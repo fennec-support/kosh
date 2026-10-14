@@ -388,6 +388,9 @@ printf 'enable-d=%s ' "$?"
 "$BIN" --mood bash --restricted -c \
   "hash -p '$directory/script' probe" >/dev/null 2>&1
 printf 'hash=%s ' "$?"
+(cd "$directory" &&
+  "$BIN" --mood bash --restricted -c 'hash -p script probe') >/dev/null 2>&1
+printf 'hash-bare=%s ' "$?"
 "$BIN" --mood bash --restricted -c \
   "history -r '$directory/script'" >/dev/null 2>&1
 printf 'history=%s ' "$?"

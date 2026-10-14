@@ -272,6 +272,7 @@ enum class terminal_handoff : u8
 
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
 constexpr char  PATH_DELIMITER                        = ';';
+constexpr bool  IS_EMPTY_PATH_ENTRY_CURRENT_DIRECTORY = false;
 constexpr char  DIRECTORY_SEPARATOR                   = '\\';
 constexpr bool  IS_BACKSLASH_A_SEPARATOR              = true;
 constexpr bool  HAS_WINDOWS_FILENAME_RULES            = true;
@@ -295,6 +296,7 @@ using os_args    = String;
 
 #elif KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
 constexpr char  PATH_DELIMITER                        = ':';
+constexpr bool  IS_EMPTY_PATH_ENTRY_CURRENT_DIRECTORY = true;
 constexpr char  DIRECTORY_SEPARATOR                   = '/';
 constexpr bool  IS_BACKSLASH_A_SEPARATOR              = false;
 constexpr bool  HAS_WINDOWS_FILENAME_RULES            = false;

@@ -606,20 +606,28 @@ ProgramResolver::split_path_dirs(StringView path) throws
   let directories = ArrayList<String>{heap_allocator()};
   let current     = String{heap_allocator()};
 
+  /* POSIX treats an empty entry as the current directory. Windows shells
+     skip an empty entry, and a trailing ';' cannot reach a planted program. */
+  let const do_push_entry = [&]() throws {
+    if (!current.is_empty()) {
+      directories.push_managed(current.view());
+    } else if (os::IS_EMPTY_PATH_ENTRY_CURRENT_DIRECTORY) {
+      directories.push_managed(StringView{"."});
+    }
+  };
+
   for (usize position = 0; position < path.length; position++) {
     let const byte = path[position];
 
     if (byte == os::PATH_DELIMITER) {
-      directories.push_managed(current.is_empty() ? StringView{"."}
-                                                  : current.view());
+      do_push_entry();
       current.clear();
     } else {
       current.push(byte);
     }
   }
 
-  directories.push_managed(current.is_empty() ? StringView{"."}
-                                              : current.view());
+  do_push_entry();
 
   return directories;
 }

@@ -563,19 +563,79 @@ splice_environment_flags(command_line &line) throws -> void
       kosh_flags.has_value() && !kosh_flags->is_empty())
   {
     static constexpr PackedStringKey IGNORED_KOSH_FLAG_KEYS[] = {
-        SSK("--apply"), SSK("--format"), SSK("--as-language-server")};
+        SSK("--apply"), SSK("--format"), SSK("--as-language-server"),
+        SSK("--command")};
     static constexpr StaticStringSet IGNORED_KOSH_FLAGS{IGNORED_KOSH_FLAG_KEYS};
-    let const                        view = kosh_flags->view();
-    bool                             should_skip_next_command_word = false;
+    let const                        view              = kosh_flags->view();
+    bool                             is_value_next     = false;
+    bool                             should_keep_value = false;
 
+    let const do_takes_separate_value = [](const Flag *flag) wontthrow {
+      return flag->kind() == Flag::Kind::String ||
+             flag->kind() == Flag::Kind::ManyStrings;
+    };
+
+    /* KOSH_FLAGS can set options but cannot choose what runs. Option words
+       and their values are kept, and -c, --, and operands are dropped. */
     view.for_each_ascii_whitespace_word([&](StringView token) throws {
-      if (should_skip_next_command_word) {
-        should_skip_next_command_word = false;
-      } else if (token == "-c") {
-        should_skip_next_command_word = true;
-      } else if (!IGNORED_KOSH_FLAGS.contains(token)) {
-        line.flag_tokens.push_managed(token);
+      if (is_value_next) {
+        is_value_next = false;
+        if (should_keep_value) line.flag_tokens.push_managed(token);
+
+        return;
       }
+
+      if (token.starts_with("--")) {
+        let const equals = token.find_character('=');
+        let const name =
+            token.substring_of_length(2, equals.value_or(token.length) - 2);
+
+        if (name.is_empty()) return;
+
+        const Flag *found_flag = nullptr;
+
+        for (let const *flag : FLAG_LIST) {
+          if (flag->long_name() == name) found_flag = flag;
+        }
+
+        let const is_ignored = IGNORED_KOSH_FLAGS.contains(
+            token.substring_of_length(0, equals.value_or(token.length)));
+
+        is_value_next = !equals.has_value() && found_flag != nullptr &&
+                        do_takes_separate_value(found_flag);
+        should_keep_value = !is_ignored;
+        if (!is_ignored) line.flag_tokens.push_managed(token);
+
+        return;
+      }
+
+      if (token.length < 2 || (token[0] != '-' && token[0] != '+')) return;
+
+      for (usize i = 1; i < token.length; i++) {
+        const Flag *found_flag = nullptr;
+
+        for (let const *flag : FLAG_LIST) {
+          if (flag->short_name() == token[i]) found_flag = flag;
+        }
+
+        if (found_flag == nullptr) continue;
+
+        if (found_flag == &FLAG_COMMAND) {
+          is_value_next     = i + 1 == token.length;
+          should_keep_value = false;
+
+          return;
+        }
+
+        if (do_takes_separate_value(found_flag)) {
+          is_value_next     = i + 1 == token.length;
+          should_keep_value = true;
+
+          break;
+        }
+      }
+
+      line.flag_tokens.push_managed(token);
     });
   }
 

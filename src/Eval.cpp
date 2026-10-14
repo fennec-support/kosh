@@ -350,7 +350,17 @@ EvalContext::guard_restricted_path(StringView            path,
     -> void
 {
   if (!runtime_state().option_is_enabled(shell_option_id::Restricted)) return;
-  if (use != restricted_path_use::History && !os::has_directory_separator(path))
+  /* History and hash -p operands are always forbidden, as in bash. hash -p
+     can bind a name to any file, including one in the current directory. */
+  let const is_always_forbidden =
+      use == restricted_path_use::History || use == restricted_path_use::Hash;
+  /* On Windows a drive designator such as C:name can reach a file outside
+     the current directory. */
+  let const has_drive_designator =
+      os::HAS_WINDOWS_FILENAME_RULES && path.find_character(':').has_value();
+
+  if (!is_always_forbidden && !has_drive_designator &&
+      !os::has_directory_separator(path))
   {
     return;
   }
@@ -370,10 +380,8 @@ EvalContext::guard_restricted_path(StringView            path,
     throw ErrorWithLocation{
         location, "History file operands are forbidden in a restricted shell"};
   case restricted_path_use::Hash:
-    throw ErrorWithLocation{
-        location,
-        "hash -p paths containing a directory separator are forbidden in a "
-        "restricted shell"};
+    throw ErrorWithLocation{location,
+                            "hash -p is forbidden in a restricted shell"};
   }
 
   unreachable("Unhandled restricted path use");

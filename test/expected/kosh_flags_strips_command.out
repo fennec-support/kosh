@@ -1,6 +1,12 @@
 == -c in KOSH_FLAGS does not run its command:
 clean
+== -xc injected_command: clean
+== --command injected_command: clean
+== --command=injected_command: clean
+== -- injected_script: clean
 == benign flag in KOSH_FLAGS survives:
 sh
 flagged
 rc=0
+== a short flag keeps its separate value:
+sh

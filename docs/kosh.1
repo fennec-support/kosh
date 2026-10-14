@@ -133,13 +133,20 @@ The
 environment variable supplies options before the command line is parsed. A
 command-line option overrides the corresponding value from
 .BR KOSH_FLAGS .
-The options
+Options and their values are kept there. The options
 .BR \-c ,
+.BR \-\-command ,
 .BR \-\-format ,
 .BR \-\-apply ,
 and
-.B \-\-as\-language\-server
-are ignored there. A secure execution ignores and removes
+.BR \-\-as\-language\-server ,
+a cluster such as
+.B \-xc
+that contains
+.BR \-c ,
+the value of a dropped option,
+.BR \-\- ,
+and every operand are ignored there. A secure execution ignores and removes
 .BR KOSH_FLAGS .
 .PP
 The shell enters rescue mode when argument zero begins with a dash, its options
@@ -1247,10 +1254,13 @@ custom rc or BASH_ENV file is unreadable, a diagnostic is also produced. An unre
 ENV file is skipped silently.
 .SH RESTRICTED SHELL
 A restricted shell rejects directory changes, changes to SHELL, PATH, ENV, and
-BASH_ENV, a directory separator in a command word, a source operand, or a
-.B hash \-p
-path, and every file operand of
+BASH_ENV, a directory separator in a command word or a source operand, every
+use of
+.BR "hash \-p" ,
+and every file operand of
 .BR history .
+On Windows a drive designator such as C:name also counts as a directory
+separator.
 The history files keep the paths derived from HOME at startup, so a later HOME
 assignment does not move them.
 .PP
@@ -2325,7 +2335,8 @@ Resolved command locations are remembered or listed. The
 .B \-r
 option clears the cache. The
 .BI "\-p " path
-option records path as the location of each name. The
+option records path as the location of each name, and a restricted shell
+rejects it. The
 .B \-t
 option prints the remembered location of each name, preceded by the name and a
 tab when several are given, and fails for a name with no remembered location.
@@ -5057,7 +5068,8 @@ These variables select startup files under the conditions in
 .TP
 .B PATH
 The value is a colon-separated command search path. An empty element, an
-empty value, and an unset PATH search the current directory. The
+empty value, and an unset PATH search the current directory. On Windows the
+separator is a semicolon, and an empty element is skipped. The
 .B \-\-no\-init\-files
 option resets it to /usr/bin:/bin.
 .TP
