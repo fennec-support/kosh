@@ -430,16 +430,15 @@ Parser::recover_to_next_statement() throws -> void
     }
 
     if (m_unclosed_construct_count > 0)
-      count_skipped_construct_token(token, is_command_position);
+      count_skipped_token(token, is_command_position);
     m_lexer.advance_past_last_peek();
     has_consumed_token = true;
   }
 }
 
 fn
-Parser::count_skipped_construct_token(const Token *token,
-                                      bool        &is_command_position)
-    wontthrow -> void
+Parser::count_skipped_token(const Token *token,
+                            bool        &is_command_position) wontthrow -> void
 {
   let const was_command_position = is_command_position;
 
@@ -615,10 +614,11 @@ is_closer_at(StringView source, usize position) wontthrow -> bool
 }
 
 cold fn
-Parser::find_next_outer_line(usize opener_position, usize error_position) const throws -> usize
+Parser::find_next_outer_line(usize opener, usize error) const throws
+    -> usize
 {
   let const source     = m_lexer.source();
-  usize     line_start = opener_position;
+  usize     line_start = opener;
 
   while (line_start > 0 && source[line_start - 1] != '\n') {
     line_start--;
@@ -626,7 +626,7 @@ Parser::find_next_outer_line(usize opener_position, usize error_position) const 
 
   usize indent_end = line_start;
 
-  while (indent_end < opener_position &&
+  while (indent_end < opener &&
          (source[indent_end] == ' ' || source[indent_end] == '\t'))
   {
     indent_end++;
@@ -680,7 +680,7 @@ Parser::find_next_outer_line(usize opener_position, usize error_position) const 
 
     let const word = text.substring_of_length(first, word_end - first);
     let const is_outer_command =
-        line > error_position && !is_continuation && !word.is_empty() &&
+        line > error && !is_continuation && !word.is_empty() &&
         word[0] != '#' && first <= outer_indent &&
         !OUTER_LINE_CLOSERS.contains(word) && word[0] != '}' &&
         word[0] != ')' && word[0] != ';' && !is_case_arm_line(text, first);

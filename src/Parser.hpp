@@ -154,10 +154,10 @@ private:
   fn
   recover_to_next_statement() throws -> void;
   fn
-  count_skipped_construct_token(const Token *token,
-                                bool        &is_command_position) wontthrow -> void;
+  count_skipped_token(const Token *token, bool &is_command_position) wontthrow
+      -> void;
   fn
-  find_next_outer_line(usize opener_position, usize error_position) const throws -> usize;
+  find_next_outer_line(usize opener, usize error) const throws -> usize;
   cold fn
   record_statement_error(
       usize                         error_position,

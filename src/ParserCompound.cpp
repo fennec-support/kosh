@@ -400,7 +400,7 @@ Parser::parse_for() throws -> Command *
 
   let header = parse_loop_header(
       location, "for", "This for loop has no closing 'done'",
-      "expected 'do' here, after the list of words",
+      "expected 'do' here, after the word list",
       "expected 'do' or 'in WORDS' here, and a loop without 'in' iterates "
       "over the positional parameters");
   let loop_node = m_lexer.arena().create<ForLoop>(
@@ -425,7 +425,7 @@ Parser::parse_select() throws -> Command *
 
   let header    = parse_loop_header(location, "select",
                                     "This select loop has no closing 'done'",
-                                    "expected 'do' here, after the list of words",
+                                    "expected 'do' here, after the word list",
                                     "expected 'do' or 'in WORDS' here");
   let loop_node = m_lexer.arena().create<SelectLoop>(
       location, header.name_token->source_location(), header.variable_name,
