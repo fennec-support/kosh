@@ -407,6 +407,58 @@ FlagOptionalValue::reset() throws -> void
   m_has_value  = false;
 }
 
+pure fn
+find_short_flag(const FlagList &flags, char letter) wontthrow -> Flag *
+{
+  for (let const flag : flags) {
+    if (flag->short_name() == letter) return flag;
+  }
+
+  return nullptr;
+}
+
+pure fn
+find_long_flag(const FlagList &flags, StringView name) wontthrow -> Flag *
+{
+  for (let const flag : flags) {
+    if (flag->long_name() == name) return flag;
+  }
+
+  return nullptr;
+}
+
+pure fn
+takes_separate_value(const Flag &flag) wontthrow -> bool
+{
+  return flag.kind() == Flag::Kind::String ||
+         flag.kind() == Flag::Kind::ManyStrings;
+}
+
+pure fn
+has_flag_word(int                argc,
+              const char *const *argv,
+              char               short_name,
+              StringView         long_name) wontthrow -> bool
+{
+  for (int i = 1; i < argc; i++) {
+    let const argument = StringView{argv[i]};
+
+    if (argument == "--") break;
+
+    if (argument.starts_with("--") && argument.substring(2) == long_name) {
+      return true;
+    }
+
+    if (argument.length > 1 && argument[0] == '-' && argument[1] != '-' &&
+        argument.find_character(short_name).has_value())
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 static fn
 find_flag(const FlagList &flags,
           const char     *flag_start,
@@ -420,35 +472,34 @@ find_flag(const FlagList &flags,
   *value_start = nullptr;
   *result_flag = nullptr;
 
+  if (!is_long) {
+    *result_flag = find_short_flag(flags, *flag_start);
+    if (*result_flag == nullptr) return false;
+
+    *value_start = flag_start + 1;
+
+    return true;
+  }
+
   for (usize i = 0; i < flags.count(); ++i) {
-    if (!is_long) {
-      if (flags[i]->short_name() == *flag_start) {
-        *result_flag = flags[i];
-        *value_start = flag_start + 1;
+    if (flags[i]->long_name().is_empty()) continue;
 
-        return true;
-      }
-    } else {
-      if (!flags[i]->long_name().is_empty()) {
-        let const flag_length = flags[i]->long_name().length;
+    let const flag_length = flags[i]->long_name().length;
 
-        let const is_flag_longer_than_argument =
-            flag_length > flag_start_length;
+    let const is_flag_longer_than_argument = flag_length > flag_start_length;
 
-        if (is_flag_longer_than_argument) continue;
+    if (is_flag_longer_than_argument) continue;
 
-        let const after_name = flag_start[flag_length];
+    let const after_name = flag_start[flag_length];
 
-        if (flag_length > longest_length &&
-            std::strncmp(flags[i]->long_name().data, flag_start, flag_length) ==
-                0 &&
-            (after_name == '\0' || after_name == '='))
-        {
-          *result_flag   = flags[i];
-          *value_start   = flag_start + flag_length;
-          longest_length = flag_length;
-        }
-      }
+    if (flag_length > longest_length &&
+        std::strncmp(flags[i]->long_name().data, flag_start, flag_length) ==
+            0 &&
+        (after_name == '\0' || after_name == '='))
+    {
+      *result_flag   = flags[i];
+      *value_start   = flag_start + flag_length;
+      longest_length = flag_length;
     }
   }
 

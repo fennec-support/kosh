@@ -200,52 +200,30 @@ next_completion_prefix_word(StringView line, usize &position) wontthrow
 }
 
 static fn
-timeout_flag_takes_value(char short_name, StringView long_name)
-    wontthrow -> bool
-{
-  let const flags =
-      koshkit::koshkit_util_flag_list(koshkit::Utility::Kind::Timeout);
-
-  if (flags == nullptr) return false;
-
-  for (let const flag : *flags) {
-    if (short_name != '\0' && flag->short_name() != short_name) {
-      continue;
-    }
-
-    if (!long_name.is_empty() && flag->long_name() != long_name) {
-      continue;
-    }
-
-    return flag->kind() == Flag::Kind::String ||
-           flag->kind() == Flag::Kind::ManyStrings;
-  }
-
-  return false;
-}
-
-static fn
 timeout_option_takes_next_word(StringView word) wontthrow -> bool
 {
   if (word.length < 2 || word[0] != '-') {
     return false;
   }
 
+  let const flags =
+      koshkit::koshkit_util_flag_list(koshkit::Utility::Kind::Timeout);
+
+  if (flags == nullptr) return false;
+
   if (word[1] == '-') {
     let const separator = word.find_character('=');
     let const name_length =
         separator.has_value() ? *separator - 2 : word.length - 2;
-    let const name = word.substring_of_length(2, name_length);
+    let const flag =
+        find_long_flag(*flags, word.substring_of_length(2, name_length));
 
-    return !separator.has_value() && timeout_flag_takes_value('\0', name);
+    return !separator.has_value() && flag != nullptr &&
+           takes_separate_value(*flag);
   }
 
-  for (usize flag_index = 1; flag_index < word.length; flag_index++) {
-    if (timeout_flag_takes_value(word[flag_index], {}))
-      return flag_index + 1 == word.length;
-  }
-
-  return false;
+  return scan_short_cluster(*flags, word.substring(1),
+                            [](const Flag &) wontthrow { return false; });
 }
 
 static pure fn

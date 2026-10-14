@@ -465,6 +465,48 @@ append_shell_quoted_arg(String    &out,
 fn
 reset_flags(const FlagList &flags) throws -> void;
 
+/* Both lookups return nullptr when no registered flag matches. The long lookup
+   compares the whole name, without any "=value" suffix. */
+pure fn
+find_short_flag(const FlagList &flags, char letter) wontthrow -> Flag *;
+pure fn
+find_long_flag(const FlagList &flags, StringView name) wontthrow -> Flag *;
+
+/* A String or ManyStrings flag reads its value from the next word when the
+   value is not attached. */
+pure fn
+takes_separate_value(const Flag &flag) wontthrow -> bool;
+
+/* Whether argv[1..] up to the first "--" holds the word --long_name or a short
+   cluster containing the letter. The check does not consult the registry, so a
+   letter inside another flag's value counts. */
+pure fn
+has_flag_word(int                argc,
+              const char *const *argv,
+              char               short_name,
+              StringView         long_name) wontthrow -> bool;
+
+/* Visits each registered flag letter of a short cluster, without the leading
+   dash, and skips unknown letters. The scan ends after the first flag that
+   takes a value or when do_visit returns true. It returns true when the last
+   letter takes a value, so the value is the next word. */
+template <class Visit>
+fn
+scan_short_cluster(const FlagList &flags,
+                   StringView      cluster,
+                   Visit           do_visit) wontthrow -> bool
+{
+  for (usize i = 0; i < cluster.length; i++) {
+    let const flag = find_short_flag(flags, cluster[i]);
+
+    if (flag == nullptr) continue;
+    if (do_visit(*flag)) return false;
+    if (takes_separate_value(*flag)) return i + 1 == cluster.length;
+  }
+
+  return false;
+}
+
 fn
 show_version() throws -> void;
 fn

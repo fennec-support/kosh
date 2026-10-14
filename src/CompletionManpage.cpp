@@ -1990,61 +1990,55 @@ describe_registered_flag(const FlagList &flags,
                          StringView      flag,
                          String         &out) throws -> bool
 {
-  for (let const *candidate : flags) {
-    let const is_short = flag.length == 2 && flag[1] != '-' &&
-                         candidate->short_name() == flag[1];
-    let const is_long = flag.length > 2 && flag[1] == '-' &&
-                        !candidate->long_name().is_empty() &&
-                        candidate->long_name() == flag.substring(2);
+  let const *candidate = flag.length == 2 && flag[1] != '-'
+                             ? find_short_flag(flags, flag[1])
+                         : flag.length > 2 && flag[1] == '-'
+                             ? find_long_flag(flags, flag.substring(2))
+                             : nullptr;
 
-    if (!is_short && !is_long) {
-      continue;
-    }
-
-    if (candidate->description().is_empty()) return false;
-
-    let forms = String{heap_allocator()};
-
-    if (candidate->short_name() != '\0') {
-      forms.push('-');
-      forms.push(candidate->short_name());
-    }
-
-    if (!candidate->long_name().is_empty()) {
-      if (!forms.is_empty()) forms.append(StringView{", "});
-      forms.append(StringView{"--"});
-      forms.append(candidate->long_name());
-    }
-
-    switch (candidate->kind()) {
-    case Flag::Kind::String:
-      forms.append(candidate->long_name().is_empty() ? StringView{" <...>"}
-                                                     : StringView{"=<...>"});
-      break;
-
-    case Flag::Kind::ManyStrings:
-      forms.append(candidate->long_name().is_empty() ? StringView{" <.., ..>"}
-                                                     : StringView{"=<.., ..>"});
-      break;
-
-    case Flag::Kind::OptionalValue:
-      forms.append(StringView{"[=<"});
-      forms.append(
-          static_cast<const FlagOptionalValue *>(candidate)->value_name());
-      forms.push('>');
-      forms.push(']');
-      break;
-
-    case Flag::Kind::Bool:
-    case Flag::Kind::RepeatedBool: break;
-    }
-
-    append_flag_row(out, forms.view(), candidate->description());
-
-    return true;
+  if (candidate == nullptr || candidate->description().is_empty()) {
+    return false;
   }
 
-  return false;
+  let forms = String{heap_allocator()};
+
+  if (candidate->short_name() != '\0') {
+    forms.push('-');
+    forms.push(candidate->short_name());
+  }
+
+  if (!candidate->long_name().is_empty()) {
+    if (!forms.is_empty()) forms.append(StringView{", "});
+    forms.append(StringView{"--"});
+    forms.append(candidate->long_name());
+  }
+
+  switch (candidate->kind()) {
+  case Flag::Kind::String:
+    forms.append(candidate->long_name().is_empty() ? StringView{" <...>"}
+                                                   : StringView{"=<...>"});
+    break;
+
+  case Flag::Kind::ManyStrings:
+    forms.append(candidate->long_name().is_empty() ? StringView{" <.., ..>"}
+                                                   : StringView{"=<.., ..>"});
+    break;
+
+  case Flag::Kind::OptionalValue:
+    forms.append(StringView{"[=<"});
+    forms.append(
+        static_cast<const FlagOptionalValue *>(candidate)->value_name());
+    forms.push('>');
+    forms.push(']');
+    break;
+
+  case Flag::Kind::Bool:
+  case Flag::Kind::RepeatedBool: break;
+  }
+
+  append_flag_row(out, forms.view(), candidate->description());
+
+  return true;
 }
 
 static fn
