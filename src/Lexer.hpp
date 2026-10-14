@@ -263,7 +263,9 @@ is_backtick_escape_stripped(char escaped, bool is_in_double_quotes) wontthrow
 fn
 scan_balanced_shell_region(StringView source,
                            usize      position,
-                           char       closing_byte) throws -> Maybe<usize>;
+                           char       closing_byte,
+                           usize      nesting_depth = 0) throws
+    -> Maybe<usize>;
 
 struct nested_substitution
 {

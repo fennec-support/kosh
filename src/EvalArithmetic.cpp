@@ -25,6 +25,36 @@ namespace koshka {
 
 namespace {
 
+/* True when an arithmetic subscript still holds a '$' or '`' after the whole
+   expression has been expanded. Such a character can only come from data. */
+pure static fn
+is_expanded_subscript(StringView subscript) wontthrow -> bool
+{
+  return subscript.find_character('$').has_value() ||
+         subscript.find_character('`').has_value();
+}
+
+/* An array reached through a nameref is checked under its target name. */
+static fn
+resolve_subscripted_array_name(const EvalContext &context,
+                               StringView         name) throws -> String
+{
+  let resolved = context.resolve_nameref(name);
+
+  if (resolved.has_value() && !resolved->is_empty()) return steal(*resolved);
+
+  return String{heap_allocator(), name};
+}
+
+cold wontreturn static fn
+reject_expanded_subscript(StringView subscript) throws -> void
+{
+  throw ErrorWithDetails{"Unexpected '$' in the array subscript '" + subscript +
+                             "'",
+                         "A subscript taken from a variable's value is data "
+                         "and cannot run a command substitution"};
+}
+
 using arithmetic_internal::ArithmeticValue;
 
 pure fn
@@ -239,6 +269,11 @@ public:
 
   usize                  depth{0};
   static constexpr usize MAX_DEPTH = 128;
+  /* Right operands of '**' recurse through parse_binary, and the branches of
+     a conditional recurse through parse_ternary. Both chains are bounded by
+     this depth. */
+  usize                  binary_depth{0};
+  static constexpr usize MAX_BINARY_DEPTH = 1024;
   usize                  chain_depth{0};
   static constexpr usize MAX_CHAIN_DEPTH = 4096;
 
@@ -475,6 +510,21 @@ public:
     if (target.subscript.has_value()) {
       ASSERT(context != nullptr);
 
+      if (is_expanded_subscript(*target.subscript)) {
+        let const array_name =
+            resolve_subscripted_array_name(*context, target.name);
+
+        if (!context->is_associative_array(array_name.view())) {
+          reject_expanded_subscript(*target.subscript);
+        }
+
+        let const value = context->lookup_associative_element(
+            array_name.view(), *target.subscript);
+
+        return evaluate_operand_value(value.has_value() ? value->view()
+                                                        : StringView{});
+      }
+
       let const value = context->read_array_element_arithmetic_text(
           target.name, *target.subscript);
 
@@ -492,6 +542,20 @@ public:
       ASSERT(context != nullptr);
 
       let const text = value.to_string(context->scratch_allocator());
+
+      if (is_expanded_subscript(*target.subscript)) {
+        let const array_name =
+            resolve_subscripted_array_name(*context, target.name);
+
+        if (!context->is_associative_array(array_name.view())) {
+          reject_expanded_subscript(*target.subscript);
+        }
+
+        context->set_associative_element(array_name.view(), *target.subscript,
+                                         text.view());
+
+        return;
+      }
 
       context->assign_array_element(target.name, *target.subscript, text.view(),
                                     assignment_update_mode::Replace);
@@ -664,6 +728,13 @@ public:
   fn
   parse_ternary() throws -> ArithmeticValue
   {
+    binary_depth++;
+    defer { binary_depth--; };
+
+    if (binary_depth > MAX_BINARY_DEPTH)
+      fail("Expression nested too deeply",
+           "An operator chain this long needs parentheses or a loop");
+
     let const condition = parse_binary(1);
 
     if (consume("?")) {
@@ -767,6 +838,13 @@ public:
   fn
   parse_binary(u8 min_precedence) throws -> ArithmeticValue
   {
+    binary_depth++;
+    defer { binary_depth--; };
+
+    if (binary_depth > MAX_BINARY_DEPTH)
+      fail("Expression nested too deeply",
+           "An operator chain this long needs parentheses or a loop");
+
     skip_spaces();
 
     let const lhs_start = pos;
@@ -2378,6 +2456,8 @@ public:
   bool                          is_exact{false};
   BumpArena                    &arena;
   static constexpr usize        MAX_DEPTH = 128;
+  usize                         binary_depth{0};
+  static constexpr usize        MAX_BINARY_DEPTH = 1024;
 
   pure fn
   at_op(StringView s) wontthrow -> bool
@@ -2467,6 +2547,15 @@ public:
   fn
   parse_binary(u8 min_precedence) throws -> ArithmeticValue
   {
+    binary_depth++;
+    defer { binary_depth--; };
+
+    if (binary_depth > MAX_BINARY_DEPTH) {
+      throw ErrorWithDetails{
+          "Expression nested too deeply",
+          "An operator chain this long needs parentheses or a loop"};
+    }
+
     let lhs = parse_operand();
 
     loop {
@@ -2564,6 +2653,18 @@ evaluate_arithmetic_value(
   if (!expression.find_character('$').has_value() &&
       !expression.find_character('`').has_value() && !has_removable_quote)
   {
+    let parser = ArithmeticParser{context, expression, is_exact, arena,
+                                  0,       false,      bc_scale};
+
+    parser.should_error_unset = should_error_unset;
+    if (expression_base != nullptr) parser.precise_base = *expression_base;
+
+    return parser.parse();
+  }
+
+  /* A variable's value is data and is parsed without expansion. Bash also
+     rejects a '$' or '`' in an operand taken from a value. */
+  if (text_kind == arithmetic_text_kind::Value) {
     let parser = ArithmeticParser{context, expression, is_exact, arena,
                                   0,       false,      bc_scale};
 

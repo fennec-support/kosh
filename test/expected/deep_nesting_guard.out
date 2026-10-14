@@ -18,3 +18,10 @@ ok
 7
 == a failed function body with a here-document reports a syntax error:
 status=2
+== a long power chain is guarded, not crashing:
+1
+ok
+== a long conditional chain is guarded, not crashing:
+1
+== deep quoted substitution nesting is a syntax error:
+status=2

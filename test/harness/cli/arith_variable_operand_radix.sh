@@ -8,3 +8,19 @@ echo "rc=$?"
 "$BIN" --mood bash --enable-extended-arithmetic -c \
   'v=18446744073709551616; echo $((v + 1))'
 echo "extended-rc=$?"
+
+# A '$' that comes from a variable's value is data. An operand or an array
+# subscript taken from a value never runs its command substitution, and an
+# associative key keeps the '$' literally.
+marker=$TEST_TEMP_DIRECTORY/arith-value-substitution
+rm -f "$marker"
+for form in '[[ $x -lt 1 ]]' 'declare -i n; n=$x' 'RANDOM=$x' 'y=$(( x ))'; do
+  "$BIN" --mood bash -c "x='a[\$(: > \$1)]'; $form" shell "$marker" \
+    >/dev/null 2>&1
+done
+if [ -f "$marker" ]; then echo "value substitution ran"; else echo "value substitution blocked"; fi
+"$BIN" --mood bash -c \
+  'declare -A m; k="\$(: > $1)"; m[$k]=7; echo $(( m[$k] + 1 ))
+   declare -n r=m; (( r[$k] += 2 )); echo "${m[$k]}"' \
+  shell "$marker" 2>&1
+if [ -f "$marker" ]; then echo "key substitution ran"; else echo "key substitution blocked"; fi

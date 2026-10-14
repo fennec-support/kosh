@@ -208,8 +208,13 @@ skip_balanced_scan_heredoc_bodies(
 fn
 scan_balanced_shell_region(StringView source,
                            usize      position,
-                           char       closing_byte) throws -> Maybe<usize>
+                           char       closing_byte,
+                           usize      nesting_depth) throws -> Maybe<usize>
 {
+  /* A quoted substitution recurses here. The recursion stops at the
+     substitution nesting limit of the lexer. */
+  if (nesting_depth > MAX_SUBSTITUTION_NESTING_DEPTH) return None;
+
   let       pending_heredocs    = ArrayList<pending_heredoc>{heap_allocator()};
   let       case_pattern_depths = ArrayList<usize>{heap_allocator()};
   usize     depth               = 1;
@@ -236,8 +241,8 @@ scan_balanced_shell_region(StringView source,
       if (byte == '$' && quote == '"' && position < source.length &&
           source[position] == '(')
       {
-        let const nested =
-            scan_balanced_shell_region(source, position + 1, ')');
+        let const nested = scan_balanced_shell_region(source, position + 1, ')',
+                                                      nesting_depth + 1);
 
         if (!nested.has_value()) return None;
         position      = *nested;
@@ -249,8 +254,8 @@ scan_balanced_shell_region(StringView source,
           source[position] == '{' &&
           (is_whitespace(source[position + 1]) || source[position + 1] == '|'))
       {
-        let const nested =
-            scan_balanced_shell_region(source, position + 1, '}');
+        let const nested = scan_balanced_shell_region(source, position + 1, '}',
+                                                      nesting_depth + 1);
 
         if (!nested.has_value()) return None;
         position      = *nested;

@@ -58,3 +58,27 @@ echo "== a failed function body with a here-document reports a syntax error:"
 printf 'p(){ cat <<E; fi; }\nx\nE\n' > "$TEST_TEMP_DIRECTORY/deep-heredoc-body.sh"
 "$BIN" -n "$TEST_TEMP_DIRECTORY/deep-heredoc-body.sh" > /dev/null 2>&1
 echo "status=$?"
+
+# A long right-associative '**' chain is capped with an error, and the shell
+# survives it.
+chain=$(printf '2**%.0s' $(seq 1 100000))
+printf 'echo $(( %s1 ))\n' "$chain" > "$TEST_TEMP_DIRECTORY/deep-power-chain.sh"
+echo "== a long power chain is guarded, not crashing:"
+"$BIN" "$TEST_TEMP_DIRECTORY/deep-power-chain.sh" 2>&1 | grep -c "nested too deeply"
+"$BIN" "$TEST_TEMP_DIRECTORY/deep-power-chain.sh" >/dev/null 2>&1
+status=$?
+[ "$status" -lt 128 ] && echo ok || echo "crashed with signal $((status - 128))"
+
+# A conditional nested in its else branches recurses the same way.
+chain=$(printf '1?1:%.0s' $(seq 1 10000))
+printf 'echo $(( %s1 ))\n' "$chain" > "$TEST_TEMP_DIRECTORY/deep-conditional.sh"
+echo "== a long conditional chain is guarded, not crashing:"
+"$BIN" "$TEST_TEMP_DIRECTORY/deep-conditional.sh" 2>&1 | grep -c "nested too deeply"
+
+# Command substitutions nested inside double quotes are scanned recursively,
+# and the scan stops at the substitution cap.
+quoted=$(printf '"$(%.0s' $(seq 1 20000))
+printf 'echo %s\n' "$quoted" > "$TEST_TEMP_DIRECTORY/deep-quoted-substitution.sh"
+echo "== deep quoted substitution nesting is a syntax error:"
+"$BIN" -n "$TEST_TEMP_DIRECTORY/deep-quoted-substitution.sh" >/dev/null 2>&1
+echo "status=$?"
