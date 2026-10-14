@@ -139,58 +139,6 @@ make_target_is_artifact(StringView name, const Path &directory) throws
 }
 
 static fn
-parse_make_database_targets(StringView  database,
-                            const Path &directory) throws
-    -> ArrayList<String>
-{
-  let   targets          = ArrayList<String>{heap_allocator()};
-  let   in_files_section = false;
-  let   skip_next_rule   = false;
-  usize i                = 0;
-
-  while (i < database.length) {
-    let const text = database.next_line(i);
-
-    if (text.starts_with(StringView{"# Files"})) {
-      in_files_section = true;
-      continue;
-    }
-
-    if (text.starts_with(StringView{"# Finished Make data base"})) break;
-    if (!in_files_section) continue;
-    if (text.starts_with(StringView{"# Not a target"})) {
-      skip_next_rule = true;
-      continue;
-    }
-
-    if (text.is_empty() || text[0] == '#') {
-      continue;
-    }
-
-    if (skip_next_rule) {
-      skip_next_rule = false;
-      continue;
-    }
-
-    if (text[0] == '.' || text[0] == '\t') {
-      continue;
-    }
-
-    let const colon = text.find_character(':');
-    if (!colon.has_value() || *colon == 0) {
-      continue;
-    }
-
-    let const name = text.substring_of_length(0, *colon);
-
-    if (make_target_is_artifact(name, directory)) continue;
-    targets.push_managed(name);
-  }
-
-  return targets;
-}
-
-static fn
 parse_colon_led_names(StringView listing) throws -> ArrayList<String>
 {
   let   names = ArrayList<String>{heap_allocator()};
@@ -588,7 +536,13 @@ internal::complete_from_tools_with_targets(StringView      line,
         ProgramResolver::Requirement::Runnable,
         ProgramResolver::CachePolicy::Bypass);
 
-    if (resolved.is_empty()) return None;
+    /* A probe runs only a program from a trusted absolute directory. A tool
+       planted in the current directory is never run. */
+    if (resolved.is_empty() ||
+        !os::directory_is_trusted_for_exec(Path{resolved[0].view()}.parent()))
+    {
+      return None;
+    }
 
     let argv = ArrayList<String>{heap_allocator()};
 
@@ -665,22 +619,9 @@ internal::complete_from_tools_with_targets(StringView      line,
 
     let const make_directory = Path{directory.view()};
 
+    /* make expands $(shell ...) while it loads the Makefile. The targets
+       come from the bundled parser, and it runs no commands. */
     cached_targets = cached_targets_for(makefile_path, [&]() throws {
-      let probe = ArrayList<String>{heap_allocator()};
-
-      probe.push_managed("make");
-      probe.push_managed("-C");
-      probe.push_managed(directory.view());
-      probe.push_managed("-f");
-      probe.push_managed(makefile_name->view());
-      probe.push_managed("-pRrq");
-      probe.push_managed(":");
-
-      let database_targets =
-          parse_make_database_targets(do_capture(probe).view(), make_directory);
-
-      if (!database_targets.is_empty()) return database_targets;
-
       let const intrinsic_targets =
           koshkit::collect_makefile_targets(context, makefile_path);
       let filtered = ArrayList<String>{heap_allocator()};
@@ -728,32 +669,48 @@ internal::complete_from_tools_with_targets(StringView      line,
 
     if (!build_directory.has_value()) return None;
 
-    let cache_file = Path{build_directory->view()};
+    let target_list = Path{build_directory->view()};
 
-    cache_file.append("CMakeCache.txt");
-    cached_targets = cached_targets_for(cache_file, [&]() throws {
-      let probe = ArrayList<String>{heap_allocator()};
+    target_list.append("CMakeFiles");
+    target_list.append("TargetDirectories.txt");
 
-      probe.push_managed("cmake");
-      probe.push_managed("--build");
-      probe.push_managed(build_directory->view());
-      probe.push_managed("--target");
-      probe.push_managed("help");
+    /* cmake --build runs the build program that the cache file selects. The
+       targets are read from the list of target directories. */
+    cached_targets = cached_targets_for(target_list, [&]() throws {
+      let       names    = ArrayList<String>{heap_allocator()};
+      let const contents = target_list.read_entire_file();
 
-      let       names = ArrayList<String>{heap_allocator()};
-      let const help  = do_capture(probe);
-      let const text  = help.view();
-      usize     i     = 0;
+      if (!contents.has_value()) return names;
+
+      /* Every generator provides all and clean without a target directory.
+         A target directory sits under the last CMakeFiles component, and a
+         target such as install/local keeps its slash there. */
+      names.push_managed("all");
+      names.push_managed("clean");
+
+      let const text   = contents->view();
+      let const suffix = StringView{".dir"};
+      let const marker = StringView{"CMakeFiles/"};
+      usize     i      = 0;
 
       while (i < text.length) {
-        let const row = text.next_line(i);
+        let row = text.next_line(i);
 
-        if (!row.starts_with(StringView{"... "})) continue;
-        let name = row.substring(4);
+        if (row.length <= suffix.length ||
+            row.substring(row.length - suffix.length) != suffix)
+        {
+          continue;
+        }
 
-        if (let const space = name.find_character(' '); space.has_value())
-          name = name.substring_of_length(0, *space);
-        if (!name.is_empty()) names.push_managed(name);
+        row = row.substring_of_length(0, row.length - suffix.length);
+
+        for (let found = row.find_substring(marker); found.has_value();
+             found     = row.find_substring(marker))
+        {
+          row = row.substring(*found + marker.length);
+        }
+
+        if (!row.is_empty()) names.push_managed(row);
       }
 
       return names;

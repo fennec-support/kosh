@@ -626,6 +626,15 @@ canonical_path(const Path &path) wontthrow -> Maybe<Path>
 fn
 directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
 {
+  /* A relative directory comes from a '.' or an empty PATH entry and resolves
+     against the current directory. A cloned repository can control it. */
+  if (!directory.is_absolute()) {
+    LOG(Debug, "trust check failed because '%s' is relative",
+        directory.c_str());
+
+    return false;
+  }
+
   struct stat directory_stat;
 
   if (stat(directory.c_str(), &directory_stat) != 0) {

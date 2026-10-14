@@ -4034,9 +4034,10 @@ and of the subcommand under the cursor. The trust rules of flag completion
 apply, so
 .BR man ,
 .BR manpath ,
-and the program run only from a directory owned by the user or root that no
-group or other user can write. Loads run in the background and the hint updates
-when the result is ready. A Tab needing a
+and the program run only from an absolute directory owned by the user or root
+that no group or other user can write. A program found through an empty or
+relative PATH element never runs. Loads run in the background and the hint
+updates when the result is ready. A Tab needing a
 load shows a
 .B loading...
 row while it waits. A key closes the row and is typed as usual, and Escape or
@@ -4050,6 +4051,21 @@ command shows the row before it runs. The
 .B koshconf set editor.hints.show_command_synopsis off
 command turns these hints off and stops the loads. The option is on by
 default.
+.PP
+Targets for
+.B make
+are completed from the Makefile by the bundled make parser, and a $(shell ...)
+function in it is not run. Targets after
+.B "cmake \-\-build"
+.I dir
+.B \-\-target
+are completed from
+.IR dir /CMakeFiles/TargetDirectories.txt,
+together with all and clean. Neither
+.B make
+nor
+.B cmake
+is started.
 .PP
 In the same pause, a line that parses is analyzed as Enter would analyze it in
 the current mood and warning level, and the rows show the wording of the first

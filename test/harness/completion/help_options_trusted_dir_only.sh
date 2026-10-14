@@ -57,6 +57,15 @@ PATH="$untrusted${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" --debug-complete
 echo "== and was never forked:"
 if [ -f "$marker" ]; then echo "forked"; else echo "not forked"; fi
 
+# An empty PATH entry resolves to the current directory, and a cloned
+# repository controls that directory even when its mode looks trusted.
+rm -f "$marker"
+echo "== an allowlisted command found through an empty PATH entry is never forked:"
+(cd "$trusted" &&
+  PATH="${TEST_PATH_SEPARATOR}/nonexistent" "$BIN" --debug-complete-at 'act --mark' </dev/null)
+echo "== and was never forked:"
+if [ -f "$marker" ]; then echo "forked"; else echo "not forked"; fi
+
 cat > "$trusted/git" <<'SH'
 #!/bin/sh
 echo "$*" >> "$KOSH_HELP_MARKER"

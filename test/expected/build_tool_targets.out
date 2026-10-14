@@ -13,3 +13,10 @@ lint:fix
 lint:fix
 == make -C from outside:
 build
+== cmake --build targets:
+all
+app
+clean
+install/local
+support
+cmake-not-run

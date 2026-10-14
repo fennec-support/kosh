@@ -486,9 +486,11 @@ directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
 {
   /* PATH already grants programs in this directory execution authority. The
      POSIX writable-mode rejection has no faithful Windows equivalent because
-     access is controlled by ordered ACLs rather than owner/group mode bits. */
+     access is controlled by ordered ACLs rather than owner/group mode bits.
+     A relative directory resolves against the current directory, and a
+     cloned repository can control it. */
 
-  return directory.is_directory();
+  return directory.is_absolute() && directory.is_directory();
 }
 
 pure fn

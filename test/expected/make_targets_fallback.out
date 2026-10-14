@@ -1,12 +1,7 @@
-== make targets without gnu make:
-all
-build
-clean
-test
-== make targets after a timed out probe:
+== make targets with a make program on PATH:
 all
 build
 clean
 test
 completion-status=0
-probe-started
+probe-not-started
