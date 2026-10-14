@@ -4,6 +4,9 @@ chmod-recursive=0 -r--r--r--
 chmod-recursive-link-target=-rwxrwx---
 chmod-nested=-rw-r----- outside=-rw-------
 chmod-operand-link=-rw----r--
+chmod-deep=0
+chgrp-deep=0
+chmod-deep-entry=-rw-r-----
 chmod-umask=-rw-r--r--
 chown=0
 chown-name=0

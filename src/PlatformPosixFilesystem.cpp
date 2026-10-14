@@ -1097,6 +1097,12 @@ remove_file(StringView path) wontthrow -> bool
 
 static constexpr usize REMOVE_TREE_HELD_DESCRIPTOR_DEPTH = 64;
 
+struct tree_directory_identity
+{
+  u64 device_id;
+  u64 file_id;
+};
+
 struct tree_removal_child
 {
   String name;
@@ -1271,6 +1277,38 @@ read_directory_children(int                            directory,
   }
 }
 
+/* A walk past the depth limit closes the parent descriptor while it visits
+   the children and reopens it afterwards, so the descriptors held stay
+   bounded. The working-directory operand is never closed. */
+static fn
+release_parent_descriptor(int &parent_descriptor, usize depth) wontthrow -> bool
+{
+  if (depth < REMOVE_TREE_HELD_DESCRIPTOR_DEPTH || parent_descriptor < 0) {
+    return false;
+  }
+
+  ::close(parent_descriptor);
+  parent_descriptor = -1;
+
+  return true;
+}
+
+/* The reopened parent must have the identity of the released one, and a
+   mismatch fails with ESTALE and leaves the descriptor closed. */
+static fn
+reopen_parent_descriptor(int                directory,
+                         int               &parent_descriptor,
+                         const struct stat &parent_status) wontthrow -> bool
+{
+  struct stat reopened_status{};
+
+  parent_descriptor = open_expected_directory(directory, "..", O_NOFOLLOW,
+                                              parent_status, reopened_status);
+  if (parent_descriptor < 0) errno = ESTALE;
+
+  return parent_descriptor >= 0;
+}
+
 static fn
 remove_tree_entry(TreeRemovalWalk   &walk,
                   int               &parent_descriptor,
@@ -1412,12 +1450,7 @@ remove_tree_entry(TreeRemovalWalk   &walk,
   }
 
   let const should_release_parent =
-      depth >= REMOVE_TREE_HELD_DESCRIPTOR_DEPTH && parent_descriptor >= 0;
-
-  if (should_release_parent) {
-    ::close(parent_descriptor);
-    parent_descriptor = -1;
-  }
+      release_parent_descriptor(parent_descriptor, depth);
 
   for (let const &child : children) {
     if (INTERRUPT_REQUESTED) return false;
@@ -1447,24 +1480,12 @@ remove_tree_entry(TreeRemovalWalk   &walk,
     if (is_child_kept) is_kept = true;
   }
 
-  if (should_release_parent) {
-    let const reopened =
-        ::openat(directory, "..", O_RDONLY | O_DIRECTORY | O_CLOEXEC);
-    struct stat reopened_status{};
-    let const   is_reopened = reopened >= 0 &&
-                            ::fstat(reopened, &reopened_status) == 0 &&
-                            reopened_status.st_dev == parent_status.st_dev &&
-                            reopened_status.st_ino == parent_status.st_ino;
+  if (should_release_parent &&
+      !reopen_parent_descriptor(directory, parent_descriptor, parent_status))
+  {
+    walk.report(tree_removal_failure::Replaced, path, {});
 
-    if (!is_reopened) {
-      if (reopened >= 0) ::close(reopened);
-      errno = ESTALE;
-      walk.report(tree_removal_failure::Replaced, path, {});
-
-      return false;
-    }
-
-    parent_descriptor = reopened;
+    return false;
   }
 
   if (!did_succeed) return false;
@@ -1513,19 +1534,13 @@ remove_tree(StringView                path,
                            path_string.c_str(), path, false, 0, is_kept);
 }
 
-struct tree_walk_identity
+struct tree_walk_state
 {
-  u64 device_id;
-  u64 file_id;
-};
-
-class TreeWalk
-{
-public:
-  TreeWalk(const tree_walk_options &options,
-           const tree_walk_hooks   &hooks) wontthrow
-      : m_options(options), m_hooks(hooks)
-  {}
+  const tree_walk_options           &options;
+  const tree_walk_hooks             &hooks;
+  BumpArena                          arena{};
+  ArrayList<tree_directory_identity> active_directories{heap_allocator()};
+  u64                                root_device_id{0};
 
   fn
   report(tree_walk_failure failure, StringView path) const throws
@@ -1533,73 +1548,22 @@ public:
   {
     let const saved_errno = errno;
 
-    m_hooks.report_failure(m_hooks.context, failure, path,
-                           last_system_error_message().view());
+    hooks.report_failure(hooks.context, failure, path,
+                         last_system_error_message().view());
     errno = saved_errno;
   }
-
-  pure fn
-  get_options() const wontthrow -> const tree_walk_options &
-  {
-    return m_options;
-  }
-
-  fn
-  visit(const tree_walk_entry &entry) const throws -> bool
-  {
-    return m_hooks.visit(m_hooks.context, entry);
-  }
-
-  fn
-  arena() wontthrow -> BumpArena &
-  {
-    return m_arena;
-  }
-
-  fn
-  is_active_directory(const struct stat &status) const wontthrow -> bool
-  {
-    for (let const &identity : m_active_directories) {
-      if (identity.device_id == static_cast<u64>(status.st_dev) &&
-          identity.file_id == static_cast<u64>(status.st_ino))
-      {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  fn
-  push_active_directory(const struct stat &status) throws -> void
-  {
-    m_active_directories.push(
-        {static_cast<u64>(status.st_dev), static_cast<u64>(status.st_ino)});
-  }
-
-  fn
-  pop_active_directory() wontthrow -> void
-  {
-    m_active_directories.pop_back();
-  }
-
-  u64 root_device_id{0};
-
-private:
-  const tree_walk_options      &m_options;
-  const tree_walk_hooks        &m_hooks;
-  BumpArena                     m_arena{};
-  ArrayList<tree_walk_identity> m_active_directories{heap_allocator()};
 };
 
 static fn
-walk_tree_entry(TreeWalk   &walk,
-                int         parent_descriptor,
-                const char *name,
-                StringView  path,
-                bool        is_operand) throws -> bool
+walk_tree_entry(tree_walk_state   &walk,
+                int               &parent_descriptor,
+                const struct stat &parent_status,
+                const char        *name,
+                StringView         path,
+                usize              depth) throws -> bool
 {
-  let const  &options = walk.get_options();
+  let const  &options    = walk.options;
+  let const   is_operand = depth == 0;
   struct stat link_status{};
 
   if (::fstatat(parent_descriptor, name, &link_status, AT_SYMLINK_NOFOLLOW) !=
@@ -1614,32 +1578,30 @@ walk_tree_entry(TreeWalk   &walk,
 
   fill_file_status(link_status, entry_status);
 
-  let entry = tree_walk_entry{};
+  let const entry =
+      tree_walk_entry{parent_descriptor,
+                      name,
+                      path,
+                      &entry_status,
+                      is_operand,
+                      options.is_one_file_system && !is_operand &&
+                          entry_status.device_id != walk.root_device_id};
+  bool did_succeed = walk.hooks.visit(walk.hooks.context, entry);
 
-  entry.parent_descriptor    = parent_descriptor;
-  entry.name                 = name;
-  entry.path                 = path;
-  entry.status               = &entry_status;
-  entry.is_operand           = is_operand;
-  entry.is_other_file_system = options.is_one_file_system && !is_operand &&
-                               entry_status.device_id != walk.root_device_id;
-
-  bool did_succeed = walk.visit(entry);
-
-  if (INTERRUPT_REQUESTED) return did_succeed;
+  if (INTERRUPT_REQUESTED || !options.is_recursive) return did_succeed;
   if (!did_succeed && !options.should_descend_after_failure) return false;
-  if (!options.is_recursive) return did_succeed;
 
-  let const is_symlink    = S_ISLNK(link_status.st_mode);
-  let const should_follow = is_operand ? options.should_follow_operands
-                                       : options.should_follow_nested;
+  let const is_symlink = S_ISLNK(link_status.st_mode);
 
-  if (is_symlink && !should_follow) return did_succeed;
+  if (is_symlink && !(is_operand ? options.should_follow_operands
+                                 : options.should_follow_nested))
+  {
+    return did_succeed;
+  }
 
   struct stat target_status = link_status;
 
-  if (is_symlink &&
-      (::fstatat(parent_descriptor, name, &target_status, 0) != 0))
+  if (is_symlink && ::fstatat(parent_descriptor, name, &target_status, 0) != 0)
   {
     return did_succeed;
   }
@@ -1648,9 +1610,9 @@ walk_tree_entry(TreeWalk   &walk,
 
   struct stat directory_status{};
 
-  let const directory = open_expected_directory(
-      parent_descriptor, name, is_symlink ? 0 : O_NOFOLLOW, target_status,
-      directory_status);
+  int directory = open_expected_directory(parent_descriptor, name,
+                                          is_symlink ? 0 : O_NOFOLLOW,
+                                          target_status, directory_status);
 
   if (directory < 0) {
     walk.report(tree_walk_failure::ReadDirectory, path);
@@ -1658,7 +1620,9 @@ walk_tree_entry(TreeWalk   &walk,
     return false;
   }
 
-  defer { ::close(directory); };
+  defer {
+    if (directory >= 0) ::close(directory);
+  };
 
   if (is_operand) {
     walk.root_device_id = static_cast<u64>(directory_status.st_dev);
@@ -1668,16 +1632,24 @@ walk_tree_entry(TreeWalk   &walk,
     return did_succeed;
   }
 
-  if (walk.is_active_directory(directory_status)) {
-    walk.report(tree_walk_failure::Loop, path);
+  let const identity =
+      tree_directory_identity{static_cast<u64>(directory_status.st_dev),
+                              static_cast<u64>(directory_status.st_ino)};
 
-    return false;
+  for (let const &active : walk.active_directories) {
+    if (active.device_id == identity.device_id &&
+        active.file_id == identity.file_id)
+    {
+      walk.report(tree_walk_failure::Loop, path);
+
+      return false;
+    }
   }
 
-  walk.push_active_directory(directory_status);
-  defer { walk.pop_active_directory(); };
+  walk.active_directories.push(identity);
+  defer { walk.active_directories.pop_back(); };
 
-  let      &arena      = walk.arena();
+  let      &arena      = walk.arena;
   let const level_mark = arena.mark();
 
   defer { arena.release(level_mark); };
@@ -1697,6 +1669,9 @@ walk_tree_entry(TreeWalk   &walk,
     did_succeed = false;
   }
 
+  let const should_release_parent =
+      release_parent_descriptor(parent_descriptor, depth);
+
   for (let const &child : children) {
     if (INTERRUPT_REQUESTED) return did_succeed;
 
@@ -1708,11 +1683,20 @@ walk_tree_entry(TreeWalk   &walk,
 
     child_path.append(child.name.view());
 
-    if (!walk_tree_entry(walk, directory, child.name.c_str(), child_path.view(),
-                         false))
+    if (!walk_tree_entry(walk, directory, directory_status, child.name.c_str(),
+                         child_path.view(), depth + 1))
     {
+      if (directory < 0) return false;
       did_succeed = false;
     }
+  }
+
+  if (should_release_parent &&
+      !reopen_parent_descriptor(directory, parent_descriptor, parent_status))
+  {
+    walk.report(tree_walk_failure::ReadDirectory, path);
+
+    return false;
   }
 
   return did_succeed;
@@ -1724,36 +1708,31 @@ walk_tree(StringView               path,
           const tree_walk_options &options,
           const tree_walk_hooks   &hooks) throws -> bool
 {
-  let const path_string = String{allocator, path};
-  let       walk        = TreeWalk{options, hooks};
+  let const   path_string       = String{allocator, path};
+  let         walk              = tree_walk_state{options, hooks};
+  int         working_directory = AT_FDCWD;
+  struct stat working_status{};
 
-  return walk_tree_entry(walk, AT_FDCWD, path_string.c_str(), path, true);
+  return walk_tree_entry(walk, working_directory, working_status,
+                         path_string.c_str(), path, 0);
 }
 
 fn
 set_tree_entry_mode(const tree_walk_entry &entry, u32 mode) wontthrow -> bool
 {
   /* An operand follows a symlink. Any other entry is changed without
-     following one, and the fallback fails closed when it cannot open the entry
-     without following a symlink. */
-  if (entry.is_operand) {
-    return ::fchmodat(entry.parent_descriptor, entry.name, mode, 0) == 0;
-  }
-
+     following one. The flag is rejected by glibc before 2.32 and without
+     /proc, and the fallback fails closed when it cannot open the entry without
+     following a symlink. */
   if (::fchmodat(entry.parent_descriptor, entry.name, mode,
-                 AT_SYMLINK_NOFOLLOW) == 0)
+                 entry.is_operand ? 0 : AT_SYMLINK_NOFOLLOW) == 0)
   {
     return true;
   }
 
-  /* glibc before 2.32 and a system without /proc reject the flag for every
-     file. */
-  if (errno != EOPNOTSUPP && errno != ENOSYS) return false;
-
-  LOG(Debug,
-      "changing the mode of '%s' through a no-follow descriptor "
-      "after fchmodat rejected the no-follow flag",
-      entry.name);
+  if (entry.is_operand || (errno != EOPNOTSUPP && errno != ENOSYS)) {
+    return false;
+  }
 
   let const descriptor =
       ::openat(entry.parent_descriptor, entry.name,
@@ -1776,12 +1755,8 @@ set_tree_entry_owner(const tree_walk_entry &entry,
                      i64                    group_id,
                      symlink_follow_mode    follow_mode) wontthrow -> bool
 {
-  let const owner =
-      owner_id < 0 ? static_cast<uid_t>(-1) : static_cast<uid_t>(owner_id);
-  let const group =
-      group_id < 0 ? static_cast<gid_t>(-1) : static_cast<gid_t>(group_id);
-
-  return ::fchownat(entry.parent_descriptor, entry.name, owner, group,
+  return ::fchownat(entry.parent_descriptor, entry.name,
+                    static_cast<uid_t>(owner_id), static_cast<gid_t>(group_id),
                     follow_mode == symlink_follow_mode::Follow
                         ? 0
                         : AT_SYMLINK_NOFOLLOW) == 0;

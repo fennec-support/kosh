@@ -1725,69 +1725,48 @@ remove_tree(StringView                path,
   return remove_tree_entry(path, arena, hooks, is_kept);
 }
 
-struct tree_walk_identity
+struct tree_walk_state
 {
-  u64 device_id;
-  u64 file_id;
-};
-
-struct TreeWalk
-{
-  const tree_walk_options      &options;
-  const tree_walk_hooks        &hooks;
-  BumpArena                     arena{};
-  ArrayList<tree_walk_identity> active_directories{heap_allocator()};
-  u64                           root_device_id{0};
+  const tree_walk_options &options;
+  const tree_walk_hooks   &hooks;
+  BumpArena                arena{};
+  u64                      root_device_id{0};
 };
 
 static fn
-report_tree_walk_failure(const TreeWalk   &walk,
-                         tree_walk_failure failure,
-                         StringView        path) throws -> void
-{
-  let const error = GetLastError();
-
-  walk.hooks.report_failure(walk.hooks.context, failure, path,
-                            last_system_error_message().view());
-  SetLastError(error);
-}
-
-static fn
-walk_tree_entry(TreeWalk &walk, StringView path, bool is_operand) throws
-    -> bool
+walk_tree_entry(tree_walk_state &walk,
+                StringView       path,
+                bool             is_operand) throws -> bool
 {
   let const &options      = walk.options;
   let        entry_status = file_status{};
 
   if (!stat_path(path, entry_status)) {
-    report_tree_walk_failure(walk, tree_walk_failure::Access, path);
+    walk.hooks.report_failure(walk.hooks.context, tree_walk_failure::Access,
+                              path, last_system_error_message().view());
 
     return false;
   }
 
-  let entry = tree_walk_entry{};
-
-  entry.path                 = path;
-  entry.status               = &entry_status;
-  entry.is_operand           = is_operand;
-  entry.is_other_file_system = options.is_one_file_system && !is_operand &&
-                               entry_status.device_id != walk.root_device_id;
-
+  let const entry =
+      tree_walk_entry{-1,
+                      nullptr,
+                      path,
+                      &entry_status,
+                      is_operand,
+                      options.is_one_file_system && !is_operand &&
+                          entry_status.device_id != walk.root_device_id};
   bool did_succeed = walk.hooks.visit(walk.hooks.context, entry);
 
-  if (INTERRUPT_REQUESTED) return did_succeed;
+  if (INTERRUPT_REQUESTED || !options.is_recursive) return did_succeed;
   if (!did_succeed && !options.should_descend_after_failure) return false;
-  if (!options.is_recursive) return did_succeed;
-
-  let const is_symlink    = file_type_letter(entry_status.mode) == 'l';
-  let const should_follow = is_operand ? options.should_follow_operands
-                                       : options.should_follow_nested;
-
-  if (is_symlink && !should_follow) return did_succeed;
 
   let target_status = entry_status;
 
-  if (is_symlink && !stat_path_following(path, target_status)) {
+  if (file_type_letter(entry_status.mode) == 'l' &&
+      !(is_operand && options.should_follow_operands &&
+        stat_path_following(path, target_status)))
+  {
     return did_succeed;
   }
 
@@ -1801,25 +1780,6 @@ walk_tree_entry(TreeWalk &walk, StringView path, bool is_operand) throws
     return did_succeed;
   }
 
-  if (target_status.has_file_identity) {
-    for (let const &identity : walk.active_directories) {
-      if (identity.device_id == target_status.device_id &&
-          identity.file_id == target_status.file_id)
-      {
-        report_tree_walk_failure(walk, tree_walk_failure::Loop, path);
-
-        return false;
-      }
-    }
-
-    walk.active_directories.push(
-        {target_status.device_id, target_status.file_id});
-  }
-
-  defer {
-    if (target_status.has_file_identity) walk.active_directories.pop_back();
-  };
-
   let      &arena      = walk.arena;
   let const level_mark = arena.mark();
 
@@ -1829,7 +1789,9 @@ walk_tree_entry(TreeWalk &walk, StringView path, bool is_operand) throws
   let const children  = list_directory_status(path, allocator);
 
   if (!children.has_value()) {
-    report_tree_walk_failure(walk, tree_walk_failure::ReadDirectory, path);
+    walk.hooks.report_failure(walk.hooks.context,
+                              tree_walk_failure::ReadDirectory, path,
+                              last_system_error_message().view());
 
     return false;
   }
@@ -1844,7 +1806,6 @@ walk_tree_entry(TreeWalk &walk, StringView path, bool is_operand) throws
     let child_path = Path{path, allocator};
 
     child_path.append(child.child.name.view());
-
     if (!walk_tree_entry(walk, child_path.view(), false)) did_succeed = false;
   }
 
@@ -1859,15 +1820,16 @@ walk_tree(StringView               path,
 {
   unused(allocator);
 
-  let walk = TreeWalk{options, hooks};
+  let walk = tree_walk_state{options, hooks};
 
   return walk_tree_entry(walk, path, true);
 }
 
+/* A Windows mode change only toggles the read-only attribute, and ownership is
+   not supported. */
 fn
 set_tree_entry_mode(const tree_walk_entry &entry, u32 mode) wontthrow -> bool
 {
-  /* A Windows mode change only toggles the read-only attribute. */
   return set_file_mode(entry.path, mode);
 }
 
