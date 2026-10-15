@@ -11,6 +11,10 @@ tab=$(printf '\t')
 
 printf '%s\n' "$result" | grep -E "${tab}(url|invalid-path)$"
 
+login_result=$("$BIN" --debug-highlight-at \
+    'ssh root@alpha-box; echo root@alpha-box')
+printf '%s\n' "$login_result" | grep -E "${tab}url$"
+
 absolute_result=$("$BIN" --debug-highlight-at \
     "echo $directory/absolute-missing")
 printf '%s\n' "$absolute_result" | grep -q "${tab}invalid-path$"

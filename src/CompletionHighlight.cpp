@@ -13,6 +13,7 @@
 #include "CLIColors.hpp"
 #include "Completion.hpp"
 #include "CompletionInternal.hpp"
+#include "CompletionPolicy.hpp"
 #include "Koshkit.hpp"
 #include "Lexer.hpp"
 #include "Platform.hpp"
@@ -334,6 +335,31 @@ word_looks_like_ssh_remote_path(StringView word) wontthrow -> bool
   }
 
   return true;
+}
+
+static pure fn
+word_looks_like_ssh_login(StringView word) wontthrow -> bool
+{
+  let const at_position = word.find_character('@');
+
+  if (!at_position.has_value() || *at_position == 0 || word[0] == '-') {
+    return false;
+  }
+
+  for (usize byte_index = 0; byte_index < word.length; byte_index++)
+    if (word[byte_index] == '/' || word[byte_index] == '\\') return false;
+
+  return true;
+}
+
+static fn
+is_ssh_family_command(StringView command_word) wontthrow -> bool
+{
+  let const tool_kind = TOOLS_WITH_TARGETS.find(Path::filename(command_word));
+
+  return tool_kind.has_value() &&
+         (tool_kind.value() == tool_with_targets_kind::ssh ||
+          tool_kind.value() == tool_with_targets_kind::teleport);
 }
 
 namespace {
@@ -2123,7 +2149,9 @@ internal::scan_highlight_range(
 
     if (!is_command_position && is_plain && !is_assignment) {
       if (word_contains_url_scheme(word) ||
-          word_looks_like_ssh_remote_path(word))
+          word_looks_like_ssh_remote_path(word) ||
+          (is_ssh_family_command(highlight_command_word) &&
+           word_looks_like_ssh_login(word)))
       {
         do_push(word_start, word_end, highlight_role::url);
       } else if (token_has_glob_metacharacter(word)) {

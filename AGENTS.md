@@ -149,10 +149,11 @@ eight levels before builtin and koshkit flag lookup.
 
 The completion menu narrows command, path, and koshconf option lists by exact,
 smart-case, and subsequence tiers. Other lists retain their candidates. A
-callback runs again after a word boundary, a quote, an equals sign, a slash, an
-erase below the gathered token, or a changed match tier. Deferred gathers use
-the pending protocol and the 24 millisecond menu debounce. TAB, navigation keys,
-and row acceptance gather immediately.
+callback runs again after a word boundary, a quote, an equals sign, an at sign,
+a slash, an erase below the gathered token, or a changed match tier. Deferred
+gathers use the pending protocol and the 24 millisecond menu debounce. TAB,
+navigation keys, and row acceptance gather immediately. An argument of an
+ssh-family command that contains an at sign is highlighted as a URL.
 
 Inline hints use builtin and koshkit registrations, aliases, functions, manpage
 caches, and help caches. They do not search PATH or open files. The editor owns
