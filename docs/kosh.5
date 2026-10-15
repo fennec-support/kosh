@@ -219,7 +219,8 @@ prints the current form.
 .B koshconf save \-\-persist
 writes the settings that differ from the defaults of the current mood to the
 user settings file instead. A setting that matches those defaults is left out,
-so it follows the defaults of a mood chosen later.
+so it follows the defaults of a mood chosen later. A line in the file whose
+option this version does not recognize is kept at the end of the new file.
 A starting shell applies the variable after the settings files and removes it
 from the environment before any command runs:
 .PP

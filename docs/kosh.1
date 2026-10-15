@@ -566,7 +566,13 @@ moods every Bash option is toggleable through
 .B set
 and
 .BR shopt .
-The command
+An explicit
+.BR "set \-u" ,
+.BR "set \-o pipefail" ,
+.BR "shopt \-s failglob" ,
+or
+.B koshconf set interpreter.arithmetic_uses_big_numbers
+in such a mood survives a later change between those moods. The command
 .B set \-o posix
 selects
 .BR bash-posix .
@@ -579,6 +585,13 @@ only from the
 or
 .B sh
 mood.
+.PP
+An error that ends a non-interactive shell in every mood, such as an unset
+parameter expanded under
+.B set \-u
+or ${name?word} with name unset, passes through an eval and a sourced file, as
+it does in Bash and dash. A subshell, a command substitution, a trap action,
+and a startup file hold it.
 .PP
 On Windows, the default mood leaves backslashes literal in
 .BR echo .
@@ -2339,8 +2352,9 @@ Regular-expression matches are printed. The
 option colors matches. WHEN is auto, always, or never, and a bare option means
 auto. Without the option, the color mode of koshkit applies. When color is on,
 GREP_COLORS holds colon-separated GNU capabilities such as
-.BR ms=01;31 ,
-and an unknown capability is ignored. The deprecated GREP_COLOR sets the match
+.BR ms=01;31 .
+The capabilities ms, mt, sl, cx, fn, ln, se, and rv take effect, an unknown
+capability is ignored, and an empty value turns that color off. The deprecated GREP_COLOR sets the match
 color below GREP_COLORS.
 .PP
 The \fB\-i\fR, \fB\-v\fR, \fB\-r\fR, \fB\-n\fR, and \fB\-h\fR
@@ -2445,7 +2459,9 @@ continues independent goals after an error. The \fB\-e\fR, \fB\-i\fR,
 options provide the POSIX make execution modes. The \fB\-j\fR
 extension takes an optional decimal job count, propagated through MAKEFLAGS.
 Common variable functions include call, eval, filter, filter-out, foreach,
-patsubst, shell, sort, and wildcard.
+patsubst, shell, sort, and wildcard. The wildcard function and a
+prerequisite that holds *, ?, or [ expand through the pathname expansion of the
+shell, and a prerequisite pattern without a match stays as written.
 .TP
 .B meow
 A screensaver of pixel-art cats. The
@@ -2576,9 +2592,11 @@ packaged with its executable through \fB\-b\fR.
 .B eviliso
 Isolation information is grouped into namespace, cgroup, login-session, remote
 socket, container-runtime, container, and Kubernetes sections. With no
-selector, all sections are shown. Selectors combine. The \fB\-n\fR, \fB\-c\fR,
-\fB\-s\fR, and \fB\-r\fR options select namespaces, cgroups, sessions, and
-remote sockets, and \fB\-k\fR selects container-runtime data. The long-only
+selector, all sections are shown. Selectors combine. The \fB\-n\fR
+(\fB\-\-namespaces\fR), \fB\-c\fR (\fB\-\-cgroups\fR), \fB\-s\fR
+(\fB\-\-sessions\fR), and \fB\-r\fR (\fB\-\-remote\fR) options select
+namespaces, cgroups, sessions, and remote sockets, and \fB\-k\fR
+(\fB\-\-runtime\fR) selects container-runtime data. The long-only
 \fB\-\-container\fR and \fB\-\-kubernetes\fR selectors select their own
 sections, and \fB\-\-containers\fR is an alias for \fB\-\-container\fR. The
 \fB\-a\fR or \fB\-\-all\fR option adds detailed rows. The Kubernetes section
@@ -2777,7 +2795,10 @@ foreground program has the terminal in its usual mode, so Ctrl\-Z stops it and
 the shell reports the stopped job. Ctrl\-Shift\-Z redoes when the terminal
 reports it apart from Ctrl\-Z. While the editor collects a line, it requests
 such reports through the kitty keyboard protocol and xterm modifyOtherKeys, and
-withdraws both whenever it hands the terminal back. The
+withdraws both whenever it hands the terminal back. Inside tmux, the
+modifyOtherKeys request takes effect when the tmux
+.B extended\-keys
+option is on. The
 .B koshconf set editor.request_extended_key_reports off
 command stops the requests from the next prompt on. The option is on by
 default. Without these modes most terminals send the Ctrl\-Z byte for both
@@ -3575,8 +3596,14 @@ option resets it to /usr/bin:/bin.
 HOME supplies home paths. PWD and OLDPWD record the logical current and prior
 directories. CDPATH supplies search directories for a relative
 .B cd
-operand. A logical PWD is accepted only when it is absolute and identifies the
-physical current directory.
+operand. A relative directory is resolved against the logical PWD. The form
+.B cd ..
+removes the last logical component, unless
+.B cd \-P
+or the physical option resolves symbolic links first.
+.B cd \-L
+keeps the logical form. A logical PWD is accepted only when it is absolute and
+identifies the physical current directory.
 .TP
 .BR SHELL ", " SHLVL
 SHELL specifies the executable. The invocation path is used when SHELL is
