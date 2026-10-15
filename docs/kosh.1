@@ -3340,18 +3340,13 @@ determine the status.
 In the bash, bash-posix, and sh moods an asynchronous simple command or
 assignment forks before expanding its words, prefix assignments, and
 redirections, as Bash and dash do. An expansion error then fails the job, with
-status 1 in the bash moods and 2 in the sh mood, while $! still identifies it,
-and a side effect of the expansion, such as $((i++)) or ${v:=word}, stays in the
-job. The kosh mood expands the words in the shell before starting the job.
-In the bash moods the job also runs the inherited EXIT trap before ending with
-such an error, as Bash does.
+status 1 in the bash moods and 2 in the sh mood. The kosh mood expands the words
+in the shell before starting the job.
 .PP
 An ampersand ends a whole and-or list in every mood. In
 .B a && b || c &
-the entire list runs in one background job, so its left side never delays the
-shell, its variable and directory changes stay in the job, and the
-.B jobs
-builtin shows the whole list. A single simple command still forks directly.
+the entire list runs in one background job, and its variable and directory
+changes stay in the job.
 .PP
 A stopped stage is recorded even when it is not the final one. The
 .B wait
@@ -3366,14 +3361,9 @@ and the notification of a finished or stopped job print one line per job in
 the columns Bash uses: the job number and its current or previous mark, the
 process with
 .BR \-l ,
-a state field 27 columns wide, and the command. A running job ends with an
-ampersand. A job ended by a signal shows the description of the signal, such
-as Terminated or Killed, with (core dumped) before the command when the process
-dumped core, and wait still reports 128 plus the signal number. A job that
-exited shows Done, or Exit and its status. The bash-posix and sh moods show
-Done and the status in parentheses. With
-.BR \-l ,
-a stopped job shows the description of the signal that stopped it.
+the state, and the command. A job ended by a signal shows the description of
+the signal, such as Terminated or Killed, and wait still reports 128 plus the
+signal number. A job that exited shows Done, or Exit and its status.
 .PP
 A job reported by
 .BR wait ,
@@ -3382,83 +3372,38 @@ or a notification leaves the job table, and the shell remembers the
 status of its process, so a later
 .B wait
 with that process returns it again. The shell remembers the 1024 most
-recent statuses, and
-.B wait
-without an operand forgets all of them along with the jobs it waits for.
-Outside the sh mood, a job already finished when such a
-.B wait
-began stays in the table, so a later
-.B wait
-with its process still returns its status. A job number is one
-more than the highest number in use.
+recent statuses.
 .B wait
 reports 127 and a diagnostic for a process that is not a child of the shell or
 a job that does not exist. With several operands, the last operand decides the
 status.
 .PP
-A job that
-.B wait
-selects by number or process remains in the job table after it finishes. Bash
-keeps it there until the next input line, the end of a loop iteration, an eval
-or sourced command, a new child process, or the
-.B jobs
-builtin, so a second
-.B wait
-for it before then finds it by number again. The sh mood keeps it until
-the next child process or
-.B jobs
-builtin, as dash does, and remembers no status once it leaves, so a later
-.B wait
-for its process reports 127. The sh mood reports no diagnostic for a
-process that is not a child.
-.PP
 A subshell, a pipeline stage, an asynchronous command, and a coprocess cannot
-wait for a job of their parent. They report 127 for its process or number and
-see none of the remembered statuses. In the sh mood a job number matching
-no job reports 2 from
+wait for a job of their parent. They report 127 for its process or number. In
+the sh mood a job number matching no job reports 2 from
 .B wait
 and
-.BR jobs ,
-and
-.B jobs
-there still lists the parent jobs as they were when the child started. A
-command substitution reports 127 for a parent job still running, but
-keeps the remembered statuses and the status of a finished parent job, as Bash
-does. The sh mood treats a command substitution as a subshell.
+.BR jobs .
 .PP
 .B wait \-n
 returns the status of the next job to finish among the operand jobs and
-processes, or among every job when no operand is given. A finished job not yet
-waited for is returned first. An operand process whose status is remembered is
-returned at once. Otherwise every unknown operand job or process is reported
-before the wait, and the wait goes on for the known ones, so an operand process
-substitution finishing before an operand job is returned first. It reports 127
+processes, or among every job when no operand is given. It reports 127
 when no operand or tracked job is left.
 .B wait \-p
 .I var
 stores the process whose status is returned in
 .IR var ,
-and unsets it when no status is returned. With
-.B \-n
-and operands, a
-.I var
-that is a name reference loses the attribute first and holds the process
-itself, as in Bash. A stopped job returns 128 plus the stop signal, and
+and unsets it when no status is returned. A stopped job returns 128 plus the
+stop signal, and
 .B wait \-n
 skips it.
 .B wait \-f
-waits until each job terminates. Without job control Bash waits for
-termination even without
-.BR \-f ,
-so it never returns for a job that stays stopped.
+waits until each job terminates.
 .PP
 A coprocess is one asynchronous job and sets $!. Its descriptors are numbered
-above 9 and are closed across an exec. A subshell receives neither descriptor,
-while NAME and NAME_PID stay readable there. An exec that closes one of them
-sets its element of NAME to \-1. Once the coprocess has finished, the next wait,
-jobs, new line, loop iteration, external command, subshell, pipeline,
-asynchronous command, command substitution, or coprocess closes its remaining
-descriptors and unsets NAME and NAME_PID, as Bash does.
+above 9 and are closed across an exec. A subshell receives neither descriptor.
+Once the coprocess has finished, the shell closes its remaining descriptors and
+unsets NAME and NAME_PID, as Bash does.
 .SH SIGNALS
 The main shell ignores SIGPIPE. A forked child restores the default action, so
 a producer terminated by SIGPIPE returns status 141.
@@ -3468,104 +3413,62 @@ On Windows, a background process runs in its own console process group.
 The CHLD trap runs its action once for every child the shell reaps, at the next
 command boundary. Under
 .B set -m
-a job that stops counts as one arrival of its own, and a continued job
-counts as none. Windows raises no child signal, and the reap alone triggers
-the trap. The Windows
-.B kill
-builtin sends only KILL and TERM, so a script there cannot raise CHLD by hand.
-A CHLD action that returns from the function it fired inside leaves the
-trap installed, and the action runs again for the next child the shell reaps.
+a job that stops counts as one arrival of its own.
 .PP
 When a trapped signal arrives while
 .B wait
-blocks, the wait ends. The action runs at the boundary the builtin returns to,
-and
+blocks, the wait ends and
 .B wait
-will report 128 plus the signal number. The awaited job is left running,
-and the operands not yet reached are abandoned. A child arrival leaves the
-wait blocked.
-.PP
-When a trapped signal arrives during a redirection whose open blocks, such as
-a FIFO with no peer, the action runs, the open resumes, and the command runs
-against the opened file. An untrapped interrupt ends the open and is reported
-against the redirection.
+will report 128 plus the signal number. The awaited job is left running.
 .SH DIAGNOSTICS
 Errors, warnings, and analysis diagnostics include source locations when a
-mapping exists, and may include a source line, caret, detail location,
-and trailing note. A quoted source line is syntax colored and clipped to the
-terminal width.
+mapping exists.
 .PP
 After a parse error, the shell skips only the failed statement and keeps
 parsing the command list around it, so lint, the language server, and a script
-report every syntax error in one run. A body still closes on its own
-.BR fi ,
-.BR done ,
-.BR esac ,
-or closing brace, and an error later in the same body is still reported. When
-a closing keyword or brace belongs to an enclosing command, it ends an inner
-command that lacks its own closer, and the inner command reports the missing
-closer. A construct that a mood does not provide, such as
+report every syntax error in one run. A construct that a mood does not provide,
+such as
 .B [[
 in the sh mood, is reported, and the command parses as usual.
 .PP
 Analysis follows static source operands recursively when the files can be read.
 It skips dynamic operands and unavailable files.
 .PP
-An analysis diagnostic may include a ShellCheck identifier. A native analysis
-diagnostic has none.
-.PP
 In the default mood, strict and lenient findings reject the script. Annoying
-findings remain warnings. The annoying tier holds additional safety and style
-checks that can produce many reports in existing scripts.
+findings remain warnings.
 .PP
 In the default mood, a script is rejected when it expands a variable it never
 assigns, calls a function that uses arguments without passing any, or calls a
-function before defining it. An assignment resembling an unassigned variable
-is shown as a detail location.
+function before defining it.
 .PP
 A function assignment without
 .B local
-is reported because it changes a global variable. Under a
-.B sh
-shebang or in the
+is reported because it changes a global variable. In the
 .B sh
 mood there is no
 .BR local ,
 so only a variable first set inside a function and also used outside it
-is reported, with a suggestion to assign it before the function.
+is reported.
 .PP
 A comment of the form
 .B # shellcheck disable=SC2086,unquoted-command-substitution
 suppresses the listed analysis checks. A numeric code suppresses every variant
-under that code. A slug suppresses only its own variant. Native analysis
-checks use their slugs. The optional
-.B SC
-prefix may be omitted. The value may be quoted, repeated, set to
+under that code. A slug suppresses only its own variant. The value may be set to
 .BR all ,
-or contain a half-open range such as
+or contain a range such as
 .BR SC2000-SC2100 .
 A directive before the first command applies to the complete file. A later
-directive applies to the next complete and-or command. A directive after
-.BR && ,
-.BR || ,
-or a pipe does not apply. These comments do not suppress parser or runtime
-diagnostics outside the analysis catalog.
+directive applies to the next complete and-or command. These comments do not
+suppress parser or runtime diagnostics.
 .PP
 A diagnostic gives the file, line, and column of the failing command, quotes
-the source line, and puts a caret under it. Text inside command substitution,
-backticks, process substitution, and here-document bodies uses the file's own
-line and column. Text built at run time, such as an eval string or a trap
-action, is its own source. A location in an eval string appears as
+the source line, and puts a caret under it. Text built at run time, such as an
+eval string or a trap action, is its own source. A location in an eval string
+appears as
 .BR eval:2:7: ,
-counted from the start of that string, with the quoted line and caret taken
-from it. A location in a trap action appears as
-.BR trap:1:5:
-in the same way. A function defined by an eval keeps that numbering wherever it
-is called, including from a background job, while
-.B LINENO
-and
-.B BASH_LINENO
-inside it count from the file line of the eval command, as Bash does. A
+counted from the start of that string. A location in a trap action appears as
+.BR trap:1:5: .
+A
 .B \-c
 string is labeled
 .BR \-c ,
@@ -3575,28 +3478,16 @@ Standard input and interactive lines have no label.
 .PP
 Each level of indirection between the top level and the failing command adds
 one backtrace frame. The levels are a function call, a sourced file, an eval,
-a trap action, a subshell, a command substitution, a function substitution,
-and a process substitution. A trap
-action also adds a frame at the
-.B trap
-command that installed it. A diagnostic with no indirection has no frame, and a
-script given on the command line adds none. The command line counts as a
-level only when more than one script file or
-.B \-c
-string is given.
+a trap action, a subshell, and a command, function, or process substitution. A
+diagnostic with no indirection has no frame.
 .PP
 A frame begins with
 .BR trace: .
-Consecutive frames in one file print the file once, in the first header of the
-group, and the later headers show only the line and column. A repeated frame is
-printed once and its header ends with the repeat count, as in
-.BR "trace: repeated 4 times." .
+A repeated frame is printed once and its header ends with the repeat count.
 Diagnostics print the same text in every mood.
 .SH ENVIRONMENT
-On Windows an environment variable holds at most 32,766 UTF-16 units. The
-shell keeps the whole value of a longer exported variable for itself, its
-subshells, and its command substitutions, and a child process receives the
-value cut to that limit at a character boundary.
+On Windows an environment variable holds at most 32,766 UTF-16 units, and a
+child process receives a longer value cut to that limit.
 .TP
 .B KOSH_FLAGS
 The value supplies default command-line options.
@@ -3620,18 +3511,12 @@ for optimizer.analyze_before_running off.
 The variable is removed when no word remains. A shell loads it at startup. An
 explicit
 .B \-W
-level replaces the inherited level, and the other options add to the inherited
-words. A shell started with the variable rewrites it from its own settings.
+level replaces the inherited level.
 .TP
 .B KOSH_DEBUG_SYSTEM_KOSHCONF
 A non-empty value selects the system configuration file in place of
 /etc/kosh.conf or %ProgramData%\kosh\kosh.conf, with the same ownership check.
-Only a debug build, made with
-.B make MODE=dbg
-or a Debug
-.BR "zig build" ,
-honors it. Every other build, including a ReleaseSafe zig build, uses the
-system path.
+Only a debug build honors it.
 .TP
 .B KOSH_HISTORY_FILE
 The value specifies the command history file. The default is ~/.kosh_history.
@@ -3667,15 +3552,13 @@ The value specifies the interactive calc history file. The default is
 ~/.kosh_calc_history.
 .TP
 .BR KOSH_FZF_COMPLETION_COMMAND ", " KOSH_FZF_COMPLETION_OPTS
-These variables configure the external tab selector. An interactive session sets
-both before the first prompt when a startup file has not already set them.
+These variables configure the external tab selector.
 KOSH_FZF_COMPLETION_COMMAND specifies the program receiving the candidates
 and defaults to
 .BR fzf .
 KOSH_FZF_COMPLETION_OPTS holds the presentation options and defaults to
 \-\-multi \-\-layout=reverse \-\-height=~40% \-\-min\-height=3. The value is
-split on blanks with no expansion. The shell supplies the \-\-read0 and
-\-\-print0 record framing separately, so the value does not include it.
+split on blanks with no expansion.
 .TP
 .BR ENV ", " BASH_ENV
 These variables select startup files under the conditions in
@@ -3692,14 +3575,8 @@ option resets it to /usr/bin:/bin.
 HOME supplies home paths. PWD and OLDPWD record the logical current and prior
 directories. CDPATH supplies search directories for a relative
 .B cd
-operand. A relative directory is resolved against logical PWD. The form
-.B cd ..
-removes the last logical component, unless
-.B cd \-P
-or the physical option resolves symbolic links first.
-.B cd \-L
-keeps the logical form. A logical PWD is accepted only when it is
-absolute and identifies the physical current directory.
+operand. A logical PWD is accepted only when it is absolute and identifies the
+physical current directory.
 .TP
 .BR SHELL ", " SHLVL
 SHELL specifies the executable. The invocation path is used when SHELL is
@@ -3724,48 +3601,29 @@ These variables provide the pre-execution, primary, continuation, select, and
 xtrace prompts. PS0 defaults to empty. PS2 defaults to "> ". PS3 defaults to
 "#? ". PS4 defaults to "+ ". The first byte of PS4 is repeated once per
 enclosing subshell. The default PS1 shows the git branch, ahead and behind
-counts, user, colored host, and working directory, and it ends with a bullet.
+counts, user, host, and working directory, and it ends with a bullet.
 The shell expands the backslash escapes \\u,
 \\h, \\H, \\k, \\K, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\., \\t, \\T, \\@,
 \\A, \\d, \\s, \\v, \\V, \\!, \\#, \\l, \\n, \\r, \\e, \\a, \\[, and \\].
 The \\k and \\K escapes insert the hostname as \\h and \\H do, colored when
-standard output is a color terminal. The hostname is drawn as a gradient that
-depends only on the full hostname, so every session on a host shows the same
-colors. A truecolor terminal draws the exact colors, a terminal with the
-256-color palette draws the nearest palette colors, and another terminal
-alternates between two neighboring colors among seven terminal colors.
-The \\s escape inserts the last component of the path the shell was started
-with, without a leading login dash or an .exe suffix. It is never the script
-in $0. The \\v escape inserts the major and minor version and
-\\V adds the patch. In a Bash identity they come from BASH_VERSINFO, as in Bash,
-and otherwise from the Koshka version, giving 0.3 and 0.3.1/dev. The \\!
-escape inserts the history number the next command receives, one more than the
-newest history event, and 1 in a shell that keeps no history, such as a
-script. The \\# escape inserts the command number. It starts at 1, and each
-command line taken from a terminal, a script file, or standard input adds one
-before it runs. A line is a complete list ended by a newline, so a; b counts
-once. An empty line, PROMPT_COMMAND, a trap, eval, a sourced file, and a
-command in a subshell add none, and a string given to
-.B \-c
-keeps 1. The \\l escape inserts the last component of the terminal device of
-standard input, such as 3 for /dev/pts/3 or tty1, and tty when standard input
-is not a terminal.
-The \\D{format} escape inserts the time formatted
-by strftime, as Bash does. An empty format gives the time in the
-locale, and a format with no closing brace extends to the end of the prompt.
-A \\D not followed by a brace stays as typed. The \\L escape inserts the
-duration of the last command, empty when it took under 5 milliseconds.
-The escapes are decoded before parameters and substitutions expand, so inserted
-text is never expanded, and a backslash yielded by a parameter or substitution
-is never decoded.
+standard output is a color terminal. The \\s escape inserts the last component
+of the path the shell was started with, without a leading login dash or an .exe
+suffix. The \\v escape inserts the major and minor version and \\V adds the
+patch. The \\! escape inserts the history number the next command receives. The
+\\# escape inserts the command number, which starts at 1 and increases by one
+for each command line taken from a terminal, a script file, or standard input.
+The \\l escape inserts the last component of the terminal device of standard
+input, such as 3 for /dev/pts/3, and tty when standard input is not a terminal.
+The \\D{format} escape inserts the time formatted by strftime, as Bash does. The
+\\L escape inserts the duration of the last command, empty when it took under 5
+milliseconds. The escapes are decoded before parameters and substitutions
+expand, so inserted text is never expanded.
 A raw 001 or 002 byte in PS0, PS1, RPS1, or PS1_TRANSIENT delimits an invisible
-region the way \\[ and \\] do. It is not drawn, and the escape sequences
-inside the region take no columns.
+region the way \\[ and \\] do.
 The \\. escape emits a bullet, plain when the last exit status is zero and
 bold red when it is not. The user, host, directory, branch, shell name, and
-version inserted by \\u, \\h, \\H, \\k, \\K, \\w, \\W, \\P, \\g, \\s, \\v, and
-\\V draw a C0 control byte or DEL in caret notation, such as ^[ for escape, and
-a C1 control or a byte that is not UTF-8 as \\xHH. A directory path therefore
+version inserted by the escapes draw a control byte in caret notation, such as
+^[ for escape, and a byte that is not UTF-8 as \\xHH. A directory path therefore
 cannot write escape sequences to the terminal.
 .TP
 .BR RPS1 ", " RPROMPT
@@ -3787,13 +3645,9 @@ or invalid.
 .BR TERM ", " COLORTERM ", " NO_COLOR
 TERM selects terminal capabilities on POSIX systems. When COLORTERM contains
 truecolor or 24bit, the syntax, file, diagnostic, and koshkit colors are
-24-bit pastel colors. When TERM contains 256color or direct, they are pastel
-256-color shades, and any other terminal draws the basic colors. The prompt
-uses the pastel 256-color shades on every terminal that draws the 256-color
-palette. Such a terminal draws the selected completion row as white text on
-blue, and a truecolor terminal uses a softer blue. A nonempty NO_COLOR disables
-prompt, diagnostic, koshkit cat, and editor color. Reverse video carries no
-color, so the reversed row of the interactive selector stays visible.
+24-bit colors. When TERM contains 256color or direct, they are 256-color
+shades, and any other terminal draws the basic colors. A nonempty NO_COLOR
+disables prompt, diagnostic, koshkit cat, and editor color.
 .TP
 .B MANPATH
 Completion searches these manual paths for subcommands and options.
@@ -3813,24 +3667,19 @@ state, and time formatting.
 .TP
 .BR KOSH ", " KOSH_VERSION ", " KOSH_COMMIT ", " KOSH_BUILD_MODE ", " KOSH_OS
 These values identify the invocation path, version, build commit, build mode,
-and build host distribution and kernel. The invocation path is absolute. A
-command word without a slash is found on PATH, and the running executable is
-used when the search finds nothing. The shell never exports them. When the
-environment supplies a value, it is replaced and loses its export attribute, so
-a child shell that is not Koshka will see them unset.
+and build host distribution and kernel. The shell never exports them. A value
+supplied by the environment is replaced and loses its export attribute.
 .TP
 .B KOSH_GIT_BRANCH
 The value is the branch of the repository holding the working directory, a
 short commit hash for a detached HEAD, and empty outside a repository. An
-assignment overrides detection. The search moves up from the working directory
-and never enters a directory listed in GIT_CEILING_DIRECTORIES, a
-colon-separated list of absolute paths.
+assignment overrides detection. The search never enters a directory listed in
+GIT_CEILING_DIRECTORIES.
 .TP
 .BR KOSH_GIT_AHEAD ", " KOSH_GIT_BEHIND
 The values contain the unpushed and unpulled commit counts relative to the
 current branch's upstream. Both are empty outside a repository, when no upstream
-is configured, and when the count is zero. The counts come from git, which runs
-only from a directory that program completion trusts.
+is configured, and when the count is zero.
 .TP
 .B KOSH_IDENTITY
 The read-only exported value is the lowercase CRC-32 identity of the running
@@ -3851,9 +3700,7 @@ applies a value to the current session.
 .BR KOSH_WELCOME ", " KOSH_FAREWELL
 A non-empty value is printed once at interactive startup (KOSH_WELCOME) or
 exit (KOSH_FAREWELL), prefixed with the shell name. An empty value prints
-nothing. When unset, the shell prints the built-in greeting for the active mood
-on startup and a fixed farewell on exit. A non-zero exit code is appended in
-parentheses to the farewell.
+nothing. When unset, the shell prints a built-in greeting and farewell.
 .TP
 .B KOSH_ANSI_*
 The variables BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, their
@@ -3866,46 +3713,26 @@ An assignment to
 .B SECONDS
 moves the base of the elapsed count. An assignment to
 .B RANDOM
-seeds the generator, and a repeated seed repeats the sequence. Each subshell
-and command substitution reseeds its own generator, so its numbers differ from
-the parent's next draws. A
-.B local
-declaration of either variable fixes its value for the length of the call. An
+seeds the generator, and a repeated seed repeats the sequence. An
 .B unset
 of
 .B SECONDS
 or
 .B RANDOM
-makes the variable ordinary for the rest of the shell. It is then empty,
-an assignment stores an ordinary value, and a subshell inherits it that way.
-These variables are unavailable in the
+makes the variable ordinary for the rest of the shell. These variables are
+unavailable in the
 .B sh
 mood.
 .TP
-.BR IFS ", " LINENO
-The field separator and the line number of the running command are available in
-every mood. Inside a command substitution, backticks, or a process
-substitution,
 .B LINENO
-is the file line of the command expanding it in every mood. Bash differs
-inside a command substitution that spans lines. It starts the count at a line
-between the first and last line of the substitution, and it counts the lines
-of the body as printed back, without comments or blank lines. A command on
-the second line of
-.B y=$(echo $LINENO
-followed by
-.B echo $LINENO)
-gives 3 in Bash and 2 in kosh when the substitution starts on line 1.
+The line number of the running command is available in every mood. Inside a
+command substitution, backticks, or a process substitution, it is the file line
+of the command expanding it.
 .TP
 .BR BASHPID ", " PPID ", " UID ", " EUID ", " GROUPS ", " HOSTNAME ", " HOSTTYPE ", " MACHTYPE ", " OSTYPE
 These dynamic values identify the current shell process, parent, ids,
 groups, host, and platform. The value of $$ remains the original shell process
-id. A subshell that is the last command of an already forked substitution,
-subshell, pipeline stage, or background job runs in that process without
-another fork, so
-.B BASHPID
-inside it repeats the value of the enclosing process. These variables are
-unavailable in the
+id. These variables are unavailable in the
 .B sh
 mood.
 .TP
@@ -3941,10 +3768,8 @@ mood.
 .B BASH_ALIASES
 This associative array contains the current aliases. Assigning an element
 defines or replaces that alias. Unsetting an element has no effect. Unsetting
-the whole variable disconnects the array without deleting the aliases. A later
-.B declare \-A BASH_ALIASES
-creates an ordinary array that is not connected to aliases. The name is
-unavailable in the
+the whole variable disconnects the array without deleting the aliases. The name
+is unavailable in the
 .B sh
 mood.
 .TP
@@ -3958,18 +3783,11 @@ not change arguments already recorded for a frame.
 .PP
 The
 .B extdebug
-shopt option records function calls and sourced-file calls. A source call with
-operands records those operands. A source call without operands records its
-path as one argument while the file runs. Without
+shopt option records function calls and sourced-file calls. Without
 .BR extdebug ,
-function calls are not recorded. The first root source call with operands
-establishes those operands as the base frame, and later ones are not
-recorded. Enabling
-.B extdebug
-before the arrays are initialized starts with the current frame.
-.PP
-Assignments and declarations with values have no effect. Unset and local
-declarations fail. The variables are unavailable in the
+function calls are not recorded. Assignments and declarations with values have
+no effect. Unset and local declarations fail. The variables are unavailable in
+the
 .B sh
 mood.
 .TP
@@ -3978,22 +3796,15 @@ This indexed array contains the current directory at index zero followed by the
 saved directories that
 .B dirs
 prints. Assigning index zero or an index past the end has no effect. Assigning
-another existing index changes that saved stack entry. Whole-array assignment
-changes only the existing indices, and appending cannot grow the stack.
-Unsetting an element has no effect. A local declaration shadows the live array
-until the function returns. Unsetting the whole variable disconnects the array
-without clearing the directory stack. A later
-.B declare \-a DIRSTACK
-creates an ordinary array that is not connected to the stack. The name is
-unavailable in the
+another existing index changes that saved stack entry. Unsetting an element has
+no effect. Unsetting the whole variable disconnects the array without clearing
+the directory stack. The name is unavailable in the
 .B sh
 mood.
 .TP
 .BR FUNCNAME ", " BASH_SOURCE ", " BASH_LINENO ", " BASH_COMMAND
 These values describe the active call stack and command. Their array forms
-contain the complete stack. BASH_COMMAND holds the source text as written. Bash
-lays out a compound command over several indented lines, and kosh does not
-reproduce that layout. They are unavailable in the
+contain the complete stack. They are unavailable in the
 .B sh
 mood.
 .TP
@@ -4020,22 +3831,13 @@ filter and its
 .B \-P
 and
 .B \-S
-text apply to COMPREPLY entries as they do to the spec's other candidates. When
-the spec was registered with
+text apply to COMPREPLY entries. With
 .B complete -o filenames
 or
-.B compopt -o filenames
-is run inside the function, a slash is appended to each entry that refers to a
-directory, and to each such word of a
-.B \-W
-list.
+.BR "compopt -o filenames" ,
+a slash is appended to each entry that refers to a directory.
 .B compopt +o filenames
-turns the slash off for the current completion, also for the candidates of a
-directory or file action and a glob. The directories that dirnames and
-plusdirs add after the function keep their slash, and a
-.B compopt
-run inside the function turns dirnames, plusdirs, default, and bashdefault on
-or off for them.
+turns the slash off for the current completion.
 .SH EXIT STATUS
 The shell exits with the status of the last command it ran. A command path that
 is a directory, or has a trailing separator and is not a directory, returns
@@ -4044,28 +3846,15 @@ script or a
 .B \-c
 string returns 2, and so does an
 .B eval
-or a sourced file whose text does not parse. With the posix option on, such
-an
-.B eval
-or
-.B .
-also ends a non-interactive shell with status 2, as Bash in POSIX mode and
-dash do, unless
-.B command
-runs it. A usage error in a
+or a sourced file whose text does not parse. A usage error in a
 non-rescue invocation returns 2. In the bash and bash-posix moods, an
 expansion error that ends the shell, such as an unset parameter under nounset,
 a
 .B ${name:?}
 operand, or a bad substitution, returns 127 from a
 .B \-c
-string, as Bash does, and 1 from a script file or standard input. Errexit keeps
-the status 1 for a
-.B \-c
-string. A background simple command or assignment of a
-.B \-c
-string meeting such an error also ends with 127, while a background
-subshell or group ends with 1. A child terminated by SIGPIPE returns 141. A
+string, as Bash does, and 1 from a script file or standard input. A child
+terminated by SIGPIPE returns 141. A
 .B \-\-lint
 batch returns 1 when an input cannot be read or parsed, or its analysis reports
 an error. Warning-only findings return 0.
@@ -4079,9 +3868,7 @@ return 0 after every requested input succeeds. An invalid option combination
 returns 2.
 .SH ERRORS
 An unavailable command or pathname is reported through its first unavailable
-component when that component can be identified. A missing explicit directory
-may include one close sibling suggestion. A source caret covers the relevant
-component or argument when source mapping is available.
+component when that component can be identified.
 .SH FILES
 .TP
 .I ~/.kosh_history
