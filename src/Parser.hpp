@@ -183,6 +183,11 @@ private:
   cold fn
   report_soft_error(const ErrorWithLocationAndDetails &error) throws
       -> void;
+  /* Peeks the next token and collects shellcheck directives while
+     should_collect is set. The collection mode returns to disabled on every
+     exit. */
+  fn
+  peek_with_directive_collection(bool should_collect) throws -> Token *;
   fn
   begin_error_collection(ArrayList<String>            &errors,
                          EvalContext                  *context,
