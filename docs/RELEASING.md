@@ -1,8 +1,7 @@
 # Release checklist
 
-This checklist takes a green staging branch through every installation channel.
-Complete the steps in order. Repositories are under `github.com/fennec-support`
-unless noted.
+Complete the steps in order. Repositories are under
+`github.com/fennec-support` unless noted.
 
 ## 1. Before tagging
 
@@ -29,7 +28,7 @@ unless noted.
       `kosh.5.zst`, `kosh.bash`, and `SHA256SUMS`.
 - [ ] Write the release notes, then turn off **prerelease** and mark it
       **latest**. The installers, the Homebrew formula, and every editor client
-      skip prereleases, so nothing below finds the release before this.
+      skip prereleases.
 - [ ] Check the installers against it:
       `KOSH_INSTALL_DRY_RUN=1 sh scripts/install.sh` and `scripts/install.ps1`.
 - [ ] Set the next development version on `staging`: bump `KOSH_VER_PATCH` and
@@ -37,10 +36,8 @@ unless noted.
 
 ## 3. Homebrew (`homebrew-kosh`)
 
-- [ ] No edit is needed, since the formula uses the newest release tag and its
-      `SHA256SUMS`.
-- [ ] Re-run its CI, or `brew update && brew upgrade kosh` on macOS, and
-      confirm `kosh --version` prints the version.
+- [ ] No edit is needed. Re-run its CI, or `brew update && brew upgrade kosh`
+      on macOS, and confirm `kosh --version` prints the version.
 
 ## 4. Distribution recipes (`deploy/`)
 
@@ -61,14 +58,12 @@ unless noted.
       `makepkg --printsrcinfo > .SRCINFO`, build once with `makepkg`, and push.
 - [ ] **Alpine aports**: the maintainer listed in the APKBUILD opens or updates
       the merge request against aports.
-- [ ] **nixpkgs**: `flake.nix` takes the version from `Common.hpp` and needs no
-      edit. A nixpkgs package, once it exists, needs its version and hash
-      bumped in a pull request.
+- [ ] **nixpkgs**: `flake.nix` needs no edit. A nixpkgs package, once it
+      exists, needs its version and hash bumped in a pull request.
 
 ## 5. Editor clients
 
-Clients download the newest Kosh release automatically. Release a client only
-after a change to its code.
+Release a client only after a change to its code.
 
 - [ ] **VS Code** (`kosh-vscode`): bump `version` in `package.json`, push, then
       push a tag `vX.Y.Z` (the workflow runs only on tags starting with `v`). It
