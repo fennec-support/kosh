@@ -26,6 +26,14 @@ if [ -f "$marker" ]; then echo "value substitution ran"; else echo "value substi
 if [ -f "$marker" ]; then echo "key substitution ran"; else echo "key substitution blocked"; fi
 "$BIN" --mood bash -c 'a=(1 2 3); i=1; q="a[\$i]"
   declare -A m=([x]=9); k=x; j="m[\$k]"; echo "$((q)) $((j))"' 2>&1
+# A ${name@P} prompt expansion in such a subscript also counts, because it runs
+# the substitutions held in the value.
+rm -f "$marker"
+"$BIN" --mood bash -c 'a=(1 2); k="\$(: > $1)"; q="a[\${k@P}]"; echo $((q))' \
+  shell "$marker" >/dev/null 2>&1
+"$BIN" --mood kosh -c 'a=(x y); k="\$(: > $1)"; s="\${k@P}"; unset "a[$s]"' \
+  shell "$marker" >/dev/null 2>&1
+if [ -f "$marker" ]; then echo "prompt expansion ran"; else echo "prompt expansion blocked"; fi
 
 # A builtin operand or a name reference target expands its subscript again.
 # Parameter and arithmetic expansion still work there, and the kosh mood

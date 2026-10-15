@@ -206,8 +206,10 @@ terminate_and_reap_processes(const ArrayList<os::process> &processes,
 pure fn
 strip_sig_prefix(StringView name) wontthrow -> StringView;
 
-/* Whether text holds a $( command substitution or a backquote outside a
-   backslash escape. A $(( arithmetic expansion does not count. */
+/* Whether expanding text can run a command: a $( command substitution, a
+   backquote outside a backslash escape, or a ${name@P} prompt expansion, which
+   runs the substitutions in the value. A $(( arithmetic expansion does not
+   count. */
 pure fn
 has_command_substitution(StringView text) wontthrow -> bool;
 

@@ -1040,7 +1040,19 @@ has_command_substitution(StringView text) wontthrow -> bool
     }
 
     if (text[i] == '`') return true;
-    if (text[i] != '$' || i + 1 >= text.length || text[i + 1] != '(') continue;
+    if (text[i] != '$' || i + 1 >= text.length) continue;
+
+    if (text[i + 1] == '{') {
+      let const rest = text.substring(i + 2);
+      let const body = rest.substring_of_length(
+          0, rest.find_character('}').value_or(rest.length));
+
+      if (body.find_substring("@P").has_value()) return true;
+
+      continue;
+    }
+
+    if (text[i + 1] != '(') continue;
     if (i + 2 >= text.length || text[i + 2] != '(') return true;
   }
 
