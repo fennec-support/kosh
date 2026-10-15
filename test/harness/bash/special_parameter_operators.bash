@@ -58,4 +58,10 @@ echo "indirect-default=${!ref:-fallback}"
 echo "last=${!#}"
 echo "positional-indirect=${!1:-none}"
 
+# ${#-} is the length of $-, not a default operator on $#.
+set -- a b c d e f g h i j
+flags=$-
+[ "${#-}" = "${#flags}" ] && echo dash-length-matches
+echo "dash-default=${#-x}"
+
 echo special-done

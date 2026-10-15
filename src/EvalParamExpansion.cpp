@@ -3098,11 +3098,11 @@ is_operator_after_hash(StringView spec) wontthrow -> bool
 {
   switch (spec[1]) {
   case ':':
-  case '-':
   case '=':
   case '+':
   case '%':
   case '/': return true;
+  case '-':
   case '?': return spec.length > 2;
   default:  return false;
   }
