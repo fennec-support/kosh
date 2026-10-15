@@ -206,6 +206,11 @@ terminate_and_reap_processes(const ArrayList<os::process> &processes,
 pure fn
 strip_sig_prefix(StringView name) wontthrow -> StringView;
 
+/* Whether text holds a $( command substitution or a backquote outside a
+   backslash escape. A $(( arithmetic expansion does not count. */
+pure fn
+has_command_substitution(StringView text) wontthrow -> bool;
+
 struct signal_pair
 {
   i32        number;

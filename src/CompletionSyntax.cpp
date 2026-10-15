@@ -222,8 +222,7 @@ timeout_option_takes_next_word(StringView word) wontthrow -> bool
            takes_separate_value(*flag);
   }
 
-  return scan_short_cluster(*flags, word.substring(1),
-                            [](const Flag &) wontthrow { return false; });
+  return short_cluster_takes_next_word(*flags, word.substring(1));
 }
 
 static pure fn

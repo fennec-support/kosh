@@ -486,26 +486,13 @@ has_flag_word(int                argc,
               char               short_name,
               StringView         long_name) wontthrow -> bool;
 
-/* Visits each registered flag letter of a short cluster, without the leading
-   dash, and skips unknown letters. The scan ends after the first flag that
-   takes a value or when do_visit returns true. It returns true when the last
-   letter takes a value, so the value is the next word. */
-template <class Visit>
-fn
-scan_short_cluster(const FlagList &flags,
-                   StringView      cluster,
-                   Visit           do_visit) wontthrow -> bool
-{
-  for (usize i = 0; i < cluster.length; i++) {
-    let const flag = find_short_flag(flags, cluster[i]);
-
-    if (flag == nullptr) continue;
-    if (do_visit(*flag)) return false;
-    if (takes_separate_value(*flag)) return i + 1 == cluster.length;
-  }
-
-  return false;
-}
+/* A short cluster, without its leading dash, takes the next word as a value
+   when its first value-taking flag is its last letter. Unknown letters are
+   skipped. */
+pure fn
+short_cluster_takes_next_word(const FlagList &flags, StringView cluster)
+    wontthrow
+    -> bool;
 
 fn
 show_version() throws -> void;

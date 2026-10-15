@@ -17,3 +17,6 @@ KOSH_FLAGS='--mood sh' "$BIN" -c 'set -M; echo flagged' 2>&1
 echo "rc=$?"
 echo "== a short flag keeps its separate value:"
 KOSH_FLAGS='-M sh' "$BIN" -c 'set -M' 2>&1
+echo "== the other letters of a cluster with c survive:"
+KOSH_FLAGS='-ec injected_command' "$BIN" -c \
+  'case $- in *e*) echo errexit-kept ;; *) echo errexit-lost ;; esac' 2>&1

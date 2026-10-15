@@ -1030,6 +1030,23 @@ strip_sig_prefix(StringView name) wontthrow -> StringView
   return name;
 }
 
+pure fn
+has_command_substitution(StringView text) wontthrow -> bool
+{
+  for (usize i = 0; i < text.length; i++) {
+    if (text[i] == '\\') {
+      i++;
+      continue;
+    }
+
+    if (text[i] == '`') return true;
+    if (text[i] != '$' || i + 1 >= text.length || text[i + 1] != '(') continue;
+    if (i + 2 >= text.length || text[i + 2] != '(') return true;
+  }
+
+  return false;
+}
+
 fn
 find_signal_number(const signal_pair *pairs,
                    usize              pair_count,

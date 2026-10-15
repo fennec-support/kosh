@@ -9,9 +9,9 @@ echo "rc=$?"
   'v=18446744073709551616; echo $((v + 1))'
 echo "extended-rc=$?"
 
-# A '$' that comes from a variable's value is data. An operand or an array
-# subscript taken from a value never runs its command substitution, and an
-# associative key keeps the '$' literally.
+# An operand or an array subscript taken from a variable's value never runs a
+# command substitution, and an associative key keeps it literally. A parameter
+# reference in such a subscript expands as in Bash.
 marker=$TEST_TEMP_DIRECTORY/arith-value-substitution
 rm -f "$marker"
 for form in '[[ $x -lt 1 ]]' 'declare -i n; n=$x' 'RANDOM=$x' 'y=$(( x ))'; do
@@ -24,6 +24,8 @@ if [ -f "$marker" ]; then echo "value substitution ran"; else echo "value substi
    declare -n r=m; (( r[$k] += 2 )); echo "${m[$k]}"' \
   shell "$marker" 2>&1
 if [ -f "$marker" ]; then echo "key substitution ran"; else echo "key substitution blocked"; fi
+"$BIN" --mood bash -c 'a=(1 2 3); i=1; q="a[\$i]"
+  declare -A m=([x]=9); k=x; j="m[\$k]"; echo "$((q)) $((j))"' 2>&1
 
 # A builtin operand or a name reference target expands its subscript again.
 # Parameter and arithmetic expansion still work there, and the kosh mood

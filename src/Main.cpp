@@ -585,23 +585,34 @@ splice_environment_flags(command_line &line) throws -> void
         return;
       }
 
-      bool is_command_word = false;
-      bool is_stdin_word   = false;
+      /* The c letter drops itself and its value, attached or the next word,
+         and the s letter drops itself. The other letters stay. */
+      let kept          = String{heap_allocator()};
+      should_keep_value = true;
 
-      is_value_next = scan_short_cluster(
-          FLAG_LIST, token.substring(1), [&](const Flag &flag) wontthrow {
-            is_command_word = &flag == &FLAG_COMMAND;
-            is_stdin_word   = &flag == &FLAG_STDIN;
+      kept.push(token[0]);
+      for (usize i = 1; i < token.length; i++) {
+        let const flag = find_short_flag(FLAG_LIST, token[i]);
 
-            return is_stdin_word;
-          });
-      should_keep_value = !is_command_word;
+        if (flag == &FLAG_COMMAND) {
+          is_value_next     = i + 1 == token.length;
+          should_keep_value = false;
 
-      if (is_command_word || is_stdin_word) {
-        return;
+          break;
+        }
+
+        if (flag == &FLAG_STDIN) continue;
+        kept.push(token[i]);
+
+        if (flag != nullptr && takes_separate_value(*flag)) {
+          is_value_next = i + 1 == token.length;
+          kept.append(token.substring(i + 1));
+
+          break;
+        }
       }
 
-      line.flag_tokens.push_managed(token);
+      if (kept.count() > 1) line.flag_tokens.push_managed(kept.view());
     });
   }
 

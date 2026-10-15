@@ -31,17 +31,9 @@ static constexpr usize  MAX_OPERATOR_CHAIN_DEPTH = 1024;
 static const StringView OPERATOR_CHAIN_HINT =
     "An operator chain this long needs parentheses or a loop";
 
-/* True when an arithmetic subscript still holds a '$' or '`' after the whole
-   expression has been expanded. Such a character can only come from data. */
-pure static fn
-is_expanded_subscript(StringView subscript) wontthrow -> bool
-{
-  return subscript.find_character('$').has_value() ||
-         subscript.find_character('`').has_value();
-}
-
-/* An expanded subscript is a literal key, so only an associative array,
-   reached directly or through a nameref, accepts it. */
+/* A command substitution left in a subscript after the whole expression has
+   been expanded came from data. It is a literal key of an associative array,
+   reached directly or through a nameref, and an indexed array rejects it. */
 static fn
 associative_array_for_expanded_subscript(const EvalContext &context,
                                          StringView         name,
@@ -54,8 +46,8 @@ associative_array_for_expanded_subscript(const EvalContext &context,
                        : String{heap_allocator(), name};
 
   if (!context.is_associative_array(array_name.view())) {
-    throw ErrorWithDetails{"Unexpected '$' in the array subscript '" +
-                               subscript + "'",
+    throw ErrorWithDetails{"The subscript '" + subscript +
+                               "' runs a command substitution",
                            "A subscript taken from a variable's value is data "
                            "and cannot run a command substitution"};
   }
@@ -523,7 +515,7 @@ public:
     if (target.subscript.has_value()) {
       ASSERT(context != nullptr);
 
-      if (is_expanded_subscript(*target.subscript)) {
+      if (utils::has_command_substitution(*target.subscript)) {
         let const array_name = associative_array_for_expanded_subscript(
             *context, target.name, *target.subscript);
         let const value = context->lookup_associative_element(
@@ -551,7 +543,7 @@ public:
 
       let const text = value.to_string(context->scratch_allocator());
 
-      if (is_expanded_subscript(*target.subscript)) {
+      if (utils::has_command_substitution(*target.subscript)) {
         let const array_name = associative_array_for_expanded_subscript(
             *context, target.name, *target.subscript);
 

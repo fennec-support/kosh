@@ -142,15 +142,12 @@ Options and their values are kept there. The options
 .BR \-\-apply ,
 and
 .BR \-\-as\-language\-server ,
-a cluster such as
-.B \-xc
-that contains
-.B \-c
-or
-.BR \-s ,
 the value of a dropped option,
 .BR \-\- ,
-and every operand are ignored there. A secure execution ignores and removes
+and every operand are ignored there. In a cluster such as
+.BR \-xc ,
+the c and s letters are dropped and the other letters stay. A secure execution
+ignores and removes
 .BR KOSH_FLAGS .
 .PP
 The shell enters rescue mode when argument zero begins with a dash, its options
@@ -1497,12 +1494,13 @@ Arithmetic accepts the C operators, ++, \-\-, **, the conditional operator, the
 comma operator, and assignment operators. Literals may use 0x hexadecimal, 0
 octal, 0b binary, or a base prefix such as 16#ff. A variable value is
 re-evaluated as an arithmetic expression without further expansion, so a $ or a
-backquote in it is an error. A subscript taken from a variable value is used as
-a literal key of an associative array, and with an indexed array a $ or a
-backquote in it is an error. Bash runs a command substitution in such a
-subscript. A subscript in an operand of unset, printf \-v, declare, export, or
-the [[ \-v ]] test, and in the target of a name reference, is expanded again, as
-in Bash, so unset 'a[$i]' uses the value of i. In the kosh mood a command
+backquote in it is an error. A subscript taken from a variable value is
+expanded again, as in Bash, so q='a[$i]' and $((q)) read the element at i. A
+command substitution in such a subscript is not run, though Bash runs it. An
+associative array uses that subscript as a literal key, and an indexed array
+reports an error. A subscript in an operand of unset, printf \-v, declare,
+export, or the [[ \-v ]] test, and in the target of a name reference, is
+expanded again, as in Bash, so unset 'a[$i]' uses the value of i. In the kosh mood a command
 substitution in such a subscript is an error. The bash and sh moods run it, as
 Bash does. Nested subscripts such as a[b[c]] are
 resolved inside out. An empty (( )) command returns one.

@@ -792,37 +792,17 @@ EvalContext::guard_expanded_subscript(StringView subscript) const throws
 {
   /* The bash and sh moods run the substitution, as Bash does. */
   if (runtime_state().get_mood() != mimic_mood::Default) return;
+  if (!utils::has_command_substitution(subscript)) return;
 
-  for (usize i = 0; i < subscript.length; i++) {
-    if (subscript[i] == '\\') {
-      i++;
-      continue;
-    }
+  LOG(Debug,
+      "rejecting a command substitution in the expanded subscript '%.*s'",
+      static_cast<int>(subscript.length), subscript.data);
 
-    let const is_backquote            = subscript[i] == '`';
-    let const is_command_substitution = subscript[i] == '$' &&
-                                        i + 1 < subscript.length &&
-                                        subscript[i + 1] == '(';
-    let const is_arithmetic_expansion = is_command_substitution &&
-                                        i + 2 < subscript.length &&
-                                        subscript[i + 2] == '(';
-
-    if (!is_backquote && (!is_command_substitution || is_arithmetic_expansion))
-    {
-      continue;
-    }
-
-    LOG(Debug,
-        "rejecting a command substitution in the expanded subscript "
-        "'%.*s'",
-        static_cast<int>(subscript.length), subscript.data);
-
-    throw ErrorWithDetails{
-        "The subscript '" + subscript + "' runs a command substitution",
-        "A subscript from an operand or a name reference is expanded again. "
-        "Store the result in a variable and use the variable in the "
-        "subscript"};
-  }
+  throw ErrorWithDetails{
+      "The subscript '" + subscript + "' runs a command substitution",
+      "A subscript from an operand or a name reference is expanded again. "
+      "Store the result in a variable and use the variable in the "
+      "subscript"};
 }
 
 fn

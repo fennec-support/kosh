@@ -435,6 +435,22 @@ takes_separate_value(const Flag &flag) wontthrow -> bool
 }
 
 pure fn
+short_cluster_takes_next_word(const FlagList &flags, StringView cluster)
+    wontthrow
+    -> bool
+{
+  for (usize i = 0; i < cluster.length; i++) {
+    let const flag = find_short_flag(flags, cluster[i]);
+
+    if (flag != nullptr && takes_separate_value(*flag)) {
+      return i + 1 == cluster.length;
+    }
+  }
+
+  return false;
+}
+
+pure fn
 has_flag_word(int                argc,
               const char *const *argv,
               char               short_name,

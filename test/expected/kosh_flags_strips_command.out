@@ -1,6 +1,7 @@
 == -c in KOSH_FLAGS does not run its command:
 clean
-== -xc injected_command: clean
+== -xc injected_command: + echo clean
+clean
 == --command injected_command: clean
 == --command=injected_command: clean
 == -- injected_script: clean
@@ -12,3 +13,5 @@ flagged
 rc=0
 == a short flag keeps its separate value:
 sh
+== the other letters of a cluster with c survive:
+errexit-kept
