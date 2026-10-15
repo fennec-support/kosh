@@ -4060,18 +4060,26 @@ build_prompt(EvalContext &context) -> String
   let const is_cacheable = scan_prompt_template_inputs_or_report_impure(
       decoded.view(), scanned_inputs);
 
+  String rendered{koshka::heap_allocator()};
+
   if (is_cacheable && PROMPT_CACHE.matches(decoded.view(), context)) {
-    return finish_prompt_dropping_width_markers(PROMPT_CACHE.expansion.view());
+    rendered =
+        finish_prompt_dropping_width_markers(PROMPT_CACHE.expansion.view());
+  } else {
+    String expanded = expand_prompt_variable(
+        context, "PS1", ps1_template.view(), decoded.view());
+
+    rendered = finish_prompt_dropping_width_markers(expanded.view());
+    PROMPT_CACHE.invalidate();
+    if (is_cacheable)
+      PROMPT_CACHE.store(decoded, steal(scanned_inputs), steal(expanded),
+                         context);
   }
 
-  String expanded = expand_prompt_variable(context, "PS1", ps1_template.view(),
-                                           decoded.view());
-  String rendered = finish_prompt_dropping_width_markers(expanded.view());
-
-  PROMPT_CACHE.invalidate();
-  if (is_cacheable)
-    PROMPT_CACHE.store(decoded, steal(scanned_inputs), steal(expanded),
-                       context);
+  if (::itl_prompt_last_row_width(rendered.c_str(), nullptr) == 0) {
+    LOG(Debug, "padding the zero-width prompt row with a no-break space");
+    rendered += "\xc2\xa0";
+  }
 
   return rendered;
 }
