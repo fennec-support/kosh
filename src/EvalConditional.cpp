@@ -94,6 +94,16 @@ struct conditional_evaluator
     return String{heap_allocator()};
   }
 
+  /* A bare unquoted operand is one literal segment, so its text is borrowed. */
+  fn
+  bare_operand_view(const conditional_element &e) const wontthrow
+      -> Maybe<StringView>
+  {
+    if (!e.is_bare_unquoted || e.word == nullptr) return None;
+
+    return e.word->raw_view();
+  }
+
   fn
   operand_value(const conditional_element &e) throws -> String
   {
@@ -422,15 +432,15 @@ struct conditional_evaluator
     if (first.kind != Kind::Operand)
       fail_conditional("An operator appears where an operand is expected");
 
-    let const first_literal = operand_literal(first);
+    let const first_view = bare_operand_view(first);
 
     let selected_unary_operator = Maybe<UnaryOperatorKind>{};
 
-    if (first.is_bare_unquoted)
-      selected_unary_operator = unary_operator(first_literal.view());
+    if (first_view.has_value())
+      selected_unary_operator = unary_operator(*first_view);
     if (selected_unary_operator.has_value()) {
       if (pos + 1 >= elements.count() || kind_at(pos + 1) != Kind::Operand) {
-        fail_conditional("The unary operator '" + first_literal +
+        fail_conditional("The unary operator '" + operand_literal(first) +
                          "' is missing its operand");
       }
 
@@ -482,15 +492,17 @@ struct conditional_evaluator
       }
 
       if (next == Kind::Operand && elements[pos + 1].is_bare_unquoted) {
-        let const op                       = operand_literal(elements[pos + 1]);
-        let const selected_binary_operator = binary_operator(op.view());
+        let const op_view = bare_operand_view(elements[pos + 1]);
+        let const selected_binary_operator = op_view.has_value()
+                                                 ? binary_operator(*op_view)
+                                                 : Maybe<BinaryOperatorKind>{};
 
         if (selected_binary_operator.has_value()) {
           if (pos + 2 >= elements.count() || kind_at(pos + 2) != Kind::Operand)
           {
             fail_conditional_syntax(
-                String{heap_allocator(), "Expected an operand after '"} + op +
-                "'");
+                String{heap_allocator(), "Expected an operand after '"} +
+                *op_view + "'");
           }
           pos += 3;
           if (is_skipping) return false;
