@@ -335,8 +335,8 @@ case "$out" in
     elif ! grep -qx 'printf P_EXECUTED > "$HISTORY_P_MARKER"' \
       "$modifier_stderr_log" ||
       ! grep -qx 'echo alpha W omega tail' "$modifier_stderr_log" ||
-      ! grep -qx 'z: unrecognized history modifier' "$modifier_stderr_log" ||
-      ! grep -qx ':s/MISSING/repl/: substitution failed' \
+      ! grep -qx 'error: z: unrecognized history modifier.' "$modifier_stderr_log" ||
+      ! grep -qx 'error: :s/MISSING/repl/: substitution failed.' \
         "$modifier_stderr_log"; then
       printf 'history modifier diagnostics:\n%.4096s\n' \
         "$(cat "$modifier_stderr_log")" >&2

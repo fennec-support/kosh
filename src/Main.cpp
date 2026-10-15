@@ -643,7 +643,7 @@ parse_invocation_flags(int argc, const char *const *argv) throws
 static fn
 enter_rescue_mode(command_line &line) throws -> void
 {
-  show_message("Entering rescue.");
+  show_message(Warning{"Entering rescue"}.to_string());
   line.is_rescue_mode = true;
   reset_flags(FLAG_LIST);
   try {
@@ -1169,7 +1169,7 @@ take_inherited_shell() throws -> inherited_shell
   if (!os::can_fork_evaluator() && !inherited.bootstrap.payload.is_empty()) {
     inherited.state = os::inherited_subshell_state::take_from_environment();
     if (!inherited.state.has_value()) {
-      show_message("Invalid inherited shell state");
+      show_message(Error{"Invalid inherited shell state"}.to_string());
       inherited.has_invalid_state = true;
 
       return inherited;
@@ -1198,7 +1198,8 @@ apply_inherited_shell(inherited_shell &inherited,
 
       return 1;
     } catch (const std::bad_alloc &) {
-      show_message("Could not allocate inherited shell state");
+      show_message(
+          Error{"Could not allocate inherited shell state"}.to_string());
 
       return 1;
     }
@@ -2421,7 +2422,7 @@ struct interactive_session
           should_execute = expanded->should_execute;
         }
       } catch (const Error &error) {
-        show_message(error.message().view());
+        show_message(error.to_string());
 
         return false;
       }
@@ -2610,8 +2611,10 @@ kosh_main(int argc, char **argv) -> int
       if (koshka::os::is_running_secure() &&
           !koshka::os::drop_elevated_identity())
       {
-        koshka::show_message("Unable to drop elevated ids: " +
-                             koshka::os::last_system_error_message());
+        koshka::show_message(
+            koshka::Error{"Unable to drop elevated ids: " +
+                          koshka::os::last_system_error_message()}
+                .to_string());
 
         return 1;
       }
@@ -2669,8 +2672,9 @@ kosh_main(int argc, char **argv) -> int
   let const has_elevated_identity = koshka::os::is_running_secure();
 
   if (has_elevated_identity && !koshka::os::drop_elevated_identity()) {
-    koshka::show_message("Unable to drop elevated ids: " +
-                         koshka::os::last_system_error_message());
+    koshka::show_message(koshka::Error{"Unable to drop elevated ids: " +
+                                       koshka::os::last_system_error_message()}
+                             .to_string());
 
     return 1;
   }
