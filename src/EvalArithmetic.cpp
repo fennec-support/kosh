@@ -475,6 +475,7 @@ public:
     if (context->is_associative_array(target.name)) return;
     if (context->variable_store().attributes().is_nameref(target.name)) return;
 
+    let const data_scope = DataExpansionScope{*context};
     let const index =
         context->evaluate_arithmetic(*target.subscript, nullptr, true);
     let const text = utils::int_to_text_into(index, target.resolved_subscript,
