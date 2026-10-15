@@ -219,6 +219,8 @@ append_namespace_report(String                      &output,
         if (left.type_index != right.type_index)
           return left.type_index < right.type_index;
         if (left.is_available != right.is_available) return left.is_available;
+        if (!left.is_available && left.reason != right.reason)
+          return left.reason < right.reason;
         if (left.is_identifier_numeric != right.is_identifier_numeric)
           return left.is_identifier_numeric;
         if (left.is_identifier_numeric &&
@@ -303,81 +305,52 @@ append_namespace_report(String                      &output,
   let failure_table = ReportTable{allocator};
 
   failure_table.add_heading("TYPE");
-  if (detail == eviliso_detail_mode::All) {
-    failure_table.add_heading("PID", report_table_alignment::Right);
-    failure_table.add_heading("NAME");
-    failure_table.add_heading("ROLE");
-  } else {
-    failure_table.add_heading("PROCESSES", report_table_alignment::Right);
-  }
-
+  failure_table.add_heading("PROCESSES", report_table_alignment::Right);
   failure_table.add_heading("STATUS");
   failure_table.add_heading("REASON");
 
-  bool has_failure = false;
+  bool  has_failure    = false;
+  usize relation_index = 0;
 
-  if (detail == eviliso_detail_mode::All) {
-    for (let const &relation : sorted_relations) {
-      if (relation.is_available) continue;
-      has_failure = true;
+  while (relation_index < sorted_relations.count()) {
+    let const &first = sorted_relations[relation_index];
 
-      let const process_id = String::from(relation.process_id, allocator);
-      let       cells      = ArrayList<report_table_cell_view>{allocator};
-
-      cells.push({relation.type, colors::soft(colors::ansi::BOLD_MAGENTA)});
-      cells.push({process_id.view(), colors::soft(colors::ansi::BOLD_GREEN)});
-      cells.push({relation.name.view(), colors::ansi::RESET});
-      cells.push({relation.role, colors::soft(colors::ansi::BOLD_MAGENTA)});
-      cells.push({"Unavailable", colors::soft(colors::ansi::BOLD_YELLOW)});
-      cells.push({relation.reason.is_empty() ? StringView{"unknown error"}
-                                             : relation.reason.view(),
-                  colors::ansi::RESET});
-      failure_table.add_row(cells);
+    if (first.is_available) {
+      relation_index++;
+      continue;
     }
-  } else {
-    usize relation_index = 0;
 
-    while (relation_index < sorted_relations.count()) {
-      let const &first = sorted_relations[relation_index];
+    let const reason    = first.reason.is_empty() ? StringView{"unknown error"}
+                                                  : first.reason.view();
+    usize     group_end = relation_index + 1;
 
-      if (first.is_available) {
-        relation_index++;
-        continue;
+    while (group_end < sorted_relations.count()) {
+      let const &candidate        = sorted_relations[group_end];
+      let const  candidate_reason = candidate.reason.is_empty()
+                                        ? StringView{"unknown error"}
+                                        : candidate.reason.view();
+
+      if (candidate.is_available || candidate.type != first.type ||
+          candidate_reason != reason)
+      {
+        break;
       }
 
-      let const reason = first.reason.is_empty() ? StringView{"unknown error"}
-                                                 : first.reason.view();
-      usize     group_end = relation_index + 1;
-
-      while (group_end < sorted_relations.count()) {
-        let const &candidate        = sorted_relations[group_end];
-        let const  candidate_reason = candidate.reason.is_empty()
-                                          ? StringView{"unknown error"}
-                                          : candidate.reason.view();
-
-        if (candidate.is_available || candidate.type != first.type ||
-            candidate_reason != reason)
-        {
-          break;
-        }
-
-        group_end++;
-      }
-
-      has_failure = true;
-
-      let const process_count =
-          String::from(group_end - relation_index, allocator);
-      let cells = ArrayList<report_table_cell_view>{allocator};
-
-      cells.push({first.type, colors::soft(colors::ansi::BOLD_MAGENTA)});
-      cells.push(
-          {process_count.view(), colors::soft(colors::ansi::BOLD_GREEN)});
-      cells.push({"Unavailable", colors::soft(colors::ansi::BOLD_YELLOW)});
-      cells.push({reason, colors::ansi::RESET});
-      failure_table.add_row(cells);
-      relation_index = group_end;
+      group_end++;
     }
+
+    has_failure = true;
+
+    let const process_count =
+        String::from(group_end - relation_index, allocator);
+    let cells = ArrayList<report_table_cell_view>{allocator};
+
+    cells.push({first.type, colors::soft(colors::ansi::BOLD_MAGENTA)});
+    cells.push({process_count.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+    cells.push({"Unavailable", colors::soft(colors::ansi::BOLD_YELLOW)});
+    cells.push({reason, colors::ansi::RESET});
+    failure_table.add_row(cells);
+    relation_index = group_end;
   }
 
   if (has_failure)
@@ -890,24 +863,31 @@ append_cgroup_failure_report(String &output,
   let const allocator = snapshot.allocator();
   let       table     = ReportTable{allocator};
 
-  table.add_heading("PID", report_table_alignment::Right);
-  table.add_heading("PROCESS");
+  table.add_heading("PROCESSES", report_table_alignment::Right);
   table.add_heading("STATUS");
 
-  bool has_failure = false;
+  constexpr usize STATUS_COUNT =
+      static_cast<usize>(process_snapshot_status::Unverifiable) + 1;
+  usize status_counts[STATUS_COUNT] = {};
+  bool  has_failure                 = false;
 
   for (let const &process : snapshot) {
     if (process.status == process_snapshot_status::Available) continue;
 
     has_failure = true;
+    status_counts[static_cast<usize>(process.status)]++;
+  }
 
-    let const process_id = String::from(process.process_id, allocator);
-    let       cells      = ArrayList<report_table_cell_view>{allocator};
+  for (usize status_index = 0; status_index < STATUS_COUNT; status_index++) {
+    if (status_counts[status_index] == 0) continue;
 
-    cells.push({process_id.view(), colors::soft(colors::ansi::BOLD_GREEN)});
-    cells.push({process.name.is_empty() ? StringView{"-"} : process.name.view(),
-                colors::ansi::RESET});
-    cells.push({process_snapshot_status_name(process.status),
+    let const process_count =
+        String::from(status_counts[status_index], allocator);
+    let cells = ArrayList<report_table_cell_view>{allocator};
+
+    cells.push({process_count.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+    cells.push({process_snapshot_status_name(
+                    static_cast<process_snapshot_status>(status_index)),
                 colors::soft(colors::ansi::BOLD_YELLOW)});
     table.add_row(cells);
   }
@@ -915,9 +895,8 @@ append_cgroup_failure_report(String &output,
   if (!has_failure && fallback == cgroup_failure_fallback::ReportUnavailable) {
     let cells = ArrayList<report_table_cell_view>{allocator};
 
-    cells.reserve(3);
-    cells.push({"-", colors::soft(colors::ansi::BOLD_GREEN)});
-    cells.push({"self", colors::ansi::RESET});
+    cells.reserve(2);
+    cells.push({"self", colors::soft(colors::ansi::BOLD_GREEN)});
     cells.push({"Unavailable", colors::soft(colors::ansi::BOLD_YELLOW)});
     table.add_row(cells);
   }
