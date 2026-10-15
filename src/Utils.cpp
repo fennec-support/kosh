@@ -1046,7 +1046,11 @@ has_command_substitution(StringView text) wontthrow -> bool
       let const rest = text.substring(i + 2);
       let const body = rest.substring_of_length(
           0, rest.find_character('}').value_or(rest.length));
+      let const is_function_substitution =
+          !rest.is_empty() && (rest[0] == ' ' || rest[0] == '\t' ||
+                               rest[0] == '\n' || rest[0] == '|');
 
+      if (is_function_substitution) return true;
       if (body.find_substring("@P").has_value()) return true;
 
       continue;

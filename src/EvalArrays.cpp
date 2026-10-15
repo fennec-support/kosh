@@ -787,22 +787,54 @@ EvalContext::clear_associative_array(StringView name) throws -> void
 }
 
 fn
-EvalContext::guard_expanded_subscript(StringView subscript) const throws
-    -> void
+EvalContext::guard_expanded_subscript(StringView subscript) throws
+    -> DataExpansionScope
 {
   /* The bash and sh moods run the substitution, as Bash does. */
-  if (runtime_state().get_mood() != mimic_mood::Default) return;
-  if (!utils::has_command_substitution(subscript)) return;
+  let const is_kosh_mood = runtime_state().get_mood() == mimic_mood::Default;
 
-  LOG(Debug,
-      "rejecting a command substitution in the expanded subscript '%.*s'",
-      static_cast<int>(subscript.length), subscript.data);
+  /* An indirection is rejected here because a name reference target is
+     expanded after this scope ends. */
+  if (is_kosh_mood && (utils::has_command_substitution(subscript) ||
+                       subscript.find_substring("${!").has_value()))
+  {
+    LOG(Debug,
+        "rejecting a command substitution in the expanded subscript '%.*s'",
+        static_cast<int>(subscript.length), subscript.data);
 
-  throw ErrorWithDetails{
-      "The subscript '" + subscript + "' runs a command substitution",
-      "A subscript from an operand or a name reference is expanded again. "
-      "Store the result in a variable and use the variable in the "
-      "subscript"};
+    throw ErrorWithDetails{
+        "The subscript '" + subscript + "' runs a command substitution",
+        "A subscript from an operand or a name reference is expanded again. "
+        "Store the result in a variable and use the variable in the "
+        "subscript"};
+  }
+
+  return DataExpansionScope{*this, is_kosh_mood};
+}
+
+fn
+EvalContext::refuse_command_in_data_expansion(StringView kind) const throws -> void
+{
+  if (expansion_store().data_expansion_depth() == 0) return;
+
+  LOG(Debug, "refusing a %.*s inside a subscript taken from data",
+      static_cast<int>(kind.length), kind.data);
+
+  throw ErrorWithDetails{"A subscript taken from data cannot run a " + kind,
+                         "Store the result in a variable and use the variable "
+                         "in the subscript"};
+}
+
+DataExpansionScope::DataExpansionScope(EvalContext &context,
+                                       bool         should_apply) wontthrow
+    : m_context(context), m_should_apply(should_apply)
+{
+  if (m_should_apply) m_context.expansion_store().data_expansion_depth()++;
+}
+
+DataExpansionScope::~DataExpansionScope()
+{
+  if (m_should_apply) m_context.expansion_store().data_expansion_depth()--;
 }
 
 fn

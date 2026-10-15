@@ -267,7 +267,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         let const subscript = name.view().substring_of_length(
             *bracket + 1, name.count() - *bracket - 2);
 
-        cxt.guard_expanded_subscript(subscript);
+        let const data_scope = cxt.guard_expanded_subscript(subscript);
         cxt.assign_array_element(name.view().substring_of_length(0, *bracket),
                                  subscript, value.view(),
                                  assignment_update_mode::Replace);

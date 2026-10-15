@@ -420,7 +420,7 @@ EvalContext::set_shell_variable(StringView name,
       let const subscript = target.view().substring_of_length(
           *bracket + 1, target.count() - *bracket - 2);
 
-      guard_expanded_subscript(subscript);
+      let const data_scope = guard_expanded_subscript(subscript);
       assign_array_element(target.view().substring_of_length(0, *bracket),
                            subscript, value, assignment_update_mode::Replace);
 
@@ -576,7 +576,7 @@ EvalContext::unset_shell_variable(StringView name) throws -> void
         let const subscript = target.view().substring_of_length(
             *bracket + 1, target.count() - *bracket - 2);
 
-        guard_expanded_subscript(subscript);
+        let const data_scope = guard_expanded_subscript(subscript);
         unset_array_element(target.view().substring_of_length(0, *bracket),
                             subscript);
 

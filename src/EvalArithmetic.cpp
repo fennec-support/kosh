@@ -525,7 +525,8 @@ public:
                                                         : StringView{});
       }
 
-      let const value = context->read_array_element_arithmetic_text(
+      let const data_scope = DataExpansionScope{*context};
+      let const value      = context->read_array_element_arithmetic_text(
           target.name, *target.subscript);
 
       return evaluate_operand_value(value.view());
@@ -552,6 +553,8 @@ public:
 
         return;
       }
+
+      let const data_scope = DataExpansionScope{*context};
 
       context->assign_array_element(target.name, *target.subscript, text.view(),
                                     assignment_update_mode::Replace);

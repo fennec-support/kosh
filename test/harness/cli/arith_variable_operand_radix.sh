@@ -34,6 +34,16 @@ rm -f "$marker"
 "$BIN" --mood kosh -c 'a=(x y); k="\$(: > $1)"; s="\${k@P}"; unset "a[$s]"' \
   shell "$marker" >/dev/null 2>&1
 if [ -f "$marker" ]; then echo "prompt expansion ran"; else echo "prompt expansion blocked"; fi
+# An indirection or a function substitution in such a subscript cannot run a
+# command either, while an indirection to a plain value still works.
+"$BIN" --mood bash -c 'a=(1 2); r="a[\$(: > $1)]"; q="a[\${!r}]"; echo $((q))' \
+  shell "$marker" >/dev/null 2>&1
+"$BIN" --mood bash -c 'a=(1 2); q="a[\${ : > $1; }]"; echo $((q))' \
+  shell "$marker" >/dev/null 2>&1
+"$BIN" --mood kosh -c 'a=(x y); s="\${ : > $1; }"; unset "a[$s]"' \
+  shell "$marker" >/dev/null 2>&1
+if [ -f "$marker" ]; then echo "indirect command ran"; else echo "indirect command blocked"; fi
+"$BIN" --mood bash -c 'a=(1 2); r=i; i=1; q="a[\${!r}]"; echo "indirect=$((q))"' 2>&1
 
 # A builtin operand or a name reference target expands its subscript again.
 # Parameter and arithmetic expansion still work there, and the kosh mood

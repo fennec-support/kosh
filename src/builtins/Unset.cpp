@@ -101,7 +101,7 @@ Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const subscript  = name.view().substring_of_length(
           *bracket + 1, name.count() - *bracket - 2);
 
-      cxt.guard_expanded_subscript(subscript);
+      let const data_scope = cxt.guard_expanded_subscript(subscript);
 
       try {
         cxt.unset_array_element(array_name, subscript);

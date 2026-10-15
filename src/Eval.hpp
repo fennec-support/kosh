@@ -3579,6 +3579,20 @@ public:
     return m_parameter_expansion_depth;
   }
 
+  /* A nonzero depth means a subscript taken from data is being expanded
+     again, and a substitution that runs commands is refused. */
+  fn
+  data_expansion_depth() wontthrow -> usize &
+  {
+    return m_data_expansion_depth;
+  }
+
+  pure fn
+  data_expansion_depth() const wontthrow -> usize
+  {
+    return m_data_expansion_depth;
+  }
+
   fn
   set_glob_exempt_for_test(bool is_exempt) wontthrow
   {
@@ -3699,6 +3713,7 @@ private:
   mutable BumpArena               m_scratch_arena{};
   usize                           m_substitution_depth{0};
   usize                           m_parameter_expansion_depth{0};
+  usize                           m_data_expansion_depth{0};
   getopts_cursor                  m_getopts_cursor{};
   bool                            m_is_glob_exempt_for_test{false};
   bool                            m_is_expanding_here_document{false};
@@ -4862,6 +4877,23 @@ private:
   EvalContext     &m_context;
   saved_frame_trap m_saved;
   Kind             m_kind;
+};
+
+/* Raises the data expansion depth while it lives, so a command, function, or
+   process substitution reached from a subscript taken from data is refused. */
+class DataExpansionScope
+{
+public:
+  explicit DataExpansionScope(EvalContext &context,
+                              bool         should_apply = true) wontthrow;
+  DataExpansionScope(const DataExpansionScope &)                = delete;
+  fn
+  operator=(const DataExpansionScope &) -> DataExpansionScope & = delete;
+  ~DataExpansionScope();
+
+private:
+  EvalContext &m_context;
+  bool         m_should_apply;
 };
 
 class DefinitionStateScope
@@ -6031,10 +6063,15 @@ public:
                         const SourceLocation &location,
                         restricted_path_use   use) const throws -> void;
   /* A subscript from an expanded operand or a name reference target is
-     expanded again, and the kosh mood rejects a command substitution in
-     it. */
+     expanded again. The kosh mood rejects one that runs a command or follows
+     an indirection, and the returned scope refuses any substitution that runs
+     a command while the caller expands the subscript. */
   fn
-  guard_expanded_subscript(StringView subscript) const throws -> void;
+  guard_expanded_subscript(StringView subscript) throws
+      -> DataExpansionScope;
+  fn
+  refuse_command_in_data_expansion(StringView kind) const throws
+      -> void;
 
   fn
   make_stats_string() const throws -> String;

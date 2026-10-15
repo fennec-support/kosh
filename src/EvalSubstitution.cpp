@@ -460,6 +460,7 @@ EvalContext::setup_process_substitution(
     StringView text, Maybe<SourceLocation> segment_location) throws
     -> String
 {
+  refuse_command_in_data_expansion("process substitution");
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Unable to run the process substitution because no script is "
                 "being parsed"};
@@ -919,6 +920,7 @@ EvalContext::run_captured_substitution(
     Maybe<SourceLocation> call_site) throws -> String
 {
   ASSERT(ast != nullptr);
+  refuse_command_in_data_expansion("command substitution");
   LOG(Debug, "running a captured substitution body of %zu bytes",
       source.count());
 
@@ -1276,6 +1278,7 @@ fn
 EvalContext::capture_function_substitution(const WordSegment &segment)
     throws -> String
 {
+  refuse_command_in_data_expansion("function substitution");
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Unable to run the function substitution because no script is "
                 "being parsed"};
@@ -1330,6 +1333,7 @@ fn
 EvalContext::capture_function_substitution(
     StringView text, const SourceLocation *call_site) throws -> String
 {
+  refuse_command_in_data_expansion("function substitution");
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Unable to run the function substitution because no script is "
                 "being parsed"};

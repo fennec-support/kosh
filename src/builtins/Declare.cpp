@@ -573,7 +573,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     if (has_subscript && equals.has_value()) {
-      cxt.guard_expanded_subscript(subscript);
+      let const data_scope = cxt.guard_expanded_subscript(subscript);
       cxt.assign_array_element(name, subscript, value, update_mode);
     } else if (should_make_associative) {
       LOG(All, "declare making '%.*s' an associative array",

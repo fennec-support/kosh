@@ -207,9 +207,10 @@ pure fn
 strip_sig_prefix(StringView name) wontthrow -> StringView;
 
 /* Whether expanding text can run a command: a $( command substitution, a
-   backquote outside a backslash escape, or a ${name@P} prompt expansion, which
-   runs the substitutions in the value. A $(( arithmetic expansion does not
-   count. */
+   backquote outside a backslash escape, a ${ cmd; } or ${|cmd;} function
+   substitution, or a ${name@P} prompt expansion, which runs the substitutions
+   in the value. A $(( arithmetic expansion does not count. The runtime refusal
+   behind DataExpansionScope covers forms this text check cannot see. */
 pure fn
 has_command_substitution(StringView text) wontthrow -> bool;
 

@@ -10,6 +10,8 @@ value substitution blocked
 key substitution blocked
 2 9
 prompt expansion blocked
+indirect command blocked
+indirect=2
 operand substitution blocked
 r=new
 declare -a a=([0]="x" [1]="new")
