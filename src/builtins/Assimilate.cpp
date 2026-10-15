@@ -904,7 +904,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
     prompt += "/kosh? [y/N] ";
 
     if (!koshkit::confirm_koshkit_action(ec, prompt.view())) {
-      ec.print_to_stderr("assimilate: The installation was cancelled.\n");
+      report_soft_builtin_warning(ec, cxt, "The installation was cancelled");
 
       return 1;
     }

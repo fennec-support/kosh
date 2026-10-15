@@ -386,7 +386,8 @@ report_soft_builtin_error(const ExecContext &ec,
   if (show_with_current_source(cxt, located)) {
     cxt.print_source_backtrace(location, false);
   } else {
-    print_error(builtin_error_message(ec.program(), message) + "\n");
+    show_message(
+        Error{builtin_error_message(ec.program(), message)}.to_string());
   }
 }
 
@@ -438,8 +439,11 @@ report_usage_error(EvalContext   &cxt,
       source != nullptr)
     show_message(located.to_string(source->view(), &cxt));
   else
-    print_error(String{heap_allocator(), program_name} +
-                ": Not enough arguments.\n");
+    show_message(Error{
+        String{heap_allocator(), program_name}
+        + ": Not enough arguments"
+    }
+                     .to_string());
   show_message(Note{
       String{heap_allocator(), "Try `"}
       + program_name +

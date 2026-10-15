@@ -2964,9 +2964,10 @@ initialize() -> void
     let const result = load_history(*kosh_history, true);
 
     if (result.is_error()) {
-      koshka::show_message(
+      koshka::show_message(koshka::Warning{
           koshka::StringView{"Unable to read the history at '"} +
-          kosh_history->text().view() + "': " + result.error().message());
+          kosh_history->text().view() + "': " + result.error().message()}
+                               .to_string());
     }
   }
 
