@@ -1054,6 +1054,21 @@ has_command_substitution(StringView text) wontthrow -> bool
 
     if (text[i + 1] != '(') continue;
     if (i + 2 >= text.length || text[i + 2] != '(') return true;
+
+    // A '$((' whose body has an unpaired ')' lexes as a command substitution.
+    usize depth = 0;
+
+    for (usize j = i + 3; j < text.length; j++) {
+      if (text[j] == '(') {
+        depth++;
+      } else if (text[j] == ')' && depth > 0) {
+        depth--;
+      } else if (text[j] == ')') {
+        if (j + 1 >= text.length || text[j + 1] != ')') return true;
+
+        break;
+      }
+    }
   }
 
   return false;

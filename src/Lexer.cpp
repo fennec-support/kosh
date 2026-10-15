@@ -1114,11 +1114,14 @@ Lexer::lex_identifier() throws -> Token *
       if (is_bracket_arithmetic ||
           (next == '(' && chop_character(byte_count + 1) == '('))
       {
+        let const command_substitution_start = byte_count;
+
         byte_count += is_bracket_arithmetic ? 1 : 2;
 
         let   arithmetic_start = byte_count;
         let   closing_length   = is_bracket_arithmetic ? usize{1} : usize{2};
         usize group_depth      = 0;
+        bool  is_subshell_substitution = false;
 
         loop {
           let const c = chop_character(byte_count);
@@ -1253,29 +1256,39 @@ Lexer::lex_identifier() throws -> Token *
           } else if (c == ')' && chop_character(byte_count + 1) == ')') {
             byte_count += 2;
             break;
+          } else if (c == ')') {
+            is_subshell_substitution = true;
+            break;
           } else {
             byte_count++;
           }
         }
 
-        let const body_length = byte_count - arithmetic_start - closing_length;
+        // A ')' that does not close a group or pair with a second ')' makes
+        // the '$((' a command substitution that starts with a subshell.
+        if (!is_subshell_substitution) {
+          let const body_length =
+              byte_count - arithmetic_start - closing_length;
 
-        word.segments.push(WordSegment{
-            WordSegment::Kind::ArithmeticExpansion,
-            SegmentText{bump_allocator(arena()),
-                        m_source.substring_of_length(
-                            m_cursor_position + arithmetic_start, body_length)},
-            is_in_double_quotes
-        });
-        word.segments.back().set_source_span(m_cursor_position +
-                                                 arithmetic_start,
-                                             word.segments.back().text.count());
-        if (should_validate_substitutions()) {
-          validate_nested_expansions(m_cursor_position + arithmetic_start,
-                                     body_length, false);
+          word.segments.push(WordSegment{
+              WordSegment::Kind::ArithmeticExpansion,
+              SegmentText{bump_allocator(arena()),
+                          m_source.substring_of_length(m_cursor_position +
+                                                           arithmetic_start, body_length)},
+              is_in_double_quotes
+          });
+          word.segments.back().set_source_span(
+              m_cursor_position + arithmetic_start,
+              word.segments.back().text.count());
+          if (should_validate_substitutions()) {
+            validate_nested_expansions(m_cursor_position + arithmetic_start,
+                                       body_length, false);
+          }
+
+          continue;
         }
 
-        continue;
+        byte_count = command_substitution_start;
       }
 
       if (next == '(') {
