@@ -97,25 +97,25 @@ struct pastel_color
 };
 
 static const pastel_color PASTEL_COLORS[] = {
-    {ansi::RED,               "\x1b[38;5;174m"  },
-    {ansi::GREEN,             "\x1b[38;5;108m"  },
-    {ansi::YELLOW,            "\x1b[38;5;186m"  },
-    {ansi::BLUE,              "\x1b[38;5;110m"  },
-    {ansi::MAGENTA,           "\x1b[38;5;176m"  },
-    {ansi::CYAN,              "\x1b[38;5;116m"  },
+    {ansi::RED,               "\x1b[38;5;203m"  },
+    {ansi::GREEN,             "\x1b[38;5;114m"  },
+    {ansi::YELLOW,            "\x1b[38;5;221m"  },
+    {ansi::BLUE,              "\x1b[38;5;75m"   },
+    {ansi::MAGENTA,           "\x1b[38;5;170m"  },
+    {ansi::CYAN,              "\x1b[38;5;80m"   },
     {ansi::BRIGHT_RED,        "\x1b[38;5;210m"  },
-    {ansi::BRIGHT_GREEN,      "\x1b[38;5;151m"  },
+    {ansi::BRIGHT_GREEN,      "\x1b[38;5;120m"  },
     {ansi::BRIGHT_BLUE,       "\x1b[38;5;111m"  },
-    {ansi::BRIGHT_MAGENTA,    "\x1b[38;5;183m"  },
-    {ansi::BRIGHT_CYAN,       "\x1b[38;5;152m"  },
-    {ansi::BOLD_RED,          "\x1b[1;38;5;174m"},
+    {ansi::BRIGHT_MAGENTA,    "\x1b[38;5;213m"  },
+    {ansi::BRIGHT_CYAN,       "\x1b[38;5;123m"  },
+    {ansi::BOLD_RED,          "\x1b[1;38;5;203m"},
     {ansi::BOLD_BRIGHT_RED,   "\x1b[1;38;5;210m"},
-    {ansi::BOLD_GREEN,        "\x1b[1;38;5;108m"},
-    {ansi::BOLD_BRIGHT_GREEN, "\x1b[1;38;5;151m"},
-    {ansi::BOLD_YELLOW,       "\x1b[1;38;5;186m"},
-    {ansi::BOLD_BLUE,         "\x1b[1;38;5;110m"},
-    {ansi::BOLD_MAGENTA,      "\x1b[1;38;5;176m"},
-    {ansi::BOLD_CYAN,         "\x1b[1;38;5;116m"},
+    {ansi::BOLD_GREEN,        "\x1b[1;38;5;114m"},
+    {ansi::BOLD_BRIGHT_GREEN, "\x1b[1;38;5;120m"},
+    {ansi::BOLD_YELLOW,       "\x1b[1;38;5;221m"},
+    {ansi::BOLD_BLUE,         "\x1b[1;38;5;75m" },
+    {ansi::BOLD_MAGENTA,      "\x1b[1;38;5;170m"},
+    {ansi::BOLD_CYAN,         "\x1b[1;38;5;80m" },
 };
 
 static fn
@@ -148,17 +148,26 @@ static const highlight_theme DIAGNOSTIC_HIGHLIGHT_THEMES[] = {
     make_pastel_theme(make_diagnostic_highlight_theme())};
 
 fn
-terminal_supports_256_color() wontthrow -> bool
+terminal_supports_true_color() wontthrow -> bool
 {
   static const bool is_supported = [] wontthrow {
     let const colorterm = os::get_environment_variable("COLORTERM");
-    let const term      = os::get_environment_variable("TERM");
-    let const is_true_color =
-        colorterm.has_value() &&
-        (colorterm->view().find_substring("truecolor").has_value() ||
-         colorterm->view().find_substring("24bit").has_value());
 
-    return is_true_color ||
+    return colorterm.has_value() &&
+           (colorterm->view().find_substring("truecolor").has_value() ||
+            colorterm->view().find_substring("24bit").has_value());
+  }();
+
+  return is_supported;
+}
+
+fn
+terminal_supports_256_color() wontthrow -> bool
+{
+  static const bool is_supported = [] wontthrow {
+    let const term = os::get_environment_variable("TERM");
+
+    return terminal_supports_true_color() ||
            (term.has_value() &&
             (term->view().find_substring("256color").has_value() ||
              term->view().find_substring("direct").has_value()));

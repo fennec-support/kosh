@@ -3288,73 +3288,107 @@ append_prompt_data(String    &out,
                    StringView data,
                    bool       should_quote) throws -> void;
 
-/* The hostname changes color every two letters. Each pair takes its color from
-   the checksum of the full hostname mixed with the pair index, so a host keeps
-   its colors in every session and two pairs in a row never share one. A
-   256-color terminal draws from the 60 pastel colors of the color cube, and
-   another terminal draws from seven colors that exclude the status reds and
-   greens. */
+/* The hostname is drawn as a gradual gradient. The checksum of the full
+   hostname picks the starting hue and the direction, and the hue drifts by 6
+   degrees per letter and at most 40 degrees across the name, so a host keeps
+   its colors in every session. A truecolor terminal draws each letter in its
+   exact color, and a 256-color terminal draws the nearest color of the color
+   cube. Another terminal moves between two neighbors among seven colors
+   ordered by hue that exclude the status reds and greens, and the step never
+   wraps from the last color to the first. */
 static fn
 append_colored_hostname(String    &out,
                         StringView host,
                         bool       should_quote) throws -> void
 {
-  static const StringView BASIC_COLORS[] = {
-      colors::ansi::YELLOW,      colors::ansi::BLUE,
-      colors::ansi::MAGENTA,     colors::ansi::CYAN,
-      colors::ansi::BRIGHT_BLUE, colors::ansi::BRIGHT_MAGENTA,
-      colors::ansi::BRIGHT_CYAN,
+  static const StringView HUE_ORDERED_COLORS[] = {
+      colors::ansi::YELLOW,         colors::ansi::CYAN,
+      colors::ansi::BRIGHT_CYAN,    colors::ansi::BRIGHT_BLUE,
+      colors::ansi::BLUE,           colors::ansi::MAGENTA,
+      colors::ansi::BRIGHT_MAGENTA,
   };
-  static constexpr u32 PASTEL_CUBE_COLOR_COUNT = 4 * 4 * 4 - 4;
+  static constexpr u32 HUE_STEP_DEGREES     = 6;
+  static constexpr u32 MAX_HUE_SPAN_DEGREES = 40;
+  static constexpr u32 SATURATION           = 150;
+  static constexpr u32 BRIGHTNESS           = 240;
 
   let const full_host = prompt_hostname(true);
   let const seed =
       ~os::crc32c_update(0xFFFFFFFF, full_host.view().data, full_host.length());
-  let const is_256_color = colors::terminal_supports_256_color();
-  let const color_count =
-      is_256_color ? PASTEL_CUBE_COLOR_COUNT : u32{countof(BASIC_COLORS)};
-  u32 previous_choice = color_count;
+  let const is_hue_rising = (seed >> 16 & 1) != 0;
+  let const color_count   = u32{countof(HUE_ORDERED_COLORS)};
+  let const start_color   = seed % color_count;
+  let const is_color_rising =
+      start_color == 0 || (is_hue_rising && start_color + 1 < color_count);
+  let const next_color = is_color_rising ? start_color + 1 : start_color - 1;
+  let const step_span  = HUE_STEP_DEGREES *
+                        static_cast<u32>(host.length > 1 ? host.length - 1 : 0);
+  let const hue_span =
+      step_span < MAX_HUE_SPAN_DEGREES ? step_span : MAX_HUE_SPAN_DEGREES;
+  let sequence      = String{koshka::heap_allocator()};
+  let last_sequence = String{koshka::heap_allocator()};
 
-  for (usize start = 0; start < host.length; start += 2) {
-    u32 mixed = seed ^ static_cast<u32>(start / 2 + 1) * 0x9E3779B9u;
+  for (usize i = 0; i < host.length; i++) {
+    let const progress = host.length > 1 ? static_cast<u32>(i) * 1000 /
+                                               static_cast<u32>(host.length - 1)
+                                         : 0;
 
-    mixed ^= mixed >> 16;
-    mixed *= 0x85EBCA6Bu;
-    mixed ^= mixed >> 13;
-    mixed *= 0xC2B2AE35u;
-    mixed ^= mixed >> 16;
+    sequence.clear();
+    if (!colors::terminal_supports_256_color()) {
+      sequence.append(
+          HUE_ORDERED_COLORS[progress < 500 ? start_color : next_color]);
+    } else {
+      let const offset = hue_span * progress / 1000;
+      let const hue =
+          (seed % 360 + (is_hue_rising ? offset : 360 - offset)) % 360;
+      let const region    = hue / 60;
+      let const remainder = (hue % 60) * 255 / 60;
+      let const low       = BRIGHTNESS * (255 - SATURATION) / 255;
+      let const falling =
+          BRIGHTNESS * (255 - SATURATION * remainder / 255) / 255;
+      let const rising =
+          BRIGHTNESS * (255 - SATURATION * (255 - remainder) / 255) / 255;
+      u32 const channels[6][3] = {
+          {BRIGHTNESS, rising,     low       },
+          {falling,    BRIGHTNESS, low       },
+          {low,        BRIGHTNESS, rising    },
+          {low,        falling,    BRIGHTNESS},
+          {rising,     low,        BRIGHTNESS},
+          {BRIGHTNESS, low,        falling   },
+      };
+      let const &rgb = channels[region];
 
-    u32 choice = mixed % color_count;
+      if (colors::terminal_supports_true_color()) {
+        sequence.append("\x1b[38;2;");
+        for (usize channel = 0; channel < 3; channel++) {
+          if (channel != 0) sequence.push(';');
+          sequence.append(String::from(static_cast<i64>(rgb[channel]),
+                                       koshka::heap_allocator())
+                              .view());
+        }
+      } else {
+        let const do_cube_level = [](u32 value) wontthrow -> u32 {
+          return value < 48 ? 0 : value < 115 ? 1 : (value - 35) / 40;
+        };
 
-    if (choice == previous_choice) choice = (choice + 1) % color_count;
-    previous_choice = choice;
-
-    if (is_256_color) {
-      u32 cube_index = 0;
-
-      for (u32 remaining = choice;; cube_index++) {
-        let const red       = cube_index / 36;
-        let const green     = cube_index / 6 % 6;
-        let const blue      = cube_index % 6;
-        let const is_pastel = red >= 2 && green >= 2 && blue >= 2 &&
-                              !(red == green && green == blue);
-
-        if (!is_pastel) continue;
-        if (remaining == 0) break;
-        remaining--;
+        sequence.append("\x1b[38;5;");
+        sequence.append(
+            String::from(static_cast<i64>(16 + 36 * do_cube_level(rgb[0]) +
+                                          6 * do_cube_level(rgb[1]) +
+                                          do_cube_level(rgb[2])),
+                         koshka::heap_allocator())
+                .view());
       }
 
-      out += "\x1b[38;5;";
-      out += String::from(static_cast<i64>(16 + cube_index),
-                          koshka::heap_allocator());
-      out += "m";
-    } else {
-      out += BASIC_COLORS[choice];
+      sequence.push('m');
     }
 
-    append_prompt_data(
-        out, host.substring_of_length(start, host.length - start < 2 ? 1 : 2),
-        should_quote);
+    if (sequence.view() != last_sequence.view()) {
+      out += sequence.view();
+      last_sequence = sequence.clone();
+    }
+
+    append_prompt_data(out, host.substring_of_length(i, 1), should_quote);
   }
 
   out += colors::ansi::RESET;
