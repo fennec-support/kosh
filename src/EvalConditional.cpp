@@ -324,8 +324,26 @@ struct conditional_evaluator
         let const name      = operand.substring_of_length(0, *bracket);
         let const subscript = operand.substring_of_length(
             *bracket + 1, operand.length - *bracket - 2);
+        let const has_expansion_text =
+            subscript.find_character('$').has_value() ||
+            subscript.find_character('`').has_value();
 
-        let const data_scope = cxt.guard_expanded_subscript(subscript);
+        /* As in Bash, the subscript of an expanded operand is not expanded
+           again. An associative array takes it as a literal key, and an
+           indexed array cannot evaluate it. */
+        if (has_expansion_text) {
+          if (cxt.is_associative_array(name)) {
+            return cxt.lookup_associative_element(name, subscript).has_value();
+          }
+
+          let error = ErrorWithDetails{
+              "The subscript '" + subscript + "' is not an arithmetic value",
+              "The subscript of a [[ -v ]] operand is not expanded again"};
+
+          cxt.mark_expansion_error(error, expansion_error_reach::Line);
+
+          throw error;
+        }
 
         return cxt.array_element_is_set(name, subscript);
       }

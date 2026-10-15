@@ -233,3 +233,14 @@ test "$HOME" == "$HOME" && echo var-eq
 [[ "-n" ]] && echo quoted-unary-is-an-operand
 eval '[[ x "==" x ]]'
 echo "quoted-binary-status=$?"
+
+# The [[ -v ]] subscript of an expanded operand is not expanded again: an
+# associative array takes it as a literal key, and an indexed array errors.
+declare -A km=(["\$key"]=1 [a]=2); key=a
+[[ -v "km[\$key]" ]] && echo literal-key-set || echo literal-key-unset
+declare -A kn=([a]=2)
+[[ -v "kn[\$key]" ]] && echo expanded-key-set || echo expanded-key-unset
+ka=(x y); ki=1
+eval '[[ -v "ka[\$ki]" ]]' 2>/dev/null
+echo "indexed-dollar-status=$?"
+[[ -v ka[ki] ]] && echo indexed-arith-set

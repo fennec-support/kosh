@@ -1496,9 +1496,12 @@ backquote in it is an error. A subscript taken from a variable value is
 expanded again, as in Bash, so q='a[$i]' and $((q)) yield the element at i. A
 command substitution in such a subscript is not run, though Bash runs it. An
 associative array uses that subscript as a literal key, and an indexed array
-reports an error. A subscript in an operand of unset, printf \-v, declare,
-export, or the [[ \-v ]] test, and in the target of a name reference, is
-expanded again, as in Bash, so unset 'a[$i]' uses the value of i. In the kosh
+reports an error. A subscript in an operand of unset, printf \-v, declare, or
+export, and in the target of a name reference, is expanded again, as in Bash,
+so unset 'a[$i]' uses the value of i. As in Bash, the [[ \-v ]] test does not
+expand its operand's subscript again: an associative array takes it as a
+literal key, and an indexed array reports an error for a $ or a backquote in
+it. In the kosh
 mood a command substitution in such a subscript is an error. The bash and sh
 moods run it, as Bash does. Nested subscripts such as a[b[c]] are resolved
 inside out. An empty (( )) command returns one. An empty $(( )) expansion
