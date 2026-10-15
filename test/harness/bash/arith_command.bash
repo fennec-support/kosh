@@ -258,3 +258,7 @@ i=0; a=(0 0 0); (( --a[i++] )); echo "$i ${a[*]}"
 i=0; a=(0 0 0); echo "$(( a[i++]++ ))" "$i ${a[*]}"
 i=0; a=(1 2 3); echo "$(( a[i++] += a[i] ))" "$i ${a[*]}"
 x=1; echo "$(( x += x++ ))" "$x"
+
+# A doubled sign before a number or a parenthesis is two unary operators.
+echo "$(( ++1 ))" "$(( --1 ))" "$(( -- -2 ))" "$(( 1 + ++2 ))" "$(( ++(2) ))"
+(( ++3 )) && echo unary-plus-true

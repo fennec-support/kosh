@@ -594,6 +594,10 @@ public:
   {
     Lvalue target = read_lvalue();
 
+    /* Bash reads '++' and '--' before a non-variable operand as two unary
+       signs, which leave the operand unchanged. */
+    if (target.name.is_empty() && pos < source.length) return parse_unary();
+
     if (target.name.is_empty())
       fail_span(operator_position, operator_position + 2,
                 "Expected a variable after '++' or '--'",
