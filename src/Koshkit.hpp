@@ -385,8 +385,10 @@ path_error_message(StringView verb,
 
 KOSHKIT_UTILITY_LIST(UTILITY_STRUCT)
 
-fn confirm_koshkit_action(const ExecContext &ec,
-                            StringView         prompt) throws -> bool;
+/* clang-format off */
+fn
+confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws -> bool;
+/* clang-format on */
 
 enum class removal_mode : u8
 {
