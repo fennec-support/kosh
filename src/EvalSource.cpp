@@ -454,17 +454,17 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
 
   let const do_evaluate_script = [&]() throws {
     let const was_terminal_exec_allowed =
-        execution_store().terminal_exec_allowed();
+        execution_store().is_terminal_exec_allowed();
 
     defer {
-      execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
+      execution_store().is_terminal_exec_allowed() = was_terminal_exec_allowed;
     };
 
     loop {
       let const *ast = parser.construct_next_top_level_ast();
 
       if (ast == nullptr) break;
-      execution_store().terminal_exec_allowed() =
+      execution_store().is_terminal_exec_allowed() =
           was_terminal_exec_allowed && parser.is_at_end();
       ast->evaluate(*this);
       if (control_flow_store().has_pending()) break;

@@ -159,23 +159,23 @@ private:
                                              : 0;
       }
 
-      bool matches = false;
+      bool is_match = false;
 
       switch (*operation) {
-      case ComparisonOperatorKind::Equal: matches = order == 0; break;
+      case ComparisonOperatorKind::Equal: is_match = order == 0; break;
 
-      case ComparisonOperatorKind::NotEqual: matches = order != 0; break;
+      case ComparisonOperatorKind::NotEqual: is_match = order != 0; break;
 
-      case ComparisonOperatorKind::Less: matches = order < 0; break;
+      case ComparisonOperatorKind::Less: is_match = order < 0; break;
 
-      case ComparisonOperatorKind::LessEqual: matches = order <= 0; break;
+      case ComparisonOperatorKind::LessEqual: is_match = order <= 0; break;
 
-      case ComparisonOperatorKind::Greater: matches = order > 0; break;
+      case ComparisonOperatorKind::Greater: is_match = order > 0; break;
 
-      case ComparisonOperatorKind::GreaterEqual: matches = order >= 0; break;
+      case ComparisonOperatorKind::GreaterEqual: is_match = order >= 0; break;
       }
 
-      left = String{m_allocator, matches ? "1" : "0"};
+      left = String{m_allocator, is_match ? "1" : "0"};
     }
 
     return left;

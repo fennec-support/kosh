@@ -3909,11 +3909,11 @@ build_target(const ExecContext        &ec,
     subshell_command += recipe_source.view();
     subshell_command += "\n)";
     let const saved_terminal_exec =
-        cxt.execution_store().terminal_exec_allowed();
+        cxt.execution_store().is_terminal_exec_allowed();
 
-    cxt.execution_store().terminal_exec_allowed() = false;
+    cxt.execution_store().is_terminal_exec_allowed() = false;
     defer {
-      cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+      cxt.execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
     };
 
     i32 status = 0;

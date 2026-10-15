@@ -1995,7 +1995,7 @@ Meow::execute(const ExecContext               &ec,
   let const should_color           = koshkit_should_color();
   u64       last_frame_nanoseconds = started_at_nanoseconds;
   let       scene                  = scene_state{};
-  bool      are_cats_placed        = false;
+  bool      has_placed_cats        = false;
 
   scene.noise     = seed_noise;
   scene.cat_count = cat_count;
@@ -2022,9 +2022,9 @@ Meow::execute(const ExecContext               &ec,
       step_seconds = LONGEST_STEP_SECONDS;
     }
 
-    if (!are_cats_placed) {
+    if (!has_placed_cats) {
       place_cats(scene);
-      are_cats_placed = true;
+      has_placed_cats = true;
     }
 
     advance_scene(scene, scene.is_paused ? 0.0 : step_seconds * scene.speed);

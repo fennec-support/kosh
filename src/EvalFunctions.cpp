@@ -422,11 +422,11 @@ EvalContext::run_named_trap(
   let const action = trap->action_text.view();
 
   let const was_terminal_exec_allowed =
-      execution_store().terminal_exec_allowed();
+      execution_store().is_terminal_exec_allowed();
 
-  execution_store().terminal_exec_allowed() = false;
+  execution_store().is_terminal_exec_allowed() = false;
   defer {
-    execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
+    execution_store().is_terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
   let const trigger_site      = trigger_location != nullptr
@@ -840,11 +840,11 @@ EvalContext::run_pending_traps() throws -> void
       TrapActionScope::enter(trap_store(), saved_exit_status);
 
   let const was_terminal_exec_allowed =
-      execution_store().terminal_exec_allowed();
+      execution_store().is_terminal_exec_allowed();
 
-  execution_store().terminal_exec_allowed() = false;
+  execution_store().is_terminal_exec_allowed() = false;
   defer {
-    execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
+    execution_store().is_terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
   os::SIGNAL_PENDING = 0;

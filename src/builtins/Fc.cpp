@@ -405,11 +405,11 @@ edit_fc_commands(const ExecContext                          &ec,
 
   {
     let const saved_terminal_exec =
-        cxt.execution_store().terminal_exec_allowed();
+        cxt.execution_store().is_terminal_exec_allowed();
 
-    cxt.execution_store().terminal_exec_allowed() = false;
+    cxt.execution_store().is_terminal_exec_allowed() = false;
     defer {
-      cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+      cxt.execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
     };
 
     editor_status = cxt.run_source(

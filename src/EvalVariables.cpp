@@ -579,7 +579,7 @@ EvalContext::get_variable_value(StringView name) const throws
         let const command_index =
             evaluation_metrics_store().command_evaluation_index();
 
-        if (!git_status_cache().are_counts_current(command_index)) {
+        if (!git_status_cache().is_count_current(command_index)) {
           let const ceiling_directories =
               get_variable_value("GIT_CEILING_DIRECTORIES");
 

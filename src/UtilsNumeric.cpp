@@ -545,15 +545,15 @@ parse_magnitude_in_base(StringView text, int_base base) throws
     -> ErrorOr<parsed_integer_magnitude>;
 
 fn
-parse_decimal_i64(StringView text, bool *out_of_range) throws
+parse_decimal_i64(StringView text, bool *is_out_of_range) throws
     -> ErrorOr<i64>
 {
   let const parsed = TRY(parse_magnitude_in_base(text, int_base::decimal));
 
-  if (out_of_range != nullptr)
-    *out_of_range = parsed.has_overflowed ||
-                    parsed.magnitude > static_cast<u64>(INT64_MAX) +
-                                           (parsed.is_negative ? 1u : 0u);
+  if (is_out_of_range != nullptr)
+    *is_out_of_range = parsed.has_overflowed ||
+                       parsed.magnitude > static_cast<u64>(INT64_MAX) +
+                                              (parsed.is_negative ? 1u : 0u);
 
   return saturate_signed_magnitude(parsed.magnitude, parsed.is_negative,
                                    parsed.has_overflowed);
@@ -788,15 +788,15 @@ parse_magnitude_in_base(StringView text, int_base base) throws
 
 fn
 parse_integer_in_base(StringView text,
-                      bool      *out_of_range,
+                      bool      *is_out_of_range,
                       int_base   base) throws -> ErrorOr<i64>
 {
   let const parsed = TRY(parse_magnitude_in_base(text, base));
 
-  if (out_of_range != nullptr)
-    *out_of_range = parsed.has_overflowed ||
-                    parsed.magnitude > static_cast<u64>(INT64_MAX) +
-                                           (parsed.is_negative ? 1u : 0u);
+  if (is_out_of_range != nullptr)
+    *is_out_of_range = parsed.has_overflowed ||
+                       parsed.magnitude > static_cast<u64>(INT64_MAX) +
+                                              (parsed.is_negative ? 1u : 0u);
 
   return saturate_signed_magnitude(parsed.magnitude, parsed.is_negative,
                                    parsed.has_overflowed);

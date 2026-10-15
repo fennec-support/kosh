@@ -173,11 +173,12 @@ CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const t
   status_result ret{NOTHING_WAS_EXECUTED, 0};
 
   let const was_terminal_exec_allowed =
-      cxt.execution_store().terminal_exec_allowed();
+      cxt.execution_store().is_terminal_exec_allowed();
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
   defer {
-    cxt.execution_store().terminal_exec_allowed() = was_terminal_exec_allowed;
+    cxt.execution_store().is_terminal_exec_allowed() =
+        was_terminal_exec_allowed;
   };
 
   bool  is_discarding_line           = false;
@@ -265,7 +266,7 @@ CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const t
 
     let const is_last_node = index + 1 >= m_nodes.count();
 
-    cxt.execution_store().terminal_exec_allowed() =
+    cxt.execution_store().is_terminal_exec_allowed() =
         was_terminal_exec_allowed && is_last_node;
 
     bool       did_execute = false;
@@ -540,7 +541,7 @@ CompoundListCondition::evaluate_impl(EvalContext &cxt,
   cxt.evaluation_metrics_store().begin_command_evaluation();
 
   if (m_cmd->is_negated() || m_cmd->is_timed()) {
-    cxt.execution_store().terminal_exec_allowed() = false;
+    cxt.execution_store().is_terminal_exec_allowed() = false;
   }
 
   double user_before   = 0.0;
@@ -942,7 +943,7 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
 {
   ASSERT(m_commands.count() > 1);
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
   cxt.job_table_store().forget_waited_jobs();
   if (!cxt.job_table_store().jobs().is_empty())
     cxt.job_table_store().update_jobs();

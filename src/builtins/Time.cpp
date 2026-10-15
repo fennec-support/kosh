@@ -49,12 +49,13 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(Debug, "time running command '%s' under the clock", command.c_str());
 
-  let const child_times_before  = os::read_child_cpu_times();
-  let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+  let const child_times_before = os::read_child_cpu_times();
+  let const saved_terminal_exec =
+      cxt.execution_store().is_terminal_exec_allowed();
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
   defer {
-    cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+    cxt.execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
   };
 
   let const start_nanos = os::monotonic_nanos();

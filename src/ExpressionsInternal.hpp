@@ -328,7 +328,7 @@ fn
 resolve_redirection(const Redirection    &redir,
                     EvalContext          &cxt,
                     const SourceLocation &fallback_location,
-                    bool                 *open_or_stage_failed        = nullptr,
+                    bool                 *did_open_or_stage_fail      = nullptr,
                     bool                  should_allow_fd_memoization = false) throws
     -> resolved_redirection;
 
@@ -351,8 +351,8 @@ allocate_redirection_descriptor(
     const resolved_redirection &resolved,
     EvalContext                &cxt,
     const SourceLocation       &location,
-    bool                       *open_or_stage_failed = nullptr,
-    const Maybe<String>        *known_current_value  = nullptr) throws -> i32;
+    bool                       *did_open_or_stage_fail = nullptr,
+    const Maybe<String>        *known_current_value    = nullptr) throws -> i32;
 
 enum class loop_disposition : u8
 {

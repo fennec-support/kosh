@@ -275,7 +275,7 @@ struct execution_snapshot
 {
   String last_argument;
   usize  terminal_exec_subshell_depth;
-  bool   terminal_exec_allowed;
+  bool   is_terminal_exec_allowed;
 };
 
 struct trap_snapshot

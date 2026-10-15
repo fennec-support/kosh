@@ -171,11 +171,12 @@ Watch::execute(const ExecContext               &ec,
   let const is_terminal       = colors::stdout_is_a_terminal();
   let const should_color      = koshkit_should_color();
 
-  let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+  let const saved_terminal_exec =
+      cxt.execution_store().is_terminal_exec_allowed();
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
   defer {
-    cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+    cxt.execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
   };
 
   bool is_alternate_screen_active = false;

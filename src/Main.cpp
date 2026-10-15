@@ -2521,7 +2521,7 @@ allow_terminal_exec_on_final_chunk(EvalContext &context,
       context.runtime_state().show_exit_code() ||
       context.runtime_state().stats_enabled();
 
-  context.execution_store().terminal_exec_allowed() =
+  context.execution_store().is_terminal_exec_allowed() =
       should_quit && !context.execution_store().shell_is_interactive() &&
       !context.has_exit_trap() && !should_print_post_run_trailer;
 }

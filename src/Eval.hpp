@@ -1305,7 +1305,7 @@ public:
   snapshot() const throws -> execution_snapshot
   {
     return execution_snapshot{m_last_argument, m_terminal_exec_subshell_depth,
-                              m_terminal_exec_allowed};
+                              m_is_terminal_exec_allowed};
   }
 
   fn
@@ -1313,7 +1313,7 @@ public:
   {
     m_last_argument                = steal(snapshot.last_argument);
     m_terminal_exec_subshell_depth = snapshot.terminal_exec_subshell_depth;
-    m_terminal_exec_allowed        = snapshot.terminal_exec_allowed;
+    m_is_terminal_exec_allowed     = snapshot.is_terminal_exec_allowed;
   }
 
   fn
@@ -1413,15 +1413,15 @@ public:
   }
 
   fn
-  terminal_exec_allowed() wontthrow -> bool &
+  is_terminal_exec_allowed() wontthrow -> bool &
   {
-    return m_terminal_exec_allowed;
+    return m_is_terminal_exec_allowed;
   }
 
   pure fn
-  terminal_exec_allowed() const wontthrow -> bool
+  is_terminal_exec_allowed() const wontthrow -> bool
   {
-    return m_terminal_exec_allowed;
+    return m_is_terminal_exec_allowed;
   }
 
   pure fn
@@ -1434,7 +1434,7 @@ public:
   allow_terminal_exec_at_current_depth() wontthrow -> void
   {
     m_terminal_exec_subshell_depth = m_subshell_depth;
-    m_terminal_exec_allowed        = true;
+    m_is_terminal_exec_allowed     = true;
   }
 
   fn
@@ -1586,7 +1586,7 @@ private:
   u32                 m_completion_option_mask{0};
   bool                m_is_make_shell_suppressed{false};
   bool                m_should_elide_pending_subshell_fork{false};
-  bool                m_terminal_exec_allowed{false};
+  bool                m_is_terminal_exec_allowed{false};
   bool                m_is_completion_function_running{false};
   bool                m_should_mark_completion_directories{false};
   bool                m_is_prompt_command_running{false};
@@ -1728,7 +1728,7 @@ public:
   }
 
   pure fn
-  are_counts_current(usize command_index) const wontthrow -> bool
+  is_count_current(usize command_index) const wontthrow -> bool
   {
     return m_counts_command_index == command_index;
   }

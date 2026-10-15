@@ -781,12 +781,12 @@ redirection_open_error(StringView path) throws -> String
 }
 
 wontreturn fn
-reject_restricted_output_redirection(const Redirection    &redir,
-                                     const SourceLocation &fallback_location,
-                                     bool                 *open_or_stage_failed) throws
-    -> void
+reject_restricted_output_redirection(
+    const Redirection    &redir,
+    const SourceLocation &fallback_location,
+    bool                 *did_open_or_stage_fail) throws -> void
 {
-  if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
+  if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
   throw ErrorWithLocation{
       redir.target != nullptr ? redir.target->source_location()
                               : fallback_location,
@@ -874,7 +874,7 @@ fn
 internal::resolve_redirection(const Redirection    &redir,
                               EvalContext          &cxt,
                               const SourceLocation &fallback_location,
-                              bool                 *open_or_stage_failed,
+                              bool                 *did_open_or_stage_fail,
                               bool                  should_memoize_fds) throws
     -> resolved_redirection
 {
@@ -885,7 +885,7 @@ internal::resolve_redirection(const Redirection    &redir,
        redir.kind == Redirection::Kind::ReadWrite))
   {
     reject_restricted_output_redirection(redir, fallback_location,
-                                         open_or_stage_failed);
+                                         did_open_or_stage_fail);
   }
 
   if (redir.kind == Redirection::Kind::Heredoc ||
@@ -922,7 +922,7 @@ internal::resolve_redirection(const Redirection    &redir,
             throw;
           }
 
-          if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
+          if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
           relocate_if_unlocated(error, fallback_location);
         }
 
@@ -939,7 +939,7 @@ internal::resolve_redirection(const Redirection    &redir,
     let opened = os::write_to_temp_file(body);
 
     if (!opened) {
-      if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
+      if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
       throw ErrorWithLocation{redir.target != nullptr
                                   ? redir.target->source_location()
                                   : fallback_location,
@@ -959,7 +959,7 @@ internal::resolve_redirection(const Redirection    &redir,
     if (resolved_dup.both_streams_file.has_value()) {
       if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
         reject_restricted_output_redirection(redir, fallback_location,
-                                             open_or_stage_failed);
+                                             did_open_or_stage_fail);
       }
 
       let opened = os::open_file_descriptor(
@@ -967,7 +967,7 @@ internal::resolve_redirection(const Redirection    &redir,
           redirection_open_mode(Redirection::Kind::TruncateOutput,
                                 cxt.runtime_state().no_clobber()));
       if (!opened) {
-        if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
+        if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
         throw ErrorWithLocation{
             redir.target->source_location(),
             "Could not open '" + *resolved_dup.both_streams_file + "': " +
@@ -990,7 +990,7 @@ internal::resolve_redirection(const Redirection    &redir,
       cxt.process_args(target_tokens, nullptr, argument_lifetime::Transient);
 
   if (target.count() != 1) {
-    if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
+    if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
     throw ErrorWithLocation{redir.target->source_location(),
                             "Redirection target is not a single file"};
   }
@@ -1030,7 +1030,7 @@ internal::resolve_redirection(const Redirection    &redir,
   }
 
   if (!opened) {
-    if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
+    if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
 
     if (os::INTERRUPT_REQUESTED)
       throw InterruptErrorWithLocation{redir.target->source_location()};
@@ -1070,7 +1070,7 @@ internal::allocate_redirection_descriptor(
     const resolved_redirection &resolved,
     EvalContext                &cxt,
     const SourceLocation       &location,
-    bool                       *open_or_stage_failed,
+    bool                       *did_open_or_stage_fail,
     const Maybe<String>        *known_current_value) throws -> i32
 {
   if (redir.fd_allocation_name_token == nullptr) return redir.fd;
@@ -1099,7 +1099,7 @@ internal::allocate_redirection_descriptor(
       }
     }
 
-    if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
+    if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
     throw ErrorWithLocation{
         location, "'" + String{heap_allocator(), *allocation_name}
            +
@@ -1110,7 +1110,7 @@ internal::allocate_redirection_descriptor(
   let const allocated_fd = os::allocate_free_shell_fd(10);
 
   if (allocated_fd < 0) {
-    if (open_or_stage_failed != nullptr) *open_or_stage_failed = true;
+    if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
     throw ErrorWithLocation{location, "Could not allocate a file descriptor"};
   }
 

@@ -243,11 +243,11 @@ EvalContext::run_completion_function(
     leave_function_scope();
   };
 
-  let const saved_terminal_exec = execution_store().terminal_exec_allowed();
+  let const saved_terminal_exec = execution_store().is_terminal_exec_allowed();
 
-  execution_store().terminal_exec_allowed() = false;
+  execution_store().is_terminal_exec_allowed() = false;
   defer {
-    execution_store().terminal_exec_allowed() = saved_terminal_exec;
+    execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
   };
 
   let was_interrupted = false;

@@ -37,13 +37,14 @@ StringView::copy_to(Allocator allocator) const throws -> StringView
 
 namespace utils {
 fn
-parse_decimal_i64(StringView text, bool *out_of_range = nullptr) throws
+parse_decimal_i64(StringView text,
+                  bool      *is_out_of_range = nullptr) throws
     -> ErrorOr<i64>;
 fn
 parse_decimal_u64(StringView text) throws -> ErrorOr<u64>;
 fn
 parse_integer_in_base(StringView text,
-                      bool      *out_of_range,
+                      bool      *is_out_of_range,
                       int_base   base) throws -> ErrorOr<i64>;
 fn
 parse_integer_in_base_u64(StringView text, int_base base) throws

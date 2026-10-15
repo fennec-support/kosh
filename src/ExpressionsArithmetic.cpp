@@ -904,7 +904,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 {
   ASSERT(m_body != nullptr);
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
 
   let const should_skip_condition_commands = !folded_commands_are_observed(cxt);
 
@@ -1218,7 +1218,7 @@ evaluate_subshell_in_process(const Expression *body,
   i64  ret                = 0;
 
   try {
-    cxt.execution_store().terminal_exec_allowed() = false;
+    cxt.execution_store().is_terminal_exec_allowed() = false;
     cxt.enter_subshell();
     did_enter_subshell = true;
     cxt.hide_coprocess_descriptors();
@@ -1824,7 +1824,7 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
     cxt.cleanup_process_substitutions(own_redirection_substitution_mark);
   };
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
 
   ArrayList<os::saved_descriptor> saved_descriptors{cxt.scratch_allocator()};
 

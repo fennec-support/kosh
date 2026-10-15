@@ -218,7 +218,7 @@ EvalContext::can_replace_process() const wontthrow -> bool
       (!trap_store().did_reset_inherited_signal_traps() || has_exit_trap() ||
        trap_store().has_err_trap());
 
-  return execution_store().terminal_exec_allowed() &&
+  return execution_store().is_terminal_exec_allowed() &&
          execution_store().subshell_depth() ==
              execution_store().get_terminal_exec_subshell_depth() &&
          !has_trap_to_run && !runtime_state().show_exit_code() &&

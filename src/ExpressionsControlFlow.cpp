@@ -298,7 +298,7 @@ IfClause::to_ast_string(usize layer) const throws -> String
 hot fn
 IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
 
   let const should_skip_condition_commands = !folded_commands_are_observed(cxt);
 
@@ -560,7 +560,7 @@ WhileLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws ->
   ASSERT(m_condition != nullptr);
   ASSERT(m_body != nullptr);
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
 
   let const is_until_loop     = is_until();
   let const is_folded_to_skip = this->is_folded_to_skip();
@@ -750,7 +750,7 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
 {
   ASSERT(m_body != nullptr);
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
   cxt.source_store().set_current_location(source_location());
 
   let const values = m_has_in_clause ? cxt.process_args(m_words)
@@ -891,7 +891,7 @@ ForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> s
 {
   ASSERT(m_body != nullptr);
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
 
   if (is_fully_eliminated()) {
     cxt.publish_single_pipe_status(0);
@@ -1202,7 +1202,7 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
 {
   ASSERT(m_word != nullptr);
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
   cxt.source_store().set_current_location(source_location());
 
   let const should_run_case = publish_command_and_run_debug_trap(cxt, [&] {
@@ -1605,7 +1605,7 @@ BraceGroup::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
 {
   ASSERT(m_body != nullptr);
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
 
   if (is_fully_eliminated()) {
     cxt.publish_single_pipe_status(0);

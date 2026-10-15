@@ -807,10 +807,10 @@ evaluate_script(const script_run_input &input,
               context.runtime_state().get_mood()}
     };
     let const was_terminal_exec_allowed =
-        context.execution_store().terminal_exec_allowed();
+        context.execution_store().is_terminal_exec_allowed();
 
     defer {
-      context.execution_store().terminal_exec_allowed() =
+      context.execution_store().is_terminal_exec_allowed() =
           was_terminal_exec_allowed;
     };
 
@@ -837,7 +837,7 @@ evaluate_script(const script_run_input &input,
         input.arena.release(unit_mark);
       };
 
-      context.execution_store().terminal_exec_allowed() =
+      context.execution_store().is_terminal_exec_allowed() =
           was_terminal_exec_allowed && execution_parser.is_at_end();
       do_set_line_discard_root(unit);
       exit_code =

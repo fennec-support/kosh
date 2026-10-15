@@ -150,11 +150,12 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.set_indexed_array(array_name, ArrayList<String>{heap_allocator()});
   }
 
-  let const saved_terminal_exec = cxt.execution_store().terminal_exec_allowed();
+  let const saved_terminal_exec =
+      cxt.execution_store().is_terminal_exec_allowed();
 
-  cxt.execution_store().terminal_exec_allowed() = false;
+  cxt.execution_store().is_terminal_exec_allowed() = false;
   defer {
-    cxt.execution_store().terminal_exec_allowed() = saved_terminal_exec;
+    cxt.execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
   };
 
   usize read_count = 0;
