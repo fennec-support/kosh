@@ -39,6 +39,7 @@
   BIN_DIR=${KOSH_INSTALL_PATH:-}
   IS_DRY_RUN=${KOSH_INSTALL_DRY_RUN:+1}
   IS_FORCE=${KOSH_INSTALL_FORCE:+1}
+  LINK_MOODS=
   IS_COLOR=
   IS_ERROR_COLOR=
 
@@ -157,7 +158,46 @@
     fi
   }
 
-  is_free_for_koshkit_link ()
+  add_link_moods ()
+  {
+    [ -n "$1" ] || fail "--link-mood needs bash, dash, sh, or kosh"
+    case $1 in
+      ,* | *, | *,,*)
+        fail "--link-mood needs bash, dash, sh, or kosh, not '$1'"
+      ;;
+      *)
+      ;;
+    esac
+
+    REMAINING=$1
+
+    while [ -n "$REMAINING" ]
+    do
+      MOOD=${REMAINING%%,*}
+
+      case $REMAINING in
+        *,*)
+          REMAINING=${REMAINING#*,}
+        ;;
+        *)
+          REMAINING=
+        ;;
+      esac
+
+      case $MOOD in
+        bash | dash | sh)
+          LINK_MOODS="$LINK_MOODS $MOOD"
+        ;;
+        kosh)
+        ;;
+        *)
+          fail "--link-mood needs bash, dash, sh, or kosh, not '$MOOD'"
+        ;;
+      esac
+    done
+  }
+
+  is_free_for_link ()
   {
     if [ ! -e "$1" ] && [ ! -L "$1" ]
     then
@@ -202,6 +242,15 @@
       --force)
         IS_FORCE=1
       ;;
+      --link-mood=*)
+        add_link_moods "${1#*=}"
+      ;;
+      --link-mood)
+        [ "$#" -ge 2 ] || fail "--link-mood needs bash, dash, sh, or kosh"
+        add_link_moods "$2"
+
+        shift
+      ;;
       --install-path=*)
         BIN_DIR=${1#*=}
         [ -n "$BIN_DIR" ] || fail "--install-path needs a path"
@@ -224,10 +273,13 @@
         set -x
       ;;
       -h | --help)
-        line "Usage: install.sh [--dry-run] [--force] [--install-path DIR] [-x]"
+        line "Usage: install.sh [--dry-run] [--force] [--install-path DIR]"
+        line "                  [--link-mood MOODS] [-x]"
         line "  --dry-run           list the downloads, install nothing"
         line "  --force             install even when kosh is up to date"
         line "  --install-path DIR  install to DIR, extras to DIR/../share"
+        line "  --link-mood MOODS   link bash, dash, or sh to kosh in DIR,"
+        line "                      commas are accepted, existing files stay"
         line "  -x                  trace every command"
         line "  --help              print this help"
         line "Environment: KOSH_INSTALL_PATH, KOSH_INSTALL_VERSION,"
@@ -396,12 +448,18 @@
     line "Would install $BIN_DIR/kosh$EXT"
     if [ -z "$EXT" ]
     then
-      if is_free_for_koshkit_link "$BIN_DIR/koshkit"
-      then
-        line "Would link $BIN_DIR/koshkit to kosh"
-      else
-        line "Would keep $BIN_DIR/koshkit, which is not a link to kosh"
-      fi
+      for NAME in koshkit $LINK_MOODS
+      do
+        if is_free_for_link "$BIN_DIR/$NAME"
+        then
+          line "Would link $BIN_DIR/$NAME to kosh"
+        else
+          line "Would keep $BIN_DIR/$NAME, which is not a link to kosh"
+        fi
+      done
+    elif [ -n "$LINK_MOODS" ]
+    then
+      line "Would skip the mood links, which install.ps1 creates on Windows"
     fi
     line "Would install completions and manpages to $SHARE_DIR"
     line "Dry run: nothing was installed."
@@ -452,12 +510,18 @@
   install -m 755 "$BINARY" "$BIN_DIR/kosh$EXT"
   if [ -z "$EXT" ]
   then
-    if is_free_for_koshkit_link "$BIN_DIR/koshkit"
-    then
-      ln -sf kosh "$BIN_DIR/koshkit" || fail "cannot link $BIN_DIR/koshkit"
-    else
-      line "Kept $BIN_DIR/koshkit, which is not a link to kosh"
-    fi
+    for NAME in koshkit $LINK_MOODS
+    do
+      if is_free_for_link "$BIN_DIR/$NAME"
+      then
+        ln -sf kosh "$BIN_DIR/$NAME" || fail "cannot link $BIN_DIR/$NAME"
+      else
+        line "Kept $BIN_DIR/$NAME, which is not a link to kosh"
+      fi
+    done
+  elif [ -n "$LINK_MOODS" ]
+  then
+    line "Skipped the mood links, which install.ps1 creates on Windows"
   fi
   if [ "$FILES" != "$BINARY" ]
   then

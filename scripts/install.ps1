@@ -36,6 +36,7 @@
         [switch]$DryRun,
         [switch]$Force,
         [string]$InstallPath,
+        [string[]]$LinkMood,
         [switch]$X,
         [switch]$Help,
         [Parameter(ValueFromRemainingArguments = $true)]$Rest
@@ -129,6 +130,17 @@
         return -not ($Have -match "-" -and $Want -notmatch "-")
     }
 
+    function Get-KoshHash($Path) {
+        if (Test-Path -LiteralPath $Path) { return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash }
+        return $null
+    }
+
+    function Test-KoshLink($Path, $Hashes) {
+        if (-not (Test-Path -LiteralPath $Path)) { return $true }
+        $HASH = Get-KoshHash $Path
+        return [bool]($HASH -and ($Hashes -contains $HASH))
+    }
+
     function Ask($Question) {
         if ([Console]::IsInputRedirected) { return $true }
         [Console]::Error.Write("$(Mark -IsColor $IS_ERROR_COLOR)$Question [y/n] ")
@@ -141,10 +153,13 @@
             else { throw "unknown option $ARGUMENT" }
         }
         if ($Help) {
-            Line "Usage: install.ps1 [-DryRun] [-Force] [-InstallPath DIR] [-X]"
+            Line "Usage: install.ps1 [-DryRun] [-Force] [-InstallPath DIR]"
+            Line "                   [-LinkMood MOODS] [-X]"
             Line "  -DryRun           list the downloads, install nothing"
             Line "  -Force            install even when kosh is up to date"
             Line "  -InstallPath DIR  install to DIR, extras to DIR\..\share"
+            Line "  -LinkMood MOODS   link bash, dash, or sh to kosh in DIR,"
+            Line "                    commas are accepted, existing files stay"
             Line "  -X                trace every command"
             Line "  -Help             print this help"
             Line "Environment: KOSH_INSTALL_PATH, KOSH_INSTALL_VERSION,"
@@ -154,6 +169,11 @@
         if ($PSBoundParameters.ContainsKey("InstallPath")) {
             if (-not $InstallPath) { throw "-InstallPath needs a path" }
             if ($InstallPath.StartsWith("-")) { throw "-InstallPath needs a path, not '$InstallPath'" }
+        }
+        $LINK_MOODS = @()
+        foreach ($MOOD in @($LinkMood | ForEach-Object { "$_" -split "," })) {
+            if ($MOOD -in "bash", "dash", "sh") { $LINK_MOODS += $MOOD }
+            elseif ($MOOD -ne "kosh") { throw "-LinkMood needs bash, dash, sh, or kosh, not '$MOOD'" }
         }
         if ($X) { Set-PSDebug -Trace 1 }
         if ($env:KOSH_INSTALL_DRY_RUN) { $DryRun = $true }
@@ -247,6 +267,15 @@
                 Line "Would download $URL/$FILE and verify it against SHA256SUMS"
             }
             Line "Would install $(Join-Path $BIN_DIR 'kosh.exe')"
+            foreach ($MOOD in $LINK_MOODS) {
+                $LINK = Join-Path $BIN_DIR "$MOOD.exe"
+                if (Test-KoshLink $LINK @(Get-KoshHash (Join-Path $BIN_DIR "kosh.exe"))) {
+                    Line "Would link $LINK to kosh.exe"
+                }
+                else {
+                    Line "Would keep $LINK, which is not a link to kosh.exe"
+                }
+            }
             Line "Would install completions and manpages to $SHARE_DIR"
             Line "Dry run: nothing was installed."
             return
@@ -279,7 +308,22 @@
             throw "cannot write to $BIN_DIR"
         }
         $EXE = Join-Path $BIN_DIR "kosh.exe"
+        $KOSH_HASHES = @((Get-KoshHash $EXE), (Get-FileHash -Algorithm SHA256 $BINARY).Hash)
         Move-Item -Force $BINARY $EXE
+        foreach ($MOOD in $LINK_MOODS) {
+            $LINK = Join-Path $BIN_DIR "$MOOD.exe"
+            if (-not (Test-KoshLink $LINK $KOSH_HASHES)) {
+                Line "Kept $LINK, which is not a link to kosh.exe"
+                continue
+            }
+            if (Test-Path -LiteralPath $LINK) { Remove-Item -Force -LiteralPath $LINK }
+            try {
+                New-Item -ItemType HardLink -Path $LINK -Target $EXE | Out-Null
+            }
+            catch {
+                Copy-Item -LiteralPath $EXE $LINK
+            }
+        }
         if ($IS_EXTRAS_WANTED) {
             $COMPLETIONS = Join-Path $SHARE_DIR "bash-completion\completions"
             try {
