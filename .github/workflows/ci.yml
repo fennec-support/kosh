@@ -41,28 +41,37 @@ jobs:
         with:
           submodules: recursive
 
+      # A root shell neither loads nor writes the user kosh.conf, and the
+      # tests that persist settings need it, so the suite runs unprivileged.
+      - name: Create the test user
+        run: |
+          adduser -D -s /bin/sh tester
+          chown -R tester:tester "$GITHUB_WORKSPACE"
+
       - name: Build ASAN binary
-        run: make kosh
+        run: su tester -c 'make kosh'
 
       - name: Run golden tests
-        run: make test
+        run: su tester -c 'make test'
 
       - name: Build release binary
-        run: make clean && make CXX=g++ LINKER_SELECTION_FLAG= MODE=rel kosh && du -sh kosh
+        run: >-
+          su tester -c 'make clean &&
+          make CXX=g++ LINKER_SELECTION_FLAG= MODE=rel kosh && du -sh kosh'
 
       - name: Run benchmark
         run: >-
-          SCALE=200 BENCH_WARMUP_COUNT=2 BENCH_SAMPLE_COUNT=7
+          su tester -c 'SCALE=200 BENCH_WARMUP_COUNT=2 BENCH_SAMPLE_COUNT=7
           DASH_SPEEDUP_REQUIRED=1 BASH_SPEEDUP_REQUIRED=3
-          make MODE=rel bench
+          make MODE=rel bench'
 
       - name: Build release binary with code coverage
         if: '!cancelled()'
-        run: make clean && make MODE=cov kosh
+        run: su tester -c 'make clean && make MODE=cov kosh'
 
       - name: Run tests under release coverage binary
         if: '!cancelled()'
-        run: make MODE=cov test
+        run: su tester -c 'make MODE=cov test'
 
       - name: Record release binary coverage
         if: always()
