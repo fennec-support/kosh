@@ -1,8 +1,8 @@
 # Release checklist
 
 This checklist takes a green staging branch through every installation channel.
-Complete the steps in order, since each depends on the preceding ones.
-Repositories live under `github.com/fennec-support` unless noted.
+Complete the steps in order. Repositories are under `github.com/fennec-support`
+unless noted.
 
 ## 1. Before tagging
 
@@ -37,8 +37,8 @@ Repositories live under `github.com/fennec-support` unless noted.
 
 ## 3. Homebrew (`homebrew-kosh`)
 
-- [ ] No edit is needed. The formula uses the newest release tag and its
-      `SHA256SUMS` each time Homebrew loads it.
+- [ ] No edit is needed, since the formula uses the newest release tag and its
+      `SHA256SUMS`.
 - [ ] Re-run its CI, or `brew update && brew upgrade kosh` on macOS, and
       confirm `kosh --version` prints the version.
 

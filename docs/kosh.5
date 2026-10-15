@@ -2,16 +2,16 @@
 .SH NAME
 kosh.conf \- Koshka settings files and the KOSHCONF encoding
 .SH DESCRIPTION
-Koshka settings live in koshconf files. They hold option values, not
-shell commands. A shell loads them before any shell startup file, whether or
-not it is interactive. The following do not read a settings file or apply
+Koshka settings are stored in koshconf files, which hold option values and
+no shell commands. A shell loads them before any shell startup file, whether
+or not it is interactive. The following load no settings file and apply no
 KOSHCONF: a shell started with
 .B \-Q
 or
 .BR \-\-no\-config ,
 a lint, format, or language server run, rescue mode, a shell whose real and
-effective ids differ, a fresh evaluator receiving its state from its
-parent, and a binary started as a koshkit utility or as
+effective ids differ, a subshell that receives its state from its parent,
+and a binary started as a koshkit utility or as
 .BR koshkit .
 Privileged mode,
 .BR \-p ,
@@ -21,10 +21,9 @@ The configured mood also applies to
 .B kosh \-c
 and to a script without a shebang, so a file that sets
 .B mood=bash
-runs such code under the bash grammar. Where the grammar matters, select the
-mood with
+runs such code under the bash grammar. Select the mood with
 .B \-\-mood
-or a shebang.
+or a shebang when the grammar matters.
 The
 .B koshconf
 builtin in
@@ -37,49 +36,45 @@ mood sources none unless init_moods selects some. See STARTUP MOODS.
 .SH FILES
 .TP
 .IR /etc/kosh.conf " or " %ProgramData%\kosh\kosh.conf
-The system settings file, read first. It is read only when nobody else could
-have written it. On POSIX the open file and
-its directory must be owned by root and must not be writable by their group or
-by others. The check runs on the descriptor then read, so the file cannot be
-swapped in between. On Windows the ProgramData directory comes from the
-system's known folder, not from an environment variable, and the file and its
+The system settings file, loaded first. It is loaded only when no other user
+could have written it. On POSIX, the file and its directory must be owned by
+root and must not be writable by their group or by others. On Windows, the
+ProgramData directory is taken from the system's known folder and not from an
+environment variable. The file and its
 .I kosh
 directory must be owned by SYSTEM, Administrators, or TrustedInstaller. No
 access control entry may let another account write, append, delete,
 change the permissions of, or take ownership of the file. For the directory,
 no entry may let another account delete its entries, delete or rename it,
-change its permissions, or take ownership of it. Adding files and
-subdirectories, granted to every user by the default ProgramData permissions,
-is allowed on the directory, because replacing an existing file needs one of
-the rights above and a file added by another account fails the owner check. An entry applying only to children, such as the usual CREATOR
-OWNER entry, is not counted. A file failing the check is skipped
-with a warning giving the reason and, on POSIX, suggesting the
+change its permissions, or take ownership of it. The directory may grant
+other accounts the right to add files and subdirectories, as the default
+ProgramData permissions do. An entry that applies only to children, such as
+the usual CREATOR OWNER entry, is not counted. A file that fails the check is
+skipped with a warning giving the reason and, on POSIX, suggesting the
 .B chown root
 or
 .B chmod go\-w
 command that would make the file trusted.
 .TP
 .IR $XDG_CONFIG_HOME/kosh/kosh.conf " or " ~/.config/kosh/kosh.conf
-The user settings file, read second. XDG_CONFIG_HOME is used when it is set to
+The user settings file, loaded second. XDG_CONFIG_HOME is used when it is set to
 an absolute path. On POSIX systems, a shell whose effective user is root
-neither reads nor writes this file.
+neither loads nor writes this file.
 .BR "koshconf create" ,
 .BR "koshconf set \-\-persist" ,
 and
 .B koshconf save \-\-persist
-write this file. A symbolic link, as left by a dotfile manager
-such as stow, is kept and its final target is written instead. The
-new text goes to a temporary file in the target's directory, which is flushed
-and renamed over the target, so a reader sees either the old or the new
+write this file. When the file is a symbolic link, as left by a dotfile
+manager such as stow, the link is kept and its final target is written. The
+file is replaced in one step, so a reader sees either the old or the new
 file. The directory is created when missing. The written file keeps the
 permission bits of the file it replaces, and a new file is created with mode
-0644 less the file creation mask. Each write holds an advisory lock on the
-target's directory while loading and replacing the file, so concurrent
+0644 less the file creation mask. Concurrent
 .B koshconf set \-\-persist
-commands that change different options all take effect. On Windows the lock is
-a hidden
+commands that change different options all take effect. On Windows, a hidden
 .I .kosh\-flock.lock
-file in that directory, and only the owner write bit of the mode is kept.
+file in the directory serves as the lock, and only the owner write bit of the
+mode is kept.
 .TP
 .I /etc/profile
 The system login file of the
@@ -98,14 +93,15 @@ The first user Bash login candidate.
 The second user Bash login candidate.
 .TP
 .IR /etc/bash/bashrc " or " /etc/bash.bashrc
-The first readable path is the system rc file of an interactive non-login Bash mood.
+The first readable path is the system rc file of an interactive non-login
+Bash mood.
 .TP
 .I ~/.bashrc
 The default user rc file of an interactive non-login Bash mood.
 .TP
 .I /usr/share/bash-completion/bash_completion
-Bash programmable completion, sourced after the Bash startup chain sources an rc
-file. It is skipped when completion is disabled, when a default completion
+Bash programmable completion, sourced after the Bash startup chain sources an
+rc file. It is skipped when completion is disabled, when a default completion
 specification exists, and when BASH_COMPLETION_VERSINFO is already set.
 .PP
 The
@@ -136,16 +132,17 @@ at either end must be kept.
 Otherwise the value is everything between the blanks after the equals sign and
 the blanks at the end of the line. A value cannot span lines.
 .PP
-A boolean is written as on or off and is also read as true, false, 1, or 0. An
-enumeration is written by name. A string is taken as written and must be valid
-UTF-8 without a NUL byte. editor.history.max_entries is a decimal integer from
-0 to 2147483647. init_moods is a comma-separated list of moods accepted by
+A boolean is written as on or off and is also accepted as true, false, 1, or
+0. An enumeration is written by its value. A string is taken as written and
+must be valid UTF-8 without a NUL byte. editor.history.max_entries is a
+decimal integer from 0 to 2147483647. init_moods is a comma-separated list of
+moods accepted by
 .BR \-L ,
-such as kosh, sh, bash, and bash-posix. An empty name is skipped.
+such as kosh, sh, bash, and bash-posix. An empty entry is skipped.
 .B koshconf
-quotes a written value starting with a quote or starting or ending with a blank.
-A value containing a newline cannot be written to a file, nor can a value
-containing both quote characters if it needs quoting.
+quotes a written value that starts with a quote or starts or ends with a
+blank. A value containing a newline cannot be written to a file, nor can a
+value containing both quote characters if it needs quoting.
 .B koshconf set \-\-persist
 rejects either value before changing the session.
 .B koshconf list
@@ -155,30 +152,34 @@ such a value, and any value with a control byte or invalid UTF-8, in the shell
 form.
 .PP
 A file may set every option except those fixed by how the shell started,
-such as bash.interpreter.login_shell, bash.interpreter.restricted_shell, bash.interpreter.privileged_mode,
-posix.interpreter.parse_without_executing, and bash.interpreter.exit_after_one_command, and those
-following the session, posix.interpreter.job_control, bash.editor.history.records_commands,
-bash.editor.history.bang_expansion, and bash.interpreter.posixly_correct. The OPTION REGISTRY
-section of
+such as bash.interpreter.login_shell, bash.interpreter.restricted_shell,
+bash.interpreter.privileged_mode, posix.interpreter.parse_without_executing,
+and bash.interpreter.exit_after_one_command, and those that follow the
+session, posix.interpreter.job_control,
+bash.editor.history.records_commands, bash.editor.history.bang_expansion,
+and bash.interpreter.posixly_correct. The OPTION REGISTRY section of
 .BR kosh (1)
 lists them.
 .PP
 .B A semantic option in a file changes every shell that loads it, scripts included.
-For example, posix.interpreter.exit_on_command_failure=on makes every script exit on its
-first failing command, and bash.interpreter.glob_includes_dotfiles=on changes what every
-glob matches. Put such a setting in a file only when every script should use it. Otherwise set
-it for a session with
+For example, posix.interpreter.exit_on_command_failure=on makes every script
+exit on its first failing command, and
+bash.interpreter.glob_includes_dotfiles=on changes what every glob matches.
+Put such a setting in a file only when every script should use it. Otherwise
+set it for a session with
 .BR set ,
 .BR shopt ,
 or
 .BR "koshconf set" .
 .PP
 The mood is applied first, wherever it appears in the file, so the other lines
-are read under it. In the
+are interpreted under it. In the
 .B kosh
-mood, posix.interpreter.unset_variable_is_error, posix.interpreter.pipeline_fails_on_any_stage,
-bash.interpreter.glob_no_match_is_error, and interpreter.arithmetic_uses_big_numbers stay
-on and bash.interpreter.glob_no_match_expands_to_nothing stays off. A line
+mood, posix.interpreter.unset_variable_is_error,
+posix.interpreter.pipeline_fails_on_any_stage,
+bash.interpreter.glob_no_match_is_error, and
+interpreter.arithmetic_uses_big_numbers stay on and
+bash.interpreter.glob_no_match_expands_to_nothing stays off. A line
 setting another value is skipped with a warning giving the file, line, option,
 and
 .BR "koshconf set mood bash" .
@@ -188,8 +189,9 @@ keeps the command-line value, so
 .B kosh +e script
 runs without errexit whatever a file says. Likewise, a KOSH_HISTORY_FILE
 or KOSH_HISTORY_SIZE variable inherited from the environment keeps its value
-over editor.history.file_path or editor.history.max_entries. A later line replaces an earlier one, and the
-user file and KOSHCONF replace the system file.
+over editor.history.file_path or editor.history.max_entries. A later line
+replaces an earlier one, and the user file and KOSHCONF replace the system
+file.
 .PP
 The canonical name of an option inherited from POSIX
 .B set \-o
@@ -210,15 +212,15 @@ accepts NAME, and otherwise bash.legacy.NAME when
 .B set \-o
 or
 .B shopt
-accepts NAME, as in bash.legacy.extglob and bash.legacy.posix. An alias resolves at lookup to
-the same option entry as the canonical name, with the same id and storage, so
+accepts NAME, as in bash.legacy.extglob and bash.legacy.posix. An alias
+refers to the same option as the canonical name, so
 setting either spelling changes the value shown by the other,
 .BR "set \-o" ,
 .BR shopt ,
 .BR $\- ,
 and SHELLOPTS. A kosh.conf
-line, koshconf set, koshconf get, and every other option-name
-operand accept the alias.
+line, koshconf set, koshconf get, and every other option operand accept the
+alias.
 .B koshconf create
 and
 .BR "koshconf list" ,
@@ -238,12 +240,13 @@ or
 spelling. A string option without a default, such as editor.history.file_path,
 is written commented out. The
 .B bash
-preset also writes bash.interpreter.aliases_expand commented out, because bash expands
-aliases only in an interactive shell and a written value would apply to both. The
+preset also writes bash.interpreter.aliases_expand commented out, because bash
+expands aliases only in an interactive shell and a written value would apply
+to both. The
 .B kosh
 preset writes the values held by the
 .B kosh
-mood, so reading it back never warns.
+mood, so loading it never produces a warning.
 .SH STARTUP MOODS
 init_moods lists the moods whose startup files an interactive or login
 shell sources, in order, each file parsed under the grammar of its mood.
@@ -256,8 +259,7 @@ and
 .B \-L
 on the command line replaces it. A shell that is neither interactive nor a
 login shell ignores it. A restricted shell ignores it with a warning, as it
-does the mood, because it would select the files run before the restrictions
-take effect. KOSHCONF never carries it. Changing it with
+does the mood. KOSHCONF never carries it. Changing it with
 .B koshconf set
 in a running shell sources nothing. Use
 .B set \-L
@@ -289,15 +291,15 @@ test \-n "$KOSH" && alias ll='ls \-l'
 .PP
 Listing bash also sets BASH_VERSION in that session, as
 .B \-L bash
-does, so a ~/.bashrc checking it will proceed.
+does, so a ~/.bashrc that checks it will proceed.
 .SH KOSHCONF
 .B KOSHCONF
 is a dynamic shell variable holding the current settings in a binary
-form, encoded as standard base64 with padding. It is never exported by itself.
-After
+form, encoded as standard base64 with padding. It is not exported unless the
+user exports it. After
 .BR "export KOSHCONF" ,
-each command the shell starts receives the settings current when it starts,
-not a copy taken at the export. Another shell can receive it through
+each command the shell starts receives the settings current when that command
+starts. Another shell can receive it through
 .B koshconf load
 .I value
 or through a KOSHCONF variable in its environment.
@@ -309,9 +311,9 @@ will start a kosh with the settings of the shell that ran it.
 writes the settings that differ from the defaults of the current mood to the
 user settings file instead. A setting that matches those defaults is left out,
 so it follows the defaults of a mood chosen later. A line in the file whose
-option this version does not recognize is kept at the end of the new file. The
-variable is
-applied after the settings files and removed before any command runs:
+option this version does not recognize is kept at the end of the new file.
+A starting shell applies the variable after the settings files and removes it
+from the environment before any command runs:
 .PP
 .RS
 .EX
@@ -328,33 +330,34 @@ The ids are listed by
 .BR kosh (1)
 and never change meaning. Only the mood and the interactive options are
 written. An interactive option affects only the interactive editor, the
-history, or the presentation of diagnostics, never how a script runs. A child
-shell loads the settings files itself, so semantic options such as
-posix.interpreter.exit_on_command_failure, interpreter.mimic_shebang, and the debug
-reports never pass through the environment. Bash exports SHELLOPTS only on
-request.
+history, or the presentation of diagnostics, and never how a script runs. A
+child shell loads the settings files itself, so semantic options such as
+posix.interpreter.exit_on_command_failure, interpreter.mimic_shebang, and the
+debug reports never pass through the environment. Bash exports SHELLOPTS only
+on request.
 .PP
-A reader skips a record with an unknown id, an option it never carries, or a
-value a settings file would reject, and reports a warning. Only the
-canonical form is accepted. The base64 text must carry its padding, every
-varint must use the fewest bytes, and the ids must strictly ascend in writer
-order. A blob breaking any of these rules, or with truncated records,
-is rejected as a whole with a warning identifying the broken rule.
+A shell that loads a blob skips a record with an unknown id, an option the
+blob never carries, or a value a settings file would reject, and reports a
+warning. Only the canonical form is accepted. The base64 text must carry its
+padding, every varint must use the fewest bytes, and the ids must strictly
+ascend in the order in which they are written. A blob that breaks any of
+these rules, or that has truncated records, is rejected as a whole with a
+warning identifying the broken rule.
 .SH ERRORS
 A missing settings file is skipped. An unreadable one, and a system file
-failing the ownership check under FILES, produce a warning. A line
-without an equals sign, an unknown option name, an invalid value, an unclosed
+that fails the ownership check under FILES, produce a warning. A line
+without an equals sign, an unknown option, an invalid value, an unclosed
 quote, text after a closing quote, and an option a file cannot hold each
 produce a warning identifying the file and line, and the line is skipped.
-The warning for an unknown option name suggests a close option name when one
-exists. It renders a control byte or invalid UTF-8 byte from the file as an
-escape in its message and as a question mark in the source excerpt. A settings
-file never stops the shell.
+The warning for an unknown option suggests a similar option when one
+exists. The warning shows a control byte or invalid UTF-8 byte from the file
+as an escape in its message and as a question mark in the source excerpt. A
+settings file never stops the shell.
 .PP
 Shell startup files produce the ordinary shell diagnostics described in
 .BR kosh (1).
 .SH MIGRATION
-The files /etc/koshrc and ~/.koshrc are not read. An interactive shell in the
+The files /etc/koshrc and ~/.koshrc are not loaded. An interactive shell in the
 .B kosh
 mood prints one warning about them when either exists. A non-interactive shell
 and a shell started with
