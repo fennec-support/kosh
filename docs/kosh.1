@@ -2137,9 +2137,7 @@ form prints the utilities one per line.
 .PP
 With no utility,
 .B koshkit
-groups the catalog under POSIX and Koshka headings, with the additional
-inspection and reporting utilities under Koshka. The headings are colored when
-standard output is a color terminal.
+groups the catalog under POSIX and Koshka headings.
 .PP
 The bundled set contains basename, bc, cal, calc, cat, chgrp, chmod, chown,
 cksum, cmp, comm, cp, csplit, cut, date, df, diff, dirname, du, env, evil,
@@ -2165,18 +2163,14 @@ places next to
 .BR kosh ,
 it runs the utility given by its first operand, such as
 .BR "koshkit ls \-l" ,
-and otherwise acts as the koshkit builtin, so
-.B koshkit \-\-list
-lists the utilities. Either form skips the shell startup, loading no settings
-or startup file and ignoring KOSH_FLAGS.
+and otherwise acts as the koshkit builtin. Either form skips the shell
+startup, loading no settings or startup file and ignoring KOSH_FLAGS.
 .TP
 .B basename
 The final path component is printed, minus an optional suffix operand.
 .TP
 .B cal
-A Gregorian month or year is printed, each week starting on Sunday. On a color
-terminal, month titles and weekday headings are colored, weekend dates are red,
-and the current date is emphasized when it appears. The
+A Gregorian month or year is printed, each week starting on Sunday. The
 \fB\-a\fR, \fB\-\-today\fR
 option starts each week on Monday and prints the current date in words below
 the calendar.
@@ -2185,13 +2179,10 @@ the calendar.
 Arithmetic operands are evaluated. The \fB\-i\fR, \fB\-\-interactive\fR and
 \fB\-p\fR, \fB\-\-pipe\fR options take expressions interactively or from a pipe.
 Arbitrary precision integers and finite decimal values are accepted in every
-mood, and the
-.B interpreter.arithmetic_uses_big_numbers
-option does not narrow a calc result. The abs, atan, ceil, cmp, cos, exp,
-fact, fib, floor, frac, gcd, int, iseven, isint, isodd, length, lcm, ln, max,
-min, scale, sgn, sin, and sqrt functions are available. An interrupt stops a
-long calculation, and the interactive prompt then accepts the next expression.
-Ctrl-R in the interactive prompt searches the calc history.
+mood. The abs, atan, ceil, cmp, cos, exp, fact, fib, floor, frac, gcd, int,
+iseven, isint, isodd, length, lcm, ln, max, min, scale, sgn, sin, and sqrt
+functions are available. Ctrl-R in the interactive prompt searches the calc
+history.
 .TP
 .B bc
 Expressions, assignments, functions, arrays, control flow, input and output
@@ -2200,90 +2191,74 @@ and sin and selects a scale of 20.
 .TP
 .B cat
 Files or standard input are concatenated, with line numbering (\fB\-n\fR)
-continuing across file and standard input boundaries. The \fB\-u\fR option is
-accepted. The \fB\-\-syntax\-highlighting\fR
-option colors recognized shell source when standard output is a terminal, except
-in a file containing a null byte.
+continuing across files. The \fB\-u\fR option is accepted. The
+\fB\-\-syntax\-highlighting\fR
+option colors recognized shell source when standard output is a terminal.
 .TP
 .BR chgrp ", " chown
 The group, or the owner and optional group, of each file is changed. The
 \fB\-R\fR option recurses, \fB\-H\fR, \fB\-L\fR, and \fB\-P\fR select how
 symbolic links are followed, and \fB\-h\fR changes a link instead of its target.
 The \fB\-x\fR, \fB\-\-one\-file\-system\fR
-option stops recursion from descending into a directory on a file system
-other than that of its operand. The directory itself is still changed.
+option keeps recursion on the file system of each operand.
 .TP
 .B chmod
-Symbolic or octal modes are applied to each file. An octal mode of fewer than
-five digits keeps the set-user-ID and set-group-ID bits of a directory. The
+Symbolic or octal modes are applied to each file. The
 \fB\-R\fR, \fB\-\-recursive\fR
 option changes directories and their contents without following symbolic
-links. The \fB\-\-one\-file\-system\fR option skips every directory below an
-operand that is on a file system other than that of the operand, together with
-its contents. It has no short form because \fB\-x\fR is a mode operand.
+links. The \fB\-\-one\-file\-system\fR option skips directories on a file system
+other than that of the operand. It has no short form because \fB\-x\fR is a mode
+operand.
 .TP
 .B cp
 Files and directory trees are copied. The \fB\-r\fR, \fB\-R\fR, \fB\-f\fR,
 \fB\-i\fR, \fB\-p\fR, and \fB\-v\fR options are supported. A recursive copy
 keeps symbolic links as links. The \fB\-L\fR option follows every symbolic link,
-\fB\-H\fR follows only a link given on the command line, and \fB\-P\fR restores
-the default of copying a link as a link without \fB\-r\fR. A copy without
-\fB\-r\fR or \fB\-P\fR follows links. A symbolic link leading back into a
-directory being copied is reported as cyclic and skipped, and the status is 1.
-The \fB\-x\fR, \fB\-\-one\-file\-system\fR
-option copies a directory on a file system other than that of its source
-operand as an empty directory.
+\fB\-H\fR follows only a link given on the command line, and \fB\-P\fR copies a
+link as a link. A symbolic link leading back into a directory being copied is
+reported as cyclic and skipped, and the status is 1. The
+\fB\-x\fR, \fB\-\-one\-file\-system\fR
+option copies a directory on another file system as an empty directory.
 .TP
 .B df
 Mounted filesystems or the filesystems of the operands are reported. The
 \fB\-k\fR and \fB\-P\fR options select 1024-byte blocks and the POSIX header.
 The \fB\-h\fR, \fB\-\-human\-readable\fR
-option prints sizes in powers of 1024 with K, M, G, T, and P suffixes under the
-header
-.BR "Filesystem Size Used Avail Use% Mounted on" ,
-and the \fB\-H\fR, \fB\-\-si\fR
-option does the same in powers of 1000, with a lowercase k for the kilo suffix.
+option prints sizes in powers of 1024, and the \fB\-H\fR, \fB\-\-si\fR
+option does the same in powers of 1000.
 .TP
 .B diff
 Two files are compared line by line. The
 .BR \-\-color [= \fIWHEN\fR ]
-option colors removed lines red, added lines green, hunk headers cyan, and the
-unified file headers bold. WHEN is auto, always, or never, and a bare option
-means auto. Without the option, the color mode of koshkit decides, and it is
-auto by default. The \fB\-u\fR,
+option colors the output. WHEN is auto, always, or never, and a bare option
+means auto. Without the option, the color mode of koshkit decides. The
+\fB\-u\fR,
 \fB\-w\fR, \fB\-a\fR, and repeated \fB\-L\fR
 options select unified output, ignore whitespace, force text input, and set up
-to two unified header labels. An unlabeled filesystem header includes the file
-modification time. Equal files return zero, different files return one, and
-usage or input errors return two.
+to two unified header labels. Equal files return zero, different files return
+one, and usage or input errors return two.
 .TP
 .B dirname
 The directory portion of each path is printed.
 .TP
 .B du
 Every file and directory below each path is printed in descending size order,
-without following symbolic links and in color on a color terminal. With no path,
-the current directory is used. The \fB\-s\fR option prints only each path total,
+without following symbolic links. With no path, the current directory is used.
+The \fB\-s\fR option prints only each path total,
 and \fB\-h\fR prints human-readable sizes. The \fB\-x\fR,
 \fB\-\-one\-file\-system\fR
 option skips every entry on a file system other than that of its path operand.
-The \fB\-\-tree\fR option prints the same entries as a tree with box-drawing
-branches. Children are sorted by size, largest first, then by name, and each
-line shows the size column, the branch, and the last path component, with each
-path operand shown as written. With \fB\-s\fR, only the operand lines are
-printed. The \fB\-T\fR, \fB\-\-top\-largest\fR
-option prints a human-readable tree of only the largest entries and every
-ancestor of one up to its operand. The tree takes at most 36 lines, or the
-terminal height minus four (at least ten) when that is smaller. Entries are
-colored by file type as in \fBls\fR. A file or directory that cannot be read
-because permission is denied is reported as a warning, and other read failures
-are errors. Either kind makes the status 1.
+The \fB\-\-tree\fR option prints the same entries as a tree. The
+\fB\-T\fR, \fB\-\-top\-largest\fR
+option prints a human-readable tree of only the largest entries and their
+ancestors. A file or directory that cannot be read because permission is denied
+is reported as a warning, and other read failures are errors. Either kind makes
+the status 1.
 .TP
 .B env
 Temporary assignments are applied before a command, or the environment is
 printed. The \fB\-i\fR option starts with an empty environment, and each
-\fB\-u\fR option removes one variable. The command receives exactly that
-environment and is found through its
+\fB\-u\fR option removes one variable. The command is found through its
 .BR PATH ,
 or through /usr/bin:/bin when it has none.
 .TP
@@ -2294,34 +2269,31 @@ input is empty, \fB\-E\fR sets the end-of-input marker, and \fB\-I\fR replaces a
 string in the command with each input line. The \fB\-L\fR, \fB\-n\fR, and
 \fB\-s\fR options limit each command to a number of lines, arguments, or bytes.
 The \fB\-p\fR option asks before each command runs, \fB\-t\fR traces each
-command, and \fB\-x\fR fails when a command does not fit in the size limit. Each
-command runs as soon as its arguments are read. The status is 123 when a command
+command, and \fB\-x\fR fails when a command does not fit in the size limit. The
+status is 123 when a command
 fails, 124 when one exits with 255, 125 when a signal ends one, and 126 or
 127 when one cannot run.
 .TP
 .B od
 Input bytes are written in the formats selected by \fB\-t\fR. The \fB\-b\fR,
 \fB\-c\fR, \fB\-d\fR, \fB\-o\fR, \fB\-s\fR, and \fB\-x\fR options select the o1,
-c, u2, o2, d2, and x2 formats in command line order.
+c, u2, o2, d2, and x2 formats.
 .TP
 .B pathchk
 Each pathname is checked against the component and pathname limits of the file
 system. The \fB\-p\fR option uses the POSIX portable limits and filename
 characters, and \fB\-P\fR rejects an empty pathname and a component that begins
-with a hyphen. The \fB\-W\fR or \fB\-\-windows\fR option rejects a component
-that holds a
-control character or one of < > : " | ? *, ends with a dot or a space, or is
-a reserved device such as CON, NUL, COM1, or LPT1, with or without an extension.
-Windows builds always apply these rules.
+with a hyphen. The \fB\-W\fR or \fB\-\-windows\fR option rejects components that
+Windows cannot hold, such as reserved devices. Windows builds always apply
+these rules.
 .TP
 .B printenv
-The whole environment is printed when no name is given. Values are printed
-in operand order. The status is one if any name is absent.
+The whole environment is printed when no name is given. The status is one if
+any name is absent.
 .TP
 .B file
-Filesystem object kinds and file contents are classified. The default content
-tests recognize more than 100 executable, archive, document, data, image, audio,
-and video formats. The \fB\-h\fR, \fB\-\-no\-dereference\fR
+Filesystem object kinds and file contents are classified. The \fB\-h\fR,
+\fB\-\-no\-dereference\fR
 option classifies a symbolic link, and \fB\-L\fR, \fB\-\-dereference\fR follows
 it. The \fB\-i\fR, \fB\-\-regular\-only\fR option skips content tests. The
 \fB\-m\fR, \fB\-\-magic\-file\fR option adds a magic database, and
@@ -2331,9 +2303,7 @@ it. The \fB\-i\fR, \fB\-\-regular\-only\fR option skips content tests. The
 Sorted trees are walked with \fB\-name\fR, \fB\-iname\fR, \fB\-type\fR,
 \fB\-maxdepth\fR, \fB\-mindepth\fR, \fB\-print\fR, and \fB\-print0\fR. The
 \fB\-xdev\fR and \fB\-mount\fR
-primaries are always true and keep the walk from descending into a directory on
-a file system other than that of its starting point. The directory itself is
-still matched. The
+primaries keep the walk on the file system of its starting point. The
 .B \-exec
 action runs a command ending in a
 .B ;
@@ -2343,8 +2313,7 @@ with the path. A command ending in
 .B +
 after
 .B {}
-receives the matched paths in batches. A failed command skips the later actions
-for that path.
+receives the matched paths in batches.
 .TP
 .B flock
 A command runs while a directory lock is held. The
@@ -2359,27 +2328,20 @@ Process IDs that use each given file are printed. The \fB\-c\fR, \fB\-f\fR, and
 System and string variables take one name. Path variables also take a path.
 An undefined or unsupported variable prints
 .BR undefined .
-A platform query failure prints a diagnostic and returns a nonzero status. The
-\fB\-a\fR, \fB\-\-all\fR
-option prints every known variable as a name and value, using the current
-directory for path variables unless a path is supplied. The
+The \fB\-a\fR, \fB\-\-all\fR
+option prints every known variable as a name and value. The
 \fB\-v\fR, \fB\-\-specification\fR
 option selects a supported POSIX environment.
 .TP
 .B grep
 Regular-expression matches are printed. The
 .BR \-\-color [= \fIWHEN\fR ]
-option colors matches bold red, filenames magenta, line numbers green, and
-separators cyan. WHEN is auto, always, or never, and a bare option means auto.
-Without the option, the color mode of koshkit applies, and it is auto by
-default. Matches are not highlighted with
-\fB\-v\fR, \fB\-c\fR, \fB\-l\fR, or \fB\-q\fR. When color is on, GREP_COLORS
-holds colon-separated GNU capabilities such as
+option colors matches. WHEN is auto, always, or never, and a bare option means
+auto. Without the option, the color mode of koshkit applies. When color is on,
+GREP_COLORS holds colon-separated GNU capabilities such as
 .BR ms=01;31 ,
-with ms, mt, sl, cx, fn, ln, se, and rv taking effect and an unknown name
-ignored. Parsing stops at the first character of a value that is not a digit or
-a semicolon, and an empty value turns that color off. The deprecated GREP_COLOR
-sets the match color below GREP_COLORS.
+and an unknown capability is ignored. The deprecated GREP_COLOR sets the match
+color below GREP_COLORS.
 .PP
 The \fB\-i\fR, \fB\-v\fR, \fB\-r\fR, \fB\-n\fR, and \fB\-h\fR
 options ignore case, invert matches, recurse into directories, show line
@@ -2387,36 +2349,25 @@ numbers, and suppress file-name prefixes. The
 .B \-\-one\-file\-system
 option makes \fB\-r\fR
 skip every directory on a file system other than that of its operand. It has
-no short form because \fB\-x\fR matches whole lines. The combined
-.B \-rnh
-form is accepted, and options may follow the operands.
+no short form because \fB\-x\fR matches whole lines. Options may follow the
+operands.
 A pattern is a basic regular expression. The \fB\-E\fR
 option treats patterns as extended regular expressions and \fB\-F\fR
 treats them as fixed strings. The two options conflict and exit with
 status 2. Each \fB\-e\fR option adds a pattern, and each \fB\-f\fR option adds
 the lines of a file as patterns. When either option is given, every
-operand is a file. A newline inside a pattern separates two patterns, and a line
-is selected when any pattern matches it. An empty pattern matches every line,
-and an empty pattern file matches none. The \fB\-x\fR
+operand is a file. A newline inside a pattern separates two patterns. The
+\fB\-x\fR
 option selects only lines that match entirely. The \fB\-c\fR
-option prints the count of selected lines for each file, prefixed with the file
-name when several files are searched. The \fB\-l\fR
+option prints the count of selected lines for each file. The \fB\-l\fR
 option prints each file with a selected line once, and takes precedence over
 \fB\-c\fR. The \fB\-q\fR
-option prints nothing and exits with status 0 at the first selected line, even
-if an earlier file could not be read. The \fB\-s\fR
-option suppresses messages about unreadable files, leaving the exit status 2.
-The standard input is shown as
-.I (standard input)
-in prefixes, counts, and lists. The exit status is 0 when a line is selected, 1
-when no line is selected, and 2 on an error. The locale is chosen from the first
-nonempty value of
-.BR LC_ALL ,
-.BR LC_CTYPE ,
-and
-.BR LANG .
-In a UTF-8 locale, a dot and a bracket expression match one whole character.
-In every other locale, they match one byte.
+option prints nothing and exits with status 0 at the first selected line. The
+\fB\-s\fR
+option suppresses messages about unreadable files. The exit status is 0 when a
+line is selected, 1 when no line is selected, and 2 on an error. In a UTF-8
+locale, a dot and a bracket expression match one whole character. In every
+other locale, they match one byte.
 .TP
 .B head
 The first ten lines are printed by default. The \fB\-n\fR
@@ -2431,22 +2382,17 @@ dash-and-digits first argument as for head. The \fB\-q\fR, \fB\-\-quiet\fR, and
 options never print file name headers, and \fB\-v\fR, \fB\-\-verbose\fR always
 print them. The \fB\-f\fR
 option keeps each regular file open after the initial output and prints the
-bytes appended to it, with a header whenever the output switches to another
-file. The \fB\-F\fR
-option follows the file by name, reports and reopens a file that is replaced,
-removed, or created later, and implies \fB\-\-retry\fR. The
+bytes appended to it. The \fB\-F\fR
+option follows the file by name, reopens a file that is replaced, removed, or
+created later, and implies \fB\-\-retry\fR. The
 .BI \-\-follow= descriptor|name
-option selects the mode, and a name follow without \fB\-\-retry\fR
-stops following a removed file. A truncated file is reported on standard error
-and read again from its start. Standard input is followed only when it is a
-regular file, and a pipe is printed once. The
+option selects the mode. The
 \fB\-s\fR, \fB\-\-sleep\-interval\fR
 option sets the longest wait between checks in seconds, one
 second by default. The
 .BI \-\-pid= pid
-option ends the follow after that process exits. On Linux and macOS, file
-changes wake the follow, and on other targets, the files are checked every
-interval. An interrupted follow ends with status 130.
+option ends the follow after that process exits. An interrupted follow ends
+with status 130.
 .TP
 .B killall
 Processes are signaled by exact name. The signal is selected and the signals
@@ -2484,11 +2430,9 @@ prints an indented directory tree. The \fB\-L\fR
 option sets the maximum recursion depth. The
 .B \-\-one\-file\-system
 option keeps \fB\-R\fR and \fB\-\-tree\fR
-from descending into a directory on a file system other than that of its
-operand, and the directory is still listed. It has no short form because
+on the file system of the operand. It has no short form because
 \fB\-x\fR
-lists entries across. Entries are colored by file
-type when the standard output is a terminal. The \fB\-\-color\fR
+lists entries across. The \fB\-\-color\fR
 option accepts always, auto, and never.
 .TP
 .B make
@@ -2501,24 +2445,17 @@ continues independent goals after an error. The \fB\-e\fR, \fB\-i\fR,
 options provide the POSIX make execution modes. The \fB\-j\fR
 extension takes an optional decimal job count, propagated through MAKEFLAGS.
 Common variable functions include call, eval, filter, filter-out, foreach,
-patsubst, shell, sort, and wildcard. The wildcard function and a
-prerequisite that holds *, ?, or [ expand through the pathname expansion of the
-shell, and a prerequisite pattern without a match stays as written. A missing
-prerequisite is reported at the rule line of the target that needs it.
+patsubst, shell, sort, and wildcard.
 .TP
 .B meow
-A screensaver of pixel-art cats. Each run chooses striped domestic cats,
-British Shorthairs, or Oriental cats with random coats. The cats move through a
-starfield with shooting stars, a moon, and a drifting ball of yarn. They loaf,
-groom, nap, interact, and bounce away from walls. The
+A screensaver of pixel-art cats. The
 \fB\-f\fR or \fB\-\-fps\fR
 option sets the frames drawn per second, from 1 to 240, with 60 by default. The
 \fB\-s\fR or \fB\-\-speed\fR
 option runs the scene faster or slower, from 0.1 to 10, and the
 \fB\-n\fR or \fB\-\-cats\fR
 option shows from 1 to 8 cats. Space pauses, \fB+\fR and \fB\-\fR
-change the speed, and any other key ends the screensaver. Redirected output
-receives one still cat.
+change the speed, and any other key ends the screensaver.
 .TP
 .B mkdir
 Directories are created with \fB\-p\fR
@@ -2533,63 +2470,35 @@ options. Device nodes accept \fB\-\-major\fR and \fB\-\-minor\fR
 numbers, and the \fB\-m\fR option sets the permission mode.
 .TP
 .B mv
-Sources are renamed with
-.BR \-f ,
-.BR \-i ,
-and
-.BR \-v .
+Sources are renamed with \fB\-f\fR, \fB\-i\fR, and \fB\-v\fR.
 .TP
 .B nproc
-The available logical processor count is printed. The
-.B \-\-all
-and
-.B \-\-ignore=COUNT
-options are supported.
+The available logical processor count is printed. The \fB\-\-all\fR and
+\fB\-\-ignore=COUNT\fR options are supported.
 .TP
 .B ps
-Processes are listed with
-.BR \-a ,
-.BR \-u ,
-and
-.BR \-x .
-The
-.B \-w
+Processes are listed with \fB\-a\fR, \fB\-u\fR, and \fB\-x\fR. The \fB\-w\fR
 option is accepted without effect.
 .TP
 .B readlink
 The target of each symbolic link is printed on its own line. A file that is not
-a link is reported, the remaining files are still read, and the status is 1.
-The
+a link is reported and makes the status 1. The
 .B \-n
-option suppresses the trailing newline of a single file and is ignored for
-several.
+option suppresses the trailing newline of a single file.
 .TP
 .B realpath
 The canonical absolute form of each path is printed. Every component but the
-last must exist, every component must exist with
-.BR \-e ,
-and none needs to exist with
-.BR \-m .
+last must exist, every component must exist with \fB\-e\fR, and none needs to
+exist with \fB\-m\fR.
 .TP
 .B rm
-Paths are removed with
-.BR \-r ,
-.BR \-R ,
-.BR \-f ,
-.BR \-i ,
-and
-.BR \-\-dry\-run .
-Root, dot, and dot-dot are refused. Root covers every spelling of a root
-directory, such as
-.BR // ,
-a Windows drive root such as
-.BR C:/ ,
-and an operand resolving to one, such as
-.B C:
-while its current directory is the drive root. The
+Paths are removed with \fB\-r\fR, \fB\-R\fR, \fB\-f\fR, \fB\-i\fR, and
+\fB\-\-dry\-run\fR.
+Root, dot, and dot-dot are refused, including every spelling of a root
+directory and a Windows drive root. The
 .BR \-x ", " \-\-one\-file\-system
 option skips a directory on a file system other than that of its path
-operand, reports it as being on a different device, and makes the status 1.
+operand and makes the status 1.
 .TP
 .B rmdir
 Empty directories are removed. The
@@ -2607,232 +2516,91 @@ Input lines are sorted in byte order, or by the keys given with
 .BR \-k .
 A key is
 .IR F[.C][bdfinr][,F[.C][bdfinr]] .
-The
-.B \-t
-option sets the field separator byte. The
-.BR \-b ,
-.BR \-d ,
-.BR \-f ,
-.BR \-i ,
-.BR \-n ,
-and
-.B \-r
-options ignore leading blanks, compare only blanks and alphanumeric characters,
-fold lowercase letters, compare only printable characters, compare leading
-numbers by value, and reverse the result. The
-.B \-u
-option writes the first of each run of equal keys. The
-.B \-c
-option checks that the input is sorted and reports the first line out of
-order, and
-.B \-C
-checks it without a message. The
-.B \-o
-option writes the result to a file after all input has been consumed. The
-.B \-s
-option skips the last-resort comparison of whole lines, and
-.B \-m
-is accepted for merging sorted input.
+The \fB\-t\fR option sets the field separator byte. The \fB\-b\fR, \fB\-d\fR,
+\fB\-f\fR, \fB\-i\fR, \fB\-n\fR, and \fB\-r\fR options ignore leading blanks,
+compare only blanks and alphanumeric characters, fold lowercase letters,
+compare only printable characters, compare leading numbers by value, and
+reverse the result. The \fB\-u\fR option writes the first of each run of equal
+keys. The \fB\-c\fR option checks that the input is sorted and reports the
+first line out of order, and \fB\-C\fR checks it without a message. The
+\fB\-o\fR option writes the result to a file. The \fB\-s\fR option skips the
+last-resort comparison of whole lines, and \fB\-m\fR is accepted for merging
+sorted input.
 .TP
 .B stty
-Terminal settings are reported or changed.
-.B \-a
-reports all settings, and
-.B \-g
-reports an encoded state that can be supplied later to restore the settings.
+Terminal settings are reported or changed. The \fB\-a\fR option reports all
+settings, and \fB\-g\fR reports an encoded state that can be supplied later to
+restore the settings.
 .TP
 .B tee
-Standard input is copied to output files. The
-.B \-a
-option appends.
+Standard input is copied to output files. The \fB\-a\fR option appends.
 .TP
 .B timeout
 A command runs with a time limit. The duration accepts a suffix. The
-.BR \-s ,
-.BR \-\-signal ,
-.BR \-k ,
-.BR \-\-kill\-after ,
-.BR \-p ,
-and
-.B \-\-preserve\-status
-options select the signal, send KILL after a further duration, and return the
-command status.
+\fB\-s\fR, \fB\-\-signal\fR, \fB\-k\fR, \fB\-\-kill\-after\fR, \fB\-p\fR, and
+\fB\-\-preserve\-status\fR options select the signal, send KILL after a further
+duration, and return the command status.
 .TP
 .B touch
-File times are updated. The
-.BR \-a ,
-.BR \-c ,
-.BR \-m ,
-.BR \-r ,
-and
-.B \-t
-options select the access time, suppress creation of a missing file, select the
-modification time, specify a reference file, and set an explicit timestamp.
+File times are updated. The \fB\-a\fR, \fB\-c\fR, \fB\-m\fR, \fB\-r\fR, and
+\fB\-t\fR options select the access time, suppress creation of a missing file,
+select the modification time, specify a reference file, and set an explicit
+timestamp.
 .TP
 .B tr
-Input bytes are translated with ranges and character classes. The
-.B \-d
-option deletes bytes,
-.BR \-c " and " \-C
-replace the first set with every byte outside it, in byte order, and
-.B \-s
-squeezes each run of a repeated byte from the last set into one byte.
+Input bytes are translated with ranges and character classes. The \fB\-d\fR
+option deletes bytes, \fB\-c\fR and \fB\-C\fR replace the first set with every
+byte outside it, and \fB\-s\fR squeezes each run of a repeated byte from the
+last set into one byte.
 .TP
 .B uniq
-Adjacent equal lines are collapsed. The
-.B \-c
-option prints run counts. The
-.B \-d
-and
-.B \-u
-options write only lines that have a repeat or only lines that have none. The
-.B \-f
-and
-.B \-s
-options ignore leading fields and characters when comparing lines. A second
-operand is the output file.
+Adjacent equal lines are collapsed. The \fB\-c\fR option prints run counts.
+The \fB\-d\fR and \fB\-u\fR options write only lines that have a repeat or only
+lines that have none. The \fB\-f\fR and \fB\-s\fR options ignore leading fields
+and characters when comparing lines. A second operand is the output file.
 .TP
 .B unlink
 One non-directory path is removed.
 .TP
 .B evil
 System identity, uptime, processor, memory, swap, root filesystem, process,
-filesystem, and network information is printed in titled sections called
-Identity, Session, Accounts, Resources, Limits, Activity, and Anomalies, each
-with name and value rows indented two spaces beneath the title. A section
-without rows is omitted. The
-.B \-a
-option adds system details omitted from the default report. The
-additional activity counters are shown only when the platform provides them,
-and pressure-stall totals are in microseconds. On Linux, they include
-counts of the current process's namespace entries and cgroup memberships,
-each reported as unavailable when it cannot be determined. The
-.B \-s
-option selects identity fields,
-.B \-u
-prints every local user account, and
-.B \-\-color
-accepts always, auto, and never.
+filesystem, and network information is printed in titled sections. The
+\fB\-a\fR option adds system details omitted from the default report, \fB\-s\fR
+selects identity fields, \fB\-u\fR prints every local user account, and
+\fB\-\-color\fR accepts always, auto, and never.
 .TP
 .B goodcore
-A running process can be captured with
-.BR \-p ,
-and an existing core can be packaged with its executable through
-.BR \-b .
-Mapped libraries and host metadata are included. Compression is Zstandard when
-available and gzip otherwise.
+A running process can be captured with \fB\-p\fR, and an existing core can be
+packaged with its executable through \fB\-b\fR.
 .TP
 .B eviliso
 Isolation information is grouped into namespace, cgroup, login-session, remote
 socket, container-runtime, container, and Kubernetes sections. With no
-selector, all sections are shown. Selectors combine, and only the selected
-sections are printed. The
-.BR \-n ,
-.BR \-c ,
-.BR \-s ,
-and
-.B \-r
-options select namespaces, cgroups, sessions, and remote sockets, and
-.B \-k
-selects container-runtime data. The long-only
-.B \-\-container
-and
-.B \-\-kubernetes
-selectors select their own sections, and
-.B \-\-containers
-is an alias for
-.BR \-\-container .
-The
-.B \-a
-or
-.B \-\-all
-option adds detailed rows, including per-process namespace attribution,
-controller membership, login times, and remote peers.
-.PP
-The namespace section groups visible process relationships by namespace type
-and numeric identifier and prints their process counts. With
-.BR \-\-all ,
-it prints type, identifier, process ID, process name, and self/other role for
-each relationship. A relationship that cannot be read or disappears during
-collection is kept with an
-.B unavailable
-identifier.
-.PP
-The cgroup section prints hierarchy, controller, path, process ID, process name,
-and self/other role columns. With
-.BR \-\-all ,
-it adds each membership of another process sharing the hierarchy, controller,
-and path of one of the current process's memberships. Sessions are
-printed as user and terminal rows. With
-.BR \-\-all ,
-each row adds its login time, and an unavailable timestamp is marked as such.
-.PP
-The remote section starts with a socket summary of remote and total socket
-counts. The
-.B \-\-remote
-option selects a table with protocol, state, queues, local and peer
-endpoints, and socket identifiers. With
-.B \-\-all ,
-the rows add process, owner, network namespace, orchestrator, runtime,
-container, and cgroup columns. Command lines, short commands, and cgroup
-memberships are shortened. A dash marks information
-that disappeared or could not be read.
-.PP
-The runtime section prints runtime, source, and EVIDENCE columns. The
-EVIDENCE value is a cgroup path or an existing container marker file such as
-.BR /.dockerenv .
-With
-.BR \-\-all ,
-it adds process ID, process name, and self, other, or host role columns.
-The container section prints runtime, container identifier, and process count
-columns. With
-.BR \-\-all ,
-each process has its own row with process ID, name, role, and cgroup columns
-in place of the count. The Kubernetes section prints a table with
-source, host, namespace, and EVIDENCE columns. The values come from the
+selector, all sections are shown. Selectors combine. The \fB\-n\fR, \fB\-c\fR,
+\fB\-s\fR, and \fB\-r\fR options select namespaces, cgroups, sessions, and
+remote sockets, and \fB\-k\fR selects container-runtime data. The long-only
+\fB\-\-container\fR and \fB\-\-kubernetes\fR selectors select their own
+sections, and \fB\-\-containers\fR is an alias for \fB\-\-container\fR. The
+\fB\-a\fR or \fB\-\-all\fR option adds detailed rows. The Kubernetes section
+takes its values from the
 .B KUBERNETES_SERVICE_HOST
 variable, the service-account namespace file, and
 .B kubepods
-cgroup components. Values from the environment or the file are cut to
-one line of 256 bytes, and control bytes are replaced by spaces. A second table
-lists workloads with pod UID, QoS class, runtime, container, and process count
-columns. The QoS class is
-.BR guaranteed ,
-.BR burstable ,
-or
-.BR besteffort .
-With
-.BR \-\-all ,
-the process count is replaced by process ID, name, role, and cgroup columns for
-each process.
+cgroup components.
 .TP
 .B evildisk
 Capacity and filesystem identity are printed for each operand path or
 mounted filesystem, along with native disk error and retry totals when the
-operating system provides them. With
-.B \-a
-mount labels and UUIDs plus filesystem error counters are included when the
-platform exposes them, along with SMART status, model, and protocol
-data when smartctl or macOS diskutil is available.
+operating system provides them. With \fB\-a\fR, mount labels, UUIDs,
+filesystem error counters, and SMART data are included when the platform
+exposes them.
 .TP
 .B evilfiles
-Open files are listed for visible processes in a table titled Open files, with
-rows indented two spaces beneath the title. The
-.BR \-p ,
-.BR \-u ,
-.BR \-c ,
-.BR \-i ,
-and
-.B \-t
-options filter by process, owner, command prefix, socket descriptor, and terse
-process identifier output. On a terminal the command and name columns are
-shortened with an ellipsis to fit the width, and the
-.BR \-w " and " \-\-wide
-options keep them whole. Pipes show the FIFO type, and anonymous inodes show
-the a_inode type. On Linux a socket shows its family as unix, IPv4, IPv6,
-netlink, or packet, and the ENDPOINT column holds the local and remote address
-of a TCP or UDP socket, with the TCP state, and the path and peer inode of a
-Unix-domain socket.
+Open files are listed for visible processes. The \fB\-p\fR, \fB\-u\fR,
+\fB\-c\fR, \fB\-i\fR, and \fB\-t\fR options filter by process, owner, command
+prefix, socket descriptor, and terse process identifier output. The
+\fB\-w\fR and \fB\-\-wide\fR options keep the command and name columns from
+being shortened to the terminal width.
 .TP
 .B evilfs
 Mounted filesystem sources, targets, types, and options are printed in a sorted
@@ -2840,311 +2608,128 @@ table.
 .TP
 .B evilio
 Current memory, swap, and cumulative disk I/O counters are printed without
-waiting. The
-.B \-a
-option adds processor usage, paging, scheduler state, pressure stalls, disk
-activity, and swap rates from a one second sample.
-Nonzero stall rates and disk failures are highlighted. Byte sizes and byte
-rates use compact binary units by default, and the
-.BR \-h " and " \-\-human-readable
-options select them explicitly. With
-.BR \-\-ps ,
-each mode prints per-process data and leaves out a process without I/O, except
-one selected with
-.BR \-p .
-The
-.BR \-\-ps ,
-.BR \-n ,
-.BR \-p ,
-and
-.B \-NUMBER
-options otherwise print only lifetime process I/O counters. They show every
+waiting. The \fB\-a\fR option adds processor usage, paging, scheduler state,
+pressure stalls, disk activity, and swap rates from a one second sample. The
+\fB\-h\fR and \fB\-\-human-readable\fR options select compact binary units for
+byte sizes, which is the default. The \fB\-\-ps\fR, \fB\-n\fR, \fB\-p\fR, and
+\fB\-NUMBER\fR options print per-process I/O counters. They show every
 process, limit the table, select one process, or limit the table to NUMBER rows.
 .PP
-The
-.BR \-l " and " \-\-live
-options print the report repeatedly until interrupted. Their optional
-value, N, is the number of seconds between samples and between refreshes, and
-defaults to 0.5. Output uses the alternate screen and restores the previous
-contents on exit. Every frame of a live utility starts with a header line
-identifying the utility and showing a LIVE indicator, the local time, the window
-and the refresh interval, and, on a terminal, the keys the utility accepts. The
-header is shortened to fit the terminal width and is colored only when color is
-enabled. A key takes effect at once, without echo or Enter. q quits with status
-0, and an interrupt quits with status 130. A frame taller than the terminal
-scrolls.
-.BR j ,
-.BR k ,
-and the arrow keys scroll one row, the page keys scroll ten rows,
-.B g
-and
-.B G
-jump to the top and bottom, and, on a POSIX terminal, the mouse wheel scrolls
-three rows. Output that is not a terminal carries a plain header and no escape
-sequences.
+The \fB\-l\fR and \fB\-\-live\fR options print the report repeatedly until
+interrupted. Their optional value, N, is the number of seconds between samples
+and between refreshes, and defaults to 0.5. Output uses the alternate screen
+and restores the previous contents on exit. q quits with status 0, and an
+interrupt quits with status 130. A frame taller than the terminal scrolls with
+\fBj\fR, \fBk\fR, the arrow keys, the page keys, \fBg\fR, \fBG\fR, and, on a
+POSIX terminal, the mouse wheel.
 .PP
-The
-.B \-\-cumulative
-option waits for M seconds, defaulting to one second, and prints the counter
-change over that window. When combined with
-.BR \-\-live ,
-it sets the length of a rolling window keeping the counter changes of the last
-M seconds, and
-.B \-\-live
-alone sets the sampling and refresh interval. The counter columns show the
-accumulated change inside the window, and a heading such as
-.B READ OPS/2s
-indicates its length. A burst stays in the report until its samples age out of
-the window, and then it leaves at once. When the
-window is shorter than the interval, the last interval is divided
-proportionally. A row leaves the report after it has been missing for a whole
-window. A process is identified by its identifier and
-start time, so a reused identifier begins a new row.
+The \fB\-\-cumulative\fR option waits for M seconds, defaulting to one second,
+and prints the counter change over that window. When combined with
+\fB\-\-live\fR, it sets the length of a rolling window keeping the counter
+changes of the last M seconds, and \fB\-\-live\fR alone sets the sampling and
+refresh interval.
 .PP
-The
-.B \-\-sort
-option orders rows by a full metric name or its shortest unambiguous prefix.
-Process reports accept
-.BR pid ,
-.BR read ,
-.BR write ,
-.BR read-ops ,
-and
-.BR write-ops .
-Disk reports accept
-.BR read ,
-.BR write ,
-.BR read-ops ,
-.BR write-ops ,
-.BR busy ,
-.BR read-latency ,
-.BR write-latency ,
-.BR average-queue ,
-.BR queue ,
-.BR errors ,
-and
-.BR retries .
-Metrics sort from largest to smallest, unavailable values sort last, and ties
-use the process identifier or device name. Process identifiers sort from
-smallest to largest. Busy, latency, and average queue values require a sampled
-report. Live reports sort the values from the displayed window.
+The \fB\-\-sort\fR option orders rows by a full metric name or its shortest
+unambiguous prefix. Process reports accept pid, read, write, read-ops, and
+write-ops. Disk reports accept read, write, read-ops, write-ops, busy,
+read-latency, write-latency, average-queue, queue, errors, and retries. Metrics
+sort from largest to smallest, and process identifiers sort from smallest to
+largest. Busy, latency, and average queue values require a sampled report.
 .TP
 .B evillogs
 Core dump settings, recognized dump reports, and known log directories are
-printed. Each core dump directory and each log directory is a titled table
-with its name, entry count, and total size in the title and its rows indented
-two spaces beneath it. On Windows, the dump directories also include
-%LOCALAPPDATA%\\CrashDumps, %SystemRoot%\\Minidump, and the WER report
-folders, and the log directories include %SystemRoot%\\System32\\winevt\\Logs
-and %SystemRoot%\\Logs. The newest records of the System and Application event
-logs follow, with their time, level, source, and inserted text. The
-.B \-\-cores
-and
-.B \-\-logs
-options select one report.
+printed. The \fB\-\-cores\fR and \fB\-\-logs\fR options select one report.
 .TP
 .B evilnet
-Assigned IPv4 and IPv6 addresses are printed in a sorted table. The
-.B \-a
+Assigned IPv4 and IPv6 addresses are printed in a sorted table. The \fB\-a\fR
 option adds interface traffic, packet errors, packet drops, and a TCP counter
-table.
-.B \-f
-prints TCP failure and packet-loss telemetry without interface or socket rows.
-Nonzero error, drop, and failure counters are also reported as warnings. The
-.BR \-t " and " \-\-traffic
-options print only the interface traffic table. On Linux the interface carrying
-the default IPv4 route is shown in bold green when color is enabled.
-Live and cumulative options behave as for evilio, with
-.B \-\-live
-sampling and refreshing the traffic table. Without
-.BR \-\-live ,
-.B \-\-cumulative
-enables the traffic table, waits M seconds, and prints the counter change
-over that window. The traffic headings carry the window length, as in
-.BR RX\ PACKETS/2s .
-The
-.B \-\-sort
-option orders traffic rows by name, receive or transmit bytes, packet counts,
-errors, or drops, using the shortest unambiguous prefix. Numeric counters sort
-from largest to smallest, unavailable values sort last, and ties use the
-interface name.
+table. The \fB\-f\fR option prints TCP failure and packet-loss telemetry
+without interface or socket rows. The \fB\-t\fR and \fB\-\-traffic\fR options
+print only the interface traffic table. Live and cumulative options behave as
+for evilio. The \fB\-\-sort\fR option orders traffic rows by name, receive or
+transmit bytes, packet counts, errors, or drops, using the shortest
+unambiguous prefix.
 .TP
 .B goodnode
 Inode identity, allocation, known filesystem capabilities, verification state,
-and a CRC32C checksum are printed for each path. The
-.B \-i
-option locates an inode beneath the path selected by
-.BR \-r .
-The
-.B \-\-verify
-option runs the native filesystem verification of the platform when it supports
-it. On APFS it runs
-.B diskutil verifyVolume
-and reports the command status.
+and a CRC32C checksum are printed for each path. The \fB\-i\fR option locates
+an inode beneath the path selected by \fB\-r\fR. The \fB\-\-verify\fR option
+runs the native filesystem verification of the platform when it supports it.
 .TP
 .B evilps
-Visible processes are printed as a parent and child tree. The
-.BR \-p ,
-.BR \-n ,
-.BR \-a ,
-.BR \-A ,
-.BR \-U ,
-.BR \-c ,
-.BR \-M ,
-and
-.BR \-w
-options show process identifiers, sort numerically, enable every field, show
-command lines, show owners, show processor usage, show resident memory, and
-keep command lines at full length. On a terminal without
-.BR \-w ,
-a command line is cut to the width of the output, in a report and in a live
-view, and the
-.B \-\-wide
-option is equivalent to
-.BR \-w .
-Processor usage is accumulated time in an ordinary report and the average
-utilization over the window in a sampled report. The
-.B \-\-sort
-option accepts name, pid, cpu, memory, or an unambiguous prefix of one of those.
-Each sorted tree starts with its highest-ranked process and shows its
-parents and children beneath it. CPU sorting uses the value shown in the report.
-The
-.B \-NUMBER
-operand limits the output to NUMBER processes. The
-.B \-C
-option is shorthand for
-.BR \-\-cumulative .
+Visible processes are printed as a parent and child tree. The \fB\-p\fR,
+\fB\-n\fR, \fB\-a\fR, \fB\-A\fR, \fB\-U\fR, \fB\-c\fR, \fB\-M\fR, and
+\fB\-w\fR options show process identifiers, sort numerically, enable every
+field, show command lines, show owners, show processor usage, show resident
+memory, and keep command lines at full length. The \fB\-\-wide\fR option is
+equivalent to \fB\-w\fR. The \fB\-\-sort\fR option accepts name, pid, cpu,
+memory, or an unambiguous prefix of one of those. The \fB\-NUMBER\fR operand
+limits the output to NUMBER processes. The \fB\-C\fR option is shorthand for
+\fB\-\-cumulative\fR.
 .PP
-The
-.BR \-l " and " \-\-live
-options sample and refresh the process tree until interrupted, with N as for
-evilio. On a terminal, the scroll keys of every live utility apply to the tree
-below the sort line, and
-.B s
-cycles the sort key. The
-.B /
-key starts a search, edited with Backspace, applied with Enter, and cleared
-with Escape. The
-.B \-\-cumulative
-option sets a window of M seconds, defaulting to one second. With
-.BR \-\-live ,
-the window rolls as for evilio. A new process shows unavailable processor
-utilization until two samples have been collected. Without
-.BR \-\-live ,
-two snapshots are taken M seconds apart and the report will show the
-average processor utilization between them.
+The \fB\-l\fR and \fB\-\-live\fR options sample and refresh the process tree
+until interrupted, with N as for evilio. On a terminal, the scroll keys of
+evilio apply, \fBs\fR cycles the sort key, and \fB/\fR starts a search, applied
+with Enter and cleared with Escape. The \fB\-\-cumulative\fR option sets a
+window of M seconds, defaulting to one second. Without \fB\-\-live\fR, two
+snapshots are taken M seconds apart and the report will show the average
+processor utilization between them.
 .TP
 .B evilss
 Visible TCP, UDP, and Unix-domain sockets are printed in a table. Address
 family, protocol, listening state, process identifiers, and the header can be
-selected with ss-compatible options. The
-.B \-\-live
-option, which has no short form because
-.B \-l
-selects listening sockets, samples the sockets again and refreshes the same
-table every optional number of seconds until interrupted, defaulting to 0.5
-seconds.
+selected with ss-compatible options. The \fB\-\-live\fR option, which has no
+short form because \fB\-l\fR selects listening sockets, refreshes the table
+every optional number of seconds until interrupted, defaulting to 0.5 seconds.
 .TP
 .B goodstat
-File metadata is printed as a labeled report. Its type uses the same classifier
-as
-.BR "koshkit file" .
-The
-.B \-L
-option follows symbolic links.
-The
-.B \-c
-and
-.B \-f
-options add a CRC32C checksum and filesystem capacity report, respectively.
+File metadata is printed as a labeled report. The \fB\-L\fR option follows
+symbolic links. The \fB\-c\fR and \fB\-f\fR options add a CRC32C checksum and
+filesystem capacity report, respectively.
 .TP
 .B goodfsw
 Path changes are reported by polling filesystem metadata. Machine-readable
 output is the default, and each record contains the Unix scan time, a numeric
-event mask, and the path. The
-.BR \-h " and " \-\-human-readable
-options use formatted timestamps and descriptive event labels, and
-.BR \-m " and " \-\-machine-readable
-select the numeric format explicitly. The
-.B \-\-timezone
-option selects local or UTC time for human output, and
-.B \-\-precision
-selects zero through nine fractional timestamp digits. The
-.BR \-r ,
-.BR \-t ,
-.BR \-\-event-flags ,
-.BR \-x ,
-.BR \-1 ,
-.BR \-l ,
-and
-.B \-e
-options select recursion, timestamp prefixes, appended event labels, one
-filesystem, one event batch, the polling period, and an excluded substring.
+event mask, and the path. The \fB\-h\fR and \fB\-\-human-readable\fR options use
+formatted timestamps and descriptive event labels, and \fB\-m\fR and
+\fB\-\-machine-readable\fR select the numeric format explicitly. The
+\fB\-\-timezone\fR option selects local or UTC time for human output, and
+\fB\-\-precision\fR selects the fractional timestamp digits. The \fB\-r\fR,
+\fB\-t\fR, \fB\-\-event-flags\fR, \fB\-x\fR, \fB\-1\fR, \fB\-l\fR, and
+\fB\-e\fR options select recursion, timestamp prefixes, appended event labels,
+one filesystem, one event batch, the polling period, and an excluded substring.
 .TP
 .B retry
 A command is repeated until it succeeds or its attempt limit is reached. The
-.BR \-n ,
-.BR \-d ,
-.BR \-b ,
-.BR \-m ,
-and
-.B \-q
-options set the attempt count, initial delay, backoff factor, maximum delay,
-and quiet mode.
+\fB\-n\fR, \fB\-d\fR, \fB\-b\fR, \fB\-m\fR, and \fB\-q\fR options set the
+attempt count, initial delay, backoff factor, maximum delay, and quiet mode.
 .TP
 .B stat
-File or filesystem metadata is printed. The
-.BR \-L ,
-.BR \-f ,
-.BR \-t ,
-.BR \-c ,
-and
-.B \-\-printf
-options dereference links, select filesystem data, select terse output, apply a
-format, and apply a format without an automatic newline.
+File or filesystem metadata is printed. The \fB\-L\fR, \fB\-f\fR, \fB\-t\fR,
+\fB\-c\fR, and \fB\-\-printf\fR options dereference links, select filesystem
+data, select terse output, apply a format, and apply a format without an
+automatic newline.
 .TP
 .B sync
-Dirty filesystem data is flushed. The
-.B \-d
-option flushes file data for each operand, and
-.B \-f
-flushes the filesystem containing each operand.
+Dirty filesystem data is flushed. The \fB\-d\fR option flushes file data for
+each operand, and \fB\-f\fR flushes the filesystem containing each operand.
 .TP
 .B watch
-A command is run at a fixed interval. The
-.BR \-n ,
-.BR \-t ,
-.BR \-g ,
-and
-.B \-e
-options set the interval, omit the title, exit after output changes, and exit
-after a command error. The
-.B \-x
-option is accepted for compatibility. The title and screen controls are used
-only when standard output is a terminal. On a terminal, output taller than the
-screen shows its first lines and drops the rest. Redirected output keeps every
-line.
+A command is run at a fixed interval. The \fB\-n\fR, \fB\-t\fR, \fB\-g\fR, and
+\fB\-e\fR options set the interval, omit the title, exit after output changes,
+and exit after a command error. The \fB\-x\fR option is accepted for
+compatibility.
 .PP
 Utilities with styled reports use color when their output stream is a terminal.
 Redirected output contains no terminal escape sequences.
 .TP
 .B wc
-Lines, words, characters, and bytes are counted with
-.BR \-l ,
-.BR \-w ,
-.BR \-m ,
-and
-.BR \-c .
-A character is a UTF-8 sequence.
+Lines, words, characters, and bytes are counted with \fB\-l\fR, \fB\-w\fR,
+\fB\-m\fR, and \fB\-c\fR.
 .TP
 .B which
-Builtins, PATH programs, and koshkit utilities are resolved. The
-.BR \-a ,
-.BR \-\-all ,
-.BR \-q ,
-and
-.B \-\-quiet
-options are supported.
+Builtins, PATH programs, and koshkit utilities are resolved. The \fB\-a\fR,
+\fB\-\-all\fR, \fB\-q\fR, and \fB\-\-quiet\fR options are supported.
 .TP
 .B whoami
 The effective user name is printed.
