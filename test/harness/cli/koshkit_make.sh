@@ -274,6 +274,12 @@ all:
 	@echo "warning=[$(warning warning-text)]"
 EOF
 "$BIN" -c 'koshkit make -f warning-function.mk' 2>&1
+cat > warning-parse.mk <<'EOF'
+VALUE := $(warning parse-warning-text)
+all:
+	@echo "value=[$(VALUE)]"
+EOF
+"$BIN" -c 'koshkit make -f warning-parse.mk' 2>&1
 cat > expansion-depth.mk <<'EOF'
 deep1 = $(deep2)
 deep2 = $(deep3)

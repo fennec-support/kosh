@@ -76,7 +76,7 @@ foreach-restored=parent
 call=[call_body][left][right]
 nested-call=[call_body][inner-left][right]-outer-left
 call-eclipsed=[one][two][three][][]
-make: warning: call-expanded-once
+warning: call-expanded-once.
 call-builtin=value
 value=$(simple)
 origin=file flavor=recursive simple-flavor=simple
@@ -118,8 +118,12 @@ automatic-indirect=auto.c first=auto.in target-file=auto.c
 word-zero=2
 word-invalid=2
 function-arguments=2
-make: warning: warning-text
+warning: warning-text.
 warning=[]
+warning-parse.mk:1:1: warning: parse-warning-text.
+     1 |  VALUE := $(warning parse-warning-text)
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+value=[]
 deep-expansion=valid
 unterminated-expansion=2
 recursive-expansion=2

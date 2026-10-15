@@ -385,6 +385,7 @@ struct makefile
   usize                            call_max_argument_count{0};
   usize                            eval_depth{0};
   u32                              active_source_name_index{0};
+  SourceLocation                   active_source_span{};
   ArrayList<make_source_document> *source_documents{nullptr};
 
   fn
@@ -2014,10 +2015,25 @@ evaluate_make_function(EvalContext                 &cxt,
   case make_function_kind::Error:
     throw Error{"The makefile stopped the build with the message '" +
                 do_expand(0) + "'"};
-  case make_function_kind::Warning:
-    show_message("make: warning: " + do_expand(0));
+  case make_function_kind::Warning: {
+    let const message = do_expand(0);
+
+    if (mk.source_documents != nullptr && mk.active_source_span.length != 0) {
+      for (let const &document : *mk.source_documents) {
+        if (document.source_name_index !=
+            mk.active_source_span.source_name_index)
+          continue;
+        show_message(WarningWithLocation{mk.active_source_span, message.view()}
+                         .to_string(document.source.view(), &cxt));
+
+        return String{allocator};
+      }
+    }
+
+    show_message(Warning{message.view()}.to_string());
 
     return String{allocator};
+  }
   }
 
   unreachable();
@@ -2534,7 +2550,12 @@ parse_makefile_into(EvalContext                     &cxt,
 {
   let const saved_source_name_index = mk.active_source_name_index;
 
-  defer { mk.active_source_name_index = saved_source_name_index; };
+  let const saved_source_span = mk.active_source_span;
+
+  defer {
+    mk.active_source_name_index = saved_source_name_index;
+    mk.active_source_span       = saved_source_span;
+  };
 
   ArrayList<usize>             current_rule_indices{cxt.scratch_allocator()};
   ArrayList<usize>             current_pattern_indices{cxt.scratch_allocator()};
@@ -2573,6 +2594,7 @@ parse_makefile_into(EvalContext                     &cxt,
 
       active_source_span          = logical.source_span;
       mk.active_source_name_index = logical.source_span.source_name_index;
+      mk.active_source_span       = logical.source_span;
 
       let line = logical.text.view();
 
