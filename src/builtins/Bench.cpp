@@ -261,7 +261,7 @@ format_metric(double      value,
 
   char buffer[64];
 
-  std::snprintf(buffer, sizeof(buffer), "%.3g%s", scaled, suffix);
+  snprintf(buffer, sizeof(buffer), "%.3g%s", scaled, suffix);
 
   return String{allocator, buffer};
 }
@@ -362,12 +362,12 @@ append_relative_line(String             &out,
   char buffer[128];
 
   if (ratio > 1.0) {
-    std::snprintf(buffer, sizeof(buffer), "%.2fx slower +/- %.2f", ratio,
-                  ratio_uncertainty);
+    snprintf(buffer, sizeof(buffer), "%.2fx slower +/- %.2f", ratio,
+             ratio_uncertainty);
     out.append(colored(colors::ansi::BOLD_RED, should_color));
   } else {
-    std::snprintf(buffer, sizeof(buffer), "%.2fx faster +/- %.2f", 1.0 / ratio,
-                  ratio_uncertainty / (ratio * ratio));
+    snprintf(buffer, sizeof(buffer), "%.2fx faster +/- %.2f", 1.0 / ratio,
+             ratio_uncertainty / (ratio * ratio));
     out.append(colored(colors::ansi::BOLD_GREEN, should_color));
   }
 

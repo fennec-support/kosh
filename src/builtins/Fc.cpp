@@ -164,7 +164,7 @@ replace_all(StringView source,
     let const remaining = source.length - position;
 
     if (remaining >= pattern.length &&
-        std::memcmp(source.data + position, pattern.data, pattern.length) == 0)
+        memcmp(source.data + position, pattern.data, pattern.length) == 0)
     {
       result.append(replacement);
       position += pattern.length;

@@ -57,7 +57,7 @@ path_root_length(StringView path) wontthrow -> usize
 fn
 temp_directory_path() throws -> String
 {
-  if (const char *from_env = std::getenv("TMPDIR");
+  if (const char *from_env = getenv("TMPDIR");
       from_env != nullptr && !is_running_secure())
   {
     return String{heap_allocator(), from_env};

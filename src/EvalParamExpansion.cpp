@@ -4184,14 +4184,14 @@ EvalContext::apply_case_modification_to_value(
     const unsigned char byte      = static_cast<unsigned char>(character);
 
     if (op == '^') {
-      character = static_cast<char>(std::toupper(byte));
+      character = static_cast<char>(toupper(byte));
     } else if (op == ',') {
-      character = static_cast<char>(std::tolower(byte));
+      character = static_cast<char>(tolower(byte));
     } else {
-      if (std::islower(byte) != 0)
-        character = static_cast<char>(std::toupper(byte));
-      else if (std::isupper(byte) != 0)
-        character = static_cast<char>(std::tolower(byte));
+      if (islower(byte) != 0)
+        character = static_cast<char>(toupper(byte));
+      else if (isupper(byte) != 0)
+        character = static_cast<char>(tolower(byte));
     }
 
     out.push(character);

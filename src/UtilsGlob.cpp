@@ -380,18 +380,18 @@ extglob_full_match(StringView    glob,
 using posix_class_test = bool (*)(u8 byte);
 
 constexpr static_string_entry<posix_class_test> POSIX_CLASS_ENTRIES[] = {
-    {SSK("alnum"),  [](u8 byte) { return std::isalnum(byte) != 0; } },
-    {SSK("alpha"),  [](u8 byte) { return std::isalpha(byte) != 0; } },
-    {SSK("blank"),  [](u8 byte) { return std::isblank(byte) != 0; } },
-    {SSK("cntrl"),  [](u8 byte) { return std::iscntrl(byte) != 0; } },
-    {SSK("digit"),  [](u8 byte) { return std::isdigit(byte) != 0; } },
-    {SSK("graph"),  [](u8 byte) { return std::isgraph(byte) != 0; } },
-    {SSK("lower"),  [](u8 byte) { return std::islower(byte) != 0; } },
-    {SSK("print"),  [](u8 byte) { return std::isprint(byte) != 0; } },
-    {SSK("punct"),  [](u8 byte) { return std::ispunct(byte) != 0; } },
-    {SSK("space"),  [](u8 byte) { return std::isspace(byte) != 0; } },
-    {SSK("upper"),  [](u8 byte) { return std::isupper(byte) != 0; } },
-    {SSK("xdigit"), [](u8 byte) { return std::isxdigit(byte) != 0; }},
+    {SSK("alnum"),  [](u8 byte) { return isalnum(byte) != 0; } },
+    {SSK("alpha"),  [](u8 byte) { return isalpha(byte) != 0; } },
+    {SSK("blank"),  [](u8 byte) { return isblank(byte) != 0; } },
+    {SSK("cntrl"),  [](u8 byte) { return iscntrl(byte) != 0; } },
+    {SSK("digit"),  [](u8 byte) { return isdigit(byte) != 0; } },
+    {SSK("graph"),  [](u8 byte) { return isgraph(byte) != 0; } },
+    {SSK("lower"),  [](u8 byte) { return islower(byte) != 0; } },
+    {SSK("print"),  [](u8 byte) { return isprint(byte) != 0; } },
+    {SSK("punct"),  [](u8 byte) { return ispunct(byte) != 0; } },
+    {SSK("space"),  [](u8 byte) { return isspace(byte) != 0; } },
+    {SSK("upper"),  [](u8 byte) { return isupper(byte) != 0; } },
+    {SSK("xdigit"), [](u8 byte) { return isxdigit(byte) != 0; }},
 };
 
 constexpr StaticStringMap POSIX_CLASSES{POSIX_CLASS_ENTRIES};
@@ -467,7 +467,7 @@ locale_is_installed(StringView locale_name) wontthrow -> bool
 
   for (let const &entry : cache) {
     if (entry.name_length == locale_name.length &&
-        std::memcmp(entry.name, locale_name.data, locale_name.length) == 0)
+        memcmp(entry.name, locale_name.data, locale_name.length) == 0)
     {
       return entry.is_available;
     }
@@ -476,7 +476,7 @@ locale_is_installed(StringView locale_name) wontthrow -> bool
   let &slot = cache[next_slot];
 
   next_slot = (next_slot + 1) % CACHE_ENTRY_COUNT;
-  std::memcpy(slot.name, locale_name.data, locale_name.length);
+  memcpy(slot.name, locale_name.data, locale_name.length);
   slot.name_length  = static_cast<u8>(locale_name.length);
   slot.is_available = os::locale_is_available(locale_name);
 

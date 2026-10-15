@@ -65,7 +65,7 @@ intern_source_name(StringView name) throws -> u32
     let const &row = table[row_index];
 
     if (row.kind == kind && row.length == name.length &&
-        std::memcmp(row.data, name.data, name.length) == 0)
+        memcmp(row.data, name.data, name.length) == 0)
     {
       return static_cast<u32>(row_index + 1);
     }
@@ -73,7 +73,7 @@ intern_source_name(StringView name) throws -> u32
 
   let const copy = heap_allocator().alloc_array<char>(name.length + 1);
 
-  std::memcpy(copy, name.data, name.length);
+  memcpy(copy, name.data, name.length);
   copy[name.length] = '\0';
   table.push(interned_source_name{copy, static_cast<u32>(name.length), kind});
 

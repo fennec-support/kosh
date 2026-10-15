@@ -104,7 +104,7 @@ find_byte(const char *bytes, usize byte_count, unsigned char wanted) wontthrow
     -> const char *
 {
   if (byte_count >= LIBRARY_SCAN_CROSSOVER) {
-    return static_cast<const char *>(std::memchr(bytes, wanted, byte_count));
+    return static_cast<const char *>(memchr(bytes, wanted, byte_count));
   }
 
   usize position = 0;

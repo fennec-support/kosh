@@ -148,7 +148,7 @@ parse_printf_float(const String &arg) throws -> printf_float
 
   let const *const start = arg.c_str();
   char            *end   = nullptr;
-  let const        value = std::strtod(start, &end);
+  let const        value = strtod(start, &end);
 
   return {value, end != start && end == start + arg.count()};
 }
@@ -196,7 +196,7 @@ get_numeric_locale_environment() throws
 
       environment.value_lengths[name_index] = static_cast<u8>(text.length);
       if (!text.is_empty()) {
-        std::memcpy(environment.values[name_index], text.data, text.length);
+        memcpy(environment.values[name_index], text.data, text.length);
         environment.inherited_name =
             StringView{environment.values[name_index], text.length};
       }
@@ -523,7 +523,7 @@ append_conversion(String                &out,
 
   let const do_append_formatted = [&](const char *format,
                                       auto        value) throws {
-    const int needed = std::snprintf(buffer, sizeof(buffer), format, value);
+    const int needed = snprintf(buffer, sizeof(buffer), format, value);
 
     if (needed >= 0 && static_cast<usize>(needed) < sizeof(buffer)) {
       out += buffer;
@@ -534,7 +534,7 @@ append_conversion(String                &out,
       if (heap_buffer != nullptr) {
         defer { allocator.free_array(heap_buffer, size); };
 
-        std::snprintf(heap_buffer, size, format, value);
+        snprintf(heap_buffer, size, format, value);
         out += StringView{heap_buffer, static_cast<usize>(needed)};
       }
     }
@@ -753,7 +753,7 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       bool has_grouping_flag = false;
 
-      while (i < fmt.length() && std::strchr("-+ 0#'", fmt[i]) != nullptr) {
+      while (i < fmt.length() && strchr("-+ 0#'", fmt[i]) != nullptr) {
         if (fmt[i] == '\'') {
           has_grouping_flag = true;
           i++;

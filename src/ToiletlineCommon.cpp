@@ -360,7 +360,7 @@ get_utf8_length(const char *bytes, usize byte_count) -> usize
   while (byte_offset + sizeof(u64) <= byte_count) {
     u64 word;
 
-    std::memcpy(&word, bytes + byte_offset, sizeof(word));
+    memcpy(&word, bytes + byte_offset, sizeof(word));
     if (((word - LOW_BITS) & ~word & HIGH_BITS) != 0) break;
 
     let const continuation_bits = word & ~(word << 1) & HIGH_BITS;

@@ -214,7 +214,7 @@ Cmp::execute(const ExecContext               &ec,
       let const *right_bytes  = right.buffer + right.position;
       usize      equal_length = common_length;
 
-      if (std::memcmp(left_bytes, right_bytes, common_length) != 0) {
+      if (memcmp(left_bytes, right_bytes, common_length) != 0) {
         equal_length = 0;
 
         while (left_bytes[equal_length] == right_bytes[equal_length])

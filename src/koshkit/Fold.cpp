@@ -43,7 +43,7 @@ append_folded_line(String         &output,
 
     if (break_mode == fold_break_mode::Blank) {
       for (usize offset = width; offset > 0; offset--)
-        if (std::isspace(static_cast<u8>(line[start + offset - 1])) != 0) {
+        if (isspace(static_cast<u8>(line[start + offset - 1])) != 0) {
           break_length = offset;
           break;
         }

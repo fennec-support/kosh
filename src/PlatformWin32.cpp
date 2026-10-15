@@ -66,7 +66,7 @@ kosh_regex_allocate_zeroed(size_t count, size_t length)
   let const payload_length = count * length;
   let       pointer        = kosh_regex_allocate(payload_length);
 
-  if (pointer != nullptr) std::memset(pointer, 0, payload_length);
+  if (pointer != nullptr) memset(pointer, 0, payload_length);
 
   return pointer;
 }
@@ -1758,7 +1758,7 @@ code_point_is_in_class(StringView class_name, u32 code_point) wontthrow -> bool
     return false;
   }
 
-  std::memcpy(name, class_name.data, class_name.length);
+  memcpy(name, class_name.data, class_name.length);
   name[class_name.length] = '\0';
 
   let const kind = wctype(name);
@@ -2080,8 +2080,8 @@ terminal_settings(descriptor                    terminal,
   if (GetConsoleMode(terminal, &console_mode) == FALSE) return None;
   if (mode == terminal_settings_output_mode::Encoded) {
     char      encoded[32];
-    let const length = std::snprintf(encoded, sizeof(encoded), "win32:%08lx\n",
-                                     static_cast<unsigned long>(console_mode));
+    let const length = snprintf(encoded, sizeof(encoded), "win32:%08lx\n",
+                                static_cast<unsigned long>(console_mode));
 
     return String{
         allocator, StringView{encoded, static_cast<usize>(length)}
@@ -2128,7 +2128,7 @@ apply_terminal_settings(descriptor               terminal,
     if (setting.starts_with(StringView{"win32:"})) {
       let const encoded = String{heap_allocator(), setting.substring(6)};
       char     *end     = nullptr;
-      let const parsed  = std::strtoul(encoded.c_str(), &end, 16);
+      let const parsed  = strtoul(encoded.c_str(), &end, 16);
 
       if (end == encoded.c_str() || *end != '\0' || parsed > MAXDWORD) {
         return {terminal_settings_apply_kind::InvalidSetting, setting_position};

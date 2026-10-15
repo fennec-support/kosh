@@ -59,8 +59,8 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
     return None;
   }
 
-  let const  now     = std::time(nullptr);
-  let const *current = std::localtime(&now);
+  let const  now     = time(nullptr);
+  let const *current = localtime(&now);
 
   if (current == nullptr) throw Error{"cannot read the current time"};
 
@@ -114,7 +114,7 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
   value.tm_sec   = second;
   value.tm_isdst = -1;
 
-  let const timestamp = std::mktime(&value);
+  let const timestamp = mktime(&value);
 
   if (timestamp == static_cast<time_t>(-1) || value.tm_mon != month - 1 ||
       value.tm_mday != day || value.tm_hour != hour || value.tm_min != minute ||
@@ -204,7 +204,7 @@ Touch::execute(const ExecContext               &ec,
       continue;
     }
 
-    let const now = static_cast<i64>(std::time(nullptr));
+    let const now = static_cast<i64>(time(nullptr));
     let const selected_access_time =
         FLAG_TOUCH_REFERENCE.is_set() ? reference_status.access_time
         : requested_time.has_value()  ? *requested_time

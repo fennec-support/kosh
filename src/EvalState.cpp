@@ -2778,8 +2778,7 @@ EvalContext::make_subshell_bootstrap() const throws
 
   char mask_text[8];
 
-  std::snprintf(mask_text, sizeof(mask_text), "%04o",
-                os::get_file_creation_mask());
+  snprintf(mask_text, sizeof(mask_text), "%04o", os::get_file_creation_mask());
   source += "umask ";
   source += mask_text;
   source.push('\n');

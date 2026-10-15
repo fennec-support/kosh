@@ -97,7 +97,7 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 
   let const fresh = tl_arena_malloc(length);
   if (fresh == nullptr) return nullptr;
-  std::memcpy(fresh, pointer, old_capacity);
+  memcpy(fresh, pointer, old_capacity);
   tl_arena_free(pointer);
 
   return fresh;
@@ -106,7 +106,7 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 #define TL_MALLOC  tl_arena_malloc
 #define TL_REALLOC tl_arena_realloc
 #define TL_FREE    tl_arena_free
-#define TL_ABORT() std::abort()
+#define TL_ABORT() abort()
 
 #define TL_NO_SUSPEND
 #define TL_CTRL_Z_UNDO
@@ -1102,8 +1102,8 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 
       if (style.length + emphasis.length >= sizeof(slot)) return fallback;
 
-      if (!style.is_empty()) std::memcpy(slot, style.data, style.length);
-      std::memcpy(slot + style.length, emphasis.data, emphasis.length);
+      if (!style.is_empty()) memcpy(slot, style.data, style.length);
+      memcpy(slot + style.length, emphasis.data, emphasis.length);
       slot[style.length + emphasis.length] = '\0';
       bracket_style_count++;
 
@@ -1624,8 +1624,7 @@ restore_history_snapshot(const history_snapshot &snapshot) -> void
   if (!snapshot.path.is_empty()) {
     ::itl_g_history_path =
         static_cast<char *>(::itl_malloc(snapshot.path.count() + 1));
-    std::memcpy(::itl_g_history_path, snapshot.path.data(),
-                snapshot.path.count());
+    memcpy(::itl_g_history_path, snapshot.path.data(), snapshot.path.count());
     ::itl_g_history_path[snapshot.path.count()] = '\0';
   }
 
@@ -1756,7 +1755,7 @@ reset_private_history(const Path &path) -> void
   ::itl_g_history_free();
   ::itl_g_history_path =
       static_cast<char *>(::itl_malloc(path.text().count() + 1));
-  std::memcpy(::itl_g_history_path, path.text().data(), path.text().count());
+  memcpy(::itl_g_history_path, path.text().data(), path.text().count());
   ::itl_g_history_path[path.text().count()] = '\0';
   ::itl_g_history_file_is_bad               = false;
   ::itl_g_history_read_buffer               = ::itl_char_buf_alloc();
@@ -3258,12 +3257,12 @@ format_prompt_duration(u64 nanos) throws -> String
 static fn
 prompt_strftime(const char *format) throws -> String
 {
-  std::time_t now   = std::time(nullptr);
-  std::tm    *local = std::localtime(&now);
+  std::time_t now   = time(nullptr);
+  std::tm    *local = localtime(&now);
 
   if (local == nullptr) return String{koshka::heap_allocator()};
   char  buffer[128];
-  usize written = std::strftime(buffer, sizeof(buffer), format, local);
+  usize written = strftime(buffer, sizeof(buffer), format, local);
 
   return String{
       koshka::heap_allocator(), StringView{buffer, written}

@@ -173,7 +173,7 @@ Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
     } else {
       char buffer[8];
 
-      std::snprintf(buffer, sizeof(buffer), "%04o", mask);
+      snprintf(buffer, sizeof(buffer), "%04o", mask);
       out += buffer;
     }
 

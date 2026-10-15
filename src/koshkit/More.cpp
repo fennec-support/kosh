@@ -166,7 +166,7 @@ More::execute(const ExecContext               &ec,
                      remaining.substring_of_length(0, line_length)};
 
           if (FLAG_MORE_CASE.is_enabled()) searchable.lowercase_ascii();
-          if (std::strstr(searchable.c_str(), pattern.c_str()) != nullptr) {
+          if (strstr(searchable.c_str(), pattern.c_str()) != nullptr) {
             output_start = search_position;
             break;
           }

@@ -35,7 +35,7 @@ String::adopt_storage_of(String &&other) wontthrow -> void
 {
   m_ascii_state = other.m_ascii_state;
   if (other.is_inline()) {
-    std::memcpy(m_inline, other.m_inline, other.m_length + 1);
+    memcpy(m_inline, other.m_inline, other.m_length + 1);
     m_data     = m_inline;
     m_length   = other.m_length;
     m_capacity = INLINE_CAPACITY;
@@ -157,7 +157,7 @@ String::reserve(usize needed) throws -> void
   let       fresh            = m_allocator.alloc_array<char>(new_capacity);
   let const preserved_length = m_length;
 
-  if (preserved_length > 0) std::memcpy(fresh, m_data, preserved_length);
+  if (preserved_length > 0) memcpy(fresh, m_data, preserved_length);
   fresh[preserved_length] = '\0';
 
   let const preserved_state = m_ascii_state;

@@ -2141,7 +2141,7 @@ next_relay_write_length(const substitution_relay &relay) wontthrow -> DWORD
 
   let const line_start = relay.ring + start;
   let const newline    = static_cast<const char *>(
-      std::memchr(line_start, '\n', static_cast<usize>(length)));
+      memchr(line_start, '\n', static_cast<usize>(length)));
   if (newline == nullptr) return static_cast<DWORD>(length);
 
   return static_cast<DWORD>(newline - line_start + 1);

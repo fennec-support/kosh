@@ -17,14 +17,14 @@ class String;
 #if !defined NDEBUG
 #define TRACE(...)                                                             \
   do {                                                                         \
-    unused(std::fprintf(stderr, "[TRACE] " __FILE__ ":%d: ", __LINE__));       \
-    unused(std::fprintf(stderr, __VA_ARGS__));                                 \
+    unused(fprintf(stderr, "[TRACE] " __FILE__ ":%d: ", __LINE__));            \
+    unused(fprintf(stderr, __VA_ARGS__));                                      \
     unused(fflush(stderr));                                                    \
   } while (0)
 #define TRACELN(...)                                                           \
   do {                                                                         \
-    unused(std::fprintf(stderr, "[TRACE] " __FILE__ ":%d: ", __LINE__));       \
-    unused(std::fprintf(stderr, __VA_ARGS__));                                 \
+    unused(fprintf(stderr, "[TRACE] " __FILE__ ":%d: ", __LINE__));            \
+    unused(fprintf(stderr, __VA_ARGS__));                                      \
     unused(fputc('\n', stderr));                                               \
     unused(fflush(stderr));                                                    \
   } while (0)

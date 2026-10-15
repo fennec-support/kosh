@@ -452,21 +452,21 @@ label_of_magic(const char *bytes, usize byte_count) wontthrow -> StringView
 
   switch (static_cast<unsigned char>(bytes[0])) {
   case 'E':
-    if (byte_count >= 8 && std::memcmp(bytes, "ElfFile\0", 8) == 0) {
+    if (byte_count >= 8 && memcmp(bytes, "ElfFile\0", 8) == 0) {
       return "evtx";
     }
 
     break;
 
   case 'L':
-    if (byte_count >= 8 && std::memcmp(bytes, "LPKSHHRH", 8) == 0) {
+    if (byte_count >= 8 && memcmp(bytes, "LPKSHHRH", 8) == 0) {
       return "journal";
     }
 
     break;
 
   case 'S':
-    if (byte_count >= 6 && std::memcmp(bytes, "SQLite", 6) == 0) {
+    if (byte_count >= 6 && memcmp(bytes, "SQLite", 6) == 0) {
       return "sqlite";
     }
 
@@ -480,10 +480,10 @@ label_of_magic(const char *bytes, usize byte_count) wontthrow -> StringView
     break;
 
   case 0xfd:
-    if (byte_count >= 6 && std::memcmp(bytes,
-                                       "\xfd"
-                                       "7zXZ",
-                                       6) == 0)
+    if (byte_count >= 6 && memcmp(bytes,
+                                  "\xfd"
+                                  "7zXZ",
+                                  6) == 0)
     {
       return "xz";
     }
@@ -501,7 +501,7 @@ label_of_magic(const char *bytes, usize byte_count) wontthrow -> StringView
     break;
 
   case 'B':
-    if (byte_count >= 3 && std::memcmp(bytes, "BZh", 3) == 0) {
+    if (byte_count >= 3 && memcmp(bytes, "BZh", 3) == 0) {
       return "bzip2";
     }
 

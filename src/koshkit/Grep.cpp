@@ -178,7 +178,7 @@ is_ascii_line(StringView line) wontthrow -> bool
   for (; index + sizeof(u64) <= line.length; index += sizeof(u64)) {
     u64 word = 0;
 
-    std::memcpy(&word, line.data + index, sizeof(word));
+    memcpy(&word, line.data + index, sizeof(word));
     if ((word & HIGH_BITS) != 0) return false;
   }
 

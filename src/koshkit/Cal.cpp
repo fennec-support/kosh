@@ -151,8 +151,8 @@ Cal::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let const  now   = std::time(nullptr);
-  let const *local = std::localtime(&now);
+  let const  now   = time(nullptr);
+  let const *local = localtime(&now);
 
   if (local == nullptr) throw Error{"cannot read the current date"};
 

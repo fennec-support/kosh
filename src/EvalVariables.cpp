@@ -409,7 +409,7 @@ EvalContext::write_dynamic_variable(StringView name,
   LOG(Debug, "moving the $SECONDS base to '%.*s'",
       static_cast<int>(value.length), value.data);
   dynamic_runtime_store().seconds_base() =
-      assigned - (static_cast<i64>(std::time(nullptr)) -
+      assigned - (static_cast<i64>(time(nullptr)) -
                   dynamic_runtime_store().shell_start_time());
 
   return true;
@@ -619,7 +619,7 @@ EvalContext::get_variable_value(StringView name) const throws
           return String::from(static_cast<usize>(next_random_u32() & 0x7fff),
                               heap_allocator());
         case dynamic_var::SECONDS:
-          return String::from(static_cast<i64>(std::time(nullptr)) -
+          return String::from(static_cast<i64>(time(nullptr)) -
                                   dynamic_runtime_store().shell_start_time() +
                                   dynamic_runtime_store().seconds_base(),
                               heap_allocator());
@@ -632,15 +632,14 @@ EvalContext::get_variable_value(StringView name) const throws
                               heap_allocator());
         }
         case dynamic_var::EPOCHSECONDS:
-          return String::from(static_cast<i64>(std::time(nullptr)),
+          return String::from(static_cast<i64>(time(nullptr)),
                               heap_allocator());
         case dynamic_var::EPOCHREALTIME: {
           let const microseconds = os::realtime_microseconds();
           char      fraction[8];
 
-          std::snprintf(
-              fraction, sizeof(fraction), "%06llu",
-              static_cast<unsigned long long>(microseconds % 1000000ULL));
+          snprintf(fraction, sizeof(fraction), "%06llu",
+                   static_cast<unsigned long long>(microseconds % 1000000ULL));
 
           return String::from(static_cast<i64>(microseconds / 1000000ULL),
                               heap_allocator()) +

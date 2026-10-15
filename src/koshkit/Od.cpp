@@ -468,7 +468,7 @@ Od::execute(const ExecContext               &ec,
       return;
     }
 
-    std::memcpy(previous_row_bytes, row.data, row_length);
+    memcpy(previous_row_bytes, row.data, row_length);
     previous_row_length = row_length;
     has_previous_row    = true;
     did_suppress        = false;
@@ -604,7 +604,7 @@ Od::execute(const ExecContext               &ec,
                               ? OD_ROW_LENGTH - row_length
                               : available;
 
-        std::memcpy(row_bytes + row_length, chunk + position, taken);
+        memcpy(row_bytes + row_length, chunk + position, taken);
         row_length += taken;
         position += taken;
         dumped_count += taken;

@@ -786,34 +786,32 @@ print_memory_report() wontthrow -> void
   if (QUIT_CONTEXT != nullptr &&
       QUIT_CONTEXT->arena_store().parse_arena() != nullptr)
   {
-    std::fprintf(
-        stderr,
-        "AST arena: used %zu, reserved %zu, blocks %zu, destructors "
-        "%zu of %zu\n",
-        QUIT_CONTEXT->arena_store().parse_arena()->bytes_used(),
-        QUIT_CONTEXT->arena_store().parse_arena()->bytes_capacity(),
-        QUIT_CONTEXT->arena_store().parse_arena()->block_count(),
-        QUIT_CONTEXT->arena_store().parse_arena()->destructor_count(),
-        QUIT_CONTEXT->arena_store().parse_arena()->destructor_capacity());
+    fprintf(stderr,
+            "AST arena: used %zu, reserved %zu, blocks %zu, destructors "
+            "%zu of %zu\n",
+            QUIT_CONTEXT->arena_store().parse_arena()->bytes_used(),
+            QUIT_CONTEXT->arena_store().parse_arena()->bytes_capacity(),
+            QUIT_CONTEXT->arena_store().parse_arena()->block_count(),
+            QUIT_CONTEXT->arena_store().parse_arena()->destructor_count(),
+            QUIT_CONTEXT->arena_store().parse_arena()->destructor_capacity());
   }
 
   if (QUIT_CONTEXT != nullptr) {
     let const stats = QUIT_CONTEXT->function_storage_stats();
 
-    std::fprintf(stderr,
-                 "Function arenas: used %zu, reserved %zu, blocks %zu, "
-                 "destructors %zu of %zu\n",
-                 stats.bytes_used, stats.bytes_capacity, stats.block_count,
-                 stats.destructor_count, stats.destructor_capacity);
+    fprintf(stderr,
+            "Function arenas: used %zu, reserved %zu, blocks %zu, "
+            "destructors %zu of %zu\n",
+            stats.bytes_used, stats.bytes_capacity, stats.block_count,
+            stats.destructor_count, stats.destructor_capacity);
   }
 
   os::malloc_heap_stats heap_stats{};
 
   if (os::read_malloc_heap_stats(heap_stats))
-    std::fprintf(stderr,
-                 "Malloc heap: in use %zu, total arena %zu, mmapped %zu\n",
-                 heap_stats.bytes_in_use, heap_stats.arena_byte_count,
-                 heap_stats.mapped_byte_count);
+    fprintf(stderr, "Malloc heap: in use %zu, total arena %zu, mmapped %zu\n",
+            heap_stats.bytes_in_use, heap_stats.arena_byte_count,
+            heap_stats.mapped_byte_count);
 }
 
 wontreturn fn
@@ -878,7 +876,7 @@ quit(i32 code, farewell_policy farewell) throws -> void
     }
   }
 
-  std::exit(actual_code);
+  exit(actual_code);
 }
 
 } /* namespace utils */

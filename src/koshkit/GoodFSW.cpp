@@ -207,14 +207,14 @@ format_watch_timestamp(i64                           seconds,
 {
   let const  when        = static_cast<time_t>(seconds);
   let const *broken_down = format.timezone == timestamp_timezone::UTC
-                               ? std::gmtime(&when)
-                               : std::localtime(&when);
+                               ? gmtime(&when)
+                               : localtime(&when);
 
   if (broken_down == nullptr) return String{allocator};
 
   char      date_buffer[32];
-  let const date_length = std::strftime(date_buffer, sizeof(date_buffer),
-                                        "%Y-%m-%d %H:%M:%S", broken_down);
+  let const date_length = strftime(date_buffer, sizeof(date_buffer),
+                                   "%Y-%m-%d %H:%M:%S", broken_down);
   let       text        = String{
       allocator, StringView{date_buffer, date_length}
   };
@@ -238,7 +238,7 @@ format_watch_timestamp(i64                           seconds,
   } else {
     char      zone_buffer[16];
     let const zone_length =
-        std::strftime(zone_buffer, sizeof(zone_buffer), "%z", broken_down);
+        strftime(zone_buffer, sizeof(zone_buffer), "%z", broken_down);
 
     text += StringView{zone_buffer, zone_length};
   }

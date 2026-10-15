@@ -164,8 +164,8 @@ Man::execute(const ExecContext               &ec,
           let lowered_name = String{cxt.scratch_allocator(), name};
 
           lowered_name.lowercase_ascii();
-          if (std::strstr(searchable.c_str(), keyword.c_str()) == nullptr &&
-              std::strstr(lowered_name.c_str(), keyword.c_str()) == nullptr)
+          if (strstr(searchable.c_str(), keyword.c_str()) == nullptr &&
+              strstr(lowered_name.c_str(), keyword.c_str()) == nullptr)
           {
             continue;
           }

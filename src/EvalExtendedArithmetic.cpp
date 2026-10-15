@@ -681,7 +681,7 @@ ArithmeticValue::from_magnitude(const u64 *limbs,
   let  result =
       allocate_promoted(count, is_negative, decimal_scale, arena, destination);
 
-  if (count > 0) std::memcpy(destination, limbs, count * sizeof(u64));
+  if (count > 0) memcpy(destination, limbs, count * sizeof(u64));
 
   return result;
 }
@@ -743,7 +743,7 @@ ArithmeticValue::from_power_of_two(usize      bit_position,
   u64      *limbs;
   let result = allocate_promoted(limb_count, is_negative, 0, arena, limbs);
 
-  std::memset(limbs, 0, limb_count * sizeof(u64));
+  memset(limbs, 0, limb_count * sizeof(u64));
   limbs[limb_position] = u64{1} << (bit_position % 64);
 
   return result;

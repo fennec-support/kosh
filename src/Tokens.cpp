@@ -778,7 +778,7 @@ SegmentText::grow_owned(usize needed) throws -> void
 
   let const fresh = heap_allocator().alloc_array<char>(new_capacity);
 
-  if (m_length > 0) std::memcpy(fresh, m_data, m_length);
+  if (m_length > 0) memcpy(fresh, m_data, m_length);
   if (m_capacity != 0) {
     heap_allocator().free_array(const_cast<char *>(m_data), m_capacity);
   }
@@ -810,7 +810,7 @@ SegmentText::append(StringView other) throws -> void
     if (is_aliased) other.data = m_data + source_offset;
   }
 
-  std::memcpy(const_cast<char *>(m_data) + m_length, other.data, other.length);
+  memcpy(const_cast<char *>(m_data) + m_length, other.data, other.length);
   m_length = static_cast<u32>(needed);
 }
 

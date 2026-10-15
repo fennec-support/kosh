@@ -88,7 +88,7 @@ public:
     let const bytes  = allocator.alloc_array<char>(length);
 
     bytes[0] = prefix;
-    if (suffix.length > 0) std::memcpy(bytes + 1, suffix.data, suffix.length);
+    if (suffix.length > 0) memcpy(bytes + 1, suffix.data, suffix.length);
     m_data     = bytes;
     m_length   = static_cast<u32>(length);
     m_capacity = allocator.get_kind() == Allocator::Kind::Heap
@@ -153,7 +153,7 @@ public:
 
     let const bytes = allocator.alloc_array<char>(source.length);
 
-    std::memcpy(bytes, source.data, source.length);
+    memcpy(bytes, source.data, source.length);
     release();
     m_data     = bytes;
     m_length   = static_cast<u32>(source.length);
@@ -260,8 +260,7 @@ public:
     if (needle.length > m_length) return None;
 
     for (usize start = from; start + needle.length <= m_length; start++) {
-      if (std::memcmp(m_data + start, needle.data, needle.length) == 0)
-        return start;
+      if (memcmp(m_data + start, needle.data, needle.length) == 0) return start;
     }
 
     return None;
@@ -316,7 +315,7 @@ public:
 
     let const bytes = allocator.alloc_array<char>(m_length);
 
-    std::memcpy(bytes, m_data, m_length);
+    memcpy(bytes, m_data, m_length);
     if (m_capacity != 0)
       heap_allocator().free_array(const_cast<char *>(m_data), m_capacity);
     m_data     = bytes;

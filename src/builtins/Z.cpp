@@ -74,7 +74,7 @@ frecency_store_path() throws -> Maybe<Path>
 static fn
 now_epoch_seconds() wontthrow -> i64
 {
-  return static_cast<i64>(std::time(nullptr));
+  return static_cast<i64>(time(nullptr));
 }
 
 static fn

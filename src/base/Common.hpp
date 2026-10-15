@@ -87,7 +87,11 @@
 #include <clocale>
 #include <cmath>
 #include <cstring>
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <type_traits>
 #include <initializer_list>

@@ -509,8 +509,7 @@ find_flag(const FlagList &flags,
     let const after_name = flag_start[flag_length];
 
     if (flag_length > longest_length &&
-        std::strncmp(flags[i]->long_name().data, flag_start, flag_length) ==
-            0 &&
+        strncmp(flags[i]->long_name().data, flag_start, flag_length) == 0 &&
         (after_name == '\0' || after_name == '='))
     {
       match.flag        = flags[i];
@@ -2097,7 +2096,7 @@ print_error(StringView text) throws -> void
 fn
 flush() throws -> void
 {
-  if (std::fflush(stdout) != 0)
+  if (fflush(stdout) != 0)
     throw Error{"Unable to flush standard output: " +
                 os::last_system_error_message()};
 }

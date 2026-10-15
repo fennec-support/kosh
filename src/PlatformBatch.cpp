@@ -171,7 +171,7 @@ is_same_metadata_request(const batch_internal::batched_syscall &left,
         batch_internal::batch_operation_access::get_relative_name(right);
 
     return left_name != nullptr && right_name != nullptr &&
-           std::strcmp(left_name, right_name) == 0;
+           strcmp(left_name, right_name) == 0;
   }
   case batch_operation::Kind::Read:
   case batch_operation::Kind::Write:

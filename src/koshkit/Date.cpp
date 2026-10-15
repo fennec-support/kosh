@@ -39,9 +39,9 @@ Date::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let const  now = std::time(nullptr);
+  let const  now = time(nullptr);
   let const *broken_down =
-      FLAG_DATE_UTC.is_enabled() ? std::gmtime(&now) : std::localtime(&now);
+      FLAG_DATE_UTC.is_enabled() ? gmtime(&now) : localtime(&now);
 
   if (broken_down == nullptr) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
@@ -55,7 +55,7 @@ Date::execute(const ExecContext               &ec,
   let const format_text = String{cxt.scratch_allocator(), format};
   char      buffer[8192];
   let const length =
-      std::strftime(buffer, sizeof(buffer), format_text.c_str(), broken_down);
+      strftime(buffer, sizeof(buffer), format_text.c_str(), broken_down);
 
   if (length == 0 && !format.is_empty()) {
     let const location =

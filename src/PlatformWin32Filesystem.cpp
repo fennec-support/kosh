@@ -914,10 +914,9 @@ restore_current_directory(const DirectoryReference &reference) wontthrow -> bool
   }
 
   if (length >= 8 &&
-      std::memcmp(path.begin(), L"\\\\?\\UNC\\", 8 * sizeof(wchar_t)) == 0)
+      memcmp(path.begin(), L"\\\\?\\UNC\\", 8 * sizeof(wchar_t)) == 0)
   {
-    std::memmove(path.begin() + 2, path.begin() + 8,
-                 (length - 7) * sizeof(wchar_t));
+    memmove(path.begin() + 2, path.begin() + 8, (length - 7) * sizeof(wchar_t));
     path.begin()[0] = L'\\';
     path.begin()[1] = L'\\';
 
@@ -925,8 +924,7 @@ restore_current_directory(const DirectoryReference &reference) wontthrow -> bool
   }
 
   let const *restored_path =
-      length >= 4 &&
-              std::memcmp(path.begin(), L"\\\\?\\", 4 * sizeof(wchar_t)) == 0
+      length >= 4 && memcmp(path.begin(), L"\\\\?\\", 4 * sizeof(wchar_t)) == 0
           ? path.begin() + 4
           : path.begin();
 
@@ -1177,7 +1175,7 @@ acquire_process_lock(StringView path) throws -> Maybe<descriptor>
     absolute_path.begin()[length++] = L'\\';
   }
 
-  std::memcpy(absolute_path.begin() + length, LOCK_NAME, sizeof(LOCK_NAME));
+  memcpy(absolute_path.begin() + length, LOCK_NAME, sizeof(LOCK_NAME));
 
   SECURITY_ATTRIBUTES attributes{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
 
@@ -1270,8 +1268,8 @@ write_to_named_temp_file(const Path &directory,
   wchar_t   prefix_text[4]{L'x', L'x', L'x', L'\0'};
   let const prefix_length = static_cast<usize>(lstrlenW(wide_prefix->begin()));
 
-  std::memcpy(prefix_text, wide_prefix->begin(),
-              (prefix_length < 3 ? prefix_length : 3) * sizeof(wchar_t));
+  memcpy(prefix_text, wide_prefix->begin(),
+         (prefix_length < 3 ? prefix_length : 3) * sizeof(wchar_t));
 
   wchar_t temp_path[MAX_PATH];
   HANDLE  handle = INVALID_HANDLE_VALUE;
@@ -2120,13 +2118,13 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
 
   bool is_unc_target = false;
   if (is_substitute_name && wide_target_length >= 8 &&
-      std::memcmp(wide_target, UNC_NAMESPACE_PREFIX, 8 * sizeof(WCHAR)) == 0)
+      memcmp(wide_target, UNC_NAMESPACE_PREFIX, 8 * sizeof(WCHAR)) == 0)
   {
     wide_target += 8;
     wide_target_length -= 8;
     is_unc_target = true;
   } else if (is_substitute_name && wide_target_length >= 4 &&
-             std::memcmp(wide_target, NAMESPACE_PREFIX, 4 * sizeof(WCHAR)) == 0)
+             memcmp(wide_target, NAMESPACE_PREFIX, 4 * sizeof(WCHAR)) == 0)
   {
     wide_target += 4;
     wide_target_length -= 4;

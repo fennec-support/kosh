@@ -273,8 +273,7 @@ linux_unix_socket_peers(Allocator allocator) throws
         {
           u32 peer_identity = 0;
 
-          std::memcpy(&peer_identity, RTA_DATA(attribute),
-                      sizeof(peer_identity));
+          memcpy(&peer_identity, RTA_DATA(attribute), sizeof(peer_identity));
           peer.peer_identity = peer_identity;
         }
 
@@ -283,8 +282,7 @@ linux_unix_socket_peers(Allocator allocator) throws
         {
           struct unix_diag_rqlen queue_lengths{};
 
-          std::memcpy(&queue_lengths, RTA_DATA(attribute),
-                      sizeof(queue_lengths));
+          memcpy(&queue_lengths, RTA_DATA(attribute), sizeof(queue_lengths));
           peer.receive_queue_byte_count = queue_lengths.udiag_rqueue;
           peer.send_queue_byte_count    = queue_lengths.udiag_wqueue;
         }
@@ -1186,9 +1184,9 @@ passwd_field(StringView line, usize index) wontthrow -> StringView;
 fn
 get_current_user() throws -> Maybe<String>
 {
-  if (const char *name = std::getenv("LOGNAME"); name != nullptr)
+  if (const char *name = getenv("LOGNAME"); name != nullptr)
     return String{heap_allocator(), name};
-  if (const char *name = std::getenv("USER"); name != nullptr)
+  if (const char *name = getenv("USER"); name != nullptr)
     return String{heap_allocator(), name};
 
   return uid_to_username(static_cast<u32>(getuid()));
@@ -1766,7 +1764,7 @@ allocate_aligned(usize length, usize alignment) wontthrow -> opaque *
 fn
 free_aligned(opaque *pointer) wontthrow -> void
 {
-  std::free(pointer);
+  free(pointer);
 }
 
 fn
@@ -1823,7 +1821,7 @@ locale_is_available(StringView locale_name) wontthrow -> bool
 
   if (locale_name.length >= sizeof(name)) return false;
 
-  std::memcpy(name, locale_name.data, locale_name.length);
+  memcpy(name, locale_name.data, locale_name.length);
   name[locale_name.length] = '\0';
 
   let const created = newlocale(LC_CTYPE_MASK, name, nullptr);
@@ -1846,7 +1844,7 @@ code_point_is_in_class(StringView class_name, u32 code_point) wontthrow -> bool
     return false;
   }
 
-  std::memcpy(name, class_name.data, class_name.length);
+  memcpy(name, class_name.data, class_name.length);
   name[class_name.length] = '\0';
 
   let const kind = wctype_l(name, unicode_locale);
@@ -1892,7 +1890,7 @@ locale_has_dot_decimal_point(locale_t numeric_locale) wontthrow -> bool
   if (previous == nullptr) return false;
 
   char      half[8];
-  let const length = std::snprintf(half, sizeof(half), "%.1f", 0.5);
+  let const length = snprintf(half, sizeof(half), "%.1f", 0.5);
 
   uselocale(previous);
 
@@ -1911,7 +1909,7 @@ get_numeric_locale(StringView locale_name) wontthrow
 
   for (let const &entry : cache) {
     if (entry.name_length == locale_name.length &&
-        std::memcmp(entry.name, locale_name.data, locale_name.length) == 0)
+        memcmp(entry.name, locale_name.data, locale_name.length) == 0)
     {
       return &entry;
     }
@@ -1923,7 +1921,7 @@ get_numeric_locale(StringView locale_name) wontthrow
 
   if (slot.numeric_locale != nullptr) freelocale(slot.numeric_locale);
 
-  std::memcpy(slot.name, locale_name.data, locale_name.length);
+  memcpy(slot.name, locale_name.data, locale_name.length);
   slot.name[locale_name.length] = '\0';
   slot.name_length              = static_cast<u8>(locale_name.length);
 
@@ -2649,7 +2647,7 @@ has_environment_variable(StringView key) throws -> bool
 {
   const String key_string{heap_allocator(), key};
 
-  return std::getenv(key_string.c_str()) != nullptr;
+  return getenv(key_string.c_str()) != nullptr;
 }
 
 fn
@@ -2659,7 +2657,7 @@ get_environment_variable(StringView key) throws -> Maybe<String>
       static_cast<int>(key.length), key.data);
 
   const String key_string{heap_allocator(), key};
-  const char  *e = std::getenv(key_string.c_str());
+  const char  *e = getenv(key_string.c_str());
 
   if (e != nullptr) return String{heap_allocator(), e};
 
@@ -3034,7 +3032,7 @@ install_fatal_exit_hook(void (*hook)()) throws -> void
   if (was_installed) return;
 
   LOG(Info, "installing the fatal exit hook");
-  if (std::atexit(run_fatal_exit_hook) != 0) {
+  if (atexit(run_fatal_exit_hook) != 0) {
     throw Error{"Could not install the exit hook"};
   }
 

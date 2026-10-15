@@ -447,8 +447,8 @@ public:
       return false;
     }
 
-    std::memset(start_counters, 0, start_counter_count * sizeof(u64));
-    std::memset(end_counters, 0, start_counter_count * sizeof(u64));
+    memset(start_counters, 0, start_counter_count * sizeof(u64));
+    memset(end_counters, 0, start_counter_count * sizeof(u64));
 
     for (usize event_index = 0; event_index < EVENT_COUNT; event_index++) {
       if (counter_map[event_index] >= counter_count) return false;
@@ -762,9 +762,8 @@ format_proc_pid_path(char (&path)[64],
                      i64         process_id,
                      const char *suffix) wontthrow -> bool
 {
-  let const path_length =
-      std::snprintf(path, sizeof(path), "/proc/%lld%s",
-                    static_cast<long long>(process_id), suffix);
+  let const path_length = snprintf(path, sizeof(path), "/proc/%lld%s",
+                                   static_cast<long long>(process_id), suffix);
 
   return path_length > 0 && static_cast<usize>(path_length) < sizeof(path);
 }
@@ -1297,8 +1296,8 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
     if (parsed_pid.is_error()) continue;
 
     char      process_path[64];
-    let const process_path_length = std::snprintf(
-        process_path, sizeof(process_path), "/proc/%s", entry->d_name);
+    let const process_path_length =
+        snprintf(process_path, sizeof(process_path), "/proc/%s", entry->d_name);
 
     if (process_path_length <= 0 ||
         static_cast<usize>(process_path_length) >= sizeof(process_path))
@@ -1310,7 +1309,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
 
     if (!process_user_id.has_value()) continue;
 
-    std::memset(use_masks.begin(), 0, use_masks.count() * sizeof(u8));
+    memset(use_masks.begin(), 0, use_masks.count() * sizeof(u8));
 
     struct named_reference
     {
@@ -1325,7 +1324,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
 
     for (let const &reference : references) {
       char      reference_path[80];
-      let const length = std::snprintf(
+      let const length = snprintf(
           reference_path, sizeof(reference_path), "%s/%.*s", process_path,
           static_cast<int>(reference.name.length), reference.name.data);
 
@@ -1340,7 +1339,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
     }
 
     char      descriptor_path[80];
-    let const descriptor_path_length = std::snprintf(
+    let const descriptor_path_length = snprintf(
         descriptor_path, sizeof(descriptor_path), "%s/fd", process_path);
 
     if (descriptor_path_length > 0 &&
@@ -1370,17 +1369,17 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
 
     char      maps_path[80];
     let const maps_path_length =
-        std::snprintf(maps_path, sizeof(maps_path), "%s/maps", process_path);
+        snprintf(maps_path, sizeof(maps_path), "%s/maps", process_path);
 
     if (maps_path_length > 0 &&
         static_cast<usize>(maps_path_length) < sizeof(maps_path))
     {
-      if (FILE *maps = std::fopen(maps_path, "r"); maps != nullptr) {
-        defer { std::fclose(maps); };
+      if (FILE *maps = fopen(maps_path, "r"); maps != nullptr) {
+        defer { fclose(maps); };
 
         char line[4096];
 
-        while (std::fgets(line, sizeof(line), maps) != nullptr) {
+        while (fgets(line, sizeof(line), maps) != nullptr) {
           char *field = line;
 
           for (usize field_position = 0; field_position < 3; field_position++) {
@@ -1393,7 +1392,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
           }
 
           char     *end      = nullptr;
-          let const major_id = std::strtoull(field, &end, 16);
+          let const major_id = strtoull(field, &end, 16);
 
           if (end == field || *end != ':') {
             continue;
@@ -1401,7 +1400,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
 
           field = end + 1;
 
-          let const minor_id = std::strtoull(field, &end, 16);
+          let const minor_id = strtoull(field, &end, 16);
 
           if (end == field || *end != ' ') {
             continue;
@@ -1412,7 +1411,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
           while (*field == ' ')
             field++;
 
-          let const file_id = std::strtoull(field, &end, 10);
+          let const file_id = strtoull(field, &end, 10);
 
           if (end == field || file_id == 0) {
             continue;
@@ -2454,7 +2453,7 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
         continue;
       }
 
-      std::snprintf(name_buffer, sizeof(name_buffer), "%s", fallback_name);
+      snprintf(name_buffer, sizeof(name_buffer), "%s", fallback_name);
     }
 
     disk_io_status status{};
@@ -2601,7 +2600,7 @@ system_uptime_seconds() wontthrow -> Maybe<u64>
 
   if (read_small_file("/proc/uptime", buffer, sizeof(buffer)) == 0) return None;
 
-  return static_cast<u64>(std::strtoull(buffer, nullptr, 10));
+  return static_cast<u64>(strtoull(buffer, nullptr, 10));
 #else
 
   return None;
@@ -3442,7 +3441,7 @@ list_process_open_files(i64                      pid,
           continue;
         }
 
-        let const flags = std::strtol(line.data + 6, nullptr, 8);
+        let const flags = strtol(line.data + 6, nullptr, 8);
 
         switch (flags & O_ACCMODE) {
         case O_RDONLY: access = 'r'; break;
@@ -3507,7 +3506,7 @@ FileWatcher::watch(StringView path) wontthrow -> void
 
   char file_path[PATH_MAX];
 
-  std::memcpy(file_path, path.data, path.length);
+  memcpy(file_path, path.data, path.length);
   file_path[path.length] = '\0';
 
   char      directory_path[PATH_MAX];
@@ -3519,7 +3518,7 @@ FileWatcher::watch(StringView path) wontthrow -> void
   } else {
     let const directory_length = *slash == 0 ? usize{1} : *slash;
 
-    std::memcpy(directory_path, path.data, directory_length);
+    memcpy(directory_path, path.data, directory_length);
     directory_path[directory_length] = '\0';
   }
 

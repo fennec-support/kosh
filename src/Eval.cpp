@@ -57,9 +57,8 @@ EvalContext::EvalContext(startup_options   options,
   runtime_state().set_option(shell_option_id::Histexpand,
                              options.is_interactive);
 
-  dynamic_runtime_store().shell_start_time() =
-      static_cast<i64>(std::time(nullptr));
-  trap_store().startup_ignored_signals() = os::get_entry_ignored_signals();
+  dynamic_runtime_store().shell_start_time() = static_cast<i64>(time(nullptr));
+  trap_store().startup_ignored_signals()     = os::get_entry_ignored_signals();
 
   os::for_each_environment_name(this, [](opaque *context, StringView name) {
     static_cast<EvalContext *>(context)->mark_exported(name);

@@ -284,7 +284,7 @@ public:
     let const new_length = m_length + other.length;
 
     if (new_length < m_capacity) usually {
-      std::memcpy(m_data + m_length, other.data, other.length);
+      memcpy(m_data + m_length, other.data, other.length);
       m_length         = new_length;
       m_data[m_length] = '\0';
 
@@ -300,7 +300,7 @@ public:
     if (is_aliased) source_offset = source_address - storage_address;
     reserve(new_length);
     if (is_aliased) other.data = m_data + source_offset;
-    std::memcpy(m_data + m_length, other.data, other.length);
+    memcpy(m_data + m_length, other.data, other.length);
     m_length         = new_length;
     m_data[m_length] = '\0';
   }
@@ -316,8 +316,7 @@ public:
     let const new_length = m_length + repeat_count;
 
     if (new_length >= m_capacity) reserve(new_length);
-    std::memset(m_data + m_length, static_cast<unsigned char>(byte),
-                repeat_count);
+    memset(m_data + m_length, static_cast<unsigned char>(byte), repeat_count);
     m_length         = new_length;
     m_data[m_length] = '\0';
   }

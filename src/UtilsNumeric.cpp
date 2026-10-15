@@ -97,8 +97,8 @@ format_minutes_seconds(double seconds, i32 decimal_count) throws
   const double remainder = seconds - static_cast<double>(minutes * 60);
   char         buffer[64];
 
-  std::snprintf(buffer, sizeof(buffer), "%ldm%.*fs", static_cast<long>(minutes),
-                static_cast<int>(decimal_count), remainder);
+  snprintf(buffer, sizeof(buffer), "%ldm%.*fs", static_cast<long>(minutes),
+           static_cast<int>(decimal_count), remainder);
 
   return String{heap_allocator(), buffer};
 }
@@ -144,14 +144,14 @@ format_time_report_posix(double real_seconds,
   char buffer[64];
   let  report = String{heap_allocator()};
 
-  std::snprintf(buffer, sizeof(buffer), "real %.2f\n",
-                real_seconds < 0.0 ? 0.0 : real_seconds);
+  snprintf(buffer, sizeof(buffer), "real %.2f\n",
+           real_seconds < 0.0 ? 0.0 : real_seconds);
   report += buffer;
-  std::snprintf(buffer, sizeof(buffer), "user %.2f\n",
-                user_seconds < 0.0 ? 0.0 : user_seconds);
+  snprintf(buffer, sizeof(buffer), "user %.2f\n",
+           user_seconds < 0.0 ? 0.0 : user_seconds);
   report += buffer;
-  std::snprintf(buffer, sizeof(buffer), "sys %.2f\n",
-                system_seconds < 0.0 ? 0.0 : system_seconds);
+  snprintf(buffer, sizeof(buffer), "sys %.2f\n",
+           system_seconds < 0.0 ? 0.0 : system_seconds);
   report += buffer;
 
   return report;
@@ -187,7 +187,7 @@ format_time_report_pretty(double real_seconds,
   report += "  real   " + format_minutes_seconds(real_seconds) + "\n";
   report += "  user   " + format_minutes_seconds(user_seconds) + "\n";
   report += "  sys    " + format_minutes_seconds(system_seconds) + "\n";
-  std::snprintf(buffer, sizeof(buffer), "  cpu    %.0f%%\n", cpu_percent);
+  snprintf(buffer, sizeof(buffer), "  cpu    %.0f%%\n", cpu_percent);
   report += buffer;
 
   return report;
@@ -254,7 +254,7 @@ format_time_report_custom(StringView format,
               ? (user_seconds + system_seconds) / real_seconds * 100.0
               : 0.0;
 
-      std::snprintf(buffer, sizeof(buffer), "%.2f", cpu_percent);
+      snprintf(buffer, sizeof(buffer), "%.2f", cpu_percent);
       report += buffer;
       continue;
     }
@@ -271,12 +271,11 @@ format_time_report_custom(StringView format,
       const i64    minutes   = static_cast<i64>(value) / 60;
       const double remainder = value - static_cast<double>(minutes * 60);
 
-      std::snprintf(buffer, sizeof(buffer), "%ldm%.*fs",
-                    static_cast<long>(minutes), static_cast<int>(precision),
-                    remainder);
+      snprintf(buffer, sizeof(buffer), "%ldm%.*fs", static_cast<long>(minutes),
+               static_cast<int>(precision), remainder);
     } else {
-      std::snprintf(buffer, sizeof(buffer), "%.*f", static_cast<int>(precision),
-                    value);
+      snprintf(buffer, sizeof(buffer), "%.*f", static_cast<int>(precision),
+               value);
     }
 
     report += buffer;

@@ -61,7 +61,7 @@ static constexpr StaticStringMap LOCALE_KEYWORDS{LOCALE_KEYWORD_ENTRIES};
 static fn
 locale_environment_value(const char *name) wontthrow -> StringView
 {
-  let const *value = std::getenv(name);
+  let const *value = getenv(name);
 
   return value == nullptr ? StringView{} : StringView{value};
 }
@@ -157,7 +157,7 @@ Locale::execute(const ExecContext               &ec,
       let lowered = String{cxt.scratch_allocator(), StringView{active_locale}};
 
       lowered.lowercase_ascii();
-      value = std::strstr(lowered.c_str(), "utf") != nullptr
+      value = strstr(lowered.c_str(), "utf") != nullptr
                   ? StringView{"UTF-8"}
                   : StringView{"ANSI_X3.4-1968"};
       break;

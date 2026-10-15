@@ -45,7 +45,7 @@ uncached_heap_alloc(usize length, usize alignment) wontthrow -> opaque *
     return os::allocate_aligned(rounded_length, alignment);
   }
 
-  return std::malloc(length);
+  return malloc(length);
 }
 
 hot inline fn
@@ -57,7 +57,7 @@ uncached_heap_free(opaque *pointer, usize alignment) wontthrow -> void
     return;
   }
 
-  std::free(pointer);
+  free(pointer);
 }
 
 class HeapPool
@@ -68,7 +68,7 @@ public:
   {
     let const shift = class_shift_for(length);
 
-    if (shift > MAX_CLASS_SHIFT) return std::malloc(length);
+    if (shift > MAX_CLASS_SHIFT) return malloc(length);
 
     let const class_index = shift - MIN_CLASS_SHIFT;
 
@@ -81,7 +81,7 @@ public:
       return reused;
     }
 
-    return std::malloc(usize{1} << shift);
+    return malloc(usize{1} << shift);
   }
 
   hot static fn
@@ -98,7 +98,7 @@ public:
     let const target_length =
         new_shift <= MAX_CLASS_SHIFT ? (usize{1} << new_shift) : new_length;
 
-    return std::realloc(pointer, target_length);
+    return realloc(pointer, target_length);
   }
 
   hot fn
@@ -109,7 +109,7 @@ public:
     let const shift = class_shift_for(length);
 
     if (shift > MAX_CLASS_SHIFT) {
-      std::free(pointer);
+      free(pointer);
 
       return;
     }
@@ -121,7 +121,7 @@ public:
         byte_limit < MAX_BLOCKS_PER_CLASS ? byte_limit : MAX_BLOCKS_PER_CLASS;
 
     if (m_counts[class_index] >= class_limit) {
-      std::free(pointer);
+      free(pointer);
 
       return;
     }
@@ -179,7 +179,7 @@ heap_alloc(usize length, usize alignment) wontthrow -> opaque *
   }
 #if defined KOSH_HAS_ADDRESS_SANITIZER
 
-  return std::malloc(length);
+  return malloc(length);
 #else
 
   return heap_pool_instance().take(length);
@@ -193,7 +193,7 @@ heap_realloc(opaque *pointer, usize old_length, usize new_length) wontthrow
 #if defined KOSH_HAS_ADDRESS_SANITIZER
   unused(old_length);
 
-  return std::realloc(pointer, new_length);
+  return realloc(pointer, new_length);
 #else
 
   return HeapPool::regrow(pointer, old_length, new_length);
@@ -210,7 +210,7 @@ heap_free(opaque *pointer, usize length, usize alignment) wontthrow -> void
   }
 #if defined KOSH_HAS_ADDRESS_SANITIZER
   unused(length);
-  std::free(pointer);
+  free(pointer);
 #else
   heap_pool_instance().give(pointer, length);
 #endif
@@ -297,7 +297,7 @@ public:
 
     if (alignment <= alignof(max_align_t)) {
       if (get_kind() == Kind::UncachedHeap) {
-        let const replacement = std::realloc(pointer, new_length);
+        let const replacement = realloc(pointer, new_length);
 
         if (replacement == nullptr) throw std::bad_alloc{};
 
@@ -317,8 +317,8 @@ public:
     let const replacement = raw_alloc(new_length, alignment);
 
     if (replacement == nullptr) throw std::bad_alloc{};
-    std::memcpy(replacement, pointer,
-                old_length < new_length ? old_length : new_length);
+    memcpy(replacement, pointer,
+           old_length < new_length ? old_length : new_length);
     raw_free(pointer, old_length, alignment);
 
     return replacement;
