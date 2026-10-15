@@ -477,8 +477,28 @@ printf 'parse-status=%s unchanged=%s\n' "$?" \
 
 printf 'printf unrecognized\n' > "$root/unrecognized.txt"
 cp "$root/unrecognized.txt" "$root/unrecognized.expected"
-(cd "$root" && "$BIN" --format unrecognized.txt) 2>&1
-printf 'unrecognized-format-status=%s\n' "$?"
+# A file operand error points at the operand in the invocation, whose column
+# and excerpt depend on the binary path, so only the located count and the text
+# remain.
+output=$(cd "$root" && "$BIN" --format unrecognized.txt 2>&1)
+status=$?
+located_count=$(printf '%s\n' "$output" |
+  grep -cE '^[0-9]+:[0-9]+: error: The format of ')
+printf '%s\n' "$output" | grep -v '^ ' | sed 's/^[0-9]*:[0-9]*: //'
+printf 'unrecognized-format-located=%s\n' "$located_count"
+printf 'unrecognized-format-status=%s\n' "$status"
+
+output=$(cd "$root" && "$BIN" --format missing.sh 2>&1)
+status=$?
+located_count=$(printf '%s\n' "$output" |
+  grep -cE "^[0-9]+:[0-9]+: error: Could not open 'missing.sh'")
+printf 'missing-format-located=%s status=%s\n' "$located_count" "$status"
+
+output=$(cd "$root" && "$BIN" --format --apply missing.sh 2>&1)
+status=$?
+located_count=$(printf '%s\n' "$output" |
+  grep -cE "^[0-9]+:[0-9]+: error: Unable to resolve 'missing.sh'")
+printf 'missing-apply-located=%s status=%s\n' "$located_count" "$status"
 "$BIN" --format --apply "$root/unrecognized.txt" >/dev/null 2>&1
 format_apply_status=$?
 "$BIN" --lint --apply --no-traces "$root/unrecognized.txt" >/dev/null 2>&1

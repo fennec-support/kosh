@@ -1065,20 +1065,24 @@ run_lint_document_contents(
 }
 
 static fn
-format_document_source(StringView         source,
-                       Maybe<StringView>  filename,
-                       BumpArena         &ast_arena,
-                       ArrayList<String> &errors,
-                       String            *ast_output     = nullptr,
-                       BumpArena         *function_arena = nullptr,
-                       mimic_mood         mood           = mimic_mood::Posix) throws
+format_document_source(StringView            source,
+                       Maybe<StringView>     filename,
+                       BumpArena            &ast_arena,
+                       ArrayList<String>    &errors,
+                       String               *ast_output     = nullptr,
+                       BumpArena            *function_arena = nullptr,
+                       mimic_mood            mood           = mimic_mood::Posix,
+                       const SourceLocation *operand_location = nullptr,
+                       StringView            invocation       = {},
+                       EvalContext          *context          = nullptr) throws
     -> Maybe<String>
 {
   let const document =
       parse_format_document(parser_format_input{source, filename, None});
 
   if (document.kind == parser_format_kind::UnknownHost) {
-    errors.push(unrecognized_format_message(filename));
+    errors.push(unrecognized_format_message(filename, operand_location,
+                                            invocation, context));
 
     return None;
   }
@@ -2472,23 +2476,63 @@ quoted_argv_offset_until(int                argc,
   return offset;
 }
 
+/* Each operand is located at its first appearance in the invocation. */
+static fn
+collect_operand_locations(int                      argc,
+                          const char *const       *argv,
+                          const ArrayList<String> &file_names) throws
+    -> ArrayList<SourceLocation>
+{
+  let locations = ArrayList<SourceLocation>{heap_allocator()};
+
+  for (let const &file_name : file_names) {
+    locations.push(
+        SourceLocation{quoted_argv_offset_until(argc, argv, file_name.view()),
+                       shell_quoted_arg_length(file_name.view())});
+  }
+
+  return locations;
+}
+
+/* The error is located at the file operand when a location is given. */
+static fn
+show_operand_error(const SourceLocation *operand_location,
+                   StringView            invocation,
+                   EvalContext          &context,
+                   StringView            message) throws -> void
+{
+  if (operand_location == nullptr) {
+    show_message(Error{message}.to_string());
+
+    return;
+  }
+
+  show_message(ErrorWithLocation{*operand_location, message}.to_string(
+      invocation, &context));
+}
+
 struct apply_file_snapshot
 {
   Path            operand_path;
   Path            target_path;
   os::file_status status;
   String          contents;
+  SourceLocation  operand_location;
 };
 
 static fn
-read_apply_file(const Path &operand_path) throws
+read_apply_file(const Path           &operand_path,
+                const SourceLocation &operand_location,
+                StringView            invocation,
+                EvalContext          &context) throws
     -> Maybe<apply_file_snapshot>
 {
   let target_path = os::canonical_path(operand_path);
 
   if (!target_path.has_value()) {
-    show_message("Unable to resolve '" + operand_path.text() +
-                 "': " + os::last_system_error_message());
+    show_operand_error(&operand_location, invocation, context,
+                       "Unable to resolve '" + operand_path.text() +
+                           "': " + os::last_system_error_message());
 
     return None;
   }
@@ -2496,15 +2540,17 @@ read_apply_file(const Path &operand_path) throws
   let status = os::file_status{};
 
   if (!os::stat_path_following(target_path->text().view(), status)) {
-    show_message("Unable to inspect '" + operand_path.text() +
-                 "': " + os::last_system_error_message());
+    show_operand_error(&operand_location, invocation, context,
+                       "Unable to inspect '" + operand_path.text() +
+                           "': " + os::last_system_error_message());
 
     return None;
   }
 
   if (os::file_type_letter(status.mode) != '-') {
-    show_message("The '--apply' option requires a regular file: '" +
-                 operand_path.text() + "'.");
+    show_operand_error(&operand_location, invocation, context,
+                       "The '--apply' option requires a regular file: '" +
+                           operand_path.text() + "'");
 
     return None;
   }
@@ -2516,27 +2562,31 @@ read_apply_file(const Path &operand_path) throws
       !os::stat_path_following(target_path->text().view(), verified_status) ||
       !os::file_status_matches(status, verified_status))
   {
-    show_message("Refusing to read '" + operand_path.text() +
-                 "' because it changed while being processed.");
+    show_operand_error(&operand_location, invocation, context,
+                       "Refusing to read '" + operand_path.text() +
+                           "' because it changed while being processed");
 
     return None;
   }
 
   return apply_file_snapshot{operand_path.clone(), target_path.take(), status,
-                             contents.take()};
+                             contents.take(), operand_location};
 }
 
 static fn
 replace_file_contents(const apply_file_snapshot &snapshot,
-                      StringView                 replacement) throws -> bool
+                      StringView                 replacement,
+                      StringView                 invocation,
+                      EvalContext               &context) throws -> bool
 {
   let replacement_path = os::write_to_named_temp_file(
       snapshot.target_path.parent(), ".kosh_apply", replacement);
 
   if (!replacement_path.has_value()) {
-    show_message("Unable to create a replacement for '" +
-                 snapshot.operand_path.text() +
-                 "': " + os::last_system_error_message());
+    show_operand_error(&snapshot.operand_location, invocation, context,
+                       "Unable to create a replacement for '" +
+                           snapshot.operand_path.text() +
+                           "': " + os::last_system_error_message());
 
     return false;
   }
@@ -2547,9 +2597,10 @@ replace_file_contents(const apply_file_snapshot &snapshot,
 
   if (!os::set_file_mode(replacement_path->text().view(), snapshot.status.mode))
   {
-    show_message("Unable to preserve the mode of '" +
-                 snapshot.operand_path.text() +
-                 "': " + os::last_system_error_message());
+    show_operand_error(&snapshot.operand_location, invocation, context,
+                       "Unable to preserve the mode of '" +
+                           snapshot.operand_path.text() +
+                           "': " + os::last_system_error_message());
 
     return false;
   }
@@ -2565,8 +2616,9 @@ replace_file_contents(const apply_file_snapshot &snapshot,
       !os::stat_path_following(snapshot.target_path.view(), current_status) ||
       !os::file_status_matches(snapshot.status, current_status))
   {
-    show_message("Refusing to replace '" + snapshot.operand_path.text() +
-                 "' because it changed while being processed.");
+    show_operand_error(&snapshot.operand_location, invocation, context,
+                       "Refusing to replace '" + snapshot.operand_path.text() +
+                           "' because it changed while being processed");
 
     return false;
   }
@@ -2574,8 +2626,9 @@ replace_file_contents(const apply_file_snapshot &snapshot,
   if (!os::rename_path(replacement_path->text().view(),
                        snapshot.target_path.view()))
   {
-    show_message("Unable to replace '" + snapshot.operand_path.text() +
-                 "': " + os::last_system_error_message());
+    show_operand_error(&snapshot.operand_location, invocation, context,
+                       "Unable to replace '" + snapshot.operand_path.text() +
+                           "': " + os::last_system_error_message());
 
     return false;
   }
@@ -2710,12 +2763,14 @@ print_applied_fix_summary(
 }
 
 static fn
-run_format_operation(const ArrayList<String> &file_names,
-                     bool                     should_apply,
-                     bool                     should_apply_lint_fixes,
-                     BumpArena               &ast_arena,
-                     EvalContext             &context,
-                     mimic_mood               mood) throws -> int
+run_format_operation(const ArrayList<String>         &file_names,
+                     const ArrayList<SourceLocation> &operand_locations,
+                     StringView                       invocation,
+                     bool                             should_apply,
+                     bool                             should_apply_lint_fixes,
+                     BumpArena                       &ast_arena,
+                     EvalContext                     &context,
+                     mimic_mood                       mood) throws -> int
 {
   bool  did_fail    = false;
   usize input_count = file_names.count();
@@ -2729,11 +2784,14 @@ run_format_operation(const ArrayList<String> &file_names,
         file_names.is_empty() || file_names[input_index] == "-";
     Maybe<apply_file_snapshot> snapshot;
     let                        source = String{heap_allocator()};
+    let const                  operand_location =
+        is_standard_input ? nullptr : &operand_locations[input_index];
 
     if (is_standard_input) {
       source = utils::read_entire_standard_input();
     } else if (should_apply) {
-      snapshot = read_apply_file(Path{file_names[input_index].view()});
+      snapshot = read_apply_file(Path{file_names[input_index].view()},
+                                 *operand_location, invocation, context);
       if (!snapshot.has_value()) {
         did_fail = true;
         continue;
@@ -2745,8 +2803,9 @@ run_format_operation(const ArrayList<String> &file_names,
       let       contents = path.read_entire_file();
 
       if (!contents.has_value()) {
-        show_message("Could not open '" + path.text() +
-                     "': " + os::last_system_error_message());
+        show_operand_error(operand_location, invocation, context,
+                           "Could not open '" + path.text() +
+                               "': " + os::last_system_error_message());
         did_fail = true;
         continue;
       }
@@ -2767,7 +2826,8 @@ run_format_operation(const ArrayList<String> &file_names,
 
       unused(run_lint_document_contents(normalized_source, context, ast_arena,
                                         source_name, nullptr, &diagnostics,
-                                        &is_format_recognized, false));
+                                        &is_format_recognized, false, None,
+                                        operand_location, invocation));
       if (!is_format_recognized) {
         did_fail = true;
         continue;
@@ -2802,7 +2862,9 @@ run_format_operation(const ArrayList<String> &file_names,
       let fixed = apply_source_fixes(source.view(), fixes);
 
       if (!fixed.has_value()) {
-        show_message("Unable to apply non-conflicting fixes to the input.");
+        show_operand_error(operand_location, invocation, context,
+                           "Unable to apply non-conflicting fixes to the "
+                           "input");
         did_fail = true;
         continue;
       }
@@ -2818,7 +2880,8 @@ run_format_operation(const ArrayList<String> &file_names,
     let       formatted   = format_document_source(
         source.view(), source_name, ast_arena, errors,
         context.runtime_state().show_ast() ? &ast_output : nullptr,
-        context.arena_store().function_arena(), mood);
+        context.arena_store().function_arena(), mood, operand_location,
+        invocation, &context);
 
     if (!formatted.has_value()) {
       for (let const &error : errors)
@@ -2839,7 +2902,8 @@ run_format_operation(const ArrayList<String> &file_names,
     if (should_apply) {
       ASSERT(snapshot.has_value());
       if (formatted->view() != source.view() &&
-          !replace_file_contents(*snapshot, formatted->view()))
+          !replace_file_contents(*snapshot, formatted->view(), invocation,
+                                 context))
       {
         did_fail = true;
       }
@@ -2859,18 +2923,22 @@ run_format_operation(const ArrayList<String> &file_names,
 }
 
 static fn
-run_lint_apply_operation(const ArrayList<String> &file_names,
-                         bool                     should_format,
-                         EvalContext             &context,
-                         BumpArena               &ast_arena) throws -> int
+run_lint_apply_operation(const ArrayList<String>         &file_names,
+                         const ArrayList<SourceLocation> &operand_locations,
+                         StringView                       invocation,
+                         bool                             should_format,
+                         EvalContext                     &context,
+                         BumpArena                       &ast_arena) throws -> int
 {
   bool did_fail        = false;
   let  final_totals    = analysis_diagnostic_totals{};
   let  applied_tallies = ArrayList<applied_fix_tally>{heap_allocator()};
 
-  for (let const &file_name : file_names) {
-    let const path     = Path{file_name.view()};
-    let       snapshot = read_apply_file(path);
+  for (usize file_index = 0; file_index < file_names.count(); file_index++) {
+    let const &file_name        = file_names[file_index];
+    let const &operand_location = operand_locations[file_index];
+    let const  path             = Path{file_name.view()};
+    let snapshot = read_apply_file(path, operand_location, invocation, context);
 
     if (!snapshot.has_value()) {
       did_fail = true;
@@ -2884,9 +2952,9 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
     let  diagnostics          = ArrayList<source_diagnostic>{heap_allocator()};
     bool is_format_recognized = true;
 
-    unused(run_lint_document_contents(source, context, ast_arena,
-                                      file_name.view(), nullptr, &diagnostics,
-                                      &is_format_recognized, false));
+    unused(run_lint_document_contents(
+        source, context, ast_arena, file_name.view(), nullptr, &diagnostics,
+        &is_format_recognized, false, None, &operand_location, invocation));
     if (!is_format_recognized) {
       did_fail = true;
       continue;
@@ -2929,8 +2997,9 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
         apply_source_fixes(snapshot->contents.view(), fixes, &applied_origins);
 
     if (!fixed.has_value()) {
-      show_message("Unable to apply non-conflicting fixes to '" + path.text() +
-                   "'.");
+      show_operand_error(&operand_location, invocation, context,
+                         "Unable to apply non-conflicting fixes to '" +
+                             path.text() + "'");
       did_fail = true;
       continue;
     }
@@ -2942,7 +3011,8 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
       let formatted = format_document_source(
           final_source.view(), file_name.view(), ast_arena, errors, nullptr,
           context.arena_store().function_arena(),
-          context.runtime_state().get_mood());
+          context.runtime_state().get_mood(), &operand_location, invocation,
+          &context);
 
       if (!formatted.has_value()) {
         for (let const &error : errors)
@@ -2979,7 +3049,8 @@ run_lint_apply_operation(const ArrayList<String> &file_names,
     }
 
     if (final_source.view() != snapshot->contents.view() &&
-        !replace_file_contents(*snapshot, final_source.view()))
+        !replace_file_contents(*snapshot, final_source.view(), invocation,
+                               context))
     {
       did_fail = true;
       continue;

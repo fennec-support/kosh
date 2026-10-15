@@ -2796,7 +2796,9 @@ kosh_main(int argc, char **argv) -> int
 
   let cli_invocation = koshka::String{koshka::heap_allocator()};
 
-  if (input.should_execute_commands || input.should_read_files) {
+  if (input.should_execute_commands || input.should_read_files ||
+      FLAG_FORMAT.is_enabled())
+  {
     cli_invocation = koshka::join_command_line(parse_argc, parse_argv);
   }
 
@@ -2830,16 +2832,21 @@ kosh_main(int argc, char **argv) -> int
 
   if (is_language_server)
     return koshka::language_server::run(context, ast_arena);
+
   if (FLAG_LINT.is_enabled() && FLAG_APPLY.is_enabled()) {
     return koshka::run_lint_apply_operation(
-        file_names, FLAG_FORMAT.is_enabled(), context, ast_arena);
+        file_names,
+        koshka::collect_operand_locations(parse_argc, parse_argv, file_names),
+        cli_invocation.view(), FLAG_FORMAT.is_enabled(), context, ast_arena);
   }
 
   if (FLAG_FORMAT.is_enabled()) {
     try {
-      return koshka::run_format_operation(file_names, FLAG_APPLY.is_enabled(),
-                                          FLAG_LINT.is_enabled(), ast_arena,
-                                          context, identity.session_mood);
+      return koshka::run_format_operation(
+          file_names,
+          koshka::collect_operand_locations(parse_argc, parse_argv, file_names),
+          cli_invocation.view(), FLAG_APPLY.is_enabled(),
+          FLAG_LINT.is_enabled(), ast_arena, context, identity.session_mood);
     } catch (const koshka::Error &error) {
       koshka::show_message(error.to_string());
 
