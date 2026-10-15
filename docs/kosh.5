@@ -308,7 +308,9 @@ will start a kosh with the settings of the shell that ran it.
 .B koshconf save \-\-persist
 writes the settings that differ from the defaults of the current mood to the
 user settings file instead. A setting that matches those defaults is left out,
-so it follows the defaults of a mood chosen later. The variable is
+so it follows the defaults of a mood chosen later. A line in the file whose
+option this version does not recognize is kept at the end of the new file. The
+variable is
 applied after the settings files and removed before any command runs:
 .PP
 .RS

@@ -1286,6 +1286,50 @@ write_koshconf_file(const Path &path, StringView contents) throws
 }
 
 fn
+persist_koshconf_snapshot(const Path        &path,
+                          const EvalContext &cxt) throws -> void
+{
+  let const target = prepare_koshconf_target(path);
+  let const lock = lock_koshconf_directory(target);
+
+  defer { os::release_process_lock(lock); };
+
+  let contents = make_koshconf_snapshot(cxt);
+  let existing = target.read_entire_file();
+
+  if (!existing.has_value()) {
+    if (!os::last_system_error_is_missing_file()) {
+      throw Error{"Unable to read '" + target.text() +
+                  "': " + os::last_system_error_message()};
+    }
+
+    existing = String{heap_allocator()};
+  }
+
+  let       kept = String{heap_allocator()};
+  let const text = existing->view();
+
+  for (usize position = 0; position < text.count();) {
+    let const line = text.next_line(position).without_trailing_newline();
+    let const name = declared_name(line);
+
+    if (name.has_value() && find_option_by_koshconf_name(*name) == nullptr) {
+      LOG(Info, "koshconf save keeps the unknown setting '%.*s'",
+          static_cast<int>(name->length), name->data);
+      kept += line;
+      kept += '\n';
+    }
+  }
+
+  if (!kept.is_empty()) {
+    contents += "# Settings this version of Koshka does not recognize.\n";
+    contents += kept;
+  }
+
+  replace_koshconf_target(target, contents.view());
+}
+
+fn
 persist_koshconf_setting(const Path              &path,
                          const option_descriptor &option,
                          StringView               value) throws -> void

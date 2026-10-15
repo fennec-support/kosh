@@ -89,5 +89,10 @@ fn
 persist_koshconf_setting(const Path              &path,
                          const option_descriptor &option,
                          StringView               value) throws -> void;
+/* Replaces the file with a snapshot of the current settings and keeps every
+   setting line whose option this build does not recognize. */
+fn
+persist_koshconf_snapshot(const Path        &path,
+                          const EvalContext &cxt) throws -> void;
 
 } /* namespace koshka */

@@ -457,7 +457,7 @@ run_save(const ExecContext       &ec,
   if (!path.has_value()) return 1;
 
   try {
-    write_koshconf_file(*path, make_koshconf_snapshot(cxt).view());
+    persist_koshconf_snapshot(*path, cxt);
   } catch (const Error &error) {
     report_caught_error(ec, cxt, ec.source_location(), error);
 

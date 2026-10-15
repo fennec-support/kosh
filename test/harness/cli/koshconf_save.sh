@@ -71,6 +71,11 @@ echo "== the saved file loads back:"
 "$BIN" -c 'koshconf get mood; koshconf get editor.auto_close_brackets_and_quotes'
 "$BIN" --mood bash -c 'koshconf list' >"$config/before.txt"
 "$BIN" --mood bash -c 'koshconf list' | diff - "$config/before.txt" && echo same
+echo "== save --persist keeps settings this build does not recognize:"
+printf 'future.option=on\n' >> "$conf"
+"$BIN" --mood bash -c 'koshconf save --persist' 2>/dev/null
+grep -c '^future\.option=on$' "$conf"
+grep -v '^future\.option=' "$conf" >"$conf.kept" && mv "$conf.kept" "$conf"
 echo "== plain save writes no file:"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$XDG_CONFIG_HOME"
 "$BIN" -c 'koshconf save' >/dev/null

@@ -66,6 +66,8 @@ editor.auto_close_brackets_and_quotes=on
 bash
 on
 same
+== save --persist keeps settings this build does not recognize:
+1
 == plain save writes no file:
 absent
 == a restricted shell prints a blob but refuses save --persist:
