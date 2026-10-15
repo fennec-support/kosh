@@ -2904,7 +2904,8 @@ get_entry_ignored_signals() wontthrow -> u64
   return ENTRY_IGNORED_SIGNALS;
 }
 
-static constexpr usize STACK_RESERVE_BYTE_COUNT = 256 * 1024;
+static constexpr usize STACK_RESERVE_BYTE_COUNT   = 256 * 1024;
+static constexpr usize UNLIMITED_STACK_BYTE_COUNT = 8 * 1024 * 1024;
 
 /* Returns the lowest usable stack address of the calling thread, or zero when
    the platform does not report it. */
@@ -2926,6 +2927,23 @@ probe_stack_floor() wontthrow -> uintptr_t
   pthread_attr_destroy(&attributes);
   if (!is_known) return 0;
   stack_low = reinterpret_cast<uintptr_t>(stack_address);
+
+  if (static_cast<pid_t>(syscall(SYS_gettid)) == getpid()) {
+    struct rlimit limit = {};
+
+    if (getrlimit(RLIMIT_STACK, &limit) == 0) {
+      let const stack_high       = stack_low + stack_byte_count;
+      let const limit_byte_count = limit.rlim_cur == RLIM_INFINITY
+                                       ? UNLIMITED_STACK_BYTE_COUNT
+                                       : static_cast<usize>(limit.rlim_cur);
+
+      if (limit_byte_count > stack_byte_count && limit_byte_count < stack_high)
+      {
+        stack_byte_count = limit_byte_count;
+        stack_low        = stack_high - limit_byte_count;
+      }
+    }
+  }
 #elif defined __APPLE__
   stack_byte_count = pthread_get_stacksize_np(pthread_self());
   stack_low =
@@ -2954,9 +2972,8 @@ is_stack_nearly_exhausted() wontthrow -> bool
     has_probed  = true;
   }
 
-  char marker = 0;
-
-  return stack_floor != 0 && reinterpret_cast<uintptr_t>(&marker) < stack_floor;
+  return stack_floor != 0 &&
+         reinterpret_cast<uintptr_t>(__builtin_frame_address(0)) < stack_floor;
 }
 
 fn
