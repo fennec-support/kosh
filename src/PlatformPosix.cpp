@@ -22,6 +22,7 @@
 #include "base/Trace.hpp"
 
 #include <locale.h>
+#include <pthread.h>
 #include <syslog.h>
 #include <utmpx.h>
 #include <wctype.h>
@@ -2903,6 +2904,58 @@ fn
 get_entry_ignored_signals() wontthrow -> u64
 {
   return ENTRY_IGNORED_SIGNALS;
+}
+
+static constexpr usize STACK_RESERVE_BYTE_COUNT = 256 * 1024;
+
+/* Returns the lowest usable stack address of the calling thread, or zero when
+   the platform does not report it. */
+static fn
+probe_stack_floor() wontthrow -> uintptr_t
+{
+  usize stack_byte_count = 0;
+  let   stack_low        = uintptr_t{0};
+
+#if defined __linux__
+  pthread_attr_t attributes;
+  void          *stack_address = nullptr;
+
+  if (pthread_getattr_np(pthread_self(), &attributes) != 0) return 0;
+
+  let const is_known = pthread_attr_getstack(&attributes, &stack_address,
+                                             &stack_byte_count) == 0;
+
+  pthread_attr_destroy(&attributes);
+  if (!is_known) return 0;
+  stack_low = reinterpret_cast<uintptr_t>(stack_address);
+#elif defined __APPLE__
+  stack_byte_count = pthread_get_stacksize_np(pthread_self());
+  stack_low =
+      reinterpret_cast<uintptr_t>(pthread_get_stackaddr_np(pthread_self())) -
+      stack_byte_count;
+#else
+  return 0;
+#endif
+
+  let const reserve = std::min(STACK_RESERVE_BYTE_COUNT, stack_byte_count / 4);
+
+  return stack_low + reserve;
+}
+
+fn
+is_stack_nearly_exhausted() wontthrow -> bool
+{
+  static thread_local bool      has_probed  = false;
+  static thread_local uintptr_t stack_floor = 0;
+
+  if (!has_probed) {
+    stack_floor = probe_stack_floor();
+    has_probed  = true;
+  }
+
+  char marker = 0;
+
+  return stack_floor != 0 && reinterpret_cast<uintptr_t>(&marker) < stack_floor;
 }
 
 fn

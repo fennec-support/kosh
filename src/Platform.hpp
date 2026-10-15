@@ -2380,6 +2380,11 @@ clear_trap_handler(i32 signal_number) throws -> void;
 
 fn
 take_pending_signal() wontthrow -> i32;
+/* Reports whether the calling thread has used all but a reserve of its stack.
+   Deep recursion checks it to fail with an error before a stack overflow. */
+fn
+is_stack_nearly_exhausted() wontthrow -> bool;
+
 
 mustuse fn
 peek_pending_signal_besides_child() wontthrow -> i32;

@@ -84,3 +84,14 @@ echo "== deep quoted substitution nesting is a syntax error:"
   grep -c "nested too deeply"
 "$BIN" -n "$TEST_TEMP_DIRECTORY/deep-quoted-substitution.sh" >/dev/null 2>&1
 echo "status=$?"
+
+# Unbounded recursion through a function body ends with an error before the
+# native stack overflows, and the shell survives it.
+printf 'f() { [ "$1" -ge 0 ] && f $(( $1 + 1 )); }\nf 0\n' \
+  > "$TEST_TEMP_DIRECTORY/deep-function-recursion.sh"
+echo "== unbounded function recursion is guarded, not crashing:"
+"$BIN" "$TEST_TEMP_DIRECTORY/deep-function-recursion.sh" 2>&1 |
+  grep -c "nested too deeply"
+"$BIN" "$TEST_TEMP_DIRECTORY/deep-function-recursion.sh" >/dev/null 2>&1
+status=$?
+[ "$status" -lt 128 ] && echo ok || echo "crashed with signal $((status - 128))"

@@ -26,3 +26,6 @@ ok
 == deep quoted substitution nesting is a syntax error:
 1
 status=2
+== unbounded function recursion is guarded, not crashing:
+1
+ok

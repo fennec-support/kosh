@@ -630,6 +630,7 @@ EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
 static constexpr usize MAX_SOURCE_DEPTH              = 400;
 static constexpr usize MAX_FUNCTION_CALL_DEPTH       = 900;
 static constexpr usize MAX_PARAMETER_EXPANSION_DEPTH = 256;
+static constexpr usize STACK_PROBE_MINIMUM_DEPTH     = 32;
 
 static fn
 guard_located_depth(usize                   current_depth,
@@ -637,8 +638,11 @@ guard_located_depth(usize                   current_depth,
                     maybeunused const char *what,
                     const SourceLocation   &location) throws -> void
 {
-  if (current_depth >= cap) {
-    LOG(Debug, "%s depth %zu exceeds cap %zu", what, current_depth, cap);
+  if (current_depth >= cap || (current_depth >= STACK_PROBE_MINIMUM_DEPTH &&
+                               os::is_stack_nearly_exhausted()))
+  {
+    LOG(Debug, "%s depth %zu exceeds cap %zu or the stack", what, current_depth,
+        cap);
     throw ErrorWithLocation{
         location, "Sourced files and function calls are nested too deeply"};
   }

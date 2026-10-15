@@ -3258,6 +3258,23 @@ get_entry_ignored_signals() wontthrow -> u64
 }
 
 fn
+is_stack_nearly_exhausted() wontthrow -> bool
+{
+  constexpr ULONG_PTR reserve_byte_count = 128 * 1024;
+
+  ULONG_PTR stack_low  = 0;
+  ULONG_PTR stack_high = 0;
+
+  GetCurrentThreadStackLimits(&stack_low, &stack_high);
+
+  let const reserve =
+      std::min(reserve_byte_count, (stack_high - stack_low) / 4);
+  char marker = 0;
+
+  return reinterpret_cast<ULONG_PTR>(&marker) < stack_low + reserve;
+}
+
+fn
 clear_trap_handler(i32 signal_number) -> void
 {
   if (!is_trappable_signal(signal_number)) return;
