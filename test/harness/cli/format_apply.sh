@@ -510,9 +510,11 @@ printf 'unrecognized-apply-status=%s,%s unchanged=%s\n' \
 
 printf '#!/bin/sh\n[ "\0441" == y ]\nif\n' > "$root/invalid-lint.sh"
 cp "$root/invalid-lint.sh" "$root/invalid-lint.expected"
-"$BIN" --lint --apply --no-traces "$root/invalid-lint.sh" \
-  >/dev/null 2>&1
-printf 'lint-parse-status=%s unchanged=%s\n' "$?" \
+parse_output=$("$BIN" --lint --apply --no-traces "$root/invalid-lint.sh" 2>&1)
+parse_status=$?
+printf 'lint-parse-located=%s\n' "$(printf '%s\n' "$parse_output" |
+  grep -c "^$root/invalid-lint.sh:3:1: error: This 'if' has no condition")"
+printf 'lint-parse-status=%s unchanged=%s\n' "$parse_status" \
   "$(cmp -s "$root/invalid-lint.sh" "$root/invalid-lint.expected" && \
       printf yes)"
 "$BIN" --lint --format --apply --no-traces "$root/invalid-lint.sh" \

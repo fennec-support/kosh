@@ -3044,7 +3044,9 @@ run_lint_apply_operation(const ArrayList<String>         &file_names,
     for (let const &diagnostic : validation_diagnostics) {
       if (diagnostic.id.has_value()) continue;
       has_parse_error = true;
-      show_message(diagnostic.message.view());
+      show_message(
+          ErrorWithLocation{diagnostic.location, diagnostic.message.view()}
+              .to_string(validation_source.view(), &context));
     }
 
     if (has_parse_error) {

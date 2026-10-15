@@ -372,6 +372,7 @@ unrecognized-format-status=1
 missing-format-located=1 status=1
 missing-apply-located=1 status=1
 unrecognized-apply-status=1,1 unchanged=yes
+lint-parse-located=1
 lint-parse-status=1 unchanged=yes
 combined-parse-status=1 unchanged=yes
 apply-alone-status=2
