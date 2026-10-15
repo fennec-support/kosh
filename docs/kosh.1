@@ -608,16 +608,12 @@ unchanged.
 and the
 .B \-o
 test share one registry. Each option has a numeric id, a koshconf name, a type,
-a class, and, when it has them, a Bash spelling and a letter. A boolean is
-written as a statement that is true when the option is on. An enumeration is
-written by name. A string is written as it is. An interactive option affects
-only the editor, the history, or the presentation of diagnostics, so a script
-runs the same under every value. Every other option is semantic and can change
-what a script does or writes, such as the analysis stage, command resolution,
-mimicry, and the debug reports.
+a class, and, when it has them, a Bash spelling and a letter. An interactive
+option affects only the editor, the history, or the presentation of
+diagnostics, so a script runs the same under every value. Every other option is
+semantic and can change what a script does or writes.
 .PP
-A koshconf name starts with its topic. Every globbing option contains glob. The
-topics are
+A koshconf name starts with its topic. The topics are
 .B mood
 and
 .B init_moods
@@ -656,18 +652,10 @@ accepts NAME, otherwise bash.legacy.NAME when
 .B set \-o
 or
 .B shopt
-accepts NAME, as in bash.legacy.extglob, bash.legacy.failglob,
-bash.legacy.braceexpand, and bash.legacy.posix. An alias is the same option as
-the canonical name, so setting either spelling changes the value shown by the
-other, by
-.BR "set \-o" ,
-by
-.BR shopt ,
-by
-.BR $\- ,
-and by SHELLOPTS. A kosh.conf line, koshconf set, koshconf get, and every option
-operand accept the alias. A kosh.conf line that sets an option twice through
-both spellings follows the duplicate rule of the file.
+accepts NAME, as in bash.legacy.extglob and bash.legacy.posix. An alias is the
+same option as the canonical name, so setting either spelling changes the value
+shown by the other. A kosh.conf line, koshconf set, koshconf get, and every
+option operand accept the alias.
 .B koshconf create
 and
 .BR "koshconf list" ,
@@ -683,9 +671,6 @@ bash.interpreter.exit_after_one_command come from the command line.
 posix.interpreter.job_control, bash.editor.history.records_commands,
 bash.editor.history.bang_expansion, and bash.interpreter.posixly_correct follow
 the session and the mood.
-.B KOSHCONF
-carries only the mood and the interactive options, and omits
-editor.history.file_path, which a file may set.
 .PP
 editor.base_mode is one option that covers the Bash options emacs and vi. Its
 value is vi while
@@ -697,27 +682,19 @@ their
 .B +o
 forms, the
 .B \-o
-test, and SHELLOPTS keep the Bash behavior, including the state where neither
-is on. A non-interactive shell starts in that state. Writing vi turns vi on and
-emacs off. When vi is on, writing emacs turns vi off and emacs on. The id 88 is
-retired.
+test, and SHELLOPTS keep the Bash behavior. The id 88 is retired.
 .PP
-The Bash options hashall and nolog have no koshconf name. Koshka remembers
-command paths whether or not hashall is on, and Bash ignores nolog.
+The Bash options hashall and nolog have no koshconf name.
 .B set
 and
 .B \-o
 accept both for Bash scripts that query them. The ids 68 and 86 are retired.
 .PP
-Some Bash shopt options are accepted and never change behavior, so Bash
-startup files that set them run unchanged. They are assoc_expand_once, cdspell,
-checkjobs, checkwinsize, cmdhist, complete_fullquote, direxpand, dirspell,
-execfail, extquote, force_fignore, globasciiranges, gnu_errfmt, histappend,
-histreedit, histverify, hostcomplete, huponexit, lithist, mailwarn,
-no_empty_cmd_completion, promptvars, and varredir_close. Their only koshconf
-name is bash.legacy.NAME. Koshka always appends to the history file and
-records a multi-line command as one entry. shopt accepts array_expand_once as
-the Bash 5.3 spelling of assoc_expand_once.
+The shopt options with a bash.legacy prefix in the table are accepted and never
+change behavior, so Bash startup files that set them run unchanged. Koshka
+always appends to the history file and records a multi-line command as one
+entry. shopt accepts array_expand_once as the Bash 5.3 spelling of
+assoc_expand_once.
 .PP
 .nf
 .ft CR
@@ -933,23 +910,16 @@ emacs or vi. editor.history.file_path and editor.history.max_entries are the
 KOSH_HISTORY_FILE and KOSH_HISTORY_SIZE variables. init_moods is a
 comma-separated list of the moods accepted by
 .BR \-L ,
-empty by default. It is read once at startup, applies only to an
-interactive or login shell, and yields to
+empty by default. It applies only to an interactive or login shell at startup
+and yields to
 .BR \-L .
-A restricted shell ignores it in the configuration files. Changing it in a
-running shell sources nothing. Use
-.B set \-L
-for that. completion.on_tab, editor.highlight_syntax_and_show_ghost_text,
-and optimizer.show_source_traces are the settings for
+A restricted shell ignores it in the configuration files. completion.on_tab,
+editor.highlight_syntax_and_show_ghost_text, and optimizer.show_source_traces
+are the settings for
 .BR \-T ,
 .BR \-\-no\-syntax\-highlighting ,
 and
 .BR \-\-no\-traces .
-The editor applies the first two at the next prompt. Syntax coloring and ghost
-text need completion.on_tab as well. interactive-comments is a spelling of both
-.B set \-o
-and
-.BR shopt .
 .SS Migration
 .B set \-\-mood
 is
@@ -968,22 +938,8 @@ Each Koshka
 option of earlier releases is a koshconf option.
 .B set \-o koshkit
 is
-.BR "koshconf set interpreter.resolve_koshkit_applets_as_commands on" ,
-and interactive-hints, interactive-diagnostics, auto-pair, transient-prompt,
-extended-keys, history-prefix-search, space-after-completion,
-annoying-diagnostics, no-diagnostics, extended-arithmetic, mimicry, and the
-show options are editor.hints.show_command_synopsis,
-editor.hints.show_live_diagnostics,
-editor.auto_close_brackets_and_quotes, editor.transient_prompt_after_submit,
-editor.request_extended_key_reports,
-editor.history.arrow_keys_search_by_typed_prefix,
-completion.add_space_after_completed_word,
-optimizer.show_annoying_tier,
-optimizer.analyze_before_running with the opposite value,
-interpreter.arithmetic_uses_big_numbers, interpreter.mimic_shebang,
-and the debug options. failglob is
-.B shopt \-s failglob
-only. Hyphenated spellings such as no-unset are not accepted.
+.BR "koshconf set interpreter.resolve_koshkit_applets_as_commands on" .
+Hyphenated spellings such as no-unset are not accepted.
 .SH STARTUP FILES
 Every shell applies the configuration files before any shell startup file.
 These are /etc/kosh.conf (%ProgramData%\kosh\kosh.conf on Windows), then
@@ -994,12 +950,10 @@ only the system administrator can change it. The files are not shell code, and
 describes their format. A
 .B KOSHCONF
 variable is applied after them and removed from the environment. A later
-setting replaces an earlier one, and a malformed line is reported with its file
-and line and skipped. A mood chosen by the configuration selects the startup
-files below unless the command line or the invocation name selects one. A
-script shebang still selects the mood of that script. Options given on the
-command line and diagnostic settings inherited through KOSH_ANALYSIS keep their
-values.
+setting replaces an earlier one, and a malformed line is reported and skipped.
+A mood chosen by the configuration selects the startup files below unless the
+command line or the invocation name selects one. Options given on the command
+line keep their values.
 .PP
 The
 .B kosh
@@ -1021,15 +975,9 @@ mood and then returns to the
 mood. The init_moods option in a configuration file does the same for
 every interactive or login shell started without
 .BR \-L .
-Every mood sets KOSH without exporting it, so a real bash sees it unset. A line
-guarded with
+Every mood sets KOSH without exporting it, so a line guarded with
 .B test \-n \(dq$KOSH\(dq
-runs only in Koshka, and one guarded with
-.B test \-z \(dq$KOSH\(dq
-runs only in another shell. Each startup file is parsed with the grammar of the
-mood whose files are being sourced, and
-.B "set \-L"
-in a startup file does not reenter that mood.
+runs only in Koshka.
 .PP
 A login shell in the
 .B sh
@@ -1052,15 +1000,11 @@ or
 .B bash-posix
 mood sources the first readable file among /etc/bash/bashrc and
 /etc/bash.bashrc, then the custom rc file or ~/.bashrc, then
-/usr/share/bash-completion/bash_completion. The last is skipped when completion
-is disabled, when a default completion specification exists, and when
-BASH_COMPLETION_VERSINFO is already set.
+/usr/share/bash-completion/bash_completion.
 .PP
 A noninteractive shell in the
 .B bash
-mood sources BASH_ENV once, after parameter expansion, command substitution,
-arithmetic expansion, and leading-tilde expansion of the value, without a PATH
-search. A shell in the
+mood sources BASH_ENV once, without a PATH search. A shell in the
 .B bash-posix
 mood does not source BASH_ENV.
 .PP
@@ -1068,14 +1012,11 @@ Clean, rescue, lint, format, and language server shells skip every startup and
 configuration file, as do
 .B \-Q
 and a shell whose real and effective identities differ. The privileged option
-suppresses ENV and BASH_ENV processing. Restricted mode is visible while startup
-files run, and its restrictions take effect after startup finishes, together
-with the strictness of the selected mood. Until then the pipefail and failglob
-settings from the mood stay off, and an explicit command-line nounset stays on.
+suppresses ENV and BASH_ENV processing. The restrictions of restricted mode and
+the strictness of the selected mood take effect after startup finishes.
 .PP
-Missing optional files, custom rc files, and BASH_ENV files are skipped. An
-unreadable custom rc or BASH_ENV file also produces a diagnostic. An unreadable
-ENV file is skipped silently.
+Missing startup files are skipped. An unreadable custom rc or BASH_ENV file
+also produces a diagnostic.
 .SH RESTRICTED SHELL
 A restricted shell rejects directory changes, changes to SHELL, PATH, ENV, and
 BASH_ENV, a directory separator in a command word or a source operand, every
@@ -1083,10 +1024,6 @@ use of
 .BR "hash \-p" ,
 and every file operand of
 .BR history .
-On Windows a drive designator such as C:name also counts as a directory
-separator.
-The history files keep the paths derived from HOME at startup, so a later HOME
-assignment does not move them.
 .PP
 A restricted shell also rejects the redirections >, >|, <>, >>, &>, &>>, and
 >&, the
@@ -1108,13 +1045,10 @@ and every form of the
 builtin. Numeric descriptor duplication remains available. A command word falls
 back only to a bundled utility that a startup file enabled with
 .BR enable .
-.BR type ,
-.BR "command \-v" ,
-and completion offer only those utilities. After startup,
+After startup,
 .B enable
-can disable a builtin but cannot enable a disabled builtin, and it cannot enable
-or disable a bundled utility. As with a program on the PATH of a restricted
-Bash, an enabled utility that starts other programs, such as
+can disable a builtin but cannot enable a disabled builtin or change a bundled
+utility. An enabled utility that starts other programs, such as
 .BR env ,
 .BR xargs ,
 .BR find ,
@@ -1124,9 +1058,6 @@ or
 .BR watch ,
 runs any program its arguments give, including another shell, so a startup
 file for a restricted shell should enable only utilities that start no program.
-.B set \-o posix
-remains available, as in bash. Changes to the restricted_shell shopt value are
-accepted without effect.
 .PP
 The
 .B koshconf
@@ -1140,19 +1071,17 @@ configuration file.
 .B get
 and
 .B list
-remain available, and XDG_CONFIG_HOME and HOME stay assignable. No setting can
-turn restricted mode off. A shell started restricted by
+remain available. No setting can turn restricted mode off. A shell started
+restricted by
 .B \-r
 or the invocation name rbash ignores and removes
 .B KOSHCONF
-with a warning. The configuration files are processed before the restrictions
-take effect and apply only presentation and diagnostic options. When a file sets
-the mood, a semantic option, editor.history.file_path, or
-editor.history.max_entries, the shell warns, so the
-files cannot choose the startup files, the evaluation rules, the command
-resolution, or a history path. A child shell inherits the restrictions, and a
-sourced script retains them. A shell script found through PATH and executed as
-a command runs without them.
+with a warning. The configuration files apply only presentation and diagnostic
+options. When a file sets the mood, a semantic option,
+editor.history.file_path, or editor.history.max_entries, the shell warns and
+ignores it. A child shell inherits the restrictions, and a sourced script
+retains them. A shell script found through PATH and executed as a command runs
+without them.
 .SH SHELL GRAMMAR
 The shell accepts the POSIX Shell Command Language and the Bash extensions
 described below. The
@@ -1161,8 +1090,7 @@ mood disables Bash-only syntax except for documented compatibility forms.
 Differences are listed under
 .BR COMPATIBILITY .
 .PP
-An if command with no selected branch and no else command returns status zero,
-also at the end of a sourced file.
+An if command with no selected branch and no else command returns status zero.
 .SS Coprocesses
 .EX
 coproc [NAME] command [redirections]
@@ -1172,13 +1100,9 @@ Every mood except
 .B sh
 accepts a coprocess. The command runs asynchronously and two pipes connect
 it to the shell. NAME[0] is read from, NAME[1] is written to, and NAME_PID holds
-the process id. The default is COPROC.
-.PP
-A word before the command is the coprocess identifier only when a compound
-command follows that word. In
-.B coproc NAME cat
-the word NAME is the first word of a simple command and the coprocess takes the
-default identifier. The launch returns status zero.
+the process id. The default is COPROC. A word before the command is the
+identifier only when a compound command follows it. The launch returns status
+zero.
 .SH QUOTING
 Single quotes preserve every enclosed byte. Double quotes retain parameter,
 command, and arithmetic expansion. A backslash quotes the next byte where the
@@ -1186,47 +1110,27 @@ grammar permits it.
 .PP
 The form $'...' interprets C escapes including \en, \et, \exHH, and \eOOO. The
 form
-$"..." marks a string for translation. Every mood accepts it outside double
-quotes, and it behaves as an ordinary double-quoted string without a catalog.
-Within double quotes, $" is a literal dollar followed by the closing quote.
-Under an sh or dash shebang, analysis reports it as a bash extension absent
-from POSIX sh.
+$"..." marks a string for translation and behaves as an ordinary double-quoted
+string without a catalog.
 .SH PARAMETERS
 .SS Positional parameters
 An unquoted $@ or $* is subject to field splitting. The form "$@" preserves one
 field per positional parameter. The form "$*" joins the parameters with the
-first byte of IFS. In the sh mood, as in dash, a prefix or suffix removal on
-$@ or $* matches the parameters as one string whose pieces are the parameters,
-so "${@%%?}" can drop later parameters and "${@#?}" shortens only the first.
-In the sh mood a $@ that becomes one string, as in an assignment, a case word,
-or a here-document, joins the parameters with the first byte of IFS, or with
-nothing when IFS is empty. The bash moods join with a space.
-In the sh mood, as in dash, $@ and $* are always set, so "${@\-d}" and
-"${@+p}" never test for missing parameters. The colon forms ${@:+p} and any
-test of a quoted $* or of a single string treat the parameters as null when
-they join to an empty string. The colon forms \-, =, and ? in a field context
-treat them as null only with no parameters or one empty parameter.
-A quoted form expanding to no field, such as "${@\-d}" without parameters,
-still gives one empty field.
+first byte of IFS. In the sh mood, as in dash, $@ and $* are always set, so
+"${@\-d}" and "${@+p}" never test for missing parameters. A $@ that becomes one
+string, as in an assignment, joins the parameters with the first byte of IFS in
+the sh mood and with a space in the bash moods.
 .SS Indexed arrays
 An indexed array is assigned with a=(x y z), an element with a[2]=z, and
-a+=(w) appends. An opening parenthesis directly after a nonempty value, as in
-a=x(y) or a=\e<(y), is a syntax error in every mood. The list holds words, so a
-nested parenthesis, a control operator such as ; or |, or a redirection operator
-inside it is a syntax error, as in Bash.
-${a[i]} takes an arithmetic subscript.
+a+=(w) appends. ${a[i]} takes an arithmetic subscript.
 ${a[@]} and ${a[*]} list elements. ${#a[@]} counts elements. ${!a[@]} lists
 indices, omitting absent sparse ones. A negative index counts from the end.
 .PP
-Inside double quotes, "${a[@]}" preserves one field per element, also when an
-operator changes each element or the form sits in the word of another
-expansion, as in "${u:-${a[@]#x}}". The form "${a[@]@A}" yields the words of
-the declaration. "${a[*]}" joins elements with the first byte of IFS.
-An unquoted ${a[@]} or ${a[*]}, with or without an operator, joins elements with
-the first byte of IFS and splits the result, so a non-whitespace IFS keeps empty
-fields. Under an empty IFS the elements stay apart, except that a prefix or
-suffix removal joins them with a space into one word. An unset array in
-${a[@]} is an error under
+Inside double quotes, "${a[@]}" preserves one field per element. The form
+"${a[@]@A}" yields the words of the declaration. "${a[*]}" joins elements with
+the first byte of IFS. An unquoted ${a[@]} or ${a[*]} joins elements with the
+first byte of IFS and splits the result. An unset array in ${a[@]} is an error
+under
 .BR "set \-u" .
 .SS Associative arrays
 The command
@@ -1234,39 +1138,28 @@ The command
 declares an associative array. The form m[key]=v assigns an element. The form
 ${m[key]} expands to it. The form ${!m[@]} lists keys. The command
 .B unset 'm[key]'
-removes one element. A word in the list m=(k1 v1 k2 v2) is not split into
-fields and not matched against files, and a quoted "${a[@]}" joins into one
-word. A quoted ] inside a key, as in m['k]x']=1, does not close the subscript.
+removes one element.
 .PP
 The key order of an associative array is unspecified and may differ from Bash.
-The shell lists keys in the order first assigned, and an element removed and
-assigned again moves to the end. A script that depends on an order should sort
-the keys.
+The shell lists keys in the order first assigned. A script that depends on an
+order should sort the keys.
 .PP
 The
 .B export
 and
 .B declare \-x
-commands on an indexed or associative array keep the array, set element 0 or
-key 0 when given a value, and record the export attribute.
+commands on an indexed or associative array keep the array and record the
+export attribute, which
 .B declare \-p
-prints that attribute as \-ax or \-Ax, and
-.B ${a@a}
-reports it as x. The commands
-.B "export \-n"
-and
-.B "declare +x"
-remove it. As in Bash, no child process receives the array in its environment.
+prints as \-ax or \-Ax. As in Bash, no child process receives the array in its
+environment.
 .SH EXPANSIONS
 .SS Parameter expansion
 The form ${v:offset:length} selects a substring. A negative offset requires a
 leading space, as in ${v: \-3}. Without the space, ${v:\-3} is the default-value
 form. A negative length excludes that many characters from the end.
 On an indexed array, ${a[@]:offset:length} starts at the first element whose
-index is at least the offset and takes length elements. A negative offset
-counts back from one past the highest index, and one falling before index zero
-selects nothing. On an associative array the offset counts from one in the
-listing order, as in bash.
+index is at least the offset and takes length elements.
 .PP
 The form ${v/pat/rep} replaces the first match. The form ${v//pat/rep} replaces
 every match. The anchors /# and /% select the start and end. The
@@ -1281,194 +1174,95 @@ The transforms ${v@Q}, ${v@E}, ${v@A}, ${v@P}, and ${v@a} produce a quoted
 value, expanded escapes, an assignment, a prompt expansion, or attributes.
 A value or key with a byte that does not print in the locale, such as a
 control byte or invalid UTF-8, takes the $'...' form in ${v@Q}, ${v@A},
-${a[@]@K}, printf %q, declare \-p, and export \-p, so the text evaluates back to
-the same bytes. The forms ${v@U}, ${v@L}, and ${v@u} apply the corresponding
-case conversion. Any other operator after @ on a set parameter is a bad
-substitution that ends the script, and on an unset one it expands to nothing.
-.PP
-The runtime warning for an unset variable expanding to empty, such as the one
-for ${1}, also prints in the sh mood, where dash is silent.
+${a[@]@K}, printf %q, declare \-p, and export \-p. The forms ${v@U}, ${v@L},
+and ${v@u} apply the corresponding case conversion. Any other operator after @
+on a set parameter is a bad substitution that ends the script.
 .PP
 The form ${!ref} expands the variable whose identifier is in ref. The forms
 ${!pre*} and ${!pre@} list variables beginning with pre.
 .PP
-An unquoted tilde that starts the word of a parameter expansion expands, as in
-${v\-~} and ${v#~/x}. It stays literal in double quotes and after the anchor of
-${v/#~/x}.
-.PP
 When ${v:\-word}, ${v:+word}, or ${v:=word}, with or without the colon, sits
 in double quotes or a here-document, the word follows double-quote rules.
 Single quotes in it stay literal, so "${v:\-'a'}" expands to 'a' with its
-quotes and "${v:\-\e'a\e'}" keeps both backslashes. A double-quoted part of the
-word loses its quotes, and a backslash before } is removed. Outside the sh
-mood a backslash inside that double-quoted part is removed before any byte, so
-"${v:\-"\ex"}" expands to x, while the sh mood keeps it. The expression of an
-arithmetic expansion treats such a word as a here-document does, so a single
-quote or $'...' in it is a syntax error. A $'...' form in the word is decoded
-inside double quotes but kept literal in a here-document. The sh and bash-posix
-moods also keep it literal inside double quotes, and end the word at the first }
-even inside single quotes. The message of ${v:?word} loses the quotes. A pattern
-word of #, %, or / still treats quotes as quoting.
+quotes.
 .SS Arithmetic expansion
 Arithmetic accepts the C operators, ++, \-\-, **, the conditional operator, the
 comma operator, and assignment operators. Literals may use 0x hexadecimal, 0
 octal, 0b binary, or a base prefix such as 16#ff. A variable value is
 re-evaluated as an arithmetic expression without further expansion, so a $ or a
 backquote in it is an error. A subscript taken from a variable value is
-expanded again, as in Bash, so q='a[$i]' and $((q)) yield the element at i. A
-command substitution in such a subscript is not run, though Bash runs it. An
-associative array uses that subscript as a literal key, and an indexed array
-reports an error. A subscript in an operand of unset, printf \-v, declare, or
-export, and in the target of a name reference, is expanded again, as in Bash,
-so unset 'a[$i]' uses the value of i. As in Bash, the [[ \-v ]] test does not
-expand its operand's subscript again: an associative array takes it as a
-literal key, and an indexed array reports an error for a $ or a backquote in
-it. In the kosh
-mood a command substitution in such a subscript is an error. The bash and sh
-moods run it, as Bash does. Nested subscripts such as a[b[c]] are resolved
-inside out. An empty (( )) command returns one. An empty $(( )) expansion
-produces zero. Outside the sh mood, double quotes in
-the text of $(( )), (( )), a C-style for header, a subscript, or a substring
-offset are removed before the evaluation, as Bash removes them, so
-$(( "1 + 2" * 3 )) is 7. Quotes inside a variable value, a single quote, and a
-double quote in a
-.B let
-operand stay an error. The sh mood rejects every quote, as dash does.
+expanded again, as in Bash, so q='a[$i]' and $((q)) yield the element at i. An
+empty (( )) command returns one. An empty $(( )) expansion produces zero.
+Outside the sh mood, double quotes in the text of $(( )), (( )), a C-style for
+header, a subscript, or a substring offset are removed before the evaluation,
+so $(( "1 + 2" * 3 )) is 7. The sh mood rejects every quote.
 .PP
 Outside the sh mood, $[expression] is the obsolete Bash spelling of
-$((expression)). It ends at the ] that balances its brackets, so $[ a[1] + 1 ]
-is one expansion. It expands, nests, and fails as $(( )) does, also inside
-double quotes, here-document bodies, and the words of a parameter expansion.
-Inside double quotes a double quote ends the string even within $[, as in
-Bash, so "$[ "3" ]" fails as an unterminated expansion and abandons the line.
-The sh mood keeps $[ literal, as dash does. Analysis reports the spelling
+$((expression)). The sh mood keeps $[ literal. Analysis reports the spelling
 as SC2007.
 .PP
 An arithmetic error in the bash and bash-posix moods abandons the rest of the
 input line, as in Bash. This covers a $(( )) expansion, a subscript, a substring
 offset, and an assignment to an integer variable. Every command left on the line
-stops, including those of a function, loop, or group it runs inside, and $? is 1
-on the next line. Neither set \-e nor an ERR trap acts on it. The line ends at
-an unquoted newline, so the rest of a command spanning lines goes with it.
+stops, and $? is 1 on the next line. Neither set \-e nor an ERR trap acts on it.
 An eval, a sourced file, a subshell, and a command substitution are separate
-lines. An eval or sourced file goes on with its next line, a subshell or command
-substitution ends with status 1, and a pipeline stage or asynchronous command
-fails alone. An eval or sourced file inside a subshell, command substitution,
-pipeline stage, or asynchronous command passes the error on, and the enclosing
-subshell ends with status 1. An error in an indexed array subscript or an
-assignment to an integer variable passes through every eval and sourced file,
-abandons the line of the outermost script, and ends a \-c string or command
-substitution with status 1. A $(( )) expansion inside the subscript stays an
-ordinary arithmetic error. An error in the expression of (( )),
+lines. An error in the expression of (( )),
 .BR let ,
-a [[ ]] operand, or a C-style for header fails that command with status 1. An
-error in a here-document body fails the command it feeds, unless it comes from a
-$(( )) expansion or a subscript inside it.
+a [[ ]] operand, or a C-style for header fails only that command with status 1.
 .PP
 A $(( )) error outside a here-document body ends a non-interactive shell with
 status 1 in the bash-posix mood and 2 in the sh mood, as in Bash POSIX mode and
-dash, and passes through an eval and a sourced file. A subshell and a command
-substitution end with it alone, with the same status. An interactive shell
-abandons the line instead. In the kosh mood every arithmetic error ends the
-script with status 1, like any other evaluation error, while an eval, a
-subshell, or a command substitution holds it to status 1.
+dash. An interactive shell abandons the line instead. In the kosh mood every
+arithmetic error ends the script with status 1.
 .PP
 Other expansion errors follow Bash 5.3. A glob matching nothing under failglob
 abandons the line in the bash and bash-posix moods. A bad substitution, such as
-${x!y}, ${x:}, or ${%}, and an assignment to a read-only variable by NAME=value,
-NAME=(...), NAME+=value, NAME[i]=value, or ${NAME:=value} abandon the line in
-the bash mood and, like a $(( )) error, end a non-interactive shell in the
-bash-posix and sh moods. A read-only ${NAME:=value} leaves status 2 in the bash
-mood. A read-only for loop variable fails the loop in the bash mood and ends a
-non-interactive shell in the bash-posix and sh moods. A read-only prefix
-assignment is reported and skipped in the bash mood, so its command still runs,
-while the bash-posix mood abandons the line, or ends the shell before a special
-builtin. An unset parameter under set \-u and ${NAME?word} end the script in
-every mood. Inside a function substitution, they end the enclosing subshell.
+${x!y} or ${x:}, and an assignment to a read-only variable abandon the line in
+the bash mood and end a non-interactive shell in the bash-posix and sh moods.
+An unset parameter under set \-u and ${NAME?word} end the script in every mood.
 In the kosh mood each of these errors ends the script.
-.PP
-Outside the kosh mood, an unset parameter under set \-u, ${NAME?word}, or a bad
-substitution in a here-document body fails only the simple command the body
-feeds, with status 1 in the bash and bash-posix moods and 2 in the sh mood. In
-the sh mood a $(( )) error in the body fails the command the same way. The error
-still ends the shell before a special builtin, and before a function in the bash
-and bash-posix moods.
 .PP
 In the sh mood, an error of a regular builtin, such as a missing cd directory or
 an invalid test operand, fails that command with status 2 and the script goes
 on. An error of a special builtin or of local, such as shift past the last
 parameter or export of an invalid identifier, ends a non-interactive shell with
-status 2 unless command runs it. A bad trap signal only fails trap, and extra
-operands of exit, break, and continue are ignored, as in dash. Run through
-command, local checks its operands and binds nothing, even outside a function,
-so it succeeds. The builtin read without a variable, printf with an option or
-without a format, ulimit with a bad number or a second operand, and wait or jobs
-with an unknown job number fail with status 2. times prints the seconds with six
-decimals. In every mood printf without a format fails with status 2.
+status 2 unless command runs it. In every mood printf without a format fails
+with status 2.
 .PP
 The
 .B interpreter.arithmetic_uses_big_numbers
 koshconf option selects arbitrary-precision integers and finite base-10 decimal
 literals. The default mood always holds it on, and the other moods start with it
-off. When it is disabled, signed 64-bit arithmetic wraps. Addition, subtraction,
-division, and remainder use the larger operand scale, multiplication adds the
-operand scales, and division and remainder truncate toward zero.
-.PP
-A standalone expression with decimal integer literals on both sides of ^ may
-report that ^ is bitwise XOR and suggest **. Expressions containing identifiers,
-assignments, or another bitwise operator produce no such suggestion.
+off. When it is disabled, signed 64-bit arithmetic wraps.
 .SS Command substitution
 The forms $(command) and `command` replace a command with its output. A command
 substitution restores runtime state, shell options, directory stack, working
 directory state, and file creation mask when it finishes. Trailing newlines are
 removed from the output. The bash and sh moods also drop every null byte, and
 the kosh mood keeps them. A syntax error inside a command, process, or function
-substitution is reported at its place in the outer source, every such error is
-reported, and a script or command string containing one does not run. The same
-check covers substitutions in double quotes, here-document bodies, the words of
-a parameter expansion or arithmetic expansion, and the subscript of an array
-assignment. A substitution nested more than 64 levels deep is a syntax error, as
-at run time.
+substitution is reported at its place in the outer source, and a script or
+command string containing one does not run. A substitution nested more than 64
+levels deep is a syntax error.
 .PP
-Analysis covers the commands inside command, process, and function
-substitutions, including those in parameter expansion words, arithmetic
-expansions, here-document bodies, arithmetic commands, and C-style for headers.
-It reports inner findings at the line and column of the file. The body of a
-command, backtick, or process substitution is analyzed as a subshell, so a
-variable it assigns is not visible after it, and a use of a parent variable
-inside it counts as a use. A function substitution shares the current shell. A
-backtick body whose escapes change its text is not analyzed.
+Analysis checks the commands inside substitutions and reports findings at the
+line and column of the file. The body of a command, backtick, or process
+substitution is analyzed as a subshell, and a function substitution shares the
+current shell.
 .SS Process substitution
 The forms <(command) and >(command) supply a descriptor path. The command runs
 in a separate process. A form expands anywhere in an unquoted word, so
 p=<(command) assigns the path and x<(command) joins it to the text around it.
-The word of an unquoted ${v:\-word}, ${v:+word}, ${v:=word}, or ${v:?word}
-expansion, with or without the colon, expands a form outside quotes. A pattern
-or replacement word keeps the form as text.
 The path stays open until the command that expanded it finishes, and a path in
 the word list of a for loop stays open until the loop finishes. The shell then
 closes it and waits for the process, while Bash leaves the process running.
 A process substitution sets
 .B $!
-to its process. The shell keeps its status as for a job, and
+to its process, and
 .B wait
-with that process returns it, waiting first while it runs.
-.B wait
-without an operand waits for the process in
-.B $!
-when it is a process substitution.
-A later command cannot open the path. An
-.B exec
-command without a program keeps the process while its redirections hold the
-descriptor, closes the path, and reaps the process after it ends without
-waiting for it. On POSIX the path is /dev/fd/63 or the next free descriptor
-above it. On Windows the path is a pipe that behaves like a FIFO. A program may
-open or inspect the path before reading or writing, and may open it again. Each
-reader continues where the previous reader stopped, a reader opening the path
-after the stream ends receives end of file, and each writer appends to the same
-stream. When a redirection finds the pipe busy, it retries for up to two
-seconds. When a reader consuming input in large blocks closes the path in the
-middle of a line, the next reader may receive that whole line again.
+with that process returns its status. On POSIX the path is /dev/fd/63 or the
+next free descriptor above it. On Windows the path is a pipe that behaves like
+a FIFO. Each reader continues where the previous reader stopped, and each
+writer appends to the same stream.
 .SS Brace expansion
 The form {a,b,c} produces alternatives. The forms {1..10}, {a..z}, and
 {1..10..2} produce ranges. A numeric range such as {001..10} retains its width.
@@ -1482,11 +1276,9 @@ locale, as Bash does. The kosh and sh moods sort them by byte value.
 .PP
 The
 .B extglob
-option enables ?(), *(), +(), @(), and !() matching. The shell parses these
-groups as part of a word in every mood whatever the option, so @(a)<(cmd) is one
-word where Bash with the option off reports a syntax error. The pattern of
+option enables ?(), *(), +(), @(), and !() matching. The pattern of
 .B [[
-always matches these groups, as in Bash, whatever the option. The
+always matches these groups, whatever the option. The
 .B globstar
 option enables **. The
 .BR dotglob ,
@@ -1495,50 +1287,28 @@ and
 .B failglob
 options control leading dots, nonmatches, and failed matches. In the default
 mood a nonmatching glob is fatal. In a compatibility mood with failglob
-disabled, the nonmatching pattern remains literal, and the warning policy may
-report that fallback. A glob in command position is fatal in the default mood
-and reports a warning in a compatibility mood unless diagnostics are disabled.
+disabled, the nonmatching pattern remains literal.
 .PP
 A nonempty
 .B GLOBIGNORE
 holds colon\-separated patterns. A pathname expansion result matching one
 pattern is removed, and a glob whose results are all removed follows the
-nonmatching rules. A pattern is matched against the whole result. A star in a
-pattern crosses a slash only at the end of the pattern. The entries . and .. are
-never results while GLOBIGNORE is nonempty. A nonempty assignment enables the
+nonmatching rules. The entries . and .. are never results while GLOBIGNORE is
+nonempty. A nonempty assignment enables the
 .B dotglob
-option, an empty assignment leaves it unchanged, and an unset of GLOBIGNORE
-disables it. A value imported from the environment filters nothing and leaves
-.B dotglob
-alone until the shell assigns GLOBIGNORE. The
-.B extglob
-and
-.B nocaseglob
-options apply to the patterns.
+option, and an unset of GLOBIGNORE disables it.
 .PP
-The character locale decides how much a ? matches. It is selected by the first
-nonempty value of LC_ALL, LC_CTYPE, and LANG, taken from the shell at each
-match, so an assignment, an unset, an export, and a prefix assignment all take
-effect. A value whose codeset after the dot is UTF\-8 or utf8, in any letter
-case, selects UTF\-8 when the platform can select that locale. Any other value
-selects bytes, and so do a UTF\-8 value the platform cannot select, an empty
-value, and no value. Bash falls back to the C locale in the same cases.
+The first nonempty value of LC_ALL, LC_CTYPE, and LANG selects the character
+locale. A value whose codeset is UTF\-8 or utf8 selects UTF\-8 when the platform
+supports that locale. Any other value, an empty value, and no value select
+bytes.
 .PP
-In UTF\-8, a ? and each step of a * consume one whole valid UTF\-8 sequence,
-and an invalid byte counts as one character. In bytes, each of them consumes
-one byte. In UTF\-8, ${#v} and ${v:offset:length} count characters, ${v^},
-${v,}, and ${v~} change the case of multibyte letters, and a ${v/pat/rep} whose
-pattern holds an invalid UTF\-8 sequence matches by byte. The rule applies to
-pathname expansion, case, [[ == ]], ${v#pat}, ${v%pat}, ${v/pat/rep},
-${v^pat}, and compgen \-X.
-.PP
-In UTF\-8, a bracket expression consumes one whole character, its members and
-range endpoints are whole characters, a range compares code points, and a
-negated bracket still consumes one character. A POSIX class such as [:alpha:]
-tests a non\-ASCII character against the platform's Unicode class, and matches
-nothing where the platform has none. In bytes, a bracket compares one byte. In
-UTF\-8, an extglob group and its inner patterns split the subject only at
-character boundaries. Completion always matches by UTF\-8 sequence.
+In UTF\-8, a ? and each step of a * consume one whole character, a bracket
+expression compares code points, ${#v} and ${v:offset:length} count
+characters, and ${v^}, ${v,}, and ${v~} change the case of multibyte letters.
+In bytes, each of them uses one byte. The rule applies to pathname expansion,
+case, [[ == ]], ${v#pat}, ${v%pat}, ${v/pat/rep}, ${v^pat}, and compgen \-X.
+Completion always matches by UTF\-8 sequence.
 .SH REDIRECTIONS
 The operators &> and &>> redirect standard output and standard error to one
 file. The operator |& pipes both streams. The operator <<< supplies a
