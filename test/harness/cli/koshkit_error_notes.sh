@@ -559,3 +559,9 @@ echo "=== xargs line count location ==="
 echo "=== xargs byte count location ==="
 "$BIN" -c 'koshkit xargs -s 0' 2>&1
 [ "$?" -eq 1 ]
+
+echo "=== chown failure prefix ==="
+touch "$TEST_TEMP_DIRECTORY/chown-prefix"
+"$BIN" -c 'koshkit chown 0 "$1"' probe "$TEST_TEMP_DIRECTORY/chown-prefix" 2>&1 |
+  grep -c 'chown: chown:'
+"$BIN" -c 'koshkit unlink "$1"' cleanup "$TEST_TEMP_DIRECTORY/chown-prefix"

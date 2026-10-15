@@ -71,7 +71,7 @@ change_entry_ownership(void                      *context,
 
   koshkit::report_soft_koshkit_error(
       state.ec, state.cxt,
-      state.utility_name + ": cannot change ownership of '" + entry.path +
+      "cannot change ownership of '" + entry.path +
           "': " + os::last_system_error_message());
 
   return false;
@@ -83,8 +83,7 @@ report_ownership_walk_failure(void *context, StringView message) throws
 {
   let const &state = *static_cast<ownership_state *>(context);
 
-  koshkit::report_soft_koshkit_error(state.ec, state.cxt,
-                                     state.utility_name + ": " + message);
+  koshkit::report_soft_koshkit_error(state.ec, state.cxt, message);
 }
 
 } /* namespace */

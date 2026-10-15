@@ -893,3 +893,5 @@ note: use a positive decimal integer for the maximum input lines per command.
      1 |  koshkit xargs -s 0
        |                   ^
 note: use a positive decimal integer for the maximum command size in bytes.
+=== chown failure prefix ===
+0

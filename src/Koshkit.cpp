@@ -1346,11 +1346,19 @@ run_as_multicall(StringView           util_name,
 
     return 1;
   } catch (const std::exception &e) {
-    show_message(String{heap_allocator(), util_name} + ": " + e.what());
+    show_message(Error{
+        String{heap_allocator(), util_name}
+        + ": " + e.what()
+    }
+                     .to_string());
 
     return 1;
   } catch (...) {
-    show_message(String{heap_allocator(), util_name} + ": unexpected error");
+    show_message(Error{
+        String{heap_allocator(), util_name}
+        + ": unexpected error"
+    }
+                     .to_string());
 
     return 1;
   }
@@ -1753,12 +1761,12 @@ show_soft_koshkit_error(const ExecContext   &ec,
   }
 
   if (severity == soft_report_severity::Warning) {
-    print_error(String{heap_allocator(), "warning: "} + message + "\n");
+    show_message(Warning{message}.to_string());
 
     return;
   }
 
-  print_error(String{heap_allocator(), message} + "\n");
+  show_message(Error{message}.to_string());
 }
 
 static fn
