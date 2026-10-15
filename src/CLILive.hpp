@@ -32,6 +32,8 @@ enum class live_view_special_key : u8
   Down,
   PageUp,
   PageDown,
+  WheelUp,
+  WheelDown,
 };
 
 struct live_view_key
@@ -45,6 +47,7 @@ enum class live_view_key_action : u8
   Unhandled,
   Consumed,
   Redraw,
+  RedrawFromTop,
   Quit,
 };
 
@@ -66,6 +69,31 @@ struct live_view_options
   bool       should_color{false};
   bool       should_render_first_frame_immediately{false};
   bool       should_show_header{true};
+  bool       should_scroll{false};
+  usize      pinned_row_count{0};
+};
+
+struct live_view_scroll
+{
+  static constexpr usize PAGE_ROW_COUNT  = 10;
+  static constexpr usize WHEEL_ROW_COUNT = 3;
+
+  usize offset{0};
+
+  fn
+  scroll_up(usize row_count) wontthrow -> void
+  {
+    offset = offset > row_count ? offset - row_count : 0;
+  }
+
+  fn
+  scroll_down(usize row_count) wontthrow -> void
+  {
+    offset = offset <= SIZE_MAX - row_count ? offset + row_count : SIZE_MAX;
+  }
+
+  fn
+  handle_key(live_view_key key) wontthrow -> live_view_key_action;
 };
 
 struct live_view_input
@@ -98,6 +126,10 @@ public:
   mustuse fn
   get_dimensions() const wontthrow -> live_view_dimensions;
   mustuse fn
+  get_scroll_key_action(live_view_key key) wontthrow -> live_view_key_action;
+  fn
+  reset_scroll() wontthrow -> void;
+  mustuse fn
   get_default_key_action(live_view_key key) const wontthrow
       -> live_view_key_action;
 
@@ -110,11 +142,17 @@ public:
                      const live_view_dimensions &dimensions,
                      Allocator                   allocator) const throws -> void;
   fn
+  clip_frame_rows(String                     &frame,
+                  usize                       body_start,
+                  const live_view_dimensions &dimensions,
+                  Allocator                   allocator) throws -> void;
+  fn
   write_frame(const String &frame, const live_view_dimensions &dimensions) const throws -> void;
 
 private:
   const ExecContext        &m_ec;
   live_view_options         m_options;
+  live_view_scroll          m_scroll;
   os::descriptor            m_output_fd;
   os::descriptor            m_input_fd;
   u64                       m_sample_interval_nanoseconds{0};
@@ -123,6 +161,7 @@ private:
   bool                      m_is_terminal{false};
   bool                      m_is_alternate_screen_active{false};
   bool                      m_is_cursor_hidden{false};
+  bool                      m_is_mouse_reporting_active{false};
   bool                      m_has_input{false};
 };
 
@@ -174,6 +213,7 @@ struct live_report_options
     options.title                    = title;
     options.refresh_interval_seconds = interval_seconds;
     options.should_color             = should_color;
+    options.should_scroll            = true;
 
     return options;
   }
@@ -242,10 +282,18 @@ run_live_view(const ExecContext       &ec,
 
     for (usize index = 0; index < input.key_count; index++) {
       let action = do_key(input.keys[index]);
+      if (action == live_view_key_action::Unhandled && options.should_scroll)
+        action = view.get_scroll_key_action(input.keys[index]);
+
       if (action == live_view_key_action::Unhandled)
         action = view.get_default_key_action(input.keys[index]);
 
       if (action == live_view_key_action::Quit) return 0;
+      if (action == live_view_key_action::RedrawFromTop) {
+        view.reset_scroll();
+        action = live_view_key_action::Redraw;
+      }
+
       if (action == live_view_key_action::Redraw) should_force_refresh = true;
     }
 
@@ -277,11 +325,17 @@ run_live_view(const ExecContext       &ec,
     let       frame      = String{frame_allocator};
 
     view.append_frame_start(frame, dimensions, frame_allocator);
+
+    let const body_start = frame.length();
+
     if (let const status = do_render(frame, dimensions, frame_allocator);
         status.has_value())
     {
       return *status;
     }
+
+    if (options.should_scroll)
+      view.clip_frame_rows(frame, body_start, dimensions, frame_allocator);
 
     view.write_frame(frame, dimensions);
   }

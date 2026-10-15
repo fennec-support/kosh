@@ -137,6 +137,21 @@ append_hints(String &output, StringView hints, bool should_style) throws
   }
 }
 
+pure fn
+get_mouse_button(const char *text, usize length) wontthrow -> u32
+{
+  u32 button = 0;
+
+  for (usize index = 0; index < length && text[index] >= '0' &&
+                        text[index] <= '9' && button < 100000;
+       index++)
+  {
+    button = button * 10 + static_cast<u32>(text[index] - '0');
+  }
+
+  return button & ~28U;
+}
+
 } /* namespace */
 
 LiveView::LiveView(const ExecContext       &ec,
@@ -159,10 +174,13 @@ LiveView::LiveView(const ExecContext       &ec,
 
   m_is_alternate_screen_active = enter_alternate_screen(m_ec);
   m_is_cursor_hidden           = hide_cursor(m_ec);
+  if (m_options.should_scroll && m_has_input)
+    m_is_mouse_reporting_active = enable_mouse_reporting(m_ec);
 }
 
 LiveView::~LiveView()
 {
+  if (m_is_mouse_reporting_active) disable_mouse_reporting(m_ec);
   if (m_is_cursor_hidden) show_cursor(m_ec);
   if (m_is_alternate_screen_active) leave_alternate_screen(m_ec);
 }
@@ -310,6 +328,110 @@ LiveView::get_dimensions() const wontthrow -> live_view_dimensions
 }
 
 fn
+live_view_scroll::handle_key(live_view_key key)
+    wontthrow -> live_view_key_action
+{
+  switch (key.special) {
+  case live_view_special_key::Up:        scroll_up(1); break;
+  case live_view_special_key::Down:      scroll_down(1); break;
+  case live_view_special_key::PageUp:    scroll_up(PAGE_ROW_COUNT); break;
+  case live_view_special_key::PageDown:  scroll_down(PAGE_ROW_COUNT); break;
+  case live_view_special_key::WheelUp:   scroll_up(WHEEL_ROW_COUNT); break;
+  case live_view_special_key::WheelDown: scroll_down(WHEEL_ROW_COUNT); break;
+  case live_view_special_key::Escape:    return live_view_key_action::Unhandled;
+  case live_view_special_key::None:
+    switch (key.character) {
+    case 'j':
+    case 'J':
+    case ' ': scroll_down(1); break;
+    case 'k':
+    case 'K': scroll_up(1); break;
+    case 'g': offset = 0; break;
+    case 'G': offset = SIZE_MAX; break;
+    default:  return live_view_key_action::Unhandled;
+    }
+
+    break;
+  }
+
+  return live_view_key_action::Redraw;
+}
+
+fn
+LiveView::get_scroll_key_action(live_view_key key) wontthrow
+    -> live_view_key_action
+{
+  return m_scroll.handle_key(key);
+}
+
+fn
+LiveView::reset_scroll() wontthrow -> void
+{
+  m_scroll.offset = 0;
+}
+
+fn
+LiveView::clip_frame_rows(String                     &frame,
+                          usize                       body_start,
+                          const live_view_dimensions &dimensions,
+                          Allocator                   allocator) throws -> void
+{
+  let const header_row_count = m_options.should_show_header ? 2U : 0U;
+  let const screen_row_count = static_cast<usize>(dimensions.rows);
+
+  if (!dimensions.is_terminal || screen_row_count <= header_row_count + 1)
+    return;
+
+  let const visible_row_count = screen_row_count - 1 - header_row_count;
+  let const pinned_row_count  = m_options.pinned_row_count;
+
+  if (visible_row_count <= pinned_row_count) return;
+
+  let const scrolling_row_count = visible_row_count - pinned_row_count;
+  let const body                = frame.view().substring(body_start);
+
+  usize total_row_count = 0;
+  usize scroll_start    = pinned_row_count == 0 ? 0 : body.length;
+
+  for (usize index = 0; index < body.length; index++) {
+    if (body[index] != '\n') continue;
+
+    total_row_count++;
+    if (total_row_count == pinned_row_count) scroll_start = index + 1;
+  }
+
+  if (body.length != 0 && body[body.length - 1] != '\n') total_row_count++;
+  if (total_row_count <= visible_row_count) return;
+
+  let const maximum_offset = total_row_count - visible_row_count;
+
+  if (m_scroll.offset > maximum_offset) m_scroll.offset = maximum_offset;
+
+  usize kept_start = scroll_start;
+  usize kept_end   = body.length;
+  usize row_index  = 0;
+
+  for (usize index = scroll_start; index < body.length; index++) {
+    if (body[index] != '\n') continue;
+
+    row_index++;
+    if (row_index == m_scroll.offset) kept_start = index + 1;
+    if (row_index == m_scroll.offset + scrolling_row_count) {
+      kept_end = index + 1;
+      break;
+    }
+  }
+
+  let clipped = String{allocator};
+
+  clipped.reserve(body_start + body.length);
+  clipped += frame.view().substring_of_length(0, body_start);
+  clipped += body.substring_of_length(0, scroll_start);
+  clipped += body.substring_of_length(kept_start, kept_end - kept_start);
+  frame = steal(clipped);
+}
+
+fn
 LiveView::get_default_key_action(live_view_key key) const wontthrow
     -> live_view_key_action
 {
@@ -350,7 +472,7 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
 
   if (readiness == 0) return true;
 
-  char      buffer[128];
+  char      buffer[512];
   let const read_count = os::read_fd(m_input_fd, buffer, sizeof(buffer));
 
   if (!read_count.has_value() || *read_count == 0) {
@@ -382,7 +504,8 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
 
     index++;
 
-    char parameter = 0;
+    char  parameter       = 0;
+    usize parameter_start = index;
 
     while (index < *read_count && buffer[index] >= 0x30 &&
            buffer[index] <= 0x3f)
@@ -396,6 +519,19 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
     let const final_byte = buffer[index];
 
     index++;
+    if (final_byte == 'M' && buffer[parameter_start] == '<') {
+      let const button = get_mouse_button(buffer + parameter_start + 1,
+                                          index - parameter_start - 2);
+
+      if (button == 64) key.special = live_view_special_key::WheelUp;
+      if (button == 65) key.special = live_view_special_key::WheelDown;
+      if (key.special != live_view_special_key::None)
+        input.keys[input.key_count++] = key;
+
+      continue;
+    }
+
+    if (final_byte == 'm' && buffer[parameter_start] == '<') continue;
     if (final_byte == 'A') key.special = live_view_special_key::Up;
     if (final_byte == 'B') key.special = live_view_special_key::Down;
     if (final_byte == '~' && parameter == '5') {
@@ -436,6 +572,8 @@ LiveView::append_frame_start(String                     &frame,
                 .view();
 
   let hints = String{allocator, "q quit"};
+
+  if (m_options.should_scroll) hints += "|j/k scroll";
 
   if (!m_options.extra_key_hints.is_empty()) {
     hints += '|';

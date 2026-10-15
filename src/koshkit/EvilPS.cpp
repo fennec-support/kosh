@@ -239,8 +239,6 @@ struct evilps_render_options
       evilps_parent_display_mode::HideAncestors};
   usize      output_limit{SIZE_MAX};
   StringView search{};
-  u32        viewport_rows{0};
-  usize      scroll_offset{0};
 };
 
 fn
@@ -621,8 +619,8 @@ render_process_snapshot(const ExecContext               &ec,
                         ArrayList<tree_node>            &unordered_nodes,
                         const ArrayList<String>         &operands,
                         const ArrayList<SourceLocation> &operand_locations,
-                        const evilps_render_options     &options,
-                        usize &visible_line_count) throws -> i32
+                        const evilps_render_options     &options) throws
+    -> i32
 {
   if (unordered_nodes.is_empty()) {
     report_soft_koshkit_error(ec, cxt, "the process listing is unavailable",
@@ -631,42 +629,9 @@ render_process_snapshot(const ExecContext               &ec,
     return 1;
   }
 
-  let const sort_key      = options.sort_key;
-  let const search        = options.search;
-  let const output_limit  = options.output_limit;
-  let const viewport_rows = options.viewport_rows;
-  let const scroll_offset = options.scroll_offset;
-  let const body_start    = output.length();
-
-  let const do_window_body = [&]() throws -> void {
-    let const body = String{allocator, output.view().substring(body_start)};
-
-    output.truncate(body_start);
-
-    usize line_number = 0;
-    usize position    = 0;
-
-    while (position < body.length()) {
-      let const relative_end =
-          body.view().substring(position).find_character('\n');
-      let const line_end =
-          relative_end.has_value() ? position + *relative_end : body.length();
-      let const line =
-          body.view().substring_of_length(position, line_end - position);
-
-      if (line_number >= scroll_offset &&
-          line_number - scroll_offset < viewport_rows - 1)
-      {
-        output += line;
-        output += "\n";
-      }
-
-      line_number++;
-      position = relative_end.has_value() ? line_end + 1 : body.length();
-    }
-
-    visible_line_count = line_number;
-  };
+  let const sort_key     = options.sort_key;
+  let const search       = options.search;
+  let const output_limit = options.output_limit;
 
   let hide_options = options;
 
@@ -728,9 +693,6 @@ render_process_snapshot(const ExecContext               &ec,
                                allocator, rendered_count, hide_options);
     }
 
-    visible_line_count = 1;
-    if (viewport_rows != 0) do_window_body();
-
     return 0;
   }
 
@@ -784,32 +746,13 @@ render_process_snapshot(const ExecContext               &ec,
                              rendered_count, hide_options);
   }
 
-  visible_line_count = rendered_count;
-  if (viewport_rows != 0) do_window_body();
-
   return 0;
-}
-
-constexpr usize LIVE_PAGE_SCROLL_LINE_COUNT = 10;
-
-pure fn
-get_clamped_scroll_offset(usize scroll_offset,
-                          usize visible_line_count,
-                          usize body_line_count) wontthrow -> usize
-{
-  if (visible_line_count <= body_line_count) return 0;
-
-  let const maximum_offset = visible_line_count - body_line_count;
-
-  return scroll_offset > maximum_offset ? maximum_offset : scroll_offset;
 }
 
 struct evilps_live_state
 {
   String                 input;
   String                 search;
-  usize                  scroll_offset{0};
-  Maybe<usize>           previous_visible_line_count;
   Maybe<evilps_sort_key> sort_key;
   bool                   should_sample_cpu;
   evilps_resource_mode   resource_mode;
@@ -833,39 +776,19 @@ evilps_live_state::handle_key(live_view_key key) throws
 {
   let const is_editing = !input.is_empty() && input[0] == '/';
 
-  let const do_scroll_up = [&](usize line_count) {
-    scroll_offset = scroll_offset > line_count ? scroll_offset - line_count : 0;
-  };
-
-  switch (key.special) {
-  case live_view_special_key::Escape:
+  if (key.special == live_view_special_key::Escape) {
     if (!is_editing && search.is_empty()) {
       return live_view_key_action::Consumed;
     }
 
     input.clear();
     search.clear();
-    scroll_offset = 0;
 
-    return live_view_key_action::Redraw;
-  case live_view_special_key::Up:
-    do_scroll_up(1);
+    return live_view_key_action::RedrawFromTop;
+  }
 
-    return live_view_key_action::Redraw;
-  case live_view_special_key::Down:
-    if (scroll_offset != SIZE_MAX) scroll_offset++;
-
-    return live_view_key_action::Redraw;
-  case live_view_special_key::PageUp:
-    do_scroll_up(LIVE_PAGE_SCROLL_LINE_COUNT);
-
-    return live_view_key_action::Redraw;
-  case live_view_special_key::PageDown:
-    if (scroll_offset <= SIZE_MAX - LIVE_PAGE_SCROLL_LINE_COUNT)
-      scroll_offset += LIVE_PAGE_SCROLL_LINE_COUNT;
-
-    return live_view_key_action::Redraw;
-  case live_view_special_key::None: break;
+  if (key.special != live_view_special_key::None) {
+    return live_view_key_action::Unhandled;
   }
 
   let const byte = key.character;
@@ -875,12 +798,14 @@ evilps_live_state::handle_key(live_view_key key) throws
       input.truncate(input.length() - 1);
       if (input.is_empty()) {
         search.clear();
-        scroll_offset = 0;
+
+        return live_view_key_action::RedrawFromTop;
       }
     } else if (byte == '\n' || byte == '\r') {
-      search        = String{search.allocator(), input.view().substring(1)};
-      scroll_offset = 0;
+      search = String{search.allocator(), input.view().substring(1)};
       input.clear();
+
+      return live_view_key_action::RedrawFromTop;
     } else if (static_cast<unsigned char>(byte) >= 32) {
       input += byte;
     } else {
@@ -893,16 +818,6 @@ evilps_live_state::handle_key(live_view_key key) throws
   switch (byte) {
   case 'q':
   case 'Q': return live_view_key_action::Quit;
-  case 'j':
-  case 'J':
-  case ' ':
-    if (scroll_offset != SIZE_MAX) scroll_offset++;
-
-    return live_view_key_action::Redraw;
-  case 'k':
-  case 'K': do_scroll_up(1); return live_view_key_action::Redraw;
-  case 'g': scroll_offset = 0; return live_view_key_action::Redraw;
-  case 'G': scroll_offset = SIZE_MAX; return live_view_key_action::Redraw;
   case 's':
   case 'S':
     if (!sort_key.has_value()) {
@@ -919,7 +834,6 @@ evilps_live_state::handle_key(live_view_key key) throws
       }
     }
 
-    scroll_offset = 0;
     if (sort_key.has_value() && *sort_key == evilps_sort_key::Cpu) {
       should_sample_cpu = true;
     }
@@ -928,14 +842,13 @@ evilps_live_state::handle_key(live_view_key key) throws
       resource_mode = evilps_resource_mode::ResourceStats;
     }
 
-    return live_view_key_action::Redraw;
+    return live_view_key_action::RedrawFromTop;
   case '/':
     input.clear();
     input += '/';
     search.clear();
-    scroll_offset = 0;
 
-    return live_view_key_action::Redraw;
+    return live_view_key_action::RedrawFromTop;
   default: return live_view_key_action::Unhandled;
   }
 }
@@ -1070,64 +983,34 @@ EvilPS::execute(const ExecContext               &ec,
         render_options.line_width_limit = dimensions.columns;
       }
 
-      render_options.viewport_rows =
-          dimensions.is_terminal && dimensions.rows > 4 ? dimensions.rows - 3
-                                                        : 0;
-
-      let const viewport_rows     = render_options.viewport_rows;
-      let const body_start_length = frame.length();
-      let const requested_offset  = state.scroll_offset;
-
-      render_options.scroll_offset = requested_offset;
-      if (viewport_rows != 0 && state.previous_visible_line_count.has_value()) {
-        render_options.scroll_offset = get_clamped_scroll_offset(
-            requested_offset, *state.previous_visible_line_count,
-            viewport_rows - 1);
-      }
-
-      for (usize pass_count = 0; pass_count < 2; pass_count++) {
-        frame.truncate(body_start_length);
-        frame += "SORT ";
-        if (!state.sort_key.has_value())
-          frame += "tree";
-        else if (*state.sort_key == evilps_sort_key::Name)
-          frame += "name";
-        else if (*state.sort_key == evilps_sort_key::Pid)
-          frame += "pid";
-        else if (*state.sort_key == evilps_sort_key::Cpu)
-          frame += "cpu";
-        else
-          frame += "memory";
-        if (!state.search.is_empty() || !state.input.is_empty()) {
-          frame += " | SEARCH ";
-          if (!state.input.is_empty())
-            frame += state.input.view();
-          else {
-            frame += "/";
-            frame += state.search.view();
-          }
+      frame += "SORT ";
+      if (!state.sort_key.has_value())
+        frame += "tree";
+      else if (*state.sort_key == evilps_sort_key::Name)
+        frame += "name";
+      else if (*state.sort_key == evilps_sort_key::Pid)
+        frame += "pid";
+      else if (*state.sort_key == evilps_sort_key::Cpu)
+        frame += "cpu";
+      else
+        frame += "memory";
+      if (!state.search.is_empty() || !state.input.is_empty()) {
+        frame += " | SEARCH ";
+        if (!state.input.is_empty())
+          frame += state.input.view();
+        else {
+          frame += "/";
+          frame += state.search.view();
         }
-
-        frame += "\n";
-
-        usize     visible_line_count = 0;
-        let const status             = render_process_snapshot(
-            ec, cxt, frame_allocator, frame, nodes, operands, operand_locations,
-            render_options, visible_line_count);
-
-        if (status != 0) return status;
-        if (viewport_rows == 0) break;
-
-        state.previous_visible_line_count = visible_line_count;
-
-        let const clamped_offset = get_clamped_scroll_offset(
-            requested_offset, visible_line_count, viewport_rows - 1);
-
-        state.scroll_offset = clamped_offset;
-        if (clamped_offset == render_options.scroll_offset) break;
-
-        render_options.scroll_offset = clamped_offset;
       }
+
+      frame += "\n";
+
+      let const status =
+          render_process_snapshot(ec, cxt, frame_allocator, frame, nodes,
+                                  operands, operand_locations, render_options);
+
+      if (status != 0) return status;
 
       return None;
     };
@@ -1135,7 +1018,8 @@ EvilPS::execute(const ExecContext               &ec,
     let options = report_options->make_view_options("evilps", should_color,
                                                     started_at_nanoseconds);
 
-    options.extra_key_hints = "s sort|j/k scroll|/ search";
+    options.extra_key_hints                       = "s sort|/ search";
+    options.pinned_row_count                      = 1;
     options.should_render_first_frame_immediately = true;
 
     return run_live_view(ec, options, do_sample, do_render, do_key);
@@ -1170,11 +1054,10 @@ EvilPS::execute(const ExecContext               &ec,
   render_options.should_color     = should_color;
   render_options.output_limit     = output_limit;
 
-  let       output             = String{allocator};
-  usize     visible_line_count = 0;
-  let const status             = render_process_snapshot(
-      ec, cxt, allocator, output, nodes, operands, operand_locations,
-      render_options, visible_line_count);
+  let       output = String{allocator};
+  let const status =
+      render_process_snapshot(ec, cxt, allocator, output, nodes, operands,
+                              operand_locations, render_options);
 
   if (status == 0) ec.print_to_stdout(output);
 

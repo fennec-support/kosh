@@ -3604,8 +3604,16 @@ identifying the utility and showing a LIVE indicator, the local time, the window
 and the refresh interval, and, on a terminal, the keys the utility accepts. The
 header is shortened to fit the terminal width and is colored only when color is
 enabled. A key takes effect at once, without echo or Enter. q quits with status
-0, and an interrupt quits with status 130. Each frame follows the terminal size
-at the time of the frame. Output that is not a terminal carries a plain header
+0, and an interrupt quits with status 130. A frame taller than the terminal
+scrolls.
+.BR j ,
+.BR k ,
+and the arrow keys scroll one row, the page keys scroll ten rows,
+.B g
+and
+.B G
+jump to the top and bottom, and, on a POSIX terminal, the mouse wheel scrolls
+three rows. Each frame follows the terminal size at the time of the frame. Output that is not a terminal carries a plain header
 and no escape sequences.
 .PP
 The
@@ -3743,14 +3751,8 @@ option is shorthand for
 The
 .BR \-l " and " \-\-live
 options sample and refresh the process tree until interrupted, with N as for
-evilio. On a terminal,
-.BR j ,
-.BR k ,
-and the arrow keys scroll, the page keys scroll by ten lines,
-.B g
-and
-.B G
-jump to the top and bottom, and
+evilio. On a terminal, the scroll keys of every live utility apply to the tree
+below the sort line, and
 .B s
 cycles the sort key. The
 .B /

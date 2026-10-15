@@ -649,6 +649,10 @@ write_screen_frame(const ExecContext &ec,
                    u32                row_count,
                    Allocator          allocator) throws -> void;
 fn
+enable_mouse_reporting(const ExecContext &ec) wontthrow -> bool;
+fn
+disable_mouse_reporting(const ExecContext &ec) wontthrow -> void;
+fn
 hide_cursor(const ExecContext &ec) wontthrow -> bool;
 fn
 show_cursor(const ExecContext &ec) wontthrow -> void;

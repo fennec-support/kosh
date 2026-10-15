@@ -1905,6 +1905,28 @@ write_screen_frame(const ExecContext &ec,
 }
 
 fn
+enable_mouse_reporting(const ExecContext &ec) wontthrow -> bool
+{
+#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+  unused(ec);
+
+  return false;
+#else
+  return write_alternate_screen_sequence(ec, "\x1b[?1000h\x1b[?1006h");
+#endif
+}
+
+fn
+disable_mouse_reporting(const ExecContext &ec) wontthrow -> void
+{
+#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32
+  unused(ec);
+#else
+  unused(write_alternate_screen_sequence(ec, "\x1b[?1006l\x1b[?1000l"));
+#endif
+}
+
+fn
 hide_cursor(const ExecContext &ec) wontthrow -> bool
 {
   return write_alternate_screen_sequence(ec, "\x1b[?25l");

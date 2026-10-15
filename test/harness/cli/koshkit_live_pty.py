@@ -94,9 +94,15 @@ def run_pty(binary, command, keys=()):
     blank_counts = [part.count(b"\r\n\r\n") for part in frame_parts]
     tree_frames = [tree_rows(part) for part in frame_parts if tree_rows(part)]
     small_frames = [rows for rows in tree_frames if len(rows) <= 10]
+    body_first_rows = [body_rows(part)[0] for part in frame_parts
+                       if body_rows(part)]
     return {
         "status": os.waitstatus_to_exitcode(status),
         "resized": resized,
+        "body_first_row_changed": len(body_first_rows) > 1
+        and body_first_rows[0] != body_first_rows[-1],
+        "has_scroll_room": bool(frame_parts)
+        and len(body_rows(frame_parts[0])) > 12,
         "frames": bytes(output).count(FRAME_MARKER),
         "controls": FRAME_MARKER in output,
         "hints": b"q quit" in output,
@@ -138,6 +144,14 @@ def tree_rows(part):
         return []
     body = part[start + len(marker):].split(b"\r\n\r\n")[0]
     return [row for row in body.split(b"\r\n") if row.strip()]
+
+
+def body_rows(part):
+    """The rows after the header blank line of a frame."""
+    pieces = part.split(b"\r\n\r\n", 1)
+    if len(pieces) < 2:
+        return []
+    return [row for row in pieces[1].split(b"\r\n") if row.strip()]
 
 
 def run_redirected(binary, command):
@@ -238,6 +252,26 @@ def main():
         scroll_requirements["scroll_moved"] = True
         scroll_requirements["steady_rows"] = True
     ok &= check("evilps-scroll", result, scroll_requirements)
+
+    wheel_down = b"\x1b[<65;5;5M"
+    result = run_pty(binary,
+                     "koshkit --color never evilps --show-pids --live=0.5",
+                     ((wheel_down, None), (wheel_down, None)))
+    wheel_requirements = {"status": 130, "debug_trap": False}
+    if result["scroll_room"]:
+        wheel_requirements["scroll_moved"] = True
+        wheel_requirements["steady_rows"] = True
+    ok &= check("evilps-wheel", result, wheel_requirements)
+
+    for name, command in (
+        ("evilio-scroll", "koshkit --color never evilio --ps --live=0.5"),
+        ("evilss-scroll", "koshkit --color never evilss --all --live=0.5"),
+    ):
+        result = run_pty(binary, command, ((b"j", None), (wheel_down, None)))
+        scroll_requirements = {"status": 130, "debug_trap": False}
+        if result["has_scroll_room"]:
+            scroll_requirements["body_first_row_changed"] = True
+        ok &= check(name, result, scroll_requirements)
 
     result = run_pty(binary, "koshkit --color always evilnet --traffic "
                      "--live=0.05 --cumulative=0.1")

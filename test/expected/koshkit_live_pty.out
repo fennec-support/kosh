@@ -7,6 +7,9 @@ evilnet-quit PASS
 evilss-quit PASS
 evilps-quit PASS
 evilps-scroll PASS
+evilps-wheel PASS
+evilio-scroll PASS
+evilss-scroll PASS
 evilnet-color-pty PASS
 evilnet-plain-pty PASS
 evilss-redirected PASS
