@@ -461,12 +461,13 @@ private:
 
 struct script_run_options
 {
-  bool should_require_shebang{true};
-  bool should_silence_unresolved_commands{false};
-  bool should_print_ast{true};
-  bool should_analyze{true};
-  bool is_whole_line{false};
-  bool should_use_command_string_status{true};
+  bool  should_require_shebang{true};
+  bool  should_silence_unresolved_commands{false};
+  bool  should_print_ast{true};
+  bool  should_analyze{true};
+  bool  is_whole_line{false};
+  bool  should_use_command_string_status{true};
+  bool *out_was_rejected{nullptr};
 };
 
 static fn
@@ -887,6 +888,15 @@ run_script_contents(
       filename->data == COMMAND_STRING_SOURCE_NAME.data;
   i32 exit_code = EXIT_SUCCESS;
 
+  let const do_reject = [&](i32 status) {
+    LOG(Debug, "the chunk was rejected before evaluation with status %d",
+        status);
+    if (run_options.out_was_rejected != nullptr)
+      *run_options.out_was_rejected = true;
+
+    return status;
+  };
+
   try {
     defer { context.end_command(); };
     defer {
@@ -909,13 +919,14 @@ run_script_contents(
 
     if (plan.should_stream_units) {
       if (scan_analysis_metadata(input, parse_errors, directives))
-        return SYNTAX_ERROR_STATUS;
+        return do_reject(SYNTAX_ERROR_STATUS);
     } else if (plan.should_preflight_syntax) {
-      if (preflight_syntax(input, parse_errors)) return SYNTAX_ERROR_STATUS;
+      if (preflight_syntax(input, parse_errors))
+        return do_reject(SYNTAX_ERROR_STATUS);
     } else if (precompiled_ast == nullptr) {
       if (parse_whole_script(input, plan, should_print_ast, parse_errors,
                              directives, ast))
-        return SYNTAX_ERROR_STATUS;
+        return do_reject(SYNTAX_ERROR_STATUS);
     }
 
     LOG(Debug, "the analysis stage %s for this chunk",
@@ -947,7 +958,7 @@ run_script_contents(
     }
 
     if (did_analysis_fail) {
-      exit_code = EXIT_FAILURE;
+      exit_code = do_reject(EXIT_FAILURE);
     } else if (context.runtime_state().no_exec()) {
       exit_code = EXIT_SUCCESS;
     } else {

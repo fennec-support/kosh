@@ -1926,6 +1926,7 @@ struct script_chunk
   bool                  should_analyze                   = true;
   bool                  is_fresh_evaluator_command       = false;
   bool                  should_use_command_string_status = true;
+  bool                  was_rejected                     = false;
 };
 
 static fn
@@ -2511,6 +2512,7 @@ run_chunk(script_chunk        &chunk,
       chunk.should_use_command_string_status;
   run_options.is_whole_line =
       chunk.command_string_name.has_value() || chunk.is_fresh_evaluator_command;
+  run_options.out_was_rejected = &chunk.was_rejected;
   if (chunk.command_string_name.has_value()) {
     run_options.should_require_shebang = false;
 
@@ -2540,9 +2542,11 @@ allow_terminal_exec_on_final_chunk(EvalContext &context,
 static fn
 should_exit_after_chunk(EvalContext         &context,
                         const script_cursor &cursor,
+                        const script_chunk  &chunk,
                         i32                  exit_code) wontthrow -> bool
 {
   return cursor.should_quit ||
+         (chunk.was_rejected && chunk.command_string_name.has_value()) ||
          context.runtime_state().option_is_enabled(shell_option_id::Onecmd) ||
          os::is_child_process() ||
          (!FLAG_LINT.is_enabled() && FLAG_ERROR_EXIT.is_enabled() &&
@@ -2990,7 +2994,7 @@ kosh_main(int argc, char **argv) -> int
     if (FLAG_LINT.is_enabled())
       exit_code = lint.record(exit_code, cursor.should_quit);
 
-    if (koshka::should_exit_after_chunk(context, cursor, exit_code)) {
+    if (koshka::should_exit_after_chunk(context, cursor, chunk, exit_code)) {
       koshka::exit_after_final_chunk(context, exit_code, lint);
     }
   }

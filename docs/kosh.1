@@ -144,7 +144,8 @@ Commands are read from standard input.
 .TP
 .BR \-c " " \fICOMMAND\fR ", " \-\-command =\fICOMMAND\fR
 COMMAND is run. The option may be repeated, and the command strings run in
-the order given.
+the order given. When a command string fails to parse or analysis rejects it,
+the shell exits with status 2 or 1 and the later strings do not run.
 .TP
 .BR \-e ", " \-\-error\-exit
 The shell exits after an unguarded failing command.

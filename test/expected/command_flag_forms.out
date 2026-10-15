@@ -1,5 +1,8 @@
 one
 two
+rejected-analysis-rc=1
+rejected-syntax-rc=2
+after-false
 equals-form
 trailer
 -c:1:1: warning: Exit code (0)

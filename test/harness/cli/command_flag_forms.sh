@@ -1,5 +1,10 @@
 unset KOSH_FLAGS
 "$BIN" -c 'echo one' -c 'echo two'
+"$BIN" -c 'no_such_command_e; exit 3' -c 'echo not-reached' 2>/dev/null
+echo "rejected-analysis-rc=$?"
+"$BIN" -c 'if' -c 'echo not-reached' 2>/dev/null
+echo "rejected-syntax-rc=$?"
+"$BIN" -c 'false' -c 'echo after-false'
 "$BIN" --command='echo equals-form'
 "$BIN" -N -c 'echo trailer'
 echo "rc=$?"

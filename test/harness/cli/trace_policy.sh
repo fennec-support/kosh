@@ -156,7 +156,8 @@ printf 'disabled-process-substitution traces=%s errors=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')"
 
-out=$("$BIN" -c no_such_first_root_xyz -c no_such_second_root_xyz 2>&1)
+out=$("$BIN" -c 'x=no_such_first_root_xyz; $x' \
+    -c 'x=no_such_second_root_xyz; $x' 2>&1)
 printf 'multi-root traces=%s errors=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')"
@@ -197,7 +198,8 @@ printf 'disabled-runtime traces=%s errors=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')"
 
-out=$("$BIN" --no-traces -c no_such_first_root_xyz -c no_such_second_root_xyz 2>&1)
+out=$("$BIN" --no-traces -c 'x=no_such_first_root_xyz; $x' \
+    -c 'x=no_such_second_root_xyz; $x' 2>&1)
 printf 'disabled-multi-root traces=%s errors=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')"
@@ -245,7 +247,7 @@ printf '%s\n' "$out" |
   echo "special_arguments_quoted=ok"
 echo "rc=$rc"
 
-out=$("$BIN" -c 'no_such_a; no_such_b' -c 'no_such_c' 2>&1)
+out=$("$BIN" -c 'x=no_such_a; $x; $x' -c 'x=no_such_c; $x' 2>&1)
 printf 'root_trace_order=%s\n' \
     "$(printf '%s\n' "$out" | grep -oE '(error|trace):' | tr -d ':' |
         paste -sd ' ' -)"
