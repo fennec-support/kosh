@@ -756,19 +756,6 @@ Lexer::lex_identifier() throws -> Token *
 
   bool did_quote_enclose_content = false;
 
-  let const do_append_char = [&word, this](WordSegment::Kind kind, char ch) {
-    if (!word.segments.is_empty() && word.segments.back().kind == kind &&
-        kind != WordSegment::Kind::VariableReference)
-    {
-      word.segments.back().text.push(ch);
-    } else {
-      word.segments.push(WordSegment{
-          kind, SegmentText{bump_allocator(arena()), StringView{&ch, 1}},
-          false
-      });
-    }
-  };
-
   let const do_append_run = [&word, this](WordSegment::Kind kind,
                                           StringView        run) {
     if (!word.segments.is_empty() && word.segments.back().kind == kind &&
@@ -781,6 +768,10 @@ Lexer::lex_identifier() throws -> Token *
            false
       });
     }
+  };
+
+  let const do_append_char = [&do_append_run](WordSegment::Kind kind, char ch) {
+    do_append_run(kind, StringView{&ch, 1});
   };
 
   let const do_append_unquoted_run = [&do_append_run](StringView run) {
