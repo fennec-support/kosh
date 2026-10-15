@@ -245,9 +245,7 @@ trap 'exit 130' 2
 trap 'exit 143' 15
 install_dir=
 if ! try_install_directory "${6-}"; then
-  printf 'assimilate: Cannot install into %s, which changed after it was chosen or holds a lock that cannot be recovered.\n' \
-    "${6-}" >&2
-  exit 1
+  exit 3
 fi
 candidate=$install_dir/.kosh-assimilate-$2.candidate
 [ ! -d "$target" ] || exit 1
@@ -939,6 +937,20 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
       link_moods.view(), install_directory->view(), trace, allocator));
 
   status = run_program(ssh_arguments, ec, trace, "install");
+
+  /* The install stage exits 3 when the chosen directory can no longer be
+     used, so the message is reported here with a location. */
+  constexpr i32 INSTALL_DIRECTORY_LOST_STATUS = 3;
+
+  if (status == INSTALL_DIRECTORY_LOST_STATUS) {
+    report_soft_builtin_error(
+        ec, cxt,
+        "Cannot install into " + install_directory->view() +
+            ", which changed after it was chosen or holds a lock that "
+            "cannot be recovered");
+
+    return 1;
+  }
 
   return status;
 }

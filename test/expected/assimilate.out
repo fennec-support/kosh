@@ -6,3 +6,4 @@ transfer-status=23 old=transfer-old leftovers=0
 options=0 links=0 commands=0 trace=0 sbin=0 collision=0 leftovers=0
 decline-status=1 result=0 leftovers=0
 install-directory-status=0 result=0 leftovers=0
+lost-directory-status=1 located=1 leftovers=0
