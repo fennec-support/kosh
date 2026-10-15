@@ -26,7 +26,7 @@ FLAG(PATHCHK_LEADING_HYPHEN,
      "Reject an empty pathname or a component beginning with a hyphen.");
 FLAG(PATHCHK_WINDOWS,
      Bool,
-     '\0',
+     'W',
      "windows",
      "Apply Windows filename rules. Windows builds always apply them.");
 

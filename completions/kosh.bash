@@ -573,7 +573,7 @@ _koshkit_util_flags ()
       echo "-d --delimiters -s --serial"
     ;;
     pathchk)
-      echo "-P --leading-hyphen -p --portable --windows"
+      echo "-P --leading-hyphen -p --portable -W --windows"
     ;;
     renice)
       echo "-g --pgrp -n --increment -p --pid -u --user"
