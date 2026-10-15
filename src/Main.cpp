@@ -2968,18 +2968,25 @@ kosh_main(int argc, char **argv) -> int
         chunk.root_frame_call_site.has_value() && has_multiple_root_sources &&
         !inherited.should_suppress_root_source_trace;
 
-    if (should_push_root_frame) {
-      context.push_root_source_frame(&cli_invocation,
-                                     *chunk.root_frame_call_site,
-                                     koshka::source_frame_kind::CLIRoot);
+    {
+      if (should_push_root_frame) {
+        let const root_source_name = chunk.command_string_name.has_value()
+                                         ? *chunk.command_string_name
+                                         : chunk.filename.value_or({});
+
+        context.push_root_source_frame(
+            &cli_invocation, *chunk.root_frame_call_site, root_source_name,
+            koshka::source_frame_kind::CLIRoot);
+      }
+
+      defer {
+        if (should_push_root_frame) context.pop_root_source_frame();
+      };
+
+      exit_code = koshka::run_chunk(chunk, context, ast_arena, lint,
+                                    inherited.take_evaluation_mode());
     }
 
-    defer {
-      if (should_push_root_frame) context.pop_root_source_frame();
-    };
-
-    exit_code = koshka::run_chunk(chunk, context, ast_arena, lint,
-                                  inherited.take_evaluation_mode());
     if (FLAG_LINT.is_enabled())
       exit_code = lint.record(exit_code, cursor.should_quit);
 

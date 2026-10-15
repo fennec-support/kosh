@@ -47,6 +47,12 @@ disabled-fallback traces=0 errors=1
 quoted_and_second_c=ok
 special_arguments_quoted=ok
 rc=1
+root_trace_order=error error trace error trace
+early_exit=exit 3 traces=1 rc=3
+early_exit=set -e; false traces=1 rc=1
+early_exit=exec true traces=1 rc=0
+early_exit=/usr/bin/true traces=1 rc=0
+early_exit=f() { exit 4; }; f traces=1 rc=4
 traces=0
 error=ok
 rc=1

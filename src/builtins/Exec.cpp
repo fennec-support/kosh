@@ -291,6 +291,7 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   try {
+    cxt.print_deferred_source_traces();
     cxt.prepare_child_environment();
     os::replace_process(steal(command));
   } catch (const ErrorBase &error) {

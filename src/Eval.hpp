@@ -5472,9 +5472,12 @@ public:
   fn
   push_root_source_frame(const String     *parent_source,
                          SourceLocation    call_site,
+                         StringView        source_name,
                          source_frame_kind kind) throws -> void;
   fn
   pop_root_source_frame() wontthrow -> void;
+  fn
+  print_deferred_source_traces() wontthrow -> void;
   pure fn
   scan_source_generation(const String *source) const wontthrow -> u64;
   pure fn
@@ -5567,9 +5570,11 @@ public:
   fn
   record_history_event(StringView command) throws -> bool;
   fn
-  print_source_backtrace(Maybe<SourceLocation> error_location = None,
-                         bool should_defer_for_source_file    = true,
-                         bool is_replay                       = false) throws -> void;
+  print_source_backtrace(Maybe<SourceLocation> error_location      = None,
+                         bool         should_defer_for_source_file = true,
+                         bool         is_replay                    = false,
+                         Maybe<usize> replay_frame_count           = None) throws
+      -> void;
   fn
   set_diagnostic_highlight_cache(completion::ShellHighlightCache *cache)
       wontthrow

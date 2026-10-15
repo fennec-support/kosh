@@ -167,6 +167,7 @@ execute_context(ExecContext  &&ec,
     LOG(Debug,
         "execute_context replacing the shell with the terminal command '%s'",
         ec.program().c_str());
+    cxt.print_deferred_source_traces();
     flush();
     cxt.prepare_child_environment();
     try {
@@ -772,10 +773,10 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
   return stage_status[stage_count - 1];
 }
 
-static const EvalContext *QUIT_CONTEXT = nullptr;
+static EvalContext *QUIT_CONTEXT = nullptr;
 
 fn
-set_quit_context(const EvalContext *context) wontthrow -> void
+set_quit_context(EvalContext *context) wontthrow -> void
 {
   QUIT_CONTEXT = context;
 }
@@ -820,6 +821,8 @@ quit(i32 code, farewell_policy farewell) throws -> void
   let const should_goodbye = farewell == farewell_policy::Goodbye;
 
   LOG(Info, "quitting with code %d", code);
+
+  if (QUIT_CONTEXT != nullptr) QUIT_CONTEXT->print_deferred_source_traces();
 
   if (QUIT_CONTEXT != nullptr &&
       QUIT_CONTEXT->runtime_state().memory_stats_enabled())

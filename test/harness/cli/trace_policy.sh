@@ -245,6 +245,20 @@ printf '%s\n' "$out" |
   echo "special_arguments_quoted=ok"
 echo "rc=$rc"
 
+out=$("$BIN" -c 'no_such_a; no_such_b' -c 'no_such_c' 2>&1)
+printf 'root_trace_order=%s\n' \
+    "$(printf '%s\n' "$out" | grep -oE '(error|trace):' | tr -d ':' |
+        paste -sd ' ' -)"
+
+for early_exit in 'exit 3' 'set -e; false' 'exec true' '/usr/bin/true' \
+    'f() { exit 4; }; f'
+do
+  out=$("$BIN" -c 'echo one' -c "x=no_such_d; \$x; $early_exit" 2>&1)
+  rc=$?
+  printf 'early_exit=%s traces=%s rc=%s\n' "$early_exit" \
+      "$(printf '%s\n' "$out" | grep -Ec 'trace:')" "$rc"
+done
+
 unset KOSH_FLAGS
 out=$("$BIN" -c no_such_command_xyz 2>&1)
 rc=$?

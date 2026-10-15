@@ -324,6 +324,7 @@ SourceScope::restore() wontthrow -> void
 fn
 EvalContext::push_root_source_frame(const String     *parent_source,
                                     SourceLocation    call_site,
+                                    StringView        source_name,
                                     source_frame_kind kind) throws
     -> void
 {
@@ -333,16 +334,47 @@ EvalContext::push_root_source_frame(const String     *parent_source,
       String{heap_allocator(), StringView{"the command line"}},
       call_site,
       parent_source, source_generation_for(parent_source),
-      String{heap_allocator()},
+      String{heap_allocator(), source_name                   },
       kind
   });
+  source_store().source_frames().back().should_defer_trace = true;
 }
 
 fn
 EvalContext::pop_root_source_frame() wontthrow -> void
 {
-  if (!source_store().source_frames().is_empty())
-    source_store().source_frames().pop_back();
+  if (source_store().source_frames().is_empty()) return;
+
+  let &frame = source_store().source_frames().back();
+
+  if (frame.has_deferred_trace) {
+    try {
+      print_source_backtrace(frame.deferred_trace_location, false, true);
+    } catch (...) {
+      LOG(Debug, "rendering a deferred root source trace failed");
+    }
+  }
+
+  source_store().source_frames().pop_back();
+}
+
+fn
+EvalContext::print_deferred_source_traces() wontthrow -> void
+{
+  for (usize i = source_store().source_frames().count(); i > 0; i--) {
+    let &frame = source_store().source_frames()[i - 1];
+
+    if (!frame.has_deferred_trace) continue;
+
+    LOG(Debug, "replaying the deferred source trace of frame %zu before exit",
+        i - 1);
+    frame.has_deferred_trace = false;
+    try {
+      print_source_backtrace(frame.deferred_trace_location, false, true, i);
+    } catch (...) {
+      LOG(Debug, "rendering a deferred source trace before exit failed");
+    }
+  }
 }
 
 struct backtrace_entry
@@ -359,9 +391,11 @@ struct backtrace_entry
 };
 
 fn
-EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
-                                    bool should_defer_for_source_file,
-                                    bool is_replay) throws -> void
+EvalContext::print_source_backtrace(
+    Maybe<SourceLocation> error_location,
+    bool                  should_defer_for_source_file,
+    bool                  is_replay,
+    Maybe<usize>          replay_frame_count) throws -> void
 {
   if (!diagnostics_store().source_traces_enabled()) return;
   if (source_store().source_frames().is_empty() &&
@@ -453,6 +487,14 @@ EvalContext::print_source_backtrace(Maybe<SourceLocation> error_location,
   usize deferral_index = static_cast<usize>(-1);
   usize frame_index    = source_store().source_frames().count();
   usize call_index     = function_store().call_frames().count();
+
+  if (replay_frame_count.has_value() && *replay_frame_count > 0 &&
+      *replay_frame_count <= frame_index)
+  {
+    frame_index = *replay_frame_count;
+    call_index =
+        source_store().source_frames()[frame_index - 1].function_call_depth;
+  }
 
   while (frame_index > 0 || call_index > 0) {
     let const is_call_next =

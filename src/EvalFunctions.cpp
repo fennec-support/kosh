@@ -955,6 +955,7 @@ EvalContext::run_pending_traps() throws -> void
 cold fn
 EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
 {
+  print_deferred_source_traces();
   if (trap_store().exit_trap_ran()) return;
   trap_store().exit_trap_ran() = true;
 

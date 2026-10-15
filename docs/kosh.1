@@ -3505,6 +3505,11 @@ diagnostic with no indirection has no frame.
 A frame begins with
 .BR trace: .
 A repeated frame is printed once and its header ends with the repeat count.
+When several
+.B \-c
+strings or files are given, the frame that points into the command line is
+printed once, after all diagnostics from that string or file. When the shell
+exits or replaces itself before that, the frame is printed first.
 Diagnostics print the same text in every mood.
 .SH ENVIRONMENT
 On Windows an environment variable holds at most 32,766 UTF-16 units, and a

@@ -73,6 +73,7 @@ Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(Info, "newgrp handing the shell off to '%s'", found[0].c_str());
 
   try {
+    cxt.print_deferred_source_traces();
     cxt.prepare_child_environment();
     os::replace_process(steal(command));
   } catch (const ErrorBase &error) {
