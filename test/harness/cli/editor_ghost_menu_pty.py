@@ -217,6 +217,14 @@ class Screen:
                 return row
         return -1
 
+    def get_prompt_width(self):
+        row = self.get_prompt_row()
+        if row < 0:
+            return 0
+        cells = self.rows[row]
+        return next(index for index, (text, _) in enumerate(cells)
+                    if text == "•") + 2
+
     def get_typed_and_ghost(self):
         row = self.get_prompt_row()
         if row < 0:
@@ -1517,7 +1525,9 @@ def run_narrow_checks(binary, directory, command_directory, report):
                       and get_help_rows(screen) is None)
         clear_line(session)
 
-        session.send(b"echo " + b"x" * 20 + b" menu/menu-\t")
+        prompt_width = session.screen.get_prompt_width()
+        filler_width = columns - prompt_width - len("echo  menu/menu-") - 2
+        session.send(b"echo " + b"x" * filler_width + b" menu/menu-\t")
         report.record("narrow-menu-far-right-keeps-two-help-rows", session,
                       lambda screen: is_help_wrapped(columns)(screen)
                       and len(get_help_rows(screen)) == 2)

@@ -13,7 +13,8 @@ else
 fi
 
 do_kosh() {
-  env -i ASAN_OPTIONS="${ASAN_OPTIONS-}" PATH="$work/bin" HOME="$work" XDG_CONFIG_HOME="$work/config" \
+  env -i ASAN_OPTIONS="${ASAN_OPTIONS-}" "$TEST_PATH_ENVIRONMENT_NAME=$work/bin" \
+    HOME="$work" XDG_CONFIG_HOME="$work/config" \
     "$BIN" "$@" 2>&1 | grep -v -e '^ ' -e '^note:'
 }
 

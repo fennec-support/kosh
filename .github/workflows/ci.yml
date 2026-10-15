@@ -45,6 +45,7 @@ jobs:
         run: |
           adduser -D -s /bin/sh tester
           chown -R tester:tester "$GITHUB_WORKSPACE"
+          chown tester:tester "$(dirname "$GITHUB_WORKSPACE")"
 
       - name: Build ASAN binary
         run: su tester -c 'make kosh'
