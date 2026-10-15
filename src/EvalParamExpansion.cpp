@@ -3,12 +3,11 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements parameter expansion operators for default values,
- * assignments, errors, lengths, substrings, trimming, replacement, quoting,
- * and case changes. The same operators apply to scalar and array values. The
- * split keeps parameter syntax and transformations outside the word-expansion
- * coordinator. ParameterExpander holds one ${...} expansion and dispatches to
- * operator families. ModifierWordExpander scans and expands the word that
- * follows an operator.
+ * assignments, errors, lengths, substrings, trimming, replacement, quoting, and
+ * case changes. The operators apply to scalar and array values and stay outside
+ * the word-expansion coordinator. ParameterExpander holds one ${...} expansion
+ * and dispatches to operator families, and ModifierWordExpander scans and
+ * expands the word that follows an operator.
  */
 
 #include "Builtin.hpp"

@@ -4,8 +4,8 @@
  *
  * This file implements the pushd builtin, which saves the current directory on
  * the stack and changes to dir. With no argument it swaps the top two
- * directories. With +N it rotates the stack, making the Nth entry from the top
- * current. With -N it counts from the bottom.
+ * directories. With +N it rotates the stack to make the Nth entry from the top
+ * current, and with -N it counts from the bottom.
  */
 
 #include "../Builtin.hpp"

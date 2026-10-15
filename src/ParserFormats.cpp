@@ -2,11 +2,11 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file detects host document formats and extracts embedded shell
- * fragments for analysis and formatting. It maps positions between host and
- * shell source, handles indentation and JSON string codecs, and applies
- * formatted replacements to the host document. Each source under formats
- * implements one host format. Shared format code stays here.
+ * This file detects host document formats and extracts embedded shell fragments
+ * for analysis and formatting. It maps positions between host and shell source,
+ * handles indentation and JSON string codecs, and applies formatted
+ * replacements to the host document. Each source under formats implements one
+ * host format, and shared format code stays here.
  */
 
 #include "ParserFormats.hpp"

@@ -2,13 +2,13 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements indexed, sparse, and associative shell arrays. It owns
+ * This file implements indexed, sparse, and associative shell arrays, including
  * assignment, lookup, removal, subscripting, key collection, local bindings,
  * and scalar or array expansion through the common variable interface. It
  * projects call stack variables, flattened Bash call arguments, and DIRSTACK
  * through the same array paths. EvalContext retains the frame and directory
- * storage. The split exists because aggregate subscripting and list expansion
- * are shared even when an array has no ordinary indexed array allocation.
+ * storage, and aggregate subscripting and list expansion are shared even when
+ * an array has no ordinary indexed allocation.
  */
 
 #include "Builtin.hpp"
