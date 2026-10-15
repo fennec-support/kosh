@@ -22,6 +22,11 @@ namespace optimizer {
 
 namespace {
 
+fn
+propagated_literal_word_value(const Token           *token,
+                              const AnalysisContext &actx) throws
+    -> Maybe<String>;
+
 pure fn
 is_constant_arithmetic_text(StringView text) wontthrow -> bool
 {
@@ -291,6 +296,8 @@ plain_variable_reference_name(const Token *token) wontthrow -> Maybe<StringView>
   return name;
 }
 
+namespace {
+
 fn
 propagated_literal_word_value(const Token           *token,
                               const AnalysisContext &actx) throws
@@ -418,6 +425,8 @@ try_fold_arithmetic_with_constants(StringView             expression,
     return None;
   }
 }
+
+} /* namespace */
 
 enum class static_verdict_kind : u8
 {
