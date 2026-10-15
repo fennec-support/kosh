@@ -127,9 +127,7 @@ Chmod::execute(const ExecContext               &ec,
       cxt.expansion_store().scratch_arena().release(operand_scratch);
     };
 
-    if (!os::walk_tree(operands[index].view(), cxt.scratch_allocator(), options,
-                       hooks))
-      status = 1;
+    if (!os::walk_tree(operands[index].view(), options, hooks)) status = 1;
     if (os::INTERRUPT_REQUESTED) return 130;
   }
 

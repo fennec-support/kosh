@@ -7,4 +7,6 @@ worktree=linked-tree
 outside=[]
 below-ceiling=0123456
 stored=stored
+ahead=[]
+planted-git=not-run
 rc=0

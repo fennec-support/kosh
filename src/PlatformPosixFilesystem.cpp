@@ -1712,11 +1712,10 @@ walk_tree_entry(tree_walk_state   &walk,
 
 fn
 walk_tree(StringView               path,
-          Allocator                allocator,
           const tree_walk_options &options,
           const tree_walk_hooks   &hooks) throws -> bool
 {
-  let const   path_string       = String{allocator, path};
+  let const   path_string       = String{heap_allocator(), path};
   let         walk              = tree_walk_state{options, hooks};
   int         working_directory = AT_FDCWD;
   struct stat working_status{};

@@ -842,7 +842,6 @@ describe_tree_walk_failure(tree_walk_failure failure,
 
 fn
 walk_tree(StringView               path,
-          Allocator                allocator,
           const tree_walk_options &options,
           const tree_walk_hooks   &hooks) throws -> bool;
 /* An operand follows a symlink. Any other entry does not. */

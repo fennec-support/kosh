@@ -27,5 +27,21 @@ fi
 GIT_CEILING_DIRECTORIES=$ceiling "$BIN" -c "cd '$root' && echo \"outside=[\$KOSH_GIT_BRANCH]\""
 "$BIN" -c "cd '$root/repo/sub/dir' && GIT_CEILING_DIRECTORIES='$ceiling' && echo \"below-ceiling=\$KOSH_GIT_BRANCH\""
 "$BIN" -c "cd '$root/repo' && KOSH_GIT_BRANCH=stored && echo \"stored=\$KOSH_GIT_BRANCH\""
+# KOSH_GIT_AHEAD starts git only from a trusted absolute directory, so a git
+# planted in the repository and reached through an empty PATH entry never runs.
+upstream=$root/upstream
+mkdir -p "$upstream/.git/refs/heads" "$upstream/.git/refs/remotes/origin"
+printf 'ref: refs/heads/main\n' > "$upstream/.git/HEAD"
+printf '1111111111111111111111111111111111111111\n' \
+    > "$upstream/.git/refs/heads/main"
+printf '2222222222222222222222222222222222222222\n' \
+    > "$upstream/.git/refs/remotes/origin/main"
+printf '[branch "main"]\n\tremote = origin\n\tmerge = refs/heads/main\n' \
+    > "$upstream/.git/config"
+printf '#!/bin/sh\n: > planted-ran\necho "3 4"\n' > "$upstream/git"
+chmod 755 "$upstream" "$upstream/git"
+(cd "$upstream" &&
+    PATH=":/nonexistent" "$BIN" -c 'echo "ahead=[${KOSH_GIT_AHEAD-}]"')
+if [ -f "$upstream/planted-ran" ]; then echo "planted-git=ran"; else echo "planted-git=not-run"; fi
 rm -rf "$root"
 echo "rc=$?"

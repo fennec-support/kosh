@@ -1455,6 +1455,31 @@ ProgramResolver::resolve_along_path(
   return result;
 }
 
+fn
+ProgramResolver::find_trusted(StringView  program_name,
+                              Requirement requirement) throws
+    -> Maybe<Path>
+{
+  let paths =
+      search(program_name, SearchMode::First, requirement, CachePolicy::Bypass);
+
+  if (paths.is_empty()) {
+    LOG(Debug, "skipping '%.*s' because it is not on the path",
+        static_cast<int>(program_name.length), program_name.data);
+
+    return None;
+  }
+
+  if (!os::directory_is_trusted_for_exec(paths[0].parent())) {
+    LOG(Debug, "skipping '%s' because its directory is not trusted",
+        paths[0].c_str());
+
+    return None;
+  }
+
+  return steal(paths[0]);
+}
+
 hot fn
 ProgramResolver::search(StringView               program_name,
                         SearchMode               search_mode,

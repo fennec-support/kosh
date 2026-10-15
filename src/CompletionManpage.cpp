@@ -211,15 +211,14 @@ manpath_argv_for(EvalContext &context) throws
   let &resolver = context.program_resolver();
   let  argv     = ArrayList<String>{heap_allocator()};
 
-  if (let const manpath = find_trusted_program(resolver, "manpath");
-      manpath.has_value())
+  if (let const manpath = resolver.find_trusted("manpath"); manpath.has_value())
   {
     argv.push_managed(manpath->view());
 
     return argv;
   }
 
-  let const man = find_trusted_program(resolver, "man");
+  let const man = resolver.find_trusted("man");
 
   if (!man.has_value()) return None;
 
@@ -1062,7 +1061,7 @@ static fn
 manpage_argv_for(StringView page_name, EvalContext &context) throws
     -> Maybe<ArrayList<String>>
 {
-  let const man = find_trusted_program(context.program_resolver(), "man");
+  let const man = context.program_resolver().find_trusted("man");
 
   if (!man.has_value()) {
     LOG(Debug,
@@ -1258,31 +1257,6 @@ internal::complete_from_manpage(StringView         line,
   return matches;
 }
 
-fn
-internal::find_trusted_program(ProgramResolver &resolver,
-                               StringView       name) throws -> Maybe<Path>
-{
-  let paths = resolver.search(name, ProgramResolver::SearchMode::First,
-                              ProgramResolver::Requirement::Runnable,
-                              ProgramResolver::CachePolicy::Bypass);
-
-  if (paths.is_empty()) {
-    LOG(Debug, "skipping the probe '%.*s' because it is not on the path",
-        static_cast<int>(name.length), name.data);
-
-    return None;
-  }
-
-  if (!os::directory_is_trusted_for_exec(paths[0].parent())) {
-    LOG(Debug, "skipping the probe '%s' because its directory is not trusted",
-        paths[0].c_str());
-
-    return None;
-  }
-
-  return steal(paths[0]);
-}
-
 static fn
 help_argv_for(EvalContext &context,
               StringView   command,
@@ -1292,7 +1266,7 @@ help_argv_for(EvalContext &context,
 
   if (!help_argument.has_value()) return None;
 
-  let const program = find_trusted_program(context.program_resolver(), command);
+  let const program = context.program_resolver().find_trusted(command);
 
   if (program.has_value()) {
     LOG(Debug,

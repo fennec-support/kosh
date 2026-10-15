@@ -648,14 +648,12 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
   if (!path_env.has_value()) return result;
 
   let       path_resolver = ProgramResolver{*path_env};
-  let const git_results =
-      path_resolver.search("git", ProgramResolver::SearchMode::First,
-                           ProgramResolver::Requirement::Regular,
-                           ProgramResolver::CachePolicy::Bypass);
+  let const git =
+      path_resolver.find_trusted("git", ProgramResolver::Requirement::Regular);
 
-  if (git_results.is_empty()) return result;
+  if (!git.has_value()) return result;
 
-  let const git_path = String{allocator, git_results[0].view()};
+  let const git_path = String{allocator, git->view()};
 
   let count_argv = ArrayList<String>{allocator};
 

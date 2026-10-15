@@ -532,7 +532,7 @@ internal::complete_from_tools_with_targets(StringView      line,
     if (probe_argv.is_empty()) return None;
 
     let const program =
-        find_trusted_program(context.program_resolver(), probe_argv[0].view());
+        context.program_resolver().find_trusted(probe_argv[0].view());
 
     if (!program.has_value()) return None;
 

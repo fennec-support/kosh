@@ -165,6 +165,13 @@ public:
          CachePolicy              cache_policy  = CachePolicy::Bypass,
          const Maybe<StringView> &path_override = None) throws
       -> ArrayList<Path>;
+  /* A program the shell starts on its own is accepted only from a trusted
+     absolute directory, so a tool planted in the current directory never
+     runs. */
+  fn
+  find_trusted(StringView  program_name,
+               Requirement requirement = Requirement::Runnable) throws
+      -> Maybe<Path>;
   fn
   get_status(StringView   name,
              StatusLookup lookup = StatusLookup::Cached) throws

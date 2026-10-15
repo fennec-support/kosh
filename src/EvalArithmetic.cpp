@@ -2644,21 +2644,13 @@ evaluate_arithmetic_value(
       context->runtime_state().bash_additions_enabled() &&
       expression.find_character('"').has_value();
 
-  if (!expression.find_character('$').has_value() &&
-      !expression.find_character('`').has_value() && !has_removable_quote)
-  {
-    let parser = ArithmeticParser{context, expression, is_exact, arena,
-                                  0,       false,      bc_scale};
-
-    parser.should_error_unset = should_error_unset;
-    if (expression_base != nullptr) parser.precise_base = *expression_base;
-
-    return parser.parse();
-  }
-
   /* A variable's value is data and is parsed without expansion. Bash also
      rejects a '$' or '`' in an operand taken from a value. */
-  if (text_kind == arithmetic_text_kind::Value) {
+  let const needs_no_expansion = !expression.find_character('$').has_value() &&
+                                 !expression.find_character('`').has_value() &&
+                                 !has_removable_quote;
+
+  if (text_kind == arithmetic_text_kind::Value || needs_no_expansion) {
     let parser = ArithmeticParser{context, expression, is_exact, arena,
                                   0,       false,      bc_scale};
 

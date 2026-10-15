@@ -1825,12 +1825,9 @@ walk_tree_entry(tree_walk_state &walk,
 
 fn
 walk_tree(StringView               path,
-          Allocator                allocator,
           const tree_walk_options &options,
           const tree_walk_hooks   &hooks) throws -> bool
 {
-  unused(allocator);
-
   let walk = tree_walk_state{options, hooks};
 
   return walk_tree_entry(walk, path, true);

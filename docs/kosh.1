@@ -5221,7 +5221,9 @@ list of absolute paths.
 .BR KOSH_GIT_AHEAD ", " KOSH_GIT_BEHIND
 The values contain the unpushed and unpulled commit counts relative to the
 current branch's upstream. Both are empty outside a repository, when no upstream
-is configured, and when the count is zero.
+is configured, and when the count is zero. The counts come from git, which runs
+only from an absolute directory owned by the user or root that no group or other
+user can write.
 .TP
 .B KOSH_IDENTITY
 The read-only exported value is the lowercase CRC-32 identity of the running
