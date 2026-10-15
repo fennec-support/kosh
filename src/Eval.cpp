@@ -109,12 +109,6 @@ EvalContext::reset_runtime_diagnostic_highlight_cache() wontthrow -> void
 }
 
 fn
-RuntimeState::capture(const EvalContext &context) wontthrow -> RuntimeState
-{
-  return context.runtime_state();
-}
-
-fn
 RuntimeState::restore(EvalContext &context) const wontthrow -> void
 {
   context.runtime_state() = *this;
@@ -122,7 +116,7 @@ RuntimeState::restore(EvalContext &context) const wontthrow -> void
 }
 
 RuntimeStateScope::RuntimeStateScope(EvalContext &context)
-    : m_context(context), m_saved(RuntimeState::capture(context))
+    : m_context(context), m_saved(context.runtime_state())
 {}
 
 RuntimeStateScope::~RuntimeStateScope() { m_saved.restore(m_context); }

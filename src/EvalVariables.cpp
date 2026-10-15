@@ -432,7 +432,7 @@ EvalContext::get_variable_value(StringView name) const throws
                  ? String::from(*job_table_store().last_background_pid(),
                                 heap_allocator())
                  : String{heap_allocator()};
-    case '-': return option_flags_string();
+    case '-': return enabled_shell_option_letters(*this);
     case '#':
       return String::from(variable_store().positional_params().count(),
                           heap_allocator());

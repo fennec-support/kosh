@@ -533,8 +533,6 @@ public:
            option_is_enabled(shell_option_id::ShowAllExitCodes);
   }
 
-  mustuse static fn
-  capture(const EvalContext &context) wontthrow -> RuntimeState;
   fn
   restore(EvalContext &context) const wontthrow -> void;
 
@@ -5675,11 +5673,11 @@ public:
   enter_definition_state(const definition_state &defining_state) wontthrow
       -> function_runtime_state
   {
-    let const previous = RuntimeState::capture(*this);
+    let const previous = runtime_state();
     defining_state.apply_to(runtime_state());
     apply_strictness_for_mood();
 
-    return function_runtime_state{previous, RuntimeState::capture(*this),
+    return function_runtime_state{previous, runtime_state(),
                                   runtime_control_store().get_mutations()};
   }
 
@@ -5697,7 +5695,7 @@ public:
       return;
     }
 
-    let const finished = RuntimeState::capture(*this);
+    let const finished = runtime_state();
     let const changed_reporting =
         runtime_control_store().get_mutations().reporting.changed_fields_since(
             state.entry_mutations.reporting);
@@ -6079,9 +6077,6 @@ public:
 protected:
   fn
   install_trap_dispositions() throws -> void;
-
-  fn
-  option_flags_string() const throws -> String;
 
   fn
   initialize_bash_argument_arrays(bool should_include_current_frame) const throws -> void;

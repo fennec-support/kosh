@@ -876,7 +876,7 @@ EvalContext::snapshot_state() throws -> eval_state_snapshot
                              expansion_store().get_getopts_cursor(),
                              subshell_store().coprocess(),
                              environment_store().snapshot(),
-                             RuntimeState::capture(*this),
+                             runtime_state(),
                              enabled_command_store(),
                              program_resolver(),
                              steal(working_directory),
@@ -2800,7 +2800,7 @@ EvalContext::make_subshell_bootstrap() const throws
   job_table_store().append_wire(body, bootstrap);
   dynamic_runtime_store().get_clock().append_wire(body);
   expansion_store().get_getopts_cursor().append_wire(body);
-  RuntimeState::capture(*this).append_wire(body);
+  runtime_state().append_wire(body);
   variable_store().append_wire(body);
   startup_store().append_wire(body);
   function_store().append_wire(body);
@@ -3427,12 +3427,6 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
   job_table_store().apply_wire(steal(jobs));
   job_table_store().inherit_parent_jobs(false);
   bootstrap.release_process_ownership();
-}
-
-fn
-EvalContext::option_flags_string() const throws -> String
-{
-  return enabled_shell_option_letters(*this);
 }
 
 fn
