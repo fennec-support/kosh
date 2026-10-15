@@ -879,24 +879,11 @@ fn
 file_content_identity(const Path &path, Allocator allocator) throws
     -> Maybe<String>
 {
-  let const file =
-      os::open_file_descriptor(path.view(), os::file_open_mode::Read);
+  let const checksum = os::crc32c_of_file(path.view());
 
-  if (!file.has_value()) return None;
-  defer { os::close_fd(*file); };
+  if (!checksum.has_value()) return None;
 
-  u32  crc = 0xFFFFFFFF;
-  char buffer[65536];
-
-  loop {
-    let const read_count = os::read_fd(*file, buffer, sizeof(buffer));
-
-    if (!read_count.has_value()) return None;
-    if (*read_count == 0) break;
-    crc = os::crc32c_update(crc, buffer, *read_count);
-  }
-
-  crc = ~crc;
+  let const crc = *checksum;
 
   constexpr char HEX_DIGITS[] = "0123456789abcdef";
   let            digest       = String{allocator};

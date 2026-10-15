@@ -78,6 +78,10 @@ get_environment_epoch() wontthrow -> u64
 } /* namespace os */
 } /* namespace koshka */
 
+#if KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
+#include <sys/mman.h>
+#endif
+
 #if defined __x86_64__ && !defined __COSMOPOLITAN__
 #include <immintrin.h>
 #elif defined __aarch64__ || defined __arm64__ || defined _M_ARM64
@@ -944,6 +948,46 @@ crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
 #endif
 
   return crc32c_update_software(crc, bytes, length);
+}
+
+fn
+crc32c_of_file(StringView path) throws -> Maybe<u32>
+{
+  let const file = open_file_descriptor(path, file_open_mode::Read);
+
+  if (!file.has_value()) return None;
+  defer { close_fd(*file); };
+
+  u32 crc = 0xFFFFFFFF;
+
+#if KOSH_PLATFORM_IS KOSH_PLATFORM_POSIX
+  struct stat info = {};
+
+  if (::fstat(*file, &info) == 0 && S_ISREG(info.st_mode) && info.st_size > 0) {
+    let const byte_count = static_cast<usize>(info.st_size);
+    void     *mapping =
+        ::mmap(nullptr, byte_count, PROT_READ, MAP_PRIVATE, *file, 0);
+
+    if (mapping != MAP_FAILED) {
+      crc = crc32c_update(crc, mapping, byte_count);
+      ::munmap(mapping, byte_count);
+
+      return ~crc;
+    }
+  }
+#endif
+
+  char buffer[65536];
+
+  loop {
+    let const read_count = read_fd(*file, buffer, sizeof(buffer));
+
+    if (!read_count.has_value()) return None;
+    if (*read_count == 0) break;
+    crc = crc32c_update(crc, buffer, *read_count);
+  }
+
+  return ~crc;
 }
 
 } /* namespace os */

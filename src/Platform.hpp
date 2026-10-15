@@ -1177,6 +1177,11 @@ current_executable_path() wontthrow -> Maybe<String>;
 fn
 crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32;
 
+/* Returns the finished CRC-32C of the file content, or None when the file
+   cannot be read. A POSIX build maps a regular file instead of copying it. */
+fn
+crc32c_of_file(StringView path) throws -> Maybe<u32>;
+
 struct file_status
 {
   u64  device_id{0};
@@ -2375,16 +2380,16 @@ constexpr i32 ENTRY_IGNORED_SIGNAL_LIMIT = 64;
 fn
 get_entry_ignored_signals() wontthrow -> u64;
 
-fn
-clear_trap_handler(i32 signal_number) throws -> void;
-
-fn
-take_pending_signal() wontthrow -> i32;
 /* Reports whether the calling thread has used all but a reserve of its stack.
    Deep recursion checks it to fail with an error before a stack overflow. */
 fn
 is_stack_nearly_exhausted() wontthrow -> bool;
 
+fn
+clear_trap_handler(i32 signal_number) throws -> void;
+
+fn
+take_pending_signal() wontthrow -> i32;
 
 mustuse fn
 peek_pending_signal_besides_child() wontthrow -> i32;
