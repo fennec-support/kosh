@@ -491,7 +491,7 @@ twos_complement_limbs(const ArithmeticValue &value,
   return result;
 }
 
-pure fn
+fn
 did_unsigned_multiply_overflow(u128 left, u128 right, u128 *product) wontthrow
     -> bool
 {
@@ -519,7 +519,7 @@ did_unsigned_multiply_overflow(u128 left, u128 right, u128 *product) wontthrow
   return false;
 }
 
-pure fn
+fn
 did_signed_multiply_overflow(i128 left, i128 right, i128 *product) wontthrow
     -> bool
 {
