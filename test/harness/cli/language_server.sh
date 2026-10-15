@@ -590,7 +590,8 @@ KOSH_FLAGS=--as-language-server "$BIN" -c 'echo environment-filtered'
 conflict_status=$?
 printf 'conflict-status=%s\n' "$conflict_status"
 case $(cat "$directory/conflict-out") in
-*"does not accept"*) printf 'conflict-message=ok\n' ;;
+*": error: The '--as-language-server' option does not accept"*)
+  printf 'conflict-message=ok\n' ;;
 *) printf 'conflict-message=missing\n' ;;
 esac
 

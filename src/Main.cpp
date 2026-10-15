@@ -838,8 +838,67 @@ resolve_invocation_options(ArrayList<invocation_option> &options) throws
   return None;
 }
 
+/* Locates a flag in the parsed command line. A short flag also matches inside
+   a group such as `-si`. */
 static fn
-validate_invocation(const ArrayList<String> &operands,
+find_flag_location(const command_line &line,
+                   StringView          long_flag,
+                   char                short_flag) wontthrow -> Maybe<SourceLocation>
+{
+  let const parse_argc = line.get_parse_argc();
+  let const parse_argv = line.get_parse_argv();
+  usize     offset     = 0;
+
+  for (int a = 0; a < parse_argc; a++) {
+    let const token          = StringView{parse_argv[a], strlen(parse_argv[a])};
+    let const length         = shell_quoted_arg_length(token);
+    let const is_short_group = short_flag != '\0' && token.length >= 2 &&
+                               token[0] == '-' && token[1] != '-' &&
+                               token.find_character(short_flag).has_value();
+
+    if (a > 0 && (token == long_flag || is_short_group))
+      return SourceLocation{offset, length};
+
+    offset += length + 1;
+  }
+
+  return None;
+}
+
+/* The diagnostic points at the flag in the invocation when the flag is
+   present, and stands alone otherwise. */
+static fn
+show_flag_diagnostic(const command_line &line,
+                     StringView          long_flag,
+                     char                short_flag,
+                     bool                is_warning,
+                     StringView          message) throws -> void
+{
+  let const location = find_flag_location(line, long_flag, short_flag);
+
+  if (!location.has_value()) {
+    show_message(is_warning ? Warning{message}.to_string()
+                            : Error{message}.to_string());
+
+    return;
+  }
+
+  let const source =
+      join_command_line(line.get_parse_argc(), line.get_parse_argv());
+  let context = EvalContext{
+      startup_options{},
+      String{heap_allocator(), line.get_parse_argv()[0]}
+  };
+
+  show_message(is_warning ? WarningWithLocation{*location, message}.to_string(
+                                source.view(), &context)
+                          : ErrorWithLocation{*location, message}.to_string(
+                                source.view(), &context));
+}
+
+static fn
+validate_invocation(const command_line      &line,
+                    const ArrayList<String> &operands,
                     ArrayList<mimic_mood>   &init_moods) throws
     -> Maybe<int>
 {
@@ -868,9 +927,10 @@ validate_invocation(const ArrayList<String> &operands,
        FLAG_APPLY.is_enabled() || !FLAG_COMMAND.is_empty() ||
        !operands.is_empty()))
   {
-    show_message("The '--as-language-server' option does not accept '-s', "
-                 "'-i', '--lint', '--format', '--apply', '-c', or file "
-                 "operands.");
+    show_flag_diagnostic(line, "--as-language-server", '\0', false,
+                         "The '--as-language-server' option does not accept "
+                         "'-s', '-i', '--lint', '--format', '--apply', '-c', "
+                         "or file operands");
 
     return 2;
   }
@@ -878,7 +938,9 @@ validate_invocation(const ArrayList<String> &operands,
   if (FLAG_APPLY.is_enabled() && !FLAG_LINT.is_enabled() &&
       !FLAG_FORMAT.is_enabled())
   {
-    show_message("The '--apply' option requires '--lint' or '--format'.");
+    show_flag_diagnostic(line, "--apply", '\0', false,
+                         "The '--apply' option requires '--lint' or "
+                         "'--format'");
 
     return 2;
   }
@@ -887,21 +949,25 @@ validate_invocation(const ArrayList<String> &operands,
       (FLAG_STDIN.is_enabled() || FLAG_INTERACTIVE.is_enabled() ||
        !FLAG_COMMAND.is_empty()))
   {
-    show_message("The '--apply' option does not accept '-s', '-i', or '-c'.");
+    show_flag_diagnostic(line, "--apply", '\0', false,
+                         "The '--apply' option does not accept '-s', '-i', "
+                         "or '-c'");
 
     return 2;
   }
 
   if (FLAG_APPLY.is_enabled()) {
     if (operands.is_empty()) {
-      show_message("The '--apply' option requires file operands.");
+      show_flag_diagnostic(line, "--apply", '\0', false,
+                           "The '--apply' option requires file operands");
 
       return 2;
     }
 
     for (let const &operand : operands) {
       if (operand != "-") continue;
-      show_message("The '--apply' option does not accept '-'.");
+      show_flag_diagnostic(line, "-", '\0', false,
+                           "The '--apply' option does not accept '-'");
 
       return 2;
     }
@@ -910,7 +976,9 @@ validate_invocation(const ArrayList<String> &operands,
   if (FLAG_FORMAT.is_enabled() && !FLAG_APPLY.is_enabled() &&
       operands.count() > 1)
   {
-    show_message("The '--format' option accepts one file without '--apply'.");
+    show_flag_diagnostic(line, "--format", '\0', false,
+                         "The '--format' option accepts one file without "
+                         "'--apply'");
 
     return 2;
   }
@@ -919,7 +987,8 @@ validate_invocation(const ArrayList<String> &operands,
 }
 
 static fn
-select_input_source(const ArrayList<String> &operands) throws
+select_input_source(const command_line      &line,
+                    const ArrayList<String> &operands) throws
     -> input_plan
 {
   let plan = input_plan{};
@@ -930,15 +999,17 @@ select_input_source(const ArrayList<String> &operands) throws
 
   if (FLAG_STDIN.is_enabled()) {
     if (!FLAG_COMMAND.is_empty()) {
-      show_message("Incompatible options or arguments were specified along "
-                   "with '-s' option. "
-                   "Falling back to '-s'.");
+      show_flag_diagnostic(line, "--stdin", 's', true,
+                           "Incompatible options or arguments were specified "
+                           "along with the '-s' option, so the shell falls "
+                           "back to '-s'");
     }
 
     if (FLAG_LINT.is_enabled() && !operands.is_empty()) {
-      show_message("The '-s' option was given along with file operands, "
-                   "so '--lint' takes standard input and analyzes no "
-                   "file.");
+      show_flag_diagnostic(line, "--stdin", 's', true,
+                           "The '-s' option was given along with file "
+                           "operands, so '--lint' takes standard input and "
+                           "analyzes no file");
     }
 
     plan.should_read_stdin = true;
@@ -951,16 +1022,18 @@ select_input_source(const ArrayList<String> &operands) throws
     plan.should_read_stdin = true;
   } else if (!FLAG_COMMAND.is_empty()) {
     if (FLAG_INTERACTIVE.is_enabled()) {
-      show_message("Incompatible options or arguments were specified along "
-                   "with '-c' options. "
-                   "Falling back to '-c'.");
+      show_flag_diagnostic(line, "--interactive", 'i', true,
+                           "Incompatible options or arguments were specified "
+                           "along with the '-c' option, so the shell falls "
+                           "back to '-c'");
     }
 
     plan.should_execute_commands = true;
   } else if (!operands.is_empty()) {
     if (FLAG_INTERACTIVE.is_enabled()) {
-      show_message("Both file argument and '-i' option were given. "
-                   "Falling back to reading files.");
+      show_flag_diagnostic(line, "--interactive", 'i', true,
+                           "Both a file operand and the '-i' option were "
+                           "given, so the shell falls back to reading files");
     }
 
     plan.should_read_files = true;
@@ -974,7 +1047,8 @@ select_input_source(const ArrayList<String> &operands) throws
 }
 
 static fn
-resolve_input_plan(const ArrayList<String> &operands) throws
+resolve_input_plan(const command_line      &line,
+                   const ArrayList<String> &operands) throws
     -> input_plan
 {
   if (FLAG_STDIN.is_enabled() && FLAG_INTERACTIVE.is_enabled()) {
@@ -983,14 +1057,15 @@ resolve_input_plan(const ArrayList<String> &operands) throws
 
     let s = String{heap_allocator()};
 
-    s += "Both '-s' and '-i' options were specified. Falling back to ";
+    s += "Both '-s' and '-i' options were specified, so the shell falls back "
+         "to ";
     if (should_use_interactive)
       s += "'-i'";
     else if (FLAG_LINT.is_enabled())
-      s += "'-s'.";
+      s += "'-s'";
     else
-      s += "'-s' because stdin is not a tty.";
-    show_message(s);
+      s += "'-s' because stdin is not a tty";
+    show_flag_diagnostic(line, "--interactive", 'i', true, s.view());
 
     if (should_use_interactive)
       FLAG_STDIN.toggle();
@@ -998,7 +1073,7 @@ resolve_input_plan(const ArrayList<String> &operands) throws
       FLAG_INTERACTIVE.toggle();
   }
 
-  let plan = select_input_source(operands);
+  let plan = select_input_source(line, operands);
 
   if (is_debug_driver_run()) {
     plan.should_be_interactive = false;
@@ -2682,7 +2757,7 @@ kosh_main(int argc, char **argv) -> int
   let init_moods =
       koshka::ArrayList<koshka::mimic_mood>{koshka::heap_allocator()};
   if (koshka::Maybe<int> usage_status =
-          koshka::validate_invocation(file_names, init_moods);
+          koshka::validate_invocation(line, file_names, init_moods);
       usage_status.has_value())
   {
     return *usage_status;
@@ -2702,7 +2777,7 @@ kosh_main(int argc, char **argv) -> int
 
   koshka::apply_configured_mood(identity, configuration);
 
-  let const input = koshka::resolve_input_plan(file_names);
+  let const input = koshka::resolve_input_plan(line, file_names);
 
   koshka::apply_configured_init_moods(init_moods, configuration,
                                       input.should_be_interactive ||
