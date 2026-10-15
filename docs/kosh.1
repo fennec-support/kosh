@@ -2744,68 +2744,29 @@ selects vi mode and
 .B set \-o emacs
 restores emacs mode.
 .PP
-A line wider than the terminal continues on rows starting under its first
-character. When the prompt leaves fewer than 20 columns beside it, those rows
-start two columns from the left edge instead.
-.PP
 With a ghost suggestion at the end of the line, the right arrow and
 End accept all of it. Ctrl\-Right and Alt\-F accept only its next word.
 .PP
 Ctrl\-K, Ctrl\-U, Ctrl\-W, Alt\-D, Alt\-Backspace and Ctrl\-Delete save the
 erased text in a kill ring of 16 entries that lasts for the session. Consecutive
-kills join into one entry. Ctrl\-Y inserts the newest entry. Alt\-Y right after
-a yank replaces the inserted text with the next older entry, wrapping around
-after the oldest. Ctrl\-T swaps the character before the cursor with the one
-under it, or the last two characters at the end of the line. Alt\-T swaps the
-word before the cursor with the word after it, or the last two words at the end
-of the line. A combining mark, an emoji skin tone, a sequence joined by a
-zero-width joiner, and a flag each move as one character, so Left, Right,
-Backspace, and Delete step over each as one. Each is two columns wide.
-Alt\-. and Alt\-_ insert the last word of the newest history entry, and each
-further press replaces it with the last word of an older entry. A quoted last
-word is inserted whole with its quotes. Undo reverts a yank or a last-word
-insertion with all of its replacements in one step. It reverts a Tab completion
-and the space after it in one step and restores the caret.
+kills join into one entry. Ctrl\-Y inserts the newest entry, and Alt\-Y right
+after a yank replaces it with the next older entry. Alt\-. and Alt\-_ insert the
+last word of the newest history entry, and each further press uses an older
+entry.
+Undo reverts a yank or a last-word insertion with all of its replacements in
+one step.
 .PP
 Ctrl\-X Ctrl\-E opens the line in a temporary file with the editor selected by
-VISUAL, EDITOR, or vi. The value is split on blanks without expansion. When the
-editor exits with status 0, the saved text replaces the line with its trailing
-newlines removed, and nothing runs until Enter is pressed. If the editor is not
-found or exits with another status, the line is unchanged and a message appears
-above the prompt. An editor stopped by SIGTSTP or SIGSTOP, such as after
-Ctrl\-Z, is continued at once. An editor stopped by any other signal, stopped
-more than 32 times, or stopped after the shell received an interrupt is killed,
-and its stop status is reported. The key does nothing under
+VISUAL, EDITOR, or vi. When the editor exits with status 0, the saved text
+replaces the line, and nothing runs until Enter is pressed. If the editor is
+not found or exits with another status, the line is unchanged and a message
+appears above the prompt. The key does nothing under
 .BR \-T .
-Ctrl\-X Ctrl\-U undoes the last edit. Ctrl\-X before any other key is ignored,
-and that key runs as usual.
+Ctrl\-X Ctrl\-U undoes the last edit.
 .PP
-A key waiting for another key shows itself and the keys that complete it on the
-hint rows below the input, in place of the command hint, until the next key
-arrives. The header row lists the keys pressed so far and the body lists
-the keys that complete them. Ctrl\-X shows the header
-.B "pressed ctrl\-x"
-over
-.BR "waiting for ctrl\-e (edit in $VISUAL), ctrl\-u (undo)" .
-In vi command mode a pending operator shows the keys typed so far and its
-motions, such as
-.B "pressed d"
-over
-.B "waiting for a motion: w, b, e, $, 0, ^, d (line), ..."
-and so do a pending count, a pending register such as
-.BR "pressed \(dqa2d" ,
-the register key
-.BR \(dq ,
-the find keys
-.BR f ,
-.BR F ,
-.B t
-and
-.BR T ,
-the replace key
-.BR r ,
-and the colon command line. A key arriving together with the prefix is handled
-at once without drawing the rows. Turning off both
+A key waiting for another key, such as Ctrl\-X or a vi operator, shows the keys
+that complete it on the hint rows below the input until the next key arrives.
+Turning off both
 .B editor.hints.show_command_synopsis
 and
 .B editor.hints.show_live_diagnostics
@@ -2814,88 +2775,34 @@ turns these rows off too.
 Ctrl\-Z undoes while the editor collects a line, the same as Ctrl\-_. A
 foreground program has the terminal in its usual mode, so Ctrl\-Z stops it and
 the shell reports the stopped job. Ctrl\-Shift\-Z redoes when the terminal
-reports it apart from Ctrl\-Z. PROMPT_COMMAND and the prompt expansions also
-run in the usual mode, so a program they start receives plain keys and Ctrl\-C
-interrupts it. While the editor collects a line, it requests such reports
-through the disambiguate flag of the kitty keyboard protocol
-.RB ( "ESC [ > 1 u" )
-and xterm modifyOtherKeys level 1
-.RB ( "ESC [ > 4 ; 1 m" ),
-and withdraws both
-.RB ( "ESC [ < u" " and " "ESC [ > 4 m" )
-whenever it hands the terminal back. This happens before a command runs,
-around the Ctrl\-X Ctrl\-E editor and the external selector, during an explicit
-completion, and on exit. Ctrl\-Shift\-Z then arrives as
-.B "ESC [ 122 ; 6 u"
-or
-.BR "ESC [ 27 ; 6 ; 90 ~" ,
-and
-.B "ESC [ 90 ; 6 u"
-and
-.B "ESC [ 27 ; 6 ; 122 ~"
-also redo. Every other key in either encoding acts as it does on a legacy
-terminal. A terminal that supports neither protocol ignores the requests.
-Inside tmux, the modifyOtherKeys request takes effect when the tmux
-.B extended\-keys
-option is on. GNU screen discards both requests. The
+reports it apart from Ctrl\-Z. While the editor collects a line, it requests
+such reports through the kitty keyboard protocol and xterm modifyOtherKeys, and
+withdraws both whenever it hands the terminal back. The
 .B koshconf set editor.request_extended_key_reports off
 command stops the requests from the next prompt on. The option is on by
 default. Without these modes most terminals send the Ctrl\-Z byte for both
-keys. The Windows console reports no shift state and receives no request, so
-there both keys undo and Ctrl\-^ redoes.
+keys. The Windows console reports no shift state, so there both keys undo and
+Ctrl\-^ redoes.
 .PP
 A control character in the line, a ghost suggestion, or a menu entry is drawn
-in caret notation, such as ^[ for ESC and ^? for DEL, and a C1 control as a hex
-escape such as \e\ex9b. A tab and a line break in the line keep their layout.
-When a filename holds a control character, it completes in the $'...' form with
-escapes. A command name, a spec word, or a noquote filename keeps its other
-bytes and has each run of control characters replaced by $'...', while compgen
-prints candidates raw.
+in caret notation, such as ^[ for ESC. A filename that holds a control
+character completes in the $'...' form with escapes.
 .PP
 On a non-empty line, the up arrow recalls only the history entries beginning
-with the text typed before the first up arrow. Each further up arrow moves to
-an older match and the down arrow moves back. Stepping past the newest match
-restores the typed text. An empty line steps through the whole history. The
+with the text typed before the first up arrow, and the down arrow moves back.
+An empty line steps through the whole history. The
 .B koshconf set editor.history.arrow_keys_search_by_typed_prefix off
 command turns this off. The option is on by default.
 .PP
 Once the cursor is past the command word, the rows directly below the input
-show a dimmed hint for the command in the pipeline segment, list element, or
-command substitution under the cursor. A hint is a header row identifying its
-kind over a body. The body is the synopsis of a builtin under
-.BR "builtin synopsis" ,
-of a bundled koshkit utility under
-.B "utility synopsis"
-when no PATH program of that name runs first or the word follows
-.BR koshkit ,
-or of an external program under
-.BR "command synopsis" ,
-and of a subcommand such as
-.B git commit
-under
-.B "subcommand synopsis"
-when its own manual page or help output is known. Inside a flag, the hint shows
-the flag description under the
-.B flag
-header, starting with the flag forms and value name, such as
-.BR "\-f, \-\-file=FILE" .
-An alias shows its definition as
-.IR name =\(aq expansion \(aq
-and then the synopsis of the command it runs, separated by a middle dot, under
-.BR "alias synopsis" .
-A function shows
-.IR name ,
-.B defined at
-.IR file : line
-under
-.BR "function synopsis" ,
-or its definition on one line when it was defined at the prompt. Every row is
-indented by two columns. The header is cut with an ellipsis at the terminal
-width, and the body wraps at spaces onto at most three rows, the last cut with
-an ellipsis. If the terminal is too short for the input and all hint rows, the
-editor drops body rows, then shows only the body on one row, then hides the
-hint. The rows are hidden while a completion menu or history search is open and
-erased when the line is submitted. A keystroke never runs
+show a dimmed hint for the command under the cursor. A hint is a header row
+identifying its kind over a body of at most three rows. The body is the
+synopsis of a builtin, a bundled koshkit utility, an external program, or a
+subcommand such as
+.BR "git commit" ,
+the description of the flag under the cursor, the definition of an alias, or
+the definition location of a function. The rows are hidden while a completion
+menu or history search is open. A keystroke never runs
 .B man
 or the command.
 .PP
@@ -2903,89 +2810,54 @@ After a short pause, the hint of an external program loads its section 1
 manual page through
 .BR man ,
 a subcommand page such as
-.BR git\-commit (1)
-from the manual directories that
-.BR manpath (1)
-reports, and, for a command on the help allowlist, the output of its help flag
-and of the subcommand under the cursor. The trust rules of flag completion
-apply, so
+.BR git\-commit (1),
+and, for a command on the help allowlist, the output of its help flag. The
+trust rules of flag completion apply, so
 .BR man ,
 .BR manpath ,
 and the program run only from an absolute directory owned by the user or root
-that no group or other user can write. On macOS a directory that the admin group
-can write, as Homebrew creates, also qualifies. A program found through an
-empty or relative PATH element never runs. The hint updates when the load
-finishes. A Tab that needs a load shows a
+that no group or other user can write. A program found through an empty or
+relative PATH element never runs. A Tab that needs a load shows a
 .B loading...
-row while it waits. A key closes the row and is typed as usual, and Escape or
-Ctrl\-C closes the Tab quietly. The language server and
-.B \-\-debug\-complete\-at
-wait for the load to finish. A Tab running a
-.B complete \-F
-function or a
-.B complete \-C
-command shows the row before it runs. The
+row while it waits. The
 .B koshconf set editor.hints.show_command_synopsis off
 command turns these hints off and stops the loads. The option is on by
 default.
 .PP
 Targets for
 .B make
-are completed from the Makefile, and a $(shell ...) function in it is not run.
-Targets after
+are completed from the Makefile, and targets after
 .B "cmake \-\-build"
 .I dir
 .B \-\-target
-are completed from
-.IR dir /CMakeFiles/TargetDirectories.txt,
-together with all and clean. Neither
+from
+.IR dir /CMakeFiles/TargetDirectories.txt.
+Neither
 .B make
 nor
 .B cmake
-is started.
+is started, and no $(shell ...) function runs.
 .PP
 In the same pause, a line that parses is analyzed as Enter would analyze it in
-the current mood and warning level. The rows show the wording of the first
-finding, such as
-.BR "An unquoted variable can split into words and expand globs. (SC2086)" ,
-under its severity,
+the current mood and warning level. The rows show the first finding under its
+severity,
 .BR error ,
 .BR warning ,
 or
 .BR note ,
-in place of the synopsis until the line changes. This analysis follows no
-sourced file, resolves no command, opens no file, and searches no PATH.
-The finding and the syntax problem below follow
-.BR editor.hints.show_live_diagnostics ,
-which
+in place of the synopsis. This analysis follows no sourced file, resolves no
+command, opens no file, and searches no PATH. The
 .B koshconf set editor.hints.show_live_diagnostics off
-turns off. The option is on by default and is independent of
+command turns off the finding and the syntax problem below. The option is on by
+default and is independent of
 .BR editor.hints.show_command_synopsis .
 .PP
-When running the line would report a syntax problem, the same rows
-show that problem in place of the synopsis, in the same dim style, under
-.BR "syntax error" .
-The line is parsed as Enter would parse it in the current mood, and the body is
-the first parse error followed by its detail, such as
-.BR "This 'if' has no closing 'fi', expected 'fi' here to close it" .
-This covers every error the parser reports, such as an unterminated quote or
-substitution, a compound command with no closing keyword, a stray
-.BR ) ,
-.BR ;; ,
-.BR fi ,
-.BR done ,
-.B esac
-or
-.BR then ,
-a pipe or list operator with no command on one side, a redirection with no
-target, a
-.B <<
-with no delimiter, and an empty body or condition. The editor submits
-the whole buffer on Enter and has no continuation prompt, so an open construct
-is an error even when a later line would close it. A trailing backslash joins
-the next row and shows nothing. The error shows wherever the caret is,
-including at the end of the word where the error starts. A line over 2048
-bytes shows nothing.
+When running the line would report a syntax problem, the rows show the first
+parse error and its detail under
+.B "syntax error"
+in place of the synopsis. The editor submits the whole buffer on Enter and has
+no continuation prompt, so an open construct is an error even when a later line
+would close it. A line over 2048 bytes shows nothing.
 .PP
 The
 .B koshconf set editor.auto_close_brackets_and_quotes on
@@ -2993,207 +2865,112 @@ command makes a typed
 .BR ( ,
 .BR [ ,
 .BR { ,
-double quote, or single quote insert its closer after the caret. The closer
-is added only at the line end or before a blank, a closing bracket, a quote, or
-a closer the editor inserted, and never after a backslash. A quote is left
-single after a letter or a digit or next to the same quote. Inside a quoted
-string, a comment, or a here-document body, a
-bracket or quote is typed alone, except that
-.B $(
-and
-.B ${
-still pair inside double quotes. Typing a closer over an inserted one steps
-over it, unless it ends a case pattern, which is typed before the inserted
-closer. Backspace between an empty inserted pair deletes both. Any other key,
-such as an arrow, keeps the inserted closers as plain text. The option is off
-by default.
+double quote, or single quote insert its closer after the caret. Typing a
+closer over an inserted one steps over it, and Backspace between an empty
+inserted pair deletes both. The option is off by default.
 .PP
 The interactive terminal title shows the current user and directory, or the
 command line of the running foreground program. Output from
 PROMPT_COMMAND or PS1 can replace the idle title.
 .PP
 RPS1, or RPROMPT when RPS1 is unset or empty, is a right prompt. It is expanded
-with PS1 before each prompt and drawn right-aligned on the first input row,
-ending one column short of the right edge. Color sequences take no columns.
-The right prompt is hidden while the text and ghost on that row would come
-within one column of it, while the terminal is too narrow for it, while PS1 is
-cut to fit the row, and when its expansion holds a control character other than
-a color sequence, such as a line break, a tab, or a title sequence. Rows after
-the first input row never carry it. It is never part of the submitted line, and
-without
+with PS1 before each prompt and drawn right-aligned on the first input row. It
+is hidden when the row has no room for it or when its expansion holds a control
+character other than a color sequence. It is never part of the submitted line,
+and without
 .B editor.transient_prompt_after_submit
 it stays in the scrollback after Enter.
 .PP
 The
 .B koshconf set editor.transient_prompt_after_submit on
 command makes Enter redraw the submitted line, and Ctrl\-C the interrupted
-line before its ^C, after a short prompt. Everything from the first row of PS1
-down is erased, including the right prompt, the ghost, the hint rows, and any
-menu rows. The line is drawn again after the expansion of PS1_TRANSIENT. When
-PS1_TRANSIENT is unset or empty, the short prompt is "$ ", or "# " for root, the
-expansion of the \\$ escape and a space. The line keeps its highlighting, and a
-multi-row PS1 collapses to the short prompt. Other keys that end a line leave it
-as drawn. The option is off by default.
+line before its ^C, after a short prompt. The prompt is the expansion of
+PS1_TRANSIENT, or "$ " ("# " for root) when PS1_TRANSIENT is unset or empty.
+The option is off by default.
 .PP
 Ghost text uses prefix matches from completion and history. Tab also offers
 smart-case and subsequence matches. An empty command position includes
 keywords, builtins, functions, aliases, koshkit utilities, and programs from
-PATH. An exact prefix ranks before a subsequence match. A directory candidate
-always ends in a slash, and so do
-.B .
-and
-.BR .. .
-The operand of
+PATH. A directory candidate always ends in a slash. The operand of
 .B cd
 or
 .B pushd
 completes only directories, and when it is neither absolute nor led by a dot or
-a tilde, also the directories under each CDPATH entry. The ghost suggestion can
-use directories from CDPATH.
+a tilde, also the directories under each CDPATH entry.
 .PP
 An explicit Tab first replaces the token with the longest common prefix. A sole
 candidate replaces the token and takes the space the setting below asks for.
-With no space, the Tab ends there, and the next Tab lists the entries of a
-completed directory. With a space, the interactive selector stays open on the
-candidates for the following word, without a preview of its first row until a
-typed byte starts the word, and it closes quietly when that word has no
-candidates. Typing, Esc, Ctrl\-G, and Enter act as in any open menu. When
-that prefix does not extend the token and more than one candidate remains, the
-selector chosen by
+When more than one candidate remains, the selector chosen by
 .B \-\-tab\-selector
-or completion.menu_style presents the candidates. Ctrl\-Space acts as Tab on a
-POSIX system. The completion.add_space_after_completed_word setting chooses
-whether an accepted complete candidate takes one space after it:
+or completion.menu_style presents the candidates. The
+completion.add_space_after_completed_word setting chooses whether an accepted
+complete candidate takes one space after it:
 .B off
 never, the default,
 .B on
-always, even after a directory's slash, so the menu does not descend into it,
-and
+always, and
 .B on\-excluding\-trailing\-slash
 unless the candidate ends in a slash.
 .PP
 The interactive selector draws a menu of the candidates below the line. The
-completion menu starts under the token being completed and moves to the left
-edge when its widest row, including the description column, does not fit to the
-right of that column, when an item of its first row would be cut there, or when
-its first row would wrap onto more rows there than at the left edge. A path list
-shows every path whole, lists directories before files, and draws a directory in
-blue. A completion function keeps its words ahead of its paths and lists
-directories first within each group. The history menu always starts at the left
-edge. The down arrow moves to the next row, the up arrow moves back, and Tab
-accepts the highlighted row. In the completion menu, Escape closes the menu with
-the current edit, Ctrl\-G restores the line that opened it, and Enter closes the
+down arrow moves to the next row, the up arrow moves back, and Tab accepts the
+highlighted row. In the completion menu, Escape closes the menu with the
+current edit, Ctrl\-G restores the line that opened it, and Enter closes the
 menu and runs the line as it stands, without accepting the highlighted row. A
 first row shows the active source and the available keys, labeled
 .B selecting completions
 for the candidates of a token and
 .B incremental history search
 for a snapshot of the shared history file. Opening the search does not
-replace or merge the session's private history. The terminal height limits the
-number of rows, and a count row shows the part drawn. A first row
-too long for the width wraps onto further rows between its items, each starting
-at the column of the menu rows.
+replace or merge the session's private history.
 .PP
 A printable key is inserted into the token, and the menu is drawn again from the
 candidates that still match. A command-name, path, or koshconf option-name list
-keeps the best tier ranked by Tab. The tiers are the candidates the token opens
-exactly, then those it opens in smart case, where a token without an uppercase
-letter matches either case, then those holding the bytes of a name-like token
-of at least two bytes in order. Any other completion list, such as the reply of
-a completion spec, keeps every candidate the token opens, comparing letters
-without case. In the history search, an entry matches when the query opens it,
-appears inside it whole, or appears inside it as bytes in order. The three
-kinds are drawn in that order, and letters are compared without case.
-Backspace erases the last character of the token and widens the list again. A
-search matching nothing keeps the menu open on a dimmed row saying
-.BR "no matches, erase to widen the search" .
-A key that leaves the listed candidates, such as a blank, a slash, or an erase
+keeps the best of three tiers: the candidates the token opens exactly, then
+those it opens in smart case, then those holding the bytes of a name-like token
+in order. Any other completion list keeps every candidate the token opens,
+comparing letters without case. In the history search, an entry matches when the
+query opens it, appears inside it whole, or appears inside it as bytes in
+order. Backspace erases the last character of the token and widens the list. A
+key that leaves the listed candidates, such as a blank, a slash, or an erase
 below the token, asks the completion again once typing has paused for 24
-milliseconds, in every word and for a list of any length. The line changes at
-once and the menu keeps its rows until the new list arrives. A key whose search
-finds no row shows a
-.B loading...
-row instead. Tab, the arrow keys, and a key that accepts a row ask at once. An
-accepted candidate referring to a directory opens a menu of the entries it
-holds, or closes the menu when it holds none. Any other key closes the menu and
-then acts on the line.
+milliseconds. An accepted candidate referring to a directory opens a menu of
+the entries it holds. Any other key closes the menu and then acts on the line.
 .PP
 The external selector passes the candidates to the program given by
 .B KOSH_FZF_COMPLETION_COMMAND
-and its output replaces the token. Raw mode is left while the program runs, and
-the prompt is repainted afterwards. A program that stops follows the continue
-and kill rules of the Ctrl\-X Ctrl\-E editor. When a selector reports no match
-or is dismissed, the line is left alone and nothing is printed. A single
-remaining candidate keeps the plain listing, and so does a session without a
-controlling terminal. An empty
+and its output replaces the token. When a selector reports no match or is
+dismissed, the line is left alone. A single remaining candidate keeps the plain
+listing, and so does a session without a controlling terminal. An empty
 .BR KOSH_FZF_COMPLETION_COMMAND ,
 a command resolving to no program, and a selector exiting with a status
 other than 0, 1, or 130 each report a message above the prompt and keep the
 plain listing.
 .PP
 The plain selector prints the candidates below the prompt as a static column
-list, starting under the token being completed or at the left edge if
-the widest candidate or description does not fit to the right of that column.
-A terminal without decoration support always receives the plain listing.
+list. A terminal without decoration support always receives the plain listing.
 .PP
 Ctrl\-R searches the history through the same selector. The line is the search
-query, and the matching entries are offered by the same three kinds, newest
-first inside each kind. The interactive selector draws them in the menu with
-the syntax colors of the line itself, and the selected row is drawn plain under
-its reverse video. Typing narrows the list,
-and an accepted row replaces the whole line. The external selector receives the
-same entries, and the line it prints replaces the whole line. The plain selector
-keeps the incremental search inside the editor and accepts the same keys as the
-menu. The down arrow and Ctrl\-R step back to an older match, the up arrow
-and Ctrl\-F step forward to a newer one, Enter or Tab accepts the match without
-running it, and Escape or Ctrl\-G cancels the search and restores the preceding
-line state. A query matching nothing opens the menu on its no-match row, and
-the incremental search writes
-.B no match
-after the query. An empty history leaves the line alone. A row or match too
-long for the width ends in an ellipsis.
-.PP
-Completion finds the command segment at the cursor across quoted separators,
-command substitutions, and here-document bodies. Directory prefixes using
-quotes, escapes, variables, or tildes keep their typed form. An explicit Tab at
-command position offers executable files and directories. Syntax highlighting
-distinguishes syntax, commands, flags, variables, paths, globs, and invalid
-input.
+query, and the matching entries are offered newest first. An accepted row
+replaces the whole line. The plain selector keeps the incremental search inside
+the editor and accepts the keys listed under History search keys. An empty
+history leaves the line alone.
 .PP
 When the caret is on a parenthesis, bracket, or brace, or just after one, that
-bracket and its partner are drawn bold black on a bright background. A caret on
-the dollar sign of
-.B $(
-or
-.B ${
-counts as a caret on its bracket. The doubled forms
-.BR [[ ,
-.BR ]] ,
-.BR ((
-and
-.B ))
-are marked whole. A bracket inside quotes, a comment, or a here-document body,
-or escaped with a backslash, never pairs. An unmatched bracket keeps its
-usual color.
+bracket and its partner are highlighted. A bracket inside quotes, a comment, or
+a here-document body, or escaped with a backslash, never pairs.
 .PP
 Each vi line begins in insert mode. Escape enters command mode. Command mode
 supports motions, counted operators, lettered registers, change repeat, and
-visual selection. The cursor is a bar in insert mode, a block in command mode,
-and an underline in visual mode or while an operator awaits a motion.
+visual selection.
 .PP
 In command mode, arrow keys move between buffer rows without recalling history.
-Insert-mode arrow keys recall history. When an operator is pending, Up or Down
-operates on the current line and the adjacent line. The dk and dj commands
-perform the corresponding linewise operations.
+Insert-mode arrow keys recall history.
 .PP
 The subsections below list every key the editor binds. A key not listed for a
 mode does nothing there unless its subsection says otherwise. An unrecognized
 key is a control key or an escape sequence that acts as no key at all, such as
-Ctrl\-G, Ctrl\-O, a bare Escape, or a function key. A key reported through the
-kitty keyboard protocol or xterm modifyOtherKeys acts as the key it represents,
-as described for the
-.B editor.request_extended_key_reports
-option above.
+Ctrl\-G, Ctrl\-O, a bare Escape, or a function key.
 .SS Emacs mode keys
 .TP
 .BR Ctrl\-A ", " Home
@@ -3207,8 +2984,7 @@ the buffer end.
 Move one character left.
 .TP
 .B Right
-Move one character right, or accept the whole ghost suggestion at the buffer
-end.
+Move one character right, or accept the ghost suggestion at the buffer end.
 .TP
 .BR Alt\-B ", " Ctrl\-Left ", " Alt\-Left
 Move to the start of the previous word.
@@ -3229,19 +3005,14 @@ Recall the oldest history entry.
 Recall the newest history entry.
 .TP
 .BR Enter ", " Ctrl\-J ", " Ctrl\-M
-Run the line, or continue it on a new row after a trailing backslash not itself
-escaped by a preceding backslash.
+Run the line, or continue it on a new row after a trailing backslash.
 .TP
 .B Alt\-Enter
 Insert a line break.
 .TP
 .BR Tab ", " Shift\-Tab ", " Ctrl\-Space
 Complete the token under the cursor. Ctrl\-Space acts as Tab on a POSIX system
-only. Candidates match the token text before the cursor. A candidate replaces
-the whole token when the cursor is inside it, and is inserted before the token
-at its start. A candidate of the
-.B complete \-I
-spec replaces only the text before the cursor, as in Bash.
+only.
 .TP
 .BR Backspace ", " Ctrl\-H
 Delete the character before the cursor.
@@ -3304,8 +3075,7 @@ Abandon the line and show a new prompt.
 Enter multi-cursor mode.
 .TP
 .B Paste
-Insert bracketed paste text with line breaks and tabs, drop other control
-characters, and run nothing.
+Insert bracketed paste text without running it.
 .SS Vi insert mode keys
 Every emacs mode key works except Ctrl\-V, which does nothing.
 .TP
@@ -3463,11 +3233,9 @@ Leave the selection, as does any other unrecognized key.
 .BR Enter ", " Ctrl\-D ", " Ctrl\-C
 Leave the selection and act as in emacs mode.
 .SS Vi colon commands
-The colon key in command mode opens a command line under the buffer. Printable
-keys type the command, Backspace erases a character, and Backspace on an empty
-command, Escape, Ctrl\-C, Ctrl\-D, or any other unrecognized key closes it.
-Other keys do nothing. Enter runs it. The line and the caret always stay
-unchanged.
+The colon key in command mode opens a command line under the buffer. Enter
+runs it, and Escape, Ctrl\-C, Ctrl\-D, or Backspace on an empty command closes
+it. The line and the caret always stay unchanged.
 .TP
 .BR :q ", " :q! ", " :quit ", " :wq ", " :wq! ", " :x
 Leave the shell with the status of the last command.
@@ -3557,17 +3325,10 @@ Accept the match, then act on the line.
 .SS Terminal shell integration
 An interactive shell with terminal standard output writes semantic marks that
 terminals use to find prompts, commands, exit statuses, and the working
-directory. Every mark ends with BEL. Each prompt is preceded by the end of the
-previous command as ESC ] 133 ; D ; status, the working directory as
-ESC ] 7 ; file://host/path, and the prompt start as ESC ] 133 ; A. The prompt
-ends with ESC ] 133 ; B, and a submitted command is announced by
-ESC ] 133 ; C after PS0 is printed. The first prompt has no D mark. Under
-.BR editor.transient_prompt_after_submit ,
-the short prompt drawn over a submitted line starts on the row of the A mark
-and ends with its own ESC ] 133 ; B. When TERM_PROGRAM is vscode, the shell
-also writes ESC ] 633 ; P ; Cwd= and ESC ] 633 ; E ; command line for VS Code.
-No mark is written when standard output is not a terminal, when TERM is dumb,
-or when
+directory. The marks are the OSC 133 sequences A, B, C, and D and the OSC 7
+working directory sequence. When TERM_PROGRAM is vscode, the shell also writes
+OSC 633 marks for VS Code. No mark is written when standard output is not a
+terminal, when TERM is dumb, or when
 .B KOSH_SHELL_INTEGRATION
 is 0.
 .SH JOB CONTROL
