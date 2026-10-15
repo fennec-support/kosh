@@ -41,8 +41,6 @@ jobs:
         with:
           submodules: recursive
 
-      # A root shell neither loads nor writes the user kosh.conf, and the
-      # tests that persist settings need it, so the suite runs unprivileged.
       - name: Create the test user
         run: |
           adduser -D -s /bin/sh tester
