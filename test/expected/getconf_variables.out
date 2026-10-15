@@ -1,0 +1,13 @@
+== a prefix selects system variables through koshkit:
+ARG_MAX
+== a prefix selects path variables through koshkit:
+PATH_MAX
+== a bare utility completes variables when no program shadows it:
+NAME_MAX
+== the full list is plausible:
+many
+== a path variable takes a path operand:
+DIR/subdir/
+== the all flag takes a path operand:
+DIR/subdir/
+== a variable operand after a variable offers nothing:

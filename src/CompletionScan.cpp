@@ -1118,6 +1118,26 @@ complete_from_flags_in_line(StringView      line,
         }
       }
 
+      if (*util_for_flags == koshkit::Utility::Kind::Getconf &&
+          is_operand_wanted)
+      {
+        let const is_variable_position =
+            previous_word == command ||
+            (is_koshkit_builtin && second_word_of(line) == previous_word) ||
+            (previous_word.starts_with("-") && previous_word != "-a" &&
+             previous_word != "--all" && previous_word != "-v" &&
+             previous_word != "--specification");
+
+        if (!is_variable_position) return None;
+
+        for (let const &name : koshkit::getconf_variable_names())
+          do_push_matching(name.view());
+
+        if (!candidates.is_empty()) return candidates;
+
+        return None;
+      }
+
       if (is_operand_wanted) return None;
 
       let const flags = koshkit::koshkit_util_flag_list(*util_for_flags);

@@ -1176,6 +1176,18 @@ sorted_util_names() throws -> const ArrayList<String> &
 }
 
 fn
+getconf_variable_names() throws -> const ArrayList<String> &
+{
+  return util_names();
+}
+
+fn
+is_getconf_path_variable(StringView) throws -> bool
+{
+  return false;
+}
+
+fn
 collect_makefile_targets(EvalContext &cxt, const Path &) throws
     -> ArrayList<String>
 {

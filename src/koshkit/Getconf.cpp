@@ -324,6 +324,31 @@ inline constexpr StaticStringMap PATH_CONFIGURATIONS{
     PATH_CONFIGURATION_ENTRIES};
 
 fn
+getconf_variable_names() throws -> const ArrayList<String> &
+{
+  static ArrayList<String> names = [] throws {
+    let collected = ArrayList<String>{heap_allocator()};
+
+    for (let const &entry : SYSTEM_CONFIGURATION_ENTRIES)
+      collected.push(entry.key.to_string(collected.allocator()));
+    for (let const &entry : STRING_CONFIGURATION_ENTRIES)
+      collected.push(entry.key.to_string(collected.allocator()));
+    for (let const &entry : PATH_CONFIGURATION_ENTRIES)
+      collected.push(entry.key.to_string(collected.allocator()));
+
+    return collected;
+  }();
+
+  return names;
+}
+
+fn
+is_getconf_path_variable(StringView name) throws -> bool
+{
+  return PATH_CONFIGURATIONS.find(name).has_value();
+}
+
+fn
 append_configuration_row(String    &output,
                          StringView name,
                          StringView value) throws -> void
