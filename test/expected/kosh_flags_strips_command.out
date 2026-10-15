@@ -13,5 +13,9 @@ flagged
 rc=0
 == a short flag keeps its separate value:
 sh
+== an rc file from KOSH_FLAGS is not sourced:
+separate: sourced=0
+attached: sourced=0
+init-file: sourced=0
 == the other letters of a cluster with c survive:
 errexit-kept

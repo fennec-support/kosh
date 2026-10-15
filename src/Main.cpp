@@ -544,8 +544,19 @@ splice_environment_flags(command_line &line) throws -> void
       kosh_flags.has_value() && !kosh_flags->is_empty())
   {
     static constexpr PackedStringKey IGNORED_KOSH_FLAG_KEYS[] = {
-        SSK("--apply"), SSK("--format"), SSK("--as-language-server"),
-        SSK("--command"), SSK("--stdin")};
+        SSK("--apply"),
+        SSK("--format"),
+        SSK("--as-language-server"),
+        SSK("--command"),
+        SSK("--stdin"),
+        SSK("--rcfile"),
+        SSK("--init-file"),
+        SSK("--debug-logging-file"),
+        SSK("--debug-complete-at"),
+        SSK("--debug-highlight-at"),
+        SSK("--debug-ghost-at"),
+        SSK("--debug-brackets-at"),
+        SSK("--debug-hint-at")};
     static constexpr StaticStringSet IGNORED_KOSH_FLAGS{IGNORED_KOSH_FLAG_KEYS};
     let const                        view              = kosh_flags->view();
     bool                             is_value_next     = false;
