@@ -4052,7 +4052,9 @@ apply, so
 .BR man ,
 .BR manpath ,
 and the program run only from an absolute directory owned by the user or root
-that no group or other user can write. A program found through an empty or
+that no group or other user can write. On macOS a directory that the admin group
+can write, as Homebrew creates, also qualifies. A program found through an
+empty or
 relative PATH element never runs. Loads run in the background and the hint
 updates when the result is ready. A Tab needing a
 load shows a
@@ -5222,8 +5224,7 @@ list of absolute paths.
 The values contain the unpushed and unpulled commit counts relative to the
 current branch's upstream. Both are empty outside a repository, when no upstream
 is configured, and when the count is zero. The counts come from git, which runs
-only from an absolute directory owned by the user or root that no group or other
-user can write.
+only from a directory that program completion trusts.
 .TP
 .B KOSH_IDENTITY
 The read-only exported value is the lowercase CRC-32 identity of the running

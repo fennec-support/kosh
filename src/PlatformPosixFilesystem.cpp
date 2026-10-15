@@ -656,7 +656,19 @@ directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
     return false;
   }
 
-  if ((directory_stat.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+  /* Homebrew makes its directories writable by the macOS admin group, whose
+     members can already act as root. */
+#if defined __APPLE__
+  static constexpr gid_t ADMIN_GROUP_ID = 80;
+
+  let const is_group_write_trusted = directory_stat.st_gid == ADMIN_GROUP_ID;
+#else
+  let const is_group_write_trusted = false;
+#endif
+  let const is_group_writable = (directory_stat.st_mode & S_IWGRP) != 0;
+  let const is_other_writable = (directory_stat.st_mode & S_IWOTH) != 0;
+
+  if (is_other_writable || (is_group_writable && !is_group_write_trusted)) {
     LOG(Debug, "trust check failed because '%s' permits shared writes",
         directory.c_str());
 
