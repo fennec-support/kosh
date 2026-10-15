@@ -529,7 +529,7 @@ did_signed_multiply_overflow(i128 left, i128 right, i128 *product) wontthrow
       right < 0 ? ~static_cast<u128>(right) + 1 : static_cast<u128>(right);
   let const is_negative_product = (left < 0) != (right < 0);
 
-  u128 magnitude;
+  u128 magnitude = 1;
 
   if (did_unsigned_multiply_overflow(left_magnitude, right_magnitude,
                                      &magnitude))
