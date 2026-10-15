@@ -98,7 +98,7 @@ case $command in
 esac
 cd "$ASSIMILATE_REMOTE" || exit 1
 umask 077
-[ -z "${ASSIMILATE_LOCK_INSTALL-}" ] || chmod 555 "$ASSIMILATE_LOCK_INSTALL"
+[ -z "${ASSIMILATE_REMOVE_INSTALL-}" ] || rmdir "$ASSIMILATE_REMOVE_INSTALL"
 HOME=$ASSIMILATE_REMOTE_HOME PATH=$ASSIMILATE_REMOTE_PATH /bin/sh -c "$command"
 SH
 chmod +x "$transport/ssh"
@@ -283,22 +283,16 @@ fi
 printf 'install-directory-status=%s result=%s leftovers=%s\n' "$chosen_status" \
     "$chosen_result" "$(leftovers)"
 
-# A directory that stops accepting the install after the preflight chose it
-# is reported as a located error. Root can still write it, so root skips this.
+# A directory that disappears after the preflight chose it is reported as a
+# located error.
 lost=$remote/lost
 /bin/mkdir -p "$lost"
 lost_output=$root/lost.out
-if [ "$(id -u)" -eq 0 ]; then
-    printf 'lost-directory=skipped\n'
-else
-    ASSIMILATE_LOCK_INSTALL=$lost \
-        PATH="$transport${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
-        "$BIN" -c 'assimilate --yes --install-directory "$1" "$2"' kosh \
-        "$lost" 'user@[2001:db8::1]' >"$lost_output" 2>&1
-    lost_status=$?
-    chmod 755 "$lost"
-    lost_located=$(grep -c '^-c:1:1: error: .*Cannot install into ' \
-        "$lost_output")
-    printf 'lost-directory-status=%s located=%s leftovers=%s\n' \
-        "$lost_status" "$lost_located" "$(leftovers)"
-fi
+ASSIMILATE_REMOVE_INSTALL=$lost \
+    PATH="$transport${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
+    "$BIN" -c 'assimilate --yes --install-directory "$1" "$2"' kosh \
+    "$lost" 'user@[2001:db8::1]' >"$lost_output" 2>&1
+lost_status=$?
+lost_located=$(grep -c '^-c:1:1: error: .*Cannot install into ' "$lost_output")
+printf 'lost-directory-status=%s located=%s leftovers=%s\n' \
+    "$lost_status" "$lost_located" "$(leftovers)"
