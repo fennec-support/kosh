@@ -944,7 +944,9 @@ internal::complete_from_builtin_flags(StringView      line,
     let const view    = expanded_line.view();
     let const command = command_word_of(view);
 
-    if (command.is_empty() || search_builtin(command).has_value()) break;
+    if (command.is_empty() || search_builtin(command).has_value()) {
+      break;
+    }
 
     let const expansion = context.scope_store().find_alias(command);
 
@@ -952,7 +954,9 @@ internal::complete_from_builtin_flags(StringView      line,
 
     let const expansion_command = command_word_of(*expansion);
 
-    if (expansion_command.is_empty() || expansion_command == command) break;
+    if (expansion_command.is_empty() || expansion_command == command) {
+      break;
+    }
 
     let const command_start = static_cast<usize>(command.data - view.data);
     let       rewritten     = String{completion_allocator(),
@@ -1121,7 +1125,9 @@ complete_from_flags_in_line(StringView      line,
 
       if (flags != nullptr) append_flag_forms(*flags, token, forms);
 
-      if (forms.is_empty() && !is_koshkit_builtin) return None;
+      if (forms.is_empty() && !is_koshkit_builtin) {
+        return None;
+      }
 
       return forms;
     }

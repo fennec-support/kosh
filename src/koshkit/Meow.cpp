@@ -575,7 +575,9 @@ struct scene_canvas
   fn
   put(isize row, isize column, char glyph, u16 style) wontthrow -> void
   {
-    if (row < 0 || column < 0) return;
+    if (row < 0 || column < 0) {
+      return;
+    }
     if (static_cast<usize>(row) >= row_count) return;
     if (static_cast<usize>(column) >= column_count) return;
 
@@ -597,7 +599,9 @@ struct scene_canvas
   fn
   put_pixel(isize pixel_row, isize column, u8 color) wontthrow -> void
   {
-    if (pixel_row < 0 || column < 0 || color == 0) return;
+    if (pixel_row < 0 || column < 0 || color == 0) {
+      return;
+    }
     if (static_cast<usize>(pixel_row) >= row_count * 2) return;
     if (static_cast<usize>(column) >= column_count) return;
 
@@ -1284,7 +1288,9 @@ draw_starfield(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
 fn
 draw_moon(scene_canvas &canvas) wontthrow -> void
 {
-  if (canvas.column_count < 50 || canvas.row_count < 14) return;
+  if (canvas.column_count < 50 || canvas.row_count < 14) {
+    return;
+  }
 
   let const center_column = static_cast<f64>(canvas.column_count) - 9.0;
   let const center_row    = 6.0;
@@ -1300,7 +1306,9 @@ draw_moon(scene_canvas &canvas) wontthrow -> void
           std::sqrt(((row_offset + 1.5) * (row_offset + 1.5)) +
                     ((column_offset + 3.5) * (column_offset + 3.5)));
 
-      if (distance > radius || shadow_distance < radius - 0.5) continue;
+      if (distance > radius || shadow_distance < radius - 0.5) {
+        continue;
+      }
 
       let const is_crater =
           (column == 3 && pixel_row == 4) || (column == 4 && pixel_row == 8);
@@ -1356,7 +1364,9 @@ draw_yarn(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
 
   for (isize row_offset = 0; row_offset < 3; row_offset++) {
     for (isize column_offset = -1; column_offset <= 1; column_offset++) {
-      if (row_offset != 1 && column_offset != 0) continue;
+      if (row_offset != 1 && column_offset != 0) {
+        continue;
+      }
 
       canvas.put_pixel(pixel_row + row_offset, column + column_offset,
                        column_offset == shine && row_offset == 1
@@ -1839,7 +1849,9 @@ print_still_cat(const ExecContext   &ec,
 
   let const do_stamp = [&](usize row, usize offset, StringView pixels) wontthrow {
     for (usize index = 0; index < pixels.length; index++) {
-      if (pixels[index] == '.' || pixels[index] == 'E') continue;
+      if (pixels[index] == '.' || pixels[index] == 'E') {
+        continue;
+      }
       if (offset + index >= CAT_PIXEL_WIDTH) break;
 
       is_filled[row][offset + index] = true;

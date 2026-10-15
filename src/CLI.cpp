@@ -1405,12 +1405,16 @@ make_synopsis(StringView program_name, const SynopsisList &lines) throws
       let const is_at_end = i == line.length;
 
       if (!is_at_end) {
-        if (line[i] == '[' || line[i] == '{') bracket_depth++;
+        if (line[i] == '[' || line[i] == '{') {
+          bracket_depth++;
+        }
         if ((line[i] == ']' || line[i] == '}') && bracket_depth > 0) {
           bracket_depth--;
         }
 
-        if (line[i] != ' ' || bracket_depth > 0) continue;
+        if (line[i] != ' ' || bracket_depth > 0) {
+          continue;
+        }
       }
 
       let const group = line.substring_of_length(group_start, i - group_start);

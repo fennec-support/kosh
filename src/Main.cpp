@@ -856,8 +856,9 @@ find_flag_location(const command_line &line,
                                token[0] == '-' && token[1] != '-' &&
                                token.find_character(short_flag).has_value();
 
-    if (a > 0 && (token == long_flag || is_short_group))
+    if (a > 0 && (token == long_flag || is_short_group)) {
       return SourceLocation{offset, length};
+    }
 
     offset += length + 1;
   }

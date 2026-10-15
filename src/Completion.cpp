@@ -1547,10 +1547,11 @@ partition_directories_first(ArrayList<String> candidates) throws
   for (let &candidate : candidates) {
     let const view = candidate.view();
 
-    if (!view.is_empty() && os::is_directory_separator(view[view.length - 1]))
+    if (!view.is_empty() && os::is_directory_separator(view[view.length - 1])) {
       ordered.push(steal(candidate));
-    else
+    } else {
       files.push(steal(candidate));
+    }
   }
 
   for (let &file : files)

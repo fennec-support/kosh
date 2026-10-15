@@ -1140,7 +1140,9 @@ append_batch_quoted_arg(String &out, StringView arg) throws -> bool
   for (usize i = 0; i < arg.count(); i++) {
     let const c = static_cast<unsigned char>(arg[i]);
 
-    if (c == '\0' || c == '\n') return false;
+    if (c == '\0' || c == '\n') {
+      return false;
+    }
 
     let const is_safe_character =
         c >= 0x80 || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') ||

@@ -72,7 +72,9 @@ collect_report_directories(const StringView            *fixed_directories,
     let const &entry = environment_directories[index];
     let const  root  = os::get_environment_variable(entry.variable_name);
 
-    if (!root.has_value() || root->is_empty()) continue;
+    if (!root.has_value() || root->is_empty()) {
+      continue;
+    }
 
     let directory = Path{root->view(), allocator};
 
@@ -634,7 +636,9 @@ append_event_log_report(String   &output,
     let const records = os::read_recent_system_log_records(
         log_name, static_cast<usize>(DEFAULT_LOG_ENTRY_COUNT), allocator);
 
-    if (!records.has_value() || records->is_empty()) continue;
+    if (!records.has_value() || records->is_empty()) {
+      continue;
+    }
 
     let title = String{allocator, "Event log "};
 

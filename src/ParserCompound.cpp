@@ -587,7 +587,9 @@ scan_pattern_word_end(StringView source, usize position) throws
     case '"':  {
       position++;
       while (position < source.length && source[position] != byte) {
-        if (byte != '\'' && source[position] == '\\') position++;
+        if (byte != '\'' && source[position] == '\\') {
+          position++;
+        }
         position++;
       }
 
@@ -644,7 +646,9 @@ is_followed_by_pattern_end(StringView            source,
     let const word_start = do_skip_blanks(position + 1);
     let const word_end   = scan_pattern_word_end(source, word_start);
 
-    if (!word_end.has_value() || *word_end == word_start) return false;
+    if (!word_end.has_value() || *word_end == word_start) {
+      return false;
+    }
     position = do_skip_blanks(*word_end);
   }
 }

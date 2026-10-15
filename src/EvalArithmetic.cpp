@@ -237,11 +237,15 @@ arith_apply_binop(char                   kind,
 static pure fn
 is_plain_decimal_operand(StringView value) wontthrow -> bool
 {
-  if (value.is_empty() || value.length > 18) return false;
+  if (value.is_empty() || value.length > 18) {
+    return false;
+  }
   if (value[0] == '0') return value.length == 1;
 
   for (usize index = 0; index < value.length; index++) {
-    if (value[index] < '0' || value[index] > '9') return false;
+    if (value[index] < '0' || value[index] > '9') {
+      return false;
+    }
   }
 
   return true;
@@ -466,11 +470,15 @@ public:
   fn
   resolve_lvalue_subscript(Lvalue &target) throws -> void
   {
-    if (m_is_skipping || !target.subscript.has_value()) return;
+    if (m_is_skipping || !target.subscript.has_value()) {
+      return;
+    }
 
     ASSERT(context != nullptr);
 
-    if (*target.subscript == "@" || *target.subscript == "*") return;
+    if (*target.subscript == "@" || *target.subscript == "*") {
+      return;
+    }
     if (utils::has_command_substitution(*target.subscript)) return;
     if (context->is_associative_array(target.name)) return;
     if (context->variable_store().attributes().is_nameref(target.name)) return;
@@ -597,7 +605,9 @@ public:
 
     /* Bash reads '++' and '--' before a non-variable operand as two unary
        signs, which leave the operand unchanged. */
-    if (target.name.is_empty() && pos < source.length) return parse_unary();
+    if (target.name.is_empty() && pos < source.length) {
+      return parse_unary();
+    }
 
     if (target.name.is_empty())
       fail_span(operator_position, operator_position + 2,

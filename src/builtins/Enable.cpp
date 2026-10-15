@@ -197,8 +197,9 @@ Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
-  if (FLAG_LOAD_FILE.is_set() || FLAG_DELETE_FILE.is_enabled())
+  if (FLAG_LOAD_FILE.is_set() || FLAG_DELETE_FILE.is_enabled()) {
     return report_unloadable_builtins(ec, cxt, args, operand_locations);
+  }
 
   let const should_disable = FLAG_DISABLE.is_enabled();
   let const mood           = cxt.runtime_state().get_mood();

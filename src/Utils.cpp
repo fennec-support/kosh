@@ -1027,7 +1027,9 @@ has_command_substitution(StringView text) wontthrow -> bool
     }
 
     if (text[i] == '`') return true;
-    if (text[i] != '$' || i + 1 >= text.length) continue;
+    if (text[i] != '$' || i + 1 >= text.length) {
+      continue;
+    }
 
     if (text[i + 1] == '{') {
       let const rest = text.substring(i + 2);
@@ -1044,7 +1046,9 @@ has_command_substitution(StringView text) wontthrow -> bool
     }
 
     if (text[i + 1] != '(') continue;
-    if (i + 2 >= text.length || text[i + 2] != '(') return true;
+    if (i + 2 >= text.length || text[i + 2] != '(') {
+      return true;
+    }
   }
 
   return false;

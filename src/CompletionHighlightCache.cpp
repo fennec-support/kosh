@@ -373,7 +373,9 @@ split_spans_at_lines(StringView                 source,
   for (usize index = 0; index < spans.count(); index++) {
     let const &span = spans[index];
 
-    if (index > 0 && spans[index - 1].start > span.start) is_sorted = false;
+    if (index > 0 && spans[index - 1].start > span.start) {
+      is_sorted = false;
+    }
 
     for (usize start             = do_next_piece_end(span.start, span.end);
          start < span.end; start = do_next_piece_end(start, span.end))

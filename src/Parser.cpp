@@ -518,8 +518,9 @@ get_skipped_body_mask(Token::Kind expected_closer,
 {
   switch (expected_closer) {
   case Token::Kind::Done:
-    if (is_command_position && kind == Token::Kind::Do)
+    if (is_command_position && kind == Token::Kind::Do) {
       return token_kind_mask(Token::Kind::Done);
+    }
     return 0;
   case Token::Kind::Fi:
     if (!is_command_position) return 0;
@@ -710,7 +711,9 @@ Parser::recover_failed_statement(const ErrorWithLocation &error,
                                  usize &last_recovery_position) throws
     -> void
 {
-  if (m_collected_errors == nullptr || m_is_input_exhausted) throw;
+  if (m_collected_errors == nullptr || m_is_input_exhausted) {
+    throw;
+  }
 
   let open_closers = ArrayList<Token::Kind>{heap_allocator()};
 

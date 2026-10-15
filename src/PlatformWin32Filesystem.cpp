@@ -1522,7 +1522,9 @@ report_tree_removal_failure(const tree_removal_hooks *hooks,
                             tree_removal_failure      failure,
                             StringView                path) throws -> void
 {
-  if (hooks == nullptr || hooks->report_failure == nullptr) return;
+  if (hooks == nullptr || hooks->report_failure == nullptr) {
+    return;
+  }
 
   let const error = GetLastError();
 

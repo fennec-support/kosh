@@ -373,7 +373,9 @@ public:
   find_for_write(StringView name) throws -> Maybe<variable_entry *>
   {
     if (m_body.is_empty()) return None;
-    if (m_body.has_been_shared() && !find(name).has_value()) return None;
+    if (m_body.has_been_shared() && !find(name).has_value()) {
+      return None;
+    }
 
     let const found = body().index.find(name);
 
@@ -594,8 +596,12 @@ public:
     let const is_declared =
         (bits & static_cast<u8>(variable_attribute::Declared)) != 0;
 
-    if (is_nameref && !has_namerefs()) body().has_namerefs = true;
-    if (is_declared && !has_declared_marks()) body().has_declared_marks = true;
+    if (is_nameref && !has_namerefs()) {
+      body().has_namerefs = true;
+    }
+    if (is_declared && !has_declared_marks()) {
+      body().has_declared_marks = true;
+    }
   }
 
 private:

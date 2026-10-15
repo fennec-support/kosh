@@ -181,7 +181,9 @@ public:
     loop {
       let const next_stop = (m_position / PR_TAB_WIDTH + 1) * PR_TAB_WIDTH;
 
-      if (goal - m_position <= 1 || next_stop > goal) break;
+      if (goal - m_position <= 1 || next_stop > goal) {
+        break;
+      }
       m_output += '\t';
       m_position = next_stop;
     }
@@ -277,7 +279,9 @@ append_pr_text(PrRowWriter     &writer,
     let const code = static_cast<u8>(byte);
 
     if (code >= 0x20 && code < 0x7f) {
-      if (has_width_limit && input_position + 1 > layout.column_width) return;
+      if (has_width_limit && input_position + 1 > layout.column_width) {
+        return;
+      }
       input_position++;
     }
 
@@ -302,7 +306,9 @@ append_pr_row(PrRowWriter                   &writer,
   for (usize column = 0; column < row.count(); column++) {
     let const &entry = row[column];
 
-    if (!entry.is_present && !layout.is_merge) break;
+    if (!entry.is_present && !layout.is_merge) {
+      break;
+    }
 
     if (layout.is_aligned) {
       let const start           = layout.get_column_start(column);
@@ -578,8 +584,9 @@ Pr::execute(const ExecContext               &ec,
 
     let input_status = os::file_status{};
 
-    if (source != "-" && os::stat_descriptor(input->descriptor, input_status))
+    if (source != "-" && os::stat_descriptor(input->descriptor, input_status)) {
       opened_modification_time = input_status.modification_time;
+    }
     if (input->mode == input_descriptor_mode::Owned)
       owned_inputs.push(input->descriptor);
 

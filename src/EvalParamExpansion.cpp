@@ -3586,7 +3586,9 @@ get_pattern_affixes(StringView    pattern,
       return pattern_affixes{};
     }
 
-    if (index >= active.count() || !active[index]) continue;
+    if (index >= active.count() || !active[index]) {
+      continue;
+    }
     if (character == '\\') return pattern_affixes{};
     if (character != '*' && character != '?' && character != '[') {
       continue;

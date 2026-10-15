@@ -423,7 +423,9 @@ append_event_text(String        &message,
     let const is_text_start = printable.is_empty() && message.is_empty();
 
     if (is_control) {
-      if (!was_space && !is_text_start) printable.push(L' ');
+      if (!was_space && !is_text_start) {
+        printable.push(L' ');
+      }
 
       continue;
     }
@@ -479,7 +481,9 @@ read_recent_system_log_records(StringView log_name,
       LOG(Debug, "the event log read stopped with error %lu",
           static_cast<unsigned long>(error));
 
-      if (records.is_empty() && error != ERROR_HANDLE_EOF) return None;
+      if (records.is_empty() && error != ERROR_HANDLE_EOF) {
+        return None;
+      }
 
       break;
     }

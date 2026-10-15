@@ -99,7 +99,9 @@ struct conditional_evaluator
   bare_operand_view(const conditional_element &e) const wontthrow
       -> Maybe<StringView>
   {
-    if (!e.is_bare_unquoted || e.word == nullptr) return None;
+    if (!e.is_bare_unquoted || e.word == nullptr) {
+      return None;
+    }
 
     return e.word->raw_view();
   }

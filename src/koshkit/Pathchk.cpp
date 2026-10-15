@@ -74,8 +74,9 @@ is_windows_reserved_name(StringView component) wontthrow -> bool
     for (usize position = 0; position < base_name.length; position++) {
       let byte = base_name[position];
 
-      if (byte >= 'a' && byte <= 'z')
+      if (byte >= 'a' && byte <= 'z') {
         byte = static_cast<char>(byte - 'a' + 'A');
+      }
       if (byte != reserved_name[position]) {
         is_matched = false;
         break;
