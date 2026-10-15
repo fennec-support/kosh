@@ -44,3 +44,7 @@ echo "group-producer=${PIPESTATUS[0]}"
 echo "== compound stage end of file =="
 ( echo subshell-stage ) | ( cat )
 { echo group-stage; } | { cat; }
+
+echo "== descriptor swap in a stage =="
+echo swapped-out 3>&1 >&3 | cat
+{ echo swapped-err >&2; } 3>&1 1>&2 2>&3 | cat

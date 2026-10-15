@@ -2086,26 +2086,39 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const th
                            r.is_cached);
       break;
 
-    case redirection_outcome::Duplicate:
-      if (r.dup_from_fd == target_fd) break;
+    case redirection_outcome::Duplicate: {
+      let source_fd = r.dup_from_fd;
 
-      if (target_fd == 2 && r.dup_from_fd == 1) {
+      // A source bound by an earlier duplication in this list has no live
+      // descriptor yet, so the duplication follows that binding.
+      for (let const &binding : nonstandard) {
+        if (binding.target_fd == source_fd &&
+            binding.file_fd == KOSH_INVALID_FD && binding.dup_from_fd >= 0)
+        {
+          source_fd = binding.dup_from_fd;
+          break;
+        }
+      }
+
+      if (source_fd == target_fd) break;
+
+      if (target_fd == 2 && source_fd == 1) {
         ec.should_duplicate_error_to_output = true;
         ec.was_output_to_error_last         = false;
         ec.did_output_file_follow_error_dup = false;
-      } else if (target_fd == 1 && r.dup_from_fd == 2) {
+      } else if (target_fd == 1 && source_fd == 2) {
         ec.should_duplicate_output_to_error = true;
         ec.was_output_to_error_last         = true;
         ec.did_error_file_follow_output_dup = false;
-      } else if (target_fd > 2 || r.dup_from_fd == Redirection::DUP_FD_CLOSE) {
+      } else if (target_fd > 2 || source_fd == Redirection::DUP_FD_CLOSE) {
         let const dup_from_fd =
-            r.dup_from_fd == Redirection::DUP_FD_CLOSE ? -1 : r.dup_from_fd;
+            source_fd == Redirection::DUP_FD_CLOSE ? -1 : source_fd;
 
         bind_nonstandard_fd(
             nonstandard,
             nonstandard_descriptor{KOSH_INVALID_FD, target_fd, dup_from_fd});
       } else {
-        let const copied = os::duplicate_shell_fd(r.dup_from_fd);
+        let const copied = os::duplicate_shell_fd(source_fd);
 
         if (copied == KOSH_INVALID_FD) {
           let const location = redir.target != nullptr
@@ -2120,6 +2133,7 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const th
       }
 
       break;
+    }
     }
   }
 
