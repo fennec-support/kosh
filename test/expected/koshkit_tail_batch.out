@@ -95,7 +95,7 @@ q
 ==> no-final.txt <==
 c
 --- missing source preserves later output and status ---
--c:1:1: error: koshkit tail: cannot open 'missing.txt': No such file or directory.
+-c:1:1: error: Koshkit `tail`: cannot open 'missing.txt': No such file or directory.
      1 |  koshkit tail -n 1 missing.txt with-final.txt
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ==> with-final.txt <==
@@ -173,7 +173,7 @@ tail -n +0 keeps every header:
 ==> empty.txt <==
 a directory operand keeps its header and error:
 ==> dir <==
--c:1:1: error: koshkit tail: cannot read 'dir': Is a directory.
+-c:1:1: error: Koshkit `tail`: cannot read 'dir': Is a directory.
      1 |  koshkit tail -n 1 dir with-final.txt; echo "status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -181,7 +181,7 @@ a directory operand keeps its header and error:
 c
 status=1
 ==> dir <==
--c:1:1: error: koshkit head: cannot read 'dir': Is a directory.
+-c:1:1: error: Koshkit `head`: cannot read 'dir': Is a directory.
      1 |  koshkit head -n 1 dir with-final.txt; echo "status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -189,7 +189,7 @@ status=1
 a
 status=1
 ==> dir <==
--c:1:1: error: koshkit head: cannot read 'dir': Is a directory.
+-c:1:1: error: Koshkit `head`: cannot read 'dir': Is a directory.
      1 |  koshkit head -n -1 dir with-final.txt; echo "status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

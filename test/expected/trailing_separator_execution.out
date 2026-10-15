@@ -7,11 +7,11 @@ rc=126
 refused
 rc=126
 --- timeout ---
--c:1:19: error: koshkit timeout: This file is not a directory.
+-c:1:19: error: Koshkit `timeout`: This file is not a directory.
 refused
 rc=126
 --- timeout-pipeline ---
--c:1:36: error: koshkit timeout: This file is not a directory.
+-c:1:36: error: Koshkit `timeout`: This file is not a directory.
 refused
 rc=126
 --- command ---

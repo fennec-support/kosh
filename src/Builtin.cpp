@@ -416,34 +416,20 @@ report_loop_control_without_loop(const ExecContext &ec,
       ec, cxt, "only meaningful in a `for', `while', or `until' loop");
 }
 
-fn
-report_usage_error(const ExecContext &ec,
-                   EvalContext       &cxt,
-                   StringView         program_name) throws -> i32
+static fn
+show_usage_error(EvalContext   &cxt,
+                 SourceLocation location,
+                 StringView     context,
+                 StringView     program_name) throws -> i32
 {
-  return report_usage_error(cxt, ec.source_location(), program_name);
-}
-
-fn
-report_usage_error(EvalContext   &cxt,
-                   SourceLocation location,
-                   StringView     program_name) throws -> i32
-{
-  const ErrorWithLocation located{
-      steal(location),
-      String{heap_allocator(), program_name}
-      + ": Not enough arguments"
-  };
+  let const               message = context + ": Not enough arguments";
+  const ErrorWithLocation located{steal(location), message.view()};
 
   if (const String *source = cxt.source_store().current_source();
       source != nullptr)
     show_message(located.to_string(source->view(), &cxt));
   else
-    show_message(Error{
-        String{heap_allocator(), program_name}
-        + ": Not enough arguments"
-    }
-                     .to_string());
+    show_message(Error{message.view()}.to_string());
   show_message(Note{
       String{heap_allocator(), "Try `"}
       + program_name +
@@ -452,6 +438,33 @@ report_usage_error(EvalContext   &cxt,
                    .to_string());
 
   return 2;
+}
+
+fn
+report_usage_error(const ExecContext &ec,
+                   EvalContext       &cxt,
+                   StringView         program_name) throws -> i32
+{
+  /* A bundled utility runs through the koshkit builtin. A multicall run uses
+     the bare name, as a separate program does. */
+  let context = String{heap_allocator(), program_name};
+
+  if (!ec.is_multicall && ec.is_builtin()) {
+    context = ec.builtin_kind() == Builtin::Kind::Koshkit
+                  ? StringView{"Koshkit `"} + program_name + "`"
+                  : builtin_error_context(program_name);
+  }
+
+  return show_usage_error(cxt, ec.source_location(), context.view(),
+                          program_name);
+}
+
+fn
+report_usage_error(EvalContext   &cxt,
+                   SourceLocation location,
+                   StringView     program_name) throws -> i32
+{
+  return show_usage_error(cxt, steal(location), program_name, program_name);
 }
 
 fn

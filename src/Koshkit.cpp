@@ -359,7 +359,7 @@ dispatch(const ExecContext   &ec,
   } catch (const ErrorWithLocation &e) {
     let const invocation_name =
         ec.is_multicall ? String{heap_allocator(), name}
-                        : String{heap_allocator(), "koshkit "} + name;
+                        : String{heap_allocator(), "Koshkit `"} + name + "`";
 
     rethrow_with_prefix(e, invocation_name);
   } catch (const Error &error) {
@@ -1784,11 +1784,11 @@ koshkit_invocation_name(const ExecContext &ec,
   }
 
   if (ec.program() == "koshkit" && ec.args().count() > 1) {
-    return String{allocator, "koshkit "} + ec.args()[1].view();
+    return String{allocator, "Koshkit `"} + ec.args()[1].view() + "`";
   }
 
   if (!ec.args().is_empty())
-    return String{allocator, "koshkit "} + ec.args()[0].view();
+    return String{allocator, "Koshkit `"} + ec.args()[0].view() + "`";
 
   return String{allocator, ec.program()};
 }

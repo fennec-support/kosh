@@ -12,10 +12,10 @@ rm: would remove 'tree/sub'
 rm: would remove 'tree'
 tree still present
 == rm refuses '.' and the root directory, before any removal:
--c:1:1: error: koshkit rm: cannot remove '.': Is a directory.
+-c:1:1: error: Koshkit `rm`: cannot remove '.': Is a directory.
      1 |  koshkit rm --dry-run .
        |  ^~~~~~~~~~~~~~~~~~~~~~
--c:1:1: error: koshkit rm: cannot remove '/': Is a directory.
+-c:1:1: error: Koshkit `rm`: cannot remove '/': Is a directory.
      1 |  koshkit rm --dry-run /
        |  ^~~~~~~~~~~~~~~~~~~~~~
 == -x and --one-file-system change nothing inside one file system:
@@ -48,7 +48,7 @@ rm: descend into directory 'tree'
 rm: descend into directory 'single'
  rm: remove regular file 'single/full'
  rm: remove directory 'single'
- -c:1:1: error: koshkit rm: cannot remove 'single': Directory not empty.
+ -c:1:1: error: Koshkit `rm`: cannot remove 'single': Directory not empty.
      1 |  koshkit rm -ri --dry-run single; echo status=$
 
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -147,7 +147,7 @@ else
   locked_output=$("$BIN" -c 'koshkit du -s locked' 2>&1)
   locked_status=$?
   case $locked_output in
-    *"warning: koshkit du: cannot read"*) severity=warning ;;
+    *'warning: Koshkit `du`: cannot read'*) severity=warning ;;
     *) severity=other ;;
   esac
   echo "permission-severity=$severity status=$locked_status"

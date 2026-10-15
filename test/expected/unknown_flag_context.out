@@ -4,17 +4,17 @@
        |         ^~~~~~~~~
 note: Use `--` before an operand that begins with a dash.
 == koshkit unknown flag carries the koshkit util prefix:
--c:1:12: error: koshkit ls: Unknown flag '--dasdas'.
+-c:1:12: error: Koshkit `ls`: Unknown flag '--dasdas'.
      1 |  koshkit ls --dasdas
        |             ^~~~~~~~
 note: Use `--` before an operand that begins with a dash.
 == multibyte unknown flag in a koshkit utility keeps the whole character:
--c:1:17: error: koshkit eviliso: Unknown flag '-в'.
+-c:1:17: error: Koshkit `eviliso`: Unknown flag '-в'.
      1 |  koshkit eviliso -в
        |                  ^~
 note: Use `--` before an operand that begins with a dash.
 == multibyte unknown flag after an ASCII flag keeps the whole character:
--c:1:12: error: koshkit ls: Unknown flag '-в'.
+-c:1:12: error: Koshkit `ls`: Unknown flag '-в'.
      1 |  koshkit ls -aв
        |             ^~~
 note: Use `--` before an operand that begins with a dash.

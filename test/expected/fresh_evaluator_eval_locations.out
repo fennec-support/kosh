@@ -44,7 +44,7 @@ note: Replace it with ${unset_in_top_eval-} if empty expansion is desired.
     19 |  eval 'echo "top=$LINENO"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~
 
-eval:3:13: error: koshkit cat: Unknown flag '--unknown-in-top-eval'.
+eval:3:13: error: Koshkit `cat`: Unknown flag '--unknown-in-top-eval'.
      3 |  koshkit cat --unknown-in-top-eval
        |              ^~~~~~~~~~~~~~~~~~~~~
 note: Use `--` before an operand that begins with a dash.
@@ -73,7 +73,7 @@ note: Replace it with ${unset_in_library_eval-} if empty expansion is desired.
        |         ^~~~~~~~~~~~
 
 library_defined=5
-eval:3:15: error: koshkit cat: Unknown flag '--unknown-in-library'.
+eval:3:15: error: Koshkit `cat`: Unknown flag '--unknown-in-library'.
      3 |    koshkit cat --unknown-in-library
        |                ^~~~~~~~~~~~~~~~~~~~
 note: Use `--` before an operand that begins with a dash.
@@ -140,7 +140,7 @@ eval:7:3: trace:
     50 |  echo piped | { read -r value; evaluated_caller; }
        |                                ^~~~~~~~~~~~~~~~
 
-eval:10:15: error: koshkit cat: Unknown flag '--unknown-in-evaluated'.
+eval:10:15: error: Koshkit `cat`: Unknown flag '--unknown-in-evaluated'.
     10 |    koshkit cat --unknown-in-evaluated
        |                ^~~~~~~~~~~~~~~~~~~~~~
 note: Use `--` before an operand that begins with a dash.
@@ -150,7 +150,7 @@ note: Use `--` before an operand that begins with a dash.
 51:1: trace:
     51 |  ( evaluated_failing )
        |  ^
-eval:10:15: error: koshkit cat: Unknown flag '--unknown-in-evaluated'.
+eval:10:15: error: Koshkit `cat`: Unknown flag '--unknown-in-evaluated'.
     10 |    koshkit cat --unknown-in-evaluated
        |                ^~~~~~~~~~~~~~~~~~~~~~
 note: Use `--` before an operand that begins with a dash.

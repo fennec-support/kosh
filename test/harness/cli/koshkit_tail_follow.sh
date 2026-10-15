@@ -43,7 +43,7 @@ stop_follower()
   follower=
   sed "s#$d#TMPDIR#g" "$d/out"
   echo "stderr:"
-  sed -n 's/^.*koshkit tail: //p' "$d/err" | sed "s#$d#TMPDIR#g"
+  sed -n 's/^.*Koshkit `tail`: //p' "$d/err" | sed "s#$d#TMPDIR#g"
 }
 
 echo "--- descriptor follow: append, truncate, rename ---"
@@ -82,7 +82,7 @@ wait "$follower"
 echo "status=$?"
 follower=
 cat "$d/out"
-sed -n 's/^.*koshkit tail: //p' "$d/err" | sed "s#$d#TMPDIR#g"
+sed -n 's/^.*Koshkit `tail`: //p' "$d/err" | sed "s#$d#TMPDIR#g"
 
 echo "--- retry opens a file that appears later ---"
 start_follower -f --retry -s 0.05 "$d/late.txt"
@@ -136,7 +136,7 @@ echo "status=$?"
 
 echo "--- missing file without retry ---"
 invoke-koshkit timeout 20 "$BIN" -c 'koshkit tail -f "$1"' x "$d/none.txt" 2>&1 \
-  | sed -n 's/^.*koshkit tail: //p' | sed "s#$d#TMPDIR#g"
+  | sed -n 's/^.*Koshkit `tail`: //p' | sed "s#$d#TMPDIR#g"
 
 echo "--- watched process ends the follow ---"
 printf 'w1\n' > "$d/w.txt"
