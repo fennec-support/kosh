@@ -385,6 +385,14 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
     }
   };
 
+  let const do_get_error_status =
+      [&](const std::exception_ptr &error) throws {
+        return mimicked_error_status(error,
+                                     runtime_state().is_posix_mode()
+                                         ? mimicked_error_status_mode::Posix
+                                         : mimicked_error_status_mode::Default);
+      };
+
   let const do_finish_script =
       [&](std::exception_ptr &error,
           script_exit_context exit_context) throws -> bool {
@@ -393,10 +401,7 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
     bool was_error_rendered = false;
 
     if (error && !is_interrupt) {
-      final_status = mimicked_error_status(
-          error, runtime_state().is_posix_mode()
-                     ? mimicked_error_status_mode::Posix
-                     : mimicked_error_status_mode::Default);
+      final_status = do_get_error_status(error);
       execution_store().set_last_exit_status(final_status);
       do_render_error(error);
       was_error_rendered = true;
@@ -420,11 +425,7 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
         if (!error) {
           error        = std::current_exception();
           is_interrupt = mimicked_error_is_interrupt(error);
-          if (!is_interrupt)
-            final_status = mimicked_error_status(
-                error, runtime_state().is_posix_mode()
-                           ? mimicked_error_status_mode::Posix
-                           : mimicked_error_status_mode::Default);
+          if (!is_interrupt) final_status = do_get_error_status(error);
         }
       }
     }
@@ -490,11 +491,7 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
     source_store().mimicry_depth()--;
     should_leave_mimicry = false;
     do_restore_fds();
-    if (error) {
-      if (is_interrupt) throw InterruptErrorWithLocation{previous_location};
-
-      return execution_store().last_exit_status();
-    }
+    if (is_interrupt) throw InterruptErrorWithLocation{previous_location};
 
     return execution_store().last_exit_status();
   }
@@ -534,11 +531,7 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
   should_restore_isolated_state = false;
   restore_state(steal(*isolated_snapshot));
   do_restore_auxiliary_state();
-  if (error) {
-    if (is_interrupt) throw InterruptErrorWithLocation{previous_location};
-
-    return status;
-  }
+  if (is_interrupt) throw InterruptErrorWithLocation{previous_location};
 
   return status;
 }
