@@ -27,16 +27,16 @@ OPTIONS
 == list has no class column:
 0
 # name=value
-bash.completion.always_apply_fignore=on
-bash.completion.expand_directory_names=off
-bash.completion.fix_directory_typos=off
+bash.completion.programmable=on
+bash.completion.programmable_follows_aliases=off
+bash.debug.debugger_support=off
 == list -a adds the alias after each canonical line:
 bash.interpreter.glob_extended_patterns=on
 bash.legacy.extglob=on
 --
 posix.interpreter.exit_on_command_failure=off
 posix.legacy.errexit=off
-70
+73
 == every alias reads the value of its option:
 == set-only options appear as posix aliases:
 posix.legacy.hashall=on

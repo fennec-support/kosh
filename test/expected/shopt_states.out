@@ -80,3 +80,9 @@ reenabled=one
 bash-default=0
 bash-directory=autocd status=127
 bash-dot-two=four
+== Bash startup history options and the Bash 5.3 spelling are accepted:
+status=0
+histappend          	on
+cmdhist             	on
+lithist             	on
+assoc_expand_once   	on

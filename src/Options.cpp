@@ -132,6 +132,20 @@ shopt_flag(u16          id,
                     is_on_in_bash);
 }
 
+/* A Bash shopt option that Koshka accepts and never reads. Its only koshconf
+   name is the bash.legacy. spelling. */
+consteval fn
+ignored_shopt_flag(u16          id,
+                   option_text  koshconf_name,
+                   option_class category,
+                   option_text  shopt_name,
+                   bool         is_on) wontthrow -> option_descriptor
+{
+  return shopt_flag(id, koshconf_name, category, shopt_name,
+                    "Accept the Bash option without changing behavior.", is_on,
+                    is_on);
+}
+
 consteval fn
 set_alias(option_text     set_name,
           shell_option_id shell_option,
@@ -814,14 +828,11 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "Change to a directory typed as a command name.",
                true,
                true),
-    shopt_flag(129,
-               "bash.interpreter.array_subscripts_expand_once",
-               SEMANTIC,
-               "assoc_expand_once",
-               "Expand an array subscript once in assignments and "
-               "arithmetic.",
-               false,
-               false),
+    ignored_shopt_flag(129,
+                       "bash.legacy.assoc_expand_once",
+                       SEMANTIC,
+                       "assoc_expand_once",
+                       false),
     shopt_flag(130,
                "bash.interpreter.cd_to_variable_value",
                SEMANTIC,
@@ -830,13 +841,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "naming one.",
                false,
                false),
-    shopt_flag(131,
-               "bash.editor.cd_fix_typos",
-               INTERACTIVE,
-               "cdspell",
-               "Correct minor spelling errors in a cd operand.",
-               false,
-               false),
+    ignored_shopt_flag(
+        131, "bash.legacy.cdspell", INTERACTIVE, "cdspell", false),
     shopt_flag(132,
                "bash.interpreter.verify_remembered_command_paths",
                SEMANTIC,
@@ -845,44 +851,19 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "running it.",
                false,
                false),
-    shopt_flag(133,
-               "bash.editor.jobs_check_before_exit",
-               INTERACTIVE,
-               "checkjobs",
-               "List running and stopped jobs before an interactive shell "
-               "exits.",
-               false,
-               false),
-    shopt_flag(134,
-               "bash.editor.update_columns_and_lines",
-               INTERACTIVE,
-               "checkwinsize",
-               "Update COLUMNS and LINES after each command from the "
-               "terminal size.",
-               true,
-               true),
-    shopt_flag(135,
-               "bash.completion.quote_all_special_characters",
-               INTERACTIVE,
-               "complete_fullquote",
-               "Quote every shell metacharacter in a completed file name.",
-               true,
-               true),
-    shopt_flag(136,
-               "bash.completion.expand_directory_names",
-               INTERACTIVE,
-               "direxpand",
-               "Replace a directory name with its expansion during "
-               "completion.",
-               false,
-               false),
-    shopt_flag(137,
-               "bash.completion.fix_directory_typos",
-               INTERACTIVE,
-               "dirspell",
-               "Correct a misspelled directory name during completion.",
-               false,
-               false),
+    ignored_shopt_flag(
+        133, "bash.legacy.checkjobs", INTERACTIVE, "checkjobs", false),
+    ignored_shopt_flag(
+        134, "bash.legacy.checkwinsize", INTERACTIVE, "checkwinsize", true),
+    ignored_shopt_flag(135,
+                       "bash.legacy.complete_fullquote",
+                       INTERACTIVE,
+                       "complete_fullquote",
+                       true),
+    ignored_shopt_flag(
+        136, "bash.legacy.direxpand", INTERACTIVE, "direxpand", false),
+    ignored_shopt_flag(
+        137, "bash.legacy.dirspell", INTERACTIVE, "dirspell", false),
     shopt_flag(138,
                "bash.interpreter.glob_includes_dotfiles",
                SEMANTIC,
@@ -890,14 +871,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "Let a glob match filenames that begin with a dot.",
                false,
                false),
-    shopt_flag(139,
-               "bash.interpreter.exec_failure_keeps_shell",
-               SEMANTIC,
-               "execfail",
-               "Keep a non-interactive shell running when exec cannot run "
-               "its command.",
-               false,
-               false),
+    ignored_shopt_flag(
+        139, "bash.legacy.execfail", SEMANTIC, "execfail", false),
     bash_default_follows_session(
         with_posix_default(shopt_flag(140,
                                       "bash.interpreter.aliases_expand",
@@ -921,14 +896,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "Accept the extended patterns ?(), *(), +(), @(), and !().",
                true,
                false),
-    shopt_flag(143,
-               "bash.interpreter.quote_dollar_strings_in_parameter_expansion",
-               SEMANTIC,
-               "extquote",
-               "Process $'...' and $\"...\" quoting inside a quoted "
-               "${...} expansion.",
-               true,
-               true),
+    ignored_shopt_flag(143, "bash.legacy.extquote", SEMANTIC, "extquote", true),
     fixed_in_kosh(make_entry(144,
                              "bash.interpreter.glob_no_match_is_error",
                              option_type::Boolean,
@@ -943,21 +911,10 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                              1,
                              0),
                   1),
-    shopt_flag(145,
-               "bash.completion.always_apply_fignore",
-               INTERACTIVE,
-               "force_fignore",
-               "Drop FIGNORE suffixes from completions even when that "
-               "leaves none.",
-               true,
-               true),
-    shopt_flag(146,
-               "bash.interpreter.glob_ranges_use_ascii_order",
-               SEMANTIC,
-               "globasciiranges",
-               "Order bracket ranges in globs and patterns by byte value.",
-               true,
-               true),
+    ignored_shopt_flag(
+        145, "bash.legacy.force_fignore", INTERACTIVE, "force_fignore", true),
+    ignored_shopt_flag(
+        146, "bash.legacy.globasciiranges", SEMANTIC, "globasciiranges", true),
     shopt_flag(147,
                "bash.interpreter.glob_never_matches_dot_and_dotdot",
                SEMANTIC,
@@ -972,43 +929,16 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "Let ** in a glob match directories at any depth.",
                false,
                false),
-    shopt_flag(149,
-               "bash.optimizer.errors_use_gnu_format",
-               INTERACTIVE,
-               "gnu_errfmt",
-               "Write error messages in the GNU file:line format.",
-               false,
-               false),
-    shopt_flag(150,
-               "bash.editor.history.reedit_failed_substitution",
-               INTERACTIVE,
-               "histreedit",
-               "Return a failed history substitution to the editor.",
-               false,
-               false),
-    shopt_flag(151,
-               "bash.editor.history.verify_expansion_before_running",
-               INTERACTIVE,
-               "histverify",
-               "Load an expanded history reference into the editor. The shell "
-               "runs it after the user accepts it.",
-               false,
-               false),
-    shopt_flag(152,
-               "bash.completion.hostnames_after_at",
-               INTERACTIVE,
-               "hostcomplete",
-               "Complete hostnames after an @ in a word.",
-               true,
-               true),
-    shopt_flag(153,
-               "bash.editor.jobs_hangup_on_exit",
-               INTERACTIVE,
-               "huponexit",
-               "Send SIGHUP to every job when an interactive login shell "
-               "exits.",
-               false,
-               false),
+    ignored_shopt_flag(
+        149, "bash.legacy.gnu_errfmt", INTERACTIVE, "gnu_errfmt", false),
+    ignored_shopt_flag(
+        150, "bash.legacy.histreedit", INTERACTIVE, "histreedit", false),
+    ignored_shopt_flag(
+        151, "bash.legacy.histverify", INTERACTIVE, "histverify", false),
+    ignored_shopt_flag(
+        152, "bash.legacy.hostcomplete", INTERACTIVE, "hostcomplete", true),
+    ignored_shopt_flag(
+        153, "bash.legacy.huponexit", INTERACTIVE, "huponexit", false),
     shopt_flag(154,
                "bash.interpreter.command_substitution_inherits_exit_on_failure",
                SEMANTIC,
@@ -1065,21 +995,13 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                     "startup."},
         0,
         0))),
-    shopt_flag(160,
-               "bash.editor.mail_warn_when_read",
-               INTERACTIVE,
-               "mailwarn",
-               "Warn when a checked mail file was read since the last "
-               "check.",
-               false,
-               false),
-    shopt_flag(161,
-               "bash.completion.skip_empty_line",
-               INTERACTIVE,
-               "no_empty_cmd_completion",
-               "Offer no command completion on an empty line.",
-               false,
-               false),
+    ignored_shopt_flag(
+        160, "bash.legacy.mailwarn", INTERACTIVE, "mailwarn", false),
+    ignored_shopt_flag(161,
+                       "bash.legacy.no_empty_cmd_completion",
+                       INTERACTIVE,
+                       "no_empty_cmd_completion",
+                       false),
     shopt_flag(162,
                "bash.interpreter.glob_ignores_case",
                SEMANTIC,
@@ -1128,13 +1050,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "it expands to.",
                false,
                false),
-    shopt_flag(168,
-               "bash.editor.prompt_expands_parameters",
-               INTERACTIVE,
-               "promptvars",
-               "Expand parameters and substitutions in prompt strings.",
-               true,
-               true),
+    ignored_shopt_flag(
+        168, "bash.legacy.promptvars", INTERACTIVE, "promptvars", true),
     invocation_only(read_only(special(
         shopt_flag(169,
                    "bash.interpreter.restricted_shell",
@@ -1159,13 +1076,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                "Search PATH for a source operand without a slash.",
                true,
                true),
-    shopt_flag(172,
-               "bash.interpreter.redirect_variable_fd_closed_after_command",
-               SEMANTIC,
-               "varredir_close",
-               "Close a {name}> descriptor when its command finishes.",
-               false,
-               false),
+    ignored_shopt_flag(
+        172, "bash.legacy.varredir_close", SEMANTIC, "varredir_close", false),
     shopt_flag(173,
                "bash.interpreter.echo_interprets_backslash_escapes",
                SEMANTIC,
@@ -1191,6 +1103,12 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
              "On Windows, resolve /tmp and every path under it in "
              "the TEMP directory."},
          true),
+    ignored_shopt_flag(
+        176, "bash.legacy.histappend", INTERACTIVE, "histappend", true),
+    ignored_shopt_flag(
+        177, "bash.legacy.cmdhist", INTERACTIVE, "cmdhist", true),
+    ignored_shopt_flag(
+        178, "bash.legacy.lithist", INTERACTIVE, "lithist", false),
 
     set_only(posix_flag(68,
                         "posix.interpreter.remember_command_paths",
@@ -1727,6 +1645,9 @@ fn
 find_option_by_shopt_name(StringView name)
     wontthrow -> const option_descriptor *
 {
+  /* Bash 5.3 spells assoc_expand_once as array_expand_once. */
+  if (name == "array_expand_once") name = "assoc_expand_once";
+
   let const position = OPTIONS_BY_SHOPT_NAME.find(name);
 
   return position.has_value() ? &OPTION_REGISTRY[*position] : nullptr;
@@ -1740,6 +1661,16 @@ get_legacy_koshconf_alias(const option_descriptor &option) throws
     -> Maybe<String>
 {
   if (option.is_set_alias && option.storage == option_storage::EditorMode) {
+    return None;
+  }
+
+  /* An option whose koshconf name is already a legacy spelling has no second
+     spelling. */
+  let const koshconf_name = StringView{option.koshconf_name};
+
+  if (koshconf_name.starts_with(BASH_ALIAS_PREFIX) ||
+      koshconf_name.starts_with(POSIX_ALIAS_PREFIX))
+  {
     return None;
   }
 
@@ -1900,6 +1831,8 @@ make_default_on_shopt_mask() wontthrow -> u64
       SSK("globskipdots"),
       SSK("interactive_comments"),
       SSK("patsub_replacement"),
+      SSK("histappend"),
+      SSK("cmdhist"),
   };
   u64 mask = 0;
 

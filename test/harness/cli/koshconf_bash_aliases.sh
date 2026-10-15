@@ -39,7 +39,7 @@ printf 'mood=bash\nbash.interpreter.glob_extended_patterns=off\nbash.legacy.extg
 "$BIN" -c 'shopt extglob' 2>&1
 
 echo "== list shows canonical names only:"
-"$BIN" -c 'koshconf list | grep -c legacy' 2>&1
+"$BIN" -c 'koshconf list | grep -c "^bash\.legacy\.extglob="' 2>&1
 "$BIN" -c 'koshconf list | grep -c "^bash.interpreter.glob_extended_patterns="' 2>&1
 
 echo "== an unknown alias and the retired names are errors:"

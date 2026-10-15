@@ -218,3 +218,7 @@ cd "$AUTOCD_ROOT/tree/one/two/three/four"
 ... 2>/dev/null
 printf "bash-dot-two=%s\n" "${PWD##*/}"
 '
+echo "== Bash startup history options and the Bash 5.3 spelling are accepted:"
+"$BIN" --mood bash -c 'shopt -s histappend cmdhist lithist array_expand_once
+printf "status=%s\n" "$?"
+shopt histappend cmdhist lithist assoc_expand_once' 2>&1

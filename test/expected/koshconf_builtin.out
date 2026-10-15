@@ -1,35 +1,19 @@
 == list prints every option as name=value:
 # name=value
-bash.completion.always_apply_fignore=on
-bash.completion.expand_directory_names=off
-bash.completion.fix_directory_typos=off
-bash.completion.hostnames_after_at=on
 bash.completion.programmable=on
 bash.completion.programmable_follows_aliases=off
-bash.completion.quote_all_special_characters=on
-bash.completion.skip_empty_line=off
 bash.debug.debugger_support=off
 bash.editor.cd_by_typing_directory_name=on
-bash.editor.cd_fix_typos=off
 bash.editor.history.bang_expansion=off
 bash.editor.history.records_commands=off
-bash.editor.history.reedit_failed_substitution=off
-bash.editor.history.verify_expansion_before_running=off
 bash.editor.interactive_comments=on
-bash.editor.jobs_check_before_exit=off
-bash.editor.jobs_hangup_on_exit=off
-bash.editor.mail_warn_when_read=off
-bash.editor.prompt_expands_parameters=on
-bash.editor.update_columns_and_lines=on
 bash.interpreter.aliases_expand=on
-bash.interpreter.array_subscripts_expand_once=off
 bash.interpreter.assignments_anywhere_in_command=off
 bash.interpreter.brace_expansion=on
 bash.interpreter.cd_resolves_symlinks=off
 bash.interpreter.cd_to_variable_value=off
 bash.interpreter.command_substitution_inherits_exit_on_failure=off
 bash.interpreter.echo_interprets_backslash_escapes=off
-bash.interpreter.exec_failure_keeps_shell=off
 bash.interpreter.exit_after_one_command=off
 bash.interpreter.glob_double_star_recurses=off
 bash.interpreter.glob_extended_patterns=on
@@ -38,7 +22,6 @@ bash.interpreter.glob_includes_dotfiles=off
 bash.interpreter.glob_never_matches_dot_and_dotdot=on
 bash.interpreter.glob_no_match_expands_to_nothing=off
 bash.interpreter.glob_no_match_is_error=on
-bash.interpreter.glob_ranges_use_ascii_order=on
 bash.interpreter.local_inherits_outer_value=off
 bash.interpreter.local_unset_hides_outer=off
 bash.interpreter.login_shell=off
@@ -47,15 +30,35 @@ bash.interpreter.pattern_substitution_ampersand_is_match=on
 bash.interpreter.pipeline_last_stage_runs_in_shell=off
 bash.interpreter.posixly_correct=off
 bash.interpreter.privileged_mode=off
-bash.interpreter.quote_dollar_strings_in_parameter_expansion=on
-bash.interpreter.redirect_variable_fd_closed_after_command=off
 bash.interpreter.restricted_shell=off
 bash.interpreter.shift_reports_overflow=off
 bash.interpreter.source_searches_path=on
 bash.interpreter.trap_debug_and_return_inherited_by_functions=off
 bash.interpreter.trap_err_inherited_by_functions=off
 bash.interpreter.verify_remembered_command_paths=off
-bash.optimizer.errors_use_gnu_format=off
+bash.legacy.assoc_expand_once=off
+bash.legacy.cdspell=off
+bash.legacy.checkjobs=off
+bash.legacy.checkwinsize=on
+bash.legacy.cmdhist=on
+bash.legacy.complete_fullquote=on
+bash.legacy.direxpand=off
+bash.legacy.dirspell=off
+bash.legacy.execfail=off
+bash.legacy.extquote=on
+bash.legacy.force_fignore=on
+bash.legacy.globasciiranges=on
+bash.legacy.gnu_errfmt=off
+bash.legacy.histappend=on
+bash.legacy.histreedit=off
+bash.legacy.histverify=off
+bash.legacy.hostcomplete=on
+bash.legacy.huponexit=off
+bash.legacy.lithist=off
+bash.legacy.mailwarn=off
+bash.legacy.no_empty_cmd_completion=off
+bash.legacy.promptvars=on
+bash.legacy.varredir_close=off
 compatibility.dev_null=on
 compatibility.slash_tmp=on
 completion.add_space_after_completed_word=off
@@ -216,9 +219,6 @@ bash.interpreter.cd_resolves_symlinks=off
 # Let shell functions, command substitutions, and subshells inherit the DEBUG
 # and RETURN traps. (set -o functrace)
 bash.interpreter.trap_debug_and_return_inherited_by_functions=off
-# Expand an array subscript once in assignments and arithmetic.
-# (shopt assoc_expand_once)
-bash.interpreter.array_subscripts_expand_once=off
 # Treat a cd operand that is not a directory as a variable naming one.
 # (shopt cdable_vars)
 bash.interpreter.cd_to_variable_value=off
@@ -227,21 +227,12 @@ bash.interpreter.cd_to_variable_value=off
 bash.interpreter.verify_remembered_command_paths=off
 # Let a glob match filenames that begin with a dot. (shopt dotglob)
 bash.interpreter.glob_includes_dotfiles=off
-# Keep a non-interactive shell running when exec cannot run its command.
-# (shopt execfail)
-bash.interpreter.exec_failure_keeps_shell=off
 # Expand aliases in commands. (shopt expand_aliases)
 bash.interpreter.aliases_expand=on
 # Accept the extended patterns ?(), *(), +(), @(), and !(). (shopt extglob)
 bash.interpreter.glob_extended_patterns=on
-# Process $'...' and $"..." quoting inside a quoted ${...} expansion.
-# (shopt extquote)
-bash.interpreter.quote_dollar_strings_in_parameter_expansion=on
 # Fail a command whose glob matches nothing. (shopt failglob)
 bash.interpreter.glob_no_match_is_error=on
-# Order bracket ranges in globs and patterns by byte value.
-# (shopt globasciiranges)
-bash.interpreter.glob_ranges_use_ascii_order=on
 # Never let a glob match . or .. (shopt globskipdots)
 bash.interpreter.glob_never_matches_dot_and_dotdot=on
 # Let ** in a glob match directories at any depth. (shopt globstar)
@@ -272,8 +263,6 @@ bash.interpreter.pattern_substitution_ampersand_is_match=on
 bash.interpreter.shift_reports_overflow=off
 # Search PATH for a source operand without a slash. (shopt sourcepath)
 bash.interpreter.source_searches_path=on
-# Close a {name}> descriptor when its command finishes. (shopt varredir_close)
-bash.interpreter.redirect_variable_fd_closed_after_command=off
 # Let echo expand backslash escapes by default. (shopt xpg_echo)
 bash.interpreter.echo_interprets_backslash_escapes=off
 
@@ -284,55 +273,65 @@ posix.debug.trace_expanded_commands=off
 
 # Change to a directory typed as a command name. (shopt autocd)
 bash.editor.cd_by_typing_directory_name=on
-# Correct minor spelling errors in a cd operand. (shopt cdspell)
-bash.editor.cd_fix_typos=off
-# List running and stopped jobs before an interactive shell exits.
-# (shopt checkjobs)
-bash.editor.jobs_check_before_exit=off
-# Update COLUMNS and LINES after each command from the terminal size.
-# (shopt checkwinsize)
-bash.editor.update_columns_and_lines=on
-# Return a failed history substitution to the editor. (shopt histreedit)
-bash.editor.history.reedit_failed_substitution=off
-# Load an expanded history reference into the editor. The shell runs it after
-# the user accepts it. (shopt histverify)
-bash.editor.history.verify_expansion_before_running=off
-# Send SIGHUP to every job when an interactive login shell exits.
-# (shopt huponexit)
-bash.editor.jobs_hangup_on_exit=off
 # Allow comments in interactive shell input. (set -o interactive-comments)
 bash.editor.interactive_comments=on
-# Warn when a checked mail file was read since the last check. (shopt mailwarn)
-bash.editor.mail_warn_when_read=off
-# Expand parameters and substitutions in prompt strings. (shopt promptvars)
-bash.editor.prompt_expands_parameters=on
 
-# Quote every shell metacharacter in a completed file name.
-# (shopt complete_fullquote)
-bash.completion.quote_all_special_characters=on
-# Replace a directory name with its expansion during completion.
-# (shopt direxpand)
-bash.completion.expand_directory_names=off
-# Correct a misspelled directory name during completion. (shopt dirspell)
-bash.completion.fix_directory_typos=off
-# Drop FIGNORE suffixes from completions even when that leaves none.
-# (shopt force_fignore)
-bash.completion.always_apply_fignore=on
-# Complete hostnames after an @ in a word. (shopt hostcomplete)
-bash.completion.hostnames_after_at=on
-# Offer no command completion on an empty line. (shopt no_empty_cmd_completion)
-bash.completion.skip_empty_line=off
+# Accept the Bash option without changing behavior. (shopt assoc_expand_once)
+bash.legacy.assoc_expand_once=off
+# Accept the Bash option without changing behavior. (shopt cdspell)
+bash.legacy.cdspell=off
+# Accept the Bash option without changing behavior. (shopt checkjobs)
+bash.legacy.checkjobs=off
+# Accept the Bash option without changing behavior. (shopt checkwinsize)
+bash.legacy.checkwinsize=on
+# Accept the Bash option without changing behavior. (shopt complete_fullquote)
+bash.legacy.complete_fullquote=on
+# Accept the Bash option without changing behavior. (shopt direxpand)
+bash.legacy.direxpand=off
+# Accept the Bash option without changing behavior. (shopt dirspell)
+bash.legacy.dirspell=off
+# Accept the Bash option without changing behavior. (shopt execfail)
+bash.legacy.execfail=off
+# Accept the Bash option without changing behavior. (shopt extquote)
+bash.legacy.extquote=on
+# Accept the Bash option without changing behavior. (shopt force_fignore)
+bash.legacy.force_fignore=on
+# Accept the Bash option without changing behavior. (shopt globasciiranges)
+bash.legacy.globasciiranges=on
+# Accept the Bash option without changing behavior. (shopt gnu_errfmt)
+bash.legacy.gnu_errfmt=off
+# Accept the Bash option without changing behavior. (shopt histreedit)
+bash.legacy.histreedit=off
+# Accept the Bash option without changing behavior. (shopt histverify)
+bash.legacy.histverify=off
+# Accept the Bash option without changing behavior. (shopt hostcomplete)
+bash.legacy.hostcomplete=on
+# Accept the Bash option without changing behavior. (shopt huponexit)
+bash.legacy.huponexit=off
+# Accept the Bash option without changing behavior. (shopt mailwarn)
+bash.legacy.mailwarn=off
+# Accept the Bash option without changing behavior.
+# (shopt no_empty_cmd_completion)
+bash.legacy.no_empty_cmd_completion=off
+# Accept the Bash option without changing behavior. (shopt promptvars)
+bash.legacy.promptvars=on
+# Accept the Bash option without changing behavior. (shopt varredir_close)
+bash.legacy.varredir_close=off
+# Accept the Bash option without changing behavior. (shopt histappend)
+bash.legacy.histappend=on
+# Accept the Bash option without changing behavior. (shopt cmdhist)
+bash.legacy.cmdhist=on
+# Accept the Bash option without changing behavior. (shopt lithist)
+bash.legacy.lithist=off
+
+# Enable the behavior Bash provides for debuggers. (shopt extdebug)
+bash.debug.debugger_support=off
+
 # Use the completion specifications defined by complete. (shopt progcomp)
 bash.completion.programmable=on
 # Complete an alias with the specification of the command it expands to.
 # (shopt progcomp_alias)
 bash.completion.programmable_follows_aliases=off
-
-# Enable the behavior Bash provides for debuggers. (shopt extdebug)
-bash.debug.debugger_support=off
-
-# Write error messages in the GNU file:line format. (shopt gnu_errfmt)
-bash.optimizer.errors_use_gnu_format=off
 
 # On Windows, open /dev/null as the NUL device.
 compatibility.dev_null=on
@@ -354,7 +353,7 @@ mood=bash
 shopt -u expand_aliases
 == the sh preset matches a fresh sh session:
 == create writes every file option with its help and Bash name:
-9
+8
 bash.interpreter.verify_remembered_command_paths=off
 # Let a glob match filenames that begin with a dot. (shopt dotglob)
 bash.interpreter.glob_includes_dotfiles=off
@@ -517,7 +516,7 @@ warning: Skipping an invalid value of 'editor.history.max_entries' in KOSHCONF.
 on
 4096
 == KOSHCONF carries the mood and interactive options to another shell:
-AQECAgEBAwEBBAEBBQEABgEABwEBCAEBCgI3NwsBAQwBAA0BARgBARkBARoBAUEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQE=
+AQECAgEBAwEBBAEBBQEABgEABwEBCAEBCgI3NwsBAQwBAA0BARgBARkBARoBAUEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQGwAQEBsQEBAbIBAQA=
 bash
 external
 77

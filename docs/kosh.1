@@ -890,14 +890,25 @@ forms, the
 .B \-o
 test, and SHELLOPTS keep the Bash behavior, including the state where neither
 is on. A non-interactive shell starts in that state. Writing vi turns vi on and
-emacs off. When vi is on, writing emacs turns vi off and emacs on.
+emacs off. When vi is on, writing emacs turns vi off and emacs on. The id 88 is
+retired.
 .PP
 The Bash options hashall and nolog have no koshconf name. Koshka caches command
 paths whether or not hashall is on, and Bash ignores nolog.
 .B set
 and
 .B \-o
-accept both for Bash scripts querying them.
+accept both for Bash scripts querying them. The ids 68 and 86 are retired.
+.PP
+Some Bash shopt options are accepted and never change behavior, so Bash
+startup files that set them run unchanged: assoc_expand_once, cdspell,
+checkjobs, checkwinsize, cmdhist, complete_fullquote, direxpand, dirspell,
+execfail, extquote, force_fignore, globasciiranges, gnu_errfmt, histappend,
+histreedit, histverify, hostcomplete, huponexit, lithist, mailwarn,
+no_empty_cmd_completion, promptvars, and varredir_close. Their only koshconf
+name is bash.legacy.NAME. Koshka always appends to the history file and
+records a multi-line command as one entry. shopt accepts array_expand_once as
+the Bash 5.3 spelling of assoc_expand_once.
 .PP
 .nf
 .ft CR
@@ -1003,27 +1014,27 @@ accept both for Bash scripts querying them.
        set -o posix, semantic
 128  bash.editor.cd_by_typing_directory_name
        shopt autocd, interactive
-129  bash.interpreter.array_subscripts_expand_once
+129  bash.legacy.assoc_expand_once
        shopt assoc_expand_once, semantic
 130  bash.interpreter.cd_to_variable_value
        shopt cdable_vars, semantic
-131  bash.editor.cd_fix_typos
+131  bash.legacy.cdspell
        shopt cdspell, interactive
 132  bash.interpreter.verify_remembered_command_paths
        shopt checkhash, semantic
-133  bash.editor.jobs_check_before_exit
+133  bash.legacy.checkjobs
        shopt checkjobs, interactive
-134  bash.editor.update_columns_and_lines
+134  bash.legacy.checkwinsize
        shopt checkwinsize, interactive
-135  bash.completion.quote_all_special_characters
+135  bash.legacy.complete_fullquote
        shopt complete_fullquote, interactive
-136  bash.completion.expand_directory_names
+136  bash.legacy.direxpand
        shopt direxpand, interactive
-137  bash.completion.fix_directory_typos
+137  bash.legacy.dirspell
        shopt dirspell, interactive
 138  bash.interpreter.glob_includes_dotfiles
        shopt dotglob, semantic
-139  bash.interpreter.exec_failure_keeps_shell
+139  bash.legacy.execfail
        shopt execfail, semantic
 140  bash.interpreter.aliases_expand
        shopt expand_aliases, semantic
@@ -1031,27 +1042,27 @@ accept both for Bash scripts querying them.
        shopt extdebug, semantic
 142  bash.interpreter.glob_extended_patterns
        shopt extglob, semantic
-143  bash.interpreter.quote_dollar_strings_in_parameter_expansion
+143  bash.legacy.extquote
        shopt extquote, semantic
 144  bash.interpreter.glob_no_match_is_error
        shopt failglob, semantic
-145  bash.completion.always_apply_fignore
+145  bash.legacy.force_fignore
        shopt force_fignore, interactive
-146  bash.interpreter.glob_ranges_use_ascii_order
+146  bash.legacy.globasciiranges
        shopt globasciiranges, semantic
 147  bash.interpreter.glob_never_matches_dot_and_dotdot
        shopt globskipdots, semantic
 148  bash.interpreter.glob_double_star_recurses
        shopt globstar, semantic
-149  bash.optimizer.errors_use_gnu_format
+149  bash.legacy.gnu_errfmt
        shopt gnu_errfmt, interactive
-150  bash.editor.history.reedit_failed_substitution
+150  bash.legacy.histreedit
        shopt histreedit, interactive
-151  bash.editor.history.verify_expansion_before_running
+151  bash.legacy.histverify
        shopt histverify, interactive
-152  bash.completion.hostnames_after_at
+152  bash.legacy.hostcomplete
        shopt hostcomplete, interactive
-153  bash.editor.jobs_hangup_on_exit
+153  bash.legacy.huponexit
        shopt huponexit, interactive
 154  bash.interpreter.command_substitution_inherits_exit_on_failure
        shopt inherit_errexit, semantic
@@ -1065,9 +1076,9 @@ accept both for Bash scripts querying them.
        shopt localvar_unset, semantic
 159  bash.interpreter.login_shell
        shopt login_shell, interactive
-160  bash.editor.mail_warn_when_read
+160  bash.legacy.mailwarn
        shopt mailwarn, interactive
-161  bash.completion.skip_empty_line
+161  bash.legacy.no_empty_cmd_completion
        shopt no_empty_cmd_completion, interactive
 162  bash.interpreter.glob_ignores_case
        shopt nocaseglob, semantic
@@ -1081,7 +1092,7 @@ accept both for Bash scripts querying them.
        shopt progcomp, interactive
 167  bash.completion.programmable_follows_aliases
        shopt progcomp_alias, interactive
-168  bash.editor.prompt_expands_parameters
+168  bash.legacy.promptvars
        shopt promptvars, interactive
 169  bash.interpreter.restricted_shell
        shopt restricted_shell, semantic
@@ -1089,7 +1100,7 @@ accept both for Bash scripts querying them.
        shopt shift_verbose, semantic
 171  bash.interpreter.source_searches_path
        shopt sourcepath, semantic
-172  bash.interpreter.redirect_variable_fd_closed_after_command
+172  bash.legacy.varredir_close
        shopt varredir_close, semantic
 173  bash.interpreter.echo_interprets_backslash_escapes
        shopt xpg_echo, semantic
@@ -1097,6 +1108,12 @@ accept both for Bash scripts querying them.
        semantic
 175  compatibility.slash_tmp
        semantic
+176  bash.legacy.histappend
+       shopt histappend, interactive
+177  bash.legacy.cmdhist
+       shopt cmdhist, interactive
+178  bash.legacy.lithist
+       shopt lithist, interactive
 .ft R
 .fi
 .PP
@@ -3023,7 +3040,8 @@ c, u2, o2, d2, and x2 formats in command line order.
 Each pathname is checked against the component and pathname limits of the file
 system. The \fB\-p\fR option uses the POSIX portable limits and filename
 characters, and \fB\-P\fR rejects an empty pathname and a component that begins
-with a hyphen. The \fB\-\-windows\fR option rejects a component that holds a
+with a hyphen. The \fB\-W\fR or \fB\-\-windows\fR option rejects a component
+that holds a
 control character or one of < > : " | ? *, ends with a dot or a space, or is
 a reserved device such as CON, NUL, COM1, or LPT1, with or without an extension.
 Windows builds always apply these rules.
