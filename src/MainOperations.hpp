@@ -15,14 +15,19 @@
 
 namespace koshka {
 
+/* The error is located at the file operand when the caller knows where the
+   operand sits in the invocation. */
 static fn
-unrecognized_format_message(Maybe<StringView> filename) throws -> String
+unrecognized_format_message(Maybe<StringView>     filename,
+                            const SourceLocation *operand_location = nullptr,
+                            StringView            invocation       = {},
+                            EvalContext          *context          = nullptr) throws
+    -> String
 {
-  let message = String{heap_allocator(),
-                       filename.has_value() ? *filename : StringView{"input"}};
-
-  message.append(": error: The file format is not recognized.\n");
-  message.append("note: Recognized formats include ");
+  let const message = "The format of `" +
+                      (filename.has_value() ? *filename : StringView{"input"}) +
+                      "` is not recognized";
+  let note = String{heap_allocator(), "Recognized formats include "};
 
   usize supported_format_count = 0;
 
@@ -45,16 +50,19 @@ unrecognized_format_message(Maybe<StringView> filename) throws -> String
 
     if (name.is_empty()) continue;
     if (appended_format_count != 0)
-      message.append(appended_format_count + 1 == supported_format_count
-                         ? ", and "
-                         : ", ");
-    message.append(name);
+      note.append(appended_format_count + 1 == supported_format_count ? ", and "
+                                                                      : ", ");
+    note.append(name);
     appended_format_count++;
   }
 
-  message.push('.');
+  if (operand_location != nullptr) {
+    return ErrorWithLocationAndDetails{*operand_location, message.view(),
+                                       note.view()}
+        .to_string(invocation, context);
+  }
 
-  return message;
+  return ErrorWithDetails{message.view(), note.view()}.to_string();
 }
 
 fn
@@ -1002,7 +1010,9 @@ run_lint_document_contents(
     ArrayList<source_diagnostic> *diagnostic_sink      = nullptr,
     bool                         *is_format_recognized = nullptr,
     bool                          should_print_ast     = true,
-    Maybe<StringView>             shell_source_name    = None) throws -> int
+    Maybe<StringView>             shell_source_name    = None,
+    const SourceLocation         *operand_location     = nullptr,
+    StringView                    invocation           = {}) throws -> int
 {
   let const document =
       parse_format_document(parser_format_input{source.view(), filename, None});
@@ -1010,7 +1020,8 @@ run_lint_document_contents(
   if (is_format_recognized != nullptr)
     *is_format_recognized = document.kind != parser_format_kind::UnknownHost;
   if (document.kind == parser_format_kind::UnknownHost) {
-    let const message = unrecognized_format_message(filename);
+    let const message = unrecognized_format_message(filename, operand_location,
+                                                    invocation, &context);
 
     show_message(message.view());
 

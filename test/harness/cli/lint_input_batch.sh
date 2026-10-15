@@ -141,10 +141,14 @@ after_open_error=$(printf '%s\n' "$output" |
 printf 'missing=%s directory=%s continued=%s rc=%s\n' \
   "$missing_count" "$directory_count" "$after_open_error" "$rc"
 
+# The error points at the operand in the invocation, whose column and excerpt
+# depend on the binary path, so only the located count and the text remain.
 output=$("$BIN" --lint --no-traces unknown.txt unknown.yaml 2>&1)
 rc=$?
-printf '%s\n' "$output"
-printf 'unknown-formats-status=%s\n' "$rc"
+located_count=$(printf '%s\n' "$output" |
+  grep -cE '^[0-9]+:[0-9]+: error: The format of ')
+printf '%s\n' "$output" | grep -v '^ ' | sed 's/^[0-9]*:[0-9]*: //'
+printf 'unknown-formats-located=%s status=%s\n' "$located_count" "$rc"
 
 output=$("$BIN" -n -WWW --no-traces first.bash parse.bash 2>&1)
 rc=$?

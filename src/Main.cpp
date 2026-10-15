@@ -2366,6 +2366,7 @@ struct interactive_session
 
 struct lint_run
 {
+  StringView                 invocation{};
   bool                       did_input_fail = false;
   analysis_diagnostic_totals totals{};
 
@@ -2374,9 +2375,13 @@ struct lint_run
           EvalContext        &context,
           BumpArena          &ast_arena) throws -> i32
   {
-    return run_lint_document_contents(chunk.contents, context, ast_arena,
-                                      chunk.filename, &totals, nullptr, nullptr,
-                                      true, chunk.command_string_name);
+    let const operand_location = chunk.root_frame_call_site.has_value()
+                                     ? &*chunk.root_frame_call_site
+                                     : nullptr;
+
+    return run_lint_document_contents(
+        chunk.contents, context, ast_arena, chunk.filename, &totals, nullptr,
+        nullptr, true, chunk.command_string_name, operand_location, invocation);
   }
 
   fn
@@ -2785,7 +2790,7 @@ kosh_main(int argc, char **argv) -> int
                                      FLAG_ONE_COMMAND.is_enabled() &&
                                          !FLAG_LINT.is_enabled()};
   let session   = koshka::interactive_session{};
-  let lint      = koshka::lint_run{};
+  let lint      = koshka::lint_run{cli_invocation.view()};
   i32 exit_code = EXIT_SUCCESS;
 
   loop {
