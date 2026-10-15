@@ -1320,20 +1320,13 @@ descriptor numbered ten or greater and assigns its number to var. The form
 {var}>&\- closes the descriptor whose number var holds.
 .PP
 An appending redirection inside a loop body opens its file once and keeps the
-descriptor until the loop ends. Up to sixteen such descriptors are kept at a
-time, and a loop that appends to more files reopens the extra ones on every
-iteration. Writes continue to the original file even after it is renamed or
-removed. Bash reopens the file on every iteration.
+descriptor until the loop ends. Writes continue to the original file even after
+it is renamed or removed. Bash reopens the file on every iteration.
 .PP
-A diagnostic inside a tab-stripped here-document carries no source caret.
-.PP
-In the bash moods, the redirections of a program (including one started through
-.BR command ),
-of a command with no word, and of a subshell expand in a child process, as in
-Bash. An assignment such as ${v:=x}, an arithmetic side effect, or a function
-substitution in the word of such a redirection or in the body of its
-here-document leaves no change in the shell. The redirections of a builtin, a
-function, a command group, and
+In the bash moods, the redirections of a program, of a command with no word,
+and of a subshell expand in a child process, as in Bash. A side effect of such
+an expansion, such as ${v:=x}, leaves no change in the shell. The redirections
+of a builtin, a function, a command group, and
 .B exec
 expand in the shell itself, and so do those of every command in the kosh mood.
 .SH COMMAND EXECUTION
@@ -1361,13 +1354,10 @@ When the command consists only of dots and is a single word, two dots move to
 the parent directory and each additional dot moves one more parent directory.
 .PP
 A command path ending in a directory separator fails with status 126 when the
-typed target is not a directory. Components are resolved in order, and the caret
-covers the first unavailable component of an unavailable path.
+target is not a directory.
 .PP
-A script without a recognized executable format is run by the shell itself,
-receiving the command environment and the command argument zero. The caller's
-variables, functions, and traps are not inherited. Each complete top-level
-command runs before the next one is parsed.
+A script without a recognized executable format is run by the shell itself.
+The caller's variables, functions, and traps are not inherited.
 .PP
 PIPESTATUS, updated after every foreground command, holds the status of each
 pipeline stage. When
@@ -1393,8 +1383,7 @@ and
 .B bash-posix
 moods fire it for a body that the
 .B functrace
-option follows and for a body that installs its own action. A sourced file
-fires the trap in all of these moods. The
+option follows. The
 .B sh
 mood rejects the RETURN condition.
 .SH BUILTINS
@@ -1403,69 +1392,14 @@ follow the active compatibility mood unless a difference is stated here.
 .PP
 With no operand,
 .B builtin
-groups the builtins under POSIX, BASH, and Koshka headings. The headings are
-colored only when standard output is a color terminal. The Koshka section
-holds assimilate, bench, koshconf, koshkit, and z. The output of
-.B builtin \-\-help
-ends with the same groups.
+groups the builtins under POSIX, BASH, and Koshka headings. The Koshka section
+holds assimilate, bench, koshconf, koshkit, and z.
 .PP
-.BR : ,
-.BR . ,
-.BR [ ,
-.BR alias ,
-.BR bg ,
-.BR break ,
-.BR builtin ,
-.BR cd ,
-.BR command ,
-.BR complete ,
-.BR compgen ,
-.BR compopt ,
-.BR continue ,
-.BR declare ,
-.BR dirs ,
-.BR disown ,
-.BR echo ,
-.BR eval ,
-.BR exec ,
-.BR exit ,
-.BR export ,
-.BR false ,
-.BR fc ,
-.BR fg ,
-.BR getopts ,
-.BR history ,
-.BR jobs ,
-.BR kill ,
-.BR let ,
-.BR local ,
-.BR mapfile ,
-.BR newgrp ,
-.BR popd ,
-.BR printf ,
-.BR pushd ,
-.BR pwd ,
-.BR read ,
-.BR readarray ,
-.BR readonly ,
-.BR return ,
-.BR set ,
-.BR shift ,
-.BR shopt ,
-.BR source ,
-.BR test ,
-.BR time ,
-.BR times ,
-.BR trap ,
-.BR true ,
-.BR type ,
-.BR typeset ,
-.BR ulimit ,
-.BR umask ,
-.BR unalias ,
-.BR unset ,
-and
-.BR wait .
+\fB: . [ alias bg break builtin cd command complete compgen compopt continue
+declare dirs disown echo eval exec exit export false fc fg getopts history jobs
+kill let local mapfile newgrp popd printf pushd pwd read readarray readonly
+return set shift shopt source test time times trap true type typeset ulimit
+umask unalias unset wait\fR
 .PP
 .B pwd \-W
 prints the physical working directory in the Windows form with forward slashes,
@@ -1476,43 +1410,35 @@ as MSYS does. On other systems, it is the same as
 .BI "assimilate " TARGET
 The running executable is copied through scp to TARGET and installed as
 .B kosh
-in the first usable remote PATH directory. A path containing sbin is skipped,
-and /usr/local/bin and $HOME/.local/bin are preferred when in PATH. The
+in the first usable remote PATH directory. A path containing sbin is
+skipped. The
 .BI \-\-link\-mood= MOOD
 option requests a relative bash, dash, sh, or kosh link. It may be repeated and
-accepts comma-separated values. A candidate directory is skipped when a
-requested link path already exists. The
+accepts comma-separated values. The
 .BI \-\-install\-directory= DIR
-option installs into DIR instead, and DIR is used even when it contains sbin.
+option installs into DIR instead, even when it contains sbin.
 .PP
-The remote host reports the chosen directory before the upload, and the shell
-asks for confirmation with the target and the full path of the new binary. Only
-an answer that begins with y or Y continues, and any other answer exits with
-status 1. The
+The shell asks for confirmation with the target and the full path of the new
+binary. Only an answer that begins with y or Y continues, and any other answer
+exits with status 1. The
 .BR \-y " or " \-\-yes
-option skips the question. A binary built for macOS or Windows also prints a
-warning.
-.PP
-The
+option skips the question. The
 .BR \-x " or " \-\-trace
 option prints remote progress. The
 .BI \-\-ssh\-command= COMMAND
 and
 .BI \-\-scp\-command= COMMAND
-options replace ssh and scp, and COMMAND is split at literal spaces.
+options replace ssh and scp.
 .PP
-The uploaded candidate is validated before the target is replaced. A failure
-handled by the transaction restores the previous file or symlink and removes
-transaction files. Transactions run one at a time, and the next one recovers an
-interrupted one. A failure before the remote transaction starts leaves the
-installed target unchanged. An unusable partial upload may remain.
+The uploaded candidate is validated before the target is replaced. A failed
+installation restores the previous file or symlink.
 .TP
 .B bench
 Each command is run through
 .BR "kosh \-c" ,
 and the wall time, peak resident set, and available performance counters are
-reported as a mean, standard deviation, and range. Later commands are compared
-with the first. Sampling stops after a nonzero status unless
+reported as a mean, standard deviation, and range. Sampling stops after a
+nonzero status unless
 .B \-\-ignore\-exit\-code
 is present. The
 .BR \-\-show\-output ,
@@ -1521,18 +1447,10 @@ is present. The
 and
 .B \-\-duration
 options control output, direct execution, sample count, and the millisecond
-budget.
-.IP
-With
+budget. With
 .BR \-\-extended ,
-each command also reports user and system time, voluntary and involuntary
-context switches, minor and major page faults, block input and output
-operations, read and write system calls, and bytes read and written. Times,
-switches, faults, and block counts cover the sampled process and the children
-it waited for. Call and byte counts cover the sampled process alone, so
-.B \-\-no\-shell
-measures the command itself. Read and write counts exist on Linux. Windows
-reports one page fault total and no switch or block counts. A row the platform
+each command also reports CPU time, context switches, page faults, block
+operations, and read and write system calls and bytes. A row the platform
 cannot report is omitted.
 .TP
 .BI "koshconf create " "PRESET " "\fR[\fB\-\-force\fR]"
@@ -1564,38 +1482,21 @@ and refuses to replace an existing file without
 changes the option in the current session. With
 .BR \-\-persist ,
 it also rewrites that option's line in the user configuration file and leaves
-every other line in place. Every option a file may hold can be persisted. When
-the target exists, its previous contents are saved as
-.I kosh.conf.bak
-before replacement. A value the file cannot hold changes nothing.
+every other line in place. The previous file is saved as
+.IR kosh.conf.bak .
 .B get
 prints the current value.
 .B list
-prints a heading row starting with a number sign and then every option with its
-current value in alphabetical order as
+prints every option with its current value in alphabetical order as
 .IR name = value ,
-one line each. A value a file cannot hold is shown in the
-.B $\(aq...\(aq
-form. With
+one line each. With
 .B \-a
 or
 .BR \-\-all ,
 each option with a Bash spelling is followed by a line with its alias and the
 same value, posix.legacy.NAME for a POSIX
 .B set \-o
-option and bash.legacy.NAME otherwise. The set-only options
-.B hashall
-and
-.B nolog
-appear there as posix.legacy.hashall and posix.legacy.nolog, for information
-only. The
-.B emacs
-and
-.B vi
-spellings of editor.base_mode are not listed. Only
-.B list
-accepts
-.BR \-\-all .
+option and bash.legacy.NAME otherwise.
 .B load
 applies a value of
 .B KOSHCONF
@@ -1606,40 +1507,26 @@ options, as the value of
 .BR $KOSHCONF .
 A kosh started with
 .B KOSHCONF=$(koshconf save)
-adopts them, and
-.B load
-accepts the value. With
+adopts them. With
 .BR \-\-persist ,
 .B save
-writes the user configuration file instead. The file holds the mood when it
-differs from kosh and every other setting whose
-current value differs from the default of the current mood. When the target
-exists, its previous contents are saved as
-.I kosh.conf.bak
-before replacement. The command prints nothing. A restricted shell refuses
+writes the user configuration file instead, holding the mood when it differs
+from kosh and every setting that differs from the default of the current mood.
+A restricted shell refuses
 .B save \-\-persist
 and allows a plain
 .BR save .
 .IP
-A boolean is written as on or off and also accepted as true, false, 1, or 0. An
-enumeration is written by its name. A string must be valid UTF-8, and
-editor.history.max_entries is a decimal integer from 0 to 2147483647. A negative
-number is an operand and reaches the value check. An unknown option or value,
-or a file that cannot be read or written, is an error with status 1, and a
-malformed form exits with status 2. An unknown option or form suggests a close
-match when one exists. An interactive shell reports on
-standard error the file written by
+A boolean is written as on or off and also accepted as true, false, 1, or 0.
+editor.history.max_entries is a decimal integer from 0 to 2147483647. An
+unknown option or value, or a file that cannot be read or written, is an error
+with status 1, and a malformed form exits with status 2. An interactive shell
+reports on standard error the file written by
 .BR create ,
 .BR "set \-\-persist" ,
 or
-.BR "save \-\-persist" ,
-with a home directory shortened to a tilde. The set form shows the option line
-and the file, such as
-.BR "interpreter.resolve_koshkit_applets_as_commands=on ~/.config/kosh/kosh.conf" ,
-the create form shows
-.B preset=
-and the preset name before the file, and the save form shows the file alone. A
-script stays silent. Only
+.BR "save \-\-persist" .
+Only
 .B set
 and
 .B save
@@ -1654,18 +1541,14 @@ accepts
 The current directory is changed to one selected from the directories that
 interactive shells have visited. A single operand
 that is an existing directory is selected as it is. Otherwise the operands form
-one case-insensitive substring query. An entry equal to the query wins, then an
-entry whose last component equals it, then any entry containing it. Within each
-group, visit count and recency determine the ranking. With no operand, the home
-directory is selected.
+one case-insensitive substring query, and visit count and recency rank the
+matches. With no operand, the home directory is selected.
 .SS Compatibility forms
 .TP
 .B dirs
 With no operand, the builtin prints the current directory followed by the saved
 stack. A +N operand prints the Nth entry from the top, and a \-N operand prints
-the Nth entry from the bottom. The
-.B \-v
-form keeps the selected entry's full-stack index.
+the Nth entry from the bottom.
 .TP
 .BR "pushd \-n DIR" ", " "popd \-n"
 The first form adds DIR below the current directory, and the second removes
@@ -1680,7 +1563,7 @@ OPTION REGISTRY section lists them. With no NAME,
 .B set \-o
 prints current states and
 .B set +o
-prints reusable commands, both in name order. A long option such as
+prints reusable commands. A long option such as
 .B \-\-mood
 is rejected with a pointer to
 .BR koshconf .
@@ -1695,8 +1578,8 @@ forms control errtrace, history expansion, physical directory resolution,
 functrace, and brace expansion. The
 .B \-N
 form controls the exit code diagnostic enabled at startup by
-.BR \-\-show\-all\-exit\-codes ,
-and reports a successful zero as well. The
+.BR \-\-show\-all\-exit\-codes .
+The
 .B \-t
 form and the
 .B onecmd
@@ -1728,8 +1611,7 @@ and
 .B \-m
 letters are accepted without effect. The
 .B \-k
-form places unquoted assignment arguments in the command environment and
-removes them from the argument list. The
+form places unquoted assignment arguments in the command environment. The
 .BR \-W ,
 .BR \-WW ,
 and
@@ -1758,26 +1640,14 @@ An event reference accepts the word designators
 .BR :N* ,
 .BR :N\-$ ,
 and
-.BR :N\- .
-The colon may be omitted before
-.BR ^ ,
-.BR $ ,
-.BR * ,
-and
-.BR % .
-The
-.B %
-designator selects the word matched by the most recent
-.B !?text?
-search, including a search on an earlier input line.
-An event or word reference accepts the pathname modifiers
+.BR :N\- ,
+and the pathname modifiers
 .BR :h ,
 .BR :t ,
 .BR :r ,
 and
-.BR :e ,
-selecting the directory, final component, name without its final suffix, and
-final suffix. The
+.BR :e .
+The
 .BI :s/ old / new /
 modifier replaces the first literal match,
 .B :gs
@@ -1785,64 +1655,33 @@ and
 .B :as
 replace every match, and
 .B :Gs
-replaces the first match in each word. The delimiter after
-.B s
-may be any byte, and its final occurrence may be omitted at the end of the
-input line. An unescaped ampersand in the replacement inserts the matched text.
-The
+replaces the first match in each word. The
 .B :&
-modifier repeats the previous substitution, including one from an earlier
-input line, and
-.BR :g& ,
-.BR :a& ,
-and
-.B :G&
-apply the corresponding scope. An empty old text reuses the previous
-substitution text, or the latest
-.B !?text?
-search text when no previous substitution exists.
-.PP
-The
+modifier repeats the previous substitution. The
 .B :q
-modifier quotes the selected text as one shell argument. The
+modifier quotes the selected text as one shell argument, and
 .B :x
-modifier splits the text at blanks and newlines and quotes each resulting
-argument. The
+quotes each word separately. The
 .B :p
 modifier prints and records the expanded input without executing it. A leading
 .BI ^ old ^ new ^
-performs the first substitution on the previous event. The final caret may be
-omitted, text after it remains in the expanded input, and a modifier may follow
-it directly.
+performs the first substitution on the previous event.
 .PP
-Single-quoted and backslash-escaped references remain literal, as does a
-reference immediately before a closing double quote. As in bash, a ! right
-after [ stays literal when a ] follows later on the line, so [!a] keeps its
-negation, a ! right after ${ stays literal when a } follows later on the line,
-so ${!name} stays an indirect expansion, and $! stays a parameter. A comment
-marker at the start of a word prevents expansion through the end of the line.
-When an event, word, modifier, or substitution error occurs, the command will
-not execute or be recorded in history, and the previous exit status is
-preserved. Both history options are
-enabled by default in an interactive shell and disabled in a noninteractive
-shell.
+Single-quoted and backslash-escaped references remain literal. When an event,
+word, modifier, or substitution error occurs, the command will not execute or
+be recorded in history. Both history options are enabled by default in an
+interactive shell and disabled in a noninteractive shell.
 .PP
 Each shell loads one private history branch at startup. An interactive shell
 appends submitted commands to the shared file immediately without importing
 commands written by other running shells. A noninteractive shell never writes
-the file on its own. Its stored events, deletions, clears, imports, and
-.B fc
-edits change only the private branch, and only
+the file on its own, and only
 .B "history \-w"
 and
 .B "history \-a"
-reach the file. Recall, expansion, listing, and editing use the private
-branch. A command duplicating the preceding private event is skipped. A
-multiline command is stored as one event with its embedded newlines.
-KOSH_HISTORY_SIZE limits retained and stored history and defaults to 4096. A
-value of zero disables history retention and storage. An existing history file
-that cannot be read is reported once at startup, and the session begins with an
-empty history.
+reach the file. KOSH_HISTORY_SIZE limits retained and stored history and
+defaults to 4096. A
+value of zero disables history retention and storage.
 .PP
 The
 .B ignoreeof
@@ -1850,7 +1689,7 @@ option requires consecutive end-of-file input before an interactive shell
 exits. The threshold is the value of
 .BR IGNOREEOF .
 When IGNOREEOF is unset, enabling the option sets it to 10. Assigning IGNOREEOF
-enables the option. Disabling the option or unsetting IGNOREEOF disables it. The
+enables the option, and unsetting it disables the option. The
 .B nolog
 option is accepted for Bash compatibility and does not change execution.
 .TP
@@ -1859,13 +1698,10 @@ The command or pipeline is timed. The
 .B \-p
 and
 .B \-\-posix
-options select the POSIX report. Under the bash mood the report is a blank line
-followed by three tab separated rows in the minutes form. The default mood
-indents the same three rows and adds a processor busy row, plus the peak
-resident set size when the platform supplies a nonzero value. The
+options select the POSIX report. The default mood adds a processor busy row,
+and the peak resident set size when the platform supplies it. The
 .B \-R
-option always adds the resident set row, even when TIMEFORMAT selects a custom
-or empty report. Under the
+option always adds the resident set row. Under the
 .B sh
 mood the name is not a keyword and is resolved on the command search path.
 .TP
@@ -1878,14 +1714,7 @@ separate entry, so disabling
 leaves
 .B [
 enabled. Command lookup skips a disabled builtin and searches PATH and the
-bundled utilities.
-.BR type ,
-.BR "command \-v" ,
-completion, and highlighting follow the same lookup, and
-.B builtin
-rejects a disabled builtin. An enabled bundled utility resolves as a command
-after PATH even when bundled utilities are otherwise unreachable, and a disabled
-one never resolves as a command. The
+bundled utilities. A disabled bundled utility never resolves as a command. The
 .B koshkit
 builtin still runs a disabled utility. A subshell inherits the state, and the
 changes made in a subshell do not reach its parent.
@@ -1893,27 +1722,23 @@ changes made in a subshell do not reach its parent.
 Without an operand, the enabled builtins and the reachable bundled utilities
 are listed as
 .B enable
-commands, with the builtins first and each group in sorted order. The
+commands. The
 .B \-n
-option lists the disabled builtins and utilities as
+option lists the disabled ones as
 .B "enable \-n"
 commands, and
 .B \-a
 lists both groups. The
 .B \-s
-option limits a listing to the special builtins, which include
-.B source
-in the bash moods. With
-.BR \-p ,
-a listing is printed even when operands are given, and the operands are
-ignored. A builtin that the mood hides, such as
+option limits a listing to the special builtins. A builtin that the mood hides,
+such as
 .B let
 in the sh mood, is neither listed nor accepted as an operand. A disabled special
 builtin loses its special properties. Koshka has no loadable builtins, so
 .B \-f
 with an operand fails, and
 .B \-d
-fails for each operand. Without an operand, both options list the builtins.
+fails for each operand.
 .TP
 .B hash
 Resolved command locations are remembered or listed. The
@@ -1923,8 +1748,8 @@ option clears the cache. The
 option records path as the location of each name, and a restricted shell
 rejects it. The
 .B \-t
-option prints the remembered location of each name, preceded by the name and a
-tab when several are given, and fails for a name with no remembered location.
+option prints the remembered location of each name and fails for a name with no
+remembered location.
 .TP
 .B "history [\-cnrwaps] [\-d selector] [operand]"
 .br
@@ -1933,30 +1758,20 @@ Without a maintenance option the stored events are listed, and a numeric
 operand limits the listing to that many newest events. The
 .B \-r
 option loads the history file into the list, and an operand gives a file whose
-events join the list without being written to the history file. The
+events join the list. The
 .B \-n
-option also loads the history file, and an operand gives a file whose bytes
-already loaded are skipped. The
+option loads only the events not yet loaded. The
 .B \-w
 option writes the list to the history file, and an operand gives a file to
-replace. Without an operand it replaces the shared file with this shell's
-private branch. The
+replace. The
 .B \-a
-option writes the list to the history file, and an operand gives a file
-receiving the events this shell has not yet written to a file. The written
-events are limited by
-.BR KOSH_HISTORY_SIZE .
-Without an operand,
-.B \-a
-appends the events of the private branch missing from the file, such as those
-stored by a noninteractive shell or supplied by an operand of
-.BR \-r .
-The
+option appends the events of the private branch missing from the history file,
+or from the file given as an operand. The
 .B \-S
 and
 .B \-\-sync
-forms accept no operand and replace the private branch with a snapshot of
-the shared history file. The
+forms replace the private branch with a snapshot of the shared history file.
+The
 .B \-c
 option clears the private branch and leaves the history file intact, as bash
 does, and
@@ -1971,12 +1786,9 @@ option joins its operands with spaces and stores the result as an event.
 .TP
 .B "fc [\-e editor] [\-lnr] [first [last]]"
 The selected history events are edited and executed in the current shell. A
-decimal selector gives an event number. A negative selector is relative to
-the current history position. A text selector finds the newest event with that
-prefix. The first and last selectors form an inclusive range. Without
-selectors, editing selects the previous event.
-.PP
-The
+decimal selector gives an event number, a negative selector is relative to
+the current history position, and a text selector finds the newest event with
+that prefix. Without selectors, editing selects the previous event. The
 .B \-l
 option lists events without executing them, up to the previous sixteen when no
 selectors are given. The
@@ -1988,14 +1800,13 @@ option reverses the selected order.
 The editor is selected by
 .B \-e
 and then by FCEDIT and EDITOR. The default is vi, or ed in POSIX mood. A dash
-as the editor skips editing and executes the selected event. The temporary file
-path is the final argument of the editor.
+as the editor skips editing and executes the selected event.
 .PP
 The form
 .B "fc \-s [old=new ...] [command]"
-selects one event and applies each literal replacement in order. The result is
-printed to standard error and executed. The active fc event is replaced by the
-executed command, and the return status is the status of that command.
+selects one event, applies each literal replacement in order, prints the result
+to standard error, and executes it. The return status is the status of that
+command.
 .TP
 .B bind
 Flags and operands are accepted without changing key bindings. The builtin
@@ -2004,20 +1815,19 @@ returns zero.
 .B caller
 Without an operand, the builtin prints nothing and returns one at top level and
 zero inside a function or sourced file. A numeric operand selects a call frame
-and prints its line number and source file. A nonnumeric operand is an error.
+and prints its line number and source file.
 .TP
 .B help
 Without a pattern, builtins are printed one per line. A builtin name
 renders the same help as its
 .B \-\-help
-flag. An unknown name is an error. The
+flag. The
 .B \-d
 option prints the name and short description, the
 .B \-s
 option only the usage synopsis, and the
 .B \-m
-option manpage-style name, synopsis, description, and option sections. Each mode
-accepts more than one builtin name.
+option a manpage-style page.
 .TP
 .B logout
 In a login shell, the builtin runs the EXIT trap and exits with the optional
@@ -2045,8 +1855,7 @@ uppercase conversion by
 .BR \-u ,
 and an exported name by
 .BR \-x .
-The plus forms remove the integer and case-conversion attributes. Lowercase
-and uppercase conversion cancel each other when both are requested.
+The plus forms remove the integer and case-conversion attributes.
 The
 .B \-f
 and
@@ -2054,61 +1863,23 @@ and
 options restrict the operands to functions, printing each recorded definition or
 only its name. The
 .B \-p
-option prints the matching declarations, and an indexed array lists each set
-element under its own index. Without operands, the
+option prints the matching declarations. Without operands, the
 .B \-p
 option or an attribute option lists every variable carrying the requested
 attributes. The
 .B \-n
 option makes the name a reference to the variable selected by its value, which
-may carry an array subscript. An expansion, an assignment, an append, an element
-assignment, an export, and an unset of the reference act on that variable, and a
-chain of references is followed. A for loop over a reference binds the reference
-to each word, ${!name} gives the name reached by the reference, and
+may carry an array subscript. An expansion, an assignment, an append, an
+export, and an unset of the reference act on that variable, and a chain of
+references is followed. ${!name} gives the name reached by the reference, and
 .B "unset \-n"
-removes the reference itself and leaves a name that is not a reference alone.
-The conditional [[ \-R name ]] and, outside the sh mood, test \-R name and [ \-R
-name ] are true for a reference with a value. A reference with no value binds to
-the name given by its first assignment. A reference to itself is an error at the
-top level, and a circular chain counts as unset with a warning and fails an
-assignment. Through a circular chain, read, printf \-v, and export fail with
-status 1, arithmetic, a prefix assignment before a builtin, and declare warn and
-skip the write, a prefix assignment before eval, a sourced file, a function, or
-an external command warns and binds a plain exported variable of that name until
-the command ends, an element or array assignment warns and turns the reference
-into an array, and unset removes the reference. When a function's reference
-loops back to its own name, an assignment warns and sets the variable hidden by
-the function's local. Inside a function, local \-n name=name or declare \-n
-name=name warns and leaves the name reaching the variable outside the function,
-as Bash falls back to the global one, though a caller's local of that name is
-reached first. Reading and writing act on that variable, declare \-p and \-R
-report a reference, ${!name} abandons the line, and unset in the same function
-turns the name into an unset local. declare \-gn name=name in a function makes a
-circular reference. A first assignment of its own name to a reference with no
-value makes the same self reference when the reference is local to the running
-function, and a circular reference otherwise. A write through a reference
-applies the read-only, restricted, integer, and case rules of the target, and
-readonly or declare \-r on a reference marks the target. A target must be a name
-or a name with a subscript, evaluated on each use. A reference to an element
-accepts only a scalar write. An array literal, an append of one, an element
-assignment, read \-a, and mapfile through it fail, and the failing assignment
-abandons the line. An export of a value through it assigns the element and
-reports an error with status 0. A scalar assignment to an array or an
-associative array sets element 0 or key 0, and an export of an array records the
-export attribute that declare \-p prints as \-x, as in Bash. An array carrying
-the attribute never reaches a child environment. A read-only name, PATH, IFS,
-and a dynamic variable other than RANDOM and SECONDS cannot become a reference.
-As in Bash, RANDOM and SECONDS take the attribute, a value given with it seeds
-or sets them as an assignment does, and they keep their generated value, and
-that value is never used as a name. An expansion or an assignment statement of
-the name then abandons the line, a write by read, printf \-v, or declare fails
-with status 1, [[ \-v name ]] is false, and ${!name} gives the generated value.
-unset leaves the name alone,
-.B "unset \-n"
-removes it with its special behavior, and
-.B +n
-restores it. A local of either name in a function is an ordinary variable that
-may become a reference. The
+removes the reference itself. The conditional [[ \-R name ]] is true for a
+reference with a value. A reference with no value binds to the name given by
+its first assignment. A reference to itself is an error at the top level, and a
+circular chain counts as unset with a warning and fails an assignment. A write
+through a reference applies the read-only, restricted, integer, and case rules
+of the target. A read-only name, PATH, IFS, and a dynamic variable other than
+RANDOM and SECONDS cannot become a reference. The
 .B +n
 form removes the reference and keeps its value. The
 .B \-g
@@ -2133,8 +1904,7 @@ passes a caller's variable by reference. A
 .B \-
 operand saves the
 .B set
-options, and the function return restores them, except the restricted option,
-which stays as the function left it.
+options, and the function return restores them.
 .TP
 .B readonly
 Each given variable is marked read-only. The
@@ -2166,10 +1936,9 @@ option replaces the newline delimiter with the first byte of its value. The
 option takes input from a file descriptor. The
 .B \-C
 option evaluates its callback with the destination index and current record as
-arguments, after each quantum of records and before the current record is
-assigned. The
+arguments after each quantum of records, and
 .B \-c
-option sets the quantum, 5000 records by default.
+sets the quantum, 5000 records by default.
 .TP
 .B printf
 The
@@ -2177,24 +1946,12 @@ The
 option assigns the formatted result to a variable.
 In every mood the numeric locale is taken from the first nonempty value of
 LC_ALL, LC_NUMERIC, and LANG as the shell holds them at each call, so
-assignments, unsets, locals, and prefix assignments apply without an export. A
-floating operand is parsed with the decimal point of
-that locale, and an operand not consumed whole is an invalid number. The
-floating conversions print that decimal point. The
+assignments apply without an export. Floating operands are parsed and printed
+with the decimal point of that locale. The
 .B \(aq
-flag groups the digits of the
-.BR d ,
-.BR i ,
-.BR u ,
-.BR f ,
-.BR F ,
-.BR g ,
-and
-.B G
-conversions with the thousands separator of the locale. The C and POSIX
-locales, no value, and a locale the platform cannot select use a dot and no
-grouping, and so does every locale on Windows. Arithmetic expansion does
-not use the locale.
+flag groups the digits of integer and floating conversions with the thousands
+separator of the locale. The C and POSIX locales and every locale on Windows
+use a dot and no grouping. Arithmetic expansion does not use the locale.
 .TP
 .B read
 The
@@ -2210,7 +1967,7 @@ The
 option sets the maximum byte count. The
 .B \-N
 option takes exactly that many bytes, ignores the delimiter, and stores them
-unsplit in the first name, leaving the rest empty. The
+unsplit in the first name. The
 .B \-t
 option limits the wait in seconds. The
 .B \-p
@@ -2228,9 +1985,8 @@ option is accepted without effect.
 The
 .BI "\-V " varname
 option stores the candidates in the given indexed array and writes nothing to
-standard output. An invalid name is a usage error, and an associative or
-read-only target is rejected. A generator matching no candidates leaves the
-array empty and returns one. The
+standard output. A generator matching no candidates leaves the array empty and
+returns one. The
 .BI "\-P " prefix
 and
 .BI "\-S " suffix
@@ -2252,13 +2008,8 @@ command, in that order. The
 command runs as a command substitution with the command name, the word, and
 the previous word appended as quoted arguments, and with COMP_LINE,
 COMP_POINT, COMP_KEY, and COMP_TYPE exported. Each nonempty line of its output
-is a candidate, taken without word prefix matching. The ghost suggestion
-never runs a function or a command, never expands the glob, and never adds
-directories. It offers only actions answered from memory, so the user, group,
-hostname, service, command, file, and directory actions wait for a Tab. A
-.B \-I
-spec with none of the generators used by the ghost leaves the ghost of the
-command words in place. The actions
+is a candidate. The ghost suggestion never runs a function or a command and
+offers only actions answered from memory. The actions
 .BR \-a ,
 .BR \-b ,
 .BR \-c ,
@@ -2289,34 +2040,17 @@ add their text to each remaining candidate. The
 option adds the directories starting with the word when nothing else
 matched, and
 .B \-o plusdirs
-adds them always. A spec with a directory or file action or a glob ends each
-candidate that refers to a directory with a slash unless its function runs
-.BR "compopt +o filenames" ,
-and dirnames and plusdirs mark the directories they add after the function.
-As in Bash, a spec quotes the special characters of inserted candidates
-only when it generates filenames, through
-.BR "\-o filenames" ,
-a directory or file action, a glob, or directories added by dirnames and
-plusdirs.
+adds them always. As in Bash, a spec quotes the special characters of inserted
+candidates only when it generates filenames.
 .B \-o fullquote
 quotes every candidate, and
 .B \-o noquote
-leaves filenames unquoted, including an empty filename-completion result that
-falls through, unless fullquote is on.
+leaves filenames unquoted.
 .B \-o nosort
-keeps the candidates in the order the spec generated them and drops only a
-candidate equal to the one before it.
+keeps the candidates in the order the spec generated them.
 .B \-o nospace
-inserts no space after an accepted candidate whatever
-completion.add_space_after_completed_word chooses.
-A dash candidate is offered only when the word starts with a dash. An empty
-result falls through to the next completion source, except that with
-.B \-o bashdefault
-and without
-.B \-o default
-it stays empty as in Bash unless the word starts with $ or ~ or holds a glob
-character. A single candidate that is not a directory closes a quote left open
-by the word. An unknown
+inserts no space after an accepted candidate.
+An empty result falls through to the next completion source. An unknown
 .B \-o
 option name or
 .B \-A
@@ -2326,26 +2060,14 @@ With
 .B progcomp_alias
 on, a command with no spec of its own uses the spec of the first word of its
 alias. An explicit Tab also follows a command found through PATH to the name
-of its symlink target. The ghost suggestion follows only the alias, so it
-never searches PATH. A command with no spec reached this way uses the
+of its symlink target. A command with no spec reached this way uses the
 .B \-D
-default spec, which generates candidates by those rules. When its function
-returns 124, completion restarts with the spec the function registered for the
-command. The
+default spec. When its function returns 124, completion restarts with the spec
+the function registered for the command. The
 .B \-E
-spec serves an explicit Tab on a line holding nothing, not even a blank,
-and the
+spec serves an explicit Tab on an empty line, and the
 .B \-I
-spec serves the command word in place of the command words, including an
-empty line with no
-.B \-E
-spec. When either offers nothing, the completion stays empty unless the spec
-has
-.B \-o default
-or
-.BR "\-o bashdefault" ,
-and then it falls back to the command words. Their functions and commands
-receive
+spec serves the command word. Their functions and commands receive
 .B _EmptycmD_
 and
 .B _InitialWorD_
@@ -2358,14 +2080,7 @@ the first in that order is used and command words are ignored.
 .IP
 The
 .B \-p
-option prints each spec with its options, actions, and arguments in the order
-Bash prints them, including an argument given as an empty string, followed by
-the
-.BR \-I ,
-.BR \-D ,
-and
-.B \-E
-specs. The
+option prints each spec in the order Bash prints them. The
 .B \-r
 option removes the specified specs or the given slot, and every spec when given
 neither. A name or slot with no spec is an error.
@@ -2384,40 +2099,33 @@ applies to the spec of each given command, or to the
 or
 .B \-I
 spec, the first in that order, in place of the operands. Inside a running
-completion function with neither, it applies to the current completion only,
-and the registered spec keeps its options. Without
+completion function with neither, it applies to the current completion only.
+Without
 .B \-o
 or
 .BR +o ,
 the options are printed as one
 .B compopt
-line for each spec, with the command name or the slot flag last, and the
-current completion prints under its command name. An unknown option name or
-letter is an error with status 2 that changes nothing. A name or slot with no
-spec is an error with status 1, and the other operands still change. Outside a
-completion function, a call with no name and no slot is an error with status 1.
+line for each spec. An unknown option name is an error with status 2 that
+changes nothing. A name or slot with no spec is an error with status 1.
+Outside a completion function, a call with no name and no slot is an error with
+status 1.
 .TP
 .B type
 The
 .B \-V
-option prints everything the shell holds about each name. A function is reported
-with the file and line where its definition starts, followed by the body as
-recorded. A function defined by an eval is reported as defined in
-.B eval
-on its line within the eval text. A builtin and a bundled utility are reported
-with their description. A keyword and an alias hold nothing further. The
+option prints everything the shell holds about each name, such as the file and
+line where a function is defined, followed by its body, or the description of
+a builtin or bundled utility. The
 .BR \-t ,
 .BR \-p ,
 and
 .B \-P
 options keep their terse output and ignore
 .BR \-V .
-The
-.B \-a
-option applies the longer form to every resolution it prints. Under the bash
-moods a function is reported as "is a function" and its body is printed from
-the plain form. Every other mood reports "is a shell function" and prints
-nothing after it.
+Under the bash moods a function is reported as "is a function" and its body is
+printed. Every other mood reports "is a shell function" and prints nothing
+after it.
 .SH KOSHKIT UTILITIES
 The
 .B koshkit
