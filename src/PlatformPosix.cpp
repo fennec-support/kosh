@@ -2937,7 +2937,10 @@ probe_stack_floor() wontthrow -> uintptr_t
   return 0;
 #endif
 
-  let const reserve = std::min(STACK_RESERVE_BYTE_COUNT, stack_byte_count / 4);
+  let const quarter_byte_count = stack_byte_count / 4;
+  let const reserve            = STACK_RESERVE_BYTE_COUNT < quarter_byte_count
+                                     ? STACK_RESERVE_BYTE_COUNT
+                                     : quarter_byte_count;
 
   return stack_low + reserve;
 }

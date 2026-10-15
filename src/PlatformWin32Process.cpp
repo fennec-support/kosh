@@ -3267,9 +3267,11 @@ is_stack_nearly_exhausted() wontthrow -> bool
 
   GetCurrentThreadStackLimits(&stack_low, &stack_high);
 
-  let const reserve =
-      std::min(reserve_byte_count, (stack_high - stack_low) / 4);
-  char marker = 0;
+  let const quarter_byte_count = (stack_high - stack_low) / 4;
+  let const reserve            = reserve_byte_count < quarter_byte_count
+                                     ? reserve_byte_count
+                                     : quarter_byte_count;
+  char      marker             = 0;
 
   return reinterpret_cast<ULONG_PTR>(&marker) < stack_low + reserve;
 }

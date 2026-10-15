@@ -2454,9 +2454,8 @@ quoted_argv_offset_until(int                argc,
   usize offset = 0;
 
   for (int a = 0; a < argc; a++) {
-    if (needle == StringView{argv[a], std::strlen(argv[a])}) break;
-    offset +=
-        shell_quoted_arg_length(StringView{argv[a], std::strlen(argv[a])}) + 1;
+    if (needle == StringView{argv[a], strlen(argv[a])}) break;
+    offset += shell_quoted_arg_length(StringView{argv[a], strlen(argv[a])}) + 1;
   }
 
   return offset;

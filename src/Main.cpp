@@ -1851,7 +1851,7 @@ find_command_call_site(const command_line &line,
   usize     flag_offset        = 0;
 
   for (int a = 0; a < parse_argc; a++) {
-    let const        token_length = std::strlen(parse_argv[a]);
+    let const        token_length = strlen(parse_argv[a]);
     const StringView token{parse_argv[a], token_length};
     let const        quoted_length = shell_quoted_arg_length(token);
 
@@ -1859,7 +1859,7 @@ find_command_call_site(const command_line &line,
       seen_command_count++;
       if (seen_command_count == consumed_command_index && a + 1 < parse_argc) {
         const usize argument_length = shell_quoted_arg_length(
-            StringView{parse_argv[a + 1], std::strlen(parse_argv[a + 1])});
+            StringView{parse_argv[a + 1], strlen(parse_argv[a + 1])});
 
         return SourceLocation{flag_offset, quoted_length + 1 + argument_length};
       }

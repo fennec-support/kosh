@@ -87,6 +87,7 @@
 #include <clocale>
 #include <cmath>
 #include <cstring>
+#include <string.h>
 
 #include <type_traits>
 #include <initializer_list>

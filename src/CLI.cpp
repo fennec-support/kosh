@@ -487,7 +487,7 @@ find_flag(const FlagList &flags,
           bool            is_long) throws -> flag_match
 {
   usize      longest_length    = 0;
-  let const  flag_start_length = std::strlen(flag_start);
+  let const  flag_start_length = strlen(flag_start);
   flag_match match{};
 
   if (!is_long) {
@@ -638,7 +638,7 @@ argument_location(const char *const               *argv,
     caret_offset += shell_quoted_arg_length(StringView{argv[prior_index]}) + 1;
 
   return SourceLocation{base_position + caret_offset,
-                        std::strlen(argv[argument_index])};
+                        strlen(argv[argument_index])};
 }
 
 static fn
@@ -653,10 +653,10 @@ attached_flag_value_location(
   let location =
       argument_location(argv, argument_index, base_position, arg_locations);
 
-  if (location.length != std::strlen(argv[argument_index])) return location;
+  if (location.length != strlen(argv[argument_index])) return location;
 
   location.position += static_cast<u32>(value - argv[argument_index]);
-  location.length = static_cast<u32>(std::strlen(value));
+  location.length = static_cast<u32>(strlen(value));
 
   return location;
 }
@@ -673,7 +673,7 @@ boolean_flag_location(
 {
   let location =
       argument_location(argv, argument_index, base_position, arg_locations);
-  let const argument_length = std::strlen(argv[argument_index]);
+  let const argument_length = strlen(argv[argument_index]);
 
   if (!is_long && argument_length > 2 && location.length == argument_length) {
     location.position += static_cast<u32>(flag_offset - argv[argument_index]);
@@ -1268,7 +1268,7 @@ join_command_line(int argc, const char *const *argv) throws -> String
 
   for (int i = 0; i < argc; i++) {
     if (i > 0) s.push(' ');
-    append_shell_quoted_arg(s, StringView{argv[i], std::strlen(argv[i])});
+    append_shell_quoted_arg(s, StringView{argv[i], strlen(argv[i])});
   }
 
   return s;

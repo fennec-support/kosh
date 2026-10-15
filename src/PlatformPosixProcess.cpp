@@ -1775,7 +1775,7 @@ machine_type() throws -> String
     struct utsname info{};
 
     if (uname(&info) != 0) return String{heap_allocator(), "unknown"};
-    let const machine = StringView{info.machine, std::strlen(info.machine)};
+    let const machine = StringView{info.machine, strlen(info.machine)};
 #if defined __APPLE__
     if (machine == "arm64") return String{heap_allocator(), "aarch64"};
 #endif
@@ -1804,7 +1804,7 @@ executable_system_name() throws -> String
   if (uname(&info) != 0) return String{heap_allocator(), "unknown"};
 
   return String{
-      StringView{info.sysname, std::strlen(info.sysname)}
+      StringView{info.sysname, strlen(info.sysname)}
   };
 #endif
 }

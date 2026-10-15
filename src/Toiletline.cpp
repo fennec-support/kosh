@@ -879,7 +879,7 @@ kosh_edit_callback(const char *buffer, const char **out_edited) -> int
 
   try {
     if (!run_line_editor(*COMPLETION_SESSION.context,
-                         koshka::StringView{buffer, std::strlen(buffer)},
+                         koshka::StringView{buffer, strlen(buffer)},
                          EDITED_LINE))
     {
       return 0;
@@ -930,7 +930,7 @@ completion_session::complete(const char    *buffer,
       koshka::os::INTERRUPT_REQUESTED = 0;
     };
 
-    const usize byte_length = std::strlen(buffer);
+    const usize byte_length = strlen(buffer);
     let         line        = koshka::StringView{buffer, byte_length};
 
     const usize byte_cursor =
@@ -1032,7 +1032,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
   if (!is_highlight_color_enabled) return 0;
 
   try {
-    const usize byte_length = std::strlen(buffer);
+    const usize byte_length = strlen(buffer);
     let         line        = koshka::StringView{buffer, byte_length};
 
     if (!has_highlighted_spans || highlighted_line.view() != line) {
@@ -1202,7 +1202,7 @@ completion_session::validate_ghost(const char *entry) const -> int
 {
   if (context == nullptr) return 1;
   try {
-    const usize byte_length = std::strlen(entry);
+    const usize byte_length = strlen(entry);
 
     return koshka::completion::command_word_resolves(
                koshka::StringView{entry, byte_length}, *context)
@@ -1225,7 +1225,7 @@ completion_session::hint(const char *buffer, size_t cursor) -> const char *
   if (context == nullptr) return nullptr;
 
   try {
-    let const byte_length = std::strlen(buffer);
+    let const byte_length = strlen(buffer);
     let const line        = koshka::StringView{buffer, byte_length};
 
     if (should_show_diagnostics) {
@@ -1282,7 +1282,7 @@ fn
 kosh_pair_role_callback(const char *buffer, size_t cursor, int byte) -> int
 {
   try {
-    let const line = koshka::StringView{buffer, std::strlen(buffer)};
+    let const line = koshka::StringView{buffer, strlen(buffer)};
     switch (koshka::completion::classify_typed_pair_byte(
         line, cursor, static_cast<char>(byte)))
     {
@@ -1306,7 +1306,7 @@ completion_session::idle(const char *buffer, size_t cursor) -> int
   if (context == nullptr) return 0;
 
   try {
-    let const line    = koshka::StringView{buffer, std::strlen(buffer)};
+    let const line    = koshka::StringView{buffer, strlen(buffer)};
     let       outcome = 0;
 
     koshka::completion::warm_cdpath_indexes(*context);
