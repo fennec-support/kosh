@@ -74,8 +74,18 @@ first_word_resolves(StringView word, EvalContext &context) throws
   LOG(All, "the path search resolves '%.*s' to %s",
       static_cast<int>(word.length), word.data, is_runnable ? "yes" : "no");
   if (path_status != ProgramResolver::Status::Missing) return is_runnable;
+  if (context.is_koshkit_utility_reachable(word)) return true;
 
-  return context.is_koshkit_utility_reachable(word);
+  /* With autocd, a directory or a run of two or more dots becomes a cd. */
+  if (!context.is_shopt_enabled(shopt_option_id::Autocd)) return false;
+
+  bool is_parent_steps = word.length >= 2;
+
+  for (usize i = 0; i < word.length && is_parent_steps; i++) {
+    is_parent_steps = word[i] == '.';
+  }
+
+  return is_parent_steps || Path{word}.is_directory();
 }
 
 static fn

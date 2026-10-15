@@ -1,0 +1,4 @@
+subdir	resolved-command
+..	resolved-command
+...	resolved-command
+missing-directory	unknown-command
