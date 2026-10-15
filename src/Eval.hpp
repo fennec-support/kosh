@@ -1600,13 +1600,13 @@ public:
   fn
   add_evaluated_expression(bool is_enabled) wontthrow -> void
   {
-    if (is_enabled) m_expressions_executed_last++;
+    if (is_enabled) m_expressions_executed_last_count++;
   }
 
   fn
   add_expansion(bool is_enabled) wontthrow -> void
   {
-    if (is_enabled) m_expansions_last++;
+    if (is_enabled) m_expansions_last_count++;
   }
 
   fn
@@ -1648,13 +1648,13 @@ public:
   fn
   end_command(usize live_ast_arena_byte_count) wontthrow -> void
   {
-    m_expansions_total += m_expansions_last;
-    m_expressions_executed_total += m_expressions_executed_last;
+    m_expansions_total_count += m_expansions_last_count;
+    m_expressions_executed_total_count += m_expressions_executed_last_count;
     m_commands_evaluated++;
     if (live_ast_arena_byte_count > m_peak_ast_arena_byte_count)
       m_peak_ast_arena_byte_count = live_ast_arena_byte_count;
-    m_expansions_last           = 0;
-    m_expressions_executed_last = 0;
+    m_expansions_last_count           = 0;
+    m_expressions_executed_last_count = 0;
   }
 
   fn
@@ -1666,25 +1666,26 @@ public:
   pure fn
   last_expressions_executed() const wontthrow -> usize
   {
-    return m_expressions_executed_last;
+    return m_expressions_executed_last_count;
   }
 
   pure fn
   total_expressions_executed() const wontthrow -> usize
   {
-    return m_expressions_executed_total + m_expressions_executed_last;
+    return m_expressions_executed_total_count +
+           m_expressions_executed_last_count;
   }
 
   pure fn
   last_expansion_count() const wontthrow -> usize
   {
-    return m_expansions_last;
+    return m_expansions_last_count;
   }
 
   pure fn
   total_expansion_count() const wontthrow -> usize
   {
-    return m_expansions_total + m_expansions_last;
+    return m_expansions_total_count + m_expansions_last_count;
   }
 
   pure fn
@@ -1706,10 +1707,10 @@ public:
   }
 
 private:
-  usize m_expressions_executed_last{0};
-  usize m_expressions_executed_total{0};
-  usize m_expansions_last{0};
-  usize m_expansions_total{0};
+  usize m_expressions_executed_last_count{0};
+  usize m_expressions_executed_total_count{0};
+  usize m_expansions_last_count{0};
+  usize m_expansions_total_count{0};
   usize m_commands_evaluated{0};
   usize m_builtins_run{0};
   usize m_functions_run{0};

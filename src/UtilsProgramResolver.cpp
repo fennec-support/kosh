@@ -34,7 +34,7 @@ struct cached_directory_listing
   u32                             modification_nanoseconds{0};
   i64                             change_time{0};
   u32                             change_nanoseconds{0};
-  u64                             size{0};
+  u64                             size_byte_count{0};
   u64                             generation{0};
   usize                           alias_count{0};
   bool                            has_file_identity{false};
@@ -293,7 +293,7 @@ read_directory_cached_after_status(const Path             &directory,
         cached.modification_nanoseconds == status.modification_nanoseconds &&
         cached.change_time == status.change_time &&
         cached.change_nanoseconds == status.change_nanoseconds &&
-        cached.size == status.size)
+        cached.size_byte_count == status.size)
     {
       set_directory_listing_alias(key, *physical_position);
 
@@ -388,7 +388,7 @@ read_directory_cached_after_status(const Path             &directory,
       has_status ? status.modification_nanoseconds : 0;
   fresh.change_time        = has_status ? status.change_time : 0;
   fresh.change_nanoseconds = has_status ? status.change_nanoseconds : 0;
-  fresh.size               = has_status ? status.size : 0;
+  fresh.size_byte_count    = has_status ? status.size : 0;
   fresh.generation         = ++DIRECTORY_LISTING_GENERATION;
   fresh.has_file_identity  = has_status && status.has_file_identity;
   fresh.entries            = steal(*entries);

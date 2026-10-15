@@ -3516,8 +3516,8 @@ EvalContext::make_stats_string() const throws -> String
   };
 
   let const do_append_size_line = [&](StringView name,
-                                      usize      bytes) throws {
-    let const value = koshkit::format_human_size(bytes, allocator);
+                                      usize      byte_count) throws {
+    let const value = koshkit::format_human_size(byte_count, allocator);
 
     do_append_stat_line(name, value.view());
   };
