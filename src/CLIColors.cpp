@@ -90,62 +90,85 @@ make_diagnostic_highlight_theme() wontthrow -> highlight_theme
   return theme;
 }
 
-struct pastel_color
+struct palette_color
 {
   StringView basic;
-  StringView pastel;
+  StringView pastel_256;
+  StringView pastel_true;
 };
 
-static const pastel_color PASTEL_COLORS[] = {
-    {ansi::RED,               "\x1b[38;5;203m"  },
-    {ansi::GREEN,             "\x1b[38;5;114m"  },
-    {ansi::YELLOW,            "\x1b[38;5;221m"  },
-    {ansi::BLUE,              "\x1b[38;5;75m"   },
-    {ansi::MAGENTA,           "\x1b[38;5;170m"  },
-    {ansi::CYAN,              "\x1b[38;5;80m"   },
-    {ansi::BRIGHT_RED,        "\x1b[38;5;210m"  },
-    {ansi::BRIGHT_GREEN,      "\x1b[38;5;120m"  },
-    {ansi::BRIGHT_BLUE,       "\x1b[38;5;111m"  },
-    {ansi::BRIGHT_MAGENTA,    "\x1b[38;5;213m"  },
-    {ansi::BRIGHT_CYAN,       "\x1b[38;5;123m"  },
-    {ansi::BOLD_RED,          "\x1b[1;38;5;203m"},
-    {ansi::BOLD_BRIGHT_RED,   "\x1b[1;38;5;210m"},
-    {ansi::BOLD_GREEN,        "\x1b[1;38;5;114m"},
-    {ansi::BOLD_BRIGHT_GREEN, "\x1b[1;38;5;120m"},
-    {ansi::BOLD_YELLOW,       "\x1b[1;38;5;221m"},
-    {ansi::BOLD_BLUE,         "\x1b[1;38;5;75m" },
-    {ansi::BOLD_MAGENTA,      "\x1b[1;38;5;170m"},
-    {ansi::BOLD_CYAN,         "\x1b[1;38;5;80m" },
+static const palette_color PALETTE_COLORS[] = {
+    {ansi::RED,               "\x1b[38;5;203m",   "\x1b[38;2;240;110;110m"  },
+    {ansi::GREEN,             "\x1b[38;5;114m",   "\x1b[38;2;130;215;120m"  },
+    {ansi::YELLOW,            "\x1b[38;5;221m",   "\x1b[38;2;240;205;100m"  },
+    {ansi::BLUE,              "\x1b[38;5;75m",    "\x1b[38;2;110;165;245m"  },
+    {ansi::MAGENTA,           "\x1b[38;5;170m",   "\x1b[38;2;215;130;220m"  },
+    {ansi::CYAN,              "\x1b[38;5;80m",    "\x1b[38;2;100;210;215m"  },
+    {ansi::BRIGHT_RED,        "\x1b[38;5;210m",   "\x1b[38;2;255;140;140m"  },
+    {ansi::BRIGHT_GREEN,      "\x1b[38;5;120m",   "\x1b[38;2;140;245;130m"  },
+    {ansi::BRIGHT_BLUE,       "\x1b[38;5;111m",   "\x1b[38;2;140;185;255m"  },
+    {ansi::BRIGHT_MAGENTA,    "\x1b[38;5;213m",   "\x1b[38;2;240;150;245m"  },
+    {ansi::BRIGHT_CYAN,       "\x1b[38;5;123m",   "\x1b[38;2;130;235;240m"  },
+    {ansi::BOLD_RED,          "\x1b[1;38;5;203m", "\x1b[1;38;2;240;110;110m"},
+    {ansi::BOLD_BRIGHT_RED,   "\x1b[1;38;5;210m", "\x1b[1;38;2;255;140;140m"},
+    {ansi::BOLD_GREEN,        "\x1b[1;38;5;114m", "\x1b[1;38;2;130;215;120m"},
+    {ansi::BOLD_BRIGHT_GREEN, "\x1b[1;38;5;120m", "\x1b[1;38;2;140;245;130m"},
+    {ansi::BOLD_YELLOW,       "\x1b[1;38;5;221m", "\x1b[1;38;2;240;205;100m"},
+    {ansi::BOLD_BLUE,         "\x1b[1;38;5;75m",  "\x1b[1;38;2;110;165;245m"},
+    {ansi::BOLD_MAGENTA,      "\x1b[1;38;5;170m", "\x1b[1;38;2;215;130;220m"},
+    {ansi::BOLD_CYAN,         "\x1b[1;38;5;80m",  "\x1b[1;38;2;100;210;215m"},
+};
+
+enum class palette_tier : u8
+{
+  Basic,
+  Color256,
+  TrueColor,
 };
 
 static fn
-pastel_of(StringView style) wontthrow -> StringView
+palette_color_of(StringView style, palette_tier tier) wontthrow -> StringView
 {
-  for (let const &color : PASTEL_COLORS) {
-    if (color.basic == style) return color.pastel;
+  if (tier == palette_tier::Basic) return style;
+
+  for (let const &color : PALETTE_COLORS) {
+    if (color.basic == style) {
+      return tier == palette_tier::TrueColor ? color.pastel_true
+                                             : color.pastel_256;
+    }
   }
 
   return style;
 }
 
 static fn
-make_pastel_theme(highlight_theme theme) wontthrow -> highlight_theme
+make_pastel_theme(highlight_theme theme, palette_tier tier) wontthrow
+    -> highlight_theme
 {
   for (let &style : theme.styles)
-    style = pastel_of(style);
+    style = palette_color_of(style, tier);
 
   return theme;
 }
 
 static const highlight_theme NONINTERACTIVE_HIGHLIGHT_THEMES[] = {
     make_noninteractive_highlight_theme(),
-    make_pastel_theme(make_noninteractive_highlight_theme())};
+    make_pastel_theme(make_noninteractive_highlight_theme(),
+                      palette_tier::Color256),
+    make_pastel_theme(make_noninteractive_highlight_theme(),
+                      palette_tier::TrueColor)};
 static const highlight_theme PRINTED_SOURCE_HIGHLIGHT_THEMES[] = {
     make_printed_source_highlight_theme(),
-    make_pastel_theme(make_printed_source_highlight_theme())};
+    make_pastel_theme(make_printed_source_highlight_theme(),
+                      palette_tier::Color256),
+    make_pastel_theme(make_printed_source_highlight_theme(),
+                      palette_tier::TrueColor)};
 static const highlight_theme DIAGNOSTIC_HIGHLIGHT_THEMES[] = {
     make_diagnostic_highlight_theme(),
-    make_pastel_theme(make_diagnostic_highlight_theme())};
+    make_pastel_theme(make_diagnostic_highlight_theme(),
+                      palette_tier::Color256),
+    make_pastel_theme(make_diagnostic_highlight_theme(),
+                      palette_tier::TrueColor)};
 
 fn
 terminal_supports_true_color() wontthrow -> bool
@@ -176,28 +199,45 @@ terminal_supports_256_color() wontthrow -> bool
   return is_supported;
 }
 
+static fn
+get_palette_tier() wontthrow -> palette_tier
+{
+  if (terminal_supports_true_color()) return palette_tier::TrueColor;
+
+  return terminal_supports_256_color() ? palette_tier::Color256
+                                       : palette_tier::Basic;
+}
+
 fn
 soft(StringView style) wontthrow -> StringView
 {
-  return terminal_supports_256_color() ? pastel_of(style) : style;
+  return palette_color_of(style, get_palette_tier());
+}
+
+fn
+prompt_soft(StringView style) wontthrow -> StringView
+{
+  return palette_color_of(style, terminal_supports_256_color()
+                                     ? palette_tier::Color256
+                                     : palette_tier::Basic);
 }
 
 fn
 noninteractive_highlight_theme() wontthrow -> const highlight_theme &
 {
-  return NONINTERACTIVE_HIGHLIGHT_THEMES[terminal_supports_256_color()];
+  return NONINTERACTIVE_HIGHLIGHT_THEMES[static_cast<u32>(get_palette_tier())];
 }
 
 fn
 printed_source_highlight_theme() wontthrow -> const highlight_theme &
 {
-  return PRINTED_SOURCE_HIGHLIGHT_THEMES[terminal_supports_256_color()];
+  return PRINTED_SOURCE_HIGHLIGHT_THEMES[static_cast<u32>(get_palette_tier())];
 }
 
 fn
 diagnostic_highlight_theme() wontthrow -> const highlight_theme &
 {
-  return DIAGNOSTIC_HIGHLIGHT_THEMES[terminal_supports_256_color()];
+  return DIAGNOSTIC_HIGHLIGHT_THEMES[static_cast<u32>(get_palette_tier())];
 }
 
 static fn

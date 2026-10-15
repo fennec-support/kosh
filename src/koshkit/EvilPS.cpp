@@ -403,14 +403,14 @@ append_label(String                      &output,
   let const should_color = options.should_color;
   let const sort_key     = options.sort_key;
 
-  append_report_text(output, node.name.view(), colors::ansi::BOLD_GREEN,
-                     should_color);
+  append_report_text(output, node.name.view(),
+                     colors::soft(colors::ansi::BOLD_GREEN), should_color);
 
   if (FLAG_EVILPS_ALL.is_enabled() || FLAG_EVILPS_PIDS.is_enabled()) {
     output += "(";
     append_report_text(
         output, String::from(static_cast<u64>(node.pid), allocator).view(),
-        colors::ansi::CYAN, should_color);
+        colors::soft(colors::ansi::CYAN), should_color);
     output += ")";
   }
 
@@ -422,7 +422,7 @@ append_label(String                      &output,
                        owner.has_value()
                            ? owner->view()
                            : String::from(node.owner_id, allocator).view(),
-                       colors::ansi::YELLOW, should_color);
+                       colors::soft(colors::ansi::YELLOW), should_color);
   }
 
   let const should_show_cpu =
@@ -435,7 +435,8 @@ append_label(String                      &output,
   if (should_show_cpu || should_show_memory) {
     output += " [";
     if (should_show_cpu) {
-      append_report_text(output, "CPU", colors::ansi::BOLD_CYAN, should_color);
+      append_report_text(output, "CPU", colors::soft(colors::ansi::BOLD_CYAN),
+                         should_color);
       output += " ";
       append_cpu_value(output, node, allocator, options.sampling);
     }
@@ -445,7 +446,8 @@ append_label(String                      &output,
     }
 
     if (should_show_memory) {
-      append_report_text(output, "MEM", colors::ansi::BOLD_CYAN, should_color);
+      append_report_text(output, "MEM", colors::soft(colors::ansi::BOLD_CYAN),
+                         should_color);
       output += " ";
       output += format_human_size(node.resident_kib * 1024, allocator).view();
     }
@@ -530,9 +532,10 @@ render_process_relatives(String                      &output,
 
     nodes[position].was_rendered = true;
 
-    append_report_text(output, prefix.view(), colors::ansi::CYAN, should_color);
-    append_report_text(output, connector.branch, colors::ansi::CYAN,
+    append_report_text(output, prefix.view(), colors::soft(colors::ansi::CYAN),
                        should_color);
+    append_report_text(output, connector.branch,
+                       colors::soft(colors::ansi::CYAN), should_color);
     append_label(output, nodes[position], allocator, options);
     rendered_count++;
 

@@ -1556,7 +1556,7 @@ ReportTable::add_heading(StringView             heading,
                          report_table_alignment alignment) throws
     -> void
 {
-  add_column(heading, alignment, colors::ansi::BOLD_CYAN);
+  add_column(heading, alignment, colors::soft(colors::ansi::BOLD_CYAN));
 }
 
 fn
@@ -1728,7 +1728,8 @@ append_titled_report_table(String            &output,
     output += "\n\n";
   }
 
-  append_report_text(output, title, colors::ansi::BOLD_BLUE, should_color);
+  append_report_text(output, title, colors::soft(colors::ansi::BOLD_BLUE),
+                     should_color);
   output += '\n';
   output += body.view();
 }
@@ -1760,7 +1761,8 @@ append_report_name_section(String                      &output,
                            StringView                   indentation) throws -> void
 {
   output += indentation;
-  append_report_text(output, title, colors::ansi::BOLD_BLUE, should_color);
+  append_report_text(output, title, colors::soft(colors::ansi::BOLD_BLUE),
+                     should_color);
   output += '\n';
 
   usize longest_length = 0;
@@ -1831,10 +1833,11 @@ format_cli_help(StringView text, bool should_color) throws -> String
     is_heading = is_heading && has_heading_letter;
 
     if (is_heading) {
-      append_report_text(output, line, colors::ansi::BOLD_BLUE, true);
+      append_report_text(output, line, colors::soft(colors::ansi::BOLD_BLUE),
+                         true);
       is_synopsis = line == "SYNOPSIS";
     } else if (is_synopsis) {
-      append_report_text(output, line, colors::ansi::GREEN, true);
+      append_report_text(output, line, colors::soft(colors::ansi::GREEN), true);
     } else {
       output += line;
     }

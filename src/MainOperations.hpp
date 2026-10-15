@@ -2712,10 +2712,11 @@ print_applied_fix_summary(
     labels.push(steal(label));
   }
 
-  let const wants_color   = colors::stderr_wants_color();
-  let const warning_color = wants_color ? colors::ansi::YELLOW : StringView{};
+  let const wants_color = colors::stderr_wants_color();
+  let const warning_color =
+      wants_color ? colors::soft(colors::ansi::YELLOW) : StringView{};
   let const error_color =
-      wants_color ? colors::ansi::BOLD_BRIGHT_RED : StringView{};
+      wants_color ? colors::soft(colors::ansi::BOLD_BRIGHT_RED) : StringView{};
   let const reset = wants_color ? colors::ansi::RESET : StringView{};
 
   let summary = String{heap_allocator(), "Fixed "};

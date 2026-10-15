@@ -3662,8 +3662,8 @@ expand_prompt_escapes(StringView   prompt,
       const i32 status           = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
       if (should_use_color)
-        out +=
-            colors::soft(status == 0 ? colors::ansi::GREEN : colors::ansi::RED);
+        out += colors::prompt_soft(status == 0 ? colors::ansi::GREEN
+                                               : colors::ansi::RED);
       out += String::from(status, koshka::heap_allocator());
       if (should_use_color) out += colors::ansi::RESET;
     } break;
@@ -3672,7 +3672,7 @@ expand_prompt_escapes(StringView   prompt,
       const i32 status           = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
       if (should_use_color && status != 0) {
-        out += colors::soft(colors::ansi::BOLD_BRIGHT_RED);
+        out += colors::prompt_soft(colors::ansi::BOLD_BRIGHT_RED);
       }
       out += "•";
       if (should_use_color && status != 0) {
@@ -3879,24 +3879,24 @@ get_default_prompt_template() -> String
 
   if (should_use_color) {
     template_string += R"(${KOSH_GIT_BRANCH:+)";
-    template_string += colors::soft(colors::ansi::CYAN);
+    template_string += colors::prompt_soft(colors::ansi::CYAN);
     template_string += R"($KOSH_GIT_BRANCH)";
     template_string += colors::ansi::RESET;
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_AHEAD:+ )";
-    template_string += colors::soft(colors::ansi::BOLD_YELLOW);
+    template_string += colors::prompt_soft(colors::ansi::BOLD_YELLOW);
     template_string += "\xe2\x86\x91";
     template_string += R"($KOSH_GIT_AHEAD)";
     template_string += colors::ansi::RESET;
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_BEHIND:+ )";
-    template_string += colors::soft(colors::ansi::BOLD_YELLOW);
+    template_string += colors::prompt_soft(colors::ansi::BOLD_YELLOW);
     template_string += "\xe2\x86\x93";
     template_string += R"($KOSH_GIT_BEHIND)";
     template_string += colors::ansi::RESET;
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_BRANCH:+ at }\u@\k )";
-    template_string += colors::soft(colors::ansi::GREEN);
+    template_string += colors::prompt_soft(colors::ansi::GREEN);
     template_string += R"(\P)";
     template_string += colors::ansi::RESET;
   } else {

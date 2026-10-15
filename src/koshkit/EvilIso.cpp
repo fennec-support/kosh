@@ -255,11 +255,11 @@ append_namespace_report(String                      &output,
       let process_id = String::from(relation.process_id, allocator);
 
       cells.clear();
-      cells.push({relation.type, colors::ansi::BOLD_MAGENTA});
+      cells.push({relation.type, colors::soft(colors::ansi::BOLD_MAGENTA)});
       cells.push({relation.identifier.view(), colors::ansi::RESET});
-      cells.push({process_id.view(), colors::ansi::BOLD_GREEN});
+      cells.push({process_id.view(), colors::soft(colors::ansi::BOLD_GREEN)});
       cells.push({relation.name.view(), colors::ansi::RESET});
-      cells.push({relation.role, colors::ansi::BOLD_MAGENTA});
+      cells.push({relation.role, colors::soft(colors::ansi::BOLD_MAGENTA)});
       table.add_row(cells);
     }
   } else {
@@ -290,9 +290,9 @@ append_namespace_report(String                      &output,
       let count = String::from(group_end - relation_index, allocator);
 
       cells.clear();
-      cells.push({first.type, colors::ansi::BOLD_MAGENTA});
+      cells.push({first.type, colors::soft(colors::ansi::BOLD_MAGENTA)});
       cells.push({first.identifier.view(), colors::ansi::RESET});
-      cells.push({count.view(), colors::ansi::BOLD_GREEN});
+      cells.push({count.view(), colors::soft(colors::ansi::BOLD_GREEN)});
       table.add_row(cells);
       relation_index = group_end;
     }
@@ -324,11 +324,11 @@ append_namespace_report(String                      &output,
       let const process_id = String::from(relation.process_id, allocator);
       let       cells      = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({relation.type, colors::ansi::BOLD_MAGENTA});
-      cells.push({process_id.view(), colors::ansi::BOLD_GREEN});
+      cells.push({relation.type, colors::soft(colors::ansi::BOLD_MAGENTA)});
+      cells.push({process_id.view(), colors::soft(colors::ansi::BOLD_GREEN)});
       cells.push({relation.name.view(), colors::ansi::RESET});
-      cells.push({relation.role, colors::ansi::BOLD_MAGENTA});
-      cells.push({"Unavailable", colors::ansi::BOLD_YELLOW});
+      cells.push({relation.role, colors::soft(colors::ansi::BOLD_MAGENTA)});
+      cells.push({"Unavailable", colors::soft(colors::ansi::BOLD_YELLOW)});
       cells.push({relation.reason.is_empty() ? StringView{"unknown error"}
                                              : relation.reason.view(),
                   colors::ansi::RESET});
@@ -370,9 +370,10 @@ append_namespace_report(String                      &output,
           String::from(group_end - relation_index, allocator);
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({first.type, colors::ansi::BOLD_MAGENTA});
-      cells.push({process_count.view(), colors::ansi::BOLD_GREEN});
-      cells.push({"Unavailable", colors::ansi::BOLD_YELLOW});
+      cells.push({first.type, colors::soft(colors::ansi::BOLD_MAGENTA)});
+      cells.push(
+          {process_count.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+      cells.push({"Unavailable", colors::soft(colors::ansi::BOLD_YELLOW)});
       cells.push({reason, colors::ansi::RESET});
       failure_table.add_row(cells);
       relation_index = group_end;
@@ -903,11 +904,11 @@ append_cgroup_failure_report(String &output,
     let const process_id = String::from(process.process_id, allocator);
     let       cells      = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({process_id.view(), colors::ansi::BOLD_GREEN});
+    cells.push({process_id.view(), colors::soft(colors::ansi::BOLD_GREEN)});
     cells.push({process.name.is_empty() ? StringView{"-"} : process.name.view(),
                 colors::ansi::RESET});
     cells.push({process_snapshot_status_name(process.status),
-                colors::ansi::BOLD_YELLOW});
+                colors::soft(colors::ansi::BOLD_YELLOW)});
     table.add_row(cells);
   }
 
@@ -915,9 +916,9 @@ append_cgroup_failure_report(String &output,
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     cells.reserve(3);
-    cells.push({"-", colors::ansi::BOLD_GREEN});
+    cells.push({"-", colors::soft(colors::ansi::BOLD_GREEN)});
     cells.push({"self", colors::ansi::RESET});
-    cells.push({"Unavailable", colors::ansi::BOLD_YELLOW});
+    cells.push({"Unavailable", colors::soft(colors::ansi::BOLD_YELLOW)});
     table.add_row(cells);
   }
 
@@ -1012,16 +1013,16 @@ append_cgroup_report(String                                   &output,
 
   for (let const &row : sorted_rows) {
     cells.clear();
-    cells.push({row.hierarchy.view(), colors::ansi::BOLD_GREEN});
+    cells.push({row.hierarchy.view(), colors::soft(colors::ansi::BOLD_GREEN)});
     cells.push({row.controller.view(), colors::ansi::RESET});
     cells.push({row.path.view(), colors::ansi::RESET});
-    cells.push({row.process_id.view(), colors::ansi::BOLD_GREEN});
+    cells.push({row.process_id.view(), colors::soft(colors::ansi::BOLD_GREEN)});
     cells.push({row.name.view(), colors::ansi::RESET});
-    cells.push({row.role, colors::ansi::BOLD_MAGENTA});
+    cells.push({row.role, colors::soft(colors::ansi::BOLD_MAGENTA)});
     if (detail == eviliso_detail_mode::All)
       cells.push({row.status, row.status == "available"
-                                  ? colors::ansi::BOLD_GREEN
-                                  : colors::ansi::BOLD_YELLOW});
+                                  ? colors::soft(colors::ansi::BOLD_GREEN)
+                                  : colors::soft(colors::ansi::BOLD_YELLOW)});
     report.add_row(cells);
   }
 
@@ -1087,7 +1088,7 @@ append_session_report(String             &output,
   for (let const &row : rows) {
     let cells = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({row.user.view(), colors::ansi::BOLD_GREEN});
+    cells.push({row.user.view(), colors::soft(colors::ansi::BOLD_GREEN)});
     cells.push({row.terminal.view(), colors::ansi::RESET});
     if (detail == eviliso_detail_mode::All) {
       cells.push({row.login_time.view(), colors::ansi::RESET});
@@ -1174,8 +1175,8 @@ append_remote_report(String                                   &output,
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     cells.reserve(3);
-    cells.push({"Sockets", colors::ansi::BOLD_CYAN});
-    cells.push({"unavailable", colors::ansi::BOLD_YELLOW});
+    cells.push({"Sockets", colors::soft(colors::ansi::BOLD_CYAN)});
+    cells.push({"unavailable", colors::soft(colors::ansi::BOLD_YELLOW)});
     cells.push(
         {"platform does not expose socket records", colors::ansi::RESET});
     table.add_row(cells);
@@ -1264,15 +1265,17 @@ append_remote_report(String                                   &output,
 
   let const remote_socket_text = String::from(remote_count, allocator);
 
-  summary_cells.push({"Remote sockets", colors::ansi::BOLD_CYAN});
-  summary_cells.push({remote_socket_text.view(), colors::ansi::BOLD_GREEN});
+  summary_cells.push({"Remote sockets", colors::soft(colors::ansi::BOLD_CYAN)});
+  summary_cells.push(
+      {remote_socket_text.view(), colors::soft(colors::ansi::BOLD_GREEN)});
   table.add_row(summary_cells);
   summary_cells.clear();
 
   let const total_socket_text = String::from(socket_count, allocator);
 
-  summary_cells.push({"Total sockets", colors::ansi::BOLD_CYAN});
-  summary_cells.push({total_socket_text.view(), colors::ansi::BOLD_GREEN});
+  summary_cells.push({"Total sockets", colors::soft(colors::ansi::BOLD_CYAN)});
+  summary_cells.push(
+      {total_socket_text.view(), colors::soft(colors::ansi::BOLD_GREEN)});
   table.add_row(summary_cells);
   append_titled_report_table(output, "Socket summary", table, should_color);
   if (rows_mode == eviliso_remote_rows_mode::Hide) return;
@@ -1591,16 +1594,16 @@ append_remote_report(String                                   &output,
     let send    = String::from(row.send_queue_byte_count, allocator);
     let cells   = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({row.family, colors::ansi::BOLD_MAGENTA});
-    cells.push({row.protocol, colors::ansi::BOLD_MAGENTA});
-    cells.push({row.state, colors::ansi::BOLD_GREEN});
-    cells.push({receive.view(), colors::ansi::GREEN});
-    cells.push({send.view(), colors::ansi::GREEN});
-    cells.push({row.local.view(), colors::ansi::BOLD_CYAN});
-    cells.push({row.peer.view(), colors::ansi::CYAN});
+    cells.push({row.family, colors::soft(colors::ansi::BOLD_MAGENTA)});
+    cells.push({row.protocol, colors::soft(colors::ansi::BOLD_MAGENTA)});
+    cells.push({row.state, colors::soft(colors::ansi::BOLD_GREEN)});
+    cells.push({receive.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({send.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({row.local.view(), colors::soft(colors::ansi::BOLD_CYAN)});
+    cells.push({row.peer.view(), colors::soft(colors::ansi::CYAN)});
     if (detail == eviliso_detail_mode::All) {
-      cells.push({row.socket_id.view(), colors::ansi::YELLOW});
-      cells.push({row.process_id.view(), colors::ansi::YELLOW});
+      cells.push({row.socket_id.view(), colors::soft(colors::ansi::YELLOW)});
+      cells.push({row.process_id.view(), colors::soft(colors::ansi::YELLOW)});
       cells.push({row.owner_id.view(), colors::ansi::RESET});
       cells.push({row.user.view(), colors::ansi::RESET});
       cells.push({row.name.view(), colors::ansi::RESET});
@@ -1735,12 +1738,12 @@ append_runtime_evidence_report(
   for (let const &row : sorted_rows) {
     let cells = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({row.runtime.view(), colors::ansi::BOLD_GREEN});
+    cells.push({row.runtime.view(), colors::soft(colors::ansi::BOLD_GREEN)});
     cells.push({row.source.view(), colors::ansi::RESET});
     if (detail == eviliso_detail_mode::All) {
-      cells.push({row.process_id.view(), colors::ansi::YELLOW});
+      cells.push({row.process_id.view(), colors::soft(colors::ansi::YELLOW)});
       cells.push({row.name.view(), colors::ansi::RESET});
-      cells.push({row.role.view(), colors::ansi::BOLD_MAGENTA});
+      cells.push({row.role.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
     }
 
     cells.push({row.evidence.view(), colors::ansi::RESET});
@@ -1886,9 +1889,9 @@ append_container_report(String                                   &output,
       let count = String::from(row.process_count, allocator);
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({row.runtime.view(), colors::ansi::BOLD_GREEN});
-      cells.push({row.identifier.view(), colors::ansi::CYAN});
-      cells.push({count.view(), colors::ansi::YELLOW});
+      cells.push({row.runtime.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+      cells.push({row.identifier.view(), colors::soft(colors::ansi::CYAN)});
+      cells.push({count.view(), colors::soft(colors::ansi::YELLOW)});
       table.add_row(cells);
     }
   } else {
@@ -1914,11 +1917,11 @@ append_container_report(String                                   &output,
     for (let const &row : sorted_detail_rows) {
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({row.runtime.view(), colors::ansi::BOLD_GREEN});
-      cells.push({row.identifier.view(), colors::ansi::CYAN});
-      cells.push({row.process_id.view(), colors::ansi::YELLOW});
+      cells.push({row.runtime.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+      cells.push({row.identifier.view(), colors::soft(colors::ansi::CYAN)});
+      cells.push({row.process_id.view(), colors::soft(colors::ansi::YELLOW)});
       cells.push({row.name.view(), colors::ansi::RESET});
-      cells.push({row.role.view(), colors::ansi::BOLD_MAGENTA});
+      cells.push({row.role.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
       cells.push({row.cgroup.view(), colors::ansi::RESET});
       table.add_row(cells);
     }
@@ -2011,7 +2014,8 @@ append_kubernetes_report(String                                   &output,
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     cells.push({"environment", colors::ansi::RESET});
-    cells.push({kubernetes_host.view(), colors::ansi::BOLD_GREEN});
+    cells.push(
+        {kubernetes_host.view(), colors::soft(colors::ansi::BOLD_GREEN)});
     cells.push(
         {namespace_name.is_empty() ? StringView{"-"} : namespace_name.view(),
          colors::ansi::RESET});
@@ -2036,7 +2040,7 @@ append_kubernetes_report(String                                   &output,
 
     cells.push({"service-account", colors::ansi::RESET});
     cells.push({"-", colors::ansi::RESET});
-    cells.push({namespace_name.view(), colors::ansi::BOLD_GREEN});
+    cells.push({namespace_name.view(), colors::soft(colors::ansi::BOLD_GREEN)});
     cells.push({"namespace file", colors::ansi::RESET});
     evidence_table.add_row(cells);
   }
@@ -2138,11 +2142,11 @@ append_kubernetes_report(String                                   &output,
       let cells = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({"cgroup", colors::ansi::RESET});
-      cells.push({row.pod_uid.view(), colors::ansi::BOLD_GREEN});
-      cells.push({row.qos.view(), colors::ansi::BOLD_MAGENTA});
+      cells.push({row.pod_uid.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+      cells.push({row.qos.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
       cells.push({row.runtime.view(), colors::ansi::RESET});
-      cells.push({row.container_id.view(), colors::ansi::CYAN});
-      cells.push({count.view(), colors::ansi::YELLOW});
+      cells.push({row.container_id.view(), colors::soft(colors::ansi::CYAN)});
+      cells.push({count.view(), colors::soft(colors::ansi::YELLOW)});
       workload_table.add_row(cells);
     }
   } else {
@@ -2180,15 +2184,18 @@ append_kubernetes_report(String                                   &output,
         let cells      = ArrayList<report_table_cell_view>{allocator};
 
         cells.push({"cgroup", colors::ansi::RESET});
-        cells.push({evidence.pod_uid.view(), colors::ansi::BOLD_GREEN});
-        cells.push({evidence.qos.view(), colors::ansi::BOLD_MAGENTA});
+        cells.push(
+            {evidence.pod_uid.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+        cells.push(
+            {evidence.qos.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
         cells.push({evidence.runtime.view(), colors::ansi::RESET});
-        cells.push({evidence.container_id.view(), colors::ansi::CYAN});
-        cells.push({process_id.view(), colors::ansi::YELLOW});
+        cells.push(
+            {evidence.container_id.view(), colors::soft(colors::ansi::CYAN)});
+        cells.push({process_id.view(), colors::soft(colors::ansi::YELLOW)});
         cells.push({process.name.view(), colors::ansi::RESET});
         cells.push({process.process_id == self_process_id ? StringView{"self"}
                                                           : StringView{"other"},
-                    colors::ansi::BOLD_MAGENTA});
+                    colors::soft(colors::ansi::BOLD_MAGENTA)});
         cells.push({evidence.path.view(), colors::ansi::RESET});
         workload_table.add_row(cells);
       }

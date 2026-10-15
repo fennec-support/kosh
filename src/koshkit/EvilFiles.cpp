@@ -686,20 +686,20 @@ EvilFiles::execute(const ExecContext               &ec,
 
     let cells = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({command.view(), colors::ansi::BOLD_GREEN});
-    cells.push({row.pid.view(), colors::ansi::GREEN});
-    cells.push({row.user.view(), colors::ansi::YELLOW});
-    cells.push({row.descriptor.view(), colors::ansi::CYAN});
-    cells.push({row.type.view(), colors::ansi::BOLD_MAGENTA});
-    cells.push({row.mode.view(), colors::ansi::BOLD_MAGENTA});
+    cells.push({command.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+    cells.push({row.pid.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({row.user.view(), colors::soft(colors::ansi::YELLOW)});
+    cells.push({row.descriptor.view(), colors::soft(colors::ansi::CYAN)});
+    cells.push({row.type.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
+    cells.push({row.mode.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
     cells.push({row.state.view(), row.state == "deleted"
-                                      ? colors::ansi::BOLD_RED
-                                      : colors::ansi::GREEN});
-    cells.push({row.device.view(), colors::ansi::GREEN});
-    cells.push({row.size.view(), colors::ansi::GREEN});
-    cells.push({row.offset.view(), colors::ansi::GREEN});
-    cells.push({row.node.view(), colors::ansi::GREEN});
-    cells.push({row.endpoint.view(), colors::ansi::CYAN});
+                                      ? colors::soft(colors::ansi::BOLD_RED)
+                                      : colors::soft(colors::ansi::GREEN)});
+    cells.push({row.device.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({row.size.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({row.offset.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({row.node.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({row.endpoint.view(), colors::soft(colors::ansi::CYAN)});
     cells.push({name.view(), {}});
     table.add_row(cells);
   }

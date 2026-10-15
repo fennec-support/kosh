@@ -85,13 +85,13 @@ append_calendar_month(String        &output,
   for (usize position = 0; position < left_padding; position++)
     output += ' ';
 
-  append_report_text(output, title.view(), colors::ansi::BOLD_BLUE,
-                     should_color);
+  append_report_text(output, title.view(),
+                     colors::soft(colors::ansi::BOLD_BLUE), should_color);
   output += '\n';
   append_report_text(output,
                      first_day == week_start::Monday ? "Mo Tu We Th Fr Sa Su"
                                                      : "Su Mo Tu We Th Fr Sa",
-                     colors::ansi::BOLD_CYAN, should_color);
+                     colors::soft(colors::ansi::BOLD_CYAN), should_color);
   output += '\n';
 
   let const first_weekday = cal_weekday(year, month, 1);
@@ -116,10 +116,10 @@ append_calendar_month(String        &output,
         day == static_cast<usize>(current_date.tm_mday);
     let const is_weekend = weekday == 0 || weekday == 6;
     let const style      = is_current_day && is_weekend
-                               ? colors::ansi::BOLD_BRIGHT_RED
-                           : is_current_day ? colors::ansi::BOLD_GREEN
-                           : is_weekend     ? colors::ansi::RED
-                                            : StringView{};
+                               ? colors::soft(colors::ansi::BOLD_BRIGHT_RED)
+                           : is_current_day ? colors::soft(colors::ansi::BOLD_GREEN)
+                           : is_weekend ? colors::soft(colors::ansi::RED)
+                                        : StringView{};
     let const day_text   = String::from(day, allocator);
 
     append_report_text(output, day_text.view(), style, should_color);
@@ -217,7 +217,8 @@ Cal::execute(const ExecContext               &ec,
 
   if (FLAG_CAL_TODAY.is_enabled()) {
     output += '\n';
-    append_report_text(output, "Today", colors::ansi::BOLD_GREEN, should_color);
+    append_report_text(output, "Today", colors::soft(colors::ansi::BOLD_GREEN),
+                       should_color);
     output += " is ";
     output += CAL_WEEKDAY_NAMES[static_cast<usize>(current_date.tm_wday)];
     output += ", ";

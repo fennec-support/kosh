@@ -497,14 +497,22 @@ struct grep_options
   bool                should_highlight{false};
 };
 
+static fn
+default_grep_sgr(StringView style) wontthrow -> StringView
+{
+  let const soft_style = colors::soft(style);
+
+  return soft_style.substring_of_length(2, soft_style.length - 3);
+}
+
 struct grep_palette
 {
-  StringView selected_match{"1;31"};
+  StringView selected_match{default_grep_sgr(colors::ansi::BOLD_RED)};
   StringView selected_line{};
   StringView context_line{};
-  StringView file_name{"35"};
-  StringView line_number{"32"};
-  StringView separator{"36"};
+  StringView file_name{default_grep_sgr(colors::ansi::MAGENTA)};
+  StringView line_number{default_grep_sgr(colors::ansi::GREEN)};
+  StringView separator{default_grep_sgr(colors::ansi::CYAN)};
   bool       is_reversed{false};
 };
 

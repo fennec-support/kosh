@@ -344,16 +344,17 @@ append_network_socket_report(String                              &output,
 
   for (let const &row : rows) {
     cells.clear();
-    cells.push({row.protocol.view(), colors::ansi::BOLD_MAGENTA});
-    cells.push({row.state.view(), colors::ansi::BOLD_GREEN});
-    cells.push({row.receive_queue.view(), colors::ansi::GREEN});
-    cells.push({row.send_queue.view(), colors::ansi::GREEN});
-    cells.push({row.local.view(), colors::ansi::BOLD_CYAN});
-    cells.push({row.peer.view(), colors::ansi::CYAN});
+    cells.push({row.protocol.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
+    cells.push({row.state.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+    cells.push({row.receive_queue.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({row.send_queue.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({row.local.view(), colors::soft(colors::ansi::BOLD_CYAN)});
+    cells.push({row.peer.view(), colors::soft(colors::ansi::CYAN)});
     if (options.should_show_processes) {
-      cells.push({row.process_id.view(), colors::ansi::YELLOW});
-      cells.push({row.process_name.view(), colors::ansi::BOLD_GREEN});
-      cells.push({row.owner.view(), colors::ansi::YELLOW});
+      cells.push({row.process_id.view(), colors::soft(colors::ansi::YELLOW)});
+      cells.push(
+          {row.process_name.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+      cells.push({row.owner.view(), colors::soft(colors::ansi::YELLOW)});
     }
 
     table.add_row(cells);

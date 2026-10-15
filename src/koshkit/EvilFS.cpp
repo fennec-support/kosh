@@ -132,15 +132,15 @@ EvilFS::execute(const ExecContext               &ec,
 
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({mount.source.view(), colors::ansi::GREEN});
-      cells.push({mount.target.view(), colors::ansi::BOLD_GREEN});
+      cells.push({mount.source.view(), colors::soft(colors::ansi::GREEN)});
+      cells.push({mount.target.view(), colors::soft(colors::ansi::BOLD_GREEN)});
       cells.push({mount.volume_name.is_empty() ? StringView{"-"}
                                                : mount.volume_name.view(),
                   {}});
       cells.push({mount.volume_uuid.is_empty() ? StringView{"-"}
                                                : mount.volume_uuid.view(),
                   {}});
-      cells.push({mount.type.view(), colors::ansi::BOLD_MAGENTA});
+      cells.push({mount.type.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
       cells.push({mount.options.view(), colors::ansi::DIM});
       cells.push({filesystem_id.view(), {}});
       cells.push({type_id.view(), {}});
@@ -152,9 +152,10 @@ EvilFS::execute(const ExecContext               &ec,
       cells.push({total_files.view(), {}});
       cells.push({free_files.view(), {}});
       cells.push({name_limit.view(), {}});
-      cells.push({metadata_status.view(), is_metadata_available
-                                              ? colors::ansi::BOLD_GREEN
-                                              : colors::ansi::BOLD_RED});
+      cells.push(
+          {metadata_status.view(), is_metadata_available
+                                       ? colors::soft(colors::ansi::BOLD_GREEN)
+                                       : colors::soft(colors::ansi::BOLD_RED)});
       table.add_row(cells);
     }
 
@@ -185,9 +186,9 @@ EvilFS::execute(const ExecContext               &ec,
   for (let const &mount : mounts) {
     let cells = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({mount.source.view(), colors::ansi::GREEN});
-    cells.push({mount.target.view(), colors::ansi::BOLD_GREEN});
-    cells.push({mount.type.view(), colors::ansi::BOLD_MAGENTA});
+    cells.push({mount.source.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({mount.target.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+    cells.push({mount.type.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
     cells.push({mount.options.view(), colors::ansi::DIM});
     table.add_row(cells);
   }

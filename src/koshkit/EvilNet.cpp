@@ -215,15 +215,17 @@ append_network_interface_report(String &output,
 
   table.add_heading("NAME");
   table.add_column("FAMILY", report_table_alignment::Left,
-                   colors::ansi::BOLD_MAGENTA);
+                   colors::soft(colors::ansi::BOLD_MAGENTA));
   table.add_column("ADDRESS", report_table_alignment::Left,
                    colors::ansi::RESET);
 
   for (let const &address : addresses) {
     let cells = ArrayList<report_table_cell_view>{addresses.allocator()};
 
-    cells.push({address.interface_name.view(), colors::ansi::BOLD_GREEN});
-    cells.push({family_name(address.family), colors::ansi::BOLD_MAGENTA});
+    cells.push({address.interface_name.view(),
+                colors::soft(colors::ansi::BOLD_GREEN)});
+    cells.push({family_name(address.family),
+                colors::soft(colors::ansi::BOLD_MAGENTA)});
     cells.push({address.address.view(), colors::ansi::RESET});
     table.add_row(cells);
   }
@@ -342,11 +344,13 @@ append_network_traffic_statistics_report(
 
     cells.clear();
     cells.push({entry.interface_name.view(),
-                is_default ? colors::ansi::BOLD_GREEN : colors::ansi::GREEN});
+                is_default ? colors::soft(colors::ansi::BOLD_GREEN)
+                           : colors::soft(colors::ansi::GREEN)});
 
     for (usize index = 0; index < values.count(); index++)
-      cells.push({values[index].view(),
-                  index < 2 ? colors::ansi::GREEN : colors::ansi::RESET});
+      cells.push({values[index].view(), index < 2
+                                            ? colors::soft(colors::ansi::GREEN)
+                                            : colors::ansi::RESET});
 
     table.add_row(cells);
 
@@ -440,7 +444,7 @@ append_tcp_report(String            &output,
       let const value = String::from(values[index], allocator);
 
       cells.clear();
-      cells.push({title, colors::ansi::BOLD_CYAN});
+      cells.push({title, colors::soft(colors::ansi::BOLD_CYAN)});
       cells.push({names[index], colors::ansi::RESET});
       cells.push({value.view(), colors::ansi::RESET});
       table.add_row(cells);

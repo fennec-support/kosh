@@ -313,23 +313,23 @@ append_metric_line(String          &out,
 
   out.append_repeated(' ', name_padding);
 
-  out.append(colored(colors::ansi::BOLD_GREEN, should_color));
+  out.append(colored(colors::soft(colors::ansi::BOLD_GREEN), should_color));
   out.append(row.mean.view());
   out.append(colored(colors::ansi::RESET, should_color));
   out.append_repeated(' ', mean_width - row.mean.length());
 
   out += " +/- ";
-  out.append(colored(colors::ansi::BOLD_GREEN, should_color));
+  out.append(colored(colors::soft(colors::ansi::BOLD_GREEN), should_color));
   out.append(row.std_dev.view());
   out.append(colored(colors::ansi::RESET, should_color));
   out.append_repeated(' ', std_dev_width - row.std_dev.length());
 
   out += "  (";
-  out.append(colored(colors::ansi::BOLD_CYAN, should_color));
+  out.append(colored(colors::soft(colors::ansi::BOLD_CYAN), should_color));
   out.append(row.min.view());
   out.append(colored(colors::ansi::RESET, should_color));
   out += " ... ";
-  out.append(colored(colors::ansi::BOLD_MAGENTA, should_color));
+  out.append(colored(colors::soft(colors::ansi::BOLD_MAGENTA), should_color));
   out.append(row.max.view());
   out.append(colored(colors::ansi::RESET, should_color));
   out += ")\n";
@@ -364,11 +364,11 @@ append_relative_line(String             &out,
   if (ratio > 1.0) {
     snprintf(buffer, sizeof(buffer), "%.2fx slower +/- %.2f", ratio,
              ratio_uncertainty);
-    out.append(colored(colors::ansi::BOLD_RED, should_color));
+    out.append(colored(colors::soft(colors::ansi::BOLD_RED), should_color));
   } else {
     snprintf(buffer, sizeof(buffer), "%.2fx faster +/- %.2f", 1.0 / ratio,
              ratio_uncertainty / (ratio * ratio));
-    out.append(colored(colors::ansi::BOLD_GREEN, should_color));
+    out.append(colored(colors::soft(colors::ansi::BOLD_GREEN), should_color));
   }
 
   out += StringView{buffer};

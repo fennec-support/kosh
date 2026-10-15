@@ -736,8 +736,9 @@ Diff::execute(const ExecContext               &ec,
                                  FLAG_DIFF_COLOR.has_value(),
                                  FLAG_DIFF_COLOR.value()))
   {
-    palette = diff_palette{colors::ansi::RED, colors::ansi::GREEN,
-                           colors::ansi::CYAN, colors::ansi::BOLD};
+    palette = diff_palette{
+        colors::soft(colors::ansi::RED), colors::soft(colors::ansi::GREEN),
+        colors::soft(colors::ansi::CYAN), colors::ansi::BOLD};
   }
 
   if (FLAG_DIFF_UNIFIED.is_enabled()) {

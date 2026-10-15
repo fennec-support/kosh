@@ -68,10 +68,15 @@ fn
 terminal_supports_true_color() wontthrow -> bool;
 fn
 terminal_supports_256_color() wontthrow -> bool;
-/* An ordinary color becomes its pastel 256-color form on a terminal that
-   draws the 256-color palette. Any other style is returned unchanged. */
+/* An ordinary color becomes its 24-bit pastel form on a truecolor terminal
+   and its pastel 256-color form on a terminal that draws the 256-color
+   palette. Any other style is returned unchanged. */
 fn
 soft(StringView style) wontthrow -> StringView;
+/* The prompt keeps the 256-color pastel form on every terminal that draws
+   the 256-color palette, including truecolor terminals. */
+fn
+prompt_soft(StringView style) wontthrow -> StringView;
 
 enum class file_entry_type : u8
 {
@@ -90,8 +95,7 @@ file_entry_type_of_mode(u32 mode) wontthrow -> file_entry_type;
 fn
 file_entry_color(file_entry_type type) wontthrow -> StringView;
 
-/* Each theme uses pastel colors on a terminal that draws the 256-color
-   palette. */
+/* Each theme uses the pastel colors of soft. */
 fn
 noninteractive_highlight_theme() wontthrow -> const highlight_theme &;
 fn

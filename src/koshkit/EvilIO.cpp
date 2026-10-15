@@ -544,12 +544,12 @@ append_process_io_rate_report(String                  &output,
             : String{allocator, "-"};
     let cells = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({pid.view(), colors::ansi::BOLD_MAGENTA});
-    cells.push({read.view(), colors::ansi::GREEN});
-    cells.push({write.view(), colors::ansi::GREEN});
+    cells.push({pid.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
+    cells.push({read.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({write.view(), colors::soft(colors::ansi::GREEN)});
     cells.push({read_operations.view(), {}});
     cells.push({write_operations.view(), {}});
-    cells.push({row.name.view(), colors::ansi::BOLD_CYAN});
+    cells.push({row.name.view(), colors::soft(colors::ansi::BOLD_CYAN)});
     table.add_row(cells);
   }
 
@@ -950,9 +950,9 @@ append_disk_io_report(String                       &output,
             : String{allocator, "-"};
     let cells = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({row.name.view(), colors::ansi::BOLD_GREEN});
-    cells.push({read.view(), colors::ansi::GREEN});
-    cells.push({write.view(), colors::ansi::GREEN});
+    cells.push({row.name.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+    cells.push({read.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({write.view(), colors::soft(colors::ansi::GREEN)});
     cells.push({read_operations.view(), {}});
     cells.push({write_operations.view(), {}});
 
@@ -996,11 +996,11 @@ append_disk_io_report(String                       &output,
 
     cells.push({queue.view(), {}});
     cells.push({errors.view(), row.errors.has_value() && *row.errors != 0
-                                   ? colors::ansi::BOLD_RED
-                                   : colors::ansi::GREEN});
+                                   ? colors::soft(colors::ansi::BOLD_RED)
+                                   : colors::soft(colors::ansi::GREEN)});
     cells.push({retries.view(), row.retries.has_value() && *row.retries != 0
-                                    ? colors::ansi::BOLD_RED
-                                    : colors::ansi::GREEN});
+                                    ? colors::soft(colors::ansi::BOLD_RED)
+                                    : colors::soft(colors::ansi::GREEN)});
     table.add_row(cells);
   }
 
@@ -1254,7 +1254,7 @@ add_metric_row(ReportTable &table,
 {
   let cells = ArrayList<report_table_cell_view>{allocator};
 
-  cells.push({name, colors::ansi::BOLD_CYAN});
+  cells.push({name, colors::soft(colors::ansi::BOLD_CYAN)});
   cells.push({value, style});
   table.add_row(cells);
 }
@@ -1288,7 +1288,8 @@ add_stall_row(ReportTable &table,
   value += percent_text(*rate, 1000000, allocator).view();
   value += ")";
   add_metric_row(table, name, value.view(), allocator,
-                 *rate == 0 ? colors::ansi::BOLD_CYAN : colors::ansi::BOLD_RED);
+                 *rate == 0 ? colors::soft(colors::ansi::BOLD_CYAN)
+                            : colors::soft(colors::ansi::BOLD_RED));
 }
 
 fn
@@ -1346,9 +1347,9 @@ append_process_io_report(String                  &output,
     let write_operations = String{allocator};
     let cells            = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({pid.view(), colors::ansi::BOLD_MAGENTA});
-    cells.push({read.view(), colors::ansi::GREEN});
-    cells.push({written.view(), colors::ansi::GREEN});
+    cells.push({pid.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
+    cells.push({read.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({written.view(), colors::soft(colors::ansi::GREEN)});
     if (has_operation_counts) {
       read_operations =
           row.status.has_operation_counts
@@ -1358,11 +1359,11 @@ append_process_io_report(String                  &output,
           row.status.has_operation_counts
               ? String::from(row.status.write_operation_count, allocator)
               : String{allocator, "-"};
-      cells.push({read_operations.view(), colors::ansi::GREEN});
-      cells.push({write_operations.view(), colors::ansi::GREEN});
+      cells.push({read_operations.view(), colors::soft(colors::ansi::GREEN)});
+      cells.push({write_operations.view(), colors::soft(colors::ansi::GREEN)});
     }
 
-    cells.push({row.name.view(), colors::ansi::BOLD_CYAN});
+    cells.push({row.name.view(), colors::soft(colors::ansi::BOLD_CYAN)});
     process_table.add_row(cells);
   }
 

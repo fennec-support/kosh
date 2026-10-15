@@ -791,10 +791,11 @@ print_analysis_diagnostic_summary(
 {
   if (totals.warning_count + totals.error_count < 2) return;
 
-  let const wants_color   = colors::stderr_wants_color();
-  let const warning_color = wants_color ? colors::ansi::YELLOW : StringView{};
+  let const wants_color = colors::stderr_wants_color();
+  let const warning_color =
+      wants_color ? colors::soft(colors::ansi::YELLOW) : StringView{};
   let const error_color =
-      wants_color ? colors::ansi::BOLD_BRIGHT_RED : StringView{};
+      wants_color ? colors::soft(colors::ansi::BOLD_BRIGHT_RED) : StringView{};
   let const reset = wants_color ? colors::ansi::RESET : StringView{};
 
   let summary = String{heap_allocator(), "Encountered "};
@@ -837,7 +838,7 @@ AnalysisContext::print_optimizer_summary() const throws -> void
 
   let summary = String{heap_allocator(), "Eliminated "};
 
-  if (wants_color) summary.append(colors::ansi::BLUE);
+  if (wants_color) summary.append(colors::soft(colors::ansi::BLUE));
   summary.append(String::from(optimizer_eliminated_count, heap_allocator()));
   summary.append(optimizer_eliminated_count == 1 ? " statement"
                                                  : " statements");

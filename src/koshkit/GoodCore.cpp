@@ -61,7 +61,8 @@ print_progress(const ExecContext     &ec,
   let       output       = String{heap_allocator()};
 
   if (is_terminal) output += "\r\x1b[2K";
-  append_report_text(output, "goodcore: ", colors::ansi::BOLD_CYAN,
+  append_report_text(output,
+                     "goodcore: ", colors::soft(colors::ansi::BOLD_CYAN),
                      should_color);
   append_report_text(output, message, colors::ansi::BOLD_WHITE, should_color);
   if (!is_terminal) output += "\n";
@@ -684,19 +685,19 @@ GoodCore::execute(const ExecContext               &ec,
     let       cells        = ArrayList<report_table_cell_view>{allocator};
 
     cells.reserve(2);
-    cells.push({"Archive", colors::ansi::BOLD_CYAN});
-    cells.push({output.view(), colors::ansi::GREEN});
+    cells.push({"Archive", colors::soft(colors::ansi::BOLD_CYAN)});
+    cells.push({output.view(), colors::soft(colors::ansi::GREEN)});
     table.add_row(cells);
     cells.clear();
-    cells.push({"Executable", colors::ansi::BOLD_CYAN});
-    cells.push({binary->view(), colors::ansi::GREEN});
+    cells.push({"Executable", colors::soft(colors::ansi::BOLD_CYAN)});
+    cells.push({binary->view(), colors::soft(colors::ansi::GREEN)});
     table.add_row(cells);
     cells.clear();
 
     let const file_count = String::from(copied_path_count, allocator);
 
-    cells.push({"Files", colors::ansi::BOLD_CYAN});
-    cells.push({file_count.view(), colors::ansi::GREEN});
+    cells.push({"Files", colors::soft(colors::ansi::BOLD_CYAN)});
+    cells.push({file_count.view(), colors::soft(colors::ansi::GREEN)});
     table.add_row(cells);
 
     let result = String{allocator};

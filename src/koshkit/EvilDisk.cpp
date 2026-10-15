@@ -58,10 +58,10 @@ struct smart_statistic_field
 fn
 usage_style(u64 percent) wontthrow -> StringView
 {
-  if (percent >= 90) return colors::ansi::BOLD_RED;
-  if (percent >= 75) return colors::ansi::BOLD_YELLOW;
+  if (percent >= 90) return colors::soft(colors::ansi::BOLD_RED);
+  if (percent >= 75) return colors::soft(colors::ansi::BOLD_YELLOW);
 
-  return colors::ansi::BOLD_GREEN;
+  return colors::soft(colors::ansi::BOLD_GREEN);
 }
 
 fn
@@ -422,13 +422,13 @@ EvilDisk::execute(const ExecContext               &ec,
   for (let const &row : rows) {
     let cells = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({row.source.view(), colors::ansi::GREEN});
-    cells.push({row.type.view(), colors::ansi::BOLD_MAGENTA});
-    cells.push({row.size.view(), colors::ansi::CYAN});
-    cells.push({row.used.view(), colors::ansi::CYAN});
-    cells.push({row.available.view(), colors::ansi::CYAN});
+    cells.push({row.source.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({row.type.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
+    cells.push({row.size.view(), colors::soft(colors::ansi::CYAN)});
+    cells.push({row.used.view(), colors::soft(colors::ansi::CYAN)});
+    cells.push({row.available.view(), colors::soft(colors::ansi::CYAN)});
     cells.push({row.use.view(), usage_style(row.use_percent)});
-    cells.push({row.target.view(), colors::ansi::BOLD_GREEN});
+    cells.push({row.target.view(), colors::soft(colors::ansi::BOLD_GREEN)});
     capacity_table.add_row(cells);
   }
 
@@ -491,14 +491,14 @@ EvilDisk::execute(const ExecContext               &ec,
 
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({disk.name.view(), colors::ansi::BOLD_GREEN});
+      cells.push({disk.name.view(), colors::soft(colors::ansi::BOLD_GREEN)});
 
       for (usize index = 0; index < counter_text.count(); index++) {
         let color = colors::ansi::DIM;
 
         if (disk.has_field(FIELDS[index]))
-          color = counters[index] == 0 ? colors::ansi::GREEN
-                                       : colors::ansi::BOLD_RED;
+          color = counters[index] == 0 ? colors::soft(colors::ansi::GREEN)
+                                       : colors::soft(colors::ansi::BOLD_RED);
         cells.push({counter_text[index].view(), color});
       }
 
@@ -545,7 +545,7 @@ EvilDisk::execute(const ExecContext               &ec,
       for (let const &row : identity_rows) {
         let cells = ArrayList<report_table_cell_view>{allocator};
 
-        cells.push({row.mount, colors::ansi::BOLD_GREEN});
+        cells.push({row.mount, colors::soft(colors::ansi::BOLD_GREEN)});
         cells.push({row.label, colors::ansi::RESET});
         cells.push({row.uuid, colors::ansi::DIM});
         table.add_row(cells);
@@ -615,10 +615,13 @@ EvilDisk::execute(const ExecContext               &ec,
 
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({filesystem.target.view(), colors::ansi::BOLD_GREEN});
-      cells.push({filesystem.type.view(), colors::ansi::BOLD_MAGENTA});
-      cells.push({status, status == "dirty" ? colors::ansi::BOLD_RED
-                                            : colors::ansi::RESET});
+      cells.push(
+          {filesystem.target.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+      cells.push(
+          {filesystem.type.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
+      cells.push({status, status == "dirty"
+                              ? colors::soft(colors::ansi::BOLD_RED)
+                              : colors::ansi::RESET});
       cells.push({read_count.view(), colors::ansi::RESET});
       cells.push({write_count.view(), colors::ansi::RESET});
       cells.push({flush_count.view(), colors::ansi::RESET});
@@ -650,12 +653,14 @@ EvilDisk::execute(const ExecContext               &ec,
         let const is_healthy = smart_status_is_healthy(row.status.view());
         let       cells      = ArrayList<report_table_cell_view>{allocator};
 
-        cells.push({row.device.view(), colors::ansi::BOLD_GREEN});
-        cells.push({row.status.view(), is_healthy ? colors::ansi::BOLD_GREEN
-                                                  : colors::ansi::BOLD_YELLOW});
+        cells.push({row.device.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+        cells.push({row.status.view(),
+                    is_healthy ? colors::soft(colors::ansi::BOLD_GREEN)
+                               : colors::soft(colors::ansi::BOLD_YELLOW)});
         cells.push({row.model.view(), colors::ansi::RESET});
-        cells.push({row.protocol.view(), colors::ansi::BOLD_MAGENTA});
-        cells.push({row.statistics.view(), colors::ansi::CYAN});
+        cells.push(
+            {row.protocol.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
+        cells.push({row.statistics.view(), colors::soft(colors::ansi::CYAN)});
         table.add_row(cells);
 
         if (!is_healthy) {
@@ -677,13 +682,13 @@ EvilDisk::execute(const ExecContext               &ec,
 
     table.add_heading("SECTION");
     table.add_column("STATUS", report_table_alignment::Left,
-                     colors::ansi::BOLD_YELLOW);
+                     colors::soft(colors::ansi::BOLD_YELLOW));
 
     for (let const section : unavailable_sections) {
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({section, colors::ansi::BOLD_CYAN});
-      cells.push({"Unavailable", colors::ansi::BOLD_YELLOW});
+      cells.push({section, colors::soft(colors::ansi::BOLD_CYAN)});
+      cells.push({"Unavailable", colors::soft(colors::ansi::BOLD_YELLOW)});
       table.add_row(cells);
     }
 

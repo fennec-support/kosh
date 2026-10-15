@@ -131,17 +131,25 @@ diagnostic_colors_for(error_severity severity) throws
 
   switch (severity) {
   case error_severity::error:
-    return diagnostic_color{colors::ansi::BOLD_BRIGHT_RED, colors::ansi::BOLD,
-                            colors::ansi::BOLD, colors::ansi::BOLD_BRIGHT_RED};
+    return diagnostic_color{colors::soft(colors::ansi::BOLD_BRIGHT_RED),
+                            colors::ansi::BOLD, colors::ansi::BOLD,
+                            colors::soft(colors::ansi::BOLD_BRIGHT_RED)};
   case error_severity::warning:
-    return diagnostic_color{colors::ansi::YELLOW, {}, {}, colors::ansi::YELLOW};
+    return diagnostic_color{colors::soft(colors::ansi::YELLOW),
+                            {},
+                            {},
+                            colors::soft(colors::ansi::YELLOW)};
   case error_severity::note:
   case error_severity::trace:
-    return diagnostic_color{
-        colors::ansi::CYAN, {}, colors::ansi::CYAN, colors::ansi::CYAN};
+    return diagnostic_color{colors::soft(colors::ansi::CYAN),
+                            {},
+                            colors::soft(colors::ansi::CYAN),
+                            colors::soft(colors::ansi::CYAN)};
   case error_severity::details:
-    return diagnostic_color{
-        colors::ansi::BLUE, {}, colors::ansi::BLUE, colors::ansi::BLUE};
+    return diagnostic_color{colors::soft(colors::ansi::BLUE),
+                            {},
+                            colors::soft(colors::ansi::BLUE),
+                            colors::soft(colors::ansi::BLUE)};
   }
 
   unreachable("invalid diagnostic color severity %d", ENUM(severity));

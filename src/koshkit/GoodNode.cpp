@@ -71,7 +71,7 @@ append_node_report(String                    &output,
 
   let const do_append_field = [&](StringView name,
                                   StringView value) throws {
-    table.add_field_row(name, value, colors::ansi::BOLD_CYAN);
+    table.add_field_row(name, value, colors::soft(colors::ansi::BOLD_CYAN));
   };
 
   do_append_field("Type", file_type_name(status));

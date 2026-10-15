@@ -205,8 +205,8 @@ Watch::execute(const ExecContext               &ec,
       let const title = build_title(command.view(), interval_seconds,
                                     column_count, allocator);
 
-      append_report_text(screen, title.view(), colors::ansi::BOLD_CYAN,
-                         should_color);
+      append_report_text(screen, title.view(),
+                         colors::soft(colors::ansi::BOLD_CYAN), should_color);
       screen += "\n";
     }
 

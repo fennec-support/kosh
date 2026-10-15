@@ -313,8 +313,8 @@ append_setting_row(ReportTable &table,
 {
   let cells = ArrayList<report_table_cell_view>{allocator};
 
-  cells.push({name, colors::ansi::BOLD_CYAN});
-  cells.push({value, colors::ansi::GREEN});
+  cells.push({name, colors::soft(colors::ansi::BOLD_CYAN)});
+  cells.push({value, colors::soft(colors::ansi::GREEN)});
   table.add_row(cells);
 }
 
@@ -411,9 +411,10 @@ append_core_dump_report(String   &output,
           os::format_local_time("%Y-%m-%d %H:%M", dump.modification_time);
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({size.view(), colors::ansi::GREEN});
+      cells.push({size.view(), colors::soft(colors::ansi::GREEN)});
       cells.push({modified.view(), colors::ansi::DIM});
-      cells.push({dump.program.view(), colors::ansi::BOLD_MAGENTA});
+      cells.push(
+          {dump.program.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
       cells.push({dump.name.view(), {}});
       table.add_row(cells);
     }
@@ -677,8 +678,8 @@ append_event_log_report(String   &output,
       let cells = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({generated.view(), colors::ansi::DIM});
-      cells.push({record.level, colors::ansi::BOLD_MAGENTA});
-      cells.push({record.source.view(), colors::ansi::GREEN});
+      cells.push({record.level, colors::soft(colors::ansi::BOLD_MAGENTA)});
+      cells.push({record.source.view(), colors::soft(colors::ansi::GREEN)});
       cells.push({message.view(), {}});
       table.add_row(cells);
     }
@@ -738,8 +739,9 @@ append_log_report(String   &output,
           os::format_local_time("%Y-%m-%d %H:%M", entry.modification_time);
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({size.view(), colors::ansi::GREEN});
-      cells.push({entry.format_label, colors::ansi::BOLD_MAGENTA});
+      cells.push({size.view(), colors::soft(colors::ansi::GREEN)});
+      cells.push(
+          {entry.format_label, colors::soft(colors::ansi::BOLD_MAGENTA)});
       cells.push({modified.view(), colors::ansi::DIM});
       cells.push({entry.name.view(), {}});
       table.add_row(cells);

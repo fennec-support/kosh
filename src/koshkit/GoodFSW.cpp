@@ -155,10 +155,11 @@ pure fn
 event_style(watch_event event) wontthrow -> StringView
 {
   switch (event) {
-  case watch_event::Created:           return colors::ansi::BOLD_GREEN;
-  case watch_event::Removed:           return colors::ansi::BOLD_RED;
-  case watch_event::Updated:           return colors::ansi::BOLD_CYAN;
-  case watch_event::AttributeModified: return colors::ansi::BOLD_YELLOW;
+  case watch_event::Created: return colors::soft(colors::ansi::BOLD_GREEN);
+  case watch_event::Removed: return colors::soft(colors::ansi::BOLD_RED);
+  case watch_event::Updated: return colors::soft(colors::ansi::BOLD_CYAN);
+  case watch_event::AttributeModified:
+    return colors::soft(colors::ansi::BOLD_YELLOW);
   }
 
   unreachable("unknown filesystem watch event");

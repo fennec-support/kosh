@@ -137,37 +137,39 @@ append_subject(String                    &output,
   do_append_field("Type",
                   described_type.has_value() ? described_type->view()
                                              : file_type_name(status),
-                  colors::ansi::BOLD_CYAN);
+                  colors::soft(colors::ansi::BOLD_CYAN));
 
   if (os::file_type_letter(status.mode) == 'l') {
     let const target = os::read_symlink(operand, allocator);
     if (target.has_value()) {
-      do_append_field("Target", target->view(), colors::ansi::BOLD_CYAN);
+      do_append_field("Target", target->view(),
+                      colors::soft(colors::ansi::BOLD_CYAN));
     }
   }
 
   do_append_field("Size", size_text(status.size, allocator).view(),
-                  colors::ansi::BOLD_CYAN);
+                  colors::soft(colors::ansi::BOLD_CYAN));
   do_append_field("Permissions", permission_text(status.mode, allocator).view(),
-                  colors::ansi::BOLD_CYAN);
+                  colors::soft(colors::ansi::BOLD_CYAN));
   do_append_field(
       "Owner",
       id_name(status.owner_id, allocator, goodstat_identity_kind::User).view(),
-      colors::ansi::BOLD_CYAN);
+      colors::soft(colors::ansi::BOLD_CYAN));
   do_append_field(
       "Group",
       id_name(status.group_id, allocator, goodstat_identity_kind::Group).view(),
-      colors::ansi::BOLD_CYAN);
+      colors::soft(colors::ansi::BOLD_CYAN));
   do_append_field("Inode", String::from(status.file_id, allocator).view(),
-                  colors::ansi::BOLD_CYAN);
+                  colors::soft(colors::ansi::BOLD_CYAN));
   do_append_field("Links", String::from(status.link_count, allocator).view(),
-                  colors::ansi::BOLD_CYAN);
+                  colors::soft(colors::ansi::BOLD_CYAN));
 
   let device = String::from(os::device_major(status.device_id), allocator);
 
   device += ",";
   device += String::from(os::device_minor(status.device_id), allocator).view();
-  do_append_field("Device", device.view(), colors::ansi::BOLD_CYAN);
+  do_append_field("Device", device.view(),
+                  colors::soft(colors::ansi::BOLD_CYAN));
 
   let const type_letter = os::file_type_letter(status.mode);
 
@@ -179,59 +181,62 @@ append_subject(String                    &output,
     special +=
         String::from(os::device_minor(status.special_device_id), allocator)
             .view();
-    do_append_field("Device type", special.view(), colors::ansi::BOLD_CYAN);
+    do_append_field("Device type", special.view(),
+                    colors::soft(colors::ansi::BOLD_CYAN));
   }
 
   let blocks = String::from(status.blocks, allocator);
 
   blocks += " of 512 bytes";
-  do_append_field("Blocks", blocks.view(), colors::ansi::BOLD_CYAN);
+  do_append_field("Blocks", blocks.view(),
+                  colors::soft(colors::ansi::BOLD_CYAN));
   do_append_field("Accessed",
                   format_file_timestamp(status.access_time,
                                         status.access_nanoseconds, allocator)
                       .view(),
-                  colors::ansi::BOLD_CYAN);
+                  colors::soft(colors::ansi::BOLD_CYAN));
   do_append_field("Modified",
                   format_file_timestamp(status.modification_time,
                                         status.modification_nanoseconds,
                                         allocator)
                       .view(),
-                  colors::ansi::BOLD_CYAN);
+                  colors::soft(colors::ansi::BOLD_CYAN));
   do_append_field("Changed",
                   format_file_timestamp(status.change_time,
                                         status.change_nanoseconds, allocator)
                       .view(),
-                  colors::ansi::BOLD_CYAN);
+                  colors::soft(colors::ansi::BOLD_CYAN));
 
   if (filesystem_report == goodstat_filesystem_report::Include) {
     let filesystem = os::filesystem_status{};
 
     if (os::stat_filesystem(operand, filesystem)) {
       do_append_field("Filesystem", StringView{filesystem.type_name},
-                      colors::ansi::BOLD_CYAN);
+                      colors::soft(colors::ansi::BOLD_CYAN));
       do_append_field(
           "Filesystem block size",
           String::from(filesystem.block_byte_count, allocator).view(),
-          colors::ansi::BOLD_CYAN);
+          colors::soft(colors::ansi::BOLD_CYAN));
       do_append_field("Filesystem capacity",
                       String::from(percent_used(filesystem), allocator).view() +
                           "%",
-                      colors::ansi::BOLD_CYAN);
+                      colors::soft(colors::ansi::BOLD_CYAN));
       do_append_field("Filesystem blocks",
                       String::from(filesystem.total_blocks, allocator).view(),
-                      colors::ansi::BOLD_CYAN);
+                      colors::soft(colors::ansi::BOLD_CYAN));
       do_append_field("Filesystem free blocks",
                       String::from(filesystem.free_blocks, allocator).view(),
-                      colors::ansi::BOLD_CYAN);
+                      colors::soft(colors::ansi::BOLD_CYAN));
       do_append_field(
           "Filesystem available blocks",
           String::from(filesystem.available_blocks, allocator).view(),
-          colors::ansi::BOLD_CYAN);
+          colors::soft(colors::ansi::BOLD_CYAN));
       do_append_field("Filesystem id",
                       String::from(filesystem.filesystem_id, allocator).view(),
-                      colors::ansi::BOLD_CYAN);
+                      colors::soft(colors::ansi::BOLD_CYAN));
     } else {
-      do_append_field("Filesystem", "unavailable", colors::ansi::BOLD_CYAN);
+      do_append_field("Filesystem", "unavailable",
+                      colors::soft(colors::ansi::BOLD_CYAN));
     }
   }
 
@@ -239,7 +244,8 @@ append_subject(String                    &output,
       os::file_type_letter(status.mode) == '-')
   {
     if (let const checksum = file_crc32c(ec, operand, allocator))
-      do_append_field("CRC32C", checksum->view(), colors::ansi::BOLD_CYAN);
+      do_append_field("CRC32C", checksum->view(),
+                      colors::soft(colors::ansi::BOLD_CYAN));
   }
 
   append_titled_report_table(output, operand, table, should_color);

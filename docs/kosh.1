@@ -5197,9 +5197,12 @@ or invalid.
 .TP
 .BR TERM ", " COLORTERM ", " NO_COLOR
 TERM selects terminal capabilities on POSIX systems. When COLORTERM contains
-truecolor or 24bit, or TERM contains 256color or direct, the prompt, syntax,
-file, and diagnostic colors become softer 256-color shades, and the selected
-completion row is drawn as white text on blue. A nonempty NO_COLOR disables
+truecolor or 24bit, the syntax, file, diagnostic, and koshkit colors are
+24-bit pastel colors. When TERM contains 256color or direct, they are pastel
+256-color shades, and any other terminal draws the basic colors. The prompt
+uses the pastel 256-color shades on every terminal that draws the 256-color
+palette. Such a terminal draws the selected completion row as white text on
+blue. A nonempty NO_COLOR disables
 prompt, diagnostic, koshkit cat, and editor color. Reverse video carries no
 color, so the reversed row of the interactive selector stays visible.
 .TP

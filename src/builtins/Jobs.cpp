@@ -53,8 +53,8 @@ state_color(job::State state, jobs_color_mode color_mode) throws
 {
   if (color_mode == jobs_color_mode::Plain) return StringView{};
   switch (state) {
-  case job::State::Running: return colors::ansi::BOLD_GREEN;
-  case job::State::Stopped: return colors::ansi::BOLD_YELLOW;
+  case job::State::Running: return colors::soft(colors::ansi::BOLD_GREEN);
+  case job::State::Stopped: return colors::soft(colors::ansi::BOLD_YELLOW);
   case job::State::Done:    return colors::ansi::DIM;
   }
 

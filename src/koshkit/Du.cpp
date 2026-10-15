@@ -829,8 +829,8 @@ render_tree(const ArrayList<du_tree_node> &nodes,
     for (usize padding = size_text.length; padding < size_width; padding++)
       output += ' ';
 
-    append_report_text(output, size_text, colors::ansi::BOLD_GREEN,
-                       should_color);
+    append_report_text(output, size_text,
+                       colors::soft(colors::ansi::BOLD_GREEN), should_color);
     output += ' ';
     output += prefix;
     output += connector;
@@ -1127,11 +1127,11 @@ Du::execute(const ExecContext               &ec,
     let const  size_text = rendered_sizes[index].view();
 
     output.append_repeated(' ', size_width - size_text.length);
-    append_report_text(output, size_text, colors::ansi::BOLD_GREEN,
-                       should_color);
+    append_report_text(output, size_text,
+                       colors::soft(colors::ansi::BOLD_GREEN), should_color);
     output += "  ";
-    append_report_text(output, row.path.view(), colors::ansi::BOLD_CYAN,
-                       should_color);
+    append_report_text(output, row.path.view(),
+                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
     output += '\n';
     if (output.length() >= 65536) {
       ec.print_to_stdout(output.view());
