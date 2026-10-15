@@ -8,6 +8,10 @@ echo done
 echo "neg-true=$?"
 ! false
 echo "neg-false=$?"
+! ! false
+echo "double-neg-false=$?"
+! ! ! true
+echo "triple-neg-true=$?"
 
 
 flag_string=$-

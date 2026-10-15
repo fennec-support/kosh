@@ -1180,9 +1180,12 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         Token *maybe_negation = m_lexer.peek_shell_token();
 
         ASSERT(maybe_negation != nullptr);
-        if (is_unquoted_word(maybe_negation, "!")) {
+        while (is_unquoted_word(maybe_negation, "!")) {
           m_lexer.advance_past_last_peek();
-          should_negate_pending = true;
+          should_negate_pending = !should_negate_pending;
+          maybe_negation        = m_lexer.peek_shell_token();
+
+          ASSERT(maybe_negation != nullptr);
         }
 
         lhs = parse_simple_command(leading_command_token);
