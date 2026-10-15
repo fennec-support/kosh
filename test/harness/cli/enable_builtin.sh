@@ -5,8 +5,12 @@ unset KOSH_FLAGS KOSHCONF
 work=$(mktemp -d)
 trap 'cd / && [ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
 mkdir "$work/bin"
-printf '#!/bin/sh\nprintf "program echo %%s\\n" "$*"\n' >"$work/bin/echo"
-chmod +x "$work/bin/echo"
+if [ "${OS-}" = Windows_NT ]; then
+  printf '@echo program echo %%*\r\n' >"$work/bin/echo.bat"
+else
+  printf '#!/bin/sh\nprintf "program echo %%s\\n" "$*"\n' >"$work/bin/echo"
+  chmod +x "$work/bin/echo"
+fi
 
 do_kosh() {
   env -i ASAN_OPTIONS="${ASAN_OPTIONS-}" PATH="$work/bin" HOME="$work" XDG_CONFIG_HOME="$work/config" \

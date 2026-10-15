@@ -14,11 +14,13 @@ trap 'rm -rf "$work"' EXIT
 printf 'echo sourced\n' >"$work/payload"
 
 echo "== source without a slash searches PATH:"
-PATH="$work:/usr/bin:/bin" "$BIN" -r -c 'source payload; echo "status=$?"' 2>&1
+env -u PATH \
+  "$TEST_PATH_ENVIRONMENT_NAME=$work${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
+  "$BIN" -r -c 'source payload; echo "status=$?"' 2>&1
 
 echo "== dot with a slash is blocked:"
 (cd "$work" && PATH=/usr/bin:/bin "$BIN" -r -c '. ./payload; echo "status=$?"' 2>&1)
 
 echo "== rescue mode keeps the shell restricted:"
-printf 'cd /\n' | (exec -a -kosh "$BIN" -r --bogus) 2>&1 |
+printf 'cd /\n' | "$BIN" -c 'exec -a -kosh "$1" -r --bogus' kosh "$BIN" 2>&1 |
   grep -c 'cd is forbidden in a restricted shell'
