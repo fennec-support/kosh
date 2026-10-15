@@ -366,6 +366,24 @@ internal::is_in_command_position(StringView line, usize token_start) wontthrow
 }
 
 fn
+internal::is_after_builtin_prefix(StringView line, usize token_start) wontthrow
+    -> bool
+{
+  usize position      = command_segment_start(line, token_start);
+  let   previous_word = StringView{};
+
+  loop {
+    position = skip_blanks(line, position);
+    if (position >= token_start) return previous_word == "builtin";
+
+    let const word = next_completion_prefix_word(line, position);
+
+    if (!word.has_value()) return false;
+    previous_word = *word;
+  }
+}
+
+fn
 internal::command_word_of(StringView line) wontthrow -> StringView
 {
   if (let const managed_start = timeout_command_start(line);

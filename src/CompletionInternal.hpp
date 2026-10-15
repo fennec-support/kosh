@@ -73,6 +73,10 @@ pure fn
 is_active_token_boundary(StringView line, usize position) wontthrow -> bool;
 fn
 is_in_command_position(StringView line, usize token_start) wontthrow -> bool;
+/* Whether the word before a command-position token is the builtin command,
+   so only builtins can follow. */
+fn
+is_after_builtin_prefix(StringView line, usize token_start) wontthrow -> bool;
 pure fn
 command_segment_start(StringView line, usize cursor) wontthrow -> usize;
 

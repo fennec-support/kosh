@@ -111,7 +111,8 @@ fn
 complete_command_names(StringView                   token,
                        EvalContext                 &context,
                        const ArrayList<StringView> *extra_command_names,
-                       command_match_mode           match_mode) throws
+                       command_match_mode           match_mode,
+                       bool                         is_builtin_only = false) throws
     -> ArrayList<String>;
 
 fn

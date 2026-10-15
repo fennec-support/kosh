@@ -497,7 +497,8 @@ collect_command_names(StringView                   token,
                       EvalContext                 &context,
                       Collector                   &collector,
                       const ArrayList<StringView> *extra_command_names,
-                      command_match_mode           match_mode) throws -> void
+                      command_match_mode           match_mode,
+                      bool is_builtin_only = false) throws -> void
 {
   let const is_glob_token     = match_mode == command_match_mode::Glob;
   let const is_case_sensitive = utils::token_has_uppercase(token);
@@ -535,8 +536,10 @@ collect_command_names(StringView                   token,
     }
   };
 
-  for (let const &keyword_name : keyword_names())
-    do_add(keyword_name.view());
+  if (!is_builtin_only) {
+    for (let const &keyword_name : keyword_names())
+      do_add(keyword_name.view());
+  }
 
   let const &builtin_name_list = builtin_names();
 
@@ -544,6 +547,8 @@ collect_command_names(StringView                   token,
     if (!context.is_builtin_entry_enabled(static_cast<u8>(i))) continue;
     do_add(builtin_name_list[i].view());
   }
+
+  if (is_builtin_only) return;
 
   let const &util_names = koshkit::util_names();
 
@@ -599,13 +604,14 @@ static fn
 complete_command_name_prefix(StringView                   token,
                              EvalContext                 &context,
                              const ArrayList<StringView> *extra_command_names,
-                             command_match_mode           match_mode) throws
+                             command_match_mode           match_mode,
+                             bool                         is_builtin_only) throws
     -> GhostPrefixCollector
 {
   let collector = GhostPrefixCollector{};
 
   collect_command_names(token, context, collector, extra_command_names,
-                        match_mode);
+                        match_mode, is_builtin_only);
 
   return collector;
 }
@@ -637,8 +643,8 @@ fn
 complete_command_names(StringView                   token,
                        EvalContext                 &context,
                        const ArrayList<StringView> *extra_command_names,
-                       command_match_mode           match_mode) throws
-    -> ArrayList<String>
+                       command_match_mode           match_mode,
+                       bool is_builtin_only) throws -> ArrayList<String>
 {
   let collector = CommandListCollector{};
 
@@ -646,7 +652,7 @@ complete_command_names(StringView                   token,
       static_cast<int>(token.length), token.data);
 
   collect_command_names(token, context, collector, extra_command_names,
-                        match_mode);
+                        match_mode, is_builtin_only);
 
   return collector.take();
 }
@@ -1694,6 +1700,8 @@ complete(StringView                   line,
 
   let const token_has_path_separator =
       os::has_directory_separator(decoded_token.text.view());
+  let const is_builtin_only =
+      is_command && is_after_builtin_prefix(line, token_start);
 
   LOG(Debug, "complete line '%.*s' cursor %zu token '%.*s' command %d",
       static_cast<int>(line.length), line.data, cursor,
@@ -1771,16 +1779,18 @@ complete(StringView                   line,
       candidates.clear();
       candidates.push(steal(joined));
     } else if (is_command && !token_has_path_separator) {
-      candidates =
-          complete_command_names(stage_token, context, extra_command_names,
-                                 is_glob_token ? command_match_mode::Glob
-                                               : command_match_mode::Prefix);
+      candidates = complete_command_names(
+          stage_token, context, extra_command_names,
+          is_glob_token ? command_match_mode::Glob : command_match_mode::Prefix,
+          is_builtin_only);
       should_rebuild_shell_syntax_candidates = true;
     }
   } else if (is_command && !token_has_path_separator) {
     let from_initial_word = Maybe<ArrayList<String>>{None};
 
-    if (!is_posix_completion && (!stage_token.is_empty() || is_for_listing)) {
+    if (!is_posix_completion && !is_builtin_only &&
+        (!stage_token.is_empty() || is_for_listing))
+    {
       from_initial_word = complete_from_initial_word_spec(
           line, stage_token, cursor, is_line_empty, context, descriptions, mode,
           spec_option_mask);
@@ -1800,12 +1810,14 @@ complete(StringView                   line,
         candidates =
             complete_command_names(stage_token, context, extra_command_names,
                                    is_glob_token ? command_match_mode::Glob
-                                                 : command_match_mode::Prefix);
+                                                 : command_match_mode::Prefix,
+                                   is_builtin_only);
       } else {
         let collector = complete_command_name_prefix(
             stage_token, context, extra_command_names,
             is_glob_token ? command_match_mode::Glob
-                          : command_match_mode::Prefix);
+                          : command_match_mode::Prefix,
+            is_builtin_only);
 
         ghost_candidate_count        = collector.count();
         source_candidate_scan_count  = collector.source_scans();

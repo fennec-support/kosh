@@ -16,3 +16,9 @@ export
 export
 == command position through koshkit timeout:
 export
+== builtin offers only builtins for its first operand:
+export
+export
+export_fn
+== builtin stays transparent for the inner builtin arguments:
+noclobber
