@@ -392,8 +392,10 @@ get_context_pointing_to(StringView                         source,
 
   static constexpr usize UNBOUNDED_STREAM_LINE_WIDTH = 240;
   let const              is_stderr_a_terminal = colors::stderr_is_a_terminal();
-  let const terminal_dimensions = os::get_terminal_dimensions(KOSH_STDERR);
-  let const should_window_for_terminal =
+  let const              terminal_dimensions  = is_stderr_a_terminal
+                                                    ? os::get_terminal_dimensions(KOSH_STDERR)
+                                                    : Maybe<os::terminal_dimensions>{};
+  let const              should_window_for_terminal =
       display_cells > 24 && is_stderr_a_terminal &&
       terminal_dimensions.has_value() &&
       terminal_dimensions->columns > gutter_width + 24 &&
