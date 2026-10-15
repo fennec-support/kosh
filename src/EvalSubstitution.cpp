@@ -33,9 +33,12 @@ mark_substitution_frames_printed(SourceStore &store) wontthrow -> void
 }
 
 static fn
-finish_captured_output(String             &captured,
-                       const RuntimeState &runtime) throws -> void
+finish_captured_output(String        &captured,
+                       EvalContext   &cxt,
+                       SourceLocation location) throws -> void
 {
+  let const &runtime = cxt.runtime_state();
+
   let const should_drop_nul_bytes =
       (runtime.is_bash_compatible() || runtime.is_posix_mode()) &&
       captured.view().find_character('\0').has_value();
@@ -60,10 +63,11 @@ finish_captured_output(String             &captured,
   kept.append(remaining);
   kept.strip_trailing_newlines();
   captured = steal(kept);
-  if (runtime.is_bash_compatible())
-    show_message(
-        Warning{"The command substitution dropped the null bytes of its output"}
-            .to_string());
+  if (runtime.is_bash_compatible()) {
+    cxt.show_runtime_warning_at(
+        location,
+        "The command substitution dropped the null bytes of its output");
+  }
 }
 
 static fn
@@ -376,7 +380,7 @@ EvalContext::read_redirect_substitution(StringView source) throws
 
   let result = steal(*content);
 
-  finish_captured_output(result, runtime_state());
+  finish_captured_output(result, *this, source_store().current_location());
 
   return result;
 }
@@ -1102,7 +1106,8 @@ EvalContext::run_captured_substitution(
         throw ErrorWithLocation{previous_location,
                                 "Could not read command substitution output"};
 
-      finish_captured_output(*captured, runtime_state());
+      finish_captured_output(*captured, *this,
+                             source_store().current_location());
 
       return steal(*captured);
     }
@@ -1249,7 +1254,7 @@ EvalContext::run_captured_substitution(
           error, runtime_state().is_posix_mode()));
     }
 
-    finish_captured_output(captured, runtime_state());
+    finish_captured_output(captured, *this, source_store().current_location());
 
     return captured;
   };
@@ -1491,7 +1496,7 @@ EvalContext::run_function_substitution(
 
   do_contain_error(error);
 
-  finish_captured_output(captured, runtime_state());
+  finish_captured_output(captured, *this, source_store().current_location());
 
   return captured;
 }

@@ -53,3 +53,7 @@ conditional-local-errors=0
 uncertain-slash-full-name=1
 uncertain-slash-prefix=0
 runtime-level-two-warnings=1
+=== circular name reference location ===
+1
+=== substitution null byte location ===
+1

@@ -220,3 +220,8 @@ fi
 runtime_warning_count=$(strings "$temporary_directory/typescript" |
   grep -c "is used before it is assigned")
 echo "runtime-level-two-warnings=$runtime_warning_count"
+
+echo "=== circular name reference location ==="
+"$BIN" -M bash -c 'declare -n a; a=a; echo $a' 2>&1 | grep -c '^-c:1:[0-9]*: warning: '
+echo "=== substitution null byte location ==="
+"$BIN" -M bash -c 'echo $(printf "a\0b")' 2>&1 | grep -c '^-c:1:[0-9]*: warning: '
