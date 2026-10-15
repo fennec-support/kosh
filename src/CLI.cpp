@@ -475,26 +475,26 @@ has_flag_word(int                argc,
   return false;
 }
 
+struct flag_match
+{
+  Flag       *flag{};
+  const char *value_start{};
+};
+
 static fn
 find_flag(const FlagList &flags,
           const char     *flag_start,
-          bool            is_long,
-          Flag          **result_flag,
-          const char    **value_start) throws -> bool
+          bool            is_long) throws -> flag_match
 {
-  usize     longest_length    = 0;
-  let const flag_start_length = std::strlen(flag_start);
-
-  *value_start = nullptr;
-  *result_flag = nullptr;
+  usize      longest_length    = 0;
+  let const  flag_start_length = std::strlen(flag_start);
+  flag_match match{};
 
   if (!is_long) {
-    *result_flag = find_short_flag(flags, *flag_start);
-    if (*result_flag == nullptr) return false;
+    match.flag = find_short_flag(flags, *flag_start);
+    if (match.flag != nullptr) match.value_start = flag_start + 1;
 
-    *value_start = flag_start + 1;
-
-    return true;
+    return match;
   }
 
   for (usize i = 0; i < flags.count(); ++i) {
@@ -513,13 +513,13 @@ find_flag(const FlagList &flags,
             0 &&
         (after_name == '\0' || after_name == '='))
     {
-      *result_flag   = flags[i];
-      *value_start   = flag_start + flag_length;
-      longest_length = flag_length;
+      match.flag        = flags[i];
+      match.value_start = flag_start + flag_length;
+      longest_length    = flag_length;
     }
   }
 
-  return longest_length > 0;
+  return match;
 }
 
 fn
@@ -738,13 +738,11 @@ parse_flags(const FlagList                  &flags,
         let const token_offset  = is_long_token ? &argv[i][2] : &argv[i][1];
 
         if (*token_offset != '\0') {
-          Flag       *probe_flag  = nullptr;
-          const char *probe_value = nullptr;
+          let const probe = find_flag(flags, token_offset, is_long_token);
 
-          if (find_flag(flags, token_offset, is_long_token, &probe_flag,
-                        &probe_value) &&
-              (probe_flag->kind() == Flag::Kind::Bool ||
-               probe_flag->kind() == Flag::Kind::RepeatedBool))
+          if (probe.flag != nullptr &&
+              (probe.flag->kind() == Flag::Kind::Bool ||
+               probe.flag->kind() == Flag::Kind::RepeatedBool))
           {
             is_next_known_boolean_flag = true;
           }
@@ -782,11 +780,10 @@ parse_flags(const FlagList                  &flags,
 
     if (is_plus_cluster) {
       for (const char *letter = &argv[i][1]; *letter != '\0'; letter++) {
-        Flag       *plus_flag  = nullptr;
-        const char *plus_value = nullptr;
-        let const   is_known =
+        let const plus_match = find_flag(flags, letter, false);
+        let const is_known =
             parse_options.plus_letters.find_character(*letter).has_value() &&
-            find_flag(flags, letter, false, &plus_flag, &plus_value);
+            plus_match.flag != nullptr;
 
         if (!is_known) {
           let message = String{heap_allocator(), "The flag '+"};
@@ -807,30 +804,31 @@ parse_flags(const FlagList                  &flags,
             boolean_flag_location(argv, static_cast<usize>(i), letter, false,
                                   base_position, arg_locations);
 
-        if (plus_flag->kind() == Flag::Kind::Bool) {
-          static_cast<FlagBool *>(plus_flag)->disable();
-          plus_flag->set_position(++position);
-          plus_flag->set_value_location(flag_location);
+        if (plus_match.flag->kind() == Flag::Kind::Bool) {
+          static_cast<FlagBool *>(plus_match.flag)->disable();
+          plus_match.flag->set_position(++position);
+          plus_match.flag->set_value_location(flag_location);
           continue;
         }
 
-        ASSERT(plus_flag->kind() == Flag::Kind::ManyStrings);
-        if (*plus_value != '\0') {
+        ASSERT(plus_match.flag->kind() == Flag::Kind::ManyStrings);
+        if (*plus_match.value_start != '\0') {
           let const value_position = ++position;
           let const value_location = attached_flag_value_location(
-              argv, static_cast<usize>(i), plus_value, base_position,
-              arg_locations);
+              argv, static_cast<usize>(i), plus_match.value_start,
+              base_position, arg_locations);
 
-          static_cast<FlagManyStrings *>(plus_flag)->append(
-              plus_value, value_position, value_location, true);
-          plus_flag->set_position(value_position);
-          plus_flag->set_value_location(value_location);
+          static_cast<FlagManyStrings *>(plus_match.flag)
+              ->append(plus_match.value_start, value_position, value_location,
+                       true);
+          plus_match.flag->set_position(value_position);
+          plus_match.flag->set_value_location(value_location);
         } else {
           should_take_next_argument_as_value = true;
-          previous_flag                      = plus_flag;
+          previous_flag                      = plus_match.flag;
           was_previous_flag_long             = false;
           was_previous_flag_after_plus       = true;
-          plus_flag->set_value_location(flag_location);
+          plus_match.flag->set_value_location(flag_location);
         }
 
         break;
@@ -896,10 +894,12 @@ parse_flags(const FlagList                  &flags,
     while (should_repeat) {
       should_repeat = false;
 
-      let const found =
-          find_flag(flags, flag_offset, is_long, &flag, &value_offset);
+      let const match = find_flag(flags, flag_offset, is_long);
 
-      if (found) {
+      flag         = match.flag;
+      value_offset = match.value_start;
+
+      if (flag != nullptr) {
         switch (flag->kind()) {
         case Flag::Kind::Bool: {
           let const bool_flag = static_cast<FlagBool *>(flag);
