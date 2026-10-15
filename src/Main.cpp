@@ -2910,15 +2910,18 @@ kosh_main(int argc, char **argv) -> int
       koshka::show_message(e.to_string());
       koshka::utils::quit(EXIT_FAILURE);
     } catch (const std::exception &e) {
-      koshka::show_message(
-          "Uncaught exception while getting the input. Exiting.");
-      koshka::show_message("Context: '" + koshka::StringView{e.what()} + "'.");
+      koshka::show_message(koshka::ErrorWithDetails{
+          "Uncaught exception while getting the input, so the shell exits",
+          "The exception context is '" + koshka::StringView{e.what()} + "'"}
+                               .to_string());
       koshka::utils::quit(EXIT_FAILURE);
     } catch (...) {
-      koshka::show_message(
-          "Unexpected system explosion while getting the input. Exiting.");
-      koshka::show_message("Last system message: " +
-                           koshka::os::last_system_error_message());
+      koshka::show_message(koshka::ErrorWithDetails{
+          "Unexpected system explosion while getting the input, so the "
+          "shell exits",
+          "The last system message is '" +
+              koshka::os::last_system_error_message() + "'"}
+                               .to_string());
       koshka::utils::quit(EXIT_FAILURE);
     }
 

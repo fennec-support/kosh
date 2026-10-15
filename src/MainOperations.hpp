@@ -984,14 +984,18 @@ run_script_contents(
   } catch (const std::exception &e) {
     exit_code = EXIT_FAILURE;
     show_message(
-        "Uncaught exception while executing the AST. Aborting the command.");
-    show_message("Last system message: '" + os::last_system_error_message() +
-                 "'.");
-    show_message("Context: '" + StringView{e.what()} + "'.");
+        ErrorWithDetails{"Uncaught exception while executing the AST, so the "
+                         "command is aborted",
+                         "The exception context is '" + StringView{e.what()} +
+                             "' and the last system message is '" +
+                             os::last_system_error_message() + "'"}
+            .to_string());
   } catch (...) {
-    show_message(
-        "Unexpected system explosion while executing the AST. Exiting.");
-    show_message("Last system message: " + os::last_system_error_message());
+    show_message(ErrorWithDetails{
+        "Unexpected system explosion while executing the AST, "
+        "so the shell exits",
+        "The last system message is '" + os::last_system_error_message() + "'"}
+                     .to_string());
     utils::quit(EXIT_FAILURE);
   }
 
