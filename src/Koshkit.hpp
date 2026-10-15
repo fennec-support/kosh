@@ -247,8 +247,6 @@ sorted_util_names() throws -> const ArrayList<String> &;
 
 fn
 getconf_variable_names() throws -> const ArrayList<String> &;
-fn
-is_getconf_path_variable(StringView name) throws -> bool;
 
 fn
 resolve_util_program(EvalContext &cxt, StringView name) throws

@@ -1182,12 +1182,6 @@ getconf_variable_names() throws -> const ArrayList<String> &
 }
 
 fn
-is_getconf_path_variable(StringView) throws -> bool
-{
-  return false;
-}
-
-fn
 collect_makefile_targets(EvalContext &cxt, const Path &) throws
     -> ArrayList<String>
 {

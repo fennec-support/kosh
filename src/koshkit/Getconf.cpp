@@ -343,12 +343,6 @@ getconf_variable_names() throws -> const ArrayList<String> &
 }
 
 fn
-is_getconf_path_variable(StringView name) throws -> bool
-{
-  return PATH_CONFIGURATIONS.find(name).has_value();
-}
-
-fn
 append_configuration_row(String    &output,
                          StringView name,
                          StringView value) throws -> void
@@ -402,9 +396,23 @@ Getconf::execute(const ExecContext               &ec,
     if (operands.count() > 1) {
       return report_usage_error(ec, cxt, args[0].view());
     }
-  } else if (operands.is_empty() || operands.count() > 2) {
+  } else if (operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());
+  } else if (operands.count() > 2) {
+    report_soft_koshkit_util_error(ec, cxt, operand_locations[2],
+                                   args[0].view(),
+                                   "Unexpected operand `" + operands[2] + "`");
+
+    return 1;
   }
+
+  let const do_reject_path_operand = [&]() throws -> i32 {
+    report_soft_koshkit_util_error(
+        ec, cxt, operand_locations[1], args[0].view(),
+        "The variable `" + operands[0] + "` takes no path operand");
+
+    return 1;
+  };
 
   if (FLAG_GETCONF_SPECIFICATION.is_set() &&
       FLAG_GETCONF_SPECIFICATION.value() != "POSIX_V7_LP64_OFF64" &&
@@ -481,8 +489,7 @@ Getconf::execute(const ExecContext               &ec,
   if (let const string_key = STRING_CONFIGURATIONS.find(operands[0].view());
       string_key.has_value())
   {
-    if (operands.count() != 1)
-      return report_usage_error(ec, cxt, args[0].view());
+    if (operands.count() != 1) return do_reject_path_operand();
 
     let value =
         os::query_string_configuration(*string_key, cxt.scratch_allocator());
@@ -507,14 +514,20 @@ Getconf::execute(const ExecContext               &ec,
   if (let const system_key = SYSTEM_CONFIGURATIONS.find(operands[0].view());
       system_key.has_value())
   {
-    if (operands.count() != 1)
-      return report_usage_error(ec, cxt, args[0].view());
+    if (operands.count() != 1) return do_reject_path_operand();
+
     result = os::query_system_configuration(*system_key);
   } else if (let const path_key = PATH_CONFIGURATIONS.find(operands[0].view());
              path_key.has_value())
   {
-    if (operands.count() != 2)
-      return report_usage_error(ec, cxt, args[0].view());
+    if (operands.count() != 2) {
+      report_soft_koshkit_util_error(
+          ec, cxt, operand_locations[0], args[0].view(),
+          "The variable `" + operands[0] + "` needs a path operand");
+
+      return 1;
+    }
+
     result = os::query_path_configuration(operands[1].view(), *path_key);
   } else {
     report_soft_koshkit_util_error(ec, cxt, operand_locations[0],

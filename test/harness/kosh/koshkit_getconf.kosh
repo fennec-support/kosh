@@ -87,3 +87,8 @@ do
   koshkit getconf "$variable" . >/dev/null || path_status=1
 done
 echo "getconf-path=$path_status"
+# A wrong operand count is reported at the operand that does not fit. The
+# excerpt lines start with a space and are not counted.
+koshkit getconf IOV_MAX . 2>&1 | grep -c '^[^ ].*takes no path operand'
+koshkit getconf PATH_MAX 2>&1 | grep -c '^[^ ].*needs a path operand'
+koshkit getconf IOV_MAX . . 2>&1 | grep -c '^[^ ].*Unexpected operand'

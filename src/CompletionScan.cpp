@@ -1038,6 +1038,17 @@ complete_from_flags_in_line(StringView      line,
       }
     }
 
+    /* A getconf program on PATH takes the same POSIX variable names as the
+       bundled utility. */
+    if (!util_for_flags.has_value() && !is_koshkit_builtin &&
+        command == "getconf" && previous_word == command && is_operand_wanted)
+    {
+      for (let const &name : koshkit::getconf_variable_names())
+        do_push_matching(name.view());
+
+      if (!candidates.is_empty()) return candidates;
+    }
+
     if (should_offer_util_names) {
       let names = ArrayList<String>{heap_allocator()};
 

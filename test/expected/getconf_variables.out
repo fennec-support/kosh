@@ -4,6 +4,8 @@ ARG_MAX
 PATH_MAX
 == a bare utility completes variables when no program shadows it:
 NAME_MAX
+== a getconf program on PATH completes the same variables:
+NAME_MAX
 == the full list is plausible:
 many
 == a path variable takes a path operand:
