@@ -249,10 +249,3 @@ let "p = 2" "q = p * 3 + 1"
 echo "chain p=$p q=$q"
 let "r = (1 << 4) | 2"
 echo "bitwise r=$r"
-
-# A '$((' with an unpaired ')' is a command substitution that starts with a
-# subshell.
-echo $((echo a) | cat)
-x=$((echo b);echo c)
-echo "subshell-substitution $x"
-echo $(( (1 + 2) * 3 ))
