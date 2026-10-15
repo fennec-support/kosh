@@ -211,9 +211,8 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       out += "\n";
 
       if (is_function) {
-        if (!should_print_verbose && !is_bash_function_report) {
-          return;
-        }
+        /* The body is printed only with -V, also in the Bash moods. */
+        if (!should_print_verbose) return;
 
         if (let const *source = cxt.function_store().find_source(name.view());
             source != nullptr && !source->is_empty())
