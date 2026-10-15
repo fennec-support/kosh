@@ -19,3 +19,14 @@ y='Éa ÖB'
 echo "${x@U}|${y@L}|${x@u}|${y@u}"
 set -- éa bé
 echo "${@@U}"
+
+# A star pattern with literal head and tail replaces the same text as bash and
+# stays linear when no match exists, including a POSIX class bracket.
+m='xxabcyyabzzabcab'
+echo "${m/a*c/_}|${m//a*c/_}|${m/#x*y/_}|${m/%a*b/_}|${m//ab*b/_}|${m//*c/_}"
+echo "${m//a?c/_}|${m//[[:alpha:]]b/_}|${m/%*zz/_}|${m//a*z/_}|${m//y*q/_}"
+big=$(printf 'a%.0s' $(seq 1 6000))
+for r in "${big//a*y/Z}" "${big/a*y/Z}" "${big/%a*b/c}" "${big/#a*b/c}" \
+  "${big//a?*y/Z}" "${big//[[:space:]]/}" "${big//[[:alpha:]]/b}"; do
+  echo "${#r}"
+done

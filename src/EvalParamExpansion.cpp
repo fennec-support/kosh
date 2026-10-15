@@ -3526,7 +3526,19 @@ longest_possible_pattern_match(StringView    pattern,
             (pattern[close + 1] == ':' || pattern[close + 1] == '.' ||
              pattern[close + 1] == '='))
         {
-          return None;
+          let const terminator = pattern[close + 1];
+          usize     end        = close + 2;
+
+          while (end + 1 < pattern.length &&
+                 !(pattern[end] == terminator && pattern[end + 1] == ']'))
+          {
+            end++;
+          }
+
+          if (end + 1 >= pattern.length) return None;
+
+          close = end + 2;
+          continue;
         }
 
         close++;
@@ -3545,14 +3557,82 @@ longest_possible_pattern_match(StringView    pattern,
   return length;
 }
 
+/* The literal text that every match of a pattern starts and ends with. A
+   pattern with an extglob group or an active backslash has neither. A pattern
+   with an active bracket has no tail. */
+struct pattern_affixes
+{
+  StringView head;
+  StringView tail;
+};
+
+static fn
+get_pattern_affixes(StringView    pattern,
+                    const Bitset &active,
+                    extglob_mode  mode) wontthrow -> pattern_affixes
+{
+  usize first_glob_position = pattern.length;
+  usize last_glob_position  = 0;
+  bool  has_active_bracket  = false;
+
+  for (usize index = 0; index < pattern.length; index++) {
+    let const character = pattern[index];
+
+    if (mode == extglob_mode::Enabled && index + 1 < pattern.length &&
+        pattern[index + 1] == '(' &&
+        (character == '?' || character == '*' || character == '+' ||
+         character == '@' || character == '!'))
+    {
+      return pattern_affixes{};
+    }
+
+    if (index >= active.count() || !active[index]) continue;
+    if (character == '\\') return pattern_affixes{};
+    if (character != '*' && character != '?' && character != '[') {
+      continue;
+    }
+
+    if (first_glob_position == pattern.length) first_glob_position = index;
+    last_glob_position = index;
+    if (character == '[') has_active_bracket = true;
+  }
+
+  if (first_glob_position == pattern.length) return pattern_affixes{};
+
+  return pattern_affixes{pattern.substring_of_length(0, first_glob_position),
+                         has_active_bracket
+                             ? StringView{}
+                             : pattern.substring(last_glob_position + 1)};
+}
+
+/* Returns the largest end offset at which the value ends with the tail, or
+   zero when the tail does not occur. */
+static fn
+get_last_tail_end(StringView value, StringView tail) wontthrow -> usize
+{
+  if (tail.is_empty()) return value.length;
+
+  usize last_end = 0;
+  usize from     = 0;
+
+  while (let const found = value.find_substring(tail, from)) {
+    last_end = *found + tail.length;
+    from     = *found + 1;
+  }
+
+  return last_end;
+}
+
 alwaysinline static fn
-longest_pattern_match_at(StringView    pattern,
-                         const Bitset &pattern_active,
-                         StringView    value,
-                         usize         start,
-                         extglob_mode  mode,
-                         glob_charset  charset,
-                         Maybe<usize>  longest_possible = None) throws
+longest_pattern_match_at(StringView      pattern,
+                         const Bitset   &pattern_active,
+                         StringView      value,
+                         usize           start,
+                         extglob_mode    mode,
+                         glob_charset    charset,
+                         Maybe<usize>    longest_possible = None,
+                         pattern_affixes affixes          = {},
+                         usize           last_tail_end    = SIZE_MAX) throws
     -> Maybe<usize>
 {
   let const is_utf8   = charset == glob_charset::Utf8;
@@ -3562,8 +3642,19 @@ longest_pattern_match_at(StringView    pattern,
     first_end = start + *longest_possible;
   }
 
+  if (!value.substring(start).starts_with(affixes.head)) return None;
+  if (last_tail_end < first_end) first_end = last_tail_end;
+  if (first_end < start) return None;
+
+  let const do_has_tail = [&](usize end) wontthrow -> bool {
+    return end - start >= affixes.tail.length &&
+           value.substring_of_length(end - affixes.tail.length,
+                                     affixes.tail.length) == affixes.tail;
+  };
+
   for (usize end = first_end; end >= start; end--) {
-    if ((!is_utf8 || !splits_character(value, end, charset)) &&
+    if ((affixes.tail.is_empty() || do_has_tail(end)) &&
+        (!is_utf8 || !splits_character(value, end, charset)) &&
         utils::glob_matches(pattern,
                             value.substring_of_length(start, end - start),
                             pattern_active, 0, mode, charset))
@@ -3700,9 +3791,13 @@ EvalContext::pattern_replace_value(
           ? glob_charset::Bytes
           : value_charset;
 
+  let const affixes =
+      get_pattern_affixes(pattern.view(), pattern_active, extglob);
+
   if (is_anchored_at_start) {
     if (let const matched = longest_pattern_match_at(
-            pattern.view(), pattern_active, value, 0, extglob, charset))
+            pattern.view(), pattern_active, value, 0, extglob, charset, None,
+            affixes, get_last_tail_end(value, affixes.tail)))
     {
       do_append_replacement(value.substring_of_length(0, *matched));
       out.append(value.substring(*matched));
@@ -3714,7 +3809,14 @@ EvalContext::pattern_replace_value(
   }
 
   if (is_anchored_at_end) {
-    for (usize start = 0; start <= value.length; start++) {
+    let const does_value_end_with_tail =
+        value.length >= affixes.tail.length &&
+        value.substring(value.length - affixes.tail.length) == affixes.tail;
+
+    for (usize start = 0; does_value_end_with_tail && start <= value.length;
+         start++)
+    {
+      if (!value.substring(start).starts_with(affixes.head)) continue;
       if (!splits_character(value, start, charset) &&
           utils::glob_matches(pattern.view(), value.substring(start),
                               pattern_active, 0, extglob, charset))
@@ -3781,15 +3883,17 @@ EvalContext::pattern_replace_value(
 
   let const longest_possible = longest_possible_pattern_match(
       pattern.view(), pattern_active, extglob, charset);
-  bool  has_replaced = false;
-  usize i            = 0;
+  let const last_tail_end = get_last_tail_end(value, affixes.tail);
+  bool      has_replaced  = false;
+  usize     i             = 0;
 
   while (i < value.length) {
     Maybe<usize> matched;
 
     if (!has_replaced || should_replace_all) {
       matched = longest_pattern_match_at(pattern.view(), pattern_active, value,
-                                         i, extglob, charset, longest_possible);
+                                         i, extglob, charset, longest_possible,
+                                         affixes, last_tail_end);
     }
 
     let const do_copy_character = [&]() throws -> void {
