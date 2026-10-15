@@ -249,3 +249,12 @@ let "p = 2" "q = p * 3 + 1"
 echo "chain p=$p q=$q"
 let "r = (1 << 4) | 2"
 echo "bitwise r=$r"
+
+# A subscript with a side effect runs once, and a compound assignment reads
+# the left value before it evaluates the right side.
+i=0; a=(0 0 0); (( a[i++]++ )); echo "$i ${a[*]}"
+i=0; a=(0 0 0); (( a[i++] += 2 )); echo "$i ${a[*]}"
+i=0; a=(0 0 0); (( --a[i++] )); echo "$i ${a[*]}"
+i=0; a=(0 0 0); echo "$(( a[i++]++ ))" "$i ${a[*]}"
+i=0; a=(1 2 3); echo "$(( a[i++] += a[i] ))" "$i ${a[*]}"
+x=1; echo "$(( x += x++ ))" "$x"

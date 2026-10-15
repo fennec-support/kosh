@@ -458,7 +458,30 @@ public:
     StringView        name;
     Maybe<StringView> subscript;
     usize             name_position;
+    char              resolved_subscript[24]{};
   };
+
+  /* Evaluates an indexed subscript once so that a read and a write of the
+     same lvalue use one index. */
+  fn
+  resolve_lvalue_subscript(Lvalue &target) throws -> void
+  {
+    if (m_is_skipping || !target.subscript.has_value()) return;
+
+    ASSERT(context != nullptr);
+
+    if (*target.subscript == "@" || *target.subscript == "*") return;
+    if (utils::has_command_substitution(*target.subscript)) return;
+    if (context->is_associative_array(target.name)) return;
+    if (context->variable_store().attributes().is_nameref(target.name)) return;
+
+    let const index =
+        context->evaluate_arithmetic(*target.subscript, nullptr, true);
+    let const text = utils::int_to_text_into(index, target.resolved_subscript,
+                                             sizeof(target.resolved_subscript));
+
+    target.subscript = text;
+  }
 
   fn
   read_optional_subscript() throws -> Maybe<StringView>
@@ -569,12 +592,14 @@ public:
   prefix_step(i64 delta, usize operator_position) throws
       -> ArithmeticValue
   {
-    const Lvalue target = read_lvalue();
+    Lvalue target = read_lvalue();
 
     if (target.name.is_empty())
       fail_span(operator_position, operator_position + 2,
                 "Expected a variable after '++' or '--'",
                 "'++' and '--' apply only to a variable");
+
+    resolve_lvalue_subscript(target);
 
     let const updated =
         arith_apply_binop('+', read_lvalue_value(target),
@@ -586,9 +611,10 @@ public:
   }
 
   fn
-  postfix_step(const Lvalue &target, i64 delta) throws
-      -> ArithmeticValue
+  postfix_step(Lvalue &target, i64 delta) throws -> ArithmeticValue
   {
+    resolve_lvalue_subscript(target);
+
     let const original = read_lvalue_value(target);
 
     write_lvalue(target,
@@ -640,7 +666,7 @@ public:
     let const name       = read_lvalue_name();
 
     if (!name.is_empty()) {
-      const Lvalue target{name, read_optional_subscript(), name_start};
+      Lvalue target{name, read_optional_subscript(), name_start};
 
       struct compound_operator
       {
@@ -674,9 +700,11 @@ public:
           if (consume(op)) {
             skip_spaces();
 
+            resolve_lvalue_subscript(target);
+
+            let const lhs       = read_lvalue_value(target);
             let const rhs_start = pos;
             let const rhs       = parse_assignment();
-            let const lhs       = read_lvalue_value(target);
             let       result    = ArithmeticValue{};
 
             try {
@@ -1878,7 +1906,7 @@ public:
     }
 
     if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
-      const Lvalue target = read_lvalue();
+      Lvalue target = read_lvalue();
 
       if (should_error_unset && !target.subscript.has_value() && consume("(")) {
         return apply_calculator_function(target.name, target.name_position);
