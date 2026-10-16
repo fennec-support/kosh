@@ -166,7 +166,8 @@ inline constexpr static_string_entry<shell_variable_description>
           shell_variable_fact::NotPosix}                                     },
         {SSK("PROMPT_COMMAND"),
          {"The command runs before each interactive prompt, and its status "
-          "does not replace the previous status.",
+          "does not replace the previous status. It is deprecated in favor of "
+          "the prompt escapes.",
           shell_variable_fact::NotPosix}                                     },
         {SSK("COLUMNS"),
          {"The value is the terminal width an interactive shell recorded at "
