@@ -53,6 +53,9 @@ early_exit=set -e; false traces=1 rc=1
 early_exit=exec true traces=1 rc=0
 early_exit=/usr/bin/true traces=1 rc=0
 early_exit=f() { exit 4; }; f traces=1 rc=4
+child=( $x ) traces=2
+child={ $x; } & wait traces=1
+child=$x | cat traces=1
 traces=0
 error=ok
 rc=1

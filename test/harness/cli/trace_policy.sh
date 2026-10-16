@@ -261,6 +261,12 @@ do
       "$(printf '%s\n' "$out" | grep -Ec 'trace:')" "$rc"
 done
 
+for child in '( $x )' '{ $x; } & wait' '$x | cat'; do
+  out=$("$BIN" -c 'echo one' -c "x=no_such_e; $child" 2>&1)
+  printf 'child=%s traces=%s\n' "$child" \
+      "$(printf '%s\n' "$out" | grep -Ec 'trace:')"
+done
+
 unset KOSH_FLAGS
 out=$("$BIN" -c no_such_command_xyz 2>&1)
 rc=$?

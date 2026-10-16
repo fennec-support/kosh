@@ -230,7 +230,8 @@ throw_exec_failure_error(SourceLocation location,
         let const interpreter = String{
             heap_allocator(), text.substring_of_length(start, end - start)};
 
-        if (!interpreter.is_empty() && ::access(interpreter.c_str(), F_OK) != 0)
+        if (!interpreter.is_empty() && interpreter.view() != "\r" &&
+            ::access(interpreter.c_str(), F_OK) != 0)
         {
           LOG(Debug, "the #! interpreter '%s' of '%s' is missing",
               interpreter.c_str(), program_path.c_str());
