@@ -4,11 +4,11 @@
 #    See the top-level LICENSE file for the licensing information.
 #
 # Drives the interactive editor through a real PTY and checks the right prompt
-# and the transient prompt from the text on screen. RPS1 must sit at the right
-# edge of the first input row less one column, leave when typed text comes
+# and the transient prompt from the text on screen. RPS1 must end at the right
+# edge of the first input row, leave when typed text comes
 # within one column of it and come back when the text shrinks, stay off the
 # rows after the first, leave a terminal too narrow for it, stay out of the
-# submitted command, and stay in the scrollback without the transient prompt.
+# submitted command, and leave the scrollback without the transient prompt.
 # With the transient-prompt option, Enter must redraw the submitted line after
 # "$ ", "# " for root, or PS1_TRANSIENT with no right prompt, no hint row, and
 # no rows of a multi-row PS1, and Ctrl-C must redraw the interrupted line the
@@ -41,7 +41,7 @@ from editor_ghost_menu_pty import ROWS, Report, Session
 
 COLUMNS = 40
 RIGHT_PROMPT = "<R>"
-RIGHT_PROMPT_COLUMN = COLUMNS - 1 - len(RIGHT_PROMPT)
+RIGHT_PROMPT_COLUMN = COLUMNS - len(RIGHT_PROMPT)
 ALT_ENTER = b"\x1b\r"
 BACKSPACE = b"\x7f"
 CTRL_C = b"\x03"
@@ -121,11 +121,11 @@ def run_checks(binary, directory, command_directory, report):
                       and is_prompt_line("  echo two", 1)(screen))
         session.send(b"\r")
         report.record("right-prompt-is-not-submitted", session,
-                      is_submitted([with_right_prompt(BULLET + " echo one"),
+                      is_submitted([BULLET + " echo one",
                                     "  echo two", "one", "two"],
                                    empty_prompt))
 
-        set_columns(session, 6)
+        set_columns(session, 5)
         report.record("right-prompt-leaves-a-narrow-terminal", session,
                       is_prompt_line(BULLET))
         set_columns(session, COLUMNS)
@@ -134,7 +134,7 @@ def run_checks(binary, directory, command_directory, report):
 
         session.send(b"koshconf set editor.transient_prompt_after_submit on\r")
         session.wait_until(is_submitted(
-            [with_right_prompt(BULLET + " koshconf set editor.transient_prompt_after_submit on")],
+            [BULLET + " koshconf set editor.transient_prompt_after_submit on"],
             empty_prompt))
         session.send(b"echo three\r")
         report.record("transient-prompt-redraws-the-line", session,

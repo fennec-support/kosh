@@ -293,6 +293,7 @@ class Session:
             "KOSH_HISTORY_FILE": os.path.join(directory, "history"),
             "TERM": "xterm-256color",
             "LANG": "C.UTF-8",
+            "RPS1": "",
         }
         self.screen = Screen()
         self.raw = bytearray()
