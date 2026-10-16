@@ -253,7 +253,9 @@ throw_exec_failure_error(SourceLocation location,
 
           while (line_end < text.length && text[line_end] != '\n')
             line_end++;
-          if (line_end > 0 && text[line_end - 1] == '\r') line_end--;
+          if (line_end > 0 && text[line_end - 1] == '\r') {
+            line_end--;
+          }
 
           let const shebang_location = SourceLocation{
               start, shown_length, intern_source_name(program_path.text())};
@@ -1358,7 +1360,9 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 
   check_syscall(changed_pid);
 
-  if (WIFEXITED(status) || WIFSIGNALED(status)) note_reaped_child_usage(usage);
+  if (WIFEXITED(status) || WIFSIGNALED(status)) {
+    note_reaped_child_usage(usage);
+  }
   if (!WIFCONTINUED(status)) note_child_reaped();
 
   if (was_stopped != nullptr && WIFSTOPPED(status)) {
@@ -2075,7 +2079,7 @@ mark_own_memory() wontthrow -> own_memory_mark
   if (getrusage(RUSAGE_SELF, &own_usage) == 0)
     mark.peak_byte_count = platform_peak_rss_bytes(own_usage.ru_maxrss);
 #elif defined __linux__
-  char      buffer[4096];
+  char      buffer[16384];
   let const length =
       read_small_file("/proc/self/status", buffer, sizeof(buffer));
   let const status = StringView{buffer, length};
@@ -2264,7 +2268,9 @@ fill_usage_from_proc_schedstat(pid_t                   pid,
   let const wait   = text.next_ascii_whitespace_word(position).to<u64>();
   let const slices = text.next_ascii_whitespace_word(position).to<u64>();
 
-  if (wait.is_error() || slices.is_error()) return;
+  if (wait.is_error() || slices.is_error()) {
+    return;
+  }
 
   LOG(Debug, "child %d waited %llu ns for a processor over %llu slices",
       static_cast<int>(pid), static_cast<unsigned long long>(wait.value()),
@@ -2323,7 +2329,7 @@ wait_for_measured_child(pid_t                   child_pid,
                         process_resource_usage *resources,
                         int                     io_descriptor) wontthrow -> bool
 {
-#if defined __linux__
+#if defined __linux__ || defined __APPLE__
   if (resources != nullptr) {
     siginfo_t info{};
     let const wait_result = retry_interrupted([&] {
@@ -2332,22 +2338,16 @@ wait_for_measured_child(pid_t                   child_pid,
     });
 
     if (wait_result == 0) {
+#if defined __linux__
       fill_usage_from_proc_io(io_descriptor, *resources);
       fill_usage_from_proc_schedstat(child_pid, *resources);
+#else
+      fill_usage_from_rusage_info(child_pid, *resources);
+#endif
     }
   }
-#elif defined __APPLE__
-  unused(io_descriptor);
-  if (resources != nullptr) {
-    siginfo_t info{};
-    let const wait_result = retry_interrupted([&] {
-      return waitid(P_PID, static_cast<id_t>(child_pid), &info,
-                    WEXITED | WNOWAIT);
-    });
-
-    if (wait_result == 0) fill_usage_from_rusage_info(child_pid, *resources);
-  }
-#else
+#endif
+#if !defined __linux__
   unused(io_descriptor);
 #endif
 

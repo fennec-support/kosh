@@ -19,6 +19,7 @@ export
 == builtin offers only builtins for its first operand:
 export
 export
+export
 export_fn
 == builtin stays transparent for the inner builtin arguments:
 noclobber

@@ -460,14 +460,6 @@ report_usage_error(const ExecContext &ec,
 }
 
 fn
-report_usage_error(EvalContext   &cxt,
-                   SourceLocation location,
-                   StringView     program_name) throws -> i32
-{
-  return show_usage_error(cxt, steal(location), program_name, program_name);
-}
-
-fn
 bind_declared_self_nameref(const ExecContext &ec,
                            EvalContext       &cxt,
                            usize              arg_index,

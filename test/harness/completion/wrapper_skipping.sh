@@ -21,6 +21,7 @@ echo "== command position through koshkit timeout:"
 "$BIN" --debug-complete-at 'koshkit timeout --kill-after=1 2 expor' </dev/null
 echo "== builtin offers only builtins for its first operand:"
 "$BIN" -c 'export_fn() { :; }' --debug-complete-at 'builtin expor' </dev/null
+"$BIN" -c 'export_fn() { :; }' --debug-complete-at '(builtin expor' </dev/null
 "$BIN" -c 'export_fn() { :; }' --debug-complete-at 'expor' </dev/null
 echo "== builtin stays transparent for the inner builtin arguments:"
 "$BIN" --debug-complete-at 'builtin set -o noc' </dev/null

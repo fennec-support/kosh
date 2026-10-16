@@ -92,11 +92,9 @@ struct extended_metric
   bool                                    is_descendant_inclusive{false};
 };
 
-constexpr usize EXTENDED_METRIC_COUNT = 24;
-
 using usage = os::process_resource_usage;
 
-constexpr extended_metric EXTENDED_METRICS[EXTENDED_METRIC_COUNT] = {
+constexpr extended_metric EXTENDED_METRICS[] = {
     {"user time", metric_unit::Nanoseconds, &usage::user_nanos, true},
     {"system time", metric_unit::Nanoseconds, &usage::system_nanos, true},
     {"scheduler wait", metric_unit::Nanoseconds, &usage::scheduler_wait_nanos},
@@ -124,6 +122,8 @@ constexpr extended_metric EXTENDED_METRICS[EXTENDED_METRIC_COUNT] = {
     {"bytes written", metric_unit::Bytes, &usage::written_byte_count},
     {"other io calls", metric_unit::Count, &usage::other_io_call_count},
 };
+
+constexpr usize EXTENDED_METRIC_COUNT = countof(EXTENDED_METRICS);
 
 struct bench_sample
 {

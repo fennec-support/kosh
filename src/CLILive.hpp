@@ -282,8 +282,9 @@ run_live_view(const ExecContext       &ec,
 
     for (usize index = 0; index < input.key_count; index++) {
       let action = do_key(input.keys[index]);
-      if (action == live_view_key_action::Unhandled && options.should_scroll)
+      if (action == live_view_key_action::Unhandled && options.should_scroll) {
         action = view.get_scroll_key_action(input.keys[index]);
+      }
 
       if (action == live_view_key_action::Unhandled)
         action = view.get_default_key_action(input.keys[index]);

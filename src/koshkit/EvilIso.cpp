@@ -219,8 +219,9 @@ append_namespace_report(String                      &output,
         if (left.type_index != right.type_index)
           return left.type_index < right.type_index;
         if (left.is_available != right.is_available) return left.is_available;
-        if (!left.is_available && left.reason != right.reason)
+        if (!left.is_available && left.reason != right.reason) {
           return left.reason < right.reason;
+        }
         if (left.is_identifier_numeric != right.is_identifier_numeric)
           return left.is_identifier_numeric;
         if (left.is_identifier_numeric &&

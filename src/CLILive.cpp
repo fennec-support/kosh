@@ -174,8 +174,9 @@ LiveView::LiveView(const ExecContext       &ec,
 
   m_is_alternate_screen_active = enter_alternate_screen(m_ec);
   m_is_cursor_hidden           = hide_cursor(m_ec);
-  if (m_options.should_scroll && m_has_input)
+  if (m_options.should_scroll && m_has_input) {
     m_is_mouse_reporting_active = enable_mouse_reporting(m_ec);
+  }
 }
 
 LiveView::~LiveView()
@@ -400,7 +401,9 @@ LiveView::clip_frame_rows(String                     &frame,
     if (total_row_count == pinned_row_count) scroll_start = index + 1;
   }
 
-  if (body.length != 0 && body[body.length - 1] != '\n') total_row_count++;
+  if (body.length != 0 && body[body.length - 1] != '\n') {
+    total_row_count++;
+  }
 
   let const maximum_offset = total_row_count > visible_row_count
                                  ? total_row_count - visible_row_count
@@ -533,7 +536,9 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
       continue;
     }
 
-    if (final_byte == 'm' && buffer[parameter_start] == '<') continue;
+    if (final_byte == 'm' && buffer[parameter_start] == '<') {
+      continue;
+    }
     if (final_byte == 'A') key.special = live_view_special_key::Up;
     if (final_byte == 'B') key.special = live_view_special_key::Down;
     if (final_byte == '~' && parameter == '5') {

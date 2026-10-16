@@ -435,11 +435,6 @@ get_operand_location(const ExecContext               &ec,
                      usize                            index) wontthrow -> SourceLocation;
 
 fn
-report_usage_error(EvalContext   &cxt,
-                   SourceLocation location,
-                   StringView     program_name) throws -> i32;
-
-fn
 make_error_for_arg(const ExecContext &ec,
                    usize              index,
                    StringView         message) throws -> ErrorWithLocation;

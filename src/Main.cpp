@@ -2058,10 +2058,9 @@ struct script_cursor
       let const verb = FLAG_LINT.is_enabled() ? StringView{"analyze"}
                                               : StringView{"execute"};
 
-      show_message(ErrorWithLocation{
-          operand_location, "Unable to " + verb + " `" + file_name.view() +
-                                "` because the file is a directory"}
-                       .to_string(cli_invocation.view(), &context));
+      show_operand_error(&operand_location, cli_invocation.view(), context,
+                         "Unable to " + verb + " `" + file_name.view() +
+                             "` because the file is a directory");
       if (!FLAG_LINT.is_enabled()) {
         utils::quit(126, utils::farewell_policy::Goodbye);
       }
@@ -2092,8 +2091,8 @@ struct script_cursor
                           "': " + os::last_system_error_message();
 
       if (hint.is_empty()) {
-        show_message(ErrorWithLocation{operand_location, message}.to_string(
-            cli_invocation.view(), &context));
+        show_operand_error(&operand_location, cli_invocation.view(), context,
+                           message.view());
       } else {
         show_message(
             ErrorWithLocationAndDetails{operand_location, message, hint.view()}

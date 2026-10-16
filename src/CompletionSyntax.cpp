@@ -327,6 +327,23 @@ timeout_command_start(StringView line) wontthrow -> Maybe<usize>
   }
 }
 
+static fn
+command_words_start(StringView line, usize token_start) wontthrow -> usize
+{
+  usize position = command_segment_start(line, token_start);
+
+  for (usize k = position; k < token_start; k++) {
+    if (line[k] == '\'' || line[k] == '"' || line[k] == '\\') {
+      k = quoted_run_end(line, k);
+      continue;
+    }
+
+    if (line[k] == '(') position = k + 1;
+  }
+
+  return position;
+}
+
 fn
 internal::is_in_command_position(StringView line, usize token_start) wontthrow
     -> bool
@@ -339,16 +356,7 @@ internal::is_in_command_position(StringView line, usize token_start) wontthrow
 
   let const is_active_option =
       token_start < line.length && line[token_start] == '-';
-  usize position = command_segment_start(line, token_start);
-
-  for (usize k = position; k < token_start; k++) {
-    if (line[k] == '\'' || line[k] == '"' || line[k] == '\\') {
-      k = quoted_run_end(line, k);
-      continue;
-    }
-
-    if (line[k] == '(') position = k + 1;
-  }
+  usize position = command_words_start(line, token_start);
 
   loop {
     position = skip_blanks(line, position);
@@ -369,7 +377,7 @@ fn
 internal::is_after_builtin_prefix(StringView line, usize token_start) wontthrow
     -> bool
 {
-  usize position      = command_segment_start(line, token_start);
+  usize position      = command_words_start(line, token_start);
   let   previous_word = StringView{};
 
   loop {
