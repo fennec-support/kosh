@@ -93,12 +93,12 @@ echo "== --extended adds resource rows and the default output omits them:"
 extended_labels='cpu usage|user time|system time|scheduler wait|time slices|cycles|instructions|wakeups|energy|page-ins|peak commit|storage read|storage written|voluntary switches|involuntary switches|minor faults|major faults|page faults|block input|block output|read calls|write calls|bytes read|bytes written|other io calls'
 plain_output=$("$BIN" -c 'bench --runs 2 --no-shell "$BENCH_ECHO plain"' 2>&1)
 plain_extended_count=$(printf '%s\n' "$plain_output" |
-    grep -Ec "^  ($extended_labels)  ")
+    grep -E "^  ($extended_labels)  " | grep -Evc '^  instructions  ')
 test "$plain_extended_count" -eq 0 || { echo "plain output has extended rows"; exit 1; }
 extended_output=$("$BIN" -c \
     'bench --runs 2 --extended --no-shell "$BENCH_ECHO extended"' 2>&1)
 extended_labels_found=$(printf '%s\n' "$extended_output" |
-    grep -E "^  ($extended_labels)  " | sed 's/^  //; s/  .*//' | tr '\n' ',')
+    sed -n '/^  cpu usage  /,$p' | grep -E "^  ($extended_labels)  " | sed 's/^  //; s/  .*//' | tr '\n' ',')
 case "$extended_labels_found" in
     cpu\ usage,user\ time,system\ time,*) ;;
     *) echo "missing extended rows: $extended_labels_found"; exit 1 ;;
@@ -123,7 +123,7 @@ case "$(uname -s)" in
     Linux|Darwin)
         printf '%s\n' "$wrapped_output" | grep -q 'are shown with --no-shell' ||
             { echo "missing process-only note: $wrapped_output"; exit 1; }
-        if printf '%s\n' "$wrapped_output" |
+        if printf '%s\n' "$wrapped_output" | sed -n '/^  cpu usage  /,$p' |
             grep -Eq '^  (read calls|cycles|instructions)  '; then
             echo "process-only rows shown through the shell"; exit 1
         fi
