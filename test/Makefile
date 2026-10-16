@@ -42,7 +42,7 @@ SKIPPED_TESTS := \
 	source_locations mood_diagnostics_parity \
 	loop_redirect_descriptor \
 	pipeline_stage_evaluation_mode shopt_states \
-	subshell_replay_trap_suppression subshell_spawn_state \
+	subshell_spawn_state \
 	trace_policy trailing_separator_execution ulimit_validation \
 	ansi_c_quoted_word editor_append_hot_path executable_filtering_batch \
 	help_options_trusted_dir_only help_subcommand_third_level \
