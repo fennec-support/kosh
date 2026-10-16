@@ -53,6 +53,36 @@ note_reaped_child_usage(const struct rusage &usage) wontthrow -> void
 #endif
 }
 
+#if defined __APPLE__
+static fn
+fill_usage_from_rusage_info(pid_t                   pid,
+                            process_resource_usage &resources) wontthrow -> void
+{
+  rusage_info_v6 usage{};
+
+  if (::proc_pid_rusage(pid, RUSAGE_INFO_V6,
+                        reinterpret_cast<rusage_info_t *>(&usage)) != 0)
+  {
+    LOG(Debug, "the usage of child %d could not be read",
+        static_cast<int>(pid));
+
+    return;
+  }
+
+  LOG(Debug, "child %d ran %llu instructions in %llu cycles",
+      static_cast<int>(pid),
+      static_cast<unsigned long long>(usage.ri_instructions),
+      static_cast<unsigned long long>(usage.ri_cycles));
+  resources.cpu_cycle_count   = usage.ri_cycles;
+  resources.instruction_count = usage.ri_instructions;
+  resources.wakeup_count = usage.ri_interrupt_wkups + usage.ri_pkg_idle_wkups;
+  resources.energy_nanojoules          = usage.ri_billed_energy;
+  resources.page_in_count              = usage.ri_pageins;
+  resources.storage_read_byte_count    = usage.ri_diskio_bytesread;
+  resources.storage_written_byte_count = usage.ri_diskio_byteswritten;
+}
+#endif
+
 static fn
 peek_exited_child_footprint(pid_t pid, int wait_flags) wontthrow -> void
 {
@@ -2261,6 +2291,34 @@ open_proc_io_descriptor(pid_t pid) wontthrow -> int
 }
 
 fn
+fill_usage_from_proc_schedstat(pid_t                   pid,
+                               process_resource_usage &resources) wontthrow
+    -> void
+{
+  char path[64];
+
+  if (!format_proc_pid_path(path, pid, "/schedstat")) return;
+
+  char      buffer[128];
+  let const length   = read_small_file(path, buffer, sizeof(buffer));
+  let const text     = StringView{buffer, length};
+  usize     position = 0;
+
+  let const run_nanos = text.next_ascii_whitespace_word(position);
+  let const wait      = text.next_ascii_whitespace_word(position).to<u64>();
+  let const slices    = text.next_ascii_whitespace_word(position).to<u64>();
+
+  unused(run_nanos);
+  if (wait.is_error() || slices.is_error()) return;
+
+  LOG(Debug, "child %d waited %llu ns for a processor over %llu slices",
+      static_cast<int>(pid), static_cast<unsigned long long>(wait.value()),
+      static_cast<unsigned long long>(slices.value()));
+  resources.scheduler_wait_nanos = wait.value();
+  resources.time_slice_count     = slices.value();
+}
+
+fn
 fill_usage_from_proc_io(int                     io_descriptor,
                         process_resource_usage &resources) wontthrow -> void
 {
@@ -2270,10 +2328,12 @@ fill_usage_from_proc_io(int                     io_descriptor,
     Maybe<u64> process_resource_usage::*field;
   };
   static constexpr io_field FIELDS[] = {
-      {"rchar:", &process_resource_usage::read_byte_count   },
-      {"wchar:", &process_resource_usage::written_byte_count},
-      {"syscr:", &process_resource_usage::read_call_count   },
-      {"syscw:", &process_resource_usage::write_call_count  },
+      {"rchar:",       &process_resource_usage::read_byte_count           },
+      {"wchar:",       &process_resource_usage::written_byte_count        },
+      {"syscr:",       &process_resource_usage::read_call_count           },
+      {"syscw:",       &process_resource_usage::write_call_count          },
+      {"read_bytes:",  &process_resource_usage::storage_read_byte_count   },
+      {"write_bytes:", &process_resource_usage::storage_written_byte_count},
   };
 
   if (io_descriptor < 0) return;
@@ -2316,7 +2376,21 @@ wait_for_measured_child(pid_t                   child_pid,
                     WEXITED | WNOWAIT);
     });
 
-    if (wait_result == 0) fill_usage_from_proc_io(io_descriptor, *resources);
+    if (wait_result == 0) {
+      fill_usage_from_proc_io(io_descriptor, *resources);
+      fill_usage_from_proc_schedstat(child_pid, *resources);
+    }
+  }
+#elif defined __APPLE__
+  unused(io_descriptor);
+  if (resources != nullptr) {
+    siginfo_t info{};
+    let const wait_result = retry_interrupted([&] {
+      return waitid(P_PID, static_cast<id_t>(child_pid), &info,
+                    WEXITED | WNOWAIT);
+    });
+
+    if (wait_result == 0) fill_usage_from_rusage_info(child_pid, *resources);
   }
 #else
   unused(io_descriptor);

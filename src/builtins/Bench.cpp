@@ -46,8 +46,8 @@ FLAG(BENCH_EXTENDED,
      Bool,
      '\0',
      "extended",
-     "Also report CPU time, context switches, page faults, block operations, "
-     "system calls, and bytes transferred by each command.");
+     "Also report CPU time and usage, context switches, faults, IO, and the "
+     "cycles, scheduler, and energy counters the platform provides.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 HELP_SYNOPSIS_DECL("[--runs n] [--duration ms] [--ignore-exit-code] "
@@ -72,6 +72,8 @@ enum class metric_unit : u8
   Nanoseconds,
   Bytes,
   Count,
+  Ratio,
+  Nanojoules,
 };
 
 struct metric_stats
@@ -87,37 +89,40 @@ struct extended_metric
   StringView  name;
   metric_unit unit;
   Maybe<u64> os::process_resource_usage::*field;
+  bool                                    covers_descendants{false};
 };
 
-constexpr usize EXTENDED_METRIC_COUNT = 13;
+constexpr usize EXTENDED_METRIC_COUNT = 24;
+
+using usage = os::process_resource_usage;
 
 constexpr extended_metric EXTENDED_METRICS[EXTENDED_METRIC_COUNT] = {
-    {"user time",            metric_unit::Nanoseconds,
-     &os::process_resource_usage::user_nanos                      },
-    {"system time",          metric_unit::Nanoseconds,
-     &os::process_resource_usage::system_nanos                    },
-    {"voluntary switches",   metric_unit::Count,
-     &os::process_resource_usage::voluntary_context_switch_count  },
+    {"user time", metric_unit::Nanoseconds, &usage::user_nanos, true},
+    {"system time", metric_unit::Nanoseconds, &usage::system_nanos, true},
+    {"scheduler wait", metric_unit::Nanoseconds, &usage::scheduler_wait_nanos},
+    {"time slices", metric_unit::Count, &usage::time_slice_count},
+    {"cycles", metric_unit::Count, &usage::cpu_cycle_count},
+    {"instructions", metric_unit::Count, &usage::instruction_count},
+    {"wakeups", metric_unit::Count, &usage::wakeup_count},
+    {"energy", metric_unit::Nanojoules, &usage::energy_nanojoules},
+    {"page-ins", metric_unit::Count, &usage::page_in_count},
+    {"peak commit", metric_unit::Bytes, &usage::peak_commit_byte_count},
+    {"storage read", metric_unit::Bytes, &usage::storage_read_byte_count},
+    {"storage written", metric_unit::Bytes, &usage::storage_written_byte_count},
+    {"voluntary switches", metric_unit::Count,
+     &usage::voluntary_context_switch_count, true},
     {"involuntary switches", metric_unit::Count,
-     &os::process_resource_usage::involuntary_context_switch_count},
-    {"minor faults",         metric_unit::Count,
-     &os::process_resource_usage::minor_fault_count               },
-    {"major faults",         metric_unit::Count,
-     &os::process_resource_usage::major_fault_count               },
-    {"page faults",          metric_unit::Count,
-     &os::process_resource_usage::page_fault_count                },
-    {"block input",          metric_unit::Count,
-     &os::process_resource_usage::block_input_count               },
-    {"block output",         metric_unit::Count,
-     &os::process_resource_usage::block_output_count              },
-    {"read calls",           metric_unit::Count,
-     &os::process_resource_usage::read_call_count                 },
-    {"write calls",          metric_unit::Count,
-     &os::process_resource_usage::write_call_count                },
-    {"bytes read",           metric_unit::Bytes,
-     &os::process_resource_usage::read_byte_count                 },
-    {"bytes written",        metric_unit::Bytes,
-     &os::process_resource_usage::written_byte_count              },
+     &usage::involuntary_context_switch_count, true},
+    {"minor faults", metric_unit::Count, &usage::minor_fault_count, true},
+    {"major faults", metric_unit::Count, &usage::major_fault_count, true},
+    {"page faults", metric_unit::Count, &usage::page_fault_count},
+    {"block input", metric_unit::Count, &usage::block_input_count, true},
+    {"block output", metric_unit::Count, &usage::block_output_count, true},
+    {"read calls", metric_unit::Count, &usage::read_call_count},
+    {"write calls", metric_unit::Count, &usage::write_call_count},
+    {"bytes read", metric_unit::Bytes, &usage::read_byte_count},
+    {"bytes written", metric_unit::Bytes, &usage::written_byte_count},
+    {"other io calls", metric_unit::Count, &usage::other_io_call_count},
 };
 
 struct bench_sample
@@ -129,6 +134,7 @@ struct bench_sample
   double cache_references{0};
   double cache_misses{0};
   double branch_misses{0};
+  double cpu_usage_ratio{0};
   double extended_values[EXTENDED_METRIC_COUNT]{};
 };
 
@@ -142,7 +148,10 @@ public:
   bool         has_perf{false};
   bool         is_perf_system_wide{false};
   bool         has_extended[EXTENDED_METRIC_COUNT]{};
+  bool         is_process_only_hidden[EXTENDED_METRIC_COUNT]{};
+  bool         has_cpu_usage{false};
   metric_stats extended_stats[EXTENDED_METRIC_COUNT]{};
+  metric_stats cpu_usage{};
   metric_stats wall_time{};
   metric_stats peak_rss{};
   metric_stats cpu_cycles{};
@@ -236,6 +245,24 @@ format_metric(double      value,
       suffix = "KB";
     } else {
       suffix = "B";
+    }
+
+    break;
+
+  case metric_unit::Ratio: suffix = "x"; break;
+
+  case metric_unit::Nanojoules:
+    if (value >= 1e9) {
+      scaled = value / 1e9;
+      suffix = "J";
+    } else if (value >= 1e6) {
+      scaled = value / 1e6;
+      suffix = "mJ";
+    } else if (value >= 1e3) {
+      scaled = value / 1e3;
+      suffix = "uJ";
+    } else {
+      suffix = "nJ";
     }
 
     break;
@@ -479,6 +506,7 @@ sample_command(StringView shell_binary,
   bool      has_perf            = true;
   bool      is_perf_system_wide = false;
   bool      is_extended_available[EXTENDED_METRIC_COUNT];
+  bool      is_cpu_usage_available = should_collect_extended;
 
   for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++)
     is_extended_available[k] = should_collect_extended;
@@ -564,11 +592,29 @@ sample_command(StringView shell_binary,
     if (should_collect_extended) {
       for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
         let const &value = measured->resources.*(EXTENDED_METRICS[k].field);
+        let const  is_wrapper_only =
+            should_use_shell && !EXTENDED_METRICS[k].covers_descendants;
 
-        if (value.has_value())
+        if (value.has_value() && is_wrapper_only) {
+          result.is_process_only_hidden[k] = true;
+          is_extended_available[k]         = false;
+        } else if (value.has_value()) {
           sample.extended_values[k] = static_cast<double>(*value);
-        else
+        } else {
           is_extended_available[k] = false;
+        }
+      }
+
+      let const &resources = measured->resources;
+
+      if (resources.user_nanos.has_value() &&
+          resources.system_nanos.has_value() && measured->wall_nanos > 0)
+      {
+        sample.cpu_usage_ratio = static_cast<double>(*resources.user_nanos +
+                                                     *resources.system_nanos) /
+                                 static_cast<double>(measured->wall_nanos);
+      } else {
+        is_cpu_usage_available = false;
       }
     }
 
@@ -581,6 +627,12 @@ sample_command(StringView shell_binary,
       result.extended_stats[k] = compute_stats(
           samples, [k](const bench_sample &s) { return s.extended_values[k]; });
     }
+  }
+
+  result.has_cpu_usage = !samples.is_empty() && is_cpu_usage_available;
+  if (result.has_cpu_usage) {
+    result.cpu_usage = compute_stats(
+        samples, [](const bench_sample &s) { return s.cpu_usage_ratio; });
   }
 
   result.sample_count        = samples.count();
@@ -667,6 +719,11 @@ append_summary(String              &out,
                               metric_unit::Count, allocator));
   }
 
+  if (result.has_cpu_usage) {
+    rows.push(make_metric_row("cpu usage", result.cpu_usage, metric_unit::Ratio,
+                              allocator));
+  }
+
   for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
     if (result.has_extended[k]) {
       rows.push(make_metric_row(EXTENDED_METRICS[k].name,
@@ -686,6 +743,23 @@ append_summary(String              &out,
 
   for (usize i = 0; i < rows.count(); i++)
     append_metric_line(out, rows[i], mean_width, std_dev_width, should_color);
+
+  let hidden_names = String{allocator};
+
+  for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
+    if (!result.is_process_only_hidden[k]) continue;
+    if (!hidden_names.is_empty()) hidden_names += ", ";
+    hidden_names.append(EXTENDED_METRICS[k].name);
+  }
+
+  if (!hidden_names.is_empty()) {
+    out.append(colored(colors::ansi::DIM, should_color));
+    out += "  The ";
+    out.append(hidden_names.view());
+    out += " rows cover one process and are shown with --no-shell.";
+    out.append(colored(colors::ansi::RESET, should_color));
+    out += '\n';
+  }
 }
 
 fn

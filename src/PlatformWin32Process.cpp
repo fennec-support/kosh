@@ -257,16 +257,24 @@ fill_resource_usage(HANDLE                  process_handle,
         static_cast<u64>(memory_counters.PeakWorkingSetSize);
     resources.page_fault_count =
         static_cast<u64>(memory_counters.PageFaultCount);
+    resources.peak_commit_byte_count =
+        static_cast<u64>(memory_counters.PeakPagefileUsage);
   }
 
   IO_COUNTERS io_counters{};
 
   if (GetProcessIoCounters(process_handle, &io_counters) != FALSE) {
-    resources.read_call_count    = io_counters.ReadOperationCount;
-    resources.write_call_count   = io_counters.WriteOperationCount;
-    resources.read_byte_count    = io_counters.ReadTransferCount;
-    resources.written_byte_count = io_counters.WriteTransferCount;
+    resources.read_call_count     = io_counters.ReadOperationCount;
+    resources.write_call_count    = io_counters.WriteOperationCount;
+    resources.other_io_call_count = io_counters.OtherOperationCount;
+    resources.read_byte_count     = io_counters.ReadTransferCount;
+    resources.written_byte_count  = io_counters.WriteTransferCount;
   }
+
+  ULONG64 cycle_count = 0;
+
+  if (QueryProcessCycleTime(process_handle, &cycle_count) != FALSE)
+    resources.cpu_cycle_count = static_cast<u64>(cycle_count);
 }
 
 fn

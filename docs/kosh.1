@@ -1464,9 +1464,16 @@ and
 options control output, direct execution, sample count, and the millisecond
 budget. With
 .BR \-\-extended ,
-each command also reports CPU time, context switches, page faults, block
-operations, and read and write system calls and bytes. A row the platform
-cannot report is omitted.
+each command also reports CPU time and CPU usage over wall time, context
+switches, page faults, block operations, and read and write system calls and
+bytes. Platforms add what they can read after the command exits. macOS adds
+cycles, instructions, wakeups, energy, page-ins, and storage bytes for the
+measured process. Linux adds scheduler wait, time slices, and storage bytes,
+and Windows adds cycles, peak commit, and other IO calls. A row that covers one
+process is shown only with
+.BR \-\-no\-shell ,
+because through the shell it would count only the wrapping shell, and a note
+names the hidden rows. A row the platform cannot report is omitted.
 .TP
 .BI "koshconf create " "PRESET " "\fR[\fB\-\-force\fR]"
 .PD 0

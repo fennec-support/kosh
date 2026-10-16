@@ -2550,6 +2550,17 @@ struct process_resource_usage
   Maybe<u64> write_call_count{};
   Maybe<u64> read_byte_count{};
   Maybe<u64> written_byte_count{};
+  Maybe<u64> scheduler_wait_nanos{};
+  Maybe<u64> time_slice_count{};
+  Maybe<u64> cpu_cycle_count{};
+  Maybe<u64> instruction_count{};
+  Maybe<u64> wakeup_count{};
+  Maybe<u64> energy_nanojoules{};
+  Maybe<u64> page_in_count{};
+  Maybe<u64> peak_commit_byte_count{};
+  Maybe<u64> storage_read_byte_count{};
+  Maybe<u64> storage_written_byte_count{};
+  Maybe<u64> other_io_call_count{};
 };
 
 fn
