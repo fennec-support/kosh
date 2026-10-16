@@ -205,11 +205,8 @@ describe_exec_failure(const Path &program_path, int exec_error) throws
         {
           LOG(Debug, "the #! interpreter '%s' of '%s' is missing",
               interpreter.c_str(), program_path.c_str());
-          message += "the interpreter `";
-          message += interpreter.view();
-          message += "` named on its #! line does not exist";
-
-          return message;
+          return "The interpreter command `" + interpreter.view() +
+                 "` does not exist";
         }
       }
     }

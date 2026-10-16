@@ -14,7 +14,7 @@ pipeline=0 first=126
        |       ^~~~~~~~~
 rc=126
 == missing #! interpreter:
--c:1:1: error: Unable to execute `TMPDIR/badshebang`: the interpreter `/no/such/kosh_interpreter` named on its #! line does not exist.
+-c:1:1: error: The interpreter command `/no/such/kosh_interpreter` does not exist.
      1 |  ./badshebang; printf "rc=%s\n" "$?"
        |  ^~~~~~~~~~~~
 rc=127
