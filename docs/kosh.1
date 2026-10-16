@@ -144,8 +144,9 @@ Commands are read from standard input.
 .TP
 .BR \-c " " \fICOMMAND\fR ", " \-\-command =\fICOMMAND\fR
 COMMAND is run. The option may be repeated, and the command strings run in
-the order given. When a command string fails to parse or analysis rejects it,
-the shell exits with status 2 or 1 and the later strings do not run.
+the order given. A command string with a syntax error ends the shell with
+status 2, one that analysis rejects ends it with status 1, and the later strings
+do not run.
 .TP
 .BR \-e ", " \-\-error\-exit
 The shell exits after an unguarded failing command.
@@ -2770,8 +2771,8 @@ End accept all of it. Ctrl\-Right and Alt\-F accept only its next word.
 Ctrl\-K, Ctrl\-U, Ctrl\-W, Alt\-D, Alt\-Backspace and Ctrl\-Delete save the
 erased text in a kill ring of 16 entries that lasts for the session. Consecutive
 kills join into one entry. Ctrl\-K on an empty line of a multi-line buffer
-removes that line without saving it, and the cursor moves to the end of the
-previous line when one exists. Ctrl\-Y inserts the newest entry, and Alt\-Y right
+removes that line without adding it to the kill ring, and the cursor moves to
+the end of the previous line when one exists. Ctrl\-Y inserts the newest entry, and Alt\-Y right
 after a yank replaces it with the next older entry. Alt\-. and Alt\-_ insert the
 last word of the newest history entry, and each further press uses an older
 entry.
@@ -3640,8 +3641,8 @@ enclosing subshell. The default PS1 shows the git branch with its ahead and
 behind counts, then the user, host, and working directory, and it ends with a
 bullet.
 The shell expands the backslash escapes \\u,
-\\h, \\H, \\k, \\K, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\M, \\., \\t, \\T, \\@,
-\\A, \\d, \\s, \\v, \\V, \\!, \\#, \\l, \\n, \\r, \\e, \\a, \\[, and \\].
+\\h, \\H, \\k, \\K, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\M, \\., \\t, \\T,
+\\@, \\A, \\d, \\s, \\v, \\V, \\!, \\#, \\l, \\n, \\r, \\e, \\a, \\[, and \\].
 The \\k and \\K escapes insert the hostname as \\h and \\H do, colored when
 standard output is a color terminal. The \\s escape inserts the last component
 of the path the shell was started with, without a leading login dash or an .exe
@@ -3728,10 +3729,11 @@ current branch's upstream. Both are empty outside a repository, when no upstream
 is configured, and when the count is zero.
 .TP
 .BR KOSH_PS1_ *
-Each variable expands to the text of one prompt escape, computed when it is
-read, so a function can use it inside a prompt. An assignment is discarded.
-The variables are KOSH_PS1_USER for \\u, KOSH_PS1_HOST for \\h,
-KOSH_PS1_HOST_FULL for \\H, KOSH_PS1_CWD for \\w, KOSH_PS1_CWD_BASE for \\W, KOSH_PS1_CWD_SHORT for \\P, KOSH_PS1_GIT_BRANCH for \\g,
+Each variable expands to the text of one prompt escape at the time it is read.
+An assignment is discarded. The variables are KOSH_PS1_USER for \\u,
+KOSH_PS1_HOST for \\h, KOSH_PS1_HOST_FULL for \\H, KOSH_PS1_CWD for \\w,
+KOSH_PS1_CWD_BASE for \\W, KOSH_PS1_CWD_SHORT for \\P, KOSH_PS1_GIT_BRANCH
+for \\g,
 KOSH_PS1_PROMPT_SIGN for \\$, KOSH_PS1_STATUS for \\?, KOSH_PS1_JOBS for \\j,
 KOSH_PS1_DURATION for \\L, KOSH_PS1_MEMORY for \\M, KOSH_PS1_DOT for \\.,
 KOSH_PS1_TIME for \\t, KOSH_PS1_TIME_12 for \\T, KOSH_PS1_TIME_AMPM for \\@,
