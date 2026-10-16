@@ -45,3 +45,11 @@ azure-pipelines-ci.yml:8:13: error: This 'if' has no closing 'fi'.
 cloudbuild-prod.yaml:4:51: error: This 'if' has no closing 'fi'.
 .gitlab-ci.yaml:4:7: error: This 'if' has no closing 'fi'.
 compose.override.yml:3:15: error: This 'case' has no closing 'esac'.
+hooks/package.json:3:39: error: This 'case' has no closing 'esac'.
+hooks/package.json:4:36: error: This loop has no closing 'done'.
+configmap.yaml:6:5: error: This 'if' has no closing 'fi'.
+workflow.yaml:9:9: error: This 'case' has no closing 'esac'.
+compose/compose.yaml:6:13: error: This 'if' has no closing 'fi'.
+make/Makefile:4:3: error: This 'case' has no closing 'esac'.
+session.md:6:3: error: This loop has no closing 'done'.
+.vscode/tasks.json:2:72: error: This 'if' has no closing 'fi'.

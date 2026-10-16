@@ -2996,6 +2996,11 @@ parse_format_document(const parser_format_input &input) throws
     break;
   }
 
+  document.fragments.sort([](const parser_format_fragment &left,
+                             const parser_format_fragment &right) {
+    return left.host_start < right.host_start;
+  });
+
   usize     host_variable_count = 0;
   let const host_variables =
       host_variable_patterns(document.kind, host_variable_count);

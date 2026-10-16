@@ -628,3 +628,65 @@ for case_file in .github/workflows/shells.yml roles/web/tasks/main.yml \
   (cd "$cases" && "$BIN" --lint --no-traces "$case_file" 2>&1) |
     grep -E '^[^ ].*: (error|warning): '
 done
+
+more="$root/more"
+mkdir -p "$more/hooks" "$more/.vscode" "$more/make" "$more/compose"
+cat > "$more/hooks/package.json" <<'EOF'
+{
+  "config": {"cmd": "if true; then"},
+  "simple-git-hooks": {"pre-commit": "case x in"},
+  "husky": {"hooks": {"pre-push": "while true; do"}},
+  "lint-staged": {"*.js": "if true; then"}
+}
+EOF
+cat > "$more/configmap.yaml" <<'EOF'
+apiVersion: v1
+kind: ConfigMap
+data:
+  entrypoint.sh: |
+    #!/bin/sh
+    if true; then
+  settings.conf: |
+    if true; then
+EOF
+cat > "$more/workflow.yaml" <<'EOF'
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+spec:
+  templates:
+  - name: a
+    script:
+      command: [bash]
+      source: |
+        case x in
+EOF
+cat > "$more/compose/compose.yaml" <<'EOF'
+services:
+  app:
+    build:
+      dockerfile_inline: |
+        FROM alpine
+        RUN if true; then
+EOF
+printf '%s\n' '.RECIPEPREFIX = >' 'all:' '> echo ok' '> case x in' \
+  > "$more/make/Makefile"
+cat > "$more/session.md" <<'MD'
+```console
+$ cat <<EOF > x
+if true; then
+EOF
+output line
+$ while true; do
+```
+MD
+cat > "$more/.vscode/tasks.json" <<'EOF'
+{"tasks": [
+  {"label": "a", "type": "process", "command": "bash", "args": ["-c", "if true; then"]},
+  {"label": "b", "type": "process", "command": "python3", "args": ["-c", "if True: pass"]}
+]}
+EOF
+for more_file in hooks/package.json configmap.yaml workflow.yaml \
+  compose/compose.yaml make/Makefile session.md .vscode/tasks.json; do
+  (cd "$more" && "$BIN" --lint --no-traces "$more_file" 2>&1) |
+    grep -E '^[^ ].*: (error|warning): '
+done

@@ -151,6 +151,38 @@ starts_with_prompt(StringView source,
   return false;
 }
 
+static pure fn
+session_heredoc_delimiter(StringView line) wontthrow -> StringView
+{
+  for (usize position = 0; position + 2 < line.length; position++) {
+    if (line[position] != '<' || line[position + 1] != '<' ||
+        line[position + 2] == '<')
+    {
+      continue;
+    }
+
+    usize at = position + 2;
+
+    if (at < line.length && line[at] == '-') at++;
+    while (at < line.length && line[at] == ' ')
+      at++;
+    if (at < line.length && (line[at] == '\'' || line[at] == '"')) at++;
+
+    let const word_start = at;
+
+    while (at < line.length &&
+           ((line[at] >= 'A' && line[at] <= 'Z') ||
+            (line[at] >= 'a' && line[at] <= 'z') ||
+            (line[at] >= '0' && line[at] <= '9') || line[at] == '_'))
+      at++;
+
+    if (at > word_start)
+      return line.substring_of_length(word_start, at - word_start);
+  }
+
+  return {};
+}
+
 static fn
 markdown_analysis_source(StringView        source,
                          usize             start,
@@ -168,8 +200,9 @@ markdown_analysis_source(StringView        source,
   for (usize position = 0; position < start; position++)
     analysis.push(source[position] == '\n' ? '\n' : ' ');
 
-  usize position        = start;
-  bool  is_continuation = false;
+  usize      position        = start;
+  bool       is_continuation = false;
+  StringView heredoc_delimiter{};
 
   while (position < end) {
     let const line_start = position;
@@ -185,7 +218,10 @@ markdown_analysis_source(StringView        source,
       is_kept = false;
 
     if (language.is_session) {
-      if (is_continuation) {
+      if (!heredoc_delimiter.is_empty()) {
+        is_kept = true;
+        if (content.trim_blanks() == heredoc_delimiter) heredoc_delimiter = {};
+      } else if (is_continuation) {
         is_kept = true;
       } else if (content.starts_with("$ ") || content.starts_with("% ")) {
         masked_to = prefix + 2;
@@ -197,6 +233,8 @@ markdown_analysis_source(StringView        source,
 
       is_continuation =
           is_kept && !trimmed.is_empty() && trimmed[trimmed.length - 1] == '\\';
+      if (is_kept && heredoc_delimiter.is_empty())
+        heredoc_delimiter = session_heredoc_delimiter(content);
     }
 
     for (usize at = 0; at < line.length; at++) {

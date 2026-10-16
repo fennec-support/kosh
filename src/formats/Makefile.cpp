@@ -4,7 +4,8 @@
  *
  * This file converts make recipe bodies and shell-function arguments into
  * mapped shell fragments using the bundled make parser. A SHELL assignment
- * selects the mood, and .ONESHELL joins the lines of each recipe.
+ * selects the mood, .ONESHELL joins the lines of each recipe, and
+ * .RECIPEPREFIX replaces the tab that starts recipe lines.
  */
 
 #include "../Koshkit.hpp"
@@ -193,25 +194,77 @@ is_recipe_gap(StringView gap) wontthrow -> bool
   return true;
 }
 
+struct prefixed_source
+{
+  char   prefix{'\t'};
+  String source{heap_allocator()};
+};
+
+static fn
+recipe_prefix_source(StringView source) throws -> prefixed_source
+{
+  let   result   = prefixed_source{};
+  usize position = 0;
+  usize after    = 0;
+
+  while (position < source.length) {
+    let const text = source.next_line(position).trim_blanks();
+
+    if (!text.starts_with(".RECIPEPREFIX")) continue;
+
+    let value = text.substring(13).trim_blanks();
+
+    if (value.starts_with(":=") || value.starts_with("?="))
+      value = value.substring(2).trim_blanks();
+    else if (value.starts_with("="))
+      value = value.substring(1).trim_blanks();
+    else
+      continue;
+
+    if (value.length != 1 || value[0] == '\t') continue;
+    result.prefix = value[0];
+    after         = position;
+    break;
+  }
+
+  if (result.prefix == '\t') return result;
+
+  result.source.reserve(source.length);
+  for (usize at = 0; at < source.length; at++) {
+    let const is_line_start = at == 0 || source[at - 1] == '\n';
+
+    result.source.push(at >= after && is_line_start &&
+                               source[at] == result.prefix
+                           ? '\t'
+                           : source[at]);
+  }
+
+  return result;
+}
+
 fn
 parse_makefile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void
 {
   Maybe<mimic_mood> mood{};
-  let               targets = ArrayList<target_shell>{heap_allocator()};
+  let               targets       = ArrayList<target_shell>{heap_allocator()};
+  let               prefixed      = recipe_prefix_source(input.source);
+  let const         recipe_prefix = prefixed.prefix;
+  let const         source =
+      recipe_prefix == '\t' ? input.source : prefixed.source.view();
 
-  collect_shell_moods(input.source, mood, targets);
+  collect_shell_moods(source, mood, targets);
 
   let const ranges =
-      koshkit::parse_makefile_shell_sources(input.source, heap_allocator());
+      koshkit::parse_makefile_shell_sources(source, heap_allocator());
   let merged = ArrayList<koshkit::make_shell_source_range>{heap_allocator()};
 
   for (let const &range : ranges) {
-    if (has_oneshell(input.source) && !merged.is_empty() &&
+    if (has_oneshell(source) && !merged.is_empty() &&
         range.kind == koshkit::make_shell_source_kind::Recipe &&
         merged.back().kind == koshkit::make_shell_source_kind::Recipe &&
         merged.back().end_position <= range.start_position &&
-        is_recipe_gap(input.source.substring_of_length(
+        is_recipe_gap(source.substring_of_length(
             merged.back().end_position,
             range.start_position - merged.back().end_position)))
     {
@@ -224,13 +277,12 @@ parse_makefile_format(const parser_format_input &input,
 
   for (let const &range : merged) {
     let const range_mood =
-        recipe_mood(input.source, range.start_position, mood, targets);
+        recipe_mood(source, range.start_position, mood, targets);
 
     if (!range_mood.has_value()) continue;
 
-    let const raw =
-        koshkit::makefile_shell_analysis_source(input.source, range);
-    let analysis_source = String{heap_allocator()};
+    let const raw = koshkit::makefile_shell_analysis_source(source, range);
+    let       analysis_source = String{heap_allocator()};
 
     analysis_source.reserve(raw.length());
 
@@ -262,7 +314,7 @@ parse_makefile_format(const parser_format_input &input,
               range.start_position, range.end_position - range.start_position)};
       document.fragments.back().should_select_end =
           range.kind == koshkit::make_shell_source_kind::ShellFunction;
-      document.fragments.back().continuation_byte = '\t';
+      document.fragments.back().continuation_byte = recipe_prefix;
     }
   }
 }
