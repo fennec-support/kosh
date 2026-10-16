@@ -406,9 +406,7 @@ EvalContext::print_source_backtrace(
 
   source_frame *deferring_frame = nullptr;
 
-  if (should_defer_for_source_file &&
-      execution_store().subshell_depth() == 0)
-  {
+  if (should_defer_for_source_file && execution_store().subshell_depth() == 0) {
     for (usize i = source_store().source_frames().count(); i > 0; i--) {
       let &frame = source_store().source_frames()[i - 1];
 
