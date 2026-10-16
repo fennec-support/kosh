@@ -17,7 +17,7 @@ jobs:
     steps:
       - shell: bash
         run: |
-          printf '%s\n' "$GITHUB_EMBEDDED"
+          printf '%s\n' "$EMBEDDED_GITHUB"
           awk 'BEGIN { print "$10" }'
       - shell: pwsh
         run: |
@@ -75,18 +75,18 @@ EOF
 
 cat > "$root/.gitea/workflows/check.yml" <<'EOF'
 steps:
-  - run: 'printf "%s\n" "$GITEA_EMBEDDED"'
+  - run: 'printf "%s\n" "$EMBEDDED_GITEA"'
 EOF
 
 cat > "$root/.forgejo/workflows/check.yml" <<'EOF'
 steps:
-  - run: 'printf "%s\n" "$FORGEJO_EMBEDDED"'
+  - run: 'printf "%s\n" "$EMBEDDED_FORGEJO"'
 EOF
 
 cat > "$root/.gitlab-ci.yml" <<'EOF'
 job:
   script:
-    - printf '%s\n' "$GITLAB_EMBEDDED"
+    - printf '%s\n' "$EMBEDDED_GITLAB"
 EOF
 
 cat > "$root/playbook.yml" <<'EOF'
@@ -112,7 +112,7 @@ version: 2.1
 jobs:
   check:
     steps:
-      - run: printf '%s\n' "$CIRCLE_EMBEDDED"
+      - run: printf '%s\n' "$EMBEDDED_CIRCLE"
 EOF
 
 cat > "$root/azure-pipelines.yml" <<'EOF'
@@ -125,16 +125,16 @@ pipelines:
   default:
     - step:
         script:
-          - printf '%s\n' "$BITBUCKET_EMBEDDED"
+          - printf '%s\n' "$EMBEDDED_BITBUCKET"
 EOF
 
 cat > "$root/.buildkite/pipeline.yml" <<'EOF'
 steps:
-  - command: printf '%s\n' "$BUILDKITE_EMBEDDED"
+  - command: printf '%s\n' "$EMBEDDED_BUILDKITE"
 EOF
 
 cat > "$root/.travis.yml" <<'EOF'
-script: printf '%s\n' "$TRAVIS_EMBEDDED"
+script: printf '%s\n' "$EMBEDDED_TRAVIS"
 EOF
 
 cat > "$root/pod.yml" <<'EOF'
@@ -151,7 +151,7 @@ cat > "$root/.drone.yml" <<'EOF'
 kind: pipeline
 steps:
   - commands:
-      - printf '%s\n' "$DRONE_EMBEDDED"
+      - printf '%s\n' "$EMBEDDED_DRONE"
 EOF
 
 cat > "$root/.woodpecker/check.yml" <<'EOF'
@@ -230,7 +230,7 @@ count_variable_and_missing_executable()
   printf '%s %s' "$variable_count" "$command_count"
 }
 
-github=$(count_variable GITHUB_EMBEDDED "$root/.github/workflows/check.yml")
+github=$(count_variable EMBEDDED_GITHUB "$root/.github/workflows/check.yml")
 github_output=$("$BIN" --lint --no-traces \
   "$root/.github/workflows/check.yml" 2>&1)
 github_host=$(printf '%s' "$github_output" | \
@@ -263,19 +263,19 @@ set -- $(count_variable_and_missing_executable PACKAGE_EMBEDDED \
   missing_package_executable "$root/package.json")
 package=$1
 package_missing=$2
-gitea=$(count_variable GITEA_EMBEDDED "$root/.gitea/workflows/check.yml")
-forgejo=$(count_variable FORGEJO_EMBEDDED "$root/.forgejo/workflows/check.yml")
-gitlab=$(count_variable GITLAB_EMBEDDED "$root/.gitlab-ci.yml")
+gitea=$(count_variable EMBEDDED_GITEA "$root/.gitea/workflows/check.yml")
+forgejo=$(count_variable EMBEDDED_FORGEJO "$root/.forgejo/workflows/check.yml")
+gitlab=$(count_variable EMBEDDED_GITLAB "$root/.gitlab-ci.yml")
 ansible=$(count_variable ANSIBLE_EMBEDDED "$root/playbook.yml")
 compose=$(count_variable COMPOSE_EMBEDDED "$root/compose.yml")
 cloud_build=$(count_variable CLOUD_BUILD_EMBEDDED "$root/cloudbuild.yaml")
-circle=$(count_variable CIRCLE_EMBEDDED "$root/.circleci/config.yml")
+circle=$(count_variable EMBEDDED_CIRCLE "$root/.circleci/config.yml")
 azure=$(count_variable AZURE_EMBEDDED "$root/azure-pipelines.yml")
-bitbucket=$(count_variable BITBUCKET_EMBEDDED "$root/bitbucket-pipelines.yml")
-buildkite=$(count_variable BUILDKITE_EMBEDDED "$root/.buildkite/pipeline.yml")
-travis=$(count_variable TRAVIS_EMBEDDED "$root/.travis.yml")
+bitbucket=$(count_variable EMBEDDED_BITBUCKET "$root/bitbucket-pipelines.yml")
+buildkite=$(count_variable EMBEDDED_BUILDKITE "$root/.buildkite/pipeline.yml")
+travis=$(count_variable EMBEDDED_TRAVIS "$root/.travis.yml")
 kubernetes=$(count_variable KUBERNETES_EMBEDDED "$root/pod.yml")
-drone=$(count_variable DRONE_EMBEDDED "$root/.drone.yml")
+drone=$(count_variable EMBEDDED_DRONE "$root/.drone.yml")
 woodpecker=$(count_variable WOODPECKER_EMBEDDED "$root/.woodpecker/check.yml")
 set -- $(count_variable_and_missing_executable TASKFILE_EMBEDDED \
   missing_taskfile_executable "$root/Taskfile.yml")
@@ -471,5 +471,160 @@ steps:
 EOF
 for shape_file in .gitlab-ci.yml .github/workflows/ci.yml compose.yaml pod.yaml azure-pipelines.yml; do
   (cd "$root/shapes" && "$BIN" --lint --no-traces "$shape_file" 2>&1) |
+    grep -E '^[^ ].*: (error|warning): '
+done
+
+cases="$root/cases"
+mkdir -p "$cases/.github/workflows" "$cases/roles/web/tasks" \
+  "$cases/.devcontainer" "$cases/.vscode"
+cat > "$cases/.github/workflows/shells.yml" <<'EOF'
+defaults:
+  run:
+    shell: pwsh
+jobs:
+  win:
+    runs-on: ubuntu-latest
+    steps:
+      - run: if ($x) { Write-Host hi }
+      - run: if true; then
+        shell: bash
+      - run: Get-Item | Where { $_ }
+EOF
+cat > "$cases/roles/web/tasks/main.yml" <<'EOF'
+- name: bash task
+  shell: |
+    [[ -f /etc/x ]] && echo ok
+  args:
+    executable: /bin/bash
+- name: posix task
+  ansible.builtin.shell:
+    cmd: if true; then
+    chdir: /tmp
+EOF
+printf '%s\n' '.ONESHELL:' 'build: SHELL := /bin/bash' 'build:' \
+  '	if [[ -n x ]]; then' '	  echo yes' '	fi' 'plain:' '	[[ -n x ]]' \
+  > "$cases/Makefile.inc"
+cat > "$cases/pkg.spec.in" <<'EOF'
+%prep
+%setup -q
+if true; then
+%conf
+%configure
+%post -p <lua>
+if posix.stat("/x") then end
+EOF
+cat > "$cases/guide.mdx" <<'EOF'
+```console
+$ npm install
+added 1 package
+$ if true; then
+```
+
+> ```sh title="a.sh"
+> cp <file> <dest>
+> if true; then
+> ```
+EOF
+mkdir -p "$cases/just"
+cat > "$cases/just/justfile" <<'EOF'
+set shell := ['/usr/bin/env', 'bash', '-c']
+set export
+name := "x"
+
+[windows]
+w:
+    if ($true) { echo hi }
+
+[confirm("sure?"), script("python3")]
+p:
+    if True: pass
+
+a target:
+    [[ -n $name$target ]] && echo "{{ "}}" }}"
+    if true; then
+EOF
+printf '%s\n' '#!/bin/sh -eu' '[[ -n x ]]' > "$cases/run.j2"
+cat > "$cases/package.json" <<'EOF'
+{"scripts": {"a": "echo \u0026\u0026 true", "b": "if true; then"}}
+EOF
+cat > "$cases/.devcontainer/devcontainer.jsonc" <<'EOF'
+{
+  // "postCreateCommand": "if true; then",
+  "postAttachCommand": {"a": "echo ${containerWorkspaceFolder}", "b": "if true; then"},
+  "customizations": {"vscode": {"settings": {"postStartCommand": "if true; then"}}},
+  "onCreateCommand": ["sh", "-c", "case x in"]
+}
+EOF
+cat > "$cases/.vscode/tasks.json" <<'EOF'
+{
+  "tasks": [
+    {"label": "a", "command": "echo ${workspaceFolder:sub} ${env:HOME}",
+     "windows": {"command": "dir C:\\x"}},
+    {"label": "b", "command": "if true; then"}
+  ],
+  "inputs": [{"id": "x", "type": "command", "command": "ext.pick"}]
+}
+EOF
+cat > "$cases/Dockerfile-dev" <<'EOF'
+FROM alpine
+ARG VERSION=1
+RUN --mount=type=cache,target=/c echo "$VERSION"; \
+    # comment inside the instruction
+    if true; then
+HEALTHCHECK --interval=5s CMD case x in
+ONBUILD RUN while true; do
+CMD ["sh", "-c", "until false; do"]
+RUN [ -f /x ] && echo found
+RUN <<'EOT' bash
+[[ -n x ]] && echo ok
+EOT
+SHELL ["powershell", "-Command"]
+RUN if ($x) { }
+EOF
+cat > "$cases/azure-pipelines-ci.yml" <<'EOF'
+steps:
+- task: PowerShell@2
+  inputs:
+    script: |
+      if ($true) {
+- task: Bash@3
+  inputs:
+    script: if true; then
+EOF
+cat > "$cases/.drone.yaml" <<'EOF'
+kind: pipeline
+steps:
+- commands:
+  - if true; then
+---
+kind: pipeline
+platform: {os: windows}
+steps:
+- commands:
+  - if ($x) { }
+EOF
+cat > "$cases/cloudbuild-prod.yaml" <<'EOF'
+steps:
+- name: ubuntu
+  entrypoint: bash
+  args: ["-c", "echo $$HOME $_REGION $PROJECT_ID; if true; then"]
+EOF
+cat > "$cases/.gitlab-ci.yaml" <<'EOF'
+job:
+  script:
+    - echo "$CI_COMMIT_SHA"
+    - if true; then
+EOF
+cat > "$cases/compose.override.yml" <<'EOF'
+services:
+  app:
+    command: "case x in"
+EOF
+for case_file in .github/workflows/shells.yml roles/web/tasks/main.yml \
+  Makefile.inc pkg.spec.in guide.mdx just/justfile run.j2 package.json \
+  .devcontainer/devcontainer.jsonc .vscode/tasks.json Dockerfile-dev \
+  azure-pipelines-ci.yml .drone.yaml cloudbuild-prod.yaml .gitlab-ci.yaml \
+  compose.override.yml; do
+  (cd "$cases" && "$BIN" --lint --no-traces "$case_file" 2>&1) |
     grep -E '^[^ ].*: (error|warning): '
 done

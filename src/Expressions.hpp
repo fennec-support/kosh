@@ -529,14 +529,15 @@ enum class missing_shebang_policy : u8
 
 struct analysis_options
 {
-  u8                     warning_level{0};
-  bool                   is_default_mood{true};
-  bool                   should_emit_annoying{true};
-  bool                   should_silence_unresolved_commands{false};
-  bool                   should_report_optimizer_diagnostics{false};
-  missing_shebang_policy shebang_policy{missing_shebang_policy::Suppress};
-  StringView             source_base_directory{};
-  StringView             display_source{};
+  u8                       warning_level{0};
+  bool                     is_default_mood{true};
+  bool                     should_emit_annoying{true};
+  bool                     should_silence_unresolved_commands{false};
+  bool                     should_report_optimizer_diagnostics{false};
+  missing_shebang_policy   shebang_policy{missing_shebang_policy::Suppress};
+  StringView               source_base_directory{};
+  StringView               display_source{};
+  const ArrayList<String> *assumed_variables{nullptr};
 
   static fn
   from_runtime(const RuntimeState &runtime) wontthrow -> analysis_options

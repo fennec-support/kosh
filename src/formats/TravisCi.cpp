@@ -19,9 +19,9 @@ parse_travis_ci_format(const parser_format_input &input,
   static const StringView KEYS[] = {
       "before_install", "install",       "before_script", "script",
       "after_success",  "after_failure", "before_deploy", "deploy",
-      "after_deploy",   "after_script"};
+      "after_deploy",   "after_script",  "before_cache"};
 
-  parser_format_extract_yaml_keys(document, input.source, KEYS, 10,
+  parser_format_extract_yaml_keys(document, input.source, KEYS, countof(KEYS),
                                   mimic_mood::Bash,
                                   yaml_shell_selection::Nearby);
 }

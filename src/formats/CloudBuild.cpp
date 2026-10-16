@@ -19,10 +19,11 @@ parse_cloud_build_format(const parser_format_input &input,
   static const StringView KEYS[]      = {"script"};
   static const StringView EXEC_KEYS[] = {"args"};
 
-  parser_format_extract_yaml_keys(document, input.source, KEYS, 1,
-                                  mimic_mood::Posix,
-                                  yaml_shell_selection::Nearby);
-  parser_format_extract_yaml_exec_keys(document, input.source, EXEC_KEYS, 1);
+  parser_format_extract_yaml_keys(
+      document, input.source, KEYS, 1, mimic_mood::Posix,
+      yaml_shell_selection::Nearby, TEMPLATE_DOUBLE_DOLLAR);
+  parser_format_extract_yaml_exec_keys(document, input.source, EXEC_KEYS, 1,
+                                       TEMPLATE_DOUBLE_DOLLAR);
 }
 
 } /* namespace koshka */

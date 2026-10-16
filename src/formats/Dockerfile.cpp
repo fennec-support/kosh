@@ -2,10 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file extracts shell-form RUN, CMD, ENTRYPOINT, and HEALTHCHECK commands
- * from Dockerfiles. SHELL instructions select POSIX, Bash, or Koshka parsing
- * for subsequent commands, while JSON-array forms remain outside shell
- * analysis.
+ * This file extracts RUN, CMD, ENTRYPOINT, and HEALTHCHECK commands, including
+ * ONBUILD forms, from Dockerfiles. A SHELL instruction selects the mood, and an
+ * exec form contributes only the script of a shell -c command.
  */
 
 #include "../Lexer.hpp"
@@ -100,6 +99,7 @@ struct docker_heredoc
 {
   StringView delimiter;
   bool       is_shell_body;
+  StringView command;
 };
 
 static fn
@@ -149,31 +149,295 @@ read_docker_heredoc(StringView command) wontthrow -> Maybe<docker_heredoc>
     position++;
   }
 
-  return docker_heredoc{delimiter, position == command.length};
+  let const rest = command.substring(position).trim_blanks();
+
+  return docker_heredoc{delimiter, rest.is_empty(), rest};
+}
+
+static pure fn
+leading_blank_count(StringView line) wontthrow -> usize
+{
+  usize count = 0;
+
+  while (count < line.length && (line[count] == ' ' || line[count] == '\t'))
+    count++;
+
+  return count;
+}
+
+static pure fn
+skip_docker_flags(StringView line, usize position) wontthrow -> usize
+{
+  while (position + 1 < line.length && line[position] == '-' &&
+         line[position + 1] == '-')
+  {
+    while (position < line.length && line[position] != ' ' &&
+           line[position] != '\t')
+      position++;
+
+    while (position < line.length &&
+           (line[position] == ' ' || line[position] == '\t'))
+      position++;
+  }
+
+  return position;
+}
+
+static pure fn
+is_exec_form(StringView command) wontthrow -> bool
+{
+  if (command.is_empty() || command[0] != '[') return false;
+
+  usize position = 1;
+
+  while (position < command.length &&
+         (command[position] == ' ' || command[position] == '\t'))
+    position++;
+
+  return position < command.length &&
+         (command[position] == '"' || command[position] == ']');
+}
+
+struct docker_json_item
+{
+  usize start;
+  usize end;
+};
+
+static fn
+read_docker_json_array(StringView                   line,
+                       usize                        position,
+                       ArrayList<docker_json_item> &items) throws
+    -> void
+{
+  position++;
+
+  while (position < line.length) {
+    while (position < line.length &&
+           (line[position] == ' ' || line[position] == '\t' ||
+            line[position] == ','))
+      position++;
+
+    if (position >= line.length || line[position] != '"') return;
+
+    let const start = ++position;
+
+    while (position < line.length && line[position] != '"') {
+      if (line[position] == '\\') position++;
+      position++;
+    }
+
+    if (position >= line.length) return;
+    items.push(docker_json_item{start, position});
+    position++;
+  }
+}
+
+static pure fn
+docker_shell_mood(StringView program) wontthrow -> Maybe<mimic_mood>
+{
+  if (let const slash = program.find_last_character('/'))
+    program = program.substring(*slash + 1);
+
+  if (program == "bash") return mimic_mood::Bash;
+  if (program == "kosh") return mimic_mood::Default;
+  if (program == "sh" || program == "dash" || program == "ash")
+    return mimic_mood::Posix;
+
+  return None;
+}
+
+static pure fn
+docker_shebang_mood(StringView line, Maybe<mimic_mood> fallback) wontthrow
+    -> Maybe<mimic_mood>
+{
+  if (!line.starts_with("#!")) return fallback;
+
+  usize     position     = 2;
+  let const do_next_word = [&]() {
+    while (position < line.length && line[position] == ' ')
+      position++;
+
+    let const start = position;
+
+    while (position < line.length && line[position] != ' ' &&
+           line[position] != '\r')
+      position++;
+
+    return line.substring_of_length(start, position - start);
+  };
+
+  let program = do_next_word();
+
+  if (program == "/usr/bin/env" || program == "env") {
+    program = do_next_word();
+    if (program == "-S") program = do_next_word();
+  }
+
+  return docker_shell_mood(program);
+}
+
+static fn
+blanked_comment_source(StringView source, usize start, usize end) throws
+    -> Maybe<String>
+{
+  bool  has_comment = false;
+  usize position    = start;
+
+  while (position < end) {
+    let const line = source.next_line(position);
+    let const text = line.trim_blanks();
+
+    if (!text.is_empty() && text[0] == '#') has_comment = true;
+  }
+
+  if (!has_comment) return None;
+
+  let analysis = String{heap_allocator()};
+
+  analysis.reserve(end);
+
+  for (usize at = 0; at < start; at++)
+    analysis.push(source[at] == '\n' ? '\n' : ' ');
+
+  position = start;
+
+  while (position < end) {
+    let const line_start = position;
+    let const line       = source.next_line(position);
+    let const text       = line.trim_blanks();
+    let const is_comment = !text.is_empty() && text[0] == '#';
+
+    for (usize at = line_start; at < line_start + line.length && at < end; at++)
+      analysis.push(is_comment ? ' ' : source[at]);
+
+    if (line_start + line.length < end) analysis.push('\n');
+  }
+
+  return analysis;
+}
+
+static fn
+collect_docker_variables(StringView         source,
+                         ArrayList<String> &names) throws -> void
+{
+  usize position = 0;
+
+  while (position < source.length) {
+    let const line    = source.next_line(position);
+    let const text    = line.trim_blanks();
+    usize     keyword = 0;
+
+    while (keyword < text.length && text[keyword] != ' ' &&
+           text[keyword] != '\t')
+      keyword++;
+
+    let const word   = text.substring_of_length(0, keyword);
+    let const is_env = parser_format_ascii_equal(word, "ENV");
+
+    if (!is_env && !parser_format_ascii_equal(word, "ARG")) continue;
+
+    usize at = keyword;
+
+    while (at < text.length) {
+      while (at < text.length && (text[at] == ' ' || text[at] == '\t'))
+        at++;
+
+      let const start = at;
+
+      while (at < text.length && lexer::is_variable_name(text[at]))
+        at++;
+
+      if (at == start) break;
+      names.push(String{heap_allocator(),
+                        text.substring_of_length(start, at - start)});
+      if (at >= text.length || text[at] != '=') break;
+      at++;
+      if (at < text.length && (text[at] == '"' || text[at] == '\'')) {
+        let const quote = text[at++];
+
+        while (at < text.length && text[at] != quote) {
+          if (text[at] == '\\') at++;
+          at++;
+        }
+
+        at++;
+      } else {
+        while (at < text.length && text[at] != ' ' && text[at] != '\t')
+          at++;
+      }
+    }
+  }
 }
 
 fn
 parse_dockerfile_format(const parser_format_input &input,
                         parsed_format_document    &document) throws -> void
 {
-  mimic_mood mood     = mimic_mood::Posix;
-  usize      position = 0;
+  let variables = ArrayList<String>{heap_allocator()};
+
+  collect_docker_variables(input.source, variables);
+  defer {
+    for (let &fragment : document.fragments) {
+      for (let const &name : variables)
+        fragment.assumed_variables.push(name.clone());
+    }
+  };
+
+  Maybe<mimic_mood> mood              = mimic_mood::Posix;
+  usize             position          = 0;
+  bool              is_directive_area = true;
 
   while (position < input.source.length) {
-    let const line_start       = position;
-    let const line             = input.source.next_line(position);
-    usize     content_position = 0;
-    let const instruction      = docker_instruction(line, content_position);
+    let const line_start = position;
+    let const line       = input.source.next_line(position);
+    let const text       = line.trim_blanks();
+
+    if (is_directive_area && text.starts_with("#")) {
+      let const directive = text.substring(1).trim_blanks();
+
+      if (directive.starts_with("escape") &&
+          parser_format_has_substring(directive, "`"))
+      {
+        return;
+      }
+
+      continue;
+    }
+
+    is_directive_area = false;
+
+    usize content_position = 0;
+    let   instruction      = docker_instruction(line, content_position);
+
+    if (instruction == docker_instruction_kind::None) {
+      usize     word_end = 0;
+      let const trimmed  = line.substring(leading_blank_count(line));
+
+      while (word_end < trimmed.length && trimmed[word_end] != ' ' &&
+             trimmed[word_end] != '\t')
+        word_end++;
+
+      if (parser_format_ascii_equal(trimmed.substring_of_length(0, word_end),
+                                    "ONBUILD"))
+      {
+        let const base = leading_blank_count(line) + word_end;
+
+        instruction =
+            docker_instruction(line.substring(base), content_position);
+        content_position += base;
+      }
+    }
 
     if (instruction == docker_instruction_kind::Shell) {
-      let const shell = line.substring(content_position);
+      let items = ArrayList<docker_json_item>{heap_allocator()};
 
-      if (parser_format_has_substring(shell, "bash"))
-        mood = mimic_mood::Bash;
-      else if (parser_format_has_substring(shell, "kosh"))
-        mood = mimic_mood::Default;
-      else if (parser_format_has_substring(shell, "sh"))
-        mood = mimic_mood::Posix;
+      read_docker_json_array(line, content_position, items);
+      if (!items.is_empty()) {
+        mood = docker_shell_mood(line.substring_of_length(
+            items[0].start, items[0].end - items[0].start));
+      }
+
       continue;
     }
 
@@ -182,23 +446,48 @@ parse_dockerfile_format(const parser_format_input &input,
         instruction == docker_instruction_kind::Command ||
         instruction == docker_instruction_kind::Entrypoint;
 
+    if (instruction == docker_instruction_kind::Run)
+      content_position = skip_docker_flags(line, content_position);
+
     if (instruction == docker_instruction_kind::Healthcheck) {
-      let const remainder        = line.substring(content_position);
+      let const flags_end        = skip_docker_flags(line, content_position);
+      let const remainder        = line.substring(flags_end);
       usize     command_position = 0;
 
       if (docker_instruction(remainder, command_position) ==
           docker_instruction_kind::Command)
       {
-        content_position += command_position;
+        content_position     = flags_end + command_position;
         is_shell_instruction = true;
       }
     }
 
-    if (!is_shell_instruction || content_position >= line.length ||
-        line[content_position] == '[')
-    {
+    if (!is_shell_instruction || content_position >= line.length) continue;
+
+    if (is_exec_form(line.substring(content_position))) {
+      let items = ArrayList<docker_json_item>{heap_allocator()};
+
+      read_docker_json_array(line, content_position, items);
+      if (items.count() < 3) continue;
+
+      let const exec_mood = docker_shell_mood(line.substring_of_length(
+          items[0].start, items[0].end - items[0].start));
+      let const flag      = line.substring_of_length(items[1].start,
+                                                     items[1].end - items[1].start);
+
+      if (!exec_mood.has_value() || flag.length < 2 || flag[0] != '-' ||
+          !flag.find_character('c').has_value())
+      {
+        continue;
+      }
+
+      parser_format_add_json_fragment(document, input.source,
+                                      line_start + items[2].start,
+                                      line_start + items[2].end, *exec_mood);
       continue;
     }
+
+    if (!mood.has_value()) continue;
 
     let const heredoc =
         instruction == docker_instruction_kind::Run
@@ -222,9 +511,24 @@ parse_dockerfile_format(const parser_format_input &input,
         body_end = body_line_start + body_line.length;
       }
 
-      if (heredoc->is_shell_body && body_end > body_start) {
-        parser_format_add_fragment(document, input.source, body_start, body_end,
-                                   0, None, parser_format_codec::Direct, mood);
+      usize     first_position = body_start;
+      let const first_line     = input.source.next_line(first_position);
+      let       body_mood      = docker_shebang_mood(first_line, mood);
+      let const is_shell_body  = heredoc->is_shell_body ||
+                                docker_shell_mood(heredoc->command).has_value();
+
+      if (!heredoc->is_shell_body)
+        body_mood = docker_shell_mood(heredoc->command);
+
+      if (is_shell_body && body_mood.has_value() && body_end > body_start) {
+        let const content_start =
+            first_line.starts_with("#!") ? first_position : body_start;
+
+        if (content_start < body_end) {
+          parser_format_add_fragment(document, input.source, content_start,
+                                     body_end, 0, None,
+                                     parser_format_codec::Direct, *body_mood);
+        }
       }
 
       continue;
@@ -236,15 +540,22 @@ parse_dockerfile_format(const parser_format_input &input,
     while (is_continued && position < input.source.length) {
       let const continuation_start = position;
       let const continuation       = input.source.next_line(position);
+      let const continuation_text  = continuation.trim_blanks();
 
-      shell_end    = continuation_start + continuation.length;
+      shell_end = continuation_start + continuation.length;
+      if (!continuation_text.is_empty() && continuation_text[0] == '#')
+        continue;
+
       is_continued = !continuation.is_empty() &&
                      continuation[continuation.length - 1] == '\\';
     }
 
-    parser_format_add_fragment(document, input.source,
-                               line_start + content_position, shell_end, 4,
-                               None, parser_format_codec::Continued, mood);
+    let const shell_start = line_start + content_position;
+
+    parser_format_add_fragment(
+        document, input.source, shell_start, shell_end, 4,
+        blanked_comment_source(input.source, shell_start, shell_end),
+        parser_format_codec::Continued, *mood);
   }
 }
 

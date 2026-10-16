@@ -22,3 +22,26 @@ compose.yaml:10:16: error: This 'if' has no closing 'fi'.
 pod.yaml:10:9: error: This loop has no closing 'done'.
 azure-pipelines.yml:4:5: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
 azure-pipelines.yml:6:9: error: This 'if' has no closing 'fi'.
+.github/workflows/shells.yml:9:14: error: This 'if' has no closing 'fi'.
+roles/web/tasks/main.yml:8:10: error: This 'if' has no closing 'fi'.
+Makefile.inc:4:11: warning: The string test has a literal operand, so its result never changes. (SC2157)
+Makefile.inc:8:2: error: The [[ conditional is a bash extension.
+pkg.spec.in:3:1: error: This 'if' has no closing 'fi'.
+guide.mdx:4:3: error: This 'if' has no closing 'fi'.
+guide.mdx:9:3: error: This 'if' has no closing 'fi'.
+just/justfile:15:5: error: This 'if' has no closing 'fi'.
+run.j2:2:1: error: The [[ conditional is a bash extension.
+package.json:1:51: error: This 'if' has no closing 'fi'.
+.devcontainer/devcontainer.jsonc:3:72: error: This 'if' has no closing 'fi'.
+.devcontainer/devcontainer.jsonc:5:36: error: This 'case' has no closing 'esac'.
+.vscode/tasks.json:5:32: error: This 'if' has no closing 'fi'.
+Dockerfile-dev:5:5: error: This 'if' has no closing 'fi'.
+Dockerfile-dev:6:31: error: This 'case' has no closing 'esac'.
+Dockerfile-dev:7:13: error: This loop has no closing 'done'.
+Dockerfile-dev:8:19: error: This loop has no closing 'done'.
+Dockerfile-dev:11:7: warning: The string test has a literal operand, so its result never changes. (SC2157)
+azure-pipelines-ci.yml:8:13: error: This 'if' has no closing 'fi'.
+.drone.yaml:4:5: error: This 'if' has no closing 'fi'.
+cloudbuild-prod.yaml:4:51: error: This 'if' has no closing 'fi'.
+.gitlab-ci.yaml:4:7: error: This 'if' has no closing 'fi'.
+compose.override.yml:3:15: error: This 'case' has no closing 'esac'.

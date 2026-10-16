@@ -2,30 +2,226 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file extracts fenced Bash, POSIX shell, and Koshka code blocks from
- * Markdown. It recognizes backtick and tilde fences, preserves indentation,
- * and maps formatted replacements back inside the original fence.
+ * This file extracts fenced shell code blocks from Markdown, including fences
+ * inside lists and block quotes. Console sessions keep only prompted commands,
+ * and angle-bracket placeholders and elision lines are masked.
  */
 
 #include "../ParserFormats.hpp"
 
 namespace koshka {
 
-constexpr static_string_entry<mimic_mood> MARKDOWN_MOOD_ENTRIES[] = {
-    {SSK("bash"),        mimic_mood::Bash   },
-    {SSK("shell"),       mimic_mood::Bash   },
-    {SSK("shellscript"), mimic_mood::Bash   },
-    {SSK("sh"),          mimic_mood::Posix  },
-    {SSK("posix"),       mimic_mood::Posix  },
-    {SSK("dash"),        mimic_mood::Posix  },
-    {SSK("kosh"),        mimic_mood::Default},
+struct markdown_language
+{
+  mimic_mood mood;
+  bool       is_session;
 };
-constexpr StaticStringMap MARKDOWN_MOODS{MARKDOWN_MOOD_ENTRIES};
+
+constexpr static_string_entry<markdown_language> MARKDOWN_LANGUAGE_ENTRIES[] = {
+    {SSK("bash"),          {mimic_mood::Bash, false}   },
+    {SSK("shell"),         {mimic_mood::Bash, false}   },
+    {SSK("shellscript"),   {mimic_mood::Bash, false}   },
+    {SSK("sh"),            {mimic_mood::Posix, false}  },
+    {SSK("posix"),         {mimic_mood::Posix, false}  },
+    {SSK("dash"),          {mimic_mood::Posix, false}  },
+    {SSK("kosh"),          {mimic_mood::Default, false}},
+    {SSK("console"),       {mimic_mood::Bash, true}    },
+    {SSK("terminal"),      {mimic_mood::Bash, true}    },
+    {SSK("shell-session"), {mimic_mood::Bash, true}    },
+    {SSK("shellsession"),  {mimic_mood::Bash, true}    },
+    {SSK("sh-session"),    {mimic_mood::Bash, true}    },
+    {SSK("bash-session"),  {mimic_mood::Bash, true}    },
+};
+constexpr StaticStringMap MARKDOWN_LANGUAGES{MARKDOWN_LANGUAGE_ENTRIES};
 
 static fn
-markdown_mood(StringView info) throws -> Maybe<mimic_mood>
+markdown_language_of(StringView info) throws -> Maybe<markdown_language>
 {
-  return parser_format_find_ascii_folded(MARKDOWN_MOODS, info.trim_blanks());
+  info = info.trim_blanks();
+
+  while (!info.is_empty() && (info[0] == '{' || info[0] == '.'))
+    info = info.substring(1);
+
+  usize end = 0;
+
+  while (end < info.length && info[end] != ' ' && info[end] != ',' &&
+         info[end] != ':' && info[end] != '{' && info[end] != '}' &&
+         info[end] != '\t')
+    end++;
+
+  return parser_format_find_ascii_folded(MARKDOWN_LANGUAGES,
+                                         info.substring_of_length(0, end));
+}
+
+static pure fn
+markdown_prefix_length(StringView line, usize quote_depth) wontthrow -> usize
+{
+  usize position = 0;
+  usize depth    = 0;
+
+  while (position < line.length) {
+    if (line[position] == ' ') {
+      position++;
+      continue;
+    }
+
+    if (line[position] == '>' && depth < quote_depth) {
+      depth++;
+      position++;
+      continue;
+    }
+
+    break;
+  }
+
+  return position;
+}
+
+static pure fn
+markdown_quote_depth(StringView line) wontthrow -> usize
+{
+  usize depth = 0;
+
+  for (usize position = 0; position < line.length; position++) {
+    if (line[position] == '>')
+      depth++;
+    else if (line[position] != ' ')
+      break;
+  }
+
+  return depth;
+}
+
+static pure fn
+is_placeholder_end(StringView line, usize open, usize &close) wontthrow -> bool
+{
+  if (open + 2 >= line.length || line[open + 1] == '<' || line[open + 1] == '(')
+    return false;
+  if (open > 0 && line[open - 1] != ' ' && line[open - 1] != '=' &&
+      line[open - 1] != '"' && line[open - 1] != '\'' && line[open - 1] != '/')
+  {
+    return false;
+  }
+
+  usize position = open + 1;
+
+  while (position < line.length &&
+         ((line[position] >= 'a' && line[position] <= 'z') ||
+          (line[position] >= 'A' && line[position] <= 'Z') ||
+          (line[position] >= '0' && line[position] <= '9') ||
+          line[position] == '_' || line[position] == '-' ||
+          line[position] == '.'))
+    position++;
+
+  if (position == open + 1 || position >= line.length || line[position] != '>')
+    return false;
+
+  let const after = position + 1;
+
+  if (after < line.length && line[after] != ' ' && line[after] != '"' &&
+      line[after] != '\'' && line[after] != ';' && line[after] != '/' &&
+      line[after] != '\r')
+  {
+    return false;
+  }
+
+  close = position;
+
+  return true;
+}
+
+static pure fn
+starts_with_prompt(StringView source,
+                   usize      start,
+                   usize      end,
+                   usize      quote_depth) wontthrow -> bool
+{
+  usize position = start;
+
+  while (position < end) {
+    let const line = source.next_line(position);
+    let const content =
+        line.substring(markdown_prefix_length(line, quote_depth));
+
+    if (content.trim_blanks().is_empty()) continue;
+
+    return content.starts_with("$ ");
+  }
+
+  return false;
+}
+
+static fn
+markdown_analysis_source(StringView        source,
+                         usize             start,
+                         usize             end,
+                         usize             quote_depth,
+                         markdown_language language) throws -> String
+{
+  if (starts_with_prompt(source, start, end, quote_depth))
+    language.is_session = true;
+
+  let analysis = String{heap_allocator()};
+
+  analysis.reserve(end);
+
+  for (usize position = 0; position < start; position++)
+    analysis.push(source[position] == '\n' ? '\n' : ' ');
+
+  usize position        = start;
+  bool  is_continuation = false;
+
+  while (position < end) {
+    let const line_start = position;
+    let const line       = source.next_line(position);
+    let const line_end   = line_start + line.length;
+    let const prefix     = markdown_prefix_length(line, quote_depth);
+    let const content    = line.substring(prefix);
+    bool      is_kept    = true;
+    usize     masked_to  = prefix;
+
+    if (content.trim_blanks() == "..." ||
+        content.trim_blanks() == "\xe2\x80\xa6")
+      is_kept = false;
+
+    if (language.is_session) {
+      if (is_continuation) {
+        is_kept = true;
+      } else if (content.starts_with("$ ") || content.starts_with("% ")) {
+        masked_to = prefix + 2;
+      } else {
+        is_kept = false;
+      }
+
+      let const trimmed = content.trim_blanks();
+
+      is_continuation =
+          is_kept && !trimmed.is_empty() && trimmed[trimmed.length - 1] == '\\';
+    }
+
+    for (usize at = 0; at < line.length; at++) {
+      let const host_position = line_start + at;
+      usize     close         = 0;
+
+      if (!is_kept || at < masked_to) {
+        analysis.push(' ');
+        continue;
+      }
+
+      if (line[at] == '<' && is_placeholder_end(line, at, close)) {
+        analysis.append("$$");
+        analysis.append_repeated('x', close - at - 1);
+        at = close;
+        continue;
+      }
+
+      analysis.push(source[host_position]);
+    }
+
+    if (line_end < end) analysis.push('\n');
+  }
+
+  return analysis;
 }
 
 fn
@@ -37,13 +233,8 @@ parse_markdown_format(const parser_format_input &input,
   while (position < input.source.length) {
     let const opener_start = position;
     let const line         = input.source.next_line(position);
-    usize     fence_start  = 0;
-
-    while (fence_start < line.length && fence_start < 4 &&
-           line[fence_start] == ' ')
-    {
-      fence_start++;
-    }
+    let const quote_depth  = markdown_quote_depth(line);
+    let const fence_start  = markdown_prefix_length(line, quote_depth);
 
     if (fence_start >= line.length ||
         (line[fence_start] != '`' && line[fence_start] != '~'))
@@ -62,25 +253,16 @@ parse_markdown_format(const parser_format_input &input,
 
     if (fence_length < 3) continue;
 
-    let const mood = markdown_mood(line.substring(fence_start + fence_length));
-
-    if (!mood.has_value()) continue;
-
+    let const language =
+        markdown_language_of(line.substring(fence_start + fence_length));
     let const shell_start = position;
     usize     shell_end   = input.source.length;
 
     while (position < input.source.length) {
       let const closer_start  = position;
       let const closer        = input.source.next_line(position);
-      usize     closer_indent = 0;
-
-      while (closer_indent < closer.length && closer_indent < 4 &&
-             closer[closer_indent] == ' ')
-      {
-        closer_indent++;
-      }
-
-      usize closer_length = 0;
+      let const closer_indent = markdown_prefix_length(closer, quote_depth);
+      usize     closer_length = 0;
 
       while (closer_indent + closer_length < closer.length &&
              closer[closer_indent + closer_length] == fence_byte)
@@ -93,9 +275,14 @@ parse_markdown_format(const parser_format_input &input,
       break;
     }
 
-    if (shell_start < shell_end)
-      parser_format_add_indented_fragment(document, input.source, shell_start,
-                                          shell_end, fence_start, *mood);
+    if (language.has_value() && shell_start < shell_end) {
+      parser_format_add_indented_fragment(
+          document, input.source, shell_start, shell_end, fence_start,
+          language->mood,
+          markdown_analysis_source(input.source, shell_start, shell_end,
+                                   quote_depth, *language));
+    }
+
     if (position <= opener_start) break;
   }
 }

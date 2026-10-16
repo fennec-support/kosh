@@ -852,7 +852,15 @@ Server::publish_diagnostics(Document &document) throws -> bool
     let const document_directory =
         document.path.has_value() ? document.path->parent() : Path{};
 
+    let assumed_variables = ArrayList<String>{heap_allocator()};
+
+    for (let const &fragment : document.format.fragments) {
+      for (let const &assumed : fragment.assumed_variables)
+        assumed_variables.push(assumed.clone());
+    }
+
     options.source_base_directory = document_directory.view();
+    options.assumed_variables     = &assumed_variables;
     analyze_ast(ast, document.shell_source(), functions, aliases, &m_context,
                 options, directives, {&followed_paths, &source_effects}, {},
                 {nullptr, &diagnostics, &symbol_records}, this, nullptr,

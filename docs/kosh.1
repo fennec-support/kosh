@@ -308,14 +308,21 @@ Every startup file is skipped.
 .PP
 Shell commands are extracted from CI configurations, Ansible, Dockerfile,
 Compose, Markdown, Makefile, justfile, Kubernetes, and similar hosts. Only the
-extracted sh, bash, or kosh source is parsed and diagnosed. Each justfile recipe
-line, joined across backslash continuations, is checked as one command, and a
-shebang or script recipe is checked as one script. A Jinja template of a shell
-script, such as
+extracted sh, bash, or kosh source is parsed and diagnosed. A host interpreter
+setting, such as a step shell, a SHELL assignment or instruction, a shebang, or
+an executable option, selects the shell, and a command for another interpreter
+is skipped. An exec array contributes only the script of a shell
+.B \-c
+command. Each justfile recipe line, joined across backslash continuations, is
+checked as one command, and a shebang or script recipe is checked as one
+script. A Jinja template of a shell script, such as
 .IR name .sh.j2,
-is checked with its template syntax masked. Interpolated values are treated as
+is checked with its template syntax masked. Host template expressions and
+editor variables are masked in every format. Interpolated values are treated as
 plain words, and a command that cannot be resolved is not reported in a
-template or in a recipe line that contains an interpolation.
+fragment that contains an interpolation. Variables that the host provides, such
+as CI variables, exported recipe parameters, and Dockerfile ARG and ENV values,
+are treated as set. Diagnostics point into the host file and show its text.
 .PP
 With
 .BR \-\-apply ,

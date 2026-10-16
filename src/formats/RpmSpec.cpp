@@ -2,27 +2,201 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file extracts POSIX shell bodies from RPM preparation, build,
- * installation, check, transaction, and trigger sections. Each fragment ends
- * at the next unescaped section directive.
+ * This file extracts shell bodies from RPM spec script sections and
+ * scriptlets. A section ends at the next section header, macro lines are
+ * blanked, inline macros are masked, and a non-shell -p interpreter is skipped.
  */
 
 #include "../ParserFormats.hpp"
 
 namespace koshka {
 
-static pure fn
-is_script_section(StringView line) wontthrow -> bool
-{
-  static const StringView SECTIONS[] = {
-      "%prep",      "%build",     "%install",   "%check",        "%clean",
-      "%pre",       "%post",      "%preun",     "%postun",       "%pretrans",
-      "%posttrans", "%triggerin", "%triggerun", "%triggerpostun"};
+static constexpr StringView SCRIPT_SECTIONS[] = {
+    "%prep",
+    "%conf",
+    "%build",
+    "%install",
+    "%check",
+    "%clean",
+    "%generate_buildrequires",
+    "%pre",
+    "%post",
+    "%preun",
+    "%postun",
+    "%pretrans",
+    "%posttrans",
+    "%preuntrans",
+    "%postuntrans",
+    "%verifyscript",
+    "%triggerprein",
+    "%triggerin",
+    "%triggerun",
+    "%triggerpostun",
+    "%filetriggerin",
+    "%filetriggerun",
+    "%filetriggerpostun",
+    "%transfiletriggerin",
+    "%transfiletriggerun",
+    "%transfiletriggerpostun",
+};
 
-  for (let const section : SECTIONS)
-    if (line.starts_with(section)) return true;
+static constexpr StringView OTHER_SECTIONS[] = {
+    "%description", "%package",    "%files",
+    "%changelog",   "%sourcelist", "%patchlist",
+};
+
+static pure fn
+section_word(StringView line) wontthrow -> StringView
+{
+  usize end = 0;
+
+  while (end < line.length && line[end] != ' ' && line[end] != '\t')
+    end++;
+
+  return line.substring_of_length(0, end);
+}
+
+static pure fn
+is_section_header(StringView line, bool &is_script) wontthrow -> bool
+{
+  let const word = section_word(line);
+
+  for (let const section : SCRIPT_SECTIONS) {
+    if (word == section) {
+      is_script = true;
+
+      return true;
+    }
+  }
+
+  for (let const section : OTHER_SECTIONS) {
+    if (word == section) {
+      is_script = false;
+
+      return true;
+    }
+  }
 
   return false;
+}
+
+static pure fn
+section_interpreter_mood(StringView header) wontthrow -> Maybe<mimic_mood>
+{
+  let const option = header.find_substring(" -p ");
+
+  if (!option.has_value()) return mimic_mood::Posix;
+
+  let   program = header.substring(*option + 4).trim_blanks();
+  usize end     = 0;
+
+  while (end < program.length && program[end] != ' ')
+    end++;
+
+  program = program.substring_of_length(0, end);
+  if (let const slash = program.find_last_character('/'))
+    program = program.substring(*slash + 1);
+
+  if (program == "bash") return mimic_mood::Bash;
+  if (program == "sh") return mimic_mood::Posix;
+
+  return None;
+}
+
+static pure fn
+macro_end(StringView source, usize position, usize end)
+    wontthrow -> Maybe<usize>
+{
+  if (position + 1 >= end || source[position] != '%') return None;
+
+  let const next = source[position + 1];
+
+  if (next == '{') {
+    usize depth = 0;
+
+    for (usize at = position + 1; at < end; at++) {
+      if (source[at] == '\n') return None;
+      if (source[at] == '{') depth++;
+      if (source[at] == '}' && --depth == 0) return at + 1;
+    }
+
+    return None;
+  }
+
+  static constexpr StringView BARE_MACROS[] = {
+      "buildroot", "name", "version", "release", "optflags",
+  };
+
+  usize word_end = position + 1;
+
+  while (word_end < end &&
+         ((source[word_end] >= 'a' && source[word_end] <= 'z') ||
+          (source[word_end] >= 'A' && source[word_end] <= 'Z') ||
+          (source[word_end] >= '0' && source[word_end] <= '9') ||
+          source[word_end] == '_'))
+    word_end++;
+
+  let const word =
+      source.substring_of_length(position + 1, word_end - position - 1);
+
+  if (word.length > 1 && word[0] == '_') return word_end;
+
+  for (let const macro : BARE_MACROS) {
+    if (word == macro) return word_end;
+  }
+
+  return None;
+}
+
+static fn
+masked_section_source(StringView source, usize start, usize end) throws
+    -> String
+{
+  let analysis = String{heap_allocator()};
+
+  analysis.reserve(end);
+
+  for (usize position = 0; position < start; position++)
+    analysis.push(source[position] == '\n' ? '\n' : ' ');
+
+  bool  is_line_start = true;
+  usize position      = start;
+
+  while (position < end) {
+    let const byte = source[position];
+
+    if (is_line_start && byte == '%' && position + 1 < end &&
+        source[position + 1] != '%')
+    {
+      while (position < end && source[position] != '\n') {
+        analysis.push(' ');
+        position++;
+      }
+
+      continue;
+    }
+
+    is_line_start = byte == '\n';
+
+    if (let const macro = macro_end(source, position, end)) {
+      let const length = *macro - position;
+
+      if (length >= 2) {
+        analysis.append("$$");
+        analysis.append_repeated('x', length - 2);
+      } else {
+        analysis.push('x');
+      }
+
+      position = *macro;
+      continue;
+    }
+
+    analysis.push(byte);
+    position++;
+  }
+
+  return analysis;
 }
 
 fn
@@ -32,28 +206,33 @@ parse_rpm_spec_format(const parser_format_input &input,
   usize position = 0;
 
   while (position < input.source.length) {
-    let const line = input.source.next_line(position);
+    let const line      = input.source.next_line(position);
+    bool      is_script = false;
 
-    if (!is_script_section(line)) continue;
+    if (!is_section_header(line, is_script) || !is_script) continue;
 
+    let const mood        = section_interpreter_mood(line);
     let const shell_start = position;
     usize     shell_end   = input.source.length;
 
     while (position < input.source.length) {
-      let const next_start = position;
-      let const next_line  = input.source.next_line(position);
+      let const next_start     = position;
+      let const next_line      = input.source.next_line(position);
+      bool      is_next_script = false;
 
-      if (!next_line.is_empty() && next_line[0] == '%' &&
-          !next_line.starts_with("%%"))
-      {
+      if (is_section_header(next_line, is_next_script)) {
         shell_end = next_start;
+        position  = next_start;
         break;
       }
     }
 
-    parser_format_add_fragment(document, input.source, shell_start, shell_end,
-                               0, None, parser_format_codec::Direct,
-                               mimic_mood::Posix);
+    if (!mood.has_value() || shell_start >= shell_end) continue;
+
+    parser_format_add_fragment(
+        document, input.source, shell_start, shell_end, 0,
+        masked_section_source(input.source, shell_start, shell_end),
+        parser_format_codec::Direct, *mood);
   }
 }
 

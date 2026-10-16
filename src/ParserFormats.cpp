@@ -83,8 +83,8 @@ static pure fn
 known_host_extension(StringView path) wontthrow -> bool
 {
   static const StringView EXTENSIONS[] = {
-      ".json", ".jsonc", ".markdown", ".md",   ".mk",
-      ".nix",  ".spec",  ".tf",       ".yaml", ".yml",
+      ".json", ".jsonc", ".markdown", ".md", ".mdc",  ".mdx", ".mk",
+      ".make", ".nix",   ".spec",     ".tf", ".yaml", ".yml",
   };
 
   for (let const extension : EXTENSIONS)
@@ -97,7 +97,13 @@ constexpr static_string_entry<parser_format_kind> FORMAT_FILENAME_ENTRIES[] = {
     {SSK("action.yml"),               parser_format_kind::GithubActions     },
     {SSK("action.yaml"),              parser_format_kind::GithubActions     },
     {SSK(".gitlab-ci.yml"),           parser_format_kind::GitlabCi          },
+    {SSK(".gitlab-ci.yaml"),          parser_format_kind::GitlabCi          },
     {SSK(".drone.yml"),               parser_format_kind::Drone             },
+    {SSK(".drone.yaml"),              parser_format_kind::Drone             },
+    {SSK("buildkite.yml"),            parser_format_kind::Buildkite         },
+    {SSK("buildkite.yaml"),           parser_format_kind::Buildkite         },
+    {SSK(".buildkite.yml"),           parser_format_kind::Buildkite         },
+    {SSK(".buildkite.yaml"),          parser_format_kind::Buildkite         },
     {SSK(".woodpecker.yml"),          parser_format_kind::Woodpecker        },
     {SSK(".woodpecker.yaml"),         parser_format_kind::Woodpecker        },
     {SSK("azure-pipelines.yml"),      parser_format_kind::AzurePipelines    },
@@ -119,10 +125,15 @@ constexpr static_string_entry<parser_format_kind> FORMAT_FILENAME_ENTRIES[] = {
     {SSK("containerfile"),            parser_format_kind::Dockerfile        },
     {SSK("makefile"),                 parser_format_kind::Makefile          },
     {SSK("gnumakefile"),              parser_format_kind::Makefile          },
+    {SSK("bsdmakefile"),              parser_format_kind::Makefile          },
+    {SSK("makefile.inc"),             parser_format_kind::Makefile          },
+    {SSK("makefile.am"),              parser_format_kind::Makefile          },
     {SSK("justfile"),                 parser_format_kind::Justfile          },
     {SSK(".justfile"),                parser_format_kind::Justfile          },
     {SSK("package.json"),             parser_format_kind::PackageJson       },
     {SSK("devcontainer.json"),        parser_format_kind::DevContainer      },
+    {SSK("devcontainer.jsonc"),       parser_format_kind::DevContainer      },
+    {SSK(".devcontainer.json"),       parser_format_kind::DevContainer      },
     {SSK("readme"),                   parser_format_kind::Markdown          },
 };
 constexpr StaticStringMap FORMAT_FILENAMES{FORMAT_FILENAME_ENTRIES};
@@ -153,6 +164,76 @@ path_has_directory(StringView path, StringView directory) wontthrow -> bool
 }
 
 static pure fn
+has_yaml_extension(StringView path) wontthrow -> bool
+{
+  return path_ends_with(path, ".yml") || path_ends_with(path, ".yaml");
+}
+
+static pure fn
+filename_pattern_kind(StringView path, StringView filename) wontthrow
+    -> Maybe<parser_format_kind>
+{
+  if (has_yaml_extension(filename)) {
+    if (path_has_directory(path, ".gitlab/ci/") ||
+        path_has_directory(path, ".gitlab-ci/"))
+    {
+      return parser_format_kind::GitlabCi;
+    }
+
+    if (path_starts_with(filename, "compose.") ||
+        path_starts_with(filename, "docker-compose.") ||
+        path_ends_with(filename, ".compose.yml") ||
+        path_ends_with(filename, ".compose.yaml"))
+    {
+      return parser_format_kind::Compose;
+    }
+
+    if (path_starts_with(filename, "cloudbuild-") ||
+        path_starts_with(filename, "cloudbuild.") ||
+        path_ends_with(filename, ".cloudbuild.yml") ||
+        path_ends_with(filename, ".cloudbuild.yaml"))
+    {
+      return parser_format_kind::CloudBuild;
+    }
+
+    if (path_starts_with(filename, "azure-pipelines-") ||
+        path_starts_with(filename, "azure-pipelines.") ||
+        path_has_directory(path, ".azure-pipelines/") ||
+        path_has_directory(path, ".azuredevops/"))
+    {
+      return parser_format_kind::AzurePipelines;
+    }
+  }
+
+  if (path_ends_with(filename, ".devcontainer.json"))
+    return parser_format_kind::DevContainer;
+  if (path_ends_with(filename, ".make")) return parser_format_kind::Makefile;
+  if (path_starts_with(filename, "dockerfile-") ||
+      path_starts_with(filename, "dockerfile_") ||
+      path_starts_with(filename, "containerfile-") ||
+      path_starts_with(filename, "containerfile_"))
+  {
+    return parser_format_kind::Dockerfile;
+  }
+
+  return None;
+}
+
+static pure fn
+has_top_level_key(StringView source, StringView key) wontthrow -> bool
+{
+  usize position = 0;
+
+  while (position < source.length) {
+    let const line = source.next_line(position);
+
+    if (line.starts_with(key)) return true;
+  }
+
+  return false;
+}
+
+static pure fn
 path_has_tail(StringView path, StringView tail) wontthrow -> bool
 {
   if (!path_ends_with(path, tail)) return false;
@@ -169,8 +250,11 @@ detect_format_kind(const parser_format_input &input) throws
 {
   let       path     = input.path.has_value() ? *input.path : StringView{};
   let const filename = parser_format_filename(path);
-  let const named_kind =
-      parser_format_find_ascii_folded(FORMAT_FILENAMES, filename);
+  let named_kind = parser_format_find_ascii_folded(FORMAT_FILENAMES, filename);
+
+  if (!named_kind.has_value())
+    named_kind = filename_pattern_kind(path, filename);
+
   let const source = input.source;
   let const language_id =
       input.language_id.has_value() ? *input.language_id : StringView{};
@@ -204,8 +288,8 @@ detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::AzurePipelines;
   if (named_kind == parser_format_kind::BitbucketPipelines)
     return parser_format_kind::BitbucketPipelines;
-  if (path_has_directory(path, ".buildkite/") &&
-      (path_ends_with(path, ".yml") || path_ends_with(path, ".yaml")))
+  if ((path_has_directory(path, ".buildkite/") && has_yaml_extension(path)) ||
+      named_kind == parser_format_kind::Buildkite)
   {
     return parser_format_kind::Buildkite;
   }
@@ -251,13 +335,15 @@ detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::VscodeTasks;
   if (named_kind == parser_format_kind::DevContainer &&
       (path_has_directory(path, ".devcontainer/") ||
-       path_has_tail(path, ".devcontainer.json")))
+       path_ends_with(filename, ".devcontainer.json")))
   {
     return parser_format_kind::DevContainer;
   }
 
-  if (path_ends_with(path, ".spec")) return parser_format_kind::RpmSpec;
+  if (path_ends_with(path, ".spec") || path_ends_with(path, ".spec.in"))
+    return parser_format_kind::RpmSpec;
   if (path_ends_with(path, ".md") || path_ends_with(path, ".markdown") ||
+      path_ends_with(path, ".mdx") || path_ends_with(path, ".mdc") ||
       named_kind == parser_format_kind::Markdown ||
       parser_format_ascii_equal(language_id, "markdown"))
   {
@@ -270,8 +356,22 @@ detect_format_kind(const parser_format_input &input) throws
   if (path_ends_with(path, ".yml") || path_ends_with(path, ".yaml") ||
       parser_format_ascii_equal(language_id, "yaml"))
   {
-    if (parser_format_has_substring(source, "apiVersion:") &&
-        parser_format_has_substring(source, "kind:"))
+    let const is_ansible_task_file =
+        (path_has_directory(path, "tasks/") ||
+         path_has_directory(path, "handlers/")) &&
+        (parser_format_has_substring(source, "shell:") ||
+         parser_format_has_substring(source, "command:") ||
+         parser_format_has_substring(source, "- name:"));
+
+    if ((parser_format_has_substring(source, "hosts:") &&
+         parser_format_has_substring(source, "tasks:")) ||
+        is_ansible_task_file)
+    {
+      return parser_format_kind::Ansible;
+    }
+
+    if (has_top_level_key(source, "apiVersion:") &&
+        has_top_level_key(source, "kind:"))
     {
       return parser_format_kind::Kubernetes;
     }
@@ -282,21 +382,16 @@ detect_format_kind(const parser_format_input &input) throws
       return parser_format_kind::GithubActions;
     }
 
-    if (parser_format_has_substring(source, "tasks:") &&
-        parser_format_has_substring(source, "version:"))
+    if (has_top_level_key(source, "tasks:") &&
+        has_top_level_key(source, "version:"))
     {
       return parser_format_kind::Taskfile;
     }
 
-    if (parser_format_has_substring(source, "hosts:") &&
-        parser_format_has_substring(source, "tasks:"))
-    {
-      return parser_format_kind::Ansible;
-    }
-
-    if (parser_format_has_substring(source, "services:") &&
-        (parser_format_has_substring(source, "image:") ||
-         parser_format_has_substring(source, "build:")))
+    if (has_top_level_key(source, "services:") ||
+        (parser_format_has_substring(source, "services:") &&
+         (parser_format_has_substring(source, "image:") ||
+          parser_format_has_substring(source, "build:"))))
     {
       return parser_format_kind::Compose;
     }
@@ -405,8 +500,25 @@ template_construct_end(StringView source,
 {
   let const remaining = end - position;
   let const do_find = [&](usize from, char first, char second) -> Maybe<usize> {
+    char quote = '\0';
+
     for (usize at = from; at + 1 < end; at++) {
-      if (source[at] == first && source[at + 1] == second) return at + 2;
+      let const byte = source[at];
+
+      if (quote != '\0') {
+        if (byte == '\\' && quote == '"')
+          at++;
+        else if (byte == quote)
+          quote = '\0';
+        continue;
+      }
+
+      if (byte == '"' || byte == '\'') {
+        quote = byte;
+        continue;
+      }
+
+      if (byte == first && source[at + 1] == second) return at + 2;
     }
 
     return None;
@@ -436,6 +548,74 @@ template_construct_end(StringView source,
       is_value = false;
 
       return do_find(position + 2, opener, '}');
+    }
+  }
+
+  if ((template_syntax & TEMPLATE_IDE_VARIABLES) != 0 && remaining >= 4 &&
+      source[position] == '$' && source[position + 1] == '{')
+  {
+    static constexpr StringView NAMES[] = {
+        "workspaceFolder",
+        "workspaceFolderBasename",
+        "workspaceRoot",
+        "userHome",
+        "file",
+        "fileWorkspaceFolder",
+        "relativeFile",
+        "relativeFileDirname",
+        "fileBasename",
+        "fileBasenameNoExtension",
+        "fileExtname",
+        "fileDirname",
+        "fileDirnameBasename",
+        "cwd",
+        "lineNumber",
+        "selectedText",
+        "execPath",
+        "pathSeparator",
+        "defaultBuildTask",
+        "localWorkspaceFolder",
+        "localWorkspaceFolderBasename",
+        "containerWorkspaceFolder",
+        "containerWorkspaceFolderBasename",
+        "devcontainerId",
+    };
+    static constexpr StringView PREFIXES[] = {
+        "env",
+        "config",
+        "input",
+        "command",
+        "localEnv",
+        "containerEnv",
+        "workspaceFolder",
+        "workspaceFolderBasename",
+    };
+
+    usize name_end = position + 2;
+
+    while (name_end < end &&
+           ((source[name_end] >= 'a' && source[name_end] <= 'z') ||
+            (source[name_end] >= 'A' && source[name_end] <= 'Z')))
+      name_end++;
+
+    let const name =
+        source.substring_of_length(position + 2, name_end - position - 2);
+
+    if (name_end < end && source[name_end] == '}') {
+      for (let const known : NAMES) {
+        if (known == name) return name_end + 1;
+      }
+    }
+
+    if (name_end < end && source[name_end] == ':') {
+      for (let const prefix : PREFIXES) {
+        if (prefix != name) continue;
+
+        for (usize close = name_end; close < end; close++) {
+          if (source[close] == '}') return close + 1;
+          if (source[close] == '\n') break;
+        }
+      }
     }
   }
 
@@ -522,6 +702,14 @@ parser_format_masked_template_source(StringView host_source,
 
   while (position < host_end) {
     let const byte = host_source[position];
+
+    if ((template_syntax & TEMPLATE_DOUBLE_DOLLAR) != 0 && byte == '$' &&
+        position + 1 < host_end && host_source[position + 1] == '$')
+    {
+      analysis_source.append(" $");
+      position += 2;
+      continue;
+    }
 
     if (has_curly_escape && position + 3 < host_end &&
         host_source.substring_of_length(position, 4) == "{{{{")
@@ -684,35 +872,6 @@ leading_spaces(StringView line) wontthrow -> usize
 }
 
 static pure fn
-mood_near(StringView source, usize position, mimic_mood fallback) wontthrow
-    -> mimic_mood
-{
-  let const start  = position > 512 ? position - 512 : 0;
-  let const nearby = source.substring_of_length(start, position - start);
-
-  if (parser_format_has_substring(nearby, "shell: bash") ||
-      parser_format_has_substring(nearby, "executable: /bin/bash") ||
-      parser_format_has_substring(nearby, "interpreter: bash"))
-  {
-    return mimic_mood::Bash;
-  }
-
-  if (parser_format_has_substring(nearby, "shell: kosh") ||
-      parser_format_has_substring(nearby, "executable: kosh"))
-  {
-    return mimic_mood::Default;
-  }
-
-  if (parser_format_has_substring(nearby, "shell: sh") ||
-      parser_format_has_substring(nearby, "executable: /bin/sh"))
-  {
-    return mimic_mood::Posix;
-  }
-
-  return fallback;
-}
-
-static pure fn
 yaml_key_position(StringView line) wontthrow -> usize
 {
   usize position = leading_spaces(line);
@@ -765,36 +924,228 @@ previous_line(StringView source, usize &position) wontthrow -> StringView
   return source.substring_of_length(start, end - start);
 }
 
+struct interpreter_choice
+{
+  bool              is_found{false};
+  Maybe<mimic_mood> mood{};
+};
+
 static pure fn
-workflow_shell_mood(StringView value) wontthrow -> Maybe<mimic_mood>
+interpreter_of_value(StringView value) wontthrow -> interpreter_choice
+{
+  while (!value.is_empty() &&
+         (value[0] == '\'' || value[0] == '"' || value[0] == ' '))
+    value = value.substring(1);
+
+  usize word_end = 0;
+
+  while (word_end < value.length && value[word_end] != ' ' &&
+         value[word_end] != '\'' && value[word_end] != '"')
+    word_end++;
+
+  let word = value.substring_of_length(0, word_end);
+
+  if (let const slash = word.find_last_character('/'))
+    word = word.substring(*slash + 1);
+  if (let const at = word.find_character('@'))
+    word = word.substring_of_length(0, *at);
+  if (word.length > 4 &&
+      parser_format_ascii_equal(word.substring(word.length - 4), ".exe"))
+  {
+    word = word.substring_of_length(0, word.length - 4);
+  }
+
+  if (word == "bash") return {true, mimic_mood::Bash};
+  if (word == "kosh") return {true, mimic_mood::Default};
+  if (word == "sh" || word == "dash" || word == "ash")
+    return {true, mimic_mood::Posix};
+
+  static constexpr StringView OTHERS[] = {
+      "pwsh",   "powershell", "azurepowershell",
+      "python", "python3",    "cmd",
+      "node",   "ruby",       "perl",
+      "zsh",    "fish",       "ps",
+      "pscore", "batch",
+  };
+
+  for (let const other : OTHERS) {
+    if (parser_format_ascii_equal(word, other)) return {true, None};
+  }
+
+  return {};
+}
+
+static pure fn
+mood_near(StringView source,
+          usize      line_start,
+          StringView line,
+          mimic_mood fallback) wontthrow -> Maybe<mimic_mood>
+{
+  usize key_column = 0;
+
+  while (key_column < line.length &&
+         (line[key_column] == ' ' || line[key_column] == '-'))
+    key_column++;
+
+  usize scope_start  = line_start;
+  usize scope_indent = key_column;
+  usize scan         = line_start;
+  bool  is_item =
+      line.substring_of_length(0, key_column).find_character('-').has_value();
+
+  if (is_item) scope_indent = leading_spaces(line);
+
+  while (!is_item && scan > 0) {
+    let const previous = previous_line(source, scan);
+
+    if (previous.trim_blanks().is_empty()) continue;
+
+    let const indent = leading_spaces(previous);
+
+    if (indent >= scope_indent) continue;
+    scope_indent = indent;
+    if (indent < previous.length && previous[indent] == '-') {
+      scope_start = scan;
+      is_item     = true;
+      break;
+    }
+
+    if (indent == 0) break;
+  }
+
+  if (!is_item) {
+    scope_start  = line_start;
+    scope_indent = key_column;
+    scan         = line_start;
+
+    while (scan > 0) {
+      let const previous = previous_line(source, scan);
+
+      if (previous.trim_blanks().is_empty()) continue;
+      if (leading_spaces(previous) != key_column) break;
+      scope_start = scan;
+    }
+  }
+
+  usize position = scope_start;
+  bool  is_first = true;
+
+  while (position < source.length) {
+    let const candidate_start = position;
+    let const candidate       = source.next_line(position);
+
+    if (candidate.trim_blanks().is_empty()) continue;
+    if (!is_first && (is_item ? leading_spaces(candidate) <= scope_indent
+                              : leading_spaces(candidate) < key_column))
+    {
+      break;
+    }
+
+    is_first = false;
+    if (candidate_start == line_start) continue;
+
+    static constexpr StringView KEYS[] = {"executable", "shell", "interpreter",
+                                          "scriptType", "task"};
+
+    for (let const key : KEYS) {
+      let const value = yaml_line_value(candidate, key);
+
+      if (!value.has_value()) continue;
+
+      let const choice = interpreter_of_value(*value);
+
+      if (choice.is_found) return choice.mood;
+    }
+  }
+
+  return fallback;
+}
+
+struct workflow_shell_choice
+{
+  bool              is_found{false};
+  Maybe<mimic_mood> mood{};
+};
+
+static pure fn
+workflow_shell_mood(StringView value) wontthrow -> workflow_shell_choice
 {
   if (!value.is_empty() && (value[0] == '\'' || value[0] == '"')) {
     value = value.substring(1);
   }
 
-  if (value.is_empty()) return None;
+  usize word_end = 0;
 
-  switch (value[0]) {
-  case 'b':
-    if (value.starts_with("bash")) return mimic_mood::Bash;
-    break;
+  while (word_end < value.length && value[word_end] != ' ' &&
+         value[word_end] != '\'' && value[word_end] != '"')
+    word_end++;
 
-  case 'd':
-    if (value.starts_with("dash")) return mimic_mood::Posix;
-    break;
+  let word = value.substring_of_length(0, word_end);
 
-  case 's':
-    if (value.starts_with("sh")) return mimic_mood::Posix;
-    break;
+  if (let const slash = word.find_last_character('/'))
+    word = word.substring(*slash + 1);
 
-  case 'k':
-    if (value.starts_with("kosh")) return mimic_mood::Default;
-    break;
+  if (word.is_empty()) return {};
+  if (word == "bash") return {true, mimic_mood::Bash};
+  if (word == "kosh") return {true, mimic_mood::Default};
+  if (word == "sh" || word == "dash" || word == "ash")
+    return {true, mimic_mood::Posix};
 
-  default: break;
+  return {true, None};
+}
+
+static fn
+line_start_before(StringView source, usize position) wontthrow -> usize
+{
+  while (position > 0 && source[position - 1] != '\n')
+    position--;
+
+  return position;
+}
+
+static fn
+find_child_shell(StringView source,
+                 usize      parent_end,
+                 usize      parent_indent,
+                 StringView child_key) wontthrow -> workflow_shell_choice
+{
+  usize position     = parent_end;
+  usize child_indent = static_cast<usize>(-1);
+
+  while (position < source.length) {
+    let const line = source.next_line(position);
+
+    if (line.trim_blanks().is_empty()) continue;
+
+    let const indent = leading_spaces(line);
+
+    if (parent_indent != static_cast<usize>(-1) && indent <= parent_indent)
+      break;
+    if (child_indent == static_cast<usize>(-1)) child_indent = indent;
+    if (indent != child_indent) continue;
+    if (!yaml_line_value(line, child_key).has_value()) continue;
+
+    usize run_position = position;
+
+    while (run_position < source.length) {
+      let const run_line = source.next_line(run_position);
+
+      if (run_line.trim_blanks().is_empty()) continue;
+      if (leading_spaces(run_line) <= child_indent) break;
+      if (!yaml_line_value(run_line, "run").has_value()) continue;
+
+      while (run_position < source.length) {
+        let const shell_line = source.next_line(run_position);
+
+        if (shell_line.trim_blanks().is_empty()) continue;
+        if (leading_spaces(shell_line) <= leading_spaces(run_line)) break;
+        if (let const shell = yaml_line_value(shell_line, "shell"))
+          return workflow_shell_mood(*shell);
+      }
+    }
   }
 
-  return None;
+  return {};
 }
 
 static pure fn
@@ -803,37 +1154,101 @@ selected_workflow_mood(StringView source,
                        StringView line,
                        mimic_mood fallback) wontthrow -> Maybe<mimic_mood>
 {
-  let const current_indent = leading_spaces(line);
-  let       scan_position  = line_start;
+  let const key_column = yaml_key_position(line);
+  let       item_start = line_start;
+  let       item_line  = line;
+  bool      has_item   = leading_spaces(line) < key_column;
 
-  while (scan_position > 0) {
-    let const previous = previous_line(source, scan_position);
+  if (!has_item) {
+    usize scan = line_start;
 
-    if (previous.trim_blanks().is_empty()) continue;
+    while (scan > 0) {
+      let const previous = previous_line(source, scan);
 
-    let const previous_indent = leading_spaces(previous);
+      if (previous.trim_blanks().is_empty()) continue;
 
-    if (previous_indent == current_indent &&
-        previous_indent < previous.length && previous[previous_indent] == '-')
-    {
-      break;
+      let const indent = leading_spaces(previous);
+
+      if (indent < key_column && indent < previous.length &&
+          previous[indent] == '-' && yaml_key_position(previous) == key_column)
+      {
+        item_start = scan;
+        item_line  = previous;
+        has_item   = true;
+        break;
+      }
+
+      if (indent < key_column) break;
+    }
+  }
+
+  if (has_item) {
+    usize position = item_start;
+    bool  is_first = true;
+
+    while (position < source.length) {
+      let const candidate = source.next_line(position);
+
+      if (candidate.trim_blanks().is_empty()) continue;
+      if (!is_first && leading_spaces(candidate) < key_column) break;
+      is_first = false;
+      if (yaml_key_position(candidate) != key_column) continue;
+      if (let const shell = yaml_line_value(candidate, "shell")) {
+        let const choice = workflow_shell_mood(*shell);
+
+        if (choice.is_found) return choice.mood;
+      }
+    }
+  }
+
+  usize ancestor_scan  = line_start_before(source, item_start);
+  usize minimum_indent = leading_spaces(item_line);
+
+  while (ancestor_scan > 0) {
+    let const ancestor = previous_line(source, ancestor_scan);
+
+    if (ancestor.trim_blanks().is_empty()) continue;
+
+    let const indent = leading_spaces(ancestor);
+
+    if (indent >= minimum_indent) continue;
+    minimum_indent = indent;
+
+    usize ancestor_end = ancestor_scan;
+
+    unused(source.next_line(ancestor_end));
+
+    let const choice =
+        find_child_shell(source, ancestor_end, indent, "defaults");
+
+    if (choice.is_found) return choice.mood;
+    if (let const runner = yaml_line_value(ancestor, "runs-on")) {
+      if (parser_format_has_substring(*runner, "windows")) return None;
     }
 
-    if (let const shell = yaml_line_value(previous, "shell"); shell.has_value())
-      return workflow_shell_mood(*shell);
-    if (previous_indent < current_indent) break;
+    usize sibling = ancestor_end;
+
+    while (sibling < source.length) {
+      let const sibling_line = source.next_line(sibling);
+
+      if (sibling_line.trim_blanks().is_empty()) continue;
+      if (leading_spaces(sibling_line) <= indent) break;
+      if (leading_spaces(sibling_line) != minimum_indent + 2 &&
+          yaml_key_position(sibling_line) != minimum_indent + 2)
+      {
+        continue;
+      }
+
+      if (let const runner = yaml_line_value(sibling_line, "runs-on")) {
+        if (parser_format_has_substring(*runner, "windows")) return None;
+      }
+    }
   }
 
-  scan_position = line_start;
+  let const root_choice =
+      find_child_shell(source, 0, static_cast<usize>(-1), "defaults");
 
-  while (scan_position > 0) {
-    let const previous = previous_line(source, scan_position);
-    let const runner   = yaml_line_value(previous, "runs-on");
-
-    if (!runner.has_value()) continue;
-    if (parser_format_has_substring(*runner, "windows")) return None;
-    break;
-  }
+  if (root_choice.is_found) return root_choice.mood;
 
   return fallback;
 }
@@ -1225,16 +1640,91 @@ read_yaml_scalar(StringView        source,
 }
 
 static fn
+has_yaml_ancestor(StringView source,
+                  usize      line_start,
+                  StringView line,
+                  StringView ancestor) wontthrow -> bool
+{
+  usize indent = leading_spaces(line);
+  usize scan   = line_start;
+
+  while (scan > 0 && indent > 0) {
+    let const previous = previous_line(source, scan);
+
+    if (previous.trim_blanks().is_empty()) continue;
+
+    let const previous_indent = leading_spaces(previous);
+
+    if (previous_indent >= indent) continue;
+    indent = previous_indent;
+    if (yaml_line_value(previous, ancestor).has_value()) return true;
+  }
+
+  return false;
+}
+
+static pure fn
+shebang_interpreter(StringView line) wontthrow -> interpreter_choice
+{
+  usize     position     = 2;
+  let const do_next_word = [&]() {
+    while (position < line.length && line[position] == ' ')
+      position++;
+
+    let const start = position;
+
+    while (position < line.length && line[position] != ' ' &&
+           line[position] != '\r')
+      position++;
+
+    return line.substring_of_length(start, position - start);
+  };
+
+  let program = do_next_word();
+
+  if (program == "/usr/bin/env" || program == "env" || program == "/bin/env") {
+    program = do_next_word();
+    if (program == "-S") program = do_next_word();
+  }
+
+  let const choice = interpreter_of_value(program);
+
+  if (choice.is_found) return choice;
+
+  return {true, None};
+}
+
+static fn
 add_yaml_scalar_fragment(parsed_format_document &document,
                          StringView              source,
                          const yaml_scalar_item &item,
                          mimic_mood              mood,
                          u8                      template_syntax) throws -> void
 {
+  if (item.start >= item.end) return;
+
   bool did_mask = false;
   let  analysis = parser_format_masked_template_source(
       source, item.start, item.end, template_syntax, did_mask);
-  let const fragment_count = document.fragments.count();
+  let const fragment_count      = document.fragments.count();
+  usize     first_line_position = item.start;
+  let const first_line          = source.next_line(first_line_position);
+  let const first_content = first_line.substring(leading_spaces(first_line));
+
+  if (first_content.starts_with("#!")) {
+    let const choice = shebang_interpreter(first_content);
+
+    if (!choice.mood.has_value()) return;
+    mood = *choice.mood;
+
+    let blanked = String{heap_allocator()};
+
+    blanked.reserve(analysis.length());
+    blanked.append(analysis.view().substring_of_length(0, item.start));
+    blanked.append_repeated(' ', first_line.length);
+    blanked.append(analysis.view().substring(item.start + first_line.length));
+    analysis = steal(blanked);
+  }
 
   if (item.is_block) {
     if (item.is_folded) {
@@ -1400,7 +1890,9 @@ parser_format_extract_yaml_keys(parsed_format_document &document,
                                 usize                   key_count,
                                 mimic_mood              default_mood,
                                 yaml_shell_selection    selection,
-                                u8                      template_syntax) throws -> void
+                                u8                      template_syntax,
+                                StringView              excluded_ancestor) throws
+    -> void
 {
   usize position = 0;
 
@@ -1410,11 +1902,16 @@ parser_format_extract_yaml_keys(parsed_format_document &document,
     usize     content_position = 0;
 
     if (!yaml_key_match(line, keys, key_count, content_position)) continue;
+    if (!excluded_ancestor.is_empty() &&
+        has_yaml_ancestor(source, line_start, line, excluded_ancestor))
+    {
+      continue;
+    }
 
     let const mood =
         selection == yaml_shell_selection::Workflow
             ? selected_workflow_mood(source, line_start, line, default_mood)
-            : Maybe<mimic_mood>{mood_near(source, line_start, default_mood)};
+            : mood_near(source, line_start, line, default_mood);
 
     if (!mood.has_value()) continue;
 
@@ -1429,6 +1926,41 @@ parser_format_extract_yaml_keys(parsed_format_document &document,
 
     if (next_position > position) position = next_position;
   }
+}
+
+fn
+parser_format_extract_yaml_value_at(parsed_format_document &document,
+                                    StringView              source,
+                                    usize                   value_line_start,
+                                    usize                   mood_line_start,
+                                    mimic_mood              default_mood,
+                                    u8 template_syntax) throws -> void
+{
+  usize     mood_position = mood_line_start;
+  let const mood_line     = source.next_line(mood_position);
+  let const mood = mood_near(source, mood_line_start, mood_line, default_mood);
+
+  if (!mood.has_value()) return;
+
+  usize     position   = value_line_start;
+  let const line       = source.next_line(position);
+  let const key_column = yaml_key_position(line);
+  let const colon      = line.substring(key_column).find_character(':');
+
+  if (!colon.has_value()) return;
+
+  usize content_position = key_column + *colon + 1;
+
+  while (content_position < line.length && line[content_position] == ' ')
+    content_position++;
+
+  let items = ArrayList<yaml_scalar_item>{heap_allocator()};
+
+  collect_yaml_value_items(source, value_line_start, line, content_position,
+                           key_column, position, items);
+
+  for (let const &item : items)
+    add_yaml_scalar_fragment(document, source, item, *mood, template_syntax);
 }
 
 static pure fn
@@ -1640,6 +2172,33 @@ parser_format_extract_yaml_exec_keys(parsed_format_document &document,
   }
 }
 
+static pure fn
+json_ascii_escape(StringView source, usize backslash, usize end) wontthrow
+    -> Maybe<char>
+{
+  if (backslash + 6 > end || source[backslash + 1] != 'u') return None;
+
+  u32 code = 0;
+
+  for (usize at = backslash + 2; at < backslash + 6; at++) {
+    let const byte = source[at];
+
+    code <<= 4;
+    if (byte >= '0' && byte <= '9')
+      code |= static_cast<u32>(byte - '0');
+    else if (byte >= 'a' && byte <= 'f')
+      code |= static_cast<u32>(byte - 'a' + 10);
+    else if (byte >= 'A' && byte <= 'F')
+      code |= static_cast<u32>(byte - 'A' + 10);
+    else
+      return None;
+  }
+
+  if (code < 0x20 || code >= 0x7f) return None;
+
+  return static_cast<char>(code);
+}
+
 fn
 parser_format_add_json_fragment(parsed_format_document &document,
                                 StringView              source,
@@ -1672,6 +2231,14 @@ parser_format_add_json_fragment(parsed_format_document &document,
     case 't':  decoded.push('\t'); break;
     case '"':  decoded.push('"'); break;
     case '\\': decoded.push('\\'); break;
+    case '/':  decoded.push('/'); break;
+    case 'u':
+      if (let const code = json_ascii_escape(source, position - 2, end)) {
+        decoded.push(*code);
+        position += 4;
+        break;
+      }
+      [[fallthrough]];
     default:
       decoded.push('\\');
       decoded.push(escaped);
@@ -1697,16 +2264,176 @@ parser_format_add_json_fragment(parsed_format_document &document,
   for (usize host_position = literal_start; host_position < end;
        host_position++)
   {
-    let byte = source[host_position];
+    let const byte = source[host_position];
 
-    if (byte == '\\' && host_position + 1 < end) {
-      byte = ' ';
+    if (byte != '\\' || host_position + 1 >= end) {
+      masked.push(byte);
+      continue;
     }
 
-    masked.push(byte);
+    char  run[64];
+    usize run_count = 0;
+    usize run_end   = host_position;
+
+    while (run_end + 1 < end && source[run_end] == '\\' &&
+           run_count < countof(run))
+    {
+      let const escaped = source[run_end + 1];
+
+      if (let const code = json_ascii_escape(source, run_end, end)) {
+        run[run_count++] = *code;
+        run_end += 6;
+        continue;
+      }
+
+      run[run_count++] = escaped == 'n'   ? '\n'
+                         : escaped == 't' ? '\t'
+                         : escaped == 'r' ? ' '
+                                          : escaped;
+      run_end += 2;
+    }
+
+    masked.append_repeated(' ', run_end - host_position - run_count);
+    for (usize index = 0; index < run_count; index++)
+      masked.push(run[index]);
+    host_position = run_end - 1;
   }
 
   fragment.analysis_source = steal(masked);
+}
+
+static pure fn
+skip_json_trivia(StringView source, usize position) wontthrow -> usize
+{
+  while (position < source.length) {
+    let const byte = source[position];
+
+    if (byte == ' ' || byte == '\t' || byte == '\n' || byte == '\r' ||
+        byte == ',')
+    {
+      position++;
+      continue;
+    }
+
+    if (byte == '/' && position + 1 < source.length &&
+        source[position + 1] == '/')
+    {
+      while (position < source.length && source[position] != '\n')
+        position++;
+      continue;
+    }
+
+    if (byte == '/' && position + 1 < source.length &&
+        source[position + 1] == '*')
+    {
+      position += 2;
+      while (position + 1 < source.length &&
+             !(source[position] == '*' && source[position + 1] == '/'))
+        position++;
+      position += 2;
+      continue;
+    }
+
+    break;
+  }
+
+  return position < source.length ? position : source.length;
+}
+
+static pure fn
+json_string_close(StringView source, usize position) wontthrow -> usize
+{
+  while (position < source.length && source[position] != '"') {
+    if (source[position] == '\\' && position + 1 < source.length) position++;
+    position++;
+  }
+
+  return position;
+}
+
+struct json_container
+{
+  bool                          is_array{false};
+  StringView                    key{};
+  const parser_format_json_key *command_key{nullptr};
+};
+
+static fn
+add_json_command_fragment(parsed_format_document       &document,
+                          StringView                    source,
+                          usize                         start,
+                          usize                         end,
+                          mimic_mood                    mood,
+                          const parser_format_json_key &key,
+                          u8                            template_syntax) throws -> void
+{
+  let const fragment_count = document.fragments.count();
+
+  parser_format_add_json_fragment(document, source, start, end, mood);
+  if (document.fragments.count() == fragment_count) return;
+
+  let &fragment = document.fragments.back();
+
+  fragment.should_silence_unresolved_commands =
+      key.should_silence_unresolved_commands;
+  if (template_syntax == 0) return;
+
+  bool did_mask = false;
+  let  masked   = parser_format_masked_template_source(
+      fragment.analysis_source.view(), start, end, template_syntax, did_mask);
+
+  if (!did_mask) return;
+  fragment.analysis_source                    = steal(masked);
+  fragment.should_silence_unresolved_commands = true;
+}
+
+static fn
+add_json_exec_array(parsed_format_document       &document,
+                    StringView                    source,
+                    usize                         open,
+                    const parser_format_json_key &key,
+                    u8                            template_syntax) throws -> void
+{
+  usize starts[4]{};
+  usize ends[4]{};
+  usize item_count = 0;
+  usize position   = skip_json_trivia(source, open + 1);
+
+  while (position < source.length && source[position] == '"' &&
+         item_count < countof(starts))
+  {
+    starts[item_count] = position + 1;
+    position           = json_string_close(source, position + 1);
+    ends[item_count++] = position;
+    position           = skip_json_trivia(source, position + 1);
+  }
+
+  if (item_count < 3) return;
+
+  let program = source.substring_of_length(starts[0], ends[0] - starts[0]);
+
+  if (let const slash = program.find_last_character('/'))
+    program = program.substring(*slash + 1);
+
+  Maybe<mimic_mood> mood{};
+
+  if (program == "bash")
+    mood = mimic_mood::Bash;
+  else if (program == "kosh")
+    mood = mimic_mood::Default;
+  else if (program == "sh" || program == "dash" || program == "ash")
+    mood = mimic_mood::Posix;
+
+  let const flag = source.substring_of_length(starts[1], ends[1] - starts[1]);
+
+  if (!mood.has_value() || flag.length < 2 || flag[0] != '-' ||
+      !flag.find_character('c').has_value())
+  {
+    return;
+  }
+
+  add_json_command_fragment(document, source, starts[2], ends[2], *mood, key,
+                            template_syntax);
 }
 
 fn
@@ -1714,85 +2441,107 @@ parser_format_extract_json_keys(parsed_format_document       &document,
                                 StringView                    source,
                                 const parser_format_json_key *keys,
                                 usize                         key_count,
-                                mimic_mood default_mood) throws -> void
+                                mimic_mood                    default_mood,
+                                u8 template_syntax) throws -> void
 {
-  usize position = 0;
+  let        stack    = ArrayList<json_container>{heap_allocator()};
+  usize      position = 0;
+  StringView pending_key{};
+
+  let const do_find_key =
+      [&](StringView key) -> const parser_format_json_key * {
+    for (usize key_index = 0; key_index < key_count; key_index++) {
+      let const &candidate = keys[key_index];
+
+      if (candidate.name != key) continue;
+      if (candidate.depth != 0 && candidate.depth != stack.count()) continue;
+      bool has_container = candidate.container_key.is_empty();
+      bool is_excluded   = false;
+
+      for (let const &container : stack) {
+        if (container.key == candidate.container_key) has_container = true;
+        if (!candidate.excluded_container_key.is_empty() &&
+            container.key == candidate.excluded_container_key)
+        {
+          is_excluded = true;
+        }
+      }
+
+      if (!has_container || is_excluded) continue;
+
+      return &candidate;
+    }
+
+    return nullptr;
+  };
 
   while (position < source.length) {
-    if (source[position] != '"') {
-      position++;
-      continue;
-    }
-
-    let const key_start = ++position;
-
-    while (position < source.length && source[position] != '"') {
-      if (source[position] == '\\' && position + 1 < source.length) {
-        position++;
-      }
-      position++;
-    }
-
+    position = skip_json_trivia(source, position);
     if (position >= source.length) break;
 
-    let const key = source.substring_of_length(key_start, position - key_start);
+    let const byte = source[position];
 
-    position++;
-    if (key.is_empty()) continue;
+    if (byte == '{' || byte == '[') {
+      let const *command_key = !pending_key.is_empty() && byte == '{'
+                                   ? do_find_key(pending_key)
+                                   : nullptr;
 
-    while (position < source.length &&
-           (source[position] == ' ' || source[position] == '\t' ||
-            source[position] == '\n' || source[position] == '\r'))
-    {
-      position++;
-    }
-
-    if (position >= source.length || source[position] != ':') {
-      continue;
-    }
-
-    position++;
-
-    const parser_format_json_key *matched_key = nullptr;
-
-    for (usize key_index = 0; key_index < key_count; key_index++) {
-      if (keys[key_index].name.is_empty()) continue;
-      if (key[0] != keys[key_index].name[0]) continue;
-      if (key != keys[key_index].name) continue;
-      matched_key = &keys[key_index];
-      break;
-    }
-
-    if (matched_key == nullptr) continue;
-
-    while (position < source.length &&
-           (source[position] == ' ' || source[position] == '\t' ||
-            source[position] == '\n' || source[position] == '\r'))
-    {
-      position++;
-    }
-
-    if (position >= source.length || source[position] != '"') {
-      continue;
-    }
-
-    let const value_start = ++position;
-
-    while (position < source.length && source[position] != '"') {
-      if (source[position] == '\\' && position + 1 < source.length) {
-        position++;
+      if (!pending_key.is_empty() && byte == '[') {
+        if (let const *exec_key = do_find_key(pending_key))
+          add_json_exec_array(document, source, position, *exec_key,
+                              template_syntax);
       }
+
+      stack.push(json_container{byte == '[', pending_key, command_key});
+      pending_key = {};
       position++;
+      continue;
     }
 
-    let const fragment_count = document.fragments.count();
+    if (byte == '}' || byte == ']') {
+      if (!stack.is_empty()) stack.pop_back();
+      pending_key = {};
+      position++;
+      continue;
+    }
 
-    parser_format_add_json_fragment(document, source, value_start, position,
-                                    default_mood);
-    if (document.fragments.count() != fragment_count)
-      document.fragments.back().should_silence_unresolved_commands =
-          matched_key->should_silence_unresolved_commands;
-    if (position < source.length) position++;
+    if (byte != '"') {
+      while (position < source.length && source[position] != ',' &&
+             source[position] != '}' && source[position] != ']' &&
+             source[position] != '\n')
+        position++;
+      pending_key = {};
+      continue;
+    }
+
+    let const string_start = position + 1;
+    let const string_end   = json_string_close(source, string_start);
+
+    position = skip_json_trivia(source, string_end + 1);
+
+    let const is_object_member = !stack.is_empty() && !stack.back().is_array;
+
+    if (pending_key.is_empty() && is_object_member &&
+        position < source.length && source[position] == ':')
+    {
+      pending_key =
+          source.substring_of_length(string_start, string_end - string_start);
+      position++;
+      continue;
+    }
+
+    if (!pending_key.is_empty()) {
+      if (let const *matched = do_find_key(pending_key)) {
+        add_json_command_fragment(document, source, string_start, string_end,
+                                  default_mood, *matched, template_syntax);
+      } else if (!stack.is_empty() && stack.back().command_key != nullptr) {
+        add_json_command_fragment(document, source, string_start, string_end,
+                                  default_mood, *stack.back().command_key,
+                                  template_syntax);
+      }
+    }
+
+    pending_key = {};
   }
 }
 
@@ -2103,6 +2852,65 @@ parser_format_should_silence_unresolved_commands(
   return false;
 }
 
+static fn
+host_variable_patterns(parser_format_kind kind, usize &count) wontthrow
+    -> const StringView *
+{
+  static constexpr StringView GITHUB[]  = {"GITHUB_*", "RUNNER_*", "CI"};
+  static constexpr StringView GITEA[]   = {"GITHUB_*", "GITEA_*", "RUNNER_*",
+                                           "CI"};
+  static constexpr StringView FORGEJO[] = {"GITHUB_*", "FORGEJO_*", "RUNNER_*",
+                                           "CI"};
+  static constexpr StringView GITLAB[]  = {"CI_*", "GITLAB_*", "CI"};
+  static constexpr StringView CIRCLE[]  = {"CIRCLE_*", "CIRCLECI", "CI"};
+  static constexpr StringView AZURE[]   = {"BUILD_*", "SYSTEM_*", "AGENT_*",
+                                           "PIPELINE_*", "TF_BUILD"};
+  static constexpr StringView BITBUCKET[]  = {"BITBUCKET_*", "CI"};
+  static constexpr StringView BUILDKITE[]  = {"BUILDKITE_*", "BUILDKITE", "CI"};
+  static constexpr StringView TRAVIS[]     = {"TRAVIS_*", "TRAVIS", "CI"};
+  static constexpr StringView DRONE[]      = {"DRONE_*", "DRONE", "CI_*", "CI"};
+  static constexpr StringView WOODPECKER[] = {"CI_*", "CI"};
+  static constexpr StringView CLOUD_BUILD[] = {
+      "PROJECT_ID",  "PROJECT_NUMBER", "BUILD_ID",    "LOCATION",
+      "REPO_NAME",   "REPO_FULL_NAME", "BRANCH_NAME", "TAG_NAME",
+      "REVISION_ID", "COMMIT_SHA",     "SHORT_SHA",   "_*"};
+  static constexpr StringView NPM[] = {"npm_*"};
+
+  struct host_variable_entry
+  {
+    parser_format_kind kind;
+    const StringView  *patterns;
+    usize              pattern_count;
+  };
+
+  static constexpr host_variable_entry ENTRIES[] = {
+      {parser_format_kind::GithubActions,      GITHUB,      countof(GITHUB)     },
+      {parser_format_kind::GiteaActions,       GITEA,       countof(GITEA)      },
+      {parser_format_kind::ForgejoActions,     FORGEJO,     countof(FORGEJO)    },
+      {parser_format_kind::GitlabCi,           GITLAB,      countof(GITLAB)     },
+      {parser_format_kind::CircleCi,           CIRCLE,      countof(CIRCLE)     },
+      {parser_format_kind::AzurePipelines,     AZURE,       countof(AZURE)      },
+      {parser_format_kind::BitbucketPipelines, BITBUCKET,   countof(BITBUCKET)  },
+      {parser_format_kind::Buildkite,          BUILDKITE,   countof(BUILDKITE)  },
+      {parser_format_kind::TravisCi,           TRAVIS,      countof(TRAVIS)     },
+      {parser_format_kind::Drone,              DRONE,       countof(DRONE)      },
+      {parser_format_kind::Woodpecker,         WOODPECKER,  countof(WOODPECKER) },
+      {parser_format_kind::CloudBuild,         CLOUD_BUILD, countof(CLOUD_BUILD)},
+      {parser_format_kind::PackageJson,        NPM,         countof(NPM)        },
+  };
+
+  for (let const &entry : ENTRIES) {
+    if (entry.kind != kind) continue;
+    count = entry.pattern_count;
+
+    return entry.patterns;
+  }
+
+  count = 0;
+
+  return nullptr;
+}
+
 fn
 parse_format_document(const parser_format_input &input) throws
     -> parsed_format_document
@@ -2186,6 +2994,17 @@ parse_format_document(const parser_format_input &input) throws
   case parser_format_kind::DevContainer:
     parse_dev_container_format(input, document);
     break;
+  }
+
+  usize     host_variable_count = 0;
+  let const host_variables =
+      host_variable_patterns(document.kind, host_variable_count);
+
+  for (let &fragment : document.fragments) {
+    for (usize index = 0; index < host_variable_count; index++) {
+      fragment.assumed_variables.push(
+          String{heap_allocator(), host_variables[index]});
+    }
   }
 
   return document;

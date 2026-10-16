@@ -90,6 +90,9 @@ struct parser_format_json_key
 {
   StringView name;
   bool       should_silence_unresolved_commands;
+  usize      depth{0};
+  StringView container_key{};
+  StringView excluded_container_key{};
 };
 
 struct parser_format_fragment
@@ -100,6 +103,7 @@ struct parser_format_fragment
   parser_format_codec codec{parser_format_codec::Direct};
   bool                should_silence_unresolved_commands{false};
   bool                should_select_end{false};
+  ArrayList<String>   assumed_variables{heap_allocator()};
   char                continuation_byte{' '};
   usize               host_start{0};
   usize               host_end{0};
@@ -197,6 +201,8 @@ constexpr u8 TEMPLATE_STATEMENTS        = 1u << 1;
 constexpr u8 TEMPLATE_DOLLAR_CURLY      = 1u << 2;
 constexpr u8 TEMPLATE_AZURE_MACROS      = 1u << 3;
 constexpr u8 TEMPLATE_CIRCLE_PARAMETERS = 1u << 4;
+constexpr u8 TEMPLATE_IDE_VARIABLES     = 1u << 5;
+constexpr u8 TEMPLATE_DOUBLE_DOLLAR     = 1u << 6;
 
 fn
 parser_format_masked_template_source(StringView host_source,
@@ -219,9 +225,17 @@ parser_format_extract_yaml_keys(
     StringView              source,
     const StringView       *keys,
     usize                   key_count,
-    mimic_mood              default_mood    = mimic_mood::Posix,
-    yaml_shell_selection    selection       = yaml_shell_selection::Nearby,
-    u8                      template_syntax = TEMPLATE_CURLY) throws -> void;
+    mimic_mood              default_mood      = mimic_mood::Posix,
+    yaml_shell_selection    selection         = yaml_shell_selection::Nearby,
+    u8                      template_syntax   = TEMPLATE_CURLY,
+    StringView              excluded_ancestor = {}) throws -> void;
+fn
+parser_format_extract_yaml_value_at(parsed_format_document &document,
+                                    StringView              source,
+                                    usize                   value_line_start,
+                                    usize                   mood_line_start,
+                                    mimic_mood              default_mood,
+                                    u8 template_syntax) throws -> void;
 fn
 parser_format_extract_yaml_exec_keys(
     parsed_format_document &document,
@@ -234,7 +248,8 @@ parser_format_extract_json_keys(parsed_format_document       &document,
                                 StringView                    source,
                                 const parser_format_json_key *keys,
                                 usize                         key_count,
-                                mimic_mood default_mood) throws -> void;
+                                mimic_mood                    default_mood,
+                                u8 template_syntax = 0) throws -> void;
 fn
 parser_format_add_json_fragment(parsed_format_document &document,
                                 StringView              source,

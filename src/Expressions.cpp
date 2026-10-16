@@ -1455,6 +1455,26 @@ AnalysisContext::is_posix_mood() const wontthrow -> bool
           eval_context->runtime_state().get_mood() == mimic_mood::Posix);
 }
 
+static pure fn
+is_assumed_variable(const ArrayList<String> *assumed_variables,
+                    StringView               name) wontthrow -> bool
+{
+  if (assumed_variables == nullptr) return false;
+
+  for (let const &assumed : *assumed_variables) {
+    let const pattern = assumed.view();
+
+    if (pattern == name) return true;
+    if (!pattern.is_empty() && pattern[pattern.length - 1] == '*' &&
+        name.starts_with(pattern.substring_of_length(0, pattern.length - 1)))
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 fn
 AnalysisContext::note_variable_read(
     StringView            name,
@@ -1485,6 +1505,7 @@ AnalysisContext::note_variable_read(
   }
 
   if (inherited_assigned_names.contains(name)) return;
+  if (is_assumed_variable(options.assumed_variables, name)) return;
   if (function_local_names.find(name).has_value()) return;
   if (global_assigned_names.find(name).has_value()) return;
   if (reads_before_assignment.find(name).has_value()) return;

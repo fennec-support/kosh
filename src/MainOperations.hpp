@@ -461,14 +461,15 @@ private:
 
 struct script_run_options
 {
-  bool       should_require_shebang{true};
-  bool       should_silence_unresolved_commands{false};
-  bool       should_print_ast{true};
-  bool       should_analyze{true};
-  bool       is_whole_line{false};
-  bool       should_use_command_string_status{true};
-  bool      *out_was_rejected{nullptr};
-  StringView display_source{};
+  bool                     should_require_shebang{true};
+  bool                     should_silence_unresolved_commands{false};
+  bool                     should_print_ast{true};
+  bool                     should_analyze{true};
+  bool                     is_whole_line{false};
+  bool                     should_use_command_string_status{true};
+  bool                    *out_was_rejected{nullptr};
+  StringView               display_source{};
+  const ArrayList<String> *assumed_variables{nullptr};
 };
 
 static fn
@@ -715,7 +716,8 @@ analyze_script(const script_run_input    &input,
        context.execution_store().shell_is_interactive());
   options.should_report_optimizer_diagnostics =
       FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled();
-  options.display_source = input.display_source;
+  options.display_source    = input.display_source;
+  options.assumed_variables = run_options.assumed_variables;
   options.shebang_policy =
       run_options.should_require_shebang && input.filename.has_value()
           ? missing_shebang_policy::Report
@@ -1124,7 +1126,8 @@ run_lint_document_contents(
     let fragment_options = script_run_options{
         false, fragment.should_silence_unresolved_commands, should_print_ast};
 
-    fragment_options.display_source = source.view();
+    fragment_options.display_source    = source.view();
+    fragment_options.assumed_variables = &fragment.assumed_variables;
 
     let const fragment_status = run_script_contents(
         fragment.analysis_source, context, ast_arena, filename, nullptr,
