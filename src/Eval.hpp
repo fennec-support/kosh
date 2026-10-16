@@ -784,8 +784,6 @@ private:
 
 namespace koshka {
 
-class EvalContext;
-
 namespace completion {
 class ShellHighlightCache;
 } /* namespace completion */
@@ -1135,10 +1133,7 @@ public:
   alias_names() const throws -> HashSet
   {
     let out = HashSet{heap_allocator()};
-    m_aliases.for_each([&out](StringView key, const String &value) {
-      unused(value);
-      out.add(key);
-    });
+    for_each_alias_name([&out](StringView name) { out.add(name); });
 
     return out;
   }
@@ -2597,6 +2592,7 @@ public:
     if (((*entry)->attribute_bits &
          static_cast<u8>(variable_attribute::Nameref)) != 0) rarely
       return None;
+    /* at this point: entry is set and is not a nameref. */
 
     return &(*entry)->value;
   }
@@ -3229,6 +3225,7 @@ public:
     if (!found.has_value() || !found.value()->has_location) {
       return None;
     }
+    /* at this point: found holds a trap with a source location. */
 
     try {
       return trap_definition{*found.value()};
@@ -3243,11 +3240,11 @@ public:
     return m_traps.count();
   }
 
-  template <class Fn>
+  template <typename Callback>
   fn
-  list(Fn callback) const throws -> void
+  list(Callback do_callback) const throws -> void
   {
-    m_traps.for_each(callback);
+    m_traps.for_each(do_callback);
   }
 
   fn

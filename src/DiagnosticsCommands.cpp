@@ -343,18 +343,18 @@ check_command_name_lints(AnalysisContext          &actx,
     if (args.count() >= 2 && args[1]->kind() == Token::Kind::Word) {
       let const &action =
           static_cast<const tokens::WordToken *>(args[1])->word();
-      let action_expands_now = false;
+      let has_expanding_action = false;
 
       for (let const &segment : action.segments)
         if (segment.is_in_double_quotes &&
             (segment.kind == WordSegment::Kind::VariableReference ||
              segment.kind == WordSegment::Kind::CommandSubstitution))
         {
-          action_expands_now = true;
+          has_expanding_action = true;
           break;
         }
 
-      if (action_expands_now)
+      if (has_expanding_action)
         actx.report_diagnostic(diagnostic_id::sc2064,
                                args[1]->source_location());
     }
@@ -407,6 +407,11 @@ check_command_name_lints(AnalysisContext          &actx,
                               ->word()
                               .to_literal_string();
       let const view = literal.view();
+
+      if (view == "-v") {
+        i++;
+        continue;
+      }
 
       if (view == "--") {
         if (i + 1 < args.count()) format_index = i + 1;
@@ -468,15 +473,15 @@ check_command_value_lints(AnalysisContext          &actx,
 
         if (has_reported_substitution_value) continue;
 
-        let value_has_substitution = false;
+        let has_substitution_segment = false;
 
         for (let const &segment : assignment->value_word().segments)
           if (segment.kind == WordSegment::Kind::CommandSubstitution) {
-            value_has_substitution = true;
+            has_substitution_segment = true;
             break;
           }
 
-        if (!value_has_substitution) continue;
+        if (!has_substitution_segment) continue;
 
         actx.report_diagnostic(diagnostic_id::sc2155,
                                args[i]->source_location());

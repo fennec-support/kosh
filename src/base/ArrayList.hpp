@@ -435,14 +435,14 @@ public:
 
     /* at this point: needed is greater than m_capacity and at most
        MAXIMUM_ELEMENT_COUNT. */
-    constexpr usize INITIAL_ALLOCATION_BYTES      = 64;
+    constexpr usize INITIAL_ALLOCATION_BYTE_COUNT = 64;
     constexpr usize MAXIMUM_INITIAL_ELEMENT_COUNT = 16;
     constexpr usize INITIAL_ELEMENT_COUNT =
-        sizeof(T) >= INITIAL_ALLOCATION_BYTES
+        sizeof(T) >= INITIAL_ALLOCATION_BYTE_COUNT
             ? 1
-            : (INITIAL_ALLOCATION_BYTES / sizeof(T) <
+            : (INITIAL_ALLOCATION_BYTE_COUNT / sizeof(T) <
                        MAXIMUM_INITIAL_ELEMENT_COUNT
-                   ? INITIAL_ALLOCATION_BYTES / sizeof(T)
+                   ? INITIAL_ALLOCATION_BYTE_COUNT / sizeof(T)
                    : MAXIMUM_INITIAL_ELEMENT_COUNT);
     usize new_capacity = INITIAL_ELEMENT_COUNT;
 
@@ -487,14 +487,14 @@ public:
     if (m_allocator == allocator) return;
 
     if (m_length == 0) {
-      if (m_data != nullptr) m_allocator.free_array(m_data, m_capacity);
-      m_data      = nullptr;
-      m_capacity  = 0;
+      destroy_all();
       m_allocator = allocator;
 
       return;
     }
 
+    /* at this point: m_length is greater than zero, and allocator differs
+       from m_allocator. */
     let const fresh = allocator.alloc_array<T>(m_length);
 
     try {
@@ -515,13 +515,13 @@ public:
   {
     if (m_length == m_capacity) return;
     if (m_length == 0) {
-      if (m_data != nullptr) m_allocator.free_array(m_data, m_capacity);
-      m_data     = nullptr;
-      m_capacity = 0;
+      destroy_all();
 
       return;
     }
 
+    /* at this point: m_length is greater than zero and less than
+       m_capacity. */
     let const fresh = m_allocator.alloc_array<T>(m_length);
 
     try {
@@ -552,6 +552,7 @@ public:
       return;
     }
 
+    /* at this point: m_length is greater than INSERTION_SORT_THRESHOLD. */
     usize allowed_unbalanced_count = 0;
 
     for (usize count = m_length; count > 1; count >>= 1)
@@ -959,13 +960,10 @@ private:
   fn
   destroy_all() wontthrow -> void
   {
-    if constexpr (!std::is_trivially_destructible_v<T>)
-      for (usize i = 0; i < m_length; i++)
-        m_data[i].~T();
+    clear();
 
     if (m_data != nullptr) m_allocator.free_array(m_data, m_capacity);
     m_data     = nullptr;
-    m_length   = 0;
     m_capacity = 0;
   }
 
@@ -1067,7 +1065,9 @@ public:
     if constexpr (requires { value.move_to_allocator(Base::allocator()); })
       value.move_to_allocator(Base::allocator());
 
-    Base::insert_at(lower_bound(value), steal(value));
+    let const index = lower_bound(value);
+
+    Base::insert_at(index, steal(value));
   }
 
   template <typename... Args>

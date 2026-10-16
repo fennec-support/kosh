@@ -152,21 +152,12 @@ set_alias(option_text     set_name,
           option_text     help,
           bool            is_on) wontthrow -> option_descriptor
 {
-  option_descriptor entry{};
+  let entry =
+      make_entry(0, {}, option_type::Boolean, option_class::Interactive,
+                 option_storage::EditorMode, shell_option,
+                 entry_shape{.set_name = set_name, .help = help}, is_on, is_on);
 
-  entry.set_name            = set_name;
-  entry.help                = help;
-  entry.enum_values         = enum_values(BOOLEAN_VALUE_NAMES);
-  entry.type                = option_type::Boolean;
-  entry.category            = option_class::Interactive;
-  entry.storage             = option_storage::EditorMode;
-  entry.shell_option        = shell_option;
-  entry.default_value       = is_on;
-  entry.bash_default_value  = is_on;
-  entry.posix_default_value = is_on;
-  entry.strict_value        = is_on;
-  entry.is_set_alias        = true;
-  entry.is_listed_by_set    = true;
+  entry.is_set_alias = true;
 
   return entry;
 }
@@ -1333,17 +1324,6 @@ registry_is_valid() wontthrow -> bool
 
 static_assert(registry_is_valid());
 
-consteval fn
-set_listing_count() wontthrow -> usize
-{
-  usize result = 0;
-
-  for (let const &entry : OPTION_REGISTRY)
-    if (!entry.set_name.is_empty()) result++;
-
-  return result;
-}
-
 template <usize Count>
 struct listing_table
 {
@@ -1351,10 +1331,10 @@ struct listing_table
 };
 
 consteval fn
-make_set_listing() wontthrow -> listing_table<set_listing_count()>
+make_set_listing() wontthrow -> listing_table<name_count(name_kind::Set)>
 {
-  listing_table<set_listing_count()> result{};
-  usize                              count = 0;
+  listing_table<name_count(name_kind::Set)> result{};
+  usize                                     count = 0;
 
   for (let const &entry : OPTION_REGISTRY)
     if (!entry.set_name.is_empty()) result.entries[count++] = entry;

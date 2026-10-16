@@ -352,12 +352,12 @@ get_codepoint_byte_offset(const char *bytes,
        the first loop consumes c3, a lead byte -> byte_offset 1, seen 1
        the second loop skips a9, a continuation byte -> byte_offset 2
        e4 is a lead byte, so the result is 2, the start of U+4E2D */
-  usize byte_offset     = 0;
-  usize seen_codepoints = 0;
+  usize byte_offset          = 0;
+  usize seen_codepoint_count = 0;
 
-  while (byte_offset < byte_length && seen_codepoints < codepoint_index) {
+  while (byte_offset < byte_length && seen_codepoint_count < codepoint_index) {
     if ((static_cast<unsigned char>(bytes[byte_offset]) & 0xC0) != 0x80)
-      seen_codepoints += 1;
+      seen_codepoint_count += 1;
     byte_offset += 1;
   }
 
@@ -432,28 +432,18 @@ get_byte_offset_at_or_before_display_cell(StringView text,
   usize byte_offset = 0;
 
   /* e.g. text = "ab" + U+4E2D (bytes 61 62 e4 b8 ad), cell_position = 3
-       the ASCII prefix ends at byte 2 with width 2; the walk consumes U+4E2D
-       as width 2 -> byte_offset 5, width 4
-       4 > 3, so previous_byte_offset = 4; ad and b8 are continuation bytes,
-       so it moves to 2, where e4 is a lead byte
-       the prefix "ab" has width 2 -> returns byte offset 2, cell position 2 */
+       the walk consumes U+4E2D as width 2 -> byte_offset 5, width 4
+       4 > 3, so the walk runs again with cell_position - 1 = 2
+       the prefix "ab" has width 2 and stops before U+4E2D -> byte offset 2 */
   actual_cell_position =
       koshka::internal::display_width_walk(text, cell_position, &byte_offset);
   if (actual_cell_position <= cell_position) return byte_offset;
 
-  usize previous_byte_offset = byte_offset - 1;
-
-  while (previous_byte_offset > 0 &&
-         (static_cast<u8>(text[previous_byte_offset]) & 0xc0) == 0x80)
-  {
-    previous_byte_offset--;
-  }
-
+  /* the walk consumed a wide character that starts at cell_position - 1 */
   actual_cell_position = koshka::internal::display_width_walk(
-      text.substring_of_length(0, previous_byte_offset), static_cast<usize>(-1),
-      nullptr);
+      text, cell_position - 1, &byte_offset);
 
-  return previous_byte_offset;
+  return byte_offset;
 }
 
 fn

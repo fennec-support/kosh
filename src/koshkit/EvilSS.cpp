@@ -144,7 +144,7 @@ fn
 append_network_socket_report(String                              &output,
                              const network_socket_report_options &options,
                              Allocator                            allocator,
-                             bool should_color) throws -> bool
+                             bool should_color) throws -> void
 {
   let sockets_unsorted = os::network_sockets(
       options.should_show_processes
@@ -266,7 +266,10 @@ append_network_socket_report(String                              &output,
       continue;
     }
 
-    if (has_previous && socket.identity == previous_identity &&
+    /* identity 0 marks a socket without an inode, such as a Linux TIME_WAIT
+       socket, so only sockets with an identity can be duplicates. */
+    if (has_previous && socket.identity != 0 &&
+        socket.identity == previous_identity &&
         socket.process_id == previous_process_id)
     {
       continue;
@@ -361,8 +364,6 @@ append_network_socket_report(String                              &output,
   }
 
   append_titled_report_table(output, "Sockets", table, should_color);
-
-  return !rows.is_empty();
 }
 
 } /* namespace */

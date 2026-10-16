@@ -47,7 +47,7 @@ interpreter_from_word(StringView word, mimic_mood fallback) wontthrow
   return {recipe_language::Other, fallback};
 }
 
-pure fn
+fn
 next_word(StringView text, usize &position) wontthrow -> StringView
 {
   while (position < text.length &&
@@ -70,7 +70,7 @@ interpreter_from_shebang(StringView line, mimic_mood fallback) wontthrow
   return interpreter_from_word(parser_format_shebang_program(line), fallback);
 }
 
-pure fn
+fn
 next_quoted_word(StringView text, usize &position)
     wontthrow -> Maybe<StringView>
 {
@@ -322,8 +322,7 @@ is_recipe_header(StringView line) wontthrow -> bool
 
   let const first = line[0];
 
-  return first == '@' || first == '_' || (first >= 'a' && first <= 'z') ||
-         (first >= 'A' && first <= 'Z');
+  return first == '@' || is_recipe_variable_start(first);
 }
 
 pure fn
@@ -404,7 +403,7 @@ parse_justfile_format(const parser_format_input &input,
   usize                     position     = 0;
 
   let const do_flush_script = [&]() throws {
-    if (body_script.has_value() &&
+    if (body_script.has_value() && is_body_started &&
         body_script->language == recipe_language::Shell)
     {
       add_recipe_fragment(input, document, script_start, script_end,

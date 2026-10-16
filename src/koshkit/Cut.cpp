@@ -55,13 +55,12 @@ Cut::execute(const ExecContext               &ec,
     return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let const list = FLAG_CUT_BYTES.is_set()        ? FLAG_CUT_BYTES.value()
-                   : FLAG_CUT_CHARACTERS.is_set() ? FLAG_CUT_CHARACTERS.value()
-                                                  : FLAG_CUT_FIELDS.value();
-  let const list_location =
-      FLAG_CUT_BYTES.is_set()        ? FLAG_CUT_BYTES.value_location()
-      : FLAG_CUT_CHARACTERS.is_set() ? FLAG_CUT_CHARACTERS.value_location()
-                                     : FLAG_CUT_FIELDS.value_location();
+  let const &list_flag = FLAG_CUT_BYTES.is_set()        ? FLAG_CUT_BYTES
+                         : FLAG_CUT_CHARACTERS.is_set() ? FLAG_CUT_CHARACTERS
+                                                        : FLAG_CUT_FIELDS;
+
+  let const list          = list_flag.value();
+  let const list_location = list_flag.value_location();
   let const ranges =
       utils::parse_text_position_ranges(list, cxt.scratch_allocator());
 
@@ -75,8 +74,7 @@ Cut::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let const last_selected_position =
-      ranges->is_empty() ? usize{0} : (*ranges)[ranges->count() - 1].last;
+  let const last_selected_position = (*ranges)[ranges->count() - 1].last;
 
   char delimiter = '\t';
 

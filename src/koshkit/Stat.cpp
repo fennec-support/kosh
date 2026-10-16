@@ -131,9 +131,7 @@ append_padded(String               &output,
   }
 
   if (spec.has_precision && is_numeric && body.length < spec.precision) {
-    for (usize index = body.length; index < spec.precision; index++)
-      padded_body += "0";
-
+    padded_body.append_repeated('0', spec.precision - body.length);
     padded_body += body;
     body = padded_body.view();
   }
@@ -148,18 +146,14 @@ append_padded(String               &output,
 
   if (spec.is_left_aligned) {
     output += body;
-
-    for (usize index = 0; index < pad_length; index++)
-      output += " ";
+    output.append_repeated(' ', pad_length);
 
     return;
   }
 
-  let const pad_text = spec.is_zero_padded && is_numeric ? "0" : " ";
+  let const pad_byte = spec.is_zero_padded && is_numeric ? '0' : ' ';
 
-  for (usize index = 0; index < pad_length; index++)
-    output += pad_text;
-
+  output.append_repeated(pad_byte, pad_length);
   output += body;
 }
 
@@ -798,6 +792,8 @@ render_format(String                      &output,
       return;
     }
 
+    /* at this point: spec holds a parsed directive, and position is past
+       its letter. */
     if (subject != nullptr) {
       render_file_directive(output, spec, *subject, cxt);
       continue;
@@ -892,11 +888,11 @@ Stat::execute(const ExecContext               &ec,
     results = batch.execute(os::batch_deduplication::Disabled);
   }
 
-  i32             status             = 0;
-  constexpr usize OUTPUT_BATCH_BYTES = 64 * 1024;
-  let             output             = String{allocator};
+  i32             status                  = 0;
+  constexpr usize OUTPUT_BATCH_BYTE_COUNT = 64 * 1024;
+  let             output                  = String{allocator};
 
-  if (operands.count() > 16) output.reserve(OUTPUT_BATCH_BYTES);
+  if (operands.count() > 16) output.reserve(OUTPUT_BATCH_BYTE_COUNT);
 
   for (usize index = 0; index < operands.count(); index++) {
     let const &operand = operands[index];
@@ -936,7 +932,9 @@ Stat::execute(const ExecContext               &ec,
 
       let active_format = selected_format.view();
 
-      if (active_format.is_empty()) {
+      if (!FLAG_STAT_FORMAT.is_set() && !FLAG_STAT_PRINTF.is_set() &&
+          !FLAG_STAT_TERSE.is_enabled())
+      {
         let const type_letter = os::file_type_letter(subject.status.mode);
         let const is_device   = type_letter == 'b' || type_letter == 'c';
 
@@ -948,7 +946,7 @@ Stat::execute(const ExecContext               &ec,
       if (should_append_newline) output += "\n";
     }
 
-    if (output.length() < OUTPUT_BATCH_BYTES) continue;
+    if (output.length() < OUTPUT_BATCH_BYTE_COUNT) continue;
 
     ec.print_to_stdout(output);
     output.clear();

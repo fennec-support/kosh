@@ -127,6 +127,8 @@ WordSegment::set_exact_constant_arithmetic_text(StringView text,
     cache.arithmetic_lifetime = arena->register_lifetime();
   }
 
+  /* at this point: cache.arith is non-null, and arithmetic_lifetime is valid
+     in arena. */
   cache.arith->exact_constant_text     = String{allocator, text};
   cache.arith->has_exact_constant_text = true;
 }
@@ -366,6 +368,9 @@ Word::get_fd_allocation_target() const wontthrow -> Maybe<fd_allocation_target>
   let const subscript_length = inner.length - name_length - 2;
 
   if (subscript_length == 0) return None;
+
+  /* at this point: inner is a variable name followed by a non-empty
+     subscript in brackets that close at the last byte of inner. */
 
   return fd_allocation_target{
       inner.substring_of_length(0, name_length),
@@ -665,6 +670,8 @@ Word::get_assignment_split(Allocator allocator) const throws
 
   if (name_cursor != name_length) return koshka::None;
 
+  /* at this point: first.text starts with a variable name, and its first
+     name_length bytes form a valid assignment name. */
   let const name_view = first.text.substring_of_length(0, name_length);
   let       name      = String{allocator, name_view};
 
@@ -968,6 +975,9 @@ ExpandedWordToken::fill_literal() const throws -> void
 
   if (view.length == 0) return;
   if (view.length > ~static_cast<u32>(0)) throw std::bad_alloc{};
+
+  /* at this point: m_literal_data is null, and view is non-empty and fits
+     in u32. */
 
   let buffer = m_word.segments.allocator().alloc_array<char>(view.length);
 

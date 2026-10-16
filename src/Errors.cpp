@@ -16,7 +16,6 @@
 #include "Toiletline.hpp"
 #include "Utils.hpp"
 #include "base/Debug.hpp"
-#include "base/ErrorOr.hpp"
 #include "base/Trace.hpp"
 
 namespace koshka {
@@ -71,6 +70,8 @@ intern_source_name(StringView name) throws -> u32
     }
   }
 
+  /* at this point: name is not empty, and no row has the same kind and
+     text. */
   let const copy = heap_allocator().alloc_array<char>(name.length + 1);
 
   memcpy(copy, name.data, name.length);
@@ -101,6 +102,7 @@ source_name_at(u32 source_name_index) wontthrow -> Maybe<StringView>
 
   if (source_name_index > table.count()) return None;
 
+  /* at this point: source_name_index is between 1 and table.count(). */
   let const &row = table[source_name_index - 1];
 
   if (row.kind == source_identity_kind::CommandString)
@@ -207,10 +209,8 @@ append_diagnostic_message(String                 &out,
   out += reset;
 }
 
-template <class T>
-  requires std::is_integral_v<T>
 cold static fn
-number_string_length(T value) wontthrow -> usize
+number_string_length(usize value) wontthrow -> usize
 {
   usize digit_count = 1;
 
@@ -650,6 +650,8 @@ resolve_rendered_site(StringView            source,
     return rendered_site{source, location, line_offset};
   }
 
+  /* at this point: resolved.is_windowed is true, and resolved.text is
+     non-null. */
   return rendered_site{resolved.text->view(), resolved.rebase(location),
                        resolved.line_offset};
 }
@@ -849,6 +851,9 @@ DetailsWithLocation::to_string(StringView source, EvalContext *context) const th
   let const byte_count    = site.location.length;
 
   if (byte_position > source.count()) return String{heap_allocator()};
+
+  /* at this point: m_message is not empty, and byte_position is at most
+     source.count(). */
 
   LOG(Debug, "formatting details at byte %zu", byte_position);
 

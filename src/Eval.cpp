@@ -137,11 +137,11 @@ DefinitionStateScope::~DefinitionStateScope()
 fn
 EvalContext::end_command() wontthrow -> void
 {
-  let const used = arena_store().parse_arena() != nullptr
-                       ? arena_store().parse_arena()->bytes_used()
-                       : 0;
+  let const used_byte_count = arena_store().parse_arena() != nullptr
+                                  ? arena_store().parse_arena()->bytes_used()
+                                  : 0;
 
-  evaluation_metrics_store().end_command(used);
+  evaluation_metrics_store().end_command(used_byte_count);
 }
 
 fn
@@ -235,12 +235,7 @@ EvalContext::assign_variable(StringView              name,
     variable_store().special_variable_definition_locations().set(
         name, source_store().current_location());
   if (is_exported(name)) {
-    if (execution_store().subshell_depth() > 0)
-      environment_store().environment_undo_log().push(environment_undo_entry{
-          String{heap_allocator(), name},
-          os::get_environment_variable(name),
-          None
-      });
+    record_environment_change(name);
     os::set_environment_variable(name, value);
   }
 }
@@ -358,6 +353,8 @@ EvalContext::guard_restricted_path(StringView            path,
     return;
   }
 
+  /* at this point: the restricted option is on, and path is forbidden
+     for use. */
   switch (use) {
   case restricted_path_use::Command:
     throw ErrorWithLocation{
@@ -596,6 +593,8 @@ EvalContext::unset_shell_variable(StringView name) throws -> void
     return;
   }
 
+  /* at this point: name is not read only or an argument array, and no caller
+     local binding was peeled for it. */
   let const should_disable_bash_aliases =
       name == BASH_ALIASES_VARIABLE &&
       is_bash_special_array_active(bash_special_array_id::Aliases);
@@ -931,6 +930,8 @@ EvalContext::show_runtime_warning_at(SourceLocation location,
       return;
     }
 
+    /* at this point: resolved_source.text is non-null, and location.position
+       is at most resolved_source.text->count(). */
     let warning = WarningWithLocationAndDetails{location, message, note};
 
     if (resolved_source.is_windowed) warning.set_line_offset(line_offset);
@@ -961,6 +962,8 @@ EvalContext::show_runtime_error_at(SourceLocation location,
       return;
     }
 
+    /* at this point: resolved_source.text is non-null, and location.position
+       is at most resolved_source.text->count(). */
     let error = ErrorWithLocation{location, message};
 
     if (resolved_source.is_windowed) error.set_line_offset(line_offset);
@@ -1122,7 +1125,7 @@ EvalContext::report_unset_reference(StringView name) throws -> void
     if (reference.position == source_store().current_location().position &&
         reference.length == source_store().current_location().length)
     {
-      throw_script_fatal(String{message}, empty_expansion_note.view());
+      throw_script_fatal(message, empty_expansion_note.view());
     }
 
     ErrorWithLocationAndDetails error{reference, message,
@@ -2022,9 +2025,9 @@ EvalContext::dynamic_array_element_count(DynamicArray which) const throws -> usi
                ? variable_store().bash_arguments().frame_counts().count()
                : variable_store().bash_arguments().values().count();
   }
-  case DynamicArray::SourcePath:   return bash_source_frame_count();
-  case DynamicArray::FunctionName: return funcname_frame_count();
+  case DynamicArray::SourcePath:
   case DynamicArray::LineNumber:   return bash_source_frame_count();
+  case DynamicArray::FunctionName: return funcname_frame_count();
   }
 
   return 0;

@@ -233,6 +233,8 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* at this point: name_index is below args.count(), so each remaining
+     operand is a command name to look up. */
   i32 status = 0;
 
   for (; name_index < args.count(); name_index++) {

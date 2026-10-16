@@ -1088,6 +1088,9 @@ run_live_process_io(const ExecContext         &ec,
       return 1;
     }
 
+    /* at this point: no interrupt request is pending. when selected_pid has
+       a value, after_rows holds the row for that process. */
+
     update_retained_rows(retained, after_rows, now, window_nanoseconds,
                          frame_allocator, do_get_key, do_get_value,
                          process_io_counter_reset, do_make_row);
@@ -1700,6 +1703,7 @@ EvilIO::execute(const ExecContext               &ec,
     has_swap_before     = os::read_swap_status(swap_before);
     disk_before         = steal(disk_after);
     os::sleep_for_seconds(cumulative_duration_seconds);
+    if (take_interrupt_request()) return 130;
     has_activity_after = os::read_system_activity_status(activity_after);
     disk_after         = os::read_disk_io_snapshot(allocator);
     has_swap_after     = os::read_swap_status(swap_after);
@@ -2157,9 +2161,7 @@ EvilIO::execute(const ExecContext               &ec,
     if (FLAG_EVILIO_ALL.is_enabled() && swap_after.has_activity) {
       let activity = String{allocator};
 
-      if (FLAG_EVILIO_ALL.is_enabled() && has_swap_before &&
-          swap_before.has_activity)
-      {
+      if (has_swap_before && swap_before.has_activity) {
         let const input_rate =
             counter_rate(swap_before.input_byte_count,
                          swap_after.input_byte_count, elapsed_nanoseconds);

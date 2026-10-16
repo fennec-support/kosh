@@ -153,6 +153,9 @@ test_inequality_left_operand(const ArrayList<const Token *> &args,
     return None;
   }
 
+  /* at this point: args[operator_index] has the raw text "!=", and
+     operator_index - 1 is a valid index. */
+
   return args[operator_index - 1]->raw_view();
 }
 
@@ -316,6 +319,9 @@ view_is_plain_substitution_script(StringView view) wontthrow -> bool
   if (lexer::is_variable_name(delimiter) || delimiter == '\\') {
     return false;
   }
+
+  /* at this point: view has at least four bytes and starts with 's', and
+     delimiter is neither a variable name byte nor a backslash. */
 
   /* e.g. view = "s/a/b/g", delimiter = '/'
        position 2 'a' keeps field_count at 1; position 3 '/' makes it 2
@@ -511,7 +517,7 @@ cold fn
 printf_consumed_argument_count(StringView format,
                                bool      &has_quote_conversion) wontthrow -> usize
 {
-  usize count = 0;
+  usize consumed_argument_count = 0;
 
   /* e.g. format = "%*d %.*s%%" (10 bytes)
        i=0 starts "%*d": '*' width counts 1, 'd' counts 1; total 2
@@ -534,7 +540,7 @@ printf_consumed_argument_count(StringView format,
 
     if (i >= format.length) break;
     if (format[i] == '*') {
-      count++;
+      consumed_argument_count++;
       i++;
     } else {
       while (i < format.length && (format[i] >= '0' && format[i] <= '9')) {
@@ -545,7 +551,7 @@ printf_consumed_argument_count(StringView format,
     if (i < format.length && format[i] == '.') {
       i++;
       if (i < format.length && format[i] == '*') {
-        count++;
+        consumed_argument_count++;
         i++;
       } else {
         while (i < format.length && (format[i] >= '0' && format[i] <= '9')) {
@@ -573,10 +579,10 @@ printf_consumed_argument_count(StringView format,
       has_quote_conversion = true;
     }
 
-    count++;
+    consumed_argument_count++;
   }
 
-  return count;
+  return consumed_argument_count;
 }
 
 cold pure fn
@@ -613,6 +619,8 @@ cold fn
 single_literal_file_operand(const ArrayList<const Token *> &args) throws
     -> Maybe<const Token *>
 {
+  if (args_have_short_flag(args, 't')) return None;
+
   const Token *lone_operand = nullptr;
 
   for (usize i = 1; i < args.count(); i++) {
@@ -627,10 +635,8 @@ single_literal_file_operand(const ArrayList<const Token *> &args) throws
 
     if (view.is_empty()) return None;
 
-    if (view[0] == '-') {
-      if (view == "--" || view == "-t" ||
-          view.starts_with(StringView{"--target-directory"}))
-      {
+    if (view.length > 1 && view[0] == '-') {
+      if (view == "--" || view.starts_with(StringView{"--target-directory"})) {
         return None;
       }
 
@@ -643,6 +649,8 @@ single_literal_file_operand(const ArrayList<const Token *> &args) throws
 
   if (lone_operand == nullptr) return None;
 
+  /* at this point: lone_operand is the only non-option operand, and it is
+     a fully literal word token. */
   return lone_operand;
 }
 
@@ -707,6 +715,21 @@ constexpr PackedStringKey SHELL_MAINTAINED_VARIABLE_KEYS[] = {
     SSK("GLOBIGNORE"),
     SSK("HISTCMD"),
     SSK("HOME"),
+    SSK("KOSH"),
+    SSK("KOSH_BUILD_MODE"),
+    SSK("KOSH_CALC_HISTORY"),
+    SSK("KOSH_COMMIT"),
+    SSK("KOSH_DIRECTORY_HISTORY"),
+    SSK("KOSH_FAREWELL"),
+    SSK("KOSH_FLAGS"),
+    SSK("KOSH_HISTORY_FILE"),
+    SSK("KOSH_HISTORY_SIZE"),
+    SSK("KOSH_OS"),
+    SSK("KOSH_SHELL_INTEGRATION"),
+    SSK("KOSH_TRANSIENT_PS1"),
+    SSK("KOSH_TRANSIENT_RPS1"),
+    SSK("KOSH_VERSION"),
+    SSK("KOSH_WELCOME"),
     SSK("LANG"),
     SSK("LC_ALL"),
     SSK("LC_COLLATE"),
@@ -752,27 +775,6 @@ pure fn
 is_shell_maintained_variable(StringView name) wontthrow -> bool
 {
   if (is_runtime_dynamic_variable_name(name)) return true;
-
-  static constexpr PackedStringKey KOSH_KEYS[] = {
-      SSK("KOSH"),
-      SSK("KOSH_BUILD_MODE"),
-      SSK("KOSH_CALC_HISTORY"),
-      SSK("KOSH_COMMIT"),
-      SSK("KOSH_DIRECTORY_HISTORY"),
-      SSK("KOSH_FAREWELL"),
-      SSK("KOSH_FLAGS"),
-      SSK("KOSH_HISTORY_FILE"),
-      SSK("KOSH_HISTORY_SIZE"),
-      SSK("KOSH_OS"),
-      SSK("KOSH_SHELL_INTEGRATION"),
-      SSK("KOSH_TRANSIENT_PS1"),
-      SSK("KOSH_TRANSIENT_RPS1"),
-      SSK("KOSH_VERSION"),
-      SSK("KOSH_WELCOME"),
-  };
-  static constexpr StaticStringSet KOSH_VARIABLES{KOSH_KEYS};
-
-  if (KOSH_VARIABLES.contains(name)) return true;
 
   return SHELL_MAINTAINED_VARIABLES.contains(name);
 }
@@ -895,6 +897,8 @@ check_posix_parameter_expansion(AnalysisContext   &actx,
 
   if (position >= text.length) return;
 
+  /* at this point: text[name_start, position) is a nonempty variable name
+     that is not bash only, and position is inside text. */
   switch (text[position]) {
   case '[':
     actx.report_diagnostic(diagnostic_id::sc3054, do_get_location(), {text});
@@ -980,6 +984,8 @@ arithmetic_assignment_target(StringView expression,
 
   if (at == end) return {};
   if (!lexer::is_variable_name_start(expression[at])) return {};
+
+  /* at this point: expression[at, end) is a nonempty variable name. */
 
   return expression.substring_of_length(at, end - at);
 }

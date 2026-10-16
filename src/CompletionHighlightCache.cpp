@@ -217,6 +217,9 @@ find_matching_bracket(StringView                       line,
 
   if (!has_bracket_candidate) return None;
 
+  /* at this point: candidates holds candidate_count indices into line, and
+     at least one of them is a bracket byte. */
+
   let case_pattern_ends = ArrayList<usize>{heap_allocator()};
 
   if (line.find_substring("case").has_value())
@@ -554,21 +557,28 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
   for (let const &span : *first)
     expected.push(span);
 
+  let const do_spans_match =
+      [&](const ArrayList<highlight_span> &spans) throws -> bool {
+    if (spans.count() != expected.count()) return false;
+
+    for (usize index = 0; index < expected.count(); index++) {
+      if (spans[index].start != expected[index].start ||
+          spans[index].end != expected[index].end ||
+          spans[index].role != expected[index].role)
+      {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   unused(highlight_line("printf reset", context));
 
   let const *repeated =
       cache.spans_for(source.view(), line_start, source.count(), context);
 
-  if (repeated->count() != expected.count()) return false;
-
-  for (usize index = 0; index < expected.count(); index++) {
-    if ((*repeated)[index].start != expected[index].start ||
-        (*repeated)[index].end != expected[index].end ||
-        (*repeated)[index].role != expected[index].role)
-    {
-      return false;
-    }
-  }
+  if (!do_spans_match(*repeated)) return false;
 
   let       function_cache      = ShellHighlightCache{heap_allocator()};
   let const function_source     = ConstString{"finish() { :; }\nfinish"};
@@ -594,18 +604,7 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
   let const *invalidated =
       cache.spans_for(other_source.view(), 0, other_source.count(), context);
 
-  if (invalidated->count() != expected.count()) return true;
-
-  for (usize index = 0; index < expected.count(); index++) {
-    if ((*invalidated)[index].start != expected[index].start ||
-        (*invalidated)[index].end != expected[index].end ||
-        (*invalidated)[index].role != expected[index].role)
-    {
-      return true;
-    }
-  }
-
-  return false;
+  return !do_spans_match(*invalidated);
 }
 #endif
 

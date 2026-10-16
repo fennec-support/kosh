@@ -55,12 +55,14 @@ alwaysinline fn
 Parser::next_token_of_kind(Token::Kind kind,
                            StringView  missing_message) throws -> Token *
 {
-  Token *token = m_lexer.next_shell_token();
+  Token *token = m_lexer.peek_shell_token();
 
   ASSERT(token != nullptr);
   if (token->kind() != kind) {
     throw ErrorWithLocation{token->source_location(), missing_message};
   }
+
+  m_lexer.advance_past_last_peek();
 
   return token;
 }
@@ -642,9 +644,7 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
         return;
       default: break;
       }
-    }
 
-    if (open_closers.is_empty()) {
       if (is_list_terminator(token, mask)) return;
       if (is_separator) {
         m_lexer.advance_past_last_peek();
@@ -734,6 +734,8 @@ Parser::recover_failed_statement(const ErrorWithLocation &error,
     throw;
   }
 
+  /* at this point: m_collected_errors is set, the input is not exhausted,
+     and m_recorded_error_count is below MAX_RECOVERED_ERROR_COUNT. */
   let const failure_position = static_cast<usize>(
       m_lexer.peek_shell_token()->source_location().position);
 
@@ -1099,7 +1101,8 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
             m_lexer.advance_past_last_peek();
             maybe_time = peek_with_directive_collection(true);
 
-            let following_directives = m_lexer.take_shellcheck_directives();
+            let const following_directives =
+                m_lexer.take_shellcheck_directives();
 
             for (let const &directive : following_directives)
               directives.push(directive);
@@ -1348,8 +1351,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
                 last_pipe_token->source_location(),
                 "Expected a command after the pipe to receive the output",
                 "Put a command after the '|', as in `cmd | sort`, or remove "
-                "the "
-                "pipe"};
+                "the pipe"};
           }
 
           last_pipe_token = m_lexer.peek_shell_token();
@@ -1450,8 +1452,9 @@ Parser::build_file_or_dup_redirection(
             op_location.position + op_location.length)
     {
       m_lexer.advance_past_last_peek();
-      Token     *from      = next_token_of_kind(Token::Kind::Word,
-                                                "Expected a descriptor after '&'");
+      Token *from = next_token_of_kind(Token::Kind::Word,
+                                       "Expected a descriptor after '&'");
+
       let const &from_word = static_cast<tokens::WordToken *>(from)->word();
 
       redir.kind = (op_kind == Token::Kind::Less)
@@ -1634,7 +1637,7 @@ Parser::wrap_with_stderr_to_stdout(Command *command) throws -> Command *
 
   redirections.push(stderr_to_stdout_dup());
 
-  let redirected = m_lexer.arena().create<RedirectedCommand>(
+  let const redirected = m_lexer.arena().create<RedirectedCommand>(
       command->source_location(), command, steal(redirections));
 
   redirected->set_source_end_position(command->source_end_position());
@@ -1657,20 +1660,13 @@ Parser::build_heredoc_redirection(
 
   let is_separated_strip_operator = false;
 
-  if (delimiter_token->kind() == Token::Kind::Word &&
+  if (is_unquoted_word(delimiter_token, "-") &&
       delimiter_token->source_location().position ==
           op_location.position + op_location.length)
   {
-    let const &word = static_cast<tokens::WordToken *>(delimiter_token)->word();
-
-    if (word.segments.count() == 1 &&
-        word.segments[0].kind == WordSegment::Kind::UnquotedText &&
-        word.segments[0].text.view() == "-")
-    {
-      is_separated_strip_operator = true;
-      delimiter_token             = m_lexer.next_shell_token();
-      ASSERT(delimiter_token != nullptr);
-    }
+    is_separated_strip_operator = true;
+    delimiter_token             = m_lexer.next_shell_token();
+    ASSERT(delimiter_token != nullptr);
   }
 
   if (delimiter_token->kind() != Token::Kind::Word) {
@@ -1916,7 +1912,7 @@ Parser::attach_trailing_redirections(Command *compound) throws
 
   if (redirections.is_empty()) return compound;
 
-  let redirected = m_lexer.arena().create<RedirectedCommand>(
+  let const redirected = m_lexer.arena().create<RedirectedCommand>(
       compound->source_location(), compound, steal(redirections));
 
   redirected->set_source_end_position(end_position);
@@ -2247,8 +2243,8 @@ Parser::finish_function_body(const SourceLocation &location,
 
   let const rest_of_source = m_lexer.source().substring(location.position);
   let const line_length    = rest_of_source.find_character('\n');
-  let       body_storage   = FunctionBodyHandle::create(
-      line_length.has_value() ? line_length.value() : rest_of_source.length);
+  let       body_storage =
+      FunctionBodyHandle::create(line_length.value_or(rest_of_source.length));
   let      &previous_arena      = m_lexer.arena();
   let const previous_arena_kind = m_lexer.arena_kind();
   Command  *body                = nullptr;
@@ -2282,7 +2278,7 @@ Parser::finish_function_body(const SourceLocation &location,
      and m_lexer uses previous_arena again for FunctionDefinition. */
   body_storage.set_body(body);
 
-  let definition = m_lexer.arena().create<FunctionDefinition>(
+  let const definition = m_lexer.arena().create<FunctionDefinition>(
       location, name, steal(body_storage));
 
   definition->set_analysis_scope_definitions(close_analysis_scope(scope_mark));
@@ -2351,14 +2347,9 @@ Parser::consume_bash_array_assignment() throws
      keeps lexing with the same lexer, which would otherwise keep array
      literal lexing on. */
   m_lexer.set_is_lexing_array_literal(true);
-  try {
-    consume_bash_array_elements(open, elements);
-  } catch (...) {
-    m_lexer.set_is_lexing_array_literal(false);
-    throw;
-  }
+  defer { m_lexer.set_is_lexing_array_literal(false); };
 
-  m_lexer.set_is_lexing_array_literal(false);
+  consume_bash_array_elements(open, elements);
 
   return elements;
 }

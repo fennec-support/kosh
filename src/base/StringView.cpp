@@ -190,10 +190,7 @@ StringView::find_substring(StringView needle, usize from) const wontthrow
 fn
 StringView::substring(usize start) const wontthrow -> StringView
 {
-  if (start >= length)
-    return StringView{data == nullptr ? nullptr : data + length, 0};
-
-  return StringView{data + start, length - start};
+  return substring_of_length(start, length);
 }
 
 fn

@@ -37,7 +37,8 @@ FLAG_LIST_DECL();
 /* clang-format off */
 HELP_SYNOPSIS_DECL("[-OPTIONS] [--] <file> [argument ...]",
                    "[-OPTIONS] -c <script1> [-c <script2> ...] [argument ...]",
-                   "[-OPTIONS] (--lint [--format] | --format) [--apply] [file ...]",
+                   "[-OPTIONS] (--lint [--format] | --format) "
+                   "[--apply] [file ...]",
                    "[-OPTIONS] --as-language-server");
 /* clang-format on */
 

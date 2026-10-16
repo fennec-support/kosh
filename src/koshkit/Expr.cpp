@@ -126,7 +126,7 @@ private:
     while (peek("&")) {
       m_position++;
 
-      let right = parse_comparison();
+      let const right = parse_comparison();
 
       if (!expr_value_is_true(left.view()) || !expr_value_is_true(right.view()))
       {
@@ -148,7 +148,7 @@ private:
       if (!operation.has_value()) break;
       m_position++;
 
-      let       right        = parse_addition();
+      let const right        = parse_addition();
       let const left_number  = left.view().to<i64>();
       let const right_number = right.view().to<i64>();
       int       order        = 0;

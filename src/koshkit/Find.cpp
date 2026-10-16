@@ -240,6 +240,7 @@ public:
       return;
     }
 
+    /* at this point: children holds the entries of the directory path_text. */
     let const child_depth = depth + 1;
     let const is_terminal_depth =
         m_options.max_depth >= 0 &&
@@ -400,7 +401,8 @@ private:
         break;
       }
       case find_action_kind::ExecuteBatch: {
-        let path = String{m_allocator};
+        /* batch_paths keeps the path after this scratch scope ends. */
+        let path = String{heap_allocator()};
 
         do_append_path(path);
         action.batch_byte_count += path.count() + 1;
@@ -869,6 +871,8 @@ Find::execute(const ExecContext               &ec,
 
   if (roots.is_empty()) roots.push(StringView{"."});
 
+  /* at this point: roots holds at least one path, and actions holds the
+     print and exec actions in argument order. */
   let const allocator     = cxt.scratch_allocator();
   let       root_paths    = ArrayList<Path>{allocator};
   let       root_statuses = ArrayList<os::file_status>{allocator};

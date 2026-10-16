@@ -286,6 +286,8 @@ Nl::execute(const ExecContext               &ec,
     if (result == utils::BufferedLineReader::Result::End) break;
     if (result == utils::BufferedLineReader::Result::Error) {
       if (os::INTERRUPT_REQUESTED) return 130;
+
+      ec.print_to_stdout(output);
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                             os::last_system_error_message());
 

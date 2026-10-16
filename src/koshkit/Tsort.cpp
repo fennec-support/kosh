@@ -62,6 +62,8 @@ Tsort::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: content holds the input, and tokens holds an even number
+     of words from it. */
   let vertex_indices = StringMap<usize>{cxt.scratch_allocator()};
   let vertices       = ArrayList<tsort_vertex>{cxt.scratch_allocator()};
 
@@ -150,7 +152,7 @@ Tsort::execute(const ExecContext               &ec,
                                    "input contains a cycle");
     status = 1;
 
-    for (let &vertex : vertices)
+    for (let const &vertex : vertices)
       if (!vertex.is_emitted) {
         output += vertex.name;
         output += '\n';

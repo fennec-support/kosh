@@ -636,35 +636,35 @@ network_counter_reset(
     const os::network_interface_statistics_entry &before,
     const os::network_interface_statistics_entry &after) wontthrow -> bool
 {
-  let const did_reset =
+  let const do_is_reset =
       [&](os::network_statistics_field field,
           u64 os::network_interface_statistics_entry::*member) {
         return before.has_field(field) && after.has_field(field) &&
                after.*member < before.*member;
       };
 
-  return did_reset(
+  return do_is_reset(
              os::network_statistics_field::ReceiveBytes,
              &os::network_interface_statistics_entry::receive_byte_count) ||
-         did_reset(
+         do_is_reset(
              os::network_statistics_field::TransmitBytes,
              &os::network_interface_statistics_entry::transmit_byte_count) ||
-         did_reset(
+         do_is_reset(
              os::network_statistics_field::ReceivePackets,
              &os::network_interface_statistics_entry::receive_packet_count) ||
-         did_reset(
+         do_is_reset(
              os::network_statistics_field::TransmitPackets,
              &os::network_interface_statistics_entry::transmit_packet_count) ||
-         did_reset(
+         do_is_reset(
              os::network_statistics_field::ReceiveErrors,
              &os::network_interface_statistics_entry::receive_error_count) ||
-         did_reset(
+         do_is_reset(
              os::network_statistics_field::TransmitErrors,
              &os::network_interface_statistics_entry::transmit_error_count) ||
-         did_reset(
+         do_is_reset(
              os::network_statistics_field::ReceiveDrops,
              &os::network_interface_statistics_entry::receive_drop_count) ||
-         did_reset(
+         do_is_reset(
              os::network_statistics_field::TransmitDrops,
              &os::network_interface_statistics_entry::transmit_drop_count);
 }

@@ -610,7 +610,7 @@ struct scene_canvas
   }
 
   fn
-  pixel_at(usize pixel_row, usize column) const wontthrow -> u8
+  get_pixel(usize pixel_row, usize column) const wontthrow -> u8
   {
     return pixels[(pixel_row * column_count) + column];
   }
@@ -1393,6 +1393,7 @@ shade_color(u8 color, i32 step_count) wontthrow -> u8
   }
 
   if (color < 16) return color;
+  /* at this point: color is in the 6x6x6 cube, 16 to 231. */
 
   let const cube_index = static_cast<i32>(color) - 16;
   let const do_shade   = [step_count](i32 channel) {
@@ -1802,8 +1803,8 @@ render_scene(String      &frame,
         let const column     = static_cast<usize>(source);
         let const cell_index = (row * column_count) + column;
         let const style      = canvas.styles[cell_index];
-        let const top        = canvas.pixel_at(row * 2, column);
-        let const bottom     = canvas.pixel_at((row * 2) + 1, column);
+        let const top        = canvas.get_pixel(row * 2, column);
+        let const bottom     = canvas.get_pixel((row * 2) + 1, column);
         let const has_pixels = top != 0 || bottom != 0;
 
         if (has_pixels && (style & OVERLAY_STYLE_BIT) == 0) {
@@ -1856,7 +1857,8 @@ render_scene(String      &frame,
 }
 
 /* memory: text is a String in allocator with at most 7 lines of 28 glyphs,
-           freed on return. is_filled is a stack array of 12 * 28 bools.
+           stored in the bump arena of allocator until that arena is released.
+           is_filled is a stack array of 12 * 28 bools.
    time:   constant. the stamps and the encode loop visit at most
            CAT_PIXEL_HEIGHT * CAT_PIXEL_WIDTH cells. print_to_stdout() is
            called once. */

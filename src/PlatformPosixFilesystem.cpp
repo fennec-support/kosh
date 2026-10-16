@@ -1936,6 +1936,10 @@ fill_file_status(const struct stat &info, file_status &status) wontthrow -> void
   status.blocks                   = static_cast<u64>(info.st_blocks);
 }
 
+/* memory: copy of path in heap_allocator(), freed by ~String() on return. the
+           heap is used only past the inline buffer of String.
+   time:   one lstat() syscall, which does not follow a final symbolic link;
+           O(path length) for the copy. */
 fn
 stat_path(StringView path, file_status &status) wontthrow -> bool
 {

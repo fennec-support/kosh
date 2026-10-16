@@ -194,6 +194,7 @@ execute_context(ExecContext  &&ec,
     ec.in_fd.reset();
     ec.out_fd.reset();
     ec.err_fd.reset();
+    ec.nonstandard_fds.clear();
     const mimic_mood mode = cxt.runtime_state().get_mood();
 
     quit(cxt.run_program_fallback(ec, mode, script_isolation::Shared),
@@ -826,7 +827,7 @@ print_memory_report() wontthrow -> void
 
   if (os::read_malloc_heap_stats(heap_stats))
     fprintf(stderr, "Malloc heap: in use %zu, total arena %zu, mmapped %zu\n",
-            heap_stats.bytes_in_use, heap_stats.arena_byte_count,
+            heap_stats.in_use_byte_count, heap_stats.arena_byte_count,
             heap_stats.mapped_byte_count);
 }
 
@@ -865,23 +866,12 @@ quit(i32 code, farewell_policy farewell) throws -> void
     if (should_goodbye && QUIT_CONTEXT != nullptr &&
         QUIT_CONTEXT->execution_store().shell_is_interactive())
     {
-      if (let const farewell =
-              QUIT_CONTEXT->get_variable_value("KOSH_FAREWELL");
-          farewell.has_value())
-      {
-        if (!farewell->is_empty()) {
-          let message = String{heap_allocator(), farewell->view()};
+      let const farewell = QUIT_CONTEXT->get_variable_value("KOSH_FAREWELL");
 
-          if (code != 0) {
-            message += " (Code ";
-            message += String::from(actual_code, heap_allocator());
-            message += ')';
-          }
-
-          show_message(message);
-        }
-      } else {
-        let message = String{heap_allocator(), "Goodbye :c"};
+      if (!farewell.has_value() || !farewell->is_empty()) {
+        let message = farewell.has_value()
+                          ? String{heap_allocator(), farewell->view()}
+                          : String{heap_allocator(), "Goodbye :c"};
 
         if (code != 0) {
           message += " (Code ";

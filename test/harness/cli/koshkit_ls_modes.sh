@@ -198,5 +198,9 @@ if [ "${TARGET:-$(uname -s)}" = Linux ]; then
   fi
 fi
 
+echo "== long and classified listings of a directory operand:"
+"$BIN" -c 'koshkit ls -l sized | koshkit grep -v "^total" | koshkit cut -c 1'
+"$BIN" -c 'koshkit ls -F sub'
+
 cd / || exit 1
 [ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"

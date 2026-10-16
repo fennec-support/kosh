@@ -256,6 +256,8 @@ apply_long_option_by_name(const ExecContext       &ec,
     throw error;
   }
 
+  /* at this point: option is non-null and available in the current mood,
+     and i indexes the option name in args. */
   apply_or_reject_option(cxt, *option, is_enabled);
 }
 
@@ -602,7 +604,7 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         if (letter == 'o') {
           apply_long_option_by_name(ec, cxt, args, i, is_enabled);
-          break;
+          continue;
         }
 
         if (letter == 'r') {

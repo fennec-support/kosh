@@ -79,6 +79,8 @@ fn
 apply_symbolic_mask(StringView spec, u32 current_mask) throws
     -> Maybe<u32>
 {
+  if (spec.is_empty()) return None;
+
   u32   allowed = (~current_mask) & PERMISSION_BITS;
   usize i       = 0;
 
@@ -142,8 +144,8 @@ apply_symbolic_mask(StringView spec, u32 current_mask) throws
 
 } /* namespace */
 
-cold i32
-Umask::execute(ExecContext &ec, EvalContext &cxt) const throws
+cold fn
+Umask::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
   let const operands = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);

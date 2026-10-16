@@ -465,21 +465,6 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       continue;
     }
 
-    if (byte == '#' && !has_code_on_line) {
-      let end_position = position;
-
-      while (end_position < source.length && source[end_position] != '\n') {
-        end_position++;
-      }
-
-      pieces.push(format_piece{
-          source.substring_of_length(line_start, end_position - line_start),
-          line_start, format_piece_kind::Comment, true});
-      has_comment_on_line = true;
-      position            = end_position;
-      continue;
-    }
-
     if (byte == '#') {
       let end_position = position;
 
@@ -487,31 +472,22 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         end_position++;
       }
 
+      let const is_at_line_start = !has_code_on_line;
+      let const start_position   = is_at_line_start ? line_start : position;
+
       pieces.push(format_piece{
-          source.substring_of_length(position, end_position - position),
-          position, format_piece_kind::Comment, false});
+          source.substring_of_length(start_position,
+                                     end_position - start_position),
+          start_position, format_piece_kind::Comment, is_at_line_start});
       has_comment_on_line = true;
       position            = end_position;
       continue;
     }
 
-    if ((byte == '<' || byte == '>') && position + 1 < source.length &&
-        source[position + 1] == '(')
+    if ((byte == '<' || byte == '>' || byte == '(') &&
+        position + 1 < source.length && source[position + 1] == '(')
     {
-      let end_position = position + 2;
-      scan_balanced_region(source, end_position, ')');
-      pieces.push(format_piece{
-          source.substring_of_length(position, end_position - position),
-          position, format_piece_kind::Word, !has_code_on_line});
-      has_code_on_line = true;
-      position         = end_position;
-      continue;
-    }
-
-    if (byte == '(' && position + 1 < source.length &&
-        source[position + 1] == '(')
-    {
-      let end_position = position + 1;
+      let end_position = position + (byte == '(' ? 1 : 2);
       scan_balanced_region(source, end_position, ')');
       pieces.push(format_piece{
           source.substring_of_length(position, end_position - position),
@@ -606,6 +582,9 @@ piece_begins_redirection(const ArrayList<format_piece> &pieces,
     return false;
   }
 
+  /* at this point: index is below pieces.count(), and piece is a Word
+     that is all decimal digits or a braced variable such as {fd}. */
+
   return index + 1 < pieces.count() &&
          pieces[index + 1].kind == format_piece_kind::Operator &&
          is_redirection_operator(pieces[index + 1].text) &&
@@ -684,7 +663,6 @@ public:
     if (!m_has_line_text) return;
     m_output.append(" \\\n");
     m_has_line_text = false;
-    m_column        = 0;
 
     for (usize position = 0; position < continuation_indent; position++)
       m_output.push(' ');
@@ -937,6 +915,8 @@ word_is_unbreakable(StringView word) wontthrow -> bool
   for (usize position = 0; position < word.length; position++)
     if (lexer::is_whitespace(word[position])) return false;
 
+  /* at this point: word is at least two bytes, and word holds neither a
+     quote nor whitespace. */
   return true;
 }
 
@@ -1701,10 +1681,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         }
 
         writer.append_token(rendered_text);
-        if (index + 1 < pieces.count() &&
-            pieces[index + 1].kind == format_piece_kind::Comment &&
-            !pieces[index + 1].is_at_line_start)
-        {
+        if (is_followed_by_inline_comment) {
           index++;
           writer.append_comment(pieces[index].text, false);
         }
@@ -2339,6 +2316,8 @@ apply_source_fixes(StringView                   source,
     }
   }
 
+  /* at this point: every candidate edit lies within source, and its expected
+     text matches the source span it replaces. */
   let const nonconflicting =
       select_nonconflicting_source_edits(steal(candidates));
 

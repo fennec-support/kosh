@@ -156,6 +156,9 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     arg_path.append(home_directory->text());
   }
 
+  /* at this point: arg_path holds the OLDPWD value, the operand, or the
+     home directory. an empty operand is kept only in a shell that is not
+     bash compatible. */
   LOG(Info, "cd changing directory to '%s'", arg_path.c_str());
 
   let target                      = Path{arg_path};
@@ -296,8 +299,8 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       is_physical_target_available = false;
     }
   } else {
-    let raw_logical_target = Path{};
-    let logical_operand    = target.view();
+    let       raw_logical_target = Path{};
+    let const logical_operand    = target.view();
 
     if (target.is_absolute() || os::path_is_drive_relative(target.view())) {
       raw_logical_target = target.to_absolute_without_normalizing();
@@ -333,8 +336,6 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       throw ErrorWithLocation{ec.arg_location_at(operand_index),
                               StringView{"The path '"} + arg_path +
                                   "' is not a directory"};
-
-    if (!is_physical) target = target.normalized();
 
     if (old_directory.is_empty())
       old_directory = logical_working_directory(cxt);

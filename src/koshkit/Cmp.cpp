@@ -22,6 +22,8 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Cmp);
 
 namespace koshka::koshkit {
 
+constexpr usize CMP_OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
+
 enum class byte_read_result : u8
 {
   Byte,
@@ -275,7 +277,7 @@ Cmp::execute(const ExecContext               &ec,
       output += ' ';
       append_padded_number(output, right_byte, 3, int_base::octal);
       output += '\n';
-      if (output.length() >= 65536) {
+      if (output.length() >= CMP_OUTPUT_FLUSH_BYTE_COUNT) {
         ec.print_to_stdout(output);
         output.clear();
       }

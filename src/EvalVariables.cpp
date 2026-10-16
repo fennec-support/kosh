@@ -274,19 +274,18 @@ constexpr StaticStringMap BASH_DYNAMIC{BASH_DYNAMIC_ENTRIES};
 #undef DYNAMIC_VARIABLE
 
 pure fn
-is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool
-{
-  return ALWAYS_DYNAMIC.find(name).has_value() ||
-         BASH_DYNAMIC.find(name).has_value() ||
-         KOSH_ANSI_COLORS.find(name).has_value() ||
-         name == BASH_ALIASES_VARIABLE || name == DIRSTACK_VARIABLE;
-}
-
-pure fn
 is_bash_only_dynamic_variable_name(StringView name) wontthrow -> bool
 {
   return BASH_DYNAMIC.find(name).has_value() || name == BASH_ALIASES_VARIABLE ||
          name == DIRSTACK_VARIABLE;
+}
+
+pure fn
+is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool
+{
+  return ALWAYS_DYNAMIC.find(name).has_value() ||
+         KOSH_ANSI_COLORS.find(name).has_value() ||
+         is_bash_only_dynamic_variable_name(name);
 }
 
 pure fn
@@ -446,9 +445,11 @@ EvalContext::write_dynamic_variable(StringView name,
 
   LOG(Debug, "moving the $SECONDS base to '%.*s'",
       static_cast<int>(value.length), value.data);
-  dynamic_runtime_store().seconds_base() =
-      assigned - (static_cast<i64>(time(nullptr)) -
-                  dynamic_runtime_store().shell_start_time());
+  /* the base is computed in u64, so an extreme assigned value wraps. */
+  dynamic_runtime_store().seconds_base() = static_cast<i64>(
+      static_cast<u64>(assigned) -
+      static_cast<u64>(static_cast<i64>(time(nullptr)) -
+                       dynamic_runtime_store().shell_start_time()));
 
   return true;
 }
@@ -665,11 +666,16 @@ EvalContext::get_variable_value(StringView name) const throws
         case dynamic_var::RANDOM:
           return String::from(static_cast<usize>(next_random_u32() & 0x7fff),
                               heap_allocator());
-        case dynamic_var::SECONDS:
-          return String::from(static_cast<i64>(time(nullptr)) -
-                                  dynamic_runtime_store().shell_start_time() +
-                                  dynamic_runtime_store().seconds_base(),
+        case dynamic_var::SECONDS: {
+          let const elapsed_seconds =
+              static_cast<u64>(time(nullptr)) -
+              static_cast<u64>(dynamic_runtime_store().shell_start_time());
+          let const base =
+              static_cast<u64>(dynamic_runtime_store().seconds_base());
+
+          return String::from(static_cast<i64>(elapsed_seconds + base),
                               heap_allocator());
+        }
         case dynamic_var::BASHOPTS:  return enabled_shopt_option_names(*this);
         case dynamic_var::SHELLOPTS: {
           return enabled_shell_option_names(*this);
@@ -1057,7 +1063,8 @@ EvalContext::resolve_nameref_parameter(StringView spec) throws
 }
 
 fn
-EvalContext::append_dynamic_variable_names(ArrayList<StringView> &out) const throws -> void
+EvalContext::append_dynamic_variable_names(ArrayList<StringView> &out) const
+    throws -> void
 {
   for (let const &entry : ALWAYS_DYNAMIC.entries)
     out.push(entry.value.name);

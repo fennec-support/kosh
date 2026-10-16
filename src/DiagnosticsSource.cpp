@@ -387,7 +387,15 @@ line_above_continues(StringView source, usize line_start) wontthrow -> bool
 
   if (source[ending - 1] == '\r') ending--;
 
-  return ending > 0 && source[ending - 1] == '\\';
+  usize backslash_count = 0;
+
+  while (backslash_count < ending &&
+         source[ending - 1 - backslash_count] == '\\')
+  {
+    backslash_count++;
+  }
+
+  return backslash_count % 2 == 1;
 }
 
 } /* namespace */
@@ -517,6 +525,13 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws
 
       case '<':
         is_command_position = false;
+        if (at + 2 < source.length && source[at + 1] == '<' &&
+            source[at + 2] == '<')
+        {
+          at += 2;
+          break;
+        }
+
         if (arithmetic_paren_depth == 0 && at + 2 < source.length &&
             source[at + 1] == '<' && source[at + 2] != '<')
         {
@@ -1143,6 +1158,8 @@ check_shellcheck_directives(
       continue;
     }
 
+    /* at this point: only blanks precede the directive on its line, and
+       word_below is not a clause keyword. */
     if (word_holds_case_pattern(word_below) &&
         line_opens_case_branch(read_line_above_directive(source, line_start)))
     {
@@ -1529,6 +1546,9 @@ check_function_argument_dataflow(AnalysisContext &actx) throws -> void
   }
 
   let const summaries = build_function_name_summaries(actx);
+
+  /* at this point: summaries has one entry for each function name in
+     actx.functions.records, and each entry has first_definition_index set. */
 
   if (should_check_argument_use) {
     for (usize index = 0; index < actx.functions.records.count(); index++) {

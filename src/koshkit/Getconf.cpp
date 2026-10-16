@@ -454,7 +454,7 @@ Getconf::execute(const ExecContext               &ec,
 
     for (let const &entry : STRING_CONFIGURATION_ENTRIES) {
       let const name = entry.key.to_string(heap_allocator());
-      let       result =
+      let const result =
           os::query_string_configuration(entry.value, cxt.scratch_allocator());
 
       if (result.status == os::configuration_query_status::Error) {
@@ -498,7 +498,7 @@ Getconf::execute(const ExecContext               &ec,
   {
     if (operands.count() != 1) return do_reject_path_operand();
 
-    let value =
+    let const value =
         os::query_string_configuration(*string_key, cxt.scratch_allocator());
 
     if (value.status == os::configuration_query_status::Error) {

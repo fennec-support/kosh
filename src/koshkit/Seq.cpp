@@ -95,34 +95,24 @@ Seq::execute(const ExecContext               &ec,
 
   char value_text[21];
 
-  if (increment > 0)
-    for (i64 value = first; value <= last; value += increment) {
-      output += utils::int_to_text_into(value, value_text, sizeof(value_text));
-      output += '\n';
-      if (output.count() >= OUTPUT_BUFFER_LENGTH) {
-        if (os::INTERRUPT_REQUESTED) return 130;
-        ec.print_to_stdout(output);
-        output.clear();
-      }
+  let const is_ascending = increment > 0;
 
-      let const is_step_overflow = value > INT64_MAX - increment;
-
-      if (is_step_overflow) break;
+  for (i64 value = first; is_ascending ? value <= last : value >= last;
+       value += increment)
+  {
+    output += utils::int_to_text_into(value, value_text, sizeof(value_text));
+    output += '\n';
+    if (output.count() >= OUTPUT_BUFFER_LENGTH) {
+      if (os::INTERRUPT_REQUESTED) return 130;
+      ec.print_to_stdout(output);
+      output.clear();
     }
-  else
-    for (i64 value = first; value >= last; value += increment) {
-      output += utils::int_to_text_into(value, value_text, sizeof(value_text));
-      output += '\n';
-      if (output.count() >= OUTPUT_BUFFER_LENGTH) {
-        if (os::INTERRUPT_REQUESTED) return 130;
-        ec.print_to_stdout(output);
-        output.clear();
-      }
 
-      let const is_step_underflow = value < INT64_MIN - increment;
+    let const is_step_overflow = is_ascending ? value > INT64_MAX - increment
+                                              : value < INT64_MIN - increment;
 
-      if (is_step_underflow) break;
-    }
+    if (is_step_overflow) break;
+  }
 
   ec.print_to_stdout(output);
 

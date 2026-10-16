@@ -169,8 +169,8 @@ require_user_path(const ExecContext &ec, EvalContext &cxt) throws
     report_soft_builtin_error(
         ec, cxt,
         "The user configuration file cannot be located because the shell "
-        "runs as the superuser or because neither XDG_CONFIG_HOME nor HOME "
-        "names a directory");
+        "runs as the superuser or because neither an absolute XDG_CONFIG_HOME "
+        "nor HOME is set");
 
   return path;
 }
@@ -221,6 +221,8 @@ run_create(const ExecContext       &ec,
     return 1;
   }
 
+  /* at this point: preset holds a known mood, path holds the user
+     configuration file, and the file is absent or --force is set. */
   try {
     write_koshconf_file(*path, make_koshconf_preset(*preset).view());
   } catch (const Error &error) {

@@ -67,6 +67,8 @@ Return::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     status = parsed_value.value();
   }
 
+  /* at this point: status holds the last exit status or the parsed
+     operand, and no error was reported. */
   status &= 0xFF;
 
   LOG(Debug, "return stopping the enclosing scope with status %lld",

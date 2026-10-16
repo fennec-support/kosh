@@ -56,13 +56,17 @@ Env::execute(const ExecContext               &ec,
   ArrayList<String> saved_values{cxt.scratch_allocator()};
   ArrayList<bool>   was_present{cxt.scratch_allocator()};
 
-  let const do_save_and_unset = [&](StringView name) throws -> void {
+  let const do_save = [&](StringView name) throws -> void {
     let const previous = os::get_environment_variable(name);
 
     saved_names.push_managed(name);
     saved_values.push(previous.has_value() ? previous->clone()
                                            : String{cxt.scratch_allocator()});
     was_present.push(previous.has_value());
+  };
+
+  let const do_save_and_unset = [&](StringView name) throws -> void {
+    do_save(name);
     os::unset_environment_variable(name);
   };
 
@@ -97,12 +101,7 @@ Env::execute(const ExecContext               &ec,
     let const name   = text.substring_of_length(0, equals);
     let const value  = text.substring(equals + 1);
 
-    let const previous = os::get_environment_variable(name);
-
-    saved_names.push_managed(name);
-    saved_values.push(previous.has_value() ? previous->clone()
-                                           : String{cxt.scratch_allocator()});
-    was_present.push(previous.has_value());
+    do_save(name);
 
     os::set_environment_variable(name, value);
     first_command++;

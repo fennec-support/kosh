@@ -130,7 +130,7 @@ format_duration_nanoseconds(u64 nanoseconds, Allocator allocator) throws
   let       result = String::from(tenths / 10, allocator);
 
   result += ".";
-  result += String::from(tenths % 10, allocator).view();
+  result.push(static_cast<char>('0' + tenths % 10));
   result += suffix;
 
   return result;
@@ -268,17 +268,13 @@ format_time_report_custom(StringView format,
     if (value < 0.0) value = 0.0;
 
     if (is_long_format) {
-      const i64    minutes   = static_cast<i64>(value) / 60;
-      const double remainder = value - static_cast<double>(minutes * 60);
-
-      snprintf(buffer, sizeof(buffer), "%ldm%.*fs", static_cast<long>(minutes),
-               static_cast<int>(precision), remainder);
+      report +=
+          format_minutes_seconds(value, static_cast<i32>(precision)).view();
     } else {
       snprintf(buffer, sizeof(buffer), "%.*f", static_cast<int>(precision),
                value);
+      report += buffer;
     }
-
-    report += buffer;
   }
 
   report.push('\n');
@@ -552,27 +548,13 @@ fn
 parse_decimal_i64(StringView text, bool *is_out_of_range) throws
     -> ErrorOr<i64>
 {
-  let const parsed = TRY(parse_magnitude_in_base(text, int_base::decimal));
-
-  if (is_out_of_range != nullptr)
-    *is_out_of_range = parsed.has_overflowed ||
-                       parsed.magnitude > static_cast<u64>(INT64_MAX) +
-                                              (parsed.is_negative ? 1u : 0u);
-
-  return saturate_signed_magnitude(parsed.magnitude, parsed.is_negative,
-                                   parsed.has_overflowed);
+  return parse_integer_in_base(text, is_out_of_range, int_base::decimal);
 }
 
 fn
 parse_decimal_u64(StringView text) throws -> ErrorOr<u64>
 {
-  let const parsed = TRY(parse_magnitude_in_base(text, int_base::decimal));
-
-  if (parsed.is_negative || parsed.has_overflowed) {
-    return Error{"integer value out of range"};
-  }
-
-  return parsed.magnitude;
+  return parse_integer_in_base_u64(text, int_base::decimal);
 }
 
 fn
@@ -591,9 +573,7 @@ parse_decimal_f64(const String &text) throws -> ErrorOr<f64>
 
   let digits = start;
 
-  while (*digits == ' ' || *digits == '\t' || *digits == '\n' ||
-         *digits == '\r' || *digits == '\f' || *digits == '\v')
-  {
+  while (is_ascii_whitespace(*digits)) {
     digits++;
   }
 
@@ -625,6 +605,8 @@ parse_decimal_f64(const String &text) throws -> ErrorOr<f64>
     return Error{"number value out of range"};
   }
 
+  /* at this point: strtold() consumed all of text, text has no hex prefix
+     after its sign, and narrowed_value is zero only if parsed_value is zero. */
   return narrowed_value;
 }
 
@@ -698,6 +680,8 @@ parse_timeout_seconds_to_nanos(StringView text) throws -> ErrorOr<i64>
     return static_cast<i64>(INT64_MAX);
   }
 
+  /* at this point: the text is a valid timeout, has_overflowed is false,
+     and whole_seconds * 1'000'000'000 + fractional_nanos fits in i64. */
   return static_cast<i64>(whole_seconds) * 1'000'000'000 + fractional_nanos;
 }
 
@@ -787,6 +771,8 @@ parse_magnitude_in_base(StringView text, int_base base) throws
     return not_an_integer_error(text);
   }
 
+  /* at this point: at least one digit was parsed, all of text was consumed,
+     and magnitude is exact unless has_overflowed is set. */
   return parsed_integer_magnitude{magnitude, is_negative, has_overflowed};
 }
 

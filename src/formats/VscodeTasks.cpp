@@ -163,6 +163,10 @@ extract_shell_args(const parser_format_input &input,
 
     if (!mood.has_value()) continue;
 
+    /* at this point: array indexes a '[' in source, objects.back() opens the
+       object that holds args, that object is not a windows override, command
+       holds its command string, and mood holds a shell mood. */
+
     /* e.g. args = ["bash", "-lc", "make test"]
             "bash" has no leading '-', so is_script stays false. "-lc" starts
             with '-', is not "--", and contains 'c', so is_script is true.

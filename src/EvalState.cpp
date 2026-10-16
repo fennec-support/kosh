@@ -2177,8 +2177,8 @@ ScopeStore::from_wire(
     return false;
   }
 
-  constexpr usize MINIMUM_LOCAL_BINDING_BYTES  = 10;
-  constexpr usize MINIMUM_SPARSE_ELEMENT_BYTES = 12;
+  constexpr usize MINIMUM_LOCAL_BINDING_BYTE_COUNT  = 10;
+  constexpr usize MINIMUM_SPARSE_ELEMENT_BYTE_COUNT = 12;
   constexpr u8    VALID_ATTRIBUTE_MASK =
       static_cast<u8>(variable_attribute::Readonly) |
       static_cast<u8>(variable_attribute::Integer) |
@@ -2200,8 +2200,9 @@ ScopeStore::from_wire(
   for (usize frame_index = 0; frame_index < depth; frame_index++) {
     let const binding_count = static_cast<usize>(payload.read_u32());
 
-    if (!payload.is_valid || binding_count > payload.get_remaining_length() /
-                                                 MINIMUM_LOCAL_BINDING_BYTES)
+    if (!payload.is_valid ||
+        binding_count >
+            payload.get_remaining_length() / MINIMUM_LOCAL_BINDING_BYTE_COUNT)
     {
       return false;
     }
@@ -2285,8 +2286,9 @@ ScopeStore::from_wire(
 
       let const sparse_count = static_cast<usize>(payload.read_u32());
 
-      if (!payload.is_valid || sparse_count > payload.get_remaining_length() /
-                                                  MINIMUM_SPARSE_ELEMENT_BYTES)
+      if (!payload.is_valid ||
+          sparse_count > payload.get_remaining_length() /
+                             MINIMUM_SPARSE_ELEMENT_BYTE_COUNT)
       {
         return false;
       }
@@ -2334,11 +2336,11 @@ ProgramResolver::from_wire(
   if (!reader.read_section(wire_section::Programs, payload)) return false;
 
   let const       entry_count = static_cast<usize>(payload.read_u32());
-  constexpr usize MINIMUM_CACHE_ENTRY_BYTES = 12;
-  constexpr usize MINIMUM_CACHED_PATH_BYTES = 5;
+  constexpr usize MINIMUM_CACHE_ENTRY_BYTE_COUNT = 12;
+  constexpr usize MINIMUM_CACHED_PATH_BYTE_COUNT = 5;
 
-  if (!payload.is_valid ||
-      entry_count > payload.get_remaining_length() / MINIMUM_CACHE_ENTRY_BYTES)
+  if (!payload.is_valid || entry_count > payload.get_remaining_length() /
+                                             MINIMUM_CACHE_ENTRY_BYTE_COUNT)
   {
     return false;
   }
@@ -2350,7 +2352,7 @@ ProgramResolver::from_wire(
 
     if (!payload.is_valid ||
         path_count >
-            payload.get_remaining_length() / MINIMUM_CACHED_PATH_BYTES ||
+            payload.get_remaining_length() / MINIMUM_CACHED_PATH_BYTE_COUNT ||
         (bare_path_position != NO_BARE_PROGRAM_PATH &&
          bare_path_position >= path_count))
     {
@@ -2392,10 +2394,10 @@ CompletionStore::from_wire(subshell_bootstrap_reader &reader,
   if (!reader.read_section(wire_section::Completion, payload)) return false;
 
   let const       spec_count = static_cast<usize>(payload.read_u32());
-  constexpr usize MINIMUM_COMPLETION_SPEC_BYTES = 48;
+  constexpr usize MINIMUM_COMPLETION_SPEC_BYTE_COUNT = 48;
 
   if (!payload.is_valid || spec_count > payload.get_remaining_length() /
-                                            MINIMUM_COMPLETION_SPEC_BYTES)
+                                            MINIMUM_COMPLETION_SPEC_BYTE_COUNT)
   {
     return false;
   }
@@ -2480,11 +2482,11 @@ JobTable::from_wire(subshell_bootstrap_reader &reader,
   if (has_last_background_pid) wire.last_background_pid = payload.read_i64();
   wire.next_job_id = payload.read_i32();
 
-  let const       job_count         = static_cast<usize>(payload.read_u32());
-  constexpr usize MINIMUM_JOB_BYTES = 48;
+  let const       job_count = static_cast<usize>(payload.read_u32());
+  constexpr usize MINIMUM_JOB_BYTE_COUNT = 48;
 
   if (!payload.is_valid || wire.next_job_id < 1 ||
-      job_count > payload.get_remaining_length() / MINIMUM_JOB_BYTES)
+      job_count > payload.get_remaining_length() / MINIMUM_JOB_BYTE_COUNT)
   {
     return false;
   }
@@ -2600,8 +2602,7 @@ JobTable::from_wire(subshell_bootstrap_reader &reader,
 
 fn
 job_table_wire::bind_processes(const os::subshell_bootstrap &bootstrap)
-    wontthrow
-    -> bool
+    throws -> bool
 {
   if (process_references.count() != bootstrap.processes.count()) return false;
 
@@ -3357,6 +3358,9 @@ EvalContext::register_inherited_source_origin(
 
   if (window_length > UINT32_MAX) invalid_subshell_bootstrap();
 
+  /* at this point: has_origin is set, origin_line_number is non-zero, and
+     window_length fits in u32, so the origin window can be created. */
+
   source_name = source_name_at(origin_name_index);
   windows.push_managed();
 
@@ -3706,7 +3710,7 @@ EvalContext::make_stats_string() const throws -> String
   os::malloc_heap_stats heap_stats{};
 
   if (os::read_malloc_heap_stats(heap_stats)) {
-    do_append_size_line("Malloc heap in use", heap_stats.bytes_in_use);
+    do_append_size_line("Malloc heap in use", heap_stats.in_use_byte_count);
     do_append_size_line("Malloc heap arena", heap_stats.arena_byte_count);
     do_append_size_line("Malloc heap mapped", heap_stats.mapped_byte_count);
   }

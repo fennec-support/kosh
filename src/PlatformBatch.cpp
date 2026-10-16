@@ -187,6 +187,9 @@ is_same_metadata_request(const batch_internal::batched_syscall &left,
     return false;
   }
 
+  /* at this point: both requests are path-based of the same kind, and both
+     paths are non-null. */
+
   return left_path->text().view() == right_path->text().view();
 }
 
@@ -370,12 +373,14 @@ Batch::execute(ArrayList<batch_result> &results,
     return;
   }
 
+  /* at this point: at least one request repeats, unique_operation_count is
+     below m_operations.count(), and m_canonical_positions maps each request to
+     its first occurrence. */
   m_optimized_operations.reserve(unique_operation_count);
 
   for (usize index = 0; index < m_operations.count(); index++) {
     /* e.g. ops = [stat a, read fd, stat a, stat b], canonical = [0, 1, 0, 3]
-            -> optimized = [stat a, read fd, stat b], canonical = [0, 1, 0,
-       2] */
+       -> optimized = [stat a, read fd, stat b], canonical = [0, 1, 0, 2] */
     let const canonical_position = m_canonical_positions[index];
 
     if (canonical_position != index) {

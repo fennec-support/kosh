@@ -305,6 +305,9 @@ inherited_subshell_state::take_from_environment() throws
     return None;
   }
 
+  /* at this point: the four variables are unset, process_id is positive, and
+     depth fits in usize. */
+
   return inherited_subshell_state{
       .previous_exit_status    = status.value(),
       .shell_process_id        = process_id.value(),
@@ -554,7 +557,7 @@ compile_basic_regex(StringView       pattern,
            branch without REG_STARTEND also copy subject into options.scratch.
    time:   one regexec() call, plus O(re_nsub) work to build the spans. the
            NUL rewrite in the branch without REG_STARTEND scans each byte
-   once. */
+           once. */
 fn
 execute_regex(compiled_regex                &compiled,
               const regex_execution_options &options) throws
@@ -619,6 +622,8 @@ execute_regex(compiled_regex                &compiled,
     return report;
   }
 
+  /* at this point: match_result is 0, so matches holds the offsets of
+     group_count groups. */
   report.spans.reserve(group_count);
 
   for (usize i = 0; i < group_count; i++) {

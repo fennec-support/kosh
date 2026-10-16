@@ -81,6 +81,7 @@ Who::execute(const ExecContext               &ec,
     }
   }
 
+  /* at this point: operands is empty or holds exactly am and i. */
   let const is_current = FLAG_WHO_CURRENT.is_enabled() || !operands.is_empty();
 
   if (!is_current) {

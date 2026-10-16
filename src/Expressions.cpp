@@ -92,6 +92,7 @@ allocate_assignment_index_storage(usize count) throws
       static_cast<assignment_index_storage *>(heap_allocator().raw_alloc(
           allocation_length, alignof(assignment_index_storage)));
 
+  if (storage == nullptr) throw std::bad_alloc{};
   new (storage) assignment_index_storage{};
   storage->allocation_count = count;
 
@@ -804,12 +805,12 @@ print_analysis_diagnostic_summary(
 {
   if (totals.warning_count + totals.error_count < 2) return;
 
-  let const wants_color = colors::stderr_wants_color();
+  let const should_color = colors::stderr_wants_color();
   let const warning_color =
-      wants_color ? colors::soft(colors::ansi::YELLOW) : StringView{};
+      should_color ? colors::soft(colors::ansi::YELLOW) : StringView{};
   let const error_color =
-      wants_color ? colors::soft(colors::ansi::BOLD_BRIGHT_RED) : StringView{};
-  let const reset = wants_color ? colors::ansi::RESET : StringView{};
+      should_color ? colors::soft(colors::ansi::BOLD_BRIGHT_RED) : StringView{};
+  let const reset = should_color ? colors::ansi::RESET : StringView{};
 
   let summary = String{heap_allocator(), "Encountered "};
 
@@ -847,15 +848,15 @@ AnalysisContext::print_optimizer_summary() const throws -> void
 {
   if (!options.should_report_optimizer_diagnostics) return;
 
-  let const wants_color = colors::stderr_wants_color();
+  let const should_color = colors::stderr_wants_color();
 
   let summary = String{heap_allocator(), "Eliminated "};
 
-  if (wants_color) summary.append(colors::soft(colors::ansi::BLUE));
+  if (should_color) summary.append(colors::soft(colors::ansi::BLUE));
   summary.append(String::from(optimizer_eliminated_count, heap_allocator()));
   summary.append(optimizer_eliminated_count == 1 ? " statement"
                                                  : " statements");
-  if (wants_color) summary.append(colors::ansi::RESET);
+  if (should_color) summary.append(colors::ansi::RESET);
   summary.append(".");
 
   show_message(summary.view());
@@ -975,14 +976,6 @@ analysis_reporter::fail(const analysis_report_site  &site,
   let *const eval_context = site.eval_context;
 
   if (!options.is_default_mood) {
-    if (should_report(tier))
-      warn(id, location, message, suggestion, tier, related_location,
-           related_message);
-
-    return;
-  }
-
-  if (tier == diagnostic_tier::Annoying) {
     warn(id, location, message, suggestion, tier, related_location,
          related_message);
 

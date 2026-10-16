@@ -70,11 +70,7 @@ Dirname::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  if (operands.is_empty()) {
-    report_usage_error(ec, cxt, args[0].view());
-
-    return 1;
-  }
+  if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
   let output = String{cxt.scratch_allocator()};
 

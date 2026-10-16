@@ -103,6 +103,8 @@ public:
       return;
     }
 
+    /* at this point: m_shared is not null, and m_allocator differs from
+       allocator. */
     let *const copy = create(allocator, clone_value(read()));
 
     release();

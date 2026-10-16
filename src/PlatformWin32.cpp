@@ -54,6 +54,8 @@ kosh_regex_allocate(size_t length)
     return nullptr;
   }
 
+  if (header == nullptr) return nullptr;
+
   header->allocation_length = allocation_length;
   header->payload_length    = length;
 
@@ -677,10 +679,6 @@ wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
 {
   let const file_type = GetFileType(fd);
 
-  if (file_type == FILE_TYPE_UNKNOWN && GetLastError() != NO_ERROR) {
-    return -1;
-  }
-
   if (file_type == FILE_TYPE_DISK) return 1;
 
   let const     has_timeout = timeout_nanos >= 0;
@@ -1025,17 +1023,20 @@ shell_has_controlling_terminal() wontthrow -> bool
 {
   return false;
 }
+
 fn
 give_controlling_terminal_to(process p) wontthrow -> void
 {
   unused(p);
 }
+
 fn
 give_controlling_terminal_to_process_group(i64 process_group_id)
     wontthrow -> void
 {
   unused(process_group_id);
 }
+
 fn
 reclaim_controlling_terminal() wontthrow -> void
 {}
@@ -1705,7 +1706,6 @@ TerminalEchoGuard::did_succeed() const wontthrow -> bool
 TerminalRawInputGuard::TerminalRawInputGuard(descriptor input) wontthrow
     : m_input(input)
 {
-  if (!is_fd_a_tty(input)) return;
   if (GetConsoleMode(input, &m_original_mode) == FALSE) return;
 
   let const raw_mode = m_original_mode & ~static_cast<DWORD>(ENABLE_ECHO_INPUT |
@@ -2162,9 +2162,11 @@ apply_terminal_settings(descriptor               terminal,
     if (setting.starts_with(StringView{"win32:"})) {
       let const encoded = String{heap_allocator(), setting.substring(6)};
       char     *end     = nullptr;
-      let const parsed  = strtoul(encoded.c_str(), &end, 16);
 
-      if (end == encoded.c_str() || *end != '\0' || parsed > MAXDWORD) {
+      errno            = 0;
+      let const parsed = strtoul(encoded.c_str(), &end, 16);
+
+      if (end == encoded.c_str() || *end != '\0' || errno == ERANGE) {
         return {terminal_settings_apply_kind::InvalidSetting, setting_position};
       }
 
@@ -2267,10 +2269,7 @@ find_environment_spelling(const wchar_t *wide_key) throws
   let const key_length = static_cast<int>(wcslen(wide_key));
 
   for (wchar_t *entry = block; *entry != L'\0';) {
-    usize pair_length = 0;
-
-    while (entry[pair_length] != L'\0')
-      pair_length++;
+    let const pair_length = wcslen(entry);
 
     usize name_length = 0;
 
@@ -2321,6 +2320,9 @@ set_environment_variable(StringView key, StringView value) -> void
     wide_value->begin()[kept_unit_count] = L'\0';
   }
 
+  /* at this point: wide_key and wide_value are NUL-terminated, and wide_value
+     holds at most ENVIRONMENT_VALUE_MAX_UNIT_COUNT units before its
+     terminator. */
   let const existing_spelling = find_environment_spelling(wide_key->begin());
 
   SetEnvironmentVariableW(existing_spelling.has_value()
@@ -2340,6 +2342,8 @@ get_environment_spelling(StringView key) -> String
   let const existing_spelling = find_environment_spelling(wide_key->begin());
 
   if (!existing_spelling.has_value()) return String{heap_allocator(), key};
+
+  /* at this point: existing_spelling holds the variable name and a NUL. */
 
   let const spelling =
       wide_to_utf8(existing_spelling->begin(), existing_spelling->count() - 1,
@@ -2395,10 +2399,7 @@ for_each_environment_name(opaque                   *context,
   defer { FreeEnvironmentStringsW(block); };
 
   for (wchar_t *entry = block; *entry != L'\0';) {
-    usize pair_length = 0;
-
-    while (entry[pair_length] != L'\0')
-      pair_length++;
+    let const pair_length = wcslen(entry);
 
     if (entry[0] != L'=') {
       usize name_length = 0;
@@ -2714,6 +2715,8 @@ build_owner_only_security(PINIT_ONCE, PVOID, PVOID *) -> BOOL
     return TRUE;
   }
 
+  /* at this point: the DACL in acl_bytes allows the current user and local
+     system, and security.descriptor points at that DACL. */
   security.attributes.nLength              = sizeof(security.attributes);
   security.attributes.lpSecurityDescriptor = &security.descriptor;
   security.attributes.bInheritHandle       = FALSE;
@@ -2936,10 +2939,7 @@ wmain(int argc, wchar_t **wide_argv) -> int
 
   for (int argument_position = 0; argument_position < argc; argument_position++)
   {
-    usize wide_length = 0;
-
-    while (wide_argv[argument_position][wide_length] != L'\0')
-      wide_length++;
+    let const wide_length = wcslen(wide_argv[argument_position]);
 
     let utf8 = koshka::os::wide_to_utf8(wide_argv[argument_position],
                                         wide_length, koshka::heap_allocator());

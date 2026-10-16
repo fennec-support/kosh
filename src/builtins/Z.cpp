@@ -100,6 +100,8 @@ read_frecency_store(Allocator allocator) throws
 
   if (!content) return entries;
 
+  /* at this point: path holds the store path, content holds the whole file,
+     and entries is empty. */
   let const text       = content->view();
   usize     line_start = 0;
 
@@ -231,7 +233,11 @@ fn
 record_directory_access(StringView directory,
                         Allocator  allocator) throws -> void
 {
-  if (directory.is_empty()) return;
+  if (directory.is_empty() || directory.find_character('\n').has_value() ||
+      directory.find_character('\t').has_value())
+  {
+    return;
+  }
 
   let       entries = read_frecency_store(allocator);
   let const now     = now_epoch_seconds();
@@ -367,6 +373,8 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     throw make_error_for_arg(
         ec, 1, StringView{"No matching directory for '"} + query + "'");
 
+  /* at this point: best points to an entry whose path contains the query and
+     is an existing directory. */
   let const target = Path{best->path.view()}.to_absolute().normalized();
 
   LOG(Info, "z changing directory to '%s'", target.c_str());

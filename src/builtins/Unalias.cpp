@@ -35,14 +35,7 @@ Unalias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_ALL.is_enabled()) {
     LOG(Debug, "unalias removing every alias");
 
-    for (let const &definition : cxt.scope_store().alias_definitions()) {
-      let const equals_position = definition.find_character('=');
-      let const name_length =
-          equals_position.has_value() ? *equals_position : definition.count();
-      let const name = definition.substring_of_length(0, name_length);
-
-      cxt.scope_store().remove_alias(name);
-    }
+    cxt.scope_store().aliases().clear();
 
     return 0;
   }

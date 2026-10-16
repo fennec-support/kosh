@@ -475,11 +475,8 @@ replace_koshconf_target(const Path &target, StringView contents) throws
     }
 
     let const do_discard_backup = [&](StringView action) throws {
-      let const message = os::last_system_error_message();
-
       unused(os::remove_file(backup_temporary->view()));
       do_discard(action);
-      throw Error{message};
     };
 
     if (!os::set_file_mode(backup_temporary->view(), mode))
@@ -1055,6 +1052,9 @@ format_koshconf_line(const option_descriptor &option,
                 "file"};
   }
 
+  /* at this point: value has no line break, and quote is none or a quote
+     character that value does not contain. */
+
   let line = String{heap_allocator(), StringView{option.koshconf_name}};
 
   line += '=';
@@ -1334,11 +1334,15 @@ persist_koshconf_snapshot(const Path        &path,
     existing = String{heap_allocator()};
   }
 
-  let       kept = String{heap_allocator()};
-  let const text = existing->view();
+  let kept = String{heap_allocator()};
+  let text = existing->view();
+
+  if (text.starts_with(UTF8_BYTE_ORDER_MARK)) {
+    text = text.substring(UTF8_BYTE_ORDER_MARK.count());
+  }
 
   for (usize position = 0; position < text.count();) {
-    let const line = text.next_line(position).without_trailing_newline();
+    let const line = text.next_line(position);
     let const name = declared_name(line);
 
     if (name.has_value() && find_option_by_koshconf_name(*name) == nullptr) {

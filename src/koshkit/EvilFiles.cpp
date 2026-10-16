@@ -15,6 +15,7 @@
 #include "../Platform.hpp"
 #include "../Toiletline.hpp"
 #include "../Utils.hpp"
+#include "../UtilsOwnership.hpp"
 #include "../base/StaticStringMap.hpp"
 
 KOSHKIT_UTIL_DECL(
@@ -353,7 +354,8 @@ matches_path_operands(StringView               path,
     if (path == wanted) return true;
 
     if (path.starts_with(wanted) && wanted.length > 0 &&
-        path.length > wanted.length && path[wanted.length] == '/')
+        (wanted[wanted.length - 1] == '/' ||
+         (path.length > wanted.length && path[wanted.length] == '/')))
     {
       return true;
     }
@@ -416,22 +418,15 @@ EvilFiles::execute(const ExecContext               &ec,
   Maybe<u32> wanted_owner = None;
 
   if (FLAG_EVILFILES_USER.is_set()) {
-    wanted_owner = os::username_to_uid(FLAG_EVILFILES_USER.value());
+    wanted_owner = utils::resolve_user_id(FLAG_EVILFILES_USER.value());
     if (!wanted_owner.has_value()) {
-      let const parsed = utils::parse_integer_in_base(
-          FLAG_EVILFILES_USER.value(), nullptr, int_base::decimal);
+      KOSHKIT_REPORT_ERROR_AT(
+          FLAG_EVILFILES_USER.value_location(),
+          "no such user '" + String{allocator, FLAG_EVILFILES_USER.value()} +
+              "'",
+          "provide a user name or numeric uid");
 
-      if (parsed.is_error()) {
-        KOSHKIT_REPORT_ERROR_AT(
-            FLAG_EVILFILES_USER.value_location(),
-            "no such user '" + String{allocator, FLAG_EVILFILES_USER.value()} +
-                "'",
-            "provide a user name or numeric uid");
-
-        return 1;
-      }
-
-      wanted_owner = static_cast<u32>(parsed.value());
+      return 1;
     }
   }
 

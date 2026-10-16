@@ -41,7 +41,7 @@ Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const shift_count = parse_optional_integer_arg(ec, 1);
 
-  let const &params = cxt.variable_store().positional_params();
+  let &params = cxt.variable_store().positional_params();
 
   let const do_range_note = [&]() throws -> String {
     return StringView{"The count must be from 0 to "} +
@@ -69,16 +69,17 @@ Shift::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
+  /* at this point: shift_count is from 0 to params.count(), inclusive, so
+     each dropped parameter exists. */
   LOG(All, "shift dropping %lld of %zu positional parameters",
       static_cast<long long>(shift_count), params.count());
 
-  let      &shifted_params = cxt.variable_store().positional_params();
-  let const dropped_count  = static_cast<usize>(shift_count);
+  let const dropped_count = static_cast<usize>(shift_count);
 
-  for (usize i = dropped_count; i < shifted_params.count(); i++)
-    shifted_params[i - dropped_count] = steal(shifted_params[i]);
+  for (usize i = dropped_count; i < params.count(); i++)
+    params[i - dropped_count] = steal(params[i]);
 
-  shifted_params.truncate(shifted_params.count() - dropped_count);
+  params.truncate(params.count() - dropped_count);
 
   return 0;
 }

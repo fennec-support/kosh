@@ -184,6 +184,9 @@ set_cpu_percentage(tree_node                  &node,
   {
     return;
   }
+  /* at this point: baseline is valid, current_milliseconds is not less than
+     *baseline, and now_nanoseconds is after boundary.timestamp, so the divisor
+     below is nonzero. */
 
   node.cpu_percentage_hundredths =
       static_cast<u64>(static_cast<u128>(current_milliseconds - *baseline) *
@@ -704,15 +707,13 @@ render_process_snapshot(const ExecContext               &ec,
       (!sort_key.has_value() || !operands.is_empty()) &&
       (search.is_empty() || nodes[root_position].is_search_visible))
   {
-    if (nodes[root_position].is_search_visible) {
-      nodes[root_position].was_rendered = true;
-      output += root_indentation;
-      append_label(output, nodes[root_position], allocator, hide_options);
-      rendered_count++;
-      render_process_relatives(output, nodes, root_position,
-                               String{allocator, root_indentation}, 0,
-                               allocator, rendered_count, hide_options);
-    }
+    nodes[root_position].was_rendered = true;
+    output += root_indentation;
+    append_label(output, nodes[root_position], allocator, hide_options);
+    rendered_count++;
+    render_process_relatives(output, nodes, root_position,
+                             String{allocator, root_indentation}, 0, allocator,
+                             rendered_count, hide_options);
 
     return 0;
   }
@@ -859,6 +860,7 @@ evilps_live_state::handle_key(live_view_key key) throws
 
     if (sort_key.has_value() && *sort_key == evilps_sort_key::Cpu) {
       should_sample_cpu = true;
+      resource_mode     = evilps_resource_mode::ResourceStats;
     }
 
     if (sort_key.has_value() && *sort_key == evilps_sort_key::Memory) {

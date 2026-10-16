@@ -2139,7 +2139,7 @@ const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
       "the `xargs -i` flag is deprecated",
       "The `xargs -i` flag is deprecated",
       "Use `-I` with an explicit replacement string, as in "
-      "`xargs -I{{}} cmd {{}}`",
+      "`xargs -I{} cmd {}`",
       None,
       Annoying,
       Policy),

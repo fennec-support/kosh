@@ -239,7 +239,9 @@ public:
 
   /* memory: m_pieces and m_line_spans are owned by the cache. m_pieces is
              replaced when source changes. the pointer returned is valid until
-             the next call.
+             the next call. spans_for() identifies source by data pointer and
+             length, so a caller replaces the cache when the bytes at the same
+             address change.
      time:   when source changes, one scan_highlight_source() over source, then
              split_spans_at_lines(), which sorts the P pieces when they are out
              of order. otherwise, a binary search over P pieces, then one step

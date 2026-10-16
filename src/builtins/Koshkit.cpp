@@ -238,7 +238,7 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
-  return koshkit::dispatch(ec, cxt, 1, chosen);
+  return koshkit::dispatch(ec, cxt, utility_index, chosen);
 }
 
 #endif

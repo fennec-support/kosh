@@ -336,7 +336,7 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     cxt.expansion_store().scratch_arena().release(scratch_mark);
   };
 
-  let const value_ran_substitution =
+  let const did_value_run_substitution =
       m_assignment->value_word().runs_substitution();
   let const substitution_mark = cxt.mark_process_substitutions();
   defer { cxt.cleanup_process_substitutions(substitution_mark); };
@@ -367,7 +367,7 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
         cxt.assign_caller_binding_of_circular_nameref(assigned_name,
                                                       value.view()))
     {
-      if (!value_ran_substitution)
+      if (!did_value_run_substitution)
         cxt.execution_store().set_last_exit_status(0);
       cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
 
@@ -399,13 +399,16 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
       throw steal(error);
     }
 
+    /* at this point: assigned_name is not read only, and resolved_name holds
+       the nameref target when assigned_name was resolved through a nameref. */
+
     if (is_element_assignment) {
       let const array_name = key_view.substring_of_length(0, *bracket);
       let const subscript  = key_view.substring_of_length(
           *bracket + 1, key_view.length - *bracket - 2);
       cxt.assign_array_element(array_name, subscript, value.view(),
                                m_assignment->get_update_mode());
-      if (!value_ran_substitution) {
+      if (!did_value_run_substitution) {
         cxt.execution_store().set_last_exit_status(0);
       }
 
@@ -438,7 +441,7 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
               assigned_name))
       {
         (*stored)->append(value.view());
-        if (!value_ran_substitution)
+        if (!did_value_run_substitution)
           cxt.execution_store().set_last_exit_status(0);
         cxt.publish_single_pipe_status(
             cxt.execution_store().last_exit_status());
@@ -468,7 +471,8 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
       cxt.mark_exported(key);
     }
 
-    if (!value_ran_substitution) cxt.execution_store().set_last_exit_status(0);
+    if (!did_value_run_substitution)
+      cxt.execution_store().set_last_exit_status(0);
     cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
 
     return cxt.execution_store().last_exit_status();
@@ -590,6 +594,8 @@ SimpleCommand::can_evaluate_in_process_substitution(
 
   if (!command_name.has_value()) return false;
 
+  /* at this point: command_name is the static name of m_args[0], and every
+     word argument is safe for in-process substitution. */
   if (let const function_body =
           cxt.function_store().find_function(*command_name);
       function_body.has_value())
@@ -747,6 +753,8 @@ resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
                             field + ": Bad file descriptor"};
   }
 
+  /* at this point: field is a single word other than "-", and the
+     parsed descriptor is in the range 0 to INT32_MAX. */
   return resolved_duplication{static_cast<i32>(parsed_descriptor.value()),
                               koshka::None};
 }
@@ -1007,7 +1015,7 @@ internal::resolve_redirection(const Redirection    &redir,
                                      redir.fd_allocation_name_token == nullptr;
 
   if (should_memoize_append) {
-    let cached = cxt.find_loop_redirect_fd(redir.fd, target_path, mode);
+    let const cached = cxt.find_loop_redirect_fd(redir.fd, target_path, mode);
 
     if (cached.has_value())
       return resolved_redirection{redirection_outcome::OpenedFile, redir.fd,
@@ -1097,7 +1105,9 @@ internal::allocate_redirection_descriptor(
 
     if (current_value->has_value()) {
       let const parsed = (*current_value)->view().to<i64>();
-      if (!parsed.is_error() && parsed.value() >= 0) {
+      if (!parsed.is_error() && parsed.value() >= 0 &&
+          parsed.value() <= INT32_MAX)
+      {
         return static_cast<i32>(parsed.value());
       }
     }
@@ -1999,7 +2009,8 @@ struct stage_fd_allocation_restore
 };
 
 fn
-SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const throws -> void
+SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const
+    throws -> void
 {
   LOG(Debug, "applying %zu redirections to the pipeline stage",
       m_redirections.count());
@@ -2126,8 +2137,8 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const th
     case redirection_outcome::Duplicate: {
       let source_fd = r.dup_from_fd;
 
-      // A source bound by an earlier duplication in this list has no live
-      // descriptor yet, so the duplication follows that binding.
+      /* a source bound by an earlier duplication in this list has no live
+         descriptor yet, so the duplication follows that binding. */
       for (let const &binding : nonstandard) {
         if (binding.target_fd == source_fd &&
             binding.file_fd == KOSH_INVALID_FD && binding.dup_from_fd >= 0)
@@ -2161,9 +2172,9 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const th
           let const location = redir.target != nullptr
                                    ? redir.target->source_location()
                                    : source_location();
-          throw ErrorWithLocation{
-              location, String::from(r.dup_from_fd, heap_allocator()) +
-                            ": Bad file descriptor"};
+          throw ErrorWithLocation{location,
+                                  String::from(source_fd, heap_allocator()) +
+                                      ": Bad file descriptor"};
         }
 
         assign_redirected_fd(ec, nonstandard, target_fd, copied);

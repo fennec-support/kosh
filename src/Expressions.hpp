@@ -925,6 +925,10 @@ public:
                             usize      body_position,
                             usize      body_end_position) throws -> void;
 
+  /* memory: the first positional read copies its spelling into the allocator
+             of first_positional_read. later calls do not allocate.
+     time:   O(length of the spelling) for that copy, O(1) for each later
+             call. */
   fn
   note_positional_reference(StringView            name,
                             const SourceLocation &location) throws
@@ -1286,6 +1290,12 @@ struct published_command_text
   CopyOnWrite<String> text{heap_allocator()};
   bool                was_rendered_with_bash_additions{false};
 
+  /* memory: the held text is a String copy made in heap_allocator(). a
+             re-render replaces it, and the previous String is freed unless
+             another holder shares it.
+     time:   O(length of the rendered text) for the copy, plus the cost of
+             do_render() on a re-render. a call that keeps the held text is
+             O(1). */
   template <typename Render>
   fn
   get(bool has_bash_additions, Render do_render) throws

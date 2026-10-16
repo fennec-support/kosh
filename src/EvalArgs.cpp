@@ -287,11 +287,7 @@ find_brace_group(StringView text, Allocator alloc) throws
               text.substring_of_length(open + 1, j - open - 1), alloc);
 
           if (alternatives.has_value()) {
-            let group = brace_group{open, j, ArrayList<String>{alloc}};
-
-            group.alternatives = steal(*alternatives);
-
-            return group;
+            return brace_group{open, j, steal(*alternatives)};
           }
 
           break;
@@ -646,15 +642,15 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
     }
   }
 
-  let const previous_glob_exempt = expansion_store().glob_exempt_for_test();
+  let const was_glob_exempt = expansion_store().glob_exempt_for_test();
 
   expansion_store().set_glob_exempt_for_test(is_test_command ||
                                              is_declaration_command);
   defer {
-    expansion_store().set_glob_exempt_for_test(previous_glob_exempt);
+    expansion_store().set_glob_exempt_for_test(was_glob_exempt);
   };
 
-  let const previous_suppress_test_warning =
+  let const was_test_warning_suppressed =
       runtime_control_store().is_warning_suppressed(
           suppressible_warning::UnsetTestOperand);
 
@@ -663,7 +659,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         suppressible_warning::UnsetTestOperand, true);
   defer {
     runtime_control_store().set_warning_suppressed(
-        suppressible_warning::UnsetTestOperand, previous_suppress_test_warning);
+        suppressible_warning::UnsetTestOperand, was_test_warning_suppressed);
   };
 
   let const do_fill_subscript_flags = [&]() throws -> void {
@@ -995,7 +991,9 @@ EvalContext::write_xtrace(StringView command) throws -> void
   {
     let const parsed = xtrace_fd_value->view().to<i64>();
 
-    if (!parsed.is_error() && parsed.value() >= 0) {
+    if (!parsed.is_error() && parsed.value() >= 0 &&
+        parsed.value() <= INT32_MAX)
+    {
       xtrace_fd = parsed.value();
     }
   }

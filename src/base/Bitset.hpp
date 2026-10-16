@@ -92,8 +92,7 @@ public:
   fn
   reset(usize bit_count) throws -> void
   {
-    m_words.clear();
-    m_length = 0;
+    clear();
 
     let const word_count =
         bit_count / BITS_PER_WORD + (bit_count % BITS_PER_WORD != 0 ? 1 : 0);

@@ -21,7 +21,7 @@ HELP_DESCRIPTION_DECL(
     "the editor. Koshka uses the toiletline editor, which this builtin does "
     "not configure.");
 
-FLAG(LIST_NAMES, Bool, 'l', "\0", "List key names, with no effect.");
+FLAG(LIST_NAMES, Bool, 'l', "\0", "List key identifiers, with no effect.");
 FLAG(READLINE_META,
      Bool,
      'm',

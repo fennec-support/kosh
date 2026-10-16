@@ -922,16 +922,12 @@ public:
         let const is_decided_by_lhs = (op.kind == 'A') == lhs.is_zero();
         let       rhs               = ArithmeticValue{};
 
-        if (is_decided_by_lhs) {
-          let const was_skipping = m_is_skipping;
+        let const was_skipping = m_is_skipping;
 
-          m_is_skipping = true;
-          defer { m_is_skipping = was_skipping; };
+        m_is_skipping = was_skipping || is_decided_by_lhs;
+        defer { m_is_skipping = was_skipping; };
 
-          rhs = parse_binary(op.precedence + 1);
-        } else {
-          rhs = parse_binary(op.precedence + 1);
-        }
+        rhs = parse_binary(op.precedence + 1);
 
         lhs = ArithmeticValue{
             op.kind == 'A' ? ((!lhs.is_zero() && !rhs.is_zero()) ? 1 : 0)
@@ -1156,6 +1152,8 @@ public:
     let next    = ArithmeticValue{1};
 
     if (index == 0) return current;
+
+    /* at this point: index is nonzero, so __builtin_clzll() is defined. */
 
     let bit = u64{1} << (63u - static_cast<u32>(__builtin_clzll(index)));
 
@@ -1544,6 +1542,10 @@ public:
 
     value = ArithmeticValue::rescale(value, work_scale, arena);
 
+    if (value.is_zero())
+      fail("Logarithm operand is too small",
+           "ln requires an operand of at least 10 ** -(scale + 12)");
+
     let const lower = ArithmeticValue::rescale(
         ArithmeticValue::parse_decimal("0.8", arena), work_scale, arena);
     let const upper = ArithmeticValue::rescale(
@@ -1908,18 +1910,20 @@ public:
       return;
     }
 
-    let const token = source.substring(number_start);
-    usize     base  = arithmetic_internal::detect_radix_prefix(token).radix;
-
-    if (let const hash = token.find_character('#'); hash.has_value()) {
-      base = static_cast<usize>(
-          parse_arithmetic_operand(token.substring_of_length(0, *hash)));
-    }
-
     usize end = pos;
 
     while (end < source.length && is_number_continuation(source[end])) {
       end++;
+    }
+
+    let const token =
+        source.substring_of_length(number_start, end - number_start);
+
+    usize base = arithmetic_internal::detect_radix_prefix(token).radix;
+
+    if (let const hash = token.find_character('#'); hash.has_value()) {
+      base = static_cast<usize>(
+          parse_arithmetic_operand(token.substring_of_length(0, *hash)));
     }
 
     fail_span(number_start, end,
@@ -2941,20 +2945,14 @@ evaluate_arithmetic_cached_value(EvalContext            *context,
     }
 
     tokens.clear();
+    is_tokenized = true;
+    is_simple    = false;
     try {
       tokenize_arithmetic(expression, tokens);
+      is_simple = arith_tokens_are_simple(tokens);
     } catch (...) {
       tokens.clear();
-      is_tokenized = true;
-      is_simple    = false;
-
-      return evaluate_arithmetic_value(context, expression, source_location,
-                                       is_exact, arena,
-                                       arithmetic_text_kind::ShellSource);
     }
-
-    is_tokenized = true;
-    is_simple    = arith_tokens_are_simple(tokens);
   }
 
   if (!is_simple)

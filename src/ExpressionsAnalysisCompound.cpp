@@ -42,11 +42,11 @@ find_pipe_overriding_redirection(const SimpleCommand *stage,
     -> const Redirection *
 {
   for (let const &redirection : stage->redirections()) {
-    let const claims_stream = is_output_wanted
-                                  ? redirection.opens_output_file()
-                                  : redirection.opens_input_source();
+    let const is_stream_claimed = is_output_wanted
+                                      ? redirection.opens_output_file()
+                                      : redirection.opens_input_source();
 
-    if (claims_stream && redirection.fd == (is_output_wanted ? 1 : 0)) {
+    if (is_stream_claimed && redirection.fd == (is_output_wanted ? 1 : 0)) {
       return &redirection;
     }
   }
@@ -177,7 +177,7 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
                               actx.functions.aliases.contains(*stage_name);
     let const stage_info = get_analysis_command_info(*stage_name);
     let const next_info  = get_analysis_command_info(*next_name);
-    let const next_is_pattern_matcher =
+    let const is_next_pattern_matcher =
         next_info.is_in_group(COMMAND_GROUP_PATTERN_MATCHER);
     let const is_next_xargs =
         next_info.id == command_name_id::Xargs && !is_next_user_command;
@@ -240,7 +240,7 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
     }
 
     case command_name_id::Ls:
-      if (next_is_pattern_matcher) {
+      if (is_next_pattern_matcher) {
         actx.report_diagnostic(diagnostic_id::sc2010,
                                next->args()[0]->source_location());
       } else if (is_next_xargs) {
@@ -254,7 +254,7 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
       break;
 
     case command_name_id::Ps:
-      if (next_is_pattern_matcher)
+      if (is_next_pattern_matcher)
         actx.report_diagnostic(diagnostic_id::sc2009,
                                next->args()[0]->source_location());
       break;
@@ -364,6 +364,8 @@ node_unclosed_test_bracket(const CompoundListCondition *node) wontthrow
     return nullptr;
   }
 
+  /* at this point: command is a simple command whose first argument is the
+     literal "[" and whose last argument is not the literal "]". */
   return args[0];
 }
 

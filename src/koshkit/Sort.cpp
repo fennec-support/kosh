@@ -330,11 +330,9 @@ compare_sort_numbers(StringView left, StringView right) wontthrow -> int
 
     parsed_number number{};
 
-    if (position < text.length) {
-      if (text[position] == '-') {
-        number.is_negative = true;
-        position++;
-      }
+    if (position < text.length && text[position] == '-') {
+      number.is_negative = true;
+      position++;
     }
 
     number.integer_start = position;
@@ -348,15 +346,13 @@ compare_sort_numbers(StringView left, StringView right) wontthrow -> int
 
     number.fraction_start = position;
     number.fraction_end   = position;
-    if (position < text.length) {
-      if (text[position] == '.') {
-        number.fraction_start = position + 1;
-        number.fraction_end   = skip_sort_digits(text, position + 1);
+    if (position < text.length && text[position] == '.') {
+      number.fraction_start = position + 1;
+      number.fraction_end   = skip_sort_digits(text, position + 1);
 
-        while (number.fraction_end > number.fraction_start) {
-          if (text[number.fraction_end - 1] != '0') break;
-          number.fraction_end--;
-        }
+      while (number.fraction_end > number.fraction_start) {
+        if (text[number.fraction_end - 1] != '0') break;
+        number.fraction_end--;
       }
     }
 
@@ -364,8 +360,8 @@ compare_sort_numbers(StringView left, StringView right) wontthrow -> int
     let const has_fraction_digits =
         number.fraction_start != number.fraction_end;
 
-    if (!has_integer_digits) {
-      if (!has_fraction_digits) number.is_negative = false;
+    if (!has_integer_digits && !has_fraction_digits) {
+      number.is_negative = false;
     }
 
     return number;

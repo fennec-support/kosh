@@ -135,6 +135,8 @@ String::reserve(usize needed) throws -> void
   if (needed == SIZE_MAX) rarely
     throw std::bad_alloc{};
 
+  /* at this point: needed is at least m_capacity and below SIZE_MAX, so
+     required_capacity does not overflow. */
   let const required_capacity = needed + 1;
   let       new_capacity      = required_capacity;
 

@@ -140,6 +140,7 @@ public:
     if (expected_count > SIZE_MAX - third - 1) rarely
       throw std::bad_alloc{};
 
+    /* at this point: expected_count + third + 1 does not overflow. */
     let const needed       = expected_count + third + 1;
     usize     new_capacity = m_capacity == 0 ? m_first_capacity : m_capacity;
 
@@ -418,7 +419,7 @@ private:
 
     ASSERT(m_slots != nullptr);
 
-    let result = probe(key, hash);
+    let const result = probe(key, hash);
 
     ASSERT(result.insertion != NO_INDEX);
     if (result.found != NO_INDEX ||
@@ -439,9 +440,7 @@ private:
       rehash(m_capacity);
     }
 
-    result = probe(key, hash);
-
-    return result;
+    return probe(key, hash);
   }
 
   hot fn

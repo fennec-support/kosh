@@ -256,7 +256,8 @@ copy_path(const ExecContext                &ec,
           Path{destination, allocator}.to_absolute().normalized();
       let source_prefix = source_absolute.text().clone();
 
-      source_prefix.push(os::DIRECTORY_SEPARATOR);
+      if (!os::is_directory_separator(source_prefix.back()))
+        source_prefix.push(os::DIRECTORY_SEPARATOR);
 
       let is_destination_inside_source =
           destination_absolute.view() == source_absolute.view() ||
@@ -278,7 +279,8 @@ copy_path(const ExecContext                &ec,
         if (resolved_source.has_value() && resolved_destination.has_value()) {
           let resolved_prefix = resolved_source->text().clone();
 
-          resolved_prefix.push(os::DIRECTORY_SEPARATOR);
+          if (!os::is_directory_separator(resolved_prefix.back()))
+            resolved_prefix.push(os::DIRECTORY_SEPARATOR);
           is_destination_inside_source =
               resolved_destination->view() == resolved_source->view() ||
               resolved_destination->view().starts_with(resolved_prefix.view());
@@ -321,7 +323,13 @@ copy_path(const ExecContext                &ec,
     let const did_destination_exist =
         Path{destination, allocator}.is_directory();
 
-    os::make_directory(destination, 0700);
+    if (!did_destination_exist && !os::make_directory(destination, 0700)) {
+      throw Error{
+          "unable to create the directory '" + String{allocator, destination}
+            +
+          "': " + os::last_system_error_message()
+      };
+    }
 
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
 
@@ -448,6 +456,8 @@ copy_path(const ExecContext                &ec,
     };
   }
 
+  /* at this point: destination is not a symbolic link, since a link at
+     destination was removed above. */
   let const did_destination_exist =
       was_destination_present && !is_destination_link_to_unlink_before_copy;
 
@@ -543,6 +553,8 @@ Cp::execute(const ExecContext               &ec,
     };
   }
 
+  /* at this point: operands holds at least two entries, and destination is a
+     directory whenever more than one source is given. */
   ArrayList<cp_directory_identity> active_directories{cxt.scratch_allocator()};
   i32                              status = 0;
 

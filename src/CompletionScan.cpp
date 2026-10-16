@@ -481,6 +481,9 @@ internal::complete_from_process_arguments(StringView      line,
     return None;
   }
 
+  /* at this point: command is kill, wait, pkill, or killall, token does not
+     start with '-', and previous_word is not a signal flag. */
+
   let const processes  = os::enumerate_processes();
   let       candidates = ArrayList<String>{completion_allocator()};
   let       seen       = HashSet{completion_allocator()};
@@ -592,6 +595,9 @@ internal::complete_from_tools_with_targets(StringView      line,
 
   if (!tool_kind.has_value()) return None;
 
+  /* at this point: tool_kind holds a tool with targets, token does not start
+     with '-', and command is non-empty. */
+
   switch (tool_kind.value()) {
   case tool_with_targets_kind::make: {
     let const directory = settled_option_value(line, "-C")
@@ -617,7 +623,11 @@ internal::complete_from_tools_with_targets(StringView      line,
 
     let makefile_path = Path{directory.view()};
 
-    makefile_path.append(makefile_name->view());
+    if (Path{makefile_name->view()}.is_absolute()) {
+      makefile_path = Path{makefile_name->view()};
+    } else {
+      makefile_path.append(makefile_name->view());
+    }
 
     if (!makefile_path.exists()) return None;
 
@@ -648,17 +658,24 @@ internal::complete_from_tools_with_targets(StringView      line,
   case tool_with_targets_kind::ninja: {
     let const directory = settled_option_value(line, "-C")
                               .value_or(String{heap_allocator(), "."});
+    let const build_name =
+        settled_option_value(line, "-f")
+            .value_or(String{heap_allocator(), "build.ninja"});
     let build_file = Path{directory.view()};
 
-    build_file.append(settled_option_value(line, "-f")
-                          .value_or(String{heap_allocator(), "build.ninja"})
-                          .view());
+    if (Path{build_name.view()}.is_absolute()) {
+      build_file = Path{build_name.view()};
+    } else {
+      build_file.append(build_name.view());
+    }
     cached_targets = cached_targets_for(build_file, [&]() throws {
       let probe = ArrayList<String>{heap_allocator()};
 
       probe.push_managed("ninja");
       probe.push_managed("-C");
       probe.push_managed(directory.view());
+      probe.push_managed("-f");
+      probe.push_managed(build_name.view());
       probe.push_managed("-t");
       probe.push_managed("targets");
 
@@ -1550,9 +1567,9 @@ complete_from_flags_in_line(StringView      line,
   if (builtin_kind.has_value() && *builtin_kind == Builtin::Kind::Unset &&
       (token.is_empty() || token[0] != '-'))
   {
-    let       unsets_function = false;
-    let const prefix          = line.substring_of_length(0, token_start);
-    usize     scan_position   = 0;
+    let       should_unset_function = false;
+    let const prefix                = line.substring_of_length(0, token_start);
+    usize     scan_position         = 0;
 
     while (scan_position < prefix.length) {
       scan_position        = skip_blanks(prefix, scan_position);
@@ -1570,11 +1587,11 @@ complete_from_flags_in_line(StringView      line,
       if (arg.length >= 2 && arg[0] == '-' && arg[1] != '-' &&
           arg.find_character('f').has_value())
       {
-        unsets_function = true;
+        should_unset_function = true;
       }
     }
 
-    if (unsets_function) {
+    if (should_unset_function) {
       let seen = HashSet{heap_allocator()};
       context.function_store().for_each_name(
           [&](StringView name) throws {
@@ -1674,8 +1691,7 @@ mark_spec_directory_candidates(ArrayList<String>       &candidates,
 }
 
 /* actions that a non-listing gather runs. inline hints must not search PATH
-   or open files (CLAUDE.md, Completion and editor), so the mask omits the
-   file and command actions. */
+   or open files, so the mask omits the file and command actions. */
 static constexpr u32 GHOST_ACTION_MASK =
     compgen_action_bit(compgen_action::Alias) |
     compgen_action_bit(compgen_action::ArrayVar) |
@@ -1974,6 +1990,8 @@ internal::complete_from_spec(StringView         line,
       spec != nullptr ? spec->function_name.c_str() : "",
       spec != nullptr ? spec->word_list.length() : 0);
   if (spec == nullptr) return None;
+  /* at this point: Progcomp is enabled, command is not empty, and spec is
+     non-null. */
 
   i32 function_status = 0;
   let active_spec     = spec->clone(completion_allocator());
@@ -2044,6 +2062,8 @@ internal::complete_from_initial_word_spec(StringView         line,
   if (!is_for_listing && !spec_has_ghost_generators(*spec)) {
     return None;
   }
+  /* at this point: Progcomp is enabled, spec is non-null, and spec has
+     ghost generators or the call is for listing. */
 
   LOG(Debug, "completing the command word from the %.*s spec",
       static_cast<int>(command_name.length), command_name.data);
@@ -2083,6 +2103,9 @@ consider_shell_lexical_frame(const shell_lexical_frame &frame,
   }
 
   if (depth < target->frame_depth) return;
+  /* at this point: target is non-null, frame is a command or backtick frame,
+     the cursor lies in [body_start, body_end], and depth is at least
+     target->frame_depth. */
   target->range       = completion_command_range{frame.body_start, body_end};
   target->frame_depth = depth;
 }
@@ -2324,7 +2347,8 @@ internal::advance_shell_lexical_state(
       {
         let const frame = do_pop_frame();
 
-        consider_shell_lexical_frame(frame, i, state.frames.count(), target);
+        consider_shell_lexical_frame(frame, i, state.frames.count() + 1,
+                                     target);
       } else {
         state.frames.push(shell_lexical_frame{
             i + 1, 0, 0, 0, shell_lexical_frame_kind::backtick, state.quote});
@@ -2657,7 +2681,7 @@ internal::advance_shell_lexical_state(
 
       let const closed_frame = do_pop_frame();
 
-      consider_shell_lexical_frame(closed_frame, i, state.frames.count(),
+      consider_shell_lexical_frame(closed_frame, i, state.frames.count() + 1,
                                    target);
       i++;
       continue;
@@ -2727,6 +2751,8 @@ internal::collect_case_pattern_ends(StringView        line,
     {
       continue;
     }
+    /* at this point: the scan stopped at position, which holds ')', outside
+       quotes, comments, and heredocs. */
 
     let const &frame =
         state.frames.is_empty() ? state.root_frame : state.frames.back();
@@ -2769,6 +2795,8 @@ classify_typed_pair_byte(StringView line,
     return is_substitution_opener ? typed_pair_role::opens
                                   : typed_pair_role::none;
   }
+  /* at this point: state.quote is 0, and the scan is outside heredocs and
+     comments. */
 
   switch (byte) {
   case '"':

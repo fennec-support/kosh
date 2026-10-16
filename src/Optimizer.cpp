@@ -391,6 +391,14 @@ try_fold_arithmetic_with_constants(StringView             expression,
 
       usize start_position = i;
 
+      /* a name after a digit merges with that digit in the rewritten text, so
+         "2x" would fold to 25 instead of failing. */
+      if (start_position > 0 &&
+          lexer::is_variable_name(expression[start_position - 1]))
+      {
+        return None;
+      }
+
       while (i < expression.length && lexer::is_variable_name(expression[i])) {
         i++;
       }

@@ -506,7 +506,6 @@ report_dry_run_removal(const removal_request &request,
 
       if (is_child_kept) has_kept_child = true;
       if (is_child_left) has_left_child = true;
-      if (os::INTERRUPT_REQUESTED) return false;
     }
   } else {
     let status = os::file_status{};
@@ -546,7 +545,7 @@ report_dry_run_removal(const removal_request &request,
 }
 
 static fn
-names_dot_refused_under_force(StringView operand) wontthrow -> bool
+is_dot_or_dot_dot(StringView operand) wontthrow -> bool
 {
   usize end = operand.length;
 
@@ -746,7 +745,7 @@ Rm::execute(const ExecContext               &ec,
 
   for (let const &operand : operands) {
     if (os::INTERRUPT_REQUESTED) return 130;
-    if (is_recursive && names_dot_refused_under_force(operand.view())) {
+    if (is_recursive && is_dot_or_dot_dot(operand.view())) {
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
           "refusing to remove '.' or '..' directory: "
@@ -813,7 +812,6 @@ Rm::execute(const ExecContext               &ec,
     }
 
     if (!remove_path_with_prompt(request, operand.view(), is_directory_mode)) {
-      if (os::INTERRUPT_REQUESTED) return 130;
       status = 1;
     }
 

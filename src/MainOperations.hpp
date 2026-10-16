@@ -265,7 +265,7 @@ resolve_session_tab_selector() wontthrow -> tab_selector_mode
 
 /* memory: row is a heap String freed on return. listing grows by the wrapped
            row.
-   time:   O(summary length) for the capital scan and copy, plus one
+   time:   O(summary length) for the copy, plus one
            wrap_text() call on row. called once per diagnostic from the loops
            in print_help_or_version_status(). */
 static fn
@@ -288,23 +288,14 @@ append_listed_diagnostic(String                      &listing,
   row += get_diagnostic_tier_name(definition.tier);
   row += "): ";
 
-  let const summary          = StringView{definition.summary};
-  usize     capital_position = 0;
+  let const summary = StringView{definition.summary};
 
-  while (capital_position < summary.length &&
-         (summary[capital_position] < 'a' || summary[capital_position] > 'z'))
-  {
-    capital_position++;
+  if (!summary.is_empty() && summary[0] >= 'a' && summary[0] <= 'z') {
+    row += static_cast<char>(summary[0] - 'a' + 'A');
+    row += summary.substring(1);
+  } else {
+    row += summary;
   }
-
-  row += summary.substring_of_length(0, capital_position);
-  if (capital_position < summary.length) {
-    row += static_cast<char>(summary[capital_position] - 'a' + 'A');
-    capital_position++;
-  }
-
-  row += summary.substring_of_length(capital_position,
-                                     summary.length - capital_position);
   listing +=
       wrap_text(row.view(), HELP_INDENT, HELP_WRAP_WIDTH, HELP_INDENT + 2);
   listing += '\n';
@@ -1231,6 +1222,9 @@ run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 
   if (command_count == 0) return;
 
+  /* at this point: commands holds CRLF-normalized elements, and at least
+     one of them is not empty. */
+
   let      &prompt_store      = context.prompt_command_store();
   let      &execution         = context.execution_store();
   let const saved_exit_status = execution.last_exit_status();
@@ -1330,6 +1324,9 @@ next_history_word(StringView source, usize &position) throws
   if (position >= source.length || source[position] == '#') {
     return None;
   }
+
+  /* at this point: position is below source.length, and source[position]
+     is neither whitespace nor '#', so a word starts at position. */
 
   let const start_position = position;
   let const first_byte     = source[position];
@@ -1456,12 +1453,9 @@ select_history_words(StringView        command,
   } else if (designator == "*") {
     first_word_index = word_count > 0 ? 1 : 0;
   } else {
-    usize     separator_position  = 0;
-    let const is_zero_based_range = designator[0] == '-';
+    usize separator_position = 0;
 
-    if (is_zero_based_range) {
-      separator_position = 0;
-    } else {
+    if (designator[0] != '-') {
       while (separator_position < designator.length &&
              lexer::is_number(designator[separator_position]))
       {
@@ -1510,6 +1504,9 @@ select_history_words(StringView        command,
   if (first_word_index > end_word_index || end_word_index > word_count) {
     throw_bad_history_word_specifier(spelling);
   }
+
+  /* at this point: first_word_index <= end_word_index <= word_count, so
+     every index in the selected range is below word_count. */
 
   scan_position = 0;
 
@@ -1947,7 +1944,7 @@ is_history_expansion_inhibited(StringView source, usize position) wontthrow
     return true;
   }
 
-  return position > 1 && source[position - 1] == '$';
+  return position > 0 && source[position - 1] == '$';
 }
 
 static fn
@@ -2289,6 +2286,8 @@ expand_interactive_history(StringView               source,
   }
 
   if (!did_expand) return None;
+  /* at this point: did_expand is true, and expanded holds the text before
+     copied_position with each history reference replaced. */
   expanded.append(source.substring(copied_position));
 
   return interactive_history_expansion{steal(expanded), should_execute};
@@ -2327,6 +2326,7 @@ source_file(const Path              &path,
     return false;
   }
 
+  /* at this point: contents holds the bytes of path. */
   LOG(Info, "sourcing '%s', %zu bytes", path.c_str(), contents->count());
 
   context.run_source(*contents, path.view(), None, path.view(), nullptr,
@@ -2466,6 +2466,8 @@ ensure_bash_completion_loaded(EvalContext &context) throws -> void
     return;
   }
 
+  /* at this point: no default completion spec is registered and
+     BASH_COMPLETION_VERSINFO is unset. */
   LOG(Info, "sourcing the stock bash-completion script");
 
   let bash_completion_state = definition_state::from(context.runtime_state());
@@ -2733,7 +2735,7 @@ replace_file_contents(const apply_file_snapshot &snapshot,
     return false;
   }
 
-  let       resolved_operand = os::canonical_path(snapshot.operand_path);
+  let const resolved_operand = os::canonical_path(snapshot.operand_path);
   let       current_status   = os::file_status{};
   let const current_contents = snapshot.target_path.read_entire_file();
 
@@ -2843,12 +2845,12 @@ print_applied_fix_summary(
     labels.push(steal(label));
   }
 
-  let const wants_color = colors::stderr_wants_color();
+  let const should_color = colors::stderr_wants_color();
   let const warning_color =
-      wants_color ? colors::soft(colors::ansi::YELLOW) : StringView{};
+      should_color ? colors::soft(colors::ansi::YELLOW) : StringView{};
   let const error_color =
-      wants_color ? colors::soft(colors::ansi::BOLD_BRIGHT_RED) : StringView{};
-  let const reset = wants_color ? colors::ansi::RESET : StringView{};
+      should_color ? colors::soft(colors::ansi::BOLD_BRIGHT_RED) : StringView{};
+  let const reset = should_color ? colors::ansi::RESET : StringView{};
 
   let summary = String{heap_allocator(), "Fixed "};
 
@@ -3013,7 +3015,7 @@ run_format_operation(const ArrayList<String>         &file_names,
                                 ? Maybe<StringView>{}
                                 : Maybe<StringView>{file_names[input_index]};
     let       ast_output  = String{heap_allocator()};
-    let       formatted   = format_document_source(
+    let const formatted   = format_document_source(
         source.view(), source_name, ast_arena, errors,
         context.runtime_state().show_ast() ? &ast_output : nullptr,
         context.arena_store().function_arena(), mood, operand_location,
@@ -3074,13 +3076,16 @@ run_lint_apply_operation(const ArrayList<String>         &file_names,
     let const &file_name        = file_names[file_index];
     let const &operand_location = operand_locations[file_index];
     let const  path             = Path{file_name.view()};
-    let snapshot = read_apply_file(path, operand_location, invocation, context);
+    let const  snapshot =
+        read_apply_file(path, operand_location, invocation, context);
 
     if (!snapshot.has_value()) {
       did_fail = true;
       continue;
     }
 
+    /* at this point: snapshot holds the contents of a regular file that did
+       not change while it was read. */
     let source = snapshot->contents.clone();
 
     source.normalize_crlf_line_endings();
@@ -3126,7 +3131,7 @@ run_lint_apply_operation(const ArrayList<String>         &file_names,
       }
     }
 
-    let fixes = source_fixes_for_original_line_endings(
+    let const fixes = source_fixes_for_original_line_endings(
         snapshot->contents.view(), normalized_fixes);
     let applied_origins = ArrayList<diagnostic_id>{heap_allocator()};
     let fixed =

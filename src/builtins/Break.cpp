@@ -108,6 +108,7 @@ Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (cxt.execution_store().loop_depth() == 0) return 0;
 
+  /* at this point: level is at least 1, and an enclosing loop exists. */
   LOG(All, "break leaving %lld enclosing loops", static_cast<long long>(level));
   cxt.request_break(level, ec.source_location());
 

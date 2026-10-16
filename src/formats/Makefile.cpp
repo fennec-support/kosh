@@ -13,7 +13,7 @@
 
 namespace koshka {
 
-static pure fn
+static fn
 shell_assignment_mood(StringView line, Maybe<mimic_mood> &mood)
     wontthrow -> bool
 {

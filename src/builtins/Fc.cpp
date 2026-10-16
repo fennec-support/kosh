@@ -556,6 +556,8 @@ Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                       : static_cast<i64>(events.count()) - 1;
 
   if (last_eligible_index < 0) return 0;
+  /* at this point: events is not empty, and last_eligible_index is in
+     [0, events.count()). */
 
   i64   first_index      = last_eligible_index;
   i64   last_index       = last_eligible_index;

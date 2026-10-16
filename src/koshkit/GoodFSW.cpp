@@ -264,10 +264,7 @@ report_event(String                       &output,
     output += format_watch_timestamp(scan_time, scan_nanoseconds,
                                      timestamp_format, output.allocator());
     output += " ";
-  } else if (FLAG_GOODFSW_MACHINE.is_enabled() ||
-             FLAG_GOODFSW_TIMESTAMP.is_enabled() ||
-             !FLAG_GOODFSW_HUMAN.is_enabled())
-  {
+  } else {
     output +=
         String::from(static_cast<u64>(scan_time), output.allocator()).view();
     output += " ";
@@ -333,6 +330,8 @@ scan_path(StringView                path,
     return;
   }
 
+  /* at this point: path is not excluded, depth is within
+     MAXIMUM_SCAN_DEPTH, and known_status points to the status of path. */
   watched_entry entry{
       String{allocator, path}
   };
@@ -361,10 +360,6 @@ scan_path(StringView                path,
     if (os::INTERRUPT_REQUESTED) return;
 
     let const &child = child_entry.child;
-
-    if (child.name.view() == "." || child.name.view() == "..") {
-      continue;
-    }
 
     let child_path = Path{path, allocator};
 
@@ -485,6 +480,8 @@ GoodFSW::execute(const ExecContext               &ec,
 
   if (take_interrupt_request()) return 130;
 
+  /* at this point: collected_previous holds the entries of the first scan, and
+     no interrupt request is pending. */
   let previous =
       steal(collected_previous).make_sorted(watched_entry_comparator{});
   let recycled_entries = ArrayList<watched_entry>{watch_allocator};
@@ -591,6 +588,11 @@ GoodFSW::execute(const ExecContext               &ec,
 
       previous_position++;
       current_position++;
+    }
+
+    if (was_interrupted) {
+      os::INTERRUPT_REQUESTED = 0;
+      break;
     }
 
     recycled_entries = steal(previous).into_array_list();

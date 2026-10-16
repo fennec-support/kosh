@@ -49,7 +49,7 @@ struct shell_variable_description
   shell_variable_fact facts;
 };
 
-inline constexpr char SHELL_ANSI_VARIABLE_PREFIX[] = "KOSH_ANSI_";
+inline constexpr StringView SHELL_ANSI_VARIABLE_PREFIX{"KOSH_ANSI_"};
 
 inline constexpr shell_variable_description SHELL_ANSI_VARIABLE{
     "The value is a terminal escape, and it is empty when color is disabled.",
@@ -586,9 +586,7 @@ describe_shell_variable(StringView name) throws
 {
   if (name.is_empty()) return None;
 
-  if (name.starts_with(StringView{SHELL_ANSI_VARIABLE_PREFIX,
-                                  countof(SHELL_ANSI_VARIABLE_PREFIX) - 1}))
-  {
+  if (name.starts_with(SHELL_ANSI_VARIABLE_PREFIX)) {
     return SHELL_ANSI_VARIABLE;
   }
 

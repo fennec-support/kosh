@@ -45,10 +45,7 @@ Sleep::execute(const ExecContext               &ec,
     }
 
     total_seconds += seconds_value;
-    if (__builtin_isinf(total_seconds)) {
-      should_sleep_forever = true;
-      break;
-    }
+    if (__builtin_isinf(total_seconds)) should_sleep_forever = true;
   }
 
   if (should_sleep_forever) {

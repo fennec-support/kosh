@@ -62,6 +62,8 @@ Sync::execute(const ExecContext               &ec,
     return 0;
   }
 
+  /* at this point: operands is not empty, and at most one of -d and -f is
+     set. */
   i32       status = 0;
   let const mode   = FLAG_SYNC_DATA.is_enabled() ? os::sync_mode::DataOnly
                                                  : os::sync_mode::All;

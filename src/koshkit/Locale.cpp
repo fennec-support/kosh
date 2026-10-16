@@ -116,6 +116,8 @@ Locale::execute(const ExecContext               &ec,
     return 0;
   }
 
+  /* at this point: operands holds at least one name, and neither -a nor -m
+     is set. */
   const char   *active_locale = nullptr;
   struct lconv *locale_values = nullptr;
 

@@ -16,8 +16,6 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-#include <cstdlib>
-
 KOSHKIT_UTIL_DECL(
     "[-a] [-n] [-c] [-s] [-r] [-k] [--kubernetes] [--container] "
     "[--containers]",
@@ -553,6 +551,7 @@ scoped_container_id(StringView component, StringView prefix) wontthrow
     return None;
   }
 
+  /* at this point: component is prefix, 64 bytes, then SUFFIX. */
   let const identifier = component.substring_of_length(prefix.length, 64);
 
   return is_hexadecimal_id(identifier) ? Maybe<StringView>{identifier} : None;
@@ -2020,9 +2019,7 @@ append_kubernetes_report(String                                   &output,
       value.has_value())
     kubernetes_host = sanitize_kubernetes_metadata(value->view(), allocator);
 
-  let namespace_name = String{allocator};
-
-  namespace_name = read_kubernetes_metadata("namespace", allocator);
+  let const namespace_name = read_kubernetes_metadata("namespace", allocator);
 
   bool has_kubepods = false;
 

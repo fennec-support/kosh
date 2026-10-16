@@ -1189,11 +1189,7 @@ File::execute(const ExecContext               &ec,
           operand_paths[operand_position], file_statuses[operand_position]));
     }
 
-    if (metadata_batch.count() != 0) {
-      let follow_results = ArrayList<os::batch_result>{allocator};
-
-      metadata_batch.execute(follow_results);
-    }
+    if (metadata_batch.count() != 0) metadata_batch.execute();
 
     let sample_sources           = ArrayList<StringView>{allocator};
     let sample_operand_positions = ArrayList<usize>{allocator};

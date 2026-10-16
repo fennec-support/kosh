@@ -26,7 +26,7 @@ namespace koshka {
 
 namespace utils {
 
-/* Inspiration taken from https://github.com/tsoding/glob.h :3
+/* Inspiration taken from https://github.com/tsoding/glob.h
  * This fragment is under MIT License (c) Alexey Kutepov <reximkut@gmail.com> */
 static pure fn
 is_glob_char_active(const Bitset &glob_active, usize index) wontthrow -> bool
@@ -205,8 +205,8 @@ extglob_match_repetition(const ExtglobAlternatives &alternatives,
   {
     let const &alternative = alternatives.get_at(alternative_index);
 
-    for (usize length = get_next_split(str, 0, charset); length <= str.count();
-         length       = get_next_split(str, length, charset))
+    for (usize length = min_reps > 0 ? 0 : get_next_split(str, 0, charset);
+         length <= str.count(); length = get_next_split(str, length, charset))
     {
       if (!extglob_full_match(alternative.pattern,
                               str.substring_of_length(0, length), mask,

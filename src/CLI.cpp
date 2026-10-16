@@ -1020,27 +1020,7 @@ parse_flags(const FlagList                  &flags,
             if (*value_offset == '=') {
               value_offset++;
 
-              if (*value_offset != '\0') {
-                let const value_position = ++position;
-
-                if (flag->kind() == Flag::Kind::String)
-                  static_cast<FlagString *>(flag)->set(value_offset);
-                else {
-                  let const value_location = attached_flag_value_location(
-                      argv, static_cast<usize>(i), value_offset, base_position,
-                      arg_locations);
-
-                  static_cast<FlagManyStrings *>(flag)->append(
-                      value_offset, value_position, value_location);
-                }
-
-                flag->set_position(value_position);
-                flag->set_value_location(attached_flag_value_location(
-                    argv, static_cast<usize>(i), value_offset, base_position,
-                    arg_locations));
-                LOG(All, "set the flag '%s' to '%s'",
-                    flag_name(flag, is_long).c_str(), value_offset);
-              } else {
+              if (*value_offset == '\0') {
                 let error = ErrorWithLocation{
                     argument_location(argv, static_cast<usize>(i),
                                       base_position, arg_locations),
@@ -1050,27 +1030,7 @@ parse_flags(const FlagList                  &flags,
                 error.set_command_status(2);
                 throw error;
               }
-            } else if (!is_long) {
-              let const value_position = ++position;
-
-              if (flag->kind() == Flag::Kind::String)
-                static_cast<FlagString *>(flag)->set(value_offset);
-              else {
-                let const value_location = attached_flag_value_location(
-                    argv, static_cast<usize>(i), value_offset, base_position,
-                    arg_locations);
-
-                static_cast<FlagManyStrings *>(flag)->append(
-                    value_offset, value_position, value_location);
-              }
-
-              flag->set_position(value_position);
-              flag->set_value_location(attached_flag_value_location(
-                  argv, static_cast<usize>(i), value_offset, base_position,
-                  arg_locations));
-              LOG(All, "set the flag '%s' to the attached value '%s'",
-                  flag_name(flag, is_long).c_str(), value_offset);
-            } else {
+            } else if (is_long) {
               let error = ErrorWithLocation{
                   argument_location(argv, static_cast<usize>(i), base_position,
                                     arg_locations),
@@ -1081,6 +1041,22 @@ parse_flags(const FlagList                  &flags,
               error.set_command_status(2);
               throw error;
             }
+
+            let const value_position = ++position;
+            let const value_location = attached_flag_value_location(
+                argv, static_cast<usize>(i), value_offset, base_position,
+                arg_locations);
+
+            if (flag->kind() == Flag::Kind::String)
+              static_cast<FlagString *>(flag)->set(value_offset);
+            else
+              static_cast<FlagManyStrings *>(flag)->append(
+                  value_offset, value_position, value_location);
+
+            flag->set_position(value_position);
+            flag->set_value_location(value_location);
+            LOG(All, "set the flag '%s' to '%s'",
+                flag_name(flag, is_long).c_str(), value_offset);
           }
         } break;
         }
@@ -1640,6 +1616,8 @@ append_report_grid(String                                        &output,
 
   if (column_count == 0) return;
 
+  /* at this point: column_count is nonzero, so the grid has a column. */
+
   let widths = ArrayList<usize>{columns.allocator()};
 
   widths.reserve(column_count);
@@ -1799,11 +1777,12 @@ append_report_name_section(String                      &output,
 
   let const column_width      = longest_length + 2;
   let const indentation_width = report_indentation_width(indentation) + 2;
-  let const available_width =
-      indentation_width < 80 ? 80 - indentation_width : usize{1};
-  let const column_count = column_width >= available_width
-                               ? usize{1}
-                               : available_width / column_width;
+  let const available_width   = indentation_width < HELP_WRAP_WIDTH
+                                    ? HELP_WRAP_WIDTH - indentation_width
+                                    : usize{1};
+  let const column_count      = column_width >= available_width
+                                    ? usize{1}
+                                    : available_width / column_width;
 
   for (usize index = 0; index < names.count(); index++) {
     let const name = names[index];
@@ -1889,11 +1868,8 @@ static fn
 write_alternate_screen_sequence(const ExecContext &ec,
                                 StringView         sequence) wontthrow -> bool
 {
-  let descriptor = KOSH_STDOUT;
-
-  if (ec.out_fd.has_value()) descriptor = *ec.out_fd;
-
-  return os::write_all(descriptor, sequence.data, sequence.length);
+  return os::write_all(ec.out_fd.value_or(KOSH_STDOUT), sequence.data,
+                       sequence.length);
 }
 
 fn
@@ -1977,7 +1953,10 @@ show_cursor(const ExecContext &ec) wontthrow -> void
 fn
 format_live_duration(f64 seconds, Allocator allocator) throws -> String
 {
-  let const nanoseconds = static_cast<u64>(seconds * 1000000000.0 + 0.5);
+  /* seconds beyond the u64 nanosecond range saturate to UINT64_MAX. */
+  let const nanoseconds = seconds >= 18446744073.0
+                              ? UINT64_MAX
+                              : static_cast<u64>(seconds * 1000000000.0 + 0.5);
   let       result      = String::from(nanoseconds / 1000000000ULL, allocator);
   u64       fraction    = nanoseconds % 1000000000ULL;
 

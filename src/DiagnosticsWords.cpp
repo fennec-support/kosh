@@ -95,6 +95,8 @@ arithmetic_expansion_assigns(StringView expression, usize expansion_end)
     return false;
   }
 
+  /* at this point: at is less than expression.length, and expression[at]
+     is '='. */
   return at + 1 >= expression.length || expression[at + 1] != '=';
 }
 
@@ -773,11 +775,10 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
     return;
   }
 
+  /* at this point: input is not shadowed and is not a test command. */
   switch (input.command_id()) {
   case command_name_id::Find: {
-    bool                  has_exec               = false;
     bool                  has_exec_terminator    = false;
-    bool                  has_or                 = false;
     bool                  has_group              = false;
     bool                  has_action             = false;
     bool                  has_path_operand       = false;
@@ -799,10 +800,9 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
       }
 
       if (view == "-exec" || view == "-execdir") {
-        has_exec              = true;
         is_inside_exec_action = true;
         exec_location         = args[i]->source_location();
-      } else if (has_exec && view.length == 1 &&
+      } else if (exec_location.has_value() && view.length == 1 &&
                  (leading == ';' || leading == '+'))
       {
         has_exec_terminator   = true;
@@ -813,7 +813,6 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
         actx.report_diagnostic(diagnostic_id::sc2014,
                                args[i]->source_location());
       } else if (view == "-o") {
-        has_or      = true;
         or_location = args[i]->source_location();
       } else if (view.length == 1 && (leading == '(' || leading == ')')) {
         has_group = true;
@@ -822,11 +821,11 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
       if (is_find_action(view)) has_action = true;
     }
 
-    if (has_exec && !has_exec_terminator && exec_location.has_value()) {
+    if (!has_exec_terminator && exec_location.has_value()) {
       actx.report_diagnostic(diagnostic_id::sc2067, *exec_location);
     }
 
-    if (has_or && has_action && !has_group && or_location.has_value()) {
+    if (has_action && !has_group && or_location.has_value()) {
       actx.report_diagnostic(diagnostic_id::sc2146, *or_location);
     }
 
@@ -973,7 +972,7 @@ check_equals_bearing_command_name(AnalysisContext      &actx,
   case '=': {
     bool is_all_equals = true;
 
-    for (usize i = 0; i < command_literal.length; i += 1) {
+    for (usize i = 0; i < command_literal.length; i++) {
       if (command_literal[i] != '=') {
         is_all_equals = false;
         break;
@@ -1015,7 +1014,7 @@ check_equals_bearing_command_name(AnalysisContext      &actx,
                                   {command_literal});
   }
 
-  for (usize i = 0; i < equals_position; i += 1) {
+  for (usize i = 0; i < equals_position; i++) {
     if (command_literal[i] != '$') continue;
 
     return actx.report_diagnostic(diagnostic_id::sc2271, location,

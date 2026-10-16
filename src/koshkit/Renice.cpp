@@ -44,7 +44,8 @@ renice_identifier(StringView text, os::priority_target target) throws
 {
   let const parsed = utils::parse_decimal_i64(text);
 
-  if (!parsed.is_error() && parsed.value() >= 0) {
+  if (!parsed.is_error() && parsed.value() >= 0 && parsed.value() <= UINT32_MAX)
+  {
     return parsed.value();
   }
 

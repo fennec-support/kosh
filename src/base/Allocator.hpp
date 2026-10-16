@@ -70,6 +70,8 @@ public:
 
     if (shift > MAX_CLASS_SHIFT) return malloc(length);
 
+    /* at this point: shift is in [MIN_CLASS_SHIFT, MAX_CLASS_SHIFT], so
+       class_index indexes m_bins. */
     let const class_index = shift - MIN_CLASS_SHIFT;
 
     if (m_bins[class_index] != nullptr) {
@@ -130,6 +132,8 @@ public:
       return;
     }
 
+    /* at this point: pointer is non-null, class_index indexes m_bins, and
+       m_counts[class_index] is below class_limit. */
     let const recycled = static_cast<Node *>(pointer);
 
     recycled->next      = m_bins[class_index];
@@ -175,11 +179,7 @@ hot inline fn
 heap_alloc(usize length, usize alignment) wontthrow -> opaque *
 {
   if (alignment > alignof(max_align_t)) {
-    if (length > SIZE_MAX - (alignment - 1)) return nullptr;
-
-    let const rounded_length = (length + alignment - 1) & ~(alignment - 1);
-
-    return os::allocate_aligned(rounded_length, alignment);
+    return uncached_heap_alloc(length, alignment);
   }
 /* under AddressSanitizer, blocks bypass the pool, so free() returns each one
    to the allocator and ASan reports a later use of it. */
@@ -210,7 +210,7 @@ hot inline fn
 heap_free(opaque *pointer, usize length, usize alignment) wontthrow -> void
 {
   if (alignment > alignof(max_align_t)) {
-    os::free_aligned(pointer);
+    uncached_heap_free(pointer, alignment);
 
     return;
   }
@@ -364,6 +364,8 @@ public:
       throw std::bad_alloc{};
     }
 
+    /* at this point: count * sizeof(T) does not overflow usize, and result
+       is nullptr only when count is zero. */
     return result;
   }
 

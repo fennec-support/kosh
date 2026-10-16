@@ -727,11 +727,11 @@ man_subcommand_page_is_valid(StringView command,
   needle.push(' ');
   needle.append(subcommand);
 
-  let const valid = synopsis.find_substring(needle.view()).has_value();
+  let const is_valid = synopsis.find_substring(needle.view()).has_value();
 
-  MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), valid);
+  MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), is_valid);
 
-  return valid;
+  return is_valid;
 }
 
 static fn
@@ -1496,11 +1496,11 @@ is_plausible_subcommand_name(StringView name) wontthrow -> bool
   if (!is_word_start) return false;
 
   for (usize i = 0; i < name.length; i++) {
-    let const c  = name[i];
-    let const ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-                   (c >= '0' && c <= '9') || c == '-' || c == '_';
+    let const c     = name[i];
+    let const is_ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                      (c >= '0' && c <= '9') || c == '-' || c == '_';
 
-    if (!ok) return false;
+    if (!is_ok) return false;
   }
 
   return true;
@@ -1517,18 +1517,11 @@ line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
     let const offset = trimmed.length - suffix.length;
 
     for (usize i = 0; i < suffix.length; i++) {
-      let a = trimmed[offset + i];
-      let b = suffix[i];
-
-      if (a >= 'A' && a <= 'Z') {
-        a = static_cast<char>(a - 'A' + 'a');
+      if (utils::ascii_to_lower(trimmed[offset + i]) !=
+          utils::ascii_to_lower(suffix[i]))
+      {
+        return false;
       }
-
-      if (b >= 'A' && b <= 'Z') {
-        b = static_cast<char>(b - 'A' + 'a');
-      }
-
-      if (a != b) return false;
     }
 
     return true;
@@ -1565,18 +1558,11 @@ line_opens_subcommand_section(StringView trimmed) wontthrow -> bool
 
         let const is_equal = [&]() {
           for (usize j = 0; j < needle.length; j++) {
-            let a = candidate[j];
-            let b = needle[j];
-
-            if (a >= 'A' && a <= 'Z') {
-              a = static_cast<char>(a - 'A' + 'a');
+            if (utils::ascii_to_lower(candidate[j]) !=
+                utils::ascii_to_lower(needle[j]))
+            {
+              return false;
             }
-
-            if (b >= 'A' && b <= 'Z') {
-              b = static_cast<char>(b - 'A' + 'a');
-            }
-
-            if (a != b) return false;
           }
 
           return true;
@@ -1871,13 +1857,11 @@ internal::complete_from_help_subcommands(StringView         line,
   let const chain = settled_subcommand_chain(context, resolved_name.view(),
                                              line, token_start);
 
-  if (chain.is_empty()) {
-    if (!is_first_argument_token(line, token_start)) {
-      LOG(Debug, "help subcommands bail because the token is not the first "
-                 "argument");
+  if (chain.is_empty() && !is_first_argument_token(line, token_start)) {
+    LOG(Debug, "help subcommands bail because the token is not the first "
+               "argument");
 
-      return None;
-    }
+    return None;
   }
 
   let const &subcommands =
@@ -1946,6 +1930,7 @@ synopsis_row_of(StringView          key,
     return StringView{};
   }
 
+  /* at this point: synopsis is non-null and holds at least one form. */
   let form = (*synopsis)[0];
 
   if (!subcommand_word.is_empty()) {
@@ -2182,6 +2167,8 @@ describe_function(StringView   name,
     return true;
   }
 
+  /* at this point: source_name holds a non-empty file path, and info
+     points to the function definition. */
   out.append(name);
   if (info->definition_line == 0) {
     out.append(StringView{", defined in "});
@@ -2512,6 +2499,7 @@ adopt_idle_load(idle_load_kind kind,
     return false;
   }
 
+  /* at this point: IDLE_LOAD holds a load of kind and key. */
   let const deadline_nanos =
       os::monotonic_nanos() + completion_fork_timeout_nanos(context);
   let state = IDLE_LOAD->capture.step();
@@ -2560,6 +2548,9 @@ defer_idle_load(idle_load_kind                  kind,
   {
     throw documentation_pending{};
   }
+
+  /* at this point: IDLE_LOAD is None, and no load of kind and key was
+     started. */
 }
 
 ScopedDocumentationDeferral::ScopedDocumentationDeferral(
@@ -2619,10 +2610,10 @@ start_next_idle_load(StringView   line,
   let const has_subcommand_word =
       !first_word.is_empty() && first_word[0] != '-';
 
-  let const prefers_help = command_prefers_help_over_manpage(command.view());
-  let const page_name    = manpage_name_for(command.view());
+  let const should_use_help = command_prefers_help_over_manpage(command.view());
+  let const page_name       = manpage_name_for(command.view());
 
-  if (!prefers_help &&
+  if (!should_use_help &&
       !MANPAGE_CACHE.option_entries.find(page_name.view()).has_value())
   {
     let const argv = manpage_argv_for(page_name.view(), context);
@@ -2642,7 +2633,7 @@ start_next_idle_load(StringView   line,
 
   subcommand_key.push(' ');
   subcommand_key.append(first_word);
-  if (has_subcommand_word && !prefers_help) {
+  if (has_subcommand_word && !should_use_help) {
     if (!MANPAGE_CACHE.is_subcommand_index_built) {
       if (!MANPAGE_CACHE.was_manpath_settled) {
         let const argv = manpath_argv_for(context);
@@ -2722,6 +2713,8 @@ start_next_idle_load(StringView   line,
 
   if (!is_known_subcommand) return false;
 
+  /* at this point: name has parsed help that lists first_word as a
+     subcommand, and subcommand_key has no hint page or parsed help. */
   let const argv = help_argv_for(context, name.view(), first_word);
 
   if (argv.has_value() &&
@@ -2761,6 +2754,8 @@ step_idle_documentation(StringView   line,
     return progress;
   }
 
+  /* at this point: IDLE_LOAD holds a load whose capture has finished or
+     failed. */
   LOG(Debug, "idle documentation load of '%.*s' %s",
       static_cast<int>(IDLE_LOAD->key.length()), IDLE_LOAD->key.c_str(),
       state == os::ProgramCapture::State::Finished ? "finished" : "failed");

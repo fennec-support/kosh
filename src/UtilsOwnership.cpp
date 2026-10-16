@@ -42,9 +42,11 @@ parse_numeric_id(StringView text) wontthrow -> Maybe<u32>
     }
 
     value = value * 10 + static_cast<u64>(byte - '0');
-    if (value > UINT32_MAX) return None;
+    if (value >= UINT32_MAX) return None;
   }
 
+  /* at this point: text is non-empty, holds only decimal digits, and value
+     fits in u32. */
   return static_cast<u32>(value);
 }
 

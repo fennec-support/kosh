@@ -102,7 +102,7 @@ public:
               Allocator         allocator) throws
       : m_fd{fd}, m_format{format}, m_buffer{allocator}
   {
-    m_buffer.reserve(READ_CHUNK_LENGTH);
+    m_buffer.reserve(READ_CHUNK_BYTE_COUNT);
   }
 
   fn
@@ -119,7 +119,7 @@ public:
   }
 
   pure fn
-  line_number() const wontthrow -> usize
+  get_line_number() const wontthrow -> usize
   {
     return m_line_number;
   }
@@ -134,18 +134,18 @@ private:
       m_buffer.clear();
       m_position = 0;
 
-      char      chunk[READ_CHUNK_LENGTH];
-      let const read_count = os::read_fd(m_fd, chunk, sizeof(chunk));
+      char      chunk[READ_CHUNK_BYTE_COUNT];
+      let const read_byte_count = os::read_fd(m_fd, chunk, sizeof(chunk));
 
-      if (!read_count.has_value())
+      if (!read_byte_count.has_value())
         throw Error{"read error: " + os::last_system_error_message()};
-      if (*read_count == 0) {
+      if (*read_byte_count == 0) {
         m_is_at_end = true;
 
         return None;
       }
 
-      m_buffer.append(StringView{chunk, *read_count});
+      m_buffer.append(StringView{chunk, *read_byte_count});
     }
 
     return m_buffer[m_position];
@@ -282,7 +282,7 @@ private:
     }
   }
 
-  static constexpr usize READ_CHUNK_LENGTH = 65536;
+  static constexpr usize READ_CHUNK_BYTE_COUNT = 65536;
 
   os::descriptor    m_fd;
   xargs_item_format m_format;
@@ -493,7 +493,7 @@ Xargs::execute(const ExecContext               &ec,
       loop {
         if (added_count != 0 && !has_deferred_item &&
             (added_count >= maximum_arguments ||
-             reader.line_number() - first_line >= maximum_lines))
+             reader.get_line_number() - first_line >= maximum_lines))
         {
           break;
         }

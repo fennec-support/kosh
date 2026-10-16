@@ -459,6 +459,8 @@ publish_command_and_run_debug_trap(
     }
   }
 
+  /* at this point: when the DEBUG trap ran, no control flow is pending, and
+     extdebug did not skip the command. */
   return true;
 }
 

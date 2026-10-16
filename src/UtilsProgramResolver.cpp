@@ -69,9 +69,6 @@ clear_directory_listing_cache() throws -> void
   FREE_DIR_LISTING_POSITIONS.clear();
 }
 
-static fn
-begin_directory_validation_epoch() wontthrow -> void;
-
 fn
 ProgramResolver::cache_resolved_path(StringView            name,
                                      const Path           &full_path,
@@ -834,12 +831,11 @@ ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh)
 {
   if (refresh == CompletionRefresh::Fresh) {
     clear_derived_indexes();
+    refresh_path_directory_generations();
   } else {
     ASSERT(m_is_path_generation_list_valid);
     clear_command_name_indexes();
   }
-
-  if (refresh == CompletionRefresh::Fresh) refresh_path_directory_generations();
 
   let previous_probes = steal(m_directory_probes);
 
@@ -1268,6 +1264,8 @@ ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
     m_statuses_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
   }
 
+  /* at this point: normalized_name is a cached command or regular name, and
+     m_command_statuses holds only statuses of the current epoch. */
   if (let const known = m_command_statuses.find(normalized_name.view());
       known.has_value())
     return *known.value();
@@ -1427,13 +1425,12 @@ ProgramResolver::resolve_along_path(
                                           cache_policy != CachePolicy::Bypass;
       let const is_runnable =
           should_check_executable && candidate_paths[index].is_executable();
-      let const is_match = requirement == Requirement::Regular || is_runnable;
+      let const is_match  = requirement == Requirement::Regular || is_runnable;
+      let const extension = name_info.extension == os::program_extension::None
+                                ? os::PROGRAM_SUFFIXES[index].extension
+                                : name_info.extension;
 
       if (is_match) {
-        let const extension = name_info.extension == os::program_extension::None
-                                  ? os::PROGRAM_SUFFIXES[index].extension
-                                  : name_info.extension;
-
         result.push(steal(candidate_paths[index]));
         if ((cache_policy == CachePolicy::Remember ||
              cache_policy == CachePolicy::RememberUnchecked) &&
@@ -1449,10 +1446,6 @@ ProgramResolver::resolve_along_path(
       }
 
       if (requirement == Requirement::Execution && !blocked.has_value()) {
-        let const extension = name_info.extension == os::program_extension::None
-                                  ? os::PROGRAM_SUFFIXES[index].extension
-                                  : name_info.extension;
-
         blocked = CachedPath{candidate_paths[index].clone(), extension};
       }
     }
@@ -1519,6 +1512,8 @@ ProgramResolver::search(StringView               program_name,
                               CachePolicy::Bypass, path_override);
   }
 
+  /* at this point: program_name has no directory separator, search_mode is
+     First, cache_policy is not Bypass, and path_override has no value. */
   let       normalized_name = String{heap_allocator(), program_name};
   let const name_info       = os::normalize_program_name(normalized_name);
   let const stem =

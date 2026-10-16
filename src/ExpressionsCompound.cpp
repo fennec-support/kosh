@@ -562,12 +562,9 @@ CompoundListCondition::evaluate_impl(EvalContext &cxt,
 
   if (m_cmd->is_timed()) {
     let const elapsed_nanos = os::monotonic_nanos() - start_nanos;
-    double    user_after    = 0.0;
-    double    system_after  = 0.0;
     let const child_times   = os::read_child_cpu_times();
-
-    user_after   = child_times.user_seconds;
-    system_after = child_times.system_seconds;
+    let const user_after    = child_times.user_seconds;
+    let const system_after  = child_times.system_seconds;
 
     let const rss_after =
         os::finish_nested_command_peak(outer_peak_rss_byte_count);
@@ -1126,22 +1123,10 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
             "as in `$cmd | cat` with `cmd` empty"};
       }
 
-      let empty_stage =
-          ExecContext::make_from_unresolved(e->source_location(), 0, {});
-      bool was_empty_stage_handed_off = false;
-
-      defer {
-        if (!was_empty_stage_handed_off) empty_stage.close_fds();
-      };
-
-      try {
-        e->redirect_exec_context(empty_stage, cxt);
-      } catch (const TrapAbandonedRedirection &) {
+      if (!do_push_unresolved_stage(0, {})) {
         return cxt.execution_store().last_exit_status();
       }
 
-      was_empty_stage_handed_off = true;
-      ecs.push(steal(empty_stage));
       continue;
     }
 

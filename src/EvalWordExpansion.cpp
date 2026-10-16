@@ -128,6 +128,9 @@ EvalContext::expand_word(const Word &word) throws
         return false;
       }
 
+      /* at this point: index is at least 1, current is a tilde candidate
+         that starts with '~', and the segment before it is a non-empty tilde
+         candidate. */
       let const last = previous.view()[previous.view().length - 1];
 
       return last == ':' || (index == 1 && equals.has_value() &&

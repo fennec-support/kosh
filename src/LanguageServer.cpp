@@ -1382,8 +1382,8 @@ Server::code_actions(const JsonValue *id,
      revision, so diagnostic_index selects the same entry in
      document->diagnostics. */
   let const do_associated_diagnostic =
-      [&](usize                    diagnostic_index,
-          const source_diagnostic &diagnostic) wontthrow -> const JsonValue * {
+      [&](usize diagnostic_index, const source_diagnostic &diagnostic)
+          throws -> const JsonValue * {
     if (!m_client.has_diagnostic_data || context_diagnostics == nullptr ||
         context_diagnostics->kind != json_kind::Array ||
         !diagnostic.id.has_value())
@@ -2074,6 +2074,13 @@ Server::document_symbols(const JsonValue *id,
   return send_result(id, response.view());
 }
 
+/* memory: the returned String is owned by the caller. a successful output is
+           copied into m_shell_help_cache, keyed by command.
+   time:   the builtin and koshkit routes start one shell process per call
+           that misses m_shell_help_cache. the process is bounded by
+           INFORMATION_TIMEOUT_NANOS. empty output is not cached, so the next
+           call starts the process again. the request loop is single-threaded,
+           so the call blocks it for that duration. */
 fn
 Server::command_information(StringView command) throws -> Maybe<String>
 {
@@ -2294,6 +2301,8 @@ clipped_line_span(StringView text,
      text is "a\nb", and dropped_line_count is 1. */
   if (position + 1 >= text.length) return text;
 
+  /* at this point: text[position] is the newline that ends the kept lines, and
+     at least one byte follows it. */
   for (usize scan = position; scan < text.length; scan++) {
     if (text[scan] == '\n') dropped_line_count++;
   }

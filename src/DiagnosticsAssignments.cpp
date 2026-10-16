@@ -126,7 +126,7 @@ fn
 check_redirection_lints(AnalysisContext          &actx,
                         const command_lint_input &input) throws -> void
 {
-  let          saw_stderr_to_stdout = false;
+  let          has_stderr_to_stdout = false;
   String       read_target{heap_allocator()};
   const Token *read_token = nullptr;
   let const    is_test_command =
@@ -138,7 +138,7 @@ check_redirection_lints(AnalysisContext          &actx,
     if (redirection.kind == Redirection::Kind::DuplicateOutput &&
         redirection.fd == 2 && redirection.dup_fd == 1)
     {
-      saw_stderr_to_stdout = true;
+      has_stderr_to_stdout = true;
       continue;
     }
 
@@ -180,7 +180,7 @@ check_redirection_lints(AnalysisContext          &actx,
         redirection.kind == Redirection::Kind::TruncateOutput ||
         redirection.kind == Redirection::Kind::TruncateOutputOverride;
 
-    if (is_file_output && redirection.fd == 1 && saw_stderr_to_stdout &&
+    if (is_file_output && redirection.fd == 1 && has_stderr_to_stdout &&
         redirection.target != nullptr)
     {
       actx.report_diagnostic(diagnostic_id::sc2069,

@@ -485,6 +485,7 @@ parse_transport_command(StringView       spelling,
   let const program = resolve_transfer_program(arguments[0].view(), resolver);
 
   if (!program.has_value()) return None;
+
   arguments[0] = program->text();
 
   return arguments;
@@ -794,7 +795,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
       cxt.program_resolver(), allocator);
 
   if (!scp_command.has_value() || !ssh_command.has_value()) {
-    report_soft_builtin_error(ec, cxt, "Cannot find both scp and ssh in PATH");
+    report_soft_builtin_error(ec, cxt, "Cannot find the scp or ssh command");
 
     return 127;
   }

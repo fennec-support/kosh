@@ -324,6 +324,8 @@ Tr::execute(const ExecContext               &ec,
     set2 = steal(*expanded_set2);
   }
 
+  /* at this point: set1 holds the first set, complemented when -c or -C
+     is given, and set2 holds the expanded second set or is empty. */
   static constexpr usize BYTE_VALUE_COUNT             = 256;
   bool                   is_in_set1[BYTE_VALUE_COUNT] = {};
   unsigned char          translation[BYTE_VALUE_COUNT];

@@ -289,6 +289,7 @@ struct conditional_evaluator
                        match.error_message.view());
     }
 
+    /* at this point: match.result is Matched. */
     let rematch = ArrayList<String>{heap_allocator()};
 
     rematch.reserve(match.spans.count());
@@ -451,12 +452,12 @@ struct conditional_evaluator
     if (first.kind != Kind::Operand)
       fail_conditional("An operator appears where an operand is expected");
 
+    /* at this point: elements[pos] is an operand. */
     let const first_view = bare_operand_view(first);
 
-    let selected_unary_operator = Maybe<UnaryOperatorKind>{};
-
-    if (first_view.has_value())
-      selected_unary_operator = unary_operator(*first_view);
+    let const selected_unary_operator = first_view.has_value()
+                                            ? unary_operator(*first_view)
+                                            : Maybe<UnaryOperatorKind>{};
     if (selected_unary_operator.has_value()) {
       if (pos + 1 >= elements.count() || kind_at(pos + 1) != Kind::Operand) {
         fail_conditional("The unary operator '" + operand_literal(first) +
@@ -660,43 +661,43 @@ struct conditional_evaluator
   fn
   eval_and() throws -> bool
   {
-    let and_result = eval_term();
+    let is_and_true = eval_term();
 
     while (!at_end() && kind_at(pos) == Kind::And) {
       pos++;
 
       let const was_skipping = is_skipping;
 
-      is_skipping = is_skipping || !and_result;
+      is_skipping = is_skipping || !is_and_true;
 
       let const is_right_hand_side_true = eval_term();
 
       is_skipping = was_skipping;
-      and_result  = and_result && is_right_hand_side_true;
+      is_and_true = is_and_true && is_right_hand_side_true;
     }
 
-    return and_result;
+    return is_and_true;
   }
 
   fn
   eval_or() throws -> bool
   {
-    let or_result = eval_and();
+    let is_or_true = eval_and();
 
     while (!at_end() && kind_at(pos) == Kind::Or) {
       pos++;
 
       let const was_skipping = is_skipping;
 
-      is_skipping = is_skipping || or_result;
+      is_skipping = is_skipping || is_or_true;
 
       let const is_right_hand_side_true = eval_and();
 
       is_skipping = was_skipping;
-      or_result   = or_result || is_right_hand_side_true;
+      is_or_true  = is_or_true || is_right_hand_side_true;
     }
 
-    return or_result;
+    return is_or_true;
   }
 };
 
@@ -762,6 +763,7 @@ EvalContext::cached_compiled_regex(StringView pattern) throws
                      "The pattern must be a valid extended regular expression");
   }
 
+  /* at this point: compiled holds a valid regex, and the cache lacks key. */
   return expansion_store()
       .store_regex(key.view(), CompiledRegex{*compiled})
       ->get();

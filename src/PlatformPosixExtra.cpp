@@ -120,6 +120,8 @@ public:
       return None;
     }
 
+    /* at this point: reading holds one complete read of event_fd, and
+       0 < running_nanos <= enabled_nanos. */
     if (reading.running_nanos == reading.enabled_nanos) return reading.value;
 
     /* the product of value and enabled_nanos can exceed u64, so the
@@ -457,6 +459,8 @@ public:
       return false;
     }
 
+    /* at this point: database and config are non-null, config_force_counters()
+       succeeded, and every later return calls do_cleanup(). */
     for (usize event_index = 0; event_index < EVENT_COUNT; event_index++) {
       kpep_event *event = nullptr;
 
@@ -814,20 +818,20 @@ enumerate_processes(process_detail detail) throws
   int             name_mib[4]        = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
   constexpr usize LIST_ATTEMPT_COUNT = 8;
   ArrayList<struct kinfo_proc> records{heap_allocator()};
-  usize                        byte_length = 0;
-  bool                         did_list    = false;
+  usize                        byte_count = 0;
+  bool                         did_list   = false;
 
   for (usize attempt_count = 0; attempt_count < LIST_ATTEMPT_COUNT;
        attempt_count++)
   {
-    if (::sysctl(name_mib, 4, nullptr, &byte_length, nullptr, 0) != 0)
+    if (::sysctl(name_mib, 4, nullptr, &byte_count, nullptr, 0) != 0)
       return processes;
 
-    let const record_count = byte_length / sizeof(struct kinfo_proc);
+    let const record_count = byte_count / sizeof(struct kinfo_proc);
 
     records.reserve(record_count + record_count / 2 + 16);
-    byte_length = records.capacity() * sizeof(struct kinfo_proc);
-    if (::sysctl(name_mib, 4, records.begin(), &byte_length, nullptr, 0) == 0) {
+    byte_count = records.capacity() * sizeof(struct kinfo_proc);
+    if (::sysctl(name_mib, 4, records.begin(), &byte_count, nullptr, 0) == 0) {
       did_list = true;
       break;
     }
@@ -837,7 +841,7 @@ enumerate_processes(process_detail detail) throws
 
   if (!did_list) return processes;
 
-  let const entry_count = byte_length / sizeof(struct kinfo_proc);
+  let const entry_count = byte_count / sizeof(struct kinfo_proc);
 
   for (usize entry_index = 0; entry_index < entry_count; entry_index++) {
     let const    &record = records.begin()[entry_index];
@@ -1039,6 +1043,8 @@ enumerate_processes(process_detail detail) throws
     let command_name = Path{process_file}.read_entire_file();
 
     if (!command_name.has_value()) continue;
+    /* at this point: parsed_pid is a valid pid, process_directory and
+       process_file hold its /proc paths, and command_name holds its comm. */
 
     while (!command_name->is_empty() && command_name->back() == '\n') {
       command_name->pop_back();
@@ -1481,6 +1487,8 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
 
     if (!process_user_id.has_value()) continue;
 
+    /* at this point: process_user_id holds the real uid of parsed_pid, read
+       from the status file under process_path. */
     memset(use_masks.begin(), 0, use_masks.count() * sizeof(u8));
 
     struct named_reference
@@ -1653,7 +1661,7 @@ read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
   if (mallinfo2 != nullptr) {
     let const info = mallinfo2();
 
-    stats.bytes_in_use      = static_cast<usize>(info.uordblks);
+    stats.in_use_byte_count = static_cast<usize>(info.uordblks);
     stats.arena_byte_count  = static_cast<usize>(info.arena);
     stats.mapped_byte_count = static_cast<usize>(info.hblkhd);
   } else
@@ -1664,7 +1672,7 @@ read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
     let const info = mallinfo();
 #pragma GCC diagnostic pop
 
-    stats.bytes_in_use =
+    stats.in_use_byte_count =
         info.uordblks < 0 ? 0 : static_cast<usize>(info.uordblks);
     stats.arena_byte_count =
         info.arena < 0 ? 0 : static_cast<usize>(info.arena);
@@ -1677,7 +1685,7 @@ read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool
   malloc_statistics_t default_zone_stats{};
 
   malloc_zone_statistics(malloc_default_zone(), &default_zone_stats);
-  stats.bytes_in_use      = default_zone_stats.size_in_use;
+  stats.in_use_byte_count = default_zone_stats.size_in_use;
   stats.arena_byte_count  = default_zone_stats.size_allocated;
   stats.mapped_byte_count = default_zone_stats.max_size_in_use;
 
@@ -1700,20 +1708,20 @@ read_small_file(const char *path, char *buffer, usize capacity)
   if (file_fd < 0) return 0;
   defer { ::close(file_fd); };
 
-  usize total_length = 0;
+  usize total_byte_count = 0;
 
-  while (total_length + 1 < capacity) {
-    let const read_length =
-        ::read(file_fd, buffer + total_length, capacity - 1 - total_length);
+  while (total_byte_count + 1 < capacity) {
+    let const read_byte_count = ::read(file_fd, buffer + total_byte_count,
+                                       capacity - 1 - total_byte_count);
 
-    if (read_length <= 0) break;
+    if (read_byte_count <= 0) break;
 
-    total_length += static_cast<usize>(read_length);
+    total_byte_count += static_cast<usize>(read_byte_count);
   }
 
-  buffer[total_length] = '\0';
+  buffer[total_byte_count] = '\0';
 
-  return total_length;
+  return total_byte_count;
 }
 
 static fn
@@ -2245,27 +2253,26 @@ read_network_interface_statistics() throws
   let result = ArrayList<network_interface_statistics_entry>{heap_allocator()};
 #if defined __APPLE__
   int   name_mib[6] = {CTL_NET, PF_ROUTE, 0, 0, NET_RT_IFLIST2, 0};
-  usize byte_length = 0;
+  usize byte_count  = 0;
 
-  if (::sysctl(name_mib, 6, nullptr, &byte_length, nullptr, 0) != 0) {
+  if (::sysctl(name_mib, 6, nullptr, &byte_count, nullptr, 0) != 0) {
     return result;
   }
 
   let storage = ArrayList<u8>{heap_allocator()};
 
-  storage.reserve(byte_length);
-  if (::sysctl(name_mib, 6, storage.begin(), &byte_length, nullptr, 0) != 0) {
+  storage.reserve(byte_count);
+  if (::sysctl(name_mib, 6, storage.begin(), &byte_count, nullptr, 0) != 0) {
     return result;
   }
 
   usize position = 0;
 
-  while (position + sizeof(if_msghdr) <= byte_length) {
+  while (position + sizeof(if_msghdr) <= byte_count) {
     let const *header =
         reinterpret_cast<const if_msghdr *>(storage.begin() + position);
 
-    if (header->ifm_msglen == 0 || position + header->ifm_msglen > byte_length)
-    {
+    if (header->ifm_msglen == 0 || position + header->ifm_msglen > byte_count) {
       break;
     }
 
@@ -2962,6 +2969,9 @@ read_swap_status(swap_status &status) wontthrow -> bool
   {
     return false;
   }
+
+  /* at this point: memory has the SwapTotal and SwapFree fields, so
+     memory.swap_total_kib and memory.swap_free_kib are set. */
   status.total_byte_count = memory.swap_total_kib * 1024;
   status.free_byte_count  = memory.swap_free_kib * 1024;
   status.used_byte_count =
@@ -3694,6 +3704,9 @@ FileWatcher::watch(StringView path) wontthrow -> void
   {
     return;
   }
+
+  /* at this point: m_descriptor is valid, and path is non-empty and shorter
+     than PATH_MAX, so the copies below fit in the PATH_MAX buffers. */
 
   char file_path[PATH_MAX];
 

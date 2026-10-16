@@ -162,3 +162,11 @@ rc=2
 --- unreadable root ---
 ls-unreadable=checked
 --- recursive ls interruption ---
+== long and classified listings of a directory operand:
+-
+-
+-
+-
+-
+deep/
+inner.txt

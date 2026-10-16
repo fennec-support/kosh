@@ -116,6 +116,8 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const spec = optstring.find_character(option);
 
+  let const current_arg_index = static_cast<usize>(optind) + 2;
+
   let const do_advance_letter = [&]() {
     char_index++;
     if (char_index >= current.length()) {
@@ -130,8 +132,8 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const message = prefix + option_as_string;
 
     if (args.count() > 3) {
-      report_soft_builtin_error(
-          ec, cxt, ec.arg_location_at(static_cast<usize>(optind) + 2), message);
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(current_arg_index),
+                                message);
     } else {
       report_soft_builtin_error(ec, cxt, message);
     }

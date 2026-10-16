@@ -203,6 +203,8 @@ Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return report_unloadable_builtins(ec, cxt, args, operand_locations);
   }
 
+  /* at this point: args holds at least one operand, no -p, -f, or -d flag is
+     set, and each operand from index 1 is a name to enable or disable. */
   let const should_disable = FLAG_DISABLE.is_enabled();
   let const mood           = cxt.runtime_state().get_mood();
   let      &store          = cxt.enabled_command_store();

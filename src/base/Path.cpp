@@ -140,6 +140,8 @@ Path::parent() const throws -> Path
   if (end == 0) return Path{{}, allocator()};
   if (end == 1) return Path{m_text.substring_of_length(0, 1), allocator()};
 
+  /* at this point: end is at least 2, so the text before the last separator
+     is not empty. */
   return Path{m_text.substring_of_length(0, end - 1), allocator()};
 }
 
@@ -341,15 +343,12 @@ Path::first_unavailable_component() const throws
       let const component_count =
           component_index + remaining_component_count + 1;
 
-      if (!is_available)
-        return unavailable_path_component{component.start, component.end,
-                                          component_index, component_count,
-                                          false};
-
       return unavailable_path_component{component.start, component.end,
-                                        component_index, component_count, true};
+                                        component_index, component_count,
+                                        is_available};
     }
 
+    /* at this point: prefix is an existing directory. */
     component_index++;
   }
 
@@ -630,7 +629,7 @@ Path::canonicalize(StringView path) throws -> Maybe<Path>
     }
   }
 
-  if (!was_resolved) return koshka::None;
+  if (!was_resolved) return None;
 
   return candidate;
 }

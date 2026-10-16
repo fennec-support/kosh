@@ -850,8 +850,8 @@ token_kind_is_keyword(Token::Kind kind) wontthrow -> bool
   return kind >= Token::Kind::If && kind <= Token::Kind::Function;
 }
 
-const ArrayList<String> &
-keyword_names() throws;
+fn
+keyword_names() throws -> const ArrayList<String> &;
 
 /* clang-format off */
 #define KW_CASE(k)                                                             \

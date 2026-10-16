@@ -425,8 +425,8 @@ collect_recursive_sources(const ExecContext &ec,
       batch.clear();
 
       for (usize index = 0; index < unknown_indices.count(); index++)
-        batch.add(os::batch_operation::stat(child_paths[unknown_indices[index]],
-                                            unknown_statuses[index]));
+        batch.add(os::batch_operation::lstat(
+            child_paths[unknown_indices[index]], unknown_statuses[index]));
 
       batch.execute(results, os::batch_deduplication::Disabled);
 
@@ -1344,12 +1344,6 @@ public:
           m_sources.push(view);
         }
       }
-
-      if (m_sources.is_empty() && operand_sources.count() == 1 &&
-          operand_sources[0] == "-")
-      {
-        m_sources.push("-");
-      }
     } else {
       m_sources = steal(operand_sources);
     }
@@ -1596,16 +1590,12 @@ private:
 
         if (m_should_print_names) {
           append_source_name(source);
-          m_output += ':';
+          append_separator();
         }
 
         if (m_options.should_print_line_numbers) {
-          char line_number[20];
-
-          m_output +=
-              utils::uint_to_text_into(m_source_line_numbers[source_index],
-                                       line_number, sizeof(line_number));
-          m_output += ':';
+          append_line_number(m_source_line_numbers[source_index]);
+          append_separator();
         }
 
         m_output += value;
@@ -1930,18 +1920,10 @@ Grep::execute(const ExecContext               &ec,
   };
 
   let const do_add_pattern_list = [&](StringView list) throws -> void {
-    usize start = 0;
+    let const patterns = utils::split_lines(list, cxt.scratch_allocator());
 
-    loop {
-      let const newline = list.substring(start).find_character('\n');
-
-      if (!newline.has_value()) {
-        do_add_pattern(list.substring(start));
-        break;
-      }
-
-      do_add_pattern(list.substring_of_length(start, *newline));
-      start += *newline + 1;
+    for (let const &pattern : patterns) {
+      do_add_pattern(pattern);
     }
   };
 

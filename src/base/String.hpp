@@ -281,6 +281,9 @@ public:
     if (other.length == 0) return;
     if (other.length > SIZE_MAX - m_length) rarely
       throw std::bad_alloc{};
+
+    /* at this point: other is not empty, and m_length + other.length does
+       not overflow. */
     m_ascii_state = AsciiState::Unknown;
 
     let const new_length = m_length + other.length;

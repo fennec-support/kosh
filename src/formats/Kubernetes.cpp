@@ -122,12 +122,7 @@ parse_kubernetes_format(const parser_format_input &input,
       scan = parent_start;
       if (parent.trim_blanks().is_empty()) continue;
 
-      usize parent_indent = 0;
-
-      while (parent_indent < parent.length && parent[parent_indent] == ' ')
-        parent_indent++;
-
-      if (parent_indent >= indent) continue;
+      if (parser_format_leading_spaces(parent) >= indent) continue;
       if (parent.trim_blanks() == "data:") {
         parser_format_extract_yaml_value_at(document, input.source, line_start,
                                             line_start, mimic_mood::Posix,

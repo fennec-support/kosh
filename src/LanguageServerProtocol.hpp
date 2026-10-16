@@ -243,7 +243,7 @@ private:
             low = (low << 4) | *digit;
           }
 
-          /* -> low = 0xde00 */
+          /* e.g. the pair 0xd83d 0xde00: low = 0xde00 */
           if (low < 0xdc00 || low > 0xdfff) {
             return None;
           }
@@ -899,6 +899,9 @@ public:
     replacement.normalize_crlf_line_endings();
     if (replacement.view() == normalized_source.view()) return false;
 
+    /* at this point: replacement holds the CRLF-normalized source, which
+       differs from normalized_source. */
+
     normalized_source = steal(replacement);
     symbol_records.clear();
     rebuild_format();
@@ -926,6 +929,9 @@ public:
     if (line >= line_starts.count()) return None;
 
     let const[start, end] = get_line_bounds(line);
+
+    /* at this point: line indexes an existing line, and start and end
+       bound its bytes without the newline. */
 
     if (encoding == position_encoding::Utf8 || normalized_source.is_ascii()) {
       if (character > end - start) return None;
@@ -1238,6 +1244,9 @@ document_position(const JsonValue *position) throws
   {
     return None;
   }
+
+  /* at this point: line and character hold non-negative values, so
+     the usize casts keep their values. */
 
   return protocol_position{static_cast<usize>(*line),
                            static_cast<usize>(*character)};

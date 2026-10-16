@@ -306,6 +306,12 @@ Mknod::execute(const ExecContext               &ec,
                                    "Cannot create '" + name +
                                        "': " + os::last_system_error_message());
     status = 1;
+  } else if (FLAG_MKNOD_MODE.is_set() && !os::set_file_mode(name.view(), mode))
+  {
+    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                   "Cannot set mode of '" + name +
+                                       "': " + os::last_system_error_message());
+    status = 1;
   }
 
   return status;

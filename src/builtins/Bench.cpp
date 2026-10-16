@@ -678,11 +678,8 @@ clear_progress() wontthrow -> void
                       CLEAR_PROGRESS_LINE.count()));
 }
 
-/* memory: child_argv, samples, and the per-metric present lists are
-           allocated in allocator and live until it is reset or destroyed.
-   time:   O(n * METRIC_COUNT) for n samples, where n is at most MAX_SAMPLES.
-           each sample is one os::run_measured() call, which spawns the
-           command. */
+/* memory: walls and deviations are allocated in allocator.
+   time:   O(n log n) for the two sorts over n samples. */
 /* modified z-scores as hyperfine computes them: the distance from the
    median over 1.4826 times the median absolute deviation. a score above
    OUTLIER_SCORE_THRESHOLD marks an outlier. */
@@ -739,6 +736,11 @@ detect_outliers(const ArrayList<bench_sample> &samples,
   }
 }
 
+/* memory: child_argv, samples, and the per-metric present lists are
+           allocated in allocator and live until it is reset or destroyed.
+   time:   O(n * METRIC_COUNT) for n samples, where n is at most MAX_SAMPLES.
+           each sample is one os::run_measured() call, which spawns the
+           command. */
 fn
 sample_command(StringView shell_binary,
                StringView command,

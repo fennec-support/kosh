@@ -75,6 +75,7 @@ report_unresolved_sort_key(const ExecContext &ec,
 
     return false;
   }
+  /* at this point: match_count is greater than one. */
 
   let note = String{cxt.scratch_allocator(), "matches "};
 
@@ -483,17 +484,15 @@ fn
 read_named_or_stdin(const ExecContext &ec, StringView path) throws
     -> Maybe<String>
 {
-  if (path == "-") {
-    return os::read_fd_to_string(ec.in_fd.value_or(KOSH_STDIN),
-                                 heap_allocator());
-  }
+  let const input = open_named_or_stdin(ec, path);
 
-  let const fd = os::open_file_descriptor(path, os::file_open_mode::Read);
+  if (!input.has_value()) return None;
+  defer {
+    if (input->mode == input_descriptor_mode::Owned)
+      unused(os::close_fd(input->descriptor));
+  };
 
-  if (!fd.has_value()) return None;
-  defer { os::close_fd(*fd); };
-
-  return os::read_fd_to_string(*fd, heap_allocator());
+  return os::read_fd_to_string(input->descriptor, heap_allocator());
 }
 
 SourceBatchReader::SourceBatchReader(const ExecContext           &ec,
@@ -565,13 +564,13 @@ SourceBatchReader::set_source_read_byte_count(usize source_index,
                                               usize byte_count)
     wontthrow -> void
 {
-  let const bounded_count =
+  let const bounded_byte_count =
       byte_count < m_read_byte_count ? byte_count : m_read_byte_count;
 
   for (let &reader : m_readers) {
     if (reader.source_index != source_index) continue;
 
-    reader.read_byte_count = bounded_count;
+    reader.read_byte_count = bounded_byte_count;
 
     return;
   }
@@ -579,7 +578,7 @@ SourceBatchReader::set_source_read_byte_count(usize source_index,
   if (m_sequential_reader.has_value() &&
       m_sequential_reader->source_index == source_index)
   {
-    m_sequential_reader->read_byte_count = bounded_count;
+    m_sequential_reader->read_byte_count = bounded_byte_count;
   }
 }
 

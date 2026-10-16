@@ -440,13 +440,6 @@ EvalContext::capture_command_substitution(
 
   try {
     ast = parser.construct_ast();
-  } catch (ErrorWithLocation &error) {
-    frame.pop_source_frame();
-    mark_substitution_frames_printed(source_store());
-    render_contained_substitution_error(std::current_exception(),
-                                        normalized_source.view());
-    error.set_rendered();
-    throw;
   } catch (...) {
     frame.pop_source_frame();
     mark_substitution_frames_printed(source_store());
@@ -872,13 +865,6 @@ EvalContext::capture_command_substitution(const WordSegment &segment)
 
     try {
       cache.substitution_ast = parser.construct_ast();
-    } catch (ErrorWithLocation &error) {
-      frame.pop_source_frame();
-      mark_substitution_frames_printed(source_store());
-      render_contained_substitution_error(std::current_exception(),
-                                          segment.text.view());
-      error.set_rendered();
-      throw;
     } catch (...) {
       frame.pop_source_frame();
       mark_substitution_frames_printed(source_store());
@@ -1399,13 +1385,6 @@ EvalContext::capture_function_substitution(
 
   try {
     ast = parser.construct_ast();
-  } catch (ErrorWithLocation &error) {
-    frame.pop_source_frame();
-    mark_substitution_frames_printed(source_store());
-    render_contained_substitution_error(std::current_exception(),
-                                        source.view());
-    error.set_rendered();
-    throw;
   } catch (...) {
     frame.pop_source_frame();
     mark_substitution_frames_printed(source_store());

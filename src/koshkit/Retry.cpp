@@ -63,7 +63,8 @@ parse_backoff_factor(StringView text, f64 &out_factor) throws -> bool
 
   if (parsed.is_error()) return false;
 
-  if (parsed.value() < MINIMUM_BACKOFF_FACTOR ||
+  if (__builtin_isnan(parsed.value()) ||
+      parsed.value() < MINIMUM_BACKOFF_FACTOR ||
       parsed.value() > MAXIMUM_BACKOFF_FACTOR)
   {
     return false;
@@ -209,6 +210,10 @@ Retry::execute(const ExecContext               &ec,
       show_warning(line.view());
     }
 
+    if (maximum_delay_seconds > 0.0 && delay_seconds > maximum_delay_seconds) {
+      delay_seconds = maximum_delay_seconds;
+    }
+
     if (delay_seconds > 0.0 && !sleep_interruptibly(delay_seconds)) {
       os::INTERRUPT_REQUESTED = 0;
 
@@ -216,9 +221,6 @@ Retry::execute(const ExecContext               &ec,
     }
 
     delay_seconds *= backoff_factor;
-    if (maximum_delay_seconds > 0.0 && delay_seconds > maximum_delay_seconds) {
-      delay_seconds = maximum_delay_seconds;
-    }
   }
 
   return status;

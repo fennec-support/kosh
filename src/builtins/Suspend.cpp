@@ -40,10 +40,7 @@ Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
   if (operands.count() > 1) {
-    report_soft_builtin_error(ec, cxt,
-                              operand_locations.count() > 1
-                                  ? operand_locations[1]
-                                  : ec.arg_location_at(1),
+    report_soft_builtin_error(ec, cxt, operand_locations[1],
                               "Suspend takes no arguments",
                               "Run `suspend --help` for the accepted options");
 

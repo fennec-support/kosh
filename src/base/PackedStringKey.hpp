@@ -105,16 +105,11 @@ public:
   cold mustuse fn
   to_string(Allocator allocator) const throws -> String
   {
-    char  buffer[BYTE_CAPACITY];
-    usize length = 0;
+    char      buffer[BYTE_CAPACITY];
+    let const length = packed_length();
 
-    for (; length < BYTE_CAPACITY; length++) {
-      let const byte =
-          static_cast<char>((words[length / 8] >> (8 * (length % 8))) & 0xFF);
-
-      if (byte == '\0') break;
-      buffer[length] = byte;
-    }
+    for (usize i = 0; i < length; i++)
+      buffer[i] = static_cast<char>((words[i / 8] >> (8 * (i % 8))) & 0xFF);
 
     return String{
         allocator, StringView{buffer, length}

@@ -55,10 +55,8 @@ resolve_koshkit_signal(StringView     spelled,
   let const named = os::signal_number_from_name(uppercased.view());
 
   if (!named.has_value()) {
-    let const unknown_signal = String{allocator, spelled};
-
     throw ErrorWithLocationAndDetails{
-        location, "unknown signal '" + unknown_signal + "'",
+        location, "unknown signal '" + spelled + "'",
         "Use a signal name such as TERM or a number such as 15"};
   }
 
@@ -106,7 +104,8 @@ Pkill::execute(const ExecContext               &ec,
   bool      did_signal_any = false;
 
   for (let const &process : processes) {
-    if (process.pid == self_pid) continue;
+    /* pid 0 is the kernel on macOS, and kill(0) signals the caller's group. */
+    if (process.pid <= 0 || process.pid == self_pid) continue;
     if (process.name.find_substring(pattern, 0).has_value()) {
       if (os::signal_process(os::process_from_pid(process.pid), signal_number))
       {

@@ -175,22 +175,9 @@ total_size(const ExecContext        &ec,
            ArrayList<du_output_row> *output_rows,
            HashSet                  &seen_links,
            Allocator                 allocator,
-           const os::file_status    *known_status = nullptr) throws
+           const os::file_status    *known_status) throws
     -> Maybe<du_size_result>
 {
-  os::file_status queried_status{};
-
-  if (known_status == nullptr) {
-    if (!os::stat_path(path.view(), queried_status)) {
-      report_unreadable_path(ec, cxt, path);
-      has_failure = true;
-
-      return None;
-    }
-
-    known_status = &queried_status;
-  }
-
   let const root_device_id     = known_status->device_id;
   let const is_one_file_system = FLAG_DU_ONE_FILE_SYSTEM.is_enabled();
   let const type_letter        = os::file_type_letter(known_status->mode);
@@ -227,6 +214,9 @@ total_size(const ExecContext        &ec,
 
     return du_size_result{allocated_byte_count, true};
   }
+
+  /* at this point: known_status describes a directory, and
+     allocated_byte_count is blocks * 512 without overflow. */
 
   let       wave_arena             = BumpArena{};
   let const wave_allocator         = bump_allocator(wave_arena);
@@ -844,8 +834,7 @@ render_tree(const ArrayList<du_tree_node> &nodes,
           bool has_shown_children) throws -> void {
     let const size_text = rendered_sizes[node_index].view();
 
-    for (usize padding = size_text.length; padding < size_width; padding++)
-      output += ' ';
+    output.append_repeated(' ', size_width - size_text.length);
 
     append_report_text(output, size_text,
                        colors::soft(colors::ansi::BOLD_GREEN), should_color);

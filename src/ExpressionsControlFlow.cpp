@@ -1012,14 +1012,14 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> v
                            {m_variable_name}, m_variable_location);
   }
 
-  let const had_outer_loop_variable   = outer_loop_location.has_value();
+  let const has_outer_loop_variable   = outer_loop_location.has_value();
   let       saved_outer_loop_location = SourceLocation{};
 
-  if (had_outer_loop_variable)
+  if (has_outer_loop_variable)
     saved_outer_loop_location = *outer_loop_location.value();
   actx.active_loop_variables.set(m_variable_name, m_variable_location);
   defer {
-    if (had_outer_loop_variable)
+    if (has_outer_loop_variable)
       actx.active_loop_variables.set(m_variable_name,
                                      saved_outer_loop_location);
     else
@@ -1036,7 +1036,7 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> v
 
     check_posix_word_portability(actx, word, t->source_location());
 
-    let word_is_literal        = true;
+    let is_word_literal        = true;
     let has_glob_character     = false;
     let has_unquoted_glob      = false;
     let has_unquoted_brace     = false;
@@ -1060,7 +1060,7 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> v
       }
 
       case WordSegment::Kind::CommandSubstitution: {
-        word_is_literal = false;
+        is_word_literal = false;
         if (segment.is_in_double_quotes) break;
         has_unquoted_expansion = true;
 
@@ -1090,21 +1090,21 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> v
 
       case WordSegment::Kind::VariableReference: {
         note_variable_reference(actx, segment, t->source_location());
-        word_is_literal = false;
+        is_word_literal = false;
         if (!segment.is_in_double_quotes) has_unquoted_expansion = true;
         break;
       }
 
       case WordSegment::Kind::ArithmeticExpansion:
-        word_is_literal = false;
+        is_word_literal = false;
         if (!segment.is_in_double_quotes) has_unquoted_expansion = true;
         break;
 
-      default: word_is_literal = false; break;
+      default: is_word_literal = false; break;
       }
     }
 
-    if (word_is_literal && has_glob_character && source_text.length >= 2 &&
+    if (is_word_literal && has_glob_character && source_text.length >= 2 &&
         (source_text[0] == '\'' || source_text[0] == '"'))
     {
       actx.report_diagnostic(diagnostic_id::sc2066, t->source_location());
@@ -1115,7 +1115,7 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> v
                              {source_text});
     }
 
-    if (has_single_word_list && word_is_literal && !has_glob_character &&
+    if (has_single_word_list && is_word_literal && !has_glob_character &&
         !has_unquoted_brace && !source_text.is_empty())
     {
       actx.report_diagnostic(diagnostic_id::sc2043, t->source_location(),
@@ -1724,6 +1724,7 @@ CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
     try {
       cxt.enter_subshell();
+      cxt.hide_coprocess_descriptors();
       cxt.job_table_store().inherit_parent_jobs(false);
       status = static_cast<i32>(m_body->evaluate(cxt));
       if (cxt.control_flow_store().has_pending() &&

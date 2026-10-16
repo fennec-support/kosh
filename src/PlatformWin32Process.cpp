@@ -626,6 +626,7 @@ ProgramCapture::abandon() wontthrow -> void
   CloseHandle(m_child);
   m_child = KOSH_INVALID_PROCESS;
 }
+
 static pure fn
 process_is_pid_reference(process p) wontthrow -> bool
 {
@@ -665,6 +666,7 @@ is_running_setuid() wontthrow -> bool
 {
   return false;
 }
+
 fn
 drop_elevated_identity() wontthrow -> bool
 {
@@ -834,6 +836,7 @@ create_process_utf8(StringView           application_path,
   let wide_command_line = utf8_to_wide(command_line, heap_allocator());
 
   if (!wide_command_line.has_value()) return false;
+
   let wide_working_directory =
       working_directory.is_empty()
           ? Maybe<ArrayList<wchar_t>>{}
@@ -999,15 +1002,17 @@ create_process_utf8(StringView           application_path,
 
   for (usize handle_position = 0; handle_position < unique_handles.count();
        handle_position++)
+  {
     if (!make_handle_inheritable(unique_handles[handle_position],
                                  inheritance_states[handle_position]))
     {
       preserved_error = GetLastError();
 
       return false;
-    } else {
-      inheritable_handle_count = handle_position + 1;
     }
+
+    inheritable_handle_count = handle_position + 1;
+  }
 
   SIZE_T                       attribute_byte_count = 0;
   LPPROC_THREAD_ATTRIBUTE_LIST attribute_list       = nullptr;
@@ -1280,7 +1285,8 @@ get_command_processor_path() throws -> Maybe<String>
    time:   O(argument bytes) to build and convert the command line. one
            create_process_utf8() call, which takes launch_lock. */
 fn
-execute_program(ExecContext &ec, const program_execution_options &options)
+execute_program(ExecContext                     &ec,
+                const program_execution_options &options) throws
     -> process
 {
   let const should_allow_script_fallback =
@@ -2501,7 +2507,8 @@ run_substitution_relay(opaque *context) wontthrow -> void
 
 /* memory: os::allocate_aligned() storage for one substitution_relay, about
            512 KiB: 64 clients with 4096 byte buffers and a 262144 byte ring.
-           the caller owns it and frees it with destroy_substitution_relay().
+           the caller frees it when launch fails. otherwise the relay worker
+           thread frees it with destroy_substitution_relay() after finishing.
    time:   constant. placement new initializes the fixed-size client and write
            arrays. */
 static fn
@@ -2760,6 +2767,8 @@ spawn_subshell_stage(StringView                   source,
     }
   }
   should_terminate_child = false;
+  /* at this point: process_info.hProcess is the spawned child that the caller
+     owns, and the defer does not close it. */
 
   return process_info.hProcess;
 }
@@ -3245,6 +3254,8 @@ last_system_error_message() throws -> String
     return String::from(win_errno, heap_allocator()) +
            StringView{" (Error message could not be converted to UTF-8)"};
   }
+  /* at this point: converted holds the UTF-8 message, and errno_text is
+     freed by the defer when this function returns. */
   let view = converted->view();
 
   while (view.length > 0) {
@@ -3401,6 +3412,8 @@ monotonic_nanos() wontthrow -> u64
   LARGE_INTEGER counter;
   if (frequency.QuadPart == 0) return 0;
   if (QueryPerformanceCounter(&counter) == 0) return 0;
+  /* at this point: frequency is nonzero, so the division below is defined,
+     and counter holds the count from QueryPerformanceCounter(). */
   const u64 whole_seconds = counter.QuadPart / frequency.QuadPart;
   const u64 remainder     = counter.QuadPart % frequency.QuadPart;
 
@@ -3811,7 +3824,6 @@ fn
 enumerate_processes(process_detail detail) throws
     -> ArrayList<process_entry>
 {
-  unused(detail);
   ArrayList<process_entry> processes{heap_allocator()};
   HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
   if (snapshot == INVALID_HANDLE_VALUE) return processes;
@@ -3820,6 +3832,9 @@ enumerate_processes(process_detail detail) throws
   PROCESSENTRY32W entry{};
   entry.dwSize = sizeof(entry);
   if (Process32FirstW(snapshot, &entry) == 0) return processes;
+
+  /* at this point: snapshot is a valid toolhelp snapshot that stays open
+     until return, and entry holds the first process record. */
 
   do {
     let name = wide_to_utf8(entry.szExeFile,
@@ -3963,6 +3978,9 @@ read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 
   IO_COUNTERS counters{};
   if (GetProcessIoCounters(process, &counters) == FALSE) return false;
+
+  /* at this point: process is an open handle closed on return, and counters
+     holds the I/O totals of pid. */
   status.read_byte_count       = counters.ReadTransferCount;
   status.written_byte_count    = counters.WriteTransferCount;
   status.read_operation_count  = counters.ReadOperationCount;
@@ -4233,7 +4251,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
            user_position < users.count(); user_position++)
       {
         let const &user = users[user_position];
-        if (user.query_position == query.query_position && user.pid == pid) {
+        if (user.pid == pid) {
           is_duplicate = true;
           break;
         }
@@ -4295,13 +4313,13 @@ process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws
   if (OpenProcessToken(process, TOKEN_QUERY, &token) == FALSE) return None;
   defer { CloseHandle(token); };
 
-  DWORD token_length = 0;
-  GetTokenInformation(token, TokenUser, nullptr, 0, &token_length);
-  if (token_length == 0) return None;
+  DWORD token_byte_count = 0;
+  GetTokenInformation(token, TokenUser, nullptr, 0, &token_byte_count);
+  if (token_byte_count == 0) return None;
   ArrayList<u8> token_buffer{allocator};
-  token_buffer.reserve(token_length);
-  if (GetTokenInformation(token, TokenUser, token_buffer.begin(), token_length,
-                          &token_length) == FALSE)
+  token_buffer.reserve(token_byte_count);
+  if (GetTokenInformation(token, TokenUser, token_buffer.begin(),
+                          token_byte_count, &token_byte_count) == FALSE)
     return None;
   let const *token_user =
       reinterpret_cast<const TOKEN_USER *>(token_buffer.begin());

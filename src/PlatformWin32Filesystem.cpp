@@ -765,14 +765,14 @@ paths_are_same_file(StringView first, StringView second) wontthrow -> bool
   }
 
   BY_HANDLE_FILE_INFORMATION first_info{}, second_info{};
-  let const                  both_read =
+  let const                  did_read_both =
       GetFileInformationByHandle(first_handle, &first_info) != 0 &&
       GetFileInformationByHandle(second_handle, &second_info) != 0;
-  let const error = both_read ? ERROR_SUCCESS : GetLastError();
+  let const error = did_read_both ? ERROR_SUCCESS : GetLastError();
 
   CloseHandle(first_handle);
   CloseHandle(second_handle);
-  if (!both_read) {
+  if (!did_read_both) {
     SetLastError(error);
 
     return false;
@@ -975,8 +975,7 @@ cold fn
 list_directory_typed(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
 {
-  const String dir_string{allocator, dir};
-  let          pattern = dir_string.clone();
+  let pattern = String{allocator, dir};
 
   pattern.push(DIRECTORY_SEPARATOR);
   pattern.push('*');
@@ -1306,6 +1305,9 @@ write_to_named_temp_file(const Path &directory,
   }
 
   if (handle == INVALID_HANDLE_VALUE) return None;
+
+  /* at this point: handle is open for writing, and CREATE_NEW created the
+     file at temp_path in this call. */
 
   if (!write_all(handle, content.data, content.count())) {
     let const error = GetLastError();
@@ -2141,6 +2143,9 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     return koshka::None;
   }
 
+  /* at this point: tag is a symlink or mount point tag, and wide_target
+     points at wide_target_length characters inside buffer. */
+
   constexpr WCHAR UNC_NAMESPACE_PREFIX[] = L"\\??\\UNC\\";
   constexpr WCHAR NAMESPACE_PREFIX[]     = L"\\??\\";
 
@@ -2151,9 +2156,9 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     wide_target += 8;
     wide_target_length -= 8;
     is_unc_target = true;
-    /* e.g. substitute name \??\UNC\srv\share, wide_target_length 17
-         after the 8 character strip: "srv\share", wide_target_length 9
-         the final result after the "\\" prefix is \\srv\share */
+    /* e.g. substitute name \??\UNC\srv\share, wide_target_length 17 before
+         the 8 character strip, then "srv\share" with wide_target_length 9,
+         and the final result is \\srv\share */
   } else if (is_substitute_name && wide_target_length >= 4 &&
              memcmp(wide_target, NAMESPACE_PREFIX, 4 * sizeof(WCHAR)) == 0)
   {
@@ -2608,8 +2613,8 @@ stat_path(StringView path, file_status &status) wontthrow -> bool
     status.change_nanoseconds = status.modification_nanoseconds;
   }
 
-  /* Windows stat has no block count, so 512-byte blocks are derived from size.
-   */
+  /* Windows stat has no block count, so 512-byte blocks are derived from
+     size. */
   status.blocks = (static_cast<u64>(info.st_size) + 511) / 512;
 
   return true;
@@ -2624,7 +2629,14 @@ stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
 
   status = {};
   fill_file_identity(identity, status);
-  status.link_count = identity.nNumberOfLinks;
+  status.link_count         = identity.nNumberOfLinks;
+  status.access_time        = filetime_unix_seconds(identity.ftLastAccessTime);
+  status.access_nanoseconds = filetime_nanoseconds(identity.ftLastAccessTime);
+  status.modification_time  = filetime_unix_seconds(identity.ftLastWriteTime);
+  status.modification_nanoseconds =
+      filetime_nanoseconds(identity.ftLastWriteTime);
+  status.change_time        = status.modification_time;
+  status.change_nanoseconds = status.modification_nanoseconds;
   status.size =
       (static_cast<u64>(identity.nFileSizeHigh) << 32) | identity.nFileSizeLow;
   status.mode = (identity.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0
@@ -3069,7 +3081,7 @@ fn
 format_mode_string(u32 mode) throws -> String
 {
   /* Windows stat exposes only the owner bits, mirrored across all three
-   * triplets. */
+     triplets. */
   let const is_readable   = (mode & 0000400u) != 0;
   let const is_writable   = (mode & 0000200u) != 0;
   let const is_executable = (mode & 0000100u) != 0;

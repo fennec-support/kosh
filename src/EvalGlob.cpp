@@ -191,8 +191,8 @@ EvalContext::expand_path_once(const glob_field   &field,
     });
   }
 
-  let const dotglob_is_on    = is_shopt_enabled(shopt_option_id::Dotglob);
-  let const nocaseglob_is_on = is_shopt_enabled(shopt_option_id::Nocaseglob);
+  let const is_dotglob_on    = is_shopt_enabled(shopt_option_id::Dotglob);
+  let const is_nocaseglob_on = is_shopt_enabled(shopt_option_id::Nocaseglob);
   let const extglob          = get_extglob_mode();
   Maybe<glob_charset> locale_charset = None;
 
@@ -208,12 +208,12 @@ EvalContext::expand_path_once(const glob_field   &field,
 
   let lowered_glob = String{scratch};
 
-  if (nocaseglob_is_on) {
+  if (is_nocaseglob_on) {
     lowered_glob =
         utils::lowercase_for_glob(glob, get_glob_charset_for(glob), scratch);
   }
 
-  let const match_glob = nocaseglob_is_on ? lowered_glob.view() : glob;
+  let const match_glob = is_nocaseglob_on ? lowered_glob.view() : glob;
 
   let const do_entry_matches =
       [&](const Path::DirectoryChild &entry) throws -> bool {
@@ -224,7 +224,7 @@ EvalContext::expand_path_once(const glob_field   &field,
         return false;
       }
     } else if (!is_dot_pattern && !filename.is_empty() && filename[0] == '.' &&
-               !dotglob_is_on)
+               !is_dotglob_on)
     {
       return false;
     }
@@ -232,7 +232,7 @@ EvalContext::expand_path_once(const glob_field   &field,
     return name_matches_glob(
         match_glob, filename, field.glob_active, stem_start, extglob,
         do_get_entry_charset(filename), scratch,
-        nocaseglob_is_on ? os::case_sensitivity::Insensitive
+        is_nocaseglob_on ? os::case_sensitivity::Insensitive
                          : os::case_sensitivity::Sensitive);
   };
 
@@ -628,19 +628,19 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
       else if (component_start > 1)
         base = Path{text.substring_of_length(0, component_start - 1)};
 
-      let const directory_position = slash_after.has_value();
+      let const has_slash_after = slash_after.has_value();
       let const has_pattern_after =
-          directory_position && *slash_after + 1 < text.length;
+          has_slash_after && *slash_after + 1 < text.length;
       let const should_list_symlinked_directories =
           !has_pattern_after || component_start != 0;
       let relatives = ArrayList<String>{scratch};
 
-      collect_globstar_paths(base, StringView{""}, directory_position,
+      collect_globstar_paths(base, StringView{""}, has_slash_after,
                              is_shopt_enabled(shopt_option_id::Dotglob),
                              should_list_symlinked_directories, true, 0,
                              scratch, relatives);
 
-      if (!directory_position) {
+      if (!has_slash_after) {
         if (!prefix.is_empty()) {
           let base_field = glob_field{scratch};
 
@@ -671,12 +671,12 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
           candidate.text += '/';
         }
 
-        let const literal_length = candidate.text.count();
+        let const literal_byte_count = candidate.text.count();
 
         candidate.text.append(suffix);
         if (candidate.text.is_empty()) continue;
 
-        for (usize k = 0; k < literal_length; k++)
+        for (usize k = 0; k < literal_byte_count; k++)
           candidate.glob_active.push(false);
 
         for (usize k = *slash_after + 1; k < field.glob_active.count(); k++)
@@ -724,11 +724,11 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
         expand_path_once(directory_component, glob_expansion_mode::Directories);
 
     for (let &f : expanded_directories) {
-      let const matched_length = f.text.count();
+      let const matched_byte_count = f.text.count();
       f.text.append(removed_suffix.text.view());
       f.glob_active.clear();
 
-      for (usize k = 0; k < matched_length; k++)
+      for (usize k = 0; k < matched_byte_count; k++)
         f.glob_active.push(false);
 
       for (usize k = 0; k < removed_suffix.glob_active.count(); k++)
@@ -1062,18 +1062,18 @@ EvalContext::expand_path(glob_field            field,
       values.count());
 
   if (values.count() == 0) {
-    let const failglob_is_on = runtime_state().failglob();
-    let const failglob_is_explicit =
+    let const is_failglob_on = runtime_state().failglob();
+    let const is_failglob_explicit =
         runtime_state().was_failglob_set_explicitly();
     let const is_failglob_fatal =
-        failglob_is_on &&
-        (failglob_is_explicit || !strict_diagnostics_are_warnings());
+        is_failglob_on &&
+        (is_failglob_explicit || !strict_diagnostics_are_warnings());
 
     if (!expansion_store().glob_exempt_for_test() &&
         (is_failglob_fatal || has_literal_glob))
     {
       try {
-        warn_or_throw(failglob_is_on, failglob_is_explicit, location,
+        warn_or_throw(is_failglob_on, is_failglob_explicit, location,
                       "The glob pattern '" + pattern +
                           "' matched no file, it expands to its literal text, "
                           "which is rarely intended",

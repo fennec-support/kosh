@@ -895,7 +895,9 @@ EvalContext::unset_array_element(StringView name,
     const i64 resolved =
         index < 0 ? index + array_negative_index_base(name) : index;
 
-    if (resolved < 0) return;
+    if (resolved < 0)
+      throw Error{"Unable to index '" + name +
+                  "' because the array subscript is invalid"};
     if (resolved < array_count) {
       if (static_cast<usize>(resolved) + 1 < array->count())
         variable_store().sparse_arrays().declare(name);
@@ -1430,12 +1432,12 @@ EvalContext::collect_array_elements(StringView name) const throws
   }
 
   if (is_bash_directory_stack_special(name)) {
-    let       elements = ArrayList<String>{heap_allocator()};
-    let const count    = variable_store().directory_stack().count() + 1;
+    let       elements        = ArrayList<String>{heap_allocator()};
+    let const directory_count = variable_store().directory_stack().count() + 1;
 
-    elements.reserve(count);
+    elements.reserve(directory_count);
 
-    for (usize index = 0; index < count; index++)
+    for (usize index = 0; index < directory_count; index++)
       elements.push(
           get_bash_directory_stack_element(index, heap_allocator()).take());
 
@@ -1456,7 +1458,7 @@ EvalContext::collect_array_elements(StringView name) const throws
 
     if (variable_store().sparse_arrays().has(name)) {
       let sparse = collect_sparse_array_entries(
-          variable_store().sparse_arrays().values(), name, scratch_allocator());
+          variable_store().sparse_arrays().values(), name, heap_allocator());
 
       for (sparse_array_entry &entry : sparse)
         out.push(steal(entry.value));
@@ -1588,11 +1590,11 @@ EvalContext::collect_array_subscripts(StringView name) const throws
   }
 
   if (is_bash_directory_stack_special(name)) {
-    let const count = variable_store().directory_stack().count() + 1;
+    let const directory_count = variable_store().directory_stack().count() + 1;
 
-    out.reserve(count);
+    out.reserve(directory_count);
 
-    for (usize index = 0; index < count; index++)
+    for (usize index = 0; index < directory_count; index++)
       out.push(String::from(index, heap_allocator()));
 
     return out;

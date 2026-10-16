@@ -224,6 +224,8 @@ parse_tab_stop_list(StringView text, Allocator allocator) throws
 
   if (stops.is_empty()) return None;
 
+  /* at this point: stops holds positive tab stops, strictly ascending. */
+
   return stops;
 }
 
@@ -416,7 +418,7 @@ decode_shell_word(StringView                word,
   char  quote_character              = 0;
   let   is_scanning_tilde_prefix     = false;
   let   is_scanning_leading_variable = false;
-  let   leading_variable_is_braced   = false;
+  let   is_leading_variable_braced   = false;
   let   is_after_unconsumed_dollar   = false;
   let   has_active_bracket           = false;
   usize glob_inert_end               = 0;
@@ -474,8 +476,6 @@ decode_shell_word(StringView                word,
 
         body_end++;
       }
-
-      if (body_end > word.length) body_end = word.length;
 
       if (is_scanning_tilde_prefix) {
         decoded.leading.is_tilde_active = false;
@@ -609,11 +609,11 @@ decode_shell_word(StringView                word,
       if (is_scanning_leading_variable) decoded.leading.variable_end = 1;
     } else if (is_scanning_leading_variable) {
       if (decoded.text.length() == 1 && byte == '{') {
-        leading_variable_is_braced   = true;
+        is_leading_variable_braced   = true;
         decoded.leading.variable_end = decoded.text.length() + 1;
       } else if (lexer::is_variable_name(byte)) {
         decoded.leading.variable_end = decoded.text.length() + 1;
-      } else if (leading_variable_is_braced && byte == '}') {
+      } else if (is_leading_variable_braced && byte == '}') {
         decoded.leading.variable_end = decoded.text.length() + 1;
         is_scanning_leading_variable = false;
       } else {
@@ -930,7 +930,6 @@ struct kosh_identity_cache
   Path            path{};
   os::file_status status{};
   Maybe<String>   identity{};
-  bool            is_initialized{false};
 };
 
 } /* namespace */
@@ -940,7 +939,7 @@ kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
 {
   static kosh_identity_cache cache;
 
-  if (cache.is_initialized && cache.identity.has_value()) {
+  if (cache.identity.has_value()) {
     let cached_status = os::file_status{};
 
     if (os::stat_path_following(cache.path.text(), cached_status) &&
@@ -966,16 +965,14 @@ kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
   if (!has_status) has_status = os::stat_path_following(path.text(), status);
 
   if (!has_status) {
-    if (cache.is_initialized && cache.path.text() == path.text() &&
-        cache.identity.has_value())
-    {
+    if (cache.path.text() == path.text() && cache.identity.has_value()) {
       return cache.identity->view();
     }
 
     return None;
   }
 
-  if (cache.is_initialized && cache.path.text() == path.text() &&
+  if (cache.path.text() == path.text() &&
       os::file_status_matches(cache.status, status) &&
       cache.identity.has_value())
   {
@@ -997,10 +994,9 @@ kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
   /* at this point: the stat before and after the crc32c_of_file() call
      matched, so identity is the crc32c of the file at path. the cache is not
      yet updated. */
-  cache.path           = steal(path);
-  cache.status         = verified_status;
-  cache.identity       = steal(identity);
-  cache.is_initialized = true;
+  cache.path     = steal(path);
+  cache.status   = verified_status;
+  cache.identity = steal(identity);
   os::set_environment_variable("KOSH_IDENTITY", cache.identity->view());
 
   return cache.identity->view();
@@ -1010,18 +1006,18 @@ fn
 merge_tokens_to_string(const ArrayList<const Token *> &tokens) throws
     -> String
 {
-  let   result       = String{heap_allocator()};
-  usize total_length = 0;
+  let   result           = String{heap_allocator()};
+  usize total_byte_count = 0;
 
   for (usize i = 0; i < tokens.count(); i++) {
     let const token = tokens[i];
 
     ASSERT(token != nullptr);
-    total_length += token->raw_string().count();
-    if (i + 1 < tokens.count()) total_length++;
+    total_byte_count += token->raw_string().count();
+    if (i + 1 < tokens.count()) total_byte_count++;
   }
 
-  result.reserve(total_length);
+  result.reserve(total_byte_count);
 
   for (usize i = 0; i < tokens.count(); i++) {
     let const token = tokens[i];

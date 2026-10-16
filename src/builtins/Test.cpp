@@ -157,7 +157,11 @@ public:
     if (op == "-t") {
       let const file_descriptor = parse_integer(operand.view());
 
-      if (!file_descriptor.has_value()) return false;
+      if (!file_descriptor.has_value() || *file_descriptor < 0 ||
+          *file_descriptor > 0x7fffffff)
+      {
+        return false;
+      }
 
       return os::shell_fd_is_a_tty(static_cast<int>(*file_descriptor));
     }
@@ -324,7 +328,6 @@ public:
       if (pos + 2 >= end) {
         fail(StringView{"An argument is expected after '"} + args[pos + 1] +
              "'");
-        pos = end;
 
         return false;
       }

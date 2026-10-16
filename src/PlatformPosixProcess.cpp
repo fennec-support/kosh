@@ -678,6 +678,9 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
     return None;
   }
 
+  /* at this point: child_pid is a spawned child, read_end is the open read end
+     of the output pipe, and write_end and devnull_fd are closed. */
+
   let capture = ProgramCapture{};
 
   capture.m_child          = child_pid;
@@ -761,6 +764,9 @@ ProgramCapture::step() wontthrow -> State
 
     return State::Failed;
   }
+
+  /* at this point: m_child is a child that has not been reaped, and the
+     deadline has not passed. */
 
   return State::Running;
 }
@@ -1405,13 +1411,12 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
                                 ? String{heap_allocator(), sig_str}
                                 : String{heap_allocator(), "Unknown"};
 
-    if (sig == SIGPIPE) {
-    } else if (sig != SIGINT) {
+    if (sig == SIGINT) {
+      koshka::print("\n");
+    } else if (sig != SIGPIPE) {
       koshka::print_error(
           "[Process " + String::from(changed_pid, heap_allocator()) + ": " +
           sig_desc + ", signal " + String::from(sig, heap_allocator()) + "]\n");
-    } else {
-      koshka::print("\n");
     }
 
     return 128 + sig;
@@ -1621,6 +1626,9 @@ is_running_group_member(i64 process_id, pid_t group_id) wontthrow -> bool
   {
     return false;
   }
+
+  /* at this point: state is not empty, member_group_id equals group_id, and
+     position is past the process group field. */
 
   /* a zombie stays in /proc while other threads of its thread group run.
      field 20 of /proc/<pid>/stat (num_threads) counts the group's threads. */
@@ -1970,7 +1978,7 @@ executable_system_name() throws -> String
   if (uname(&info) != 0) return String{heap_allocator(), "unknown"};
 
   return String{
-      StringView{info.sysname, strlen(info.sysname)}
+      heap_allocator(), StringView{info.sysname, strlen(info.sysname)}
   };
 #endif
 }
@@ -2448,7 +2456,7 @@ fill_usage_from_proc_io(int                     io_descriptor,
 /* memory: no heap allocation. the Linux path uses stack buffers.
    time:   blocks until the child exits. on Linux with resources, it then
            performs three bounded /proc file reads. wait4() runs in all
-   cases. */
+           cases. */
 fn
 wait_for_measured_child(pid_t                   child_pid,
                         i64                    &status_out,
@@ -2586,6 +2594,9 @@ run_measured(const ArrayList<String> &argv,
                                should_read_usage ? &result.resources : nullptr,
                                io_descriptor, exit_nanos))
     return None;
+
+  /* at this point: the child is reaped, and result holds its exit status
+     and peak RSS byte count. */
   result.wall_nanos = exit_nanos - start_nanos;
 
   if (has_perf) {
@@ -2874,6 +2885,8 @@ run_traced(const ArrayList<String> &argv, measured_output output) throws
   reap_child(tracer);
   if (read_count != static_cast<ssize_t>(sizeof(counts))) return None;
 
+  /* at this point: the tracer is reaped, and counts holds the full report
+     written by run_tracer(). */
   return counts;
 #else
   unused(argv);

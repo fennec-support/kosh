@@ -211,20 +211,21 @@ static fn
 read_docker_json_array(StringView                   line,
                        usize                        position,
                        ArrayList<docker_json_item> &items) throws
-    -> void
+    -> bool
 {
   position++;
 
   /* e.g. line = ["sh", "-c", "exit 0"], position = 0 on the '['.
      -> "sh" at [2, 4), "-c" at [8, 10), "exit 0" at [14, 20).
-        position 21 is the ']', so the loop returns. */
+        position 21 is the ']', so the function returns true. */
   while (position < line.length) {
     while (position < line.length &&
            (line[position] == ' ' || line[position] == '\t' ||
             line[position] == ','))
       position++;
 
-    if (position >= line.length || line[position] != '"') return;
+    if (position < line.length && line[position] == ']') return true;
+    if (position >= line.length || line[position] != '"') return false;
 
     let const start = ++position;
 
@@ -233,10 +234,12 @@ read_docker_json_array(StringView                   line,
       position++;
     }
 
-    if (position >= line.length) return;
+    if (position >= line.length) return false;
     items.push(docker_json_item{start, position});
     position++;
   }
+
+  return false;
 }
 
 static pure fn
@@ -444,10 +447,11 @@ parse_dockerfile_format(const parser_format_input &input,
 
     if (!is_shell_instruction || content_position >= line.length) continue;
 
-    if (is_exec_form(line.substring(content_position))) {
-      let items = ArrayList<docker_json_item>{heap_allocator()};
+    let items = ArrayList<docker_json_item>{heap_allocator()};
 
-      read_docker_json_array(line, content_position, items);
+    if (is_exec_form(line.substring(content_position)) &&
+        read_docker_json_array(line, content_position, items))
+    {
       if (items.count() < 3) continue;
 
       let const exec_mood = parser_format_shell_mood(line.substring_of_length(
@@ -475,6 +479,10 @@ parse_dockerfile_format(const parser_format_input &input,
     if (heredoc.has_value()) {
       let const body_start = position;
       usize     body_end   = position;
+      let const pending    = lexer::pending_heredoc{
+          String{heap_allocator(), heredoc->delimiter},
+          line.substring(content_position).starts_with("<<-")
+      };
 
       while (position < input.source.length) {
         let const body_line_start = position;
@@ -484,7 +492,7 @@ parse_dockerfile_format(const parser_format_input &input,
           body_line = body_line.substring_of_length(0, body_line.length - 1);
         }
 
-        if (body_line == heredoc->delimiter) break;
+        if (lexer::match_heredoc_line(body_line, pending).is_terminator) break;
 
         body_end = body_line_start + body_line.length;
       }
@@ -492,14 +500,10 @@ parse_dockerfile_format(const parser_format_input &input,
       usize     first_position = body_start;
       let const first_line     = input.source.next_line(first_position);
       let       body_mood      = docker_shebang_mood(first_line, mood);
-      let const is_shell_body =
-          heredoc->is_shell_body ||
-          parser_format_shell_mood(heredoc->command).has_value();
-
       if (!heredoc->is_shell_body)
         body_mood = parser_format_shell_mood(heredoc->command);
 
-      if (is_shell_body && body_mood.has_value() && body_end > body_start) {
+      if (body_mood.has_value() && body_end > body_start) {
         let const content_start =
             first_line.starts_with("#!") ? first_position : body_start;
 

@@ -365,6 +365,8 @@ internal::shell_syntax_candidate_is_unchanged(
   if (raw_token != decoded_word.text.view()) return false;
   if (!decoded_candidate.starts_with(raw_token)) return false;
 
+  /* at this point: the word has no quote, raw_token equals its decoded text,
+     and decoded_candidate starts with raw_token. */
   let const suffix = decoded_candidate.substring(raw_token.length);
 
   return should_quote_words ? !path_candidate_needs_quoting(suffix)
@@ -516,6 +518,7 @@ expand_leading_variable_path(StringView   directory_part,
 
   if (!value.has_value()) return None;
 
+  /* at this point: name is nonempty, and value holds the variable value. */
   let expanded = String{completion_allocator(), value->view()};
 
   expanded.append(directory_part.substring(expansion_end));

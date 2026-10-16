@@ -108,6 +108,7 @@ move_across_devices(const ExecContext &ec,
         String{allocator, target}
         + "': " + os::last_system_error_message()
     };
+
   defer {
     unused(os::remove_file(temporary_path->text().view()));
   };

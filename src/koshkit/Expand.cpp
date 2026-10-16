@@ -35,9 +35,9 @@ Expand::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  /* memory: output holds converted text until it reaches OUTPUT_FLUSH_LENGTH
-             bytes. the flush check runs after each line, so output can hold
-             one line past that length.
+  /* memory: output holds converted text until it reaches
+             OUTPUT_FLUSH_BYTE_COUNT. the flush check runs after each line, so
+             output can hold one line past that length.
      time:   O(b + k * t) for b input bytes, k tabs, and t tab stops, from the
              scan in get_next_tab_column() for each tab. */
   let tab_stops = ArrayList<usize>{cxt.scratch_allocator()};
@@ -117,13 +117,13 @@ Expand::execute(const ExecContext               &ec,
     }
   };
 
-  static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
+  static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 
   let do_visit_line = [&](StringView line,
                           bool       is_terminated) throws -> void {
     do_append_line(line);
     if (is_terminated) output += '\n';
-    if (output.length() >= OUTPUT_FLUSH_LENGTH) {
+    if (output.length() >= OUTPUT_FLUSH_BYTE_COUNT) {
       ec.print_to_stdout(output);
       output.clear();
     }

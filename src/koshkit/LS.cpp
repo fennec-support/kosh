@@ -482,6 +482,9 @@ collect_directory(const Path            &directory,
 
   if (!children.has_value()) return None;
 
+  /* at this point: children holds the entries of directory, and entries is
+     empty. */
+
   entries.reserve(children->count() + 2);
 
   if (options.is_listing_dot_and_dotdot) {
@@ -500,18 +503,8 @@ collect_directory(const Path            &directory,
       continue;
     }
 
-    if (options.should_load_full_status || options.should_classify ||
-        options.should_color)
-    {
-      let child_path = Path{directory_text, allocator};
-
-      child_path.append(child.name.view());
-      entries.push(make_entry(child_path, child.name.view(), options,
-                              child.kind, allocator));
-    } else {
-      entries.push(make_entry(directory, child.name.view(), options, child.kind,
-                              allocator));
-    }
+    entries.push(make_entry(directory, child.name.view(), options, child.kind,
+                            allocator));
   }
 
   return prepare_entries(steal(entries), options, directory_text, allocator);

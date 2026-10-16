@@ -124,6 +124,7 @@ Tabs::execute(const ExecContext               &ec,
     }
   }
 
+  /* at this point: stops holds increasing columns in 1 through 160. */
   let output = String{cxt.scratch_allocator(), "\r\033[3g"};
   u64 column = 1;
 

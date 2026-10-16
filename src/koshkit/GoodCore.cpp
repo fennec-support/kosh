@@ -140,6 +140,8 @@ copy_into_root(const Path &stage,
   destination.append(relative);
   if (!make_directories(destination.parent(), 0700)) return false;
 
+  /* at this point: source is a regular file, relative is non-empty, and
+     the parent of destination exists under stage/root. */
   return copy_file_contents(source, destination.view(),
                             copy_force_mode::Normal) ==
          copy_file_result::Success;
@@ -229,7 +231,7 @@ infer_binary(EvalContext &cxt,
     let const candidate = remainder.substring_of_length(0, *end_position);
 
     if (Path{candidate, allocator}.is_regular_file())
-      return String{allocator, candidate};
+      return Path{candidate, allocator}.to_absolute().text().clone();
 
     let const matches =
         cxt.program_resolver().search(Path{candidate, allocator}.filename(),
@@ -559,7 +561,7 @@ GoodCore::execute(const ExecContext               &ec,
     {
       metadata += "Host: ";
       metadata += output->view();
-      if (metadata.is_empty() || metadata[metadata.length() - 1] != '\n') {
+      if (metadata[metadata.length() - 1] != '\n') {
         metadata += "\n";
       }
     }
@@ -577,13 +579,13 @@ GoodCore::execute(const ExecContext               &ec,
   let const zstd = FLAG_GOODCORE_NO_COMPRESS.is_enabled()
                        ? Maybe<Path>{None}
                        : resolve_util_program(cxt, "zstd");
-  let       output =
+  let const output =
       FLAG_GOODCORE_OUTPUT.is_set()
-                ? Path{FLAG_GOODCORE_OUTPUT.value(), allocator}.to_absolute()
-                : Path{"goodcore-" + core.filename() +
+          ? Path{FLAG_GOODCORE_OUTPUT.value(), allocator}.to_absolute()
+          : Path{"goodcore-" + core.filename() +
                  (FLAG_GOODCORE_NO_COMPRESS.is_enabled() ? StringView{".tar"}
-                        : zstd.has_value() ? StringView{".tar.zst"}
-                                           : StringView{".tar.gz"})}
+                  : zstd.has_value() ? StringView{".tar.zst"}
+                                     : StringView{".tar.gz"})}
                 .to_absolute();
 
   if (output.is_same_file_as(Path{binary->view(), allocator}) ||

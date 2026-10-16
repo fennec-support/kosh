@@ -74,35 +74,6 @@ append_number_prefix(String &output, i64 line_number) throws -> void
   output.append(StringView{prefix + position, sizeof(prefix) - position});
 }
 
-/* memory: appends to output. each line adds a prefix of 7 bytes while its
-           line number stays below 1000000.
-   time:   O(source.length). each line costs one find_character() scan of that
-           line. */
-static fn
-append_numbered_chunk(String    &output,
-                      StringView source,
-                      i64       &line_number,
-                      bool      &is_at_output_line_start) throws -> void
-{
-  usize position = 0;
-
-  while (position < source.length) {
-    if (is_at_output_line_start) {
-      append_number_prefix(output, line_number);
-      line_number++;
-    }
-
-    let const remaining      = source.substring(position);
-    let const newline_offset = remaining.find_character('\n');
-    let const length =
-        newline_offset.has_value() ? *newline_offset + 1 : remaining.length;
-
-    output.append(remaining.substring_of_length(0, length));
-    is_at_output_line_start = newline_offset.has_value();
-    position += length;
-  }
-}
-
 static fn
 append_cat_source(String            &output,
                   StringView         source,
@@ -285,8 +256,9 @@ Cat::execute(const ExecContext               &ec,
                   ": " + os::last_system_error_message());
           status = 1;
         } else {
-          append_numbered_chunk(output, chunk.content, line_number,
-                                                          is_at_output_line_start);
+          append_cat_source(
+              output, chunk.content, line_number, is_at_output_line_start, cxt,
+              cat_number_mode::Numbered, cat_highlight_mode::Plain);
         }
 
         if (output.count() >= CAT_OUTPUT_FLUSH_BYTE_COUNT) {

@@ -181,38 +181,27 @@ word_looks_like_assignment(StringView word) wontthrow -> bool
     position++;
   }
 
-  if (position < word.length && word[position] == '=') {
-    return true;
-  }
-
-  if (position + 1 < word.length && word[position] == '+' &&
-      word[position + 1] == '=')
-  {
-    return true;
-  }
-
-  if (position >= word.length || word[position] != '[') {
-    return false;
-  }
-
-  /* e.g. word = "a[x]+=1": position stops at 1 on '['. the loop below sets
-     bracket_depth to 0 at ']' (index 3), which leaves position at 4 on '+'. */
-  usize bracket_depth = 1;
-
-  position++;
-
-  while (position < word.length && bracket_depth > 0) {
-    let const byte = word[position];
-
-    if (byte == '[') {
-      bracket_depth++;
-    } else if (byte == ']') {
-      bracket_depth--;
-    } else {
-      position = skip_quoted_run(word, position);
-    }
+  if (position < word.length && word[position] == '[') {
+    /* e.g. word = "a[x]+=1": position stops at 1 on '['. the loop below
+       sets bracket_depth to 0 at ']' (index 3), which leaves position at 4
+       on '+'. */
+    usize bracket_depth = 1;
 
     position++;
+
+    while (position < word.length && bracket_depth > 0) {
+      let const byte = word[position];
+
+      if (byte == '[') {
+        bracket_depth++;
+      } else if (byte == ']') {
+        bracket_depth--;
+      } else {
+        position = skip_quoted_run(word, position);
+      }
+
+      position++;
+    }
   }
 
   if (position < word.length && word[position] == '=') {
@@ -1037,7 +1026,7 @@ Lexer::lex_identifier() throws -> Token *
     if (is_in_double_quotes && ch != '$' && ch != '`') {
       let const run_start = byte_count;
 
-      while (true) {
+      loop {
         let const next = chop_character(byte_count);
         if (!has_character(byte_count) || next == '"' || next == '\\' ||
             next == '$' || next == '`')

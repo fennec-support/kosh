@@ -712,7 +712,6 @@ EvalContext::run_source(StringView                source,
 
       let const owned_source = heap_allocator().alloc_array<String>(1);
 
-      if (owned_source == nullptr) throw std::bad_alloc{};
       try {
         new (owned_source) String{steal(normalized_source)};
       } catch (...) {

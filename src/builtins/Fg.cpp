@@ -66,6 +66,7 @@ Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return done_status;
   }
 
+  /* at this point: job is non-null, and job->state is not Done. */
   let const command = job->command.view();
 
   ec.print_to_stdout(command + "\n");

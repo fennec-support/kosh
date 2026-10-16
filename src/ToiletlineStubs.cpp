@@ -33,16 +33,12 @@ struct no_editor_history_state
   ArrayList<usize> record_byte_offsets{heap_allocator()};
   ArrayList<usize> durable_record_byte_offsets{heap_allocator()};
   usize            total_count{0};
-  usize            file_byte_count{0};
   usize            trailing_record_start_byte_offset{0};
   usize            first_record_index{0};
   os::file_status  file_status{};
   u64              file_contents_hash{HISTORY_HASH_OFFSET_BASIS};
   u16              entry_limit{TL_HISTORY_MAX_SIZE};
   bool             is_loaded{false};
-  bool             is_file_bad{false};
-  bool             has_file_status{false};
-  bool             is_rewritable{false};
 };
 
 struct history_record_span
@@ -81,10 +77,7 @@ static fn
 update_history_file_status(no_editor_history_state &state, const Path &path)
     -> bool
 {
-  state.has_file_status =
-      os::stat_path_following(path.view(), state.file_status);
-
-  return state.has_file_status;
+  return os::stat_path_following(path.view(), state.file_status);
 }
 
 static fn
@@ -278,16 +271,13 @@ scan_no_editor_history(const Path &path,
   state.record_byte_offsets.clear();
   state.durable_record_byte_offsets.clear();
   state.total_count                       = 0;
-  state.file_byte_count                   = contents.length;
   state.trailing_record_start_byte_offset = 0;
   state.first_record_index                = 0;
   state.file_contents_hash =
       contents_hash.has_value()
           ? *contents_hash
           : extend_history_contents_hash(HISTORY_HASH_OFFSET_BASIS, contents);
-  state.is_loaded       = false;
-  state.has_file_status = false;
-  state.is_rewritable   = false;
+  state.is_loaded = false;
 
   usize               byte_offset = 0;
   bool                is_valid    = true;
@@ -310,10 +300,7 @@ scan_no_editor_history(const Path &path,
     return history_scan_outcome::Stale;
   }
 
-  state.is_rewritable =
-      state.has_file_status && state.file_status.has_file_identity;
-  state.is_file_bad = false;
-  state.is_loaded   = true;
+  state.is_loaded = true;
 
   return history_scan_outcome::Loaded;
 }
@@ -381,6 +368,8 @@ find_no_editor_history_event(Allocator    allocator,
   if (!path.has_value()) return None;
 
   if (ensure_no_editor_history_loaded(*path, false).is_error()) return None;
+  /* at this point: the history path is resolved and the history is
+     loaded. */
 
   let      &state                 = get_no_editor_history_state();
   let const retained_record_count = state.record_byte_offsets.count();
@@ -454,6 +443,9 @@ rewrite_no_editor_history_event(usize                    wanted_number,
     return false;
   }
 
+  /* at this point: the history is loaded, retained_index is a retained
+     record whose text equals expected, and private_span covers that
+     record. */
   let encoded_replacements     = String{heap_allocator()};
   let replacement_byte_offsets = ArrayList<usize>{heap_allocator()};
 
@@ -532,7 +524,6 @@ rewrite_no_editor_history_event(usize                    wanted_number,
   state.record_byte_offsets         = steal(retained_private_offsets);
   state.durable_record_byte_offsets = steal(retained_durable_offsets);
   state.first_record_index          = 0;
-  state.file_byte_count             = state.branch_contents.count();
 
   usize               trailing_byte_offset = 0;
   history_record_span trailing_span{};
@@ -578,8 +569,7 @@ append_no_editor_history_records(no_editor_history_state &state,
   }
 
   state.branch_contents.append(records);
-  state.file_byte_count                   = state.branch_contents.count();
-  state.trailing_record_start_byte_offset = state.file_byte_count;
+  state.trailing_record_start_byte_offset = state.branch_contents.count();
 
   return state.total_count;
 }
@@ -676,6 +666,8 @@ write_history() -> koshka::ErrorOr<koshka::Ok>
 
   TRY(koshka::internal::ensure_no_editor_history_loaded(*path, true));
 
+  /* at this point: the process lock is held and the history is loaded
+     from path. */
   let written         = String{koshka::heap_allocator()};
   let durable_offsets = koshka::ArrayList<usize>{koshka::heap_allocator()};
 
@@ -702,13 +694,11 @@ write_history() -> koshka::ErrorOr<koshka::Ok>
     state.durable_record_byte_offsets[slot] = durable_offsets[index];
   }
 
-  state.is_file_bad = false;
-  state.has_file_status =
-      koshka::internal::update_history_file_status(state, *path);
-  state.is_rewritable =
-      state.has_file_status && state.file_status.has_file_identity;
-  if (!state.is_rewritable)
+  if (!koshka::internal::update_history_file_status(state, *path) ||
+      !state.file_status.has_file_identity)
+  {
     return koshka::Error{"the file contains invalid data"};
+  }
 
   return koshka::Success;
 }
@@ -830,6 +820,9 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   }
 
   if (payload.is_empty()) return koshka::Success;
+
+  /* at this point: the process lock is held, the history is loaded, and
+     payload holds the bytes of one or more unwritten records. */
 
   let const file_byte_count =
       koshka::os::path_file_size(path->text().view()).value_or(0);
@@ -1080,16 +1073,12 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
 
   let &state = koshka::internal::get_no_editor_history_state();
 
-  if (state.is_file_bad) return koshka::None;
   if (state.entry_limit == 0) return state.total_count;
 
-  let const first_rune = koshka::utils::decode_utf8(command, 0, 0xfffd);
-
-  if (first_rune.length >= command.length ||
-      !toiletline::is_history_contents_valid(command))
-  {
-    return koshka::None;
-  }
+  if (!toiletline::is_history_contents_valid(command)) return koshka::None;
+  /* at this point: command is nonempty and at most
+     NO_EDITOR_HISTORY_ENTRY_MAX_BYTE_COUNT bytes, it holds valid history
+     contents, and the history is loaded with a nonzero entry_limit. */
 
   if (!state.record_byte_offsets.is_empty()) {
     let const newest_span = koshka::internal::get_history_record_span(

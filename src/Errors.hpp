@@ -507,10 +507,6 @@ private:
 
 static_assert(std::is_abstract_v<ErrorBase>);
 static_assert(std::is_base_of_v<Error, ErrorWithLocation>);
-static_assert(!std::is_same_v<ErrorWithDetails, Error>);
-static_assert(!std::is_same_v<WarningWithDetails, Warning>);
-static_assert(
-    !std::is_same_v<WarningWithLocationAndDetails, WarningWithLocation>);
 
 /* memory: the thrown error copies message, and detail_message when it is
            set, into heap_allocator() strings that it owns.

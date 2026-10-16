@@ -226,6 +226,7 @@ Man::execute(const ExecContext               &ec,
         Path{page->view(), cxt.scratch_allocator()}.read_entire_file();
 
     if (!content.has_value()) {
+      KOSHKIT_REPORT_PATH_ERROR("read", page->view());
       status = 1;
       continue;
     }

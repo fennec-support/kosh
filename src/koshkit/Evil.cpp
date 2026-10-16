@@ -207,6 +207,9 @@ append_anomaly_report(field_section &section, EvalContext &cxt) throws
     return;
   }
 
+  /* at this point: files lists the process mappings, and no mapped file
+     is inaccessible. */
+
   let   families              = ArrayList<mapped_library_family>{allocator};
   usize mixed_family_count    = 0;
   usize deleted_mapping_count = 0;

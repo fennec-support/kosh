@@ -1646,6 +1646,9 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
   {
     return;
   }
+  /* at this point: the command is not shadowed, it runs unconditionally
+     at top level, and it is neither a variable target nor a variable
+     probe. */
 
   for (usize i = 1; i < m_args.count(); i++) {
     if (m_args[i]->kind() != Token::Kind::Word) continue;
@@ -1770,12 +1773,11 @@ cold fn
 SimpleCommand::try_static_condition_verdict(
     const AnalysisContext &actx) const wontthrow -> Maybe<bool>
 {
-  if (!m_redirections.is_empty()) return koshka::None;
-  if (is_async() || is_negated()) {
+  if (!m_redirections.is_empty() || is_async() || is_negated() ||
+      !m_local_vars.is_empty())
+  {
     return koshka::None;
   }
-
-  if (m_local_vars.count() > 0) return koshka::None;
 
   return optimizer::simple_command_static_verdict(m_args, actx);
 }

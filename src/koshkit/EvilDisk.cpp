@@ -259,6 +259,8 @@ read_smart_rows(EvalContext                             &cxt,
                 const ArrayList<os::mounted_filesystem> &filesystems,
                 Allocator allocator) throws -> ArrayList<smart_row>
 {
+  constexpr u64 SMART_TIMEOUT_NANOSECONDS = 10'000'000'000;
+
   let       rows           = ArrayList<smart_row>{allocator};
   let const smartctl       = resolve_util_program(cxt, "smartctl");
   let const platform_tools = os::evildisk_tools();
@@ -278,7 +280,7 @@ read_smart_rows(EvalContext                             &cxt,
       arguments.push(filesystem.source.clone());
 
       let const report = capture_util_program_output(
-          *smartctl, steal(arguments), 10'000'000'000);
+          *smartctl, steal(arguments), SMART_TIMEOUT_NANOSECONDS);
 
       if (report.has_value())
         has_row = parse_smart_report(report->view(), filesystem.source.view(),
@@ -292,7 +294,7 @@ read_smart_rows(EvalContext                             &cxt,
       arguments.push(filesystem.target.clone());
 
       let const report = capture_util_program_output(
-          *smart_fallback, steal(arguments), 10'000'000'000);
+          *smart_fallback, steal(arguments), SMART_TIMEOUT_NANOSECONDS);
 
       if (report.has_value())
         has_row = parse_smart_report(report->view(), filesystem.source.view(),

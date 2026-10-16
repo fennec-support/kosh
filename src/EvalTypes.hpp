@@ -996,7 +996,8 @@ struct job_table_wire
   ArrayList<u32>         process_references{heap_allocator()};
 
   fn
-  bind_processes(const os::subshell_bootstrap &bootstrap) wontthrow -> bool;
+  bind_processes(const os::subshell_bootstrap &bootstrap) throws
+      -> bool;
 };
 
 class JobTable

@@ -105,6 +105,9 @@ find_windows_name_problem(StringView component, bool is_literal_path) wontthrow
 
   if (is_literal_path) return None;
 
+  /* at this point: component is non-empty, holds no byte that Windows
+     forbids, and is not a literal path. */
+
   let const last_byte = component[component.length - 1];
 
   if (last_byte == '.' || last_byte == ' ') {
@@ -250,19 +253,19 @@ Pathchk::execute(const ExecContext               &ec,
                        .value_or(255);
     }
 
-    String reason{cxt.scratch_allocator()};
+    StringView reason{};
 
     if (path.is_empty() && should_check_hyphen) {
-      reason = String{reason.allocator(), "empty pathname"};
+      reason = "empty pathname";
     } else if (path_limit > 0 && path.length >= static_cast<usize>(path_limit))
     {
-      reason = String{reason.allocator(), "pathname too long"};
+      reason = "pathname too long";
     } else if (let const windows_problem = should_check_windows
                                                ? find_windows_path_problem(path)
                                                : Maybe<StringView>{};
                windows_problem.has_value())
     {
-      reason = String{reason.allocator(), *windows_problem};
+      reason = *windows_problem;
     } else {
       usize position = 0;
 
@@ -280,14 +283,14 @@ Pathchk::execute(const ExecContext               &ec,
 
         if (name_limit > 0 && component_length > static_cast<usize>(name_limit))
         {
-          reason = String{reason.allocator(), "component too long"};
+          reason = "component too long";
           break;
         }
 
         if (should_check_hyphen && !component.text.is_empty() &&
             component.text[0] == '-')
         {
-          reason = String{reason.allocator(), "a component begins with '-'"};
+          reason = "a component begins with '-'";
           break;
         }
 
@@ -296,8 +299,7 @@ Pathchk::execute(const ExecContext               &ec,
                byte_position++)
           {
             if (!is_portable_filename_byte(component.text[byte_position])) {
-              reason = String{reason.allocator(),
-                              "component contains non-portable characters"};
+              reason = "component contains non-portable characters";
               break;
             }
           }

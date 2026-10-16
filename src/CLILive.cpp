@@ -213,10 +213,11 @@ LiveView::get_wait_nanoseconds(u64 now_nanoseconds,
                                u64 last_refresh_nanoseconds) const wontthrow
     -> u64
 {
-  let const refresh_elapsed  = now_nanoseconds - last_refresh_nanoseconds;
-  let       wait_nanoseconds = m_refresh_interval_nanoseconds > refresh_elapsed
-                                   ? m_refresh_interval_nanoseconds - refresh_elapsed
-                                   : 0;
+  let const refresh_elapsed = now_nanoseconds - last_refresh_nanoseconds;
+  let const wait_nanoseconds =
+      m_refresh_interval_nanoseconds > refresh_elapsed
+          ? m_refresh_interval_nanoseconds - refresh_elapsed
+          : 0;
 
   if (m_sample_interval_nanoseconds == 0) return wait_nanoseconds;
 
@@ -499,6 +500,8 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
     return true;
   }
 
+  /* at this point: m_has_input is true, and buffer holds *read_count bytes,
+     which is at least 1. */
   usize index = 0;
 
   while (index < *read_count && input.key_count < live_view_input::CAPACITY) {
@@ -528,7 +531,7 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
     while (index < *read_count && buffer[index] >= 0x30 &&
            buffer[index] <= 0x3f)
     {
-      parameter = buffer[index];
+      if (index == parameter_start) parameter = buffer[index];
       index++;
     }
 

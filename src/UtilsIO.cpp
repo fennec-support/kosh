@@ -478,9 +478,8 @@ read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
 
     while (!remainder.is_empty()) {
       let const newline_pos = remainder.find_character('\n');
-      let       line        = newline_pos.has_value()
-                                  ? remainder.substring_of_length(0, *newline_pos)
-                                  : remainder;
+      let       line        = remainder.substring_of_length(
+          0, newline_pos.value_or(remainder.length));
 
       if (!line.is_empty() && line[line.length - 1] == '\r') {
         line = line.substring_of_length(0, line.length - 1);
@@ -518,9 +517,9 @@ git_upstream_ref(const Path &git_dir, StringView branch_name) throws
 
   let const section_header =
       StringView{"[branch \""} + branch_name + StringView{"\"]"};
-  let remote_name = String{heap_allocator()};
-  let merge_ref   = String{heap_allocator()};
-  let in_section  = false;
+  let remote_name   = String{heap_allocator()};
+  let merge_ref     = String{heap_allocator()};
+  let is_in_section = false;
 
   let remainder = content->view();
 
@@ -541,8 +540,8 @@ git_upstream_ref(const Path &git_dir, StringView branch_name) throws
     }
 
     if (line.starts_with("[")) {
-      in_section = line == section_header;
-    } else if (in_section) {
+      is_in_section = line == section_header;
+    } else if (is_in_section) {
       let const eq_pos = line.find_character('=');
 
       if (!eq_pos.has_value()) {
@@ -768,9 +767,8 @@ parse_file_mode(StringView     expression,
 {
   if (expression.is_empty()) return None;
 
-  bool is_octal           = true;
-  bool has_octal_overflow = false;
-  u32  octal_mode         = 0;
+  bool is_octal   = true;
+  u32  octal_mode = 0;
 
   for (usize position = 0; position < expression.length; position++) {
     let const byte = expression[position];
@@ -781,14 +779,10 @@ parse_file_mode(StringView     expression,
     }
 
     octal_mode = octal_mode * 8 + static_cast<u32>(byte - '0');
-    if (octal_mode > 07777u) {
-      has_octal_overflow = true;
-      octal_mode         = 07777u;
-    }
+    if (octal_mode > 07777u) return None;
   }
 
   if (is_octal) {
-    if (has_octal_overflow) return None;
 
     let const kept_directory_bits =
         kind == file_kind_mode::Directory && expression.length < 5

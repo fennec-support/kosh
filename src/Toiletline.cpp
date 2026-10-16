@@ -78,7 +78,7 @@ tl_arena_malloc(usize length) -> opaque *
     return base + TL_ALLOC_HEADER;
   }
 
-  return NULL;
+  return nullptr;
 }
 
 fn
@@ -1898,6 +1898,8 @@ write_history() -> koshka::ErrorOr<koshka::Ok>
     return koshka::Error{"the file contains invalid data"};
   }
 
+  /* at this point: the process lock is held, and the read buffer holds
+     every record, or the history has no records. */
   let written         = String{koshka::heap_allocator()};
   let durable_offsets = koshka::ArrayList<usize>{koshka::heap_allocator()};
 
@@ -1970,7 +1972,7 @@ load_history(const Path &path, bool should_allow_missing)
        attempt_index++)
   {
     let       status_before = os::file_status{};
-    let const had_status_before =
+    let const has_status_before =
         os::stat_path_following(path.view(), status_before);
 
     if (::tl_history_load(path.c_str()) != TL_SUCCESS) {
@@ -2010,7 +2012,7 @@ load_history(const Path &path, bool should_allow_missing)
     let status_after = os::file_status{};
 
     if (!os::stat_path_following(path.view(), status_after)) continue;
-    if (!had_status_before ||
+    if (!has_status_before ||
         !os::file_status_matches(status_before, status_after))
     {
       continue;
@@ -2155,6 +2157,8 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
   if (!::itl_history_ensure_read_buffer())
     return koshka::Error{"the file contains invalid data"};
 
+  /* at this point: the process lock is held, the history has at least
+     one record, and the read buffer is valid. */
   let const buffered  = StringView{::itl_g_history_read_buffer->data,
                                   ::itl_g_history_read_buffer->size};
   let       payload   = String{koshka::heap_allocator()};
@@ -2304,6 +2308,8 @@ get_history_events(koshka::Allocator    allocator,
   if (!::itl_history_ensure_read_buffer())
     return koshka::Error{"the file contains invalid data"};
 
+  /* at this point: the history is loaded with at least one record, and the
+     read buffer is valid. */
   let const first_number =
       ::itl_g_history_total_count - ::itl_g_history_count + 1;
   usize first_index = 0;
@@ -2347,6 +2353,8 @@ find_history_event(koshka::Allocator    allocator,
   if (::itl_g_history_count == 0) return koshka::None;
   if (!::itl_history_ensure_read_buffer()) return koshka::None;
 
+  /* at this point: the history is loaded with at least one record, and the
+     read buffer is valid. */
   let const first_number =
       ::itl_g_history_total_count - ::itl_g_history_count + 1;
   char decoded[ITL_STRING_MAX_LEN + 1];
@@ -2601,7 +2609,12 @@ rewrite_history_event(usize                                    number,
       koshka::ArrayList<usize>{koshka::heap_allocator()};
 
   for (let const &replacement : replacements) {
-    if (replacement.count() > ITL_HISTORY_ENTRY_MAX_BYTES) return false;
+    if (replacement.count() > ITL_HISTORY_ENTRY_MAX_BYTES ||
+        !is_history_contents_valid(replacement.view()))
+    {
+      return false;
+    }
+
     replacement_byte_offsets.push(encoded_replacements.count());
     encode_history_record(encoded_replacements, replacement.view());
   }
@@ -3064,6 +3077,9 @@ compact_history_file_from_locked_reread(usize entry_limit) -> bool
   }
 
   if (entry_limit > retained_entry_limit) return true;
+
+  /* at this point: the process lock is held, the history is loaded, and
+     entry_limit is nonzero and less than itl_g_history_total_count. */
 
   let contents = String{koshka::heap_allocator()};
 
@@ -3643,15 +3659,15 @@ expand_prompt_escapes(StringView         prompt,
     u8 escaped = static_cast<u8>(prompt[i + 1]);
 
     if (escaped >= '0' && escaped <= '7') {
-      u32   value  = 0;
-      usize digits = 0;
+      u32   value       = 0;
+      usize digit_count = 0;
 
-      while (digits < 3 && i + 1 < prompt.length && prompt[i + 1] >= '0' &&
+      while (digit_count < 3 && i + 1 < prompt.length && prompt[i + 1] >= '0' &&
              prompt[i + 1] <= '7')
       {
         value = value * 8 + static_cast<u32>(prompt[i + 1] - '0');
         i++;
-        digits++;
+        digit_count++;
       }
 
       out += static_cast<char>(value & 0xFF);
@@ -3917,6 +3933,7 @@ scan_prompt_template_inputs_or_report_impure(
 
     let const next = text[i + 1];
     if (next == '(') return false;
+    if (next == '[') return false;
     if (next == '{') {
       usize j = i + 2;
 
@@ -3925,7 +3942,10 @@ scan_prompt_template_inputs_or_report_impure(
       {
         return false;
       }
-      if (j < text.length && (text[j] == '#' || text[j] == '!')) {
+      if (j < text.length && text[j] == '!') {
+        return false;
+      }
+      if (j < text.length && text[j] == '#') {
         j++;
       }
 
@@ -3937,7 +3957,7 @@ scan_prompt_template_inputs_or_report_impure(
 
       if (j == name_start) return false;
       do_add_name(text.substring_of_length(name_start, j - name_start));
-      if (j < text.length && text[j] == '=') {
+      if (j < text.length && (text[j] == '=' || text[j] == '[')) {
         return false;
       }
 
@@ -4087,14 +4107,8 @@ finish_prompt_dropping_width_markers(StringView expanded) throws
 static fn
 get_cached_user() throws -> const String &
 {
-  static String CACHED_USER{koshka::heap_allocator()};
-  static bool   was_user_resolved = false;
-
-  if (!was_user_resolved) {
-    CACHED_USER =
-        os::get_current_user().value_or(String{CACHED_USER.allocator(), "???"});
-    was_user_resolved = true;
-  }
+  static const String CACHED_USER =
+      os::get_current_user().value_or(String{koshka::heap_allocator(), "???"});
 
   return CACHED_USER;
 }

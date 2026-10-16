@@ -65,7 +65,11 @@ parse_uniq_count(StringView text) wontthrow -> Maybe<usize>
     if (text[i] < '0') return {};
     if (text[i] > '9') return {};
 
-    value = value * 10 + static_cast<usize>(text[i] - '0');
+    let const digit = static_cast<usize>(text[i] - '0');
+
+    if (value > (SIZE_MAX - digit) / 10) return {};
+
+    value = value * 10 + digit;
   }
 
   return value;
@@ -98,7 +102,7 @@ get_uniq_key(StringView line, usize skipped_fields, usize skipped_chars)
     }
   }
 
-  position = position + skipped_chars < line.length ? position + skipped_chars
+  position = skipped_chars < line.length - position ? position + skipped_chars
                                                     : line.length;
 
   return line.substring(position);

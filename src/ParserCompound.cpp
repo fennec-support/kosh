@@ -135,7 +135,7 @@ Parser::parse_if() throws -> Command *
     break;
   }
 
-  let node =
+  let const node =
       m_lexer.arena().create<IfClause>(location, steal(branches), otherwise);
 
   node->set_source_end_position(end_position);
@@ -415,7 +415,7 @@ Parser::parse_for() throws -> Command *
       "expected 'do' here, after the word list",
       "expected 'do' or 'in WORDS' here, and a loop without 'in' iterates "
       "over the positional parameters");
-  let loop_node = m_lexer.arena().create<ForLoop>(
+  let const loop_node = m_lexer.arena().create<ForLoop>(
       location, header.name_token->source_location(), header.variable_name,
       steal(header.words), header.has_in_clause, header.body.body);
 
@@ -530,7 +530,7 @@ Parser::parse_coproc() throws -> Command *
 
   if (end_position < keyword_end_position) end_position = keyword_end_position;
 
-  let node = m_lexer.arena().create<CoprocCommand>(location, name, body);
+  let const node = m_lexer.arena().create<CoprocCommand>(location, name, body);
 
   node->set_source_end_position(end_position);
 
@@ -952,7 +952,7 @@ Parser::parse_subshell(Token *open) throws -> Command *
         "Put a command in the subshell, as in `( : )`"};
   }
 
-  let subshell =
+  let const subshell =
       m_lexer.arena().create<Subshell>(open->source_location(), body);
 
   subshell->set_analysis_scope_definitions(close_analysis_scope(scope_mark));
@@ -1096,7 +1096,7 @@ Parser::parse_c_style_for(const SourceLocation &location,
   let const parsed_body =
       parse_loop_body(location, "This for loop has no closing 'done'");
 
-  let loop_node = m_lexer.arena().create<expressions::CStyleForLoop>(
+  let const loop_node = m_lexer.arena().create<expressions::CStyleForLoop>(
       location, open->source_location().position + 2, init, condition, step,
       parsed_body.body);
 
@@ -1265,14 +1265,14 @@ Parser::parse_conditional_command() throws -> Command *
             if (next->source_location().position != end_position) {
               if (regex_parenthesis_depth == 0) break;
 
-              let const gap_length =
+              let const gap_byte_count =
                   next->source_location().position - end_position;
 
               regex_word.segments.push(WordSegment{
                   WordSegment::Kind::UnquotedText,
                   SegmentText{bump_allocator(m_lexer.arena()),
-                              m_lexer.source().substring_of_length(end_position,
-                              gap_length)},
+                              m_lexer.source().substring_of_length(
+                                  end_position, gap_byte_count)},
                   false
               });
             }

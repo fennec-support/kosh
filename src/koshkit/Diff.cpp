@@ -344,9 +344,9 @@ append_diff_number(String &output, usize value) throws -> void
 static fn
 flush_diff_output(const ExecContext &ec, String &output) throws -> void
 {
-  constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
+  constexpr usize OUTPUT_BUFFER_BYTE_COUNT = 64 * 1024;
 
-  if (output.count() < OUTPUT_BUFFER_LENGTH) return;
+  if (output.count() < OUTPUT_BUFFER_BYTE_COUNT) return;
 
   ec.print_to_stdout(output);
   output.clear();

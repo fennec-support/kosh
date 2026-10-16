@@ -184,10 +184,6 @@ is_dump_entry(StringView      directory,
 
     break;
 
-  case '_':
-    if (dump_suffix(name) == StringView{".crash"}) return true;
-    break;
-
   default: break;
   }
 
@@ -625,8 +621,8 @@ collect_log_entries(StringView directory, Allocator allocator) throws
     entries.push(steal(entry));
     if (is_directory) continue;
 
-    let const opened =
-        os::open_file_descriptor(child_path.text(), os::file_open_mode::Read);
+    let const opened = os::open_file_descriptor(
+        child_path.text(), os::file_open_mode::ReadNonblocking);
 
     if (!opened.has_value()) continue;
 

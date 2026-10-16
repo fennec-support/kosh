@@ -92,7 +92,11 @@ Logger::execute(const ExecContext               &ec,
   } else if (operands.is_empty()) {
     let const content = read_named_or_stdin(ec, "-");
 
-    if (!content.has_value()) return 1;
+    if (!content.has_value()) {
+      KOSHKIT_REPORT_PATH_ERROR("read", "-");
+
+      return 1;
+    }
     message = content->clone();
   } else {
     for (usize index = 0; index < operands.count(); index++) {

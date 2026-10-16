@@ -100,6 +100,8 @@ parse_diagnostic_code(StringView text) wontthrow -> Maybe<u16>
 
   if (!text.is_all_decimal_digits()) return None;
 
+  /* at this point: text is non-empty and holds only decimal digits. */
+
   u32 value = 0;
 
   for (usize position = 0; position < text.length; position++) {
@@ -129,7 +131,7 @@ shellcheck_selector_disables(const shellcheck_selector &selector,
   case shellcheck_selector_kind::CodeRange:
     return definition.shellcheck_code.has_value() &&
            *definition.shellcheck_code >= selector.code_start &&
-           *definition.shellcheck_code < selector.code_end;
+           *definition.shellcheck_code <= selector.code_end;
   }
 
   return false;

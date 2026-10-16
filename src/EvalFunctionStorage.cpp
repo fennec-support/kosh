@@ -39,6 +39,7 @@ function_body_storage::~function_body_storage()
   if (next_live != nullptr) next_live->previous_live = previous_live;
 
   utils::invalidate_line_number_cache_for(source.view());
+  utils::invalidate_line_number_cache_for(definition_info.render_source.view());
   arena->~BumpArena();
   heap_allocator().free_array(arena, 1);
 }

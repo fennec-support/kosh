@@ -762,7 +762,6 @@ struct rolling_history
     let const after_timestamp  = timestamps[boundary.after_index];
     if (boundary.timestamp <= before_timestamp) return before_value;
     if (boundary.timestamp >= after_timestamp) return after_value;
-    if (after_timestamp <= before_timestamp) return before_value;
 
     /* e.g. boundary = {1, 2, 250}, before_value = 10, after_value = 30: the
        timestamps are 200 and 300, so elapsed = 100 and passed = 50. the result

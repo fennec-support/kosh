@@ -63,6 +63,7 @@ Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* at this point: args has at least two entries, so arg is args[1]. */
   let const arg = args[1].view();
 
   if (FLAG_NO_CHANGE.is_enabled()) {
@@ -90,7 +91,6 @@ Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     for (usize offset = ring.count() - 1; offset >= 1; offset--) {
       stack.push_managed(ring[(index + offset) % ring.count()].view());
-      if (offset == 1) break;
     }
 
     print_directory_stack(cxt, ec, false, false, false);

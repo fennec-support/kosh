@@ -871,7 +871,7 @@ read_native_filesystem_error_counters(
       break;
     }
 
-    let const device_name = Path{selected.source.view()}.filename();
+    let const device_name = Path::filename(selected.source.view());
 
     if (device_name.is_empty()) continue;
 
@@ -1123,7 +1123,7 @@ verify_filesystem_integrity(StringView path,
     while (::waitpid(child, nullptr, 0) == -1 && errno == EINTR) {}
   };
 
-  let const started_at = monotonic_nanos();
+  let const start_nanos = monotonic_nanos();
 
   loop {
     int       status = 0;
@@ -1147,9 +1147,9 @@ verify_filesystem_integrity(StringView path,
       return filesystem_verification_result::Interrupted;
     }
 
-    let const now = monotonic_nanos();
+    let const now_nanos = monotonic_nanos();
 
-    if (now - started_at >= timeout_nanoseconds) {
+    if (now_nanos - start_nanos >= timeout_nanoseconds) {
       do_stop_child();
 
       return filesystem_verification_result::TimedOut;
@@ -2087,6 +2087,9 @@ execute_io_uring_batch(const batched_syscall  *operations,
   if (!io_uring_batch_supports_operations(ring, operations, operation_count))
     return false;
 
+  /* at this point: ring is open with owner_process_id set to process_id, every
+     operation has a ring opcode, and every transfer byte count fits in
+     UINT32_MAX. */
   usize operation_start = 0;
 
   while (operation_start < operation_count) {
@@ -2228,15 +2231,12 @@ execute_io_uring_batch(const batched_syscall  *operations,
       let const submitted_count = ::syscall(SYS_io_uring_enter, ring.descriptor,
                                             pending_count, 0, 0, nullptr, 0);
 
-      if (submitted_count < 0 && errno == EINTR) {
-        if (!INTERRUPT_REQUESTED) continue;
-        do_fail_unfinished(EINTR);
-
-        return true;
-      }
-
       if (submitted_count < 0) {
         let const error_number = errno;
+
+        if (error_number == EINTR && !INTERRUPT_REQUESTED) {
+          continue;
+        }
 
         do_fail_unfinished(error_number);
 
@@ -2258,15 +2258,13 @@ execute_io_uring_batch(const batched_syscall  *operations,
                       static_cast<u32>(queued_count - completed_count),
                       IORING_ENTER_GETEVENTS, nullptr, 0);
 
-        if (wait_result < 0 && errno == EINTR) {
-          if (!INTERRUPT_REQUESTED) continue;
-          do_fail_unfinished(EINTR);
-
-          return true;
-        }
-
         if (wait_result < 0) {
           let const error_number = errno;
+
+          if (error_number == EINTR && !INTERRUPT_REQUESTED) {
+            continue;
+          }
+
           do_fail_unfinished(error_number);
 
           return true;

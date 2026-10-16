@@ -73,8 +73,8 @@ Flock::execute(const ExecContext               &ec,
   let const lock = os::acquire_process_lock(operands[0].view());
 
   if (!lock.has_value()) {
-    report_soft_builtin_error(ec, cxt, operand_locations[0],
-                              "Cannot acquire directory lock");
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
+                            "Cannot acquire directory lock");
 
     return 1;
   }

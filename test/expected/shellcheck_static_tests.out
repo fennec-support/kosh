@@ -312,7 +312,7 @@ note: Add the link path, or write `.` explicitly.
 79:3: warning: The `xargs -i` flag is deprecated. (SC2267)
     79 |    xargs -i echo replaced < list
        |    ^~~~~
-note: Use `-I` with an explicit replacement string, as in `xargs -I{{}} cmd {{}}`.
+note: Use `-I` with an explicit replacement string, as in `xargs -I{} cmd {}`.
 83:3: warning: The `echo` output is counted by `wc` for a length the shell already knows. (SC2000)
     83 |    echo "$value" | wc -c
        |    ^~~~

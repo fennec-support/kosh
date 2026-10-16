@@ -703,6 +703,9 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (format_index >= ec.args().count()) return do_report_missing_format();
 
+  /* at this point: format_index is a valid index into args, and
+     store_variable holds an assignment target when -v was given. */
+
   let const &args          = ec.args();
   let const &fmt           = args[format_index];
   let const  operand_base  = format_index + 1;

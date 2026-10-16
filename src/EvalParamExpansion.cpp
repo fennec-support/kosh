@@ -10,7 +10,6 @@
  * expands the word that follows an operator.
  */
 
-#include "Builtin.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "Expressions.hpp"
@@ -21,7 +20,6 @@
 #include "base/Arena.hpp"
 #include "base/Common.hpp"
 #include "base/Debug.hpp"
-#include "base/Path.hpp"
 #include "base/Trace.hpp"
 
 namespace koshka {
@@ -61,6 +59,7 @@ compute_substring_bounds(i64               value_count,
     throw Error{"Unable to take the substring because the length ends at "
                 "a point before the offset"};
 
+  /* at this point: 0 <= start <= end <= value_count. */
   return substring_bounds{start, end};
 }
 
@@ -861,6 +860,8 @@ EvalContext::ModifierWordExpander::expand_field_reference(
     return false;
   }
 
+  /* at this point: name is a nonempty variable name followed by [@] or [*],
+     and rest is the text after that bracket. */
   let const is_star = inner[name_length + 1] == '*';
   let const rest    = inner.substring(name_length + 3);
   let const name    = inner.substring_of_length(0, name_length);
@@ -1092,26 +1093,12 @@ EvalContext::ModifierWordExpander::expand_backslash() throws -> void
       return;
     }
 
-    if (m_should_strip_escaped_literals && m_should_remove_quotes &&
-        !is_quoted())
-    {
-      emit_byte(next, false);
-      m_index++;
+    let const is_escaped_literal =
+        m_should_strip_escaped_literals && m_should_remove_quotes &&
+        (!is_quoted() || (m_is_outer_quoted && m_is_in_double_quote &&
+                          !m_context.runtime_state().is_posix_mode()));
 
-      return;
-    }
-
-    if (m_should_strip_escaped_literals && m_should_remove_quotes &&
-        m_is_outer_quoted && m_is_in_double_quote &&
-        !m_context.runtime_state().is_posix_mode())
-    {
-      emit_byte(next, false);
-      m_index++;
-
-      return;
-    }
-
-    if (next == '$' || next == '`' || next == '\\' ||
+    if (is_escaped_literal || next == '$' || next == '`' || next == '\\' ||
         (m_should_remove_quotes && next == '"') || (is_quoted() && next == '}'))
     {
       emit_byte(next, false);
@@ -2227,6 +2214,10 @@ EvalContext::ParameterExpander::expand_element_operator(
   let const after = is_colon && modifier.length > 1 ? modifier[1] : modifier_op;
   let const is_test_form = is_colon_modifier_operator(after);
 
+  if (is_colon && modifier.length == 1) {
+    raise_bare_colon(modifier);
+  }
+
   if (is_colon && !is_test_form) {
     let const substring_body     = modifier.substring(1);
     let       substring_location = SourceLocation{};
@@ -2708,12 +2699,13 @@ EvalContext::ParameterExpander::expand_bare_reference() throws -> String
 
   let value = m_context.get_variable_value(m_name);
 
-  if (!value.has_value()) m_context.report_unset_reference(m_name);
-  if (value.has_value()) {
-    return String{m_context.scratch_allocator(), value->view()};
+  if (!value.has_value()) {
+    m_context.report_unset_reference(m_name);
+
+    return String{m_context.scratch_allocator()};
   }
 
-  return String{m_context.scratch_allocator()};
+  return String{m_context.scratch_allocator(), value->view()};
 }
 
 fn
@@ -3151,6 +3143,10 @@ EvalContext::ParameterExpander::expand() throws -> String
   {
     raise_invalid_name_start();
   }
+
+  /* at this point: m_name is not empty and starts with a name start, a
+     digit, or a special parameter character, and m_rest holds the text after
+     m_name. */
 
   if (!m_rest.is_empty() && m_rest[0] == '[' && !m_name.is_empty() &&
       lexer::is_variable_name_start(m_name[0]))
@@ -3653,6 +3649,10 @@ get_last_tail_end(StringView value, StringView tail) wontthrow -> usize
   return last_end;
 }
 
+/* memory: none.
+   time:   up to value.length - start + 1 glob_matches() calls, one for each
+           end from first_end down to start. pattern_replace_value() calls
+           this at each character step of its scan. */
 alwaysinline static fn
 longest_pattern_match_at(StringView      pattern,
                          const Bitset   &pattern_active,
@@ -3841,11 +3841,11 @@ EvalContext::pattern_replace_value(
   }
 
   if (is_anchored_at_end) {
-    let const does_value_end_with_tail =
+    let const is_value_ending_with_tail =
         value.length >= affixes.tail.length &&
         value.substring(value.length - affixes.tail.length) == affixes.tail;
 
-    for (usize start = 0; does_value_end_with_tail && start <= value.length;
+    for (usize start = 0; is_value_ending_with_tail && start <= value.length;
          start++)
     {
       if (!value.substring(start).starts_with(affixes.head)) continue;

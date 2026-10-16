@@ -124,11 +124,13 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const should_strip_newline = FLAG_MAPFILE_TRIM.is_enabled();
   let const has_origin           = FLAG_MAPFILE_ORIGIN.is_set();
   let const has_callback         = FLAG_MAPFILE_CALLBACK.is_set();
-  let const delimiter            = FLAG_MAPFILE_DELIMITER.is_set()
-                                       ? (FLAG_MAPFILE_DELIMITER.value().is_empty()
-                                              ? '\0'
-                                              : FLAG_MAPFILE_DELIMITER.value()[0])
-                                       : '\n';
+  char      delimiter            = '\n';
+
+  if (FLAG_MAPFILE_DELIMITER.is_set()) {
+    let const value = FLAG_MAPFILE_DELIMITER.value();
+
+    delimiter = value.is_empty() ? '\0' : value[0];
+  }
 
   LOG(Debug, "mapfile reading lines into array '%.*s'",
       static_cast<int>(array_name.length), array_name.data);

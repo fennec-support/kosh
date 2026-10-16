@@ -189,8 +189,7 @@ JobTable::register_pipeline_job(const ArrayList<os::process> &processes,
   bool did_skip_primary = false;
 
   /* e.g. processes = [100, 101, 100], primary_process = 100
-          the first 100 is skipped, so earlier_pipeline_processes = [101,
-     100] */
+     the first 100 is skipped, so earlier_pipeline_processes = [101, 100] */
   for (let const process : processes) {
     if (!did_skip_primary && process == primary_process) {
       did_skip_primary = true;
@@ -427,6 +426,8 @@ JobTable::wait_for_job_processes(
     return job.stopped_status;
   }
 
+  /* at this point: job is not Done, and it is Stopped only when
+     should_wait_for_termination is set. */
   if constexpr (os::HAS_CHILD_STATE_CHANGE_WAIT) {
     loop {
       update_jobs();
@@ -574,6 +575,8 @@ JobTable::find_job_index_by_spec(StringView spec) throws -> Maybe<usize>
 
   if (body.is_empty()) return koshka::None;
 
+  /* at this point: m_jobs is not empty, and body is a non-empty pattern.
+     is_substring_match selects a substring match over a prefix match. */
   for (usize i = 0; i < m_jobs.count(); i++) {
     if (is_substring_match) {
       if (m_jobs[i].command.find_substring(body).has_value()) return i;

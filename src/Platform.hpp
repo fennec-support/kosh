@@ -2535,7 +2535,7 @@ mark_own_memory() wontthrow -> own_memory_mark;
 
 struct malloc_heap_stats
 {
-  usize bytes_in_use{0};
+  usize in_use_byte_count{0};
   usize arena_byte_count{0};
   usize mapped_byte_count{0};
 };

@@ -574,15 +574,15 @@ finish_exit_builtin(const ExecContext &ec,
 
   /* the status is masked to 8 bits because a process exit status keeps only
      the low 8 bits (exit(3)). */
-  if (cxt.in_subshell()) {
-    let const masked_status = status & 0xFF;
+  let const masked_status = status & 0xFF;
 
+  if (cxt.in_subshell()) {
     cxt.request_exit(masked_status, ec.source_location());
 
     return static_cast<i32>(masked_status);
   }
 
-  cxt.run_exit_trap(static_cast<i32>(status & 0xFF));
+  cxt.run_exit_trap(static_cast<i32>(masked_status));
   utils::quit(static_cast<i32>(status), utils::farewell_policy::Goodbye);
 }
 
@@ -1051,6 +1051,8 @@ abbreviate_home_directory(StringView path, Allocator allocator) throws
     }
   }
 
+  /* at this point: home is unset, or path is neither the home directory nor
+     below it. */
   return String{allocator, path};
 }
 
@@ -1084,6 +1086,8 @@ parse_directory_stack_rotation(StringView     arg,
         "Run `dirs -v` to see the numbered stack"};
   }
 
+  /* at this point: number < ring_count, so ring_count - 1 - number does not
+     underflow. */
   index_out = arg[0] == '+' ? number : ring_count - 1 - number;
 
   return true;
@@ -1111,6 +1115,8 @@ logical_working_directory(const EvalContext &cxt) throws -> Path
       return logical_directory;
   }
 
+  /* at this point: PWD is unset, empty, relative, or does not refer to
+     physical_directory, so physical_directory is the working directory. */
   return physical_directory;
 }
 

@@ -25,10 +25,7 @@ jinja_template_inner_name(StringView filename) wontthrow -> Maybe<StringView>
   static constexpr StringView SUFFIXES[] = {".j2", ".jinja2", ".jinja"};
 
   for (let const suffix : SUFFIXES) {
-    if (filename.length > suffix.length &&
-        parser_format_ascii_equal(
-            filename.substring(filename.length - suffix.length), suffix))
-    {
+    if (filename.length > suffix.length && has_suffix(filename, suffix)) {
       return filename.substring_of_length(0, filename.length - suffix.length);
     }
   }

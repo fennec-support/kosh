@@ -453,7 +453,7 @@ linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
         linux_unix_socket_field(line, 3), int_base::hex);
     let const type  = linux_unix_socket_field(line, 4);
     let const state = linux_unix_socket_field(line, 5);
-    let       path  = linux_unix_socket_field(line, 7);
+    let const path  = linux_unix_socket_field(line, 7);
 
     let const unix_type =
         type == "0002"
@@ -735,9 +735,9 @@ system_log_priority(StringView priority) wontthrow -> int
 fn
 write_system_log(const system_log_options &options) wontthrow -> bool
 {
-  let tag_text     = String{heap_allocator(), options.tag};
-  let message_text = String{heap_allocator(), options.message};
-  let log_options  = options.should_include_pid ? LOG_PID : 0;
+  let const tag_text     = String{heap_allocator(), options.tag};
+  let const message_text = String{heap_allocator(), options.message};
+  let       log_options  = options.should_include_pid ? LOG_PID : 0;
 
   if (options.should_copy_to_stderr) log_options |= LOG_PERROR;
   openlog(tag_text.is_empty() ? nullptr : tag_text.c_str(), log_options, 0);
@@ -955,9 +955,14 @@ redirect_stdout(os::descriptor target) wontthrow -> os::descriptor
 fn
 restore_stdout(os::descriptor saved) wontthrow -> void
 {
-  dup2(saved, STDOUT_FILENO);
+  if (saved == KOSH_INVALID_FD) {
+    close(STDOUT_FILENO);
+  } else {
+    dup2(saved, STDOUT_FILENO);
+    close(saved);
+  }
+
   note_descriptor_rebound();
-  close(saved);
 }
 
 constexpr int SHELL_BACKUP_FD_FLOOR = 10;
@@ -1103,7 +1108,9 @@ reopen_terminal_as_stdin() wontthrow -> bool
   let const was_replaced = dup2(tty_fd, STDIN_FILENO) != -1;
 
   note_descriptor_rebound();
-  close(tty_fd);
+
+  /* tty_fd is 0 when stdin was closed, so it must stay open. */
+  if (tty_fd != STDIN_FILENO) close(tty_fd);
 
   return was_replaced && isatty(STDIN_FILENO) == 1;
 }
@@ -1295,7 +1302,7 @@ fn
 default_network_interface(Allocator allocator) throws -> Maybe<String>
 {
 #if defined __linux__
-  let contents = Path{"/proc/net/route"}.read_entire_file();
+  let const contents = Path{"/proc/net/route"}.read_entire_file();
 
   if (!contents.has_value()) return None;
 
@@ -1706,6 +1713,7 @@ is_stderr_a_tty() wontthrow -> bool
 {
   return isatty(KOSH_STDERR);
 }
+
 fn
 is_fd_a_tty(descriptor fd) wontthrow -> bool
 {
@@ -2531,7 +2539,10 @@ apply_terminal_settings(descriptor               terminal,
     if (let const selected_character = TERMINAL_CONTROL_CHARACTERS.find(name);
         selected_character.has_value())
     {
-      if (is_disabled || ++index == settings.count()) {
+      if (is_disabled) {
+        return {terminal_settings_apply_kind::InvalidSetting, index};
+      }
+      if (++index == settings.count()) {
         return {terminal_settings_apply_kind::InvalidSetting, index - 1};
       }
 
@@ -3647,6 +3658,7 @@ query_path_configuration(StringView path, path_configuration_key key) wontthrow
 {
   if (key == path_configuration_key::Count)
     return {configuration_query_status::Undefined, 0};
+
   let const native_key = PATH_CONFIGURATION_KEYS[static_cast<usize>(key)];
 
   if (native_key < 0) return {configuration_query_status::Undefined, 0};

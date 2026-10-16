@@ -857,6 +857,8 @@ parser_format_host_replacement(const parser_format_fragment &fragment,
     return None;
   }
 
+  /* at this point: text views restored, and text has a newline only when
+     the host has one or the codec is indented. */
   return String{heap_allocator(), text};
 }
 
@@ -1524,6 +1526,8 @@ heredoc_delimiter_at(StringView line, usize &position) wontthrow
       continue;
     }
 
+    /* at this point: line[position] starts a variable name at word_start. */
+
     while (position < line.length && lexer::is_variable_name(line[position]))
       position++;
 
@@ -1561,9 +1565,7 @@ align_indented_heredoc_terminators(StringView source,
       let const content = line.trim_blanks();
       let const indent  = parser_format_leading_spaces(line);
 
-      if (content == pending[pending_index] && indent > 0 && line_start > 0 &&
-          parser_format_leading_spaces(line) + content.length <= line.length)
-      {
+      if (content == pending[pending_index] && indent > 0) {
         rewritten.append(source.substring_of_length(
             rewritten.length(), line_start - 1 - rewritten.length()));
         rewritten.append_repeated(' ', indent);
@@ -1790,6 +1792,7 @@ read_yaml_scalar(StringView        source,
 
   if (end <= value_position) return false;
 
+  /* at this point: value is a plain scalar, and item.start < item.end. */
   item = yaml_scalar_item{line_start + value_position, line_start + end};
 
   return true;
@@ -1824,9 +1827,7 @@ shebang_interpreter(StringView line) wontthrow -> interpreter_choice
 {
   let const choice = interpreter_of_value(parser_format_shebang_program(line));
 
-  if (choice.is_found) return choice;
-
-  return {true, None};
+  return {true, choice.mood};
 }
 
 static fn
@@ -1940,6 +1941,15 @@ collect_flow_sequence_items(StringView                   source,
         close++;
       }
 
+      while (byte == '\'' && close + 1 < line_end && source[close + 1] == '\'')
+      {
+        close += 2;
+
+        while (close < line_end && source[close] != byte) {
+          close++;
+        }
+      }
+
       if (close >= line_end) return;
       items.push(yaml_scalar_item{position + 1, close, byte});
       position = close + 1;
@@ -1994,6 +2004,8 @@ collect_yaml_value_items(StringView                   source,
 
   if (value_position < line.length && line[value_position] != '#') return;
 
+  /* at this point: value_position is at the end of line or at a '#'
+     comment, so any value items start on a following line. */
   usize item_indent = static_cast<usize>(-1);
 
   while (next_position < source.length) {
@@ -2324,6 +2336,8 @@ json_ascii_escape(StringView source, usize backslash, usize end) wontthrow
 {
   if (backslash + 6 > end || source[backslash + 1] != 'u') return None;
 
+  /* at this point: source[backslash + 1] is 'u', and the four bytes after it
+     lie before end. */
   u32 code = 0;
 
   for (usize at = backslash + 2; at < backslash + 6; at++) {
@@ -2398,10 +2412,7 @@ parser_format_add_json_fragment(parsed_format_document &document,
 
   masked.reserve(end);
 
-  let const literal_start = start < end ? start : end;
-
-  for (usize host_position = 0; host_position < literal_start; host_position++)
-  {
+  for (usize host_position = 0; host_position < start; host_position++) {
     let const byte = source[host_position];
 
     masked.push(byte == '\n' ? '\n' : ' ');
@@ -2412,9 +2423,7 @@ parser_format_add_json_fragment(parsed_format_document &document,
        the escape at position 1 gives run character '\n' and run_end = 3, so
        append_repeated() adds 3 - 1 - 1 = 1 space before it.
        -> masked = "a \nb" (4 bytes); shell_source = "a\nb" (3 bytes) */
-  for (usize host_position = literal_start; host_position < end;
-       host_position++)
-  {
+  for (usize host_position = start; host_position < end; host_position++) {
     let const byte = source[host_position];
 
     if (byte != '\\' || host_position + 1 >= end) {

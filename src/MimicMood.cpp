@@ -103,6 +103,8 @@ detect_mimic_shell_from_source(StringView source) throws
     }
   }
 
+  /* at this point: shell is the basename of the command word, or of the
+     word after env and its options. */
   static constexpr static_string_entry<mimic_mood> SHELL_ENTRIES[] = {
       {SSK("sh"),   mimic_mood::Posix  },
       {SSK("dash"), mimic_mood::Posix  },

@@ -411,7 +411,7 @@ ConditionalCommand::analyze(AnalysisContext &actx, bool is_unconditional) const 
                              element.word->source_location(), {operand.view()});
     }
 
-    if (element.word->kind() == Token::Kind::Word) {
+    if (token_kind == Token::Kind::Word) {
       let const &operand_word =
           static_cast<const tokens::WordToken *>(element.word)->word();
       let const shape = classify_test_operand(operand_word);
@@ -458,17 +458,10 @@ ConditionalCommand::analyze(AnalysisContext &actx, bool is_unconditional) const 
       }
     }
 
-    let is_binary_operand = false;
-
-    if (i > 0) {
-      is_binary_operand =
-          conditional_operator_view(m_elements[i - 1]).has_value();
-    }
-
-    if (!is_binary_operand && i + 1 < m_elements.count()) {
-      is_binary_operand =
-          conditional_operator_view(m_elements[i + 1]).has_value();
-    }
+    let const is_binary_operand =
+        (i > 0 && conditional_operator_view(m_elements[i - 1]).has_value()) ||
+        (i + 1 < m_elements.count() &&
+         conditional_operator_view(m_elements[i + 1]).has_value());
 
     if (!is_binary_operand && !conditional_operator_view(element).has_value() &&
         element.word->kind() == Token::Kind::Word)
@@ -1937,6 +1930,8 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
     }
   }
 
+  /* at this point: every redirection is applied, and saved_descriptors holds
+     the restore records for them in apply order. */
   discard_child_redirection_state(cxt, redirection_snapshot);
 
   if (m_child->as_subshell() != nullptr) {

@@ -193,9 +193,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
-  if (FLAG_READ_PROMPT.is_set() &&
-      os::is_fd_a_tty(ec.in_fd.value_or(KOSH_STDIN)))
-  {
+  if (FLAG_READ_PROMPT.is_set() && os::is_fd_a_tty(read_fd)) {
     koshka::print_error(FLAG_READ_PROMPT.value());
   }
 
@@ -268,9 +266,9 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let is_literal_byte = ArrayList<bool>{cxt.scratch_allocator()};
 
   if (has_byte_limit) {
-    i64 output_count = 0;
+    i64 output_byte_count = 0;
 
-    while (output_count < max_byte_count) {
+    while (output_byte_count < max_byte_count) {
       char      byte = 0;
       let const got  = do_read_byte(byte);
 
@@ -290,7 +288,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         line.push(escaped_byte);
         is_literal_byte.push(true);
-        output_count++;
+        output_byte_count++;
         continue;
       }
 
@@ -301,11 +299,11 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       line.push(byte);
       is_literal_byte.push(false);
-      output_count++;
+      output_byte_count++;
     }
 
-    if (output_count >= max_byte_count) was_newline_terminated = true;
-    was_read_successful = output_count > 0 || was_newline_terminated;
+    if (output_byte_count >= max_byte_count) was_newline_terminated = true;
+    was_read_successful = output_byte_count > 0 || was_newline_terminated;
   } else {
     let read_line_result = utils::read_line_from_fd(
         read_fd, delimiter, deadline_nanos, cxt.scratch_allocator());

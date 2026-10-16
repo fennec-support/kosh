@@ -186,6 +186,8 @@ BuiltinBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
     return 1;
   }
 
+  /* at this point: target holds the builtin kind of name, and name is not
+     disabled. */
   let forwarded           = ArrayList<String>{heap_allocator()};
   let forwarded_locations = ArrayList<SourceLocation>{heap_allocator()};
 
