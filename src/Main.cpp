@@ -1851,6 +1851,13 @@ finish_startup(EvalContext               &context,
                                toiletline::get_default_prompt_template());
   }
 
+  if (is_interactive && !context.get_variable_value("RPS1").has_value() &&
+      !context.get_variable_value("RPROMPT").has_value())
+  {
+    context.set_shell_variable("RPS1",
+                               toiletline::get_default_right_prompt_template());
+  }
+
   context.set_startup_finished();
 
   context.select_mood(context.runtime_control_store().was_mood_set_explicitly()

@@ -1214,6 +1214,12 @@ get_default_prompt_template() -> String
 }
 
 fn
+get_default_right_prompt_template() -> String
+{
+  return String{koshka::heap_allocator()};
+}
+
+fn
 build_prompt(koshka::EvalContext &context) -> String
 {
   unused(context);

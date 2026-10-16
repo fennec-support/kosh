@@ -33,6 +33,18 @@ static process_launch_counts PROCESS_LAUNCH_COUNTS{};
 
 static bool IS_TERMINAL_OWNER = true;
 
+static u64 COMMAND_PEAK_RSS_BYTES = 0;
+
+static fn
+note_reaped_child_usage(const struct rusage &usage) wontthrow -> void
+{
+  let const byte_count = platform_peak_rss_bytes(usage.ru_maxrss);
+
+  LOG(Debug, "a reaped child peaked at %llu resident bytes",
+      static_cast<unsigned long long>(byte_count));
+  if (byte_count > COMMAND_PEAK_RSS_BYTES) COMMAND_PEAK_RSS_BYTES = byte_count;
+}
+
 static inline fn
 note_fork_launch() wontthrow -> void
 {
@@ -1230,13 +1242,15 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 
   LOG(Debug, "waiting on process %lld", static_cast<long long>(pid));
 
-  i32       status{};
-  const int wait_flags = was_stopped != nullptr ? WUNTRACED : 0;
-  let const changed_pid =
-      retry_interrupted([&] { return waitpid(pid, &status, wait_flags); });
+  i32           status{};
+  struct rusage usage{};
+  const int     wait_flags  = was_stopped != nullptr ? WUNTRACED : 0;
+  let const     changed_pid = retry_interrupted(
+      [&] { return wait4(pid, &status, wait_flags, &usage); });
 
   check_syscall(changed_pid);
 
+  if (WIFEXITED(status) || WIFSIGNALED(status)) note_reaped_child_usage(usage);
   if (!WIFCONTINUED(status)) note_child_reaped();
 
   if (was_stopped != nullptr && WIFSTOPPED(status)) {
@@ -1301,10 +1315,12 @@ reap_process_quietly(process pid) throws -> i32
 
   LOG(Debug, "quietly reaping process %lld", static_cast<long long>(pid));
 
-  i32 status{};
+  i32           status{};
+  struct rusage usage{};
 
   loop {
-    const pid_t w = retry_interrupted([&] { return waitpid(pid, &status, 0); });
+    const pid_t w =
+        retry_interrupted([&] { return wait4(pid, &status, 0, &usage); });
 
     if (w == -1 && errno == ECHILD) {
       return 0;
@@ -1313,6 +1329,7 @@ reap_process_quietly(process pid) throws -> i32
     if (check_syscall(w) == pid) break;
   }
 
+  note_reaped_child_usage(usage);
   note_child_reaped();
 
   if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);
@@ -1326,9 +1343,11 @@ poll_process(process              p,
              i32                 &status_out,
              process_termination *termination_out) wontthrow -> process_state
 {
-  i32       status = 0;
-  let const result = retry_interrupted(
-      [&] { return waitpid(p, &status, WNOHANG | WUNTRACED | WCONTINUED); });
+  i32           status = 0;
+  struct rusage usage{};
+  let const     result = retry_interrupted([&] {
+    return wait4(p, &status, WNOHANG | WUNTRACED | WCONTINUED, &usage);
+  });
 
   if (result == 0) return process_state::Unchanged;
   if (result == -1) {
@@ -1346,6 +1365,7 @@ poll_process(process              p,
 
   if (WIFCONTINUED(status)) return process_state::Running;
 
+  note_reaped_child_usage(usage);
   note_child_reaped();
 
   if (WIFSIGNALED(status)) {
@@ -1921,13 +1941,12 @@ read_child_cpu_times() wontthrow -> child_cpu_times
 }
 
 fn
-children_peak_rss_bytes() wontthrow -> u64
+exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64
 {
-  struct rusage usage{};
+  let const byte_count   = COMMAND_PEAK_RSS_BYTES;
+  COMMAND_PEAK_RSS_BYTES = next_byte_count;
 
-  if (getrusage(RUSAGE_CHILDREN, &usage) != 0) return 0;
-
-  return platform_peak_rss_bytes(usage.ru_maxrss);
+  return byte_count;
 }
 
 namespace {
@@ -2160,6 +2179,7 @@ wait_for_measured_child(pid_t                   child_pid,
     status_out = -1;
 
   peak_rss_out = platform_peak_rss_bytes(usage.ru_maxrss);
+  note_reaped_child_usage(usage);
   if (resources != nullptr) fill_usage_from_rusage(usage, *resources);
 
   return true;

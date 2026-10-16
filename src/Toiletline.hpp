@@ -35,6 +35,9 @@ fn
 get_default_prompt_template() -> String;
 
 fn
+get_default_right_prompt_template() -> String;
+
+fn
 build_prompt(koshka::EvalContext &context) -> String;
 
 fn

@@ -2502,7 +2502,7 @@ fn
 read_child_cpu_times() wontthrow -> child_cpu_times;
 
 fn
-children_peak_rss_bytes() wontthrow -> u64;
+exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64;
 
 struct malloc_heap_stats
 {

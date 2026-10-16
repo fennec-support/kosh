@@ -800,6 +800,8 @@ evaluate_script(const script_run_input &input,
 
   let const command_start_nanos = koshka::os::monotonic_nanos();
 
+  unused(koshka::os::exchange_command_peak_rss_bytes(0));
+
   if (plan.should_stream_execution) {
     input.arena.release(preflight_mark);
 
@@ -858,6 +860,8 @@ evaluate_script(const script_run_input &input,
 
   context.execution_store().set_last_command_duration_nanos(
       koshka::os::monotonic_nanos() - command_start_nanos);
+  context.execution_store().set_last_command_peak_rss_bytes(
+      koshka::os::exchange_command_peak_rss_bytes(0));
   LOG(Debug, "the chunk finished with exit code %d", exit_code);
   if (koshka::os::SIGNAL_PENDING) context.run_pending_traps();
   report_escaped_control_flow(context, input.contents);

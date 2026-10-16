@@ -1377,6 +1377,18 @@ public:
   }
 
   fn
+  set_last_command_peak_rss_bytes(u64 byte_count) wontthrow
+  {
+    m_last_command_peak_rss_bytes = byte_count;
+  }
+
+  pure fn
+  last_command_peak_rss_bytes() const wontthrow -> u64
+  {
+    return m_last_command_peak_rss_bytes;
+  }
+
+  fn
   subshell_depth() wontthrow -> usize &
   {
     return m_subshell_depth;
@@ -1577,6 +1589,7 @@ private:
   Maybe<i64>          m_line_discard_status{};
   usize               m_line_discard_subshell_depth{0};
   u64                 m_last_command_duration_nanos{0};
+  u64                 m_last_command_peak_rss_bytes{0};
   usize               m_subshell_depth{0};
   usize               m_condition_depth{0};
   usize               m_loop_depth{0};

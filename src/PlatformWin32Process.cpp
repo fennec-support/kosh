@@ -3508,10 +3508,10 @@ read_child_cpu_times() wontthrow -> child_cpu_times
 }
 
 fn
-children_peak_rss_bytes() wontthrow -> u64
+exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64
 {
-  return static_cast<u64>(
-      InterlockedCompareExchange64(&CHILD_PEAK_RSS_BYTES, 0, 0));
+  return static_cast<u64>(InterlockedExchange64(
+      &CHILD_PEAK_RSS_BYTES, static_cast<LONG64>(next_byte_count)));
 }
 
 fn

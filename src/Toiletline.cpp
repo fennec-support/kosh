@@ -18,6 +18,7 @@
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "ExecContext.hpp"
+#include "Koshkit.hpp"
 #include "Platform.hpp"
 #include "ToiletlineHistory.hpp"
 #include "Utils.hpp"
@@ -3671,13 +3672,28 @@ expand_prompt_escapes(StringView   prompt,
     case '.': {
       const i32 status           = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
-      if (should_use_color && status != 0) {
-        out += colors::prompt_soft(colors::ansi::BOLD_BRIGHT_RED);
+      let       dot_sgr          = StringView{};
+
+      if (should_use_color) {
+        if (status == 0) {
+          if (colors::terminal_supports_256_color())
+            dot_sgr = StringView{"\x1b[38;5;231m"};
+        } else if (status == 1 || !colors::terminal_supports_true_color()) {
+          dot_sgr = colors::prompt_soft(colors::ansi::BOLD_BRIGHT_RED);
+        } else if (status < 64) {
+          dot_sgr = StringView{"\x1b[1;38;2;220;20;60m"};
+        } else if (status < 128) {
+          dot_sgr = StringView{"\x1b[1;38;2;230;10;110m"};
+        } else if (status < 192) {
+          dot_sgr = StringView{"\x1b[1;38;2;240;0;150m"};
+        } else {
+          dot_sgr = StringView{"\x1b[1;38;2;255;0;200m"};
+        }
       }
+
+      out += dot_sgr;
       out += "•";
-      if (should_use_color && status != 0) {
-        out += colors::ansi::RESET;
-      }
+      if (!dot_sgr.is_empty()) out += colors::ansi::RESET;
     } break;
 
     case 'j':
@@ -3690,6 +3706,16 @@ expand_prompt_escapes(StringView   prompt,
       out += format_prompt_duration(
           context.execution_store().last_command_duration_nanos());
       break;
+
+    case 'M': {
+      let const byte_count =
+          context.execution_store().last_command_peak_rss_bytes();
+
+      if (byte_count > 0) {
+        out += koshka::koshkit::format_human_size(byte_count,
+                                                  koshka::heap_allocator());
+      }
+    } break;
 
     case 'D': {
       if (i + 1 >= prompt.length || prompt[i + 1] != '{') {
@@ -3879,7 +3905,7 @@ get_default_prompt_template() -> String
 
   if (should_use_color) {
     template_string += R"(${KOSH_GIT_BRANCH:+)";
-    template_string += colors::prompt_soft(colors::ansi::CYAN);
+    template_string += colors::prompt_soft(colors::ansi::BLUE);
     template_string += R"($KOSH_GIT_BRANCH)";
     template_string += colors::ansi::RESET;
     template_string += R"(})";
@@ -3895,22 +3921,44 @@ get_default_prompt_template() -> String
     template_string += R"($KOSH_GIT_BEHIND)";
     template_string += colors::ansi::RESET;
     template_string += R"(})";
-    template_string += R"(${KOSH_GIT_BRANCH:+ at }\u@\k )";
+    template_string += R"(${KOSH_GIT_BRANCH:+ }\u@\k )";
     template_string += colors::prompt_soft(colors::ansi::GREEN);
     template_string += R"(\P)";
     template_string += colors::ansi::RESET;
   } else {
-    template_string += R"([${KOSH_GIT_BRANCH:+$KOSH_GIT_BRANCH})";
+    template_string += R"(${KOSH_GIT_BRANCH:+$KOSH_GIT_BRANCH})";
     template_string += R"(${KOSH_GIT_AHEAD:+ )";
     template_string += "\xe2\x86\x91";
     template_string += R"($KOSH_GIT_AHEAD})";
     template_string += R"(${KOSH_GIT_BEHIND:+ )";
     template_string += "\xe2\x86\x93";
     template_string += R"($KOSH_GIT_BEHIND})";
-    template_string += R"(${KOSH_GIT_BRANCH:+ at }\u@\h \P)";
+    template_string += R"(${KOSH_GIT_BRANCH:+ }\u@\h \P)";
   }
 
   template_string += R"( \. )";
+
+  return template_string;
+}
+
+fn
+get_default_right_prompt_template() -> String
+{
+  let template_string = String{koshka::heap_allocator()};
+
+  if (!colors::stdout_wants_color()) {
+    template_string += R"(\L \M)";
+
+    return template_string;
+  }
+
+  template_string += R"(\[)";
+  template_string += colors::terminal_supports_256_color()
+                         ? StringView{"\x1b[2;38;5;244m"}
+                         : colors::ansi::DIM;
+  template_string += R"(\]\L \M\[)";
+  template_string += colors::ansi::RESET;
+  template_string += R"(\])";
 
   return template_string;
 }

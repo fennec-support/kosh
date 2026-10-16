@@ -1713,7 +1713,8 @@ The command or pipeline is timed. The
 and
 .B \-\-posix
 options select the POSIX report. The default mood adds a processor busy row,
-and the peak resident set size when the platform supplies it. The
+and the peak resident set size when the platform supplies it. The peak is the
+largest among the processes the timed command started. The
 .B \-R
 option always adds the resident set row. Under the
 .B sh
@@ -3635,10 +3636,11 @@ nor $_ of a hook replaces them.
 These variables provide the pre-execution, primary, continuation, select, and
 xtrace prompts. PS0 defaults to empty. PS2 defaults to "> ". PS3 defaults to
 "#? ". PS4 defaults to "+ ". The first byte of PS4 is repeated once per
-enclosing subshell. The default PS1 shows the git branch, ahead and behind
-counts, user, host, and working directory, and it ends with a bullet.
+enclosing subshell. The default PS1 shows the git branch with its ahead and
+behind counts, then the user, host, and working directory, and it ends with a
+bullet.
 The shell expands the backslash escapes \\u,
-\\h, \\H, \\k, \\K, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\., \\t, \\T, \\@,
+\\h, \\H, \\k, \\K, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\M, \\., \\t, \\T, \\@,
 \\A, \\d, \\s, \\v, \\V, \\!, \\#, \\l, \\n, \\r, \\e, \\a, \\[, and \\].
 The \\k and \\K escapes insert the hostname as \\h and \\H do, colored when
 standard output is a color terminal. The \\s escape inserts the last component
@@ -3651,19 +3653,24 @@ The \\l escape inserts the last component of the terminal device of standard
 input, such as 3 for /dev/pts/3, and tty when standard input is not a terminal.
 The \\D{format} escape inserts the time formatted by strftime, as Bash does. The
 \\L escape inserts the duration of the last command, empty when it took under 5
-milliseconds. The escapes are decoded before parameters and substitutions
+milliseconds. The \\M escape inserts the largest peak resident memory among the
+processes the last command started, empty when it started none. The escapes are decoded before parameters and substitutions
 expand, so inserted text is never expanded.
 A raw 001 or 002 byte in PS0, PS1, RPS1, or PS1_TRANSIENT delimits an invisible
 region the way \\[ and \\] do.
-The \\. escape emits a bullet, plain when the last exit status is zero and
-bold red when it is not. The user, host, directory, branch, shell name, and
+The \\. escape emits a bullet colored by the last exit status. It is white
+after status 0 and bold red after status 1. On a truecolor terminal a higher
+status shifts the red toward magenta in four steps, and other terminals use
+bold red for it. The user, host, directory, branch, shell name, and
 version inserted by the escapes draw a control byte in caret notation, such as
 ^[ for escape, and a byte that is not UTF-8 as \\xHH. A directory path therefore
 cannot write escape sequences to the terminal.
 .TP
 .BR RPS1 ", " RPROMPT
 RPS1 is the right prompt drawn at the right edge of the first input row.
-RPROMPT is used when RPS1 is unset or empty. The value expands like PS1. See
+RPROMPT is used when RPS1 is unset or empty. The value expands like PS1. When
+an interactive shell starts with neither variable set, RPS1 defaults to a dim
+"\\L \\M", the duration and peak memory of the last command. See
 .BR "LINE EDITING" .
 .TP
 .B PS1_TRANSIENT
