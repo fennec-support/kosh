@@ -10,6 +10,7 @@ right-prompt-returns-at-full-width PASS
 transient-prompt-redraws-the-line PASS
 transient-prompt-redraws-an-interrupted-line PASS
 transient-right-prompt-replaces-the-right-prompt PASS
+empty-transient-right-prompt-keeps-the-right-prompt PASS
 transient-prompt-collapses-prompt-rows PASS
 narrow-prompt-continues-near-the-left-edge PASS
 prompt-directory-draws-control-bytes PASS

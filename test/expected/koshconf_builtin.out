@@ -79,7 +79,6 @@ editor.history.arrow_keys_search_by_typed_prefix=on
 editor.history.file_path=/history
 editor.history.max_entries=4096
 editor.request_extended_key_reports=on
-editor.transient_prompt_after_submit=off
 init_moods=
 interpreter.arithmetic_uses_big_numbers=on
 interpreter.mimic_shebang=off
@@ -128,8 +127,6 @@ editor.hints.show_live_diagnostics=on
 
 # Insert the closer after a typed bracket, brace, or quote.
 editor.auto_close_brackets_and_quotes=off
-# Redraw a submitted or interrupted line after KOSH_TRANSIENT_PS1.
-editor.transient_prompt_after_submit=off
 # Ask the terminal to report modified keys such as Ctrl-Shift-Z separately while
 # a line is read.
 editor.request_extended_key_reports=on
@@ -516,7 +513,7 @@ warning: Skipping an invalid value of 'editor.history.max_entries' in KOSHCONF.
 on
 4096
 == KOSHCONF carries the mood and interactive options to another shell:
-AQECAgEBAwEBBAEBBQEABgEABwEBCAEBCgI3NwsBAQwBAA0BARgBARkBARoBAUEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQGwAQEBsQEBAbIBAQA=
+AQECAgEBAwEBBAEBBQEABwEBCAEBCgI3NwsBAQwBAA0BARgBARkBARoBAUEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQGwAQEBsQEBAbIBAQA=
 bash
 external
 77

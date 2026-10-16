@@ -156,13 +156,13 @@ inline constexpr static_string_entry<shell_variable_description>
          {"The value is the right prompt when RPS1 is unset or empty.",
           shell_variable_fact::NotPosix}                                     },
         {SSK("KOSH_TRANSIENT_PS1"),
-         {"The value is the prompt a submitted line is redrawn with under the "
-          "transient-prompt option, and the default is \"$ \", or \"# \" for "
-          "root.",
+         {"A nonempty value is the prompt a submitted or interrupted line is "
+          "redrawn with, and an empty value leaves the line as it was drawn.",
           shell_variable_fact::NotPosix}                                     },
         {SSK("KOSH_TRANSIENT_RPS1"),
          {"A nonempty value is the right prompt a submitted or interrupted "
-          "line keeps, and an empty value erases the right prompt from it.",
+          "line keeps, and an empty value leaves the right prompt as it was "
+          "drawn. An interactive shell sets it to \\[\\] when it is unset.",
           shell_variable_fact::NotPosix}                                     },
         {SSK("PROMPT_COMMAND"),
          {"The command runs before each interactive prompt, and its status "

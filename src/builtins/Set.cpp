@@ -143,8 +143,6 @@ find_retired_option_replacement(StringView name, bool is_enabled) throws
       {SSK("show-stats"),              {"debug.print_evaluation_statistics", Koshconf}    },
       {SSK("space-after-completion"),
        {"completion.add_space_after_completed_word", Koshconf}                            },
-      {SSK("transient-prompt"),
-       {"editor.transient_prompt_after_submit", Koshconf}                                 },
   };
   static constexpr StaticStringMap RETIRED{RETIRED_ENTRIES};
 

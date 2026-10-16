@@ -131,7 +131,6 @@ enum class shell_option_id : u8
   InteractiveHints,
   InteractiveDiagnostics,
   AutoPair,
-  TransientPrompt,
   ExtendedKeys,
   SpaceAfterDirectoryCompletion,
   TabCompletion,

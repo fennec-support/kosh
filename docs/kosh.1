@@ -697,7 +697,7 @@ their
 .B +o
 forms, the
 .B \-o
-test, and SHELLOPTS keep the Bash behavior. The id 88 is retired.
+test, and SHELLOPTS keep the Bash behavior. The ids 6 and 88 are retired.
 .PP
 The Bash options hashall and nolog have no koshconf name.
 .B set
@@ -722,8 +722,6 @@ assoc_expand_once.
   4  editor.hints.show_live_diagnostics
        interactive
   5  editor.auto_close_brackets_and_quotes
-       interactive
-  6  editor.transient_prompt_after_submit
        interactive
   7  editor.request_extended_key_reports
        interactive
@@ -2912,19 +2910,17 @@ RPS1, or RPROMPT when RPS1 is unset or empty, is a right prompt. It is expanded
 with PS1 before each prompt and drawn right-aligned on the first input row. It
 is hidden when the row has no room for it or when its expansion holds a control
 character other than a color sequence. It is never part of the submitted line.
-On the line that Enter or Ctrl\-C leaves in the scrollback, the right prompt is
-replaced by the expansion of KOSH_TRANSIENT_RPS1, or erased when
-KOSH_TRANSIENT_RPS1 is unset or empty. The figures in that right prompt belong
-to the command that ran before the line beside it. When the window is resized,
-the terminal can wrap such a right prompt or move it away from the edge.
 .PP
-The
-.B koshconf set editor.transient_prompt_after_submit on
-command makes Enter redraw the submitted line, and Ctrl\-C the interrupted
-line before its ^C, after a short prompt. The prompt is the expansion of
-KOSH_TRANSIENT_PS1, or "$ " ("# " for root) when KOSH_TRANSIENT_PS1 is unset or
-empty.
-The option is off by default.
+A nonempty KOSH_TRANSIENT_PS1 makes Enter redraw the submitted line, and
+Ctrl\-C the interrupted line before its ^C, after its expansion instead of PS1.
+A nonempty KOSH_TRANSIENT_RPS1 replaces the right prompt on that line with its
+expansion. When either variable is unset or empty, its side of the line stays
+as it was drawn. An interactive shell that starts with KOSH_TRANSIENT_RPS1
+unset sets it to \\[\\], which expands to nothing, so the right prompt
+disappears from the line that stays in the scrollback. A right prompt left on
+that line shows the figures of the command that ran before the line beside it,
+and the terminal can wrap it or move it away from the edge when the window is
+resized.
 .PP
 Ghost text uses prefix matches from completion and history. Tab also offers
 smart-case and subsequence matches. An empty command position includes
@@ -3697,17 +3693,18 @@ See
 .BR "LINE EDITING" .
 .TP
 .B KOSH_TRANSIENT_PS1
-The value is the prompt shown after a line is submitted when the
-.B editor.transient_prompt_after_submit
-option is on. It expands like PS1. When it is unset or empty, the prompt is
-"$ ", or "# " for root. See
+A nonempty value expands like PS1 and replaces the prompt on a line that Enter
+submits or Ctrl\-C interrupts. For example, KOSH_TRANSIENT_PS1='\\$ ' leaves
+"$ ", or "# " for root, before each command in the scrollback. When it is unset
+or empty, the line keeps its prompt. See
 .BR "LINE EDITING" .
 .TP
 .B KOSH_TRANSIENT_RPS1
 A nonempty value expands like RPS1 and replaces the right prompt on a line that
-Enter submits or Ctrl\-C interrupts. When it is unset or empty, that line keeps
-no right prompt. For example, KOSH_TRANSIENT_RPS1='\\L' leaves the duration
-of each command beside the next line. See
+Enter submits or Ctrl\-C interrupts. When it is unset or empty, the line keeps
+its right prompt. An interactive shell that starts with it unset sets it to
+\\[\\], which erases the right prompt. For example, KOSH_TRANSIENT_RPS1='\\L'
+leaves the duration of each command beside the next line. See
 .BR "LINE EDITING" .
 .TP
 .B BASH_XTRACEFD

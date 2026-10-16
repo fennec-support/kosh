@@ -49,10 +49,11 @@ fn
 build_right_prompt(koshka::EvalContext &context) -> String;
 
 fn
-build_transient_prompt(koshka::EvalContext &context) -> String;
+build_transient_prompt(koshka::EvalContext &context) -> koshka::Maybe<String>;
 
 fn
-build_transient_right_prompt(koshka::EvalContext &context) -> String;
+build_transient_right_prompt(koshka::EvalContext &context)
+    -> koshka::Maybe<String>;
 
 fn
 expand_prompt_template(StringView prompt, koshka::EvalContext &context)
@@ -241,10 +242,10 @@ struct input_result
 fn
 get_input(const String &prompt) -> input_result;
 fn
-get_input(const String &prompt,
-          const String &right_prompt,
-          const String &transient_prompt,
-          const String &transient_right_prompt) -> input_result;
+get_input(const String                &prompt,
+          const String                &right_prompt,
+          const koshka::Maybe<String> &transient_prompt,
+          const koshka::Maybe<String> &transient_right_prompt) -> input_result;
 
 fn
 set_input(const String &input) -> void;

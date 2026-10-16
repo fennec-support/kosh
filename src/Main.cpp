@@ -1858,6 +1858,12 @@ finish_startup(EvalContext               &context,
                                toiletline::get_default_right_prompt_template());
   }
 
+  if (is_interactive &&
+      !context.get_variable_value("KOSH_TRANSIENT_RPS1").has_value())
+  {
+    context.set_shell_variable("KOSH_TRANSIENT_RPS1", "\\[\\]");
+  }
+
   context.set_startup_finished();
 
   context.select_mood(context.runtime_control_store().was_mood_set_explicitly()
@@ -2299,13 +2305,10 @@ struct interactive_session
     let const right_prompt = toiletline::build_right_prompt(context);
     let const transient_right_prompt =
         toiletline::build_transient_right_prompt(context);
-    let transient_prompt = String{heap_allocator()};
+    let transient_prompt = toiletline::build_transient_prompt(context);
 
-    if (context.runtime_state().option_is_enabled(
-            shell_option_id::TransientPrompt))
-    {
-      transient_prompt = toiletline::build_transient_prompt(context);
-      toiletline::append_prompt_end_mark(context, transient_prompt);
+    if (transient_prompt.has_value()) {
+      toiletline::append_prompt_end_mark(context, *transient_prompt);
     }
 
     enter_line_editor(context);
@@ -2343,14 +2346,14 @@ struct interactive_session
   }
 
   fn
-  read_accepted_line(EvalContext        &context,
-                     const command_line &line,
-                     const String       &prompt,
-                     const String       &right_prompt,
-                     const String       &transient_prompt,
-                     const String       &transient_right_prompt,
-                     i32                 exit_code,
-                     script_chunk       &chunk) throws -> void
+  read_accepted_line(EvalContext         &context,
+                     const command_line  &line,
+                     const String        &prompt,
+                     const String        &right_prompt,
+                     const Maybe<String> &transient_prompt,
+                     const Maybe<String> &transient_right_prompt,
+                     i32                  exit_code,
+                     script_chunk        &chunk) throws -> void
   {
     loop {
       let[code, input, accepted_history_event_number] = toiletline::get_input(

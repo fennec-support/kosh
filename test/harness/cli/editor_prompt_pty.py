@@ -8,19 +8,20 @@
 # edge of the first input row, leave when typed text comes within one column of
 # it and come back when the text shrinks, stay off the rows after the first,
 # leave a terminal too narrow for it, and stay out of the submitted command and
-# the scrollback. A nonempty KOSH_TRANSIENT_RPS1 takes its place on a submitted
-# line.
-# With the transient-prompt option, Enter must redraw the submitted line after
-# "$ ", "# " for root, or KOSH_TRANSIENT_PS1 with no right prompt, no hint row,
-# and no rows of a multi-row PS1, and Ctrl-C must redraw the interrupted line
-# the same way before its ^C. A prompt that leaves too few columns beside it
-# continues the input two columns from the left edge instead of in a narrow
-# strip under the prompt. A working directory spelled with control bytes
-# reaches the prompt through \w in caret notation and never as raw bytes. A
-# backslash that PS1 takes from a parameter stays literal, also when the
-# prompt is drawn again from its cached expansion. Raw 001 and 002 bytes
-# around escape sequences in PS1, RPS1, and KOSH_TRANSIENT_PS1 are not drawn
-# and take no columns, as the \[ and \] markers do. A job stopped by Ctrl-Z
+# the scrollback through the default KOSH_TRANSIENT_RPS1. Another nonempty
+# KOSH_TRANSIENT_RPS1 takes its place on a submitted line, and an empty one
+# leaves RPS1 there.
+# With a nonempty KOSH_TRANSIENT_PS1, Enter must redraw the submitted line
+# after its expansion with no hint row and no rows of a multi-row PS1, and
+# Ctrl-C must redraw the interrupted line the same way before its ^C. A prompt
+# that leaves too few columns beside it continues the input two columns from
+# the left edge instead of in a narrow strip under the prompt. A working
+# directory spelled with control bytes reaches the prompt through \w in caret
+# notation and never as raw bytes. A backslash that PS1 takes from a parameter
+# stays literal, also when the prompt is drawn again from its cached
+# expansion. Raw 001 and 002 bytes around escape sequences in PS1, RPS1, and
+# KOSH_TRANSIENT_PS1 are not drawn and take no columns, as the \[ and \]
+# markers do. A job stopped by Ctrl-Z
 # reports on its own row below the echoed ^Z, and Ctrl-C on a job that fg
 # resumed ends its row before the next prompt. A background job that a signal
 # ended reports the signal description at the next prompt.
@@ -133,10 +134,9 @@ def run_checks(binary, directory, command_directory, report):
         report.record("right-prompt-returns-at-full-width", session,
                       is_prompt_line(empty_prompt))
 
-        session.send(b"koshconf set editor.transient_prompt_after_submit on\r")
+        session.send(b"KOSH_TRANSIENT_PS1='\\$ '\r")
         session.wait_until(is_submitted(
-            [BULLET + " koshconf set editor.transient_prompt_after_submit on"],
-            empty_prompt))
+            [BULLET + " KOSH_TRANSIENT_PS1='\\$ '"], empty_prompt))
         session.send(b"echo three\r")
         report.record("transient-prompt-redraws-the-line", session,
                       is_submitted([SHORT_PROMPT + "echo three", "three"],
@@ -165,6 +165,16 @@ def run_checks(binary, directory, command_directory, report):
         session.wait_until(is_submitted(
             [(SHORT_PROMPT + "KOSH_TRANSIENT_RPS1=").ljust(
                 COLUMNS - len(transient_right)) + transient_right],
+            empty_prompt))
+        session.send(b"echo plain\r")
+        report.record("empty-transient-right-prompt-keeps-the-right-prompt",
+                      session,
+                      is_submitted([with_right_prompt(SHORT_PROMPT
+                                                      + "echo plain"),
+                                    "plain"], empty_prompt))
+        session.send(b"KOSH_TRANSIENT_RPS1='\\[\\]'\r")
+        session.wait_until(is_submitted(
+            [with_right_prompt(SHORT_PROMPT + "KOSH_TRANSIENT_RPS1='\\[\\]'")],
             empty_prompt))
 
         session.send(b"PS1=$'top\\n\\\\. '; KOSH_TRANSIENT_PS1='T> '\r")

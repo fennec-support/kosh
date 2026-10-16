@@ -345,16 +345,6 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      "Insert the closer after a typed bracket, brace, "
                      "or quote."},
          false),
-    flag(6,
-         "editor.transient_prompt_after_submit",
-         INTERACTIVE,
-         shell_option_id::TransientPrompt,
-         entry_shape{{},
-                     {},
-                     {},
-                     "Redraw a submitted or interrupted line after "
-                     "KOSH_TRANSIENT_PS1."},
-         false),
     flag(7,
          "editor.request_extended_key_reports",
          INTERACTIVE,
