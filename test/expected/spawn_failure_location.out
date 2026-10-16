@@ -14,9 +14,10 @@ pipeline=0 first=126
        |       ^~~~~~~~~
 rc=126
 == missing #! interpreter:
--c:1:1: error: The interpreter command `/no/such/kosh_interpreter` does not exist.
+-c:1:1: error: Unable to execute script with a broken shebang.
      1 |  ./badshebang; printf "rc=%s\n" "$?"
        |  ^~~~~~~~~~~~
+note: `/no/such/kosh_interpreter` does not exist.
 rc=127
 == script argument is a directory:
 1:9: error: Unable to execute `scriptdir` because the file is a directory.

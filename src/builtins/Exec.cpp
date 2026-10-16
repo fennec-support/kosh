@@ -45,9 +45,10 @@ report_exec_resolution_error(ExecContext   &ec,
                              EvalContext   &cxt,
                              SourceLocation location,
                              StringView     message,
-                             i32            command_status) throws -> i32
+                             i32            command_status,
+                             StringView     note = {}) throws -> i32
 {
-  let error = ErrorWithLocation{steal(location), message};
+  let error = ErrorWithLocationAndDetails{steal(location), message, note};
 
   error.set_command_status(command_status);
   show_message(error.to_string(cxt.source_store().current_source_view(), &cxt));
@@ -296,7 +297,8 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     os::replace_process(steal(command));
   } catch (const ErrorBase &error) {
     return report_exec_resolution_error(
-        ec, cxt, ec.arg_location_at(command_index), error.message(), 126);
+        ec, cxt, ec.arg_location_at(command_index), error.message(), 126,
+        error.detail_message());
   }
 
   command.in_fd.reset();

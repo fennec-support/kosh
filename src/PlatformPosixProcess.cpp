@@ -238,13 +238,11 @@ process_has_id(process p, i64 id) wontthrow -> bool
 }
 
 cold static fn
-describe_exec_failure(const Path &program_path, int exec_error) throws
-    -> String
+make_exec_failure_error(SourceLocation location,
+                        const Path    &program_path,
+                        int            exec_error) throws
+    -> ErrorWithLocationAndDetails
 {
-  errno = exec_error;
-
-  let message = "Unable to execute `" + program_path.text() + "`: ";
-
   if (exec_error == ENOENT) {
     let const descriptor = ::open(program_path.c_str(), O_RDONLY | O_CLOEXEC);
 
@@ -280,17 +278,22 @@ describe_exec_failure(const Path &program_path, int exec_error) throws
         {
           LOG(Debug, "the #! interpreter '%s' of '%s' is missing",
               interpreter.c_str(), program_path.c_str());
-          return "The interpreter command `" + interpreter.view() +
-                 "` does not exist";
+
+          return ErrorWithLocationAndDetails{
+              steal(location), "Unable to execute script with a broken shebang",
+              "`" + interpreter.view() + "` does not exist"};
         }
       }
     }
   }
 
   errno = exec_error;
-  message += last_system_error_message();
 
-  return message;
+  return ErrorWithLocationAndDetails{steal(location),
+                                     "Unable to execute `" +
+                                         program_path.text() +
+                                         "`: " + last_system_error_message(),
+                                     StringView{}};
 }
 
 cold fn
@@ -315,8 +318,8 @@ spawn_failure_child(SourceLocation     location,
       (void) setpgid(0, target_group);
     }
 
-    let error = ErrorWithLocation{
-        steal(location), describe_exec_failure(program_path, spawn_error)};
+    let error =
+        make_exec_failure_error(steal(location), program_path, spawn_error);
 
     koshka::show_message(error.to_string(source));
     koshka::flush();
@@ -1163,9 +1166,8 @@ replace_process(ExecContext &&ec) throws -> void
 
   if (exec_error == ENOEXEC) return;
 
-  let error = koshka::ErrorWithLocation{
-      ec.source_location(),
-      describe_exec_failure(ec.program_path(), exec_error)};
+  let error = make_exec_failure_error(ec.source_location(), ec.program_path(),
+                                      exec_error);
 
   error.set_command_status(exec_error == ENOENT ? 127 : 126);
   throw error;
