@@ -1950,42 +1950,61 @@ exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64
 }
 
 fn
-sample_own_memory() wontthrow -> own_memory_sample
+reset_own_peak_memory() wontthrow -> void
 {
-  own_memory_sample sample{};
+#if defined __APPLE__
+  if (::proc_reset_footprint_interval(getpid()) != 0)
+    LOG(Debug, "the footprint interval could not be reset");
+#elif defined __linux__
+  let const descriptor = ::open("/proc/self/clear_refs", O_WRONLY | O_CLOEXEC);
+
+  if (descriptor < 0) return;
+  if (::write(descriptor, "5", 1) != 1)
+    LOG(Debug, "the resident high-water mark could not be reset");
+  ::close(descriptor);
+#endif
+}
+
+fn
+read_own_peak_memory_bytes() wontthrow -> u64
+{
 #if defined __APPLE__
   rusage_info_v4 usage{};
 
   if (::proc_pid_rusage(getpid(), RUSAGE_INFO_V4,
-                        reinterpret_cast<rusage_info_t *>(&usage)) == 0)
+                        reinterpret_cast<rusage_info_t *>(&usage)) != 0)
   {
-    sample.resident_byte_count = usage.ri_phys_footprint;
-    sample.peak_byte_count     = usage.ri_lifetime_max_phys_footprint;
+    return 0;
   }
+
+  return usage.ri_interval_max_phys_footprint;
+#elif defined __linux__
+  char      buffer[4096];
+  let const length =
+      read_small_file("/proc/self/status", buffer, sizeof(buffer));
+  let const status     = StringView{buffer, length};
+  let const field_name = StringView{"VmHWM:"};
+  let const field      = status.find_substring(field_name);
+
+  if (!field.has_value()) return 0;
+
+  usize     position = *field + field_name.length;
+  let const word     = status.next_ascii_whitespace_word(position);
+  u64       kib      = 0;
+
+  for (let const digit : word) {
+    if (digit < '0' || digit > '9') break;
+    kib = kib * 10 + static_cast<u64>(digit - '0');
+  }
+
+  return kib * 1024;
 #else
   struct rusage usage{};
 
-  if (getrusage(RUSAGE_SELF, &usage) == 0)
-    sample.peak_byte_count = platform_peak_rss_bytes(usage.ru_maxrss);
-  sample.resident_byte_count = sample.peak_byte_count;
-#if defined __linux__
-  char      buffer[128];
-  let const length =
-      read_small_file("/proc/self/statm", buffer, sizeof(buffer));
+  if (getrusage(RUSAGE_SELF, &usage) != 0) return 0;
 
-  if (length > 0) {
-    if (let const resident =
-            nth_space_field(StringView{buffer, length}, 1).to<i64>();
-        !resident.is_error() && resident.value() >= 0)
-    {
-      sample.resident_byte_count = static_cast<u64>(resident.value()) *
-                                   static_cast<u64>(sysconf(_SC_PAGESIZE));
-    }
-  }
+  return platform_peak_rss_bytes(usage.ru_maxrss);
 #endif
-#endif
-
-  return sample;
 }
 
 namespace {

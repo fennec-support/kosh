@@ -3655,8 +3655,9 @@ The \\D{format} escape inserts the time formatted by strftime, as Bash does. The
 \\L escape inserts the duration of the last command, empty when it took under 5
 milliseconds. The \\M escape inserts the largest peak resident memory among the
 processes the last command started. When the command started no process, it
-inserts how much the shell itself grew while the command ran, and it is empty
-when the shell did not grow. The escapes are decoded before parameters and substitutions
+inserts the peak memory of the shell itself while the command ran. On Windows
+that peak cannot be reset, so the shell's working set at the end of the command
+is used. The escapes are decoded before parameters and substitutions
 expand, so inserted text is never expanded.
 A raw 001 or 002 byte in PS0, PS1, RPS1, or PS1_TRANSIENT delimits an invisible
 region the way \\[ and \\] do.
@@ -3672,7 +3673,9 @@ cannot write escape sequences to the terminal.
 RPS1 is the right prompt drawn at the right edge of the first input row.
 RPROMPT is used when RPS1 is unset or empty. The value expands like PS1. When
 an interactive shell starts with neither variable set, RPS1 defaults to a dim
-"\\L \\M", the duration and peak memory of the last command. See
+"\\L \\M", the duration and peak memory of the last command. Spaces at either
+end of the expanded right prompt are dropped, so an empty escape leaves no
+gap. See
 .BR "LINE EDITING" .
 .TP
 .B PS1_TRANSIENT

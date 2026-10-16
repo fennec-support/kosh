@@ -3515,22 +3515,22 @@ exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64
 }
 
 fn
-sample_own_memory() wontthrow -> own_memory_sample
+reset_own_peak_memory() wontthrow -> void
+{}
+
+fn
+read_own_peak_memory_bytes() wontthrow -> u64
 {
-  own_memory_sample       sample{};
   PROCESS_MEMORY_COUNTERS memory_counters{};
 
   memory_counters.cb = sizeof(memory_counters);
   if (GetProcessMemoryInfo(GetCurrentProcess(), &memory_counters,
-                           sizeof(memory_counters)) != FALSE)
+                           sizeof(memory_counters)) == FALSE)
   {
-    sample.resident_byte_count =
-        static_cast<u64>(memory_counters.WorkingSetSize);
-    sample.peak_byte_count =
-        static_cast<u64>(memory_counters.PeakWorkingSetSize);
+    return 0;
   }
 
-  return sample;
+  return static_cast<u64>(memory_counters.WorkingSetSize);
 }
 
 fn

@@ -4144,6 +4144,82 @@ render_prompt_variable(EvalContext &context,
           .view());
 }
 
+static fn
+trim_visible_prompt_spaces(StringView rendered) throws -> String
+{
+  let const do_escape_end = [&](usize position) -> usize {
+    if (rendered[position] != '\x1b' || position + 1 >= rendered.length)
+      return position;
+
+    let const introducer = rendered[position + 1];
+
+    position += 2;
+    if (introducer == '[') {
+      while (position < rendered.length &&
+             !(rendered[position] >= '\x40' && rendered[position] <= '\x7e'))
+      {
+        position++;
+      }
+
+      return position < rendered.length ? position + 1 : position;
+    }
+
+    if (introducer == ']') {
+      while (position < rendered.length && rendered[position] != '\a' &&
+             !(rendered[position] == '\x1b' && position + 1 < rendered.length &&
+               rendered[position + 1] == '\\'))
+      {
+        position++;
+      }
+
+      if (position >= rendered.length) return position;
+
+      return rendered[position] == '\a' ? position + 1 : position + 2;
+    }
+
+    return position;
+  };
+
+  usize first_text_position = rendered.length;
+  usize last_text_position  = 0;
+  usize i                   = 0;
+
+  while (i < rendered.length) {
+    if (let const escape_end = do_escape_end(i); escape_end != i) {
+      i = escape_end;
+      continue;
+    }
+
+    if (rendered[i] != ' ') {
+      if (first_text_position == rendered.length) first_text_position = i;
+      last_text_position = i;
+    }
+
+    i++;
+  }
+
+  let trimmed = String{koshka::heap_allocator()};
+
+  i = 0;
+  while (i < rendered.length) {
+    if (let const escape_end = do_escape_end(i); escape_end != i) {
+      trimmed.append(rendered.substring_of_length(i, escape_end - i));
+      i = escape_end;
+      continue;
+    }
+
+    let const is_outer_space =
+        rendered[i] == ' ' &&
+        (first_text_position == rendered.length || i < first_text_position ||
+         i > last_text_position);
+
+    if (!is_outer_space) trimmed.push(rendered[i]);
+    i++;
+  }
+
+  return trimmed;
+}
+
 fn
 build_right_prompt(EvalContext &context) -> String
 {
@@ -4151,7 +4227,8 @@ build_right_prompt(EvalContext &context) -> String
     Maybe<String> right_template = context.get_variable_value(name);
 
     if (right_template.has_value() && !right_template->is_empty()) {
-      return render_prompt_variable(context, name, right_template->view());
+      return trim_visible_prompt_spaces(
+          render_prompt_variable(context, name, right_template->view()).view());
     }
   }
 
