@@ -1456,7 +1456,8 @@ and
 options control output, direct execution, sample count, and the millisecond
 budget. With
 .BR \-\-extended ,
-each command also reports CPU time, CPU usage over wall time, off-CPU time, the
+each command also reports CPU time, CPU usage over wall time, waiting time
+(wall time minus user and system time) and its share of wall time, the
 system share of CPU time, context switches and their involuntary share, page
 faults, block operations, and read and write calls and bytes. Linux adds
 scheduler wait, time slices, CPU migrations, cancelled writes, and the branch,

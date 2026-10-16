@@ -156,7 +156,7 @@ read_cpu_usage(const measured &result) wontthrow -> Maybe<double>
 }
 
 fn
-read_off_cpu_nanos(const measured &result) wontthrow -> Maybe<double>
+read_waiting_nanos(const measured &result) wontthrow -> Maybe<double>
 {
   let const cpu_nanos = read_cpu_nanos(result);
 
@@ -165,6 +165,13 @@ read_off_cpu_nanos(const measured &result) wontthrow -> Maybe<double>
   let const wall_nanos = static_cast<double>(result.wall_nanos);
 
   return wall_nanos > *cpu_nanos ? wall_nanos - *cpu_nanos : 0.0;
+}
+
+fn
+read_waiting_share(const measured &result) wontthrow -> Maybe<double>
+{
+  return read_quotient(read_waiting_nanos(result),
+                       static_cast<double>(result.wall_nanos));
 }
 
 fn
@@ -222,7 +229,8 @@ constexpr bench_metric METRICS[] = {
     {"cpu usage", RATIO, read_cpu_usage, TREE, true},
     {"user time", NANOS, read_resource<&usage::user_nanos>, TREE, true},
     {"system time", NANOS, read_resource<&usage::system_nanos>, TREE, true},
-    {"off-cpu time", NANOS, read_off_cpu_nanos, TREE, true},
+    {"waiting time", NANOS, read_waiting_nanos, TREE, true},
+    {"waiting share", PERCENT, read_waiting_share, TREE, true},
     {"system share", PERCENT, read_system_share, TREE, true},
     {"scheduler wait", NANOS, read_resource<&usage::scheduler_wait_nanos>, PROCESS, true},
     {"max scheduler wait", NANOS, read_resource<&usage::max_scheduler_wait_nanos>, PROCESS, true},
@@ -271,31 +279,40 @@ constexpr bench_metric METRICS[] = {
 };
 /* clang-format on */
 
-constexpr usize METRIC_COUNT                = countof(METRICS);
-constexpr usize CPU_USAGE_METRIC            = 5;
-constexpr usize SYSCALLS_METRIC             = 33;
-constexpr usize BRANCH_MISSES_METRIC        = 4;
-constexpr usize BRANCHES_METRIC             = 26;
-constexpr usize CPU_CYCLES_METRIC           = 0;
-constexpr usize INSTRUCTIONS_METRIC         = 1;
-constexpr usize PROCESS_CYCLES_METRIC       = 20;
-constexpr usize PROCESS_INSTRUCTIONS_METRIC = 21;
+constexpr usize METRIC_COUNT = countof(METRICS);
+consteval fn
+metric_index(reader read) -> usize
+{
+  for (usize index = 0; index < countof(METRICS); index++)
+    if (METRICS[index].read == read) return index;
 
-static_assert(METRICS[CPU_USAGE_METRIC].read == read_cpu_usage);
-static_assert(METRICS[BRANCH_MISSES_METRIC].read ==
-              read_perf<&os::perf_counts::branch_misses>);
-static_assert(METRICS[BRANCHES_METRIC].read ==
-              read_resource<&usage::branch_count>);
-static_assert(METRICS[SYSCALLS_METRIC].read ==
-              read_resource<&usage::syscall_count>);
-static_assert(METRICS[CPU_CYCLES_METRIC].read ==
-              read_perf<&os::perf_counts::cpu_cycles>);
-static_assert(METRICS[INSTRUCTIONS_METRIC].read ==
-              read_perf<&os::perf_counts::instructions>);
-static_assert(METRICS[PROCESS_CYCLES_METRIC].read ==
-              read_resource<&usage::cpu_cycle_count>);
-static_assert(METRICS[PROCESS_INSTRUCTIONS_METRIC].read ==
-              read_resource<&usage::instruction_count>);
+  return countof(METRICS);
+}
+
+constexpr usize CPU_USAGE_METRIC = metric_index(read_cpu_usage);
+constexpr usize SYSCALLS_METRIC =
+    metric_index(read_resource<&usage::syscall_count>);
+constexpr usize BRANCH_MISSES_METRIC =
+    metric_index(read_perf<&os::perf_counts::branch_misses>);
+constexpr usize BRANCHES_METRIC =
+    metric_index(read_resource<&usage::branch_count>);
+constexpr usize CPU_CYCLES_METRIC =
+    metric_index(read_perf<&os::perf_counts::cpu_cycles>);
+constexpr usize INSTRUCTIONS_METRIC =
+    metric_index(read_perf<&os::perf_counts::instructions>);
+constexpr usize PROCESS_CYCLES_METRIC =
+    metric_index(read_resource<&usage::cpu_cycle_count>);
+constexpr usize PROCESS_INSTRUCTIONS_METRIC =
+    metric_index(read_resource<&usage::instruction_count>);
+
+static_assert(CPU_USAGE_METRIC < countof(METRICS) &&
+              SYSCALLS_METRIC < countof(METRICS) &&
+              BRANCH_MISSES_METRIC < countof(METRICS) &&
+              BRANCHES_METRIC < countof(METRICS) &&
+              CPU_CYCLES_METRIC < countof(METRICS) &&
+              INSTRUCTIONS_METRIC < countof(METRICS) &&
+              PROCESS_CYCLES_METRIC < countof(METRICS) &&
+              PROCESS_INSTRUCTIONS_METRIC < countof(METRICS));
 
 struct bench_sample
 {

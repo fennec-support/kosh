@@ -90,7 +90,7 @@ if [ "$(uname -s)" = Linux ]; then
 fi
 echo "counter fallback passed"
 echo "== --extended adds resource rows and the default output omits them:"
-extended_labels='cpu usage|user time|system time|scheduler wait|time slices|cycles|instructions|wakeups|energy|page-ins|peak commit|storage read|storage written|voluntary switches|involuntary switches|minor faults|major faults|page faults|block input|block output|read calls|write calls|bytes read|bytes written|other io calls'
+extended_labels='cpu usage|user time|system time|waiting time|waiting share|scheduler wait|time slices|cycles|instructions|wakeups|energy|page-ins|peak commit|storage read|storage written|voluntary switches|involuntary switches|minor faults|major faults|page faults|block input|block output|read calls|write calls|bytes read|bytes written|other io calls'
 plain_output=$("$BIN" -c 'bench --runs 2 --no-shell "$BENCH_ECHO plain"' 2>&1)
 plain_extended_count=$(printf '%s\n' "$plain_output" |
     grep -E "^  ($extended_labels)( \*)?  " | grep -Evc '^  instructions( \*)?  ')
@@ -100,7 +100,7 @@ extended_output=$("$BIN" -c \
 extended_labels_found=$(printf '%s\n' "$extended_output" |
     sed -n '/^  cpu usage  /,$p' | grep -E "^  ($extended_labels)( \*)?  " | sed 's/^  //; s/  .*//; s/ \*$//' | tr '\n' ',')
 case "$extended_labels_found" in
-    cpu\ usage,user\ time,system\ time,*) ;;
+    cpu\ usage,user\ time,system\ time,waiting\ time,waiting\ share,*) ;;
     *) echo "missing extended rows: $extended_labels_found"; exit 1 ;;
 esac
 case "$(uname -s)" in
