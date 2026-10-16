@@ -4,6 +4,7 @@ set -e
 # so it is highlighted as a resolved command.
 tab=$(printf '\t')
 root=$(mktemp -d)
+root=$(cd "$root" && pwd)
 trap 'test -n "$root" && rm -rf "$root"' EXIT
 mkdir -p "$root/subdir"
 cd "$root"

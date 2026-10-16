@@ -2296,8 +2296,10 @@ struct interactive_session
 
     toiletline::append_prompt_end_mark(context, prompt);
 
-    let const right_prompt     = toiletline::build_right_prompt(context);
-    let       transient_prompt = String{heap_allocator()};
+    let const right_prompt = toiletline::build_right_prompt(context);
+    let const transient_right_prompt =
+        toiletline::build_transient_right_prompt(context);
+    let transient_prompt = String{heap_allocator()};
 
     if (context.runtime_state().option_is_enabled(
             shell_option_id::TransientPrompt))
@@ -2309,7 +2311,7 @@ struct interactive_session
     enter_line_editor(context);
     configure_line_editor(context);
     read_accepted_line(context, line, prompt, right_prompt, transient_prompt,
-                       exit_code, chunk);
+                       transient_right_prompt, exit_code, chunk);
 
     LOG(Info, "accepted an interactive line of %zu bytes",
         chunk.contents.count());
@@ -2346,12 +2348,13 @@ struct interactive_session
                      const String       &prompt,
                      const String       &right_prompt,
                      const String       &transient_prompt,
+                     const String       &transient_right_prompt,
                      i32                 exit_code,
                      script_chunk       &chunk) throws -> void
   {
     loop {
-      let[code, input, accepted_history_event_number] =
-          toiletline::get_input(prompt, right_prompt, transient_prompt);
+      let[code, input, accepted_history_event_number] = toiletline::get_input(
+          prompt, right_prompt, transient_prompt, transient_right_prompt);
 
       switch (code) {
       case TL_PRESSED_TAB: toiletline::set_input(input); continue;

@@ -179,6 +179,6 @@ arithmetic_dollar_sign() {
 
 RPS1='\e[2m<R>'
 RPROMPT='\033[2m<R>'
-PS1_TRANSIENT='\x1b[1m> '
+KOSH_TRANSIENT_PS1='\x1b[1m> '
 RPS1='\[\e[2m\]<R>'
 PS2='\e[1m> '

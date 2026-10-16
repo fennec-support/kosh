@@ -1157,10 +1157,12 @@ get_input(const String &prompt) -> input_result
 fn
 get_input(const String &prompt,
           const String &right_prompt,
-          const String &transient_prompt) -> input_result
+          const String &transient_prompt,
+          const String &transient_right_prompt) -> input_result
 {
   unused(right_prompt);
   unused(transient_prompt);
+  unused(transient_right_prompt);
 
   return get_input(prompt);
 }
@@ -1247,6 +1249,14 @@ build_right_prompt(koshka::EvalContext &context) -> String
 
 fn
 build_transient_prompt(koshka::EvalContext &context) -> String
+{
+  unused(context);
+
+  return String{koshka::heap_allocator()};
+}
+
+fn
+build_transient_right_prompt(koshka::EvalContext &context) -> String
 {
   unused(context);
 

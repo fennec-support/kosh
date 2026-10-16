@@ -716,7 +716,6 @@ constexpr PackedStringKey SHELL_MAINTAINED_VARIABLE_KEYS[] = {
     SSK("POSIXLY_CORRECT"),
     SSK("PROMPT_COMMAND"),
     SSK("PS1"),
-    SSK("PS1_TRANSIENT"),
     SSK("PS2"),
     SSK("PS3"),
     SSK("PS4"),
@@ -753,6 +752,8 @@ is_shell_maintained_variable(StringView name) wontthrow -> bool
       SSK("KOSH_HISTORY_SIZE"),
       SSK("KOSH_OS"),
       SSK("KOSH_SHELL_INTEGRATION"),
+      SSK("KOSH_TRANSIENT_PS1"),
+      SSK("KOSH_TRANSIENT_RPS1"),
       SSK("KOSH_VERSION"),
       SSK("KOSH_WELCOME"),
   };

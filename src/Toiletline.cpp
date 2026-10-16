@@ -3066,12 +3066,16 @@ exit(usize history_size_limit) -> void
 fn
 get_input(const String &prompt,
           const String &right_prompt,
-          const String &transient_prompt) -> input_result
+          const String &transient_prompt,
+          const String &transient_right_prompt) -> input_result
 {
   ::tl_set_right_prompt(right_prompt.is_empty() ? nullptr
                                                 : right_prompt.c_str());
   ::tl_set_transient_prompt(
       transient_prompt.is_empty() ? nullptr : transient_prompt.c_str());
+  ::tl_set_transient_right_prompt(transient_right_prompt.is_empty()
+                                      ? nullptr
+                                      : transient_right_prompt.c_str());
 
   let completion_base_directory = koshka::Maybe<Path>{};
   let completion_storage =
@@ -3115,6 +3119,7 @@ get_input(const String &prompt,
 
   ::tl_set_right_prompt(nullptr);
   ::tl_set_transient_prompt(nullptr);
+  ::tl_set_transient_right_prompt(nullptr);
   if (history_path.has_value() &&
       ::itl_g_history_total_count != previous_history_total_count)
   {
@@ -3146,7 +3151,7 @@ get_input(const String &prompt) -> input_result
 {
   let const no_prompt = String{koshka::heap_allocator()};
 
-  return get_input(prompt, no_prompt, no_prompt);
+  return get_input(prompt, no_prompt, no_prompt, no_prompt);
 }
 
 fn
@@ -4241,15 +4246,31 @@ fn
 build_transient_prompt(EvalContext &context) -> String
 {
   Maybe<String> transient_template =
-      context.get_variable_value("PS1_TRANSIENT");
+      context.get_variable_value("KOSH_TRANSIENT_PS1");
 
   if (transient_template.has_value() && !transient_template->is_empty()) {
-    return render_prompt_variable(context, "PS1_TRANSIENT",
+    return render_prompt_variable(context, "KOSH_TRANSIENT_PS1",
                                   transient_template->view());
   }
 
   return finish_prompt_dropping_width_markers(
       decode_prompt("\\$ ", context, false).view());
+}
+
+fn
+build_transient_right_prompt(EvalContext &context) -> String
+{
+  Maybe<String> right_template =
+      context.get_variable_value("KOSH_TRANSIENT_RPS1");
+
+  if (right_template.has_value() && !right_template->is_empty()) {
+    return trim_visible_prompt_spaces(
+        render_prompt_variable(context, "KOSH_TRANSIENT_RPS1",
+                               right_template->view())
+            .view());
+  }
+
+  return String{koshka::heap_allocator()};
 }
 
 fn

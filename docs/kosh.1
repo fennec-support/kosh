@@ -2911,14 +2911,19 @@ PROMPT_COMMAND or PS1 can replace the idle title.
 RPS1, or RPROMPT when RPS1 is unset or empty, is a right prompt. It is expanded
 with PS1 before each prompt and drawn right-aligned on the first input row. It
 is hidden when the row has no room for it or when its expansion holds a control
-character other than a color sequence. It is never part of the submitted line,
-and Enter and Ctrl\-C erase it from the line that stays in the scrollback.
+character other than a color sequence. It is never part of the submitted line.
+On the line that Enter or Ctrl\-C leaves in the scrollback, the right prompt is
+replaced by the expansion of KOSH_TRANSIENT_RPS1, or erased when
+KOSH_TRANSIENT_RPS1 is unset or empty. The figures in that right prompt belong
+to the command that ran before the line beside it. When the window is resized,
+the terminal can wrap such a right prompt or move it away from the edge.
 .PP
 The
 .B koshconf set editor.transient_prompt_after_submit on
 command makes Enter redraw the submitted line, and Ctrl\-C the interrupted
 line before its ^C, after a short prompt. The prompt is the expansion of
-PS1_TRANSIENT, or "$ " ("# " for root) when PS1_TRANSIENT is unset or empty.
+KOSH_TRANSIENT_PS1, or "$ " ("# " for root) when KOSH_TRANSIENT_PS1 is unset or
+empty.
 The option is off by default.
 .PP
 Ghost text uses prefix matches from completion and history. Tab also offers
@@ -3668,8 +3673,8 @@ descendants, or the growth of the shell's own memory during the command when
 that is larger. The escape is empty after a command that only reuses memory the
 shell already holds. The escapes are decoded before parameters and substitutions
 expand, so inserted text is never expanded.
-A raw 001 or 002 byte in PS0, PS1, RPS1, or PS1_TRANSIENT delimits an invisible
-region the way \\[ and \\] do.
+A raw 001 or 002 byte in PS0, PS1, RPS1, KOSH_TRANSIENT_PS1, or
+KOSH_TRANSIENT_RPS1 delimits an invisible region the way \\[ and \\] do.
 The \\. escape emits a bullet colored by the last exit status. It is white
 after status 0 and bold red after status 1. On a truecolor terminal a higher
 status shifts the red toward magenta in four steps, and other terminals use
@@ -3687,11 +3692,18 @@ end of the expanded right prompt are dropped, so an empty escape leaves no gap.
 See
 .BR "LINE EDITING" .
 .TP
-.B PS1_TRANSIENT
+.B KOSH_TRANSIENT_PS1
 The value is the prompt shown after a line is submitted when the
 .B editor.transient_prompt_after_submit
 option is on. It expands like PS1. When it is unset or empty, the prompt is
 "$ ", or "# " for root. See
+.BR "LINE EDITING" .
+.TP
+.B KOSH_TRANSIENT_RPS1
+A nonempty value expands like RPS1 and replaces the right prompt on a line that
+Enter submits or Ctrl\-C interrupts. When it is unset or empty, that line keeps
+no right prompt. For example, KOSH_TRANSIENT_RPS1='\\L' leaves the duration
+of each command beside the next line. See
 .BR "LINE EDITING" .
 .TP
 .B BASH_XTRACEFD

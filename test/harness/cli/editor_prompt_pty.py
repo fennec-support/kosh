@@ -8,18 +8,19 @@
 # edge of the first input row, leave when typed text comes within one column of
 # it and come back when the text shrinks, stay off the rows after the first,
 # leave a terminal too narrow for it, and stay out of the submitted command and
-# the scrollback.
+# the scrollback. A nonempty KOSH_TRANSIENT_RPS1 takes its place on a submitted
+# line.
 # With the transient-prompt option, Enter must redraw the submitted line after
-# "$ ", "# " for root, or PS1_TRANSIENT with no right prompt, no hint row, and
-# no rows of a multi-row PS1, and Ctrl-C must redraw the interrupted line the
-# same way before its ^C. A prompt that leaves too few columns beside it
+# "$ ", "# " for root, or KOSH_TRANSIENT_PS1 with no right prompt, no hint row,
+# and no rows of a multi-row PS1, and Ctrl-C must redraw the interrupted line
+# the same way before its ^C. A prompt that leaves too few columns beside it
 # continues the input two columns from the left edge instead of in a narrow
 # strip under the prompt. A working directory spelled with control bytes
 # reaches the prompt through \w in caret notation and never as raw bytes. A
 # backslash that PS1 takes from a parameter stays literal, also when the
 # prompt is drawn again from its cached expansion. Raw 001 and 002 bytes
-# around escape sequences in PS1, RPS1, and PS1_TRANSIENT are not drawn and
-# take no columns, as the \[ and \] markers do. A job stopped by Ctrl-Z
+# around escape sequences in PS1, RPS1, and KOSH_TRANSIENT_PS1 are not drawn
+# and take no columns, as the \[ and \] markers do. A job stopped by Ctrl-Z
 # reports on its own row below the echoed ^Z, and Ctrl-C on a job that fg
 # resumed ends its row before the next prompt. A background job that a signal
 # ended reports the signal description at the next prompt.
@@ -148,7 +149,25 @@ def run_checks(binary, directory, command_directory, report):
                       is_submitted([SHORT_PROMPT + "echo dropped^C"],
                                    empty_prompt))
 
-        session.send(b"PS1=$'top\\n\\\\. '; PS1_TRANSIENT='T> '\r")
+        transient_right = "<T>"
+        session.send(b"KOSH_TRANSIENT_RPS1='" + transient_right.encode()
+                     + b"'\r")
+        session.wait_until(is_submitted(
+            [SHORT_PROMPT + "KOSH_TRANSIENT_RPS1='" + transient_right + "'"],
+            empty_prompt))
+        session.send(b"echo kept\r")
+        report.record("transient-right-prompt-replaces-the-right-prompt",
+                      session,
+                      is_submitted([(SHORT_PROMPT + "echo kept").ljust(
+                          COLUMNS - len(transient_right)) + transient_right,
+                          "kept"], empty_prompt))
+        session.send(b"KOSH_TRANSIENT_RPS1=\r")
+        session.wait_until(is_submitted(
+            [(SHORT_PROMPT + "KOSH_TRANSIENT_RPS1=").ljust(
+                COLUMNS - len(transient_right)) + transient_right],
+            empty_prompt))
+
+        session.send(b"PS1=$'top\\n\\\\. '; KOSH_TRANSIENT_PS1='T> '\r")
         session.wait_until(lambda screen: is_prompt_line(empty_prompt)(screen)
                            and is_prompt_line("top", -1)(screen))
         session.send(b"echo four" + ALT_ENTER + b"echo five\r")
@@ -194,7 +213,7 @@ def run_checks(binary, directory, command_directory, report):
         mark = len(session.raw)
         session.send(b"PS1=$'\\001\\e[1m\\002p\\001\\e[0m\\002 \\\\. ';"
                      b" RPS1=$'\\001\\e[2m\\002<R>\\001\\e[0m\\002';"
-                     b" PS1_TRANSIENT=$'\\001\\e[1m\\002M> '\r")
+                     b" KOSH_TRANSIENT_PS1=$'\\001\\e[1m\\002M> '\r")
         report.record("prompt-markers-take-no-columns", session,
                       is_prompt_line(marked_prompt))
         session.send(b"true\r")

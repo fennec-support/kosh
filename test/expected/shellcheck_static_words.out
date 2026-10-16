@@ -539,8 +539,8 @@ note: Wrap nonprinting prompt escapes in `\[` and `\]`.
        |  ^~~~~~~~~~~~~~~~~~~~
 note: Wrap nonprinting prompt escapes in `\[` and `\]`.
 182:1: warning: The prompt value holds a control escape without a `\[` and `\]` guard pair. (SC2025)
-   182 |  PS1_TRANSIENT='\x1b[1m> '
-       |  ^~~~~~~~~~~~~~~~~~~~~~~~~
+   182 |  KOSH_TRANSIENT_PS1='\x1b[1m> '
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Wrap nonprinting prompt escapes in `\[` and `\]`.
 Encountered 132 warnings.
 done

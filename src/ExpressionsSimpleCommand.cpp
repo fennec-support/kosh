@@ -152,8 +152,9 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
       view_contains(raw_assignment.view(), StringView{"\\["}) &&
       view_contains(raw_assignment.view(), StringView{"\\]"});
   constexpr PackedStringKey GUARDED_PROMPT_KEYS[] = {
+      SSK("KOSH_TRANSIENT_PS1"),
+      SSK("KOSH_TRANSIENT_RPS1"),
       SSK("PS1"),
-      SSK("PS1_TRANSIENT"),
       SSK("RPROMPT"),
       SSK("RPS1"),
   };

@@ -353,7 +353,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      {},
                      {},
                      "Redraw a submitted or interrupted line after "
-                     "PS1_TRANSIENT and without RPS1."},
+                     "KOSH_TRANSIENT_PS1."},
          false),
     flag(7,
          "editor.request_extended_key_reports",
