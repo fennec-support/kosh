@@ -14,6 +14,9 @@ after
 condition-body 1
 condition-body 2
 end-condition-break
-34:27: error: Builtin `continue`: Unable to continue because '0' is not a valid loop count.
+34:27: error: Builtin `continue`: continue count '0' is out of range.
+    34 |  for i in 1 2; do continue 0; echo unreached; done
+       |                            ^
+34:27: error: Builtin `continue`: continue count '0' is out of range.
     34 |  for i in 1 2; do continue 0; echo unreached; done
        |                            ^

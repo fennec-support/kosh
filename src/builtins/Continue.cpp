@@ -72,14 +72,23 @@ Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (level < 1) {
-    if (!cxt.runtime_state().is_bash_compatible()) {
+    if (cxt.runtime_state().is_posix_mode()) {
       let error =
           make_error_for_arg(ec, 1,
                              "Unable to continue because '" + ec.args()[1] +
                                  "' is not a valid loop count");
 
-      if (cxt.runtime_state().is_posix_mode()) error.set_command_status(2);
+      error.set_command_status(2);
       throw error;
+    }
+
+    if (!cxt.runtime_state().is_bash_compatible()) {
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
+                                "continue count '" + ec.args()[1] +
+                                    "' is out of range");
+      cxt.request_continue(1, ec.source_location());
+
+      return 1;
     }
 
     LOG(All, "continue abandoning every enclosing loop for a count below one");
