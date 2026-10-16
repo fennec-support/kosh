@@ -3922,11 +3922,7 @@ get_default_prompt_template() -> String
     template_string += R"($KOSH_GIT_BEHIND)";
     template_string += colors::ansi::RESET;
     template_string += R"(})";
-    template_string += R"(${KOSH_GIT_BRANCH:+ )";
-    template_string += colors::ansi::DIM;
-    template_string += "at";
-    template_string += colors::ansi::RESET;
-    template_string += R"( }\u@\k )";
+    template_string += R"(${KOSH_GIT_BRANCH:+ at }\u@\k )";
     template_string += colors::prompt_soft(colors::ansi::GREEN);
     template_string += R"(\P)";
     template_string += colors::ansi::RESET;

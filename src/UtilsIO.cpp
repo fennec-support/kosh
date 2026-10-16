@@ -588,6 +588,19 @@ git_upstream_ref(const Path &git_dir, StringView branch_name) throws
   return result;
 }
 
+struct git_count_cache
+{
+  char  local_sha[64]{};
+  char  upstream_sha[64]{};
+  usize local_sha_length{0};
+  usize upstream_sha_length{0};
+  i32   ahead_count{0};
+  i32   behind_count{0};
+  bool  is_valid{false};
+};
+
+static git_count_cache GIT_COUNT_CACHE{};
+
 fn
 git_status(StringView ceiling_directories, Allocator allocator) throws
     -> git_status_result
@@ -643,6 +656,24 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
 
   if (local_sha == upstream_sha) return result;
 
+  let const do_is_cached_pair = [&] {
+    return GIT_COUNT_CACHE.is_valid &&
+           StringView{GIT_COUNT_CACHE.local_sha,
+                      GIT_COUNT_CACHE.local_sha_length} == local_sha.view() &&
+           StringView{GIT_COUNT_CACHE.upstream_sha,
+                      GIT_COUNT_CACHE.upstream_sha_length} ==
+               upstream_sha.view();
+  };
+
+  if (do_is_cached_pair()) {
+    LOG(Debug, "reusing the cached ahead and behind counts for %s",
+        local_sha.c_str());
+    result.ahead_count  = GIT_COUNT_CACHE.ahead_count;
+    result.behind_count = GIT_COUNT_CACHE.behind_count;
+
+    return result;
+  }
+
   let const path_env = os::get_environment_variable("PATH");
 
   if (!path_env.has_value()) return result;
@@ -686,6 +717,21 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
           count_output->view().substring_of_length(0, *separator));
       result.behind_count =
           do_parse_count(count_output->view().substring(*separator + 1));
+
+      if (local_sha.count() <= sizeof(GIT_COUNT_CACHE.local_sha) &&
+          upstream_sha.count() <= sizeof(GIT_COUNT_CACHE.upstream_sha))
+      {
+        LOG(Debug, "caching the ahead and behind counts for %s",
+            local_sha.c_str());
+        memcpy(GIT_COUNT_CACHE.local_sha, local_sha.data(), local_sha.count());
+        GIT_COUNT_CACHE.local_sha_length = local_sha.count();
+        memcpy(GIT_COUNT_CACHE.upstream_sha, upstream_sha.data(),
+               upstream_sha.count());
+        GIT_COUNT_CACHE.upstream_sha_length = upstream_sha.count();
+        GIT_COUNT_CACHE.ahead_count         = result.ahead_count;
+        GIT_COUNT_CACHE.behind_count        = result.behind_count;
+        GIT_COUNT_CACHE.is_valid            = true;
+      }
     }
   }
 
