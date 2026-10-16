@@ -5,8 +5,6 @@
  * This file implements the dirs builtin, which prints the directory stack: the
  * current directory first, then the saved directories from the top down. A +N
  * operand selects the Nth entry from the top, and -N selects from the bottom.
- * The builtin owns selection so it shares path abbreviation and numbering with
- * pushd and popd output.
  */
 
 #include "../Builtin.hpp"

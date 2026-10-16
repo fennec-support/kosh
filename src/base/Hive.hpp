@@ -3,8 +3,8 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the hive, a container whose elements never move. It
- * stores elements in fixed blocks and reuses erased slots through a free
- * list, so a pointer to an element stays valid until that element is erased.
+ * stores elements in fixed blocks, so a pointer to an element stays valid
+ * until that element is erased.
  */
 
 #pragma once

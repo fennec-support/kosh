@@ -95,7 +95,6 @@ file_entry_type_of_mode(u32 mode) wontthrow -> file_entry_type;
 fn
 file_entry_color(file_entry_type type) wontthrow -> StringView;
 
-/* Each theme uses the pastel colors of soft. */
 fn
 noninteractive_highlight_theme() wontthrow -> const highlight_theme &;
 fn

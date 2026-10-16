@@ -4,9 +4,7 @@
  *
  * This file defines the per-command execution context, which carries
  * arguments, source locations, descriptors, and command metadata into builtins
- * and koshkit utilities, apart from the long-lived EvalContext state. It has
- * its own header because the descriptor routing template needs the complete
- * definition at its call sites.
+ * and koshkit utilities, apart from the long-lived EvalContext state.
  */
 
 #pragma once

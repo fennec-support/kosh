@@ -132,7 +132,7 @@ shopt_flag(u16          id,
                     is_on_in_bash);
 }
 
-/* A Bash shopt option that Koshka accepts and never reads. Its only koshconf
+/* A Bash shopt option that Koshka accepts and ignores. Its only koshconf
    name is the bash.legacy. spelling. */
 consteval fn
 ignored_shopt_flag(u16          id,

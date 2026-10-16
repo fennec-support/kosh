@@ -3,8 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file defines private environment keys used to bootstrap evaluator
- * state and Windows pipe transport. It centralizes narrow and wide
- * spellings so internal protocol keys cannot diverge between process paths.
+ * state and Windows pipe transport, in narrow and wide spellings.
  */
 
 #pragma once

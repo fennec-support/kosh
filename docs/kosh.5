@@ -34,8 +34,7 @@ mood sources none unless init_moods selects some. See STARTUP MOODS.
 The system settings file, loaded first. It is loaded only when no other user
 could have written it. On POSIX, the file and its directory must be owned by
 root and must not be writable by their group or by others. On Windows, the
-ProgramData directory comes from the system's known folder and not from an
-environment variable. The file and its
+ProgramData directory is the system's known folder. The file and its
 .I kosh
 directory must be owned by SYSTEM, Administrators, or TrustedInstaller, and
 no access control entry may let another account modify them, change their
@@ -119,8 +118,8 @@ lists them.
 .PP
 .B A semantic option in a file changes every shell that loads it,
 .B scripts included.
-Put such a setting in a file only when every script should use it. Otherwise
-set it for a session with
+Put such a setting in a file only when every script should use it. Set it
+for a session with
 .BR set ,
 .BR shopt ,
 or
@@ -218,9 +217,8 @@ or through a KOSHCONF variable in its environment.
 prints the current form.
 .B koshconf save \-\-persist
 writes the settings that differ from the defaults of the current mood to the
-user settings file instead. A setting that matches those defaults is left out,
-so it follows the defaults of a mood chosen later. A line in the file whose
-option this version does not recognize is kept at the end of the new file.
+user settings file. A line in that file whose option this version does not
+recognize is kept at the end of the new file.
 A starting shell applies the variable after the settings files and removes it
 from the environment before any command runs:
 .PP
@@ -238,10 +236,9 @@ a varint holding the value's position in its list. A string is its UTF-8 bytes.
 The ids are listed by
 .BR kosh (1)
 and never change meaning. Only the mood and the interactive options are
-written. An interactive option affects only the interactive editor, the
-history, or the presentation of diagnostics, and never how a script runs. A
-child shell loads the settings files itself, so semantic options never pass
-through the environment.
+written. An interactive option affects only the editor, the history, or the
+presentation of diagnostics. Semantic options never pass through the
+environment; a child shell loads the settings files itself.
 .PP
 A shell that loads a blob skips a record with an unknown id, an option the
 blob never carries, or a value a settings file would reject, and reports a

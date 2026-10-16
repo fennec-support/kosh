@@ -3,9 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file defines the history constants and the atomic history file
- * replacement shared by both editor configurations. It stays apart from
- * Toiletline.hpp because Toiletline.cpp defines the vendored editor
- * configuration macros itself and cannot include that header.
+ * replacement shared by both editor configurations.
  */
 
 #pragma once

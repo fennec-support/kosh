@@ -3,9 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements a shared value that clones itself on the first write.
- * Copying the holder increments the reader count, so a snapshot of a value
- * that rarely changes allocates only when one copy changes it. An empty holder
- * allocates its value on the first assignment.
+ * A copy of the holder shares the value until one copy changes it.
  */
 
 #pragma once

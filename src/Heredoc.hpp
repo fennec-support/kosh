@@ -3,8 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file declares pending heredoc state and the test for its terminating
- * line. The lexer, highlighter, and completion scanner share them, so every
- * reader of shell source recognizes the same terminating line.
+ * line. The lexer, highlighter, and completion scanner share them.
  */
 
 #pragma once

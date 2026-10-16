@@ -1207,7 +1207,7 @@ fn
 crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32;
 
 /* Returns the finished CRC-32C of the file content, or None when the file
-   cannot be read. A POSIX build maps a regular file instead of copying it. */
+   cannot be read. */
 fn
 crc32c_of_file(StringView path) throws -> Maybe<u32>;
 

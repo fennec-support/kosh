@@ -3294,14 +3294,11 @@ append_prompt_data(String    &out,
                    StringView data,
                    bool       should_quote) throws -> void;
 
-/* The hostname is drawn as a gradual gradient. The checksum of the full
-   hostname picks the starting hue and the direction, and the hue drifts by 6
-   degrees per letter and at most 40 degrees across the name, so a host keeps
-   its colors in every session. A truecolor terminal draws each letter in its
-   exact color, and a 256-color terminal draws the nearest color of the color
-   cube. Another terminal moves between two neighbors among seven colors
-   ordered by hue that exclude the status reds and greens, and the step never
-   wraps from the last color to the first. */
+/* The checksum of the full hostname picks the starting hue and the direction
+   of the gradient, so a host keeps its colors in every session. A truecolor
+   terminal draws the exact colors, a 256-color terminal the nearest color of
+   the color cube, and another terminal seven colors ordered by hue that
+   exclude the status reds and greens. */
 static fn
 append_colored_hostname(String    &out,
                         StringView host,

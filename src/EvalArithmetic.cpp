@@ -605,7 +605,7 @@ public:
   {
     Lvalue target = read_lvalue();
 
-    /* Bash reads '++' and '--' before a non-variable operand as two unary
+    /* Bash treats '++' and '--' before a non-variable operand as two unary
        signs, which leave the operand unchanged. */
     if (target.name.is_empty() && pos < source.length) {
       return parse_unary();

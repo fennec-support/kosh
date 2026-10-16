@@ -3,8 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the bind builtin, which accepts readline key bindings
- * but has no effect. The line editor is the vendored toiletline, so key binding
- * is not wired through this builtin.
+ * but has no effect.
  */
 
 #include "../Builtin.hpp"

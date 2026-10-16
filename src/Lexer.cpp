@@ -28,8 +28,7 @@ namespace lexer {
 
 static constexpr char CEOF = static_cast<char>(EOF);
 
-/* The message lives in its own frame, and the recursive lexing frames stay
-   small enough for the substitution nesting limit. */
+/* The message is built in its own frame to keep the recursive frames small. */
 cold wontreturn static fn
 throw_substitution_too_deep(const SourceLocation &location,
                             StringView            kind) throws -> void

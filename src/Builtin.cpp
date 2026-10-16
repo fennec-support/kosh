@@ -340,8 +340,7 @@ report_soft_builtin_error(const ExecContext &ec,
   show_message(Note{note}.to_string());
 }
 
-/* A located diagnostic is drawn against the current source. Without one, the
-   caller prints the plain message. */
+/* Without a located diagnostic, the caller prints the plain message. */
 static fn
 show_with_current_source(EvalContext             &cxt,
                          const ErrorWithLocation &located) throws
@@ -445,8 +444,7 @@ report_usage_error(const ExecContext &ec,
                    EvalContext       &cxt,
                    StringView         program_name) throws -> i32
 {
-  /* A bundled utility runs through the koshkit builtin. A multicall run uses
-     the bare name, as a separate program does. */
+  /* A multicall run uses the bare utility name. */
   let context = String{heap_allocator(), program_name};
 
   if (!ec.is_multicall && ec.is_builtin()) {

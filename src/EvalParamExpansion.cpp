@@ -4,8 +4,8 @@
  *
  * This file implements parameter expansion operators for default values,
  * assignments, errors, lengths, substrings, trimming, replacement, quoting, and
- * case changes. The operators apply to scalar and array values and stay outside
- * the word-expansion coordinator. ParameterExpander holds one ${...} expansion
+ * case changes. The operators apply to scalar and array values.
+ * ParameterExpander holds one ${...} expansion
  * and dispatches to operator families, and ModifierWordExpander scans and
  * expands the word that follows an operator.
  */

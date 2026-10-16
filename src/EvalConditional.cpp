@@ -94,7 +94,6 @@ struct conditional_evaluator
     return String{heap_allocator()};
   }
 
-  /* A bare unquoted operand is one literal segment, so its text is borrowed. */
   fn
   bare_operand_view(const conditional_element &e) const wontthrow
       -> Maybe<StringView>

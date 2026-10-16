@@ -4,9 +4,8 @@
  *
  * This file implements UTF-8 validation, length, position, terminal display
  * width conversion, history record encoding, and atomic history file
- * replacement for the interactive editor and noninteractive stubs. Both builds
- * share it so they use the same text measurement and history format without
- * initializing terminal state. is_history_contents_valid must agree with the
+ * replacement for the interactive editor and noninteractive stubs.
+ * is_history_contents_valid must agree with the
  * rejection rules of the vendored itl_string_from_bytes in
  * src/toiletline/toiletline.h.
  */

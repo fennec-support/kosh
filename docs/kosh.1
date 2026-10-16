@@ -94,7 +94,7 @@ or
 .B rbash
 selects the
 .B bash
-mood. The name
+mood. The basename
 .B rbash
 also requests restricted mode. A dash at the start of argument zero or the
 .B \-l
@@ -197,7 +197,7 @@ and
 .B \-o posix
 acts as
 .BR \-\-posix .
-An unknown name exits with status 2.
+An unknown option exits with status 2.
 .TP
 .BR +a ", " +C ", " +e ", " +f ", " +n ", " +p ", " +t ", " +u ", " +v ", " +x
 The letter's option is turned off, as with
@@ -229,7 +229,7 @@ as with
 and
 .B shopt \-u
 .IR NAME ,
-and overrides the settings files. An unknown name exits with status 2.
+and overrides the settings files. An unknown option exits with status 2.
 .TP
 .BR \-r ", " \-\-restricted
 The shell becomes restricted after the startup files finish.
@@ -266,7 +266,7 @@ mood. An explicit
 .BR \-\-mood ,
 .BR \-\-dumb ,
 .BR \-\-posix ,
-or a shell invocation name such as sh or bash takes precedence over the shebang.
+or an invocation basename such as sh or bash takes precedence over the shebang.
 The shebang is not used for
 .BR \-c ,
 standard input, or
@@ -322,7 +322,7 @@ Shell source is formatted without being run. Structural keywords and compound
 braces are placed on separate lines. Each nested level uses two spaces. Direct
 .B test
 commands become bracket commands unless an earlier alias or function shadows
-the name. Code is wrapped at 80 columns when a safe token boundary exists.
+them. Code is wrapped at 80 columns when a safe token boundary exists.
 Output uses LF line endings. With no file or a lone
 .B \-
 operand, standard input is formatted.
@@ -625,7 +625,7 @@ and the
 test share one registry. Each option has a numeric id, a koshconf name, a type,
 a class, and, when it has them, a Bash spelling and a letter. An interactive
 option affects only the editor, the history, or the presentation of
-diagnostics, so a script runs the same under every value. Every other option is
+diagnostics. Every other option is
 semantic and can change what a script does or writes.
 .PP
 A koshconf name starts with its topic. The topics are
@@ -697,13 +697,13 @@ their
 .B +o
 forms, the
 .B \-o
-test, and SHELLOPTS keep the Bash behavior. The id 88 is retired.
+test, and SHELLOPTS keep the Bash behavior.
 .PP
 The Bash options hashall and nolog have no koshconf name.
 .B set
 and
 .B \-o
-accept both for Bash scripts that query them. The ids 68 and 86 are retired.
+accept both for Bash scripts that query them.
 .PP
 The shopt options with a bash.legacy prefix in the table are accepted and never
 change behavior, so Bash startup files that set them run unchanged. Koshka
@@ -933,26 +933,6 @@ are the settings for
 .BR \-\-no\-syntax\-highlighting ,
 and
 .BR \-\-no\-traces .
-.SS Migration
-.B set \-\-mood
-is
-.B set \-M
-or
-.BR "koshconf set mood" ,
-.B set \-\-init\-moods
-is
-.BR "set \-L" ,
-and
-.B set \-\-tab\-selector
-is
-.BR "koshconf set completion.menu_style" .
-Each Koshka
-.B set \-o
-option of earlier releases is a koshconf option.
-.B set \-o koshkit
-is
-.BR "koshconf set interpreter.resolve_koshkit_applets_as_commands on" .
-Hyphenated spellings such as no-unset are not accepted.
 .SH STARTUP FILES
 Every shell applies the configuration files before any shell startup file.
 These are /etc/kosh.conf (%ProgramData%\kosh\kosh.conf on Windows), then
@@ -1385,7 +1365,7 @@ A function has its own positional parameters and local variables. FUNCNAME,
 BASH_SOURCE, BASH_LINENO, and BASH_COMMAND expose the call stack.
 .PP
 A function called from a guarded and-or operand or a negation inherits that
-condition, so
+condition, and
 .B errexit
 stays suppressed throughout its body.
 .PP
@@ -1469,9 +1449,8 @@ macOS adds cycles, instructions, wakeups, energy, page-ins, and storage bytes
 for the measured process. Linux adds scheduler wait, time slices, and storage
 bytes, and Windows adds cycles, peak commit, and other IO calls. A row that
 covers one process is shown only with
-.BR \-\-no\-shell ,
-because through the shell it would count only the wrapping shell. A note lists
-the hidden rows. A row the platform cannot report is omitted.
+.BR \-\-no\-shell .
+A note lists the hidden rows. A row the platform cannot report is omitted.
 .TP
 .BI "koshconf create " "PRESET " "\fR[\fB\-\-force\fR]"
 .PD 0
@@ -1578,7 +1557,7 @@ the entry below it. Neither changes the current directory.
 With no option and no operand, the shell variables are printed as sorted
 assignments. A minus enables an option, and a plus disables it. The forms
 .BR "set \-o NAME" " and " "set +o NAME"
-select the option by its Bash name, and only Bash spellings are accepted. The
+select the option by its Bash spelling, and only Bash spellings are accepted. The
 OPTION REGISTRY section lists them. With no NAME,
 .B set \-o
 prints current states and
@@ -1725,13 +1704,13 @@ descendants. The
 .B \-R
 option always adds the resident set row. Under the
 .B sh
-mood the name is not a keyword and is resolved on the command search path.
+mood time is not a keyword and is resolved on the command search path.
 .TP
 .B "enable [\-a] [\-d] [\-n] [\-p] [\-s] [\-f filename] [name ...]"
 Each operand is enabled, or disabled with
 .BR \-n .
 An operand can be a builtin or a bundled utility. Each builtin word is a
-separate entry, so disabling
+separate entry, and disabling
 .B test
 leaves
 .B [
@@ -1767,10 +1746,10 @@ Resolved command locations are remembered or listed. The
 .B \-r
 option clears the cache. The
 .BI "\-p " path
-option records path as the location of each name, and a restricted shell
+option records path as the location of each command, and a restricted shell
 rejects it. The
 .B \-t
-option prints the remembered location of each name and fails for a name with no
+option prints the remembered location of each command and fails for a command with no
 remembered location.
 .TP
 .B "history [\-cnrwaps] [\-d selector] [operand]"
@@ -1840,7 +1819,7 @@ zero inside a function or sourced file. A numeric operand selects a call frame
 and prints its line number and source file.
 .TP
 .B help
-Without a pattern, builtins are printed one per line. A builtin name
+Without a pattern, builtins are printed one per line. A builtin operand
 renders the same help as its
 .B \-\-help
 flag. The
@@ -1875,7 +1854,7 @@ read-only assignment by
 .BR \-r ,
 uppercase conversion by
 .BR \-u ,
-and an exported name by
+and an exported variable by
 .BR \-x .
 The plus forms remove the integer and case-conversion attributes.
 The
@@ -1890,17 +1869,17 @@ option prints the matching declarations. Without operands, the
 option or an attribute option lists every variable carrying the requested
 attributes. The
 .B \-n
-option makes the name a reference to the variable selected by its value, which
+option makes the variable a reference to the variable selected by its value, which
 may carry an array subscript. An expansion, an assignment, an append, an
 export, and an unset of the reference act on that variable, and a chain of
 references is followed. ${!name} gives the name reached by the reference, and
 .B "unset \-n"
 removes the reference itself. The conditional [[ \-R name ]] is true for a
-reference with a value. A reference with no value binds to the name given by
+reference with a value. A reference with no value binds to the variable given by
 its first assignment. A reference to itself is an error at the top level, and a
 circular chain counts as unset with a warning and fails an assignment. A write
 through a reference applies the read-only, restricted, integer, and case rules
-of the target. A read-only name, PATH, IFS, and a dynamic variable other than
+of the target. A read-only variable, PATH, IFS, and a dynamic variable other than
 RANDOM and SECONDS cannot become a reference. The
 .B +n
 form removes the reference and keeps its value. The
@@ -1910,7 +1889,7 @@ and
 options are accepted without effect.
 .TP
 .B local
-The name is local to the running function. The
+The variable is local to the running function. The
 .BR \-a ,
 .BR \-A ,
 .BR \-i ,
@@ -1920,7 +1899,7 @@ The name is local to the running function. The
 .BR \-u ,
 and
 .B \-x
-attributes act as for declare, so
+attributes act as for declare, and
 .B "local \-n"
 passes a caller's variable by reference. A
 .B \-
@@ -1935,9 +1914,9 @@ option lists the read-only variables in a reusable form. The
 .B \-a
 and
 .B \-A
-options treat each name as an indexed or associative array. The
+options treat each operand as an indexed or associative array. The
 .B \-f
-option marks each given function read-only, so it cannot be redefined or
+option marks each given function read-only, and it cannot be redefined or
 unset. A bare
 .B \-f
 lists each read-only function with its body.
@@ -1967,8 +1946,7 @@ The
 .B \-v
 option assigns the formatted result to a variable.
 In every mood the numeric locale is taken from the first nonempty value of
-LC_ALL, LC_NUMERIC, and LANG as the shell holds them at each call, so
-assignments apply without an export. Floating operands are parsed and printed
+LC_ALL, LC_NUMERIC, and LANG as the shell holds them at each call. Floating operands are parsed and printed
 with the decimal point of that locale. The
 .B \(aq
 flag groups the digits of integer and floating conversions with the thousands
@@ -1989,7 +1967,7 @@ The
 option sets the maximum byte count. The
 .B \-N
 option takes exactly that many bytes, ignores the delimiter, and stores them
-unsplit in the first name. The
+unsplit in the first variable. The
 .B \-t
 option limits the wait in seconds. The
 .B \-p
@@ -2074,9 +2052,9 @@ keeps the candidates in the order the spec generated them.
 inserts no space after an accepted candidate.
 An empty result falls through to the next completion source. An unknown
 .B \-o
-option name or
+option or
 .B \-A
-action name is an error with status 2, and nothing is registered.
+action is an error with status 2, and nothing is registered.
 .IP
 With
 .B progcomp_alias
@@ -2229,8 +2207,7 @@ Symbolic or octal modes are applied to each file. The
 \fB\-R\fR, \fB\-\-recursive\fR
 option changes directories and their contents without following symbolic
 links. The \fB\-\-one\-file\-system\fR option skips directories on a file system
-other than that of the operand. It has no short form because \fB\-x\fR is a mode
-operand.
+other than that of the operand. It has no short form.
 .TP
 .B cp
 Files and directory trees are copied. The \fB\-r\fR, \fB\-R\fR, \fB\-f\fR,
@@ -2368,11 +2345,11 @@ color below GREP_COLORS.
 .PP
 The \fB\-i\fR, \fB\-v\fR, \fB\-r\fR, \fB\-n\fR, and \fB\-h\fR
 options ignore case, invert matches, recurse into directories, show line
-numbers, and suppress file-name prefixes. The
+numbers, and suppress filename prefixes. The
 .B \-\-one\-file\-system
 option makes \fB\-r\fR
 skip every directory on a file system other than that of its operand. It has
-no short form because \fB\-x\fR matches whole lines. Options may follow the
+no short form. Options may follow the
 operands.
 A pattern is a basic regular expression. The \fB\-E\fR
 option treats patterns as extended regular expressions and \fB\-F\fR
@@ -2396,13 +2373,13 @@ other locale, they match one byte.
 The first ten lines are printed by default. The \fB\-n\fR
 option selects a line count and \fB\-c\fR
 a byte count. A first argument of a dash and digits, such as \fB\-5\fR,
-is the historical spelling of \fB\-n 5\fR.
+is the same as \fB\-n 5\fR.
 .TP
 .B tail
 The last ten lines are printed by default, with \fB\-n\fR, \fB\-c\fR, and the
 dash-and-digits first argument as for head. The \fB\-q\fR, \fB\-\-quiet\fR, and
 \fB\-\-silent\fR
-options never print file name headers, and \fB\-v\fR, \fB\-\-verbose\fR always
+options never print filename headers, and \fB\-v\fR, \fB\-\-verbose\fR always
 print them. The \fB\-f\fR
 option keeps each regular file open after the initial output and prints the
 bytes appended to it. The \fB\-F\fR
@@ -2453,9 +2430,7 @@ prints an indented directory tree. The \fB\-L\fR
 option sets the maximum recursion depth. The
 .B \-\-one\-file\-system
 option keeps \fB\-R\fR and \fB\-\-tree\fR
-on the file system of the operand. It has no short form because
-\fB\-x\fR
-lists entries across. The \fB\-\-color\fR
+on the file system of the operand. It has no short form. The \fB\-\-color\fR
 option accepts always, auto, and never.
 .TP
 .B make
@@ -2706,7 +2681,7 @@ processor utilization between them.
 Visible TCP, UDP, and Unix-domain sockets are printed in a table. Address
 family, protocol, listening state, process identifiers, and the header can be
 selected with ss-compatible options. The \fB\-\-live\fR option, which has no
-short form because \fB\-l\fR selects listening sockets, refreshes the table
+short form, refreshes the table
 every optional number of seconds until interrupted, defaulting to 0.5 seconds.
 .TP
 .B goodstat
@@ -2802,20 +2777,18 @@ and
 .B editor.hints.show_live_diagnostics
 turns these rows off too.
 .PP
-Ctrl\-Z undoes while the editor collects a line, the same as Ctrl\-_. A
-foreground program has the terminal in its usual mode, so Ctrl\-Z stops it and
+Ctrl\-Z undoes while the editor collects a line, the same as Ctrl\-_. In a
+foreground program Ctrl\-Z stops it and
 the shell reports the stopped job. Ctrl\-Shift\-Z redoes when the terminal
 reports it apart from Ctrl\-Z. While the editor collects a line, it requests
-such reports through the kitty keyboard protocol and xterm modifyOtherKeys, and
-withdraws both whenever it hands the terminal back. Inside tmux, the
+such reports through the kitty keyboard protocol and xterm modifyOtherKeys. Inside tmux, the
 modifyOtherKeys request takes effect when the tmux
 .B extended\-keys
 option is on. The
 .B koshconf set editor.request_extended_key_reports off
 command stops the requests from the next prompt on. The option is on by
 default. Without these modes most terminals send the Ctrl\-Z byte for both
-keys. The Windows console reports no shift state, so there both keys undo and
-Ctrl\-^ redoes.
+keys. On the Windows console both keys undo and Ctrl\-^ redoes.
 .PP
 A control character in the line, a ghost suggestion, or a menu entry is drawn
 in caret notation, such as ^[ for ESC. A filename that holds a control
@@ -2916,11 +2889,8 @@ Ctrl\-C the interrupted line before its ^C, after its expansion instead of PS1.
 A nonempty KOSH_TRANSIENT_RPS1 replaces the right prompt on that line with its
 expansion. When either variable is unset or empty, its side of the line stays
 as it was drawn. An interactive shell that starts with KOSH_TRANSIENT_RPS1
-unset sets it to \\[\\], which expands to nothing, so the right prompt
-disappears from the line that stays in the scrollback. A right prompt left on
-that line shows the figures of the command that ran before the line beside it,
-and the terminal can wrap it or move it away from the edge when the window is
-resized.
+unset sets it to \\[\\], which expands to nothing, and the right prompt
+is removed from the line that stays in the scrollback.
 .PP
 Ghost text uses prefix matches from completion and history. Tab also offers
 smart-case and subsequence matches. An empty command position includes
@@ -3402,10 +3372,9 @@ signal number. A job that exited shows Done, or Exit and its status.
 A job reported by
 .BR wait ,
 .BR jobs ,
-or a notification leaves the job table, and the shell remembers the
-status of its process, so a later
+or a notification leaves the job table, and a later
 .B wait
-with that process returns it again. The shell remembers the 1024 most
+with that process returns the remembered status again. The shell remembers the 1024 most
 recent statuses.
 .B wait
 reports 127 and a diagnostic for a process that is not a child of the shell or
@@ -3459,7 +3428,7 @@ Errors, warnings, and analysis diagnostics include source locations when a
 mapping exists.
 .PP
 After a parse error, the shell skips only the failed statement and keeps
-parsing the command list around it, so lint, the language server, and a script
+parsing the command list around it. Lint, the language server, and a script
 report every syntax error in one run. A construct that a mood does not provide,
 such as
 .B [[
@@ -3475,9 +3444,9 @@ In the default mood, a script is rejected when it expands a variable it never
 assigns, calls a function that uses arguments without passing any, or calls a
 function before defining it.
 .PP
-A function assignment without
+An assignment in a function to a variable not declared
 .B local
-is reported because it changes a global variable. In the
+is reported. In the
 .B sh
 mood there is no
 .BR local ,
@@ -3506,7 +3475,7 @@ A
 .B \-c
 string is labeled
 .BR \-c ,
-so a location in it appears as
+and a location in it appears as
 .BR \-c:1:5: .
 Standard input and interactive lines have no label.
 .PP
@@ -3640,9 +3609,8 @@ variables.
 The command runs before each interactive prompt. When the variable is an
 indexed array, each nonempty element runs as a command in index order. Every
 element sees the status and $_ of the previous command, and neither the status
-nor $_ of a hook replaces them. PROMPT_COMMAND is deprecated and discouraged,
-since every hook runs a command before each prompt. The prompt escapes cover
-its usual uses without running a command: \\g inserts the git branch, \\L the
+nor $_ of a hook replaces them. PROMPT_COMMAND is deprecated and discouraged.
+The prompt escapes cover its usual uses without running a command: \\g inserts the git branch, \\L the
 duration of the last command, and \\M its memory use, and the KOSH_PS1_
 variables hold the same values for parameter expansion.
 .TP
@@ -3671,8 +3639,7 @@ milliseconds. The \\M escape inserts the resident memory that the last command
 used: the highest peak among the processes that the command started and their
 descendants, or the growth of the shell's own memory during the command when
 that is larger. The escape is empty after a command that only reuses memory the
-shell already holds. The escapes are decoded before parameters and substitutions
-expand, so inserted text is never expanded.
+shell already holds. Text inserted by an escape is never expanded.
 A raw 001 or 002 byte in PS0, PS1, RPS1, KOSH_TRANSIENT_PS1, or
 KOSH_TRANSIENT_RPS1 delimits an invisible region the way \\[ and \\] do.
 The \\. escape emits a bullet colored by the last exit status. It is white
@@ -3680,15 +3647,14 @@ after status 0 and bold red after status 1. On a truecolor terminal a higher
 status shifts the red toward magenta in four steps, and other terminals use
 bold red for it. The user, host, directory, branch, shell name, and
 version inserted by the escapes draw a control byte in caret notation, such as
-^[ for escape, and a byte that is not UTF-8 as \\xHH. A directory path therefore
-cannot write escape sequences to the terminal.
+^[ for escape, and a byte that is not UTF-8 as \\xHH.
 .TP
 .BR RPS1 ", " RPROMPT
 RPS1 is the right prompt drawn at the right edge of the first input row.
 RPROMPT is used when RPS1 is unset or empty. The value expands like PS1. When
 an interactive shell starts with neither variable set, RPS1 defaults to a dim
 "\\L \\M", the duration and memory use of the last command. Spaces at either
-end of the expanded right prompt are dropped, so an empty escape leaves no gap.
+end of the expanded right prompt are dropped. An empty escape leaves no gap.
 See
 .BR "LINE EDITING" .
 .TP
@@ -3772,7 +3738,7 @@ base64 binary form that
 .BR kosh (5)
 describes. An assignment is discarded, and the shell never exports it by
 itself. A KOSHCONF value in the environment at startup is applied after the
-configuration files and removed from the environment, so
+configuration files and removed from the environment. For example,
 .B ssh host KOSHCONF=\(dq$KOSHCONF\(dq kosh
 carries the settings to a remote shell.
 .B koshconf load
@@ -3785,7 +3751,7 @@ nothing. When unset, the shell prints a built-in greeting and farewell.
 .TP
 .B KOSH_ANSI_*
 The variables BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, their
-BRIGHT_ forms, BOLD, DIM, and RESET supply terminal escapes. A recognized name
+BRIGHT_ forms, BOLD, DIM, and RESET supply terminal escapes. A recognized variable
 is empty when color is disabled. An explicit assignment takes precedence.
 .TP
 .BR RANDOM ", " SRANDOM ", " SECONDS ", " EPOCHSECONDS ", " EPOCHREALTIME
@@ -3826,7 +3792,7 @@ matching.
 .TP
 .B HISTCMD
 The value is the history number of the current command. A non-interactive shell
-reports zero. An assignment is discarded. The name is unavailable in the
+reports zero. An assignment is discarded. The variable is unavailable in the
 .B sh
 mood.
 .TP
@@ -3849,7 +3815,7 @@ mood.
 .B BASH_ALIASES
 This associative array contains the current aliases. Assigning an element
 defines or replaces that alias. Unsetting an element has no effect. Unsetting
-the whole variable disconnects the array without deleting the aliases. The name
+the whole variable disconnects the array without deleting the aliases. The variable
 is unavailable in the
 .B sh
 mood.
@@ -3879,7 +3845,7 @@ saved directories that
 prints. Assigning index zero or an index past the end has no effect. Assigning
 another existing index changes that saved stack entry. Unsetting an element has
 no effect. Unsetting the whole variable disconnects the array without clearing
-the directory stack. The name is unavailable in the
+the directory stack. The variable is unavailable in the
 .B sh
 mood.
 .TP

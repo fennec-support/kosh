@@ -10,8 +10,7 @@ Complete the steps in order. Repositories are under
 - [ ] `make MODE=rel test`, `make toiletline_test`, `NO_TOILETLINE=1 make`, and
       `make -C src MODE=rel TARGET=Windows_NT` pass locally.
 - [ ] `src/toiletline` points at a commit pushed to a public branch of
-      `toiletbril/toiletline`. A release tarball carries no submodule contents,
-      and the package recipes fetch toiletline by that commit.
+      `toiletbril/toiletline`.
 - [ ] `docs/kosh.1`, `docs/kosh.5`, and `completions/kosh.bash` describe every
       added flag, option, variable, and builtin.
 
@@ -27,8 +26,7 @@ Complete the steps in order. Repositories are under
       `kosh-linux-amd64-X.Y.Z`, `kosh-win32-amd64-X.Y.Z.exe`, `kosh.1.zst`,
       `kosh.5.zst`, `kosh.bash`, and `SHA256SUMS`.
 - [ ] Write the release notes, then turn off **prerelease** and mark it
-      **latest**. The installers, the Homebrew formula, and every editor client
-      skip prereleases.
+      **latest**.
 - [ ] Check the installers against it:
       `KOSH_INSTALL_DRY_RUN=1 sh scripts/install.sh` and `scripts/install.ps1`.
 - [ ] Set the next development version on `staging`: bump `KOSH_VER_PATCH` and

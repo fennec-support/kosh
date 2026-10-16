@@ -4,8 +4,7 @@
  *
  * This file converts semantic scans into highlight spans and caches a source
  * by line. It renders ranges, pairs the bracket at the caret with its match,
- * and validates cached diagnostics after source changes. The split keeps
- * mutable cache state and rendering separate from semantic classification.
+ * and validates cached diagnostics after source changes.
  */
 
 #include "Builtin.hpp"
