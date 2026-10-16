@@ -2588,9 +2588,12 @@ run_measured(const ArrayList<String> &argv,
 #if defined __linux__
 namespace {
 
-constexpr long  PTRACE_GET_SYSCALL_INFO_REQUEST = 0x420e;
-constexpr u8    PTRACE_SYSCALL_INFO_ENTRY_OP    = 1;
-constexpr usize TRACED_NEW_TASK_CAPACITY        = 256;
+constexpr long  PTRACE_GET_SYSCALL_INFO_REQUEST   = 0x420e;
+constexpr u8    PTRACE_SYSCALL_INFO_ENTRY_OP      = 1;
+constexpr u8    PTRACE_SYSCALL_INFO_EXIT_OP       = 2;
+constexpr usize PTRACE_SYSCALL_INFO_NUMBER_OFFSET = 24;
+constexpr usize TRACED_NEW_TASK_CAPACITY          = 256;
+constexpr usize TRACED_WAITING_TASK_CAPACITY      = 1024;
 
 fn
 trace_ptrace(long request, pid_t pid, void *address, uintptr_t data) wontthrow
@@ -2649,9 +2652,36 @@ run_tracer(const char *const *raw_argv,
 
   pid_t new_tasks[TRACED_NEW_TASK_CAPACITY]{};
   usize new_task_count = 0;
-  u64   live_count     = 1;
+  pid_t waiting_tasks[TRACED_WAITING_TASK_CAPACITY]{};
+  usize waiting_count = 0;
+  u64   live_count    = 1;
+
+  u64  last_change_nanos = monotonic_nanos();
+  u128 active_nanos_sum  = 0;
+  u64  observed_nanos    = 0;
 
   counts.peak_task_count = 1;
+
+  let const do_account = [&]() {
+    let const now_nanos     = monotonic_nanos();
+    let const elapsed_nanos = now_nanos - last_change_nanos;
+    let const active_count =
+        live_count > waiting_count ? live_count - waiting_count : 0;
+
+    active_nanos_sum += static_cast<u128>(elapsed_nanos) * active_count;
+    observed_nanos += elapsed_nanos;
+    last_change_nanos = now_nanos;
+  };
+
+  let const do_stop_waiting = [&](pid_t task) {
+    for (usize i = 0; i < waiting_count; i++) {
+      if (waiting_tasks[i] != task) continue;
+
+      do_account();
+      waiting_tasks[i] = waiting_tasks[--waiting_count];
+      break;
+    }
+  };
 
   loop {
     let const task = waitpid(-1, &status, __WALL);
@@ -2662,6 +2692,8 @@ run_tracer(const char *const *raw_argv,
     }
 
     if (WIFEXITED(status) || WIFSIGNALED(status)) {
+      do_stop_waiting(task);
+      do_account();
       if (live_count > 0) live_count--;
       continue;
     }
@@ -2676,10 +2708,23 @@ run_tracer(const char *const *raw_argv,
       u8 info[128]{};
 
       if (trace_ptrace(PTRACE_GET_SYSCALL_INFO_REQUEST, task, info,
-                       reinterpret_cast<uintptr_t>(info)) > 0 &&
-          info[0] == PTRACE_SYSCALL_INFO_ENTRY_OP)
+                       reinterpret_cast<uintptr_t>(info)) > 0)
       {
-        counts.syscall_count++;
+        if (info[0] == PTRACE_SYSCALL_INFO_ENTRY_OP) {
+          u64 number = 0;
+
+          memcpy(&number, info + PTRACE_SYSCALL_INFO_NUMBER_OFFSET,
+                 sizeof(number));
+          counts.syscall_count++;
+          if ((number == SYS_wait4 || number == SYS_waitid) &&
+              waiting_count < TRACED_WAITING_TASK_CAPACITY)
+          {
+            do_account();
+            waiting_tasks[waiting_count++] = task;
+          }
+        } else if (info[0] == PTRACE_SYSCALL_INFO_EXIT_OP) {
+          do_stop_waiting(task);
+        }
       }
     } else if (signal_number == SIGTRAP && event != 0) {
       if (event == PTRACE_EVENT_CLONE || event == PTRACE_EVENT_FORK ||
@@ -2691,6 +2736,7 @@ run_tracer(const char *const *raw_argv,
           counts.thread_count++;
         else
           counts.process_count++;
+        do_account();
         live_count++;
         if (live_count > counts.peak_task_count)
           counts.peak_task_count = live_count;
@@ -2721,6 +2767,12 @@ run_tracer(const char *const *raw_argv,
 
     unused(trace_ptrace(PTRACE_SYSCALL, task, nullptr, injected));
   }
+
+  do_account();
+  counts.average_active_task_millis =
+      observed_nanos == 0
+          ? 1000
+          : static_cast<u64>(active_nanos_sum * 1000 / observed_nanos);
 
   unused(retry_interrupted(
       [&] { return write(report_descriptor, &counts, sizeof(counts)); }));

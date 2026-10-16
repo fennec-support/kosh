@@ -885,10 +885,15 @@ append_summary(String              &out,
                    metric_unit::Count);
     do_push_traced("peak tasks", static_cast<double>(traced.peak_task_count),
                    metric_unit::Count);
-    if (result.has_metric[CPU_USAGE_METRIC] && traced.peak_task_count > 0) {
+    let const average_active_tasks =
+        static_cast<double>(traced.average_active_task_millis) / 1000.0;
+
+    do_push_traced("average active tasks", average_active_tasks,
+                   metric_unit::Count);
+    if (result.has_metric[CPU_USAGE_METRIC] && average_active_tasks > 0) {
       do_push_traced("thread efficiency",
                      result.metric[CPU_USAGE_METRIC].mean /
-                         static_cast<double>(traced.peak_task_count),
+                         average_active_tasks,
                      metric_unit::Percent);
     }
   }

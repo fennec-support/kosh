@@ -1462,8 +1462,9 @@ tree through a job object and adds peak commit, other IO calls, and the number
 of processes. The extended hardware counters are sampled on alternate runs, so
 they do not share the processor counters with the default set. On Linux, one
 extra untimed run under ptrace counts system calls, started threads and
-processes, execs, and the peak number of tasks, and reports thread efficiency
-as CPU usage divided by that peak. These rows are marked (traced). Run as root,
+processes, execs, the peak number of tasks, and the average number of active
+tasks, where a task that waits for a child counts as idle. Thread efficiency
+is CPU usage divided by that average. These rows are marked (traced). Run as root,
 Linux counts system calls on every run, and macOS reads the processor counters
 system-wide. A row marked * counts only the measured process, not the
 processes it started. A row the platform cannot report is omitted.

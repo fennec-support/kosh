@@ -2616,6 +2616,7 @@ struct traced_counts
   u64 process_count{0};
   u64 exec_count{0};
   u64 peak_task_count{0};
+  u64 average_active_task_millis{0};
 };
 
 fn

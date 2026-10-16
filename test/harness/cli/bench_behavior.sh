@@ -136,6 +136,8 @@ ptrace_scope=$(cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || echo 0)
 if [ "$(uname -s)" = Linux ] && [ "$ptrace_scope" != 3 ]; then
     printf '%s\n' "$extended_output" | grep -Eq '^  syscalls( \(traced\))?  ' ||
         { echo "missing syscall count: $extended_output"; exit 1; }
+    printf '%s\n' "$extended_output" | grep -q '^  average active tasks (traced)  ' ||
+        { echo "missing active task average: $extended_output"; exit 1; }
 fi
 extended_row_count=$(printf '%s\n' "$extended_output" |
     grep -Ec '^  [a-z ]+  +[0-9.]+[A-Za-z]* +\+/- ')
