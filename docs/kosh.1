@@ -2912,9 +2912,7 @@ RPS1, or RPROMPT when RPS1 is unset or empty, is a right prompt. It is expanded
 with PS1 before each prompt and drawn right-aligned on the first input row. It
 is hidden when the row has no room for it or when its expansion holds a control
 character other than a color sequence. It is never part of the submitted line,
-and without
-.B editor.transient_prompt_after_submit
-it stays in the scrollback after Enter.
+and Enter and Ctrl\-C erase it from the line that stays in the scrollback.
 .PP
 The
 .B koshconf set editor.transient_prompt_after_submit on
