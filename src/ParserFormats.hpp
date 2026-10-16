@@ -192,28 +192,43 @@ parser_format_add_fragment(
     Maybe<String>           prepared_analysis_source = None,
     parser_format_codec     codec = parser_format_codec::Direct,
     mimic_mood              mood  = mimic_mood::Posix) throws -> void;
+constexpr u8 TEMPLATE_CURLY             = 1u << 0;
+constexpr u8 TEMPLATE_STATEMENTS        = 1u << 1;
+constexpr u8 TEMPLATE_DOLLAR_CURLY      = 1u << 2;
+constexpr u8 TEMPLATE_AZURE_MACROS      = 1u << 3;
+constexpr u8 TEMPLATE_CIRCLE_PARAMETERS = 1u << 4;
+
 fn
 parser_format_masked_template_source(StringView host_source,
                                      usize      host_start,
                                      usize      host_end,
-                                     bool       should_mask_statements,
+                                     u8         template_syntax,
                                      bool      &did_mask) throws -> String;
 fn
-parser_format_add_indented_fragment(parsed_format_document &document,
-                                    StringView              host_source,
-                                    usize                   host_start,
-                                    usize                   host_end,
-                                    usize                   indent_length,
-                                    mimic_mood              mood) throws -> void;
+parser_format_add_indented_fragment(
+    parsed_format_document &document,
+    StringView              host_source,
+    usize                   host_start,
+    usize                   host_end,
+    usize                   indent_length,
+    mimic_mood              mood,
+    Maybe<String>           prepared_analysis_source = None) throws -> void;
 fn
-parser_format_extract_yaml_keys(parsed_format_document &document,
-                                StringView              source,
-                                const StringView       *keys,
-                                usize                   key_count,
-                                mimic_mood default_mood = mimic_mood::Posix,
-                                yaml_shell_selection selection =
-                                    yaml_shell_selection::Nearby) throws
-    -> void;
+parser_format_extract_yaml_keys(
+    parsed_format_document &document,
+    StringView              source,
+    const StringView       *keys,
+    usize                   key_count,
+    mimic_mood              default_mood    = mimic_mood::Posix,
+    yaml_shell_selection    selection       = yaml_shell_selection::Nearby,
+    u8                      template_syntax = TEMPLATE_CURLY) throws -> void;
+fn
+parser_format_extract_yaml_exec_keys(
+    parsed_format_document &document,
+    StringView              source,
+    const StringView       *keys,
+    usize                   key_count,
+    u8                      template_syntax = TEMPLATE_CURLY) throws -> void;
 fn
 parser_format_extract_json_keys(parsed_format_document       &document,
                                 StringView                    source,

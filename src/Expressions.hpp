@@ -536,6 +536,7 @@ struct analysis_options
   bool                   should_report_optimizer_diagnostics{false};
   missing_shebang_policy shebang_policy{missing_shebang_policy::Suppress};
   StringView             source_base_directory{};
+  StringView             display_source{};
 
   static fn
   from_runtime(const RuntimeState &runtime) wontthrow -> analysis_options
@@ -962,7 +963,9 @@ private:
   pure fn
   get_report_site() const wontthrow -> analysis_report_site
   {
-    return analysis_report_site{source, eval_context};
+    return analysis_report_site{
+        options.display_source.is_empty() ? source : options.display_source,
+        eval_context};
   }
 };
 

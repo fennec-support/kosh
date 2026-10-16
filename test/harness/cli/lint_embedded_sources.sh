@@ -257,7 +257,7 @@ make_shell=$(printf '%s' "$make_output" | \
   grep -c "The variable 'MAKE_SHELL_EMBEDDED'")
 make_shell_missing=$(printf '%s' "$make_output" | \
   grep -c "The command 'missing_make_shell_executable' was not found")
-make_host=$(printf '%s' "$make_output" | \
+make_host=$(printf '%s\n' "$make_output" | grep -E '^[^ ].*: (warning|error): ' | \
   grep -Ec "MAKE_ONLY|MAKE_CONTINUATION|missing_make_comment_executable|missing_make_define_executable|positional parameter|for loop has no")
 set -- $(count_variable_and_missing_executable PACKAGE_EMBEDDED \
   missing_package_executable "$root/package.json")
@@ -336,11 +336,15 @@ jobs:
   tag:
     steps:
       - run: |
-          docker tag ${{ needs.build.outputs.image }} target
+          docker tag ${{ needs.build.outputs.image }} target; if true; then
 EOF
-template_underline_count=$("$BIN" --lint --no-traces \
-  "$root/.github/workflows/template.yml" 2>&1 | grep -c '\^~\{31\}$')
-printf 'template-underline=%s\n' "$template_underline_count"
+template_output=$("$BIN" --lint --no-traces \
+  "$root/.github/workflows/template.yml" 2>&1)
+template_excerpt_count=$(printf '%s\n' "$template_output" |
+  grep -c 'docker tag \${{ needs.build.outputs.image }} target')
+template_warning_count=$(printf '%s\n' "$template_output" | grep -c 'warning:')
+printf 'template-excerpt=%s template-warnings=%s\n' \
+  "$template_excerpt_count" "$template_warning_count"
 
 cat > "$root/recipes/justfile" <<'EOF'
 set shell := ["bash", "-uc"]
@@ -395,3 +399,77 @@ done
 nginx_template=$("$BIN" --lint --no-traces "$root/recipes/nginx.conf.j2" 2>&1 |
   grep -c 'is not recognized')
 printf 'non-shell-template-unrecognized=%s\n' "$nginx_template"
+
+mkdir -p "$root/shapes/.github/workflows"
+cat > "$root/shapes/.gitlab-ci.yml" <<'EOF'
+.base: &base
+  script:
+  - echo base
+job:
+  before_script: # setup
+  - |
+    if true; then
+      echo ok
+    fi
+  - >
+    echo folded
+    && echo continued
+  - !reference [.base, script]
+  script: ["echo one", "echo two"]
+  after_script:
+  - if true; then
+  variables:
+    A: b
+EOF
+cat > "$root/shapes/.github/workflows/ci.yml" <<'EOF'
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          cat <<EOF > out.txt
+          hello ${{ github.sha }}
+          EOF
+          echo "${{ secrets.TOKEN }}" > token
+        if: always()
+      - run: case $x in
+EOF
+cat > "$root/shapes/compose.yaml" <<'EOF'
+services:
+  app:
+    image: x
+    command: ["python", "app.py", "--flag"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost || exit 1"]
+  worker:
+    image: x
+    entrypoint: ["sh", "-c"]
+    command: ["if true; then"]
+EOF
+cat > "$root/shapes/pod.yaml" <<'EOF'
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: a
+    command: ["/bin/sh", "-c"]
+    args:
+      - |
+        echo start
+        while true; do
+  - name: b
+    args: ["--config=/etc/x", "-c", "value"]
+EOF
+cat > "$root/shapes/azure-pipelines.yml" <<'EOF'
+steps:
+- script: |
+    echo $(Build.BuildId) ${{ parameters.name }} $[ variables.x ]
+    echo "$(date)"
+  displayName: show
+- bash: if true; then
+EOF
+for shape_file in .gitlab-ci.yml .github/workflows/ci.yml compose.yaml pod.yaml azure-pipelines.yml; do
+  (cd "$root/shapes" && "$BIN" --lint --no-traces "$shape_file" 2>&1) |
+    grep -E '^[^ ].*: (error|warning): '
+done

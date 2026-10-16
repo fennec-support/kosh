@@ -158,7 +158,7 @@ add_recipe_fragment(const parser_format_input &input,
 
   bool did_mask        = false;
   let  analysis_source = parser_format_masked_template_source(
-      input.source, start, end, false, did_mask);
+      input.source, start, end, TEMPLATE_CURLY, did_mask);
   let const fragment_count = document.fragments.count();
 
   parser_format_add_fragment(document, input.source, start, end, 0,

@@ -92,6 +92,18 @@ public:
   }
 
   fn
+  set_display_source(StringView display_source) wontthrow -> void
+  {
+    m_display_source = display_source;
+  }
+
+  pure fn
+  get_display_source() const wontthrow -> StringView
+  {
+    return m_display_source.is_empty() ? m_lexer.source() : m_display_source;
+  }
+
+  fn
   set_error_collection(
       ArrayList<ErrorWithLocationAndDetails> *collection) wontthrow -> void
   {
@@ -109,6 +121,7 @@ public:
   take_analysis_directives() throws -> analysis_directives;
 
 private:
+  StringView             m_display_source{};
   static constexpr usize MAX_COMMAND_DEPTH = 512;
   /* The cap spans every collecting call on one parser, so a streamed script
      stops recovering after this many errors in total. */

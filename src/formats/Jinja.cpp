@@ -73,7 +73,8 @@ parse_jinja_format(const parser_format_input &input,
 
   bool did_mask        = false;
   let  analysis_source = parser_format_masked_template_source(
-      input.source, 0, input.source.length, true, did_mask);
+      input.source, 0, input.source.length,
+      TEMPLATE_CURLY | TEMPLATE_STATEMENTS, did_mask);
   let const fragment_count = document.fragments.count();
 
   parser_format_add_fragment(document, input.source, 0, input.source.length, 0,

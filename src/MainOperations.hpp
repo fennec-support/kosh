@@ -461,13 +461,14 @@ private:
 
 struct script_run_options
 {
-  bool  should_require_shebang{true};
-  bool  should_silence_unresolved_commands{false};
-  bool  should_print_ast{true};
-  bool  should_analyze{true};
-  bool  is_whole_line{false};
-  bool  should_use_command_string_status{true};
-  bool *out_was_rejected{nullptr};
+  bool       should_require_shebang{true};
+  bool       should_silence_unresolved_commands{false};
+  bool       should_print_ast{true};
+  bool       should_analyze{true};
+  bool       is_whole_line{false};
+  bool       should_use_command_string_status{true};
+  bool      *out_was_rejected{nullptr};
+  StringView display_source{};
 };
 
 static fn
@@ -501,6 +502,7 @@ struct script_run_plan
 struct script_run_input
 {
   const String                 &contents;
+  StringView                    display_source;
   Maybe<StringView>             filename;
   EvalContext                  &context;
   BumpArena                    &arena;
@@ -565,6 +567,8 @@ scan_analysis_metadata(const script_run_input &input,
             input.context.runtime_state().get_mood()}
   };
 
+  scan_parser.set_display_source(input.display_source);
+
   scan_parser.set_analysis_metadata_collection_mode(
       analysis_metadata_collection_mode::Enabled);
   scan_parser.set_substitution_validation_mode(
@@ -601,6 +605,8 @@ preflight_syntax(const script_run_input &input,
       Lexer{input.contents.view(), input.arena, input.filename,
             input.context.runtime_state().get_mood()}
   };
+
+  preflight_parser.set_display_source(input.display_source);
 
   preflight_parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
@@ -642,6 +648,8 @@ parse_whole_script(const script_run_input &input,
                 ? debug_word_collection_mode::Enabled
                 : debug_word_collection_mode::Disabled}
   };
+
+  p.set_display_source(input.display_source);
 
   p.set_analysis_metadata_collection_mode(
       plan.should_analyze ? analysis_metadata_collection_mode::Enabled
@@ -707,6 +715,7 @@ analyze_script(const script_run_input    &input,
        context.execution_store().shell_is_interactive());
   options.should_report_optimizer_diagnostics =
       FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled();
+  options.display_source = input.display_source;
   options.shebang_policy =
       run_options.should_require_shebang && input.filename.has_value()
           ? missing_shebang_policy::Report
@@ -726,6 +735,8 @@ analyze_script(const script_run_input    &input,
       Lexer{input.contents.view(), input.arena, input.filename,
             context.runtime_state().get_mood()}
   };
+
+  unit_parser.set_display_source(input.display_source);
 
   unit_parser.set_analysis_scope_collection_mode(
       analysis_metadata_collection_mode::Enabled);
@@ -840,6 +851,8 @@ evaluate_script(const script_run_input &input,
         Lexer{input.contents.view(), input.arena, input.filename,
               context.runtime_state().get_mood()}
     };
+
+    execution_parser.set_display_source(input.display_source);
     let const was_terminal_exec_allowed =
         context.execution_store().is_terminal_exec_allowed();
 
@@ -916,6 +929,9 @@ run_script_contents(
 {
   let const diagnostic_sink  = diagnostics.diagnostic_sink;
   let const should_print_ast = run_options.should_print_ast;
+  let const display_contents = run_options.display_source.is_empty()
+                                   ? script_contents.view()
+                                   : run_options.display_source;
   let const is_contained_substitution =
       evaluation_mode == root_evaluation_mode::ContainedSubstitution;
   let const is_command_string =
@@ -942,12 +958,14 @@ run_script_contents(
     ast_arena.reset();
     context.expansion_store().scratch_arena().reset();
 
-    let const plan  = make_script_run_plan(context, precompiled_ast != nullptr,
-                                           out_ast != nullptr, run_options);
-    let const input = script_run_input{script_contents, filename, context,
-                                       ast_arena, diagnostic_sink};
-    let       parse_errors = ArrayList<String>{heap_allocator()};
-    let       directives   = analysis_directives{};
+    let const plan = make_script_run_plan(context, precompiled_ast != nullptr,
+                                          out_ast != nullptr, run_options);
+    let const input =
+        script_run_input{script_contents, run_options.display_source,
+                         filename,        context,
+                         ast_arena,       diagnostic_sink};
+    let parse_errors = ArrayList<String>{heap_allocator()};
+    let directives   = analysis_directives{};
 
     let const   preflight_mark = ast_arena.mark();
     Expression *ast            = precompiled_ast;
@@ -1009,8 +1027,8 @@ run_script_contents(
     }
   } catch (const ErrorWithLocationAndDetails &e) {
     if (!e.was_rendered()) {
-      show_message(e.to_string(script_contents, &context));
-      show_message(e.details_to_string(script_contents, &context));
+      show_message(e.to_string(display_contents, &context));
+      show_message(e.details_to_string(display_contents, &context));
       if (is_contained_substitution)
         context.print_source_backtrace(e.location());
     }
@@ -1018,7 +1036,7 @@ run_script_contents(
     exit_code = exit_status_for(e, context, is_command_string);
   } catch (const ErrorWithLocation &e) {
     if (!e.was_rendered()) {
-      show_message(e.to_string(script_contents, &context));
+      show_message(e.to_string(display_contents, &context));
       if (is_contained_substitution)
         context.print_source_backtrace(e.location());
     }
@@ -1103,10 +1121,15 @@ run_lint_document_contents(
     context.runtime_state().set_warning_level(
         warning_level_for_mood(fragment.mood));
 
+    let fragment_options = script_run_options{
+        false, fragment.should_silence_unresolved_commands, should_print_ast};
+
+    fragment_options.display_source = source.view();
+
     let const fragment_status = run_script_contents(
         fragment.analysis_source, context, ast_arena, filename, nullptr,
         nullptr, None, {diagnostic_totals, diagnostic_sink, nullptr},
-        {false, fragment.should_silence_unresolved_commands, should_print_ast});
+        fragment_options);
 
     if (fragment_status != EXIT_SUCCESS) status = fragment_status;
   }

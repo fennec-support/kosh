@@ -783,8 +783,8 @@ Parser::record_detailed_parse_error(
     return;
   }
 
-  errors.push(error.to_string(m_lexer.source(), context));
-  errors.push(error.details_to_string(m_lexer.source(), context));
+  errors.push(error.to_string(get_display_source(), context));
+  errors.push(error.details_to_string(get_display_source(), context));
   if (diagnostic_sink == nullptr) return;
 
   let const location         = error.location();
@@ -818,7 +818,7 @@ Parser::record_parse_error(
     return;
   }
 
-  errors.push(error.to_string(m_lexer.source(), context));
+  errors.push(error.to_string(get_display_source(), context));
   if (diagnostic_sink == nullptr) return;
 
   let const location = error.location();

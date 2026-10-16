@@ -15,10 +15,10 @@ fn
 parse_taskfile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void
 {
-  static const StringView KEYS[] = {"cmd", "cmds",   "defer",
-                                    "sh",  "status", "if"};
+  static const StringView KEYS[] = {"cmd",    "cmds", "defer",        "sh",
+                                    "status", "if",   "preconditions"};
 
-  parser_format_extract_yaml_keys(document, input.source, KEYS, 6,
+  parser_format_extract_yaml_keys(document, input.source, KEYS, countof(KEYS),
                                   mimic_mood::Bash,
                                   yaml_shell_selection::Nearby);
 }
