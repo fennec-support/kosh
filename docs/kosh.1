@@ -3653,11 +3653,10 @@ The \\l escape inserts the last component of the terminal device of standard
 input, such as 3 for /dev/pts/3, and tty when standard input is not a terminal.
 The \\D{format} escape inserts the time formatted by strftime, as Bash does. The
 \\L escape inserts the duration of the last command, empty when it took under 5
-milliseconds. The \\M escape inserts the largest peak resident memory among the
-processes the last command started. When the command started no process, it
-inserts the peak memory of the shell itself while the command ran. On Windows
-that peak cannot be reset, so the shell's working set at the end of the command
-is used. The escapes are decoded before parameters and substitutions
+milliseconds. The \\M escape inserts the memory the last command used. It is the
+larger of the peak resident memory among the processes the command started and
+the most memory the shell allocated above its starting level while the command
+ran. The escapes are decoded before parameters and substitutions
 expand, so inserted text is never expanded.
 A raw 001 or 002 byte in PS0, PS1, RPS1, or PS1_TRANSIENT delimits an invisible
 region the way \\[ and \\] do.

@@ -63,7 +63,6 @@
 #pragma pop_macro("cold")
 #include <dlfcn.h>
 #include <libproc.h>
-extern "C" int proc_reset_footprint_interval(int pid);
 #include <mach-o/dyld.h>
 #include <mach/mach.h>
 #include <malloc/malloc.h>
@@ -2504,13 +2503,6 @@ read_child_cpu_times() wontthrow -> child_cpu_times;
 
 fn
 exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64;
-
-fn
-reset_own_peak_memory() wontthrow -> void;
-
-fn
-read_own_peak_memory_bytes() wontthrow -> u64;
-
 struct malloc_heap_stats
 {
   usize bytes_in_use{0};

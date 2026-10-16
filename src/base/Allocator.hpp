@@ -34,6 +34,39 @@ free_aligned(opaque *pointer) wontthrow -> void;
 
 namespace allocators {
 
+struct heap_byte_counts
+{
+  usize live_byte_count{0};
+  usize peak_byte_count{0};
+};
+
+inline heap_byte_counts HEAP_BYTE_COUNTS{};
+
+hot inline fn
+note_heap_bytes_taken(usize byte_count) wontthrow -> void
+{
+  HEAP_BYTE_COUNTS.live_byte_count += byte_count;
+  if (HEAP_BYTE_COUNTS.live_byte_count > HEAP_BYTE_COUNTS.peak_byte_count)
+    HEAP_BYTE_COUNTS.peak_byte_count = HEAP_BYTE_COUNTS.live_byte_count;
+}
+
+hot inline fn
+note_heap_bytes_given(usize byte_count) wontthrow -> void
+{
+  HEAP_BYTE_COUNTS.live_byte_count =
+      HEAP_BYTE_COUNTS.live_byte_count > byte_count
+          ? HEAP_BYTE_COUNTS.live_byte_count - byte_count
+          : 0;
+}
+
+inline fn
+restart_heap_peak() wontthrow -> usize
+{
+  HEAP_BYTE_COUNTS.peak_byte_count = HEAP_BYTE_COUNTS.live_byte_count;
+
+  return HEAP_BYTE_COUNTS.live_byte_count;
+}
+
 hot inline fn
 uncached_heap_alloc(usize length, usize alignment) wontthrow -> opaque *
 {
@@ -261,16 +294,23 @@ public:
   hot flatten fn
   raw_alloc(usize length, usize alignment) const throws -> opaque *
   {
+    opaque *allocated = nullptr;
+
     switch (get_kind()) {
-    case Kind::Heap: return allocators::heap_alloc(length, alignment);
+    case Kind::Heap:
+      allocated = allocators::heap_alloc(length, alignment);
+      break;
     case Kind::Bump: return bump_arena_allocate(get_arena(), length, alignment);
     case Kind::Fake:
       unreachable("a container with the fake allocator attempted to allocate");
     case Kind::UncachedHeap:
-      return allocators::uncached_heap_alloc(length, alignment);
+      allocated = allocators::uncached_heap_alloc(length, alignment);
+      break;
     }
 
-    unreachable("the allocator carries no known kind");
+    if (allocated != nullptr) allocators::note_heap_bytes_taken(length);
+
+    return allocated;
   }
 
   hot fn
@@ -296,19 +336,19 @@ public:
     }
 
     if (alignment <= alignof(max_align_t)) {
-      if (get_kind() == Kind::UncachedHeap) {
-        let const replacement = realloc(pointer, new_length);
+      let const is_uncached = get_kind() == Kind::UncachedHeap;
 
-        if (replacement == nullptr) throw std::bad_alloc{};
-
-        return replacement;
-      }
-
-      if (get_kind() == Kind::Heap) {
+      if (is_uncached || get_kind() == Kind::Heap) {
         let const replacement =
-            allocators::heap_realloc(pointer, old_length, new_length);
+            is_uncached
+                ? realloc(pointer, new_length)
+                : allocators::heap_realloc(pointer, old_length, new_length);
 
         if (replacement == nullptr) throw std::bad_alloc{};
+        if (new_length > old_length)
+          allocators::note_heap_bytes_taken(new_length - old_length);
+        else
+          allocators::note_heap_bytes_given(old_length - new_length);
 
         return replacement;
       }
@@ -328,8 +368,13 @@ public:
   raw_free(opaque *pointer, usize length, usize alignment) const wontthrow -> void
   {
     switch (get_kind()) {
-    case Kind::Heap: allocators::heap_free(pointer, length, alignment); return;
+    case Kind::Heap:
+      if (pointer != nullptr) allocators::note_heap_bytes_given(length);
+      allocators::heap_free(pointer, length, alignment);
+
+      return;
     case Kind::UncachedHeap:
+      if (pointer != nullptr) allocators::note_heap_bytes_given(length);
       allocators::uncached_heap_free(pointer, alignment);
 
       return;

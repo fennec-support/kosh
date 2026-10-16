@@ -737,18 +737,18 @@ analyze_script(const script_run_input    &input,
 }
 
 static fn
-command_memory_byte_count() wontthrow -> u64
+command_memory_byte_count(usize heap_start_byte_count) wontthrow -> u64
 {
   let const child_peak_byte_count = os::exchange_command_peak_rss_bytes(0);
+  let const heap_peak_byte_count =
+      allocators::HEAP_BYTE_COUNTS.peak_byte_count - heap_start_byte_count;
 
-  if (child_peak_byte_count > 0) return child_peak_byte_count;
+  LOG(Debug, "the children peaked at %llu bytes and the shell heap rose %zu",
+      static_cast<unsigned long long>(child_peak_byte_count),
+      heap_peak_byte_count);
 
-  let const shell_peak_byte_count = os::read_own_peak_memory_bytes();
-
-  LOG(Debug, "no child was reaped, so the shell peak of %llu bytes is used",
-      static_cast<unsigned long long>(shell_peak_byte_count));
-
-  return shell_peak_byte_count;
+  return child_peak_byte_count > heap_peak_byte_count ? child_peak_byte_count
+                                                      : heap_peak_byte_count;
 }
 
 static fn
@@ -813,9 +813,8 @@ evaluate_script(const script_run_input &input,
         previous_line_discard_subshell_depth;
   };
 
-  let const command_start_nanos = koshka::os::monotonic_nanos();
-
-  koshka::os::reset_own_peak_memory();
+  let const command_start_nanos   = koshka::os::monotonic_nanos();
+  let const heap_start_byte_count = koshka::allocators::restart_heap_peak();
 
   unused(koshka::os::exchange_command_peak_rss_bytes(0));
 
@@ -878,7 +877,7 @@ evaluate_script(const script_run_input &input,
   context.execution_store().set_last_command_duration_nanos(
       koshka::os::monotonic_nanos() - command_start_nanos);
   context.execution_store().set_last_command_peak_rss_bytes(
-      command_memory_byte_count());
+      command_memory_byte_count(heap_start_byte_count));
   LOG(Debug, "the chunk finished with exit code %d", exit_code);
   if (koshka::os::SIGNAL_PENDING) context.run_pending_traps();
   report_escaped_control_flow(context, input.contents);

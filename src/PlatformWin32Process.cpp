@@ -3513,26 +3513,6 @@ exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64
   return static_cast<u64>(InterlockedExchange64(
       &CHILD_PEAK_RSS_BYTES, static_cast<LONG64>(next_byte_count)));
 }
-
-fn
-reset_own_peak_memory() wontthrow -> void
-{}
-
-fn
-read_own_peak_memory_bytes() wontthrow -> u64
-{
-  PROCESS_MEMORY_COUNTERS memory_counters{};
-
-  memory_counters.cb = sizeof(memory_counters);
-  if (GetProcessMemoryInfo(GetCurrentProcess(), &memory_counters,
-                           sizeof(memory_counters)) == FALSE)
-  {
-    return 0;
-  }
-
-  return static_cast<u64>(memory_counters.WorkingSetSize);
-}
-
 fn
 read_process_cpu_times() wontthrow -> cpu_times
 {

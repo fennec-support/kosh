@@ -3715,6 +3715,7 @@ expand_prompt_escapes(StringView         prompt,
       if (byte_count > 0) {
         out += koshka::koshkit::format_human_size(byte_count,
                                                   koshka::heap_allocator());
+        if (byte_count < 1024) out += 'B';
       }
     } break;
 

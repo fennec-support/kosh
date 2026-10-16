@@ -105,9 +105,10 @@ BumpArena::~BumpArena()
   run_destructors_down_to(0);
   release_destructor_chunks(0);
 
+  allocators::note_heap_bytes_given(bytes_used());
   for (Block &block : m_blocks) {
     unpoison_arena_bytes(block.base, block.size);
-    heap_allocator().free_array(block.base, block.size);
+    allocators::heap_free(block.base, block.size, alignof(u8));
   }
 
   unregister_live();
@@ -220,7 +221,9 @@ BumpArena::add_block(usize minimum_byte_count,
 
   if (minimum_byte_count > size) size = minimum_byte_count;
 
-  let const base = heap_allocator().alloc_array<u8>(size);
+  let const base = static_cast<u8 *>(allocators::heap_alloc(size, alignof(u8)));
+
+  if (base == nullptr) throw std::bad_alloc{};
 
   ASSERT(size >= minimum_byte_count,
          "fresh block must fit the requested allocation");
@@ -230,7 +233,7 @@ BumpArena::add_block(usize minimum_byte_count,
   try {
     m_blocks.push(Block{base, size, 0});
   } catch (...) {
-    heap_allocator().free_array(base, size);
+    allocators::heap_free(base, size, alignof(u8));
     throw;
   }
 
@@ -256,6 +259,7 @@ BumpArena::allocate(usize size, usize alignment) throws -> opaque *
 
           let const pointer = block.base + aligned;
 
+          allocators::note_heap_bytes_taken(aligned + size - block.used);
           block.used = aligned + size;
           unpoison_arena_bytes(pointer, size);
 
@@ -386,8 +390,11 @@ BumpArena::release(Mark saved) wontthrow -> void
     m_active_lifetime_slots.pop_back();
   }
 
+  usize released_byte_count = 0;
+
   for (usize i = saved.block_index + 1; i < m_blocks.count(); i++) {
     poison_arena_bytes(m_blocks[i].base, m_blocks[i].used);
+    released_byte_count += m_blocks[i].used;
     m_blocks[i].used = 0;
   }
 
@@ -395,11 +402,15 @@ BumpArena::release(Mark saved) wontthrow -> void
     let &saved_block = m_blocks[saved.block_index];
 
     ASSERT(saved.used_in_block <= saved_block.size);
-    if (saved_block.used > saved.used_in_block)
+    if (saved_block.used > saved.used_in_block) {
       poison_arena_bytes(saved_block.base + saved.used_in_block,
                          saved_block.used - saved.used_in_block);
+      released_byte_count += saved_block.used - saved.used_in_block;
+    }
     saved_block.used = saved.used_in_block;
   }
+
+  allocators::note_heap_bytes_given(released_byte_count);
 
   m_current_index = saved.block_index;
 }
@@ -422,10 +433,11 @@ BumpArena::reset() wontthrow -> void
   }
 
   m_active_lifetime_slots.clear();
+  allocators::note_heap_bytes_given(bytes_used());
 
   for (usize i = 1; i < m_blocks.count(); i++) {
     unpoison_arena_bytes(m_blocks[i].base, m_blocks[i].size);
-    heap_allocator().free_array(m_blocks[i].base, m_blocks[i].size);
+    allocators::heap_free(m_blocks[i].base, m_blocks[i].size, alignof(u8));
   }
 
   while (m_blocks.count() > 1)
