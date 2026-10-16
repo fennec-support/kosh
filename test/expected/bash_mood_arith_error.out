@@ -27,3 +27,5 @@ rc=0
      1 |  readonly r=1; r=2; echo after
        |                ^~~
 rc=1
+== bash mood reports a stray token after an operand before evaluating:
+1

@@ -344,6 +344,7 @@ enum class diagnostic_id : u16
   sc3056,
   sc3057,
   sc3060,
+  arithmetic_syntax_error,
   arithmetic_xor_power,
   assignment_prefix_read,
   conditional_missing_operand,

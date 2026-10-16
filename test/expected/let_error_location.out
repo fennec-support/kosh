@@ -1,12 +1,13 @@
 == default argument location ==
+-c:1:12: error: Unexpected character in the arithmetic expression.
+     1 |  a=0; let a = 2; echo unreached
+       |             ^
+note: This is not a valid operator or operand.
 -c:1:6: warning: The `let` builtin evaluates its argument as arithmetic. (SC2219)
      1 |  a=0; let a = 2; echo unreached
        |       ^~~
 note: Write `(( ... ))` for the arithmetic.
--c:1:12: error: Builtin `let`: Unexpected character in the arithmetic expression.
-     1 |  a=0; let a = 2; echo unreached
-       |             ^
-note: This is not a valid operator or operand.
+Encountered 1 warning and 1 error.
 rc=1
 == bash soft argument location ==
 -c:1:12: error: Builtin `let`: Unexpected character in the arithmetic expression.

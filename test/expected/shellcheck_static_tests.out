@@ -9,6 +9,10 @@ note: Avoid recursion by rewriting the call as a loop, or suppress this check wi
      7 |    let "counter -lt limit"
        |    ^~~
 note: Write `(( ... ))` for the arithmetic.
+7:7: warning: Unexpected 'limit' after the expression.
+     7 |    let "counter -lt limit"
+       |        ^~~~~~~~~~~~~~~~~~~
+note: An operator is missing between two values.
 7:7: warning: Arithmetic treats the `-lt` operator as a subtraction. (SC1106)
      7 |    let "counter -lt limit"
        |        ^~~~~~~~~~~~~~~~~~~
@@ -498,4 +502,4 @@ note: Quote it to avoid an empty or split argument.
    139 |    [ $? -eq 0 ]
        |      ^~
 note: Test the command directly with `if` or `&&`.
-Encountered 122 warnings.
+Encountered 123 warnings.

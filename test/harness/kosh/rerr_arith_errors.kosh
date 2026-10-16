@@ -25,3 +25,7 @@ echo "command_division=$?"
 ( (( 1 @ 2 )) )
 echo "command_token=$?"
 echo $((0x + 010 + 16#ff + 2#101))
+(y=$((3 4)); echo "$y")
+echo "assignment=$?"
+(export z=$((5 6)))
+echo "declaration=$?"

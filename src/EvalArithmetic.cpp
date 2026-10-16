@@ -642,6 +642,29 @@ public:
   }
 
   fn
+  fail_on_unexpected_tail() throws -> void
+  {
+    let tail_position = pos;
+
+    while (tail_position < source.length &&
+           (source[tail_position] == ' ' || source[tail_position] == '\t' ||
+            source[tail_position] == '\n'))
+      tail_position++;
+
+    if (tail_position == source.length) return;
+
+    static constexpr StringView CONTINUATIONS = "+-*/%<>=!&|^,?:)]";
+
+    if (CONTINUATIONS.find_character(source[tail_position]).has_value()) return;
+
+    fail_at(tail_position,
+            should_error_unset ? source.length - tail_position : 1,
+            "Unexpected '" + source.substring(tail_position) +
+                "' after the expression",
+            "An operator is missing between two values");
+  }
+
+  fn
   parse() throws -> ArithmeticValue
   {
     skip_spaces();
@@ -934,6 +957,7 @@ public:
       } catch (const ErrorWithLocation &) {
         throw;
       } catch (const ErrorBase &error) {
+        fail_on_unexpected_tail();
         fail_span(op.kind == 'P' || op.kind == '/' || op.kind == '%'
                                   ? rhs_start
                                   : lhs_start,
@@ -2607,7 +2631,23 @@ public:
       let const rhs =
           parse_binary(op.kind == 'P' ? op.precedence : op.precedence + 1);
 
-      lhs = arith_apply_binop(op.kind, lhs, rhs, is_exact, arena);
+      try {
+        lhs = arith_apply_binop(op.kind, lhs, rhs, is_exact, arena);
+      } catch (const ErrorBase &) {
+        let const is_invalid_tail =
+            ti < toks.count() &&
+            (toks[ti].k != arith_token::kind::op ||
+             (toks[ti].text != ")" &&
+              arith_classify_binop(toks[ti].text).precedence == 0));
+
+        if (is_invalid_tail) {
+          throw ErrorWithDetails{"Unexpected '" + toks[ti].text +
+                                     "' after the expression",
+                                 "An operator is missing between two values"};
+        }
+
+        throw;
+      }
     }
   }
 
@@ -3014,6 +3054,40 @@ evaluate_constant_arithmetic(StringView expression) throws -> i64
   let parser = ArithmeticParser{nullptr, expression, false, arena};
 
   return parser.parse().wrapped_i64();
+}
+
+fn
+find_arithmetic_syntax_problem(StringView expression,
+                               bool       is_exact) throws
+    -> Maybe<arithmetic_syntax_problem>
+{
+  let      &arena   = get_constant_arithmetic_arena();
+  let const scratch = arena.mark();
+
+  defer { arena.release(scratch); };
+
+  let parser = ArithmeticParser{nullptr, expression, is_exact, arena, 0, true};
+
+  parser.precise_base = SourceLocation{0, 0};
+
+  let problem = arithmetic_syntax_problem{};
+
+  try {
+    unused(parser.parse());
+
+    return None;
+  } catch (const ErrorWithLocation &error) {
+    problem.position = error.location().position;
+    problem.length   = error.location().length;
+    problem.message  = String{heap_allocator(), error.message().view()};
+    problem.note     = String{heap_allocator(), error.detail_message()};
+  } catch (const ErrorBase &error) {
+    problem.length  = expression.length;
+    problem.message = String{heap_allocator(), error.message().view()};
+    problem.note    = String{heap_allocator(), error.detail_message()};
+  }
+
+  return problem;
 }
 
 fn

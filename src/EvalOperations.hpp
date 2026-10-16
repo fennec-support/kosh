@@ -31,6 +31,19 @@ pure fn
 obvious_xor_power_operator_position(StringView expression) wontthrow
     -> Maybe<usize>;
 
+struct arithmetic_syntax_problem
+{
+  usize  position{0};
+  usize  length{0};
+  String message{heap_allocator()};
+  String note{heap_allocator()};
+};
+
+fn
+find_arithmetic_syntax_problem(StringView expression,
+                               bool       is_exact) throws
+    -> Maybe<arithmetic_syntax_problem>;
+
 fn
 find_substring_length_separator(StringView body) wontthrow -> usize;
 

@@ -140,6 +140,32 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
   let const obvious_power_position =
       obvious_xor_power_operator_position(expression);
 
+  let const has_expansion_syntax =
+      expression.find_character('$').has_value() ||
+      expression.find_character('`').has_value() ||
+      expression.find_character('"').has_value() ||
+      expression.find_character('\'').has_value() ||
+      expression.find_character('\\').has_value();
+
+  if (!has_expansion_syntax) {
+    if (let const problem = find_arithmetic_syntax_problem(
+            expression, actx.options.is_default_mood))
+    {
+      let problem_location = location;
+
+      if (expression_base_position.has_value()) {
+        problem_location =
+            SourceLocation{*expression_base_position + problem->position,
+                           problem->length > 0 ? problem->length : 1,
+                           location.source_name_index};
+      }
+
+      actx.report_diagnostic(diagnostic_id::arithmetic_syntax_error,
+                             problem_location,
+                             {problem->message.view(), problem->note.view()});
+    }
+  }
+
   struct arithmetic_write
   {
     StringView             name;

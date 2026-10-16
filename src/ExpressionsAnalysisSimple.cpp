@@ -1000,6 +1000,22 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
       locale_word = word;
     } else if (arg->kind() == Token::Kind::Assignment) {
       locale_word = &static_cast<const tokens::Assignment *>(arg)->value_word();
+
+      for (let const &segment : locale_word->segments) {
+        if (segment.kind != WordSegment::Kind::ArithmeticExpansion) continue;
+
+        let const segment_location =
+            segment.get_source_location(arg_location.source_name_index)
+                .value_or(arg_location);
+        let const base_position =
+            segment_location.length == segment.text.count()
+                ? Maybe<usize>{segment_location.position}
+                : None;
+
+        check_arithmetic_expression_lints(actx, segment.text.view(),
+                                          segment_location, base_position,
+                                          lint_input.is_conditional);
+      }
     }
 
     let is_assignment_builtin_operand = false;
