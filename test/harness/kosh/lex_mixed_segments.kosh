@@ -1,33 +1,35 @@
 #!/bin/env kosh
-# The tokens below stand in for word segments and are never assigned on purpose.
-# shellcheck disable=unassigned-variable-read
-: pre"dq"'sq'$x${y}post
-: "a$b"'c'$(:)"d$(( 1 + 1 ))e"
+# shellcheck disable=unquoted-command-substitution
+show() { printf '[%s]' "$@"; echo; }
+HOME=/home/segments
+x=X y=Y b=B
 
+show pre"dq"'sq'$x${y}post
+show "a$b"'c'$(printf p)"d$(( 1 + 1 ))e"
 
-: $(( 1 + 2 ))
-: pre$(( 3 * 4 ))post
-: "val=$(( 5 - 1 ))end"
-: $(( 6 ))$(( 7 ))
+show $(( 1 + 2 ))
+show pre$(( 3 * 4 ))post
+show "val=$(( 5 - 1 ))end"
+show $(( 6 ))$(( 7 ))
 
-: "$(:)"
-: pre$(:)post
-: "head$(:)tail"
-: $(:)$(:)
+show "$(printf p)"
+show pre$(printf p)post
+show "head$(printf p)tail"
+show $(printf p)$(printf q)
 
-: a\*b c\?d
-: \$foo \~home
-: \" \\ \`
-: pre\ space
+show a\*b c\?d
+show \$foo \~home
+show \" \\ \`
+show pre\ space
 
 set -f
-: a*b c?d [a-z]
-: "lit*" 'lit?' "[abc]"
+show a*b c?d [a-z]
+show "lit*" 'lit?' "[abc]"
 
-: bare 'single' "double"
-: pre'mid'post
-: out"in"out
-: 'one''two'"three"
+show bare 'single' "double"
+show pre'mid'post
+show out"in"out
+show 'one''two'"three"
 
-: ~ ~user ~/path
-: pre~mid "~quoted" '~raw'
+show ~ ~nosuchuser_xyz ~/path
+show pre~mid "~quoted" '~raw'

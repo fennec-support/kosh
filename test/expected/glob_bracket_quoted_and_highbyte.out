@@ -11,3 +11,11 @@ unquoted_star_hit
 highrange_b_hit
 highrange_A_miss
 neg_highrange_hit
+neg_b_hit
+neg_a_miss
+member_close_hit
+member_x_hit
+member_y_miss
+neg_member_a_hit
+neg_member_close_miss
+neg_member_x_miss

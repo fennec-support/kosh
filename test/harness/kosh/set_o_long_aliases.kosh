@@ -10,6 +10,10 @@ do
   (set -o "$name")
   echo "$name rc=$?"
 done
+for name in no-diagnostics failglob; do
+  (set +o "$name")
+  echo "+o $name rc=$?"
+done
 (set --mood bash)
 echo "long-mood rc=$?"
 (set --options)

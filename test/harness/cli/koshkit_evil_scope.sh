@@ -21,16 +21,23 @@ printf 'users-selector=%s\n' "$users_selector"
 
 all_report=$($BIN -c 'koshkit --color never evil --all')
 case $all_report in
-  *'Mixed library ABIs'*'Finding confidence'*) all_extended=matched ;;
+  *'Mixed library ABIs'*'Finding confidence'*'Cost'*) all_extended=matched ;;
   *) all_extended=missing ;;
 esac
 if [ "$(uname -s)" = Linux ]; then
   case $all_report in
-    *'Page faults  '*) ;;
+    *'Page faults  '*'Runnable processes  '*'Memory partial stall microseconds  '*'Finding confidence  '*'  high'*'Cost  '*'  process mappings'*) ;;
     *) all_extended=missing ;;
   esac
 fi
 printf 'all-extended=%s\n' "$all_extended"
+
+short_all_report=$($BIN -c 'koshkit --color never evil -a')
+case $short_all_report in
+  *'Mixed library ABIs'*'Finding confidence'*) short_all=matched ;;
+  *) short_all=missing ;;
+esac
+printf 'short-all=%s\n' "$short_all"
 
 short_report=$($BIN -c 'koshkit --color never evil --short')
 case $short_report in

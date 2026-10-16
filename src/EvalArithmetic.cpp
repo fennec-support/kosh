@@ -275,6 +275,7 @@ public:
   static constexpr usize MAX_DEPTH = 128;
   usize                  binary_depth{0};
   usize                  chain_depth{0};
+  bool                   is_variable_value{false};
   static constexpr usize MAX_CHAIN_DEPTH = 4096;
 
   fn
@@ -417,6 +418,7 @@ public:
     ArithmeticParser nested{context,   stable_value.view(), is_exact, arena,
                             depth + 1, m_is_skipping,       bc_scale};
 
+    nested.is_variable_value  = true;
     nested.should_error_unset = should_error_unset;
 
     return nested.parse();
@@ -1883,9 +1885,12 @@ public:
     depth++;
     defer { depth--; };
 
-    if (depth > MAX_DEPTH)
+    if (depth > MAX_DEPTH) {
       fail("Expression nested too deeply",
-           "A variable may reference itself, like `x=x`");
+           is_variable_value
+               ? StringView{"A variable may reference itself, like `x=x`"}
+               : StringView{});
+    }
 
     skip_spaces();
     if (consume("(")) {
@@ -2444,6 +2449,8 @@ evaluate_named_value_operand(EvalContext *context,
   let const        stable_value = String{bump_allocator(arena), value};
   ArithmeticParser nested{context, stable_value.view(), is_exact, arena};
 
+  nested.is_variable_value = true;
+
   return nested.parse();
 }
 
@@ -2505,10 +2512,7 @@ public:
     depth++;
     defer { depth--; };
 
-    if (depth > MAX_DEPTH) {
-      throw ErrorWithDetails{"Expression nested too deeply",
-                             "A variable may reference itself, like `x=x`"};
-    }
+    if (depth > MAX_DEPTH) throw Error{"Expression nested too deeply"};
 
     if (at_op("+")) {
       ti++;

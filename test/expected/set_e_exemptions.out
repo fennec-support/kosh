@@ -1,9 +1,10 @@
-after-and
-after-neg
-after-or-ok
-after-neg-ok
-sub-exited
-or-exited
-bare-exited
+reached-and
+sub-ok
+reached-or
+or-ok
+reached-bare
+bare-ok
+reached-neg
 neg-ok
+plain=1
 done

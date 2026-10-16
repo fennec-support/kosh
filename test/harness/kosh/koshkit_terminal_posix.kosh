@@ -1,5 +1,5 @@
 root=$(mktemp -d)
-cd "$root"
+cd "$root" || exit 1
 
 koshkit mkdir -p man1
 printf 'LOCAL MANPAGE\n' >man1/topic.1

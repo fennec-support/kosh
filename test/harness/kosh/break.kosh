@@ -1,10 +1,11 @@
 #!/bin/env kosh
+# shellcheck disable=break-outside-loop-in-function,break-outside-loop
 for i in 1 2; do for j in a b; do break 5; echo unreached; done; echo inner-done; done
 echo end-break
 for i in 1 2; do continue 5; echo body; done
 echo end-continue
 
-for x in 1 2 3; do echo $x; break; done
+for x in 1 2 3; do echo "$x"; break; done
 
 f() { break; }
 for i in 1 2 3; do f; echo "$i"; done
@@ -19,7 +20,7 @@ for i in 1 2; do break 0; echo unreached; done
 echo after
 
 condition_break() {
-  count=0
+  local count=0
   while
     count=$((count + 1))
     [ "$count" -gt 2 ] && break
@@ -30,3 +31,4 @@ condition_break() {
 }
 condition_break
 echo end-condition-break
+for i in 1 2; do continue 0; echo unreached; done

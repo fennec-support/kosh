@@ -1,3 +1,5 @@
 == SHELL is runnable while $0 keeps the login dash:
 SHELL=runnable
 zero=dashed
+== exec -l drops the dash from $KOSH:
+shle_leading_dash=no

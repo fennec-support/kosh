@@ -1,4 +1,6 @@
 144 external
+random_digits
+indirect_differs
 -c:5:1: error: Could not open a pipe for command substitution.
      5 |  value=$(printf hi)
        |  ^~~~~~~~~~~~~~~~~~

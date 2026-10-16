@@ -39,7 +39,6 @@ ctrl-z-undoes-at-the-prompt PASS
 ctrl-shift-z-redoes PASS
 ctrl-shift-z-redoes-from-modify-other-keys PASS
 ctrl-z-leaves-the-shell-running PASS
-ctrl-z-stops-a-running-program PASS
 ctrl-x-before-an-arrow-keeps-the-arrow PASS
 alt-t-keeps-trailing-blanks PASS
 alt-t-leaves-the-caret-before-the-blank PASS

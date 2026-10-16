@@ -1,4 +1,5 @@
 #!/bin/env kosh
+# shellcheck disable=one-operand-test
 # A constant assigned a literal becomes a propagation candidate, yet an unquoted
 # $k operand in a test field-splits at run time, so the optimizer must not fold
 # the verdict from the recorded single-string value. A quoted "$k" does not

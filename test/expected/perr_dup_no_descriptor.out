@@ -1,3 +1,0 @@
-2:9: error: Expected a descriptor after '&'.
-     2 |  echo 3>&
-       |          ^

@@ -31,3 +31,8 @@ echo "== unguarded still errors:"
 totally-nonexistent-command
 echo "rc=$?"
 "echo" "string exec"
+alias ll='ls -l'
+command -v if
+command -v ll
+command -V if
+command -V ll

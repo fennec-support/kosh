@@ -53,3 +53,9 @@ note: Assign 'DEMO_TEST_EXPORTE' before this use, or set it in the environment.
        |        ^~~~~~~~~~~~~~~~~~
 note: The variable 'DEMO_TEST_EXPORTED' is set. Correct the spelling, or write ${DEMO_TEST_EXPORTE-} if an empty expansion is intended.
 
+== a plain unset reference is fatal in the default mood:
+-c:2:7: error: Unable to expand 'never_set_name' because the parameter is not set.
+     2 |  echo "$never_set_name"; echo after
+       |        ^~~~~~~~~~~~~~~
+note: Replace it with ${never_set_name-} if empty expansion is desired.
+rc=1

@@ -1,4 +1,5 @@
 #!/bin/env kosh
+# shellcheck disable=SC2050,SC2157
 # Bash [[ ]] conditionals work in the default strict mood, not only bash mode.
 [[ "configure.sh" == *.sh ]] && echo glob-yes
 [[ "a*b" == "a*b" ]] && echo quoted-literal

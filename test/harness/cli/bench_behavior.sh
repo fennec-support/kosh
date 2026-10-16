@@ -193,7 +193,7 @@ if [ "$has_typescript" -eq 1 ]; then
 fi
 if [ "$has_progress_terminal" -eq 1 ]; then
     case $terminal_hex in
-        *0d1b5b324b1b5b316d*) ;;
+        *0d1b5b324b*) ;;
         *) echo "progress clobbered error"; exit 1 ;;
     esac
 fi

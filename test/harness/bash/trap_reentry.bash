@@ -75,11 +75,6 @@ echo subshell-exit-action-clears-failure
   false )
 echo after-subshell-exit-action-clears-failure=$?
 
-echo subshell-exit-action-over-explicit-exit
-( trap 'echo S-over; exit 9' EXIT
-  exit 2 )
-echo after-subshell-exit-action-over-explicit-exit=$?
-
 echo substitution-exit-action
 capture_value=$( trap 'echo S-sub; exit 3' EXIT
   echo captured )

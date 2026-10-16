@@ -37,3 +37,7 @@ echo "deeper_outside=$?"
 
 declare valued=1
 declare -p valued
+
+exported_set=hello
+declare -x exported_set
+env | /usr/bin/grep '^exported_set=hello'

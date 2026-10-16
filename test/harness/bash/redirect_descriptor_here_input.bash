@@ -11,6 +11,11 @@ echo "== numbered here-string on a command =="
 /bin/cat 3<<< "three" <&3
 echo "rc=$?"
 
+echo "== numbered here-document on a command =="
+/bin/cat 3<<EOF <&3
+body
+EOF
+
 echo "== numbered here-string on a function and a group =="
 f() { /bin/cat <&5; }
 f 5<<< "five"

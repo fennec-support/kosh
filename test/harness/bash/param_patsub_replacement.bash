@@ -4,7 +4,8 @@
 # the matched text. A quoted or backslash-escaped & stays literal, a & that
 # comes from an unquoted expansion is active, and a backslash that comes from
 # an unquoted expansion quotes a following & or backslash. With the option off
-# every & is literal.
+# every & is literal. An empty pattern is a no-op, and the anchored # and %
+# forms still splice.
 
 v=abc
 shopt patsub_replacement
@@ -34,3 +35,10 @@ echo "off-variable:${v/b/$r}"
 shopt -s patsub_replacement
 echo "on-again:${v/b/[&]}"
 shopt -p patsub_replacement
+
+v=ab; e=
+printf 'replace-all=[%s]\n' "${v//$e/-}"
+printf 'replace-one=[%s]\n' "${v/$e/-}"
+w=hi
+printf 'prefix=[%s]\n' "${w/#/X}"
+printf 'suffix=[%s]\n' "${w/%/Z}"

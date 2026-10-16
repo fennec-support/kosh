@@ -10,9 +10,6 @@ rc=0
 == --posix reports the bash-posix mood:
 bash-posix
 rc=0
-== --mood bash-posix keeps [[ working:
-bracket-works
-rc=0
 == --posix does not enter the sh mood:
 b
 rc=0
@@ -42,11 +39,6 @@ trap -- 'echo E' ERR
 trap -- 'echo R' RETURN
 rc=0
 == --posix fires RETURN when a sourced file finishes:
-inner-body
-R-src
-after=0
-rc=0
-== --mood bash-posix fires RETURN when a sourced file finishes:
 inner-body
 R-src
 after=0

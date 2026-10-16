@@ -55,13 +55,6 @@ h=0x10; echo $((h + 1))
 w="  7  "; echo $((w))
 z=" 3 "; arr=(0 10 20 30); echo "${arr[z]}"
 
-echo "dec: $((10#15))"
-echo "hex: $((16#ff))"
-echo "bin: $((2#101))"
-echo "octbase: $((8#17))"
-echo "b36: $((36#z))"
-echo "lead0: $((10#0042))"
-echo "mixed: $((16#A + 2#10))"
 u=42.9
 echo "trunc: $((10#0${u%.*}))"
 
@@ -84,14 +77,10 @@ echo "shortand $x"
 echo "shortor $x"
 
 echo "empty: $(( ))"
+(( )) ; echo "empty arith rc=$?"
 n=(a b c)
 echo "unset-sub: ${n[$1]}"
 echo "expr-empty: $(( ${#nosuchvar} ))"
-type -at if
-f() { :; }
-type -at f
-alias_target_builtin() { :; }
-type -t type
 
 # A (( that closes with a lone parenthesis is a subshell whose first child is
 # a subshell, while a true arithmetic command keeps the (( reading, the
@@ -201,8 +190,9 @@ echo "mix $(( 16#A + 2#10 + 010 ))"
 
 # Bash let builtin arithmetic forms, checked byte-for-byte against bash. Covers a
 # parenthesized expression, the assignment operators through let, increment and
-# decrement, a multi-argument let where a later argument reads an earlier
-# assignment, and the let exit status that follows the last argument value.
+# decrement, a bitwise shift, a multi-argument let where a later argument reads
+# an earlier assignment, and the let exit status that follows the last argument
+# value.
 let "v = (3 + 4) * 2 - 1"
 echo "v $v"
 let w=10 "w += 5" "w *= 2"
@@ -218,37 +208,14 @@ let "z = 7" "z <<= 2"
 echo "z $z"
 let "0"; echo "rc-zero $?"
 let "9"; echo "rc-nonzero $?"
-
-# Bash (( )) arithmetic command exit status, checked byte-for-byte against bash.
-# The command succeeds when the value is non-zero and fails when it is zero, so a
-# negative value also succeeds. Covers the status in $?, in an if, and through
-# the && and || connectives.
-(( 5 )); echo "five rc=$?"
-(( 0 )); echo "zero rc=$?"
-(( -3 )); echo "neg rc=$?"
-(( 2 - 2 )); echo "cancel rc=$?"
-if (( 2 + 2 == 4 )); then echo "if true"; fi
-if (( 1 == 2 )); then echo nope; else echo "if false"; fi
-(( 3 > 1 )) && echo "and true"
-(( 3 < 1 )) || echo "or false"
-total=0
-i=0
-while (( i < 4 )); do
-  (( total += i ))
-  (( i++ ))
-done
-echo "total $total"
-
-let "x = 5 + 3"
-echo "x=$x"
-let a=0; echo "zero rc=$?"
-let b=7; echo "nonzero rc=$?"
-i=5; let i++; let ++i
-echo "steps i=$i"
-let "p = 2" "q = p * 3 + 1"
-echo "chain p=$p q=$q"
 let "r = (1 << 4) | 2"
 echo "bitwise r=$r"
+
+# Bash (( )) arithmetic command exit status, checked byte-for-byte against bash.
+# A negative value succeeds. Covers the status in $? and in an if.
+(( -3 )); echo "neg rc=$?"
+if (( 2 + 2 == 4 )); then echo "if true"; fi
+if (( 1 == 2 )); then echo nope; else echo "if false"; fi
 
 # A subscript with a side effect runs once, and a compound assignment reads
 # the left value before it evaluates the right side.

@@ -1,7 +1,7 @@
 #!/bin/sh
-# The read builtin and heredocs, checked against dash. The read operand
-# indexing, its honoring of a redirected input descriptor, and the heredoc
-# body storage all changed, so this guards them.
+# The read builtin takes operands and honors a redirected input descriptor,
+# heredocs keep their own bodies, and here-document forms expand, quote, strip
+# tabs, and feed pipelines, all checked against dash.
 
 read first second rest <<HD
 alpha beta gamma delta
@@ -23,11 +23,6 @@ ONE
 cat <<TWO
 body two
 TWO
-
-# A heredoc that strips leading tabs with the dash form.
-cat <<-END
-	tab stripped
-END
 
 # A bare exec applies its redirections to the shell itself and keeps them for
 # every later command. An arbitrary descriptor such as 5 opens a file, takes
@@ -54,31 +49,6 @@ rm -f "$ef"
 exec 7>&1
 echo "via fd seven" >&7
 exec 7>&-
-
-
-# Heredocs with expansion, a quoted delimiter, tab stripping, and a pipeline.
-
-name=world
-cat <<EOF
-Hello, $name!
-Sum is $((3 + 4)).
-EOF
-
-cat <<'LITERAL'
-No $expansion happens in here.
-LITERAL
-
-echo "smallest:"
-sort <<DATA | head -n1
-gamma
-alpha
-beta
-DATA
-
-cat <<-INDENTED
-	tab-stripped line
-	another one
-INDENTED
 
 # The here-document forms, checked against dash. An unquoted delimiter expands a
 # parameter and a command substitution in the body, a quoted delimiter keeps the

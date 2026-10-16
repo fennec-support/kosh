@@ -12,3 +12,12 @@ counted	assignment-name
 V	variable
 $SHIPPED	variable
 $rows	variable
+$U1	unset-variable
+U1	assignment-name
+$U1	variable
+U2	assignment-name
+$U2	unset-variable
+$uarr	unset-variable
+uarr	assignment-name
+$uarr	variable
+$PATH	variable

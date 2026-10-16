@@ -1,5 +1,0 @@
-opt=a arg=val
-opt=b arg=
-opt=c arg=
-rest=-a ind=4
-silent=? arg=

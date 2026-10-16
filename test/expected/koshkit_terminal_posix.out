@@ -1,7 +1,3 @@
-2:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-     2 |  cd "$root"
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
 LOCAL MANPAGE
 topic (1) - LOCAL MANPAGE
 one

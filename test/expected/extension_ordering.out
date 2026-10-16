@@ -10,5 +10,18 @@ sub/
 OLD.ZIP
 archive.zip
 backup.tar.gz
+book.pdf
 data.csv
+notes.txt
+photo.png
+== mupdf with an empty argument shows only the pdf and directories:
+sub/
+book.pdf
+== evince with an empty argument shows only the pdf and directories:
+sub/
+book.pdf
+== feh with an empty argument shows only the image and directories:
+sub/
+photo.png
+== a typed prefix keeps a non-matching file too:
 notes.txt

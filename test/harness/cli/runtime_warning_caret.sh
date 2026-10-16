@@ -18,4 +18,3 @@ a=( "$UNSET_ELEM" )
 EOF
 "$BIN" -WWW "$script" 2>&1 | grep -E 'warning' | sed "s|$script|SCRIPT|"
 rm -f "$script"
-echo "rc=$?"

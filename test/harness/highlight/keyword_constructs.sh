@@ -29,18 +29,6 @@ in a
 do :
 done' | grep -E "${tab}(keyword|variable)$"
 
-"$BIN" --debug-highlight-at 'cat <<EOF
-body
-EOF
-cat <<-"DONE"
-	body
-	DONE' | grep -E "${tab}(heredoc|heredoc-delimiter)$"
-
-"$BIN" --debug-highlight-at 'cat <<\_ACEOF
-body
-_ACEOF
-echo tail' | grep -E "${tab}(heredoc|heredoc-delimiter|resolved-command)$"
-
 koshkit_result=$("$BIN" --debug-highlight-at \
     'koshkit ls -l; koshkit koshkit-missing-utility value; koshkit --help; koshkit "cat"; koshkit '\''expr'\''; koshkit koshkit\-missing-escaped; koshkit c\at; koshkit basename; koshkit $'\''c\x61t'\''; koshkit $"cat"; koshkit "overlong-utility"; koshkit "cat')
 printf '%s\n' "$koshkit_result" | grep -Fx "ls${tab}resolved-command"

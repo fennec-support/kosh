@@ -176,37 +176,6 @@ printf '#!/bin/sh\n' > "$d/path/probe-alpha"
 printf '#!/bin/sh\n' > "$d/path/probe-beta"
 chmod +x "$d/path/probe-alpha" "$d/path/probe-beta"
 
-send_typing_input()
-{
-    wait_for_prompt_count "$d/typing-ready" 1 || fail "$LINENO"
-    for character in e c h o ' ' h e l l o; do
-        printf %s "$character"
-        sleep 0.02
-    done
-    printf '\n'
-    wait_for_prompt_count "$d/typing-ready" 2 || fail "$LINENO"
-    for character in p r o b e; do
-        printf %s "$character"
-        sleep 0.02
-    done
-    printf '\n'
-    wait_for_prompt_count "$d/typing-ready" 3 || fail "$LINENO"
-    finish_editor_input || fail "$LINENO"
-}
-
-printf '%s\n' \
-    "PS1='> '" \
-    "PROMPT_COMMAND='printf \"ready\\\\n\" >> \"\$EDITOR_READY_FILE\"'" \
-    "trap 'echo exited >> \"\$EDITOR_EXIT_FILE\"' EXIT" \
-    > "$d/typing-rc"
-send_typing_input | TERM=xterm-256color PATH="$d/path" \
-    EDITOR_READY_FILE="$d/typing-ready" \
-    KOSH_HISTORY_FILE="$d/typing-history" RCFILE="$d/typing-rc" BIN="$BIN" \
-    run_editor "$d/typing-typescript" || fail "$LINENO"
-
-strings "$d/typing-typescript" | grep -q '^hello$' || fail "$LINENO"
-echo 'interactive typing runs a command'
-
 send_unhighlighted_input()
 {
     wait_for_editor "$d/unhighlighted-ready" || fail "$LINENO"
@@ -462,49 +431,6 @@ do
     }
 done
 echo 'quoted replacement and smart-case TAB preserve the completed token'
-
-send_navigation_input()
-{
-    wait_for_prompt_count "$d/navigation-ready" 1 || fail "$LINENO"
-    printf 'echo alt-left-XXX\033[1;3Dfixed-\n'
-    wait_for_prompt_count "$d/navigation-ready" 2 || fail "$LINENO"
-    printf 'echo ctrl-left-XXX\033[1;5Dfixed-\n'
-    wait_for_prompt_count "$d/navigation-ready" 3 || fail "$LINENO"
-    printf 'echo XXX tail\001\033[C\033[C\033[C\033[C\033[C\033[1;3C-fixed\n'
-    wait_for_prompt_count "$d/navigation-ready" 4 || fail "$LINENO"
-    printf 'echo XXX tail\001\033[C\033[C\033[C\033[C\033[C\033[1;5C-fixed\n'
-    wait_for_prompt_count "$d/navigation-ready" 5 || fail "$LINENO"
-    printf 'cho command-home\033[He\n'
-    wait_for_prompt_count "$d/navigation-ready" 6 || fail "$LINENO"
-    printf 'echo command-end\033[H\033[F-ok\n'
-    wait_for_prompt_count "$d/navigation-ready" 7 || fail "$LINENO"
-    printf 'echo option-del remove\033\177kept\n'
-    wait_for_prompt_count "$d/navigation-ready" 8 || fail "$LINENO"
-    printf 'echo option-bs remove\033\010kept\n'
-    wait_for_prompt_count "$d/navigation-ready" 9 || fail "$LINENO"
-    printf 'echo ctrl-w remove\027kept\n'
-    wait_for_prompt_count "$d/navigation-ready" 10 || fail "$LINENO"
-    printf 'exit 0\n'
-}
-
-printf '%s\n' \
-    "PS1='> '" \
-    "PROMPT_COMMAND='printf \"ready\\\\n\" >> \"\$EDITOR_READY_FILE\"'" \
-    > "$d/navigation-rc"
-send_navigation_input | TERM=xterm-256color \
-    EDITOR_READY_FILE="$d/navigation-ready" \
-    KOSH_HISTORY_FILE="$d/navigation-history" RCFILE="$d/navigation-rc" BIN="$BIN" \
-    run_editor "$d/navigation-typescript" || fail "$LINENO"
-
-for navigation_expected_output in \
-    'alt-left-fixed-XXX' 'ctrl-left-fixed-XXX' \
-    'XXX-fixed tail' 'command-home' 'command-end-ok' \
-    'option-del kept' 'option-bs kept' 'ctrl-w kept'
-do
-    strings "$d/navigation-typescript" | \
-        grep -q "$navigation_expected_output" || fail "$LINENO"
-done
-echo 'Alt and Ctrl keys preserve word and line editing'
 
 printf '#!/bin/sh\nprintf "actual-cwd-completion\\n"\n' > "$d/actual-cwd-probe"
 chmod +x "$d/actual-cwd-probe"

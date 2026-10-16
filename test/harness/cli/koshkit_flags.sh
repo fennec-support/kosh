@@ -1,7 +1,6 @@
-# The human-readable -h on du and ls, the verbose -v on cp and mv, and the
-# located error a utility renders in the bash mood the same as in the default
-# mood. The du checks derive the platform allocation, and the ls checks use the
-# fixed logical size.
+# The human-readable -h on du and ls and the verbose -v on cp and mv. The du
+# checks derive the platform allocation, and the ls checks use the fixed
+# logical size.
 unset KOSH_FLAGS
 # A fixed umask keeps the rendered file mode the same on every machine.
 umask 022
@@ -35,8 +34,3 @@ echo "--- cp -v names the copy ---"
 "$BIN" -c 'koshkit cp -v big.txt copy.txt'
 echo "--- mv -v names the move ---"
 "$BIN" -c 'koshkit mv -v copy.txt moved.txt'
-echo "--- utility error is located in the bash mood ---"
-"$BIN" --mood bash -c 'koshkit cp' 2>&1
-echo "--- and a missing operand is located in the bash mood ---"
-"$BIN" --mood bash -c 'koshkit ls /no/such/path' 2>&1
-[ "$?" -eq 2 ]

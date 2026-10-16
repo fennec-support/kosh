@@ -1,10 +1,4 @@
 #!/bin/bash
-print_history_commands()
-{
-  history > "$TEST_TEMP_DIRECTORY/history-list"
-  sed 's/^ *[0-9][0-9]*  //' "$TEST_TEMP_DIRECTORY/history-list"
-}
-
 history -c
 history -s one alpha
 history -s two

@@ -13,4 +13,3 @@ chmod +x "$script"
 "$BIN" -I -c "$script"
 "$BIN" -I -c ". $script" | sed -n '1p'
 rm -f "$script"
-echo "rc=$?"

@@ -4,3 +4,6 @@ is_escaped\* \
 word \
 \
 does_not_exist*
+echo \
+привет мир! \
+hello sailor!

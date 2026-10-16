@@ -10,3 +10,4 @@ background-replaces
 before-background=12
 no-operand=0
 forgotten=127
+empty-redirections=0

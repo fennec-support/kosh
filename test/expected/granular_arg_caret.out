@@ -19,6 +19,10 @@ note: Pass `--ignore-exit-code` to benchmark it regardless.
 -c:1:7: error: Builtin `umask`: Unable to set the file creation mask because '0999' is not a valid octal mask.
      1 |  umask 0999
        |        ^~~~
+== umask points at the bad symbolic mask, not the whole umask line:
+-c:1:7: error: Builtin `umask`: Unable to set the file creation mask because 'u=rwx,bogus' is not a valid symbolic mask.
+     1 |  umask u=rwx,bogus
+       |        ^~~~~~~~~~~
 == set points at the bad option, not the whole set line:
 -c:1:5: error: Builtin `set`: Unknown option '-Z'.
      1 |  set -Z

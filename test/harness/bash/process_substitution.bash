@@ -13,7 +13,7 @@ cat <(
   printf 'nested-close:%s\n' "$(printf ')')"
 )
 echo data | tee >(cat > /tmp/kosh_ps_out_$$) >/dev/null
-sleep 0.2
+for n in {1..50}; do [ -s /tmp/kosh_ps_out_$$ ] && break; sleep 0.1; done
 cat /tmp/kosh_ps_out_$$
 rm -f /tmp/kosh_ps_out_$$
 

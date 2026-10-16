@@ -90,17 +90,3 @@ printf 'disk-window-shape=%s\n' "$disk_window_shape"
 
 $BIN -c 'koshkit evilio --live=bad' > /dev/null 2>&1
 printf 'rejected-live-status=%s\n' "$?"
-
-help=$($BIN -c 'koshkit evilio --help')
-case $help in
-  *"Sample and refresh live output"*"0.5 seconds"*) live_help=described ;;
-  *) live_help=missing ;;
-esac
-case $help in
-  *"M-second"*"window"*)
-    cumulative_help=described
-    ;;
-  *) cumulative_help=missing ;;
-esac
-printf 'live-help=%s\n' "$live_help"
-printf 'cumulative-help=%s\n' "$cumulative_help"

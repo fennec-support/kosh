@@ -1,6 +1,0 @@
-== tsh does not complete an ssh host by prefix, it is the Teleport client:
-== tsh ssh does not complete an ssh host either:
-== ssh still completes its host by prefix:
-bravo
-== ssh keeps a login before the host too:
-admin@bravo

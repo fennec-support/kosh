@@ -7,9 +7,10 @@ unset KOSH_FLAGS
 names="BLACK RED GREEN YELLOW BLUE MAGENTA CYAN WHITE \
 BRIGHT_BLACK BRIGHT_RED BRIGHT_GREEN BRIGHT_YELLOW \
 BRIGHT_BLUE BRIGHT_MAGENTA BRIGHT_CYAN BRIGHT_WHITE BOLD DIM RESET BOGUS"
-for name in $names; do
-  "$BIN" -c "printf '%-16s [%s]\n' KOSH_ANSI_$name \"\${KOSH_ANSI_$name-MISSING}\""
-done
+NAMES=$names "$BIN" -c 'for name in $NAMES; do
+  ref=KOSH_ANSI_$name
+  printf "%-16s [%s]\n" "$ref" "${!ref-MISSING}"
+done'
 # A stored assignment wins over the computed escape.
 "$BIN" -c 'KOSH_ANSI_RED=stored; printf "stored=[%s]\n" "$KOSH_ANSI_RED"'
 # The recognition holds in the sh mood the same as the default mood.

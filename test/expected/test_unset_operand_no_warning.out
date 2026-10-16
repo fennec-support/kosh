@@ -8,3 +8,5 @@ not-x
 1
 == the suppression does not leak past the test (count):
 1
+== alternate form on an unset var is silent:
+[]

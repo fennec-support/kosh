@@ -1,16 +1,8 @@
 #!/bin/env kosh
 # shellcheck disable=negation-skips-errexit
-set -e
-false && echo never-and
-echo after-and
-! true
-echo after-neg
-false || true
-echo after-or-ok
-! false
-echo after-neg-ok
-if ( set -e; true && false ); then echo sub-ok; else echo sub-exited; fi
-if ( set -e; false || false ); then echo or-ok; else echo or-exited; fi
-if ( set -e; false ); then echo bare-ok; else echo bare-exited; fi
-if ( set -e; ! false ); then echo neg-ok; else echo neg-exited; fi
+if ( set -e; true && false; echo reached-and ); then echo sub-ok; else echo sub-exited; fi
+if ( set -e; false || false; echo reached-or ); then echo or-ok; else echo or-exited; fi
+if ( set -e; false; echo reached-bare ); then echo bare-ok; else echo bare-exited; fi
+if ( set -e; ! false; echo reached-neg ); then echo neg-ok; else echo neg-exited; fi
+( set -e; false; echo reached-plain ); echo "plain=$?"
 echo done

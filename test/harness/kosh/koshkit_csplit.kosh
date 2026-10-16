@@ -1,5 +1,5 @@
 root=$(mktemp -d)
-cd "$root"
+cd "$root" || exit 1
 
 printf 'one\ntwo\nthree\nfour\n' > lines
 koshkit csplit -s lines 3

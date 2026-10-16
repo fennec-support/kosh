@@ -6,3 +6,21 @@
 4
 4
 4
+count=4
+i=3
+27:1: warning: The variable 'hello' is not set and expands to an empty string.
+    27 |  echo $((word + 1))
+       |  ^~~~~~~~~~~~~~~~~~
+note: Replace it with ${hello-} if empty expansion is desired.
+1
+42
+4
+35:9: warning: The variable 'notrecorded' is not set and expands to an empty string.
+    35 |  echo $((notrecorded + 1))
+       |          ^~~~~~~~~~~
+note: Replace it with ${notrecorded-} if empty expansion is desired.
+1
+17
+99
+hello
+8

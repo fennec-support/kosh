@@ -11,8 +11,6 @@ echo "== --posix seeds BASH_VERSINFO:"
   'printf "BASH_VERSINFO=%s.%s.%s.%s\n" "${BASH_VERSINFO[@]:0:4}"'; echo "rc=$?"
 echo "== --posix reports the bash-posix mood:"
 "$BIN" --posix -c 'set -M'; echo "rc=$?"
-echo "== --mood bash-posix keeps [[ working:"
-"$BIN" --mood bash-posix -c '[[ x == x ]] && echo bracket-works'; echo "rc=$?"
 echo "== --posix does not enter the sh mood:"
 "$BIN" --posix -c 'arr=(a b c); echo "${arr[1]}"'; echo "rc=$?"
 # The sh mood rejects DEBUG, ERR, and RETURN. The bash-posix mood keeps all
@@ -42,10 +40,6 @@ trap '[ -n "$posix_directory" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$posix_dire
 printf 'echo inner-body\n' > "$posix_directory/inner.sh"
 echo "== --posix fires RETURN when a sourced file finishes:"
 "$BIN" --posix -c 'trap "echo R-src" RETURN; . "$1"; echo "after=$?"' \
-  posix-driver "$posix_directory/inner.sh"
-echo "rc=$?"
-echo "== --mood bash-posix fires RETURN when a sourced file finishes:"
-"$BIN" --mood bash-posix -c 'trap "echo R-src" RETURN; . "$1"; echo "after=$?"' \
   posix-driver "$posix_directory/inner.sh"
 echo "rc=$?"
 echo "== the sh mood rejects RETURN for a sourced file:"

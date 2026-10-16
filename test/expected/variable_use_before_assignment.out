@@ -1,9 +1,0 @@
-$V	unset-variable
-V	assignment-name
-$V	variable
-V2	assignment-name
-$V2	unset-variable
-$arr	unset-variable
-arr	assignment-name
-$arr	variable
-$PATH	variable

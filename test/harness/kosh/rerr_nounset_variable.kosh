@@ -1,5 +1,19 @@
 #!/bin/env kosh
 # The runtime nounset error is the contract under test, not the static warning.
+# Case modification, replacement, substring, and indirect expansion of an unset
+# variable fail without set -u, and set -u also fails an unset variable in the
+# word of a modifier and a plain reference.
 # shellcheck disable=unassigned-variable-read
+(echo "${nope^^}")
+echo "case-mod=$?"
+(echo "${nope/a/b}")
+echo "replace=$?"
+(echo "${nope:1:2}")
+echo "substring=$?"
+(echo "${!nope}")
+echo "indirect=$?"
 set -u
+(printf '%s' "${x-$y}")
+echo "modifier-word=$?"
 echo "$undefined_var"
+echo not-reached

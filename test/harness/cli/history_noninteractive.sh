@@ -261,12 +261,12 @@ history -s local; history -d 1; echo "rc=$?"; history; \
 echo durable; cat "$KOSH_HISTORY_FILE"' history-test \
   "$dir/replaced-receipt-next" 2>/dev/null
 
-printf 'same\n' > "$dir/replaced-fc-receipt"
-printf 'same\npeer\n' > "$dir/replaced-fc-receipt-next"
+printf 'true\n' > "$dir/replaced-fc-receipt"
+printf 'true\npeer\n' > "$dir/replaced-fc-receipt-next"
 echo "== fc after a replaced file leaves the file alone =="
 KOSH_HISTORY_FILE="$dir/replaced-fc-receipt" "$BIN" --no-init-files -c \
   'history >/dev/null; koshkit mv "$1" "$KOSH_HISTORY_FILE"; \
-history -s same; fc -s 1; echo "rc=$?"; history; \
+history -s true; fc -s 1; echo "rc=$?"; history; \
 echo durable; cat "$KOSH_HISTORY_FILE"' history-test \
   "$dir/replaced-fc-receipt-next" 2>/dev/null
 
@@ -603,12 +603,6 @@ KOSH_HISTORY_FILE="$dir/append-alias-backing" "$BIN" --no-init-files -c \
 history -a "$2"; echo "rc=$?"' history-test "$dir/append-alias-target" \
   "$dir/./append-alias-target"
 cat "$dir/append-alias-target"
-
-printf 'one\ntwo\nthree\n' > "$dir/backing-write"
-echo "== a named write trims its backing file =="
-KOSH_HISTORY_FILE="$dir/backing-write" "$BIN" --no-init-files -c \
-  'KOSH_HISTORY_SIZE=2; history -w "$KOSH_HISTORY_FILE"; echo "rc=$?"'
-cat "$dir/backing-write"
 
 : > "$dir/concurrent-named-append"
 echo "== concurrent named appends keep complete records =="

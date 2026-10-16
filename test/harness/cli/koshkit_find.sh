@@ -131,6 +131,9 @@ echo "--- find -exec runs a command for each entry ---"
 "$BIN" -c 'koshkit find a -name "*.txt" -exec echo got {} \;'
 echo "--- find -exec batches entries after plus ---"
 "$BIN" -c 'koshkit find a -name "*.txt" -exec echo batch {} +'
+echo "--- find -print0 -print -exec run in order for each match ---"
+"$BIN" -c 'koshkit find a -name "*.txt" -print0 -print -exec echo exec {} \;' |
+  tr '\0' '|'
 echo "--- find -exec failure skips the later print ---"
 "$BIN" -c 'koshkit find a -name "*.txt" -exec false \; -print'
 "$BIN" -c 'koshkit find a -name "*.txt" -exec true \; -print'

@@ -111,3 +111,23 @@ printf 'one\\ two three\n' | { read a b; echo "a=[$a] b=[$b]"; }
 printf 'x\\ty\n' | { read a b; echo "a=[$a] b=[$b]"; }
 printf 'keep\\\\literal\n' | { read x; echo "x=[$x]"; }
 printf 'raw\\ kept\n' | { read -r a b; echo "raw a=[$a] b=[$b]"; }
+
+# The read builtin returns status one when input ends without a newline but
+# still assigns the partial line, and returns zero for a terminated line. The
+# status and value are checked byte-for-byte against bash. Empty fields between
+# adjacent non-whitespace separators stay empty, and a command-prefix IFS splits
+# a here-document.
+printf 'noeol' | { read v; echo "rc=$? v=$v"; }
+read_file=$(mktemp)
+printf abc > "$read_file"
+read x < "$read_file"
+echo "no_newline=[$x] $?"
+printf 'def\n' > "$read_file"
+read y < "$read_file"
+echo "with_newline=[$y] $?"
+rm -f "$read_file"
+printf 'x::y\n' | { IFS=:; read a b c; echo "[$a][$b][$c]"; }
+IFS=- read a b c d <<IN
+w-x-y-z
+IN
+echo "[$a][$b][$c][$d]"

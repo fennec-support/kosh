@@ -20,6 +20,8 @@ false || echo recovered
 # A negated failing command does not exit.
 ! false
 echo after_negation
+! true
+echo after_negation_true
 
 # A failing command in a while condition does not exit.
 while false; do echo loop; done

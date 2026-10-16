@@ -3,3 +3,5 @@ printf "[%s]" ${y:-${z:-"a}b"}}
 echo
 printf "[%s]" ${y:-${z:-$(echo "}")}}
 echo
+printf "[%s]" ${x:-$(printf ")")}
+echo

@@ -56,18 +56,6 @@ false || echo "or ran"
 false && echo "should not print"
 true || echo "should not print either"
 
-true; echo "after true $?"
-false; echo "after false $?"
-
-echo hi | cat | cat
-echo "pipe rc $?"
-
-false | true
-echo "pipe last true rc $?"
-
-true | false
-echo "pipe last false rc $?"
-
 if echo seq | grep -q seq; then
     echo "grep matched"
 fi

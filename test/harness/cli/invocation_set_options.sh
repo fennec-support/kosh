@@ -42,6 +42,8 @@ echo "rc=$?"
 echo "rc=$?"
 "$BIN" +r -c 'echo ran' 2>&1 | grep -v '^ ' | sed 's/^[0-9]*:[0-9]*: //'
 echo "rc=${PIPESTATUS[0]}"
+"$BIN" zz_no_such_script_file 2>&1 | grep -c 'error: Could not open'
+echo "rc=${PIPESTATUS[0]}"
 echo "== the kosh mood refuses to turn off an option it holds:"
 "$BIN" --mood kosh +o pipefail -c 'echo ran'
 echo "rc=$?"
@@ -51,3 +53,6 @@ printf 'echo "operand=$1"\n' >"$work/script.sh"
 echo "== --no-config reads no settings file and drops KOSHCONF:"
 KOSHCONF=AQEB "$BIN" --no-config -c 'koshconf get mood; echo "$-"
 env | grep -c "^KOSHCONF=" || :'
+echo "== a flag after -c is parsed as a flag:"
+"$BIN" -c -f 'echo marker-noglob' 2>/dev/null | grep -E '^marker-'
+"$BIN" -c -l 'echo marker-login' 2>/dev/null | grep -E '^marker-'

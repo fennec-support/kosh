@@ -15,11 +15,28 @@ echo "== timeout flags through koshkit:"
 "$BIN" --debug-complete-at 'koshkit timeout -' </dev/null
 echo "== nproc flags through koshkit:"
 "$BIN" --debug-complete-at 'koshkit nproc -' </dev/null
+echo "== every help flag of a listed utility is completed:"
+missing_count=0
 for utility in evil evildisk evilfiles evilfs evilio evillogs eviliso evilnet evilps \
   evilss goodcore goodfsw goodnode goodstat retry stat sync watch; do
-  echo "== $utility flags through koshkit:"
-  "$BIN" --debug-complete-at "koshkit $utility -" </dev/null
+  offered=" $("$BIN" --debug-complete-at "koshkit $utility -" </dev/null |
+    sed 's/=$//' | tr '\n' ' ') "
+  flags=$("$BIN" -c "koshkit $utility --help" 2>&1 |
+    sed -n '/^OPTIONS$/,/^$/p' |
+    sed -n -E '/^(  -|      --)/p' |
+    sed -E 's/^(.{0,38}[^ ]) {2,}.*/\1/; s/\[?=.*$//; s/^ +//; s/, /\n/g')
+  [ -n "$flags" ] || echo "$utility: no help flags"
+  for flag in $flags; do
+    case $offered in
+      *" $flag "*) ;;
+      *)
+        echo "$utility: missing $flag"
+        missing_count=$((missing_count + 1))
+        ;;
+    esac
+  done
 done
+[ "$missing_count" -eq 0 ] && echo "ok: koshkit flags complete"
 echo "== cat flags through koshkit:"
 "$BIN" --debug-complete-at 'koshkit cat --s' </dev/null
 echo "== date format directives through koshkit:"

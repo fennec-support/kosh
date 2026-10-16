@@ -1,6 +1,0 @@
-ble/util/put	function-name
-ble/util/put	resolved-command
-ble/variable#load:x	function-name
-ble/variable#load:x	resolved-command
-existing-path	existing-path
-missing-path	invalid-path

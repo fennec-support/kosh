@@ -1,7 +1,0 @@
-before
-3:7: warning: The variable '1' is not set and expands to an empty string.
-     3 |  echo "$1"
-       |        ^~
-note: Replace it with ${1-} if empty expansion is desired.
-
-not-reached

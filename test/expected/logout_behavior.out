@@ -5,11 +5,11 @@
 note: `exit` may be used instead.
 rc=1
 == logout with a non-numeric operand is a located error:
--c:1:1: error: Builtin `logout`: Cannot use 'logout' in a non-login shell.
+-c:1:8: error: Builtin `logout`: 'abc' is not a numeric exit status.
      1 |  logout abc
-       |  ^~~~~~~~~~
-note: `exit` may be used instead.
-rc=1
+       |         ^~~
+note: The status must be a whole number such as `logout 1`.
+rc=2
 == logout runs the EXIT action with its operand:
 body
 action-ran

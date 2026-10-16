@@ -10,6 +10,8 @@ rc=1
 no_match_*
 == the sh mood leaves it literal:
 no_match_*
+== an unclosed bracket stays literal in the bash mood:
+a[b
 == a glob made by an expansion is data and warns nothing:
 data_*
 -c:2:49: warning: The glob pattern 'literal_*' matched no file, it expands to its literal text, which is rarely intended.

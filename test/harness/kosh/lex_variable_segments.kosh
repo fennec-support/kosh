@@ -1,6 +1,6 @@
 #!/bin/env kosh
 # The tokens below stand in for word segments and are never assigned on purpose.
-# shellcheck disable=unassigned-variable-read
+# shellcheck disable=unassigned-variable-read,unquoted-expansion
 : $foo ${bar}
 : "$foo" "${bar}"
 : pre$foo "lead${bar}tail"

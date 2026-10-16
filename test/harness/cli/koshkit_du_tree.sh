@@ -155,7 +155,7 @@ fi
 chmod 755 locked
 
 echo "--- help ---"
-"$BIN" -c 'koshkit du --help' | grep -e '--tree' -e '--top-largest' -e 'Usage'
+"$BIN" -c 'koshkit du --help' | grep -o -e '--tree' -e '--top-largest' | sort -u
 
 cd /
 "$BIN" -c "koshkit rm -rf '$d'"

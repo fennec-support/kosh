@@ -11,6 +11,8 @@ explicit history writes ok
 exit trim keeps file records ok
 explicit write after clear ok
 zero history size storage ok
+stderr history expansion ok
 history option ok
 ignoreeof ok
 prompt hook shebang ok
+prompt hook history ok

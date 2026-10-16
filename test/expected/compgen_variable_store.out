@@ -1,39 +1,3 @@
-== stored candidates:
-status=0
-declare -a stored=([0]="alpha" [1]="apex")
-== nothing reaches standard output:
-captured=[]
-declare -a stored=([0]="alpha")
-== the store replaces every earlier element:
-declare -a stored=([0]="alpha")
-== a sparse element does not survive the store:
-declare -a stored=([0]="alpha")
-count=1
-== a scalar is promoted to an indexed array:
-declare -a stored=([0]="alpha")
-== no match leaves an empty array and status 1:
-status=1
-declare -a stored=()
-== no generator leaves an empty array and status 1:
-status=1
-declare -a stored=()
-== duplicates are preserved:
-declare -a stored=([0]="alpha" [1]="alpha")
-== the last -V wins:
-declare -a last=([0]="alpha")
-first-status=1
-== the prefix and the suffix reach both the array and the output:
-declare -a stored=([0]="prealphasuf" [1]="preapexsuf")
-prealphasuf
-preapexsuf
-== the filter sees the candidate without its prefix:
-prealpha
-preapex
-raw-status=0
-prefixed-status=1
-== a local target keeps the store inside the function:
-declare -a stored=([0]="alpha")
-outer-status=1
 == the kosh mood stores as well:
 declare -a stored=([0]="alpha")
 == an invalid name is refused:

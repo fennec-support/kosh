@@ -5,9 +5,16 @@ hint() {
   "$BIN" --debug-hint-at "$1"
 }
 
+help_hint() {
+  printf '%s => ' "$1"
+  "$BIN" --debug-hint-at "$1" |
+    sed -E -e 's/^(\[builtin synopsis\]).*/\1/' -e 's/^(\[flag\] [^:]*):.*/\1/'
+}
+
 printf '== open constructs\n'
 hint 'echo "abc'
 hint "echo 'abc"
+hint "echo \$'abc"
 hint 'echo $(ls'
 hint 'echo `ls'
 hint 'echo ${x'
@@ -22,6 +29,7 @@ hint 'if true'
 hint 'if (true)'
 hint 'if true; then'
 hint 'while true'
+hint 'while true; do :'
 hint 'for x in a b'
 hint 'for x in a; do '
 hint 'case x in'
@@ -69,13 +77,13 @@ hint 'if'
 hint 'while :; do done'
 
 printf '== continued on enter\n'
-hint 'echo \'
-hint 'echo "abc\'
+help_hint 'echo \'
+help_hint 'echo "abc\'
 
 printf '== clean lines\n'
-hint 'echo "abc" "$(ls)" "${HOME}"'
-hint 'echo hi # "abc'
-hint 'echo \"abc'
+help_hint 'echo "abc" "$(ls)" "${HOME}"'
+help_hint 'echo hi # "abc'
+help_hint 'echo \"abc'
 hint 'read x <<EOF'
 hint 'if true; then echo; fi'
 hint 'f() { :; }'
@@ -85,10 +93,10 @@ hint 'echo $x'
 hint 'cat file | grep x'
 hint 'x = 1'
 hint 'zzunknown-command arg'
-hint 'source ./zz-missing-file.sh'
+help_hint 'source ./zz-missing-file.sh'
 
 printf '== alias, function, and segment under the caret\n'
-"$BIN" -c "alias zzl='ls -a'" --debug-hint-at 'zzl '
+"$BIN" -c "alias zzl='ls -a'" --debug-hint-at 'zzl ' | sed 's/ · .*//'
 "$BIN" -c 'zzf() { echo hi; }' --debug-hint-at 'zzf '
-hint 'echo hi | cat -n'
-hint 'echo hi && cat -n'
+help_hint 'echo hi | cat -n'
+help_hint 'echo hi && cat -n'

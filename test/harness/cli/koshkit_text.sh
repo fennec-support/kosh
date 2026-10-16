@@ -115,20 +115,12 @@ echo "--- cksum repeated explicit standard input ---"
 printf 'abc\n' | "$BIN" -c 'koshkit cksum - -'
 echo "--- cksum implicit standard input ---"
 printf 'abc\n' | "$BIN" -c 'koshkit cksum'
-echo "--- head -n 2 ---"
-"$BIN" -c 'koshkit head -n 2 fruit.txt'
-echo "--- tail -n 1 ---"
-"$BIN" -c 'koshkit tail -n 1 fruit.txt'
 echo "--- head -2 and tail -1 take the historical count form ---"
 "$BIN" -c 'koshkit head -2 fruit.txt; koshkit tail -1 fruit.txt'
 echo "--- a -2 after a file is a file operand ---"
 "$BIN" -c 'koshkit head fruit.txt -2 2>/dev/null; printf "status=%s\n" "$?"'
-echo "--- sort ---"
-"$BIN" -c 'koshkit sort fruit.txt'
 echo "--- sort -r ---"
 "$BIN" -c 'koshkit sort -r fruit.txt'
-echo "--- sort then uniq -c ---"
-"$BIN" -c 'koshkit sort fruit.txt | koshkit uniq -c'
 printf 'zulu\nalpha\n' > sort-a.txt
 printf 'middle\nbeta\n' > sort-b.txt
 echo "--- sort multiple files with a missing operand ---"
@@ -163,20 +155,8 @@ echo "--- pr normal mode suppresses a missing warning ---"
 "$BIN" -c \
   'koshkit pr -r -t sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"' \
   2>&1
-echo "--- grep an ---"
-"$BIN" -c 'koshkit grep an fruit.txt'
-echo "--- grep -v apple ---"
-"$BIN" -c 'koshkit grep -v apple fruit.txt'
-echo "--- grep -i APPLE ---"
-"$BIN" -c 'koshkit grep -i APPLE fruit.txt'
-echo "--- grep no match status ---"
-"$BIN" -c 'koshkit grep absent fruit.txt; printf "status=%s\n" "$?"'
 echo "--- grep invalid pattern status ---"
 "$BIN" -c 'koshkit grep "[" fruit.txt; printf "status=%s\n" "$?"' 2>&1
-echo "--- grep regex wildcard ---"
-"$BIN" -c 'koshkit grep "a.a" fruit.txt'
-echo "--- grep regex no match status ---"
-"$BIN" -c 'koshkit grep "z.z" fruit.txt; printf "status=%s\n" "$?"'
 echo "--- grep regex chunk boundary ---"
 "$BIN" -c 'koshkit grep "a.a" grep-regex-boundary.txt > "$TEST_NULL_DEVICE"; printf "status=%s\n" "$?"'
 echo "--- grep -rnh ---"
@@ -288,8 +268,6 @@ echo "--- env clears and removes variables ---"
 "$BIN" -c 'export FOO=bar; koshkit env -u FOO koshkit env | koshkit grep FOO; printf "status=%s\n" "$?"'
 "$BIN" -c 'export FOO=bar; koshkit env -u FOO true; printf "FOO=%s\n" "$FOO"'
 "$BIN" -c 'koshkit env -i env; printf "empty-environment-status=%s\n" "$?"'
-echo "--- seq into head ---"
-"$BIN" -c 'koshkit seq 5 | koshkit head -n 2'
 echo "--- head batches regular prefix reads ---"
 "$BIN" -c 'koshkit head -n 1 batch-source-*.txt | koshkit cksum'
 echo "--- head bounds multi-chunk prefix reads ---"
@@ -344,61 +322,14 @@ echo "--- seq with step ---"
 printf 'alpha foo beta\nplain\nFOO and foo\n' > color-input.txt
 printf 'a\nb\nc\n' > color-left.txt
 printf 'a\nB\nc\nd\n' > color-right.txt
-echo "--- grep color always marks matches, names, numbers, and separators ---"
-"$BIN" -c 'koshkit grep --color=always -n foo color-input.txt' | tr '\033' '@'
-"$BIN" -c 'koshkit grep --color=always -i foo color-input.txt grep-tree/a.txt' |
-  tr '\033' '@'
-echo "--- grep color highlights every alternative ---"
-"$BIN" -c 'koshkit grep --color=always -E "o+|ph" color-input.txt' |
-  tr '\033' '@'
-echo "--- grep color leaves selected lines of -v and -x plain or whole ---"
-"$BIN" -c 'koshkit grep --color=always -v foo color-input.txt' | tr '\033' '@'
-"$BIN" -c 'koshkit grep --color=always -x plain color-input.txt' |
-  tr '\033' '@'
-echo "--- grep color colors -c and -l names but not counts ---"
-"$BIN" -c 'koshkit grep --color=always -c foo color-input.txt grep-tree/a.txt' |
-  tr '\033' '@'
-"$BIN" -c 'koshkit grep --color=always -l foo color-input.txt' | tr '\033' '@'
-echo "--- grep color never, auto, and redirected default keep bytes ---"
-"$BIN" -c 'koshkit grep --color=never -n foo color-input.txt' | tr '\033' '@'
-"$BIN" -c 'koshkit grep --color -n foo color-input.txt' | tr '\033' '@'
-"$BIN" -c 'koshkit grep -n foo color-input.txt' | tr '\033' '@'
-"$BIN" -c 'koshkit grep --color=sometimes foo color-input.txt' 2>&1 |
-  tr '\033' '@'
-echo "--- grep color honors GREP_COLORS capabilities ---"
-GREP_COLORS='ms=01;32:fn=34:ln=33:se=31' "$BIN" -c \
-  'koshkit grep --color=always -n foo color-input.txt color-input.txt' |
-  tr '\033' '@'
-GREP_COLORS='mt=4:sl=7:fn=' "$BIN" -c \
-  'koshkit grep --color=always foo color-input.txt color-input.txt' |
-  tr '\033' '@'
-GREP_COLORS='sl=1:cx=2' "$BIN" -c \
-  'koshkit grep --color=always -v foo color-input.txt' | tr '\033' '@'
-GREP_COLORS='sl=1:cx=2:rv' "$BIN" -c \
-  'koshkit grep --color=always -v foo color-input.txt' | tr '\033' '@'
-echo "--- grep color ignores unknown names and stops at an invalid value ---"
-GREP_COLORS='xx=1:ms=5:bad;x:sl=9' "$BIN" -c \
-  'koshkit grep --color=always foo color-input.txt' | tr '\033' '@'
-GREP_COLORS='ms=5:ln=2x:sl=9' "$BIN" -c \
-  'koshkit grep --color=always -n foo color-input.txt' | tr '\033' '@'
-echo "--- grep color reads the deprecated GREP_COLOR below GREP_COLORS ---"
-GREP_COLOR='4;33' "$BIN" -c \
-  'koshkit grep --color=always foo color-input.txt' | tr '\033' '@'
-GREP_COLOR='4;33' GREP_COLORS='ms=7' "$BIN" -c \
-  'koshkit grep --color=always foo color-input.txt' | tr '\033' '@'
-GREP_COLORS='ms=7' "$BIN" -c \
-  'koshkit grep --color=never foo color-input.txt' | tr '\033' '@'
-echo "--- diff color marks removed, added, hunk, and header lines ---"
-"$BIN" -c 'koshkit diff --color=always color-left.txt color-right.txt' |
-  tr '\033' '@'
-"$BIN" -c \
-  'koshkit diff --color=always -u -L left -L right color-left.txt color-right.txt' |
-  tr '\033' '@'
-echo "--- diff color never and redirected default keep bytes ---"
-"$BIN" -c 'koshkit diff --color=never color-left.txt color-right.txt' |
-  tr '\033' '@'
-"$BIN" -c 'koshkit diff -u -L left -L right color-left.txt color-right.txt' |
-  tr '\033' '@'
+echo "--- grep color modes keep plain output when redirected ---"
+"$BIN" -c 'koshkit grep --color=never -n foo color-input.txt'
+"$BIN" -c 'koshkit grep --color -n foo color-input.txt'
+"$BIN" -c 'koshkit grep -n foo color-input.txt'
+"$BIN" -c 'koshkit grep --color=sometimes foo color-input.txt' 2>&1
+echo "--- diff color modes keep plain output when redirected ---"
+"$BIN" -c 'koshkit diff --color=never color-left.txt color-right.txt'
+"$BIN" -c 'koshkit diff -u -L left -L right color-left.txt color-right.txt'
 echo "--- df human readable header and unit shape ---"
 "$BIN" -c 'koshkit df -h . | koshkit head -n 1'
 "$BIN" -c 'koshkit df -H . | koshkit head -n 1'

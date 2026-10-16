@@ -6,4 +6,4 @@ set -M -- mood-marker; echo "mood=$(set -M) args=$*"
 set -L -- init-marker; echo "init=$*"
 ( set -euo pipefail; echo "bundled=$?" )
 ( set -e; false; echo notreached ); echo "after=$?"
-set -Z 2>&1; echo "bad=$?"
+(set -Z); echo "bad=$?"

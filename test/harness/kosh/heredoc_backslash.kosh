@@ -23,3 +23,7 @@ EOF
 second-a
 second-b
 EOF2
+
+cat <<EOF
+$'\n'
+EOF

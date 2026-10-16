@@ -1,2 +1,7 @@
 #!/bin/env kosh
 echo data/*/doesnotexist
+echo data/*/\*
+echo [d]*\*
+echo *\*
+echo *.zzz_no_such_glob
+echo [abc

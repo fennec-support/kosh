@@ -1,6 +1,0 @@
-== bash mood lists targets:
-all
-build
-clean
-== sh mood stays plain:
-Makefile

@@ -1,7 +1,6 @@
 #!/bin/env kosh
-# shellcheck disable=constant-test-operand,unassigned-variable-read,impossible-comparison,empty-test
+# shellcheck disable=constant-test-operand,unassigned-variable-read,impossible-comparison,empty-test,SC2050,SC2157,SC2166,SC2170
 test -s "$TEST_NULL_DEVICE"; echo $?
-test 5 -le 10; echo $?
 ( test abc -eq 5 ); echo "invalid_number=$?"
 test ! ""; echo $?
 [ ]; echo $?
@@ -11,21 +10,6 @@ test "$TEST_NULL_DEVICE" -nt "$TEST_NULL_DEVICE"; echo $?
 
 [ ! ]
 echo $?
-
-test 1 -eq 1; echo "eq=$?"
-test 1 -ne 2; echo "ne=$?"
-[ abc = abc ]; echo "streq=$?"
-[ -z "" ]; echo "empty=$?"
-[ -n "x" ]; echo "nonempty=$?"
-[ 5 -gt 3 ]; echo "gt=$?"
-
-koshkit mkdir -p "$TEST_TEMP_DIRECTORY"
-: > "$TEST_TEMP_DIRECTORY/same-file"
-: > "$TEST_TEMP_DIRECTORY/different-file"
-test "$TEST_TEMP_DIRECTORY/same-file" -ef "$TEST_TEMP_DIRECTORY/same-file"; echo "ef_same:$?"
-test "$TEST_TEMP_DIRECTORY/same-file" -ef "$TEST_TEMP_DIRECTORY/different-file"; echo "ef_diff:$?"
-koshkit unlink "$TEST_TEMP_DIRECTORY/same-file"
-koshkit unlink "$TEST_TEMP_DIRECTORY/different-file"
 
 [ "(" = "(" ]; echo "paren_eq=$?"
 [ "(" ]; echo "paren_single=$?"

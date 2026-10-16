@@ -176,10 +176,6 @@ error: The variable 'base' is not set.
 == a leading decimal point is accepted:
 0.75
 -1.000
-== a valid expression prints the value:
-14
-== 128-bit width still prints in full:
-1180591620717411303424
 == -i evaluates each piped line, continuing past a bad one:
 2
 1:1: error: The variable 'bad' is not set.
@@ -191,8 +187,3 @@ error: The variable 'base' is not set.
 25
 == --pipe is the long form:
 42
-== no expression off a pipe reports a verbose error:
--c:1:1: error: calc has no expression to evaluate.
-     1 |  koshkit calc
-       |  ^~~~~~~~~~~~
-note: Pass an expression such as `calc '2 + 2'`, read a pipe with `-p`, or enter the interactive prompt with `-i`.

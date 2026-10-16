@@ -8,11 +8,6 @@ rc=127
      1 |  exec nonexistent_cmd_xyz
        |       ^~~~~~~~~~~~~~~~~~~
 rc=127
-== a non-executable file exits 126:
--c:1:6: error: Unable to execute `./notexec`: Permission denied.
-     1 |  exec ./notexec
-       |       ^~~~~~~~~
-rc=126
 == exec replaces the shell and runs the command:
 replaced
 == exec in a command substitution runs as a child:

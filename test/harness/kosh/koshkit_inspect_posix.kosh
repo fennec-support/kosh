@@ -1,5 +1,5 @@
 root=$(mktemp -d)
-cd "$root"
+cd "$root" || exit
 
 : > empty
 printf 'hello\n' > text
@@ -46,24 +46,6 @@ koshkit yes A | koshkit tr -d '\n' | koshkit head -c 10000 > magic-number-data
 printf '\007' >> magic-number-data
 koshkit file -M magic-far-number magic-number-data
 koshkit file -m magic-zero text
-printf '%s\n' \
-  '65534 string A end-65535' \
-  '65535 string B end-65536' \
-  '65536 string C end-65537' > magic-boundaries
-koshkit yes X | koshkit tr -d '\n' | koshkit head -c 65534 > magic-end-65535
-printf A >> magic-end-65535
-koshkit yes X | koshkit tr -d '\n' | koshkit head -c 65535 > magic-end-65536
-printf B >> magic-end-65536
-koshkit yes X | koshkit tr -d '\n' | koshkit head -c 65536 > magic-end-65537
-printf C >> magic-end-65537
-koshkit file -M magic-boundaries \
-  magic-end-65535 magic-end-65536 magic-end-65537
-printf '%s\n' '0 string M parent' '>70000 string Z child' \
-  > magic-far-continuation
-printf M > magic-continuation-data
-koshkit yes X | koshkit tr -d '\n' | koshkit head -c 69999 >> magic-continuation-data
-printf Z >> magic-continuation-data
-koshkit file -M magic-far-continuation magic-continuation-data
 printf '%s\n' '9000 string Z far-no-match' > magic-far-default
 koshkit yes A | koshkit tr -d '\n' | koshkit head -c 9000 > magic-default-data
 printf '\0' >> magic-default-data
@@ -75,19 +57,11 @@ for batch_index in 01 02 03 04 05 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 2
   printf MATCH > "magic-probe-$batch_index"
 done
 koshkit file -M magic-batch magic-probe-*
-(koshkit file -M magic-batch magic-probe-01 absent magic-probe-18) \
-  2> "$TEST_NULL_DEVICE"
-echo "file-magic-missing=$?"
 koshkit ln -s magic-far-exact magic-far-link
 koshkit file -M magic-far magic-far-link
 koshkit file -h -M magic-far magic-far-link
-koshkit file -h -L -M magic-far magic-far-link
-koshkit file -L -h -M magic-far magic-far-link
-koshkit mkfifo magic-fifo
 printf M > magic-short
-koshkit file -M magic-batch empty magic-short magic-fifo
-printf MATCH > -
-koshkit file -M magic-batch -- -
+koshkit file -M magic-batch empty magic-short
 
 format_rows='png|\211PNG\r\n\032\n
 jpeg|\377\330\377

@@ -2,3 +2,6 @@ piped-script
 rc=0
 empty-stdin-rc=0
 unterminated-ansi-backslash-rc=2
+got alpha and beta
+dd
+rc=0

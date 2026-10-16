@@ -8,9 +8,8 @@ esac
 printf 'evilps-tree=%s\n' "$ps_tree"
 
 ps_limited=$($BIN -c 'koshkit --color never evilps --show-pids -3')
-all_lines=$(printf '%s\n' "$ps_all" | wc -l)
 limited_lines=$(printf '%s\n' "$ps_limited" | wc -l)
-if [ "$limited_lines" -le "$all_lines" ]; then ps_limit=matched; else ps_limit=wrong; fi
+if [ "$limited_lines" -eq 3 ]; then ps_limit=matched; else ps_limit=wrong; fi
 printf 'evilps-limit=%s\n' "$ps_limit"
 case $ps_limited in
   *'('*) ps_pid_labels=matched ;;
@@ -25,8 +24,13 @@ case $ps_all in
 esac
 printf 'evilps-all-format=%s\n' "$ps_all_format"
 
-ps_sorted=$($BIN -c 'koshkit --color never evilps --sort cpu -3')
-if [ -n "$ps_sorted" ]; then ps_sorted_roots=matched; else ps_sorted_roots=wrong; fi
+ps_pid_first=$($BIN -c 'koshkit --color never evilps --sort pid --show-pids -1')
+ps_numeric_first=$($BIN -c 'koshkit --color never evilps -n --show-pids -1')
+if [ -n "$ps_pid_first" ] && [ "$ps_pid_first" = "$ps_numeric_first" ]; then
+  ps_sorted_roots=matched
+else
+  ps_sorted_roots=wrong
+fi
 printf 'evilps-sorted-roots=%s\n' "$ps_sorted_roots"
 
 evilps_sort_prefixes=matched
@@ -115,17 +119,6 @@ else
 fi
 printf 'evilio-help-controls=%s\n' "$evilio_help_controls"
 
-evilnet_help=$($BIN -c 'koshkit evilnet --help')
-if printf '%s\n' "$evilnet_help" | grep -Fq 'LIVE OPTIONS' &&
-  printf '%s\n' "$evilnet_help" | grep -Fq -- '--live[=<seconds>]' &&
-  printf '%s\n' "$evilnet_help" | grep -Fq -- '--cumulative[=<seconds>]'
-then
-  evilnet_help_controls=matched
-else
-  evilnet_help_controls=wrong
-fi
-printf 'evilnet-help-controls=%s\n' "$evilnet_help_controls"
-
 evilnet_sort_keys=matched
 for evilnet_sort_key in name rx tx rx-packets tx-packets rx-errors \
   tx-errors rx-drops tx-drops
@@ -171,21 +164,6 @@ case $evilnet_live_sort_report in
   *) evilnet_live_sort_update=wrong ;;
 esac
 printf 'evilnet-live-sort=%s\n' "$evilnet_live_sort_update"
-
-evilio_cumulative_heading=$(
-  "$BIN" -c 'koshkit --color never evilio --cumulative=0.2 -p $$' 2>&1
-)
-case $evilio_cumulative_heading in
-  *'READ/0.2s'*'WRITE/0.2s'*) evilio_cumulative_heading_status=matched ;;
-  *)
-    evilio_cumulative_heading_status=wrong
-    printf '%s\n' "$evilio_cumulative_heading" >&2
-    "$BIN" -c 'koshkit --color never evilio -p $$; echo "instant=$?"
-      koshkit --color never evilio --ps -3; echo "all=$?"
-      koshkit --color never evilps -p $$; echo "evilps=$?"' >&2 2>&1
-    ;;
-esac
-printf 'evilio-cumulative-heading=%s\n' "$evilio_cumulative_heading_status"
 
 evilnet_cumulative_heading=$(
   "$BIN" -c 'koshkit --color never evilnet --traffic --cumulative=0.2'
@@ -315,17 +293,11 @@ printf 'evilss-rejected-live=%s\n' "$?"
 
 fs_report=$($BIN -c 'koshkit --color never evilfs --all' 2> "$TEST_NULL_DEVICE")
 case $fs_report in
-  *'Filesystems'*'SOURCE'*'VOLUME'*'UUID'*'FILESYSTEM ID'*) fs_detail=matched ;;
+  *'Filesystems'*'SOURCE'*'TARGET'*'VOLUME'*'UUID'*'OPTIONS'*'FILESYSTEM ID'*)
+    fs_detail=matched ;;
   *) fs_detail=wrong ;;
 esac
 printf 'evilfs-detail=%s\n' "$fs_detail"
-
-net_report=$($BIN -c 'koshkit --color never evilnet')
-case $net_report in
-  *NAME*FAMILY*ADDRESS*) net_addresses=matched ;;
-  *) net_addresses=wrong ;;
-esac
-printf 'evilnet-addresses=%s\n' "$net_addresses"
 
 net_all=$($BIN -c 'koshkit --color never evilnet --all' 2>/dev/null)
 case $net_all in
@@ -334,10 +306,3 @@ case $net_all in
   *) net_all_sections=wrong ;;
 esac
 printf 'evilnet-all-sections=%s\n' "$net_all_sections"
-
-net_failures=$($BIN -c 'koshkit --color never evilnet --failures' 2>/dev/null)
-case $net_failures in
-  *'TCP'*'GROUP'*'Failures'*) net_failure_section=matched ;;
-  *) net_failure_section=wrong ;;
-esac
-printf 'evilnet-failures=%s\n' "$net_failure_section"

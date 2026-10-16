@@ -1,3 +1,0 @@
-#!/bin/env kosh
-[ x == x ] && echo eq || echo neq
-echo after

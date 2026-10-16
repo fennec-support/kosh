@@ -1,4 +1,0 @@
-#!/bin/env kosh
-cat 3<<EOF <&3
-body
-EOF

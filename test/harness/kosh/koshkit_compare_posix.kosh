@@ -1,5 +1,5 @@
 root=$(mktemp -d)
-cd "$root"
+cd "$root" || exit 1
 
 printf 'abc\n' > first
 printf 'abd\n' > second

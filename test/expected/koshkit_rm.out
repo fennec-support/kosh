@@ -55,5 +55,3 @@ rm: descend into directory 'single'
 status=1
 == the last of -f and -i decides:
 rm: would remove 'a'
-== rm . without -r reports a directory:
-1

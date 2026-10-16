@@ -1,3 +1,16 @@
-2:7: error: Expected a file after the redirection operator.
-     2 |  echo >
+2:8: error: Expected a delimiter word after the heredoc operator.
+     2 |  cat << >foo
+       |         ^
+note: Write `cat <<EOF`, then the text, then a line that holds only `EOF`.
+3:9: error: Expected a descriptor after '&'.
+     3 |  echo 3>&;
+       |          ^
+4:8: error: Expected a filename after '<>'.
+     4 |  echo <>;
+       |         ^
+5:8: error: Expected a filename after '>|'.
+     5 |  echo >|;
+       |         ^
+6:7: error: Expected a file after the redirection operator.
+     6 |  echo >
        |        ^

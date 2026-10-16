@@ -101,6 +101,5 @@ one-fs-local=same
 --- an unreadable directory is a warning ---
 permission-severity=warning status=1
 --- help ---
-  du [-shxT] [--tree] [path ...]
-      --tree                            Print the entries as a tree, largest
-  -T, --top-largest                     Print a human-readable tree of only the
+--top-largest
+--tree

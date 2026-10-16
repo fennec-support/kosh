@@ -1,4 +1,7 @@
 #!/bin/env kosh
+test -d ~ && echo 1
+test -d ~/ && echo 2
+test ~+ = "$PWD" && echo tilde_plus
 HOME=testhome
 export E=~/a:~/b
 echo "$E"
@@ -10,3 +13,9 @@ declare D=~/d
 echo "$D"
 a=~/x b=~/y
 echo "$a $b"
+p=~/a:~/b:~
+echo "$p"
+q=~/only
+echo "$q"
+r=~/x:~/y
+echo "$r"

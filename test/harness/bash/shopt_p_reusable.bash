@@ -10,3 +10,5 @@ shopt -s globstar
 $reset
 shopt globstar
 shopt -p globstar
+shopt -s nullglob
+shopt -p nullglob

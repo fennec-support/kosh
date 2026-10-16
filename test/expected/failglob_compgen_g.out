@@ -1,12 +1,3 @@
-3:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-     3 |  cd "$d"
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-14:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-    14 |  cd /
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-Encountered 2 warnings.
 real.txt
 glob-match=0
 glob-miss=1

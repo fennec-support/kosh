@@ -12,6 +12,13 @@ rc=0
        |       ^~~~~~~~
 note: The right operand evaluated to 0.
 rc=1
+== the strict default mood aborts on an unset arithmetic operand:
+before
+-c:1:22: error: Unable to expand 'nope' because the parameter is not set.
+     1 |  echo before; echo $((nope + 1)); echo not-reached
+       |                       ^~~~
+note: Replace it with ${nope-} if empty expansion is desired.
+rc=1
 == bash mood still continues past an ordinary command failure:
 after
 rc=0

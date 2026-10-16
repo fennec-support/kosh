@@ -1,2 +1,6 @@
 #!/bin/env kosh
+cat << >foo
+echo 3>&;
+echo <>;
+echo >|;
 echo >

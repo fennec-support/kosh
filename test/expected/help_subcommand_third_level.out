@@ -10,3 +10,44 @@ up
 --services
 --volumes
 == an unknown deeper word does not fork:
+== subcommands under a colon-less header:
+debug
+down
+exit-node
+set
+up
+== a flags header at the margin ends the section:
+--help
+== second-level options from 'tailscale set --help':
+--hostname
+--shields-up
+== second-level sub-subcommands from 'tailscale debug --help':
+derp-map
+prefs
+== an unknown second word does not fork:
+--help
+== grouped subcommands with no prefix:
+add
+clone
+diff
+init
+log
+mv
+restore
+status
+== grouped subcommands with a prefix:
+diff
+== go subcommands in subcommand position:
+bug
+build
+== go subcommands with no prefix:
+bug
+build
+clean
+doc
+env
+== cargo subcommands in subcommand position:
+check
+clean
+== cargo option after a dash:
+--verbose

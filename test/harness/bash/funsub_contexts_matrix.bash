@@ -77,8 +77,8 @@ for operator in "${bodies[@]}"; do
   done
 done
 
-for operator in '${ echo "$unset_name"; }' '${| REPLY=$unset_name; }' \
-  '${ echo ok; }'; do
+for operator in '$(echo "$unset_name")' '${ echo "$unset_name"; }' \
+  '${| REPLY=$unset_name; }' '${ echo ok; }'; do
   for context in 0 1 2; do
     run_case "( set -u; ${contexts[context]//@E@/$operator} )"
   done

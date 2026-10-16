@@ -2,3 +2,6 @@
 1
 == non-login shell with the same bad flag does not:
 0
+== a bad flag in KOSH_FLAGS exits 2 without rescue:
+error: Unknown flag '--nonexistent-flag'.
+exit=2

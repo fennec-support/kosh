@@ -423,3 +423,8 @@ echo "modifier_comment: ${missing:-$(echo a # ) comment
 )}"
 echo "modifier_nested: ${missing:-$(echo "${missing:-$(echo ')')}")}"
 echo "modifier_backquote: ${missing:-`echo bq`} arith: ${missing:-$((1 + 2))}"
+unset bt_unset
+bt_set=set; bt_word=foo
+echo "modifier_backquote_unset: ${bt_unset-`echo bt`}"
+echo "modifier_backquote_set: ${bt_set-`echo bt`}"
+echo "modifier_backquote_var: ${bt_unset:-`echo $bt_word`}"

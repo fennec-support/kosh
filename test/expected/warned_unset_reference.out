@@ -1,0 +1,40 @@
+7:6: warning: An unquoted variable can split into words and expand globs. (SC2086)
+     7 |  echo $nope
+       |       ^~~~~
+note: Quote the expansion to keep one argument.
+before
+7:6: warning: The variable 'nope' is not set and expands to an empty string.
+     7 |  echo $nope
+       |       ^~~~~
+note: Replace it with ${nope-} if empty expansion is desired.
+
+8:7: warning: The variable 'nope' is not set and expands to an empty string.
+     8 |  echo "${nope}"
+       |        ^~~~~~~
+note: Replace it with ${nope-} if empty expansion is desired.
+
+9:7: warning: The variable '1' is not set and expands to an empty string.
+     9 |  echo "$1"
+       |        ^~
+note: Replace it with ${1-} if empty expansion is desired.
+
+10:10: warning: The variable 'nope' is not set and expands to an empty string.
+    10 |  echo "${#nope}"
+       |           ^~~~
+note: Replace it with ${nope-} if empty expansion is desired.
+0
+12:12: warning: The variable 'nope' is not set and expands to an empty string.
+    12 |  echo "${x:+$nope}"
+       |             ^~~~~
+note: Replace it with ${nope-} if empty expansion is desired.
+
+14:2: warning: The variable 'missing_target' is not set and expands to an empty string.
+    14 |  (echo "${!ref}")
+       |   ^~~~~~~~~~~~~~
+note: Replace it with ${missing_target-} if empty expansion is desired.
+14:1: trace:
+    14 |  (echo "${!ref}")
+       |  ^
+
+target-form=0
+continued

@@ -49,7 +49,9 @@ slug-variant-test=1
 native-slug-directive
 native-slug-warnings=0
 conditional-pattern-errors=0
+conditional-spacing-positive=1
 conditional-local-errors=0
+conditional-local-positive=1
 uncertain-slash-full-name=1
 uncertain-slash-prefix=0
 runtime-level-two-warnings=1
@@ -57,3 +59,8 @@ runtime-level-two-warnings=1
 1
 === substitution null byte location ===
 1
+=== diagnostic catalog ===
+SHELLCHECK DIAGNOSTICS
+entries=nonzero
+entries-without-level=0
+duplicate-entries=0

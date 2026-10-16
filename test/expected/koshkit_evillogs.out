@@ -1,3 +1,9 @@
-unexpected-operand=1
+evillogs-operand=1
 settings-title=flush
 trailing-space=absent
+cores-in-logs=absent
+logs-in-cores=absent
+both-title=flush
+evilfs-operand=1
+evilnet-operand=1
+evilps-operand=1

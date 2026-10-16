@@ -570,7 +570,7 @@ out=$({
       'exec "$BIN" -i -M bash --rcfile "$HISTORY_STDERR_RC"') || exit 1
 [ "$(cat "$input_status")" = 0 ] || exit 1
 if grep -q '^echo echo STDERR_HISTORY_MARKER$' "$stderr_log"; then
-  :
+  echo "stderr history expansion ok"
 else
   echo "history expansion broken"
 fi
@@ -629,3 +629,8 @@ case "$out" in
 *missing\ shebang*) echo "prompt hook shebang broken" ;;
 *) echo "prompt hook shebang ok" ;;
 esac
+if grep -q 'printf ready' "$hist"; then
+  echo "prompt hook history broken"
+else
+  echo "prompt hook history ok"
+fi

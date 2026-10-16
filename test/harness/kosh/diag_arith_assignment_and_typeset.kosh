@@ -1,7 +1,0 @@
-#!/bin/env kosh
-total=$((6 * 7))
-echo "$total"
-typeset name=value
-echo "$name"
-B=(2 + 2)
-((standalone = 2 + 2))

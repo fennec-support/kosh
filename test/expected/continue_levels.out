@@ -1,9 +1,0 @@
-== a zero count is rejected:
--c:1:27: error: Builtin `continue`: Unable to continue because '0' is not a valid loop count.
-     1 |  for i in 1 2; do continue 0; done
-       |                            ^
-rc=1
-== a bare continue skips the rest of the body:
-done
-== a count of two skips to the outer loop:
-outer_done

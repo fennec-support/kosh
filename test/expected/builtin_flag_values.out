@@ -67,3 +67,70 @@ info
 debug
 == every signal flag reads the platform table:
 yes
+== set has no long mood flags:
+== set -M value:
+bash
+bash-posix
+kosh
+sh
+== set -L value:
+bash
+bash-posix
+kosh
+sh
+== set -M= value:
+bash
+bash-posix
+kosh
+sh
+== set -M= prefix:
+bash
+bash-posix
+== kosh --mood value:
+bash
+bash-posix
+kosh
+sh
+== kosh --mood= value:
+bash
+bash-posix
+kosh
+sh
+== kosh -M value:
+bash
+bash-posix
+kosh
+sh
+== kosh --init-moods value:
+bash
+bash-posix
+kosh
+sh
+== kosh -L= prefix:
+kosh
+== assimilate --link-mood value:
+bash
+dash
+kosh
+sh
+== assimilate --link-mood= prefix:
+dash
+== assignment prefix is untouched:
+0
+== koshconf set completion.menu_style value:
+external
+interactive
+plain
+== koshconf set completion.menu_style prefix:
+external
+== kosh --tab-selector value:
+external
+interactive
+plain
+== kosh --tab-selector= prefix:
+plain
+== the flag name itself:
+--tab-selector
+== set has no tab selector flag:
+== an unrelated command keeps its own candidates:
+0

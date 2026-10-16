@@ -21,17 +21,17 @@ echo "== an ANSI C quote completes a command name:"
 "$BIN" --debug-complete-at "\$'ZQcommand" </dev/null
 echo "== an ANSI C quote after a directory keeps the prefix:"
 "$BIN" --debug-complete-at "echo ZQdir_marker/\$'" </dev/null
-echo "== a doubled dollar sign keeps the process id in the prefix:"
+echo "== a doubled dollar sign offers nothing, the process id prefix matches no file:"
 "$BIN" --debug-complete-at "echo \$\$'ZQ" </dev/null
-echo "== a tripled dollar sign keeps the process id before the quote body:"
+echo "== a tripled dollar sign offers nothing, the process id prefix matches no file:"
 "$BIN" --debug-complete-at "echo \$\$\$'ZQ" </dev/null
 echo "== a locale quote lists the same markers:"
 "$BIN" --debug-complete-at "echo \$\"ZQ" </dev/null
-echo "== an escaped quote stays inside a locale quoted word:"
+echo "== an escaped quote keeps the locale quoted word open and matches no file:"
 "$BIN" --debug-complete-at "echo \$\"ZQ\\\" marker ZQ" </dev/null
 echo "== a locale quote completes a command name:"
 "$BIN" --debug-complete-at "\$\"ZQcommand" </dev/null
 echo "== a locale quote after a directory keeps the prefix:"
 "$BIN" --debug-complete-at "echo ZQdir_marker/\$\"" </dev/null
-echo "== a doubled dollar sign keeps the process id before a locale quote:"
+echo "== a doubled dollar sign before a locale quote offers nothing:"
 "$BIN" --debug-complete-at "echo \$\$\"ZQ" </dev/null

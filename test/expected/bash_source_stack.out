@@ -1,12 +1,3 @@
-4:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-     4 |  cd "$d"
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-34:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-    34 |  cd /
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-Encountered 2 warnings.
 main-scalar=./main.sh
 main[0]=./main.sh depth=1
 lib-top=./lib.sh depth=2

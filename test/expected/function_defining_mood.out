@@ -3,6 +3,9 @@
 ok
 == kosh-defined function stays strict when called from bash mood:
 is not set
+== switching back to kosh restores strictness, and set -M prints the mood:
+nounset-restored
+sh
 == sourced function keeps its source mood:
 inside=bash unset=[]
 outside=kosh

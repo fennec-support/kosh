@@ -1,4 +1,0 @@
-ran
-ran
--c:1:10: error: The [[ conditional is a bash extension.
-rc=0

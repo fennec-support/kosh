@@ -21,6 +21,7 @@ editor.auto_close_brackets_and_quotes=on
 interpreter.resolve_koshkit_applets_as_commands=on
 editor.history.max_entries=128
 optimizer.warning_level=1
+posix.interpreter.unset_variable_is_error=on
 mood=kosh
 rc=0
 == a byte order mark is skipped, and raw bytes are escaped in warnings:
@@ -87,11 +88,6 @@ off
 rc=1
 dotglob             	on
 bash
-== a kosh mood value that conflicts with a fixed option is skipped:
-HOME/.config/kosh/kosh.conf:1:43: warning: The kosh mood keeps 'posix.interpreter.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `koshconf set mood bash` to change it.
-     1 |  posix.interpreter.unset_variable_is_error=off
-       |                                            ^~~
-on
 == an unknown name in the file suggests a close one:
 HOME/.config/kosh/kosh.conf:1:1: warning: Unknown option 'editor.history.max_entry', skipping it.
      1 |  editor.history.max_entry=3

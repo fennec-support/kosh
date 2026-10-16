@@ -1,28 +1,3 @@
-7:25: warning: An unquoted variable can split into words and expand globs. (SC2086)
-     7 |  for x in 1 2 3; do echo $x; break; done
-       |                          ^~
-note: Quote the expansion to keep one argument.
-9:7: warning: The `break` command is used in a function outside any loop. (SC2104)
-     9 |  f() { break; }
-       |        ^~~~~
-note: Use `return` to leave the function.
-13:1: warning: The `break` command is used outside any loop. (SC2105)
-    13 |  break
-       |  ^~~~~
-note: Remove it, or move it into the loop it belongs to.
-15:1: warning: The `continue` command is used outside any loop. (SC2105)
-    15 |  continue
-       |  ^~~~~~~~
-note: Remove it, or move it into the loop it belongs to.
-22:3: warning: This assignment to 'count' in a function has no `local`.
-    22 |    count=0
-       |    ^~~~~~~
-note: Declare it with `local` to keep it inside the function.
-24:5: warning: This assignment to 'count' in a function has no `local`.
-    24 |      count=$((count + 1))
-       |      ^~~~~~~~~~~~~~~~~~~~
-note: Declare it with `local` to keep it inside the function.
-Encountered 6 warnings.
 end-break
 end-continue
 1
@@ -32,10 +7,13 @@ end-continue
 loop_done
 after-break
 after-continue
-18:24: error: break count '0' is out of range.
-    18 |  for i in 1 2; do break 0; echo unreached; done
+19:24: error: break count '0' is out of range.
+    19 |  for i in 1 2; do break 0; echo unreached; done
        |                         ^
 after
 condition-body 1
 condition-body 2
 end-condition-break
+34:27: error: Builtin `continue`: Unable to continue because '0' is not a valid loop count.
+    34 |  for i in 1 2; do continue 0; echo unreached; done
+       |                            ^

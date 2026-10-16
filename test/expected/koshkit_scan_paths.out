@@ -25,12 +25,6 @@
 < 55
 < 56
 status=1
---- find print and exec per match ---
-tree/sub/leaf|tree/sub/leaf
-exec tree/sub/leaf
-
-tree/sub/leaf
-tree/top
 --- pr columns ---
 1	  4	    7
 2	  5	    8

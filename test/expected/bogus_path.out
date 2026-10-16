@@ -1,5 +1,30 @@
+7:6: warning: The glob pattern has an unterminated `[`.
+     7 |  echo [abc
+       |       ^~~~
+note: Close the bracket with `]`, or escape it as `\[`.
 2:6: warning: The glob pattern 'data/*/doesnotexist' matched no file, it expands to its literal text, which is rarely intended.
      2 |  echo data/*/doesnotexist
        |       ^~~~~~~~~~~~~~~~~~~
 note: Probe for matches with compgen -G 'data/*/doesnotexist' or relax it with shopt -u failglob outside the kosh mood.
 data/*/doesnotexist
+3:6: warning: The glob pattern 'data/*/*' matched no file, it expands to its literal text, which is rarely intended.
+     3 |  echo data/*/\*
+       |       ^~~~~~~~~
+note: Probe for matches with compgen -G 'data/*/*' or relax it with shopt -u failglob outside the kosh mood.
+data/*/*
+4:6: warning: The glob pattern '[d]**' matched no file, it expands to its literal text, which is rarely intended.
+     4 |  echo [d]*\*
+       |       ^~~~~~
+note: Probe for matches with compgen -G '[d]**' or relax it with shopt -u failglob outside the kosh mood.
+[d]**
+5:6: warning: The glob pattern '**' matched no file, it expands to its literal text, which is rarely intended.
+     5 |  echo *\*
+       |       ^~~
+note: Probe for matches with compgen -G '**' or relax it with shopt -u failglob outside the kosh mood.
+**
+6:6: warning: The glob pattern '*.zzz_no_such_glob' matched no file, it expands to its literal text, which is rarely intended.
+     6 |  echo *.zzz_no_such_glob
+       |       ^~~~~~~~~~~~~~~~~~
+note: Probe for matches with compgen -G '*.zzz_no_such_glob' or relax it with shopt -u failglob outside the kosh mood.
+*.zzz_no_such_glob
+[abc

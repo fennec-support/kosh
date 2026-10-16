@@ -562,6 +562,12 @@ echo "=== xargs byte count location ==="
 
 echo "=== chown failure prefix ==="
 touch "$TEST_TEMP_DIRECTORY/chown-prefix"
-"$BIN" -c 'koshkit chown 0 "$1"' probe "$TEST_TEMP_DIRECTORY/chown-prefix" 2>&1 |
-  grep -c 'chown: chown:'
+chown_output=$("$BIN" -c 'koshkit chown 0 "$1"' probe \
+  "$TEST_TEMP_DIRECTORY/chown-prefix" 2>&1)
+printf '%s\n' "$chown_output" | grep -c ': chown: '
+if [ "$(id -u)" -eq 0 ]; then
+  echo 1
+else
+  printf '%s\n' "$chown_output" | grep -c 'cannot change ownership'
+fi
 "$BIN" -c 'koshkit unlink "$1"' cleanup "$TEST_TEMP_DIRECTORY/chown-prefix"

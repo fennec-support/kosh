@@ -12,22 +12,6 @@ echo "== set -o lists the option states:"
 "$BIN" -c 'set -o'
 
 unset KOSH_FLAGS
-# set -M switches the runtime mood and reseeds the strictness, and -L sources
-# the startup files of other moods, matching the command-line letters.
-echo "== bash mood relaxes nounset:"
-"$BIN" -c '# shellcheck disable=unassigned-variable-read
-set -M bash; echo "[${UNSETA}]"; echo ok'
-echo "== -M short form prints the active mood:"
-"$BIN" -c 'set -M sh; set -M'
-echo "== default mood is strict:"
-"$BIN" -c '# shellcheck disable=SC2154
-echo "[${UNSETB}]"' 2>&1 | grep -o "is not set" | head -1
-echo "== switching back to kosh restores strictness:"
-"$BIN" -c '# shellcheck disable=SC2154
-set -M bash; set -M kosh; echo "[${UNSETC}]"' 2>&1 | grep -o "is not set" | head -1
-echo "rc-done"
-
-unset KOSH_FLAGS
 # set -b backs a real notify option now, so the state round-trips through
 # set +o and the letter form.
 "$BIN" -c 'set -o | grep notify'

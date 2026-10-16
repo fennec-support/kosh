@@ -104,5 +104,4 @@ folded_lookup=$(MyFolded=one "$BIN" --no-init-files -c \
 
 [ "$("$BIN" -c 'echo -e "a\tb"')" = "$(printf 'a\tb')" ] || fail "$LINENO"
 echo "Exported name folding follows the platform"
-echo "Windows PATH echo stays literal"
-echo "Windows paths retain the portable shell escape grammar"
+echo "echo -e expands the tab escape"

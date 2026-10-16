@@ -1,0 +1,27 @@
+#!/bin/env kosh
+# shellcheck disable=octal-literal
+(echo $((010 + 09)))
+echo "octal=$?"
+(echo $((2#102)))
+echo "base2=$?"
+(echo $((16#fg)))
+echo "base16=$?"
+(echo $((0b12)))
+echo "binary=$?"
+(echo $((0xZ)))
+echo "hex=$?"
+(echo $((1a)))
+echo "decimal=$?"
+(echo $((1%0)))
+echo "modzero=$?"
+(echo $((1 << -1)))
+echo "negative_shift=$?"
+(echo $((1 2)))
+echo "trailing=$?"
+(echo $((++)))
+echo "bad_increment=$?"
+( (( 1 / 0 )) )
+echo "command_division=$?"
+( (( 1 @ 2 )) )
+echo "command_token=$?"
+echo $((0x + 010 + 16#ff + 2#101))

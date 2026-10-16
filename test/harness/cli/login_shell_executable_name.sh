@@ -10,3 +10,10 @@ echo "== SHELL is runnable while \$0 keeps the login dash:"
   case "$SHELL" in -*) echo "SHELL=dashed" ;; *) echo "SHELL=runnable" ;; esac
   case "$0" in -*) echo "zero=dashed" ;; *) echo "zero=runnable" ;; esac
 '\''' test-login "$BIN" 2>/dev/null | grep -E "^(SHELL|zero)="
+echo "== exec -l drops the dash from \$KOSH:"
+out=$("$BIN" -c 'exec -l "$1" -c '\''printf "%s\n" "$KOSH"'\''' \
+    test-login "$BIN" 2>/dev/null)
+case "$out" in
+  -*) echo "shle_leading_dash=yes" ;;
+  *)  echo "shle_leading_dash=no" ;;
+esac

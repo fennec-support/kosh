@@ -11,6 +11,7 @@ printf 'if [ "${profile_loaded-}" = yes ]; then printf login-bashrc-marker; else
   > "$directory/.bashrc"
 printf 'profile_loaded=yes\nprintf profile-marker\n' \
   > "$directory/.bash_profile"
+printf 'printf env:' > "$directory/env"
 printf 'printf custom-marker\n' > "$directory/custom"
 printf 'printf init-marker\n' > "$directory/init"
 printf 'printf tilde-marker\n' > "$directory/.custom"
@@ -25,6 +26,8 @@ tilde=ok
 privileged_rc=ok
 privileged_env=ok
 unreadable_rc=ok
+norc_control=ok
+env_control=ok
 script_mode=
 if script -qec true /dev/null >/dev/null 2>&1; then
   script_mode=gnu
@@ -97,15 +100,24 @@ if [ -n "$script_mode" ]; then
     *"Unable to read startup file"*) ;;
     *) unreadable_rc=broken ;;
   esac
+
+  output=$(printf 'exit\n' |
+    HOME="$directory" NO_COLOR=1 run_interactive "$BIN --mood bash -i")
+  case "$output" in *bashrc-marker*) ;; *) norc_control=broken ;; esac
+
+  output=$(printf 'exit\n' |
+    HOME="$directory" ENV="$directory/env" NO_COLOR=1 run_interactive \
+      "$BIN --mood sh -i")
+  case "$output" in *env:*) ;; *) env_control=broken ;; esac
 else
   printf 'A terminal test requires the script command.\n' >&2
   exit 125
 fi
-printf 'norc=%s rcfile=%s init-file=%s aliases=%s/%s login=%s tilde=%s privileged-rc=%s privileged-env=%s unreadable-rc=%s\n' \
+printf 'norc=%s rcfile=%s init-file=%s aliases=%s/%s login=%s tilde=%s privileged-rc=%s privileged-env=%s unreadable-rc=%s norc-control=%s env-control=%s\n' \
   "$norc" "$rcfile" "$init_file" "$last_alias" "$last_rcfile" "$login" "$tilde" \
-  "$privileged_rc" "$privileged_env" "$unreadable_rc"
+  "$privileged_rc" "$privileged_env" "$unreadable_rc" "$norc_control" \
+  "$env_control"
 
-printf 'printf env:' > "$directory/env"
 printf 'printf expanded:' > "$directory/env0"
 printf 'printf body' > "$directory/script"
 

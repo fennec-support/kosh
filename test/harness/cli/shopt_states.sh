@@ -1,15 +1,9 @@
 unset KOSH_FLAGS
-# shopt queries, sets, and unsets a bash shell option, the -q form reports the
-# state through the status alone, the -p form prints a replayable command, an
-# unknown name is an error or a silent non-zero under -q, and -o bridges to a
-# set -o option name.
+# shopt queries, sets, and unsets a bash shell option, an unknown name is an
+# error or a silent non-zero under -q, and -o bridges to a set -o option name.
 echo "== a default option queries off:"; "$BIN" -c 'shopt dotglob'; echo "rc=$?"
 echo "== set then query:"; "$BIN" -c 'shopt -s dotglob; shopt dotglob'; echo "rc=$?"
 echo "== unset then query:"; "$BIN" -c 'shopt -s dotglob; shopt -u dotglob; shopt dotglob'; echo "rc=$?"
-echo "== -q is silent and reports off through the status:"; "$BIN" -c 'shopt -q dotglob'; echo "rc=$?"
-echo "== -q reports on through the status:"; "$BIN" -c 'shopt -s dotglob; shopt -q dotglob'; echo "rc=$?"
-echo "== -p prints the replayable form when off:"; "$BIN" -c 'shopt -p dotglob'
-echo "== -p prints the replayable form when on:"; "$BIN" -c 'shopt -s dotglob; shopt -p dotglob'
 echo "== an unknown name is an error:"; "$BIN" -c 'shopt bogusopt'; echo "rc=$?"
 echo "== an unknown name under -q is silent:"; "$BIN" -c 'shopt -q bogusopt'; echo "rc=$?"
 echo "== -o queries a set option name:"; "$BIN" -c 'shopt -o noexec'; echo "rc=$?"

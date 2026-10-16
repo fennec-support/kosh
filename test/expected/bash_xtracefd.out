@@ -14,7 +14,7 @@ external
 == assignments, arrays, loops, and redirections trace by syntax owner:
 + scalar=value
 + scalar+=tail
-+ arr=(one 'two three')
++ arr=(one apt-get 'two three')
 + empty=()
 + arr+=(four)
 + PFX=value
@@ -25,9 +25,4 @@ ok
 + for i in a b
 + : b
 + printf done
-+ set +x
-== BlueBomb dependency arrays stay intact:
-+ deps=(unzip wget)
-+ empty=()
-+ managers=(pacman apt-get apt brew)
 + set +x

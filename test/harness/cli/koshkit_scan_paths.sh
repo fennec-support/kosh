@@ -1,8 +1,7 @@
 # The koshkit utilities that scan whole words, runs, or tables run against
 # fixed inputs in a temporary directory: cksum around its four-byte step,
-# diff with several separated edits, find printing and running per match,
-# pr padding columns, cut past the last selected byte, and grep -l stopping
-# a matched file early.
+# diff with several separated edits, pr padding columns, cut past the last
+# selected byte, and grep -l stopping a matched file early.
 unset KOSH_FLAGS
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 d=$(mktemp -d) || exit 1
@@ -21,12 +20,6 @@ echo "--- diff separated edits ---"
 "$BIN" -c 'koshkit seq 60' | sed -e '7d' -e '19s/.*/nineteen/' -e '40a\
 inserted' -e '55,56d' > right.txt
 "$BIN" -c 'koshkit diff left.txt right.txt; printf "status=%s\n" "$?"'
-
-echo "--- find print and exec per match ---"
-"$BIN" -c 'koshkit mkdir -p tree/sub && koshkit touch tree/sub/leaf tree/top'
-"$BIN" -c 'koshkit find tree -name leaf -print0 -print -exec echo exec {} ";"' | tr '\0' '|'
-echo
-"$BIN" -c 'koshkit find tree -type f -print0' | tr '\0' '\n' | sort
 
 echo "--- pr columns ---"
 "$BIN" -c 'koshkit seq 9 | koshkit pr -3 -t -w 30'

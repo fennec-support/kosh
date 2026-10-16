@@ -11,6 +11,14 @@ dev
 lint:fix
 == bun run by prefix:
 lint:fix
+== bash mood lists targets:
+all
+build
+clean
+test
+== sh mood stays plain:
+Makefile
+package.json
 == make -C from outside:
 build
 == cmake --build targets:

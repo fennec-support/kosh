@@ -11,3 +11,6 @@ printf '%s' "echo \$'abc\\" | "$BIN" --no-init-files -s > "$output" 2>&1
 status=$?
 grep -F "Unterminated \$'...' string." "$output" >/dev/null || exit 1
 printf 'unterminated-ansi-backslash-rc=%s\n' "$status"
+printf 'echo "got $1 and $2"' | "$BIN" - alpha beta
+printf 'echo "dd"' | "$BIN" -- -
+echo "rc=$?"

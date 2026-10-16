@@ -1,6 +1,0 @@
-#!/bin/env kosh
-printf 'read='
-koshkit cat <(printf 'input\n')
-printf 'write\n' > >(koshkit cat)
-: <(:) >(:)
-printf 'empty-redirections=%s\n' "$?"

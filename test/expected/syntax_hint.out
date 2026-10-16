@@ -1,6 +1,7 @@
 == open constructs
 echo "abc => [syntax error] Unterminated string literal, expected " here
 echo 'abc => [syntax error] Unterminated string literal, expected ' here
+echo $'abc => [syntax error] Unterminated $'...' string, expected ' here
 echo $(ls => [syntax error] Unterminated command substitution, expected ) here
 echo `ls => [syntax error] Unterminated command substitution, expected ` here
 echo ${x => [syntax error] Unterminated variable expansion, expected } here
@@ -15,6 +16,7 @@ if true => [syntax error] This 'if' has no 'then', expected 'then' here, after t
 if (true) => [syntax error] This 'if' has no 'then', expected 'then' here, after the condition
 if true; then => [syntax error] This 'if' has no closing 'fi', expected 'fi' here to close it
 while true => [syntax error] This loop has no 'do', expected 'do' here, after the loop condition
+while true; do : => [syntax error] This loop has no closing 'done', expected 'done' here to close it
 for x in a b => [syntax error] This for loop has no 'do', expected 'do' here, after the word list
 for x in a; do  => [syntax error] This for loop has no closing 'done', expected 'done' here to close it
 case x in => [syntax error] This 'case' has no closing 'esac', expected a pattern to start an arm, or 'esac' to end the case
@@ -57,12 +59,12 @@ function => [syntax error] Expected an identifier after the 'function' keyword, 
 if => [syntax error] This 'if' has no condition, expected a command for the condition here
 while :; do done => [syntax error] The loop body between 'do' and 'done' is empty, put a command in the body, such as `:` to do nothing
 == continued on enter
-echo \ => [builtin synopsis] echo [-neE] [arg ...]
-echo "abc\ => [builtin synopsis] echo [-neE] [arg ...]
+echo \ => [builtin synopsis]
+echo "abc\ => [builtin synopsis]
 == clean lines
-echo "abc" "$(ls)" "${HOME}" => [builtin synopsis] echo [-neE] [arg ...]
-echo hi # "abc => [builtin synopsis] echo [-neE] [arg ...]
-echo \"abc => [builtin synopsis] echo [-neE] [arg ...]
+echo "abc" "$(ls)" "${HOME}" => [builtin synopsis]
+echo hi # "abc => [builtin synopsis]
+echo \"abc => [builtin synopsis]
 read x <<EOF => [error] A `read` without `-r` treats a backslash in the input as an escape. (SC2162)
 if true; then echo; fi => 
 f() { :; } => 
@@ -71,9 +73,9 @@ echo $x => [error] An unquoted variable can split into words and expand globs. (
 cat file | grep x => [warning] The `cat` writes its file unchanged into the pipe. (SC2002)
 x = 1 => [error] An assignment with spaces around equals runs as a command with arguments. (SC2283)
 zzunknown-command arg => 
-source ./zz-missing-file.sh => [builtin synopsis] source file
+source ./zz-missing-file.sh => [builtin synopsis]
 == alias, function, and segment under the caret
-[alias synopsis] zzl='ls -a' · ls [-aA1dgFhklnoprRSt] [-L level] [--tree] [--one-file-system] [path ...]
+[alias synopsis] zzl='ls -a'
 [function synopsis] zzf () { echo hi; }
-echo hi | cat -n => [flag] -n: Number every output line, starting at one.
-echo hi && cat -n => [flag] -n: Number every output line, starting at one.
+echo hi | cat -n => [flag] -n
+echo hi && cat -n => [flag] -n

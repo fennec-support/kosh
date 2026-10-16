@@ -46,3 +46,21 @@ echo "=== c-style for with a non-blank init folds but keeps the init ==="
 
 echo "=== while false is eliminated ==="
 "$BIN" --show-optimizer-diagnostics -c 'while false; do echo a; done; echo done'
+
+echo "=== a recorded constant survives read-only commands ==="
+"$BIN" --show-optimizer-diagnostics -c 'n=10; echo first; true; echo $((n + 5))'
+
+echo "=== a recorded constant does not survive a read into its name ==="
+"$BIN" -WWW --show-optimizer-diagnostics -c 'n=10; read -r n </dev/null; echo $((n + 5))'
+
+echo "=== an unquoted glob operand does not fold ==="
+"$BIN" -WWW --show-optimizer-diagnostics -c 'set -f; if [ a* = a* ]; then echo x; fi'
+
+echo "=== a quoted glob operand folds ==="
+"$BIN" -WWW --show-optimizer-diagnostics -c 'set -f; if [ "a*" = "a*" ]; then echo x; fi'
+
+echo "=== an unquoted tilde operand does not fold ==="
+"$BIN" -WWW --show-optimizer-diagnostics -c 'if [ ~ = ~ ]; then echo x; fi'
+
+echo "=== a quoted tilde operand folds ==="
+"$BIN" -WWW --show-optimizer-diagnostics -c 'if [ "~" = "~" ]; then echo x; fi'

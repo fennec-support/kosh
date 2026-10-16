@@ -131,3 +131,11 @@ countdown_case() { case $1 in 0) ;; *) countdown_case $(($1 - 1)) ;; esac; }
 countdown_loop() { while [ "$1" -gt 0 ]; do countdown_loop $(($1 - 1)); break; done; }
 spin_while() { while spin_while; do :; done; }
 spin_until() { until spin_until; do :; done; }
+
+test_special_parameter_operands() {
+  local v=x
+  [ $v = x ]
+  [ $# -eq 0 ]
+  [ $? -eq 0 ]
+  [ $$ -gt 1 ]
+}

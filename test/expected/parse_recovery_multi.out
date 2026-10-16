@@ -6,3 +6,15 @@ note: An 'if' above may be missing, or another 'fi' may have closed it early.
      4 |  done
        |  ^~~~
 note: A loop above may be missing, or another 'done' may have closed it early.
+5:1: error: 'then' has no matching 'if'.
+     5 |  then
+       |  ^~~~
+note: An 'if' above may be missing, or another 'fi' may have closed it early.
+6:1: error: 'do' has no matching 'while', 'until', or 'for'.
+     6 |  do
+       |  ^~
+note: A loop above may be missing, or another 'done' may have closed it early.
+7:1: error: 'esac' has no matching 'case'.
+     7 |  esac
+       |  ^~~~
+note: A 'case' above may be missing, or another 'esac' may have closed it early.

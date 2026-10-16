@@ -24,7 +24,8 @@ echo "--- a symlinked utility reports the kosh version on --version ---"
 ./tail --version | grep -c "Koshka Shell"
 
 echo "--- a symlinked utility opens its help with the bundled banner ---"
-./tail --help | head -3
+[ "$(./tail --help | head -1)" != DESCRIPTION ] && echo banner-first
+./tail --help | grep -c '^DESCRIPTION$'
 
 echo "--- the koshkit form opens with the description instead ---"
 "$BIN" -c 'koshkit tail --help' | head -1

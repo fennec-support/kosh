@@ -17,14 +17,13 @@ done
 shift $((OPTIND - 1))
 echo "remaining=$* count=$#"
 
-# A fresh parse needs OPTIND reset to one.
 OPTIND=1
-set -- -x -y
-silent_seen=0
+set -- -x -z -y
 while getopts :xy flag; do
     case "$flag" in
     x) echo "flag x" ;;
     y) echo "flag y" ;;
+    '?') echo "unknown $OPTARG" ;;
     esac
 done
 echo "second_done"

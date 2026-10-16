@@ -168,15 +168,25 @@ echo "native-slug-warnings=$(printf '%s\n' "$native_slug_output" |
   grep -c 'has no .local.')"
 
 conditional_pattern_output=$(
-  "$BIN" -n -c '[[ $arg != *=* ]]; [[ $arg == *=* ]]; [[ $arg == *"="* ]]' 2>&1
+  "$BIN" -n -WWW -c '[[ $arg != *=* ]]; [[ $arg == *=* ]]; [[ $arg == *"="* ]]' 2>&1
 )
 echo "conditional-pattern-errors=$(printf '%s\n' "$conditional_pattern_output" |
   grep -c 'without surrounding spaces')"
+conditional_spacing_output=$(
+  "$BIN" -n -WWW -c '[[ $arg=b ]]' 2>&1
+)
+echo "conditional-spacing-positive=$(printf '%s\n' \
+  "$conditional_spacing_output" | grep -c 'without surrounding spaces')"
 
 local_probe_output=$(
-  "$BIN" -n -c 'local probe 2>/dev/null && probe_ran=1' 2>&1
+  "$BIN" -n -WWW -c 'local probe 2>/dev/null && probe_ran=1' 2>&1
 )
 echo "conditional-local-errors=$(printf '%s\n' "$local_probe_output" |
+  grep -c '.local. outside a function')"
+local_positive_output=$(
+  "$BIN" -n -WWW -c 'local probe' 2>&1
+)
+echo "conditional-local-positive=$(printf '%s\n' "$local_positive_output" |
   grep -c '.local. outside a function')"
 
 uncertain_slash_output=$(
@@ -225,3 +235,15 @@ echo "=== circular name reference location ==="
 "$BIN" -M bash -c 'declare -n a; a=a; echo $a' 2>&1 | grep -c '^-c:1:[0-9]*: warning: '
 echo "=== substitution null byte location ==="
 "$BIN" -M bash -c 'echo $(printf "a\0b")' 2>&1 | grep -c '^-c:1:[0-9]*: warning: '
+
+echo "=== diagnostic catalog ==="
+catalog=$("$BIN" --list-diagnostics)
+printf '%s\n' "$catalog" | sed -n 1p
+catalog_entries=$(printf '%s\n' "$catalog" | grep '^  [^ ]')
+if [ -n "$catalog_entries" ]; then
+  echo "entries=nonzero"
+fi
+echo "entries-without-level=$(printf '%s\n' "$catalog_entries" |
+  grep -vc ' ([a-z]*):')"
+echo "duplicate-entries=$(printf '%s\n' "$catalog_entries" |
+  sort | uniq -d | wc -l | tr -d ' ')"

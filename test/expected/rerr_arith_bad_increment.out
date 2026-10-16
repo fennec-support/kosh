@@ -1,4 +1,0 @@
-2:9: error: Expected a variable after '++' or '--'.
-     2 |  echo $((++))
-       |          ^~
-note: '++' and '--' apply only to a variable.

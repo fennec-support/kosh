@@ -5,4 +5,3 @@ unset KOSH_FLAGS
 # assertable here, the count guards that the prompt silencing did not leak.
 "$BIN" -WWW -c 'dasdsadsa_zzqq' 2>&1 | grep -c "dasdsadsa_zzqq.*found"
 "$BIN" -c 'dasdsadsa_zzqq' 2>&1 | grep -c "dasdsadsa_zzqq.*found"
-echo "rc=$?"

@@ -4,11 +4,15 @@ trap 'test -n "$directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"' EXI
 # A function runs in the mood it was defined in. A function defined in bash mood
 # expands an unset variable to empty even after the session switches to the
 # strict default, and a function defined in the default mood stays strict even
-# when it is called from bash mood.
+# when it is called from bash mood. Switching back to the default mood restores
+# strictness.
 echo "== bash-defined function stays lax after switching to kosh:"
 "$BIN" -c 'set -M bash; f() { echo "[${UNSET}]"; }; set -M kosh; f; echo ok'
 echo "== kosh-defined function stays strict when called from bash mood:"
 "$BIN" -c 'f() { echo "[${UNSET}]"; }; set -M bash; f' 2>&1 | grep -o "is not set" | head -1
+echo "== switching back to kosh restores strictness, and set -M prints the mood:"
+"$BIN" -c 'set -M bash; set -M kosh; [[ -o nounset ]] && echo nounset-restored'
+"$BIN" -c 'set -M sh; set -M'
 echo "== sourced function keeps its source mood:"
 directory=$(mktemp -d)
 printf '%s\n' 'f() { printf "inside=%s unset=[%s]\n" "$(set -M)" "$NEVER_SET"; }' > "$directory/functions"

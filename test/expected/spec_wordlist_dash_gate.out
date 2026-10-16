@@ -8,5 +8,12 @@ beta
 datafile
 == progcomp off ignores the registered specification:
 == progcomp_alias off ignores the aliased specification:
-== progcomp_alias on follows the aliased specification:
-alpha
+== empty COMPREPLY falls to files:
+datafile
+== retry status 124 falls to files:
+datafile
+== dash-only reply on an operand falls to files:
+datafile
+== the dash token keeps the spec options:
+--archive
+--backup

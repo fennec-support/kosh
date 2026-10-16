@@ -15,17 +15,17 @@ ifeq ($(TARGET), Windows_NT)
 SKIPPED_TESTS := \
 	koshkit_filesystem_posix koshkit_inspect_posix koshkit_system_posix \
 	koshkit_text_posix alias_unalias glob_dot_slash_prefix koshkit_getconf \
-	pipeline_compound_group read_builtin redirect_high_fd \
-	shellcheck_bashisms_sh_shebang trap umask_modes \
+	pipeline_compound_group redirect_high_fd \
+	shellcheck_bashisms_sh_shebang trap \
 	bash_startup_restricted bash_xtracefd bench_behavior \
-	cd_suggestion chld_trap_after_return command_edge_case_behavior \
+	cd_suggestion chld_trap_after_return \
 	command_flag_forms command_p_restores_path \
 	command_substitution_interrupt command_substitution_strategy \
 	crlf_source ctrl_c_interrupts_bash_loop deep_nesting_guard \
 	diagnostic_levels disown_removes_jobs disown_running_only \
 	env_runs_command_directly exec_behavior export_function \
 	export_readonly_integer fg_terminal_handoff granular_arg_caret \
-	help_colors history_behavior history_noninteractive \
+	history_behavior history_noninteractive \
 	interrupt_during_blocking_open job_state_running_then_stopped \
 	jobspec_grammar kill_behavior kosh_identity \
 	koshkit_error_notes koshkit_evil_regressions \
@@ -34,8 +34,8 @@ SKIPPED_TESTS := \
 	path_cache_behavior path_lookup_follows_changes \
 	signal_noninteractive_term set_option_state \
 	spawn_failure_location suspend_behavior \
-	trap_during_blocking_builtin trap_startup_ignored \
-	unknown_flag_color wait_on_stopped_job \
+	trap_startup_ignored \
+	wait_on_stopped_job \
 	koshkit_goodcore_archive koshkit_ls_modes koshkit_misc \
 	assimilate koshkit_printenv koshkit_process_tools \
 	koshkit_tail_follow koshkit_text koshkit_timeout koshkit_seq_interrupt \
@@ -44,13 +44,9 @@ SKIPPED_TESTS := \
 	pipeline_stage_evaluation_mode shopt_states \
 	subshell_replay_trap_suppression subshell_spawn_state \
 	trace_policy trailing_separator_execution ulimit_validation \
-	ansi_c_quoted_word complete_git_grouped_subcommands \
-	complete_go_subcommands complete_help_subcommands \
-	editor_append_hot_path executable_filtering_batch \
-	help_options_trusted_dir_only \
-	help_subcommand_second_level \
-	help_subcommand_third_level \
-	help_subcommands_no_colon make_targets_fallback \
+	ansi_c_quoted_word editor_append_hot_path executable_filtering_batch \
+	help_options_trusted_dir_only help_subcommand_third_level \
+	make_targets_fallback \
 	completion_glob_quoting path_quoting control_byte_quoting koshkit_mknod \
 	literal_tilde_and_ansi_c_escapes \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
@@ -94,21 +90,21 @@ ifeq ($(KOSHKIT_BIN),)
 $(error NO_KOSHKIT=1 needs KOSHKIT_BIN set to a build that bundles koshkit)
 endif
 export KOSHKIT_BIN
-SKIPPED_TESTS += alias_unalias arith_decimal ast_process_substitution \
-	bash_operators_default bash_source_stack builtin_list cd_dash \
-	cd_fail_file cd_paths command compound_redirect \
+SKIPPED_TESTS += alias_unalias arith_decimal \
+	bash_operators_default bash_source_stack builtin_list \
+	cd_paths command compound_redirect \
 	debug_err_return_traps fc fresh_evaluator_directories fresh_evaluator_jobs \
 	fresh_evaluator_path glob_dot_slash_prefix \
 	koshkit_compare_posix koshkit_csplit koshkit_diff koshkit_evillogs \
 	koshkit_expr koshkit_filesystem_portable koshkit_filesystem_posix \
-	koshkit_getconf koshkit_goodfsw koshkit_inspect_posix \
+	koshkit_getconf koshkit_inspect_posix \
 	koshkit_numeric_posix koshkit_process_posix koshkit_readlink \
 	koshkit_restricted \
 	koshkit_retry koshkit_stat koshkit_stream_posix koshkit_sync \
 	koshkit_system_posix koshkit_terminal_posix koshkit_text_posix \
-	koshkit_watch koshkit_whoami mood_arithmetic \
+	koshkit_whoami mood_arithmetic \
 	process_substitution_partial_reads process_substitution_readers \
-	process_substitution_traces read_builtin \
+	process_substitution_traces \
 	redirect_dynamic_fd redirection_truncate_append_input \
 	rerr_redirect_to_directory subshell_isolates_state test_builtin trap
 endif

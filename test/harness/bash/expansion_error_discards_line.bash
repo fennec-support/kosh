@@ -82,6 +82,8 @@ echo "posix-for-eval=$?"
 ( set -o posix; : ${unset_readonly:=2}; echo same ); echo "posix-default=$?"
 ( set -u; echo $unset_name; echo same ); echo "nounset=$?"
 ( echo ${unset_name:?gone}; echo same ); echo "question=$?"
+result=$(echo ${undef_var:?the message})
+echo "question-substitution: [$result]"
 (: ${unset_readonly:=2}; echo same); echo "readonly-default-subshell=$?"
 eval ': ${unset_readonly:=2}; echo same'; echo "readonly-default-eval=$?"
 eval $': ${unset_readonly:=2}\necho "readonly-default-eval-line=$?"'

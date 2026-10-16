@@ -28,6 +28,8 @@ rc=2
 rc=2
 error: The flag '+r' cannot be turned off.
 rc=2
+1
+rc=127
 == the kosh mood refuses to turn off an option it holds:
 error: The kosh mood keeps 'pipefail' on.
 note: Switch to the bash mood with `koshconf set mood bash` to change it.
@@ -38,3 +40,6 @@ operand=+e
 kosh
 huBc
 0
+== a flag after -c is parsed as a flag:
+marker-noglob
+marker-login

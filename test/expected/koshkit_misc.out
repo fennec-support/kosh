@@ -12,12 +12,6 @@ subnormal=0
        |                ^~~~~~~
 note: Use a non-negative number with an optional `s`, `m`, `h`, or `d` suffix, such as `5` or `0.25s`.
 underflow=1
---- sleep bad duration ---
--c:1:15: error: Koshkit `sleep`: invalid duration 'abc'.
-     1 |  koshkit sleep abc
-       |                ^~~
-note: Use a non-negative number with an optional `s`, `m`, `h`, or `d` suffix, such as `5` or `0.25s`.
-rc=1
 --- env runs the command ---
 1
 rc=0
@@ -29,6 +23,12 @@ KOSHKIT_TESTVAR=present
        |  ^~~~~~~~~~~~~
 note: Try `pkill --help` for more info.
 rc=2
+--- pkill rejects an empty pattern ---
+-c:1:15: error: Koshkit `pkill`: requires a non-empty pattern.
+     1 |  koshkit pkill ""
+       |                ^~
+note: pass a pattern, e.g. `pkill ssh`.
+rc=1
 --- pkill with no match ---
 rc=1
 --- killall with no match ---
@@ -41,13 +41,7 @@ rc=1
      1 |  koshkit kill
        |          ^~~~
 rc=1
---- kill with a non-numeric pid ---
--c:1:6: error: Builtin `kill`: 'notapid' is not a valid job or process id.
-     1 |  kill notapid
-       |       ^~~~~~~
-rc=1
---- ps prints the header ---
-  PID CMD
-rc=0
---- list prints the utility count ---
-106
+--- list prints sorted unique utility names ---
+sorted-unique=0
+0
+invalid-names-status=1

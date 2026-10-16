@@ -77,3 +77,19 @@ if [ "${OS-}" = Windows_NT ]; then
     esac
 fi
 echo "== native filesystem case matching completes globs"
+
+empty_result=$(env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$dir" \
+    "$BIN" --debug-complete-at '' <"$TEST_NULL_DEVICE")
+case "$empty_result" in
+    *zz_path_exec*) ;;
+    *) exit 1 ;;
+esac
+echo "== empty command includes PATH programs"
+
+segment_result=$(env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$dir" \
+    "$BIN" --debug-complete-at 'true; ' <"$TEST_NULL_DEVICE")
+case "$segment_result" in
+    *zz_path_exec*) ;;
+    *) exit 1 ;;
+esac
+echo "== empty command segment includes PATH programs"

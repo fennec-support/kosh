@@ -36,7 +36,7 @@ editor.history.file_path="unterminated
 mood='bash' trailing
 EOF
 echo "== the file applies with a warning per malformed line:"
-"$BIN" -c 'for name in editor.auto_close_brackets_and_quotes interpreter.resolve_koshkit_applets_as_commands editor.history.max_entries optimizer.warning_level mood; do
+"$BIN" -c 'for name in editor.auto_close_brackets_and_quotes interpreter.resolve_koshkit_applets_as_commands editor.history.max_entries optimizer.warning_level posix.interpreter.unset_variable_is_error mood; do
   printf "%s=%s\n" "$name" "$(koshconf get "$name")"
 done' >"$home/out" 2>&1
 status=$?
@@ -114,10 +114,6 @@ printf 'false\necho unreached\n' >"$home/script.sh"
 "$BIN" "$home/script.sh"
 echo "rc=$?"
 "$BIN" -c 'shopt dotglob; set -M'
-echo "== a kosh mood value that conflicts with a fixed option is skipped:"
-printf 'posix.interpreter.unset_variable_is_error=off\nbash.interpreter.glob_no_match_expands_to_nothing=off\n' >"$conf"
-"$BIN" -c 'koshconf get posix.interpreter.unset_variable_is_error' 2>&1 |
-  mask_home
 echo "== an unknown name in the file suggests a close one:"
 printf 'editor.history.max_entry=3\n' >"$conf"
 "$BIN" -c 'koshconf get editor.history.max_entries' 2>&1 | mask_home
@@ -159,4 +155,4 @@ printf 'init_moods=bash,zsh\n' >"$conf"
 echo "== koshconf set validates the list:"
 : >"$conf"
 "$BIN" -c 'koshconf set init_moods sh,bash-posix; koshconf get init_moods
-koshconf set init_moods ksh' 2>&1 | grep -v '^ '
+koshconf set init_moods bash,ksh' 2>&1 | grep -v '^ '

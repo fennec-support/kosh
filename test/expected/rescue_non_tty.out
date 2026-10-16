@@ -1,5 +1,0 @@
-== non-tty bad flag exits 2:
-error: Unknown flag '--nonexistent-flag'.
-exit=2
-== non-tty run does not enter rescue:
-0

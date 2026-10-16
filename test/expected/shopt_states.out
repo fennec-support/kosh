@@ -7,14 +7,6 @@ rc=0
 == unset then query:
 dotglob             	off
 rc=1
-== -q is silent and reports off through the status:
-rc=1
-== -q reports on through the status:
-rc=0
-== -p prints the replayable form when off:
-shopt -u dotglob
-== -p prints the replayable form when on:
-shopt -s dotglob
 == an unknown name is an error:
 -c:1:7: error: Builtin `shopt`: 'bogusopt' is not a valid shell option name.
      1 |  shopt bogusopt

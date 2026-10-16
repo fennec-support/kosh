@@ -30,4 +30,3 @@ chmod +x "$inner"
     sed 's|[^ ]*wscinner|INNER|g' | "invoke-normalize-trace" "$BIN"
 "$BIN" -WWW -c '[[ x = "$UNSET_FLAT" ]]' 2>&1 | grep -Ec 'trace:'
 [ -n "$TEST_TEMP_DIRECTORY" ] && rm -f "$outer" "$inner"
-echo "rc=$?"

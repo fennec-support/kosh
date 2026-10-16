@@ -2,7 +2,8 @@
 # Bash associative array operations beyond the basics, checked byte-for-byte
 # against bash. A declare -A with an inline element initializes the map, append
 # concatenates onto an existing value, a missing key reads empty with a zero
-# count, and a for loop reads a value back by its key.
+# count, and a for loop reads a value back by its key. A subshell leaves the
+# parent's elements alone, and repeated unset and set keeps the map consistent.
 declare -A cap
 cap[france]=paris
 echo "${cap[france]}"
@@ -67,3 +68,29 @@ echo "mask: ${key[55]}-${key[8]}"
 declare -A m
 m[plain]=v
 echo "assoc: ${m[plain]}"
+
+indexed=(one two)
+associative=global
+declare -A mapping=([key]=parent)
+(
+    indexed[0]=changed
+    indexed[1]=leaked
+    mapping[key]=child
+    mapping[extra]=child
+)
+printf 'indexed=%s,%s\n' "${indexed[0]}" "${indexed[1]}"
+printf 'mapping=%s,%s\n' "${mapping[key]}" "${mapping[extra]-missing}"
+
+declare -A churn
+churn_index=0
+while [ "$churn_index" -lt 24 ]; do
+    churn["key_$churn_index"]=$churn_index
+    churn_index=$((churn_index + 1))
+done
+churn_index=0
+while [ "$churn_index" -lt 1000 ]; do
+    unset 'churn[key_12]'
+    churn[key_12]=12
+    churn_index=$((churn_index + 1))
+done
+printf 'churn-count=%s churn-value=%s\n' "${#churn[@]}" "${churn[key_12]}"

@@ -138,16 +138,6 @@ set +o pipefail
 false | true
 echo "no pipefail false|true rc $?"
 
-for (( i = 0; i < 5; i++ )); do
-    echo "cfor $i"
-done
-
-sum=0
-for (( k = 1; k <= 4; k++ )); do
-    sum=$((sum + k))
-done
-echo "cfor sum $sum"
-
 # nested C-style for with break N.
 for (( a = 0; a < 3; a++ )); do
     for (( b = 0; b < 3; b++ )); do

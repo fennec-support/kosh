@@ -1,4 +1,4 @@
-norc=ok rcfile=ok init-file=ok aliases=ok/ok login=ok tilde=ok privileged-rc=ok privileged-env=ok unreadable-rc=ok
+norc=ok rcfile=ok init-file=ok aliases=ok/ok login=ok tilde=ok privileged-rc=ok privileged-env=ok unreadable-rc=ok norc-control=ok env-control=ok
 bash-env-command=env:body
 bash-env-stdin=env:body
 bash-env-script=env:body

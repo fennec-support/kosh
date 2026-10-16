@@ -24,11 +24,15 @@ do_compare_preset() {
 }
 
 echo "== list prints every option as name=value:"
-KOSH_HISTORY_FILE=/history "$BIN" -c 'koshconf list'
+KOSH_HISTORY_FILE=/history "$BIN" -c 'koshconf list' >"$config/list.txt"
+grep -vc '^[a-z0-9_.]*=' "$config/list.txt"
+grep '^mood=kosh$' "$config/list.txt"
+grep '^editor.history.file_path=/history$' "$config/list.txt"
 echo "== the kosh preset matches a fresh kosh session:"
 "$BIN" -c 'koshconf create kosh'
 echo "rc=$?"
-cat "$conf"
+grep -v -e '^#' -e '^$' "$conf" | grep -vc '^[a-z0-9_.]*='
+grep -c '^mood=kosh$' "$conf"
 do_compare_preset kosh
 echo "== create refuses an existing file without --force:"
 "$BIN" -c 'koshconf create bash' 2>&1 | sed "s|$config|CONFIG|; s|\\\\|/|g"
@@ -39,20 +43,22 @@ grep '^mood=' "$conf"
 echo "== the bash preset matches a fresh bash session:"
 do_compare_preset bash
 echo "== the bash preset leaves the alias default to the session:"
-grep -B2 '^# bash.interpreter.aliases_expand=$' "$conf"
+grep -c '^# bash.interpreter.aliases_expand=$' "$conf"
 "$BIN" -c 'shopt -p expand_aliases'
 echo "== the sh preset matches a fresh sh session:"
 "$BIN" -c 'koshconf create --force sh'
 do_compare_preset sh
 echo "== create writes every file option with its help and Bash name:"
 grep -c -E '^((bash|posix)\.)?interpreter\.glob' "$conf"
-grep -B2 '^bash.interpreter.glob_includes_dotfiles=' "$conf"
+grep -c '^bash.interpreter.glob_includes_dotfiles=off$' "$conf"
+grep -c '(shopt dotglob)' "$conf"
 grep -c '^# editor.history.file_path=$' "$conf"
 grep -c '^bash.interpreter.privileged_mode=' "$conf"
 echo "== a Bash spelling stays on one comment line:"
 grep -c -E '\((set -o|shopt) [a-z_]*$' "$conf"
 grep -c -E '^# [a-z_]+\)$' "$conf"
-grep -B1 '^bash.interpreter.assignments_anywhere_in_command=' "$conf"
+grep -c '(set -o keyword)' "$conf"
+grep -c '^bash.interpreter.assignments_anywhere_in_command=off$' "$conf"
 
 echo "== set changes the session, and --persist rewrites one line:"
 "$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes true; koshconf get editor.auto_close_brackets_and_quotes'

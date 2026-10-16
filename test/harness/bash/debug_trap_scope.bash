@@ -193,6 +193,71 @@ echo continue-in-action
   echo continue-tail )
 echo after-continue-in-action=$?
 
+echo header-break-in-action
+( set -T
+  trap 'case "$BASH_COMMAND" in for\ v*) break ;; esac' DEBUG
+  for v in 1 2 3; do echo body-$v; done
+  trap - DEBUG
+  echo v=${v-unset} )
+echo after-header-break-in-action=$?
+
+echo header-continue-in-action
+( set -T
+  trap 'case "$BASH_COMMAND" in for\ v*) continue ;; esac' DEBUG
+  for v in 1 2 3; do echo body-$v; done
+  trap - DEBUG
+  echo v=${v-unset} )
+echo after-header-continue-in-action=$?
+
+echo inner-header-continue-in-action
+( set -T
+  trap 'case "$BASH_COMMAND" in for\ v*) continue ;; esac' DEBUG
+  for o in A B; do echo outer-$o; for v in 1 2; do echo body-$v; done; echo after-inner; done
+  trap - DEBUG
+  echo inner-continue-tail )
+echo after-inner-header-continue-in-action=$?
+
+echo inner-header-break-2-in-action
+( set -T
+  trap 'case "$BASH_COMMAND" in for\ v*) break 2 ;; esac' DEBUG
+  for o in A B; do echo outer-$o; for v in 1 2; do echo body-$v; done; echo after-inner; done
+  trap - DEBUG
+  echo inner-break-2-tail )
+echo after-inner-header-break-2-in-action=$?
+
+echo inner-header-continue-2-in-action
+( set -T
+  trap 'case "$BASH_COMMAND" in for\ v*) continue 2 ;; esac' DEBUG
+  for o in A B; do echo outer-$o; for v in 1 2; do echo body-$v; done; echo after-inner; done
+  trap - DEBUG
+  echo inner-continue-2-tail )
+echo after-inner-header-continue-2-in-action=$?
+
+echo while-condition-break-in-action
+( set -T
+  n=0
+  trap 'case "$BASH_COMMAND" in *-lt\ 3*) break ;; esac' DEBUG
+  while [ $n -lt 3 ]; do echo w-$n; n=$((n + 1)); done
+  trap - DEBUG
+  echo n=$n )
+echo after-while-condition-break-in-action=$?
+
+echo arithmetic-init-break-in-action
+( set -T
+  trap 'case "$BASH_COMMAND" in *i\ =\ 0*) break ;; esac' DEBUG
+  for ((i = 0; i < 3; i++)); do echo body-$i; done
+  trap - DEBUG
+  echo i=${i-unset} )
+echo after-arithmetic-init-break-in-action=$?
+
+echo case-header-break-in-action
+( set -T
+  trap 'case "$BASH_COMMAND" in case*) break ;; esac' DEBUG
+  for o in A B; do case x in x) echo matched ;; esac; echo after-case; done
+  trap - DEBUG
+  echo case-break-tail )
+echo after-case-header-break-in-action=$?
+
 echo return-in-action
 set -T
 returning_function() {
@@ -205,6 +270,45 @@ returning_function() {
   echo returned=$?
   echo return-tail )
 echo after-return-in-action=$?
+
+echo return-loop-in-function
+( set -T
+  looping_function() {
+    trap 'case "$BASH_COMMAND" in echo\ inner*) return 9 ;; esac' DEBUG
+    for value in 1 2 3; do echo inner-$value; done
+    trap - DEBUG
+    echo unreachable-loop
+  }
+  looping_function
+  echo returned=$?
+  echo loop-tail )
+echo after-return-loop-in-function=$?
+
+echo return-from-sourced-file
+( set -T
+  trap 'case "$BASH_COMMAND" in echo\ plain*) return 3 ;; esac' DEBUG
+  . "${BASH_SOURCE[0]%/*}/goldens/return_trap_plain.bash"
+  echo sourced=$?
+  trap - DEBUG
+  echo sourced-tail )
+echo after-return-from-sourced-file=$?
+
+echo return-from-sourced-function
+( set -T
+  trap 'case "$BASH_COMMAND" in echo\ g-1*) return 4 ;; esac' DEBUG
+  . "${BASH_SOURCE[0]%/*}/goldens/debug_trap_return_function.bash"
+  echo sourced=$?
+  trap - DEBUG
+  echo function-tail )
+echo after-return-from-sourced-function=$?
+
+echo return-at-top-level
+( set -T
+  trap 'case "$BASH_COMMAND" in echo\ top*) return 5 ;; esac' DEBUG
+  echo top-1
+  trap - DEBUG
+  echo top-tail ) 2> /dev/null
+echo after-return-at-top-level=$?
 set +T
 
 echo pinned-command

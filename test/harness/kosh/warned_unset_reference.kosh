@@ -1,0 +1,16 @@
+#!/bin/env kosh
+# A reference to an unset variable is reported, and -WWW downgrades the report
+# to a warning, so each form expands to the empty string and the script
+# continues.
+# shellcheck disable=unassigned-variable-read
+echo before
+echo $nope
+echo "${nope}"
+echo "$1"
+echo "${#nope}"
+x=set
+echo "${x:+$nope}"
+ref=missing_target
+(echo "${!ref}")
+echo "target-form=$?"
+echo continued

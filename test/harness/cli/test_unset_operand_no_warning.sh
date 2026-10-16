@@ -15,3 +15,5 @@ echo "[$NOPE]"' 2>&1 | grep -c "is not set"
 echo "== the suppression does not leak past the test (count):"
 "$BIN" -W -c '# shellcheck disable=SC2154
 test -z "$A"; echo "[$B]"' 2>&1 | grep -c "is not set"
+echo "== alternate form on an unset var is silent:"
+"$BIN" -W -c 'echo "[${UNSETV:+x}]"' 2>&1

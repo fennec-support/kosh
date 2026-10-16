@@ -1,4 +1,0 @@
-3:6: error: Shift count is negative.
-     3 |  echo $((1 << -1))
-       |       ^~~~~~~~~~~~
-note: An exact shift requires a non-negative count.

@@ -18,10 +18,6 @@ magic-good-a: batch-match
        |                                           ^~~~~~~~~~~~~
 magic-good-b: batch-match
 custom-file-status=1
---- stat preserves nonadjacent repeated operands ---
-nums.txt=6
-stamp=0
-nums.txt=6
 --- stat preserves interleaved directory operands ---
 batch-a/first=3
 batch-b/third=5
@@ -56,7 +52,7 @@ mv-interactive-yes=new source=missing
 du-file-allocation=matched
 --- du with no operand lists every entry and the total ---
 du-order=descending
-du-recursion=incomplete
+du-recursion=complete
 --- du multiple roots ---
 du-multiple-roots=matched
 --- du equal-size roots ---
@@ -114,4 +110,10 @@ sub/
 cp-links/loop-l/sub:
 rc=0
 up@
+--- cp -r refuses to copy a directory into itself ---
+-c:1:1: error: Koshkit `cp`: cannot copy 'cp-self/sub' into itself.
+     1 |  koshkit cp -r cp-self/sub cp-self/sub
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+note: The destination is inside the source directory.
+rc=1
 --- one-file-system options change nothing inside one file system ---

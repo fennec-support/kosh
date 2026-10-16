@@ -68,8 +68,6 @@ printf '%q %q\n' foo bar
 # against bash. The format repeats until the arguments run out, and a format
 # with several conversions consumes that many arguments per cycle.
 printf '%s\n' one two three
-printf '[%d]' 1 2 3 4
-echo
 printf '%s=%s\n' a 1 b 2 c 3
 printf '%d-%d ' 1 2 3 4 5
 echo
@@ -124,7 +122,6 @@ echo "${c[0]}-${c[1]}-count=${#c[@]}"
 
 # Bash echo -e/-E/-n and printf -v, checked byte-for-byte against bash. The bash
 # echo leaves escapes literal unless -e, and printf -v stores into a variable.
-echo -e "a\tb\tc"
 echo -e "line1\nline2"
 echo "no\tescapes here"
 echo -ne "x\ty\n"
@@ -135,8 +132,6 @@ printf -v x "%d-%d" 3 5
 echo "x is $x"
 printf -v greeting "Hello, %s!" world
 echo "$greeting"
-printf -v padded "%05d" 42
-echo "$padded"
 printf "%s %s\n" direct output
 
 # printf parses the leading numeric prefix of a malformed integer argument the

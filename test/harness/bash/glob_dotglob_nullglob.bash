@@ -193,5 +193,21 @@ for x in s*/needle; do echo "$x"; done
 echo "--- off ---"
 shopt -u globstar
 for x in **; do echo "$x"; done
+# With no prefix, a later pattern after ** does not look inside a symlinked
+# directory, while a literal prefix lets it, and ** itself still matches the
+# symlink.
+mkdir -p sym/d/real/sub sym/target
+touch sym/d/real/x sym/d/real/sub/y sym/target/inside
+ln -s ../target sym/d/l
+ln -s ../../target sym/d/real/l2
+cd sym
+shopt -s globstar
+echo **/*
+echo d/**/*
+echo d/real/**/*
+echo **/
+echo ./**/*
+shopt -u globstar
+cd ..
 cd "$initial_directory"
 rm -rf "$dir"

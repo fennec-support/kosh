@@ -1,4 +1,4 @@
-# The remaining utilities, sleep with a zero and a bad duration, env applying an
+# The remaining utilities, sleep with a zero duration, env applying an
 # assignment and running a command, and the pkill and killall error paths. The
 # process matchers use a name that matches nothing, so no real process is
 # signalled.
@@ -19,10 +19,6 @@ echo "minimum=$?"
 echo "subnormal=$?"
 "$BIN" -c 'koshkit sleep 1e-4000' 2>&1
 echo "underflow=$?"
-
-echo "--- sleep bad duration ---"
-"$BIN" -c 'koshkit sleep abc' 2>&1
-echo "rc=$?"
 
 echo "--- env runs the command ---"
 "$BIN" -c 'koshkit env X=1 koshkit seq 1'
@@ -51,6 +47,10 @@ echo "--- pkill with no pattern ---"
 "$BIN" -c 'koshkit pkill' 2>&1
 echo "rc=$?"
 
+echo "--- pkill rejects an empty pattern ---"
+"$BIN" -c 'koshkit pkill ""' 2>&1
+echo "rc=$?"
+
 echo "--- pkill with no match ---"
 "$BIN" -c 'koshkit pkill no_such_process_xyz_123'
 echo "rc=$?"
@@ -63,13 +63,7 @@ echo "--- kill is a builtin, not a koshkit utility ---"
 "$BIN" -c 'koshkit kill' 2>&1
 echo "rc=$?"
 
-echo "--- kill with a non-numeric pid ---"
-"$BIN" -c 'kill notapid' 2>&1
-echo "rc=$?"
-
-echo "--- ps prints the header ---"
-"$BIN" --mood sh -c 'koshkit ps | koshkit head -n 1'
-echo "rc=$?"
-
-echo "--- list prints the utility count ---"
-"$BIN" -c 'koshkit --list | koshkit wc -l'
+echo "--- list prints sorted unique utility names ---"
+"$BIN" -c 'koshkit --list | koshkit sort -cu; echo "sorted-unique=$?"'
+"$BIN" -c 'koshkit --list | koshkit grep -vc "^[a-z0-9_-]*$"'
+echo "invalid-names-status=$?"

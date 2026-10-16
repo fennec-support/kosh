@@ -1,4 +1,9 @@
 -c:1:6: error: The |& stderr pipe is a bash extension.
+rc=2
 -c:1:5: error: The C-style for ((...)) loop is a bash extension.
+rc=2
 -c:1:13: error: The <<< here-string is a bash extension.
-rc=0
+rc=2
+-c:1:8: error: Unable to expand '${ echo body; }' because a parameter name cannot start with a space.
+rc=2
+default=hello words

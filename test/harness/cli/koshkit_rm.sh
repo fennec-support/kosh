@@ -113,7 +113,5 @@ printf "y\\nn\\ny\\n" | "$BIN" -c "koshkit rm -ri --dry-run single; echo status=
   tr "?" "\\n" | tr '\\' '/'
 echo "== the last of -f and -i decides:"
 "$BIN" -c "koshkit rm -i -f --dry-run a" </dev/null 2>&1
-echo "== rm . without -r reports a directory:"
-"$BIN" -c "koshkit rm --dry-run .; echo status=\$?" </dev/null 2>&1 | grep -c -e "Is a directory" -e "refusing"
 cd / || exit 1
 [ -n "$dir" ] && rm -rf "$dir"

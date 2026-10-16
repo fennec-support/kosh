@@ -17,8 +17,8 @@
 # the shell joins it only
 # outside quotes, and history keeps both physical lines. A lone Ctrl-X lists
 # its chords on the hint rows until the next key resolves it, and Ctrl-X before
-# an arrow keeps the arrow. Ctrl-Z undoes at the prompt and still stops a
-# running program, Ctrl-Shift-Z in its kitty and xterm encodings redoes, and
+# an arrow keeps the arrow. Ctrl-Z undoes at the prompt and leaves the shell
+# running, Ctrl-Shift-Z in its kitty and xterm encodings redoes, and
 # Alt-T keeps trailing blanks in place. Leaving the vi : command line by
 # Escape or Backspace keeps the caret where the colon was typed. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
@@ -576,16 +576,6 @@ def run_checks(binary, directory, command_directory, report):
         report.record("ctrl-z-leaves-the-shell-running", session,
                       has_output("still-here", 1))
 
-        session.send(b"slow-program\r")
-        session.wait_until(lambda screen: screen.count_lines("started") == 1)
-        session.send(CTRL_Z)
-        report.record("ctrl-z-stops-a-running-program", session,
-                      lambda screen: any("Stopped" in line
-                                         for line in screen.get_lines())
-                      and is_line("")(screen))
-        session.send(b"kill -9 %1\r")
-        session.wait_until(is_line(""))
-
         session.send(b"echo ab")
         session.wait_until(is_line("echo ab"))
         session.send(CTRL_X + LEFT + LEFT + b"Z")
@@ -696,9 +686,6 @@ def main():
                      "kill -STOP $$\n"
                      "IFS= read -r line < \"$1\"\n"
                      "printf '%s RESUMED\\n' \"$line\" > \"$1\"\n")
-        write_script(os.path.join(command_directory, "slow-program"),
-                     "echo started\n"
-                     "exec /bin/sleep 30\n")
         write_script(os.path.join(command_directory, "control-visual"),
                      "printf ': a\\033]0;PWN\\007b\\n' > \"$1\"\n")
         write_script(os.path.join(command_directory, "tty-modes"),

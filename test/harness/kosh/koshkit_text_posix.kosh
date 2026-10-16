@@ -1,5 +1,5 @@
 root=$(mktemp -d)
-cd "$root"
+cd "$root" || exit 1
 
 printf 'alpha:one\nbeta:two\ngamma:three\n' > records
 printf 'a\tb\n123456789\n' > spaced

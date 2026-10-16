@@ -17,4 +17,14 @@ TIMEFORMAT='[%%]'
 time true
 TIMEFORMAT=''
 time true
+outer() {
+  echo "fn=${FUNCNAME}"
+  echo "fn0=${FUNCNAME[0]}"
+  inner
+}
+inner() {
+  echo "depth=${#FUNCNAME[@]}"
+}
+outer
+if [ -n "$OSTYPE" ]; then echo "ostype=set"; fi
 echo "done"

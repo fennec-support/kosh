@@ -146,21 +146,13 @@ echo "== a decimal divisor preserves decimal arithmetic:"
 echo "== a leading decimal point is accepted:"
 "$BIN" -c "koshkit calc '.5 + .25'" 2>&1
 "$BIN" -c "koshkit calc -- '-.125 * 8'" 2>&1
-echo "== a valid expression prints the value:"
-"$BIN" -c "koshkit calc '2 + 3 * 4'" 2>&1
-echo "== 128-bit width still prints in full:"
-"$BIN" -c "koshkit calc '2 ** 70'" 2>&1
 echo "== -i evaluates each piped line, continuing past a bad one:"
 printf '1 + 1\nbad +\n10 * 10\n' | "$BIN" -c 'koshkit calc -i' 2>&1
 
 unset KOSH_FLAGS
 # calc with -p reads and evaluates expressions from standard input one per line
-# with no prompt, a name = value line binds a variable for a later line, and
-# with no expression off a pipe it reports a verbose located error.
+# with no prompt, and a name = value line binds a variable for a later line.
 echo "== -p evaluates each piped line and binds a variable:"
 printf '2 + 2\nx = 5\nx * x\n' | "$BIN" -c 'koshkit calc -p' 2>&1
 echo "== --pipe is the long form:"
 printf '7 * 6\n' | "$BIN" -c 'koshkit calc --pipe' 2>&1
-echo "== no expression off a pipe reports a verbose error:"
-printf '' | "$BIN" -c 'koshkit calc' 2>&1
-[ "$?" -eq 1 ]

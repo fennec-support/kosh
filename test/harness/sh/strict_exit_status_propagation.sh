@@ -19,6 +19,8 @@ false | true
 echo "pipe_last_true=$?"
 true | false
 echo "pipe_last_false=$?"
+echo hi | cat | cat
+echo "pipe_three_stage=$?"
 
 # A command substitution does not by itself change the caller status.
 false

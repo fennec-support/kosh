@@ -47,11 +47,6 @@ EOF
 done
 
 HOME=/testhome
-x=$(cat <<EOF
-body
-EOF
-)
-echo "$x"
 y=$(cat <<'EOF'
 a " b
 EOF

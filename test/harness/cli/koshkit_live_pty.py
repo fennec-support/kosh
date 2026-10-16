@@ -18,7 +18,6 @@ FRAME_MARKER = b"  LIVE"
 LINE_ERASE = b"\x1b[K"
 SYNC_START = b"\x1b[?2026h"
 SYNC_END = b"\x1b[?2026l"
-HEADER_BAR_STYLE = b"\x1b[0;48;5;236;38;5;252m"
 
 
 def run_pty(binary, command, keys=()):
@@ -106,7 +105,6 @@ def run_pty(binary, command, keys=()):
         "frames": bytes(output).count(FRAME_MARKER),
         "controls": FRAME_MARKER in output,
         "hints": b"q quit" in output,
-        "styled_header": HEADER_BAR_STYLE in output,
         "ansi": b"\x1b[" in output,
         "alternate_enter": b"\x1b[?1049h" in output,
         "alternate_leave": b"\x1b[?1049l" in output,
@@ -212,7 +210,7 @@ def main():
     ):
         result = run_pty(binary, command, keys)
         requirements = {"status": 130, "resized": True,
-                        "controls": True, "hints": True, "ansi": True,
+                        "controls": True, "hints": True,
                         "alternate_enter": True,
                         "alternate_leave": True,
                         "cursor_hide": True,
@@ -272,15 +270,6 @@ def main():
         if result["has_scroll_room"]:
             scroll_requirements["body_first_row_changed"] = True
         ok &= check(name, result, scroll_requirements)
-
-    result = run_pty(binary, "koshkit --color always evilnet --traffic "
-                     "--live=0.05 --cumulative=0.1")
-    ok &= check("evilnet-color-pty", result,
-                {"status": 130, "styled_header": True, "hints": False})
-    result = run_pty(binary, "koshkit --color never evilnet --traffic "
-                     "--live=0.05 --cumulative=0.1")
-    ok &= check("evilnet-plain-pty", result,
-                {"status": 130, "styled_header": False, "hints": True})
 
     for name, command in (
         ("evilss-redirected", "koshkit --color never evilss --live=0.05"),

@@ -36,16 +36,6 @@ privileged     	off
 verbose        	off
 vi             	off
 xtrace         	off
-== bash mood relaxes nounset:
-[]
-ok
-== -M short form prints the active mood:
-sh
-== default mood is strict:
-is not set
-== switching back to kosh restores strictness:
-is not set
-rc-done
 notify         	off
 notify         	on
 notify         	off

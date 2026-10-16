@@ -1,8 +1,0 @@
-# comment	comment
-inner-command	unknown-command
-echo	resolved-command
-printf	resolved-command
-")"	string
-echo	resolved-command
-probecmd	resolved-command
-esac	keyword

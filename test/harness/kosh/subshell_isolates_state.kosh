@@ -72,4 +72,29 @@ for attempt in $(koshkit seq 500); do
 done
 jobs -l | koshkit sed 's/  *[0-9][0-9]* / PID /;s/  .*//'
 jobs
+x=1
+(readonly x)
+x=2
+echo "x=$x"
+n=5
+(declare -i n)
+n=abc
+echo "n=$n"
+arr=(a b)
+(readonly arr)
+arr=(c d)
+echo "arr=${arr[1]}"
+before_mask=$(umask)
+(umask 077)
+[ "$before_mask" = "$(umask)" ] && echo mask-restored
+(pushd "$TEST_TEMP_DIRECTORY/subshell-state" >"$TEST_NULL_DEVICE"; umask 077)
+[ "$(dirs -p | koshkit wc -l)" -eq 1 ] && echo directory-stack-restored
+koshkit mkdir -p "$TEST_TEMP_DIRECTORY/subshell-state/original" "$TEST_TEMP_DIRECTORY/subshell-state/sibling"
+: > "$TEST_TEMP_DIRECTORY/subshell-state/original/marker"
+state_directory=$(cd "$TEST_TEMP_DIRECTORY/subshell-state" && pwd)
+cd "$state_directory/original" || exit 1
+(chmod 000 .; cd "$state_directory/sibling")
+chmod 700 "$state_directory/original"
+[[ -f marker ]] && echo permission-directory-restored
+cd / || exit 1
 echo done

@@ -1,7 +1,7 @@
 #!/bin/env kosh
 kosh_binary=$(koshkit realpath "$BIN")
 d=$(mktemp -d)
-cd "$d"
+cd "$d" || exit
 koshkit cat > lib.sh <<'EOF'
 inner()
 {
@@ -31,5 +31,5 @@ EOF
 "$kosh_binary" -c 'echo "command-string=[$BASH_SOURCE] depth=[${#BASH_SOURCE[@]}]"'
 own_name=$("$kosh_binary" -c 'f() { echo "${BASH_SOURCE[0]}"; }; f')
 [ "$own_name" = "$kosh_binary" ] && echo "command-string-function=own-name"
-cd /
+cd / || exit
 [ -n "$d" ] && rm -r "$d"

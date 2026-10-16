@@ -31,8 +31,6 @@ mkdir .magic-batch
     2>&1
   echo "custom-file-status=$?"
 )
-echo "--- stat preserves nonadjacent repeated operands ---"
-"$BIN" -c 'koshkit stat -c "%n=%s" nums.txt stamp nums.txt'
 mkdir batch-a batch-b
 printf one > batch-a/first
 printf two-two > batch-a/second
@@ -142,11 +140,13 @@ while read -r current_size current_path; do
     ./sub) du_path_mask=$((du_path_mask | 16)) ;;
     ./sub/c) du_path_mask=$((du_path_mask | 32)) ;;
     ./sub-link) du_path_mask=$((du_path_mask | 64)) ;;
+    ./tie-a) du_path_mask=$((du_path_mask | 128)) ;;
+    ./tie-b) du_path_mask=$((du_path_mask | 256)) ;;
     *) du_path_mask=-1 ;;
   esac
 done < "$du_report"
 printf 'du-order=%s\n' "$du_order"
-if [ "$du_path_mask" -eq 127 ]; then
+if [ "$du_path_mask" -eq 511 ]; then
   echo "du-recursion=complete"
 else
   echo "du-recursion=incomplete"
@@ -288,6 +288,11 @@ echo "--- cp links without recursion and cycles ---"
 "$BIN" -c 'koshkit cp cp-links/link cp-links/copy-default; echo "rc=$?"; koshkit ls -F cp-links/copy-default'
 "$BIN" -c 'koshkit cp -rL cp-links/loop cp-links/loop-l 2>&1; echo "rc=$?"; koshkit ls -F cp-links/loop-l cp-links/loop-l/sub'
 "$BIN" -c 'koshkit cp -rP cp-links/loop cp-links/loop-p; echo "rc=$?"; koshkit ls -F cp-links/loop-p/sub'
+echo "--- cp -r refuses to copy a directory into itself ---"
+mkdir -p cp-self/sub
+: > cp-self/sub/f
+"$BIN" -c 'koshkit cp -r cp-self/sub cp-self/sub' 2>&1
+echo "rc=$?"
 echo "--- one-file-system options change nothing inside one file system ---"
 mkdir -p ofs-src/sub
 printf one > ofs-src/a

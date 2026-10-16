@@ -1,7 +1,7 @@
 #!/bin/env kosh
 
 koshkit mkdir -p "$TEST_TEMP_DIRECTORY/koshkit-readlink"
-cd "$TEST_TEMP_DIRECTORY/koshkit-readlink"
+cd "$TEST_TEMP_DIRECTORY/koshkit-readlink" || exit
 
 printf 'default=['
 koshkit ln -sf relative-target readlink-link

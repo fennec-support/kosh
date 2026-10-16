@@ -1,2 +1,6 @@
-resumed
+== while stopped:
+before
 rc=0
+== after SIGCONT:
+before
+after

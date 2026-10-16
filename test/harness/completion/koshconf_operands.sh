@@ -7,6 +7,8 @@ echo "== koshconf create preset:"
 "$BIN" --debug-complete-at 'koshconf create ' </dev/null
 echo "== koshconf get option prefix:"
 "$BIN" --debug-complete-at 'koshconf get editor.' </dev/null
+echo "== koshconf set offers the diagnostics options:"
+"$BIN" --debug-complete-at 'koshconf set optimizer.' </dev/null
 echo "== koshconf set option prefix after a flag:"
 "$BIN" --debug-complete-at 'koshconf --persist set bash.interpreter.glob_no_' \
   </dev/null

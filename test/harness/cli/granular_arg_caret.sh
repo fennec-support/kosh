@@ -20,6 +20,10 @@ echo "== umask points at the bad mask, not the whole umask line:"
 result=$("$BIN" -c 'umask 0999' 2>&1)
 [ "$?" -eq 1 ] || exit 1
 printf '%s\n' "$result"
+echo "== umask points at the bad symbolic mask, not the whole umask line:"
+result=$("$BIN" -c 'umask u=rwx,bogus' 2>&1)
+[ "$?" -eq 1 ] || exit 1
+printf '%s\n' "$result"
 echo "== set points at the bad option, not the whole set line:"
 result=$("$BIN" -c 'set -Z' 2>&1)
 [ "$?" -eq 1 ] || exit 1

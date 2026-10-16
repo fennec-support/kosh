@@ -11,3 +11,5 @@ zz_path_blocked
 == native path separators complete directories
 == native PATH case matching completes commands
 == native filesystem case matching completes globs
+== empty command includes PATH programs
+== empty command segment includes PATH programs

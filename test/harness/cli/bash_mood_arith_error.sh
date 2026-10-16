@@ -7,6 +7,9 @@ echo "rc=$?"
 echo "== the strict default mood aborts the run on an arithmetic error:"
 "$BIN" -c 'echo $((1/0)); echo after'
 echo "rc=$?"
+echo "== the strict default mood aborts on an unset arithmetic operand:"
+"$BIN" --mood kosh -c 'echo before; echo $((nope + 1)); echo not-reached'
+echo "rc=$?"
 echo "== bash mood still continues past an ordinary command failure:"
 "$BIN" --mood bash -c 'false; echo after'
 echo "rc=$?"

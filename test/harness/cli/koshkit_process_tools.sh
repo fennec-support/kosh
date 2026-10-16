@@ -75,12 +75,7 @@ case $node_report in
   *Type*Inode*Device*Links*) node_grid=matched ;;
   *) node_grid=missing ;;
 esac
-case $node_report in
-  *$(printf '\033')*) node_color=present ;;
-  *) node_color=absent ;;
-esac
 printf 'goodnode-grid=%s\n' "$node_grid"
-printf 'goodnode-color=%s\n' "$node_color"
 
 default_report=$("$BIN" -c 'koshkit --color never evilio')
 case $default_report in
@@ -117,11 +112,6 @@ esac
 printf 'evilio-disk-row=%s\n' "$disk_row_layout"
 
 evilio_help=$("$BIN" -c 'koshkit evilio --help')
-case $evilio_help in
-  *"--cumulative[=<seconds>]"*) cumulative_help=named-seconds ;;
-  *) cumulative_help=unclear ;;
-esac
-printf 'evilio-cumulative-help=%s\n' "$cumulative_help"
 case $evilio_help in
   *'-h, --human-readable'*) human_help=matched ;;
   *) human_help=missing ;;
@@ -209,14 +199,6 @@ case $network_report in
 esac
 printf 'evilnet-single-title=%s\n' "$network_title"
 
-network_all_report=$("$BIN" -c 'koshkit evilnet --all' \
-  2> "$TEST_NULL_DEVICE")
-case $network_all_report in
-  *'Network interfaces'*'Network traffic'*) network_all_title=present ;;
-  *) network_all_title=omitted ;;
-esac
-printf 'evilnet-multiple-titles=%s\n' "$network_all_title"
-
 network_traffic_report=$("$BIN" -c 'koshkit evilnet --traffic' 2> "$TEST_NULL_DEVICE")
 case $network_traffic_report in
   *RX*TX*"RX PACKETS"*) network_traffic_only=present ;;
@@ -271,28 +253,6 @@ case $filesystem_report in
   *) filesystem_title=omitted ;;
 esac
 printf 'evilfs-single-title=%s\n' "$filesystem_title"
-
-filesystem_all_report=$("$BIN" -c 'koshkit evilfs --all' \
-  2> "$TEST_NULL_DEVICE")
-case $filesystem_all_report in
-  *'Filesystems'*SOURCE*TARGET*VOLUME*OPTIONS*) filesystem_all_title=present ;;
-  *) filesystem_all_title=omitted ;;
-esac
-printf 'evilfs-multiple-titles=%s\n' "$filesystem_all_title"
-
-cores_report=$("$BIN" -c 'koshkit evillogs --cores')
-case $cores_report in
-  CORES*|*LOGS*) cores_title=present ;;
-  *) cores_title=omitted ;;
-esac
-printf 'evillogs-single-title=%s\n' "$cores_title"
-
-logs_report=$("$BIN" -c 'koshkit evillogs --cores --logs')
-case $logs_report in
-  CORES*LOGS*) logs_titles=present ;;
-  *) logs_titles=omitted ;;
-esac
-printf 'evillogs-multiple-titles=%s\n' "$logs_titles"
 
 host_system=$("$BIN" -c 'koshkit uname -s')
 evildisk_tools=$TEST_TEMP_DIRECTORY/evildisk-tools

@@ -1,5 +1,0 @@
-2:6: warning: The glob pattern has an unterminated `[`.
-     2 |  echo [abc
-       |       ^~~~
-note: Close the bracket with `]`, or escape it as `\[`.
-[abc

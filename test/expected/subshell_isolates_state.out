@@ -25,5 +25,11 @@ background-pid-restored
 jobs-restored
 [1]+ PID Exit 3
 [1]+  Exit 3                     (exit 3)
+x=2
+n=abc
+arr=d
+mask-restored
+directory-stack-restored
+permission-directory-restored
 done
 PARENT

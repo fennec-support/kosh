@@ -4,3 +4,10 @@ ble/prompt/unit:{section}/get	function-name
 ble/prompt/unit:{section}/get	resolved-command
 bad{1..3}	invalid-syntax
 bad{unclosed	invalid-syntax
+g	unknown-command
+g	function-name
+g	resolved-command
+ble/util/put	function-name
+ble/util/put	resolved-command
+ble/variable#load:x	function-name
+ble/variable#load:x	resolved-command

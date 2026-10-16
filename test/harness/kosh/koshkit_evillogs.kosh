@@ -1,5 +1,5 @@
 (koshkit evillogs extra) 2> "$TEST_NULL_DEVICE"
-echo "unexpected-operand=$?"
+echo "evillogs-operand=$?"
 report=$(koshkit --color never evillogs --cores)
 case $report in
   'Core dump settings'*) echo "settings-title=flush" ;;
@@ -9,3 +9,23 @@ case $report in
   *' '$'\n'*) echo "trailing-space=present" ;;
   *) echo "trailing-space=absent" ;;
 esac
+logs=$(koshkit --color never evillogs --logs)
+case $logs in
+  *'Core dump settings'*) echo "cores-in-logs=present" ;;
+  *) echo "cores-in-logs=absent" ;;
+esac
+case $report in
+  *' entries, '*) echo "logs-in-cores=present" ;;
+  *) echo "logs-in-cores=absent" ;;
+esac
+both=$(koshkit --color never evillogs --cores --logs)
+case $both in
+  'Core dump settings'*) echo "both-title=flush" ;;
+  *) echo "both-title=missing" ;;
+esac
+(koshkit evilfs extra) 2> "$TEST_NULL_DEVICE"
+echo "evilfs-operand=$?"
+(koshkit evilnet extra) 2> "$TEST_NULL_DEVICE"
+echo "evilnet-operand=$?"
+(koshkit evilps 1 2) 2> "$TEST_NULL_DEVICE"
+echo "evilps-operand=$?"

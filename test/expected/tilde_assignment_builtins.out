@@ -1,5 +1,11 @@
+1
+2
+tilde_plus
 testhome/a:testhome/b
 testhome/r
 testhome/z
 testhome/d
 testhome/x testhome/y
+testhome/a:testhome/b:testhome
+testhome/only
+testhome/x:testhome/y

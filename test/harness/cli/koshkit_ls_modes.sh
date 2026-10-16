@@ -65,12 +65,13 @@ echo "--- sort by size reversed ---"
 "$BIN" -c 'koshkit ls -Sr sized'
 echo "--- color never is bare ---"
 "$BIN" -c 'koshkit --color never ls -F'
-echo "--- color always ---"
-"$BIN" -c 'koshkit --color always ls -F' | cat -v
-echo "--- batched symlink colors ---"
-"$BIN" -c 'koshkit --color always ls -1 .symlink-batch' | cat -v
-echo "--- explicit symlink colors ---"
-"$BIN" -c 'koshkit --color always ls -1 good-link' | cat -v
+echo "--- color always keeps the listing text ---"
+for ls_args in '-F' '-1 .symlink-batch' '-1 good-link'; do
+  plain=$("$BIN" -c "koshkit --color never ls $ls_args")
+  stripped=$("$BIN" -c "koshkit --color always ls $ls_args" |
+    sed "s/$(printf '\033')\[[0-9;]*m//g")
+  [ "$plain" = "$stripped" ] && echo same || echo different
+done
 echo "--- redirected output carries no escape ---"
 "$BIN" -c 'koshkit ls -F' | cat -v
 echo "--- human total ---"
@@ -159,29 +160,41 @@ else
   esac
 fi
 echo "--- recursive ls interruption ---"
-if [ "${TARGET-}" != Linux ]; then
-  :
-else
+if [ "${TARGET:-$(uname -s)}" = Linux ]; then
   interrupt_root=$TEST_TEMP_DIRECTORY/ls-interrupt
   "$BIN" -c 'koshkit mkdir -p "$1"' mkdir "$interrupt_root"
   interrupt_directory=0
   while [ "$interrupt_directory" -lt 200 ]; do
     interrupt_path=$interrupt_root/d$interrupt_directory
     "$BIN" -c 'koshkit mkdir "$1"' mkdir "$interrupt_path"
-    interrupt_file=0
-    while [ "$interrupt_file" -lt 200 ]; do
-      printf x > "$interrupt_path/f$interrupt_file"
-      interrupt_file=$((interrupt_file + 1))
-    done
+    (
+      cd "$interrupt_path" || exit 1
+      seq 1 200 | xargs touch
+    )
     interrupt_directory=$((interrupt_directory + 1))
   done
-  "$BIN" -c 'koshkit timeout -p -s INT "$@"' timeout 0.005s "$BIN" -c \
-    "koshkit ls -R '$interrupt_root'" > "$interrupt_root/output" 2>&1
-  interrupt_status=$?
-  if [ "$interrupt_status" -eq 130 ]; then
+  interrupt_expected_count=$("$BIN" -c 'koshkit ls -R "$1"' ls "$interrupt_root" |
+    wc -l)
+  interrupt_status=$("$BIN" --no-traces --mood bash -c '
+    shell_pid=$$
+    (
+      while [ ! -e ls-interrupt.ready ]; do /bin/sleep 0.001; done
+      /bin/sleep 0.005
+      kill -INT $shell_pid
+    ) &
+    : > ls-interrupt.ready
+    koshkit ls -R "$1" > ls-interrupt.out 2> ls-interrupt.err
+    ls_status=$?
+    wait
+    exit $ls_status
+  ' ls-interrupt "$interrupt_root" 2> /dev/null; echo "$?")
+  interrupt_line_count=$(wc -l < ls-interrupt.out)
+  if [ "$interrupt_status" -eq 130 ] &&
+    [ "$interrupt_line_count" -lt "$interrupt_expected_count" ] &&
+    ! grep -q 'Interrupted system call' ls-interrupt.err; then
     :
   else
-    exit 1
+    echo "ls-interrupt=failed status=$interrupt_status lines=$interrupt_line_count"
   fi
 fi
 

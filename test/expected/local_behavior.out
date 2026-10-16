@@ -4,18 +4,8 @@
        |  ^~~~~~~~~
 note: `local` only works inside a function body.
 rc=1
-== local -i evaluates an integer assignment:
-7
-== local -a declares an indexed array:
-xy
-== local -A declares an associative array:
-val
-== a local shadows an outer value and restores it:
-inner
-outer
-== invalid local names fail without creating hidden bindings:
+== invalid local names fail:
 status=1
-hidden=1
 == fresh name warns:
 1
 == top-level name is quiet:

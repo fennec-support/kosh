@@ -7,3 +7,14 @@ EOF	heredoc-delimiter
 echo	resolved-command
 2
 echo	resolved-command
+EOF	heredoc-delimiter
+	heredoc
+EOF	heredoc-delimiter
+"DONE"	heredoc-delimiter
+		heredoc
+DONE	heredoc-delimiter
+cat	resolved-command
+\_ACEOF	heredoc-delimiter
+	heredoc
+_ACEOF	heredoc-delimiter
+echo	resolved-command

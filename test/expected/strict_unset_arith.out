@@ -1,7 +1,0 @@
-before
-3:9: warning: The variable 'nope' is not set and expands to an empty string.
-     3 |  echo $((nope + 1))
-       |          ^~~~
-note: Replace it with ${nope-} if empty expansion is desired.
-1
-not-reached

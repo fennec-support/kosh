@@ -26,3 +26,13 @@ case $- in *u*) echo "nounset=on" ;; *) echo "nounset=off" ;; esac
 leak_target
 case $- in *f*) echo "after leak noglob=on" ;; *) echo "after leak noglob=off" ;; esac
 set +f
+
+flag_string=$-
+echo "${flag_string//[cI]/}"
+set -f
+flag_string=$-
+echo "${flag_string//[cI]/}"
+set +f
+set -u
+flag_string=$-
+echo "${flag_string//[cI]/}"

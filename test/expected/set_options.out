@@ -14,6 +14,10 @@ mood=kosh args=mood-marker
 init=init-marker
 bundled=0
 after=1
-9:5: error: Builtin `set`: Unknown option '-Z'.
-     9 |  set -Z 2>&1; echo "bad=$?"
-       |      ^~
+9:6: error: Builtin `set`: Unknown option '-Z'.
+     9 |  (set -Z); echo "bad=$?"
+       |       ^~
+9:1: trace:
+     9 |  (set -Z); echo "bad=$?"
+       |  ^
+bad=1

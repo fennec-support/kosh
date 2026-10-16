@@ -4,6 +4,14 @@ echo $(( ((2+3)) * (4-1) ))
 echo $((10%3))
 echo $((1<<4))
 echo $((2 ** 256))
+
+# A multiply by a literal zero and a subtraction of a recorded name from itself
+# evaluate to zero.
+v=7
+echo $((v * 0))
+echo $((0 * v))
+echo $((v - v))
+
 for ((; 2 ** 64;)); do
   echo exact-loop
   break

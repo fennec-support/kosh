@@ -10,7 +10,7 @@ frame()
 {
   frame '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"rootUri":"file:///tmp","capabilities":{"general":{"positionEncodings":["utf-8"]},"textDocument":{"publishDiagnostics":{"dataSupport":true},"codeAction":{"isPreferredSupport":true,"codeActionLiteralSupport":{"codeActionKind":{"valueSet":["quickfix","source.fixAll.kosh"]}}}}}}}'
   frame '{"jsonrpc":"2.0","method":"initialized","params":{}}'
-  frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/check.yml","languageId":"yaml","version":1,"text":"name: \"$value $HOST_TEXT\"\njobs:\n  check:\n    steps:\n      - run: |\n          value=ready\n          printf \"%s\\n\" \"$value\" \"$EMBEDDED_TEXT\"\n"}}}'
+  frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/check.yml","languageId":"yaml","version":1,"text":"name: \"$value $HOST_TEXT\"\njobs:\n  check:\n    steps:\n      - run: |\n          value=ready\n          printf \"%s\\n\" \"$value\" \"$EMBEDDED_TEXT\"\n          [ x == y ]\n"}}}'
   frame '{"jsonrpc":"2.0","id":2,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/check.yml"},"position":{"line":6,"character":27}}}'
   frame '{"jsonrpc":"2.0","id":3,"method":"textDocument/definition","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/check.yml"},"position":{"line":6,"character":27}}}'
   frame '{"jsonrpc":"2.0","id":4,"method":"textDocument/documentSymbol","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/check.yml"}}}'
@@ -18,7 +18,7 @@ frame()
   frame '{"jsonrpc":"2.0","id":6,"method":"textDocument/formatting","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/check.yml"},"options":{"tabSize":2,"insertSpaces":true}}}'
   frame '{"jsonrpc":"2.0","id":8,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/check.yml"},"position":{"line":6,"character":13}}}'
   frame '{"jsonrpc":"2.0","id":9,"method":"textDocument/rename","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/check.yml"},"position":{"line":6,"character":27},"newName":"renamed"}}'
-  frame '{"jsonrpc":"2.0","id":10,"method":"textDocument/codeAction","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/check.yml"},"range":{"start":{"line":6,"character":36},"end":{"line":6,"character":50}},"context":{"diagnostics":[]}}}'
+  frame '{"jsonrpc":"2.0","id":10,"method":"textDocument/codeAction","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/check.yml"},"range":{"start":{"line":7,"character":10},"end":{"line":7,"character":20}},"context":{"diagnostics":[]}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/README.md","languageId":"markdown","version":1,"text":"```bash\nmissing_lsp_executable\n```\n"}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/.devcontainer/devcontainer.json","languageId":"json","version":1,"text":"{\n\"postCreateCommand\":\"missing_lsp_dev_target\",\n\"waitFor\":\"missing_lsp_dev_wait\",\n\"initializeCommand\":\"missing_lsp_dev_host\"\n}"}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/custom.compose","languageId":"dockercompose","version":1,"text":"services:\n  app:\n    environment: $HOST_COMPOSE\n    command: echo $EMBEDDED_COMPOSE\n"}}}'
@@ -75,15 +75,15 @@ case $output in
 *) printf 'outline=missing\n' ;;
 esac
 case $output in
-*'"id":5,"result":{"data":['*']}'*) printf 'semantic-tokens=ok\n' ;;
+*'"id":5,"result":{"data":[5,10,'*']}'*) printf 'semantic-tokens=ok\n' ;;
 *) printf 'semantic-tokens=missing\n' ;;
 esac
 case $output in
-*'"id":6,"result":'*) printf 'format-preserves-host=ok\n' ;;
+*'"id":6,"result":'*'"newText":"name: \"$value $HOST_TEXT\"\njobs:\n  check:\n    steps:\n      - run: |\n'*) printf 'format-preserves-host=ok\n' ;;
 *) printf 'format-preserves-host=missing\n' ;;
 esac
 case $output in
-*'"id":2,"result":{"contents":'*) printf 'hover=ok\n' ;;
+*'"id":2,"result":{"contents":{"kind":"plaintext","value":"value=ready\nValue: ready"'*) printf 'hover=ok\n' ;;
 *) printf 'hover=missing\n' ;;
 esac
 case $output in
@@ -103,6 +103,6 @@ case $output in
 *) printf 'rename-host=none\n' ;;
 esac
 case $output in
-*'"id":10,"result":['*) printf 'code-actions=ok\n' ;;
+*'"id":10,"result":[{"title":"Replace'*'"line":7,"character":14'*) printf 'code-actions=ok\n' ;;
 *) printf 'code-actions=missing\n' ;;
 esac

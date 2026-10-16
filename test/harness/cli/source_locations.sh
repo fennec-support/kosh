@@ -55,7 +55,7 @@ EOF
 cat > call_helper.sh <<'EOF'
 #!/bin/bash
 
-. ./helper_lib.sh
+. "${lib:=./helper_lib.sh}"
 
 echo hello
 
@@ -63,13 +63,6 @@ build
 EOF
 run "function defined in a sourced file, called by the sourcer" \
     "$BIN" call_helper.sh
-
-cat > viavar.sh <<'EOF'
-lib=./helper_lib.sh
-. "$lib"
-build
-EOF
-run "file sourced through a variable" "$BIN" --mood bash viavar.sh
 
 cat > level_c.sh <<'EOF'
 echo c-start
@@ -101,12 +94,6 @@ echo "status=$?"
 echo "status=$?"
 EOF
 run "source with arguments and a return" "$BIN" --mood bash use_args.sh
-
-cat > twice.sh <<'EOF'
-. ./lib.sh
-. ./lib.sh
-EOF
-run "the same file sourced twice" "$BIN" --mood bash twice.sh
 
 cat > redefine.sh <<'EOF'
 cat > swap_lib.sh <<'LIB'

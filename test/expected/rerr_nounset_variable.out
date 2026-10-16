@@ -1,4 +1,25 @@
-5:7: error: Unable to expand 'undefined_var' because the parameter is not set.
-     5 |  echo "$undefined_var"
+7:7: error: Unable to expand 'nope' because the parameter is not set.
+     7 |  (echo "${nope^^}")
+       |        ^~~~~~~~~~~
+case-mod=2
+9:7: error: Unable to expand 'nope' because the parameter is not set.
+     9 |  (echo "${nope/a/b}")
+       |        ^~~~~~~~~~~~~
+replace=2
+11:7: error: Unable to expand 'nope' because the parameter is not set.
+    11 |  (echo "${nope:1:2}")
+       |        ^~~~~~~~~~~~~
+substring=2
+13:7: error: Unable to expand 'nope' because the parameter is not set.
+    13 |  (echo "${!nope}")
+       |        ^~~~~~~~~~
+indirect=2
+16:19: error: Unable to expand 'y' because the parameter is not set.
+    16 |  (printf '%s' "${x-$y}")
+       |                    ^~
+note: Replace it with ${y-} if empty expansion is desired.
+modifier-word=2
+18:7: error: Unable to expand 'undefined_var' because the parameter is not set.
+    18 |  echo "$undefined_var"
        |        ^~~~~~~~~~~~~~
 note: Replace it with ${undefined_var-} if empty expansion is desired.

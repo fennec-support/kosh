@@ -12,25 +12,9 @@ warning: The KOSHCONF environment variable is ignored because its option ids are
 note: 'pipefail' is the Bash name of 'posix.interpreter.pipeline_fails_on_any_stage'.
 -c:1:37: error: Builtin `koshconf`: Unknown option 'extglob'.
 note: 'extglob' is the Bash name of 'bash.interpreter.glob_extended_patterns'.
-== a retired set -o name points at its replacement:
--c:1:8: error: Builtin `set`: Unknown -o option 'koshkit'.
-note: The option was retired; use `koshconf set interpreter.resolve_koshkit_applets_as_commands on` instead.
--c:1:24: error: Builtin `set`: Unknown -o option 'no-diagnostics'.
-note: The option was retired; use `koshconf set optimizer.analyze_before_running on` instead.
--c:1:47: error: Builtin `set`: Unknown -o option 'no-unset'.
-note: The option was retired; use `set -o nounset` instead.
--c:2:8: error: Builtin `set`: Unknown -o option 'failglob'.
-note: The option was retired; use `shopt -u failglob` instead.
-== an invalid init_moods names the bad entry:
--c:1:25: error: Builtin `koshconf`: Unknown mood 'fish' in the value of 'init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix'.
 == enumeration values read naturally:
 -c:1:31: error: Builtin `koshconf`: Invalid value 'ed' for 'editor.base_mode', expected 'emacs' or 'vi'.
 -c:2:56: error: Builtin `koshconf`: Invalid value 'true' for 'completion.add_space_after_completed_word', expected 'off', 'on', or 'on-excluding-trailing-slash'.
-# Insert a space after an accepted completion: off for never, on for always, or
-# on-excluding-trailing-slash for all but a directory.
---
-# Color the input by syntax and suggest the rest of the word in ghost text. Both
-# also need completion.on_tab on.
 == --persist skips a byte order mark:
  357 273 277 b a s h . i n t e r p r e
  t e r . g l o b _ i n c l u d e

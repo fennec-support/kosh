@@ -1,9 +1,10 @@
 #!/bin/bash
-# Bash type -a for cd and type -t for a builtin, keywords, a function, and a name
-# with no command, checked byte-for-byte against bash. PATH is pinned to a single
-# directory so the type -a cd listing is deterministic. A usrmerge system carries
-# /usr/sbin as a symlink to /usr/bin, so a PATH with both makes bash list the cd
-# binary twice while kosh lists it once, a divergence the single entry removes.
+# Bash type -a for cd, type -t for a builtin, keywords, a function, and a name
+# with no command, and type -at for a keyword and a function, checked
+# byte-for-byte against bash. PATH is pinned to a single directory so the type
+# -a cd listing is deterministic. A usrmerge system carries /usr/sbin as a
+# symlink to /usr/bin, so a PATH with both makes bash list the cd binary twice
+# while kosh lists it once, a divergence the single entry removes.
 PATH=/usr/bin
 type -a cd
 type -t cd
@@ -15,6 +16,9 @@ greet() { :; }
 type -t greet
 type -t no_such_command_zzz
 echo "rc=$?"
+type -at if
+f() { :; }
+type -at f
 
 
 # command -p resolves against a default PATH that finds the standard utilities,
@@ -50,14 +54,6 @@ printf 'function=%s\n' "$(type -t 'function')"
 printf 'time=%s\n' "$(type -t 'time')"
 printf 'if=%s\n' "$(type -t 'if')"
 printf 'echo=%s\n' "$(type -t 'echo')"
-
-type -t echo
-type -t if
-type -t while
-f() { :; }
-type -t f
-type -t totally_nonexistent_xyz_cmd
-echo "notfound rc=$?"
 
 # The parser reads coproc, select, and the double brackets as keywords, so type,
 # command, and compgen report them with the lexer keywords.

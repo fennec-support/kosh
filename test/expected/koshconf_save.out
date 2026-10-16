@@ -1,29 +1,7 @@
-== the help documents the forms and $KOSHCONF:
-DESCRIPTION
-  Koshka settings and their binary KOSHCONF form can be read and written here.
-  The save form can print the current settings for a child kosh. With --persist,
-  it also writes them to the user configuration file.
-
-SYNOPSIS
-  koshconf create <bash|sh|kosh> [--force]
-  koshconf set <option> <value> [--persist]
-  koshconf get <option>
-  koshconf list [-a|--all]
-  koshconf load <base64>
-  koshconf save [--persist]
-
-OPTIONS
-      --help                            Display help.
-  -a, --all                             When list is used, also show the
-                                        posix.legacy and bash.legacy spelling of
-                                        each option.
-      --persist                         When set is used, also write the option
-                                        to the user configuration file. When
-                                        save is used, write the settings that
-                                        differ from the defaults of the current
-                                        mood to that file.
-      --force                           When create is used, replace an existing
-                                        configuration file.
+== the help has the save form and the --persist flag:
+3
+1
+4
 == list has no class column:
 0
 # name=value

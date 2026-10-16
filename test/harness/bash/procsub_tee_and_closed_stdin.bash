@@ -6,11 +6,10 @@
 work=$(mktemp -d)
 cd "$work" || exit 1
 echo x | tee >(cat > first) >(cat > second) >(cat > third) > /dev/null
-wait
-sleep 0.2
+for n in {1..50}; do [ -s first ] && [ -s second ] && [ -s third ] && break; sleep 0.1; done
 echo "tee=$(cat first second third | tr '\n' ,)"
 printf 'one\ntwo\n' | tee >(wc -l > count_a) >(wc -l > count_b) > /dev/null
-sleep 0.2
+for n in {1..50}; do [ -s count_a ] && [ -s count_b ] && break; sleep 0.1; done
 echo "counts=$(tr -d ' ' < count_a) $(tr -d ' ' < count_b)"
 printf '%s\n' 'echo y | cat' 'echo y | { read -r line; echo "got $line"; }' > closed.sh
 "$BASH" closed.sh 0<&-

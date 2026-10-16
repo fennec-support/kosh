@@ -19,6 +19,11 @@ editor.history.arrow_keys_search_by_typed_prefix
 editor.history.file_path
 editor.history.max_entries
 editor.request_extended_key_reports
+== koshconf set offers the diagnostics options:
+optimizer.analyze_before_running
+optimizer.show_annoying_tier
+optimizer.show_source_traces
+optimizer.warning_level
 == koshconf set option prefix after a flag:
 bash.interpreter.glob_no_match_expands_to_nothing
 bash.interpreter.glob_no_match_is_error

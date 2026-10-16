@@ -6,4 +6,4 @@ echo "== export of a read-only name fails:"
 echo "== a bare export publishes a read-only value:"
 "$BIN" -c 'readonly x=old; export x; koshkit env | grep "^x=old$"'
 echo "== export of an integer-marked name stores the evaluated value:"
-"$BIN" -c 'declare -i n=3+4; export n; echo "$n"'
+"$BIN" -c 'declare -i n=3+4; export n; koshkit env | grep "^n=7$"'

@@ -1,5 +1,5 @@
 root=$(mktemp -d)
-cd "$root"
+cd "$root" || exit 1
 
 printf 'one\ntwo\nthree\nfour\nfive\n' > left
 printf 'one\nTWO\nthree\nfour\nfive\n' > right

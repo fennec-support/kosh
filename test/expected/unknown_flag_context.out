@@ -29,6 +29,15 @@ note: Use `--` before an operand that begins with a dash.
        |      ^~~
 == multibyte unknown flag of the shell keeps the whole character:
 error: Unknown flag '-в'.
+== a long flag matches its whole name, not a prefix:
+error: Unknown flag '--helpXYZ'.
+== a shell flag close to a known flag suggests it:
+== --mimicry
+note: Did you mean '--enable-mimicry'?
+== --enable-mimicy
+note: Did you mean '--enable-mimicry'?
+== --zz-bogus-flag
+note: Use `--` before an operand that begins with a dash.
 == multibyte invalid option in exec and eval keeps the whole character:
 -c:1:6: error: Builtin `exec`: Invalid option -- в.
      1 |  exec -в

@@ -1,44 +1,16 @@
-4:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-     4 |  cd .test-work/cd-paths/parent/child
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-6:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-     6 |  cd ..
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-6:1: warning: A later `cd -` undoes this directory change. (SC2103)
-     6 |  cd ..
-       |  ^~
-8:1: details:
-     8 |  cd - > ../cd-output
-       |  ^~ the working directory is restored here.
-note: Run the commands inside `( )`.
-8:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-     8 |  cd - > ../cd-output
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-10:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-    10 |  cd ../..
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-11:31: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-    11 |  CDPATH="$TEST_PATH_SEPARATOR" cd parent > cd-output
-       |                                ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-13:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-    13 |  cd "$start"
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-14:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-    14 |  cd .test-work/nonexistent-xyz-dir 2>&-
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
-Encountered 8 warnings.
 child
 parent
 child
+child
 cdpath=0
-14:15: error: The directory '.test-work/nonexistent-xyz-dir' does not exist.
-    14 |  cd .test-work/nonexistent-xyz-dir 2>&-
+PWD=first OLDPWD=second
+second
+-c:1:5: error: The path '.test-work/cd-fail-file/tfile' is not a directory.
+     1 |  cd "$1" || exit; echo not-reached
+       |      ^~
+rc=1
+-c:1:15: error: The directory '.test-work/nonexistent-xyz-dir' does not exist.
+     1 |  cd .test-work/nonexistent-xyz-dir || exit; echo not-reached
        |                ^~~~~~~~~~~~~~~~~~~
 note: Check the spelling or create it with `mkdir -p`.
+miss=1

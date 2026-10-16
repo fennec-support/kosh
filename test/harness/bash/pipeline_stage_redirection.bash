@@ -48,3 +48,9 @@ echo "== compound stage end of file =="
 echo "== descriptor swap in a stage =="
 echo swapped-out 3>&1 >&3 | cat
 { echo swapped-err >&2; } 3>&1 1>&2 2>&3 | cat
+
+# A not-found command in a pipeline stage does not abort the rest, so a later
+# stage still runs and the pipeline status is the last stage's, matching bash.
+nonexistent_cmd_xyz_123 | cat
+echo "after=$?"
+echo start | nonexistent_cmd_xyz_123 | wc -l | tr -d ' '

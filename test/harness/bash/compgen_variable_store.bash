@@ -53,3 +53,13 @@ wrapper()
 wrapper
 declare -p inner 2>/dev/null
 echo "local-target=$?"
+stale=(old keep)
+compgen -V stale -W alpha -- a
+declare -p stale
+sparse[7]=far
+compgen -V sparse -W alpha -- a
+declare -p sparse
+echo "sparse-count=${#sparse[@]}"
+echo "captured=[$(compgen -V sub -W "alpha beta" -- a)]"
+declare -p sub 2>/dev/null
+echo "subshell-store=$?"

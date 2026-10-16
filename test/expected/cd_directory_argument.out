@@ -22,3 +22,6 @@ chi	partial-path
 '~'	string
 /	existing-path
 loc	partial-path
+existing-path	existing-path
+missing-path	invalid-path
+null-device	existing-path

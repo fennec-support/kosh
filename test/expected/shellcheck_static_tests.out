@@ -490,4 +490,12 @@ note: Avoid recursion by rewriting the call as a loop, or suppress this check wi
    133 |  spin_until() { until spin_until; do :; done; }
        |  ^~~~~~~~~~ 'spin_until' is defined here.
 note: Avoid recursion by rewriting the call as a loop, or suppress this check with `# shellcheck disable=SC2264`. A wrapper around the `spin_until` command should call it as `command spin_until`.
-Encountered 120 warnings.
+137:5: warning: The unquoted test operand vanishes when the value is empty. (SC2086)
+   137 |    [ $v = x ]
+       |      ^~
+note: Quote it to avoid an empty or split argument.
+139:5: warning: Testing `$?` checks the exit status indirectly. (SC2181)
+   139 |    [ $? -eq 0 ]
+       |      ^~
+note: Test the command directly with `if` or `&&`.
+Encountered 122 warnings.

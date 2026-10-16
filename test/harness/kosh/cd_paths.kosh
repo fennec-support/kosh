@@ -1,15 +1,30 @@
 #!/bin/env kosh
+# shellcheck disable=directory-change-and-back
 start=$PWD
 koshkit mkdir -p .test-work/cd-paths/parent/child
-cd .test-work/cd-paths/parent/child
+cd .test-work/cd-paths/parent/child || exit
 koshkit basename "$PWD"
-cd ..
+cd .. || exit
 koshkit basename "$PWD"
-cd - > ../cd-output
+cd - > "$start/.test-work/cd-output" || exit
+koshkit basename "$(koshkit cat "$start/.test-work/cd-output")"
 koshkit basename "$PWD"
-cd ../..
-CDPATH="$TEST_PATH_SEPARATOR" cd parent > cd-output
+cd ../.. || exit
+CDPATH="$TEST_PATH_SEPARATOR" cd parent > cd-output || exit
 echo "cdpath=$?"
-cd "$start"
-cd .test-work/nonexistent-xyz-dir 2>&-
+cd "$start" || exit
+koshkit mkdir -p "$TEST_TEMP_DIRECTORY/cd-dash/first" "$TEST_TEMP_DIRECTORY/cd-dash/second"
+cd "$TEST_TEMP_DIRECTORY/cd-dash/first" || exit
+cd ../second || exit
+cd - >/dev/null || exit
+echo "PWD=$(koshkit basename "$PWD") OLDPWD=$(koshkit basename "$OLDPWD")"
+cd - >/dev/null || exit
+koshkit basename "$PWD"
+cd "$start" || exit
+koshkit mkdir -p "$TEST_TEMP_DIRECTORY/cd-fail-file"
+: > "$TEST_TEMP_DIRECTORY/cd-fail-file/tfile"
+"$BIN" -c 'cd "$1" || exit; echo not-reached' kosh "$TEST_TEMP_DIRECTORY/cd-fail-file/tfile" 2>&1
+echo "rc=$?"
+koshkit unlink "$TEST_TEMP_DIRECTORY/cd-fail-file/tfile"
+"$BIN" -c 'cd .test-work/nonexistent-xyz-dir || exit; echo not-reached' 2>&1
 echo "miss=$?"

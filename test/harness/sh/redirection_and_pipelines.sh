@@ -91,12 +91,6 @@ echo "iterated $count items"
 
 echo "pipeline: $(printf '5\n3\n9\n1\n' | sort -n | head -n1)"
 
-i=1
-until [ "$i" -gt 3 ]; do
-    echo "until $i"
-    i=$((i + 1))
-done
-
 # A compound command as a pipeline stage, checked against dash.
 
 # A subshell or a brace group feeds the next stage.

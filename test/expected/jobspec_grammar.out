@@ -1,10 +1,12 @@
 == kill resolves a job by its command name:
-1
+rc=0
 == disown by name drops the job so a later kill fails:
 1
 == fg by %+ selects the current job:
-1
+sleep 0.2
+rc=0
 == wait resolves a job by its command name:
-1
+rc=0
 == bg by name resumes a stopped job:
-1
+[1] sleep 0.3 &
+rc=0

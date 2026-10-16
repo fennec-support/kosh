@@ -39,3 +39,37 @@ notify
 nounset
 == subshell body:
 export
+== spec command on the first line:
+restart
+start
+stop
+== spec command after a newline:
+restart
+start
+stop
+== spec command after '&&' then a newline:
+restart
+start
+stop
+== spec command in a loop body on the next line:
+restart
+start
+stop
+== cd offers only directories on the next line:
+ZQdir_marker/
+adir/
+== plain argument lists both markers:
+ZQdir_marker/
+ZQmarker_file
+== a quoted semicolon does not split the segment:
+ZQdir_marker/
+ZQmarker_file
+== a quoted pipe does not split the segment:
+ZQdir_marker/
+ZQmarker_file
+== a quoted ampersand does not split the segment:
+ZQdir_marker/
+ZQmarker_file
+== a real separator still starts a new command segment:
+ZQdir_marker/
+ZQmarker_file

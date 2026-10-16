@@ -29,7 +29,7 @@ decimal_step()
   decimal_result=$((decimal_formula + decimal_iteration + 0.1))
 
   if ((decimal_result != decimal_formula + decimal_iteration + 0.1)); then
-    decimal_lifetime=bad
+    return 1
   fi
 
   if ((decimal_iteration == 255)); then
@@ -41,7 +41,7 @@ decimal_iteration=0
 decimal_lifetime=ok
 
 while ((decimal_iteration < 256)); do
-  decimal_step
+  decimal_step || decimal_lifetime=bad
   decimal_iteration=$((decimal_iteration + 1))
 done
 

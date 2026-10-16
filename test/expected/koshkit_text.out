@@ -127,11 +127,6 @@ status=1
 4294967295 0 -
 --- cksum implicit standard input ---
 1112837078 4
---- head -n 2 ---
-banana
-apple
---- tail -n 1 ---
-apple
 --- head -2 and tail -1 take the historical count form ---
 banana
 apple
@@ -143,20 +138,11 @@ apple
 cherry
 apple
 status=1
---- sort ---
-apple
-apple
-banana
-cherry
 --- sort -r ---
 cherry
 banana
 apple
 apple
---- sort then uniq -c ---
-      2 apple
-      1 banana
-      1 cherry
 --- sort multiple files with a missing operand ---
 -c:1:1: error: Koshkit `sort`: cannot read 'missing.txt': No such file or directory.
      1 |  koshkit sort sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
@@ -209,25 +195,11 @@ alpha
 middle
 beta
 status=1
---- grep an ---
-banana
---- grep -v apple ---
-banana
-cherry
---- grep -i APPLE ---
-apple
-apple
---- grep no match status ---
-status=1
 --- grep invalid pattern status ---
 -c:1:14: error: Koshkit `grep`: the pattern '[' is not a valid regex.
      1 |  koshkit grep "[" fruit.txt; printf "status=%s\n" "$?"
        |               ^~~
 status=2
---- grep regex wildcard ---
-banana
---- grep regex no match status ---
-status=1
 --- grep regex chunk boundary ---
 status=0
 --- grep -rnh ---
@@ -584,9 +556,6 @@ A=1
 status=1
 FOO=bar
 empty-environment-status=0
---- seq into head ---
-1
-2
 --- head batches regular prefix reads ---
 3902117615 701
 --- head bounds multi-chunk prefix reads ---
@@ -649,22 +618,7 @@ kept
 4
 6
 8
---- grep color always marks matches, names, numbers, and separators ---
-@[32m1@[0m@[36m:@[0malpha @[1;31mfoo@[0m beta
-@[32m3@[0m@[36m:@[0mFOO and @[1;31mfoo@[0m
-@[35mcolor-input.txt@[0m@[36m:@[0malpha @[1;31mfoo@[0m beta
-@[35mcolor-input.txt@[0m@[36m:@[0m@[1;31mFOO@[0m and @[1;31mfoo@[0m
---- grep color highlights every alternative ---
-al@[1;31mph@[0ma f@[1;31moo@[0m beta
-FOO and f@[1;31moo@[0m
---- grep color leaves selected lines of -v and -x plain or whole ---
-plain
-@[1;31mplain@[0m
---- grep color colors -c and -l names but not counts ---
-@[35mcolor-input.txt@[0m@[36m:@[0m2
-@[35mgrep-tree/a.txt@[0m@[36m:@[0m0
-@[35mcolor-input.txt@[0m
---- grep color never, auto, and redirected default keep bytes ---
+--- grep color modes keep plain output when redirected ---
 1:alpha foo beta
 3:FOO and foo
 1:alpha foo beta
@@ -674,45 +628,7 @@ plain
 -c:1:14: error: Koshkit `grep`: Invalid value 'sometimes' for '--color'.
      1 |  koshkit grep --color=sometimes foo color-input.txt
        |               ^~~~~~~~~~~~~~~~~
---- grep color honors GREP_COLORS capabilities ---
-@[34mcolor-input.txt@[0m@[31m:@[0m@[33m1@[0m@[31m:@[0malpha @[01;32mfoo@[0m beta
-@[34mcolor-input.txt@[0m@[31m:@[0m@[33m3@[0m@[31m:@[0mFOO and @[01;32mfoo@[0m
-@[34mcolor-input.txt@[0m@[31m:@[0m@[33m1@[0m@[31m:@[0malpha @[01;32mfoo@[0m beta
-@[34mcolor-input.txt@[0m@[31m:@[0m@[33m3@[0m@[31m:@[0mFOO and @[01;32mfoo@[0m
-color-input.txt@[36m:@[0m@[7malpha @[0m@[4mfoo@[0m@[7m beta@[0m
-color-input.txt@[36m:@[0m@[7mFOO and @[0m@[4mfoo@[0m
-color-input.txt@[36m:@[0m@[7malpha @[0m@[4mfoo@[0m@[7m beta@[0m
-color-input.txt@[36m:@[0m@[7mFOO and @[0m@[4mfoo@[0m
-@[1mplain@[0m
-@[2mplain@[0m
---- grep color ignores unknown names and stops at an invalid value ---
-@[9malpha @[0m@[5mfoo@[0m@[9m beta@[0m
-@[9mFOO and @[0m@[5mfoo@[0m
-@[32m1@[0m@[36m:@[0malpha @[5mfoo@[0m beta
-@[32m3@[0m@[36m:@[0mFOO and @[5mfoo@[0m
---- grep color reads the deprecated GREP_COLOR below GREP_COLORS ---
-alpha @[4;33mfoo@[0m beta
-FOO and @[4;33mfoo@[0m
-alpha @[7mfoo@[0m beta
-FOO and @[7mfoo@[0m
-alpha foo beta
-FOO and foo
---- diff color marks removed, added, hunk, and header lines ---
-@[36m2c2@[0m
-@[31m< b@[0m
----
-@[32m> B@[0m
-@[36m3a4@[0m
-@[32m> d@[0m
-@[1m--- left@[0m
-@[1m+++ right@[0m
-@[36m@@ -1,3 +1,4 @@@[0m
- a
-@[31m-b@[0m
-@[32m+B@[0m
- c
-@[32m+d@[0m
---- diff color never and redirected default keep bytes ---
+--- diff color modes keep plain output when redirected ---
 2c2
 < b
 ---

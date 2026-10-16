@@ -1,17 +1,20 @@
 unset KOSH_FLAGS KOSHCONF
-# koshconf documents save and $KOSHCONF in its help, lists name=value lines
-# without a class column, shows the posix.legacy and bash.legacy alias of
-# each option with list --all, refuses --all outside list, prints a blob that
-# load and a child kosh adopt, writes the current settings with save
-# --persist, and keeps save --persist out of a restricted shell.
+# koshconf has the save form and the --persist flag in its help, lists
+# name=value lines without a class column, shows the posix.legacy and
+# bash.legacy alias of each option with list --all, refuses --all outside list,
+# prints a blob that load and a child kosh adopt, writes the current settings
+# with save --persist, and keeps save --persist out of a restricted shell.
 config=$(mktemp -d)
 trap '[ -n "$config" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$config"' EXIT
 export XDG_CONFIG_HOME="$config/user"
 export KOSH_HISTORY_FILE=/history
 conf="$XDG_CONFIG_HOME/kosh/kosh.conf"
 
-echo "== the help documents the forms and \$KOSHCONF:"
-"$BIN" -c 'koshconf --help'
+echo "== the help has the save form and the --persist flag:"
+"$BIN" -c 'koshconf --help' >"$config/help.txt"
+grep -cE '^(DESCRIPTION|SYNOPSIS|OPTIONS)$' "$config/help.txt"
+grep -c '^  koshconf save' "$config/help.txt"
+grep -c -e '--persist' "$config/help.txt"
 echo "== list has no class column:"
 "$BIN" -c 'koshconf list' | grep -c -E ' +(interactive|semantic|class)$'
 "$BIN" -c 'koshconf list' | head -4
@@ -62,6 +65,8 @@ KOSHCONF=$blob "$BIN" -c 'koshconf get mood'
 echo "== save refuses an operand:"
 "$BIN" -c 'koshconf save now' 2>&1 | grep error
 
+"$BIN" --mood bash -c 'koshconf set editor.auto_close_brackets_and_quotes on
+koshconf list' >"$config/before.txt"
 echo "== save --persist writes only the settings that differ from the defaults:"
 "$BIN" --mood bash -c 'koshconf set editor.auto_close_brackets_and_quotes on; koshconf save --persist'
 echo "rc=$?"
@@ -69,8 +74,7 @@ grep -v '^#' "$conf" | grep .
 head -1 "$conf"
 echo "== the saved file loads back:"
 "$BIN" -c 'koshconf get mood; koshconf get editor.auto_close_brackets_and_quotes'
-"$BIN" --mood bash -c 'koshconf list' >"$config/before.txt"
-"$BIN" --mood bash -c 'koshconf list' | diff - "$config/before.txt" && echo same
+"$BIN" -c 'koshconf list' | diff - "$config/before.txt" && echo same
 echo "== save --persist keeps settings this build does not recognize:"
 printf 'future.option=on\n' >> "$conf"
 "$BIN" --mood bash -c 'koshconf save --persist' 2>/dev/null

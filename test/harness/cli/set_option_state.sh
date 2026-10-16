@@ -254,18 +254,29 @@ printf "unset-status=%s value=%s state=%s\n" "$?" \
   "${IGNOREEOF-unset}" "$([[ -o ignoreeof ]] && echo on || echo off)"
 ' 2>/dev/null
 
+wait_for_prompt()
+{
+    local raw_mode_marker attempt_count=0
+    raw_mode_marker=$(printf '\033[>4;1m')
+    while [ "$attempt_count" -lt 100 ] &&
+        ! grep -aqF -- "$raw_mode_marker" "$1" 2>/dev/null
+    do
+        sleep 0.1
+        attempt_count=$((attempt_count + 1))
+    done
+}
 echo "== interactive state is independent of hashall:"
 send_interactive_input()
 {
-    sleep 2
+    wait_for_prompt "$1"
     printf '[[ -o emacs ]] && echo inter""active-emacs\nset +h\ncase $- in *i*) echo inter""active-letter;; *) :;; esac\nexit\n'
 }
 if script --version >/dev/null 2>&1; then
-    send_interactive_input |
-        BIN="$BIN" script -q -c 'exec "$BIN" -i --rcfile /dev/null' \
+    send_interactive_input "$directory/interactive" |
+        BIN="$BIN" script -q -f -c 'exec "$BIN" -i --rcfile /dev/null' \
             "$directory/interactive" >/dev/null 2>&1
 else
-    send_interactive_input |
+    send_interactive_input "$directory/interactive" |
         BIN="$BIN" script -q "$directory/interactive" /bin/sh -c \
             'exec "$BIN" -i --rcfile /dev/null' >/dev/null 2>&1
 fi
@@ -283,16 +294,16 @@ printf 'ignored=$(set -M sh)\nignored=$(set -L sh)\n' \
     > "$directory/home/.bashrc"
 send_snapshot_input()
 {
-    sleep 2
+    wait_for_prompt "$1"
     printf 'printf "snapshot-""mood=%%s\\n" "$(set -M)"\nprintf "snapshot-""moods=%%s\\n" "$(set -L)"\nexit\n'
 }
 if script --version >/dev/null 2>&1; then
-    send_snapshot_input |
-        HOME="$directory/home" ENV=/dev/null BIN="$BIN" script -q -c \
+    send_snapshot_input "$directory/startup-state" |
+        HOME="$directory/home" ENV=/dev/null BIN="$BIN" script -q -f -c \
             'exec "$BIN" -i -M kosh -L bash' \
             "$directory/startup-state" >/dev/null 2>&1
 else
-    send_snapshot_input |
+    send_snapshot_input "$directory/startup-state" |
         HOME="$directory/home" ENV=/dev/null BIN="$BIN" script -q \
             "$directory/startup-state" /bin/sh -c \
             'exec "$BIN" -i -M kosh -L bash' >/dev/null 2>&1

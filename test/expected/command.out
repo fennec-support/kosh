@@ -22,3 +22,7 @@ end
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=127
 string exec
+if
+alias ll='ls -l'
+if is a shell keyword
+ll is aliased to `ls -l'

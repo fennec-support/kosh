@@ -3,3 +3,4 @@
        |  ^~~~~~~~~~~~~~~
 note: Probe for matches with compgen -G 'does_not_exist*' or relax it with shopt -u failglob outside the kosh mood.
 is_escaped* word does_not_exist*
+привет мир! hello sailor!

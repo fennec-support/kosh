@@ -53,18 +53,6 @@ echo errtrace-subshell
 echo "status=$?"
 set +E
 
-echo return-plain
-trap 'echo RETURN' RETURN
-return_function() {
-  true
-}
-return_function
-echo return-functrace
-set -T
-return_function
-set +T
-trap - RETURN
-
 echo lineno-plain
 trap 'echo "at $LINENO"' ERR
 false

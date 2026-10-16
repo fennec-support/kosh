@@ -1,3 +1,0 @@
-default=hello words
--c:1:13: error: The <<< here-string is a bash extension.
-rc=0

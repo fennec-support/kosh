@@ -6,7 +6,7 @@ cat "$redirect_file"
 echo back
 { echo a; echo b; } > "$redirect_file"
 wc -l < "$redirect_file" | tr -d ' '
-for n in 1 2 3; do echo $n; done > "$redirect_file"
+for n in 1 2 3; do echo "$n"; done > "$redirect_file"
 cat "$redirect_file"
 if true; then echo y; fi 2>/dev/null
 koshkit unlink "$redirect_file"

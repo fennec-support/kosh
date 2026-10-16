@@ -12,9 +12,8 @@ rc=1
 --- a symlinked utility reports the kosh version on --version ---
 1
 --- a symlinked utility opens its help with the bundled banner ---
-
-  This utility is bundled with the Koshka shell and runs from the kosh binary
-  reached through a symlink, not a system program of the same name.
+banner-first
+1
 --- the koshkit form opens with the description instead ---
 DESCRIPTION
 --- a symlinked utility locates an invalid operand ---

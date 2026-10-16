@@ -147,7 +147,8 @@ output=$("$BIN" --lint --no-traces unknown.txt unknown.yaml 2>&1)
 rc=$?
 located_count=$(printf '%s\n' "$output" |
   grep -cE '^[0-9]+:[0-9]+: error: The format of ')
-printf '%s\n' "$output" | grep -v '^ ' | sed 's/^[0-9]*:[0-9]*: //'
+printf '%s\n' "$output" | grep -v -e '^ ' -e '^note:' |
+  sed 's/^[0-9]*:[0-9]*: //'
 printf 'unknown-formats-located=%s status=%s\n' "$located_count" "$rc"
 
 output=$("$BIN" -n -WWW --no-traces first.bash parse.bash 2>&1)

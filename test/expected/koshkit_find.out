@@ -161,6 +161,13 @@ got a/literal[bracket].txt
 got a/one.txt
 --- find -exec batches entries after plus ---
 batch a/b/c/three.txt a/literal[bracket].txt a/one.txt
+--- find -print0 -print -exec run in order for each match ---
+a/b/c/three.txt|a/b/c/three.txt
+exec a/b/c/three.txt
+a/literal[bracket].txt|a/literal[bracket].txt
+exec a/literal[bracket].txt
+a/one.txt|a/one.txt
+exec a/one.txt
 --- find -exec failure skips the later print ---
 a/b/c/three.txt
 a/literal[bracket].txt

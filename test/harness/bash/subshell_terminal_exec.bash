@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # The last command of a forked substitution, subshell, pipeline stage, or
-# background subshell keeps its traps, status, and missing-command status.
+# background subshell keeps its traps, status, and missing-command status. A
+# return in a subshell inside a function ends only that subshell.
 
 (/bin/sh -c 'echo subshell ran')
 
@@ -24,3 +25,10 @@ echo "missing command status=$? output=<$missing>"
 
 callbacks=$(printf 'x\ny\n' | { mapfile -t -C /bin/echo -c 1 lines; })
 echo "mapfile callbacks in a substitution: $callbacks"
+
+subshell_return() {
+    (return 7)
+    printf 'after-return=%s\n' "$?"
+}
+subshell_return
+printf 'function-return=%s\n' "$?"

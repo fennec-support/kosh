@@ -1,6 +1,7 @@
 # The build-tool stage lists make targets from the Makefile, the npm family's
 # scripts from package.json, and cmake targets from the build directory, and
-# honors -C, hermetically in a temporary directory.
+# honors -C, hermetically in a temporary directory. The stage answers in the
+# bash mood as in the default mood, and the sh mood stays plain.
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 printf 'all: build test\n\nbuild:\n\ttrue\n\ntest: build\n\ttrue\n\nclean:\n\ttrue\n\n.PHONY: clean\n' > "$dir/Makefile"
@@ -14,6 +15,10 @@ echo "== npm run scripts:"
 "$BIN" --debug-complete-at 'npm run ' </dev/null
 echo "== bun run by prefix:"
 "$BIN" --debug-complete-at 'bun run li' </dev/null
+echo "== bash mood lists targets:"
+"$BIN" --mood bash --debug-complete-at 'make ' </dev/null
+echo "== sh mood stays plain:"
+"$BIN" --mood sh --debug-complete-at 'make ' </dev/null
 echo "== make -C from outside:"
 cd /
 "$BIN" --debug-complete-at "make -C $dir bu" </dev/null

@@ -14,12 +14,15 @@ echo "== a parenthesis inside a value is left whole:"
 # adds its own space, so the trailing spaces are trimmed before quoting.
 echo "== trailing spaces are trimmed from a value:"
 "$BIN" -c "_f(){ COMPREPLY=('clean ' 'checkout '); }; complete -F _f tg" --debug-complete-at 'tg c' </dev/null
-# A function that calls compopt -o filenames gets a slash after each directory,
-# for both a command spec and the -D loader. Without the option a directory
-# name is left bare, as in bash.
-echo "== compopt -o filenames marks directories:"
-"$BIN" -c "_f(){ compopt -o filenames; COMPREPLY=(harness Makefile); }; complete -F _f tl" --debug-complete-at 'tl ' </dev/null
-echo "== the -D loader marks directories after compopt -o filenames:"
-"$BIN" -c "_d(){ compopt -o filenames; COMPREPLY=(harness Makefile); }; complete -D -F _d" --debug-complete-at 'td ' </dev/null
-echo "== a directory is left bare without compopt -o filenames:"
-"$BIN" -c "_f(){ COMPREPLY=(harness); }; complete -F _f tb" --debug-complete-at 'tb ' </dev/null
+# bash empties COMPREPLY before each completion, so a function that appends with
+# COMPREPLY+=() does not inherit the entries of a previous completion. A stale
+# COMPREPLY set before the run stands in for it.
+echo "== a stale COMPREPLY does not leak into an appending spec:"
+"$BIN" -c "COMPREPLY=(stale_one stale_two); _f(){ COMPREPLY+=(search); }; complete -F _f gn" --debug-complete-at 'gn sea' </dev/null
+# A spec may return the same value many times, the way a wrapped
+# bash-completion helper does when it cannot narrow the current word. The
+# duplicates collapse to one candidate.
+echo "== a repeated value collapses to one candidate:"
+"$BIN" -c "_f(){ COMPREPLY=(search search search search); }; complete -F _f gn" --debug-complete-at 'gn sea' </dev/null
+echo "== duplicates among distinct values are each collapsed:"
+"$BIN" -c "_f(){ COMPREPLY=(build search profile search flake profile search); }; complete -F _f gn" --debug-complete-at 'gn ' </dev/null

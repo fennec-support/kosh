@@ -1,11 +1,11 @@
 unset KOSH_FLAGS
 # logout in a non-login shell prints a not-login-shell message and returns
-# one, since exit is the non-login counterpart. A non-numeric operand is a
-# located error pointing at the operand.
+# one, since exit is the non-login counterpart. In a login shell, a non-numeric
+# operand is a located error pointing at the operand.
 echo "== logout in a non-login shell is refused:"
 "$BIN" -c 'logout' 2>&1; echo "rc=$?"
 echo "== logout with a non-numeric operand is a located error:"
-"$BIN" -c 'logout abc' 2>&1; echo "rc=$?"
+"$BIN" -l --no-init-files -c 'logout abc' 2>&1; echo "rc=$?"
 # logout in a login shell runs the EXIT action before the shell ends. The
 # operand supplies the status, a bare logout takes the status the action found,
 # an external last command leaves the shell alive to carry it, and an exit the

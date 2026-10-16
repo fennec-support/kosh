@@ -14,13 +14,12 @@ fib()
 }
 value=$(fib 12)
 external=$(/bin/echo external)
-pid=$(printf %s "$BASHPID")
-ppid=$(printf %s "$PPID")
 random=$(printf %s "$RANDOM")
-srandom=$(printf %s "$SRANDOM")
 name=BASHPID
 indirect=$(printf %s "${!name}")
 echo "$value $external"
+case $random in ""|*[!0-9]*) echo random_bad;; *) echo random_digits;; esac
+[ "$indirect" != "$BASHPID" ] && echo indirect_differs
 '
 
 "$BIN" --mood bash -c '

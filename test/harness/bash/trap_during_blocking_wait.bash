@@ -5,7 +5,7 @@
 # is left running. A bare wait ends the same way, and a wait with several
 # operands abandons the operands it has not reached. A wait that no signal
 # reaches reports the status of its child, and an ignored signal leaves the
-# wait blocked.
+# wait blocked. A child arrival runs a CHLD action without ending the wait.
 
 echo wait-on-a-pid
 trap 'echo action-pid' USR1
@@ -72,5 +72,15 @@ echo "ignored-status=$?"
 wait "$notifier" 2> /dev/null
 trap - USR1
 echo wait-under-an-ignored-signal-done
+
+echo wait-with-a-child-arrival
+trap 'echo chld-fired' CHLD
+/bin/sh -c '/bin/sleep 1; exit 4' &
+/bin/sh -c '/bin/sleep 3; exit 6' &
+slow=$!
+wait "$slow"
+echo "chld-status=$?"
+trap - CHLD
+echo wait-with-a-child-arrival-done
 
 echo trap-during-blocking-wait-done

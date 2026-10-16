@@ -53,3 +53,8 @@ true; $(false); echo "vanished_word=$?"
 a=$(true) b=$(false); echo "last_assign=$?"
 a=$(false) b=$(true); echo "last_assign2=$?"
 a=1 b=2; echo "plain_assign=$?"
+
+v=$(exit 5)
+echo after=$?
+for x in 1 2 3; do v=$(break); echo "$x"; done
+echo fin

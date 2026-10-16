@@ -85,20 +85,36 @@ login rc=1
     10 |    (set -o "$name")
        |    ^
 rcfile rc=1
-13:6: error: Builtin `set`: Unknown option '--mood'.
-    13 |  (set --mood bash)
+14:11: error: Builtin `set`: Unknown -o option 'no-diagnostics'.
+    14 |    (set +o "$name")
+       |            ^~~~~~~
+note: The option was retired; use `koshconf set optimizer.analyze_before_running on` instead.
+14:3: trace:
+    14 |    (set +o "$name")
+       |    ^
++o no-diagnostics rc=1
+14:11: error: Builtin `set`: Unknown -o option 'failglob'.
+    14 |    (set +o "$name")
+       |            ^~~~~~~
+note: The option was retired; use `shopt -u failglob` instead.
+14:3: trace:
+    14 |    (set +o "$name")
+       |    ^
++o failglob rc=1
+17:6: error: Builtin `set`: Unknown option '--mood'.
+    17 |  (set --mood bash)
        |       ^~~~~~
 note: Use koshconf for Koshka settings without a letter, such as `koshconf set mood bash`.
-13:1: trace:
-    13 |  (set --mood bash)
+17:1: trace:
+    17 |  (set --mood bash)
        |  ^
 long-mood rc=1
-15:6: error: Builtin `set`: Unknown option '--options'.
-    15 |  (set --options)
+19:6: error: Builtin `set`: Unknown option '--options'.
+    19 |  (set --options)
        |       ^~~~~~~~~
 note: Use koshconf for Koshka settings without a letter, such as `koshconf set mood bash`.
-15:1: trace:
-    15 |  (set --options)
+19:1: trace:
+    19 |  (set --options)
        |  ^
 options rc=1
 done

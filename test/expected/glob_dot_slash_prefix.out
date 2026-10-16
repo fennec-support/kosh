@@ -1,7 +1,3 @@
-9:1: warning: This `cd` is not checked for failure, so later commands can run in the wrong directory. (SC2164)
-     9 |  cd "$start"
-       |  ^~
-note: Write `cd dir || exit`, or `cd dir || return` in a function.
 ./a.sh ./b.sh
 a.sh b.sh
 linked/nested real/nested

@@ -1,7 +1,8 @@
 #!/bin/bash
 
-# A quoted ] in an associative key neither closes the subscript nor ends
-# the assignment target, in a list, an element assignment, and an expansion.
+# A quoted or backslash-escaped ] in an associative key neither closes the
+# subscript nor ends the assignment target, in a list, an element assignment,
+# and an expansion.
 
 dump() {
   local -n map=$1
@@ -31,3 +32,5 @@ m+=(["p]q"]=1)
 dump m
 [[ -v m['a]b'] ]]; echo "set $?"
 [[ -v m['a]b]x'] ]]; echo "unset $?"
+m[\]=]=2
+dump m

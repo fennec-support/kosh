@@ -12,3 +12,34 @@ echo $((x >> 2))
 ((x >>= 2))
 echo $((x + 0))
 echo "$x"
+
+# A name assigned inside a loop body holds the loop's final value afterward, so
+# the recorded initial constant must not reach the read.
+count=0
+for item in a b c d; do count=$((count + 1)); done
+echo "count=$count"
+i=0
+until [ "$i" -ge 3 ]; do i=$((i + 1)); done
+echo "i=$i"
+
+# A non-integer assignment is never inlined as a number.
+word=hello
+echo $((word + 1))
+
+# A constant arithmetic folds in a plain and in a prefix assignment.
+total=$((6 * 7))
+echo "$total"
+prefix=$((2 + 2)) printenv prefix
+
+# An unrecorded name and a hexadecimal literal are not folded wrongly.
+echo $((notrecorded + 1))
+echo $((0x10 + 1))
+
+# printf -v binds a shell variable and invalidates the recorded constant; a
+# plain printf writes only its output.
+pv=5
+printf -v pv 99
+echo $((pv + 0))
+pq=7
+printf '%s\n' hello
+echo $((pq + 1))

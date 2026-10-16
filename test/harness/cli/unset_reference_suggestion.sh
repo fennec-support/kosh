@@ -17,3 +17,8 @@ echo "rc=$?"
 
 echo '== an exported name is a candidate:'
 DEMO_TEST_EXPORTED=1 "$BIN" -WWW -c 'echo "$DEMO_TEST_EXPORTE"' 2>&1
+
+echo '== a plain unset reference is fatal in the default mood:'
+"$BIN" -c '# shellcheck disable=SC2154
+echo "$never_set_name"; echo after' 2>&1
+echo "rc=$?"

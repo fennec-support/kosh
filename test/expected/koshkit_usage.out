@@ -9,12 +9,6 @@ rc=2
      1 |  let
        |  ^~~
 rc=1
---- calc with no expression ---
--c:1:1: error: calc has no expression to evaluate.
-     1 |  koshkit calc
-       |  ^~~~~~~~~~~~
-note: Pass an expression such as `calc '2 + 2'`, read a pipe with `-p`, or enter the interactive prompt with `-i`.
-rc=1
 --- koshkit cp with one operand ---
 -c:1:1: error: Koshkit `cp`: Not enough arguments.
      1 |  koshkit cp onlyone
@@ -127,4 +121,9 @@ rc=2
      1 |  koshkit mkdir
        |  ^~~~~~~~~~~~~
 note: Try `mkdir --help` for more info.
+rc=2
+--- the bash mood locates a missing path ---
+-c:1:1: error: Koshkit `ls`: cannot access '/no/such/path': no such file or directory.
+     1 |  koshkit ls /no/such/path
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~
 rc=2

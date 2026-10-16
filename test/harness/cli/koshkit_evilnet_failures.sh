@@ -38,7 +38,7 @@ case $help in
 esac
 printf 'help-shape=%s\n' "$help_shape"
 case $help in
-  *'--live[=<seconds>]'*'--cumulative[=<seconds>]'*)
+  *'LIVE OPTIONS'*'--live[=<seconds>]'*'--cumulative[=<seconds>]'*)
     sampling_help_shape=matched
     ;;
   *) sampling_help_shape=wrong ;;

@@ -22,7 +22,7 @@ promoted_step()
 
   if ((previous != formula + iteration + 1 ||
       chosen != formula + iteration + 2 || combined != chosen)); then
-    lifetime=bad
+    return 1
   fi
 
   if ((iteration == 255)); then
@@ -36,7 +36,7 @@ iteration=0
 lifetime=ok
 
 while ((iteration < 256)); do
-  promoted_step
+  promoted_step || lifetime=bad
   iteration=$((iteration + 1))
 done
 

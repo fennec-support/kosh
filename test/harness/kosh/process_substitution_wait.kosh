@@ -35,3 +35,5 @@ wait
 printf 'no-operand=%s\n' "$?"
 wait "$substituted" 2> /dev/null
 printf 'forgotten=%s\n' "$?"
+: <(:) >(:)
+printf 'empty-redirections=%s\n' "$?"

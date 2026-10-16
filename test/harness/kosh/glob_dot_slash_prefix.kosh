@@ -6,5 +6,5 @@ koshkit mkdir -p "$directory/real/nested"
 koshkit ln -s real "$directory/linked"
 koshkit ln -s missing "$directory/broken"
 cd "$directory" && : > a.sh && : > b.sh && : > plain && echo ./*.sh && echo *.sh && echo */nested
-cd "$start"
+cd "$start" || exit
 if [ -n "$directory" ]; then "$BIN_DIR/invoke-koshkit" rm -rf -- "$directory"; fi

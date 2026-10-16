@@ -1,7 +1,0 @@
-before
-4:12: warning: The variable 'nope' is not set and expands to an empty string.
-     4 |  echo "${x:+$nope}"
-       |             ^~~~~
-note: Replace it with ${nope-} if empty expansion is desired.
-
-not-reached
