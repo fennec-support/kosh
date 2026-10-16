@@ -798,6 +798,28 @@ ErrorWithLocationAndDetails::ErrorWithLocationAndDetails(
       m_details_message(heap_allocator()), m_note(heap_allocator(), note)
 {}
 
+ErrorInOtherSource::ErrorInOtherSource(SourceLocation location,
+                                       StringView     own_source,
+                                       StringView     message,
+                                       StringView     note,
+                                       SourceLocation trace_location)
+    : ErrorWithLocationAndDetails(steal(location), message, note),
+      m_own_source(heap_allocator(), own_source),
+      m_trace_location(steal(trace_location))
+{}
+
+cold fn
+ErrorInOtherSource::to_string(StringView source, EvalContext *context) const throws -> String
+{
+  let rendered = ErrorWithLocation::to_string(m_own_source.view(), nullptr);
+
+  rendered += '\n';
+  rendered.append(
+      TraceWithLocation{m_trace_location}.to_string(source, context).view());
+
+  return rendered;
+}
+
 cold fn
 DetailsWithLocation::to_string(StringView source, EvalContext *context) const throws -> String
 {

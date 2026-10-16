@@ -488,6 +488,23 @@ protected:
   String         m_note{heap_allocator()};
 };
 
+class ErrorInOtherSource : public ErrorWithLocationAndDetails
+{
+public:
+  ErrorInOtherSource(SourceLocation location,
+                     StringView     own_source,
+                     StringView     message,
+                     StringView     note,
+                     SourceLocation trace_location);
+
+  fn
+  to_string(StringView source, EvalContext *context = nullptr) const throws -> String override;
+
+private:
+  String         m_own_source;
+  SourceLocation m_trace_location;
+};
+
 static_assert(std::is_abstract_v<ErrorBase>);
 static_assert(std::is_base_of_v<Error, ErrorWithLocation>);
 static_assert(!std::is_same_v<ErrorWithDetails, Error>);

@@ -41,16 +41,11 @@ REGISTER_BUILTIN_FLAGS(Exec);
 namespace koshka {
 
 static fn
-report_exec_resolution_error(ExecContext   &ec,
-                             EvalContext   &cxt,
-                             SourceLocation location,
-                             StringView     message,
-                             i32            command_status,
-                             StringView     note = {}) throws -> i32
+report_exec_error(ExecContext             &ec,
+                  EvalContext             &cxt,
+                  const ErrorWithLocation &error,
+                  i32                      command_status) throws -> i32
 {
-  let error = ErrorWithLocationAndDetails{steal(location), message, note};
-
-  error.set_command_status(command_status);
   show_message(error.to_string(cxt.source_store().current_source_view(), &cxt));
 
   if (cxt.in_subshell() || cxt.job_table_store().is_in_pipeline_stage()) {
@@ -63,6 +58,20 @@ report_exec_resolution_error(ExecContext   &ec,
   if (cxt.execution_store().shell_is_interactive()) return command_status;
 
   utils::quit(command_status, utils::farewell_policy::Goodbye);
+}
+
+static fn
+report_exec_resolution_error(ExecContext   &ec,
+                             EvalContext   &cxt,
+                             SourceLocation location,
+                             StringView     message,
+                             i32            command_status) throws -> i32
+{
+  let error = ErrorWithLocation{steal(location), message};
+
+  error.set_command_status(command_status);
+
+  return report_exec_error(ec, cxt, error, command_status);
 }
 
 fn
@@ -295,10 +304,12 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.print_deferred_source_traces();
     cxt.prepare_child_environment();
     os::replace_process(steal(command));
+  } catch (const ErrorInOtherSource &error) {
+    return report_exec_error(ec, cxt, error,
+                             static_cast<i32>(error.command_status()));
   } catch (const ErrorBase &error) {
     return report_exec_resolution_error(
-        ec, cxt, ec.arg_location_at(command_index), error.message(), 126,
-        error.detail_message());
+        ec, cxt, ec.arg_location_at(command_index), error.message(), 126);
   }
 
   command.in_fd.reset();

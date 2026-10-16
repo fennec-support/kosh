@@ -237,12 +237,13 @@ process_has_id(process p, i64 id) wontthrow -> bool
   return p == static_cast<process>(id);
 }
 
-cold static fn
-make_exec_failure_error(SourceLocation location,
-                        const Path    &program_path,
-                        int            exec_error) throws
-    -> ErrorWithLocationAndDetails
+wontreturn cold static fn
+throw_exec_failure_error(SourceLocation location,
+                         const Path    &program_path,
+                         int            exec_error) throws -> void
 {
+  let const command_status = exec_error == ENOENT ? 127 : 126;
+
   if (exec_error == ENOENT) {
     let const descriptor = ::open(program_path.c_str(), O_RDONLY | O_CLOEXEC);
 
@@ -266,7 +267,7 @@ make_exec_failure_error(SourceLocation location,
         usize end = start;
 
         while (end < text.length && text[end] != ' ' && text[end] != '\t' &&
-               text[end] != '\n' && text[end] != '\r')
+               text[end] != '\n')
         {
           end++;
         }
@@ -279,9 +280,33 @@ make_exec_failure_error(SourceLocation location,
           LOG(Debug, "the #! interpreter '%s' of '%s' is missing",
               interpreter.c_str(), program_path.c_str());
 
-          return ErrorWithLocationAndDetails{
-              steal(location), "Unable to execute script with a broken shebang",
-              "`" + interpreter.view() + "` does not exist"};
+          let const has_carriage_return = text[end - 1] == '\r';
+          let const shown_length =
+              has_carriage_return ? end - start - 1 : end - start;
+          let const shown_interpreter =
+              text.substring_of_length(start, shown_length);
+          let note = "`" + shown_interpreter + "` does not exist";
+
+          if (has_carriage_return) {
+            note = "`" + shown_interpreter +
+                   "` followed by a carriage return does not exist";
+          }
+
+          usize line_end = end;
+
+          while (line_end < text.length && text[line_end] != '\n')
+            line_end++;
+          if (line_end > 0 && text[line_end - 1] == '\r') line_end--;
+
+          let const shebang_location = SourceLocation{
+              start, shown_length, intern_source_name(program_path.text())};
+          let error = ErrorInOtherSource{
+              shebang_location, text.substring_of_length(0, line_end),
+              "Unable to execute script with a broken shebang", note.view(),
+              steal(location)};
+
+          error.set_command_status(command_status);
+          throw error;
         }
       }
     }
@@ -289,11 +314,12 @@ make_exec_failure_error(SourceLocation location,
 
   errno = exec_error;
 
-  return ErrorWithLocationAndDetails{steal(location),
-                                     "Unable to execute `" +
-                                         program_path.text() +
-                                         "`: " + last_system_error_message(),
-                                     StringView{}};
+  let error = ErrorWithLocation{steal(location),
+                                "Unable to execute `" + program_path.text() +
+                                    "`: " + last_system_error_message()};
+
+  error.set_command_status(command_status);
+  throw error;
 }
 
 cold fn
@@ -318,10 +344,11 @@ spawn_failure_child(SourceLocation     location,
       (void) setpgid(0, target_group);
     }
 
-    let error =
-        make_exec_failure_error(steal(location), program_path, spawn_error);
-
-    koshka::show_message(error.to_string(source));
+    try {
+      throw_exec_failure_error(steal(location), program_path, spawn_error);
+    } catch (const ErrorWithLocation &error) {
+      koshka::show_message(error.to_string(source));
+    }
     koshka::flush();
     _exit(spawn_error == ENOENT ? 127 : 126);
   }
@@ -1166,11 +1193,7 @@ replace_process(ExecContext &&ec) throws -> void
 
   if (exec_error == ENOEXEC) return;
 
-  let error = make_exec_failure_error(ec.source_location(), ec.program_path(),
-                                      exec_error);
-
-  error.set_command_status(exec_error == ENOENT ? 127 : 126);
-  throw error;
+  throw_exec_failure_error(ec.source_location(), ec.program_path(), exec_error);
 }
 
 fn

@@ -38,6 +38,14 @@ chmod +x "$d/badshebang"
     "$BIN" --mood sh -c './badshebang; printf "rc=%s\n" "$?"'
 ) 2>&1 | sed "s#$real_d#TMPDIR#g"
 
+echo '== #! line with a carriage return:'
+printf '#!/bin/sh\r\necho never\r\n' > "$d/crlfshebang"
+chmod +x "$d/crlfshebang"
+(
+    cd "$d" || exit 1
+    "$BIN" --mood sh -c './crlfshebang'
+) 2>&1 | sed "s#$real_d#TMPDIR#g"
+
 echo '== script argument is a directory:'
 mkdir "$d/scriptdir"
 ln -s "$BIN" "$d/shell"
