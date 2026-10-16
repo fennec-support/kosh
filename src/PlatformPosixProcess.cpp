@@ -162,6 +162,65 @@ process_has_id(process p, i64 id) wontthrow -> bool
   return p == static_cast<process>(id);
 }
 
+cold static fn
+describe_exec_failure(const Path &program_path, int exec_error) throws
+    -> String
+{
+  errno = exec_error;
+
+  let message = "Unable to execute `" + program_path.text() + "`: ";
+
+  if (exec_error == ENOENT) {
+    let const descriptor = ::open(program_path.c_str(), O_RDONLY | O_CLOEXEC);
+
+    if (descriptor >= 0) {
+      char      head[256];
+      let const head_length = ::read(descriptor, head, sizeof(head));
+
+      ::close(descriptor);
+
+      let const text = head_length > 0
+                           ? StringView{head, static_cast<usize>(head_length)}
+                           : StringView{};
+
+      if (text.starts_with("#!")) {
+        usize start = 2;
+
+        while (start < text.length &&
+               (text[start] == ' ' || text[start] == '\t'))
+          start++;
+
+        usize end = start;
+
+        while (end < text.length && text[end] != ' ' && text[end] != '\t' &&
+               text[end] != '\n' && text[end] != '\r')
+        {
+          end++;
+        }
+
+        let const interpreter = String{
+            heap_allocator(), text.substring_of_length(start, end - start)};
+
+        if (!interpreter.is_empty() && ::access(interpreter.c_str(), F_OK) != 0)
+        {
+          LOG(Debug, "the #! interpreter '%s' of '%s' is missing",
+              interpreter.c_str(), program_path.c_str());
+          message += "the interpreter `";
+          message += interpreter.view();
+          message += "` named on its #! line does not exist";
+
+          return message;
+        }
+      }
+    }
+  }
+
+  errno = exec_error;
+  message += last_system_error_message();
+
+  return message;
+}
+
 cold fn
 spawn_failure_child(SourceLocation     location,
                     const Path        &program_path,
@@ -184,11 +243,8 @@ spawn_failure_child(SourceLocation     location,
       (void) setpgid(0, target_group);
     }
 
-    errno = spawn_error;
-
-    let error = ErrorWithLocation{steal(location),
-                                  "Unable to execute `" + program_path.text() +
-                                      "`: " + last_system_error_message()};
+    let error = ErrorWithLocation{
+        steal(location), describe_exec_failure(program_path, spawn_error)};
 
     koshka::show_message(error.to_string(source));
     koshka::flush();
@@ -1034,12 +1090,10 @@ replace_process(ExecContext &&ec) throws -> void
   let const exec_error = errno;
 
   if (exec_error == ENOEXEC) return;
-  errno = exec_error;
 
-  let const reason = last_system_error_message();
-  let       error  = koshka::ErrorWithLocation{
+  let error = koshka::ErrorWithLocation{
       ec.source_location(),
-      "Unable to execute `" + ec.program_path().text() + "`: " + reason};
+      describe_exec_failure(ec.program_path(), exec_error)};
 
   error.set_command_status(exec_error == ENOENT ? 127 : 126);
   throw error;

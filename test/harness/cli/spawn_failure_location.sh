@@ -30,6 +30,14 @@ rc=$?
 printf '%s\n' "$out" | sed "s#$real_d#TMPDIR#g"
 echo "rc=$rc"
 
+echo '== missing #! interpreter:'
+printf '#!/no/such/kosh_interpreter -x\necho never\n' > "$d/badshebang"
+chmod +x "$d/badshebang"
+(
+    cd "$d" || exit 1
+    "$BIN" --mood sh -c './badshebang; printf "rc=%s\n" "$?"'
+) 2>&1 | sed "s#$real_d#TMPDIR#g"
+
 echo '== script argument is a directory:'
 mkdir "$d/scriptdir"
 ln -s "$BIN" "$d/shell"
