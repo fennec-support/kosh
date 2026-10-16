@@ -2504,6 +2504,9 @@ read_child_cpu_times() wontthrow -> child_cpu_times;
 fn
 exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64;
 
+fn
+finish_nested_command_peak(u64 outer_byte_count) wontthrow -> u64;
+
 struct own_memory_mark
 {
   u64 current_byte_count{0};
@@ -2513,8 +2516,6 @@ struct own_memory_mark
 fn
 mark_own_memory() wontthrow -> own_memory_mark;
 
-fn
-own_memory_growth_bytes(const own_memory_mark &mark) wontthrow -> u64;
 struct malloc_heap_stats
 {
   usize bytes_in_use{0};

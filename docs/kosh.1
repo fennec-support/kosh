@@ -1721,9 +1721,9 @@ The command or pipeline is timed. The
 and
 .B \-\-posix
 options select the POSIX report. The default mood adds a processor busy row,
-and the peak memory when the platform supplies it. The peak is the largest
-among the processes the timed command started, measured as physical footprint
-on macOS and as resident set elsewhere. The
+and the peak resident set when the platform supplies it. The peak is the
+largest among the processes the timed command started and their descendants.
+The
 .B \-R
 option always adds the resident set row. Under the
 .B sh
@@ -3662,11 +3662,11 @@ The \\l escape inserts the last component of the terminal device of standard
 input, such as 3 for /dev/pts/3, and tty when standard input is not a terminal.
 The \\D{format} escape inserts the time formatted by strftime, as Bash does. The
 \\L escape inserts the duration of the last command, empty when it took under 5
-milliseconds. The \\M escape inserts the memory the last command used, measured
-as physical footprint on macOS and as resident set elsewhere. It is the larger
-of the peak among the processes the command started and how far the shell
-itself rose above its level at the start of the command. A command that only
-reuses memory the shell already holds leaves it empty. The escapes are decoded before parameters and substitutions
+milliseconds. The \\M escape inserts the resident memory the last command used.
+It is the larger of the peak among the processes the command started, their
+descendants included, and how far the shell itself rose above its level at the
+start of the command. A command that only reuses memory the shell already holds
+leaves it empty. The escapes are decoded before parameters and substitutions
 expand, so inserted text is never expanded.
 A raw 001 or 002 byte in PS0, PS1, RPS1, or PS1_TRANSIENT delimits an invisible
 region the way \\[ and \\] do.

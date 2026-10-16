@@ -405,6 +405,18 @@ static bool DID_REAPED_CHILD_ARRIVE = false;
 volatile sig_atomic_t CHILD_TRAP_ARMED = 0;
 
 fn
+finish_nested_command_peak(u64 outer_byte_count) wontthrow -> u64
+{
+  let const inner_byte_count = exchange_command_peak_rss_bytes(0);
+
+  exchange_command_peak_rss_bytes(inner_byte_count > outer_byte_count
+                                      ? inner_byte_count
+                                      : outer_byte_count);
+
+  return inner_byte_count;
+}
+
+fn
 set_child_trap_armed(child_trap_arming arming) wontthrow -> void
 {
   CHILD_TRAP_ARMED = arming == child_trap_arming::Armed ? 1 : 0;

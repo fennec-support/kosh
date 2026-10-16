@@ -36,21 +36,13 @@ static bool IS_TERMINAL_OWNER = true;
 static u64 COMMAND_PEAK_RSS_BYTES = 0;
 
 static fn
-note_child_peak_bytes(u64 byte_count) wontthrow -> void
-{
-  LOG(Debug, "a reaped child peaked at %llu bytes",
-      static_cast<unsigned long long>(byte_count));
-  if (byte_count > COMMAND_PEAK_RSS_BYTES) COMMAND_PEAK_RSS_BYTES = byte_count;
-}
-
-static fn
 note_reaped_child_usage(const struct rusage &usage) wontthrow -> void
 {
-#if defined __APPLE__
-  unused(usage);
-#else
-  note_child_peak_bytes(platform_peak_rss_bytes(usage.ru_maxrss));
-#endif
+  let const byte_count = platform_peak_rss_bytes(usage.ru_maxrss);
+
+  LOG(Debug, "a reaped child and its descendants peaked at %llu bytes",
+      static_cast<unsigned long long>(byte_count));
+  if (byte_count > COMMAND_PEAK_RSS_BYTES) COMMAND_PEAK_RSS_BYTES = byte_count;
 }
 
 #if defined __APPLE__
@@ -82,43 +74,6 @@ fill_usage_from_rusage_info(pid_t                   pid,
   resources.storage_written_byte_count = usage.ri_diskio_byteswritten;
 }
 #endif
-
-static fn
-peek_exited_child_footprint(pid_t pid, int wait_flags) wontthrow -> void
-{
-#if defined __APPLE__
-  int waitid_flags = WEXITED | WNOWAIT;
-
-  if ((wait_flags & WNOHANG) != 0) waitid_flags |= WNOHANG;
-  if ((wait_flags & WUNTRACED) != 0) waitid_flags |= WSTOPPED;
-  if ((wait_flags & WCONTINUED) != 0) waitid_flags |= WCONTINUED;
-
-  siginfo_t info{};
-  int       result = -1;
-
-  do {
-    result = waitid(P_PID, static_cast<id_t>(pid), &info, waitid_flags);
-  } while (result == -1 && errno == EINTR);
-
-  if (result != 0 || info.si_pid != pid) return;
-  if (info.si_code != CLD_EXITED && info.si_code != CLD_KILLED &&
-      info.si_code != CLD_DUMPED)
-  {
-    return;
-  }
-
-  rusage_info_v4 usage{};
-
-  if (::proc_pid_rusage(pid, RUSAGE_INFO_V4,
-                        reinterpret_cast<rusage_info_t *>(&usage)) == 0)
-  {
-    note_child_peak_bytes(usage.ri_lifetime_max_phys_footprint);
-  }
-#else
-  unused(pid);
-  unused(wait_flags);
-#endif
-}
 
 static inline fn
 note_fork_launch() wontthrow -> void
@@ -1395,11 +1350,8 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 
   i32           status{};
   struct rusage usage{};
-  const int     wait_flags = was_stopped != nullptr ? WUNTRACED : 0;
-
-  peek_exited_child_footprint(pid, wait_flags);
-
-  let const changed_pid = retry_interrupted(
+  const int     wait_flags  = was_stopped != nullptr ? WUNTRACED : 0;
+  let const     changed_pid = retry_interrupted(
       [&] { return wait4(pid, &status, wait_flags, &usage); });
 
   check_syscall(changed_pid);
@@ -1473,8 +1425,6 @@ reap_process_quietly(process pid) throws -> i32
   struct rusage usage{};
 
   loop {
-    peek_exited_child_footprint(pid, 0);
-
     const pid_t w =
         retry_interrupted([&] { return wait4(pid, &status, 0, &usage); });
 
@@ -1501,10 +1451,7 @@ poll_process(process              p,
 {
   i32           status = 0;
   struct rusage usage{};
-
-  peek_exited_child_footprint(p, WNOHANG | WUNTRACED | WCONTINUED);
-
-  let const result = retry_interrupted([&] {
+  let const     result = retry_interrupted([&] {
     return wait4(p, &status, WNOHANG | WUNTRACED | WCONTINUED, &usage);
   });
 
@@ -2118,9 +2065,13 @@ mark_own_memory() wontthrow -> own_memory_mark
   if (::proc_pid_rusage(getpid(), RUSAGE_INFO_V4,
                         reinterpret_cast<rusage_info_t *>(&usage)) == 0)
   {
-    mark.current_byte_count = usage.ri_phys_footprint;
-    mark.peak_byte_count    = usage.ri_lifetime_max_phys_footprint;
+    mark.current_byte_count = usage.ri_resident_size;
   }
+
+  struct rusage own_usage{};
+
+  if (getrusage(RUSAGE_SELF, &own_usage) == 0)
+    mark.peak_byte_count = platform_peak_rss_bytes(own_usage.ru_maxrss);
 #elif defined __linux__
   char      buffer[4096];
   let const length =
@@ -2149,23 +2100,6 @@ mark_own_memory() wontthrow -> own_memory_mark
 #endif
 
   return mark;
-}
-
-fn
-own_memory_growth_bytes(const own_memory_mark &mark) wontthrow -> u64
-{
-  let const now          = mark_own_memory();
-  u64       growth_bytes = 0;
-
-  if (now.current_byte_count > mark.current_byte_count)
-    growth_bytes = now.current_byte_count - mark.current_byte_count;
-  if (now.peak_byte_count > mark.peak_byte_count &&
-      now.peak_byte_count - mark.current_byte_count > growth_bytes)
-  {
-    growth_bytes = now.peak_byte_count - mark.current_byte_count;
-  }
-
-  return growth_bytes;
 }
 
 namespace {
@@ -2329,11 +2263,11 @@ fill_usage_from_proc_schedstat(pid_t                   pid,
   let const text     = StringView{buffer, length};
   usize     position = 0;
 
-  let const run_nanos = text.next_ascii_whitespace_word(position);
-  let const wait      = text.next_ascii_whitespace_word(position).to<u64>();
-  let const slices    = text.next_ascii_whitespace_word(position).to<u64>();
+  unused(text.next_ascii_whitespace_word(position));
 
-  unused(run_nanos);
+  let const wait   = text.next_ascii_whitespace_word(position).to<u64>();
+  let const slices = text.next_ascii_whitespace_word(position).to<u64>();
+
   if (wait.is_error() || slices.is_error()) return;
 
   LOG(Debug, "child %d waited %llu ns for a processor over %llu slices",
@@ -2420,8 +2354,6 @@ wait_for_measured_child(pid_t                   child_pid,
 #else
   unused(io_descriptor);
 #endif
-
-  peek_exited_child_footprint(child_pid, 0);
 
   int           status = 0;
   struct rusage usage{};

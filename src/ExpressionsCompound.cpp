@@ -569,10 +569,7 @@ CompoundListCondition::evaluate_impl(EvalContext &cxt,
     user_after   = child_times.user_seconds;
     system_after = child_times.system_seconds;
 
-    let const rss_after = os::exchange_command_peak_rss_bytes(0);
-
-    os::exchange_command_peak_rss_bytes(
-        rss_after > outer_peak_rss_bytes ? rss_after : outer_peak_rss_bytes);
+    let const rss_after = os::finish_nested_command_peak(outer_peak_rss_bytes);
     const double real_seconds =
         static_cast<double>(elapsed_nanos) / 1000000000.0;
     let const user_cpu   = user_after - user_before;

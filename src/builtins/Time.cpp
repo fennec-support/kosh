@@ -68,10 +68,7 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const elapsed_nanos = os::monotonic_nanos() - start_nanos;
 
   let const child_times_after = os::read_child_cpu_times();
-  let const rss_after         = os::exchange_command_peak_rss_bytes(0);
-
-  os::exchange_command_peak_rss_bytes(
-      rss_after > outer_peak_rss_bytes ? rss_after : outer_peak_rss_bytes);
+  let const rss_after = os::finish_nested_command_peak(outer_peak_rss_bytes);
 
   let const real_seconds = static_cast<double>(elapsed_nanos) / 1000000000.0;
   let const user_cpu =

@@ -3540,22 +3540,6 @@ mark_own_memory() wontthrow -> own_memory_mark
 }
 
 fn
-own_memory_growth_bytes(const own_memory_mark &mark) wontthrow -> u64
-{
-  let const now          = mark_own_memory();
-  u64       growth_bytes = 0;
-
-  if (now.current_byte_count > mark.current_byte_count)
-    growth_bytes = now.current_byte_count - mark.current_byte_count;
-  if (now.peak_byte_count > mark.peak_byte_count &&
-      now.peak_byte_count - mark.current_byte_count > growth_bytes)
-  {
-    growth_bytes = now.peak_byte_count - mark.current_byte_count;
-  }
-
-  return growth_bytes;
-}
-fn
 read_process_cpu_times() wontthrow -> cpu_times
 {
   cpu_times result{};

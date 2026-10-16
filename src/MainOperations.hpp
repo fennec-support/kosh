@@ -741,7 +741,21 @@ command_memory_byte_count(const os::own_memory_mark &shell_start)
     wontthrow -> u64
 {
   let const child_peak_byte_count   = os::exchange_command_peak_rss_bytes(0);
-  let const shell_growth_byte_count = os::own_memory_growth_bytes(shell_start);
+  let const shell_now               = os::mark_own_memory();
+  u64       shell_growth_byte_count = 0;
+
+  if (shell_now.current_byte_count > shell_start.current_byte_count) {
+    shell_growth_byte_count =
+        shell_now.current_byte_count - shell_start.current_byte_count;
+  }
+
+  if (shell_now.peak_byte_count > shell_start.peak_byte_count &&
+      shell_now.peak_byte_count - shell_start.current_byte_count >
+          shell_growth_byte_count)
+  {
+    shell_growth_byte_count =
+        shell_now.peak_byte_count - shell_start.current_byte_count;
+  }
 
   LOG(Debug, "the children peaked at %llu bytes and the shell rose %llu",
       static_cast<unsigned long long>(child_peak_byte_count),
@@ -1172,6 +1186,8 @@ run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
   let const saved_exit_status = execution.last_exit_status();
   let const saved_command_duration_nanos =
       execution.last_command_duration_nanos();
+  let const saved_command_peak_rss_bytes =
+      execution.last_command_peak_rss_bytes();
   let const saved_last_argument = execution.get_last_argument().clone();
 
   execution.prompt_command_running() = true;
@@ -1217,6 +1233,7 @@ run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 
   execution.set_last_exit_status(saved_exit_status);
   execution.set_last_command_duration_nanos(saved_command_duration_nanos);
+  execution.set_last_command_peak_rss_bytes(saved_command_peak_rss_bytes);
 }
 
 static fn

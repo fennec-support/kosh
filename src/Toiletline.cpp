@@ -4149,8 +4149,9 @@ static fn
 trim_visible_prompt_spaces(StringView rendered) throws -> String
 {
   let const do_escape_end = [&](usize position) -> usize {
-    if (rendered[position] != '\x1b' || position + 1 >= rendered.length)
+    if (rendered[position] != '\x1b' || position + 1 >= rendered.length) {
       return position;
+    }
 
     let const introducer = rendered[position + 1];
 
