@@ -10,7 +10,7 @@ for utility in $("$BIN" -c 'koshkit --list'); do
   offered=" $("$BIN" -M bash -c '. "$1"; _koshkit_util_flags "$2"' kosh \
     "$completion" "$utility" | tr ' ' '\n' | sed 's/=$//' | tr '\n' ' ') "
   flags=$("$BIN" -c "koshkit $utility --help" 2>&1 \
-    | sed -n '/^OPTIONS$/,/^$/p' \
+    | sed -n '/^\(LIVE \)\{0,1\}OPTIONS$/,/^$/p' \
     | sed -n -E '/^(  -|      --)/p' \
     | sed -E 's/^(.{0,38}[^ ]) {2,}.*/\1/; s/\[?=.*$//; s/^ +//; s/, /\n/g')
   for flag in $flags; do

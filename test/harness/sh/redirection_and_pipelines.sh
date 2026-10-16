@@ -54,6 +54,8 @@ echo
 # the command runs and succeeds.
 echo unopened_close 3>&-
 echo "close_status=$?"
+true >&-
+echo "close_stdout=$?"
 exec 4>&-
 echo "exec_close_status=$?"
 

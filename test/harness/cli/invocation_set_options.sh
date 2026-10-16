@@ -56,3 +56,6 @@ env | grep -c "^KOSHCONF=" || :'
 echo "== a flag after -c is parsed as a flag:"
 "$BIN" -c -f 'echo marker-noglob' 2>/dev/null | grep -E '^marker-'
 "$BIN" -c -l 'echo marker-login' 2>/dev/null | grep -E '^marker-'
+echo "== -V and --short-version exit 0:"
+"$BIN" -V >/dev/null; echo "V=$?"
+"$BIN" --short-version >/dev/null; echo "short=$?"

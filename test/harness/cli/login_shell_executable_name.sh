@@ -13,6 +13,7 @@ echo "== SHELL is runnable while \$0 keeps the login dash:"
 echo "== exec -l drops the dash from \$KOSH:"
 out=$("$BIN" -c 'exec -l "$1" -c '\''printf "%s\n" "$KOSH"'\''' \
     test-login "$BIN" 2>/dev/null)
+[ -n "$out" ] || echo "exec -l printed nothing"
 case "$out" in
   -*) echo "shle_leading_dash=yes" ;;
   *)  echo "shle_leading_dash=no" ;;

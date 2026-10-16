@@ -27,6 +27,8 @@ echo "== list prints every option as name=value:"
 KOSH_HISTORY_FILE=/history "$BIN" -c 'koshconf list' >"$config/list.txt"
 grep -vc '^[a-z0-9_.]*=' "$config/list.txt"
 grep '^mood=kosh$' "$config/list.txt"
+grep -c '=on$' "$config/list.txt"
+grep -c '=off$' "$config/list.txt"
 grep '^editor.history.file_path=/history$' "$config/list.txt"
 echo "== the kosh preset matches a fresh kosh session:"
 "$BIN" -c 'koshconf create kosh'

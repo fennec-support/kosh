@@ -37,3 +37,13 @@ printf 'no match here\n' > none.txt
 printf 'x\n7\n' > small.txt
 "$BIN" -c 'koshkit grep -l 7 big.txt none.txt small.txt; printf "status=%s\n" "$?"'
 "$BIN" -c 'koshkit grep -l zzz big.txt none.txt; printf "status=%s\n" "$?"'
+echo "--- mkdir -m and ls -A ---"
+mkdir flags
+"$BIN" -c 'koshkit mkdir -m 700 flags/d700'
+if [ "${OS-}" = Windows_NT ]; then
+  [ -d flags/d700 ] && echo 1 || echo 0
+else
+  "$BIN" -c 'koshkit ls -l flags' | grep -c '^drwx------'
+fi
+printf x > flags/.hidden
+"$BIN" -c 'koshkit ls -A -1 flags'

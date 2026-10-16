@@ -96,7 +96,7 @@ hint 'zzunknown-command arg'
 help_hint 'source ./zz-missing-file.sh'
 
 printf '== alias, function, and segment under the caret\n'
-"$BIN" -c "alias zzl='ls -a'" --debug-hint-at 'zzl ' | sed 's/ · .*//'
+"$BIN" -c "alias zzl='ls -a'" --debug-hint-at 'zzl ' | sed -E 's/( · [^ ]+) .*/\1/'
 "$BIN" -c 'zzf() { echo hi; }' --debug-hint-at 'zzf '
 help_hint 'echo hi | cat -n'
 help_hint 'echo hi && cat -n'

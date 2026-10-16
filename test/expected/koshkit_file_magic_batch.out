@@ -15,7 +15,9 @@ continuation: parent child
 link: edge-65536
 link: symbolic link to edge-65536
 --- nonregular and literal dash ---
+ordered-first: match
 fifo: fifo
+ordered-last: match
 -: match
 --- sparse logical size ---
 sparse: sparse-end

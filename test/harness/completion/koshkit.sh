@@ -22,7 +22,7 @@ for utility in evil evildisk evilfiles evilfs evilio evillogs eviliso evilnet ev
   offered=" $("$BIN" --debug-complete-at "koshkit $utility -" </dev/null |
     sed 's/=$//' | tr '\n' ' ') "
   flags=$("$BIN" -c "koshkit $utility --help" 2>&1 |
-    sed -n '/^OPTIONS$/,/^$/p' |
+    sed -n '/^\(LIVE \)\{0,1\}OPTIONS$/,/^$/p' |
     sed -n -E '/^(  -|      --)/p' |
     sed -E 's/^(.{0,38}[^ ]) {2,}.*/\1/; s/\[?=.*$//; s/^ +//; s/, /\n/g')
   [ -n "$flags" ] || echo "$utility: no help flags"

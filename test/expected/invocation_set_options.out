@@ -43,3 +43,6 @@ huBc
 == a flag after -c is parsed as a flag:
 marker-noglob
 marker-login
+== -V and --short-version exit 0:
+V=0
+short=0

@@ -105,7 +105,8 @@ SKIPPED_TESTS += alias_unalias arith_decimal \
 	koshkit_whoami mood_arithmetic \
 	process_substitution_partial_reads process_substitution_readers \
 	process_substitution_traces \
-	redirect_dynamic_fd redirection_truncate_append_input \
+	redirect_csh_both_streams redirect_dynamic_fd \
+	redirection_truncate_append_input \
 	rerr_redirect_to_directory subshell_isolates_state test_builtin trap
 endif
 ifeq ($(TARGET), Linux)

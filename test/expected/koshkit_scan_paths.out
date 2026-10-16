@@ -47,3 +47,7 @@ big.txt
 small.txt
 status=0
 status=1
+--- mkdir -m and ls -A ---
+1
+.hidden
+d700

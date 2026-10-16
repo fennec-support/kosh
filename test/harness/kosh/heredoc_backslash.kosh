@@ -27,3 +27,7 @@ EOF2
 cat <<EOF
 $'\n'
 EOF
+
+cat 3<<EOF <&3
+body
+EOF

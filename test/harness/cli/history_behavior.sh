@@ -629,6 +629,7 @@ case "$out" in
 *missing\ shebang*) echo "prompt hook shebang broken" ;;
 *) echo "prompt hook shebang ok" ;;
 esac
+grep -q PROMPT_HOOK_HISTORY_MARKER "$hist" || echo "prompt hook history missing"
 if grep -q 'printf ready' "$hist"; then
   echo "prompt hook history broken"
 else

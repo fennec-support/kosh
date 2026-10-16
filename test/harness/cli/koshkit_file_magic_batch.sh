@@ -54,7 +54,7 @@ echo '--- symlink precedence ---'
 
 echo '--- nonregular and literal dash ---'
 "$BIN" -c 'koshkit mkfifo fifo'
-"$BIN" -c 'koshkit file -M magic fifo'
+"$BIN" -c 'koshkit file -M magic ordered-first fifo ordered-last'
 printf MATCH > -
 "$BIN" -c 'koshkit file -M magic -- -'
 

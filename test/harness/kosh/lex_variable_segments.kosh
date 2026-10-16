@@ -5,3 +5,5 @@
 : "$foo" "${bar}"
 : pre$foo "lead${bar}tail"
 : a${b}c$d
+: pre"dq"'sq'$x${y}post
+: pre$(:)post

@@ -75,7 +75,7 @@ x = 1 => [error] An assignment with spaces around equals runs as a command with 
 zzunknown-command arg => 
 source ./zz-missing-file.sh => [builtin synopsis]
 == alias, function, and segment under the caret
-[alias synopsis] zzl='ls -a'
+[alias synopsis] zzl='ls -a' · ls
 [function synopsis] zzf () { echo hi; }
 echo hi | cat -n => [flag] -n
 echo hi && cat -n => [flag] -n

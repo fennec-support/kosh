@@ -302,6 +302,14 @@ echo return-from-sourced-function
   echo function-tail )
 echo after-return-from-sourced-function=$?
 
+echo return-abandons-sourced-file
+( set -T
+  trap 'case "$BASH_COMMAND" in g) return 6 ;; esac' DEBUG
+  . "${BASH_SOURCE[0]%/*}/goldens/debug_trap_return_function.bash"
+  echo sourced=$?
+  trap - DEBUG
+  echo tail )
+
 echo return-at-top-level
 ( set -T
   trap 'case "$BASH_COMMAND" in echo\ top*) return 5 ;; esac' DEBUG

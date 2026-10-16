@@ -34,7 +34,7 @@ eval 'eval_defined_function() { printf "eval-function=%s\\n" "$1"; }'
 eval_defined_function alive
 source_file=$(mktemp)
 trap '[ -n "$source_file" ] && /bin/rm -f "$source_file"' EXIT
-printf 'source_defined_function() { printf "source-function=%s\\n" "$1"; }\n' \
+printf 'source_defined_function() { printf "source-function=%%s\\n" "$1"; }\n' \
     > "$source_file"
 source "$source_file"
 /bin/rm -f "$source_file"

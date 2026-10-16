@@ -19,7 +19,7 @@ name=BASHPID
 indirect=$(printf %s "${!name}")
 echo "$value $external"
 case $random in ""|*[!0-9]*) echo random_bad;; *) echo random_digits;; esac
-[ "$indirect" != "$BASHPID" ] && echo indirect_differs
+case $indirect in ""|*[!0-9]*) echo indirect_bad;; *) [ "$indirect" != "$BASHPID" ] && echo indirect_differs;; esac
 '
 
 "$BIN" --mood bash -c '
