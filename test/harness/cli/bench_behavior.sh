@@ -228,8 +228,8 @@ fi
 echo "progress clear check complete"
 echo "== short flags, profile, and warmup:"
 "$BIN" -c 'bench -p -N true' 2>&1 | sed -n '1s/^Benchmark: .* (\(.*\))$/\1/p'
-"$BIN" -c "bench -n 2 -w 3 'echo x >> $d/warmup-count'" >/dev/null 2>&1
+"$BIN" -c "bench -n 2 -w3 'echo x >> $d/warmup-count'" >/dev/null 2>&1
 wc -l < "$d/warmup-count" | tr -d ' '
 "$BIN" -c 'bench -p -n 2 true' 2>&1 | sed -n '1s/^.*error: //p'
-"$BIN" -c 'bench -w 0 true' 2>&1 | sed -n '1s/^.*error: //p'
+"$BIN" -c 'bench -w0 true' 2>&1 | sed -n '1s/^.*error: //p'
 "$BIN" -c 'bench -E -n 2 -N true' 2>&1 | grep -c '^  user time  '

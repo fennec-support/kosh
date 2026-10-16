@@ -17,6 +17,21 @@
 
 FLAG_LIST_DECL();
 
+namespace koshka {
+
+static pure fn
+is_bench_warmup_count(StringView value) wontthrow -> bool
+{
+  if (value.is_empty()) return false;
+
+  for (usize index = 0; index < value.length; index++)
+    if (value[index] < '0' || value[index] > '9') return false;
+
+  return true;
+}
+
+} /* namespace koshka */
+
 FLAG(bench_runs,
      String,
      'n',
@@ -53,14 +68,17 @@ FLAG(BENCH_PROFILE,
      'p',
      "profile",
      "Take one extended sample, the same as --runs 1 --extended.");
-FLAG(bench_warmup,
-     String,
-     'w',
-     "warmup",
-     "The number of unmeasured runs before sampling, at least one.");
+FLAG_OPTIONAL(bench_warmup,
+              'w',
+              "warmup",
+              "The number of unmeasured runs before sampling. Without a value, "
+              "one to three runs, until two in a row agree within 10%. One run "
+              "without the flag.",
+              koshka::is_bench_warmup_count,
+              "runs");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
-HELP_SYNOPSIS_DECL("[-n runs] [-t ms] [-w runs] [-p] [--ignore-exit-code] "
+HELP_SYNOPSIS_DECL("[-n runs] [-t ms] [-w[runs]] [-p] [--ignore-exit-code] "
                    "[--show-output] [-N] [-E] command [command ...]");
 
 HELP_DESCRIPTION_DECL(
@@ -726,7 +744,7 @@ sample_command(StringView shell_binary,
                StringView command,
                Maybe<u64> run_limit,
                u64        duration_millis,
-               u64        warmup_count,
+               Maybe<u64> warmup_count,
                bool       should_show_progress,
                bool       should_suppress_output,
                bool       should_ignore_exit_code,
@@ -773,7 +791,10 @@ sample_command(StringView shell_binary,
                   command + "'"};
   }
 
-  for (u64 warmup = 0; warmup < warmup_count; warmup++) {
+  let const warmup_limit   = warmup_count.has_value() ? *warmup_count : 3;
+  double    previous_nanos = 0;
+
+  for (u64 warmup = 0; warmup < warmup_limit; warmup++) {
     if (should_show_progress) draw_progress(command, 0, allocator);
 
     let const warmed = os::run_measured(
@@ -795,6 +816,18 @@ sample_command(StringView shell_binary,
 
       return result;
     }
+
+    let const nanos      = static_cast<double>(warmed->wall_nanos);
+    let const difference = nanos > previous_nanos ? nanos - previous_nanos
+                                                  : previous_nanos - nanos;
+
+    if (!warmup_count.has_value() && warmup > 0 &&
+        difference <= previous_nanos / 10)
+    {
+      break;
+    }
+
+    previous_nanos = nanos;
   }
 
   let       samples             = ArrayList<bench_sample>{allocator};
@@ -1204,15 +1237,20 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const should_collect_extended =
       FLAG_BENCH_EXTENDED.is_enabled() || FLAG_BENCH_PROFILE.is_enabled();
 
-  u64 warmup_count = 1;
+  Maybe<u64> warmup_count = 1;
 
-  if (FLAG_bench_warmup.is_set())
-    warmup_count = parse_count_flag(FLAG_bench_warmup, StringView{"warmup"});
-  if (warmup_count == 0 || warmup_count > MAX_SAMPLES) {
-    throw ErrorWithLocation{
-        FLAG_bench_warmup.value_location(),
-        "--warmup expects a number from 1 through " +
-            String::from(MAX_SAMPLES, cxt.scratch_allocator())};
+  if (FLAG_bench_warmup.is_enabled()) warmup_count = None;
+  if (FLAG_bench_warmup.has_value()) {
+    let const parsed = FLAG_bench_warmup.value().to<u64>();
+
+    if (parsed.is_error() || parsed.value() == 0 ||
+        parsed.value() > MAX_SAMPLES)
+    {
+      throw Error{"--warmup expects a number from 1 through " +
+                  String::from(MAX_SAMPLES, cxt.scratch_allocator())};
+    }
+
+    warmup_count = parsed.value();
   }
 
   let shell_binary = String{cxt.scratch_allocator(),

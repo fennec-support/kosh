@@ -52,5 +52,5 @@ progress clear check complete
 1 run
 5
 --profile takes exactly one run.
---warmup expects a number from 1 through 100000.
+Builtin `bench`: --warmup expects a number from 1 through 100000.
 1

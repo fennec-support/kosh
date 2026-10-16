@@ -1456,7 +1456,9 @@ and
 options control output, direct execution, sample count, and the millisecond
 budget.
 .BR \-w " (" \-\-warmup )
-sets the number of unmeasured runs before sampling, one by default. A note
+sets the number of unmeasured runs before sampling. Without a value it runs
+one to three, stopping when two runs in a row agree within 10%. Without the
+option one unmeasured run precedes sampling. A note
 follows the report when the first sample, or any sample, is an outlier by a
 modified z-score above 14 against the median absolute deviation of the wall
 times.
