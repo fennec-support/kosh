@@ -2,56 +2,272 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file extracts indented recipe lines from justfiles and removes recipe
- * indentation and a leading quiet marker. Recipes default to POSIX parsing,
- * while a Bash set shell directive changes the mood of following recipes.
+ * This file extracts recipe bodies from justfiles. Each recipe line, joined
+ * across backslash continuations, is one fragment, and a shebang or script
+ * recipe is one script; interpolations are masked before parsing.
  */
 
 #include "../ParserFormats.hpp"
 
 namespace koshka {
 
+namespace {
+
+enum class recipe_language : u8
+{
+  Shell,
+  Other,
+};
+
+struct recipe_interpreter
+{
+  recipe_language language{recipe_language::Shell};
+  mimic_mood      mood{mimic_mood::Posix};
+};
+
+pure fn
+starts_with_word(StringView line, StringView word) wontthrow -> bool
+{
+  if (!line.starts_with(word)) return false;
+  if (line.length == word.length) return true;
+
+  let const next = line[word.length];
+
+  return next == ' ' || next == '\t' || next == '(' || next == ']';
+}
+
+pure fn
+interpreter_from_word(StringView word, mimic_mood fallback) wontthrow
+    -> recipe_interpreter
+{
+  if (let const slash = word.find_last_character('/'))
+    word = word.substring(*slash + 1);
+
+  if (word.is_empty()) return {recipe_language::Shell, fallback};
+  if (word == "bash") return {recipe_language::Shell, mimic_mood::Bash};
+  if (word == "kosh") return {recipe_language::Shell, mimic_mood::Default};
+  if (word == "sh" || word == "dash" || word == "ash")
+    return {recipe_language::Shell, mimic_mood::Posix};
+
+  return {recipe_language::Other, fallback};
+}
+
+pure fn
+next_word(StringView text, usize &position) wontthrow -> StringView
+{
+  while (position < text.length &&
+         (text[position] == ' ' || text[position] == '\t'))
+    position++;
+
+  let const start = position;
+
+  while (position < text.length && text[position] != ' ' &&
+         text[position] != '\t')
+    position++;
+
+  return text.substring_of_length(start, position - start);
+}
+
+pure fn
+interpreter_from_shebang(StringView line, mimic_mood fallback) wontthrow
+    -> recipe_interpreter
+{
+  usize position = 2;
+  let   word     = next_word(line, position);
+
+  if ((word.length >= 4 && word.substring(word.length - 4) == "/env") ||
+      word == "env")
+  {
+    word = next_word(line, position);
+    if (word == "-S") word = next_word(line, position);
+  }
+
+  return interpreter_from_word(word, fallback);
+}
+
+pure fn
+interpreter_from_quoted_list(StringView line, mimic_mood fallback) wontthrow
+    -> recipe_interpreter
+{
+  let const quote = line.find_character('"');
+
+  if (!quote.has_value()) return {recipe_language::Shell, fallback};
+
+  let const rest  = line.substring(*quote + 1);
+  let const close = rest.find_character('"');
+
+  if (!close.has_value()) return {recipe_language::Shell, fallback};
+
+  return interpreter_from_word(rest.substring_of_length(0, *close), fallback);
+}
+
+pure fn
+is_recipe_header(StringView line) wontthrow -> bool
+{
+  if (line.is_empty() || line[0] == '#' || line[0] == '[') return false;
+
+  static constexpr StringView KEYWORDS[] = {
+      "set", "alias", "export", "unexport", "import", "mod",
+  };
+
+  for (let const keyword : KEYWORDS) {
+    if (starts_with_word(line, keyword)) return false;
+  }
+
+  let const colon = line.find_character(':');
+
+  if (!colon.has_value()) return false;
+  if (*colon + 1 < line.length && line[*colon + 1] == '=') return false;
+
+  let const first = line[0];
+
+  return first == '@' || first == '_' || (first >= 'a' && first <= 'z') ||
+         (first >= 'A' && first <= 'Z');
+}
+
+pure fn
+indentation_length(StringView line) wontthrow -> usize
+{
+  usize length = 0;
+
+  while (length < line.length && (line[length] == ' ' || line[length] == '\t'))
+    length++;
+
+  return length;
+}
+
+pure fn
+ends_with_continuation(StringView line) wontthrow -> bool
+{
+  usize end = line.length;
+
+  while (end > 0 && (line[end - 1] == ' ' || line[end - 1] == '\t'))
+    end--;
+
+  return end > 0 && line[end - 1] == '\\';
+}
+
+fn
+add_recipe_fragment(const parser_format_input &input,
+                    parsed_format_document    &document,
+                    usize                      start,
+                    usize                      end,
+                    mimic_mood                 mood) throws -> void
+{
+  if (start >= end) return;
+
+  bool did_mask        = false;
+  let  analysis_source = parser_format_masked_template_source(
+      input.source, start, end, false, did_mask);
+  let const fragment_count = document.fragments.count();
+
+  parser_format_add_fragment(document, input.source, start, end, 0,
+                             steal(analysis_source),
+                             parser_format_codec::Direct, mood);
+  if (did_mask && document.fragments.count() != fragment_count)
+    document.fragments.back().should_silence_unresolved_commands = true;
+}
+
+} /* namespace */
+
 fn
 parse_justfile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void
 {
-  bool       is_recipe = false;
-  mimic_mood mood      = mimic_mood::Posix;
-  usize      position  = 0;
+  mimic_mood                mood                 = mimic_mood::Posix;
+  bool                      is_recipe            = false;
+  bool                      is_body_started      = false;
+  bool                      has_script_attribute = false;
+  recipe_interpreter        script_interpreter{};
+  Maybe<recipe_interpreter> body_script{};
+  usize                     script_start = 0;
+  usize                     script_end   = 0;
+  usize                     position     = 0;
+
+  let const do_flush_script = [&]() throws {
+    if (body_script.has_value() &&
+        body_script->language == recipe_language::Shell)
+    {
+      add_recipe_fragment(input, document, script_start, script_end,
+                          body_script->mood);
+    }
+
+    body_script.reset();
+  };
 
   while (position < input.source.length) {
     let const line_start = position;
     let const line       = input.source.next_line(position);
+    let const indent     = indentation_length(line);
 
-    if (parser_format_has_substring(line, "set shell") &&
-        parser_format_has_substring(line, "bash"))
-    {
-      mood = mimic_mood::Bash;
-    }
+    if (!line.is_empty() && indent == 0) {
+      do_flush_script();
+      is_body_started = false;
 
-    if (!line.is_empty() && line[0] != ' ' && line[0] != '\t') {
-      is_recipe = line[line.length - 1] == ':' &&
-                  !parser_format_has_substring(line, ":=");
+      if (starts_with_word(line, "set") &&
+          parser_format_has_substring(line, "shell"))
+      {
+        mood = interpreter_from_quoted_list(line, mood).mood;
+      }
+
+      if (line[0] == '[') {
+        if (parser_format_has_substring(line, "script")) {
+          has_script_attribute = true;
+          script_interpreter   = interpreter_from_quoted_list(line, mood);
+        }
+
+        continue;
+      }
+
+      if (line[0] == '#') continue;
+
+      is_recipe = is_recipe_header(line);
+      if (is_recipe && has_script_attribute) body_script = script_interpreter;
+      has_script_attribute = false;
       continue;
     }
 
-    if (!is_recipe) continue;
+    if (!is_recipe || indent == line.length) continue;
 
-    usize shell_start = 0;
+    let content_start = line_start + indent;
 
-    while (shell_start < line.length &&
-           (line[shell_start] == ' ' || line[shell_start] == '\t'))
-    {
-      shell_start++;
+    if (!is_body_started) {
+      is_body_started = true;
+      script_start    = content_start;
+
+      if (line.substring(indent).starts_with("#!")) {
+        body_script  = interpreter_from_shebang(line.substring(indent), mood);
+        script_start = position;
+        script_end   = position;
+        continue;
+      }
     }
 
-    if (shell_start == line.length) continue;
-    if (line[shell_start] == '@') shell_start++;
+    if (body_script.has_value()) {
+      script_end = line_start + line.length;
+      continue;
+    }
 
-    parser_format_add_fragment(document, input.source, line_start + shell_start,
-                               line_start + line.length, 0, None,
-                               parser_format_codec::Direct, mood);
+    while (content_start < line_start + line.length &&
+           (input.source[content_start] == '@' ||
+            input.source[content_start] == '-'))
+      content_start++;
+
+    usize logical_end = line_start + line.length;
+    let   last_line   = line;
+
+    while (ends_with_continuation(last_line) && position < input.source.length)
+    {
+      let const next_start = position;
+
+      last_line   = input.source.next_line(position);
+      logical_end = next_start + last_line.length;
+    }
+
+    add_recipe_fragment(input, document, content_start, logical_end, mood);
   }
+
+  do_flush_script();
 }
 
 } /* namespace koshka */

@@ -42,6 +42,7 @@ namespace koshka {
   X(Woodpecker, "Woodpecker")                                                  \
   X(Taskfile, "Taskfiles")                                                     \
   X(Justfile, "Justfiles")                                                     \
+  X(Jinja, "Jinja templates")                                                  \
   X(RpmSpec, "RPM specs")                                                      \
   X(VscodeTasks, "VS Code tasks")                                              \
   X(DevContainer, "Dev Containers")
@@ -192,6 +193,12 @@ parser_format_add_fragment(
     parser_format_codec     codec = parser_format_codec::Direct,
     mimic_mood              mood  = mimic_mood::Posix) throws -> void;
 fn
+parser_format_masked_template_source(StringView host_source,
+                                     usize      host_start,
+                                     usize      host_end,
+                                     bool       should_mask_statements,
+                                     bool      &did_mask) throws -> String;
+fn
 parser_format_add_indented_fragment(parsed_format_document &document,
                                     StringView              host_source,
                                     usize                   host_start,
@@ -293,6 +300,14 @@ parse_taskfile_format(const parser_format_input &input,
 fn
 parse_justfile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void;
+fn
+parse_jinja_format(const parser_format_input &input,
+                   parsed_format_document    &document) throws -> void;
+pure fn
+jinja_template_inner_name(StringView filename) wontthrow -> Maybe<StringView>;
+pure fn
+jinja_template_shell_mood(StringView inner_name, StringView source) wontthrow
+    -> Maybe<mimic_mood>;
 fn
 parse_rpm_spec_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void;

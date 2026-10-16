@@ -196,8 +196,18 @@ detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::Makefile;
   }
 
-  if (named_kind == parser_format_kind::Justfile)
+  if (named_kind == parser_format_kind::Justfile ||
+      path_ends_with(filename, ".just"))
+  {
     return parser_format_kind::Justfile;
+  }
+
+  if (let const inner_name = jinja_template_inner_name(filename)) {
+    return jinja_template_shell_mood(*inner_name, source).has_value()
+               ? parser_format_kind::Jinja
+               : parser_format_kind::UnknownHost;
+  }
+
   if (named_kind == parser_format_kind::PackageJson)
     return parser_format_kind::PackageJson;
   if (path_ends_with(path, "/.vscode/tasks.json"))
@@ -347,6 +357,70 @@ parser_format_add_fragment(parsed_format_document &document,
   fragment.host_end      = host_end;
   fragment.indent_length = indent_length;
   document.fragments.push(steal(fragment));
+}
+
+fn
+parser_format_masked_template_source(StringView host_source,
+                                     usize      host_start,
+                                     usize      host_end,
+                                     bool       should_mask_statements,
+                                     bool      &did_mask) throws -> String
+{
+  let analysis_source = String{heap_allocator()};
+
+  analysis_source.reserve(host_end);
+  did_mask = false;
+
+  for (usize position = 0; position < host_start; position++)
+    analysis_source.push(host_source[position] == '\n' ? '\n' : ' ');
+
+  usize position = host_start;
+
+  while (position < host_end) {
+    let const byte = host_source[position];
+    let const opener =
+        position + 1 < host_end ? host_source[position + 1] : '\0';
+    let const is_expression = byte == '{' && opener == '{';
+    let const is_statement  = should_mask_statements && byte == '{' &&
+                             (opener == '%' || opener == '#');
+
+    if (!is_expression && !is_statement) {
+      analysis_source.push(byte);
+      position++;
+      continue;
+    }
+
+    if (!should_mask_statements && position + 3 < host_end &&
+        host_source[position + 2] == '{' && host_source[position + 3] == '{')
+    {
+      analysis_source.append("xxxx");
+      position += 4;
+      continue;
+    }
+
+    let const closer = is_expression ? '}' : opener;
+    usize     close  = position + 2;
+
+    while (close + 1 < host_end &&
+           !(host_source[close] == closer && host_source[close + 1] == '}'))
+      close++;
+
+    if (close + 1 >= host_end) {
+      analysis_source.push(byte);
+      position++;
+      continue;
+    }
+
+    let const fill = is_expression ? 'x' : ' ';
+
+    for (usize masked = position; masked <= close + 1; masked++)
+      analysis_source.push(host_source[masked] == '\n' ? '\n' : fill);
+
+    did_mask = true;
+    position = close + 2;
+  }
+
+  return analysis_source;
 }
 
 fn
@@ -1154,6 +1228,7 @@ parser_format_should_silence_unresolved_commands(
   case parser_format_kind::Taskfile:
   case parser_format_kind::Justfile:
   case parser_format_kind::VscodeTasks:        return false;
+  case parser_format_kind::Jinja:              return true;
   case parser_format_kind::GithubActions:
   case parser_format_kind::GiteaActions:
   case parser_format_kind::ForgejoActions:
@@ -1251,6 +1326,7 @@ parse_format_document(const parser_format_input &input) throws
   case parser_format_kind::Justfile:
     parse_justfile_format(input, document);
     break;
+  case parser_format_kind::Jinja: parse_jinja_format(input, document); break;
   case parser_format_kind::RpmSpec:
     parse_rpm_spec_format(input, document);
     break;

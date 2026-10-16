@@ -307,8 +307,15 @@ and
 Every startup file is skipped.
 .PP
 Shell commands are extracted from CI configurations, Ansible, Dockerfile,
-Compose, Markdown, Makefile, Kubernetes, and similar hosts. Only the extracted
-sh, bash, or kosh source is parsed and diagnosed.
+Compose, Markdown, Makefile, justfile, Kubernetes, and similar hosts. Only the
+extracted sh, bash, or kosh source is parsed and diagnosed. Each justfile recipe
+line, joined across backslash continuations, is checked as one command, and a
+shebang or script recipe is checked as one script. A Jinja template of a shell
+script, such as
+.IR name .sh.j2,
+is checked with its template syntax masked. Interpolated values are treated as
+plain words, and a command that cannot be resolved is not reported in a
+template or in a recipe line that contains an interpolation.
 .PP
 With
 .BR \-\-apply ,

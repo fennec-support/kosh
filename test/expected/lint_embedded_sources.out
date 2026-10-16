@@ -11,3 +11,8 @@ missing markdown=1 make=1 package=0 taskfile=1 justfile=1 vscode=1
 target container=0 dev-lifecycle=0 dev-wait=0 dev-host=1
 json-value-key=0
 template-underline=1
+recipes/justfile:15:5: error: This 'if' has no closing 'fi'.
+recipes/justfile:16:5: warning: The command 'missing_recipe_executable' was not found.
+recipes/tools.just:2:5: warning: The command 'missing_module_executable' was not found.
+recipes/broken.sh.j2:2:1: error: This 'case' has no closing 'esac'.
+non-shell-template-unrecognized=1

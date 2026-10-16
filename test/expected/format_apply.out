@@ -365,7 +365,7 @@ builtin eval \
 substitution-wrap-idempotent=yes
 parse-status=1 unchanged=yes
 error: The format of `unrecognized.txt` is not recognized.
-note: Recognized formats include shell scripts, GitHub Actions, Gitea Actions, Forgejo Actions, GitLab CI, Ansible, Dockerfiles, Compose files, Markdown, Makefiles, Google Cloud Build, CircleCI, Azure Pipelines, Bitbucket Pipelines, Buildkite, Travis CI, Kubernetes, package.json, Drone, Woodpecker, Taskfiles, Justfiles, RPM specs, VS Code tasks, and Dev Containers.
+note: Recognized formats include shell scripts, GitHub Actions, Gitea Actions, Forgejo Actions, GitLab CI, Ansible, Dockerfiles, Compose files, Markdown, Makefiles, Google Cloud Build, CircleCI, Azure Pipelines, Bitbucket Pipelines, Buildkite, Travis CI, Kubernetes, package.json, Drone, Woodpecker, Taskfiles, Justfiles, Jinja templates, RPM specs, VS Code tasks, and Dev Containers.
 unrecognized-format-located=1
 unrecognized-format-status=1
 missing-format-located=1 status=1

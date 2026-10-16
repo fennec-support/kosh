@@ -4,7 +4,7 @@ start_directory=$(pwd -P)
 root=$TEST_TEMP_DIRECTORY/lint-embedded-sources
 mkdir -p "$root/.github/workflows" "$root/.gitea/workflows" \
   "$root/.forgejo/workflows" "$root/.circleci" "$root/.buildkite" \
-  "$root/.woodpecker" "$root/.vscode" "$root/.devcontainer"
+  "$root/.woodpecker" "$root/.vscode" "$root/.devcontainer" "$root/recipes"
 root=$(cd "$root" && pwd -P)
 trap 'cd "$start_directory" && [ -n "$root" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$root"' EXIT
 
@@ -341,3 +341,57 @@ EOF
 template_underline_count=$("$BIN" --lint --no-traces \
   "$root/.github/workflows/template.yml" 2>&1 | grep -c '\^~\{31\}$')
 printf 'template-underline=%s\n' "$template_underline_count"
+
+cat > "$root/recipes/justfile" <<'EOF'
+set shell := ["bash", "-uc"]
+
+bin := ".venv" / "bin"
+
+[private]
+setup arg="x": (other "a:b")
+    if [ ! -x {{ bin }}/tool ]; then \
+        uv venv {{ bin }} && \
+        echo "{{ arg }}"; \
+    fi
+    {{ bin }}/tool --check
+    @-rm -f stale
+
+other value:
+    if true; then echo "{{ value }}"
+    missing_recipe_executable
+
+[script("python3")]
+python:
+    print("a" if True else "b")
+
+script:
+    #!/usr/bin/env bash
+    x=$(echo {{ bin }})
+    echo "$x"
+EOF
+cat > "$root/recipes/tools.just" <<'EOF'
+build:
+    missing_module_executable
+EOF
+cat > "$root/recipes/uci.sh.j2" <<'EOF'
+#!/bin/sh
+{# vlans #}
+{% for vlan in vlans %}
+uci set network.{{ vlan.name }}_dev.vid='{{ vlan.id }}'
+{% endfor %}
+uci commit network
+EOF
+cat > "$root/recipes/nginx.conf.j2" <<'EOF'
+server { listen {{ port }}; {% if tls %}ssl on;{% endif %} }
+EOF
+cat > "$root/recipes/broken.sh.j2" <<'EOF'
+#!/bin/sh
+case {{ value }} in
+EOF
+for template_file in justfile tools.just uci.sh.j2 broken.sh.j2; do
+  "$BIN" --lint --no-traces "$root/recipes/$template_file" 2>&1 |
+    grep -E '^[^ ].*: (error|warning): ' | sed "s|^$root/||"
+done
+nginx_template=$("$BIN" --lint --no-traces "$root/recipes/nginx.conf.j2" 2>&1 |
+  grep -c 'is not recognized')
+printf 'non-shell-template-unrecognized=%s\n' "$nginx_template"
