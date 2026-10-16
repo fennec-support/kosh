@@ -5,10 +5,10 @@
 #
 # Drives the interactive editor through a real PTY and checks the right prompt
 # and the transient prompt from the text on screen. RPS1 must end at the right
-# edge of the first input row, leave when typed text comes
-# within one column of it and come back when the text shrinks, stay off the
-# rows after the first, leave a terminal too narrow for it, stay out of the
-# submitted command, and leave the scrollback without the transient prompt.
+# edge of the first input row, leave when typed text comes within one column of
+# it and come back when the text shrinks, stay off the rows after the first,
+# leave a terminal too narrow for it, and stay out of the submitted command and
+# the scrollback.
 # With the transient-prompt option, Enter must redraw the submitted line after
 # "$ ", "# " for root, or PS1_TRANSIENT with no right prompt, no hint row, and
 # no rows of a multi-row PS1, and Ctrl-C must redraw the interrupted line the

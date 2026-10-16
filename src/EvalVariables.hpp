@@ -362,7 +362,7 @@ inline constexpr static_string_entry<shell_variable_description>
           "last command.",
           shell_variable_fact::Dynamic}                                      },
         {SSK("KOSH_PS1_MEMORY"),
-         {"The value is the text of the \\M prompt escape, the peak memory of "
+         {"The value is the text of the \\M prompt escape, the memory use of "
           "the last command.",
           shell_variable_fact::Dynamic}                                      },
         {SSK("KOSH_PS1_DOT"),
