@@ -40,14 +40,9 @@ pure fn
 interpreter_from_word(StringView word, mimic_mood fallback) wontthrow
     -> recipe_interpreter
 {
-  if (let const slash = word.find_last_character('/'))
-    word = word.substring(*slash + 1);
-
   if (word.is_empty()) return {recipe_language::Shell, fallback};
-  if (word == "bash") return {recipe_language::Shell, mimic_mood::Bash};
-  if (word == "kosh") return {recipe_language::Shell, mimic_mood::Default};
-  if (word == "sh" || word == "dash" || word == "ash")
-    return {recipe_language::Shell, mimic_mood::Posix};
+  if (let const mood = parser_format_shell_mood(word))
+    return {recipe_language::Shell, *mood};
 
   return {recipe_language::Other, fallback};
 }
@@ -72,17 +67,7 @@ pure fn
 interpreter_from_shebang(StringView line, mimic_mood fallback) wontthrow
     -> recipe_interpreter
 {
-  usize position = 2;
-  let   word     = next_word(line, position);
-
-  if ((word.length >= 4 && word.substring(word.length - 4) == "/env") ||
-      word == "env")
-  {
-    word = next_word(line, position);
-    if (word == "-S") word = next_word(line, position);
-  }
-
-  return interpreter_from_word(word, fallback);
+  return interpreter_from_word(parser_format_shebang_program(line), fallback);
 }
 
 pure fn

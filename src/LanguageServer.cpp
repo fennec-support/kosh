@@ -1216,6 +1216,8 @@ Server::format_document(const JsonValue *id,
     let replacements = ArrayList<parser_format_replacement>{heap_allocator()};
 
     for (let const &fragment : document->format.fragments) {
+      if (fragment.should_skip_format) continue;
+
       let const formatted_fragment = format_shell_source(
           fragment.shell_source.view(), m_ast_arena, errors, nullptr,
           m_context.arena_store().function_arena(), fragment.mood);

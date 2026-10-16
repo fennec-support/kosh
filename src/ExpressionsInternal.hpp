@@ -143,6 +143,11 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
                                   bool         is_conditional           = false) throws
     -> void;
 fn
+check_arithmetic_segment_lints(AnalysisContext      &actx,
+                               const WordSegment    &segment,
+                               const SourceLocation &fallback_location,
+                               bool                  is_conditional) throws -> void;
+fn
 check_numeric_comparison_operand(
     AnalysisContext &actx,
     StringView       operator_view,

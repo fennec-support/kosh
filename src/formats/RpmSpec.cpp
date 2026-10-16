@@ -93,14 +93,7 @@ section_interpreter_mood(StringView header) wontthrow -> Maybe<mimic_mood>
   while (end < program.length && program[end] != ' ')
     end++;
 
-  program = program.substring_of_length(0, end);
-  if (let const slash = program.find_last_character('/'))
-    program = program.substring(*slash + 1);
-
-  if (program == "bash") return mimic_mood::Bash;
-  if (program == "sh") return mimic_mood::Posix;
-
-  return None;
+  return parser_format_shell_mood(program.substring_of_length(0, end));
 }
 
 static pure fn

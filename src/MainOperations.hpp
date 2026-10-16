@@ -1170,6 +1170,8 @@ format_document_source(StringView            source,
   let replacements = ArrayList<parser_format_replacement>{heap_allocator()};
 
   for (let const &fragment : document.fragments) {
+    if (fragment.should_skip_format) continue;
+
     let       fragment_ast = String{heap_allocator()};
     let const formatted =
         format_shell_source(fragment.shell_source.view(), ast_arena, errors,

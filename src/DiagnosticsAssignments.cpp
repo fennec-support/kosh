@@ -861,17 +861,8 @@ scan_assignment_value(AnalysisContext      &actx,
       shape.has_unquoted_pattern = true;
     }
 
-    if (segment.kind == WordSegment::Kind::ArithmeticExpansion) {
-      let const segment_location =
-          segment.get_source_location(location.source_name_index)
-              .value_or(location);
-      let const base_position = segment_location.length == segment.text.count()
-                                    ? Maybe<usize>{segment_location.position}
-                                    : None;
-
-      check_arithmetic_expression_lints(actx, segment.text.view(),
-                                        segment_location, base_position, true);
-    }
+    if (segment.kind == WordSegment::Kind::ArithmeticExpansion)
+      check_arithmetic_segment_lints(actx, segment, location, true);
 
     if (segment.kind == WordSegment::Kind::VariableReference) {
       note_variable_reference(actx, segment, location);

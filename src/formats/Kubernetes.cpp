@@ -13,17 +13,6 @@
 namespace koshka {
 
 static pure fn
-leading_space_count(StringView line) wontthrow -> usize
-{
-  usize count = 0;
-
-  while (count < line.length && line[count] == ' ')
-    count++;
-
-  return count;
-}
-
-static pure fn
 argo_source_mood(StringView source, usize line_start, usize indent) wontthrow
     -> Maybe<mimic_mood>
 {
@@ -39,7 +28,7 @@ argo_source_mood(StringView source, usize line_start, usize indent) wontthrow
     let const previous     = source.next_line(previous_end);
 
     if (!previous.trim_blanks().is_empty() &&
-        leading_space_count(previous) < indent)
+        parser_format_leading_spaces(previous) < indent)
     {
       break;
     }
@@ -53,8 +42,8 @@ argo_source_mood(StringView source, usize line_start, usize indent) wontthrow
     let const line = source.next_line(position);
 
     if (line.trim_blanks().is_empty()) continue;
-    if (leading_space_count(line) < indent) break;
-    if (leading_space_count(line) != indent) continue;
+    if (parser_format_leading_spaces(line) < indent) break;
+    if (parser_format_leading_spaces(line) != indent) continue;
 
     let const text = line.trim_blanks();
 
@@ -73,15 +62,7 @@ argo_source_mood(StringView source, usize line_start, usize indent) wontthrow
            value[end] != '\'' && value[end] != ',' && value[end] != ' ')
       end++;
 
-    value = value.substring_of_length(0, end);
-    if (let const slash = value.find_last_character('/'))
-      value = value.substring(*slash + 1);
-
-    if (value == "bash") return mimic_mood::Bash;
-    if (value == "sh" || value == "dash" || value == "ash")
-      return mimic_mood::Posix;
-
-    return None;
+    return parser_format_shell_mood(value.substring_of_length(0, end));
   }
 
   return None;
@@ -101,7 +82,7 @@ parse_kubernetes_format(const parser_format_input &input,
   while (position < input.source.length) {
     let const line_start = position;
     let const line       = input.source.next_line(position);
-    let const indent     = leading_space_count(line);
+    let const indent     = parser_format_leading_spaces(line);
 
     let const colon = line.find_character(':');
 

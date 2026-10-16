@@ -53,3 +53,22 @@ compose/compose.yaml:6:13: error: This 'if' has no closing 'fi'.
 make/Makefile:4:3: error: This 'case' has no closing 'esac'.
 session.md:6:3: error: This loop has no closing 'done'.
 .vscode/tasks.json:2:72: error: This 'if' has no closing 'fi'.
+          #!/bin/bash|
+|
+          if true|
+          then|
+            echo hi|
+          fi|
+```console
+$ echo   hi
+added 1 package (3s)
+```
+
+```sh
+if true
+then
+  echo x
+fi
+```
+compose/compose.yaml:3:20: warning: The variable 'FOO' is used before any assignment gives it a value. (SC2154)
+escape/Dockerfile:8:5: error: This 'case' has no closing 'esac'.

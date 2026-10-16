@@ -103,6 +103,7 @@ struct parser_format_fragment
   parser_format_codec codec{parser_format_codec::Direct};
   bool                should_silence_unresolved_commands{false};
   bool                should_select_end{false};
+  bool                should_skip_format{false};
   ArrayList<String>   assumed_variables{heap_allocator()};
   char                continuation_byte{' '};
   usize               host_start{0};
@@ -165,6 +166,15 @@ pure fn
 parser_format_filename(StringView path) wontthrow -> StringView;
 pure fn
 parser_format_ascii_equal(StringView left, StringView right) wontthrow -> bool;
+pure fn
+parser_format_leading_spaces(StringView line) wontthrow -> usize;
+pure fn
+parser_format_shell_mood(StringView program) wontthrow -> Maybe<mimic_mood>;
+pure fn
+parser_format_shebang_program(StringView line) wontthrow -> StringView;
+pure fn
+parser_format_json_string_end(StringView source, usize position) wontthrow
+    -> usize;
 
 template <class Value, usize Count>
 fn

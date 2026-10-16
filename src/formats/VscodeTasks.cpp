@@ -13,17 +13,6 @@
 namespace koshka {
 
 static pure fn
-json_string_close(StringView source, usize position) wontthrow -> usize
-{
-  while (position < source.length && source[position] != '"') {
-    if (source[position] == '\\') position++;
-    position++;
-  }
-
-  return position;
-}
-
-static pure fn
 json_member_string(StringView source,
                    usize      object_start,
                    usize      object_end,
@@ -41,7 +30,7 @@ json_member_string(StringView source,
       depth--;
     } else if (byte == '"') {
       let const start = position + 1;
-      let const close = json_string_close(source, start);
+      let const close = parser_format_json_string_end(source, start);
 
       position = close;
       if (depth != 1 || source.substring_of_length(start, close - start) != key)
@@ -58,7 +47,8 @@ json_member_string(StringView source,
 
       if (position >= object_end || source[position] != '"') return None;
 
-      let const value_close = json_string_close(source, position + 1);
+      let const value_close =
+          parser_format_json_string_end(source, position + 1);
 
       return source.substring_of_length(position + 1,
                                         value_close - position - 1);
@@ -79,7 +69,7 @@ json_object_end(StringView source, usize object_start) wontthrow -> usize
     let const byte = source[position];
 
     if (byte == '"') {
-      position = json_string_close(source, position + 1);
+      position = parser_format_json_string_end(source, position + 1);
       continue;
     }
 
@@ -91,17 +81,26 @@ json_object_end(StringView source, usize object_start) wontthrow -> usize
 }
 
 static pure fn
-task_shell_mood(StringView program) wontthrow -> Maybe<mimic_mood>
+is_windows_override(StringView source, usize object_start) wontthrow -> bool
 {
-  if (let const slash = program.find_last_character('/'))
-    program = program.substring(*slash + 1);
+  usize position = object_start;
 
-  if (program == "bash") return mimic_mood::Bash;
-  if (program == "kosh") return mimic_mood::Default;
-  if (program == "sh" || program == "dash" || program == "ash")
-    return mimic_mood::Posix;
+  while (position > 0 &&
+         (source[position - 1] == ' ' || source[position - 1] == '\t' ||
+          source[position - 1] == '\n' || source[position - 1] == '\r'))
+    position--;
 
-  return None;
+  if (position == 0 || source[position - 1] != ':') return false;
+  position--;
+
+  while (position > 0 &&
+         (source[position - 1] == ' ' || source[position - 1] == '\t'))
+    position--;
+
+  let const close = position;
+
+  return close >= 9 &&
+         source.substring_of_length(close - 9, 9) == "\"windows\"";
 }
 
 static fn
@@ -127,7 +126,7 @@ extract_shell_args(const parser_format_input &input,
     if (byte != '"') continue;
 
     let const start = position + 1;
-    let const close = json_string_close(source, start);
+    let const close = parser_format_json_string_end(source, start);
 
     position = close;
     if (objects.is_empty() ||
@@ -146,13 +145,15 @@ extract_shell_args(const parser_format_input &input,
     if (array >= source.length || source[array] != '[') continue;
 
     let const object_start = objects.back();
-    let const object_end   = json_object_end(source, object_start);
+
+    if (is_windows_override(source, object_start)) continue;
+    let const object_end = json_object_end(source, object_start);
     let const command =
         json_member_string(source, object_start, object_end, "command");
 
     if (!command.has_value()) continue;
 
-    let const mood = task_shell_mood(*command);
+    let const mood = parser_format_shell_mood(*command);
 
     if (!mood.has_value()) continue;
 
@@ -166,7 +167,7 @@ extract_shell_args(const parser_format_input &input,
       }
 
       let const item_start = item + 1;
-      let const item_close = json_string_close(source, item_start);
+      let const item_close = parser_format_json_string_end(source, item_start);
       let const word =
           source.substring_of_length(item_start, item_close - item_start);
 

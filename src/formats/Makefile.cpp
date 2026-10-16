@@ -45,18 +45,7 @@ shell_assignment_mood(StringView line, Maybe<mimic_mood> &mood)
   while (word_end < value.length && value[word_end] != ' ')
     word_end++;
 
-  value = value.substring_of_length(0, word_end);
-  if (let const slash = value.find_last_character('/'))
-    value = value.substring(*slash + 1);
-
-  if (value == "bash")
-    mood = mimic_mood::Bash;
-  else if (value == "kosh")
-    mood = mimic_mood::Default;
-  else if (value == "sh" || value == "dash" || value == "ash")
-    mood = mimic_mood::Posix;
-  else
-    mood = None;
+  mood = parser_format_shell_mood(value.substring_of_length(0, word_end));
 
   return true;
 }
@@ -258,9 +247,10 @@ parse_makefile_format(const parser_format_input &input,
   let const ranges =
       koshkit::parse_makefile_shell_sources(source, heap_allocator());
   let merged = ArrayList<koshkit::make_shell_source_range>{heap_allocator()};
+  let const is_oneshell = has_oneshell(source);
 
   for (let const &range : ranges) {
-    if (has_oneshell(source) && !merged.is_empty() &&
+    if (is_oneshell && !merged.is_empty() &&
         range.kind == koshkit::make_shell_source_kind::Recipe &&
         merged.back().kind == koshkit::make_shell_source_kind::Recipe &&
         merged.back().end_position <= range.start_position &&

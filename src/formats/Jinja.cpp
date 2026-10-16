@@ -45,40 +45,10 @@ jinja_template_shell_mood(StringView inner_name, StringView source) wontthrow
   if (has_suffix(inner_name, ".sh")) return mimic_mood::Posix;
   if (!source.starts_with("#!")) return None;
 
-  usize     line_end     = 0;
-  let const line         = source.next_line(line_end);
-  usize     position     = 2;
-  let const do_next_word = [&]() {
-    while (position < line.length && line[position] == ' ')
-      position++;
+  usize     line_end = 0;
+  let const line     = source.next_line(line_end);
 
-    let const start = position;
-
-    while (position < line.length && line[position] != ' ' &&
-           line[position] != '\r')
-      position++;
-
-    let word = line.substring_of_length(start, position - start);
-
-    if (let const slash = word.find_last_character('/'))
-      word = word.substring(*slash + 1);
-
-    return word;
-  };
-
-  let program = do_next_word();
-
-  if (program == "env") {
-    program = do_next_word();
-    if (program == "-S") program = do_next_word();
-  }
-
-  if (program == "bash") return mimic_mood::Bash;
-  if (program == "kosh") return mimic_mood::Default;
-  if (program == "sh" || program == "dash" || program == "ash")
-    return mimic_mood::Posix;
-
-  return None;
+  return parser_format_shell_mood(parser_format_shebang_program(line));
 }
 
 fn

@@ -690,3 +690,54 @@ for more_file in hooks/package.json configmap.yaml workflow.yaml \
   (cd "$more" && "$BIN" --lint --no-traces "$more_file" 2>&1) |
     grep -E '^[^ ].*: (error|warning): '
 done
+
+fixes="$root/fixes"
+mkdir -p "$fixes/.github/workflows" "$fixes/.vscode" "$fixes/compose" "$fixes/escape"
+cat > "$fixes/.github/workflows/shebang.yml" <<'EOF'
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          #!/bin/bash
+          if true;then echo hi;fi
+EOF
+cat > "$fixes/session.md" <<'MD'
+```console
+$ echo   hi
+added 1 package (3s)
+```
+
+```sh
+if true;then echo x;fi
+```
+MD
+cat > "$fixes/compose/compose.yaml" <<'EOF'
+services:
+  app:
+    command: echo "$FOO"
+    build:
+      dockerfile_inline: |
+        FROM alpine
+        ARG FOO
+EOF
+cat > "$fixes/escape/Dockerfile" <<'EOF'
+# escapes a ` inside RUN lines
+FROM alpine
+SHELL ["python3", "-c"]
+RUN <<EOT
+RUN if true; then
+EOT
+SHELL ["/bin/sh", "-c"]
+RUN case x in
+EOF
+cat > "$fixes/.vscode/tasks.json" <<'EOF'
+{"tasks": [{"label": "w", "windows": {"command": "bash", "args": ["-c", "if ("]}}]}
+EOF
+(cd "$fixes" && "$BIN" --format .github/workflows/shebang.yml) |
+  sed -n '6,11p' | sed 's/ *$/|/'
+(cd "$fixes" && "$BIN" --format session.md)
+for fix_file in compose/compose.yaml escape/Dockerfile .vscode/tasks.json; do
+  (cd "$fixes" && "$BIN" --lint --no-traces "$fix_file" 2>&1) |
+    grep -E '^[^ ].*: (error|warning): ' || true
+done

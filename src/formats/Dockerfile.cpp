@@ -234,47 +234,12 @@ read_docker_json_array(StringView                   line,
 }
 
 static pure fn
-docker_shell_mood(StringView program) wontthrow -> Maybe<mimic_mood>
-{
-  if (let const slash = program.find_last_character('/'))
-    program = program.substring(*slash + 1);
-
-  if (program == "bash") return mimic_mood::Bash;
-  if (program == "kosh") return mimic_mood::Default;
-  if (program == "sh" || program == "dash" || program == "ash")
-    return mimic_mood::Posix;
-
-  return None;
-}
-
-static pure fn
 docker_shebang_mood(StringView line, Maybe<mimic_mood> fallback) wontthrow
     -> Maybe<mimic_mood>
 {
   if (!line.starts_with("#!")) return fallback;
 
-  usize     position     = 2;
-  let const do_next_word = [&]() {
-    while (position < line.length && line[position] == ' ')
-      position++;
-
-    let const start = position;
-
-    while (position < line.length && line[position] != ' ' &&
-           line[position] != '\r')
-      position++;
-
-    return line.substring_of_length(start, position - start);
-  };
-
-  let program = do_next_word();
-
-  if (program == "/usr/bin/env" || program == "env") {
-    program = do_next_word();
-    if (program == "-S") program = do_next_word();
-  }
-
-  return docker_shell_mood(program);
+  return parser_format_shell_mood(parser_format_shebang_program(line));
 }
 
 static fn
@@ -377,10 +342,14 @@ parse_dockerfile_format(const parser_format_input &input,
   let variables = ArrayList<String>{heap_allocator()};
 
   collect_docker_variables(input.source, variables);
+  let const first_fragment = document.fragments.count();
+
   defer {
-    for (let &fragment : document.fragments) {
+    for (usize index = first_fragment; index < document.fragments.count();
+         index++)
+    {
       for (let const &name : variables)
-        fragment.assumed_variables.push(name.clone());
+        document.fragments[index].assumed_variables.push(name.clone());
     }
   };
 
@@ -396,8 +365,10 @@ parse_dockerfile_format(const parser_format_input &input,
     if (is_directive_area && text.starts_with("#")) {
       let const directive = text.substring(1).trim_blanks();
 
-      if (directive.starts_with("escape") &&
-          parser_format_has_substring(directive, "`"))
+      let const value = directive.substring(6).trim_blanks();
+
+      if (directive.starts_with("escape") && value.starts_with("=") &&
+          value.substring(1).trim_blanks() == "`")
       {
         return;
       }
@@ -434,7 +405,7 @@ parse_dockerfile_format(const parser_format_input &input,
 
       read_docker_json_array(line, content_position, items);
       if (!items.is_empty()) {
-        mood = docker_shell_mood(line.substring_of_length(
+        mood = parser_format_shell_mood(line.substring_of_length(
             items[0].start, items[0].end - items[0].start));
       }
 
@@ -470,7 +441,7 @@ parse_dockerfile_format(const parser_format_input &input,
       read_docker_json_array(line, content_position, items);
       if (items.count() < 3) continue;
 
-      let const exec_mood = docker_shell_mood(line.substring_of_length(
+      let const exec_mood = parser_format_shell_mood(line.substring_of_length(
           items[0].start, items[0].end - items[0].start));
       let const flag      = line.substring_of_length(items[1].start,
                                                      items[1].end - items[1].start);
@@ -486,8 +457,6 @@ parse_dockerfile_format(const parser_format_input &input,
                                       line_start + items[2].end, *exec_mood);
       continue;
     }
-
-    if (!mood.has_value()) continue;
 
     let const heredoc =
         instruction == docker_instruction_kind::Run
@@ -514,11 +483,12 @@ parse_dockerfile_format(const parser_format_input &input,
       usize     first_position = body_start;
       let const first_line     = input.source.next_line(first_position);
       let       body_mood      = docker_shebang_mood(first_line, mood);
-      let const is_shell_body  = heredoc->is_shell_body ||
-                                docker_shell_mood(heredoc->command).has_value();
+      let const is_shell_body =
+          heredoc->is_shell_body ||
+          parser_format_shell_mood(heredoc->command).has_value();
 
       if (!heredoc->is_shell_body)
-        body_mood = docker_shell_mood(heredoc->command);
+        body_mood = parser_format_shell_mood(heredoc->command);
 
       if (is_shell_body && body_mood.has_value() && body_end > body_start) {
         let const content_start =
@@ -533,6 +503,8 @@ parse_dockerfile_format(const parser_format_input &input,
 
       continue;
     }
+
+    if (!mood.has_value()) continue;
 
     usize shell_end    = line_start + line.length;
     let   is_continued = !line.is_empty() && line[line.length - 1] == '\\';

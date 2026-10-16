@@ -2586,6 +2586,7 @@ constexpr u8    PTRACE_SYSCALL_INFO_EXIT_OP       = 2;
 constexpr usize PTRACE_SYSCALL_INFO_NUMBER_OFFSET = 24;
 constexpr usize TRACED_NEW_TASK_CAPACITY          = 256;
 constexpr usize TRACED_WAITING_TASK_CAPACITY      = 1024;
+constexpr usize TRACED_KNOWN_TASK_CAPACITY        = 4096;
 
 fn
 trace_ptrace(long request, pid_t pid, void *address, uintptr_t data) wontthrow
@@ -2646,7 +2647,11 @@ run_tracer(const char *const *raw_argv,
   usize new_task_count = 0;
   pid_t waiting_tasks[TRACED_WAITING_TASK_CAPACITY]{};
   usize waiting_count = 0;
-  u64   live_count    = 1;
+  pid_t early_tasks[TRACED_NEW_TASK_CAPACITY]{};
+  usize early_count = 0;
+  pid_t known_tasks[TRACED_KNOWN_TASK_CAPACITY]{target};
+  usize known_count = 1;
+  u64   live_count  = 1;
 
   u64  last_change_nanos = monotonic_nanos();
   u128 active_nanos_sum  = 0;
@@ -2663,6 +2668,18 @@ run_tracer(const char *const *raw_argv,
     active_nanos_sum += static_cast<u128>(elapsed_nanos) * active_count;
     observed_nanos += elapsed_nanos;
     last_change_nanos = now_nanos;
+  };
+
+  let const do_take = [](pid_t *tasks, usize &count, pid_t task) {
+    for (usize i = 0; i < count; i++) {
+      if (tasks[i] != task) continue;
+
+      tasks[i] = tasks[--count];
+
+      return true;
+    }
+
+    return false;
   };
 
   let const do_stop_waiting = [&](pid_t task) {
@@ -2685,6 +2702,7 @@ run_tracer(const char *const *raw_argv,
 
     if (WIFEXITED(status) || WIFSIGNALED(status)) {
       do_stop_waiting(task);
+      unused(do_take(known_tasks, known_count, task));
       do_account();
       if (live_count > 0) live_count--;
       continue;
@@ -2699,7 +2717,8 @@ run_tracer(const char *const *raw_argv,
     if (signal_number == (SIGTRAP | 0x80)) {
       u8 info[128]{};
 
-      if (trace_ptrace(PTRACE_GET_SYSCALL_INFO_REQUEST, task, info,
+      if (trace_ptrace(PTRACE_GET_SYSCALL_INFO_REQUEST, task,
+                       reinterpret_cast<void *>(sizeof(info)),
                        reinterpret_cast<uintptr_t>(info)) > 0)
       {
         if (info[0] == PTRACE_SYSCALL_INFO_ENTRY_OP) {
@@ -2732,27 +2751,39 @@ run_tracer(const char *const *raw_argv,
         live_count++;
         if (live_count > counts.peak_task_count)
           counts.peak_task_count = live_count;
-        if (trace_ptrace(PTRACE_GETEVENTMSG, task, nullptr,
-                         reinterpret_cast<uintptr_t>(&new_task)) == 0 &&
+        let const has_new_task =
+            trace_ptrace(PTRACE_GETEVENTMSG, task, nullptr,
+                         reinterpret_cast<uintptr_t>(&new_task)) == 0;
+        let const child = static_cast<pid_t>(new_task);
+
+        if (has_new_task && !do_take(early_tasks, early_count, child) &&
             new_task_count < TRACED_NEW_TASK_CAPACITY)
         {
-          new_tasks[new_task_count++] = static_cast<pid_t>(new_task);
+          new_tasks[new_task_count++] = child;
         }
       } else if (event == PTRACE_EVENT_EXEC) {
         counts.exec_count++;
       }
     } else if (signal_number == SIGSTOP) {
-      bool was_new_task = false;
+      bool is_known_task = false;
 
-      for (usize i = 0; i < new_task_count; i++) {
-        if (new_tasks[i] != task) continue;
+      for (usize i = 0; i < known_count; i++)
+        if (known_tasks[i] == task) is_known_task = true;
 
-        new_tasks[i] = new_tasks[--new_task_count];
-        was_new_task = true;
-        break;
+      let const was_new_task  = do_take(new_tasks, new_task_count, task);
+      let const is_early_task = !was_new_task && !is_known_task &&
+                                known_count < TRACED_KNOWN_TASK_CAPACITY &&
+                                early_count < TRACED_NEW_TASK_CAPACITY;
+
+      if (is_early_task) early_tasks[early_count++] = task;
+      if ((was_new_task || is_early_task) &&
+          known_count < TRACED_KNOWN_TASK_CAPACITY)
+      {
+        known_tasks[known_count++] = task;
       }
 
-      if (!was_new_task) injected = static_cast<uintptr_t>(signal_number);
+      if (!was_new_task && !is_early_task)
+        injected = static_cast<uintptr_t>(signal_number);
     } else if (signal_number != SIGTRAP) {
       injected = static_cast<uintptr_t>(signal_number);
     }

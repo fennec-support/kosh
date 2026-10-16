@@ -1004,17 +1004,8 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
       for (let const &segment : locale_word->segments) {
         if (segment.kind != WordSegment::Kind::ArithmeticExpansion) continue;
 
-        let const segment_location =
-            segment.get_source_location(arg_location.source_name_index)
-                .value_or(arg_location);
-        let const base_position =
-            segment_location.length == segment.text.count()
-                ? Maybe<usize>{segment_location.position}
-                : None;
-
-        check_arithmetic_expression_lints(actx, segment.text.view(),
-                                          segment_location, base_position,
-                                          lint_input.is_conditional);
+        check_arithmetic_segment_lints(actx, segment, arg_location,
+                                       lint_input.is_conditional);
       }
     }
 
@@ -1175,17 +1166,8 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
         case WordSegment::Kind::ArithmeticExpansion: {
           quote_sandwich_state = 0;
 
-          let const segment_location =
-              segment.get_source_location(arg_location.source_name_index)
-                  .value_or(arg_location);
-          let const base_position =
-              segment_location.length == segment.text.count()
-                  ? Maybe<usize>{segment_location.position}
-                  : None;
-
-          check_arithmetic_expression_lints(actx, segment.text.view(),
-                                            segment_location, base_position,
-                                            lint_input.is_conditional);
+          check_arithmetic_segment_lints(actx, segment, arg_location,
+                                         lint_input.is_conditional);
 
           if (is_operand && !has_external_arithmetic_read &&
               arithmetic_reads_external_input(actx, segment.text.view()))

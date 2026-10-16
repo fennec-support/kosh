@@ -278,9 +278,7 @@ detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::Woodpecker;
   }
 
-  if (path_has_directory(path, ".circleci/") &&
-      (path_ends_with(path, ".yml") || path_ends_with(path, ".yaml")))
-  {
+  if (path_has_directory(path, ".circleci/") && has_yaml_extension(path)) {
     return parser_format_kind::CircleCi;
   }
 
@@ -353,7 +351,7 @@ detect_format_kind(const parser_format_input &input) throws
   if (parser_format_ascii_equal(language_id, "dockercompose"))
     return parser_format_kind::Compose;
 
-  if (path_ends_with(path, ".yml") || path_ends_with(path, ".yaml") ||
+  if (has_yaml_extension(path) ||
       parser_format_ascii_equal(language_id, "yaml"))
   {
     let const is_ansible_task_file =
@@ -780,12 +778,20 @@ parser_format_add_indented_fragment(
     mimic_mood              mood,
     Maybe<String>           prepared_analysis_source) throws -> void
 {
+  let const fragment_count = document.fragments.count();
+
   parser_format_add_fragment(document, host_source, host_start, host_end,
                              indent_length, steal(prepared_analysis_source),
                              parser_format_codec::Indented, mood);
-  if (document.fragments.is_empty()) return;
+  if (document.fragments.count() == fragment_count) return;
 
-  let  &fragment   = document.fragments.back();
+  let &fragment = document.fragments.back();
+
+  fragment.should_skip_format =
+      fragment.analysis_source.view().substring_of_length(
+          host_start, host_end - host_start) !=
+      host_source.substring_of_length(host_start, host_end - host_start);
+
   let   deindented = String{heap_allocator()};
   usize position   = host_start;
 
@@ -859,8 +865,8 @@ yaml_key_match(StringView        line,
   return false;
 }
 
-static pure fn
-leading_spaces(StringView line) wontthrow -> usize
+pure fn
+parser_format_leading_spaces(StringView line) wontthrow -> usize
 {
   usize count = 0;
 
@@ -874,7 +880,7 @@ leading_spaces(StringView line) wontthrow -> usize
 static pure fn
 yaml_key_position(StringView line) wontthrow -> usize
 {
-  usize position = leading_spaces(line);
+  usize position = parser_format_leading_spaces(line);
 
   if (position < line.length && line[position] == '-') {
     position++;
@@ -924,6 +930,59 @@ previous_line(StringView source, usize &position) wontthrow -> StringView
   return source.substring_of_length(start, end - start);
 }
 
+pure fn
+parser_format_shell_mood(StringView program) wontthrow -> Maybe<mimic_mood>
+{
+  if (let const slash = program.find_last_character('/'))
+    program = program.substring(*slash + 1);
+  if (program.length > 4 &&
+      parser_format_ascii_equal(program.substring(program.length - 4), ".exe"))
+  {
+    program = program.substring_of_length(0, program.length - 4);
+  }
+
+  if (program == "bash") return mimic_mood::Bash;
+  if (program == "kosh") return mimic_mood::Default;
+  if (program == "sh" || program == "dash" || program == "ash")
+    return mimic_mood::Posix;
+
+  return None;
+}
+
+pure fn
+parser_format_shebang_program(StringView line) wontthrow -> StringView
+{
+  if (!line.starts_with("#!")) return {};
+
+  usize     position     = 2;
+  let const do_next_word = [&]() {
+    while (position < line.length &&
+           (line[position] == ' ' || line[position] == '\t'))
+      position++;
+
+    let const start = position;
+
+    while (position < line.length && line[position] != ' ' &&
+           line[position] != '\t' && line[position] != '\r')
+      position++;
+
+    return line.substring_of_length(start, position - start);
+  };
+
+  let       program = do_next_word();
+  let const basename =
+      program.find_last_character('/').has_value()
+          ? program.substring(*program.find_last_character('/') + 1)
+          : program;
+
+  if (basename == "env") {
+    program = do_next_word();
+    if (program == "-S") program = do_next_word();
+  }
+
+  return program;
+}
+
 struct interpreter_choice
 {
   bool              is_found{false};
@@ -955,10 +1014,7 @@ interpreter_of_value(StringView value) wontthrow -> interpreter_choice
     word = word.substring_of_length(0, word.length - 4);
   }
 
-  if (word == "bash") return {true, mimic_mood::Bash};
-  if (word == "kosh") return {true, mimic_mood::Default};
-  if (word == "sh" || word == "dash" || word == "ash")
-    return {true, mimic_mood::Posix};
+  if (let const mood = parser_format_shell_mood(word)) return {true, *mood};
 
   static constexpr StringView OTHERS[] = {
       "pwsh",   "powershell", "azurepowershell",
@@ -993,14 +1049,14 @@ mood_near(StringView source,
   bool  is_item =
       line.substring_of_length(0, key_column).find_character('-').has_value();
 
-  if (is_item) scope_indent = leading_spaces(line);
+  if (is_item) scope_indent = parser_format_leading_spaces(line);
 
   while (!is_item && scan > 0) {
     let const previous = previous_line(source, scan);
 
     if (previous.trim_blanks().is_empty()) continue;
 
-    let const indent = leading_spaces(previous);
+    let const indent = parser_format_leading_spaces(previous);
 
     if (indent >= scope_indent) continue;
     scope_indent = indent;
@@ -1022,7 +1078,7 @@ mood_near(StringView source,
       let const previous = previous_line(source, scan);
 
       if (previous.trim_blanks().is_empty()) continue;
-      if (leading_spaces(previous) != key_column) break;
+      if (parser_format_leading_spaces(previous) != key_column) break;
       scope_start = scan;
     }
   }
@@ -1035,8 +1091,9 @@ mood_near(StringView source,
     let const candidate       = source.next_line(position);
 
     if (candidate.trim_blanks().is_empty()) continue;
-    if (!is_first && (is_item ? leading_spaces(candidate) <= scope_indent
-                              : leading_spaces(candidate) < key_column))
+    if (!is_first &&
+        (is_item ? parser_format_leading_spaces(candidate) <= scope_indent
+                 : parser_format_leading_spaces(candidate) < key_column))
     {
       break;
     }
@@ -1061,14 +1118,8 @@ mood_near(StringView source,
   return fallback;
 }
 
-struct workflow_shell_choice
-{
-  bool              is_found{false};
-  Maybe<mimic_mood> mood{};
-};
-
 static pure fn
-workflow_shell_mood(StringView value) wontthrow -> workflow_shell_choice
+workflow_shell_mood(StringView value) wontthrow -> interpreter_choice
 {
   if (!value.is_empty() && (value[0] == '\'' || value[0] == '"')) {
     value = value.substring(1);
@@ -1082,16 +1133,9 @@ workflow_shell_mood(StringView value) wontthrow -> workflow_shell_choice
 
   let word = value.substring_of_length(0, word_end);
 
-  if (let const slash = word.find_last_character('/'))
-    word = word.substring(*slash + 1);
-
   if (word.is_empty()) return {};
-  if (word == "bash") return {true, mimic_mood::Bash};
-  if (word == "kosh") return {true, mimic_mood::Default};
-  if (word == "sh" || word == "dash" || word == "ash")
-    return {true, mimic_mood::Posix};
 
-  return {true, None};
+  return {true, parser_format_shell_mood(word)};
 }
 
 static fn
@@ -1107,7 +1151,7 @@ static fn
 find_child_shell(StringView source,
                  usize      parent_end,
                  usize      parent_indent,
-                 StringView child_key) wontthrow -> workflow_shell_choice
+                 StringView child_key) wontthrow -> interpreter_choice
 {
   usize position     = parent_end;
   usize child_indent = static_cast<usize>(-1);
@@ -1117,7 +1161,7 @@ find_child_shell(StringView source,
 
     if (line.trim_blanks().is_empty()) continue;
 
-    let const indent = leading_spaces(line);
+    let const indent = parser_format_leading_spaces(line);
 
     if (parent_indent != static_cast<usize>(-1) && indent <= parent_indent)
       break;
@@ -1131,14 +1175,16 @@ find_child_shell(StringView source,
       let const run_line = source.next_line(run_position);
 
       if (run_line.trim_blanks().is_empty()) continue;
-      if (leading_spaces(run_line) <= child_indent) break;
+      if (parser_format_leading_spaces(run_line) <= child_indent) break;
       if (!yaml_line_value(run_line, "run").has_value()) continue;
 
       while (run_position < source.length) {
         let const shell_line = source.next_line(run_position);
 
         if (shell_line.trim_blanks().is_empty()) continue;
-        if (leading_spaces(shell_line) <= leading_spaces(run_line)) break;
+        if (parser_format_leading_spaces(shell_line) <=
+            parser_format_leading_spaces(run_line))
+          break;
         if (let const shell = yaml_line_value(shell_line, "shell"))
           return workflow_shell_mood(*shell);
       }
@@ -1157,7 +1203,7 @@ selected_workflow_mood(StringView source,
   let const key_column = yaml_key_position(line);
   let       item_start = line_start;
   let       item_line  = line;
-  bool      has_item   = leading_spaces(line) < key_column;
+  bool      has_item   = parser_format_leading_spaces(line) < key_column;
 
   if (!has_item) {
     usize scan = line_start;
@@ -1167,7 +1213,7 @@ selected_workflow_mood(StringView source,
 
       if (previous.trim_blanks().is_empty()) continue;
 
-      let const indent = leading_spaces(previous);
+      let const indent = parser_format_leading_spaces(previous);
 
       if (indent < key_column && indent < previous.length &&
           previous[indent] == '-' && yaml_key_position(previous) == key_column)
@@ -1190,7 +1236,8 @@ selected_workflow_mood(StringView source,
       let const candidate = source.next_line(position);
 
       if (candidate.trim_blanks().is_empty()) continue;
-      if (!is_first && leading_spaces(candidate) < key_column) break;
+      if (!is_first && parser_format_leading_spaces(candidate) < key_column)
+        break;
       is_first = false;
       if (yaml_key_position(candidate) != key_column) continue;
       if (let const shell = yaml_line_value(candidate, "shell")) {
@@ -1202,14 +1249,14 @@ selected_workflow_mood(StringView source,
   }
 
   usize ancestor_scan  = line_start_before(source, item_start);
-  usize minimum_indent = leading_spaces(item_line);
+  usize minimum_indent = parser_format_leading_spaces(item_line);
 
   while (ancestor_scan > 0) {
     let const ancestor = previous_line(source, ancestor_scan);
 
     if (ancestor.trim_blanks().is_empty()) continue;
 
-    let const indent = leading_spaces(ancestor);
+    let const indent = parser_format_leading_spaces(ancestor);
 
     if (indent >= minimum_indent) continue;
     minimum_indent = indent;
@@ -1232,8 +1279,8 @@ selected_workflow_mood(StringView source,
       let const sibling_line = source.next_line(sibling);
 
       if (sibling_line.trim_blanks().is_empty()) continue;
-      if (leading_spaces(sibling_line) <= indent) break;
-      if (leading_spaces(sibling_line) != minimum_indent + 2 &&
+      if (parser_format_leading_spaces(sibling_line) <= indent) break;
+      if (parser_format_leading_spaces(sibling_line) != minimum_indent + 2 &&
           yaml_key_position(sibling_line) != minimum_indent + 2)
       {
         continue;
@@ -1291,10 +1338,10 @@ replace_analysis_newlines(StringView source,
 
     let const next =
         source.substring_of_length(position + 1, next_end - position - 1);
-    let const is_joined = !current.trim_blanks().is_empty() &&
-                          !next.trim_blanks().is_empty() &&
-                          leading_spaces(current) == content_indent &&
-                          leading_spaces(next) == content_indent;
+    let const is_joined =
+        !current.trim_blanks().is_empty() && !next.trim_blanks().is_empty() &&
+        parser_format_leading_spaces(current) == content_indent &&
+        parser_format_leading_spaces(next) == content_indent;
 
     result.push(is_joined ? ' ' : '\n');
   }
@@ -1403,10 +1450,10 @@ align_indented_heredoc_terminators(StringView source,
 
     if (pending_index < pending_count) {
       let const content = line.trim_blanks();
-      let const indent  = leading_spaces(line);
+      let const indent  = parser_format_leading_spaces(line);
 
       if (content == pending[pending_index] && indent > 0 && line_start > 0 &&
-          leading_spaces(line) + content.length <= line.length)
+          parser_format_leading_spaces(line) + content.length <= line.length)
       {
         rewritten.append(source.substring_of_length(
             rewritten.length(), line_start - 1 - rewritten.length()));
@@ -1571,7 +1618,7 @@ read_yaml_scalar(StringView        source,
       let const candidate       = source.next_line(block_position);
 
       if (!candidate.trim_blanks().is_empty()) {
-        let const indent = leading_spaces(candidate);
+        let const indent = parser_format_leading_spaces(candidate);
 
         if (indent <= parent_indent) {
           block_position = candidate_start;
@@ -1645,7 +1692,7 @@ has_yaml_ancestor(StringView source,
                   StringView line,
                   StringView ancestor) wontthrow -> bool
 {
-  usize indent = leading_spaces(line);
+  usize indent = parser_format_leading_spaces(line);
   usize scan   = line_start;
 
   while (scan > 0 && indent > 0) {
@@ -1653,7 +1700,7 @@ has_yaml_ancestor(StringView source,
 
     if (previous.trim_blanks().is_empty()) continue;
 
-    let const previous_indent = leading_spaces(previous);
+    let const previous_indent = parser_format_leading_spaces(previous);
 
     if (previous_indent >= indent) continue;
     indent = previous_indent;
@@ -1666,28 +1713,7 @@ has_yaml_ancestor(StringView source,
 static pure fn
 shebang_interpreter(StringView line) wontthrow -> interpreter_choice
 {
-  usize     position     = 2;
-  let const do_next_word = [&]() {
-    while (position < line.length && line[position] == ' ')
-      position++;
-
-    let const start = position;
-
-    while (position < line.length && line[position] != ' ' &&
-           line[position] != '\r')
-      position++;
-
-    return line.substring_of_length(start, position - start);
-  };
-
-  let program = do_next_word();
-
-  if (program == "/usr/bin/env" || program == "env" || program == "/bin/env") {
-    program = do_next_word();
-    if (program == "-S") program = do_next_word();
-  }
-
-  let const choice = interpreter_of_value(program);
+  let const choice = interpreter_of_value(parser_format_shebang_program(line));
 
   if (choice.is_found) return choice;
 
@@ -1709,7 +1735,8 @@ add_yaml_scalar_fragment(parsed_format_document &document,
   let const fragment_count      = document.fragments.count();
   usize     first_line_position = item.start;
   let const first_line          = source.next_line(first_line_position);
-  let const first_content = first_line.substring(leading_spaces(first_line));
+  let const first_content =
+      first_line.substring(parser_format_leading_spaces(first_line));
 
   if (first_content.starts_with("#!")) {
     let const choice = shebang_interpreter(first_content);
@@ -1750,8 +1777,21 @@ add_yaml_scalar_fragment(parsed_format_document &document,
                                mood);
   }
 
-  if (did_mask && document.fragments.count() != fragment_count)
-    document.fragments.back().should_silence_unresolved_commands = true;
+  if (document.fragments.count() == fragment_count) return;
+
+  let &fragment = document.fragments.back();
+
+  let const compared_start = first_content.starts_with("#!")
+                                 ? item.start + first_line.length
+                                 : item.start;
+
+  if (did_mask) fragment.should_silence_unresolved_commands = true;
+  fragment.should_skip_format =
+      did_mask || (compared_start < item.end &&
+                   fragment.analysis_source.view().substring_of_length(
+                       compared_start, item.end - compared_start) !=
+                       source.substring_of_length(compared_start,
+                                                  item.end - compared_start));
 }
 
 static fn
@@ -1842,7 +1882,7 @@ collect_yaml_value_items(StringView                   source,
 
     if (item_line.trim_blanks().is_empty()) continue;
 
-    let const indent = leading_spaces(item_line);
+    let const indent = parser_format_leading_spaces(item_line);
     let const is_dash =
         indent < item_line.length && item_line[indent] == '-' &&
         (indent + 1 == item_line.length || item_line[indent + 1] == ' ');
@@ -1964,20 +2004,6 @@ parser_format_extract_yaml_value_at(parsed_format_document &document,
 }
 
 static pure fn
-shell_mood_for_program(StringView program) wontthrow -> Maybe<mimic_mood>
-{
-  if (let const slash = program.find_last_character('/'))
-    program = program.substring(*slash + 1);
-
-  if (program == "bash") return mimic_mood::Bash;
-  if (program == "kosh") return mimic_mood::Default;
-  if (program == "sh" || program == "dash" || program == "ash")
-    return mimic_mood::Posix;
-
-  return None;
-}
-
-static pure fn
 is_shell_command_flag(StringView word) wontthrow -> bool
 {
   if (word.length < 2 || word[0] != '-' || word[1] == '-') return false;
@@ -2022,12 +2048,12 @@ find_yaml_sibling_items(StringView                   source,
 {
   let const key_column = yaml_key_position(line);
   let const do_matches = [&](StringView candidate) {
-    return leading_spaces(candidate) <= key_column &&
+    return parser_format_leading_spaces(candidate) <= key_column &&
            yaml_key_position(candidate) == key_column &&
            yaml_line_value(candidate, sibling).has_value();
   };
   let const do_is_item_start = [&](StringView candidate) {
-    let const indent = leading_spaces(candidate);
+    let const indent = parser_format_leading_spaces(candidate);
 
     return indent < key_column && indent < candidate.length &&
            candidate[indent] == '-';
@@ -2041,7 +2067,7 @@ find_yaml_sibling_items(StringView                   source,
       let const candidate_start = scan;
 
       if (candidate.trim_blanks().is_empty()) continue;
-      if (leading_spaces(candidate) < key_column &&
+      if (parser_format_leading_spaces(candidate) < key_column &&
           !do_is_item_start(candidate))
         break;
       if (do_matches(candidate)) {
@@ -2063,7 +2089,7 @@ find_yaml_sibling_items(StringView                   source,
     let const candidate       = source.next_line(forward);
 
     if (candidate.trim_blanks().is_empty()) continue;
-    if (leading_spaces(candidate) < key_column) break;
+    if (parser_format_leading_spaces(candidate) < key_column) break;
     if (do_matches(candidate)) {
       collect_yaml_key_items(source, candidate_start, candidate, items);
 
@@ -2150,7 +2176,7 @@ parser_format_extract_yaml_exec_keys(parsed_format_document &document,
     if (argv.count() < first + 3) continue;
 
     let const mood =
-        shell_mood_for_program(yaml_item_text(source, argv[first]));
+        parser_format_shell_mood(yaml_item_text(source, argv[first]));
 
     if (!mood.has_value()) continue;
 
@@ -2340,8 +2366,9 @@ skip_json_trivia(StringView source, usize position) wontthrow -> usize
   return position < source.length ? position : source.length;
 }
 
-static pure fn
-json_string_close(StringView source, usize position) wontthrow -> usize
+pure fn
+parser_format_json_string_end(StringView source, usize position) wontthrow
+    -> usize
 {
   while (position < source.length && source[position] != '"') {
     if (source[position] == '\\' && position + 1 < source.length) position++;
@@ -2403,34 +2430,18 @@ add_json_exec_array(parsed_format_document       &document,
          item_count < countof(starts))
   {
     starts[item_count] = position + 1;
-    position           = json_string_close(source, position + 1);
+    position           = parser_format_json_string_end(source, position + 1);
     ends[item_count++] = position;
     position           = skip_json_trivia(source, position + 1);
   }
 
   if (item_count < 3) return;
 
-  let program = source.substring_of_length(starts[0], ends[0] - starts[0]);
-
-  if (let const slash = program.find_last_character('/'))
-    program = program.substring(*slash + 1);
-
-  Maybe<mimic_mood> mood{};
-
-  if (program == "bash")
-    mood = mimic_mood::Bash;
-  else if (program == "kosh")
-    mood = mimic_mood::Default;
-  else if (program == "sh" || program == "dash" || program == "ash")
-    mood = mimic_mood::Posix;
-
+  let const mood = parser_format_shell_mood(
+      source.substring_of_length(starts[0], ends[0] - starts[0]));
   let const flag = source.substring_of_length(starts[1], ends[1] - starts[1]);
 
-  if (!mood.has_value() || flag.length < 2 || flag[0] != '-' ||
-      !flag.find_character('c').has_value())
-  {
-    return;
-  }
+  if (!mood.has_value() || !is_shell_command_flag(flag)) return;
 
   add_json_command_fragment(document, source, starts[2], ends[2], *mood, key,
                             template_syntax);
@@ -2515,7 +2526,7 @@ parser_format_extract_json_keys(parsed_format_document       &document,
     }
 
     let const string_start = position + 1;
-    let const string_end   = json_string_close(source, string_start);
+    let const string_end = parser_format_json_string_end(source, string_start);
 
     position = skip_json_trivia(source, string_end + 1);
 
@@ -2737,10 +2748,10 @@ parser_format_encode(const parser_format_fragment &fragment,
   usize position = 0;
 
   while (position < replacement.length) {
-    encoded.append_repeated(' ', fragment.indent_length);
-
     let const line_start = position;
     let const line       = replacement.next_line(position);
+
+    if (!line.is_empty()) encoded.append_repeated(' ', fragment.indent_length);
 
     encoded.append(line);
     if (position > line_start + line.length) encoded.push('\n');

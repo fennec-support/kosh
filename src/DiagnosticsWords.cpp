@@ -574,6 +574,23 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
 }
 
 fn
+check_arithmetic_segment_lints(AnalysisContext      &actx,
+                               const WordSegment    &segment,
+                               const SourceLocation &fallback_location,
+                               bool                  is_conditional) throws -> void
+{
+  let const segment_location =
+      segment.get_source_location(fallback_location.source_name_index)
+          .value_or(fallback_location);
+  let const base_position = segment_location.length == segment.text.count()
+                                ? Maybe<usize>{segment_location.position}
+                                : None;
+
+  check_arithmetic_expression_lints(actx, segment.text.view(), segment_location,
+                                    base_position, is_conditional);
+}
+
+fn
 check_numeric_comparison_operand(
     AnalysisContext &actx,
     StringView       operator_view,
