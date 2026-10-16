@@ -719,18 +719,29 @@ def is_typed_without_menu(typed):
                            and get_state(screen)[0] == typed)
 
 
+def is_typed_with_menu(typed):
+    return lambda screen: (screen.get_menu() is not None
+                           and get_state(screen)[0] == typed)
+
+
 def run_sole_completion_checks(session, report):
-    for name, keys, typed in (
-            ("sole-directory-stops-after-the-slash", b"ls zzloc\tQ",
-             "ls zzlocal/Q"),
-            ("second-tab-lists-the-directory", b"ls zzloc\t\t",
-             "ls zzlocal/inner.txt"),
-            ("sole-empty-directory-opens-no-menu", b"ls zzhol\t\tQ",
-             "ls zzhollow/Q"),
+    for name, keys, typed, has_menu in (
+            ("sole-directory-keeps-the-menu-inside", b"ls zzloc\tQ",
+             "ls zzlocal/Q", True),
+            ("second-tab-accepts-and-keeps-the-menu", b"ls zzloc\t\t",
+             "ls zzlocal/inner.txt", True),
+            ("sole-empty-directory-keeps-the-menu", b"ls zzhol\t\tQ",
+             "ls zzhollow/Q", True),
             ("completion-undoes-in-one-step", b"cat sub/al\t" + CTRL_Z + b"Q",
-             "cat sub/alQ")):
+             "cat sub/alQ", False),
+            ("ctrl-c-closes-the-menu-and-clears", b"ls zzloc\t" + CTRL_C,
+             "", False)):
         session.send(keys)
-        report.record(name, session, is_typed_without_menu(typed))
+        report.record(name, session, is_typed_with_menu(typed) if has_menu
+                      else is_typed_without_menu(typed))
+        if has_menu:
+            session.send(ESCAPE)
+            session.wait_until(is_menu_closed)
         clear_line(session)
     session.send(
         b"koshconf set completion.add_space_after_completed_word on\r")
@@ -825,11 +836,13 @@ def run_next_word_menu_checks(session, report, directory):
     session.wait_until(lambda screen: count_marker_lines(
         directory, "next-runs") - before == 2)
     settle(session, 0.5)
-    report.record("next-word-without-candidates-opens-no-menu", session,
-                  is_typed_without_menu("zznone zznonefirst"))
+    report.record("next-word-without-candidates-keeps-the-menu", session,
+                  is_typed_with_menu("zznone zznonefirst"))
     session.send(b"Q")
     report.record("next-word-without-candidates-keeps-typing", session,
-                  is_typed_without_menu("zznone zznonefirst Q"))
+                  is_typed_with_menu("zznone zznonefirst Q"))
+    session.send(ESCAPE)
+    session.wait_until(is_menu_closed)
     clear_line(session)
     session.send(
         b"koshconf set completion.add_space_after_completed_word off\r")
@@ -837,10 +850,12 @@ def run_next_word_menu_checks(session, report, directory):
     before = count_marker_lines(directory, "next-runs")
     session.send(b"zznw zznwf\t")
     session.wait_until(lambda screen: count_marker_lines(
-        directory, "next-runs") - before == 1)
+        directory, "next-runs") - before >= 1)
     settle(session, 0.5)
-    report.record("next-word-menu-stays-closed-with-the-option-off", session,
-                  is_typed_without_menu("zznw zznwfirst"))
+    report.record("sole-word-keeps-the-menu-with-the-option-off", session,
+                  is_typed_with_menu("zznw zznwfirst"))
+    session.send(ESCAPE)
+    session.wait_until(is_menu_closed)
     clear_line(session)
 
 
@@ -1140,6 +1155,9 @@ def run_checks(binary, directory, command_directory, report):
                       lambda screen: get_state(screen) is not None
                       and get_state(screen)[0].startswith(
                           "koshconf get editor.history.max_entries"))
+        session.wait_until(lambda screen: screen.get_menu() is not None)
+        session.send(ESCAPE)
+        session.wait_until(is_menu_closed)
         clear_line(session)
 
         session.send(b"zzprobe-one ")
