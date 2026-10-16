@@ -1459,7 +1459,10 @@ budget. With
 each command also reports CPU time, CPU usage over wall time, waiting time
 (wall time minus user and system time) and its share of wall time, the
 system share of CPU time, context switches and their involuntary share, page
-faults, block operations, and read and write calls and bytes. Linux adds
+faults, block operations, and read and write calls and bytes. When the traced
+run finds more than one active task on average, waiting time is the average
+active task count times wall time, minus user and system time, so idle threads
+of a parallel command count as waiting. Linux adds
 scheduler wait, time slices, CPU migrations, cancelled writes, and the branch,
 stall, cache, and TLB hardware counters with instructions per cycle and the
 miss ratios. Linux also reports sleep, block, and IO wait times when kernel

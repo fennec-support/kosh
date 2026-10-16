@@ -289,7 +289,9 @@ metric_index(reader read) -> usize
   return countof(METRICS);
 }
 
-constexpr usize CPU_USAGE_METRIC = metric_index(read_cpu_usage);
+constexpr usize CPU_USAGE_METRIC     = metric_index(read_cpu_usage);
+constexpr usize WAITING_TIME_METRIC  = metric_index(read_waiting_nanos);
+constexpr usize WAITING_SHARE_METRIC = metric_index(read_waiting_share);
 constexpr usize SYSCALLS_METRIC =
     metric_index(read_resource<&usage::syscall_count>);
 constexpr usize BRANCH_MISSES_METRIC =
@@ -306,6 +308,8 @@ constexpr usize PROCESS_INSTRUCTIONS_METRIC =
     metric_index(read_resource<&usage::instruction_count>);
 
 static_assert(CPU_USAGE_METRIC < countof(METRICS) &&
+              WAITING_TIME_METRIC < countof(METRICS) &&
+              WAITING_SHARE_METRIC < countof(METRICS) &&
               SYSCALLS_METRIC < countof(METRICS) &&
               BRANCH_MISSES_METRIC < countof(METRICS) &&
               BRANCHES_METRIC < countof(METRICS) &&
@@ -817,6 +821,41 @@ sample_command(StringView shell_binary,
     result.traced = os::run_traced(
         child_argv, should_suppress_output ? os::measured_output::Suppress
                                            : os::measured_output::Inherit);
+  }
+
+  let const active_task_count =
+      result.traced.has_value()
+          ? static_cast<double>(result.traced->average_active_task_millis) /
+                1000.0
+          : 0.0;
+
+  if (active_task_count > 1.0 && result.has_metric[CPU_USAGE_METRIC]) {
+    let waits = ArrayList<bench_sample>{allocator};
+
+    for (let const &sample : samples) {
+      if (!sample.is_present[CPU_USAGE_METRIC]) continue;
+
+      let const cpu_nanos = sample.values[CPU_USAGE_METRIC] * sample.wall_nanos;
+      let const task_nanos = active_task_count * sample.wall_nanos;
+      let       wait       = sample;
+
+      wait.values[WAITING_TIME_METRIC] =
+          task_nanos > cpu_nanos ? task_nanos - cpu_nanos : 0.0;
+      wait.values[WAITING_SHARE_METRIC] =
+          task_nanos > 0 ? wait.values[WAITING_TIME_METRIC] / task_nanos : 0.0;
+      waits.push(wait);
+    }
+
+    if (!waits.is_empty()) {
+      result.metric[WAITING_TIME_METRIC] =
+          compute_stats(waits, [](const bench_sample &s) {
+            return s.values[WAITING_TIME_METRIC];
+          });
+      result.metric[WAITING_SHARE_METRIC] =
+          compute_stats(waits, [](const bench_sample &s) {
+            return s.values[WAITING_SHARE_METRIC];
+          });
+    }
   }
 
   result.sample_count = samples.count();
