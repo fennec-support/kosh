@@ -80,6 +80,12 @@ unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
   let  delimiter = String{allocator};
   char quote     = 0;
 
+  /* e.g. word = a"b\"c"\d
+       a: pushed, delimiter is a
+       ": opens quotes, b: pushed, delimiter is ab
+       \" inside quotes: pushes ", delimiter is ab"
+       c: pushed, delimiter is ab"c
+       ": closes quotes, \d outside quotes: pushes d, delimiter is ab"cd */
   for (usize position = 0; position < word.length; position++) {
     let const byte = word[position];
 
@@ -177,6 +183,10 @@ match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
   return {content_start, content.length, content == heredoc.delimiter.view()};
 }
 
+/* memory: none.
+   time:   O(b) for the b bytes from position through the terminator line of
+           the last pending heredoc, or to the end of source when none
+   exists. */
 fn
 skip_balanced_scan_heredoc_bodies(
     StringView                        source,
@@ -221,6 +231,9 @@ scan_balanced_shell_region(StringView source,
     return None;
   }
 
+  /* at this point: nesting_depth is at most MAX_SUBSTITUTION_NESTING_DEPTH,
+     so recursion for a substitution inside double quotes is at most 65 frames
+     deep. */
   let       pending_heredocs    = ArrayList<pending_heredoc>{heap_allocator()};
   let       case_pattern_depths = ArrayList<usize>{heap_allocator()};
   usize     depth               = 1;
@@ -232,6 +245,13 @@ scan_balanced_shell_region(StringView source,
   bool      is_ansi_c_quote          = false;
   let const opening_byte             = closing_byte == ')' ? '(' : '{';
 
+  /* e.g. source = "case x in a) echo hi;; esac)", position 0, closing ')'
+       "case" at 0: starts a case, position 4
+       "in" at 7: pushes depth 1 onto case_pattern_depths, pattern expected
+       ")" at 11: closes the pattern at depth 1, depth stays 1
+       ";;" at 20: pattern expected again
+       "esac" at 23: pops depth 1, position 27
+       ")" at 27: depth 0, return 28 */
   while (position < source.length) {
     let const byte = source[position++];
 
@@ -350,6 +370,7 @@ scan_balanced_shell_region(StringView source,
       previous_byte   = byte;
       continue;
 
+    /* in ${ }, # is a parameter operator, as in ${#name}, not a comment. */
     case '#':
       if (closing_byte != '}' && (previous_byte == 0 || previous_byte == '\n' ||
                                   is_whitespace(previous_byte)))

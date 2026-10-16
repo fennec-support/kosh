@@ -74,6 +74,10 @@ append_number_prefix(String &output, i64 line_number) throws -> void
   output.append(StringView{prefix + position, sizeof(prefix) - position});
 }
 
+/* memory: appends to output. each line adds a prefix of 7 bytes while its
+           line number stays below 1000000.
+   time:   O(source.length). each line costs one find_character() scan of that
+           line. */
 static fn
 append_numbered_chunk(String    &output,
                       StringView source,
@@ -161,6 +165,10 @@ append_cat_source(String            &output,
   }
 }
 
+/* memory: the numbered path flushes output once it holds 64 KiB. the path
+           that highlights output holds all output until the call returns, and
+           visit_ordered_sources() buffers each source whole until its turn.
+   time:   O(total input bytes). sources are read in chunks of up to 64 KiB. */
 fn
 Cat::execute(const ExecContext               &ec,
              EvalContext                     &cxt,

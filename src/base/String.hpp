@@ -70,6 +70,8 @@ private:
 class String
 {
 public:
+  /* 23 inline bytes keep sizeof(String) at 56 on 64-bit targets. the
+     static_assert() after the class checks the size. */
   static constexpr usize INLINE_CAPACITY = 23;
 
   explicit String(Allocator allocator) : m_allocator(allocator)

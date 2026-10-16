@@ -107,6 +107,8 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (char_index >= current.length()) char_index = 1;
   ASSERT(char_index < current.length());
 
+  /* at this point: current is an option word of at least two bytes that
+     starts with '-' and is not "--", and char_index addresses a byte of it. */
   let const option           = current[char_index];
   let       option_as_string = String{cxt.scratch_allocator()};
 

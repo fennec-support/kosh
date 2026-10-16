@@ -33,6 +33,8 @@ get_shebang_line(StringView source) wontthrow -> Maybe<StringView>
 {
   if (!source.starts_with("#!")) return None;
 
+  /* matches BINPRM_BUF_SIZE in linux/binfmts.h, the number of bytes the Linux
+     exec loader checks for a #! line. */
   constexpr usize shebang_byte_limit = 256;
   let const       source_limit =
       source.length < shebang_byte_limit ? source.length : shebang_byte_limit;

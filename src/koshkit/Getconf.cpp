@@ -384,6 +384,11 @@ report_configuration_query_error(const ExecContext &ec,
   return 1;
 }
 
+/* memory: rows accumulate in output, a String in the scratch allocator, until
+           print_to_stdout(). each name is a heap String released at the end of
+           its loop iteration.
+   time:   O(R) for R table entries under -a, one os::query_* call per entry.
+           a single operand makes one query. */
 fn
 Getconf::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,
@@ -426,6 +431,8 @@ Getconf::execute(const ExecContext               &ec,
     return 2;
   }
 
+  /* at this point: operands holds at most one entry under -a, and one or two
+     entries otherwise. a specification, when set, is a supported value. */
   if (FLAG_GETCONF_ALL.is_enabled()) {
     let       output         = String{cxt.scratch_allocator()};
     let const error_location = FLAG_GETCONF_ALL.value_location();

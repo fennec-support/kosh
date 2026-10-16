@@ -1346,6 +1346,8 @@ static_koshkit_operand(StringView word, bool &is_valid) throws
   is_valid = true;
   if (is_decoded_too_long) return None;
 
+  /* at this point: quotes are balanced, the word fits in decoded, and
+     decoded[0, decoded_length) holds the word after quote removal. */
   return koshkit::find_util(StringView{decoded, decoded_length});
 }
 

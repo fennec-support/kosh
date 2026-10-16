@@ -263,6 +263,11 @@ resolve_session_tab_selector() wontthrow -> tab_selector_mode
   return tab_selector_mode::Interactive;
 }
 
+/* memory: row is a heap String freed on return. listing grows by the wrapped
+           row.
+   time:   O(summary length) for the capital scan and copy, plus one
+           wrap_text() call on row. called once per diagnostic from the loops
+           in print_help_or_version_status(). */
 static fn
 append_listed_diagnostic(String                      &listing,
                          const diagnostic_definition &definition) throws
@@ -422,6 +427,9 @@ report_escaped_control_flow(EvalContext &context, const String &fallback_source)
   context.control_flow_store().clear();
 }
 
+/* memory: each unit is allocated in m_arena by next_unit() and freed by
+           release_unit(), which rewinds m_arena to the mark that next_unit()
+           took. */
 class StreamedAnalysisUnits final : public AnalysisUnitStream
 {
 public:
@@ -1194,6 +1202,11 @@ format_document_source(StringView            source,
   return parser_format_apply_replacements(source, steal(replacements));
 }
 
+/* memory: commands holds copies of the PROMPT_COMMAND elements and frees
+           them on return. the cached text and AST stay in the prompt store
+           until the next parse replaces them.
+   time:   one run_script_contents() call per non-empty element, plus one
+           parse for each element that does not run from the cached AST. */
 static fn
 run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 {
@@ -1369,6 +1382,9 @@ next_history_word(StringView source, usize &position) throws
     }
   }
 
+  /* e.g. source = "cat 'a b' x", position = 4: the quote opens at 4 and
+     closes at 8, so the space at 9 ends the word.
+     -> "'a b'", with position 9 */
   return source.substring_of_length(start_position, position - start_position);
 }
 
@@ -1519,6 +1535,9 @@ select_history_words(StringView        command,
     word_index++;
   }
 
+  /* e.g. command = "cat 'a b' x", designator = "1-2" gives word_count 3,
+     first_word_index 1 and end_word_index 3, so the words "'a b'" and "x"
+     are selected. selected_byte_length is 5 + 1 + 1 = 7. */
   selected.reserve(selected_byte_length);
   scan_position = 0;
   word_index    = 0;
@@ -1572,6 +1591,8 @@ static pure fn
 apply_history_path_modifier(StringView text, char modifier) wontthrow
     -> StringView
 {
+  /* e.g. text = "/usr/lib/x.c": the last "/" is at index 8.
+     modifier 'h' gives "/usr/lib" and modifier 't' gives "x.c". */
   if (modifier == 'h' || modifier == 't') {
     for (usize position = text.length; position > 0; position--) {
       if (text[position - 1] != '/') continue;
@@ -1618,6 +1639,9 @@ parse_history_substitution_field(StringView source,
                                  bool      *did_find_delimiter) throws
     -> String
 {
+  /* e.g. source = a\/b/c with delimiter '/' from position 0: the escaped
+     slash adds '/', b is added, and the unescaped slash at 4 ends the field.
+     the field is "a/b" and position is 5. */
   let field = String{allocator};
 
   if (did_find_delimiter != nullptr) *did_find_delimiter = false;
@@ -1680,6 +1704,9 @@ apply_history_substitution(StringView                 text,
   bool  did_replace     = false;
   usize copied_position = 0;
 
+  /* e.g. text = "aXbXc", old_text = "X", replacement = "-", and scope All:
+     the match at 1 gives "a-", the match at 3 gives "a-b-", and the tail
+     "c" gives "a-b-c". */
   if (scope == history_substitution_scope::FirstPerWord) {
     usize word_scan_position = 0;
 
@@ -2264,6 +2291,9 @@ enum class startup_file_requirement : u8
   Explicit,
 };
 
+/* memory: contents is owned by this call and freed when it returns.
+   time:   O(file bytes) for read_entire_file(); run_source() then runs the
+           script, so its cost follows the script contents. */
 static fn
 source_file(const Path              &path,
             EvalContext             &context,
@@ -2651,10 +2681,17 @@ read_apply_file(const Path           &operand_path,
     return None;
   }
 
+  /* at this point: target_path is the canonical path, status describes a
+     regular file, and contents was read between two stat calls that matched. */
   return apply_file_snapshot{operand_path.clone(), target_path.take(), status,
                              contents.take(), operand_location};
 }
 
+/* memory: the replacement temp file holds the new contents on disk until the
+           rename; the defer removes it when this returns.
+   time:   O(replacement bytes + target bytes) for the temp file write and the
+           comparison read of the target; the stat, mode, and rename calls are
+           constant. */
 static fn
 replace_file_contents(const apply_file_snapshot &snapshot,
                       StringView                 replacement,
@@ -2705,6 +2742,9 @@ replace_file_contents(const apply_file_snapshot &snapshot,
     return false;
   }
 
+  /* at this point: the target still holds snapshot.contents, still has the
+     status captured in snapshot, and resolves to the same path.
+     replacement_path holds the new contents with the original mode. */
   if (!os::rename_path(replacement_path->text().view(),
                        snapshot.target_path.view()))
   {
@@ -2757,6 +2797,10 @@ append_applied_fix_label(String &label, diagnostic_id id) throws -> void
   label.push(')');
 }
 
+/* memory: labels and their line strings are heap-allocated and freed when
+           this returns.
+   time:   O(t log t) to sort t tallies, then O(t) for the labels and the output
+           lines. */
 cold static fn
 print_applied_fix_summary(
     ArrayList<applied_fix_tally> &&collected_tallies) throws -> void

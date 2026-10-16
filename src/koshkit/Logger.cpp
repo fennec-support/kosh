@@ -61,6 +61,9 @@ logger_priority_is_valid(StringView priority) wontthrow -> bool
   return LOGGER_SEVERITIES.contains(severity);
 }
 
+/* memory: message holds a copy of the input until the function returns.
+   time:   O(input bytes) to read, copy, and join the message, then one
+           os::write_system_log() call with the whole message. */
 fn
 Logger::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,

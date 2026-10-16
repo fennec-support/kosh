@@ -454,6 +454,10 @@ struct locale_availability_entry
   bool is_available;
 };
 
+/* memory: none. the cache is static thread_local storage of four entries.
+   time:   O(4) per call on a hit. a miss calls os::locale_is_available() and
+           replaces one entry in round-robin order. a locale_name of 48 or more
+           bytes skips the cache. */
 static fn
 locale_is_installed(StringView locale_name) wontthrow -> bool
 {
@@ -529,6 +533,12 @@ utf8_character_length(StringView text, usize position) wontthrow -> usize
   return decode_utf8(text, position, 0xfffd).length;
 }
 
+/* memory: when charset is not glob_charset::Utf8, to_lower_ascii() allocates
+           the result. otherwise result uses allocator, and the returned String
+           frees it. each multibyte code point makes one temporary folded
+           String, freed at the end of its iteration.
+   time:   O(text.length) for the decode loop, plus one
+           os::code_point_to_lower() call per multibyte code point. */
 fn
 lowercase_for_glob(StringView   text,
                    glob_charset charset,
@@ -559,6 +569,8 @@ lowercase_for_glob(StringView   text,
     let folded = String{allocator};
 
     append_utf8(folded, os::code_point_to_lower(decoded.value));
+    /* glob_matches() indexes glob_active by byte offset, so a fold that alters
+       the byte length keeps the original bytes. */
     result.append(folded.length() == decoded.length ? folded.view() : original);
   }
 

@@ -149,6 +149,9 @@ get_mouse_button(const char *text, usize length) wontthrow -> u32
     button = button * 10 + static_cast<u32>(text[index] - '0');
   }
 
+  /* the sgr mouse protocol adds 4 for shift, 8 for meta, and 16 for control to
+     the button code. the mask clears those bits, so codes 64 and 65 match the
+     wheel with modifiers held. */
   return button & ~28U;
 }
 
@@ -416,6 +419,12 @@ LiveView::clip_frame_rows(String                     &frame,
   usize kept_end   = body.length;
   usize row_index  = 0;
 
+  /* e.g. body = "A\nB\nC\nD\nE\n", pinned_row_count = 0, offset = 1, and
+     visible_row_count = 3: total_row_count is 5, so scrolling_row_count is 3
+     and maximum_offset is 2. the first newline at index 1 sets kept_start to 2
+     because row_index 1 equals offset, and the fourth newline at index 7 sets
+     kept_end to 8 because row_index 4 equals offset + 3. the result is
+     "B\nC\nD\n". */
   for (usize index = scroll_start; index < body.length; index++) {
     if (body[index] != '\n') continue;
 
@@ -449,6 +458,10 @@ LiveView::get_default_key_action(live_view_key key) const wontthrow
   return live_view_key_action::Consumed;
 }
 
+/* memory: buffer[512] on the stack. no heap allocation.
+   time: one wait_for_fd_readable() call bounded by wait_nanoseconds, or one
+         sleep when m_has_input is false, then at most one read_fd(). the key
+         loop is O(bytes read). */
 fn
 LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
     -> bool

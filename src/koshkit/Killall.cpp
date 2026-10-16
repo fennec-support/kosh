@@ -27,6 +27,10 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Killall);
 
 namespace koshka::koshkit {
 
+/* memory: the process list from enumerate_processes() is an ArrayList that
+           this call frees on return.
+   time:   O(processes) to enumerate, then one os::signal_process() call per
+           process whose name matches exactly. */
 fn
 Killall::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,

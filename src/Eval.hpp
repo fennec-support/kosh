@@ -1083,6 +1083,9 @@ public:
     return m_aliases.count() != 0;
   }
 
+  /* memory: one String copy of the alias value in heap_allocator(). the caller
+             owns the copy and frees it when the returned Maybe is destroyed.
+     time:   one find() on the alias map, then O(value length) for the copy. */
   fn
   get_alias(StringView name) const throws -> Maybe<String>
   {
@@ -1101,6 +1104,15 @@ public:
     return None;
   }
 
+  /* memory: one heap String per alias and the ArrayList buffer that holds
+             them. the buffer moves into the returned SortedArrayList, and the
+             caller frees it when that list is destroyed.
+     time:   O(n) for the walk over n aliases, O(total value length) for the
+             quoting, and O(n log n) for the sort of the definitions.
+     e.g. aliases = {ll: "ls -l", say: "echo it's"}
+          key=value: ll=ls -l, say=echo it's
+          quoted:    ll='ls -l', say='echo it'\''s'
+          sorted:    ["ll='ls -l'", "say='echo it'\''s'"] */
   fn
   alias_definitions() const throws
       -> SortedArrayList<String, order_comparator<String>>
@@ -1116,6 +1128,9 @@ public:
     return steal(out).make_sorted(sort_order::ascending);
   }
 
+  /* memory: a HashSet in heap_allocator() with one entry per alias. the caller
+             owns the set and frees it on destruction.
+     time:   n insertions into a hash table, each hashing its alias key. */
   fn
   alias_names() const throws -> HashSet
   {
@@ -1825,6 +1840,8 @@ public:
     if (static_cast<usize>(level) > loop_depth)
       level = static_cast<i64>(loop_depth);
     if (level < 1) level = 1;
+    /* at this point: loop_depth is at least 1, and level is in [1,
+       loop_depth]. */
     set(control_flow{
         level, source, String{heap_allocator(), origin},
           location, kind
@@ -2167,9 +2184,11 @@ private:
   ArrayList<String>    m_values{heap_allocator()};
   ArrayList<u32>       m_frame_counts{heap_allocator()};
   bash_argument_frame *m_context{nullptr};
-  bash_argument_frame  m_inherited_context{};
-  String               m_inherited_source_path{heap_allocator()};
-  bool                 m_is_active{false};
+  /* m_context points here after adopt_inherited_context(), so a copy of the
+     stack would hold a pointer into the original object. */
+  bash_argument_frame m_inherited_context{};
+  String              m_inherited_source_path{heap_allocator()};
+  bool                m_is_active{false};
 };
 
 class ScalarVariables
@@ -2343,6 +2362,8 @@ public:
 
     if (!m_table->find(name).has_value()) return;
 
+    /* at this point: name has a variable entry, and find_for_write() returns a
+       slot in a table body this store can write. */
     let &entry = **m_table->find_for_write(name);
     entry.attribute_bits &= static_cast<u8>(~mask);
     m_table->release_if_unused(name, entry);
@@ -2492,6 +2513,10 @@ public:
         });
   }
 
+  /* memory: a StringMap<u8> in m_table->allocator(), returned by value; the
+             caller owns it.
+     time:   O(v), where v is the number of table entries: one walk of the table
+             with a hash lookup in get_bits() for each marked name. */
   fn
   entries() const throws -> StringMap<u8>
   {
@@ -2518,17 +2543,25 @@ public:
         m_positional_params(steal(positional_params))
   {}
 
+  /* memory: append() may reallocate m_field_separators from heap_allocator();
+             the VariableStore owns the buffer.
+     time:   O(value.length) for the bit loop and the copy. */
   fn
   set_field_separators(StringView value) throws -> void
   {
     for (u64 &bits : m_field_separator_bits)
       bits = 0;
 
+    /* e.g. value = " :": 0x20 sets bit 32 and 0x3a sets bit 58 of
+       m_field_separator_bits[0]. */
     for (usize i = 0; i < value.length; i++) {
       let const byte = static_cast<u8>(value.data[i]);
       m_field_separator_bits[byte >> 6] |= u64{1} << (byte & 63);
     }
 
+    /* value can view m_field_separators, so the copy is skipped when both
+       point at the same data. clear() writes a NUL to the first byte, which
+       value would then read. */
     if (value.data != m_field_separators.data()) {
       m_field_separators.clear();
       m_field_separators.append(value);
@@ -3814,8 +3847,10 @@ public:
   }
 
 private:
-  Maybe<usize>                   m_event_number{None};
-  history_recording_mark         m_mark{};
+  Maybe<usize>           m_event_number{None};
+  history_recording_mark m_mark{};
+  /* the stack holds borrowed pointers. the caller of begin_transaction() keeps
+     the commands list alive until the matching end_transaction(). */
   ArrayList<ArrayList<String> *> m_transaction_stack{heap_allocator()};
 };
 
@@ -3840,6 +3875,9 @@ public:
     return m_sources.count();
   }
 
+  /* reserves one slot in m_asts and m_sources so retain() does not allocate.
+     retain() runs after the owned source is allocated, and an allocation
+     failure there would leak the source. */
   fn
   reserve_one_more() throws -> void
   {
@@ -4038,6 +4076,8 @@ public:
     m_line_bases.push(source_line_base{source, preceding_line_count});
   }
 
+  /* time: O(m_line_bases.count()) pointer comparisons per call, no
+     allocation. */
   pure fn
   preceding_line_count_of(const String *source) const wontthrow -> usize
   {

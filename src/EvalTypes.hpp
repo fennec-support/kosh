@@ -373,6 +373,7 @@ public:
   find_for_write(StringView name) throws -> Maybe<variable_entry *>
   {
     if (m_body.is_empty()) return None;
+    /* a miss returns before body() clones a shared body made by share(). */
     if (m_body.has_been_shared() && !find(name).has_value()) {
       return None;
     }
@@ -392,6 +393,8 @@ public:
 
     if (slot != nullptr) return *slot;
 
+    /* the null slot must not stay in index when emplace() throws, because
+       find() returns the stored pointer and its callers dereference it. */
     try {
       slot = table.entries.emplace(table.allocator);
     } catch (...) {
@@ -413,6 +416,7 @@ public:
 
     let &table = body();
 
+    /* pipestatus_entry must not dangle after entries.erase() frees entry. */
     if (&entry == table.pipestatus_entry) table.pipestatus_entry = nullptr;
     table.index.erase(name);
     table.entries.erase(&entry);
@@ -618,6 +622,9 @@ private:
   CopyOnWrite<variable_table_body> m_body;
 
 #if !defined NDEBUG
+  /* memory: none beyond the stack.
+     time:   O(variable count + bytes in all keys, values, and elements) per
+             call. only debug builds call this. */
   pure fn
   debug_checksum() const wontthrow -> u64
   {

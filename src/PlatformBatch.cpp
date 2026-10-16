@@ -322,6 +322,14 @@ find_canonical_operation_positions(
   return has_repeated_request ? unique_operation_count : 0;
 }
 
+/* memory: results grows to m_operations.count() entries and is owned by the
+           caller. m_canonical_positions, m_buckets, and m_optimized_operations
+           belong to this Batch and are cleared on entry. m_optimized_operations
+           is cleared again on exit.
+   time:   O(n) expected for n = m_operations.count() when more than 8 metadata
+           requests exist, and O(8n) below that. execute_batch_operations() runs
+           each unique operation once when deduplication applies, so the syscall
+           count is the unique operation count. no locks. */
 fn
 Batch::execute(ArrayList<batch_result> &results,
                batch_deduplication      deduplication) throws -> void
@@ -365,6 +373,9 @@ Batch::execute(ArrayList<batch_result> &results,
   m_optimized_operations.reserve(unique_operation_count);
 
   for (usize index = 0; index < m_operations.count(); index++) {
+    /* e.g. ops = [stat a, read fd, stat a, stat b], canonical = [0, 1, 0, 3]
+            -> optimized = [stat a, read fd, stat b], canonical = [0, 1, 0,
+       2] */
     let const canonical_position = m_canonical_positions[index];
 
     if (canonical_position != index) {

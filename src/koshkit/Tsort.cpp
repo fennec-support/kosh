@@ -26,6 +26,11 @@ struct tsort_vertex
   bool             is_emitted{false};
 };
 
+/* memory: tokens, vertex_indices, vertices with one outgoing list each,
+           edge_marks, and output use cxt.scratch_allocator(). the allocations
+           stay until that allocator is reset.
+   time:   one vertex_indices lookup per token, then O(vertices + edges) for
+           the deduplication and emission loops. */
 fn
 Tsort::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
@@ -73,6 +78,11 @@ Tsort::execute(const ExecContext               &ec,
     return index;
   };
 
+  /* e.g. tokens = "a b b c a c"
+          the pairs add edges 0 -> 1, 1 -> 2, and 0 -> 2.
+          incoming = [0, 1, 2] and ready = [0].
+          emitting 0 ("a") appends 1 and lowers incoming[2] to 1.
+          emitting 1 ("b") appends 2, so the output is "a", "b", "c". */
   for (usize token_index = 0; token_index < tokens.count(); token_index += 2) {
     let const from = do_vertex_index(tokens[token_index]);
     let const to   = do_vertex_index(tokens[token_index + 1]);

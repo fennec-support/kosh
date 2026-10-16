@@ -161,6 +161,12 @@ private:
     return byte;
   }
 
+  /* e.g. input "x y"\ z followed by a newline:
+       the quoted run adds x y, value = "x y"
+       the backslash escapes the space, value = "x y "
+       z appends, value = "x y z"
+       the newline ends the item and sets m_line_number to 1
+     the result is item "x y z" with line_number 0. */
   fn
   next_quoted(Allocator allocator) throws -> Maybe<xargs_item>
   {
@@ -286,6 +292,12 @@ private:
   bool              m_is_at_end{false};
 };
 
+/* e.g. source = "a{}b{}", needle = "{}", replacement = "X":
+     'a' is copied, position 0 to 1
+     "{}" matches at position 1, "X" is appended, position 1 to 3
+     'b' is copied, position 3 to 4
+     "{}" matches at position 4, "X" is appended, position 4 to 6
+   the loop stops at position 6 and the result is "aXbX". */
 static fn
 append_replaced(String    &output,
                 StringView source,
@@ -408,6 +420,9 @@ Xargs::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: base holds the utility, or echo, followed by the operands.
+     reader takes its input from ec.in_fd or KOSH_STDIN, and the three limits
+     are positive and fit in usize. */
   let   deferred_value       = String{heap_allocator()};
   usize deferred_line_number = 0;
   bool  has_deferred_item    = false;

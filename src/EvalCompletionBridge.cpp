@@ -86,6 +86,13 @@ EvalContext::run_completion_command(StringView command,
   let const text       = output.view();
   usize     line_start = 0;
 
+  /* e.g. text is "a", LF, "b", BS, LF, "c", LF, LF, "d" (9 bytes), where LF
+     is a newline and BS is a backslash.
+          line_start 0: line_end stops at index 1, pushes "a".
+          line_start 2: BS LF does not end the line, so line_end stops at
+                        index 6 and pushes "b", BS, LF, "c".
+          line_start 7: line_end stops at index 7, pushes nothing.
+          line_start 8: line_end reaches index 9 at the end, pushes "d". */
   while (line_start < text.length) {
     usize line_end = line_start;
 
@@ -113,6 +120,12 @@ EvalContext::run_completion_command(StringView command,
   return candidates;
 }
 
+/* memory: COMP_WORDS holds a copy of words until the next call resets it.
+           COMPREPLY is moved into the returned list. call_params moves into
+           the positional parameters and is released when the saved parameters
+           are restored.
+   time:   O(words.count()) to copy words into COMP_WORDS, plus the body
+           evaluation, which runs arbitrary shell code. */
 fn
 EvalContext::run_completion_function(
     StringView               function_name,
@@ -137,6 +150,8 @@ EvalContext::run_completion_function(
 
   if (body == nullptr) return ArrayList<String>{heap_allocator()};
 
+  /* at this point: body is non-null, and body_storage keeps the body alive
+     until this function returns. */
   LOG(Info,
       "running the completion function '%.*s' with %zu words, cursor word %zu",
       static_cast<int>(function_name.length), function_name.data, words.count(),

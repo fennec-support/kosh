@@ -364,6 +364,11 @@ private:
       return m_source_data == source.data && m_source_length == source.count();
     }
 
+    /* memory: m_newline_offsets reserves one slot per newline in source and
+               keeps that capacity after invalidate(). the thread_local cache
+               frees it when its thread exits.
+       time:   O(source length) for count_newlines(), then one more scan of the
+               same length with O(1) work per newline. */
     fn
     build_for(StringView source) throws -> void
     {
@@ -840,6 +845,10 @@ decode_ansi_c_escapes(String &out, StringView body) throws -> void
 {
   usize i = 0;
 
+  /* e.g. body = A\x4Z\101
+       'A' is pushed. \x4 takes one hex digit and pushes 0x04. 'Z' is pushed.
+       \101 takes three octal digits and pushes 'A'.
+       out = "A\x04ZA", where 0x04 is one byte. */
   while (i < body.length) {
     let const c = body[i];
 
@@ -1015,6 +1024,9 @@ append_ansi_c_quoted(String    &out,
 
   usize position = 0;
 
+  /* e.g. text = a\x01'b
+       'a' is copied. 0x01 becomes \001. ' becomes \'. 'b' is copied.
+       out = $'a\001\'b' once the closing quote is appended. */
   while (position < text.length) {
     let const character = text[position];
 

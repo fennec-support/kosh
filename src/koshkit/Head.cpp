@@ -57,6 +57,9 @@ line_prefix_length_dropping_last(StringView text, u64 drop_count) wontthrow
 
   let const keep_count = total_line_count - drop_count;
 
+  /* e.g. text = "a\nb\nc" and drop_count = 1 give total_line_count = 3 and
+     keep_count = 2. the newline at index 3 is the second one, so the function
+     returns 4 and the prefix is "a\nb\n". */
   u64 lines_seen = 0;
 
   for (usize i = 0; i < text.length; i++) {
@@ -173,6 +176,8 @@ read_regular_all_but_last(os::descriptor fd,
     }
   }
 
+  /* at this point: prefix_end is at most file_byte_count, and every block
+     read so far transferred its full byte count. */
   let result      = String{allocator};
   u64 next_offset = 0;
 

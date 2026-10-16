@@ -127,6 +127,9 @@ pure fn
 internal::find_token_bounds(StringView line, usize cursor) wontthrow
     -> token_bounds
 {
+  /* e.g. line = ls "a b" c, cursor = 9. the first pass sets start to 3 at the
+     space after ls, skips the quoted run to index 7, then sets start to 9 at
+     the space at index 8. the second pass finds no boundary, so end = 10. */
   usize start = 0;
   usize i     = 0;
 
@@ -425,6 +428,9 @@ internal::command_segment_start(StringView line, usize cursor)
   usize     open_paren_depth = 0;
   let const limit            = cursor < line.length ? cursor : line.length;
 
+  /* e.g. line = a && (b; c, cursor = 10. the & bytes leave start at 4, ( sets
+     open_paren_depth to 1, and ; sets start to 8 at depth 1, so the result is
+     8. only ) checks open_paren_depth. */
   for (usize k = 0; k < limit; k++) {
     let const c = line[k];
 
@@ -449,6 +455,10 @@ internal::command_segment_start(StringView line, usize cursor)
   return start;
 }
 
+/* memory: name holds one String in heap_allocator(), and each expansion
+           replaces it. the caller owns the returned String.
+   time:   at most 8 find_alias() calls, each followed by a scan of the first
+           word of the expansion. */
 fn
 internal::resolve_completion_alias(StringView   command,
                                    EvalContext &context) throws
@@ -508,6 +518,10 @@ internal::resolve_completion_command(StringView   command,
   return name;
 }
 
+/* memory: one String per word, allocated in completion_allocator(). the words
+           live until COMPLETION_ARENA resets or a mark is released.
+   time:   O(line.length). i only moves forward, so each byte is scanned
+   once. */
 fn
 internal::split_completion_words(StringView line,
                                  usize      cursor,
@@ -536,6 +550,9 @@ internal::split_completion_words(StringView line,
     words.push_managed(line.substring_of_length(start, i - start));
   }
 
+  /* e.g. line = "git  co", cursor = 4, on the blanks. "git" ends at 3 and "co"
+     starts at 5, so neither covers the cursor. words = ["git", "co"], and
+     is_found stays false, so cword = 2 and an empty word is pushed. */
   if (!is_found) {
     cword = words.count();
     words.push_managed();

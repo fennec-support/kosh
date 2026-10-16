@@ -109,6 +109,9 @@ read_docker_heredoc(StringView command) wontthrow -> Maybe<docker_heredoc>
     return None;
   }
 
+  /* e.g. command = <<-"EOF" sh: the '-' at 2 is skipped, the quote at 3 opens,
+     the delimiter is EOF over [4, 7), the quote at 7 closes, and rest is sh, so
+     is_shell_body is false. */
   usize position = 2;
 
   if (command[position] == '-') position++;
@@ -212,6 +215,9 @@ read_docker_json_array(StringView                   line,
 {
   position++;
 
+  /* e.g. line = ["sh", "-c", "exit 0"], position = 0 on the '['.
+     -> "sh" at [2, 4), "-c" at [8, 10), "exit 0" at [14, 20).
+        position 21 is the ']', so the loop returns. */
   while (position < line.length) {
     while (position < line.length &&
            (line[position] == ' ' || line[position] == '\t' ||
@@ -367,6 +373,9 @@ parse_dockerfile_format(const parser_format_input &input,
 
       let const value = directive.substring(6).trim_blanks();
 
+      /* the parser stops at an escape=` directive because a backtick escape
+         alters the continuation character, and the continuation loop accepts
+         only a backslash. */
       if (directive.starts_with("escape") && value.starts_with("=") &&
           value.substring(1).trim_blanks() == "`")
       {

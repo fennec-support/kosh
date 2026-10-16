@@ -512,6 +512,9 @@ static_assert(!std::is_same_v<WarningWithDetails, Warning>);
 static_assert(
     !std::is_same_v<WarningWithLocationAndDetails, WarningWithLocation>);
 
+/* memory: the thrown error copies message, and detail_message when it is
+           set, into heap_allocator() strings that it owns.
+   time:   O(message.length + detail_message.length) for the copies. */
 wontreturn inline fn
 relocate_error(const ErrorBase      &error,
                const SourceLocation &location) throws -> void

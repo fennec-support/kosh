@@ -1042,6 +1042,7 @@ Parser::parse_c_style_for(const SourceLocation &location,
   usize separator_count = 0;
   usize depth           = 0;
 
+  /* e.g. header = "i = (1; 2); i < 3; i++" */
   for (usize i = 0; i < header.length; i++) {
     let const c = header[i];
 
@@ -1062,6 +1063,7 @@ Parser::parse_c_style_for(const SourceLocation &location,
     }
   }
 
+  /* -> separators = [10, 17], separator_count = 2 */
   if (separator_count != 2) {
     throw ErrorWithLocationAndDetails{
         location, "Expected two ';' separators in the C-style for header",

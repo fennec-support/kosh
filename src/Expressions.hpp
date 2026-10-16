@@ -381,6 +381,10 @@ struct analysis_function_table
   fn
   rollback(const analysis_function_mark &mark) throws -> void
   {
+    /* e.g. records = [f#0, f#1, g#2], latest_indices = {f: 1, g: 2}, and
+       mark.definition_count = 1. index 3 erases g, since g#2 has no previous
+       definition. index 2 sets f to 0, the previous definition of f#1. index 1
+       fails the loop test, so f#0 stays the latest definition of f. */
     for (usize index = records.count(); index > mark.definition_count; index--)
     {
       let const &definition = records[index - 1];
@@ -770,6 +774,11 @@ public:
       current_source_effects->array_valued_names.add(name);
   }
 
+  /* memory: when the set insert succeeds, a String copy of name in
+             heap_allocator(), held by scoped_name_insertions until the scope
+             rollback pops it.
+     time:   O(1) average for the set insert and amortized O(1) for push().
+             the String copy costs O(length of name). */
   fn
   add_scoped_name(HashSet &names, StringView name) throws -> void
   {
@@ -929,6 +938,9 @@ public:
 
     if (!definition.first_positional_read.is_empty()) return;
 
+    /* at this point: active_function_definition_index is a live index into
+       functions.records, and first_positional_read is empty, so location is
+       the first positional read of the active function. */
     let spelling = location.get_source_text(source).value_or(name);
 
     definition.first_positional_read =

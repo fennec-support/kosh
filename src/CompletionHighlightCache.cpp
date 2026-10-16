@@ -321,6 +321,10 @@ append_highlighted_range(String                          &output,
     rendered_position = span_end;
   }
 
+  /* e.g. text = "abcdef", range 0..6, spans {1, 4, keyword}, {3, 6, string}.
+     "a" is copied and keyword "bcd" follows, so rendered_position is 4. the
+     second span starts at 3, is clipped to 4, and gives string "ef", so
+     rendered_position is 6. */
   if (rendered_position < range_end)
     output += text.substring_of_length(rendered_position,
                                        range_end - rendered_position);
@@ -366,6 +370,7 @@ split_spans_at_lines(StringView                 source,
                : end;
   };
 
+  /* e.g. source = "ab\ncd", spans = {0, 5, keyword} */
   usize extra_piece_count = 0;
   bool  is_sorted         = true;
 
@@ -383,6 +388,7 @@ split_spans_at_lines(StringView                 source,
     }
   }
 
+  /* -> extra_piece_count is 1 for the piece {3, 5} */
   let const span_count = spans.count();
 
   spans.reserve(span_count + extra_piece_count);
@@ -391,6 +397,7 @@ split_spans_at_lines(StringView                 source,
     spans.push(spans[0]);
   }
 
+  /* -> spans is {0, 5, keyword}, {0, 5, keyword} */
   usize write_position = spans.count();
 
   for (usize index = span_count; index > 0; index--) {
@@ -416,6 +423,7 @@ split_spans_at_lines(StringView                 source,
     }
   }
 
+  /* -> spans is {0, 3, keyword}, {3, 5, keyword}, and is_sorted stays true */
   if (!is_sorted) {
     spans.sort([](const highlight_span &left, const highlight_span &right) {
       return left.start < right.start;
@@ -423,6 +431,13 @@ split_spans_at_lines(StringView                 source,
   }
 }
 
+/* memory: m_pieces and m_line_spans use m_allocator and are freed when the
+           cache is destroyed. a source change replaces m_pieces. each call
+           clears m_line_spans, so its result is valid until the next call.
+   time:   a source change runs scan_highlight_source() over all of source,
+           then split_spans_at_lines(). each call costs O(log m + k), where m
+           is m_pieces.count() and k is the number of pieces that overlap the
+           line. */
 fn
 ShellHighlightCache::spans_for(StringView   source,
                                usize        line_start,
@@ -442,6 +457,9 @@ ShellHighlightCache::spans_for(StringView   source,
     split_spans_at_lines(source, m_pieces);
   }
 
+  /* at this point: m_pieces holds the pieces of m_source sorted by start.
+     no piece has a newline before its last byte. the cache treats an equal
+     data pointer and length as equal bytes. */
   usize first_piece = 0;
   usize piece_limit = m_pieces.count();
 
@@ -527,6 +545,8 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
   let const  line_start = string_line_start;
   let const *first =
       cache.spans_for(source.view(), line_start, source.count(), context);
+  /* first points into m_line_spans, which the next spans_for() call
+     clears. the spans are copied before the repeated call. */
   let expected = ArrayList<highlight_span>{heap_allocator()};
 
   expected.reserve(first->count());

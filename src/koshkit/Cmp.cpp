@@ -125,6 +125,12 @@ append_padded_number(String  &output,
   output += digits.view();
 }
 
+/* memory: each buffered_byte_reader holds a 64 KiB buffer inline, so the two
+           readers occupy 128 KiB of the stack frame. in -l mode, output is
+           printed once it reaches 64 KiB.
+   time:   O(bytes compared). each run of common bytes is checked with
+           memcmp(), then the first mismatch is found byte by byte. a reader
+           is refilled when it has no unread bytes. */
 fn
 Cmp::execute(const ExecContext               &ec,
              EvalContext                     &cxt,

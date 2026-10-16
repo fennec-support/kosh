@@ -37,6 +37,11 @@ format_filesystem_id(u64 value, Allocator allocator) throws -> String
   return text;
 }
 
+/* memory: the mount list comes from os::mounted_filesystems() and is owned by
+           the local mounts. table cells come from scratch_allocator(), and the
+           function does not free them.
+   time:   O(M log M) for the sort over M mounts, plus one stat_filesystem()
+           call per mount when -a is set. */
 fn
 EvilFS::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,

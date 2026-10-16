@@ -37,6 +37,9 @@ constexpr StaticStringMap MARKDOWN_LANGUAGES{MARKDOWN_LANGUAGE_ENTRIES};
 static fn
 markdown_language_of(StringView info) throws -> Maybe<markdown_language>
 {
+  /* e.g. info = "{.bash .numberLines}"
+          the prefix loop strips "{" and ".", and the scan stops at the space
+          after "bash", so the lookup key is "bash". */
   info = info.trim_blanks();
 
   while (!info.is_empty() && (info[0] == '{' || info[0] == '.'))
@@ -125,6 +128,9 @@ is_placeholder_end(StringView line, usize open, usize &close) wontthrow -> bool
     return false;
   }
 
+  /* at this point: line[open] is '<', line[open + 1, position) is a
+     non-empty run of ASCII letters, digits, '_', '-', and '.', and
+     line[position] is '>'. */
   close = position;
 
   return true;
@@ -183,6 +189,12 @@ session_heredoc_delimiter(StringView line) wontthrow -> StringView
   return {};
 }
 
+/* memory: String of end bytes from heap_allocator(), reserved up front and
+           owned by the document after parser_format_add_indented_fragment()
+           takes it.
+   time:   O(end), since the start blank bytes and the pass over [start, end)
+           each touch one byte. called once per shell fence, so a source of
+           N bytes with F shell fences costs at most O(F * N). */
 static fn
 markdown_analysis_source(StringView        source,
                          usize             start,
@@ -237,6 +249,9 @@ markdown_analysis_source(StringView        source,
         heredoc_delimiter = session_heredoc_delimiter(content);
     }
 
+    /* e.g. line = "cp <src> dir" with no session prompt and quote_depth 0.
+            the '<' at 3 closes at the '>' at 7, so "$$" and 3 'x' replace
+            "<src>", and the loop resumes at 8 -> "cp $$xxx dir". */
     for (usize at = 0; at < line.length; at++) {
       let const host_position = line_start + at;
       usize     close         = 0;

@@ -64,6 +64,12 @@ has_multi_digit_positional_expansion(StringView source) wontthrow -> bool
 {
   shell_quote_state state = shell_quote_state::Normal;
 
+  /* e.g. source = '$10' "$10" (11 bytes)
+          byte 0 sets the state to Single, bytes 1 to 3 keep it, and byte 4
+          returns it to Normal
+          byte 6 is a double quote, so the state becomes Double
+          byte 7 is '$' followed by the digits at bytes 8 and 9, so the
+          function returns true */
   for (usize position = 0; position < source.length; position++) {
     let const byte = source[position];
 
@@ -219,6 +225,12 @@ internal::is_single_word_special_parameter(StringView name) wontthrow -> bool
 pure fn
 internal::reference_has_quoted_alternate_word(StringView spec) wontthrow -> bool
 {
+  /* e.g. spec = arr[1]:+"x" (11 bytes)
+          the variable-name loop stops at position 3, the '['
+          the bracket skip stops at the ']' at 5, then position is 6, the ':'
+          the ':' and '+' are consumed, so position is 8, the opening quote
+          the 'x' is inside the quotes, and the quote at 10 sets is_closed
+          position is 11, the end of spec, so the function returns true */
   usize position = 0;
 
   if (!spec.is_empty() && (spec[0] == '@' || spec[0] == '*')) {
@@ -452,6 +464,11 @@ substitution_body_is_bare_echo(StringView body) wontthrow -> bool
   return true;
 }
 
+/* memory: one heap_allocator() String holds the text of a token that has no
+           borrowed view, and it is freed on return.
+   time:   O(A) for A = the total text length of the arguments after the
+           command, since each token is copied at most once and compared
+   once. */
 cold fn
 internal::args_have_stdin_operand(const ArrayList<const Token *> &args)
     throws -> bool
@@ -528,6 +545,13 @@ note_variable_target_operands(AnalysisContext                &actx,
   let is_array_option_value    = false;
   let bare_operand_count       = usize{0};
 
+  /* e.g. args = [read, -a, arr, -r, name], where args[0] is the command
+          -a: a value option, so should_skip_option_value and
+              is_array_option_value are set
+          arr: taken as an operand because is_array_option_value is set, so it
+              is recorded as a ReadInput target
+          -r: an option without a value, so both flags are cleared
+          name: the second bare operand, recorded as a ReadInput target */
   for (usize i = 1; i < args.count(); i++) {
     let const literal = args[i]->kind() == Token::Kind::Word
                             ? static_cast<const tokens::WordToken *>(args[i])
@@ -1707,6 +1731,9 @@ SimpleCommand::append_presence_tested_command_names(
            operand_source == "\"${ZSH_VERSION+set}\"");
     }
 
+    /* a zsh guard tests ${ZSH_VERSION+set} and runs its branch only in zsh, so
+       emulate, setopt, and zmodload are recorded as presence tested and are not
+       reported as unresolved commands. */
     if (option.has_value() && *option == "-n" && is_zsh_presence_operand) {
       names.add("emulate");
       names.add("setopt");

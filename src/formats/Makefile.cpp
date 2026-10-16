@@ -231,6 +231,14 @@ recipe_prefix_source(StringView source) throws -> prefixed_source
   return result;
 }
 
+/* memory: recipe_prefix_source() copies the n source bytes when .RECIPEPREFIX
+           sets a prefix, and that copy is freed on return. each range that adds
+           a fragment stores an analysis source and a shell_source copy in
+           document, which owns them.
+   time:   O(n) for recipe_prefix_source(), collect_shell_moods(), and
+           has_oneshell(). recipe_mood() compares the header words of a range
+           with each of T targets, so the ranges cost O(R * T * h) for R ranges
+           and a header of h bytes. */
 fn
 parse_makefile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void

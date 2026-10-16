@@ -176,6 +176,7 @@ public:
   fn
   flush_spaces() throws -> void
   {
+    /* e.g. m_position = 6, m_pending_space_count = 5, goal = 11 */
     let const goal = m_position + m_pending_space_count;
 
     loop {
@@ -188,6 +189,7 @@ public:
       m_position = next_stop;
     }
 
+    /* -> one tab to column 8, then three spaces to goal = 11 */
     m_output.append_repeated(' ', goal - m_position);
     m_position            = goal;
     m_pending_space_count = 0;
@@ -876,6 +878,7 @@ Pr::execute(const ExecContext               &ec,
       let       column_lengths = ArrayList<usize>{page_allocator};
       usize     row_count      = 0;
 
+      /* e.g. entry_count = 7, effective_column_count = 3 */
       if (effective_column_count > 1 && !FLAG_PR_ACROSS.is_enabled()) {
         usize next_start = 0;
 
@@ -889,6 +892,7 @@ Pr::execute(const ExecContext               &ec,
           next_start += length;
         }
 
+        /* -> column_lengths = [3, 2, 2], column_starts = [0, 3, 5] */
         row_count = column_lengths[0];
       } else {
         row_count =

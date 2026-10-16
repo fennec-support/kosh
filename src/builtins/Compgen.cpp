@@ -109,6 +109,10 @@ compile_filter(StringView   raw_filter,
     position++;
   }
 
+  /* e.g. raw_filter = !a\*&, word = x
+     -> '!' sets is_negated; position starts at 1
+     -> 'a' pushes active; '\' pushes '*' inactive; '&' appends "x" inactive
+     -> pattern = "a*x", active = [1, 0, 0] */
   while (position < raw_filter.length) {
     let const character = raw_filter[position++];
 
@@ -244,6 +248,10 @@ push_table_file_names(compgen_emitter &emitter,
     usize position    = 0;
     usize field_index = 0;
 
+    /* e.g. line = "10.0.0.1 gw gateway # router", mode = FieldsAfterFirst
+       -> body = "10.0.0.1 gw gateway " with the text from '#' dropped
+       -> "10.0.0.1" is field 0 and skipped; "gw" and "gateway" reach
+          push_prefixed() */
     while (position < body.length) {
       while (position < body.length && lexer::is_whitespace(body[position])) {
         position++;
@@ -503,6 +511,9 @@ run_compgen_generators(EvalContext      &cxt,
   }
 }
 
+/* memory: each returned String is a heap_allocator() copy owned by the
+           returned ArrayList. scratch allocations are released before return.
+   time:   O(n) copies for n candidates, on top of the generator cost. */
 fn
 completion::collect_compgen_candidates(EvalContext      &context,
                                        u32               action_mask,
@@ -617,6 +628,9 @@ Compgen::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     action_mask |= compgen_action_bit(*resolved);
   }
 
+  /* at this point: variable_name, when set, is a valid identifier that is
+     not an associative array and not read-only. action_mask holds only the
+     letter flags and the -A action. */
   let const wordlist     = FLAG_COMPGEN_WORDLIST.is_set()
                                ? Maybe<StringView>{FLAG_COMPGEN_WORDLIST.value()}
                                : None;

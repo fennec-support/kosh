@@ -27,6 +27,12 @@ REGISTER_BUILTIN_FLAGS(Fg);
 
 namespace koshka {
 
+/* memory: one temporary String for command and a newline, released after
+           the print call.
+   time: blocks in wait_for_job_processes() until the job exits or stops, so
+         the wait is not bounded. when the shell is interactive, has a
+         controlling terminal, and job->process_group_id is positive, the job's
+         process group holds the controlling terminal during the wait. */
 fn
 Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

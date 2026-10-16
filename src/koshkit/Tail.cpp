@@ -234,6 +234,13 @@ struct positioned_tail_state
   ArrayList<char> buffer{heap_allocator()};
 };
 
+/* memory: batch, results, and operation_states are allocated in allocator
+           and reused for each round. Tail::execute() reserves the state
+           buffers and frees them with states.
+   time:   each round issues one read per unfinished state, of at most
+           TAIL_BLOCK_BYTE_COUNT bytes, and moves scan_offset toward zero.
+           a state runs at most ceil(file_byte_count / TAIL_BLOCK_BYTE_COUNT)
+           rounds and scans at most file_byte_count bytes. */
 static fn
 find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
                           Allocator                         allocator) throws -> void
@@ -310,6 +317,14 @@ find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
   }
 }
 
+/* memory: batch, results, and operation_states are allocated in allocator
+           and reused for each round. Tail::execute() reserves the state
+           buffers and frees them with states.
+   time:   each round issues one read per unfinished state, of at most
+           TAIL_BLOCK_BYTE_COUNT bytes, and moves scan_offset toward
+           file_byte_count. A state runs at most
+           ceil(file_byte_count / TAIL_BLOCK_BYTE_COUNT) rounds and scans at
+           most file_byte_count bytes. */
 static fn
 find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
                             Allocator                         allocator) throws -> void
@@ -874,6 +889,9 @@ Tail::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: active_count is not zero. each active entry either holds an
+     open descriptor, or has descriptor == KOSH_INVALID_FD while it waits for
+     its file to appear. */
   let const do_report_follow_message =
       [&](const String &message) throws -> void {
     do_flush_output();

@@ -250,6 +250,12 @@ parse_sed_script(StringView              script,
 {
   usize position = 0;
 
+  /* e.g. script = "1,$!s/a/b/g":
+       address 1 ends at the ',' at position 1
+       address $ ends at the '!' at position 3, which sets is_negated
+       command s at position 4, pattern "a" from position 6, replacement "b"
+         from position 8, the flag g at position 10 sets is_global
+       commands gets one entry: lines 1 through $, negated, s/a/b/, global */
   while (position < script.length) {
     while (position < script.length &&
            (script[position] == ';' || script[position] == '\n' ||
@@ -544,6 +550,11 @@ append_sed_pattern_space(String    &output,
   if (has_terminating_newline) output += '\n';
 }
 
+/* memory: result is allocated from allocator and moved into line when a
+           replacement is made.
+   time:   at most line.length() + 1 iterations, since each one advances
+           consumed. each iteration runs one regex search from consumed to the
+           end of the line. */
 static fn
 apply_sed_substitution(sed_command &command,
                        String      &line,
@@ -554,6 +565,13 @@ apply_sed_substitution(sed_command &command,
   bool   did_replace                = false;
   bool   did_previous_match_consume = false;
 
+  /* e.g. line = "abc", pattern b*, replacement "-", global:
+       consumed 0: empty match at 0, emit "-", copy "a", consumed 1
+       consumed 1: match "b" at 0, emit "-", consumed 2
+       consumed 2: empty match at 0 right after a non-empty match, copy "c",
+                   consumed 3
+       consumed 3: empty match at the end, emit "-", break
+       result "-a-c-" */
   while (consumed <= line.length()) {
     let const subject = line.view().substring(consumed);
     let const match   = os::execute_regex(

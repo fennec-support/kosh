@@ -85,6 +85,8 @@ Chown::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* -1 leaves an id unchanged, because fchownat() treats (uid_t)-1 and
+     (gid_t)-1 as no change. */
   i64 owner_id = -1;
   i64 group_id = -1;
 

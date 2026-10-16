@@ -276,6 +276,9 @@ public:
 
     let &slot = m_slots[found];
 
+    /* the slot becomes a tombstone, not empty, because probe() stops at the
+       first empty slot. an empty slot would hide later keys of the same
+       chain. */
     slot.key   = String{m_allocator};
     slot.value = make_empty_value();
     slot.set_state(Slot::Tombstone);

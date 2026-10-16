@@ -89,6 +89,10 @@ get_utility_section(koshkit::Utility::Kind kind) wontthrow -> utility_section
   }
 }
 
+/* memory: the help listing and the --list output are allocated in
+           scratch_allocator() and are released when the scratch arena is reset.
+   time:   --assimilate makes one link check and one create_symlink() call per
+           utility, so O(utilities) syscalls. */
 fn
 Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

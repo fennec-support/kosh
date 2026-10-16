@@ -147,6 +147,10 @@ is_special_builtin_name(StringView name) wontthrow -> bool
   return SPECIAL_BUILTINS.contains(name);
 }
 
+/* memory: the static vector and each String in it are owned for the process
+           lifetime. nothing frees them before exit.
+   time:   O(n) for n BUILTIN_ENTRIES on the first call. later calls return the
+           cached vector. */
 fn
 builtin_names() throws -> const ArrayList<String> &
 {
@@ -568,6 +572,8 @@ finish_exit_builtin(const ExecContext &ec,
   LOG(Debug, "%s ending the shell with status %lld", ec.program().c_str(),
       static_cast<long long>(status));
 
+  /* the status is masked to 8 bits because a process exit status keeps only
+     the low 8 bits (exit(3)). */
   if (cxt.in_subshell()) {
     let const masked_status = status & 0xFF;
 
@@ -1066,6 +1072,8 @@ parse_directory_stack_rotation(StringView     arg,
 
   if (parsed.is_error()) return false;
 
+  /* e.g. arg = "-1", ring_count = 4: digits = "1", parsed = 1, number = 1,
+     and index_out = 4 - 1 - 1 = 2. */
   let const number = static_cast<usize>(parsed.value());
 
   if (number >= ring_count) {
@@ -1081,12 +1089,19 @@ parse_directory_stack_rotation(StringView     arg,
   return true;
 }
 
+/* memory: each Path holds a heap copy of its text. the returned Path belongs
+           to the caller, and the other candidate is freed on return.
+   time:   constant. one read_current_directory() call, and when PWD is
+           non-empty and absolute, one is_same_file_as() call, which stats both
+           paths. */
 fn
 logical_working_directory(const EvalContext &cxt) throws -> Path
 {
   let       physical_directory = Path::current_directory();
   let const logical_pwd        = cxt.get_variable_value("PWD");
 
+  /* PWD is an ordinary variable that a user can assign, so it is used only
+     when it refers to the physical current directory. */
   if (logical_pwd.has_value() && !logical_pwd->is_empty() &&
       os::path_is_absolute(logical_pwd->view()))
   {
@@ -1099,6 +1114,12 @@ logical_working_directory(const EvalContext &cxt) throws -> Path
   return physical_directory;
 }
 
+/* memory: out and each abbreviated entry come from cxt.scratch_allocator(),
+           released with the enclosing scratch mark.
+   time:   one logical_working_directory() call, then one
+           abbreviate_home_directory() call per printed entry unless
+           should_print_full_paths is set. the printed entries number
+           stack.count() + 1, or one when selected_index is set. */
 fn
 print_directory_stack(EvalContext       &cxt,
                       const ExecContext &ec,

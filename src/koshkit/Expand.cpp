@@ -35,6 +35,11 @@ Expand::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
+  /* memory: output holds converted text until it reaches OUTPUT_FLUSH_LENGTH
+             bytes. the flush check runs after each line, so output can hold
+             one line past that length.
+     time:   O(b + k * t) for b input bytes, k tabs, and t tab stops, from the
+             scan in get_next_tab_column() for each tab. */
   let tab_stops = ArrayList<usize>{cxt.scratch_allocator()};
 
   if (FLAG_EXPAND_TABS.is_set()) {
@@ -61,6 +66,10 @@ Expand::execute(const ExecContext               &ec,
     usize column   = 0;
     usize position = 0;
 
+    /* e.g. text is "ab\tc\td\te" and tab_stops is [4, 8]. the tab at column 2
+       moves to column 4, the tab at column 5 moves to column 8, and the tab at
+       column 9 has no stop beyond it, so it stays a literal tab.
+       -> output is "ab  c   d\te" */
     while (position < text.length) {
       let const byte = text[position];
 

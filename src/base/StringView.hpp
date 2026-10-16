@@ -56,6 +56,11 @@ load_partial_word(const char *bytes, usize byte_count) wontthrow -> u64
 
   if (byte_count == 0) return 0;
 
+  /* e.g. bytes "abc" with byte_count 3: middle 1, last 2.
+       bytes[0] 'a' = 0x61
+       bytes[1] 'b' << 8 = 0x6200
+       bytes[2] 'c' << 16 = 0x630000
+       -> 0x636261 */
   let const middle = byte_count / 2;
   let const last   = byte_count - 1;
 
@@ -234,6 +239,8 @@ public:
     let const shared_length = length < other.length ? length : other.length;
 
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+    /* bswap64() turns the first 8 bytes into a big-endian word. comparing those
+       words as integers orders the bytes like memcmp(). */
     if (shared_length >= 8) {
       let const left_word = __builtin_bswap64(byte_scan::load_word(data));
       let const right_word =

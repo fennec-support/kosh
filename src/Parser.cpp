@@ -1467,6 +1467,9 @@ Parser::build_file_or_dup_redirection(
         return;
       }
 
+      /* e.g. `2>&3-` gives literal "3-", so is_move is true and
+         descriptor_text is "3". out gets {fd 2, dup_fd 3}, then {fd 3,
+         DUP_FD_CLOSE}. */
       let const is_move =
           literal.count() > 1 && literal.view()[literal.count() - 1] == '-';
       let const descriptor_text =
@@ -2225,6 +2228,12 @@ Parser::parse_simple_command(const Token *leading_token) throws
   unreachable("the simple-command parser loop terminated without returning");
 }
 
+/* memory: FunctionBodyHandle::create() allocates a BumpArena sized from the
+           line length, clamped to a minimum and a maximum. the definition
+           holds the handle, and the arena is freed when the last handle is
+           released.
+   time:   O(L) for the newline scan, where L is the rest of the line from
+           location. the body parse is counted in parse_simple_command(). */
 fn
 Parser::finish_function_body(const SourceLocation &location,
                              StringView            name) throws -> Command *
@@ -2245,6 +2254,9 @@ Parser::finish_function_body(const SourceLocation &location,
   Command  *body                = nullptr;
 
   {
+    /* a failed body drops its pending heredocs. parse_command_list() recovers
+       and keeps lexing with the same lexer, and the lexer consumes pending
+       heredoc lines at the next newline. */
     let const pending_heredoc_count = m_lexer.get_pending_heredoc_count();
 
     m_lexer.set_arena(*body_storage.get_arena(),
@@ -2266,6 +2278,8 @@ Parser::finish_function_body(const SourceLocation &location,
         "Write the body as a brace group, as in `greet() { echo hi; }`"};
   }
 
+  /* at this point: body is non-null and allocated in body_storage's arena,
+     and m_lexer uses previous_arena again for FunctionDefinition. */
   body_storage.set_body(body);
 
   let definition = m_lexer.arena().create<FunctionDefinition>(
@@ -2318,6 +2332,10 @@ Parser::parse_keyword_function_definition() throws -> Command *
   return finish_function_body(location, name.view());
 }
 
+/* memory: heap_allocator() list of the element tokens, returned by value. the
+           caller moves it into an array_builtin_assignment.
+   time:   O(n) for the n tokens consumed by consume_bash_array_elements(). each
+           token is pushed once. */
 fn
 Parser::consume_bash_array_assignment() throws
     -> ArrayList<const Token *>
@@ -2329,6 +2347,9 @@ Parser::consume_bash_array_assignment() throws
 
   ArrayList<const Token *> elements{heap_allocator()};
 
+  /* the flag is cleared on a throw because parse_command_list() recovers and
+     keeps lexing with the same lexer, which would otherwise keep array
+     literal lexing on. */
   m_lexer.set_is_lexing_array_literal(true);
   try {
     consume_bash_array_elements(open, elements);

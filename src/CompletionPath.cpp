@@ -145,6 +145,10 @@ append_ansi_c_control_byte(String &quoted, char byte) throws -> void
   quoted.push(HEX_DIGITS[value & 0x0f]);
 }
 
+/* e.g. text = "it's" followed by byte 0x09 and "x"
+        "$'" opens, then "i" and "t" copy, "'" becomes "\'", "s" copies,
+        0x09 becomes "\t", "x" copies, and "'" closes
+        -> $'it\'s\tx' */
 static fn
 append_ansi_c_quoted(String &quoted, StringView text) throws -> void
 {
@@ -173,6 +177,9 @@ append_ansi_c_quoted(String &quoted, StringView text) throws -> void
   quoted.push('\'');
 }
 
+/* memory: one String in COMPLETION_ARENA through completion_allocator(),
+           returned to the caller. the arena frees it on release or reset.
+   time:   O(candidate.length) for one scan and one copy. */
 fn
 internal::quote_path_candidate(StringView candidate) throws -> String
 {
@@ -200,6 +207,8 @@ internal::quote_path_candidate(StringView candidate) throws -> String
   return quoted;
 }
 
+/* memory: grows candidate, which the caller owns. no other allocation.
+   time:   O(text.length). a control run is scanned once and then skipped. */
 fn
 internal::append_with_quoted_controls(String    &candidate,
                                       StringView text) throws -> void
@@ -271,6 +280,10 @@ append_open_quote_candidate(String    &candidate,
   }
 }
 
+/* e.g. typed = "ab", typed_boundary = 2, candidate = "a'b c"
+        "a" matches, the quote at index 1 is skipped, "b" matches, and
+        typed_position reaches 2
+        -> returns candidate_position 3 */
 static fn
 open_quote_candidate_boundary(StringView typed,
                               usize      typed_boundary,
@@ -298,6 +311,10 @@ open_quote_candidate_boundary(StringView typed,
   return typed_boundary < candidate.length ? typed_boundary : candidate.length;
 }
 
+/* e.g. suffix = "a b/c'd" with should_quote_words set
+        "a b" is quoted to 'a b', and "/" is kept
+        "c'd" is quoted to 'c'"'"'d'
+        -> 'a b'/'c'"'"'d' */
 static fn
 append_candidate_suffix(String    &candidate,
                         StringView suffix,
@@ -428,6 +445,9 @@ internal::rebuild_shell_syntax_candidate(
     return candidate;
   }
 
+  /* at this point: decoded_word.last_quote_character is nonzero, so the word
+     contains a quote. candidate_boundary is at most
+     decoded_candidate.length. */
   let const candidate_boundary = open_quote_candidate_boundary(
       decoded_word.text.view(), decoded_word.last_quote_decoded_start,
       decoded_candidate);
@@ -454,6 +474,10 @@ internal::rebuild_shell_syntax_candidate(
   return candidate;
 }
 
+/* memory: the returned String is allocated in COMPLETION_ARENA through
+           completion_allocator(), and the arena frees it on release or reset.
+   time:   O(value length + directory_part length) for the copies, plus one
+           variable lookup through context.get_variable_value(). */
 static fn
 expand_leading_variable_path(StringView   directory_part,
                              usize        expansion_end,

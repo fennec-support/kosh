@@ -635,6 +635,12 @@ enum class source_visit_result : u8
   Interrupted,
 };
 
+/* memory: one source_read_result per source comes from allocator. the content
+           of each source is a heap_allocator() String, which is freed when the
+           source is visited or fails.
+   time:   O(total chunk bytes) to append chunks. the visit loop advances
+           next_source_index only forward, so it takes O(sources) steps in all,
+           plus one check per read_next() call. */
 template <class Visit>
 fn
 visit_ordered_sources(const ExecContext           &ec,
@@ -673,6 +679,10 @@ visit_ordered_sources(const ExecContext           &ec,
       result.content->append(chunk.content);
     }
 
+    /* e.g. sources = [a, b, c]. a call to read_next() completes source 1 first,
+            so next_source_index stays 0 and nothing is visited. a later call
+            completes source 0, so the loop visits 0 and 1, then stops at 2
+            because results[2] is still pending. */
     while (next_source_index < results.count() &&
            results[next_source_index].completion ==
                source_completion_state::Complete)

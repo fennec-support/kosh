@@ -40,6 +40,12 @@ enum class realpath_mode : u8
   Missing,
 };
 
+/* memory: candidate, spliced, remaining, and resolved are allocated in
+           allocator and freed when allocator is released. each component other
+           than . and .. allocates one candidate Path.
+   time:   one canonical_path() call per component until the first missing
+           component. at most MAXIMUM_LINK_COUNT link splices, and each splice
+           adds the components of its target to the walk. */
 static fn
 resolve_with_missing_components(StringView    operand,
                                 realpath_mode mode,
@@ -126,7 +132,8 @@ resolve_with_missing_components(StringView    operand,
         }
 
         remaining = steal(spliced);
-        position  = 0;
+        /* -> remaining = "../v/x//c", position = 0, resolved = "/w" */
+        position = 0;
         continue;
       }
 

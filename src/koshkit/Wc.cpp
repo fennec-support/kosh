@@ -148,6 +148,8 @@ count_newlines(StringView content) wontthrow -> u64
   while (byte_position + LANE_COUNT <= content.length) {
     byte_vector lane_counts = {};
 
+    /* each byte lane of lane_counts wraps modulo 256, so at most 255 rounds
+       keep every lane count exact before the lane words are summed. */
     for (usize round_count = 0; round_count < MAXIMUM_ROUND_COUNT &&
                                 byte_position + LANE_COUNT <= content.length;
          round_count++)
@@ -272,6 +274,12 @@ append_counts(String            &line,
   line += '\n';
 }
 
+/* memory: scratch allocations for the source states, the read lists, the
+           reader chunks, the rows, and the output text, all in the expansion
+           scratch arena. they are freed when that arena is released.
+   time:   O(sources) for the opens and size probes. O(total bytes) for the
+           streamed counts, one pass per enabled count. a seekable regular
+           file counted by bytes alone is sized, not read. */
 fn
 Wc::execute(const ExecContext               &ec,
             EvalContext                     &cxt,

@@ -216,6 +216,12 @@ struct id_name_cache
   ArrayList<id_name_entry> gid_cache;
 };
 
+/* memory: a miss pushes one id_name_entry onto cache and allocates its name in
+           allocator. the cache keeps every entry until its id_name_cache is
+           destroyed.
+   time:   O(k) for the linear scan, where k is the number of cached ids of
+           the same kind. a miss calls os::uid_to_username() or
+           os::gid_to_groupname() once, which may read the account database. */
 static fn
 cached_id_name(u32            id,
                id_name_kind   kind,
@@ -424,6 +430,12 @@ prepare_entries(ArrayList<listing_entry> entries,
       options.is_reversed ? sort_order::descending : sort_order::ascending});
 }
 
+/* memory: the returned list and its entries are allocated in allocator and
+           owned by the caller.
+   time:   one directory read by os::list_directory_status() or
+           Path::read_directory_typed(), then O(n) work over n children and
+           O(n log n) comparisons in prepare_entries() for the sort. with color
+           on, prepare_entries() adds one batched stat per symlink child. */
 static fn
 collect_directory(const Path            &directory,
                   const listing_options &options,
@@ -612,6 +624,11 @@ column_width(const ArrayList<usize> &widths,
   return widest;
 }
 
+/* memory: cells and column_widths hold one element per entry and per column,
+           allocated in allocator. the rendered rows are appended to output.
+   time:   the fit loop runs at most max_columns times, and each run visits
+           about count entries through column_width(), so O(count * max_columns)
+           with max_columns at most count. */
 static fn
 render_columns(const ArrayList<listing_entry> &entries,
                const listing_options          &options,
@@ -645,6 +662,8 @@ render_columns(const ArrayList<listing_entry> &entries,
     widths.push(decorated_width(entry, options));
   }
 
+  /* at this point: count is at least 1, so widths.front() is valid, and cells
+     and widths hold one element for each entry. */
   const usize terminal_width = options.terminal_dimensions->columns;
 
   usize shortest_name_length = widths.front();
@@ -659,6 +678,14 @@ render_columns(const ArrayList<listing_entry> &entries,
   let const max_columns  = bounded_columns == 0 ? 1 : bounded_columns;
   usize     best_columns = 1;
 
+  /* e.g. widths = [3, 5, 2, 4, 6], terminal_width = 20. shortest_name_length
+     is 2, so max_columns = 20 / (2 + 2) = 5.
+     columns = 5: rows = 1, column widths sum to 20, gaps add 4 * 2, total = 28.
+     columns = 4: rows = 2, column widths are 5, 4, 6, 0, gaps add 3 * 2,
+                  total = 21 > 20.
+     columns = 3: rows = 2, column widths are 5, 4, 6, gaps add 2 * 2,
+                  total = 19 <= 20, so best_columns = 3.
+     row 0 holds indices 0, 2, 4 and row 1 holds indices 1, 3. */
   for (usize columns = max_columns;; columns--) {
     let const rows  = (count + columns - 1) / columns;
     usize     total = 0;
@@ -832,6 +859,12 @@ struct ls_run
   bool               has_printed_block{false};
 };
 
+/* memory: each block allocates its entries in allocator. run.output grows with
+           every rendered row.
+   time:   one collect_directory() call per reached directory, so each entry
+           under the operand is listed once. with -L, the recursion stops at
+           max_depth. with --one-file-system and no loaded status, one stat per
+           directory child. */
 static fn
 render_directory_block(StringView             directory,
                        const listing_options &options,
@@ -914,6 +947,12 @@ resolve_depth_limit(const ExecContext &ec,
   return true;
 }
 
+/* memory: operands, statuses, and entries are allocated in the scratch
+           allocator. run.output holds the whole listing until one
+           ec.print_to_stdout() call writes it.
+   time:   one lstat per operand, one stat per symlink operand, then one
+           collect_directory() call per directory operand and per subdirectory
+           reached with -R or --tree. */
 fn
 LS::execute(const ExecContext               &ec,
             EvalContext                     &cxt,

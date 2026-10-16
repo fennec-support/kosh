@@ -171,6 +171,10 @@ append_ata_smart_statistics(StringView report,
 
     if (!has_metadata) continue;
 
+    /* e.g. "5 Reallocated_Sector_Ct 0x0033 100 100 010 Pre-fail Always - 0"
+       -> attribute_id = "5" finds "reallocated". the label word is skipped,
+          the seven words from "0x0033" to "-" pass the metadata check, and
+          value = "0", which is not a nonzero counter. */
     let const value = line.next_ascii_whitespace_word(word_position);
 
     append_smart_statistic(statistics, warning_statistics, *field, value);

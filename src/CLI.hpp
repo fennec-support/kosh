@@ -709,6 +709,9 @@ struct rolling_history
     return timestamps.back();
   }
 
+  /* memory: none. remove() moves elements inside the existing buffers.
+     time: O(k * n) for k removed samples and n samples, because each remove()
+           moves the tail of both lists. */
   fn
   trim(u64 window_start_nanoseconds) throws -> void
   {
@@ -721,6 +724,9 @@ struct rolling_history
     }
   }
 
+  /* memory: none.
+     time: O(n) in the worst case for n samples, a linear scan from index 0
+           that stops at the first sample after window_start_nanoseconds. */
   pure fn
   get_boundary(u64 window_start_nanoseconds) const wontthrow
       -> rolling_window_boundary
@@ -730,6 +736,9 @@ struct rolling_history
 
     usize before = 0;
 
+    /* e.g. timestamps = [100, 200, 300] and window_start = 250. before starts
+       at 0; timestamps[1] = 200 <= 250 advances it to 1, and timestamps[2] =
+       300 > 250 stops the loop. the result is {1, 2, 250}. */
     while (before + 1 < timestamps.count() &&
            timestamps[before + 1] <= window_start_nanoseconds)
     {
@@ -755,9 +764,14 @@ struct rolling_history
     if (boundary.timestamp >= after_timestamp) return after_value;
     if (after_timestamp <= before_timestamp) return before_value;
 
+    /* e.g. boundary = {1, 2, 250}, before_value = 10, after_value = 30: the
+       timestamps are 200 and 300, so elapsed = 100 and passed = 50. the result
+       is 10 + (30 - 10) * 50 / 100 = 20. */
     let const elapsed = after_timestamp - before_timestamp;
     let const passed  = boundary.timestamp - before_timestamp;
 
+    /* the product of the value difference and passed nanoseconds can exceed
+       u64, so the multiplication runs in u128. */
     return before_value +
            static_cast<u64>(static_cast<u128>(after_value - before_value) *
                             passed / elapsed);

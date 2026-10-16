@@ -58,6 +58,10 @@ More::execute(const ExecContext               &ec,
       return 1;
     }
 
+    /* e.g. tags = "main\tsrc/Main.cpp\t12\n", FLAG_MORE_TAG = main
+            line = "main\tsrc/Main.cpp\t12", first_tab = 4 matches the tag
+            after_name = "src/Main.cpp\t12", second_tab = 12
+            tagged_source = "src/Main.cpp", tagged_line_number = 12 */
     usize position = 0;
 
     while (position < tags->length()) {

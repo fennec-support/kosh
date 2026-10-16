@@ -1180,6 +1180,10 @@ advance_yarn(scene_state &scene, f64 step_seconds) wontthrow -> void
   }
 }
 
+/* memory: none. the step writes only into scene.
+   time:   O(cat_count^2) for meet_cats() and O(cat_count) for advance_cat(),
+           plus fixed-count loops over particles, explosions, and shooting
+           stars. A step costs O(1) because cat_count <= MAXIMUM_CAT_COUNT. */
 fn
 advance_scene(scene_state &scene, f64 step_seconds) wontthrow -> void
 {
@@ -1397,6 +1401,8 @@ shade_color(u8 color, i32 step_count) wontthrow -> u8
     return shaded < 0 ? 0 : shaded > 5 ? 5 : shaded;
   };
 
+  /* e.g. color = 208, step_count = 1: cube_index = 192 is channels (5, 2, 0),
+     which shade to (5, 3, 1) and encode to 215. */
   return static_cast<u8>(16 + (36 * do_shade(cube_index / 36)) +
                          (6 * do_shade((cube_index / 6) % 6)) +
                          do_shade(cube_index % 6));
@@ -1678,6 +1684,9 @@ draw_particles(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
   }
 }
 
+/* memory: text is a String in allocator and is freed on return. it holds
+           at most 11 bytes, "speed 10.0x", so the cost is constant.
+   time:   O(1). */
 fn
 draw_notice(scene_canvas      &canvas,
             const scene_state &scene,
@@ -1731,6 +1740,12 @@ append_colors(String &frame,
   }
 }
 
+/* memory: canvas holds three ArrayList buffers of cell_count entries each,
+           where pixels has 2 * cell_count entries. the destructor frees
+           them on return. frame grows by the appended text.
+   time:   O(cell_count), with cell_count = column_count * row_count, in the
+           starfield, fill, and output loops. cats, explosions, and particles
+           add work bounded by their fixed counts. */
 fn
 render_scene(String      &frame,
              scene_state &scene,
@@ -1840,6 +1855,11 @@ render_scene(String      &frame,
   }
 }
 
+/* memory: text is a String in allocator with at most 7 lines of 28 glyphs,
+           freed on return. is_filled is a stack array of 12 * 28 bools.
+   time:   constant. the stamps and the encode loop visit at most
+           CAT_PIXEL_HEIGHT * CAT_PIXEL_WIDTH cells. print_to_stdout() is
+           called once. */
 fn
 print_still_cat(const ExecContext   &ec,
                 const cat_breed_art &art,
@@ -1904,6 +1924,14 @@ Meow::execute(const ExecContext               &ec,
               const ArrayList<String>         &args,
               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
+  /* memory: the scene and parsed options live on the stack. error messages
+             use cxt.scratch_allocator(). each frame is allocated in the
+             frame arena of run_live_view(), which releases it after the
+             frame is written.
+     time:   one render_scene() call per refresh, at most frames_per_second
+             refreshes each second plus one per redraw key. the loop ends on
+             a quit key or an interrupt. a non-terminal output calls
+             print_still_cat() once and returns. */
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
@@ -1985,6 +2013,9 @@ Meow::execute(const ExecContext               &ec,
     return 0;
   }
 
+  /* at this point: the output descriptor is a terminal, frames_per_second is
+     1 to 240, speed is 0.1 to 10, and cat_count is 1 to 8, which fits in
+     scene_state::cats. */
   live_view_options options{};
 
   options.title                    = "meow";

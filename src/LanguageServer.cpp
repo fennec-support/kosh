@@ -681,6 +681,8 @@ Server::change_document(const JsonValue *params) throws -> Document *
     return nullptr;
   }
 
+  /* textDocumentSync is 1 (full), so each content change carries the whole
+     document. the last entry therefore holds the current text. */
   let const text = string_field(changes->array.back(), "text");
 
   if (!text.has_value()) return nullptr;
@@ -689,6 +691,9 @@ Server::change_document(const JsonValue *params) throws -> Document *
 
   if (document == nullptr) return nullptr;
 
+  /* spans_for() identifies its source by data pointer and length only. an
+     edit with the same pointer and length would otherwise return spans from
+     a different text. */
   m_highlight_cache = completion::ShellHighlightCache{heap_allocator()};
 
   return document;
@@ -1015,6 +1020,9 @@ Server::validate_all(Document *changed_document) throws -> bool
 
   if (!publish_auxiliary_diagnostics()) return false;
 
+  /* a client keeps the last diagnostics published for a uri until a new
+     publish replaces them. each uri in m_published_uris that is absent from
+     m_round_uris receives an empty list through this callback. */
   let const do_retire = [this](StringView uri) throws -> bool {
     return send_empty_diagnostics(uri);
   };
@@ -1025,6 +1033,13 @@ Server::validate_all(Document *changed_document) throws -> bool
   return true;
 }
 
+/* memory: the copied identifier lists, the sorted function list, and the
+           response strings use heap_allocator() and are freed at return.
+           the response is passed to send_result().
+   time:   O(v + f) to copy the identifier views, where v is the variable count
+           and f the function count. sorting the function list is O(f log f).
+           the candidate loop does a fixed number of lookups for each of the
+           c candidates. completion::complete() is not counted here. */
 fn
 Server::complete(const JsonValue *id, const JsonValue *params) throws
     -> bool
@@ -1042,6 +1057,8 @@ Server::complete(const JsonValue *id, const JsonValue *params) throws
   let const fragment_index = document->fragment_at(*cursor);
 
   if (!fragment_index.has_value()) return send_result(id, "[]");
+  /* at this point: document is non-null, *cursor is a byte offset inside the
+     document, and fragment_index selects the fragment that holds the cursor. */
   if (document->format.is_host_format)
     document->mood = document->format.fragments[*fragment_index].mood;
   select_document_mood(*document);
@@ -1317,6 +1334,9 @@ Server::code_actions(const JsonValue *id,
     if (range_end < range_start) return send_result(id, "[]");
   }
 
+  /* at this point: document is non-null, and range_start is not greater than
+     range_end. both offsets come from byte_position() or span the whole
+     normalized source. */
   bool       should_include_quick_fixes = m_client.has_quick_fixes;
   bool       should_include_fix_all     = m_client.has_fix_all;
   let const *context = params != nullptr ? params->get("context") : nullptr;
@@ -1347,6 +1367,10 @@ Server::code_actions(const JsonValue *id,
   let const *context_diagnostics =
       context != nullptr ? context->get("diagnostics") : nullptr;
 
+  /* the client echoes the data object that append_diagnostic() attaches. the
+     documentVersion and diagnosticRevision fields reject data from another
+     revision, so diagnostic_index selects the same entry in
+     document->diagnostics. */
   let const do_associated_diagnostic =
       [&](usize                    diagnostic_index,
           const source_diagnostic &diagnostic) wontthrow -> const JsonValue * {
@@ -1784,6 +1808,9 @@ Server::collect_rename_spans(const Document         &document,
 
         if (variable_name_of(text) != name) return true;
 
+        /* e.g. text = "${count}" and span.start = 10. variable_name_start_of()
+           returns 2, so name_start = 12 and the span is [12, 17), which leaves
+           out the sigil and the braces. */
         let const name_start = span.start + variable_name_start_of(text);
 
         out_spans.push(
@@ -1873,6 +1900,9 @@ Server::rename(const JsonValue *id, const JsonValue *params) throws
 
   collect_rename_spans(*document, *kind, name, spans);
 
+  /* the workspace edit addresses only this document, so a command is renamed
+     only when this document defines it. call sites in other documents would
+     stay unchanged. */
   if (!is_variable && !spans_hold_definition(spans)) {
     return send_error(id, REQUEST_FAILED_ERROR,
                       "This command is not defined in this document.");
@@ -1961,6 +1991,8 @@ document_outline(const Document &document) throws
                                is_name_verbatim ? name_end : end});
   }
 
+  /* e.g. start..end ranges [y 4..6, f 0..20, x 4..9] sort to
+     [f 0..20, x 4..9, y 4..6]: the tie at start 4 puts the longer x first. */
   return steal(entries).make_sorted(sort_order::ascending);
 }
 
@@ -2248,6 +2280,8 @@ clipped_line_span(StringView text,
     position++;
   }
 
+  /* e.g. text = "a\nb\nc", line_limit = 2: position = 3, so the kept
+     text is "a\nb", and dropped_line_count is 1. */
   if (position + 1 >= text.length) return text;
 
   for (usize scan = position; scan < text.length; scan++) {
@@ -2257,6 +2291,8 @@ clipped_line_span(StringView text,
   return text.substring_of_length(0, position);
 }
 
+/* latest position first, so front() is the nearest assignment to the symbol,
+   as variable_hover_text() requires. */
 struct reaching_assignment_comparator
 {
   pure fn
@@ -2286,6 +2322,8 @@ assignments_reaching(const Document        &document,
     }
   }
 
+  /* e.g. symbol.start = 8 and assignments at positions 3, 10, and 7: position
+     10 is skipped, and the sorted result is [7, 3]. */
   return steal(reaching).make_sorted(reaching_assignment_comparator{});
 }
 
@@ -2309,6 +2347,11 @@ function_body_for(const Document        &document,
   return nearest;
 }
 
+/* memory: headline and text use heap_allocator(); text is returned to the
+           caller. the headline is freed when this function returns.
+   time:   O(k * L) for k <= 9 assignments (the nearest and up to 8 earlier
+           ones), with L the length of each assignment line up to its
+   newline. */
 fn
 Server::variable_hover_text(const Document &document,
                             const ArrayList<const variable_assignment_record *>
@@ -2558,6 +2601,8 @@ Server::hover(const JsonValue *id, const JsonValue *params) throws
 
   if (!information.has_value()) return send_result(id, "null");
 
+  /* at this point: information is non-empty, and document does not define
+     symbol. */
   let text = String{heap_allocator()};
 
   append_hover_block(text, information->view(), m_client.has_markdown_hover,

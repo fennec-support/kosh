@@ -98,7 +98,10 @@ struct batch_operation
   static fn
   exists(const Path &&path) wontthrow -> batch_operation = delete;
 
-  u64   request_id{0};
+  u64 request_id{0};
+  /* lstat_at() stores its directory descriptor in byte_offset, since the union
+     members already hold the name and status. the static_assert below keeps
+     batch_operation at 48 bytes on 64-bit targets. */
   u64   byte_offset{0};
   usize byte_count{0};
 

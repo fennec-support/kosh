@@ -521,6 +521,12 @@ find_flag(const FlagList &flags,
   return match;
 }
 
+/* memory: 128 pointers on the stack. when args has more than 128 entries,
+           overflow_arguments holds one pointer per entry, freed on return.
+           the returned operands are allocated in allocator and owned by the
+           caller.
+   time:   O(args.count()) to collect the argument pointers, then one
+           parse_flags() call. */
 fn
 parse_flags_vec(const FlagList                  &flags,
                 const ArrayList<String>         &args,
@@ -553,6 +559,9 @@ parse_flags_vec(const FlagList                  &flags,
       local_arguments[index] = args[index].c_str();
   }
 
+  /* at this point: argument_data holds args.count() pointers into the strings
+     of args. overflow_arguments owns the storage when args has more than 128
+     entries. both live until the function returns. */
   try {
     return parse_flags(flags, static_cast<int>(args.count()), argument_data,
                        base_position, operand_value_flag, arg_locations,
@@ -633,6 +642,9 @@ argument_location(const char *const               *argv,
 
   usize caret_offset = 0;
 
+  /* e.g. argv = {"kosh", "a b", "-x"}, argument_index = 2: "kosh" adds 4 + 1,
+          "'a b'" adds 5 + 1, so caret_offset is 11, the column of "-x" in
+          the joined command line kosh 'a b' -x. */
   for (usize prior_index = 0; prior_index < argument_index; prior_index++)
     caret_offset += shell_quoted_arg_length(StringView{argv[prior_index]}) + 1;
 
@@ -1250,6 +1262,8 @@ append_shell_quoted_arg(String    &out,
 
   out.push('\'');
 
+  /* e.g. arg = it's: the loop appends i and t, then '\'' for the apostrophe,
+          then s. with the opening and closing quotes, out is 'it'\''s'. */
   for (usize i = 0; i < arg.length; i++) {
     if (arg[i] == '\'')
       out += "'\\''";
@@ -1438,6 +1452,10 @@ make_synopsis(StringView program_name, const SynopsisList &lines) throws
   return s;
 }
 
+/* memory: the returned String is allocated in heap_allocator() and owned by
+           the caller.
+   time:   O(text.length) for the scan, plus O(indent) for each output line.
+           each word is appended once. */
 cold fn
 wrap_text(StringView          text,
           usize               indent,
@@ -1451,6 +1469,10 @@ wrap_text(StringView          text,
   usize word_start      = 0;
   bool  is_line_started = false;
 
+  /* e.g. text = "aa bbb cccc", indent = 2, width = 8, no continuation indent,
+          so text_width is 6. "bbb" fits since 2 + 1 + 3 is not over 6. "cccc"
+          needs 6 + 1 + 4 = 11 and wraps to column 2, giving the lines
+          "  aa bbb" and "  cccc". */
   for (usize i = 0; i <= text.length; i++) {
     let const is_at_end = i == text.length;
 
@@ -1595,6 +1617,11 @@ ReportTable::add_field_row(StringView name,
   m_grid_rows.push(steal(row));
 }
 
+/* memory: widths is allocated in columns.allocator() and freed on return. the
+           header copies its headings into a temporary row. output grows in the
+           caller's String.
+   time:   O(rows * column_count) cell measurements for the widths, and the same
+           again for the output pass. each measurement is O(text length). */
 static fn
 append_report_grid(String                                        &output,
                    const ArrayList<report_table_column>          &columns,
@@ -1801,6 +1828,9 @@ append_report_name_section(String                      &output,
   output += '\n';
 }
 
+/* memory: heap String returned to the caller. each line is appended once.
+   time:   O(text.length). each line is scanned for its end and again for the
+           heading check. */
 fn
 format_cli_help(StringView text, bool should_color) throws -> String
 {
@@ -1884,6 +1914,9 @@ write_screen_frame(const ExecContext &ec,
                    u32                row_count,
                    Allocator          allocator) throws -> void
 {
+  /* when row_count is above 1, at most row_count - 1 lines are written, so
+     the newline after the last line does not scroll the screen. the same row
+     is reserved by clip_frame_rows() in CLILive.cpp. */
   let const kept_line_count = row_count > 1 ? usize{row_count} - 1 : SIZE_MAX;
   let       screen          = String{allocator};
   usize     position        = 0;
@@ -1980,6 +2013,11 @@ rolling_window_start(u64 now_nanoseconds, u64 window_nanoseconds)
              : 0;
 }
 
+/* memory: the returned String is allocated on heap_allocator() and owned by
+           the caller. flag_name, flag_value, and description_text are freed at
+           the end of each flag.
+   time:   O(8 * n + d) for n flags and d description bytes. the section loop
+           checks each flag once per section, and each flag is rendered once. */
 cold fn
 make_flag_help(const FlagList &flags, bool should_color) throws
     -> String

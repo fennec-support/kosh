@@ -1023,6 +1023,10 @@ literal_run_matches_at(const Word &case_word,
   return true;
 }
 
+/* memory: none. the function allocates nothing.
+   time:   O(pattern.length * run_bytes), where run_bytes is the total text of
+           the literal runs left between the stripped prefix and suffix. each
+           run tries every start from front to back. */
 pure fn
 case_pattern_can_match_word(const Word &case_word, StringView pattern) wontthrow
     -> bool
@@ -1053,6 +1057,9 @@ case_pattern_can_match_word(const Word &case_word, StringView pattern) wontthrow
     last--;
   }
 
+  /* e.g. segments = [$x, mid, $y], pattern = zzmidyy. the prefix and suffix
+     are empty, so front = 0 and back = 7. the run mid (length 3) fails at
+     positions 0 and 1, then matches at position 2, so front = 5. */
   usize at = first;
 
   while (at < last) {

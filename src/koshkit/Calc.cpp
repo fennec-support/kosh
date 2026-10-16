@@ -353,6 +353,9 @@ Calc::execute(const ExecContext               &ec,
     expression += operands[i].view();
   }
 
+  /* the joined operands can differ from the source text, such as when the
+     source has several spaces between operands. then expression_base stays
+     unset and errors use the joined expression. */
   Maybe<SourceLocation> expression_base;
 
   if (operand_locations.count() == operands.count() &&

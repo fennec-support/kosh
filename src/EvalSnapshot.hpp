@@ -106,6 +106,10 @@ inline constexpr compgen_action LETTER_COMPGEN_ACTIONS[] = {
 inline constexpr usize LETTER_COMPGEN_ACTION_COUNT =
     sizeof(LETTER_COMPGEN_ACTIONS) / sizeof(LETTER_COMPGEN_ACTIONS[0]);
 
+/* e.g. is_action_enabled = {true, false, true, false, ...}
+   -> LETTER_COMPGEN_ACTIONS[0] is Alias, compgen_action_bit() gives 0x1,
+      LETTER_COMPGEN_ACTIONS[2] is Command, compgen_action_bit() gives 0x10,
+      and the returned mask is 0x11 */
 inline constexpr pure fn
 compgen_letter_action_mask(
     const bool (&is_action_enabled)[LETTER_COMPGEN_ACTION_COUNT])

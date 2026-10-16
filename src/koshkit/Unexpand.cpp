@@ -28,6 +28,11 @@ append_unexpanded_blanks(String                 &output,
                          const ArrayList<usize> &tab_stops) throws
     -> void
 {
+  /* e.g. start_column = 3, end_column = 10, and tab_stops is empty
+          the next tab column from 3 is 8, which is within end_column, so
+          '\t' is emitted and column = 8.
+          the next tab column from 8 is 16, which is past end_column, so
+          ' ' is emitted twice and column = 10. output = "\t  ". */
   usize column = start_column;
 
   while (column < end_column) {

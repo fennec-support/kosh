@@ -54,6 +54,11 @@ find_pipe_overriding_redirection(const SimpleCommand *stage,
   return nullptr;
 }
 
+/* memory: String buffers for token text in each stage pair and flag scan,
+           released when their block ends.
+   time:   O(args + redirections) across all stages for the pipe checks,
+           since each adjacent pair scans its two stages. the analyze() calls
+           on the stages are not included. */
 fn
 Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
@@ -163,6 +168,8 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
       continue;
     }
 
+    /* at this point: stage and next are simple commands with at least one
+       argument each, and stage_name and next_name hold values. */
     let const is_next_user_command =
         actx.functions.defined.contains(*next_name) ||
         actx.functions.aliases.contains(*next_name);
@@ -270,6 +277,9 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
     }
   }
 
+  /* the Pipeline analysis scope neither saves nor restores
+     constant_variables, so a constant recorded inside a multi-stage pipeline
+     stage would stay visible after the pipeline. */
   if (m_commands.count() > 1) actx.constant_variables.clear();
 }
 
@@ -725,6 +735,9 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
         steal(conditional_chain_entry_generated_paths);
   }
 
+  /* a condition that sets should_retain_tested_command_names keeps
+     actx.tested_command_names after this list returns. IfClause::analyze()
+     uses them to build the set that holds when the condition fails. */
   if (!actx.walk.should_retain_tested_command_names)
     actx.tested_command_names = steal(saved_tested_command_names);
 }

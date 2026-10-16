@@ -276,6 +276,9 @@ extract_sort_key(StringView            line,
                  const sort_settings  &settings,
                  const sort_modifiers &modifiers) wontthrow -> StringView
 {
+  /* e.g. line = "  ab  cdef", key = 2.2,2. find_sort_field_start() returns 4,
+     the blank before "cdef". start = 4 + 2 - 1 = 5. find_sort_field_end() of
+     field 2 returns 10, so the key is line[5..10) = " cdef". */
   usize start = find_sort_field_start(line, key.start_field, settings);
 
   if (modifiers.is_start_blank_skipping) start = skip_sort_blanks(line, start);

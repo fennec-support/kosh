@@ -77,6 +77,9 @@ public:
     assign_copy(allocator, initial);
   }
 
+  /* memory: suffix.length + 1 bytes from allocator. release() frees them only
+             when allocator is the heap allocator.
+     time:   O(suffix.length) for memcpy(). */
   SegmentText(Allocator  allocator,
               char       prefix,
               StringView suffix) throws
@@ -139,6 +142,10 @@ public:
     return *this;
   }
 
+  /* memory: source.length bytes from allocator. release() frees them when
+             allocator is the heap allocator, and an arena owns them. the old
+             buffer is freed after the copy.
+     time:   O(source.length) for memcpy(). */
   fn
   assign_copy(Allocator allocator, StringView source) throws -> void
   {
@@ -252,6 +259,8 @@ public:
     return None;
   }
 
+  /* time:   O((m_length - from) * needle.length) in the worst case, one
+             memcmp() per start position. no allocation. */
   mustuse pure fn
   find_substring(StringView needle, usize from = 0) const wontthrow
       -> Maybe<usize>
@@ -259,6 +268,8 @@ public:
     if (needle.length == 0) return from <= m_length ? Maybe<usize>{from} : None;
     if (needle.length > m_length) return None;
 
+    /* at this point: 0 < needle.length <= m_length, so every memcmp() stays
+       inside m_data. */
     for (usize start = from; start + needle.length <= m_length; start++) {
       if (memcmp(m_data + start, needle.data, needle.length) == 0) return start;
     }
@@ -304,6 +315,10 @@ public:
     append(StringView{&byte, 1});
   }
 
+  /* memory: m_length bytes from allocator when allocator does not own m_data.
+             the old heap buffer is freed when m_capacity is nonzero.
+     time:   O(m_length) for memcpy(). returns early for a heap allocator, an
+             empty text, or bytes that allocator owns. */
   fn
   move_to_allocator(Allocator allocator) throws -> void
   {
@@ -447,6 +462,8 @@ public:
 
   mutable u32 source_position{0};
 
+  /* the bit widths in this run total 32, which keeps WordSegment at 32 bytes.
+     see the static_assert after the class. */
   mutable u32 source_length : 24 {0};
   Kind        kind : 3;
   u32         is_in_double_quotes : 1 {false};
@@ -468,6 +485,9 @@ public:
   pure fn
   is_tilde_candidate() const wontthrow -> bool;
 
+  /* memory: the text and eval cache copies come from allocator. with the heap
+             allocator, ~WordSegment() frees them. an arena owns them.
+     time:   O(text length) for memcpy(), plus one fixed-size cache copy. */
   cold fn
   clone(Allocator allocator) const throws -> WordSegment
   {
@@ -564,6 +584,10 @@ public:
   Word() = default;
   ~Word() { release_constant_value(); }
 
+  /* memory: segments.reserve() allocates one slot per segment from
+             heap_allocator(), and each clone() allocates its text there.
+             ~WordSegment() frees the text and the eval cache.
+     time:   O(segment count + total text length), one clone() per segment. */
   cold
   Word(const Word &other) throws
       : segments(heap_allocator()),

@@ -174,8 +174,11 @@ get_windows_root_length(StringView path) wontthrow -> usize
     return prefix_length + get_windows_root_length(rest);
   }
 
+  /* e.g. path = "\\server\share\dir" */
   let const server_end = skip_windows_component(path, 2);
 
+  /* -> server_end = 9, past the separator after server. the root ends at 15,
+        past the separator after share. */
   return skip_windows_component(path, server_end);
 }
 

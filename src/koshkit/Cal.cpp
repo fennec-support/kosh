@@ -50,6 +50,11 @@ is_cal_leap_year(i64 year) wontthrow -> bool
   return year % 4 == 0 && (year % 100 != 0 || year % 400 == 0);
 }
 
+/* sakamoto's day-of-week formula, with 0 for sunday.
+   e.g. year = 2026, month = 10, day = 1
+     year % 7 = 3, year / 4 % 7 = 2, year / 100 % 7 = 6 (7 - 6 = 1),
+     year / 400 % 7 = 5, MONTH_OFFSETS[9] = 6, day = 1
+     sum = 3 + 2 + 1 + 5 + 6 + 1 = 18, and 18 % 7 = 4, a thursday. */
 static pure fn
 cal_weekday(i64 year, usize month, usize day) wontthrow -> usize
 {
@@ -199,6 +204,8 @@ Cal::execute(const ExecContext               &ec,
     year = static_cast<i64>(parsed_year.value());
   }
 
+  /* at this point: month is 0 for a whole year, or 1 through 12 for one
+     month, and year is positive. */
   let       output       = String{cxt.scratch_allocator()};
   let const should_color = koshkit_should_color();
   let const first_day =

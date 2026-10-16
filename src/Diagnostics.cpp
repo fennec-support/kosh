@@ -36,6 +36,9 @@ format_diagnostic_template(
     const char                       *text_template,
     std::initializer_list<StringView> arguments) throws -> String
 {
+  /* e.g. text_template = "bad {1}: {0}", arguments = {"x", "y"}
+          "bad " is copied, "{1}" appends "y", ": " is copied, and "{0}"
+          appends "x", so the result is "bad y: x". */
   let       result = String{heap_allocator()};
   let const text   = StringView{text_template};
 
@@ -230,8 +233,15 @@ collect_shellcheck_selectors(
     return;
   }
 
+  /* at this point: comment starts with the shellcheck word at position, and
+     the byte after that word is a space, a tab, or the end of comment. */
   position += 10;
 
+  /* e.g. comment = "# shellcheck disable=SC2034,SC2086-SC2090" (41 bytes)
+          the directive word starts at 2, so position is 12 after the += 10
+          and 13 after the skip. "disable=" ends at 21, and the unquoted value
+          runs to 41. collect_comma_separated_selectors() receives
+          "SC2034,SC2086-SC2090": Code 2034, then CodeRange 2086 to 2090. */
   while (position < comment.length) {
     while (position < comment.length &&
            (comment[position] == ' ' || comment[position] == '\t'))

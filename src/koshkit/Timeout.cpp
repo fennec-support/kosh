@@ -50,6 +50,8 @@ duration_to_nanos(f64 seconds) wontthrow -> u64
 
   let const nanos = seconds * NANOS_PER_SECOND;
 
+  /* a positive duration never maps to 0, since wait_for_process_until() treats
+     0 as no deadline. */
   if (nanos < 1.0) return 1;
 
   return static_cast<u64>(nanos);
@@ -136,6 +138,9 @@ timeout_expiration_status(i32 command_status, i32 timeout_signal)
   return 124;
 }
 
+/* memory: none.
+   time:   a 0.01 second sleep and a fixed number of signal and reap calls
+           that do not depend on the input. */
 static fn
 finish_interrupted_supervision(os::process child,
                                os::process process_group,
@@ -418,6 +423,8 @@ Timeout::execute(const ExecContext               &ec,
     throw;
   }
 
+  /* at this point: child is a started process, and process_group refers to its
+     process group. the defer below releases process_group on every return. */
   defer { os::close_process_reference(process_group); };
 
   i32 status           = 0;

@@ -75,6 +75,7 @@ nl_style_numbers(nl_style style,
                  u64     &blank_count,
                  u64      blank_group) wontthrow -> bool
 {
+  /* e.g. style All, blank_group 2, lines "", "", "a" -> false, true, true */
   switch (style) {
   case nl_style::None: return false;
 
@@ -291,7 +292,8 @@ Nl::execute(const ExecContext               &ec,
       return 1;
     }
 
-    let const line            = reader.get_line();
+    let const line = reader.get_line();
+    /* e.g. line = \:\:\:, delimiter = \:, delimiter_count = 3, header */
     let const delimiter_count = line.length / delimiter.length;
     bool      is_section_delimiter =
         delimiter_count >= 1 && delimiter_count <= 3 &&

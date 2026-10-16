@@ -73,6 +73,10 @@ Tabs::execute(const ExecContext               &ec,
     usize position      = 0;
     u64   previous_stop = 0;
 
+    /* e.g. specification = "1,+5,+7", previous_stop = 0 at the start
+            item "1": stop 1, pushed; previous_stop 1
+            item "+5": stop 5 + 1 = 6, pushed; previous_stop 6
+            item "+7": stop 7 + 6 = 13, pushed; stops = [1, 6, 13] */
     while (position <= specification.length) {
       let const remaining = specification.substring(position);
       let const item_length =

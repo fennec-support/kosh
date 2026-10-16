@@ -228,6 +228,10 @@ decode_history_record(String             &decoded,
 
   bool is_escape_pending = false;
 
+  /* e.g. the encoded bytes a\\b\nc, followed by a newline, where each \\ and
+          \n is two bytes. the loop stops before the final newline.
+       a -> a, \\ -> \, b -> b, \n -> newline, c -> c
+       decoded: a\b, newline, c */
   for (usize byte_offset = span.start_byte_offset;
        byte_offset + 1 < span.end_byte_offset; byte_offset++)
   {
@@ -404,6 +408,16 @@ find_no_editor_history_event(Allocator    allocator,
   return None;
 }
 
+/* memory: encoded_replacements and replacement_byte_offsets hold the
+           replacements. private_rewritten copies the whole branch with the
+           record replaced. private_offsets and durable_offsets hold one entry
+           per retained record and per replacement. the retained_* arrays hold
+           at most entry_limit entries. steal() frees the previous
+           branch_contents. the temporaries are freed on return.
+   time:   O(replacement bytes) to encode, O(branch bytes) for the splice and
+           the trailing scan, and O(retained records) for the offset loops.
+           when the history is not loaded, the load adds O(file bytes) of
+   reads. */
 static fn
 rewrite_no_editor_history_event(usize                    wanted_number,
                                 StringView               expected,
@@ -454,6 +468,12 @@ rewrite_no_editor_history_event(usize                    wanted_number,
     toiletline::encode_history_record(encoded_replacements, replacement.view());
   }
 
+  /* e.g. branch "ls\npwd\necho\n" with \n as a newline byte, and
+          wanted_number 2, so private_span is [3, 7). the replacements are
+          "git status" and "date".
+     -> encoded_replacements "git status\ndate\n" (16 bytes), offsets [0, 11]
+     -> private_rewritten "ls\ngit status\ndate\necho\n" (24 bytes)
+     -> private_offsets [0, 3, 14, 19] */
   let private_rewritten = String{heap_allocator()};
 
   private_rewritten.append(state.branch_contents.substring_of_length(
@@ -632,6 +652,12 @@ get_history_path() -> koshka::Maybe<koshka::Path>
   return koshka::internal::resolve_no_editor_history_path();
 }
 
+/* memory: written holds a copy of every retained record, and durable_offsets
+           holds one entry per retained record. both are freed on return.
+   time:   O(branch bytes) for the copy and O(retained records) for the offset
+           loops, plus the whole-file write through
+           write_history_file_atomically(). the process lock on the history
+           directory is held until return. */
 fn
 write_history() -> koshka::ErrorOr<koshka::Ok>
 {
@@ -756,6 +782,16 @@ import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
   return koshka::Success;
 }
 
+/* memory: payload holds the bytes of each record without a durable offset.
+           unwritten_indexes and unwritten_byte_offsets hold one entry per such
+           record. written holds payload and at most one separator byte. all
+           are freed on return.
+   time:   O(retained records) to find the unwritten records, then O(unwritten
+           bytes) to copy and write them. syscalls: a size query, an open and
+           read of the last byte when the file is not empty, and an open,
+           write, and close for the append. the process lock on the history
+           directory is held until return. with no unwritten record, the file
+           is not touched after the load. */
 fn
 append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
 {
@@ -931,6 +967,11 @@ get_newest_history_event_number() -> koshka::ErrorOr<koshka::Maybe<usize>>
   return koshka::Maybe<usize>{state.total_count};
 }
 
+/* memory: events holds one history_event per returned record, and each command
+           is allocated in allocator. the owner of allocator frees them.
+   time:   O(bytes of the returned records), since each record from first_index
+           on is decoded once. when the history is not loaded, the load adds
+           O(file bytes) of reads. */
 fn
 get_history_events(koshka::Allocator    allocator,
                    koshka::Maybe<usize> after_event_number)

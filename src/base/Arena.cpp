@@ -138,6 +138,9 @@ BumpArena::unregister_live() wontthrow -> void
   m_next_live     = nullptr;
 }
 
+/* memory: none.
+   time:   O(B) in the total block count B of all live arenas, scanned while
+           LIVE_ARENAS_LOCK is held. the lock spins until it is acquired. */
 fn
 BumpArena::find_live_owner(const opaque *pointer) wontthrow -> BumpArena *
 {

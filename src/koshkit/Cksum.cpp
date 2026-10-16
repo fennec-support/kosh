@@ -52,6 +52,9 @@ make_checksum_table() -> checksum_table
 
 inline constexpr checksum_table CHECKSUM_TABLE = make_checksum_table();
 
+/* memory: none.
+   time:   O(byte_count). one table step per four bytes, then one table step
+           per trailing byte. */
 static t__forceinline fn
 update_checksum(u32 checksum, const char *bytes, usize byte_count) wontthrow
     -> u32
@@ -87,6 +90,8 @@ struct checksum_source_state
   source_completion_state completion{source_completion_state::Pending};
 };
 
+/* the byte count follows the data as its least significant byte first, with
+   no leading zero bytes, as the POSIX cksum definition requires. */
 static fn
 finish_checksum(u32 checksum, u64 byte_count) wontthrow -> u32
 {
@@ -100,6 +105,10 @@ finish_checksum(u32 checksum, u64 byte_count) wontthrow -> u32
   return ~checksum;
 }
 
+/* memory: source_states holds one checksum_source_state per source in the
+           scratch allocator. chunk content is a view of the reader's buffers.
+   time:   O(total input bytes). update_checksum() runs once per chunk, and
+           each read returns at most 64 KiB. */
 fn
 Cksum::execute(const ExecContext               &ec,
                EvalContext                     &cxt,

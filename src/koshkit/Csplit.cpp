@@ -104,6 +104,8 @@ write_csplit_part(const ExecContext           &ec,
   output_paths.push(name.clone());
   is_output_tracked = true;
 
+  /* at this point: descriptor is open, and output_paths holds name. the defer
+     in Csplit::execute() removes name when the run fails and -k is not set. */
   usize byte_count = 0;
 
   if (first < last) {

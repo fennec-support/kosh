@@ -61,6 +61,12 @@ append_paste_delimiter(String    &output,
   if (delimiter != '\0') output += delimiter;
 }
 
+/* memory: columns, output, and the BufferedLineReader objects come from the
+           scratch allocator and scratch arena. each reader embeds a 64 KiB
+           buffer, and the arena does not free allocations one at a time.
+           owned_inputs are closed when the defer block runs.
+   time:   O(total input bytes) for the reads and O(output bytes) for the
+           copies. parallel mode adds O(columns) work for each output line. */
 fn
 Paste::execute(const ExecContext               &ec,
                EvalContext                     &cxt,

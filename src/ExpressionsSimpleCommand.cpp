@@ -1041,6 +1041,8 @@ internal::resolve_redirection(const Redirection    &redir,
                                 "': " + redirection_open_error(target_path)};
   }
 
+  /* at this point: target_path is the single expanded word, and file_fd is
+     an open descriptor that the returned resolved_redirection carries. */
   let const file_fd = opened.take();
 
   let const is_retained =
@@ -1115,6 +1117,8 @@ internal::allocate_redirection_descriptor(
     throw ErrorWithLocation{location, "Could not allocate a file descriptor"};
   }
 
+  /* at this point: allocated_fd is at least 0 and is not yet stored in the
+     target variable. */
   let const allocated_text = String::from(allocated_fd, heap_allocator());
 
   if (target->has_subscript) {
@@ -1190,6 +1194,9 @@ append_reprinted_source(String    &out,
                         bool       should_join_lines,
                         bool       has_bash_additions) throws -> void;
 
+/* memory: none.
+   time:   linear in the scanned region. each $( is skipped by one
+           scan_balanced_shell_region() call, so each byte is scanned once. */
 static fn
 find_double_quote_end(StringView source, usize position) throws -> usize
 {
@@ -1361,6 +1368,21 @@ append_reprinted_subshell(String    &out,
   out.append(" )");
 }
 
+/* memory: appends to out, which the caller owns and which grows through
+           heap_allocator(). the decoded ANSI-C string is a local String freed
+           at the end of its block. recursion follows nested $( regions, (
+           regions, and "..." regions.
+   time:   O(n * d) for n source bytes and nesting depth d. each nested region
+           is scanned by its scan_balanced_shell_region() call and again by the
+           recursive call over its body.
+
+   e.g. source = "a&&b|c" with should_collapse_blanks, should_space_operators,
+        and should_join_lines set
+     'a'       -> out = "a"
+     "&&" at 1 -> " && " appended, out = "a && ", position = 3
+     'b'       -> out = "a && b"
+     '|' at 4  -> " | " appended, out = "a && b | ", position = 5
+     'c'       -> out = "a && b | c" */
 static fn
 append_reprinted_source(String    &out,
                         StringView source,
@@ -1660,6 +1682,11 @@ append_reprinted_source(String    &out,
   }
 }
 
+/* memory: returns a String from heap_allocator() that the caller owns. when
+           the source is reprinted, the String reserves source.length bytes.
+   time:   O(n) for the scan in should_reprint_source(). the reprint pass
+           costs O(n * d) for nesting depth d, as in
+   append_reprinted_source(). */
 fn
 internal::reprinted_command_text(StringView source,
                                  bool       has_bash_additions) throws
@@ -1890,10 +1917,17 @@ internal::append_redirections_text(
     String                        &out,
     const SparseList<Redirection> &redirections) throws -> void
 {
+  /* memory: appends to out, which grows its buffer as needed. the caller owns
+             out.
+     time:   two passes over R redirections, plus the bytes that
+             append_one_redirection() and each heredoc body add to out. */
   bool should_drop_error_duplication = false;
   bool has_heredoc                   = false;
 
   for (let const &redir : redirections) {
+    /* the Parser::build_both_streams_redirection() emits &> as a file
+       redirection followed by a synthesized 2>&1. skipping that 2>&1 keeps
+       the &> spelling in the output. */
     if (should_drop_error_duplication) {
       should_drop_error_duplication = false;
       if (is_synthesized_error_duplication(redir)) continue;
@@ -1986,6 +2020,8 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const th
   ArrayList<stage_fd_allocation_restore> allocation_restores{heap_allocator()};
 
   defer {
+    /* restores run in reverse, so a name that repeats in the list ends with
+       the value saved before its first redirection. */
     for (usize i = allocation_restores.count(); i > 0; i--) {
       let const &restore = allocation_restores[i - 1];
 

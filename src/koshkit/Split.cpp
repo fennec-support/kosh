@@ -38,6 +38,9 @@ split_output_name(StringView prefix,
 {
   usize widened_count = 0;
 
+  /* e.g. suffix_length = 2 and index = 651. the first pass has block_count
+     650, so index becomes 1 and suffix_length becomes 3. the second pass has
+     block_count 16900, which is more than 1. the output suffix is "zaab". */
   if (is_suffix_widened) {
     loop {
       u64 block_count = 25;
@@ -144,6 +147,8 @@ Split::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: unit_limit is 1 or more and suffix_length is from 1 through
+     64. each segment written below is nonempty. */
   let const input = open_named_or_stdin(ec, source);
 
   if (!input.has_value()) {

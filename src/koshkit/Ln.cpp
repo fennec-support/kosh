@@ -26,6 +26,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Ln);
 
 namespace koshka::koshkit {
 
+/* memory: each destination path string comes from scratch_allocator(), which
+           the simple command releases with its scratch mark.
+   time:   O(operands) iterations, each with up to two stat_path() calls, an
+           optional remove_file() under -f, an optional canonical_path() for a
+           hard link resolved with -L, and one link creation. */
 fn
 Ln::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
@@ -62,6 +67,8 @@ Ln::execute(const ExecContext               &ec,
       link = link_path.text();
     }
 
+    /* the same-file check runs before -f removes the link, so ln -f a a reports
+       an error instead of removing a. */
     let       target_status = os::file_status{};
     let       link_status   = os::file_status{};
     let const is_same_file  = os::stat_path(target, target_status) &&

@@ -82,6 +82,7 @@ block_factor(const resource_entry &entry, mimic_mood mood) throws -> u64
   if (entry.kind == os::resource_kind::FileBlocks ||
       entry.kind == os::resource_kind::CoreBlocks)
   {
+    /* POSIX ulimit reports file and core limits in 512-byte blocks. */
     return mood == mimic_mood::Posix ? 512 : 1024;
   }
 
@@ -222,6 +223,8 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return is_posix ? 2 : 1;
     }
 
+    /* the scaled value must stay below os::RESOURCE_UNLIMITED, which is the
+       stored value for an unlimited limit. */
     let const is_out_of_range =
         units != 0 && parsed.value() >= os::RESOURCE_UNLIMITED / units;
 

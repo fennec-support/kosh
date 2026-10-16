@@ -26,6 +26,9 @@ directory_part_of(StringView path) wontthrow -> StringView
 {
   if (path.is_empty()) return StringView{"."};
 
+  /* e.g. path = "/usr//lib/". the trailing separator moves end_position to 9.
+     separators at 0, 4, and 5 leave last_separator_position at 5, and the
+     second loop moves end_position to 4, so the result is "/usr". */
   usize end_position = path.length;
 
   while (end_position > 0 && os::is_directory_separator(path[end_position - 1]))

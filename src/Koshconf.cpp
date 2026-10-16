@@ -212,6 +212,7 @@ append_varint(String &output, u32 value) throws -> void
     value >>= 7;
   }
 
+  /* e.g. 300: the loop pushes 0xac and leaves value 2, pushed as 0x02 */
   output.push(static_cast<char>(value));
 }
 
@@ -234,6 +235,7 @@ read_varint(StringView bytes, usize &position) wontthrow -> Maybe<u32>
     }
 
     value |= static_cast<u32>(byte & 0x7f) << shift;
+    /* e.g. [0xac, 0x02]: value 44 after shift 0, then 300 after shift 7 */
     if ((byte & 0x80) == 0) return value;
   }
 
@@ -354,6 +356,11 @@ preset_sorts_before(const option_descriptor &left,
   return left.id < right.id;
 }
 
+/* memory: one link string and one Path per step; each Path replaces the
+           previous one.
+   time:   one canonical_path() call. when it fails, at most
+           KOSHCONF_LINK_LIMIT steps, each with one path_is_symbolic_link() and
+           one read_symlink() call. */
 fn
 resolve_koshconf_target(const Path &path) throws -> Path
 {
@@ -398,6 +405,9 @@ prepare_koshconf_target(const Path &path) throws -> Path
   return target;
 }
 
+/* the directory lock covers the read and the replacement in
+   persist_koshconf_setting() and persist_koshconf_snapshot(). without it, two
+   writers can read the same file and each replace it, losing one update. */
 fn
 lock_koshconf_directory(const Path &target) throws -> os::descriptor
 {
@@ -412,6 +422,12 @@ lock_koshconf_directory(const Path &target) throws -> os::descriptor
   return *lock;
 }
 
+/* memory: the existing contents of the target, M bytes in a heap string freed
+           on return, and two temporary path strings.
+   time:   O(N + M) bytes for N new bytes and M existing bytes. syscalls: one
+           stat(), one temporary write, one mode change, and one sync. when the
+           target exists, also one read, one backup write, a mode change, a
+           sync, and a rename. the last step is one rename over the target. */
 fn
 replace_koshconf_target(const Path &target, StringView contents) throws
     -> void
@@ -1089,6 +1105,13 @@ has_default_koshconf_value(const EvalContext       &cxt,
   return current_value.view() == baseline_text.view();
 }
 
+/* memory: the returned contents string, owned by the caller; the ordered array
+           of K option pointers, freed on return; per-option strings, freed at
+           the end of each iteration.
+   time:   O(K^2 R) for the insertion sort over K options: each of the O(K^2)
+           comparisons calls get_preset_group_first_id() twice, and each call
+           scans R registry entries. the rendering loop is O(K R), since each
+           editor option scans the registry for its set -o aliases. */
 fn
 compose_koshconf_text(StringView         description,
                       mimic_mood         preset,
@@ -1285,6 +1308,11 @@ write_koshconf_file(const Path &path, StringView contents) throws
   replace_koshconf_target(target, contents);
 }
 
+/* memory: the snapshot text from make_koshconf_snapshot(), the existing file
+           contents, and the kept lines, all heap strings freed on return.
+   time:   the make_koshconf_snapshot() cost, plus O(N) for an N-byte file: one
+           scan with one find_option_by_koshconf_name() call per declared line,
+           and one replace_koshconf_target() call that writes the result. */
 fn
 persist_koshconf_snapshot(const Path        &path,
                           const EvalContext &cxt) throws -> void
@@ -1329,6 +1357,11 @@ persist_koshconf_snapshot(const Path        &path,
   replace_koshconf_target(target, contents.view());
 }
 
+/* memory: heap strings for the existing file contents, the replacement line,
+           and the rewritten text, all freed on return.
+   time:   O(N) for an N-byte file: one scan for the setting line, one rewrite
+           pass, and one replace_koshconf_target() call that writes N bytes.
+           the directory lock is held for the whole call. */
 fn
 persist_koshconf_setting(const Path              &path,
                          const option_descriptor &option,

@@ -29,6 +29,10 @@ Stty::execute(const ExecContext               &ec,
               const ArrayList<String>         &args,
               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
+  /* memory: the settings text from os::terminal_settings() comes from the
+             scratch arena.
+     time:   at most one os::terminal_settings() call and one
+             os::apply_terminal_settings() call. the function has no loop. */
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
                                  {.should_accept_unknown_flag_operand = true});
 

@@ -77,6 +77,10 @@ parse_positive_position(StringView text, usize &position) wontthrow
   return value;
 }
 
+/* memory: ranges are collected in an ArrayList in allocator, which the
+           returned SortedArrayList takes over.
+   time:   O(text.length) to parse, O(r log r) to sort, and O(r) to merge,
+           where r is the number of parsed ranges. */
 fn
 parse_text_position_ranges(StringView text, Allocator allocator) throws
     -> Maybe<SortedArrayList<text_position_range,
@@ -145,6 +149,10 @@ parse_text_position_ranges(StringView text, Allocator allocator) throws
     if (text[position] == ',') return None;
   }
 
+  /* e.g. text is "5-,1-3,2", which parses to {5, SIZE_MAX}, {1, 3}, {2, 2}.
+     sorted by first, these are {1, 3}, {2, 2}, {5, SIZE_MAX}. {2, 2} joins
+     {1, 3} because 2 <= 3 + 1, and {5, SIZE_MAX} stays because 5 > 4.
+     the merge gives {1, 3}, {5, SIZE_MAX}. */
   let   ranges       = steal(parsed_ranges).make_sorted(sort_order::ascending);
   usize output_count = 0;
 
@@ -380,6 +388,13 @@ shell_word_expansion_end(StringView word, usize expansion_start) wontthrow
   }
 }
 
+/* memory: text, glob_active, and opaque_ranges grow in allocator and belong to
+           the returned decoded_shell_word. raw_positions gets one entry per
+           decoded byte plus one when mapping is Record. each $'...' body is
+           decoded into a String that is destroyed at the end of its branch.
+   time:   O(word.length). each expansion span goes through
+           shell_word_expansion_end() once, because later scans start after
+           its end. */
 hot fn
 decode_shell_word(StringView                word,
                   Allocator                 allocator,
@@ -406,6 +421,9 @@ decode_shell_word(StringView                word,
   let   has_active_bracket           = false;
   usize glob_inert_end               = 0;
 
+  /* e.g. word is "a"b with mapping Record. the opening quote at 0 sets
+     raw_positions to 1, 'a' pushes 2, the closing quote at 2 pushes nothing,
+     and 'b' pushes 4. -> text is ab, raw_positions is 1, 2, 4 */
   for (usize position = 0; position < word.length; position++) {
     let const byte = word[position];
 
@@ -630,6 +648,8 @@ decode_shell_word(StringView                word,
 
   decoded.quote_character = quote_character;
 
+  /* at this point: text and glob_active have one entry per decoded byte. when
+     should_map_source is true, raw_positions holds text.length + 1 entries. */
   if (!should_map_source) return decoded;
 
   char  scan_quote       = 0;
@@ -875,6 +895,10 @@ locate_first_unavailable_path_component(const Path    &target,
                                            is_final_component};
 }
 
+/* memory: the 8 character digest is allocated from allocator and returned to
+           the caller.
+   time:   O(file bytes) for crc32c_of_file(), which opens path and scans all
+           of it. the digest loop runs 8 times. */
 fn
 file_content_identity(const Path &path, Allocator allocator) throws
     -> Maybe<String>
@@ -970,6 +994,9 @@ kosh_identity(StringView fallback_path) throws -> Maybe<StringView>
     return None;
   }
 
+  /* at this point: the stat before and after the crc32c_of_file() call
+     matched, so identity is the crc32c of the file at path. the cache is not
+     yet updated. */
   cache.path           = steal(path);
   cache.status         = verified_status;
   cache.identity       = steal(identity);
@@ -1205,6 +1232,9 @@ split_lines(StringView           text,
 static constexpr char BASE64_ALPHABET[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
+/* memory: encoded is allocated from heap_allocator() and reserved to
+           ceil(bytes.count() / 3) * 4 bytes. the caller owns it.
+   time:   O(bytes.count()), one 3 byte group per iteration. */
 fn
 encode_base64(StringView bytes) throws -> String
 {
@@ -1212,6 +1242,9 @@ encode_base64(StringView bytes) throws -> String
 
   encoded.reserve((bytes.count() + 2) / 3 * 4);
 
+  /* e.g. bytes is "Ma" (0x4d, 0x61), so remaining_count is 2 and group is
+     0x4d6100. the indices 19, 22, and 4 give T, W, and E, and the final
+     digit is padded with =. */
   for (usize position = 0; position < bytes.count(); position += 3) {
     let const remaining_count = bytes.count() - position;
     u32       group = static_cast<u32>(static_cast<u8>(bytes[position])) << 16;
@@ -1260,6 +1293,8 @@ decode_base64(StringView text) throws -> Maybe<String>
 
   decoded.reserve(text.count() / 4 * 3);
 
+  /* e.g. text is "TWE=", so the digits are 19, 22, and 4, and padding_count is
+     1. group is 0x4d6100 after the padding shift, which pushes 'M' and 'a'. */
   for (usize position = 0; position < text.count(); position += 4) {
     let const is_last_group = position + 4 == text.count();
     usize     padding_count = 0;

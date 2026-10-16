@@ -243,6 +243,7 @@ private:
             low = (low << 4) | *digit;
           }
 
+          /* -> low = 0xde00 */
           if (low < 0xdc00 || low > 0xdfff) {
             return None;
           }
@@ -958,6 +959,11 @@ public:
     return position;
   }
 
+  /* memory: none.
+     time:   O(log line_starts.count()) for the search. the UTF-16 path decodes
+             from the line start, or from the cached position when that is on
+             the same line and not past byte_position. ascending positions on
+             one line cost O(line bytes) in total. the UTF-8 path is O(1). */
   pure fn
   protocol_position_at(usize             byte_position,
                        position_encoding encoding) const wontthrow
@@ -1092,6 +1098,9 @@ private:
   mutable usize m_cached_unit_byte{0};
   mutable usize m_cached_units{0};
 
+  /* memory: line_starts holds one usize per line, grown by push().
+     time:   O(normalized_source.count()) in one pass, run by the constructor
+             and by replace_source(). */
   fn
   rebuild_lines() throws -> void
   {

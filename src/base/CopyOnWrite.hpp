@@ -127,6 +127,11 @@ public:
     m_shared = created;
   }
 
+  /* memory: when the value is shared, create() allocates a Shared from
+             m_allocator. the old Shared loses this holder's reference and
+             stays alive for the other holders.
+     time:   O(1) when the value is not shared. when it is shared, one
+             clone_value() call copies T. */
   fn
   write() throws -> T &
   {

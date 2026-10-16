@@ -259,6 +259,8 @@ read_system_owned_file(const Path &path) throws -> system_file_reading
     return reading;
   }
 
+  /* at this point: handle is open for reading, and find_security_problem()
+     accepted both the file and its directory. */
   reading.contents = read_fd_to_string(handle, heap_allocator());
   if (!reading.contents.has_value()) {
     reading.rejection =
@@ -965,6 +967,10 @@ list_directory_typed(StringView dir) throws
   return list_directory_typed(dir, heap_allocator());
 }
 
+/* memory: one String per entry and the entries list, both from allocator.
+           the caller owns them.
+   time:   one FindFirstFileW() call, then one FindNextFileW() call per entry.
+           O(entries), with no sorting. */
 cold fn
 list_directory_typed(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
@@ -1143,6 +1149,10 @@ open_file_descriptor_until_signal(StringView     path,
   return open_file_descriptor(path, mode);
 }
 
+/* memory: one ArrayList<wchar_t> for the absolute lock path, freed on return.
+           the returned descriptor belongs to the caller.
+   time:   no deadline. sleeps 10 milliseconds per retry while CreateFileW()
+           fails with a sharing or lock violation. other errors return None. */
 fn
 acquire_process_lock(StringView path) throws -> Maybe<descriptor>
 {
@@ -1246,6 +1256,10 @@ write_to_temp_file(StringView content) -> Maybe<descriptor>
   return handle;
 }
 
+/* memory: the returned Path is a String from heap_allocator(), owned by the
+           caller. the temporary file stays on disk until the caller removes it.
+   time:   at most 256 GetTempFileNameW() and CreateFileW() attempts, then one
+           write_all() and one close. */
 fn
 write_to_named_temp_file(const Path &directory,
                          StringView  prefix,
@@ -1277,6 +1291,8 @@ write_to_named_temp_file(const Path &directory,
     let unique = static_cast<UINT>(
         (GetCurrentProcessId() ^ GetTickCount() ^ attempt) & 0xffffU);
 
+    /* a zero uUnique makes GetTempFileNameW() create the file, so the
+       CREATE_NEW open below fails on that attempt. */
     if (unique == 0) unique = 1;
     if (GetTempFileNameW(wide_directory->begin(), prefix_text, unique,
                          temp_path) == 0)
@@ -1733,6 +1749,10 @@ struct tree_walk_state
   u64                      root_device_id{0};
 };
 
+/* memory: each level allocates its child list in walk.arena and releases it
+           when the level returns.
+   time:   one stat_path() call per entry and one list_directory_status() call
+           per directory, O(entries) in the subtree. */
 static fn
 walk_tree_entry(tree_walk_state &walk,
                 StringView       path,
@@ -1899,6 +1919,10 @@ create_symlink(StringView target, StringView link_path) wontthrow -> bool
 #ifndef SYMBOLIC_LINK_FLAG_DIRECTORY
 #define SYMBOLIC_LINK_FLAG_DIRECTORY 0x1
 #endif
+  /* memory: two or three wide path buffers from heap_allocator(), freed on
+             return.
+     time:   O(path length) for the conversions and the slash loop, plus one
+             GetFileAttributesW() call and one CreateSymbolicLinkW() call. */
   let wide_target = path_to_wide(target, heap_allocator());
 
   if (!wide_target.has_value()) return false;
@@ -1960,6 +1984,11 @@ create_symlink(StringView target, StringView link_path) wontthrow -> bool
 fn
 read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
 {
+  /* memory: one wide path buffer from heap_allocator(), freed on return. the
+             result string is allocated in allocator and owned by the caller.
+     time:   O(path length + target length) for the conversions, plus one
+             FSCTL_GET_REPARSE_POINT call that fills at most
+             MAXIMUM_REPARSE_DATA_BUFFER_SIZE bytes. */
   struct symbolic_link_reparse_data
   {
     u32   tag;
@@ -2122,6 +2151,9 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     wide_target += 8;
     wide_target_length -= 8;
     is_unc_target = true;
+    /* e.g. substitute name \??\UNC\srv\share, wide_target_length 17
+         after the 8 character strip: "srv\share", wide_target_length 9
+         the final result after the "\\" prefix is \\srv\share */
   } else if (is_substitute_name && wide_target_length >= 4 &&
              memcmp(wide_target, NAMESPACE_PREFIX, 4 * sizeof(WCHAR)) == 0)
   {
@@ -2245,6 +2277,10 @@ mounted_filesystems() throws -> ArrayList<mounted_filesystem>
     return result;
   }
 
+  /* e.g. drives = "C:\" <nul> "D:\" <nul> <nul>, length = 8 (no final nul)
+       position 0: drive "C:\", drive_length 3, position becomes 4
+       position 4: drive "D:\", drive_length 3, position becomes 8
+       position 8: not less than length, loop ends */
   usize position = 0;
 
   while (position < length && drives[position] != L'\0') {
@@ -2388,6 +2424,9 @@ verify_filesystem_integrity(StringView, u64) throws
 fn
 sync_filesystems() wontthrow -> bool
 {
+  /* memory: none. drives and volume_path are stack arrays.
+     time:   one CreateFileW(), FlushFileBuffers(), and CloseHandle() per fixed
+             drive. each FlushFileBuffers() call waits for the device. */
   wchar_t   drives[512];
   let const length = GetLogicalDriveStringsW(countof(drives), drives);
 
@@ -2443,6 +2482,10 @@ sync_path(StringView path, sync_mode mode) wontthrow -> bool
 fn
 current_executable_path() wontthrow -> Maybe<String>
 {
+  /* memory: module_path holds up to 32768 wchar_t, freed on return. the result
+             from wide_to_utf8() is owned by the caller.
+     time:   at most 8 GetModuleFileNameW() calls, with capacities 260, 520,
+             1040, 2080, 4160, 8320, 16640, and 32768 wchar_t. */
   ArrayList<wchar_t> module_path{heap_allocator()};
   DWORD              capacity = MAX_PATH;
 

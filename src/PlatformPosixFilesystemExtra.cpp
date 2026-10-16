@@ -146,6 +146,11 @@ fill_bulk_file_status(const attribute_set_t &returned,
   return (flags & SF_FIRMLINK) == 0;
 }
 
+/* memory: 64 KiB buffer on the stack; one String per entry in allocator, and
+           the returned ArrayList is owned by the caller.
+   time:   one getattrlistbulk() call per filled buffer plus a final call that
+           returns 0, so O(entries) records overall; one fstatat() for each
+           entry without bulk status. */
 static fn
 list_directory_status_bulk(StringView dir, Allocator allocator) throws
     -> Maybe<ArrayList<directory_status_entry>>
@@ -629,6 +634,9 @@ decode_udev_filename(StringView filename, Allocator allocator) throws
 
   decoded.reserve(filename.length);
 
+  /* e.g. filename = "a\x20b" (6 bytes): position 0 copies 'a'. position 1
+     sees '\', high '2' and low '0' give 0x20, and position += 3 moves to 4.
+     the loop increment moves to 5 and copies 'b'. result is "a b". */
   for (usize position = 0; position < filename.length; position++) {
     if (filename[position] != '\\' || position + 3 >= filename.length ||
         filename[position + 1] != 'x')
@@ -706,6 +714,12 @@ populate_linux_volume_identity(ArrayList<mounted_filesystem> &filesystems,
 
 #endif
 
+/* memory: one mounted_filesystem per mount is pushed to result, with Strings
+           from heap_allocator(). on Linux, canonical_sources holds one Path
+           per mount.
+   time:   O(mounts) mount table entries, one canonical_path() call per mount
+           source, and for each /dev/disk/by-* link one canonical_path() call
+           plus O(mounts) comparisons. */
 static fn
 append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws
     -> void
@@ -1160,6 +1174,7 @@ verify_filesystem_integrity(StringView path,
 static fn
 sync_native_descriptor(descriptor fd, sync_mode mode) wontthrow -> bool
 {
+  /* macOS has no fdatasync(), so every sync mode calls fsync(). */
   unused(mode);
 
   return ::fsync(fd) == 0;
@@ -1400,6 +1415,9 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
       collected_operation_positions.push(index);
     }
 
+    /* e.g. paths = ["/a/x", "/b/y", "/a/z"] give parents ["/a", "/b", "/a"],
+       so the sort gives operation_positions = [0, 2, 1]. the group [0, 2]
+       lists "/a" once, and the group [1] runs its operation directly. */
     let const operation_positions =
         steal(collected_operation_positions)
             .make_sorted([&](usize left, usize right) {
@@ -1773,6 +1791,8 @@ close_io_uring_batch(io_uring_batch &ring) wontthrow -> void
     ring.entry_mapping = MAP_FAILED;
   }
 
+  /* with IORING_FEAT_SINGLE_MMAP, completion_mapping is submission_mapping.
+     it is unmapped with submission_mapping, so it is skipped here. */
   if (ring.completion_mapping != MAP_FAILED && !ring.has_shared_mapping) {
     ::munmap(ring.completion_mapping, ring.completion_mapping_byte_count);
     ring.completion_mapping = MAP_FAILED;
@@ -1952,9 +1972,16 @@ open_io_uring_batch(io_uring_batch &ring) wontthrow -> io_uring_open_result
     return io_uring_open_result::Unavailable;
   }
 
+  /* at this point: ring.descriptor is open, the submission and completion
+     mappings are valid, and the queue pointers address slots inside them.
+     the ring holds at least IO_URING_ENTRY_COUNT submission and completion
+     slots. */
   return io_uring_open_result::Opened;
 }
 
+/* memory: none.
+   time:   O(operation_count^2) in the worst case, from the scan of earlier
+           operations for each WriteCurrent operation. no syscalls. */
 static fn
 io_uring_batch_supports_operations(const io_uring_batch  &ring,
                                    const batched_syscall *operations,
@@ -2004,6 +2031,14 @@ io_uring_batch_supports_operations(const io_uring_batch  &ring,
   return true;
 }
 
+/* memory: status_records, was_queued, and was_completed are stack arrays of
+           IO_URING_ENTRY_COUNT entries per chunk. the mappings belong to the
+           static thread_local ring, closed when the owning process changes or
+           the thread exits.
+   time:   O(operation_count) for validation, queueing, and completion, with
+           one io_uring_enter() per submit or wait round. an operation that
+           the ring reports as unsupported costs one direct syscall. no
+   locks. */
 static fn
 execute_io_uring_batch(const batched_syscall  *operations,
                        usize                   operation_count,
@@ -2075,6 +2110,11 @@ execute_io_uring_batch(const batched_syscall  *operations,
     bool         was_completed[IO_URING_ENTRY_COUNT]{};
     let const    initial_tail =
         __atomic_load_n(ring.submission_tail, __ATOMIC_ACQUIRE);
+    /* e.g. submission_mask = 511, initial_tail = 510, operations 0 to 2 with
+            operation 1 invalid. operation 0 takes slot 510 and queued_count
+            becomes 1. operation 1 is skipped. operation 2 takes slot
+            (510 + 1) & 511 = 511 and queued_count becomes 2. published_tail
+            is 510 + 2 = 512, stored without a mask. */
     u32 queued_count = 0;
 
     for (usize chunk_index = 0; chunk_index < chunk_count; chunk_index++) {
@@ -2364,6 +2404,8 @@ execute_batch_operations(const batched_syscall  *operations,
     return;
   }
 
+  /* at this point: operations and results are not null, operation_count is
+     not zero, and no interrupt is pending. */
   if (execute_native_batch(operations, operation_count, results)) return;
 
   for (usize index = 0; index < operation_count; index++) {

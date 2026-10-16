@@ -65,6 +65,10 @@ append_right(String &output, StringView text, usize width) throws
   output += text;
 }
 
+/* memory: uid_cache, owners, and the number texts are allocated in allocator.
+   time:   one owner_name_for_uid() call per process. each call scans the cache
+           linearly, so the lookups cost O(processes * distinct uids). one
+           os::uid_to_username() call runs for each distinct uid. */
 static fn
 render_aux_without_sampled_columns(
     const ArrayList<os::process_entry> &processes,

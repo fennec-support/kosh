@@ -27,6 +27,10 @@ REGISTER_BUILTIN_FLAGS(Source);
 
 namespace koshka {
 
+/* memory: read_entire_file() returns the file bytes, which stay in a local
+           until Source::execute() returns.
+   time:   O(file bytes) for the read. the cost of running the file is not
+           included. */
 fn
 Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

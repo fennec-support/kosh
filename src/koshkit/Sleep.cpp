@@ -52,6 +52,8 @@ Sleep::execute(const ExecContext               &ec,
   }
 
   if (should_sleep_forever) {
+    /* sleep_for_seconds() on Windows calls Sleep(), which does not return on
+       an interrupt, so the wait runs in 24 hour steps. */
     while (!os::INTERRUPT_REQUESTED)
       os::sleep_for_seconds(60.0 * 60.0 * 24.0);
 

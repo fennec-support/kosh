@@ -137,6 +137,10 @@ namespace_identifier(StringView target, Allocator allocator) throws
   return String{allocator, after_open.substring_of_length(0, *close)};
 }
 
+/* memory: relations and their strings come from processes.allocator(), which
+           the caller owns. sorted_relations is freed on return.
+   time:   O(P) readlink() calls for P processes, 8 per process, and O(R log R)
+           for the sort of R = 8 * P relations. */
 fn
 append_namespace_report(String                      &output,
                         bool                         should_color,
@@ -416,6 +420,9 @@ parse_cgroup_memberships(StringView text, Allocator allocator) throws
 {
   let memberships = ArrayList<cgroup_membership>{allocator};
 
+  /* e.g. text "12:cpu,cpuacct:/user.slice" and "0::/init.scope" on two lines
+     -> {12, "cpu,cpuacct", "/user.slice"}, then {0, "unified", "/init.scope"}
+        since an empty controller becomes "unified". */
   for (let const line : utils::split_lines(text)) {
     let const first_separator = line.find_character(':');
 
@@ -551,6 +558,9 @@ scoped_container_id(StringView component, StringView prefix) wontthrow
   return is_hexadecimal_id(identifier) ? Maybe<StringView>{identifier} : None;
 }
 
+/* memory: returns "-" or a 36-byte String from allocator, owned by the caller.
+   time:   O(1). four prefix forms are compared, then at most 36 bytes are
+           copied. */
 pure fn
 normalized_pod_uid(StringView component, Allocator allocator) throws
     -> String
@@ -605,6 +615,10 @@ normalized_pod_uid(StringView component, Allocator allocator) throws
   return result;
 }
 
+/* memory: the result strings come from allocator and are owned by the caller
+           through the returned identity_evidence.
+   time:   O(len(path)) for one pass over the components. each component is
+           checked against fixed tables and a 36-byte or 64-byte identifier. */
 fn
 parse_cgroup_identity(StringView path, Allocator allocator) throws
     -> process_cgroup_snapshot::identity_evidence
@@ -622,6 +636,11 @@ parse_cgroup_identity(StringView path, Allocator allocator) throws
   let  remaining                = path;
   bool has_kubernetes_component = false;
 
+  /* e.g. components "kubepods.slice", "kubepods-besteffort.slice", and
+          "kubepods-besteffort-pod12345678_1234_1234_1234_123456789abc.slice"
+     -> is_kubernetes is true after the first; qos is "besteffort" after the
+        second; pod_uid is "12345678-1234-1234-1234-123456789abc" and qos stays
+        "besteffort" after the third. runtime and container_id stay "-". */
   while (!remaining.is_empty()) {
     if (remaining[0] == '/') {
       remaining = remaining.substring(1);
@@ -698,6 +717,12 @@ parse_cgroup_identity(StringView path, Allocator allocator) throws
   return result;
 }
 
+/* memory: the returned snapshot and its strings come from allocator, which
+           the caller owns. candidates and current are freed on return.
+   time:   two os::enumerate_processes() calls, one /proc/<pid>/cgroup read per
+           process when collection is Collect, and O(P log P) for the sort of
+           current plus P binary searches over it, where P is the process
+   count. */
 fn
 collect_process_cgroup_snapshot(
     Allocator allocator, eviliso_collection_mode collection) throws
@@ -752,6 +777,8 @@ collect_process_cgroup_snapshot(
     snapshot.push(steal(record));
   }
 
+  /* a pid can exit and be reused while the cgroup files are read. the second
+     enumeration confirms each pid and start_token pair. */
   let current_unsorted =
       os::enumerate_processes(os::process_detail::ResourceStats);
   let const current = steal(current_unsorted)
@@ -1087,6 +1114,9 @@ is_remote_socket(const os::network_socket_entry &socket) wontthrow -> bool
          !socket.peer_address.is_empty() && socket.peer_port != 0;
 }
 
+/* memory: the returned String comes from allocator and is owned by the caller.
+   time:   O(maximum_cells). at most 8 bytes are copied per cell, and the
+           display width is measured over those bytes only. */
 fn
 remote_table_text(StringView text,
                   usize      maximum_cells,
@@ -1923,6 +1953,9 @@ sanitize_kubernetes_metadata(StringView text,
 
   result.reserve(byte_count);
 
+  /* e.g. text = "a\tb  \r\nc", byte_count = 8: the loop pushes "a", " " for
+     \t, "b", " ", " ", then stops at \r. result = "a b  "; trim_blanks()
+     returns "a b". */
   for (usize index = 0; index < byte_count; index++) {
     let const byte = text[index];
 
@@ -1937,6 +1970,10 @@ sanitize_kubernetes_metadata(StringView text,
   return String{allocator, result.view().trim_blanks()};
 }
 
+/* memory: the path String is released when the function returns. the String
+           returned to the caller is allocated in allocator.
+   time:   one open, one read of at most KUBERNETES_METADATA_BYTE_LIMIT bytes,
+           and one close, plus one sanitize_kubernetes_metadata() call. */
 fn
 read_kubernetes_metadata(StringView name, Allocator allocator) throws
     -> String
@@ -1955,10 +1992,20 @@ read_kubernetes_metadata(StringView name, Allocator allocator) throws
     return String{allocator};
   }
 
+  /* at this point: bytes holds *read_count bytes, between 1 and
+     KUBERNETES_METADATA_BYTE_LIMIT, and the descriptor is closed by the defer
+     on return. */
   return sanitize_kubernetes_metadata(StringView{bytes, *read_count},
                                       allocator);
 }
 
+/* memory: rows and the report tables are allocator-backed locals released on
+           return. process_id is released at the end of each detail loop
+           iteration. the report text grows in output.
+   time:   read_kubernetes_metadata() costs one open, read, and close. the row
+           loop scans the R rows for each of the E evidence entries, O(E * R).
+           the detail loop scans earlier entries of each process, O(sum of
+           E_p^2). summary mode sorts the rows, O(R log R). */
 fn
 append_kubernetes_report(String                                   &output,
                          bool                                      should_color,

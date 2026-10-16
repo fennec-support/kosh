@@ -75,6 +75,13 @@ mimicked_error_status(const std::exception_ptr  &error,
   }
 }
 
+/* memory: when should_use_empty_environment is set, saved_environment copies
+           each variable that is set. fallback_context copies every source frame
+           and frees them when it is destroyed.
+   time:   O(e + f) for e environment variables and f source frames when
+           should_use_empty_environment is set, otherwise O(f). each variable is
+           read and unset once, each saved variable is set again, and each frame
+           is copied once. */
 fn
 EvalContext::run_program_fallback(ExecContext     &ec,
                                   mimic_mood       mode,
@@ -536,6 +543,14 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
   return status;
 }
 
+/* memory: without cached_body, a copy of source is made in normalized_source.
+           that copy is stolen into a heap String, which source_retention()
+           keeps until SourceRetention::release_to() or SourceRetention::clear()
+           drops it. the syntax tree is allocated in the parse arena, which is
+           released to parse_mark when the source completes with no pending
+           control flow or process substitution.
+   time:   O(n) for the copy and the CRLF normalization of n bytes, plus the
+           parse of the body. */
 fn
 EvalContext::run_source(StringView                source,
                         StringView                origin,
@@ -571,6 +586,9 @@ EvalContext::run_source(StringView                source,
   if (arena_store().parse_arena() == nullptr)
     throw Error{"Cannot run source outside of a parse"};
 
+  /* at this point: parse_arena() is non-null. source views normalized_source
+     when cached_body is nullptr, and the retained source of cached_body
+     otherwise, whose body and source are non-null. */
   let      *parse_arena    = arena_store().parse_arena();
   let const parse_mark     = parse_arena->mark();
   let const retention_mark = source_retention().get_mark();
@@ -822,6 +840,10 @@ EvalContext::run_source(StringView                source,
   }
 }
 
+/* memory: expanded_path is a local String, freed on return.
+   time:   O(p) for the tilde expansion of p bytes. a bare name with shopt
+           sourcepath enabled runs one uncached ProgramResolver::search() over
+           PATH. */
 fn
 EvalContext::resolve_source_path(
     StringView path, source_tilde_expansion tilde_expansion) throws
@@ -829,6 +851,9 @@ EvalContext::resolve_source_path(
 {
   let expanded_path = String{heap_allocator(), path};
 
+  /* e.g. path = "~/lib/a.sh" and HOME = "/home/sd"
+     -> slash = 1, prefix = "", resolve_tilde_prefix() returns "/home/sd",
+        expanded_path = "/home/sd/" + "lib/a.sh" = "/home/sd/lib/a.sh" */
   if (tilde_expansion == source_tilde_expansion::Enabled &&
       path.starts_with("~"))
   {
@@ -882,6 +907,9 @@ EvalContext::clear_retained_sources() wontthrow -> void
   }
 #endif
 
+  /* pending process substitutions and control flow keep pointers into the
+     retained sources. those pointers are cleared before the sources are
+     freed. */
   for (process_substitution &sub :
        expansion_store().pending_process_substitutions())
   {
@@ -903,6 +931,11 @@ EvalContext::clear_retained_sources() wontthrow -> void
   source_store().current_origin().clear();
 }
 
+/* memory: destroys each retained String from index first onward and frees
+           its storage with heap_allocator(). then m_sources is truncated to
+           first entries.
+   time:   O(m - first) for m retained sources, with one
+           invalidate_line_number_cache_for() call per destroyed source. */
 fn
 SourceRetention::free_sources_from(usize first) wontthrow -> void
 {

@@ -231,6 +231,9 @@ program_of_dump(StringView name, Allocator allocator) throws -> String
 
   if (name.starts_with("ccpp-")) return String{allocator, "abrt report"};
 
+  /* e.g. name = "firefox-2026-01-01.dmp". indices 0 to 6 fail
+     is_year_marker(), and index 7 matches "-2026", so the program is
+     "firefox". */
   for (usize index = 0; index < name.length; index++) {
     if (!is_year_marker(name, index)) continue;
 
@@ -249,6 +252,11 @@ program_of_dump(StringView name, Allocator allocator) throws -> String
   return String{allocator, "-"};
 }
 
+/* memory: an ArrayList of dump_entry, with one name and one program String
+           per dump, all in allocator. the caller owns the returned list.
+   time:   one list_directory_status() call, O(n) for the n children with one
+           program_of_dump() call per matching name, then O(n log n) for
+           make_sorted(). */
 fn
 collect_dumps(StringView directory, Allocator allocator) throws
     -> SortedArrayList<dump_entry, newest_named_entry_comparator>
@@ -541,6 +549,14 @@ struct format_probe
   char           bytes[MAGIC_BYTE_COUNT]{};
 };
 
+/* memory: an ArrayList of log_entry, one name String, and one Path per child,
+           all in allocator. probes[] lives on the stack. do_flush_probes()
+           closes each descriptor after its read.
+   time:   one list_directory_status() call, O(n) for the n children, one
+           open_file_descriptor() call per file, and one batched read per
+           FORMAT_BATCH_COUNT opened files plus one for the rest. at most
+           FORMAT_BATCH_COUNT descriptors are open at once. make_sorted()
+           adds O(n log n). */
 fn
 collect_log_entries(StringView directory, Allocator allocator) throws
     -> SortedArrayList<log_entry, newest_named_entry_comparator>

@@ -310,6 +310,10 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let       ignored_names   = ArrayList<String>{cxt.scratch_allocator()};
 
     if (ignored_signals != 0) {
+      /* collected holds StringView values into the ignored-signal String
+         objects. short text lives inside its String, so an element that moves
+         leaves the view dangling. reserve() keeps every element in place for
+         the pushes below. */
       ignored_names.reserve(os::ENTRY_IGNORED_SIGNAL_LIMIT);
 
       for (i32 number = 1; number <= os::ENTRY_IGNORED_SIGNAL_LIMIT; number++) {
@@ -326,6 +330,8 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
     }
 
+    /* e.g. INT, RETURN, EXIT, TERM have trap_listing_order() values 2, 1002,
+       0, 15 on Linux, so the sorted order is EXIT, INT, TERM, RETURN. */
     let const listed = steal(collected).make_sorted(listed_trap_comparator{});
 
     for (usize i = 0; i < listed.count(); i++)

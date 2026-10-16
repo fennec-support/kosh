@@ -359,6 +359,11 @@ EvalContext::variable_names(Allocator result_allocator) const throws
   return names;
 }
 
+/* memory: a miss creates a FunctionBodyHandle sized for the action length, and
+           cached_bodies() holds that handle until set() replaces the condition.
+           a hit returns the cached handle.
+   time:   a hit costs one hash lookup and an O(action length) byte compare. a
+           miss adds one parse of the action. */
 fn
 EvalContext::cached_trap_body(StringView condition,
                               StringView action) throws
@@ -598,6 +603,9 @@ EvalContext::is_signal_ignored_at_startup(StringView condition) const wontthrow
     return false;
   }
 
+  /* at this point: *number is from 1 through os::ENTRY_IGNORED_SIGNAL_LIMIT,
+     which is 64, so the shift count is from 0 through 63 and fits the u64
+     mask. */
   return (ignored & (u64{1} << (*number - 1))) != 0;
 }
 
@@ -646,6 +654,8 @@ EvalContext::set_trap(StringView            condition,
                       Maybe<SourceLocation> definition_location) throws
     -> void
 {
+  /* a signal ignored at startup stays ignored in Bash compatible moods, and the
+     Bash manual states that such a signal cannot be trapped or reset. */
   if (is_signal_ignored_at_startup(condition)) {
     LOG(Info, "keeping '%.*s' ignored because the shell inherited it ignored",
         static_cast<int>(condition.length), condition.data);
@@ -1135,6 +1145,9 @@ fn
 EvalContext::append_integer_expression(String    &joined,
                                        StringView expression) const throws -> void
 {
+  /* e.g. expression = "  1+2" and joined = "" on entry. "+" is appended, the
+     loop stops at index 2 on '1', and "(1+2)" is appended, so joined is
+     "+(1+2)". an expression of only blanks leaves joined as "+0". */
   joined += '+';
 
   for (usize i = 0; i < expression.length; i++) {

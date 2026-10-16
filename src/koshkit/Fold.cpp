@@ -38,6 +38,10 @@ append_folded_line(String         &output,
 {
   usize start = 0;
 
+  /* e.g. line = "aaa bbb ccc", width = 5, break_mode is Blank
+     start 0: the blank at index 3 gives break_length 4, output "aaa ".
+     start 4: the blank at index 7 gives break_length 4, output "bbb ".
+     start 8: 3 bytes remain, output "ccc". */
   while (line.length - start > width) {
     usize break_length = width;
 
@@ -58,6 +62,11 @@ append_folded_line(String         &output,
   if (has_newline) output += '\n';
 }
 
+/* memory: each source's text is a heap String, released after its visit.
+           folded lines accumulate in the scratch arena and are printed once.
+   time:   O(n) for n input bytes in width mode. blank mode scans back up to
+           width bytes for each break, so O(n * width) in the worst case.
+   syscalls: reads each source through visit_ordered_sources(). */
 fn
 Fold::execute(const ExecContext               &ec,
               EvalContext                     &cxt,
@@ -84,6 +93,8 @@ Fold::execute(const ExecContext               &ec,
     width_value = parsed.value();
   }
 
+  /* at this point: width is at least 1, so append_folded_line() advances
+     start on every pass. */
   let const width = static_cast<usize>(width_value);
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());

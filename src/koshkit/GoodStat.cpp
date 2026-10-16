@@ -253,6 +253,11 @@ append_subject(String                    &output,
 
 } /* namespace */
 
+/* memory: operand_paths, file_statuses, batch, and output are allocated in
+           the scratch allocator. output holds every report until
+           print_to_stdout() runs.
+   time:   one stat() or lstat() per operand, issued as one batch. then one
+           append_subject() call per operand that succeeded. */
 fn
 GoodStat::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,

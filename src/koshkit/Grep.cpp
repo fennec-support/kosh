@@ -212,6 +212,12 @@ find_required_regex_literal(StringView pattern, bool is_extended) wontthrow
 
   usize index = 0;
 
+  /* e.g. pattern = "ab*cdef", basic regex
+       index 0-1: run "ab", run_length 2
+       index 2 '*': run_length 1, run "a" closes, required = "a"
+       index 3-6: run "cdef", run_length 4
+       end: run "cdef" closes, 4 > 1, required = "cdef"
+     returns "cdef" */
   while (index < pattern.length) {
     let const character = pattern[index];
 
@@ -293,6 +299,13 @@ find_required_regex_literal(StringView pattern, bool is_extended) wontthrow
   return required_literal;
 }
 
+/* memory: Path::read_directory_typed() and child_paths allocate in allocator,
+           the eval scratch arena, once per directory. storage holds one Path
+           per regular file. the arena frees all of them in bulk when it is
+           released.
+   time:   one directory read and one sort of its n entries, O(n log n), per
+           directory. stat runs once per Unknown entry, in waves of
+           GREP_UNKNOWN_BATCH_COUNT. recursion depth equals the tree depth. */
 static fn
 collect_recursive_sources(const ExecContext &ec,
                           EvalContext       &cxt,
@@ -917,6 +930,8 @@ private:
           m_is_fast_start_anchored && m_is_fast_end_anchored && !has_any_gap;
     }
 
+    /* a leading .* or trailing .* lets the first or last segment match at any
+       column, so the anchor flag for that side cannot hold. */
     if (has_leading_gap) m_is_fast_start_anchored = false;
     if (has_trailing_gap) m_is_fast_end_anchored = false;
     m_has_utf8_wildcard = m_options.is_utf8 && has_single_wildcard;
@@ -973,6 +988,10 @@ private:
     return None;
   }
 
+  /* memory: none.
+     time:   O(value.length * L) worst case, L the longest segment. each scan
+             starts where the previous match ended, so scans do not overlap.
+             called once per line from match_line(). */
   fn
   match_fast_line(StringView value) const wontthrow -> bool
   {
@@ -1807,6 +1826,9 @@ private:
       return;
     }
 
+    /* at this point: chunk is the final chunk of its source and was read
+       without error. m_line holds the unterminated tail of the source, or is
+       empty. */
     if (!m_line.is_empty()) finish_pending_line(chunk.source_index, source);
     if (m_options.output_mode == grep_output_mode::Count)
       print_source_count(chunk.source_index, source);
@@ -1994,6 +2016,8 @@ Grep::execute(const ExecContext               &ec,
     return 2;
   }
 
+  /* at this point: every matcher in search compiled its pattern, and search
+     owns pattern_text in the scratch arena. */
   search.collect_sources(operands);
 
   return search.run();

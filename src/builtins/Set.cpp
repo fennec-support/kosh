@@ -561,6 +561,8 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       source_init_moods(cxt, moods, cxt.startup_store().is_login_shell(),
                         cxt.execution_store().shell_is_interactive());
+      /* source_init_moods() changes the mood while it sources startup files,
+         so the mood saved before the call is restored here. */
       cxt.select_mood(previous_mood);
       continue;
     }

@@ -340,6 +340,9 @@ build_selector_args(koshka::EvalContext &context,
   return args;
 }
 
+/* memory: the returned ArrayList holds a heap copy of each kept record, owned
+           by the caller.
+   time:   O(reply.length), one pass over reply. */
 fn
 parse_selector_reply_stripping_descriptions(
     koshka::StringView reply, bool has_descriptions) throws
@@ -348,6 +351,9 @@ parse_selector_reply_stripping_descriptions(
   let   selected = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
   usize start    = 0;
 
+  /* e.g. reply = "a\tdesc\0\0b\n\0", has_descriptions = true
+       "a\tdesc" -> "a"; the empty record between NULs is skipped;
+       "b\n" -> "b". result: ["a", "b"] */
   for (usize i = 0; i <= reply.length; i++) {
     if (i != reply.length && reply[i] != '\0') {
       continue;
@@ -476,6 +482,12 @@ wait_for_continued_program(koshka::os::process child) throws -> i32
   }
 }
 
+/* memory: captured holds the child output in heap storage, and the caller owns
+           the returned String. without a continue signal, the whole output is
+           read by read_fd_to_string().
+   time:   one read_fd() per readable event. each wait_for_fd_readable() call
+           waits up to STOPPED_PROGRAM_POLL_NANOS when no output arrives. the
+           loop ends at end of file, or on a failed wait or read. */
 fn
 read_while_continuing_program(
     koshka::os::descriptor fd,
@@ -1505,6 +1517,11 @@ static String HISTORY_SEARCH_SNAPSHOT{koshka::heap_allocator()};
 static fn
 get_active_history_file_path() -> koshka::Maybe<koshka::Path>;
 
+/* memory: HISTORY_SEARCH_SNAPSHOT holds the copied history file until the next
+           call replaces it. the returned out_contents pointer is valid until
+           then.
+   time:   at most HISTORY_RACE_ATTEMPT_COUNT attempts, each with one
+           read_entire_file() call and two stat calls. one lock per call. */
 static fn
 provide_history_search_snapshot(const char **out_contents, size_t *out_size)
     -> int
@@ -1524,6 +1541,8 @@ provide_history_search_snapshot(const char **out_contents, size_t *out_size)
     if (!lock.has_value()) return 0;
     defer { os::release_process_lock(lock.take()); };
 
+    /* at this point: path has a value, and the process lock on its parent
+       directory is held until the defer above releases it. */
     for (int attempt_index = 0; attempt_index < HISTORY_RACE_ATTEMPT_COUNT;
          attempt_index++)
     {
@@ -1773,6 +1792,9 @@ static fn
 find_history_record_end(StringView contents, usize start_offset)
     -> koshka::Maybe<usize>
 {
+  /* e.g. contents = a, backslash, newline, b, newline; start_offset = 0
+       the backslash at index 1 escapes the newline at index 2, so no record
+       ends there. the newline at index 4 ends the record and returns 5. */
   bool is_escape_pending = false;
 
   for (usize position = start_offset; position < contents.length; position++) {
@@ -1855,6 +1877,12 @@ append_encoded_records_to_private_branch_as_unwritten(StringView records)
 fn
 write_history() -> koshka::ErrorOr<koshka::Ok>
 {
+  /* memory: written and durable_offsets are heap containers freed on return,
+             and written holds a copy of every buffered record. the process
+             lock is released by defer.
+     time:   O(B) bytes for the record scan, because each record is scanned
+             once from its start to its newline, plus one atomic write of
+             the same size. B is the buffered history size in bytes. */
   let const path = get_history_file_path();
 
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
@@ -1934,6 +1962,10 @@ load_history(const Path &path, bool should_allow_missing)
 {
   HISTORY_FILE.invalidate();
 
+  /* read_history() takes no process lock (see its call in
+     src/builtins/History.cpp), so another shell can replace the file between
+     tl_history_load() and the status checks. the loop retries up to
+     HISTORY_RACE_ATTEMPT_COUNT times. */
   for (int attempt_index = 0; attempt_index < HISTORY_RACE_ATTEMPT_COUNT;
        attempt_index++)
   {
@@ -2101,6 +2133,13 @@ import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
 fn
 append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
 {
+  /* memory: payload holds the encoded unwritten records, and unwritten_slots
+             and unwritten_byte_offsets hold one entry per unwritten record.
+             all are freed on return. the process lock is released by defer.
+     time:   O(count) to scan the slots and O(U) bytes to find the record ends,
+             where U is the byte count of the unwritten records. one 1-byte
+             read of the file end, then one append write of a separator and U
+             bytes. */
   let const path = get_history_file_path();
 
   if (!path.has_value()) return koshka::Error{"the path is unavailable"};
@@ -2471,6 +2510,14 @@ rewrite_history_event(usize                                    number,
                       const koshka::ArrayList<koshka::String> &replacements)
     -> bool
 {
+  /* memory: contents holds the durable file when should_rewrite_file is set,
+             durable_rewritten and private_rewritten hold the rewritten
+             contents, and the offset arrays hold one usize per record. all are
+             freed on return. the process lock is released by defer.
+     time:   O(F + B) bytes for the reads, the copies, and the atomic write,
+             where F is the durable file size and B is the private buffer size.
+             the offset loops take O(count) steps, where count is the record
+             count. */
   let const path = get_history_file_path();
 
   if (!path.has_value()) return false;
@@ -2650,6 +2697,9 @@ rewrite_history_event(usize                                    number,
     }
   }
 
+  /* at this point: the history lock is held, the history file holds
+     durable_rewritten when should_rewrite_file is set, and the in-memory
+     offsets still describe the records from before the replacement. */
   let const new_total_count =
       ::itl_g_history_total_count - 1 + replacements.count();
   let const retained_count = private_offsets.count() < ::itl_g_history_limit
@@ -2698,6 +2748,11 @@ set_title(StringView title) -> void
 
   if (output == KOSH_INVALID_FD) return;
 
+  /* memory: sequence reserves at most MAX_TITLE_LENGTH + 5 bytes and is freed
+             on return. LAST_TITLE_SEQUENCE keeps a copy until exit.
+     time:   O(title.count()) for the sanitizing loop, because each iteration
+             advances position. at most one os::write_all() call writes the
+             sequence. */
   static constexpr usize MAX_TITLE_LENGTH = 4096;
   let                    sequence         = String{koshka::heap_allocator()};
 
@@ -3334,6 +3389,10 @@ append_colored_hostname(String    &out,
   let sequence      = String{koshka::heap_allocator()};
   let last_sequence = String{koshka::heap_allocator()};
 
+  /* e.g. seed = 9, host = "kosh", truecolor terminal, i = 1:
+       progress = 1 * 1000 / 3 = 333, offset = hue_span (18) * 333 / 1000 = 5,
+       hue = (9 + (360 - 5)) % 360 = 4, region = 4 / 60 = 0,
+       remainder = 4 * 255 / 60 = 17, rgb = {240, 108, 98}. */
   for (usize i = 0; i < host.length; i++) {
     let const progress = host.length > 1 ? static_cast<u32>(i) * 1000 /
                                                static_cast<u32>(host.length - 1)
@@ -3845,6 +3904,11 @@ scan_prompt_template_inputs_or_report_impure(
     names.push(steal(input));
   };
 
+  /* e.g. text = "$a ${b}$a"
+       i = 0, "$a": do_add_name() adds a, so the list is [a]
+       i = 3, "${b}": do_add_name() adds b, so the list is [a, b]
+       i = 7, "$a": do_add_name() finds a, so the list stays [a, b]
+       returns true, so the template is cacheable */
   for (usize i = 0; i < text.length; i++) {
     let const byte = text[i];
     if (byte == '`') return false;
@@ -3973,6 +4037,11 @@ get_default_right_prompt_template() -> String
 static fn
 strip_sgr_color_sequences_only(StringView text) throws -> String
 {
+  /* e.g. text = "\x1b[1mhi\x1b[0m!"
+       i = 0: the m at index 3 ends the sequence, so i = 4
+       i = 4, 5: h and i are appended, so out = "hi"
+       i = 6: the m at index 9 ends the sequence, so i = 10
+       i = 10: ! is appended, so out = "hi!" */
   let   out = String{koshka::heap_allocator()};
   usize i   = 0;
 
@@ -4116,6 +4185,8 @@ build_prompt(EvalContext &context) -> String
     ps1_template = get_default_prompt_template();
   }
 
+  /* should_quote escapes $, backtick, and backslash in the values, because
+     expand_decoded_prompt() expands the decoded text as a heredoc body. */
   let const decoded = decode_prompt(ps1_template.view(), context, true);
   let       scanned_inputs =
       koshka::ArrayList<prompt_cache_input>{koshka::heap_allocator()};
@@ -4159,6 +4230,10 @@ trim_visible_prompt_spaces(StringView rendered) throws -> String
                : position;
   };
 
+  /* e.g. rendered = "  a b  "
+       first pass: first_text_position = 2 and last_text_position = 4
+       second pass: drops the spaces at 0, 1, 5, and 6, keeps the space at 3
+       -> "a b" */
   usize first_text_position = rendered.length;
   usize last_text_position  = 0;
   usize i                   = 0;
@@ -4388,6 +4463,10 @@ emit_command_end_mark(EvalContext &context, i32 exit_status) -> void
   koshka::flush();
 }
 
+/* memory: sequence is freed when the function returns.
+   time:   O(directory length + host length) for the escaping.
+           syscalls: a hostname lookup, a working directory lookup, and the
+           output through koshka::print() and koshka::flush(). */
 fn
 emit_prompt_start_marks(EvalContext &context) -> void
 {

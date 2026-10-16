@@ -27,6 +27,12 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Flock);
 
 namespace koshka::koshkit {
 
+/* memory: the keeper and command arrays are in the scratch arena and are
+           released with it.
+   time:   acquire_process_lock() blocks in flock(LOCK_EX) until the lock on
+           operands[0] is free. run_measured() then waits for the command to
+           exit. with --transaction-held-lock, a keeper child takes the lock,
+           and this process waits for that child instead. */
 fn
 Flock::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
@@ -73,6 +79,8 @@ Flock::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: lock is the held directory lock on operands[0], and the
+     defer below releases it on every return path. */
   defer { os::release_process_lock(*lock); };
 
   let command = ArrayList<String>{cxt.scratch_allocator()};

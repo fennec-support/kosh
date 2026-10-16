@@ -201,6 +201,12 @@ describe_network_socket(const os::network_socket_entry &socket,
   return endpoint;
 }
 
+/* memory: entries holds one socket_description per socket, allocated in
+           allocator. each endpoint is a String in allocator, empty for kernel
+           sockets.
+   time:   O(S log S) for the sort over S entries, after O(S) pushes. one
+           os::network_sockets() call and one os::kernel_sockets() call read
+           the socket tables. */
 fn
 load_socket_directory(socket_directory &directory,
                       Allocator         allocator) throws -> void
@@ -232,6 +238,7 @@ load_socket_directory(socket_directory &directory,
         socket_description{kernel_socket.identity, type, String{allocator}});
   }
 
+  /* find_socket_description() binary searches entries by inode. */
   directory.entries.sort(
       [](const socket_description &left, const socket_description &right) {
         return left.inode < right.inode;
@@ -363,6 +370,12 @@ is_network_file(StringView path) wontthrow -> bool
 
 } /* namespace */
 
+/* memory: the rows, matched paths, and stat results come from
+           cxt.scratch_allocator(), and the function frees none of them.
+   time:   one pass over the process table, one os::list_process_open_files()
+           call per matched process, one stat per matched path, and O(log S)
+           per socket path, where S is the socket count. the socket table
+           loads at most once. */
 fn
 EvilFiles::execute(const ExecContext               &ec,
                    EvalContext                     &cxt,

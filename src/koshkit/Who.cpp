@@ -38,6 +38,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Who);
 
 namespace koshka::koshkit {
 
+/* memory: sessions from os::logged_in_users() are heap allocated and freed
+           when the branch that lists them ends. output is in the expansion
+           scratch arena.
+   time:   one pass over the utmp records, O(records), then O(sessions) to
+           write one line for each session. */
 fn
 Who::execute(const ExecContext               &ec,
              EvalContext                     &cxt,

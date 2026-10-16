@@ -726,6 +726,9 @@ arithmetic_clause_command_text(StringView clause) throws -> String
   return command_text;
 }
 
+/* memory: m_cache is allocated on the first evaluation and freed by
+           ~ArithmeticCommand(). the clause tokens live in m_cache->tokens.
+   time:   one clause evaluation per call. this function has no loops. */
 fn
 ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
@@ -758,6 +761,7 @@ ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const t
       m_cache = new (block) arith_token_cache{};
     }
 
+    /* at this point: m_cache points to an initialized arith_token_cache. */
     try {
       is_nonzero = cxt.evaluate_arithmetic_cached_clause_nonzero(
           m_expression, m_cache->tokens, m_cache->is_tokenized,
@@ -899,6 +903,11 @@ CStyleForLoop::to_ast_string(usize layer) const throws -> String
          m_body->to_ast_string(layer + 1);
 }
 
+/* memory: get_clause_cache() allocates the condition and step caches once per
+           loop node, and ~CStyleForLoop() frees them. each clause evaluation
+           releases its scratch arena mark before it returns.
+   time:   O(n * (condition + step + body)) for n iterations, where the
+           condition decides n. the loop is a while over do_test_condition(). */
 fn
 CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
@@ -1295,6 +1304,11 @@ evaluate_subshell_in_process(const Expression *body,
   SET_AND_RETURN_EXIT_STATUS(cxt, ret);
 }
 
+/* memory: the command text from internal::subshell_command_text() is moved
+           into the execution store by set_current_command() when command text
+           is observed.
+   time:   at most one fork and one wait per call, and one run of the body.
+           this function has no loops. */
 fn
 Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
@@ -1402,6 +1416,8 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
     SET_AND_RETURN_EXIT_STATUS(cxt, status);
   }
 
+  /* at this point: forked_child holds a process, and no wait has consumed
+     it. */
   let const child = *forked_child;
 
   if (os::process_id_of(child) == 0) {
@@ -1824,6 +1840,8 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
     cxt.cleanup_process_substitutions(own_redirection_substitution_mark);
   };
 
+  /* the child must return to this frame so the restore defers below run.
+     a terminal exec would replace the process first. */
   cxt.execution_store().is_terminal_exec_allowed() = false;
 
   ArrayList<os::saved_descriptor> saved_descriptors{cxt.scratch_allocator()};
@@ -1831,10 +1849,14 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
   defer {
     koshka::flush();
 
+    /* one target fd can be saved more than once, as in 2>a 2>b, so the saves
+       are undone in reverse order to leave the original descriptor in place. */
     for (usize i = saved_descriptors.count(); i > 0; i--)
       os::restore_descriptor(saved_descriptors[i - 1]);
   };
 
+  /* stdout is flushed before a redirection replaces a descriptor, so output
+     written earlier still reaches the original target. */
   koshka::flush();
 
   Maybe<eval_state_snapshot> redirection_snapshot;

@@ -174,6 +174,9 @@ append_diagnostic_message(String                 &out,
   let const reset       = color.get_reset();
   usize     digit_start = message.length;
 
+  /* e.g. message = "bad (SC2086)" with color set: digit_start is 11 at the
+     ")", and the digit loop stops at "C", so digit_start is 7. the 4 bytes at
+     3 are " (SC", so out gets "bad", then DIM " (SC2086)". */
   if (!reset.is_empty() && message.length > 0 &&
       message[message.length - 1] == ')')
   {
@@ -226,6 +229,13 @@ reported_line_number(usize rendered_line, isize line_offset) wontthrow -> usize
                             line_offset);
 }
 
+/* memory: msg and expanded_line use heap_allocator(). expanded_line and the
+           two highlight lists are freed on return. msg goes to the caller.
+   time:   O(w + h) for w bytes of the line and h highlight spans on it. when
+           the line is longer than 2 * LONG_LINE_CONTEXT_BYTES, w is at most
+           2 * LONG_LINE_CONTEXT_BYTES + byte_count. spans_for() is not
+           counted. one os::get_terminal_dimensions() call runs when stderr is
+           a terminal. */
 cold static fn
 get_context_pointing_to(StringView                         source,
                         usize                              byte_position,
@@ -242,6 +252,9 @@ get_context_pointing_to(StringView                         source,
   static constexpr usize LONG_LINE_CONTEXT_BYTES = 4096;
   let                    line_position           = full_line_position;
 
+  /* a line longer than 2 * LONG_LINE_CONTEXT_BYTES is cut around the caret.
+     the start moves forward and the end moves back past UTF-8 continuation
+     bytes, so each cut lands on a code point boundary. */
   if (line_position.line_end - line_position.line_start >
       2 * LONG_LINE_CONTEXT_BYTES)
   {
@@ -656,6 +669,8 @@ ErrorWithLocation::to_string(StringView source, EvalContext *context) const thro
     return ErrorBase::to_string(source, context);
   }
 
+  /* at this point: source.data is non-null and byte_position is at most
+     source.count(). byte_count is not checked against source.count(). */
   LOG_VARS(Debug, byte_position, byte_count);
 
   let const severity      = get_severity();

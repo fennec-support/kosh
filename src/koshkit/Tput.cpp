@@ -91,6 +91,7 @@ Tput::execute(const ExecContext               &ec,
     let const row    = utils::parse_decimal_u64(operands[1].view());
     let const column = utils::parse_decimal_u64(operands[2].view());
 
+    /* the output writes row + 1, which overflows at UINT64_MAX. */
     if (row.is_error() || row.value() == UINT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[1], "invalid row '" + operands[1] + "'",

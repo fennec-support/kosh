@@ -60,6 +60,10 @@ sparse_array_key(StringView name,
   return key;
 }
 
+/* memory: one prefix key in allocator, which the caller's allocator reclaims.
+   time:   O(S) over every entry of sparse, S counting the entries of all
+           arrays, plus one integer parse for each entry that matches the
+           prefix. */
 template <class Visit>
 static fn
 for_each_sparse_index(const StringMap<String> &sparse,
@@ -381,6 +385,8 @@ EvalContext::set_array_element(StringView name,
 
   ASSERT(dense.has_value());
 
+  /* at this point: name is not readonly, is not a write-discarded dynamic
+     variable, and dense is the indexed array of name in the variable store. */
   let const dense_count = dense->count();
 
   if (index < dense_count) {
@@ -471,6 +477,11 @@ struct associative_entry
   StringView value;
 };
 
+/* memory: one entry per matching key in allocator. the key and value fields
+           are views into arrays and stay valid while arrays is unchanged.
+   time:   O(C) scan over every composite key of arrays, C being the keys of
+           all associative arrays, then a sort of the k matching entries by
+           sequence. */
 static fn
 collect_associative_entries(const CompositeKeyArrays &arrays,
                             StringView                prefix,

@@ -113,6 +113,12 @@ EvalContext::first_field_separator() const throws -> StringView
                                          get_glob_charset_for(separators)));
 }
 
+/* memory: scratch_allocator() holds the result list, the candidate fields, and
+           the stat batch until the caller releases the scratch arena mark.
+           entries uses the default allocator and is destroyed on return.
+   time:   one directory read and O(e) filename matches for e entries. in
+           Directories mode, one batched stat() call covers each matching entry
+           of kind Symlink or Unknown. */
 fn
 EvalContext::expand_path_once(const glob_field   &field,
                               glob_expansion_mode expansion_mode) throws
@@ -169,6 +175,9 @@ EvalContext::expand_path_once(const glob_field   &field,
   ASSERT(has_glob);
   ASSERT(!glob.is_empty());
 
+  /* at this point: entries holds the listing of parent_dir, glob is the
+     non-empty last component of path, and typed_prefix is the text of path
+     before glob, or empty when path has no slash. */
   let const is_dot_pattern = glob[0] == '.';
 
   if (is_dot_pattern && !is_shopt_enabled(shopt_option_id::Globskipdots)) {
@@ -340,6 +349,14 @@ namespace {
 
 constexpr usize GLOBSTAR_MAX_DEPTH = 256;
 
+/* memory: allocator holds the flags, uncertain paths, and statuses until
+           return. out receives one relative path per match, and each child
+           relative path is copied from its parent's.
+   time:   one directory read per visited directory, one batched lstat() call
+           for the Unknown entries, and one batched stat() call for the
+           uncertain entries. non-symlink directories are descended until
+           GLOBSTAR_MAX_DEPTH, so the walk covers every listed entry in the
+           tree below dir up to that depth. */
 fn
 collect_globstar_paths(const Path        &dir,
                        StringView         relative,
@@ -857,6 +874,10 @@ parse_glob_ignore_patterns(StringView list,
                            Allocator  allocator) throws
     -> ArrayList<glob_ignore_pattern>
 {
+  /* e.g. list is x\*.o:b. the colon splits it into the entries x\*.o and b.
+     the backslash keeps the star literal, so the first pattern has text x*.o
+     and active flags true, false, true, true. the second pattern has text b
+     and active flag true. */
   let   patterns    = ArrayList<glob_ignore_pattern>{allocator};
   usize entry_start = 0;
 

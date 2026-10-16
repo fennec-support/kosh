@@ -102,6 +102,10 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
+    /* e.g. arg = "x\x41\0101\cy" with -e
+            "x" is copied, "\x41" adds "A", and "\0101" adds "A" (octal 101 is
+            65). "\c" sets should_stop, so "y" is not reached.
+            output = "xAA", and the trailing newline is suppressed. */
     for (usize j = 0; j < arg.length(); j++) {
       if (arg[j] != '\\' || j + 1 >= arg.length()) {
         output += arg[j];

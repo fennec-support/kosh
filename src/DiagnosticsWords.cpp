@@ -123,6 +123,11 @@ note_arithmetic_target_record(AnalysisContext       &actx,
       target, name_location, assignment_binder::Arithmetic, is_conditional);
 }
 
+/* memory: pending_writes is a heap ArrayList with one entry per assignment
+           target, freed when the function returns.
+   time:   O(length) of expression, since name scans advance position.
+           find_arithmetic_syntax_problem() runs only without expansion
+           syntax. obvious_xor_power_operator_position() runs once. */
 fn
 check_arithmetic_expression_lints(AnalysisContext      &actx,
                                   StringView            expression,
@@ -613,6 +618,7 @@ check_numeric_comparison_operand(
 
   if (view_is_integer_literal(literal.view())) return;
 
+  /* at this point: word is fully literal, and literal is not an integer. */
   if (view_has_arithmetic_operator(literal.view())) {
     actx.report_diagnostic(diagnostic_id::sc2255, location, {literal.view()});
   } else if (view_has_decimal_fraction(literal.view())) {
@@ -1019,6 +1025,10 @@ check_equals_bearing_command_name(AnalysisContext      &actx,
   return false;
 }
 
+/* memory: last_storage copies the last argument only when its token has
+           no borrowed view, and it is freed on return.
+   time:   linear in command_literal for the equals and dollar scans, plus
+           the copy of the last argument when one is made. */
 fn
 check_command_word_shape(AnalysisContext          &actx,
                          const command_lint_input &input) throws -> bool

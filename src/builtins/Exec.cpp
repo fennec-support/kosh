@@ -74,6 +74,10 @@ report_exec_resolution_error(ExecContext   &ec,
   return report_exec_error(ec, cxt, error, command_status);
 }
 
+/* memory: argv copies on heap_allocator(), owned by command.
+   time: O(args) to copy argv, one PATH search that may stat each PATH entry
+         when command_name has no directory separator, and three descriptor
+         saves. no locks. */
 fn
 Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -300,6 +304,8 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     saved_descriptors.push(saved_descriptor);
   }
 
+  /* at this point: every descriptor from 0 to 2 is saved in
+     saved_descriptors, and the defer restores them when execute() returns. */
   try {
     cxt.print_deferred_source_traces();
     cxt.prepare_child_environment();

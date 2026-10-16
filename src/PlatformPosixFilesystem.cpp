@@ -473,6 +473,10 @@ list_directory_typed(descriptor directory, Allocator allocator) throws
 
 #endif
 
+/* memory: children, entries, paths, and batch use allocator. paths and batch
+           are destroyed on return, and entries is returned to the caller.
+   time:   one readdir() pass over n children, then one lstat() per child
+           through batch. O(n) syscalls and O(n * path length) bytes copied. */
 cold static fn
 list_directory_status_fallback(StringView dir,
                                Allocator  allocator) throws
@@ -530,6 +534,11 @@ find_ownership_problem(const struct stat &status,
   return None;
 }
 
+/* memory: read_fd_to_string() allocates the contents in heap_allocator(), and
+           the caller frees them. the descriptor is closed on return.
+   time:   open(), fstat(), and stat() on the directory, then one read() per
+           16384 bytes of contents plus a final read() that returns 0, which
+           gives ceil(size / 16384) + 1 read() calls. */
 fn
 read_system_owned_file(const Path &path) throws -> system_file_reading
 {
@@ -585,6 +594,10 @@ read_system_owned_file(const Path &path) throws -> system_file_reading
     return reading;
   }
 
+  /* at this point: fd is open read-only, and fstat() checked that its owner
+     is root and that neither group nor others can write it. the contents come
+     through fd, so they come from the checked file. the parent directory was
+     checked by path with stat(), so that check does not bind to fd. */
   reading.contents = read_fd_to_string(fd, heap_allocator());
   if (!reading.contents.has_value()) {
     reading.rejection =
@@ -791,6 +804,12 @@ open_file_descriptor_until_signal(StringView     path,
   return open_with_flags(path, mode, true, did_signal_arrive);
 }
 
+/* memory: path_string is a heap_allocator() copy of path, freed on return.
+           the returned descriptor is owned by the caller, who passes it to
+           release_process_lock().
+   time:   one open() and one blocking flock() with LOCK_EX. the call waits
+           without a timeout until the current holder releases the lock. a
+           signal that interrupts flock() returns None. */
 fn
 acquire_process_lock(StringView path) throws -> Maybe<descriptor>
 {
@@ -1333,6 +1352,10 @@ remove_tree_entry(TreeRemovalWalk   &walk,
   let entry = tree_removal_entry{};
 
   entry.path = path;
+  /* without a removal hook, an entry that readdir() reports as a non-directory
+     is unlinked before fstatat(). a name can be replaced by a directory after
+     readdir(). unlinkat() then fails with EISDIR or EPERM, and the entry
+     continues on the directory path. */
   if (is_known_non_directory && !walk.has_removal_choice()) {
     if (::unlinkat(parent_descriptor, name, 0) == 0) {
       walk.report_removed(entry);
@@ -1423,6 +1446,9 @@ remove_tree_entry(TreeRemovalWalk   &walk,
     }
   };
 
+  /* at this point: directory is open on the directory that entry_status
+     describes, because its st_dev and st_ino match entry_status. children are
+     listed through directory, not through the path. */
   let const do_is_same_directory = [&](const struct stat &other) wontthrow {
     return other.st_dev == directory_status.st_dev &&
            other.st_ino == directory_status.st_ino;
@@ -1567,6 +1593,16 @@ struct tree_walk_state
   }
 };
 
+/* memory: each child's name and path are bump-allocated in walk.arena under
+           a mark for each level and each child. a mark is released when its
+           level or child returns. active_directories holds one identity per
+           open level. walk_tree() frees the arena when it returns.
+   time:   one fstatat() per entry. per directory: one openat(), one fstat(),
+           one dup(), one fdopendir(), and a readdir() pass over the children.
+           the loop check scans active_directories, so O(directories * depth)
+           comparisons in total. a directory level at or past
+           REMOVE_TREE_HELD_DESCRIPTOR_DEPTH that is not a followed symlink adds
+           one openat() of "..". total: O(entries) syscalls. */
 static fn
 walk_tree_entry(tree_walk_state   &walk,
                 int               &parent_descriptor,
@@ -1823,8 +1859,12 @@ fn
 read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
 {
   const String path_string{heap_allocator(), path};
-  char         inline_buffer[256];
-  let          length =
+  /* e.g. the link target is 300 bytes long:
+       readlink(256) returns 256, which is not less than 256, so capacity
+       becomes 512; readlink(512) returns 300, which is less than 512, so the
+       function returns 300 bytes. */
+  char inline_buffer[256];
+  let  length =
       ::readlink(path_string.c_str(), inline_buffer, sizeof(inline_buffer));
 
   if (length < 0) return koshka::None;
@@ -1908,6 +1948,10 @@ stat_path(StringView path, file_status &status) wontthrow -> bool
   return true;
 }
 
+/* memory: copy of path in heap_allocator(), freed by ~String() on return. the
+           heap is used only past the inline buffer of String.
+   time:   one stat() syscall, which walks each path component and follows
+           symbolic links; O(path length) for the copy. */
 fn
 stat_path_following(StringView path, file_status &status) wontthrow -> bool
 {
@@ -1920,6 +1964,8 @@ stat_path_following(StringView path, file_status &status) wontthrow -> bool
   return true;
 }
 
+/* memory: none; struct stat lives on the stack.
+   time:   one fstat() syscall, O(1). */
 fn
 stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
 {
@@ -1946,6 +1992,9 @@ file_type_letter(u32 mode) wontthrow -> char
   return '-';
 }
 
+/* memory: String in heap_allocator() returned by value; the caller owns it.
+           the heap is used only past the inline buffer of String.
+   time:   O(1), ten push() calls, one of them from file_type_letter(). */
 fn
 format_mode_string(u32 mode) throws -> String
 {

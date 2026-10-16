@@ -113,6 +113,10 @@ history_target_needs_separator(const Path &target) throws
   return last_byte != '\n';
 }
 
+/* memory: out and the events list are allocated in scratch_allocator() and
+           are released when the scratch arena is reset.
+   time:   one get_history_events() read, then O(displayed events) to format
+           each line. */
 static fn
 print_history_list(const ExecContext &ec,
                    EvalContext       &cxt,
@@ -164,6 +168,10 @@ struct history_file_identity
   bool   has_file_identity{false};
 };
 
+/* memory: the returned resolved_path is a heap_allocator() string owned by
+           the caller.
+   time:   one canonical_path() call, or to_absolute() if that fails, and one
+           stat_path_following() call. */
 static fn
 get_history_file_identity(const Path &path) throws
     -> history_file_identity
@@ -311,6 +319,8 @@ write_history_to_file(EvalContext            &cxt,
 
   if (append_state.event_number > newest_number) append_state.event_number = 0;
 
+  /* at this point: the process lock on lock_parent is held, and
+     append_state.event_number is at most newest_number. */
   Maybe<usize> written_above{None};
 
   if (write_mode == history_file_write_mode::Append)
@@ -411,6 +421,8 @@ parse_history_selection(
       do_resolve(specification.substring_of_length(0, *separator));
   let const last_index = do_resolve(specification.substring(*separator + 1));
 
+  /* e.g. events numbered [10, 11, 12] and specification "11-12": the
+     separator is at byte 2, first_index is 1, and last_index is 2. */
   if (!first_index.has_value() || !last_index.has_value() ||
       *first_index > *last_index)
   {

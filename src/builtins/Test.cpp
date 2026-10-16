@@ -380,6 +380,10 @@ public:
   bool
   evaluate_with_posix_argument_count_rules() throws
   {
+    /* e.g. [ ! ( a = b ) ] has end 7 after the "]" is dropped, so count is
+       6 and no count rule applies. parse_factor() negates the group
+       "( a = b )", where evaluate_binary() gives false, so the result is
+       true. */
     let should_negate = false;
 
     loop {

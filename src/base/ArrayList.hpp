@@ -85,6 +85,9 @@ public:
       push(element);
   }
 
+  /* memory: reserve() allocates other.m_length elements in the allocator of
+             other. the destructor of this list frees them.
+     time:   O(other.m_length) element copies. */
   cold
   ArrayList(const ArrayList &other)
       : ArrayList(other.m_allocator)
@@ -418,6 +421,11 @@ public:
     return m_data[0];
   }
 
+  /* memory: alloc_array() of new_capacity elements in m_allocator replaces
+             m_data. the old buffer is freed here, and the new buffer is freed
+             by destroy_all().
+     time:   O(m_length) to relocate the elements, plus O(log needed) growth
+             steps. */
   cold fn
   reserve(usize needed) throws -> void
   {
@@ -425,6 +433,8 @@ public:
     if (needed > MAXIMUM_ELEMENT_COUNT) rarely
       throw std::bad_alloc{};
 
+    /* at this point: needed is greater than m_capacity and at most
+       MAXIMUM_ELEMENT_COUNT. */
     constexpr usize INITIAL_ALLOCATION_BYTES      = 64;
     constexpr usize MAXIMUM_INITIAL_ELEMENT_COUNT = 16;
     constexpr usize INITIAL_ELEMENT_COUNT =
@@ -526,6 +536,10 @@ public:
     m_capacity = m_length;
   }
 
+  /* memory: none. the elements are sorted in place.
+     time:   O(n log n) comparisons. intro_sort_range() recurses only into the
+             smaller partition, so the recursion depth is O(log n), and
+             heap_sort_range() caps the worst case at O(n log n). */
   template <typename Compare>
   fn
   sort(Compare is_less) throws -> void
@@ -1183,6 +1197,8 @@ public:
       m_list = new (block) ArrayList<T>{allocator};
     }
 
+    /* at this point: m_list is non-null, and its allocator equals the
+       allocator of filled. */
     *m_list = steal(filled);
     if (allocator.get_kind() == Allocator::Kind::Heap) m_list->shrink_to_fit();
   }

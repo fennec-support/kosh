@@ -50,6 +50,8 @@ Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         "Push a directory first with `pushd DIR`"};
   }
 
+  /* at this point: stack holds at least one directory, so stack.back() and
+     stack.pop_back() are valid. */
   let const do_pop_top = [&]() throws -> i32 {
     let const target = String{cxt.scratch_allocator(), stack.back().view()};
     let const status = run_cd_to_directory(cxt, ec, target.view());

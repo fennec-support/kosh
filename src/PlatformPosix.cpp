@@ -73,6 +73,9 @@ linux_socket_address(StringView             encoded,
 
     u8 bytes[16]{};
 
+    /* e.g. encoded = "00000000000000000000000001000000" for ::1. word 3 parses
+       to 0x01000000, and the byte loop stores its low byte first, so bytes[12]
+       through bytes[15] are 00 00 00 01 and inet_ntop() prints ::1. */
     for (usize word_index = 0; word_index < 4; word_index++) {
       let const word = utils::parse_integer_in_base_u64(
           encoded.substring_of_length(word_index * 8, 8), int_base::hex);
@@ -162,6 +165,12 @@ linux_socket_proc_path(StringView suffix, Allocator allocator) throws
   return path;
 }
 
+/* memory: peers is an ArrayList in allocator, and the returned list owns it.
+           the 64 KiB receive buffer is on the stack and zeroed by each pass.
+   time:   one socket(), one sendto(), and one close(). each pass makes one
+           poll() and one recvmsg(), and the passes end at a deadline 1 s after
+           the request is sent. each pass parses its rows and their attributes.
+           make_sorted() is O(n log n) for the n peers kept. */
 static fn
 linux_unix_socket_peers(Allocator allocator) throws
     -> linux_unix_socket_peer_list
@@ -329,6 +338,9 @@ linux_process_start_token(StringView process_directory) throws
 
   usize after_name_position = stat->count();
 
+  /* e.g. stat = "42 (a)b) S 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 777"
+     -> the scan stops at the ')' after "b", so after_name_position points at
+        " S". nth_space_field(..., 19) returns "777", the field after 18. */
   for (usize position = stat->count(); position > 0; position--) {
     if (stat->view()[position - 1] == ')') {
       after_name_position = position;
@@ -486,6 +498,14 @@ linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
   return result;
 }
 
+/* memory: owners is an ArrayList in allocator, and the caller owns it. the
+           proc directory is closed on return, and each fd directory is closed
+           at the end of its process pass.
+   time:   one opendir() per process, one readdir() per entry, and one
+           readlinkat() per fd entry. each socket fd scans owners for a
+           duplicate, so the worst case is O(S * O) for S socket fds and O
+           owners. linux_process_start_token() opens at most one stat file per
+           process. */
 static fn
 linux_socket_owners(Allocator allocator) throws
     -> ArrayList<linux_socket_owner>
@@ -845,6 +865,11 @@ seek_descriptor_from_start(os::descriptor fd, u64 byte_offset) wontthrow -> bool
          static_cast<off_t>(-1);
 }
 
+/* memory: none.
+   time:   one poll() per pass. a pass returns when poll() reports the fd or
+           fails, and it repeats after EINTR, or after a zero result when
+           timeout_nanos is not 0. a positive timeout_nanos bounds the total
+           wait, and a negative one makes poll() wait without a deadline. */
 hot fn
 wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
 {
@@ -1262,6 +1287,10 @@ network_interface_addresses() throws
   return result;
 }
 
+/* memory: on Linux, the contents of /proc/net/route are a String freed on
+           return. the returned String is allocated in allocator.
+   time:   O(B) for B bytes of the file, one pass over its lines, and four
+           word slots per line. */
 fn
 default_network_interface(Allocator allocator) throws -> Maybe<String>
 {
@@ -1310,6 +1339,9 @@ default_network_interface(Allocator allocator) throws -> Maybe<String>
             line.substring_of_length(word_start, word_position - word_start);
     }
 
+    /* e.g. line = "eth0 00000000 0102A8C0 0003 ..." gives words = [eth0,
+       00000000, 0102A8C0, 0003]. words[3][3] is '3', which sets the RTF_UP bit
+       (0x1), so has_up_flag is true and "eth0" is returned. */
     let const has_up_flag =
         word_count >= 4 && words[3].length >= 4 &&
         (words[3][3] == '1' || words[3][3] == '3' || words[3][3] == '5' ||
@@ -1714,6 +1746,8 @@ TerminalEchoGuard::TerminalEchoGuard(descriptor         input,
     return;
   }
 
+  /* at this point: ECHO is cleared on input, and m_original_mode holds the
+     attributes that the destructor restores. */
   m_should_restore = true;
 }
 
@@ -1741,6 +1775,8 @@ TerminalRawInputGuard::TerminalRawInputGuard(descriptor input) wontthrow
   raw_mode.c_cc[VTIME] = 0;
   if (tcsetattr(input, TCSANOW, &raw_mode) != 0) return;
 
+  /* at this point: ECHO and ICANON are cleared on input, and m_original_mode
+     holds the attributes that the destructor restores. */
   m_should_restore = true;
 }
 
@@ -1897,6 +1933,11 @@ locale_has_dot_decimal_point(locale_t numeric_locale) wontthrow -> bool
   return length == 3 && half[1] == '.';
 }
 
+/* memory: each slot keeps its locale_t from newlocale() until the slot is
+           reused, when freelocale() releases it. the slots are not freed at
+           thread exit.
+   time:   O(CACHE_ENTRY_COUNT) comparisons per call. a miss calls
+           newlocale() once and freelocale() at most once. */
 static fn
 get_numeric_locale(StringView locale_name) wontthrow
     -> const numeric_locale_entry *
@@ -2961,6 +3002,9 @@ probe_stack_floor() wontthrow -> uintptr_t
   return stack_low + reserve;
 }
 
+/* the floor is probed once per thread because guard_located_depth() calls
+   this for each depth check from STACK_PROBE_MINIMUM_DEPTH up to the cap,
+   and probe_stack_floor() makes system calls. */
 fn
 is_stack_nearly_exhausted() wontthrow -> bool
 {

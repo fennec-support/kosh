@@ -274,6 +274,9 @@ Mknod::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: *type is FIFO_TYPE, CHARACTER_TYPE, or BLOCK_TYPE. unless
+     is_fifo, major_number and minor_number hold values within range.
+     operands[name_operand_index] is the node name. */
   u32 mode = 0666;
 
   if (FLAG_MKNOD_MODE.is_set()) {

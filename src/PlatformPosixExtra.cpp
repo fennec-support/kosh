@@ -122,6 +122,8 @@ public:
 
     if (reading.running_nanos == reading.enabled_nanos) return reading.value;
 
+    /* the product of value and enabled_nanos can exceed u64, so the
+       multiplication runs in u128. */
     let const scaled_value = static_cast<u128>(reading.value) *
                              reading.enabled_nanos / reading.running_nanos;
 
@@ -559,6 +561,10 @@ public:
       if (counter_map[event_index] >= counter_count) return false;
     }
 
+    /* at this point: the force counters are acquired, counting is set on
+       counter_classes, and start_counters and end_counters each hold
+       start_counter_count zeroed values owned by this session. every
+       counter_map entry is below counter_count. */
     return true;
   }
 
@@ -692,6 +698,7 @@ platform_peak_rss_bytes(long peak_rss) wontthrow -> u64
 {
 #if defined __linux__
 
+  /* linux reports ru_maxrss in kibibytes, so the value scales by 1024. */
   return static_cast<u64>(peak_rss) * 1024ULL;
 #else
 
@@ -701,6 +708,11 @@ platform_peak_rss_bytes(long peak_rss) wontthrow -> u64
 
 } /* namespace */
 
+/* memory: one CPU_ALLOC() set per attempt, released with CPU_FREE() before the
+           next attempt, so at most one set is live. linux only.
+   time:   at most 8 sched_getaffinity() calls. each attempt is O(capacity)
+           for CPU_ZERO_S() and CPU_COUNT_S(), and the capacity doubles after
+           an EINVAL. */
 fn
 affinity_processor_count(usize online_count, usize configured_count) wontthrow
     -> usize
@@ -786,6 +798,12 @@ process_state_letter(char state) wontthrow -> char
   }
 }
 
+/* memory: the returned list and its strings come from heap_allocator(), and
+           the caller owns them. the kinfo_proc records buffer is released when
+           the function returns.
+   time:   O(P) for P records from one sysctl() listing, retried up to 8 times
+           while the buffer is too small. with ResourceStats, each record adds
+           proc_pidpath() and proc_pidinfo() calls. */
 fn
 enumerate_processes(process_detail detail) throws
     -> ArrayList<process_entry>
@@ -978,6 +996,13 @@ linux_process_real_uid(StringView process_directory,
   return None;
 }
 
+/* memory: the returned list and the strings in its entries come from
+           heap_allocator(), and the caller owns them. each /proc read is
+           released at the end of its pid iteration unless moved into an entry.
+   time:   O(P) for P numeric entries in /proc. each pid costs reads of comm,
+           status, and cmdline, plus stat and statm when the detail is
+           ResourceStats. the cmdline normalization adds O(L) per pid for L
+           bytes of cmdline. */
 fn
 enumerate_processes(process_detail detail) throws
     -> ArrayList<process_entry>
@@ -1123,6 +1148,9 @@ enumerate_processes(process_detail) throws -> ArrayList<process_entry>
 
 #if defined __linux__
 
+/* memory: described is heap_allocator() memory owned by the caller. the
+           strings in each entry move out of their /proc read buffers.
+   time:   O(N) for N pids, with reads of comm, status, and stat per pid. */
 fn
 describe_processes(const ArrayList<u32> &pids) throws
     -> ArrayList<process_entry>
@@ -1230,6 +1258,11 @@ cached_stat_at(int directory_fd, const char *path, struct stat &status)
 }
 #endif
 
+/* memory: use_masks holds one byte per query in scratch, which the caller
+           owns. users grows by one entry for each matching process and query.
+   time:   linux: O(P * (F + M) * Q) for P processes, F descriptors, M maps
+           lines, and Q queries, because each stat() result is compared with
+           every query. macos: O(Q * P * (F + R)) for R regions per process. */
 fn
 scan_process_file_users(const ArrayList<process_file_query> &queries,
                         ArrayList<process_file_user>        &users,
@@ -1700,6 +1733,11 @@ each_line(StringView text, usize &position) wontthrow -> StringView
   return line;
 }
 
+/* e.g. word "18446744073709551616" (2^64, 20 digits). the 19th digit 1 is
+   accepted because 184467440737095516 does not exceed (UINT64_MAX - 1) / 10,
+   which is 1844674407370955161, and parsed becomes 1844674407370955161. the
+   20th digit 6 is rejected because parsed exceeds (UINT64_MAX - 6) / 10, which
+   is 1844674407370955160, so the result is None. */
 static fn
 parse_decimal_word(StringView word) wontthrow -> Maybe<u64>
 {
@@ -3045,6 +3083,14 @@ read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 #endif
 }
 
+/* memory: statuses and availability hold one entry per process_ids element
+           and belong to the caller. the Linux branch takes batch and results
+           from statuses.allocator() and frees them on return. probes holds 64
+           descriptors with 2 KiB buffers, about 128 KiB on the stack.
+   time:   Linux opens one descriptor per pid and closes each after its batch
+           read, so at most 64 descriptors are open. the work is O(P) opens and
+           reads for P process_ids. other platforms call
+           read_process_io_status() once per pid. */
 fn
 read_process_io_statuses(const ArrayList<i64>         &process_ids,
                          ArrayList<process_io_status> &statuses,
@@ -3633,6 +3679,12 @@ FileWatcher::~FileWatcher()
   if (m_descriptor != KOSH_INVALID_FD) close_fd(m_descriptor);
 }
 
+/* memory: no heap allocation on Linux. the two paths sit in PATH_MAX stack
+           buffers. BSD and macOS copy a new path into m_watched_paths, which
+           owns the copy until the watcher is destroyed.
+   time:   two inotify_add_watch() calls on Linux. BSD and macOS scan
+           m_watched_paths in O(W) for W watched paths, then one open() and
+           one kevent() per side. */
 fn
 FileWatcher::watch(StringView path) wontthrow -> void
 {

@@ -19,6 +19,10 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Rmdir);
 
 namespace koshka::koshkit {
 
+/* memory: each -p parent is a Path allocated from cxt.scratch_allocator().
+   time:   one os::remove_directory() call per operand, and with -p one more
+           call per parent up to the first failure, so O(operands + removed
+           parents) calls. */
 fn
 Rmdir::execute(const ExecContext               &ec,
                EvalContext                     &cxt,

@@ -161,6 +161,11 @@ WordSegment::move_resources_to_arena(BumpArena &arena) throws -> void
   is_eval_cache_in_arena = true;
 }
 
+/* memory: copies each heap-held segment text, the eval cache, and the constant
+           value into arena, then frees the heap buffers it copied. the arena
+           owns the copies.
+   time:   O(segment count) for the loop, plus a memcpy of each heap-held text
+           and of the constant value. */
 fn
 Word::move_resources_to_arena(BumpArena &arena) throws -> void
 {
@@ -321,6 +326,9 @@ Word::get_fd_allocation_target() const wontthrow -> Maybe<fd_allocation_target>
     return None;
   }
 
+  /* e.g. text = "{fd[3]}" (7 bytes), inner = "fd[3]" (5 bytes). the '[' at
+          index 2 ends name_length at 2. the bracket loop ends at position 5
+          with open_count 0. subscript_length = 1, so the subscript is "3". */
   let const inner = text.substring_of_length(1, text.length - 2);
 
   if (!lexer::is_variable_name_start(inner[0])) return None;
@@ -575,6 +583,9 @@ find_assignment_equals(StringView text) wontthrow -> Maybe<usize>
   if (cursor >= text.length) return koshka::None;
   if (text[cursor] != '[') return text.find_character('=');
 
+  /* e.g. text = "a[1+2]=x": cursor is 1. the '[' at index 1 sets depth to 1,
+          the ']' at index 5 sets it to 0, and text[6] is '=', so the result
+          is 6. */
   usize depth = 0;
 
   for (usize position = cursor; position < text.length; position++) {
@@ -805,6 +816,8 @@ SegmentText::append(StringView other) throws -> void
     let const source_offset =
         is_aliased ? source_address - storage_address : usize{0};
 
+    /* other can point into the buffer that grow_owned() frees. the offset from
+       m_data is kept so other is rebased onto the new buffer. */
     grow_owned(needed);
 
     if (is_aliased) other.data = m_data + source_offset;

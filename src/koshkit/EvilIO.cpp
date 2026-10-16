@@ -318,6 +318,13 @@ is_idle_process_io(const os::process_io_status &status) wontthrow -> bool
                                            status.write_operation_count == 0));
 }
 
+/* memory: the local lists process_ids, process_positions, statuses, and
+           availability, and the list returned by os::enumerate_processes(),
+           are freed on return. the rows are allocated in allocator, and the
+           returned list owns them.
+   time:   O(P) for the loop over P listed processes, plus the work of
+           os::enumerate_processes(). one status probe for each of S selected
+           processes. O(R log R) for the pid sort of R rows kept. */
 fn
 read_process_io_rows(Allocator        allocator,
                      Maybe<i64>       selected_pid,
@@ -373,6 +380,11 @@ read_process_io_rows(Allocator        allocator,
   return steal(rows).make_sorted(process_pid_comparator{});
 }
 
+/* memory: the sampled rows and their process name strings are allocated in
+           allocator. the returned list owns them.
+   time:   O(B + A) for the merge of B before_rows and A after_rows, since
+           before_position never decreases. O(K log K) for the sort of K
+           sampled rows. no syscalls. */
 fn
 sample_process_io_rows(const ArrayList<io_row> &before_rows,
                        const ArrayList<io_row> &after_rows,
@@ -384,6 +396,13 @@ sample_process_io_rows(const ArrayList<io_row> &before_rows,
   let   sampled_rows    = ArrayList<io_row>{allocator};
   usize before_position = 0;
 
+  /* e.g. before = [10/3/100, 20/7/500, 30/5/0], after = [20/7/900, 30/8/40],
+          as pid/start_token/read bytes.
+          after 20: before_position 0 -> 1 because 10 < 20. tokens 7 and 7
+                    match, so the read delta is 900 - 500 = 400.
+          after 30: before_position 1 -> 2 because 20 < 30. tokens 5 and 8
+                    differ, so the row is skipped.
+          -> one row, pid 20, read 400 */
   for (let const &after : after_rows) {
     while (before_position < before_rows.count() &&
            before_rows[before_position].pid < after.pid)
@@ -781,6 +800,12 @@ make_disk_io_row(const os::disk_io_status *before,
   return row;
 }
 
+/* memory: rows is reserved for after_snapshot.disks rows in allocator, and
+           each row copies its device name into allocator. the caller owns
+           rows.
+   time:   O(A * B) for one find_disk_io_status() call per after disk, where A
+           and B are the disk counts of after_snapshot and before_snapshot.
+           no syscalls. */
 fn
 make_disk_io_rows(const os::disk_io_snapshot &before_snapshot,
                   const os::disk_io_snapshot &after_snapshot,
@@ -1048,6 +1073,8 @@ run_live_process_io(const ExecContext         &ec,
     return 1;
   }
 
+  /* at this point: no interrupt request is pending. when selected_pid has a
+     value, baseline_rows holds the row for that process. */
   update_retained_rows(retained, baseline_rows, last_sample_nanoseconds,
                        window_nanoseconds, allocator, do_get_key, do_get_value,
                        process_io_counter_reset, do_make_row);
@@ -1372,6 +1399,11 @@ append_process_io_report(String                  &output,
 
 } /* namespace */
 
+/* memory: report rows and output use cxt.scratch_allocator(), a bump arena
+           that execute() does not release.
+   time:   read_process_io_rows() costs O(P) status reads for P processes.
+           sorting R rows costs O(R log R). the cumulative and --all paths
+           sleep for cumulative_duration_seconds once. */
 fn
 EvilIO::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
@@ -1510,6 +1542,8 @@ EvilIO::execute(const ExecContext               &ec,
 
   if (!report_options.has_value()) return 1;
 
+  /* at this point: report_options has a value, cumulative_duration_seconds is
+     greater than zero, and row_limit is SIZE_MAX or from 1 through 100000. */
   String sample_duration_label{allocator, "/S"};
 
   if (report_options->is_cumulative || report_options->is_live) {
@@ -1591,6 +1625,9 @@ EvilIO::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: --all is not combined with --cumulative or --live, and
+     sort_key has a value only when --sort was given and it is valid for the
+     report kind. */
   if (report_options->is_live) {
     if (should_show_processes) {
       return run_live_process_io(ec, selected_pid, row_limit, *report_options,
@@ -1755,6 +1792,8 @@ EvilIO::execute(const ExecContext               &ec,
         (memory.has_field(os::memory_status_field::Available) ||
          memory.has_field(os::memory_status_field::Free)))
     {
+      /* kib counts are scaled to bytes with saturation because a count above
+         UINT64_MAX / 1024 wraps when multiplied by 1024. */
       let const total_byte_count     = memory.total_kib > UINT64_MAX / 1024
                                            ? UINT64_MAX
                                            : memory.total_kib * 1024;

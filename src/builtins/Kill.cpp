@@ -28,6 +28,10 @@ REGISTER_BUILTIN_FLAGS(Kill);
 
 namespace koshka {
 
+/* memory: the --list output and signal_error are allocated in
+           scratch_allocator() and are released when the scratch arena is reset.
+   time:   one signal_process() call per target, plus one per earlier pipeline
+           stage of each %job target. forget_waited_jobs() runs once. */
 fn
 Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

@@ -327,6 +327,8 @@ colored(StringView code, bool should_color) wontthrow -> StringView
   return should_color ? code : StringView{};
 }
 
+/* time: O(n) for two passes over n samples, with one accessor() call per
+         sample in each pass. no allocation. */
 template <typename Accessor>
 fn
 compute_stats(const ArrayList<bench_sample> &samples,
@@ -336,6 +338,9 @@ compute_stats(const ArrayList<bench_sample> &samples,
 
   if (samples.is_empty()) return stats;
 
+  /* e.g. samples = [2, 4, 6]: the first loop gives sum = 12, min = 2, and
+          max = 6, so mean = 4. the second loop gives deltas -2, 0, 2, so
+          variance_sum = 8 and std_dev = sqrt(8 / 2) = 2. */
   double sum     = 0;
   double minimum = accessor(samples[0]);
   double maximum = accessor(samples[0]);
@@ -368,11 +373,16 @@ compute_stats(const ArrayList<bench_sample> &samples,
   return stats;
 }
 
+/* memory: the returned String is allocated in allocator and lives until
+           allocator is reset or destroyed.
+   time:   O(1), one snprintf() into a 64 byte buffer. */
 cold fn
 format_metric(double      value,
               metric_unit unit,
               Allocator   allocator) throws -> String
 {
+  /* e.g. value = 2500000 in Nanoseconds: the value is at least 1e6, so
+          scaled = 2.5 and suffix = "ms". snprintf() gives "2.5ms". */
   double      scaled = value;
   const char *suffix;
 
@@ -615,6 +625,11 @@ clear_progress() wontthrow -> void
                       CLEAR_PROGRESS_LINE.count()));
 }
 
+/* memory: child_argv, samples, and the per-metric present lists are
+           allocated in allocator and live until it is reset or destroyed.
+   time:   O(n * METRIC_COUNT) for n samples, where n is at most MAX_SAMPLES.
+           each sample is one os::run_measured() call, which spawns the
+           command. */
 fn
 sample_command(StringView shell_binary,
                StringView command,
@@ -647,6 +662,9 @@ sample_command(StringView shell_binary,
   } else {
     usize start = 0;
 
+    /* e.g. command = "cat  a" gives child_argv = ["cat", "a"]: the space at
+            index 3 emits "cat", the space at index 4 emits nothing, and the
+            end at index 6 emits "a". */
     for (usize i = 0; i <= command.length; i++) {
       let const is_at_end = i == command.length;
 
@@ -755,6 +773,8 @@ sample_command(StringView shell_binary,
   }
 
   for (usize k = 0; k < METRIC_COUNT; k++) {
+    /* when the perf counters cover only the measured process, the process
+       cycles and instructions repeat the perf rows, so they are skipped. */
     let const is_duplicate =
         result.is_perf_process_only &&
         (k == PROCESS_CYCLES_METRIC || k == PROCESS_INSTRUCTIONS_METRIC);
@@ -952,6 +972,11 @@ append_comparison(String              &out,
 
 } /* namespace */
 
+/* memory: results and out are allocated in scratch_allocator() and live
+           until that allocator is reset or destroyed.
+   time:   sample_command() runs once per command, in sequence, so the total
+           sampling time is the sum over commands. the output is linear in
+           the number of commands. */
 cold fn
 Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -1015,6 +1040,9 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         StringView{"bench cannot find the kosh binary to run a sample"}};
   }
 
+  /* at this point: run_limit is empty or holds a value from 1 through
+     MAX_SAMPLES, duration_millis * 1000000 fits in u64, and shell_binary is
+     not empty when should_use_shell is set. */
   LOG(Debug, "bench sampling %zu commands for %llu ms each",
       arguments.count() - 1, static_cast<unsigned long long>(duration_millis));
 

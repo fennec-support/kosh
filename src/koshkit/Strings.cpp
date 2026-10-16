@@ -113,6 +113,8 @@ Strings::execute(const ExecContext               &ec,
     radix = radix_value[0];
   }
 
+  /* at this point: minimum_length is in 1 through SIZE_MAX, and radix is
+     '\0' when -t is absent or one of 'd', 'o', or 'x'. */
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
   let output = String{cxt.scratch_allocator()};
@@ -135,6 +137,12 @@ Strings::execute(const ExecContext               &ec,
     if (read_result == SourceBatchReader::ReadResult::Complete) break;
     if (read_result == SourceBatchReader::ReadResult::Interrupted) return 130;
 
+    /* e.g. chunk.content is "ab\0cdef", minimum_length 4, radix '\0'
+            "ab" is shorter than 4 and is dropped; byte_offset 0 -> 2
+            "\0" is not printable and run is empty; byte_offset 2 -> 3
+            "cdef" reaches the chunk end, so it waits in run at run_offset 3;
+            byte_offset 3 -> 7. do_flush() writes "cdef\n" once the chunk
+            completes. */
     for (let const &chunk : chunks) {
       usize position = 0;
 

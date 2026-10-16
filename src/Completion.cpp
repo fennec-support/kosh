@@ -168,6 +168,10 @@ internal::best_tier_matches(StringView                   token,
 class BorrowedStringSet
 {
 public:
+  /* memory: slots holds a table of Slot in completion_allocator(). grow()
+             allocates a table with twice the capacity, or 16 slots when empty.
+     time:   place() probes linearly from hash & mask. grow() rehashes every
+             slot, O(capacity), when adding would reach 3/4 of capacity. */
   fn
   add(StringView value) throws -> bool
   {
@@ -866,6 +870,14 @@ build_filesystem_candidate(StringView                       directory_part,
   return candidate;
 }
 
+/* memory: the matches, paths, statuses, and result positions go to
+           completion_allocator(), which complete() resets on its next call.
+   time:   O(log E) lower bound over E directory entries, then one
+           candidate_match() for each entry that shares the basename prefix.
+           the fuzzy fallback runs only when the collector allows it and has no
+           prefix match, and then calls candidate_match() on each other entry.
+   io:     read_directory_cached() may scan the directory on a cache miss, and
+           each symlink match costs one stat() in the os::Batch. */
 template <typename Collector>
 static fn
 collect_filesystem_matches(
@@ -885,6 +897,8 @@ collect_filesystem_matches(
 
   if (!listing.has_value()) return;
 
+  /* at this point: listing->entries is non-null and sorted by folded name,
+     which the lower bound search below requires. */
   let const &parts              = listing->parts;
   let        raw_directory_part = parts.directory_part;
 
@@ -1427,6 +1441,10 @@ token_is_tilde_user_prefix(StringView token) wontthrow -> bool
          !os::has_directory_separator(token);
 }
 
+/* memory: candidates go to completion_allocator(). the user list from
+           enumerate_users() is heap memory that lasts until the loop ends.
+   time:   enumerate_users() loads /etc/passwd in full on POSIX, then one
+           starts_with() call for each user. */
 static fn
 complete_tilde_user(StringView token) throws -> ArrayList<String>
 {
@@ -1528,6 +1546,7 @@ partition_by_extension(ArrayList<String> candidates,
 
   let rest = ArrayList<String>{candidates.allocator()};
 
+  /* e.g. candidates = [main.o, util.c, lib.h, Makefile], hint_list = "c h" */
   for (usize i = 0; i < candidates.count(); i++) {
     if (candidate_extension_is_hinted(candidates[i].view(), hinted_extensions))
       ordered.push(steal(candidates[i]));
@@ -1535,6 +1554,7 @@ partition_by_extension(ArrayList<String> candidates,
       rest.push(steal(candidates[i]));
   }
 
+  /* -> ordered [util.c, lib.h], rest [main.o, Makefile] */
   for (usize i = 0; i < rest.count(); i++)
     ordered.push(steal(rest[i]));
 

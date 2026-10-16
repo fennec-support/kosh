@@ -142,6 +142,8 @@ Env::execute(const ExecContext               &ec,
     return static_cast<i32>(resolution_error.command_status());
   }
 
+  /* at this point: sub holds a resolved command, and the defer above restores
+     every saved variable when this function returns. */
   let      &execution = cxt.execution_store();
   let const was_child_environment_fixed =
       execution.is_child_environment_fixed();

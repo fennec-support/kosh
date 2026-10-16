@@ -361,6 +361,11 @@ append_bounded_command(String    &output,
 
   if (current_width >= line_width_limit) return;
 
+  /* e.g. output ends with "abcd", line_width_limit is 20, and the command is
+     "/usr/bin/python3 script.py --flag" (33 cells). current_width is 4, and
+     available is 20 - 4 - 1 = 15 cells, after the space. the command is wider,
+     so 15 - 3 = 12 cells of it are kept before "...".
+     -> output is "abcd /usr/bin/pyt..." (20 cells) */
   let const available = line_width_limit - current_width - 1;
 
   if (available == 0) return;
@@ -483,6 +488,11 @@ render_process_relatives(String                      &output,
     return;
   }
 
+  /* memory: relative_positions and relative_prefix are allocated in allocator.
+             each active call holds one prefix, and the call depth stops at
+             MAXIMUM_TREE_DEPTH.
+     time:   each call scans nodes up to twice, and each rendered node makes
+             one call, so the total is O(n^2) for n nodes. */
   ArrayList<usize> relative_positions{allocator};
   let const        parent_pid        = nodes[parent_position].pid;
   let const        ancestor_pid      = nodes[parent_position].parent_pid;
@@ -552,6 +562,10 @@ read_process_nodes(Allocator            allocator,
                    evilps_resource_mode resource_mode) throws
     -> ArrayList<tree_node>
 {
+  /* memory: name and command_line are copied into allocator for each process.
+             the returned list owns the copies.
+     time:   one os::enumerate_processes() call, which loads the process table,
+             then O(p) copies for p processes. */
   let const processes = os::enumerate_processes(
       resource_mode == evilps_resource_mode::ResourceStats
           ? os::process_detail::ResourceStats
@@ -579,6 +593,10 @@ fn
 mark_search_visibility(ArrayList<tree_node> &nodes,
                        StringView            search) throws -> void
 {
+  /* memory: none. the match and ancestor flags are set in place on nodes.
+     time:   one substring match per node. each visible node walks its
+             ancestor chain, and each step scans all n nodes, so the worst
+             case is O(n^3) for n nodes. */
   if (search.is_empty()) return;
 
   let const parsed_pid =
@@ -707,6 +725,8 @@ render_process_snapshot(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: operands is empty, nodes is in the order from sort_nodes(),
+     and no node has its was_rendered flag set. */
   for (usize position = 0; position < nodes.count(); position++) {
     if (rendered_count >= output_limit) break;
 

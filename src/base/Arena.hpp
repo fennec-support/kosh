@@ -198,6 +198,11 @@ private:
                : FIRST_DESTRUCTOR_CHUNK_COUNT << chunk_index;
   }
 
+  /* e.g. position = 100 with FIRST_DESTRUCTOR_CHUNK_COUNT = 32 takes the
+     branch below DOUBLED_DESTRUCTOR_COUNT (4064):
+       scaled = 100 / 32 + 1 = 4
+       chunk_index = 63 - __builtin_clzll(4) = 2
+       position_in_chunk = 100 - 32 * 3 = 4 (chunk 2 starts at position 96) */
   static fn
   locate_destructor(usize  position,
                     usize &chunk_index,

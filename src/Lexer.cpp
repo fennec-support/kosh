@@ -195,6 +195,8 @@ word_looks_like_assignment(StringView word) wontthrow -> bool
     return false;
   }
 
+  /* e.g. word = "a[x]+=1": position stops at 1 on '['. the loop below sets
+     bracket_depth to 0 at ']' (index 3), which leaves position at 4 on '+'. */
   usize bracket_depth = 1;
 
   position++;
@@ -426,6 +428,9 @@ Lexer::advance_past_last_peek() throws -> usize
   m_cached_offset = 0;
   m_peek_cache    = nullptr;
 
+  /* heredoc bodies start on the line after the newline token, so the bodies
+     are collected once that newline is consumed rather than when it is
+     peeked. */
   if (m_was_last_shell_token_newline && !m_pending_heredocs.is_empty()) {
     m_was_last_shell_token_newline = false;
     collect_pending_heredocs();
@@ -555,6 +560,12 @@ Lexer::walk_heredoc_body(usize              start,
   return position;
 }
 
+/* memory: one heap String per pending heredoc, which steal() moves into
+           contents->text. the delimiter Strings are freed when
+           m_pending_heredocs is cleared.
+   time:   O(sum of body bytes), one walk_heredoc_body() pass per pending
+           heredoc. validate_nested_expansions() adds one call per expanding
+           body. */
 cold fn
 Lexer::collect_pending_heredocs() throws -> void
 {
@@ -689,6 +700,9 @@ Lexer::skip_whitespace() throws -> void
           content_position++;
         }
 
+        /* e.g. comment = "#  shellcheck disable=SC2034": content_position
+           stops at 3 on 's', so directive_text is "shellcheck disable=SC2034"
+           and directive_text[10] is ' '. */
         let const directive_text = comment.substring(content_position);
 
         if (directive_text.starts_with(StringView{"shellcheck", 10}) &&
@@ -1859,6 +1873,12 @@ Lexer::record_substitution_error(
   m_substitution_errors.push(error);
 }
 
+/* memory: nested_errors and nested_messages use heap_allocator() and are
+           freed on return. the nested lexer and parser allocate from arena,
+           which the defer releases to arena_mark.
+   time:   one lex and parse of body per call. a byte inside d nested
+           substitutions is lexed d times, and d is at most
+           MAX_SUBSTITUTION_NESTING_DEPTH. */
 cold fn
 Lexer::validate_substitution_body(
     usize                 body_position,
@@ -1882,6 +1902,10 @@ Lexer::validate_substitution_body(
   let const arena_mark = arena.mark();
   defer { arena.release(arena_mark); };
 
+  /* an exact body is lexed in place, so its errors keep their positions in
+     m_source. an unescaped body is lexed from its own buffer, so its errors
+     report outer_location. the constraint is that substitution bodies use
+     validation parsing where diagnostics need outer source coordinates. */
   let const is_exact     = body.data == m_source.data + body_position;
   let       nested_lexer = Lexer{
       is_exact ? m_source.substring_of_length(0, body_position + body.length)
@@ -2015,7 +2039,12 @@ lexer::find_nested_substitutions(StringView source,
       entry.body_length    = body.length;
       entry.outer_position = region_position + offset;
       entry.outer_length   = end + 1 - offset;
-      entry.is_exact       = !has_stripped_escape;
+      /* e.g. region = `a\`b`, is_heredoc = false: the scan sets
+              has_stripped_escape at the backslash, and body = a\`b (4 bytes)
+              gives is_exact = false. unescape appends index 0 a, skips the
+              backslash at index 1 to append index 2, then appends index 3 b:
+              a`b (3 bytes). */
+      entry.is_exact = !has_stripped_escape;
       if (has_stripped_escape) {
         for (usize index = 0; index < body.length; index++) {
           if (body[index] == '\\' && index + 1 < body.length &&

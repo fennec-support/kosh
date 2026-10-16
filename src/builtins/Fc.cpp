@@ -144,6 +144,10 @@ report_fc_selection_error(const ExecContext    &ec,
   return 1;
 }
 
+/* memory: result String in allocator, owned by the caller.
+   time: O(source.length * pattern.length) in the worst case, since each
+         position compares at most pattern.length bytes. an empty pattern
+         appends replacement once per byte of source. */
 static fn
 replace_all(StringView source,
             StringView pattern,
@@ -160,6 +164,9 @@ replace_all(StringView source,
 
   usize position = 0;
 
+  /* e.g. source = "aXbX", pattern = "X", replacement = "yy": position 0
+     copies "a", position 1 matches "X" and appends "yy", position 2 copies
+     "b", and position 3 matches "X" and appends "yy". result = "ayybyy". */
   while (position < source.length) {
     let const remaining = source.length - position;
 
@@ -296,6 +303,8 @@ execute_fc_command(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: selection.index is in [0, last_eligible_index], so it
+     addresses an event in events. */
   let command = String{cxt.scratch_allocator(),
                        events[static_cast<usize>(selection.index)].command};
 
@@ -498,6 +507,11 @@ edit_fc_commands(const ExecContext                          &ec,
   return status;
 }
 
+/* memory: every history event and its command string in
+           cxt.scratch_allocator(), freed when the scratch arena resets.
+   time: O(H) to decode the H entries of the history file, plus the file load
+         on first use. each text specification scans the events in
+         resolve_fc_selection(), which is O(H) per specification. */
 fn
 Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

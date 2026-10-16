@@ -237,6 +237,13 @@ public:
       : m_pieces{allocator}, m_line_spans{allocator}, m_allocator{allocator}
   {}
 
+  /* memory: m_pieces and m_line_spans are owned by the cache. m_pieces is
+             replaced when source changes. the pointer returned is valid until
+             the next call.
+     time:   when source changes, one scan_highlight_source() over source, then
+             split_spans_at_lines(), which sorts the P pieces when they are out
+             of order. otherwise, a binary search over P pieces, then one step
+             per piece that overlaps the line. */
   fn
   spans_for(StringView   source,
             usize        line_start,

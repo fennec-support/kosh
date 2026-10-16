@@ -140,11 +140,13 @@ parse_od_byte_count(StringView text, bool has_unit_suffix) throws
     }
   }
 
+  /* e.g. text = "0x10b" with has_unit_suffix: the b stays in the text */
   int_base base = int_base::decimal;
 
   if (is_hexadecimal) {
     base = int_base::hex;
     text = text.substring(2);
+    /* -> base = hex and text = "10b", which parses to 267 */
   } else if (text.length > 1 && text[0] == '0') {
     base = int_base::octal;
   }
@@ -160,6 +162,12 @@ parse_od_byte_count(StringView text, bool has_unit_suffix) throws
   return parsed.value() * multiplier;
 }
 
+/* memory: output, type_requests, formats, and input_operands come from
+           cxt.scratch_allocator(), a bump arena whose allocations are not
+           freed one at a time. chunk is a 64 KiB stack array. output is
+           printed and cleared once it holds at least 64 KiB.
+   time:   O(skip_count + byte_limit) bytes read, capped at the end of input.
+           each emitted row costs O(formats * 16). */
 fn
 Od::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
@@ -429,6 +437,8 @@ Od::execute(const ExecContext               &ec,
         od_format{base, unit_byte_count, width_columns, false, is_signed});
   }
 
+  /* at this point: every format has a unit_byte_count of 1, 2, 4, or 8, so
+     OD_ROW_LENGTH splits into whole fields for each format. */
   static constexpr usize OD_ROW_LENGTH     = 16;
   usize                  row_width_columns = 0;
 
@@ -515,6 +525,7 @@ Od::execute(const ExecContext               &ec,
 
           bool is_negative = false;
 
+          /* e.g. -t d1, row byte 0xf0: value = 240, sign_bit = 0x80 */
           if (format.is_signed) {
             let const bit_count = format.unit_byte_count * 8;
             let const sign_bit  = u64{1} << (bit_count - 1);
@@ -524,6 +535,7 @@ Od::execute(const ExecContext               &ec,
               value       = format.unit_byte_count == sizeof(u64)
                                 ? ~value + 1
                                 : (u64{1} << bit_count) - value;
+              /* -> is_negative = true, value = 256 - 240 = 16 */
             }
           }
 

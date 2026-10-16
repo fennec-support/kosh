@@ -583,6 +583,11 @@ struct captured_program_result
   String     output;
 };
 
+/* memory: the output String grows by appending each read of at most 4096
+           bytes; the caller owns it through captured_program_result.
+   time:   each pass drains at most 16 reads (at most 64 KiB), then blocks in
+           wait() until output is ready or the 600 s deadline passes. the loop
+           ends on Finished or Failed. */
 fn
 run_captured_program(const ArrayList<String> &arguments,
                      const ExecContext       &ec,
@@ -636,6 +641,11 @@ append_printable_text(String &out, StringView text) throws -> bool
   return did_replace_control;
 }
 
+/* memory: each line creates local Strings in allocator, which go out of scope
+           at the end of that line's pass; the returned install directory is
+           owned by the caller.
+   time:   O(preflight_output.count()) for one next_line() pass over the output,
+           plus one print_to_stderr() call for each unmarked line. */
 fn
 take_install_directory(const ExecContext &ec,
                        EvalContext       &cxt,
@@ -890,6 +900,8 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
     return 1;
   }
 
+  /* at this point: install_directory is an absolute path with no control
+     characters, and the remote preflight exited 0. */
   LOG(Info, "assimilate chose the remote directory '%s'",
       install_directory->c_str());
 

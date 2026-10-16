@@ -87,6 +87,8 @@ fn
 FunctionBodyHandle::create(usize source_length_hint) throws
     -> FunctionBodyHandle
 {
+  /* e.g. source_length_hint = 200: 200 * 24 = 4800, and 512 + 4800 = 5312,
+     which exceeds the 4096 maximum, so the arena is 4096 bytes. */
   let const wanted_byte_count =
       FUNCTION_ARENA_FIXED_SIZE +
       (source_length_hint < MAXIMUM_FUNCTION_ARENA_SIZE

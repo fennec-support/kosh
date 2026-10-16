@@ -1346,6 +1346,10 @@ inheritable_analysis_state::decode(StringView text) throws
 {
   let result = inheritable_analysis_state{};
 
+  /* e.g. text = "mimicry warnings=2 no-annoying" splits into the tokens
+     "mimicry", "warnings=2", and "no-annoying". "mimicry" sets
+     is_mimicry_enabled, "warnings=2" sets reporting.warning_level to 2, and
+     "no-annoying" sets reporting.is_annoying_disabled. */
   text.for_each_ascii_whitespace_word([&](StringView token) throws {
     let const separator = token.find_character('=');
     let const name      = separator.has_value()
@@ -1398,6 +1402,9 @@ inheritable_analysis_state::from_environment() throws
 fn
 inheritable_analysis_state::encode(String &text) const throws -> void
 {
+  /* e.g. is_mimicry_enabled, warning_level 2, and is_annoying_disabled give
+     "mimicry " + "warnings=2 " + "no-annoying ", and pop_back() removes the
+     final space, leaving "mimicry warnings=2 no-annoying". */
   if (is_mimicry_enabled) {
     text += analysis_word_name(analysis_word::Mimicry);
     text += " ";
@@ -1648,6 +1655,8 @@ EvalContext::leave_function_scope() throws -> void
 
   ASSERT(scope_store().local_scope_depth() <=
          scope_store().local_scopes().count());
+  /* at this point: local_scope_depth() is at least 1, and
+     current_local_scope() is the frame of the function being left. */
   let &scope = scope_store().current_local_scope();
 
   LOG(Debug, "leaving function scope, restoring %zu shadowed locals",
@@ -1723,6 +1732,11 @@ EvalContext::script_source_frame_index() const wontthrow -> Maybe<usize>
   return None;
 }
 
+/* memory: none. merged_frame_at() allocates nothing and returns by value.
+   time:   O(S + F), where S is source_store().source_frames().count() and F
+           is function_store().call_frames().count(). each loop step either
+           returns or advances source_index or function_index, and both only
+           grow up to their counts. */
 pure fn
 EvalContext::merged_frame_at(usize        index,
                              usize        total,
@@ -1743,7 +1757,11 @@ EvalContext::merged_frame_at(usize        index,
   usize     function_index = 0;
   usize     source_index   = 0;
 
-  loop {
+  /* e.g. source frames A (depth 0) and B (depth 1), function frame f() at
+     index 0, total = 3, and not a script run: index 0 -> target 2 -> Source
+     B; index 1 -> target 1 -> Function f(); index 2 -> target 0 -> Source A. */
+  loop
+  {
     while (source_index < source_store().source_frames().count() &&
            !source_store().source_frames()[source_index].has_bash_source_row())
     {
@@ -1961,6 +1979,8 @@ EvalContext::bash_source_frame_at(usize index) const wontthrow -> StringView
   return execution_store().get_shell_name();
 }
 
+/* memory: none.
+   time:   one pass over source_frames(), so O(source frame count) per call. */
 pure fn
 EvalContext::bash_source_frame_count(
     Maybe<usize> script_source_index) const wontthrow -> usize
@@ -2133,6 +2153,10 @@ ExecContext::set_program_path(Path path) throws -> void
   m_kind.program_path = steal(path);
 }
 
+/* memory: no heap allocation. closes each owned descriptor and leaves each
+           borrowed descriptor open.
+   time:   one os::close_fd() call per owned descriptor, which is at most
+           three standard descriptors plus one per nonstandard_fds entry. */
 fn
 ExecContext::close_fds() throws -> void
 {
@@ -2365,6 +2389,9 @@ ExecContext::make_from(const SourceLocation       &location,
     }
   }
 
+  /* at this point: the command is not rewritten to cd, so kind comes from
+     resolved_builtin, resolved_program_path, or the koshkit utility, or the
+     function has thrown. */
   ResolvedCommand kind;
 
   if (!resolved_builtin) {
@@ -2430,6 +2457,8 @@ ExecContext::make_from_unresolved(const SourceLocation &location,
 {
   let args = ArrayList<String>{heap_allocator()};
 
+  /* program() asserts that args is not empty, so an unresolved command
+     keeps one empty word in args. */
   args.push_managed();
 
   let arg_locations = ArrayList<SourceLocation>{heap_allocator()};

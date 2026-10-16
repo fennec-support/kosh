@@ -67,6 +67,11 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
   struct tm value    = *current;
   usize     position = 0;
 
+  /* e.g. text = "202601021530.45"
+          the ".45" suffix sets second = 45, and main_length = 12.
+          century = 20 and year = 26 set tm_year = 126 and position = 4.
+          month = 1, day = 2, hour = 15, minute = 30 fill the rest.
+          mktime() returns the local time 2026-01-02 15:30:45. */
   if (main_length == 12) {
     i32 century;
     i32 year;
@@ -126,6 +131,11 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
   return static_cast<i64>(timestamp);
 }
 
+/* memory: each Path uses cxt.scratch_allocator(). stat results stay on the
+           stack.
+   time:   O(operands). each operand makes a fixed number of syscalls: one
+           exists check, open and close when it is created, one stat, and one
+           set_file_times() call. */
 fn
 Touch::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
@@ -172,6 +182,9 @@ Touch::execute(const ExecContext               &ec,
     }
   }
 
+  /* at this point: operands is not empty, reference_status holds the stat of
+     the -r file when -r is given, and requested_time holds the parsed time
+     when -t is given. */
   let const should_change_access =
       FLAG_TOUCH_ACCESS.is_enabled() || !FLAG_TOUCH_MODIFICATION.is_enabled();
   let const should_change_modification =

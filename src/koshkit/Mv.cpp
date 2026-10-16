@@ -95,6 +95,9 @@ move_across_devices(const ExecContext &ec,
     return;
   }
 
+  /* the temporary file sits beside target because rename() cannot cross
+     filesystems, and the publishing rename() must stay on target's
+     filesystem. */
   let const target_path    = Path{target, allocator};
   let       temporary_path = os::write_to_named_temp_file(target_path.parent(),
                                                           ".kosh_mv", StringView{});

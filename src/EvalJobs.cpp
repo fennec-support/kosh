@@ -67,6 +67,12 @@ JobTable::forget_finished_statuses() wontthrow -> void
   m_next_finished_status_slot = 0;
 }
 
+/* memory: a copy of the finished statuses, at most 1024, allocated in
+           m_finished_statuses.allocator(). the returned snapshot owns it, the
+           moved jobs, and the moved detached processes until restore_snapshot()
+           or destruction.
+   time:   O(F) to copy F finished statuses, F <= 1024. moving the job and
+           process lists costs O(1). m_next_job_id is reset to 1. */
 fn
 JobTable::take_snapshot() throws -> job_table_snapshot
 {
@@ -182,6 +188,9 @@ JobTable::register_pipeline_job(const ArrayList<os::process> &processes,
 
   bool did_skip_primary = false;
 
+  /* e.g. processes = [100, 101, 100], primary_process = 100
+          the first 100 is skipped, so earlier_pipeline_processes = [101,
+     100] */
   for (let const process : processes) {
     if (!did_skip_primary && process == primary_process) {
       did_skip_primary = true;
@@ -307,6 +316,11 @@ JobTable::append_status_line(String                &out,
   if (entry.state == job::State::Running) out += " &";
 }
 
+/* memory: none allocated. exited entries are removed from processes.
+   time:   one poll_process() call per entry, so O(processes). the loop walks
+           from the back, so a removal does not shift an entry that is still
+           unvisited. stopped_status ends with the status of the lowest-index
+           stopped entry. */
 static fn
 poll_owned_processes(ArrayList<os::process> &processes) wontthrow -> Maybe<i32>
 {
@@ -389,6 +403,12 @@ JobTable::update_jobs() throws -> void
   }
 }
 
+/* memory: none allocated.
+   time:   with os::HAS_CHILD_STATE_CHANGE_WAIT, each pass runs update_jobs()
+           and blocks in os::wait_for_child_state_change(). without it, each
+           pass blocks on one process, and each wait removes one process from
+           the job, so the loop waits at most P + 1 times for P earlier
+           pipeline processes, unless a stop is reported first. */
 fn
 JobTable::wait_for_job_processes(
     job  &job,
@@ -477,6 +497,11 @@ JobTable::wait_for_job_processes(
   }
 }
 
+/* memory: none allocated.
+   time:   each pass runs update_jobs(), O(J + P + D) poll_process() calls, and
+           scans the job list in O(J). passes repeat until a selected job is
+           Done, no selected job is waitable, or a signal arrives. without
+           os::HAS_CHILD_STATE_CHANGE_WAIT, each pass sleeps 5 milliseconds. */
 fn
 JobTable::wait_for_next_job(const ArrayList<i32> &job_ids,
                             bool                  should_wait_for_termination) throws
@@ -580,6 +605,10 @@ JobTable::most_recent_job() wontthrow -> job *
   return nullptr;
 }
 
+/* memory: a new ArrayList from m_jobs.allocator() holds the kept jobs.
+           assigning it to m_jobs frees the previous buffer.
+   time:   O(J) moves over m_jobs. each removed job that was not waited adds
+           one remember_finished_status() call, O(1) each. */
 fn
 JobTable::forget_done_jobs() throws -> void
 {
@@ -672,6 +701,9 @@ JobTable::remove_job(i32 id) throws -> bool
   let const detached_count = removed.earlier_pipeline_processes.count() +
                              (removed.is_primary_process_active ? 1 : 0);
 
+  /* the removed processes stay in m_detached_job_processes. an asynchronous
+     pipeline owns and reaps every stage, so update_jobs() polls these
+     processes until they exit. */
   m_detached_job_processes.reserve(m_detached_job_processes.count() +
                                    detached_count);
 
@@ -686,6 +718,10 @@ JobTable::remove_job(i32 id) throws -> bool
   return true;
 }
 
+/* memory: the returned String uses heap_allocator(). the caller owns it.
+   time:   update_jobs() makes O(J + P + D) poll_process() calls. the loop then
+           appends one status line per Done job not yet waited, O(J). then
+           forget_done_jobs() removes every Done job that is not inherited. */
 fn
 JobTable::format_done_job_notifications(StringView line_ending,
                                         bool       is_posix) throws -> String

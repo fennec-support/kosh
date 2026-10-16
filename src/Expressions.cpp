@@ -150,6 +150,11 @@ AssignmentIndexSet::singleton(usize index) throws -> AssignmentIndexSet
   return AssignmentIndexSet{storage};
 }
 
+/* memory: allocate_assignment_index_storage() for count() + other.count()
+           indices, only when both sets are non-empty and distinct. the storage
+           is reference counted and freed by release() after the last copy.
+   time:   O(count() + other.count()) for the two-pointer merge. duplicate
+           indices are dropped during the merge. */
 fn
 AssignmentIndexSet::merge(const AssignmentIndexSet &other) throws
     -> void
@@ -380,6 +385,8 @@ VariableOccurrenceStateMap::snapshot() throws
   return VariableOccurrenceStateMap{*this};
 }
 
+/* time: one find_hashed() probe per layer from the head toward the root, so
+         at most depth + 1 probes. no allocation. */
 pure fn
 VariableOccurrenceStateMap::find(StringView name) const wontthrow
     -> const variable_occurrence_state *
@@ -434,6 +441,12 @@ VariableOccurrenceStateMap::get_private_head() throws
   return m_head;
 }
 
+/* memory: collapsed layers are released through
+           release_variable_occurrence_map_storage(). entries are copied into
+           the surviving layer, which may grow its StringMap.
+   time:   each pass copies min(upper, lower) entries, the entry counts of the
+           two top layers. each pass removes one layer, so passes are bounded
+           by the layer depth. */
 fn
 VariableOccurrenceStateMap::collapse_exclusive_layers() throws -> void
 {
@@ -1979,6 +1992,7 @@ expressions::internal::analyze_followed_source(
   }
 
   if (!contents.has_value()) return do_give_up_on_source();
+  /* positions in the lexer, analysis, and diagnostics assume LF endings. */
   contents->normalize_crlf_line_endings();
 
   if (!actx.followed_source_paths->add(canonical_path->text().view()))
@@ -2064,6 +2078,8 @@ expressions::internal::analyze_followed_source(
   }
 
   if (!analyzed) actx.reporter.has_fatal = true;
+  /* an analysis under an unknown path or working directory depends on the
+     caller state, so its effects are not cached for other callers. */
   if (!was_analyzed_under_uncertainty) {
     actx.followed_source_effects_cache->set(canonical_path->text().view(),
                                             steal(effects));
@@ -2164,6 +2180,11 @@ expressions::internal::word_has_malformed_glob_bracket(const Word &word)
     wontthrow
     -> bool
 {
+  /* e.g. word text "[!a" with live glob characters in its only segment
+       '[' moves Outside to AfterOpen
+       '!' moves AfterOpen to InsideClass and does not close the class
+       'a' leaves InsideClass unchanged
+       the end of the word is in InsideClass, so the result is true */
   let state = bracket_scan_state::Outside;
 
   for (let const &segment : word.segments) {
@@ -2414,6 +2435,10 @@ internal::expansion_location_with_sigil(const AnalysisContext &actx,
     return location;
   }
 
+  /* e.g. source "echo ${x}", location {7, 1} for the x
+       start 7 and length 1; source[6] is '{' and source[5] is '$', so
+       start 5 and length 3; source[8] is '}', so length 4
+       -> {5, 4}, the text "${x}" */
   usize start  = location.position;
   usize length = location.length;
 
@@ -2668,6 +2693,10 @@ is_trivial_substitution_body(const AnalysisContext &actx,
   return true;
 }
 
+/* memory: the nested parse allocates in substitution_arena, and the defer
+           releases that space on return.
+   time:   one lex and parse of the body, then one analysis walk of its tree.
+           recursion depth is bounded by MAX_SUBSTITUTION_NESTING_DEPTH. */
 static fn
 analyze_substitution_body(AnalysisContext                  &actx,
                           const lexer::nested_substitution &body,
@@ -2704,6 +2733,9 @@ analyze_substitution_body(AnalysisContext                  &actx,
 
   if (!parse_errors.is_empty()) return;
 
+  /* at this point: parse_errors is empty, ast is owned by substitution_arena
+     until the defer releases it, and the walk flags set below are restored
+     before return. */
   let const was_direct_pipeline_stage  = actx.walk.is_direct_pipeline_stage;
   let const was_analyzing_condition    = actx.walk.is_analyzing_condition;
   let const was_bare_read_substitution = actx.walk.is_bare_read_substitution;

@@ -20,6 +20,10 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Seq);
 
 namespace koshka::koshkit {
 
+/* memory: output grows to about 64 KiB from the scratch arena, which is reset
+           before the next script run.
+   time:   O(V) for V values from first to last, each formatted in O(digits).
+           print_to_stdout() runs once per 64 KiB. */
 fn
 Seq::execute(const ExecContext               &ec,
              EvalContext                     &cxt,

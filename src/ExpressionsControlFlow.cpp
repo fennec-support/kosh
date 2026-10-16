@@ -537,6 +537,8 @@ internal::resolve_loop_control(EvalContext &cxt) throws
     return loop_disposition::StopLoop;
   }
 
+  /* e.g. break 2 in the inner loop: value 2 is decremented to 1 and this loop
+     stops. the outer loop clears value 1 and stops. */
   if (control.value > 1) {
     control.value -= 1;
     LOG(All, "the loop jump targets an outer loop, %lld levels stay pending",
@@ -1344,6 +1346,8 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
       did_run_a_body = true;
       if (cxt.control_flow_store().has_pending()) return result;
 
+      /* e.g. subject 'b', arms b) X ;&, c) Y ;;&, *) Z ;;: X runs, Y runs
+         without a match test, and matching resumes at *) for Z. */
       let const terminator = m_items[i].terminator;
 
       if (terminator == case_terminator::FallThrough && i + 1 < m_items.count())
@@ -1675,6 +1679,8 @@ CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
       cxt.source_text_in_span(source_location(), source_end_position());
 
   let const body_location = m_body->source_location();
+  /* os::can_fork_evaluator() is false in PlatformWin32Process.cpp, so the
+     child evaluates body_text instead of a forked copy of the evaluator. */
   let const body_text =
       os::can_fork_evaluator() ? StringView{} : full_source_text(cxt, *m_body);
 
@@ -1768,6 +1774,8 @@ CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
   let const process_id = os::process_id_of(child);
 
+  /* at this point: read_fd and write_fd are shell descriptors at or above
+     COPROCESS_FD_FLOOR, and the parent holds no child end of either pipe. */
   cxt.set_coprocess_descriptors(read_fd, write_fd, process_id, m_name);
 
   let descriptors = ArrayList<String>{heap_allocator()};

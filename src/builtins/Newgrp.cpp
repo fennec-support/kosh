@@ -53,6 +53,7 @@ Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 127;
   }
 
+  /* at this point: found[0] is the path of a runnable newgrp program. */
   let command_args = ArrayList<String>{heap_allocator()};
 
   command_args.push_managed("newgrp");

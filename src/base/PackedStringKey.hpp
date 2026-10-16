@@ -81,6 +81,11 @@ public:
   hot mustuse pure constexpr fn
   packed_length() const wontthrow -> usize
   {
+    /* e.g. words[0] = 0x6261 for "ab", and the other words are 0
+         w - 0x0101010101010101 -> 0xfefefefefeff6160
+         & ~w                   -> 0xfefefefefeff0100
+         & 0x8080808080808080   -> 0x8080808080800000, lowest set bit 23
+         23 >> 3 = 2, so the length is 2 */
     for (usize k = 0; k < WORD_COUNT; k++) {
       let const w = words[k];
       let const z = (w - 0x0101010101010101ull) & ~w & 0x8080808080808080ull;

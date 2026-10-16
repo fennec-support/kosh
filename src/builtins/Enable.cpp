@@ -59,6 +59,8 @@ struct enable_listing_entry
   bool       is_disabled;
 };
 
+/* memory: appends to out, which grows as needed and belongs to the caller.
+   time:   O(n log n) for the introsort of n entries, then one append each. */
 static fn
 append_sorted_enable_lines(
     String &out, ArrayList<enable_listing_entry> &entries) throws

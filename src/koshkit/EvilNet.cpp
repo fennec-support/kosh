@@ -669,6 +669,10 @@ network_counter_reset(
              &os::network_interface_statistics_entry::transmit_drop_count);
 }
 
+/* memory: an ArrayList of after.count() entries and one interface name String
+           per entry, all in allocator. the caller owns the returned list.
+   time:   O(after.count() * before.count()) name comparisons to find each
+           previous entry, then eight field checks per entry. */
 fn
 sample_network_statistics(
     const ArrayList<os::network_interface_statistics_entry> &before,
@@ -680,6 +684,9 @@ sample_network_statistics(
 
   sampled.reserve(after.count());
 
+  /* e.g. before = [eth0 rx 100], after = [eth0 rx 160, wlan0 rx 5]. eth0
+     finds before[0] and gets rx 60. wlan0 has no previous entry and keeps
+     rx 5. */
   for (let const &entry : after) {
     let previous_index = Maybe<usize>{None};
 
@@ -765,6 +772,10 @@ struct live_network_row
   rolling_history<os::network_interface_statistics_entry> history;
 };
 
+/* memory: one String copy of the interface name in allocator per call.
+   time:   called once per retained row in each frame. O(H) for get_boundary(),
+           a linear scan over the H samples of the row, then O(1) work per
+           field. */
 fn
 get_network_window_status(const live_network_row &row,
                           u64                     window_start_nanoseconds,
@@ -961,6 +972,8 @@ EvilNet::execute(const ExecContext               &ec,
 
   if (!report_options.has_value()) return 1;
 
+  /* at this point: report_options holds parsed options, and sort_key holds a
+     key only when --sort resolved to exactly one entry. */
   if (report_options->is_live) {
     return run_live_network_traffic(ec, heap_allocator(), *report_options,
                                     sort_key, should_color);

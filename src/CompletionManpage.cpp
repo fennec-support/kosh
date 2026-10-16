@@ -458,6 +458,12 @@ ManpageCache::scan_next_subcommand_directory(EvalContext &context)
   finish_subcommand_index();
 }
 
+/* e.g. page_file_paths = {"git", "git-status", "git-1x", "foo-bar"}
+     "git-status" has head "git" and tail "status", so "status" is indexed
+     under "git". "git-1x" has a digit tail and is skipped. "foo-bar" is
+     skipped because "foo" is not a page.
+     -> subcommand_index = {"git": ["status"]}
+     -> sorted_page_names = ["foo-bar", "git", "git-1x", "git-status"] */
 fn
 ManpageCache::finish_subcommand_index() throws -> void
 {
@@ -495,6 +501,13 @@ ManpageCache::finish_subcommand_index() throws -> void
   LOG(Info, "indexed %zu section-1 pages", page_file_paths.count());
 }
 
+/* e.g. the page has ".SH SYNOPSIS", then "\fBkosh\fR [\-c] \fIfile\fR",
+   then ".SH OPTIONS".
+     "\fB" and "\fR" are skipped. "kosh" is pushed, then ' ' is pushed.
+     "[" is pushed, and "\-" pushes '-'. "c" and "]" are pushed.
+     "\fI" and "\fR" are skipped. "file" is pushed.
+     the line end pushes ' ', and ".SH OPTIONS" ends the section.
+     -> "kosh [-c] file " */
 static fn
 cleaned_synopsis_of_page(StringView source) throws -> String
 {
@@ -706,6 +719,8 @@ man_subcommand_page_is_valid(StringView command,
     }
   }
 
+  /* source holds the page text of page_name, or the text of its .so target.
+     the validity cache entry for page_name is not set yet. */
   let const synopsis = cleaned_synopsis_of_page(source->view());
   let       needle   = String{heap_allocator(), command};
 
@@ -829,6 +844,9 @@ internal::complete_from_man_subcommands(StringView      line,
     }
   }
 
+  /* at this point: sorted_page_names and subcommand_index hold the result of a
+     finished scan. is_subcommand_index_built is false when the manpath fork was
+     not settled, and then the index can be partial. */
   let const resolved_name =
       is_for_listing ? resolve_completion_command(command_name, context)
                      : resolve_completion_alias(command_name, context);
@@ -878,6 +896,10 @@ internal::complete_from_man_subcommands(StringView      line,
   return matches;
 }
 
+/* e.g. option_part = "-f, --foo=BAR"
+     "-f" is pushed, and the ", " gap is skipped.
+     "--foo=BAR" is cut at '=' to "--foo", which is pushed.
+     -> ["-f", "--foo"] */
 static fn
 extract_dash_flags(StringView option_part) throws -> ArrayList<String>
 {
@@ -1883,6 +1905,10 @@ find_synopsis_form(const SynopsisList &synopsis,
 {
   constexpr StringView FORM_SEPARATOR{" | "};
 
+  /* e.g. line = "alpha X | beta Y", subcommand_word = "beta"
+       form_start 0:  separator 7, form "alpha X", no match
+       form_start 10: no separator, form "beta Y" starts with "beta" and
+                      form[4] is ' ', so "beta Y" is returned */
   for (let const line : synopsis) {
     usize form_start = 0;
 
@@ -2091,6 +2117,8 @@ locate_hint_target(StringView line, usize cursor) throws
 
   if (bounds.start < command_end) return None;
 
+  /* at this point: command is a non-empty word with no directory separator,
+     the cursor is past it, and token starts at or after command_end. */
   let target = hint_target{};
 
   target.command = command;

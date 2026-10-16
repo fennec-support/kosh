@@ -702,6 +702,9 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
 
       let const is_first = (stage_index == 0);
       let const is_last  = (stage_index + 1 == m_commands.count());
+      /* bash runs the last stage in the shell only without job control
+         (Bash manual, shopt lastpipe). the Monitor test matches
+         should_fork_last_builtin in UtilsExecution.cpp. */
       let const should_run_in_parent =
           is_last && !is_async() && cxt.runtime_state().is_bash_compatible() &&
           cxt.runtime_state().is_shopt_enabled(shopt_option_id::Lastpipe) &&
@@ -859,6 +862,8 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
     throw;
   }
 
+  /* at this point: children holds each launched stage that has not been
+     waited for, and pending_pipe is empty. */
   if (was_pipeline_abandoned) {
     if (last_stdin != KOSH_INVALID_FD) os::close_fd(last_stdin);
     utils::terminate_and_reap_processes(children);
@@ -941,6 +946,12 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   SET_AND_RETURN_EXIT_STATUS(cxt, ret);
 }
 
+/* memory: ecs and the per-stage argument lists use scratch_allocator() and
+           the scratch arena. the defer closes leftover fds and releases the
+           arena to pipeline_mark.
+   time:   O(stages) for the compound-stage scan and the stage loop, plus
+           O(args) per stage for expansion. one execute_contexts_with_pipes()
+           call runs the stages. */
 hot fn
 Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {

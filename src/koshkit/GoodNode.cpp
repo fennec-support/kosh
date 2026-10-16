@@ -58,6 +58,12 @@ filesystem_features(StringView filesystem_type) throws
   return FEATURES.find(filesystem_type);
 }
 
+/* memory: the table, the field values, and the report text are allocated in
+           allocator. the scratch arena releases them when it is reset.
+   time:   one stat_filesystem() call and one
+           read_filesystem_integrity_evidence() call. file_crc32c() hashes
+           the whole file when path is a regular file. with --verify,
+           verify_filesystem_integrity() can run for up to 300 seconds. */
 fn
 append_node_report(String                    &output,
                    const ExecContext         &ec,
@@ -194,6 +200,12 @@ append_node_report(String                    &output,
   append_titled_report_table(output, path, table, should_color);
 }
 
+/* memory: each directory visited allocates its listing in allocator, and each
+           child visited allocates a cloned Path there. the scratch arena
+           releases them when it is reset.
+   time:   one list_directory_status() call per directory visited. the walk
+           checks each entry beneath path at most once, so it is
+           O(entries beneath path). it stops at the first match. */
 fn
 find_inode(const Path            &path,
            const os::file_status &status,
@@ -239,6 +251,8 @@ path_is_beneath(const Path &root, const Path &candidate) wontthrow -> bool
     return false;
   }
 
+  /* at this point: root_text is non-empty, and candidate_text starts with
+     root_text. */
   return os::is_directory_separator(root_text[root_text.length - 1]) ||
          (candidate_text.length > root_text.length &&
           os::is_directory_separator(candidate_text[root_text.length]));

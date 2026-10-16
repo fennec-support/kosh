@@ -33,6 +33,10 @@ namespace koshka::koshkit {
 
 namespace {
 
+/* memory: read_entire_file() copies the whole file to the heap, and the body
+           frees it on return. the returned String is in allocator.
+   time:   O(file size) to read the file, then O(first line length) to find
+           the newline. the callers read /etc/os-release and /proc/loadavg. */
 fn
 read_first_line(StringView path, Allocator allocator) throws
     -> Maybe<String>
@@ -156,6 +160,11 @@ struct mapped_library_family
   bool   has_version_mix{false};
 };
 
+/* memory: the process file list, the families array, and the Path values for
+           mapped files live in the scratch arena of cxt, released with the
+           enclosing evaluator's scratch mark.
+   time:   one list_process_open_files() call, then a scan of the families
+           array for each mapped file, O(F * G) for F files and G families. */
 fn
 append_anomaly_report(field_section &section, EvalContext &cxt) throws
     -> void
@@ -226,6 +235,8 @@ append_anomaly_report(field_section &section, EvalContext &cxt) throws
       version_end++;
     }
 
+    /* e.g. filename "libz.so.1.2.13": marker = 4, the digit loop stops at 9
+       (the "." after "1"), abi_version = 1, family = "libz". */
     if (version_end == *marker + 4) continue;
     if (version_end < filename.length && filename[version_end] != '.') {
       continue;
@@ -267,6 +278,10 @@ append_anomaly_report(field_section &section, EvalContext &cxt) throws
   section.add("Cost", "process mappings");
 }
 
+/* memory: each value is allocated in section.allocator, which execute() takes
+           from the scratch arena of cxt.
+   time:   a fixed number of platform reads, then one loop over METRICS, whose
+           length is a compile-time constant. */
 fn
 append_procfs_report(field_section &section) throws -> void
 {

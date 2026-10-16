@@ -714,6 +714,11 @@ append_escapes(String &output, StringView text) throws -> void
 {
   usize position = 0;
 
+  /* e.g. text is a\tb\q with literal backslashes
+          "a" is copied; position 0 -> 1
+          "\t" becomes a tab; position 1 -> 3
+          "b" is copied; position 3 -> 4
+          "\q" is an unknown escape, so both characters are copied; 4 -> 6 */
   while (position < text.length) {
     if (text[position] != '\\' || position + 1 >= text.length) {
       output += text.substring_of_length(position, 1);

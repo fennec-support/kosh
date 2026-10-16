@@ -296,6 +296,11 @@ parse_package_json_scripts(StringView text) throws -> ArrayList<String>
   return scripts;
 }
 
+/* memory: the returned hosts list owns its strings. the seen set and the
+           config and known_hosts contents are freed on return.
+   time:   O(B) for B total bytes of ~/.ssh/config and ~/.ssh/known_hosts, both
+           read whole with read_entire_file(). each host costs one expected O(1)
+           seen.add(). */
 static fn
 collect_ssh_hosts() throws -> ArrayList<String>
 {
@@ -502,6 +507,13 @@ internal::complete_from_process_arguments(StringView      line,
   return candidates;
 }
 
+/* memory: owned_targets, or the sorted list in BUILD_TARGET_CACHE, holds the
+           targets. candidates is allocated in heap_allocator() and returned to
+           the caller. BUILD_TARGET_CACHE keeps one entry per source file.
+   time:   each program probe waits at most 2 seconds (probe_timeout_nanos).
+           a cache check costs one modification_time() call. teleport runs at
+           most two probes. a cached lookup is O(log T + M) for T targets and M
+           matches. an uncached list is scanned in O(T). */
 fn
 internal::complete_from_tools_with_targets(StringView      line,
                                            StringView      token,
@@ -1661,6 +1673,9 @@ mark_spec_directory_candidates(ArrayList<String>       &candidates,
   }
 }
 
+/* actions that a non-listing gather runs. inline hints must not search PATH
+   or open files (CLAUDE.md, Completion and editor), so the mask omits the
+   file and command actions. */
 static constexpr u32 GHOST_ACTION_MASK =
     compgen_action_bit(compgen_action::Alias) |
     compgen_action_bit(compgen_action::ArrayVar) |
@@ -2665,6 +2680,11 @@ debug_shell_lexical_scan_byte_count() wontthrow -> usize
 }
 #endif
 
+/* memory: scanner state in COMPLETION_ARENA through completion_allocator().
+           the next COMPLETION_ARENA.reset() releases it.
+   time:   O(line.length). the first pass covers bytes 0 to cursor, and the
+           second covers cursor to line.length, so each byte is visited at
+           most once. */
 fn
 internal::command_substitution_range(StringView line,
                                      usize      cursor) throws
@@ -2687,6 +2707,10 @@ internal::command_substitution_range(StringView line,
   return target.range;
 }
 
+/* memory: state in heap_allocator(), freed on return. positions grows by one
+           entry for each case pattern end.
+   time:   O(line.length). each call to advance_shell_lexical_state() resumes
+           at state.source_position, so each byte is scanned once. */
 fn
 internal::collect_case_pattern_ends(StringView        line,
                                     ArrayList<usize> &positions) throws
@@ -2715,6 +2739,10 @@ internal::collect_case_pattern_ends(StringView        line,
   }
 }
 
+/* memory: scanner state in COMPLETION_ARENA through completion_allocator().
+           the scratch scope releases it on return.
+   time:   O(cursor) per call, because the scan starts at byte 0.
+           kosh_pair_role_callback() calls this for each typed byte. */
 fn
 classify_typed_pair_byte(StringView line,
                          usize      cursor,
@@ -2773,6 +2801,10 @@ constexpr usize SYNTAX_HINT_BYTE_LIMIT = 2048;
 fn
 append_sentence_tail(String &out, StringView sentence) throws -> void
 {
+  /* e.g. sentence = "URL parse.": the trailing dot is removed, leaving
+     "URL parse". ", " is appended. the first byte is 'U' and sentence[1] is
+     'R', so is_capitalized_word is false and 'U' is kept. "RL parse" is
+     appended, and out gains ", URL parse". */
   if (sentence.length > 0 && sentence[sentence.length - 1] == '.') {
     sentence = sentence.substring_of_length(0, sentence.length - 1);
   }
@@ -2792,6 +2824,10 @@ append_sentence_tail(String &out, StringView sentence) throws -> void
 
 } /* namespace */
 
+/* memory: errors and messages are heap allocations freed on return. the
+           lexer uses COMPLETION_ARENA, which the scratch scope releases on
+           return. out belongs to the caller.
+   time:   one parse of line. line is at most SYNTAX_HINT_BYTE_LIMIT bytes. */
 fn
 describe_syntax_problem(StringView line,
                         usize      cursor,
@@ -2821,6 +2857,8 @@ describe_syntax_problem(StringView line,
   unused(parser.construct_ast(messages, nullptr, nullptr));
   if (errors.is_empty()) return false;
 
+  /* at this point: errors is non-empty, and error is the first error that the
+     parser recorded. the other errors are not rendered. */
   let const &error = errors[0];
 
   out.append(StringView{"syntax error\n"});

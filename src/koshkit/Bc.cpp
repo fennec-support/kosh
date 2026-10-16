@@ -45,6 +45,9 @@ bc_digit_value(char byte) wontthrow -> u32
   return ~u32{0};
 }
 
+/* memory: one String in allocator, returned to the caller.
+   time:   O(program.length), one pass with constant work per byte.
+           the output is no longer than program. */
 static fn
 bc_strip_comments(StringView program, Allocator allocator) throws
     -> String
@@ -457,6 +460,11 @@ bc_base_digit(u32 digit) wontthrow -> char
                     : static_cast<char>('A' + digit - 10);
 }
 
+/* memory: one String per step in allocator, freed when the arena is released
+           to a mark that precedes them.
+   time:   two calculator evaluations per output digit of the integer part.
+           the fraction loop evaluates once per digit. its digit count is
+           ceil(fraction_digits * ln(10) / ln(output_base)). */
 static fn
 bc_format_in_base(StringView   decimal,
                   u32          output_base,
@@ -478,6 +486,12 @@ bc_format_in_base(StringView   decimal,
 
   let reversed = String{allocator};
 
+  /* e.g. decimal = "10", output_base = 2
+       integer "10": remainder "0", integer becomes "5"
+       integer "5":  remainder "1", integer becomes "2"
+       integer "2":  remainder "0", integer becomes "1"
+       integer "1":  remainder "1", integer becomes "0"
+       reversed "0101" is written back to front, giving "1010". */
   while (integer.view() != "0") {
     let expression = String{allocator, "("};
 
@@ -630,7 +644,10 @@ bc_group_nested_assignment(StringView expression,
 {
   usize depth      = 0;
   usize name_start = 0;
-  usize name_end   = 0;
+  /* e.g. expression = "3 + x += 2": name_start is 4 and name_end is 5. the
+     '+' at index 6 follows the space at index 5, so the result is
+     "3 + " + "(" + "x += 2" + ")", which is "3 + (x += 2)". */
+  usize name_end = 0;
 
   for (usize position = 0; position < expression.length; position++) {
     if (expression[position] == '(' || expression[position] == '[') {
@@ -756,6 +773,10 @@ bc_print_result(String             result,
   let             output             = String{allocator};
   usize           position           = 0;
 
+  /* e.g. result.length() is 150. the loop writes bytes 0 through 67, then
+     bytes 68 through 135, each followed by a backslash and a newline. at
+     position 136, 150 - 136 is 14, which is not greater than 68, so the
+     remaining 14 bytes are written. */
   while (result.length() - position > OUTPUT_LINE_LENGTH) {
     output += result.view().substring_of_length(position, OUTPUT_LINE_LENGTH);
     output += "\\\n";
@@ -864,6 +885,8 @@ bc_define_function(StringView  statement,
     return false;
   }
 
+  /* at this point: statement has the form "define name(parameters) {body}",
+     the braces are balanced, and only blanks follow the closing brace. */
   bc_function function{allocator};
 
   function.name = String{allocator, name};
@@ -1476,6 +1499,11 @@ bc_execute_statement(StringView         statement,
   return bc_flow::Normal;
 }
 
+/* memory: none allocated here. statements are StringView slices, and
+           bc_execute_statement() allocates in the scratch arena.
+   time:   O(program.length) to split statements, plus the execution of each
+           statement. A braced body of while or for is split again on every
+           iteration. */
 static fn
 bc_run_program(StringView         program,
                const ExecContext &ec,

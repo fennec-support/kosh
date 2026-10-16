@@ -1646,6 +1646,9 @@ find_option_by_shopt_name(StringView name)
 constexpr StringView POSIX_ALIAS_PREFIX{"posix.legacy."};
 constexpr StringView BASH_ALIAS_PREFIX{"bash.legacy."};
 
+/* memory: the String in the returned Maybe comes from heap_allocator() and is
+           owned by the caller.
+   time:   O(length of the set or shopt name) for the appends. no loop. */
 fn
 get_legacy_koshconf_alias(const option_descriptor &option) throws
     -> Maybe<String>
@@ -1682,6 +1685,10 @@ get_legacy_koshconf_alias(const option_descriptor &option) throws
   return alias;
 }
 
+/* memory: none. the returned pointer refers to OPTION_REGISTRY.
+   time:   O(log n) per lookup, a binary search over the koshconf name table.
+           a bash. or posix. alias adds up to two more searches, and an editor
+           mode alias scans OPTION_REGISTRY linearly. */
 fn
 find_option_by_koshconf_name(StringView name) wontthrow
     -> const option_descriptor *
@@ -1878,6 +1885,9 @@ read_option_number(const EvalContext       &cxt,
   }
 }
 
+/* memory: a heap String returned to the caller, who owns it.
+   time:   O(length of the enum value text) for an enum index, otherwise
+           O(digits in value) for the decimal text. */
 fn
 format_option_number(const option_descriptor &option, u32 value) throws
     -> String

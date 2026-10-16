@@ -169,6 +169,8 @@ EvalContext::release_finished_coprocess() throws -> void
   for (let const process : table.detached_job_processes())
     if (os::process_has_id(process, coprocess.process_id)) return;
 
+  /* at this point: every job with coprocess.process_id is Done or absent, and
+     no detached process has that id. */
   LOG(Debug, "releasing the finished coprocess '%s'", coprocess.name.c_str());
 
   for (let const shell_fd : {coprocess.read_fd, coprocess.write_fd}) {
@@ -390,6 +392,11 @@ struct backtrace_entry
   bool           is_repeat{false};
 };
 
+/* memory: entries, a heap ArrayList of backtrace_entry, is freed on return.
+           each printed line is written through show_message().
+   time:   O(e^2) comparisons for the repeat scan over e entries, which come
+           from the source frames, the call frames, and the function
+           definitions. */
 fn
 EvalContext::print_source_backtrace(
     Maybe<SourceLocation> error_location,
@@ -880,6 +887,10 @@ EvalContext::suggest_similar_variable_name(StringView name) const throws
   return suggestion.take_suggestion();
 }
 
+/* memory: one heap String per shell variable, owned by the returned
+           SortedArrayList.
+   time:   O(v log v) for the sort of v shell variables, plus O(v) to build
+           the list. */
 fn
 EvalContext::sorted_variable_assignments() const throws
     -> SortedArrayList<String, order_comparator<String>>
@@ -1139,6 +1150,10 @@ append_wire_section(String      &output,
   output.append(payload.view());
 }
 
+/* e.g. list = [], then name_index 42, 7, 42
+        42 is pushed, returns 1, list = [42]
+        7 is pushed, returns 2, list = [42, 7]
+        42 is found at index 0, returns 1 */
 static fn
 find_wire_source_name(ArrayList<u32> &names, u32 name_index) throws
     -> u32
@@ -1306,6 +1321,12 @@ EnabledCommandStore::append_wire(String &output) const throws -> void
       });
 }
 
+/* memory: the source index list and the records string are heap allocations
+           freed when the section writer returns. append_wire_section() frees
+           the payload.
+   time:   O(f * s) for f function definitions and s distinct source indices,
+           since find_wire_source_name() scans the source index list once per
+           definition. */
 fn
 FunctionStore::append_wire(String &output) const throws -> void
 {
@@ -1463,6 +1484,10 @@ ProgramResolver::append_wire(String &output) const throws -> void
   });
 }
 
+/* memory: one heap copy per command string, freed when the section writer
+           returns.
+   time:   O(n log n) for the sort of n command strings, then one
+           m_specs.find() per command string. */
 fn
 CompletionStore::append_wire(String &output) const throws -> void
 {
@@ -1849,6 +1874,8 @@ RuntimeState::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
 
+  /* at this point: mood, warning_level, tab_selector, flags, shell_options,
+     and shopt are valid, and the payload has no unread bytes. */
   runtime.m_mood                    = static_cast<mimic_mood>(mood);
   runtime.m_reporting.warning_level = warning_level;
   runtime.m_tab_selector = static_cast<tab_selector_mode>(tab_selector);
@@ -2517,6 +2544,9 @@ JobTable::from_wire(subshell_bootstrap_reader &reader,
       return false;
     }
 
+    /* the process handles arrive in the bootstrap, so pid stays
+       KOSH_INVALID_PROCESS until bind_processes() replaces it with the handle
+       at the index stored in process_references. */
     child_job.pid = KOSH_INVALID_PROCESS;
     if (is_primary_process_active)
       wire.process_references.push(primary_process_index);
@@ -3193,6 +3223,10 @@ EvalContext::register_inherited_source_origin(
   }
 
   ASSERT(windows.is_empty());
+  /* windows never grows past this capacity, so the pointers into it that
+     push_line_base() and push_embedded_source() keep stay valid. the capacity
+     covers the extra lines entry, one site per call frame and source frame,
+     and the origin window. */
   windows.reserve(call_count + source_frame_count + 2);
   windows.push_managed();
 
@@ -3352,6 +3386,12 @@ EvalContext::register_inherited_source_origin(
   return true;
 }
 
+/* memory: the decoded wire values are locals, and the stores take their
+   contents through apply_wire() and steal(). bootstrap is taken by value and
+   still owns its processes until release_process_ownership() runs, so a throw
+   closes them.
+   time: O(payload bytes) to decode each section once, plus one run_source()
+   call that parses and evaluates the replayed source. */
 fn
 EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
     throws -> void
@@ -3416,8 +3456,14 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
     invalid_subshell_bootstrap();
   }
 
+  /* at this point: every wire section is decoded and fully read, each entry of
+     bootstrap.processes is referenced by exactly one job or detached process
+     slot, and bootstrap still owns its processes. */
   let replay_runtime = runtime;
 
+  /* the replay runs with these options off so that every inherited command
+     runs without xtrace or verbose output and without errexit or nounset
+     aborts. runtime.restore() applies its own options after the replay. */
   replay_runtime.set_option(shell_option_id::Allexport, false);
   replay_runtime.set_option(shell_option_id::Errexit, false);
   replay_runtime.set_option(shell_option_id::Noexec, false);

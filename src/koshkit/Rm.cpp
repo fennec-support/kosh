@@ -422,6 +422,12 @@ remove_path_with_prompt(const removal_request &request,
   return true;
 }
 
+/* memory: each level lists its directory from request.allocator, which is
+           the scratch arena, and releases the mark taken before the listing
+           when it returns. child paths use the same arena with a mark per
+           child.
+   time:   O(entries under path). each entry costs a constant number of stat
+           calls, and each descended directory costs one listing call. */
 static fn
 report_dry_run_removal(const removal_request &request,
                        StringView             path,
@@ -621,6 +627,10 @@ is_on_other_device_than_parent(StringView operand,
          operand_status.device_id != parent_status.device_id;
 }
 
+/* memory: prompts and paths allocate from cxt.scratch_allocator().
+   time:   a constant number of stat calls per operand. a recursive removal
+           walks each operand once through os::remove_tree(), so the cost is
+           O(entries under the operands). */
 fn
 Rm::execute(const ExecContext               &ec,
             EvalContext                     &cxt,
@@ -669,6 +679,12 @@ Rm::execute(const ExecContext               &ec,
                        : Maybe<bool>{false}});
   }
 
+  /* e.g. argv "--interactive=never -i -f" gives positions when 1, i 2, f 3:
+       settings in push order: [f(3), i(2), when(1)]
+       index 1 swaps: [i(2), f(3), when(1)]
+       index 2 moves when(1) to the front: [when(1), i(2), f(3)]
+       the last interaction and the last should_ignore_missing value win:
+       interaction Never, should_ignore_missing true */
   for (usize index = 1; index < settings.count(); index++) {
     for (usize slot = index;
          slot > 0 && settings[slot].position < settings[slot - 1].position;

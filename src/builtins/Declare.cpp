@@ -382,6 +382,10 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   for (; i < args.count(); i++) {
+    /* e.g. operand = "a[1]+=x"
+            equals = 5, name = "a[1]+", value = "x"
+            update_mode = Append, name = "a[1]"
+            bracket = 1, has_subscript, subscript = "1", name = "a" */
     let const operand = args[i].view();
     let const equals  = operand.find_character('=');
     let       name =
@@ -572,6 +576,9 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
+    /* at this point: name is a valid identifier without its subscript, the
+       attribute flags are applied, and name is not a circular nameref when
+       the operand assigns a value without a subscript. */
     if (has_subscript && equals.has_value()) {
       let const data_scope = cxt.guard_expanded_subscript(subscript);
       cxt.assign_array_element(name, subscript, value, update_mode);

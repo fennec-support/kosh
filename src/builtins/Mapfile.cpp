@@ -91,6 +91,9 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
+  /* at this point: callback_quantum is at least 1, so the modulo in the
+     callback check is defined, and max_lines, skip_count, and origin are
+     not negative. */
   let read_fd = ec.in_fd.value_or(KOSH_STDIN);
 
   if (FLAG_MAPFILE_FD.is_set()) {

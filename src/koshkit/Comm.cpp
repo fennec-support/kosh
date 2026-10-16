@@ -74,6 +74,8 @@ Comm::execute(const ExecContext               &ec,
       os::close_fd(right_input->descriptor);
   };
 
+  /* at this point: left_input and right_input hold open descriptors. each
+     Owned input is closed by its defer block when execute() returns. */
   let        left_reader    = utils::BufferedLineReader{left_input->descriptor,
                                               cxt.scratch_allocator()};
   let        right_reader   = utils::BufferedLineReader{right_input->descriptor,
@@ -113,7 +115,15 @@ Comm::execute(const ExecContext               &ec,
     was_disorder_reported[side] = true;
   };
 
-  loop {
+  /* e.g. left = [a, b, d], right = [b, c], no column hidden
+     iteration 1: a < b, column 0 gets a, left advances to b
+     iteration 2: b == b, column 2 gets two tabs and b, both sides advance,
+                  so left is d and right is c
+     iteration 3: d > c, column 1 gets one tab and c, right reaches its end
+     iteration 4: right is at its end, column 0 gets d, left is at its end
+     output:      a, two tabs and b, one tab and c, d */
+  loop
+  {
     if (left_result == utils::BufferedLineReader::Result::Error ||
         right_result == utils::BufferedLineReader::Result::Error)
     {

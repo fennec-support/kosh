@@ -220,6 +220,10 @@ process_has_id(process p, i64 id) wontthrow -> bool
   return p == static_cast<process>(id);
 }
 
+/* memory: head[256] is on the stack. the interpreter String is freed when its
+           scope ends.
+   time:   for ENOENT, one open(), one read() of at most 256 bytes, one close(),
+           and at most one access() for a shebang interpreter. */
 wontreturn cold static fn
 throw_exec_failure_error(SourceLocation location,
                          const Path    &program_path,
@@ -1205,6 +1209,8 @@ make_pipe() wontthrow -> Maybe<pipe_ends>
   }
 #endif
 
+  /* ends at or below STDERR_FILENO move above it. a later dup2() onto
+     stdin, stdout, or stderr would otherwise overwrite a pipe end. */
   for (descriptor &end : p) {
     if (end > STDERR_FILENO) continue;
 
@@ -1253,6 +1259,9 @@ pooled_worker_main(opaque *raw_worker) wontthrow -> opaque *
 
   sigset_t blocked_signals;
 
+  /* worker threads block every signal except the synchronous fault signals,
+     so process-directed signals go to threads that do not block them. a fault
+     still reaches the thread that raised it. */
   sigfillset(&blocked_signals);
   sigdelset(&blocked_signals, SIGSEGV);
   sigdelset(&blocked_signals, SIGBUS);
@@ -1427,6 +1436,9 @@ wait_for_child_state_change() wontthrow -> void
 
   if (sigprocmask(SIG_BLOCK, &blocked_signals, &previous_mask) != 0) return;
 
+  /* SIGCHLD stays blocked while the flag and pending signals are checked.
+     sigsuspend() unblocks it atomically, so a child that exits after the
+     check leaves SIGCHLD pending and the suspend returns at once. */
   while (CHILD_STATE_CHANGED == 0 && peek_pending_signal_besides_child() == 0) {
     let wait_mask = previous_mask;
 
@@ -1534,6 +1546,8 @@ read_process_stat_after_command(i64 process_id,
 
   text = StringView{buffer, stat_length};
 
+  /* the command field is wrapped in parentheses and may contain spaces and ')'
+     characters, so the last ')' ends it. */
   let const command_end = text.find_last_character(')');
 
   if (!command_end.has_value()) return false;
@@ -1608,6 +1622,8 @@ is_running_group_member(i64 process_id, pid_t group_id) wontthrow -> bool
     return false;
   }
 
+  /* a zombie stays in /proc while other threads of its thread group run.
+     field 20 of /proc/<pid>/stat (num_threads) counts the group's threads. */
   if (state[0] != 'Z') return true;
 
   for (usize field_number = 6; field_number < 20; field_number++)
@@ -2228,6 +2244,9 @@ spawn_measured_child(const ArrayList<String> &argv,
     return false;
   }
 
+  /* at this point: child_pid is an unreaped child blocked on the start
+     barrier before execvp(), and the caller owns start_descriptor and closes
+     it after writing the start byte. */
   child_out = {child_pid, start_descriptors[1]};
 
   return true;
@@ -2306,6 +2325,10 @@ parse_proc_sched_millis(StringView text) wontthrow -> Maybe<u64>
 
   if (millis.is_error()) return None;
 
+  /* e.g. text = "12345.678901": dot = 5, whole = "12345", so millis = 12345.
+          fraction = "678901" adds 6 * 100000 + 7 * 10000 + 8 * 1000 +
+          9 * 100 + 0 * 10 + 1 * 1 = 678901, and scale reaches 0 after 6 digits.
+          result = 12345 * 1000000 + 678901 = 12345678901 ns. */
   u64 fraction_nanos = 0;
 
   if (dot.has_value()) {
@@ -2422,6 +2445,10 @@ fill_usage_from_proc_io(int                     io_descriptor,
 }
 #endif
 
+/* memory: no heap allocation. the Linux path uses stack buffers.
+   time:   blocks until the child exits. on Linux with resources, it then
+           performs three bounded /proc file reads. wait4() runs in all
+   cases. */
 fn
 wait_for_measured_child(pid_t                   child_pid,
                         i64                    &status_out,
@@ -2434,6 +2461,8 @@ wait_for_measured_child(pid_t                   child_pid,
 #if defined __linux__ || defined __APPLE__
   if (resources != nullptr) {
     siginfo_t info{};
+    /* waitid() uses WNOWAIT, so the child stays an unreaped zombie. its /proc
+       entries stay readable until wait4() reaps it. */
     let const wait_result = retry_interrupted([&] {
       return waitid(P_PID, static_cast<id_t>(child_pid), &info,
                     WEXITED | WNOWAIT);
@@ -2765,6 +2794,8 @@ run_tracer(const char *const *raw_argv,
         counts.exec_count++;
       }
     } else if (signal_number == SIGSTOP) {
+      /* the initial SIGSTOP of a new task can arrive before the parent reports
+         PTRACE_EVENT_CLONE for it, so an unmatched stop goes to early_tasks. */
       bool is_known_task = false;
 
       for (usize i = 0; i < known_count; i++)
@@ -2886,6 +2917,10 @@ set_priority(i64 id, i32 priority, priority_target target) wontthrow -> bool
                      priority) == 0;
 }
 
+/* memory: no heap allocation in the parent. the child keeps its copy of the
+           parent's memory until exec() or _exit().
+   time:   blocks on read() until the child calls exec() or exits, then blocks
+           on waitpid() until the child exits. */
 template <typename PrepareChild>
 static fn
 run_through_error_pipe(const auto  &raw_argv,
@@ -2932,7 +2967,9 @@ run_through_error_pipe(const auto  &raw_argv,
 
   close(exec_error_pipe[1]);
 
-  int       child_errno  = 0;
+  int child_errno = 0;
+  /* FD_CLOEXEC closes exec_error_pipe[1] on exec(), so error_length is 0 after
+     a successful exec(). it is sizeof(child_errno) when exec() failed. */
   let const error_length = retry_interrupted([&] {
     return read(exec_error_pipe[0], &child_errno, sizeof(child_errno));
   });

@@ -82,6 +82,9 @@ apply_symbolic_mask(StringView spec, u32 current_mask) throws
   u32   allowed = (~current_mask) & PERMISSION_BITS;
   usize i       = 0;
 
+  /* e.g. spec = "g+w,o=", current_mask = 022 starts with allowed = 0755.
+     "g+w" gives permission_bits = 020, so allowed = 0775. "o=" gives
+     permission_bits = 0, so allowed = 0770 and the returned mask is 0007. */
   while (i < spec.length) {
     u32 who = 0;
 

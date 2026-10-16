@@ -33,6 +33,7 @@ throw_if_arithmetic_interrupted() throws -> void
 
 namespace {
 
+/* 10^19 is the largest power of ten below 2^64, so one chunk fits in a u64. */
 constexpr u64 DECIMAL_CHUNK_BASE = 10000000000000000000ULL;
 
 fn
@@ -150,6 +151,9 @@ subtract_limbs_in_place(ArrayList<u64>       &left,
   trim_limbs(left);
 }
 
+/* memory: result is allocated in allocator with left.count() + right.count()
+           limbs before trim_limbs().
+   time:   O(left.count() * right.count()) limb products, schoolbook order. */
 fn
 multiply_limbs(const ArrayList<u64> &left,
                const ArrayList<u64> &right,
@@ -322,6 +326,12 @@ magnitude_bit_length(const ArrayList<u64> &limbs) wontthrow -> usize
          static_cast<usize>(64 - __builtin_clzll(top));
 }
 
+/* memory: quotient is allocated in allocator with (bit_count + 63) / 64
+           limbs. remainder grows through its own allocator and has at most
+           divisor.count() + 1 limbs during the loop.
+   time:   O(B * L), where B = magnitude_bit_length(dividend) and
+           L = divisor.count(). each bit shifts, compares, and subtracts the
+           remainder in O(L). a single-limb divisor takes divide_small(). */
 fn
 magnitude_divide(const ArrayList<u64> &dividend,
                  const ArrayList<u64> &divisor,
@@ -686,6 +696,9 @@ ArithmeticValue::from_magnitude(const u64 *limbs,
   return result;
 }
 
+/* memory: one bump allocation of sizeof(Storage) plus limb_count u64 values
+           from arena. arena frees it when it resets. the caller fills limbs.
+   time:   O(1). */
 fn
 ArithmeticValue::allocate_promoted(usize      limb_count,
                                    bool       is_negative,
@@ -790,6 +803,11 @@ ArithmeticValue::parse(StringView text,
   if (radix == 10) {
     let const first_chunk_length =
         body.length % 19 == 0 ? usize{19} : body.length % 19;
+    /* e.g. body "12345678901234567890123" (23 digits). the first chunk
+            length is 23 % 19 = 4, so the chunks are "1234" and
+            "5678901234567890123". "1234" sets magnitude to [1234]. the second
+            chunk gives 1234 * 10^19 + 5678901234567890123
+            = 12345678901234567890123. */
     usize position = 0;
 
     while (position < body.length) {
@@ -828,6 +846,9 @@ ArithmeticValue::parse(StringView text,
                         arena);
 }
 
+/* memory: magnitude uses allocator and grows by at most one limb per digit.
+   time:   O(D^2) for D digits. each digit runs multiply_add_small(), which
+           visits every limb, and the limb count grows with D. */
 fn
 ArithmeticValue::parse_decimal(StringView text, BumpArena &arena) throws
     -> ArithmeticValue
@@ -1000,6 +1021,13 @@ ArithmeticValue::to_string(Allocator allocator) const throws -> String
     }
   }
 
+  /* e.g. limbs [0, 1], the value 2^64, and chunks start empty.
+          limb 1: carry 1, so chunks [1].
+          limb 0: carry 0. (1 * 2^64 + 0) / 10^19 gives quotient 1 and
+          remainder 8446744073709551616, so chunks [8446744073709551616] and
+          carry 1, then chunks [8446744073709551616, 1].
+          digits "1" followed by "8446744073709551616" give
+          "18446744073709551616". */
   let chunks = ArrayList<u64>{allocator};
 
   for (usize limb_position = limb_count(); limb_position > 0; limb_position--) {
@@ -1241,6 +1269,11 @@ ArithmeticValue::modulo(const ArithmeticValue &left,
                         left.is_negative(), decimal_scale, arena);
 }
 
+/* memory: intermediates live in two local arenas that alternate. each
+           iteration resets the arena that does not hold the current result and
+           factor. the final value is copied into arena.
+   time:   one iteration per bit of exponent_value, each with at most two
+           multiply() calls, one for the set bit and one for the squaring. */
 fn
 ArithmeticValue::power(const ArithmeticValue &base,
                        const ArithmeticValue &exponent,

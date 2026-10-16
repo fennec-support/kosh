@@ -512,6 +512,11 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
   return capture;
 }
 
+/* memory: appends to m_captured, which grows with the output. buffer is a
+           4096 byte stack array.
+   time:   at most 16 iterations of PeekNamedPipe() and ReadFile(), so at most
+           65536 bytes per call. on completion, normalize_crlf_line_endings()
+           makes one pass over m_captured. */
 fn
 ProgramCapture::step() wontthrow -> State
 {
@@ -786,6 +791,13 @@ ensure_valid_standard_handles(STARTUPINFOW &startup_info,
   return true;
 }
 
+/* memory: every container and string is heap_allocator() storage that its
+           destructor releases on return. inherited_fd_storage is at most
+           UINT16_MAX bytes.
+   time:   O(H^2) for the dedupe in do_add_unique_handle(), where H is
+           inherited_handle_count plus the open shell fds. O(F) for the fd
+           block, where F is highest_inherited_fd + 1. launch_lock is held
+           across CreateProcessW(). */
 static fn
 create_process_utf8(StringView           application_path,
                     StringView           command_line,
@@ -949,6 +961,10 @@ create_process_utf8(StringView           application_path,
         do_add_unique_handle(do_read_inherited_fd(shell_fd));
   }
 
+  /* the inheritance flag belongs to each handle, so two launches that list the
+     same handle race on it: one restore can clear the flag while the other
+     CreateProcessW() is pending. launch_lock covers the marks, the create, and
+     the restore. */
   static SRWLOCK launch_lock = SRWLOCK_INIT;
 
   AcquireSRWLockExclusive(&launch_lock);
@@ -1051,6 +1067,9 @@ create_process_utf8(StringView           application_path,
     creation_flags |= EXTENDED_STARTUPINFO_PRESENT;
   }
 
+  /* at this point: launch_lock is held, every entry of unique_handles has
+     HANDLE_FLAG_INHERIT set, and attribute_list lists unique_handles when that
+     list is not empty. */
   PROCESS_LAUNCH_COUNTS.fork_count++;
   PROCESS_LAUNCH_COUNTS.exec_count++;
 
@@ -1255,6 +1274,11 @@ get_command_processor_path() throws -> Maybe<String>
   return path;
 }
 
+/* memory: the returned process handle belongs to the caller, which closes it.
+           ec file descriptors close on return unless the script fallback takes
+           them. command line and path strings are heap_allocator() storage.
+   time:   O(argument bytes) to build and convert the command line. one
+           create_process_utf8() call, which takes launch_lock. */
 fn
 execute_program(ExecContext &ec, const program_execution_options &options)
     -> process
@@ -1418,6 +1442,8 @@ execute_program(ExecContext &ec, const program_execution_options &options)
     throw ErrorWithLocation{ec.source_location(), last_system_error_message()};
   }
 
+  /* the child starts suspended when a timeout job is attached, so it cannot
+     create descendants before attach_timeout_job() assigns it to the job. */
   if (should_attach_timeout_job) {
     try {
       attach_timeout_job(process_info, job_lifetime);
@@ -1490,6 +1516,11 @@ append_subshell_transport_u64(String &output, u64 value) throws -> void
     output.push(static_cast<char>((value >> (byte_position * 8U)) & 0xffU));
 }
 
+/* memory: the returned String belongs to the caller. each duplicated process
+           handle is open in child.
+   time:   O(payload bytes + source origin bytes) to copy, then one
+           DuplicateHandle() per entry of bootstrap.processes that is not a pid
+           reference. */
 static fn
 make_subshell_transport(const subshell_bootstrap &bootstrap,
                         process                   child) throws -> Maybe<String>
@@ -1537,6 +1568,9 @@ make_subshell_transport(const subshell_bootstrap &bootstrap,
   return transport;
 }
 
+/* memory: wide_path is heap_allocator() storage released on return.
+   time:   polls until 5000 ms pass or the child exits. a pass that finds no
+           pipe waits up to 50 ms in WaitNamedPipeW() and then sleeps 1 ms. */
 static fn
 send_internal_pipe(StringView path,
                    StringView content,
@@ -2138,6 +2172,11 @@ retire_relay_writes(substitution_relay &relay) wontthrow -> void
     let &write = relay.writes[relay.oldest_write];
     if (!write.is_done) return;
 
+    /* e.g. head = 1000. write 1000-3000 succeeds, write 3000-4000 fails after
+       300 bytes, and write 4000-5000 succeeds.
+         1000-3000: head = 3000
+         3000-4000: head = 3000 + 300 = 3300, has_active_failed is set
+         4000-5000: head stays 3300 because has_active_failed is set */
     if (!relay.has_active_failed) {
       relay.head = write.did_succeed
                        ? write.end
@@ -2175,6 +2214,13 @@ finish_relay_write(substitution_relay &relay,
 static fn
 next_relay_write_length(const substitution_relay &relay) wontthrow -> DWORD
 {
+  /* e.g. posted = 260000, tail = 270000, is_bulk = false, and the first newline
+     is at ring offset 260100.
+       start = 260000 % 262144 = 260000; length = 270000 - 260000 = 10000
+       wrap limit 262144 - 260000 = 2144, so length = 2144
+       chunk limit 65536 does not apply to length 2144
+       memchr() finds the newline 100 bytes past line_start, so it returns
+     101 */
   let const start  = relay.posted % SUBSTITUTION_RELAY_RING_BYTES;
   let       length = relay.tail - relay.posted;
   if (length > SUBSTITUTION_RELAY_RING_BYTES - start)
@@ -2453,6 +2499,11 @@ run_substitution_relay(opaque *context) wontthrow -> void
   destroy_substitution_relay(&relay);
 }
 
+/* memory: os::allocate_aligned() storage for one substitution_relay, about
+           512 KiB: 64 clients with 4096 byte buffers and a 262144 byte ring.
+           the caller owns it and frees it with destroy_substitution_relay().
+   time:   constant. placement new initializes the fixed-size client and write
+           arrays. */
 static fn
 create_substitution_relay(bool is_command_writes) throws
     -> substitution_relay *
@@ -3112,6 +3163,12 @@ append_windows_quoted_arg(String &out, StringView arg) -> void
 
   out += '"';
 
+  /* e.g. arg = a b\"c\ (characters: a, space, b, backslash, quote, c,
+       backslash). a, space, b, and c are copied as they are. the backslash
+       before the quote is a run of 1, written as 2 * 1 + 1 = 3 backslashes
+       followed by the quote. the trailing run of 1 backslash is written as
+       2 * 1 = 2 backslashes. the loop writes a b\\\"c\\ and the quotes added
+       before and after the loop give "a b\\\"c\\". */
   for (usize i = 0; i < arg.count();) {
     usize backslash_count = 0;
 
@@ -3807,6 +3864,10 @@ enumerate_processes(process_detail detail) throws
   return processes;
 }
 
+/* memory: the snapshot from enumerate_processes() is freed on return. the
+           matched entries move into the returned list.
+   time:   O(P) for enumerate_processes(), plus O(P * K) for K = pids.count(),
+           because each entry runs one find() over pids. */
 fn
 describe_processes(const ArrayList<u32> &pids) throws
     -> ArrayList<process_entry>
@@ -3851,6 +3912,9 @@ read_memory_status(memory_status &status) wontthrow -> bool
   return true;
 }
 
+/* memory: none allocated.
+   time:   one EnumPageFilesW() call. it invokes do_collect() once per page
+           file, so the cost is O(F) for F page files. */
 fn
 read_swap_status(swap_status &status) wontthrow -> bool
 {
@@ -3883,6 +3947,9 @@ read_swap_status(swap_status &status) wontthrow -> bool
   return true;
 }
 
+/* memory: none.
+   time:   one OpenProcess(). on success, one GetProcessIoCounters() and one
+           CloseHandle(). no loops. */
 fn
 read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 {
@@ -3905,6 +3972,10 @@ read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
   return true;
 }
 
+/* memory: reserve() on statuses and availability for N = process_ids.count()
+           entries. no other allocation.
+   time:   O(N) calls to read_process_io_status(). one entry is pushed for
+           every id, including ids that cannot be opened. */
 fn
 read_process_io_statuses(const ArrayList<i64>         &process_ids,
                          ArrayList<process_io_status> &statuses,
@@ -4075,6 +4146,13 @@ utf8_to_absolute_wide_path(StringView path, Allocator allocator) throws
   return None;
 }
 
+/* memory: wide_path, process_infos, and image_path come from scratch. each
+           opened process reserves MAXIMUM_IMAGE_PATH_LENGTH wchar_t, 64 KiB,
+           in scratch. the arena behind scratch releases them on reset. users
+           gains one entry for each process that is not a duplicate.
+   time:   per query, up to 9 RmGetList() calls, one OpenProcess() per
+           process, and an O(M^2) duplicate check for M processes, since each
+           one scans the users added for that query. */
 fn
 scan_process_file_users(const ArrayList<process_file_query> &queries,
                         ArrayList<process_file_user>        &users,
@@ -4136,8 +4214,14 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
       }
     }
 
+    /* at this point: result is ERROR_SUCCESS, session_handle has the query
+       file registered, and the first process_count entries of process_infos
+       hold the RmGetList() output. */
     let const query_user_start = users.count();
 
+    /* e.g. pids = [4120, 812, 4120], users empty on entry, query_user_start = 0
+       -> 4120 is pushed as users[0], 812 as users[1]; the second 4120 matches
+          users[0] and is skipped, so users ends as [4120, 812] */
     for (UINT process_position = 0; process_position < process_count;
          process_position++)
     {
@@ -4243,6 +4327,9 @@ process_owner_name(u32 pid, u32 owner_id, Allocator allocator) throws
     domain_length--;
   }
 
+  /* at this point: token_user points into token_buffer, which holds the
+     TOKEN_USER from GetTokenInformation(). name and domain each hold their
+     length in wchar_t, excluding any terminating null. */
   let user_name = wide_to_utf8(name.begin(), name_length, allocator);
   if (!user_name.has_value()) return None;
   if (domain_length == 0) return user_name;

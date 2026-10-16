@@ -57,6 +57,11 @@ public:
 
   ~Hive() { destroy_all(); }
 
+  /* memory: add_block() allocates one Block of BLOCK_SLOT_COUNT slots when
+             no slot is free. destroy_all() frees the blocks.
+     time:   O(1) when a free slot exists. add_block() links
+             BLOCK_SLOT_COUNT slots, which adds O(BLOCK_SLOT_COUNT) to the
+             call that runs it. */
   template <class... Arguments>
   fn
   emplace(Arguments &&...arguments) throws -> T *

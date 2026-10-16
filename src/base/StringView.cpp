@@ -16,6 +16,8 @@ namespace koshka {
 fn
 StringView::to_lower_ascii(Allocator allocator) const throws -> String
 {
+  /* memory: a String copy of the view in allocator, returned to the caller.
+     time:   O(length) for the copy and the lowercase pass over it. */
   let result = String{allocator, *this};
 
   result.lowercase_ascii();
@@ -151,6 +153,10 @@ fn
 StringView::find_substring(StringView needle, usize from) const wontthrow
     -> Maybe<usize>
 {
+  /* memory: none.
+     time:   O(length * needle.length) worst case, when the first byte of
+             needle matches at every position. find_byte() scans each gap
+             between candidates once. */
   if (needle.length == 0) return from <= length ? Maybe<usize>{from} : None;
   if (needle.length > length) return None;
 
@@ -158,6 +164,8 @@ StringView::find_substring(StringView needle, usize from) const wontthrow
 
   if (from > last_start) return None;
 
+  /* at this point: needle is non-empty, it fits within length, and from
+     is at most last_start, so data + position stays inside the view. */
   let position = from;
 
   while (position <= last_start) {
@@ -203,6 +211,9 @@ StringView::substring_of_length(usize start, usize count) const wontthrow
 fn
 StringView::next_line(usize &position) const wontthrow -> StringView
 {
+  /* e.g. text "ab\ncd" from position 0, then from position 3
+       first call:  remaining "ab\ncd", newline 2, line "ab", position 3
+       second call: remaining "cd", no newline, line "cd", position 5 */
   let const remaining   = substring(position);
   let const newline     = remaining.find_character('\n');
   let const line_length = newline.has_value() ? *newline : remaining.length;

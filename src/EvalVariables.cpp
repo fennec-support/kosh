@@ -425,6 +425,9 @@ EvalContext::write_dynamic_variable(StringView name,
     return false;
   if (scope_store().has_active_local(name)) return false;
 
+  /* at this point: bash dynamic variables are enabled, name is RANDOM or
+     SECONDS, and its reader is not unset. no local variable of that name is
+     active. assigned is 0 when value does not parse as i64. */
   let const parsed   = value.to<i64>();
   let const assigned = parsed.is_error() ? i64{0} : parsed.value();
 
@@ -799,6 +802,10 @@ is_valid_nameref_target(StringView target) wontthrow -> bool
   return lexer::word_is_variable_name(base);
 }
 
+/* memory: the target String comes from heap_allocator() and is replaced on
+           each step, which frees the previous one. the caller owns the result.
+   time:   at most NAMEREF_DEPTH_LIMIT passes, each with one O(target length)
+           scan and two lookups. */
 fn
 EvalContext::resolve_nameref(StringView name) const throws
     -> Maybe<String>
@@ -1030,6 +1037,8 @@ EvalContext::resolve_nameref_parameter(StringView spec) throws
     return None;
   }
 
+  /* at this point: target is a nonempty name from resolve_nameref(), so it is
+     not circular. */
   if (let const bracket = target->view().find_character('[');
       bracket.has_value() && target->view()[target->count() - 1] == ']')
   {

@@ -34,6 +34,10 @@ struct alignas(max_align_t) regex_allocation_header
   size_t payload_length;
 };
 
+/* memory: allocates sizeof(regex_allocation_header) + length bytes from
+           uncached_heap_allocator(). the caller frees the block with
+           kosh_regex_release() or kosh_regex_reallocate().
+   time:   one raw_alloc() call. */
 extern "C" void *
 kosh_regex_allocate(size_t length)
 {
@@ -163,6 +167,8 @@ is_shell_fd_close_on_exec(i32 shell_fd) wontthrow -> bool
           mask) != 0;
 }
 
+/* time: one descriptor_from_fd_number() call for each fd from 3 up to
+         _getmaxstdio(), once per process because of the scan guard. */
 static fn
 scan_inherited_shell_fds() wontthrow -> void
 {
@@ -198,6 +204,9 @@ note_shell_fd_closed(i32 shell_fd) wontthrow -> void
   }
 }
 
+/* memory: reserves wide_length + 1 wchar_t in allocator for the returned list,
+           and the caller owns that list.
+   time:   two MultiByteToWideChar() calls, O(text.length) in bytes. */
 static fn
 utf8_to_wide(StringView text, Allocator allocator) throws
     -> Maybe<ArrayList<wchar_t>>
@@ -217,6 +226,8 @@ utf8_to_wide(StringView text, Allocator allocator) throws
     return wide;
   }
 
+  /* e.g. text = "a\xc3\xa9" (3 bytes): wide_length = 2, and the buffer becomes
+     L'a', U+00E9, L'\0'. */
   let const wide_length =
       MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, text.data,
                           static_cast<int>(text.length), nullptr, 0);
@@ -232,6 +243,9 @@ utf8_to_wide(StringView text, Allocator allocator) throws
   return wide;
 }
 
+/* memory: utf8 is an ArrayList<char> from allocator that is freed on return.
+           the returned String owns a copy of the converted bytes.
+   time:   two WideCharToMultiByte() calls, O(length) in wide units. */
 static fn
 wide_to_utf8(const wchar_t *text,
              usize          length,
@@ -439,6 +453,11 @@ append_event_text(String        &message,
   if (utf8.has_value()) message += utf8->view();
 }
 
+/* memory: the 64 KiB read buffer is a heap_allocator() ArrayList that is
+           freed on return. source and message strings use allocator, and the
+           returned list owns them.
+   time:   one ReadEventLogW() call per 64 KiB chunk, so the time grows with the
+           bytes read until max_record_count records are collected. */
 fn
 read_recent_system_log_records(StringView log_name,
                                usize      max_record_count,
@@ -649,6 +668,10 @@ seek_descriptor_from_start(os::descriptor fd, u64 byte_offset) wontthrow -> bool
   return SetFilePointerEx(fd, distance, nullptr, FILE_BEGIN) != FALSE;
 }
 
+/* time: sleeps 1 ms between polls until the descriptor is readable or
+         timeout_nanos elapses. a negative timeout_nanos waits without a limit
+         for pipe and console descriptors.
+   memory: console_events is a HeapAlloc() buffer freed on return. */
 fn
 wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
 {
@@ -1262,6 +1285,11 @@ ensure_winsock_started() wontthrow -> bool
   return is_started;
 }
 
+/* memory: storage holds the GetAdaptersAddresses() buffer, which starts at
+           16384 bytes and grows when a query overflows. storage is freed on
+           return, and result is owned by the caller.
+   time:   at most 4 GetAdaptersAddresses() queries, then one getnameinfo()
+           call for each IPv4 or IPv6 unicast address of each adapter. */
 fn
 network_interface_addresses() throws
     -> ArrayList<network_interface_address>
@@ -1289,6 +1317,8 @@ network_interface_addresses() throws
 
   if (query_status != NO_ERROR) return result;
 
+  /* at this point: query_status is NO_ERROR, and storage owns every adapter
+     reached from adapters until the function returns. */
   for (let *adapter = adapters; adapter != nullptr; adapter = adapter->Next) {
     if (adapter->FriendlyName == nullptr) continue;
 
@@ -1339,6 +1369,10 @@ default_network_interface(Allocator allocator) throws -> Maybe<String>
   return None;
 }
 
+/* memory: GetIfTable2() allocates the MIB_IF_TABLE2 table, which
+           FreeMibTable() frees on return. result is owned by the caller.
+   time:   one wide_to_utf8() conversion and one push for each interface row,
+           O(NumEntries). */
 fn
 read_network_interface_statistics() throws
     -> ArrayList<network_interface_statistics_entry>
@@ -2221,6 +2255,10 @@ static fn
 find_environment_spelling(const wchar_t *wide_key) throws
     -> Maybe<ArrayList<wchar_t>>
 {
+  /* memory: the returned spelling is heap_allocator() storage owned by the
+             caller. the environment block is freed on return.
+     time:   O(E) for E wide characters in the environment block, since each
+             entry is scanned once. */
   wchar_t *block = GetEnvironmentStringsW();
 
   if (block == nullptr) return None;
@@ -2410,6 +2448,8 @@ FileWatcher::watch(StringView path) wontthrow -> void
 fn
 FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
 {
+  /* time:   about timeout_seconds / SLICE_SECONDS sleep calls, fewer when
+             INTERRUPT_REQUESTED is set. memory: none. */
   constexpr f64 SLICE_SECONDS = 0.1;
 
   f64 remaining_seconds = timeout_seconds;
@@ -2531,6 +2571,7 @@ struct subshell_transport_header
   decode(const char (&bytes)[ENCODED_LENGTH]) wontthrow
       -> Maybe<subshell_transport_header>
   {
+    /* e.g. bytes 42 54 53 4b 05 00 00 00 -> magic 0x4b535442, version 5 */
     if (decode_subshell_transport_u32(bytes) != MAGIC ||
         decode_subshell_transport_u32(bytes + 4) != VERSION)
     {
@@ -2716,6 +2757,10 @@ create_private_pipe(const wchar_t *path,
 static fn
 receive_subshell_bootstrap() wontthrow -> void
 {
+  /* memory: the payload, source origin, and process handles are appended to
+             SUBSHELL_BOOTSTRAP, which take_subshell_bootstrap() steals.
+     time:   one header read, then O(payload_length + origin_length) bytes in
+             chunks of at most 4096 bytes, plus 8 bytes per process handle. */
   wchar_t   path[256]{};
   let const path_length = GetEnvironmentVariableW(
       internal::STATE_NAMED_PIPE_WIDE, path, countof(path));
@@ -2726,6 +2771,8 @@ receive_subshell_bootstrap() wontthrow -> void
 
   SetEnvironmentVariableW(internal::STATE_NAMED_PIPE_WIDE, nullptr);
 
+  /* FILE_FLAG_FIRST_PIPE_INSTANCE makes this call fail when an instance with
+     the same random name exists, so the child creates the first instance. */
   let const pipe = create_private_pipe(
       path, PIPE_ACCESS_INBOUND | FILE_FLAG_FIRST_PIPE_INSTANCE, 1, 65536,
       65536);
@@ -2762,6 +2809,9 @@ receive_subshell_bootstrap() wontthrow -> void
     ExitProcess(1);
   }
 
+  /* at this point: the header is valid, so the lengths below are at most
+     MAXIMUM_TRANSPORT_LENGTH, and the connected client is the parent
+     process. */
   let const payload_length  = static_cast<usize>(header->payload_length);
   let const source_length   = header->source_length;
   let const origin_length   = static_cast<usize>(header->origin_length);
@@ -2859,6 +2909,8 @@ initialize_platform_runtime() wontthrow -> void
     return;
   }
 
+  /* at this point: the parent process ID variable is removed, and this process
+     is an internal child of get_parent_process_id(). */
   receive_subshell_bootstrap();
 }
 

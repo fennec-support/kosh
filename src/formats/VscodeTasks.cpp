@@ -103,6 +103,12 @@ is_windows_override(StringView source, usize object_start) wontthrow -> bool
          source.substring_of_length(close - 9, 9) == "\"windows\"";
 }
 
+/* memory: ArrayList<usize> of open '{' offsets from heap_allocator(), freed
+           when this function returns. its length is the number of open '{'.
+   time:   O(N) for the scan. each args array rescans its innermost object in
+           json_object_end() and json_member_string(), which cost the object
+           length. a byte inside d nested objects that each hold an args array
+           is rescanned up to d times, so the total is O(N * d). */
 static fn
 extract_shell_args(const parser_format_input &input,
                    parsed_format_document    &document) throws -> void
@@ -157,6 +163,10 @@ extract_shell_args(const parser_format_input &input,
 
     if (!mood.has_value()) continue;
 
+    /* e.g. args = ["bash", "-lc", "make test"]
+            "bash" has no leading '-', so is_script stays false. "-lc" starts
+            with '-', is not "--", and contains 'c', so is_script is true.
+            "make test" is added as a json fragment, and the loop breaks. */
     bool  is_script = false;
     usize item      = array + 1;
 

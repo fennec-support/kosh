@@ -175,6 +175,10 @@ collect_paths_from_output(StringView         output,
 
     if (!start.has_value()) continue;
 
+    /* e.g. view = "Yes (*) /lib64/ld.so", start = 8
+            end_position stops at view.length = 20, since none of the
+            characters in "/lib64/ld.so" is a blank, tab, ')', or '('.
+            path = "/lib64/ld.so" */
     usize end_position = *start;
 
     while (end_position < view.length && view[end_position] != ' ' &&
@@ -401,6 +405,8 @@ GoodCore::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: binary holds a path to a regular file, and has_pid selects
+     between capturing a process and copying a core file. */
   let const stage_directory =
       os::make_temp_directory(Path::temp_directory(), "goodcore");
 
@@ -597,6 +603,8 @@ GoodCore::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* the temporary archive shares the directory of output, so rename_path()
+     stays on one filesystem. rename() fails across filesystems. */
   let const temporary_output =
       os::write_to_named_temp_file(output.parent(), ".goodcore", StringView{});
 

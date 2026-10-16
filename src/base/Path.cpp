@@ -227,6 +227,11 @@ Path::with_extension(StringView new_extension) const throws -> Path
   return result;
 }
 
+/* memory: components and normalized_text are allocated in allocator(). both
+           are freed on return, and the returned Path owns a copy of the text.
+   time:   O(n) for n = m_text.count(). each byte is visited once by
+           next_component(), pops are O(1), and the join copies each component
+           once. */
 cold fn
 Path::normalized() const throws -> Path
 {
@@ -238,6 +243,13 @@ Path::normalized() const throws -> Path
   let   components = ArrayList<StringView>{allocator()};
   usize i          = root_length;
 
+  /* e.g. m_text = "a/b/../c/./d", root_length = 0
+       "a"  -> components [a]
+       "b"  -> components [a, b]
+       ".." -> pops "b", components [a]
+       "c"  -> components [a, c]
+       "."  -> skipped, components [a, c]
+       "d"  -> components [a, c, d], and the join gives "a/c/d" */
   while (i < m_text.count()) {
     let const component = next_component(i).text;
 
@@ -287,6 +299,11 @@ Path::first_unavailable_component() const throws
   usize       position          = root_length;
   let         has_dot_component = false;
 
+  /* e.g. m_text = "/usr/nope/x", root_length = 1, /usr is a directory,
+          and /usr/nope does not exist
+       "usr"  -> /usr is available, so component_index goes from 0 to 1
+       "nope" -> /usr/nope is unavailable, returns {5, 9, 1, 3, false}
+                 (start, end, index, count, is_not_directory) */
   while (position < m_text.count()) {
     let const component = next_component(position);
     if (component.text.is_empty()) break;
@@ -558,6 +575,11 @@ Path::temp_directory() throws -> Path
   return Path{os::temp_directory_path().view()};
 }
 
+/* memory: the file is read into a String in heap_allocator(). the caller owns
+           it on success. read_fd_to_string() keeps a 16384-byte buffer on the
+           stack.
+   time:   one open, reads of up to 16384 bytes until a read returns 0, and one
+           close. the copies into the String are O(file size). */
 fn
 Path::read_entire_file() const throws -> Maybe<String>
 {
@@ -572,6 +594,14 @@ Path::read_entire_file() const throws -> Maybe<String>
   return os::read_fd_to_string(*file, heap_allocator());
 }
 
+/* memory: each candidate is a Path in the heap allocator. with_extension()
+           replaces the candidate, which frees the old one. the returned Path
+           owns the last candidate.
+   time:   a relative path with a separator may be resolved against the
+           working directory first. then one stat_path_following() runs, and
+           one more for each os::PROGRAM_SUFFIXES entry while the path is
+           unresolved and has no extension. POSIX has one empty suffix, so at
+           most two stats run there. */
 fn
 Path::canonicalize(StringView path) throws -> Maybe<Path>
 {
@@ -605,6 +635,10 @@ Path::canonicalize(StringView path) throws -> Maybe<Path>
   return candidate;
 }
 
+/* memory: buffer[256] on the stack. the descriptor closes before
+           detect_mimic_shell_from_source() runs.
+   time:   one open, one read of at most 256 bytes, and one close, so the
+           syscall count is constant. */
 fn
 Path::detect_mimic_shell() const throws -> Maybe<mimic_mood>
 {

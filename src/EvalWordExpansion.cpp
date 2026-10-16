@@ -64,6 +64,12 @@ get_segment_quoting(const WordSegment &segment) wontthrow
                                      : parameter_word_quoting::Unquoted;
 }
 
+/* memory: fields and their text are bump-allocated in the scratch arena, which
+           a caller releases to a mark taken before the call. tilde expansion
+           clones the segments into the same arena.
+   time:   O(b) for b bytes of segment text, since each byte is appended once
+           and checked against the field separators once. O(p) for each $@ or
+           $* segment, where p is the positional parameter count. */
 hot fn
 EvalContext::expand_word(const Word &word) throws
     -> ArrayList<glob_field>
@@ -191,6 +197,12 @@ EvalContext::expand_word(const Word &word) throws
 
   let const do_emit_empty_field = [&]() { fields.push(glob_field{scratch}); };
 
+  /* e.g. text = "a::b" with IFS ":"
+       the first run appends "a" to current and stops at the first ":".
+       the delimiter loop counts 2, and do_flush() pushes "a". one empty
+       field is emitted for the second delimiter.
+       the run "b" stays in current until a later do_flush().
+       -> "a", "", "b" */
   let const do_append_split_run = [&](StringView text, bool is_glob_active) {
     let const separators = variable_store().field_separators();
     let const is_multibyte =
@@ -1164,6 +1176,11 @@ EvalContext::expand_word(const Word &word) throws
   return fields;
 }
 
+/* memory: the result string and any segment clones are bump-allocated in the
+           scratch arena, which a caller releases to a mark taken before the
+           call.
+   time:   O(s + n) for s segments and n bytes of the result, since each
+           segment is visited once and its text is appended once. */
 hot fn
 EvalContext::expand_word_for_assignment(const Word &word,
                                         bool        is_assignment_value) throws
@@ -1282,6 +1299,10 @@ EvalContext::expand_case_pattern_masked(const Word &word,
       active_out.push(is_active);
   };
 
+  /* e.g. bytes = a\*b with is_active = true
+       a -> result "a", active_out gets true
+       the backslash escapes *, so result "a*" and active_out gets false
+       b -> result "a*b", active_out gets true */
   let const do_emit_expansion_run = [&](StringView bytes, bool is_active) {
     if (!is_active) {
       do_emit_run(bytes, false);
@@ -1440,6 +1461,8 @@ EvalContext::expand_wordlist_to_fields(
           return false;
         }
 
+        /* a # at the start of a word begins a shell comment, which would
+           swallow the ")" that closes the array literal run as source below. */
         if (character == '#' && is_at_word_start) {
           return false;
         }
@@ -1458,6 +1481,9 @@ EvalContext::expand_wordlist_to_fields(
     return do_split_plain();
   }
 
+  /* at this point: wordlist is a balanced array literal body with no open
+     quote or backtick, and no separator outside a nested construct. the
+     closing paren appended below is the only one that closes the literal. */
   defer {
     variable_store().indexed_arrays().erase("t__wordlist_fields");
     force_unset_shell_variable("t__wordlist_fields");

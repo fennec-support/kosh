@@ -76,6 +76,10 @@ get_uniq_key(StringView line, usize skipped_fields, usize skipped_chars)
     wontthrow
     -> StringView
 {
+  /* e.g. line = "  a  bb   c", skipped_fields = 2, skipped_chars = 1
+          field 0 skips "  a" and stops at position 3.
+          field 1 skips "  bb" and stops at position 7.
+          skipped_chars moves position to 8, so the key is "  c". */
   usize position = 0;
 
   for (usize field = 0; field < skipped_fields && position < line.length;
@@ -100,6 +104,12 @@ get_uniq_key(StringView line, usize skipped_fields, usize skipped_chars)
   return line.substring(position);
 }
 
+/* memory: the reader and the output use cxt.scratch_allocator(). previous
+           holds one line in heap_allocator(), and its destructor frees it on
+           return. output is written once it reaches 64 KiB.
+   time:   O(input bytes) to read. with a nonzero -f or -s, each line
+           comparison calls get_uniq_key() twice, and each call scans one
+   line. */
 fn
 Uniq::execute(const ExecContext               &ec,
               EvalContext                     &cxt,

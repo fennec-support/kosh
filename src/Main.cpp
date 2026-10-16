@@ -531,6 +531,10 @@ struct command_line
   }
 };
 
+/* memory: each kept option word is copied into line.flag_tokens, which owns
+           the copies. spliced_argv points into flag_tokens and argv.
+   time:   one pass over the bytes of KOSH_FLAGS, with one flag lookup per
+           option letter. */
 static fn
 splice_environment_flags(command_line &line) throws -> void
 {
@@ -564,6 +568,11 @@ splice_environment_flags(command_line &line) throws -> void
 
     /* KOSH_FLAGS can set options but cannot choose what runs. Option words
        and their values are kept, and -c, -s, --, and operands are dropped. */
+    /* e.g. KOSH_FLAGS = "-ec echo --rcfile x -o nounset"
+       "-ec": kept as "-e"; c drops itself and the next word "echo".
+       "--rcfile": ignored, so it and its value "x" are dropped.
+       "-o": kept, and its value "nounset" is kept after it.
+       flag_tokens: ["-e", "-o", "nounset"] */
     view.for_each_ascii_whitespace_word([&](StringView token) throws {
       if (is_value_next) {
         is_value_next = false;
@@ -1102,6 +1111,8 @@ resolve_input_plan(const command_line      &line,
   return plan;
 }
 
+/* memory: the returned String holds the whole operand file. the caller owns it.
+   time:   O(file bytes) for the read through Path::read_entire_file(). */
 static fn
 prefetch_script_shebang(invocation_identity     &identity,
                         const input_plan        &input,
@@ -1178,6 +1189,9 @@ take_inherited_shell() throws -> inherited_shell
 
   inherited.should_use_command_string_status = should_use_command_string_status;
   inherited.source_origin = steal(inherited.bootstrap.source_origin);
+  /* windows cannot fork an evaluator (os::can_fork_evaluator() returns false
+     in src/PlatformWin32Process.cpp), so the shell state arrives through the
+     environment. */
   if (!os::can_fork_evaluator() && !inherited.bootstrap.payload.is_empty()) {
     inherited.state = os::inherited_subshell_state::take_from_environment();
     if (!inherited.state.has_value()) {
@@ -1895,6 +1909,13 @@ struct script_operands
   ArrayList<String> positional_params;
 };
 
+/* memory: positional_params holds operands.count() - first_param_index
+           elements in heap_allocator(). each element is cloned when
+           should_retain_operands is true and moved out of operands otherwise.
+           the returned script_operands owns both members, and kosh_main()
+           moves them into EvalContext.
+   time:   O(operands.count()) for the moves, or O(total operand bytes) when
+           the operands are cloned. */
 static fn
 take_script_operands(String             program_name,
                      ArrayList<String> &operands,
@@ -1947,6 +1968,10 @@ find_command_call_site(const command_line &line,
                        usize               consumed_command_index) wontthrow
     -> Maybe<SourceLocation>
 {
+  /* e.g. parse_argv = ["kosh", "-c", "echo hi", "-c", "true"] and
+          consumed_command_index = 2. "kosh" adds 5 to flag_offset, "-c" adds 3,
+          and "echo hi" adds 10 (9 quoted bytes plus a separator), so the second
+          "-c" starts at offset 18. the return is {18, 7} for "-c true". */
   let const parse_argc         = line.get_parse_argc();
   let const parse_argv         = line.get_parse_argv();
   usize     seen_command_count = 0;
@@ -1984,6 +2009,9 @@ struct script_cursor
   bool                       should_quit;
   usize                      next_file_index = 0;
 
+  /* memory: chunk.contents owns all of standard input until the loop iteration
+             in kosh_main() ends.
+     time:   O(standard input bytes). the call blocks until the end of input. */
   fn
   read_whole_standard_input(script_chunk &chunk) const throws -> void
   {
@@ -2192,6 +2220,8 @@ emit_prompt_line_break() throws -> void
     return;
   }
 
+  /* at this point: the terminal has at least one column, and the cursor is not
+     at column 0 when cursor_column has a value. */
   String eol_marker{heap_allocator()};
 
   eol_marker.reserve(dimensions->columns + 12);
@@ -2894,6 +2924,9 @@ kosh_main(int argc, char **argv) -> int
     return *startup_status;
   }
 
+  /* at this point: startup finished without a status, context holds the parse
+     and function arenas, and the signal handlers match
+     input.should_be_interactive. */
   let cursor    = koshka::script_cursor{line,
                                      file_names,
                                      input,

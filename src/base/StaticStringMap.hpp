@@ -63,6 +63,10 @@ public:
   static_string_entry<Value> entries[Count]{};
   static_string_prefilter    prefilter{};
 
+  /* memory: none at run time. the entries and prefilter are members.
+     time:   O(Count) to copy and record each entry, plus O(Count^2) for the
+             insertion sort of entries in the worst case. consteval, so this
+             runs at compile time only. */
   consteval StaticStringMap(
       const static_string_entry<Value> (&table)[Count]) wontthrow
   {
@@ -124,6 +128,10 @@ public:
   PackedStringKey         keys[Count]{};
   static_string_prefilter prefilter{};
 
+  /* memory: none at run time. the keys and prefilter are members.
+     time:   O(Count) to copy and record each key, plus O(Count^2) for the
+             insertion sort of keys in the worst case. consteval, so this
+             runs at compile time only. */
   consteval StaticStringSet(const PackedStringKey (&table)[Count]) wontthrow
   {
     for (usize i = 0; i < Count; i++) {

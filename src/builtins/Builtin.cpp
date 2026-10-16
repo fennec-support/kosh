@@ -32,6 +32,9 @@ namespace koshka {
 using sorted_builtin_name_list =
     SortedArrayList<String, order_comparator<String>>;
 
+/* memory: the sorted list is allocated in heap_allocator() and lives until
+           exit. the static initializer runs once.
+   time:   O(B log B) for B builtin words on the first call, then O(1). */
 static fn
 sorted_builtin_names() throws -> const sorted_builtin_name_list &
 {

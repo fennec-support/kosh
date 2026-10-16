@@ -23,6 +23,13 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Tee);
 
 namespace koshka::koshkit {
 
+/* memory: the descriptor, name, byte count, position, and batch vectors are
+           allocated in the scratch allocator and reused for each chunk. the
+           read buffer is 65536 bytes on the stack.
+   time:   one read per chunk of up to 65536 bytes. A write round sends the
+           rest of the chunk to each output that has not finished it. each
+           output either advances in the round or is removed, so a chunk of
+           n bytes takes at most n rounds. */
 fn
 Tee::execute(const ExecContext               &ec,
              EvalContext                     &cxt,

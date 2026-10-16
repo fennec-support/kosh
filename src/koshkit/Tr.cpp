@@ -148,6 +148,11 @@ expand_set(StringView   set,
   Maybe<char>  fill_byte;
   usize        i = 0;
 
+  /* e.g. set = "x[y*]z", repeat_target_length = 5
+          "x" pushes 'x', so expanded = "x".
+          "[y*]" has no count, so fill_position = 1 and fill_byte = 'y'.
+          "z" pushes 'z', so expanded = "xz".
+          the fill inserts 5 - 2 = 3 'y' bytes at position 1: "xyyyz". */
   while (i < set.length) {
     if (let const class_width = expand_posix_class(set, i, expanded);
         class_width > 0)
@@ -238,6 +243,12 @@ expand_set(StringView   set,
   return expanded;
 }
 
+/* memory: input and output are 64 KiB stack arrays, 128 KiB together. set1
+           and set2, including the complement of set1, use
+           cxt.scratch_allocator().
+   time:   O(input bytes) for the read loop. table setup is O(256) plus
+           O(set1 + set2) entries. one read_fd() call and at most one
+           print_to_stdout() call per chunk. */
 fn
 Tr::execute(const ExecContext               &ec,
             EvalContext                     &cxt,

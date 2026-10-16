@@ -289,6 +289,8 @@ write_history_file_atomically(const koshka::Path &path,
 
   if (!replacement.has_value()) return false;
 
+  /* at this point: replacement is a Path to a written temporary file in the
+     directory of target, and target is the canonical path when one resolves. */
   if ((has_status &&
        !koshka::os::set_file_mode(replacement->view(), status.mode & 07777)) ||
       !koshka::os::sync_path(replacement->view(), koshka::os::sync_mode::All) ||
@@ -346,6 +348,10 @@ get_codepoint_byte_offset(const char *bytes,
                           usize       byte_length,
                           usize       codepoint_index) -> usize
 {
+  /* e.g. bytes c3 a9 e4 b8 ad (U+00E9, U+4E2D), codepoint_index = 1
+       the first loop consumes c3, a lead byte -> byte_offset 1, seen 1
+       the second loop skips a9, a continuation byte -> byte_offset 2
+       e4 is a lead byte, so the result is 2, the start of U+4E2D */
   usize byte_offset     = 0;
   usize seen_codepoints = 0;
 
@@ -367,6 +373,11 @@ get_codepoint_byte_offset(const char *bytes,
 fn
 get_escape_sequence_end(StringView text, usize byte_offset) -> usize
 {
+  /* e.g. text = ESC [ 3 1 m X (bytes 1b 5b 33 31 6d 58), byte_offset = 0
+       byte_offset 0 -> 1, where 5b ('[') starts a CSI sequence; the scan
+       starts at 2
+       33 and 31 are below 0x40 and are skipped -> 4, where 6d ('m') ends it
+       byte_offset 4 -> 5, the position of X */
   byte_offset++;
   if (byte_offset >= text.length) return byte_offset;
   if (text[byte_offset] == '[') {
@@ -420,6 +431,12 @@ get_byte_offset_at_or_before_display_cell(StringView text,
 {
   usize byte_offset = 0;
 
+  /* e.g. text = "ab" + U+4E2D (bytes 61 62 e4 b8 ad), cell_position = 3
+       the ASCII prefix ends at byte 2 with width 2; the walk consumes U+4E2D
+       as width 2 -> byte_offset 5, width 4
+       4 > 3, so previous_byte_offset = 4; ad and b8 are continuation bytes,
+       so it moves to 2, where e4 is a lead byte
+       the prefix "ab" has width 2 -> returns byte offset 2, cell position 2 */
   actual_cell_position =
       koshka::internal::display_width_walk(text, cell_position, &byte_offset);
   if (actual_cell_position <= cell_position) return byte_offset;

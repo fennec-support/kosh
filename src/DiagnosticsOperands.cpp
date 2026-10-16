@@ -317,6 +317,10 @@ view_is_plain_substitution_script(StringView view) wontthrow -> bool
     return false;
   }
 
+  /* e.g. view = "s/a/b/g", delimiter = '/'
+       position 2 'a' keeps field_count at 1; position 3 '/' makes it 2
+       position 4 'b' keeps it at 2; position 5 '/' makes it 3
+       position 6 'g' is accepted as the flag, so the function returns true */
   usize field_count = 1;
 
   for (usize position = 2; position < view.length; position++) {
@@ -378,6 +382,11 @@ find_echo_escape_sequence(StringView view) wontthrow -> StringView
   return {};
 }
 
+/* memory: none; the returned view points into operand_text.
+   time:   O(operand_text.length + segment count) per call. the ranges between
+           cursor and each segment start are disjoint, so each byte is scanned
+           once. the caller loops over the arguments, so the total is the sum
+           of their lengths. */
 cold fn
 find_echo_escape_sequence_outside_substitutions(StringView   operand_text,
                                                 const Token *token) wontthrow
@@ -504,6 +513,10 @@ printf_consumed_argument_count(StringView format,
 {
   usize count = 0;
 
+  /* e.g. format = "%*d %.*s%%" (10 bytes)
+       i=0 starts "%*d": '*' width counts 1, 'd' counts 1; total 2
+       i=4 starts "%.*s": '*' precision counts 1, 's' counts 1; total 4
+       i=8 is "%%", which counts nothing and returns 4 */
   for (usize i = 0; i < format.length; i++) {
     if (format[i] != '%' || i + 1 >= format.length) {
       continue;
@@ -908,6 +921,10 @@ check_posix_parameter_expansion(AnalysisContext   &actx,
   }
 }
 
+/* memory: none; the returned view points into expression.
+   time:   O(k) for the k bytes of whitespace and variable name before
+           equals_position. the caller loops over expression positions, so the
+           cost of each call is bounded by expression.length. */
 pure fn
 arithmetic_assignment_target(StringView expression,
                              usize      equals_position) wontthrow -> StringView
@@ -919,6 +936,11 @@ arithmetic_assignment_target(StringView expression,
     return {};
   }
 
+  /* e.g. expression = "x += 1", equals_position = 3
+       expression[2] is '+', so at moves from 3 to 2
+       expression[1] is a space, so at moves to 1; end is 1
+       expression[0] is 'x', so at moves to 0
+       expression[0] starts a variable name, so "x" is returned */
   usize at = equals_position;
 
   switch (expression[at - 1]) {

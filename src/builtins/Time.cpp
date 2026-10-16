@@ -29,6 +29,10 @@ REGISTER_BUILTIN_FLAGS(Time);
 
 namespace koshka {
 
+/* memory: command is a String in scratch_allocator(), owned by
+           scratch_arena().
+   time:   O(operand bytes) to join the operands. the joined command runs
+   once. */
 cold fn
 Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

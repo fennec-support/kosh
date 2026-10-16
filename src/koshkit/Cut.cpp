@@ -31,6 +31,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Cut);
 
 namespace koshka::koshkit {
 
+/* memory: line holds one whole input line, so memory grows with the longest
+           line. output is flushed to stdout after a line once it reaches 65536
+           bytes.
+   time:   O(input bytes). character and field selection each scan a line up to
+           last_selected_position. */
 fn
 Cut::execute(const ExecContext               &ec,
              EvalContext                     &cxt,
@@ -153,6 +158,10 @@ Cut::execute(const ExecContext               &ec,
           output += '\n';
         }
       } else {
+        /* e.g. line = "a:b::c", delimiter ':', list = "2,4". first_delimiter is
+           1. the separators at 1, 3, and 4 and the line end at 6 close fields 1
+           to 4 as "a", "b", "", and "c". fields 2 and 4 are selected, giving
+           "b:c". */
         usize field_start      = 0;
         usize field_number     = 1;
         bool  has_output_field = false;

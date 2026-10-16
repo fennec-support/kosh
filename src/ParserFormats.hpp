@@ -185,6 +185,7 @@ parser_format_find_ascii_folded(const StaticStringMap<Value, Count> &map,
 
   if (text.length > sizeof(folded)) return None;
 
+  /* at this point: text fits in folded, so the loop below stays in bounds. */
   for (usize position = 0; position < text.length; position++) {
     let const byte = text[position];
 

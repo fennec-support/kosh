@@ -196,6 +196,10 @@ make_diff_edits(const diff_lines    &left_lines,
   let const       maximum_distance = left_middle_count + right_middle_count;
   usize           found_distance   = maximum_distance + 1;
 
+  /* e.g. left middle = [x, y], right middle = [y]. trace is [0] after distance
+     0 and [0, 0, 2] after distance 1, so found_distance is 1. the backtrack
+     from (left 2, right 1) pushes Equal then Delete, and the final reversal
+     gives [Delete, Equal]. */
   for (usize distance = 0; distance <= maximum_distance; distance++) {
     if (os::INTERRUPT_REQUESTED) return {steal(edits), true};
     if (trace.count() > MAXIMUM_TRACE_ELEMENT_COUNT - (distance + 1)) {
@@ -729,6 +733,9 @@ Diff::execute(const ExecContext               &ec,
 
   if (!has_difference) return 0;
 
+  /* at this point: left_lines and right_lines view left_contents and
+     right_contents, which live until the function returns, and result.edits
+     holds at least one Delete or Insert. */
   let output  = String{cxt.scratch_allocator()};
   let palette = diff_palette{};
 

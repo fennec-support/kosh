@@ -143,6 +143,8 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (timeout_nanos == 0)
     return os::wait_for_fd_readable(read_fd, 0) == 1 ? 0 : 1;
 
+  /* at this point: timeout_nanos is -1 without -t, and otherwise the -t
+     value in nanoseconds, never 0. deadline_nanos is 0 without a timeout. */
   let       was_timed_out  = false;
   let const start_nanos    = os::monotonic_nanos();
   let const duration_nanos = static_cast<u64>(timeout_nanos);

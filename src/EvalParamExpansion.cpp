@@ -206,6 +206,10 @@ get_byte_position_after(StringView value,
   return byte_position;
 }
 
+/* memory: one String in result_allocator, returned to the caller.
+   time:   the general path calls utils::glob_matches() once per candidate,
+           up to value.length + 1 times. the single-star and literal paths
+           call find_substring() in a loop over value. */
 fn
 trim_matching(const EvalContext   &cxt,
               Allocator            result_allocator,
@@ -346,6 +350,9 @@ trim_matching(const EvalContext   &cxt,
                literal_tail;
   };
 
+  /* e.g. value = "ab", pattern = "?*", op = '#' (Prefix, Shortest)
+          literal_head = "", literal_tail = "" (the pattern has no literal)
+          length 0: "" fails "?*"; length 1: "a" matches -> result "b" */
   if (end == trim_end::Prefix) {
     if (!value.starts_with(literal_head))
       return String{result_allocator, value};
@@ -700,6 +707,9 @@ EvalContext::ModifierWordExpander::emit_field_slice(
   }
 }
 
+/* memory: joined in scratch_allocator() on the join path, holding the values
+           and separators. emit_run() copies the result into m_out.
+   time:   O(total byte count of values) for the join. */
 fn
 EvalContext::ModifierWordExpander::emit_unquoted_list(
     const ArrayList<String> &values,
@@ -1288,6 +1298,10 @@ EvalContext::ModifierWordExpander::expand_function_substitution() throws
   m_index = j;
 }
 
+/* memory: inner in scratch_allocator(), returned to the caller by value.
+   time:   one pass over m_word from m_index + 2 to the closing brace, since
+           every loop iteration advances position. copy_braced_command() adds
+           the cost of scan_command_body() for each $( it copies. */
 fn
 EvalContext::ModifierWordExpander::scan_braced_body(
     usize &position, bool is_command_body) throws -> String
@@ -1931,6 +1945,8 @@ static pure fn
 find_balanced_subscript_close(StringView subscript_text)
     wontthrow -> Maybe<usize>
 {
+  /* e.g. subscript_text = "[x[1]]": '[' at 0 sets depth 1, '[' at 2 sets
+          depth 2, ']' at 4 drops depth to 1, and ']' at 5 returns 5. */
   usize depth = 0;
 
   for (usize position = 0; position < subscript_text.length; position++) {
@@ -3324,6 +3340,11 @@ EvalContext::compute_list_slice_bounds(
                                   substring_subject::List);
 }
 
+/* memory: subscripts holds one String per element of a sparse array, and the
+           call frees it on return.
+   time:   O(1) for an associative array. for a sparse array, O(n) to collect
+           the subscripts and O(n) parses in the scan, with n =
+   element_count. */
 fn
 EvalContext::compute_array_slice_bounds(
     StringView            name,
@@ -3392,6 +3413,11 @@ EvalContext::compute_array_slice_bounds(
 
   do_check_length();
 
+  /* at this point: offset is in [0, last_index] and length is absent or not
+     negative.
+     e.g. subscripts = [0, 2, 5, 9], element_count = 4, offset = 3, length = 2
+          -> start stops at index 2 (subscript 5); end = 4, so bounds = {2,
+     4}. */
   i64 start = 0;
 
   while (start < element_count &&
@@ -3600,6 +3626,9 @@ get_pattern_affixes(StringView    pattern,
 
   if (first_glob_position == pattern.length) return pattern_affixes{};
 
+  /* e.g. pattern = "ab*cd*ef" with every byte active: the loop leaves
+     first_glob_position = 2 and last_glob_position = 5, so head = "ab" and
+     tail = "ef". */
   return pattern_affixes{pattern.substring_of_length(0, first_glob_position),
                          has_active_bracket
                              ? StringView{}
@@ -3647,6 +3676,8 @@ longest_pattern_match_at(StringView      pattern,
   if (last_tail_end < first_end) first_end = last_tail_end;
   if (first_end < start) return None;
 
+  /* at this point: start <= first_end <= value.length, and the value at start
+     begins with affixes.head. */
   let const do_has_tail = [&](usize end) wontthrow -> bool {
     return end - start >= affixes.tail.length &&
            value.substring_of_length(end - affixes.tail.length,
@@ -3844,6 +3875,8 @@ EvalContext::pattern_replace_value(
     return out;
   }
 
+  /* at this point: value and pattern are not empty, and no anchor is set,
+     so pattern[0] is valid. */
   bool is_literal_pattern =
       charset == glob_charset::Bytes || static_cast<u8>(pattern[0]) < 0x80;
 
@@ -4102,6 +4135,11 @@ EvalContext::apply_case_modification(
   return apply_case_modification_to_value(current_view, spec, source_location);
 }
 
+/* memory: scratch arena for out. the caller's arena mark releases it.
+   time:   O(value.length) character steps when should_modify_all is set. the
+           single form takes one step and copies the rest. each step calls
+           glob_matches() for one character unless the pattern is empty or a
+           single literal. */
 fn
 EvalContext::apply_case_modification_to_value(
     StringView            value,

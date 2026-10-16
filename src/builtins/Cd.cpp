@@ -162,6 +162,8 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let old_directory               = Path{};
   let is_logical_target_available = true;
 
+  /* e.g. raw_target = /a/b/../c/./d, with /a/b a directory
+     -> a: /a, b: /a/b, ..: /a, c: /a/c, .: skipped, d: /a/c/d */
   let const do_resolve_logical_target = [](const Path &raw_target,
                                            bool       &did_fail_before_dotdot) {
     let   logical_candidate  = Path{raw_target.view().substring_of_length(

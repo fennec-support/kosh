@@ -97,6 +97,8 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         "Unable to declare a local variable outside a function",
         "`local` only works inside a function body"};
 
+  /* at this point: local_scope_depth() is at least 1, so the saved shell
+     options index used by do_save_shell_options() is in range. */
   bool  should_make_indexed      = false;
   bool  should_make_associative  = false;
   bool  should_mark_integer      = false;

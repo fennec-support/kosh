@@ -195,6 +195,9 @@ total_size(const ExecContext        &ec,
   let const is_one_file_system = FLAG_DU_ONE_FILE_SYSTEM.is_enabled();
   let const type_letter        = os::file_type_letter(known_status->mode);
 
+  /* an inode number is unique only within one device, so the key pairs
+     device_id with file_id. directories are not checked because most file
+     systems refuse hard links to directories. */
   if (type_letter != 'd' && known_status->has_file_identity &&
       known_status->link_count > 1)
   {
@@ -409,6 +412,9 @@ total_size(const ExecContext        &ec,
       return;
     }
 
+    /* at this point: the entry is not a directory and is not a repeated hard
+       link, and adding allocated_byte_count to
+       frames[parent_index].total_byte_count cannot overflow. */
     frames[parent_index].total_byte_count += allocated_byte_count;
     if (output_rows != nullptr) {
       let child_path = do_make_child_path();
@@ -521,6 +527,13 @@ total_size(const ExecContext        &ec,
   return root_result;
 }
 
+/* memory: nodes and root_indices grow in allocator, and each span creates a
+           StringMap<usize> in allocator. node paths and components are views
+           into request.rows and request.targets, so those must outlive the
+           nodes.
+   time:   O(D * L) per row with D components and path length L, because each
+           component prefix is looked up in the map and hashing scans up to L
+           bytes. the final pass over nodes is O(N) for N nodes. */
 static fn
 build_tree_nodes(const du_tree_request   &request,
                  Allocator                allocator,
@@ -666,6 +679,11 @@ order_tree_children(ArrayList<du_tree_node> &nodes,
     }
   }
 
+  /* e.g. keys = (node 1, parent 0, 10), (node 2, parent 0, 30),
+          (node 3, parent 2, 5), with every node kept.
+          sorted order is node 2, node 1, node 3.
+          child_order becomes 2, 1, 3. nodes[0] gets first_child 0 and
+          child_count 2. nodes[2] gets first_child 2 and child_count 1. */
   let const sorted = steal(keys).make_sorted(
       [](const du_tree_order_key &left, const du_tree_order_key &right) {
         if (left.parent_index != right.parent_index)
@@ -937,6 +955,12 @@ print_tree_report(const du_tree_request &request,
   return render_tree(nodes, child_order, sorted_roots, request, ec, allocator);
 }
 
+/* memory: targets, target_statuses, output_rows, and operand_spans live in the
+           scratch arena. each output row copies its path into allocator.
+   time:   one lstat() batch for the operands, then total_size() per operand,
+           which is O(entries under each operand). list mode sorts the R output
+           rows in O(R log R) and scans the shared prefix in O(R * P) for P
+           shared path bytes. each output line is written to stdout. */
 fn
 Du::execute(const ExecContext               &ec,
             EvalContext                     &cxt,

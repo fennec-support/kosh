@@ -143,6 +143,9 @@ Fuser::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: queries holds one entry for each operand whose stat
+     succeeded and whose file type is supported, and users holds each match
+     that scan_process_file_users() found for those entries. */
   if (users.is_empty() && status == 0) {
     status = 1;
   }

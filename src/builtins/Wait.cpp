@@ -72,6 +72,15 @@ Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return status;
 }
 
+/* memory: the operand and location lists live in the scratch arena, which is
+           released when the enclosing command ends. finished_before_ids is
+           heap-owned and freed on return.
+   time:   a job wait blocks until the job finishes. the polling loop in the
+           -n branch runs only while job_ids and other_pids are both non-empty.
+           each pass calls table.update_jobs() and scans table.jobs() with a
+           linear job_ids find per job, O(jobs * job_ids). the pass then waits
+           for a child state change, or sleeps 5 ms where that wait is
+   absent. */
 static fn
 wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
 {

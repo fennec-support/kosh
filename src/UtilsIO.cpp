@@ -28,6 +28,11 @@ namespace utils {
 
 constexpr usize OSA_ROW_WIDTH = 256;
 
+/* memory: rows is a stack array of 3 * OSA_ROW_WIDTH usize values. no heap
+           allocation.
+   time:   at most (b_length + max_distance) * b_length cell updates, where
+           b_length is at most 255 after the OSA_ROW_WIDTH check. a row whose
+           minimum exceeds max_distance ends the loop early. */
 pure fn
 bounded_osa_distance(StringView a, StringView b, usize max_distance) wontthrow
     -> usize
@@ -154,6 +159,13 @@ read_entire_standard_input() throws -> String
   return steal(*contents);
 }
 
+/* memory: the line String uses allocator and moves to the caller through
+           result.line. buffer is 4096 bytes on the stack.
+   time:   one os::read_fd() call per loop pass. a seekable descriptor requests
+           4096 bytes per pass, so a delimiter-terminated line of n bytes takes
+           about n / 4096 + 1 reads. a descriptor that is not seekable requests
+           one byte per pass, so the same line takes n + 1 reads. a nonzero
+           deadline adds one os::wait_for_fd_readable() call per pass. */
 fn
 read_line_from_fd(os::descriptor fd,
                   char           delimiter,
@@ -233,6 +245,10 @@ BufferedLineReader::BufferedLineReader(os::descriptor descriptor,
     : m_descriptor(descriptor), m_line(allocator)
 {}
 
+/* memory: m_line keeps its capacity between calls and grows only when a line
+           is longer than that capacity. m_buffer is a member array.
+   time:   one os::read_fd() call per refill, at most 65536 bytes each. the
+           bytes of each line are copied into m_line once. */
 hot flatten fn
 BufferedLineReader::next() throws -> Result
 {
@@ -276,6 +292,9 @@ BufferedLineReader::get_line() const wontthrow -> StringView
   return m_line.view();
 }
 
+/* e.g. ceiling_directories = "/home::x:/tmp" on POSIX, where ':' is the
+        delimiter. the entries are "/home", "", "x", and "/tmp". "" and "x"
+        are dropped, so ceilings = ["/home", "/tmp"]. */
 static fn
 ceiling_directory_list(StringView ceiling_directories) throws
     -> ArrayList<String>
@@ -656,6 +675,9 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
 
   if (local_sha == upstream_sha) return result;
 
+  /* at this point: local_sha and upstream_sha are non-empty and differ, so
+     the ahead and behind counts are the only result fields still at their
+     default values. */
   let const do_is_cached_pair = [&] {
     return GIT_COUNT_CACHE.is_valid &&
            StringView{GIT_COUNT_CACHE.local_sha,
@@ -776,6 +798,10 @@ parse_file_mode(StringView     expression,
     return (current_mode & ~07777u) | octal_mode | kept_directory_bits;
   }
 
+  /* e.g. expression = "+x", current_mode = 0644, creation_mask = 022
+       no class letter, so selected_classes = 0777 and the mask applies
+       requested_bits = 0111, affected_bits = 0777 & ~022 = 0755
+       requested_bits & affected_bits = 0111, mode = 0644 | 0111 = 0755 */
   u32   mode     = current_mode;
   usize position = 0;
 

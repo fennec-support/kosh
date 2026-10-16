@@ -55,6 +55,10 @@ finish_captured_output(String        &captured,
 
   let remaining = captured.view();
 
+  /* e.g. captured = "ab\0cd\n" in Bash-compatible or POSIX mode
+     -> the loop appends "ab" and remaining becomes "cd\n"
+     -> no NUL remains, so the final append gives "abcd\n"
+     -> strip_trailing_newlines() gives "abcd" */
   while (let const nul = remaining.find_character('\0')) {
     kept.append(remaining.substring_of_length(0, *nul));
     remaining = remaining.substring(*nul + 1);
@@ -286,6 +290,12 @@ struct command_substitution_drain_context
   os::descriptor read_fd;
 };
 
+/* memory: drain->data grows by doubling from DRAIN_CHUNK_LENGTH, allocated
+           with uncached_heap_allocator(). the caller frees it with
+           free_array().
+   time:   O(n) in the bytes read. each read() returns at least one byte or
+           ends the loop, and the capacity doubles on each growth, so the
+           reallocations copy O(n) bytes in total. */
 static fn
 drain_command_substitution_pipe(opaque *raw_context) wontthrow -> void
 {
@@ -323,6 +333,10 @@ drain_command_substitution_pipe(opaque *raw_context) wontthrow -> void
   }
 }
 
+/* memory: the returned String in heap_allocator() holds the whole file and is
+           owned by the caller. the parse arena is released before the return.
+   time:   O(file bytes) for read_entire_file(). the lexer produces at most two
+           tokens from source. */
 fn
 EvalContext::read_redirect_substitution(StringView source) throws
     -> Maybe<String>
@@ -459,6 +473,12 @@ EvalContext::setup_process_substitution(const WordSegment &segment)
           source_store().current_location().source_name_index));
 }
 
+/* memory: substitution_source is a String local to this call. the pending
+           entry keeps launch.retained_fd and launch.child until
+           cleanup_process_substitutions() or hold_process_substitutions()
+           removes it.
+   time:   one os::launch_process_substitution() call. in the child branch, the
+           loop over pending process substitutions costs O(pending). */
 fn
 EvalContext::setup_process_substitution(
     StringView text, Maybe<SourceLocation> segment_location) throws
@@ -917,6 +937,11 @@ EvalContext::push_substitution_source_frame(const SourceLocation &location,
   return true;
 }
 
+/* memory: the returned String is in heap_allocator() and owned by the caller.
+           the in-process path drains into a buffer from
+           uncached_heap_allocator(), freed before the call returns.
+   time:   O(output bytes) to drain the pipe, plus either one fork() with the
+           child evaluating ast, or one in-process evaluation of ast. */
 fn
 EvalContext::run_captured_substitution(
     const Expression     *ast,
@@ -1064,6 +1089,9 @@ EvalContext::run_captured_substitution(
 
       os::close_fd(pipe->out);
 
+      /* at this point: pipe->out is closed in this process, so the read from
+         pipe->in returns end of file once the child exits and no descendant
+         still holds the write end. */
       bool is_input_open    = true;
       bool has_reaped_child = false;
 
@@ -1135,6 +1163,9 @@ EvalContext::run_captured_substitution(
     let captured = String{heap_allocator()};
     let drain_context =
         command_substitution_drain_context{nullptr, 0, 0, pipe->in};
+    /* the reader thread drains the pipe because this process writes to it.
+       a write blocks once the pipe buffer is full, so the output must be read
+       while ast is evaluated. */
     let const reader =
         os::start_thread(drain_command_substitution_pipe, &drain_context);
 

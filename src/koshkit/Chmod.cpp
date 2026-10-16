@@ -70,6 +70,9 @@ change_mode(void *context, const os::tree_walk_entry &entry) throws
                                  ? utils::file_kind_mode::Directory
                                  : utils::file_kind_mode::Regular);
 
+  /* at this point: the mode expression was accepted by Chmod::execute() for
+     a regular file, and parsing does not fail based on the file kind, so the
+     parse cannot fail here. */
   ASSERT(parsed.has_value());
 
   if (os::set_tree_entry_mode(entry, *parsed)) return true;

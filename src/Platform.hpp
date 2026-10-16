@@ -490,16 +490,20 @@ inline fn
 normalize_windows_program_name(String &program_name) throws
     -> program_name_info
 {
+  /* e.g. program_name is "Tool.EXE" */
   program_name.lowercase_ascii();
 
+  /* -> program_name is "tool.exe" */
   let const         length    = program_name.length();
   program_extension extension = program_extension::None;
 
+  /* -> length is 8 and program_name[4] is '.' */
   if (length >= 4 && program_name[length - 4] == '.') {
     let const packed_suffix = static_cast<u32>(program_name[length - 3]) << 16 |
                               static_cast<u32>(program_name[length - 2]) << 8 |
                               static_cast<u32>(program_name[length - 1]);
 
+    /* -> packed_suffix is 0x657865, the packed "exe" */
     for (let const &suffix : WINDOWS_PROGRAM_SUFFIXES) {
       if (suffix.packed_name == packed_suffix) {
         extension = suffix.extension;
@@ -508,6 +512,7 @@ normalize_windows_program_name(String &program_name) throws
     }
   }
 
+  /* -> extension is Exe, so the return value is {Exe, 4} */
   return {extension,
           extension == program_extension::None ? length : length - 4};
 }
@@ -855,6 +860,8 @@ struct tree_walk_hooks
   void (*report_failure)(void *context, StringView message){nullptr};
 };
 
+/* memory: the returned String is owned by the caller.
+   time:   linear in the lengths of path and reason. */
 inline fn
 describe_tree_walk_failure(tree_walk_failure failure,
                            StringView        path,
@@ -1536,6 +1543,11 @@ extern const ProgramSuffixList PROGRAM_SUFFIXES;
 fn
 write_fd(os::descriptor fd, const opaque *buf, usize size) wontthrow
     -> Maybe<usize>;
+/* memory: no allocation. buf and fd stay owned by the caller.
+   time:   one write_fd() call per loop iteration. each call that returns a
+           positive count advances the loop, so size bytes take one call when
+           the descriptor accepts them all and more calls after short writes.
+           a zero count or an error ends the loop with false. */
 inline fn
 write_all(os::descriptor fd, const opaque *buf, usize size) wontthrow -> bool
 {
@@ -2002,6 +2014,9 @@ is_environment_value_storable(StringView value) wontthrow -> bool
 
   usize unit_count = 0;
 
+  /* counts UTF-16 code units, the unit that ENVIRONMENT_VALUE_MAX_UNIT_COUNT
+     limits on Windows. a lead byte of 0xF0 or above starts a surrogate pair
+     and counts two. */
   for (usize index = 0; index < value.length; index++) {
     let const byte = static_cast<u8>(value[index]);
 

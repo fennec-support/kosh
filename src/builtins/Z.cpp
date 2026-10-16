@@ -122,11 +122,14 @@ read_frecency_store(Allocator allocator) throws
 
     if (!second_tab) continue;
 
+    /* e.g. line = "/a/b\t3\t1700000000" gives first_tab = 4, after_path =
+       "3\t1700000000", second_tab = 1, rank = 3, and last = 1700000000. */
     let const path_field = line.substring_of_length(0, *first_tab);
     let const rank_field = after_path.substring_of_length(0, *second_tab);
     let const time_field = after_path.substring(*second_tab + 1);
-    let const rank       = rank_field.to<i64>();
-    let const last       = time_field.to<i64>();
+    /* -> path_field = "/a/b", rank_field = "3", time_field = "1700000000" */
+    let const rank = rank_field.to<i64>();
+    let const last = time_field.to<i64>();
 
     if (rank.is_error() || last.is_error()) {
       continue;
@@ -173,6 +176,10 @@ equals_ignore_case(StringView text, StringView folded_needle) wontthrow -> bool
 
 } /* namespace */
 
+/* memory: the entries and candidates live in allocator. the file text is
+           heap-owned and freed when read_frecency_store() returns.
+   time:   O(n) to read the file, O(n log n) to sort the entries by score, and
+           one Path::is_directory() call per entry that contains the query. */
 fn
 z_completion_candidates(StringView query, Allocator allocator) throws
     -> ArrayList<String>
@@ -180,6 +187,9 @@ z_completion_candidates(StringView query, Allocator allocator) throws
   let       entries = read_frecency_store(allocator);
   let const now     = now_epoch_seconds();
 
+  /* e.g. (rank, age in seconds): A (3, 100), B (5, 172800), C (1, 10).
+     the scores are 3 * 4.0 = 12.0, 5 * 0.5 = 2.5, and 1 * 4.0 = 4.0, so the
+     order is A, C, B. */
   entries.sort([now](const frecency_entry &left, const frecency_entry &right) {
     let const left_score =
         static_cast<double>(left.rank) * recency_weight(now - left.last_access);
@@ -212,6 +222,11 @@ z_completion_candidates(StringView query, Allocator allocator) throws
   return candidates;
 }
 
+/* memory: the entries list and the trimmed copy live in allocator. the file
+           text is heap-owned and freed when read_frecency_store() returns.
+   time:   O(n) to read and parse the file, O(n) to find the directory, an
+           O(n log n) sort only when n reaches Z_FRECENCY_MAX, and O(n) to
+           write the file back. */
 fn
 record_directory_access(StringView directory,
                         Allocator  allocator) throws -> void

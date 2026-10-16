@@ -493,6 +493,9 @@ sort_and_deduplicate_names(ArrayList<String> names) throws
   let   sorted_names = steal(names).make_sorted(program_name_comparator{});
   usize unique_count = 0;
 
+  /* e.g. sorted_names = [cat, cat, ls, ls, pwd]
+          -> index 1 and index 3 are skipped, index 2 moves to 1, index 4 moves
+             to 2, and truncate(3) keeps [cat, ls, pwd] */
   for (usize index = 0; index < sorted_names.count(); index++) {
     if (unique_count > 0 &&
         sorted_names[unique_count - 1].view() == sorted_names[index].view())
@@ -616,6 +619,8 @@ ProgramResolver::split_path_dirs(StringView path) throws
     }
   };
 
+  /* e.g. path = "/bin::/usr/bin:" on posix
+          -> ["/bin", ".", "/usr/bin", "."] */
   for (usize position = 0; position < path.length; position++) {
     let const byte = path[position];
 
@@ -690,6 +695,11 @@ ProgramResolver::working_directory_changed() throws -> void
     }
 }
 
+/* memory: the returned ArrayList<u64> is owned by the caller. the path, status,
+           and batch buffers are freed on return.
+   time:   one batched stat per directory, then one
+           read_directory_cached_after_status() call per directory, which loads
+           the directory unless its stat matches the cached listing. */
 static fn
 collect_directory_generations(const ArrayList<String> &directory_texts)
     throws -> ArrayList<u64>

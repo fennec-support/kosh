@@ -123,6 +123,8 @@ source_holds_scanned_byte(StringView source) wontthrow -> bool
   while (at + sizeof(u64) <= source.length) {
     u64 chunk = 0;
 
+    /* source.data + at is not guaranteed to be 8-byte aligned, so the chunk
+       is copied with memcpy() instead of loaded through a u64 pointer. */
     __builtin_memcpy(&chunk, source.data + at, sizeof(u64));
     if (chunk_holds_scanned_byte(chunk)) return true;
     at += sizeof(u64);
@@ -390,6 +392,13 @@ line_above_continues(StringView source, usize line_start) wontthrow -> bool
 
 } /* namespace */
 
+/* memory: quoted_substitution_ends holds one end position per open
+           double-quoted substitution and is freed on return. each
+           scan_balanced_shell_region() call frees its own lists on return.
+   time:   O(source.length * D), where D is the number of enclosing
+           double-quoted substitutions. the main loop visits each byte once.
+           each double-quoted "$(" starts a balanced scan of its body. each
+           enclosing scan also covers the bytes of the inner bodies. */
 fn
 check_source_bytes(AnalysisContext &actx, StringView source) throws
     -> void
@@ -781,6 +790,9 @@ check_shebang(AnalysisContext       &actx,
   let const has_bang =
       has_hash && bang_at < first_line.length && first_line[bang_at] == '!';
 
+  /* the body of a here-document opened on the first line can hold a line
+     starting with "#!". header_holds_shebang() would report that line as a
+     shebang, so the lookup is skipped for such a first line. */
   let const is_here_document_opener =
       !has_hash && first_line.find_substring("<<").has_value();
 
@@ -815,6 +827,13 @@ check_shebang(AnalysisContext       &actx,
                            SourceLocation{at + 1, bang_at - at - 1});
   }
 
+  /* e.g. first_line = "#!/usr/bin/env -S bash -e" (25 bytes), so bang_at = 1.
+     the reader returns "/usr/bin/env" at {2, 12}, so interpreter_name is "env"
+     from path_base_name() and is_env_interpreter is true. the loop visits
+     "-S" (sets has_split_string_flag), "bash" (sets shell_argument), and
+     "-e", so parameter_count = 3. sc2096 is not reported because both
+     is_env_interpreter and has_split_string_flag are true. shell_name is
+     "bash", which is in KNOWN_SHELLS. */
   let       reader = shebang_word_reader{first_line, bang_at + 1, bang_at + 1};
   let const interpreter          = reader.read_next_word();
   let const interpreter_location = reader.word_location();
@@ -876,6 +895,8 @@ check_shebang(AnalysisContext       &actx,
     return;
   }
 
+  /* at this point: shell_name is non-empty and is in KNOWN_SHELLS, and
+     shell_name_location points at the word that shell_name came from. */
   if (shell_name == StringView{"dash"} || shell_name == StringView{"sh"}) {
     actx.is_posix_sh_shebang = true;
   }
@@ -1194,6 +1215,11 @@ suggest_shell_maintained_variable_name(
   return suggestion.take_suggestion();
 }
 
+/* memory: out_names copies every key it receives into its own allocator. each
+           key string made here is freed at the end of its loop iteration.
+           dynamic_names is freed on return.
+   time:   one insert per fixed key, one per Bash key outside Posix mode, and
+           one per dynamic key from append_dynamic_variable_names(). */
 fn
 collect_shell_provided_variable_names(const AnalysisContext &actx,
                                       HashSet               &out_names) throws -> void
@@ -1398,6 +1424,11 @@ struct function_name_summary
   bool  has_call_without_arguments{false};
 };
 
+/* memory: the returned map owns a copy of each function name in
+           heap_allocator(). check_function_argument_dataflow() frees it on
+           return.
+   time:   O(F + C) hash operations, where F is functions.records.count() and
+           C is the number of function_calls. */
 fn
 build_function_name_summaries(const AnalysisContext &actx) throws
     -> StringMap<function_name_summary>

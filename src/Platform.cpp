@@ -230,6 +230,8 @@ ScopedEnvironment::set(StringView key, StringView value) throws -> void
 
 ScopedEnvironment::~ScopedEnvironment()
 {
+  /* restores in reverse order, so a key set twice ends with the value saved
+     before its first set(). */
   for (usize index = m_saved.count(); index > 0; index--) {
     let const &saved = m_saved[index - 1];
 
@@ -270,6 +272,10 @@ fn
 inherited_subshell_state::take_from_environment() throws
     -> Maybe<inherited_subshell_state>
 {
+  /* e.g. the four variables hold "2", "0", "1", and "3" for status, process
+     id, parent process id, and depth. take_environment_variable() unsets each
+     one and returns its text. the texts parse to 2, 0, 1, and 3. process id 0
+     fails the > 0 check, so the result is None and the variables stay unset. */
   let const status_text =
       take_environment_variable(internal::PREVIOUS_EXIT_STATUS);
   let const process_id_text =
@@ -481,6 +487,9 @@ set_shell_parent_process_id(i64 pid) wontthrow -> void
 fn
 get_file_creation_mask() wontthrow -> u32
 {
+  /* umask() has no read-only call, so the mask is set to 0 and restored. a
+     file created by another thread during that window is created without the
+     mask. */
   let const previous_mask = KOSH_UMASK(0);
 
   KOSH_UMASK(previous_mask);
@@ -540,6 +549,12 @@ compile_basic_regex(StringView       pattern,
   return compiled;
 }
 
+/* memory: matches, the report spans, and any error_message are allocated in
+           options.scratch, which the caller owns. the ASan branch and the
+           branch without REG_STARTEND also copy subject into options.scratch.
+   time:   one regexec() call, plus O(re_nsub) work to build the spans. the
+           NUL rewrite in the branch without REG_STARTEND scans each byte
+   once. */
 fn
 execute_regex(compiled_regex                &compiled,
               const regex_execution_options &options) throws
@@ -668,6 +683,10 @@ note_descriptor_rebound() wontthrow -> void
   DESCRIPTOR_EPOCH++;
 }
 
+/* memory: a 16384-byte stack buffer. contents grows by append() in allocator,
+           and the caller owns the returned String.
+   time:   O(n) bytes appended for n bytes read, with at least one read_fd()
+           call per 16384 bytes plus one call that returns 0. */
 fn
 read_fd_to_string(os::descriptor fd, Allocator allocator) throws
     -> Maybe<String>
@@ -859,6 +878,10 @@ is_aarch64_crc32c_available() wontthrow -> bool
 #endif
 
 #if defined CRC32C_TARGETISA
+/* memory: none.
+   time:   ceil(block_length / 8) iterations. each iteration makes three
+           independent update_word() steps. two shift_crc32c() calls combine
+           the three partial crcs. */
 template <typename Instructions>
 CRC32C_TARGETISA pure fn
 crc32c_update_streams(u32                       crc,
@@ -923,6 +946,8 @@ crc32c_update_hardware(u32 crc, const u8 *data, usize length) wontthrow -> u32
 }
 #endif
 
+/* memory: none.
+   time:   eight bit steps for each byte, so O(length) with a constant of 8. */
 pure alwaysinline fn
 crc32c_update_software(u32 crc, const u8 *data, usize length) wontthrow -> u32
 {
@@ -962,6 +987,11 @@ crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32
   return crc32c_update_software(crc, bytes, length);
 }
 
+/* memory: the mapping or a 65536-byte stack buffer, and no heap. the mapping
+           is unmapped before return, and defer closes the descriptor.
+   time:   O(file size) bytes hashed. the mmap path makes one fstat(), one
+           mmap(), and one munmap() call. the read path makes at least one
+           read() per 65536 bytes, plus one read() that returns 0. */
 fn
 crc32c_of_file(StringView path) throws -> Maybe<u32>
 {
@@ -989,6 +1019,8 @@ crc32c_of_file(StringView path) throws -> Maybe<u32>
   }
 #endif
 
+  /* at this point: *file has not been read, so its offset is 0 and the read
+     loop hashes the file from its first byte. */
   char buffer[65536];
 
   loop {

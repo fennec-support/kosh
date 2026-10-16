@@ -52,6 +52,11 @@ set_foreground_program_title(const ArrayList<String> &arguments,
   toiletline::set_title(command_title.view());
 }
 
+/* memory: command is a heap_allocator() String freed on return. the replace
+           path quits before command is built.
+   time:   O(args) to build command for a background or foreground job. one
+           fork for a mimicked script, or one os::execute_program() call, and
+           one wait for the child. */
 fn
 execute_context(ExecContext  &&ec,
                 EvalContext   &cxt,
@@ -335,6 +340,14 @@ report_unresolved_stage(EvalContext       &cxt,
   cxt.print_source_backtrace(stage.source_location(), !saved.is_dup2_ok);
 }
 
+/* memory: children, child_stage, stage_status, and unresolved_stages use
+           heap_allocator() and are freed on return. pipe_status moves into
+           publish_pipe_statuses(). command uses scratch_allocator() when the
+           pipeline is interactive, and job_command uses heap_allocator().
+   time:   O(stage_count) for the stage loop, plus O(total argument bytes) to
+           build job_command for a background pipeline. one os::make_pipe()
+           call is made per stage except the last, and one wait is made per
+           child in order. */
 fn
 execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
                             EvalContext             &cxt,
@@ -728,6 +741,8 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       const i32 id = cxt.job_table_store().register_pipeline_job(
           children, last_child, job_command.view(), process_group_id);
 
+      /* the job table owns children after register_pipeline_job() returns, so
+         unwinding must not reap them. */
       should_reap_children_on_unwind = false;
       if (cxt.execution_store().shell_is_interactive())
         koshka::print_error(

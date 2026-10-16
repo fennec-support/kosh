@@ -107,6 +107,9 @@ private:
     while (peek("|")) {
       m_position++;
 
+      /* the right operand is always parsed. parsing advances m_position past
+         its tokens, which parse() requires even when left decides the
+         result. */
       let right = parse_and();
 
       if (!expr_value_is_true(left.view())) left = steal(right);
@@ -231,6 +234,8 @@ private:
         break;
 
       default:
+        /* right_number == -1 returns 0 directly because INT64_MIN % -1 is
+           undefined behavior in C++. */
         result = right_number == -1 ? 0 : left_number % right_number;
         break;
       }
@@ -244,6 +249,12 @@ private:
   fn
   parse_match() throws -> String
   {
+    /* memory: the anchored pattern and the compiled regex are allocated for
+               each ':' operator. os::free_regex() releases the regex when the
+               iteration ends. match results and the new left value use
+               m_allocator, which is released when its arena is reset.
+       time:   one os::compile_basic_regex() and one os::execute_regex() per ':'
+               operator, so a chain of n operators costs n of each. */
     let left = parse_primary();
 
     while (peek(":")) {
@@ -269,6 +280,8 @@ private:
       let const match = os::execute_regex(
           *compiled, os::regex_execution_options{left.view(), m_allocator});
 
+      /* e.g. left = "abc", pattern = "a\(b\)" gives anchored = "^a\(b\)".
+              spans[0] covers 0..2 and spans[1] covers 1..2, so left = "b". */
       if (match.result == os::regex_match_result::Error)
         throw Error{"" + match.error_message};
       if (match.result == os::regex_match_result::NoMatch) {

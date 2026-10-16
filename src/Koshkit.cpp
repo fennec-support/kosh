@@ -637,6 +637,9 @@ SourceBatchReader::fill_readers() throws -> void
       break;
     }
 
+    /* a source opened while m_readers is empty, or known to be a regular file,
+       opens blocking. other sources open nonblocking, so a fifo without a
+       writer cannot stall the readers that are already open. */
     let const probe_mode =
         !m_readers.is_empty() && m_kind_mode != SourceKindMode::KnownRegular
             ? SourceProbeMode::Nonblocking
@@ -1060,6 +1063,10 @@ visit_source_lines_with(const ExecContext  &ec,
   }
 }
 
+/* memory: a 64 KiB buffer on the stack. the digest is allocated in allocator
+           and returned to the caller.
+   time:   O(n) for n input bytes, one read_fd() and one crc32c_update() per
+           64 KiB chunk. the loop returns None on read failure or interrupt. */
 fn
 file_crc32c(const ExecContext &ec,
             StringView         path,
@@ -1236,6 +1243,9 @@ preflight_timeout_stage(const ExecContext &,
 
 #endif
 
+/* memory: none.
+   time:   one read_fd() call per input byte, until a newline, end of input,
+           or read error. */
 fn
 confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
     -> bool
@@ -1499,6 +1509,9 @@ format_human_size(u64 bytes, Allocator allocator, u64 unit_step) throws
   double            value   = static_cast<double>(bytes);
   usize             unit    = 0;
 
+  /* e.g. bytes = 1536, unit_step = 1024: the loop divides 1536 by 1024 once,
+     so value = 1.5 and unit = 1. tenths = 15, so the digits are "1.5", and
+     units[0] adds "K", giving "1.5K". */
   while (value >= step && unit < sizeof(units)) {
     value /= step;
     unit++;
@@ -1535,6 +1548,9 @@ scaled_filesystem_blocks(u64 block_count,
                          u64 block_byte_count,
                          u64 output_unit) wontthrow -> u64
 {
+  /* e.g. block_count = 3, block_byte_count = 1000, output_unit = 1024:
+     byte_count = 3000, rounded = 3000 + 1023 = 4023, high = 0, and
+     4023 / 1024 = 3 with remainder 951, so the result is 3. */
   let const byte_count = static_cast<u128>(block_count) * block_byte_count;
   let const rounded_byte_count = byte_count + output_unit - 1;
   let const high               = static_cast<u64>(rounded_byte_count >> 64u);
@@ -1682,6 +1698,9 @@ parse_koshkit_duration_seconds(StringView     text,
         "suffix, such as `5` or `0.25s`"};
   };
 
+  /* e.g. text = "0.25m": the suffix sets multiplier = 60.0 and
+     number_length = 4, so number = "0.25" and value = 0.25. the result is
+     15.0. */
   f64   multiplier    = 1.0;
   usize number_length = text.length;
 

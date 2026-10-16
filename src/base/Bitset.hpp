@@ -85,6 +85,10 @@ public:
       word &= ~mask;
   }
 
+  /* memory: m_words grows to at least ceil(bit_count / BITS_PER_WORD) words in
+             its allocator. clear() keeps the buffer, and the destructor of
+             m_words frees it.
+     time:   O(bit_count / BITS_PER_WORD) to push the words. */
   fn
   reset(usize bit_count) throws -> void
   {

@@ -103,6 +103,8 @@ Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (cxt.execution_store().loop_depth() == 0) return 0;
 
+  /* at this point: level is at least one, and at least one loop encloses the
+     command. */
   LOG(All, "continue skipping to the next iteration of %lld loops",
       static_cast<long long>(level));
   cxt.request_continue(level, ec.source_location());

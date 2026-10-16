@@ -538,6 +538,8 @@ Koshconf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
+  /* at this point: command is a known form, its flags are valid, and a
+     mutating form runs only when the restricted option is off. */
   LOG(Debug, "koshconf running the '%s' form", args[1].c_str());
 
   let const operands = koshconf_operands{args, operand_locations};

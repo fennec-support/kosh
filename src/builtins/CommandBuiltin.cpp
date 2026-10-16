@@ -65,6 +65,8 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
   let              default_resolver = Maybe<ProgramResolver>{};
   ProgramResolver *resolver         = &cxt.program_resolver();
 
+  /* at this point: args[1] is the command word, and guard_restricted_path()
+     has passed for it unless -v or -V is set. */
   if (FLAG_COMMAND_DEFAULT_PATH.is_enabled()) {
     default_resolver = ProgramResolver{
         String{heap_allocator(), utils::DEFAULT_COMMAND_SEARCH_PATH}

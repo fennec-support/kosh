@@ -456,6 +456,12 @@ make_analysis_source(StringView host_source,
   return analysis_source;
 }
 
+/* memory: shell_source copies host_end - host_start bytes. analysis_source is
+           prepared_analysis_source when it has a value, and otherwise a
+           host_end byte copy from make_analysis_source(). both are freed with
+           document.fragments.
+   time:   O(host_end) to build analysis_source, O(host_end - host_start) for
+           shell_source. no loops over the document. */
 fn
 parser_format_add_fragment(parsed_format_document &document,
                            StringView              host_source,
@@ -489,6 +495,10 @@ parser_format_add_fragment(parsed_format_document &document,
   document.fragments.push(steal(fragment));
 }
 
+/* memory: none.
+   time:   O(end - position) per call, since do_find() scans to end. the
+           caller parser_format_masked_template_source() makes one call for
+           each position it visits. */
 static pure fn
 template_construct_end(StringView source,
                        usize      position,
@@ -768,6 +778,10 @@ parser_format_masked_template_source(StringView host_source,
   return analysis_source;
 }
 
+/* memory: deindented holds each line without up to indent_length leading
+           spaces. it is moved into fragment.shell_source, which replaces the
+           copy made by parser_format_add_fragment().
+   time:   O(host_end - host_start). each line is appended once. */
 fn
 parser_format_add_indented_fragment(
     parsed_format_document &document,
@@ -785,6 +799,8 @@ parser_format_add_indented_fragment(
                              parser_format_codec::Indented, mood);
   if (document.fragments.count() == fragment_count) return;
 
+  /* at this point: fragment is the last entry in document.fragments, and
+     parser_format_add_fragment() pushed it for host_start to host_end. */
   let &fragment = document.fragments.back();
 
   fragment.should_skip_format =
@@ -969,6 +985,8 @@ parser_format_shebang_program(StringView line) wontthrow -> StringView
     return line.substring_of_length(start, position - start);
   };
 
+  /* e.g. "#!/usr/bin/env -S bash -e": the first word is "/usr/bin/env", the
+     word "-S" is skipped, and "bash" is returned. */
   let       program = do_next_word();
   let const basename =
       program.find_last_character('/').has_value()
@@ -1300,6 +1318,10 @@ selected_workflow_mood(StringView source,
   return fallback;
 }
 
+/* memory: result reserves source.length bytes and is returned to the caller.
+   time:   O(source.length). in folded mode, each newline in [start, end)
+           scans the line before it and the line after it. A line borders at
+           most two newlines, so each line is scanned at most twice. */
 static fn
 replace_analysis_newlines(StringView source,
                           usize      start,
@@ -1429,6 +1451,11 @@ heredoc_delimiter_at(StringView line, usize &position) wontthrow
   return None;
 }
 
+/* memory: result copies source and is returned when no line is rewritten.
+           otherwise rewritten, which reserves source.length bytes, is returned
+           and result is freed.
+   time:   O(source.length). each line in [start, end) is scanned once, either
+           for heredoc operators or for a pending terminator. */
 static fn
 align_indented_heredoc_terminators(StringView source,
                                    usize      start,
@@ -2287,6 +2314,11 @@ parser_format_add_json_fragment(parsed_format_document &document,
     masked.push(byte == '\n' ? '\n' : ' ');
   }
 
+  /* e.g. the string body is a\nb with start = 0 and end = 4, bytes 'a', '\\',
+          'n', 'b'.
+       the escape at position 1 gives run character '\n' and run_end = 3, so
+       append_repeated() adds 3 - 1 - 1 = 1 space before it.
+       -> masked = "a \nb" (4 bytes); shell_source = "a\nb" (3 bytes) */
   for (usize host_position = literal_start; host_position < end;
        host_position++)
   {
@@ -2363,6 +2395,7 @@ skip_json_trivia(StringView source, usize position) wontthrow -> usize
     break;
   }
 
+  /* an unterminated block comment advances position past source.length. */
   return position < source.length ? position : source.length;
 }
 
@@ -2399,6 +2432,8 @@ add_json_command_fragment(parsed_format_document       &document,
   parser_format_add_json_fragment(document, source, start, end, mood);
   if (document.fragments.count() == fragment_count) return;
 
+  /* at this point: fragment is the last element of document.fragments, added
+     by parser_format_add_json_fragment() for the host range [start, end). */
   let &fragment = document.fragments.back();
 
   fragment.should_silence_unresolved_commands =
@@ -2437,6 +2472,8 @@ add_json_exec_array(parsed_format_document       &document,
 
   if (item_count < 3) return;
 
+  /* at this point: item_count is at least 3, so starts[0] to starts[2] and
+     ends[0] to ends[2] bound the mood, flag, and script strings. */
   let const mood = parser_format_shell_mood(
       source.substring_of_length(starts[0], ends[0] - starts[0]));
   let const flag = source.substring_of_length(starts[1], ends[1] - starts[1]);
@@ -2659,6 +2696,13 @@ encode_continued(const parser_format_fragment &fragment,
     if (!line_first_token(line).is_empty()) lines.push(line);
   }
 
+  /* e.g. replacement = "case $x in\na)\nrun\n;;\nesac", indent_length = 4,
+     continuation_byte = ' '
+       "case $x in": case header, so no ';' follows it
+       "a)": case pattern, so no ';' follows it
+       "run": next line is ";;", so no ';' follows it
+       ";;": in LIST_OPENERS, so no ';' before "esac"
+       -> "case $x in \\\n    a) \\\n    run \\\n    ;; \\\n    esac" */
   bool is_expecting_case_pattern = false;
 
   for (usize index = 0; index < lines.count(); index++) {
@@ -2773,6 +2817,10 @@ parser_format_apply_replacements(
             return left.start_position < right.start_position;
           });
 
+  /* e.g. source = "abcdefgh", replacements = [(1, 3, "YY"), (5, 7, "X")]
+       append "a" and "YY", position = 3
+       append "de" and "X", position = 7
+       append "h"; result = "aYYdeXh" */
   let   result   = String{heap_allocator()};
   usize position = 0;
 
@@ -2795,6 +2843,10 @@ parser_format_apply_replacements(
   return result;
 }
 
+/* memory: returns a String of host_source.length bytes, which the caller owns.
+   time:   O(host_source.length + document.fragments.count()). fragment_index
+           only increases, so the inner while loop advances it at most once per
+           fragment in total. */
 fn
 parser_format_analysis_source(const parsed_format_document &document,
                               StringView host_source) throws -> String
@@ -2922,6 +2974,11 @@ host_variable_patterns(parser_format_kind kind, usize &count) wontthrow
   return nullptr;
 }
 
+/* memory: each fragment holds one String per host variable pattern, at most
+           12 for CloudBuild. the returned document owns them.
+   time:   O(F log F) for sort() over F fragments, then O(F * V) for V host
+           variable patterns, with V at most 12. the detected kind's parser
+           adds its own cost. */
 fn
 parse_format_document(const parser_format_input &input) throws
     -> parsed_format_document

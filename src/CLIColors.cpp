@@ -151,6 +151,9 @@ make_pastel_theme(highlight_theme theme, palette_tier tier) wontthrow
   return theme;
 }
 
+/* the three theme arrays below are indexed by static_cast<u32>(palette_tier)
+   in the functions that return them, so each array lists the tiers in
+   palette_tier order. */
 static const highlight_theme NONINTERACTIVE_HIGHLIGHT_THEMES[] = {
     make_noninteractive_highlight_theme(),
     make_pastel_theme(make_noninteractive_highlight_theme(),
@@ -262,11 +265,17 @@ color_is_suppressed_by_environment() throws -> bool
   return false;
 }
 
+/* the cached answer is valid for one os::get_descriptor_epoch() value.
+   redirect_stdout() and restore_stdout() call note_descriptor_rebound() after
+   dup2(), so a redirected stdout is probed again. */
 struct cached_terminal_answer
 {
   u64  epoch{static_cast<u64>(-1)};
   bool is_a_terminal{false};
 
+  /* memory: none.
+     time:   O(1) on a cache hit. A miss calls probe() once, which calls
+             isatty(), one syscall on POSIX. */
   template <typename Probe>
   fn
   get(Probe probe) wontthrow -> bool

@@ -74,6 +74,8 @@ parse_backoff_factor(StringView text, f64 &out_factor) throws -> bool
   return true;
 }
 
+/* time: about seconds / SLEEP_SLICE_SECONDS calls to os::sleep_for_seconds(),
+         and os::INTERRUPT_REQUESTED is checked before each one. */
 fn
 sleep_interruptibly(f64 seconds) wontthrow -> bool
 {

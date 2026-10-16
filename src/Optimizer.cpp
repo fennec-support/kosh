@@ -111,6 +111,9 @@ is_split_eligible_variable_operand(const Token *token) wontthrow -> bool
          segment.is_split_eligible();
 }
 
+/* an unquoted variable can split into several words at run time. the operand
+   count that constant_test_verdict() relies on then changes, so the operand
+   cannot be folded. */
 fn
 propagated_test_operand_value(const Token           *token,
                               const AnalysisContext &actx) throws
@@ -198,6 +201,10 @@ may_expand_assignment_tilde(StringView text) wontthrow -> bool
 
 } /* namespace */
 
+/* memory: value is a heap_allocator() String returned to the caller, who frees
+           it by destruction. a None return destroys it inside the function.
+   time:   O(total byte count of word.segments) for the appends, stopping early
+           at the first segment that is not literal text. */
 fn
 literal_word_value(const Word &word) throws -> Maybe<String>
 {
@@ -611,6 +618,8 @@ fold_constant_arithmetic_in_word(
     if (segment.kind != WordSegment::Kind::ArithmeticExpansion) continue;
     if (segment.has_optimizer_arithmetic_result()) continue;
 
+    /* the target of an arithmetic side effect is not parsed, so it can assign
+       any recorded constant. every recorded constant is dropped. */
     if (arithmetic_has_side_effect(segment.text.view())) {
       actx.constant_variables.clear();
       continue;

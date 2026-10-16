@@ -43,6 +43,10 @@ find_manual_page(StringView paths,
                  StringView name,
                  Allocator  allocator) throws -> Maybe<String>
 {
+  /* e.g. paths = "/x:", section = "", name = "ls"
+          pass 1: path_start 0, remaining "/x:", path_length 2, directory "/x"
+          pass 2: path_start 3, remaining "", path_length 0, directory "."
+          an empty entry searches the current directory. */
   usize path_start = 0;
 
   while (path_start <= paths.length) {
@@ -193,6 +197,8 @@ Man::execute(const ExecContext               &ec,
   }
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
+  /* at this point: operands holds at least one entry, and paths is not
+     empty. */
   usize      name_position = 0;
   StringView section;
 

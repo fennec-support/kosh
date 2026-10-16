@@ -63,6 +63,11 @@ id_group_text(u32          id,
   return String::from(id, allocator);
 }
 
+/* memory: the group list and the output string come from scratch_allocator(),
+           which the simple command releases with its scratch mark.
+   time:   the default output makes one os::uid_to_username() call, and one
+           os::gid_to_groupname() call for the primary group and for each
+           supplementary group. -G makes those group calls only with -n. */
 fn
 Id::execute(const ExecContext               &ec,
             EvalContext                     &cxt,

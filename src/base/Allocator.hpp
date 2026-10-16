@@ -101,6 +101,10 @@ public:
     return realloc(pointer, target_length);
   }
 
+  /* memory: keeps up to min(64 KiB / class_length, 512) blocks per class,
+             where class_length is the block size of that class. other
+             blocks go to free().
+     time:   O(1), with at most one free() call. */
   hot fn
   give(opaque *pointer, usize length) wontthrow -> void
   {
@@ -177,6 +181,8 @@ heap_alloc(usize length, usize alignment) wontthrow -> opaque *
 
     return os::allocate_aligned(rounded_length, alignment);
   }
+/* under AddressSanitizer, blocks bypass the pool, so free() returns each one
+   to the allocator and ASan reports a later use of it. */
 #if defined KOSH_HAS_ADDRESS_SANITIZER
 
   return malloc(length);
@@ -314,6 +320,8 @@ public:
       }
     }
 
+    /* at this point: pointer is non-null, new_length is nonzero, and either
+       alignment exceeds alignof(max_align_t) or the kind is Bump or Fake. */
     let const replacement = raw_alloc(new_length, alignment);
 
     if (replacement == nullptr) throw std::bad_alloc{};

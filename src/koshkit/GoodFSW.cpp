@@ -298,6 +298,12 @@ is_excluded(StringView path) wontthrow -> bool
   return path.find_substring(FLAG_GOODFSW_EXCLUDE.value()).has_value();
 }
 
+/* memory: each visited path is a String in allocator, appended to entries,
+           which the caller owns. each directory listing is held in allocator
+           and released when the function returns.
+   time:   O(E) for E visited paths, one list_directory_status() per directory
+           visited, and one stat_path() per path without a known status.
+           paths deeper than MAXIMUM_SCAN_DEPTH are skipped. */
 fn
 scan_path(StringView                path,
           ArrayList<watched_entry> &entries,
@@ -374,6 +380,13 @@ scan_path(StringView                path,
 
 } /* namespace */
 
+/* memory: previous and current are sorted ArrayList values in watch_allocator.
+           each cycle swaps them, and recycled_entries keeps the storage of the
+           older list for the next scan. output is a String in watch_allocator
+           that is cleared each cycle.
+   time:   each cycle sleeps latency_seconds, then scans E entries with one
+           stat per path without a known status, sorts the scan in O(E log E)
+           with make_sorted(), and merges both lists in O(E). */
 fn
 GoodFSW::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,
@@ -461,6 +474,8 @@ GoodFSW::execute(const ExecContext               &ec,
     }
   }
 
+  /* at this point: every operand exists, and operand_statuses[index] holds the
+     lstat() result for operands[index]. */
   let collected_previous = ArrayList<watched_entry>{watch_allocator};
 
   for (usize index = 0; index < operands.count(); index++)
@@ -516,6 +531,10 @@ GoodFSW::execute(const ExecContext               &ec,
     usize previous_position = 0;
     usize current_position  = 0;
 
+    /* e.g. previous = [/a, /c], current = [/b, /c]
+            /a < /b: Removed /a, previous_position = 1
+            /b < /c: Created /b, current_position = 1
+            /c == /c: compare content and attributes, advance both */
     while (previous_position < previous.count() ||
            current_position < current.count())
     {

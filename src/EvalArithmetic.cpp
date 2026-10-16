@@ -1145,6 +1145,10 @@ public:
     return left;
   }
 
+  /* memory: each intermediate value is allocated in arena and kept until the
+             owner of arena resets it. values reach about 0.7 * index bits.
+     time:   O(log index) loop steps, each with a constant number of additions
+             and multiplications of values up to about 0.7 * index bits. */
   fn
   calculator_fibonacci(u64 index) throws -> ArithmeticValue
   {
@@ -1155,6 +1159,9 @@ public:
 
     let bit = u64{1} << (63u - static_cast<u32>(__builtin_clzll(index)));
 
+    /* e.g. index = 5 (binary 101), so bit starts at 4. (current, next) is
+       (0, 1) before the loop; bit 4 gives (1, 1), bit 2 gives (1, 2), and bit 1
+       gives (5, 8), so the loop returns 5. */
     while (bit != 0) {
       let const doubled_next = ArithmeticValue::add(next, next, arena);
       let const c            = ArithmeticValue::multiply(
@@ -1208,6 +1215,11 @@ public:
     return requested_scale + 12;
   }
 
+  /* memory: cached_pi is allocated in arena and lives until the owner of arena
+             resets it.
+     time:   one calculator_atan() call when cached_pi_scale is below
+             decimal_scale. otherwise one ArithmeticValue::rescale() call, or no
+             work when the scales match. */
   fn
   calculator_pi(u32 decimal_scale) throws -> ArithmeticValue
   {
@@ -1350,6 +1362,12 @@ public:
     return ArithmeticValue::rescale(sum, requested_scale, arena);
   }
 
+  /* memory: iteration_arenas[0] and iteration_arenas[1] hold the series terms
+             and are reset before reuse. the result is allocated in arena.
+     time:   one modulo(), a fixed number of comparisons, and one
+             calculator_pi() call. then at most 2 * work_scale + 128 series
+             steps, each a multiply and a divide. the series stops early when
+             a term is zero. */
   fn
   calculator_sin_cos(ArithmeticValue value,
                      u32             requested_scale,
@@ -1432,6 +1450,12 @@ public:
     return ArithmeticValue::rescale(sum, requested_scale, arena);
   }
 
+  /* memory: iteration_arenas[0] and iteration_arenas[1] hold the series terms
+             and are reset before reuse. the result is allocated in arena.
+     time:   up to 4096 halvings of the operand while it exceeds 0.5, each a
+             divide by 2. then at most 4 * work_scale + 256 series steps, each
+             a multiply and a divide by index. then squaring_count squarings.
+             the series stops early when a term is zero. */
   fn
   calculator_exp(ArithmeticValue value, u32 requested_scale) throws
       -> ArithmeticValue
@@ -1700,6 +1724,10 @@ public:
                   "The argument to 'fact' is negative",
                   "Factorial requires a non-negative integer");
 
+      /* memory: each product is allocated in arena and kept until the owner of
+                 arena resets it.
+         time:   count - 1 multiplications. the product grows to about
+                 count * log2(count) bits. */
       let result = ArithmeticValue{1};
 
       for (i64 factor = 2; factor <= count; factor++) {
@@ -2092,6 +2120,11 @@ static const StringView ARITH_OPERATORS[] = {
     "%",   "<",   ">",  "=",  "&",  "|",  "^",  "!",  "~",
 };
 
+/* memory: out grows by one arith_token per token; the caller owns out and
+           clears it before a retokenize. token texts are views into src.
+   time:   O(n) in the bytes of src. an operator token probes at most 39
+           entries of ARITH_OPERATORS before it matches or falls back to
+           a single-byte operator. */
 static fn
 tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
     -> void
@@ -2156,6 +2189,10 @@ tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
         let const inner_start = i;
         usize     depth       = 1;
 
+        /* e.g. src = "a[b[1]]+2" and i = 2 after the '[' at index 1
+           -> the loop visits index 2 (depth 1), index 3 (depth 2), index 5
+              (depth 1), index 6 (depth 0, break with i = 6)
+           -> subscript "b[1]" from inner_start 2, length 4; i = 7 at '+' */
         while (i < src.length && depth > 0) {
           if (src[i] == '[') {
             depth++;
@@ -2966,6 +3003,8 @@ EvalContext::evaluate_arithmetic_cached_text(
 
   let const is_exact = runtime_state().is_extended_arithmetic_enabled();
 
+  /* at this point: cache.arith is non-null and its lifetime is valid in
+     cache_arena, so the token cache can be used by this call. */
   if (is_exact && cache.arith->has_exact_constant_text) {
     return String{scratch_allocator(), cache.arith->exact_constant_text.view()};
   }

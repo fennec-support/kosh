@@ -348,6 +348,8 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     action_mask |= compgen_action_bit(*action);
   }
 
+  /* at this point: option_mask and action_mask hold only bits of valid -o
+     options and -A actions. */
   let const do_flag_text = [](const auto &flag) wontthrow -> StringView {
     return flag.is_set() ? flag.value() : StringView{};
   };

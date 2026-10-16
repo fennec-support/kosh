@@ -399,6 +399,8 @@ parse_magic_rule(StringView       line,
     }
   }
 
+  /* at this point: rule.offset and rule.kind hold the parsed test, and
+     rule.message is not set yet. */
   rule.message = String{allocator, message};
 
   return true;
@@ -627,6 +629,9 @@ matches_builtin_file_signature(StringView                    bytes,
 static pure fn
 file_content_description(StringView bytes) wontthrow -> StringView
 {
+  /* time:   O(bytes.length) for the control-byte scan at the end. the other
+             checks compare a constant number of bytes each. memory: none, since
+             every result is a static string. */
   if (bytes.is_empty()) return "empty";
 
   if (bytes.length >= 0x40 && bytes.starts_with("MZ")) {
@@ -907,6 +912,10 @@ describe_file_type(StringView             path,
                    const os::file_status &status,
                    Allocator              allocator) throws -> Maybe<String>
 {
+  /* memory: the returned String comes from allocator, and the caller owns it.
+     time:   for a regular file, one os::open_file_descriptor(), one
+             os::read_fd() of at most 8192 bytes, and one os::close_fd(). other
+             file types make no system calls. */
   switch (os::file_type_letter(status.mode)) {
   case 'd': return String{allocator, "directory"};
   case 'l': return String{allocator, "symbolic link"};
@@ -945,6 +954,16 @@ File::execute(const ExecContext               &ec,
               const ArrayList<String>         &args,
               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
+  /* memory: the operand paths, file statuses, magic paths, and magic rules are
+             bump-allocated in cxt.scratch_allocator(). the probes array holds
+             32 buffers of 8192 bytes on the stack. sample Strings in
+             result.content use heap_allocator() and are released by reset() or
+             when source_results is destroyed.
+     time:   O(P^2) insertion sort over P magic paths. one lstat() per operand
+             in one batch. the default samples read one 8192-byte buffer per
+             regular operand. the custom samples read at most sample_byte_count
+             bytes per regular operand. the rule scan costs O(R) per sample for
+             R magic rules. */
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
@@ -963,6 +982,9 @@ File::execute(const ExecContext               &ec,
                                      FLAG_FILE_MAGIC_ONLY.get(index),
                                      FLAG_FILE_MAGIC_ONLY.get_location(index)});
 
+  /* sorts the -m and -M paths by command-line position. match_magic_rules()
+     returns the first matching top-level rule, so this order selects the
+     magic file that wins. */
   for (usize index = 1; index < magic_paths.count(); index++) {
     let   current     = magic_paths[index];
     usize destination = index;

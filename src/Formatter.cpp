@@ -151,6 +151,8 @@ is_format_operator_at(StringView source, usize position) wontthrow -> bool
     return is_format_operator_start(byte);
   }
 
+  /* { and } are operators only when standalone, as POSIX 2.4 Reserved Words
+     requires. words such as {a,b} and a} stay single words. */
   let const is_previous_boundary =
       position == 0 || lexer::is_whitespace(source[position - 1]) ||
       source[position - 1] == '\n' || source[position - 1] == ';' ||
@@ -294,6 +296,9 @@ scan_format_operator_end(StringView source, usize position) wontthrow -> usize
   return position + length;
 }
 
+/* e.g. word = "a\\\n" (bytes a, backslash, newline): the loop runs once with
+        backslash_count = 1, which is odd, so the last two bytes are removed.
+        word = "a", and the loop ends because its length is below 2. */
 pure fn
 without_trailing_line_continuation(StringView word) wontthrow -> StringView
 {
@@ -862,6 +867,9 @@ measure_word_layout(StringView word) throws -> word_layout
   return measure;
 }
 
+/* memory: positions is returned to the caller.
+   time:   O(total length of the word pieces). each word piece belongs to at
+           most one segment, and measure_word_layout() visits each one once. */
 fn
 collect_option_wrap_positions(const ArrayList<format_piece> &pieces)
     throws -> ArrayList<option_wrap_position>
@@ -1107,6 +1115,8 @@ format_word_substitutions(StringView word,
       continue;
     }
 
+    /* at this point: word[inner_end] is closing, and inner_start <= inner_end
+       because end > position + opener_length. */
     let inner_start = position + opener_length;
     let inner_end   = end - 1;
 
@@ -1166,6 +1176,14 @@ format_word_substitutions(StringView word,
   return output;
 }
 
+/* memory: the result is the String returned by writer.take(), owned by the
+           caller. loop_do_join_states, pending_fi_counts, case_pattern_states,
+           and each stripped heredoc buffer are heap_allocator() values freed
+           when the function or their block returns.
+   time:   O(pieces) for the main loop, since each piece is visited once.
+           do_is_declaration_command() scans one statement once, when its first
+           word is classified. format_word_substitutions() adds the cost of
+           nested substitution bodies, which recurse into this function. */
 fn
 render_format_pieces(const ArrayList<format_piece> &pieces,
                      usize                          initial_indent  = 0,
@@ -2168,6 +2186,8 @@ format_shell_source(StringView         source,
                                  function_arena, mood))
     return None;
 
+  /* at this point: source_view parses without errors under mood, and
+     ast_output holds the AST text when ast_output is non-null. */
   let const pieces = scan_format_pieces(source_view);
 
   append_long_string_warnings(source_view, pieces, filename, errors);
@@ -2213,6 +2233,11 @@ format_bash_function_source(StringView source) throws -> String
   return formatted;
 }
 
+/* memory: steal(candidates) moves the list into sorted_candidates, which is
+           freed on return. unique and nonconflicting are heap_allocator()
+           lists. nonconflicting is returned, and the caller owns it.
+   time:   O(k log k) for the sort of k candidates in make_sorted(), then O(k)
+           for the dedupe and group scans. */
 fn
 select_nonconflicting_source_edits(
     ArrayList<const source_edit *> &&candidates) throws
@@ -2366,6 +2391,11 @@ apply_source_fixes(StringView                   source,
   return output;
 }
 
+/* memory: original_positions holds at most source.count() + 1 entries and is
+           freed on return. the returned fixes own a String copy of each
+           original span.
+   time:   O(source length) to build original_positions, then O(total length
+           of the edit spans) for the copies. */
 fn
 source_fixes_for_original_line_endings(
     StringView                   source,
@@ -2377,6 +2407,10 @@ source_fixes_for_original_line_endings(
   original_positions.reserve(source.count() + 1);
   original_positions.push(0);
 
+  /* e.g. source is a, CR, LF, b (length 4), and normalized is a, LF, b
+          (length 3). the loop below pushes original_positions = [0, 1, 3, 4].
+          the normalized edit [1, 2) maps to [original_positions[1],
+          original_positions[2]) = [1, 3), which is CR LF. */
   usize position = 0;
 
   while (position < source.length) {

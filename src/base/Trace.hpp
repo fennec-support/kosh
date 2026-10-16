@@ -115,6 +115,11 @@ format_named_values(StringView names, Args &&...args) -> String
   usize       index       = 0;
   const usize value_count = sizeof...(Args);
 
+  /* e.g. LOG_VARS(Debug, a, b, c) with the text "a, b, c" and values 1, 2, 3
+       value 1: label "a", text " b, c", appends "a = 1"
+       value 2: label "b", text " c", appends "b = 2"
+       value 3: label "c", text "", appends "c = 3"
+     -> "a = 1, b = 2, c = 3" */
   let do_append_one = [&](auto &&value) {
     StringView   name           = names;
     Maybe<usize> comma_position = names.find_character(',');

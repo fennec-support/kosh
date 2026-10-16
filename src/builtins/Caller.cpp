@@ -61,6 +61,8 @@ Caller::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (frame_index + 1 >= cxt.funcname_frame_count()) return 1;
   }
 
+  /* at this point: source_count is at least 1, and an operand, when given,
+     leaves frame_index + 1 below funcname_frame_count(). */
   let out = String{cxt.scratch_allocator()};
 
   out +=

@@ -439,6 +439,11 @@ struct makefile
     if (!stored_index.has_value()) return;
     let const index      = *stored_index.value();
     let const last_index = variables.count() - 1;
+    /* e.g. variables = [A, B, C], name = "B"
+            index is 1 and last_index is 2
+            B is erased from variable_index
+            variables[1] = C, and C is indexed at 1
+            -> variables = [A, C] */
     variable_index.erase(name);
     if (index != last_index) {
       variables[index] = steal(variables[last_index]);
@@ -760,6 +765,10 @@ apply_makeflags(StringView          text,
   }
 }
 
+/* memory: archive.read_entire_file() copies the whole archive into heap
+           memory, freed on return. long_names is a view into this buffer.
+   time:   O(archive bytes) for the read. the header loop costs O(1) per member
+           plus a scan to the newline of each long name it resolves. */
 static fn
 archive_member_modification_time(const Path &archive,
                                  StringView  wanted_member) throws
@@ -1022,6 +1031,8 @@ lookup_make_variable(EvalContext    &cxt,
     lookup.flavor = make_variable_flavor::Recursive;
   }
 
+  /* at this point: lookup holds the builtin entry for name when one exists.
+     otherwise origin is Undefined, flavor is Undefined, and value is empty. */
   return lookup;
 }
 
@@ -1115,6 +1126,13 @@ decode_make_percent_text(StringView source, Allocator allocator) throws
   make_percent_text decoded{allocator};
   usize             source_position = 0;
 
+  /* e.g. source = x\%y%z
+          x is pushed: text "x"
+          \% has one backslash, which is odd, so % is pushed: text "x%"
+          y is pushed: text "x%y"
+          % sets wildcard_position to 3: text "x%y"
+          z is pushed: text "x%yz"
+          -> text "x%yz", wildcard_position 3 */
   while (source_position < source.length) {
     if (source[source_position] == '%') {
       if (!decoded.wildcard_position.has_value())
@@ -1230,6 +1248,12 @@ substitute_make_words(StringView source,
   let       result   = String{allocator};
   bool      has_word = false;
 
+  /* e.g. source = "a.c b.c x.h", pattern = "%.c", replacement = "%.o"
+          parse_make_pattern() gives prefix "" and suffix ".c"
+          "a.c" matches with stem "a", which gives "a.o"
+          "b.c" matches with stem "b", which gives "b.o"
+          "x.h" has no match, so it is kept: "x.h"
+          -> "a.o b.o x.h" */
   for (StringView word : split_word_views(source, allocator)) {
     if (has_word) result += ' ';
     if (pattern.has_wildcard) {
@@ -1346,6 +1370,11 @@ has_make_glob_character(StringView word) wontthrow -> bool
          word.find_character('[').has_value();
 }
 
+/* memory: matches are allocated in the scratch arena behind
+           cxt.scratch_allocator() and released when that arena is reset.
+   time:   a pattern without glob characters costs one existence check, and a
+           symbolic link check when that fails. a glob pattern costs the
+           matching in expand_glob_lenient(). */
 static fn
 expand_make_glob(EvalContext &cxt, StringView pattern) throws
     -> ArrayList<String>
@@ -1378,6 +1407,11 @@ expand_make_glob(EvalContext &cxt, StringView pattern) throws
   return matches;
 }
 
+/* memory: result is allocated in the scratch arena behind
+           cxt.scratch_allocator(), which also holds each match from
+           expand_make_glob().
+   time:   one expand_make_glob() call per word of patterns, plus the appends
+           to result, O(result bytes) in total. */
 static fn
 make_wildcard(EvalContext &cxt, StringView patterns) throws -> String
 {
@@ -1393,6 +1427,11 @@ make_wildcard(EvalContext &cxt, StringView patterns) throws -> String
   return result;
 }
 
+/* memory: source and folded are allocated in the scratch arena behind
+           cxt.scratch_allocator(). captured is owned by this function and
+           freed on return.
+   time:   the command runs once in capture_command_substitution(). the fold
+           loop is O(captured bytes). */
 static fn
 run_make_shell_function(EvalContext &cxt,
                         makefile    &mk,
@@ -1423,6 +1462,12 @@ run_make_shell_function(EvalContext &cxt,
   let const captured = cxt.capture_command_substitution(source, source_name);
   let       folded   = String{cxt.scratch_allocator()};
 
+  /* e.g. captured = "a\r\nb\n"
+          "a" is kept
+          "\r" is skipped because "\n" follows it
+          "\n" becomes " "
+          "b" is kept, and the final "\n" becomes " "
+          -> "a b " */
   for (usize byte_position = 0; byte_position < captured.count();
        byte_position++)
   {
@@ -1494,6 +1539,14 @@ split_make_function_arguments(StringView text,
   usize argument_start = 0;
   usize nested_depth   = 0;
 
+  /* e.g. text = "$(x),a,$(f,b),c", maximum_argument_count = 3
+          position 0 opens "$(" and nested_depth is 1
+          position 3 closes it and nested_depth is 0
+          position 4 splits: "$(x)" is the first argument
+          position 6 splits: "a" is the second argument
+          position 10 is inside "$(f,b)", so there is no split
+          position 13 is blocked: 2 + 1 is not below 3
+          -> ["$(x)", "a", "$(f,b),c"] */
   for (usize position = 0; position < text.length; position++) {
     if (text[position] == '$' && position + 1 < text.length &&
         (text[position + 1] == '(' || text[position + 1] == '{'))
@@ -1579,6 +1632,12 @@ show_located_make_error(EvalContext             &cxt,
                         const makefile          &mk,
                         const ErrorWithLocation &error) throws -> bool;
 
+/* memory: the returned String and each expanded argument are allocated in
+           cxt.scratch_allocator(). the caller owns the returned String.
+   time:   the expansion of each argument, then the function's own work. sort
+           is O(W log W) for W words, filter and filter-out are O(W * P) for P
+           wildcard patterns, and most other word functions are linear in the
+           input bytes. */
 static fn
 evaluate_make_function(EvalContext                 &cxt,
                        makefile                    &mk,
@@ -1615,6 +1674,12 @@ evaluate_make_function(EvalContext                 &cxt,
       return result;
     }
 
+    /* e.g. from = "a", to = "xy", source = "banana"; each pass copies the text
+       before the match, then to, and moves past from.
+         pass 1: match at 1, copies "b", source_position 0 -> 2
+         pass 2: match at 1 in "nana", copies "n", source_position 2 -> 4
+         pass 3: match at 1 in "na", copies "n", source_position 4 -> 6
+         result: "bxynxynxy" */
     usize source_position = 0;
 
     while (source_position < source.count()) {
@@ -2305,6 +2370,9 @@ struct make_logical_line
   SourceLocation source_span;
 };
 
+/* memory: one String per logical line, copied from the source, in a list
+           allocated from allocator. the caller frees the list.
+   time:   O(S) for S source bytes. each physical line is copied once. */
 static fn
 join_continuations(StringView source,
                    u32        source_name_index,
@@ -2316,6 +2384,12 @@ join_continuations(StringView source,
   ArrayList<make_logical_line> logical{allocator};
   usize                        i = 0;
 
+  /* e.g. source = "x = a \\\n    b\n\tcmd \\\n\tc\n"; the physical lines are
+     "x = a \", "    b", "\tcmd \", and "\tc".
+       line 0 ends with an odd backslash run: drop it, add " ", and append
+              trim("    b"), giving "x = a  b"
+       line 2 is a recipe: keep the backslash, add "\n", and append "c" with the
+              leading tab removed, giving "\tcmd \\\nc" */
   while (i < physical.count()) {
     let const raw          = physical[i].without_trailing_newline();
     let const source_start = static_cast<usize>(raw.data - source.data);
@@ -3052,6 +3126,11 @@ parse_makefile_into(EvalContext                     &cxt,
   }
 }
 
+/* memory: the makefile tables are allocated in cxt.scratch_allocator(), so
+           they are released with the scratch arena.
+   time:   O(P^2 * K) for the pattern cancellation loop, with P pattern rules
+           and K prerequisites per rule. parsing the sources adds the cost of
+           parse_makefile_into(). */
 static fn
 parse_makefile(EvalContext                     &cxt,
                ArrayList<make_source_document> &sources,
@@ -3733,6 +3812,8 @@ build_target(const ExecContext        &ec,
     return false;
   }
 
+  /* at this point: goal is in active_targets, every normal prerequisite was
+     built or found up to date, and goal is out of date. */
   if (options.should_touch && !recipe_lines.is_empty()) {
     if (!options.is_silent)
       ec.print_to_stdout("touch " + String{cxt.scratch_allocator(), goal} +
@@ -4071,6 +4152,9 @@ parse_makefile_shell_sources(StringView source,
 
   let const recipe_range_count = ranges.count();
 
+  /* the recipe ranges are appended in source order, so the first
+     recipe_range_count ranges are sorted by start_position for the binary
+     search. the ShellFunction ranges appended later are not searched. */
   let const do_is_inside_recipe = [&](usize source_position) {
     usize lower = 0;
     usize upper = recipe_range_count;
@@ -4164,6 +4248,12 @@ parse_makefile_shell_sources(StringView source,
   return steal(ranges).make_sorted(sort_order::ascending);
 }
 
+/* memory: reserve() takes range.end_position bytes from heap_allocator().
+           the caller owns the returned String.
+   time:   one pass over source up to range.end_position. a '$(' that closes
+           inside the range is skipped after one make_expansion_end() scan. a
+           '$(' that never closes scans to the end of source, so k such openers
+           cost O(k * n) for n bytes of source. */
 fn
 makefile_shell_analysis_source(
     StringView source, const make_shell_source_range &range) throws
@@ -4246,6 +4336,11 @@ makefile_shell_analysis_source(
   return analysis_source;
 }
 
+/* memory: make_sources owns each makefile source until return. the parse
+           results and the argument lists are in cxt.scratch_allocator().
+   time:   parse_makefile() over the total makefile source, one pass over
+           mk.variables for the environment, then build_target() for each goal.
+           each makefile read and the standard input read are I/O. */
 fn
 Make::execute(const ExecContext               &ec,
               EvalContext                     &cxt,

@@ -305,6 +305,17 @@ find_brace_group(StringView text, Allocator alloc) throws
 
 constexpr usize MAX_BRACE_DEPTH = 256;
 
+/* memory: the returned list and its strings use alloc, owned by the caller.
+           each recursive call allocates its own result list from alloc.
+   time:   find_brace_group() tries each '{' and scans to its match, which is
+           O(n^2) for n bytes in the worst case. each call joins its
+           alternatives with the postamble, so the output holds one string
+           per expansion, each O(n) bytes.
+
+   e.g. text "x{a,b{1,2}}y". the outer group content is "a,b{1,2}". the comma
+     at depth 1 is skipped, so the alternatives are "a" and "b{1,2}".
+     "a" -> ["a"]. "b{1,2}" -> ["b1", "b2"]. preamble "x", postamble "y".
+     result: ["xay", "xb1y", "xb2y"]. */
 fn
 brace_expand_text(StringView text,
                   Allocator  alloc,
@@ -340,6 +351,14 @@ brace_expand_text(StringView text,
   return results;
 }
 
+/* memory: word_template, expanded, and words use alloc, which process_args()
+           passes as scratch_allocator(). the enclosing scratch mark frees them.
+   time:   the template pass is O(n), where n is the byte count of the word.
+           each of the k words from brace_expand_text() is decoded in O(n).
+
+   e.g. segments "a{b," $x "}-d" -> template "a{b,<M>O0;}-d", where <M> is
+     BRACE_OPAQUE_MARKER. brace_expand_text() -> "ab-d", "a<M>O0;-d".
+     the decode loop -> [Unquoted "ab-d"], [Unquoted "a", $x, Unquoted "-d"]. */
 fn
 expand_braces(const Word &word, Allocator alloc) throws
     -> ArrayList<Word>
@@ -594,6 +613,9 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
 
   let const fields_mark = expansion_store().scratch_arena().mark();
 
+  /* a transient result lives in scratch_allocator(), so the scratch mark is
+     released only for a persistent call. releasing it here would free the
+     result before the caller uses it. */
   defer {
     if (!is_transient) expansion_store().scratch_arena().release(fields_mark);
   };
@@ -942,6 +964,11 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
   return expanded_args;
 }
 
+/* memory: trace uses scratch_allocator() and is freed with the enclosing
+           scratch mark. ps4 is a local String freed on return.
+   time:   O(subshell_depth + ps4.length + command.length) to build trace. a
+           write of trace.length bytes then goes to BASH_XTRACEFD or the error
+           stream. */
 fn
 EvalContext::write_xtrace(StringView command) throws -> void
 {
@@ -979,6 +1006,10 @@ EvalContext::write_xtrace(StringView command) throws -> void
     koshka::print_error(trace);
 }
 
+/* memory: command uses scratch_allocator() and is freed with the enclosing
+           scratch mark.
+   time:   O(total bytes of args) to quote each argument, then one call to
+           write_xtrace(StringView). */
 fn
 EvalContext::write_xtrace(const ArrayList<String> &args) throws -> void
 {
