@@ -89,7 +89,7 @@ struct extended_metric
   StringView  name;
   metric_unit unit;
   Maybe<u64> os::process_resource_usage::*field;
-  bool                                    covers_descendants{false};
+  bool                                    is_descendant_inclusive{false};
 };
 
 constexpr usize EXTENDED_METRIC_COUNT = 24;
@@ -593,7 +593,7 @@ sample_command(StringView shell_binary,
       for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
         let const &value = measured->resources.*(EXTENDED_METRICS[k].field);
         let const  is_wrapper_only =
-            should_use_shell && !EXTENDED_METRICS[k].covers_descendants;
+            should_use_shell && !EXTENDED_METRICS[k].is_descendant_inclusive;
 
         if (value.has_value() && is_wrapper_only) {
           result.is_process_only_hidden[k] = true;

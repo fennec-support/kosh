@@ -2083,16 +2083,10 @@ mark_own_memory() wontthrow -> own_memory_mark
 
     if (!field.has_value()) return 0;
 
-    usize     position = *field + field_name.length;
-    let const word     = status.next_ascii_whitespace_word(position);
-    u64       kib      = 0;
+    let const kib =
+        leading_digits(status, *field + field_name.length).to<u64>();
 
-    for (let const digit : word) {
-      if (digit < '0' || digit > '9') break;
-      kib = kib * 10 + static_cast<u64>(digit - '0');
-    }
-
-    return kib * 1024;
+    return kib.is_error() ? 0 : kib.value() * 1024;
   };
 
   mark.current_byte_count = do_read_kib_field("VmRSS:");
