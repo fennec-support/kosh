@@ -46,8 +46,8 @@ FLAG(BENCH_EXTENDED,
      Bool,
      '\0',
      "extended",
-     "Also report CPU time and usage, context switches, faults, IO, and the "
-     "cycles, scheduler, and energy counters the platform provides.");
+     "Also report the CPU, scheduler, memory, IO, and hardware counters the "
+     "platform provides, and trace one run for system calls and threads.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 HELP_SYNOPSIS_DECL("[--runs n] [--duration ms] [--ignore-exit-code] "
@@ -73,7 +73,15 @@ enum class metric_unit : u8
   Bytes,
   Count,
   Ratio,
+  Percent,
   Nanojoules,
+};
+
+enum class metric_scope : u8
+{
+  Tree,
+  Process,
+  Perf,
 };
 
 struct metric_stats
@@ -84,58 +92,217 @@ struct metric_stats
   double max{0};
 };
 
-struct extended_metric
+using measured = os::measured_result;
+using usage    = os::process_resource_usage;
+using reader   = Maybe<double> (*)(const measured &);
+
+struct bench_metric
 {
-  StringView  name;
-  metric_unit unit;
-  Maybe<u64> os::process_resource_usage::*field;
-  bool                                    is_descendant_inclusive{false};
+  StringView   name;
+  metric_unit  unit;
+  reader       read;
+  metric_scope scope;
+  bool         is_extended;
 };
 
-using usage = os::process_resource_usage;
+template <Maybe<u64> usage::*Field>
+fn
+read_resource(const measured &result) wontthrow -> Maybe<double>
+{
+  let const &value = result.resources.*Field;
 
-constexpr extended_metric EXTENDED_METRICS[] = {
-    {"user time", metric_unit::Nanoseconds, &usage::user_nanos, true},
-    {"system time", metric_unit::Nanoseconds, &usage::system_nanos, true},
-    {"scheduler wait", metric_unit::Nanoseconds, &usage::scheduler_wait_nanos},
-    {"time slices", metric_unit::Count, &usage::time_slice_count},
-    {"cycles", metric_unit::Count, &usage::cpu_cycle_count},
-    {"instructions", metric_unit::Count, &usage::instruction_count},
-    {"wakeups", metric_unit::Count, &usage::wakeup_count},
-    {"energy", metric_unit::Nanojoules, &usage::energy_nanojoules},
-    {"page-ins", metric_unit::Count, &usage::page_in_count},
-    {"peak commit", metric_unit::Bytes, &usage::peak_commit_byte_count},
-    {"storage read", metric_unit::Bytes, &usage::storage_read_byte_count},
-    {"storage written", metric_unit::Bytes, &usage::storage_written_byte_count},
-    {"voluntary switches", metric_unit::Count,
-     &usage::voluntary_context_switch_count, true},
-    {"involuntary switches", metric_unit::Count,
-     &usage::involuntary_context_switch_count, true},
-    {"minor faults", metric_unit::Count, &usage::minor_fault_count, true},
-    {"major faults", metric_unit::Count, &usage::major_fault_count, true},
-    {"page faults", metric_unit::Count, &usage::page_fault_count},
-    {"block input", metric_unit::Count, &usage::block_input_count, true},
-    {"block output", metric_unit::Count, &usage::block_output_count, true},
-    {"read calls", metric_unit::Count, &usage::read_call_count},
-    {"write calls", metric_unit::Count, &usage::write_call_count},
-    {"bytes read", metric_unit::Bytes, &usage::read_byte_count},
-    {"bytes written", metric_unit::Bytes, &usage::written_byte_count},
-    {"other io calls", metric_unit::Count, &usage::other_io_call_count},
+  if (!value.has_value()) return None;
+
+  return static_cast<double>(*value);
+}
+
+template <Maybe<u64> os::perf_counts::*Field>
+fn
+read_perf(const measured &result) wontthrow -> Maybe<double>
+{
+  let const &value = result.perf.*Field;
+
+  if (!result.has_perf || !value.has_value()) return None;
+
+  return static_cast<double>(*value);
+}
+
+fn
+read_quotient(Maybe<double> numerator, Maybe<double> denominator) wontthrow
+    -> Maybe<double>
+{
+  if (!numerator.has_value() || !denominator.has_value() || *denominator <= 0)
+    return None;
+
+  return *numerator / *denominator;
+}
+
+fn
+read_cpu_nanos(const measured &result) wontthrow -> Maybe<double>
+{
+  let const &resources = result.resources;
+
+  if (!resources.user_nanos.has_value() || !resources.system_nanos.has_value())
+    return None;
+
+  return static_cast<double>(*resources.user_nanos + *resources.system_nanos);
+}
+
+fn
+read_cpu_usage(const measured &result) wontthrow -> Maybe<double>
+{
+  return read_quotient(read_cpu_nanos(result),
+                       static_cast<double>(result.wall_nanos));
+}
+
+fn
+read_off_cpu_nanos(const measured &result) wontthrow -> Maybe<double>
+{
+  let const cpu_nanos = read_cpu_nanos(result);
+
+  if (!cpu_nanos.has_value()) return None;
+
+  let const wall_nanos = static_cast<double>(result.wall_nanos);
+
+  return wall_nanos > *cpu_nanos ? wall_nanos - *cpu_nanos : 0.0;
+}
+
+fn
+read_system_share(const measured &result) wontthrow -> Maybe<double>
+{
+  return read_quotient(read_resource<&usage::system_nanos>(result),
+                       read_cpu_nanos(result));
+}
+
+fn
+read_involuntary_share(const measured &result) wontthrow -> Maybe<double>
+{
+  let const voluntary =
+      read_resource<&usage::voluntary_context_switch_count>(result);
+  let const involuntary =
+      read_resource<&usage::involuntary_context_switch_count>(result);
+
+  if (!voluntary.has_value() || !involuntary.has_value()) return None;
+
+  return read_quotient(involuntary, *voluntary + *involuntary);
+}
+
+fn
+read_instructions_per_cycle(const measured &result) wontthrow -> Maybe<double>
+{
+  return read_quotient(read_perf<&os::perf_counts::instructions>(result),
+                       read_perf<&os::perf_counts::cpu_cycles>(result));
+}
+
+fn
+read_cache_miss_ratio(const measured &result) wontthrow -> Maybe<double>
+{
+  return read_quotient(read_perf<&os::perf_counts::cache_misses>(result),
+                       read_perf<&os::perf_counts::cache_references>(result));
+}
+
+constexpr metric_scope TREE    = metric_scope::Tree;
+constexpr metric_scope PROCESS = metric_scope::Process;
+constexpr metric_scope PERF    = metric_scope::Perf;
+
+constexpr metric_unit NANOS   = metric_unit::Nanoseconds;
+constexpr metric_unit BYTES   = metric_unit::Bytes;
+constexpr metric_unit COUNT   = metric_unit::Count;
+constexpr metric_unit RATIO   = metric_unit::Ratio;
+constexpr metric_unit PERCENT = metric_unit::Percent;
+constexpr metric_unit JOULES  = metric_unit::Nanojoules;
+
+/* clang-format off */
+constexpr bench_metric METRICS[] = {
+    {"cpu cycles", COUNT, read_perf<&os::perf_counts::cpu_cycles>, PERF, false},
+    {"instructions", COUNT, read_perf<&os::perf_counts::instructions>, PERF, false},
+    {"cache refs", COUNT, read_perf<&os::perf_counts::cache_references>, PERF, false},
+    {"cache misses", COUNT, read_perf<&os::perf_counts::cache_misses>, PERF, false},
+    {"branch misses", COUNT, read_perf<&os::perf_counts::branch_misses>, PERF, false},
+    {"cpu usage", RATIO, read_cpu_usage, TREE, true},
+    {"user time", NANOS, read_resource<&usage::user_nanos>, TREE, true},
+    {"system time", NANOS, read_resource<&usage::system_nanos>, TREE, true},
+    {"off-cpu time", NANOS, read_off_cpu_nanos, TREE, true},
+    {"system share", PERCENT, read_system_share, TREE, true},
+    {"scheduler wait", NANOS, read_resource<&usage::scheduler_wait_nanos>, PROCESS, true},
+    {"max scheduler wait", NANOS, read_resource<&usage::max_scheduler_wait_nanos>, PROCESS, true},
+    {"time slices", COUNT, read_resource<&usage::time_slice_count>, PROCESS, true},
+    {"sleep time", NANOS, read_resource<&usage::sleep_nanos>, PROCESS, true},
+    {"block time", NANOS, read_resource<&usage::block_nanos>, PROCESS, true},
+    {"io wait", NANOS, read_resource<&usage::io_wait_nanos>, PROCESS, true},
+    {"cpu migrations", COUNT, read_resource<&usage::cpu_migration_count>, PROCESS, true},
+    {"voluntary switches", COUNT, read_resource<&usage::voluntary_context_switch_count>, TREE, true},
+    {"involuntary switches", COUNT, read_resource<&usage::involuntary_context_switch_count>, TREE, true},
+    {"involuntary share", PERCENT, read_involuntary_share, TREE, true},
+    {"cycles", COUNT, read_resource<&usage::cpu_cycle_count>, PROCESS, true},
+    {"instructions", COUNT, read_resource<&usage::instruction_count>, PROCESS, true},
+    {"p-core cycles", COUNT, read_resource<&usage::performance_core_cycle_count>, PROCESS, true},
+    {"p-core instructions", COUNT, read_resource<&usage::performance_core_instruction_count>, PROCESS, true},
+    {"instructions per cycle", RATIO, read_instructions_per_cycle, PERF, true},
+    {"cache miss ratio", PERCENT, read_cache_miss_ratio, PERF, true},
+    {"branches", COUNT, read_resource<&usage::branch_count>, TREE, true},
+    {"frontend stalls", COUNT, read_resource<&usage::frontend_stall_cycle_count>, TREE, true},
+    {"backend stalls", COUNT, read_resource<&usage::backend_stall_cycle_count>, TREE, true},
+    {"l1d read misses", COUNT, read_resource<&usage::l1d_read_miss_count>, TREE, true},
+    {"llc read misses", COUNT, read_resource<&usage::llc_read_miss_count>, TREE, true},
+    {"dtlb read misses", COUNT, read_resource<&usage::dtlb_read_miss_count>, TREE, true},
+    {"itlb read misses", COUNT, read_resource<&usage::itlb_read_miss_count>, TREE, true},
+    {"syscalls", COUNT, read_resource<&usage::syscall_count>, TREE, true},
+    {"wakeups", COUNT, read_resource<&usage::wakeup_count>, PROCESS, true},
+    {"energy", JOULES, read_resource<&usage::energy_nanojoules>, PROCESS, true},
+    {"minor faults", COUNT, read_resource<&usage::minor_fault_count>, TREE, true},
+    {"major faults", COUNT, read_resource<&usage::major_fault_count>, TREE, true},
+    {"page faults", COUNT, read_resource<&usage::page_fault_count>, TREE, true},
+    {"page-ins", COUNT, read_resource<&usage::page_in_count>, PROCESS, true},
+    {"peak footprint", BYTES, read_resource<&usage::peak_footprint_byte_count>, PROCESS, true},
+    {"peak commit", BYTES, read_resource<&usage::peak_commit_byte_count>, TREE, true},
+    {"block input", COUNT, read_resource<&usage::block_input_count>, TREE, true},
+    {"block output", COUNT, read_resource<&usage::block_output_count>, TREE, true},
+    {"read calls", COUNT, read_resource<&usage::read_call_count>, TREE, true},
+    {"write calls", COUNT, read_resource<&usage::write_call_count>, TREE, true},
+    {"other io calls", COUNT, read_resource<&usage::other_io_call_count>, TREE, true},
+    {"bytes read", BYTES, read_resource<&usage::read_byte_count>, TREE, true},
+    {"bytes written", BYTES, read_resource<&usage::written_byte_count>, TREE, true},
+    {"storage read", BYTES, read_resource<&usage::storage_read_byte_count>, PROCESS, true},
+    {"storage written", BYTES, read_resource<&usage::storage_written_byte_count>, PROCESS, true},
+    {"cancelled writes", BYTES, read_resource<&usage::cancelled_write_byte_count>, TREE, true},
+    {"logical writes", BYTES, read_resource<&usage::logical_write_byte_count>, PROCESS, true},
+    {"processes", COUNT, read_resource<&usage::process_count>, TREE, true},
 };
+/* clang-format on */
 
-constexpr usize EXTENDED_METRIC_COUNT = countof(EXTENDED_METRICS);
+constexpr usize METRIC_COUNT                = countof(METRICS);
+constexpr usize CPU_USAGE_METRIC            = 5;
+constexpr usize SYSCALLS_METRIC             = 33;
+constexpr usize BRANCH_MISSES_METRIC        = 4;
+constexpr usize BRANCHES_METRIC             = 26;
+constexpr usize CPU_CYCLES_METRIC           = 0;
+constexpr usize INSTRUCTIONS_METRIC         = 1;
+constexpr usize PROCESS_CYCLES_METRIC       = 20;
+constexpr usize PROCESS_INSTRUCTIONS_METRIC = 21;
+
+static_assert(METRICS[CPU_USAGE_METRIC].read == read_cpu_usage);
+static_assert(METRICS[BRANCH_MISSES_METRIC].read ==
+              read_perf<&os::perf_counts::branch_misses>);
+static_assert(METRICS[BRANCHES_METRIC].read ==
+              read_resource<&usage::branch_count>);
+static_assert(METRICS[SYSCALLS_METRIC].read ==
+              read_resource<&usage::syscall_count>);
+static_assert(METRICS[CPU_CYCLES_METRIC].read ==
+              read_perf<&os::perf_counts::cpu_cycles>);
+static_assert(METRICS[INSTRUCTIONS_METRIC].read ==
+              read_perf<&os::perf_counts::instructions>);
+static_assert(METRICS[PROCESS_CYCLES_METRIC].read ==
+              read_resource<&usage::cpu_cycle_count>);
+static_assert(METRICS[PROCESS_INSTRUCTIONS_METRIC].read ==
+              read_resource<&usage::instruction_count>);
 
 struct bench_sample
 {
   double wall_nanos{0};
   double peak_rss_byte_count{0};
-  double cpu_cycles{0};
-  double instructions{0};
-  double cache_references{0};
-  double cache_misses{0};
-  double branch_misses{0};
-  double cpu_usage_ratio{0};
-  double extended_values[EXTENDED_METRIC_COUNT]{};
+  double values[METRIC_COUNT]{};
+  bool   is_present[METRIC_COUNT]{};
 };
 
 class CommandResult
@@ -143,22 +310,15 @@ class CommandResult
 public:
   explicit CommandResult(Allocator allocator) : label(allocator) {}
 
-  String       label;
-  usize        sample_count{0};
-  bool         has_perf{false};
-  bool         is_perf_system_wide{false};
-  bool         has_extended[EXTENDED_METRIC_COUNT]{};
-  bool         is_process_only_hidden[EXTENDED_METRIC_COUNT]{};
-  bool         has_cpu_usage{false};
-  metric_stats extended_stats[EXTENDED_METRIC_COUNT]{};
-  metric_stats cpu_usage{};
-  metric_stats wall_time{};
-  metric_stats peak_rss{};
-  metric_stats cpu_cycles{};
-  metric_stats instructions{};
-  metric_stats cache_references{};
-  metric_stats cache_misses{};
-  metric_stats branch_misses{};
+  String                   label;
+  usize                    sample_count{0};
+  bool                     is_perf_system_wide{false};
+  bool                     is_perf_process_only{false};
+  bool                     has_metric[METRIC_COUNT]{};
+  metric_stats             metric[METRIC_COUNT]{};
+  metric_stats             wall_time{};
+  metric_stats             peak_rss{};
+  Maybe<os::traced_counts> traced{};
 };
 
 fn
@@ -251,6 +411,11 @@ format_metric(double      value,
 
   case metric_unit::Ratio: suffix = "x"; break;
 
+  case metric_unit::Percent:
+    scaled = value * 100;
+    suffix = "%";
+    break;
+
   case metric_unit::Nanojoules:
     if (value >= 1e9) {
       scaled = value / 1e9;
@@ -297,10 +462,11 @@ class MetricRow
 {
 public:
   explicit MetricRow(Allocator allocator)
-      : mean(allocator), std_dev(allocator), min(allocator), max(allocator)
+      : name(allocator), mean(allocator), std_dev(allocator), min(allocator),
+        max(allocator)
   {}
 
-  StringView  name{};
+  String      name;
   metric_unit unit{metric_unit::Count};
   String      mean;
   String      std_dev;
@@ -316,7 +482,7 @@ make_metric_row(StringView          name,
 {
   let row = MetricRow{allocator};
 
-  row.name    = name;
+  row.name    = String{allocator, name};
   row.unit    = unit;
   row.mean    = format_metric(stats.mean, unit, allocator);
   row.std_dev = format_metric(stats.std_dev, unit, allocator);
@@ -329,16 +495,14 @@ make_metric_row(StringView          name,
 fn
 append_metric_line(String          &out,
                    const MetricRow &row,
+                   usize            name_width,
                    usize            mean_width,
                    usize            std_dev_width,
                    bool             should_color) throws -> void
 {
   out += "  ";
-  out.append(row.name);
-
-  let const name_padding = row.name.length < 22 ? 22 - row.name.length : 1;
-
-  out.append_repeated(' ', name_padding);
+  out.append(row.name.view());
+  out.append_repeated(' ', name_width - row.name.length() + 2);
 
   out.append(colored(colors::soft(colors::ansi::BOLD_GREEN), should_color));
   out.append(row.mean.view());
@@ -503,13 +667,6 @@ sample_command(StringView shell_binary,
   let const duration_nanos      = duration_millis * 1000000ULL;
   let const start_nanos         = os::monotonic_nanos();
   u64       last_progress_nanos = 0;
-  bool      has_perf            = true;
-  bool      is_perf_system_wide = false;
-  bool      is_extended_available[EXTENDED_METRIC_COUNT];
-  bool      is_cpu_usage_available = should_collect_extended;
-
-  for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++)
-    is_extended_available[k] = should_collect_extended;
 
   for (usize i = 0;; i++) {
     if (os::INTERRUPT_REQUESTED) {
@@ -552,11 +709,13 @@ sample_command(StringView shell_binary,
       draw_progress(command, percent, allocator);
     }
 
+    let const should_count_extended_events =
+        should_collect_extended && i % 2 == 1;
     let const measured =
         os::run_measured(child_argv, {},
                          should_suppress_output ? os::measured_output::Suppress
                                                 : os::measured_output::Inherit,
-                         should_collect_extended);
+                         should_collect_extended, should_count_extended_events);
 
     if (!measured.has_value())
       throw Error{StringView{"Unable to run '"} + command +
@@ -578,80 +737,56 @@ sample_command(StringView shell_binary,
     sample.wall_nanos = static_cast<double>(measured->wall_nanos);
     sample.peak_rss_byte_count =
         static_cast<double>(measured->peak_rss_byte_count);
-    has_perf            = has_perf && measured->has_perf;
-    is_perf_system_wide = is_perf_system_wide || measured->is_perf_system_wide;
-    if (measured->has_perf) {
-      sample.cpu_cycles   = static_cast<double>(measured->perf.cpu_cycles);
-      sample.instructions = static_cast<double>(measured->perf.instructions);
-      sample.cache_references =
-          static_cast<double>(measured->perf.cache_references);
-      sample.cache_misses  = static_cast<double>(measured->perf.cache_misses);
-      sample.branch_misses = static_cast<double>(measured->perf.branch_misses);
-    }
+    result.is_perf_system_wide =
+        result.is_perf_system_wide || measured->is_perf_system_wide;
+    result.is_perf_process_only =
+        result.is_perf_process_only || measured->is_perf_process_only;
 
-    if (should_collect_extended) {
-      for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
-        let const &value = measured->resources.*(EXTENDED_METRICS[k].field);
-        let const  is_wrapper_only =
-            should_use_shell && !EXTENDED_METRICS[k].is_descendant_inclusive;
+    for (usize k = 0; k < METRIC_COUNT; k++) {
+      if (METRICS[k].is_extended && !should_collect_extended) continue;
 
-        if (value.has_value() && is_wrapper_only) {
-          result.is_process_only_hidden[k] = true;
-          is_extended_available[k]         = false;
-        } else if (value.has_value()) {
-          sample.extended_values[k] = static_cast<double>(*value);
-        } else {
-          is_extended_available[k] = false;
-        }
-      }
-
-      let const &resources = measured->resources;
-
-      if (resources.user_nanos.has_value() &&
-          resources.system_nanos.has_value() && measured->wall_nanos > 0)
-      {
-        sample.cpu_usage_ratio = static_cast<double>(*resources.user_nanos +
-                                                     *resources.system_nanos) /
-                                 static_cast<double>(measured->wall_nanos);
-      } else {
-        is_cpu_usage_available = false;
+      if (let const value = METRICS[k].read(*measured)) {
+        sample.values[k]     = *value;
+        sample.is_present[k] = true;
       }
     }
 
     samples.push(sample);
   }
 
-  for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
-    result.has_extended[k] = !samples.is_empty() && is_extended_available[k];
-    if (result.has_extended[k]) {
-      result.extended_stats[k] = compute_stats(
-          samples, [k](const bench_sample &s) { return s.extended_values[k]; });
+  for (usize k = 0; k < METRIC_COUNT; k++) {
+    let const is_duplicate =
+        result.is_perf_process_only &&
+        (k == PROCESS_CYCLES_METRIC || k == PROCESS_INSTRUCTIONS_METRIC);
+
+    if (is_duplicate) continue;
+
+    let present = ArrayList<bench_sample>{allocator};
+
+    for (usize i = 0; i < samples.count(); i++) {
+      if (samples[i].is_present[k]) present.push(samples[i]);
+    }
+
+    result.has_metric[k] = !present.is_empty();
+    if (result.has_metric[k]) {
+      result.metric[k] = compute_stats(
+          present, [k](const bench_sample &s) { return s.values[k]; });
     }
   }
 
-  result.has_cpu_usage = !samples.is_empty() && is_cpu_usage_available;
-  if (result.has_cpu_usage) {
-    result.cpu_usage = compute_stats(
-        samples, [](const bench_sample &s) { return s.cpu_usage_ratio; });
+  if (should_collect_extended && !samples.is_empty() && !was_interrupted &&
+      !did_command_fail)
+  {
+    result.traced = os::run_traced(
+        child_argv, should_suppress_output ? os::measured_output::Suppress
+                                           : os::measured_output::Inherit);
   }
 
-  result.sample_count        = samples.count();
-  result.has_perf            = !samples.is_empty() && has_perf;
-  result.is_perf_system_wide = result.has_perf && is_perf_system_wide;
-  result.wall_time           = compute_stats(
+  result.sample_count = samples.count();
+  result.wall_time    = compute_stats(
       samples, [](const bench_sample &s) { return s.wall_nanos; });
   result.peak_rss = compute_stats(
       samples, [](const bench_sample &s) { return s.peak_rss_byte_count; });
-  result.cpu_cycles = compute_stats(
-      samples, [](const bench_sample &s) { return s.cpu_cycles; });
-  result.instructions = compute_stats(
-      samples, [](const bench_sample &s) { return s.instructions; });
-  result.cache_references = compute_stats(
-      samples, [](const bench_sample &s) { return s.cache_references; });
-  result.cache_misses = compute_stats(
-      samples, [](const bench_sample &s) { return s.cache_misses; });
-  result.branch_misses = compute_stats(
-      samples, [](const bench_sample &s) { return s.branch_misses; });
 
   return result;
 }
@@ -690,73 +825,93 @@ append_summary(String              &out,
                             metric_unit::Nanoseconds, allocator));
   rows.push(make_metric_row("peak rss", result.peak_rss, metric_unit::Bytes,
                             allocator));
-  if (result.has_perf) {
-    let const cpu_cycles_name       = result.is_perf_system_wide
-                                          ? StringView{"cpu cycles (system)"}
-                                          : StringView{"cpu cycles"};
-    let const instructions_name     = result.is_perf_system_wide
-                                          ? StringView{"instructions (system)"}
-                                          : StringView{"instructions"};
-    let const cache_references_name = result.is_perf_system_wide
-                                          ? StringView{"cache refs (system)"}
-                                          : StringView{"cache refs"};
-    let const cache_misses_name     = result.is_perf_system_wide
-                                          ? StringView{"cache misses (system)"}
-                                          : StringView{"cache misses"};
-    let const branch_misses_name    = result.is_perf_system_wide
-                                          ? StringView{"branch misses (system)"}
-                                          : StringView{"branch misses"};
 
-    rows.push(make_metric_row(cpu_cycles_name, result.cpu_cycles,
-                              metric_unit::Count, allocator));
-    rows.push(make_metric_row(instructions_name, result.instructions,
-                              metric_unit::Count, allocator));
-    rows.push(make_metric_row(cache_references_name, result.cache_references,
-                              metric_unit::Count, allocator));
-    rows.push(make_metric_row(cache_misses_name, result.cache_misses,
-                              metric_unit::Count, allocator));
-    rows.push(make_metric_row(branch_misses_name, result.branch_misses,
-                              metric_unit::Count, allocator));
+  bool has_process_row = false;
+
+  for (usize k = 0; k < METRIC_COUNT; k++) {
+    if (!result.has_metric[k]) continue;
+
+    let const &metric = METRICS[k];
+    let        row =
+        make_metric_row(metric.name, result.metric[k], metric.unit, allocator);
+    let const is_process_only =
+        metric.scope == metric_scope::Process ||
+        (metric.scope == metric_scope::Perf && result.is_perf_process_only);
+
+    if (metric.scope == metric_scope::Perf && result.is_perf_system_wide)
+      row.name += " (system)";
+    if (is_process_only) {
+      row.name += " *";
+      has_process_row = true;
+    }
+
+    rows.push(steal(row));
   }
 
-  if (result.has_cpu_usage) {
-    rows.push(make_metric_row("cpu usage", result.cpu_usage, metric_unit::Ratio,
-                              allocator));
+  if (result.has_metric[BRANCH_MISSES_METRIC] &&
+      result.has_metric[BRANCHES_METRIC] &&
+      result.metric[BRANCHES_METRIC].mean > 0)
+  {
+    let const ratio = result.metric[BRANCH_MISSES_METRIC].mean /
+                      result.metric[BRANCHES_METRIC].mean;
+
+    rows.push(make_metric_row("branch miss ratio",
+                              metric_stats{ratio, 0, ratio, ratio},
+                              metric_unit::Percent, allocator));
   }
 
-  for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
-    if (result.has_extended[k]) {
-      rows.push(make_metric_row(EXTENDED_METRICS[k].name,
-                                result.extended_stats[k],
-                                EXTENDED_METRICS[k].unit, allocator));
+  if (result.traced.has_value()) {
+    let const &traced         = *result.traced;
+    let const  do_push_traced = [&](StringView name, double value,
+                                   metric_unit unit) {
+      let const stats = metric_stats{value, 0, value, value};
+      let       row   = make_metric_row(name, stats, unit, allocator);
+
+      row.name += " (traced)";
+      rows.push(steal(row));
+    };
+
+    if (!result.has_metric[SYSCALLS_METRIC]) {
+      do_push_traced("syscalls", static_cast<double>(traced.syscall_count),
+                     metric_unit::Count);
+    }
+
+    do_push_traced("threads started", static_cast<double>(traced.thread_count),
+                   metric_unit::Count);
+    do_push_traced("processes started",
+                   static_cast<double>(traced.process_count),
+                   metric_unit::Count);
+    do_push_traced("execs", static_cast<double>(traced.exec_count),
+                   metric_unit::Count);
+    do_push_traced("peak tasks", static_cast<double>(traced.peak_task_count),
+                   metric_unit::Count);
+    if (result.has_metric[CPU_USAGE_METRIC] && traced.peak_task_count > 0) {
+      do_push_traced("thread efficiency",
+                     result.metric[CPU_USAGE_METRIC].mean /
+                         static_cast<double>(traced.peak_task_count),
+                     metric_unit::Percent);
     }
   }
 
+  usize name_width    = 0;
   usize mean_width    = 0;
   usize std_dev_width = 0;
 
   for (usize i = 0; i < rows.count(); i++) {
+    if (rows[i].name.length() > name_width) name_width = rows[i].name.length();
     if (rows[i].mean.length() > mean_width) mean_width = rows[i].mean.length();
     if (rows[i].std_dev.length() > std_dev_width)
       std_dev_width = rows[i].std_dev.length();
   }
 
   for (usize i = 0; i < rows.count(); i++)
-    append_metric_line(out, rows[i], mean_width, std_dev_width, should_color);
+    append_metric_line(out, rows[i], name_width, mean_width, std_dev_width,
+                       should_color);
 
-  let hidden_names = String{allocator};
-
-  for (usize k = 0; k < EXTENDED_METRIC_COUNT; k++) {
-    if (!result.is_process_only_hidden[k]) continue;
-    if (!hidden_names.is_empty()) hidden_names += ", ";
-    hidden_names.append(EXTENDED_METRICS[k].name);
-  }
-
-  if (!hidden_names.is_empty()) {
+  if (has_process_row) {
     out.append(colored(colors::ansi::DIM, should_color));
-    out += "  The ";
-    out.append(hidden_names.view());
-    out += " rows cover one process and are shown with --no-shell.";
+    out += "  * Counts only the measured process, not the processes it "
+           "started.";
     out.append(colored(colors::ansi::RESET, should_color));
     out += '\n';
   }
@@ -779,18 +934,14 @@ append_comparison(String              &out,
                        should_color);
   append_relative_line(out, "peak rss", first.peak_rss, other.peak_rss,
                        should_color);
-  if (first.has_perf && other.has_perf) {
-    let const cpu_cycles_name   = first.is_perf_system_wide
-                                      ? StringView{"cpu cycles (system)"}
-                                      : StringView{"cpu cycles"};
-    let const instructions_name = first.is_perf_system_wide
-                                      ? StringView{"instructions (system)"}
-                                      : StringView{"instructions"};
 
-    append_relative_line(out, cpu_cycles_name, first.cpu_cycles,
-                         other.cpu_cycles, should_color);
-    append_relative_line(out, instructions_name, first.instructions,
-                         other.instructions, should_color);
+  constexpr usize COMPARED_METRICS[] = {CPU_CYCLES_METRIC, INSTRUCTIONS_METRIC};
+
+  for (let const k : COMPARED_METRICS) {
+    if (first.has_metric[k] && other.has_metric[k]) {
+      append_relative_line(out, METRICS[k].name, first.metric[k],
+                           other.metric[k], should_color);
+    }
   }
 }
 

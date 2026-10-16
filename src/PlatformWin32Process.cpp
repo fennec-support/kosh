@@ -277,6 +277,42 @@ fill_resource_usage(HANDLE                  process_handle,
     resources.cpu_cycle_count = static_cast<u64>(cycle_count);
 }
 
+static fn
+fill_job_resource_usage(HANDLE job, process_resource_usage &resources) wontthrow
+    -> void
+{
+  JOBOBJECT_BASIC_AND_IO_ACCOUNTING_INFORMATION accounting{};
+
+  if (QueryInformationJobObject(job, JobObjectBasicAndIoAccountingInformation,
+                                &accounting, sizeof(accounting),
+                                nullptr) != FALSE)
+  {
+    let const &basic = accounting.BasicInfo;
+    let const &io    = accounting.IoInfo;
+
+    resources.user_nanos =
+        static_cast<u64>(basic.TotalUserTime.QuadPart) * 100ULL;
+    resources.system_nanos =
+        static_cast<u64>(basic.TotalKernelTime.QuadPart) * 100ULL;
+    resources.page_fault_count    = basic.TotalPageFaultCount;
+    resources.process_count       = basic.TotalProcesses;
+    resources.read_call_count     = io.ReadOperationCount;
+    resources.write_call_count    = io.WriteOperationCount;
+    resources.other_io_call_count = io.OtherOperationCount;
+    resources.read_byte_count     = io.ReadTransferCount;
+    resources.written_byte_count  = io.WriteTransferCount;
+  }
+
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+
+  if (QueryInformationJobObject(job, JobObjectExtendedLimitInformation, &limits,
+                                sizeof(limits), nullptr) != FALSE)
+  {
+    resources.peak_commit_byte_count =
+        static_cast<u64>(limits.PeakJobMemoryUsed);
+  }
+}
+
 fn
 read_own_resource_usage() wontthrow -> process_resource_usage
 {
@@ -3632,20 +3668,38 @@ run_measured_with_options(
       should_use_standard_handles ? startup.hStdOutput : INVALID_HANDLE_VALUE,
       should_use_standard_handles ? startup.hStdError : INVALID_HANDLE_VALUE,
       options.inherited_handle.value_or(INVALID_HANDLE_VALUE)};
-  if (!create_process_utf8({}, command_line.view(), {}, options.creation_flags,
-                           nullptr, startup, inherited_handles, 4,
-                           process_info))
+  HANDLE job = nullptr;
+
+  if (options.should_collect_resources)
+    job = CreateJobObjectW(nullptr, nullptr);
+  defer {
+    if (job != nullptr) CloseHandle(job);
+  };
+
+  let const creation_flags =
+      options.creation_flags | (job != nullptr ? CREATE_SUSPENDED : 0);
+
+  if (!create_process_utf8({}, command_line.view(), {}, creation_flags, nullptr,
+                           startup, inherited_handles, 4, process_info))
   {
     return None;
   }
   defer { CloseHandle(process_info.hProcess); };
   defer { CloseHandle(process_info.hThread); };
 
+  if (job != nullptr) {
+    if (AssignProcessToJobObject(job, process_info.hProcess) == FALSE) {
+      CloseHandle(job);
+      job = nullptr;
+    }
+
+    ResumeThread(process_info.hThread);
+  }
+
   if (WaitForSingleObject(process_info.hProcess, INFINITE) != WAIT_OBJECT_0)
     return None;
-  record_child_process_usage(process_info.hProcess);
-
   result.wall_nanos = monotonic_nanos() - start_nanos;
+  record_child_process_usage(process_info.hProcess);
 
   DWORD exit_code = 0;
   if (GetExitCodeProcess(process_info.hProcess, &exit_code) == FALSE)
@@ -3661,16 +3715,34 @@ run_measured_with_options(
 
   if (options.should_collect_resources)
     fill_resource_usage(process_info.hProcess, result.resources);
+  if (job != nullptr) fill_job_resource_usage(job, result.resources);
+
+  ULONG64 cycle_count = 0;
+
+  if (QueryProcessCycleTime(process_info.hProcess, &cycle_count) != FALSE &&
+      cycle_count != 0)
+  {
+    result.perf.cpu_cycles      = static_cast<u64>(cycle_count);
+    result.has_perf             = true;
+    result.is_perf_process_only = true;
+  }
 
   return result;
+}
+
+fn
+run_traced(const ArrayList<String> &, measured_output) throws
+    -> Maybe<traced_counts>
+{
+  return None;
 }
 
 fn
 run_measured(const ArrayList<String> &argv,
              const Maybe<descriptor> &inherited_handle,
              measured_output          output,
-             bool                     should_collect_resources) throws
-    -> Maybe<measured_result>
+             bool                     should_collect_resources,
+             bool) throws -> Maybe<measured_result>
 {
   windows_measured_launch_options options{};
   options.inherited_handle         = inherited_handle;

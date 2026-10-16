@@ -48,6 +48,25 @@ note_reaped_child_usage(const struct rusage &usage) wontthrow -> void
 
 #if defined __APPLE__
 static fn
+mach_ticks_to_nanos(u64 ticks) wontthrow -> u64
+{
+  static mach_timebase_info_data_t timebase{};
+
+  if (timebase.denom == 0 && mach_timebase_info(&timebase) != KERN_SUCCESS)
+    return ticks;
+  if (timebase.denom == 0) return ticks;
+
+  return static_cast<u64>(static_cast<u128>(ticks) * timebase.numer /
+                          timebase.denom);
+}
+
+static fn
+set_nonzero(Maybe<u64> &field, u64 value) wontthrow -> void
+{
+  if (value != 0) field = value;
+}
+
+static fn
 fill_usage_from_rusage_info(pid_t                   pid,
                             process_resource_usage &resources) wontthrow -> void
 {
@@ -66,13 +85,20 @@ fill_usage_from_rusage_info(pid_t                   pid,
       static_cast<int>(pid),
       static_cast<unsigned long long>(usage.ri_instructions),
       static_cast<unsigned long long>(usage.ri_cycles));
-  resources.cpu_cycle_count   = usage.ri_cycles;
-  resources.instruction_count = usage.ri_instructions;
+  set_nonzero(resources.cpu_cycle_count, usage.ri_cycles);
+  set_nonzero(resources.instruction_count, usage.ri_instructions);
+  set_nonzero(resources.performance_core_cycle_count, usage.ri_pcycles);
+  set_nonzero(resources.performance_core_instruction_count,
+              usage.ri_pinstructions);
   resources.wakeup_count = usage.ri_interrupt_wkups + usage.ri_pkg_idle_wkups;
-  resources.energy_nanojoules          = usage.ri_billed_energy;
+  resources.energy_nanojoules =
+      usage.ri_energy_nj != 0 ? usage.ri_energy_nj : usage.ri_billed_energy;
   resources.page_in_count              = usage.ri_pageins;
   resources.storage_read_byte_count    = usage.ri_diskio_bytesread;
   resources.storage_written_byte_count = usage.ri_diskio_byteswritten;
+  resources.logical_write_byte_count   = usage.ri_logical_writes;
+  resources.peak_footprint_byte_count  = usage.ri_lifetime_max_phys_footprint;
+  resources.scheduler_wait_nanos = mach_ticks_to_nanos(usage.ri_runnable_time);
 }
 #endif
 
@@ -2280,6 +2306,86 @@ fill_usage_from_proc_schedstat(pid_t                   pid,
 }
 
 fn
+parse_proc_sched_millis(StringView text) wontthrow -> Maybe<u64>
+{
+  let const dot    = text.find_character('.');
+  let const whole  = dot.has_value() ? text.substring_of_length(0, *dot) : text;
+  let const millis = whole.to<u64>();
+
+  if (millis.is_error()) return None;
+
+  u64 fraction_nanos = 0;
+
+  if (dot.has_value()) {
+    let const fraction = text.substring(*dot + 1);
+    u64       scale    = 100000;
+
+    for (usize i = 0; i < fraction.length && scale > 0; i++) {
+      if (fraction[i] < '0' || fraction[i] > '9') return None;
+      fraction_nanos += static_cast<u64>(fraction[i] - '0') * scale;
+      scale /= 10;
+    }
+  }
+
+  return millis.value() * 1000000ULL + fraction_nanos;
+}
+
+fn
+fill_usage_from_proc_sched(pid_t pid, process_resource_usage &resources)
+    wontthrow
+    -> void
+{
+  struct sched_field
+  {
+    StringView name;
+    Maybe<u64> process_resource_usage::*field;
+    bool                                is_millis;
+  };
+  static constexpr sched_field FIELDS[] = {
+      {"nr_migrations",     &process_resource_usage::cpu_migration_count,      false},
+      {"wait_max",          &process_resource_usage::max_scheduler_wait_nanos, true },
+      {"sum_sleep_runtime", &process_resource_usage::sleep_nanos,              true },
+      {"sum_block_runtime", &process_resource_usage::block_nanos,              true },
+      {"iowait_sum",        &process_resource_usage::io_wait_nanos,            true },
+  };
+
+  char path[64];
+
+  if (!format_proc_pid_path(path, pid, "/sched")) return;
+
+  char      buffer[8192];
+  let const length   = read_small_file(path, buffer, sizeof(buffer));
+  let const text     = StringView{buffer, length};
+  usize     position = 0;
+
+  while (position < text.length) {
+    let const line  = each_line(text, position);
+    let const colon = line.find_character(':');
+
+    if (!colon.has_value()) continue;
+
+    let key = line.substring_of_length(0, *colon).trim_blanks();
+
+    if (let const dot = key.find_last_character('.'))
+      key = key.substring(*dot + 1);
+
+    let const value = line.substring(*colon + 1).trim_blanks();
+
+    for (let const &known : FIELDS) {
+      if (key != known.name) continue;
+
+      if (known.is_millis) {
+        if (let const parsed = parse_proc_sched_millis(value))
+          resources.*known.field = *parsed;
+      } else if (let const parsed = value.to<u64>(); !parsed.is_error()) {
+        resources.*known.field = parsed.value();
+      }
+      break;
+    }
+  }
+}
+
+fn
 fill_usage_from_proc_io(int                     io_descriptor,
                         process_resource_usage &resources) wontthrow -> void
 {
@@ -2289,12 +2395,14 @@ fill_usage_from_proc_io(int                     io_descriptor,
     Maybe<u64> process_resource_usage::*field;
   };
   static constexpr io_field FIELDS[] = {
-      {"rchar:",       &process_resource_usage::read_byte_count           },
-      {"wchar:",       &process_resource_usage::written_byte_count        },
-      {"syscr:",       &process_resource_usage::read_call_count           },
-      {"syscw:",       &process_resource_usage::write_call_count          },
-      {"read_bytes:",  &process_resource_usage::storage_read_byte_count   },
-      {"write_bytes:", &process_resource_usage::storage_written_byte_count},
+      {"rchar:",                 &process_resource_usage::read_byte_count           },
+      {"wchar:",                 &process_resource_usage::written_byte_count        },
+      {"syscr:",                 &process_resource_usage::read_call_count           },
+      {"syscw:",                 &process_resource_usage::write_call_count          },
+      {"read_bytes:",            &process_resource_usage::storage_read_byte_count   },
+      {"write_bytes:",           &process_resource_usage::storage_written_byte_count},
+      {"cancelled_write_bytes:",
+       &process_resource_usage::cancelled_write_byte_count                          },
   };
 
   if (io_descriptor < 0) return;
@@ -2327,8 +2435,10 @@ wait_for_measured_child(pid_t                   child_pid,
                         i64                    &status_out,
                         u64                    &peak_rss_out,
                         process_resource_usage *resources,
-                        int                     io_descriptor) wontthrow -> bool
+                        int                     io_descriptor,
+                        u64                    &exit_nanos) wontthrow -> bool
 {
+  exit_nanos = 0;
 #if defined __linux__ || defined __APPLE__
   if (resources != nullptr) {
     siginfo_t info{};
@@ -2337,10 +2447,12 @@ wait_for_measured_child(pid_t                   child_pid,
                     WEXITED | WNOWAIT);
     });
 
+    exit_nanos = monotonic_nanos();
     if (wait_result == 0) {
 #if defined __linux__
       fill_usage_from_proc_io(io_descriptor, *resources);
       fill_usage_from_proc_schedstat(child_pid, *resources);
+      fill_usage_from_proc_sched(child_pid, *resources);
 #else
       fill_usage_from_rusage_info(child_pid, *resources);
 #endif
@@ -2356,6 +2468,7 @@ wait_for_measured_child(pid_t                   child_pid,
   let const     waited =
       retry_interrupted([&] { return wait4(child_pid, &status, 0, &usage); });
 
+  if (exit_nanos == 0) exit_nanos = monotonic_nanos();
   if (waited != child_pid) {
     if (waited == -1 && errno != ECHILD) {
       kill_and_reap(child_pid);
@@ -2402,7 +2515,8 @@ fn
 run_measured(const ArrayList<String> &argv,
              const Maybe<descriptor> &,
              measured_output output,
-             bool            should_collect_resources) throws
+             bool            should_collect_resources,
+             bool            should_count_extended_events) throws
     -> Maybe<measured_result>
 {
   if (argv.is_empty()) return None;
@@ -2423,7 +2537,7 @@ run_measured(const ArrayList<String> &argv,
   };
 
   PlatformPerfSession perf_session;
-  bool                has_perf = perf_session.prepare(child.pid);
+  bool has_perf = perf_session.prepare(child.pid, should_count_extended_events);
 
   if (has_perf) has_perf = perf_session.start();
   if (!has_perf) perf_session.cancel();
@@ -2439,12 +2553,19 @@ run_measured(const ArrayList<String> &argv,
     return None;
   }
 
-  if (!wait_for_measured_child(
-          child.pid, result.exit_status, result.peak_rss_byte_count,
-          should_collect_resources ? &result.resources : nullptr,
-          io_descriptor))
+#if defined __APPLE__
+  let const should_read_usage = true;
+#else
+  let const should_read_usage = should_collect_resources;
+#endif
+  u64 exit_nanos = 0;
+
+  if (!wait_for_measured_child(child.pid, result.exit_status,
+                               result.peak_rss_byte_count,
+                               should_read_usage ? &result.resources : nullptr,
+                               io_descriptor, exit_nanos))
     return None;
-  result.wall_nanos = monotonic_nanos() - start_nanos;
+  result.wall_nanos = exit_nanos - start_nanos;
 
   if (has_perf) {
     result.has_perf = perf_session.finish(result.perf);
@@ -2452,7 +2573,208 @@ run_measured(const ArrayList<String> &argv,
         result.has_perf && perf_session.is_system_wide();
   }
 
+  if (should_collect_resources) perf_session.finish_extended(result.resources);
+
+  if (!result.has_perf && result.resources.cpu_cycle_count.has_value()) {
+    result.perf.cpu_cycles      = result.resources.cpu_cycle_count;
+    result.perf.instructions    = result.resources.instruction_count;
+    result.has_perf             = true;
+    result.is_perf_process_only = true;
+  }
+
   return result;
+}
+
+#if defined __linux__
+namespace {
+
+constexpr long  PTRACE_GET_SYSCALL_INFO_REQUEST = 0x420e;
+constexpr u8    PTRACE_SYSCALL_INFO_ENTRY_OP    = 1;
+constexpr usize TRACED_NEW_TASK_CAPACITY        = 256;
+
+fn
+trace_ptrace(long request, pid_t pid, void *address, uintptr_t data) wontthrow
+    -> long
+{
+  return syscall(SYS_ptrace, request, pid, address, data);
+}
+
+[[noreturn]] fn
+run_tracer(const char *const *raw_argv,
+           measured_output    output,
+           int                report_descriptor) wontthrow -> void
+{
+  traced_counts counts{};
+  let const     target = fork();
+
+  if (target == -1) _exit(127);
+
+  if (target == 0) {
+    close(report_descriptor);
+    signal(SIGPIPE, SIG_DFL);
+    if (output == measured_output::Suppress) {
+      const int null_fd = open("/dev/null", O_WRONLY);
+
+      if (null_fd != -1) {
+        dup2(null_fd, STDOUT_FILENO);
+        dup2(null_fd, STDERR_FILENO);
+        if (null_fd != STDOUT_FILENO && null_fd != STDERR_FILENO) {
+          close(null_fd);
+        }
+      }
+    }
+
+    if (trace_ptrace(PTRACE_TRACEME, 0, nullptr, 0) != 0) _exit(127);
+    raise(SIGSTOP);
+    execvp(raw_argv[0], const_cast<char *const *>(raw_argv));
+    _exit(127);
+  }
+
+  int status = 0;
+
+  if (waitpid(target, &status, __WALL) != target || !WIFSTOPPED(status))
+    _exit(127);
+
+  let const options = PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE |
+                      PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK |
+                      PTRACE_O_TRACEEXEC | PTRACE_O_EXITKILL;
+
+  if (trace_ptrace(PTRACE_SETOPTIONS, target, nullptr,
+                   static_cast<uintptr_t>(options)) != 0 ||
+      trace_ptrace(PTRACE_SYSCALL, target, nullptr, 0) != 0)
+  {
+    kill(target, SIGKILL);
+    _exit(127);
+  }
+
+  pid_t new_tasks[TRACED_NEW_TASK_CAPACITY]{};
+  usize new_task_count = 0;
+  u64   live_count     = 1;
+
+  counts.peak_task_count = 1;
+
+  loop {
+    let const task = waitpid(-1, &status, __WALL);
+
+    if (task == -1) {
+      if (errno == EINTR) continue;
+      break;
+    }
+
+    if (WIFEXITED(status) || WIFSIGNALED(status)) {
+      if (live_count > 0) live_count--;
+      continue;
+    }
+
+    if (!WIFSTOPPED(status)) continue;
+
+    let const signal_number = WSTOPSIG(status);
+    let const event         = static_cast<unsigned>(status) >> 16;
+    uintptr_t injected      = 0;
+
+    if (signal_number == (SIGTRAP | 0x80)) {
+      u8 info[128]{};
+
+      if (trace_ptrace(PTRACE_GET_SYSCALL_INFO_REQUEST, task, info,
+                       reinterpret_cast<uintptr_t>(info)) > 0 &&
+          info[0] == PTRACE_SYSCALL_INFO_ENTRY_OP)
+      {
+        counts.syscall_count++;
+      }
+    } else if (signal_number == SIGTRAP && event != 0) {
+      if (event == PTRACE_EVENT_CLONE || event == PTRACE_EVENT_FORK ||
+          event == PTRACE_EVENT_VFORK)
+      {
+        unsigned long new_task = 0;
+
+        if (event == PTRACE_EVENT_CLONE)
+          counts.thread_count++;
+        else
+          counts.process_count++;
+        live_count++;
+        if (live_count > counts.peak_task_count)
+          counts.peak_task_count = live_count;
+        if (trace_ptrace(PTRACE_GETEVENTMSG, task, nullptr,
+                         reinterpret_cast<uintptr_t>(&new_task)) == 0 &&
+            new_task_count < TRACED_NEW_TASK_CAPACITY)
+        {
+          new_tasks[new_task_count++] = static_cast<pid_t>(new_task);
+        }
+      } else if (event == PTRACE_EVENT_EXEC) {
+        counts.exec_count++;
+      }
+    } else if (signal_number == SIGSTOP) {
+      bool was_new_task = false;
+
+      for (usize i = 0; i < new_task_count; i++) {
+        if (new_tasks[i] != task) continue;
+
+        new_tasks[i] = new_tasks[--new_task_count];
+        was_new_task = true;
+        break;
+      }
+
+      if (!was_new_task) injected = static_cast<uintptr_t>(signal_number);
+    } else if (signal_number != SIGTRAP) {
+      injected = static_cast<uintptr_t>(signal_number);
+    }
+
+    unused(trace_ptrace(PTRACE_SYSCALL, task, nullptr, injected));
+  }
+
+  unused(retry_interrupted(
+      [&] { return write(report_descriptor, &counts, sizeof(counts)); }));
+  _exit(0);
+}
+
+} /* namespace */
+#endif
+
+fn
+run_traced(const ArrayList<String> &argv, measured_output output) throws
+    -> Maybe<traced_counts>
+{
+#if defined __linux__
+  if (argv.is_empty()) return None;
+
+  let const raw_argv = make_os_args(argv);
+  int       report_descriptors[2];
+
+  if (pipe(report_descriptors) != 0) return None;
+
+  note_spawn_launch();
+
+  let const tracer = fork();
+
+  if (tracer == -1) {
+    close(report_descriptors[0]);
+    close(report_descriptors[1]);
+
+    return None;
+  }
+
+  if (tracer == 0) {
+    close(report_descriptors[0]);
+    run_tracer(raw_argv.begin(), output, report_descriptors[1]);
+  }
+
+  close(report_descriptors[1]);
+
+  traced_counts counts{};
+  let const     read_count = retry_interrupted(
+      [&] { return read(report_descriptors[0], &counts, sizeof(counts)); });
+
+  close(report_descriptors[0]);
+  reap_child(tracer);
+  if (read_count != static_cast<ssize_t>(sizeof(counts))) return None;
+
+  return counts;
+#else
+  unused(argv);
+  unused(output);
+
+  return None;
+#endif
 }
 
 static pure fn

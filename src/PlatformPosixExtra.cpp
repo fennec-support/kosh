@@ -50,26 +50,121 @@ open_current_directory_reference() wontthrow -> descriptor
 class PlatformPerfSession
 {
 public:
-  static constexpr usize PERF_EVENT_COUNT = 5;
+  static constexpr usize PERF_EVENT_COUNT     = 5;
+  static constexpr usize EXTENDED_EVENT_COUNT = 8;
+
+  struct perf_event_spec
+  {
+    u32 type;
+    u64 config;
+  };
 
   int event_fds[PERF_EVENT_COUNT]{-1, -1, -1, -1, -1};
+  int extended_fds[EXTENDED_EVENT_COUNT]{-1, -1, -1, -1, -1, -1, -1, -1};
 
   ~PlatformPerfSession()
   {
-    for (usize event_index = 0; event_index < PERF_EVENT_COUNT; event_index++) {
-      if (event_fds[event_index] != -1) close(event_fds[event_index]);
+    for (let const event_fd : event_fds) {
+      if (event_fd != -1) close(event_fd);
+    }
+
+    for (let const event_fd : extended_fds) {
+      if (event_fd != -1) close(event_fd);
     }
   }
 
-  fn
-  prepare(pid_t child_pid) wontthrow -> bool
+  static fn
+  open_event(pid_t child_pid, perf_event_spec spec) wontthrow -> int
   {
-    struct perf_event_spec
+    struct perf_event_attr attributes{};
+    attributes.size           = sizeof(attributes);
+    attributes.type           = spec.type;
+    attributes.config         = spec.config;
+    attributes.disabled       = 1;
+    attributes.exclude_kernel = spec.type != PERF_TYPE_TRACEPOINT;
+    attributes.exclude_hv     = 1;
+    attributes.inherit        = 1;
+    attributes.inherit_stat   = 1;
+    attributes.enable_on_exec = 1;
+    attributes.read_format =
+        PERF_FORMAT_TOTAL_TIME_ENABLED | PERF_FORMAT_TOTAL_TIME_RUNNING;
+
+    return static_cast<int>(syscall(SYS_perf_event_open, &attributes, child_pid,
+                                    -1, -1, PERF_FLAG_FD_CLOEXEC));
+  }
+
+  static fn
+  read_scaled_event(int event_fd) wontthrow -> Maybe<u64>
+  {
+    struct perf_reading
     {
-      u32 type;
-      u64 config;
+      u64 value;
+      u64 enabled_nanos;
+      u64 running_nanos;
     };
 
+    if (event_fd == -1) return None;
+
+    perf_reading reading{};
+    ssize_t      read_count;
+
+    do {
+      read_count = read(event_fd, &reading, sizeof(reading));
+    } while (read_count == -1 && errno == EINTR);
+
+    if (read_count != static_cast<ssize_t>(sizeof(reading)) ||
+        reading.running_nanos == 0 ||
+        reading.running_nanos > reading.enabled_nanos)
+    {
+      return None;
+    }
+
+    if (reading.running_nanos == reading.enabled_nanos) return reading.value;
+
+    let const scaled_value = static_cast<u128>(reading.value) *
+                             reading.enabled_nanos / reading.running_nanos;
+
+    if (scaled_value > UINT64_MAX) return None;
+
+    return static_cast<u64>(scaled_value);
+  }
+
+  static fn
+  read_syscall_tracepoint_id() wontthrow -> Maybe<u64>
+  {
+    static constexpr const char *PATHS[] = {
+        "/sys/kernel/tracing/events/raw_syscalls/sys_enter/id",
+        "/sys/kernel/debug/tracing/events/raw_syscalls/sys_enter/id",
+    };
+
+    for (let const path : PATHS) {
+      let const descriptor = ::open(path, O_RDONLY | O_CLOEXEC);
+
+      if (descriptor < 0) continue;
+
+      char      buffer[32];
+      let const length = ::read(descriptor, buffer, sizeof(buffer));
+
+      ::close(descriptor);
+      if (length <= 0) continue;
+
+      usize digit_count = 0;
+
+      while (digit_count < static_cast<usize>(length) &&
+             buffer[digit_count] >= '0' && buffer[digit_count] <= '9')
+        digit_count++;
+
+      let const parsed = StringView{buffer, digit_count}.to<u64>();
+
+      if (digit_count > 0 && !parsed.is_error()) return parsed.value();
+    }
+
+    return None;
+  }
+
+  fn
+  prepare(pid_t child_pid, bool should_count_extended) wontthrow -> bool
+  {
     constexpr perf_event_spec EVENT_SPECS[PERF_EVENT_COUNT] = {
         {PERF_TYPE_HARDWARE, PERF_COUNT_HW_CPU_CYCLES      },
         {PERF_TYPE_HARDWARE, PERF_COUNT_HW_INSTRUCTIONS    },
@@ -78,23 +173,37 @@ public:
         {PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_MISSES   },
     };
 
-    for (usize event_index = 0; event_index < PERF_EVENT_COUNT; event_index++) {
-      struct perf_event_attr attributes{};
-      attributes.size           = sizeof(attributes);
-      attributes.type           = EVENT_SPECS[event_index].type;
-      attributes.config         = EVENT_SPECS[event_index].config;
-      attributes.disabled       = 1;
-      attributes.exclude_kernel = 1;
-      attributes.exclude_hv     = 1;
-      attributes.inherit        = 1;
-      attributes.inherit_stat   = 1;
-      attributes.enable_on_exec = 1;
-      attributes.read_format =
-          PERF_FORMAT_TOTAL_TIME_ENABLED | PERF_FORMAT_TOTAL_TIME_RUNNING;
+    if (should_count_extended) {
+      constexpr u64 READ_MISS =
+          (static_cast<u64>(PERF_COUNT_HW_CACHE_OP_READ) << 8) |
+          (static_cast<u64>(PERF_COUNT_HW_CACHE_RESULT_MISS) << 16);
+      constexpr perf_event_spec EXTENDED_SPECS[EXTENDED_EVENT_COUNT - 1] = {
+          {PERF_TYPE_HARDWARE, PERF_COUNT_HW_BRANCH_INSTRUCTIONS    },
+          {PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_FRONTEND},
+          {PERF_TYPE_HARDWARE, PERF_COUNT_HW_STALLED_CYCLES_BACKEND },
+          {PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_L1D | READ_MISS  },
+          {PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_LL | READ_MISS   },
+          {PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_DTLB | READ_MISS },
+          {PERF_TYPE_HW_CACHE, PERF_COUNT_HW_CACHE_ITLB | READ_MISS },
+      };
 
-      event_fds[event_index] =
-          static_cast<int>(syscall(SYS_perf_event_open, &attributes, child_pid,
-                                   -1, -1, PERF_FLAG_FD_CLOEXEC));
+      for (usize event_index = 0; event_index < countof(EXTENDED_SPECS);
+           event_index++)
+      {
+        extended_fds[event_index] =
+            open_event(child_pid, EXTENDED_SPECS[event_index]);
+      }
+
+      if (let const tracepoint_id = read_syscall_tracepoint_id()) {
+        extended_fds[EXTENDED_EVENT_COUNT - 1] = open_event(
+            child_pid, perf_event_spec{PERF_TYPE_TRACEPOINT, *tracepoint_id});
+      }
+
+      return false;
+    }
+
+    for (usize event_index = 0; event_index < PERF_EVENT_COUNT; event_index++) {
+      event_fds[event_index] = open_event(child_pid, EVENT_SPECS[event_index]);
       if (event_fds[event_index] == -1) return false;
     }
 
@@ -120,51 +229,46 @@ public:
   fn
   finish(perf_counts &counts) wontthrow -> bool
   {
-    struct perf_reading
-    {
-      u64 value;
-      u64 enabled_nanos;
-      u64 running_nanos;
-    };
-
-    u64 *destinations[PERF_EVENT_COUNT] = {
-        &counts.cpu_cycles, &counts.instructions, &counts.cache_references,
-        &counts.cache_misses, &counts.branch_misses};
+    Maybe<u64> perf_counts::*destinations[PERF_EVENT_COUNT] = {
+        &perf_counts::cpu_cycles, &perf_counts::instructions,
+        &perf_counts::cache_references, &perf_counts::cache_misses,
+        &perf_counts::branch_misses};
 
     for (usize event_index = 0; event_index < PERF_EVENT_COUNT; event_index++) {
-      perf_reading reading{};
-      ssize_t      read_count;
+      let const value = read_scaled_event(event_fds[event_index]);
 
-      do {
-        read_count = read(event_fds[event_index], &reading, sizeof(reading));
-      } while (read_count == -1 && errno == EINTR);
-
-      if (read_count != static_cast<ssize_t>(sizeof(reading)) ||
-          reading.running_nanos == 0 ||
-          reading.running_nanos > reading.enabled_nanos)
-      {
+      if (!value.has_value()) {
         counts = {};
 
         return false;
       }
 
-      if (reading.running_nanos == reading.enabled_nanos) {
-        *destinations[event_index] = reading.value;
-      } else {
-        let const scaled_value = static_cast<u128>(reading.value) *
-                                 reading.enabled_nanos / reading.running_nanos;
-
-        if (scaled_value > UINT64_MAX) {
-          counts = {};
-
-          return false;
-        }
-
-        *destinations[event_index] = static_cast<u64>(scaled_value);
-      }
+      counts.*destinations[event_index] = *value;
     }
 
     return true;
+  }
+
+  fn
+  finish_extended(process_resource_usage &resources) wontthrow -> void
+  {
+    Maybe<u64> process_resource_usage::*destinations[EXTENDED_EVENT_COUNT] = {
+        &process_resource_usage::branch_count,
+        &process_resource_usage::frontend_stall_cycle_count,
+        &process_resource_usage::backend_stall_cycle_count,
+        &process_resource_usage::l1d_read_miss_count,
+        &process_resource_usage::llc_read_miss_count,
+        &process_resource_usage::dtlb_read_miss_count,
+        &process_resource_usage::itlb_read_miss_count,
+        &process_resource_usage::syscall_count,
+    };
+
+    for (usize event_index = 0; event_index < EXTENDED_EVENT_COUNT;
+         event_index++)
+    {
+      if (let const value = read_scaled_event(extended_fds[event_index]))
+        resources.*destinations[event_index] = *value;
+    }
   }
 };
 
@@ -389,7 +493,7 @@ public:
   }
 
   fn
-  prepare(pid_t) wontthrow -> bool
+  prepare(pid_t, bool) wontthrow -> bool
   {
     if (!load_libraries()) return false;
 
@@ -486,9 +590,10 @@ public:
       return false;
     }
 
-    u64 *destinations[EVENT_COUNT] = {
-        &counts.cpu_cycles, &counts.instructions, &counts.cache_references,
-        &counts.cache_misses, &counts.branch_misses};
+    Maybe<u64> perf_counts::*destinations[EVENT_COUNT] = {
+        &perf_counts::cpu_cycles, &perf_counts::instructions,
+        &perf_counts::cache_references, &perf_counts::cache_misses,
+        &perf_counts::branch_misses};
 
     for (usize event_index = 0; event_index < EVENT_COUNT; event_index++) {
       u128 total = 0;
@@ -514,13 +619,17 @@ public:
         return false;
       }
 
-      *destinations[event_index] = static_cast<u64>(total);
+      counts.*destinations[event_index] = static_cast<u64>(total);
     }
 
     restore();
 
     return true;
   }
+
+  fn
+  finish_extended(process_resource_usage &) wontthrow -> void
+  {}
 
   fn
   restore() wontthrow -> void
@@ -543,7 +652,7 @@ class PlatformPerfSession
 {
 public:
   fn
-  prepare(pid_t) wontthrow -> bool
+  prepare(pid_t, bool) wontthrow -> bool
   {
     return false;
   }
@@ -569,6 +678,10 @@ public:
   {
     return false;
   }
+
+  fn
+  finish_extended(process_resource_usage &) wontthrow -> void
+  {}
 };
 
 #endif

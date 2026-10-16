@@ -93,19 +93,19 @@ echo "== --extended adds resource rows and the default output omits them:"
 extended_labels='cpu usage|user time|system time|scheduler wait|time slices|cycles|instructions|wakeups|energy|page-ins|peak commit|storage read|storage written|voluntary switches|involuntary switches|minor faults|major faults|page faults|block input|block output|read calls|write calls|bytes read|bytes written|other io calls'
 plain_output=$("$BIN" -c 'bench --runs 2 --no-shell "$BENCH_ECHO plain"' 2>&1)
 plain_extended_count=$(printf '%s\n' "$plain_output" |
-    grep -E "^  ($extended_labels)  " | grep -Evc '^  instructions  ')
+    grep -E "^  ($extended_labels)( \*)?  " | grep -Evc '^  instructions( \*)?  ')
 test "$plain_extended_count" -eq 0 || { echo "plain output has extended rows"; exit 1; }
 extended_output=$("$BIN" -c \
     'bench --runs 2 --extended --no-shell "$BENCH_ECHO extended"' 2>&1)
 extended_labels_found=$(printf '%s\n' "$extended_output" |
-    sed -n '/^  cpu usage  /,$p' | grep -E "^  ($extended_labels)  " | sed 's/^  //; s/  .*//' | tr '\n' ',')
+    sed -n '/^  cpu usage  /,$p' | grep -E "^  ($extended_labels)( \*)?  " | sed 's/^  //; s/  .*//; s/ \*$//' | tr '\n' ',')
 case "$extended_labels_found" in
     cpu\ usage,user\ time,system\ time,*) ;;
     *) echo "missing extended rows: $extended_labels_found"; exit 1 ;;
 esac
 case "$(uname -s)" in
     Linux) required_rows='voluntary switches,minor faults,read calls,bytes written,' ;;
-    Darwin) required_rows='cycles,instructions,storage read,minor faults,' ;;
+    Darwin) required_rows='storage read,minor faults,' ;;
     *) required_rows='' ;;
 esac
 old_ifs=$IFS
@@ -121,14 +121,22 @@ wrapped_output=$("$BIN" -c \
     'bench --runs 2 --extended "$BENCH_ECHO wrapped"' 2>&1)
 case "$(uname -s)" in
     Linux|Darwin)
-        printf '%s\n' "$wrapped_output" | grep -q 'are shown with --no-shell' ||
+        printf '%s\n' "$wrapped_output" |
+            grep -q '^  \* Counts only the measured process' ||
             { echo "missing process-only note: $wrapped_output"; exit 1; }
-        if printf '%s\n' "$wrapped_output" | sed -n '/^  cpu usage  /,$p' |
-            grep -Eq '^  (read calls|cycles|instructions)  '; then
-            echo "process-only rows shown through the shell"; exit 1
-        fi
+        printf '%s\n' "$wrapped_output" | grep -Eq '^  [a-z -]+ \*  ' ||
+            { echo "no marked process-only row: $wrapped_output"; exit 1; }
         ;;
 esac
+if [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ]; then
+    printf '%s\n' "$plain_output" | grep -q '^  cpu cycles' ||
+        { echo "missing default cycles: $plain_output"; exit 1; }
+fi
+ptrace_scope=$(cat /proc/sys/kernel/yama/ptrace_scope 2>/dev/null || echo 0)
+if [ "$(uname -s)" = Linux ] && [ "$ptrace_scope" != 3 ]; then
+    printf '%s\n' "$extended_output" | grep -Eq '^  syscalls( \(traced\))?  ' ||
+        { echo "missing syscall count: $extended_output"; exit 1; }
+fi
 extended_row_count=$(printf '%s\n' "$extended_output" |
     grep -Ec '^  [a-z ]+  +[0-9.]+[A-Za-z]* +\+/- ')
 plain_row_count=$(printf '%s\n' "$plain_output" |

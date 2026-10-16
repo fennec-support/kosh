@@ -1442,15 +1442,24 @@ and
 options control output, direct execution, sample count, and the millisecond
 budget. With
 .BR \-\-extended ,
-each command also reports CPU time and CPU usage over wall time, context
-switches, page faults, block operations, and read and write system calls and
-bytes. Each platform adds the counters it can collect after the command exits.
-macOS adds cycles, instructions, wakeups, energy, page-ins, and storage bytes
-for the measured process. Linux adds scheduler wait, time slices, and storage
-bytes, and Windows adds cycles, peak commit, and other IO calls. A row that
-covers one process is shown only with
-.BR \-\-no\-shell .
-A note lists the hidden rows. A row the platform cannot report is omitted.
+each command also reports CPU time, CPU usage over wall time, off-CPU time, the
+system share of CPU time, context switches and their involuntary share, page
+faults, block operations, and read and write calls and bytes. Linux adds
+scheduler wait, time slices, CPU migrations, cancelled writes, and the branch,
+stall, cache, and TLB hardware counters with instructions per cycle and the
+miss ratios. Linux also reports sleep, block, and IO wait times when kernel
+scheduler statistics are enabled. macOS adds cycles, instructions,
+performance-core counters, run-queue wait, wakeups, energy, page-ins, peak
+footprint, storage bytes, and logical writes. Windows counts the whole process
+tree through a job object and adds peak commit, other IO calls, and the number
+of processes. The extended hardware counters are sampled on alternate runs, so
+they do not share the processor counters with the default set. On Linux, one
+extra untimed run under ptrace counts system calls, started threads and
+processes, execs, and the peak number of tasks, and reports thread efficiency
+as CPU usage divided by that peak. These rows are marked (traced). Run as root,
+Linux counts system calls on every run, and macOS reads the processor counters
+system-wide. A row marked * counts only the measured process, not the
+processes it started. A row the platform cannot report is omitted.
 .TP
 .BI "koshconf create " "PRESET " "\fR[\fB\-\-force\fR]"
 .PD 0

@@ -47,6 +47,7 @@
 #if defined __linux__
 #include <linux/perf_event.h>
 #include <sched.h>
+#include <sys/ptrace.h>
 #include <sys/sysmacros.h>
 #include <sys/syscall.h>
 #include <sys/vfs.h>
@@ -65,6 +66,7 @@
 #include <libproc.h>
 #include <mach-o/dyld.h>
 #include <mach/mach.h>
+#include <mach/mach_time.h>
 #include <malloc/malloc.h>
 #include <net/if.h>
 #include <net/if_mib.h>
@@ -2528,11 +2530,11 @@ read_malloc_heap_stats(malloc_heap_stats &stats) wontthrow -> bool;
 
 struct perf_counts
 {
-  u64 cpu_cycles{0};
-  u64 instructions{0};
-  u64 cache_references{0};
-  u64 cache_misses{0};
-  u64 branch_misses{0};
+  Maybe<u64> cpu_cycles{};
+  Maybe<u64> instructions{};
+  Maybe<u64> cache_references{};
+  Maybe<u64> cache_misses{};
+  Maybe<u64> branch_misses{};
 };
 
 struct process_resource_usage
@@ -2562,6 +2564,25 @@ struct process_resource_usage
   Maybe<u64> storage_read_byte_count{};
   Maybe<u64> storage_written_byte_count{};
   Maybe<u64> other_io_call_count{};
+  Maybe<u64> cancelled_write_byte_count{};
+  Maybe<u64> logical_write_byte_count{};
+  Maybe<u64> cpu_migration_count{};
+  Maybe<u64> max_scheduler_wait_nanos{};
+  Maybe<u64> sleep_nanos{};
+  Maybe<u64> block_nanos{};
+  Maybe<u64> io_wait_nanos{};
+  Maybe<u64> peak_footprint_byte_count{};
+  Maybe<u64> performance_core_cycle_count{};
+  Maybe<u64> performance_core_instruction_count{};
+  Maybe<u64> process_count{};
+  Maybe<u64> branch_count{};
+  Maybe<u64> frontend_stall_cycle_count{};
+  Maybe<u64> backend_stall_cycle_count{};
+  Maybe<u64> l1d_read_miss_count{};
+  Maybe<u64> llc_read_miss_count{};
+  Maybe<u64> dtlb_read_miss_count{};
+  Maybe<u64> itlb_read_miss_count{};
+  Maybe<u64> syscall_count{};
 };
 
 fn
@@ -2583,15 +2604,30 @@ struct measured_result
   i64                    exit_status{0};
   bool                   has_perf{false};
   bool                   is_perf_system_wide{false};
+  bool                   is_perf_process_only{false};
   perf_counts            perf{};
   process_resource_usage resources{};
 };
+
+struct traced_counts
+{
+  u64 syscall_count{0};
+  u64 thread_count{0};
+  u64 process_count{0};
+  u64 exec_count{0};
+  u64 peak_task_count{0};
+};
+
+fn
+run_traced(const ArrayList<String> &argv, measured_output output) throws
+    -> Maybe<traced_counts>;
 
 fn
 run_measured(const ArrayList<String> &argv,
              const Maybe<descriptor> &inherited_handle = {},
              measured_output          output = measured_output::Inherit,
-             bool                     should_collect_resources = false) throws
+             bool                     should_collect_resources     = false,
+             bool                     should_count_extended_events = false) throws
     -> Maybe<measured_result>;
 fn
 get_priority(i64 id, priority_target target) wontthrow -> Maybe<i32>;
