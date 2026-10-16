@@ -1449,13 +1449,22 @@ nonzero status unless
 .B \-\-ignore\-exit\-code
 is present. The
 .BR \-\-show\-output ,
-.BR \-\-no\-shell ,
-.BR \-\-runs ,
+.BR \-N " (" \-\-no\-shell ),
+.BR \-n " (" \-\-runs ),
 and
-.B \-\-duration
+.BR \-t " (" \-\-duration )
 options control output, direct execution, sample count, and the millisecond
-budget. With
-.BR \-\-extended ,
+budget.
+.BR \-w " (" \-\-warmup )
+sets the number of unmeasured runs before sampling, one by default. A note
+follows the report when the first sample, or any sample, is an outlier by a
+modified z-score above 14 against the median absolute deviation of the wall
+times.
+.BR \-p " (" \-\-profile )
+takes one extended sample, the same as
+.BR "\-\-runs 1 \-\-extended" .
+With
+.BR \-E " (" \-\-extended ),
 each command also reports CPU time, CPU usage over wall time, waiting time
 (wall time minus user and system time) and its share of wall time, the
 system share of CPU time, context switches and their involuntary share, page

@@ -70,7 +70,7 @@ if [ "$(uname -s)" = Linux ] && command -v perf >/dev/null 2>&1 &&
     test "$counter_row_count" -eq 5
 fi
 case "$counter_output" in
-    *"Benchmark: \`$BENCH_ECHO counter-run\` (1 runs)"*) ;;
+    *"Benchmark: \`$BENCH_ECHO counter-run\` (1 run)"*) ;;
     *) exit 1 ;;
 esac
 echo "counter capability passed"
@@ -84,7 +84,7 @@ if [ "$(uname -s)" = Linux ]; then
     test "$(printf '%s\n' "$fallback_output" | grep -c '^fallback-run$')" -eq 1
     test "$(printf '%s\n' "$fallback_output" | grep -Ec '^  (cpu cycles|instructions|cache refs|cache misses|branch misses)')" -eq 0
     case "$fallback_output" in
-        *"Benchmark: \`$BENCH_ECHO fallback-run\` (1 runs)"*) ;;
+        *"Benchmark: \`$BENCH_ECHO fallback-run\` (1 run)"*) ;;
         *) exit 1 ;;
     esac
 fi
@@ -147,7 +147,7 @@ test "$extended_row_count" -gt "$plain_row_count" ||
     { echo "extended adds no rows"; exit 1; }
 echo "extended rows passed"
 echo "== --extended is documented in the builtin help:"
-"$BIN" -c 'bench --help' 2>&1 | grep -q -e '^      --extended ' && echo "help lists --extended"
+"$BIN" -c 'bench --help' 2>&1 | grep -q -e '^  -E, --extended ' && echo "help lists --extended"
 echo "== a failed later sample clears terminal progress:"
 cat > "$d/vanishing-environment" <<'SH'
 koshkit sleep 0.03 || exit 1
@@ -226,3 +226,10 @@ SH
     [ "$clear_count" -ge 4 ] || exit 1
 fi
 echo "progress clear check complete"
+echo "== short flags, profile, and warmup:"
+"$BIN" -c 'bench -p -N true' 2>&1 | sed -n '1s/^Benchmark: .* (\(.*\))$/\1/p'
+"$BIN" -c "bench -n 2 -w 3 'echo x >> $d/warmup-count'" >/dev/null 2>&1
+wc -l < "$d/warmup-count" | tr -d ' '
+"$BIN" -c 'bench -p -n 2 true' 2>&1 | sed -n '1s/^.*error: //p'
+"$BIN" -c 'bench -w 0 true' 2>&1 | sed -n '1s/^.*error: //p'
+"$BIN" -c 'bench -E -n 2 -N true' 2>&1 | grep -c '^  user time  '

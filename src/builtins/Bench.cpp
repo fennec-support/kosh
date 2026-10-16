@@ -19,12 +19,12 @@ FLAG_LIST_DECL();
 
 FLAG(bench_runs,
      String,
-     '\0',
+     'n',
      "runs",
      "The exact number of samples per command.");
 FLAG(bench_duration,
      String,
-     '\0',
+     't',
      "duration",
      "The sampling budget per command in milliseconds.");
 FLAG(BENCH_IGNORE_EXIT,
@@ -39,20 +39,29 @@ FLAG(BENCH_SHOW_OUTPUT,
      "Show the command's output instead of suppressing it.");
 FLAG(BENCH_NO_SHELL,
      Bool,
-     '\0',
+     'N',
      "no-shell",
      "Fork the command directly, without wrapping it in a shell.");
 FLAG(BENCH_EXTENDED,
      Bool,
-     '\0',
+     'E',
      "extended",
      "Also report the CPU, scheduler, memory, IO, and hardware counters the "
      "platform provides, and trace one run for system calls and threads.");
+FLAG(BENCH_PROFILE,
+     Bool,
+     'p',
+     "profile",
+     "Take one extended sample, the same as --runs 1 --extended.");
+FLAG(bench_warmup,
+     String,
+     'w',
+     "warmup",
+     "The number of unmeasured runs before sampling, at least one.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
-HELP_SYNOPSIS_DECL("[--runs n] [--duration ms] [--ignore-exit-code] "
-                   "[--show-output] [--no-shell] [--extended] "
-                   "command [command ...]");
+HELP_SYNOPSIS_DECL("[-n runs] [-t ms] [-w runs] [-p] [--ignore-exit-code] "
+                   "[--show-output] [-N] [-E] command [command ...]");
 
 HELP_DESCRIPTION_DECL(
     "This builtin measures and compares the runtime of each command.");
@@ -63,9 +72,11 @@ namespace koshka {
 
 namespace {
 
-constexpr usize MAX_SAMPLES             = 100000;
-constexpr usize MIN_SAMPLES             = 3;
-constexpr u64   DEFAULT_DURATION_MILLIS = 3000;
+constexpr usize  MAX_SAMPLES             = 100000;
+constexpr usize  MIN_SAMPLES             = 3;
+constexpr u64    DEFAULT_DURATION_MILLIS = 3000;
+constexpr double OUTLIER_SCORE_THRESHOLD = 14.0;
+constexpr double DOUBLE_EPSILON          = 2.220446049250313e-16;
 
 enum class metric_unit : u8
 {
@@ -340,6 +351,9 @@ public:
   metric_stats             wall_time{};
   metric_stats             peak_rss{};
   Maybe<os::traced_counts> traced{};
+  bool                     is_first_run_slow{false};
+  bool                     has_outliers{false};
+  double                   first_run_nanos{0};
 };
 
 fn
@@ -651,11 +665,68 @@ clear_progress() wontthrow -> void
    time:   O(n * METRIC_COUNT) for n samples, where n is at most MAX_SAMPLES.
            each sample is one os::run_measured() call, which spawns the
            command. */
+/* modified z-scores as hyperfine computes them: the distance from the
+   median over 1.4826 times the median absolute deviation. a score above
+   OUTLIER_SCORE_THRESHOLD marks an outlier. */
+static fn
+detect_outliers(const ArrayList<bench_sample> &samples,
+                CommandResult                 &result,
+                Allocator                      allocator) throws -> void
+{
+  if (samples.count() < 2) return;
+
+  let const do_median = [](ArrayList<double> &values) {
+    values.sort();
+
+    let const middle = values.count() / 2;
+
+    return values.count() % 2 == 1 ? values[middle]
+                                   : (values[middle - 1] + values[middle]) / 2;
+  };
+
+  let walls = ArrayList<double>{allocator};
+
+  for (let const &sample : samples)
+    walls.push(sample.wall_nanos);
+
+  let const median     = do_median(walls);
+  let       deviations = ArrayList<double>{allocator};
+
+  for (let const &sample : samples) {
+    let const deviation = sample.wall_nanos - median;
+
+    deviations.push(deviation < 0 ? -deviation : deviation);
+  }
+
+  let deviation_median = do_median(deviations);
+
+  if (deviation_median == 0) deviation_median = DOUBLE_EPSILON;
+
+  let const do_score = [&](double value) {
+    return (value - median) / (1.4826 * deviation_median);
+  };
+
+  result.first_run_nanos = samples[0].wall_nanos;
+  if (do_score(samples[0].wall_nanos) > OUTLIER_SCORE_THRESHOLD) {
+    result.is_first_run_slow = true;
+
+    return;
+  }
+
+  for (let const &sample : samples) {
+    let const score = do_score(sample.wall_nanos);
+
+    if (score > OUTLIER_SCORE_THRESHOLD || score < -OUTLIER_SCORE_THRESHOLD)
+      result.has_outliers = true;
+  }
+}
+
 fn
 sample_command(StringView shell_binary,
                StringView command,
                Maybe<u64> run_limit,
                u64        duration_millis,
+               u64        warmup_count,
                bool       should_show_progress,
                bool       should_suppress_output,
                bool       should_ignore_exit_code,
@@ -700,6 +771,30 @@ sample_command(StringView shell_binary,
     if (child_argv.is_empty())
       throw Error{StringView{"bench --no-shell needs a command word in '"} +
                   command + "'"};
+  }
+
+  for (u64 warmup = 0; warmup < warmup_count; warmup++) {
+    if (should_show_progress) draw_progress(command, 0, allocator);
+
+    let const warmed = os::run_measured(
+        child_argv, {}, os::measured_output::Suppress, false, false);
+
+    if (!warmed.has_value())
+      throw Error{StringView{"Unable to run '"} + command +
+                  "': " + os::last_system_error_message()};
+
+    if (os::INTERRUPT_REQUESTED) {
+      was_interrupted = true;
+
+      return result;
+    }
+
+    if (warmed->exit_status != 0 && !should_ignore_exit_code) {
+      did_command_fail = true;
+      failure_status   = warmed->exit_status;
+
+      return result;
+    }
   }
 
   let       samples             = ArrayList<bench_sample>{allocator};
@@ -861,6 +956,7 @@ sample_command(StringView shell_binary,
   result.sample_count = samples.count();
   result.wall_time    = compute_stats(
       samples, [](const bench_sample &s) { return s.wall_nanos; });
+  detect_outliers(samples, result, allocator);
   result.peak_rss = compute_stats(
       samples, [](const bench_sample &s) { return s.peak_rss_byte_count; });
 
@@ -893,7 +989,8 @@ append_summary(String              &out,
 {
   out += "Benchmark: ";
   append_command_label(out, result.label.view(), should_color, context);
-  out += " (" + String::from(result.sample_count, allocator) + " runs)\n";
+  out += " (" + String::from(result.sample_count, allocator) +
+         (result.sample_count == 1 ? " run)\n" : " runs)\n");
 
   let rows = ArrayList<MetricRow>{allocator};
 
@@ -996,6 +1093,23 @@ append_summary(String              &out,
     out.append(colored(colors::ansi::RESET, should_color));
     out += '\n';
   }
+
+  if (result.is_first_run_slow || result.has_outliers) {
+    out.append(colored(colors::ansi::DIM, should_color));
+    if (result.is_first_run_slow) {
+      out += "  The first run took ";
+      out += format_metric(result.first_run_nanos, metric_unit::Nanoseconds,
+                           allocator);
+      out += ", much longer than the rest. Raise --warmup to fill caches "
+             "before sampling.";
+    } else {
+      out += "  Some runs are statistical outliers. Run on a quiet system "
+             "or raise --warmup.";
+    }
+
+    out.append(colored(colors::ansi::RESET, should_color));
+    out += '\n';
+  }
 }
 
 fn
@@ -1057,6 +1171,12 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   Maybe<u64> run_limit = None;
 
+  if (FLAG_BENCH_PROFILE.is_enabled() && FLAG_bench_runs.is_set()) {
+    throw ErrorWithLocation{FLAG_bench_runs.value_location(),
+                            StringView{"--profile takes exactly one run"}};
+  }
+
+  if (FLAG_BENCH_PROFILE.is_enabled()) run_limit = 1;
   if (FLAG_bench_runs.is_set())
     run_limit = parse_count_flag(FLAG_bench_runs, StringView{"runs"});
 
@@ -1081,7 +1201,19 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const should_ignore_exit_code = FLAG_BENCH_IGNORE_EXIT.is_enabled();
   let const should_suppress_output  = !FLAG_BENCH_SHOW_OUTPUT.is_enabled();
   let const should_use_shell        = !FLAG_BENCH_NO_SHELL.is_enabled();
-  let const should_collect_extended = FLAG_BENCH_EXTENDED.is_enabled();
+  let const should_collect_extended =
+      FLAG_BENCH_EXTENDED.is_enabled() || FLAG_BENCH_PROFILE.is_enabled();
+
+  u64 warmup_count = 1;
+
+  if (FLAG_bench_warmup.is_set())
+    warmup_count = parse_count_flag(FLAG_bench_warmup, StringView{"warmup"});
+  if (warmup_count == 0 || warmup_count > MAX_SAMPLES) {
+    throw ErrorWithLocation{
+        FLAG_bench_warmup.value_location(),
+        "--warmup expects a number from 1 through " +
+            String::from(MAX_SAMPLES, cxt.scratch_allocator())};
+  }
 
   let shell_binary = String{cxt.scratch_allocator(),
                             cxt.execution_store().get_shell_executable_path()};
@@ -1111,9 +1243,10 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     results.push(sample_command(
         shell_binary.view(), arguments[i].view(), run_limit, duration_millis,
-        should_show_progress, should_suppress_output, should_ignore_exit_code,
-        should_use_shell, should_collect_extended, was_interrupted,
-        did_command_fail, failure_status, cxt.scratch_allocator()));
+        warmup_count, should_show_progress, should_suppress_output,
+        should_ignore_exit_code, should_use_shell, should_collect_extended,
+        was_interrupted, did_command_fail, failure_status,
+        cxt.scratch_allocator()));
 
     if (was_interrupted) {
       os::INTERRUPT_REQUESTED = 0;

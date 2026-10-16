@@ -10,7 +10,7 @@ direct
 direct
 Benchmark: `/bin/echo direct` (2 runs)
 == --runs executes exactly one sample:
-Benchmark: `true` (1 runs)
+Benchmark: `true` (1 run)
 == invalid sample counts are rejected:
 rc=1
 rc=1
@@ -48,3 +48,9 @@ extended rows passed
 help lists --extended
 == a failed later sample clears terminal progress:
 progress clear check complete
+== short flags, profile, and warmup:
+1 run
+5
+--profile takes exactly one run.
+--warmup expects a number from 1 through 100000.
+1
