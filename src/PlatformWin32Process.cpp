@@ -3515,6 +3515,25 @@ exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64
 }
 
 fn
+sample_own_memory() wontthrow -> own_memory_sample
+{
+  own_memory_sample       sample{};
+  PROCESS_MEMORY_COUNTERS memory_counters{};
+
+  memory_counters.cb = sizeof(memory_counters);
+  if (GetProcessMemoryInfo(GetCurrentProcess(), &memory_counters,
+                           sizeof(memory_counters)) != FALSE)
+  {
+    sample.resident_byte_count =
+        static_cast<u64>(memory_counters.WorkingSetSize);
+    sample.peak_byte_count =
+        static_cast<u64>(memory_counters.PeakWorkingSetSize);
+  }
+
+  return sample;
+}
+
+fn
 read_process_cpu_times() wontthrow -> cpu_times
 {
   cpu_times result{};

@@ -2504,6 +2504,15 @@ read_child_cpu_times() wontthrow -> child_cpu_times;
 fn
 exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64;
 
+struct own_memory_sample
+{
+  u64 resident_byte_count{0};
+  u64 peak_byte_count{0};
+};
+
+fn
+sample_own_memory() wontthrow -> own_memory_sample;
+
 struct malloc_heap_stats
 {
   usize bytes_in_use{0};

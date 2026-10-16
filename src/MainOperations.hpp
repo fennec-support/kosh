@@ -737,6 +737,30 @@ analyze_script(const script_run_input    &input,
 }
 
 static fn
+command_memory_byte_count(const os::own_memory_sample &before) wontthrow -> u64
+{
+  let const child_peak_byte_count = os::exchange_command_peak_rss_bytes(0);
+
+  if (child_peak_byte_count > 0) return child_peak_byte_count;
+
+  let const after        = os::sample_own_memory();
+  u64       growth_bytes = 0;
+
+  if (after.resident_byte_count > before.resident_byte_count)
+    growth_bytes = after.resident_byte_count - before.resident_byte_count;
+  if (after.peak_byte_count > before.peak_byte_count &&
+      after.peak_byte_count - before.resident_byte_count > growth_bytes)
+  {
+    growth_bytes = after.peak_byte_count - before.resident_byte_count;
+  }
+
+  LOG(Debug, "the shell grew by %llu bytes during the command",
+      static_cast<unsigned long long>(growth_bytes));
+
+  return growth_bytes;
+}
+
+static fn
 evaluate_script(const script_run_input &input,
                 const script_run_plan  &plan,
                 Expression             *ast,
@@ -799,6 +823,7 @@ evaluate_script(const script_run_input &input,
   };
 
   let const command_start_nanos = koshka::os::monotonic_nanos();
+  let const memory_before       = koshka::os::sample_own_memory();
 
   unused(koshka::os::exchange_command_peak_rss_bytes(0));
 
@@ -861,7 +886,7 @@ evaluate_script(const script_run_input &input,
   context.execution_store().set_last_command_duration_nanos(
       koshka::os::monotonic_nanos() - command_start_nanos);
   context.execution_store().set_last_command_peak_rss_bytes(
-      koshka::os::exchange_command_peak_rss_bytes(0));
+      command_memory_byte_count(memory_before));
   LOG(Debug, "the chunk finished with exit code %d", exit_code);
   if (koshka::os::SIGNAL_PENDING) context.run_pending_traps();
   report_escaped_control_flow(context, input.contents);

@@ -1949,6 +1949,45 @@ exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64
   return byte_count;
 }
 
+fn
+sample_own_memory() wontthrow -> own_memory_sample
+{
+  own_memory_sample sample{};
+#if defined __APPLE__
+  rusage_info_v4 usage{};
+
+  if (::proc_pid_rusage(getpid(), RUSAGE_INFO_V4,
+                        reinterpret_cast<rusage_info_t *>(&usage)) == 0)
+  {
+    sample.resident_byte_count = usage.ri_phys_footprint;
+    sample.peak_byte_count     = usage.ri_lifetime_max_phys_footprint;
+  }
+#else
+  struct rusage usage{};
+
+  if (getrusage(RUSAGE_SELF, &usage) == 0)
+    sample.peak_byte_count = platform_peak_rss_bytes(usage.ru_maxrss);
+  sample.resident_byte_count = sample.peak_byte_count;
+#if defined __linux__
+  char      buffer[128];
+  let const length =
+      read_small_file("/proc/self/statm", buffer, sizeof(buffer));
+
+  if (length > 0) {
+    if (let const resident =
+            nth_space_field(StringView{buffer, length}, 1).to<i64>();
+        !resident.is_error() && resident.value() >= 0)
+    {
+      sample.resident_byte_count = static_cast<u64>(resident.value()) *
+                                   static_cast<u64>(sysconf(_SC_PAGESIZE));
+    }
+  }
+#endif
+#endif
+
+  return sample;
+}
+
 namespace {
 
 struct measured_child
