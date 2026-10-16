@@ -3715,7 +3715,7 @@ expand_prompt_escapes(StringView         prompt,
 
     case 'M': {
       let const byte_count =
-          context.execution_store().last_command_peak_rss_bytes();
+          context.execution_store().last_command_peak_rss_byte_count();
 
       if (byte_count > 0) {
         out += koshka::koshkit::format_human_size(byte_count,

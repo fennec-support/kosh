@@ -544,18 +544,18 @@ CompoundListCondition::evaluate_impl(EvalContext &cxt,
     cxt.execution_store().is_terminal_exec_allowed() = false;
   }
 
-  double user_before          = 0.0;
-  double system_before        = 0.0;
-  u64    start_nanos          = 0;
-  u64    outer_peak_rss_bytes = 0;
+  double user_before               = 0.0;
+  double system_before             = 0.0;
+  u64    start_nanos               = 0;
+  u64    outer_peak_rss_byte_count = 0;
 
   if (m_cmd->is_timed()) {
     let const child_times = os::read_child_cpu_times();
 
-    user_before          = child_times.user_seconds;
-    system_before        = child_times.system_seconds;
-    start_nanos          = os::monotonic_nanos();
-    outer_peak_rss_bytes = os::exchange_command_peak_rss_bytes(0);
+    user_before               = child_times.user_seconds;
+    system_before             = child_times.system_seconds;
+    start_nanos               = os::monotonic_nanos();
+    outer_peak_rss_byte_count = os::exchange_command_peak_rss_byte_count(0);
   }
 
   let result = m_cmd->evaluate_root_status(cxt, mode);
@@ -569,7 +569,8 @@ CompoundListCondition::evaluate_impl(EvalContext &cxt,
     user_after   = child_times.user_seconds;
     system_after = child_times.system_seconds;
 
-    let const rss_after = os::finish_nested_command_peak(outer_peak_rss_bytes);
+    let const rss_after =
+        os::finish_nested_command_peak(outer_peak_rss_byte_count);
     const double real_seconds =
         static_cast<double>(elapsed_nanos) / 1000000000.0;
     let const user_cpu   = user_after - user_before;

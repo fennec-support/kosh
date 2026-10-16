@@ -1376,15 +1376,15 @@ public:
   }
 
   fn
-  set_last_command_peak_rss_bytes(u64 byte_count) wontthrow
+  set_last_command_peak_rss_byte_count(u64 byte_count) wontthrow
   {
-    m_last_command_peak_rss_bytes = byte_count;
+    m_last_command_peak_rss_byte_count = byte_count;
   }
 
   pure fn
-  last_command_peak_rss_bytes() const wontthrow -> u64
+  last_command_peak_rss_byte_count() const wontthrow -> u64
   {
-    return m_last_command_peak_rss_bytes;
+    return m_last_command_peak_rss_byte_count;
   }
 
   fn
@@ -1588,7 +1588,7 @@ private:
   Maybe<i64>          m_line_discard_status{};
   usize               m_line_discard_subshell_depth{0};
   u64                 m_last_command_duration_nanos{0};
-  u64                 m_last_command_peak_rss_bytes{0};
+  u64                 m_last_command_peak_rss_byte_count{0};
   usize               m_subshell_depth{0};
   usize               m_condition_depth{0};
   usize               m_loop_depth{0};
@@ -2008,6 +2008,8 @@ pure fn
 shopt_option_index(shopt_option_id option) wontthrow -> u8;
 pure fn
 shopt_default_is_on(u8 index) wontthrow -> bool;
+pure fn
+dot_parent_steps(StringView word) wontthrow -> Maybe<usize>;
 
 inline pure fn
 RuntimeState::is_shopt_enabled(shopt_option_id option) const wontthrow -> bool

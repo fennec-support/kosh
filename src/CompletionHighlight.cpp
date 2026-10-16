@@ -36,6 +36,53 @@ BumpArena internal::HIGHLIGHT_ARENA{};
 usize internal::DEBUG_HIGHLIGHT_INPUT_BYTE_COUNT = 0;
 #endif
 
+enum class listed_path_state : u8
+{
+  Missing,
+  Directory,
+  NonDirectory,
+  Unlisted,
+};
+
+static fn
+find_listed_path_state(StringView directory, StringView name) throws
+    -> listed_path_state
+{
+  let const listing_directory = Path{directory};
+  let const entries           = utils::read_directory_cached(
+      listing_directory, utils::directory_validation::Cached,
+      utils::directory_listing_order::FoldedName);
+
+  if (entries == nullptr) return listed_path_state::Unlisted;
+
+  let entry_position = utils::directory_entry_name_lower_bound(*entries, name);
+
+  for (; entry_position < entries->count(); entry_position++) {
+    let const &entry = (*entries)[entry_position];
+
+    if (entry.name.length() != name.length ||
+        !utils::directory_entry_name_has_casefold_prefix(entry.name.view(),
+                                                         name))
+    {
+      return listed_path_state::Missing;
+    }
+
+    if (os::FILESYSTEM_IS_CASE_SENSITIVE && entry.name.view() != name) {
+      continue;
+    }
+
+    switch (entry.kind) {
+    case Path::EntryKind::Directory: return listed_path_state::Directory;
+    case Path::EntryKind::Regular:
+    case Path::EntryKind::Other:     return listed_path_state::NonDirectory;
+    case Path::EntryKind::Symlink:
+    case Path::EntryKind::Unknown:   return listed_path_state::Unlisted;
+    }
+  }
+
+  return listed_path_state::Missing;
+}
+
 static fn
 first_word_resolves(StringView word, EvalContext &context) throws
     -> bool
@@ -79,14 +126,17 @@ first_word_resolves(StringView word, EvalContext &context) throws
 
   /* With autocd, a directory or a run of two or more dots becomes a cd. */
   if (!context.is_shopt_enabled(shopt_option_id::Autocd)) return false;
+  if (dot_parent_steps(word).has_value()) return true;
+  if (os::has_directory_separator(word)) return Path{word}.is_directory();
 
-  bool is_parent_steps = word.length >= 2;
-
-  for (usize i = 0; i < word.length && is_parent_steps; i++) {
-    is_parent_steps = word[i] == '.';
+  switch (find_listed_path_state(".", word)) {
+  case listed_path_state::Directory:    return true;
+  case listed_path_state::NonDirectory:
+  case listed_path_state::Missing:      return false;
+  case listed_path_state::Unlisted:     return Path{word}.is_directory();
   }
 
-  return is_parent_steps || Path{word}.is_directory();
+  return false;
 }
 
 static fn
@@ -346,8 +396,11 @@ word_looks_like_ssh_login(StringView word) wontthrow -> bool
     return false;
   }
 
-  for (usize byte_index = 0; byte_index < word.length; byte_index++)
-    if (word[byte_index] == '/' || word[byte_index] == '\\') return false;
+  for (usize byte_index = 0; byte_index < word.length; byte_index++) {
+    if (word[byte_index] == '/' || word[byte_index] == '\\') {
+      return false;
+    }
+  }
 
   return true;
 }
@@ -543,53 +596,6 @@ color_arithmetic(StringView                 line,
                  HashSet                   &line_variable_names,
                  HashSet                   &function_names,
                  bool                       is_bracket_form) throws -> usize;
-
-enum class listed_path_state : u8
-{
-  Missing,
-  Directory,
-  NonDirectory,
-  Unlisted,
-};
-
-static fn
-find_listed_path_state(StringView directory, StringView name) throws
-    -> listed_path_state
-{
-  let const listing_directory = Path{directory};
-  let const entries           = utils::read_directory_cached(
-      listing_directory, utils::directory_validation::Cached,
-      utils::directory_listing_order::FoldedName);
-
-  if (entries == nullptr) return listed_path_state::Unlisted;
-
-  let entry_position = utils::directory_entry_name_lower_bound(*entries, name);
-
-  for (; entry_position < entries->count(); entry_position++) {
-    let const &entry = (*entries)[entry_position];
-
-    if (entry.name.length() != name.length ||
-        !utils::directory_entry_name_has_casefold_prefix(entry.name.view(),
-                                                         name))
-    {
-      return listed_path_state::Missing;
-    }
-
-    if (os::FILESYSTEM_IS_CASE_SENSITIVE && entry.name.view() != name) {
-      continue;
-    }
-
-    switch (entry.kind) {
-    case Path::EntryKind::Directory: return listed_path_state::Directory;
-    case Path::EntryKind::Regular:
-    case Path::EntryKind::Other:     return listed_path_state::NonDirectory;
-    case Path::EntryKind::Symlink:
-    case Path::EntryKind::Unknown:   return listed_path_state::Unlisted;
-    }
-  }
-
-  return listed_path_state::Missing;
-}
 
 static fn
 word_names_existing_path(StringView word) throws -> bool

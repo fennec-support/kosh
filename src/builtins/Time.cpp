@@ -58,8 +58,9 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     cxt.execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
   };
 
-  let const start_nanos          = os::monotonic_nanos();
-  let const outer_peak_rss_bytes = os::exchange_command_peak_rss_bytes(0);
+  let const start_nanos = os::monotonic_nanos();
+  let const outer_peak_rss_byte_count =
+      os::exchange_command_peak_rss_byte_count(0);
 
   let const status =
       cxt.run_source(command, "time", ec.source_location(), StringView{"time"},
@@ -68,7 +69,8 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const elapsed_nanos = os::monotonic_nanos() - start_nanos;
 
   let const child_times_after = os::read_child_cpu_times();
-  let const rss_after = os::finish_nested_command_peak(outer_peak_rss_bytes);
+  let const rss_after =
+      os::finish_nested_command_peak(outer_peak_rss_byte_count);
 
   let const real_seconds = static_cast<double>(elapsed_nanos) / 1000000000.0;
   let const user_cpu =

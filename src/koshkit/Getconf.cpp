@@ -401,7 +401,7 @@ Getconf::execute(const ExecContext               &ec,
   } else if (operands.count() > 2) {
     report_soft_koshkit_util_error(ec, cxt, operand_locations[2],
                                    args[0].view(),
-                                   "Unexpected operand `" + operands[2] + "`");
+                                   "Unexpected operand '" + operands[2] + "'");
 
     return 1;
   }
@@ -409,7 +409,7 @@ Getconf::execute(const ExecContext               &ec,
   let const do_reject_path_operand = [&]() throws -> i32 {
     report_soft_koshkit_util_error(
         ec, cxt, operand_locations[1], args[0].view(),
-        "The variable `" + operands[0] + "` takes no path operand");
+        "The variable '" + operands[0] + "' takes no path operand");
 
     return 1;
   };
@@ -523,7 +523,7 @@ Getconf::execute(const ExecContext               &ec,
     if (operands.count() != 2) {
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[0], args[0].view(),
-          "The variable `" + operands[0] + "` needs a path operand");
+          "The variable '" + operands[0] + "' needs a path operand");
 
       return 1;
     }

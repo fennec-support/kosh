@@ -1767,7 +1767,7 @@ show_soft_koshkit_error(const ExecContext   &ec,
   }
 
   if (severity == soft_report_severity::Warning) {
-    show_message(Warning{message}.to_string());
+    show_warning(message);
 
     return;
   }

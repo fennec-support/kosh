@@ -401,11 +401,13 @@ LiveView::clip_frame_rows(String                     &frame,
   }
 
   if (body.length != 0 && body[body.length - 1] != '\n') total_row_count++;
-  if (total_row_count <= visible_row_count) return;
 
-  let const maximum_offset = total_row_count - visible_row_count;
+  let const maximum_offset = total_row_count > visible_row_count
+                                 ? total_row_count - visible_row_count
+                                 : 0;
 
   if (m_scroll.offset > maximum_offset) m_scroll.offset = maximum_offset;
+  if (total_row_count <= visible_row_count) return;
 
   usize kept_start = scroll_start;
   usize kept_end   = body.length;

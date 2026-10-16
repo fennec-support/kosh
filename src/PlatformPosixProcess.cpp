@@ -33,7 +33,7 @@ static process_launch_counts PROCESS_LAUNCH_COUNTS{};
 
 static bool IS_TERMINAL_OWNER = true;
 
-static u64 COMMAND_PEAK_RSS_BYTES = 0;
+static u64 COMMAND_PEAK_RSS_BYTE_COUNT = 0;
 
 static fn
 note_reaped_child_usage(const struct rusage &usage) wontthrow -> void
@@ -42,7 +42,8 @@ note_reaped_child_usage(const struct rusage &usage) wontthrow -> void
 
   LOG(Debug, "a reaped child and its descendants peaked at %llu bytes",
       static_cast<unsigned long long>(byte_count));
-  if (byte_count > COMMAND_PEAK_RSS_BYTES) COMMAND_PEAK_RSS_BYTES = byte_count;
+  if (byte_count > COMMAND_PEAK_RSS_BYTE_COUNT)
+    COMMAND_PEAK_RSS_BYTE_COUNT = byte_count;
 }
 
 #if defined __APPLE__
@@ -304,7 +305,7 @@ spawn_failure_child(SourceLocation     location,
       throw_exec_failure_error(steal(location), program_path, spawn_error);
     } catch (const ErrorWithLocation &error) {
       koshka::show_message(error.to_string(source));
-    }
+    } catch (...) {}
     koshka::flush();
     _exit(spawn_error == ENOENT ? 127 : 126);
   }
@@ -2048,10 +2049,10 @@ read_child_cpu_times() wontthrow -> child_cpu_times
 }
 
 fn
-exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64
+exchange_command_peak_rss_byte_count(u64 next_byte_count) wontthrow -> u64
 {
-  let const byte_count   = COMMAND_PEAK_RSS_BYTES;
-  COMMAND_PEAK_RSS_BYTES = next_byte_count;
+  let const byte_count        = COMMAND_PEAK_RSS_BYTE_COUNT;
+  COMMAND_PEAK_RSS_BYTE_COUNT = next_byte_count;
 
   return byte_count;
 }

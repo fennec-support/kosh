@@ -654,7 +654,7 @@ parse_invocation_flags(int argc, const char *const *argv) throws
 static fn
 enter_rescue_mode(command_line &line) throws -> void
 {
-  show_message(Warning{"Entering rescue"}.to_string());
+  show_warning("Entering rescue");
   line.is_rescue_mode = true;
   reset_flags(FLAG_LIST);
   try {

@@ -384,7 +384,6 @@ struct makefile
   bool                             is_every_target_precious{false};
   usize                            call_max_argument_count{0};
   usize                            eval_depth{0};
-  u32                              active_source_name_index{0};
   SourceLocation                   active_source_span{};
   ArrayList<make_source_document> *source_documents{nullptr};
 
@@ -1416,7 +1415,8 @@ run_make_shell_function(EvalContext &cxt,
 
   let source_name = StringView{"make"};
 
-  if (let const active_name = source_name_at(mk.active_source_name_index);
+  if (let const active_name =
+          source_name_at(mk.active_source_span.source_name_index);
       active_name.has_value())
     source_name = *active_name;
 
@@ -1573,6 +1573,11 @@ last_suffix_position(StringView path) wontthrow -> Maybe<usize>
 
   return suffix;
 }
+
+static fn
+show_located_make_error(EvalContext             &cxt,
+                        const makefile          &mk,
+                        const ErrorWithLocation &error) throws -> bool;
 
 static fn
 evaluate_make_function(EvalContext                 &cxt,
@@ -1991,7 +1996,8 @@ evaluate_make_function(EvalContext                 &cxt,
     let evaluated_source = do_expand(0);
     let source_name      = String{allocator};
 
-    if (let const active_name = source_name_at(mk.active_source_name_index);
+    if (let const active_name =
+            source_name_at(mk.active_source_span.source_name_index);
         active_name.has_value())
       source_name = String{allocator, *active_name};
     else
@@ -2018,19 +2024,13 @@ evaluate_make_function(EvalContext                 &cxt,
   case make_function_kind::Warning: {
     let const message = do_expand(0);
 
-    if (mk.source_documents != nullptr && mk.active_source_span.length != 0) {
-      for (let const &document : *mk.source_documents) {
-        if (document.source_name_index !=
-            mk.active_source_span.source_name_index)
-          continue;
-        show_message(WarningWithLocation{mk.active_source_span, message.view()}
-                         .to_string(document.source.view(), &cxt));
-
-        return String{allocator};
-      }
+    if (mk.active_source_span.length == 0 ||
+        !show_located_make_error(
+            cxt, mk,
+            WarningWithLocation{mk.active_source_span, message.view()}))
+    {
+      show_warning(message.view());
     }
-
-    show_message(Warning{message.view()}.to_string());
 
     return String{allocator};
   }
@@ -2548,14 +2548,9 @@ parse_makefile_into(EvalContext                     &cxt,
                     ArrayList<make_source_document> &sources,
                     usize first_source_position) throws -> void
 {
-  let const saved_source_name_index = mk.active_source_name_index;
-
   let const saved_source_span = mk.active_source_span;
 
-  defer {
-    mk.active_source_name_index = saved_source_name_index;
-    mk.active_source_span       = saved_source_span;
-  };
+  defer { mk.active_source_span = saved_source_span; };
 
   ArrayList<usize>             current_rule_indices{cxt.scratch_allocator()};
   ArrayList<usize>             current_pattern_indices{cxt.scratch_allocator()};
@@ -2577,8 +2572,6 @@ parse_makefile_into(EvalContext                     &cxt,
                            sources[source_position - 1].source_name_index,
                            cxt.scratch_allocator())});
 
-  SourceLocation active_source_span;
-
   try {
     while (!source_frames.is_empty()) {
       make_source_frame &source_frame =
@@ -2592,9 +2585,7 @@ parse_makefile_into(EvalContext                     &cxt,
       const make_logical_line &logical =
           source_frame.lines[source_frame.line_position++];
 
-      active_source_span          = logical.source_span;
-      mk.active_source_name_index = logical.source_span.source_name_index;
-      mk.active_source_span       = logical.source_span;
+      mk.active_source_span = logical.source_span;
 
       let line = logical.text.view();
 
@@ -3003,7 +2994,8 @@ parse_makefile_into(EvalContext                     &cxt,
 
               for (String &prerequisite : new_prerequisites) {
                 existing->prerequisites.push(steal(prerequisite));
-                existing->prerequisite_line_locations.push(active_source_span);
+                existing->prerequisite_line_locations.push(
+                    mk.active_source_span);
               }
 
               current_rule_indices.push(
@@ -3026,7 +3018,7 @@ parse_makefile_into(EvalContext                     &cxt,
 
             for (String &prerequisite : new_prerequisites) {
               rule.prerequisites.push(steal(prerequisite));
-              rule.prerequisite_line_locations.push(active_source_span);
+              rule.prerequisite_line_locations.push(mk.active_source_span);
             }
 
             current_rule_indices.push(mk.add_rule(steal(rule)));
@@ -3056,7 +3048,7 @@ parse_makefile_into(EvalContext                     &cxt,
       }
     }
   } catch (const ErrorBase &error) {
-    relocate_if_unlocated(error, active_source_span);
+    relocate_if_unlocated(error, mk.active_source_span);
   }
 }
 

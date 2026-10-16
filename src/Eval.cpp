@@ -2195,7 +2195,7 @@ ExecContext::print_to_stderr(StringView s) const throws -> void
   }
 }
 
-static pure fn
+pure fn
 dot_parent_steps(StringView word) wontthrow -> Maybe<usize>
 {
   if (word.length < 2) return None;
