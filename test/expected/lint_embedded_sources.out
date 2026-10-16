@@ -72,3 +72,18 @@ fi
 ```
 compose/compose.yaml:3:20: warning: The variable 'FOO' is used before any assignment gives it a value. (SC2154)
 escape/Dockerfile:8:5: error: This 'case' has no closing 'esac'.
+jobs:|
+  push:|
+    runs-on: ubuntu-latest|
+    steps:|
+      - run: ||
+          if [ -n "${{ secrets.TOKEN }}" ]|
+          then|
+            docker push ${{ env.IMAGE }}:${{ github.sha }}|
+          fi|
+|
+          echo '${{ inputs.raw }}'|
+      - run: if true;then echo ${{ matrix.os }};fi|
+      - run: ||
+          {%- if x %}echo a{%- endif %}|
+      - run: echo done|

@@ -1235,13 +1235,23 @@ Server::format_document(const JsonValue *id,
     for (let const &fragment : document->format.fragments) {
       if (fragment.should_skip_format) continue;
 
+      let const formattable = parser_format_formattable_source(fragment);
+
+      if (!formattable.has_value()) continue;
+
       let const formatted_fragment = format_shell_source(
-          fragment.shell_source.view(), m_ast_arena, errors, nullptr,
+          formattable->view(), m_ast_arena, errors, nullptr,
           m_context.arena_store().function_arena(), fragment.mood);
 
       if (!formatted_fragment.has_value()) break;
 
-      let encoded = parser_format_encode(fragment, formatted_fragment->view());
+      let const restored = parser_format_host_replacement(
+          fragment, document->normalized_source.view(),
+          formatted_fragment->view());
+
+      if (!restored.has_value()) continue;
+
+      let encoded = parser_format_encode(fragment, restored->view());
 
       if (!encoded.has_value()) break;
       replacements.push(parser_format_replacement{

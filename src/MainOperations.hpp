@@ -1180,9 +1180,13 @@ format_document_source(StringView            source,
   for (let const &fragment : document.fragments) {
     if (fragment.should_skip_format) continue;
 
+    let const formattable = parser_format_formattable_source(fragment);
+
+    if (!formattable.has_value()) continue;
+
     let       fragment_ast = String{heap_allocator()};
     let const formatted =
-        format_shell_source(fragment.shell_source.view(), ast_arena, errors,
+        format_shell_source(formattable->view(), ast_arena, errors,
                             ast_output != nullptr ? &fragment_ast : nullptr,
                             function_arena, fragment.mood);
 
@@ -1192,7 +1196,12 @@ format_document_source(StringView            source,
       ast_output->append(fragment_ast.view());
     }
 
-    let encoded = parser_format_encode(fragment, formatted->view());
+    let const restored =
+        parser_format_host_replacement(fragment, source, formatted->view());
+
+    if (!restored.has_value()) continue;
+
+    let encoded = parser_format_encode(fragment, restored->view());
 
     if (!encoded.has_value()) return None;
     replacements.push(parser_format_replacement{

@@ -741,3 +741,20 @@ for fix_file in compose/compose.yaml escape/Dockerfile .vscode/tasks.json; do
   (cd "$fixes" && "$BIN" --lint --no-traces "$fix_file" 2>&1) |
     grep -E '^[^ ].*: (error|warning): ' || true
 done
+
+templates="$root/templates"
+mkdir -p "$templates/.github/workflows"
+cat > "$templates/.github/workflows/push.yml" <<'EOF'
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          if [ -n "${{ secrets.TOKEN }}" ];then docker push ${{ env.IMAGE }}:${{ github.sha }};fi
+          echo '${{ inputs.raw }}'
+      - run: if true;then echo ${{ matrix.os }};fi
+      - run: |
+          {%- if x %}echo a{%- endif %}
+      - run: echo done
+EOF
+(cd "$templates" && "$BIN" --format .github/workflows/push.yml) | sed 's/ *$/|/'

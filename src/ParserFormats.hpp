@@ -95,6 +95,18 @@ struct parser_format_json_key
   StringView excluded_container_key{};
 };
 
+struct parser_format_template_span
+{
+  String host_text{heap_allocator()};
+  String placeholder{heap_allocator()};
+};
+
+struct parser_format_template_masks
+{
+  ArrayList<parser_format_template_span> spans{heap_allocator()};
+  bool                                   is_restorable{true};
+};
+
 struct parser_format_fragment
 {
   String              analysis_source{heap_allocator()};
@@ -104,11 +116,12 @@ struct parser_format_fragment
   bool                should_silence_unresolved_commands{false};
   bool                should_select_end{false};
   bool                should_skip_format{false};
-  ArrayList<String>   assumed_variables{heap_allocator()};
-  char                continuation_byte{' '};
-  usize               host_start{0};
-  usize               host_end{0};
-  usize               indent_length{0};
+  ArrayList<parser_format_template_span> template_spans{heap_allocator()};
+  ArrayList<String>                      assumed_variables{heap_allocator()};
+  char                                   continuation_byte{' '};
+  usize                                  host_start{0};
+  usize                                  host_end{0};
+  usize                                  indent_length{0};
 
   pure fn
   contains(usize host_position) const wontthrow -> bool
@@ -216,11 +229,21 @@ constexpr u8 TEMPLATE_IDE_VARIABLES     = 1u << 5;
 constexpr u8 TEMPLATE_DOUBLE_DOLLAR     = 1u << 6;
 
 fn
-parser_format_masked_template_source(StringView host_source,
-                                     usize      host_start,
-                                     usize      host_end,
-                                     u8         template_syntax,
-                                     bool      &did_mask) throws -> String;
+parser_format_masked_template_source(
+    StringView                    host_source,
+    usize                         host_start,
+    usize                         host_end,
+    u8                            template_syntax,
+    bool                         &did_mask,
+    parser_format_template_masks *masks = nullptr) throws -> String;
+fn
+parser_format_formattable_source(
+    const parser_format_fragment &fragment) throws -> Maybe<String>;
+fn
+parser_format_host_replacement(const parser_format_fragment &fragment,
+                               StringView                    host_source,
+                               StringView                    formatted) throws
+    -> Maybe<String>;
 fn
 parser_format_add_indented_fragment(
     parsed_format_document &document,

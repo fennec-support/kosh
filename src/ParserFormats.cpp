@@ -688,11 +688,13 @@ template_construct_end(StringView source,
 }
 
 fn
-parser_format_masked_template_source(StringView host_source,
-                                     usize      host_start,
-                                     usize      host_end,
-                                     u8         template_syntax,
-                                     bool      &did_mask) throws -> String
+parser_format_masked_template_source(
+    StringView                    host_source,
+    usize                         host_start,
+    usize                         host_end,
+    u8                            template_syntax,
+    bool                         &did_mask,
+    parser_format_template_masks *masks) throws -> String
 {
   let analysis_source = String{heap_allocator()};
 
@@ -716,6 +718,7 @@ parser_format_masked_template_source(StringView host_source,
     {
       analysis_source.append(" $");
       position += 2;
+      if (masks != nullptr) masks->is_restorable = false;
       continue;
     }
 
@@ -724,6 +727,7 @@ parser_format_masked_template_source(StringView host_source,
     {
       analysis_source.append("xxxx");
       position += 4;
+      if (masks != nullptr) masks->is_restorable = false;
       continue;
     }
 
@@ -753,8 +757,9 @@ parser_format_masked_template_source(StringView host_source,
     let const length      = *construct_end - position;
     let const construct   = host_source.substring_of_length(position, length);
     let const has_newline = construct.find_character('\n').has_value();
+    let const placeholder_start = analysis_source.length();
 
-    if (is_value && !has_newline && !is_in_single_quote && length >= 4) {
+    if (is_value && !has_newline && length >= 4) {
       if (is_in_double_quote && length >= 5) {
         analysis_source.append("${1#");
         analysis_source.append_repeated('x', length - 5);
@@ -771,11 +776,88 @@ parser_format_masked_template_source(StringView host_source,
       }
     }
 
+    if (masks != nullptr) {
+      let const placeholder =
+          analysis_source.view().substring(placeholder_start);
+
+      if (placeholder.is_empty() || placeholder[0] != '$') {
+        masks->is_restorable = false;
+      } else {
+        masks->spans.push(parser_format_template_span{
+            String{heap_allocator(), construct  },
+            String{heap_allocator(), placeholder}
+        });
+      }
+    }
+
     did_mask = true;
     position = *construct_end;
   }
 
   return analysis_source;
+}
+
+static fn
+replace_in_order(StringView                                    text,
+                 const ArrayList<parser_format_template_span> &spans,
+                 bool is_restoring) throws -> Maybe<String>
+{
+  let   result   = String{heap_allocator()};
+  usize position = 0;
+
+  for (let const &span : spans) {
+    let const wanted =
+        is_restoring ? span.placeholder.view() : span.host_text.view();
+    let const replacement =
+        is_restoring ? span.host_text.view() : span.placeholder.view();
+    let const found = text.substring(position).find_substring(wanted);
+
+    if (!found.has_value()) return None;
+    result.append(text.substring_of_length(position, *found));
+    result.append(replacement);
+    position += *found + wanted.length;
+  }
+
+  result.append(text.substring(position));
+
+  return result;
+}
+
+fn
+parser_format_formattable_source(
+    const parser_format_fragment &fragment) throws -> Maybe<String>
+{
+  return replace_in_order(fragment.shell_source.view(), fragment.template_spans,
+                          false);
+}
+
+fn
+parser_format_host_replacement(const parser_format_fragment &fragment,
+                               StringView                    host_source,
+                               StringView                    formatted) throws
+    -> Maybe<String>
+{
+  let restored = replace_in_order(formatted, fragment.template_spans, true);
+
+  if (!restored.has_value()) return None;
+
+  let const host = host_source.substring_of_length(
+      fragment.host_start, fragment.host_end - fragment.host_start);
+  let text = restored->view();
+
+  if (host.is_empty() || host[host.length - 1] != '\n') {
+    while (!text.is_empty() && text[text.length - 1] == '\n')
+      text = text.substring_of_length(0, text.length - 1);
+  }
+
+  if (fragment.codec != parser_format_codec::Indented &&
+      !host.find_character('\n').has_value() &&
+      text.find_character('\n').has_value())
+  {
+    return None;
+  }
+
+  return String{heap_allocator(), text};
 }
 
 /* memory: deindented holds each line without up to indent_length leading
@@ -1757,8 +1839,9 @@ add_yaml_scalar_fragment(parsed_format_document &document,
   if (item.start >= item.end) return;
 
   bool did_mask = false;
+  let  masks    = parser_format_template_masks{};
   let  analysis = parser_format_masked_template_source(
-      source, item.start, item.end, template_syntax, did_mask);
+      source, item.start, item.end, template_syntax, did_mask, &masks);
   let const fragment_count      = document.fragments.count();
   usize     first_line_position = item.start;
   let const first_line          = source.next_line(first_line_position);
@@ -1779,6 +1862,8 @@ add_yaml_scalar_fragment(parsed_format_document &document,
     blanked.append(analysis.view().substring(item.start + first_line.length));
     analysis = steal(blanked);
   }
+
+  let const masked = analysis.clone();
 
   if (item.is_block) {
     if (item.is_folded) {
@@ -1812,13 +1897,21 @@ add_yaml_scalar_fragment(parsed_format_document &document,
                                  ? item.start + first_line.length
                                  : item.start;
 
+  let const do_differs_from = [&](StringView other) {
+    return compared_start < item.end &&
+           fragment.analysis_source.view().substring_of_length(
+               compared_start, item.end - compared_start) !=
+               other.substring_of_length(compared_start,
+                                         item.end - compared_start);
+  };
+  let const has_other_change = do_differs_from(masked.view());
+
   if (did_mask) fragment.should_silence_unresolved_commands = true;
-  fragment.should_skip_format =
-      did_mask || (compared_start < item.end &&
-                   fragment.analysis_source.view().substring_of_length(
-                       compared_start, item.end - compared_start) !=
-                       source.substring_of_length(compared_start,
-                                                  item.end - compared_start));
+  fragment.should_skip_format = has_other_change ||
+                                (did_mask && !masks.is_restorable) ||
+                                (!did_mask && do_differs_from(source));
+  if (did_mask && !fragment.should_skip_format)
+    fragment.template_spans = steal(masks.spans);
 }
 
 static fn

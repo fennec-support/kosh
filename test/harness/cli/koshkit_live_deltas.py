@@ -145,9 +145,9 @@ def probe_evilnet(binary):
         time.sleep(0.3)
         status, report = run_report(
             binary, "koshkit --color never evilnet --traffic "
-            "--cumulative=0.3")
+            "--cumulative=1")
         print_result("evilnet-cumulative", status,
-                     describe_network_report(report, "RX/0.3s"))
+                     describe_network_report(report, "RX/1s"))
 
         status, report = run_live_report(
             binary, "koshkit --color never evilnet --traffic --live=0.1 "
