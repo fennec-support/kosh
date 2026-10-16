@@ -1466,14 +1466,14 @@ budget. With
 .BR \-\-extended ,
 each command also reports CPU time and CPU usage over wall time, context
 switches, page faults, block operations, and read and write system calls and
-bytes. Platforms add what they can read after the command exits. macOS adds
-cycles, instructions, wakeups, energy, page-ins, and storage bytes for the
-measured process. Linux adds scheduler wait, time slices, and storage bytes,
-and Windows adds cycles, peak commit, and other IO calls. A row that covers one
-process is shown only with
+bytes. Each platform adds the counters it can collect after the command exits.
+macOS adds cycles, instructions, wakeups, energy, page-ins, and storage bytes
+for the measured process. Linux adds scheduler wait, time slices, and storage
+bytes, and Windows adds cycles, peak commit, and other IO calls. A row that
+covers one process is shown only with
 .BR \-\-no\-shell ,
-because through the shell it would count only the wrapping shell, and a note
-names the hidden rows. A row the platform cannot report is omitted.
+because through the shell it would count only the wrapping shell. A note lists
+the hidden rows. A row the platform cannot report is omitted.
 .TP
 .BI "koshconf create " "PRESET " "\fR[\fB\-\-force\fR]"
 .PD 0
@@ -1721,9 +1721,9 @@ The command or pipeline is timed. The
 and
 .B \-\-posix
 options select the POSIX report. The default mood adds a processor busy row,
-and the peak resident set when the platform supplies it. The peak is the
-largest among the processes the timed command started and their descendants.
-The
+and the peak resident set size when the platform supplies it. The peak is the
+highest among the processes that the timed command started and their
+descendants. The
 .B \-R
 option always adds the resident set row. Under the
 .B sh
@@ -2779,9 +2779,10 @@ End accept all of it. Ctrl\-Right and Alt\-F accept only its next word.
 Ctrl\-K, Ctrl\-U, Ctrl\-W, Alt\-D, Alt\-Backspace and Ctrl\-Delete save the
 erased text in a kill ring of 16 entries that lasts for the session. Consecutive
 kills join into one entry. Ctrl\-K on an empty line kills the newline after it,
-and the next line becomes the cursor's line. On an empty last line it removes the
-line, and the cursor moves to the end of the previous line. Ctrl\-Y inserts the newest entry, and Alt\-Y right
-after a yank replaces it with the next older entry. Alt\-. and Alt\-_ insert the
+so the next line moves up to the cursor. On an empty last line, Ctrl\-K removes
+the line and moves the cursor to the end of the previous line. Ctrl\-Y inserts
+the newest entry, and Alt\-Y right after a yank replaces it with the next older
+entry. Alt\-. and Alt\-_ insert the
 last word of the newest history entry, and each further press uses an older
 entry.
 Undo reverts a yank or a last-word insertion with all of its replacements in
@@ -3521,8 +3522,9 @@ A repeated frame is printed once and its header ends with the repeat count.
 When several
 .B \-c
 strings or files are given, the frame that points into the command line is
-printed once, after all diagnostics from that string or file. When the shell
-exits or replaces itself before that, the frame is printed first.
+printed once, after all diagnostics from that string or file. If the shell
+exits or replaces itself before those diagnostics end, the frame is printed
+first.
 Diagnostics print the same text in every mood.
 .SH ENVIRONMENT
 On Windows an environment variable holds at most 32,766 UTF-16 units, and a
@@ -3662,11 +3664,11 @@ The \\l escape inserts the last component of the terminal device of standard
 input, such as 3 for /dev/pts/3, and tty when standard input is not a terminal.
 The \\D{format} escape inserts the time formatted by strftime, as Bash does. The
 \\L escape inserts the duration of the last command, empty when it took under 5
-milliseconds. The \\M escape inserts the resident memory the last command used.
-It is the larger of the peak among the processes the command started, their
-descendants included, and how far the shell itself rose above its level at the
-start of the command. A command that only reuses memory the shell already holds
-leaves it empty. The escapes are decoded before parameters and substitutions
+milliseconds. The \\M escape inserts the resident memory that the last command
+used: the highest peak among the processes that the command started and their
+descendants, or the growth of the shell's own memory during the command when
+that is larger. The escape is empty after a command that only reuses memory the
+shell already holds. The escapes are decoded before parameters and substitutions
 expand, so inserted text is never expanded.
 A raw 001 or 002 byte in PS0, PS1, RPS1, or PS1_TRANSIENT delimits an invisible
 region the way \\[ and \\] do.
@@ -3682,9 +3684,9 @@ cannot write escape sequences to the terminal.
 RPS1 is the right prompt drawn at the right edge of the first input row.
 RPROMPT is used when RPS1 is unset or empty. The value expands like PS1. When
 an interactive shell starts with neither variable set, RPS1 defaults to a dim
-"\\L \\M", the duration and peak memory of the last command. Spaces at either
-end of the expanded right prompt are dropped, so an empty escape leaves no
-gap. See
+"\\L \\M", the duration and memory use of the last command. Spaces at either
+end of the expanded right prompt are dropped, so an empty escape leaves no gap.
+See
 .BR "LINE EDITING" .
 .TP
 .B PS1_TRANSIENT
@@ -3738,12 +3740,11 @@ current branch's upstream. Both are empty outside a repository, when no upstream
 is configured, and when the count is zero.
 .TP
 .BR KOSH_PS1_ *
-Each variable expands to the text of one prompt escape at the time it is read.
-An assignment is discarded. The variables are KOSH_PS1_USER for \\u,
+Each variable expands to the current text of one prompt escape. Assignments to
+these variables are ignored. The variables are KOSH_PS1_USER for \\u,
 KOSH_PS1_HOST for \\h, KOSH_PS1_HOST_FULL for \\H, KOSH_PS1_CWD for \\w,
-KOSH_PS1_CWD_BASE for \\W, KOSH_PS1_CWD_SHORT for \\P, KOSH_PS1_GIT_BRANCH
-for \\g,
-KOSH_PS1_PROMPT_SIGN for \\$, KOSH_PS1_STATUS for \\?, KOSH_PS1_JOBS for \\j,
+KOSH_PS1_CWD_BASE for \\W, KOSH_PS1_CWD_SHORT for \\P, KOSH_PS1_GIT_BRANCH for
+\\g, KOSH_PS1_PROMPT_SIGN for \\$, KOSH_PS1_STATUS for \\?, KOSH_PS1_JOBS for \\j,
 KOSH_PS1_DURATION for \\L, KOSH_PS1_MEMORY for \\M, KOSH_PS1_DOT for \\.,
 KOSH_PS1_TIME for \\t, KOSH_PS1_TIME_12 for \\T, KOSH_PS1_TIME_AMPM for \\@,
 KOSH_PS1_TIME_SHORT for \\A, KOSH_PS1_DATE for \\d, KOSH_PS1_SHELL for \\s,

@@ -152,8 +152,8 @@ smart-case, and subsequence tiers. Other lists retain their candidates. A
 callback runs again after a word boundary, a quote, an equals sign, an at sign,
 a slash, an erase below the gathered token, or a changed match tier. Deferred
 gathers use the pending protocol and the 24 millisecond menu debounce. TAB,
-navigation keys, and row acceptance gather immediately. An argument of an
-ssh-family command that contains an at sign is highlighted as a URL.
+navigation keys, and row acceptance gather immediately. An argument with an at
+sign is highlighted as a URL when the command takes ssh or teleport targets.
 
 Inline hints use builtin and koshkit registrations, aliases, functions, manpage
 caches, and help caches. They do not search PATH or open files. The editor owns
