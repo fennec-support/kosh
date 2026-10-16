@@ -25,6 +25,9 @@ enum class mimic_mood : u8
 };
 
 fn
+get_shebang_line(StringView source) wontthrow -> Maybe<StringView>;
+
+fn
 detect_mimic_shell_from_source(StringView source) throws
     -> Maybe<mimic_mood>;
 

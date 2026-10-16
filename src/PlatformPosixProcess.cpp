@@ -12,6 +12,7 @@
 #include "CLI.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
+#include "MimicMood.hpp"
 #include "Platform.hpp"
 #include "Utils.hpp"
 #include "base/Common.hpp"
@@ -239,20 +240,17 @@ throw_exec_failure_error(SourceLocation location,
                            ? StringView{head, static_cast<usize>(head_length)}
                            : StringView{};
 
-      if (text.starts_with("#!")) {
-        usize start = 2;
+      if (let const line = get_shebang_line(text); line.has_value()) {
+        usize     start    = 2;
+        let const line_end = 2 + line->length;
 
-        while (start < text.length &&
-               (text[start] == ' ' || text[start] == '\t'))
+        while (start < line_end && (text[start] == ' ' || text[start] == '\t'))
           start++;
 
         usize end = start;
 
-        while (end < text.length && text[end] != ' ' && text[end] != '\t' &&
-               text[end] != '\n')
-        {
+        while (end < line_end && text[end] != ' ' && text[end] != '\t')
           end++;
-        }
 
         let const interpreter = String{
             heap_allocator(), text.substring_of_length(start, end - start)};
@@ -275,18 +273,12 @@ throw_exec_failure_error(SourceLocation location,
                    "` followed by a carriage return does not exist";
           }
 
-          usize line_end = end;
-
-          while (line_end < text.length && text[line_end] != '\n')
-            line_end++;
-          if (line_end > 0 && text[line_end - 1] == '\r') {
-            line_end--;
-          }
-
+          let const shown_line_end =
+              text[line_end - 1] == '\r' ? line_end - 1 : line_end;
           let const shebang_location = SourceLocation{
               start, shown_length, intern_source_name(program_path.text())};
           let error = ErrorInOtherSource{
-              shebang_location, text.substring_of_length(0, line_end),
+              shebang_location, text.substring_of_length(0, shown_line_end),
               "Unable to execute script with a broken shebang", note.view(),
               steal(location)};
 

@@ -29,8 +29,7 @@ detect_mimic_shell_from_extension(StringView extension) throws
 }
 
 fn
-detect_mimic_shell_from_source(StringView source) throws
-    -> Maybe<mimic_mood>
+get_shebang_line(StringView source) wontthrow -> Maybe<StringView>
 {
   if (!source.starts_with("#!")) return None;
 
@@ -43,11 +42,22 @@ detect_mimic_shell_from_source(StringView source) throws
     line_end++;
   }
 
-  if (line_end > 2 && source[line_end - 1] == '\r') {
-    line_end--;
-  }
+  return source.substring_of_length(2, line_end - 2);
+}
 
-  let const line = source.substring_of_length(2, line_end - 2);
+fn
+detect_mimic_shell_from_source(StringView source) throws
+    -> Maybe<mimic_mood>
+{
+  let const shebang_line = get_shebang_line(source);
+
+  if (!shebang_line.has_value()) return None;
+
+  let const has_carriage_return =
+      !shebang_line->is_empty() &&
+      (*shebang_line)[shebang_line->length - 1] == '\r';
+  let const line = shebang_line->substring_of_length(
+      0, shebang_line->length - (has_carriage_return ? 1 : 0));
 
   let const do_basename_of = [](StringView token) -> StringView {
     usize last_slash = token.length;
