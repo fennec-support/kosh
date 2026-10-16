@@ -38,6 +38,11 @@ fn
 get_default_right_prompt_template() -> String;
 
 fn
+decode_prompt_escapes(StringView                 prompt,
+                      const koshka::EvalContext &context) throws
+    -> String;
+
+fn
 build_prompt(koshka::EvalContext &context) -> String;
 
 fn

@@ -320,6 +320,96 @@ inline constexpr static_string_entry<shell_variable_description>
          {"The value is the number of commits the branch is behind its "
           "upstream, and it is empty when the count is zero.",
           shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_USER"),
+         {"The value is the text of the \\u prompt escape, the user name.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_HOST"),
+         {"The value is the text of the \\h prompt escape, the short host "
+          "name.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_HOST_FULL"),
+         {"The value is the text of the \\H prompt escape, the full host "
+          "name.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_CWD"),
+         {"The value is the text of the \\w prompt escape, the working "
+          "directory with the home directory shown as a tilde.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_CWD_BASE"),
+         {"The value is the text of the \\W prompt escape, the last component "
+          "of the working directory.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_CWD_SHORT"),
+         {"The value is the text of the \\P prompt escape, the working "
+          "directory shortened with an ellipsis.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_GIT_BRANCH"),
+         {"The value is the text of the \\g prompt escape, the git branch.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_PROMPT_SIGN"),
+         {"The value is the text of the \\$ prompt escape, # for root and $ "
+          "for other users.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_STATUS"),
+         {"The value is the text of the \\? prompt escape, the last exit "
+          "status.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_JOBS"),
+         {"The value is the text of the \\j prompt escape, the job count.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_DURATION"),
+         {"The value is the text of the \\L prompt escape, the duration of the "
+          "last command.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_MEMORY"),
+         {"The value is the text of the \\M prompt escape, the peak memory of "
+          "the last command.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_DOT"),
+         {"The value is the text of the \\. prompt escape, a bullet colored "
+          "by the last exit status.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_TIME"),
+         {"The value is the text of the \\t prompt escape, the time as "
+          "HH:MM:SS.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_TIME_12"),
+         {"The value is the text of the \\T prompt escape, the 12-hour time "
+          "as HH:MM:SS.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_TIME_AMPM"),
+         {"The value is the text of the \\@ prompt escape, the 12-hour time "
+          "with AM or PM.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_TIME_SHORT"),
+         {"The value is the text of the \\A prompt escape, the time as HH:MM.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_DATE"),
+         {"The value is the text of the \\d prompt escape, the date such as "
+          "Fri Oct 16.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_SHELL"),
+         {"The value is the text of the \\s prompt escape, the shell name.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_VERSION"),
+         {"The value is the text of the \\v prompt escape, the major and minor "
+          "version.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_VERSION_FULL"),
+         {"The value is the text of the \\V prompt escape, the full version.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_TTY"),
+         {"The value is the text of the \\l prompt escape, the terminal "
+          "device name.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_HISTORY_NUMBER"),
+         {"The value is the text of the \\! prompt escape, the history number "
+          "of the next command.",
+          shell_variable_fact::Dynamic}                                      },
+        {SSK("KOSH_PS1_COMMAND_NUMBER"),
+         {"The value is the text of the \\# prompt escape, the command "
+          "number.",
+          shell_variable_fact::Dynamic}                                      },
         {SSK("KOSH_IDENTITY"),
          {"The value is the lowercase CRC-32 identity of the running "
           "executable, and an inherited value is discarded.",

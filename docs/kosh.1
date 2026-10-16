@@ -3725,6 +3725,18 @@ The values contain the unpushed and unpulled commit counts relative to the
 current branch's upstream. Both are empty outside a repository, when no upstream
 is configured, and when the count is zero.
 .TP
+.BR KOSH_PS1_ *
+Each variable expands to the text of one prompt escape, computed when it is
+read, so a function can use it inside a prompt. An assignment is discarded.
+The variables are KOSH_PS1_USER for \\u, KOSH_PS1_HOST for \\h,
+KOSH_PS1_HOST_FULL for \\H, KOSH_PS1_CWD for \\w, KOSH_PS1_CWD_BASE for \\W, KOSH_PS1_CWD_SHORT for \\P, KOSH_PS1_GIT_BRANCH for \\g,
+KOSH_PS1_PROMPT_SIGN for \\$, KOSH_PS1_STATUS for \\?, KOSH_PS1_JOBS for \\j,
+KOSH_PS1_DURATION for \\L, KOSH_PS1_MEMORY for \\M, KOSH_PS1_DOT for \\.,
+KOSH_PS1_TIME for \\t, KOSH_PS1_TIME_12 for \\T, KOSH_PS1_TIME_AMPM for \\@,
+KOSH_PS1_TIME_SHORT for \\A, KOSH_PS1_DATE for \\d, KOSH_PS1_SHELL for \\s,
+KOSH_PS1_VERSION for \\v, KOSH_PS1_VERSION_FULL for \\V, KOSH_PS1_TTY for \\l,
+KOSH_PS1_HISTORY_NUMBER for \\!, and KOSH_PS1_COMMAND_NUMBER for \\#.
+.TP
 .B KOSH_IDENTITY
 The read-only exported value is the lowercase CRC-32 identity of the running
 executable. An inherited value is discarded.

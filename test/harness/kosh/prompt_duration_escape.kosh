@@ -5,3 +5,19 @@ echo "${strftime@P}"
 colored='\k \K'
 plain='\h \H'
 [[ "${colored@P}" == "${plain@P}" ]] && echo "the colored host is plain without a terminal"
+mismatch_count=0
+for pair in USER:u HOST:h HOST_FULL:H \
+    CWD:w CWD_BASE:W CWD_SHORT:P GIT_BRANCH:g PROMPT_SIGN:'$' STATUS:'?' \
+    JOBS:j DURATION:L MEMORY:M DOT:. TIME_SHORT:A DATE:d SHELL:s VERSION:v \
+    VERSION_FULL:V TTY:l HISTORY_NUMBER:'!' COMMAND_NUMBER:'#'
+do
+  name="KOSH_PS1_${pair%%:*}"
+  escape="\\${pair#*:}"
+  if [[ "${!name}" != "${escape@P}" ]]; then
+    echo "$name differs from $escape"
+    mismatch_count=$((mismatch_count + 1))
+  fi
+done
+echo "prompt escape variables differing: $mismatch_count"
+KOSH_PS1_USER=overridden
+[[ "$KOSH_PS1_USER" != overridden ]] && echo "an assignment to a prompt escape variable is discarded"

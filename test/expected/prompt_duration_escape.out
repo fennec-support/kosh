@@ -1,3 +1,5 @@
 []
 a%b\D
 the colored host is plain without a terminal
+prompt escape variables differing: 0
+an assignment to a prompt escape variable is discarded

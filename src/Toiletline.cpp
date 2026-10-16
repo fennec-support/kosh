@@ -3489,7 +3489,7 @@ append_prompt_data(String    &out,
 }
 
 static fn
-prompt_shell_name(EvalContext &context) throws -> String
+prompt_shell_name(const EvalContext &context) throws -> String
 {
   let name = String{
       koshka::heap_allocator(),
@@ -3510,7 +3510,8 @@ prompt_terminal_name() throws -> String
 }
 
 static fn
-prompt_version(EvalContext &context, bool is_full) throws -> String
+prompt_version(const EvalContext &context, bool is_full) throws
+    -> String
 {
   let const versinfo =
       context.variable_store().indexed_arrays().find("BASH_VERSINFO");
@@ -3539,7 +3540,7 @@ prompt_version(EvalContext &context, bool is_full) throws -> String
 }
 
 static fn
-prompt_history_number(EvalContext &context) throws -> usize
+prompt_history_number(const EvalContext &context) throws -> usize
 {
   if (!context.execution_store().shell_is_interactive()) return 1;
 
@@ -3553,11 +3554,11 @@ prompt_history_number(EvalContext &context) throws -> usize
 }
 
 static fn
-expand_prompt_escapes(StringView   prompt,
-                      StringView   user,
-                      StringView   working_directory,
-                      EvalContext &context,
-                      bool         should_quote) throws -> String
+expand_prompt_escapes(StringView         prompt,
+                      StringView         user,
+                      StringView         working_directory,
+                      const EvalContext &context,
+                      bool               should_quote) throws -> String
 {
   let out = String{koshka::heap_allocator()};
 
@@ -4028,14 +4029,21 @@ get_cached_user() throws -> const String &
 }
 
 static fn
-decode_prompt(StringView   template_string,
-              EvalContext &context,
-              bool         should_quote) throws -> String
+decode_prompt(StringView         template_string,
+              const EvalContext &context,
+              bool               should_quote) throws -> String
 {
   let const working_directory = Path::current_directory().text();
 
   return expand_prompt_escapes(template_string, get_cached_user().view(),
                                working_directory.view(), context, should_quote);
+}
+
+fn
+decode_prompt_escapes(StringView         prompt,
+                      const EvalContext &context) throws -> String
+{
+  return decode_prompt(prompt, context, false);
 }
 
 static fn

@@ -139,6 +139,7 @@ enum class dynamic_var : u8
   KOSH_GIT_BEHIND,
   KOSH_IDENTITY,
   KOSHCONF,
+  KOSH_PS1,
 
   RANDOM,
   SECONDS,
@@ -201,8 +202,60 @@ constexpr static_string_entry<dynamic_variable_info> ALWAYS_DYNAMIC_ENTRIES[] =
         DYNAMIC_VARIABLE("KOSH_GIT_BEHIND", KOSH_GIT_BEHIND, false, Settable),
         DYNAMIC_VARIABLE("KOSH_IDENTITY", KOSH_IDENTITY, false, Settable),
         DYNAMIC_VARIABLE("KOSHCONF", KOSHCONF, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_USER", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_HOST", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_HOST_FULL", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_CWD", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_CWD_BASE", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_CWD_SHORT", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_GIT_BRANCH", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_PROMPT_SIGN", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_STATUS", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_JOBS", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_DURATION", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_MEMORY", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_DOT", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_TIME", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_TIME_12", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_TIME_AMPM", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_TIME_SHORT", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_DATE", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_SHELL", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_VERSION", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_VERSION_FULL", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_TTY", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_HISTORY_NUMBER", KOSH_PS1, false, Discarded),
+        DYNAMIC_VARIABLE("KOSH_PS1_COMMAND_NUMBER", KOSH_PS1, false, Discarded),
 };
 constexpr StaticStringMap ALWAYS_DYNAMIC{ALWAYS_DYNAMIC_ENTRIES};
+
+constexpr static_string_entry<StringView> KOSH_PS1_ESCAPE_ENTRIES[] = {
+    {SSK("KOSH_PS1_USER"),           "\\u"},
+    {SSK("KOSH_PS1_HOST"),           "\\h"},
+    {SSK("KOSH_PS1_HOST_FULL"),      "\\H"},
+    {SSK("KOSH_PS1_CWD"),            "\\w"},
+    {SSK("KOSH_PS1_CWD_BASE"),       "\\W"},
+    {SSK("KOSH_PS1_CWD_SHORT"),      "\\P"},
+    {SSK("KOSH_PS1_GIT_BRANCH"),     "\\g"},
+    {SSK("KOSH_PS1_PROMPT_SIGN"),    "\\$"},
+    {SSK("KOSH_PS1_STATUS"),         "\\?"},
+    {SSK("KOSH_PS1_JOBS"),           "\\j"},
+    {SSK("KOSH_PS1_DURATION"),       "\\L"},
+    {SSK("KOSH_PS1_MEMORY"),         "\\M"},
+    {SSK("KOSH_PS1_DOT"),            "\\."},
+    {SSK("KOSH_PS1_TIME"),           "\\t"},
+    {SSK("KOSH_PS1_TIME_12"),        "\\T"},
+    {SSK("KOSH_PS1_TIME_AMPM"),      "\\@"},
+    {SSK("KOSH_PS1_TIME_SHORT"),     "\\A"},
+    {SSK("KOSH_PS1_DATE"),           "\\d"},
+    {SSK("KOSH_PS1_SHELL"),          "\\s"},
+    {SSK("KOSH_PS1_VERSION"),        "\\v"},
+    {SSK("KOSH_PS1_VERSION_FULL"),   "\\V"},
+    {SSK("KOSH_PS1_TTY"),            "\\l"},
+    {SSK("KOSH_PS1_HISTORY_NUMBER"), "\\!"},
+    {SSK("KOSH_PS1_COMMAND_NUMBER"), "\\#"},
+};
+constexpr StaticStringMap KOSH_PS1_ESCAPES{KOSH_PS1_ESCAPE_ENTRIES};
 
 constexpr static_string_entry<dynamic_variable_info> BASH_DYNAMIC_ENTRIES[] = {
     DYNAMIC_VARIABLE("BASH_ARGC", BASH_ARGC, false, Discarded),
@@ -598,7 +651,17 @@ EvalContext::get_variable_value(StringView name) const throws
       }
       case dynamic_var::KOSH_IDENTITY: return materialize_kosh_identity();
       case dynamic_var::KOSHCONF:      return encode_koshconf_blob(*this);
-      default:                         break;
+      case dynamic_var::KOSH_PS1:      {
+        let const escape = KOSH_PS1_ESCAPES.find(name);
+
+        if (!escape.has_value()) return String{heap_allocator()};
+        LOG(Debug, "expanding the prompt escape %.*s for %.*s",
+            static_cast<int>(escape->length), escape->data,
+            static_cast<int>(name.length), name.data);
+
+        return toiletline::decode_prompt_escapes(*escape, *this);
+      }
+      default: break;
       }
     }
 
