@@ -3263,8 +3263,8 @@ format_prompt_duration(u64 nanos) throws -> String
 static fn
 prompt_strftime(const char *format) throws -> String
 {
-  std::time_t now   = time(nullptr);
-  std::tm    *local = localtime(&now);
+  time_t     now   = time(nullptr);
+  struct tm *local = localtime(&now);
 
   if (local == nullptr) return String{koshka::heap_allocator()};
   char  buffer[128];

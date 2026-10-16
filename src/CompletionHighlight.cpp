@@ -127,7 +127,6 @@ first_word_resolves(StringView word, EvalContext &context) throws
   /* With autocd, a directory or a run of two or more dots becomes a cd. */
   if (!context.is_shopt_enabled(shopt_option_id::Autocd)) return false;
   if (dot_parent_steps(word).has_value()) return true;
-  if (os::has_directory_separator(word)) return Path{word}.is_directory();
 
   switch (find_listed_path_state(".", word)) {
   case listed_path_state::Directory:    return true;

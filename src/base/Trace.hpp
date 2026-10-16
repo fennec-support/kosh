@@ -24,10 +24,10 @@ enum class verbosity : u8
 
 inline verbosity LOGGER_VERBOSITY = verbosity::Nothing;
 
-inline std::FILE *LOGGER_OUTPUT = nullptr;
+inline FILE *LOGGER_OUTPUT = nullptr;
 
 inline fn
-log_output_stream() -> std::FILE *
+log_output_stream() -> FILE *
 {
   return LOGGER_OUTPUT != nullptr ? LOGGER_OUTPUT : stderr;
 }
@@ -177,7 +177,7 @@ format_named_values(StringView names, Args &&...args) -> String
   do {                                                                         \
     constexpr ::koshka::verbosity t__log_level = ::koshka::verbosity::level;   \
     if (t__log_level <= ::koshka::LOGGER_VERBOSITY) rarely {                   \
-      std::FILE *t__log_stream = ::koshka::log_output_stream();                \
+      FILE *t__log_stream = ::koshka::log_output_stream();                     \
       unused(fprintf(t__log_stream, "[%s] %32s %32s(): ",                      \
                      ::koshka::verbosity_to_string(t__log_level),              \
                      __FILE__ ":" T__LOG_STRINGIZE(__LINE__), __func__));      \
@@ -193,7 +193,7 @@ format_named_values(StringView names, Args &&...args) -> String
     if (t__log_level <= ::koshka::LOGGER_VERBOSITY) rarely {                   \
       ::koshka::String t__vars = ::koshka::log_detail::format_named_values(    \
           #__VA_ARGS__, __VA_ARGS__);                                          \
-      std::FILE *t__log_stream = ::koshka::log_output_stream();                \
+      FILE *t__log_stream = ::koshka::log_output_stream();                     \
       unused(fprintf(t__log_stream, "[%s] %32s %32s(): %s\n",                  \
                      ::koshka::verbosity_to_string(t__log_level),              \
                      __FILE__ ":" T__LOG_STRINGIZE(__LINE__), __func__,        \

@@ -67,13 +67,13 @@ cal_weekday(i64 year, usize month, usize day) wontthrow -> usize
 }
 
 static fn
-append_calendar_month(String        &output,
-                      usize          month,
-                      i64            year,
-                      const std::tm &current_date,
-                      Allocator      allocator,
-                      week_start     first_day,
-                      bool           should_color) throws -> void
+append_calendar_month(String          &output,
+                      usize            month,
+                      i64              year,
+                      const struct tm &current_date,
+                      Allocator        allocator,
+                      week_start       first_day,
+                      bool             should_color) throws -> void
 {
   let title = String{allocator, CAL_MONTH_NAMES[month - 1]};
 

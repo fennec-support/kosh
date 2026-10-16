@@ -2758,8 +2758,7 @@ kosh_main(int argc, char **argv) -> int
     let const log_file_name = koshka::String{koshka::heap_allocator(),
                                              FLAG_DEBUG_OUTPUT_FILE.value()};
 
-    if (std::FILE *log_file = fopen(log_file_name.c_str(), "a");
-        log_file != nullptr)
+    if (FILE *log_file = fopen(log_file_name.c_str(), "a"); log_file != nullptr)
     {
       koshka::LOGGER_OUTPUT = log_file;
     }
