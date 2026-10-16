@@ -36,13 +36,58 @@ static bool IS_TERMINAL_OWNER = true;
 static u64 COMMAND_PEAK_RSS_BYTES = 0;
 
 static fn
-note_reaped_child_usage(const struct rusage &usage) wontthrow -> void
+note_child_peak_bytes(u64 byte_count) wontthrow -> void
 {
-  let const byte_count = platform_peak_rss_bytes(usage.ru_maxrss);
-
-  LOG(Debug, "a reaped child peaked at %llu resident bytes",
+  LOG(Debug, "a reaped child peaked at %llu bytes",
       static_cast<unsigned long long>(byte_count));
   if (byte_count > COMMAND_PEAK_RSS_BYTES) COMMAND_PEAK_RSS_BYTES = byte_count;
+}
+
+static fn
+note_reaped_child_usage(const struct rusage &usage) wontthrow -> void
+{
+#if defined __APPLE__
+  unused(usage);
+#else
+  note_child_peak_bytes(platform_peak_rss_bytes(usage.ru_maxrss));
+#endif
+}
+
+static fn
+peek_exited_child_footprint(pid_t pid, int wait_flags) wontthrow -> void
+{
+#if defined __APPLE__
+  int waitid_flags = WEXITED | WNOWAIT;
+
+  if ((wait_flags & WNOHANG) != 0) waitid_flags |= WNOHANG;
+  if ((wait_flags & WUNTRACED) != 0) waitid_flags |= WSTOPPED;
+  if ((wait_flags & WCONTINUED) != 0) waitid_flags |= WCONTINUED;
+
+  siginfo_t info{};
+  int       result = -1;
+
+  do {
+    result = waitid(P_PID, static_cast<id_t>(pid), &info, waitid_flags);
+  } while (result == -1 && errno == EINTR);
+
+  if (result != 0 || info.si_pid != pid) return;
+  if (info.si_code != CLD_EXITED && info.si_code != CLD_KILLED &&
+      info.si_code != CLD_DUMPED)
+  {
+    return;
+  }
+
+  rusage_info_v4 usage{};
+
+  if (::proc_pid_rusage(pid, RUSAGE_INFO_V4,
+                        reinterpret_cast<rusage_info_t *>(&usage)) == 0)
+  {
+    note_child_peak_bytes(usage.ri_lifetime_max_phys_footprint);
+  }
+#else
+  unused(pid);
+  unused(wait_flags);
+#endif
 }
 
 static inline fn
@@ -1295,8 +1340,11 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 
   i32           status{};
   struct rusage usage{};
-  const int     wait_flags  = was_stopped != nullptr ? WUNTRACED : 0;
-  let const     changed_pid = retry_interrupted(
+  const int     wait_flags = was_stopped != nullptr ? WUNTRACED : 0;
+
+  peek_exited_child_footprint(pid, wait_flags);
+
+  let const changed_pid = retry_interrupted(
       [&] { return wait4(pid, &status, wait_flags, &usage); });
 
   check_syscall(changed_pid);
@@ -1370,6 +1418,8 @@ reap_process_quietly(process pid) throws -> i32
   struct rusage usage{};
 
   loop {
+    peek_exited_child_footprint(pid, 0);
+
     const pid_t w =
         retry_interrupted([&] { return wait4(pid, &status, 0, &usage); });
 
@@ -1396,7 +1446,10 @@ poll_process(process              p,
 {
   i32           status = 0;
   struct rusage usage{};
-  let const     result = retry_interrupted([&] {
+
+  peek_exited_child_footprint(p, WNOHANG | WUNTRACED | WCONTINUED);
+
+  let const result = retry_interrupted([&] {
     return wait4(p, &status, WNOHANG | WUNTRACED | WCONTINUED, &usage);
   });
 
@@ -2000,6 +2053,66 @@ exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64
   return byte_count;
 }
 
+fn
+mark_own_memory() wontthrow -> own_memory_mark
+{
+  own_memory_mark mark{};
+#if defined __APPLE__
+  rusage_info_v4 usage{};
+
+  if (::proc_pid_rusage(getpid(), RUSAGE_INFO_V4,
+                        reinterpret_cast<rusage_info_t *>(&usage)) == 0)
+  {
+    mark.current_byte_count = usage.ri_phys_footprint;
+    mark.peak_byte_count    = usage.ri_lifetime_max_phys_footprint;
+  }
+#elif defined __linux__
+  char      buffer[4096];
+  let const length =
+      read_small_file("/proc/self/status", buffer, sizeof(buffer));
+  let const status = StringView{buffer, length};
+
+  let const do_read_kib_field = [&](StringView field_name) -> u64 {
+    let const field = status.find_substring(field_name);
+
+    if (!field.has_value()) return 0;
+
+    usize     position = *field + field_name.length;
+    let const word     = status.next_ascii_whitespace_word(position);
+    u64       kib      = 0;
+
+    for (let const digit : word) {
+      if (digit < '0' || digit > '9') break;
+      kib = kib * 10 + static_cast<u64>(digit - '0');
+    }
+
+    return kib * 1024;
+  };
+
+  mark.current_byte_count = do_read_kib_field("VmRSS:");
+  mark.peak_byte_count    = do_read_kib_field("VmHWM:");
+#endif
+
+  return mark;
+}
+
+fn
+own_memory_growth_bytes(const own_memory_mark &mark) wontthrow -> u64
+{
+  let const now          = mark_own_memory();
+  u64       growth_bytes = 0;
+
+  if (now.current_byte_count > mark.current_byte_count)
+    growth_bytes = now.current_byte_count - mark.current_byte_count;
+  if (now.peak_byte_count > mark.peak_byte_count &&
+      now.peak_byte_count - mark.current_byte_count > growth_bytes)
+  {
+    growth_bytes = now.peak_byte_count - mark.current_byte_count;
+  }
+
+  return growth_bytes;
+}
+
 namespace {
 
 struct measured_child
@@ -2208,6 +2321,8 @@ wait_for_measured_child(pid_t                   child_pid,
 #else
   unused(io_descriptor);
 #endif
+
+  peek_exited_child_footprint(child_pid, 0);
 
   int           status = 0;
   struct rusage usage{};

@@ -3513,6 +3513,40 @@ exchange_command_peak_rss_bytes(u64 next_byte_count) wontthrow -> u64
   return static_cast<u64>(InterlockedExchange64(
       &CHILD_PEAK_RSS_BYTES, static_cast<LONG64>(next_byte_count)));
 }
+
+fn
+mark_own_memory() wontthrow -> own_memory_mark
+{
+  own_memory_mark         mark{};
+  PROCESS_MEMORY_COUNTERS memory_counters{};
+
+  memory_counters.cb = sizeof(memory_counters);
+  if (GetProcessMemoryInfo(GetCurrentProcess(), &memory_counters,
+                           sizeof(memory_counters)) != FALSE)
+  {
+    mark.current_byte_count = static_cast<u64>(memory_counters.WorkingSetSize);
+    mark.peak_byte_count = static_cast<u64>(memory_counters.PeakWorkingSetSize);
+  }
+
+  return mark;
+}
+
+fn
+own_memory_growth_bytes(const own_memory_mark &mark) wontthrow -> u64
+{
+  let const now          = mark_own_memory();
+  u64       growth_bytes = 0;
+
+  if (now.current_byte_count > mark.current_byte_count)
+    growth_bytes = now.current_byte_count - mark.current_byte_count;
+  if (now.peak_byte_count > mark.peak_byte_count &&
+      now.peak_byte_count - mark.current_byte_count > growth_bytes)
+  {
+    growth_bytes = now.peak_byte_count - mark.current_byte_count;
+  }
+
+  return growth_bytes;
+}
 fn
 read_process_cpu_times() wontthrow -> cpu_times
 {
