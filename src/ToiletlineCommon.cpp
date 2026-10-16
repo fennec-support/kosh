@@ -120,44 +120,7 @@ display_width_walk(StringView text, usize stop_after, usize *out_byte_offset)
 
   while (byte_offset < text.length && text[byte_offset] != '\0') {
     if (static_cast<u8>(text[byte_offset]) == 0x1b) {
-      byte_offset++;
-      if (byte_offset >= text.length) break;
-      if (text[byte_offset] == '[') {
-        byte_offset++;
-
-        while (byte_offset < text.length && text[byte_offset] != '\0' &&
-               (text[byte_offset] < 0x40 || text[byte_offset] > 0x7e))
-        {
-          byte_offset++;
-        }
-
-        if (byte_offset < text.length && text[byte_offset] != '\0') {
-          byte_offset++;
-        }
-      } else if (text[byte_offset] == ']') {
-        byte_offset++;
-
-        while (byte_offset < text.length && text[byte_offset] != '\0' &&
-               static_cast<u8>(text[byte_offset]) != 0x07 &&
-               !(byte_offset + 1 < text.length &&
-                 static_cast<u8>(text[byte_offset]) == 0x1b &&
-                 text[byte_offset + 1] == '\\'))
-        {
-          byte_offset++;
-        }
-
-        if (byte_offset + 1 < text.length &&
-            static_cast<u8>(text[byte_offset]) == 0x1b &&
-            text[byte_offset + 1] == '\\')
-        {
-          byte_offset += 2;
-        } else if (byte_offset < text.length && text[byte_offset] != '\0') {
-          byte_offset++;
-        }
-      } else if (text[byte_offset] != '\0') {
-        byte_offset++;
-      }
-
+      byte_offset = toiletline::get_escape_sequence_end(text, byte_offset);
       continue;
     }
 
@@ -396,6 +359,48 @@ get_codepoint_byte_offset(const char *bytes,
          (static_cast<unsigned char>(bytes[byte_offset]) & 0xC0) == 0x80)
   {
     byte_offset += 1;
+  }
+
+  return byte_offset;
+}
+
+fn
+get_escape_sequence_end(StringView text, usize byte_offset) -> usize
+{
+  byte_offset++;
+  if (byte_offset >= text.length) return byte_offset;
+  if (text[byte_offset] == '[') {
+    byte_offset++;
+
+    while (byte_offset < text.length && text[byte_offset] != '\0' &&
+           (text[byte_offset] < 0x40 || text[byte_offset] > 0x7e))
+    {
+      byte_offset++;
+    }
+
+    if (byte_offset < text.length && text[byte_offset] != '\0') byte_offset++;
+  } else if (text[byte_offset] == ']') {
+    byte_offset++;
+
+    while (byte_offset < text.length && text[byte_offset] != '\0' &&
+           static_cast<u8>(text[byte_offset]) != 0x07 &&
+           !(byte_offset + 1 < text.length &&
+             static_cast<u8>(text[byte_offset]) == 0x1b &&
+             text[byte_offset + 1] == '\\'))
+    {
+      byte_offset++;
+    }
+
+    if (byte_offset + 1 < text.length &&
+        static_cast<u8>(text[byte_offset]) == 0x1b &&
+        text[byte_offset + 1] == '\\')
+    {
+      byte_offset += 2;
+    } else if (byte_offset < text.length && text[byte_offset] != '\0') {
+      byte_offset++;
+    }
+  } else if (text[byte_offset] != '\0') {
+    byte_offset++;
   }
 
   return byte_offset;

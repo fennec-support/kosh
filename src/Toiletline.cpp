@@ -41,6 +41,9 @@ get_codepoint_byte_offset(const char *bytes,
                           usize       byte_length,
                           usize       codepoint_index) -> usize;
 
+fn
+get_escape_sequence_end(koshka::StringView text, usize byte_offset) -> usize;
+
 } /* namespace toiletline */
 
 #if !defined KOSH_NO_TOILETLINE
@@ -4151,37 +4154,9 @@ static fn
 trim_visible_prompt_spaces(StringView rendered) throws -> String
 {
   let const do_escape_end = [&](usize position) -> usize {
-    if (rendered[position] != '\x1b' || position + 1 >= rendered.length) {
-      return position;
-    }
-
-    let const introducer = rendered[position + 1];
-
-    position += 2;
-    if (introducer == '[') {
-      while (position < rendered.length &&
-             !(rendered[position] >= '\x40' && rendered[position] <= '\x7e'))
-      {
-        position++;
-      }
-
-      return position < rendered.length ? position + 1 : position;
-    }
-
-    if (introducer == ']') {
-      while (position < rendered.length && rendered[position] != '\a' &&
-             !(rendered[position] == '\x1b' && position + 1 < rendered.length &&
-               rendered[position + 1] == '\\'))
-      {
-        position++;
-      }
-
-      if (position >= rendered.length) return position;
-
-      return rendered[position] == '\a' ? position + 1 : position + 2;
-    }
-
-    return position;
+    return rendered[position] == '\x1b'
+               ? toiletline::get_escape_sequence_end(rendered, position)
+               : position;
   };
 
   usize first_text_position = rendered.length;

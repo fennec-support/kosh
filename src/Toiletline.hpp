@@ -211,6 +211,9 @@ get_codepoint_byte_offset(const char *bytes,
                           usize       codepoint_index) -> usize;
 
 fn
+get_escape_sequence_end(StringView text, usize byte_offset) -> usize;
+
+fn
 get_display_width(StringView text) -> usize;
 
 fn
