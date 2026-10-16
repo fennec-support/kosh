@@ -18,6 +18,7 @@
 
 #if defined __linux__
 #include <sys/inotify.h>
+#include <sys/sysmacros.h>
 #elif defined __APPLE__ || defined __FreeBSD__
 #include <sys/event.h>
 #endif
@@ -1204,6 +1205,31 @@ describe_processes(const ArrayList<u32> &pids) throws
 
 #endif
 
+#if defined __linux__
+static fn
+cached_stat_at(int directory_fd, const char *path, struct stat &status)
+    wontthrow
+    -> bool
+{
+#if defined STATX_INO
+  struct statx extended{};
+
+  if (::statx(directory_fd, path, AT_STATX_DONT_SYNC | AT_NO_AUTOMOUNT,
+              STATX_INO, &extended) != 0)
+  {
+    return false;
+  }
+
+  status.st_dev = makedev(extended.stx_dev_major, extended.stx_dev_minor);
+  status.st_ino = extended.stx_ino;
+
+  return true;
+#else
+  return ::fstatat(directory_fd, path, &status, 0) == 0;
+#endif
+}
+#endif
+
 fn
 scan_process_file_users(const ArrayList<process_file_query> &queries,
                         ArrayList<process_file_user>        &users,
@@ -1447,7 +1473,7 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
 
       struct stat reference_status{};
 
-      if (::stat(reference_path, &reference_status) == 0)
+      if (cached_stat_at(AT_FDCWD, reference_path, reference_status))
         do_apply_status(use_masks, reference_status, reference.use);
     }
 
@@ -1472,8 +1498,8 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
 
           struct stat descriptor_status{};
 
-          if (::fstatat(descriptor_directory_fd, descriptor->d_name,
-                        &descriptor_status, 0) == 0)
+          if (cached_stat_at(descriptor_directory_fd, descriptor->d_name,
+                             descriptor_status))
             do_apply_status(use_masks, descriptor_status,
                             process_file_use::File);
         }
