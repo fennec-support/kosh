@@ -80,6 +80,8 @@ Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     selected_index = index;
   }
 
+  /* at this point: at most one operand follows the command word, and
+     selected_index is set only when that operand parsed as a stack index. */
   print_directory_stack(cxt, ec, FLAG_DIRS_PER_LINE.is_enabled(),
                         FLAG_DIRS_NUMBERED.is_enabled(),
                         FLAG_DIRS_LONG.is_enabled(), selected_index);

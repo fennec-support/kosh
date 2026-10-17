@@ -304,6 +304,8 @@ descriptor_label(const os::process_open_file &file,
 
   if (file.descriptor_number < 0) return String{allocator, "unk"};
 
+  /* at this point: file.use is File, and file.descriptor_number is not
+     negative. */
   let label = String::from(static_cast<u64>(file.descriptor_number), allocator);
 
   label += StringView{&file.access, 1};
@@ -439,6 +441,9 @@ EvilFiles::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: processes is not empty, wanted_pid holds the parsed -p
+     value when has_wanted_pid is true, and wanted_owner holds the resolved
+     uid when -u is set. */
   ArrayList<open_file_row> rows{allocator};
   column_widths            widths{};
   socket_directory         sockets{allocator};
@@ -464,6 +469,8 @@ EvilFiles::execute(const ExecContext               &ec,
       continue;
     }
 
+    /* at this point: the process matches the -p, -u, and -c filters, files is
+       not empty, and files is not the single inaccessible placeholder. */
     if (FLAG_EVILFILES_TERSE.is_enabled()) {
       bool did_match_this_process = false;
 

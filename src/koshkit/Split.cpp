@@ -205,6 +205,8 @@ Split::execute(const ExecContext               &ec,
       return false;
     }
 
+    /* at this point: name does not refer to the input file, and descriptor
+       is the output file opened with Truncate. */
     output_descriptor = *descriptor;
     output_unit_count = 0;
 

@@ -458,6 +458,8 @@ substitution_body_is_bare_echo(StringView body) wontthrow -> bool
       return false;
     }
 
+  /* at this point: trimmed is echo or starts with echo and a space, and it
+     has no pipe, semicolon, ampersand, redirection, or backtick. */
   return true;
 }
 

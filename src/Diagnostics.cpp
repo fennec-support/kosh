@@ -76,6 +76,7 @@ append_diagnostic_code(String    &message,
 {
   if (!shellcheck_code.has_value()) return;
   if (message.is_empty()) return;
+  /* at this point: shellcheck_code has a value, and message is non-empty. */
 
   if (let const last_byte = message.back();
       last_byte != '.' && last_byte != '?' && last_byte != '!')

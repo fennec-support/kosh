@@ -690,6 +690,8 @@ Server::change_document(const JsonValue *params) throws -> Document *
   let *document = m_documents.change(*uri, *text, version);
 
   if (document == nullptr) return nullptr;
+  /* at this point: document is non-null, and its source holds the full text
+     from the last content change. */
 
   /* spans_for() identifies its source by data pointer and length only. an
      edit with the same pointer and length would otherwise return spans from

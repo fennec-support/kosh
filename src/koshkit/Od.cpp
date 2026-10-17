@@ -240,6 +240,8 @@ Od::execute(const ExecContext               &ec,
     byte_limit = *parsed;
   }
 
+  /* at this point: address_radix is one of o, d, x, or n, and skip_count
+     and byte_limit hold parsed values or their defaults, 0 and UINT64_MAX. */
   let type_requests = ArrayList<od_type_request>{cxt.scratch_allocator()};
 
   for (usize type_index = 0; type_index < FLAG_OD_TYPE.count(); type_index++) {

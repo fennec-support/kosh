@@ -380,6 +380,8 @@ EvalContext::read_redirect_substitution(StringView source) throws
     return None;
   }
 
+  /* at this point: name holds a word token, and the token after it is
+     absent, end of file, or a newline. */
   let const filename = expand_word_for_assignment(
       static_cast<const tokens::WordToken *>(name)->word());
 
@@ -416,6 +418,8 @@ EvalContext::capture_command_substitution(
     throw Error{"Unable to run the command substitution because no script is "
                 "being parsed"};
 
+  /* at this point: source is not a bare file read, and parse_arena() is
+     non-null. */
   let const ast_mark = arena_store().parse_arena()->mark();
 
   defer { arena_store().parse_arena()->release(ast_mark); };
@@ -484,6 +488,7 @@ EvalContext::setup_process_substitution(
     throw Error{"Unable to run the process substitution because no script is "
                 "being parsed"};
   ASSERT(!text.is_empty());
+  /* at this point: text is non-empty, and parse_arena() is non-null. */
 
   let const direction              = text[0];
   let const is_command_pipe_writer = direction == '<';
@@ -1489,6 +1494,8 @@ EvalContext::run_function_substitution(
     throw Error{"Could not start a thread for function substitution"};
   }
 
+  /* at this point: pipe is open at both ends, and the reader thread drains
+     pipe->in into drain_context. */
   koshka::flush();
 
   let const saved = os::redirect_stdout(pipe->out);

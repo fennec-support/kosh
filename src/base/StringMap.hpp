@@ -64,6 +64,8 @@ public:
       return;
     }
 
+    /* at this point: other holds at least one entry, and the slot array of
+       other is not copied, so rehash() builds the slots for this map. */
     rehash(fitted_slot_count);
 
     for (usize i = 0; i < other.m_capacity; i++) {
@@ -257,6 +259,8 @@ public:
         return existing;
       }
 
+      /* at this point: key is present, and is_buffer_wasteful holds, so
+         the stored string is replaced by a new one. */
       *existing = String{m_allocator, value};
 
       return existing;

@@ -329,6 +329,8 @@ run_get(const ExecContext       &ec,
 
   if (option == nullptr) return 1;
 
+  /* at this point: the operand count is three, and option points to a
+     registry entry. */
   let line = read_option_text(cxt, *option);
 
   line += '\n';
@@ -425,6 +427,8 @@ run_load(const ExecContext       &ec,
     return 1;
   }
 
+  /* at this point: the operand count is three, and reading holds the
+     settings and warnings decoded from the KOSHCONF value. */
   apply_koshconf_settings(cxt, reading.settings, option_origin::Koshconf,
                           reading.warnings);
 
@@ -458,6 +462,8 @@ run_save(const ExecContext       &ec,
 
   if (!path.has_value()) return 1;
 
+  /* at this point: no operand follows save, --persist is set, and path
+     holds the user configuration file. */
   try {
     persist_koshconf_snapshot(*path, cxt);
   } catch (const Error &error) {

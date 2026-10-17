@@ -150,6 +150,8 @@ append_padded(String               &output,
     return;
   }
 
+  /* at this point: body is shorter than spec.width, and pad_length is the
+     number of padding bytes that precede body. */
   let const pad_byte = spec.is_zero_padded && is_numeric ? '0' : ' ';
 
   output.append_repeated(pad_byte, pad_length);
@@ -835,6 +837,8 @@ resolve_format(String     &format,
     return;
   }
 
+  /* at this point: --printf, -c, and -t are all unset, and
+     should_append_newline is false. */
   if (target == stat_target::Filesystem) {
     format += DEFAULT_FILESYSTEM_FORMAT;
   }

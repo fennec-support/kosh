@@ -42,6 +42,8 @@ Tty::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: operands is empty, and name holds the terminal name of
+     the input descriptor. */
   if (!FLAG_TTY_SILENT.is_enabled()) {
     ec.print_to_stdout(name->view());
     ec.print_to_stdout("\n");

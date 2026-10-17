@@ -101,6 +101,8 @@ parse_magic_number(StringView text) wontthrow -> Maybe<u64>
 
   if (position == text.length) return None;
 
+  /* at this point: text is not empty, and position is less than
+     text.length, so the digit loop stays inside text. */
   u64 parsed = 0;
 
   for (; position < text.length; position++) {
@@ -485,6 +487,8 @@ magic_rule_matches(const file_magic_rule &rule,
     return false;
   }
 
+  /* at this point: rule.kind is String, and the expected text lies
+     inside bytes at rule.offset. */
   return __builtin_memcmp(bytes.data + rule.offset, rule.expected_text.data(),
                           rule.expected_text.count()) == 0;
 }
@@ -517,6 +521,8 @@ format_magic_message(const file_magic_rule &rule,
       continue;
     }
 
+    /* at this point: conversion is not '%', and no earlier conversion
+       in message has formatted a value. */
     has_formatted_value = true;
     switch (conversion) {
     case 'd':
@@ -570,6 +576,8 @@ match_magic_rules(const ArrayList<file_magic_rule> &rules,
 
     if (!magic_rule_matches(rule, bytes, number)) continue;
 
+    /* at this point: rule is not a continuation rule, and rule matches
+       bytes. */
     let result = format_magic_message(rule, number, allocator);
 
     for (index++; index < rules.count() && rules[index].is_continuation;
@@ -894,6 +902,8 @@ file_content_description(StringView bytes) wontthrow -> StringView
     }
   }
 
+  /* at this point: bytes is not empty, and no earlier test or builtin
+     signature matched bytes, so the text or data test decides the result. */
   static constexpr u32 TEXT_CONTROL_MASK =
       (1U << '\b') | (1U << '\t') | (1U << '\n') | (1U << '\f') | (1U << '\r');
 
@@ -1352,6 +1362,9 @@ File::execute(const ExecContext               &ec,
       }
     }
 
+    /* at this point: operand has no metadata error, and when operand is a
+       symbolic link, file_status holds the status of the target that was
+       followed. */
     let       description = String{allocator};
     let const is_regular  = os::file_type_letter(file_status.mode) == '-';
 

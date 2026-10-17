@@ -222,6 +222,7 @@ manpath_argv_for(EvalContext &context) throws
 
   if (!man.has_value()) return None;
 
+  /* at this point: no trusted manpath exists, and man is a trusted program. */
   argv.push_managed(man->view());
   argv.push_managed("-w");
 
@@ -455,6 +456,8 @@ ManpageCache::scan_next_subcommand_directory(EvalContext &context)
 
   if (scanned_directory_count < scan_directories.count()) return;
 
+  /* at this point: every directory in scan_directories has been read or
+     skipped, so page_file_paths holds every page found. */
   finish_subcommand_index();
 }
 
@@ -682,6 +685,8 @@ man_subcommand_page_is_valid(StringView command,
     return false;
   }
 
+  /* at this point: is_read_allowed is true, file_path holds the page file for
+     page_name, and subcommand_page_validity has no entry for page_name. */
   let const path_view = file_path->view();
 
   if (has_compression_suffix(path_view)) {
@@ -1190,6 +1195,8 @@ internal::manpage_text_for(StringView   page_name,
   if (!location->view().find_character('/').has_value())
     return MANPAGE_CACHE.text.set(page_name, steal(text))->view();
 
+  /* at this point: argv holds the man command for page_name, and location
+     holds a path that contains '/'. */
   Maybe<String> page = capture_completion_program_output(context, *argv);
 
   if (!page.has_value()) {
@@ -1380,6 +1387,8 @@ internal::help_text_of(StringView command, EvalContext &context) throws
 
   if (!text.has_value()) return StringView{};
 
+  /* at this point: the text cache has no entry for command, and text holds
+     the help text of command. */
   return HELP_OUTPUT_CACHE.text.set(command, steal(*text))->view();
 }
 

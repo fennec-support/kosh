@@ -106,6 +106,8 @@ More::execute(const ExecContext               &ec,
     }
   }
 
+  /* at this point: when FLAG_MORE_TAG is set, operands is empty, and
+     tagged_source holds the source file of the tag. */
   let sources = source_list_from_operands(operands, cxt.scratch_allocator());
 
   if (FLAG_MORE_TAG.is_set()) {

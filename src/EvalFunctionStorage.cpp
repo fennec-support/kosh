@@ -205,6 +205,8 @@ FunctionBodyHandle::release() wontthrow -> void
   if (m_storage == nullptr) return;
 
   ASSERT(m_storage->reference_count > 0);
+  /* at this point: m_storage is non-null, and reference_count is at least 1
+     before the decrement. */
   m_storage->reference_count--;
   if (m_storage->reference_count == 0) {
     m_storage->~function_body_storage();

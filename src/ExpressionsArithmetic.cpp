@@ -207,6 +207,8 @@ conditional_operator_view(const conditional_element &element) wontthrow
     return None;
   }
 
+  /* at this point: element is a bare unquoted operand, and view is a
+     binary operator. */
   return view;
 }
 
@@ -232,6 +234,8 @@ conditional_inequality_left_operand(
     return None;
   }
 
+  /* at this point: elements[operator_index] is !=, and
+     elements[operator_index - 1] is an operand with a non-null word. */
   return left.word->raw_view();
 }
 
@@ -992,6 +996,8 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
     return do_evaluate_condition();
   };
 
+  /* at this point: m_body is non-null, the init clause has run or is
+     blank, and the loop is entered. */
   status_result result{};
 
   while (do_test_condition()) {
@@ -1165,6 +1171,8 @@ Subshell::collapsed_body() const wontthrow -> const Expression *
         break;
       }
 
+      /* at this point: sole is a redirected command, and its child is
+         a subshell. */
       return sole;
     }
 

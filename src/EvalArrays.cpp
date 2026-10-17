@@ -223,6 +223,8 @@ EvalContext::assign_associative_elements(
     return;
   }
 
+  /* at this point: elements is not empty, and elements[0] has no [key]=
+     subscript, so elements holds alternating keys and values. */
   for (usize i = 0; i < elements.count(); i += 2) {
     let const key = elements[i].view();
 
@@ -292,6 +294,8 @@ EvalContext::assign_indexed_array_elements(
     return;
   }
 
+  /* at this point: name is not readonly, is not a write-discarded dynamic
+     variable, is not associative, and the shell is not in posix mode. */
   usize running_index = 0;
 
   if (is_bash_directory_stack_special(name)) {
@@ -583,6 +587,8 @@ EvalContext::assign_array_element(
     throw Error{"Unable to index '" + name +
                 "' because the array subscript is invalid"};
 
+  /* at this point: name is not readonly, is not associative, and index is not
+     negative. */
   let const resolved_index = static_cast<usize>(index);
 
   let const do_lookup_existing_element = [&]() throws -> Maybe<String> {
@@ -705,6 +711,8 @@ EvalContext::set_associative_element(StringView name,
     }
   }
 
+  /* at this point: name is not readonly, is_bash_aliases_special() is false,
+     and name is an associative array. */
   variable_store().associative_arrays().put_ordered(
       associative_composite_key(name, key, scratch_allocator()).view(), value);
 }
@@ -926,6 +934,8 @@ EvalContext::unset_array_element(StringView name,
     return;
   }
 
+  /* at this point: name is not readonly, is not an argument array, is not the
+     directory stack, is not associative, and has no indexed array. */
   if (name.find_character('[').has_value()) return;
 
   if (variable_store().shell_variables().find(name).has_value() &&
@@ -1360,6 +1370,8 @@ EvalContext::apply_array_subscript(
     return String{scratch_allocator()};
   }
 
+  /* at this point: name is not associative and is not the directory stack,
+     and array holds the indexed array of name. */
   let const array_count = static_cast<i64>(array->count());
 
   if (index < 0) index += array_negative_index_base(name);

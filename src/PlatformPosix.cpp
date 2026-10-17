@@ -94,6 +94,8 @@ linux_socket_address(StringView             encoded,
     if (::inet_ntop(AF_INET6, bytes, text, sizeof(text)) == nullptr)
       return None;
 
+    /* at this point: bytes holds the 16 bytes parsed from encoded, and
+       text holds the printable form of bytes. */
     return String{allocator, StringView{text}};
   }
 
@@ -109,6 +111,8 @@ linux_socket_address(StringView             encoded,
   if (::inet_ntop(AF_INET, &address, text, sizeof(text)) == nullptr)
     return None;
 
+  /* at this point: address holds the value parsed from encoded, and
+     text holds the dotted form of address. */
   return String{allocator, StringView{text}};
 }
 
@@ -310,6 +314,9 @@ linux_unix_socket_peers(Allocator allocator) throws
                                        linux_unix_socket_peer_comparator{}};
   }
 
+  /* at this point: is_done and is_valid are true, and peers holds the rows
+     kept from the netlink dump. the netlink descriptor closes when this
+     function returns. */
   return steal(peers).make_sorted(linux_unix_socket_peer_comparator{});
 }
 
@@ -356,6 +363,9 @@ linux_process_start_token(StringView process_directory) throws
 
   if (start_token.is_error()) return None;
 
+  /* at this point: the stat file was read, after_name_position is inside
+     stat, and start_token holds the u64 parsed from the field after the last
+     ')'. */
   return start_token.value();
 }
 
@@ -1042,6 +1052,8 @@ save_and_replace_descriptor_at(i32            shell_fd,
 
   if (!result.is_dup2_ok) return result;
 
+  /* at this point: target is open, and result records the state of shell_fd
+     before the replacement, with is_dup2_ok set. */
   result.is_dup2_ok = dup2(target, shell_fd) != -1;
   note_descriptor_rebound();
 
@@ -1647,6 +1659,8 @@ get_home_for_user(StringView username) throws -> Maybe<Path>
 
   let const text = contents->view();
 
+  /* at this point: username is not empty, and text holds the contents of
+     /etc/passwd. */
   for (let const &line : utils::split_lines(text)) {
     if (passwd_field(line, 0) != username) continue;
 
@@ -1872,6 +1886,8 @@ locale_is_available(StringView locale_name) wontthrow -> bool
 
   if (created == nullptr) return false;
 
+  /* at this point: created is a non-null locale_t, and the local copy
+     of locale_name is NUL-terminated. */
   freelocale(created);
 
   return true;
@@ -1908,6 +1924,8 @@ RegexUtf8Scope::RegexUtf8Scope(bool is_enabled) wontthrow
   let const previous = uselocale(regex_locale);
 
   if (previous == nullptr) return;
+  /* at this point: regex_locale is the thread's locale, and previous holds
+     the locale that the destructor restores. */
 
   m_previous  = previous;
   m_is_active = true;
@@ -2006,6 +2024,8 @@ NumericLocaleScope::activate(StringView locale_name, bool is_grouping) wontthrow
   let const previous = uselocale(entry->numeric_locale);
 
   if (previous == nullptr) return;
+  /* at this point: entry->numeric_locale is the thread's locale, and
+     previous holds the locale to restore. */
 
   m_previous  = previous;
   m_is_active = true;
@@ -2027,6 +2047,8 @@ read_process_cpu_times() wontthrow -> cpu_times
     let const ticks = static_cast<double>(sysconf(_SC_CLK_TCK));
 
     if (ticks > 0) {
+      /* at this point: ticks is positive, so the divisions below are defined,
+         and accounting holds the times() result. */
       result.self_user_seconds =
           static_cast<double>(accounting.tms_utime) / ticks;
       result.self_system_seconds =
@@ -2083,6 +2105,8 @@ get_resource_limit(resource_kind kind) wontthrow -> Maybe<resource_limit>
   struct rlimit limit{};
 
   if (getrlimit(*which, &limit) != 0) return None;
+  /* at this point: *which is a valid rlimit id, and limit holds the values
+     from getrlimit(). */
 
   resource_limit result{};
 
@@ -2140,6 +2164,8 @@ get_terminal_dimensions(descriptor output)
   if (window.ws_col == 0 || window.ws_row == 0) {
     return None;
   }
+  /* at this point: window.ws_col and window.ws_row are both nonzero, and
+     ioctl() has filled window. */
 
   return terminal_dimensions{window.ws_col, window.ws_row};
 }
@@ -3107,6 +3133,8 @@ install_fatal_exit_hook(void (*hook)()) throws -> void
   if (atexit(run_fatal_exit_hook) != 0) {
     throw Error{"Could not install the exit hook"};
   }
+  /* at this point: run_fatal_exit_hook() is registered with atexit(), and
+     FATAL_EXIT_HOOK_OWNER holds the current process id. */
 
   struct sigaction action = {};
 
@@ -3577,6 +3605,8 @@ query_string_configuration(string_configuration_key key,
 
     return result;
   }
+  /* at this point: native_key is a defined confstr() key, and confstr()
+     reported a nonzero length for it. */
 
   ArrayList<char> buffer{allocator};
 

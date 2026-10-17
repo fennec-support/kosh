@@ -431,6 +431,8 @@ parse_history_selection(
     return None;
   }
 
+  /* at this point: events is not empty, first_index and last_index are
+     indices into events, and first_index is at most last_index. */
   return history_selection{*first_index, *last_index};
 }
 

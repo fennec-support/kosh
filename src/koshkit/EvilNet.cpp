@@ -806,6 +806,8 @@ get_network_window_status(const live_network_row &row,
           return;
         }
 
+        /* at this point: before and after_boundary both have field, and
+           baseline holds an interpolated value. */
         sampled.*member = network_counter_delta(*baseline, newest.*member);
       };
 

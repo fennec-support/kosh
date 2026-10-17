@@ -52,6 +52,8 @@ json_member_string(StringView source,
         position++;
 
       if (position >= object_end || source[position] != '"') return None;
+      /* at this point: key is a direct member of the object at object_start,
+         and position is the opening quote of its value, before object_end. */
 
       let const value_close =
           parser_format_json_string_end(source, position + 1);

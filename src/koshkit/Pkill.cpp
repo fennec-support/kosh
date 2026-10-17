@@ -95,6 +95,7 @@ Pkill::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: pattern is the only operand and is not empty. */
   let const signal_number = resolve_koshkit_signal(
       FLAG_PKILL_SIGNAL.value(), FLAG_PKILL_SIGNAL.value_location(),
       cxt.scratch_allocator());

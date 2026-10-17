@@ -331,6 +331,9 @@ copy_path(const ExecContext                &ec,
       };
     }
 
+    /* at this point: destination is a directory, and source is a directory
+       that is not copied as a symbolic link. active_directories holds the
+       identity of source when has_identity is set. */
     let const directory_scratch = cxt.expansion_store().scratch_arena().mark();
 
     defer {

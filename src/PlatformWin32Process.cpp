@@ -498,6 +498,8 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
     return None;
   }
 
+  /* at this point: process_info holds a created child process, and read_end
+     is still owned by this function. */
   CloseHandle(process_info.hThread);
   CloseHandle(write_end);
   write_end = INVALID_HANDLE_VALUE;
@@ -1167,6 +1169,8 @@ attach_timeout_job(const PROCESS_INFORMATION &process_info,
   if (AssignProcessToJobObject(job, process_info.hProcess) == FALSE)
     throw Error{last_system_error_message()};
 
+  /* at this point: job is a new job object, and process_info.hProcess is
+     assigned to it. */
   HANDLE child_job_handle = nullptr;
   if (DuplicateHandle(GetCurrentProcess(), job, process_info.hProcess,
                       &child_job_handle, 0,
@@ -1448,6 +1452,8 @@ execute_program(ExecContext                     &ec,
     throw ErrorWithLocation{ec.source_location(), last_system_error_message()};
   }
 
+  /* at this point: process_info holds a created child process, and no fallback
+     has taken the descriptors, so ec.close_fds() runs on return. */
   /* the child starts suspended when a timeout job is attached, so it cannot
      create descendants before attach_timeout_job() assigns it to the job. */
   if (should_attach_timeout_job) {
@@ -1746,6 +1752,8 @@ create_relay_instance(const substitution_relay &relay, bool is_first) wontthrow
     return INVALID_HANDLE_VALUE;
   }
 
+  /* at this point: pipe is an overlapped instance that completes through
+     relay.port. */
   return pipe;
 }
 
@@ -1930,6 +1938,8 @@ finish_relay_connect(substitution_relay &relay,
 
     return;
   }
+  /* at this point: client is Listening, and error is ERROR_SUCCESS,
+     ERROR_PIPE_CONNECTED, or ERROR_NO_DATA. */
 
   accept_relay_client(relay, position);
 }
@@ -1977,6 +1987,9 @@ finish_relay_client_read(substitution_relay &relay,
     return;
   }
 
+  /* at this point: client is not Closing, error is ERROR_SUCCESS,
+     byte_count is nonzero, relay.is_command_writes is false, and the body
+     is open. */
   client.held_byte_count = byte_count;
 }
 
@@ -2136,6 +2149,8 @@ finish_relay_offer(substitution_relay &relay,
   {
     return;
   }
+  /* at this point: error is ERROR_SUCCESS, no relay client is active, and
+     relay.head equals client.offer_position. */
 
   relay.head++;
   relay.posted = relay.head;
@@ -2620,6 +2635,8 @@ launch_process_substitution(
     throw Error{"Unable to start the process substitution relay"};
   }
 
+  /* at this point: child is a spawned process, and worker is a
+     started thread. */
   relay->worker = *worker;
   let launch    = process_substitution_launch{
          .path        = steal(path),
@@ -2996,6 +3013,8 @@ poll_process(process              p,
 
     return process_state::Exited;
   }
+  /* at this point: wait_result is WAIT_OBJECT_0, so p has exited and
+     p is still open. */
   record_child_process_usage(p);
   note_child_reaped();
 
@@ -3052,6 +3071,8 @@ signal_process(process p, i32 signal_number) wontthrow -> bool
 
     return false;
   }
+  /* at this point: signal_number is 9 or 15, the only non-zero signals
+     that is_process_signal_supported() accepts. */
   let const exit_status = static_cast<UINT>(128 + signal_number);
 
   if (process_is_group_reference(p)) {
@@ -3427,6 +3448,8 @@ query_parent_process_id() wontthrow -> i64
   PROCESSENTRY32W entry{};
   entry.dwSize = sizeof(entry);
   if (Process32FirstW(snapshot, &entry) == FALSE) return 0;
+  /* at this point: snapshot is a valid handle that the defer closes,
+     and entry holds the first process record. */
 
   let const process_id = GetCurrentProcessId();
 
@@ -3770,6 +3793,8 @@ run_measured_with_options(
   DWORD exit_code = 0;
   if (GetExitCodeProcess(process_info.hProcess, &exit_code) == FALSE)
     return None;
+  /* at this point: the process has exited, and exit_code holds the exit
+     status of process_info.hProcess. */
   result.exit_status = static_cast<i64>(exit_code);
 
   PROCESS_MEMORY_COUNTERS memory_counters{};

@@ -108,6 +108,9 @@ Tput::execute(const ExecContext               &ec,
       return 1;
     }
 
+    /* at this point: operands holds three entries, and row and column hold
+       values below UINT64_MAX, so row.value() + 1 and column.value() + 1
+       do not overflow. */
     let output = String{cxt.scratch_allocator(), "\033["};
 
     output += String::from(row.value() + 1, cxt.scratch_allocator());

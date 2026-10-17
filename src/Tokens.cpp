@@ -278,6 +278,8 @@ Word::constant_value() const throws -> StringView
     m_constant_value_length = static_cast<u32>(total_length);
   }
 
+  /* at this point: m_constant_value_data is non-null, and
+     m_constant_value_length holds its byte count. */
   return StringView{m_constant_value_data, m_constant_value_length};
 }
 
@@ -386,6 +388,7 @@ Word::fd_allocation_name() const wontthrow -> Maybe<StringView>
 
   if (!target->has_subscript) return target->name;
 
+  /* at this point: target holds a value, and has_subscript is true. */
   return StringView{target->name.data,
                     target->subscript.length + target->name.length + 2};
 }
@@ -549,6 +552,8 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
       return koshka::None;
     }
 
+    /* at this point: after starts with "+=" or "=", so value_start is the
+       operator length, and subscript holds the text up to the closing ']'. */
     let key =
         String{heap_allocator(), first.text.substring_of_length(0, name_end)};
 
@@ -587,6 +592,7 @@ find_assignment_equals(StringView text) wontthrow -> Maybe<usize>
 
   if (cursor >= text.length) return koshka::None;
   if (text[cursor] != '[') return text.find_character('=');
+  /* at this point: cursor is in range, and text[cursor] is '['. */
 
   /* e.g. text = "a[1+2]=x": cursor is 1. the '[' at index 1 sets depth to 1,
           the ']' at index 5 sets it to 0, and text[6] is '=', so the result
@@ -836,6 +842,8 @@ SegmentText::append(StringView other) throws -> void
     if (is_aliased) other.data = m_data + source_offset;
   }
 
+  /* at this point: other is non-empty, and m_capacity is at least needed, so
+     the memcpy() below stays inside the buffer. */
   memcpy(const_cast<char *>(m_data) + m_length, other.data, other.length);
   m_length = static_cast<u32>(needed);
 }
@@ -1004,6 +1012,8 @@ ExpandedWordToken::raw_view() const wontthrow -> Maybe<StringView>
 
   if (m_literal_data == nullptr) return StringView{};
 
+  /* at this point: fill_literal() returned without throwing, and
+     m_literal_data is non-null with m_literal_length bytes. */
   return StringView{m_literal_data, m_literal_length};
 }
 

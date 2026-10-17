@@ -301,6 +301,8 @@ append_highlighted_range(String                          &output,
 {
   if (range_end > text.length) range_end = text.length;
   if (range_start > range_end) range_start = range_end;
+  /* at this point: range_end is at most text.length, and range_start is at
+     most range_end. */
 
   let rendered_position = range_start;
 
@@ -599,6 +601,9 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
     }
 
   if (!has_resolved_function_call) return false;
+  /* at this point: the keyword line has a keyword span at 0 through 4, the
+     repeated spans_for() call matches the first, and the function call has a
+     resolved_command span at 0 through 6. */
 
   let const  other_source = ConstString{"echo ok"};
   let const *invalidated =

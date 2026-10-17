@@ -258,6 +258,8 @@ BumpArena::allocate(usize size, usize alignment) throws -> opaque *
         usually {
           ASSERT(block.base != nullptr);
 
+          /* at this point: block.base is non-null, and the size bytes from
+             aligned lie inside block. */
           let const pointer = block.base + aligned;
 
           block.used = aligned + size;

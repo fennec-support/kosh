@@ -133,6 +133,8 @@ suggest_directory_entry(const Path &directory, StringView name) throws
 
   if (entries == nullptr) return None;
 
+  /* at this point: the query is non-empty, and entries points to a
+     listing of directory. */
   let directory_names_unsorted = ArrayList<StringView>{heap_allocator()};
 
   for (let const &entry : *entries)
@@ -214,6 +216,8 @@ read_line_from_fd(os::descriptor fd,
     if (*read_byte_count == 0) break;
     has_read_any_byte = true;
 
+    /* at this point: read_byte_count holds a successful, nonzero byte count,
+       so chunk is not empty. */
     let const chunk =
         StringView{reinterpret_cast<const char *>(buffer), *read_byte_count};
     let const delimiter_position =
@@ -285,6 +289,8 @@ BufferedLineReader::next() throws -> Result
 
     if (!read_byte_count.has_value()) return Result::Error;
 
+    /* at this point: the read succeeded, and m_is_at_end was false before the
+       read. */
     m_buffer_position = 0;
     m_buffer_length   = *read_byte_count;
     m_is_at_end       = m_buffer_length == 0;
@@ -324,6 +330,8 @@ ceiling_directory_list(StringView ceiling_directories) throws
 
     if (!ceiling.is_absolute()) continue;
 
+    /* at this point: entry is non-empty, and ceiling is absolute, so its
+       normalized text is added to ceilings. */
     ceilings.push_managed(ceiling.normalized().text());
   }
 
@@ -419,6 +427,8 @@ resolve_git_directory(StringView ceiling_directories) throws -> Path
       break;
     }
 
+    /* at this point: normalized differs from dir and is not a ceiling, so the
+       walk continues from normalized. */
     dir = steal(normalized);
   }
 
@@ -837,6 +847,8 @@ parse_file_mode(StringView     expression,
       return None;
     }
 
+    /* at this point: operation is '+', '-', or '=', so the clause has a valid
+       operator. */
     u32 requested_bits         = 0;
     u32 requested_special_bits = 0;
 

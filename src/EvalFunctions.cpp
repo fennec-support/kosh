@@ -85,6 +85,8 @@ EvalContext::register_function(
                 "' because it is a read only function"};
   }
 
+  /* at this point: body_storage holds a non-null body, and the function being
+     registered is not read only. */
   let info = function_definition_info{};
 
   info.body_start_position = body_start_position;
@@ -294,6 +296,8 @@ EvalContext::source_text_in_span(const SourceLocation &location,
     return {};
   }
 
+  /* at this point: resolved_source.text is non-null, and start is below stop,
+     which is at most view.length. */
   return view.substring_of_length(start, stop - start);
 }
 
@@ -392,6 +396,8 @@ EvalContext::cached_trap_body(StringView condition,
   let const *stored_action = body_storage.get_source();
 
   ASSERT(stored_action != nullptr);
+  /* at this point: action has no carriage return, and stored_action is a
+     copy of action that body_storage owns. */
 
   let parser = Parser{
       Lexer{stored_action->view(), *body_storage.get_arena(), TRAP_SOURCE_NAME,
@@ -422,6 +428,8 @@ EvalContext::run_named_trap(
   let const trap = trap_store().find_active(condition);
 
   if (!trap.has_value()) return;
+  /* at this point: condition is not running, and trap holds an active action
+     for condition. */
 
   let const action = trap->action_text.view();
 
@@ -742,6 +750,8 @@ EvalContext::save_untraced_trap(StringView      condition,
   let const trap = trap_store().find(condition);
 
   if (!trap.has_value()) return saved;
+  /* at this point: trace_option is off, and trap holds an action for
+     condition that is saved and then reset below. */
 
   LOG(Info, "taking a %zu byte '%.*s' action away from an untraced body",
       trap->action_text.count(), static_cast<int>(condition.length),
@@ -759,6 +769,8 @@ EvalContext::restore_untraced_trap(StringView         condition,
 {
   if (!saved.definition.has_value()) return;
   if (trap_store().find(condition).has_value()) return;
+  /* at this point: saved.definition holds the action removed for an untraced
+     body, and no trap is set for condition. */
 
   LOG(Info, "restoring the '%.*s' action an untraced body ran without",
       static_cast<int>(condition.length), condition.data);

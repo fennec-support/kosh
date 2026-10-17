@@ -296,6 +296,9 @@ check_redirection_lints(AnalysisContext          &actx,
   if (!input.is_in_group(COMMAND_GROUP_NON_STDIN_READER)) return;
   if (args_have_stdin_operand(input.args)) return;
 
+  /* at this point: input.is_command_shadowed is false, input.redirections is
+     non-empty, the command is in COMMAND_GROUP_NON_STDIN_READER, and input.args
+     has no stdin operand. */
   for (let const &redirection : input.redirections)
     if (redirection.kind == Redirection::Kind::ReadInput ||
         redirection.kind == Redirection::Kind::Heredoc ||
@@ -768,6 +771,8 @@ value_is_self_arithmetic(StringView name, StringView value) wontthrow -> bool
 
   if (position >= value.length) return false;
 
+  /* at this point: value holds name after an optional $, then one of + - * /,
+     then at least one byte. */
   return value.substring(position).is_all_decimal_digits();
 }
 
@@ -1178,6 +1183,8 @@ check_case_pattern_shape(AnalysisContext       &actx,
 
   if (letter_index == 64) return;
 
+  /* at this point: input.is_getopts_case is true, pattern_literal is one ASCII
+     letter, and letter_index is in 0 to 51. */
   tally.handled_option_letters |= u64{1} << letter_index;
 
   if (!input.getopts_optstring.find_character(pattern_literal[0]).has_value()) {

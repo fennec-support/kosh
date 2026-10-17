@@ -88,6 +88,8 @@ public:
     let *const erased_slot = reinterpret_cast<Slot *>(element);
 
     ASSERT(erased_slot->is_live);
+    /* at this point: element is non-null and its slot is live, so the element
+       is constructed and has not been erased. */
     element->~T();
     erased_slot->is_live   = false;
     erased_slot->next_free = m_free;

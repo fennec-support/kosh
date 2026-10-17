@@ -133,6 +133,8 @@ is_year_marker(StringView name, usize position) wontthrow -> bool
     return false;
   }
 
+  /* at this point: position + 5 is at most name.length, and name[position]
+     is '-' or '_', so the four bytes after position are in range. */
   for (usize offset = 1; offset <= 4; offset++) {
     if (name[position + offset] < '0' || name[position + offset] > '9') {
       return false;
@@ -185,6 +187,8 @@ is_dump_entry(StringView      directory,
 
   if (!is_directory) return false;
 
+  /* at this point: is_directory is true, and name matches none of the core.,
+     ccpp-, or dump suffix checks above. */
   return directory.find_substring("WER/ReportArchive").has_value() ||
          directory.find_substring("WER/ReportQueue").has_value() ||
          directory.find_substring("WER\\ReportArchive").has_value() ||
@@ -377,6 +381,7 @@ append_core_dump_report(String   &output,
 
     if (dumps.is_empty()) continue;
 
+    /* at this point: directory is a directory, and dumps is not empty. */
     total_dump_count += dumps.count();
 
     u64 total_byte_count = 0;
@@ -618,6 +623,9 @@ collect_log_entries(StringView directory, Allocator allocator) throws
 
     if (!opened.has_value()) continue;
 
+    /* at this point: the child is not a directory, and opened holds a
+       descriptor that probes[probe_count] owns until do_flush_probes() closes
+       it. */
     probes[probe_count].descriptor     = *opened;
     probes[probe_count].entry_position = entries.count() - 1;
     probe_count++;
@@ -711,6 +719,7 @@ append_log_report(String   &output,
 
     if (entries.is_empty()) continue;
 
+    /* at this point: directory is a directory, and entries is not empty. */
     directory_count++;
 
     u64 total_byte_count = 0;

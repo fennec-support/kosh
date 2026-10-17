@@ -593,6 +593,8 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     ASSERT(*glob_index < text.length);
     ASSERT(field.glob_active.count() == text.length);
 
+    /* at this point: glob_index holds a position inside text, and
+       field.glob_active holds one flag for each byte of text. */
     let slash_after = Maybe<usize>{};
 
     for (usize k = *glob_index; k < text.length; k++) {
@@ -946,6 +948,8 @@ glob_ignore_segments_match(const glob_ignore_pattern &pattern,
       return !pattern_slash.has_value() && !text_slash.has_value();
     }
 
+    /* at this point: pattern_segment matches text_segment, and both
+       pattern_slash and text_slash hold a '/' position in their remainders. */
     pattern_start += *pattern_slash + 1;
     text_start += *text_slash + 1;
   }

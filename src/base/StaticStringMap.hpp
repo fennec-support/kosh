@@ -50,6 +50,8 @@ struct static_string_prefilter
 
     if (text.length == 0) return true;
 
+    /* at this point: text is not empty, and its length is within
+       shortest_key_length and longest_key_length. */
     let const leading = static_cast<u8>(text.data[0]);
 
     return ((leading_byte_mask[leading >> 6] >> (leading & 63)) & 1) != 0;

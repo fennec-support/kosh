@@ -718,6 +718,8 @@ append_declare_key(String    &out,
     return;
   }
 
+  /* at this point: key is neither ansi-quoted nor plain, so it is written
+     inside double quotes. */
   out += '"';
   out += quote_for_declare(key);
   out += '"';
@@ -789,6 +791,8 @@ append_variable_declaration(EvalContext &cxt,
     return true;
   }
 
+  /* at this point: name is neither a self reference nor a nameref, so the
+     array and scalar branches below apply. */
   let const is_utf8_locale     = cxt.get_glob_charset() == glob_charset::Utf8;
   let const is_directory_stack = cxt.is_bash_directory_stack_special(name);
   let const is_argument_array  = cxt.is_bash_argument_array(name);
@@ -970,6 +974,7 @@ parse_optional_integer_arg(const ExecContext &ec,
 
   if (parsed_value.is_error()) throw parsed_value.error();
 
+  /* at this point: ec.args()[1] exists and parses as an i64. */
   return parsed_value.value();
 }
 

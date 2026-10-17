@@ -178,6 +178,9 @@ public:
         continue;
       }
 
+      /* at this point: binding.file_fd is KOSH_INVALID_FD and
+         binding.dup_from_fd is negative, so close_target() gets
+         binding.target_fd. */
       close_target(binding.target_fd);
     }
   }

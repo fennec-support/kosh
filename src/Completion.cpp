@@ -433,6 +433,8 @@ public:
       return;
     }
 
+    /* at this point: tier_index equals best_tier, so name is counted and not
+       kept. */
     match_count++;
   }
 
@@ -775,6 +777,9 @@ check_filesystem_entry(
     return None;
   }
 
+  /* at this point: entry is not hidden unless the basename starts with '.',
+     and it is a directory when filter is DirectoriesOnly, or a directory or
+     an executable when filter is RunnableOrDirectories. */
   return eligible_filesystem_entry{is_directory};
 }
 
@@ -838,6 +843,9 @@ build_filesystem_candidate(StringView                       directory_part,
     return candidate;
   }
 
+  /* at this point: decoded_word has no open quote, no closed quote ends the
+     token, and raw_directory_part equals directory_part, so the candidate
+     starts from directory_part. */
   let       candidate = String{completion_allocator(), directory_part};
   let const is_variable_prefixed =
       !directory_part.is_empty() && directory_part[0] == '$';
@@ -1681,6 +1689,8 @@ complete(StringView                   line,
     token     = token_prefix;
   }
 
+  /* at this point: token_end is at most cursor, and token_end is cursor
+     when decoded_prefix has an open quote. */
   let const line_end = replacement_token_end;
 
   if (cursor == token_start) replacement_token_end = cursor;

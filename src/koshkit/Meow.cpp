@@ -1062,6 +1062,8 @@ meet_cats(scene_state &scene) wontthrow -> void
       if (!is_approaching || left_cat.activity == cat_activity::Hissing) {
         continue;
       }
+      /* at this point: left_cat and right_cat are distinct, close enough to
+         meet, approaching each other, and left_cat is not hissing. */
 
       let const is_friendly   = scene.noise.next_index(2) == 0;
       let const middle_column = ((left_cat.column + right_cat.column) / 2.0) +

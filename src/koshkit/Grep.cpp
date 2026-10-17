@@ -384,6 +384,8 @@ collect_recursive_sources(const ExecContext &ec,
     return;
   }
 
+  /* at this point: path_kind is Directory, and children holds the entries
+     read from path. */
   children->sort(
       [](const Path::DirectoryChild &left, const Path::DirectoryChild &right) {
         return left.name.view() < right.name.view();
@@ -696,6 +698,8 @@ public:
 
     if (!m_options.is_utf8) return true;
 
+    /* at this point: is_utf8 is set, so the regex compiled below is
+       m_utf8_regex. */
     let const scope = os::RegexUtf8Scope{true};
 
     return compile_regex_into(m_utf8_regex, sensitivity);
@@ -1048,6 +1052,8 @@ private:
       limit = value.length - tail.length;
     }
 
+    /* at this point: position is at most limit, and the anchored head and
+       tail, when present, matched at their ends. */
     for (usize index = first; index < last; index++) {
       let const found =
           find_fast_segment(m_fast_segments[index], value, position, limit);
@@ -1229,6 +1235,8 @@ public:
       return false;
     }
 
+    /* at this point: value starts with m_regex_prefix, or m_regex_prefix is
+       empty. */
     if (m_fast_regex_class != grep_repeated_class::None)
       return match_repeated_class_line(value);
 
@@ -1423,6 +1431,8 @@ public:
       }
     }
 
+    /* at this point: the reader reported Complete, so no source has chunks
+       left to read. */
     m_ec.print_to_stdout(m_output);
     if (m_status == 2) return 2;
 

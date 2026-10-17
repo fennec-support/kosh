@@ -88,6 +88,8 @@ Cut::execute(const ExecContext               &ec,
     delimiter = FLAG_CUT_DELIMITER.value()[0];
   }
 
+  /* at this point: exactly one of -b, -c, or -f is set, ranges holds the
+     parsed position list, and delimiter is one byte. */
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
   let       output                       = String{cxt.scratch_allocator()};

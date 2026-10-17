@@ -61,6 +61,8 @@ move_directory_across_devices(const ExecContext &ec,
     };
   }
 
+  /* at this point: temporary_directory holds a copy of source beside target,
+     and was_published is false, so the defer removes the copy on error. */
   if (!os::rename_path(temporary_directory->view(), target))
     throw Error{
         "unable to publish '" + String{allocator, target}
@@ -192,6 +194,8 @@ Mv::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: operands holds at least two entries, and
+     is_destination_directory is true when several sources are given. */
   let output = String{cxt.scratch_allocator()};
   i32 status = 0;
 

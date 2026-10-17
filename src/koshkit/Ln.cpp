@@ -54,6 +54,8 @@ Ln::execute(const ExecContext               &ec,
     };
   }
 
+  /* at this point: operands holds at least two paths, and destination is a
+     directory when there is more than one target. */
   i32 status = 0;
 
   for (usize i = 0; i + 1 < operands.count(); i++) {

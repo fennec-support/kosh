@@ -238,6 +238,8 @@ parse_rpm_spec_format(const parser_format_input &input,
     }
 
     if (!mood.has_value() || shell_start >= shell_end) continue;
+    /* at this point: mood holds a shell mood, shell_start is the byte after
+       the script section header, and shell_start < shell_end. */
 
     parser_format_add_fragment(
         document, input.source, shell_start, shell_end, 0,

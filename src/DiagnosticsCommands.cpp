@@ -41,6 +41,7 @@ check_trap_condition_operands(AnalysisContext                &actx,
     let const view = literal.view();
 
     if (view.is_empty()) continue;
+    /* at this point: args[i] is a word token, and view is non-empty. */
 
     if (view == "ERR") {
       if (is_posix) {
@@ -273,6 +274,8 @@ check_command_name_lints(AnalysisContext          &actx,
     if (name_word.segments.count() != 1) break;
     if (!word_is_fully_literal(optstring_word)) break;
     if (!word_is_fully_literal(name_word)) break;
+    /* at this point: args has at least three entries, args[1] and args[2] are
+       word tokens, and each word is one fully literal segment. */
 
     actx.active_getopts.optstring     = optstring_word.segments[0].text.view();
     actx.active_getopts.variable_name = name_word.segments[0].text.view();

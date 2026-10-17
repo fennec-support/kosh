@@ -681,6 +681,9 @@ Pr::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: effective_column_count is at least 1, column_width is
+     nonzero when is_multicolumn, and rows_per_page * effective_column_count
+     fits in usize. */
   let       writer = PrRowWriter{output, is_multicolumn};
   BumpArena page_arena{};
   let const page_allocator = bump_allocator(page_arena);
@@ -870,6 +873,8 @@ Pr::execute(const ExecContext               &ec,
         continue;
       }
 
+      /* at this point: lines is not empty, and page_number is at least
+         first_page. */
       if (has_page_frame)
         do_append_header(date_text.view(), title, page_number);
 

@@ -79,6 +79,8 @@ resolve_no_editor_history_path() -> Maybe<Path>
   let home = os::get_home_directory();
 
   if (!home.has_value()) return None;
+  /* at this point: KOSH_HISTORY_FILE is unset or empty, and home holds
+     the home directory path. */
 
   let path = home->clone();
 
@@ -140,6 +142,8 @@ push_history_record_byte_offset(no_editor_history_state &state,
     return;
   }
 
+  /* at this point: entry_limit is nonzero, and record_byte_offsets holds
+     at least entry_limit entries. */
   state.record_byte_offsets[state.first_record_index] = byte_offset;
   state.durable_record_byte_offsets[state.first_record_index] =
       durable_byte_offset;
@@ -280,6 +284,9 @@ scan_no_editor_history(const Path &path,
   } else if (state.file_status.size != contents.length) {
     return history_scan_outcome::Stale;
   }
+  /* at this point: every record in contents is valid, and either the
+     file status of path has the size of contents, or path is missing and
+     should_allow_missing is true. */
 
   state.is_loaded = true;
 
@@ -901,6 +908,9 @@ set_history_limit(usize entry_count) -> void
     return;
   }
 
+  /* at this point: entry_limit is retained_limit, and record_byte_offsets
+     holds more than retained_limit entries or has a nonzero
+     first_record_index. */
   let retained_offsets = koshka::ArrayList<usize>{koshka::heap_allocator()};
   let retained_durable_offsets =
       koshka::ArrayList<usize>{koshka::heap_allocator()};
@@ -939,6 +949,8 @@ get_newest_history_event_number() -> koshka::ErrorOr<koshka::Maybe<usize>>
 
   if (state.record_byte_offsets.is_empty())
     return koshka::Maybe<usize>{koshka::None};
+  /* at this point: the history is loaded from path, and
+     record_byte_offsets holds at least one record. */
 
   return koshka::Maybe<usize>{state.total_count};
 }

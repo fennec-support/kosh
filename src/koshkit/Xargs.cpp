@@ -146,6 +146,8 @@ private:
       }
 
       m_buffer.append(StringView{chunk, *read_byte_count});
+      /* at this point: m_buffer holds the bytes just read, m_position is 0,
+         and m_is_at_end is false. */
     }
 
     return m_buffer[m_position];

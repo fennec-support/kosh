@@ -91,6 +91,7 @@ control_sequence_length(StringView text, usize position) wontthrow -> usize
   if (byte != 0xc2 || position + 1 >= text.length) {
     return 0;
   }
+  /* at this point: byte is 0xc2 and position + 1 < text.length. */
 
   let const next_byte = static_cast<u8>(text[position + 1]);
 

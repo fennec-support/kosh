@@ -181,6 +181,8 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 1;
     }
 
+    /* at this point: target holds the path of this binary, and
+       FLAG_KOSHKIT_ASSIMILATE.value() is a directory. */
     i32 status = 0;
 
     for (let const &name : sorted_names) {

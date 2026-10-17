@@ -195,6 +195,8 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* at this point: args[1] is the requested value, and limit holds the soft
+     and hard values of resource. */
   LOG(Debug, "ulimit changing the '%s' limit to '%s'", resource.label,
       args[1].c_str());
 

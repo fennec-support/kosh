@@ -731,6 +731,8 @@ apply_makeflags(StringView          text,
       continue;
     }
 
+    /* at this point: word is not empty and is not a command line
+       assignment, and letters is not empty and does not start with '-'. */
     for (usize letter_position = 0; letter_position < letters.length;
          letter_position++)
     {
@@ -824,6 +826,8 @@ archive_member_modification_time(const Path &archive,
     if (member_byte_count.value() > contents->view().length - content_position)
       return None;
 
+    /* at this point: timestamp and member_byte_count hold parsed values, and
+       the member fits in contents after content_position. */
     u64 extended_name_length = 0;
 
     if (member_name.starts_with(StringView{"#1/"})) {
@@ -1049,6 +1053,8 @@ expand_variable(EvalContext &cxt,
   if (lookup.flavor == make_variable_flavor::Undefined)
     return String{cxt.scratch_allocator()};
 
+  /* at this point: lookup.flavor is recursive, so the value is expanded
+     by expand(). */
   let recursive_value = lookup.into_string(cxt.scratch_allocator());
 
   return expand(cxt, mk, recursive_value.view(), depth + 1);
@@ -1214,6 +1220,8 @@ match_make_pattern(const make_pattern &pattern, StringView word) wontthrow
       pattern.suffix.view())
     return None;
 
+  /* at this point: pattern has a wildcard, word starts with prefix, and word
+     ends with suffix without overlapping the prefix. */
   return word.substring_of_length(pattern.prefix.count(),
                                   word.length - pattern.prefix.count() -
                                       pattern.suffix.count());
@@ -1355,6 +1363,8 @@ restore_make_variable(makefile                     &mk,
 
   ASSERT(index.has_value());
 
+  /* at this point: was_present is true, and index holds the slot of
+     snapshot.name in mk.variables. */
   make_variable &variable = mk.variables[*index.value()];
 
   variable.value  = String{allocator, snapshot.value.view()};
@@ -1510,6 +1520,8 @@ try_substitution_reference(EvalContext &cxt,
 
   if (!equals.has_value()) return None;
 
+  /* at this point: variable_name is the text before the first ':', is
+     non-empty, and has no blanks. rest holds '=' at *equals. */
   let const pattern =
       expand(cxt, mk, rest.substring_of_length(0, *equals), depth + 1);
   let const replacement =
@@ -1536,6 +1548,7 @@ split_make_function_arguments(StringView text,
     return arguments;
   }
 
+  /* at this point: text is not empty, and maximum_argument_count is not 1. */
   usize argument_start = 0;
   usize nested_depth   = 0;
 
@@ -2555,6 +2568,9 @@ split_conditional_arguments_at_top_level_comma(StringView  rest,
 
   if (!comma.has_value()) return false;
 
+  /* at this point: rest is trimmed and starts with '(', content is the text
+     between the outer parentheses, and comma is the offset of the first
+     top-level comma in content. */
   first  = trim(content.substring_of_length(0, *comma));
   second = trim(content.substring(*comma + 1));
 
@@ -2798,6 +2814,8 @@ parse_makefile_into(EvalContext                     &cxt,
           throw ErrorWithLocation{
               logical.source_span,
               "Makefile includes exceed the supported nesting depth"};
+        /* at this point: include_paths holds at least one path, and
+           include_depth is below 17. */
         current_rule_indices.clear();
         current_pattern_indices.clear();
 
@@ -3954,6 +3972,8 @@ build_target(const ExecContext        &ec,
       continue;
     }
 
+    /* at this point: command is not empty, and should_force_run is set or no
+       query, touch, or dry run option is active. */
     let const strict_toggles_off_scope = RuntimeStateScope{cxt};
 
     cxt.runtime_state().set_mood(mimic_mood::Posix);
@@ -4765,6 +4785,8 @@ Make::execute(const ExecContext               &ec,
     goal_locations.push(ec.source_location());
   }
 
+  /* at this point: goals holds at least one goal, and mk holds the parsed
+     makefile. */
   StringMap<bool> active_targets{cxt.scratch_allocator()};
   StringMap<bool> completed_target_results{cxt.scratch_allocator()};
   let const       options = make_build_options{

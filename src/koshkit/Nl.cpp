@@ -273,6 +273,8 @@ Nl::execute(const ExecContext               &ec,
       os::close_fd(input->descriptor);
   };
 
+  /* at this point: input holds an open descriptor, delimiter is two bytes,
+     and width_value is positive. */
   let reader =
       utils::BufferedLineReader{input->descriptor, cxt.scratch_allocator()};
   let      output        = String{cxt.scratch_allocator()};

@@ -254,6 +254,9 @@ public:
     }
 #endif
 
+    /* at this point: shared_length is the smaller of length and
+       other.length. on little-endian targets with shared_length of 8 or
+       more, the first 8 bytes are equal. */
     let const order = shared_length == 0
                           ? 0
                           : __builtin_memcmp(data, other.data, shared_length);

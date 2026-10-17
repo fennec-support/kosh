@@ -249,6 +249,8 @@ resolve_selector_program_or_report_why_it_cannot_run(
                          command_name + "' was not found"};
   }
 
+  /* at this point: configured is unset or non-empty, and resolved holds at
+     least one match, so resolved[0] is valid. */
   return koshka::Path{resolved[0].text()};
 }
 
@@ -532,6 +534,8 @@ read_while_continuing_program(
     if (!read_count.has_value()) return koshka::None;
     if (*read_count == 0) return koshka::Maybe<koshka::String>{steal(captured)};
 
+    /* at this point: read_count is nonzero and no read error occurred, so
+       buffer holds the new output bytes. */
     captured.append(koshka::StringView{buffer, *read_count});
   }
 }
@@ -599,6 +603,9 @@ run_selector_program(
     if (is_read_end_open) koshka::os::close_fd(output_pipe->in);
   };
 
+  /* at this point: program holds a resolved selector, input_fd and
+     output_pipe are open, and the defer above owns them until
+     is_child_descriptor_pair_owned is cleared. */
   let arg_locations =
       koshka::ArrayList<koshka::SourceLocation>{koshka::heap_allocator()};
   let selector = koshka::ExecContext::make_from_resolved(
@@ -727,6 +734,8 @@ completion_session::select_history(const char *const *entries,
   if (entries == nullptr || count == 0) {
     return 0;
   }
+  /* at this point: context is non-null, tab_selector is External, and entries
+     is non-null with a nonzero count. */
 
   try {
     let input = koshka::String{koshka::heap_allocator()};
@@ -819,6 +828,8 @@ run_line_editor(koshka::EvalContext &context,
     unused(koshka::os::remove_file(temp_path->text().view()));
   };
 
+  /* at this point: resolved is non-empty, and temp_path is the file that the
+     defer above removes on return. */
   let const program = koshka::Path{resolved[0].text()};
 
   words[0] = koshka::String{words[0].allocator(), program.view()};
@@ -2070,6 +2081,8 @@ replace_history_file(const Path &path,
   if (load_history(path, false).is_error())
     return history_replacement::NotReloaded;
 
+  /* at this point: the file at path holds contents, and the history is
+     loaded from path. */
   return history_replacement::Replaced;
 }
 
@@ -2123,6 +2136,8 @@ import_history(StringView contents) -> koshka::ErrorOr<koshka::Ok>
     return koshka::Success;
   }
 
+  /* at this point: the history is loaded, the history limit is nonzero,
+     and contents is not empty. */
   let records = String{koshka::heap_allocator(), contents};
 
   if (contents[contents.length - 1] != '\n') records.push('\n');
@@ -2290,6 +2305,7 @@ get_newest_history_event_number() -> koshka::ErrorOr<koshka::Maybe<usize>>
   TRY(ensure_history_loaded(*path, true));
   if (::itl_g_history_count == 0) return koshka::Maybe<usize>{koshka::None};
 
+  /* at this point: the history is loaded with at least one record. */
   return koshka::Maybe<usize>{::itl_g_history_total_count};
 }
 
@@ -2499,6 +2515,8 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
   if (!::itl_string_from_bytes(entry, command.data, command.length))
     return koshka::None;
 
+  /* at this point: the process lock is held, the history is loaded with a
+     nonzero limit, and entry holds a copy of command until the return. */
   if (!is_history_persistent())
     return append_private_history_event(entry, command);
 
@@ -3630,6 +3648,8 @@ prompt_history_number(const EvalContext &context) throws -> usize
     return 1;
   }
 
+  /* at this point: the shell is interactive, and newest holds a history
+     event number. */
   return *newest.value() + 1;
 }
 
@@ -3879,6 +3899,9 @@ struct prompt_cache
       }
     }
 
+    /* at this point: is_valid is true and prompt_template equals
+       current_template, and every input matches its stored value, or is
+       unset in both. */
     return true;
   }
 
@@ -4348,6 +4371,8 @@ render_ps0(EvalContext &context) -> String
 
   if (!expanded.has_value()) return String{koshka::heap_allocator()};
 
+  /* at this point: ps0 is a non-empty PS0 template, and expanded holds
+     a value. */
   return finish_prompt_dropping_width_markers(expanded->view());
 }
 
@@ -4372,6 +4397,8 @@ is_shell_integration_enabled(EvalContext &context) throws -> bool
     return false;
   }
 
+  /* at this point: stdout is a terminal, TERM is not dumb, and
+     KOSH_SHELL_INTEGRATION is not 0. */
   return true;
 }
 

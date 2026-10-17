@@ -68,6 +68,8 @@ Eval::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (joined.is_empty()) return 0;
 
+  /* at this point: joined holds at least one byte, built from the operands
+     from index first, and any leading option has been rejected. */
   LOG(Debug, "eval running %zu joined bytes in the current shell",
       joined.length());
 

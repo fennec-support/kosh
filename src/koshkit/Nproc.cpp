@@ -60,6 +60,8 @@ Nproc::execute(const ExecContext               &ec,
     ignored_count = parsed.value();
   }
 
+  /* at this point: operands is empty, and ignored_count holds the parsed
+     count, or 0 when --ignore is not set. */
   let const counts          = os::get_processor_counts();
   let const processor_count = FLAG_NPROC_ALL.is_enabled()
                                   ? counts.configured_count

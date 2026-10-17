@@ -2109,6 +2109,9 @@ append_kubernetes_report(String                                   &output,
 
       if (is_duplicate) continue;
 
+      /* at this point: evidence.is_kubernetes is true, evidence.pod_uid is not
+         "-", and no earlier entry of this process has the same pod_uid, qos,
+         runtime, and container_id. */
       bool is_known = false;
 
       for (let &row : rows) {
@@ -2243,6 +2246,7 @@ EvilIso::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: FLAG_HELP is not enabled, and operands is empty. */
   let const has_selector =
       FLAG_EVILISO_NAMESPACES.is_enabled() ||
       FLAG_EVILISO_CGROUPS.is_enabled() || FLAG_EVILISO_SESSIONS.is_enabled() ||

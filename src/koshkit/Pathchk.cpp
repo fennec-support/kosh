@@ -156,6 +156,8 @@ get_windows_root_length(StringView path) wontthrow -> usize
 
   if (!is_double_separator) return 0;
 
+  /* at this point: path[0] and path[1] are separators, so path may be a
+     UNC or device path. */
   let const is_device_prefix = path.length >= 4 &&
                                (path[2] == '?' || path[2] == '.') &&
                                is_windows_separator(path[3]);

@@ -261,6 +261,8 @@ struct process_row_comparator
       return *left_value > *right_value;
     }
 
+    /* at this point: sort_key holds a key other than Pid, and left_value and
+       right_value are both absent or hold equal values. */
     return left.pid < right.pid;
   }
 };
@@ -349,6 +351,8 @@ read_process_io_rows(Allocator        allocator,
       continue;
     }
 
+    /* at this point: process.pid is positive, and when selected_pid has a
+       value, process.pid equals *selected_pid. */
     process_ids.push(process.pid);
     process_positions.push(process_position);
   }
@@ -450,6 +454,9 @@ sample_process_io_rows(const ArrayList<io_row> &before_rows,
       continue;
     }
 
+    /* at this point: before and after describe the same process by pid
+       and start_token, read_delta and write_delta have values, and
+       status is not idle or idle_mode is Include. */
     sampled_rows.push(io_row{
         String{allocator, after.name.view()},
         after.pid, after.start_token,

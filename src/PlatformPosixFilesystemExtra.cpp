@@ -143,6 +143,8 @@ fill_bulk_file_status(const attribute_set_t &returned,
     status.special_device_id = special_device;
   }
 
+  /* at this point: every attribute in REQUIRED_COMMON and the group for
+     type is returned, so status holds the fields set above. */
   return (flags & SF_FIRMLINK) == 0;
 }
 
@@ -185,6 +187,8 @@ list_directory_status_bulk(StringView dir, Allocator allocator) throws
     if (entry_count < 0) return None;
     if (entry_count == 0) return entries;
 
+    /* at this point: directory_descriptor is open, and entry_count is
+       positive, so buffer holds at least one record. */
     const char *record = buffer;
 
     for (i32 index = 0; index < entry_count; index++) {
@@ -353,6 +357,8 @@ find_path_from_file_id(StringView filesystem_path, u64 file_id) wontthrow
 
   if (path_byte_count <= 1) return None;
 
+  /* at this point: filesystem is the statfs result for filesystem_path,
+     and fsgetpath() returned at least two bytes into path_buffer. */
   return Path{
       StringView{path_buffer, static_cast<usize>(path_byte_count - 1)}
   };
@@ -892,6 +898,8 @@ read_native_filesystem_error_counters(
     return false;
   }
 
+  /* at this point: filesystem_root is the sysfs directory of the selected
+     btrfs filesystem, and device_ids lists at least one device. */
   struct named_counter
   {
     StringView name;
@@ -2032,6 +2040,8 @@ io_uring_batch_supports_operations(const io_uring_batch  &ring,
     }
   }
 
+  /* at this point: every operation maps to an opcode that ring supports,
+     and no two WriteCurrent operations share a descriptor. */
   return true;
 }
 

@@ -292,6 +292,8 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return status;
   }
 
+  /* at this point: at least one operand is present, and neither -s nor -u
+     is set. */
   for (usize n = 0; n < names.count(); n++) {
     let const *option = do_find_or_reject(names[n], name_locations[n]);
 

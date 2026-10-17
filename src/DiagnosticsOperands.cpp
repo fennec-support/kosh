@@ -197,6 +197,8 @@ view_has_decimal_fraction(StringView view) wontthrow -> bool
     return false;
   }
 
+  /* at this point: view has at least one digit after its optional sign,
+     and view[position] is '.'. */
   position++;
 
   let const fraction_start = position;

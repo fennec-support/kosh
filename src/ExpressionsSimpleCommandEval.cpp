@@ -157,6 +157,8 @@ command_runs_program(const ArrayList<String>    &args,
     return false;
   }
 
+  /* at this point: *builtin is CommandBuiltin, and operand_index is in
+     range for args and points at a word without a leading dash. */
   return !cxt.find_enabled_builtin(args[operand_index].view()).has_value();
 }
 
@@ -185,6 +187,8 @@ SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
   }
 
   if (program_args[0].view() != literal_name) return nullptr;
+  /* at this point: m_args[0] is a Word token, literal_name holds the
+     literal text of that word, and program_args[0] equals literal_name. */
 
   if (!m_literal_command_lookup.has_value()) {
     m_literal_command_lookup = LiteralCommandLookup{
@@ -255,6 +259,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
     }
   }
 
+  /* at this point: the command word is not a glob pattern, or a non-default
+     mood has already shown its warning. */
   if (cxt.runtime_state().should_echo()) {
     koshka::print(utils::merge_tokens_to_string(m_args) + "\n");
     koshka::flush();

@@ -403,6 +403,8 @@ Head::execute(const ExecContext               &ec,
         continue;
       }
 
+      /* at this point: text holds the content of this source, and fd is closed
+         when this call opened it. */
       do_print_header(source_index);
       do_write_output(text->view());
     }

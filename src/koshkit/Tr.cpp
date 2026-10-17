@@ -130,6 +130,8 @@ expand_posix_class(StringView set,
 
   if (!test.has_value()) return 0;
 
+  /* at this point: the [:class:] token ends at set[scan + 1], and test
+     holds the predicate of a known class. */
   for (int byte = 0; byte < 256; byte++) {
     if ((*test)(static_cast<u8>(byte))) expanded.push(static_cast<char>(byte));
   }

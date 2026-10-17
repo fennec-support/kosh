@@ -64,6 +64,8 @@ frecency_store_path() throws -> Maybe<Path>
 
   if (!home.has_value()) return None;
 
+  /* at this point: KOSH_DIRECTORY_HISTORY is unset or empty, and home
+     holds the home directory. */
   let path = home->clone();
 
   path.append(".kosh_directory_history");

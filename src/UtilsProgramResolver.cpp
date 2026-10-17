@@ -305,6 +305,8 @@ read_directory_cached_after_status(const Path             &directory,
 
   if (!entries.has_value()) return nullptr;
 
+  /* at this point: entries holds the listing of directory, and no cached
+     listing matches the stat of directory. */
   usize unknown_count = 0;
 
   for (let const &child : *entries)
@@ -815,6 +817,8 @@ ProgramResolver::probe_directory_entries(
       continue;
     }
 
+    /* at this point: entry is a regular file, or a symlink to one whose path
+       is in full_path. */
     if (!full_path.has_value()) {
       full_path = directory.clone();
       full_path->append(entry.name.view());

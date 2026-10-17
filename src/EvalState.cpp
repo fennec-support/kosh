@@ -1163,6 +1163,7 @@ find_wire_source_name(ArrayList<u32> &names, u32 name_index) throws
     return static_cast<u32>(*found + 1);
   }
 
+  /* at this point: name_index is nonzero and is not already recorded. */
   names.push(name_index);
 
   return static_cast<u32>(names.count());
@@ -1765,6 +1766,7 @@ read_wire_source_names(subshell_bootstrap_reader &reader,
       return false;
     }
 
+    /* at this point: kind is File, reader is valid, and name is not empty. */
     names.push(intern_source_name(name));
   }
 
@@ -1998,6 +2000,8 @@ VariableStore::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
 
+  /* at this point: value_count equals the frame argument total, and
+     bash_argument_values is empty unless has_bash_argument_arrays is set. */
   if (!read_subshell_bootstrap_bool(payload, wire.has_bash_argument_context))
     return false;
   if (wire.has_bash_argument_context) {
@@ -2111,6 +2115,9 @@ FunctionStore::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
 
+  /* at this point: call_depth is at most MAX_FUNCTION_CALL_DEPTH,
+     call_name_count does not exceed call_depth, and record_count fits the
+     remaining payload. */
   for (usize index = 0; index < record_count; index++) {
     let const name = payload.read_text();
     let       info = function_definition_info{};
@@ -2159,6 +2166,8 @@ FunctionStore::apply_wire_definitions(function_wire &wire) throws
           return;
         }
 
+        /* at this point: storage has a value, and replayed and source are
+           non-null. */
         origin.body_start_position = replayed->body_start_position;
         origin.header_length       = replayed->header_length;
         origin.body_name_index     = replayed->body_name_index;
@@ -2575,6 +2584,9 @@ JobTable::from_wire(subshell_bootstrap_reader &reader,
       return false;
     }
 
+    /* at this point: a done job has no earlier pipeline processes and no
+       primary process, and every other job has a primary process or at
+       least one earlier pipeline process. */
     child_job.earlier_pipeline_processes.reserve(earlier_process_count);
 
     for (usize process_index = 0; process_index < earlier_process_count;
@@ -2627,6 +2639,8 @@ job_table_wire::bind_processes(const os::subshell_bootstrap &bootstrap)
     referenced_processes.set(process_index);
   }
 
+  /* at this point: process_references lists each index of bootstrap.processes
+     exactly once, because the counts match and no index repeats. */
   usize process_reference_position = 0;
 
   for (let &child_job : jobs) {
@@ -2892,6 +2906,8 @@ EvalContext::make_subshell_bootstrap() const throws
   enabled_command_store().append_wire(body);
 
   if (body.count() > UINT32_MAX) throw std::bad_alloc{};
+  /* at this point: source.count() and body.count() both fit in u32, so the
+     length fields cannot truncate. */
   append_subshell_bootstrap_u32(source, SUBSHELL_BOOTSTRAP_MAGIC);
   append_subshell_bootstrap_u32(source, SUBSHELL_BOOTSTRAP_VERSION);
   append_subshell_bootstrap_u32(source, static_cast<u32>(body.count()));
@@ -3578,6 +3594,8 @@ EvalContext::apply_indirect_or_name_listing(StringView body) throws
     return String{scratch_allocator()};
   }
 
+  /* at this point: body is non-empty, body does not end in * or @, and
+     target holds the value of body. */
   let const target_view = target->view();
 
   if (let const bracket = target_view.find_character('[');

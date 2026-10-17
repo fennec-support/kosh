@@ -223,6 +223,8 @@ public:
       return false;
     }
 
+    /* at this point: found holds a known operator, and left and right both
+       parse as integers. */
     switch (*found) {
     case binary_operator::IntegerEqual:    return *left_number == *right_number;
     case binary_operator::IntegerNotEqual: return *left_number != *right_number;
@@ -332,6 +334,8 @@ public:
         return false;
       }
 
+      /* at this point: pos + 2 is less than end, so args[pos] through
+         args[pos + 2] are in range. */
       let const &left  = args[pos];
       let const &op    = args[pos + 1];
       let const &right = args[pos + 2];

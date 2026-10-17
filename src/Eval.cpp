@@ -98,6 +98,9 @@ EvalContext::get_or_create_diagnostic_highlight_cache() throws
     }
   }
 
+  /* at this point: diagnostic_highlight_cache() is null, and
+     runtime_diagnostic_highlight_cache() is a constructed cache owned by
+     the diagnostics store. */
   return diagnostics_store().runtime_diagnostic_highlight_cache();
 }
 
@@ -549,6 +552,8 @@ EvalContext::prepare_child_environment() const throws -> void
 
   unused(utils::kosh_identity(execution_store().get_shell_executable_path()));
   if (!is_exported(KOSHCONF_VARIABLE_NAME)) return;
+  /* at this point: the child environment is not fixed, and KOSHCONF is
+     exported. */
 
   os::set_environment_variable(KOSHCONF_VARIABLE_NAME,
                                encode_koshconf_blob(*this).view());
@@ -626,6 +631,8 @@ EvalContext::peel_caller_local_binding(StringView name) throws -> bool
 {
   if (scope_store().local_scope_depth() < 2) return false;
   if (scope_store().has_current_local(name)) return false;
+  /* at this point: local_scope_depth() is at least 2, and the current frame
+     holds no local binding for name. */
 
   for (usize frame_index = scope_store().local_scope_depth() - 1;
        frame_index-- > 0;)
@@ -659,6 +666,8 @@ EvalContext::assign_caller_binding_of_circular_nameref(
   if (scope_store().local_scope_depth() == 0) return false;
   if (!variable_store().attributes().is_nameref(name)) return false;
   if (!is_circular_nameref(name)) return false;
+  /* at this point: local_scope_depth() is nonzero, and name is a circular
+     nameref. */
 
   ArrayList<local_binding> &frame = scope_store().current_local_scope();
 
@@ -1006,6 +1015,8 @@ EvalContext::locate_variable_reference(StringView name) const wontthrow
 
   if (scan_start >= source.length) return fallback;
 
+  /* at this point: name is not empty, resolved_source.text is non-null, and
+     scan_start is less than source.length. */
   usize i = scan_start;
 
   while (i < source.length) {
@@ -1079,6 +1090,8 @@ EvalContext::mark_expansion_error(ErrorBase            &error,
 
   if (expansion_store().is_expanding_here_document()) return;
 
+  /* at this point: error is neither script fatal nor line discarding, and no
+     here document is being expanded. */
   if (reach != expansion_error_reach::Line &&
       runtime_state().is_posix_option_on() &&
       !execution_store().shell_is_interactive())
@@ -1144,6 +1157,8 @@ EvalContext::report_unset_reference(StringView name) throws -> void
           suppressible_warning::UnsetTestOperand))
     return;
 
+  /* at this point: the UnsetReference and UnsetTestOperand warnings are not
+     suppressed, and no completion function is running. */
   if (runtime_state().error_unset() || should_demote) {
     show_runtime_warning_at(locate_variable_reference(name),
                             "The variable '" + name +
@@ -2061,6 +2076,8 @@ EvalContext::dynamic_array_element_text(DynamicArray which,
     let const &values = variable_store().bash_arguments().values();
 
     ASSERT(index < values.count());
+    /* at this point: bash arguments are active, and index is less than
+       values.count(). */
 
     return String{result_allocator, values[values.count() - 1 - index].view()};
   }

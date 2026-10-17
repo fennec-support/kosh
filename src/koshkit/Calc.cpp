@@ -131,6 +131,8 @@ try_define_unevaluated_assignment(EvalContext &cxt,
     return false;
   }
 
+  /* at this point: name is a non-empty variable name, and line[i] is an '='
+     not followed by another '='. */
   let const value =
       line.substring_of_length(i + 1, line.length - (i + 1)).trim_blanks();
 

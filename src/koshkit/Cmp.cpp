@@ -175,6 +175,8 @@ Cmp::execute(const ExecContext               &ec,
       os::close_fd(right_input->descriptor);
   };
 
+  /* at this point: operands holds exactly two operands, -l and -s are not
+     both set, and left_input and right_input have values. */
   buffered_byte_reader left{left_input->descriptor,
                             0,
                             0,

@@ -76,6 +76,8 @@ Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
+  /* at this point: the shell is not a login shell or -f was given, and the
+     STOP signal was sent to self_process. */
   LOG(All, "suspend stopped the shell pid %lld",
       static_cast<long long>(self_pid));
 

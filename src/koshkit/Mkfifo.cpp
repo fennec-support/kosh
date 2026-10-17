@@ -47,6 +47,8 @@ Mkfifo::execute(const ExecContext               &ec,
     mode = *parsed;
   }
 
+  /* at this point: operands is not empty, and mode holds a valid file mode,
+     0666 when -m is not set. */
   i32 status = 0;
 
   for (let const &operand : operands) {

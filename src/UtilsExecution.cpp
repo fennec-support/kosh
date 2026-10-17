@@ -134,6 +134,8 @@ execute_context(ExecContext  &&ec,
             os::close_fd(sync_pipe->in);
           }
 
+          /* at this point: child is the parent side of the forked mimicry
+             process, and process_id_of(child) is not 0. */
           os::give_controlling_terminal_to(child);
           if (sync_pipe.has_value()) {
             (void) os::write_fd(sync_pipe->out, "x", 1);
@@ -262,6 +264,8 @@ execute_context(ExecContext  &&ec,
     return 0;
   }
 
+  /* at this point: p holds a started child process, is_async is false, and
+     is_foreground_job says whether the child gets the terminal. */
   LOG(Debug, "waiting for the foreground child to finish");
 
   let was_stopped = false;
@@ -757,6 +761,8 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
     return ret;
   }
 
+  /* at this point: is_async is false, and children holds every external or
+     forked child this call started. the wait loop below waits for each. */
   usize waited_child_count = 0;
 
   try {

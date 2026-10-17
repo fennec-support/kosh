@@ -233,6 +233,8 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
+    /* at this point: identifier is a valid identifier that is not a Bash
+       argument array. */
     if (should_print_declaration) {
       let line = String{cxt.scratch_allocator()};
 

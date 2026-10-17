@@ -50,6 +50,8 @@ Date::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: operands holds no operand or one operand that starts with
+     '+', and broken_down points to the converted time. */
   let const format = operands.is_empty() ? StringView{"%a %b %e %H:%M:%S %Z %Y"}
                                          : operands[0].view().substring(1);
   let const format_text = String{cxt.scratch_allocator(), format};

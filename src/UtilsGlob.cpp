@@ -431,6 +431,8 @@ smart_case_prefix_matches(StringView candidate,
     return false;
   }
 
+  /* at this point: candidate does not start with prefix, prefix may match
+     without case, and candidate is at least prefix.length bytes long. */
   for (usize position = 0; position < prefix.length; position++)
     if (ascii_to_lower(candidate[position]) != ascii_to_lower(prefix[position]))
       return false;
@@ -478,6 +480,8 @@ locale_is_installed(StringView locale_name) wontthrow -> bool
     }
   }
 
+  /* at this point: locale_name is shorter than 48 bytes and no cache entry
+     holds it, so cache[next_slot] is the entry to overwrite. */
   let &slot = cache[next_slot];
 
   next_slot = (next_slot + 1) % CACHE_ENTRY_COUNT;
@@ -523,6 +527,8 @@ locale_name_is_utf8(StringView locale_name) wontthrow -> bool
     return true;
   }
 
+  /* at this point: locale_name has a UTF-8 codeset, and it is neither
+     C.UTF-8 nor C.utf8. locale_is_installed() decides the result. */
   return locale_is_installed(locale_name);
 }
 

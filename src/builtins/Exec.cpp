@@ -57,6 +57,8 @@ report_exec_error(ExecContext             &ec,
 
   if (cxt.execution_store().shell_is_interactive()) return command_status;
 
+  /* at this point: cxt is not in a subshell or pipeline stage, and the shell
+     is not interactive, so utils::quit() ends the shell with command_status. */
   utils::quit(command_status, utils::farewell_policy::Goodbye);
 }
 

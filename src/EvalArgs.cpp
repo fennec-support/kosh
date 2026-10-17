@@ -160,6 +160,8 @@ parse_brace_sequence(StringView content, Allocator alloc) throws
     let const element_count = distance / magnitude + 1;
 
     if (element_count > static_cast<u128>(static_cast<usize>(-1))) return None;
+    /* at this point: element_count fits in usize, so the cast in reserve()
+       loses no value. */
     elements.reserve(static_cast<usize>(element_count));
 
     for (i128 current = from; increment > 0 ? current <= to : current >= to;
@@ -285,6 +287,8 @@ find_brace_group(StringView text, Allocator alloc) throws
       } else if (c == '}') {
         depth--;
         if (depth == 0) {
+          /* at this point: text[open] is '{', and text[j] is the '}' that
+             closes it, because depth is 0. */
           let alternatives = brace_group_alternatives(
               text.substring_of_length(open + 1, j - open - 1), alloc);
 
@@ -483,6 +487,9 @@ expand_braces(const Word &word, Allocator alloc) throws
 
       if (taken == 0) continue;
 
+      /* at this point: reference is a greedy variable reference outside
+         double quotes, following is unquoted text, and its first taken
+         bytes satisfy lexer::is_variable_name(). */
       let joined = String{alloc, reference.text.view()};
 
       joined.append(following.text.view().substring_of_length(0, taken));
@@ -795,6 +802,9 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         continue;
       }
 
+      /* at this point: word is non-null and points at the token's Word or at
+         fallback_word, which lives to the end of this try block. associative
+         and subscript literal elements are already skipped. */
       let const do_expand_one_word =
           [&](const Word &expandable) throws -> void {
         let const plain_kind         = expandable.plain_literal_kind();

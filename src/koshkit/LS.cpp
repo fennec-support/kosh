@@ -373,6 +373,7 @@ make_entry(const Path                       &path,
     return entry;
   }
 
+  /* at this point: known_entry is nullptr, so status is read from path. */
   os::file_status status{};
 
   if (os::stat_path(path.view(), status)) set_entry_status(entry, status);
@@ -403,6 +404,8 @@ prepare_entries(ArrayList<listing_entry> entries,
     }
 
     if (!symlink_paths.is_empty()) {
+      /* at this point: symlink_paths is not empty, and symlink_statuses holds
+         one slot for each path. */
       let batch = os::Batch{allocator};
 
       batch.reserve(symlink_paths.count());
@@ -789,6 +792,8 @@ is_on_operand_device(const Path          &path,
 
   if (!os::stat_path(path.view(), status)) return true;
 
+  /* at this point: operand_device_id is not nullptr, and status holds the
+     stat of path, because os::stat_path() succeeded. */
   return status.device_id == *operand_device_id;
 }
 

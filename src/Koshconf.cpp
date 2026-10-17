@@ -233,6 +233,8 @@ read_varint(StringView bytes, usize &position) wontthrow -> Maybe<u32>
     if (shift > 0 && byte == 0) {
       return None;
     }
+    /* at this point: byte is in bytes, is non-zero unless shift is 0, and
+       value stays within 32 bits. */
 
     value |= static_cast<u32>(byte & 0x7f) << shift;
     /* e.g. [0xac, 0x02]: value 44 after shift 0, then 300 after shift 7 */
@@ -486,6 +488,8 @@ replace_koshconf_target(const Path &target, StringView contents) throws
     if (!os::rename_path(backup_temporary->view(), backup_path.view()))
       do_discard_backup("replace the configuration backup");
   }
+  /* at this point: temporary holds the synced replacement beside target, and
+     target.bak holds the previous contents when target existed. */
 
   if (!os::rename_path(temporary->view(), target.view())) {
     do_discard("replace");
@@ -519,6 +523,8 @@ get_user_koshconf_path() throws -> Maybe<Path>
   }
 
   if (!config_home.has_value()) return None;
+  /* at this point: config_home holds a base directory, absolute when it came
+     from XDG_CONFIG_HOME, and on POSIX the effective user id is not 0. */
 
   config_home->append("kosh");
   config_home->append("kosh.conf");
@@ -1156,6 +1162,8 @@ compose_koshconf_text(StringView         description,
           option.koshconf_name.data);
       continue;
     }
+    /* at this point: option is configurable and is not left out, and when
+       current is set, its value passes find_koshconf_value_problem(). */
 
     ordered.push(&option);
   }
@@ -1389,6 +1397,8 @@ persist_koshconf_setting(const Path              &path,
 
     existing = String{heap_allocator()};
   }
+  /* at this point: existing holds the bytes of the file, or is empty when the
+     file is missing, and the directory lock is held. */
 
   let contents = String{heap_allocator()};
   let text     = existing->view();

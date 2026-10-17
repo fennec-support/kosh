@@ -536,6 +536,8 @@ JobTable::wait_for_next_job(const ArrayList<i32> &job_ids,
 
       return next_job_wait{None, 0, 128 + number, true};
     }
+    /* at this point: no selected job is Done, at least one selected job is
+       waitable, and no signal besides the child signal is pending. */
 
     if constexpr (os::HAS_CHILD_STATE_CHANGE_WAIT)
       os::wait_for_child_state_change();

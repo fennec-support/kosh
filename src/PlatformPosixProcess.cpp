@@ -597,6 +597,7 @@ execute_program(ExecContext                     &ec,
                                spawn_error, options.source,
                                options.process_group_id, options.process_group);
 
+  /* at this point: spawn_error is 0, and child_pid is the spawned child. */
   return child_pid;
 }
 
@@ -1036,6 +1037,8 @@ launch_process_substitution(
     };
   }
 
+  /* at this point: child is the pid of a forked stage, and both pipe ends
+     are still open in this process. */
   descriptor retained_fd = is_command_pipe_writer ? pipe->in : pipe->out;
 
   close_fd(is_command_pipe_writer ? pipe->out : pipe->in);
@@ -1231,6 +1234,7 @@ make_pipe() wontthrow -> Maybe<pipe_ends>
     end = lifted;
   }
 
+  /* at this point: p[0] and p[1] are open descriptors above STDERR_FILENO. */
   return pipe_ends{p[0], p[1]};
 }
 
@@ -1510,6 +1514,7 @@ poll_process(process              p,
 
   if (WIFCONTINUED(status)) return process_state::Running;
 
+  /* at this point: p has terminated, and wait4() has reaped it. */
   note_reaped_child_usage(usage);
   note_child_reaped();
 
@@ -2315,6 +2320,8 @@ fill_usage_from_proc_schedstat(pid_t                   pid,
     return;
   }
 
+  /* at this point: path holds the /proc/<pid>/schedstat path, and
+     wait_nanos and slice_count hold parsed u64 values. */
   LOG(Debug, "child %d waited %llu ns for a processor over %llu slices",
       static_cast<int>(pid),
       static_cast<unsigned long long>(wait_nanos.value()),
@@ -2434,6 +2441,8 @@ fill_usage_from_proc_io(int                     io_descriptor,
       [&] { return ::pread(io_descriptor, buffer, sizeof(buffer), 0); });
 
   if (length <= 0) return;
+  /* at this point: io_descriptor is non-negative, and length bytes of buffer
+     hold pread() output. */
 
   let const text     = StringView{buffer, static_cast<usize>(length)};
   usize     position = 0;
@@ -2682,6 +2691,8 @@ run_tracer(const char *const *raw_argv,
     _exit(127);
   }
 
+  /* at this point: target is traced with the trace options set, and it
+     was resumed with PTRACE_SYSCALL. */
   pid_t new_tasks[TRACED_NEW_TASK_CAPACITY]{};
   usize new_task_count = 0;
   pid_t waiting_tasks[TRACED_WAITING_TASK_CAPACITY]{};

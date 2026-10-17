@@ -53,6 +53,8 @@ Killall::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: operands holds exactly one process name, and no signal
+     list was requested. */
   let const wanted        = operands[0].view();
   let const signal_number = resolve_koshkit_signal(
       FLAG_KILLALL_SIGNAL.is_set() ? FLAG_KILLALL_SIGNAL.value() : StringView{},

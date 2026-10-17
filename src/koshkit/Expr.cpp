@@ -231,6 +231,8 @@ private:
           throw Error{"integer overflow"};
         }
 
+        /* at this point: right_number is not 0, and the quotient fits in
+           i64. */
         result = left_number / right_number;
         break;
 

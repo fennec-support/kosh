@@ -2644,6 +2644,8 @@ public:
       return fallback;
     }
 
+    /* at this point: value is a set scalar, and parsed holds a
+       non-negative value. */
     return static_cast<usize>(parsed.value());
   }
 
@@ -5878,6 +5880,8 @@ public:
       return runtime_state().get_mood() != mimic_mood::Bash ||
              execution_store().shell_is_interactive();
 
+    /* at this point: index is not overridden and is not Extglob, Autocd,
+       or ExpandAliases, so shopt_default_is_on() gives the result. */
     return shopt_default_is_on(index);
   }
 

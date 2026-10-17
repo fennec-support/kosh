@@ -80,6 +80,8 @@ Parser::parse_if() throws -> Command *
                     "The condition before 'then' is empty",
                     "Put a command before 'then', as in `if true; then`");
 
+    /* at this point: then_token is the 'then' keyword, and the condition
+       is not empty. */
     Expression *body = parse_command_list(
         token_kind_mask(Token::Kind::Elif, Token::Kind::Else, Token::Kind::Fi));
 
@@ -174,6 +176,8 @@ Parser::parse_while_or_until(loop_kind kind) throws -> Command *
                                       do_token->source_location(), detail};
   }
 
+  /* at this point: do_token is the 'do' keyword, and the loop body
+     follows it. */
   let const parsed_body =
       parse_loop_body(location, "This loop has no closing 'done'");
 
@@ -718,6 +722,8 @@ Parser::parse_case() throws -> Command *
     throw error;
   }
 
+  /* at this point: word is a Word token, and in_token is the unquoted 'in'
+     keyword. */
   let   items        = ArrayList<case_item>{heap_allocator()};
   usize end_position = location.position + location.length;
 
@@ -1133,6 +1139,8 @@ Parser::parse_loop_body(const SourceLocation &location,
   }
 
   reject_empty_loop_body(body);
+  /* at this point: done_token is the peeked 'done' keyword, and body is not
+     empty. */
   m_lexer.advance_past_last_peek();
 
   return parsed_loop_body{body, done_token->source_location()};

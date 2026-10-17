@@ -74,6 +74,8 @@ Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* at this point: at least one job operand follows the command word, and
+     no -a, -r, or -h flag is set. */
   for (usize i = 1; i < names.count(); i++) {
     let const job = cxt.job_table_store().find_job_by_spec(names[i]);
 

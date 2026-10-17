@@ -344,6 +344,8 @@ GoodNode::execute(const ExecContext               &ec,
     return report_usage_error(ec, cxt, args[0].view());
   }
 
+  /* at this point: paths is non-empty, and when --inode is set, paths ends
+     with the path found for that inode. */
   let const should_color = koshkit_should_color();
   let const verification = FLAG_GOODNODE_VERIFY.is_enabled()
                                ? goodnode_verification_mode::Verify

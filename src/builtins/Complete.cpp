@@ -398,6 +398,8 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 0;
     }
 
+    /* at this point: slot holds no value, and commands holds at least one
+       command word. */
     let output       = String{cxt.scratch_allocator()};
     i32 print_status = 0;
 
@@ -436,6 +438,8 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 0;
     }
 
+    /* at this point: slot holds no value, and commands holds at least one
+       command word. */
     i32 remove_status = 0;
 
     for (let const &command : commands) {

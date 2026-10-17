@@ -382,6 +382,8 @@ line_above_continues(StringView source, usize line_start) wontthrow -> bool
 {
   if (line_start < 2) return false;
   if (source[line_start - 1] != '\n') return false;
+  /* at this point: line_start is at least 2, and source[line_start - 1] is
+     the newline that ends the line above. */
 
   usize ending = line_start - 1;
 
@@ -975,6 +977,8 @@ read_word_below_directive(StringView source, usize after)
     }
   }
 
+  /* at this point: at is less than source.length, and source[at] is neither
+     whitespace, a newline, nor '#'. */
   let const word_start = at;
 
   while (at < source.length && !lexer::is_whitespace(source[at]) &&
@@ -1329,6 +1333,8 @@ check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
     return;
   }
 
+  /* at this point: reads_before_assignment holds at least one read, and at
+     least one of sc2154 and sc2153 should be reported. */
   let collected_reads = ArrayList<unassigned_read>{heap_allocator()};
 
   actx.reads_before_assignment.for_each(
@@ -1512,6 +1518,8 @@ check_call_before_definition(
 
     if (!summary.has_value()) continue;
 
+    /* at this point: call is not inside a function body, search_builtin()
+       finds no builtin for call.name, and summary holds call.name. */
     let const &first_definition =
         actx.functions.records[summary->first_definition_index];
 

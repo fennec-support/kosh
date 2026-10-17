@@ -379,6 +379,8 @@ find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
 
       let const transferred = result.transferred_byte_count;
 
+      /* at this point: the read had no error, and state.buffer holds
+         transferred bytes starting at scan_offset. */
       let const block    = StringView{state.buffer.begin(), transferred};
       usize     position = 0;
 
@@ -603,6 +605,8 @@ Tail::execute(const ExecContext               &ec,
       return;
     }
 
+    /* at this point: descriptor is open, file_byte_count holds its size, and
+       the path was checked as a regular file. */
     positioned_tail_state state{};
 
     state.source_index    = source_index;
@@ -942,6 +946,8 @@ Tail::execute(const ExecContext               &ec,
 
       if (*read_count == 0) return;
 
+      /* at this point: block holds *read_count bytes read from
+         entry.descriptor, and no interrupt was requested. */
       do_write_header(source_index);
       do_write_output(StringView{block.begin(), *read_count});
       entry.offset += *read_count;

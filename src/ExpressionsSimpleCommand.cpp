@@ -1294,6 +1294,9 @@ match_reprinted_redirection(StringView source,
     fd = static_cast<i32>(parsed_fd);
   }
 
+  /* at this point: fd is -1 when no digits precede the operator, and
+     otherwise it holds the parsed descriptor from 0 to 0xffff, with
+     source[scan] equal to '<' or '>'. */
   let const byte       = source[scan];
   let const next_byte  = scan + 1 < source.length ? source[scan + 1] : '\0';
   let const third_byte = scan + 2 < source.length ? source[scan + 2] : '\0';
@@ -1732,6 +1735,8 @@ internal::subshell_command_text(EvalContext          &cxt,
 
   if (!body_end.has_value()) return text;
 
+  /* at this point: source starts with '(', and body_end holds the end of
+     the balanced region returned by scan_balanced_shell_region(). */
   let const has_bash_additions = cxt.runtime_state().bash_additions_enabled();
 
   text.reserve(source.length + 2);
@@ -1785,6 +1790,8 @@ append_redirection_descriptor(String            &out,
 
   if (redir.fd == default_fd) return;
 
+  /* at this point: no fd allocation name was appended, and redir.fd differs
+     from default_fd. */
   out += String::from(static_cast<i64>(redir.fd), heap_allocator());
 }
 
@@ -1904,6 +1911,7 @@ append_one_redirection(EvalContext       &cxt,
       return;
     }
 
+    /* at this point: dup_fd is negative and is not DUP_FD_CLOSE. */
     append_redirection_descriptor(out, redir, is_output ? 1 : 0);
     out += is_output ? ">&" : "<&";
     do_append_target();
@@ -2177,6 +2185,9 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const
                                       ": Bad file descriptor"};
         }
 
+        /* at this point: target_fd is at most 2, source_fd differs from
+           target_fd and is not DUP_FD_CLOSE, and copied is not
+           KOSH_INVALID_FD. */
         assign_redirected_fd(ec, nonstandard, target_fd, copied);
       }
 
@@ -2224,6 +2235,8 @@ SimpleCommand::always_exits(const AnalysisContext &actx) const wontthrow -> bool
 
   if (!name.has_value()) return false;
 
+  /* at this point: m_args is not empty, the command is not async, and name
+     holds the raw view of m_args[0]. */
   if (actx.always_exiting_function_names.contains(*name)) return true;
 
   return *name == StringView{"exit"} && !actx.functions.defined.contains(*name);

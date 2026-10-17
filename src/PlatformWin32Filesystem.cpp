@@ -778,6 +778,8 @@ paths_are_same_file(StringView first, StringView second) wontthrow -> bool
     return false;
   }
 
+  /* at this point: first_info and second_info hold the identity of both
+     files, and both handles are closed. */
   return first_info.dwVolumeSerialNumber == second_info.dwVolumeSerialNumber &&
          first_info.nFileIndexHigh == second_info.nFileIndexHigh &&
          first_info.nFileIndexLow == second_info.nFileIndexLow;
@@ -810,6 +812,8 @@ path_is_newer_than(StringView first, StringView second) wontthrow -> bool
                            &second_data) == 0)
     return false;
 
+  /* at this point: first_data and second_data hold the last write times of
+     first and second. */
   return CompareFileTime(&first_data.ftLastWriteTime,
                          &second_data.ftLastWriteTime) > 0;
 }
@@ -914,6 +918,8 @@ restore_current_directory(const DirectoryReference &reference) wontthrow -> bool
     return false;
   }
 
+  /* at this point: path holds the final path of the directory behind
+     reference, and the buffer has room for a terminating nul after length. */
   if (length >= 8 &&
       memcmp(path.begin(), L"\\\\?\\UNC\\", 8 * sizeof(wchar_t)) == 0)
   {
@@ -996,6 +1002,8 @@ list_directory_typed(StringView dir, Allocator allocator) throws
     SetLastError(error);
   };
 
+  /* at this point: wide_pattern is valid, and handle is a find handle that
+     the defer closes on every return. */
   let entries = ArrayList<Path::DirectoryChild>{allocator};
 
   do {
@@ -1256,6 +1264,8 @@ write_to_temp_file(StringView content) -> Maybe<descriptor>
     return koshka::None;
   }
 
+  /* at this point: handle is open for reading and writing at offset 0, and
+     FILE_FLAG_DELETE_ON_CLOSE removes the file when the handle closes. */
   return handle;
 }
 
@@ -1672,6 +1682,8 @@ remove_tree_entry(StringView                path,
     return false;
   }
 
+  /* at this point: pinned_directory is open on a directory that is not a
+     reparse point, and the defer closes it on every return. */
   let const entries = list_directory_status(path, allocator);
 
   if (!entries.has_value()) {
@@ -2212,6 +2224,8 @@ stat_filesystem(StringView path, filesystem_status &status) wontthrow -> bool
 
   if (GetDiskFreeSpaceExW(volume_root, &available, &total, &free) == 0)
     return false;
+  /* at this point: path exists, volume_root holds the root of its volume,
+     and available, total, and free hold byte counts for that volume. */
 
   constexpr u64 block_size = 512;
 
@@ -2590,6 +2604,8 @@ stat_path(StringView path, file_status &status) wontthrow -> bool
   struct _stat64 info{};
 
   if (_wstat64(wide_path->begin(), &info) != 0) return false;
+  /* at this point: wide_path is a valid path that _wstat64() accepted, info
+     holds its stat data, and the path is not a reparse point. */
   status.device_id         = 0;
   status.file_id           = 0;
   status.has_file_identity = false;
@@ -2705,6 +2721,8 @@ execute_shared_positioned_file_operation(const batched_syscall  &operation,
     return;
   }
 
+  /* at this point: the descriptor file pointer is at byte_offset, and the
+     defer restores saved_position on return. */
   let const transferred =
       batch_operation_access::get_kind(operation) == batched_syscall_id::Read
           ? read_fd(batch_operation_access::get_descriptor(operation),
@@ -2879,6 +2897,8 @@ execute_batch_operations(const batched_syscall  *operations,
   if (operations == nullptr || results == nullptr) {
     return;
   }
+  /* at this point: operations and results are non-null, and operation_count
+     is not zero. */
 
   constexpr usize REQUEST_COUNT = 64;
 

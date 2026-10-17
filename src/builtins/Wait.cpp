@@ -137,6 +137,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
       return 1;
     }
 
+    /* at this point: target parses as an i64 and does not start with %. */
     if (!cxt.runtime_state().is_posix_mode()) {
       report_soft_builtin_error(ec, cxt, operand_locations[i],
                                 "pid " + target +
@@ -175,6 +176,8 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
       return 127;
     }
 
+    /* at this point: outcome was not interrupted, and outcome.job_id holds
+       a job id. */
     do_store_pid(outcome.process_id);
     table.forget_done_job(*outcome.job_id);
 

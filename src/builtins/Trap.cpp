@@ -360,6 +360,8 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* at this point: args[action_index] is the action, and at least one
+     condition operand follows it. */
   let const &action   = args[action_index];
   let const  is_reset = action == "-";
 

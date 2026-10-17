@@ -207,6 +207,8 @@ parse_sort_endpoint(StringView text,
     position++;
   }
 
+  /* at this point: field is 1 or more, and position stops at a comma or at
+     the end of text. */
   return true;
 }
 
@@ -227,6 +229,8 @@ parse_sort_key(StringView text, sort_key &key) wontthrow -> bool
                            key, key.modifiers.is_end_blank_skipping))
     return false;
 
+  /* at this point: key has an end endpoint, and the start and end endpoints
+     each have a field of 1 or more. */
   return position == text.length;
 }
 
@@ -310,6 +314,8 @@ extract_sort_key(StringView            line,
 
   if (end < start) return StringView{};
 
+  /* at this point: start and end are offsets into line with start <= end
+     and end <= line.length. */
   return line.substring_of_length(start, end - start);
 }
 
@@ -514,6 +520,8 @@ compare_sort_entries(const sort_entry    &left,
     }
   }
 
+  /* at this point: the keys compare equal, and when is_last_resort_enabled
+     is true, left.line equals right.line. */
   if (left.index == right.index) return 0;
 
   return left.index < right.index ? -1 : 1;
@@ -665,6 +673,8 @@ Sort::execute(const ExecContext               &ec,
     }
   }
 
+  /* at this point: is_check is false, the separator and keys are valid, and
+     output_descriptor holds the -o file or is empty for standard output. */
   defer {
     if (output_descriptor.has_value()) os::close_fd(*output_descriptor);
   };

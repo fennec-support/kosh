@@ -271,6 +271,9 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
         break;
       }
 
+      /* at this point: position + 3 is at most expression.length, and the
+         three bytes at position are delimited by whitespace or by the ends
+         of expression. */
       let const candidate = expression.substring_of_length(position, 3);
 
       if (is_test_numeric_operator_word(candidate)) {
@@ -1203,6 +1206,8 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
 
       if (target.is_empty()) continue;
 
+      /* at this point: target is not empty, and the word does not start
+         with a dash. */
       if (actx.walk.is_direct_pipeline_stage) {
         actx.report_diagnostic(diagnostic_id::sc2030_read,
                                args[i]->source_location());
@@ -1529,6 +1534,8 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
           static_cast<const tokens::WordToken *>(args[format_index])->word();
 
       if (word_is_fully_literal(format_word)) {
+        /* at this point: format_index is less than args.count(), and
+           args[format_index] is a word token whose text is fully literal. */
         let const format               = format_word.to_literal_string();
         let       has_quote_conversion = false;
         let const consumed =

@@ -1173,6 +1173,9 @@ decode_utf8(StringView source, usize position, u32 invalid_codepoint) wontthrow
     value = (value << 6) | (continuation & 0x3fu);
   }
 
+  /* at this point: first starts a 2, 3, or 4 byte sequence, and source has
+     all of its bytes. every continuation byte is 10xxxxxx, and value is the
+     code point they encode. overlong forms are not rejected. */
   return {value, length};
 }
 

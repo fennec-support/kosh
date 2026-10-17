@@ -121,6 +121,8 @@ resolve_fc_selection(StringView                                  specification,
     return fc_selection{relative_number, fc_selection_error::None};
   }
 
+  /* at this point: specification is not a history number, and
+     last_eligible_index is at least 0. */
   for (i64 index = last_eligible_index; index >= 0; index--)
     if (events[static_cast<usize>(index)].command.starts_with(specification))
       return fc_selection{index, fc_selection_error::None};
@@ -211,6 +213,8 @@ remember_fc_command(EvalContext                                &cxt,
     return false;
   }
 
+  /* at this point: command is not empty, events is not empty, and the
+     rewrite of the history event at replacement_index succeeded. */
   if (active_index.has_value()) cxt.history_recorder().set_event_number(None);
 
   return true;

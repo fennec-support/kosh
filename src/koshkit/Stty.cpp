@@ -77,6 +77,7 @@ Stty::execute(const ExecContext               &ec,
       return 1;
     }
 
+    /* at this point: operands is not empty, and terminal is a tty. */
     let const result = os::apply_terminal_settings(terminal, operands);
 
     if (result.kind == os::terminal_settings_apply_kind::SystemError) {

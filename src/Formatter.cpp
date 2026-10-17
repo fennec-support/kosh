@@ -379,6 +379,8 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
               separator.kind == format_piece_kind::Operator &&
               separator.text == ";")
           {
+            /* at this point: keyword_index is at least 1, candidate is the
+               then or do word, and separator is a ";" operator. */
             deferred_heredoc_keyword = candidate;
             pieces.remove(keyword_index);
             if (keyword_index < pieces.count() &&
@@ -883,6 +885,8 @@ collect_option_wrap_positions(const ArrayList<format_piece> &pieces)
       }
 
       if (!has_multiline_word && line_width > FormatWriter::MAX_LINE_WIDTH) {
+        /* at this point: command is a plain command with operands, no word
+           contains a newline, and line_width exceeds MAX_LINE_WIDTH. */
         let const continuation_offset =
             toiletline::get_display_width(command) + 1;
 
@@ -1345,6 +1349,8 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       return;
     }
 
+    /* at this point: the pending statement end is cleared, and either the
+       writer has a line or should_pad_pending_line is set. */
     let const &next = pieces[flush_index];
 
     if (next.kind == format_piece_kind::Operator && next.text == ";") {
@@ -2571,6 +2577,8 @@ x_prefix_test_fix(StringView            source,
 
   if (!right_replacement.has_value()) return None;
 
+  /* at this point: left_replacement and right_replacement hold values, and
+     written_operator is "=" or "!=". */
   let edits = ArrayList<source_edit>{heap_allocator()};
 
   edits.push(source_edit{
@@ -2616,6 +2624,8 @@ negated_test_operator_fix(diagnostic_id         diagnostic,
     return None;
   }
 
+  /* at this point: the negation is "!", and the bytes from operator_start to
+     operator_end equal written_operator. */
   let edits = ArrayList<source_edit>{heap_allocator()};
 
   edits.push(source_edit{

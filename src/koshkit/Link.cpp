@@ -35,6 +35,8 @@ Link::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: operands holds exactly two paths, operands[0] is the link
+     source, and operands[1] is the path to create. */
   if (os::create_hard_link(operands[0].view(), operands[1].view())) return 0;
   KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[1], "create", operands[1]);
 

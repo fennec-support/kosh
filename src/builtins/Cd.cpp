@@ -387,6 +387,9 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                 "' is not a directory"};
   }
 
+  /* at this point: unavailable holds the first unavailable component of
+     target, and it is not a non-directory. an operand is given and it is
+     not "-". */
   let details = String{cxt.scratch_allocator(),
                        "Check the spelling or create it with `mkdir -p`"};
 

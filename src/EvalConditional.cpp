@@ -345,6 +345,8 @@ struct conditional_evaluator
           throw error;
         }
 
+        /* at this point: operand is name[subscript], and subscript holds
+           no $ or backtick, so it is used without another expansion. */
         return cxt.array_element_is_set(name, subscript);
       }
 
@@ -466,6 +468,8 @@ struct conditional_evaluator
 
       pos += 2;
       if (is_skipping) return false;
+      /* at this point: is_skipping is false, pos is past the unary operator
+         and its operand, and elements[pos - 1] is that operand. */
 
       let const is_existence_test =
           *selected_unary_operator == UnaryOperatorKind::VariableSet;
@@ -504,6 +508,9 @@ struct conditional_evaluator
         pos += 3;
         if (is_skipping) return false;
 
+        /* at this point: is_skipping is false, elements[pos - 3] and
+           elements[pos - 1] are operands, and elements[pos - 2] is the
+           < or > operator. */
         let const left  = operand_value(elements[pos - 3]);
         let const right = operand_value(elements[pos - 1]);
         let const order = os::collate_compare(left, right);
@@ -527,6 +534,8 @@ struct conditional_evaluator
           pos += 3;
           if (is_skipping) return false;
 
+          /* at this point: is_skipping is false, pos is past the operator
+             and its right operand, and elements[pos - 1] is that operand. */
           let const is_test_operand_op = [&]() -> bool {
             switch (*selected_binary_operator) {
             case BinaryOperatorKind::ArithmeticEqual:

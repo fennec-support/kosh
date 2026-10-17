@@ -351,6 +351,8 @@ EvalContext::is_write_discarded_dynamic_variable(StringView name) const wontthro
 
   if (!runtime_state().bash_dynamic_variables_enabled()) return false;
 
+  /* at this point: name is nonempty and starts with a dynamic first byte,
+     name is not in ALWAYS_DYNAMIC, and bash dynamic variables are enabled. */
   let const info = BASH_DYNAMIC.find(name);
 
   return info.has_value() && info->write == dynamic_write::Discarded;
@@ -526,6 +528,8 @@ EvalContext::get_variable_value(StringView name) const throws
 
       if (parsed_index.is_error()) return None;
 
+      /* at this point: name is all decimal digits of at most nine characters,
+         and parsed_index holds its value. */
       let const index = static_cast<usize>(parsed_index.value());
 
       if (index >= 1 && index <= variable_store().positional_params().count()) {
@@ -819,6 +823,7 @@ EvalContext::resolve_nameref(StringView name) const throws
     return None;
   }
 
+  /* at this point: name is a nameref, and its stored value is nonempty. */
   let target = String{heap_allocator(), stored->view()};
 
   for (u32 depth_count = 0; depth_count < NAMEREF_DEPTH_LIMIT; depth_count++) {
@@ -975,6 +980,8 @@ EvalContext::bind_nameref(StringView name, StringView target) throws
     throw Error{"The name reference '" + name + "' would refer to itself"};
   }
 
+  /* at this point: guard_nameref_name() accepted name, target is a valid
+     variable name, and target differs from name. */
   variable_store().attributes().set(name, variable_attribute::Nameref, true);
   assign_variable(name, target);
 }

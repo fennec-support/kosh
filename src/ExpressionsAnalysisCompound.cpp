@@ -314,6 +314,8 @@ CompoundList::has_single_test_command() const throws -> bool
     return false;
   }
 
+  /* at this point: m_nodes holds one node, and simple is a simple command
+     with at least one argument, so simple->args()[0] is valid. */
   let const name_token = simple->args()[0];
   let const name       = static_command_name(name_token);
 

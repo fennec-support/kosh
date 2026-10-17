@@ -89,6 +89,8 @@ apply_or_reject_option(EvalContext             &cxt,
     return;
   }
 
+  /* at this point: option is available in the current mood, and the
+     warning level step branch was not taken. */
   write_option_number(cxt, option, is_enabled ? 1 : 0, option_origin::Set);
 }
 

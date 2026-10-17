@@ -377,6 +377,8 @@ public:
     if (m_body.has_been_shared() && !find(name).has_value()) {
       return None;
     }
+    /* at this point: m_body holds a table, and when it was shared,
+       find() has a value for name. */
 
     let const found = body().index.find(name);
 
@@ -466,6 +468,8 @@ public:
     let const found = table.index.find(StringView{"PIPESTATUS", 10});
 
     if (!found.has_value()) return None;
+    /* at this point: m_body holds a table, table.pipestatus_entry is
+       nullptr, and found holds the PIPESTATUS entry. */
 
     table.pipestatus_entry = *found.value();
 
@@ -812,6 +816,9 @@ struct trap_action_frame
     if (depth == 0) return None;
     if (current_source_frame_count != source_frame_count) return None;
     if (current_function_depth != function_depth) return None;
+    /* at this point: depth is nonzero, and the current source frame count
+       and function depth equal the stored source_frame_count and
+       function_depth. */
 
     return trigger_line_number;
   }

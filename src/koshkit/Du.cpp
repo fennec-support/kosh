@@ -613,6 +613,8 @@ build_tree_nodes(const du_tree_request   &request,
             do_get_or_create_child(parent_index, last_end, last_start);
       }
 
+      /* at this point: current_index is root_index when path has no component
+         below target. otherwise it is the node for the last component. */
       let const &row = request.rows[span.first_row + offset];
 
       nodes[current_index].byte_count = row.byte_count;
@@ -754,6 +756,8 @@ keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
   for (let const root_index : root_indices)
     nodes[root_index].is_kept = true;
 
+  /* at this point: heap holds at most top_count keys, none of them roots, and
+     every root node has is_kept set. */
   usize     kept_row_count = root_indices.count();
   let const selected_keys  = steal(heap).make_sorted(is_tree_key_before);
 
@@ -923,6 +927,9 @@ print_tree_report(const du_tree_request &request,
       node.is_kept = true;
   }
 
+  /* at this point: build_tree_nodes() succeeded, and is_kept is set on every
+     node to render: all nodes when row_limit is 0, or the roots and the
+     largest rows with their ancestors. */
   order_tree_children(nodes, child_order, allocator);
 
   let root_keys = ArrayList<du_tree_order_key>{allocator};

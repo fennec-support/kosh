@@ -418,6 +418,8 @@ private:
         return;
       }
 
+      /* at this point: m_source_data and source.data are non-null, and
+         the cached range lies inside source, so invalidate() drops it. */
       invalidate();
     }
 
@@ -983,6 +985,9 @@ get_printable_character_length(StringView text,
     return 0;
   }
 
+  /* at this point: is_utf8_locale is true, decoded.length is at least 2,
+     and decoded.value is printable, not a surrogate, and at least the
+     smallest code point for its length. */
   return decoded.length;
 }
 
@@ -1068,6 +1073,8 @@ append_ansi_c_quote_if_needed(String    &out,
 
   if (!should_ansi_c_quote(arg, is_utf8_locale)) return false;
 
+  /* at this point: arg is not empty, and at least one of its characters
+     is not printable, so append_ansi_c_quoted() writes arg as $'...'. */
   append_ansi_c_quoted(out, arg, is_utf8_locale);
 
   return true;

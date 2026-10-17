@@ -395,6 +395,8 @@ public:
       return ArithmeticValue{};
     }
 
+    /* at this point: m_is_skipping is false, and value holds the variable's
+       value. */
     return evaluate_operand_value(value->view());
   }
 
@@ -454,6 +456,8 @@ public:
       return;
     }
 
+    /* at this point: m_is_skipping is false, and the variable is not a
+       circular nameref. */
     let const text = value.to_string(context->scratch_allocator());
 
     context->set_shell_variable(name, text.view());
@@ -485,6 +489,9 @@ public:
     if (context->is_associative_array(target.name)) return;
     if (context->variable_store().attributes().is_nameref(target.name)) return;
 
+    /* at this point: m_is_skipping is false, the subscript is set and is
+       neither "@" nor "*", it has no command substitution, and target.name
+       is neither an associative array nor a nameref. */
     let const data_scope = DataExpansionScope{*context};
     let const index =
         context->evaluate_arithmetic(*target.subscript, nullptr, true);
@@ -520,6 +527,8 @@ public:
       fail("Expected ']' after an array subscript",
            "The subscript '[' was never closed");
 
+    /* at this point: pos is the index of the ']' that closes the subscript,
+       and inner_start up to pos is the subscript text. */
     let const subscript =
         source.substring_of_length(inner_start, pos - inner_start);
 
@@ -559,6 +568,8 @@ public:
                                                         : StringView{});
       }
 
+      /* at this point: m_is_skipping is false, the subscript is set, and it
+         has no command substitution. */
       let const data_scope = DataExpansionScope{*context};
       let const value      = context->read_array_element_arithmetic_text(
           target.name, *target.subscript);
@@ -1575,6 +1586,8 @@ public:
     iteration_arenas[0].reset();
     iteration_arenas[1].reset();
 
+    /* at this point: value lies in [0.8, 1.25] at work_scale, so reduced is
+       (value - 1) / (value + 1) with magnitude at most about 0.112. */
     let const numerator =
         ArithmeticValue::subtract(value, ArithmeticValue{1}, arena);
     let const denominator =
@@ -1985,6 +1998,8 @@ public:
       return read_lvalue_value(target);
     }
 
+    /* at this point: depth is at most MAX_DEPTH, and source[pos] starts
+       neither a number nor a variable name, or pos is at the end. */
     if (pos >= source.length)
       fail("Unfinished expression", "An operand is missing");
     fail("Unexpected character in the arithmetic expression",
@@ -2266,6 +2281,8 @@ arith_tokens_are_single_step(const ArrayList<arith_token> &toks)
 
   if (do_is_step(first)) return second.k == arith_token::kind::name;
 
+  /* at this point: toks holds two tokens, and first is not a '++' or '--'
+     operator. */
   return first.k == arith_token::kind::name && do_is_step(second) &&
          first.text.data + first.text.length == second.text.data;
 }
@@ -2389,6 +2406,8 @@ bc_apply_binop(char                   kind,
     if (is_negative)
       return bc_apply_binop('/', ArithmeticValue{1}, powered, scale, arena);
 
+    /* at this point: magnitude holds the absolute value of an integer
+       exponent, and is_negative is false. */
     let const exponent_count = magnitude.checked_i64();
     let const combined_scale = static_cast<u64>(lhs.get_decimal_scale()) *
                                static_cast<u64>(exponent_count);
@@ -2463,6 +2482,8 @@ arith_apply_binop(char                   kind,
     throw_division_by_zero();
   }
 
+  /* at this point: is_exact is true, bc_scale is absent or kind is not
+     '*', '/', '%', or 'P', and rhs is nonzero when kind is '/' or '%'. */
   let const allocator = bump_allocator(arena);
 
   switch (kind) {
@@ -2505,6 +2526,9 @@ evaluate_named_value_operand(EvalContext *context,
     return ArithmeticValue::parse(value, 10, arena);
   }
 
+  /* at this point: value is not empty, and it is not a single integer
+     literal (when is_exact is false) or a plain decimal operand (when
+     is_exact is true). */
   let const        stable_value = String{bump_allocator(arena), value};
   ArithmeticParser nested{context, stable_value.view(), is_exact, arena};
 
@@ -2615,6 +2639,8 @@ public:
       return value;
     }
 
+    /* at this point: depth is at most MAX_DEPTH, and no unary operator or
+       '(' is at ti. */
     if (ti < toks.count() && toks[ti].k == arith_token::kind::number) {
       let value = ArithmeticValue{toks[ti].value};
 
@@ -2719,6 +2745,8 @@ public:
     if (toks.is_empty()) return ArithmeticValue{};
     if (arith_tokens_are_single_step(toks)) return run_single_step();
 
+    /* at this point: toks is not empty and does not form a single step, so
+       the whole list goes to parse_binary(1). */
     let const result = parse_binary(1);
 
     if (ti != toks.count()) {
@@ -2957,6 +2985,8 @@ evaluate_arithmetic_cached_value(EvalContext            *context,
                                      is_exact, arena,
                                      arithmetic_text_kind::ShellSource);
 
+  /* at this point: is_tokenized and is_simple are both true, so tokens
+     holds a complete tokenization that arith_tokens_are_simple() accepted. */
   ArithmeticTokenEvaluator evaluator{context, tokens, is_exact, arena};
 
   return evaluator.run();

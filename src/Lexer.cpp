@@ -1630,6 +1630,7 @@ Lexer::lex_identifier() throws -> Token *
         "expected a character after the backslash here"};
   }
 
+  /* at this point: no quote is open and no backslash is pending. */
   let const actual_cursor_position = m_cursor_position;
 
   ASSERT(actual_cursor_position <= m_source.length);
@@ -1827,6 +1828,8 @@ Lexer::lex_process_substitution(Word &word, usize offset) throws
         "expected ) here"};
   }
 
+  /* at this point: substitution_end holds the position past the matching ')',
+     so body is the text between inner_start and that ')'. */
   let const byte_count = *substitution_end - open_position;
   let const body       = m_source.substring_of_length(
       inner_start, *substitution_end - inner_start - 1);

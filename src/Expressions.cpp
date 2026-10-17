@@ -172,6 +172,8 @@ AssignmentIndexSet::merge(const AssignmentIndexSet &other) throws
 
   if (count() > SIZE_MAX - other.count()) throw std::bad_alloc{};
 
+  /* at this point: this and other are both non-empty and do not share
+     storage, and count() + other.count() does not overflow. */
   let *merged_storage =
       allocate_assignment_index_storage(count() + other.count());
   let  *merged_indices = assignment_index_data(merged_storage);
@@ -899,6 +901,8 @@ AnalysisContext::should_silence_unresolved_command_at(
       parser_format_fragment_at(*format_document, position);
   if (!fragment_index.has_value()) return false;
 
+  /* at this point: effects does not silence unresolved commands,
+     format_document is non-null, and fragment_index has a value. */
   return format_document->fragments[*fragment_index]
       .should_silence_unresolved_commands;
 }
@@ -914,6 +918,8 @@ analysis_reporter::report(
   if (!should_report(id)) return false;
   if (is_suppressed(site, id, location)) return false;
 
+  /* at this point: id passes the tier filter, and no suppression disables
+     id at location. */
   let named_location = location;
 
   if (named_location.source_name_index == 0)
@@ -998,6 +1004,8 @@ analysis_reporter::fail(const analysis_report_site  &site,
     return;
   }
 
+  /* at this point: the mood is default, and warning_level is below
+     demote_at_level, so the diagnostic is reported as an error. */
   flush(site);
   totals.error_count++;
 
@@ -1296,6 +1304,8 @@ AnalysisContext::apply_called_function(
     return;
   }
 
+  /* at this point: definition is the latest definition of name, its
+     analysis is complete, and it starts at or before call_location. */
   if (active_function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION) {
     let &active_definition =
         functions.records[active_function_definition_index];
@@ -1551,6 +1561,8 @@ expressions::internal::window_function_body_error(
 
   if (rebased.position > resolved.text->count()) return None;
 
+  /* at this point: resolved is windowed, resolved.text is non-null, and
+     rebased.position does not exceed the text count. */
   error.set_location(rebased);
   error.set_line_offset(resolved.line_offset);
 
@@ -1725,6 +1737,8 @@ expressions::internal::normalized_relative_executable_path(
 
   if (normalized == ".") return None;
 
+  /* at this point: path is a non-empty relative path, and normalized is
+     not '.'. */
   return normalized;
 }
 
@@ -2131,6 +2145,8 @@ expressions::internal::command_resolves(
     return false;
   }
 
+  /* at this point: name is non-empty without a directory separator,
+     and no enabled builtin or reachable koshkit utility matches it. */
   let              environment_resolver = Maybe<ProgramResolver>{};
   ProgramResolver *resolver             = nullptr;
 
@@ -2624,6 +2640,8 @@ is_trivial_substitution_body(const AnalysisContext &actx,
     return false;
   }
 
+  /* at this point: args is non-empty, name is the command word of args[0],
+     and name is neither a defined function nor an alias. */
   let const info = get_analysis_command_info(*name);
 
   switch (info.id) {
@@ -2922,6 +2940,8 @@ internal::location_spanning(SourceLocation first, SourceLocation last) wontthrow
   if (first.length == 0) return last;
   if (last.length == 0) return first;
   if (last.position < first.position) return first;
+  /* at this point: first and last both have a non-zero length, and last
+     does not start before first. */
 
   return SourceLocation{first.position,
                         last.position + last.length - first.position,

@@ -114,6 +114,8 @@ Chmod::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: expression parses as a mode for a regular file, and
+     operands holds the mode followed by at least one file. */
   i32 status = 0;
   let state  = chmod_state{ec, cxt, expression, os::get_file_creation_mask()};
   let const hooks =

@@ -92,6 +92,8 @@ next_quoted_word(StringView text, usize &position)
 
   if (position >= text.length) return None;
 
+  /* at this point: position is at the closing quote, and start - 1 is the
+     opening quote. */
   return text.substring_of_length(start, position++ - start);
 }
 
@@ -320,6 +322,8 @@ is_recipe_header(StringView line) wontthrow -> bool
   if (!colon.has_value()) return false;
   if (*colon + 1 < line.length && line[*colon + 1] == '=') return false;
 
+  /* at this point: line is nonempty, has a colon not followed by =, and
+     does not start with #, [, or a keyword. */
   let const first = line[0];
 
   return first == '@' || is_recipe_variable_start(first);
@@ -480,6 +484,8 @@ parse_justfile_format(const parser_format_input &input,
 
     if (!is_recipe || indent == line.length) continue;
 
+    /* at this point: is_recipe is true, indent is positive, and line has text
+       after its indentation. */
     let content_start = line_start + indent;
 
     if (!is_body_started) {

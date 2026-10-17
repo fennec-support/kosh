@@ -301,6 +301,9 @@ EvalContext::expand_word(const Word &word) throws
       return;
     }
 
+    /* at this point: index is at least 1, separators is not empty, its first
+       byte is not a space, tab, or newline, and the shell is not in POSIX
+       mode. */
     do_append_split_run(
         separators.substring_of_length(
             0, utils::charset_character_length(

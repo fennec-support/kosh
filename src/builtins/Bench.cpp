@@ -730,6 +730,8 @@ detect_outliers(const ArrayList<bench_sample> &samples,
     return;
   }
 
+  /* at this point: samples holds at least two samples, and the first run
+     does not score above OUTLIER_SCORE_THRESHOLD. */
   for (let const &sample : samples) {
     let const score = do_score(sample.wall_nanos);
 
@@ -1168,6 +1170,8 @@ is_compared_metric(usize                k,
     return false;
   }
 
+  /* at this point: first and other both have metric k, is_extended is set,
+     and metric k is neither a ratio nor a percent. */
   return first.metric[k].mean > 0 || other.metric[k].mean > 0;
 }
 

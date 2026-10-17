@@ -390,6 +390,8 @@ EvilSS::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: operands is empty, and os::has_network_socket_listing()
+     is true. */
   unused(FLAG_EVILSS_NUMERIC);
 
   let const allocator      = cxt.scratch_allocator();

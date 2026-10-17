@@ -443,6 +443,8 @@ list_directory_for_batch(StringView dir, Allocator allocator) throws
 
   if (!children.has_value()) return {None, None};
 
+  /* at this point: children holds the listing of dir, and directory is open
+     on dir. directory.take() passes the descriptor to the caller. */
   return {steal(children), directory.take()};
 #else
 
@@ -633,6 +635,8 @@ canonical_path(const Path &path) wontthrow -> Maybe<Path>
     }
   }
 
+  /* at this point: resolved_path holds the realpath() result, and the defer
+     frees it on return. a path ending in '/' resolves to a directory. */
   return Path{StringView{resolved_path}};
 }
 
@@ -688,6 +692,9 @@ directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
     return false;
   }
 
+  /* at this point: directory is absolute, stat() succeeded on it, and its
+     owner is root or the effective user. it is not writable by others, and
+     it is group-writable only when its group is the macOS admin group. */
   LOG(Debug, "trust check passed for '%s'", directory.c_str());
 
   return true;
@@ -869,6 +876,8 @@ write_to_temp_file(StringView content) throws -> Maybe<descriptor>
     return koshka::None;
   }
 
+  /* at this point: fd is an unlinked file that holds content, and its offset
+     is 0. */
   return fd;
 }
 
@@ -913,6 +922,8 @@ write_to_named_temp_file(const Path &directory,
     return None;
   }
 
+  /* at this point: the file at path_template holds all of content, and fd
+     is closed. */
   return Path{StringView{path_template.begin()}};
 }
 
@@ -1700,6 +1711,9 @@ walk_tree_entry(tree_walk_state   &walk,
     }
   }
 
+  /* at this point: directory is open on a directory that is not in
+     active_directories, and its device is root_device_id when
+     is_one_file_system is set. */
   walk.active_directories.push(identity);
   defer { walk.active_directories.pop_back(); };
 
@@ -1993,6 +2007,8 @@ file_type_letter(u32 mode) wontthrow -> char
   if (S_ISFIFO(bits)) return 'p';
   if (S_ISSOCK(bits)) return 's';
 
+  /* at this point: bits is not a directory, symbolic link, character device,
+     block device, FIFO, or socket. */
   return '-';
 }
 

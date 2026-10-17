@@ -35,6 +35,8 @@ basename_component(StringView path) wontthrow -> StringView
 
     return StringView{"/"};
   }
+  /* at this point: path is non-empty, and end_position is one past a byte
+     that is not a separator. */
 
   usize start_position = end_position;
 

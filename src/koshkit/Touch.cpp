@@ -128,6 +128,8 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
     return None;
   }
 
+  /* at this point: timestamp is not the error value, and mktime() left the
+     month, day, hour, minute, and second of value unchanged. */
   return static_cast<i64>(timestamp);
 }
 

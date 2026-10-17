@@ -332,6 +332,8 @@ trim_matching(const EvalContext   &cxt,
     return String{result_allocator, value.substring_of_length(0, *match)};
   }
 
+  /* at this point: the pattern has glob syntax other than a lone leading or
+     trailing '*', so the general search below applies. */
   let const charset = cxt.get_glob_charset_for(value);
   let const literal_head =
       has_extglob_group ? StringView{}
@@ -692,6 +694,8 @@ EvalContext::ModifierWordExpander::emit_field_slice(
 
   m_did_quoted_at = true;
 
+  /* at this point: is_quoted() is true and is_star is false, so each
+     element in the slice is emitted as its own field. */
   for (i64 index = bounds.start; index < bounds.end; index++) {
     if (index > bounds.start) start_field();
 
@@ -1655,6 +1659,9 @@ EvalContext::ModifierWordExpander::expand_leading_tilde() throws -> bool
 
   if (!directory.has_value()) return false;
 
+  /* at this point: prefix_end is the first '/' or ':' after the tilde, or the
+     word end, and the prefix holds no quote, backslash, dollar, or backquote.
+     directory holds the resolved directory for the prefix. */
   emit_run(directory->view(), false);
   m_index = prefix_end - 1;
 
@@ -2018,6 +2025,8 @@ EvalContext::ParameterExpander::expand_indirect() throws -> String
     return String{m_context.scratch_allocator()};
   }
 
+  /* at this point: body does not refer to itself, and when
+     m_is_reference_target is set, body does not end with [@] or [*]. */
   let const name_end = find_indirect_name_end(body);
 
   if (name_end > 0 && name_end < body.length &&
@@ -2088,6 +2097,8 @@ EvalContext::ParameterExpander::expand_length() throws -> String
     return expand_element_length(name, *bracket);
   }
 
+  /* at this point: name is not @ or *, name is not an element of the form
+     x[subscript], and when m_is_reference_target is set, name has no ][. */
   if (let const stored = m_context.variable_store().find_plain_scalar(name);
       stored.has_value())
     return String::from(get_character_count(m_context, **stored),
@@ -2289,6 +2300,8 @@ EvalContext::ParameterExpander::expand_element_transform(
     return out;
   }
 
+  /* at this point: op is neither 'a' nor 'A', and is_set tells whether
+     m_name[subscript] is set. */
   if (!is_set) return String{m_context.scratch_allocator()};
 
   return m_context.apply_parameter_transform_to_value(
@@ -2379,6 +2392,8 @@ EvalContext::ParameterExpander::expand_subscripted() throws
     raise_unknown_operator(modifier);
   }
 
+  /* at this point: subscript is @ or *, and modifier holds at least one
+     character after the closing bracket. */
   let const elements = m_context.collect_array_elements(m_name);
 
   if (modifier.length > 1 && modifier_op == ':' &&
@@ -3037,6 +3052,8 @@ EvalContext::ParameterExpander::expand_operator() throws -> String
     }
   }
 
+  /* at this point: op_index is less than m_rest.length, and when is_colon_form
+     is set, m_rest[1] is a colon modifier operator. */
   let const is_dash_single_string =
       m_context.runtime_state().get_mood() == mimic_mood::Posix &&
       (m_context.expansion_store().is_expanding_single_string() ||
@@ -3623,6 +3640,9 @@ get_pattern_affixes(StringView    pattern,
   }
 
   if (first_glob_position == pattern.length) return pattern_affixes{};
+  /* at this point: pattern has no active backslash, no extglob group when
+     mode is extglob_mode::Enabled, and first_glob_position is less than
+     pattern.length. */
 
   /* e.g. pattern = "ab*cd*ef" with every byte active: the loop leaves
      first_glob_position = 2 and last_glob_position = 5, so head = "ab" and
@@ -4258,6 +4278,8 @@ EvalContext::apply_value_modifier(
     return apply_case_modification_to_value(value, modifier, source_location);
   }
 
+  /* at this point: modifier is not empty, and op is none of '/', '^', ',',
+     or '~'. */
   if (op == '#' || op == '%') {
     let const is_doubled       = modifier.length > 1 && modifier[1] == op;
     let const pattern_word     = modifier.substring(is_doubled ? 2 : 1);
@@ -4291,6 +4313,9 @@ EvalContext::is_posix_positional_test_null(bool is_colon,
     return false;
   }
 
+  /* at this point: is_colon is set, either op is '+' or should_test_joined
+     is set, and params holds one entry or fewer, or field_separators is
+     empty. */
   for (let const &param : params)
     if (!param.view().is_empty()) return false;
 
@@ -4365,6 +4390,8 @@ EvalContext::trim_positional_fields(
     return fields;
   }
 
+  /* at this point: fields holds at least one entry, and either is_doubled
+     is set or the pattern does not match the empty string. */
   for (usize step = 0; step < fields.count(); step++) {
     let const index = is_doubled ? step : fields.count() - 1 - step;
     let       trimmed =

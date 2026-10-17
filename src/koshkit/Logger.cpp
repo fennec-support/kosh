@@ -123,6 +123,8 @@ Logger::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: priority is a valid severity or facility.severity pair,
+     and message holds the input text without trailing newlines. */
   if (!os::write_system_log({tag, priority, message.view(),
                              FLAG_LOGGER_PID.is_enabled(),
                              FLAG_LOGGER_STDERR.is_enabled()}))

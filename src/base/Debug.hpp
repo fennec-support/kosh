@@ -124,6 +124,8 @@ t__strprintf(t__dump_state<StringT> &state,
       if (is_pointer_value && !is_unknown_field && pointer != nullptr) {
         if (!state.is_at_line_start) t__append_dump_text(state, "\n");
 
+        /* at this point: pointer is non-null and points to a class or union,
+           and format contains %p without *%p. */
         const usize previous_indent = state.base_indent;
 
         state.base_indent += clang_indent + 2;

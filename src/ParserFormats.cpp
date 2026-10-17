@@ -425,6 +425,9 @@ detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::UnknownHost;
   }
 
+  /* at this point: path has no known host extension, filename is not
+     jenkinsfile, and language_id is none of dockerfile, makefile, json,
+     jsonc, markdown, dockercompose, or yaml. */
   if (path.is_empty() || !language_id.is_empty() ||
       Path{path}.is_shell_source(source))
   {
@@ -1117,6 +1120,7 @@ interpreter_of_value(StringView value) wontthrow -> interpreter_choice
     word = word.substring_of_length(0, word.length - 4);
   }
 
+  /* at this point: word holds no '/' or '@' character. */
   if (let const mood = parser_format_shell_mood(word)) return {true, *mood};
 
   static constexpr StringView OTHERS[] = {
@@ -1273,6 +1277,8 @@ find_child_shell(StringView source,
     if (indent != child_indent) continue;
     if (!yaml_line_value(line, child_key).has_value()) continue;
 
+    /* at this point: line is not blank, its indent is child_indent, and line
+       is a mapping entry for child_key. */
     usize run_position = position;
 
     while (run_position < source.length) {
@@ -1432,6 +1438,8 @@ replace_analysis_newlines(StringView source,
       continue;
     }
 
+    /* at this point: source[position] is a newline, start <= position,
+       position + 1 < end, and is_folded_block is true. */
     usize line_begin = position;
 
     while (line_begin > 0 && source[line_begin - 1] != '\n')
@@ -2092,6 +2100,7 @@ parser_format_extract_yaml_keys(parsed_format_document &document,
 
     if (!mood.has_value()) continue;
 
+    /* at this point: line matches one of keys, and mood holds a value. */
     let   items         = ArrayList<yaml_scalar_item>{heap_allocator()};
     usize next_position = position;
 
@@ -2126,6 +2135,8 @@ parser_format_extract_yaml_value_at(parsed_format_document &document,
 
   if (!colon.has_value()) return;
 
+  /* at this point: mood holds a value, and line has a ':' at or after
+     key_column. */
   usize content_position = key_column + *colon + 1;
 
   while (content_position < line.length && line[content_position] == ' ')
@@ -2270,6 +2281,7 @@ parser_format_extract_yaml_exec_keys(parsed_format_document &document,
     if (next_position > position) position = next_position;
     if (items.is_empty()) continue;
 
+    /* at this point: line matches one of keys, and items is not empty. */
     let const value = line.substring(content_position).trim_blanks();
     let const is_sequence =
         value.is_empty() || value.starts_with("[") || value.starts_with("#");
@@ -2376,6 +2388,8 @@ parser_format_add_json_fragment(parsed_format_document &document,
                              parser_format_codec::JsonString, mood);
   if (document.fragments.is_empty()) return;
 
+  /* at this point: start is less than end, and fragment is the last element
+     of document.fragments. */
   let  &fragment = document.fragments.back();
   let   decoded  = String{heap_allocator()};
   usize position = start;

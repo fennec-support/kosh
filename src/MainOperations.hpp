@@ -371,6 +371,8 @@ print_help_or_version_status(const String &program_path) -> Maybe<int>
     return EXIT_SUCCESS;
   }
 
+  /* at this point: no help, list, version, or short version flag is enabled,
+     so no status is reported. */
   return None;
 }
 
@@ -409,6 +411,8 @@ report_escaped_control_flow(EvalContext &context, const String &fallback_source)
   case control_flow::Kind::Normal: context.control_flow_store().clear(); return;
   }
 
+  /* at this point: control is pending with kind Break, Continue, or an
+     interactive Return, and what holds the message to show. */
   const String *source =
       control.source != nullptr ? control.source : &fallback_source;
   let const located = ErrorWithLocation{control.location, what};
@@ -487,6 +491,8 @@ exit_status_for(const Error &error,
     return BASH_COMMAND_STRING_FATAL_STATUS;
   }
 
+  /* at this point: error.command_status() is 1, and the Bash command string
+     fatal status does not apply. */
   return context.runtime_state().is_posix_mode() ? 2 : EXIT_FAILURE;
 }
 
@@ -1166,6 +1172,8 @@ format_document_source(StringView            source,
     return format_shell_source(source, ast_arena, errors, ast_output,
                                function_arena, mood, filename);
 
+  /* at this point: document is a recognized host format, so the replacements
+     built from its fragments are applied to source. */
   let replacements = ArrayList<parser_format_replacement>{heap_allocator()};
 
   for (let const &fragment : document.fragments) {
@@ -1739,6 +1747,8 @@ apply_history_substitution(StringView                 text,
   }
 
   if (!did_replace) return false;
+  /* at this point: old_text is not empty and did_replace is true, so output
+     holds the text before copied_position with the replacements applied. */
   output.append(text.substring(copied_position));
 
   return true;
@@ -1995,6 +2005,8 @@ expand_interactive_history(StringView               source,
 
     state.last_substitution = steal(next_substitution);
 
+    /* at this point: selected_event holds a value, has_old_delimiter is
+       true, and substituted holds the rewritten command. */
     let first_modifier_buffer  = String{context.scratch_allocator()};
     let second_modifier_buffer = String{context.scratch_allocator()};
     let selected               = substituted.view();
@@ -2357,6 +2369,7 @@ source_environment_file(StringView   variable_name,
 
   if (expanded.is_empty()) return;
 
+  /* at this point: value is set and nonempty, and expanded is nonempty. */
   source_custom_rcfile(expanded.view(), context);
 }
 
@@ -2496,6 +2509,9 @@ source_init_moods(EvalContext                 &context,
       context.runtime_control_store().set_init_mood_sourcing(flavor, false);
     };
 
+    /* at this point: flavor is marked as sourcing, and at least one of
+       is_login_shell, should_be_interactive, or should_consider_bash_env
+       holds. */
     context.runtime_state().set_mood(flavor);
     LOG(Info, "sourcing the startup files for the %s mood",
         flavor == mimic_mood::Bash        ? "bash"
@@ -3010,6 +3026,7 @@ run_format_operation(const ArrayList<String>         &file_names,
       continue;
     }
 
+    /* at this point: formatted holds the formatted text of source. */
     for (let const &warning : errors)
       show_message(warning.view());
 
@@ -3172,6 +3189,8 @@ run_lint_apply_operation(const ArrayList<String>         &file_names,
       continue;
     }
 
+    /* at this point: validation_source reported no diagnostic without an id,
+       and final_source is the candidate replacement for file_name. */
     if (final_source.view() != snapshot->contents.view() &&
         !replace_file_contents(*snapshot, final_source.view(), invocation,
                                context))

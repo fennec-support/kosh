@@ -145,6 +145,8 @@ read_docker_heredoc(StringView command) wontthrow -> Maybe<docker_heredoc>
     position++;
   }
 
+  /* at this point: command starts with <<, delimiter is a nonempty run of
+     bytes that is_variable_name() accepts, and any opening quote is closed. */
   while (position < command.length &&
          (command[position] == ' ' || command[position] == '\t' ||
           command[position] == '\r'))
@@ -447,6 +449,8 @@ parse_dockerfile_format(const parser_format_input &input,
 
     if (!is_shell_instruction || content_position >= line.length) continue;
 
+    /* at this point: instruction is Run, Command, or Entrypoint, or a
+       Healthcheck with a CMD, and content_position is inside line. */
     let items = ArrayList<docker_json_item>{heap_allocator()};
 
     if (is_exec_form(line.substring(content_position)) &&
@@ -465,6 +469,8 @@ parse_dockerfile_format(const parser_format_input &input,
         continue;
       }
 
+      /* at this point: items has at least three entries, exec_mood holds a
+         shell mood, and flag is a dash option that contains c. */
       parser_format_add_json_fragment(document, input.source,
                                       line_start + items[2].start,
                                       line_start + items[2].end, *exec_mood);

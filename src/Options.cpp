@@ -1659,6 +1659,8 @@ get_legacy_koshconf_alias(const option_descriptor &option) throws
 
   if (option.shopt_name.is_empty()) return None;
 
+  /* at this point: option.set_name is empty, option.shopt_name is non-empty,
+     and alias is an empty heap String that is returned to the caller. */
   alias += BASH_ALIAS_PREFIX;
   alias += option.shopt_name;
 
@@ -1697,6 +1699,8 @@ find_option_by_koshconf_name(StringView name) wontthrow
 
   if (found == nullptr) return nullptr;
 
+  /* at this point: found points into OPTION_REGISTRY, and spelling is the
+     name after the legacy prefix. */
   if (found->is_set_alias) {
     if (found->storage != option_storage::EditorMode) return nullptr;
 
@@ -1882,6 +1886,8 @@ read_option_text(const EvalContext       &cxt,
   if (option.storage == option_storage::InitMoods)
     return String{heap_allocator(), cxt.startup_store().get_init_moods()};
 
+  /* at this point: option.storage is neither Variable nor InitMoods, so
+     the value comes from read_option_number(). */
   return format_option_number(option, read_option_number(cxt, option));
 }
 

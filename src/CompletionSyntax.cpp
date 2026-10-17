@@ -173,6 +173,8 @@ is_transparent_command_prefix(StringView word) wontthrow -> bool
     return true;
   }
 
+  /* at this point: word is non-empty, does not start with -, and is not an
+     assignment whose first byte starts a variable name. */
   return TRANSPARENT_PREFIXES.contains(word);
 }
 
@@ -212,6 +214,8 @@ timeout_option_takes_next_word(StringView word) wontthrow -> bool
 
   if (flags == nullptr) return false;
 
+  /* at this point: flags is non-null, and word starts with - and has at least
+     two bytes. */
   if (word[1] == '-') {
     let const separator = word.find_character('=');
     let const name_length =
@@ -486,6 +490,8 @@ internal::resolve_completion_alias(StringView   command,
       break;
     }
 
+    /* at this point: expansion holds a value, and first is non-empty and
+       differs from name. */
     name = String{name.allocator(), first};
   }
 
@@ -507,6 +513,8 @@ internal::resolve_completion_command(StringView   command,
     if (let const canonical = os::canonical_path(located.front());
         canonical.has_value())
     {
+      /* at this point: located is non-empty, and canonical holds the canonical
+         path of located.front(). */
       let       resolved_name = String{heap_allocator(), canonical->filename()};
       let const name_info     = os::normalize_program_name(resolved_name);
 

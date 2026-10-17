@@ -840,6 +840,8 @@ rule_eliminate_empty_for(const Expression *node,
   if (!loop_node->has_in_clause()) return false;
   if (!loop_node->words().is_empty()) return false;
 
+  /* at this point: loop_node is not null, is not fully eliminated, has an
+     in clause, and holds no words. */
   LOG(All, "empty for-loop elimination folded a for with an empty in clause to "
            "a no-op");
   loop_node->set_fully_eliminated();

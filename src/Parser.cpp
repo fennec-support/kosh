@@ -118,6 +118,8 @@ Parser::record_analysis_alias_definitions(
     return;
   }
 
+  /* at this point: collection is enabled, args is not empty, and args[0]
+     has the raw text alias, so the remaining arguments are alias operands. */
   for (usize i = 1; i < args.count(); i++) {
     let const text            = args[i]->raw_string();
     let const equals_position = text.find_character('=');
@@ -169,6 +171,8 @@ internal::get_unquoted_word_text(const Token *token) wontthrow
     return nullptr;
   }
 
+  /* at this point: token is a Word token, and word has one unquoted text
+     segment, so the returned text is owned by token. */
   return &word.segments[0].text;
 }
 
@@ -241,6 +245,8 @@ Parser::record_swallowed_closer(const Token *token) wontthrow -> void
     break;
   }
 
+  /* at this point: token is Fi, Done, Esac, or an unquoted '}'. Other
+     kinds returned above. */
   m_swallowed_closers[get_swallowed_closer_slot(token->kind())] =
       token->source_location();
 }
@@ -791,6 +797,8 @@ Parser::record_detailed_parse_error(
   errors.push(error.details_to_string(get_display_source(), context));
   if (diagnostic_sink == nullptr) return;
 
+  /* at this point: m_error_collection is nullptr, and diagnostic_sink is
+     set, so the diagnostic is pushed below. */
   let const location         = error.location();
   let const details_location = error.details_location();
   let const related_location = error.details_message().is_empty()
@@ -825,6 +833,8 @@ Parser::record_parse_error(
   errors.push(error.to_string(get_display_source(), context));
   if (diagnostic_sink == nullptr) return;
 
+  /* at this point: m_error_collection is nullptr, and diagnostic_sink is
+     set, so the diagnostic is pushed below. */
   let const location = error.location();
 
   diagnostic_sink->push(source_diagnostic{
@@ -1637,6 +1647,8 @@ Parser::wrap_with_stderr_to_stdout(Command *command) throws -> Command *
     return command;
   }
 
+  /* at this point: command is non-null and not a simple command, so the dup
+     goes into a RedirectedCommand that wraps it. */
   let redirections = ArrayList<expressions::Redirection>{arena_allocator};
 
   redirections.push(stderr_to_stdout_dup());
@@ -1800,6 +1812,8 @@ Parser::try_parse_descriptor_prefixed_redirection(
                               parsed_descriptor.error().message()};
     }
 
+    /* at this point: literal parses as an integer no greater than INT32_MAX
+       and the word has no fd allocation name, so fd holds the parsed value. */
     let const fd = static_cast<i32>(parsed_descriptor.value());
 
     if (nk == Token::Kind::DoubleLess) {
@@ -1889,6 +1903,8 @@ Parser::try_parse_trailing_redirection(
     return false;
   }
 
+  /* at this point: token is a non-null Word token, and its word is all ASCII
+     digits or has an fd allocation name. */
   let const word_location = token->source_location();
 
   if (try_parse_descriptor_prefixed_redirection(word_token, word_location,
@@ -1917,6 +1933,8 @@ Parser::attach_trailing_redirections(Command *compound) throws
 
   if (redirections.is_empty()) return compound;
 
+  /* at this point: compound is non-null, and redirections holds at least one
+     entry that the new RedirectedCommand takes over. */
   let const redirected = m_lexer.arena().create<RedirectedCommand>(
       compound->source_location(), compound, steal(redirections));
 
@@ -2354,6 +2372,8 @@ Parser::consume_bash_array_assignment() throws
   m_lexer.set_is_lexing_array_literal(true);
   defer { m_lexer.set_is_lexing_array_literal(false); };
 
+  /* at this point: open is a non-null LeftParen token, elements is empty, and
+     array literal lexing stays on until this function returns. */
   consume_bash_array_elements(open, elements);
 
   return elements;

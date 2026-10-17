@@ -198,6 +198,7 @@ Realpath::execute(const ExecContext               &ec,
       continue;
     }
 
+    /* at this point: operand is not empty, and resolved holds a path. */
     output += resolved->text().view();
     output += '\n';
   }

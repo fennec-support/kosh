@@ -340,6 +340,8 @@ private:
       }
     }
 
+    /* at this point: m_source[start, m_position) is a valid JSON number, and
+       m_position is past its last byte. */
     let *value = create(json_kind::Number);
 
     value->text =
@@ -604,6 +606,8 @@ public:
       let content_length = parse_content_length(headers);
 
       if (!content_length.has_value()) return None;
+      /* at this point: headers holds the header block before the blank line,
+         and content_length holds the parsed body length. */
 
       let const body_start = header_end + 4;
 
@@ -748,6 +752,8 @@ private:
     }
 
     if (m_offset < 64 * 1024) return;
+    /* at this point: m_offset is at least 64 KiB and differs from the
+       buffered count. */
     m_buffer = String{
         m_buffer.allocator(),
         m_buffer.substring_of_length(m_offset, m_buffer.count() - m_offset)};
@@ -808,6 +814,8 @@ string_field(const JsonValue *object, StringView name) wontthrow
     return None;
   }
 
+  /* at this point: object is a non-null object, value is a non-null string,
+     and the returned view borrows value->text. */
   return value->text.view();
 }
 
@@ -831,6 +839,8 @@ integer_field(const JsonValue *object, StringView name) throws
 
   if (parsed.is_error()) return None;
 
+  /* at this point: object is an object, value is a non-empty number, and
+     parsed holds the i64 that value->text encodes. */
   return parsed.value();
 }
 

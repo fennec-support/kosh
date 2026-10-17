@@ -46,6 +46,8 @@ Alias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* at this point: args holds the program name and at least one operand,
+     and --help was not requested. */
   i32 status = 0;
 
   for (usize i = 1; i < args.count(); i++) {

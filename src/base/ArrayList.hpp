@@ -611,6 +611,8 @@ private:
       return;
     }
 
+    /* at this point: index is less than m_length, so at least one element
+       moves one slot right. */
     reserve(static_cast<usize>(m_length) + 1);
     if constexpr (std::is_trivially_copyable_v<T>) {
       __builtin_memmove(m_data + index + 1, m_data + index,

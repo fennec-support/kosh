@@ -153,6 +153,8 @@ public:
       ::close(descriptor);
       if (length <= 0) continue;
 
+      /* at this point: length is positive, buffer holds length bytes of the
+         file at path, and descriptor is closed. */
       usize digit_count = 0;
 
       while (digit_count < static_cast<usize>(length) &&
@@ -630,6 +632,9 @@ public:
         return false;
       }
 
+      /* at this point: total is the sum of end minus start over every cpu
+         for this event, total fits in u64, and no end counter for this event
+         is below its start counter. */
       counts.*destinations[event_index] = static_cast<u64>(total);
     }
 
@@ -996,6 +1001,8 @@ linux_process_real_uid(StringView process_directory,
       continue;
     }
 
+    /* at this point: line starts with the Uid: field, so the digits after it
+       are the real uid. */
     let const uid = leading_digits(line, 4).to<u32>();
 
     return uid.is_error() ? Maybe<u32>{None} : Maybe<u32>{uid.value()};
@@ -1778,6 +1785,8 @@ parse_decimal_word(StringView word) wontthrow -> Maybe<u64>
     parsed = parsed * 10 + digit;
   }
 
+  /* at this point: word is non-empty, every character is an ASCII digit,
+     and parsed is the value of word, which fits in u64. */
   return parsed;
 }
 
@@ -1808,6 +1817,8 @@ read_tcp_counter_rows(StringView text,
       continue;
     }
 
+    /* at this point: line starts with prefix, and header holds the text after
+       prefix. */
     usize name_position  = 0;
     usize value_position = prefix.length;
 
@@ -1849,6 +1860,8 @@ parse_decimal_words(StringView text, u64 *values, usize value_capacity)
     let const parsed = parse_decimal_word(word);
 
     if (!parsed.has_value()) break;
+    /* at this point: parsed holds a value, and value_count is below
+       value_capacity, so values[value_count] is in range. */
     values[value_count] = *parsed;
     value_count++;
   }
@@ -2409,6 +2422,8 @@ append_kernel_socket_table(
 
   if (!header_end.has_value()) return;
 
+  /* at this point: contents holds the table text, and header_end holds the
+     newline that ends the header row. */
   usize position = *header_end + 1;
 
   while (position < text.length) {
@@ -2522,6 +2537,8 @@ read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
 
   if (netstat_length == 0) return has_statistics;
 
+  /* at this point: buffer holds the non-empty /proc/net/snmp text, and
+     netstat_buffer holds the non-empty /proc/net/netstat text. */
   static constexpr tcp_counter_field NETSTAT_FIELDS[] = {
       {"ListenOverflows", &tcp_statistics::listen_overflow_count,
        tcp_statistics_field::ListenOverflows           },
@@ -2575,6 +2592,8 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
   {
     return snapshot;
   }
+  /* at this point: iterator holds a valid service iterator, and the defer
+     that follows releases it on return. */
   defer { IOObjectRelease(iterator); };
 
   let const do_read_number = [](CFDictionaryRef dictionary, const char *key,
@@ -2718,6 +2737,8 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
 
     if (value_count < 11) continue;
 
+    /* at this point: name is non-empty, and values[0] through values[10] hold
+       parsed fields from the line. */
     let const do_scale = [](u64 value, u64 multiplier) wontthrow -> Maybe<u64> {
       if (value > UINT64_MAX / multiplier) return None;
 
@@ -3092,6 +3113,8 @@ read_process_io_status(i64 pid, process_io_status &status) wontthrow -> bool
 
   if (length == 0) return false;
 
+  /* at this point: buffer holds length non-zero bytes read from the io file
+     at path, and path was formatted for pid. */
   parse_linux_process_io_status(StringView{buffer, length}, status);
 
   return true;
@@ -3577,6 +3600,8 @@ list_process_open_files(i64                      pid,
     return files;
   }
 
+  /* at this point: descriptor_directory is an open DIR for
+     descriptor_root, and the defer below closes it on return. */
   defer { ::closedir(descriptor_directory); };
 
   let const descriptor_directory_fd = ::dirfd(descriptor_directory);
@@ -3811,6 +3836,9 @@ FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
       continue;
     }
 
+    /* at this point: m_descriptor is valid, and slice_seconds is positive and
+       at most FILE_WATCHER_SLICE_SECONDS, since remaining_seconds was positive
+       when the loop condition held. */
 #if defined __linux__
     if (wait_for_fd_readable(m_descriptor,
                              static_cast<i64>(slice_seconds * 1e9) + 1) <= 0)

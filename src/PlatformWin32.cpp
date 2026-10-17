@@ -100,6 +100,8 @@ kosh_regex_reallocate(void *pointer, size_t length)
 
   if (length > SIZE_MAX - sizeof(regex_allocation_header)) return nullptr;
 
+  /* at this point: pointer is non-null, length is nonzero, and adding the
+     header size to length does not overflow. */
   let       old_header = static_cast<regex_allocation_header *>(pointer) - 1;
   let const allocation_length = sizeof(regex_allocation_header) + length;
 
@@ -240,6 +242,8 @@ utf8_to_wide(StringView text, Allocator allocator) throws
                           static_cast<int>(text.length), wide.begin(),
                           wide_length) != wide_length)
     return None;
+  /* at this point: text is not empty, wide_length is positive, and wide
+     holds wide_length converted units. */
   wide.begin()[wide_length] = L'\0';
 
   return wide;
@@ -274,6 +278,8 @@ wide_to_utf8(const wchar_t *text,
                           nullptr, nullptr) != utf8_length)
     return None;
 
+  /* at this point: length is positive and at most INT_MAX, and utf8 holds
+     utf8_length converted bytes. */
   return String{
       allocator, StringView{utf8.begin(), static_cast<usize>(utf8_length)}
   };
@@ -479,6 +485,8 @@ read_recent_system_log_records(StringView log_name,
     return None;
   }
 
+  /* at this point: wide_name has a value, and event_log is an open handle
+     that the defer closes on return. */
   defer { CloseEventLog(event_log); };
 
   constexpr DWORD EVENT_BUFFER_BYTE_COUNT = 64 * 1024;
@@ -910,6 +918,8 @@ save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
     return result;
   }
 
+  /* at this point: slot is a standard handle slot, target is valid, and
+     duplicate is the handle now held by that slot. */
   result.is_dup2_ok = true;
   note_descriptor_rebound();
 
@@ -946,6 +956,8 @@ restore_descriptor(const saved_descriptor &saved) wontthrow -> void
                                          : INVALID_HANDLE_VALUE) == FALSE)
     return;
 
+  /* at this point: SetStdHandle() succeeded, so the slot holds saved.saved
+     when was_open is set and INVALID_HANDLE_VALUE otherwise. */
   note_descriptor_rebound();
 
   if (replaced != nullptr && replaced != INVALID_HANDLE_VALUE &&
@@ -1161,6 +1173,8 @@ replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
     return false;
   }
 
+  /* at this point: duplicate is installed in the slot for shell_fd, and
+     previous is the handle that slot held before this call. */
   note_descriptor_rebound();
 
   if (previous != nullptr && previous != INVALID_HANDLE_VALUE &&
@@ -1671,6 +1685,8 @@ TerminalEchoGuard::TerminalEchoGuard(descriptor         input,
     return;
   }
 
+  /* at this point: input is a console, m_original_mode holds the mode it
+     had before this call, and ENABLE_ECHO_INPUT is cleared on input. */
   m_should_restore = true;
 }
 
@@ -1962,6 +1978,8 @@ windows_path_configuration_value(StringView             path,
       return None;
     }
 
+    /* at this point: volume_path holds the mount point of the volume that
+       contains the path, and maximum_component_length holds its limit. */
     return static_cast<i64>(maximum_component_length);
   }
   case path_configuration_key::NoTrunc:                          return 1;
@@ -2023,6 +2041,8 @@ path_component_length(StringView component) wontthrow -> Maybe<usize>
 
   if (wide_length <= 0) return None;
 
+  /* at this point: component is not empty and fits in int, and wide_length
+     is positive. */
   return static_cast<usize>(wide_length);
 }
 
@@ -2073,6 +2093,8 @@ get_terminal_dimensions(descriptor output)
     return None;
   }
 
+  /* at this point: width and height are positive, so the u32 casts keep
+     their values. */
   return terminal_dimensions{static_cast<u32>(width), static_cast<u32>(height)};
 }
 
@@ -2084,6 +2106,8 @@ get_terminal_cursor_column(descriptor output) wontthrow -> Maybe<u32>
   if (GetConsoleScreenBufferInfo(output, &info) == 0) return None;
   if (info.dwCursorPosition.X < 0) return None;
 
+  /* at this point: info holds the console buffer info, and
+     dwCursorPosition.X is not negative, so the cast keeps its value. */
   return static_cast<u32>(info.dwCursorPosition.X);
 }
 
@@ -2233,6 +2257,8 @@ get_environment_variable(StringView key) -> Maybe<String>
     return koshka::None;
   }
 
+  /* at this point: value_length is at least 1 and below required_size, and
+     buffer.begin() holds value_length wide characters. */
   return wide_to_utf8(buffer.begin(), static_cast<usize>(value_length),
                       heap_allocator());
 }
@@ -2366,6 +2392,8 @@ signal_internal_diagnostic() wontthrow -> void
 
   if (marker == INVALID_HANDLE_VALUE) return;
 
+  /* at this point: marker is a valid handle to an existing file, opened
+     for append. */
   DWORD written = 0;
 
   WriteFile(marker, "x", 1, &written, nullptr);
@@ -2575,6 +2603,8 @@ struct subshell_transport_header
 
     if (!header.is_valid()) return None;
 
+    /* at this point: the magic and version match, and header passes
+       is_valid(). */
     return header;
   }
 

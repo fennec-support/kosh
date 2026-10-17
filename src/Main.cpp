@@ -637,6 +637,8 @@ splice_environment_flags(command_line &line) throws -> void
     });
   }
 
+  /* at this point: the process is not running secure, and flag_tokens holds
+     the kept KOSH_FLAGS words, if any. */
   if (!line.flag_tokens.is_empty() && line.argc > 0) {
     line.spliced_argv.reserve(static_cast<usize>(line.argc) +
                               line.flag_tokens.count());
@@ -714,6 +716,9 @@ parse_command_line(command_line &line) throws -> Maybe<int>
     enter_rescue_mode(line);
   }
 
+  /* at this point: line.operands holds the parsed flag operands, and
+     line.is_rescue_mode is set only when a login invocation's flags failed
+     to parse. */
   return None;
 }
 
@@ -1211,6 +1216,8 @@ take_inherited_shell() throws -> inherited_shell
     os::set_shell_parent_process_id(inherited.state->shell_parent_process_id);
   }
 
+  /* at this point: has_invalid_state is false, and when the state was taken
+     from the environment, the shell process ids are set from it. */
   inherited.should_suppress_root_source_trace =
       os::get_environment_variable(internal::SUPPRESS_ROOT_TRACE).has_value();
   os::unset_environment_variable(internal::SUPPRESS_ROOT_TRACE);
@@ -2558,6 +2565,8 @@ run_chunk(script_chunk        &chunk,
 
   chunk.contents.normalize_crlf_line_endings();
   if (FLAG_LINT.is_enabled()) return lint.analyze(chunk, context, ast_arena);
+  /* at this point: chunk.should_analyze is true, lint is off, and
+     chunk.contents has its CRLF line endings normalized. */
 
   let run_options = script_run_options{};
 
@@ -2834,6 +2843,8 @@ kosh_main(int argc, char **argv) -> int
   {
     return *usage_status;
   }
+  /* at this point: line and file_names passed validate_invocation(), and
+     any elevated identity has been dropped. */
 
   let const is_language_server = FLAG_LANGUAGE_SERVER.is_enabled();
 

@@ -87,6 +87,8 @@ Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (status != 0) return status;
 
+    /* at this point: index < ring.count(), and the cd to ring[index]
+       succeeded. */
     stack.clear();
 
     for (usize offset = ring.count() - 1; offset >= 1; offset--) {

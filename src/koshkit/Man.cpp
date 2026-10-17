@@ -87,6 +87,9 @@ find_manual_page(StringView paths,
       if (!section.is_empty()) break;
     }
 
+    /* at this point: no candidate section in directory holds a page for
+       name, because each stat_path_following() call failed or the fixed
+       section was the only candidate. */
     if (path_length == remaining.length) break;
     path_start += path_length + 1;
   }

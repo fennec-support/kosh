@@ -340,6 +340,8 @@ dispatch(const ExecContext   &ec,
                                             "'"
     };
 
+  /* at this point: chosen holds a utility kind, and name_index is within
+     the bounds of args. */
   ArrayList<String> shifted{cxt.scratch_allocator()};
 
   shifted.reserve(ec.args().count() - name_index);
@@ -429,6 +431,8 @@ copy_file_contents(StringView      source,
 
   if (!destination_descriptor.has_value())
     return copy_file_result::DestinationOpenFailed;
+  /* at this point: source_descriptor and destination_descriptor hold open
+     file descriptors. */
   defer { unused(os::close_fd(*destination_descriptor)); };
 
   char buffer[64 * 1024];
@@ -836,6 +840,8 @@ SourceBatchReader::read_sequential() throws -> ReadResult
     return ReadResult::Chunks;
   }
 
+  /* at this point: reader is not complete, its chunk_state is not Pending,
+     and read_byte_count is nonzero. */
   let const read_count = os::read_fd(reader.descriptor, reader.buffer.begin(),
                                      reader.read_byte_count);
 
@@ -1058,6 +1064,8 @@ visit_source_lines_with(const ExecContext  &ec,
                                      : source_line_outcome::Failed;
     }
 
+    /* at this point: result is neither End nor Error, and input holds an open
+       descriptor. */
     do_visit_line(visitor, reader.get_line(), reader.was_line_terminated());
   }
 }
@@ -1650,6 +1658,8 @@ get_init_system_name(Allocator allocator) throws -> String
 
   if (os::path_exists("/run/runit")) return String{allocator, "runit"};
 
+  /* at this point: the systemd, openrc, s6, and runit runtime paths did not
+     exist when checked. */
   let const body = Path{"/proc/1/comm"}.read_entire_file();
 
   if (body.has_value()) {

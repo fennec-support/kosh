@@ -131,6 +131,8 @@ make_target_is_artifact(StringView name, const Path &directory) throws
 
   if (MAKEFILE_NAMES.contains(name)) return true;
 
+  /* at this point: name has no directory separator and is not GNUmakefile,
+     makefile, or Makefile. */
   let candidate = directory.clone();
 
   candidate.append(name);
@@ -432,6 +434,8 @@ cached_targets_for(const Path &source_file, Collector collect) throws
     return &cached->targets;
   }
 
+  /* at this point: mtime holds the modification time of absolute_source_file,
+     and BUILD_TARGET_CACHE has no entry for key with that mtime. */
   let targets = collect();
 
   return &BUILD_TARGET_CACHE
@@ -873,6 +877,8 @@ dash_candidates_for(Maybe<Builtin::Kind> builtin_kind) throws
       let const flags = builtin_flag_list(*builtin_kind);
 
       if (flags == nullptr) return nullptr;
+      /* at this point: flags is non-null, and per_kind_candidates[index] is
+         an empty list that the static table owns. */
       append_flag_forms(*flags, StringView{}, *per_kind_candidates[index]);
       if (*builtin_kind == Builtin::Kind::Set) {
         const String &letters = shell_option_letters();
@@ -1615,6 +1621,8 @@ complete_from_flags_in_line(StringView      line,
 
   if (dash_candidates == nullptr) return None;
 
+  /* at this point: token starts with '-', and dash_candidates is non-null
+     and points into the static cache of dash_candidates_for(). */
   for (let const &candidate : *dash_candidates)
     do_push_matching(candidate.view());
 
@@ -1684,6 +1692,8 @@ mark_spec_directory_candidates(ArrayList<String>       &candidates,
       continue;
     }
 
+    /* at this point: candidate does not end with a directory separator, has
+       no description, and is a directory per Path::is_directory(). */
     LOG(Debug, "marking the spec candidate '%s' as a directory",
         candidate.c_str());
     candidate.push('/');
@@ -2934,6 +2944,8 @@ describe_analysis_finding(StringView   line,
     return false;
   }
 
+  /* at this point: line is at most SYNTAX_HINT_BYTE_LIMIT bytes, it is
+     analyzed on submit, and ast is non-null with no rendered errors. */
   let const directives = parser.take_analysis_directives();
   let       options    = analysis_options::from_runtime(state);
 

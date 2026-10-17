@@ -59,6 +59,9 @@ append_word_loop_header(EvalContext                    &cxt,
     return;
   }
 
+  /* at this point: has_in_clause is true, and at least one of
+     should_echo_expanded(), bash_dynamic_variables_enabled(), or
+     has_debug_trap() holds. */
   header += " in";
 
   for (usize index = 0; index < words.count(); index++) {
@@ -321,6 +324,8 @@ IfClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
     return {static_cast<i32>(set_and_return_exit_status(cxt, 0)), 0};
   }
 
+  /* at this point: when should_skip_condition_commands is true, the clause
+     has no folded branch and is not fully eliminated. */
   for (let const &[ condition, body ] : m_branches) {
     ASSERT(condition != nullptr);
     ASSERT(body != nullptr);
@@ -537,6 +542,7 @@ internal::resolve_loop_control(EvalContext &cxt) throws
     return loop_disposition::StopLoop;
   }
 
+  /* at this point: control_flow_store holds a pending break or continue. */
   /* e.g. break 2 in the inner loop: value 2 is decremented to 1 and this loop
      stops. the outer loop clears value 1 and stops. */
   if (control.value > 1) {
@@ -772,6 +778,8 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
 
   if (values.is_empty()) return {};
 
+  /* at this point: should_run_select is true, and values holds at least one
+     choice. */
   LOG(Debug, "the select loop offers %zu choices for '%.*s'", values.count(),
       static_cast<int>(m_variable_name.length), m_variable_name.data);
 

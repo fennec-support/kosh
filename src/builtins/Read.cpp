@@ -373,6 +373,8 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return was_timed_out ? 142 : 1;
   }
 
+  /* at this point: line holds the bytes read, and is_literal_byte has one
+     flag per byte of line. */
   let const field_separators =
       String{cxt.scratch_allocator(), cxt.variable_store().field_separators()};
   let const is_multibyte =

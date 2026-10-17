@@ -388,6 +388,8 @@ bc_is_assignment(StringView statement) wontthrow -> bool
   }
 
   if (position >= statement.length) return false;
+  /* at this point: a variable name and its balanced index, if any, precede
+     position, and statement[position] is not a blank. */
   if (statement[position] == '=')
     return position + 1 == statement.length || statement[position + 1] != '=';
 
@@ -531,6 +533,8 @@ bc_format_in_base(StringView   decimal,
   let const fraction_digits = decimal.length - *point - 1;
 
   if (fraction_digits == 0) return formatted;
+  /* at this point: decimal has no leading '-' and at least one digit after
+     its '.', and formatted holds the sign and the integer digits. */
 
   let const output_digit_count = static_cast<usize>(
       std::ceil(static_cast<double>(fraction_digits) * std::log(10.0) /
@@ -705,6 +709,9 @@ bc_group_nested_assignment(StringView expression,
     }
 
     if (prefix_end == 0) continue;
+    /* at this point: the variable name spans name_start to name_end, the
+       operator at position follows it after blanks, and a non-blank byte
+       precedes name_start. */
 
     let grouped =
         String{allocator, expression.substring_of_length(0, name_start)};
@@ -1198,6 +1205,8 @@ bc_expand_function_calls(StringView         expression,
           expression.substring_of_length(name_start, position - name_start);
       continue;
     }
+    /* at this point: name is a defined function, and call_end is one past
+       the ')' that matches the '(' at opening_position. */
 
     let const result = bc_evaluate_function_call(
         expression.substring_of_length(name_start, call_end - name_start), ec,
@@ -1480,6 +1489,8 @@ bc_execute_statement(StringView         statement,
     }
 
     if (part_count != 3) return bc_flow::Normal;
+    /* at this point: parts holds the three trimmed clauses of header, and
+       parts[1] is empty when the condition is omitted. */
     if (!parts[0].is_empty())
       bc_execute_simple(parts[0], ec, cxt, runtime, bc_output_mode::Silent);
 

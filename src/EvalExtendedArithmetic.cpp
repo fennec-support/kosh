@@ -166,6 +166,8 @@ multiply_limbs(const ArrayList<u64> &left,
   if (left.count() > ArrayList<u64>::MAXIMUM_ELEMENT_COUNT - right.count())
     throw std::bad_alloc{};
 
+  /* at this point: left and right are nonempty, and the product limb count
+     left.count() + right.count() fits in ArrayList<u64>. */
   let result = make_zero_limbs(left.count() + right.count(), allocator);
 
   for (usize left_index = 0; left_index < left.count(); left_index++) {
@@ -401,6 +403,8 @@ shift_magnitude_left(const ArrayList<u64> &source,
     throw std::bad_alloc{};
   }
 
+  /* at this point: source is nonempty, and the result limb count
+     source.count() + whole_limbs + extra_limb fits in ArrayList<u64>. */
   let result =
       make_zero_limbs(source.count() + whole_limbs + extra_limb, allocator);
   u64 carry = 0;
@@ -720,6 +724,8 @@ ArithmeticValue::allocate_promoted(usize      limb_count,
       bump_allocator(arena).raw_alloc(allocation_byte_count, alignof(Storage)));
 
   if (storage == nullptr) throw std::bad_alloc{};
+  /* at this point: storage is non-null, and it heads an arena allocation
+     of sizeof(Storage) plus limb_count u64 values. limb_count fits in u32. */
   new (storage) Storage{};
   storage->limb_count    = static_cast<u32>(limb_count);
   storage->decimal_scale = decimal_scale;
@@ -1224,6 +1230,9 @@ ArithmeticValue::divide(const ArithmeticValue &left,
   if (is_i64_division(left, right))
     return from_signed_128(left.wrapped_i64() / right.wrapped_i64(), arena);
 
+  /* at this point: right is nonzero, and is_i64_division() is false, so
+     an operand is promoted or outside the int64 range, or left is INT64_MIN
+     and right is -1. */
   let const decimal_scale   = wider_decimal_scale(left, right);
   let       left_magnitude  = left.copy_magnitude(allocator);
   let const numerator_scale = static_cast<u64>(decimal_scale) +
@@ -1256,6 +1265,9 @@ ArithmeticValue::modulo(const ArithmeticValue &left,
   if (is_i64_division(left, right))
     return from_signed_128(left.wrapped_i64() % right.wrapped_i64(), arena);
 
+  /* at this point: right is nonzero, and is_i64_division() is false, so
+     an operand is promoted or outside the int64 range, or left is INT64_MIN
+     and right is -1. */
   let const decimal_scale = wider_decimal_scale(left, right);
   let const left_magnitude =
       get_scaled_magnitude(left, decimal_scale, allocator);
@@ -1466,6 +1478,8 @@ ArithmeticValue::get_shift_bit_count(
     return None;
   }
 
+  /* at this point: count is an integer, is nonnegative, and has at most one
+     limb. */
   return count.limb_count() == 0 ? usize{0}
                                  : static_cast<usize>(count.limb_at(0));
 }

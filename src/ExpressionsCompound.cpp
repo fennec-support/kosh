@@ -193,6 +193,8 @@ CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const t
     const CompoundListCondition *n = m_nodes[index];
 
     ASSERT(n != nullptr);
+    /* at this point: n is non-null, no_exec() is false, and no loop jump is
+       pending for this iteration. */
 
     let const do_starts_new_line =
         [&](usize separator_position) wontthrow -> bool {
@@ -1136,6 +1138,8 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
       continue;
     }
 
+    /* at this point: publish_simple_command() returned true, and stage_args
+       is non-empty after alias expansion, so stage_args[0] is the command. */
     cxt.write_xtrace(stage_args);
 
     Maybe<ExecContext> stage_ec;

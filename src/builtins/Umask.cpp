@@ -189,6 +189,8 @@ Umask::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* at this point: operands holds exactly two entries, so operands[1] is
+     the requested mask. */
   let const &requested = operands[1];
 
   LOG(Debug, "umask setting the file creation mask from '%s'",

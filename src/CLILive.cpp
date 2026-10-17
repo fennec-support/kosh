@@ -282,6 +282,8 @@ live_report_options::parse_with_window(const ExecContext       &ec,
       "invalid live interval", "use a positive number of seconds", allocator);
 
   if (!interval.has_value()) return None;
+  /* at this point: live_flag has a value, and interval holds a positive
+     number of seconds. */
 
   options.interval_seconds = *interval;
 
@@ -310,6 +312,8 @@ live_report_options::parse(const ExecContext       &ec,
       "use a positive number of seconds", allocator);
 
   if (!window.has_value()) return None;
+  /* at this point: options holds a value, cumulative_flag has a value, and
+     window holds a positive number of seconds. */
 
   options->window_seconds = *window;
 
@@ -419,6 +423,8 @@ LiveView::clip_frame_rows(String                     &frame,
 
   if (m_scroll.offset > maximum_offset) m_scroll.offset = maximum_offset;
   if (total_row_count <= visible_row_count) return;
+  /* at this point: total_row_count exceeds visible_row_count, m_scroll.offset
+     is at most maximum_offset, and scrolling_row_count is at least 1. */
 
   usize kept_start = scroll_start;
   usize kept_end   = body.length;

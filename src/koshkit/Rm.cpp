@@ -184,6 +184,8 @@ struct removal_request
       return os::tree_removal_choice::Proceed;
     }
 
+    /* at this point: interaction is not Never, and the entry is write
+       protected or interaction is Always. */
     let       prompt = String{allocator, "rm: "};
     let const protection =
         is_write_protected ? StringView{"write-protected "} : StringView{};
@@ -245,6 +247,8 @@ struct removal_request
 
     if (known_status->device_id == *root_device_id) return false;
 
+    /* at this point: known_status describes path, root_device_id is set, and
+       path is on a different device from root_device_id. */
     report_soft_koshkit_util_error(ec, cxt, utility_name,
                                    "skipping '" + path +
                                        "', since it's on a different device");
