@@ -64,51 +64,51 @@ for probe in "kill -s $signal_prefix" "trap handler $signal_prefix" \
 done
 echo "$agreement"
 echo "== set has no long mood flags:"
-"$BIN" --debug-complete-at 'set --m' <"$TEST_NULL_DEVICE"
-"$BIN" --debug-complete-at 'set --i' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'set --m' </dev/null
+"$BIN" --debug-complete-at 'set --i' </dev/null
 echo "== set -M value:"
-"$BIN" --debug-complete-at 'set -M ' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'set -M ' </dev/null
 echo "== set -L value:"
-"$BIN" --debug-complete-at 'set -L ' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'set -L ' </dev/null
 echo "== set -M= value:"
-"$BIN" --debug-complete-at 'set -M=' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'set -M=' </dev/null
 echo "== set -M= prefix:"
-"$BIN" --debug-complete-at 'set -M=b' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'set -M=b' </dev/null
 echo "== kosh --mood value:"
-"$BIN" --debug-complete-at 'kosh --mood ' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'kosh --mood ' </dev/null
 echo "== kosh --mood= value:"
-"$BIN" --debug-complete-at 'kosh --mood=' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'kosh --mood=' </dev/null
 echo "== kosh -M value:"
-"$BIN" --debug-complete-at 'kosh -M ' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'kosh -M ' </dev/null
 echo "== kosh --init-moods value:"
-"$BIN" --debug-complete-at 'kosh --init-moods ' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'kosh --init-moods ' </dev/null
 echo "== kosh -L= prefix:"
-"$BIN" --debug-complete-at 'kosh -L=k' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'kosh -L=k' </dev/null
 echo "== assimilate --link-mood value:"
-"$BIN" --debug-complete-at 'assimilate --link-mood ' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'assimilate --link-mood ' </dev/null
 echo "== assimilate --link-mood= prefix:"
-"$BIN" --debug-complete-at 'assimilate --link-mood=d' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'assimilate --link-mood=d' </dev/null
 echo "== assignment prefix is untouched:"
-result=$("$BIN" --debug-complete-at 'MOOD=' <"$TEST_NULL_DEVICE") || exit 1
+result=$("$BIN" --debug-complete-at 'MOOD=' </dev/null) || exit 1
 printf '%s\n' "$result" | grep -qxF bash
 [ "$?" -eq 1 ] || exit 1
 printf '0\n'
 echo "== koshconf set completion.menu_style value:"
 "$BIN" --debug-complete-at 'koshconf set completion.menu_style ' \
-  <"$TEST_NULL_DEVICE"
+  </dev/null
 echo "== koshconf set completion.menu_style prefix:"
 "$BIN" --debug-complete-at 'koshconf set completion.menu_style e' \
-  <"$TEST_NULL_DEVICE"
+  </dev/null
 echo "== kosh --tab-selector value:"
-"$BIN" --debug-complete-at 'kosh --tab-selector ' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'kosh --tab-selector ' </dev/null
 echo "== kosh --tab-selector= prefix:"
-"$BIN" --debug-complete-at 'kosh --tab-selector=p' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'kosh --tab-selector=p' </dev/null
 echo "== the flag name itself:"
-"$BIN" --debug-complete-at 'kosh --tab-s' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'kosh --tab-s' </dev/null
 echo "== set has no tab selector flag:"
-"$BIN" --debug-complete-at 'set --tab-s' <"$TEST_NULL_DEVICE"
+"$BIN" --debug-complete-at 'set --tab-s' </dev/null
 echo "== an unrelated command keeps its own candidates:"
-result=$("$BIN" --debug-complete-at 'echo --tab-selector ' <"$TEST_NULL_DEVICE") || exit 1
+result=$("$BIN" --debug-complete-at 'echo --tab-selector ' </dev/null) || exit 1
 printf '%s\n' "$result" | grep -qxF interactive
 [ "$?" -eq 1 ] || exit 1
 printf '0\n'

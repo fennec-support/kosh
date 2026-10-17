@@ -7,9 +7,9 @@ unset KOSH_FLAGS
 # dash-prefixed symlink the way login and tmux start one.
 echo "== login shell with a bad flag enters rescue:"
 "$BIN" -c 'exec -a -kosh "$1" --nonexistent-flag' \
-    test-login "$BIN" <"$TEST_NULL_DEVICE" 2>&1 | grep -c "Entering rescue"
+    test-login "$BIN" </dev/null 2>&1 | grep -c "Entering rescue"
 echo "== non-login shell with the same bad flag does not:"
-result=$("$BIN" --nonexistent-flag <"$TEST_NULL_DEVICE" 2>&1)
+result=$("$BIN" --nonexistent-flag </dev/null 2>&1)
 [ "$?" -eq 2 ] || exit 1
 case $result in
   *'Entering rescue'*) exit 1 ;;
@@ -18,7 +18,7 @@ esac
 echo "== a bad flag in KOSH_FLAGS exits 2 without rescue:"
 # The error reconstructs argv, which carries the binary path, so only the
 # path-independent error text and the exit status are printed.
-rescue_output=$(KOSH_FLAGS='--nonexistent-flag' "$BIN" -c 'echo unreached' <"$TEST_NULL_DEVICE" 2>&1)
+rescue_output=$(KOSH_FLAGS='--nonexistent-flag' "$BIN" -c 'echo unreached' </dev/null 2>&1)
 rescue_status=$?
 printf '%s\n' "$rescue_output" | grep -o "error: Unknown flag '--nonexistent-flag'."
 echo "exit=$rescue_status"

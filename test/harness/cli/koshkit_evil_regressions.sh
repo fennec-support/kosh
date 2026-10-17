@@ -39,7 +39,7 @@ evilps_sort_prefixes=matched
 for evilps_sort_prefix in n p c m; do
   if ! "$BIN" -c \
     "koshkit --color never evilps --sort $evilps_sort_prefix -1" \
-    > "$TEST_NULL_DEVICE"
+    > /dev/null
   then
     evilps_sort_prefixes=wrong
   fi
@@ -50,7 +50,7 @@ evilio_process_sort_keys=matched
 for evilio_sort_key in pid read write read-ops write-ops; do
   if ! "$BIN" -c \
     "koshkit --color never evilio --ps --sort $evilio_sort_key -3" \
-    > "$TEST_NULL_DEVICE" 2>&1
+    > /dev/null 2>&1
   then
     evilio_process_sort_keys=wrong
   fi
@@ -63,7 +63,7 @@ for evilio_sort_key in read write read-ops write-ops busy read-latency \
 do
   if ! "$BIN" -c \
     "koshkit --color never evilio --all --sort $evilio_sort_key" \
-    > "$TEST_NULL_DEVICE" 2>&1
+    > /dev/null 2>&1
   then
     evilio_disk_sort_keys=wrong
   fi
@@ -127,7 +127,7 @@ for evilnet_sort_key in name rx tx rx-packets tx-packets rx-errors \
 do
   if ! "$BIN" -c \
     "koshkit --color never evilnet --traffic --sort $evilnet_sort_key" \
-    > "$TEST_NULL_DEVICE" 2>&1
+    > /dev/null 2>&1
   then
     evilnet_sort_keys=wrong
   fi
@@ -211,7 +211,7 @@ evilps_sampled_cpu=$(
 {
   kill -TERM "$busy_process_pid"
   wait "$busy_process_pid"
-} 2> "$TEST_NULL_DEVICE"
+} 2> /dev/null
 case $evilps_sampled_cpu in
   *'CPU 0.00%'*|*'CPU -'*) evilps_sampled_cpu_unit=wrong ;;
   *'CPU '*'%'*) evilps_sampled_cpu_unit=matched ;;
@@ -293,7 +293,7 @@ printf 'evilss-invalid-live=%s\n' "$?"
 $BIN -c 'koshkit evilss --live=bad' > /dev/null 2>&1
 printf 'evilss-rejected-live=%s\n' "$?"
 
-fs_report=$($BIN -c 'koshkit --color never evilfs --all' 2> "$TEST_NULL_DEVICE")
+fs_report=$($BIN -c 'koshkit --color never evilfs --all' 2> /dev/null)
 case $fs_report in
   *'Filesystems'*'SOURCE'*'TARGET'*'VOLUME'*'UUID'*'OPTIONS'*'FILESYSTEM ID'*)
     fs_detail=matched ;;

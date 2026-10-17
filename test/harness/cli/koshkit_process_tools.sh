@@ -117,7 +117,7 @@ case $evilio_help in
   *) human_help=missing ;;
 esac
 "$BIN" -c 'koshkit --color never evilio --human-readable' \
-  > "$TEST_NULL_DEVICE"
+  > /dev/null
 if [ "$?" -ne 0 ]; then human_help=failed; fi
 printf 'evilio-human-readable=%s\n' "$human_help"
 
@@ -126,16 +126,16 @@ for evilio_sort_key in read write read-ops write-ops busy read-latency \
   write-latency average-queue queue errors retries; do
   "$BIN" -c \
     "koshkit --color never evilio --cumulative=0.01 --sort $evilio_sort_key" \
-    > "$TEST_NULL_DEVICE" 2>&1 || evilio_sort_keys=wrong
+    > /dev/null 2>&1 || evilio_sort_keys=wrong
 done
 for evilio_sort_key in a b e q read-l read-o ret write-l write-o; do
   "$BIN" -c \
     "koshkit --color never evilio --cumulative=0.01 --sort $evilio_sort_key" \
-    > "$TEST_NULL_DEVICE" 2>&1 || evilio_sort_keys=wrong
+    > /dev/null 2>&1 || evilio_sort_keys=wrong
 done
 for evilio_sort_key in p read write read-o write-o; do
   "$BIN" -c "koshkit --color never evilio --ps -1 --sort $evilio_sort_key" \
-    > "$TEST_NULL_DEVICE" 2>&1 || evilio_sort_keys=wrong
+    > /dev/null 2>&1 || evilio_sort_keys=wrong
 done
 printf 'evilio-sort-keys=%s\n' "$evilio_sort_keys"
 
@@ -174,7 +174,7 @@ printf 'evilio-process-idle=%s\n' "$process_idle"
 
 "$BIN" -c \
   'koshkit --color never evilio --cumulative --ps -1 0.05' \
-  > "$TEST_NULL_DEVICE"
+  > /dev/null
 printf 'evilio-process-duration-limit=%s\n' "$?"
 
 all_process_report=$(
@@ -199,7 +199,7 @@ case $network_report in
 esac
 printf 'evilnet-single-title=%s\n' "$network_title"
 
-network_traffic_report=$("$BIN" -c 'koshkit evilnet --traffic' 2> "$TEST_NULL_DEVICE")
+network_traffic_report=$("$BIN" -c 'koshkit evilnet --traffic' 2> /dev/null)
 case $network_traffic_report in
   *RX*TX*"RX PACKETS"*) network_traffic_only=present ;;
   *) network_traffic_only=missing ;;
@@ -232,8 +232,8 @@ time.sleep(60)
     unix_socket_wait=$((unix_socket_wait + 1))
   done
   unix_socket_report=$("$BIN" -c 'koshkit --color never evilss -xa')
-  kill "$unix_socket_owner" 2> "$TEST_NULL_DEVICE"
-  wait "$unix_socket_owner" 2> "$TEST_NULL_DEVICE"
+  kill "$unix_socket_owner" 2> /dev/null
+  wait "$unix_socket_owner" 2> /dev/null
   case $unix_socket_report in
     *Sockets*Netid*'Local Address:Port'*'Peer Address:Port'*"$unix_socket_path"*) ;;
     *) echo 'evilss-unix=missing' ;;
@@ -247,7 +247,7 @@ case $process_tree in
 esac
 printf 'evilps-single-title=%s\n' "$process_title"
 
-filesystem_report=$("$BIN" -c 'koshkit evilfs' 2> "$TEST_NULL_DEVICE")
+filesystem_report=$("$BIN" -c 'koshkit evilfs' 2> /dev/null)
 case $filesystem_report in
   *'Filesystems'*SOURCE*TARGET*TYPE*OPTIONS*) filesystem_title=present ;;
   *) filesystem_title=omitted ;;
@@ -292,5 +292,5 @@ printf 'evildisk-smart-fallback=%s\n' "$evildisk_fallback"
 printf 'evildisk-smart-ata=%s\n' "$evildisk_ata"
 
 "$BIN" -c 'koshkit --color never evilio --all --cumulative' \
-  > "$TEST_NULL_DEVICE" 2>&1
+  > /dev/null 2>&1
 printf 'evilio-conflict=%s\n' "$?"

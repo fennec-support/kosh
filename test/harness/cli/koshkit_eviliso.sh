@@ -19,14 +19,14 @@ has_namespace_section()
 {
   printf '%s\n' "$1" | command grep -E \
     '^[[:space:]]+TYPE +ID +(PROCESSES|PID +NAME +ROLE) *$' \
-    > "$TEST_NULL_DEVICE" 2>&1
+    > /dev/null 2>&1
 }
 
 has_session_section()
 {
   printf '%s\n' "$1" | command grep -E \
     '^[[:space:]]+USER +TERMINAL( +LOGIN TIME)? *$' \
-    > "$TEST_NULL_DEVICE" 2>&1
+    > /dev/null 2>&1
 }
 
 cgroup_detail_report=$(run_report '-a -c')

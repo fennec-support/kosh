@@ -49,8 +49,8 @@ koshconf get bash.interpreter.glob_includes_dotfiles
 koshconf get editor.history.file_path
 koshconf get editor.auto_close_brackets_and_quotes
 koshconf get init_moods'
-HOME="$home" "$BIN" -r -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
-HOME="$home" "$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
+HOME="$home" "$BIN" -r -i </dev/null 2>/dev/null | grep -c bashrc-ran
+HOME="$home" "$BIN" -i </dev/null 2>/dev/null | grep -c bashrc-ran
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$config/kosh"
 
 echo "== a subshell of a restricted shell keeps the restrictions:"

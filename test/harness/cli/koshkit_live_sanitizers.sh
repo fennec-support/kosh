@@ -19,14 +19,14 @@ start_probe() {
 finish_probe() {
   probe_name=$1
   probe_pid=$(cat "$probe_directory/$probe_name.pid")
-  kill -INT "$probe_pid" 2> "$TEST_NULL_DEVICE"
+  kill -INT "$probe_pid" 2> /dev/null
   attempt=0
-  while [ "$attempt" -lt 50 ] && kill -0 "$probe_pid" 2> "$TEST_NULL_DEVICE"
+  while [ "$attempt" -lt 50 ] && kill -0 "$probe_pid" 2> /dev/null
   do
     attempt=$((attempt + 1))
     sleep 0.1
   done
-  kill -KILL "$probe_pid" 2> "$TEST_NULL_DEVICE"
+  kill -KILL "$probe_pid" 2> /dev/null
   wait "$probe_pid"
   probe_status=$?
 

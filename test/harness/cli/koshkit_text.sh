@@ -170,7 +170,7 @@ echo "--- grep one file system changes nothing on one file system ---"
 echo "--- grep -r names the file of a one-file tree ---"
 "$BIN" -c 'koshkit grep -rn again grep-tree/sub'
 echo "--- grep -r with no operand searches the working directory ---"
-(cd grep-tree/sub && "$BIN" -c 'koshkit grep -r again' < "$TEST_NULL_DEVICE")
+(cd grep-tree/sub && "$BIN" -c 'koshkit grep -r again' < /dev/null)
 echo "--- grep stdin ---"
 printf 'pear\nplum\n' | "$BIN" -c 'koshkit grep plum'
 echo "--- grep repeated stdin ---"

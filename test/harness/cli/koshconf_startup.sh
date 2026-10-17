@@ -75,17 +75,17 @@ echo "rc=$?"
 echo "== the kosh mood sources no rc file:"
 printf 'echo koshrc-ran\n' >"$home/.koshrc"
 printf 'mood=kosh\n' >"$conf"
-"$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c koshrc-ran
+"$BIN" -i </dev/null 2>/dev/null | grep -c koshrc-ran
 echo "== an interactive kosh mood warns once about a retired koshrc:"
 printf 'set -L kosh\nset -L kosh\n' | "$BIN" -i 2>&1 |
   grep 'no longer read' | mask_home -e "s|' and '/etc/koshrc'|'|"
 echo "== -Q and a non-interactive shell do not warn:"
-"$BIN" -Q -i <"$TEST_NULL_DEVICE" 2>&1 | grep -c 'no longer read'
+"$BIN" -Q -i </dev/null 2>&1 | grep -c 'no longer read'
 "$BIN" -c : 2>&1 | grep -c 'no longer read'
 echo "== a configured bash mood sources the bash rc:"
 printf 'echo bashrc-ran\n' >"$home/.bashrc"
 printf 'mood=bash\n' >"$conf"
-"$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
+"$BIN" -i </dev/null 2>/dev/null | grep -c bashrc-ran
 echo "== an inherited KOSH_HISTORY_SIZE is the editor.history.max_entries option:"
 printf 'mood=kosh\n' >"$conf"
 KOSH_HISTORY_SIZE=77 "$BIN" -c 'koshconf get editor.history.max_entries; (koshconf get editor.history.max_entries) & wait "$!"'
@@ -143,11 +143,11 @@ koshconf get optimizer.show_source_traces'
 echo "== init_moods selects the startup files of an interactive shell:"
 printf 'init_moods=bash\n' >"$conf"
 "$BIN" -c 'koshconf get init_moods; koshconf get mood'
-"$BIN" -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
+"$BIN" -i </dev/null 2>/dev/null | grep -c bashrc-ran
 echo "== a script ignores it and keeps the kosh identity:"
 "$BIN" -c 'echo "bash version: ${BASH_VERSION:-unset}"'
 echo "== -L wins over the file:"
-"$BIN" -L kosh -i <"$TEST_NULL_DEVICE" 2>/dev/null | grep -c bashrc-ran
+"$BIN" -L kosh -i </dev/null 2>/dev/null | grep -c bashrc-ran
 "$BIN" -L sh,bash -c 'koshconf get init_moods'
 echo "== an unknown mood in the list is a warning:"
 printf 'init_moods=bash,zsh\n' >"$conf"

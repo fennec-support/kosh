@@ -18,7 +18,7 @@ printf 'if test -f "\044x"; then echo yes; else echo no; fi\n' |
 
 long_token_warning=$(printf '%s\n' \
   'echo this_is_an_unbreakable_token_that_is_longer_than_the_formatter_limit_and_should_warn' |
-  "$BIN" --format 2>&1 > "$TEST_NULL_DEVICE")
+  "$BIN" --format 2>&1 > /dev/null)
 case $long_token_warning in
 *'warning:'*'Unbreakable word exceeds 78 columns'*'shorter or splitting it'*)
   printf 'long-token-warning=yes\n'

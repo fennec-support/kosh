@@ -10,7 +10,7 @@ run_watch() {
     > "$watch_output" &
   watch_pid=$!
   watch_attempt=0
-  while [ "$watch_attempt" -lt 100 ] && kill -0 "$watch_pid" 2> "$TEST_NULL_DEVICE"; do
+  while [ "$watch_attempt" -lt 100 ] && kill -0 "$watch_pid" 2> /dev/null; do
     : > "$root/file"
     sleep 0.02
     watch_attempt=$((watch_attempt + 1))

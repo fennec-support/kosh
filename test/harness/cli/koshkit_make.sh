@@ -263,11 +263,11 @@ invalid:
 arguments:
 	@echo "$(filter %.c)"
 EOF
-"$BIN" -c 'koshkit make -f invalid-functions.mk zero' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -f invalid-functions.mk zero' 2> /dev/null
 echo "word-zero=$?"
-"$BIN" -c 'koshkit make -f invalid-functions.mk invalid' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -f invalid-functions.mk invalid' 2> /dev/null
 echo "word-invalid=$?"
-"$BIN" -c 'koshkit make -f invalid-functions.mk arguments' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -f invalid-functions.mk arguments' 2> /dev/null
 echo "function-arguments=$?"
 cat > warning-function.mk <<'EOF'
 all:
@@ -312,9 +312,9 @@ recursive = $(recursive)
 overflow:
 	@echo '$(recursive)'
 EOF
-"$BIN" -c 'koshkit make -f invalid-expansion.mk unterminated' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -f invalid-expansion.mk unterminated' 2> /dev/null
 echo "unterminated-expansion=$?"
-"$BIN" -c 'koshkit make -f invalid-expansion.mk overflow' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -f invalid-expansion.mk overflow' 2> /dev/null
 echo "recursive-expansion=$?"
 
 mkdir -p 'C:'
@@ -426,15 +426,15 @@ EOF
 echo "rc=$?"
 "$BIN" -c 'koshkit make -i broken'
 echo "ignore=$?"
-"$BIN" -c 'koshkit make -k broken independent' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -k broken independent' 2> /dev/null
 echo "keep-going=$?"
-"$BIN" -c 'koshkit make -k -S broken independent' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -k -S broken independent' 2> /dev/null
 echo "stop=$?"
-"$BIN" -c 'koshkit make -S -k broken independent' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -S -k broken independent' 2> /dev/null
 echo "keep-last=$?"
-"$BIN" -c 'koshkit make compound' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make compound' 2> /dev/null
 echo "compound=$?"
-"$BIN" -c 'koshkit make compound-final-failure' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make compound-final-failure' 2> /dev/null
 echo "compound-final-failure=$?"
 "$BIN" -c 'koshkit make compound-ignored'
 echo "compound-ignored=$?"
@@ -444,7 +444,7 @@ interrupted:
 	@kill -INT $$$$
 EOF
 if [ "${OS-}" != Windows_NT ]; then
-  "$BIN" -c 'koshkit make interrupted' 2> "$TEST_NULL_DEVICE"
+  "$BIN" -c 'koshkit make interrupted' 2> /dev/null
   interrupt_status=$?
   [ "$interrupt_status" -eq 130 ] || echo "interrupt=$interrupt_status"
   [ -e interrupted ] && echo interrupt-cleanup=no
@@ -482,7 +482,7 @@ CFLAGS = -O9
 EOF
 : > builtin.c
 "$BIN" -c 'koshkit make builtin.o'
-"$BIN" -c 'koshkit make -r builtin.o' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -r builtin.o' 2> /dev/null
 echo "no-builtins=$?"
 printf '#!/bin/sh\necho copied-shell\n' > builtin-script.sh
 "$BIN" -c 'koshkit make -s builtin-script'
@@ -530,9 +530,9 @@ touch -t 202201010000 second
 "$BIN" -c 'koshkit make joined'
 "$BIN" -c 'koshkit make inline'
 "$BIN" -c 'koshkit make posix'
-"$BIN" -c 'koshkit make failed' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make failed' 2> /dev/null
 [ -e failed ] && echo failed-kept=yes || echo failed-kept=no
-"$BIN" -c 'koshkit make precious' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make precious' 2> /dev/null
 [ -e precious ] && echo precious-kept=yes || echo precious-kept=no
 
 echo "--- POSIX database stdin and target attributes ---"
@@ -564,12 +564,12 @@ grep -c '^VALUE = printed$' database.out
 grep -c '^print:$' database.out
 grep -c '^print-flags=\[\]$' database.out
 : > empty.mk
-"$BIN" -c 'koshkit make -p -f empty.mk' > empty-database.out 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -p -f empty.mk' > empty-database.out 2> /dev/null
 echo "empty-database=$?"
 "$BIN" -c 'koshkit make ignored'
 "$BIN" -c 'koshkit make quiet'
 "$BIN" -c 'koshkit make loud'
-"$BIN" -c 'koshkit make broken' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make broken' 2> /dev/null
 echo "target-ignore=$?"
 printf 'stdin-target: ; @echo stdin-makefile\n' |
   "$BIN" -c 'koshkit make -f - stdin-target'
@@ -728,7 +728,7 @@ failed-prerequisite:
 independent-prerequisite:
 	@echo nested-independent
 EOF
-"$BIN" -c 'koshkit make -k all' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make -k all' 2> /dev/null
 echo "nested-keep=$?"
 cat > Makefile <<'EOF'
 .SUFFIXES:
@@ -956,7 +956,7 @@ failed.a(member.o):
 	@: > failed.a
 	@false
 EOF
-"$BIN" -c 'koshkit make "failed.a(member.o)"' 2> "$TEST_NULL_DEVICE"
+"$BIN" -c 'koshkit make "failed.a(member.o)"' 2> /dev/null
 [ -e failed.a ] && echo archive-cleanup=no || echo archive-cleanup=yes
 
 echo "--- POSIX suffix precedence ---"

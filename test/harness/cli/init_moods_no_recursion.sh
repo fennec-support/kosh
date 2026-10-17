@@ -5,7 +5,7 @@ home=$(mktemp -d)
 trap '[ -n "$home" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$home"' EXIT
 printf 'echo RC-MARK\narr=(a b c)\necho "bashrc-arr=${arr[1]}"\nset -L kosh,bash\n' \
   > "$home/.bashrc"
-HOME="$home" "$BIN" -L bash -i <"$TEST_NULL_DEVICE" >"$home/out" 2>&1
+HOME="$home" "$BIN" -L bash -i </dev/null >"$home/out" 2>&1
 status=$?
 rc_mark_count=$(grep -c '^RC-MARK$' "$home/out")
 bashrc_array_count=$(grep -c '^bashrc-arr=b$' "$home/out")

@@ -199,7 +199,7 @@ fi
 printf "reenabled=%s\n" "${PWD##*/}"
 EOF
 AUTOCD_ROOT="$autocd_root" AUTOCD_BIN="$autocd_bin" ENV="$autocd_env" \
-  "$BIN" --no-diagnostics -L sh -i <"$TEST_NULL_DEVICE" 2>/dev/null
+  "$BIN" --no-diagnostics -L sh -i </dev/null 2>/dev/null
 echo "== autocd is enabled in the Bash mood by default but not in a script:"
 AUTOCD_ROOT="$autocd_root" "$BIN" --no-init-files --no-diagnostics \
   --mood bash -c '

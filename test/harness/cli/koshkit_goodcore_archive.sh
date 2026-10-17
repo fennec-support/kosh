@@ -9,7 +9,7 @@ mkdir -p "$compressed_work"
 cp "$BIN" "$core"
 
 report=$($BIN -c 'koshkit --color never goodcore --binary "$1" --output "$2" --no-compress "$3"' \
-  goodcore "$BIN" "$uncompressed" "$core" 2> "$TEST_NULL_DEVICE")
+  goodcore "$BIN" "$uncompressed" "$core" 2> /dev/null)
 status=$?
 printf 'uncompressed-status=%s\n' "$status"
 case $report in

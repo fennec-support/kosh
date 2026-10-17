@@ -2,7 +2,7 @@
 
 run_probe()
 {
-  "$BIN" -c "$2" >"$TEST_NULL_DEVICE" 2>&1
+  "$BIN" -c "$2" >/dev/null 2>&1
   printf '%s=%s\n' "$1" "$?"
 }
 

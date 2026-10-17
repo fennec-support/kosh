@@ -63,7 +63,7 @@ if [ "${OS-}" != Windows_NT ] && command -v truncate >/dev/null 2>&1 &&
   echo '--- sparse logical size ---'
   if truncate -s 1048576 sparse &&
     printf Z | dd of=sparse bs=1 seek=1048575 conv=notrunc \
-      2> "$TEST_NULL_DEVICE"; then
+      2> /dev/null; then
     printf '%s\n' '1048575 string Z sparse-end' > sparse-magic
     "$BIN" -c 'koshkit file -M sparse-magic sparse'
   else
