@@ -50,8 +50,16 @@ mixed=$(
 printf '%s\n' "$mixed" |
     grep -E "${tab}(string|existing-path|partial-path|glob)$"
 
-result=$("$BIN" --debug-highlight-at "$BIN; $dir/highlight-missing")
-printf '%s\n' "$result" | grep -Fx "${BIN}${tab}existing-path" >/dev/null
+# A native shell resolves only native paths, so MSYS paths are converted.
+native_bin=$BIN
+native_dir=$dir
+if command -v cygpath >/dev/null 2>&1; then
+    native_bin=$(cygpath -m "$BIN")
+    native_dir=$(cygpath -m "$dir")
+fi
+result=$("$BIN" --debug-highlight-at \
+    "$native_bin; $native_dir/highlight-missing")
+printf '%s\n' "$result" | grep -Fx "${native_bin}${tab}existing-path" >/dev/null
 printf '%s\n' "$result" | grep -Fx "highlight-missing${tab}invalid-path" >/dev/null
 printf 'existing-path\texisting-path\n'
 printf 'missing-path\tinvalid-path\n'
