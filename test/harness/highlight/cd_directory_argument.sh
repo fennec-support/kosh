@@ -51,11 +51,11 @@ printf '%s\n' "$mixed" |
     grep -E "${tab}(string|existing-path|partial-path|glob)$"
 
 result=$("$BIN" --debug-highlight-at "$BIN; $dir/highlight-missing")
-printf '%s\n' "$result" | grep -Fx "${BIN}${tab}existing-path" >"$TEST_NULL_DEVICE"
-printf '%s\n' "$result" | grep -Fx "highlight-missing${tab}invalid-path" >"$TEST_NULL_DEVICE"
+printf '%s\n' "$result" | grep -Fx "${BIN}${tab}existing-path" >/dev/null
+printf '%s\n' "$result" | grep -Fx "highlight-missing${tab}invalid-path" >/dev/null
 printf 'existing-path\texisting-path\n'
 printf 'missing-path\tinvalid-path\n'
 
 result=$("$BIN" --debug-highlight-at "echo x >$TEST_NULL_DEVICE")
-printf '%s\n' "$result" | grep -Fx "${TEST_NULL_DEVICE}${tab}existing-path" >"$TEST_NULL_DEVICE"
+printf '%s\n' "$result" | grep -Fx "${TEST_NULL_DEVICE}${tab}existing-path" >/dev/null
 printf 'null-device\texisting-path\n'

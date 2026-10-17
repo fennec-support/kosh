@@ -128,7 +128,9 @@ case "$(uname -s)" in
             { echo "no marked process-only row: $wrapped_output"; exit 1; }
         ;;
 esac
-if [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ]; then
+# A virtual machine reports no cycles, and bench hides a row without a value.
+if [ "$(uname -s)" = Darwin ] && [ "$(uname -m)" = arm64 ] &&
+    [ "$(sysctl -n kern.hv_vmm_present 2>/dev/null)" != 1 ]; then
     printf '%s\n' "$plain_output" | grep -q '^  cpu cycles' ||
         { echo "missing default cycles: $plain_output"; exit 1; }
 fi

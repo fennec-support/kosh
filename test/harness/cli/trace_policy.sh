@@ -252,7 +252,7 @@ printf 'root_trace_order=%s\n' \
     "$(printf '%s\n' "$out" | grep -oE '(error|trace):' | tr -d ':' |
         paste -sd ' ' -)"
 
-for early_exit in 'exit 3' 'set -e; false' 'exec true' '/usr/bin/true' \
+for early_exit in 'exit 3' 'set -e; false' 'exec true' '/bin/sh -c true' \
     'f() { exit 4; }; f'
 do
   out=$("$BIN" -c 'echo one' -c "x=no_such_d; \$x; $early_exit" 2>&1)

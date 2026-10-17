@@ -123,7 +123,8 @@ printf x > du-default/tie-a
 printf y > du-default/tie-b
 echo "--- du with no operand lists every entry and the total ---"
 du_report=$d/du-default.out
-(cd du-default && "$BIN" -c 'koshkit du') > "$du_report"
+# Windows joins the listed paths with its native separator.
+(cd du-default && "$BIN" -c 'koshkit du') | tr '\\' / > "$du_report"
 du_order=descending
 du_path_mask=0
 previous_size=

@@ -393,8 +393,8 @@ cat > "$root/recipes/broken.sh.j2" <<'EOF'
 case {{ value }} in
 EOF
 for template_file in justfile tools.just uci.sh.j2 broken.sh.j2; do
-  "$BIN" --lint --no-traces "$root/recipes/$template_file" 2>&1 |
-    grep -E '^[^ ].*: (error|warning): ' | sed "s|^$root/||"
+  (cd "$root" && "$BIN" --lint --no-traces "recipes/$template_file" 2>&1) |
+    grep -E '^[^ ].*: (error|warning): '
 done
 nginx_template=$("$BIN" --lint --no-traces "$root/recipes/nginx.conf.j2" 2>&1 |
   grep -c 'is not recognized')

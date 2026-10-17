@@ -24,8 +24,10 @@ case $ps_all in
 esac
 printf 'evilps-all-format=%s\n' "$ps_all_format"
 
-ps_pid_first=$($BIN -c 'koshkit --color never evilps --sort pid --show-pids -1')
-ps_numeric_first=$($BIN -c 'koshkit --color never evilps -n --show-pids -1')
+# Both listings start at process 1, since the pid sort starts at the lowest
+# visible identifier and some systems show a process 0.
+ps_pid_first=$($BIN -c 'koshkit --color never evilps --sort pid --show-pids -2 1')
+ps_numeric_first=$($BIN -c 'koshkit --color never evilps -n --show-pids -2 1')
 if [ -n "$ps_pid_first" ] && [ "$ps_pid_first" = "$ps_numeric_first" ]; then
   ps_sorted_roots=matched
 else
