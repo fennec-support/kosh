@@ -8,7 +8,7 @@ hint() {
 help_hint() {
   printf '%s => ' "$1"
   "$BIN" --debug-hint-at "$1" |
-    sed -E -e 's/^(\[builtin synopsis\]).*/\1/' -e 's/^(\[flag\] [^:]*):.*/\1/'
+    sed -E -e 's/^(\[explain\]) +([^ ]+) .*/\1 \2/' -e 's/^(> |  )?([^ []+) .*/\1\2/'
 }
 
 printf '== open constructs\n'

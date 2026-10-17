@@ -28,15 +28,15 @@
 # completion with its space. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, a Ctrl-R menu that flags a miss and cuts
-# a long entry with an ellipsis, and the inline hint rows for a command and
-# a flag, the builtin form that a typed subcommand opens, a koshconf option
-# that Tab finds by subsequence, their header naming the kind and the
+# a long entry with an ellipsis, and the inline explain rows for a command and
+# the flag under the caret, a word without a description left out, a koshconf
+# option that Tab finds by subsequence, their explain header and the
 # two-column indent, their absence inside the command word, for an uncached
 # command, and for a bundled utility that a PATH program shadows unless the
 # word follows koshkit, their yielding to the menu, their erasure on submit,
 # and their option. A path menu lists the last component of each path. A
-# narrow terminal wraps a long synopsis onto several indented rows that a
-# submit erases, starts the menu at the left edge when the token is too far
+# narrow terminal keeps every explain row within its width and a submit erases
+# them, starts the menu at the left edge when the token is too far
 # right for its help text to keep two rows, and a short
 # terminal keeps the input on screen with fewer rows. A pause loads
 # the --help usage, flag forms, and subcommand usage of a trusted allowlisted
@@ -44,7 +44,8 @@
 # slow manpath started by a pause leaves typed keys served while it runs, and
 # Tab adopts that run instead of forking another. The
 # row shows the command of the command substitution under the caret, flags an
-# unterminated double quote and stays on the synopsis once the quote closes,
+# unterminated double quote and returns to the explain rows once the quote
+# closes,
 # and reports a misplaced closing keyword after the word and at its end.
 # Caret moves onto matched brackets keep the line and the caret,
 # so a key typed there lands in place. The auto-pair option inserts, steps
@@ -422,8 +423,24 @@ def is_hint_started_by(header, text):
 
 def are_hint_rows_indented(screen):
     rows = screen.get_hint_rows()
-    return len(rows) > 1 and all(line.startswith("  ") and line[2] != " "
-                                 for line in rows)
+    return len(rows) > 1 and all(line.startswith("  ") for line in rows)
+
+
+def get_explain_words(screen):
+    rows = screen.get_hint_rows()
+    if not rows or rows[0].strip() != "explain":
+        return None
+    words = []
+    for row in rows[1:]:
+        text = row[2:]
+        marker = "> " if text.startswith("> ") else ""
+        fields = text[2:].split()
+        words.append(marker + (fields[0] if fields else ""))
+    return words
+
+
+def is_explained(words):
+    return lambda screen: get_explain_words(screen) == words
 
 
 def is_without_hint(typed):
@@ -489,20 +506,22 @@ def count_marker_lines(directory, name):
 def run_idle_hint_checks(session, report, directory):
     session.send(b"act ")
     report.record("idle-hint-loads-help-usage", session,
-                  is_hint_under("command synopsis", "act [command] [flags]"))
+                  lambda screen: is_explained(["act"])(screen)
+                  and "act [command] [flags]" in screen.get_hint())
     session.send(b"-f")
     report.record("idle-hint-names-flag-value", session,
-                  is_hint_under("flag",
-                                "-f, --file=FILE: read the workflow from FILE"))
+                  lambda screen: is_explained(["act", "> -f"])(screen)
+                  and "read the workflow from FILE" in screen.get_hint())
     clear_line(session)
 
     session.send(b"act run ")
     report.record("idle-hint-loads-subcommand-usage", session,
-                  is_hint_under("subcommand synopsis", "act run [--job NAME]"))
+                  lambda screen: is_explained(["act"])(screen)
+                  and "act run [--job NAME]" in screen.get_hint())
     clear_line(session)
 
     session.send(b"act ")
-    session.wait_until(is_hint("act [command] [flags]"))
+    session.wait_until(has_hint("act [command] [flags]"))
     session.pump(0.6)
     report.record("idle-hint-loads-each-key-once", session,
                   lambda screen: count_marker_lines(directory, "act-marker")
@@ -523,15 +542,15 @@ def run_idle_hint_checks(session, report, directory):
     session.wait_until(is_line(""))
     session.send(b"zzfile ")
     report.record("hint-names-function-file", session,
-                  is_hint_under("function synopsis",
-                                "zzfile, defined at ./zzdefs.sh:2"))
+                  lambda screen: is_explained(["zzfile"])(screen)
+                  and "function, defined at ./zzdefs.sh:2" in screen.get_hint())
     clear_line(session)
 
     session.send(b"echo $(cat -n)")
     session.wait_until(is_line("echo $(cat -n)"))
     session.send(LEFT)
     report.record("hint-follows-command-substitution", session,
-                  is_hint_started_by("flag", "-n"))
+                  is_explained(["cat", "> -n"]))
     clear_line(session)
 
 
@@ -1119,35 +1138,26 @@ def run_checks(binary, directory, command_directory, report):
         clear_line(session)
 
         session.send(b"cat ")
-        report.record("hint-shows-command-synopsis", session,
-                      has_hint("cat ["))
-        report.record("hint-names-utility-header", session,
-                      is_hint_started_by("utility synopsis", "cat ["))
+        report.record("hint-explains-the-command", session,
+                      is_explained(["cat"]))
         report.record("hint-rows-indented", session, are_hint_rows_indented)
         session.send(b"-n")
-        report.record("hint-names-flag-header", session,
-                      lambda screen: is_hint_started_by("flag", "-n")(screen)
-                      and len(screen.get_hint()) > len("-n"))
+        report.record("hint-explains-the-flag-under-the-caret", session,
+                      lambda screen: is_explained(["cat", "> -n"])(screen)
+                      and screen.get_hint_rows()[-1].strip() != "> -n")
         session.send(BACKSPACE * 3)
         report.record("hint-clears-inside-command-word", session,
                       is_without_hint("cat"))
         clear_line(session)
 
         session.send(b"echo ")
-        report.record("hint-names-builtin-header", session,
-                      is_hint_started_by("builtin synopsis", "echo ["))
+        report.record("hint-explains-a-builtin", session,
+                      is_explained(["echo"]))
         clear_line(session)
 
         session.send(b"koshconf set ")
-        report.record("hint-names-typed-builtin-form", session,
-                      is_hint_started_by("builtin synopsis",
-                                         "koshconf set "))
-        clear_line(session)
-
-        session.send(b"koshconf load ")
-        report.record("hint-names-alternative-builtin-form", session,
-                      is_hint_started_by("builtin synopsis",
-                                         "koshconf load "))
+        report.record("hint-skips-a-word-without-description", session,
+                      is_explained(["koshconf"]))
         clear_line(session)
 
         session.send(b"koshconf get maxent\t")
@@ -1175,28 +1185,29 @@ def run_checks(binary, directory, command_directory, report):
         clear_line(session)
 
         session.send(b"koshkit nproc ")
-        report.record("hint-koshkit-names-bundled-synopsis", session,
-                      has_hint_header("utility synopsis"))
+        report.record("hint-koshkit-explains-the-utility", session,
+                      is_explained(["koshkit", "nproc"]))
         clear_line(session)
 
         session.send(b"cat menu/menu-")
-        session.wait_until(has_hint("cat ["))
+        session.wait_until(is_explained(["cat"]))
         session.send(b"\t")
         report.record("hint-yields-to-menu", session, is_menu(names))
         session.send(ESCAPE)
         report.record("hint-returns-after-menu-closes", session,
                       lambda screen: is_menu_closed(screen)
-                      and "cat [" in screen.get_hint())
+                      and is_explained(["cat"])(screen))
         clear_line(session)
 
         session.send(b"cat -n sub/alpha-beta.txt")
-        session.wait_until(is_hint_started_by("flag", "-n"))
+        session.wait_until(lambda screen: get_explain_words(screen) is not None
+                           and "-n" in get_explain_words(screen))
         session.send(b"\r")
         report.record("hint-erased-on-submit", session,
                       lambda screen: get_state(screen) == ("", "")
                       and any("ALPHA-CONTENT" in line
                               for line in screen.get_lines()[:-1])
-                      and not any(line.strip() == "flag"
+                      and not any(line.strip() == "explain"
                                   for line in screen.get_lines()))
 
         run_idle_hint_checks(session, report, directory)
@@ -1218,7 +1229,7 @@ def run_checks(binary, directory, command_directory, report):
             is_hint('Unterminated string literal, expected " here'))
         session.send(b'"')
         report.record("diagnostic-clears-when-quote-closes", session,
-                      is_hint_started_by("builtin synopsis", "echo ["))
+                      is_explained(["echo"]))
         clear_line(session)
 
         type_text(session, b"echo $((1+(2*3)))")
@@ -1355,15 +1366,11 @@ def is_help_wrapped(columns):
     return do_check
 
 
-LS_SYNOPSIS = ("ls [-aA1dgFhklnoprRSt] [-L level] [--tree] "
-               "[--one-file-system] [path ...]")
 
-
-def is_hint_wrapped(columns, header, text):
+def is_hint_within(columns, words):
     def do_check(screen):
         rows = screen.get_hint_rows()
-        return (len(rows) > 2 and screen.get_hint_header() == header
-                and screen.get_hint() == text
+        return (is_explained(words)(screen)
                 and all(len(line) < columns for line in rows))
     return do_check
 
@@ -1395,17 +1402,15 @@ def run_narrow_checks(binary, directory, command_directory, report):
         clear_line(session)
 
         session.send(b"ls ")
-        report.record("narrow-hint-wraps-long-synopsis", session,
-                      is_hint_wrapped(columns, "utility synopsis",
-                                      LS_SYNOPSIS))
+        report.record("narrow-hint-rows-fit-the-width", session,
+                      is_hint_within(columns, ["ls"]))
         report.record("narrow-hint-rows-indented", session,
                       are_hint_rows_indented)
         session.send(b"-d sub\r")
         report.record("narrow-hint-rows-erased-on-submit", session,
                       lambda screen: get_state(screen) == ("", "")
                       and screen.get_hint_rows() == []
-                      and not any("[--one-file-system]" in line
-                                  or line.strip() == "utility synopsis"
+                      and not any(line.strip() == "explain"
                                   for line in screen.get_lines()))
     finally:
         session.close()
@@ -1422,8 +1427,7 @@ def run_short_checks(binary, directory, command_directory, report):
                       lambda screen: get_state(screen) is not None
                       and get_state(screen)[0] == "ls"
                       and len(screen.get_hint_rows()) == 2
-                      and screen.get_hint_header() == "utility synopsis"
-                      and screen.get_hint().endswith("..."))
+                      and screen.get_hint_header() == "explain")
     finally:
         session.close()
 

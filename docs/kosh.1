@@ -2840,14 +2840,17 @@ An empty line steps through the whole history. The
 command turns this off. The option is on by default.
 .PP
 Once the cursor is past the command word, the rows directly below the input
-show a dimmed hint for the command under the cursor. A hint is a header row
-identifying its kind over a body of at most three rows. The body is the
-synopsis of a builtin, a bundled koshkit utility, an external program, or a
-subcommand such as
+explain the command under the cursor under an
+.B explain
+header. Each of up to three rows pairs a word of the command with its
+meaning: the command itself, a subcommand such as
 .BR "git commit" ,
-the description of the flag under the cursor, the definition of an alias, or
-the definition location of a function. The rows are hidden while a completion
-menu or history search is open. A keystroke never runs
+and each flag, ending at the word under the cursor, which is marked with
+.BR > .
+A command is described by its manual page, builtin or koshkit help, alias
+definition, or function location, and by its synopsis when it has no
+description. The rows are hidden while a completion menu or history search is
+open. A keystroke never runs
 .B man
 or the command.
 .PP
@@ -2890,7 +2893,7 @@ severity,
 .BR warning ,
 or
 .BR note ,
-in place of the synopsis. This analysis follows no sourced file, resolves no
+in place of the explanation. This analysis follows no sourced file, resolves no
 command, opens no file, and searches no PATH. The
 .B koshconf set editor.hints.show_live_diagnostics off
 command turns off the finding and the syntax problem below. The option is on by
@@ -2900,9 +2903,9 @@ default and is independent of
 When running the line would report a syntax problem, the rows show the first
 parse error and its detail under
 .B "syntax error"
-in place of the synopsis. The editor submits the whole buffer on Enter and has
-no continuation prompt, so an open construct is an error even when a later line
-would close it. A line over 2048 bytes shows nothing.
+in place of the explanation. The editor submits the whole buffer on Enter and
+has no continuation prompt, so an open construct is an error even when a later
+line would close it. A line over 2048 bytes shows nothing.
 .PP
 The
 .B koshconf set editor.auto_close_brackets_and_quotes on

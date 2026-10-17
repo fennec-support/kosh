@@ -198,7 +198,8 @@ run_debug_hint_driver(StringView   driver_line,
     printed.append(row.view());
   }
 
-  printed += '\n';
+  if (printed.is_empty() || printed.view()[printed.length() - 1] != '\n')
+    printed += '\n';
   print(printed);
   flush();
 

@@ -130,13 +130,17 @@ static const FlagList *KOSHKIT_UTIL_FLAG_LISTS[KOSHKIT_UTIL_COUNT] = {};
 
 static const SynopsisList *KOSHKIT_UTIL_SYNOPSES[KOSHKIT_UTIL_COUNT] = {};
 
+static StringView KOSHKIT_UTIL_DESCRIPTIONS[KOSHKIT_UTIL_COUNT] = {};
+
 fn
 register_koshkit_util_flags(Utility::Kind       chosen,
                             const FlagList     *flags,
-                            const SynopsisList *synopsis) wontthrow -> void
+                            const SynopsisList *synopsis,
+                            StringView          description) wontthrow -> void
 {
-  KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)] = flags;
-  KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)]   = synopsis;
+  KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)]   = flags;
+  KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)]     = synopsis;
+  KOSHKIT_UTIL_DESCRIPTIONS[static_cast<usize>(chosen)] = description;
 }
 
 fn
@@ -149,6 +153,12 @@ fn
 koshkit_util_synopsis(Utility::Kind chosen) wontthrow -> const SynopsisList *
 {
   return KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)];
+}
+
+fn
+koshkit_util_description(Utility::Kind chosen) wontthrow -> StringView
+{
+  return KOSHKIT_UTIL_DESCRIPTIONS[static_cast<usize>(chosen)];
 }
 
 fn
@@ -1173,6 +1183,12 @@ fn
 koshkit_util_synopsis(Utility::Kind) wontthrow -> const SynopsisList *
 {
   return nullptr;
+}
+
+fn
+koshkit_util_description(Utility::Kind) wontthrow -> StringView
+{
+  return StringView{};
 }
 
 fn

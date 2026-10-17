@@ -205,11 +205,14 @@ inline constexpr usize KOSHKIT_UTIL_COUNT = countof(KOSHKIT_ENTRIES);
 fn
 register_koshkit_util_flags(Utility::Kind       chosen,
                             const FlagList     *flags,
-                            const SynopsisList *synopsis) wontthrow -> void;
+                            const SynopsisList *synopsis,
+                            StringView          description) wontthrow -> void;
 fn
 koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *;
 fn
 koshkit_util_synopsis(Utility::Kind chosen) wontthrow -> const SynopsisList *;
+fn
+koshkit_util_description(Utility::Kind chosen) wontthrow -> StringView;
 
 #define KOSHKIT_UTIL_DECL(synopsis, description)                               \
   FLAG_LIST_DECL();                                                            \
@@ -219,7 +222,8 @@ koshkit_util_synopsis(Utility::Kind chosen) wontthrow -> const SynopsisList *;
 #define REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(util)                        \
   static uchar t__koshkit_flag_registrar =                                     \
       (koshka::koshkit::register_koshkit_util_flags(                           \
-           koshka::koshkit::Utility::Kind::util, &FLAG_LIST, &HELP_SYNOPSIS),  \
+           koshka::koshkit::Utility::Kind::util, &FLAG_LIST, &HELP_SYNOPSIS,   \
+           HELP_DESCRIPTION),                                                  \
        0)
 
 #define REGISTER_KOSHKIT_UTIL_FLAGS(util)                                      \

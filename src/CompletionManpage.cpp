@@ -89,6 +89,7 @@ public:
   StringMap<bool>                   subcommand_page_validity{heap_allocator()};
   StringMap<String>                 text{heap_allocator()};
   StringMap<String>                 synopses{heap_allocator()};
+  StringMap<String>                 descriptions{heap_allocator()};
   StringMap<String>                 hint_pages{heap_allocator()};
   String                            manpath_output{heap_allocator()};
   ArrayList<Path>                   scan_directories{heap_allocator()};
@@ -582,8 +583,11 @@ cleaned_synopsis_of_page(StringView source) throws -> String
 
 static constexpr usize HINT_SYNOPSIS_MAX_BYTES = 400;
 
+/* The words of the section of rendered page text under heading, joined by
+   single spaces and cut at HINT_SYNOPSIS_MAX_BYTES. */
 static fn
-rendered_synopsis_of_page(StringView text) throws -> String
+rendered_section_of_page(StringView text, StringView heading) throws
+    -> String
 {
   let clean = String{heap_allocator()};
 
@@ -609,7 +613,7 @@ rendered_synopsis_of_page(StringView text) throws -> String
     if (indent >= raw.length) continue;
     if (indent == 0) {
       if (is_inside_synopsis) break;
-      is_inside_synopsis = raw.trim_blanks() == "SYNOPSIS";
+      is_inside_synopsis = raw.trim_blanks() == heading;
       continue;
     }
 
@@ -627,6 +631,25 @@ rendered_synopsis_of_page(StringView text) throws -> String
     synopsis.truncate(HINT_SYNOPSIS_MAX_BYTES);
 
   return synopsis;
+}
+
+static fn
+rendered_synopsis_of_page(StringView text) throws -> String
+{
+  return rendered_section_of_page(text, StringView{"SYNOPSIS"});
+}
+
+/* e.g. the NAME section "ls - list directory contents" -> "list directory
+   contents". A NAME section without a dash separator gives nothing. */
+static fn
+rendered_description_of_page(StringView text) throws -> String
+{
+  let const name      = rendered_section_of_page(text, StringView{"NAME"});
+  let const separator = name.view().find_substring(StringView{" - "});
+
+  if (!separator.has_value()) return String{heap_allocator()};
+
+  return String{heap_allocator(), name.view().substring(*separator + 3)};
 }
 
 static fn
@@ -1117,6 +1140,7 @@ store_manpage_options(StringView page_name, StringView page) throws
     -> const ArrayList<help_entry> &
 {
   MANPAGE_CACHE.synopses.set(page_name, rendered_synopsis_of_page(page));
+  MANPAGE_CACHE.descriptions.set(page_name, rendered_description_of_page(page));
 
   return *MANPAGE_CACHE.option_entries.set(page_name,
                                            parse_manpage_option_entries(page));
@@ -1976,19 +2000,8 @@ synopsis_row_of(StringView          key,
 }
 
 static fn
-append_flag_row(String    &out,
-                StringView flag_forms,
-                StringView description) throws -> void
-{
-  out.append(flag_forms);
-  out.append(StringView{": "});
-  out.append(description);
-}
-
-static fn
-describe_registered_flag(const FlagList &flags,
-                         StringView      flag,
-                         String         &out) throws -> bool
+registered_flag_description(const FlagList &flags, StringView flag) wontthrow
+    -> StringView
 {
   let const *candidate = flag.length == 2 && flag[1] != '-'
                              ? find_short_flag(flags, flag[1])
@@ -1996,95 +2009,98 @@ describe_registered_flag(const FlagList &flags,
                              ? find_long_flag(flags, flag.substring(2))
                              : nullptr;
 
-  if (candidate == nullptr || candidate->description().is_empty()) {
-    return false;
-  }
-
-  let forms = String{heap_allocator()};
-
-  if (candidate->short_name() != '\0') {
-    forms.push('-');
-    forms.push(candidate->short_name());
-  }
-
-  if (!candidate->long_name().is_empty()) {
-    if (!forms.is_empty()) forms.append(StringView{", "});
-    forms.append(StringView{"--"});
-    forms.append(candidate->long_name());
-  }
-
-  switch (candidate->kind()) {
-  case Flag::Kind::String:
-    forms.append(candidate->long_name().is_empty() ? StringView{" <...>"}
-                                                   : StringView{"=<...>"});
-    break;
-
-  case Flag::Kind::ManyStrings:
-    forms.append(candidate->long_name().is_empty() ? StringView{" <.., ..>"}
-                                                   : StringView{"=<.., ..>"});
-    break;
-
-  case Flag::Kind::OptionalValue:
-    forms.append(StringView{"[=<"});
-    forms.append(
-        static_cast<const FlagOptionalValue *>(candidate)->value_name());
-    forms.push('>');
-    forms.push(']');
-    break;
-
-  case Flag::Kind::Bool:
-  case Flag::Kind::RepeatedBool: break;
-  }
-
-  append_flag_row(out, forms.view(), candidate->description());
-
-  return true;
+  return candidate != nullptr ? candidate->description() : StringView{};
 }
 
 static fn
-describe_cached_flag(const ArrayList<help_entry> &entries,
-                     StringView                   flag,
-                     String                      &out) throws -> bool
+cached_flag_description(const ArrayList<help_entry> &entries,
+                        StringView                   flag) wontthrow -> StringView
 {
-  for (let const &entry : entries) {
-    if (entry.name.view() != flag || entry.description.is_empty()) {
-      continue;
-    }
+  for (let const &entry : entries)
+    if (entry.name.view() == flag) return entry.description.view();
 
-    append_flag_row(out, entry.forms.is_empty() ? flag : entry.forms.view(),
-                    entry.description.view());
-
-    return true;
-  }
-
-  return false;
+  return StringView{};
 }
 
 struct hint_source
 {
-  StringView                   header{};
+  StringView                   description{};
+  StringView                   subcommand_description{};
   StringView                   synopsis{};
   const FlagList              *flags{nullptr};
   const ArrayList<help_entry> *manpage_entries{nullptr};
   const ArrayList<help_entry> *help_entries{nullptr};
 };
 
+/* The description of flag in source, from the registered flags first and then
+   the manual and help entries. */
 static fn
-flag_under_caret(StringView token,
-                 usize      cursor_in_token,
-                 String    &whole,
-                 String    &letter) throws -> void
+flag_description(const hint_source &source, StringView flag) wontthrow
+    -> StringView
 {
-  let const equals = token.find_character('=');
+  let description = StringView{};
 
-  whole = String{whole.allocator(), equals.has_value()
-                                        ? token.substring_of_length(0, *equals)
-                                        : token};
-  if (token.length > 2 && token[1] != '-' && cursor_in_token >= 2 &&
-      cursor_in_token <= token.length)
+  if (source.flags != nullptr)
+    description = registered_flag_description(*source.flags, flag);
+  if (description.is_empty() && source.manpage_entries != nullptr)
+    description = cached_flag_description(*source.manpage_entries, flag);
+  if (description.is_empty() && source.help_entries != nullptr)
+    description = cached_flag_description(*source.help_entries, flag);
+
+  return description;
+}
+
+/* The first sentence of text without its closing period. A period after a
+   blank is a word of its own, as in "entries starting with .", and stays. */
+static pure fn
+first_sentence(StringView text) wontthrow -> StringView
+{
+  text           = text.trim_blanks();
+  let const stop = text.find_substring(StringView{". "});
+
+  if (stop.has_value() && *stop > 0 && text[*stop - 1] != ' ') {
+    return text.substring_of_length(0, *stop);
+  }
+
+  if (text.length > 1 && text[text.length - 1] == '.' &&
+      text[text.length - 2] != ' ')
   {
-    letter.push('-');
-    letter.push(token[cursor_in_token - 1]);
+    return text.substring_of_length(0, text.length - 1);
+  }
+
+  return text;
+}
+
+/* The description of a flag word. A word with a value describes the part
+   before '=', and a cluster of short flags that has no entry of its own joins
+   the descriptions of its letters. */
+static fn
+describe_flag_word(const hint_source &source,
+                   StringView         word,
+                   String            &out) throws -> void
+{
+  out.clear();
+
+  let const equals = word.find_character('=');
+  let const flag =
+      equals.has_value() ? word.substring_of_length(0, *equals) : word;
+  let const whole = flag_description(source, flag);
+
+  if (!whole.is_empty() || flag.length <= 2 || flag[1] == '-') {
+    out.append(first_sentence(whole));
+
+    return;
+  }
+
+  char letter_flag[2] = {'-', '\0'};
+
+  for (usize position = 1; position < flag.length; position++) {
+    letter_flag[1]   = flag[position];
+    let const letter = flag_description(source, StringView{letter_flag, 2});
+
+    if (letter.is_empty()) continue;
+    if (!out.is_empty()) out.append(StringView{", "});
+    out.append(first_sentence(letter));
   }
 }
 
@@ -2147,13 +2163,9 @@ locate_hint_target(StringView line, usize cursor) throws
   return target;
 }
 
-static constexpr StringView FUNCTION_HINT_HEADER{"function synopsis\n"};
-static constexpr StringView ALIAS_HINT_HEADER{"alias synopsis\n"};
-static constexpr StringView FLAG_HINT_HEADER{"flag\n"};
-static constexpr StringView BUILTIN_HINT_HEADER{"builtin synopsis\n"};
-static constexpr StringView UTILITY_HINT_HEADER{"utility synopsis\n"};
-static constexpr StringView COMMAND_HINT_HEADER{"command synopsis\n"};
-static constexpr StringView SUBCOMMAND_HINT_HEADER{"subcommand synopsis\n"};
+static constexpr StringView EXPLAIN_HINT_HEADER{"explain\n"};
+static constexpr usize      EXPLAIN_ROW_MAX        = 3;
+static constexpr usize      EXPLAIN_WORD_WIDTH_MAX = 16;
 
 static fn
 describe_function(StringView   name,
@@ -2161,8 +2173,6 @@ describe_function(StringView   name,
                   String      &out) throws -> bool
 {
   if (context.function_store().find_storage(name) == nullptr) return false;
-
-  out.append(FUNCTION_HINT_HEADER);
 
   let const *info        = context.function_definition_info_of(name);
   let const  source_name = info != nullptr
@@ -2187,15 +2197,14 @@ describe_function(StringView   name,
       return true;
     }
 
-    out.append(name);
-    out.append(StringView{" ()"});
+    out.append(StringView{"function"});
 
     return true;
   }
 
   /* at this point: source_name holds a non-empty file path, and info
      points to the function definition. */
-  out.append(name);
+  out.append(StringView{"function"});
   if (info->definition_line == 0) {
     out.append(StringView{", defined in "});
     out.append(*source_name);
@@ -2207,6 +2216,86 @@ describe_function(StringView   name,
   out.append(*source_name);
   out.push(':');
   out.append(String::from(info->definition_line, heap_allocator()));
+
+  return true;
+}
+
+struct explain_row
+{
+  StringView word;
+  String     description;
+  bool       is_caret{false};
+};
+
+/* Lay the words of a command out as explain rows: the command and its
+   description, a subcommand with its own description, and each flag with its
+   description. The rows end at the word under the caret, which is marked, and
+   only the last EXPLAIN_ROW_MAX of them are kept. Each row ends with a line
+   break, so the editor keeps it on a row of its own. Returns false when no
+   row has a description. */
+static fn
+compose_explain_rows(StringView         command,
+                     StringView         between,
+                     StringView         token,
+                     const hint_source &source,
+                     String            &out) throws -> bool
+{
+  let rows             = ArrayList<explain_row>{heap_allocator()};
+  let is_first_operand = true;
+
+  let const do_add_word = [&](StringView word, bool is_caret) throws {
+    let row = explain_row{word, String{heap_allocator()}, is_caret};
+
+    if (word.length >= 2 && word[0] == '-' && word != StringView{"--"}) {
+      describe_flag_word(source, word, row.description);
+    } else if (is_first_operand) {
+      is_first_operand = false;
+      if (!source.subcommand_description.is_empty()) {
+        row.description.append(source.subcommand_description);
+      }
+    }
+
+    if (!row.description.is_empty()) rows.push(steal(row));
+  };
+
+  rows.push(explain_row{
+      command, String{heap_allocator(), source.description}
+  });
+  between.for_each_ascii_whitespace_word(
+      [&](StringView word) throws { do_add_word(word, false); });
+  if (!token.is_empty()) do_add_word(token, true);
+
+  let has_description = false;
+
+  for (let const &row : rows)
+    if (!row.description.is_empty()) has_description = true;
+
+  if (!has_description) return false;
+
+  let const first =
+      rows.count() > EXPLAIN_ROW_MAX ? rows.count() - EXPLAIN_ROW_MAX : 0;
+  usize word_width = 0;
+
+  for (usize index = first; index < rows.count(); index++) {
+    let const length = rows[index].word.length;
+
+    if (length <= EXPLAIN_WORD_WIDTH_MAX && length > word_width) {
+      word_width = length;
+    }
+  }
+
+  out.append(EXPLAIN_HINT_HEADER);
+  for (usize index = first; index < rows.count(); index++) {
+    let const &row = rows[index];
+
+    out.append(row.is_caret ? StringView{"> "} : StringView{"  "});
+    out.append(row.word);
+    out.append_repeated(
+        ' ', row.word.length < word_width ? word_width - row.word.length : 0);
+    out.append(StringView{"  "});
+    out.append(row.description.view());
+    out.push('\n');
+  }
 
   return true;
 }
@@ -2231,21 +2320,14 @@ compose_command_hint(StringView   line,
   let const has_subcommand_word =
       !first_word.is_empty() && first_word[0] != '-';
 
-  let const is_flag     = token.length >= 2 && token[0] == '-';
-  let       whole_flag  = String{heap_allocator()};
-  let       letter_flag = String{heap_allocator()};
+  let const name          = resolve_completion_alias(command, context);
+  let       function_text = String{heap_allocator()};
+  let       source        = hint_source{};
 
-  if (is_flag)
-    flag_under_caret(token, target->cursor_in_token, whole_flag, letter_flag);
-
-  let const name = resolve_completion_alias(command, context);
-
-  if (describe_function(name.view(), context, out)) return true;
-
-  let source = hint_source{};
-
-  if (let const builtin_kind = context.find_enabled_builtin(name.view());
-      builtin_kind.has_value())
+  if (describe_function(name.view(), context, function_text)) {
+    source.description = function_text.view();
+  } else if (let const builtin_kind = context.find_enabled_builtin(name.view());
+             builtin_kind.has_value())
   {
     let const is_koshkit_dispatch =
         *builtin_kind == Builtin::Kind::Koshkit && has_subcommand_word;
@@ -2256,7 +2338,10 @@ compose_command_hint(StringView   line,
       let key = String{heap_allocator(), "k:"};
 
       key.append(first_word);
-      source.header   = UTILITY_HINT_HEADER;
+      source.description =
+          first_sentence(builtin_help_description(*builtin_kind));
+      source.subcommand_description =
+          first_sentence(koshkit::koshkit_util_description(*bundled));
       source.synopsis = synopsis_row_of(
           key.view(), first_word, koshkit::koshkit_util_synopsis(*bundled));
       source.flags = koshkit::koshkit_util_flag_list(*bundled);
@@ -2275,7 +2360,8 @@ compose_command_hint(StringView   line,
         key.append(subcommand_word);
       }
 
-      source.header = BUILTIN_HINT_HEADER;
+      source.description =
+          first_sentence(builtin_help_description(*builtin_kind));
       source.synopsis =
           synopsis_row_of(key.view(), name.view(), synopsis, subcommand_word);
       source.flags = builtin_flag_list(*builtin_kind);
@@ -2296,6 +2382,17 @@ compose_command_hint(StringView   line,
       }
     }
 
+    if (let const command_page = MANPAGE_CACHE.hint_pages.find(name.view());
+        is_subcommand_page && command_page.has_value())
+    {
+      if (let const description =
+              MANPAGE_CACHE.descriptions.find(command_page->view());
+          description.has_value())
+      {
+        source.description = description->view();
+      }
+    }
+
     if (let const page = MANPAGE_CACHE.hint_pages.find(page_key.view());
         page.has_value())
     {
@@ -2303,9 +2400,17 @@ compose_command_hint(StringView   line,
       if (let const synopsis = MANPAGE_CACHE.synopses.find(page->view());
           synopsis.has_value())
       {
-        source.header =
-            is_subcommand_page ? SUBCOMMAND_HINT_HEADER : COMMAND_HINT_HEADER;
         source.synopsis = synopsis->view();
+      }
+
+      if (let const description = MANPAGE_CACHE.descriptions.find(page->view());
+          description.has_value())
+      {
+        if (is_subcommand_page) {
+          source.subcommand_description = description->view();
+        } else {
+          source.description = description->view();
+        }
       }
 
       if (let const entries = MANPAGE_CACHE.option_entries.find(page->view());
@@ -2351,8 +2456,6 @@ compose_command_hint(StringView   line,
         if (let const usage = HELP_OUTPUT_CACHE.usages.find(help_key.view());
             usage.has_value() && !usage->is_empty())
         {
-          source.header =
-              chain.is_empty() ? COMMAND_HINT_HEADER : SUBCOMMAND_HINT_HEADER;
           source.synopsis = usage->view();
         }
       }
@@ -2370,7 +2473,8 @@ compose_command_hint(StringView   line,
         let key = String{heap_allocator(), "k:"};
 
         key.append(name.view());
-        source.header   = UTILITY_HINT_HEADER;
+        source.description =
+            first_sentence(koshkit::koshkit_util_description(*bundled));
         source.synopsis = synopsis_row_of(
             key.view(), name.view(), koshkit::koshkit_util_synopsis(*bundled));
         source.flags = koshkit::koshkit_util_flag_list(*bundled);
@@ -2378,66 +2482,20 @@ compose_command_hint(StringView   line,
     }
   }
 
-  if (is_flag) {
-    out.append(FLAG_HINT_HEADER);
-
-    for (let const *flag : {&whole_flag, &letter_flag}) {
-      if (flag->is_empty()) continue;
-      if (source.flags != nullptr &&
-          describe_registered_flag(*source.flags, flag->view(), out))
-      {
-        return true;
-      }
-
-      if (source.manpage_entries != nullptr &&
-          describe_cached_flag(*source.manpage_entries, flag->view(), out))
-      {
-        return true;
-      }
-
-      if (source.help_entries != nullptr &&
-          describe_cached_flag(*source.help_entries, flag->view(), out))
-      {
-        return true;
-      }
-    }
-
-    out.clear();
-  }
+  let alias_text = String{heap_allocator()};
 
   if (let const expansion = context.scope_store().find_alias(command);
       expansion.has_value() && !expansion->trim_blanks().is_empty())
   {
-    out.append(ALIAS_HINT_HEADER);
-    out.append(command);
-    out.append(StringView{"='"});
-
-    let const value = *expansion;
-
-    for (usize position = 0; position < value.length; position++) {
-      let const character = value[position];
-
-      if (character == '\'') {
-        out.append(StringView{"'\\''"});
-      } else {
-        out.push(character);
-      }
-    }
-
-    out.push('\'');
-    if (!source.synopsis.is_empty()) {
-      out.append(StringView{" \xc2\xb7 "});
-      out.append(source.synopsis);
-    }
-
-    return true;
+    alias_text.append(StringView{"alias for '"});
+    alias_text.append(expansion->trim_blanks());
+    alias_text.push('\'');
+    source.description = alias_text.view();
   }
 
-  if (source.synopsis.is_empty()) return false;
-  out.append(source.header);
-  out.append(source.synopsis);
+  if (source.description.is_empty()) source.description = source.synopsis;
 
-  return true;
+  return compose_explain_rows(command, between, token, source, out);
 }
 
 struct idle_load
