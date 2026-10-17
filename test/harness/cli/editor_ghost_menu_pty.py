@@ -28,14 +28,14 @@
 # completion with its space. It also covers word-wise ghost
 # acceptance through Ctrl-Right and Alt-F, and prefix history search on Up and
 # Down with its option switched off, a Ctrl-R menu that flags a miss and cuts
-# a long entry with an ellipsis, and the inline explain rows for a command and
+# a long entry with an ellipsis, and the inline synopsis rows for a command and
 # the flag under the caret, a word without a description left out, a koshconf
-# option that Tab finds by subsequence, their explain header and the
+# option that Tab finds by subsequence, their synopsis header and the
 # two-column indent, their absence inside the command word, for an uncached
 # command, and for a bundled utility that a PATH program shadows unless the
 # word follows koshkit, their yielding to the menu, their erasure on submit,
 # and their option. A path menu lists the last component of each path. A
-# narrow terminal keeps every explain row within its width and a submit erases
+# narrow terminal keeps every synopsis row within its width and a submit erases
 # them, starts the menu at the left edge when the token is too far
 # right for its help text to keep two rows, and a short
 # terminal keeps the input on screen with fewer rows. A pause loads
@@ -44,7 +44,7 @@
 # slow manpath started by a pause leaves typed keys served while it runs, and
 # Tab adopts that run instead of forking another. The
 # row shows the command of the command substitution under the caret, flags an
-# unterminated double quote and returns to the explain rows once the quote
+# unterminated double quote and returns to the synopsis rows once the quote
 # closes,
 # and reports a misplaced closing keyword after the word and at its end.
 # Caret moves onto matched brackets keep the line and the caret,
@@ -428,7 +428,7 @@ def are_hint_rows_indented(screen):
 
 def get_explain_words(screen):
     rows = screen.get_hint_rows()
-    if not rows or rows[0].strip() != "explain":
+    if not rows or rows[0].strip() != "synopsis":
         return None
     words = []
     for row in rows[1:]:
@@ -1207,7 +1207,7 @@ def run_checks(binary, directory, command_directory, report):
                       lambda screen: get_state(screen) == ("", "")
                       and any("ALPHA-CONTENT" in line
                               for line in screen.get_lines()[:-1])
-                      and not any(line.strip() == "explain"
+                      and not any(line.strip() == "synopsis"
                                   for line in screen.get_lines()))
 
         run_idle_hint_checks(session, report, directory)
@@ -1410,7 +1410,7 @@ def run_narrow_checks(binary, directory, command_directory, report):
         report.record("narrow-hint-rows-erased-on-submit", session,
                       lambda screen: get_state(screen) == ("", "")
                       and screen.get_hint_rows() == []
-                      and not any(line.strip() == "explain"
+                      and not any(line.strip() == "synopsis"
                                   for line in screen.get_lines()))
     finally:
         session.close()
@@ -1427,7 +1427,7 @@ def run_short_checks(binary, directory, command_directory, report):
                       lambda screen: get_state(screen) is not None
                       and get_state(screen)[0] == "ls"
                       and len(screen.get_hint_rows()) == 2
-                      and screen.get_hint_header() == "explain")
+                      and screen.get_hint_header() == "synopsis")
     finally:
         session.close()
 

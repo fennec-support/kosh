@@ -59,12 +59,12 @@ function => [syntax error] Expected an identifier after the 'function' keyword, 
 if => [syntax error] This 'if' has no condition, expected a command for the condition here
 while :; do done => [syntax error] The loop body between 'do' and 'done' is empty, put a command in the body, such as `:` to do nothing
 == continued on enter
-echo \ => [explain] echo
-echo "abc\ => [explain] echo
+echo \ => [synopsis] echo
+echo "abc\ => [synopsis] echo
 == clean lines
-echo "abc" "$(ls)" "${HOME}" => [explain] echo
-echo hi # "abc => [explain] echo
-echo \"abc => [explain] echo
+echo "abc" "$(ls)" "${HOME}" => [synopsis] echo
+echo hi # "abc => [synopsis] echo
+echo \"abc => [synopsis] echo
 read x <<EOF => [error] A `read` without `-r` treats a backslash in the input as an escape. (SC2162)
 if true; then echo; fi => 
 f() { :; } => 
@@ -73,11 +73,11 @@ echo $x => [error] An unquoted variable can split into words and expand globs. (
 cat file | grep x => [warning] The `cat` writes its file unchanged into the pipe. (SC2002)
 x = 1 => [error] An assignment with spaces around equals runs as a command with arguments. (SC2283)
 zzunknown-command arg => 
-source ./zz-missing-file.sh => [explain] source
+source ./zz-missing-file.sh => [synopsis] source
 == alias, function, and segment under the caret
-[explain]   zzl  alias for 'ls -a'
-[explain]   zzf  zzf () { echo hi; }
-echo hi | cat -n => [explain] cat
+[synopsis]   zzl  alias for 'ls -a'
+[synopsis]   zzf  zzf () { echo hi; }
+echo hi | cat -n => [synopsis] cat
 > -n
-echo hi && cat -n => [explain] cat
+echo hi && cat -n => [synopsis] cat
 > -n

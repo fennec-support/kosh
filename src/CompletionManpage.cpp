@@ -2163,7 +2163,7 @@ locate_hint_target(StringView line, usize cursor) throws
   return target;
 }
 
-static constexpr StringView EXPLAIN_HINT_HEADER{"explain\n"};
+static constexpr StringView SYNOPSIS_HINT_HEADER{"synopsis\n"};
 static constexpr usize      EXPLAIN_ROW_MAX        = 3;
 static constexpr usize      EXPLAIN_WORD_WIDTH_MAX = 16;
 
@@ -2284,7 +2284,7 @@ compose_explain_rows(StringView         command,
     }
   }
 
-  out.append(EXPLAIN_HINT_HEADER);
+  out.append(SYNOPSIS_HINT_HEADER);
   for (usize index = first; index < rows.count(); index++) {
     let const &row = rows[index];
 
