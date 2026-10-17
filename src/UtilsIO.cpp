@@ -50,6 +50,9 @@ bounded_osa_distance(StringView a, StringView b, usize max_distance) wontthrow
 
   if (is_beyond_row_width) return max_distance + 1;
 
+  /* at this point: a_length and b_length are non-zero, and b_length is at
+     most 255, so every index into rows is below OSA_ROW_WIDTH. */
+
   usize rows[3][OSA_ROW_WIDTH];
   let   previous_previous = rows[0];
   let   previous          = rows[1];
@@ -200,27 +203,29 @@ read_line_from_fd(os::descriptor fd,
       }
     }
 
-    let const requested_count = should_read_chunks ? sizeof(buffer) : 1;
-    let const read_count      = os::read_fd(fd, buffer, requested_count);
+    let const requested_byte_count = should_read_chunks ? sizeof(buffer) : 1;
+    let const read_byte_count = os::read_fd(fd, buffer, requested_byte_count);
 
-    if (!read_count.has_value()) {
+    if (!read_byte_count.has_value()) {
       result.did_read_fail = true;
       break;
     }
 
-    if (*read_count == 0) break;
+    if (*read_byte_count == 0) break;
     has_read_any_byte = true;
 
     let const chunk =
-        StringView{reinterpret_cast<const char *>(buffer), *read_count};
+        StringView{reinterpret_cast<const char *>(buffer), *read_byte_count};
     let const delimiter_position =
-        chunk.find_character(delimiter).value_or(*read_count);
+        chunk.find_character(delimiter).value_or(*read_byte_count);
 
     line.append(chunk.substring_of_length(0, delimiter_position));
-    if (delimiter_position < *read_count) {
-      let const unread_count = *read_count - delimiter_position - 1;
+    if (delimiter_position < *read_byte_count) {
+      let const unread_byte_count = *read_byte_count - delimiter_position - 1;
 
-      if (unread_count > 0 && !os::rewind_descriptor(fd, unread_count)) {
+      if (unread_byte_count > 0 &&
+          !os::rewind_descriptor(fd, unread_byte_count))
+      {
         result.did_read_fail = true;
 
         return result;
@@ -577,6 +582,9 @@ git_upstream_ref(const Path &git_dir, StringView branch_name) throws
   }
 
   if (remote_name == ".") return merge_ref;
+
+  /* at this point: remote_name is neither empty nor ".", and merge_ref is
+     non-empty. */
 
   let const refs_prefix    = StringView{"refs/"};
   let const remotes_prefix = StringView{"refs/remotes/"};

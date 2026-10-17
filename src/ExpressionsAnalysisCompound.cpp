@@ -178,6 +178,7 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
     let const stage_info = get_analysis_command_info(*stage_name);
     let const next_info  = get_analysis_command_info(*next_name);
     let const is_next_pattern_matcher =
+        !is_next_user_command &&
         next_info.is_in_group(COMMAND_GROUP_PATTERN_MATCHER);
     let const is_next_xargs =
         next_info.id == command_name_id::Xargs && !is_next_user_command;
@@ -428,6 +429,8 @@ node_inequality_left_operand(const CompoundListCondition *node) wontthrow
     return nullptr;
   }
 
+  /* at this point: command is a simple command with five arguments, and
+     args[0], args[2], and args[4] are the literal "[", "!=", and "]". */
   return args[1];
 }
 

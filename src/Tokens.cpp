@@ -759,6 +759,8 @@ Word::get_quoted_assignment_split() const throws
 
   if (name_cursor != name_length) return koshka::None;
 
+  /* at this point: prefix_view starts with an assignment name of name_length
+     bytes, and segments[equals_segment] holds the '=' at equals_position. */
   const WordSegment &carrier = segments[equals_segment];
 
   let value = Word{};
@@ -780,6 +782,10 @@ Word::get_quoted_assignment_split() const throws
   };
 }
 
+/* memory: new_capacity bytes from heap_allocator(). the old buffer is freed
+           when m_capacity is nonzero.
+   time:   O(m_length) for memcpy(). capacity doubles until it covers needed,
+           so repeated appends cost O(1) amortized per byte. */
 cold fn
 SegmentText::grow_owned(usize needed) throws -> void
 {

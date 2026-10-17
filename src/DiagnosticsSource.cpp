@@ -678,13 +678,9 @@ constexpr StaticStringSet KNOWN_SHELLS{KNOWN_SHELL_KEYS};
 pure fn
 path_base_name(StringView path) wontthrow -> StringView
 {
-  usize at = path.length;
+  let const last_slash = path.find_last_character('/');
 
-  while (at > 0 && path[at - 1] != '/') {
-    at--;
-  }
-
-  return path.substring(at);
+  return last_slash.has_value() ? path.substring(*last_slash + 1) : path;
 }
 
 struct shebang_word_reader

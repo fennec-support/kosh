@@ -282,9 +282,8 @@ extglob_full_match(StringView    glob,
         {
           let const &alternative = alternatives.get_at(alternative_index);
 
-          for (usize length = head == '?' ? 0 : get_next_split(str, 0, charset);
-               length <= str.count();
-               length = get_next_split(str, length, charset))
+          for (usize length = 0; length <= str.count();
+               length       = get_next_split(str, length, charset))
           {
             if (extglob_full_match(alternative.pattern,
                                    str.substring_of_length(0, length), mask,
@@ -347,6 +346,8 @@ extglob_full_match(StringView    glob,
 
   if (str.is_empty()) return false;
 
+  /* at this point: glob and str are non-empty, so head is glob[0] and str[0]
+     is valid. */
   if (is_active && head == '?') {
     return extglob_full_match(glob.substring(1),
                               str.substring(get_next_split(str, 0, charset)),
@@ -450,7 +451,7 @@ smart_case_prefix_matches(StringView candidate, StringView prefix) wontthrow
 struct locale_availability_entry
 {
   char name[48];
-  u8   name_length;
+  u8   name_byte_count;
   bool is_available;
 };
 
@@ -470,7 +471,7 @@ locale_is_installed(StringView locale_name) wontthrow -> bool
   }
 
   for (let const &entry : cache) {
-    if (entry.name_length == locale_name.length &&
+    if (entry.name_byte_count == locale_name.length &&
         memcmp(entry.name, locale_name.data, locale_name.length) == 0)
     {
       return entry.is_available;
@@ -481,8 +482,8 @@ locale_is_installed(StringView locale_name) wontthrow -> bool
 
   next_slot = (next_slot + 1) % CACHE_ENTRY_COUNT;
   memcpy(slot.name, locale_name.data, locale_name.length);
-  slot.name_length  = static_cast<u8>(locale_name.length);
-  slot.is_available = os::locale_is_available(locale_name);
+  slot.name_byte_count = static_cast<u8>(locale_name.length);
+  slot.is_available    = os::locale_is_available(locale_name);
 
   return slot.is_available;
 }

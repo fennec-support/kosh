@@ -328,8 +328,8 @@ struct conditional_evaluator
             subscript.find_character('$').has_value() ||
             subscript.find_character('`').has_value();
 
-        /* As in Bash, the subscript of an expanded operand is not expanded
-           again. An associative array takes it as a literal key, and an
+        /* as in Bash, the subscript of an expanded operand is not expanded
+           again. an associative array takes it as a literal key, and an
            indexed array cannot evaluate it. */
         if (has_expansion_text) {
           if (cxt.is_associative_array(name)) {
@@ -469,10 +469,10 @@ struct conditional_evaluator
 
       let const is_existence_test =
           *selected_unary_operator == UnaryOperatorKind::VariableSet;
-      let const saved_suppress_unset =
+      let const was_reference_suppressed =
           cxt.runtime_control_store().is_warning_suppressed(
               suppressible_warning::UnsetReference);
-      let const saved_suppress_test_operand =
+      let const was_test_operand_suppressed =
           cxt.runtime_control_store().is_warning_suppressed(
               suppressible_warning::UnsetTestOperand);
 
@@ -483,10 +483,10 @@ struct conditional_evaluator
             suppressible_warning::UnsetReference, true);
       defer {
         cxt.runtime_control_store().set_warning_suppressed(
-            suppressible_warning::UnsetReference, saved_suppress_unset);
+            suppressible_warning::UnsetReference, was_reference_suppressed);
         cxt.runtime_control_store().set_warning_suppressed(
             suppressible_warning::UnsetTestOperand,
-            saved_suppress_test_operand);
+            was_test_operand_suppressed);
       };
 
       let const operand = operand_value(elements[pos - 1]);
@@ -546,7 +546,7 @@ struct conditional_evaluator
             return false;
           }();
 
-          let const saved_suppress_test_operand =
+          let const was_test_operand_suppressed =
               cxt.runtime_control_store().is_warning_suppressed(
                   suppressible_warning::UnsetTestOperand);
 
@@ -556,7 +556,7 @@ struct conditional_evaluator
           defer {
             cxt.runtime_control_store().set_warning_suppressed(
                 suppressible_warning::UnsetTestOperand,
-                saved_suppress_test_operand);
+                was_test_operand_suppressed);
           };
 
           let const left = operand_value(elements[pos - 3]);
@@ -789,6 +789,8 @@ EvalContext::evaluate_conditional(
         "between two tests");
   }
 
+  /* at this point: the evaluator consumed every element, so the result
+     covers the whole list. */
   return is_conditional_true;
 }
 

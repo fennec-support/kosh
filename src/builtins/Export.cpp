@@ -185,6 +185,8 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return has_error ? 1 : 0;
   }
 
+  /* at this point: neither -f nor -n is enabled, so each operand is a name
+     or name=value to export. */
   let has_error            = false;
   let has_assignment_error = false;
 

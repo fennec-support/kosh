@@ -466,7 +466,6 @@ Tail::execute(const ExecContext               &ec,
   let       statuses                = ArrayList<os::file_status>{allocator};
   let       metadata_errors         = ArrayList<i32>{allocator};
   let       metadata_source_indices = ArrayList<usize>{allocator};
-  let       metadata_results        = ArrayList<os::batch_result>{allocator};
   let       metadata_batch          = os::Batch{allocator};
 
   paths.reserve(sources.count());
@@ -488,7 +487,7 @@ Tail::execute(const ExecContext               &ec,
   }
 
   if (metadata_batch.count() != 0) {
-    metadata_results = metadata_batch.execute();
+    let const metadata_results = metadata_batch.execute();
 
     for (usize result_index = 0; result_index < metadata_results.count();
          result_index++)
@@ -692,6 +691,8 @@ Tail::execute(const ExecContext               &ec,
       return;
     }
 
+    /* at this point: content holds the text of the source, and no interrupt
+       was requested while reading it. */
     do_write_header(source_index);
     if (options.is_following)
       buffered_byte_counts[source_index] = content->length();

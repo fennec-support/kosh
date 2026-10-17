@@ -123,7 +123,7 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (; first_name < args.count(); first_name++) {
     let const arg = args[first_name].view();
 
-    if (arg.length < 1 || arg[0] != '-') {
+    if (arg.is_empty() || arg[0] != '-') {
       break;
     }
 

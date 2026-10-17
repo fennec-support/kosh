@@ -168,6 +168,16 @@ report_unreadable_path(const ExecContext &ec,
 }
 
 static fn
+report_too_large_path(const ExecContext &ec,
+                      EvalContext       &cxt,
+                      const Path        &path) throws -> void
+{
+  report_soft_koshkit_util_error(ec, cxt, "du",
+                                 "cannot read '" + path.text() +
+                                     "': the total size is too large");
+}
+
+static fn
 total_size(const ExecContext        &ec,
            EvalContext              &cxt,
            const Path               &path,
@@ -196,9 +206,7 @@ total_size(const ExecContext        &ec,
   }
 
   if (known_status->blocks > UINT64_MAX / 512) {
-    report_soft_koshkit_util_error(ec, cxt, "du",
-                                   "cannot read '" + path.text() +
-                                       "': the total size is too large");
+    report_too_large_path(ec, cxt, path);
     has_failure = true;
 
     return None;
@@ -260,6 +268,8 @@ total_size(const ExecContext        &ec,
         return;
       }
 
+      /* at this point: frame is enumerated, is not complete, and has no
+         pending child directories. */
       frame.is_complete = true;
       if (frame.has_failure) {
         has_failure = true;
@@ -270,23 +280,16 @@ total_size(const ExecContext        &ec,
           append_output_row(*output_rows, frame.total_byte_count,
                             frame.path.view(),
                             colors::file_entry_type::Directory, allocator);
-        if (frame.parent_index == SIZE_MAX) {
-          is_root_complete = true;
-          root_result      = du_size_result{frame.total_byte_count, true};
+        if (frame.parent_index != SIZE_MAX) {
+          let &parent = frames[frame.parent_index];
 
-          return;
-        }
-
-        let &parent = frames[frame.parent_index];
-
-        if (frame.total_byte_count > UINT64_MAX - parent.total_byte_count) {
-          report_soft_koshkit_util_error(ec, cxt, "du",
-                                         "cannot read '" + frame.path.text() +
-                                             "': the total size is too large");
-          parent.has_failure = true;
-          has_failure        = true;
-        } else {
-          parent.total_byte_count += frame.total_byte_count;
+          if (frame.total_byte_count > UINT64_MAX - parent.total_byte_count) {
+            report_too_large_path(ec, cxt, frame.path);
+            parent.has_failure = true;
+            has_failure        = true;
+          } else {
+            parent.total_byte_count += frame.total_byte_count;
+          }
         }
       }
 
@@ -349,10 +352,7 @@ total_size(const ExecContext        &ec,
     }
 
     if (status.blocks > UINT64_MAX / 512) {
-      let child_path = do_make_child_path();
-      report_soft_koshkit_util_error(ec, cxt, "du",
-                                     "cannot read '" + child_path.text() +
-                                         "': the total size is too large");
+      report_too_large_path(ec, cxt, do_make_child_path());
       frames[parent_index].has_failure = true;
       has_failure                      = true;
 
@@ -392,10 +392,7 @@ total_size(const ExecContext        &ec,
     if (allocated_byte_count >
         UINT64_MAX - frames[parent_index].total_byte_count)
     {
-      let child_path = do_make_child_path();
-      report_soft_koshkit_util_error(ec, cxt, "du",
-                                     "cannot read '" + child_path.text() +
-                                         "': the total size is too large");
+      report_too_large_path(ec, cxt, do_make_child_path());
       frames[parent_index].has_failure = true;
       has_failure                      = true;
 
@@ -959,10 +956,9 @@ Du::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const allocator              = cxt.scratch_allocator();
-  let       targets                = ArrayList<Path>{allocator};
-  let       target_statuses        = ArrayList<os::file_status>{allocator};
-  let       is_target_status_known = ArrayList<bool>{allocator};
+  let const allocator       = cxt.scratch_allocator();
+  let       targets         = ArrayList<Path>{allocator};
+  let       target_statuses = ArrayList<os::file_status>{allocator};
 
   if (operands.is_empty()) {
     targets.push(Path{".", allocator});
@@ -974,7 +970,6 @@ Du::execute(const ExecContext               &ec,
   }
 
   target_statuses.reserve(targets.count());
-  is_target_status_known.reserve(targets.count());
 
   let batch = os::Batch{allocator};
 
@@ -987,9 +982,6 @@ Du::execute(const ExecContext               &ec,
   }
 
   let const target_results = batch.execute();
-
-  for (let const &result : target_results)
-    is_target_status_known.push(result.error_number == 0);
 
   let const is_top        = FLAG_DU_TOP.is_enabled();
   let const is_tree       = is_top || FLAG_DU_TREE.is_enabled();
@@ -1006,7 +998,7 @@ Du::execute(const ExecContext               &ec,
   for (usize index = 0; index < targets.count(); index++) {
     let const &target = targets[index];
 
-    if (!is_target_status_known[index]) {
+    if (target_results[index].error_number != 0) {
       os::set_last_system_error(target_results[index].error_number);
       KOSHKIT_REPORT_PATH_ERROR("access", target.text());
       status = 1;

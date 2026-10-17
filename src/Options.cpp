@@ -1334,12 +1334,12 @@ consteval fn
 make_set_listing() wontthrow -> listing_table<name_count(name_kind::Set)>
 {
   listing_table<name_count(name_kind::Set)> result{};
-  usize                                     count = 0;
+  usize                                     entry_count = 0;
 
   for (let const &entry : OPTION_REGISTRY)
-    if (!entry.set_name.is_empty()) result.entries[count++] = entry;
+    if (!entry.set_name.is_empty()) result.entries[entry_count++] = entry;
 
-  for (usize position = 1; position < count; position++) {
+  for (usize position = 1; position < entry_count; position++) {
     let const moved = result.entries[position];
     usize     slot  = position;
 
@@ -1667,8 +1667,8 @@ get_legacy_koshconf_alias(const option_descriptor &option) throws
 
 /* memory: none. the returned pointer refers to OPTION_REGISTRY.
    time:   O(log n) per lookup, a binary search over the koshconf name table.
-           a bash. or posix. alias adds up to two more searches, and an editor
-           mode alias scans OPTION_REGISTRY linearly. */
+           a bash.legacy. or posix.legacy. name adds up to two more searches,
+           and an editor mode alias scans OPTION_REGISTRY linearly. */
 fn
 find_option_by_koshconf_name(StringView name) wontthrow
     -> const option_descriptor *
@@ -1795,26 +1795,16 @@ shopt_option_index(shopt_option_id option) wontthrow -> u8
 consteval fn
 make_default_on_shopt_mask() wontthrow -> u64
 {
-  constexpr PackedStringKey DEFAULT_ON_KEYS[] = {
-      SSK("progcomp"),
-      SSK("promptvars"),
-      SSK("sourcepath"),
-      SSK("extquote"),
-      SSK("complete_fullquote"),
-      SSK("hostcomplete"),
-      SSK("checkwinsize"),
-      SSK("force_fignore"),
-      SSK("globasciiranges"),
-      SSK("globskipdots"),
-      SSK("interactive_comments"),
-      SSK("patsub_replacement"),
-      SSK("histappend"),
-      SSK("cmdhist"),
-  };
   u64 mask = 0;
 
-  for (let const key : DEFAULT_ON_KEYS)
+  for (let const &entry : OPTION_REGISTRY) {
+    if (entry.storage != option_storage::Shopt) continue;
+    if (entry.bash_default_value == 0) continue;
+
+    let const key = PackedStringKey::from_literal(entry.shopt_name.data);
+
     mask |= u64{1} << compact_shopt_option_index(key);
+  }
 
   return mask;
 }
@@ -1929,6 +1919,8 @@ parse_option_number(const option_descriptor &option,
   return None;
 }
 
+/* memory: a heap String returned to the caller, who owns it.
+   time:   O(total length of the value strings). */
 fn
 describe_option_values(const option_descriptor &option) throws -> String
 {
@@ -1972,7 +1964,7 @@ write_option_number(EvalContext             &cxt,
       value != option.strict_value;
 
   if (is_held_by_kosh_mood) {
-    let error = ErrorWithDetails{
+    let const error = ErrorWithDetails{
         StringView{"The kosh mood keeps '"} + display_name(option, origin) +
             "' " + format_option_number(option, option.strict_value),
         "Switch to the bash mood with `koshconf set mood bash` to change "
@@ -1980,6 +1972,8 @@ write_option_number(EvalContext             &cxt,
     throw error;
   }
 
+  /* at this point: option is writable, and the kosh mood does not
+     reject value. */
   LOG(Info, "setting option '%.*s' to %u",
       static_cast<int>(option.koshconf_name.length), option.koshconf_name.data,
       value);
@@ -2056,6 +2050,8 @@ write_option_text(EvalContext             &cxt,
     throw Error{StringView{"Invalid value '"} + text + "' for '" +
                 display_name(option, origin) + "', expected " +
                 describe_option_values(option)};
+  /* at this point: value holds a number that parse_option_number accepts
+     for option. */
   write_option_number(cxt, option, *value, origin);
 }
 

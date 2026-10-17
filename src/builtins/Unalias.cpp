@@ -42,6 +42,8 @@ Unalias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() < 2) return report_usage_error(ec, cxt, ec.program());
 
+  /* at this point: args holds at least one alias operand, and -a is off. */
+
   i32 status = 0;
 
   for (usize i = 1; i < args.count(); i++) {

@@ -103,6 +103,11 @@ codepoint_display_width(u32 codepoint) -> usize
   return 1;
 }
 
+/* returns the display width of a prefix of text. once the width reaches
+   stop_after, the walk stops before the next character with positive width,
+   so the result can exceed stop_after by one when a wide character starts at
+   stop_after - 1. out_byte_offset, when not nullptr, receives the byte offset
+   where the walk stopped. get_display_width() passes the largest usize. */
 flatten static fn
 display_width_walk(StringView text, usize stop_after, usize *out_byte_offset)
     -> usize
@@ -277,6 +282,11 @@ write_history_file_atomically(const koshka::Path &path,
                               StringView          name_prefix,
                               StringView          contents) throws -> bool
 {
+  /* memory: target and replacement own their path strings, freed on return.
+             the temporary file is removed when set_file_mode(),
+             sync_path(), or rename_path() fails.
+     time:   O(contents.length) for the write, then one sync_path() and one
+             rename_path() of the temporary file. no locks are taken. */
   let target = koshka::Path{path.view()};
 
   if (let resolved = koshka::os::canonical_path(path); resolved.has_value())

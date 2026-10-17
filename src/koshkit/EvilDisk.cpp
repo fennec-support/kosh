@@ -171,6 +171,9 @@ append_ata_smart_statistics(StringView report,
 
     if (!has_metadata) continue;
 
+    /* at this point: field has a value, and the seven words after the label
+       are non-empty. */
+
     /* e.g. "5 Reallocated_Sector_Ct 0x0033 100 100 010 Pre-fail Always - 0"
        -> attribute_id = "5" finds "reallocated". the label word is skipped,
           the seven words from "0x0033" to "-" pass the metadata check, and
@@ -302,6 +305,9 @@ read_smart_rows(EvalContext                             &cxt,
     }
 
     if (!has_row) continue;
+
+    /* at this point: row holds a parsed report of filesystem, so row.status
+       is non-empty. */
 
     bool is_duplicate = false;
 
@@ -573,7 +579,9 @@ EvilDisk::execute(const ExecContext               &ec,
     table.add_heading("GENERATION", report_table_alignment::Right);
     table.add_heading("RECORDED ERRORS", report_table_alignment::Right);
 
-    constexpr StringView SUPPORTED_TYPES[] = {"btrfs", "ext4", "ntfs", "ntfs3"};
+    static constexpr PackedStringKey SUPPORTED_TYPE_KEYS[] = {
+        SSK("btrfs"), SSK("ext4"), SSK("ntfs"), SSK("ntfs3")};
+    static constexpr StaticStringSet SUPPORTED_TYPES{SUPPORTED_TYPE_KEYS};
 
     for (let const &filesystem : filesystems) {
       let status               = StringView{"unsupported"};
@@ -611,12 +619,8 @@ EvilDisk::execute(const ExecContext               &ec,
               evidence->is_dirty ? StringView{"dirty"} : StringView{"clean"};
           break;
         }
-      } else {
-        for (let const type : SUPPORTED_TYPES) {
-          if (filesystem.type.view() != type) continue;
-          status = "unavailable";
-          break;
-        }
+      } else if (SUPPORTED_TYPES.contains(filesystem.type.view())) {
+        status = "unavailable";
       }
 
       let cells = ArrayList<report_table_cell_view>{allocator};

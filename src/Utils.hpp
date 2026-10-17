@@ -206,7 +206,7 @@ terminate_and_reap_processes(const ArrayList<os::process> &processes,
 pure fn
 strip_sig_prefix(StringView name) wontthrow -> StringView;
 
-/* Whether expanding text can run a command: a $( command substitution, a
+/* whether expanding text can run a command: a $( command substitution, a
    backquote outside a backslash escape, a ${ cmd; } or ${|cmd;} function
    substitution, or a ${name@P} prompt expansion, which runs the substitutions
    in the value. A $(( arithmetic expansion does not count. */
@@ -456,6 +456,9 @@ public:
 
     if (distance > m_best_distance) return;
     if (!is_correction(distance, m_name.length)) return;
+
+    /* at this point: candidate is non-empty and differs from m_name, and
+       distance is at most m_best_distance and is a correction for m_name. */
 
     const bool is_candidate_anagram = is_anagram(m_name, candidate);
 

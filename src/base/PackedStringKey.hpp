@@ -40,17 +40,17 @@ public:
   from_view(StringView text) wontthrow -> PackedStringKey
   {
     PackedStringKey key{};
-    let const       count =
+    let const       byte_count =
         text.count() < BYTE_CAPACITY ? text.count() : BYTE_CAPACITY;
 
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-    if (count < 8) {
-      key.words[0] = byte_scan::load_partial_word(text.data, count);
+    if (byte_count < 8) {
+      key.words[0] = byte_scan::load_partial_word(text.data, byte_count);
 
       return key;
     }
 #endif
-    os::pack_little_endian_bytes(key.words, text.data, count);
+    os::pack_little_endian_bytes(key.words, text.data, byte_count);
 
     return key;
   }

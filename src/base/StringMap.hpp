@@ -275,6 +275,9 @@ public:
     if (found == NO_INDEX) return;
     ASSERT(m_slots != nullptr);
 
+    /* at this point: found indexes an occupied slot, and m_capacity is not
+       zero. */
+
     let &slot = m_slots[found];
 
     /* the slot becomes a tombstone, not empty, because probe() stops at the
@@ -358,11 +361,11 @@ private:
   static constexpr usize NO_INDEX = static_cast<usize>(-1);
 
   fn
-  fitted_capacity(usize count) const wontthrow -> usize
+  fitted_capacity(usize entry_count) const wontthrow -> usize
   {
     usize fitted = m_first_capacity;
 
-    while (count > (fitted >> 1) + (fitted >> 2))
+    while (entry_count > (fitted >> 1) + (fitted >> 2))
       fitted *= 2;
 
     return fitted;
@@ -431,6 +434,9 @@ private:
     let const maximum_occupied = (m_capacity >> 1) + (m_capacity >> 2);
 
     if (m_count + m_tombstones + 1 <= maximum_occupied) return result;
+
+    /* at this point: key is absent, result.insertion is an empty slot, and
+       inserting key would exceed maximum_occupied. */
 
     if (m_count + 1 > maximum_occupied) {
       if (m_capacity > UINT32_MAX / 2) rarely

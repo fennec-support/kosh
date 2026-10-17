@@ -404,8 +404,7 @@ enabled_shell_option_letters(const EvalContext &cxt) throws -> String
     ASSERT(option != nullptr);
     if (letter == 'h') {
       if (option_is_on(cxt, *option)) letters.push('h');
-      if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
-        letters.push('r');
+      if (is_restricted(cxt)) letters.push('r');
       if (cxt.execution_store().shell_is_interactive()) letters.push('i');
       continue;
     }
@@ -468,6 +467,7 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* at this point: args has at least one entry after args[0]. */
   let  operands               = ArrayList<String>{heap_allocator()};
   bool is_collecting_operands = false;
   bool should_rebind          = false;
@@ -608,9 +608,7 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
 
         if (letter == 'r') {
-          if (!is_enabled && cxt.runtime_state().option_is_enabled(
-                                 shell_option_id::Restricted))
-          {
+          if (!is_enabled && is_restricted(cxt)) {
             throw make_error_for_arg(ec, i,
                                      "Restricted mode cannot be disabled");
           }

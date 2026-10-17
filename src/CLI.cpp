@@ -1084,11 +1084,11 @@ parse_flags(const FlagList                  &flags,
           error_message += "Unknown flag '-";
 
           if (!is_long) {
-            let const flag_view  = StringView{flag_offset};
-            let const decoded    = utils::decode_utf8(flag_view, 0, 0);
-            let const byte_count = decoded.length > 1 ? decoded.length : 1;
+            let const flag_view       = StringView{flag_offset};
+            let const decoded         = utils::decode_utf8(flag_view, 0, 0);
+            let const utf8_byte_count = decoded.length > 1 ? decoded.length : 1;
 
-            error_message += flag_view.substring_of_length(0, byte_count);
+            error_message += flag_view.substring_of_length(0, utf8_byte_count);
           } else {
             error_message += "-";
 
@@ -1884,6 +1884,9 @@ leave_alternate_screen(const ExecContext &ec) wontthrow -> void
   unused(write_alternate_screen_sequence(ec, "\x1b[?1049l"));
 }
 
+/* memory: screen starts with frame.length + 64 bytes reserved on allocator
+           and is freed on return.
+   time:   O(frame.length) to copy the lines, then a single write call. */
 fn
 write_screen_frame(const ExecContext &ec,
                    StringView         frame,

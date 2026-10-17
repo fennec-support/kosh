@@ -414,15 +414,10 @@ hot fn
 EvalContext::write_dynamic_variable(StringView name,
                                     StringView value) throws -> bool
 {
-  if (!runtime_state().bash_dynamic_variables_enabled()) return false;
+  if (!is_dynamic_write_owner(name)) return false;
+  if (scope_store().has_active_local(name)) return false;
 
   let const id = dynamic_reader_of(name);
-
-  if (!id.has_value()) return false;
-  if ((variable_store().unset_dynamic_readers() & dynamic_reader_mask(*id)) !=
-      0)
-    return false;
-  if (scope_store().has_active_local(name)) return false;
 
   /* at this point: bash dynamic variables are enabled, name is RANDOM or
      SECONDS, and its reader is not unset. no local variable of that name is
@@ -912,6 +907,8 @@ EvalContext::resolve_nameref_for_write(StringView name) throws -> String
   if (target->is_empty())
     throw Error{"The name reference '" + name + "' is circular"};
 
+  /* at this point: target holds a nonempty name from resolve_nameref(), so
+     the name reference is not circular. */
   return target.take();
 }
 

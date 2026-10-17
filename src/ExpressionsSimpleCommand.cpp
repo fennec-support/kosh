@@ -1004,7 +1004,7 @@ internal::resolve_redirection(const Redirection    &redir,
                             "Redirection target is not a single file"};
   }
 
-  let mode =
+  let const mode =
       redirection_open_mode(redir.kind, cxt.runtime_state().no_clobber());
 
   const String &target_path = target[0];

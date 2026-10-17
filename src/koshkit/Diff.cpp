@@ -161,6 +161,11 @@ append_replacement_edits(ArrayList<diff_edit> &edits,
   return true;
 }
 
+/* memory: trace holds at most MAXIMUM_TRACE_ELEMENT_COUNT u32 values, and
+           edits holds at most left_lines.count() + right_lines.count()
+           entries, both in allocator.
+   time:   O((n + m) * d) for n = left_middle_count, m = right_middle_count,
+           and edit distance d. */
 static fn
 make_diff_edits(const diff_lines    &left_lines,
                 const diff_lines    &right_lines,
@@ -191,6 +196,7 @@ make_diff_edits(const diff_lines    &left_lines,
     return {steal(edits), false};
   }
 
+  /* at this point: both middle ranges hold at least one line. */
   constexpr usize MAXIMUM_TRACE_ELEMENT_COUNT = 262144;
   let             trace                       = ArrayList<u32>{allocator};
   let const       maximum_distance = left_middle_count + right_middle_count;

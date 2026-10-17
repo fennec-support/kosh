@@ -336,9 +336,11 @@ public:
       let const &op    = args[pos + 1];
       let const &right = args[pos + 2];
 
+      let const result = evaluate_binary(left, op, right);
+
       pos += 3;
 
-      return evaluate_binary(left, op, right);
+      return result;
     }
 
     let const result = !current().is_empty();
@@ -465,6 +467,9 @@ Test::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (expression_end <= 1) return 1;
+
+  /* at this point: expression_end is from 2 to arguments.count(), and the
+     closing ']' of "[" is outside the expression. */
 
   LOG(All, "test evaluating %zu operands", expression_end - 1);
 

@@ -641,7 +641,7 @@ private:
       }
 
     m_header_scan_position =
-        m_buffer.count() > 3 ? m_buffer.count() - 3 : m_offset;
+        m_buffer.count() - m_offset > 3 ? m_buffer.count() - 3 : m_offset;
 
     return static_cast<usize>(-1);
   }

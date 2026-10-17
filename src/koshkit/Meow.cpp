@@ -1047,19 +1047,19 @@ meet_cats(scene_state &scene) wontthrow -> void
       let &left_cat  = scene.cats[first];
       let &right_cat = scene.cats[second];
 
-      let const are_close = std::fabs(left_cat.column - right_cat.column) <
-                                static_cast<f64>(CAT_PIXEL_WIDTH) - 8.0 &&
-                            std::fabs(left_cat.row - right_cat.row) <
-                                static_cast<f64>(CAT_ROW_COUNT) - 1.0;
+      let const is_close = std::fabs(left_cat.column - right_cat.column) <
+                               static_cast<f64>(CAT_PIXEL_WIDTH) - 8.0 &&
+                           std::fabs(left_cat.row - right_cat.row) <
+                               static_cast<f64>(CAT_ROW_COUNT) - 1.0;
 
-      if (!are_close) continue;
+      if (!is_close) continue;
 
-      let const are_approaching =
+      let const is_approaching =
           (right_cat.column - left_cat.column) *
               (left_cat.columns_per_second - right_cat.columns_per_second) >
           0.0;
 
-      if (!are_approaching || left_cat.activity == cat_activity::Hissing) {
+      if (!is_approaching || left_cat.activity == cat_activity::Hissing) {
         continue;
       }
 
@@ -1534,11 +1534,11 @@ draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
                   CAT_PIXEL_WIDTH, 0, art.body[index], is_mirrored, palette,
                   eye_color);
 
-    let const tail_speed = cat.activity == cat_activity::Bracing
-                               ? TAIL_SWISH_SECONDS / 4.0
-                               : TAIL_SWISH_SECONDS;
+    let const tail_frame_seconds = cat.activity == cat_activity::Bracing
+                                       ? TAIL_SWISH_SECONDS / 4.0
+                                       : TAIL_SWISH_SECONDS;
     let const tail_frame =
-        static_cast<usize>(cat.phase_seconds / tail_speed) % 2;
+        static_cast<usize>(cat.phase_seconds / tail_frame_seconds) % 2;
 
     for (usize index = 0; index < art.tail_row_count; index++)
       draw_pixels(canvas, pixel_row + static_cast<isize>(art.tail_row + index),
@@ -2000,16 +2000,20 @@ Meow::execute(const ExecContext               &ec,
   }
 
   let const started_at_nanoseconds = os::monotonic_nanos();
-  let       seed_noise             = noise_source{};
+  let       scene                  = scene_state{};
 
-  seed_noise.state =
+  scene.noise.state =
       mix_bits(started_at_nanoseconds ^
                (static_cast<u64>(os::current_unix_seconds()) << 32) ^
-               static_cast<u64>(reinterpret_cast<uintptr_t>(&seed_noise))) |
+               static_cast<u64>(reinterpret_cast<uintptr_t>(&scene.noise))) |
       1;
 
+  scene.cat_count = cat_count;
+  scene.speed     = speed;
+
   if (!os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT))) {
-    print_still_cat(ec, *CAT_BREEDS[seed_noise.next_index(countof(CAT_BREEDS))],
+    print_still_cat(ec,
+                    *CAT_BREEDS[scene.noise.next_index(countof(CAT_BREEDS))],
                     allocator);
 
     return 0;
@@ -2027,12 +2031,7 @@ Meow::execute(const ExecContext               &ec,
 
   let const should_color           = koshkit_should_color();
   u64       last_frame_nanoseconds = started_at_nanoseconds;
-  let       scene                  = scene_state{};
   bool      has_placed_cats        = false;
-
-  scene.noise     = seed_noise;
-  scene.cat_count = cat_count;
-  scene.speed     = speed;
 
   let const do_sample = [](u64, Allocator) wontthrow -> Maybe<i32> {
     return None;

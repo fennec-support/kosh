@@ -132,6 +132,8 @@ Uniq::execute(const ExecContext               &ec,
       os::close_fd(input->descriptor);
   };
 
+  static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
+
   usize skipped_fields = 0;
 
   if (FLAG_UNIQ_FIELDS.is_set()) {
@@ -223,7 +225,7 @@ Uniq::execute(const ExecContext               &ec,
       output += count_prefix(run_length, cxt.scratch_allocator());
     output += previous.view();
     output += '\n';
-    if (output.count() >= 65536) do_write_output();
+    if (output.count() >= OUTPUT_FLUSH_BYTE_COUNT) do_write_output();
   };
 
   let reader =

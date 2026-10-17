@@ -222,17 +222,18 @@ markdown_analysis_source(StringView        source,
     let const line_end   = line_start + line.length;
     let const prefix     = markdown_prefix_length(line, quote_depth);
     let const content    = line.substring(prefix);
+    let const trimmed    = content.trim_blanks();
     bool      is_kept    = true;
     usize     masked_to  = prefix;
 
-    if (content.trim_blanks() == "..." ||
-        content.trim_blanks() == "\xe2\x80\xa6")
+    if (trimmed == "..." || trimmed == "\xe2\x80\xa6") {
       is_kept = false;
+    }
 
     if (language.is_session) {
       if (!heredoc_delimiter.is_empty()) {
         is_kept = true;
-        if (content.trim_blanks() == heredoc_delimiter) heredoc_delimiter = {};
+        if (trimmed == heredoc_delimiter) heredoc_delimiter = {};
       } else if (is_continuation) {
         is_kept = true;
       } else if (content.starts_with("$ ") || content.starts_with("% ")) {
@@ -241,12 +242,11 @@ markdown_analysis_source(StringView        source,
         is_kept = false;
       }
 
-      let const trimmed = content.trim_blanks();
-
       is_continuation =
           is_kept && !trimmed.is_empty() && trimmed[trimmed.length - 1] == '\\';
-      if (is_kept && heredoc_delimiter.is_empty())
+      if (is_kept && heredoc_delimiter.is_empty()) {
         heredoc_delimiter = session_heredoc_delimiter(content);
+      }
     }
 
     /* e.g. line = "cp <src> dir" with no session prompt and quote_depth 0.
@@ -284,10 +284,9 @@ parse_markdown_format(const parser_format_input &input,
   usize position = 0;
 
   while (position < input.source.length) {
-    let const opener_start = position;
-    let const line         = input.source.next_line(position);
-    let const quote_depth  = markdown_quote_depth(line);
-    let const fence_start  = markdown_prefix_length(line, quote_depth);
+    let const line        = input.source.next_line(position);
+    let const quote_depth = markdown_quote_depth(line);
+    let const fence_start = markdown_prefix_length(line, quote_depth);
 
     if (fence_start >= line.length ||
         (line[fence_start] != '`' && line[fence_start] != '~'))
@@ -305,6 +304,9 @@ parse_markdown_format(const parser_format_input &input,
     }
 
     if (fence_length < 3) continue;
+
+    /* at this point: fence_byte is '`' or '~', fence_length is at least 3,
+       and position is past the opener line. */
 
     let const language =
         markdown_language_of(line.substring(fence_start + fence_length));
@@ -335,8 +337,6 @@ parse_markdown_format(const parser_format_input &input,
           markdown_analysis_source(input.source, shell_start, shell_end,
                                    quote_depth, *language));
     }
-
-    if (position <= opener_start) break;
   }
 }
 

@@ -1329,7 +1329,7 @@ public:
 
       iteration_arenas[next_position].reset();
 
-      let next_term = calculator_fixed_multiply(
+      let const next_term = calculator_fixed_multiply(
           term, square, work_scale, iteration_arenas[next_position]);
 
       let const denominator  = ArithmeticValue{static_cast<i64>(index * 2 + 1)};
@@ -1338,7 +1338,7 @@ public:
 
       if (contribution.is_zero()) break;
 
-      let next_sum =
+      let const next_sum =
           (index & 1u) != 0
               ? ArithmeticValue::subtract(sum, contribution,
                                           iteration_arenas[next_position])
@@ -1422,18 +1422,19 @@ public:
       let const first       = is_cosine ? index * 2 - 1 : index * 2;
       let const second      = is_cosine ? index * 2 : index * 2 + 1;
       let const denominator = ArithmeticValue{static_cast<i64>(first * second)};
-      let       next_term   = calculator_fixed_divide(
+      let const next_term   = calculator_fixed_divide(
           calculator_fixed_multiply(term, square, work_scale,
-                                            iteration_arenas[next_position]),
+                                      iteration_arenas[next_position]),
           denominator, work_scale, iteration_arenas[next_position]);
 
       if (next_term.is_zero()) break;
 
-      let next_sum = (index & 1u) != 0
-                         ? ArithmeticValue::subtract(
-                               sum, next_term, iteration_arenas[next_position])
-                         : ArithmeticValue::add(
-                               sum, next_term, iteration_arenas[next_position]);
+      let const next_sum =
+          (index & 1u) != 0
+              ? ArithmeticValue::subtract(sum, next_term,
+                                          iteration_arenas[next_position])
+              : ArithmeticValue::add(sum, next_term,
+                                     iteration_arenas[next_position]);
 
       term           = next_term;
       sum            = next_sum;
@@ -1503,7 +1504,7 @@ public:
 
       iteration_arenas[next_position].reset();
 
-      let next_term = calculator_fixed_divide(
+      let const next_term = calculator_fixed_divide(
           calculator_fixed_multiply(term, value, work_scale,
                                     iteration_arenas[next_position]),
           ArithmeticValue{static_cast<i64>(index)}, work_scale,
@@ -1511,7 +1512,7 @@ public:
 
       if (next_term.is_zero()) break;
 
-      let next_sum =
+      let const next_sum =
           ArithmeticValue::add(sum, next_term, iteration_arenas[next_position]);
 
       term           = next_term;
@@ -1595,7 +1596,7 @@ public:
 
       iteration_arenas[next_position].reset();
 
-      let next_term = calculator_fixed_multiply(
+      let const next_term = calculator_fixed_multiply(
           term, square, work_scale, iteration_arenas[next_position]);
       let const contribution = calculator_fixed_divide(
           next_term, ArithmeticValue{static_cast<i64>(index * 2 + 1)},
@@ -1603,8 +1604,8 @@ public:
 
       if (contribution.is_zero()) break;
 
-      let next_sum = ArithmeticValue::add(sum, contribution,
-                                          iteration_arenas[next_position]);
+      let const next_sum = ArithmeticValue::add(
+          sum, contribution, iteration_arenas[next_position]);
 
       term           = next_term;
       sum            = next_sum;
@@ -1883,18 +1884,8 @@ public:
                               ? arguments[0].get_decimal_scale()
                               : 20;
 
-      if (arguments.count() == 2) {
-        let const requested_scale =
-            require_integer_argument(name, arguments[1]);
-
-        if (requested_scale < 0 || requested_scale > 100000) {
-          fail_span(arguments[1].start, arguments[1].end,
-                    "Invalid scale for 'sqrt'",
-                    "The scale must be between 0 and 100000");
-        }
-
-        decimal_scale = static_cast<u32>(requested_scale);
-      }
+      if (arguments.count() == 2)
+        decimal_scale = calculator_requested_scale(name, arguments);
 
       return ArithmeticValue::square_root(arguments[0], decimal_scale, arena);
     }
@@ -2010,23 +2001,26 @@ struct explicit_radix
 alwaysinline static fn
 lex_explicit_radix(StringView from) throws -> Maybe<explicit_radix>
 {
-  let const base_length = arithmetic_internal::count_leading_digits(from, 10);
+  let const base_digit_count =
+      arithmetic_internal::count_leading_digits(from, 10);
 
-  if (base_length == 0 || base_length >= from.length ||
-      from[base_length] != '#')
+  if (base_digit_count == 0 || base_digit_count >= from.length ||
+      from[base_digit_count] != '#')
   {
     return None;
   }
 
   let const base =
-      parse_arithmetic_operand(from.substring_of_length(0, base_length));
+      parse_arithmetic_operand(from.substring_of_length(0, base_digit_count));
 
   if (base < 2 || base > 64) {
     throw ErrorWithDetails{"The arithmetic base must be between 2 and 64",
                            "Use `base#digits` with a base from 2 to 64"};
   }
 
-  return explicit_radix{static_cast<u32>(base), base_length + 1};
+  /* at this point: from starts with base_digit_count digits and a '#', and
+     base is between 2 and 64. */
+  return explicit_radix{static_cast<u32>(base), base_digit_count + 1};
 }
 
 static fn
@@ -2769,11 +2763,11 @@ evaluate_arithmetic_value(
 
   /* A variable's value is data and is parsed without expansion. Bash also
      rejects a '$' or '`' in an operand taken from a value. */
-  let const needs_no_expansion = !expression.find_character('$').has_value() &&
-                                 !expression.find_character('`').has_value() &&
-                                 !has_removable_quote;
+  let const is_plain_text = !expression.find_character('$').has_value() &&
+                            !expression.find_character('`').has_value() &&
+                            !has_removable_quote;
 
-  if (text_kind == arithmetic_text_kind::Value || needs_no_expansion) {
+  if (text_kind == arithmetic_text_kind::Value || is_plain_text) {
     let parser = ArithmeticParser{context, expression, is_exact, arena,
                                   0,       false,      bc_scale};
 
@@ -2783,6 +2777,9 @@ evaluate_arithmetic_value(
     return parser.parse();
   }
 
+  /* at this point: text_kind is ShellSource and expression has a '$', a
+     '`', or a removable double quote, so the expansion runs before the
+     parse. */
   LOG(All, "expanding parameters inside the arithmetic before the parse");
 
   let const expanded_word = context->expand_modifier_word(
@@ -3189,6 +3186,8 @@ obvious_xor_power_operator_position(StringView expression) wontthrow
   do_skip(lexer::is_whitespace);
   if (position != expression.length) return None;
 
+  /* at this point: expression holds a number, '^', and a number, with
+     optional whitespace around them, and operator_position indexes the '^'. */
   return operator_position;
 }
 

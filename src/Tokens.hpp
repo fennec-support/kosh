@@ -158,6 +158,8 @@ public:
     if (source.length > MAXIMUM_TEXT_LENGTH) rarely
       throw std::bad_alloc{};
 
+    /* at this point: source.length is nonzero and at most MAXIMUM_TEXT_LENGTH,
+       so the u32 length fields below hold it exactly. */
     let const bytes = allocator.alloc_array<char>(source.length);
 
     memcpy(bytes, source.data, source.length);
@@ -548,6 +550,8 @@ public:
       return;
     }
 
+    /* at this point: position fits in source_position, and length fits in the
+       24-bit source_length. */
     source_position = static_cast<u32>(position);
     source_length   = static_cast<u32>(length);
   }

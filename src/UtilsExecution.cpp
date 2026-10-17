@@ -330,6 +330,7 @@ report_unresolved_stage(EvalContext       &cxt,
     return;
   }
 
+  /* at this point: target holds a descriptor for the diagnostic output. */
   koshka::flush();
 
   let const saved = os::save_and_replace_descriptor(2, *target);

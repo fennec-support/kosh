@@ -219,6 +219,8 @@ checked_timeout_program(StringView            program_name,
     throw error;
   }
 
+  /* at this point: program_path is not a directory, and program_name has no
+     trailing separator. */
   return program_path;
 }
 

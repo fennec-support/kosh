@@ -456,10 +456,10 @@ Od::execute(const ExecContext               &ec,
     format.pad_columns = row_width_columns - format.width_columns * field_count;
   }
 
-  let const              address_base         = od_base(address_radix);
-  let const              should_print_address = address_radix != 'n';
-  let const              is_verbose           = FLAG_OD_VERBOSE.is_enabled();
-  static constexpr usize OUTPUT_FLUSH_LENGTH  = 64 * 1024;
+  let const              address_base            = od_base(address_radix);
+  let const              should_print_address    = address_radix != 'n';
+  let const              is_verbose              = FLAG_OD_VERBOSE.is_enabled();
+  static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
   char                   previous_row_bytes[OD_ROW_LENGTH];
   usize                  previous_row_length = 0;
   bool                   has_previous_row    = false;
@@ -549,7 +549,7 @@ Od::execute(const ExecContext               &ec,
       output += '\n';
     }
 
-    if (output.length() >= OUTPUT_FLUSH_LENGTH) {
+    if (output.length() >= OUTPUT_FLUSH_BYTE_COUNT) {
       ec.print_to_stdout(output);
       output.clear();
     }

@@ -64,6 +64,9 @@ parse_compose_format(const parser_format_input &input,
   }
 
   if (!has_inline) return;
+  /* at this point: dockerfile is as long as input.source, with each
+     dockerfile_inline block copied and every other byte replaced by a space
+     or newline. */
 
   let const dockerfile_input =
       parser_format_input{dockerfile.view(), input.path, input.language_id};

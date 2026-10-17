@@ -73,6 +73,8 @@ parse_sequence_integer(StringView text) wontthrow -> Maybe<sequence_integer>
     magnitude = magnitude * 10 + digit;
   }
 
+  /* at this point: text is an optional sign followed by decimal digits, and
+     magnitude is at most maximum_magnitude. */
   i64 value;
 
   if (text[0] == '-' && magnitude == static_cast<u64>(INT64_MAX) + 1) {
@@ -326,6 +328,8 @@ brace_expand_text(StringView text,
     return results;
   }
 
+  /* at this point: group holds a brace group with alternatives, and depth is
+     below MAX_BRACE_DEPTH. */
   let const preamble        = text.substring_of_length(0, group->open);
   let const postamble       = text.substring(group->close + 1);
   let const post_expansions = brace_expand_text(postamble, alloc, depth + 1);
@@ -460,7 +464,7 @@ expand_braces(const Word &word, Allocator alloc) throws
       WordSegment &reference = out.segments[s];
 
       if (reference.kind != WordSegment::Kind::VariableReference ||
-          !reference.is_greedy_name)
+          !reference.is_greedy_name || reference.is_in_double_quotes)
       {
         continue;
       }
@@ -522,6 +526,7 @@ word_starts_array_subscript(const Word &word) wontthrow -> bool
     return false;
   }
 
+  /* at this point: the first segment is literal text that starts with '['. */
   for (usize segment_position = 0; segment_position < word.segments.count();
        segment_position++)
   {
@@ -781,9 +786,8 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         word = &*fallback_word;
       }
 
-      if (word != nullptr &&
-          (is_associative_literal ||
-           (is_array_literal && word_starts_array_subscript(*word))))
+      if (is_associative_literal ||
+          (is_array_literal && word_starts_array_subscript(*word)))
       {
         expanded_args.push_managed(expand_word_for_assignment(*word).view());
         do_record_location(location);

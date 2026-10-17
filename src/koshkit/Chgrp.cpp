@@ -71,8 +71,10 @@ Chgrp::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: operands holds a group operand and at least one file
+     operand, and group_id holds the resolved group id. */
   return utils::change_operands_ownership(
-      ec, cxt, "chgrp", operands,
+      ec, cxt, operands,
       {-1, *group_id, FLAG_CHGRP_RECURSIVE.is_enabled(),
        FLAG_CHGRP_ONE_FILE_SYSTEM.is_enabled(),
        FLAG_CHGRP_NO_DEREFERENCE.is_enabled(),

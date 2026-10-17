@@ -917,6 +917,9 @@ ErrorWithLocationAndDetails::details_to_string(StringView source,
 
   if (result.is_empty()) return result;
 
+  /* at this point: m_details_message is not empty, and result holds the
+     rendered details. */
+
   result += trailing_details_to_string();
 
   return result;

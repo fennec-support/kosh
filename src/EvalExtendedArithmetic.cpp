@@ -480,8 +480,8 @@ twos_complement_limbs(const ArithmeticValue &value,
                       usize                  width,
                       Allocator              allocator) throws -> ArrayList<u64>
 {
-  let result    = make_zero_limbs(width, allocator);
-  let magnitude = value.copy_magnitude(allocator);
+  let       result    = make_zero_limbs(width, allocator);
+  let const magnitude = value.copy_magnitude(allocator);
 
   for (usize index = 0; index < magnitude.count() && index < width; index++)
     result[index] = magnitude[index];
@@ -684,8 +684,10 @@ ArithmeticValue::from_magnitude(const u64 *limbs,
     }
   }
 
-  u64 *destination;
-  let  result =
+  /* at this point: limbs has no zero top limb, and the value cannot be
+     stored inline. */
+  u64      *destination;
+  let const result =
       allocate_promoted(count, is_negative, decimal_scale, arena, destination);
 
   if (count > 0) memcpy(destination, limbs, count * sizeof(u64));
@@ -751,7 +753,8 @@ ArithmeticValue::from_power_of_two(usize      bit_position,
   let const limb_position = bit_position / 64;
   let const limb_count    = limb_position + 1;
   u64      *limbs;
-  let result = allocate_promoted(limb_count, is_negative, 0, arena, limbs);
+  let const result =
+      allocate_promoted(limb_count, is_negative, 0, arena, limbs);
 
   memset(limbs, 0, limb_count * sizeof(u64));
   limbs[limb_position] = u64{1} << (bit_position % 64);
@@ -1164,7 +1167,7 @@ ArithmeticValue::subtract(const ArithmeticValue &left,
       return from_signed_128(result, arena);
   }
 
-  let       right_magnitude = right.copy_magnitude(allocator);
+  let const right_magnitude = right.copy_magnitude(allocator);
   let const negated =
       from_magnitude(right_magnitude.begin(), right_magnitude.count(),
                      !right.is_negative(), right.get_decimal_scale(), arena);
@@ -1189,6 +1192,8 @@ ArithmeticValue::multiply(const ArithmeticValue &left,
     return from_magnitude(nullptr, 0, false, decimal_scale, arena);
   }
 
+  /* at this point: left and right are nonzero, and decimal_scale is the
+     sum of their scales, which fits in u32. */
   if (!left.is_promoted() && !right.is_promoted()) {
     i128 result;
 
@@ -1201,7 +1206,7 @@ ArithmeticValue::multiply(const ArithmeticValue &left,
 
   let const left_magnitude  = left.copy_magnitude(allocator);
   let const right_magnitude = right.copy_magnitude(allocator);
-  let       result = multiply_limbs(left_magnitude, right_magnitude, allocator);
+  let const result = multiply_limbs(left_magnitude, right_magnitude, allocator);
 
   return from_magnitude(result.begin(), result.count(),
                         left.is_negative() != right.is_negative(),
@@ -1396,6 +1401,8 @@ ArithmeticValue::square_root(const ArithmeticValue &value,
   if (value.is_zero())
     return from_magnitude(nullptr, 0, false, decimal_scale, arena);
 
+  /* at this point: value is nonzero and nonnegative, and decimal_scale is at
+     least value.get_decimal_scale(). */
   BumpArena scaled_arena;
   let       magnitude = value.copy_magnitude(bump_allocator(scaled_arena));
   let const scale_growth_wide =
@@ -1476,8 +1483,9 @@ ArithmeticValue::shift_left(const ArithmeticValue &value,
     throw ErrorWithDetails{"Shift count is too large",
                            "The result cannot fit in addressable memory"};
 
+  /* at this point: value is nonzero, and bit_count holds the shift count. */
   let const magnitude = value.copy_magnitude(allocator);
-  let       result    = shift_magnitude_left(magnitude, *bit_count, allocator);
+  let const result    = shift_magnitude_left(magnitude, *bit_count, allocator);
 
   return from_magnitude(result.begin(), result.count(), value.is_negative(), 0,
                         arena);
@@ -1577,7 +1585,7 @@ ArithmeticValue::integer_part(const ArithmeticValue &value,
                               BumpArena             &arena) throws
     -> ArithmeticValue
 {
-  let decimal_count = value.get_decimal_scale();
+  let const decimal_count = value.get_decimal_scale();
 
   if (decimal_count == 0) return value;
 

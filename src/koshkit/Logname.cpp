@@ -42,6 +42,7 @@ Logname::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: name holds the login name, and operands is empty. */
   ec.print_to_stdout(name->view());
   ec.print_to_stdout("\n");
 

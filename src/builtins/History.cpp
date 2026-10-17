@@ -81,6 +81,8 @@ history_target_needs_separator(const Path &target) throws
 
   if (!opened.has_value()) return Error{os::last_system_error_message()};
 
+  /* at this point: status.size is non-zero and opened holds a read descriptor
+     for target. */
   let const fd        = opened.value();
   char      last_byte = '\0';
 
@@ -670,6 +672,8 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (parsed.value() > 0) wanted_count = static_cast<usize>(parsed.value());
   }
 
+  /* at this point: no list maintenance form ran, and wanted_count is 0 for
+     all events or the positive count operand. */
   if (!print_history_list(ec, cxt, wanted_count)) return 1;
 
   return 0;

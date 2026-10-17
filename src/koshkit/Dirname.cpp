@@ -59,6 +59,8 @@ directory_part_of(StringView path) wontthrow -> StringView
 
   if (end_position == 0) return StringView{"/"};
 
+  /* at this point: path[0, end_position) is non-empty and does not end
+     with a separator. */
   return path.substring_of_length(0, end_position);
 }
 

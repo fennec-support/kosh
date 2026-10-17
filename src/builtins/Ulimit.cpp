@@ -176,7 +176,7 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                            "with `ulimit -p`"};
   }
 
-  let current_limit = os::get_resource_limit(resource.kind);
+  let const current_limit = os::get_resource_limit(resource.kind);
 
   if (!current_limit.has_value())
     throw Error{"Unable to read the resource limit: " +
@@ -238,6 +238,9 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     value = parsed.value() * units;
   }
+
+  /* at this point: value is os::RESOURCE_UNLIMITED, or the requested limit
+     scaled by units is below os::RESOURCE_UNLIMITED. */
 
   if (FLAG_HARD.is_enabled() || !FLAG_SOFT.is_enabled()) {
     limit.hard = value;

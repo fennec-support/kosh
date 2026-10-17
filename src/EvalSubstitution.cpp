@@ -152,6 +152,8 @@ EvalContext::register_embedded_source(StringView            inner,
     return false;
   }
 
+  /* at this point: inner_offset has a value or body is non-null. */
+
   source_store().push_embedded_source(embedded_source{
       inner_offset.has_value() ? inner : StringView{}, parent, parent_location,
       inner_offset.has_value() ? *inner_offset : 0, body,
@@ -486,8 +488,9 @@ EvalContext::setup_process_substitution(
   let const direction              = text[0];
   let const is_command_pipe_writer = direction == '<';
 
-  LOG(Debug, "setting up a process substitution where the command %s the pipe",
-      is_command_pipe_writer ? "writes" : "reads");
+  LOG(Debug, "setting up a process substitution where the command %s",
+      is_command_pipe_writer ? "writes to the pipe"
+                             : "takes input from the pipe");
 
   let const ast_mark = arena_store().parse_arena()->mark();
 
@@ -1014,15 +1017,14 @@ EvalContext::run_captured_substitution(
                                      ? previous_source->view()
                                      : StringView{}});
 
+    was_pipe_handed_off = true;
+
     if (!forked_child.has_value()) {
       os::close_fd(pipe->in);
       os::close_fd(pipe->out);
-      was_pipe_handed_off = true;
       in_process_snapshot = snapshot_state();
     } else {
       let const child = *forked_child;
-
-      was_pipe_handed_off = true;
 
       if (child == 0) {
         os::close_fd(pipe->in);

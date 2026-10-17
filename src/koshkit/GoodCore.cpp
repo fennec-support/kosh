@@ -160,6 +160,7 @@ append_unique_path(ArrayList<String> &paths,
     if (existing.view() == path) return;
   }
 
+  /* at this point: path is absolute and not yet in paths. */
   if (Path{path, allocator}.is_regular_file()) paths.push_managed(path);
 }
 
@@ -522,6 +523,7 @@ GoodCore::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: core exists and has a non-zero size. */
   print_progress(ec, "collecting executable and libraries", progress_mode);
   collect_core_libraries(cxt, core.view(), binary->view(), paths, allocator);
   print_progress(ec,
@@ -531,8 +533,6 @@ GoodCore::execute(const ExecContext               &ec,
 
   append_unique_path(paths, binary->view(), allocator);
 
-  usize copied_path_count = 0;
-
   for (let const &path : paths) {
     print_progress(ec, "copying " + path.view(), progress_mode);
     if (!copy_into_root(stage, path.view(), allocator)) {
@@ -540,7 +540,6 @@ GoodCore::execute(const ExecContext               &ec,
 
       return 1;
     }
-    copied_path_count++;
   }
 
   let metadata = String{allocator};
@@ -550,7 +549,7 @@ GoodCore::execute(const ExecContext               &ec,
   metadata += "\nExecutable: ";
   metadata += binary->view();
   metadata += "\nCollected files: ";
-  metadata += String::from(copied_path_count, allocator).view();
+  metadata += String::from(paths.count(), allocator).view();
   metadata += "\n";
   if (let const uname = resolve_util_program(cxt, "uname")) {
     let uname_arguments = ArrayList<String>{heap_allocator()};
@@ -704,7 +703,7 @@ GoodCore::execute(const ExecContext               &ec,
     table.add_row(cells);
     cells.clear();
 
-    let const file_count = String::from(copied_path_count, allocator);
+    let const file_count = String::from(paths.count(), allocator);
 
     cells.push({"Files", colors::soft(colors::ansi::BOLD_CYAN)});
     cells.push({file_count.view(), colors::soft(colors::ansi::GREEN)});

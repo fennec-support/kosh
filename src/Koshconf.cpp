@@ -821,6 +821,7 @@ read_koshconf_text(StringView        text,
       continue;
     }
 
+    /* at this point: option is configurable, and value is valid for option. */
     let setting = koshconf_setting{
         option, String{heap_allocator(), value}
     };
@@ -1004,6 +1005,7 @@ read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
       continue;
     }
 
+    /* at this point: option is serialized, and value is its decoded value. */
     decoded.push(koshconf_setting{option, steal(*value)});
   }
 

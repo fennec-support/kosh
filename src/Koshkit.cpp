@@ -397,7 +397,7 @@ print_util_help(const ExecContext &ec,
   help_text += make_synopsis(name, synopsis_lines);
   help_text += '\n';
 
-  let const should_color = colors::stdout_wants_color();
+  let const should_color = koshkit_should_color();
 
   help_text += make_flag_help(flags, should_color);
   help_text += '\n';
@@ -1555,6 +1555,8 @@ scaled_filesystem_blocks(u64 block_count,
   let const high               = static_cast<u64>(rounded_byte_count >> 64u);
 
   if (high >= output_unit) return UINT64_MAX;
+  /* at this point: high is less than output_unit, so the quotient of the
+     division fits in u64. */
 
   return os::divide_u128_by_u64(high, static_cast<u64>(rounded_byte_count),
                                 output_unit)

@@ -43,19 +43,19 @@ unpoison_arena_bytes(const u8 *start, usize size) wontthrow -> void
 
 static u32        NEXT_ARENA_INCARNATION = 1;
 static BumpArena *LIVE_ARENAS            = nullptr;
-static bool       LIVE_ARENAS_LOCK       = false;
+static bool       IS_LIVE_ARENAS_LOCKED  = false;
 
 class LiveArenasLock
 {
 public:
   LiveArenasLock() wontthrow
   {
-    while (__atomic_test_and_set(&LIVE_ARENAS_LOCK, __ATOMIC_ACQUIRE)) {}
+    while (__atomic_test_and_set(&IS_LIVE_ARENAS_LOCKED, __ATOMIC_ACQUIRE)) {}
   }
 
   ~LiveArenasLock() wontthrow
   {
-    __atomic_clear(&LIVE_ARENAS_LOCK, __ATOMIC_RELEASE);
+    __atomic_clear(&IS_LIVE_ARENAS_LOCKED, __ATOMIC_RELEASE);
   }
 };
 
@@ -139,8 +139,9 @@ BumpArena::unregister_live() wontthrow -> void
 }
 
 /* memory: none.
-   time:   O(B) in the total block count B of all live arenas, scanned while
-           LIVE_ARENAS_LOCK is held. the lock spins until it is acquired. */
+   time:   O(B) in the total block count B of all live arenas, scanned
+           while IS_LIVE_ARENAS_LOCKED is held. the lock spins until it is
+           acquired. */
 fn
 BumpArena::find_live_owner(const opaque *pointer) wontthrow -> BumpArena *
 {
@@ -339,6 +340,8 @@ BumpArena::register_lifetime() throws -> LifetimeIdentity
         m_lifetime_slots[slot_position].next_free_position;
   }
 
+  /* at this point: slot_position indexes m_lifetime_slots, and that slot
+     is not on the free list. */
   let &slot = m_lifetime_slots[slot_position];
 
   slot.payload_end        = mark();
@@ -358,6 +361,8 @@ BumpArena::is_lifetime_valid(LifetimeIdentity identity) const wontthrow -> bool
     return false;
   }
 
+  /* at this point: identity.arena_incarnation matches this arena, and
+     identity.slot_position indexes m_lifetime_slots. */
   let const &slot = m_lifetime_slots[identity.slot_position];
 
   return slot.next_free_position == identity.slot_position &&

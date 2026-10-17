@@ -344,6 +344,8 @@ Calc::execute(const ExecContext               &ec,
         "enter the interactive prompt with `-i`"};
   }
 
+  /* at this point: operands holds at least one expression, and run_repl()
+     did not run. */
   LOG(Debug, "calc evaluating %zu arithmetic expressions", operands.count());
 
   String expression{cxt.scratch_allocator()};

@@ -462,10 +462,8 @@ view_settles_echo_escapes(StringView view) wontthrow -> bool
 cold fn
 substitution_runs_pattern_matcher(StringView body) throws -> bool
 {
-  usize position = 0;
-
-  for (usize scan_position = 0; scan_position < body.length; scan_position++)
-    if (body[scan_position] == '|') position = scan_position + 1;
+  let const last_pipe = body.find_last_character('|');
+  usize     position  = last_pipe.has_value() ? *last_pipe + 1 : 0;
 
   let const command = body.next_ascii_whitespace_word(position);
 
@@ -636,7 +634,7 @@ single_literal_file_operand(const ArrayList<const Token *> &args) throws
     if (view.is_empty()) return None;
 
     if (view.length > 1 && view[0] == '-') {
-      if (view == "--" || view.starts_with(StringView{"--target-directory"})) {
+      if (view == "--" || view.starts_with(StringView{"--t"})) {
         return None;
       }
 
@@ -688,6 +686,8 @@ constexpr StaticStringSet FIND_LEADING_OPTIONS{FIND_LEADING_OPTION_KEYS};
 pure fn
 is_find_leading_option(StringView word) wontthrow -> bool
 {
+  if (word.starts_with(StringView{"-O"})) return true;
+
   return FIND_LEADING_OPTIONS.contains(word);
 }
 

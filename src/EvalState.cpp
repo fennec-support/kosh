@@ -1355,6 +1355,9 @@ FunctionStore::append_wire(String &output) const throws -> void
             return;
           }
 
+          /* at this point: info and source are not null, source is not empty,
+             and line_offset, enclosing_line_count, and definition_line fit
+             their wire fields. */
           append_subshell_bootstrap_text(records, name);
           append_subshell_bootstrap_u32(
               records, find_wire_source_name(names, info->source_name_index));
@@ -1816,6 +1819,8 @@ getopts_cursor::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
 
+  /* at this point: payload is fully read, and char_index_bits is nonzero
+     and fits usize. */
   cursor.char_index = static_cast<usize>(char_index_bits);
 
   return true;
@@ -2096,10 +2101,12 @@ FunctionStore::from_wire(subshell_bootstrap_reader &reader,
     return false;
   }
 
-  let const record_count = static_cast<usize>(payload.read_u32());
+  let const       record_count = static_cast<usize>(payload.read_u32());
+  constexpr usize MINIMUM_FUNCTION_RECORD_BYTE_COUNT = 7 * sizeof(u32);
 
   if (!payload.is_valid ||
-      record_count > payload.get_remaining_length() / (7 * sizeof(u32)))
+      record_count >
+          payload.get_remaining_length() / MINIMUM_FUNCTION_RECORD_BYTE_COUNT)
   {
     return false;
   }
@@ -3213,12 +3220,14 @@ EvalContext::register_inherited_source_origin(
     origin_suffix           = payload.read_text();
   }
 
-  let const call_count         = static_cast<usize>(payload.read_u32());
-  let const source_frame_count = static_cast<usize>(payload.read_u32());
+  let const       call_count         = static_cast<usize>(payload.read_u32());
+  let const       source_frame_count = static_cast<usize>(payload.read_u32());
+  constexpr usize MINIMUM_SOURCE_FRAME_BYTE_COUNT = 14;
 
   if (!payload.is_valid || (has_origin && origin_line_number == 0) ||
       call_count > function_store().call_frames().count() ||
-      source_frame_count > payload.get_remaining_length() / 14)
+      source_frame_count >
+          payload.get_remaining_length() / MINIMUM_SOURCE_FRAME_BYTE_COUNT)
   {
     invalid_subshell_bootstrap();
   }
@@ -3618,7 +3627,7 @@ EvalContext::make_stats_string() const throws -> String
           ? arena_store().parse_arena()->bytes_used()
           : 0;
   usize peak_ast_arena_byte_count =
-      evaluation_metrics_store().peak_ast_arena_bytes();
+      evaluation_metrics_store().peak_ast_arena_byte_count();
 
   if (live_ast_arena_byte_count > peak_ast_arena_byte_count)
     peak_ast_arena_byte_count = live_ast_arena_byte_count;

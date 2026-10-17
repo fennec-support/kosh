@@ -300,6 +300,8 @@ plain_variable_reference_name(const Token *token) wontthrow -> Maybe<StringView>
 
   if (!lexer::word_is_variable_name(name)) return None;
 
+  /* at this point: name is a variable name that views the only segment of
+     the word in token, so it is valid while token lives. */
   return name;
 }
 
@@ -488,6 +490,8 @@ simple_command_static_verdict(const ArrayList<const Token *> &args,
 
   if (!kind.has_value()) return None;
 
+  /* at this point: name holds the literal command word, no function or
+     alias shadows it, and kind is its static verdict kind. */
   switch (*kind) {
   case static_verdict_kind::always_true:
     if (args.count() != 1) return None;
@@ -775,15 +779,17 @@ rule_loop_elimination(const Expression *node,
     return false;
   }
 
-  let const body_would_run = loop_node->is_until() ? !*verdict : *verdict;
+  let const should_run_body = loop_node->is_until() ? !*verdict : *verdict;
 
-  if (body_would_run) {
+  if (should_run_body) {
     LOG(All,
         "the loop fold declines, the body would run under the static verdict");
 
     return false;
   }
 
+  /* at this point: loop_node is not folded, verdict is its static condition,
+     and should_run_body is false. */
   LOG(All, "loop elimination folded the %s loop to a skip",
       loop_node->is_until() ? "until" : "while");
   loop_node->set_folded_to_skip();
@@ -809,6 +815,8 @@ rule_eliminate_compound_body(const Expression *node,
   if (clause->folded_branch_index() != clause->branches().count()) return false;
   if (clause->otherwise() != nullptr) return false;
 
+  /* at this point: the folded branch is the implicit else of clause, and
+     clause has no else body. */
   LOG(All, "compound-body elimination folded an if with no taken branch to a "
            "no-op");
   clause->set_fully_eliminated();
@@ -868,6 +876,8 @@ rule_fold_cstyle_for(const Expression *node,
     return false;
   }
 
+  /* at this point: loop_node has no folded condition, value holds the fold
+     of trimmed, and is_exact_nonzero holds its exact nonzero verdict. */
   loop_node->set_folded_condition(*value, is_exact_nonzero);
   LOG(All, "folded the c-style for condition '%.*s' to %lld",
       static_cast<int>(trimmed.length), trimmed.data,

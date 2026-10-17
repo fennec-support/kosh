@@ -82,6 +82,8 @@ EvalContext::run_completion_command(StringView command,
     return ArrayList<String>{heap_allocator()};
   }
 
+  /* at this point: the shell state is restored, was_interrupted is false,
+     and output holds the captured text or is empty after a caught error. */
   let       candidates = ArrayList<String>{heap_allocator()};
   let const text       = output.view();
   usize     line_start = 0;
@@ -258,11 +260,12 @@ EvalContext::run_completion_function(
     leave_function_scope();
   };
 
-  let const saved_terminal_exec = execution_store().is_terminal_exec_allowed();
+  let const was_terminal_exec_allowed =
+      execution_store().is_terminal_exec_allowed();
 
   execution_store().is_terminal_exec_allowed() = false;
   defer {
-    execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
+    execution_store().is_terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
   let was_interrupted = false;

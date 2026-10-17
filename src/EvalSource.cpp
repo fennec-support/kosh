@@ -149,18 +149,16 @@ EvalContext::run_program_fallback(ExecContext     &ec,
         String{heap_allocator(), frame.source_path.view()},
         frame.kind
     });
-    fallback_context.source_store().source_frames().back().function_call_depth =
-        frame.function_call_depth;
-    fallback_context.source_store().source_frames().back().was_printed =
-        frame.was_printed;
-    fallback_context.source_store().source_frames().back().should_defer_trace =
-        frame.should_defer_trace;
-    fallback_context.source_store().source_frames().back().has_deferred_trace =
-        frame.has_deferred_trace;
-    fallback_context.source_store()
-        .source_frames()
-        .back()
-        .deferred_trace_location = frame.deferred_trace_location;
+    let &copied = fallback_context.source_store().source_frames().back();
+
+    copied.function_call_depth     = frame.function_call_depth;
+    copied.definition              = frame.definition;
+    copied.is_source_changing      = frame.is_source_changing;
+    copied.was_printed             = frame.was_printed;
+    copied.was_definition_printed  = frame.was_definition_printed;
+    copied.should_defer_trace      = frame.should_defer_trace;
+    copied.has_deferred_trace      = frame.has_deferred_trace;
+    copied.deferred_trace_location = frame.deferred_trace_location;
   }
 
   defer {
@@ -177,6 +175,11 @@ EvalContext::run_program_fallback(ExecContext     &ec,
           fallback_context.source_store()
               .source_frames()[frame_index]
               .was_printed;
+      source_store().source_frames()[frame_index].was_definition_printed =
+          source_store().source_frames()[frame_index].was_definition_printed ||
+          fallback_context.source_store()
+              .source_frames()[frame_index]
+              .was_definition_printed;
       source_store().source_frames()[frame_index].has_deferred_trace =
           source_store().source_frames()[frame_index].has_deferred_trace ||
           fallback_context.source_store()
@@ -887,6 +890,9 @@ EvalContext::resolve_source_path(
 
   if (!path_matches.is_empty()) return path_matches[0].clone();
   if (runtime_state().is_posix_mode()) return None;
+
+  /* at this point: path has no directory separator, sourcepath is enabled,
+     posix mode is off, and the PATH search found no regular file for path. */
 
   return source_path;
 }

@@ -56,19 +56,18 @@ Nice::execute(const ExecContext               &ec,
     increment = parsed.value();
   }
 
-  let command = ArrayList<String>{cxt.scratch_allocator()};
-
-  for (let const &operand : operands)
-    command.push(operand.clone());
+  /* at this point: operands is not empty, and increment fits in i32. */
 
   cxt.prepare_child_environment();
 
-  let const result = os::run_nice(command, static_cast<i32>(increment));
+  let const result = os::run_nice(operands, static_cast<i32>(increment));
 
   if (!result.has_value()) {
+    let const exec_errno = errno;
+
     KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[0], "run", operands[0]);
 
-    return 126;
+    return exec_errno == ENOENT ? 127 : 126;
   }
 
   return *result;

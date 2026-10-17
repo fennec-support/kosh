@@ -308,7 +308,7 @@ public:
       value.move_to_allocator(m_allocator);
 
     if (m_length == m_capacity) rarely
-      reserve(m_length + 1);
+      reserve(static_cast<usize>(m_length) + 1);
     new (&m_data[m_length]) T(steal(value));
     m_length++;
   }
@@ -324,7 +324,7 @@ public:
   push_managed(Args &&...args) throws -> void
   {
     if (m_length == m_capacity) rarely
-      reserve(m_length + 1);
+      reserve(static_cast<usize>(m_length) + 1);
 
     new (&m_data[m_length]) T{m_allocator, static_cast<Args &&>(args)...};
     m_length++;
@@ -611,7 +611,7 @@ private:
       return;
     }
 
-    reserve(m_length + 1);
+    reserve(static_cast<usize>(m_length) + 1);
     if constexpr (std::is_trivially_copyable_v<T>) {
       __builtin_memmove(m_data + index + 1, m_data + index,
                         (m_length - index) * sizeof(T));
@@ -917,6 +917,8 @@ private:
         continue;
       }
 
+      /* at this point: m_data[first] holds the pivot chosen by select_pivot(),
+         and the range has more than INSERTION_SORT_THRESHOLD elements. */
       bool      was_partitioned = false;
       let const pivot_position =
           partition_right(first, last, is_less, was_partitioned);

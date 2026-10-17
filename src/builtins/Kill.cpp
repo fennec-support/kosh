@@ -49,11 +49,11 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     i32 status  = 0;
 
     for (usize i = 2; i < args.count(); i++) {
-      let const &spec = args[i];
+      let const    &spec = args[i];
+      Maybe<String> name = koshka::None;
 
       if (StringView{spec}.is_all_decimal_digits()) {
-        let const     parsed = StringView{spec}.to<i64>();
-        Maybe<String> name   = koshka::None;
+        let const parsed = StringView{spec}.to<i64>();
 
         if (!parsed.is_error() && parsed.value() <= INT32_MAX) {
           let const number = static_cast<i32>(parsed.value());
@@ -63,20 +63,14 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             name = os::signal_name_from_number(number - 128);
           }
         }
-
-        if (name.has_value()) {
-          listing += *name;
-          listing += '\n';
-        } else {
-          report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                    StringView{"'"} + spec +
-                                        "' is not a valid signal");
-          status = 1;
-        }
       } else if (let const number = os::signal_number_from_name(spec);
                  number.has_value())
       {
-        listing += String::from(*number, cxt.scratch_allocator()).view();
+        name = String::from(*number, cxt.scratch_allocator());
+      }
+
+      if (name.has_value()) {
+        listing += *name;
         listing += '\n';
       } else {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
@@ -132,6 +126,8 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (first_target >= args.count())
     return report_usage_error(ec, cxt, ec.program());
 
+  /* at this point: first_target indexes an operand in args, and
+     signal_number holds the resolved signal. */
   cxt.job_table_store().forget_waited_jobs();
 
   i32 status = 0;

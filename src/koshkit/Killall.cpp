@@ -60,17 +60,28 @@ Killall::execute(const ExecContext               &ec,
 
   let const self_pid         = os::get_shell_process_id();
   let const processes        = os::enumerate_processes();
+  bool      has_matched_any  = false;
   bool      has_signaled_any = false;
 
   for (let const &process : processes) {
     if (process.pid == self_pid) continue;
     if (process.name == wanted) {
+      has_matched_any = true;
       if (os::signal_process(os::process_from_pid(process.pid), signal_number))
+      {
         has_signaled_any = true;
+      } else {
+        let const reason   = os::last_system_error_message();
+        let const pid_text = String::from(process.pid, cxt.scratch_allocator());
+
+        KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "killing pid " +
+                                                          pid_text +
+                                                          " failed: " + reason);
+      }
     }
   }
 
-  if (!has_signaled_any) {
+  if (!has_matched_any) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             String{cxt.scratch_allocator(), wanted} +
                                 ": no process found");

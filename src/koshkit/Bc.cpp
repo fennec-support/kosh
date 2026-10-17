@@ -450,6 +450,7 @@ bc_parse_register(StringView   value,
     return {};
   }
 
+  /* at this point: parsed holds a u64 value that fits in u32. */
   return static_cast<u32>(parsed.value());
 }
 
@@ -1076,12 +1077,13 @@ bc_evaluate_function_call(StringView         statement,
                                " arguments"};
   }
 
+  /* at this point: function points to the bc_function for name, and
+     arguments holds one non-empty StringView per parameter. */
   let prepared = ArrayList<bc_function_argument>{cxt.scratch_allocator()};
 
   for (usize index = 0; index < function->parameters.count(); index++) {
     bc_function_argument argument{cxt.scratch_allocator()};
-    let const            source =
-        index < arguments.count() ? arguments[index] : StringView{"0"};
+    let const            source = arguments[index];
 
     if (function->parameters[index].is_array) {
       let source_name = source;
@@ -1197,7 +1199,7 @@ bc_expand_function_calls(StringView         expression,
       continue;
     }
 
-    let result = bc_evaluate_function_call(
+    let const result = bc_evaluate_function_call(
         expression.substring_of_length(name_start, call_end - name_start), ec,
         cxt, runtime);
 
@@ -1307,6 +1309,9 @@ bc_execute_simple(StringView         statement,
     return;
   }
 
+  /* at this point: statement is not a quoted string, a function call, or an
+     ibase, obase, or scale assignment. */
+
   try {
     let result = bc_evaluate_text(statement, cxt, runtime, ec);
 
@@ -1378,6 +1383,8 @@ bc_control_parts(StringView  statement,
       statement.substring_of_length(header_start, position - header_start - 1);
   body = statement.substring(position).trim_blanks();
 
+  /* at this point: the parentheses after keyword are balanced, header is
+     the text between them, and body is the trimmed text after them. */
   return !body.is_empty();
 }
 
@@ -1583,6 +1590,9 @@ Bc::execute(const ExecContext               &ec,
 
   if (visit == source_visit_result::Interrupted) return 130;
   if (visit == source_visit_result::Stopped) return 1;
+
+  /* at this point: every source was read, and program holds the text of
+     each one followed by a newline. */
   program = bc_strip_comments(program.view(), cxt.scratch_allocator());
 
   bc_runtime runtime{cxt.scratch_allocator()};

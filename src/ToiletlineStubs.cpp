@@ -22,9 +22,7 @@ namespace koshka::internal {
 static constexpr usize NO_EDITOR_HISTORY_ENTRY_MAX_BYTE_COUNT = 2048;
 static constexpr usize NO_EDITOR_HISTORY_DECODED_MAX_BYTE_COUNT =
     toiletline::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT;
-static constexpr u64  HISTORY_HASH_OFFSET_BASIS = 14695981039346656037ull;
-static constexpr u64  HISTORY_HASH_PRIME        = 1099511628211ull;
-static constexpr char NO_EDITOR_HISTORY_FILE[]  = ".kosh_history";
+static constexpr char NO_EDITOR_HISTORY_FILE[] = ".kosh_history";
 
 struct no_editor_history_state
 {
@@ -36,7 +34,6 @@ struct no_editor_history_state
   usize            trailing_record_start_byte_offset{0};
   usize            first_record_index{0};
   os::file_status  file_status{};
-  u64              file_contents_hash{HISTORY_HASH_OFFSET_BASIS};
   u16              entry_limit{TL_HISTORY_MAX_SIZE};
   bool             is_loaded{false};
 };
@@ -60,17 +57,6 @@ get_no_editor_history_state() -> no_editor_history_state &
   static no_editor_history_state state;
 
   return state;
-}
-
-static fn
-extend_history_contents_hash(u64 hash, StringView contents) -> u64
-{
-  for (usize byte_offset = 0; byte_offset < contents.length; byte_offset++) {
-    hash ^= static_cast<u8>(contents[byte_offset]);
-    hash *= HISTORY_HASH_PRIME;
-  }
-
-  return hash;
 }
 
 static fn
@@ -259,7 +245,6 @@ decode_history_record(String             &decoded,
 static fn
 scan_no_editor_history(const Path &path,
                        StringView  contents,
-                       Maybe<u64>  contents_hash        = None,
                        bool        should_allow_missing = false)
     -> history_scan_outcome
 {
@@ -273,11 +258,7 @@ scan_no_editor_history(const Path &path,
   state.total_count                       = 0;
   state.trailing_record_start_byte_offset = 0;
   state.first_record_index                = 0;
-  state.file_contents_hash =
-      contents_hash.has_value()
-          ? *contents_hash
-          : extend_history_contents_hash(HISTORY_HASH_OFFSET_BASIS, contents);
-  state.is_loaded = false;
+  state.is_loaded                         = false;
 
   usize               byte_offset = 0;
   bool                is_valid    = true;
@@ -325,7 +306,7 @@ load_no_editor_history(const Path &path, bool should_allow_missing)
         return Error{os::last_system_error_message()};
       }
 
-      if (scan_no_editor_history(path, {}, None, true) ==
+      if (scan_no_editor_history(path, {}, true) ==
           history_scan_outcome::Loaded)
       {
         return Success;
@@ -726,6 +707,8 @@ sync_history() -> koshka::ErrorOr<koshka::Ok>
   if (!lock.has_value())
     return koshka::Error{koshka::os::last_system_error_message()};
   defer { koshka::os::release_process_lock(lock.take()); };
+  /* at this point: the process lock on the history directory is held until
+     return, and path is resolved. */
 
   return koshka::internal::load_no_editor_history(*path, true);
 }

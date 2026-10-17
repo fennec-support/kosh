@@ -620,6 +620,8 @@ format_f64(f64 value, Allocator allocator) throws -> String
     return String{allocator};
   }
 
+  /* at this point: buffer holds length bytes of the %.17g text. */
+
   return String{
       allocator, StringView{buffer, static_cast<usize>(length)}
   };

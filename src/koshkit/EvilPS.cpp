@@ -372,6 +372,7 @@ append_bounded_command(String    &output,
   let const available = line_width_limit - current_width - 1;
 
   if (available == 0) return;
+  /* at this point: available is at least 1, and command is not empty. */
 
   output += " ";
   if (toiletline::get_display_width(command) <= available) {
@@ -718,6 +719,9 @@ render_process_snapshot(const ExecContext               &ec,
     return 0;
   }
 
+  /* the root exists, so the search hides its whole tree. */
+  if (!operands.is_empty() && root_position < nodes.count()) return 0;
+
   if (!operands.is_empty()) {
     report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "evilps",
                                    "no process has the id " + operands[0],
@@ -953,6 +957,9 @@ EvilPS::execute(const ExecContext               &ec,
                                  FLAG_EVILPS_CUMULATIVE, allocator);
 
   if (!report_options.has_value()) return 1;
+
+  /* at this point: operands holds at most one operand, sort_key is None or a
+     valid key, and report_options holds the parsed window. */
 
   let const window_nanoseconds = report_options->get_window_nanoseconds();
   let       line_width_limit   = SIZE_MAX;

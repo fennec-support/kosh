@@ -55,6 +55,8 @@ load_partial_word(const char *bytes, usize byte_count) wontthrow -> u64
   }
 
   if (byte_count == 0) return 0;
+  /* at this point: byte_count is 1 to 3, so bytes[0], bytes[middle], and
+     bytes[last] are inside the buffer. */
 
   /* e.g. bytes "abc" with byte_count 3: middle 1, last 2.
        bytes[0] 'a' = 0x61
@@ -184,8 +186,8 @@ public:
   usize       length{0};
 
   StringView() = default;
-  constexpr StringView(const char *bytes, usize count)
-      : data(bytes), length(count)
+  constexpr StringView(const char *bytes, usize byte_count)
+      : data(bytes), length(byte_count)
   {}
 
   constexpr StringView(const char *cstr) wontthrow
@@ -223,6 +225,8 @@ public:
   {
     if (length != other.length) return false;
     if (length == 0) return true;
+    /* at this point: length is non-zero and equals other.length, so
+       are_bytes_equal() reads length bytes from each view. */
 
     return byte_scan::are_bytes_equal(data, other.data, length);
   }
@@ -273,7 +277,8 @@ public:
   substring(usize start) const wontthrow -> StringView;
 
   mustuse pure fn
-  substring_of_length(usize start, usize count) const wontthrow -> StringView;
+  substring_of_length(usize start, usize byte_count) const wontthrow
+      -> StringView;
   mustuse fn
   next_line(usize &position) const wontthrow -> StringView;
   mustuse fn

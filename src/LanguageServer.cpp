@@ -148,7 +148,7 @@ public:
   DocumentStore() : m_documents(heap_allocator()) {}
 
   pure fn
-  documents() wontthrow -> ArrayList<Document> &
+  get_documents() wontthrow -> ArrayList<Document> &
   {
     return m_documents;
   }
@@ -273,7 +273,7 @@ public:
   }
 
   pure fn
-  diagnostics() const wontthrow -> const ArrayList<source_diagnostic> &
+  get_diagnostics() const wontthrow -> const ArrayList<source_diagnostic> &
   {
     return m_diagnostics;
   }
@@ -959,23 +959,21 @@ Server::send_diagnostics(
 fn
 Server::publish_auxiliary_diagnostics() throws -> bool
 {
-  for (let const &diagnostic : m_auxiliary_diagnostics.diagnostics()) {
+  for (let const &diagnostic : m_auxiliary_diagnostics.get_diagnostics()) {
     let const source_path = Path{diagnostic.source_name.view()};
     let       source_uri  = file_uri_for_path(source_path);
 
     if (m_auxiliary_diagnostics.is_published_this_round(source_uri)) continue;
 
-    bool is_open_source = m_documents.find(source_uri.view()) != nullptr;
+    if (m_documents.find(source_uri.view()) != nullptr) continue;
 
-    if (!is_open_source) {
-      let const canonical_source = os::canonical_path(source_path);
+    let const canonical_source = os::canonical_path(source_path);
 
-      is_open_source =
-          canonical_source.has_value() &&
-          m_documents.find_by_canonical_path(*canonical_source) != nullptr;
+    if (canonical_source.has_value() &&
+        m_documents.find_by_canonical_path(*canonical_source) != nullptr)
+    {
+      continue;
     }
-
-    if (is_open_source) continue;
 
     let source = read_source(source_path);
 
@@ -1002,7 +1000,7 @@ Server::validate_all(Document *changed_document) throws -> bool
 {
   m_auxiliary_diagnostics.begin_round();
 
-  for (let &document : m_documents.documents()) {
+  for (let &document : m_documents.get_documents()) {
     let should_reanalyze =
         changed_document == nullptr || &document == changed_document;
 
@@ -1015,6 +1013,9 @@ Server::validate_all(Document *changed_document) throws -> bool
       return false;
     }
 
+    /* an open document owns the diagnostics of its uri. the retirement
+       below skips that uri, so publish_diagnostics() results stay. */
+    m_auxiliary_diagnostics.mark_published(document.uri.clone());
     m_auxiliary_diagnostics.collect(document.auxiliary_diagnostics);
   }
 
@@ -1272,6 +1273,9 @@ Server::format_document(const JsonValue *id,
 
   if (formatted->view() == document->normalized_source.view())
     return send_result(id, "[]");
+
+  /* at this point: formatted holds text that differs from
+     normalized_source. */
 
   let response = String{heap_allocator(), "["};
 
@@ -1855,6 +1859,9 @@ Server::prepare_rename(const JsonValue *id,
     return send_result(id, "null");
   }
 
+  /* at this point: kind is set, and for a command, spans holds its
+     definition. */
+
   let const name_start =
       symbol->start +
       (is_variable ? variable_name_start_of(symbol->text.view()) : 0);
@@ -1917,6 +1924,9 @@ Server::rename(const JsonValue *id, const JsonValue *params) throws
     return send_error(id, REQUEST_FAILED_ERROR,
                       "This command is not defined in this document.");
   }
+
+  /* at this point: new_name is a valid name for kind, and spans holds the
+     occurrences of the symbol in document. */
 
   let response = String{heap_allocator(), "{"};
 
@@ -2132,6 +2142,9 @@ Server::command_information(StringView command) throws -> Maybe<String>
 
     return do_run_shell_help(steal(source));
   }
+
+  /* at this point: paths is non-empty, so paths[0] is a runnable program
+     that command resolves to. */
 
   let information =
       String{heap_allocator(),
@@ -2370,7 +2383,7 @@ function_body_for(const Document        &document,
            caller. the headline is freed when this function returns.
    time:   O(k * L) for k <= 9 assignments (the nearest and up to 8 earlier
            ones), with L the length of each assignment line up to its
-   newline. */
+           newline. */
 fn
 Server::variable_hover_text(const Document &document,
                             const ArrayList<const variable_assignment_record *>
@@ -2773,6 +2786,8 @@ Server::dispatch(const JsonValue &message) throws -> bool
     return true;
   }
 
+  /* at this point: the server is initialized and not shut down, and *request
+     is not Initialize, Initialized, Shutdown, or Exit. */
   switch (*request) {
   case request_method::DidOpen: {
     let *document = open_document(params);

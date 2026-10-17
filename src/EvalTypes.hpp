@@ -402,6 +402,8 @@ public:
       throw;
     }
 
+    /* at this point: slot holds a new entry from table.entries, and index maps
+       name to it. */
     return *slot;
   }
 
@@ -523,6 +525,7 @@ public:
     if (!current.has_value() || !(*current)->has_value) {
       return;
     }
+    /* at this point: name maps to an entry that has a value. */
 
     let &entry = *find_for_write(name).value();
 

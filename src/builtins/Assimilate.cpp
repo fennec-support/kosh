@@ -427,6 +427,7 @@ trace_stage(const ExecContext &ec,
 fn
 run_program(const ArrayList<String> &arguments,
             const ExecContext       &ec,
+            EvalContext             &cxt,
             trace_output             trace,
             StringView               stage) throws -> i32
 {
@@ -435,7 +436,11 @@ run_program(const ArrayList<String> &arguments,
   let const result =
       os::run_measured(arguments, {}, os::measured_output::Inherit);
 
-  if (!result.has_value()) return 126;
+  if (!result.has_value()) {
+    report_soft_builtin_error(ec, cxt, os::last_system_error_message().view());
+
+    return 126;
+  }
 
   return static_cast<i32>(result->exit_status);
 }
@@ -486,6 +491,8 @@ parse_transport_command(StringView       spelling,
 
   if (!program.has_value()) return None;
 
+  /* at this point: arguments is nonempty, and program holds the resolved
+     path that replaces arguments[0]. */
   arguments[0] = program->text();
 
   return arguments;
@@ -937,7 +944,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   scp_arguments.push_managed("--");
   scp_arguments.push_managed(executable->view());
   scp_arguments.push_managed(destination.view());
-  status = run_program(scp_arguments, ec, trace, "upload");
+  status = run_program(scp_arguments, ec, cxt, trace, "upload");
   if (status != 0) return status;
 
   let ssh_arguments = ArrayList<String>{allocator};
@@ -949,9 +956,9 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
       upload_name.view(), transaction_id.view(), expected_identity->view(),
       link_moods.view(), install_directory->view(), trace, allocator));
 
-  status = run_program(ssh_arguments, ec, trace, "install");
+  status = run_program(ssh_arguments, ec, cxt, trace, "install");
 
-  /* The install stage exits 3 when the chosen directory can no longer be
+  /* the install stage exits 3 when the chosen directory can no longer be
      used, so the message is reported here with a location. */
   constexpr i32 INSTALL_DIRECTORY_LOST_STATUS = 3;
 

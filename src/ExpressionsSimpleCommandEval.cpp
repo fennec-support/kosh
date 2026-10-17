@@ -293,11 +293,11 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
     }
   }
 
+  defer { cxt.cleanup_process_substitutions(substitution_mark); };
+
   let program_args =
       cxt.process_args(*argument_tokens, &program_arg_locations,
                        argument_lifetime::Transient, argument_context::Command);
-
-  defer { cxt.cleanup_process_substitutions(substitution_mark); };
 
   expand_command_aliases(cxt, program_args, program_arg_locations);
 
@@ -786,20 +786,22 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
       return false;
     };
 
-    let ran_substitution = false;
+    let did_run_substitution = false;
 
     for (let const token : m_args)
-      ran_substitution = ran_substitution || do_token_ran_substitution(token);
+      did_run_substitution =
+          did_run_substitution || do_token_ran_substitution(token);
 
     for (let const &var : m_local_vars)
-      ran_substitution =
-          ran_substitution || var.get_value().runs_substitution();
+      did_run_substitution =
+          did_run_substitution || var.get_value().runs_substitution();
 
     for (let const &assignment : m_array_args)
       for (let const token : assignment.elements)
-        ran_substitution = ran_substitution || do_token_ran_substitution(token);
+        did_run_substitution =
+            did_run_substitution || do_token_ran_substitution(token);
 
-    if (!ran_substitution) cxt.execution_store().set_last_exit_status(0);
+    if (!did_run_substitution) cxt.execution_store().set_last_exit_status(0);
     cxt.publish_single_pipe_status(cxt.execution_store().last_exit_status());
 
     return cxt.execution_store().last_exit_status();

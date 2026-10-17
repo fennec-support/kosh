@@ -547,13 +547,13 @@ ProgramCapture::step() wontthrow -> State
     if (available_byte_count == 0) break;
 
     char      buffer[4096];
-    let const requested_count = available_byte_count < sizeof(buffer)
-                                    ? available_byte_count
-                                    : sizeof(buffer);
-    DWORD     read_count      = 0;
+    let const requested_byte_count = available_byte_count < sizeof(buffer)
+                                         ? available_byte_count
+                                         : sizeof(buffer);
+    DWORD     read_byte_count      = 0;
 
-    if (ReadFile(m_output, buffer, requested_count, &read_count, nullptr) ==
-        FALSE)
+    if (ReadFile(m_output, buffer, requested_byte_count, &read_byte_count,
+                 nullptr) == FALSE)
     {
       if (GetLastError() != ERROR_BROKEN_PIPE) {
         abandon();
@@ -564,7 +564,7 @@ ProgramCapture::step() wontthrow -> State
       break;
     }
 
-    m_captured.append(StringView{buffer, static_cast<usize>(read_count)});
+    m_captured.append(StringView{buffer, static_cast<usize>(read_byte_count)});
   }
 
   if (WaitForSingleObject(m_child, 0) == WAIT_OBJECT_0) {
@@ -2708,7 +2708,7 @@ spawn_subshell_stage(StringView                   source,
   arguments.push_managed(StringView{"-c"});
   arguments.push_managed(source);
   if (!shell_name.is_empty()) arguments.push_managed(shell_name);
-  let command_line = make_os_args(arguments);
+  let const command_line = make_os_args(arguments);
 
   ScopedEnvironment child_environment;
   evaluator.inherited.apply_to(child_environment);
@@ -2758,7 +2758,8 @@ spawn_subshell_stage(StringView                   source,
     CloseHandle(process_info.hProcess);
   };
   if (has_bootstrap) {
-    let transport = make_subshell_transport(*bootstrap, process_info.hProcess);
+    let const transport =
+        make_subshell_transport(*bootstrap, process_info.hProcess);
     if (!transport.has_value() ||
         !send_internal_pipe(bootstrap_pipe_path.view(), transport->view(),
                             process_info.hProcess))
@@ -2999,12 +3000,7 @@ poll_process(process              p,
   note_child_reaped();
 
   DWORD code = 0;
-  if (GetExitCodeProcess(p, &code) == 0) {
-    status_out = 0;
-    CloseHandle(p);
-
-    return process_state::Exited;
-  }
+  GetExitCodeProcess(p, &code);
   status_out = static_cast<i32>(code);
   CloseHandle(p);
 
@@ -3688,7 +3684,7 @@ run_measured_with_options(
 
   measured_result result{};
 
-  let command_line = make_os_args(argv);
+  let const command_line = make_os_args(argv);
 
   STARTUPINFOW startup{};
   startup.cb         = sizeof(startup);

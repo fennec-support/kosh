@@ -62,12 +62,9 @@ detect_mimic_shell_from_source(StringView source) throws
       0, shebang_line->length - (has_carriage_return ? 1 : 0));
 
   let const do_basename_of = [](StringView token) -> StringView {
-    usize last_slash = token.length;
+    let const last_slash = token.find_last_character('/');
 
-    for (usize position = 0; position < token.length; position++)
-      if (token[position] == '/') last_slash = position;
-
-    return last_slash == token.length ? token : token.substring(last_slash + 1);
+    return last_slash.has_value() ? token.substring(*last_slash + 1) : token;
   };
 
   usize position = 0;

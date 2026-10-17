@@ -40,6 +40,8 @@ uncached_heap_alloc(usize length, usize alignment) wontthrow -> opaque *
   if (alignment > alignof(max_align_t)) {
     if (length > SIZE_MAX - (alignment - 1)) return nullptr;
 
+    /* at this point: length + alignment - 1 does not overflow usize, so
+       rounding up to alignment cannot wrap. */
     let const rounded_length = (length + alignment - 1) & ~(alignment - 1);
 
     return os::allocate_aligned(rounded_length, alignment);

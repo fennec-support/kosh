@@ -387,24 +387,24 @@ Xargs::execute(const ExecContext               &ec,
 
   let const base_byte_count = xargs_command_size(base);
 
-  usize maximum_arguments = SIZE_MAX;
+  usize maximum_argument_count = SIZE_MAX;
 
   if (FLAG_XARGS_MAX_ARGUMENTS.is_set() &&
       !parse_xargs_limit(ec, cxt, FLAG_XARGS_MAX_ARGUMENTS, "argument count",
                          "use a positive decimal integer for the maximum "
                          "arguments per command",
-                         maximum_arguments))
+                         maximum_argument_count))
   {
     return 1;
   }
 
-  usize maximum_lines = SIZE_MAX;
+  usize maximum_line_count = SIZE_MAX;
 
   if (FLAG_XARGS_MAX_LINES.is_set() &&
       !parse_xargs_limit(ec, cxt, FLAG_XARGS_MAX_LINES, "line count",
                          "use a positive decimal integer for the maximum "
                          "input lines per command",
-                         maximum_lines))
+                         maximum_line_count))
   {
     return 1;
   }
@@ -492,8 +492,8 @@ Xargs::execute(const ExecContext               &ec,
 
       loop {
         if (added_count != 0 && !has_deferred_item &&
-            (added_count >= maximum_arguments ||
-             reader.get_line_number() - first_line >= maximum_lines))
+            (added_count >= maximum_argument_count ||
+             reader.get_line_number() - first_line >= maximum_line_count))
         {
           break;
         }
@@ -503,8 +503,8 @@ Xargs::execute(const ExecContext               &ec,
         if (!item.has_value()) break;
 
         if (added_count == 0) first_line = item->line_number;
-        if (added_count >= maximum_arguments ||
-            item->line_number - first_line >= maximum_lines)
+        if (added_count >= maximum_argument_count ||
+            item->line_number - first_line >= maximum_line_count)
         {
           do_defer_item(*item);
           break;

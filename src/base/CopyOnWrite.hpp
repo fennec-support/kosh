@@ -145,6 +145,8 @@ public:
       m_shared = copy;
     }
 
+    /* at this point: m_shared is held only by this holder, so the write
+       may change m_shared->value in place. */
     return m_shared->value;
   }
 

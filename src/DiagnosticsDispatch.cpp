@@ -137,7 +137,7 @@ get_analysis_command_info(StringView name) throws
   if (let const found = ANALYSIS_COMMANDS.find(name); found.has_value())
     return *found;
 
-  return analysis_command_info{command_name_id::Unknown, NO_COMMAND_GROUP};
+  return analysis_command_info::unknown();
 }
 
 } /* namespace koshka */

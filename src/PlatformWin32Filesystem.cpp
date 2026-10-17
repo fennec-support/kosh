@@ -1102,7 +1102,8 @@ open_file_descriptor(StringView path, file_open_mode mode) -> Maybe<descriptor>
 
   if (is_named_pipe) disposition = OPEN_EXISTING;
 
-  /* Non-inheritable, execute_program flips it only while spawning the child. */
+  /* Non-inheritable, execute_program() flips it only while spawning the
+     child. */
   SECURITY_ATTRIBUTES att{};
 
   att.nLength              = sizeof(SECURITY_ATTRIBUTES);
@@ -1151,7 +1152,8 @@ open_file_descriptor_until_signal(StringView     path,
 /* memory: one ArrayList<wchar_t> for the absolute lock path, freed on return.
            the returned descriptor belongs to the caller.
    time:   no deadline. sleeps 10 milliseconds per retry while CreateFileW()
-           fails with a sharing or lock violation. other errors return None. */
+           fails with a sharing or lock violation. other errors and an
+           interrupt request return None. */
 fn
 acquire_process_lock(StringView path) throws -> Maybe<descriptor>
 {
@@ -1199,6 +1201,8 @@ acquire_process_lock(StringView path) throws -> Maybe<descriptor>
     if (error != ERROR_SHARING_VIOLATION && error != ERROR_LOCK_VIOLATION) {
       return None;
     }
+
+    if (INTERRUPT_REQUESTED) return None;
 
     Sleep(10);
   }
@@ -1810,6 +1814,8 @@ walk_tree_entry(tree_walk_state &walk,
     return did_succeed;
   }
 
+  /* at this point: target_status describes a directory, and it is on the root
+     device when is_one_file_system is set. */
   let      &arena      = walk.arena;
   let const level_mark = arena.mark();
 
@@ -1906,15 +1912,21 @@ rename_path(StringView from, StringView to) wontthrow -> bool
 
   let const wide_to = path_to_wide(to, heap_allocator());
 
-  return wide_to.has_value() &&
-         MoveFileExW(wide_from->begin(), wide_to->begin(),
-                     MOVEFILE_REPLACE_EXISTING) != 0;
+  if (!wide_to.has_value()) return false;
+
+  if (MoveFileExW(wide_from->begin(), wide_to->begin(),
+                  MOVEFILE_REPLACE_EXISTING) != 0)
+    return true;
+
+  if (GetLastError() == ERROR_NOT_SAME_DEVICE) errno = EXDEV;
+
+  return false;
 }
 
 fn
 create_symlink(StringView target, StringView link_path) wontthrow -> bool
 {
-/* An older mingw SDK omits these flags, defined here when absent. */
+/* an older mingw SDK omits these flags, defined here when absent. */
 #ifndef SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
 #define SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE 0x2
 #endif
@@ -1933,7 +1945,7 @@ create_symlink(StringView target, StringView link_path) wontthrow -> bool
 
   if (!wide_link_path.has_value()) return false;
 
-  /* A stored target with a forward slash cannot be resolved by the filesystem
+  /* a stored target with a forward slash cannot be resolved by the filesystem
      when the link is opened. */
 
   for (WCHAR *wide_character = wide_target->begin(); *wide_character != L'\0';
@@ -1942,7 +1954,7 @@ create_symlink(StringView target, StringView link_path) wontthrow -> bool
     if (*wide_character == L'/') *wide_character = L'\\';
   }
 
-  /* A directory target needs the directory flag, the unprivileged flag avoids
+  /* a directory target needs the directory flag. the unprivileged flag avoids
      elevation on developer-mode Windows. */
   DWORD flags      = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
   DWORD attributes = INVALID_FILE_ATTRIBUTES;
@@ -2033,10 +2045,10 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
   };
 
   alignas(void *) u8 buffer[MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
-  DWORD              bytes_returned = 0;
+  DWORD              returned_byte_count = 0;
 
   if (DeviceIoControl(handle, FSCTL_GET_REPARSE_POINT, nullptr, 0, buffer,
-                      sizeof(buffer), &bytes_returned, nullptr) == FALSE)
+                      sizeof(buffer), &returned_byte_count, nullptr) == FALSE)
   {
     return koshka::None;
   }
@@ -2051,16 +2063,14 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
           u16 print_name_offset, u16 print_name_length) -> bool {
     constexpr usize reparse_header_length = sizeof(u32) + sizeof(u16) * 2;
 
-    if (path_buffer_position < reparse_header_length ||
-        bytes_returned < path_buffer_position)
-    {
+    if (returned_byte_count < path_buffer_position) {
       return false;
     }
 
     let const fixed_data_length = path_buffer_position - reparse_header_length;
 
     if (data_length < fixed_data_length ||
-        reparse_header_length + data_length > bytes_returned)
+        reparse_header_length + data_length > returned_byte_count)
     {
       return false;
     }
@@ -2085,7 +2095,7 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     return true;
   };
 
-  if (bytes_returned < sizeof(u32)) {
+  if (returned_byte_count < sizeof(u32)) {
     SetLastError(ERROR_INVALID_DATA);
 
     return koshka::None;
@@ -2097,7 +2107,7 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     constexpr usize path_buffer_position =
         offsetof(symbolic_link_reparse_data, path_buffer);
 
-    if (bytes_returned < path_buffer_position) {
+    if (returned_byte_count < path_buffer_position) {
       SetLastError(ERROR_INVALID_DATA);
 
       return koshka::None;
@@ -2119,7 +2129,7 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     constexpr usize path_buffer_position =
         offsetof(mount_point_reparse_data, path_buffer);
 
-    if (bytes_returned < path_buffer_position) {
+    if (returned_byte_count < path_buffer_position) {
       SetLastError(ERROR_INVALID_DATA);
 
       return koshka::None;
@@ -2411,6 +2421,8 @@ read_filesystem_integrity_evidence(StringView path) throws
     return None;
   }
 
+  /* at this point: flags holds the dirty state of the NTFS volume that
+     contains path. */
   filesystem_integrity_evidence evidence{
       filesystem_integrity_kind::NtfsDirtyFlag};
 
@@ -2761,6 +2773,8 @@ submit_positioned_file_operation(const batched_syscall  &operation,
     return;
   }
 
+  /* at this point: request owns positioned_handle and control.hEvent, and
+     both are valid. */
   request.control.Offset = static_cast<DWORD>(operation.byte_offset & MAXDWORD);
   request.control.OffsetHigh = static_cast<DWORD>(operation.byte_offset >> 32);
 

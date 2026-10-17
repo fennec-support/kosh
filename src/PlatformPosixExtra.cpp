@@ -769,6 +769,8 @@ current_executable_path() wontthrow -> Maybe<String>
   buffer.reserve(capacity);
   if (_NSGetExecutablePath(buffer.begin(), &capacity) != 0) return koshka::None;
 
+  /* at this point: buffer holds the NUL-terminated executable path. */
+
   let const raw_path = StringView{buffer.begin()};
 
   if (let const canonical = canonical_path(Path{raw_path}); canonical)
@@ -840,6 +842,8 @@ enumerate_processes(process_detail detail) throws
   }
 
   if (!did_list) return processes;
+  /* at this point: records holds byte_count bytes of kinfo_proc records
+     from the successful sysctl() call. */
 
   let const entry_count = byte_count / sizeof(struct kinfo_proc);
 
@@ -1004,7 +1008,7 @@ linux_process_real_uid(StringView process_directory,
            heap_allocator(), and the caller owns them. each /proc read is
            released at the end of its pid iteration unless moved into an entry.
    time:   O(P) for P numeric entries in /proc. each pid costs reads of comm,
-           status, and cmdline, plus stat and statm when the detail is
+           status, cmdline, and stat, plus statm when the detail is
            ResourceStats. the cmdline normalization adds O(L) per pid for L
            bytes of cmdline. */
 fn
@@ -1081,24 +1085,30 @@ enumerate_processes(process_detail detail) throws
       process.command_line = "[" + process.name + "]";
     }
 
-    if (should_include_resource_stats) {
-      unused(format_proc_pid_path(process_file, parsed_pid.value(), "/stat"));
-      if (let stat = Path{process_file}.read_entire_file(); stat.has_value()) {
-        let const text                = stat->view();
-        usize     after_name_position = text.length;
+    unused(format_proc_pid_path(process_file, parsed_pid.value(), "/stat"));
+    if (let stat = Path{process_file}.read_entire_file(); stat.has_value()) {
+      let const text                = stat->view();
+      usize     after_name_position = text.length;
 
-        for (usize position = text.length; position > 0; position--)
-          if (text[position - 1] == ')') {
-            after_name_position = position;
-            break;
-          }
+      for (usize position = text.length; position > 0; position--)
+        if (text[position - 1] == ')') {
+          after_name_position = position;
+          break;
+        }
 
-        if (after_name_position < text.length) {
-          let const fields = text.substring(after_name_position);
-          let const state  = nth_space_field(fields, 0);
+      if (after_name_position < text.length) {
+        let const fields = text.substring(after_name_position);
+        let const state  = nth_space_field(fields, 0);
 
-          if (!state.is_empty()) process.state = state[0];
+        if (!state.is_empty()) process.state = state[0];
 
+        if (let const start_ticks = nth_space_field(fields, 19).to<i64>();
+            !start_ticks.is_error() && start_ticks.value() >= 0)
+        {
+          process.start_token = static_cast<u64>(start_ticks.value());
+        }
+
+        if (should_include_resource_stats) {
           u64 cpu_tick_count = 0;
 
           if (let const user_ticks = nth_space_field(fields, 11).to<i64>();
@@ -1107,11 +1117,6 @@ enumerate_processes(process_detail detail) throws
           if (let const system_ticks = nth_space_field(fields, 12).to<i64>();
               !system_ticks.is_error())
             cpu_tick_count += static_cast<u64>(system_ticks.value());
-          if (let const start_ticks = nth_space_field(fields, 19).to<i64>();
-              !start_ticks.is_error() && start_ticks.value() >= 0)
-          {
-            process.start_token = static_cast<u64>(start_ticks.value());
-          }
 
           let const ticks_per_second = ::sysconf(_SC_CLK_TCK);
 
@@ -1121,7 +1126,9 @@ enumerate_processes(process_detail detail) throws
                                  static_cast<u64>(ticks_per_second));
         }
       }
+    }
 
+    if (should_include_resource_stats) {
       unused(format_proc_pid_path(process_file, parsed_pid.value(), "/statm"));
       if (let statm = Path{process_file}.read_entire_file(); statm.has_value())
       {
@@ -1176,6 +1183,8 @@ describe_processes(const ArrayList<u32> &pids) throws
     let command_name = Path{process_file}.read_entire_file();
 
     if (!command_name.has_value()) continue;
+    /* at this point: process_directory and process_file hold the /proc paths
+       of pid, and command_name holds its comm. */
 
     while (!command_name->is_empty() && command_name->back() == '\n') {
       command_name->pop_back();
@@ -2458,7 +2467,8 @@ read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
   statistics.retransmitted_segment_count = native.tcps_sndrexmitpack;
   statistics.input_error_count = static_cast<u64>(native.tcps_rcvbadsum) +
                                  native.tcps_rcvbadoff + native.tcps_rcvshort;
-  statistics.connection_drop_count = native.tcps_conndrops + native.tcps_drops;
+  statistics.connection_drop_count =
+      static_cast<u64>(native.tcps_conndrops) + native.tcps_drops;
   statistics.receive_memory_drop_count = native.tcps_rcvmemdrop;
   statistics.listen_drop_count         = native.tcps_listendrop;
   statistics.retransmit_timeout_count  = native.tcps_rexmttimeo;
@@ -3268,7 +3278,7 @@ processor_model_name(Allocator allocator) throws -> Maybe<String>
 #endif
 }
 
-#if defined __APPLE__
+#if defined __APPLE__ || defined __linux__
 
 static pure fn
 open_flags_access(int open_flags) wontthrow -> char
@@ -3638,11 +3648,7 @@ list_process_open_files(i64                      pid,
 
         let const flags = strtol(line.data + 6, nullptr, 8);
 
-        switch (flags & O_ACCMODE) {
-        case O_RDONLY: access = 'r'; break;
-        case O_WRONLY: access = 'w'; break;
-        default:       break;
-        }
+        access = open_flags_access(static_cast<int>(flags));
 
         break;
       }
@@ -3784,6 +3790,11 @@ FileWatcher::watch(StringView path) wontthrow -> void
 #endif
 }
 
+/* memory: no heap allocation. the Linux read buffer is a 4096 byte stack
+           array.
+   time:   one poll(), kevent(), or sleep per slice of at most
+           FILE_WATCHER_SLICE_SECONDS, so about timeout_seconds / 0.1 calls
+           without events. returns after one readable event. no locks. */
 fn
 FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
 {

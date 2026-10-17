@@ -217,7 +217,9 @@ next_magic_field(StringView line, usize &position) wontthrow -> StringView
   while (position < line.length && line[position] != ' ' &&
          line[position] != '\t')
   {
-    position++;
+    /* a backslash keeps the next byte in the field, so an escaped space
+       stays in a value. */
+    position += line[position] == '\\' && position + 1 < line.length ? 2 : 1;
   }
 
   return line.substring_of_length(start, position - start);
@@ -439,6 +441,8 @@ read_magic_number(const file_magic_rule &rule,
     return false;
   }
 
+  /* at this point: rule.byte_count is from 1 to 8, and the bytes it selects
+     at rule.offset lie inside bytes. */
   value =
       os::read_native_endian_bytes(bytes.data + rule.offset, rule.byte_count);
   value &= rule.mask;
@@ -620,6 +624,9 @@ matches_builtin_file_signature(StringView                    bytes,
   let const candidate = bytes.data + signature.offset;
 
   if (candidate[0] != signature.bytes[0]) return false;
+
+  /* at this point: signature.bytes lies inside bytes at signature.offset,
+     and candidate[0] equals signature.bytes[0]. */
 
   return signature.bytes.length == 1 ||
          byte_scan::are_bytes_equal(candidate + 1, signature.bytes.data + 1,
@@ -937,6 +944,9 @@ describe_file_type(StringView             path,
 
   if (!read_count.has_value()) return None;
 
+  /* at this point: buffer holds *read_count bytes read from the descriptor,
+     which closes on return. */
+
   return String{allocator,
                 file_content_description(StringView{buffer, *read_count})};
 }
@@ -959,7 +969,7 @@ File::execute(const ExecContext               &ec,
              32 buffers of 8192 bytes on the stack. sample Strings in
              result.content use heap_allocator() and are released by reset() or
              when source_results is destroyed.
-     time:   O(P^2) insertion sort over P magic paths. one lstat() per operand
+     time:   O(P log P) sort over P magic paths. one lstat() per operand
              in one batch. the default samples read one 8192-byte buffer per
              regular operand. the custom samples read at most sample_byte_count
              bytes per regular operand. the rule scan costs O(R) per sample for
@@ -985,19 +995,10 @@ File::execute(const ExecContext               &ec,
   /* sorts the -m and -M paths by command-line position. match_magic_rules()
      returns the first matching top-level rule, so this order selects the
      magic file that wins. */
-  for (usize index = 1; index < magic_paths.count(); index++) {
-    let   current     = magic_paths[index];
-    usize destination = index;
-
-    while (destination > 0 &&
-           magic_paths[destination - 1].position > current.position)
-    {
-      magic_paths[destination] = magic_paths[destination - 1];
-      destination--;
-    }
-
-    magic_paths[destination] = current;
-  }
+  magic_paths.sort(
+      [](const file_magic_path &left, const file_magic_path &right) {
+        return left.position < right.position;
+      });
 
   ArrayList<file_magic_rule> magic_rules{allocator};
 

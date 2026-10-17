@@ -177,6 +177,9 @@ Retry::execute(const ExecContext               &ec,
     }
   }
 
+  /* at this point: operands is not empty, attempt_limit is in 1 through
+     MAXIMUM_ATTEMPT_COUNT, and backoff_factor is in MINIMUM_BACKOFF_FACTOR
+     through MAXIMUM_BACKOFF_FACTOR. */
   let const source = build_command_source(operands, allocator);
   i32       status = 0;
 

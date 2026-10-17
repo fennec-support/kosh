@@ -373,6 +373,11 @@ internal::shell_syntax_candidate_is_unchanged(
                             : !has_control_sequence(suffix);
 }
 
+/* memory: one String in COMPLETION_ARENA through completion_allocator(),
+           returned to the caller. each quoted path component adds a
+           temporary String in the same arena until the arena resets.
+   time:   O(raw_token.length + decoded_candidate.length) for one scan of
+           each. */
 fn
 internal::rebuild_shell_syntax_candidate(
     StringView                       raw_token,
@@ -557,6 +562,8 @@ internal::resolve_listing_directory(
       return resolved_path;
     }
 
+  /* at this point: directory_part is nonempty, and no leading tilde or
+     variable prefix was expanded. */
   let directory = Path{directory_part};
 
   if (directory.is_absolute()) return directory;

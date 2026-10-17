@@ -619,14 +619,12 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
 {
   if (argv.is_empty()) return None;
 
-  int pipe_fds[2];
+  let const pipe = make_pipe();
 
-  if (pipe(pipe_fds) != 0) return None;
+  if (!pipe.has_value()) return None;
 
-  const int read_end  = pipe_fds[0];
-  const int write_end = pipe_fds[1];
-
-  fcntl(read_end, F_SETFD, FD_CLOEXEC);
+  const int read_end  = pipe->in;
+  const int write_end = pipe->out;
 
   const int devnull_fd = open("/dev/null", O_RDONLY);
 
@@ -2310,18 +2308,19 @@ fill_usage_from_proc_schedstat(pid_t                   pid,
 
   unused(text.next_ascii_whitespace_word(position));
 
-  let const wait   = text.next_ascii_whitespace_word(position).to<u64>();
-  let const slices = text.next_ascii_whitespace_word(position).to<u64>();
+  let const wait_nanos  = text.next_ascii_whitespace_word(position).to<u64>();
+  let const slice_count = text.next_ascii_whitespace_word(position).to<u64>();
 
-  if (wait.is_error() || slices.is_error()) {
+  if (wait_nanos.is_error() || slice_count.is_error()) {
     return;
   }
 
   LOG(Debug, "child %d waited %llu ns for a processor over %llu slices",
-      static_cast<int>(pid), static_cast<unsigned long long>(wait.value()),
-      static_cast<unsigned long long>(slices.value()));
-  resources.scheduler_wait_nanos = wait.value();
-  resources.time_slice_count     = slices.value();
+      static_cast<int>(pid),
+      static_cast<unsigned long long>(wait_nanos.value()),
+      static_cast<unsigned long long>(slice_count.value()));
+  resources.scheduler_wait_nanos = wait_nanos.value();
+  resources.time_slice_count     = slice_count.value();
 }
 
 fn
@@ -3006,6 +3005,9 @@ run_through_error_pipe(const auto  &raw_argv,
 
     return None;
   }
+
+  /* at this point: child is reaped, no exec() error was reported, and status
+     holds the wait status of the command. */
 
   if (WIFEXITED(status)) return WEXITSTATUS(status);
   if (WIFSIGNALED(status)) return 128 + WTERMSIG(status);

@@ -155,7 +155,7 @@ Man::execute(const ExecContext               &ec,
           path += '/';
           path += entry.view();
 
-          let content =
+          let const content =
               Path{path.view(), cxt.scratch_allocator()}.read_entire_file();
 
           if (!content.has_value()) continue;
@@ -164,7 +164,8 @@ Man::execute(const ExecContext               &ec,
 
           searchable.lowercase_ascii();
 
-          let name = entry.view().substring_of_length(0, entry.length() - 2);
+          let const name =
+              entry.view().substring_of_length(0, entry.length() - 2);
           let lowered_name = String{cxt.scratch_allocator(), name};
 
           lowered_name.lowercase_ascii();

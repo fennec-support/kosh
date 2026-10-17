@@ -261,6 +261,8 @@ Parser::get_swallowed_closer(Token::Kind           closer,
     return None;
   }
 
+  /* at this point: swallowed is set at or after opener, and end is at or
+     past the end of the input. */
   return swallowed;
 }
 
@@ -472,7 +474,7 @@ get_closer_kind(const Token *token) wontthrow -> Maybe<Token::Kind>
 }
 
 pure static fn
-starts_command_position(Token::Kind kind) wontthrow -> bool
+is_command_position_start(Token::Kind kind) wontthrow -> bool
 {
   switch (kind) {
   case Token::Kind::Then:
@@ -582,7 +584,7 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
     let const is_inside_case =
         !open_closers.is_empty() && open_closers.back() == Token::Kind::Esac;
 
-    is_command_position = starts_command_position(token->kind());
+    is_command_position = is_command_position_start(token->kind());
 
     /* Inside a case, a parenthesis in command position delimits a pattern. */
     if (was_command_position && !(is_paren && is_inside_case)) {
@@ -673,8 +675,8 @@ Parser::next_token_or_foreign_closer(u64 expected_mask) throws
   return token;
 }
 
-/* Runs inside a catch block, since record_error rethrows the active error
-   to render it. */
+/* Runs inside a catch block, since record_error() rethrows the active
+   error to render it. */
 cold fn
 Parser::record_caught_error(const ErrorWithLocation &error) throws
     -> void
@@ -1549,6 +1551,8 @@ Parser::build_file_or_dup_redirection(
                                      "Expected a file after the redirection "
                                      "operator");
 
+  /* at this point: target is a Word token, and no branch above has pushed
+     redir to out. */
   switch (op_kind) {
   case Token::Kind::Greater:
     redir.kind = expressions::Redirection::Kind::TruncateOutput;
@@ -1687,6 +1691,8 @@ Parser::build_heredoc_redirection(
         "Write `cat <<EOF`, then the text, then a line that holds only `EOF`"};
   }
 
+  /* at this point: delimiter_token is a Word token, since the other kinds
+     return or throw above. */
   const Word &delimiter_word =
       static_cast<tokens::WordToken *>(delimiter_token)->word();
 
@@ -1701,8 +1707,7 @@ Parser::build_heredoc_redirection(
       !delimiter_word.segments[0].text.is_empty() &&
       delimiter_word.segments[0].text.view()[0] == '-';
 
-  if (has_unquoted_leading_dash && !delimiter.is_empty() &&
-      delimiter[0] == '-' &&
+  if (has_unquoted_leading_dash &&
       delimiter_token->source_location().position ==
           op_location.position + op_location.length)
   {
@@ -1960,7 +1965,7 @@ Parser::parse_simple_command(const Token *leading_token) throws
     SimpleCommand *c = m_lexer.arena().create<SimpleCommand>(
         *source_location, steal(args_accumulator));
 
-    if (local_vars.count() != 0) c->set_local_vars(steal(local_vars));
+    if (!local_vars.is_empty()) c->set_local_vars(steal(local_vars));
     if (!array_args.is_empty()) c->set_array_args(steal(array_args));
     if (!redirections.is_empty()) c->set_redirections(steal(redirections));
     c->set_full_source_end_position(full_end_position);
@@ -2131,7 +2136,7 @@ Parser::parse_simple_command(const Token *leading_token) throws
     } break;
 
     case Token::Kind::Function:
-      if (args_accumulator.is_empty() && local_vars.count() == 0) {
+      if (args_accumulator.is_empty() && local_vars.is_empty()) {
         m_lexer.advance_past_last_peek();
 
         return parse_keyword_function_definition();
@@ -2143,7 +2148,7 @@ Parser::parse_simple_command(const Token *leading_token) throws
       break;
 
     case Token::Kind::LeftParen:
-      if (args_accumulator.count() == 1 && local_vars.count() == 0 &&
+      if (args_accumulator.count() == 1 && local_vars.is_empty() &&
           args_accumulator[0]->kind() == Token::Kind::Word)
       {
         return parse_function_definition(args_accumulator[0]);
@@ -2192,7 +2197,7 @@ Parser::parse_simple_command(const Token *leading_token) throws
       }
 
       let const is_lone_assignment =
-          local_vars.count() == 0 && redirections.is_empty() &&
+          local_vars.is_empty() && redirections.is_empty() &&
           array_args.is_empty() &&
           (is_compound_list_separator(next->kind()) ||
            next->kind() == Token::Kind::EndOfFile ||

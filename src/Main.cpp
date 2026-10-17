@@ -1005,6 +1005,9 @@ validate_invocation(const command_line      &line,
     return 2;
   }
 
+  /* at this point: a set --mood and --tab-selector value is a known choice,
+     the --as-language-server, --apply, and --format combinations are valid,
+     and only the --init-moods values remain to parse. */
   return parse_init_moods(init_moods);
 }
 
@@ -1129,6 +1132,8 @@ prefetch_script_shebang(invocation_identity     &identity,
     return contents;
   }
 
+  /* at this point: operands[0] is a script operand other than '-', no mood is
+     given on the command line, and linting is off. */
   contents = Path{operands[0].view()}.read_entire_file();
   if (contents.has_value()) {
     let const shebang_mood = detect_mimic_shell_from_source(contents->view());
@@ -1337,6 +1342,8 @@ read_startup_configuration(const command_line        &line,
     return reading;
   }
 
+  /* at this point: no skip applies, and encoded is empty for a restricted or
+     privileged shell. */
   if (let const system_path = find_system_koshconf_path();
       system_path.has_value())
   {
@@ -2137,6 +2144,8 @@ struct script_cursor
       return;
     }
 
+    /* at this point: file_name is not a directory, and contents holds the
+       bytes of the script file. */
     chunk.contents = steal(*contents);
     chunk.filename = file_name.view();
     context.source_store().set_script_run(true);
@@ -2154,6 +2163,8 @@ struct script_cursor
       return;
     }
 
+    /* at this point: mimicry is enabled, and no mood is given on the command
+       line or set explicitly. */
     let const detected_mood =
         detect_mimic_shell_from_source(chunk.contents.view());
 
@@ -2739,9 +2750,8 @@ kosh_main(int argc, char **argv) -> int
   }
 
   if (FLAG_DUMB.is_enabled()) {
-    if (!FLAG_NO_COMPLETION.is_enabled()) FLAG_NO_COMPLETION.toggle();
-    if (!FLAG_SUPPRESS_DIAGNOSTICS.is_enabled())
-      FLAG_SUPPRESS_DIAGNOSTICS.toggle();
+    FLAG_NO_COMPLETION.enable();
+    FLAG_SUPPRESS_DIAGNOSTICS.enable();
     koshka::os::set_environment_variable("NO_COLOR", "1");
   }
 

@@ -563,8 +563,9 @@ Cp::execute(const ExecContext               &ec,
     let       target = String{cxt.scratch_allocator(), destination};
 
     if (is_destination_directory) {
-      let const source_path = Path{source, cxt.scratch_allocator()};
-      let const leaf        = source_path.filename();
+      let const source_path =
+          Path{source, cxt.scratch_allocator()}.normalized();
+      let const leaf = source_path.filename();
 
       target = join_with_operand_separator(destination, leaf,
                                            cxt.scratch_allocator())

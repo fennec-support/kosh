@@ -381,6 +381,8 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return status;
   }
 
+  /* at this point: the -f, -F, and -p paths have returned, so each operand
+     from index i is an assignment or a name to declare. */
   for (; i < args.count(); i++) {
     /* e.g. operand = "a[1]+=x"
             equals = 5, name = "a[1]+", value = "x"

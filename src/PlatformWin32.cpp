@@ -963,31 +963,13 @@ save_descriptor(i32 shell_fd) wontthrow -> saved_descriptor
 
   result.shell_fd = shell_fd;
 
-  const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);
-
-  if (!slot.has_value()) {
-    let const original = descriptor_for_shell_fd(shell_fd);
-
-    result.original = original;
-    result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
-    if (result.was_open && !duplicate_handle(original, result.saved, FALSE)) {
-      result.is_dup2_ok = false;
-    }
-
-    return result;
-  }
-
-  let const original = GetStdHandle(*slot);
+  let const original = descriptor_for_shell_fd(shell_fd);
 
   result.original = original;
   result.was_open = original != nullptr && original != INVALID_HANDLE_VALUE;
   if (result.was_open && !duplicate_handle(original, result.saved, FALSE)) {
     result.is_dup2_ok = false;
-
-    return result;
   }
-
-  result.is_dup2_ok = true;
 
   return result;
 }
@@ -1831,6 +1813,7 @@ windows_system_configuration_value(system_configuration_key key) wontthrow
   case system_configuration_key::MessageQueueOpenMax:
   case system_configuration_key::MessageQueuePriorityMax: return None;
   case system_configuration_key::OpenMax:                 return _getmaxstdio();
+  case system_configuration_key::StreamMax:               return _getmaxstdio();
   case system_configuration_key::PageSize:
     return static_cast<i64>(system_info.dwPageSize);
   case system_configuration_key::PasswordBufferSizeMax:
@@ -1838,6 +1821,7 @@ windows_system_configuration_value(system_configuration_key key) wontthrow
   case system_configuration_key::PhysicalPages:
   case system_configuration_key::PosixVersion:          return None;
   case system_configuration_key::ProcessorConfigured:
+    return static_cast<i64>(GetMaximumProcessorCount(ALL_PROCESSOR_GROUPS));
   case system_configuration_key::ProcessorOnline:
     return static_cast<i64>(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS));
   case system_configuration_key::RegexDupMax:
@@ -1845,7 +1829,6 @@ windows_system_configuration_value(system_configuration_key key) wontthrow
   case system_configuration_key::SemaphoreCountMax:
   case system_configuration_key::SemaphoreValueMax:
   case system_configuration_key::SignalQueueMax:                    return None;
-  case system_configuration_key::StreamMax:                         return _getmaxstdio();
   case system_configuration_key::SymbolicLinkLoopMax:
   case system_configuration_key::ThreadCountMax:
   case system_configuration_key::ThreadDestructorIterations:
@@ -2062,6 +2045,7 @@ set_resource_limit(const resource_limit &limit, resource_kind kind) wontthrow
 
   return false;
 }
+
 fn
 shell_fd_is_a_tty(int shell_fd) wontthrow -> bool
 {
@@ -2224,7 +2208,7 @@ get_environment_variable(StringView key) -> Maybe<String>
 
   SetLastError(ERROR_SUCCESS);
 
-  let required_size =
+  let const required_size =
       GetEnvironmentVariableW(wide_key->begin(), inline_buffer,
                               static_cast<DWORD>(countof(inline_buffer)));
 
@@ -2408,7 +2392,7 @@ for_each_environment_name(opaque                   *context,
         name_length++;
       }
 
-      let name = wide_to_utf8(entry, name_length, heap_allocator());
+      let const name = wide_to_utf8(entry, name_length, heap_allocator());
 
       if (name.has_value()) callback(context, name->view());
     }
@@ -2632,8 +2616,8 @@ read_subshell_transport_exact(descriptor pipe,
                               opaque    *output,
                               usize      length) wontthrow -> bool
 {
-  let   bytes    = static_cast<char *>(output);
-  usize position = 0;
+  let const bytes    = static_cast<char *>(output);
+  usize     position = 0;
 
   while (position < length) {
     let const read_count = read_fd(pipe, bytes + position, length - position);

@@ -1249,6 +1249,8 @@ struct directory_status_entry
   bool                 has_status{false};
 };
 
+/* The caller owns directory when it has a value and closes it with
+   close_fd(). */
 struct directory_batch_listing
 {
   Maybe<ArrayList<Path::DirectoryChild>> children;

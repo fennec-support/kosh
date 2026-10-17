@@ -192,7 +192,7 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         let listing = String{cxt.scratch_allocator()};
 
         for (let const &name : shell_option_names()) {
-          let on = query_shell_option(cxt, name);
+          let const on = query_shell_option(cxt, name);
 
           if (!on.has_value()) continue;
 

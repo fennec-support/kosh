@@ -116,6 +116,8 @@ macro_end(StringView source, usize position, usize end)
     return None;
   }
 
+  /* at this point: source[position] is '%', position + 1 < end, and
+     source[position + 1] is not '{'. */
   static constexpr StringView BARE_MACROS[] = {
       "buildroot", "name", "version", "release", "optflags",
   };

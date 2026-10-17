@@ -566,7 +566,7 @@ CompoundListCondition::evaluate_impl(EvalContext &cxt,
     let const user_after    = child_times.user_seconds;
     let const system_after  = child_times.system_seconds;
 
-    let const rss_after =
+    let const rss_after_byte_count =
         os::finish_nested_command_peak(outer_peak_rss_byte_count);
     const double real_seconds =
         static_cast<double>(elapsed_nanos) / 1000000000.0;
@@ -581,7 +581,8 @@ CompoundListCondition::evaluate_impl(EvalContext &cxt,
 
     let const time_format = cxt.get_variable_value("TIMEFORMAT");
     let const report      = utils::format_time_report(
-        time_format, real_seconds, user_cpu, system_cpu, rss_after, layout,
+        time_format, real_seconds, user_cpu, system_cpu, rss_after_byte_count,
+        layout,
         m_cmd->get_time_rss_mode() == time_rss_mode::Include
                  ? utils::time_report_rss::Include
                  : utils::time_report_rss::Omit);
@@ -670,6 +671,9 @@ Pipeline::to_ast_string(usize layer) const throws -> String
   return s;
 }
 
+/* memory: children and stage_status use scratch_allocator(). pipe_status
+           uses heap_allocator(), and publish_pipe_statuses() takes it.
+   time:   O(stages) launches, then O(stages) waits in stage order. */
 cold fn
 Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
     -> i64
@@ -1016,6 +1020,8 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
       has_compound_stage ? "fork-per-stage" : "all-simple fast");
 
   if (has_compound_stage) return evaluate_with_compound_stages(cxt);
+
+  /* at this point: every stage is a SimpleCommand. */
 
   let const substitution_mark = cxt.mark_process_substitutions();
 

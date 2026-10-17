@@ -532,6 +532,8 @@ append_sed_replacement(String                          &output,
               static_cast<usize>(spans[group].start),
               static_cast<usize>(spans[group].end - spans[group].start));
         }
+      } else if (escaped == 'n') {
+        output += '\n';
       } else {
         output += escaped;
       }
@@ -640,7 +642,9 @@ Sed::execute(const ExecContext               &ec,
 
   let do_append_script = [&](StringView addition, SourceLocation location,
                              bool is_expression) throws -> void {
-    if (!script_parts.is_empty() && script_parts.back().is_expression) {
+    if (!script_parts.is_empty() &&
+        (is_expression || script_parts.back().is_expression))
+    {
       script += '\n';
       script_parts.back().end_position = script.length();
     }
@@ -697,6 +701,9 @@ Sed::execute(const ExecContext               &ec,
     do_append_script(operands[0].view(), operand_locations[0], false);
     source_start = 1;
   }
+
+  /* at this point: script_parts is not empty, and script holds the
+     editing text in command-line order. */
 
   let commands = ArrayList<sed_command>{cxt.scratch_allocator()};
   defer {

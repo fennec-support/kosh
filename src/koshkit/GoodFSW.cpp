@@ -166,10 +166,10 @@ event_style(watch_event event) wontthrow -> StringView
 }
 
 fn
-append_event_names(String                &output,
-                   const os::file_status &status,
-                   watch_event            event,
-                   bool                   should_color) throws -> void
+append_event_names(String     &output,
+                   u32         mode,
+                   watch_event event,
+                   bool        should_color) throws -> void
 {
   let event_name = StringView{};
 
@@ -185,7 +185,7 @@ append_event_names(String                &output,
 
   append_report_text(output, event_name, event_style(event), should_color);
 
-  switch (os::file_type_letter(status.mode)) {
+  switch (os::file_type_letter(mode)) {
   case 'd': output += " IsDir"; break;
 
   case 'l': output += " IsSymLink"; break;
@@ -250,7 +250,7 @@ format_watch_timestamp(i64                           seconds,
 fn
 report_event(String                       &output,
              StringView                    path,
-             const os::file_status        &status,
+             u32                           mode,
              watch_event                   event,
              i64                           scan_time,
              u32                           scan_nanoseconds,
@@ -273,14 +273,14 @@ report_event(String                       &output,
   if (is_human) {
     append_report_text(output, path, colors::ansi::BOLD, should_color);
     output += " ";
-    append_event_names(output, status, event, should_color);
+    append_event_names(output, mode, event, should_color);
   } else {
     output += String::from(event_mask(event), output.allocator()).view();
     output += " ";
     append_report_text(output, path, colors::ansi::BOLD, should_color);
     if (FLAG_GOODFSW_EVENT_FLAGS.is_enabled()) {
       output += " ";
-      append_event_names(output, status, event, should_color);
+      append_event_names(output, mode, event, should_color);
     }
   }
 
@@ -545,13 +545,11 @@ GoodFSW::execute(const ExecContext               &ec,
            previous[previous_position].path.view() <
                current[current_position].path.view()))
       {
-        let const      &entry = previous[previous_position];
-        os::file_status rendered{};
+        let const &entry = previous[previous_position];
 
-        rendered.mode = entry.mode;
-        report_event(output, entry.path.view(), rendered, watch_event::Removed,
-                     scan_time, scan_nanoseconds, timestamp_format,
-                     should_color);
+        report_event(output, entry.path.view(), entry.mode,
+                     watch_event::Removed, scan_time, scan_nanoseconds,
+                     timestamp_format, should_color);
         previous_position++;
         continue;
       }
@@ -560,28 +558,24 @@ GoodFSW::execute(const ExecContext               &ec,
           current[current_position].path.view() <
               previous[previous_position].path.view())
       {
-        let const      &entry = current[current_position];
-        os::file_status rendered{};
+        let const &entry = current[current_position];
 
-        rendered.mode = entry.mode;
-        report_event(output, entry.path.view(), rendered, watch_event::Created,
-                     scan_time, scan_nanoseconds, timestamp_format,
-                     should_color);
+        report_event(output, entry.path.view(), entry.mode,
+                     watch_event::Created, scan_time, scan_nanoseconds,
+                     timestamp_format, should_color);
         current_position++;
         continue;
       }
 
-      let const      &previous_entry = previous[previous_position];
-      let const      &current_entry  = current[current_position];
-      os::file_status rendered{};
+      let const &previous_entry = previous[previous_position];
+      let const &current_entry  = current[current_position];
 
-      rendered.mode = current_entry.mode;
       if (!is_same_content(previous_entry, current_entry)) {
-        report_event(output, current_entry.path.view(), rendered,
+        report_event(output, current_entry.path.view(), current_entry.mode,
                      watch_event::Updated, scan_time, scan_nanoseconds,
                      timestamp_format, should_color);
       } else if (!is_same_attributes(previous_entry, current_entry)) {
-        report_event(output, current_entry.path.view(), rendered,
+        report_event(output, current_entry.path.view(), current_entry.mode,
                      watch_event::AttributeModified, scan_time,
                      scan_nanoseconds, timestamp_format, should_color);
       }

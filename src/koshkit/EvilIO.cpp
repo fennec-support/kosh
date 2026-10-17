@@ -749,13 +749,15 @@ make_disk_io_row(const os::disk_io_status *before,
         before->has_field(os::disk_io_field::ReadOperations) &&
         after.has_field(os::disk_io_field::ReadOperations))
     {
-      let const time       = counter_delta(before->read_time_nanoseconds,
-                                           after.read_time_nanoseconds);
-      let const operations = counter_delta(before->read_operation_count,
-                                           after.read_operation_count);
+      let const time_nanoseconds = counter_delta(before->read_time_nanoseconds,
+                                                 after.read_time_nanoseconds);
+      let const operation_count  = counter_delta(before->read_operation_count,
+                                                 after.read_operation_count);
 
-      if (time.has_value() && operations.has_value() && *operations != 0) {
-        row.read_latency_nanoseconds = *time / *operations;
+      if (time_nanoseconds.has_value() && operation_count.has_value() &&
+          *operation_count != 0)
+      {
+        row.read_latency_nanoseconds = *time_nanoseconds / *operation_count;
       }
     }
     if (before->has_field(os::disk_io_field::WriteTime) &&
@@ -763,13 +765,15 @@ make_disk_io_row(const os::disk_io_status *before,
         before->has_field(os::disk_io_field::WriteOperations) &&
         after.has_field(os::disk_io_field::WriteOperations))
     {
-      let const time       = counter_delta(before->write_time_nanoseconds,
-                                           after.write_time_nanoseconds);
-      let const operations = counter_delta(before->write_operation_count,
-                                           after.write_operation_count);
+      let const time_nanoseconds = counter_delta(before->write_time_nanoseconds,
+                                                 after.write_time_nanoseconds);
+      let const operation_count  = counter_delta(before->write_operation_count,
+                                                 after.write_operation_count);
 
-      if (time.has_value() && operations.has_value() && *operations != 0) {
-        row.write_latency_nanoseconds = *time / *operations;
+      if (time_nanoseconds.has_value() && operation_count.has_value() &&
+          *operation_count != 0)
+      {
+        row.write_latency_nanoseconds = *time_nanoseconds / *operation_count;
       }
     }
     if (before->has_field(os::disk_io_field::WeightedBusyTime) &&

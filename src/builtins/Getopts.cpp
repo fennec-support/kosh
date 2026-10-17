@@ -36,7 +36,7 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const &optstring = args[1];
   let const &name      = args[2];
 
-  if (!name_is_valid_assignment_target(name.view())) {
+  if (!name_is_valid_identifier(name.view())) {
     report_invalid_identifier(ec, cxt, ec.arg_location_at(2), name.view());
 
     return 1;

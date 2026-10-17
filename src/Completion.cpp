@@ -86,6 +86,8 @@ candidate_match(StringView token,
 
   if (is_token_too_loose_for_subsequence) return None;
 
+  /* at this point: token has at least two bytes, token[0] passes
+     lexer::is_variable_name(), and candidate is at least as long as token. */
   usize matched_count = 0;
 
   if (is_case_sensitive) {
@@ -394,14 +396,14 @@ common_prefix_length(StringView left,
   while (shared_length < limit && shared_length < left.length &&
          shared_length < right.length)
   {
-    let const left_byte   = left[shared_length];
-    let const right_byte  = right[shared_length];
-    let const bytes_match = should_ignore_ascii_case
-                                ? utils::ascii_to_lower(left_byte) ==
-                                      utils::ascii_to_lower(right_byte)
-                                : left_byte == right_byte;
+    let const left_byte     = left[shared_length];
+    let const right_byte    = right[shared_length];
+    let const is_byte_match = should_ignore_ascii_case
+                                  ? utils::ascii_to_lower(left_byte) ==
+                                        utils::ascii_to_lower(right_byte)
+                                  : left_byte == right_byte;
 
-    if (!bytes_match) break;
+    if (!is_byte_match) break;
     shared_length++;
   }
 
@@ -512,7 +514,7 @@ collect_command_names(StringView                   token,
 
   unused(os::normalize_program_name(normalized_path_token));
 
-  let const path_is_case_sensitive =
+  let const is_path_case_sensitive =
       utils::token_has_uppercase(normalized_path_token.view());
   let seen = BorrowedStringSet{};
 
@@ -533,7 +535,7 @@ collect_command_names(StringView                   token,
 
     let const tier =
         command_name_match(name, normalized_path_token.view(), is_glob_token,
-                           path_is_case_sensitive, glob_active);
+                           is_path_case_sensitive, glob_active);
 
     if (tier.has_value() && seen.add(name)) {
       collector.add(name, *tier);
@@ -590,7 +592,7 @@ collect_command_names(StringView                   token,
     for (let const &path_name : path_names)
       if (utils::smart_case_prefix_matches(path_name.view(),
                                            normalized_path_token.view(),
-                                           path_is_case_sensitive))
+                                           is_path_case_sensitive))
         do_add_path(path_name.view());
   }
 
@@ -1500,6 +1502,8 @@ candidate_extension_is_hinted(
 
   if (dot >= candidate.length) return false;
 
+  /* at this point: dot is the last '.' in the final path component, and
+     extension is the text after it, which may be empty. */
   let const extension = candidate.substring(dot + 1);
 
   for (let const wanted : hinted_extensions) {
@@ -1878,10 +1882,8 @@ complete(StringView                   line,
     if (!from_stage.has_value() &&
         (!is_posix_completion || should_complete_external_arguments_in_posix))
     {
-      if (!from_stage.has_value()) {
-        from_stage = complete_from_man_subcommands(line, stage_token,
-                                                   token_start, context, mode);
-      }
+      from_stage = complete_from_man_subcommands(line, stage_token, token_start,
+                                                 context, mode);
 
       if (!from_stage.has_value()) {
         from_stage = complete_from_manpage(line, stage_token, context,

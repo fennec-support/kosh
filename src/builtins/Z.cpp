@@ -261,18 +261,10 @@ record_directory_access(StringView directory,
     };
 
   if (entries.count() >= Z_FRECENCY_MAX) {
-    let const strongest =
-        steal(entries).make_sorted(frecency_rank_comparator{});
+    let strongest = steal(entries).make_sorted(frecency_rank_comparator{});
 
-    entries = ArrayList<frecency_entry>{allocator};
-    entries.reserve(Z_FRECENCY_MAX);
-
-    for (usize i = 0; i + 1 < Z_FRECENCY_MAX; i++)
-      entries.push(frecency_entry{
-          String{allocator, strongest[i].path.view()},
-          strongest[i].rank,
-          strongest[i].last_access
-      });
+    strongest.truncate(Z_FRECENCY_MAX - 1);
+    entries = steal(strongest);
   }
 
   entries.push(steal(*visited));

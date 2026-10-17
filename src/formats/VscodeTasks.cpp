@@ -41,8 +41,14 @@ json_member_string(StringView source,
 
       position++;
       while (position < object_end &&
-             (source[position] == ' ' || source[position] == ':' ||
-              source[position] == '\t'))
+             (source[position] == ' ' || source[position] == '\t'))
+        position++;
+
+      if (position >= object_end || source[position] != ':') continue;
+
+      position++;
+      while (position < object_end &&
+             (source[position] == ' ' || source[position] == '\t'))
         position++;
 
       if (position >= object_end || source[position] != '"') return None;

@@ -110,7 +110,6 @@ struct test_operand_shape
   bool has_brace_expansion{false};
   bool has_unquoted_glob{false};
   bool has_unquoted_expansion{false};
-  bool has_positional_reference{false};
 };
 
 cold fn

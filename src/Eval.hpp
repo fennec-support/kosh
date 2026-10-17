@@ -1717,7 +1717,7 @@ public:
   }
 
   pure fn
-  peak_ast_arena_bytes() const wontthrow -> usize
+  peak_ast_arena_byte_count() const wontthrow -> usize
   {
     return m_peak_ast_arena_byte_count;
   }
@@ -3345,13 +3345,13 @@ public:
   }
 
   fn
-  exit_trap_ran() wontthrow -> bool &
+  did_exit_trap_run() wontthrow -> bool &
   {
     return m_did_exit_trap_run;
   }
 
   pure fn
-  exit_trap_ran() const wontthrow -> bool
+  did_exit_trap_run() const wontthrow -> bool
   {
     return m_did_exit_trap_run;
   }

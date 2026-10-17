@@ -124,6 +124,10 @@ first_word_resolves(StringView word, EvalContext &context) throws
   if (path_status != ProgramResolver::Status::Missing) return is_runnable;
   if (context.is_koshkit_utility_reachable(word)) return true;
 
+  /* at this point: word has no directory separator, and word is not a
+     keyword, enabled builtin, function, alias, PATH program, or reachable
+     koshkit utility. */
+
   /* With autocd, a directory or a run of two or more dots becomes a cd. */
   if (!context.is_shopt_enabled(shopt_option_id::Autocd)) return false;
   if (dot_parent_steps(word).has_value()) return true;
@@ -612,6 +616,9 @@ word_names_existing_path(StringView word) throws -> bool
     return true;
   }
 
+  /* at this point: word is not empty, does not start with '~', and is
+     neither '.' nor '..'. */
+
   switch (find_listed_path_state(".", word)) {
   case listed_path_state::Missing:      return false;
   case listed_path_state::Directory:
@@ -661,6 +668,9 @@ path_partial_prefixes_entry(StringView word,
 
   if (entries == nullptr) return false;
 
+  /* at this point: partial is not empty, and entries holds the cached
+     listing of directory in folded order. */
+
   let const do_name_starts_with = [&](StringView name) wontthrow {
     if (name.starts_with(partial)) return true;
 
@@ -687,31 +697,6 @@ path_partial_prefixes_entry(StringView word,
   }
 
   return false;
-}
-
-static fn
-word_is_terminated_by_separator(StringView line,
-                                usize      word_end,
-                                usize      line_length) wontthrow -> bool
-{
-  if (word_end >= line_length) return false;
-
-  switch (line[word_end]) {
-  case ' ':
-  case '\t':
-  case '\n':
-  case ';':
-  case '|':
-  case '&':
-  case '<':
-  case '>':
-  case '(':
-  case ')':  return true;
-
-  case '\r': return word_end + 1 < line_length && line[word_end + 1] == '\n';
-
-  default: return false;
-  }
 }
 
 static fn
@@ -928,6 +913,9 @@ color_path_argument(usize                      word_start,
 
   if (existing_end >= word.length) return true;
 
+  /* at this point: existing_end < word.length, and the existing_path span
+     for word[0, existing_end) is pushed when existing_end is not zero. */
+
   usize segment_end = existing_end;
 
   while (segment_end < word.length &&
@@ -961,17 +949,17 @@ static fn
 simple_dollar_name(StringView line, usize i, usize expansion_end) wontthrow
     -> Maybe<StringView>
 {
-  if (i + 1 >= expansion_end) return koshka::None;
+  if (i + 1 >= expansion_end) return None;
   if (line[i + 1] == '{') {
     if (expansion_end < i + 3 || line[expansion_end - 1] != '}') {
-      return koshka::None;
+      return None;
     }
     let inner = line.substring_of_length(i + 2, expansion_end - (i + 2) - 1);
 
-    if (inner.is_empty()) return koshka::None;
+    if (inner.is_empty()) return None;
 
     for (usize k = 0; k < inner.length; k++)
-      if (!lexer::is_variable_name(inner[k])) return koshka::None;
+      if (!lexer::is_variable_name(inner[k])) return None;
 
     return inner;
   }
@@ -1019,7 +1007,7 @@ color_dollar(StringView                 line,
   } const scope;
 
   if (i + 2 < end && line[i + 1] == '(' && line[i + 2] == '(') {
-    let const inner_begin = i + 3 < end ? i + 3 : end;
+    let const inner_begin = i + 3;
 
     return color_arithmetic(line, inner_begin, end, context, spans,
                             line_variable_names, function_names, false);
@@ -1033,7 +1021,7 @@ color_dollar(StringView                 line,
   }
 
   if (i + 1 < end && line[i + 1] == '(') {
-    let const inner_begin = i + 2 < end ? i + 2 : end;
+    let const inner_begin = i + 2;
 
     return scan_highlight_range(line, inner_begin, end, context, spans,
                                 line_variable_names, function_names, true);
@@ -1589,7 +1577,7 @@ internal::scan_highlight_range(
         do_commit_pending_assignments();
       }
 
-      if (has_opener) parenthesis_depth++;
+      if (has_opener && !is_case_pattern_expected) parenthesis_depth++;
       if (has_closer) {
         if (is_case_pattern_expected && !stack.is_empty() &&
             stack.back() == highlight_construct::case_)
@@ -1730,7 +1718,7 @@ internal::scan_highlight_range(
     let const is_plain      = word_spans.is_empty() && !word_has_shell_syntax;
     let const is_assignment = lexer::word_looks_like_assignment(word);
     let const is_word_terminated =
-        word_is_terminated_by_separator(line, word_end, end);
+        word_end < end && position_is_highlight_word_break(line, word_end, end);
 
     let const do_color_mixed_path =
         [&](bool should_only_include_directories) throws -> bool {
@@ -1801,6 +1789,9 @@ internal::scan_highlight_range(
                                  decoded_path_spans))
           return false;
 
+        /* at this point: decoded.text contains a directory separator, the
+           opaque ranges are empty or only the leading tilde, and
+           decoded_path_spans holds the path roles of decoded.text. */
         for (let const &decoded_span : decoded_path_spans) {
           ASSERT(decoded_span.end < decoded.raw_positions.count());
 

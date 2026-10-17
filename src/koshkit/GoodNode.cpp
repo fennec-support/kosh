@@ -224,6 +224,7 @@ find_inode(const Path            &path,
   let children = os::list_directory_status(path.view(), allocator);
 
   if (!children.has_value()) return false;
+  /* at this point: path is a directory, and children holds its listing. */
 
   for (let const &child : *children) {
     if (os::INTERRUPT_REQUESTED) return false;

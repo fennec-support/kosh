@@ -384,6 +384,7 @@ Csplit::execute(const ExecContext               &ec,
       return false;
     }
 
+    /* at this point: current_line <= target_line <= lines.count(). */
     if (should_write_part) {
       let const width_location = FLAG_CSPLIT_DIGITS.is_set()
                                      ? FLAG_CSPLIT_DIGITS.value_location()

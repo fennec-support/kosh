@@ -88,6 +88,8 @@ Seq::execute(const ExecContext               &ec,
     return 1;
   }
 
+  /* at this point: first, increment, and last are set from the operands or
+     their defaults, and increment is nonzero. */
   let                    output               = String{cxt.scratch_allocator()};
   static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
 

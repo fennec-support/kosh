@@ -213,20 +213,24 @@ LiveView::get_wait_nanoseconds(u64 now_nanoseconds,
                                u64 last_refresh_nanoseconds) const wontthrow
     -> u64
 {
-  let const refresh_elapsed = now_nanoseconds - last_refresh_nanoseconds;
+  let const refresh_elapsed_nanoseconds =
+      now_nanoseconds - last_refresh_nanoseconds;
   let const wait_nanoseconds =
-      m_refresh_interval_nanoseconds > refresh_elapsed
-          ? m_refresh_interval_nanoseconds - refresh_elapsed
+      m_refresh_interval_nanoseconds > refresh_elapsed_nanoseconds
+          ? m_refresh_interval_nanoseconds - refresh_elapsed_nanoseconds
           : 0;
 
   if (m_sample_interval_nanoseconds == 0) return wait_nanoseconds;
 
-  let const sample_elapsed = now_nanoseconds - last_sample_nanoseconds;
-  let const until_sample   = m_sample_interval_nanoseconds > sample_elapsed
-                                 ? m_sample_interval_nanoseconds - sample_elapsed
-                                 : 0;
+  let const sample_elapsed_nanoseconds =
+      now_nanoseconds - last_sample_nanoseconds;
+  let const until_sample_nanoseconds =
+      m_sample_interval_nanoseconds > sample_elapsed_nanoseconds
+          ? m_sample_interval_nanoseconds - sample_elapsed_nanoseconds
+          : 0;
 
-  return until_sample < wait_nanoseconds ? until_sample : wait_nanoseconds;
+  return until_sample_nanoseconds < wait_nanoseconds ? until_sample_nanoseconds
+                                                     : wait_nanoseconds;
 }
 
 fn

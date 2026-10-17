@@ -254,6 +254,9 @@ find_canonical_operation_positions(
     if (!has_duplicate_metadata) return 0;
   }
 
+  /* at this point: metadata_count is between 2 and MAXIMUM/4, and a repeated
+     metadata request exists when metadata_count is at most 8. */
+
   canonical_positions.clear();
   canonical_positions.reserve(operations.count());
 
@@ -342,23 +345,11 @@ Batch::execute(ArrayList<batch_result> &results,
   m_optimized_operations.clear();
   defer { m_optimized_operations.clear(); };
 
-  if (deduplication == batch_deduplication::Disabled ||
-      !m_has_metadata_operations)
-  {
-    results.clear();
-    results.reserve(m_operations.count());
-
-    for (usize index = 0; index < m_operations.count(); index++)
-      results.push({});
-
-    batch_internal::execute_batch_operations(
-        m_operations.begin(), m_operations.count(), results.begin());
-
-    return;
-  }
-
-  let const unique_operation_count = find_canonical_operation_positions(
-      m_operations, m_canonical_positions, m_buckets);
+  let const unique_operation_count =
+      deduplication == batch_deduplication::Enabled && m_has_metadata_operations
+          ? find_canonical_operation_positions(m_operations,
+                                               m_canonical_positions, m_buckets)
+          : 0;
 
   if (unique_operation_count == 0) {
     results.clear();
@@ -395,15 +386,12 @@ Batch::execute(ArrayList<batch_result> &results,
   results.clear();
   results.reserve(m_operations.count());
 
-  for (usize index = 0; index < m_optimized_operations.count(); index++)
+  for (usize index = 0; index < m_operations.count(); index++)
     results.push({});
 
   batch_internal::execute_batch_operations(m_optimized_operations.begin(),
                                            m_optimized_operations.count(),
                                            results.begin());
-
-  while (results.count() < m_operations.count())
-    results.push({});
 
   for (usize remaining_count = m_operations.count(); remaining_count != 0;
        remaining_count--)

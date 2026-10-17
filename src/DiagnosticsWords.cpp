@@ -118,6 +118,9 @@ note_arithmetic_target_record(AnalysisContext       &actx,
 
   if (analysis_source_text(actx, name_location) != target) return;
 
+  /* at this point: expression_base_position has a value, and the source at
+     name_location is target. */
+
   actx.note_variable_occurrence(target, name_location,
                                 variable_occurrence_kind::Assignment,
                                 is_conditional, update_mode);
@@ -1007,6 +1010,7 @@ check_equals_bearing_command_name(AnalysisContext      &actx,
   default: break;
   }
 
+  /* at this point: command_literal does not start with $, =, or a digit. */
   if (equals_position + 1 < command_literal.length &&
       command_literal[equals_position + 1] == '=')
   {
@@ -1025,7 +1029,7 @@ check_equals_bearing_command_name(AnalysisContext      &actx,
 }
 
 /* memory: last_storage copies the last argument only when its token has
-           no borrowed view, and it is freed on return.
+           no borrowed view, and it is freed at the end of its if block.
    time:   linear in command_literal for the equals and dollar scans, plus
            the copy of the last argument when one is made. */
 fn
@@ -1228,9 +1232,15 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
       }
 
       if (!view.is_empty() && view[0] == '-') {
-        if (view.length >= 2 && ssh_option_takes_value(view[view.length - 1])) {
-          should_skip_option_value = true;
+        usize flag_position = 1;
+
+        while (flag_position < view.length &&
+               !ssh_option_takes_value(view[flag_position]))
+        {
+          flag_position++;
         }
+
+        should_skip_option_value = flag_position + 1 == view.length;
 
         continue;
       }

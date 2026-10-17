@@ -1039,12 +1039,12 @@ ProgramResolver::revalidate_command_prefix(StringView prefix) throws
       let const name_info       = os::normalize_program_name(normalized_name);
       let const stem =
           normalized_name.substring_of_length(0, name_info.stem_length);
-      let const full_name_matches =
+      let const is_full_name_match =
           smart_case_prefix_matches(normalized_name.view(), prefix);
       let const is_stem_match = stem.length != normalized_name.length() &&
                                 smart_case_prefix_matches(stem, prefix);
 
-      if (!full_name_matches && !is_stem_match) {
+      if (!is_full_name_match && !is_stem_match) {
         continue;
       }
 
@@ -1072,12 +1072,12 @@ ProgramResolver::revalidate_command_prefix(StringView prefix) throws
       let const name_info       = os::normalize_program_name(normalized_name);
       let const stem =
           normalized_name.substring_of_length(0, name_info.stem_length);
-      let const full_name_matches =
+      let const is_full_name_match =
           smart_case_prefix_matches(normalized_name.view(), prefix);
       let const is_stem_match = stem.length != normalized_name.length() &&
                                 smart_case_prefix_matches(stem, prefix);
 
-      if (!full_name_matches && !is_stem_match) {
+      if (!is_full_name_match && !is_stem_match) {
         continue;
       }
 
@@ -1103,11 +1103,12 @@ ProgramResolver::revalidate_command_prefix(StringView prefix) throws
       }
 
       if (is_stem_match) regular_names.push_managed(stem);
-      if (full_name_matches) regular_names.push_managed(normalized_name.view());
+      if (is_full_name_match)
+        regular_names.push_managed(normalized_name.view());
 
       if (!full_path->is_executable()) continue;
       if (is_stem_match) command_names.push_managed(stem);
-      if (full_name_matches) command_names.push(steal(normalized_name));
+      if (is_full_name_match) command_names.push(steal(normalized_name));
     }
   }
 
@@ -1174,7 +1175,6 @@ ProgramResolver::prepare_complete_path_cache(
   if (validation_scope == ValidationScope::Prefix &&
       !validation_prefix.is_empty())
   {
-    m_is_command_name_list_valid = false;
     revalidate_command_prefix(validation_prefix);
 
     return;
@@ -1480,6 +1480,8 @@ ProgramResolver::find_trusted(StringView  program_name,
     return None;
   }
 
+  /* at this point: paths is not empty, and the directory of paths[0] is
+     trusted for execution. */
   return steal(paths[0]);
 }
 

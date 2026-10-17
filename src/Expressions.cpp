@@ -69,7 +69,7 @@ struct assignment_index_storage
 };
 
 static fn
-assignment_index_storage_length(usize count) throws -> usize
+assignment_index_storage_byte_count(usize count) throws -> usize
 {
   if (count > (SIZE_MAX - sizeof(assignment_index_storage)) / sizeof(usize))
     throw std::bad_alloc{};
@@ -87,10 +87,10 @@ static fn
 allocate_assignment_index_storage(usize count) throws
     -> assignment_index_storage *
 {
-  let const allocation_length = assignment_index_storage_length(count);
+  let const allocation_byte_count = assignment_index_storage_byte_count(count);
   let      *storage =
       static_cast<assignment_index_storage *>(heap_allocator().raw_alloc(
-          allocation_length, alignof(assignment_index_storage)));
+          allocation_byte_count, alignof(assignment_index_storage)));
 
   if (storage == nullptr) throw std::bad_alloc{};
   new (storage) assignment_index_storage{};
@@ -253,11 +253,12 @@ AssignmentIndexSet::release() wontthrow -> void
   ASSERT(m_storage->reference_count > 0);
   m_storage->reference_count--;
   if (m_storage->reference_count == 0) {
-    let const allocation_length = sizeof(assignment_index_storage) +
-                                  m_storage->allocation_count * sizeof(usize);
+    let const allocation_byte_count =
+        sizeof(assignment_index_storage) +
+        m_storage->allocation_count * sizeof(usize);
 
     m_storage->~assignment_index_storage();
-    heap_allocator().raw_free(m_storage, allocation_length,
+    heap_allocator().raw_free(m_storage, allocation_byte_count,
                               alignof(assignment_index_storage));
   }
 
@@ -1205,8 +1206,8 @@ AnalysisContext::note_variable_occurrence(
       function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION &&
       kind == variable_occurrence_kind::Reference &&
       (current_state == nullptr || current_state->has_inherited_path);
-  let       occurrence_is_unresolved = is_unresolved;
-  let       occurrence_is_unused     = false;
+  let       is_occurrence_unresolved = is_unresolved;
+  let       is_occurrence_unused     = false;
   let const occurrence_index =
       symbol_records != nullptr ? symbol_records->variable_occurrences.count()
                                 : usize{0};
@@ -1229,11 +1230,9 @@ AnalysisContext::note_variable_occurrence(
     if (symbol_records != nullptr)
       state.assignment_indices =
           AssignmentIndexSet::singleton(occurrence_index);
-    state.is_definitely_set   = true;
-    state.is_definitely_unset = false;
-    state.has_inherited_path  = false;
+    state.is_definitely_set = true;
     occurrences.assigned.set(name, steal(state));
-    occurrence_is_unused = true;
+    is_occurrence_unused = true;
     if (function_definition_index != NO_ACTIVE_FUNCTION_DEFINITION)
       functions.records[function_definition_index].affected_names.add(name);
   } else if (kind == variable_occurrence_kind::Reference) {
@@ -1245,7 +1244,7 @@ AnalysisContext::note_variable_occurrence(
             false;
     }
 
-    occurrence_is_unresolved =
+    is_occurrence_unresolved =
         is_unresolved || (state != nullptr && !state->is_definitely_set) ||
         (state == nullptr &&
          !expressions::internal::is_shell_maintained_variable(name) &&
@@ -1254,7 +1253,7 @@ AnalysisContext::note_variable_occurrence(
   } else {
     let const *state = occurrences.find(name);
 
-    occurrence_is_unresolved = state == nullptr || !state->is_definitely_set;
+    is_occurrence_unresolved = state == nullptr || !state->is_definitely_set;
 
     let unset_state = variable_occurrence_state{};
 
@@ -1270,8 +1269,8 @@ AnalysisContext::note_variable_occurrence(
   symbol_records->variable_occurrences.push(variable_occurrence_record{
       String{heap_allocator(), name},
       location.position, location.length,
-      function_definition_index, kind, occurrence_is_unresolved,
-      occurrence_is_unused, false, false, has_inherited_function_path
+      function_definition_index, kind, is_occurrence_unresolved,
+      is_occurrence_unused, false, false, has_inherited_function_path
   });
 }
 
@@ -1347,15 +1346,11 @@ AnalysisContext::apply_called_function(
 
     if (exit_state == nullptr) return;
 
-    if (exit_state->is_definitely_set || exit_state->is_definitely_unset) {
-      occurrences.replace(affected_name, *exit_state);
-
-      return;
-    }
-
     let const *caller_state = occurrences.find(affected_name);
 
-    if (caller_state == nullptr) {
+    if (caller_state == nullptr || exit_state->is_definitely_set ||
+        exit_state->is_definitely_unset)
+    {
       occurrences.replace(affected_name, *exit_state);
 
       return;
@@ -1971,12 +1966,12 @@ expressions::internal::analyze_followed_source(
   let                  contents = actx.source_provider != nullptr
                                       ? actx.source_provider->read_source(*canonical_path)
                                       : Maybe<String>{None};
-  static constexpr u64 MAX_FOLLOWED_SOURCE_BYTES = 16 * 1024 * 1024;
+  static constexpr u64 MAX_FOLLOWED_SOURCE_BYTE_COUNT = 16 * 1024 * 1024;
 
   if (!contents.has_value()) {
-    let const size = canonical_path->file_size();
-    if (!canonical_path->is_regular_file() || !size.has_value() ||
-        *size > MAX_FOLLOWED_SOURCE_BYTES)
+    let const file_byte_count = canonical_path->file_size();
+    if (!canonical_path->is_regular_file() || !file_byte_count.has_value() ||
+        *file_byte_count > MAX_FOLLOWED_SOURCE_BYTE_COUNT)
     {
       return do_give_up_on_source();
     }

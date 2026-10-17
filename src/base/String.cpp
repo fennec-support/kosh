@@ -156,7 +156,7 @@ String::reserve(usize needed) throws -> void
     }
   }
 
-  let       fresh            = m_allocator.alloc_array<char>(new_capacity);
+  let const fresh            = m_allocator.alloc_array<char>(new_capacity);
   let const preserved_length = m_length;
 
   if (preserved_length > 0) memcpy(fresh, m_data, preserved_length);

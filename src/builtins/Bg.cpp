@@ -58,6 +58,7 @@ Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* at this point: args holds at least one job spec after args[0]. */
   for (usize arg_position = 1; arg_position < args.count(); arg_position++) {
     job *job = cxt.job_table_store().find_job_by_spec(args[arg_position]);
 

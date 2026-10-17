@@ -951,6 +951,8 @@ yaml_key_match(StringView        line,
     if (position + key.length >= line.length) continue;
     if (line.substring_of_length(position, key.length) != key) continue;
     if (line[position + key.length] != ':') continue;
+    /* at this point: key matches line at position, and the byte after it
+       is ':'. */
     content_position = position + key.length + 1;
 
     while (content_position < line.length &&
@@ -1015,7 +1017,7 @@ previous_line(StringView source, usize &position) wontthrow -> StringView
 
   usize end = position;
 
-  if (end > 0 && source[end - 1] == '\n') {
+  if (source[end - 1] == '\n') {
     end--;
   }
 
@@ -1072,10 +1074,9 @@ parser_format_shebang_program(StringView line) wontthrow -> StringView
   /* e.g. "#!/usr/bin/env -S bash -e": the first word is "/usr/bin/env", the
      word "-S" is skipped, and "bash" is returned. */
   let       program = do_next_word();
+  let const slash   = program.find_last_character('/');
   let const basename =
-      program.find_last_character('/').has_value()
-          ? program.substring(*program.find_last_character('/') + 1)
-          : program;
+      slash.has_value() ? program.substring(*slash + 1) : program;
 
   if (basename == "env") {
     program = do_next_word();
@@ -1237,6 +1238,7 @@ workflow_shell_mood(StringView value) wontthrow -> interpreter_choice
 
   if (word.is_empty()) return {};
 
+  /* at this point: word is non-empty and holds no quote characters. */
   return {true, parser_format_shell_mood(word)};
 }
 
@@ -1471,7 +1473,7 @@ decode_yaml_quoted_analysis(StringView source,
 
     if (is_inside && quote == '"' && byte == '\\') {
       result.push(' ');
-      result.push(source[position + 1] == '\n' ? '\n' : source[position + 1]);
+      result.push(source[position + 1]);
       position++;
       continue;
     }
@@ -1515,6 +1517,10 @@ heredoc_delimiter_at(StringView line, usize &position) wontthrow
     if (position < line.length &&
         (line[position] == '\'' || line[position] == '"'))
     {
+      position++;
+    }
+
+    if (position < line.length && line[position] == '\\') {
       position++;
     }
 
@@ -1620,6 +1626,8 @@ yaml_block_indicator(StringView value) wontthrow -> Maybe<bool>
 
   if (position < value.length && value[position] != '#') return None;
 
+  /* at this point: value[0] is '|' or '>', and the rest of value holds only
+     indicator characters, blanks, and an optional comment. */
   return value[0] == '>';
 }
 
@@ -1741,7 +1749,7 @@ read_yaml_scalar(StringView        source,
       }
     }
 
-    next_position = block_end < block_position ? block_position : block_end;
+    next_position = block_position;
     if (content_indent == 0 || block_end <= block_start) return false;
 
     item = yaml_scalar_item{block_start, block_end,  '\0',
@@ -1750,6 +1758,8 @@ read_yaml_scalar(StringView        source,
     return true;
   }
 
+  /* at this point: value is non-empty, value[0] is not '#', '*', or '{', and
+     value is not a block scalar header. */
   let const quote = value[0];
 
   if (quote == '"' || quote == '\'') {
@@ -1822,14 +1832,6 @@ has_yaml_ancestor(StringView source,
   return false;
 }
 
-static pure fn
-shebang_interpreter(StringView line) wontthrow -> interpreter_choice
-{
-  let const choice = interpreter_of_value(parser_format_shebang_program(line));
-
-  return {true, choice.mood};
-}
-
 static fn
 add_yaml_scalar_fragment(parsed_format_document &document,
                          StringView              source,
@@ -1850,7 +1852,8 @@ add_yaml_scalar_fragment(parsed_format_document &document,
       first_line.substring(parser_format_leading_spaces(first_line));
 
   if (first_content.starts_with("#!")) {
-    let const choice = shebang_interpreter(first_content);
+    let const choice =
+        interpreter_of_value(parser_format_shebang_program(first_content));
 
     if (!choice.mood.has_value()) return;
     mood = *choice.mood;
@@ -1892,6 +1895,8 @@ add_yaml_scalar_fragment(parsed_format_document &document,
 
   if (document.fragments.count() == fragment_count) return;
 
+  /* at this point: fragment is the last element of document.fragments, added
+     for the host range [item.start, item.end). */
   let &fragment = document.fragments.back();
 
   let const compared_start = first_content.starts_with("#!")
@@ -2400,6 +2405,8 @@ parser_format_add_json_fragment(parsed_format_document &document,
       }
       [[fallthrough]];
     default:
+      /* encoding would double the kept backslash, so skip formatting. */
+      fragment.should_skip_format = true;
       decoded.push('\\');
       decoded.push(escaped);
       break;
@@ -2753,7 +2760,7 @@ line_first_token(StringView line) wontthrow -> StringView
   return line.substring_of_length(start, end - start);
 }
 
-pure static fn
+static pure fn
 line_last_token(StringView line) wontthrow -> StringView
 {
   usize end = line.length;

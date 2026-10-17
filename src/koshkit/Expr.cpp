@@ -11,6 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
+#include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("expression",
                   "The expr utility can evaluate an operand expression.");
@@ -318,11 +319,7 @@ private:
       return result;
     }
 
-    if (peek("+")) {
-      m_position++;
-
-      return take();
-    }
+    if (peek("+")) m_position++;
 
     return take();
   }
@@ -330,9 +327,12 @@ private:
   fn
   require_number(StringView value) const throws -> i64
   {
-    let const parsed = value.to<i64>();
+    bool      is_out_of_range = false;
+    let const parsed = utils::parse_decimal_i64(value, &is_out_of_range);
 
-    if (parsed.is_error()) throw Error{"expected integer, got '" + value + "'"};
+    if (parsed.is_error() || is_out_of_range) {
+      throw Error{"expected integer, got '" + value + "'"};
+    }
 
     return parsed.value();
   }

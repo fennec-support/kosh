@@ -1969,12 +1969,13 @@ lexer::find_nested_substitutions(StringView source,
 
   let   is_in_single_quotes = false;
   let   is_in_double_quotes = is_region_in_double_quotes;
+  let   is_ansi_c_quote     = false;
   usize offset              = 0;
 
   while (offset < region.length) {
     let const c = region[offset];
 
-    if (c == '\\') {
+    if (c == '\\' && (is_heredoc || !is_in_single_quotes || is_ansi_c_quote)) {
       offset += 2;
       continue;
     }
@@ -1988,6 +1989,7 @@ lexer::find_nested_substitutions(StringView source,
 
       if (c == '\'' && !is_in_double_quotes) {
         is_in_single_quotes = true;
+        is_ansi_c_quote     = offset > 0 && region[offset - 1] == '$';
         offset++;
         continue;
       }
@@ -2066,6 +2068,8 @@ lexer::find_nested_substitutions(StringView source,
         lexer::scan_balanced_shell_region(source, body_start, ')');
 
     if (!body_end.has_value()) return found;
+    /* at this point: body_end is past the matching ')' of the region at
+       body_start, so body_end - body_start - 1 is the body length. */
 
     let entry = nested_substitution{};
 
@@ -2145,6 +2149,8 @@ lexer::find_segment_substitution(StringView         source,
   default: return None;
   }
 
+  /* at this point: the segment lies inside source, and the body range lies
+     inside the segment. */
   entry.is_exact = entry.body_length == body_text.length &&
                    source.substring_of_length(entry.body_position,
                                               entry.body_length) == body_text;

@@ -448,6 +448,8 @@ EvalContext::set_shell_variable(StringView name,
     return;
   }
 
+  /* at this point: name is not a nameref or read only, and the write is not
+     discarded, stored as an alias, or stored as an array element. */
   if (is_implicitly_integer(name) ||
       (attribute_bits & static_cast<u8>(variable_attribute::Integer)) != 0)
   {
@@ -807,6 +809,8 @@ EvalContext::set_indexed_array(StringView        name,
     return;
   }
 
+  /* at this point: name is not read only, and the write is neither discarded
+     nor stored in the directory stack. */
   variable_store().attributes().unmark_declared(name);
   if (variable_store().attributes().has_case(name)) rarely
     for (let &value : values)

@@ -229,6 +229,8 @@ More::execute(const ExecContext               &ec,
       let const count = os::read_fd(input->descriptor, buffer, sizeof(buffer));
 
       if (!count.has_value()) {
+        if (!os::INTERRUPT_REQUESTED) KOSHKIT_REPORT_PATH_ERROR("read", source);
+
         status = 1;
         break;
       }

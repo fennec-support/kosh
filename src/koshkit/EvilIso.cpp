@@ -257,7 +257,7 @@ append_namespace_report(String                      &output,
     for (let const &relation : sorted_relations) {
       if (!relation.is_available) continue;
 
-      let process_id = String::from(relation.process_id, allocator);
+      let const process_id = String::from(relation.process_id, allocator);
 
       cells.clear();
       cells.push({relation.type, colors::soft(colors::ansi::BOLD_MAGENTA)});
@@ -292,7 +292,7 @@ append_namespace_report(String                      &output,
         group_end++;
       }
 
-      let count = String::from(group_end - relation_index, allocator);
+      let const count = String::from(group_end - relation_index, allocator);
 
       cells.clear();
       cells.push({first.type, colors::soft(colors::ansi::BOLD_MAGENTA)});
@@ -592,6 +592,8 @@ normalized_pod_uid(StringView component, Allocator allocator) throws
 
   if (identifier.is_empty()) return String{allocator, "-"};
 
+  /* at this point: identifier is the 36 bytes of component after a matched
+     prefix, and its suffix matched. */
   let result = String{allocator};
 
   result.reserve(36);
@@ -841,7 +843,6 @@ struct cgroup_report_row
         controller(allocator, controller), path(allocator, path),
         process_id(String::from(process.process_id, allocator)),
         process_id_value(process.process_id),
-        process_start_token(process.start_token),
         name(allocator, process.name.view()), role(role), status(status)
   {}
 
@@ -851,7 +852,6 @@ struct cgroup_report_row
   String     path;
   String     process_id;
   i64        process_id_value{0};
-  u64        process_start_token{0};
   String     name;
   StringView role;
   StringView status;
@@ -1380,15 +1380,13 @@ append_remote_report(String                                   &output,
                   user_contexts[user_contexts.count() - 1].name.view()};
   };
 
-  let  remote_rows         = ArrayList<remote_peer_row>{allocator};
-  u64  previous_identity   = 0;
-  u32  previous_process_id = 0;
-  bool has_previous_owner  = false;
+  let remote_rows         = ArrayList<remote_peer_row>{allocator};
+  u64 previous_identity   = 0;
+  u32 previous_process_id = 0;
 
   for (let const &socket : sorted_sockets) {
     if (!is_remote_socket(socket)) continue;
-    if (socket.identity != 0 && has_previous_owner &&
-        socket.identity == previous_identity &&
+    if (socket.identity != 0 && socket.identity == previous_identity &&
         socket.process_id == previous_process_id)
     {
       continue;
@@ -1396,7 +1394,6 @@ append_remote_report(String                                   &output,
 
     previous_identity   = socket.identity;
     previous_process_id = socket.process_id;
-    has_previous_owner  = socket.identity != 0;
 
     remote_peer_row row{allocator};
 

@@ -435,6 +435,15 @@ collect_recursive_sources(const ExecContext &ec,
 
         if (results[index].error_number != 0) {
           kind = Path::EntryKind::Other;
+          if (should_report_errors) {
+            os::set_last_system_error(results[index].error_number);
+            report_soft_koshkit_util_error(
+                ec, cxt, "grep",
+                child_paths[unknown_indices[index]].text() + ": " +
+                    os::last_system_error_message());
+          }
+
+          status = 2;
           continue;
         }
 
@@ -919,6 +928,8 @@ private:
       return;
     }
 
+    /* at this point: m_fast_bytes holds at most 0x7fffffff bytes, so the u32
+       start and length fields of each segment do not truncate. */
     if (m_options.is_whole_line) {
       m_is_fast_start_anchored = true;
       m_is_fast_end_anchored   = true;
@@ -980,6 +991,8 @@ private:
       return value.substring_of_length(0, limit).find_substring(needle, from);
     }
 
+    /* at this point: limit - from is at least segment.length, so last_start
+       does not underflow. */
     let const last_start = limit - segment.length;
 
     for (usize start = from; start <= last_start; start++)
@@ -1161,6 +1174,9 @@ private:
       return false;
     }
 
+    /* at this point: value starts with m_fast_regex_prefix and ends with
+       m_fast_regex_suffix, and the two do not overlap, so middle_end is at
+       least m_fast_regex_prefix.length. */
     let const class_bits = static_cast<u8>(m_fast_regex_class);
     let const middle_end = value.length - m_fast_regex_suffix.length;
 
@@ -1676,11 +1692,9 @@ private:
       let const line_end =
           position + *lines.substring(position).find_character('\n');
 
-      if (m_options.should_invert) {
-        process_line(source_index, source,
-                     lines.substring_of_length(position, line_end - position),
-                     false);
-      }
+      process_line(source_index, source,
+                   lines.substring_of_length(position, line_end - position),
+                   false);
 
       if (m_options.should_print_line_numbers)
         m_source_line_numbers[source_index]++;
@@ -1698,6 +1712,8 @@ private:
 
     if (!last_newline.has_value()) return 0;
 
+    /* at this point: content contains a newline, so the newline searches
+       below succeed. */
     usize position = 0;
 
     if (!m_line.is_empty()) {

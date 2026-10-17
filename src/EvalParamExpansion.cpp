@@ -137,10 +137,7 @@ should_drop_final_empty_element(StringView separators) wontthrow -> bool
 {
   if (separators.is_empty()) return false;
 
-  for (usize i = 0; i < separators.length; i++)
-    if (separators[i] == ' ') return false;
-
-  return true;
+  return !separators.find_character(' ').has_value();
 }
 
 alwaysinline static fn
@@ -717,10 +714,7 @@ EvalContext::ModifierWordExpander::emit_unquoted_list(
     bool                     is_computed) throws -> void
 {
   let const ifs                 = m_context.variable_store().field_separators();
-  let       has_space_separator = false;
-
-  for (usize i = 0; i < ifs.length; i++)
-    if (ifs[i] == ' ') has_space_separator = true;
+  let const has_space_separator = ifs.find_character(' ').has_value();
 
   if (m_context.runtime_state().is_posix_mode() ||
       (!should_join_with_space &&
@@ -1410,7 +1404,7 @@ EvalContext::ModifierWordExpander::expand_plain_parameter() throws
   if (stored.has_value()) {
     emit_run(stored->view(), !m_is_in_double_quote);
   } else {
-    let value = m_context.get_variable_value(name);
+    let const value = m_context.get_variable_value(name);
 
     if (!value.has_value()) m_context.report_unset_reference(name);
     emit_run(value.has_value() ? value->view() : StringView{},
@@ -2331,8 +2325,6 @@ EvalContext::ParameterExpander::expand_subscripted() throws
     return element;
   };
 
-  if (*close + 1 == m_rest.length) return do_read_element();
-
   let const  modifier          = m_rest.substring(*close + 1);
   let        modifier_location = SourceLocation{};
   let const *modifier_location_pointer =
@@ -2354,6 +2346,8 @@ EvalContext::ParameterExpander::expand_subscripted() throws
                                       true),
         evaluated_index_text, sizeof(evaluated_index_text));
   }
+
+  if (*close + 1 == m_rest.length) return do_read_element();
 
   if (modifier_op == '@' &&
       m_context.runtime_state().get_mood() != mimic_mood::Posix &&
@@ -2486,6 +2480,8 @@ EvalContext::ParameterExpander::should_join_with_ifs(
   if (m_quoting == parameter_word_quoting::HereDocument) return false;
   if (m_context.variable_store().field_separators().is_empty()) return false;
 
+  /* at this point: is_star is false, the expansion is an assignment value,
+     the quoting is not a here document, and field_separators is not empty. */
   return m_quoting == parameter_word_quoting::DoubleQuoted ||
          is_trim_or_transform;
 }
@@ -2502,6 +2498,9 @@ EvalContext::ParameterExpander::should_drop_final_empty_of_computed_list(
   if (m_context.expansion_store().is_expanding_assignment_value()) return false;
   if (m_context.runtime_state().is_posix_mode()) return false;
 
+  /* at this point: is_star is false, values ends with an empty element,
+     the quoting is unquoted, and the expansion is outside an assignment
+     value and not in posix mode. */
   return should_drop_final_empty_element(
       m_context.variable_store().field_separators());
 }
@@ -2521,6 +2520,9 @@ EvalContext::ParameterExpander::is_operand_quoted_null(
   for (let const &value : values)
     if (!value.is_empty()) return false;
 
+  /* at this point: quoting is unquoted, the expansion is a single string
+     outside an assignment value, and every element of the non-empty values
+     is empty. */
   let const ifs = m_context.variable_store().field_separators();
 
   if (is_star) return ifs.is_empty();
@@ -2697,7 +2699,7 @@ EvalContext::ParameterExpander::expand_bare_reference() throws -> String
       stored.has_value())
     return String{m_context.scratch_allocator(), stored->view()};
 
-  let value = m_context.get_variable_value(m_name);
+  let const value = m_context.get_variable_value(m_name);
 
   if (!value.has_value()) {
     m_context.report_unset_reference(m_name);
@@ -3208,10 +3210,8 @@ find_substring_length_separator(StringView body) wontthrow -> usize
 
     if (character == '(') {
       paren_depth++;
-    } else if (character == ')') {
-      if (paren_depth > 0) {
-        paren_depth--;
-      }
+    } else if (character == ')' && paren_depth > 0) {
+      paren_depth--;
     } else if (character == '?' && paren_depth == 0) {
       question_depth++;
     } else if (character == ':' && paren_depth == 0) {
@@ -3300,6 +3300,8 @@ EvalContext::apply_substring_to_value(
                                             end_position - start_position)};
   }
 
+  /* at this point: offset is negative, or requested_length is set and
+     negative. */
   let const charset      = get_glob_charset_for(value);
   let const value_length = static_cast<i64>(
       charset == glob_charset::Utf8 ? utils::utf8_character_count(value)
@@ -3340,7 +3342,7 @@ EvalContext::compute_list_slice_bounds(
            call frees it on return.
    time:   O(1) for an associative array. for a sparse array, O(n) to collect
            the subscripts and O(n) parses in the scan, with n =
-   element_count. */
+           element_count. */
 fn
 EvalContext::compute_array_slice_bounds(
     StringView            name,
@@ -3631,8 +3633,8 @@ get_pattern_affixes(StringView    pattern,
                              : pattern.substring(last_glob_position + 1)};
 }
 
-/* Returns the largest end offset at which the value ends with the tail, or
-   zero when the tail does not occur. */
+/* Returns the end offset of the last occurrence of the tail in the value, or
+   zero when the tail does not occur. An empty tail returns value.length. */
 static fn
 get_last_tail_end(StringView value, StringView tail) wontthrow -> usize
 {
@@ -4022,6 +4024,8 @@ EvalContext::get_declaration_fields(StringView name) throws
     return fields;
   }
 
+  /* at this point: name is not @, and name is an array or has no scalar
+     value. */
   let declaration = String{scratch_allocator()};
 
   if (append_variable_declaration(*this, name, declaration) &&

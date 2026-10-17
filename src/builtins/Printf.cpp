@@ -526,7 +526,7 @@ append_conversion(String                &out,
     const int needed = snprintf(buffer, sizeof(buffer), format, value);
 
     if (needed >= 0 && static_cast<usize>(needed) < sizeof(buffer)) {
-      out += buffer;
+      out += StringView{buffer, static_cast<usize>(needed)};
     } else if (needed > 0) {
       let const   size        = static_cast<usize>(needed) + 1;
       char *const heap_buffer = allocator.alloc_array<char>(size);
@@ -541,10 +541,14 @@ append_conversion(String                &out,
   };
 
   switch (conv) {
-  case 'q':
-    append_q_argument(out, arg,
+  case 'q': {
+    let quoted = String{allocator};
+
+    append_q_argument(quoted, arg,
                       cxt.get_glob_charset_for(arg) == glob_charset::Utf8);
-    break;
+    append_conversion(out, spec, 's', false, quoted, false, numeric_locale, ec,
+                      cxt, exit_status, allocator);
+  } break;
 
   case 's': {
     if (spec == "%") {

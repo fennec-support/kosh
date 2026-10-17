@@ -44,6 +44,9 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (args.count() < 2) return 0;
 
+  /* at this point: args[1] exists, so the joined command has at least one
+     operand. */
+
   let command = String{cxt.scratch_allocator()};
 
   for (usize i = 1; i < args.count(); i++) {

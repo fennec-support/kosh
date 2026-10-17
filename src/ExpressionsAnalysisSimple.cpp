@@ -127,6 +127,9 @@ update_generated_executable_paths(AnalysisContext                &actx,
     return;
   }
 
+  /* at this point: the command is not shadowed, it runs unconditionally, and
+     args holds at least one token. */
+
   let is_driver = false;
 
   if (command_name.has_value()) {
@@ -187,14 +190,8 @@ update_generated_executable_paths(AnalysisContext                &actx,
   if (command_id == command_name_id::Rm ||
       command_id == command_name_id::Unlink)
   {
-    if (args.count() != 2) {
-      actx.generated_relative_executable_paths =
-          HashSet{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
-
-      return;
-    }
-
-    let target = literal_generated_path(args[1]);
+    let target =
+        args.count() == 2 ? literal_generated_path(args[1]) : Maybe<String>{};
 
     if (target.has_value()) {
       actx.generated_relative_executable_paths.remove(target->view());
@@ -379,9 +376,6 @@ internal::classify_test_operand(const Word &word)
       {
         shape.has_array_spread = true;
       }
-
-      if (reference_names_positional(name))
-        shape.has_positional_reference = true;
       break;
     }
 
@@ -419,6 +413,9 @@ bare_glob_can_start_with_dash(const Word &word) wontthrow -> bool
   let const close = text.find_character(']');
 
   if (!close.has_value()) return false;
+
+  /* at this point: text is a bare glob that starts with '[', and close holds
+     the position of its ']'. */
   if (*close > 1 && (text[1] == '!' || text[1] == '^')) {
     return true;
   }
@@ -1052,6 +1049,7 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
     bool  is_in_double_quote           = false;
     bool  is_quote_escape_pending      = false;
     usize parameter_expansion_depth    = 0;
+    bool  is_expansion_in_quotes       = false;
 
     for (usize position = 0; position < source_text.length; position++) {
       let const byte                       = source_text[position];
@@ -1082,7 +1080,9 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
           is_in_single_quote = true;
         } else if (byte == '"') {
           is_in_double_quote = !is_in_double_quote;
-        } else if (byte == '}' && !is_in_double_quote) {
+        } else if (byte == '}' &&
+                   (!is_in_double_quote || is_expansion_in_quotes))
+        {
           parameter_expansion_depth--;
         }
       } else if (byte == '\\') {
@@ -1135,6 +1135,8 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
             !is_in_ansi_c_quote && position + 1 < source_text.length &&
             source_text[position + 1] == '{')
         {
+          if (parameter_expansion_depth == 0)
+            is_expansion_in_quotes = is_in_double_quote;
           parameter_expansion_depth++;
         }
       }
@@ -1707,6 +1709,9 @@ SimpleCommand::append_presence_tested_command_names(
   {
     return;
   }
+
+  /* at this point: name holds the command word, which is neither a defined
+     function nor an alias. */
 
   let const is_test_presence_form    = *name == "test" && m_args.count() == 3;
   bool      is_bracket_presence_form = false;

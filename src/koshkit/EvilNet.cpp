@@ -124,12 +124,12 @@ struct evilnet_statistics_comparator
       return left.interface_name.view() < right.interface_name.view();
     }
 
-    let const &spec            = EVILNET_SORT_SPECS[*spec_index];
-    let const  left_available  = left.has_field(spec.field);
-    let const  right_available = right.has_field(spec.field);
+    let const &spec               = EVILNET_SORT_SPECS[*spec_index];
+    let const  is_left_available  = left.has_field(spec.field);
+    let const  is_right_available = right.has_field(spec.field);
 
-    if (left_available != right_available) return left_available;
-    if (left_available && left.*(spec.member) != right.*(spec.member)) {
+    if (is_left_available != is_right_available) return is_left_available;
+    if (is_left_available && left.*(spec.member) != right.*(spec.member)) {
       return left.*(spec.member) > right.*(spec.member);
     }
 
@@ -170,10 +170,7 @@ sort_network_statistics(
   let const selected   = sort_key.value_or(evilnet_sort_key::Name);
   let       spec_index = Maybe<usize>{None};
 
-  for (usize index = 0;
-       index < sizeof(EVILNET_SORT_SPECS) / sizeof(EVILNET_SORT_SPECS[0]);
-       index++)
-  {
+  for (usize index = 0; index < countof(EVILNET_SORT_SPECS); index++) {
     if (EVILNET_SORT_SPECS[index].key == selected) {
       spec_index = index;
       break;
@@ -891,12 +888,12 @@ run_live_network_traffic(const ExecContext         &ec,
 
     statistics.reserve(retained.count());
 
-    let const window_start =
+    let const window_start_nanoseconds =
         rolling_window_start(last_sample_nanoseconds, window_nanoseconds);
 
     for (let const &row : retained) {
-      statistics.push(
-          get_network_window_status(row, window_start, frame_allocator));
+      statistics.push(get_network_window_status(row, window_start_nanoseconds,
+                                                frame_allocator));
     }
 
     let const sorted_statistics =

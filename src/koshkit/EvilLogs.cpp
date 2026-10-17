@@ -175,16 +175,10 @@ is_dump_entry(StringView      directory,
   };
   constexpr StaticStringSet SUFFIXES{SUFFIX_KEYS};
 
-  switch (name[0]) {
-  case 'c':
-    if (name.starts_with("core.")) return true;
-    if (is_directory && name.starts_with("ccpp-")) {
-      return true;
-    }
+  if (name.starts_with("core.")) return true;
 
-    break;
-
-  default: break;
+  if (is_directory && name.starts_with("ccpp-")) {
+    return true;
   }
 
   if (SUFFIXES.contains(dump_suffix(name))) return true;
@@ -527,8 +521,6 @@ label_of_magic(const char *bytes, usize byte_count) wontthrow -> StringView
 
   for (usize index = 0; index < byte_count; index++) {
     let const byte = static_cast<unsigned char>(bytes[index]);
-
-    if (byte == 0) return "binary";
 
     if (byte < 0x09 || (byte > 0x0d && byte < 0x20)) {
       return "binary";

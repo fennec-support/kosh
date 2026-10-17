@@ -21,7 +21,7 @@ namespace koshka {
 
 namespace lexer {
 
-enum struct balanced_scan_keyword : u8
+enum class balanced_scan_keyword : u8
 {
   case_word,
   in_word,
@@ -397,16 +397,18 @@ scan_balanced_shell_region(StringView source,
       continue;
 
     case '<':
+      if (position + 1 < source.length && source[position] == '<' &&
+          source[position + 1] == '<')
+      {
+        position += 2;
+        previous_byte = '<';
+        continue;
+      }
+
       if (position < source.length && source[position] == '<' &&
           (previous_byte == 0 || previous_byte == '\n' ||
            is_whitespace(previous_byte) || is_shell_sentinel(previous_byte)))
       {
-        if (position + 1 < source.length && source[position + 1] == '<') {
-          position += 2;
-          previous_byte = '<';
-          continue;
-        }
-
         position++;
         bool should_strip_tabs = false;
 
@@ -433,7 +435,7 @@ scan_balanced_shell_region(StringView source,
               pending_heredoc{steal(delimiter), should_strip_tabs});
         }
 
-        previous_byte = position > 0 ? source[position - 1] : '<';
+        previous_byte = source[position - 1];
         continue;
       }
 

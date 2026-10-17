@@ -73,7 +73,6 @@ EvilFS::execute(const ExecContext               &ec,
 
   if (FLAG_EVILFS_ALL.is_enabled()) {
     usize skipped_permission_count = 0;
-    let   skipped_warning          = String{allocator};
     let   table                    = ReportTable{allocator};
 
     table.add_heading("SOURCE");
@@ -165,18 +164,18 @@ EvilFS::execute(const ExecContext               &ec,
     }
 
     append_titled_report_table(output, "Filesystems", table, should_color);
+
+    ec.print_to_stdout(output);
     if (skipped_permission_count != 0) {
-      skipped_warning = String{skipped_warning.allocator(), "Skipped "};
+      let skipped_warning = String{allocator, "Skipped "};
+
       skipped_warning +=
           String::from(skipped_permission_count, allocator).view();
       skipped_warning +=
           skipped_permission_count == 1 ? " filesystem" : " filesystems";
       skipped_warning += " due to permission denied.";
-    }
-
-    ec.print_to_stdout(output);
-    if (!skipped_warning.is_empty())
       show_report_warning(skipped_warning.view());
+    }
 
     return mounts.is_empty() ? 1 : 0;
   }

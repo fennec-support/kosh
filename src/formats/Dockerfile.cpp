@@ -503,15 +503,13 @@ parse_dockerfile_format(const parser_format_input &input,
       if (!heredoc->is_shell_body)
         body_mood = parser_format_shell_mood(heredoc->command);
 
-      if (body_mood.has_value() && body_end > body_start) {
-        let const content_start =
-            first_line.starts_with("#!") ? first_position : body_start;
+      let const content_start =
+          first_line.starts_with("#!") ? first_position : body_start;
 
-        if (content_start < body_end) {
-          parser_format_add_fragment(document, input.source, content_start,
-                                     body_end, 0, None,
-                                     parser_format_codec::Direct, *body_mood);
-        }
+      if (body_mood.has_value() && content_start < body_end) {
+        parser_format_add_fragment(document, input.source, content_start,
+                                   body_end, 0, None,
+                                   parser_format_codec::Direct, *body_mood);
       }
 
       continue;

@@ -102,6 +102,8 @@ Mkdir::execute(const ExecContext               &ec,
     named_mode = *parsed;
   }
 
+  /* at this point: operands is not empty, and named_mode holds a valid mode. */
+
   /* intermediate directories always get owner write and search, so the next
      component can be created inside them under a restrictive umask. */
   constexpr u32 owner_write_and_search_bits = 0300;

@@ -168,11 +168,7 @@ replace_all(StringView source,
      copies "a", position 1 matches "X" and appends "yy", position 2 copies
      "b", and position 3 matches "X" and appends "yy". result = "ayybyy". */
   while (position < source.length) {
-    let const remaining = source.length - position;
-
-    if (remaining >= pattern.length &&
-        memcmp(source.data + position, pattern.data, pattern.length) == 0)
-    {
+    if (source.substring(position).starts_with(pattern)) {
       result.append(replacement);
       position += pattern.length;
     } else {
@@ -449,6 +445,9 @@ edit_fc_commands(const ExecContext                          &ec,
   if (edited->is_empty()) return 0;
 
   edited->normalize_crlf_line_endings();
+
+  /* at this point: edited holds the non-empty edit text with LF line
+     endings, and the editor file is removed. */
   let const ast_mark      = cxt.arena_store().parse_arena()->mark();
   let const function_mark = cxt.arena_store().function_arena()->mark();
 

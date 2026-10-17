@@ -19,7 +19,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-lp] [--] [action condition ...]");
 
 HELP_DESCRIPTION_DECL(
-    "An action can be set for each named condition with this builtin.");
+    "An action can be set for each given condition with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(TRAP_PRINT, Bool, 'p', "", "Print the set traps in a reusable form.");
@@ -319,7 +319,7 @@ Trap::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       for (i32 number = 1; number <= os::ENTRY_IGNORED_SIGNAL_LIMIT; number++) {
         if ((ignored_signals & (u64{1} << (number - 1))) == 0) continue;
 
-        let name = os::signal_name_from_number(number);
+        let const name = os::signal_name_from_number(number);
 
         if (!name.has_value()) continue;
         if (cxt.trap_store().find(name->view()).has_value()) continue;

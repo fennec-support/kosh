@@ -381,6 +381,8 @@ collect_globstar_paths(const Path        &dir,
 
   if (!entries.has_value()) return;
 
+  /* at this point: entries holds the listing of dir, and depth is below
+     GLOBSTAR_MAX_DEPTH. */
   let is_directory        = Bitset{allocator};
   let is_symbolic_link    = Bitset{allocator};
   let uncertain_positions = ArrayList<usize>{allocator};
@@ -780,6 +782,8 @@ EvalContext::expand_tilde(WordSegment &leading_segment,
 
   if (!directory.has_value()) return;
 
+  /* at this point: directory holds the home path for name, and text starts
+     with ~. */
   LOG(All, "the tilde prefix '~%.*s' expands to '%.*s'",
       static_cast<int>(name.length), name.data,
       static_cast<int>(directory->view().length), directory->view().data);
@@ -1124,6 +1128,8 @@ EvalContext::expand_glob_lenient(StringView pattern) throws
     return values;
   }
 
+  /* at this point: field.glob_active holds an active flag for each byte of
+     pattern, and pattern contains an active glob. */
   let input = ArrayList<glob_field>{scratch};
 
   input.push(steal(field));

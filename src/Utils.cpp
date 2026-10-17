@@ -273,6 +273,8 @@ shell_word_expansion_end(StringView word, usize expansion_start) wontthrow
     return expansion_start;
   }
 
+  /* at this point: word[expansion_start] is '$', and expansion_start + 1 is
+     inside word, so next_byte is valid. */
   let const next_byte = word[expansion_start + 1];
 
   if (next_byte == '{') {

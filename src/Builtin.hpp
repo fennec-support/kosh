@@ -100,7 +100,7 @@ class Builtin
 {
 public:
 #define T__BUILTIN_KIND(kind, section, should_dispatch_help) kind,
-  enum class Kind : uint8_t
+  enum class Kind : u8
   {
     KOSH_BUILTIN_KINDS(T__BUILTIN_KIND)
   };

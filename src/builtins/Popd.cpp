@@ -77,7 +77,9 @@ Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (usize index = 0; parse_directory_stack_rotation(
           args[1].view(), stack.count() + 1, operand_locations[1], index))
   {
-    if (index == 0) {
+    if (index == 0 && FLAG_NO_CHANGE.is_enabled()) {
+      stack.pop_back();
+    } else if (index == 0) {
       if (let const status = do_pop_top(); status != 0) return status;
     } else {
       stack.remove(stack.count() - index);

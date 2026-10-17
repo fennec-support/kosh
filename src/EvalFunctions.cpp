@@ -121,8 +121,7 @@ EvalContext::register_function(
     let const body_end_position =
         body_start_position + definition_text.length - info.header_length;
 
-    if (body_start_position <= defining_view.length &&
-        body_end_position >= body_start_position &&
+    if (body_end_position >= body_start_position &&
         body_end_position <= defining_view.length)
     {
       let const before_body =
@@ -966,8 +965,8 @@ cold fn
 EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
 {
   print_deferred_source_traces();
-  if (trap_store().exit_trap_ran()) return;
-  trap_store().exit_trap_ran() = true;
+  if (trap_store().did_exit_trap_run()) return;
+  trap_store().did_exit_trap_run() = true;
 
   if (final_status.has_value())
     execution_store().last_exit_status() = *final_status;

@@ -126,13 +126,13 @@ Unexpand::execute(const ExecContext               &ec,
     do_flush_blanks();
   };
 
-  static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
+  static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 
   let do_visit_line = [&](StringView line,
                           bool       is_terminated) throws -> void {
     do_append_line(line);
     if (is_terminated) output += '\n';
-    if (output.length() >= OUTPUT_FLUSH_LENGTH) {
+    if (output.length() >= OUTPUT_FLUSH_BYTE_COUNT) {
       ec.print_to_stdout(output);
       output.clear();
     }

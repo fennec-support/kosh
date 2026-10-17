@@ -48,7 +48,7 @@ Parser::parse_if() throws -> Command *
                                      const char *note) throws -> void {
     if (!part->is_dummy()) return;
 
-    /* A consumed 'fi' closes this if, so recovery must not expect it. */
+    /* a consumed 'fi' closes this if, so recovery must not expect it. */
     if (next->kind() == Token::Kind::Fi) m_open_closers.pop_back();
 
     throw ErrorWithLocationAndDetails{next->source_location(), message, note};
@@ -63,7 +63,7 @@ Parser::parse_if() throws -> Command *
     ASSERT(then_token != nullptr);
 
     if (then_token->kind() != Token::Kind::Then) {
-      /* A 'fi' in place of 'then' closes this if. */
+      /* a 'fi' in place of 'then' closes this if. */
       if (then_token->kind() == Token::Kind::Fi) m_open_closers.pop_back();
       let const is_condition_empty = condition->is_dummy();
       let const message = is_condition_empty ? "This 'if' has no condition"
@@ -160,7 +160,7 @@ Parser::parse_while_or_until(loop_kind kind) throws -> Command *
   ASSERT(do_token != nullptr);
 
   if (do_token->kind() != Token::Kind::Do) {
-    /* A 'done' in place of 'do' closes this loop. */
+    /* a 'done' in place of 'do' closes this loop. */
     if (do_token->kind() == Token::Kind::Done) m_open_closers.pop_back();
 
     let const is_condition_empty = condition->is_dummy();
@@ -363,6 +363,9 @@ Parser::parse_loop_header(
         has_in_clause ? missing_do_detail : missing_do_without_in_detail};
   }
 
+  /* at this point: name_token is a Word token, the 'do' token is consumed,
+     and variable_name is a valid identifier unless a soft error was
+     reported. */
   return parsed_loop_header{name_token, variable_name, steal(words),
                             has_in_clause,
                             parse_loop_body(location, unterminated_message)};
@@ -530,6 +533,8 @@ Parser::parse_coproc() throws -> Command *
 
   if (end_position < keyword_end_position) end_position = keyword_end_position;
 
+  /* at this point: body is non-null, and name is COPROC or the variable
+     name before a compound command. */
   let const node = m_lexer.arena().create<CoprocCommand>(location, name, body);
 
   node->set_source_end_position(end_position);
@@ -561,7 +566,7 @@ word_token_from_assignment(BumpArena &arena, const Assignment *a) throws
   return tokens::create_word_token(arena, a->source_location(), steal(word));
 }
 
-/* The end of one case pattern word at position, skipping quotes, escapes,
+/* the end of one case pattern word at position, skipping quotes, escapes,
    backticks, and $(...), or None when the input ends inside the word. */
 static fn
 scan_pattern_word_end(StringView source, usize position) throws
@@ -615,8 +620,8 @@ scan_pattern_word_end(StringView source, usize position) throws
   return position;
 }
 
-/* True when the token starts a case pattern: a ')' follows it, or '|' and
-   further pattern words up to a ')'. A closer word such as 'fi' is then a
+/* true when the token starts a case pattern: a ')' follows it, or '|' and
+   further pattern words up to a ')'. a closer word such as 'fi' is then a
    pattern instead of the end of an enclosing command. */
 static fn
 is_followed_by_pattern_end(StringView            source,
@@ -892,6 +897,7 @@ Parser::parse_brace_group() throws -> Command *
         "Put a command in the group, as in `{ :; }`"};
   }
 
+  /* at this point: close is the unquoted '}', and body is not dummy. */
   BraceGroup *group =
       m_lexer.arena().create<BraceGroup>(open->source_location(), body);
   let const close_location = close->source_location();
@@ -952,6 +958,8 @@ Parser::parse_subshell(Token *open) throws -> Command *
         "Put a command in the subshell, as in `( : )`"};
   }
 
+  /* at this point: close is ')', body is not dummy, and the analysis
+     scope opened at scope_mark is still open. */
   let const subshell =
       m_lexer.arena().create<Subshell>(open->source_location(), body);
 
@@ -1070,6 +1078,8 @@ Parser::parse_c_style_for(const SourceLocation &location,
         "Write the header as `for ((i = 0; i < 3; i++))`"};
   }
 
+  /* at this point: separator_count is 2, so separators[0] and
+     separators[1] are offsets of ';' in header, in increasing order. */
   let const allocator = bump_allocator(m_lexer.arena());
   let const init =
       header.substring_of_length(0, separators[0]).copy_to(allocator);

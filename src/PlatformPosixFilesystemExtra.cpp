@@ -845,15 +845,9 @@ find_mounted_filesystem(StringView                           path,
 
 static fn
 read_native_filesystem_error_counters(
-    StringView path, filesystem_error_counters &counters) throws -> bool
+    const mounted_filesystem  &selected,
+    filesystem_error_counters &counters) throws -> bool
 {
-  let const filesystems = mounted_filesystems();
-  let const selected_index =
-      find_mounted_filesystem(path, filesystems, "btrfs");
-
-  if (!selected_index.has_value()) return false;
-
-  let const &selected = filesystems[*selected_index];
 
   let const sysfs_root       = Path{"/sys/fs/btrfs"};
   let const filesystem_names = Path::read_directory(sysfs_root);
@@ -1024,7 +1018,8 @@ read_filesystem_integrity_evidence(StringView path) throws
   if (filesystem.type == "btrfs") {
     filesystem_error_counters counters{};
 
-    if (!read_native_filesystem_error_counters(path, counters)) return None;
+    if (!read_native_filesystem_error_counters(filesystem, counters))
+      return None;
 
     return filesystem_integrity_evidence{
         filesystem_integrity_kind::BtrfsDeviceErrorCounters, counters};
@@ -1116,6 +1111,9 @@ verify_filesystem_integrity(StringView path,
 
   ::close(null_descriptor);
   if (spawn_result != 0) return filesystem_verification_result::Unavailable;
+
+  /* at this point: child is the pid of a spawned diskutil process that has
+     not been reaped, and null_descriptor is closed. */
 
   let const do_stop_child = [&]() wontthrow {
     unused(::kill(child, SIGKILL));
@@ -1402,6 +1400,8 @@ execute_getattrlistbulk_batch(const batched_syscall  *operations,
     }
   }
 
+  /* at this point: operation_count is at least 2, and every operation is a
+     valid Lstat with a path and a status. */
   try {
     let parent_paths                  = ArrayList<Path>{heap_allocator()};
     let collected_operation_positions = ArrayList<usize>{heap_allocator()};
@@ -1560,6 +1560,10 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
   if (aio_operation_count < 2 || aio_byte_count < MINIMUM_AIO_BYTE_COUNT) {
     return false;
   }
+
+  /* at this point: at least two read or write operations are selected for
+     aio, their byte counts total at least MINIMUM_AIO_BYTE_COUNT, and no
+     operation is WriteCurrent or Invalid. */
 
   usize operation_start = 0;
 

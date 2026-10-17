@@ -427,7 +427,7 @@ check_command_name_lints(AnalysisContext          &actx,
     if (format_index != 0 && args[format_index]->kind() == Token::Kind::Word) {
       let const &format =
           static_cast<const tokens::WordToken *>(args[format_index])->word();
-      bool has_format_expansion = false;
+      let has_format_expansion = false;
 
       for (let const &segment : format.segments) {
         if (segment.kind == WordSegment::Kind::VariableReference ||

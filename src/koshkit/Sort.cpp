@@ -627,7 +627,7 @@ Sort::execute(const ExecContext               &ec,
                                    ? compare_sort_keys(previous, current, settings)
                                    : compare_sort_entries(previous, current, settings,
                                                           is_last_resort_enabled);
-      let const  is_in_order = result < 0 || (result == 0 && !is_unique);
+      let const  is_in_order = result < 0;
 
       if (is_in_order) continue;
 

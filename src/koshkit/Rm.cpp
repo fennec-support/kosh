@@ -174,11 +174,11 @@ struct removal_request
       return os::tree_removal_choice::Proceed;
     }
 
-    let const can_ask_write_protected =
+    let const should_ask_write_protected =
         !should_ignore_missing &&
         (interaction == removal_interaction::Always || is_stdin_terminal);
     let const is_write_protected =
-        can_ask_write_protected && entry.is_write_protected;
+        should_ask_write_protected && entry.is_write_protected;
 
     if (!is_write_protected && interaction != removal_interaction::Always) {
       return os::tree_removal_choice::Proceed;
@@ -740,6 +740,9 @@ Rm::execute(const ExecContext               &ec,
     prompt += is_recursive ? " recursively? " : "? ";
     if (!confirm_koshkit_action(ec, prompt.view())) return 0;
   }
+
+  /* at this point: operands is not empty, and a required Once prompt was
+     confirmed. */
 
   i32 status = 0;
 

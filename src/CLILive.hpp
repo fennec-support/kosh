@@ -335,6 +335,9 @@ run_live_view(const ExecContext       &ec,
       return *status;
     }
 
+    /* at this point: frame holds the frame start followed by the rendered
+       body from body_start, and its storage belongs to frame_arena until the
+       loop iteration ends. */
     if (options.should_scroll)
       view.clip_frame_rows(frame, body_start, dimensions, frame_allocator);
 

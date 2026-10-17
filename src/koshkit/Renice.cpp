@@ -89,6 +89,8 @@ Renice::execute(const ExecContext               &ec,
     return 2;
   }
 
+  /* at this point: operands is not empty, at most one selector is set, and
+     increment is in INT32_MIN through INT32_MAX. */
   let const increment = parsed.value();
   let const target =
       FLAG_RENICE_GROUP.is_enabled()  ? os::priority_target::ProcessGroup

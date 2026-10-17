@@ -763,6 +763,9 @@ struct rolling_history
     if (boundary.timestamp <= before_timestamp) return before_value;
     if (boundary.timestamp >= after_timestamp) return after_value;
 
+    /* at this point: before_timestamp < boundary.timestamp < after_timestamp,
+       so after_timestamp - before_timestamp is greater than zero. */
+
     /* e.g. boundary = {1, 2, 250}, before_value = 10, after_value = 30: the
        timestamps are 200 and 300, so elapsed = 100 and passed = 50. the result
        is 10 + (30 - 10) * 50 / 100 = 20. */

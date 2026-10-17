@@ -316,6 +316,9 @@ public:
     if (repeat_count == 0) return;
     if (repeat_count > SIZE_MAX - m_length) rarely
       throw std::bad_alloc{};
+
+    /* at this point: repeat_count is not zero, and m_length + repeat_count
+       does not overflow. */
     m_ascii_state = AsciiState::Unknown;
 
     let const new_length = m_length + repeat_count;

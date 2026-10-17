@@ -15,7 +15,7 @@
 
 namespace koshka {
 
-/* The error is located at the file operand when the caller knows where the
+/* the error is located at the file operand when the caller knows where the
    operand sits in the invocation. */
 static fn
 unrecognized_format_message(Maybe<StringView>     filename,
@@ -988,9 +988,9 @@ run_script_contents(
 
     bool did_analysis_fail = false;
 #if !defined NDEBUG
-    let const diagnostic_highlight_bytes_before =
+    let const diagnostic_highlight_byte_count_before =
         completion::debug_highlight_input_byte_count();
-    let const diagnostic_lexical_scan_bytes_before =
+    let const diagnostic_lexical_scan_byte_count_before =
         completion::debug_shell_lexical_scan_byte_count();
 #endif
 
@@ -1001,10 +1001,10 @@ run_script_contents(
 #if !defined NDEBUG
     LOG(All, "diagnostic highlighting consumed %zu source bytes",
         completion::debug_highlight_input_byte_count() -
-            diagnostic_highlight_bytes_before);
+            diagnostic_highlight_byte_count_before);
     LOG(All, "diagnostic lexical replay consumed %zu source bytes",
         completion::debug_shell_lexical_scan_byte_count() -
-            diagnostic_lexical_scan_bytes_before);
+            diagnostic_lexical_scan_byte_count_before);
 #endif
 
     if (!did_analysis_fail && out_ast != nullptr) {
@@ -1282,8 +1282,7 @@ run_prompt_command(EvalContext &context, BumpArena &ast_arena) -> void
 }
 
 static fn
-history_control_operator_byte_length(StringView source, usize position)
-    wontthrow
+history_control_operator_byte_count(StringView source, usize position) wontthrow
     -> usize
 {
   let const byte      = source[position];
@@ -1335,7 +1334,7 @@ next_history_word(StringView source, usize &position) throws
       position + 1 < source.length && source[position + 1] == '(';
 
   if (lexer::is_shell_sentinel(first_byte) && !is_process_substitution) {
-    position += history_control_operator_byte_length(source, position);
+    position += history_control_operator_byte_count(source, position);
   } else {
     char quote_byte = 0;
 
@@ -1524,7 +1523,7 @@ select_history_words(StringView        command,
     throw_bad_history_word_specifier(spelling);
   }
 
-  usize selected_byte_length = 0;
+  usize selected_byte_count = 0;
 
   scan_position = 0;
   word_index    = 0;
@@ -1534,8 +1533,8 @@ select_history_words(StringView        command,
 
     if (!word.has_value()) break;
     if (word_index >= first_word_index && word_index < end_word_index) {
-      if (selected_byte_length > 0) selected_byte_length++;
-      selected_byte_length += word->length;
+      if (selected_byte_count > 0) selected_byte_count++;
+      selected_byte_count += word->length;
     }
 
     word_index++;
@@ -1543,8 +1542,8 @@ select_history_words(StringView        command,
 
   /* e.g. command = "cat 'a b' x", designator = "1-2" gives word_count 3,
      first_word_index 1 and end_word_index 3, so the words "'a b'" and "x"
-     are selected. selected_byte_length is 5 + 1 + 1 = 7. */
-  selected.reserve(selected_byte_length);
+     are selected. selected_byte_count is 5 + 1 + 1 = 7. */
+  selected.reserve(selected_byte_count);
   scan_position = 0;
   word_index    = 0;
 
@@ -1606,7 +1605,6 @@ apply_history_path_modifier(StringView text, char modifier) wontthrow
       let const separator_position = position - 1;
 
       if (modifier == 't') return text.substring(position);
-      if (separator_position == 0) return text.substring_of_length(0, 1);
 
       return text.substring_of_length(0, separator_position);
     }
@@ -1614,18 +1612,7 @@ apply_history_path_modifier(StringView text, char modifier) wontthrow
     return text;
   }
 
-  usize component_start_position = 0;
-
   for (usize position = text.length; position > 0; position--) {
-    if (text[position - 1] == '/') {
-      component_start_position = position;
-      break;
-    }
-  }
-
-  for (usize position = text.length; position > component_start_position;
-       position--)
-  {
     if (text[position - 1] != '.') continue;
 
     let const extension_position = position - 1;
@@ -2135,13 +2122,7 @@ expand_interactive_history(StringView               source,
           }
         }
       } else {
-        if (lexer::is_number(next_byte)) {
-          while (reference_end_position < source.length &&
-                 lexer::is_number(source[reference_end_position]))
-          {
-            reference_end_position++;
-          }
-        } else if (next_byte == '-') {
+        if (lexer::is_number(next_byte) || next_byte == '-') {
           while (reference_end_position < source.length &&
                  lexer::is_number(source[reference_end_position]))
           {
@@ -2599,7 +2580,7 @@ quoted_argv_offset_until(int                argc,
   return offset;
 }
 
-/* Each operand is located at its first appearance in the invocation. */
+/* each operand is located at its first appearance in the invocation. */
 static fn
 collect_operand_locations(int                      argc,
                           const char *const       *argv,
@@ -2617,7 +2598,7 @@ collect_operand_locations(int                      argc,
   return locations;
 }
 
-/* The error is located at the file operand when a location is given. */
+/* the error is located at the file operand when a location is given. */
 static fn
 show_operand_error(const SourceLocation *operand_location,
                    StringView            invocation,

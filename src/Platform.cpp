@@ -512,6 +512,9 @@ descriptor_is_shell_fd(os::descriptor fd, i32 shell_fd) wontthrow -> bool
   return fd == descriptor_for_shell_fd(shell_fd);
 }
 
+/* memory: a heap copy of pattern, freed on return. on success, compiled.re
+           holds the regcomp() allocation until free_regex() releases it.
+   time:   one regcomp() call over pattern. */
 fn
 compile_regex(StringView pattern, case_sensitivity sensitivity) throws
     -> Maybe<compiled_regex>
@@ -700,11 +703,11 @@ read_fd_to_string(os::descriptor fd, Allocator allocator) throws
   char buffer[16384];
 
   loop {
-    let const read_count = read_fd(fd, buffer, sizeof(buffer));
+    let const read_byte_count = read_fd(fd, buffer, sizeof(buffer));
 
-    if (!read_count.has_value()) return None;
-    if (*read_count == 0) return Maybe<String>{steal(contents)};
-    contents.append(StringView{buffer, *read_count});
+    if (!read_byte_count.has_value()) return None;
+    if (*read_byte_count == 0) return Maybe<String>{steal(contents)};
+    contents.append(StringView{buffer, *read_byte_count});
   }
 }
 
@@ -1029,11 +1032,11 @@ crc32c_of_file(StringView path) throws -> Maybe<u32>
   char buffer[65536];
 
   loop {
-    let const read_count = read_fd(*file, buffer, sizeof(buffer));
+    let const read_byte_count = read_fd(*file, buffer, sizeof(buffer));
 
-    if (!read_count.has_value()) return None;
-    if (*read_count == 0) break;
-    crc = crc32c_update(crc, buffer, *read_count);
+    if (!read_byte_count.has_value()) return None;
+    if (*read_byte_count == 0) break;
+    crc = crc32c_update(crc, buffer, *read_byte_count);
   }
 
   return ~crc;

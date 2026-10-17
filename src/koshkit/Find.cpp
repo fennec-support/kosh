@@ -128,13 +128,11 @@ find_entry_matches(char                type_letter,
     return false;
   }
 
-  let const original_filename = filename;
-  String    locale_independent_folded_filename{allocator};
+  String locale_independent_folded_filename{allocator};
 
   if (options.has_case_insensitive_name_pattern) {
     locale_independent_folded_filename.reserve(filename.length);
     locale_independent_folded_filename.assign_lowercase_ascii(filename);
-    filename = locale_independent_folded_filename.view();
   }
 
   if (options.name_patterns != nullptr) {
@@ -145,7 +143,7 @@ find_entry_matches(char                type_letter,
           (*options.name_pattern_ignore_case)[index];
       let const candidate = should_ignore_case
                                 ? locale_independent_folded_filename.view()
-                                : original_filename;
+                                : filename;
 
       if (!utils::glob_matches(pattern, candidate,
                                (*options.name_pattern_masks)[index], 0,
@@ -156,6 +154,9 @@ find_entry_matches(char                type_letter,
     }
   }
 
+  /* at this point: depth is within the depth limits, type_letter matches
+     type_filter when one is set, and filename matches every name pattern
+     when any is set. */
   return true;
 }
 
@@ -230,12 +231,11 @@ public:
         Path::read_directory_typed(Path{path_text, m_allocator}, m_allocator);
 
     if (!children.has_value()) {
-      if (!os::path_is_readable(path_text)) {
-        report_soft_koshkit_util_error(m_ec, m_cxt, "find",
-                                       "'" + String{m_allocator, display} +
-                                           "': Permission denied");
-        m_exit_status = 1;
-      }
+      report_soft_koshkit_util_error(
+          m_ec, m_cxt, "find",
+          "'" + String{m_allocator, display} +
+              "': " + os::last_system_error_message());
+      m_exit_status = 1;
 
       return;
     }
@@ -279,9 +279,7 @@ public:
       let const &child_entry       = (*children)[index];
       let const  child_type_letter = get_find_type_letter(child_entry.kind);
       let const  should_descend_child =
-          child_type_letter == 'd' &&
-          (m_options.max_depth < 0 ||
-           static_cast<i64>(child_depth) < m_options.max_depth);
+          child_type_letter == 'd' && !is_terminal_depth;
 
       if (should_descend_child) {
         walk_child(path_text, display, child_entry, child_depth,
@@ -465,6 +463,8 @@ private:
       return static_cast<i32>(resolution_error.command_status());
     }
 
+    /* at this point: sub holds the prepared command context, and the
+       command words were moved into it. */
     let snapshot = m_cxt.snapshot_state();
 
     m_cxt.enter_subshell();

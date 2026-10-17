@@ -107,7 +107,6 @@ struct file_subject
   String          mount_point;
   u64             optimal_block_byte_count{0};
   bool            has_optimal_block_size{false};
-  bool            has_mount_point{false};
 };
 
 enum class stat_value_kind : u8
@@ -200,6 +199,9 @@ quote_name(StringView             name,
 
   if (!target.has_value()) return text;
 
+  /* at this point: text holds the quoted display form, and target holds
+     the symlink target. */
+
   text += " -> '";
   text += target->view();
   text += "'";
@@ -213,6 +215,9 @@ find_mount_point(StringView path, Allocator allocator) throws -> String
   os::file_status start{};
 
   if (!os::stat_path_following(path, start)) return String{allocator, "?"};
+
+  /* at this point: path exists, and start holds its status with symbolic
+     links followed. */
 
   let absolute = String{allocator};
 
@@ -362,9 +367,8 @@ render_file_directive(String               &output,
     return;
 
   case 'm':
-    if (!subject.has_mount_point) {
+    if (subject.mount_point.is_empty()) {
       subject.mount_point = find_mount_point(subject.display_name, allocator);
-      subject.has_mount_point = true;
     }
 
     append_padded(output, subject.mount_point.view(), spec,
@@ -697,6 +701,7 @@ flags_done:
 
   if (position >= format.length) return false;
 
+  /* at this point: position indexes the directive letter in format. */
   spec.letter = format[position];
   position++;
 

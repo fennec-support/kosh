@@ -96,8 +96,8 @@ Pkill::execute(const ExecContext               &ec,
   }
 
   let const signal_number = resolve_koshkit_signal(
-      FLAG_PKILL_SIGNAL.is_set() ? FLAG_PKILL_SIGNAL.value() : StringView{},
-      FLAG_PKILL_SIGNAL.value_location(), cxt.scratch_allocator());
+      FLAG_PKILL_SIGNAL.value(), FLAG_PKILL_SIGNAL.value_location(),
+      cxt.scratch_allocator());
 
   let const self_pid       = os::get_shell_process_id();
   let const processes      = os::enumerate_processes();

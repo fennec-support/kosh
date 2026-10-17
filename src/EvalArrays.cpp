@@ -801,10 +801,10 @@ fn
 EvalContext::guard_expanded_subscript(StringView subscript) throws
     -> DataExpansionScope
 {
-  /* The bash and sh moods run the substitution, as Bash does. */
+  /* the bash and sh moods run the substitution, as Bash does. */
   let const is_kosh_mood = runtime_state().get_mood() == mimic_mood::Default;
 
-  /* An indirection is rejected here because a name reference target is
+  /* an indirection is rejected here because a name reference target is
      expanded after this scope ends. */
   if (is_kosh_mood && (utils::has_command_substitution(subscript) ||
                        subscript.find_substring("${!").has_value()))
@@ -952,6 +952,9 @@ EvalContext::declare_local(StringView name,
          scope_store().local_scopes().count());
   scope_store().forget_current_self_reference(name);
   if (scope_store().has_current_local(name)) return;
+
+  /* at this point: name is not readonly, the current local scope has no
+     binding for name, and the local scope depth is non-zero. */
   LOG(All, "declaring '%.*s' local in scope depth %zu",
       static_cast<int>(name.length), name.data,
       scope_store().local_scope_depth());
@@ -1393,6 +1396,8 @@ EvalContext::read_literal_array_element(StringView name,
     return None;
   }
 
+  /* at this point: name is not associative, and index holds a non-negative
+     integer. */
   let const element_index = static_cast<usize>(index.value());
   let const array         = variable_store().indexed_arrays().find(name);
 
@@ -1495,12 +1500,12 @@ EvalContext::array_element_is_set(StringView name,
 
   if (is_bash_directory_stack_special(name)) {
     let       index = evaluate_array_index(*this, subscript);
-    let const count =
+    let const directory_count =
         static_cast<i64>(variable_store().directory_stack().count() + 1);
 
-    if (index < 0) index += count;
+    if (index < 0) index += directory_count;
 
-    return index >= 0 && index < count;
+    return index >= 0 && index < directory_count;
   }
 
   if (is_associative_array(name)) {

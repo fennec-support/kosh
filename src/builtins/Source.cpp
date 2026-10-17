@@ -58,7 +58,7 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         "Unable to source the file '" + path + "': not found in PATH",
         "Pass an absolute path or add its directory to PATH"};
 
-  let       source_path = resolved_source_path.take();
+  let const source_path = resolved_source_path.take();
   let const source_name = os::has_directory_separator(path.view())
                               ? path.view()
                               : source_path.text().view();
@@ -70,6 +70,7 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                             "Unable to source the file '" + path +
                                 "': " + os::last_system_error_message()};
 
+  /* at this point: contents holds the bytes of source_path. */
   let const has_extra_args = !cxt.runtime_state().is_posix_mode() &&
                              ec.args().count() > path_index + 1;
   let saved_params = ArrayList<String>{heap_allocator()};

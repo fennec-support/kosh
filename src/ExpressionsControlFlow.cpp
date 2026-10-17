@@ -1684,13 +1684,13 @@ CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
   let const body_text =
       os::can_fork_evaluator() ? StringView{} : full_source_text(cxt, *m_body);
 
-  let toward_child = os::make_pipe();
+  let const toward_child = os::make_pipe();
   if (!toward_child.has_value()) {
     throw ErrorWithLocation{source_location(),
                             "Could not open a coprocess pipe"};
   }
 
-  let away_from_child = os::make_pipe();
+  let const away_from_child = os::make_pipe();
   if (!away_from_child.has_value()) {
     os::close_fd(toward_child->in);
     os::close_fd(toward_child->out);

@@ -21,7 +21,6 @@ struct ownership_state
 {
   const ExecContext           &ec;
   EvalContext                 &cxt;
-  StringView                   utility_name;
   i64                          owner_id;
   i64                          group_id;
   const os::tree_walk_options &options;
@@ -111,7 +110,6 @@ resolve_group_id(StringView text) throws -> Maybe<u32>
 fn
 change_operands_ownership(const ExecContext       &ec,
                           EvalContext             &cxt,
-                          StringView               utility_name,
                           const ArrayList<String> &operands,
                           const ownership_request &request) throws
     -> i32
@@ -135,8 +133,8 @@ change_operands_ownership(const ExecContext       &ec,
   let const options = os::tree_walk_options{
       request.is_recursive, request.is_one_file_system, should_follow_argument,
       should_follow_nested, false};
-  let state = ownership_state{
-      ec, cxt, utility_name, request.owner_id, request.group_id, options};
+  let state =
+      ownership_state{ec, cxt, request.owner_id, request.group_id, options};
   let const hooks  = os::tree_walk_hooks{&state, change_entry_ownership,
                                         report_ownership_walk_failure};
   i32       status = 0;

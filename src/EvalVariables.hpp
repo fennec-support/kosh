@@ -472,7 +472,7 @@ inline constexpr static_string_entry<shell_variable_description>
          {"The value is the effective user id.",
           shell_variable_fact::Dynamic | shell_variable_fact::BashOnly}      },
         {SSK("GROUPS"),
-         {"The value lists the groups the user belongs to.",
+         {"The value is the real group id of the user.",
           shell_variable_fact::Dynamic | shell_variable_fact::BashOnly}      },
         {SSK("HOSTNAME"),
          {"The value is the host name.",

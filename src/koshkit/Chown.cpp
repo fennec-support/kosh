@@ -123,7 +123,7 @@ Chown::execute(const ExecContext               &ec,
   /* at this point: owner_id and group_id are resolved ids or -1, and at least
      one of them is a resolved id. */
   return utils::change_operands_ownership(
-      ec, cxt, "chown", operands,
+      ec, cxt, operands,
       {owner_id, group_id, FLAG_CHOWN_RECURSIVE.is_enabled(),
        FLAG_CHOWN_ONE_FILE_SYSTEM.is_enabled(),
        FLAG_CHOWN_NO_DEREFERENCE.is_enabled(),

@@ -107,8 +107,8 @@ conditional_word_is_numeric_literal(const Token *token) throws -> bool
   return !view.is_empty() && view.is_all_decimal_digits();
 }
 
-/* Reports an operator in a [[ ]] that has no operand where it needs one.
-   Each primary starts with an optional unary operator, or with a left operand
+/* reports an operator in a [[ ]] that has no operand where it needs one.
+   each primary starts with an optional unary operator, or with a left operand
    and an optional binary operator. */
 cold static fn
 report_conditional_missing_operands(
@@ -741,6 +741,9 @@ ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const t
     cxt.publish_single_pipe_status(1);
     SET_AND_RETURN_EXIT_STATUS(cxt, 1);
   }
+
+  /* at this point: the command is allowed to run, and m_expression is not
+     blank. */
 
   bool is_nonzero;
 
@@ -1879,9 +1882,16 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
         break;
       }
 
-      saved_descriptors.push(
-          os::save_and_replace_descriptor(r.target_fd, r.opened_fd));
+      const os::saved_descriptor saved =
+          os::save_and_replace_descriptor(r.target_fd, r.opened_fd);
+
+      saved_descriptors.push(saved);
       os::close_fd(r.opened_fd);
+      if (!saved.is_dup2_ok) {
+        throw ErrorWithLocation{redir.target->source_location(),
+                                "Bad file descriptor"};
+      }
+
       break;
     }
     case redirection_outcome::BothStreams: {
@@ -1904,8 +1914,16 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
     }
     case redirection_outcome::Duplicate: {
       if (r.dup_from_fd == Redirection::DUP_FD_CLOSE) {
-        saved_descriptors.push(os::save_and_replace_descriptor(
-            r.target_fd, os::descriptor_for_shell_fd(r.target_fd)));
+        const os::saved_descriptor saved = os::save_and_replace_descriptor(
+            r.target_fd, os::descriptor_for_shell_fd(r.target_fd));
+
+        saved_descriptors.push(saved);
+        if (!saved.was_open) break;
+
+        if (!saved.is_dup2_ok) {
+          throw ErrorWithLocation{source_location(), "Bad file descriptor"};
+        }
+
         os::close_fd(os::descriptor_for_shell_fd(r.target_fd));
         break;
       }

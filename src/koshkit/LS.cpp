@@ -14,6 +14,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
+#include "../Toiletline.hpp"
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 #include "../base/StaticStringMap.hpp"
@@ -318,7 +319,8 @@ decorated_width(const listing_entry   &entry,
   let const has_suffix =
       options.should_classify && listing_suffix(entry.type, options) != '\0';
 
-  return entry.name.count() + (has_suffix ? 1 : 0);
+  return toiletline::get_display_width(entry.name.view()) +
+         (has_suffix ? 1 : 0);
 }
 
 static fn
@@ -806,6 +808,7 @@ render_tree_level(StringView             directory,
 
   if (!entries.has_value()) return;
 
+  /* at this point: entries holds the listing of directory. */
   for (usize index = 0; index < entries->count(); index++) {
     if (os::INTERRUPT_REQUESTED) return;
 
@@ -881,6 +884,7 @@ render_directory_block(StringView             directory,
     return;
   }
 
+  /* at this point: entries holds the listing of directory. */
   if (should_print_header) {
     if (run.has_printed_block) run.output += '\n';
     run.output += directory;
@@ -934,6 +938,7 @@ resolve_depth_limit(const ExecContext &ec,
     return false;
   }
 
+  /* at this point: parsed holds a level of at least 1. */
   options.has_depth_limit = true;
   options.max_depth       = static_cast<usize>(parsed.value());
 
@@ -1102,12 +1107,10 @@ LS::execute(const ExecContext               &ec,
     }
   }
 
-  let const sorted_file_target_indices =
-      steal(file_target_indices).make_sorted(sort_order::ascending);
   let const sorted_dir_targets =
       steal(dir_targets).make_sorted(sort_order::ascending);
 
-  for (let const target_index : sorted_file_target_indices) {
+  for (let const target_index : file_target_indices) {
     let entry = listing_entry{allocator};
 
     entry.name = String{allocator, targets[target_index]};

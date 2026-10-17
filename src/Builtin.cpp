@@ -428,10 +428,7 @@ show_usage_error(EvalContext   &cxt,
   let const               message = context + ": Not enough arguments";
   const ErrorWithLocation located{steal(location), message.view()};
 
-  if (const String *source = cxt.source_store().current_source();
-      source != nullptr)
-    show_message(located.to_string(source->view(), &cxt));
-  else
+  if (!show_with_current_source(cxt, located))
     show_message(Error{message.view()}.to_string());
   show_message(Note{
       String{heap_allocator(), "Try `"}
@@ -529,6 +526,9 @@ continue_job(job &job) throws -> void
     if (!os::signal_process(process, *cont)) did_resume = false;
 
   if (!did_resume) throw Error{"Unable to continue the stopped job"};
+
+  /* at this point: CONT was sent to the primary process when it is active,
+     and to every earlier pipeline process. */
   job.state = job::State::Running;
 }
 
@@ -821,13 +821,14 @@ append_variable_declaration(EvalContext &cxt,
       element_count = subscripts.count();
     }
 
+    let const dynamic_array = name == BASH_ARGUMENT_COUNT_VARIABLE
+                                  ? EvalContext::DynamicArray::ArgumentCount
+                                  : EvalContext::DynamicArray::ArgumentValue;
+
     if (is_directory_stack) {
       element_count = cxt.variable_store().directory_stack().count() + 1;
     } else if (is_argument_array) {
-      element_count = cxt.dynamic_array_element_count(
-          name == BASH_ARGUMENT_COUNT_VARIABLE
-              ? EvalContext::DynamicArray::ArgumentCount
-              : EvalContext::DynamicArray::ArgumentValue);
+      element_count = cxt.dynamic_array_element_count(dynamic_array);
     }
 
     for (usize e = 0; e < element_count; e++) {
@@ -855,10 +856,7 @@ append_variable_declaration(EvalContext &cxt,
         element = directory_stack_element->view();
       } else if (is_argument_array) {
         argument_array_element = cxt.dynamic_array_element_text(
-            name == BASH_ARGUMENT_COUNT_VARIABLE
-                ? EvalContext::DynamicArray::ArgumentCount
-                : EvalContext::DynamicArray::ArgumentValue,
-            e, cxt.scratch_allocator());
+            dynamic_array, e, cxt.scratch_allocator());
         element = argument_array_element.view();
       } else {
         element = values[e].view();

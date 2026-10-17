@@ -754,6 +754,28 @@ is_first_argument_token(StringView line, usize token_start) wontthrow -> bool
   return true;
 }
 
+static fn
+advance_subcommand_index(EvalContext &context) throws -> void
+{
+  if (!IS_DEFERRING_DOCUMENTATION) {
+    MANPAGE_CACHE.build_subcommand_index(context);
+
+    return;
+  }
+
+  let const scan_deadline_nanos =
+      os::monotonic_nanos() + SUBCOMMAND_SCAN_SLICE_NANOS;
+
+  do {
+    MANPAGE_CACHE.scan_next_subcommand_directory(context);
+  } while (MANPAGE_CACHE.is_subcommand_scan_running &&
+           os::monotonic_nanos() < scan_deadline_nanos);
+
+  if (MANPAGE_CACHE.is_subcommand_scan_running) {
+    throw documentation_pending{};
+  }
+}
+
 fn
 internal::second_word_of(StringView line) wontthrow -> Maybe<StringView>
 {
@@ -827,21 +849,7 @@ internal::complete_from_man_subcommands(StringView      line,
 
   if (!MANPAGE_CACHE.is_subcommand_index_built) {
     if (!is_for_listing) return None;
-    if (!IS_DEFERRING_DOCUMENTATION) {
-      MANPAGE_CACHE.build_subcommand_index(context);
-    } else {
-      let const scan_deadline_nanos =
-          os::monotonic_nanos() + SUBCOMMAND_SCAN_SLICE_NANOS;
-
-      do {
-        MANPAGE_CACHE.scan_next_subcommand_directory(context);
-      } while (MANPAGE_CACHE.is_subcommand_scan_running &&
-               os::monotonic_nanos() < scan_deadline_nanos);
-
-      if (MANPAGE_CACHE.is_subcommand_scan_running) {
-        throw documentation_pending{};
-      }
-    }
+    advance_subcommand_index(context);
   }
 
   /* at this point: sorted_page_names and subcommand_index hold the result of a
@@ -936,7 +944,6 @@ extract_dash_flags(StringView option_part) throws -> ArrayList<String>
 
 static fn
 parse_manpage_option_entries(StringView text) throws
-
     -> ArrayList<help_entry>
 {
   let clean = String{heap_allocator()};
@@ -1072,7 +1079,6 @@ parse_manpage_option_entries(StringView text) throws
 
 static fn
 command_prefers_help_over_manpage(StringView command) throws -> bool
-
 {
   let argument = HELP_ALLOWLIST.find(command);
 
@@ -1136,6 +1142,7 @@ manpage_options_for(StringView page_name, EvalContext &context) throws
   if (!argv.has_value())
     return *MANPAGE_CACHE.option_entries.set(page_name, steal(parsed_options));
 
+  /* at this point: argv holds the man command for page_name. */
   Maybe<String> page = capture_completion_program_output(context, *argv);
 
   if (!page.has_value()) {
@@ -1240,6 +1247,8 @@ internal::complete_from_manpage(StringView         line,
     return None;
   }
 
+  /* at this point: mode is Listing, token starts with '-', and
+     surface_command is a non-empty word without a directory separator. */
   let const resolved_name =
       resolve_completion_command(surface_command, context);
   let const command = resolved_name.view();
@@ -1252,8 +1261,9 @@ internal::complete_from_manpage(StringView         line,
   if (let const subcommand_word = second_word_of(line);
       subcommand_word.has_value())
   {
-    if (!MANPAGE_CACHE.is_subcommand_index_built)
-      MANPAGE_CACHE.build_subcommand_index(context);
+    if (!MANPAGE_CACHE.is_subcommand_index_built) {
+      advance_subcommand_index(context);
+    }
 
     let combined = String{heap_allocator(), command};
 
@@ -1440,6 +1450,9 @@ HelpOutputCache::ensure_parsed(EvalContext &context,
   if (parsed_keys.contains(key.view())) return;
   if (adopt_idle_load(idle_load_kind::Help, key.view(), context)) return;
 
+  /* at this point: key is not parsed, and adopt_idle_load() did not return
+     true for key. */
+
   if (IS_DEFERRING_DOCUMENTATION)
     defer_idle_load(idle_load_kind::Help, key.view(), command, key.view(),
                     help_argv_for(context, command, subcommand));
@@ -1616,8 +1629,8 @@ parse_help_subcommands(StringView text, StringView command) throws
 {
   let   subcommands          = ArrayList<help_entry>{heap_allocator()};
   let   seen                 = HashSet{heap_allocator()};
-  let   in_section           = false;
-  let   saw_entry_in_section = false;
+  let   is_in_section        = false;
+  let   has_entry_in_section = false;
   usize i                    = 0;
 
   while (i < text.length) {
@@ -1629,25 +1642,25 @@ parse_help_subcommands(StringView text, StringView command) throws
     if (line_opens_subcommand_section(trimmed)) {
       LOG(Debug, "help parse opens a subcommand section at '%.*s'",
           static_cast<int>(trimmed.length), trimmed.data);
-      in_section           = true;
-      saw_entry_in_section = false;
+      is_in_section        = true;
+      has_entry_in_section = false;
       continue;
     }
 
     if (trim_start == 0 && line_is_subcommand_group_header(trimmed)) {
-      in_section           = true;
-      saw_entry_in_section = false;
+      is_in_section        = true;
+      has_entry_in_section = false;
       continue;
     }
 
-    if (!in_section) continue;
+    if (!is_in_section) continue;
     if (trimmed.is_empty()) {
-      if (saw_entry_in_section) in_section = false;
+      if (has_entry_in_section) is_in_section = false;
       continue;
     }
 
     if (trim_start == 0) {
-      in_section = false;
+      is_in_section = false;
       continue;
     }
 
@@ -1705,7 +1718,7 @@ parse_help_subcommands(StringView text, StringView command) throws
           String{heap_allocator(), alias      },
           String{heap_allocator(), description}
       });
-      saw_entry_in_section = true;
+      has_entry_in_section = true;
     }
   }
 
@@ -1804,6 +1817,8 @@ internal::complete_from_help(StringView         line,
     return None;
   }
 
+  /* at this point: token starts with '-', and surface_command is a non-empty
+     word without a directory separator. */
   let const resolved_name = resolve_completion_alias(surface_command, context);
 
   let const chain = settled_subcommand_chain(context, resolved_name.view(),
@@ -1874,6 +1889,8 @@ internal::complete_from_help_subcommands(StringView         line,
     return None;
   }
 
+  /* at this point: subcommands holds at least one entry for chain, and
+     token does not start with '-'. */
   let matches = matches_from_help_entries(subcommands, token, descriptions);
 
   if (matches.is_empty()) return None;
@@ -2455,6 +2472,8 @@ finish_idle_load(idle_load                &load,
     return;
   }
 
+  /* at this point: load is a finished manpage load, so load.capture holds
+     its output. */
   let const  page     = load.capture.take_output();
   let const &options  = store_manpage_options(load.key.view(), page.view());
   let const  synopsis = MANPAGE_CACHE.synopses.find(load.key.view());
@@ -2605,6 +2624,8 @@ start_next_idle_load(StringView   line,
     return false;
   }
 
+  /* at this point: name is neither a builtin nor a function, and the
+     program resolver finds a runnable program for it. */
   let const command    = resolve_completion_command(name.view(), context);
   let const first_word = target->first_word;
   let const has_subcommand_word =
