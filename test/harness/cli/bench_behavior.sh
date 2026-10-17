@@ -235,3 +235,13 @@ wc -l < "$d/warmup-count" | tr -d ' '
 "$BIN" -c 'bench -p -n 2 true' 2>&1 | sed -n '1s/^.*error: //p'
 "$BIN" -c 'bench -w0 true' 2>&1 | sed -n '1s/^.*error: //p'
 "$BIN" -c 'bench -E -n 2 -N true' 2>&1 | grep -c '^  user time  '
+echo "== the extended comparison lists more rows than the default one:"
+default_rows=$("$BIN" -c 'bench -n 2 true :' 2>&1 |
+    sed -n '/^Relative to/,$p' | grep -c '^  [a-z]')
+extended_rows=$("$BIN" -c 'bench -E -n 2 true :' 2>&1 |
+    sed -n '/^Relative to/,$p' | grep -c '^  [a-z]')
+if [ "$extended_rows" -gt "$default_rows" ]; then
+    echo "extended comparison grows"
+else
+    echo "extended rows=$extended_rows default rows=$default_rows"
+fi

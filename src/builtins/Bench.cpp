@@ -592,13 +592,15 @@ append_metric_line(String          &out,
 fn
 append_relative_line(String             &out,
                      StringView          name,
+                     usize               name_width,
                      const metric_stats &first,
                      const metric_stats &other,
                      bool                should_color) throws -> void
 {
   out += "  ";
   out.append(name);
-  out.append_repeated(' ', name.length < 18 ? 18 - name.length : 0);
+  out.append_repeated(' ',
+                      name.length < name_width ? name_width - name.length : 0);
 
   if (first.mean <= 0 || other.mean <= 0) {
     out += "n/a\n";
@@ -1147,10 +1149,33 @@ append_summary(String              &out,
   }
 }
 
+/* Whether the comparison lists metric k. The default comparison lists cycles
+   and instructions. The extended one lists every time, count, size, and
+   energy that both commands measured, since a lower value is better for each
+   of them, and leaves out ratios and shares. */
+fn
+is_compared_metric(usize                k,
+                   const CommandResult &first,
+                   const CommandResult &other,
+                   bool                 is_extended) wontthrow -> bool
+{
+  if (!first.has_metric[k] || !other.has_metric[k]) return false;
+  if (!is_extended) return k == CPU_CYCLES_METRIC || k == INSTRUCTIONS_METRIC;
+
+  let const unit = METRICS[k].unit;
+
+  if (unit == metric_unit::Ratio || unit == metric_unit::Percent) {
+    return false;
+  }
+
+  return first.metric[k].mean > 0 || other.metric[k].mean > 0;
+}
+
 fn
 append_comparison(String              &out,
                   const CommandResult &first,
                   const CommandResult &other,
+                  bool                 is_extended,
                   bool                 should_color,
                   EvalContext         &context) throws -> void
 {
@@ -1160,16 +1185,24 @@ append_comparison(String              &out,
   append_command_label(out, other.label.view(), should_color, context);
   out += "\n";
 
-  append_relative_line(out, "wall time", first.wall_time, other.wall_time,
-                       should_color);
-  append_relative_line(out, "peak rss", first.peak_rss, other.peak_rss,
-                       should_color);
+  usize name_width = 18;
 
-  constexpr usize COMPARED_METRICS[] = {CPU_CYCLES_METRIC, INSTRUCTIONS_METRIC};
+  for (usize k = 0; k < METRIC_COUNT; k++) {
+    if (is_compared_metric(k, first, other, is_extended) &&
+        METRICS[k].name.length + 1 > name_width)
+    {
+      name_width = METRICS[k].name.length + 1;
+    }
+  }
 
-  for (let const k : COMPARED_METRICS) {
-    if (first.has_metric[k] && other.has_metric[k]) {
-      append_relative_line(out, METRICS[k].name, first.metric[k],
+  append_relative_line(out, "wall time", name_width, first.wall_time,
+                       other.wall_time, should_color);
+  append_relative_line(out, "peak rss", name_width, first.peak_rss,
+                       other.peak_rss, should_color);
+
+  for (usize k = 0; k < METRIC_COUNT; k++) {
+    if (is_compared_metric(k, first, other, is_extended)) {
+      append_relative_line(out, METRICS[k].name, name_width, first.metric[k],
                            other.metric[k], should_color);
     }
   }
@@ -1317,7 +1350,8 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     out += "\n";
 
     for (usize i = 1; i < results.count(); i++)
-      append_comparison(out, results[0], results[i], should_color, cxt);
+      append_comparison(out, results[0], results[i], should_collect_extended,
+                        should_color, cxt);
   }
 
   ec.print_to_stdout(out);
