@@ -303,6 +303,14 @@ is_mapped_dev_null(StringView path) wontthrow -> bool
 }
 
 fn
+is_null_device(StringView path) wontthrow -> bool
+{
+  return is_mapped_dev_null(path) ||
+         (path.length == 3 && (path[0] | 0x20) == 'n' &&
+          (path[1] | 0x20) == 'u' && (path[2] | 0x20) == 'l');
+}
+
+fn
 get_polyfilled_path_kind(StringView path) wontthrow -> polyfilled_path_kind
 {
   usize path_length = path.length;

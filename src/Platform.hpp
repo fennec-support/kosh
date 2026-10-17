@@ -1857,6 +1857,9 @@ temp_directory_path() throws -> String;
 fn
 set_path_compatibility(bool should_map_dev_null,
                        bool should_map_slash_tmp) wontthrow -> void;
+/* Whether path is the null device, which a directory listing never holds. */
+fn
+is_null_device(StringView path) wontthrow -> bool;
 
 enum class polyfilled_path_kind : u8
 {

@@ -71,6 +71,12 @@ set_path_compatibility(bool, bool) wontthrow -> void
 {}
 
 fn
+is_null_device(StringView path) wontthrow -> bool
+{
+  return path == StringView{"/dev/null"};
+}
+
+fn
 get_polyfilled_path_kind(StringView) wontthrow -> polyfilled_path_kind
 {
   return polyfilled_path_kind::None;

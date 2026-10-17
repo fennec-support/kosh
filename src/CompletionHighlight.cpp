@@ -618,6 +618,7 @@ word_names_existing_path(StringView word) throws -> bool
 
   /* at this point: word is not empty, does not start with '~', and is
      neither '.' nor '..'. */
+  if (os::is_null_device(word)) return true;
 
   switch (find_listed_path_state(".", word)) {
   case listed_path_state::Missing:      return false;
