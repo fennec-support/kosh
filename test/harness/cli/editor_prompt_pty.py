@@ -271,16 +271,25 @@ def run_prompt_pad_checks(binary, directory, command_directory, report):
     try:
         session.wait_until(lambda screen: screen.get_prompt_row() >= 0)
         session.send(b"koshconf set completion.menu_style interactive\r")
-        session.send(b"PS1=$'top\\n\\\\. '; RPS1=;"
-                     b" KOSH_TRANSIENT_PS1='T> '\r")
-        report.record("interactive-menu-pads-every-prompt-row", session,
-                      has_rows([PAD + "top", PAD + BULLET]))
-        session.send(b"true\r")
-        report.record("interactive-menu-pads-the-transient-prompt", session,
-                      has_rows([PAD + "T> true"]))
+        session.send(b"PS1=$'top\\n\\\\. '; RPS1=\r")
+        session.send(b"echo zq1")
+        report.record("interactive-menu-leaves-a-wide-prompt-row", session,
+                      has_rows(["top", BULLET + " echo zq1"]))
+        session.send(CTRL_C)
+        session.send(b"PS1=$'top\\n'\r")
+        session.send(b"echo zq2")
+        report.record("interactive-menu-pads-a-prompt-ending-in-a-newline",
+                      session, has_rows(["top", PAD + "echo zq2"]))
+        session.send(CTRL_C)
+        session.send(b"PS1='\\[\\]'\r")
+        session.send(b"echo zq3")
+        report.record("interactive-menu-pads-an-empty-prompt", session,
+                      has_rows([PAD + "echo zq3"]))
+        session.send(CTRL_C)
         session.send(b"koshconf set completion.menu_style plain\r")
+        session.send(b"echo zq4")
         report.record("plain-selector-drops-the-pad", session,
-                      has_rows(["top", BULLET]))
+                      has_rows(["echo zq4"]))
     finally:
         session.close()
 
