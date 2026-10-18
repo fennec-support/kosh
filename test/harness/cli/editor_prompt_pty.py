@@ -279,7 +279,7 @@ def run_prompt_pad_checks(binary, directory, command_directory, report):
         session.send(b"PS1=$'top\\n'\r")
         session.send(b"echo zq2")
         report.record("interactive-menu-pads-a-prompt-ending-in-a-newline",
-                      session, has_rows(["top", PAD + "echo zq2"]))
+                      session, has_rows([PAD + "top", PAD + "echo zq2"]))
         session.send(CTRL_C)
         session.send(b"PS1='\\[\\]'\r")
         session.send(b"echo zq3")
