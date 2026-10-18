@@ -2015,7 +2015,9 @@ internal::complete_from_spec(StringView         line,
       !active_spec.has_option(completion_option::Default) &&
       !token_reaches_bash_default_completion(token);
 
-  if (candidates.is_empty() && !is_bashdefault_result_empty) return None;
+  if (candidates.is_empty() && !is_bashdefault_result_empty) {
+    return None;
+  }
 
   return candidates;
 }

@@ -169,7 +169,9 @@ view_has_decimal_fraction(StringView view) wontthrow -> bool
 {
   usize position = 0;
 
-  if (view.length > 0 && (view[0] == '-' || view[0] == '+')) position++;
+  if (view.length > 0 && (view[0] == '-' || view[0] == '+')) {
+    position++;
+  }
 
   let const integer_start = position;
 

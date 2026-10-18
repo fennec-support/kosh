@@ -392,8 +392,8 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
       }
     }
 
-    /* A plain assignment hands the entry it checked to set_shell_variable(),
-       so the name is looked up once. */
+    /* A plain assignment passes the entry it checked to set_shell_variable().
+     */
     let const is_plain_assignment =
         !resolved_name.has_value() &&
         m_assignment->get_update_mode() != assignment_update_mode::Append;
@@ -711,7 +711,9 @@ assign_redirected_fd(ExecContext                       &ec,
     return;
   }
 
-  if (*slot && !*is_slot_borrowed) os::close_fd(**slot);
+  if (*slot && !*is_slot_borrowed) {
+    os::close_fd(**slot);
+  }
 
   *slot             = file_fd;
   *is_slot_borrowed = is_file_borrowed;

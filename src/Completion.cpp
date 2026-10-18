@@ -913,7 +913,7 @@ resolve_symlink_entry_kinds(const filesystem_listing &listing,
   return kinds;
 }
 
-/* memory: the matches, paths, statuses, and result positions go to
+/* memory: the matches and the positions and kinds lists go to
            completion_allocator(), which complete() resets on its next call.
    time:   O(log E) lower bound over E directory entries, then one
            candidate_match() for each entry that shares the basename prefix.

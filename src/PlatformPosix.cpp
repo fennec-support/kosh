@@ -822,7 +822,9 @@ regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>
   let const        size            = static_cast<u64>(info.st_size);
   let const        is_page_multiple =
       page_byte_count != 0 && size % page_byte_count == 0;
-  if (is_page_multiple && info.st_blocks == 0) return None;
+  if (is_page_multiple && info.st_blocks == 0) {
+    return None;
+  }
 
   return size;
 }

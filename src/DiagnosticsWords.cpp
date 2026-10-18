@@ -1582,7 +1582,9 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
       let const literal = word.to_literal_string();
       let const view    = literal.view();
 
-      if (view.is_empty() || view[0] == '-') continue;
+      if (view.is_empty() || view[0] == '-') {
+        continue;
+      }
 
       has_seen_command_word = true;
 

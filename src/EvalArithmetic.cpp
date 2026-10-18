@@ -2178,8 +2178,8 @@ arith_classify_binop(StringView t) wontthrow -> arith_binop
   return {0, 0};
 }
 
-/* The binary operator class of an operator token, kept in its value so the
-   evaluator reads it without classifying the text again. */
+/* The binary operator class of an operator token, packed into its value as
+   precedence << 8 | kind. */
 static pure fn
 arith_packed_binop(StringView t) wontthrow -> i64
 {
