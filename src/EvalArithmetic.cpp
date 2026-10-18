@@ -2133,6 +2133,57 @@ static const StringView ARITH_OPERATORS[] = {
     "%",   "<",   ">",  "=",  "&",  "|",  "^",  "!",  "~",
 };
 
+struct arith_binop
+{
+  char kind;
+  u8   precedence;
+};
+
+static pure fn
+arith_classify_binop(StringView t) wontthrow -> arith_binop
+{
+  static constexpr static_string_entry<arith_binop> ENTRIES[] = {
+      {SSK("**"), {'P', 11}},
+      {SSK("*"),  {'*', 10}},
+      {SSK("/"),  {'/', 10}},
+      {SSK("%"),  {'%', 10}},
+      {SSK("+"),  {'+', 9} },
+      {SSK("-"),  {'-', 9} },
+      {SSK("<<"), {'L', 8} },
+      {SSK(">>"), {'R', 8} },
+      {SSK("<"),  {'<', 7} },
+      {SSK("<="), {'l', 7} },
+      {SSK(">"),  {'>', 7} },
+      {SSK(">="), {'g', 7} },
+      {SSK("=="), {'e', 6} },
+      {SSK("!="), {'n', 6} },
+      {SSK("&"),  {'&', 5} },
+      {SSK("^"),  {'^', 4} },
+      {SSK("|"),  {'|', 3} },
+  };
+  static constexpr StaticStringMap BINOPS{ENTRIES};
+
+  if (let const found = BINOPS.find(t); found.has_value()) return *found;
+
+  return {0, 0};
+}
+
+/* The binary operator class of an operator token, kept in its value so the
+   evaluator reads it without classifying the text again. */
+static pure fn
+arith_packed_binop(StringView t) wontthrow -> i64
+{
+  let const op = arith_classify_binop(t);
+
+  return (static_cast<i64>(op.precedence) << 8) | static_cast<u8>(op.kind);
+}
+
+static pure fn
+arith_unpacked_binop(i64 value) wontthrow -> arith_binop
+{
+  return {static_cast<char>(value & 0xff), static_cast<u8>(value >> 8)};
+}
+
 /* memory: out grows by one arith_token per token; the caller owns out and
            clears it before a retokenize. token texts are views into src.
    time:   O(n) in the bytes of src. an operator token probes at most 39
@@ -2236,7 +2287,7 @@ tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
       if (i + op.length <= src.length &&
           src.substring_of_length(i, op.length) == op)
       {
-        out.push(arith_token{arith_token::kind::op, 0,
+        out.push(arith_token{arith_token::kind::op, arith_packed_binop(op),
                              src.substring_of_length(i, op.length)});
         i += op.length;
         is_matched = true;
@@ -2245,8 +2296,9 @@ tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
     }
 
     if (!is_matched) {
-      out.push(
-          arith_token{arith_token::kind::op, 0, src.substring_of_length(i, 1)});
+      out.push(arith_token{arith_token::kind::op,
+                           arith_packed_binop(src.substring_of_length(i, 1)),
+                           src.substring_of_length(i, 1)});
       i++;
     }
   }
@@ -2308,40 +2360,6 @@ arith_tokens_are_simple(const ArrayList<arith_token> &toks) wontthrow -> bool
   return true;
 }
 
-struct arith_binop
-{
-  char kind;
-  u8   precedence;
-};
-
-static pure fn
-arith_classify_binop(StringView t) wontthrow -> arith_binop
-{
-  static constexpr static_string_entry<arith_binop> ENTRIES[] = {
-      {SSK("**"), {'P', 11}},
-      {SSK("*"),  {'*', 10}},
-      {SSK("/"),  {'/', 10}},
-      {SSK("%"),  {'%', 10}},
-      {SSK("+"),  {'+', 9} },
-      {SSK("-"),  {'-', 9} },
-      {SSK("<<"), {'L', 8} },
-      {SSK(">>"), {'R', 8} },
-      {SSK("<"),  {'<', 7} },
-      {SSK("<="), {'l', 7} },
-      {SSK(">"),  {'>', 7} },
-      {SSK(">="), {'g', 7} },
-      {SSK("=="), {'e', 6} },
-      {SSK("!="), {'n', 6} },
-      {SSK("&"),  {'&', 5} },
-      {SSK("^"),  {'^', 4} },
-      {SSK("|"),  {'|', 3} },
-  };
-  static constexpr StaticStringMap BINOPS{ENTRIES};
-
-  if (let const found = BINOPS.find(t); found.has_value()) return *found;
-
-  return {0, 0};
-}
 
 static fn
 bc_apply_binop(char                   kind,
@@ -2684,7 +2702,7 @@ public:
         return lhs;
       }
 
-      let const op = arith_classify_binop(toks[ti].text);
+      let const op = arith_unpacked_binop(toks[ti].value);
 
       if (op.precedence < min_precedence) return lhs;
       ti++;
@@ -2699,7 +2717,7 @@ public:
             ti < toks.count() &&
             (toks[ti].k != arith_token::kind::op ||
              (toks[ti].text != ")" &&
-              arith_classify_binop(toks[ti].text).precedence == 0));
+              arith_unpacked_binop(toks[ti].value).precedence == 0));
 
         if (is_invalid_tail) {
           throw ErrorWithDetails{"Unexpected '" + toks[ti].text +
