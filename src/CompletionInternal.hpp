@@ -79,6 +79,10 @@ fn
 is_after_builtin_prefix(StringView line, usize token_start) wontthrow -> bool;
 pure fn
 command_segment_start(StringView line, usize cursor) wontthrow -> usize;
+/* The byte after the last of the command segment that holds position, where
+   an unquoted separator or parenthesis ends it. */
+pure fn
+command_segment_end(StringView line, usize position) wontthrow -> usize;
 
 pure fn
 split_path_token(StringView token) wontthrow -> path_token;

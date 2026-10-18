@@ -102,6 +102,8 @@ hint-explains-the-command PASS
 hint-rows-indented PASS
 hint-explains-the-flag-under-the-caret PASS
 hint-clears-inside-command-word PASS
+hint-window-centers-on-the-caret PASS
+hint-lists-flags-around-an-operand PASS
 hint-explains-a-builtin PASS
 hint-skips-a-word-without-description PASS
 tab-completes-option-name-by-subsequence PASS

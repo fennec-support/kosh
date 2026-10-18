@@ -1150,6 +1150,16 @@ def run_checks(binary, directory, command_directory, report):
                       is_without_hint("cat"))
         clear_line(session)
 
+        session.send(b"ls -l -a -h -R -t" + LEFT * 7)
+        report.record("hint-window-centers-on-the-caret", session,
+                      is_explained(["-a", "> -h", "-R"]))
+        clear_line(session)
+
+        session.send(b"ls -l sub -a" + LEFT * 5)
+        report.record("hint-lists-flags-around-an-operand", session,
+                      is_explained(["ls", "-l", "-a"]))
+        clear_line(session)
+
         session.send(b"echo ")
         report.record("hint-explains-a-builtin", session,
                       is_explained(["echo"]))

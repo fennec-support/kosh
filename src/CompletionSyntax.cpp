@@ -452,6 +452,26 @@ internal::command_segment_start(StringView line, usize cursor)
   return start;
 }
 
+pure fn
+internal::command_segment_end(StringView line, usize position)
+    wontthrow -> usize
+{
+  for (usize k = position; k < line.length; k++) {
+    let const c = line[k];
+
+    if (c == '\'' || c == '"' || c == '\\') {
+      k = quoted_run_end(line, k);
+      continue;
+    }
+
+    if (c == ';' || c == '|' || c == '&' || c == '\n' || c == '(' || c == ')') {
+      return k;
+    }
+  }
+
+  return line.length;
+}
+
 /* memory: name holds one String in heap_allocator(), and each expansion
            replaces it. the caller owns the returned String.
    time:   at most 8 find_alias() calls, each followed by a scan of the first

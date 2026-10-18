@@ -2109,6 +2109,7 @@ struct hint_target
   StringView command;
   StringView token;
   StringView between;
+  StringView after;
   StringView first_word;
   usize      cursor_in_token{0};
 };
@@ -2119,6 +2120,7 @@ locate_hint_target(StringView line, usize cursor) throws
 {
   if (cursor > line.length) cursor = line.length;
 
+  let const whole_line   = line;
   let const substitution = command_substitution_range(line, cursor);
 
   line = line.substring_of_length(substitution.start,
@@ -2153,6 +2155,15 @@ locate_hint_target(StringView line, usize cursor) throws
       segment.substring_of_length(bounds.start, bounds.end - bounds.start);
   target.between =
       segment.substring_of_length(command_end, bounds.start - command_end);
+
+  /* The substitution range ends at the word under the caret, so the words
+     after it are read from the whole line up to the end of the segment. */
+  let const after_start =
+      static_cast<usize>(segment.data - whole_line.data) + bounds.end;
+  let const after_end = command_segment_end(whole_line, after_start);
+
+  target.after =
+      whole_line.substring_of_length(after_start, after_end - after_start);
 
   usize between_position = 0;
 
@@ -2228,15 +2239,17 @@ struct explain_row
 };
 
 /* Lay the words of a command out as explain rows: the command and its
-   description, a subcommand with its own description, and each flag with its
-   description. The rows end at the word under the caret, which is marked, and
-   only the last EXPLAIN_ROW_MAX of them are kept. Each row ends with a line
+   description, a subcommand with its own description, and each flag of the
+   command with its description, before and after the caret. The word under
+   the caret is marked. When more than EXPLAIN_ROW_MAX rows have a
+   description, the rows nearest the caret are kept. Each row ends with a line
    break, so the editor keeps it on a row of its own. Returns false when no
    row has a description. */
 static fn
 compose_explain_rows(StringView         command,
                      StringView         between,
                      StringView         token,
+                     StringView         after,
                      const hint_source &source,
                      String            &out) throws -> bool
 {
@@ -2263,7 +2276,12 @@ compose_explain_rows(StringView         command,
   });
   between.for_each_ascii_whitespace_word(
       [&](StringView word) throws { do_add_word(word, false); });
+
+  let const caret_index = rows.count();
+
   if (!token.is_empty()) do_add_word(token, true);
+  after.for_each_ascii_whitespace_word(
+      [&](StringView word) throws { do_add_word(word, false); });
 
   let has_description = false;
 
@@ -2272,11 +2290,25 @@ compose_explain_rows(StringView         command,
 
   if (!has_description) return false;
 
-  let const first =
-      rows.count() > EXPLAIN_ROW_MAX ? rows.count() - EXPLAIN_ROW_MAX : 0;
-  usize word_width = 0;
+  /* The window keeps the row at the caret, or the first row after it, in its
+     middle, and moves to an edge only when the rows run out. */
+  usize first = 0;
 
-  for (usize index = first; index < rows.count(); index++) {
+  if (rows.count() > EXPLAIN_ROW_MAX) {
+    let const centered   = caret_index > EXPLAIN_ROW_MAX / 2
+                               ? caret_index - EXPLAIN_ROW_MAX / 2
+                               : 0;
+    let const last_first = rows.count() - EXPLAIN_ROW_MAX;
+
+    first = centered < last_first ? centered : last_first;
+  }
+
+  let const end        = rows.count() - first < EXPLAIN_ROW_MAX
+                             ? rows.count()
+                             : first + EXPLAIN_ROW_MAX;
+  usize     word_width = 0;
+
+  for (usize index = first; index < end; index++) {
     let const length = rows[index].word.length;
 
     if (length <= EXPLAIN_WORD_WIDTH_MAX && length > word_width) {
@@ -2285,7 +2317,7 @@ compose_explain_rows(StringView         command,
   }
 
   out.append(SYNOPSIS_HINT_HEADER);
-  for (usize index = first; index < rows.count(); index++) {
+  for (usize index = first; index < end; index++) {
     let const &row = rows[index];
 
     out.append(row.is_caret ? StringView{"> "} : StringView{"  "});
@@ -2495,7 +2527,8 @@ compose_command_hint(StringView   line,
 
   if (source.description.is_empty()) source.description = source.synopsis;
 
-  return compose_explain_rows(command, between, token, source, out);
+  return compose_explain_rows(command, between, token, target->after, source,
+                              out);
 }
 
 struct idle_load

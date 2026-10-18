@@ -2845,8 +2845,10 @@ explain the command under the cursor under a
 header. Each of up to three rows pairs a word of the command with its
 meaning: the command itself, a subcommand such as
 .BR "git commit" ,
-and each flag, ending at the word under the cursor, which is marked with
-.BR > .
+and each flag of the command, before or after the cursor. The word under the
+cursor is marked with
+.BR > ,
+and a command with more rows shows the ones nearest the cursor.
 A command is described by its manual page, builtin or koshkit help, alias
 definition, or function location, and by its synopsis when it has no
 description. The rows are hidden while a completion menu or history search is
