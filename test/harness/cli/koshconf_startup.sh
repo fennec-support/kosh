@@ -72,14 +72,10 @@ echo "== an invalid KOSHCONF is a warning:"
 KOSHCONF='%%%' "$BIN" -c 'koshconf get mood'
 echo "rc=$?"
 
-echo "== an interactive kosh mood sources the koshrc once:"
+echo "== the kosh mood neither sources nor warns about a koshrc:"
 printf 'echo koshrc-ran\n' >"$home/.koshrc"
 printf 'mood=kosh\n' >"$conf"
-printf 'set -L kosh\n' | "$BIN" -i 2>/dev/null | grep -c koshrc-ran
-echo "== --norc, -Q, and a non-interactive shell skip the koshrc:"
-"$BIN" --norc -i </dev/null 2>/dev/null | grep -c koshrc-ran
-"$BIN" -Q -i </dev/null 2>/dev/null | grep -c koshrc-ran
-"$BIN" -c : 2>/dev/null | grep -c koshrc-ran
+printf 'set -L kosh\n' | "$BIN" -i 2>&1 | grep -c 'koshrc'
 echo "== a configured bash mood sources the bash rc:"
 printf 'echo bashrc-ran\n' >"$home/.bashrc"
 printf 'mood=bash\n' >"$conf"

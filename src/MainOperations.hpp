@@ -2473,18 +2473,7 @@ source_init_moods(EvalContext                 &context,
                                           : "kosh");
     switch (flavor) {
     case mimic_mood::Default:
-      if (should_be_interactive && !FLAG_NORC.is_enabled() &&
-          !context.runtime_state().option_is_enabled(
-              shell_option_id::Privileged))
-      {
-        if (let const rcfile = selected_rcfile(); rcfile.has_value()) {
-          source_custom_rcfile(*rcfile, context);
-        } else {
-          source_file(Path{"/etc/koshrc"}, context);
-          source_home_file(".koshrc", context);
-        }
-      }
-
+      LOG(Info, "the kosh mood sources no shell startup file");
       break;
 
     case mimic_mood::Posix:

@@ -286,12 +286,18 @@ def run_prompt_pad_checks(binary, directory, command_directory, report):
 
 
 def run_message_checks(binary, directory, command_directory, report):
-    koshrc = os.path.join(directory, "koshrc")
-    with open(koshrc, "w") as file:
-        file.write('printf -v KOSH_WELCOME "\\r"\n'
-                   'printf -v KOSH_FAREWELL "\\r"\n')
+    bashrc = os.path.join(directory, "bashrc")
+    configuration = os.path.join(directory, ".config", "kosh", "kosh.conf")
+    with open(bashrc, "w") as file:
+        file.write('if [ -n "$KOSH" ]; then\n'
+                   '  printf -v KOSH_WELCOME "\\r"\n'
+                   '  printf -v KOSH_FAREWELL "\\r"\n'
+                   'fi\n')
+    os.makedirs(os.path.dirname(configuration), exist_ok=True)
+    with open(configuration, "w") as file:
+        file.write("init_moods=bash\n")
     session = Session(binary, directory, command_directory, COLUMNS,
-                      rcfile=koshrc)
+                      rcfile=bashrc)
     try:
         report.record("zero-width-welcome-prints-no-row", session,
                       lambda screen: screen.get_prompt_row() == 0)
@@ -303,7 +309,8 @@ def run_message_checks(binary, directory, command_directory, report):
                       <= 1)
     finally:
         session.close()
-        os.remove(koshrc)
+        os.remove(bashrc)
+        os.remove(configuration)
 
 
 def run_job_notice_checks(binary, directory, report):

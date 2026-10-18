@@ -212,14 +212,12 @@ Option parsing ends, and the next operand is the script.
 .TP
 .BR \-\-init\-file " " \fIFILE\fR ", " \-\-rcfile " " \fIFILE\fR
 FILE is the interactive rc file. The file replaces ~/.bashrc in an
-interactive non-login Bash mood, and /etc/koshrc and ~/.koshrc in an
-interactive
+interactive non-login Bash mood. The
 .B kosh
-mood.
+mood sources no rc file and ignores this option.
 .TP
 .B \-\-norc
-The interactive non-login Bash rc, the koshrc files, and a custom rc file are
-skipped. Login
+The interactive non-login Bash rc and a custom rc file are skipped. Login
 profiles and BASH_ENV processing are unchanged.
 .TP
 .BR \-O " " \fINAME\fR ", " +O " " \fINAME\fR
@@ -966,13 +964,11 @@ line keep their values.
 .PP
 The
 .B kosh
-mood sources /etc/koshrc and then ~/.koshrc in an interactive shell, as
-described in
-.BR kosh (5).
+mood sources no shell startup file, and
 .B \-\-rcfile
-replaces both files, and
-.B \-\-norc
-skips them. A
+has no effect in it. Shell code belongs in ~/.bashrc, as described in
+.BR kosh (5).
+A
 .B kosh
 session started with
 .B \-L bash
