@@ -141,7 +141,7 @@ FLAG(NORC,
      '\0',
      "norc",
      Bash,
-     "Do not source the interactive bash rc or a custom rc file.");
+     "Do not source the interactive rc file or a custom rc file.");
 FLAG(RESTRICTED,
      Bool,
      'r',
