@@ -81,3 +81,15 @@ echo hi | cat -n => [synopsis] cat
 > -n
 echo hi && cat -n => [synopsis] cat
 > -n
+== synopsis rows per flag
+read -r -s -r => [synopsis] read
+> -r
+  -s
+read -rs -r => [synopsis] read
+> -r
+  -s
+read -e -r -s -a => [synopsis] read
+  -e
+  -r
+  -s
+> -a

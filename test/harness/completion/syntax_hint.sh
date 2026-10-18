@@ -100,3 +100,8 @@ printf '== alias, function, and segment under the caret\n'
 "$BIN" -c 'zzf() { echo hi; }' --debug-hint-at 'zzf '
 help_hint 'echo hi | cat -n'
 help_hint 'echo hi && cat -n'
+
+printf '== synopsis rows per flag\n'
+help_hint 'read -r -s -r'
+help_hint 'read -rs -r'
+help_hint 'read -e -r -s -a'

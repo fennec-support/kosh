@@ -102,7 +102,7 @@ hint-explains-the-command PASS
 hint-rows-indented PASS
 hint-explains-the-flag-under-the-caret PASS
 hint-clears-inside-command-word PASS
-hint-window-centers-on-the-caret PASS
+hint-lists-more-than-three-flags PASS
 hint-lists-flags-around-an-operand PASS
 hint-lists-flags-past-a-substitution PASS
 hint-stops-at-the-closing-backtick PASS

@@ -1151,8 +1151,8 @@ def run_checks(binary, directory, command_directory, report):
         clear_line(session)
 
         session.send(b"ls -l -a -h -R -t" + LEFT * 7)
-        report.record("hint-window-centers-on-the-caret", session,
-                      is_explained(["-a", "> -h", "-R"]))
+        report.record("hint-lists-more-than-three-flags", session,
+                      is_explained(["ls", "-l", "-a", "> -h", "-R", "-t"]))
         clear_line(session)
 
         session.send(b"ls -l sub -a" + LEFT * 5)

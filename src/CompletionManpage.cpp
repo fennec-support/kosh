@@ -2071,39 +2071,6 @@ first_sentence(StringView text) wontthrow -> StringView
   return text;
 }
 
-/* The description of a flag word. A word with a value describes the part
-   before '=', and a cluster of short flags that has no entry of its own joins
-   the descriptions of its letters. */
-static fn
-describe_flag_word(const hint_source &source,
-                   StringView         word,
-                   String            &out) throws -> void
-{
-  out.clear();
-
-  let const equals = word.find_character('=');
-  let const flag =
-      equals.has_value() ? word.substring_of_length(0, *equals) : word;
-  let const whole = flag_description(source, flag);
-
-  if (!whole.is_empty() || flag.length <= 2 || flag[1] == '-') {
-    out.append(first_sentence(whole));
-
-    return;
-  }
-
-  char letter_flag[2] = {'-', '\0'};
-
-  for (usize position = 1; position < flag.length; position++) {
-    letter_flag[1]   = flag[position];
-    let const letter = flag_description(source, StringView{letter_flag, 2});
-
-    if (letter.is_empty()) continue;
-    if (!out.is_empty()) out.append(StringView{", "});
-    out.append(first_sentence(letter));
-  }
-}
-
 struct hint_target
 {
   StringView command;
@@ -2186,7 +2153,7 @@ locate_hint_target(StringView line, usize cursor) throws
 }
 
 static constexpr StringView SYNOPSIS_HINT_HEADER{"synopsis\n"};
-static constexpr usize      EXPLAIN_ROW_MAX        = 3;
+static constexpr usize      EXPLAIN_ROW_MAX        = 16;
 static constexpr usize      EXPLAIN_WORD_WIDTH_MAX = 16;
 
 static fn
@@ -2244,15 +2211,27 @@ describe_function(StringView   name,
 
 struct explain_row
 {
-  StringView word;
-  String     description;
-  bool       is_caret{false};
+  String word;
+  String description;
+  bool   is_caret{false};
 };
+
+/* The part of a flag word before '='. */
+static pure fn
+flag_name_of(StringView word) wontthrow -> StringView
+{
+  let const equals = word.find_character('=');
+
+  return equals.has_value() ? word.substring_of_length(0, *equals) : word;
+}
 
 /* Lay the words of a command out as explain rows: the command and its
    description, a subcommand with its own description, and each flag of the
-   command with its description, before and after the caret. The word under
-   the caret is marked. When more than EXPLAIN_ROW_MAX rows have a
+   command with its description, before and after the caret. A cluster of
+   short flags without an entry of its own takes one row per letter, and a
+   repeated flag keeps its first row. The word under the caret, or the letter
+   before the caret in a cluster, is marked. When more than EXPLAIN_ROW_MAX
+   rows have a
    description, the rows nearest the caret are kept. Each row ends with a line
    break, so the editor keeps it on a row of its own. Returns false when no
    row has a description. */
@@ -2260,6 +2239,7 @@ static fn
 compose_explain_rows(StringView         command,
                      StringView         between,
                      StringView         token,
+                     usize              cursor_in_token,
                      StringView         after,
                      const hint_source &source,
                      String            &out) throws -> bool
@@ -2267,32 +2247,83 @@ compose_explain_rows(StringView         command,
   let rows             = ArrayList<explain_row>{heap_allocator()};
   let is_first_operand = true;
 
-  let const do_add_word = [&](StringView word, bool is_caret) throws {
-    let row = explain_row{word, String{heap_allocator()}, is_caret};
+  let const do_add_flag = [&](StringView word, StringView description,
+                              bool is_caret) throws {
+    let const name = flag_name_of(word);
 
-    if (word.length >= 2 && word[0] == '-' && word != StringView{"--"}) {
-      describe_flag_word(source, word, row.description);
-    } else if (is_first_operand) {
-      is_first_operand = false;
-      if (!source.subcommand_description.is_empty()) {
-        row.description.append(source.subcommand_description);
+    for (let &row : rows) {
+      if (row.word.view()[0] == '-' && flag_name_of(row.word.view()) == name) {
+        if (is_caret) row.is_caret = true;
+
+        return;
       }
     }
 
-    if (!row.description.is_empty()) rows.push(steal(row));
+    if (description.is_empty()) return;
+    rows.push(explain_row{
+        String{heap_allocator(), word                       },
+        String{heap_allocator(), first_sentence(description)},
+        is_caret
+    });
+  };
+
+  let const do_add_word = [&](StringView word, bool is_caret) throws {
+    if (word.length < 2 || word[0] != '-' || word == StringView{"--"}) {
+      if (!is_first_operand) return;
+      is_first_operand = false;
+      if (source.subcommand_description.is_empty()) return;
+      rows.push(explain_row{
+          String{heap_allocator(), word                         },
+          String{heap_allocator(), source.subcommand_description},
+          is_caret
+      });
+
+      return;
+    }
+
+    let const name  = flag_name_of(word);
+    let const whole = flag_description(source, name);
+
+    if (!whole.is_empty() || name.length <= 2 || name[1] == '-') {
+      do_add_flag(word, whole, is_caret);
+
+      return;
+    }
+
+    let const caret_letter   = cursor_in_token <= 1 ? 1
+                               : cursor_in_token < name.length
+                                   ? cursor_in_token - 1
+                                   : name.length - 1;
+    char      letter_flag[2] = {'-', '\0'};
+
+    for (usize position = 1; position < name.length; position++) {
+      letter_flag[1]  = name[position];
+      let const label = StringView{letter_flag, 2};
+
+      do_add_flag(label, flag_description(source, label),
+                  is_caret && position == caret_letter);
+    }
   };
 
   rows.push(explain_row{
-      command, String{heap_allocator(), source.description}
+      String{heap_allocator(), command           },
+      String{heap_allocator(), source.description}
   });
   between.for_each_ascii_whitespace_word(
       [&](StringView word) throws { do_add_word(word, false); });
 
-  let const caret_index = rows.count();
+  usize caret_index = rows.count();
 
   if (!token.is_empty()) do_add_word(token, true);
   after.for_each_ascii_whitespace_word(
       [&](StringView word) throws { do_add_word(word, false); });
+
+  for (usize index = 0; index < rows.count(); index++) {
+    if (rows[index].is_caret) {
+      caret_index = index;
+      break;
+    }
+  }
 
   let has_description = false;
 
@@ -2320,7 +2351,7 @@ compose_explain_rows(StringView         command,
   usize     word_width = 0;
 
   for (usize index = first; index < end; index++) {
-    let const length = rows[index].word.length;
+    let const length = rows[index].word.length();
 
     if (length <= EXPLAIN_WORD_WIDTH_MAX && length > word_width) {
       word_width = length;
@@ -2332,9 +2363,10 @@ compose_explain_rows(StringView         command,
     let const &row = rows[index];
 
     out.append(row.is_caret ? StringView{"> "} : StringView{"  "});
-    out.append(row.word);
-    out.append_repeated(
-        ' ', row.word.length < word_width ? word_width - row.word.length : 0);
+    out.append(row.word.view());
+    out.append_repeated(' ', row.word.length() < word_width
+                                 ? word_width - row.word.length()
+                                 : 0);
     out.append(StringView{"  "});
     out.append(row.description.view());
     out.push('\n');
@@ -2538,8 +2570,8 @@ compose_command_hint(StringView   line,
 
   if (source.description.is_empty()) source.description = source.synopsis;
 
-  return compose_explain_rows(command, between, token, target->after, source,
-                              out);
+  return compose_explain_rows(command, between, token, target->cursor_in_token,
+                              target->after, source, out);
 }
 
 struct idle_load
