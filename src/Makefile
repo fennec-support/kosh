@@ -196,8 +196,17 @@ LIBC_INFORMATION := $(LIBC_INFO)
 
 COMMIT_HASH := $(shell git rev-parse HEAD || echo "<no git>")
 
-# Remember CXXFLAGS passed to us from CLI.
+# Remember CXXFLAGS passed to us from CLI. Make exports an environment
+# variable with its final value, so a nested make receives the user flags
+# through KOSH_USER_CXXFLAGS instead of the complete CXXFLAGS below.
+ifeq ($(KOSH_HAS_USER_CXXFLAGS), 1)
+ENVCXXFLAGS := $(KOSH_USER_CXXFLAGS)
+else
 ENVCXXFLAGS := $(CXXFLAGS)
+endif
+export KOSH_USER_CXXFLAGS := $(ENVCXXFLAGS)
+export KOSH_HAS_USER_CXXFLAGS := 1
+unexport CXXFLAGS
 USER_CXXFLAGS := $(ENVCXXFLAGS)
 # A distribution that sets its own fortify level, as Arch's makepkg does with
 # -Wp,-D_FORTIFY_SOURCE=3, keeps it; otherwise release builds use level 2.
