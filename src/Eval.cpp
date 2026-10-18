@@ -876,8 +876,7 @@ EvalContext::publish_single_pipe_status(i32 status) throws -> void
   }
 
   if (existing.has_value() && existing->count() == 1 &&
-      (variable_store().sparse_arrays().names().count() == 0 ||
-       !variable_store().sparse_arrays().has("PIPESTATUS")))
+      !variable_store().sparse_arrays().has_pipestatus())
   {
     if (variable_store().is_pipestatus_scalar_possible()) {
       variable_store().shell_variables().erase("PIPESTATUS");

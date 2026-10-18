@@ -49,12 +49,22 @@ public:
   declare(StringView name) throws -> void
   {
     m_names.add(name);
+    if (name == StringView{"PIPESTATUS"}) m_has_pipestatus = true;
   }
 
   fn
   forget(StringView name) throws -> void
   {
     m_names.remove(name);
+    if (name == StringView{"PIPESTATUS"}) m_has_pipestatus = false;
+  }
+
+  /* Whether PIPESTATUS is declared, answered without a lookup because the
+     status of every command is published through it. */
+  pure fn
+  has_pipestatus() const wontthrow -> bool
+  {
+    return m_has_pipestatus;
   }
 
   fn
@@ -106,6 +116,7 @@ public:
 
 private:
   HashSet           m_names{heap_allocator()};
+  bool              m_has_pipestatus{false};
   StringMap<String> m_values{heap_allocator()};
   StringMap<u64>    m_sequences{heap_allocator()};
   u64               m_next_sequence{1};
