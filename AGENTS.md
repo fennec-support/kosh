@@ -134,8 +134,8 @@ The startup configuration loads the system file, the user kosh.conf, and inherit
 KOSHCONF, then removes KOSHCONF from the environment. It settles a configured
 mood before the input plan and applies configured init_moods for an interactive
 or login shell after it. A release build has no system-file override. Restricted
-or privileged invocations ignore KOSHCONF. A kosh mood reads no shell startup
-file.
+or privileged invocations ignore KOSHCONF. An interactive kosh mood reads
+/etc/koshrc and ~/.koshrc.
 
 A koshkit utility runs through run_as_multicall before shell startup. The chunk
 loop uses script_cursor, interactive_session, and lint_run. run_script_contents

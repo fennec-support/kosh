@@ -55,6 +55,16 @@ final target is written. The written file keeps the permission bits of the
 file it replaces, and a new file is created with mode 0644 less the file
 creation mask. The directory is created when missing.
 .TP
+.I /etc/koshrc
+The system rc file of an interactive
+.B kosh
+mood.
+.TP
+.I ~/.koshrc
+The user rc file of an interactive
+.B kosh
+mood, described under KOSHRC.
+.TP
 .I /etc/profile
 The system login file of the
 .B bash
@@ -253,21 +263,25 @@ without an equals sign, an unknown option, an invalid value, an unclosed
 quote, text after a closing quote, and an option a file cannot hold each
 produce a warning identifying the file and line, and the line is skipped.
 A settings file never stops the shell.
-.SH MIGRATION
-The files /etc/koshrc and ~/.koshrc are not loaded. An interactive shell in the
+.SH KOSHRC
+An interactive shell in the
 .B kosh
-mood prints one warning about them when either exists. Move option settings into
-.I kosh.conf
-with
-.B "koshconf set"
-.I option value
-.BR \-\-persist ,
-and move shell code into ~/.bashrc, selected with
-.BR mood=bash ,
-.BR init_moods=bash ,
-or
-.B \-L bash
-on the command line.
+mood sources /etc/koshrc and then ~/.koshrc after the settings files. A
+.B \-\-rcfile
+file replaces both, and
+.B \-\-norc
+skips them. These files are advised only for what a settings file cannot
+hold, such as functions, aliases, and variables. Options belong in
+.IR kosh.conf .
+.PP
+A value of zero display width disables the greeting or the farewell:
+.PP
+.RS
+.EX
+printf \-v KOSH_WELCOME \(dq\er\(dq
+printf \-v KOSH_FAREWELL \(dq\er\(dq
+.EE
+.RE
 .SH EXAMPLES
 A user file that keeps the bash grammar and edits with vi keys:
 .PP

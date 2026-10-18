@@ -212,12 +212,14 @@ Option parsing ends, and the next operand is the script.
 .TP
 .BR \-\-init\-file " " \fIFILE\fR ", " \-\-rcfile " " \fIFILE\fR
 FILE is the interactive rc file. The file replaces ~/.bashrc in an
-interactive non-login Bash mood. The
+interactive non-login Bash mood, and /etc/koshrc and ~/.koshrc in an
+interactive
 .B kosh
-mood sources no rc file and ignores this option.
+mood.
 .TP
 .B \-\-norc
-The interactive non-login Bash rc and a custom rc file are skipped. Login
+The interactive non-login Bash rc, the koshrc files, and a custom rc file are
+skipped. Login
 profiles and BASH_ENV processing are unchanged.
 .TP
 .BR \-O " " \fINAME\fR ", " +O " " \fINAME\fR
@@ -964,14 +966,13 @@ line keep their values.
 .PP
 The
 .B kosh
-mood sources no shell startup file. No mood sources ~/.koshrc or /etc/koshrc,
-as described in
-.BR kosh (5),
-and
+mood sources /etc/koshrc and then ~/.koshrc in an interactive shell, as
+described in
+.BR kosh (5).
 .B \-\-rcfile
-has no effect. Startup code belongs in ~/.bashrc with the
-.B bash
-mood selected. A
+replaces both files, and
+.B \-\-norc
+skips them. A
 .B kosh
 session started with
 .B \-L bash
@@ -3789,9 +3790,9 @@ carries the settings to a remote shell.
 applies a value to the current session.
 .TP
 .BR KOSH_WELCOME ", " KOSH_FAREWELL
-A non-empty value is printed once at interactive startup (KOSH_WELCOME) or
-exit (KOSH_FAREWELL), prefixed with the shell name. An empty value prints
-nothing. When unset, the shell prints a built-in greeting and farewell.
+A value is printed once at interactive startup (KOSH_WELCOME) or exit
+(KOSH_FAREWELL), prefixed with the shell name. A value of zero display width
+prints nothing. When unset, the shell prints a built-in greeting and farewell.
 .TP
 .B KOSH_ANSI_*
 The variables BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, their
