@@ -24,4 +24,7 @@ stopped-job-notice-starts-a-row PASS
 fg-interrupt-ends-its-row PASS
 signaled-job-notice-names-the-signal PASS
 persist-names-the-written-file PASS
+interactive-menu-pads-every-prompt-row PASS
+interactive-menu-pads-the-transient-prompt PASS
+plain-selector-drops-the-pad PASS
 status=0

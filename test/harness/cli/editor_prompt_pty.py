@@ -50,6 +50,7 @@ CTRL_C = b"\x03"
 CTRL_Z = b"\x1a"
 SLEEP_TITLE = b"]0;sleep 30\x07"
 BULLET = "•"
+PAD = "\u00a0"
 SHORT_PROMPT = "# " if os.geteuid() == 0 else "$ "
 CONTROL_DIRECTORY = b"d\x07\x1b[31mRED\x1b]2;PWNED\x07z"
 CONTROL_DIRECTORY_VISIBLE = "d^G^[[31mRED^[]2;PWNED^Gz"
@@ -97,6 +98,11 @@ def run_checks(binary, directory, command_directory, report):
         if not report.record("startup-prompt", session,
                              lambda screen: screen.get_prompt_row() >= 0):
             return
+
+        # The plain selector draws the prompt without its menu pad.
+        session.send(b"koshconf set completion.menu_style plain\r")
+        session.wait_until(lambda screen: screen.get_lines()[-1].endswith(
+            BULLET))
 
         session.send(b"PS1='\\. '; RPS1='" + RIGHT_PROMPT.encode() + b"'\r")
         if not report.record("right-prompt-at-the-edge", session,
@@ -251,6 +257,25 @@ def wait_for_terminal_job(session):
     return False
 
 
+def run_prompt_pad_checks(binary, directory, command_directory, report):
+    session = Session(binary, directory, command_directory, COLUMNS)
+    try:
+        session.wait_until(lambda screen: screen.get_prompt_row() >= 0)
+        session.send(b"koshconf set completion.menu_style interactive\r")
+        session.send(b"PS1=$'top\\n\\\\. '; RPS1=;"
+                     b" KOSH_TRANSIENT_PS1='T> '\r")
+        report.record("interactive-menu-pads-every-prompt-row", session,
+                      has_rows([PAD + "top", PAD + BULLET]))
+        session.send(b"true\r")
+        report.record("interactive-menu-pads-the-transient-prompt", session,
+                      has_rows([PAD + "T> true"]))
+        session.send(b"koshconf set completion.menu_style plain\r")
+        report.record("plain-selector-drops-the-pad", session,
+                      has_rows(["top", BULLET]))
+    finally:
+        session.close()
+
+
 def run_job_notice_checks(binary, directory, report):
     sleep_path = shutil.which("sleep")
     if sleep_path is None:
@@ -259,6 +284,7 @@ def run_job_notice_checks(binary, directory, report):
     session = Session(binary, directory, os.path.dirname(sleep_path), COLUMNS)
     try:
         session.wait_until(lambda screen: screen.get_prompt_row() >= 0)
+        session.send(b"koshconf set completion.menu_style plain\r")
         session.send(b"PS1='\\. '\r")
         session.wait_until(is_prompt_line(BULLET))
 
@@ -328,6 +354,7 @@ def main():
         os.makedirs(command_directory)
         run_checks(binary, directory, command_directory, report)
         run_job_notice_checks(binary, directory, report)
+        run_prompt_pad_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1
