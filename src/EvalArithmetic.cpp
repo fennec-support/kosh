@@ -103,6 +103,23 @@ is_number_continuation(char c) wontthrow -> bool
 pure alwaysinline fn
 try_parse_single_integer_literal(StringView text) wontthrow -> Maybe<i64>
 {
+  /* e.g. "12345": a decimal literal with no sign or radix prefix, short
+     enough that 18 digits cannot overflow, is folded directly. */
+  if (text.length > 0 && text.length <= 18 && text[0] >= '1' && text[0] <= '9')
+  {
+    i64   value    = 0;
+    usize position = 0;
+
+    while (position < text.length && text[position] >= '0' &&
+           text[position] <= '9')
+    {
+      value = value * 10 + (text[position] - '0');
+      position++;
+    }
+
+    if (position == text.length) return value;
+  }
+
   usize i           = 0;
   let   is_negative = false;
 
