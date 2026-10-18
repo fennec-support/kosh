@@ -512,12 +512,10 @@ compare_sort_entries(const sort_entry    &left,
 
   if (key_result != 0) return key_result;
 
-  if (is_last_resort_enabled) {
-    if (left.line != right.line) {
-      let const result = left.line < right.line ? -1 : 1;
+  if (is_last_resort_enabled && left.line != right.line) {
+    let const result = left.line < right.line ? -1 : 1;
 
-      return settings.global.is_reversed ? -result : result;
-    }
+    return settings.global.is_reversed ? -result : result;
   }
 
   /* at this point: the keys compare equal, and when is_last_resort_enabled

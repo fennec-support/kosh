@@ -208,12 +208,16 @@ update_wc_source(wc_source_state   &state,
     state.counts.byte_count += content.length;
 
   if (has_wc_count(selection, wc_count_selection::Characters)) {
+    u64 character_count = 0;
+
     for (usize byte_position = 0; byte_position < content.length;
          byte_position++)
     {
-      state.counts.character_count +=
+      character_count +=
           (static_cast<u8>(content[byte_position]) & 0xC0) != 0x80;
     }
+
+    state.counts.character_count += character_count;
   }
 
   if (has_wc_count(selection, wc_count_selection::Lines))
@@ -289,22 +293,20 @@ Wc::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const has_requested_selection =
-      FLAG_WC_LINES.is_enabled() || FLAG_WC_WORDS.is_enabled() ||
-      FLAG_WC_BYTES.is_enabled() || FLAG_WC_CHARACTERS.is_enabled();
-  let const selection =
-      !has_requested_selection
-          ? wc_count_selection::Lines | wc_count_selection::Words |
-                wc_count_selection::Bytes
-          : (FLAG_WC_LINES.is_enabled() ? wc_count_selection::Lines
-                                        : wc_count_selection::None) |
-                (FLAG_WC_WORDS.is_enabled() ? wc_count_selection::Words
-                                            : wc_count_selection::None) |
-                (FLAG_WC_CHARACTERS.is_enabled()
-                     ? wc_count_selection::Characters
-                     : wc_count_selection::None) |
-                (FLAG_WC_BYTES.is_enabled() ? wc_count_selection::Bytes
-                                            : wc_count_selection::None);
+  let const requested_selection =
+      (FLAG_WC_LINES.is_enabled() ? wc_count_selection::Lines
+                                  : wc_count_selection::None) |
+      (FLAG_WC_WORDS.is_enabled() ? wc_count_selection::Words
+                                  : wc_count_selection::None) |
+      (FLAG_WC_CHARACTERS.is_enabled() ? wc_count_selection::Characters
+                                       : wc_count_selection::None) |
+      (FLAG_WC_BYTES.is_enabled() ? wc_count_selection::Bytes
+                                  : wc_count_selection::None);
+  let const selection = requested_selection == wc_count_selection::None
+                            ? wc_count_selection::Lines |
+                                  wc_count_selection::Words |
+                                  wc_count_selection::Bytes
+                            : requested_selection;
 
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());

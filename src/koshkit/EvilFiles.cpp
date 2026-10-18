@@ -472,8 +472,6 @@ EvilFiles::execute(const ExecContext               &ec,
     /* at this point: the process matches the -p, -u, and -c filters, files is
        not empty, and files is not the single inaccessible placeholder. */
     if (FLAG_EVILFILES_TERSE.is_enabled()) {
-      bool did_match_this_process = false;
-
       for (let const &file : files) {
         if (FLAG_EVILFILES_NETWORK.is_enabled() &&
             !is_network_file(file.path.view()))
@@ -483,15 +481,11 @@ EvilFiles::execute(const ExecContext               &ec,
 
         if (!matches_path_operands(file.path.view(), operands)) continue;
 
-        did_match              = true;
-        did_match_this_process = true;
-        break;
-      }
-
-      if (did_match_this_process) {
+        did_match = true;
         terse_output +=
             String::from(static_cast<u64>(process.pid), allocator).view();
         terse_output += "\n";
+        break;
       }
 
       continue;
@@ -637,14 +631,12 @@ EvilFiles::execute(const ExecContext               &ec,
       widths.size + 2 + widths.offset + 2 + widths.node + 2 + widths.endpoint +
       2;
 
-  if (line_width_limit != SIZE_MAX) {
-    let const fixed_width = other_columns_width + 3;
+  let const fixed_width = other_columns_width + 3;
 
-    if (line_width_limit > fixed_width + 4) {
-      let const command_limit = line_width_limit - fixed_width;
+  if (line_width_limit > fixed_width + 4) {
+    let const command_limit = line_width_limit - fixed_width;
 
-      if (widths.command > command_limit) widths.command = command_limit;
-    }
+    if (widths.command > command_limit) widths.command = command_limit;
   }
 
   let table = ReportTable{allocator};
@@ -682,9 +674,8 @@ EvilFiles::execute(const ExecContext               &ec,
 
     let name = String{allocator, row.name.view()};
 
-    if (line_width_limit != SIZE_MAX &&
-        used_width + toiletline::get_display_width(name.view()) >
-            line_width_limit)
+    if (used_width + toiletline::get_display_width(name.view()) >
+        line_width_limit)
     {
       if (line_width_limit > used_width + 4) {
         usize     actual_cells = 0;

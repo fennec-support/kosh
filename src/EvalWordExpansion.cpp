@@ -501,16 +501,7 @@ EvalContext::expand_word(const Word &word) throws
       {
         let const array_name =
             segment_text.substring_of_length(0, segment_text.length - 3);
-        let is_plain_array_name = true;
-
-        for (usize i = 0; i < array_name.length; i++) {
-          if (!lexer::is_variable_name(array_name[i])) {
-            is_plain_array_name = false;
-            break;
-          }
-        }
-
-        if (is_plain_array_name) {
+        if (lexer::word_is_variable_name(array_name)) {
           let const is_star  = segment_text[segment_text.length - 2] == '*';
           let const elements = collect_array_elements(array_name);
 
@@ -1100,16 +1091,7 @@ EvalContext::expand_word(const Word &word) throws
       if (!segment_text.is_empty() &&
           lexer::is_variable_name_start(segment_text[0]))
       {
-        let is_plain_name = true;
-
-        for (usize i = 1; i < segment_text.length; i++) {
-          if (!lexer::is_variable_name(segment_text[i])) {
-            is_plain_name = false;
-            break;
-          }
-        }
-
-        if (is_plain_name) {
+        if (lexer::word_is_variable_name(segment_text)) {
           if (let const stored =
                   variable_store().find_plain_scalar(segment_text);
               stored.has_value())
@@ -1139,18 +1121,11 @@ EvalContext::expand_word(const Word &word) throws
       }
     } break;
 
-    case WordSegment::Kind::CommandSubstitution: {
-      let const output = capture_command_substitution(segment);
-
-      if (segment.is_in_double_quotes) {
-        do_append_run(output, false);
-      } else {
-        do_append_split_run(output, true);
-      }
-    } break;
-
+    case WordSegment::Kind::CommandSubstitution:
     case WordSegment::Kind::FunctionSubstitution: {
-      let const output = capture_function_substitution(segment);
+      let const output = segment.kind == WordSegment::Kind::CommandSubstitution
+                             ? capture_command_substitution(segment)
+                             : capture_function_substitution(segment);
 
       if (segment.is_in_double_quotes) {
         do_append_run(output, false);
@@ -1348,14 +1323,11 @@ EvalContext::expand_case_pattern_masked(const Word &word,
       do_emit_expansion_run(value.view(), !segment.is_in_double_quotes);
     } break;
 
-    case WordSegment::Kind::CommandSubstitution: {
-      let const output = capture_command_substitution(segment);
-
-      do_emit_expansion_run(output.view(), !segment.is_in_double_quotes);
-    } break;
-
+    case WordSegment::Kind::CommandSubstitution:
     case WordSegment::Kind::FunctionSubstitution: {
-      let const output = capture_function_substitution(segment);
+      let const output = segment.kind == WordSegment::Kind::CommandSubstitution
+                             ? capture_command_substitution(segment)
+                             : capture_function_substitution(segment);
 
       do_emit_expansion_run(output.view(), !segment.is_in_double_quotes);
     } break;

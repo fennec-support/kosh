@@ -55,13 +55,13 @@ GitStatusCache::refresh_status(usize      command_index,
 fn
 EvalContext::next_random_u32() const wontthrow -> u32
 {
-  if (dynamic_runtime_store().random_state() == 0) {
-    dynamic_runtime_store().random_state() =
-        os::realtime_microseconds() ^
-        (static_cast<u64>(os::get_shell_process_id()) << 32) ^
-        static_cast<u64>(dynamic_runtime_store().shell_start_time());
-    if (dynamic_runtime_store().random_state() == 0)
-      dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
+  let &state = dynamic_runtime_store().random_state();
+
+  if (state == 0) {
+    state = os::realtime_microseconds() ^
+            (static_cast<u64>(os::get_shell_process_id()) << 32) ^
+            static_cast<u64>(dynamic_runtime_store().shell_start_time());
+    if (state == 0) state = 0x9e3779b97f4a7c15ULL;
   }
 
   if (dynamic_runtime_store().is_random_reseed_pending()) {
@@ -70,24 +70,18 @@ EvalContext::next_random_u32() const wontthrow -> u32
     let &reseed_count = dynamic_runtime_store().get_random_reseed_count();
 
     reseed_count++;
-    dynamic_runtime_store().random_state() ^=
-        (os::realtime_microseconds() ^
-         (static_cast<u64>(os::get_current_process_id()) << 32) ^
-         reseed_count) *
-        0x9e3779b97f4a7c15ULL;
-    if (dynamic_runtime_store().random_state() == 0)
-      dynamic_runtime_store().random_state() = 0x9e3779b97f4a7c15ULL;
+    state ^= (os::realtime_microseconds() ^
+              (static_cast<u64>(os::get_current_process_id()) << 32) ^
+              reseed_count) *
+             0x9e3779b97f4a7c15ULL;
+    if (state == 0) state = 0x9e3779b97f4a7c15ULL;
   }
 
-  dynamic_runtime_store().random_state() ^=
-      dynamic_runtime_store().random_state() >> 12;
-  dynamic_runtime_store().random_state() ^=
-      dynamic_runtime_store().random_state() << 25;
-  dynamic_runtime_store().random_state() ^=
-      dynamic_runtime_store().random_state() >> 27;
+  state ^= state >> 12;
+  state ^= state << 25;
+  state ^= state >> 27;
 
-  return static_cast<u32>(
-      (dynamic_runtime_store().random_state() * 0x2545f4914f6cdd1dULL) >> 32);
+  return static_cast<u32>((state * 0x2545f4914f6cdd1dULL) >> 32);
 }
 
 struct ansi_color_variable
@@ -361,19 +355,8 @@ EvalContext::is_write_discarded_dynamic_variable(StringView name) const wontthro
 static pure fn
 dynamic_reader_of(StringView name) wontthrow -> Maybe<dynamic_reader_id>
 {
-  if (name.is_empty()) return None;
-
-  switch (name[0]) {
-  case 'S':
-    if (name == "SECONDS") return dynamic_reader_id::Seconds;
-    break;
-
-  case 'R':
-    if (name == "RANDOM") return dynamic_reader_id::Random;
-    break;
-
-  default: break;
-  }
+  if (name == "SECONDS") return dynamic_reader_id::Seconds;
+  if (name == "RANDOM") return dynamic_reader_id::Random;
 
   return None;
 }

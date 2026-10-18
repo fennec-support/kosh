@@ -610,9 +610,8 @@ public:
                 StringView value,
                 StringView name_style) throws -> void;
   fn
-  to_string() const throws -> String;
-  fn
-  to_string(bool should_color, StringView indentation = "  ") const throws -> String;
+  to_string(bool should_color, StringView indentation) const throws
+      -> String;
 
 private:
   ArrayList<report_table_column>          m_columns;

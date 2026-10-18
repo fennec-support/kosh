@@ -383,7 +383,7 @@ template <class Row,
           class DoGetValue,
           class DoIsReset,
           class DoMakeRow,
-          class DoUpdated>
+          class DoUpdated = no_retained_update>
 fn
 update_retained_rows(ArrayList<Row> &retained,
                      Items          &observed,
@@ -394,7 +394,7 @@ update_retained_rows(ArrayList<Row> &retained,
                      DoGetValue      do_get_value,
                      DoIsReset       do_is_reset,
                      DoMakeRow       do_make_row,
-                     DoUpdated       do_updated) throws -> void
+                     DoUpdated       do_updated = {}) throws -> void
 {
   using key_type = std::decay_t<decltype(do_get_key(retained[0]))>;
   struct index_entry
@@ -412,28 +412,17 @@ update_retained_rows(ArrayList<Row> &retained,
   for (usize position = 0; position < retained.count(); position++)
     index.push(index_entry{do_get_key(retained[position]), position});
 
-  index.sort([](const index_entry &left, const index_entry &right) {
-    return left.key < right.key;
-  });
+  let const sorted_index = steal(index).make_sorted(
+      [](const index_entry &left, const index_entry &right) {
+        return left.key < right.key;
+      });
 
   let const do_find = [&](const key_type &key) -> Maybe<usize> {
-    usize low  = 0;
-    usize high = index.count();
+    let const found = sorted_index.find(index_entry{key, 0});
 
-    while (low < high) {
-      let const middle = low + (high - low) / 2;
+    if (!found.has_value()) return None;
 
-      if (index[middle].key < key)
-        low = middle + 1;
-      else
-        high = middle;
-    }
-
-    if (low < index.count() && !(key < index[low].key)) {
-      return index[low].position;
-    }
-
-    return None;
+    return sorted_index[*found].position;
   };
 
   for (let &item : observed) {
@@ -472,28 +461,6 @@ update_retained_rows(ArrayList<Row> &retained,
 
     row.history.trim(window_start);
   }
-}
-
-template <class Row,
-          class Items,
-          class DoGetKey,
-          class DoGetValue,
-          class DoIsReset,
-          class DoMakeRow>
-fn
-update_retained_rows(ArrayList<Row> &retained,
-                     Items          &observed,
-                     u64             now_nanoseconds,
-                     u64             window_nanoseconds,
-                     Allocator       index_allocator,
-                     DoGetKey        do_get_key,
-                     DoGetValue      do_get_value,
-                     DoIsReset       do_is_reset,
-                     DoMakeRow       do_make_row) throws -> void
-{
-  update_retained_rows(retained, observed, now_nanoseconds, window_nanoseconds,
-                       index_allocator, do_get_key, do_get_value, do_is_reset,
-                       do_make_row, no_retained_update{});
 }
 
 } /* namespace koshka::koshkit */

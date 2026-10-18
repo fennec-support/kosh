@@ -938,19 +938,16 @@ SourceBatchReader::read_next_internal(ArrayList<Chunk> &chunks,
   if (os::INTERRUPT_REQUESTED) return ReadResult::Interrupted;
 
   if (!m_readers.is_empty()) {
-    let const result = read_seekable();
-
-    if (result == ReadResult::Interrupted) return result;
+    if (read_seekable() == ReadResult::Interrupted)
+      return ReadResult::Interrupted;
   } else if (m_sequential_reader.has_value()) {
-    let const result = read_sequential();
-
-    if (result == ReadResult::Interrupted) return result;
+    if (read_sequential() == ReadResult::Interrupted)
+      return ReadResult::Interrupted;
   }
 
   append_pending_chunks(chunks, emit_mode);
-  if (!chunks.is_empty()) return ReadResult::Chunks;
-  if (m_source_index == m_sources.count() && m_readers.is_empty() &&
-      !m_sequential_reader.has_value())
+  if (chunks.is_empty() && m_source_index == m_sources.count() &&
+      m_readers.is_empty() && !m_sequential_reader.has_value())
   {
     return ReadResult::Complete;
   }
@@ -1511,10 +1508,7 @@ format_socket_endpoint(StringView                 address,
   result += address.is_empty() ? StringView{"*"} : address;
   if (is_bracketed) result += "]";
   result += ":";
-  if (port == 0)
-    result += "*";
-  else
-    result += String::from(port, allocator).view();
+  result += port == 0 ? StringView{"*"} : String::from(port, allocator).view();
 
   return result;
 }
@@ -1733,8 +1727,6 @@ parse_koshkit_duration_seconds(StringView     text,
 
   if (number_length != 0) {
     switch (text[number_length - 1]) {
-    case 's': multiplier = 1.0; break;
-
     case 'm': multiplier = 60.0; break;
 
     case 'h': multiplier = 60.0 * 60.0; break;

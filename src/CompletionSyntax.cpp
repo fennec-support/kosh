@@ -230,8 +230,10 @@ timeout_option_takes_next_word(StringView word) wontthrow -> bool
   return short_cluster_takes_next_word(*flags, word.substring(1));
 }
 
-static pure fn
-word_decodes_to_itself(StringView word) wontthrow -> bool
+static fn
+decoded_word_text(StringView                 word,
+                  utils::decoded_shell_word &decoded) throws
+    -> StringView
 {
   for (usize position = 0; position < word.length; position++) {
     switch (word[position]) {
@@ -240,13 +242,15 @@ word_decodes_to_itself(StringView word) wontthrow -> bool
     case '\\':
     case '$':
     case '`':
-    case '~':  return false;
+    case '~':
+      decoded = utils::decode_shell_word(word, completion_allocator());
+      return decoded.text.view();
 
     default: break;
     }
   }
 
-  return true;
+  return word;
 }
 
 static fn
@@ -260,11 +264,8 @@ timeout_managed_command_start(StringView line, usize position) wontthrow
 
     if (!word.has_value()) return None;
 
-    let const is_plain_word = word_decodes_to_itself(*word);
-    let const decoded_word =
-        is_plain_word ? utils::decoded_shell_word(completion_allocator())
-                      : utils::decode_shell_word(*word, completion_allocator());
-    let const word_text = is_plain_word ? *word : decoded_word.text.view();
+    let       decoded_word = utils::decoded_shell_word{completion_allocator()};
+    let const word_text    = decoded_word_text(*word, decoded_word);
 
     if (should_skip_value) {
       should_skip_value = false;
@@ -300,11 +301,8 @@ timeout_command_start(StringView line) wontthrow -> Maybe<usize>
 
     if (!word.has_value()) return None;
 
-    let const is_plain_word = word_decodes_to_itself(*word);
-    let const decoded_word =
-        is_plain_word ? utils::decoded_shell_word(completion_allocator())
-                      : utils::decode_shell_word(*word, completion_allocator());
-    let const word_text = is_plain_word ? *word : decoded_word.text.view();
+    let       decoded_word = utils::decoded_shell_word{completion_allocator()};
+    let const word_text    = decoded_word_text(*word, decoded_word);
 
     if (word_text == "timeout")
       return timeout_managed_command_start(line, position);
@@ -314,13 +312,8 @@ timeout_command_start(StringView line) wontthrow -> Maybe<usize>
 
       if (!utility.has_value()) return None;
 
-      let const is_plain_utility = word_decodes_to_itself(*utility);
-      let const decoded_utility =
-          is_plain_utility
-              ? utils::decoded_shell_word(completion_allocator())
-              : utils::decode_shell_word(*utility, completion_allocator());
-      let const utility_text =
-          is_plain_utility ? *utility : decoded_utility.text.view();
+      let decoded_utility = utils::decoded_shell_word{completion_allocator()};
+      let const utility_text = decoded_word_text(*utility, decoded_utility);
 
       if (utility_text == "timeout")
         return timeout_managed_command_start(line, position);
@@ -476,8 +469,7 @@ internal::resolve_completion_alias(StringView   command,
     if (!expansion.has_value()) break;
 
     let const expanded = *expansion;
-    usize     i        = 0;
-    i                  = skip_blanks(expanded, i);
+    usize     i        = skip_blanks(expanded, 0);
     let const start    = i;
 
     while (i < expanded.length && expanded[i] != ' ' && expanded[i] != '\t') {

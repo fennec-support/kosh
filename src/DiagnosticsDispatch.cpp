@@ -134,10 +134,8 @@ fn
 get_analysis_command_info(StringView name) throws
     -> analysis_command_info
 {
-  if (let const found = ANALYSIS_COMMANDS.find(name); found.has_value())
-    return *found;
-
-  return analysis_command_info::unknown();
+  return ANALYSIS_COMMANDS.find(name).value_or(
+      analysis_command_info::unknown());
 }
 
 } /* namespace koshka */

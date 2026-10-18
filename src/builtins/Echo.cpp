@@ -146,16 +146,12 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       case 'c': should_stop = true; break;
 
       case 'x': {
-        if (cxt.runtime_state().is_posix_mode()) {
-          output += '\\';
-          output += escaped;
-          break;
-        }
-
         i32   value       = 0;
         usize digit_count = 0;
 
-        while (digit_count < 2 && j + 1 < arg.length()) {
+        while (!cxt.runtime_state().is_posix_mode() && digit_count < 2 &&
+               j + 1 < arg.length())
+        {
           let const digit = utils::hex_digit_value(arg[j + 1]);
 
           if (!digit.has_value()) break;

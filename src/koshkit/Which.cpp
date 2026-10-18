@@ -43,30 +43,24 @@ Which::execute(const ExecContext               &ec,
     if (let const alias = cxt.scope_store().get_alias(program_name.view());
         alias.has_value())
     {
-      if (!is_quiet) {
-        output += "alias ";
-        output += program_name;
-        output += "='";
-        output += *alias;
-        output += "'\n";
-      }
+      output += "alias ";
+      output += program_name;
+      output += "='";
+      output += *alias;
+      output += "'\n";
     } else if (cxt.function_store().has_functions() &&
                cxt.function_store()
                    .find_function(program_name.view())
                    .has_value())
     {
-      if (!is_quiet) {
-        output += program_name;
-        output += '\n';
-      }
+      output += program_name;
+      output += '\n';
     } else if (cxt.find_enabled_builtin(program_name.view()).has_value()) {
-      if (!is_quiet) {
-        output += program_name;
-        if (os::is_stdout_a_tty()) {
-          output += ": Shell builtin";
-        }
-        output += '\n';
+      output += program_name;
+      if (os::is_stdout_a_tty()) {
+        output += ": Shell builtin";
       }
+      output += '\n';
     } else if (let const paths = cxt.program_resolver().search(
                    program_name,
                    FLAG_ALL.is_enabled() ? ProgramResolver::SearchMode::All
@@ -75,17 +69,13 @@ Which::execute(const ExecContext               &ec,
                    ProgramResolver::CachePolicy::Bypass);
                paths.count() != 0)
     {
-      if (!is_quiet) {
-        for (let const &path : paths) {
-          output += path.text();
-          output += '\n';
-        }
-      }
-    } else if (cxt.is_koshkit_utility_reachable(program_name.view())) {
-      if (!is_quiet) {
-        output += program_name;
+      for (let const &path : paths) {
+        output += path.text();
         output += '\n';
       }
+    } else if (cxt.is_koshkit_utility_reachable(program_name.view())) {
+      output += program_name;
+      output += '\n';
     } else {
       has_missing_any = true;
     }

@@ -50,17 +50,14 @@ format_diagnostic_template(
       continue;
     }
 
-    usize argument_index = 0;
+    let const index_byte = text[position + 1];
 
-    switch (text[position + 1]) {
-    case '0': argument_index = 0; break;
-
-    case '1': argument_index = 1; break;
-
-    case '2': argument_index = 2; break;
-
-    default: result += text[position]; continue;
+    if (index_byte < '0' || index_byte > '2') {
+      result += text[position];
+      continue;
     }
+
+    let const argument_index = static_cast<usize>(index_byte - '0');
 
     if (argument_index >= arguments.size()) return String{heap_allocator()};
     result += *(arguments.begin() + argument_index);

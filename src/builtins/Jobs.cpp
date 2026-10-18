@@ -114,15 +114,10 @@ Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (let index : selected) {
     job &job = jobs[index];
 
-    if (FLAG_JOBS_RUNNING.is_enabled() && job.state != job::State::Running) {
-      continue;
-    }
-
-    if (FLAG_JOBS_STOPPED.is_enabled() && job.state != job::State::Stopped) {
-      continue;
-    }
-
-    if (FLAG_JOBS_CHANGED.is_enabled() && !job.has_unreported_state_change) {
+    if ((FLAG_JOBS_RUNNING.is_enabled() && job.state != job::State::Running) ||
+        (FLAG_JOBS_STOPPED.is_enabled() && job.state != job::State::Stopped) ||
+        (FLAG_JOBS_CHANGED.is_enabled() && !job.has_unreported_state_change))
+    {
       continue;
     }
 

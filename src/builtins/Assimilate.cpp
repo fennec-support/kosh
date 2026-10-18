@@ -446,20 +446,6 @@ run_program(const ArrayList<String> &arguments,
 }
 
 fn
-resolve_transfer_program(StringView       name,
-                         ProgramResolver &resolver) throws
-    -> Maybe<Path>
-{
-  let const matches = resolver.search(name, ProgramResolver::SearchMode::First,
-                                      ProgramResolver::Requirement::Runnable,
-                                      ProgramResolver::CachePolicy::Bypass);
-
-  if (matches.is_empty()) return None;
-
-  return matches[0].clone();
-}
-
-fn
 parse_transport_command(StringView       spelling,
                         ProgramResolver &resolver,
                         Allocator        allocator) throws
@@ -487,13 +473,16 @@ parse_transport_command(StringView       spelling,
 
   if (arguments.is_empty()) return None;
 
-  let const program = resolve_transfer_program(arguments[0].view(), resolver);
+  let const matches =
+      resolver.search(arguments[0].view(), ProgramResolver::SearchMode::First,
+                      ProgramResolver::Requirement::Runnable,
+                      ProgramResolver::CachePolicy::Bypass);
 
-  if (!program.has_value()) return None;
+  if (matches.is_empty()) return None;
 
-  /* at this point: arguments is nonempty, and program holds the resolved
+  /* at this point: arguments is nonempty, and matches holds the resolved
      path that replaces arguments[0]. */
-  arguments[0] = program->text();
+  arguments[0] = matches[0].text();
 
   return arguments;
 }
@@ -726,7 +715,6 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
 
   bool  has_invalid_target_character = false;
   bool  is_inside_host_literal       = false;
-  bool  has_host_literal             = false;
   usize host_literal_start           = 0;
 
   if (arguments.count() == 2) {
@@ -742,14 +730,13 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
       case '\n': has_invalid_target_character = true; break;
 
       case '[':
-        if (has_host_literal || is_inside_host_literal ||
+        if (is_inside_host_literal ||
             (character_position != 0 &&
              arguments[1][character_position - 1] != '@'))
         {
           has_invalid_target_character = true;
         }
 
-        has_host_literal       = true;
         is_inside_host_literal = true;
         host_literal_start     = character_position;
         break;

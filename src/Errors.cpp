@@ -296,9 +296,7 @@ get_context_pointing_to(StringView                         source,
 
   let msg = String{heap_allocator()};
 
-  for (usize i = 0; i < line_number_padding_length; i++) {
-    msg += ' ';
-  }
+  msg.append_repeated(' ', line_number_padding_length);
 
   msg += String::from(line_number + 1, heap_allocator()) + " |  ";
 
@@ -482,20 +480,15 @@ get_context_pointing_to(StringView                         source,
 
   msg += '\n';
 
-  for (usize i = 0; i + 3 < gutter_width; i++)
-    msg += ' ';
+  msg.append_repeated(' ', gutter_width - 3);
 
   msg += "|  ";
 
-  for (usize i = 0; i < caret_pad; i++)
-    msg += ' ';
+  msg.append_repeated(' ', caret_pad);
 
   msg += color.caret;
   msg += '^';
-  if (visible_caret > 1) {
-    for (usize i = 0; i < visible_caret - 1; i++)
-      msg += '~';
-  }
+  msg.append_repeated('~', sub_sat(visible_caret, 1u));
 
   if (message.has_value()) {
     msg += ' ';

@@ -102,8 +102,7 @@ EvilFS::execute(const ExecContext               &ec,
       if (!is_metadata_available) {
         if (os::last_system_error_is_permission_denied()) {
           skipped_permission_count++;
-          metadata_status =
-              String{metadata_status.allocator(), "Permission denied"};
+          metadata_status = String{allocator, "Permission denied"};
         } else {
           metadata_status = os::last_system_error_message();
         }

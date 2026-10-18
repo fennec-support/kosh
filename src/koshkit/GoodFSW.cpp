@@ -79,12 +79,6 @@ namespace koshka::koshkit {
 
 namespace {
 
-enum class goodfsw_traversal_mode : u8
-{
-  SinglePath,
-  Recursive,
-};
-
 constexpr f64   DEFAULT_LATENCY_SECONDS = 1.0;
 constexpr usize MAXIMUM_SCAN_DEPTH      = 64;
 
@@ -264,17 +258,13 @@ report_event(String                       &output,
     output += format_watch_timestamp(scan_time, scan_nanoseconds,
                                      timestamp_format, output.allocator());
     output += " ";
-  } else {
-    output +=
-        String::from(static_cast<u64>(scan_time), output.allocator()).view();
-    output += " ";
-  }
-
-  if (is_human) {
     append_report_text(output, path, colors::ansi::BOLD, should_color);
     output += " ";
     append_event_names(output, mode, event, should_color);
   } else {
+    output +=
+        String::from(static_cast<u64>(scan_time), output.allocator()).view();
+    output += " ";
     output += String::from(event_mask(event), output.allocator()).view();
     output += " ";
     append_report_text(output, path, colors::ansi::BOLD, should_color);
@@ -307,8 +297,7 @@ scan_path(StringView                path,
           usize                     depth,
           Allocator                 allocator,
           u64                       root_device_id,
-          const os::file_status    *known_status,
-          goodfsw_traversal_mode    traversal) throws -> void
+          const os::file_status    *known_status) throws -> void
 {
   if (os::INTERRUPT_REQUESTED != 0) return;
 
@@ -348,7 +337,7 @@ scan_path(StringView                path,
 
   if (os::file_type_letter(known_status->mode) != 'd') return;
 
-  if (depth > 0 && traversal == goodfsw_traversal_mode::SinglePath) {
+  if (depth > 0 && !FLAG_GOODFSW_RECURSIVE.is_enabled()) {
     return;
   }
 
@@ -369,7 +358,7 @@ scan_path(StringView                path,
         child_entry.has_status ? &child_entry.status : nullptr;
 
     scan_path(child_path.view(), entries, depth + 1, allocator, root_device_id,
-              child_status, traversal);
+              child_status);
   }
 }
 
@@ -436,10 +425,6 @@ GoodFSW::execute(const ExecContext               &ec,
     }
   }
 
-  let const traversal = FLAG_GOODFSW_RECURSIVE.is_enabled()
-                            ? goodfsw_traversal_mode::Recursive
-                            : goodfsw_traversal_mode::SinglePath;
-
   let operand_paths    = ArrayList<Path>{allocator};
   let operand_statuses = ArrayList<os::file_status>{allocator};
   let operand_batch    = os::Batch{allocator};
@@ -475,8 +460,7 @@ GoodFSW::execute(const ExecContext               &ec,
 
   for (usize index = 0; index < operands.count(); index++)
     scan_path(operands[index].view(), collected_previous, 0, watch_allocator,
-              operand_statuses[index].device_id, &operand_statuses[index],
-              traversal);
+              operand_statuses[index].device_id, &operand_statuses[index]);
 
   if (take_interrupt_request()) return 130;
 
@@ -507,7 +491,7 @@ GoodFSW::execute(const ExecContext               &ec,
         break;
       }
       scan_path(operands[index].view(), recycled_entries, 0, watch_allocator,
-                operand_statuses[index].device_id, nullptr, traversal);
+                operand_statuses[index].device_id, nullptr);
     }
 
     if (was_interrupted) {

@@ -99,8 +99,6 @@ parse_magic_number(StringView text) wontthrow -> Maybe<u64>
     base = 8;
   }
 
-  if (position == text.length) return None;
-
   /* at this point: text is not empty, and position is less than
      text.length, so the digit loop stays inside text. */
   u64 parsed = 0;
@@ -436,8 +434,7 @@ read_magic_number(const file_magic_rule &rule,
                   StringView             bytes,
                   u64                   &value) wontthrow -> bool
 {
-  if (rule.byte_count == 0 || rule.byte_count > 8 ||
-      rule.offset > bytes.length ||
+  if (rule.offset > bytes.length ||
       rule.byte_count > bytes.length - rule.offset)
   {
     return false;
@@ -627,8 +624,6 @@ matches_builtin_file_signature(StringView                    bytes,
     return false;
   }
 
-  if (signature.bytes.is_empty()) return true;
-
   let const candidate = bytes.data + signature.offset;
 
   if (candidate[0] != signature.bytes[0]) return false;
@@ -717,8 +712,7 @@ file_content_description(StringView bytes) wontthrow -> StringView
   if (bytes.length >= 4 &&
       bytes.substring_of_length(0, 4) == StringView{"\x1a\x45\xdf\xa3", 4})
   {
-    let const header_length = bytes.length < 256 ? bytes.length : 256;
-    let const header        = bytes.substring_of_length(4, header_length - 4);
+    let const header = bytes.substring_of_length(4, 256 - 4);
 
     if (header.find_substring("matroska").has_value()) return "Matroska video";
     if (header.find_substring("webm").has_value()) return "WebM video";
@@ -1309,10 +1303,8 @@ File::execute(const ExecContext               &ec,
           custom_sample_descriptions[operand_position] =
               magic_description.take();
         } else if (should_apply_default_tests) {
-          let const fallback_sample = sample.substring_of_length(
-              0, sample.length < FILE_CONTENT_SAMPLE_BYTE_COUNT
-                     ? sample.length
-                     : FILE_CONTENT_SAMPLE_BYTE_COUNT);
+          let const fallback_sample =
+              sample.substring_of_length(0, FILE_CONTENT_SAMPLE_BYTE_COUNT);
 
           custom_sample_descriptions[operand_position] =
               String{allocator, file_content_description(fallback_sample)};
@@ -1348,12 +1340,11 @@ File::execute(const ExecContext               &ec,
     let const is_symbolic_link = os::file_type_letter(file_status.mode) == 'l';
 
     if (is_symbolic_link) {
-      let const target = os::read_symlink(operand.view(), allocator);
-
       if (!should_follow || should_batch_custom_samples ||
           !os::stat_path_following(operand.view(), file_status))
       {
-        let description = operand + ": symbolic link";
+        let const target      = os::read_symlink(operand.view(), allocator);
+        let       description = operand + ": symbolic link";
 
         if (target.has_value()) description += " to " + *target;
         description += '\n';

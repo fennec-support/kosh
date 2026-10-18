@@ -757,11 +757,7 @@ check_shebang(AnalysisContext       &actx,
               StringView             source,
               missing_shebang_policy shebang_policy) throws -> void
 {
-  usize line_end = 0;
-
-  while (line_end < source.length && source[line_end] != '\n') {
-    line_end++;
-  }
+  let const line_end = source.find_character('\n').value_or(source.length);
 
   let const first_line = source.substring_of_length(0, line_end);
 
@@ -1028,26 +1024,15 @@ read_line_above_directive(StringView source, usize line_start) wontthrow
 pure fn
 line_opens_case_branch(StringView line) wontthrow -> bool
 {
-  if (line.length >= 2 && line[line.length - 1] == ';' &&
-      line[line.length - 2] == ';')
+  if (line.length >= 2 && line[line.length - 2] == ';' &&
+      (line[line.length - 1] == ';' || line[line.length - 1] == '&'))
   {
     return true;
   }
 
-  if (line.length >= 2 && line[line.length - 1] == '&' &&
-      line[line.length - 2] == ';')
-  {
-    return true;
-  }
-
-  if (line.length >= 2 && line[line.length - 1] == 'n' &&
-      line[line.length - 2] == 'i' &&
-      (line.length == 2 || lexer::is_whitespace(line[line.length - 3])))
-  {
-    return true;
-  }
-
-  return false;
+  return line.length >= 2 && line[line.length - 1] == 'n' &&
+         line[line.length - 2] == 'i' &&
+         (line.length == 2 || lexer::is_whitespace(line[line.length - 3]));
 }
 
 pure fn
@@ -1085,15 +1070,9 @@ check_directive_body(AnalysisContext          &actx,
 
     let const token = source.substring_of_length(token_start, at - token_start);
 
-    usize separator_position = 0;
+    let const separator_position = token.find_character('=');
 
-    while (separator_position < token.length &&
-           token[separator_position] != '=')
-    {
-      separator_position++;
-    }
-
-    if (separator_position == token.length) {
+    if (!separator_position.has_value()) {
       actx.report_diagnostic(diagnostic_id::sc1125,
                              SourceLocation{token_start, token.length},
                              {token});
@@ -1101,7 +1080,7 @@ check_directive_body(AnalysisContext          &actx,
       return;
     }
 
-    let const key = token.substring_of_length(0, separator_position);
+    let const key = token.substring_of_length(0, *separator_position);
 
     if (!DIRECTIVE_KEYS.contains(key)) {
       actx.report_diagnostic(diagnostic_id::sc1107,

@@ -130,13 +130,9 @@ More::execute(const ExecContext               &ec,
         continue;
       }
 
-      usize     output_start = 0;
-      let       line_number  = usize{1};
-      let const requested_line_number =
-          FLAG_MORE_TAG.is_set() ? tagged_line_number : usize{1};
-
-      while (line_number < requested_line_number &&
-             output_start < input->length())
+      usize output_start = 0;
+      let   line_number  = usize{1};
+      while (line_number < tagged_line_number && output_start < input->length())
       {
         let const newline =
             input->view().substring(output_start).find_character('\n');
@@ -162,14 +158,15 @@ More::execute(const ExecContext               &ec,
         if (FLAG_MORE_CASE.is_enabled()) pattern.lowercase_ascii();
 
         usize search_position = output_start;
+        let   searchable      = String{cxt.scratch_allocator()};
 
         while (search_position < input->length()) {
           let const remaining = input->view().substring(search_position);
           let const line_length =
               remaining.find_character('\n').value_or(remaining.length);
-          let searchable =
-              String{cxt.scratch_allocator(),
-                     remaining.substring_of_length(0, line_length)};
+
+          searchable.clear();
+          searchable += remaining.substring_of_length(0, line_length);
 
           if (FLAG_MORE_CASE.is_enabled()) searchable.lowercase_ascii();
           if (searchable.view().find_substring(pattern.view()).has_value()) {

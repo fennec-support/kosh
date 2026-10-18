@@ -1116,6 +1116,14 @@ EvalContext::report_unset_reference(StringView name) throws -> void
           suppressible_warning::UnsetReference))
     return;
 
+  let const should_demote = strict_diagnostics_are_warnings();
+
+  /* at this point: the UnsetReference warning is not suppressed. The
+     reference is reported only when error_unset() or should_demote. */
+  if (!runtime_state().error_unset() && !should_demote) {
+    return;
+  }
+
   let empty_expansion_note =
       "Replace it with ${" + name + "-} if empty expansion is desired";
 
@@ -1126,8 +1134,6 @@ EvalContext::report_unset_reference(StringView name) throws -> void
                            "' is set. Correct the spelling, or write ${" +
                            name + "-} if an empty expansion is intended";
   }
-
-  let const should_demote = strict_diagnostics_are_warnings();
 
   if (runtime_state().error_unset() &&
       (runtime_state().was_error_unset_set_explicitly() || !should_demote) &&
@@ -2330,10 +2336,8 @@ ExecContext::make_from(const SourceLocation       &location,
     let const typed_program_path = Path{program.view()};
 
     if (typed_program_path.has_trailing_separator()) {
-      let const raw_program_path =
-          typed_program_path.to_absolute_without_normalizing();
-
-      resolved_program_path = os::canonical_path(raw_program_path);
+      resolved_program_path = os::canonical_path(
+          typed_program_path.to_absolute_without_normalizing());
     } else {
       resolved_program_path = Path::canonicalize(program.view());
     }
@@ -2374,8 +2378,7 @@ ExecContext::make_from(const SourceLocation       &location,
        resolved_program_path->is_directory()) &&
       !command_lookup.is_koshkit_utility_reachable(program.view()))
   {
-    String directory_operand{heap_allocator()};
-    bool   should_rewrite_to_cd = false;
+    Maybe<String> directory_operand;
 
     if (let parent_step_count = dot_parent_steps(program.view());
         parent_step_count.has_value())
@@ -2393,18 +2396,15 @@ ExecContext::make_from(const SourceLocation       &location,
                                                  directory_message.view()};
       }
 
-      directory_operand =
-          String{directory_operand.allocator(), directory_path.view()};
-      should_rewrite_to_cd = true;
+      directory_operand = String{heap_allocator(), directory_path.view()};
     } else if (Path{program.view()}.is_directory()) {
-      directory_operand    = steal(args[0]);
-      should_rewrite_to_cd = true;
+      directory_operand = steal(args[0]);
     }
 
-    if (should_rewrite_to_cd) {
+    if (directory_operand.has_value()) {
       args[0] = String{args[0].allocator(), "cd"};
       args.push_managed("--");
-      args.push(steal(directory_operand));
+      args.push(steal(*directory_operand));
       arg_locations.push(resolution_location);
       arg_locations.push(resolution_location);
 

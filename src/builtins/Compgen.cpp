@@ -267,11 +267,10 @@ push_table_file_names(compgen_emitter &emitter,
 
       let const field =
           body.substring_of_length(field_start, position - field_start);
-      let const is_wanted = mode == table_field_mode::FirstField
-                                ? field_index == 0
-                                : field_index > 0;
 
-      if (is_wanted) emitter.push_prefixed(field);
+      if (mode == table_field_mode::FirstField || field_index > 0) {
+        emitter.push_prefixed(field);
+      }
 
       field_index++;
       if (mode == table_field_mode::FirstField) break;

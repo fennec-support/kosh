@@ -60,13 +60,9 @@ find_manual_page(StringView paths,
     for (usize candidate_section = 1; candidate_section <= 9;
          candidate_section++)
     {
-      let  current_section = section;
-      char section_byte    = '\0';
-
-      if (current_section.is_empty()) {
-        section_byte    = static_cast<char>('0' + candidate_section);
-        current_section = StringView{&section_byte, 1};
-      }
+      char      section_byte = static_cast<char>('0' + candidate_section);
+      let const current_section =
+          section.is_empty() ? StringView{&section_byte, 1} : section;
 
       let path = String{allocator, directory};
 

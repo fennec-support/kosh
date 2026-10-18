@@ -998,7 +998,9 @@ lookup_make_variable(EvalContext    &cxt,
     return lookup;
   }
 
-  if (mk.is_environment_overriding)
+  const make_variable *variable = mk.find_variable_record(name);
+
+  if (variable == nullptr || mk.is_environment_overriding) {
     if (Maybe<String> from_environment = os::get_environment_variable(name);
         from_environment.has_value())
     {
@@ -1008,21 +1010,10 @@ lookup_make_variable(EvalContext    &cxt,
 
       return lookup;
     }
-
-  if (const make_variable *variable = mk.find_variable_record(name);
-      variable != nullptr)
-  {
-    do_use_stored(*variable);
-
-    return lookup;
   }
 
-  if (Maybe<String> from_environment = os::get_environment_variable(name);
-      from_environment.has_value())
-  {
-    lookup.set_owned_value(steal(*from_environment));
-    lookup.origin = make_variable_origin::Environment;
-    lookup.flavor = make_variable_flavor::Recursive;
+  if (variable != nullptr) {
+    do_use_stored(*variable);
 
     return lookup;
   }
@@ -1542,13 +1533,7 @@ split_make_function_arguments(StringView text,
   ArrayList<StringView> arguments{allocator};
 
   if (text.is_empty()) return arguments;
-  if (maximum_argument_count == 1) {
-    arguments.push(text);
 
-    return arguments;
-  }
-
-  /* at this point: text is not empty, and maximum_argument_count is not 1. */
   usize argument_start = 0;
   usize nested_depth   = 0;
 
@@ -2071,15 +2056,10 @@ evaluate_make_function(EvalContext                 &cxt,
     if (mk.eval_depth >= 17)
       throw Error{"Make eval calls exceed the supported nesting depth"};
 
-    let evaluated_source = do_expand(0);
-    let source_name      = String{allocator};
-
-    if (let const active_name =
-            source_name_at(mk.active_source_span.source_name_index);
-        active_name.has_value())
-      source_name = String{allocator, *active_name};
-    else
-      source_name = String{allocator, "make"};
+    let       evaluated_source = do_expand(0);
+    let const active_name =
+        source_name_at(mk.active_source_span.source_name_index);
+    String source_name{allocator, active_name.value_or(StringView{"make"})};
     source_name += ".eval.";
     source_name +=
         String::from(mk.source_documents->count() + 1, allocator).view();
@@ -2187,8 +2167,7 @@ expand(EvalContext &cxt,
             expand_variable(cxt, mk, expanded_name.view(), depth + 1).view();
       }
 
-      text_position =
-          close_position < text.length ? close_position + 1 : close_position;
+      text_position = close_position + 1;
     } else if (text[text_position] == '$' && text_position + 1 < text.length &&
                text[text_position + 1] == '$')
     {
@@ -2279,8 +2258,6 @@ is_command_line_assignment(StringView operand) wontthrow -> bool
 static fn
 is_target_variable_assignment(StringView after_colon) wontthrow -> bool
 {
-  if (!after_colon.find_character('=').has_value()) return false;
-
   let const name = assignment_variable_name(after_colon);
 
   if (name.is_empty()) return false;
@@ -2933,10 +2910,10 @@ parse_makefile_into(EvalContext                     &cxt,
       if (is_rule) {
         let const after_colon = statement.substring(*colon + 1);
 
-        if (is_target_variable_assignment(after_colon)) {
-          let const targets = expand(
-              cxt, mk, trim(statement.substring_of_length(0, *colon)), 0);
+        let const targets =
+            expand(cxt, mk, trim(statement.substring_of_length(0, *colon)), 0);
 
+        if (is_target_variable_assignment(after_colon)) {
           current_rule_indices.clear();
           current_pattern_indices.clear();
 
@@ -2957,8 +2934,6 @@ parse_makefile_into(EvalContext                     &cxt,
           continue;
         }
 
-        let const targets =
-            expand(cxt, mk, trim(statement.substring_of_length(0, *colon)), 0);
         let prerequisite_text = after_colon;
         let inline_recipe     = StringView{};
 
@@ -3468,8 +3443,6 @@ build_target(const ExecContext        &ec,
 
     for (let const &assignment : explicit_rule->variable_assignments)
       target_assignments.push(assignment.clone());
-
-    explicit_rule = nullptr;
 
     for (let const &prerequisite : explicit_prerequisites) {
       let const expanded = expand(cxt, mk, prerequisite.view(), 0);
@@ -4291,7 +4264,7 @@ makefile_shell_analysis_source(
   while (position < range.end_position) {
     let const byte = source[position];
 
-    if (position < range.start_position || position >= range.end_position) {
+    if (position < range.start_position) {
       analysis_source.push(byte == '\n' ? '\n' : ' ');
       if (byte == '\n') line_start_position = position + 1;
       position++;
@@ -4299,16 +4272,14 @@ makefile_shell_analysis_source(
     }
 
     if (byte != '$' || position + 1 >= range.end_position) {
-      if (position >= range.start_position) {
-        if (is_escaped) {
-          is_escaped = false;
-        } else if (byte == '\\' && quote_byte != '\'') {
-          is_escaped = true;
-        } else if (quote_byte == '\0' && (byte == '\'' || byte == '"')) {
-          quote_byte = byte;
-        } else if (byte == quote_byte) {
-          quote_byte = '\0';
-        }
+      if (is_escaped) {
+        is_escaped = false;
+      } else if (byte == '\\' && quote_byte != '\'') {
+        is_escaped = true;
+      } else if (quote_byte == '\0' && (byte == '\'' || byte == '"')) {
+        quote_byte = byte;
+      } else if (byte == quote_byte) {
+        quote_byte = '\0';
       }
 
       analysis_source.push(byte);

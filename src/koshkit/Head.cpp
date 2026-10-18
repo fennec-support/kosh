@@ -416,9 +416,7 @@ Head::execute(const ExecContext               &ec,
 
   usize read_byte_count = is_byte_mode ? 64 * 1024 : 4096;
 
-  if (count == 0) {
-    read_byte_count = 0;
-  } else if (is_byte_mode && count < read_byte_count) {
+  if (count == 0 || (is_byte_mode && count < read_byte_count)) {
     read_byte_count = static_cast<usize>(count);
   }
 
@@ -444,16 +442,17 @@ Head::execute(const ExecContext               &ec,
         has_printed_header   = false;
       }
 
+      let const has_failed_open =
+          chunk.error_number != 0 &&
+          chunk.open_state == source_open_state::Failed &&
+          !os::path_is_directory(sources[chunk.source_index]);
+
+      if (!has_failed_open && !has_printed_header) {
+        do_print_header(chunk.source_index);
+        has_printed_header = true;
+      }
+
       if (chunk.error_number != 0) {
-        let const has_failed_open =
-            chunk.open_state == source_open_state::Failed &&
-            !os::path_is_directory(sources[chunk.source_index]);
-
-        if (!has_failed_open && !has_printed_header) {
-          do_print_header(chunk.source_index);
-          has_printed_header = true;
-        }
-
         do_flush_output();
         os::set_last_system_error(chunk.error_number);
         report_soft_koshkit_util_error(
@@ -463,11 +462,6 @@ Head::execute(const ExecContext               &ec,
                 "': " + os::last_system_error_message());
         status = 1;
         continue;
-      }
-
-      if (!has_printed_header) {
-        do_print_header(chunk.source_index);
-        has_printed_header = true;
       }
 
       usize append_count = chunk.content.length;

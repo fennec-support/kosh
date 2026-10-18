@@ -39,18 +39,12 @@ parse_compose_format(const parser_format_input &input,
 
     if (value.is_empty() || (value[0] != '|' && value[0] != '>')) continue;
 
-    usize key_indent = 0;
-
-    while (key_indent < line.length && line[key_indent] == ' ')
-      key_indent++;
+    let const key_indent = parser_format_leading_spaces(line);
 
     while (position < input.source.length) {
       let const block_start = position;
       let const block_line  = input.source.next_line(position);
-      usize     indent      = 0;
-
-      while (indent < block_line.length && block_line[indent] == ' ')
-        indent++;
+      let const indent      = parser_format_leading_spaces(block_line);
 
       if (!block_line.trim_blanks().is_empty() && indent <= key_indent) {
         position = block_start;

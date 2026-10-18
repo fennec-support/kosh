@@ -225,8 +225,9 @@ fn
 brace_group_alternatives(StringView content, Allocator alloc) throws
     -> Maybe<ArrayList<String>>
 {
-  usize depth           = 0;
-  let   comma_positions = ArrayList<usize>{alloc};
+  usize depth        = 0;
+  usize start        = 0;
+  let   alternatives = ArrayList<String>{alloc};
 
   for (usize i = 0; i < content.length; i++) {
     let const c = content[i];
@@ -234,33 +235,18 @@ brace_group_alternatives(StringView content, Allocator alloc) throws
     if (c == '{') {
       depth++;
     } else if (c == '}') {
-      if (depth > 0) {
-        depth--;
-      }
+      depth--;
     } else if (c == ',' && depth == 0) {
-      comma_positions.push(i);
+      alternatives.push_managed(content.substring_of_length(start, i - start));
+      start = i + 1;
     }
   }
 
-  if (!comma_positions.is_empty()) {
-    let alternatives = ArrayList<String>{alloc};
+  if (alternatives.is_empty()) return parse_brace_sequence(content, alloc);
 
-    alternatives.reserve(comma_positions.count() + 1);
+  alternatives.push_managed(content.substring(start));
 
-    usize start = 0;
-
-    for (let const comma : comma_positions) {
-      alternatives.push_managed(
-          content.substring_of_length(start, comma - start));
-      start = comma + 1;
-    }
-
-    alternatives.push_managed(content.substring(start));
-
-    return alternatives;
-  }
-
-  return parse_brace_sequence(content, alloc);
+  return alternatives;
 }
 
 struct brace_group
@@ -895,13 +881,8 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
             for (let const &segment : expandable.segments) {
               switch (segment.kind) {
               case WordSegment::Kind::VariableReference: {
-                let const spec = segment.text.view();
-                let       is_plain_name =
-                    !spec.is_empty() && lexer::is_variable_name_start(spec[0]);
-#pragma clang loop unroll_count(4)
-
-                for (usize i = 1; is_plain_name && i < spec.length; i++)
-                  if (!lexer::is_variable_name(spec[i])) is_plain_name = false;
+                let const spec          = segment.text.view();
+                let const is_plain_name = lexer::word_is_variable_name(spec);
 
                 if (is_plain_name)
                   if (let const stored =

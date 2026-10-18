@@ -179,7 +179,6 @@ read_line_from_fd(os::descriptor fd,
 {
   let       result             = read_line_result{};
   let       line               = String{allocator};
-  bool      has_read_any_byte  = false;
   let const should_read_chunks = os::descriptor_is_seekable(fd);
   u8        buffer[4096];
 
@@ -214,7 +213,6 @@ read_line_from_fd(os::descriptor fd,
     }
 
     if (*read_byte_count == 0) break;
-    has_read_any_byte = true;
 
     /* at this point: read_byte_count holds a successful, nonzero byte count,
        so chunk is not empty. */
@@ -242,7 +240,7 @@ read_line_from_fd(os::descriptor fd,
     }
   }
 
-  if (!has_read_any_byte) return result;
+  if (line.is_empty()) return result;
 
   result.line = steal(line);
 
@@ -371,13 +369,11 @@ resolve_git_directory(StringView ceiling_directories) throws -> Path
   let       dir      = Path::current_directory();
 
   loop {
-    let head = dir.clone();
+    let git_dir = dir.clone();
 
-    head.append(".git");
+    git_dir.append(".git");
 
-    let git_dir = head.clone();
-
-    if (let const dot_git = head.read_entire_file()) {
+    if (let const dot_git = git_dir.read_entire_file()) {
       let const pointer       = dot_git->view();
       let const gitdir_prefix = StringView{"gitdir: "};
 
@@ -723,11 +719,9 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
 
   if (!git.has_value()) return result;
 
-  let const git_path = String{allocator, git->view()};
-
   let count_argv = ArrayList<String>{allocator};
 
-  count_argv.push_managed(git_path.view());
+  count_argv.push_managed(git->view());
   count_argv.push_managed("rev-list");
   count_argv.push_managed("--left-right");
   count_argv.push_managed("--count");
@@ -876,24 +870,11 @@ parse_file_mode(StringView     expression,
 
       case 't': requested_special_bits |= 01000; break;
 
-      case 'u': {
-        let const source = (mode >> 6) & 7;
-
-        if ((selected_classes & 0700) != 0) requested_bits |= source << 6;
-        if ((selected_classes & 0070) != 0) requested_bits |= source << 3;
-        if ((selected_classes & 0007) != 0) requested_bits |= source;
-        break;
-      }
-      case 'g': {
-        let const source = (mode >> 3) & 7;
-
-        if ((selected_classes & 0700) != 0) requested_bits |= source << 6;
-        if ((selected_classes & 0070) != 0) requested_bits |= source << 3;
-        if ((selected_classes & 0007) != 0) requested_bits |= source;
-        break;
-      }
+      case 'u':
+      case 'g':
       case 'o': {
-        let const source = mode & 7;
+        let const shift  = byte == 'u' ? 6u : byte == 'g' ? 3u : 0u;
+        let const source = (mode >> shift) & 7;
 
         if ((selected_classes & 0700) != 0) requested_bits |= source << 6;
         if ((selected_classes & 0070) != 0) requested_bits |= source << 3;

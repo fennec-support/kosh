@@ -252,16 +252,12 @@ public:
       let const is_buffer_wasteful =
           existing->count() > 256 && value.length < existing->count() / 2;
 
-      if (!is_buffer_wasteful) {
+      if (is_buffer_wasteful) {
+        *existing = String{m_allocator, value};
+      } else {
         existing->clear();
         existing->append(value);
-
-        return existing;
       }
-
-      /* at this point: key is present, and is_buffer_wasteful holds, so
-         the stored string is replaced by a new one. */
-      *existing = String{m_allocator, value};
 
       return existing;
     }

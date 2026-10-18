@@ -213,10 +213,9 @@ append_network_socket_report(String                              &output,
     return String{allocator, owner_texts.back().text.view()};
   };
 
-  let  rows                = ArrayList<socket_row>{allocator};
-  u64  previous_identity   = 0;
-  u32  previous_process_id = 0;
-  bool has_previous        = false;
+  let rows                = ArrayList<socket_row>{allocator};
+  u64 previous_identity   = 0;
+  u32 previous_process_id = 0;
 
   for (let const &socket : sockets) {
     let const is_tcp  = socket.protocol == os::network_socket_protocol::Tcp;
@@ -268,14 +267,12 @@ append_network_socket_report(String                              &output,
 
     /* identity 0 marks a socket without an inode, such as a Linux TIME_WAIT
        socket, so only sockets with an identity can be duplicates. */
-    if (has_previous && socket.identity != 0 &&
-        socket.identity == previous_identity &&
+    if (socket.identity != 0 && socket.identity == previous_identity &&
         socket.process_id == previous_process_id)
     {
       continue;
     }
 
-    has_previous        = true;
     previous_identity   = socket.identity;
     previous_process_id = socket.process_id;
 

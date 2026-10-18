@@ -93,12 +93,6 @@ Paste::execute(const ExecContext               &ec,
       source_list_from_operands(operands, cxt.scratch_allocator());
   i32 status = 0;
 
-  struct paste_column
-  {
-    utils::BufferedLineReader *reader;
-    bool                       is_finished;
-  };
-
   let &scratch_arena = cxt.expansion_store().scratch_arena();
   let  owned_inputs  = ArrayList<os::descriptor>{cxt.scratch_allocator()};
 
@@ -107,7 +101,7 @@ Paste::execute(const ExecContext               &ec,
       os::close_fd(descriptor);
   };
 
-  let columns = ArrayList<paste_column>{cxt.scratch_allocator()};
+  let columns = ArrayList<utils::BufferedLineReader *>{cxt.scratch_allocator()};
 
   columns.reserve(sources.count());
 
@@ -115,7 +109,7 @@ Paste::execute(const ExecContext               &ec,
 
   for (let const source : sources) {
     if (source == "-" && stdin_reader != nullptr) {
-      columns.push(paste_column{stdin_reader, false});
+      columns.push(stdin_reader);
       continue;
     }
 
@@ -124,7 +118,7 @@ Paste::execute(const ExecContext               &ec,
     if (!input.has_value()) {
       KOSHKIT_REPORT_PATH_ERROR("read", source);
       status = 1;
-      columns.push(paste_column{nullptr, true});
+      columns.push(nullptr);
       continue;
     }
 
@@ -135,7 +129,7 @@ Paste::execute(const ExecContext               &ec,
         input->descriptor, bump_allocator(scratch_arena));
 
     if (source == "-") stdin_reader = reader;
-    columns.push(paste_column{reader, false});
+    columns.push(reader);
   }
 
   static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
@@ -143,14 +137,14 @@ Paste::execute(const ExecContext               &ec,
 
   let const do_read_line =
       [&](usize column_index) throws -> Maybe<StringView> {
-    let &column = columns[column_index];
+    let &reader = columns[column_index];
 
-    if (column.is_finished) return None;
+    if (reader == nullptr) return None;
 
-    let const result = column.reader->next();
+    let const result = reader->next();
 
     if (result == utils::BufferedLineReader::Result::Line)
-      return column.reader->get_line();
+      return reader->get_line();
 
     if (result == utils::BufferedLineReader::Result::Error &&
         !os::INTERRUPT_REQUESTED)
@@ -159,7 +153,7 @@ Paste::execute(const ExecContext               &ec,
       status = 1;
     }
 
-    column.is_finished = true;
+    reader = nullptr;
 
     return None;
   };

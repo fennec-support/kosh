@@ -89,21 +89,14 @@ unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
   for (usize position = 0; position < word.length; position++) {
     let const byte = word[position];
 
-    if (quote != 0) {
-      if (byte == quote) {
-        quote = 0;
-      } else if (byte == '\\' && quote == '"' && position + 1 < word.length) {
-        delimiter.push(word[++position]);
-      } else {
-        delimiter.push(byte);
-      }
-      continue;
-    }
-
-    if (byte == '\'' || byte == '"') {
-      quote = byte;
-    } else if (byte == '\\' && position + 1 < word.length) {
+    if (quote != 0 && byte == quote) {
+      quote = 0;
+    } else if (byte == '\\' && (quote == 0 || quote == '"') &&
+               position + 1 < word.length)
+    {
       delimiter.push(word[++position]);
+    } else if (quote == 0 && (byte == '\'' || byte == '"')) {
+      quote = byte;
     } else {
       delimiter.push(byte);
     }
@@ -265,27 +258,19 @@ scan_balanced_shell_region(StringView source,
       }
 
       if (byte == '$' && quote == '"' && position < source.length &&
-          source[position] == '(')
+          (source[position] == '(' ||
+           (source[position] == '{' && position + 1 < source.length &&
+            (is_whitespace(source[position + 1]) ||
+             source[position + 1] == '|'))))
       {
-        let const nested = scan_balanced_shell_region(
-            source, position + 1, ')', nesting_depth + 1, was_nesting_too_deep);
+        let const nested_closing = source[position] == '(' ? ')' : '}';
+        let const nested =
+            scan_balanced_shell_region(source, position + 1, nested_closing,
+                                       nesting_depth + 1, was_nesting_too_deep);
 
         if (!nested.has_value()) return None;
         position      = *nested;
-        previous_byte = ')';
-        continue;
-      }
-
-      if (byte == '$' && quote == '"' && position + 1 < source.length &&
-          source[position] == '{' &&
-          (is_whitespace(source[position + 1]) || source[position + 1] == '|'))
-      {
-        let const nested = scan_balanced_shell_region(
-            source, position + 1, '}', nesting_depth + 1, was_nesting_too_deep);
-
-        if (!nested.has_value()) return None;
-        position      = *nested;
-        previous_byte = '}';
+        previous_byte = nested_closing;
         continue;
       }
 
@@ -386,11 +371,9 @@ scan_balanced_shell_region(StringView source,
       break;
 
     case '\n':
-      if (!pending_heredocs.is_empty()) {
-        position = skip_balanced_scan_heredoc_bodies(source, position,
-                                                     pending_heredocs);
-        pending_heredocs.clear();
-      }
+      position =
+          skip_balanced_scan_heredoc_bodies(source, position, pending_heredocs);
+      pending_heredocs.clear();
 
       previous_byte       = '\n';
       is_command_position = true;
@@ -406,8 +389,8 @@ scan_balanced_shell_region(StringView source,
       }
 
       if (position < source.length && source[position] == '<' &&
-          (previous_byte == 0 || previous_byte == '\n' ||
-           is_whitespace(previous_byte) || is_shell_sentinel(previous_byte)))
+          (previous_byte == 0 || is_whitespace(previous_byte) ||
+           is_shell_sentinel(previous_byte)))
       {
         position++;
         bool should_strip_tabs = false;

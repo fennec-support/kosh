@@ -87,11 +87,9 @@ is_constant_arithmetic_text(StringView text) wontthrow -> bool
 pure fn
 is_plain_integer_literal(StringView text) wontthrow -> bool
 {
-  if (text.is_empty()) return false;
+  let const digits = text.starts_with("-") ? text.substring(1) : text;
 
-  let const start_position = text[0] == '-' ? usize{1} : usize{0};
-
-  return text.substring(start_position).is_all_decimal_digits();
+  return digits.is_all_decimal_digits();
 }
 
 pure fn
@@ -494,16 +492,11 @@ simple_command_static_verdict(const ArrayList<const Token *> &args,
      alias shadows it, and kind is its static verdict kind. */
   switch (*kind) {
   case static_verdict_kind::always_true:
-    if (args.count() != 1) return None;
-    LOG(All, "the builtin '%s' always succeeds, verdict is true",
-        name->c_str());
-
-    return Maybe<bool>{true};
   case static_verdict_kind::always_false:
     if (args.count() != 1) return None;
-    LOG(All, "the builtin 'false' always fails, verdict is false");
+    LOG(All, "the builtin '%s' has a fixed verdict", name->c_str());
 
-    return Maybe<bool>{false};
+    return Maybe<bool>{*kind == static_verdict_kind::always_true};
   case static_verdict_kind::test_like: {
     usize last_index = args.count();
 

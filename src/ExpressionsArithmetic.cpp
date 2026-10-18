@@ -1055,19 +1055,18 @@ CStyleForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throw
                                    m_step.length + 2,
                                false, is_unconditional);
 
-  if (!m_init.is_empty()) {
-    check_arithmetic_expression_lints(actx, m_init, location, init_position,
+  let const do_check_clause =
+      [&](StringView clause, usize clause_position) throws -> void {
+    if (clause.is_empty()) return;
+
+    check_arithmetic_expression_lints(actx, clause, location, clause_position,
                                       is_conditional);
     if (actx.is_posix_sh_shebang)
-      check_posix_arithmetic_operators(actx, m_init, location);
-  }
+      check_posix_arithmetic_operators(actx, clause, location);
+  };
 
-  if (!m_condition.is_empty()) {
-    check_arithmetic_expression_lints(actx, m_condition, location,
-                                      condition_position, is_conditional);
-    if (actx.is_posix_sh_shebang)
-      check_posix_arithmetic_operators(actx, m_condition, location);
-  }
+  do_check_clause(m_init, init_position);
+  do_check_clause(m_condition, condition_position);
 
   let condition_occurrences = actx.occurrences.snapshot();
 
@@ -1078,12 +1077,7 @@ CStyleForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throw
   actx.conditional_branch_depth--;
   actx.loop_body_depth--;
 
-  if (!m_step.is_empty()) {
-    check_arithmetic_expression_lints(actx, m_step, location, step_position,
-                                      is_conditional);
-    if (actx.is_posix_sh_shebang)
-      check_posix_arithmetic_operators(actx, m_step, location);
-  }
+  do_check_clause(m_step, step_position);
 
   condition_occurrences.merge(actx.occurrences);
   actx.occurrences = steal(condition_occurrences);
@@ -1509,33 +1503,10 @@ Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
       body = body.substring_of_length(0, body.length - 1);
     }
 
-    let is_unary_test_prefix = false;
-
-    if (body.length >= 3 && body[0] == '-') {
-      switch (body[1]) {
-      case 'd':
-        is_unary_test_prefix = body.starts_with(StringView{"-d "});
-        break;
-
-      case 'e':
-        is_unary_test_prefix = body.starts_with(StringView{"-e "});
-        break;
-
-      case 'f':
-        is_unary_test_prefix = body.starts_with(StringView{"-f "});
-        break;
-
-      case 'n':
-        is_unary_test_prefix = body.starts_with(StringView{"-n "});
-        break;
-
-      case 'z':
-        is_unary_test_prefix = body.starts_with(StringView{"-z "});
-        break;
-
-      default: break;
-      }
-    }
+    let const is_unary_test_prefix =
+        body.length >= 3 && body[0] == '-' && body[2] == ' ' &&
+        (body[1] == 'd' || body[1] == 'e' || body[1] == 'f' || body[1] == 'n' ||
+         body[1] == 'z');
 
     if (is_unary_test_prefix) {
       actx.report_diagnostic(was_analyzing_condition ? diagnostic_id::sc2205
@@ -1828,13 +1799,9 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
   LOG(Debug, "applying %zu redirections around the compound command",
       m_redirections.count());
 
-  let const should_elide_child_fork = [&] {
-    let const should_elide =
-        cxt.execution_store().should_elide_pending_subshell_fork();
-    cxt.execution_store().should_elide_pending_subshell_fork() = false;
-
-    return should_elide;
-  }();
+  let const should_elide_child_fork =
+      cxt.execution_store().should_elide_pending_subshell_fork();
+  cxt.execution_store().should_elide_pending_subshell_fork() = false;
 
   cxt.source_store().set_current_location(source_location());
 

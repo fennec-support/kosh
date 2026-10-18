@@ -1190,21 +1190,10 @@ arg_needs_shell_quoting(StringView arg) wontthrow -> bool
                                       (character >= 'A' && character <= 'Z') ||
                                       (character >= '0' && character <= '9');
 
-    switch (character) {
-    case '_':
-    case '@':
-    case '%':
-    case '+':
-    case '=':
-    case ':':
-    case ',':
-    case '.':
-    case '/':
-    case '-': break;
-
-    default:
-      if (!is_ascii_alphanumeric) return true;
-      break;
+    if (!is_ascii_alphanumeric &&
+        !StringView{"_@%+=:,./-"}.find_character(character).has_value())
+    {
+      return true;
     }
   }
 
@@ -1710,12 +1699,6 @@ ReportTable::to_string(bool should_color, StringView indentation) const throws -
 }
 
 fn
-ReportTable::to_string() const throws -> String
-{
-  return to_string(false);
-}
-
-fn
 append_titled_report_table(String            &output,
                            StringView         title,
                            const ReportTable &table,
@@ -2025,10 +2008,8 @@ make_flag_help(const FlagList &flags, bool should_color) throws
       }
 
       if (!f->long_name().is_empty()) flag_name += ", ";
-    } else if (!f->long_name().is_empty()) {
-      flag_name += "      ";
     } else {
-      flag_name += "  ";
+      flag_name += f->long_name().is_empty() ? "  " : "      ";
     }
 
     if (!f->long_name().is_empty()) {

@@ -76,13 +76,7 @@ JobTable::forget_finished_statuses() wontthrow -> void
 fn
 JobTable::take_snapshot() throws -> job_table_snapshot
 {
-  let finished_statuses =
-      ArrayList<finished_process_status>{m_finished_statuses.allocator()};
-
-  finished_statuses.reserve(m_finished_statuses.count());
-
-  for (let const &entry : m_finished_statuses)
-    finished_statuses.push(entry);
+  let finished_statuses = m_finished_statuses.clone();
 
   let snapshot = job_table_snapshot{
       m_last_background_pid,           steal(m_jobs),
@@ -293,10 +287,9 @@ JobTable::append_status_line(String                &out,
                                  ? PROCESS_ID_COLUMN_WIDTH - process_id.count()
                                  : 0);
     out += process_id;
-    out.push(' ');
-  } else {
-    out.push(' ');
   }
+
+  out.push(' ');
 
   let const state = describe_job_state(entry, format);
 

@@ -1370,14 +1370,8 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
       {
         let const referenced =
             source_text.substring_of_length(2, source_text.length - 3);
-        bool is_simple_name = !referenced.is_empty() &&
-                              lexer::is_variable_name_start(referenced[0]);
 
-        for (usize position = 1; position < referenced.length && is_simple_name;
-             position++)
-          is_simple_name = lexer::is_variable_name(referenced[position]);
-
-        if (is_simple_name)
+        if (lexer::word_is_variable_name(referenced))
           actx.report_diagnostic(diagnostic_id::sc2016, arg_location);
       }
 
@@ -1487,16 +1481,18 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
 
   check_operand_lints_after_scan(actx, lint_input);
 
-  let  runtime_definer_name = String{heap_allocator(), command_literal};
-  let  runtime_definer_id   = command_id;
-  bool is_runtime_definer =
+  Maybe<String> wrapped_definer_name{};
+  let           runtime_definer_name = command_literal;
+  let           runtime_definer_id   = command_id;
+  bool          is_runtime_definer =
       command_info.is_in_group(COMMAND_GROUP_RUNTIME_DEFINER);
 
   if (wrapped_index.has_value()) {
-    runtime_definer_name = m_args[*wrapped_index]->raw_string();
+    wrapped_definer_name = m_args[*wrapped_index]->raw_string();
+    runtime_definer_name = wrapped_definer_name->view();
 
     let const runtime_definer_info =
-        get_analysis_command_info(runtime_definer_name.view());
+        get_analysis_command_info(runtime_definer_name);
 
     runtime_definer_id = runtime_definer_info.id;
     is_runtime_definer =
@@ -1516,9 +1512,10 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
 
   if (is_runtime_definer) {
     LOG(Debug,
-        "'%s' may define commands at run time, later resolution failures "
+        "'%.*s' may define commands at run time, later resolution failures "
         "degrade to warnings",
-        runtime_definer_name.c_str());
+        static_cast<int>(runtime_definer_name.length),
+        runtime_definer_name.data);
     actx.mark_runtime_definer_seen();
   }
 
@@ -1610,16 +1607,11 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
   update_generated_executable_paths(actx, m_args, name, command_id,
                                     is_command_shadowed, is_unconditional);
 
-  let should_clear_constants =
+  let const should_clear_constants =
       !command_info.is_in_group(COMMAND_GROUP_ENVIRONMENT_NEUTRAL) ||
-      has_command_substitution_argument;
-
-  if (!should_clear_constants &&
-      (actx.functions.defined.contains(command_literal) ||
-       actx.functions.aliases.contains(command_literal)))
-  {
-    should_clear_constants = true;
-  }
+      has_command_substitution_argument ||
+      actx.functions.defined.contains(command_literal) ||
+      actx.functions.aliases.contains(command_literal);
 
   if (should_clear_constants) {
     LOG(Debug,
@@ -1641,11 +1633,8 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
         !is_unconditional || actx.effects.has_seen_runtime_definer);
   }
 
-  if (!is_top_level_unconditional || is_command_shadowed) {
-    return;
-  }
-
-  if (command_info.is_in_group(COMMAND_GROUP_VARIABLE_TARGET) ||
+  if (!is_top_level_unconditional || is_command_shadowed ||
+      command_info.is_in_group(COMMAND_GROUP_VARIABLE_TARGET) ||
       command_info.is_in_group(COMMAND_GROUP_VARIABLE_PROBE))
   {
     return;

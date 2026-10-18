@@ -1259,13 +1259,9 @@ apply_inherited_shell(inherited_shell &inherited,
 static pure fn
 is_kept_in_restricted_shell(const option_descriptor &option) wontthrow -> bool
 {
-  if (option.category == option_class::Semantic) return false;
-
-  switch (option.storage) {
-  case option_storage::Mood:
-  case option_storage::Variable: return false;
-  default:                       return true;
-  }
+  return option.category != option_class::Semantic &&
+         option.storage != option_storage::Mood &&
+         option.storage != option_storage::Variable;
 }
 
 static fn
@@ -1664,21 +1660,16 @@ apply_session_config(EvalContext          &context,
   }
 
   context.startup_store().set_login_shell(config.is_login_shell);
-  if (config.is_restricted_shell) {
-    context.startup_store().set_restricted_shell(true);
-  }
+  context.startup_store().set_restricted_shell(config.is_restricted_shell);
 
   state.set_mood(config.mood);
   state.set_tab_selector(config.tab_selector);
   state.set_extended_arithmetic(config.is_extended_arithmetic_enabled);
-  if (config.is_extended_arithmetic_explicit) {
-    state.set_extended_arithmetic_set_explicitly(true);
-  }
+  state.set_extended_arithmetic_set_explicitly(
+      config.is_extended_arithmetic_explicit);
 
   state.set_error_unset(config.is_nounset_enabled);
-  if (config.is_nounset_enabled) {
-    state.set_error_unset_set_explicitly(true);
-  }
+  state.set_error_unset_set_explicitly(config.is_nounset_enabled);
 
   state.set_inheritable_analysis_state(config.analysis);
   state.set_pipefail(false);
@@ -1993,8 +1984,7 @@ find_command_call_site(const command_line &line,
   usize     flag_offset        = 0;
 
   for (int a = 0; a < parse_argc; a++) {
-    let const        token_length = strlen(parse_argv[a]);
-    const StringView token{parse_argv[a], token_length};
+    const StringView token{parse_argv[a], strlen(parse_argv[a])};
     let const        quoted_length = shell_quoted_arg_length(token);
 
     if (token == "-c" || token == "--command") {
@@ -2124,11 +2114,10 @@ struct script_cursor
       let const is_command_like =
           !FLAG_LINT.is_enabled() &&
           !file_name.view().find_character('/').has_value();
-      let hint = String{heap_allocator()};
-
-      if (is_command_like)
-        hint =
-            String{hint.allocator(), "Pass -c to run this as a command string"};
+      let const hint =
+          is_command_like
+              ? StringView{"Pass -c to run this as a command string"}
+              : StringView{};
 
       let const message = "Could not open '" + file_name.view() +
                           "': " + os::last_system_error_message();
@@ -2138,7 +2127,7 @@ struct script_cursor
                            message.view());
       } else {
         show_message(
-            ErrorWithLocationAndDetails{operand_location, message, hint.view()}
+            ErrorWithLocationAndDetails{operand_location, message, hint}
                 .to_string(cli_invocation.view(), &context));
       }
 
@@ -2576,15 +2565,13 @@ run_chunk(script_chunk        &chunk,
   run_options.is_whole_line =
       chunk.command_string_name.has_value() || chunk.is_fresh_evaluator_command;
   run_options.out_was_rejected = &chunk.was_rejected;
-  if (chunk.command_string_name.has_value()) {
+  if (chunk.command_string_name.has_value())
     run_options.should_require_shebang = false;
 
-    return run_script_contents(
-        chunk.contents, context, ast_arena, chunk.command_string_name, nullptr,
-        nullptr, chunk.history_event_number, {}, run_options, evaluation_mode);
-  }
-
-  return run_script_contents(chunk.contents, context, ast_arena, chunk.filename,
+  return run_script_contents(chunk.contents, context, ast_arena,
+                             chunk.command_string_name.has_value()
+                                 ? chunk.command_string_name
+                                 : chunk.filename,
                              nullptr, nullptr, chunk.history_event_number, {},
                              run_options, evaluation_mode);
 }

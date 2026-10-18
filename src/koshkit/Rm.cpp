@@ -138,22 +138,6 @@ effective_entry_kind(const os::directory_status_entry &entry) wontthrow
   }
 }
 
-static fn
-should_descend_into(StringView      path,
-                    Allocator       allocator,
-                    removal_mode    mode,
-                    Path::EntryKind known_kind) throws -> bool
-{
-  if (mode != removal_mode::Recursive) return false;
-
-  if (known_kind != Path::EntryKind::Unknown)
-    return known_kind == Path::EntryKind::Directory;
-
-  let const target = Path{path, allocator};
-
-  return target.is_directory() && !target.is_symbolic_link();
-}
-
 struct removal_request
 {
   const ExecContext  &ec;
@@ -259,7 +243,14 @@ struct removal_request
   fn
   should_descend(StringView path, Path::EntryKind known_kind) const throws -> bool
   {
-    return should_descend_into(path, allocator, mode, known_kind);
+    if (mode != removal_mode::Recursive) return false;
+
+    if (known_kind != Path::EntryKind::Unknown)
+      return known_kind == Path::EntryKind::Directory;
+
+    let const target = Path{path, allocator};
+
+    return target.is_directory() && !target.is_symbolic_link();
   }
 
   fn

@@ -55,11 +55,7 @@ parse_ansible_format(const parser_format_input &input,
 
       if (child_line.trim_blanks().is_empty()) continue;
 
-      usize child_indent = 0;
-
-      while (child_indent < child_line.length &&
-             child_line[child_indent] == ' ')
-        child_indent++;
+      let const child_indent = parser_format_leading_spaces(child_line);
 
       if (child_indent <= key_position) break;
       if (child_line.substring(child_indent).starts_with("cmd:")) {

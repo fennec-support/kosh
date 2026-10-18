@@ -91,19 +91,15 @@ build_title(StringView command,
   let       title        = String{allocator};
   let const total_length = left.length() + right.length();
 
-  if (total_length + 1 > column_count) {
-    title += left.view();
-    title += "\n";
-
-    return title;
-  }
-
   title += left.view();
 
-  for (usize index = total_length; index < column_count; index++)
-    title += " ";
+  if (total_length + 1 <= column_count) {
+    for (usize index = total_length; index < column_count; index++)
+      title += " ";
 
-  title += right.view();
+    title += right.view();
+  }
+
   title += "\n";
 
   return title;

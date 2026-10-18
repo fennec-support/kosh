@@ -197,15 +197,12 @@ execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
 
   defer { ec.close_fds(); };
 
-  const bool has_pipe_descriptors =
-      ec.in_fd.has_value() || ec.out_fd.has_value() || ec.err_fd.has_value() ||
-      !ec.nonstandard_fds.is_empty();
-  let const has_dup_routing = ec.should_duplicate_error_to_output ||
-                              ec.should_duplicate_output_to_error;
-
   let saved_descriptors = ArrayList<os::saved_descriptor>{heap_allocator()};
 
-  if (has_pipe_descriptors || has_dup_routing) {
+  if (ec.in_fd.has_value() || ec.out_fd.has_value() || ec.err_fd.has_value() ||
+      !ec.nonstandard_fds.is_empty() || ec.should_duplicate_error_to_output ||
+      ec.should_duplicate_output_to_error)
+  {
     if (ec.in_fd)
       saved_descriptors.push(os::save_and_replace_descriptor(0, *ec.in_fd));
     ec.apply_output_routing(
@@ -932,7 +929,7 @@ append_variable_declaration(EvalContext &cxt,
       cxt.variable_store().attributes().is_uppercase(name) ||
       cxt.is_readonly(name) ||
       cxt.variable_store().attributes().is_declared(name) ||
-      cxt.scope_store().has_current_local(name))
+      cxt.scope_store().has_current_local(name) || cxt.is_exported(name))
   {
     let attribute = String{cxt.scratch_allocator(), "-"};
 
@@ -944,16 +941,6 @@ append_variable_declaration(EvalContext &cxt,
 
     line.append(attribute.view());
     line += ' ';
-    line.append(name);
-    line += '\n';
-    out.append(line.view());
-
-    return true;
-  }
-
-  if (cxt.is_exported(name)) {
-    let line = String{cxt.scratch_allocator(), "declare -x "};
-
     line.append(name);
     line += '\n';
     out.append(line.view());

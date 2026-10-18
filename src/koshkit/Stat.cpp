@@ -135,13 +135,8 @@ append_padded(String               &output,
     body = padded_body.view();
   }
 
-  if (body.length >= spec.width) {
-    output += body;
-
-    return;
-  }
-
-  let const pad_length = spec.width - body.length;
+  let const pad_length =
+      body.length < spec.width ? spec.width - body.length : 0;
 
   if (spec.is_left_aligned) {
     output += body;
@@ -150,8 +145,8 @@ append_padded(String               &output,
     return;
   }
 
-  /* at this point: body is shorter than spec.width, and pad_length is the
-     number of padding bytes that precede body. */
+  /* at this point: pad_length is the number of padding bytes that precede
+     body. */
   let const pad_byte = spec.is_zero_padded && is_numeric ? '0' : ' ';
 
   output.append_repeated(pad_byte, pad_length);
@@ -298,28 +293,18 @@ render_file_directive(String               &output,
   case 'C': append_padded(output, "?", spec, stat_value_kind::Text); return;
 
   case 'd':
-    if (spec.sub_field == 'H') {
-      append_padded(
-          output,
-          decimal_of(os::device_major(status.device_id), allocator).view(),
-          spec, stat_value_kind::Numeric);
+  case 'r': {
+    let const device_id =
+        spec.letter == 'd' ? status.device_id : status.special_device_id;
+    let const value = spec.sub_field == 'H'   ? os::device_major(device_id)
+                      : spec.sub_field == 'L' ? os::device_minor(device_id)
+                                              : device_id;
 
-      return;
-    }
-
-    if (spec.sub_field == 'L') {
-      append_padded(
-          output,
-          decimal_of(os::device_minor(status.device_id), allocator).view(),
-          spec, stat_value_kind::Numeric);
-
-      return;
-    }
-
-    append_padded(output, decimal_of(status.device_id, allocator).view(), spec,
+    append_padded(output, decimal_of(value, allocator).view(), spec,
                   stat_value_kind::Numeric);
 
     return;
+  }
 
   case 'D':
     append_padded(output, hex_of(status.device_id, allocator).view(), spec,
@@ -407,33 +392,6 @@ render_file_directive(String               &output,
     append_padded(
         output, decimal_of(subject.optimal_block_byte_count, allocator).view(),
         spec, stat_value_kind::Numeric);
-
-    return;
-
-  case 'r':
-    if (spec.sub_field == 'H') {
-      append_padded(
-          output,
-          decimal_of(os::device_major(status.special_device_id), allocator)
-              .view(),
-          spec, stat_value_kind::Numeric);
-
-      return;
-    }
-
-    if (spec.sub_field == 'L') {
-      append_padded(
-          output,
-          decimal_of(os::device_minor(status.special_device_id), allocator)
-              .view(),
-          spec, stat_value_kind::Numeric);
-
-      return;
-    }
-
-    append_padded(output,
-                  decimal_of(status.special_device_id, allocator).view(), spec,
-                  stat_value_kind::Numeric);
 
     return;
 

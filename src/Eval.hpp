@@ -382,18 +382,6 @@ public:
   }
 
   fn
-  set_mimicry(bool is_enabled) wontthrow -> void
-  {
-    set_option(shell_option_id::Mimicry, is_enabled);
-  }
-
-  pure fn
-  is_mimicry_enabled() const wontthrow -> bool
-  {
-    return option_is_enabled(shell_option_id::Mimicry);
-  }
-
-  fn
   set_warning_level(u8 level) wontthrow -> void
   {
     m_reporting.warning_level = level;
@@ -516,6 +504,7 @@ public:
   KOSH_RUNTIME_OPTION(set_memory_stats_enabled,
                       memory_stats_enabled,
                       ShowMemory)
+  KOSH_RUNTIME_OPTION(set_mimicry, is_mimicry_enabled, Mimicry)
 
 #undef KOSH_RUNTIME_OPTION
 
@@ -2205,9 +2194,12 @@ public:
   hot fn
   find_for_write(StringView name) throws -> Maybe<String *>
   {
-    if (!find(name).has_value()) return None;
+    let const entry = m_table->find_for_write(name);
+    if (!entry.has_value() || !(*entry)->has_value) {
+      return None;
+    }
 
-    return &(*m_table->find_for_write(name))->value;
+    return &(*entry)->value;
   }
 
   fn
@@ -2261,9 +2253,12 @@ public:
   hot fn
   find_for_write(StringView name) throws -> Maybe<ArrayList<String> *>
   {
-    if (!find(name).has_value()) return None;
+    let const entry = m_table->find_for_write(name);
+    if (!entry.has_value() || !(*entry)->is_indexed_array) {
+      return None;
+    }
 
-    return &(*m_table->find_for_write(name))->elements;
+    return &(*entry)->elements;
   }
 
   fn
@@ -2506,21 +2501,6 @@ public:
         [&](StringView name, const variable_entry &entry) throws {
           if (entry.attribute_bits != 0) do_callback(name);
         });
-  }
-
-  /* memory: a StringMap<u8> in m_table->allocator(), returned by value; the
-             caller owns it.
-     time:   O(v), where v is the number of table entries: one walk of the table
-             with a hash lookup in get_bits() for each marked name. */
-  fn
-  entries() const throws -> StringMap<u8>
-  {
-    let marked = StringMap<u8>{m_table->allocator()};
-    for_each_name([&](StringView name) throws {
-      marked.set(name, get_bits(name));
-    });
-
-    return marked;
   }
 
 private:
@@ -3253,8 +3233,7 @@ public:
   discard_signal_traps() throws -> void
   {
     ArrayList<String> discarded{heap_allocator()};
-    m_traps.for_each([&](StringView condition, const trap_definition &trap) {
-      unused(trap);
+    m_traps.for_each([&](StringView condition, const trap_definition &) {
       if (!os::signal_number_from_name(condition).has_value()) return;
       discarded.push_managed(condition);
     });
@@ -3392,12 +3371,6 @@ public:
   pending_child_trap_count() const wontthrow -> u32
   {
     return m_pending_child_trap_count;
-  }
-
-  pure fn
-  trap_action_depth() const wontthrow -> u32
-  {
-    return m_action_frame.depth;
   }
 
   pure fn
@@ -5684,16 +5657,10 @@ public:
   fn
   set_posix_mode_via_option(bool is_enabled) wontthrow -> void
   {
-    if (is_enabled) {
+    if (is_enabled || runtime_state().is_posix_option_on()) {
       runtime_control_store().note_explicit_mood();
-      select_mood(mimic_mood::BashPosix);
-
-      return;
+      select_mood(is_enabled ? mimic_mood::BashPosix : mimic_mood::Bash);
     }
-
-    if (!runtime_state().is_posix_option_on()) return;
-    runtime_control_store().note_explicit_mood();
-    select_mood(mimic_mood::Bash);
   }
 
   fn

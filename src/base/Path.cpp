@@ -122,7 +122,7 @@ Path::extension() const wontthrow -> StringView
 {
   let const name = filename();
 
-  if (name == StringView{"."} || name == StringView{".."}) {
+  if (name == StringView{".."}) {
     return StringView{name.data + name.length, 0};
   }
 
@@ -284,10 +284,7 @@ Path::normalized() const throws -> Path
     normalized_text.append(components[i]);
   }
 
-  if (normalized_text.is_empty())
-    normalized_text.append(is_absolute_path
-                               ? StringView{&os::DIRECTORY_SEPARATOR, 1}
-                               : StringView{"."});
+  if (normalized_text.is_empty()) normalized_text.append(StringView{"."});
 
   return Path{normalized_text.view(), allocator()};
 }
@@ -542,23 +539,10 @@ Path::set_current_directory(const Path &path) throws -> ErrorOr<Ok>
 }
 
 cold fn
-Path::read_directory(const Path &dir) throws -> Maybe<ArrayList<String>>
-{
-  return os::list_directory(dir.view());
-}
-
-cold fn
 Path::read_directory(const Path &dir, Allocator allocator) throws
     -> Maybe<ArrayList<String>>
 {
   return os::list_directory(dir.view(), allocator);
-}
-
-cold fn
-Path::read_directory_typed(const Path &dir) throws
-    -> Maybe<ArrayList<DirectoryChild>>
-{
-  return os::list_directory_typed(dir.view());
 }
 
 cold fn

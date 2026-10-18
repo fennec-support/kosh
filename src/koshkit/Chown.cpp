@@ -69,7 +69,7 @@ Chown::execute(const ExecContext               &ec,
   let const group_text =
       colon.has_value() ? specification.substring(*colon + 1) : StringView{};
 
-  if (owner_text.is_empty() && !colon.has_value()) {
+  if (specification.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "invalid owner '" + operands[0] + "'",
                             "use an owner name or an unsigned decimal user id");

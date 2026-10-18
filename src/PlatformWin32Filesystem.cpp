@@ -696,19 +696,24 @@ path_is_owned_by_effective_group(StringView) wontthrow -> bool
   return false;
 }
 
-fn
-path_file_size(StringView path) wontthrow -> Maybe<u64>
+static fn
+read_standard_attributes(StringView                 path,
+                         WIN32_FILE_ATTRIBUTE_DATA &data) wontthrow -> bool
 {
   let const wide_path = path_to_wide(path, heap_allocator());
 
-  if (!wide_path.has_value()) return None;
+  if (!wide_path.has_value()) return false;
 
+  return GetFileAttributesExW(wide_path->begin(), GetFileExInfoStandard,
+                              &data) != 0;
+}
+
+fn
+path_file_size(StringView path) wontthrow -> Maybe<u64>
+{
   WIN32_FILE_ATTRIBUTE_DATA data{};
 
-  if (GetFileAttributesExW(wide_path->begin(), GetFileExInfoStandard, &data) ==
-      0)
-    return None;
-
+  if (!read_standard_attributes(path, data)) return None;
   if ((data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0) return None;
 
   return (static_cast<u64>(data.nFileSizeHigh) << 32) | data.nFileSizeLow;
@@ -717,15 +722,9 @@ path_file_size(StringView path) wontthrow -> Maybe<u64>
 fn
 path_modification_time(StringView path) wontthrow -> Maybe<i64>
 {
-  let const wide_path = path_to_wide(path, heap_allocator());
-
-  if (!wide_path.has_value()) return None;
-
   WIN32_FILE_ATTRIBUTE_DATA data{};
 
-  if (GetFileAttributesExW(wide_path->begin(), GetFileExInfoStandard, &data) ==
-      0)
-    return None;
+  if (!read_standard_attributes(path, data)) return None;
 
   let const     windows_ticks = filetime_ticks(data.ftLastWriteTime);
   constexpr u64 WINDOWS_TO_UNIX_EPOCH_TICKS = 116444736000000000ULL;
@@ -794,23 +793,10 @@ paths_match_for_history(StringView first, StringView second) wontthrow -> bool
 fn
 path_is_newer_than(StringView first, StringView second) wontthrow -> bool
 {
-  let const wide_first = path_to_wide(first, heap_allocator());
-
-  if (!wide_first.has_value()) return false;
-
-  let const wide_second = path_to_wide(second, heap_allocator());
-
-  if (!wide_second.has_value()) return false;
-
   WIN32_FILE_ATTRIBUTE_DATA first_data{}, second_data{};
 
-  if (GetFileAttributesExW(wide_first->begin(), GetFileExInfoStandard,
-                           &first_data) == 0)
-    return false;
-
-  if (GetFileAttributesExW(wide_second->begin(), GetFileExInfoStandard,
-                           &second_data) == 0)
-    return false;
+  if (!read_standard_attributes(first, first_data)) return false;
+  if (!read_standard_attributes(second, second_data)) return false;
 
   /* at this point: first_data and second_data hold the last write times of
      first and second. */
@@ -1079,16 +1065,7 @@ list_directory_status(StringView dir, Allocator allocator) throws
 fn
 open_file_descriptor(StringView path, file_open_mode mode) -> Maybe<descriptor>
 {
-  DWORD access =
-      (mode == file_open_mode::Read || mode == file_open_mode::ReadNonblocking)
-          ? GENERIC_READ
-          : GENERIC_WRITE;
-
-  if (mode == file_open_mode::ReadWrite) access = GENERIC_READ | GENERIC_WRITE;
-  if (mode == file_open_mode::Append || mode == file_open_mode::AppendPrivate) {
-    access = FILE_APPEND_DATA;
-  }
-
+  DWORD access      = GENERIC_WRITE;
   DWORD disposition = OPEN_EXISTING;
 
   switch (mode) {
@@ -1097,13 +1074,18 @@ open_file_descriptor(StringView path, file_open_mode mode) -> Maybe<descriptor>
   case file_open_mode::TruncateNoClobber: disposition = CREATE_NEW; break;
 
   case file_open_mode::Append:
-  case file_open_mode::AppendPrivate: disposition = OPEN_ALWAYS; break;
+  case file_open_mode::AppendPrivate:
+    access      = FILE_APPEND_DATA;
+    disposition = OPEN_ALWAYS;
+    break;
 
-  case file_open_mode::Read: disposition = OPEN_EXISTING; break;
+  case file_open_mode::Read:
+  case file_open_mode::ReadNonblocking: access = GENERIC_READ; break;
 
-  case file_open_mode::ReadNonblocking: disposition = OPEN_EXISTING; break;
-
-  case file_open_mode::ReadWrite: disposition = OPEN_ALWAYS; break;
+  case file_open_mode::ReadWrite:
+    access      = GENERIC_READ | GENERIC_WRITE;
+    disposition = OPEN_ALWAYS;
+    break;
   }
 
   let const is_named_pipe = is_named_pipe_path(path);
@@ -1623,9 +1605,12 @@ remove_tree_entry(StringView                path,
     }
   };
 
-  let const target = Path{path, allocator};
+  let const attributes = path_attributes(path);
 
-  if (target.is_symbolic_link() || !target.is_directory()) {
+  if (attributes == INVALID_FILE_ATTRIBUTES ||
+      (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 ||
+      (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0)
+  {
     if (let const outcome = do_apply_choice(do_choose_remove(), false);
         outcome.has_value())
     {
@@ -1684,7 +1669,7 @@ remove_tree_entry(StringView                path,
 
   /* at this point: pinned_directory is open on a directory that is not a
      reparse point, and the defer closes it on every return. */
-  let const entries = list_directory_status(path, allocator);
+  let const entries = list_directory_typed(path, allocator);
 
   if (!entries.has_value()) {
     report_tree_removal_failure(hooks, tree_removal_failure::ReadDirectory,
@@ -1714,7 +1699,7 @@ remove_tree_entry(StringView                path,
 
     let child = Path{path, allocator};
 
-    child.append(entry.child.name.view());
+    child.append(entry.name.view());
 
     bool is_child_kept = false;
 
@@ -2113,54 +2098,34 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     return koshka::None;
   }
 
-  let const tag = *reinterpret_cast<const u32 *>(buffer);
+  let const tag              = *reinterpret_cast<const u32 *>(buffer);
+  let const is_symbolic_link = tag == IO_REPARSE_TAG_SYMLINK;
 
-  if (tag == IO_REPARSE_TAG_SYMLINK) {
-    constexpr usize path_buffer_position =
-        offsetof(symbolic_link_reparse_data, path_buffer);
-
-    if (returned_byte_count < path_buffer_position) {
-      SetLastError(ERROR_INVALID_DATA);
-
-      return koshka::None;
-    }
-
-    let const *data =
-        reinterpret_cast<const symbolic_link_reparse_data *>(buffer);
-
-    if (!do_select_target(path_buffer_position, data->data_length,
-                          data->substitute_name_offset,
-                          data->substitute_name_length, data->print_name_offset,
-                          data->print_name_length))
-    {
-      SetLastError(ERROR_INVALID_DATA);
-
-      return koshka::None;
-    }
-  } else if (tag == IO_REPARSE_TAG_MOUNT_POINT) {
-    constexpr usize path_buffer_position =
-        offsetof(mount_point_reparse_data, path_buffer);
-
-    if (returned_byte_count < path_buffer_position) {
-      SetLastError(ERROR_INVALID_DATA);
-
-      return koshka::None;
-    }
-
-    let const *data =
-        reinterpret_cast<const mount_point_reparse_data *>(buffer);
-
-    if (!do_select_target(path_buffer_position, data->data_length,
-                          data->substitute_name_offset,
-                          data->substitute_name_length, data->print_name_offset,
-                          data->print_name_length))
-    {
-      SetLastError(ERROR_INVALID_DATA);
-
-      return koshka::None;
-    }
-  } else {
+  if (!is_symbolic_link && tag != IO_REPARSE_TAG_MOUNT_POINT) {
     SetLastError(ERROR_NOT_SUPPORTED);
+
+    return koshka::None;
+  }
+
+  let const path_buffer_position =
+      is_symbolic_link ? offsetof(symbolic_link_reparse_data, path_buffer)
+                       : offsetof(mount_point_reparse_data, path_buffer);
+
+  if (returned_byte_count < path_buffer_position) {
+    SetLastError(ERROR_INVALID_DATA);
+
+    return koshka::None;
+  }
+
+  /* both reparse layouts share the fields before path_buffer. */
+  let const *data = reinterpret_cast<const mount_point_reparse_data *>(buffer);
+
+  if (!do_select_target(path_buffer_position, data->data_length,
+                        data->substitute_name_offset,
+                        data->substitute_name_length, data->print_name_offset,
+                        data->print_name_length))
+  {
+    SetLastError(ERROR_INVALID_DATA);
 
     return koshka::None;
   }
@@ -2893,8 +2858,7 @@ execute_batch_operations(const batched_syscall  *operations,
                          usize                   operation_count,
                          batched_syscall_result *results) wontthrow -> void
 {
-  if (operation_count == 0) return;
-  if (operations == nullptr || results == nullptr) {
+  if (operation_count == 0 || operations == nullptr || results == nullptr) {
     return;
   }
   /* at this point: operations and results are non-null, and operation_count
@@ -2940,7 +2904,8 @@ execute_batch_operations(const batched_syscall  *operations,
 
       switch (operation_kind) {
       case batched_syscall_id::Read:
-      case batched_syscall_id::Write: {
+      case batched_syscall_id::Write:
+      case batched_syscall_id::WriteCurrent: {
         let const buffer =
             operation_kind == batched_syscall_id::Read
                 ? batch_operation_access::get_output_buffer(operation)
@@ -2954,22 +2919,14 @@ execute_batch_operations(const batched_syscall  *operations,
           continue;
         }
 
-        submit_positioned_file_operation(operation, result,
-                                         requests[chunk_index]);
+        if (operation_kind == batched_syscall_id::WriteCurrent) {
+          execute_current_file_operation(operation, result);
+        } else {
+          submit_positioned_file_operation(operation, result,
+                                           requests[chunk_index]);
+        }
         break;
       }
-      case batched_syscall_id::WriteCurrent:
-        if (batch_operation_access::get_descriptor(operation) ==
-                KOSH_INVALID_FD ||
-            (batch_operation_access::get_input_buffer(operation) == nullptr &&
-             operation.byte_count != 0))
-        {
-          result.error_number = ERROR_INVALID_PARAMETER;
-          continue;
-        }
-
-        execute_current_file_operation(operation, result);
-        break;
 
       case batched_syscall_id::Exists:
         if (batch_operation_access::get_path(operation) == nullptr) {

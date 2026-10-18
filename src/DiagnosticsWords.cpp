@@ -760,9 +760,9 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
 
   if (input.is_in_group(COMMAND_GROUP_TEST)) {
     for (usize i = 1; i < args.count(); i++) {
-      let const literal = args[i]->raw_string();
+      String literal_storage{heap_allocator()};
 
-      if (literal.view() == "=~")
+      if (borrowed_token_text(args[i], literal_storage) == "=~")
         actx.report_diagnostic(diagnostic_id::sc2074,
                                args[i]->source_location());
     }
@@ -930,9 +930,7 @@ check_operand_lints_before_scan(AnalysisContext          &actx,
 
       if (script_view.starts_with(StringView{"-f"})) break;
 
-      if (!script_view.is_empty() && script_view[0] == '-') {
-        continue;
-      }
+      if (script_view.starts_with("-")) continue;
 
       if (view_is_plain_substitution_script(script_view)) {
         actx.report_diagnostic(diagnostic_id::sc2001,
@@ -1322,11 +1320,11 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
     let const should_check_cdpath = !args_have_short_flag(args, 'n');
 
     for (usize i = 1; i < args.count(); i++) {
-      let const raw = args[i]->raw_string();
+      String    raw_storage{heap_allocator()};
+      let const raw = borrowed_token_text(args[i], raw_storage);
 
       if (should_check_cdpath &&
-          (raw.view().starts_with(StringView{"CDPATH="}) ||
-           raw.view() == "CDPATH"))
+          (raw.starts_with(StringView{"CDPATH="}) || raw == "CDPATH"))
       {
         actx.report_diagnostic(diagnostic_id::exported_cdpath,
                                args[i]->source_location());
@@ -1421,8 +1419,9 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
 
   case command_name_id::Find:
     for (usize i = 1; i + 1 < args.count(); i++) {
-      let const predicate      = args[i]->raw_string();
-      let const predicate_view = predicate.view();
+      String    predicate_storage{heap_allocator()};
+      let const predicate_view =
+          borrowed_token_text(args[i], predicate_storage);
 
       if (FIND_PATTERN_PREDICATES.contains(predicate_view)) {
         if (args[i + 1]->kind() == Token::Kind::Word &&
@@ -1583,9 +1582,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
       let const literal = word.to_literal_string();
       let const view    = literal.view();
 
-      if (view.is_empty() || view[0] == '-') {
-        continue;
-      }
+      if (view.is_empty() || view[0] == '-') continue;
 
       has_seen_command_word = true;
 

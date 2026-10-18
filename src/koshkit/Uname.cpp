@@ -46,17 +46,13 @@ Uname::execute(const ExecContext               &ec,
   }
 
   let const is_all         = FLAG_UNAME_ALL.is_enabled();
-  bool      should_system  = is_all || FLAG_UNAME_SYSTEM.is_enabled();
   let const should_node    = is_all || FLAG_UNAME_NODE.is_enabled();
   let const should_release = is_all || FLAG_UNAME_RELEASE.is_enabled();
   let const should_version = is_all || FLAG_UNAME_VERSION.is_enabled();
   let const should_machine = is_all || FLAG_UNAME_MACHINE.is_enabled();
-
-  if (!should_system && !should_node && !should_release && !should_version &&
-      !should_machine)
-  {
-    should_system = true;
-  }
+  let const should_system =
+      is_all || FLAG_UNAME_SYSTEM.is_enabled() ||
+      !(should_node || should_release || should_version || should_machine);
 
   let output = String{cxt.scratch_allocator()};
 

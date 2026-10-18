@@ -52,48 +52,34 @@ Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* at this point: stack holds at least one directory, so stack.back() and
      stack.pop_back() are valid. */
-  let const do_pop_top = [&]() throws -> i32 {
+  usize index = 0;
+
+  if (args.count() > 1 &&
+      !parse_directory_stack_rotation(args[1].view(), stack.count() + 1,
+                                      operand_locations[1], index))
+  {
+    throw ErrorWithLocationAndDetails{
+        operand_locations[1],
+        StringView{"popd does not accept the argument '"} + args[1].view() +
+            "'",
+        "Pass a +N or a -N stack index, or no argument to pop the top"};
+  }
+
+  if (index > 0) {
+    stack.remove(stack.count() - index);
+  } else if (FLAG_NO_CHANGE.is_enabled()) {
+    stack.pop_back();
+  } else {
     let const target = String{cxt.scratch_allocator(), stack.back().view()};
     let const status = run_cd_to_directory(cxt, ec, target.view());
 
     if (status != 0) return status;
     stack.pop_back();
-
-    return 0;
-  };
-
-  if (args.count() <= 1) {
-    if (FLAG_NO_CHANGE.is_enabled()) {
-      stack.pop_back();
-    } else if (let const status = do_pop_top(); status != 0) {
-      return status;
-    }
-
-    print_directory_stack(cxt, ec, false, false, false);
-
-    return 0;
   }
 
-  if (usize index = 0; parse_directory_stack_rotation(
-          args[1].view(), stack.count() + 1, operand_locations[1], index))
-  {
-    if (index == 0 && FLAG_NO_CHANGE.is_enabled()) {
-      stack.pop_back();
-    } else if (index == 0) {
-      if (let const status = do_pop_top(); status != 0) return status;
-    } else {
-      stack.remove(stack.count() - index);
-    }
+  print_directory_stack(cxt, ec, false, false, false);
 
-    print_directory_stack(cxt, ec, false, false, false);
-
-    return 0;
-  }
-
-  throw ErrorWithLocationAndDetails{
-      operand_locations[1],
-      StringView{"popd does not accept the argument '"} + args[1].view() + "'",
-      "Pass a +N or a -N stack index, or no argument to pop the top"};
+  return 0;
 }
 
 } /* namespace koshka */

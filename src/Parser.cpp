@@ -1375,8 +1375,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           const bool should_pipe_standard_error =
               last_pipe_token->kind() == Token::Kind::PipeAmpersand;
 
-          pipeline->append_command(has_another_pipe &&
-                                           should_pipe_standard_error
+          pipeline->append_command(should_pipe_standard_error
                                        ? wrap_with_stderr_to_stdout(rhs)
                                        : rhs);
           if (has_another_pipe) {
@@ -1787,42 +1786,33 @@ Parser::try_parse_descriptor_prefixed_redirection(
     m_lexer.advance_past_last_peek();
 
     let const allocation_name = word_token->word().fd_allocation_name();
+    let const allocation_token =
+        allocation_name.has_value() ? word_token : nullptr;
+    i32 fd = -1;
 
-    if (allocation_name.has_value()) {
-      if (nk == Token::Kind::DoubleLess) {
-        build_heredoc_redirection(-1, op_location, first_location, out);
-        out.back().fd_allocation_name_token = word_token;
-      } else if (nk == Token::Kind::TripleLess) {
-        build_here_string_redirection(-1, op_location, first_location, out);
-        out.back().fd_allocation_name_token = word_token;
-      } else {
-        build_file_or_dup_redirection(
-            -1, nk, op_location, first_location, out, word_token,
-            redirection_descriptor_spelling::Explicit);
+    if (!allocation_name.has_value()) {
+      let const literal           = word_token->word().to_literal_string();
+      let const parsed_descriptor = literal.to<i64>();
+
+      if (parsed_descriptor.is_error()) {
+        throw ErrorWithLocation{word_location,
+                                parsed_descriptor.error().message()};
       }
 
-      return true;
+      /* at this point: literal parses as an integer no greater than INT32_MAX,
+         and fd holds the parsed value. */
+      fd = static_cast<i32>(parsed_descriptor.value());
     }
-
-    let const literal           = word_token->word().to_literal_string();
-    let const parsed_descriptor = literal.to<i64>();
-
-    if (parsed_descriptor.is_error()) {
-      throw ErrorWithLocation{word_location,
-                              parsed_descriptor.error().message()};
-    }
-
-    /* at this point: literal parses as an integer no greater than INT32_MAX
-       and the word has no fd allocation name, so fd holds the parsed value. */
-    let const fd = static_cast<i32>(parsed_descriptor.value());
 
     if (nk == Token::Kind::DoubleLess) {
       build_heredoc_redirection(fd, op_location, first_location, out);
+      out.back().fd_allocation_name_token = allocation_token;
     } else if (nk == Token::Kind::TripleLess) {
       build_here_string_redirection(fd, op_location, first_location, out);
+      out.back().fd_allocation_name_token = allocation_token;
     } else {
       build_file_or_dup_redirection(fd, nk, op_location, first_location, out,
-                                    nullptr,
+                                    allocation_token,
                                     redirection_descriptor_spelling::Explicit);
     }
 
@@ -2022,14 +2012,14 @@ Parser::parse_simple_command(const Token *leading_token) throws
             break;
 
           case 's':
-            if (view.length == 6 && view == "select") {
+            if (view == "select") {
               position_word = command_position_word::Select;
             }
 
             break;
 
           case 'c':
-            if (view.length == 6 && view == "coproc") {
+            if (view == "coproc") {
               position_word = command_position_word::Coproc;
             }
 

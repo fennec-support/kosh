@@ -117,7 +117,6 @@ using i128 = __int128_t;
 using f64 = double;
 
 using uchar = u8;
-using ichar = i8;
 
 using usize   = size_t;
 using isize   = ptrdiff_t;

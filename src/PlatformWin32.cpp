@@ -1246,9 +1246,6 @@ get_current_user() -> Maybe<String>
 
     buffer.reserve(size);
 
-    for (DWORD i = 0; i < size; i++)
-      buffer.push(L'\0');
-
     if (GetUserNameW(buffer.begin(), &size))
       return wide_to_utf8(buffer.begin(), size - 1, heap_allocator());
   }
@@ -1681,13 +1678,9 @@ TerminalEchoGuard::TerminalEchoGuard(descriptor         input,
     return;
   }
 
-  if (GetConsoleMode(input, &m_original_mode) == FALSE) {
-    m_did_succeed = false;
-
-    return;
-  }
-
-  if (SetConsoleMode(input, m_original_mode & ~ENABLE_ECHO_INPUT) == FALSE) {
+  if (GetConsoleMode(input, &m_original_mode) == FALSE ||
+      SetConsoleMode(input, m_original_mode & ~ENABLE_ECHO_INPUT) == FALSE)
+  {
     m_did_succeed = false;
 
     return;
@@ -2190,13 +2183,8 @@ apply_terminal_settings(descriptor               terminal,
       continue;
     }
 
-    let is_disabled = false;
-    let name        = setting;
-
-    if (!name.is_empty() && name[0] == '-') {
-      is_disabled = true;
-      name        = name.substring(1);
-    }
+    let const is_disabled = !setting.is_empty() && setting[0] == '-';
+    let const name        = is_disabled ? setting.substring(1) : setting;
 
     let const flag = TERMINAL_FLAGS.find(name);
 
@@ -2289,11 +2277,7 @@ find_environment_spelling(const wchar_t *wide_key) throws
   for (wchar_t *entry = block; *entry != L'\0';) {
     let const pair_length = wcslen(entry);
 
-    usize name_length = 0;
-
-    while (name_length < pair_length && entry[name_length] != L'=') {
-      name_length++;
-    }
+    let const name_length = wcscspn(entry, L"=");
 
     if (entry[0] != L'=' &&
         CompareStringOrdinal(entry, static_cast<int>(name_length), wide_key,
@@ -2363,11 +2347,10 @@ get_environment_spelling(StringView key) -> String
 
   /* at this point: existing_spelling holds the variable name and a NUL. */
 
-  let const spelling =
-      wide_to_utf8(existing_spelling->begin(), existing_spelling->count() - 1,
-                   heap_allocator());
+  let spelling = wide_to_utf8(existing_spelling->begin(),
+                              existing_spelling->count() - 1, heap_allocator());
 
-  return spelling.has_value() ? String{heap_allocator(), spelling->view()}
+  return spelling.has_value() ? steal(*spelling)
                               : String{heap_allocator(), key};
 }
 
@@ -2422,11 +2405,7 @@ for_each_environment_name(opaque                   *context,
     let const pair_length = wcslen(entry);
 
     if (entry[0] != L'=') {
-      usize name_length = 0;
-
-      while (name_length < pair_length && entry[name_length] != L'=') {
-        name_length++;
-      }
+      let const name_length = wcscspn(entry, L"=");
 
       let const name = wide_to_utf8(entry, name_length, heap_allocator());
 
@@ -2563,12 +2542,8 @@ struct subshell_transport_header
       -> Maybe<subshell_transport_header>
   {
     if (bootstrap.payload.count() > MAXIMUM_TRANSPORT_LENGTH ||
-        bootstrap.source_origin.count() >
-            MAXIMUM_TRANSPORT_LENGTH - bootstrap.payload.count() ||
-        bootstrap.processes.count() >
-            (MAXIMUM_TRANSPORT_LENGTH - bootstrap.payload.count() -
-             bootstrap.source_origin.count()) /
-                sizeof(u64))
+        bootstrap.source_origin.count() > MAXIMUM_TRANSPORT_LENGTH ||
+        bootstrap.processes.count() > MAXIMUM_TRANSPORT_LENGTH / sizeof(u64))
     {
       return None;
     }

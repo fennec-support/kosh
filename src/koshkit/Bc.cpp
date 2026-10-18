@@ -1450,11 +1450,8 @@ bc_execute_statement(StringView         statement,
     while (bc_condition_is_true(header, ec, cxt, runtime)) {
       let const flow = bc_execute_statement(body, ec, cxt, runtime);
 
-      if (flow == bc_flow::Quit || flow == bc_flow::Return) {
-        return flow;
-      }
-
       if (flow == bc_flow::Break) break;
+      if (flow != bc_flow::Normal) return flow;
       if (os::INTERRUPT_REQUESTED) break;
     }
 
@@ -1499,11 +1496,8 @@ bc_execute_statement(StringView         statement,
     {
       let const flow = bc_execute_statement(body, ec, cxt, runtime);
 
-      if (flow == bc_flow::Quit || flow == bc_flow::Return) {
-        return flow;
-      }
-
       if (flow == bc_flow::Break) break;
+      if (flow != bc_flow::Normal) return flow;
       if (!parts[2].is_empty())
         bc_execute_simple(parts[2], ec, cxt, runtime, bc_output_mode::Silent);
       if (os::INTERRUPT_REQUESTED) break;

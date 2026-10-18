@@ -72,13 +72,11 @@ tl_arena_malloc(usize length) -> opaque *
   let const allocation_length = length + TL_ALLOC_HEADER;
   let const base              = static_cast<char *>(
       koshka::heap_allocator().raw_alloc(allocation_length, alignof(char)));
-  if (base != nullptr) {
-    *reinterpret_cast<usize *>(base) = length;
+  if (base == nullptr) return nullptr;
 
-    return base + TL_ALLOC_HEADER;
-  }
+  *reinterpret_cast<usize *>(base) = length;
 
-  return nullptr;
+  return base + TL_ALLOC_HEADER;
 }
 
 fn
@@ -168,12 +166,6 @@ struct completion_session
     has_analyzed_line = false;
     analyzed_line.clear();
     analysis_finding.clear();
-  }
-
-  pure fn
-  is_enabled() const wontthrow -> bool
-  {
-    return context != nullptr;
   }
 
   fn
@@ -392,16 +384,12 @@ enum class selector_outcome : u8
 constexpr i64 STOPPED_PROGRAM_POLL_NANOS = 100'000'000;
 
 fn
-get_continue_signal() throws -> koshka::Maybe<i32>
+is_continue_signal_supported() throws -> bool
 {
   let const continue_signal = koshka::os::signal_number_from_name("CONT");
-  if (!continue_signal.has_value() ||
-      !koshka::os::is_process_signal_supported(*continue_signal))
-  {
-    return koshka::None;
-  }
 
-  return continue_signal;
+  return continue_signal.has_value() &&
+         koshka::os::is_process_signal_supported(*continue_signal);
 }
 
 constexpr usize STOPPED_PROGRAM_CONTINUE_LIMIT = 32;
@@ -497,7 +485,7 @@ read_while_continuing_program(
     koshka::Maybe<i32>    &out_exit_status) throws
     -> koshka::Maybe<koshka::String>
 {
-  if (!get_continue_signal().has_value()) {
+  if (!is_continue_signal_supported()) {
     return koshka::os::read_fd_to_string(fd, koshka::heap_allocator());
   }
 
@@ -1460,10 +1448,8 @@ struct history_file_tracking
   fn
   record(const Path &path, usize expected_byte_count) -> void
   {
-    has_status = os::stat_path_following(path.view(), status);
-    if (has_status && status.size != expected_byte_count) {
-      has_status = false;
-    }
+    has_status = os::stat_path_following(path.view(), status) &&
+                 status.size == expected_byte_count;
   }
 
   fn
@@ -1496,13 +1482,6 @@ struct history_file_tracking
 };
 
 static history_file_tracking HISTORY_FILE{};
-
-enum class history_replacement : u8
-{
-  Replaced,
-  NotReloaded,
-  Failed,
-};
 
 static fn
 load_history(const Path &path, bool should_allow_missing)
@@ -2068,22 +2047,6 @@ ensure_history_loaded(const Path &path, bool should_allow_missing)
   }
 
   return load_history(path, should_allow_missing);
-}
-
-static fn
-replace_history_file(const Path &path,
-                     StringView  name_prefix,
-                     StringView  contents) -> history_replacement
-{
-  if (!write_history_file_atomically(path, name_prefix, contents))
-    return history_replacement::Failed;
-
-  if (load_history(path, false).is_error())
-    return history_replacement::NotReloaded;
-
-  /* at this point: the file at path holds contents, and the history is
-     loaded from path. */
-  return history_replacement::Replaced;
 }
 
 fn
@@ -3088,13 +3051,11 @@ compact_history_file_from_locked_reread(usize entry_limit) -> bool
   set_history_limit(entry_limit);
   if (load_history(*path, true).is_error()) return false;
 
-  let const retained_entry_limit = ::itl_g_history_limit;
-
-  if (entry_limit == 0 || ::itl_g_history_total_count <= entry_limit) {
+  if (entry_limit == 0 || ::itl_g_history_total_count <= entry_limit ||
+      entry_limit > ::itl_g_history_limit)
+  {
     return true;
   }
-
-  if (entry_limit > retained_entry_limit) return true;
 
   /* at this point: the process lock is held, the history is loaded, and
      entry_limit is nonzero and less than itl_g_history_total_count. */
@@ -3120,8 +3081,12 @@ compact_history_file_from_locked_reread(usize entry_limit) -> bool
     encode_history_record(contents, StringView{decoded, decoded_byte_count});
   }
 
-  return replace_history_file(*path, ".kosh_history_compact",
-                              contents.view()) == history_replacement::Replaced;
+  if (!write_history_file_atomically(*path, ".kosh_history_compact",
+                                     contents.view()))
+    return false;
+
+  /* at this point: the file at path holds contents. */
+  return !load_history(*path, false).is_error();
 }
 
 fn
@@ -3960,12 +3925,10 @@ scan_prompt_template_inputs_or_report_impure(
     if (next == '{') {
       usize j = i + 2;
 
-      if (j < text.length && (text[j] == ' ' || text[j] == '\t' ||
-                              text[j] == '\n' || text[j] == '|'))
+      if (j < text.length &&
+          (text[j] == ' ' || text[j] == '\t' || text[j] == '\n' ||
+           text[j] == '|' || text[j] == '!'))
       {
-        return false;
-      }
-      if (j < text.length && text[j] == '!') {
         return false;
       }
       if (j < text.length && text[j] == '#') {
@@ -4299,10 +4262,8 @@ trim_visible_prompt_spaces(StringView rendered) throws -> String
       continue;
     }
 
-    let const is_outer_space =
-        rendered[i] == ' ' &&
-        (first_text_position == rendered.length || i < first_text_position ||
-         i > last_text_position);
+    let const is_outer_space = rendered[i] == ' ' && (i < first_text_position ||
+                                                      i > last_text_position);
 
     if (!is_outer_space) trimmed.push(rendered[i]);
     i++;

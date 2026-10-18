@@ -324,14 +324,10 @@ Parser::parse_loop_header(
 
   let const &name_word =
       static_cast<const tokens::WordToken *>(name_token)->word();
-  let is_name_plain =
+  let const is_name_plain =
       name_word.segments.count() == 1 &&
-      name_word.segments[0].kind == WordSegment::Kind::UnquotedText;
-
-  if (is_name_plain) {
-    is_name_plain =
-        lexer::word_is_variable_name(name_word.segments[0].text.view());
-  }
+      name_word.segments[0].kind == WordSegment::Kind::UnquotedText &&
+      lexer::word_is_variable_name(name_word.segments[0].text.view());
 
   let variable_name = name_word.segments.is_empty()
                           ? StringView{}
@@ -505,14 +501,10 @@ Parser::parse_coproc() throws -> Command *
 
   if (candidate != nullptr && candidate->kind() == Token::Kind::Word) {
     let const &word = static_cast<const tokens::WordToken *>(candidate)->word();
-    let        is_plain_name =
+    let const  is_plain_name =
         word.segments.count() == 1 &&
-        word.segments[0].kind == WordSegment::Kind::UnquotedText;
-
-    if (is_plain_name) {
-      is_plain_name =
-          lexer::word_is_variable_name(word.segments[0].text.view());
-    }
+        word.segments[0].kind == WordSegment::Kind::UnquotedText &&
+        lexer::word_is_variable_name(word.segments[0].text.view());
 
     if (is_plain_name) {
       candidate = m_lexer.next_shell_token();

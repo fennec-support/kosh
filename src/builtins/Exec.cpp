@@ -192,20 +192,17 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const unavailable = utils::locate_first_unavailable_path_component(
           target, command_name.view(), raw_program, error_location,
           cxt.scratch_allocator());
-      let is_missing_directory = false;
-
       if (unavailable.has_value()) {
-        error_location       = unavailable->location;
-        reported_program     = unavailable->reported_prefix.view();
-        is_missing_directory = !unavailable->is_final_component;
-      }
+        error_location   = unavailable->location;
+        reported_program = unavailable->reported_prefix.view();
 
-      if (is_missing_directory) {
-        return report_exec_resolution_error(ec, cxt, error_location,
-                                            StringView{"The directory '"} +
-                                                reported_program +
-                                                "' does not exist",
-                                            127);
+        if (!unavailable->is_final_component) {
+          return report_exec_resolution_error(ec, cxt, error_location,
+                                              StringView{"The directory '"} +
+                                                  reported_program +
+                                                  "' does not exist",
+                                              127);
+        }
       }
 
       return report_exec_resolution_error(

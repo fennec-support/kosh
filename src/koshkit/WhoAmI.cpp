@@ -36,13 +36,12 @@ WhoAmI::execute(const ExecContext               &ec,
 
   LOG(Debug, "whoami printing the effective user name");
 
-  let output = String{cxt.scratch_allocator()};
-
   if (let const user =
           os::uid_to_username(static_cast<u32>(os::get_effective_user_id()));
       user.has_value())
   {
-    output.append(user->view());
+    let output = String{cxt.scratch_allocator(), user->view()};
+
     output += '\n';
     ec.print_to_stdout(output);
 

@@ -271,11 +271,9 @@ EvalContext::resolve_current_function_window(
     return ResolvedRenderSource{};
   }
 
-  let resolved_source = resolve_render_source(location);
+  let const resolved_source = resolve_render_source(location);
 
-  if (!resolved_source.is_windowed) return ResolvedRenderSource{};
-
-  return resolved_source;
+  return resolved_source.is_windowed ? resolved_source : ResolvedRenderSource{};
 }
 
 pure fn
@@ -335,15 +333,9 @@ EvalContext::variable_names(Allocator result_allocator) const throws
   let names = HashSet{result_allocator};
 
   variable_store().shell_variables().for_each(
-      [&](StringView name, const String &value) {
-        unused(value);
-        names.add(name);
-      });
+      [&](StringView name, const String &) { names.add(name); });
   variable_store().indexed_arrays().for_each(
-      [&](StringView name, const ArrayList<String> &value) {
-        unused(value);
-        names.add(name);
-      });
+      [&](StringView name, const ArrayList<String> &) { names.add(name); });
   variable_store().associative_arrays().names().for_each(
       [&](StringView name) { names.add(name); });
   if (runtime_state().bash_dynamic_variables_enabled()) {
@@ -491,20 +483,9 @@ EvalContext::restore_trap_pipe_statuses(
       return;
     }
 
-    let const do_is_unchanged =
-        [&](const ArrayList<String> &current) wontthrow -> bool {
-      if (current.count() != saved_pipe_statuses.count()) return false;
-
-      for (usize index = 0; index < current.count(); index++) {
-        if (current[index] != saved_pipe_statuses[index]) return false;
-      }
-
-      return true;
-    };
-
     if (let const current =
             variable_store().indexed_arrays().find("PIPESTATUS");
-        current.has_value() && do_is_unchanged(**current))
+        current.has_value() && **current == saved_pipe_statuses)
     {
       return;
     }

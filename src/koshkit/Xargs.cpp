@@ -372,19 +372,12 @@ Xargs::execute(const ExecContext               &ec,
   let       reader = XargsReader{ec.in_fd.value_or(KOSH_STDIN), format,
                            cxt.scratch_allocator()};
 
-  let base           = ArrayList<String>{cxt.scratch_allocator()};
-  let base_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+  let base           = operands.clone();
+  let base_locations = operand_locations.clone();
 
-  if (operands.is_empty()) {
+  if (base.is_empty()) {
     base.push_managed("echo");
     base_locations.push(ec.source_location());
-  } else {
-    for (usize index = 0; index < operands.count(); index++) {
-      let const &operand = operands[index];
-
-      base.push(operand.clone());
-      base_locations.push(operand_locations[index]);
-    }
   }
 
   let const base_byte_count = xargs_command_size(base);

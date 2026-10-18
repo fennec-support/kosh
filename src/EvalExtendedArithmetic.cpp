@@ -664,9 +664,6 @@ ArithmeticValue::from_magnitude(const u64 *limbs,
   }
 
   if (count == 0) is_negative = false;
-  if (count == 0 && decimal_scale == 0) {
-    return ArithmeticValue{};
-  }
 
   if (decimal_scale == 0 && count <= 2) {
     let const low            = count > 0 ? limbs[0] : 0;

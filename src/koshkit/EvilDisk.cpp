@@ -26,18 +26,6 @@ namespace koshka::koshkit {
 
 namespace {
 
-struct disk_row
-{
-  String source{heap_allocator()};
-  String type{heap_allocator()};
-  String size{heap_allocator()};
-  String used{heap_allocator()};
-  String available{heap_allocator()};
-  String use{heap_allocator()};
-  String target{heap_allocator()};
-  u64    use_percent{0};
-};
-
 struct smart_row
 {
   String device{heap_allocator()};
@@ -356,9 +344,15 @@ EvilDisk::execute(const ExecContext               &ec,
     }
   }
 
-  let rows = ArrayList<disk_row>{allocator};
+  let capacity_table = ReportTable{allocator};
 
-  rows.reserve(filesystems.count());
+  capacity_table.add_heading("FILESYSTEM");
+  capacity_table.add_heading("TYPE");
+  capacity_table.add_heading("SIZE", report_table_alignment::Right);
+  capacity_table.add_heading("USED", report_table_alignment::Right);
+  capacity_table.add_heading("AVAILABLE", report_table_alignment::Right);
+  capacity_table.add_heading("USE", report_table_alignment::Right);
+  capacity_table.add_heading("MOUNT");
 
   i32   status                   = 0;
   usize skipped_permission_count = 0;
@@ -391,20 +385,23 @@ EvilDisk::execute(const ExecContext               &ec,
     let const available =
         scaled_filesystem_blocks(filesystem.available_blocks,
                                  filesystem.fundamental_block_byte_count, 1);
-    let const used        = total > free ? total - free : 0;
-    let const use_percent = filesystem_usage_percent(used, available);
-    let       row         = disk_row{};
+    let const used           = total > free ? total - free : 0;
+    let const use_percent    = filesystem_usage_percent(used, available);
+    let const size_text      = format_human_size(total, allocator);
+    let const used_text      = format_human_size(used, allocator);
+    let const available_text = format_human_size(available, allocator);
+    let const use_text       = String::from(use_percent, allocator) + "%";
+    let       cells          = ArrayList<report_table_cell_view>{allocator};
 
-    row.source      = String{allocator, mounted.source.view()};
-    row.type        = mounted.type.is_empty() ? String{allocator, "-"}
-                                              : String{allocator, mounted.type.view()};
-    row.size        = format_human_size(total, allocator);
-    row.used        = format_human_size(used, allocator);
-    row.available   = format_human_size(available, allocator);
-    row.use         = String::from(use_percent, allocator) + "%";
-    row.target      = String{allocator, mounted.target.view()};
-    row.use_percent = use_percent;
-    rows.push(steal(row));
+    cells.push({mounted.source.view(), colors::soft(colors::ansi::GREEN)});
+    cells.push({mounted.type.is_empty() ? StringView{"-"} : mounted.type.view(),
+                colors::soft(colors::ansi::BOLD_MAGENTA)});
+    cells.push({size_text.view(), colors::soft(colors::ansi::CYAN)});
+    cells.push({used_text.view(), colors::soft(colors::ansi::CYAN)});
+    cells.push({available_text.view(), colors::soft(colors::ansi::CYAN)});
+    cells.push({use_text.view(), usage_style(use_percent)});
+    cells.push({mounted.target.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+    capacity_table.add_row(cells);
   }
 
   let output   = String{allocator};
@@ -421,28 +418,6 @@ EvilDisk::execute(const ExecContext               &ec,
   }
 
   let unavailable_sections = ArrayList<StringView>{allocator};
-  let capacity_table       = ReportTable{allocator};
-
-  capacity_table.add_heading("FILESYSTEM");
-  capacity_table.add_heading("TYPE");
-  capacity_table.add_heading("SIZE", report_table_alignment::Right);
-  capacity_table.add_heading("USED", report_table_alignment::Right);
-  capacity_table.add_heading("AVAILABLE", report_table_alignment::Right);
-  capacity_table.add_heading("USE", report_table_alignment::Right);
-  capacity_table.add_heading("MOUNT");
-
-  for (let const &row : rows) {
-    let cells = ArrayList<report_table_cell_view>{allocator};
-
-    cells.push({row.source.view(), colors::soft(colors::ansi::GREEN)});
-    cells.push({row.type.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
-    cells.push({row.size.view(), colors::soft(colors::ansi::CYAN)});
-    cells.push({row.used.view(), colors::soft(colors::ansi::CYAN)});
-    cells.push({row.available.view(), colors::soft(colors::ansi::CYAN)});
-    cells.push({row.use.view(), usage_style(row.use_percent)});
-    cells.push({row.target.view(), colors::soft(colors::ansi::BOLD_GREEN)});
-    capacity_table.add_row(cells);
-  }
 
   append_titled_report_table(output, "Filesystem capacity", capacity_table,
                              should_color);
@@ -522,13 +497,11 @@ EvilDisk::execute(const ExecContext               &ec,
   }
 
   if (FLAG_EVILDISK_ALL.is_enabled()) {
-    struct identity_row
-    {
-      StringView mount;
-      StringView label;
-      StringView uuid;
-    };
-    let identity_rows = ArrayList<identity_row>{allocator};
+    let identity_table = ReportTable{allocator};
+
+    identity_table.add_heading("MOUNT");
+    identity_table.add_heading("LABEL");
+    identity_table.add_heading("UUID");
 
     for (let const &filesystem : filesystems) {
       if (filesystem.volume_name.is_empty() &&
@@ -537,34 +510,26 @@ EvilDisk::execute(const ExecContext               &ec,
         continue;
       }
 
-      identity_rows.push(identity_row{
-          filesystem.target.view(),
-          filesystem.volume_name.is_empty() ? StringView{"-"}
-                                            : filesystem.volume_name.view(),
-          filesystem.volume_uuid.is_empty() ? StringView{"-"}
-                                            : filesystem.volume_uuid.view()});
+      let cells = ArrayList<report_table_cell_view>{allocator};
+
+      cells.push(
+          {filesystem.target.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+      cells.push({filesystem.volume_name.is_empty()
+                      ? StringView{"-"}
+                      : filesystem.volume_name.view(),
+                  colors::ansi::RESET});
+      cells.push({filesystem.volume_uuid.is_empty()
+                      ? StringView{"-"}
+                      : filesystem.volume_uuid.view(),
+                  colors::ansi::DIM});
+      identity_table.add_row(cells);
     }
 
-    if (identity_rows.is_empty()) {
+    if (identity_table.get_row_count() == 0) {
       unavailable_sections.push("Identity data");
     } else {
-      let table = ReportTable{allocator};
-
-      table.add_heading("MOUNT");
-      table.add_heading("LABEL");
-      table.add_heading("UUID");
-
-      for (let const &row : identity_rows) {
-        let cells = ArrayList<report_table_cell_view>{allocator};
-
-        cells.push({row.mount, colors::soft(colors::ansi::BOLD_GREEN)});
-        cells.push({row.label, colors::ansi::RESET});
-        cells.push({row.uuid, colors::ansi::DIM});
-        table.add_row(cells);
-      }
-
-      append_titled_report_table(output, "Filesystem identities", table,
-                                 should_color);
+      append_titled_report_table(output, "Filesystem identities",
+                                 identity_table, should_color);
     }
 
     let table = ReportTable{allocator};

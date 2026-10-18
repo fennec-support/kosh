@@ -28,8 +28,7 @@ inline const StringView BAR_HINT_STYLE  = "\x1b[22;38;5;245m";
 inline const StringView LIVE_INDICATOR  = "LIVE";
 inline const StringView SEGMENT_GAP     = "  ";
 
-constexpr u64 NANOSECONDS_PER_SECOND        = 1000000000ULL;
-constexpr f64 DEFAULT_LIVE_INTERVAL_SECONDS = 0.5;
+constexpr u64 NANOSECONDS_PER_SECOND = 1000000000ULL;
 
 struct header_fit
 {
@@ -271,11 +270,7 @@ live_report_options::parse_with_window(const ExecContext       &ec,
   options.is_live        = live_flag.is_enabled();
   options.is_cumulative  = is_cumulative;
   options.window_seconds = window_seconds;
-  if (!live_flag.has_value()) {
-    options.interval_seconds = DEFAULT_LIVE_INTERVAL_SECONDS;
-
-    return options;
-  }
+  if (!live_flag.has_value()) return options;
 
   let const interval = parse_window_seconds(
       ec, cxt, utility_name, live_flag.value(), live_flag.value_location(),
@@ -630,9 +625,7 @@ LiveView::append_frame_start(String                     &frame,
   }
 
   let const  width = static_cast<usize>(dimensions.columns);
-  header_fit fit{};
-
-  fit.hint_entry_count = get_hint_entry_count(pieces.hints);
+  header_fit fit{.hint_entry_count = get_hint_entry_count(pieces.hints)};
 
   while (get_header_length(pieces, fit) > width) {
     if (fit.has_labels) {

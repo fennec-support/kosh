@@ -28,30 +28,21 @@ Sleep::execute(const ExecContext               &ec,
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
-  f64  total_seconds        = 0.0;
-  bool should_sleep_forever = false;
+  f64 total_seconds = 0.0;
 
   for (usize operand_index = 0; operand_index < operands.count();
        operand_index++)
   {
-    let const &operand       = operands[operand_index];
-    let const  seconds_value = parse_koshkit_duration_seconds(
+    let const &operand = operands[operand_index];
+
+    total_seconds += parse_koshkit_duration_seconds(
         operand.view(), operand_locations[operand_index],
         cxt.scratch_allocator());
-
-    if (__builtin_isinf(seconds_value)) {
-      should_sleep_forever = true;
-      continue;
-    }
-
-    total_seconds += seconds_value;
-    if (__builtin_isinf(total_seconds)) should_sleep_forever = true;
   }
 
   constexpr f64 STEP_SECONDS = 60.0 * 60.0 * 24.0;
 
-  f64 remaining_seconds =
-      should_sleep_forever ? __builtin_inf() : total_seconds;
+  f64 remaining_seconds = total_seconds;
 
   /* the wait runs in steps of at most one day, so sleep_for_seconds() gets a
      value that fits time_t and the DWORD milliseconds of Sleep(). Sleep() on

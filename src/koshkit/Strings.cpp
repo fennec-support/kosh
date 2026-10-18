@@ -148,7 +148,7 @@ Strings::execute(const ExecContext               &ec,
 
       while (position < chunk.content.length) {
         if (!is_strings_printable(static_cast<u8>(chunk.content[position]))) {
-          if (!run.is_empty()) do_flush();
+          do_flush();
 
           let const separator_begin = position;
 

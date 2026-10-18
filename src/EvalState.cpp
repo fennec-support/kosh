@@ -1070,19 +1070,13 @@ append_subshell_bootstrap_u64(String &output, u64 value) throws -> void
 static fn
 append_subshell_bootstrap_i32(String &output, i32 value) throws -> void
 {
-  u32 bits = 0;
-
-  __builtin_memcpy(&bits, &value, sizeof(bits));
-  append_subshell_bootstrap_u32(output, bits);
+  append_subshell_bootstrap_u32(output, static_cast<u32>(value));
 }
 
 static fn
 append_subshell_bootstrap_i64(String &output, i64 value) throws -> void
 {
-  u64 bits = 0;
-
-  __builtin_memcpy(&bits, &value, sizeof(bits));
-  append_subshell_bootstrap_u64(output, bits);
+  append_subshell_bootstrap_u64(output, static_cast<u64>(value));
 }
 
 static fn
@@ -1686,23 +1680,13 @@ struct subshell_bootstrap_reader
   fn
   read_i32() wontthrow -> i32
   {
-    let const bits  = read_u32();
-    i32       value = 0;
-
-    __builtin_memcpy(&value, &bits, sizeof(value));
-
-    return value;
+    return static_cast<i32>(read_u32());
   }
 
   fn
   read_i64() wontthrow -> i64
   {
-    let const bits  = read_u64();
-    i64       value = 0;
-
-    __builtin_memcpy(&value, &bits, sizeof(value));
-
-    return value;
+    return static_cast<i64>(read_u64());
   }
 
   fn
@@ -2834,30 +2818,24 @@ EvalContext::make_subshell_bootstrap() const throws
 
   source.push('\n');
 
-  let const working_directory = logical_working_directory(*this);
+  let const  working_directory = logical_working_directory(*this);
+  let const &stack             = variable_store().directory_stack();
 
-  if (!variable_store().directory_stack().is_empty()) {
-    source += "builtin cd -- ";
-    append_shell_quoted_arg(source,
-                            variable_store().directory_stack()[0].view());
-    source.push('\n');
+  source += "builtin cd -- ";
+  append_shell_quoted_arg(source, stack.is_empty() ? working_directory.view()
+                                                   : stack[0].view());
+  source.push('\n');
 
-    for (usize index = 1; index < variable_store().directory_stack().count();
-         index++)
-    {
-      source += "pushd ";
-      append_shell_quoted_arg(source,
-                              variable_store().directory_stack()[index].view());
-      source += " >/dev/null\n";
-    }
+  for (usize index = 1; index < stack.count(); index++) {
+    source += "pushd ";
+    append_shell_quoted_arg(source, stack[index].view());
+    source += " >/dev/null\n";
+  }
 
+  if (!stack.is_empty()) {
     source += "pushd ";
     append_shell_quoted_arg(source, working_directory.view());
     source += " >/dev/null\n";
-  } else {
-    source += "builtin cd -- ";
-    append_shell_quoted_arg(source, working_directory.view());
-    source.push('\n');
   }
 
   if (let const previous_directory = get_variable_value("OLDPWD");

@@ -32,14 +32,12 @@ json_member_string(StringView source,
       let const start = position + 1;
       let const close = parser_format_json_string_end(source, start);
 
-      position = close;
+      position = close + 1;
       if (depth != 1 || source.substring_of_length(start, close - start) != key)
       {
-        position++;
         continue;
       }
 
-      position++;
       while (position < object_end &&
              (source[position] == ' ' || source[position] == '\t'))
         position++;
@@ -105,10 +103,8 @@ is_windows_override(StringView source, usize object_start) wontthrow -> bool
          (source[position - 1] == ' ' || source[position - 1] == '\t'))
     position--;
 
-  let const close = position;
-
-  return close >= 9 &&
-         source.substring_of_length(close - 9, 9) == "\"windows\"";
+  return position >= 9 &&
+         source.substring_of_length(position - 9, 9) == "\"windows\"";
 }
 
 /* memory: ArrayList<usize> of open '{' offsets from heap_allocator(), freed

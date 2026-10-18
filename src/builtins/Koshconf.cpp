@@ -212,7 +212,7 @@ run_create(const ExecContext       &ec,
   let const path = require_user_path(ec, cxt);
 
   if (!path.has_value()) return 1;
-  if (os::path_exists(path->text().view()) && !FLAG_FORCE.is_enabled()) {
+  if (path->exists() && !FLAG_FORCE.is_enabled()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "The configuration file '" + path->text() +
                                   "' already exists",

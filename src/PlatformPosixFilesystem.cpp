@@ -870,13 +870,9 @@ write_to_temp_file(StringView content) throws -> Maybe<descriptor>
 
   unlink(path_template.begin());
 
-  if (!write_all(fd, content.data, content.count())) {
-    close(fd);
-
-    return koshka::None;
-  }
-
-  if (lseek(fd, 0, SEEK_SET) < 0) {
+  if (!write_all(fd, content.data, content.count()) ||
+      lseek(fd, 0, SEEK_SET) < 0)
+  {
     close(fd);
 
     return koshka::None;
@@ -915,14 +911,10 @@ write_to_named_temp_file(const Path &directory,
 
   if (fd < 0) return None;
 
-  if (!write_all(fd, content.data, content.count())) {
-    unused(::close(fd));
-    unused(::unlink(path_template.begin()));
+  let const did_write = write_all(fd, content.data, content.count());
+  let const did_close = ::close(fd) == 0;
 
-    return None;
-  }
-
-  if (::close(fd) != 0) {
+  if (!did_write || !did_close) {
     unused(::unlink(path_template.begin()));
 
     return None;
@@ -1883,26 +1875,18 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
        readlink(256) returns 256, which is not less than 256, so capacity
        becomes 512; readlink(512) returns 300, which is less than 512, so the
        function returns 300 bytes. */
-  char inline_buffer[256];
-  let  length =
-      ::readlink(path_string.c_str(), inline_buffer, sizeof(inline_buffer));
-
-  if (length < 0) return koshka::None;
-  if (static_cast<usize>(length) < sizeof(inline_buffer))
-    return String{
-        allocator, StringView{inline_buffer, static_cast<usize>(length)}
-    };
-
-  usize           capacity = sizeof(inline_buffer) * 2;
+  char            inline_buffer[256];
+  usize           capacity = sizeof(inline_buffer);
+  char           *target   = inline_buffer;
   ArrayList<char> buffer{allocator};
 
   loop {
-    buffer.reserve(capacity);
-    length = ::readlink(path_string.c_str(), buffer.begin(), capacity);
+    let const length = ::readlink(path_string.c_str(), target, capacity);
+
     if (length < 0) return koshka::None;
     if (static_cast<usize>(length) < capacity)
       return String{
-          allocator, StringView{buffer.begin(), static_cast<usize>(length)}
+          allocator, StringView{target, static_cast<usize>(length)}
       };
 
     if (capacity >= (1U << 20)) {
@@ -1912,6 +1896,8 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
     }
 
     capacity *= 2;
+    buffer.reserve(capacity);
+    target = buffer.begin();
   }
 }
 

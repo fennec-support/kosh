@@ -62,7 +62,7 @@ public:
 fn
 is_arena_pointer(const opaque *pointer) wontthrow -> bool
 {
-  return BumpArena::owns_live_pointer(pointer);
+  return BumpArena::find_live_owner(pointer) != nullptr;
 }
 
 hot fn
@@ -154,12 +154,6 @@ BumpArena::find_live_owner(const opaque *pointer) wontthrow -> BumpArena *
   }
 
   return nullptr;
-}
-
-fn
-BumpArena::owns_live_pointer(const opaque *pointer) wontthrow -> bool
-{
-  return find_live_owner(pointer) != nullptr;
 }
 
 fn

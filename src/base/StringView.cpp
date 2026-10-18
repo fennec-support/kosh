@@ -162,10 +162,9 @@ StringView::find_substring(StringView needle, usize from) const wontthrow
 
   let const last_start = length - needle.length;
 
-  if (from > last_start) return None;
-
-  /* at this point: needle is non-empty, it fits within length, and from
-     is at most last_start, so data + position stays inside the view. */
+  /* at this point: needle is non-empty and fits within length, so
+     last_start does not wrap. The loop runs only while position is at most
+     last_start, so data + position stays inside the view. */
   let position = from;
 
   while (position <= last_start) {

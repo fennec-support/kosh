@@ -169,9 +169,8 @@ public:
   temp_directory() throws -> Path;
 
   cold mustuse static fn
-  read_directory(const Path &dir) throws -> Maybe<ArrayList<String>>;
-  cold mustuse static fn
-  read_directory(const Path &dir, Allocator allocator) throws
+  read_directory(const Path &dir,
+                 Allocator   allocator = heap_allocator()) throws
       -> Maybe<ArrayList<String>>;
 
   enum class EntryKind : u8
@@ -196,10 +195,8 @@ public:
   };
 
   cold mustuse static fn
-  read_directory_typed(const Path &dir) throws
-      -> Maybe<ArrayList<DirectoryChild>>;
-  cold mustuse static fn
-  read_directory_typed(const Path &dir, Allocator allocator) throws
+  read_directory_typed(const Path &dir,
+                       Allocator   allocator = heap_allocator()) throws
       -> Maybe<ArrayList<DirectoryChild>>;
 
   mustuse fn

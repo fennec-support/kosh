@@ -28,8 +28,6 @@ public:
   operator=(const BumpArena &) = delete;
 
   static fn
-  owns_live_pointer(const opaque *pointer) wontthrow -> bool;
-  static fn
   find_live_owner(const opaque *pointer) wontthrow -> BumpArena *;
 
   hot fn

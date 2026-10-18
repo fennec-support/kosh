@@ -343,57 +343,23 @@ linux_process_start_token(StringView process_directory) throws
 
   if (!stat.has_value()) return None;
 
-  usize after_name_position = stat->count();
-
   /* e.g. stat = "42 (a)b) S 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 777"
-     -> the scan stops at the ')' after "b", so after_name_position points at
+     -> find_last_character() finds the ')' after "b", so the fields start at
         " S". nth_space_field(..., 19) returns "777", the field after 18. */
-  for (usize position = stat->count(); position > 0; position--) {
-    if (stat->view()[position - 1] == ')') {
-      after_name_position = position;
-      break;
-    }
+  let const command_end = stat->view().find_last_character(')');
+
+  if (!command_end.has_value() || *command_end + 1 >= stat->count()) {
+    return None;
   }
 
-  if (after_name_position >= stat->count()) return None;
-
   let const start_token =
-      nth_space_field(stat->view().substring(after_name_position), 19)
-          .to<u64>();
+      nth_space_field(stat->view().substring(*command_end + 1), 19).to<u64>();
 
   if (start_token.is_error()) return None;
 
-  /* at this point: the stat file was read, after_name_position is inside
-     stat, and start_token holds the u64 parsed from the field after the last
-     ')'. */
+  /* at this point: the stat file was read, command_end is inside stat, and
+     start_token holds the u64 parsed from the field after the last ')'. */
   return start_token.value();
-}
-
-static pure fn
-linux_unix_socket_field(StringView text, usize index) wontthrow -> StringView
-{
-  usize field    = 0;
-  usize position = 0;
-
-  while (position < text.length) {
-    while (position < text.length && text[position] == ' ') {
-      position++;
-    }
-
-    if (position >= text.length) break;
-
-    let const start = position;
-
-    while (position < text.length && text[position] != ' ') {
-      position++;
-    }
-
-    if (field == index)
-      return text.substring_of_length(start, position - start);
-    field++;
-  }
-
-  return StringView{};
 }
 
 template <typename Row>
@@ -430,9 +396,7 @@ push_socket_for_owners(const ArrayList<linux_socket_owner> *owners,
 {
   bool has_process_owner = false;
 
-  if (process_mode == network_socket_process_mode::WithProcesses &&
-      owners != nullptr)
-  {
+  if (process_mode == network_socket_process_mode::WithProcesses) {
     for (let const &owner : *owners) {
       if (owner.inode == inode) {
         do_push_socket(owner.pid, owner.start_token, owner.has_start_token);
@@ -455,15 +419,15 @@ linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
   let const path   = linux_socket_proc_path("/net/unix", allocator);
 
   for_each_proc_net_row(path.view(), [&](StringView line) throws {
-    let const inode = linux_unix_socket_field(line, 6).to<u64>();
+    let const inode = nth_space_field(line, 6).to<u64>();
 
     if (inode.is_error()) return;
 
-    let const flags = utils::parse_integer_in_base_u64(
-        linux_unix_socket_field(line, 3), int_base::hex);
-    let const type  = linux_unix_socket_field(line, 4);
-    let const state = linux_unix_socket_field(line, 5);
-    let const path  = linux_unix_socket_field(line, 7);
+    let const flags = utils::parse_integer_in_base_u64(nth_space_field(line, 3),
+                                                       int_base::hex);
+    let const type  = nth_space_field(line, 4);
+    let const state = nth_space_field(line, 5);
+    let const path  = nth_space_field(line, 7);
 
     let const unix_type =
         type == "0002"
@@ -512,10 +476,10 @@ linux_unix_sockets(const ArrayList<linux_socket_owner> *owners,
            proc directory is closed on return, and each fd directory is closed
            at the end of its process pass.
    time:   one opendir() per process, one readdir() per entry, and one
-           readlinkat() per fd entry. each socket fd scans owners for a
-           duplicate, so the worst case is O(S * O) for S socket fds and O
-           owners. linux_process_start_token() opens at most one stat file per
-           process. */
+           readlinkat() per fd entry. each socket fd scans the owners added for
+           its process, so the worst case is O(S * P) for S socket fds and P
+           socket fds in one process. linux_process_start_token() opens at
+           most one stat file per process. */
 static fn
 linux_socket_owners(Allocator allocator) throws
     -> ArrayList<linux_socket_owner>
@@ -577,8 +541,12 @@ linux_socket_owners(Allocator allocator) throws
 
       bool is_known = false;
 
-      for (let const &owner : owners) {
-        if (owner.inode == inode.value() && owner.pid == parsed_pid.value()) {
+      /* at this point: owners entries for parsed_pid are contiguous at the end
+         of owners, because each pid directory is read once. */
+      for (usize index = owners.count();
+           index > 0 && owners[index - 1].pid == parsed_pid.value(); index--)
+      {
+        if (owners[index - 1].inode == inode.value()) {
           is_known = true;
           break;
         }
@@ -854,9 +822,7 @@ regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>
   let const        size            = static_cast<u64>(info.st_size);
   let const        is_page_multiple =
       page_byte_count != 0 && size % page_byte_count == 0;
-  let const is_unbacked = is_page_multiple && info.st_blocks == 0;
-
-  if (is_unbacked) return None;
+  if (is_page_multiple && info.st_blocks == 0) return None;
 
   return size;
 }
@@ -2935,13 +2901,9 @@ reset_signal_handlers() throws -> void
   sigemptyset(&SIGNALS_WITH_TRAP_ACTION);
 
   if (IS_PIPE_SIGNAL_IGNORED_BY_TRAP || WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY) {
-    struct sigaction ignore = {};
-
-    ignore.sa_handler = SIG_IGN;
-    check_syscall(sigaction(SIGPIPE, &ignore, nullptr));
-  } else {
-    check_syscall(sigaction(SIGPIPE, &sa, nullptr));
+    sa.sa_handler = SIG_IGN;
   }
+  check_syscall(sigaction(SIGPIPE, &sa, nullptr));
 
   INTERRUPT_REQUESTED = 0;
 }
@@ -3159,10 +3121,7 @@ handle_trapped_signal(int signal_number) wontthrow -> void
 static fn
 unblock_signal_for_trap(i32 signal_number) throws -> void
 {
-  sigset_t wanted;
-
-  sigemptyset(&wanted);
-  sigaddset(&wanted, signal_number);
+  sigset_t wanted = make_sigset(signal_number);
 
   sigset_t previous;
 
@@ -3184,10 +3143,7 @@ reblock_signal_after_trap(i32 signal_number) throws -> void
   LOG(Info, "blocking signal %d again, its trap install had unblocked it",
       signal_number);
 
-  sigset_t wanted;
-
-  sigemptyset(&wanted);
-  sigaddset(&wanted, signal_number);
+  sigset_t wanted = make_sigset(signal_number);
   check_syscall(sigprocmask(SIG_BLOCK, &wanted, nullptr));
   sigdelset(&SIGNALS_UNBLOCKED_BY_TRAP, signal_number);
 }

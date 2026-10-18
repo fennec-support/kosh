@@ -1195,25 +1195,22 @@ EvalContext::apply_array_subscript(
     StringView            subscript,
     const SourceLocation *source_location) throws -> String
 {
+  let const ifs       = variable_store().field_separators();
+  let       separator = StringView{" "};
+
+  if (subscript == "*") {
+    separator = ifs.substring_of_length(0, ifs.is_empty() ? 0 : 1);
+  }
+
   if (runtime_state().bash_dynamic_variables_enabled()) rarely {
     if (let const which = DYNAMIC_ARRAYS.find(name); which.has_value()) {
       let const element_count = dynamic_array_element_count(*which);
 
       if (subscript == "@" || subscript == "*") {
-        let separator     = ' ';
-        let has_separator = true;
-
-        if (subscript == "*") {
-          has_separator = !variable_store().field_separators().is_empty();
-          if (has_separator) separator = variable_store().field_separators()[0];
-        }
-
         let out = String{scratch_allocator()};
 
         for (usize i = 0; i < element_count; i++) {
-          if (i > 0 && has_separator) {
-            out.push(separator);
-          }
+          if (i > 0) out.append(separator);
 
           if (*which == DynamicArray::ArgumentValue) {
             ASSERT(variable_store().bash_arguments().is_active());
@@ -1248,21 +1245,11 @@ EvalContext::apply_array_subscript(
     let const count = variable_store().directory_stack().count() + 1;
 
     if (subscript == "@" || subscript == "*") {
-      let separator     = ' ';
-      let has_separator = true;
-
-      if (subscript == "*") {
-        has_separator = !variable_store().field_separators().is_empty();
-        if (has_separator) separator = variable_store().field_separators()[0];
-      }
-
       let       out               = String{scratch_allocator()};
       let const current_directory = logical_working_directory(*this);
 
       for (usize index = 0; index < count; index++) {
-        if (index > 0 && has_separator) {
-          out.push(separator);
-        }
+        if (index > 0) out.append(separator);
 
         if (index == 0)
           out.append(current_directory.text());
@@ -1290,21 +1277,11 @@ EvalContext::apply_array_subscript(
 
   if (is_associative_array(name)) {
     if (subscript == "@" || subscript == "*") {
-      let separator     = ' ';
-      let has_separator = true;
-
-      if (subscript == "*") {
-        has_separator = !variable_store().field_separators().is_empty();
-        if (has_separator) separator = variable_store().field_separators()[0];
-      }
-
       let       out    = String{scratch_allocator()};
       let const values = associative_values(name);
 
       for (usize i = 0; i < values.count(); i++) {
-        if (i > 0 && has_separator) {
-          out.push(separator);
-        }
+        if (i > 0) out.append(separator);
 
         out.append(values[i].view());
       }
@@ -1326,23 +1303,13 @@ EvalContext::apply_array_subscript(
 
     if (!array.has_value()) return expand_variable(name);
 
-    let separator     = ' ';
-    let has_separator = true;
-
-    if (subscript == "*") {
-      has_separator = !variable_store().field_separators().is_empty();
-      if (has_separator) separator = variable_store().field_separators()[0];
-    }
-
     let out = String{scratch_allocator()};
 
     if (variable_store().sparse_arrays().has(name)) rarely {
       let const elements = collect_array_elements(name);
 
       for (usize i = 0; i < elements.count(); i++) {
-        if (i > 0 && has_separator) {
-          out.push(separator);
-        }
+        if (i > 0) out.append(separator);
 
         out.append(elements[i].view());
       }
@@ -1351,9 +1318,7 @@ EvalContext::apply_array_subscript(
     }
 
     for (usize i = 0; i < array->count(); i++) {
-      if (i > 0 && has_separator) {
-        out.push(separator);
-      }
+      if (i > 0) out.append(separator);
 
       out.append(array->operator[](i).view());
     }

@@ -49,17 +49,10 @@ is_test_binary_operator_word(StringView op) wontthrow -> bool
   return TEST_BINARY_OPERATORS.contains(op);
 }
 
-constexpr PackedStringKey TEST_FILE_COMPARISON_KEYS[] = {
-    SSK("-ef"),
-    SSK("-nt"),
-    SSK("-ot"),
-};
-constexpr StaticStringSet TEST_FILE_COMPARISONS{TEST_FILE_COMPARISON_KEYS};
-
 cold fn
 is_test_file_comparison_word(StringView op) wontthrow -> bool
 {
-  return TEST_FILE_COMPARISONS.contains(op);
+  return op == "-ef" || op == "-nt" || op == "-ot";
 }
 
 constexpr PackedStringKey TEST_NUMERIC_OPERATOR_KEYS[] = {
@@ -176,14 +169,7 @@ view_has_decimal_fraction(StringView view) wontthrow -> bool
 {
   usize position = 0;
 
-  if (position < view.length) {
-    switch (view[position]) {
-    case '-':
-    case '+': position++; break;
-
-    default: break;
-    }
-  }
+  if (view.length > 0 && (view[0] == '-' || view[0] == '+')) position++;
 
   let const integer_start = position;
 

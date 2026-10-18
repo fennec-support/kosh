@@ -140,7 +140,7 @@ Csplit::execute(const ExecContext               &ec,
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
-  u64 digit_count_value = 2;
+  usize digit_count = 2;
 
   if (FLAG_CSPLIT_DIGITS.is_set()) {
     let const parsed = utils::parse_decimal_u64(FLAG_CSPLIT_DIGITS.value());
@@ -154,12 +154,11 @@ Csplit::execute(const ExecContext               &ec,
       return 1;
     }
 
-    digit_count_value = parsed.value();
+    digit_count = static_cast<usize>(parsed.value());
   }
 
   let const prefix = FLAG_CSPLIT_PREFIX.is_set() ? FLAG_CSPLIT_PREFIX.value()
                                                  : StringView{"xx"};
-  let const digit_count   = static_cast<usize>(digit_count_value);
   let const prefix_path   = Path{prefix};
   let const prefix_parent = prefix_path.parent_or_current();
   let const name_limit =
@@ -370,18 +369,16 @@ Csplit::execute(const ExecContext               &ec,
           "{count}"};
     }
 
-    if (target_line < current_line) {
-      if (exhaustion_mode == csplit_exhaustion_mode::Allow) return false;
+    if (exhaustion_mode == csplit_exhaustion_mode::Allow &&
+        target_line <= current_line)
+    {
+      return false;
+    }
 
+    if (target_line < current_line) {
       throw ErrorWithLocationAndDetails{
           pattern_location, "split point precedes the current segment",
           "choose a split point at or after the current segment"};
-    }
-
-    if (exhaustion_mode == csplit_exhaustion_mode::Allow &&
-        target_line == current_line)
-    {
-      return false;
     }
 
     /* at this point: current_line <= target_line <= lines.count(). */

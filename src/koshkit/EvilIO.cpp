@@ -593,21 +593,6 @@ find_disk_io_status(const os::disk_io_snapshot &snapshot,
   return nullptr;
 }
 
-fn
-percent_text(u64 part, u64 total, Allocator allocator) throws -> String
-{
-  if (total == 0) return String{allocator, "0.0%"};
-
-  let const tenths = static_cast<u64>(static_cast<u128>(part) * 1000 / total);
-  let       result = String::from(tenths / 10, allocator);
-
-  result += ".";
-  result += String::from(tenths % 10, allocator).view();
-  result += "%";
-
-  return result;
-}
-
 struct disk_io_row
 {
   String     name{heap_allocator()};
@@ -636,12 +621,15 @@ disk_failure_total(const os::disk_io_status *before,
   u64  total     = 0;
   bool has_total = false;
 
-  if (after.has_field(read_field)) {
-    let value = Maybe<u64>{after.*read_member};
+  let const do_add = [&](os::disk_io_field field,
+                         u64 os::disk_io_status::*member) {
+    if (!after.has_field(field)) return;
+
+    let value = Maybe<u64>{after.*member};
 
     if (sampling == report_sampling_mode::Rolling) {
-      value = before != nullptr && before->has_field(read_field)
-                  ? counter_delta(before->*read_member, after.*read_member)
+      value = before != nullptr && before->has_field(field)
+                  ? counter_delta(before->*member, after.*member)
                   : Maybe<u64>{};
     }
 
@@ -649,22 +637,10 @@ disk_failure_total(const os::disk_io_status *before,
       total     = saturated_sum(total, *value);
       has_total = true;
     }
-  }
+  };
 
-  if (after.has_field(write_field)) {
-    let value = Maybe<u64>{after.*write_member};
-
-    if (sampling == report_sampling_mode::Rolling) {
-      value = before != nullptr && before->has_field(write_field)
-                  ? counter_delta(before->*write_member, after.*write_member)
-                  : Maybe<u64>{};
-    }
-
-    if (value.has_value()) {
-      total     = saturated_sum(total, *value);
-      has_total = true;
-    }
-  }
+  do_add(read_field, read_member);
+  do_add(write_field, write_member);
 
   return has_total ? Maybe<u64>{total} : Maybe<u64>{};
 }
@@ -929,6 +905,16 @@ tenths_text(u64                 tenths,
 }
 
 fn
+percent_text(u64 part, u64 total, Allocator allocator) throws -> String
+{
+  let const tenths =
+      total == 0 ? u64{0}
+                 : static_cast<u64>(static_cast<u128>(part) * 1000 / total);
+
+  return tenths_text(tenths, allocator, evilio_percent_mode::Include);
+}
+
+fn
 append_disk_io_report(String                       &output,
                       const ArrayList<disk_io_row> &rows,
                       Allocator                     allocator,
@@ -1159,7 +1145,6 @@ make_disk_window_row(const live_disk_row &row,
   let const &newest   = row.history.get_newest();
   os::disk_io_status before{};
 
-  before.name             = String{allocator, row.name.view()};
   before.available_fields = lower.available_fields & upper.available_fields;
 
   let const do_interpolate = [&](os::disk_io_field field,
@@ -1803,22 +1788,23 @@ EvilIO::execute(const ExecContext               &ec,
   let memory_table = make_metric_table(allocator);
 
   if (has_memory_status) {
+    /* kib counts are scaled to bytes with saturation because a count above
+       UINT64_MAX / 1024 wraps when multiplied by 1024. */
+    let const do_kib_to_byte_count = [](u64 kib_count) throws -> u64 {
+      return kib_count > UINT64_MAX / 1024 ? UINT64_MAX : kib_count * 1024;
+    };
+
     if (memory.has_field(os::memory_status_field::Total) &&
         (memory.has_field(os::memory_status_field::Available) ||
          memory.has_field(os::memory_status_field::Free)))
     {
-      /* kib counts are scaled to bytes with saturation because a count above
-         UINT64_MAX / 1024 wraps when multiplied by 1024. */
-      let const total_byte_count     = memory.total_kib > UINT64_MAX / 1024
-                                           ? UINT64_MAX
-                                           : memory.total_kib * 1024;
-      let const available_byte_count = memory.available_kib > UINT64_MAX / 1024
-                                           ? UINT64_MAX
-                                           : memory.available_kib * 1024;
-      let const used_byte_count      = total_byte_count > available_byte_count
-                                           ? total_byte_count - available_byte_count
-                                           : 0;
-      let       status = format_human_size(used_byte_count, allocator);
+      let const total_byte_count = do_kib_to_byte_count(memory.total_kib);
+      let const available_byte_count =
+          do_kib_to_byte_count(memory.available_kib);
+      let const used_byte_count = total_byte_count > available_byte_count
+                                      ? total_byte_count - available_byte_count
+                                      : 0;
+      let       status          = format_human_size(used_byte_count, allocator);
 
       status += " / ";
       status += format_human_size(total_byte_count, allocator).view();
@@ -1830,9 +1816,8 @@ EvilIO::execute(const ExecContext               &ec,
     }
 
     if (memory.has_field(os::memory_status_field::Available)) {
-      let const available_byte_count = memory.available_kib > UINT64_MAX / 1024
-                                           ? UINT64_MAX
-                                           : memory.available_kib * 1024;
+      let const available_byte_count =
+          do_kib_to_byte_count(memory.available_kib);
 
       add_metric_row(memory_table, "Available memory",
                      format_human_size(available_byte_count, allocator),
@@ -1840,9 +1825,7 @@ EvilIO::execute(const ExecContext               &ec,
     }
 
     if (memory.has_field(os::memory_status_field::Free)) {
-      let const free_byte_count = memory.free_kib > UINT64_MAX / 1024
-                                      ? UINT64_MAX
-                                      : memory.free_kib * 1024;
+      let const free_byte_count = do_kib_to_byte_count(memory.free_kib);
 
       add_metric_row(memory_table, "Free memory",
                      format_human_size(free_byte_count, allocator), allocator);
@@ -1854,8 +1837,7 @@ EvilIO::execute(const ExecContext               &ec,
                                          u64 value_kib) throws -> void {
         if (!memory.has_field(field)) return;
 
-        let const value_byte_count =
-            value_kib > UINT64_MAX / 1024 ? UINT64_MAX : value_kib * 1024;
+        let const value_byte_count = do_kib_to_byte_count(value_kib);
 
         add_metric_row(memory_table, name,
                        format_human_size(value_byte_count, allocator),
@@ -2015,9 +1997,7 @@ EvilIO::execute(const ExecContext               &ec,
                                 elapsed_nanoseconds),
                    "/s", allocator);
     }
-  }
 
-  if (has_activity_before && has_activity_after) {
     append_titled_report_table(output, "Paging", paging_table, should_color);
   }
 
@@ -2043,95 +2023,70 @@ EvilIO::execute(const ExecContext               &ec,
           String::from(activity_after.blocked_process_count, allocator),
           allocator);
     }
-  }
 
-  if (has_activity_after)
     append_titled_report_table(output, "Scheduler", scheduler_table,
                                should_color);
+  }
 
   let stalls_table = make_metric_table(allocator);
 
   if (has_activity_before && has_activity_after) {
-    if (activity_before.has_field(os::system_activity_field::CpuSomeStall) &&
-        activity_after.has_field(os::system_activity_field::CpuSomeStall))
-    {
-      add_stall_row(stalls_table, "CPU partial pressure stall",
-                    counter_rate(activity_before.cpu_some_stall_microseconds,
-                                 activity_after.cpu_some_stall_microseconds,
+    let const do_add_stall_row =
+        [&](StringView name, os::system_activity_field field,
+            u64 before_microseconds,
+            u64 after_microseconds) throws -> void {
+      if (!activity_before.has_field(field) || !activity_after.has_field(field))
+      {
+        return;
+      }
+
+      add_stall_row(stalls_table, name,
+                    counter_rate(before_microseconds, after_microseconds,
                                  elapsed_nanoseconds),
                     allocator);
-    }
+    };
 
-    if (activity_before.has_field(os::system_activity_field::CpuFullStall) &&
-        activity_after.has_field(os::system_activity_field::CpuFullStall))
-    {
-      add_stall_row(stalls_table, "CPU full pressure stall",
-                    counter_rate(activity_before.cpu_full_stall_microseconds,
-                                 activity_after.cpu_full_stall_microseconds,
-                                 elapsed_nanoseconds),
-                    allocator);
-    }
+    do_add_stall_row("CPU partial pressure stall",
+                     os::system_activity_field::CpuSomeStall,
+                     activity_before.cpu_some_stall_microseconds,
+                     activity_after.cpu_some_stall_microseconds);
+    do_add_stall_row("CPU full pressure stall",
+                     os::system_activity_field::CpuFullStall,
+                     activity_before.cpu_full_stall_microseconds,
+                     activity_after.cpu_full_stall_microseconds);
+    do_add_stall_row("Memory partial pressure stall",
+                     os::system_activity_field::MemorySomeStall,
+                     activity_before.memory_some_stall_microseconds,
+                     activity_after.memory_some_stall_microseconds);
+    do_add_stall_row("Memory full pressure stall",
+                     os::system_activity_field::MemoryFullStall,
+                     activity_before.memory_full_stall_microseconds,
+                     activity_after.memory_full_stall_microseconds);
+    do_add_stall_row("I/O partial pressure stall",
+                     os::system_activity_field::IoSomeStall,
+                     activity_before.io_some_stall_microseconds,
+                     activity_after.io_some_stall_microseconds);
+    do_add_stall_row("I/O full pressure stall",
+                     os::system_activity_field::IoFullStall,
+                     activity_before.io_full_stall_microseconds,
+                     activity_after.io_full_stall_microseconds);
 
-    if (activity_before.has_field(os::system_activity_field::MemorySomeStall) &&
-        activity_after.has_field(os::system_activity_field::MemorySomeStall))
-    {
-      add_stall_row(stalls_table, "Memory partial pressure stall",
-                    counter_rate(activity_before.memory_some_stall_microseconds,
-                                 activity_after.memory_some_stall_microseconds,
-                                 elapsed_nanoseconds),
-                    allocator);
-    }
-
-    if (activity_before.has_field(os::system_activity_field::MemoryFullStall) &&
-        activity_after.has_field(os::system_activity_field::MemoryFullStall))
-    {
-      add_stall_row(stalls_table, "Memory full pressure stall",
-                    counter_rate(activity_before.memory_full_stall_microseconds,
-                                 activity_after.memory_full_stall_microseconds,
-                                 elapsed_nanoseconds),
-                    allocator);
-    }
-
-    if (activity_before.has_field(os::system_activity_field::IoSomeStall) &&
-        activity_after.has_field(os::system_activity_field::IoSomeStall))
-    {
-      add_stall_row(stalls_table, "I/O partial pressure stall",
-                    counter_rate(activity_before.io_some_stall_microseconds,
-                                 activity_after.io_some_stall_microseconds,
-                                 elapsed_nanoseconds),
-                    allocator);
-    }
-
-    if (activity_before.has_field(os::system_activity_field::IoFullStall) &&
-        activity_after.has_field(os::system_activity_field::IoFullStall))
-    {
-      add_stall_row(stalls_table, "I/O full pressure stall",
-                    counter_rate(activity_before.io_full_stall_microseconds,
-                                 activity_after.io_full_stall_microseconds,
-                                 elapsed_nanoseconds),
-                    allocator);
-    }
-  }
-
-  if (has_activity_before && has_activity_after) {
     append_titled_report_table(output, "Pressure stalls", stalls_table,
                                should_color);
   }
 
   if (!disk_after.disks.is_empty() || FLAG_EVILIO_CUMULATIVE.is_enabled()) {
-    let disk_rows = make_disk_io_rows(
-        disk_before, disk_after, elapsed_nanoseconds, allocator,
-        (FLAG_EVILIO_ALL.is_enabled() || FLAG_EVILIO_CUMULATIVE.is_enabled())
+    let const sampling_mode =
+        FLAG_EVILIO_ALL.is_enabled() || FLAG_EVILIO_CUMULATIVE.is_enabled()
             ? report_sampling_mode::Rolling
-            : report_sampling_mode::Instant);
+            : report_sampling_mode::Instant;
+    let disk_rows = make_disk_io_rows(
+        disk_before, disk_after, elapsed_nanoseconds, allocator, sampling_mode);
 
     sort_disk_rows(disk_rows, sort_key);
-    append_disk_io_report(
-        output, disk_rows, allocator, sample_duration_label.view(),
-        (FLAG_EVILIO_ALL.is_enabled() || FLAG_EVILIO_CUMULATIVE.is_enabled())
-            ? report_sampling_mode::Rolling
-            : report_sampling_mode::Instant,
-        should_color);
+    append_disk_io_report(output, disk_rows, allocator,
+                          sample_duration_label.view(), sampling_mode,
+                          should_color);
   }
 
   if (FLAG_EVILIO_CUMULATIVE.is_enabled()) {
@@ -2142,13 +2097,8 @@ EvilIO::execute(const ExecContext               &ec,
 
   let swap_table = make_metric_table(allocator);
 
-  let do_add_swap_row = [&](StringView section,
-                            StringView status) throws -> void {
-    add_metric_row(swap_table, section, status, allocator);
-  };
-
   if (!has_swap_after) {
-    do_add_swap_row("Status", "Unavailable");
+    add_metric_row(swap_table, "Status", "Unavailable", allocator);
   } else {
     let utilization = String::from(
         swap_after.total_byte_count == 0
@@ -2168,7 +2118,7 @@ EvilIO::execute(const ExecContext               &ec,
     status += "), ";
     status += format_human_size(swap_after.free_byte_count, allocator).view();
     status += " free";
-    do_add_swap_row("Usage", status.view());
+    add_metric_row(swap_table, "Usage", status.view(), allocator);
     if (FLAG_EVILIO_ALL.is_enabled() && swap_after.has_activity) {
       let activity = String{allocator};
 
@@ -2196,12 +2146,14 @@ EvilIO::execute(const ExecContext               &ec,
         activity += " out";
       }
 
-      do_add_swap_row("Input/output activity", activity.view());
+      add_metric_row(swap_table, "Input/output activity", activity.view(),
+                     allocator);
     }
 
     if (swap_after.has_encryption_state) {
-      do_add_swap_row("Encryption status",
-                      swap_after.is_encrypted ? "enabled" : "disabled");
+      add_metric_row(swap_table, "Encryption status",
+                     swap_after.is_encrypted ? "enabled" : "disabled",
+                     allocator);
     }
   }
 

@@ -40,7 +40,6 @@ namespace koshka::koshkit {
 static fn
 duration_to_nanos(f64 seconds) wontthrow -> u64
 {
-  if (__builtin_isinf(seconds)) return UINT64_MAX;
   if (seconds == 0.0) return 0;
 
   constexpr f64 NANOS_PER_SECOND = 1000000000.0;

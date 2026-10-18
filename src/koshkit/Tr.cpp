@@ -272,15 +272,9 @@ Tr::execute(const ExecContext               &ec,
                            "Supply SET1 and SET2, or use `-d` with one set"};
   }
 
-  if (operands.count() > 2) {
-    return report_usage_error(ec, cxt, args[0].view());
-  }
-
-  if (is_deleting && is_squeezing && operands.count() < 2) {
-    return report_usage_error(ec, cxt, args[0].view());
-  }
-
-  if (is_deleting && !is_squeezing && operands.count() > 1) {
+  if (operands.count() > 2 ||
+      (is_deleting && operands.count() != (is_squeezing ? 2 : 1)))
+  {
     return report_usage_error(ec, cxt, args[0].view());
   }
 

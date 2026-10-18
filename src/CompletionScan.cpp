@@ -331,9 +331,7 @@ collect_ssh_hosts() throws -> ArrayList<String>
     while (i < text.length) {
       let row = text.next_line(i);
 
-      while (!row.is_empty() && (row[0] == ' ' || row[0] == '\t')) {
-        row = row.substring(1);
-      }
+      row = row.substring(skip_blanks(row, 0));
 
       if (!(row.starts_with(StringView{"Host "}) ||
             row.starts_with(StringView{"Host\t"})))
@@ -451,9 +449,7 @@ internal::complete_from_process_arguments(StringView      line,
                                           completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
-  let const is_for_listing = mode == completion_mode::Listing;
-
-  if (!is_for_listing) return None;
+  if (mode != completion_mode::Listing) return None;
 
   let const                                  command = command_word_of(line);
   static constexpr static_string_entry<bool> PROCESS_COMMAND_ENTRIES[] = {
@@ -529,9 +525,7 @@ internal::complete_from_tools_with_targets(StringView      line,
                                            completion_mode mode) throws
     -> Maybe<ArrayList<String>>
 {
-  let const is_for_listing = mode == completion_mode::Listing;
-
-  if (!is_for_listing) return None;
+  if (mode != completion_mode::Listing) return None;
 
   if (!token.is_empty() && token[0] == '-') {
     return None;
@@ -632,8 +626,6 @@ internal::complete_from_tools_with_targets(StringView      line,
     } else {
       makefile_path.append(makefile_name->view());
     }
-
-    if (!makefile_path.exists()) return None;
 
     let const make_directory = Path{directory.view()};
 
@@ -1055,9 +1047,7 @@ complete_from_flags_in_line(StringView      line,
 
     if (is_koshkit_builtin) {
       if (previous_word == command) {
-        if (is_operand_wanted) {
-          should_offer_util_names = true;
-        }
+        should_offer_util_names = is_operand_wanted;
       } else if (let const second = second_word_of(line); second.has_value()) {
         util_for_flags = koshkit::find_util(*second);
       }
@@ -1500,14 +1490,12 @@ complete_from_flags_in_line(StringView      line,
       let const word = settled_words[index].view();
 
       if (!has_command_operand && word.starts_with("-")) {
-        for (usize byte_index = 1; byte_index < word.length; byte_index++) {
-          if (word[byte_index] == 'v' || word[byte_index] == 'V') {
-            should_complete_later_operands = true;
-            break;
-          }
+        if (word.find_character('v').has_value() ||
+            word.find_character('V').has_value())
+        {
+          should_complete_later_operands = true;
         }
 
-        if (word == "--") continue;
         continue;
       }
 
@@ -2027,11 +2015,7 @@ internal::complete_from_spec(StringView         line,
       !active_spec.has_option(completion_option::Default) &&
       !token_reaches_bash_default_completion(token);
 
-  if (is_bashdefault_result_empty) {
-    return candidates;
-  }
-
-  if (candidates.is_empty()) return None;
+  if (candidates.is_empty() && !is_bashdefault_result_empty) return None;
 
   return candidates;
 }
@@ -2101,18 +2085,14 @@ consider_shell_lexical_frame(const shell_lexical_frame &frame,
                              shell_lexical_scan_target *target)
     wontthrow -> void
 {
-  if (target == nullptr) return;
-  if (frame.kind != shell_lexical_frame_kind::command &&
-      frame.kind != shell_lexical_frame_kind::backtick)
+  if (target == nullptr ||
+      (frame.kind != shell_lexical_frame_kind::command &&
+       frame.kind != shell_lexical_frame_kind::backtick) ||
+      target->cursor < frame.body_start || target->cursor > body_end ||
+      depth < target->frame_depth)
   {
     return;
   }
-
-  if (target->cursor < frame.body_start || target->cursor > body_end) {
-    return;
-  }
-
-  if (depth < target->frame_depth) return;
   /* at this point: target is non-null, frame is a command or backtick frame,
      the cursor lies in [body_start, body_end], and depth is at least
      target->frame_depth. */
@@ -2327,12 +2307,7 @@ internal::advance_shell_lexical_state(
         continue;
       }
 
-      if (state.quote != '"') {
-        i++;
-        continue;
-      }
-
-      if (c != '$' && c != '`') {
+      if (state.quote != '"' || (c != '$' && c != '`')) {
         i++;
         continue;
       }

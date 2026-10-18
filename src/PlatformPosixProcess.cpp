@@ -478,9 +478,7 @@ execute_program(ExecContext                     &ec,
 
   if (ec.in_fd && *ec.in_fd == STDIN_FILENO) {
     do_keep_across_exec(STDIN_FILENO);
-  }
-
-  if (ec.in_fd && *ec.in_fd != STDIN_FILENO) {
+  } else if (ec.in_fd) {
     posix_spawn_file_actions_adddup2(&file_actions, *ec.in_fd, STDIN_FILENO);
     posix_spawn_file_actions_addclose(&file_actions, *ec.in_fd);
   }
@@ -489,8 +487,7 @@ execute_program(ExecContext                     &ec,
       [&]() {
         if (ec.out_fd && *ec.out_fd == STDOUT_FILENO) {
           do_keep_across_exec(STDOUT_FILENO);
-        }
-        if (ec.out_fd && *ec.out_fd != STDOUT_FILENO) {
+        } else if (ec.out_fd) {
           posix_spawn_file_actions_adddup2(&file_actions, *ec.out_fd,
                                            STDOUT_FILENO);
           posix_spawn_file_actions_addclose(&file_actions, *ec.out_fd);
@@ -499,8 +496,7 @@ execute_program(ExecContext                     &ec,
       [&]() {
         if (ec.err_fd && *ec.err_fd == STDERR_FILENO) {
           do_keep_across_exec(STDERR_FILENO);
-        }
-        if (ec.err_fd && *ec.err_fd != STDERR_FILENO) {
+        } else if (ec.err_fd) {
           posix_spawn_file_actions_adddup2(&file_actions, *ec.err_fd,
                                            STDERR_FILENO);
           posix_spawn_file_actions_addclose(&file_actions, *ec.err_fd);
@@ -1000,10 +996,6 @@ launch_process_substitution(
     const process_substitution_options &options) throws
     -> process_substitution_launch
 {
-  unused(options.source);
-  unused(options.should_trace_sources);
-  unused(options.evaluator);
-
   let const is_command_pipe_writer =
       options.direction == process_substitution_direction::CommandWrites;
 
@@ -2149,6 +2141,22 @@ mark_own_memory() wontthrow -> own_memory_mark
 
 namespace {
 
+fn
+redirect_child_output(measured_output output) wontthrow -> void
+{
+  if (output != measured_output::Suppress) return;
+
+  const int null_fd = open("/dev/null", O_WRONLY);
+
+  if (null_fd == -1) return;
+
+  dup2(null_fd, STDOUT_FILENO);
+  dup2(null_fd, STDERR_FILENO);
+  if (null_fd != STDOUT_FILENO && null_fd != STDERR_FILENO) {
+    close(null_fd);
+  }
+}
+
 struct measured_child
 {
   pid_t pid;
@@ -2212,17 +2220,7 @@ spawn_measured_child(const ArrayList<String> &argv,
     close(ready_descriptors[0]);
     close(start_descriptors[1]);
     signal(SIGPIPE, SIG_DFL);
-    if (output == measured_output::Suppress) {
-      const int null_fd = open("/dev/null", O_WRONLY);
-
-      if (null_fd != -1) {
-        dup2(null_fd, STDOUT_FILENO);
-        dup2(null_fd, STDERR_FILENO);
-        if (null_fd != STDOUT_FILENO && null_fd != STDERR_FILENO) {
-          close(null_fd);
-        }
-      }
-    }
+    redirect_child_output(output);
 
     let const is_ready = transfer_barrier_byte(
         ready_descriptors[1], barrier_transfer_direction::Write);
@@ -2656,17 +2654,7 @@ run_tracer(const char *const *raw_argv,
   if (target == 0) {
     close(report_descriptor);
     signal(SIGPIPE, SIG_DFL);
-    if (output == measured_output::Suppress) {
-      const int null_fd = open("/dev/null", O_WRONLY);
-
-      if (null_fd != -1) {
-        dup2(null_fd, STDOUT_FILENO);
-        dup2(null_fd, STDERR_FILENO);
-        if (null_fd != STDOUT_FILENO && null_fd != STDERR_FILENO) {
-          close(null_fd);
-        }
-      }
-    }
+    redirect_child_output(output);
 
     if (trace_ptrace(PTRACE_TRACEME, 0, nullptr, 0) != 0) _exit(127);
     raise(SIGSTOP);
@@ -3035,19 +3023,13 @@ run_nice(const ArrayList<String> &argv, i32 increment) throws
   let const raw_argv = make_os_args(argv);
 
   return run_through_error_pipe(raw_argv, [increment](int) {
-    errno = 0;
-
-    let current = getpriority(PRIO_PROCESS, 0);
-
-    if (current == -1 && errno != 0) {
-      current = 0;
-    }
-
-    let target = static_cast<i64>(current) + increment;
+    let current = get_priority(0, priority_target::Process);
+    let target =
+        static_cast<i64>(current.has_value() ? *current : 0) + increment;
 
     if (target < -20) target = -20;
     if (target > 19) target = 19;
-    unused(setpriority(PRIO_PROCESS, 0, static_cast<int>(target)));
+    unused(set_priority(0, static_cast<i32>(target), priority_target::Process));
   });
 }
 

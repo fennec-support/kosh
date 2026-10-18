@@ -263,12 +263,12 @@ private:
 struct variable_table_body
 {
   explicit variable_table_body(Allocator allocator) wontthrow
-      : index{allocator}, entries{allocator}, allocator{allocator}
+      : index{allocator}, entries{allocator}
   {}
 
   variable_table_body(variable_table_body &&other) wontthrow
       : index{steal(other.index)}, entries{steal(other.entries)},
-        allocator{other.allocator}, pipestatus_entry{other.pipestatus_entry},
+        pipestatus_entry{other.pipestatus_entry},
         value_count{other.value_count},
         indexed_array_count{other.indexed_array_count},
         has_namerefs{other.has_namerefs},
@@ -287,7 +287,7 @@ struct variable_table_body
   mustuse fn
   clone() const throws -> variable_table_body
   {
-    let copy = variable_table_body{allocator};
+    let copy = variable_table_body{index.allocator()};
 
     copy.index               = index.clone();
     copy.value_count         = value_count;
@@ -303,7 +303,6 @@ struct variable_table_body
 
   StringMap<variable_entry *> index;
   Hive<variable_entry>        entries;
-  Allocator                   allocator;
   mutable variable_entry     *pipestatus_entry{nullptr};
   usize                       value_count{0};
   usize                       indexed_array_count{0};
@@ -398,7 +397,7 @@ public:
     /* the null slot must not stay in index when emplace() throws, because
        find() returns the stored pointer and its callers dereference it. */
     try {
-      slot = table.entries.emplace(table.allocator);
+      slot = table.entries.emplace(allocator());
     } catch (...) {
       table.index.erase(name);
       throw;
@@ -479,16 +478,7 @@ public:
   fn
   find_pipestatus_for_write() throws -> Maybe<variable_entry *>
   {
-    if (!find_pipestatus().has_value()) return None;
-
-    let &table = body();
-
-    if (table.pipestatus_entry == nullptr) {
-      table.pipestatus_entry =
-          *table.index.find(StringView{"PIPESTATUS", 10}).value();
-    }
-
-    return table.pipestatus_entry;
+    return find_for_write(StringView{"PIPESTATUS", 10});
   }
 
   fn
@@ -510,7 +500,7 @@ public:
         entry.value.count() > 256 && value.length < entry.value.count() / 2;
 
     if (is_buffer_wasteful) {
-      entry.value = String{table.allocator, value};
+      entry.value = String{allocator(), value};
 
       return &entry.value;
     }

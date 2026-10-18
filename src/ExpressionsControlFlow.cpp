@@ -1345,8 +1345,6 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
 
     LOG(All, "case arm %zu matched, running its body", i);
 
-    bool should_resume_matching = false;
-
     loop {
       ASSERT(m_items[i].body != nullptr);
       result = m_items[i].body->evaluate_status(cxt);
@@ -1364,17 +1362,11 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
         continue;
       }
 
-      if (terminator == case_terminator::ContinueMatch) {
-        i++;
-        should_resume_matching = true;
-      }
+      if (terminator != case_terminator::ContinueMatch) return result;
 
+      i++;
       break;
     }
-
-    if (should_resume_matching) continue;
-
-    return result;
   }
 
   if (!did_run_a_body) {
@@ -1793,9 +1785,7 @@ CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
   descriptors.push(String::from(write_fd, heap_allocator()));
   cxt.set_indexed_array(m_name, steal(descriptors));
 
-  let pid_name = String{heap_allocator(), m_name};
-
-  pid_name += "_PID";
+  let const pid_name = m_name + "_PID";
   cxt.set_shell_variable(
       pid_name.view(),
       String::from(static_cast<u64>(process_id), heap_allocator()));

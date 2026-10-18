@@ -425,6 +425,15 @@ decode_shell_word(StringView                word,
   let   has_active_bracket           = false;
   usize glob_inert_end               = 0;
 
+  let const do_end_prefix_scans = [&]() wontthrow -> void {
+    if (is_scanning_tilde_prefix) {
+      decoded.leading.is_tilde_active = false;
+      is_scanning_tilde_prefix        = false;
+    }
+
+    is_scanning_leading_variable = false;
+  };
+
   /* e.g. word is "a"b with mapping Record. the opening quote at 0 sets
      raw_positions to 1, 'a' pushes 2, the closing quote at 2 pushes nothing,
      and 'b' pushes 4. -> text is ab, raw_positions is 1, 2, 4 */
@@ -479,12 +488,7 @@ decode_shell_word(StringView                word,
         body_end++;
       }
 
-      if (is_scanning_tilde_prefix) {
-        decoded.leading.is_tilde_active = false;
-        is_scanning_tilde_prefix        = false;
-      }
-
-      is_scanning_leading_variable     = false;
+      do_end_prefix_scans();
       decoded.last_quote_character     = '\'';
       decoded.is_last_quote_ansi_c     = true;
       decoded.last_quote_content_start = body_start;
@@ -525,12 +529,7 @@ decode_shell_word(StringView                word,
 
     if (quote_character == 0 && (byte == '\'' || byte == '"')) {
       decoded.has_shell_syntax = true;
-      if (is_scanning_tilde_prefix) {
-        decoded.leading.is_tilde_active = false;
-        is_scanning_tilde_prefix        = false;
-      }
-
-      is_scanning_leading_variable     = false;
+      do_end_prefix_scans();
       quote_character                  = byte;
       decoded.open_quote_content_start = position + 1;
       decoded.open_quote_decoded_start = decoded.text.length();
@@ -549,12 +548,7 @@ decode_shell_word(StringView                word,
     }
 
     if (byte == quote_character) {
-      if (is_scanning_tilde_prefix) {
-        decoded.leading.is_tilde_active = false;
-        is_scanning_tilde_prefix        = false;
-      }
-
-      is_scanning_leading_variable     = false;
+      do_end_prefix_scans();
       quote_character                  = 0;
       decoded.open_quote_content_start = 0;
       decoded.open_quote_decoded_start = 0;
@@ -575,12 +569,7 @@ decode_shell_word(StringView                word,
           escaped_byte == '\n')
       {
         decoded.has_shell_syntax = true;
-        if (is_scanning_tilde_prefix) {
-          decoded.leading.is_tilde_active = false;
-          is_scanning_tilde_prefix        = false;
-        }
-
-        is_scanning_leading_variable = false;
+        do_end_prefix_scans();
         position++;
         if (escaped_byte == '\n') {
           if (should_map_source) decoded.raw_positions.back() = position + 1;
@@ -763,10 +752,8 @@ split_path_source_components(StringView                path,
           continue;
         }
 
-        if (range.decoded_start < component.end && range_end > component.start)
-        {
-          is_opaque = true;
-        }
+        is_opaque =
+            range.decoded_start < component.end && range_end > component.start;
 
         break;
       }

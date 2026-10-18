@@ -913,17 +913,14 @@ Pr::execute(const ExecContext               &ec,
         usize present_count = 0;
 
         for (usize column = 0; column < effective_column_count; column++) {
-          let entry       = pr_row_entry{};
-          let entry_index = usize{0};
-          let is_present  = false;
-
-          if (column_starts.is_empty()) {
-            entry_index = row_index * effective_column_count + column;
-            is_present  = entry_index < entry_count;
-          } else {
-            entry_index = column_starts[column] + row_index;
-            is_present  = row_index < column_lengths[column];
-          }
+          let       entry          = pr_row_entry{};
+          let const is_down_filled = !column_starts.is_empty();
+          let const entry_index =
+              is_down_filled ? column_starts[column] + row_index
+                             : row_index * effective_column_count + column;
+          let const is_present = is_down_filled
+                                     ? row_index < column_lengths[column]
+                                     : entry_index < entry_count;
 
           if (is_present) {
             entry.text       = lines[entry_index].view();

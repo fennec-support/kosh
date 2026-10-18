@@ -234,10 +234,8 @@ DocumentStore::change(StringView uri,
 
   if (document == nullptr) return nullptr;
 
-  let const did_change =
-      document->replace_source(text, version.value_or(document->version + 1));
-
-  if (!did_change) return nullptr;
+  if (!document->replace_source(text, version.value_or(document->version + 1)))
+    return nullptr;
 
   document->mood = mood_for(*document);
 
@@ -2220,18 +2218,6 @@ assignment_headline_span(const Document                   &document,
 }
 
 fn
-append_hover_line_number(String           &output,
-                         const Document   &document,
-                         usize             position,
-                         position_encoding encoding) throws -> void
-{
-  let const line = document.protocol_position_at(position, encoding).line;
-
-  output.append("line ");
-  output.append(String::from(line + 1, heap_allocator()).view());
-}
-
-fn
 append_hover_clipped_text(String    &output,
                           StringView text,
                           usize      length_limit) throws -> void
@@ -2371,11 +2357,9 @@ function_body_for(const Document        &document,
   for (let const &record : document.symbol_records.functions) {
     if (record.name_position > symbol.start) continue;
     if (record.name.view() != symbol.text.view()) continue;
-    if (nearest != nullptr && record.name_position < nearest->name_position) {
-      continue;
+    if (nearest == nullptr || record.name_position >= nearest->name_position) {
+      nearest = &record;
     }
-
-    nearest = &record;
   }
 
   return nearest;
@@ -2438,8 +2422,11 @@ Server::variable_hover_text(const Document &document,
     text.push('\n');
 
     if (m_client.has_markdown_hover) text.append("- ");
-    append_hover_line_number(text, document, record.position,
-                             m_client.encoding);
+    let const line =
+        document.protocol_position_at(record.position, m_client.encoding).line;
+
+    text.append("line ");
+    text.append(String::from(line + 1, heap_allocator()).view());
     text.append(": ");
 
     if (m_client.has_markdown_hover) text.push('`');

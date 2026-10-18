@@ -194,11 +194,10 @@ arithmetic_shift_left(i64 lhs, i64 rhs) wontthrow -> i64
 pure fn
 arithmetic_shift_right(i64 lhs, i64 rhs) wontthrow -> i64
 {
-  let const count       = static_cast<u64>(rhs) & 63u;
-  let const is_negative = lhs < 0;
-  let       value       = static_cast<u64>(lhs) >> count;
+  let const count = static_cast<u64>(rhs) & 63u;
+  let       value = static_cast<u64>(lhs) >> count;
 
-  if (is_negative && count > 0) {
+  if (lhs < 0) {
     value |= ~(~static_cast<u64>(0) >> count);
   }
 
@@ -709,15 +708,10 @@ public:
     enter_chain();
     defer { chain_depth = chain_depth > 0 ? chain_depth - 1 : 0; };
 
-    let const save = pos;
+    let const save   = pos;
+    Lvalue    target = read_lvalue();
 
-    skip_spaces();
-
-    let const name_start = pos;
-    let const name       = read_lvalue_name();
-
-    if (!name.is_empty()) {
-      Lvalue target{name, read_optional_subscript(), name_start};
+    if (!target.name.is_empty()) {
 
       struct compound_operator
       {
@@ -931,14 +925,13 @@ public:
 
       if (op.kind == 'A' || op.kind == 'O') {
         let const is_decided_by_lhs = (op.kind == 'A') == lhs.is_zero();
-        let       rhs               = ArithmeticValue{};
 
         let const was_skipping = m_is_skipping;
 
         m_is_skipping = was_skipping || is_decided_by_lhs;
         defer { m_is_skipping = was_skipping; };
 
-        rhs = parse_binary(op.precedence + 1);
+        let const rhs = parse_binary(op.precedence + 1);
 
         lhs = ArithmeticValue{
             op.kind == 'A' ? ((!lhs.is_zero() && !rhs.is_zero()) ? 1 : 0)
@@ -2359,7 +2352,6 @@ arith_tokens_are_simple(const ArrayList<arith_token> &toks) wontthrow -> bool
 
   return true;
 }
-
 
 static fn
 bc_apply_binop(char                   kind,

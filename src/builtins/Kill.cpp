@@ -146,12 +146,10 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         continue;
       }
 
-      let did_find_active_process = false;
-      let did_signal_process      = false;
-      let signal_error            = String{cxt.scratch_allocator()};
+      let did_signal_process = false;
+      let signal_error       = String{cxt.scratch_allocator()};
 
       if (job->is_primary_process_active) {
-        did_find_active_process = true;
         if (os::signal_process(job->pid, signal_number))
           did_signal_process = true;
         else
@@ -159,7 +157,6 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       for (let const process : job->earlier_pipeline_processes) {
-        did_find_active_process = true;
         if (os::signal_process(process, signal_number))
           did_signal_process = true;
         else
@@ -167,6 +164,9 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       if (!did_signal_process) {
+        let const did_find_active_process =
+            job->is_primary_process_active ||
+            !job->earlier_pipeline_processes.is_empty();
         let const reason = did_find_active_process
                                ? signal_error.view()
                                : StringView{"The job has finished"};

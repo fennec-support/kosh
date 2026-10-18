@@ -65,21 +65,8 @@ candidate_match(StringView token,
 
   if (candidate.length < token.length) return None;
 
-  if (!is_case_sensitive &&
-      utils::ascii_to_lower(candidate[0]) == utils::ascii_to_lower(token[0]))
-  {
-    let is_prefix = true;
-
-    for (usize i = 1; i < token.length; i++)
-      if (utils::ascii_to_lower(candidate[i]) !=
-          utils::ascii_to_lower(token[i]))
-      {
-        is_prefix = false;
-        break;
-      }
-
-    if (is_prefix) return match_tier::prefix;
-  }
+  if (utils::smart_case_prefix_matches(candidate, token, is_case_sensitive))
+    return match_tier::prefix;
 
   let const is_token_too_loose_for_subsequence =
       token.length < 2 || !lexer::is_variable_name(token[0]);
@@ -609,22 +596,6 @@ collect_command_names(StringView                   token,
 }
 
 static fn
-complete_command_name_prefix(StringView                   token,
-                             EvalContext                 &context,
-                             const ArrayList<StringView> *extra_command_names,
-                             command_match_mode           match_mode,
-                             bool                         is_builtin_only) throws
-    -> GhostPrefixCollector
-{
-  let collector = GhostPrefixCollector{};
-
-  collect_command_names(token, context, collector, extra_command_names,
-                        match_mode, is_builtin_only);
-
-  return collector;
-}
-
-static fn
 compute_longest_common_prefix(const ArrayList<String> &candidates,
                               bool                     should_ignore_ascii_case) throws
     -> String
@@ -880,6 +851,68 @@ build_filesystem_candidate(StringView                       directory_part,
   return candidate;
 }
 
+static fn
+resolve_symlink_entry_kinds(const filesystem_listing &listing,
+                            const ArrayList<usize>   &positions) throws
+    -> ArrayList<Maybe<Path::EntryKind>>
+{
+  let paths            = ArrayList<Path>{completion_allocator()};
+  let statuses         = ArrayList<os::file_status>{completion_allocator()};
+  let result_positions = ArrayList<usize>{completion_allocator()};
+  let batch            = os::Batch{completion_allocator()};
+
+  paths.reserve(positions.count());
+  statuses.reserve(positions.count());
+  result_positions.reserve(positions.count());
+  batch.reserve(positions.count());
+
+  for (let const position : positions) {
+    let const &entry = (*listing.entries)[position];
+
+    result_positions.push(SIZE_MAX);
+    if (entry.kind != Path::EntryKind::Symlink) continue;
+
+    let path = listing.directory.clone();
+
+    path.append(entry.name.view());
+    result_positions.back() = paths.count();
+    paths.push(steal(path));
+    statuses.push({});
+  }
+
+  for (usize position = 0; position < paths.count(); position++)
+    batch.add(os::batch_operation::stat(paths[position], statuses[position]));
+
+  let results = ArrayList<os::batch_result>{completion_allocator()};
+  let kinds   = ArrayList<Maybe<Path::EntryKind>>{completion_allocator()};
+
+  if (!paths.is_empty()) batch.execute(results);
+
+  for (let const result_position : result_positions) {
+    let resolved_kind = Maybe<Path::EntryKind>{};
+
+    if (result_position != SIZE_MAX) {
+      if (result_position >= results.count() ||
+          results[result_position].error_number != 0)
+      {
+        resolved_kind = Path::EntryKind::Other;
+      } else {
+        switch (os::file_type_letter(statuses[result_position].mode)) {
+        case 'd': resolved_kind = Path::EntryKind::Directory; break;
+
+        case '-': resolved_kind = Path::EntryKind::Regular; break;
+
+        default: resolved_kind = Path::EntryKind::Other; break;
+        }
+      }
+    }
+
+    kinds.push(resolved_kind);
+  }
+
+  return kinds;
+}
+
 /* memory: the matches, paths, statuses, and result positions go to
            completion_allocator(), which complete() resets on its next call.
    time:   O(log E) lower bound over E directory entries, then one
@@ -933,64 +966,23 @@ collect_filesystem_matches(
 
   let const do_add_matches =
       [&](const ArrayList<matched_entry> &matches) throws {
-        let paths    = ArrayList<Path>{completion_allocator()};
-        let statuses = ArrayList<os::file_status>{completion_allocator()};
-        let result_positions = ArrayList<usize>{completion_allocator()};
-        let batch            = os::Batch{completion_allocator()};
+        let positions = ArrayList<usize>{completion_allocator()};
 
-        paths.reserve(matches.count());
-        statuses.reserve(matches.count());
-        result_positions.reserve(matches.count());
-        batch.reserve(matches.count());
+        positions.reserve(matches.count());
 
-        for (let const &match : matches) {
-          let const &entry = (*listing->entries)[match.position];
+        for (let const &match : matches)
+          positions.push(match.position);
 
-          result_positions.push(SIZE_MAX);
-          if (entry.kind != Path::EntryKind::Symlink) continue;
-
-          let path = listing->directory.clone();
-
-          path.append(entry.name.view());
-          result_positions.back() = paths.count();
-          paths.push(steal(path));
-          statuses.push({});
-        }
-
-        for (usize position = 0; position < paths.count(); position++)
-          batch.add(
-              os::batch_operation::stat(paths[position], statuses[position]));
-
-        let results = ArrayList<os::batch_result>{completion_allocator()};
-
-        if (!paths.is_empty()) batch.execute(results);
+        let const kinds = resolve_symlink_entry_kinds(*listing, positions);
 
         for (usize match_position = 0; match_position < matches.count();
              match_position++)
         {
-          let const &match           = matches[match_position];
-          let const &entry           = (*listing->entries)[match.position];
-          let        resolved_kind   = Maybe<Path::EntryKind>{};
-          let const  result_position = result_positions[match_position];
+          let const &match = matches[match_position];
+          let const &entry = (*listing->entries)[match.position];
 
-          if (result_position != SIZE_MAX) {
-            if (result_position >= results.count() ||
-                results[result_position].error_number != 0)
-            {
-              resolved_kind = Path::EntryKind::Other;
-            } else {
-              switch (os::file_type_letter(statuses[result_position].mode)) {
-              case 'd': resolved_kind = Path::EntryKind::Directory; break;
-
-              case '-': resolved_kind = Path::EntryKind::Regular; break;
-
-              default: resolved_kind = Path::EntryKind::Other; break;
-              }
-            }
-          }
-
-          let const eligible_entry =
-              check_filesystem_entry(*listing, entry, filter, resolved_kind);
+          let const eligible_entry = check_filesystem_entry(
+              *listing, entry, filter, kinds[match_position]);
 
           if (!eligible_entry.has_value()) continue;
 
@@ -1289,63 +1281,16 @@ complete_glob(StringView                       token,
     matched_positions.push(position);
   }
 
-  let paths            = ArrayList<Path>{completion_allocator()};
-  let statuses         = ArrayList<os::file_status>{completion_allocator()};
-  let result_positions = ArrayList<usize>{completion_allocator()};
-  let batch            = os::Batch{completion_allocator()};
-
-  paths.reserve(matched_positions.count());
-  statuses.reserve(matched_positions.count());
-  result_positions.reserve(matched_positions.count());
-  batch.reserve(matched_positions.count());
-
-  for (let const position : matched_positions) {
-    let const &entry = (*listing->entries)[position];
-
-    result_positions.push(SIZE_MAX);
-    if (entry.kind != Path::EntryKind::Symlink) continue;
-
-    let path = listing->directory.clone();
-
-    path.append(entry.name.view());
-    result_positions.back() = paths.count();
-    paths.push(steal(path));
-    statuses.push({});
-  }
-
-  for (usize position = 0; position < paths.count(); position++)
-    batch.add(os::batch_operation::stat(paths[position], statuses[position]));
-
-  let results = ArrayList<os::batch_result>{completion_allocator()};
-
-  if (!paths.is_empty()) batch.execute(results);
+  let const kinds = resolve_symlink_entry_kinds(*listing, matched_positions);
 
   for (usize match_position = 0; match_position < matched_positions.count();
        match_position++)
   {
     let const &entry = (*listing->entries)[matched_positions[match_position]];
     let const  name  = entry.name.view();
-    let        resolved_kind   = Maybe<Path::EntryKind>{};
-    let const  result_position = result_positions[match_position];
-
-    if (result_position != SIZE_MAX) {
-      if (result_position >= results.count() ||
-          results[result_position].error_number != 0)
-      {
-        resolved_kind = Path::EntryKind::Other;
-      } else {
-        switch (os::file_type_letter(statuses[result_position].mode)) {
-        case 'd': resolved_kind = Path::EntryKind::Directory; break;
-
-        case '-': resolved_kind = Path::EntryKind::Regular; break;
-
-        default: resolved_kind = Path::EntryKind::Other; break;
-        }
-      }
-    }
 
     let const eligible_entry =
-        check_filesystem_entry(*listing, entry, filter, resolved_kind);
+        check_filesystem_entry(*listing, entry, filter, kinds[match_position]);
 
     if (!eligible_entry.has_value()) continue;
 
@@ -1813,10 +1758,9 @@ complete(StringView                   line,
       candidates.clear();
       candidates.push(steal(joined));
     } else if (is_command && !token_has_path_separator) {
-      candidates = complete_command_names(
-          stage_token, context, extra_command_names,
-          is_glob_token ? command_match_mode::Glob : command_match_mode::Prefix,
-          is_builtin_only);
+      candidates =
+          complete_command_names(stage_token, context, extra_command_names,
+                                 command_match_mode::Glob, is_builtin_only);
       should_rebuild_shell_syntax_candidates = true;
     }
   } else if (is_command && !token_has_path_separator) {
@@ -1847,11 +1791,13 @@ complete(StringView                   line,
                                                  : command_match_mode::Prefix,
                                    is_builtin_only);
       } else {
-        let collector = complete_command_name_prefix(
-            stage_token, context, extra_command_names,
-            is_glob_token ? command_match_mode::Glob
-                          : command_match_mode::Prefix,
-            is_builtin_only);
+        let collector = GhostPrefixCollector{};
+
+        collect_command_names(stage_token, context, collector,
+                              extra_command_names,
+                              is_glob_token ? command_match_mode::Glob
+                                            : command_match_mode::Prefix,
+                              is_builtin_only);
 
         ghost_candidate_count        = collector.count();
         source_candidate_scan_count  = collector.source_scans();

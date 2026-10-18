@@ -2206,8 +2206,7 @@ const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
       "command-name-starts-equals",
       "a command word starts with an equals sign",
       "An assignment needs a variable before the equals sign, and '{0}' runs "
-      "as a "
-      "command",
+      "as a command",
       "Add the variable before the equals sign, as in `var=value`",
       None,
       Strict,

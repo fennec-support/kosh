@@ -249,8 +249,6 @@ public:
   fn
   erase(StringView name) throws -> void;
   fn
-  clear() wontthrow -> void;
-  fn
   merge(const VariableOccurrenceStateMap &other) throws -> void;
 
 private:

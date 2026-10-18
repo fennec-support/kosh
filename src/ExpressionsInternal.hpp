@@ -407,7 +407,7 @@ inline fn
 command_text_is_observed(const EvalContext &cxt) wontthrow -> bool
 {
   return cxt.runtime_state().bash_dynamic_variables_enabled() &&
-         cxt.trap_store().trap_action_depth() == 0;
+         cxt.trap_store().action_frame().depth == 0;
 }
 
 inline fn

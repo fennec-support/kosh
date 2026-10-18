@@ -225,21 +225,13 @@ check_command_name_lints(AnalysisContext          &actx,
         continue;
       }
 
-      if (view.length == 2 && view[0] == '-') {
-        switch (view[1]) {
-        case 'C':
-        case 'c':
-        case 'd':
-        case 'n':
-        case 'O':
-        case 's':
-        case 'u': should_skip_option_operand = true; continue;
-
-        default: continue;
-        }
-      }
-
       if (view.length >= 2 && view[0] == '-') {
+        if (view.length == 2 &&
+            StringView{"CcdnOsu"}.find_character(view[1]).has_value())
+        {
+          should_skip_option_operand = true;
+        }
+
         continue;
       }
 

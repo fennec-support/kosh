@@ -234,37 +234,25 @@ Split::execute(const ExecContext               &ec,
 
     if (*read_count == 0) break;
 
-    if (is_byte_mode) {
-      usize position = 0;
+    usize segment_start = 0;
 
-      while (position < *read_count) {
-        if (!do_open_output()) return 1;
+    while (segment_start < *read_count) {
+      if (!do_open_output()) return 1;
 
-        let const remaining   = unit_limit - output_unit_count;
-        let const write_count = remaining < *read_count - position
-                                    ? static_cast<usize>(remaining)
-                                    : *read_count - position;
+      usize segment_end        = *read_count;
+      u64   segment_unit_count = 0;
 
-        if (!os::write_all(output_descriptor, buffer + position, write_count)) {
-          report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                         os::last_system_error_message());
+      if (is_byte_mode) {
+        let const remaining_count = unit_limit - output_unit_count;
+        let const unread_count    = *read_count - segment_start;
+        let const write_count     = remaining_count < unread_count
+                                        ? static_cast<usize>(remaining_count)
+                                        : unread_count;
 
-          return 1;
-        }
-
-        position += write_count;
-        output_unit_count += write_count;
-        if (output_unit_count == unit_limit) do_rotate_output();
-      }
-    } else {
-      usize segment_start = 0;
-
-      while (segment_start < *read_count) {
-        if (!do_open_output()) return 1;
-
+        segment_end        = segment_start + write_count;
+        segment_unit_count = write_count;
+      } else {
         let const wanted_line_count = unit_limit - output_unit_count;
-        u64       line_count        = 0;
-        usize     segment_end       = *read_count;
 
         usize position = segment_start;
 
@@ -273,26 +261,26 @@ Split::execute(const ExecContext               &ec,
                        .find_character('\n'))
         {
           position += *newline + 1;
-          line_count++;
-          if (line_count == wanted_line_count) {
+          segment_unit_count++;
+          if (segment_unit_count == wanted_line_count) {
             segment_end = position;
             break;
           }
         }
-
-        if (!os::write_all(output_descriptor, buffer + segment_start,
-                           segment_end - segment_start))
-        {
-          report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                         os::last_system_error_message());
-
-          return 1;
-        }
-
-        segment_start = segment_end;
-        output_unit_count += line_count;
-        if (output_unit_count == unit_limit) do_rotate_output();
       }
+
+      if (!os::write_all(output_descriptor, buffer + segment_start,
+                         segment_end - segment_start))
+      {
+        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                       os::last_system_error_message());
+
+        return 1;
+      }
+
+      segment_start = segment_end;
+      output_unit_count += segment_unit_count;
+      if (output_unit_count == unit_limit) do_rotate_output();
     }
   }
 

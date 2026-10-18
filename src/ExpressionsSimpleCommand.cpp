@@ -451,10 +451,10 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
     }
 
     if (m_assignment->get_update_mode() == assignment_update_mode::Append) {
-      let appended =
-          String{heap_allocator(), cxt.get_variable_value(m_assignment->key())
-                                       .value_or(String{heap_allocator()})
-                                       .view()};
+      let const current = cxt.get_variable_value(m_assignment->key());
+      let       appended =
+          String{heap_allocator(),
+                 current.has_value() ? current->view() : StringView{}};
 
       if (cxt.is_integer_variable(assigned_name))
         cxt.append_integer_expression(appended, value.view());
@@ -675,41 +675,29 @@ assign_redirected_fd(ExecContext                       &ec,
                      os::descriptor                     file_fd,
                      bool is_file_borrowed = false) throws -> void
 {
+  Maybe<os::descriptor> *slot             = nullptr;
+  bool                  *is_slot_borrowed = nullptr;
+
   if (fd == 0) {
-    if (ec.in_fd && !ec.is_in_fd_borrowed) {
-      os::close_fd(*ec.in_fd);
-    }
-
-    ec.in_fd             = file_fd;
-    ec.is_in_fd_borrowed = is_file_borrowed;
-
-    return;
-  }
-
-  if (fd == 1) {
-    if (ec.out_fd && !ec.is_out_fd_borrowed) {
-      os::close_fd(*ec.out_fd);
-    }
-
-    ec.out_fd             = file_fd;
-    ec.is_out_fd_borrowed = is_file_borrowed;
+    slot             = &ec.in_fd;
+    is_slot_borrowed = &ec.is_in_fd_borrowed;
+  } else if (fd == 1) {
+    slot             = &ec.out_fd;
+    is_slot_borrowed = &ec.is_out_fd_borrowed;
+  } else if (fd == 2) {
+    slot             = &ec.err_fd;
+    is_slot_borrowed = &ec.is_err_fd_borrowed;
+  } else {
+    bind_nonstandard_fd(
+        nonstandard, nonstandard_descriptor{file_fd, fd, -1, is_file_borrowed});
 
     return;
   }
 
-  if (fd == 2) {
-    if (ec.err_fd && !ec.is_err_fd_borrowed) {
-      os::close_fd(*ec.err_fd);
-    }
+  if (*slot && !*is_slot_borrowed) os::close_fd(**slot);
 
-    ec.err_fd             = file_fd;
-    ec.is_err_fd_borrowed = is_file_borrowed;
-
-    return;
-  }
-
-  bind_nonstandard_fd(
-      nonstandard, nonstandard_descriptor{file_fd, fd, -1, is_file_borrowed});
+  *slot             = file_fd;
+  *is_slot_borrowed = is_file_borrowed;
 }
 
 struct resolved_duplication
@@ -1796,13 +1784,6 @@ append_redirection_descriptor(String            &out,
 }
 
 static fn
-append_duplication_descriptor(String            &out,
-                              const Redirection &redir) throws -> void
-{
-  append_redirection_descriptor(out, redir, -1);
-}
-
-static fn
 heredoc_terminator(const Redirection &redir) throws -> String
 {
   ASSERT(redir.heredoc_delimiter != nullptr);
@@ -1896,7 +1877,7 @@ append_one_redirection(EvalContext       &cxt,
   case Redirection::Kind::DuplicateOutput:
   case Redirection::Kind::DuplicateInput:  {
     if (redir.dup_fd == Redirection::DUP_FD_CLOSE) {
-      append_duplication_descriptor(out, redir);
+      append_redirection_descriptor(out, redir, -1);
       out += ">&-";
 
       return;
@@ -1904,7 +1885,7 @@ append_one_redirection(EvalContext       &cxt,
 
     let const is_output = redir.kind == Redirection::Kind::DuplicateOutput;
     if (redir.dup_fd >= 0) {
-      append_duplication_descriptor(out, redir);
+      append_redirection_descriptor(out, redir, -1);
       out += is_output ? ">&" : "<&";
       out += String::from(static_cast<i64>(redir.dup_fd), heap_allocator());
 
@@ -2024,11 +2005,8 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const
       m_redirections.count());
 
   ArrayList<nonstandard_descriptor> nonstandard{heap_allocator()};
-  bool                              was_nonstandard_handed_off = false;
 
   defer {
-    if (was_nonstandard_handed_off) return;
-
     for (let const &binding : nonstandard) {
       if (binding.file_fd != KOSH_INVALID_FD && !binding.is_file_borrowed) {
         os::close_fd(binding.file_fd);
@@ -2197,7 +2175,6 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const
   }
 
   ec.nonstandard_fds.fill(steal(nonstandard));
-  was_nonstandard_handed_off = true;
 }
 
 fn

@@ -31,10 +31,8 @@ public:
   fn
   operator=(const Bitset &other) throws -> Bitset &
   {
-    if (this != &other) {
-      m_words  = other.m_words;
-      m_length = other.m_length;
-    }
+    m_words  = other.m_words;
+    m_length = other.m_length;
 
     return *this;
   }

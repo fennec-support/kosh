@@ -143,10 +143,7 @@ run_nohup(const ArrayList<String> &argv,
 {
   if (argv.is_empty()) return None;
 
-  SECURITY_ATTRIBUTES inheritable{};
-
-  inheritable.nLength        = sizeof(inheritable);
-  inheritable.bInheritHandle = TRUE;
+  SECURITY_ATTRIBUTES inheritable{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
 
   HANDLE null_input   = INVALID_HANDLE_VALUE;
   HANDLE nohup_output = INVALID_HANDLE_VALUE;
@@ -1128,9 +1125,7 @@ timeout_job_name(HANDLE process_handle, char (&name)[64]) wontthrow -> bool
                       &user_time) == FALSE)
     return false;
 
-  let const creation_ticks =
-      (static_cast<u64>(creation_time.dwHighDateTime) << 32u) |
-      creation_time.dwLowDateTime;
+  let const creation_ticks = filetime_ticks(creation_time);
   ::snprintf(name, sizeof(name), "kosh-timeout-%lu-%llu",
              static_cast<unsigned long>(GetProcessId(process_handle)),
              static_cast<unsigned long long>(creation_ticks));
@@ -3348,12 +3343,9 @@ fn
 set_default_signal_handlers(signal_profile profile) -> void
 {
   let const is_interactive = profile == signal_profile::Interactive;
-  if (is_interactive && signal(SIGTERM, SIG_IGN) == SIG_ERR) {
-    throw Error{"Could not install the signal handlers: " +
-                last_system_error_message()};
-  }
-
-  if (signal(SIGINT, handle_interrupt) == SIG_ERR) {
+  if ((is_interactive && signal(SIGTERM, SIG_IGN) == SIG_ERR) ||
+      signal(SIGINT, handle_interrupt) == SIG_ERR)
+  {
     throw Error{"Could not install the signal handlers: " +
                 last_system_error_message()};
   }
@@ -4223,25 +4215,13 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
     UINT  required_count = 0;
     UINT  process_count  = 0;
     DWORD reboot_reasons = 0;
-    result = RmGetList(session_handle, &required_count, &process_count, nullptr,
-                       &reboot_reasons);
-    if (result == ERROR_SUCCESS && required_count == 0) {
-      continue;
-    }
-    if (result != ERROR_MORE_DATA) {
-      SetLastError(result);
 
-      return query.query_position;
-    }
-
-    constexpr usize            LIST_ATTEMPT_COUNT = 8;
+    constexpr usize            LIST_ATTEMPT_COUNT = 9;
     ArrayList<RM_PROCESS_INFO> process_infos{scratch};
 
     for (usize attempt_count = 0; attempt_count < LIST_ATTEMPT_COUNT;
          attempt_count++)
     {
-      process_count = required_count + required_count / 2 + 16;
-      process_infos.reserve(process_count);
       result = RmGetList(session_handle, &required_count, &process_count,
                          process_infos.begin(), &reboot_reasons);
       if (result == ERROR_SUCCESS) break;
@@ -4251,6 +4231,8 @@ scan_process_file_users(const ArrayList<process_file_query> &queries,
 
         return query.query_position;
       }
+      process_count = required_count + required_count / 2 + 16;
+      process_infos.reserve(process_count);
     }
 
     /* at this point: result is ERROR_SUCCESS, session_handle has the query

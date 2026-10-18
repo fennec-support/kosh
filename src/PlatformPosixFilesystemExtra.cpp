@@ -1923,29 +1923,20 @@ open_io_uring_batch(io_uring_batch &ring) wontthrow -> io_uring_open_result
   ring.submission_mapping = ::mmap(nullptr, ring.submission_mapping_byte_count,
                                    PROT_READ | PROT_WRITE, MAP_SHARED,
                                    ring.descriptor, IORING_OFF_SQ_RING);
-  if (ring.submission_mapping == MAP_FAILED) {
-    close_io_uring_batch(ring);
-
-    return io_uring_open_result::TransientFailure;
-  }
-
   if (ring.has_shared_mapping) {
     ring.completion_mapping = ring.submission_mapping;
   } else {
     ring.completion_mapping = ::mmap(
         nullptr, ring.completion_mapping_byte_count, PROT_READ | PROT_WRITE,
         MAP_SHARED, ring.descriptor, IORING_OFF_CQ_RING);
-    if (ring.completion_mapping == MAP_FAILED) {
-      close_io_uring_batch(ring);
-
-      return io_uring_open_result::TransientFailure;
-    }
   }
 
   ring.entry_mapping =
       ::mmap(nullptr, ring.entry_mapping_byte_count, PROT_READ | PROT_WRITE,
              MAP_SHARED, ring.descriptor, IORING_OFF_SQES);
-  if (ring.entry_mapping == MAP_FAILED) {
+  if (ring.submission_mapping == MAP_FAILED ||
+      ring.completion_mapping == MAP_FAILED || ring.entry_mapping == MAP_FAILED)
+  {
     close_io_uring_batch(ring);
 
     return io_uring_open_result::TransientFailure;
@@ -2002,16 +1993,21 @@ io_uring_batch_supports_operations(const io_uring_batch  &ring,
   for (usize index = 0; index < operation_count; index++) {
     switch (batch_operation_access::get_kind(operations[index])) {
     case batched_syscall_id::Read:
-      if (!ring.has_read) return false;
+      if (!ring.has_read || operations[index].byte_count > UINT32_MAX) {
+        return false;
+      }
       break;
 
     case batched_syscall_id::Write:
-      if (!ring.has_write) return false;
+      if (!ring.has_write || operations[index].byte_count > UINT32_MAX) {
+        return false;
+      }
       break;
 
     case batched_syscall_id::WriteCurrent:
       if (!ring.has_write ||
-          (ring.parameters.features & IORING_FEAT_RW_CUR_POS) == 0)
+          (ring.parameters.features & IORING_FEAT_RW_CUR_POS) == 0 ||
+          operations[index].byte_count > UINT32_MAX)
       {
         return false;
       }
@@ -2054,30 +2050,11 @@ io_uring_batch_supports_operations(const io_uring_batch  &ring,
            the ring reports as unsupported costs one direct syscall. no
    locks. */
 static fn
-execute_io_uring_batch(const batched_syscall  *operations,
-                       usize                   operation_count,
-                       batched_syscall_result *results) wontthrow -> bool
+execute_native_batch(const batched_syscall  *operations,
+                     usize                   operation_count,
+                     batched_syscall_result *results) wontthrow -> bool
 {
   if (operation_count < 32) return false;
-
-  for (usize index = 0; index < operation_count; index++) {
-    let const &operation      = operations[index];
-    let const  operation_kind = batch_operation_access::get_kind(operation);
-
-    switch (operation_kind) {
-    case batched_syscall_id::Read:
-    case batched_syscall_id::Write:
-    case batched_syscall_id::WriteCurrent:
-      if (operation.byte_count > UINT32_MAX) return false;
-      break;
-
-    case batched_syscall_id::Lstat:
-    case batched_syscall_id::Stat:
-    case batched_syscall_id::Exists:
-    case batched_syscall_id::LstatAt:
-    case batched_syscall_id::Invalid: break;
-    }
-  }
 
   static thread_local io_uring_batch ring{};
   static thread_local i64            unavailable_process_id = -1;
@@ -2192,15 +2169,6 @@ execute_io_uring_batch(const batched_syscall  *operations,
         break;
 
       case batched_syscall_id::LstatAt:
-        entry.opcode = IORING_OP_STATX;
-        entry.fd = batch_operation_access::get_directory_descriptor(operation);
-        entry.addr = reinterpret_cast<u64>(
-            batch_operation_access::get_relative_name(operation));
-        entry.len         = STATX_BASIC_STATS;
-        entry.statx_flags = AT_SYMLINK_NOFOLLOW;
-        entry.addr2       = reinterpret_cast<u64>(&status_records[chunk_index]);
-        break;
-
       case batched_syscall_id::Invalid: continue;
       }
 
@@ -2371,14 +2339,6 @@ execute_io_uring_batch(const batched_syscall  *operations,
   return true;
 }
 
-static fn
-execute_native_batch(const batched_syscall  *operations,
-                     usize                   operation_count,
-                     batched_syscall_result *results) wontthrow -> bool
-{
-  return execute_io_uring_batch(operations, operation_count, results);
-}
-
 #else
 
 static fn
@@ -2400,8 +2360,7 @@ execute_batch_operations(const batched_syscall  *operations,
                          usize                   operation_count,
                          batched_syscall_result *results) wontthrow -> void
 {
-  if (operation_count == 0) return;
-  if (operations == nullptr || results == nullptr) {
+  if (operation_count == 0 || operations == nullptr || results == nullptr) {
     return;
   }
 

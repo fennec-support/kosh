@@ -94,14 +94,12 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
 
     const SimpleCommand *first_stage = m_commands[0]->as_simple_command();
 
-    if (m_commands[0]->is_assignment()) {
-      const AssignCommand *assign = m_commands[0]->as_assign_command();
+    let const assign = m_commands[0]->as_assign_command();
 
-      if (assign != nullptr) {
-        actx.report_diagnostic(diagnostic_id::sc2036,
-                               m_commands[0]->source_location(),
-                               {assign->assignment()->key().view()});
-      }
+    if (assign != nullptr) {
+      actx.report_diagnostic(diagnostic_id::sc2036,
+                             m_commands[0]->source_location(),
+                             {assign->assignment()->key().view()});
     } else if (first_stage != nullptr && first_stage->args().is_empty() &&
                !first_stage->local_vars().is_empty())
     {
@@ -321,7 +319,7 @@ CompoundList::has_single_test_command() const throws -> bool
 
   if (name.has_value()) return *name == StringView{"test"};
 
-  return name_token->raw_view().value_or(StringView{}) == StringView{"["};
+  return name_token->raw_view() == StringView{"["};
 }
 
 fn
@@ -559,8 +557,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
           is_test_command = get_analysis_command_info(*middle_name)
                                 .is_in_group(COMMAND_GROUP_TEST);
         } else {
-          is_test_command = middle_token->raw_view().value_or(StringView{}) ==
-                            StringView{"["};
+          is_test_command = middle_token->raw_view() == StringView{"["};
         }
       }
 

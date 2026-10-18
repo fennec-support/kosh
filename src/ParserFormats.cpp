@@ -1040,11 +1040,8 @@ parser_format_shell_mood(StringView program) wontthrow -> Maybe<mimic_mood>
 {
   if (let const slash = program.find_last_character('/'))
     program = program.substring(*slash + 1);
-  if (program.length > 4 &&
-      parser_format_ascii_equal(program.substring(program.length - 4), ".exe"))
-  {
+  if (path_ends_with(program, ".exe"))
     program = program.substring_of_length(0, program.length - 4);
-  }
 
   if (program == "bash") return mimic_mood::Bash;
   if (program == "kosh") return mimic_mood::Default;
@@ -1114,11 +1111,8 @@ interpreter_of_value(StringView value) wontthrow -> interpreter_choice
     word = word.substring(*slash + 1);
   if (let const at = word.find_character('@'))
     word = word.substring_of_length(0, *at);
-  if (word.length > 4 &&
-      parser_format_ascii_equal(word.substring(word.length - 4), ".exe"))
-  {
+  if (path_ends_with(word, ".exe"))
     word = word.substring_of_length(0, word.length - 4);
-  }
 
   /* at this point: word holds no '/' or '@' character. */
   if (let const mood = parser_format_shell_mood(word)) return {true, *mood};
@@ -1551,9 +1545,8 @@ heredoc_delimiter_at(StringView line, usize &position) wontthrow
   return None;
 }
 
-/* memory: result copies source and is returned when no line is rewritten.
-           otherwise rewritten, which reserves source.length bytes, is returned
-           and result is freed.
+/* memory: a copy of source is returned when no line is rewritten. otherwise
+           rewritten, which reserves source.length bytes, is returned.
    time:   O(source.length). each line in [start, end) is scanned once, either
            for heredoc operators or for a pending terminator. */
 static fn
@@ -1561,7 +1554,6 @@ align_indented_heredoc_terminators(StringView source,
                                    usize      start,
                                    usize      end) throws -> String
 {
-  let        result    = String{heap_allocator(), source};
   let        rewritten = String{heap_allocator()};
   StringView pending[16]{};
   usize      pending_count = 0;
@@ -1609,7 +1601,7 @@ align_indented_heredoc_terminators(StringView source,
     }
   }
 
-  if (!has_rewrite) return result;
+  if (!has_rewrite) return String{heap_allocator(), source};
 
   rewritten.append(source.substring(rewritten.length()));
 
@@ -2384,50 +2376,6 @@ parser_format_add_json_fragment(parsed_format_document &document,
                                 mimic_mood              mood) throws -> void
 {
   if (start >= end) return;
-  parser_format_add_fragment(document, source, start, end, 0, None,
-                             parser_format_codec::JsonString, mood);
-  if (document.fragments.is_empty()) return;
-
-  /* at this point: start is less than end, and fragment is the last element
-     of document.fragments. */
-  let  &fragment = document.fragments.back();
-  let   decoded  = String{heap_allocator()};
-  usize position = start;
-
-  while (position < end) {
-    let byte = source[position++];
-
-    if (byte != '\\' || position >= end) {
-      decoded.push(byte);
-      continue;
-    }
-
-    let const escaped = source[position++];
-
-    switch (escaped) {
-    case 'n':  decoded.push('\n'); break;
-    case 'r':  decoded.push('\r'); break;
-    case 't':  decoded.push('\t'); break;
-    case '"':  decoded.push('"'); break;
-    case '\\': decoded.push('\\'); break;
-    case '/':  decoded.push('/'); break;
-    case 'u':
-      if (let const code = json_ascii_escape(source, position - 2, end)) {
-        decoded.push(*code);
-        position += 4;
-        break;
-      }
-      [[fallthrough]];
-    default:
-      /* encoding would double the kept backslash, so skip formatting. */
-      fragment.should_skip_format = true;
-      decoded.push('\\');
-      decoded.push(escaped);
-      break;
-    }
-  }
-
-  fragment.shell_source = steal(decoded);
 
   let masked = String{heap_allocator()};
 
@@ -2480,7 +2428,50 @@ parser_format_add_json_fragment(parsed_format_document &document,
     host_position = run_end - 1;
   }
 
-  fragment.analysis_source = steal(masked);
+  parser_format_add_fragment(document, source, start, end, 0, steal(masked),
+                             parser_format_codec::JsonString, mood);
+  if (document.fragments.is_empty()) return;
+
+  /* at this point: start is less than end, and fragment is the last element
+     of document.fragments. */
+  let  &fragment = document.fragments.back();
+  let   decoded  = String{heap_allocator()};
+  usize position = start;
+
+  while (position < end) {
+    let byte = source[position++];
+
+    if (byte != '\\' || position >= end) {
+      decoded.push(byte);
+      continue;
+    }
+
+    let const escaped = source[position++];
+
+    switch (escaped) {
+    case 'n':  decoded.push('\n'); break;
+    case 'r':  decoded.push('\r'); break;
+    case 't':  decoded.push('\t'); break;
+    case '"':  decoded.push('"'); break;
+    case '\\': decoded.push('\\'); break;
+    case '/':  decoded.push('/'); break;
+    case 'u':
+      if (let const code = json_ascii_escape(source, position - 2, end)) {
+        decoded.push(*code);
+        position += 4;
+        break;
+      }
+      [[fallthrough]];
+    default:
+      /* encoding would double the kept backslash, so skip formatting. */
+      fragment.should_skip_format = true;
+      decoded.push('\\');
+      decoded.push(escaped);
+      break;
+    }
+  }
+
+  fragment.shell_source = steal(decoded);
 }
 
 static pure fn
@@ -2653,17 +2644,16 @@ parser_format_extract_json_keys(parsed_format_document       &document,
     let const byte = source[position];
 
     if (byte == '{' || byte == '[') {
-      let const *command_key = !pending_key.is_empty() && byte == '{'
-                                   ? do_find_key(pending_key)
-                                   : nullptr;
+      let const *matched =
+          pending_key.is_empty() ? nullptr : do_find_key(pending_key);
 
-      if (!pending_key.is_empty() && byte == '[') {
-        if (let const *exec_key = do_find_key(pending_key))
-          add_json_exec_array(document, source, position, *exec_key,
-                              template_syntax);
+      if (byte == '[' && matched != nullptr) {
+        add_json_exec_array(document, source, position, *matched,
+                            template_syntax);
       }
 
-      stack.push(json_container{byte == '[', pending_key, command_key});
+      stack.push(json_container{byte == '[', pending_key,
+                                byte == '{' ? matched : nullptr});
       pending_key = {};
       position++;
       continue;

@@ -115,13 +115,16 @@ append_nl_number(String          &output,
                  StringView       separator,
                  nl_number_format format) throws -> void
 {
-  let const digits  = String::from(number, output.allocator());
-  let const padding = width > digits.length() ? width - digits.length() : 0;
+  char digit_buffer[24];
+
+  let const digits =
+      utils::int_to_text_into(number, digit_buffer, sizeof(digit_buffer));
+  let const padding = width > digits.length ? width - digits.length : 0;
 
   if (format != nl_number_format::Left)
     output.append_repeated(format == nl_number_format::Zero ? '0' : ' ',
                            padding);
-  output += digits.view();
+  output += digits;
   if (format == nl_number_format::Left) output.append_repeated(' ', padding);
   output += separator;
 }

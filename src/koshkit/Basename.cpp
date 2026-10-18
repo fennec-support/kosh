@@ -30,11 +30,7 @@ basename_component(StringView path) wontthrow -> StringView
     end_position--;
   }
 
-  if (end_position == 0) {
-    if (path.is_empty()) return path;
-
-    return StringView{"/"};
-  }
+  if (end_position == 0) return path.is_empty() ? path : StringView{"/"};
   /* at this point: path is non-empty, and end_position is one past a byte
      that is not a separator. */
 

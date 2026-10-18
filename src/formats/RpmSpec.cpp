@@ -102,9 +102,7 @@ macro_end(StringView source, usize position, usize end)
 {
   if (position + 1 >= end || source[position] != '%') return None;
 
-  let const next = source[position + 1];
-
-  if (next == '{') {
+  if (source[position + 1] == '{') {
     usize depth = 0;
 
     for (usize at = position + 1; at < end; at++) {

@@ -96,8 +96,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       break;
     }
 
-    let const is_enabling    = argument[0] == '-';
-    let const argument_index = name_index;
+    let const is_enabling = argument[0] == '-';
 
     for (usize k = 1; k < argument.length; k++) {
       let const letter = argument[k];
@@ -114,7 +113,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         invalid_option += argument[0];
         invalid_option += letter;
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(argument_index),
+        report_soft_builtin_error(ec, cxt, ec.arg_location_at(name_index),
                                   StringView{"'"} + invalid_option.view() +
                                       "' is not a valid option");
 
@@ -122,7 +121,7 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
 
       let option_name       = argument.substring(k + 1);
-      let option_name_index = argument_index;
+      let option_name_index = name_index;
 
       if (option_name.is_empty()) {
         if (name_index + 1 >= args.count())

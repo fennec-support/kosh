@@ -647,8 +647,7 @@ EvalContext::hold_process_substitutions(process_substitution_mark mark)
     }
   }
 
-  while (pending.count() > mark.pending)
-    pending.remove(pending.count() - 1);
+  pending.truncate(mark.pending);
 }
 
 fn
@@ -817,10 +816,7 @@ EvalContext::cleanup_process_substitutions(
     }
   }
 
-  while (expansion_store().pending_process_substitutions().count() >
-         mark.pending)
-    expansion_store().pending_process_substitutions().remove(
-        expansion_store().pending_process_substitutions().count() - 1);
+  expansion_store().pending_process_substitutions().truncate(mark.pending);
 }
 
 fn
@@ -1263,9 +1259,6 @@ EvalContext::run_captured_substitution(
 
     if (drain_context.data != nullptr) {
       captured.append(StringView{drain_context.data, drain_context.length});
-      uncached_heap_allocator().free_array(drain_context.data,
-                                           drain_context.capacity);
-      drain_context.data = nullptr;
     }
 
     did_begin_restoration = true;
@@ -1352,9 +1345,8 @@ EvalContext::capture_function_substitution(const WordSegment &segment)
 
   ASSERT(cache.substitution_ast != nullptr);
 
-  let const source = String{heap_allocator(), body};
-
-  return run_function_substitution(cache.substitution_ast, source,
+  return run_function_substitution(cache.substitution_ast,
+                                   String{heap_allocator(), body},
                                    is_value_substitution);
 }
 

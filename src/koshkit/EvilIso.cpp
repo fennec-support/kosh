@@ -70,12 +70,6 @@ enum class eviliso_collection_mode : u8
   Collect,
 };
 
-enum class eviliso_remote_rows_mode : u8
-{
-  Hide,
-  Show,
-};
-
 struct namespace_process
 {
   namespace_process(i64        process_id,
@@ -804,26 +798,16 @@ collect_process_cgroup_snapshot(
     if (lower == current.count() || current[lower].pid != candidate.process_id)
     {
       candidate.status = process_snapshot_status::Exited;
-      candidate.memberships.clear();
-      candidate.evidence.clear();
-      continue;
-    }
-
-    let const &process = current[lower];
-
-    if (process.start_token == 0 || candidate.start_token == 0) {
+    } else if (current[lower].start_token == 0 || candidate.start_token == 0) {
       candidate.status = process_snapshot_status::Unverifiable;
-      candidate.memberships.clear();
-      candidate.evidence.clear();
+    } else if (current[lower].start_token != candidate.start_token) {
+      candidate.status = process_snapshot_status::Reused;
+    } else {
       continue;
     }
 
-    if (process.start_token != candidate.start_token) {
-      candidate.status = process_snapshot_status::Reused;
-      candidate.memberships.clear();
-      candidate.evidence.clear();
-      continue;
-    }
+    candidate.memberships.clear();
+    candidate.evidence.clear();
   }
 
   return snapshot;
@@ -1171,7 +1155,6 @@ append_remote_report(String                                   &output,
                      bool                                      should_color,
                      const ArrayList<process_cgroup_snapshot> &snapshot,
                      Allocator                                 allocator,
-                     eviliso_remote_rows_mode                  rows_mode,
                      eviliso_detail_mode                       detail) throws -> void
 {
   let table = ReportTable{allocator};
@@ -1287,7 +1270,6 @@ append_remote_report(String                                   &output,
       {total_socket_text.view(), colors::soft(colors::ansi::BOLD_GREEN)});
   table.add_row(summary_cells);
   append_titled_report_table(output, "Socket summary", table, should_color);
-  if (rows_mode == eviliso_remote_rows_mode::Hide) return;
 
   struct remote_peer_row
   {
@@ -1779,17 +1761,16 @@ append_container_report(String                                   &output,
 
   struct container_detail_row
   {
-    String runtime;
-    String identifier;
-    i64    process_id_value{0};
-    String process_id;
-    String name;
-    String role;
-    String cgroup;
+    String     runtime;
+    String     identifier;
+    i64        process_id_value{0};
+    String     name;
+    StringView role;
+    String     cgroup;
 
     explicit container_detail_row(Allocator allocator)
-        : runtime(allocator), identifier(allocator), process_id(allocator),
-          name(allocator), role(allocator), cgroup(allocator)
+        : runtime(allocator), identifier(allocator), name(allocator),
+          cgroup(allocator)
     {}
   };
 
@@ -1864,11 +1845,9 @@ append_container_report(String                                   &output,
       row.runtime          = evidence.runtime.clone();
       row.identifier       = evidence.container_id.clone();
       row.process_id_value = process.process_id;
-      row.process_id       = String::from(process.process_id, allocator);
       row.name             = process.name.clone();
-      row.role =
-          String{row.role.allocator(),
-                 process.process_id == self_process_id ? "self" : "other"};
+      row.role   = process.process_id == self_process_id ? StringView{"self"}
+                                                         : StringView{"other"};
       row.cgroup = evidence.path.clone();
       detail_rows.push(steal(row));
     }
@@ -1921,13 +1900,14 @@ append_container_report(String                                   &output,
     table.add_heading("CGROUP");
 
     for (let const &row : sorted_detail_rows) {
-      let cells = ArrayList<report_table_cell_view>{allocator};
+      let const process_id = String::from(row.process_id_value, allocator);
+      let       cells      = ArrayList<report_table_cell_view>{allocator};
 
       cells.push({row.runtime.view(), colors::soft(colors::ansi::BOLD_GREEN)});
       cells.push({row.identifier.view(), colors::soft(colors::ansi::CYAN)});
-      cells.push({row.process_id.view(), colors::soft(colors::ansi::YELLOW)});
+      cells.push({process_id.view(), colors::soft(colors::ansi::YELLOW)});
       cells.push({row.name.view(), colors::ansi::RESET});
-      cells.push({row.role.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
+      cells.push({row.role, colors::soft(colors::ansi::BOLD_MAGENTA)});
       cells.push({row.cgroup.view(), colors::ansi::RESET});
       table.add_row(cells);
     }
@@ -2017,6 +1997,8 @@ append_kubernetes_report(String                                   &output,
     kubernetes_host = sanitize_kubernetes_metadata(value->view(), allocator);
 
   let const namespace_name = read_kubernetes_metadata("namespace", allocator);
+  let const namespace_view =
+      namespace_name.is_empty() ? StringView{"-"} : namespace_name.view();
 
   bool has_kubepods = false;
 
@@ -2037,9 +2019,7 @@ append_kubernetes_report(String                                   &output,
     cells.push({"environment", colors::ansi::RESET});
     cells.push(
         {kubernetes_host.view(), colors::soft(colors::ansi::BOLD_GREEN)});
-    cells.push(
-        {namespace_name.is_empty() ? StringView{"-"} : namespace_name.view(),
-         colors::ansi::RESET});
+    cells.push({namespace_view, colors::ansi::RESET});
     cells.push({"KUBERNETES_SERVICE_HOST", colors::ansi::RESET});
     evidence_table.add_row(cells);
   }
@@ -2049,9 +2029,7 @@ append_kubernetes_report(String                                   &output,
 
     cells.push({"cgroup", colors::ansi::RESET});
     cells.push({"-", colors::ansi::RESET});
-    cells.push(
-        {namespace_name.is_empty() ? StringView{"-"} : namespace_name.view(),
-         colors::ansi::RESET});
+    cells.push({namespace_view, colors::ansi::RESET});
     cells.push({"kubepods component", colors::ansi::RESET});
     evidence_table.add_row(cells);
   }
@@ -2274,20 +2252,16 @@ EvilIso::execute(const ExecContext               &ec,
                                     FLAG_EVILISO_CONTAINERS.is_enabled();
   let const should_color = koshkit_should_color();
   let       output       = String{cxt.scratch_allocator()};
-  let       process_cgroups =
-      ArrayList<process_cgroup_snapshot>{cxt.scratch_allocator()};
-  let const collection = should_show_cgroups ||
+  let const collection   = should_show_cgroups ||
                                  detail == eviliso_detail_mode::All ||
                                  should_show_runtime ||
                                  should_show_kubernetes || should_show_container
-                             ? eviliso_collection_mode::Collect
-                             : eviliso_collection_mode::Skip;
-
-  if (should_show_namespaces || collection == eviliso_collection_mode::Collect)
-  {
-    process_cgroups =
-        collect_process_cgroup_snapshot(cxt.scratch_allocator(), collection);
-  }
+                               ? eviliso_collection_mode::Collect
+                               : eviliso_collection_mode::Skip;
+  let const process_cgroups =
+      should_show_namespaces || collection == eviliso_collection_mode::Collect
+          ? collect_process_cgroup_snapshot(cxt.scratch_allocator(), collection)
+          : ArrayList<process_cgroup_snapshot>{cxt.scratch_allocator()};
 
   if (should_show_namespaces) {
     let namespace_processes =
@@ -2314,8 +2288,7 @@ EvilIso::execute(const ExecContext               &ec,
                           detail);
   if (should_show_remote)
     append_remote_report(output, should_color, process_cgroups,
-                         cxt.scratch_allocator(),
-                         eviliso_remote_rows_mode::Show, detail);
+                         cxt.scratch_allocator(), detail);
   if (should_show_runtime)
     append_runtime_evidence_report(output, should_color, process_cgroups,
                                    output.allocator(), detail);

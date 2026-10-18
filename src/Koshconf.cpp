@@ -801,10 +801,10 @@ read_koshconf_text(StringView        text,
         continue;
       }
 
-      let const rest = raw_value.substring(*closing + 2);
+      let const rest = raw_value.substring(*closing + 2).trim_blanks();
 
-      if (!rest.trim_blanks().is_empty()) {
-        do_warn(rest.trim_blanks(),
+      if (!rest.is_empty()) {
+        do_warn(rest,
                 "Unexpected text after the closing quote, skipping the line");
         continue;
       }
@@ -1259,20 +1259,16 @@ compose_koshconf_text(StringView         description,
       continue;
     }
 
-    if (option->type == option_type::String) {
-      if (option->default_text.is_empty()) {
-        contents += "# ";
-        contents += option->koshconf_name;
-        contents += "=\n";
-        continue;
-      }
-
+    if (option->type == option_type::String && !option->default_text.is_empty())
+    {
       contents += format_koshconf_line(*option, option->default_text);
       contents += '\n';
       continue;
     }
 
-    if (preset == mimic_mood::Bash && option->is_bash_default_session_dependent)
+    if (option->type == option_type::String ||
+        (preset == mimic_mood::Bash &&
+         option->is_bash_default_session_dependent))
     {
       contents += "# ";
       contents += option->koshconf_name;
@@ -1416,13 +1412,9 @@ persist_koshconf_setting(const Path              &path,
   let const option_name = StringView{option.koshconf_name};
 
   let const do_find_name = [](StringView line, bool is_commented) {
-    let const has_return = !line.is_empty() && line[line.count() - 1] == '\r';
-    let const without_return =
-        has_return ? line.substring_of_length(0, line.count() - 1) : line;
+    if (!is_commented) return declared_name(line);
 
-    if (!is_commented) return declared_name(without_return);
-
-    let const trimmed = without_return.trim_blanks();
+    let const trimmed = line.trim_blanks();
 
     if (trimmed.is_empty() || trimmed[0] != '#') {
       return Maybe<StringView>{};

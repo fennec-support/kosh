@@ -124,15 +124,11 @@ CompoundList::single_unconditional_command() const wontthrow -> const Command *
 
   let const *node = m_nodes[0];
 
-  if (node == nullptr) return nullptr;
-
   if (node->kind() != CompoundListCondition::Kind::None || node->is_negated()) {
     return nullptr;
   }
 
   let const *command = node->command();
-
-  if (command == nullptr) return nullptr;
 
   if (command->is_async() || command->is_timed()) {
     return nullptr;
@@ -282,6 +278,23 @@ CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const t
     let const  is_contained_async_node =
         is_async_node && cxt.runtime_state().get_mood() != mimic_mood::Default;
 
+    let const do_finish_error =
+        [&](const ErrorBase &error) throws -> status_result {
+      if (error.is_line_discarding() && !is_async_node) {
+        if (!is_line_discard_root(cxt, error, this)) throw;
+        did_discard_line = true;
+
+        return {static_cast<i32>(set_and_return_exit_status(
+                    cxt, cxt.execution_store().line_discard_status().value_or(
+                             error.command_status()))),
+                0};
+      }
+
+      return {static_cast<i32>(set_and_return_exit_status(
+                  cxt, is_async_node ? 0 : error.command_status())),
+              0};
+    };
+
     let const do_run_node = [&]() throws -> status_result {
       if (should_ignore_errexit) cxt.execution_store().condition_depth()++;
       defer {
@@ -322,19 +335,7 @@ CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const t
           error.set_rendered();
         }
 
-        if (error.is_line_discarding() && !is_async_node) {
-          if (!is_line_discard_root(cxt, error, this)) throw;
-          did_discard_line = true;
-
-          return {static_cast<i32>(set_and_return_exit_status(
-                      cxt, cxt.execution_store().line_discard_status().value_or(
-                               error.command_status()))),
-                  0};
-        }
-
-        return {static_cast<i32>(set_and_return_exit_status(
-                    cxt, is_async_node ? 0 : error.command_status())),
-                0};
+        return do_finish_error(error);
       } catch (ErrorBase &error) {
         if (!is_contained_async_node &&
             (!cxt.runtime_state().is_bash_compatible() ||
@@ -352,19 +353,7 @@ CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const t
           error.set_rendered();
         }
 
-        if (error.is_line_discarding() && !is_async_node) {
-          if (!is_line_discard_root(cxt, error, this)) throw;
-          did_discard_line = true;
-
-          return {static_cast<i32>(set_and_return_exit_status(
-                      cxt, cxt.execution_store().line_discard_status().value_or(
-                               error.command_status()))),
-                  0};
-        }
-
-        return {static_cast<i32>(set_and_return_exit_status(
-                    cxt, is_async_node ? 0 : error.command_status())),
-                0};
+        return do_finish_error(error);
       }
     };
 

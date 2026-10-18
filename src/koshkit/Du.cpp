@@ -417,17 +417,12 @@ total_size(const ExecContext        &ec,
     if (stat_work.is_empty()) return;
 
     if (directory.has_value()) {
-      stat_batch.clear();
-
       for (let &work : stat_work)
         stat_batch.add(
             os::batch_operation::lstat_at(*directory, work.name, work.status));
 
       stat_batch.execute(batch_results, os::batch_deduplication::Disabled);
     } else {
-      fallback_paths.clear();
-      fallback_batch.clear();
-
       for (let &work : stat_work) {
         let path = Path{frames[work.parent_index].path.view(), wave_allocator};
 
@@ -506,10 +501,7 @@ total_size(const ExecContext        &ec,
     }
   }
 
-  if (os::INTERRUPT_REQUESTED) return None;
-  if (!is_root_complete || !root_result.should_emit) {
-    return None;
-  }
+  if (os::INTERRUPT_REQUESTED || !root_result.should_emit) return None;
 
   return root_result;
 }
@@ -1023,9 +1015,8 @@ Du::execute(const ExecContext               &ec,
       break;
     }
 
-    if (!total.has_value()) {
-      status = 1;
-    } else if (FLAG_DU_SUMMARY.is_enabled() && total->should_emit) {
+    if (total.has_value() && FLAG_DU_SUMMARY.is_enabled() && total->should_emit)
+    {
       append_output_row(
           output_rows, total->byte_count, target.view(),
           colors::file_entry_type_of_mode(target_statuses[index].mode),

@@ -756,11 +756,9 @@ EvalContext::cached_compiled_regex(StringView pattern) throws
   LOG(Debug, "regex cache miss, compiling the pattern '%.*s'",
       static_cast<int>(pattern.length), pattern.data);
 
-  let const pattern_text = String{scratch_allocator(), pattern};
-  let const compiled =
-      os::compile_regex(pattern_text.view(),
-                        is_case_insensitive ? os::case_sensitivity::Insensitive
-                                            : os::case_sensitivity::Sensitive);
+  let const compiled = os::compile_regex(
+      pattern, is_case_insensitive ? os::case_sensitivity::Insensitive
+                                   : os::case_sensitivity::Sensitive);
 
   if (!compiled.has_value()) {
     let reason = String{scratch_allocator()};

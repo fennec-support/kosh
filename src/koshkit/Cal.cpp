@@ -87,8 +87,7 @@ append_calendar_month(String          &output,
 
   let const left_padding = title.length() < 20 ? (20 - title.length()) / 2 : 0;
 
-  for (usize position = 0; position < left_padding; position++)
-    output += ' ';
+  output.append_repeated(' ', left_padding);
 
   append_report_text(output, title.view(),
                      colors::soft(colors::ansi::BOLD_BLUE), should_color);
@@ -108,8 +107,7 @@ append_calendar_month(String          &output,
     day_count++;
   }
 
-  for (usize position = 0; position < first_column; position++)
-    output += "   ";
+  output.append_repeated(' ', first_column * 3);
 
   for (usize day = 1; day <= day_count; day++) {
     if (day < 10) output += ' ';

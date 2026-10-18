@@ -170,29 +170,16 @@ EvalContext::run_program_fallback(ExecContext     &ec,
 
     for (usize frame_index = 0; frame_index < shared_frame_count; frame_index++)
     {
-      source_store().source_frames()[frame_index].was_printed =
-          source_store().source_frames()[frame_index].was_printed ||
-          fallback_context.source_store()
-              .source_frames()[frame_index]
-              .was_printed;
-      source_store().source_frames()[frame_index].was_definition_printed =
-          source_store().source_frames()[frame_index].was_definition_printed ||
-          fallback_context.source_store()
-              .source_frames()[frame_index]
-              .was_definition_printed;
-      source_store().source_frames()[frame_index].has_deferred_trace =
-          source_store().source_frames()[frame_index].has_deferred_trace ||
-          fallback_context.source_store()
-              .source_frames()[frame_index]
-              .has_deferred_trace;
-      if (fallback_context.source_store()
-              .source_frames()[frame_index]
-              .deferred_trace_location.has_value())
-      {
-        source_store().source_frames()[frame_index].deferred_trace_location =
-            fallback_context.source_store()
-                .source_frames()[frame_index]
-                .deferred_trace_location;
+      let &outer = source_store().source_frames()[frame_index];
+      let &inner = fallback_context.source_store().source_frames()[frame_index];
+
+      outer.was_printed = outer.was_printed || inner.was_printed;
+      outer.was_definition_printed =
+          outer.was_definition_printed || inner.was_definition_printed;
+      outer.has_deferred_trace =
+          outer.has_deferred_trace || inner.has_deferred_trace;
+      if (inner.deferred_trace_location.has_value()) {
+        outer.deferred_trace_location = inner.deferred_trace_location;
       }
     }
   };
@@ -481,12 +468,12 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
     }
   };
 
-  if (!is_isolated) {
-    variable_store().positional_params() = steal(params);
-    seed_shell_identity_variables(mode == mimic_mood::Bash
-                                      ? shell_identity_mode::Bash
-                                      : shell_identity_mode::Native);
+  variable_store().positional_params() = steal(params);
+  seed_shell_identity_variables(mode == mimic_mood::Bash
+                                    ? shell_identity_mode::Bash
+                                    : shell_identity_mode::Native);
 
+  if (!is_isolated) {
     std::exception_ptr error;
 
     try {
@@ -506,10 +493,6 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
     return execution_store().last_exit_status();
   }
 
-  variable_store().positional_params() = steal(params);
-  seed_shell_identity_variables(mode == mimic_mood::Bash
-                                    ? shell_identity_mode::Bash
-                                    : shell_identity_mode::Native);
   enter_subshell();
   clear_inherited_exit_trap();
 
@@ -966,9 +949,7 @@ SourceRetention::release_to(source_retention_mark mark) wontthrow -> void
 fn
 SourceRetention::clear() wontthrow -> void
 {
-  m_asts.clear();
-  free_sources_from(0);
-  m_generation++;
+  release_to(source_retention_mark{});
 }
 
 pure fn

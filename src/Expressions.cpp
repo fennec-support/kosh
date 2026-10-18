@@ -424,13 +424,6 @@ VariableOccurrenceStateMap::erase(StringView name) throws -> void
 }
 
 fn
-VariableOccurrenceStateMap::clear() wontthrow -> void
-{
-  release_variable_occurrence_map_storage(m_head);
-  m_head = nullptr;
-}
-
-fn
 VariableOccurrenceStateMap::get_private_head() throws
     -> variable_occurrence_map_storage *
 {
@@ -1776,13 +1769,9 @@ fn
 expanded_command_path(StringView name, Allocator allocator) throws
     -> String
 {
-  if (let const expanded = utils::expand_leading_tilde_path(name);
-      expanded.has_value())
-  {
-    return String{allocator, expanded->view()};
-  }
+  let const expanded = utils::expand_leading_tilde_path(name);
 
-  return String{allocator, name};
+  return String{allocator, expanded.has_value() ? expanded->view() : name};
 }
 
 fn
@@ -1928,25 +1917,21 @@ expressions::internal::analyze_followed_source(
     }
   }
 
-  if (tilde_expansion == source_tilde_expansion::Enabled &&
-      actx.effects.has_unknown_working_directory)
+  let const source_path        = Path{*literal_path};
+  let const is_relative_source = !source_path.is_absolute();
+
+  if (actx.effects.has_unknown_working_directory &&
+      (tilde_expansion == source_tilde_expansion::Enabled ||
+       is_relative_source))
   {
     return false;
   }
 
-  let const source_path = Path{*literal_path};
   if (tilde_expansion == source_tilde_expansion::Disabled &&
-      !source_path.is_absolute())
+      is_relative_source && !os::has_directory_separator(*literal_path) &&
+      actx.effects.has_unknown_path)
   {
-    if (os::has_directory_separator(*literal_path)) {
-      if (actx.effects.has_unknown_working_directory) {
-        return false;
-      }
-    } else if (actx.effects.has_unknown_path ||
-               actx.effects.has_unknown_working_directory)
-    {
-      return false;
-    }
+    return false;
   }
 
   let resolved_path =
@@ -2020,20 +2005,25 @@ expressions::internal::analyze_followed_source(
   let       parse_errors = ArrayList<String>{heap_allocator()};
   let const child_diagnostic_start =
       actx.reporter.sink != nullptr ? actx.reporter.sink->count() : 0;
+  let const do_name_child_diagnostics =
+      [&actx, child_diagnostic_start,
+       &canonical_path]() throws -> void {
+    if (actx.reporter.sink == nullptr) return;
+
+    for (usize index = child_diagnostic_start;
+         index < actx.reporter.sink->count(); index++)
+    {
+      let &diagnostic = (*actx.reporter.sink)[index];
+
+      if (diagnostic.source_name.is_empty())
+        diagnostic.source_name = canonical_path->text();
+    }
+  };
   let const ast =
       parser.construct_ast(parse_errors, actx.eval_context, actx.reporter.sink);
 
   if (!parse_errors.is_empty()) {
-    if (actx.reporter.sink != nullptr) {
-      for (usize index = child_diagnostic_start;
-           index < actx.reporter.sink->count(); index++)
-      {
-        let &diagnostic = (*actx.reporter.sink)[index];
-
-        if (diagnostic.source_name.is_empty())
-          diagnostic.source_name = canonical_path->text();
-      }
-    }
+    do_name_child_diagnostics();
 
     if (actx.reporter.sink == nullptr)
       for (let const &error : parse_errors)
@@ -2068,16 +2058,7 @@ expressions::internal::analyze_followed_source(
        &effects},
       {nullptr, actx.reporter.sink, nullptr}, actx.source_provider);
 
-  if (actx.reporter.sink != nullptr) {
-    for (usize index = child_diagnostic_start;
-         index < actx.reporter.sink->count(); index++)
-    {
-      let &diagnostic = (*actx.reporter.sink)[index];
-
-      if (diagnostic.source_name.is_empty())
-        diagnostic.source_name = canonical_path->text();
-    }
-  }
+  do_name_child_diagnostics();
 
   if (!analyzed) actx.reporter.has_fatal = true;
   /* an analysis under an unknown path or working directory depends on the
@@ -2833,10 +2814,7 @@ internal::analyze_word_substitutions(AnalysisContext      &actx,
 
       let const position = static_cast<usize>(segment.source_position);
 
-      if (text.length > actx.source.length ||
-          position > actx.source.length - text.length ||
-          actx.source.substring_of_length(position, text.length) != text)
-      {
+      if (analysis_source_text(actx, {position, text.length}) != text) {
         break;
       }
 

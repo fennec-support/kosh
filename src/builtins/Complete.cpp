@@ -299,14 +299,14 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
+  let const do_flag_text = [](const auto &flag) wontthrow -> StringView {
+    return flag.is_set() ? flag.value() : StringView{};
+  };
+
   let function_name =
-      String{cxt.scratch_allocator(), FLAG_COMPLETE_FUNCTION.is_set()
-                                          ? FLAG_COMPLETE_FUNCTION.value()
-                                          : StringView{}};
+      String{cxt.scratch_allocator(), do_flag_text(FLAG_COMPLETE_FUNCTION)};
   let word_list =
-      String{cxt.scratch_allocator(), FLAG_COMPLETE_WORDLIST.is_set()
-                                          ? FLAG_COMPLETE_WORDLIST.value()
-                                          : StringView{}};
+      String{cxt.scratch_allocator(), do_flag_text(FLAG_COMPLETE_WORDLIST)};
   u32 option_mask = 0;
 
   for (usize i = 0; i < FLAG_COMPLETE_OPTION.count(); i++) {
@@ -350,10 +350,6 @@ Complete::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* at this point: option_mask and action_mask hold only bits of valid -o
      options and -A actions. */
-  let const do_flag_text = [](const auto &flag) wontthrow -> StringView {
-    return flag.is_set() ? flag.value() : StringView{};
-  };
-
   let const glob_pattern   = do_flag_text(FLAG_COMPLETE_GLOB);
   let const filter_pattern = do_flag_text(FLAG_COMPLETE_FILTER);
   let const prefix         = do_flag_text(FLAG_COMPLETE_PREFIX);

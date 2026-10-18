@@ -1486,8 +1486,6 @@ draw_pixels(scene_canvas      &canvas,
   for (usize index = 0; index < text.length; index++) {
     let const color = cat_pixel_color(text[index], palette, eye_color);
 
-    if (color == 0) continue;
-
     let const sprite_column = offset + index;
     let const column =
         is_mirrored ? origin_column +
@@ -1947,8 +1945,7 @@ Meow::execute(const ExecContext               &ec,
 
   let const allocator         = cxt.scratch_allocator();
   u32       frames_per_second = DEFAULT_FRAMES_PER_SECOND;
-  f64       speed             = 1.0;
-  usize     cat_count         = 1;
+  let       scene             = scene_state{};
 
   if (FLAG_MEOW_FPS.is_set()) {
     let const parsed = FLAG_MEOW_FPS.value().to<u32>();
@@ -1981,7 +1978,7 @@ Meow::execute(const ExecContext               &ec,
       return 1;
     }
 
-    speed = parsed.value();
+    scene.speed = parsed.value();
   }
 
   if (FLAG_MEOW_CATS.is_set()) {
@@ -1998,20 +1995,16 @@ Meow::execute(const ExecContext               &ec,
       return 1;
     }
 
-    cat_count = parsed.value();
+    scene.cat_count = parsed.value();
   }
 
   let const started_at_nanoseconds = os::monotonic_nanos();
-  let       scene                  = scene_state{};
 
   scene.noise.state =
       mix_bits(started_at_nanoseconds ^
                (static_cast<u64>(os::current_unix_seconds()) << 32) ^
                static_cast<u64>(reinterpret_cast<uintptr_t>(&scene.noise))) |
       1;
-
-  scene.cat_count = cat_count;
-  scene.speed     = speed;
 
   if (!os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT))) {
     print_still_cat(ec,
@@ -2047,14 +2040,11 @@ Meow::execute(const ExecContext               &ec,
         dimensions.rows > 1 ? static_cast<usize>(dimensions.rows) - 1 : 1;
 
     let const now_nanoseconds = os::monotonic_nanos();
-    let       step_seconds =
-        static_cast<f64>(now_nanoseconds - last_frame_nanoseconds) / 1e9;
+    let const step_seconds    = std::fmin(
+        static_cast<f64>(now_nanoseconds - last_frame_nanoseconds) / 1e9,
+        LONGEST_STEP_SECONDS);
 
     last_frame_nanoseconds = now_nanoseconds;
-
-    if (step_seconds > LONGEST_STEP_SECONDS) {
-      step_seconds = LONGEST_STEP_SECONDS;
-    }
 
     if (!has_placed_cats) {
       place_cats(scene);

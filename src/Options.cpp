@@ -1713,7 +1713,7 @@ find_option_by_koshconf_name(StringView name) wontthrow
     return nullptr;
   }
 
-  return found->koshconf_name.is_empty() ? nullptr : found;
+  return found;
 }
 
 pure fn
@@ -1970,12 +1970,11 @@ write_option_number(EvalContext             &cxt,
       value != option.strict_value;
 
   if (is_held_by_kosh_mood) {
-    let const error = ErrorWithDetails{
+    throw ErrorWithDetails{
         StringView{"The kosh mood keeps '"} + display_name(option, origin) +
             "' " + format_option_number(option, option.strict_value),
         "Switch to the bash mood with `koshconf set mood bash` to change "
         "it"};
-    throw error;
   }
 
   /* at this point: option is writable, and the kosh mood does not

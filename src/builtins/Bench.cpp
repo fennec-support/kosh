@@ -529,12 +529,11 @@ public:
         max(allocator)
   {}
 
-  String      name;
-  metric_unit unit{metric_unit::Count};
-  String      mean;
-  String      std_dev;
-  String      min;
-  String      max;
+  String name;
+  String mean;
+  String std_dev;
+  String min;
+  String max;
 };
 
 fn
@@ -546,7 +545,6 @@ make_metric_row(StringView          name,
   let row = MetricRow{allocator};
 
   row.name    = String{allocator, name};
-  row.unit    = unit;
   row.mean    = format_metric(stats.mean, unit, allocator);
   row.std_dev = format_metric(stats.std_dev, unit, allocator);
   row.min     = format_metric(stats.min, unit, allocator);
@@ -650,12 +648,6 @@ parse_count_flag(const FlagString &flag, StringView flag_name) throws
 
 constexpr u64    PROGRESS_INTERVAL_NANOS = 16ULL * 1000000ULL;
 const StringView CLEAR_PROGRESS_LINE{"\r\x1b[2K"};
-
-fn
-progress_is_enabled() throws -> bool
-{
-  return colors::stderr_wants_color();
-}
 
 fn
 draw_progress(StringView command,
@@ -1269,7 +1261,7 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                             "--duration is too large"};
 
   let const should_color            = colors::stdout_wants_color();
-  let const should_show_progress    = progress_is_enabled();
+  let const should_show_progress    = colors::stderr_wants_color();
   let const should_ignore_exit_code = FLAG_BENCH_IGNORE_EXIT.is_enabled();
   let const should_suppress_output  = !FLAG_BENCH_SHOW_OUTPUT.is_enabled();
   let const should_use_shell        = !FLAG_BENCH_NO_SHELL.is_enabled();

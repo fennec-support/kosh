@@ -80,6 +80,7 @@ struct sed_command
   bool   is_negated{false};
   bool   has_second_address{false};
   bool   is_range_active{false};
+  char   translation[256]{};
 };
 
 struct sed_script_part
@@ -328,7 +329,8 @@ parse_sed_script(StringView              script,
                         false,
                         is_negated,
                         has_second_address,
-                        false};
+                        false,
+                        {}};
 
     address.has_expression        = false;
     second_address.has_expression = false;
@@ -390,6 +392,19 @@ parse_sed_script(StringView              script,
             position, "translation strings have different lengths",
             "use translation strings with the same number of bytes"};
       command.replacement += destination.view();
+
+      let const source_length = command.replacement.length() / 2;
+
+      for (u16 byte = 0; byte < 256; byte++)
+        command.translation[byte] = static_cast<char>(byte);
+
+      for (usize source_position = 0; source_position < source_length;
+           source_position++)
+      {
+        command.translation[static_cast<u8>(
+            command.replacement[source_position])] =
+            command.replacement[source_length + source_position];
+      }
       break;
     }
     case 's': {
@@ -728,7 +743,6 @@ Sed::execute(const ExecContext               &ec,
   i32 status = 0;
 
   let output                            = String{heap_allocator()};
-  let has_written_output                = false;
   let did_written_output_end_in_newline = true;
 
   let const do_flush_output = [&](bool should_flush_all) throws {
@@ -737,7 +751,6 @@ Sed::execute(const ExecContext               &ec,
     }
 
     ec.print_to_stdout(output);
-    has_written_output                = true;
     did_written_output_end_in_newline = output[output.length() - 1] == '\n';
     output.clear();
   };
@@ -812,23 +825,12 @@ Sed::execute(const ExecContext               &ec,
         break;
 
       case sed_command_kind::Translate: {
-        let const source_length = command.replacement.length() / 2;
-        char      translation[256];
-
-        for (u16 byte = 0; byte < 256; byte++)
-          translation[byte] = static_cast<char>(byte);
-
-        for (usize source_position = 0; source_position < source_length;
-             source_position++)
-          translation[static_cast<u8>(command.replacement[source_position])] =
-              command.replacement[source_length + source_position];
-
         String translated{heap_allocator()};
 
         translated.reserve(line.length());
 
         for (usize position = 0; position < line.length(); position++)
-          translated += translation[static_cast<u8>(line[position])];
+          translated += command.translation[static_cast<u8>(line[position])];
 
         line = steal(translated);
         break;
@@ -845,9 +847,8 @@ Sed::execute(const ExecContext               &ec,
     }
 
     let const does_output_end_in_newline =
-        !output.is_empty()
-            ? output[output.length() - 1] == '\n'
-            : !has_written_output || did_written_output_end_in_newline;
+        !output.is_empty() ? output[output.length() - 1] == '\n'
+                           : did_written_output_end_in_newline;
 
     if (!appended_text.is_empty() && !does_output_end_in_newline) {
       output += '\n';

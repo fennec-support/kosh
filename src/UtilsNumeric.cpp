@@ -45,12 +45,6 @@ saturate_signed_magnitude(u64  magnitude,
   return static_cast<i64>(magnitude);
 }
 
-static fn
-not_an_integer_error(StringView text) throws -> Error
-{
-  return Error{"'" + text + "' is not a valid integer"};
-}
-
 fn
 int_to_text_into(i64 value, char *buffer, usize buffer_byte_count) wontthrow
     -> StringView
@@ -360,11 +354,10 @@ private:
       return m_source_data == source.data && m_source_length == source.count();
     }
 
-    /* memory: m_newline_offsets reserves one slot per newline in source and
-               keeps that capacity after invalidate(). the thread_local cache
-               frees it when its thread exits.
-       time:   O(source length) for count_newlines(), then one more scan of the
-               same length with O(1) work per newline. */
+    /* memory: m_newline_offsets keeps the capacity it grows to after
+               invalidate(). the thread_local cache frees it when its thread
+               exits.
+       time:   O(source length), with O(1) work per newline. */
     fn
     build_for(StringView source) throws -> void
     {
@@ -373,8 +366,6 @@ private:
       let const indexable_length =
           source.count() < UINT32_MAX ? source.count() : usize{UINT32_MAX};
       let const indexable = source.substring_of_length(0, indexable_length);
-
-      m_newline_offsets.reserve(count_newlines(indexable));
 
       usize scan_position = 0;
 
@@ -459,22 +450,6 @@ private:
     }
 
   private:
-    static pure fn
-    count_newlines(StringView text) wontthrow -> usize
-    {
-      usize newline_count = 0;
-      usize scan_position = 0;
-
-      while (scan_position < text.count()) {
-        let const newline = text.substring(scan_position).find_character('\n');
-        if (!newline.has_value()) break;
-        newline_count++;
-        scan_position += *newline + 1;
-      }
-
-      return newline_count;
-    }
-
     const char    *m_source_data{nullptr};
     usize          m_source_length{0};
     ArrayList<u32> m_newline_offsets;
@@ -772,7 +747,7 @@ parse_magnitude_in_base(StringView text, int_base base) throws
 
   skip_ascii_whitespace(text, offset);
   if (!has_digits || offset != text.length) {
-    return not_an_integer_error(text);
+    return Error{"'" + text + "' is not a valid integer"};
   }
 
   /* at this point: at least one digit was parsed, all of text was consumed,

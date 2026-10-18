@@ -335,24 +335,20 @@ print_help_or_version_status(const String &program_path) -> Maybe<int>
   }
 
   if (FLAG_LIST_CHECKS.is_enabled()) {
-    let l = String{heap_allocator(), "SHELLCHECK DIAGNOSTICS\n"};
+    let l = String{heap_allocator()};
 
-    for (usize index = 0; index < get_diagnostic_count(); index++) {
-      let const &definition = DIAGNOSTIC_DEFINITIONS[index];
+    for (let const is_shellcheck_section : {true, false}) {
+      l += is_shellcheck_section ? "SHELLCHECK DIAGNOSTICS\n"
+                                 : "\nNATIVE ANALYSIS DIAGNOSTICS\n";
 
-      if (!definition.shellcheck_code.has_value()) continue;
+      for (usize index = 0; index < get_diagnostic_count(); index++) {
+        let const &definition = DIAGNOSTIC_DEFINITIONS[index];
 
-      append_listed_diagnostic(l, definition);
-    }
+        if (definition.shellcheck_code.has_value() != is_shellcheck_section)
+          continue;
 
-    l += "\nNATIVE ANALYSIS DIAGNOSTICS\n";
-
-    for (usize index = 0; index < get_diagnostic_count(); index++) {
-      let const &definition = DIAGNOSTIC_DEFINITIONS[index];
-
-      if (definition.shellcheck_code.has_value()) continue;
-
-      append_listed_diagnostic(l, definition);
+        append_listed_diagnostic(l, definition);
+      }
     }
 
     print(l);
@@ -384,15 +380,15 @@ report_escaped_control_flow(EvalContext &context, const String &fallback_source)
   if (!context.control_flow_store().has_pending()) return;
 
   const control_flow &control = context.control_flow_store().pending();
-  let                 what    = String{heap_allocator()};
+  let                 what    = StringView{};
 
   switch (control.kind) {
   case control_flow::Kind::Break:
-    what = String{what.allocator(), "'break' used outside of a loop"};
+    what = "'break' used outside of a loop";
     break;
 
   case control_flow::Kind::Continue:
-    what = String{what.allocator(), "'continue' used outside of a loop"};
+    what = "'continue' used outside of a loop";
     break;
 
   case control_flow::Kind::Return: {
@@ -404,8 +400,7 @@ report_escaped_control_flow(EvalContext &context, const String &fallback_source)
       utils::quit(return_status, utils::farewell_policy::Goodbye);
     }
 
-    what = String{what.allocator(),
-                  "'return' used outside of a function or a sourced script"};
+    what = "'return' used outside of a function or a sourced script";
     break;
   }
   case control_flow::Kind::Exit:
@@ -1532,27 +1527,9 @@ select_history_words(StringView        command,
     throw_bad_history_word_specifier(spelling);
   }
 
-  usize selected_byte_count = 0;
-
-  scan_position = 0;
-  word_index    = 0;
-
-  while (scan_position < command.length) {
-    let const word = next_history_word(command, scan_position);
-
-    if (!word.has_value()) break;
-    if (word_index >= first_word_index && word_index < end_word_index) {
-      if (selected_byte_count > 0) selected_byte_count++;
-      selected_byte_count += word->length;
-    }
-
-    word_index++;
-  }
-
   /* e.g. command = "cat 'a b' x", designator = "1-2" gives word_count 3,
      first_word_index 1 and end_word_index 3, so the words "'a b'" and "x"
-     are selected. selected_byte_count is 5 + 1 + 1 = 7. */
-  selected.reserve(selected_byte_count);
+     are selected. */
   scan_position = 0;
   word_index    = 0;
 

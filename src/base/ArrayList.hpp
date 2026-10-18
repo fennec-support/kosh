@@ -544,15 +544,6 @@ public:
   fn
   sort(Compare is_less) throws -> void
   {
-    if (m_length < 2) return;
-
-    if (m_length <= INSERTION_SORT_THRESHOLD) {
-      insertion_sort_range(0, m_length, is_less);
-
-      return;
-    }
-
-    /* at this point: m_length is greater than INSERTION_SORT_THRESHOLD. */
     usize allowed_unbalanced_count = 0;
 
     for (usize count = m_length; count > 1; count >>= 1)

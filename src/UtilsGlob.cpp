@@ -670,14 +670,9 @@ glob_matches(StringView    glob,
         return glob[index] == ']' && do_is_active(index);
       };
 
-      let const do_get_byte_at = [](StringView view,
-                                    usize      index) wontthrow -> u8 {
-        return static_cast<u8>(view[index]);
-      };
-
       let const do_get_character_at =
           [&](StringView view, usize index) wontthrow -> decoded_codepoint {
-        let const byte = do_get_byte_at(view, index);
+        let const byte = static_cast<u8>(view[index]);
 
         if (!is_utf8 || byte < 0x80) {
           return {byte, 1};
@@ -746,7 +741,7 @@ glob_matches(StringView    glob,
       }
 
       if (!has_closing_bracket) {
-        if (do_get_byte_at(glob, g) != do_get_byte_at(str, s)) goto retry_star;
+        if (glob[g] != str[s]) goto retry_star;
         g++;
         s++;
         break;
@@ -835,17 +830,15 @@ retry_star:
     g = star_glob_position;
   }
 
-  if (s >= str.count()) {
-    while (g < glob.count() && glob[g] == '*' &&
-           is_glob_char_active(glob_active, mask_offset + g))
-    {
-      g++;
-    }
+  if (s < str.count()) return false;
 
-    if (g >= glob.count()) return true;
+  while (g < glob.count() && glob[g] == '*' &&
+         is_glob_char_active(glob_active, mask_offset + g))
+  {
+    g++;
   }
 
-  return false;
+  return g >= glob.count();
 }
 
 } /* namespace utils */

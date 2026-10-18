@@ -196,11 +196,7 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
           if (!on.has_value()) continue;
 
-          if (should_enable && !*on) {
-            continue;
-          }
-
-          if (should_disable && *on) {
+          if ((should_enable && !*on) || (should_disable && *on)) {
             continue;
           }
 
@@ -218,14 +214,7 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const &location = name_locations[n];
 
       if (should_enable || should_disable) {
-        if (!apply_shell_option(cxt, name, should_enable)) {
-          if (is_quiet) {
-            status = 1;
-          } else {
-            throw ErrorWithLocation{
-                location, StringView{"Unknown shopt option '"} + name + "'"};
-          }
-        }
+        if (apply_shell_option(cxt, name, should_enable)) continue;
       } else if (Maybe<bool> on = query_shell_option(cxt, name); on.has_value())
       {
         if (!*on) {
@@ -235,13 +224,15 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (!is_quiet) {
           ec.print_to_stdout(do_format_status_line(name, *on).view());
         }
+
+        continue;
+      }
+
+      if (is_quiet) {
+        status = 1;
       } else {
-        if (is_quiet) {
-          status = 1;
-        } else {
-          throw ErrorWithLocation{
-              location, StringView{"Unknown shopt option '"} + name + "'"};
-        }
+        throw ErrorWithLocation{location, StringView{"Unknown shopt option '"} +
+                                              name + "'"};
       }
     }
 
@@ -258,11 +249,7 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
           let const is_on = shopt_is_on(cxt, option);
 
-          if (should_enable && !is_on) {
-            continue;
-          }
-
-          if (should_disable && is_on) {
+          if ((should_enable && !is_on) || (should_disable && is_on)) {
             continue;
           }
 

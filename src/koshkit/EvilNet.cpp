@@ -429,8 +429,6 @@ append_tcp_report(String            &output,
 
   cells.reserve(3);
 
-  bool has_rows = false;
-
   let const do_append_group = [&](StringView title, const StringView *names,
                                   const u64                      *values,
                                   const os::tcp_statistics_field *fields,
@@ -445,7 +443,6 @@ append_tcp_report(String            &output,
       cells.push({names[index], colors::ansi::RESET});
       cells.push({value.view(), colors::ansi::RESET});
       table.add_row(cells);
-      has_rows = true;
     }
   };
 
@@ -538,7 +535,8 @@ append_tcp_report(String            &output,
 
   do_append_group("Failures", FAILURE_NAMES, failure_values, FAILURE_FIELDS,
                   countof(FAILURE_NAMES));
-  if (has_rows) append_titled_report_table(output, "TCP", table, should_color);
+  if (table.get_row_count() != 0)
+    append_titled_report_table(output, "TCP", table, should_color);
 
   constexpr StringView WARNING_NAMES[] = {
       "failed connections",
@@ -633,37 +631,18 @@ network_counter_reset(
     const os::network_interface_statistics_entry &before,
     const os::network_interface_statistics_entry &after) wontthrow -> bool
 {
-  let const do_is_reset =
-      [&](os::network_statistics_field field,
-          u64 os::network_interface_statistics_entry::*member) {
-        return before.has_field(field) && after.has_field(field) &&
-               after.*member < before.*member;
-      };
+  /* Index 0 is the name key, which has no counter. */
+  for (usize index = 1; index < countof(EVILNET_SORT_SPECS); index++) {
+    let const &spec = EVILNET_SORT_SPECS[index];
 
-  return do_is_reset(
-             os::network_statistics_field::ReceiveBytes,
-             &os::network_interface_statistics_entry::receive_byte_count) ||
-         do_is_reset(
-             os::network_statistics_field::TransmitBytes,
-             &os::network_interface_statistics_entry::transmit_byte_count) ||
-         do_is_reset(
-             os::network_statistics_field::ReceivePackets,
-             &os::network_interface_statistics_entry::receive_packet_count) ||
-         do_is_reset(
-             os::network_statistics_field::TransmitPackets,
-             &os::network_interface_statistics_entry::transmit_packet_count) ||
-         do_is_reset(
-             os::network_statistics_field::ReceiveErrors,
-             &os::network_interface_statistics_entry::receive_error_count) ||
-         do_is_reset(
-             os::network_statistics_field::TransmitErrors,
-             &os::network_interface_statistics_entry::transmit_error_count) ||
-         do_is_reset(
-             os::network_statistics_field::ReceiveDrops,
-             &os::network_interface_statistics_entry::receive_drop_count) ||
-         do_is_reset(
-             os::network_statistics_field::TransmitDrops,
-             &os::network_interface_statistics_entry::transmit_drop_count);
+    if (before.has_field(spec.field) && after.has_field(spec.field) &&
+        after.*(spec.member) < before.*(spec.member))
+    {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /* memory: an ArrayList of after.count() entries and one interface name String
@@ -700,60 +679,14 @@ sample_network_statistics(
     if (previous_index.has_value()) {
       let const &previous = before[*previous_index];
 
-      if (entry.has_field(os::network_statistics_field::ReceiveBytes) &&
-          previous.has_field(os::network_statistics_field::ReceiveBytes))
-      {
-        result.receive_byte_count = network_counter_delta(
-            previous.receive_byte_count, entry.receive_byte_count);
-      }
+      /* Index 0 is the name key, which has no counter. */
+      for (usize index = 1; index < countof(EVILNET_SORT_SPECS); index++) {
+        let const &spec = EVILNET_SORT_SPECS[index];
 
-      if (entry.has_field(os::network_statistics_field::TransmitBytes) &&
-          previous.has_field(os::network_statistics_field::TransmitBytes))
-      {
-        result.transmit_byte_count = network_counter_delta(
-            previous.transmit_byte_count, entry.transmit_byte_count);
-      }
-
-      if (entry.has_field(os::network_statistics_field::ReceivePackets) &&
-          previous.has_field(os::network_statistics_field::ReceivePackets))
-      {
-        result.receive_packet_count = network_counter_delta(
-            previous.receive_packet_count, entry.receive_packet_count);
-      }
-
-      if (entry.has_field(os::network_statistics_field::TransmitPackets) &&
-          previous.has_field(os::network_statistics_field::TransmitPackets))
-      {
-        result.transmit_packet_count = network_counter_delta(
-            previous.transmit_packet_count, entry.transmit_packet_count);
-      }
-
-      if (entry.has_field(os::network_statistics_field::ReceiveErrors) &&
-          previous.has_field(os::network_statistics_field::ReceiveErrors))
-      {
-        result.receive_error_count = network_counter_delta(
-            previous.receive_error_count, entry.receive_error_count);
-      }
-
-      if (entry.has_field(os::network_statistics_field::TransmitErrors) &&
-          previous.has_field(os::network_statistics_field::TransmitErrors))
-      {
-        result.transmit_error_count = network_counter_delta(
-            previous.transmit_error_count, entry.transmit_error_count);
-      }
-
-      if (entry.has_field(os::network_statistics_field::ReceiveDrops) &&
-          previous.has_field(os::network_statistics_field::ReceiveDrops))
-      {
-        result.receive_drop_count = network_counter_delta(
-            previous.receive_drop_count, entry.receive_drop_count);
-      }
-
-      if (entry.has_field(os::network_statistics_field::TransmitDrops) &&
-          previous.has_field(os::network_statistics_field::TransmitDrops))
-      {
-        result.transmit_drop_count = network_counter_delta(
-            previous.transmit_drop_count, entry.transmit_drop_count);
+        if (entry.has_field(spec.field) && previous.has_field(spec.field)) {
+          result.*(spec.member) = network_counter_delta(previous.*(spec.member),
+                                                        entry.*(spec.member));
+        }
       }
     }
 
@@ -811,22 +744,12 @@ get_network_window_status(const live_network_row &row,
         sampled.*member = network_counter_delta(*baseline, newest.*member);
       };
 
-  do_sample(os::network_statistics_field::ReceiveBytes,
-            &os::network_interface_statistics_entry::receive_byte_count);
-  do_sample(os::network_statistics_field::TransmitBytes,
-            &os::network_interface_statistics_entry::transmit_byte_count);
-  do_sample(os::network_statistics_field::ReceivePackets,
-            &os::network_interface_statistics_entry::receive_packet_count);
-  do_sample(os::network_statistics_field::TransmitPackets,
-            &os::network_interface_statistics_entry::transmit_packet_count);
-  do_sample(os::network_statistics_field::ReceiveErrors,
-            &os::network_interface_statistics_entry::receive_error_count);
-  do_sample(os::network_statistics_field::TransmitErrors,
-            &os::network_interface_statistics_entry::transmit_error_count);
-  do_sample(os::network_statistics_field::ReceiveDrops,
-            &os::network_interface_statistics_entry::receive_drop_count);
-  do_sample(os::network_statistics_field::TransmitDrops,
-            &os::network_interface_statistics_entry::transmit_drop_count);
+  /* Index 0 is the name key, which has no counter. */
+  for (usize index = 1; index < countof(EVILNET_SORT_SPECS); index++) {
+    let const &spec = EVILNET_SORT_SPECS[index];
+
+    do_sample(spec.field, spec.member);
+  }
 
   return sampled;
 }

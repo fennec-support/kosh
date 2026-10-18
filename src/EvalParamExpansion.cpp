@@ -47,10 +47,7 @@ compute_substring_bounds(i64               value_count,
                     "a point before the offset"};
       end = *length < -value_count ? -1 : value_count + *length;
     } else {
-      let const clamped_length = *length > value_count ? value_count : *length;
-
-      end = clamped_length > value_count - start ? value_count
-                                                 : start + clamped_length;
+      end = *length > value_count - start ? value_count : start + *length;
     }
   }
 
@@ -135,9 +132,7 @@ enum class pattern_match_extent : u8
 static fn
 should_drop_final_empty_element(StringView separators) wontthrow -> bool
 {
-  if (separators.is_empty()) return false;
-
-  return !separators.find_character(' ').has_value();
+  return !separators.is_empty() && !separators.find_character(' ').has_value();
 }
 
 alwaysinline static fn
@@ -1396,12 +1391,13 @@ fn
 EvalContext::ModifierWordExpander::expand_plain_parameter() throws
     -> void
 {
-  let   name = String{m_context.scratch_allocator()};
-  usize j    = m_index + 1;
+  usize j = m_index + 1;
 
   while (j < m_word.length && lexer::is_variable_name(m_word[j])) {
-    name += m_word[j++];
+    j++;
   }
+
+  let const name = m_word.substring_of_length(m_index + 1, j - m_index - 1);
 
   let const stored = m_context.variable_store().find_plain_scalar(name);
 
@@ -1574,15 +1570,16 @@ EvalContext::ModifierWordExpander::expand_special_parameter(char name)
     throws -> void
 {
   let const special_name = StringView{&name, 1};
-  let const value        = m_context.get_variable_value(special_name);
 
-  if (!value.has_value()) m_context.report_unset_reference(special_name);
   if ((name == '@' || name == '*') && expand_field_reference(special_name)) {
     m_index++;
 
     return;
   }
 
+  let const value = m_context.get_variable_value(special_name);
+
+  if (!value.has_value()) m_context.report_unset_reference(special_name);
   emit_run(value.has_value() ? value->view() : StringView{},
            !m_is_in_double_quote);
   m_index++;
@@ -1955,13 +1952,22 @@ find_balanced_subscript_close(StringView subscript_text)
 }
 
 static fn
-find_indirect_name_end(StringView body) wontthrow -> usize
+find_variable_name_end(StringView spec) wontthrow -> usize
 {
   usize name_end = 0;
 
-  while (name_end < body.length && lexer::is_variable_name(body[name_end])) {
+#pragma clang loop unroll_count(4)
+  while (name_end < spec.length && lexer::is_variable_name(spec[name_end])) {
     name_end++;
   }
+
+  return name_end;
+}
+
+static fn
+find_indirect_name_end(StringView body) wontthrow -> usize
+{
+  usize name_end = find_variable_name_end(body);
 
   if (name_end > 0 && name_end < body.length && body[name_end] == '[') {
     if (let const close =
@@ -2111,19 +2117,6 @@ EvalContext::ParameterExpander::expand_length() throws -> String
   return String::from(value.has_value() ? get_character_count(m_context, *value)
                                         : 0,
                       m_context.scratch_allocator());
-}
-
-static fn
-find_variable_name_end(StringView spec) wontthrow -> usize
-{
-  usize name_end = 0;
-
-#pragma clang loop unroll_count(4)
-  while (name_end < spec.length && lexer::is_variable_name(spec[name_end])) {
-    name_end++;
-  }
-
-  return name_end;
 }
 
 static fn
@@ -3167,7 +3160,7 @@ EvalContext::ParameterExpander::expand() throws -> String
      digit, or a special parameter character, and m_rest holds the text after
      m_name. */
 
-  if (!m_rest.is_empty() && m_rest[0] == '[' && !m_name.is_empty() &&
+  if (!m_rest.is_empty() && m_rest[0] == '[' &&
       lexer::is_variable_name_start(m_name[0]))
   {
     if (let element = expand_subscripted(); element.has_value()) {
@@ -3520,16 +3513,12 @@ longest_possible_pattern_match(StringView    pattern,
 {
   let const character_width = charset == glob_charset::Utf8 ? usize{4} : 1;
 
-  let const do_is_active = [&](usize index) wontthrow -> bool {
-    return index < pattern_active.count() && pattern_active[index];
-  };
-
   usize length = 0;
 
   for (usize i = 0; i < pattern.length; i++) {
     let const byte = pattern[i];
 
-    if (!do_is_active(i)) {
+    if (i >= pattern_active.count() || !pattern_active[i]) {
       length++;
       continue;
     }
@@ -3707,7 +3696,7 @@ longest_pattern_match_at(StringView      pattern,
   };
 
   for (usize end = first_end; end >= start; end--) {
-    if ((affixes.tail.is_empty() || do_has_tail(end)) &&
+    if (do_has_tail(end) &&
         (!is_utf8 || !splits_character(value, end, charset)) &&
         utils::glob_matches(pattern,
                             value.substring_of_length(start, end - start),
@@ -4192,7 +4181,6 @@ EvalContext::apply_case_modification_to_value(
                                     pattern_location));
   }
 
-  let const pattern_matches_any = pattern_word.is_empty();
   let const is_single_literal_pattern =
       pattern.length() == 1 &&
       (!pattern_active[0] ||
@@ -4211,7 +4199,7 @@ EvalContext::apply_case_modification_to_value(
 
     let const step = utils::charset_character_length(value, i, charset);
     let const is_pattern_match =
-        pattern_matches_any ||
+        pattern_word.is_empty() ||
         (is_single_literal_pattern && step == 1 && value[i] == pattern[0]) ||
         (!is_single_literal_pattern &&
          utils::glob_matches(pattern.view(), value.substring_of_length(i, step),

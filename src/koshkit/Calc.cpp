@@ -236,7 +236,6 @@ run_repl(const ExecContext   &ec,
       }
 
       switch (result.code) {
-      case TL_PRESSED_TAB: toiletline::set_input(result.text); continue;
       case TL_PRESSED_EOF:
         if (result.text.view().is_empty()) {
           koshka::print("^D");
@@ -246,8 +245,8 @@ run_repl(const ExecContext   &ec,
           return 0;
         }
 
-        toiletline::set_input(result.text);
-        continue;
+        fallthru;
+      case TL_PRESSED_TAB: toiletline::set_input(result.text); continue;
       case TL_PRESSED_INTERRUPT:
         koshka::print("^C");
         koshka::flush();
@@ -258,9 +257,7 @@ run_repl(const ExecContext   &ec,
 
       toiletline::emit_newlines(result.text);
 
-      if (result.code != TL_PRESSED_ENTER || result.text.view().is_empty()) {
-        continue;
-      }
+      if (result.code != TL_PRESSED_ENTER) continue;
 
       line = steal(result.text);
     } else {

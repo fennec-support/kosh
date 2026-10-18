@@ -199,26 +199,21 @@ find_matching_bracket(StringView                       line,
     let const is_dollar_opener =
         line[cursor] == '$' && cursor + 1 < line.length &&
         (line[cursor + 1] == '(' || line[cursor + 1] == '{');
+    let const position = is_dollar_opener ? cursor + 1 : cursor;
 
-    candidates[candidate_count++] = is_dollar_opener ? cursor + 1 : cursor;
-  }
-
-  if (cursor > 0) candidates[candidate_count++] = cursor - 1;
-
-  let has_bracket_candidate = false;
-
-  for (usize candidate_index = 0; candidate_index < candidate_count;
-       candidate_index++)
-  {
-    if (classify_bracket(line[candidates[candidate_index]]).has_value()) {
-      has_bracket_candidate = true;
+    if (classify_bracket(line[position]).has_value()) {
+      candidates[candidate_count++] = position;
     }
   }
 
-  if (!has_bracket_candidate) return None;
+  if (cursor > 0 && classify_bracket(line[cursor - 1]).has_value()) {
+    candidates[candidate_count++] = cursor - 1;
+  }
+
+  if (candidate_count == 0) return None;
 
   /* at this point: candidates holds candidate_count indices into line, and
-     at least one of them is a bracket byte. */
+     each is a bracket byte. */
 
   let case_pattern_ends = ArrayList<usize>{heap_allocator()};
 
@@ -226,12 +221,6 @@ find_matching_bracket(StringView                       line,
     collect_case_pattern_ends(line, case_pattern_ends);
 
   let const do_is_code_bracket = [&](usize position) throws -> bool {
-    if (position >= line.length ||
-        !classify_bracket(line[position]).has_value())
-    {
-      return false;
-    }
-
     if (byte_is_escaped(line, position) ||
         case_pattern_ends.find(position).has_value())
     {

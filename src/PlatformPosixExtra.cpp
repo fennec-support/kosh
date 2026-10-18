@@ -596,9 +596,10 @@ public:
   fn
   finish(perf_counts &counts) wontthrow -> bool
   {
+    defer { restore(); };
+
     if (get_cpu_counters(true, counter_classes, nullptr, end_counters) != 0) {
       counts = {};
-      restore();
 
       return false;
     }
@@ -617,7 +618,6 @@ public:
 
         if (end_counters[counter_index] < start_counters[counter_index]) {
           counts = {};
-          restore();
 
           return false;
         }
@@ -627,7 +627,6 @@ public:
 
       if (total > UINT64_MAX) {
         counts = {};
-        restore();
 
         return false;
       }
@@ -637,8 +636,6 @@ public:
          is below its start counter. */
       counts.*destinations[event_index] = static_cast<u64>(total);
     }
-
-    restore();
 
     return true;
   }
@@ -1056,10 +1053,7 @@ enumerate_processes(process_detail detail) throws
     if (!command_name.has_value()) continue;
     /* at this point: parsed_pid is a valid pid, process_directory and
        process_file hold its /proc paths, and command_name holds its comm. */
-
-    while (!command_name->is_empty() && command_name->back() == '\n') {
-      command_name->pop_back();
-    }
+    command_name->strip_trailing_newlines();
 
     process_entry process{};
 
@@ -1094,17 +1088,11 @@ enumerate_processes(process_detail detail) throws
 
     unused(format_proc_pid_path(process_file, parsed_pid.value(), "/stat"));
     if (let stat = Path{process_file}.read_entire_file(); stat.has_value()) {
-      let const text                = stat->view();
-      usize     after_name_position = text.length;
+      let const text        = stat->view();
+      let const command_end = text.find_last_character(')');
 
-      for (usize position = text.length; position > 0; position--)
-        if (text[position - 1] == ')') {
-          after_name_position = position;
-          break;
-        }
-
-      if (after_name_position < text.length) {
-        let const fields = text.substring(after_name_position);
+      if (command_end.has_value() && *command_end + 1 < text.length) {
+        let const fields = text.substring(*command_end + 1);
         let const state  = nth_space_field(fields, 0);
 
         if (!state.is_empty()) process.state = state[0];
@@ -1192,10 +1180,7 @@ describe_processes(const ArrayList<u32> &pids) throws
     if (!command_name.has_value()) continue;
     /* at this point: process_directory and process_file hold the /proc paths
        of pid, and command_name holds its comm. */
-
-    while (!command_name->is_empty() && command_name->back() == '\n') {
-      command_name->pop_back();
-    }
+    command_name->strip_trailing_newlines();
 
     process_entry process{};
 
@@ -1206,17 +1191,11 @@ describe_processes(const ArrayList<u32> &pids) throws
 
     unused(format_proc_pid_path(process_file, pid, "/stat"));
     if (let stat = Path{process_file}.read_entire_file(); stat.has_value()) {
-      let const text                = stat->view();
-      usize     after_name_position = text.length;
+      let const text        = stat->view();
+      let const command_end = text.find_last_character(')');
 
-      for (usize position = text.length; position > 0; position--)
-        if (text[position - 1] == ')') {
-          after_name_position = position;
-          break;
-        }
-
-      if (after_name_position < text.length) {
-        let const fields = text.substring(after_name_position);
+      if (command_end.has_value() && *command_end + 1 < text.length) {
+        let const fields = text.substring(*command_end + 1);
 
         if (let const start_ticks = nth_space_field(fields, 19).to<i64>();
             !start_ticks.is_error() && start_ticks.value() >= 0)
@@ -1243,7 +1222,7 @@ describe_processes(const ArrayList<u32> &pids) throws
   if (pids.is_empty()) return described;
 
   let const sorted_pids = pids.make_sorted(sort_order::ascending);
-  let       all         = enumerate_processes(process_detail::ResourceStats);
+  let       all         = enumerate_processes(process_detail::Basic);
 
   for (let &process : all) {
     if (sorted_pids.find(static_cast<u32>(process.pid)).has_value())
@@ -1989,22 +1968,6 @@ read_system_activity_status(system_activity_status &status) wontthrow -> bool
           status.available_fields |=
               static_cast<u32>(system_activity_field::Cpu);
         }
-      } else if (line.starts_with("procs_running ")) {
-        let const value = leading_digits(line, 14).to<u64>();
-
-        if (!value.is_error()) {
-          status.runnable_process_count = value.value();
-          status.available_fields |=
-              static_cast<u32>(system_activity_field::Runnable);
-        }
-      } else if (line.starts_with("procs_blocked ")) {
-        let const value = leading_digits(line, 14).to<u64>();
-
-        if (!value.is_error()) {
-          status.blocked_process_count = value.value();
-          status.available_fields |=
-              static_cast<u32>(system_activity_field::Blocked);
-        }
       } else {
         struct stat_scalar_field
         {
@@ -2013,14 +1976,18 @@ read_system_activity_status(system_activity_status &status) wontthrow -> bool
           system_activity_field        availability;
         };
         static constexpr stat_scalar_field STAT_SCALAR_FIELDS[] = {
-            {"intr ",      &system_activity_status::interrupt_count,
+            {"intr ",          &system_activity_status::interrupt_count,
              system_activity_field::Interrupts      },
-            {"ctxt ",      &system_activity_status::context_switch_count,
+            {"ctxt ",          &system_activity_status::context_switch_count,
              system_activity_field::ContextSwitches },
-            {"processes ", &system_activity_status::process_creation_count,
+            {"processes ",     &system_activity_status::process_creation_count,
              system_activity_field::ProcessCreations},
-            {"softirq ",   &system_activity_status::soft_interrupt_count,
+            {"softirq ",       &system_activity_status::soft_interrupt_count,
              system_activity_field::SoftInterrupts  },
+            {"procs_running ", &system_activity_status::runnable_process_count,
+             system_activity_field::Runnable        },
+            {"procs_blocked ", &system_activity_status::blocked_process_count,
+             system_activity_field::Blocked         },
         };
 
         for (let const &field : STAT_SCALAR_FIELDS) {
@@ -2562,11 +2529,9 @@ read_tcp_statistics(tcp_statistics &statistics) wontthrow -> bool
        tcp_statistics_field::RetransmitFailures        },
   };
 
-  if (read_tcp_counter_rows(StringView{netstat_buffer, netstat_length},
-                            "TcpExt:", NETSTAT_FIELDS, statistics))
-  {
-    has_statistics = true;
-  }
+  has_statistics |=
+      read_tcp_counter_rows(StringView{netstat_buffer, netstat_length},
+                            "TcpExt:", NETSTAT_FIELDS, statistics);
 
   return has_statistics;
 #else

@@ -307,8 +307,6 @@ collect_justfile_variables(StringView         source,
 pure fn
 is_recipe_header(StringView line) wontthrow -> bool
 {
-  if (line.is_empty() || line[0] == '#' || line[0] == '[') return false;
-
   static constexpr StringView KEYWORDS[] = {
       "set", "alias", "export", "unexport", "import", "mod",
   };
@@ -322,8 +320,7 @@ is_recipe_header(StringView line) wontthrow -> bool
   if (!colon.has_value()) return false;
   if (*colon + 1 < line.length && line[*colon + 1] == '=') return false;
 
-  /* at this point: line is nonempty, has a colon not followed by =, and
-     does not start with #, [, or a keyword. */
+  /* at this point: line is nonempty and has a colon not followed by =. */
   let const first = line[0];
 
   return first == '@' || is_recipe_variable_start(first);

@@ -643,13 +643,7 @@ public:
     }
 
     m_output.append(token);
-    let last_newline = Maybe<usize>{};
-
-    for (usize position = token.length; position > 0; position--)
-      if (token[position - 1] == '\n') {
-        last_newline = position - 1;
-        break;
-      }
+    let const last_newline = token.find_last_character('\n');
 
     if (last_newline.has_value())
       m_column =
@@ -666,8 +660,7 @@ public:
     m_output.append(" \\\n");
     m_has_line_text = false;
 
-    for (usize position = 0; position < continuation_indent; position++)
-      m_output.push(' ');
+    m_output.append_repeated(' ', continuation_indent);
 
     m_column = continuation_indent;
   }
@@ -781,8 +774,7 @@ private:
       return;
     }
 
-    for (usize position = 0; position < m_indent; position++)
-      m_output.push(' ');
+    m_output.append_repeated(' ', m_indent);
 
     m_column = m_indent;
   }
@@ -906,10 +898,6 @@ pure fn
 word_is_unbreakable(StringView word) wontthrow -> bool
 {
   if (word.length < 2) return false;
-  if (word[0] == '\'' || word[0] == '"') {
-    return true;
-  }
-
   if (word.find_character('\'').has_value() ||
       word.find_character('"').has_value())
   {
@@ -1092,9 +1080,7 @@ format_word_substitutions(StringView word,
     let end = position + opener_length;
 
     scan_balanced_region(word, end, closing);
-    if (end <= position + opener_length || end > word.length ||
-        word[end - 1] != closing)
-    {
+    if (end > word.length || word[end - 1] != closing) {
       output.push(word[position++]);
       continue;
     }
@@ -1894,16 +1880,13 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       has_completed_structural_statement = false;
       do_begin_statement(false, false);
       writer.append_token(text);
-      if (is_bash) {
-        subshell_depth++;
-        do_finish_command();
-        continue;
+      if (!is_bash) {
+        if (!is_followed_by_inline_comment) writer.finish_line();
+        indent += indent_step_spaces;
+        writer.set_indent(indent);
       }
 
-      if (!is_followed_by_inline_comment) writer.finish_line();
-      indent += indent_step_spaces;
       subshell_depth++;
-      writer.set_indent(indent);
       do_finish_command();
       continue;
     case format_operator::CloseBrace:
@@ -2526,13 +2509,10 @@ test_operand_without_x_prefix(StringView operand) throws
     return stripped;
   }
 
-  if (operand[0] == 'x' && operand[1] == '"' &&
-      operand[operand.length - 1] == '"')
+  if (operand[0] == 'x' &&
+      ((operand[1] == '"' && operand[operand.length - 1] == '"') ||
+       is_plain_test_literal(operand.substring(1))))
   {
-    return String{heap_allocator(), operand.substring(1)};
-  }
-
-  if (operand[0] == 'x' && is_plain_test_literal(operand.substring(1))) {
     return String{heap_allocator(), operand.substring(1)};
   }
 

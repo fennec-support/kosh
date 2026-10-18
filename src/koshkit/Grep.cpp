@@ -221,9 +221,9 @@ find_required_regex_literal(StringView pattern, bool is_extended) wontthrow
   while (index < pattern.length) {
     let const character = pattern[index];
 
-    if (character == '[') break;
-
-    if (is_extended && (character == '(' || character == ')')) {
+    if (character == '[' ||
+        (is_extended && (character == '(' || character == ')')))
+    {
       break;
     }
 
@@ -1132,13 +1132,10 @@ private:
         break;
       }
 
-      if (m_options.is_extended && (character == '(' || character == ')')) {
-        break;
-      }
-
       if (character == '.' || character == '[' || character == '$' ||
           character == '^' || character == '\n' || character == '\0' ||
-          static_cast<unsigned char>(character) > 0x7f)
+          static_cast<unsigned char>(character) > 0x7f ||
+          (m_options.is_extended && (character == '(' || character == ')')))
       {
         break;
       }
@@ -1516,28 +1513,6 @@ private:
   }
 
   fn
-  append_colored_line(usize      source_index,
-                      StringView source,
-                      StringView value) throws -> void
-  {
-    if (m_should_print_names) {
-      append_source_name(source);
-      append_separator();
-    }
-
-    if (m_options.should_print_line_numbers) {
-      append_line_number(m_source_line_numbers[source_index]);
-      append_separator();
-    }
-
-    if (m_options.should_highlight)
-      append_highlighted_text(value);
-    else
-      append_sgr_text(get_selected_line_sgr(), value);
-    m_output += '\n';
-  }
-
-  fn
   append_highlighted_text(StringView value) throws -> void
   {
     if (m_options.is_whole_line) {
@@ -1608,12 +1583,6 @@ private:
       m_has_any_match = true;
       switch (m_options.output_mode) {
       case grep_output_mode::Lines:
-        if (m_options.should_color) {
-          append_colored_line(source_index, source, value);
-          flush_output_if_full();
-          break;
-        }
-
         if (m_should_print_names) {
           append_source_name(source);
           append_separator();
@@ -1624,7 +1593,12 @@ private:
           append_separator();
         }
 
-        m_output += value;
+        if (!m_options.should_color)
+          m_output += value;
+        else if (m_options.should_highlight)
+          append_highlighted_text(value);
+        else
+          append_sgr_text(get_selected_line_sgr(), value);
         m_output += '\n';
         flush_output_if_full();
         break;
@@ -1953,12 +1927,9 @@ Grep::execute(const ExecContext               &ec,
     }
   };
 
-  usize first_source_index = 0;
+  usize first_source_index = has_pattern_flag ? 0 : 1;
 
-  if (!has_pattern_flag) {
-    do_add_pattern_list(operands[0].view());
-    first_source_index = 1;
-  }
+  if (!has_pattern_flag) do_add_pattern_list(operands[0].view());
 
   for (usize index = 0; index < FLAG_GREP_EXPRESSION.count(); index++)
     do_add_pattern_list(FLAG_GREP_EXPRESSION.get(index));

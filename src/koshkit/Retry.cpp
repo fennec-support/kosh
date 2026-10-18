@@ -82,8 +82,7 @@ sleep_interruptibly(f64 seconds) wontthrow -> bool
 {
   f64 remaining_seconds = seconds;
 
-  while (remaining_seconds > 0.0) {
-    if (os::INTERRUPT_REQUESTED) return false;
+  while (remaining_seconds > 0.0 && !os::INTERRUPT_REQUESTED) {
 
     let const slice = remaining_seconds < SLEEP_SLICE_SECONDS
                           ? remaining_seconds
@@ -217,7 +216,7 @@ Retry::execute(const ExecContext               &ec,
       delay_seconds = maximum_delay_seconds;
     }
 
-    if (delay_seconds > 0.0 && !sleep_interruptibly(delay_seconds)) {
+    if (!sleep_interruptibly(delay_seconds)) {
       os::INTERRUPT_REQUESTED = 0;
 
       return 130;

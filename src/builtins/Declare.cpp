@@ -232,22 +232,18 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (; i < args.count(); i++) {
       let const name = args[i].view();
 
-      if (should_set_function_attributes) {
-        if (!cxt.function_store().find_function(name).has_value()) {
-          status = 1;
-          continue;
-        }
-
-        if (should_mark_readonly) cxt.mark_function_readonly(name);
-        continue;
-      }
-
       if (!cxt.function_store().find_function(name).has_value()) {
-        if (!should_print_function_names_only)
+        if (!should_print_function_names_only &&
+            !should_set_function_attributes)
           report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
                                     StringView{"'"} + name +
                                         "' is not a function");
         status = 1;
+        continue;
+      }
+
+      if (should_set_function_attributes) {
+        if (should_mark_readonly) cxt.mark_function_readonly(name);
         continue;
       }
 

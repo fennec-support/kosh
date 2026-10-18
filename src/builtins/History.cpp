@@ -86,15 +86,9 @@ history_target_needs_separator(const Path &target) throws
   let const fd        = opened.value();
   char      last_byte = '\0';
 
-  if (!os::seek_descriptor_from_start(fd, status.size - 1)) {
-    let const failure_message = os::last_system_error_message();
-
-    unused(os::close_fd(fd));
-
-    return Error{failure_message.view()};
-  }
-
-  let const read_count = os::read_fd(fd, &last_byte, 1);
+  let const read_count = os::seek_descriptor_from_start(fd, status.size - 1)
+                             ? os::read_fd(fd, &last_byte, 1)
+                             : Maybe<usize>{None};
 
   if (!read_count.has_value()) {
     let const failure_message = os::last_system_error_message();
@@ -166,7 +160,6 @@ struct history_file_identity
   String resolved_path{heap_allocator()};
   u64    device_id{0};
   u64    file_id{0};
-  bool   is_set{false};
   bool   has_file_identity{false};
 };
 
@@ -197,8 +190,6 @@ get_history_file_identity(const Path &path) throws
     identity.file_id   = status.file_id;
   }
 
-  identity.is_set = true;
-
   return identity;
 }
 
@@ -206,7 +197,7 @@ static fn
 history_file_identity_matches(const history_file_identity &left,
                               const history_file_identity &right) -> bool
 {
-  if (!left.is_set || !right.is_set) {
+  if (left.resolved_path.is_empty() || right.resolved_path.is_empty()) {
     return false;
   }
 

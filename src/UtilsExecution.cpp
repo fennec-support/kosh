@@ -429,7 +429,6 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
 
   let unresolved_stages = ArrayList<usize>{heap_allocator()};
 
-  bool  is_first    = true;
   usize stage_index = 0;
   let   bootstrap   = os::subshell_bootstrap{};
 
@@ -471,7 +470,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       if (!did_stage_take_pipe) os::close_fd(pipe->out);
     }
 
-    if (!is_first) {
+    if (stage_index > 0) {
       if (!ec.in_fd)
         ec.in_fd = last_stdin;
       else
@@ -730,7 +729,6 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       stage_status[stage_index] = ret;
     }
 
-    is_first = false;
     stage_index++;
   }
 

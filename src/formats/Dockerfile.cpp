@@ -46,41 +46,16 @@ docker_instruction(StringView line, usize &content_position) wontthrow
       line.substring_of_length(instruction_start, position - instruction_start);
   let kind = docker_instruction_kind::None;
 
-  if (!instruction.is_empty()) {
-    switch (instruction[0]) {
-    case 'C':
-    case 'c':
-      if (parser_format_ascii_equal(instruction, "CMD"))
-        kind = docker_instruction_kind::Command;
-      break;
-
-    case 'E':
-    case 'e':
-      if (parser_format_ascii_equal(instruction, "ENTRYPOINT"))
-        kind = docker_instruction_kind::Entrypoint;
-      break;
-
-    case 'H':
-    case 'h':
-      if (parser_format_ascii_equal(instruction, "HEALTHCHECK"))
-        kind = docker_instruction_kind::Healthcheck;
-      break;
-
-    case 'R':
-    case 'r':
-      if (parser_format_ascii_equal(instruction, "RUN"))
-        kind = docker_instruction_kind::Run;
-      break;
-
-    case 'S':
-    case 's':
-      if (parser_format_ascii_equal(instruction, "SHELL"))
-        kind = docker_instruction_kind::Shell;
-      break;
-
-    default: break;
-    }
-  }
+  if (parser_format_ascii_equal(instruction, "CMD"))
+    kind = docker_instruction_kind::Command;
+  else if (parser_format_ascii_equal(instruction, "ENTRYPOINT"))
+    kind = docker_instruction_kind::Entrypoint;
+  else if (parser_format_ascii_equal(instruction, "HEALTHCHECK"))
+    kind = docker_instruction_kind::Healthcheck;
+  else if (parser_format_ascii_equal(instruction, "RUN"))
+    kind = docker_instruction_kind::Run;
+  else if (parser_format_ascii_equal(instruction, "SHELL"))
+    kind = docker_instruction_kind::Shell;
 
   if (kind == docker_instruction_kind::None) return kind;
 

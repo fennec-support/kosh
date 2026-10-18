@@ -200,9 +200,7 @@ directory_entry_folded_name_is_less(StringView left, StringView right) wontthrow
     if (left_byte != right_byte) return left_byte < right_byte;
   }
 
-  if (left.length != right.length) return left.length < right.length;
-
-  return false;
+  return left.length < right.length;
 }
 
 static pure fn
@@ -914,8 +912,6 @@ ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh)
   m_is_command_name_list_valid        = true;
   m_command_names_validation_epoch    = DIRECTORY_VALIDATION_EPOCH;
   m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
-  m_prefix_validation_epoch           = 0;
-  m_validated_prefix.clear();
 }
 
 fn

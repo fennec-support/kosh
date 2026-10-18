@@ -152,18 +152,6 @@ struct option_registry_view
   {
     return entries + entry_count;
   }
-
-  pure fn
-  count() const wontthrow -> usize
-  {
-    return entry_count;
-  }
-
-  pure fn
-  operator[](usize index) const wontthrow -> const option_descriptor &
-  {
-    return entries[index];
-  }
 };
 
 pure fn

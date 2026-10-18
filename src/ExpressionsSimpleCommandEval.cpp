@@ -872,9 +872,9 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
     return kind == Builtin::Kind::Eval || kind == Builtin::Kind::Source;
   };
 
-  let const is_source_evaluating_builtin =
-      has_prefix_assignments && !program_args.is_empty() &&
-      command_word_function == nullptr && do_is_source_evaluating_name();
+  let const is_source_evaluating_builtin = has_prefix_assignments &&
+                                           command_word_function == nullptr &&
+                                           do_is_source_evaluating_name();
   let const is_prefix_assignment_persistent =
       has_prefix_assignments &&
       (is_command_special_builtin
@@ -1315,14 +1315,12 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
     if (!error.was_rendered()) {
       let const trace_location = error.location();
 
-      if (let const windowed = window_function_body_error(cxt, error);
-          windowed.has_value())
-      {
-        show_message(error.to_string(*windowed, &cxt));
-      } else {
-        show_message(
-            error.to_string(cxt.source_store().current_source_view(), &cxt));
-      }
+      let const windowed = window_function_body_error(cxt, error);
+
+      show_message(error.to_string(
+          windowed.has_value() ? *windowed
+                               : cxt.source_store().current_source_view(),
+          &cxt));
 
       cxt.print_source_backtrace(trace_location, false);
       error.set_rendered();

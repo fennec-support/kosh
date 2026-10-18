@@ -584,8 +584,6 @@ inline fn
 describe_shell_variable(StringView name) throws
     -> Maybe<shell_variable_description>
 {
-  if (name.is_empty()) return None;
-
   if (name.starts_with(SHELL_ANSI_VARIABLE_PREFIX)) {
     return SHELL_ANSI_VARIABLE;
   }

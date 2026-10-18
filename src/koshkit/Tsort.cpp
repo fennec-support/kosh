@@ -102,20 +102,20 @@ Tsort::execute(const ExecContext               &ec,
     edge_marks.push(0);
 
   for (usize from = 0; from < vertices.count(); from++) {
-    let deduplicated = ArrayList<usize>{cxt.scratch_allocator()};
+    let const edge_mark  = from + 1;
+    let      &outgoing   = vertices[from].outgoing;
+    usize     kept_count = 0;
 
-    deduplicated.reserve(vertices[from].outgoing.count());
+    for (usize edge = 0; edge < outgoing.count(); edge++) {
+      let const to = outgoing[edge];
 
-    let const edge_mark = from + 1;
-
-    for (let const to : vertices[from].outgoing) {
       if (edge_marks[to] == edge_mark) continue;
-      edge_marks[to] = edge_mark;
-      deduplicated.push(to);
+      edge_marks[to]         = edge_mark;
+      outgoing[kept_count++] = to;
       vertices[to].incoming_count++;
     }
 
-    vertices[from].outgoing = steal(deduplicated);
+    outgoing.truncate(kept_count);
   }
 
   let ready = ArrayList<usize>{cxt.scratch_allocator()};
@@ -130,8 +130,6 @@ Tsort::execute(const ExecContext               &ec,
   while (ready_position < ready.count()) {
     let const index  = ready[ready_position++];
     let      &vertex = vertices[index];
-
-    if (vertex.is_emitted) continue;
 
     vertex.is_emitted = true;
     emitted_count++;

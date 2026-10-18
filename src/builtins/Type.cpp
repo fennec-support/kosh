@@ -155,31 +155,16 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
 
     let const do_describe_resolution = [&](StringView type_word) throws {
-      enum class resolution_kind : u8
-      {
-        Alias,
-        Keyword,
-        Function,
-      };
-
-      static constexpr static_string_entry<resolution_kind> KIND_ENTRIES[] = {
-          {SSK("alias"),    resolution_kind::Alias   },
-          {SSK("keyword"),  resolution_kind::Keyword },
-          {SSK("function"), resolution_kind::Function},
-      };
-      static constexpr StaticStringMap RESOLUTION_KINDS{KIND_ENTRIES};
-      let const                        kind = RESOLUTION_KINDS.find(type_word);
-      let const                        is_function =
-          kind.has_value() && *kind == resolution_kind::Function;
+      let const is_function = type_word == "function";
 
       out += name;
-      if (!kind.has_value()) {
-        out += " is a shell builtin";
-      } else if (*kind == resolution_kind::Alias) {
+      if (type_word == "alias") {
         out += " is an alias for ";
         out += *alias_value;
-      } else if (*kind == resolution_kind::Keyword) {
+      } else if (type_word == "keyword") {
         out += " is a shell keyword";
+      } else if (!is_function) {
+        out += " is a shell builtin";
       } else {
         out +=
             is_bash_function_report ? " is a function" : " is a shell function";
@@ -244,6 +229,20 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
     };
 
+    let const do_print_path = [&](const Path &path) throws {
+      if (should_print_word) {
+        out += "file\n";
+      } else if (should_print_path) {
+        out += path.text();
+        out += "\n";
+      } else {
+        out += name;
+        out += " is ";
+        out += path.text();
+        out += "\n";
+      }
+    };
+
     if (FLAG_TYPE_ALL.is_enabled()) {
       bool has_any = false;
 
@@ -263,17 +262,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                          ProgramResolver::CachePolicy::Bypass))
       {
         has_any = true;
-        if (should_print_word) {
-          out += "file\n";
-        } else if (should_print_path) {
-          out += path.text();
-          out += "\n";
-        } else {
-          out += name;
-          out += " is ";
-          out += path.text();
-          out += "\n";
-        }
+        do_print_path(path);
       }
 
       if (!has_any) {
@@ -302,17 +291,7 @@ Type::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             ProgramResolver::CachePolicy::ReadOnly);
         paths.count() != 0)
     {
-      if (should_print_word) {
-        out += "file\n";
-      } else if (should_print_path) {
-        out += paths[0].text();
-        out += "\n";
-      } else {
-        out += name;
-        out += " is ";
-        out += paths[0].text();
-        out += "\n";
-      }
+      do_print_path(paths[0]);
     } else {
       if (!should_print_word && !should_print_path) {
         do_report_missing(name);

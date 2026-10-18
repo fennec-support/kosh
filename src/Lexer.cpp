@@ -125,12 +125,6 @@ is_string_quote(char ch) wontthrow -> bool
   }
 }
 
-hot pure static fn
-is_ascii_letter(char ch) wontthrow -> bool
-{
-  return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z');
-}
-
 hot pure fn
 is_expandable_char(char ch) wontthrow -> bool
 {
@@ -145,7 +139,7 @@ is_expandable_char(char ch) wontthrow -> bool
 hot pure fn
 is_variable_name_start(char ch) wontthrow -> bool
 {
-  return is_ascii_letter(ch) || ch == '_';
+  return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '_';
 }
 
 hot pure fn
@@ -328,36 +322,21 @@ fn
 Lexer::take_shellcheck_directives() throws
     -> ArrayList<shellcheck_directive_span>
 {
-  let directives = steal(m_pending_shellcheck_directives);
-
-  m_pending_shellcheck_directives =
-      ArrayList<shellcheck_directive_span>{heap_allocator()};
-
-  return directives;
+  return steal(m_pending_shellcheck_directives);
 }
 
 fn
 Lexer::take_shellcheck_directive_spans() throws
     -> ArrayList<shellcheck_directive_span>
 {
-  let spans = steal(m_shellcheck_directive_spans);
-
-  m_shellcheck_directive_spans =
-      ArrayList<shellcheck_directive_span>{heap_allocator()};
-
-  return spans;
+  return steal(m_shellcheck_directive_spans);
 }
 
 fn
 Lexer::take_heredoc_terminator_misses() throws
     -> ArrayList<heredoc_terminator_miss>
 {
-  let misses = steal(m_heredoc_terminator_misses);
-
-  m_heredoc_terminator_misses =
-      ArrayList<heredoc_terminator_miss>{heap_allocator()};
-
-  return misses;
+  return steal(m_heredoc_terminator_misses);
 }
 
 pure fn
@@ -536,9 +515,7 @@ Lexer::walk_heredoc_body(usize              start,
       }
     }
 
-    let const raw = m_source.substring_of_length(line_offset, line_length);
-
-    if (!emit_line(raw, has_newline, is_delimiter)) break;
+    if (!emit_line(stripped, has_newline, is_delimiter)) break;
     if (!has_newline) break;
   }
 
@@ -570,15 +547,6 @@ Lexer::collect_pending_heredocs() throws -> void
     let const do_append_body_line = [&](StringView line, bool,
                                         bool       is_delimiter) -> bool {
       if (is_delimiter) return false;
-      if (pending.tab_policy == heredoc_tab_policy::Strip) {
-        usize offset = 0;
-
-        while (offset < line.length && line[offset] == '\t') {
-          offset++;
-        }
-
-        line = line.substring_of_length(offset, line.length - offset);
-      }
 
       collected.append(line);
       collected += '\n';
@@ -1896,8 +1864,7 @@ Lexer::validate_substitution_body(
 
   /* an exact body is lexed in place, so its errors keep their positions in
      m_source. an unescaped body is lexed from its own buffer, so its errors
-     report outer_location. the constraint is that substitution bodies use
-     validation parsing where diagnostics need outer source coordinates. */
+     report outer_location. */
   let const is_exact     = body.data == m_source.data + body_position;
   let       nested_lexer = Lexer{
       is_exact ? m_source.substring_of_length(0, body_position + body.length)
@@ -1941,15 +1908,12 @@ Lexer::validate_nested_expansions(
   for (let const &entry : found) {
     let const outer_location = here(entry.outer_position, entry.outer_length);
 
-    if (entry.is_exact) {
-      validate_substitution_body(
-          entry.body_position,
-          m_source.substring_of_length(entry.body_position, entry.body_length),
-          outer_location);
-    } else {
-      validate_substitution_body(entry.body_position,
-                                 entry.unescaped_body.view(), outer_location);
-    }
+    let const body = entry.is_exact
+                         ? m_source.substring_of_length(entry.body_position,
+                                                        entry.body_length)
+                         : entry.unescaped_body.view();
+
+    validate_substitution_body(entry.body_position, body, outer_location);
   }
 }
 

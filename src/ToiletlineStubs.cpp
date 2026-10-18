@@ -410,8 +410,6 @@ rewrite_no_editor_history_event(usize                    wanted_number,
 
   let const retained_record_count = state.record_byte_offsets.count();
 
-  if (retained_record_count == 0) return false;
-
   let const first_number = state.total_count - retained_record_count + 1;
 
   if (wanted_number < first_number ||

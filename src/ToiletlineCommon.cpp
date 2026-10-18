@@ -193,28 +193,23 @@ is_history_contents_valid(StringView contents) -> bool
       continue;
     }
 
-    if (byte < 0x80) {
-      decoded_byte_count += escaped_byte_count + 1;
-      if (decoded_byte_count > HISTORY_RECORD_MAX_DECODED_BYTE_COUNT)
-        return false;
-
-      byte_offset++;
-      continue;
-    }
-
-    usize codepoint_byte_count = 0;
-    u32   codepoint            = 0;
+    usize codepoint_byte_count = 1;
+    u32   codepoint            = byte;
+    u32   minimum_codepoint    = 0;
 
     if (byte >= 0xc2 && byte <= 0xdf) {
       codepoint_byte_count = 2;
       codepoint            = byte & 0x1f;
+      minimum_codepoint    = 0x80u;
     } else if (byte >= 0xe0 && byte <= 0xef) {
       codepoint_byte_count = 3;
       codepoint            = byte & 0x0f;
+      minimum_codepoint    = 0x800u;
     } else if (byte >= 0xf0 && byte <= 0xf4) {
       codepoint_byte_count = 4;
       codepoint            = byte & 0x07;
-    } else {
+      minimum_codepoint    = 0x10000u;
+    } else if (byte >= 0x80) {
       return false;
     }
 
@@ -228,18 +223,6 @@ is_history_contents_valid(StringView contents) -> bool
 
       if ((continuation_byte & 0xc0) != 0x80) return false;
       codepoint = (codepoint << 6) | (continuation_byte & 0x3f);
-    }
-
-    u32 minimum_codepoint = 0;
-
-    switch (codepoint_byte_count) {
-    case 2: minimum_codepoint = 0x80u; break;
-
-    case 3: minimum_codepoint = 0x800u; break;
-
-    case 4: minimum_codepoint = 0x10000u; break;
-
-    default: return false;
     }
 
     if (codepoint < minimum_codepoint || codepoint > 0x10ffffu ||

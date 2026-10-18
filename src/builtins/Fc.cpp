@@ -426,9 +426,7 @@ edit_fc_commands(const ExecContext                          &ec,
         StringView{"fc"}, nullptr, nullptr, return_handling::Propagate);
   }
 
-  if (editor_status != 0) {
-    return 1;
-  }
+  if (editor_status != 0) return 1;
 
   let edited = temp_path->read_entire_file();
 
