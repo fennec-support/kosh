@@ -4957,8 +4957,13 @@ public:
                Bitset           *subscript_flags = nullptr) throws
       -> ArrayList<String>;
 
+  /* known_entry, when given, is the result of find_variable_for_write(name)
+     taken with no write to the table since. */
   fn
-  set_shell_variable(StringView name, StringView value) throws -> void;
+  set_shell_variable(StringView              name,
+                     StringView              value,
+                     Maybe<variable_entry *> known_entry = None) throws
+      -> void;
   pure fn
   special_variable_definition_location(StringView name) const wontthrow
       -> Maybe<SourceLocation>;

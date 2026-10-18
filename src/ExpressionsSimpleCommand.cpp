@@ -392,7 +392,24 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
       }
     }
 
-    if (cxt.is_readonly(assigned_name)) {
+    /* A plain assignment hands the entry it checked to set_shell_variable(),
+       so the name is looked up once. */
+    let const is_plain_assignment =
+        !resolved_name.has_value() &&
+        m_assignment->get_update_mode() != assignment_update_mode::Append;
+    let const checked_entry =
+        is_plain_assignment
+            ? cxt.variable_store().find_variable_for_write(assigned_name)
+            : Maybe<variable_entry *>{};
+    let const is_readonly =
+        is_plain_assignment
+            ? cxt.is_implicitly_readonly(assigned_name) ||
+                  (checked_entry.has_value() &&
+                   ((*checked_entry)->attribute_bits &
+                    static_cast<u8>(variable_attribute::Readonly)) != 0)
+            : cxt.is_readonly(assigned_name);
+
+    if (is_readonly) {
       let error = Error{"Unable to assign '" + assigned_name +
                         "' because it is read only"};
       cxt.mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
@@ -463,7 +480,7 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
       value = steal(appended);
     }
 
-    cxt.set_shell_variable(m_assignment->key(), value);
+    cxt.set_shell_variable(m_assignment->key(), value, checked_entry);
     if (cxt.runtime_state().export_all()) {
       let const &key = m_assignment->key();
       cxt.record_environment_change(key);

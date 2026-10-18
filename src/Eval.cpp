@@ -381,10 +381,14 @@ EvalContext::guard_restricted_path(StringView            path,
 }
 
 hot fn
-EvalContext::set_shell_variable(StringView name,
-                                StringView value) throws -> void
+EvalContext::set_shell_variable(
+    StringView              name,
+    StringView              value,
+    Maybe<variable_entry *> known_entry) throws -> void
 {
-  let const entry = variable_store().find_variable_for_write(name);
+  let const entry = known_entry.has_value()
+                        ? known_entry
+                        : variable_store().find_variable_for_write(name);
   let const attribute_bits =
       entry.has_value() ? (*entry)->attribute_bits : u8{0};
   let const has_scalar = entry.has_value() && (*entry)->has_value;
