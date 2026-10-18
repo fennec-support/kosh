@@ -27,4 +27,6 @@ persist-names-the-written-file PASS
 interactive-menu-pads-every-prompt-row PASS
 interactive-menu-pads-the-transient-prompt PASS
 plain-selector-drops-the-pad PASS
+zero-width-welcome-prints-no-row PASS
+zero-width-farewell-prints-no-row PASS
 status=0

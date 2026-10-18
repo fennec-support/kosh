@@ -141,7 +141,7 @@ FLAG(NORC,
      '\0',
      "norc",
      Bash,
-     "Do not source the interactive bash rc or a custom rc file.");
+     "Do not source the interactive rc files or a custom rc file.");
 FLAG(RESTRICTED,
      Bool,
      'r',
@@ -2199,7 +2199,8 @@ start_line_editor(EvalContext               &context,
   if (let const welcome = context.get_variable_value("KOSH_WELCOME");
       welcome.has_value())
   {
-    if (!welcome->is_empty()) show_message(welcome->view());
+    if (toiletline::get_display_width(welcome->view()) > 0)
+      show_message(welcome->view());
   } else {
     show_message(identity.session_mood == mimic_mood::Posix ? "POSIX me harder!"
                  : (identity.session_mood == mimic_mood::Bash ||

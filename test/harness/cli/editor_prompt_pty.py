@@ -276,6 +276,27 @@ def run_prompt_pad_checks(binary, directory, command_directory, report):
         session.close()
 
 
+def run_message_checks(binary, directory, command_directory, report):
+    koshrc = os.path.join(directory, "koshrc")
+    with open(koshrc, "w") as file:
+        file.write('printf -v KOSH_WELCOME "\\r"\n'
+                   'printf -v KOSH_FAREWELL "\\r"\n')
+    session = Session(binary, directory, command_directory, COLUMNS,
+                      rcfile=koshrc)
+    try:
+        report.record("zero-width-welcome-prints-no-row", session,
+                      lambda screen: screen.get_prompt_row() == 0)
+        mark = len(session.raw)
+        session.send(b"exit\r")
+        session.wait_until(lambda screen: False)
+        report.record("zero-width-farewell-prints-no-row", session,
+                      lambda screen: bytes(session.raw[mark:]).count(b"\n")
+                      <= 1)
+    finally:
+        session.close()
+        os.remove(koshrc)
+
+
 def run_job_notice_checks(binary, directory, report):
     sleep_path = shutil.which("sleep")
     if sleep_path is None:
@@ -355,6 +376,7 @@ def main():
         run_checks(binary, directory, command_directory, report)
         run_job_notice_checks(binary, directory, report)
         run_prompt_pad_checks(binary, directory, command_directory, report)
+        run_message_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1

@@ -284,7 +284,7 @@ class Screen:
 
 class Session:
     def __init__(self, binary, directory, command_directory, columns=COLUMNS,
-                 rows=ROWS):
+                 rows=ROWS, rcfile="/dev/null"):
         environment = {
             "PATH": command_directory,
             "HOME": directory,
@@ -298,7 +298,7 @@ class Session:
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
             os.chdir(directory)
-            os.execve(binary, [binary, "-i", "--rcfile", "/dev/null"], environment)
+            os.execve(binary, [binary, "-i", "--rcfile", rcfile], environment)
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ,
                     struct.pack("HHHH", rows, columns, 0, 0))
         self.is_closed = False
