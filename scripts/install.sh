@@ -277,7 +277,8 @@
         line "                  [--link-mood MOODS] [-x]"
         line "  --dry-run           list the downloads, install nothing"
         line "  --force             install even when kosh is up to date"
-        line "  --install-path DIR  install to DIR, extras to DIR/../share"
+        line "  --install-path DIR  install to DIR, extras to DIR/../share;"
+        line "                      without it, the kosh on PATH is updated"
         line "  --link-mood MOODS   link bash, dash, or sh to kosh in DIR,"
         line "                      commas are accepted, existing files stay"
         line "  -x                  trace every command"
@@ -350,14 +351,24 @@
   esac
 
   say "Looking up the latest release.." "$VERSION"
+  # Without an install path, the kosh found on PATH is updated where it is.
   if [ -z "$BIN_DIR" ]
   then
-    BIN_DIR=$HOME/.local/bin
+    EXISTING=$(command -v kosh 2>/dev/null || :)
 
-    if [ "$(id -u)" -eq 0 ]
-    then
-      BIN_DIR=/usr/local/bin
-    fi
+    case $EXISTING in
+      /*)
+        BIN_DIR=${EXISTING%/*}
+      ;;
+      *)
+        BIN_DIR=$HOME/.local/bin
+
+        if [ "$(id -u)" -eq 0 ]
+        then
+          BIN_DIR=/usr/local/bin
+        fi
+      ;;
+    esac
   fi
 
   case $BIN_DIR in
@@ -507,7 +518,17 @@
 
   printf 'ok\n'
   mkdir -p "$BIN_DIR" || fail "cannot write to $BIN_DIR"
-  install -m 755 "$BINARY" "$BIN_DIR/kosh$EXT"
+  [ -w "$BIN_DIR" ] ||
+  fail "cannot write to $BIN_DIR; rerun as its owner or pass --install-path"
+  # The new binary is renamed over the old one, so a running kosh keeps its
+  # image and the path never holds a partial file.
+  STAGED=$BIN_DIR/.kosh$EXT.$$
+  install -m 755 "$BINARY" "$STAGED" || fail "cannot write to $BIN_DIR"
+  if ! mv -f "$STAGED" "$BIN_DIR/kosh$EXT"
+  then
+    rm -f "$STAGED"
+    fail "cannot replace $BIN_DIR/kosh$EXT"
+  fi
   if [ -z "$EXT" ]
   then
     for NAME in koshkit $LINK_MOODS

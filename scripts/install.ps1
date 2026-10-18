@@ -141,6 +141,29 @@
         return [bool]($HASH -and ($Hashes -contains $HASH))
     }
 
+    # Windows refuses to delete or overwrite a running executable but lets it
+    # be renamed, so a file in use moves to a .old name beside it.
+    function Move-Aside($Path) {
+        if (-not (Test-Path -LiteralPath $Path)) { return }
+        try {
+            Remove-Item -Force -LiteralPath $Path -ErrorAction Stop
+            return
+        }
+        catch {
+        }
+        $OLD = "$Path.old"
+        if (Test-Path -LiteralPath $OLD) {
+            try { Remove-Item -Force -LiteralPath $OLD -ErrorAction Stop }
+            catch { $OLD = "$Path.$PID.old" }
+        }
+        try {
+            Move-Item -Force -LiteralPath $Path $OLD -ErrorAction Stop
+        }
+        catch {
+            throw "cannot replace $Path"
+        }
+    }
+
     function Ask($Question) {
         if ([Console]::IsInputRedirected) { return $true }
         [Console]::Error.Write("$(Mark -IsColor $IS_ERROR_COLOR)$Question [y/n] ")
@@ -157,7 +180,8 @@
             Line "                   [-LinkMood MOODS] [-X]"
             Line "  -DryRun           list the downloads, install nothing"
             Line "  -Force            install even when kosh is up to date"
-            Line "  -InstallPath DIR  install to DIR, extras to DIR\..\share"
+            Line "  -InstallPath DIR  install to DIR, extras to DIR\..\share;"
+            Line "                    without it, the kosh on PATH is updated"
             Line "  -LinkMood MOODS   link bash, dash, or sh to kosh in DIR,"
             Line "                    commas are accepted, existing files stay"
             Line "  -X                trace every command"
@@ -200,6 +224,11 @@
 
         $BIN_DIR = $InstallPath
         if (-not $BIN_DIR) { $BIN_DIR = $env:KOSH_INSTALL_PATH }
+        # Without an install path, the kosh found on PATH is updated where it is.
+        if (-not $BIN_DIR) {
+            $EXISTING = Get-Command kosh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($EXISTING) { $BIN_DIR = Split-Path -Parent $EXISTING.Source }
+        }
         if (-not $BIN_DIR) { $BIN_DIR = Join-Path $env:LOCALAPPDATA "kosh\bin" }
         $BIN_DIR = [IO.Path]::GetFullPath([IO.Path]::Combine($HERE, $BIN_DIR)).TrimEnd("\", "/")
         $SHARE_DIR = Join-Path (Split-Path -Parent $BIN_DIR) "share"
@@ -309,6 +338,7 @@
         }
         $EXE = Join-Path $BIN_DIR "kosh.exe"
         $KOSH_HASHES = @((Get-KoshHash $EXE), (Get-FileHash -Algorithm SHA256 $BINARY).Hash)
+        Move-Aside $EXE
         Move-Item -Force $BINARY $EXE
         foreach ($MOOD in $LINK_MOODS) {
             $LINK = Join-Path $BIN_DIR "$MOOD.exe"
@@ -316,7 +346,7 @@
                 Line "Kept $LINK, which is not a link to kosh.exe"
                 continue
             }
-            if (Test-Path -LiteralPath $LINK) { Remove-Item -Force -LiteralPath $LINK }
+            Move-Aside $LINK
             try {
                 New-Item -ItemType HardLink -Path $LINK -Target $EXE | Out-Null
             }
