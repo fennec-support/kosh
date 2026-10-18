@@ -1160,6 +1160,16 @@ def run_checks(binary, directory, command_directory, report):
                       is_explained(["ls", "-l", "-a"]))
         clear_line(session)
 
+        session.send(b"ls -l $(echo sub) -a" + LEFT * 15)
+        report.record("hint-lists-flags-past-a-substitution", session,
+                      is_explained(["ls", "> -l", "-a"]))
+        clear_line(session)
+
+        session.send(b"echo `ls -l` -n" + LEFT * 4)
+        report.record("hint-stops-at-the-closing-backtick", session,
+                      is_explained(["ls", "> -l"]))
+        clear_line(session)
+
         session.send(b"echo ")
         report.record("hint-explains-a-builtin", session,
                       is_explained(["echo"]))

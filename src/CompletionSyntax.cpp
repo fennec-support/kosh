@@ -464,6 +464,27 @@ internal::command_segment_end(StringView line, usize position)
       continue;
     }
 
+    /* A backtick or $( substitution inside the segment is skipped whole. */
+    if (c == '`') {
+      for (k++; k < line.length && line[k] != '`'; k++) {}
+
+      continue;
+    }
+
+    if (c == '$' && k + 1 < line.length && line[k + 1] == '(') {
+      usize depth = 0;
+
+      for (k++; k < line.length; k++) {
+        if (line[k] == '(') {
+          depth++;
+        } else if (line[k] == ')' && --depth == 0) {
+          break;
+        }
+      }
+
+      continue;
+    }
+
     if (c == ';' || c == '|' || c == '&' || c == '\n' || c == '(' || c == ')') {
       return k;
     }

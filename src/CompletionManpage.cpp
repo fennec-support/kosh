@@ -2160,7 +2160,18 @@ locate_hint_target(StringView line, usize cursor) throws
      after it are read from the whole line up to the end of the segment. */
   let const after_start =
       static_cast<usize>(segment.data - whole_line.data) + bounds.end;
-  let const after_end = command_segment_end(whole_line, after_start);
+  let after_end = command_segment_end(whole_line, after_start);
+
+  /* Inside a backtick substitution the segment ends at its closing
+     backtick. */
+  if (substitution.start > 0 && whole_line[substitution.start - 1] == '`') {
+    for (usize position = after_start; position < after_end; position++) {
+      if (whole_line[position] == '`') {
+        after_end = position;
+        break;
+      }
+    }
+  }
 
   target.after =
       whole_line.substring_of_length(after_start, after_end - after_start);
