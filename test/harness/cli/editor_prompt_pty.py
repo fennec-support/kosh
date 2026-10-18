@@ -127,6 +127,15 @@ def run_checks(binary, directory, command_directory, report):
                       lambda screen: is_prompt_line(
                           with_right_prompt(BULLET + " echo one"))(screen)
                       and is_prompt_line("  echo two", 1)(screen))
+        session.send(CTRL_C)
+        session.wait_until(is_prompt_line(empty_prompt))
+
+        # Terminal.app pastes line breaks as bare carriage returns.
+        session.send(b"\x1b[200~echo one\recho two\x1b[201~")
+        report.record("paste-keeps-carriage-return-lines", session,
+                      lambda screen: is_prompt_line(
+                          with_right_prompt(BULLET + " echo one"))(screen)
+                      and is_prompt_line("  echo two", 1)(screen))
         session.send(b"\r")
         report.record("right-prompt-is-not-submitted", session,
                       is_submitted([BULLET + " echo one",
