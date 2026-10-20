@@ -87,6 +87,20 @@ fn
 enter_calc_history() -> void;
 fn
 leave_calc_history() -> void;
+/* Hides the shell history from the editor until leave_empty_history(), so Up
+   and Down cannot replace a buffer with a command. */
+fn
+enter_empty_history() -> void;
+fn
+leave_empty_history() -> void;
+/* Numbers the buffer lines in width columns, or turns the numbers off with 0.
+ */
+fn
+set_line_numbers(usize width) -> void;
+/* The verb of the hint that asks for a second Enter, or "run" when verb is
+   null. verb must outlive its use. */
+fn
+set_submit_verb(const char *verb) -> void;
 
 fn
 get_history_path() -> koshka::Maybe<koshka::Path>;

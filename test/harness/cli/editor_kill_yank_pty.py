@@ -25,6 +25,8 @@
 # hint lists the commands, Tab completes a command, replace-string replaces
 # every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat.
 # Vi mode ignores Ctrl-X, and Ctrl-X Ctrl-C ends the shell in emacs mode.
+# slurp numbers the lines of a script, saves it on a second Enter or on :wq,
+# leaves it on :q!, leaves a text file unnumbered, and refuses a binary file.
 # :set turns an option off with a no prefix, shows it with a question mark,
 # and completes the option with Tab, and M-x set-option lists the matching
 # options, completes the option with Tab, and sets it. :format formats the
@@ -799,6 +801,72 @@ def run_ctrl_x_mode_checks(binary, directory, command_directory, report):
         session.close()
 
 
+def read_slurped(path):
+    with open(path) as handle:
+        return handle.read()
+
+
+def run_slurp_checks(binary, directory, command_directory, report):
+    script = os.path.join(directory, "slurp-script.sh")
+    notes = os.path.join(directory, "slurp-notes.txt")
+    binary_file = os.path.join(directory, "slurp-binary")
+    with open(script, "w") as handle:
+        handle.write("#!/bin/sh\necho one\necho two\n")
+    with open(notes, "w") as handle:
+        handle.write("first note\nsecond note\n")
+    with open(binary_file, "wb") as handle:
+        handle.write(b"a\0b")
+    session = Session(binary, directory, command_directory)
+    try:
+        session.wait_until(is_line(""))
+        session.send(b"slurp slurp-script.sh\r")
+        report.record("slurp-numbers-the-lines-of-a-script", session,
+                      lambda screen: any(line.rstrip() == "   2 echo one"
+                                         for line in screen.get_lines()))
+        session.send(b" # edited\r")
+        report.record("slurp-asks-for-a-second-enter-to-save", session,
+                      has_hint("press enter again to save it"))
+        session.send(b"\r")
+        report.record("slurp-enter-saves-the-file", session,
+                      lambda screen: is_line("")(screen)
+                      and read_slurped(script)
+                      == "#!/bin/sh\necho one\necho two # edited\n")
+
+        session.send(b"slurp --mode vi slurp-script.sh\r")
+        session.wait_until(lambda screen: any(
+            line.rstrip() == "   3 echo two # edited"
+            for line in screen.get_lines()))
+        session.send(b"!")
+        settle(session, 0.2)
+        session.send(KITTY_ESCAPE)
+        settle(session, 0.2)
+        session.send(b":wq\r")
+        report.record("slurp-vi-write-quit-saves", session,
+                      lambda screen: is_line("")(screen)
+                      and read_slurped(script).endswith("# edited!\n"))
+
+        session.send(b"slurp --mode vi slurp-notes.txt\r")
+        report.record("slurp-leaves-a-text-file-unnumbered", session,
+                      lambda screen: any(line.rstrip() == "second note"
+                                         for line in screen.get_lines()))
+        session.send(b"?")
+        settle(session, 0.2)
+        session.send(KITTY_ESCAPE)
+        settle(session, 0.2)
+        session.send(b":q!\r")
+        report.record("slurp-vi-quit-leaves-the-file", session,
+                      lambda screen: is_line("")(screen)
+                      and read_slurped(notes) == "first note\nsecond note\n")
+
+        session.send(b"slurp slurp-binary\r")
+        report.record("slurp-refuses-a-binary-file", session,
+                      lambda screen: any("is not a text file" in line
+                                         for line in screen.get_lines())
+                      and is_line("")(screen))
+    finally:
+        session.close()
+
+
 def run_fatal_signal_checks(binary, directory, command_directory, report):
     for name, signal_number in (("abort", signal.SIGABRT),
                                 ("segfault", signal.SIGSEGV)):
@@ -849,6 +917,7 @@ def main():
                      "while :; do kill -STOP $$; done\n")
         run_checks(binary, directory, command_directory, report)
         run_ctrl_x_mode_checks(binary, directory, command_directory, report)
+        run_slurp_checks(binary, directory, command_directory, report)
         run_fatal_signal_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)

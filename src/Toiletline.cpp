@@ -2001,6 +2001,37 @@ leave_calc_history() -> void
   CALC_HISTORY_SWAP.leave();
 }
 
+static history_snapshot HIDDEN_SHELL_HISTORY{};
+
+fn
+enter_empty_history() -> void
+{
+  capture_history_snapshot(HIDDEN_SHELL_HISTORY);
+  ::itl_g_history_free();
+  ::itl_g_history_enabled = false;
+}
+
+fn
+leave_empty_history() -> void
+{
+  if (!HIDDEN_SHELL_HISTORY.is_valid) return;
+
+  restore_history_snapshot(HIDDEN_SHELL_HISTORY);
+  HIDDEN_SHELL_HISTORY = history_snapshot{};
+}
+
+fn
+set_line_numbers(usize width) -> void
+{
+  ::tl_set_line_numbers(width);
+}
+
+fn
+set_submit_verb(const char *verb) -> void
+{
+  ::tl_set_submit_verb(verb);
+}
+
 fn
 get_history_path() -> koshka::Maybe<koshka::Path>
 {

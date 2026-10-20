@@ -2446,6 +2446,7 @@ struct interactive_session
         break;
 
       case TL_PRESSED_QUIT:
+      case TL_PRESSED_WRITE_QUIT:
         toiletline::emit_newlines(input);
         utils::quit(exit_code, utils::farewell_policy::Goodbye);
         break;

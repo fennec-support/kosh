@@ -621,6 +621,26 @@ enter_calc_history() -> void
 {}
 
 fn
+enter_empty_history() -> void
+{}
+
+fn
+leave_empty_history() -> void
+{}
+
+fn
+set_line_numbers(usize width) -> void
+{
+  unused(width);
+}
+
+fn
+set_submit_verb(const char *verb) -> void
+{
+  unused(verb);
+}
+
+fn
 leave_calc_history() -> void
 {}
 

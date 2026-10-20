@@ -1398,7 +1398,7 @@ follow the active compatibility mood unless a difference is stated here.
 With no operand,
 .B builtin
 groups the builtins under POSIX, BASH, and Koshka headings. The Koshka section
-holds assimilate, bench, koshconf, koshkit, and z.
+holds assimilate, bench, koshconf, koshkit, slurp, and z.
 .PP
 \fB: . [ alias bg break builtin cd command complete compgen compopt continue
 declare dirs disown echo eval exec exit export false fc fg getopts history jobs
@@ -1584,6 +1584,23 @@ and only
 .B create
 accepts
 .BR \-\-force .
+.TP
+.BI "slurp " FILE
+FILE is edited in the line editor of the interactive shell, and a missing FILE
+starts empty. A shell script, recognized by its shebang or its
+extension, keeps its syntax highlighting and shows a number before each line.
+Enter saves the file and leaves, and an edited buffer of several lines asks for
+a second Enter first. The vi commands
+.BR :wq ", " :wq! ", " :wqa ", " :wqa! ", and " :x
+also save and leave, while
+.BR :q ", " :q! ,
+Ctrl\-X Ctrl\-C, and Ctrl\-D on an empty buffer leave without saving, and
+Ctrl\-C leaves with status 130. Every colon and M\-x command works. The
+.BR \-\-mode " vi or " "\-\-mode emacs"
+option selects the key set for the session. Up and Down do not recall shell
+history. A file with a NUL byte or invalid UTF\-8, a file longer than 65535
+bytes, and a restricted shell are refused. A file with CRLF line endings keeps
+them, and the final newline of the file is kept.
 .TP
 .B z
 The current directory is changed to one selected from the directories that
@@ -3320,8 +3337,10 @@ option commands change the settings. The buffer keeps
 its syntax highlighting while the command line is open, and the typed command
 is drawn in light green.
 .TP
-.BR :q ", " :q! ", " :quit ", " :wq ", " :wq! ", " :x
-Leave the shell with the status of the last command.
+.BR :q ", " :q! ", " :quit ", " :wq ", " :wq! ", " :wqa ", " :wqa! ", " :x
+Leave the shell with the status of the last command. In
+.BR slurp ,
+the w forms save the file first.
 .TP
 .BI :s/ old / new / \fR[\fBg\fR]
 Replace the first match of the basic regular expression

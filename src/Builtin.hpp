@@ -94,7 +94,8 @@ enum class builtin_section : u8
   X(Suspend, Bash, false)                                                      \
   X(Bind, Bash, false)                                                         \
   X(Enable, Bash, false)                                                       \
-  X(Koshconf, Koshka, false)
+  X(Koshconf, Koshka, false)                                                   \
+  X(Slurp, Koshka, false)
 
 class Builtin
 {
@@ -184,6 +185,7 @@ inline constexpr static_string_entry<Builtin::Kind> BUILTIN_ENTRIES[] = {
     {SSK("bind"),       Builtin::Kind::Bind          },
     {SSK("enable"),     Builtin::Kind::Enable        },
     {SSK("koshconf"),   Builtin::Kind::Koshconf      },
+    {SSK("slurp"),      Builtin::Kind::Slurp         },
 };
 
 inline constexpr StaticStringMap BUILTINS{BUILTIN_ENTRIES};

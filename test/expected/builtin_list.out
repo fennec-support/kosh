@@ -51,6 +51,7 @@ return
 set
 shift
 shopt
+slurp
 source
 suspend
 test
@@ -66,7 +67,7 @@ unalias
 unset
 wait
 z
-Koshka has 68 builtins:
+Koshka has 69 builtins:
 
 POSIX
   .         :         [         alias     bg        break     cd
@@ -83,5 +84,5 @@ BASH
   suspend    time       typeset
 
 Koshka
-  assimilate  bench       koshconf    koshkit     z
+  assimilate  bench       koshconf    koshkit     slurp       z
 

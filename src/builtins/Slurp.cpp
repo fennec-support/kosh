@@ -1,0 +1,294 @@
+/*
+ *    This file is a part of the Koshka shell, (c) toiletbril, 2026
+ *    See the top-level LICENSE file for the licensing information.
+ *
+ * This file implements the slurp builtin, which edits a text file in the line
+ * editor. A shell script keeps its syntax highlighting and numbered lines, and
+ * Enter or a colon write command saves the file.
+ */
+
+#include "../Builtin.hpp"
+#include "../CLIColors.hpp"
+#include "../Eval.hpp"
+#include "../MimicMood.hpp"
+#include "../Toiletline.hpp"
+#include "../Utils.hpp"
+
+FLAG_LIST_DECL();
+
+HELP_SYNOPSIS_DECL("[--mode vi|emacs] file");
+
+HELP_DESCRIPTION_DECL(
+    "This builtin edits a text file in the line editor. Enter saves the file "
+    "and leaves, and so do :wq, :x, and the other write commands of vi mode.");
+
+FLAG(HELP, Bool, '\0', "help", "Display help.");
+FLAG(SLURP_MODE, String, '\0', "mode", "Edit in vi or emacs mode.");
+
+REGISTER_BUILTIN_FLAGS(Slurp);
+
+namespace koshka {
+
+namespace {
+
+/* The editor holds a buffer of at most this many bytes. */
+constexpr usize SLURP_MAX_BYTE_COUNT = 65535;
+
+/* True when text has no NUL byte and is well-formed UTF-8. */
+fn
+is_text(StringView text) wontthrow -> bool
+{
+  usize position = 0;
+
+  while (position < text.length) {
+    let const lead = static_cast<u8>(text[position]);
+
+    if (lead == 0) return false;
+    if (lead < 0x80) {
+      position++;
+      continue;
+    }
+
+    usize continuation_count = 0;
+
+    if ((lead & 0xe0) == 0xc0 && lead >= 0xc2) {
+      continuation_count = 1;
+    } else if ((lead & 0xf0) == 0xe0) {
+      continuation_count = 2;
+    } else if ((lead & 0xf8) == 0xf0 && lead <= 0xf4) {
+      continuation_count = 3;
+    } else {
+      return false;
+    }
+    if (position + continuation_count >= text.length) return false;
+    for (usize i = 1; i <= continuation_count; i++)
+      if ((static_cast<u8>(text[position + i]) & 0xc0) != 0x80) return false;
+    position += continuation_count + 1;
+  }
+
+  return true;
+}
+
+fn
+count_digits(usize value) wontthrow -> usize
+{
+  usize digit_count = 1;
+
+  while (value >= 10) {
+    value /= 10;
+    digit_count++;
+  }
+
+  return digit_count;
+}
+
+/* The prompt that numbers the first line, dimmed when colors are on. */
+fn
+make_first_line_prompt(usize width) throws -> String
+{
+  let prompt = String{heap_allocator()};
+
+  if (colors::stdout_wants_color()) prompt += "\x1b[90m";
+  prompt.append_repeated(' ', width - 1);
+  prompt += "1";
+  if (colors::stdout_wants_color()) prompt += "\x1b[0m";
+  prompt += " ";
+
+  return prompt;
+}
+
+fn
+save_file(StringView path, StringView contents) throws -> bool
+{
+  let const descriptor =
+      os::open_file_descriptor(path, os::file_open_mode::Truncate);
+
+  if (!descriptor.has_value()) return false;
+
+  let const did_write =
+      os::write_all(*descriptor, contents.data, contents.length);
+
+  return os::close_fd(*descriptor) && did_write;
+}
+
+} /* namespace */
+
+fn
+Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+{
+  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+  let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
+
+  if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
+
+  if (args.count() != 2) return report_usage_error(ec, cxt, ec.program());
+
+  if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
+    report_soft_builtin_error(
+        ec, cxt, "Editing files is forbidden in a restricted shell");
+
+    return 1;
+  }
+
+  let mode = Maybe<toiletline::edit_mode>{None};
+
+  if (FLAG_SLURP_MODE.is_set()) {
+    if (FLAG_SLURP_MODE.value() == "vi") {
+      mode = toiletline::edit_mode::Vi;
+    } else if (FLAG_SLURP_MODE.value() == "emacs") {
+      mode = toiletline::edit_mode::Emacs;
+    } else {
+      report_soft_builtin_error(ec, cxt, FLAG_SLURP_MODE.value_location(),
+                                StringView{"Unknown mode '"} +
+                                    FLAG_SLURP_MODE.value() + "'",
+                                "Pass vi or emacs");
+
+      return 2;
+    }
+  }
+
+  let const location = get_operand_location(ec, operand_locations, 1);
+  let const path     = Path{args[1].view()};
+
+  if (!toiletline::is_active() ||
+      !os::is_fd_a_tty(ec.in_fd.value_or(KOSH_STDIN)))
+  {
+    report_soft_builtin_error(ec, cxt, ec.source_location(),
+                              "The line editor needs an interactive terminal",
+                              "Run slurp from an interactive shell");
+
+    return 1;
+  }
+
+  let contents = String{heap_allocator()};
+
+  if (path.exists()) {
+    if (path.is_directory()) {
+      report_soft_builtin_error(ec, cxt, location,
+                                StringView{"'"} + args[1] + "' is a directory");
+
+      return 1;
+    }
+
+    let read = path.read_entire_file();
+
+    if (!read.has_value()) {
+      report_soft_builtin_error(ec, cxt, location,
+                                StringView{"Unable to read '"} + args[1] +
+                                    "': " + os::last_system_error_message());
+
+      return 1;
+    }
+    contents = steal(*read);
+  }
+
+  if (!is_text(contents.view())) {
+    report_soft_builtin_error(
+        ec, cxt, location, StringView{"'"} + args[1] + "' is not a text file");
+
+    return 1;
+  }
+  if (contents.length() > SLURP_MAX_BYTE_COUNT) {
+    report_soft_builtin_error(
+        ec, cxt, location,
+        StringView{"'"} + args[1] + "' is longer than " +
+            String::from(SLURP_MAX_BYTE_COUNT, cxt.scratch_allocator()) +
+            " bytes");
+
+    return 1;
+  }
+
+  /* at this point: contents is text that the editor can hold. */
+  let const has_crlf = contents.view().find_substring("\r\n").has_value();
+
+  if (has_crlf) contents.normalize_crlf_line_endings();
+
+  let const has_final_newline = contents.is_empty() || contents.back() == '\n';
+
+  if (!contents.is_empty() && contents.back() == '\n') contents.pop_back();
+
+  let const is_shell_script =
+      detect_mimic_shell_from_source(contents.view()).has_value() ||
+      detect_mimic_shell_from_extension(path.extension()).has_value();
+
+  usize line_count = 1;
+
+  for (usize i = 0; i < contents.length(); i++)
+    if (contents[i] == '\n') line_count++;
+
+  let const digit_count  = count_digits(line_count * 2);
+  let const number_width = !is_shell_script  ? usize{0}
+                           : digit_count > 3 ? digit_count
+                                             : usize{3};
+  let const prompt = number_width > 0 ? make_first_line_prompt(number_width + 1)
+                                      : String{heap_allocator()};
+
+  let const was_completion_enabled = toiletline::is_completion_enabled();
+  let const was_vi = cxt.runtime_state().option_is_enabled(shell_option_id::Vi);
+
+  toiletline::enter_raw_mode();
+  toiletline::enter_empty_history();
+  toiletline::set_line_numbers(number_width);
+  toiletline::set_submit_verb("save");
+  if (!is_shell_script && was_completion_enabled)
+    toiletline::disable_completion();
+  if (mode.has_value()) toiletline::set_edit_mode(*mode);
+
+  defer {
+    toiletline::set_edit_mode(was_vi ? toiletline::edit_mode::Vi
+                                     : toiletline::edit_mode::Emacs);
+    if (!is_shell_script && was_completion_enabled)
+      toiletline::enable_completion(cxt);
+    toiletline::set_line_numbers(0);
+    toiletline::set_submit_verb(nullptr);
+    toiletline::leave_empty_history();
+    try {
+      toiletline::exit_raw_mode();
+    } catch (const Error &error) {
+      show_message(error.to_string());
+    }
+  };
+
+  toiletline::set_input(contents);
+
+  loop {
+    let result = toiletline::get_input(prompt);
+
+    if (result.code == TL_PRESSED_TAB) {
+      toiletline::set_input(result.text);
+      continue;
+    }
+
+    toiletline::emit_newlines(result.text);
+
+    if (result.code == TL_PRESSED_INTERRUPT) return 130;
+    if (result.code != TL_PRESSED_ENTER && result.code != TL_PRESSED_WRITE_QUIT)
+    {
+      return 0;
+    }
+
+    /* at this point: Enter or a write command asks to save the buffer. */
+    let saved = String{heap_allocator()};
+
+    for (usize i = 0; i < result.text.length(); i++) {
+      if (result.text[i] == '\n' && has_crlf) saved.push('\r');
+      saved.push(result.text[i]);
+    }
+    if (has_final_newline && !saved.is_empty()) {
+      if (has_crlf) saved.push('\r');
+      saved.push('\n');
+    }
+
+    if (!save_file(args[1].view(), saved.view())) {
+      report_soft_builtin_error(ec, cxt, location,
+                                StringView{"Unable to write '"} + args[1] +
+                                    "': " + os::last_system_error_message());
+
+      return 1;
+    }
+
+    return 0;
+  }
+}
+
+} /* namespace koshka */

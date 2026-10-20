@@ -104,6 +104,13 @@ extended-keys-requested-after-the-prompt-command PASS
 kitty-ctrl-d-ends-the-shell PASS
 vi-mode-ignores-ctrl-x PASS
 ctrl-x-ctrl-c-ends-the-shell PASS
+slurp-numbers-the-lines-of-a-script PASS
+slurp-asks-for-a-second-enter-to-save PASS
+slurp-enter-saves-the-file PASS
+slurp-vi-write-quit-saves PASS
+slurp-leaves-a-text-file-unnumbered PASS
+slurp-vi-quit-leaves-the-file PASS
+slurp-refuses-a-binary-file PASS
 abort-at-the-prompt-restores-the-terminal PASS
 segfault-at-the-prompt-restores-the-terminal PASS
 status=0
