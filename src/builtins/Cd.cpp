@@ -73,8 +73,9 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   ASSERT(!ec.args().is_empty());
 
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
-    throw ErrorWithLocation{ec.source_location(),
-                            "Changing the directory is forbidden in a restricted shell"};
+    throw ErrorWithLocation{
+        ec.source_location(),
+        "Changing the directory is forbidden in a restricted shell"};
 
   let is_physical =
       !cxt.runtime_state().is_posix_mode() &&
