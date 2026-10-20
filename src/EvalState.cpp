@@ -801,11 +801,11 @@ fn
 EvalContext::cleanup_loop_redirect_fds(loop_redirect_fd_mark mark) wontthrow
     -> void
 {
-  for (usize i = expansion_store().loop_redirect_fds().count(); i > mark.count;
-       i--)
+  for (usize i = expansion_store().loop_redirect_fds().count();
+       i > mark.fd_count; i--)
     os::close_fd(expansion_store().loop_redirect_fds()[i - 1].fd);
 
-  while (expansion_store().loop_redirect_fds().count() > mark.count)
+  while (expansion_store().loop_redirect_fds().count() > mark.fd_count)
     expansion_store().loop_redirect_fds().remove(
         expansion_store().loop_redirect_fds().count() - 1);
 }
@@ -2827,13 +2827,13 @@ EvalContext::make_subshell_bootstrap() const throws
   source.push('\n');
 
   for (usize index = 1; index < stack.count(); index++) {
-    source += "pushd ";
+    source += "builtin pushd ";
     append_shell_quoted_arg(source, stack[index].view());
     source += " >/dev/null\n";
   }
 
   if (!stack.is_empty()) {
-    source += "pushd ";
+    source += "builtin pushd ";
     append_shell_quoted_arg(source, working_directory.view());
     source += " >/dev/null\n";
   }

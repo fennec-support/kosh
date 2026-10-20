@@ -34,16 +34,7 @@ basename_component(StringView path) wontthrow -> StringView
   /* at this point: path is non-empty, and end_position is one past a byte
      that is not a separator. */
 
-  usize start_position = end_position;
-
-  while (start_position > 0 &&
-         !os::is_directory_separator(path[start_position - 1]))
-  {
-    start_position--;
-  }
-
-  return path.substring_of_length(start_position,
-                                  end_position - start_position);
+  return Path::filename(path.substring_of_length(0, end_position));
 }
 
 cold fn

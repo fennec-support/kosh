@@ -80,9 +80,9 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       os::finish_nested_command_peak(outer_peak_rss_byte_count);
 
   let const real_seconds = static_cast<double>(elapsed_nanos) / 1000000000.0;
-  let const user_cpu =
+  let const user_cpu_seconds =
       child_times_after.user_seconds - child_times_before.user_seconds;
-  let const system_cpu =
+  let const system_cpu_seconds =
       child_times_after.system_seconds - child_times_before.system_seconds;
 
   let const layout = FLAG_TIME_POSIX.is_enabled()
@@ -93,8 +93,8 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let const time_format = cxt.get_variable_value("TIMEFORMAT");
   let const report      = utils::format_time_report(
-      time_format, real_seconds, user_cpu, system_cpu, rss_after_byte_count,
-      layout,
+      time_format, real_seconds, user_cpu_seconds, system_cpu_seconds,
+      rss_after_byte_count, layout,
       FLAG_TIME_RSS.is_enabled() ? utils::time_report_rss::Include
                                       : utils::time_report_rss::Omit);
 

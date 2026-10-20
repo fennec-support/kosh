@@ -18,7 +18,11 @@ KOSHKIT_UTIL_DECL("[-a] [file ...]",
                   "The evildisk utility can report filesystem capacity and "
                   "disk health data.");
 
-FLAG(EVILDISK_ALL, Bool, 'a', "all", "Show available SMART data.");
+FLAG(EVILDISK_ALL,
+     Bool,
+     'a',
+     "all",
+     "Show volume identity, filesystem integrity, and SMART data.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(EvilDisk);
 

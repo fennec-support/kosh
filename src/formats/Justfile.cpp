@@ -479,7 +479,9 @@ parse_justfile_format(const parser_format_input &input,
       continue;
     }
 
-    if (!is_recipe || indent == line.length) continue;
+    if (!is_recipe || indent == line.length) {
+      continue;
+    }
 
     /* at this point: is_recipe is true, indent is positive, and line has text
        after its indentation. */

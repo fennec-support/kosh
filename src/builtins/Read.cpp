@@ -334,7 +334,14 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         while (was_newline_terminated && do_trailing_backslash_count() % 2 == 1)
         {
-          accumulated.pop_back();
+          /* A newline delimiter continues the line, so its backslash is
+             removed. Any other escaped delimiter stays in the line with its
+             backslash. */
+          if (delimiter == '\n') {
+            accumulated.pop_back();
+          } else {
+            accumulated.push(delimiter);
+          }
 
           let continued_result = utils::read_line_from_fd(
               read_fd, delimiter, deadline_nanos, cxt.scratch_allocator());

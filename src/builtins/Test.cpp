@@ -124,9 +124,9 @@ public:
     let const operand_path = Path{operand};
 
     if (op == "-s") {
-      let const size = operand_path.file_size();
+      let const size_byte_count = operand_path.file_size();
 
-      return size.has_value() && size.value() > 0;
+      return size_byte_count.has_value() && size_byte_count.value() > 0;
     }
 
     using file_predicate = bool (Path::*)() const;

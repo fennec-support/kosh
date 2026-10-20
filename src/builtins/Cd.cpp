@@ -227,10 +227,12 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
 
         let const entry     = entries.substring_of_length(start, end - start);
-        let       candidate = entry.is_empty() ? Path{arg_path}
-                                               : Path{entry}.append(arg_path.view());
-        let       resolved  = candidate;
-        let       is_candidate_available = true;
+        let       candidate = Path{arg_path};
+
+        if (!entry.is_empty()) candidate = Path{entry}.append(arg_path.view());
+
+        let resolved               = candidate;
+        let is_candidate_available = true;
 
         if (is_physical) {
           if (resolved.is_relative()) {

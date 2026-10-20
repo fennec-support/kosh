@@ -152,6 +152,8 @@ public:
       m_position++;
     } else if (byte == '\b' && m_position > 0) {
       m_position--;
+    } else if (byte == '\t') {
+      m_position = (m_position / PR_TAB_WIDTH + 1) * PR_TAB_WIDTH;
     }
   }
 

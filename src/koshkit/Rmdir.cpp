@@ -50,7 +50,7 @@ Rmdir::execute(const ExecContext               &ec,
     }
 
     if (FLAG_RMDIR_PARENTS.is_enabled()) {
-      let current = Path{operand.view(), allocator};
+      let current = Path{operand.view(), allocator}.normalized();
 
       loop {
         let parent = current.parent();

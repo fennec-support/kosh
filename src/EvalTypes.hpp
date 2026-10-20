@@ -1234,7 +1234,7 @@ struct loop_redirect_fd
 
 struct loop_redirect_fd_mark
 {
-  usize count{0};
+  usize fd_count{0};
 };
 
 struct subshell_saved_descriptor

@@ -243,14 +243,15 @@ Split::execute(const ExecContext               &ec,
       u64   segment_unit_count = 0;
 
       if (is_byte_mode) {
-        let const remaining_count = unit_limit - output_unit_count;
-        let const unread_count    = *read_count - segment_start;
-        let const write_count     = remaining_count < unread_count
-                                        ? static_cast<usize>(remaining_count)
-                                        : unread_count;
+        let const remaining_byte_count = unit_limit - output_unit_count;
+        let const unread_byte_count    = *read_count - segment_start;
+        let const write_byte_count =
+            remaining_byte_count < unread_byte_count
+                ? static_cast<usize>(remaining_byte_count)
+                : unread_byte_count;
 
-        segment_end        = segment_start + write_count;
-        segment_unit_count = write_count;
+        segment_end        = segment_start + write_byte_count;
+        segment_unit_count = write_byte_count;
       } else {
         let const wanted_line_count = unit_limit - output_unit_count;
 

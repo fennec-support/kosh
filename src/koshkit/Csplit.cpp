@@ -245,7 +245,7 @@ Csplit::execute(const ExecContext               &ec,
         numeric_target = static_cast<u64>(current_line) + numeric.value();
       }
 
-      if (numeric_target > lines.count()) {
+      if (numeric_target >= lines.count()) {
         if (exhaustion_mode == csplit_exhaustion_mode::Allow) {
           return false;
         }
@@ -351,7 +351,7 @@ Csplit::execute(const ExecContext               &ec,
 
       let const adjusted_line = static_cast<i128>(matched_line) + offset;
 
-      if (adjusted_line < 0 || adjusted_line > lines.count()) {
+      if (adjusted_line < 0 || adjusted_line >= lines.count()) {
         if (exhaustion_mode == csplit_exhaustion_mode::Allow) {
           return false;
         }

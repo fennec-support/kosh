@@ -640,7 +640,8 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
   posix_spawn_file_actions_adddup2(&file_actions, write_end, STDERR_FILENO);
   posix_spawn_file_actions_addclose(&file_actions, read_end);
   posix_spawn_file_actions_addclose(&file_actions, write_end);
-  posix_spawn_file_actions_addclose(&file_actions, devnull_fd);
+  if (devnull_fd > STDERR_FILENO)
+    posix_spawn_file_actions_addclose(&file_actions, devnull_fd);
 
   let const raw_args = make_os_args(argv);
 
@@ -2876,12 +2877,12 @@ run_traced(const ArrayList<String> &argv, measured_output output) throws
   close(report_descriptors[1]);
 
   traced_counts counts{};
-  let const     read_count = retry_interrupted(
+  let const     read_byte_count = retry_interrupted(
       [&] { return read(report_descriptors[0], &counts, sizeof(counts)); });
 
   close(report_descriptors[0]);
   reap_child(tracer);
-  if (read_count != static_cast<ssize_t>(sizeof(counts))) return None;
+  if (read_byte_count != static_cast<ssize_t>(sizeof(counts))) return None;
 
   /* at this point: the tracer is reaped, and counts holds the full report
      written by run_tracer(). */
@@ -2979,12 +2980,12 @@ run_through_error_pipe(const auto  &raw_argv,
   close(exec_error_pipe[1]);
 
   int child_errno = 0;
-  /* FD_CLOEXEC closes exec_error_pipe[1] on exec(), so error_length is 0 after
-     a successful exec(). it is sizeof(child_errno) when exec() failed. */
-  let const error_length = retry_interrupted([&] {
+  /* FD_CLOEXEC closes exec_error_pipe[1] on exec(), so error_byte_count is 0
+     after a successful exec(). it is sizeof(child_errno) when exec() failed. */
+  let const error_byte_count = retry_interrupted([&] {
     return read(exec_error_pipe[0], &child_errno, sizeof(child_errno));
   });
-  let const read_errno   = errno;
+  let const read_errno       = errno;
 
   close(exec_error_pipe[0]);
 
@@ -2993,13 +2994,13 @@ run_through_error_pipe(const auto  &raw_argv,
       retry_interrupted([&] { return waitpid(child, &status, 0); });
 
   if (waited != child) return None;
-  if (error_length == -1) {
+  if (error_byte_count == -1) {
     errno = read_errno;
 
     return None;
   }
 
-  if (error_length == static_cast<ssize_t>(sizeof(child_errno))) {
+  if (error_byte_count == static_cast<ssize_t>(sizeof(child_errno))) {
     errno = child_errno;
 
     return None;

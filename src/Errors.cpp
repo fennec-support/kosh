@@ -650,7 +650,8 @@ resolve_rendered_site(StringView            source,
 }
 
 fn
-ErrorWithLocation::to_string(StringView source, EvalContext *context) const throws -> String
+ErrorWithLocation::to_string(StringView source, EvalContext *context) const
+    throws -> String
 {
   let const site = resolve_rendered_site(source, m_location, m_line_offset,
                                          m_is_rebased, context);
@@ -819,7 +820,8 @@ ErrorInOtherSource::ErrorInOtherSource(SourceLocation location,
 {}
 
 cold fn
-ErrorInOtherSource::to_string(StringView source, EvalContext *context) const throws -> String
+ErrorInOtherSource::to_string(StringView source, EvalContext *context) const
+    throws -> String
 {
   let rendered = ErrorWithLocation::to_string(m_own_source.view(), nullptr);
 
@@ -831,7 +833,8 @@ ErrorInOtherSource::to_string(StringView source, EvalContext *context) const thr
 }
 
 cold fn
-DetailsWithLocation::to_string(StringView source, EvalContext *context) const throws -> String
+DetailsWithLocation::to_string(StringView source, EvalContext *context) const
+    throws -> String
 {
   if (m_message.is_empty()) return String{heap_allocator()};
 
@@ -900,7 +903,8 @@ DetailsWithLocation::to_string(StringView source, EvalContext *context) const th
 
 cold fn
 ErrorWithLocationAndDetails::details_to_string(StringView source,
-                                               EvalContext *context) const throws -> String
+                                               EvalContext *context) const
+    throws -> String
 {
   if (m_details_message.is_empty()) return String{heap_allocator()};
 

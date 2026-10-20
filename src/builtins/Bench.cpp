@@ -516,7 +516,10 @@ format_metric(double      value,
 
   char buffer[64];
 
-  snprintf(buffer, sizeof(buffer), "%.3g%s", scaled, suffix);
+  if (scaled >= 999.5)
+    snprintf(buffer, sizeof(buffer), "%.0f%s", scaled, suffix);
+  else
+    snprintf(buffer, sizeof(buffer), "%.3g%s", scaled, suffix);
 
   return String{allocator, buffer};
 }

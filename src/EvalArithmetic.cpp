@@ -769,6 +769,8 @@ public:
             let const rhs       = parse_assignment();
             let       result    = ArithmeticValue{};
 
+            if (m_is_skipping) return ArithmeticValue{};
+
             try {
               result =
                   arith_apply_binop(kind, lhs, rhs, is_exact, arena, bc_scale);

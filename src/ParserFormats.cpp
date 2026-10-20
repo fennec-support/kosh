@@ -248,7 +248,7 @@ static fn
 detect_format_kind(const parser_format_input &input) throws
     -> parser_format_kind
 {
-  let       path     = input.path.has_value() ? *input.path : StringView{};
+  let const path     = input.path.has_value() ? *input.path : StringView{};
   let const filename = parser_format_filename(path);
   let named_kind = parser_format_find_ascii_folded(FORMAT_FILENAMES, filename);
 
@@ -517,9 +517,9 @@ template_construct_end(StringView source,
       let const byte = source[at];
 
       if (quote != '\0') {
-        if (byte == '\\' && quote == '"')
+        if (byte == '\\' && quote == '"') {
           at++;
-        else if (byte == quote)
+        } else if (byte == quote)
           quote = '\0';
         continue;
       }
@@ -529,7 +529,9 @@ template_construct_end(StringView source,
         continue;
       }
 
-      if (byte == first && source[at + 1] == second) return at + 2;
+      if (byte == first && source[at + 1] == second) {
+        return at + 2;
+      }
     }
 
     return None;
@@ -648,7 +650,9 @@ template_construct_end(StringView source,
         let const byte = source[at];
 
         if (byte == ')') {
-          if (!has_macro_marker || at == position + 2) return None;
+          if (!has_macro_marker || at == position + 2) {
+            return None;
+          }
           return at + 1;
         }
 
@@ -657,8 +661,9 @@ template_construct_end(StringView source,
             (byte >= '0' && byte <= '9') || byte == '_' || byte == '.';
 
         if (!is_word) return None;
-        if (byte == '.' || (byte >= 'A' && byte <= 'Z'))
+        if (byte == '.' || (byte >= 'A' && byte <= 'Z')) {
           has_macro_marker = true;
+        }
       }
 
       return None;
@@ -1045,8 +1050,9 @@ parser_format_shell_mood(StringView program) wontthrow -> Maybe<mimic_mood>
 
   if (program == "bash") return mimic_mood::Bash;
   if (program == "kosh") return mimic_mood::Default;
-  if (program == "sh" || program == "dash" || program == "ash")
+  if (program == "sh" || program == "dash" || program == "ash") {
     return mimic_mood::Posix;
+  }
 
   return None;
 }
@@ -1241,15 +1247,6 @@ workflow_shell_mood(StringView value) wontthrow -> interpreter_choice
 }
 
 static fn
-line_start_before(StringView source, usize position) wontthrow -> usize
-{
-  while (position > 0 && source[position - 1] != '\n')
-    position--;
-
-  return position;
-}
-
-static fn
 find_child_shell(StringView source,
                  usize      parent_end,
                  usize      parent_indent,
@@ -1352,7 +1349,7 @@ selected_workflow_mood(StringView source,
     }
   }
 
-  usize ancestor_scan  = line_start_before(source, item_start);
+  usize ancestor_scan  = item_start;
   usize minimum_indent = parser_format_leading_spaces(item_line);
 
   while (ancestor_scan > 0) {
@@ -1750,7 +1747,9 @@ read_yaml_scalar(StringView        source,
     }
 
     next_position = block_position;
-    if (content_indent == 0 || block_end <= block_start) return false;
+    if (content_indent == 0 || block_end <= block_start) {
+      return false;
+    }
 
     item = yaml_scalar_item{block_start, block_end,  '\0',
                             true,        *is_folded, content_indent};
@@ -1916,8 +1915,9 @@ add_yaml_scalar_fragment(parsed_format_document &document,
   fragment.should_skip_format = has_other_change ||
                                 (did_mask && !masks.is_restorable) ||
                                 (!did_mask && do_differs_from(source));
-  if (did_mask && !fragment.should_skip_format)
+  if (did_mask && !fragment.should_skip_format) {
     fragment.template_spans = steal(masks.spans);
+  }
 }
 
 static fn
@@ -1942,7 +1942,9 @@ collect_flow_sequence_items(StringView                   source,
       usize close = position + 1;
 
       while (close < line_end && source[close] != byte) {
-        if (byte == '"' && source[close] == '\\') close++;
+        if (byte == '"' && source[close] == '\\') {
+          close++;
+        }
         close++;
       }
 
@@ -2007,7 +2009,9 @@ collect_yaml_value_items(StringView                   source,
     return;
   }
 
-  if (value_position < line.length && line[value_position] != '#') return;
+  if (value_position < line.length && line[value_position] != '#') {
+    return;
+  }
 
   /* at this point: value_position is at the end of line or at a '#'
      comment, so any value items start on a following line. */
@@ -2313,7 +2317,9 @@ parser_format_extract_yaml_exec_keys(parsed_format_document &document,
       continue;
     }
 
-    if (!argv.is_empty() && yaml_item_text(source, argv[0]) == "CMD") first = 1;
+    if (!argv.is_empty() && yaml_item_text(source, argv[0]) == "CMD") {
+      first = 1;
+    }
     if (argv.count() < first + 3) continue;
 
     let const mood =
@@ -2595,7 +2601,9 @@ add_json_exec_array(parsed_format_document       &document,
       source.substring_of_length(starts[0], ends[0] - starts[0]));
   let const flag = source.substring_of_length(starts[1], ends[1] - starts[1]);
 
-  if (!mood.has_value() || !is_shell_command_flag(flag)) return;
+  if (!mood.has_value() || !is_shell_command_flag(flag)) {
+    return;
+  }
 
   add_json_command_fragment(document, source, starts[2], ends[2], *mood, key,
                             template_syntax);

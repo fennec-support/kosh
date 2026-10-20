@@ -1907,26 +1907,16 @@ write_history() -> koshka::ErrorOr<koshka::Ok>
       return koshka::Error{"the file contains invalid data"};
     let const start_offset_in_buffer =
         start_offset - ::itl_g_history_read_buffer_offset;
-    usize end_offset_in_buffer = start_offset_in_buffer;
-    bool  is_escape_pending    = false;
-    bool  did_find_end         = false;
+    let const end_offset_in_buffer =
+        find_history_record_end(private_contents, start_offset_in_buffer);
 
-    while (end_offset_in_buffer < private_contents.length) {
-      let const byte = private_contents[end_offset_in_buffer++];
-      if (is_escape_pending) {
-        is_escape_pending = false;
-      } else if (byte == '\\') {
-        is_escape_pending = true;
-      } else if (byte == '\n') {
-        did_find_end = true;
-        break;
-      }
-    }
+    if (!end_offset_in_buffer.has_value())
+      return koshka::Error{"the file contains invalid data"};
 
-    if (!did_find_end) return koshka::Error{"the file contains invalid data"};
     durable_offsets.push(written.count());
     written.append(private_contents.substring_of_length(
-        start_offset_in_buffer, end_offset_in_buffer - start_offset_in_buffer));
+        start_offset_in_buffer,
+        *end_offset_in_buffer - start_offset_in_buffer));
   }
 
   if (!write_history_file_atomically(*path, ".kosh_history_write",

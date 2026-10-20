@@ -425,6 +425,10 @@ bc_register_value(StringView statement, StringView name) wontthrow
     return {};
   }
 
+  if (position + 1 < statement.length && statement[position + 1] == '=') {
+    return {};
+  }
+
   position++;
 
   return statement.substring(position).trim_blanks();
@@ -1112,6 +1116,7 @@ bc_evaluate_function_call(StringView         statement,
         argument.array = array->clone();
     } else {
       argument.scalar = bc_evaluate_text(source, cxt, runtime, ec);
+      function        = bc_find_function(runtime, name);
     }
 
     prepared.push(steal(argument));
@@ -1452,7 +1457,7 @@ bc_execute_statement(StringView         statement,
 
       if (flow == bc_flow::Break) break;
       if (flow != bc_flow::Normal) return flow;
-      if (os::INTERRUPT_REQUESTED) break;
+      if (os::INTERRUPT_REQUESTED) return bc_flow::Quit;
     }
 
     return bc_flow::Normal;
@@ -1485,7 +1490,13 @@ bc_execute_statement(StringView         statement,
       part_start = position + 1;
     }
 
-    if (part_count != 3) return bc_flow::Normal;
+    if (part_count != 3) {
+      report_soft_koshkit_util_error(
+          ec, cxt, "bc", "invalid for statement",
+          "for requires three clauses separated by semicolons");
+      runtime.status = 1;
+      return bc_flow::Normal;
+    }
     /* at this point: parts holds the three trimmed clauses of header, and
        parts[1] is empty when the condition is omitted. */
     if (!parts[0].is_empty())
@@ -1500,7 +1511,7 @@ bc_execute_statement(StringView         statement,
       if (flow != bc_flow::Normal) return flow;
       if (!parts[2].is_empty())
         bc_execute_simple(parts[2], ec, cxt, runtime, bc_output_mode::Silent);
-      if (os::INTERRUPT_REQUESTED) break;
+      if (os::INTERRUPT_REQUESTED) return bc_flow::Quit;
     }
 
     return bc_flow::Normal;
@@ -1605,6 +1616,7 @@ Bc::execute(const ExecContext               &ec,
   runtime.has_math_library = FLAG_BC_MATH_LIBRARY.is_enabled();
   if (runtime.has_math_library) runtime.scale = 20;
   unused(bc_run_program(program.view(), ec, cxt, runtime));
+  if (os::INTERRUPT_REQUESTED) return 130;
 
   return runtime.status;
 }

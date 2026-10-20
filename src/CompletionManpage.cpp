@@ -1410,7 +1410,12 @@ internal::help_text_of(StringView command, EvalContext &context) throws
 
   let text = help_text_for(context, command);
 
-  if (!text.has_value()) return StringView{};
+  if (!text.has_value()) {
+    if (should_retry_killed_fork("help-text", command)) return StringView{};
+
+    return HELP_OUTPUT_CACHE.text.set(command, String{heap_allocator()})
+        ->view();
+  }
 
   /* at this point: the text cache has no entry for command, and text holds
      the help text of command. */

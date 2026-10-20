@@ -101,8 +101,8 @@ move_across_devices(const ExecContext &ec,
      filesystems, and the publishing rename() must stay on target's
      filesystem. */
   let const target_path    = Path{target, allocator};
-  let       temporary_path = os::write_to_named_temp_file(target_path.parent(),
-                                                          ".kosh_mv", StringView{});
+  let const temporary_path = os::write_to_named_temp_file(
+      target_path.parent(), ".kosh_mv", StringView{});
 
   if (!temporary_path.has_value())
     throw Error{

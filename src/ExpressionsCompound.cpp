@@ -535,16 +535,16 @@ CompoundListCondition::evaluate_impl(EvalContext &cxt,
     cxt.execution_store().is_terminal_exec_allowed() = false;
   }
 
-  double user_before               = 0.0;
-  double system_before             = 0.0;
+  double user_before_seconds       = 0.0;
+  double system_before_seconds     = 0.0;
   u64    start_nanos               = 0;
   u64    outer_peak_rss_byte_count = 0;
 
   if (m_cmd->is_timed()) {
     let const child_times = os::read_child_cpu_times();
 
-    user_before               = child_times.user_seconds;
-    system_before             = child_times.system_seconds;
+    user_before_seconds       = child_times.user_seconds;
+    system_before_seconds     = child_times.system_seconds;
     start_nanos               = os::monotonic_nanos();
     outer_peak_rss_byte_count = os::exchange_command_peak_rss_byte_count(0);
   }
@@ -552,17 +552,17 @@ CompoundListCondition::evaluate_impl(EvalContext &cxt,
   let result = m_cmd->evaluate_root_status(cxt, mode);
 
   if (m_cmd->is_timed()) {
-    let const elapsed_nanos = os::monotonic_nanos() - start_nanos;
-    let const child_times   = os::read_child_cpu_times();
-    let const user_after    = child_times.user_seconds;
-    let const system_after  = child_times.system_seconds;
+    let const elapsed_nanos        = os::monotonic_nanos() - start_nanos;
+    let const child_times          = os::read_child_cpu_times();
+    let const user_after_seconds   = child_times.user_seconds;
+    let const system_after_seconds = child_times.system_seconds;
 
     let const rss_after_byte_count =
         os::finish_nested_command_peak(outer_peak_rss_byte_count);
     const double real_seconds =
         static_cast<double>(elapsed_nanos) / 1000000000.0;
-    let const user_cpu   = user_after - user_before;
-    let const system_cpu = system_after - system_before;
+    let const user_cpu_seconds   = user_after_seconds - user_before_seconds;
+    let const system_cpu_seconds = system_after_seconds - system_before_seconds;
 
     let const layout = m_cmd->get_time_format_mode() == time_format_mode::Posix
                            ? utils::time_report_layout::Posix
@@ -572,8 +572,8 @@ CompoundListCondition::evaluate_impl(EvalContext &cxt,
 
     let const time_format = cxt.get_variable_value("TIMEFORMAT");
     let const report      = utils::format_time_report(
-        time_format, real_seconds, user_cpu, system_cpu, rss_after_byte_count,
-        layout,
+        time_format, real_seconds, user_cpu_seconds, system_cpu_seconds,
+        rss_after_byte_count, layout,
         m_cmd->get_time_rss_mode() == time_rss_mode::Include
                  ? utils::time_report_rss::Include
                  : utils::time_report_rss::Omit);

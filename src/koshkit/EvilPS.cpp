@@ -20,7 +20,7 @@
 #include "../base/Arena.hpp"
 #include "../base/StaticStringMap.hpp"
 
-KOSHKIT_UTIL_DECL("[-NUMBER] [-pAncUMcw] [--sort key] [--live [seconds]] "
+KOSHKIT_UTIL_DECL("[-NUMBER] [-pnaAUcMw] [--sort key] [--live [seconds]] "
                   "[--cumulative [seconds]] [pid]",
                   "The evilps utility can show running processes as a tree.");
 
@@ -670,8 +670,10 @@ render_process_snapshot(const ExecContext               &ec,
 
   defer { unordered_nodes = steal(nodes).into_array_list(); };
 
-  for (let &node : nodes)
-    node.was_rendered = false;
+  for (let &node : nodes) {
+    node.was_rendered      = false;
+    node.is_search_visible = true;
+  }
 
   mark_search_visibility(nodes, search);
 

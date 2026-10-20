@@ -477,8 +477,12 @@ replace_koshconf_target(const Path &target, StringView contents) throws
     }
 
     let const do_discard_backup = [&](StringView action) throws {
+      let const message = os::last_system_error_message();
+
       unused(os::remove_file(backup_temporary->view()));
-      do_discard(action);
+      unused(os::remove_file(temporary->view()));
+      throw Error{StringView{"Unable to "} + action + " '" + target.text() +
+                  "': " + message};
     };
 
     if (!os::set_file_mode(backup_temporary->view(), mode))

@@ -343,9 +343,9 @@ EvalContext::expand_word(const Word &word) throws
     }
   };
 
-  let const do_emit_modifier_word = [&](StringView            word,
-                                        const SourceLocation *word_location,
-                                        bool                  is_quoted) throws {
+  let const do_emit_operand_word = [&](StringView            word,
+                                       const SourceLocation *word_location,
+                                       bool                  is_quoted) throws {
     if (!is_field_sensitive_word(word)) {
       let const expanded =
           expand_modifier_word(word, true, true, word_location, !is_quoted,
@@ -567,9 +567,9 @@ EvalContext::expand_word(const Word &word) throws
         let const do_emit_word = [&]() throws {
           let word_location = SourceLocation{};
 
-          do_emit_modifier_word(word,
-                                do_source_location_for(word, word_location),
-                                segment.is_in_double_quotes);
+          do_emit_operand_word(word,
+                               do_source_location_for(word, word_location),
+                               segment.is_in_double_quotes);
         };
 
         switch (op) {
@@ -1025,7 +1025,7 @@ EvalContext::expand_word(const Word &word) throws
 
               let modifier_word_location = SourceLocation{};
 
-              do_emit_modifier_word(
+              do_emit_operand_word(
                   modifier_word,
                   do_source_location_for(modifier_word, modifier_word_location),
                   segment.is_in_double_quotes);
@@ -1070,7 +1070,7 @@ EvalContext::expand_word(const Word &word) throws
             let const modifier_word          = rest.substring(op_index + 1);
             let       modifier_word_location = SourceLocation{};
 
-            do_emit_modifier_word(
+            do_emit_operand_word(
                 modifier_word,
                 do_source_location_for(modifier_word, modifier_word_location),
                 segment.is_in_double_quotes);

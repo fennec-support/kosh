@@ -38,6 +38,11 @@ directory_part_of(StringView path) wontthrow -> StringView
 
   if (end_position == 0) return StringView{"/"};
 
+  /* a drive root such as C:\ keeps its separator. */
+  if (end_position == 2 && os::path_root_length(path) == 3) {
+    return path.substring_of_length(0, 3);
+  }
+
   bool  has_separator           = false;
   usize last_separator_position = 0;
 

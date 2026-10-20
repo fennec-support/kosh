@@ -126,7 +126,8 @@ RuntimeStateScope::~RuntimeStateScope() { m_saved.restore(m_context); }
 DefinitionStateScope::DefinitionStateScope(EvalContext            &context,
                                            const definition_state &state,
                                            definition_state_exit   exit,
-                                           bool                    should_enter) wontthrow
+                                           bool                    should_enter)
+    wontthrow
     : m_context(context), m_exit(exit)
 {
   if (should_enter) m_saved = context.enter_definition_state(state);
@@ -308,9 +309,10 @@ EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
       }
 
       if (utils::environment_name_is_path(name)) {
-        program_resolver().assign_path(entry.previous_value.has_value()
-                                           ? Maybe<String>{String{heap_allocator(), restored}}
-                                           : Maybe<String>{});
+        program_resolver().assign_path(
+            entry.previous_value.has_value()
+                ? Maybe<String>{String{heap_allocator(), restored}}
+                : Maybe<String>{});
       }
 
       if (is_exported(name)) {
@@ -1871,7 +1873,8 @@ EvalContext::funcname_frame_at(usize index) const wontthrow -> StringView
 fn
 EvalContext::line_number_at_location(const SourceLocation &location,
                                      const String         *fallback_source,
-                                     Maybe<usize> fallback_call_depth) const throws -> usize
+                                     Maybe<usize> fallback_call_depth) const
+    throws -> usize
 {
   let const   &line_bases           = source_store().embedded_sources();
   let          site                 = location;

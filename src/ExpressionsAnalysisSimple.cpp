@@ -1553,24 +1553,24 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
           m_args[0]->source_location().position);
 
   let unavailable          = Maybe<utils::unavailable_path_source_component>{};
-  let command_was_resolved = false;
+  let was_command_resolved = false;
 
   if (should_check_command_resolution) {
-    command_was_resolved = command_resolves(*name, m_args[0]->source_location(),
+    was_command_resolved = command_resolves(*name, m_args[0]->source_location(),
                                             actx, unavailable);
   }
 
-  if (should_check_command_resolution && !command_was_resolved &&
+  if (should_check_command_resolution && !was_command_resolved &&
       m_args.count() == 1 && actx.eval_context != nullptr &&
       actx.eval_context->execution_store().shell_is_interactive() &&
       actx.eval_context->is_shopt_enabled(shopt_option_id::Autocd) &&
       Path{*name}.is_directory())
   {
-    command_was_resolved = true;
+    was_command_resolved = true;
     actx.mark_working_directory_unknown();
   }
 
-  if (should_check_command_resolution && !command_was_resolved &&
+  if (should_check_command_resolution && !was_command_resolved &&
       !actx.tested_command_names.contains(*name))
   {
     let reported_diagnostic  = resolution_diagnostic;

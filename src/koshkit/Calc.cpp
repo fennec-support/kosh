@@ -329,6 +329,12 @@ Calc::execute(const ExecContext               &ec,
       (FLAG_CALC_INTERACTIVE.is_enabled() ||
        (!has_expression && os::is_stdin_a_tty() && os::is_stdout_a_tty()));
 
+  if (has_expression && (should_pipe || is_interactive)) {
+    throw ErrorWithDetails{
+        "calc -i and -p read expressions from their input, not operands",
+        "Remove the operands, or evaluate them without -i or -p"};
+  }
+
   if (should_pipe || is_interactive) {
     let const input_mode = should_pipe ? calc_repl_input_mode::Pipe
                                        : calc_repl_input_mode::DetectTerminal;

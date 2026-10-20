@@ -1757,7 +1757,7 @@ seed_session_variables(EvalContext                 &context,
     identity_mode = shell_identity_mode::Bash;
   }
 
-  for (let listed : init_moods)
+  for (let const listed : init_moods)
     if (listed == mimic_mood::Bash || listed == mimic_mood::BashPosix) {
       identity_mode = shell_identity_mode::Bash;
     }
@@ -1785,8 +1785,9 @@ seed_session_variables(EvalContext                 &context,
     context.set_shell_variable("KOSH_WELCOME", welcome);
   }
 
-  if (is_interactive && !os::has_environment_variable("KOSH_FAREWELL"))
+  if (is_interactive && !os::has_environment_variable("KOSH_FAREWELL")) {
     context.set_shell_variable("KOSH_FAREWELL", "Goodbye :c");
+  }
 
   if (!os::has_environment_variable("PS2"))
     context.set_shell_variable("PS2", "> ");

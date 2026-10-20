@@ -1692,8 +1692,9 @@ draw_particles(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
   }
 }
 
-/* memory: text is a String in allocator and is freed on return. it holds
-           at most 11 bytes, "speed 10.0x", so the cost is constant.
+/* memory: text is a String in allocator. The live view passes its frame
+           arena, which releases text when the frame ends. text holds at
+           most 11 bytes, "speed 10.0x", so the cost is constant.
    time:   O(1). */
 fn
 draw_notice(scene_canvas      &canvas,
@@ -1749,8 +1750,9 @@ append_colors(String &frame,
 }
 
 /* memory: canvas holds three ArrayList buffers of cell_count entries each,
-           where pixels has 2 * cell_count entries. the destructor frees
-           them on return. frame grows by the appended text.
+           where pixels has 2 * cell_count entries. The frame arena of the
+           live view releases them when the frame ends. frame grows by the
+           appended text.
    time:   O(cell_count), with cell_count = column_count * row_count, in the
            starfield, fill, and output loops. cats, explosions, and particles
            add work bounded by their fixed counts. */

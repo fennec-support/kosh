@@ -113,10 +113,14 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
       if (let const alias = cxt.scope_store().get_alias(name.view());
           alias.has_value())
       {
-        if (is_verbose)
+        if (is_verbose) {
           ec.print_to_stdout(name + " is aliased to `" + *alias + "'\n");
-        else
-          ec.print_to_stdout("alias " + name + "='" + *alias + "'\n");
+        } else {
+          let quoted_value = String{cxt.scratch_allocator()};
+
+          append_shell_quoted_arg(quoted_value, alias->view(), true);
+          ec.print_to_stdout("alias " + name + "=" + quoted_value + "\n");
+        }
         did_find_any = true;
         continue;
       }

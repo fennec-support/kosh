@@ -1126,12 +1126,17 @@ parse_flags(const FlagList                  &flags,
 
   if (should_take_next_argument_as_value) {
     ASSERT(previous_flag != nullptr);
+
+    let       name      = String{heap_allocator()};
+    let const flag_text = flag_name(previous_flag, was_previous_flag_long);
+
+    name.push(was_previous_flag_after_plus ? '+' : '-');
+    name += flag_text.view().substring(1);
+
     let error = ErrorWithLocation{
         previous_flag->value_location(),
         prefixed_message(program_name,
-                         "No value provided for '" +
-                             flag_name(previous_flag, was_previous_flag_long) +
-                             "' flag")};
+                         "No value provided for '" + name + "' flag")};
 
     error.set_command_status(2);
     throw error;
@@ -2127,12 +2132,12 @@ flush() throws -> void
                 os::last_system_error_message()};
 }
 
-static thread_local bool ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = false;
+static thread_local bool IS_ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = false;
 
 fn
 arm_message_leading_newline(bool is_armed) wontthrow -> void
 {
-  ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = is_armed;
+  IS_ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = is_armed;
 }
 
 cold fn
@@ -2142,9 +2147,9 @@ show_message(StringView err) throws -> void
 
   os::signal_internal_diagnostic();
 
-  if (ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED) {
+  if (IS_ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED) {
     print_error("\n");
-    ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = false;
+    IS_ONE_SHOT_MESSAGE_LEADING_NEWLINE_ARMED = false;
   }
 
   print_error(err);

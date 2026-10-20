@@ -1182,7 +1182,7 @@ scan_heredoc_bodies(StringView                               line,
       let const match = lexer::match_heredoc_line(
           line.substring_of_length(i, line_end - i), heredoc);
       let const content_start = i + match.content_start;
-      let const content_end   = content_start + match.content_length;
+      let const content_end   = content_start + match.content_byte_count;
       let const next          = (line_end < end) ? line_end + 1 : line_end;
 
       if (match.is_terminator) {

@@ -54,7 +54,10 @@ Alias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const &arg   = args[i];
     let const  parts = NameValueArg::from(arg);
 
-    if (parts.get_value().has_value()) {
+    if (parts.get_value().has_value() && parts.get_name().is_empty()) {
+      report_soft_builtin_error(ec, cxt, "The alias name must not be empty");
+      status = 1;
+    } else if (parts.get_value().has_value()) {
       LOG(All, "alias defining '%.*s'",
           static_cast<int>(parts.get_name().length), parts.get_name().data);
       cxt.scope_store().set_alias(parts.get_name(), *parts.get_value());

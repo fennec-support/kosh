@@ -453,11 +453,11 @@ JobTable::wait_for_job_processes(
     let const fallback_process    = job.is_primary_process_active
                                         ? job.pid
                                         : job.earlier_pipeline_processes.back();
-    let       process_was_stopped = false;
+    let       was_process_stopped = false;
     let const process_status =
-        os::wait_and_monitor_process(fallback_process, &process_was_stopped);
+        os::wait_and_monitor_process(fallback_process, &was_process_stopped);
 
-    if (process_was_stopped) {
+    if (was_process_stopped) {
       job.state          = job::State::Stopped;
       job.stopped_status = process_status;
       if (was_stopped != nullptr) *was_stopped = true;

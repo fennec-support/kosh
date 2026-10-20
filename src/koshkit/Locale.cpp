@@ -74,8 +74,13 @@ Locale::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  if (FLAG_LOCALE_ALL_LOCALES.is_enabled() && FLAG_LOCALE_CHARMAPS.is_enabled())
-  {
+  let const is_both_listings =
+      FLAG_LOCALE_ALL_LOCALES.is_enabled() && FLAG_LOCALE_CHARMAPS.is_enabled();
+  let const is_listing_with_names = (FLAG_LOCALE_ALL_LOCALES.is_enabled() ||
+                                     FLAG_LOCALE_CHARMAPS.is_enabled()) &&
+                                    !operands.is_empty();
+
+  if (is_both_listings || is_listing_with_names) {
     return report_usage_error(ec, cxt, args[0].view());
   }
 

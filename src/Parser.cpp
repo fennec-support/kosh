@@ -1295,6 +1295,10 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         if (lhs != nullptr) {
           do_finish_pending(lhs, token);
           next_cond = get_sequence_kind(token->kind());
+        } else {
+          should_time_pending = false;
+          time_format         = time_format_mode::Default;
+          time_rss            = time_rss_mode::Omit;
         }
 
         if (token->kind() == Token::Kind::Newline &&
@@ -1458,7 +1462,8 @@ Parser::build_file_or_dup_redirection(
 
     ASSERT(after != nullptr);
 
-    if (after->kind() == Token::Kind::Ampersand &&
+    if (op_kind != Token::Kind::DoubleGreater &&
+        after->kind() == Token::Kind::Ampersand &&
         after->source_location().position ==
             op_location.position + op_location.length)
     {
@@ -1794,13 +1799,8 @@ Parser::try_parse_descriptor_prefixed_redirection(
       let const literal           = word_token->word().to_literal_string();
       let const parsed_descriptor = literal.to<i64>();
 
-      if (parsed_descriptor.is_error()) {
-        throw ErrorWithLocation{word_location,
-                                parsed_descriptor.error().message()};
-      }
-
-      /* at this point: literal parses as an integer no greater than INT32_MAX,
-         and fd holds the parsed value. */
+      /* at this point: do_is_descriptor_in_range() accepted literal, so
+         parsed_descriptor holds an integer no greater than INT32_MAX. */
       fd = static_cast<i32>(parsed_descriptor.value());
     }
 
@@ -2277,6 +2277,7 @@ Parser::finish_function_body(const SourceLocation &location,
       body = parse_simple_command();
     } catch (...) {
       m_lexer.drop_pending_heredocs_after(pending_heredoc_count);
+      unused(close_analysis_scope(scope_mark));
       throw;
     }
   }

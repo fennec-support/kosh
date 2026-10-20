@@ -2432,12 +2432,9 @@ restore_encoded_terminal_settings(termios &state, StringView encoded) wontthrow
     return false;
   }
 
-  if (input_flags > std::numeric_limits<tcflag_t>::max() ||
-      output_flags > std::numeric_limits<tcflag_t>::max() ||
-      control_flags > std::numeric_limits<tcflag_t>::max() ||
-      local_flags > std::numeric_limits<tcflag_t>::max() ||
-      input_speed > std::numeric_limits<speed_t>::max() ||
-      output_speed > std::numeric_limits<speed_t>::max())
+  if (input_flags > ~tcflag_t{0} || output_flags > ~tcflag_t{0} ||
+      control_flags > ~tcflag_t{0} || local_flags > ~tcflag_t{0} ||
+      input_speed > ~speed_t{0} || output_speed > ~speed_t{0})
   {
     return false;
   }
@@ -2625,6 +2622,8 @@ apply_terminal_settings(descriptor               terminal,
       continue;
     case terminal_setting_kind::Rows:
     case terminal_setting_kind::Columns: {
+      if (is_disabled)
+        return {terminal_settings_apply_kind::InvalidSetting, index};
       if (++index == settings.count() || !has_window) {
         return {terminal_settings_apply_kind::InvalidSetting, index - 1};
       }

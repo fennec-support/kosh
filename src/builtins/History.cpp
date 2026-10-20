@@ -86,11 +86,12 @@ history_target_needs_separator(const Path &target) throws
   let const fd        = opened.value();
   char      last_byte = '\0';
 
-  let const read_count = os::seek_descriptor_from_start(fd, status.size - 1)
-                             ? os::read_fd(fd, &last_byte, 1)
-                             : Maybe<usize>{None};
+  let const read_byte_count =
+      os::seek_descriptor_from_start(fd, status.size - 1)
+          ? os::read_fd(fd, &last_byte, 1)
+          : Maybe<usize>{None};
 
-  if (!read_count.has_value()) {
+  if (!read_byte_count.has_value()) {
     let const failure_message = os::last_system_error_message();
 
     unused(os::close_fd(fd));
@@ -98,7 +99,7 @@ history_target_needs_separator(const Path &target) throws
     return Error{failure_message.view()};
   }
 
-  if (*read_count != 1) {
+  if (*read_byte_count != 1) {
     unused(os::close_fd(fd));
 
     return Error{"the file changed"};

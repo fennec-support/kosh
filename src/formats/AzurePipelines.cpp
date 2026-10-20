@@ -28,7 +28,7 @@ parse_azure_pipelines_format(const parser_format_input &input,
 
     if (!parser_format_has_substring(line, "vmImage:")) continue;
     image_count++;
-    if (parser_format_has_substring(line, "windows")) windows_count++;
+    if (parser_format_has_substring(line, "win")) windows_count++;
   }
 
   let const is_windows_only = image_count > 0 && windows_count == image_count;

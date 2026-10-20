@@ -1660,8 +1660,8 @@ execute_suspended_aio_batch(const batched_syscall  *operations,
         while (!finish_suspended_aio(controls[chunk_index], result))
           unused(::aio_suspend(pending, 1, nullptr));
 
-        result = {operations[operation_start + chunk_index].request_id, 0,
-                  error_number};
+        if (result.error_number == ECANCELED)
+          result.error_number = error_number;
         is_completed[chunk_index] = true;
         completed_count++;
       }

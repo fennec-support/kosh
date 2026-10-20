@@ -1041,10 +1041,36 @@ format_word_substitutions(StringView word,
 
   if (!has_formattable_substitution) return None;
 
-  let   output   = String{heap_allocator()};
-  usize position = 0;
+  let   output              = String{heap_allocator()};
+  usize position            = 0;
+  bool  is_in_double_quotes = false;
 
   while (position < word.length) {
+    if (word[position] == '\\' && position + 1 < word.length) {
+      output.append(word.substring_of_length(position, 2));
+      position += 2;
+      continue;
+    }
+
+    if (word[position] == '"') {
+      is_in_double_quotes = !is_in_double_quotes;
+      output.push(word[position++]);
+      continue;
+    }
+
+    if (word[position] == '\'' && !is_in_double_quotes) {
+      usize quote_end = position + 1;
+
+      while (quote_end < word.length && word[quote_end] != '\'') {
+        quote_end++;
+      }
+
+      if (quote_end < word.length) quote_end++;
+      output.append(word.substring_of_length(position, quote_end - position));
+      position = quote_end;
+      continue;
+    }
+
     bool  is_substitution          = false;
     bool  is_function_substitution = false;
     usize opener_length            = 0;

@@ -1225,7 +1225,7 @@ collect_shell_provided_variable_names(const AnalysisContext &actx,
       SSK("KOSH_OS"), SSK("KOSH_BUILD_MODE"), SSK("OPTIND")};
 
   for (let const &key : FIXED_VARIABLE_KEYS) {
-    let name = key.to_string(heap_allocator());
+    let const name = key.to_string(heap_allocator());
 
     out_names.add(name.view());
   }
@@ -1236,7 +1236,7 @@ collect_shell_provided_variable_names(const AnalysisContext &actx,
         SSK("BASH"), SSK("BASH_VERSION"), SSK("BASH_VERSINFO")};
 
     for (let const &key : BASH_IDENTITY_KEYS) {
-      let name = key.to_string(heap_allocator());
+      let const name = key.to_string(heap_allocator());
 
       out_names.add(name.view());
     }
@@ -1390,7 +1390,7 @@ check_unassigned_variable_reads(AnalysisContext &actx) throws -> void
     if (resembled.name.is_empty()) resembled = misspelled;
 
     if (resembled.name.is_empty()) {
-      let maintained = suggest_shell_maintained_variable_name(
+      let const maintained = suggest_shell_maintained_variable_name(
           shell_maintained_variable_names, read.name);
 
       if (maintained.has_value()) {

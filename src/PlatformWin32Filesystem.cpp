@@ -1090,7 +1090,10 @@ open_file_descriptor(StringView path, file_open_mode mode) -> Maybe<descriptor>
 
   let const is_named_pipe = is_named_pipe_path(path);
 
-  if (is_named_pipe) disposition = OPEN_EXISTING;
+  /* CREATE_NEW fails on the NUL device, so the device opens as existing. */
+  if (is_named_pipe || is_mapped_dev_null(path)) {
+    disposition = OPEN_EXISTING;
+  }
 
   /* Non-inheritable, execute_program() flips it only while spawning the
      child. */

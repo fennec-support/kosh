@@ -730,7 +730,9 @@ struct resolved_duplication
 };
 
 fn
-resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
+resolve_duplication(const Redirection &redir,
+                    EvalContext       &cxt,
+                    bool              *did_open_or_stage_fail) throws
     -> resolved_duplication
 {
   if (redir.target == nullptr)
@@ -741,6 +743,7 @@ resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
   ArrayList<String> fields = cxt.process_args(target_tokens);
 
   if (fields.count() != 1) {
+    if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
     throw ErrorWithLocation{redir.target->source_location(),
                             "Duplication target is not a single descriptor"};
   }
@@ -755,11 +758,13 @@ resolve_duplication(const Redirection &redir, EvalContext &cxt) throws
   if (parsed_descriptor.is_error() || parsed_descriptor.value() < 0) {
     if (redir.is_dup_filename_allowed)
       return resolved_duplication{-1, steal(field)};
+    if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
     throw ErrorWithLocation{redir.target->source_location(),
                             "'" + field + "' is not a valid descriptor"};
   }
 
   if (parsed_descriptor.value() > INT32_MAX) {
+    if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
     throw ErrorWithLocation{redir.target->source_location(),
                             field + ": Bad file descriptor"};
   }
@@ -974,7 +979,7 @@ internal::resolve_redirection(const Redirection    &redir,
   if (redir.kind == Redirection::Kind::DuplicateOutput ||
       redir.kind == Redirection::Kind::DuplicateInput)
   {
-    let resolved_dup = resolve_duplication(redir, cxt);
+    let resolved_dup = resolve_duplication(redir, cxt, did_open_or_stage_fail);
 
     if (resolved_dup.both_streams_file.has_value()) {
       if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
@@ -1444,7 +1449,7 @@ append_reprinted_source(String    &out,
       continue;
     }
 
-    if (byte == '\'' || byte == '`') {
+    if ((byte == '\'' && should_collapse_blanks) || byte == '`') {
       let const start = position++;
 
       while (position < source.length && source[position] != byte) {

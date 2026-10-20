@@ -1207,7 +1207,7 @@ append_batch_quoted_arg(String &out, StringView arg) throws -> bool
   for (usize i = 0; i < arg.count(); i++) {
     let const c = static_cast<unsigned char>(arg[i]);
 
-    if (c == '\0' || c == '\n') {
+    if (c == '\0' || c == '\n' || c == '"') {
       return false;
     }
 
@@ -2957,7 +2957,7 @@ join_thread(thread t) wontthrow -> void
 }
 
 fn
-wait_and_monitor_process(process p, bool *was_stopped) -> i32
+wait_and_monitor_process(process p, bool *was_stopped) throws -> i32
 {
   unused(was_stopped);
   defer { CloseHandle(p); };
@@ -3138,13 +3138,13 @@ static const utils::signal_pair SIGNAL_PAIRS[] = {
 };
 
 fn
-signal_number_from_name(StringView name) -> Maybe<i32>
+signal_number_from_name(StringView name) throws -> Maybe<i32>
 {
   return utils::find_signal_number(SIGNAL_PAIRS, countof(SIGNAL_PAIRS), name);
 }
 
 fn
-signal_name_from_number(i32 number) -> Maybe<String>
+signal_name_from_number(i32 number) throws -> Maybe<String>
 {
   return utils::find_signal_name(SIGNAL_PAIRS, countof(SIGNAL_PAIRS), number);
 }
@@ -3340,7 +3340,7 @@ handle_interrupt(int s) -> void
 }
 
 fn
-set_default_signal_handlers(signal_profile profile) -> void
+set_default_signal_handlers(signal_profile profile) throws -> void
 {
   let const is_interactive = profile == signal_profile::Interactive;
   if ((is_interactive && signal(SIGTERM, SIG_IGN) == SIG_ERR) ||

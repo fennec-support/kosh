@@ -1537,14 +1537,15 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
            args[format_index] is a word token whose text is fully literal. */
         let const format               = format_word.to_literal_string();
         let       has_quote_conversion = false;
-        let const consumed =
+        let const consumed_argument_count =
             printf_consumed_argument_count(format.view(), has_quote_conversion);
-        let const available = args.count() - format_index - 1;
+        let const available_argument_count = args.count() - format_index - 1;
 
-        if (consumed > available) {
+        if (consumed_argument_count > available_argument_count) {
           actx.report_diagnostic(diagnostic_id::sc2183,
                                  args[format_index]->source_location());
-        } else if (consumed == 0 && available > 0) {
+        } else if (consumed_argument_count == 0 && available_argument_count > 0)
+        {
           actx.report_diagnostic(diagnostic_id::sc2182,
                                  args[format_index]->source_location());
         }

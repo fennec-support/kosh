@@ -212,7 +212,8 @@ Retry::execute(const ExecContext               &ec,
       show_warning(line.view());
     }
 
-    if (maximum_delay_seconds > 0.0 && delay_seconds > maximum_delay_seconds) {
+    if (FLAG_RETRY_MAX_DELAY.is_set() && delay_seconds > maximum_delay_seconds)
+    {
       delay_seconds = maximum_delay_seconds;
     }
 

@@ -397,7 +397,7 @@
         then
           IS_CURRENT=1
         fi
-      elif is_at_least "$INSTALLED_VERSION" "$VERSION"
+      elif is_at_least "$INSTALLED_VERSION" "${VERSION#v}"
       then
         IS_CURRENT=1
       fi

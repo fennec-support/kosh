@@ -1932,7 +1932,7 @@ read_system_activity_status(system_activity_status &status) wontthrow -> bool
 #elif defined __linux__
   status.has_isolation_probes = true;
 
-  char      stat_buffer[16384];
+  char      stat_buffer[65536];
   let const stat_length =
       read_small_file("/proc/stat", stat_buffer, sizeof(stat_buffer));
 

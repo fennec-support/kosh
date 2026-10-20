@@ -292,10 +292,8 @@ timeout_managed_command_start(StringView line, usize position) wontthrow
 }
 
 static fn
-timeout_command_start(StringView line) wontthrow -> Maybe<usize>
+timeout_command_start(StringView line, usize position) wontthrow -> Maybe<usize>
 {
-  usize position = 0;
-
   loop {
     let const word = next_completion_prefix_word(line, position);
 
@@ -346,7 +344,9 @@ fn
 internal::is_in_command_position(StringView line, usize token_start) wontthrow
     -> bool
 {
-  if (let const managed_start = timeout_command_start(line);
+  let const segment_start = command_segment_start(line, token_start);
+
+  if (let const managed_start = timeout_command_start(line, segment_start);
       managed_start.has_value())
   {
     return token_start == *managed_start;
@@ -392,7 +392,9 @@ internal::is_after_builtin_prefix(StringView line, usize token_start) wontthrow
 fn
 internal::command_word_of(StringView line) wontthrow -> StringView
 {
-  if (let const managed_start = timeout_command_start(line);
+  let const segment_start = command_segment_start(line, line.length);
+
+  if (let const managed_start = timeout_command_start(line, segment_start);
       managed_start.has_value())
   {
     usize     position = *managed_start;

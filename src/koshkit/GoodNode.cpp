@@ -221,7 +221,7 @@ find_inode(const Path            &path,
 
   if (os::file_type_letter(status.mode) != 'd') return false;
 
-  let children = os::list_directory_status(path.view(), allocator);
+  let const children = os::list_directory_status(path.view(), allocator);
 
   if (!children.has_value()) return false;
   /* at this point: path is a directory, and children holds its listing. */
@@ -301,7 +301,7 @@ GoodNode::execute(const ExecContext               &ec,
     let const root_path = Path{root, allocator};
     let const inode     = static_cast<u64>(parsed.value());
 
-    if (let canonical_root = os::canonical_path(root_path);
+    if (let const canonical_root = os::canonical_path(root_path);
         canonical_root.has_value() &&
         canonical_root->view() == root_path.view())
     {

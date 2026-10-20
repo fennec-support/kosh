@@ -216,9 +216,9 @@ literal_word_value(const Word &word) throws -> Maybe<String>
       break;
 
     case WordSegment::Kind::UnquotedText:
-      for (usize i = 0; i < segment.text.count(); i++) {
-        if (lexer::is_expandable_char(segment.text[i])) return None;
-      }
+      /* a glob or brace may expand into several words at run time. */
+      if (word_segment_has_glob_metacharacter(segment)) return None;
+      if (segment.text.view().find_character('{').has_value()) return None;
 
       if (!segment.text.is_empty() && segment.text[0] == '~') {
         return None;
@@ -479,6 +479,15 @@ simple_command_static_verdict(const ArrayList<const Token *> &args,
 
   if (actx.functions.aliases.contains(name->view())) {
     LOG(All, "declining the static verdict, an alias shadows '%s'",
+        name->c_str());
+
+    return None;
+  }
+
+  if (actx.eval_context != nullptr &&
+      actx.eval_context->is_builtin_name_disabled(name->view()))
+  {
+    LOG(All, "declining the static verdict, the builtin '%s' is disabled",
         name->c_str());
 
     return None;

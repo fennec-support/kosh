@@ -207,7 +207,7 @@ get_utf8_length(const char *bytes, usize byte_count) -> usize;
 
 fn
 get_codepoint_byte_offset(const char *bytes,
-                          usize       byte_length,
+                          usize       byte_count,
                           usize       codepoint_index) -> usize;
 
 fn

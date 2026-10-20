@@ -111,6 +111,10 @@ resolve_with_missing_components(StringView    operand,
         continue;
       }
 
+      if (link_count == MAXIMUM_LINK_COUNT && candidate.is_symbolic_link()) {
+        return None;
+      }
+
       let const link_target =
           link_count < MAXIMUM_LINK_COUNT && candidate.is_symbolic_link()
                 ? os::read_symlink(candidate.view(), allocator)

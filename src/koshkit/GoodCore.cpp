@@ -156,12 +156,15 @@ append_unique_path(ArrayList<String> &paths,
     return;
   }
 
+  let const normalized = Path{path, allocator}.normalized();
+
   for (let const &existing : paths) {
-    if (existing.view() == path) return;
+    if (existing.view() == normalized.view()) return;
   }
 
-  /* at this point: path is absolute and not yet in paths. */
-  if (Path{path, allocator}.is_regular_file()) paths.push_managed(path);
+  /* at this point: normalized is absolute, has no parent references, and is
+     not yet in paths. */
+  if (normalized.is_regular_file()) paths.push_managed(normalized.view());
 }
 
 fn

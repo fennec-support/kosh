@@ -601,7 +601,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
   }
 
   let const do_record_location =
-      [expanded_locations](SourceLocation loc) wontthrow -> void {
+      [expanded_locations](SourceLocation loc) throws -> void {
     if (expanded_locations != nullptr) expanded_locations->push(steal(loc));
   };
 

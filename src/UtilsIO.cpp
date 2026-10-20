@@ -595,19 +595,11 @@ git_upstream_ref(const Path &git_dir, StringView branch_name) throws
   let const refs_prefix    = StringView{"refs/"};
   let const remotes_prefix = StringView{"refs/remotes/"};
 
+  let short_ref = merge_ref.view();
+
   if (merge_ref.starts_with(refs_prefix)) {
-    let short_ref = merge_ref.view().substring(refs_prefix.length);
-
+    short_ref = short_ref.substring(refs_prefix.length);
     if (short_ref.starts_with("heads/")) short_ref = short_ref.substring(6);
-
-    let result = String{heap_allocator()};
-
-    result += remotes_prefix;
-    result += remote_name.view();
-    result += "/";
-    result += short_ref;
-
-    return result;
   }
 
   let result = String{heap_allocator()};
@@ -615,7 +607,7 @@ git_upstream_ref(const Path &git_dir, StringView branch_name) throws
   result += remotes_prefix;
   result += remote_name.view();
   result += "/";
-  result += merge_ref.view();
+  result += short_ref;
 
   return result;
 }
@@ -624,8 +616,8 @@ struct git_count_cache
 {
   char  local_sha[64]{};
   char  upstream_sha[64]{};
-  usize local_sha_length{0};
-  usize upstream_sha_length{0};
+  usize local_sha_byte_count{0};
+  usize upstream_sha_byte_count{0};
   i32   ahead_count{0};
   i32   behind_count{0};
   bool  is_valid{false};
@@ -694,9 +686,10 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
   let const do_is_cached_pair = [&] {
     return GIT_COUNT_CACHE.is_valid &&
            StringView{GIT_COUNT_CACHE.local_sha,
-                      GIT_COUNT_CACHE.local_sha_length} == local_sha.view() &&
+                      GIT_COUNT_CACHE.local_sha_byte_count} ==
+               local_sha.view() &&
            StringView{GIT_COUNT_CACHE.upstream_sha,
-                      GIT_COUNT_CACHE.upstream_sha_length} ==
+                      GIT_COUNT_CACHE.upstream_sha_byte_count} ==
                upstream_sha.view();
   };
 
@@ -757,13 +750,13 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
         LOG(Debug, "caching the ahead and behind counts for %s",
             local_sha.c_str());
         memcpy(GIT_COUNT_CACHE.local_sha, local_sha.data(), local_sha.count());
-        GIT_COUNT_CACHE.local_sha_length = local_sha.count();
+        GIT_COUNT_CACHE.local_sha_byte_count = local_sha.count();
         memcpy(GIT_COUNT_CACHE.upstream_sha, upstream_sha.data(),
                upstream_sha.count());
-        GIT_COUNT_CACHE.upstream_sha_length = upstream_sha.count();
-        GIT_COUNT_CACHE.ahead_count         = result.ahead_count;
-        GIT_COUNT_CACHE.behind_count        = result.behind_count;
-        GIT_COUNT_CACHE.is_valid            = true;
+        GIT_COUNT_CACHE.upstream_sha_byte_count = upstream_sha.count();
+        GIT_COUNT_CACHE.ahead_count             = result.ahead_count;
+        GIT_COUNT_CACHE.behind_count            = result.behind_count;
+        GIT_COUNT_CACHE.is_valid                = true;
       }
     }
   }

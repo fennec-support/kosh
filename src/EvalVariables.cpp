@@ -692,13 +692,15 @@ EvalContext::get_variable_value(StringView name) const throws
           if (dynamic_array_element_count(DynamicArray::ArgumentCount) != 0)
             return dynamic_array_element_text(DynamicArray::ArgumentCount, 0,
                                               heap_allocator());
-          break;
+
+          return koshka::None;
 
         case dynamic_var::BASH_ARGV:
           if (dynamic_array_element_count(DynamicArray::ArgumentValue) != 0)
             return dynamic_array_element_text(DynamicArray::ArgumentValue, 0,
                                               heap_allocator());
-          break;
+
+          return koshka::None;
 
         case dynamic_var::BASH_ARGV0:
           return String{heap_allocator(), execution_store().get_shell_name()};
@@ -706,7 +708,8 @@ EvalContext::get_variable_value(StringView name) const throws
           if (execution_store().has_execution_string())
             return String{heap_allocator(),
                           execution_store().get_execution_string()};
-          break;
+
+          return koshka::None;
 
         case dynamic_var::BASH_SUBSHELL:
           return String::from(
@@ -723,7 +726,8 @@ EvalContext::get_variable_value(StringView name) const throws
           if (!execution_store().get_current_command().is_empty())
             return String{heap_allocator(),
                           execution_store().get_current_command()};
-          break;
+
+          return koshka::None;
 
         case dynamic_var::PPID:
           return String::from(os::get_shell_parent_process_id(),

@@ -360,7 +360,9 @@ make_entry(const Path                       &path,
       return entry;
     }
 
-    if (!options.should_classify && !options.should_color) {
+    if (!options.should_classify && !options.should_color &&
+        kind != Path::EntryKind::Unknown)
+    {
       return entry;
     }
   }

@@ -387,8 +387,9 @@ LiveView::clip_frame_rows(String                     &frame,
   let const header_row_count = m_options.should_show_header ? 2U : 0U;
   let const screen_row_count = static_cast<usize>(dimensions.rows);
 
-  if (!dimensions.is_terminal || screen_row_count <= header_row_count + 1)
+  if (!dimensions.is_terminal || screen_row_count <= header_row_count + 1) {
     return;
+  }
 
   let const visible_row_count = screen_row_count - 1 - header_row_count;
   let const pinned_row_count  = m_options.pinned_row_count;

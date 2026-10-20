@@ -29,7 +29,7 @@ struct pending_heredoc
 struct heredoc_line_match
 {
   usize content_start;
-  usize content_length;
+  usize content_byte_count;
   bool  is_terminator;
 };
 

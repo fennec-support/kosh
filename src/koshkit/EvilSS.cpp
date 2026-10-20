@@ -166,7 +166,10 @@ append_network_socket_report(String                              &output,
             if (left.peer_port != right.peer_port)
               return left.peer_port < right.peer_port;
 
-            return left.process_id < right.process_id;
+            if (left.process_id != right.process_id)
+              return left.process_id < right.process_id;
+
+            return left.identity < right.identity;
           });
 
   let owner_process_ids = ArrayList<u32>{allocator};

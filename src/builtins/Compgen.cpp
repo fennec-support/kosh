@@ -23,9 +23,9 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-abcdefgjksuv] [-V varname] [-W wordlist] [-G glob] "
-                   "[-A action] [-P prefix] [-S suffix] [-X filterpat] "
-                   "[-F function] [-C command] [word]");
+HELP_SYNOPSIS_DECL("[-abcdefgjksuv] [-o option] [-V varname] [-W wordlist] "
+                   "[-G glob] [-A action] [-P prefix] [-S suffix] "
+                   "[-X filterpat] [-F function] [-C command] [word]");
 HELP_DESCRIPTION_DECL(
     "Completion candidates for a word can be written with this builtin.");
 

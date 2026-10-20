@@ -39,8 +39,8 @@ shell_assignment_mood(StringView line, Maybe<mimic_mood> &mood)
   else
     return false;
 
-  let   value    = rest.substring(value_position).trim_blanks();
-  usize word_end = 0;
+  let const value    = rest.substring(value_position).trim_blanks();
+  usize     word_end = 0;
 
   while (word_end < value.length && value[word_end] != ' ')
     word_end++;
@@ -128,6 +128,8 @@ recipe_mood(StringView                     source,
 
   let const names = header.substring_of_length(0, *colon);
 
+  Maybe<mimic_mood> found = mood;
+
   for (let const &target : targets) {
     usize at = 0;
 
@@ -143,12 +145,12 @@ recipe_mood(StringView                     source,
       if (names.substring_of_length(name_start, at - name_start) ==
           target.target)
       {
-        return target.mood;
+        found = target.mood;
       }
     }
   }
 
-  return mood;
+  return found;
 }
 
 static pure fn

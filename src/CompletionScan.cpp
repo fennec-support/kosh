@@ -266,8 +266,8 @@ parse_package_json_scripts(StringView text) throws -> ArrayList<String>
     break;
   }
 
-  usize depth         = 1;
-  let   expecting_key = true;
+  usize depth            = 1;
+  let   is_expecting_key = true;
 
   while (i < text.length && depth > 0) {
     let const byte = text[i];
@@ -280,16 +280,16 @@ parse_package_json_scripts(StringView text) throws -> ArrayList<String>
         i++;
       }
 
-      if (expecting_key && depth == 1) {
+      if (is_expecting_key && depth == 1) {
         scripts.push_managed(text.substring_of_length(start, i - start));
       }
-      expecting_key = false;
+      is_expecting_key = false;
       i++;
       continue;
     }
 
-    if (byte == ':') expecting_key = false;
-    if (byte == ',') expecting_key = true;
+    if (byte == ':') is_expecting_key = false;
+    if (byte == ',') is_expecting_key = true;
     if (byte == '{') depth++;
     if (byte == '}') depth--;
     i++;
@@ -379,7 +379,7 @@ collect_ssh_hosts() throws -> ArrayList<String>
     while (i < text.length) {
       let const row = text.next_line(i);
 
-      if (row.is_empty() || row[0] == '#' || row[0] == '|') {
+      if (row.is_empty() || row[0] == '#' || row[0] == '|' || row[0] == '@') {
         continue;
       }
 
@@ -971,7 +971,7 @@ internal::complete_from_builtin_flags(StringView      line,
     let const view    = expanded_line.view();
     let const command = command_word_of(view);
 
-    if (command.is_empty() || search_builtin(command).has_value()) {
+    if (command.is_empty()) {
       break;
     }
 
@@ -2298,7 +2298,10 @@ internal::advance_shell_lexical_state(
     }
 
     if (c == '\\') {
-      i += i + 1 < end ? 2 : 1;
+      /* a backslash before end leaves its escaped byte to the next call */
+      if (i + 1 >= end) break;
+
+      i += 2;
       continue;
     }
 

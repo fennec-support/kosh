@@ -38,8 +38,11 @@ FLAG(FILENAME,
      'f',
      "\0",
      "Read key bindings from filename, with no effect.");
-FLAG(
-    UNBIND, String, 'u', "\0", "Remove the named key binding, with no effect.");
+FLAG(UNBIND,
+     String,
+     'u',
+     "\0",
+     "Remove the binding of a function, with no effect.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
 REGISTER_BUILTIN_FLAGS(Bind);

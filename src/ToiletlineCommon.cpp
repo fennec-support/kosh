@@ -338,7 +338,7 @@ get_utf8_length(const char *bytes, usize byte_count) -> usize
 
 fn
 get_codepoint_byte_offset(const char *bytes,
-                          usize       byte_length,
+                          usize       byte_count,
                           usize       codepoint_index) -> usize
 {
   /* e.g. bytes c3 a9 e4 b8 ad (U+00E9, U+4E2D), codepoint_index = 1
@@ -348,13 +348,13 @@ get_codepoint_byte_offset(const char *bytes,
   usize byte_offset          = 0;
   usize seen_codepoint_count = 0;
 
-  while (byte_offset < byte_length && seen_codepoint_count < codepoint_index) {
+  while (byte_offset < byte_count && seen_codepoint_count < codepoint_index) {
     if ((static_cast<unsigned char>(bytes[byte_offset]) & 0xC0) != 0x80)
       seen_codepoint_count += 1;
     byte_offset += 1;
   }
 
-  while (byte_offset < byte_length &&
+  while (byte_offset < byte_count &&
          (static_cast<unsigned char>(bytes[byte_offset]) & 0xC0) == 0x80)
   {
     byte_offset += 1;

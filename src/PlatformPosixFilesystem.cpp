@@ -1741,7 +1741,7 @@ walk_tree_entry(tree_walk_state   &walk,
       !is_symlink && release_parent_descriptor(parent_descriptor, depth);
 
   for (let const &child : children) {
-    if (INTERRUPT_REQUESTED) return did_succeed;
+    if (INTERRUPT_REQUESTED) return false;
 
     let const child_mark = arena.mark();
 
@@ -1872,31 +1872,32 @@ read_symlink(StringView path, Allocator allocator) wontthrow -> Maybe<String>
 {
   const String path_string{heap_allocator(), path};
   /* e.g. the link target is 300 bytes long:
-       readlink(256) returns 256, which is not less than 256, so capacity
-       becomes 512; readlink(512) returns 300, which is less than 512, so the
-       function returns 300 bytes. */
+       readlink(256) returns 256, which is not less than 256, so
+       capacity_byte_count becomes 512; readlink(512) returns 300, which is
+       less than 512, so the function returns 300 bytes. */
   char            inline_buffer[256];
-  usize           capacity = sizeof(inline_buffer);
-  char           *target   = inline_buffer;
+  usize           capacity_byte_count = sizeof(inline_buffer);
+  char           *target              = inline_buffer;
   ArrayList<char> buffer{allocator};
 
   loop {
-    let const length = ::readlink(path_string.c_str(), target, capacity);
+    let const length_byte_count =
+        ::readlink(path_string.c_str(), target, capacity_byte_count);
 
-    if (length < 0) return koshka::None;
-    if (static_cast<usize>(length) < capacity)
+    if (length_byte_count < 0) return koshka::None;
+    if (static_cast<usize>(length_byte_count) < capacity_byte_count)
       return String{
-          allocator, StringView{target, static_cast<usize>(length)}
+          allocator, StringView{target, static_cast<usize>(length_byte_count)}
       };
 
-    if (capacity >= (1U << 20)) {
+    if (capacity_byte_count >= (1U << 20)) {
       errno = ENAMETOOLONG;
 
       return koshka::None;
     }
 
-    capacity *= 2;
-    buffer.reserve(capacity);
+    capacity_byte_count *= 2;
+    buffer.reserve(capacity_byte_count);
     target = buffer.begin();
   }
 }

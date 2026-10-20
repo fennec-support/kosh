@@ -261,7 +261,7 @@ posix.interpreter.unset_variable_is_error"
 
   if [[ $current_word == -* ]]
   then
-    _kosh_compgen -W "--help --all --persist --force" -- "$current_word"
+    _kosh_compgen -W "--help -a --all --persist --force" -- "$current_word"
     return
   fi
 

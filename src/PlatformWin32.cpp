@@ -2105,11 +2105,12 @@ get_terminal_cursor_column(descriptor output) wontthrow -> Maybe<u32>
   CONSOLE_SCREEN_BUFFER_INFO info;
 
   if (GetConsoleScreenBufferInfo(output, &info) == 0) return None;
-  if (info.dwCursorPosition.X < 0) return None;
+  if (info.dwCursorPosition.X < info.srWindow.Left) return None;
 
   /* at this point: info holds the console buffer info, and
-     dwCursorPosition.X is not negative, so the cast keeps its value. */
-  return static_cast<u32>(info.dwCursorPosition.X);
+     dwCursorPosition.X is at or after srWindow.Left, so the difference is
+     not negative. */
+  return static_cast<u32>(info.dwCursorPosition.X - info.srWindow.Left);
 }
 
 fn

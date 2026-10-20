@@ -138,6 +138,9 @@ Tput::execute(const ExecContext               &ec,
     return 0;
   }
 
+  report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "tput",
+                                 "unknown capability '" + operands[0] + "'");
+
   return 1;
 }
 
