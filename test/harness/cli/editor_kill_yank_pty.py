@@ -713,7 +713,7 @@ def run_checks(binary, directory, command_directory, report):
         run_minibuffer_checks(session, report)
 
         script = "x=0\n" + "x=$((x + 1))\n" * 1500 + "echo total=$x"
-        session.send(b"\x1b[200~" + script.encode() + b"\x1b[201~\r")
+        session.send(b"\x1b[200~" + script.encode() + b"\x1b[201~\r\r")
         report.record("pasted-long-script-runs-whole", session,
                       has_output("total=1500", 1))
         run_key_table_checks(session, report)

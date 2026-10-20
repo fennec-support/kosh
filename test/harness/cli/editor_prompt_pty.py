@@ -25,7 +25,9 @@
 # reports on its own row below the echoed ^Z, and Ctrl-C on a job that fg
 # resumed ends its row before the next prompt. A background job that a signal
 # ended reports the signal description at the next prompt.
-# koshconf set --persist shows the file it wrote at an interactive prompt. The
+# koshconf set --persist shows the file it wrote at an interactive prompt. An
+# edited buffer of several lines waits for a second Enter to run and a second
+# Up to leave it for history. The
 # terminal model and session come from the
 # ghost and menu probe. Each check prints one stable PASS line for the golden
 # output.
@@ -38,7 +40,7 @@ import sys
 import tempfile
 import termios
 
-from editor_ghost_menu_pty import ROWS, Report, Session
+from editor_ghost_menu_pty import ROWS, UP, Report, Session
 
 
 COLUMNS = 40
@@ -131,6 +133,14 @@ def run_checks(binary, directory, command_directory, report):
                       lambda screen: is_prompt_line(
                           with_right_prompt(BULLET + " echo one"))(screen)
                       and is_prompt_line("  echo two", 1)(screen))
+        session.send(UP)
+        session.send(UP)
+        report.record("edited-buffer-keeps-the-first-up", session,
+                      lambda screen: is_prompt_line("  echo two", 1)(screen))
+        session.send(UP)
+        report.record("edited-buffer-leaves-on-the-second-up", session,
+                      lambda screen: not is_prompt_line("  echo two",
+                                                        1)(screen))
         session.send(CTRL_C)
         session.wait_until(is_prompt_line(empty_prompt))
 
@@ -139,6 +149,10 @@ def run_checks(binary, directory, command_directory, report):
         report.record("paste-keeps-carriage-return-lines", session,
                       lambda screen: is_prompt_line(
                           with_right_prompt(BULLET + " echo one"))(screen)
+                      and is_prompt_line("  echo two", 1)(screen))
+        session.send(b"\r")
+        report.record("edited-buffer-keeps-the-first-enter", session,
+                      lambda screen: screen.count_lines("one") == 0
                       and is_prompt_line("  echo two", 1)(screen))
         session.send(b"\r")
         report.record("right-prompt-is-not-submitted", session,
@@ -199,7 +213,7 @@ def run_checks(binary, directory, command_directory, report):
         session.send(b"PS1=$'top\\n\\\\. '; KOSH_TRANSIENT_PS1='T> '\r")
         session.wait_until(lambda screen: is_prompt_line(empty_prompt)(screen)
                            and is_prompt_line("top", -1)(screen))
-        session.send(b"echo four" + ALT_ENTER + b"echo five\r")
+        session.send(b"echo four" + ALT_ENTER + b"echo five\r\r")
         report.record("transient-prompt-collapses-prompt-rows", session,
                       lambda screen: is_submitted(
                           ["T> echo four", "   echo five", "four", "five",

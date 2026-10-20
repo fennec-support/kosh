@@ -380,16 +380,16 @@ rm -f "$input_status"
 out=$({
   send_input_when_ready \
     'echo MULTILINE_ONE\033\r' \
-    '  echo MULTILINE_TWO\r' \
+    '  echo MULTILINE_TWO\r\r' \
     'if true; then\033\r' \
     '  echo IF_YES\033\r' \
     'else\033\r' \
     '  echo IF_NO\033\r' \
-    'fi\r' \
+    'fi\r\r' \
     'printf p |\033\r' \
-    '  tr p P\r' \
+    '  tr p P\r\r' \
     'printf "%s\\n" "left\033\r' \
-    'right"\r' \
+    'right"\r\r' \
     'exit\r'
   printf '%s\n' "$?" > "$input_status"
 } |

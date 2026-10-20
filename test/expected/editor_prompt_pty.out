@@ -4,7 +4,10 @@ right-prompt-keeps-one-free-column PASS
 right-prompt-leaves-on-overlap PASS
 right-prompt-returns-when-text-shrinks PASS
 right-prompt-stays-on-the-first-row PASS
+edited-buffer-keeps-the-first-up PASS
+edited-buffer-leaves-on-the-second-up PASS
 paste-keeps-carriage-return-lines PASS
+edited-buffer-keeps-the-first-enter PASS
 right-prompt-is-not-submitted PASS
 right-prompt-leaves-a-narrow-terminal PASS
 right-prompt-returns-at-full-width PASS

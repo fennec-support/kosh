@@ -3039,7 +3039,9 @@ Move to the start of the previous word.
 Move past the next word, or accept the next word of the ghost suggestion.
 .TP
 .BR Ctrl\-P ", " Up
-Move up a row, or recall an older history entry from the first row.
+Move up a row, or recall an older history entry from the first row. A buffer of
+several lines that was typed or edited, and joins no line with a backslash,
+takes a second press before it is left for history.
 .TP
 .BR Ctrl\-N ", " Down
 Move down a row, or recall a newer history entry from the last row.
@@ -3051,7 +3053,9 @@ Recall the oldest history entry.
 Recall the newest history entry.
 .TP
 .BR Enter ", " Ctrl\-J ", " Ctrl\-M
-Run the line, or continue it on a new row after a trailing backslash.
+Run the line, or continue it on a new row after a trailing backslash. A buffer
+of several lines that was typed or edited, and joins no line with a backslash,
+runs on a second press, and the hint rows say so after the first.
 .TP
 .B Alt\-Enter
 Insert a line break.
