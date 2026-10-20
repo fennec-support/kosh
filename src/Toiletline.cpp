@@ -1815,7 +1815,6 @@ provide_history_search_snapshot(const char **out_contents, size_t *out_size)
 
       if (!os::stat_path_following(path->text().view(), status_after)) continue;
       if (!os::file_status_matches(status_before, status_after)) continue;
-      if (!is_history_contents_valid(contents->view())) return 0;
 
       HISTORY_SEARCH_SNAPSHOT = contents.take();
       *out_contents           = HISTORY_SEARCH_SNAPSHOT.data();

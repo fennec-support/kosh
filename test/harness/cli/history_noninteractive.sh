@@ -180,13 +180,18 @@ echo "== history rejects a truncated UTF-8 imported sequence =="
 "$BIN" -c 'history -r "$1"; echo "rc=$?"' history-test \
   "$dir/invalid-utf8" 2>/dev/null
 
-head -c 65536 /dev/zero | tr '\000' x > "$dir/oversized"
-printf '\n' >> "$dir/oversized"
-echo "== an oversized decoded record is reported =="
-KOSH_HISTORY_FILE="$dir/oversized" "$BIN" --no-init-files -c 'history' 2>&1 | \
-  grep -c "Cannot read history at "
+{
+  echo "echo before"
+  head -c 65536 /dev/zero | tr '\000' x
+  printf '\n'
+  head -c 65535 /dev/zero | tr '\000' y
+  printf '\n'
+  echo "echo after"
+} > "$dir/oversized"
+echo "== a record over 65535 bytes is skipped and the others load =="
 KOSH_HISTORY_FILE="$dir/oversized" "$BIN" --no-init-files -c \
-  'history; echo "rc=$?"' 2>/dev/null
+  'history; echo "rc=$?"' 2>&1 |
+  awk '{ if (length($0) > 80) print $1, length($2); else print }'
 
 : > "$dir/concurrent"
 echo "== concurrent history appends preserve both records =="

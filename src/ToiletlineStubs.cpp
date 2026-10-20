@@ -116,12 +116,27 @@ get_history_record_span(const no_editor_history_state &state,
 {
   ASSERT(record_index < state.record_byte_offsets.count());
 
+  let const contents = state.branch_contents.view();
   let const start_byte_offset =
       get_history_record_byte_offset(state, record_index);
-  let const end_byte_offset =
-      record_index + 1 < state.record_byte_offsets.count()
-          ? get_history_record_byte_offset(state, record_index + 1)
-          : state.trailing_record_start_byte_offset;
+  usize end_byte_offset   = start_byte_offset;
+  bool  is_escape_pending = false;
+
+  /* The record ends at its own unescaped newline, since a skipped record can
+     lie between it and the next retained one. */
+  while (end_byte_offset < contents.length) {
+    let const byte = contents[end_byte_offset++];
+
+    if (is_escape_pending) {
+      is_escape_pending = false;
+      continue;
+    }
+    if (byte == '\\') {
+      is_escape_pending = true;
+      continue;
+    }
+    if (byte == '\n') break;
+  }
 
   ASSERT(start_byte_offset < end_byte_offset);
 
@@ -267,14 +282,19 @@ scan_no_editor_history(const Path &path,
   usize               byte_offset = 0;
   bool                is_valid    = true;
   history_record_span span{};
+  let                 decoded = String{heap_allocator()};
 
+  /* A record longer than the line buffer is skipped, as the editor skips it,
+     so the other records stay readable. */
   while (next_history_record(contents, byte_offset, span, is_valid)) {
+    if (!decode_history_record(decoded, contents, span)) continue;
+
     push_history_record_byte_offset(state, span.start_byte_offset,
                                     span.start_byte_offset);
     state.total_count++;
   }
 
-  if (!is_valid || !toiletline::is_history_contents_valid(contents)) {
+  if (!is_valid) {
     return history_scan_outcome::Invalid;
   }
 

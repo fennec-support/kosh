@@ -128,9 +128,11 @@ rc=1
 rc=1
 == history rejects a truncated UTF-8 imported sequence ==
 rc=1
-== an oversized decoded record is reported ==
-1
-rc=1
+== a record over 65535 bytes is skipped and the others load ==
+    1  echo before
+2 65535
+    3  echo after
+rc=0
 == concurrent history appends preserve both records ==
 rc=0,0
 2
