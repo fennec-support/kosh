@@ -46,7 +46,7 @@ Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (stack.is_empty()) {
     throw ErrorWithLocationAndDetails{
-        ec.source_location(), "popd found the directory stack empty",
+        ec.source_location(), "The directory stack is empty",
         "Push a directory first with `pushd DIR`"};
   }
 
@@ -60,8 +60,8 @@ Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   {
     throw ErrorWithLocationAndDetails{
         operand_locations[1],
-        StringView{"popd does not accept the argument '"} + args[1].view() +
-            "'",
+        StringView{"The argument '"} + args[1].view() +
+            "' is not a stack index",
         "Pass a +N or a -N stack index, or no argument to pop the top"};
   }
 

@@ -129,7 +129,8 @@ render_limit(const os::resource_limit &limit,
 cold fn
 Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
-  let const args = PARSE_BUILTIN_ARGS(ec);
+  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+  let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
@@ -171,9 +172,10 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 0;
     }
 
-    throw ErrorWithDetails{"The pipe size cannot be modified",
-                           "The pipe buffer is a fixed kernel limit, read it "
-                           "with `ulimit -p`"};
+    throw ErrorWithLocationAndDetails{
+        get_operand_location(ec, operand_locations, 1),
+        "The pipe size cannot be modified",
+        "The pipe buffer is a fixed kernel limit, read it with `ulimit -p`"};
   }
 
   let const current_limit = os::get_resource_limit(resource.kind);
@@ -203,9 +205,9 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const is_posix = cxt.runtime_state().is_posix_mode();
 
   if (is_posix && args.count() > 2) {
-    report_soft_builtin_error(ec, cxt, ec.arg_location_at(2),
-                              "Too many operands",
-                              "The sh mood accepts one limit operand");
+    report_soft_builtin_error(
+        ec, cxt, get_operand_location(ec, operand_locations, 2),
+        "Too many operands", "The sh mood accepts one limit operand");
 
     return 2;
   }
@@ -219,7 +221,8 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (parsed.is_error()) {
       report_soft_builtin_error(
-          ec, cxt, ec.arg_location_at(1), requested + ": invalid limit",
+          ec, cxt, get_operand_location(ec, operand_locations, 1),
+          requested + ": invalid limit",
           "The limit must be a non-negative whole number");
 
       return is_posix ? 2 : 1;
@@ -231,7 +234,8 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         parsed.value() >= os::RESOURCE_UNLIMITED / units;
 
     if (is_out_of_range) {
-      report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
+      report_soft_builtin_error(ec, cxt,
+                                get_operand_location(ec, operand_locations, 1),
                                 requested + ": limit out of range",
                                 "Pass a smaller limit or `unlimited`");
 
@@ -253,8 +257,9 @@ Ulimit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (!os::set_resource_limit(limit, resource.kind))
-    throw Error{"Unable to set the resource limit: " +
-                os::last_system_error_message()};
+    throw ErrorWithLocation{get_operand_location(ec, operand_locations, 1),
+                            "Unable to set the resource limit: " +
+                                os::last_system_error_message()};
 
   return 0;
 }

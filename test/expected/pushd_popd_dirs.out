@@ -41,7 +41,7 @@ D/b D/a
 == the home directory abbreviates to ~:
 ~/a ~
 == popd on an empty stack reports an error:
-error: popd found the directory stack empty.
+error: Builtin `popd`: The directory stack is empty.
      1 |  cd 'D' || exit; popd
        |                            ^~~~
 note: Push a directory first with `pushd DIR`.

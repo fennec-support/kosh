@@ -60,7 +60,7 @@ Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (args.count() > 1) {
     if (args.count() > 2) {
       throw ErrorWithLocationAndDetails{operand_locations[2],
-                                        "dirs accepts at most one stack index",
+                                        "At most one stack index is accepted",
                                         "Pass one +N or -N index"};
     }
 
@@ -72,8 +72,8 @@ Dirs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     {
       throw ErrorWithLocationAndDetails{
           operand_locations[1],
-          StringView{"dirs does not accept the argument '"} + args[1].view() +
-              "'",
+          StringView{"The argument '"} + args[1].view() +
+              "' is not a stack index",
           "Pass a +N or -N stack index, or no argument to print every entry"};
     }
 

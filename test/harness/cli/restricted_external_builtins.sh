@@ -23,4 +23,4 @@ echo "== dot with a slash is blocked:"
 
 echo "== rescue mode keeps the shell restricted:"
 printf 'cd /\n' | "$BIN" -c 'exec -a -kosh "$1" -r --bogus' kosh "$BIN" 2>&1 |
-  grep -c 'cd is forbidden in a restricted shell'
+  grep -c 'Changing the directory is forbidden in a restricted shell'

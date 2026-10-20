@@ -222,7 +222,7 @@ output=$(cd "$directory" &&
     "$BIN" --mood bash -c 'printf "%s" "$PWD"' \
     2> "$directory/set-r-error")
 if [ "$output" = "$physical_directory" ] &&
-   grep -F 'cd is forbidden in a restricted shell' \
+   grep -F 'Changing the directory is forbidden in a restricted shell' \
      "$directory/set-r-error" >/dev/null 2>&1
 then
   printf 'startup-set-r=blocked\n'

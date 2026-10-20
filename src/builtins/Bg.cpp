@@ -63,7 +63,8 @@ Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     job *job = cxt.job_table_store().find_job_by_spec(args[arg_position]);
 
     if (job == nullptr)
-      throw ErrorWithDetails{"There is no such job", "List jobs with `jobs`"};
+      throw make_error_for_arg(ec, arg_position, "There is no such job",
+                               "List jobs with `jobs`");
 
     resume_job_in_background(ec, cxt, job);
   }

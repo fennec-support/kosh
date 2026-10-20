@@ -118,7 +118,7 @@ cd.sh sh: same
 cd.sh bash-posix: same
 cd.sh dumb: same
 -- reference
-cd.sh:1:5: error: The directory '/no' does not exist.
+cd.sh:1:5: error: Builtin `cd`: The directory '/no' does not exist.
      1 |  cd /no/such/directory_zz
        |      ^~
 note: Check the spelling or create it with `mkdir -p`.

@@ -187,6 +187,35 @@ is_declaration_builtin_kind(Builtin::Kind kind) wontthrow -> bool
   }
 }
 
+/* True when location points inside the words of the builtin command itself,
+   so the error belongs to the builtin. A builtin that runs other code passes
+   that code's errors through. */
+static fn
+is_builtin_owned_location(const ExecContext    &ec,
+                          const SourceLocation &location) wontthrow -> bool
+{
+  let const command = ec.source_location();
+
+  switch (ec.builtin_kind()) {
+  case Builtin::Kind::Source:
+  case Builtin::Kind::Eval:
+  case Builtin::Kind::Exec:
+  case Builtin::Kind::CommandBuiltin:
+  case Builtin::Kind::BuiltinBuiltin:
+  case Builtin::Kind::Mapfile:
+  case Builtin::Kind::Time:
+  case Builtin::Kind::Fc:
+  case Builtin::Kind::Koshkit:        return false;
+  default:                            break;
+  }
+
+  return command.length != 0 &&
+         location.source_name_index == command.source_name_index &&
+         location.position >= command.position &&
+         location.position + location.length <=
+             command.position + command.length;
+}
+
 fn
 execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
 {
@@ -276,7 +305,12 @@ execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
     report_soft_builtin_error(ec, cxt, "write error: Broken pipe");
 
     return 1;
-  } catch (const ErrorWithLocation &) {
+  } catch (ErrorWithLocation &e) {
+    if (is_builtin_owned_location(ec, e.location()) &&
+        !e.message().view().starts_with(builtin_error_context(ec.program())))
+    {
+      e.set_message(builtin_error_message(ec.program(), e.message()).view());
+    }
     throw;
   } catch (const Error &e) {
     if (e.is_script_fatal()) throw;

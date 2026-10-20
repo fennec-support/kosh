@@ -47,8 +47,8 @@ Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (args.count() > 1 && !args[1].is_empty()) {
     job = cxt.job_table_store().find_job_by_spec(args[1]);
     if (job == nullptr)
-      throw ErrorWithDetails{"'" + args[1] + "' is not a valid job",
-                             "Use a job spec like `%1`, `%+`, or `%name`"};
+      throw make_error_for_arg(ec, 1, "'" + args[1] + "' is not a valid job",
+                               "Use a job spec like `%1`, `%+`, or `%name`");
   } else {
     job = cxt.job_table_store().most_recent_job();
   }

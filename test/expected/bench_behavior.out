@@ -16,24 +16,24 @@ rc=1
 rc=1
 rc=1
 == unsigned overflow is rejected by number parsing:
--c:1:14: error: --runs expects a number, got '18446744073709551616'.
+-c:1:14: error: Builtin `bench`: --runs expects a number, got '18446744073709551616'.
 == invalid values carry granular carets:
--c:1:14: error: --runs expects a number, got 'nope'.
+-c:1:14: error: Builtin `bench`: --runs expects a number, got 'nope'.
      1 |  bench --runs nope true
        |               ^~~~
--c:1:14: error: --runs expects a number, got 'nope'.
+-c:1:14: error: Builtin `bench`: --runs expects a number, got 'nope'.
      1 |  bench --runs=nope true
        |               ^~~~
--c:1:14: error: --runs expects a number from 1 through 100000.
+-c:1:14: error: Builtin `bench`: --runs expects a number from 1 through 100000.
      1 |  bench --runs 0 true
        |               ^
--c:1:18: error: --duration is too large.
+-c:1:18: error: Builtin `bench`: --duration is too large.
      1 |  bench --duration 18446744073710 true
        |                   ^~~~~~~~~~~~~~
--c:1:7: error: --runs expects a number, got 'nope'.
+-c:1:7: error: Builtin `bench`: --runs expects a number, got 'nope'.
      1 |  bench "--runs=nope" true
        |        ^~~~~~~~~~~~~
--c:1:18: error: --runs expects a number, got 'nope'.
+-c:1:18: error: Builtin `bench`: --runs expects a number, got 'nope'.
      1 |  runs=nope; bench --runs=$runs true
        |                   ^~~~~~~~~~~~
 == an overflowing duration is rejected:
@@ -51,7 +51,7 @@ progress clear check complete
 == short flags, profile, and warmup:
 1 run
 5
---profile takes exactly one run.
+Builtin `bench`: --profile takes exactly one run.
 Builtin `bench`: --warmup expects a number from 1 through 100000.
 1
 == the extended comparison lists more rows than the default one:

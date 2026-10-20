@@ -49,7 +49,7 @@ Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (args.count() <= 1) {
     if (stack.is_empty()) {
       throw ErrorWithLocationAndDetails{
-          ec.source_location(), "pushd has no other directory to swap to",
+          ec.source_location(), "There is no other directory to swap to",
           "Push a directory first with `pushd DIR`"};
     }
 

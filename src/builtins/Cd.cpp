@@ -74,7 +74,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
     throw ErrorWithLocation{ec.source_location(),
-                            "cd is forbidden in a restricted shell"};
+                            "Changing the directory is forbidden in a restricted shell"};
 
   let is_physical =
       !cxt.runtime_state().is_posix_mode() &&
@@ -111,7 +111,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (operand_count > 1) {
     let too_many = ErrorWithLocationAndDetails{
-        ec.source_location(), "cd accepts only a single directory operand",
+        ec.source_location(), "Only a single directory operand is accepted",
         "Quote a path that contains spaces"};
 
     too_many.set_command_status(2);

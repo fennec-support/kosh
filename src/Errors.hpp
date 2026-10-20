@@ -262,6 +262,12 @@ public:
   }
 
   fn
+  set_message(StringView message) throws -> void
+  {
+    m_message = String{heap_allocator(), message};
+  }
+
+  fn
   to_string() const throws -> String;
   using ErrorBase::to_string;
 

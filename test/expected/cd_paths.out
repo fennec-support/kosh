@@ -5,11 +5,11 @@ child
 cdpath=0
 PWD=first OLDPWD=second
 second
--c:1:5: error: The path '.test-work/cd-fail-file/tfile' is not a directory.
+-c:1:5: error: Builtin `cd`: The path '.test-work/cd-fail-file/tfile' is not a directory.
      1 |  cd "$1" || exit; echo not-reached
        |      ^~
 rc=1
--c:1:15: error: The directory '.test-work/nonexistent-xyz-dir' does not exist.
+-c:1:15: error: Builtin `cd`: The directory '.test-work/nonexistent-xyz-dir' does not exist.
      1 |  cd .test-work/nonexistent-xyz-dir || exit; echo not-reached
        |                ^~~~~~~~~~~~~~~~~~~
 note: Check the spelling or create it with `mkdir -p`.
