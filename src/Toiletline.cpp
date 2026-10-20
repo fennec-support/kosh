@@ -1364,7 +1364,8 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       do_advance(end);
       out->spans[filled].end = codepoint_position;
       out->spans[filled].sgr = sgr;
-      filled++;
+      /* A span above the drawn rows keeps no slot. */
+      if (codepoint_position > out->visible_start) filled++;
     };
 
     let const do_emphasize = [&](koshka::StringView style) -> const char * {
