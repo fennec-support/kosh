@@ -587,8 +587,10 @@ fn
 temp_directory_path() throws -> String
 {
   if (let from_environment = get_environment_variable("TEMP");
-      from_environment.has_value())
+      from_environment.has_value() && !from_environment->is_empty())
+  {
     return from_environment.take();
+  }
 
   return String{heap_allocator(), "C:\\Windows\\Temp"};
 }

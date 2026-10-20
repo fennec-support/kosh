@@ -37,14 +37,15 @@ Yes::execute(const ExecContext               &ec,
 
   line += '\n';
 
-  static constexpr usize OUTPUT_BUFFER_LENGTH = 64 * 1024;
-  let                    output               = String{cxt.scratch_allocator()};
+  static constexpr usize OUTPUT_BUFFER_BYTE_COUNT = 64 * 1024;
 
-  output.reserve(OUTPUT_BUFFER_LENGTH);
+  let output = String{cxt.scratch_allocator()};
+
+  output.reserve(OUTPUT_BUFFER_BYTE_COUNT);
 
   do {
     output += line;
-  } while (output.count() + line.count() <= OUTPUT_BUFFER_LENGTH);
+  } while (output.count() + line.count() <= OUTPUT_BUFFER_BYTE_COUNT);
 
   let const out_fd = ec.out_fd.value_or(KOSH_STDOUT);
 

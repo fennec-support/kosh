@@ -272,7 +272,8 @@ static fn
 collect_docker_variables(StringView         source,
                          ArrayList<String> &names) throws -> void
 {
-  usize position = 0;
+  usize position     = 0;
+  bool  is_continued = false;
 
   while (position < source.length) {
     let const line    = source.next_line(position);
@@ -286,9 +287,11 @@ collect_docker_variables(StringView         source,
     let const word   = text.substring_of_length(0, keyword);
     let const is_env = parser_format_ascii_equal(word, "ENV");
 
-    if (!is_env && !parser_format_ascii_equal(word, "ARG")) continue;
+    if (!is_continued && !is_env && !parser_format_ascii_equal(word, "ARG")) {
+      continue;
+    }
 
-    usize at = keyword;
+    usize at = is_continued ? 0 : keyword;
 
     while (at < text.length) {
       while (at < text.length && (text[at] == ' ' || text[at] == '\t'))
@@ -318,6 +321,8 @@ collect_docker_variables(StringView         source,
           at++;
       }
     }
+
+    is_continued = !text.is_empty() && text[text.length - 1] == '\\';
   }
 }
 
@@ -487,13 +492,10 @@ parse_dockerfile_format(const parser_format_input &input,
       if (!heredoc->is_shell_body)
         body_mood = parser_format_shell_mood(heredoc->command);
 
-      let const content_start =
-          first_line.starts_with("#!") ? first_position : body_start;
-
-      if (body_mood.has_value() && content_start < body_end) {
-        parser_format_add_fragment(document, input.source, content_start,
-                                   body_end, 0, None,
-                                   parser_format_codec::Direct, *body_mood);
+      if (body_mood.has_value() && body_start < body_end) {
+        parser_format_add_fragment(document, input.source, body_start, body_end,
+                                   0, None, parser_format_codec::Direct,
+                                   *body_mood);
       }
 
       continue;

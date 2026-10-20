@@ -191,7 +191,11 @@ expand_set(StringView   set,
           }
 
           if (count == 0) {
-            if (fill_position.has_value()) return None;
+            if (fill_position.has_value()) {
+              throw ErrorWithDetails{
+                  "tr allows one [c*] repeat in set2",
+                  "Remove the extra `[c*]` repeat from SET2"};
+            }
 
             fill_position = expanded.count();
             fill_byte     = static_cast<char>(repeated.byte);

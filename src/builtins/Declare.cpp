@@ -104,7 +104,7 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (; i < args.count(); i++) {
     let const arg = args[i].view();
 
-    if (arg.length < 1 || (arg[0] != '-' && arg[0] != '+')) {
+    if (arg.length < 2 || (arg[0] != '-' && arg[0] != '+')) {
       break;
     }
 

@@ -464,8 +464,6 @@ parse_justfile_format(const parser_format_input &input,
         continue;
       }
 
-      if (line[0] == '#') continue;
-
       is_recipe = is_recipe_header(line) && !is_windows_only;
       if (is_recipe && has_script_attribute) body_script = script_interpreter;
       has_script_attribute = false;

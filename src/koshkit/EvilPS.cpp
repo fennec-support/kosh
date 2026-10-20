@@ -625,6 +625,11 @@ mark_search_visibility(ArrayList<tree_node> &nodes,
 
       for (let &candidate : nodes) {
         if (candidate.pid != parent_pid) continue;
+
+        /* a visible ancestor ends the walk, so a parent_pid cycle cannot loop
+           forever. */
+        if (candidate.is_search_visible) break;
+
         candidate.is_search_visible = true;
         parent_pid                  = candidate.parent_pid;
         did_find_parent             = true;

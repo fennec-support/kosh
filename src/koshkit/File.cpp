@@ -947,15 +947,15 @@ describe_file_type(StringView             path,
   defer { os::close_fd(*descriptor); };
 
   char      buffer[FILE_CONTENT_SAMPLE_BYTE_COUNT];
-  let const read_count = os::read_fd(*descriptor, buffer, sizeof(buffer));
+  let const read_byte_count = os::read_fd(*descriptor, buffer, sizeof(buffer));
 
-  if (!read_count.has_value()) return None;
+  if (!read_byte_count.has_value()) return None;
 
-  /* at this point: buffer holds *read_count bytes read from the descriptor,
-     which closes on return. */
+  /* at this point: buffer holds *read_byte_count bytes read from the
+     descriptor, which closes on return. */
 
   return String{allocator,
-                file_content_description(StringView{buffer, *read_count})};
+                file_content_description(StringView{buffer, *read_byte_count})};
 }
 
 struct file_content_probe

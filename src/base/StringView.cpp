@@ -193,7 +193,7 @@ StringView::substring(usize start) const wontthrow -> StringView
 }
 
 fn
-StringView::substring_of_length(usize start, usize count) const wontthrow
+StringView::substring_of_length(usize start, usize byte_count) const wontthrow
     -> StringView
 {
   if (start >= length)
@@ -201,7 +201,8 @@ StringView::substring_of_length(usize start, usize count) const wontthrow
 
   usize remaining = length - start;
 
-  return StringView{data + start, count < remaining ? count : remaining};
+  return StringView{data + start,
+                    byte_count < remaining ? byte_count : remaining};
 }
 
 fn

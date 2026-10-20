@@ -24,7 +24,7 @@ namespace koshka::koshkit {
 static pure fn
 is_expand_control(char byte) wontthrow -> bool
 {
-  return byte == '\t' || byte == '\n' || byte == '\b';
+  return byte == '\t' || byte == '\b';
 }
 
 fn
@@ -87,12 +87,6 @@ Expand::execute(const ExecContext               &ec,
         position++;
       }
 
-        continue;
-
-      case '\n':
-        output += byte;
-        column = 0;
-        position++;
         continue;
 
       case '\b':

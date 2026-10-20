@@ -1214,6 +1214,14 @@ allocate_free_shell_fd(i32 floor_fd) wontthrow -> i32
     }
   }
 
+  for (int candidate_fd = floor_fd; candidate_fd < SHELL_HIDDEN_FD_CEILING;
+       candidate_fd++)
+  {
+    if (fcntl(candidate_fd, F_GETFD) == -1 && errno == EBADF) {
+      return candidate_fd;
+    }
+  }
+
   return -1;
 }
 

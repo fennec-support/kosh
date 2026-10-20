@@ -1820,8 +1820,13 @@ Server::collect_rename_spans(const Document         &document,
             span.start, span.end - span.start);
 
         if (kind == rename_kind::command) {
-          if (text == name)
+          /* a quoted or escaped spelling such as "foo" calls the same
+             command, so the decoded word is compared. */
+          let const decoded = utils::decode_shell_word(text, heap_allocator());
+
+          if (decoded.opaque_ranges.is_empty() && decoded.text.view() == name) {
             out_spans.push(rename_span{span.role, span.start, span.end});
+          }
 
           return true;
         }

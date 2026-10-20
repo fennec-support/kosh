@@ -336,9 +336,10 @@ run_compgen_actions(EvalContext     &cxt,
           cxt.enabled_command_store().is_builtin_entry_disabled(
               static_cast<u8>(i));
       let const is_listed =
-          should_list_every_builtin ||
+          do_wants(compgen_action::HelpTopic) ||
           (!is_hidden_by_mood &&
-           (is_disabled ? should_list_disabled : should_list_enabled));
+           (should_list_every_builtin ||
+            (is_disabled ? should_list_disabled : should_list_enabled)));
 
       if (is_listed) listed_names.push(builtin_name_list[i].view());
     }

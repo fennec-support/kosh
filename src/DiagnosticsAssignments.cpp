@@ -727,7 +727,9 @@ check_prefix_assignment_reads(AnalysisContext          &actx,
       for (let const &var : input.local_vars) {
         if (var.get_name() != referenced) continue;
 
-        has_name_prefix = !prefix_value_is_own_name(var);
+        if (prefix_value_is_own_name(var)) continue;
+
+        has_name_prefix = true;
         break;
       }
 

@@ -64,13 +64,10 @@ parse_jinja_format(const parser_format_input &input,
   let  analysis_source = parser_format_masked_template_source(
       input.source, 0, input.source.length,
       TEMPLATE_CURLY | TEMPLATE_STATEMENTS, did_mask);
-  let const fragment_count = document.fragments.count();
 
   parser_format_add_fragment(document, input.source, 0, input.source.length, 0,
                              steal(analysis_source),
                              parser_format_codec::Direct, *mood);
-  if (document.fragments.count() != fragment_count)
-    document.fragments.back().should_silence_unresolved_commands = true;
 }
 
 } /* namespace koshka */

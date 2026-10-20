@@ -886,7 +886,7 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
             "\n");
     }
 
-    return 0;
+    SET_AND_RETURN_EXIT_STATUS(cxt, 0);
   }
 
   let stage_status = ArrayList<i32>{cxt.scratch_allocator()};

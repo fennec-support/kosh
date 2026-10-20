@@ -1577,7 +1577,8 @@ make_subshell_transport(const subshell_bootstrap &bootstrap,
 
 /* memory: wide_path is heap_allocator() storage released on return.
    time:   polls until 5000 ms pass or the child exits. a pass that finds no
-           pipe waits up to 50 ms in WaitNamedPipeW() and then sleeps 1 ms. */
+           pipe sleeps 1 ms. a pass that finds a pipe with every instance busy
+           waits up to 50 ms in WaitNamedPipeW(). */
 static fn
 send_internal_pipe(StringView path,
                    StringView content,
@@ -2300,11 +2301,11 @@ start_relay_body_read(substitution_relay &relay) wontthrow -> void
     return;
   }
 
-  let const used = relay.tail - relay.head;
-  if (used >= SUBSTITUTION_RELAY_RING_BYTES) return;
+  let const used_byte_count = relay.tail - relay.head;
+  if (used_byte_count >= SUBSTITUTION_RELAY_RING_BYTES) return;
 
   let const start      = relay.tail % SUBSTITUTION_RELAY_RING_BYTES;
-  let       byte_count = SUBSTITUTION_RELAY_RING_BYTES - used;
+  let       byte_count = SUBSTITUTION_RELAY_RING_BYTES - used_byte_count;
   if (byte_count > SUBSTITUTION_RELAY_RING_BYTES - start)
     byte_count = SUBSTITUTION_RELAY_RING_BYTES - start;
   let const overlapped = prepare_relay_operation(
@@ -3930,13 +3931,18 @@ read_memory_status(memory_status &status) wontthrow -> bool
   status.total_kib        = memory.ullTotalPhys / 1024;
   status.free_kib         = memory.ullAvailPhys / 1024;
   status.available_kib    = status.free_kib;
-  status.swap_total_kib   = memory.ullTotalPageFile / 1024;
-  status.swap_free_kib    = memory.ullAvailPageFile / 1024;
   status.available_fields = static_cast<u32>(memory_status_field::Total) |
                             static_cast<u32>(memory_status_field::Available) |
-                            static_cast<u32>(memory_status_field::Free) |
-                            static_cast<u32>(memory_status_field::SwapTotal) |
-                            static_cast<u32>(memory_status_field::SwapFree);
+                            static_cast<u32>(memory_status_field::Free);
+  swap_status swap{};
+
+  if (read_swap_status(swap)) {
+    status.swap_total_kib = swap.total_byte_count / 1024;
+    status.swap_free_kib  = swap.free_byte_count / 1024;
+    status.available_fields |=
+        static_cast<u32>(memory_status_field::SwapTotal) |
+        static_cast<u32>(memory_status_field::SwapFree);
+  }
 
   return true;
 }

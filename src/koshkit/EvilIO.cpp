@@ -1661,10 +1661,9 @@ EvilIO::execute(const ExecContext               &ec,
   }
 
   if (should_show_processes) {
-    let               rows = read_process_io_rows(allocator, selected_pid,
-                                    selected_pid.has_value()
-                                                      ? evilio_idle_mode::Include
-                                                      : evilio_idle_mode::Omit);
+    let const idle_mode = selected_pid.has_value() ? evilio_idle_mode::Include
+                                                   : evilio_idle_mode::Omit;
+    let       rows = read_process_io_rows(allocator, selected_pid, idle_mode);
     process_io_totals totals;
 
     for (let const &row : rows)

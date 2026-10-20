@@ -649,6 +649,22 @@ decode_shell_word(StringView                word,
   for (usize raw_start = 0; raw_start < word.length; raw_start++) {
     let const byte = word[raw_start];
 
+    if (scan_quote == 0 && byte == '$' && raw_start + 1 < word.length &&
+        word[raw_start + 1] == '\'')
+    {
+      raw_start += 2;
+
+      while (raw_start < word.length && word[raw_start] != '\'') {
+        if (word[raw_start] == '\\' && raw_start + 1 < word.length) {
+          raw_start++;
+        }
+
+        raw_start++;
+      }
+
+      continue;
+    }
+
     if (scan_quote == 0 && (byte == '\'' || byte == '"')) {
       scan_quote = byte;
       continue;

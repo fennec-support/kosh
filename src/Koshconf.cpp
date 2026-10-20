@@ -1464,11 +1464,12 @@ persist_koshconf_setting(const Path              &path,
   let did_replace = false;
 
   for (usize position = 0; position < text.count();) {
-    let const line            = text.next_line(position);
-    let const name            = did_replace && !has_setting_line
-                                    ? Maybe<StringView>{}
-                                    : do_find_name(line, !has_setting_line);
-    let const is_setting_line = name.has_value() && *name == option_name;
+    let const line = text.next_line(position);
+    let const name = did_replace && !has_setting_line
+                         ? Maybe<StringView>{}
+                         : do_find_name(line, !has_setting_line);
+    let const is_setting_line =
+        name.has_value() && find_option_by_koshconf_name(*name) == &option;
 
     if (is_setting_line && did_replace) {
       continue;

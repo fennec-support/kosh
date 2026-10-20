@@ -1083,9 +1083,10 @@ enumerate_processes(process_detail detail) throws
       }
 
       process.command_line = steal(normalized_command_line);
-    } else {
-      process.command_line = "[" + process.name + "]";
     }
+
+    if (process.command_line.is_empty())
+      process.command_line = "[" + process.name + "]";
 
     unused(format_proc_pid_path(process_file, parsed_pid.value(), "/stat"));
     if (let stat = Path{process_file}.read_entire_file(); stat.has_value()) {
@@ -2980,10 +2981,10 @@ read_swap_status(swap_status &status) wontthrow -> bool
 
   if (length == 0) return true;
 
-  u64       input_pages  = 0;
-  u64       output_pages = 0;
-  let const text         = StringView{buffer, length};
-  usize     position     = 0;
+  u64       input_page_count  = 0;
+  u64       output_page_count = 0;
+  let const text              = StringView{buffer, length};
+  usize     position          = 0;
 
   while (position < text.length) {
     let const line = each_line(text, position);
@@ -2991,20 +2992,22 @@ read_swap_status(swap_status &status) wontthrow -> bool
     if (line.starts_with("pswpin ")) {
       if (let const parsed = leading_digits(line, 7).to<u64>();
           !parsed.is_error())
-        input_pages = parsed.value();
+        input_page_count = parsed.value();
     } else if (line.starts_with("pswpout ")) {
       if (let const parsed = leading_digits(line, 8).to<u64>();
           !parsed.is_error())
-        output_pages = parsed.value();
+        output_page_count = parsed.value();
     }
   }
 
   let const page_byte_count = ::sysconf(_SC_PAGESIZE);
 
   if (page_byte_count > 0) {
-    status.input_byte_count  = input_pages * static_cast<u64>(page_byte_count);
-    status.output_byte_count = output_pages * static_cast<u64>(page_byte_count);
-    status.has_activity      = true;
+    status.input_byte_count =
+        input_page_count * static_cast<u64>(page_byte_count);
+    status.output_byte_count =
+        output_page_count * static_cast<u64>(page_byte_count);
+    status.has_activity = true;
   }
 
   return true;

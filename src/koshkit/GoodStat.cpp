@@ -211,7 +211,10 @@ append_subject(String                    &output,
     let filesystem = os::filesystem_status{};
 
     if (os::stat_filesystem(operand, filesystem)) {
-      do_append_field("Filesystem", StringView{filesystem.type_name},
+      let const type_name = StringView{filesystem.type_name};
+
+      do_append_field("Filesystem",
+                      type_name.is_empty() ? StringView{"unknown"} : type_name,
                       colors::soft(colors::ansi::BOLD_CYAN));
       do_append_field(
           "Filesystem block size",

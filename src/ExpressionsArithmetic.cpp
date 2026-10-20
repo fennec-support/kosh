@@ -940,6 +940,15 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
         cxt, [] { return StringView{"((1))"}; });
   };
 
+  let const init_base =
+      SourceLocation{m_header_position, 0, source_location().source_name_index};
+  let const condition_base =
+      SourceLocation{m_header_position + m_init.length + 1, 0,
+                     source_location().source_name_index};
+  let const step_base =
+      SourceLocation{m_header_position + m_init.length + m_condition.length + 2,
+                     0, source_location().source_name_index};
+
   cxt.enter_loop();
   defer { cxt.leave_loop(); };
 
@@ -956,7 +965,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
     if (!should_run_init) return {cxt.execution_store().last_exit_status()};
 
-    cxt.evaluate_arithmetic_nonzero(m_init, nullptr,
+    cxt.evaluate_arithmetic_nonzero(m_init, &init_base,
                                     arithmetic_text_kind::ShellSource);
   }
 
@@ -981,7 +990,8 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
     let &cache = get_clause_cache(m_condition_cache);
 
     return cxt.evaluate_arithmetic_cached_clause_nonzero(
-        m_condition, cache.tokens, cache.is_tokenized, cache.is_simple);
+        m_condition, cache.tokens, cache.is_tokenized, cache.is_simple,
+        &condition_base);
   };
 
   let const do_test_condition = [&]() throws -> bool {
@@ -1021,7 +1031,8 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
       let &cache = get_clause_cache(m_step_cache);
 
       cxt.evaluate_arithmetic_cached_clause_nonzero(
-          m_step, cache.tokens, cache.is_tokenized, cache.is_simple);
+          m_step, cache.tokens, cache.is_tokenized, cache.is_simple,
+          &step_base);
     }
   }
 

@@ -164,11 +164,12 @@ run_repl(const ExecContext   &ec,
   let const is_terminal = input_mode == calc_repl_input_mode::DetectTerminal &&
                           os::is_fd_a_tty(input_fd);
 
-  let const did_initialize_editor = is_terminal && !toiletline::is_active();
+  let did_initialize_editor = false;
 
-  if (did_initialize_editor) {
+  if (is_terminal && !toiletline::is_active()) {
     try {
       toiletline::initialize();
+      did_initialize_editor = true;
     } catch (const Error &error) {
       show_message(error.to_string());
     }

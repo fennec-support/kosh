@@ -1141,15 +1141,17 @@ public:
   fn
   snapshot() const throws -> scope_snapshot
   {
-    return scope_snapshot{m_aliases, m_local_scopes, m_local_scope_depth};
+    return scope_snapshot{m_aliases, m_local_scopes, m_local_scope_depth,
+                          m_saved_scope_shell_options};
   }
 
   fn
   restore(scope_snapshot snapshot) throws -> void
   {
-    m_aliases           = steal(snapshot.aliases);
-    m_local_scopes      = steal(snapshot.local_scopes);
-    m_local_scope_depth = snapshot.local_scope_depth;
+    m_aliases                   = steal(snapshot.aliases);
+    m_local_scopes              = steal(snapshot.local_scopes);
+    m_local_scope_depth         = snapshot.local_scope_depth;
+    m_saved_scope_shell_options = steal(snapshot.saved_scope_shell_options);
   }
 
   fn
@@ -3141,7 +3143,7 @@ public:
   set(StringView condition, trap_definition definition) throws -> void
   {
     m_traps.set(condition, steal(definition));
-    m_held_exit_action = None;
+    if (condition == StringView{"EXIT", 4}) m_held_exit_action = None;
     refresh_flags();
   }
 
@@ -6112,7 +6114,8 @@ protected:
   install_trap_dispositions() throws -> void;
 
   fn
-  initialize_bash_argument_arrays(bool should_include_current_frame) const throws -> void;
+  initialize_bash_argument_arrays(bool should_include_current_frame) const
+      throws -> void;
   fn
   append_current_bash_argument_frame() const throws -> void;
 

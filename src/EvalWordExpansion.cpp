@@ -1020,6 +1020,12 @@ EvalContext::expand_word(const Word &word) throws
                                                  : should_treat_as_unset;
 
               if (!should_expand_word) {
+                if (segment.is_in_double_quotes && modifier_op == '+' &&
+                    !elements.is_empty())
+                {
+                  do_append_run(StringView{}, false);
+                }
+
                 break;
               }
 
@@ -1397,7 +1403,12 @@ EvalContext::expand_wordlist_to_fields(
       let const character = wordlist[i];
 
       if (quote != 0) {
-        if (character == quote) quote = 0;
+        /* Inside double quotes, a backslash escapes the next byte. */
+        if (character == '\\' && quote == '"') {
+          i++;
+        } else if (character == quote) {
+          quote = 0;
+        }
         is_at_word_start = false;
         continue;
       }

@@ -582,7 +582,11 @@ internal::split_completion_words(StringView line,
     let const start = i;
 
     while (i < line.length && line[i] != ' ' && line[i] != '\t') {
-      i++;
+      if (line[i] == '\'' || line[i] == '"' || line[i] == '\\') {
+        i = quoted_run_end(line, i) + 1;
+      } else {
+        i++;
+      }
     }
 
     if (cursor >= start && cursor <= i) {

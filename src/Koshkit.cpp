@@ -1417,7 +1417,9 @@ make_directories(const Path &directory, u32 mode) wontthrow -> bool
       continue;
     }
 
-    if (!os::make_directory(prefix, mode)) return false;
+    if (!os::make_directory(prefix, mode) && !os::path_is_directory(prefix)) {
+      return false;
+    }
   }
 
   return true;
@@ -1585,15 +1587,19 @@ scaled_filesystem_blocks(u64 block_count,
 fn
 filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64
 {
+  /* A sum above UINT64_MAX halves both terms, so the divisor fits in u64. */
   let const capacity_base = static_cast<u128>(used) + available;
+  let const is_wide       = capacity_base > UINT64_MAX;
+  let const divisor       = is_wide ? capacity_base >> 1u : capacity_base;
+  let const dividend_used = is_wide ? static_cast<u128>(used) >> 1u : used;
 
-  if (capacity_base == 0) return 0;
+  if (divisor == 0) return 0;
 
-  let const numerator = static_cast<u128>(used) * 100 + capacity_base - 1;
+  let const numerator = static_cast<u128>(dividend_used) * 100 + divisor - 1;
 
   return os::divide_u128_by_u64(static_cast<u64>(numerator >> 64u),
                                 static_cast<u64>(numerator),
-                                static_cast<u64>(capacity_base))
+                                static_cast<u64>(divisor))
       .quotient;
 }
 

@@ -576,7 +576,7 @@ printf_consumed_argument_count(StringView format,
 cold pure fn
 view_is_integer_literal(StringView view) wontthrow -> bool
 {
-  usize start = view.length >= 1 && view[0] == '-' ? 1 : 0;
+  usize start = view.length >= 1 && (view[0] == '-' || view[0] == '+') ? 1 : 0;
 
   return start < view.length && view.substring(start).is_all_decimal_digits();
 }

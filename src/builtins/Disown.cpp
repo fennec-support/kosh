@@ -44,6 +44,22 @@ Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
+  if (FLAG_NO_HUP.is_enabled() && !FLAG_ALL.is_enabled() &&
+      !FLAG_RUNNING.is_enabled())
+  {
+    if (names.count() <= 1 &&
+        cxt.job_table_store().most_recent_job() == nullptr)
+      throw Error{"There is no such job"};
+
+    for (usize i = 1; i < names.count(); i++) {
+      if (cxt.job_table_store().find_job_by_spec(names[i]) == nullptr)
+        throw ErrorWithLocation{get_operand_location(ec, operand_locations, i),
+                                "'" + names[i] + "' is not a valid job"};
+    }
+
+    return 0;
+  }
+
   if (FLAG_NO_HUP.is_enabled()) return 0;
 
   if (FLAG_ALL.is_enabled() || FLAG_RUNNING.is_enabled()) {

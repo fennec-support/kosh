@@ -273,6 +273,7 @@ struct scope_snapshot
   StringMap<String>                   aliases;
   ArrayList<ArrayList<local_binding>> local_scopes;
   usize                               local_scope_depth;
+  ArrayList<Maybe<u64>>               saved_scope_shell_options;
 };
 
 struct execution_snapshot

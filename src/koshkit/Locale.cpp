@@ -66,6 +66,18 @@ locale_environment_value(const char *name) wontthrow -> StringView
   return value == nullptr ? StringView{} : StringView{value};
 }
 
+static fn
+locale_ctype_name() wontthrow -> const char *
+{
+  for (let const name : {"LC_ALL", "LC_CTYPE", "LANG"}) {
+    let const value = locale_environment_value(name);
+
+    if (!value.is_empty()) return value.data;
+  }
+
+  return "C";
+}
+
 fn
 Locale::execute(const ExecContext               &ec,
                 EvalContext                     &cxt,
@@ -143,7 +155,7 @@ Locale::execute(const ExecContext               &ec,
     if ((keyword->value_kind == locale_value_kind::CharacterMap) &&
         (active_locale == nullptr))
     {
-      active_locale = setlocale(LC_ALL, nullptr);
+      active_locale = locale_ctype_name();
     }
 
     if ((keyword->value_kind != locale_value_kind::CharacterMap) &&

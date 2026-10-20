@@ -65,7 +65,16 @@ Ln::execute(const ExecContext               &ec,
     if (is_destination_directory) {
       let link_path = Path{destination, cxt.scratch_allocator()};
 
-      link_path.append(Path{target, cxt.scratch_allocator()}.filename());
+      usize target_end = target.length;
+
+      while (target_end > 0 &&
+             os::is_directory_separator(target[target_end - 1]))
+      {
+        target_end--;
+      }
+
+      link_path.append(
+          Path::filename(target.substring_of_length(0, target_end)));
       link = link_path.text();
     }
 

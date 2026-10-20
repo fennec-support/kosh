@@ -426,7 +426,7 @@ compute_stats(const ArrayList<bench_sample> &samples,
   }
 
   stats.std_dev =
-      (samples.count() > 1) ? std::sqrt(variance_sum / (count - 1)) : 0.0;
+      (samples.count() > 1) ? sqrt(variance_sum / (count - 1)) : 0.0;
 
   return stats;
 }
@@ -619,7 +619,7 @@ append_relative_line(String             &out,
   let const first_cv = first.std_dev / first.mean;
   let const other_cv = other.std_dev / other.mean;
   let const ratio_uncertainty =
-      ratio * std::sqrt(first_cv * first_cv + other_cv * other_cv);
+      ratio * sqrt(first_cv * first_cv + other_cv * other_cv);
 
   char buffer[128];
 

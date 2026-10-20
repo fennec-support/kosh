@@ -1364,6 +1364,7 @@ FunctionStore::append_wire(String &output) const throws -> void
               records, static_cast<u32>(info->definition_line));
           append_subshell_bootstrap_text(records, info->line_prefix.view());
           append_subshell_bootstrap_text(records, info->line_suffix.view());
+          records.push(static_cast<char>(info->is_numbered_apart));
           record_count++;
         });
 
@@ -1533,7 +1534,8 @@ CompletionStore::append_wire(String &output) const throws -> void
 }
 
 fn
-JobTable::append_wire(String &output, os::subshell_bootstrap &bootstrap) const throws -> void
+JobTable::append_wire(String &output, os::subshell_bootstrap &bootstrap) const
+    throws -> void
 {
   append_wire_section(output, wire_section::Jobs, [&](String &payload) {
     let const do_reference_process =
@@ -2115,6 +2117,9 @@ FunctionStore::from_wire(subshell_bootstrap_reader &reader,
     let const definition_line      = payload.read_u32();
     let const line_prefix          = payload.read_text();
     let const line_suffix          = payload.read_text();
+
+    if (!read_subshell_bootstrap_bool(payload, info.is_numbered_apart))
+      return false;
 
     if (!payload.is_valid || name.is_empty() || line_offset > INT32_MAX ||
         enclosing_line_count > INT32_MAX)

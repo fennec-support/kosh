@@ -221,10 +221,10 @@ Split::execute(const ExecContext               &ec,
   char buffer[65536];
 
   loop {
-    let const read_count =
+    let const read_byte_count =
         os::read_fd(input->descriptor, buffer, sizeof(buffer));
 
-    if (!read_count.has_value()) {
+    if (!read_byte_count.has_value()) {
       if (os::INTERRUPT_REQUESTED) return 130;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      os::last_system_error_message());
@@ -232,19 +232,19 @@ Split::execute(const ExecContext               &ec,
       return 1;
     }
 
-    if (*read_count == 0) break;
+    if (*read_byte_count == 0) break;
 
     usize segment_start = 0;
 
-    while (segment_start < *read_count) {
+    while (segment_start < *read_byte_count) {
       if (!do_open_output()) return 1;
 
-      usize segment_end        = *read_count;
+      usize segment_end        = *read_byte_count;
       u64   segment_unit_count = 0;
 
       if (is_byte_mode) {
         let const remaining_byte_count = unit_limit - output_unit_count;
-        let const unread_byte_count    = *read_count - segment_start;
+        let const unread_byte_count    = *read_byte_count - segment_start;
         let const write_byte_count =
             remaining_byte_count < unread_byte_count
                 ? static_cast<usize>(remaining_byte_count)
@@ -258,7 +258,7 @@ Split::execute(const ExecContext               &ec,
         usize position = segment_start;
 
         while (let const newline =
-                   StringView{buffer + position, *read_count - position}
+                   StringView{buffer + position, *read_byte_count - position}
                        .find_character('\n'))
         {
           position += *newline + 1;

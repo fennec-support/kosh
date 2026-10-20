@@ -1197,7 +1197,8 @@ fn
 sync_path(StringView path, sync_mode mode) wontthrow -> bool
 {
   const String path_string{heap_allocator(), path};
-  let const    path_fd = ::open(path_string.c_str(), O_RDONLY | O_CLOEXEC);
+  let const    path_fd =
+      ::open(path_string.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
 
   if (path_fd < 0) return false;
   defer { ::close(path_fd); };

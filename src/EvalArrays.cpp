@@ -1399,17 +1399,14 @@ EvalContext::collect_array_elements(StringView name) const throws
   if (runtime_state().bash_dynamic_variables_enabled()) rarely {
     if (let const which = DYNAMIC_ARRAYS.find(name); which.has_value()) {
       let const element_count = dynamic_array_element_count(*which);
+      let       frames        = ArrayList<String>{heap_allocator()};
 
-      if (element_count > 0) {
-        let frames = ArrayList<String>{heap_allocator()};
+      frames.reserve(element_count);
 
-        frames.reserve(element_count);
+      for (usize i = 0; i < element_count; i++)
+        frames.push(dynamic_array_element_text(*which, i, heap_allocator()));
 
-        for (usize i = 0; i < element_count; i++)
-          frames.push(dynamic_array_element_text(*which, i, heap_allocator()));
-
-        return frames;
-      }
+      return frames;
     }
   }
 

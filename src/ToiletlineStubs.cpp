@@ -274,7 +274,9 @@ scan_no_editor_history(const Path &path,
     state.total_count++;
   }
 
-  if (!is_valid) return history_scan_outcome::Invalid;
+  if (!is_valid || !toiletline::is_history_contents_valid(contents)) {
+    return history_scan_outcome::Invalid;
+  }
 
   state.trailing_record_start_byte_offset = span.start_byte_offset;
   if (!update_history_file_status(state, path)) {
@@ -336,7 +338,7 @@ static fn
 ensure_no_editor_history_loaded(const Path &path, bool should_allow_missing)
     -> ErrorOr<Ok>
 {
-  let &state = get_no_editor_history_state();
+  let const &state = get_no_editor_history_state();
 
   if (!state.is_loaded || state.loaded_path.view() != path.view()) {
     return load_no_editor_history(path, should_allow_missing);

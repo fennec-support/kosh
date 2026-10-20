@@ -414,7 +414,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
             os::close_fd(body_fd);
           if (!was_replaced) {
             did_redirection_open_fail = true;
-            throw ErrorWithLocation{redir.target->source_location(),
+            throw ErrorWithLocation{source_location(),
                                     String::from(redir.fd, heap_allocator()) +
                                         ": Bad file descriptor"};
           }
@@ -443,8 +443,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         os::close_fd(body_fd);
         if (!saved.is_dup2_ok) {
           did_redirection_open_fail = true;
-          throw ErrorWithLocation{redir.target->source_location(),
-                                  "Bad file descriptor"};
+          throw ErrorWithLocation{source_location(), "Bad file descriptor"};
         }
 
         break;

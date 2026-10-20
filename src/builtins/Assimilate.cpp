@@ -65,6 +65,7 @@ constexpr char REMOTE_DIRECTORY_FUNCTIONS_TEXT[] =
     [ -w "$proposed_directory" ] && [ -x "$proposed_directory" ] || return 1
   install_dir=$(cd "$proposed_directory" && pwd -P) || return 1
   target=$install_dir/kosh
+  [ ! -d "$target" ] || return 1
 }
 directory_accepts_links() {
   remaining_moods=$link_moods

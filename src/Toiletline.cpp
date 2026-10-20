@@ -2770,7 +2770,7 @@ set_title(StringView title) -> void
         end_position++;
       }
 
-      if (end_position < title.count() && title[end_position] == 'm') {
+      if (end_position < title.count()) {
         position = end_position + 1;
         continue;
       }
@@ -2788,29 +2788,31 @@ set_title(StringView title) -> void
       continue;
     }
 
-    usize codepoint_length = 0;
-    u32   codepoint        = 0;
+    usize codepoint_byte_count = 0;
+    u32   codepoint            = 0;
 
     if (unsigned_byte >= 0xc2 && unsigned_byte <= 0xdf) {
-      codepoint_length = 2;
-      codepoint        = unsigned_byte & 0x1f;
+      codepoint_byte_count = 2;
+      codepoint            = unsigned_byte & 0x1f;
     } else if (unsigned_byte >= 0xe0 && unsigned_byte <= 0xef) {
-      codepoint_length = 3;
-      codepoint        = unsigned_byte & 0x0f;
+      codepoint_byte_count = 3;
+      codepoint            = unsigned_byte & 0x0f;
     } else if (unsigned_byte >= 0xf0 && unsigned_byte <= 0xf4) {
-      codepoint_length = 4;
-      codepoint        = unsigned_byte & 0x07;
+      codepoint_byte_count = 4;
+      codepoint            = unsigned_byte & 0x07;
     }
 
-    if (codepoint_length == 0 || position + codepoint_length > title.count()) {
+    if (codepoint_byte_count == 0 ||
+        position + codepoint_byte_count > title.count())
+    {
       position++;
       continue;
     }
 
     bool is_valid = true;
 
-    for (usize continuation_index = 1; continuation_index < codepoint_length;
-         continuation_index++)
+    for (usize continuation_index = 1;
+         continuation_index < codepoint_byte_count; continuation_index++)
     {
       let const continuation_byte =
           static_cast<unsigned char>(title[position + continuation_index]);
@@ -2823,11 +2825,11 @@ set_title(StringView title) -> void
       codepoint = (codepoint << 6) | (continuation_byte & 0x3f);
     }
 
-    if (sequence.count() + codepoint_length > MAX_TITLE_LENGTH + 4) break;
+    if (sequence.count() + codepoint_byte_count > MAX_TITLE_LENGTH + 4) break;
 
     u32 minimum_codepoint = 0;
 
-    switch (codepoint_length) {
+    switch (codepoint_byte_count) {
     case 2:  minimum_codepoint = 0x80u; break;
     case 3:  minimum_codepoint = 0x800u; break;
     default: minimum_codepoint = 0x10000u; break;
@@ -2841,9 +2843,9 @@ set_title(StringView title) -> void
       continue;
     }
 
-    sequence.append(title.substring_of_length(position, codepoint_length));
+    sequence.append(title.substring_of_length(position, codepoint_byte_count));
     was_space_appended = false;
-    position += codepoint_length;
+    position += codepoint_byte_count;
   }
 
   sequence.push('\a');
@@ -3951,8 +3953,13 @@ scan_prompt_template_inputs_or_report_impure(
 
     usize j = i + 1;
 
-    while (j < text.length && do_is_name_byte(text[j])) {
+    /* $1x refers to $1 followed by x, so a digit is one parameter. */
+    if (j < text.length && text[j] >= '0' && text[j] <= '9') {
       j++;
+    } else {
+      while (j < text.length && do_is_name_byte(text[j])) {
+        j++;
+      }
     }
 
     if (j > i + 1) {

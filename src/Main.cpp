@@ -769,8 +769,8 @@ parse_init_moods(ArrayList<mimic_mood> &moods) throws -> Maybe<int>
     if (unknown_name.has_value()) {
       show_unknown_flag_value(
           "--init-moods ", *unknown_name,
-          "Unknown --init-moods value, expected one of 'kosh', 'bash', or "
-          "'sh'");
+          "Unknown --init-moods value, expected one of 'kosh', 'bash', 'sh', "
+          "or 'bash-posix'");
 
       return 2;
     }

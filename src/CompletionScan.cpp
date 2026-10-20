@@ -298,8 +298,9 @@ parse_package_json_scripts(StringView text) throws -> ArrayList<String>
   return scripts;
 }
 
-/* memory: the returned hosts list owns its strings. the seen set and the
-           config and known_hosts contents are freed on return.
+/* memory: the returned hosts list owns its strings. the seen set is freed on
+           return. the config and known_hosts contents are each freed at the
+           end of their block.
    time:   O(B) for B total bytes of ~/.ssh/config and ~/.ssh/known_hosts, both
            read whole with read_entire_file(). each host costs one expected O(1)
            seen.add(). */
@@ -333,9 +334,14 @@ collect_ssh_hosts() throws -> ArrayList<String>
 
       row = row.substring(skip_blanks(row, 0));
 
-      if (!(row.starts_with(StringView{"Host "}) ||
-            row.starts_with(StringView{"Host\t"})))
-      {
+      let const has_host_keyword = row.length > 4 &&
+                                   utils::ascii_to_lower(row[0]) == 'h' &&
+                                   utils::ascii_to_lower(row[1]) == 'o' &&
+                                   utils::ascii_to_lower(row[2]) == 's' &&
+                                   utils::ascii_to_lower(row[3]) == 't' &&
+                                   (row[4] == ' ' || row[4] == '\t');
+
+      if (!has_host_keyword) {
         continue;
       }
 

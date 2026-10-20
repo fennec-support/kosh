@@ -1988,7 +1988,9 @@ expressions::internal::analyze_followed_source(
   let const sourced_mood = detect_sourced_file_mood(
       canonical_path->text().view(), contents->view(), current_mood);
 
-  if (sourced_mood.has_value() && *sourced_mood != current_mood) return false;
+  if (sourced_mood.has_value() && *sourced_mood != current_mood) {
+    return false;
+  }
 
   if (!actx.followed_source_paths->add(canonical_path->text().view()))
     return false;
@@ -2948,6 +2950,17 @@ internal::arithmetic_reads_external_input(const AnalysisContext &actx,
     wontthrow -> bool
 {
   for (usize position = 0; position < expression.length;) {
+    if (lexer::is_number(expression[position])) {
+      while (position < expression.length &&
+             (lexer::is_variable_name(expression[position]) ||
+              expression[position] == '#'))
+      {
+        position++;
+      }
+
+      continue;
+    }
+
     if (!lexer::is_variable_name_start(expression[position])) {
       position++;
       continue;

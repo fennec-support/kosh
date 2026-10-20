@@ -84,7 +84,7 @@ bounded_osa_distance(StringView a, StringView b, usize max_distance) wontthrow
 
     if (row_best > max_distance) return max_distance + 1;
 
-    let old_previous_previous = previous_previous;
+    let const old_previous_previous = previous_previous;
 
     previous_previous = previous;
     previous          = current;

@@ -645,7 +645,7 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
                              scratch, relatives);
 
       if (!has_slash_after) {
-        if (!prefix.is_empty()) {
+        if (!prefix.is_empty() && base.is_directory()) {
           let base_field = glob_field{scratch};
 
           base_field.text.append(prefix);
@@ -706,22 +706,19 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
       continue;
     }
 
-    let const slash_offset        = static_cast<std::ptrdiff_t>(*slash_after);
-    let       directory_component = glob_field{scratch};
+    let directory_component = glob_field{scratch};
 
     directory_component.text.append(StringView{text.data, *slash_after});
 
-    for (std::ptrdiff_t k = 0; k < slash_offset; k++)
-      directory_component.glob_active.push(
-          field.glob_active[static_cast<usize>(k)]);
+    for (usize k = 0; k < *slash_after; k++)
+      directory_component.glob_active.push(field.glob_active[k]);
 
     let removed_suffix = glob_field{scratch};
 
     removed_suffix.text.append(
         StringView{text.data + *slash_after, text.length - *slash_after});
 
-    for (usize k = static_cast<usize>(slash_offset);
-         k < field.glob_active.count(); k++)
+    for (usize k = *slash_after; k < field.glob_active.count(); k++)
       removed_suffix.glob_active.push(field.glob_active[k]);
 
     let expanded_directories =

@@ -822,7 +822,11 @@ bc_define_function(StringView  statement,
                    bc_runtime &runtime,
                    Allocator   allocator) throws -> bool
 {
-  if (!statement.starts_with("define")) return false;
+  if (!statement.starts_with("define") ||
+      (statement.length > 6 && statement[6] != ' ' && statement[6] != '\t'))
+  {
+    return false;
+  }
 
   usize position = 6;
 
@@ -1646,8 +1650,15 @@ Bc::execute(const ExecContext               &ec,
 
   runtime.has_math_library = FLAG_BC_MATH_LIBRARY.is_enabled();
   if (runtime.has_math_library) runtime.scale = 20;
-  unused(bc_run_program(program.view(), ec, cxt, runtime));
+  let const flow = bc_run_program(program.view(), ec, cxt, runtime);
+
   if (os::INTERRUPT_REQUESTED) return 130;
+  if (flow == bc_flow::Break || flow == bc_flow::Return) {
+    report_soft_koshkit_util_error(ec, cxt, "bc",
+                                   "break or return outside a loop or function",
+                                   "the program stops at this statement");
+    runtime.status = 1;
+  }
 
   return runtime.status;
 }

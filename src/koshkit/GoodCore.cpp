@@ -402,6 +402,11 @@ GoodCore::execute(const ExecContext               &ec,
                  .to_absolute()
                  .text()
                  .clone();
+  } else if (!is_followed_regular_file(operands[0].view())) {
+    do_report_failure("core file not found",
+                      "the operand must refer to a regular file");
+
+    return 1;
   } else {
     binary = infer_binary(cxt, operands[0].view(), allocator);
   }

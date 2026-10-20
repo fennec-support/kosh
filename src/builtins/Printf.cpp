@@ -160,7 +160,7 @@ struct numeric_locale_environment
 {
   u64        epoch;
   bool       is_filled;
-  u8         value_lengths[countof(NUMERIC_LOCALE_VARIABLE_NAMES)];
+  u8         value_byte_counts[countof(NUMERIC_LOCALE_VARIABLE_NAMES)];
   char       values[countof(NUMERIC_LOCALE_VARIABLE_NAMES)][128];
   StringView inherited_name;
 };
@@ -194,7 +194,7 @@ get_numeric_locale_environment() throws
                                                               : StringView{"C"};
       }
 
-      environment.value_lengths[name_index] = static_cast<u8>(text.length);
+      environment.value_byte_counts[name_index] = static_cast<u8>(text.length);
       if (!text.is_empty()) {
         memcpy(environment.values[name_index], text.data, text.length);
         environment.inherited_name =
@@ -232,9 +232,9 @@ find_numeric_locale_name(const EvalContext &cxt) throws -> StringView
 
     if (cxt.scope_store().has_current_local(name)) continue;
 
-    if (environment.value_lengths[name_index] != 0) {
+    if (environment.value_byte_counts[name_index] != 0) {
       return StringView{environment.values[name_index],
-                        environment.value_lengths[name_index]};
+                        environment.value_byte_counts[name_index]};
     }
   }
 

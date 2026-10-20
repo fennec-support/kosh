@@ -503,7 +503,7 @@ struct conditional_evaluator
 
       if (next == Kind::Less || next == Kind::Greater) {
         if (pos + 2 >= elements.count() || kind_at(pos + 2) != Kind::Operand) {
-          fail_conditional("An operand is missing after a comparison");
+          fail_conditional_syntax("An operand is missing after a comparison");
         }
         pos += 3;
         if (is_skipping) return false;
@@ -656,7 +656,7 @@ struct conditional_evaluator
       let const is_inner_true = eval_or();
 
       if (at_end() || kind_at(pos) != Kind::CloseParen) {
-        throw Error{"Expected ')'"};
+        fail_conditional_syntax("Expected ')'");
       }
 
       pos++;

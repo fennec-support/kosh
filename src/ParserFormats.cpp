@@ -1533,7 +1533,9 @@ heredoc_delimiter_at(StringView line, usize &position) wontthrow
 
     /* at this point: line[position] starts a variable name at word_start. */
 
-    while (position < line.length && lexer::is_variable_name(line[position]))
+    while (position < line.length && !lexer::is_whitespace(line[position]) &&
+           !lexer::is_shell_sentinel(line[position]) &&
+           line[position] != '\'' && line[position] != '"')
       position++;
 
     return line.substring_of_length(word_start, position - word_start);

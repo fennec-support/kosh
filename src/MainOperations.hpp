@@ -198,8 +198,9 @@ run_debug_hint_driver(StringView   driver_line,
     printed.append(row.view());
   }
 
-  if (printed.is_empty() || printed.view()[printed.length() - 1] != '\n')
+  if (printed.is_empty() || printed.view()[printed.length() - 1] != '\n') {
     printed += '\n';
+  }
   print(printed);
   flush();
 
@@ -2632,11 +2633,19 @@ read_apply_file(const Path           &operand_path,
     return None;
   }
 
-  let contents        = target_path->read_entire_file();
+  let contents = target_path->read_entire_file();
+
+  if (!contents.has_value()) {
+    show_operand_error(&operand_location, invocation, context,
+                       "Unable to read '" + operand_path.text() +
+                           "': " + os::last_system_error_message());
+
+    return None;
+  }
+
   let verified_status = os::file_status{};
 
-  if (!contents.has_value() ||
-      !os::stat_path_following(target_path->text().view(), verified_status) ||
+  if (!os::stat_path_following(target_path->text().view(), verified_status) ||
       !os::file_status_matches(status, verified_status))
   {
     show_operand_error(&operand_location, invocation, context,

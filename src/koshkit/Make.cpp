@@ -4124,8 +4124,30 @@ parse_makefile_shell_sources(StringView source,
       let const raw_colon = first_colon_not_followed_by_equals(raw_line);
 
       if (!raw_colon.has_value()) continue;
+
+      usize code_end = raw_line.length;
+
+      for (usize raw_position = 0; raw_position < raw_line.length;
+           raw_position++)
+      {
+        if (raw_line[raw_position] == '\\' &&
+            raw_position + 1 < raw_line.length &&
+            raw_line[raw_position + 1] == '#')
+        {
+          raw_position++;
+          continue;
+        }
+
+        if (raw_line[raw_position] == '#') {
+          code_end = raw_position;
+          break;
+        }
+      }
+
       let const semicolon =
-          raw_line.substring(*raw_colon + 1).find_character(';');
+          raw_line
+              .substring_of_length(*raw_colon + 1, code_end - *raw_colon - 1)
+              .find_character(';');
 
       if (!semicolon.has_value()) continue;
       usize start_position =
@@ -4302,22 +4324,26 @@ makefile_shell_analysis_source(
     }
 
     let const expansion_end = make_expansion_end(source, position, close_stack);
-    let const end_position =
-        expansion_end.has_value() && *expansion_end < range.end_position
-            ? *expansion_end
-            : position + 1;
-    let const line_prefix = source.substring_of_length(
+    let const is_expansion =
+        expansion_end.has_value() && *expansion_end < range.end_position;
+    let const end_position = is_expansion ? *expansion_end : position + 1;
+    let const line_prefix  = source.substring_of_length(
         line_start_position, position - line_start_position);
     let const trimmed_prefix = trim(line_prefix);
     let const is_for_word_list =
         trimmed_prefix.starts_with("for ") &&
         line_prefix.find_substring(" in ").has_value() &&
         end_position - position >= 2;
-    let const placeholder_length = is_for_word_list ? usize{3} : usize{2};
+    let const placeholder_length =
+        is_expansion ? (is_for_word_list ? usize{3} : usize{2}) : usize{1};
 
-    analysis_source.append(is_for_word_list     ? "x y"
-                           : quote_byte == '\0' ? ": "
-                                                : "x ");
+    if (is_expansion) {
+      analysis_source.append(is_for_word_list     ? "x y"
+                             : quote_byte == '\0' ? ": "
+                                                  : "x ");
+    } else {
+      analysis_source.push(quote_byte == '\0' ? ':' : 'x');
+    }
 
     for (usize masked_position = position + placeholder_length;
          masked_position <= end_position; masked_position++)

@@ -36,7 +36,7 @@ namespace {
 /* memory: read_entire_file() copies the whole file to the heap, and the body
            frees it on return. the returned String is in allocator.
    time:   O(file size) to read the file, then O(first line length) to find
-           the newline. the callers read /etc/os-release and /proc/loadavg. */
+           the newline. the caller reads /proc/loadavg. */
 fn
 read_first_line(StringView path, Allocator allocator) throws
     -> Maybe<String>
@@ -53,6 +53,39 @@ read_first_line(StringView path, Allocator allocator) throws
   }
 
   return String{allocator, view.substring_of_length(0, line_end)};
+}
+
+/* memory: the file is read into the heap and freed on return. the returned
+           String is in allocator.
+   time:   O(file size) to scan the lines until the NAME= line. */
+fn
+read_os_release_name(Allocator allocator) throws -> Maybe<String>
+{
+  let const body = Path{"/etc/os-release", allocator}.read_entire_file();
+
+  if (!body.has_value()) return None;
+
+  let const view       = body->view();
+  usize     line_start = 0;
+
+  while (line_start < view.length) {
+    usize line_end = line_start;
+
+    while (line_end < view.length && view[line_end] != '\n') {
+      line_end++;
+    }
+
+    let const line =
+        view.substring_of_length(line_start, line_end - line_start);
+
+    if (line.starts_with("NAME=")) {
+      return String{allocator, line.substring_of_length(5, line.length - 5)};
+    }
+
+    line_start = line_end + 1;
+  }
+
+  return None;
 }
 
 fn
@@ -469,11 +502,10 @@ Evil::execute(const ExecContext               &ec,
     identity.add("OS type", os::ostype_name());
   }
 
-  let const distribution = read_first_line("/etc/os-release", allocator);
+  let const distribution = read_os_release_name(allocator);
 
-  if (distribution.has_value() && distribution->view().starts_with("NAME=")) {
-    let const named =
-        distribution->view().substring_of_length(5, distribution->length() - 5);
+  if (distribution.has_value()) {
+    let const named    = distribution->view();
     let const unquoted = named.length >= 2 && named[0] == '"'
                              ? named.substring_of_length(1, named.length - 2)
                              : named;
