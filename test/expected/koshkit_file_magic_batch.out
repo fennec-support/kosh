@@ -1,6 +1,6 @@
 --- ordered errors ---
 ordered-first: match
--c:1:37: error: Koshkit `file`: cannot open 'missing-magic': No such file or directory.
+-c:1:37: error: Koshkit `file`: Cannot open 'missing-magic': No such file or directory.
      1 |  koshkit file -M magic ordered-first missing-magic ordered-last
        |                                      ^~~~~~~~~~~~~
 ordered-last: match

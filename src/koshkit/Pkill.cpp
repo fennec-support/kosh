@@ -41,7 +41,7 @@ resolve_koshkit_signal(StringView     spelled,
   if (!parsed.is_error()) {
     if (parsed.value() < INT32_MIN || parsed.value() > INT32_MAX) {
       throw ErrorWithLocationAndDetails{
-          location, "signal number is out of range",
+          location, "Signal number is out of range",
           "Use a signal name such as TERM or a number such as 15"};
     }
 
@@ -56,7 +56,7 @@ resolve_koshkit_signal(StringView     spelled,
 
   if (!named.has_value()) {
     throw ErrorWithLocationAndDetails{
-        location, "unknown signal '" + spelled + "'",
+        location, "Unknown signal '" + spelled + "'",
         "Use a signal name such as TERM or a number such as 15"};
   }
 
@@ -79,8 +79,8 @@ Pkill::execute(const ExecContext               &ec,
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   if (operands.count() != 1) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "expects one pattern",
-                            "pass one pattern, e.g. `pkill ssh`");
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "Expects one pattern",
+                            "Pass one pattern, e.g. `pkill ssh`");
 
     return 1;
   }
@@ -89,8 +89,8 @@ Pkill::execute(const ExecContext               &ec,
 
   if (pattern.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "requires a non-empty pattern",
-                            "pass a pattern, e.g. `pkill ssh`");
+                            "Requires a non-empty pattern",
+                            "Pass a pattern, e.g. `pkill ssh`");
 
     return 1;
   }
@@ -116,7 +116,7 @@ Pkill::execute(const ExecContext               &ec,
 
         report_soft_koshkit_util_error(
             ec, cxt, args[0].view(),
-            "killing pid " +
+            "Killing pid " +
                 String::from(process.pid, cxt.scratch_allocator()) +
                 " failed: " + reason);
       }

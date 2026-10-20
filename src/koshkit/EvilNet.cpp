@@ -853,8 +853,8 @@ EvilNet::execute(const ExecContext               &ec,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",
-                            "this utility accepts no operands");
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Unexpected operand",
+                            "This utility accepts no operands");
 
     return 1;
   }
@@ -872,7 +872,7 @@ EvilNet::execute(const ExecContext               &ec,
     if (!report_unresolved_sort_key(
             ec, cxt, FLAG_EVILNET_SORT.value_location(), args[0].view(),
             resolved.match_count, resolved.matches.view(),
-            "use name, rx, tx, rx-packets, tx-packets, rx-errors, "
+            "Use name, rx, tx, rx-packets, tx-packets, rx-errors, "
             "tx-errors, rx-drops, or tx-drops"))
       return 1;
     sort_key = resolved.key;
@@ -880,7 +880,7 @@ EvilNet::execute(const ExecContext               &ec,
 
   if (FLAG_EVILNET_FAILURES.is_enabled() && FLAG_EVILNET_LIVE.is_enabled()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_EVILNET_FAILURES.value_location(),
-                            "conflicting flags",
+                            "Conflicting flags",
                             "--failures cannot be combined with --live");
 
     return 2;

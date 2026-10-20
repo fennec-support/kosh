@@ -81,8 +81,8 @@ Paste::execute(const ExecContext               &ec,
 
   if (delimiter_text.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_PASTE_DELIMITERS.value_location(),
-                            "delimiter list is empty",
-                            "provide one or more delimiter characters");
+                            "Delimiter list is empty",
+                            "Provide one or more delimiter characters");
 
     return 1;
   }

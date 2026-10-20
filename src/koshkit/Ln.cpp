@@ -124,7 +124,7 @@ Ln::execute(const ExecContext               &ec,
               : os::last_system_error_message();
 
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "cannot create link '" + link +
+                                     "Cannot create link '" + link +
                                          "': " + reason);
       status = 1;
     }

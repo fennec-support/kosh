@@ -27,7 +27,7 @@ Logname::execute(const ExecContext               &ec,
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "unexpected operand '" + operands[0] + "'");
+                            "Unexpected operand '" + operands[0] + "'");
 
     return 2;
   }
@@ -36,7 +36,7 @@ Logname::execute(const ExecContext               &ec,
 
   if (!name.has_value()) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "login name is unavailable");
+                                   "Login name is unavailable");
 
     return 1;
   }

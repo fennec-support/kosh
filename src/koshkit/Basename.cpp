@@ -48,8 +48,8 @@ Basename::execute(const ExecContext               &ec,
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   if (operands.count() > 2) {
     KOSHKIT_REPORT_ERROR_AT(
-        operand_locations[2], "extra operand '" + operands[2] + "'",
-        "basename takes a path and an optional suffix, e.g. `basename a.c .c`");
+        operand_locations[2], "Extra operand '" + operands[2] + "'",
+        "A path and an optional suffix are accepted, e.g. `basename a.c .c`");
 
     return 1;
   }

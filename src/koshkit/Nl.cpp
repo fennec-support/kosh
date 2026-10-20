@@ -156,8 +156,8 @@ Nl::execute(const ExecContext               &ec,
 
     KOSHKIT_REPORT_ERROR_AT(
         invalid_flag->value_location(),
-        "unsupported numbering style '" + invalid_flag->value() + "'",
-        "use a for all lines, t for nonempty lines, or n for no lines");
+        "Unsupported numbering style '" + invalid_flag->value() + "'",
+        "Use a for all lines, t for nonempty lines, or n for no lines");
 
     return 1;
   }
@@ -175,9 +175,9 @@ Nl::execute(const ExecContext               &ec,
 
   if (!number_format.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_NL_FORMAT.value_location(),
-                            "invalid number format '" + FLAG_NL_FORMAT.value() +
+                            "Invalid number format '" + FLAG_NL_FORMAT.value() +
                                 "'",
-                            "use ln, rn, or rz");
+                            "Use ln, rn, or rz");
 
     return 1;
   }
@@ -190,8 +190,8 @@ Nl::execute(const ExecContext               &ec,
     if (parsed.is_error() || parsed.value() > INT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_NL_INCREMENT.value_location(),
-          "invalid increment '" + FLAG_NL_INCREMENT.value() + "'",
-          "use a decimal integer from 0 through 9223372036854775807");
+          "Invalid increment '" + FLAG_NL_INCREMENT.value() + "'",
+          "Use a decimal integer from 0 through 9223372036854775807");
 
       return 1;
     }
@@ -206,9 +206,9 @@ Nl::execute(const ExecContext               &ec,
 
     if (parsed.is_error() || parsed.value() == 0) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_NL_BLANK_GROUP.value_location(),
-                              "invalid blank group '" +
+                              "Invalid blank group '" +
                                   FLAG_NL_BLANK_GROUP.value() + "'",
-                              "use a positive decimal integer");
+                              "Use a positive decimal integer");
 
       return 1;
     }
@@ -224,8 +224,8 @@ Nl::execute(const ExecContext               &ec,
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_NL_WIDTH.value_location(),
-          "invalid width '" + FLAG_NL_WIDTH.value() + "'",
-          "use a positive decimal integer within the platform size limit");
+          "Invalid width '" + FLAG_NL_WIDTH.value() + "'",
+          "Use a positive decimal integer within the platform size limit");
 
       return 1;
     }
@@ -241,8 +241,8 @@ Nl::execute(const ExecContext               &ec,
     if (parsed.is_error() || parsed.value() > INT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_NL_START.value_location(),
-          "invalid starting line number '" + FLAG_NL_START.value() + "'",
-          "use a decimal integer from 0 through 9223372036854775807");
+          "Invalid starting line number '" + FLAG_NL_START.value() + "'",
+          "Use a decimal integer from 0 through 9223372036854775807");
 
       return 1;
     }
@@ -257,7 +257,7 @@ Nl::execute(const ExecContext               &ec,
 
   if (delimiter.length != 2) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_NL_DELIMITER.value_location(),
-                            "the section delimiter must be two bytes");
+                            "The section delimiter must be two bytes");
 
     return 1;
   }

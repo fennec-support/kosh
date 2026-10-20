@@ -22,10 +22,10 @@ DESCRIPTION
        |        ^~~~~~~
 note: Use a non-negative number with an optional `s`, `m`, `h`, or `d` suffix, such as `5` or `0.25s`.
 --- a specialized utility locates an invalid operand ---
-1:6: error: tabs: invalid tab stop in '4,nope'.
+1:6: error: tabs: Invalid tab stop in '4,nope'.
      1 |  tabs 4,nope
        |       ^~~~~~
-note: use a template name or comma-separated positive decimal columns, with + for relative stops.
+note: Use a template name or comma-separated positive decimal columns, with + for relative stops.
 --- a binary named koshkit runs the utility its first operand names ---
 1
 2

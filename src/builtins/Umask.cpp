@@ -160,7 +160,7 @@ Umask::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (operands.count() > 2) {
     ErrorWithLocation located{
         ec.arg_location_at(2),
-        StringView{"umask accepts at most one mask operand"}};
+        StringView{"At most one mask operand is accepted"}};
     located.set_script_fatal();
     located.set_command_status(1);
     throw located;

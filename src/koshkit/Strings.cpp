@@ -77,8 +77,8 @@ Strings::execute(const ExecContext               &ec,
 
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
-          FLAG_STRINGS_MINIMUM.value_location(), "invalid minimum length",
-          "use a positive decimal integer within the platform size limit");
+          FLAG_STRINGS_MINIMUM.value_location(), "Invalid minimum length",
+          "Use a positive decimal integer within the platform size limit");
 
       return 1;
     }
@@ -104,8 +104,8 @@ Strings::execute(const ExecContext               &ec,
 
     if (!is_valid_radix) {
       KOSHKIT_REPORT_ERROR_AT(
-          FLAG_STRINGS_RADIX.value_location(), "invalid offset radix",
-          "use d for decimal, o for octal, or x for hexadecimal");
+          FLAG_STRINGS_RADIX.value_location(), "Invalid offset radix",
+          "Use d for decimal, o for octal, or x for hexadecimal");
 
       return 1;
     }

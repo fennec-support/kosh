@@ -146,7 +146,7 @@ Uniq::execute(const ExecContext               &ec,
 
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_UNIQ_FIELDS.value_location(),
-                              "invalid number of fields to skip");
+                              "Invalid number of fields to skip");
 
       return 1;
     }
@@ -161,7 +161,7 @@ Uniq::execute(const ExecContext               &ec,
 
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_UNIQ_CHARS.value_location(),
-                              "invalid number of characters to skip");
+                              "Invalid number of characters to skip");
 
       return 1;
     }
@@ -206,7 +206,7 @@ Uniq::execute(const ExecContext               &ec,
       {
         did_write_fail = true;
         report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "write error: " +
+                                       "Write error: " +
                                            os::last_system_error_message());
       }
     } else {

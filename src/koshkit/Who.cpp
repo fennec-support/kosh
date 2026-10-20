@@ -54,28 +54,28 @@ Who::execute(const ExecContext               &ec,
   if (!operands.is_empty()) {
     if (operands[0].view() != "am") {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                              "unexpected operand '" + operands[0] + "'",
-                              "the only operand form is `am i`");
+                              "Unexpected operand '" + operands[0] + "'",
+                              "The only operand form is `am i`");
 
       return 2;
     }
 
     if (operands.count() == 1) {
-      KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "expected 'i' after 'am'");
+      KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Expected 'i' after 'am'");
 
       return 2;
     }
 
     if (operands[1].view() != "i") {
-      KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "expected 'i' after 'am'");
+      KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "Expected 'i' after 'am'");
 
       return 2;
     }
 
     if (operands.count() > 2) {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[2],
-                              "unexpected operand '" + operands[2] + "'",
-                              "the only operand form is `am i`");
+                              "Unexpected operand '" + operands[2] + "'",
+                              "The only operand form is `am i`");
 
       return 2;
     }

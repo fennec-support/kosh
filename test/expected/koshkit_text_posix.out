@@ -103,10 +103,10 @@ one	 :three
 two	 :four
 one	 :two
 three	 :four
-75:3: error: Koshkit `pr`: the page width is too narrow for the columns.
+75:3: error: Koshkit `pr`: The page width is too narrow for the columns.
     75 |    koshkit pr -t -l 1 -18446744073709551615
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-note: use a larger width with -w or fewer columns.
+note: Use a larger width with -w or fewer columns.
 left-one      :right-one
 left-two      :right-two
 regex-across-nul=1

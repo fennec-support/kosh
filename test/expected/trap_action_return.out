@@ -1,4 +1,4 @@
-trap:1:37: error: Builtin `return`: can only `return' from a function or sourced script.
+trap:1:37: error: Builtin `return`: Can only `return' from a function or sourced script.
      1 |  case "$BASH_COMMAND" in echo\ top*) return 5;; esac
        |                                      ^~~~~~~~
 -c:2:1: trace:
@@ -8,7 +8,7 @@ trap:1:37: error: Builtin `return`: can only `return' from a function or sourced
      3 |  echo top-1
        |  ^~~~
 top-1
-trap:1:37: error: Builtin `return`: can only `return' from a function or sourced script.
+trap:1:37: error: Builtin `return`: Can only `return' from a function or sourced script.
      1 |  case "$BASH_COMMAND" in echo\ top*) return 5;; esac
        |                                      ^~~~~~~~
 -c:2:1: trace:

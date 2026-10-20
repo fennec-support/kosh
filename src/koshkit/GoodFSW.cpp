@@ -403,7 +403,7 @@ GoodFSW::execute(const ExecContext               &ec,
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODFSW_PRECISION.value_location(),
                               "Invalid timestamp precision '" +
                                   FLAG_GOODFSW_PRECISION.value() + "'",
-                              "use a number from 0 through 9");
+                              "Use a number from 0 through 9");
 
       return 1;
     }
@@ -419,7 +419,7 @@ GoodFSW::execute(const ExecContext               &ec,
     } else if (value != "local") {
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODFSW_TIMEZONE.value_location(),
                               "Invalid timestamp timezone '" + value + "'",
-                              "use local or utc");
+                              "Use local or utc");
 
       return 1;
     }

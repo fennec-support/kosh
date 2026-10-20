@@ -234,7 +234,7 @@ struct removal_request
     /* at this point: known_status describes path, root_device_id is set, and
        path is on a different device from root_device_id. */
     report_soft_koshkit_util_error(ec, cxt, utility_name,
-                                   "skipping '" + path +
+                                   "Skipping '" + path +
                                        "', since it's on a different device");
 
     return true;
@@ -331,11 +331,11 @@ report_tree_removal_failure(void                    *context,
   let const &request = static_cast<tree_removal_state *>(context)->request;
   let const  message =
       failure == os::tree_removal_failure::ReadDirectory
-           ? "cannot read directory '" + path + "': " + reason
+           ? "Cannot read directory '" + path + "': " + reason
        : failure == os::tree_removal_failure::Replaced
-           ? "cannot remove '" + path +
+           ? "Cannot remove '" + path +
                 "': the directory was replaced while it was removed"
-           : "cannot remove '" + path + "': " + reason;
+           : "Cannot remove '" + path + "': " + reason;
 
   report_soft_koshkit_util_error(request.ec, request.cxt, request.utility_name,
                                  message);
@@ -369,7 +369,7 @@ remove_path_with_prompt(const removal_request &request,
 
   let const do_report_reason = [&](StringView reason) throws -> bool {
     report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                   "cannot remove '" + path + "': " + reason);
+                                   "Cannot remove '" + path + "': " + reason);
 
     return false;
   };
@@ -437,7 +437,7 @@ report_dry_run_removal(const removal_request &request,
 
   let const do_report_reason = [&](StringView reason) throws -> bool {
     report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                   "cannot remove '" + path + "': " + reason);
+                                   "Cannot remove '" + path + "': " + reason);
 
     return false;
   };
@@ -461,7 +461,7 @@ report_dry_run_removal(const removal_request &request,
 
     if (!names.has_value()) {
       report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                     "cannot read directory '" + path + "': " +
+                                     "Cannot read directory '" + path + "': " +
                                          os::last_system_error_message());
 
       return false;
@@ -746,7 +746,7 @@ Rm::execute(const ExecContext               &ec,
     if (is_recursive && is_dot_or_dot_dot(operand.view())) {
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
-          "refusing to remove '.' or '..' directory: "
+          "Refusing to remove '.' or '..' directory: "
           "skipping '" +
               operand + "'");
       status = 1;
@@ -766,7 +766,7 @@ Rm::execute(const ExecContext               &ec,
 
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
-          "it is dangerous to operate recursively on " + subject +
+          "It is dangerous to operate recursively on " + subject +
               "; use --no-preserve-root to override this failsafe");
       status = 1;
       continue;
@@ -777,7 +777,7 @@ Rm::execute(const ExecContext               &ec,
     {
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
-          "skipping '" + operand +
+          "Skipping '" + operand +
               "', since it's on a different device and --preserve-root=all "
               "is in effect");
       status = 1;
@@ -789,7 +789,7 @@ Rm::execute(const ExecContext               &ec,
     if (!target.exists() && !target.is_symbolic_link()) {
       if (should_ignore_missing) continue;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "cannot remove '" + operand +
+                                     "Cannot remove '" + operand +
                                          "': No such file or directory");
       status = 1;
       continue;

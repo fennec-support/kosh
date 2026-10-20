@@ -277,8 +277,8 @@ GoodNode::execute(const ExecContext               &ec,
 
   if (FLAG_GOODNODE_ROOT.is_set() && !FLAG_GOODNODE_INODE.is_set()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_GOODNODE_ROOT.value_location(),
-                            "root requires an inode",
-                            "pass --inode with --root");
+                            "Root requires an inode",
+                            "Pass --inode with --root");
 
     return 1;
   }
@@ -289,8 +289,8 @@ GoodNode::execute(const ExecContext               &ec,
 
     if (parsed.is_error() || parsed.value() < 0) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODNODE_INODE.value_location(),
-                              "invalid inode",
-                              "the inode must be a non-negative integer");
+                              "Invalid inode",
+                              "The inode must be a non-negative integer");
 
       return 1;
     }
@@ -331,8 +331,8 @@ GoodNode::execute(const ExecContext               &ec,
     if (found.is_empty()) {
       if (os::INTERRUPT_REQUESTED) return 130;
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODNODE_INODE.value_location(),
-                              "inode was not found",
-                              "choose a narrower or different search root");
+                              "Inode was not found",
+                              "Choose a narrower or different search root");
 
       return 1;
     }
@@ -378,7 +378,7 @@ GoodNode::execute(const ExecContext               &ec,
     if (report_results[index].error_number != 0) {
       os::set_last_system_error(report_results[index].error_number);
       report_soft_koshkit_error(ec, cxt,
-                                "cannot inspect '" + path +
+                                "Cannot inspect '" + path +
                                     "': " + os::last_system_error_message());
       exit_status = 1;
       continue;

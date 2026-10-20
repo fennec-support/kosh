@@ -30,7 +30,7 @@ Link::execute(const ExecContext               &ec,
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
   if (operands.count() > 2) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[2],
-                            "extra operand '" + operands[2] + "'");
+                            "Extra operand '" + operands[2] + "'");
 
     return 1;
   }

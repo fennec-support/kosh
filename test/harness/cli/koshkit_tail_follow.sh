@@ -77,7 +77,7 @@ printf 'gone\n' > "$d/g.txt"
 start_follower --follow=name -s 0.05 "$d/g.txt"
 wait_for_text gone "$d/out"
 invoke-koshkit rm "$d/g.txt"
-wait_for_text 'no files remaining' "$d/err"
+wait_for_text 'No files remaining' "$d/err"
 wait "$follower"
 echo "status=$?"
 follower=
@@ -86,7 +86,7 @@ sed -n 's/^.*Koshkit `tail`: //p' "$d/err" | sed "s#$d#TMPDIR#g"
 
 echo "--- retry opens a file that appears later ---"
 start_follower -f --retry -s 0.05 "$d/late.txt"
-wait_for_text 'cannot open' "$d/err"
+wait_for_text 'Cannot open' "$d/err"
 printf 'late\n' > "$d/late.txt"
 wait_for_text late "$d/out"
 stop_follower

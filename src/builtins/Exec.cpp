@@ -164,7 +164,7 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
     throw ErrorWithLocation{ec.arg_location_at(command_index),
-                            "exec is forbidden in a restricted shell"};
+                            "`exec` is forbidden in a restricted shell"};
 
   LOG(Info, "exec replacing the shell with '%s'", command_name.c_str());
 

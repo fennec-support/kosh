@@ -43,7 +43,7 @@ Rmdir::execute(const ExecContext               &ec,
 
     if (!os::remove_directory(operand.view())) {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
-                              "failed to remove '" + operand +
+                              "Failed to remove '" + operand +
                                   "': " + os::last_system_error_message());
       status = 1;
       continue;
@@ -61,7 +61,7 @@ Rmdir::execute(const ExecContext               &ec,
 
         if (!os::remove_directory(parent.view())) {
           KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
-                                  "failed to remove '" + parent.text() +
+                                  "Failed to remove '" + parent.text() +
                                       "': " + os::last_system_error_message());
           status = 1;
           break;

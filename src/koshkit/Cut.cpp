@@ -67,8 +67,8 @@ Cut::execute(const ExecContext               &ec,
   if (!ranges.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(
         list_location,
-        "invalid position list '" + String{cxt.scratch_allocator(), list} + "'",
-        "positions start at 1 and use N, N-M, -M, or N- separated by commas "
+        "Invalid position list '" + String{cxt.scratch_allocator(), list} + "'",
+        "Positions start at 1 and use N, N-M, -M, or N- separated by commas "
         "or blanks");
 
     return 1;
@@ -81,7 +81,7 @@ Cut::execute(const ExecContext               &ec,
   if (FLAG_CUT_DELIMITER.is_set()) {
     if (FLAG_CUT_DELIMITER.value().length != 1) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_CUT_DELIMITER.value_location(),
-                              "the delimiter must be one byte");
+                              "The delimiter must be one byte");
 
       return 1;
     }

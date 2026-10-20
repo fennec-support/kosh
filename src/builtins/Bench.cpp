@@ -793,7 +793,7 @@ sample_command(StringView shell_binary,
     }
 
     if (child_argv.is_empty())
-      throw Error{StringView{"bench --no-shell needs a command word in '"} +
+      throw Error{StringView{"The --no-shell flag needs a command word in '"} +
                   command + "'"};
   }
 
@@ -1234,8 +1234,8 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
-    report_soft_builtin_error(ec, cxt,
-                              "bench is forbidden in a restricted shell");
+    report_soft_builtin_error(
+        ec, cxt, "This builtin is forbidden in a restricted shell");
 
     return 1;
   }
@@ -1306,8 +1306,7 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (should_use_shell && shell_binary.is_empty()) {
-    throw Error{
-        StringView{"bench cannot find the kosh binary to run a sample"}};
+    throw Error{StringView{"Cannot find the kosh binary to run a sample"}};
   }
 
   /* at this point: run_limit is empty or holds a value from 1 through
@@ -1339,7 +1338,7 @@ Bench::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (did_command_fail) {
       report_soft_builtin_error(
           ec, cxt, get_operand_location(ec, operand_locations, i),
-          StringView{"the command `"} + arguments[i].view() +
+          StringView{"The command `"} + arguments[i].view() +
               "` exited with status " +
               String::from(failure_status, cxt.scratch_allocator()),
           "Pass `--ignore-exit-code` to benchmark it regardless");

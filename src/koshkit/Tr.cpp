@@ -193,7 +193,7 @@ expand_set(StringView     set,
           if (count == 0) {
             if (fill_position.has_value()) {
               throw ErrorWithLocationAndDetails{
-                  set_location, "tr allows one [c*] repeat in set2",
+                  set_location, "One [c*] repeat is allowed in set2",
                   "Remove the extra `[c*]` repeat from SET2"};
             }
 
@@ -273,7 +273,7 @@ Tr::execute(const ExecContext               &ec,
 
   if (!is_deleting && !is_squeezing && operands.count() < 2) {
     throw ErrorWithLocationAndDetails{
-        operand_locations[0], "tr expects two sets unless -d is given",
+        operand_locations[0], "Expects two sets unless -d is given",
         "Supply SET1 and SET2, or use `-d` with one set"};
   }
 
@@ -287,8 +287,8 @@ Tr::execute(const ExecContext               &ec,
 
   if (!set1.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(
-        operand_locations[0], "reverse range in set '" + operands[0] + "'",
-        "order the endpoints from the lower byte to the higher byte");
+        operand_locations[0], "Reverse range in set '" + operands[0] + "'",
+        "Order the endpoints from the lower byte to the higher byte");
 
     return 1;
   }
@@ -317,8 +317,8 @@ Tr::execute(const ExecContext               &ec,
 
     if (!expanded_set2.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
-          operand_locations[1], "reverse range in set '" + operands[1] + "'",
-          "order the endpoints from the lower byte to the higher byte");
+          operand_locations[1], "Reverse range in set '" + operands[1] + "'",
+          "Order the endpoints from the lower byte to the higher byte");
 
       return 1;
     }
@@ -367,7 +367,7 @@ Tr::execute(const ExecContext               &ec,
     if (!read_count.has_value()) {
       if (os::INTERRUPT_REQUESTED) return 130;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "read failed: " +
+                                     "Read failed: " +
                                          os::last_system_error_message());
 
       return 1;

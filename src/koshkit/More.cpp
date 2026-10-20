@@ -53,7 +53,7 @@ More::execute(const ExecContext               &ec,
 
     if (!tags.has_value()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "cannot read tags");
+                                     "Cannot read tags");
 
       return 1;
     }
@@ -99,7 +99,7 @@ More::execute(const ExecContext               &ec,
 
     if (tagged_source.is_empty()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "tag not found '" + FLAG_MORE_TAG.value() +
+                                     "Tag not found '" + FLAG_MORE_TAG.value() +
                                          "'");
 
       return 1;

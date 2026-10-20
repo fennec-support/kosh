@@ -18,11 +18,11 @@ stderr:
 status=1
 gone
 TMPDIR/g.txt: No such file or directory.
-no files remaining.
+No files remaining.
 --- retry opens a file that appears later ---
 late
 stderr:
-cannot open 'TMPDIR/late.txt': No such file or directory.
+Cannot open 'TMPDIR/late.txt': No such file or directory.
 'TMPDIR/late.txt' has appeared;  following new file.
 --- headers switch with the file that printed last ---
 ==> TMPDIR/h1.txt <==
@@ -66,8 +66,8 @@ stderr:
 p2
 status=0
 --- missing file without retry ---
-cannot open 'TMPDIR/none.txt': No such file or directory.
-no files remaining.
+Cannot open 'TMPDIR/none.txt': No such file or directory.
+No files remaining.
 --- watched process ends the follow ---
 w1
 status=0

@@ -57,7 +57,7 @@ change_mode(void *context, const os::tree_walk_entry &entry) throws
 
     if (!os::stat_path_following(entry.path, status)) {
       report_soft_koshkit_util_error(state.ec, state.cxt, "chmod",
-                                     "cannot access '" + entry.path + "': " +
+                                     "Cannot access '" + entry.path + "': " +
                                          os::last_system_error_message());
 
       return false;
@@ -78,7 +78,7 @@ change_mode(void *context, const os::tree_walk_entry &entry) throws
   if (os::set_tree_entry_mode(entry, *parsed)) return true;
 
   report_soft_koshkit_util_error(state.ec, state.cxt, "chmod",
-                                 "cannot change mode of '" + entry.path +
+                                 "Cannot change mode of '" + entry.path +
                                      "': " + os::last_system_error_message());
 
   return false;
@@ -108,8 +108,8 @@ Chmod::execute(const ExecContext               &ec,
            .has_value())
   {
     KOSHKIT_REPORT_ERROR_AT(
-        operand_locations[0], "invalid mode '" + operands[0] + "'",
-        "use an octal mode up to 7777 or symbolic clauses such as u+x,g-w");
+        operand_locations[0], "Invalid mode '" + operands[0] + "'",
+        "Use an octal mode up to 7777 or symbolic clauses such as u+x,g-w");
 
     return 1;
   }

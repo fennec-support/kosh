@@ -47,8 +47,8 @@ Nice::execute(const ExecContext               &ec,
     {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_NICE_INCREMENT.value_location(),
-          "invalid increment '" + FLAG_NICE_INCREMENT.value() + "'",
-          "use a decimal integer from -2147483648 through 2147483647");
+          "Invalid increment '" + FLAG_NICE_INCREMENT.value() + "'",
+          "Use a decimal integer from -2147483648 through 2147483647");
 
       return 2;
     }

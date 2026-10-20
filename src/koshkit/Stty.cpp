@@ -61,7 +61,7 @@ Stty::execute(const ExecContext               &ec,
 
     if (!output.has_value()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "standard input is not a terminal");
+                                     "Standard input is not a terminal");
 
       return 1;
     }
@@ -72,7 +72,7 @@ Stty::execute(const ExecContext               &ec,
   if (!operands.is_empty()) {
     if (!os::is_fd_a_tty(terminal)) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "standard input is not a terminal");
+                                     "Standard input is not a terminal");
 
       return 1;
     }
@@ -90,8 +90,8 @@ Stty::execute(const ExecContext               &ec,
     if (result.kind == os::terminal_settings_apply_kind::InvalidSetting) {
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[result.setting_position], args[0].view(),
-          "invalid terminal setting",
-          "read the current terminal settings with `stty -a`");
+          "Invalid terminal setting",
+          "Read the current terminal settings with `stty -a`");
 
       return 1;
     }

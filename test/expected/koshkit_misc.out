@@ -24,10 +24,10 @@ KOSHKIT_TESTVAR=present
 note: Try `pkill --help` for more info.
 rc=2
 --- pkill rejects an empty pattern ---
--c:1:15: error: Koshkit `pkill`: requires a non-empty pattern.
+-c:1:15: error: Koshkit `pkill`: Requires a non-empty pattern.
      1 |  koshkit pkill ""
        |                ^~
-note: pass a pattern, e.g. `pkill ssh`.
+note: Pass a pattern, e.g. `pkill ssh`.
 rc=1
 --- pkill with no match ---
 rc=1

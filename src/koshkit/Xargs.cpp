@@ -77,7 +77,7 @@ parse_xargs_limit(const ExecContext &ec,
   if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
     report_soft_koshkit_util_error(
         ec, cxt, flag.value_location(), "xargs",
-        "invalid " + name + " '" + flag.value() + "'", note);
+        "Invalid " + name + " '" + flag.value() + "'", note);
 
     return false;
   }
@@ -387,7 +387,7 @@ Xargs::execute(const ExecContext               &ec,
 
   if (FLAG_XARGS_MAX_ARGUMENTS.is_set() &&
       !parse_xargs_limit(ec, cxt, FLAG_XARGS_MAX_ARGUMENTS, "argument count",
-                         "use a positive decimal integer for the maximum "
+                         "Use a positive decimal integer for the maximum "
                          "arguments per command",
                          maximum_argument_count))
   {
@@ -398,7 +398,7 @@ Xargs::execute(const ExecContext               &ec,
 
   if (FLAG_XARGS_MAX_LINES.is_set() &&
       !parse_xargs_limit(ec, cxt, FLAG_XARGS_MAX_LINES, "line count",
-                         "use a positive decimal integer for the maximum "
+                         "Use a positive decimal integer for the maximum "
                          "input lines per command",
                          maximum_line_count))
   {
@@ -409,7 +409,7 @@ Xargs::execute(const ExecContext               &ec,
 
   if (FLAG_XARGS_MAX_SIZE.is_set() &&
       !parse_xargs_limit(ec, cxt, FLAG_XARGS_MAX_SIZE, "byte count",
-                         "use a positive decimal integer for the maximum "
+                         "Use a positive decimal integer for the maximum "
                          "command size in bytes",
                          maximum_byte_count))
   {
@@ -591,7 +591,7 @@ Xargs::execute(const ExecContext               &ec,
     if (command_status == 255) {
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
-          "a command exited with status 255; stopping");
+          "A command exited with status 255; stopping");
 
       return 124;
     }

@@ -40,7 +40,7 @@ Uname::execute(const ExecContext               &ec,
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "unexpected operand '" + operands[0] + "'");
+                            "Unexpected operand '" + operands[0] + "'");
 
     return 2;
   }

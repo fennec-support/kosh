@@ -62,7 +62,7 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
   let const  now     = time(nullptr);
   let const *current = localtime(&now);
 
-  if (current == nullptr) throw Error{"cannot read the current time"};
+  if (current == nullptr) throw Error{"Cannot read the current time"};
 
   struct tm value    = *current;
   usize     position = 0;
@@ -177,8 +177,8 @@ Touch::execute(const ExecContext               &ec,
     if (!requested_time.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_TOUCH_TIME.value_location(),
-          "invalid time '" + FLAG_TOUCH_TIME.value() + "'",
-          "use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format");
+          "Invalid time '" + FLAG_TOUCH_TIME.value() + "'",
+          "Use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format");
 
       return 1;
     }

@@ -83,8 +83,8 @@ Renice::execute(const ExecContext               &ec,
   {
     KOSHKIT_REPORT_ERROR_AT(
         FLAG_RENICE_INCREMENT.value_location(),
-        "invalid increment '" + FLAG_RENICE_INCREMENT.value() + "'",
-        "use a decimal integer from -2147483648 through 2147483647");
+        "Invalid increment '" + FLAG_RENICE_INCREMENT.value() + "'",
+        "Use a decimal integer from -2147483648 through 2147483647");
 
     return 2;
   }
@@ -106,11 +106,11 @@ Renice::execute(const ExecContext               &ec,
 
     if (!id.has_value()) {
       let const note = target == os::priority_target::User
-                           ? "use a user name or a nonnegative decimal user id"
-                           : "use a nonnegative decimal identifier";
+                           ? "Use a user name or a nonnegative decimal user id"
+                           : "Use a nonnegative decimal identifier";
 
       KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_position],
-                              "invalid identifier '" + operand + "'", note);
+                              "Invalid identifier '" + operand + "'", note);
       result = 1;
       continue;
     }

@@ -708,8 +708,8 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
-    report_soft_builtin_error(ec, cxt,
-                              "assimilate is forbidden in a restricted shell");
+    report_soft_builtin_error(
+        ec, cxt, "This builtin is forbidden in a restricted shell");
 
     return 1;
   }

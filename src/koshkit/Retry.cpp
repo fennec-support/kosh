@@ -137,9 +137,9 @@ Retry::execute(const ExecContext               &ec,
     {
       report_soft_koshkit_util_error(
           ec, cxt, FLAG_RETRY_ATTEMPTS.value_location(), "retry",
-          "invalid attempt count '" +
+          "Invalid attempt count '" +
               String{allocator, FLAG_RETRY_ATTEMPTS.value()} + "'",
-          "the value must be a positive attempt count");
+          "The value must be a positive attempt count");
 
       return 1;
     }
@@ -168,9 +168,9 @@ Retry::execute(const ExecContext               &ec,
     if (!parse_backoff_factor(FLAG_RETRY_BACKOFF.value(), backoff_factor)) {
       report_soft_koshkit_util_error(
           ec, cxt, FLAG_RETRY_BACKOFF.value_location(), "retry",
-          "invalid backoff factor '" +
+          "Invalid backoff factor '" +
               String{allocator, FLAG_RETRY_BACKOFF.value()} + "'",
-          "the value is a multiplier between one and sixty");
+          "The value is a multiplier between one and sixty");
 
       return 1;
     }

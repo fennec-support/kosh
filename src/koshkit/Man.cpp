@@ -216,7 +216,7 @@ Man::execute(const ExecContext               &ec,
 
     if (!page.has_value()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "no manual entry for '" +
+                                     "No manual entry for '" +
                                          operands[name_position] + "'");
       status = 1;
       continue;

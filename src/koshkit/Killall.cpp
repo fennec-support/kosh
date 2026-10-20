@@ -47,8 +47,8 @@ Killall::execute(const ExecContext               &ec,
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   if (operands.count() != 1) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "expects one process name",
-                            "pass one name, e.g. `killall firefox`");
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "Expects one process name",
+                            "Pass one name, e.g. `killall firefox`");
 
     return 1;
   }
@@ -76,7 +76,7 @@ Killall::execute(const ExecContext               &ec,
         let const reason   = os::last_system_error_message();
         let const pid_text = String::from(process.pid, cxt.scratch_allocator());
 
-        KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "killing pid " +
+        KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Killing pid " +
                                                           pid_text +
                                                           " failed: " + reason);
       }

@@ -333,16 +333,16 @@ GoodCore::execute(const ExecContext               &ec,
 
     if (operand_locations[0].position > conflict_location.position)
       conflict_location = operand_locations[0];
-    KOSHKIT_REPORT_ERROR_AT(conflict_location, "conflicting input",
-                            "pass either one running pid or one core file");
+    KOSHKIT_REPORT_ERROR_AT(conflict_location, "Conflicting input",
+                            "Pass either one running pid or one core file");
 
     return 2;
   }
 
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
-                            "extra operand '" + operands[1] + "'",
-                            "pass exactly one core file");
+                            "Extra operand '" + operands[1] + "'",
+                            "Pass exactly one core file");
 
     return 2;
   }
@@ -357,7 +357,7 @@ GoodCore::execute(const ExecContext               &ec,
     }
 
     KOSHKIT_REPORT_ERROR_AT(
-        conflict_location, "conflicting flags",
+        conflict_location, "Conflicting flags",
         "--binary applies only when packaging an existing core file");
 
     return 2;
@@ -371,8 +371,8 @@ GoodCore::execute(const ExecContext               &ec,
 
     if (parsed.is_error() || parsed.value() <= 0) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_GOODCORE_PID.value_location(),
-                              "invalid process id",
-                              "the process id must be a positive integer");
+                              "Invalid process id",
+                              "The process id must be a positive integer");
 
       return 1;
     }
@@ -403,8 +403,8 @@ GoodCore::execute(const ExecContext               &ec,
                  .text()
                  .clone();
   } else if (!is_followed_regular_file(operands[0].view())) {
-    do_report_failure("core file not found",
-                      "the operand must refer to a regular file");
+    do_report_failure("Core file not found",
+                      "The operand must refer to a regular file");
 
     return 1;
   } else {
@@ -418,8 +418,8 @@ GoodCore::execute(const ExecContext               &ec,
                                          : operand_locations[0];
 
     report_soft_koshkit_util_error(ec, cxt, error_location, args[0].view(),
-                                   "executable not found",
-                                   "pass its path with --binary");
+                                   "Executable not found",
+                                   "Pass its path with --binary");
 
     return 1;
   }
@@ -430,7 +430,7 @@ GoodCore::execute(const ExecContext               &ec,
       os::make_temp_directory(Path::temp_directory(), "goodcore");
 
   if (!stage_directory.has_value()) {
-    do_report_failure("cannot create staging directory",
+    do_report_failure("Cannot create staging directory",
                       os::last_system_error_message());
 
     return 1;
@@ -444,7 +444,7 @@ GoodCore::execute(const ExecContext               &ec,
 
   dump_directory.append("dump");
   if (!os::make_directory(dump_directory.view(), 0700)) {
-    do_report_failure("cannot create dump directory",
+    do_report_failure("Cannot create dump directory",
                       os::last_system_error_message());
 
     return 1;
@@ -489,8 +489,8 @@ GoodCore::execute(const ExecContext               &ec,
                                            os::measured_output::Inherit))
     {
       do_report_failure(
-          "capture failed",
-          "install the platform debugger and check process permissions");
+          "Capture failed",
+          "Install the platform debugger and check process permissions");
 
       return 1;
     }
@@ -500,8 +500,8 @@ GoodCore::execute(const ExecContext               &ec,
           core.text() + "." + String::from(process_id, allocator), allocator};
 
       if (!os::rename_path(captured_core.view(), core.view())) {
-        do_report_failure("capture failed",
-                          "the debugger produced no usable core file");
+        do_report_failure("Capture failed",
+                          "The debugger produced no usable core file");
 
         return 1;
       }
@@ -512,8 +512,8 @@ GoodCore::execute(const ExecContext               &ec,
     let const source = Path{operands[0].view(), allocator}.to_absolute();
 
     if (!source.is_regular_file()) {
-      do_report_failure("core file not found",
-                        "the operand must refer to a regular file");
+      do_report_failure("Core file not found",
+                        "The operand must refer to a regular file");
 
       return 1;
     }
@@ -522,7 +522,7 @@ GoodCore::execute(const ExecContext               &ec,
                            copy_force_mode::Normal) !=
         copy_file_result::Success)
     {
-      do_report_failure("cannot copy core file",
+      do_report_failure("Cannot copy core file",
                         os::last_system_error_message());
 
       return 1;
@@ -534,7 +534,7 @@ GoodCore::execute(const ExecContext               &ec,
   if (!os::stat_path_following(core.view(), core_status) ||
       core_status.size == 0)
   {
-    do_report_failure("capture failed", "the core file is missing or empty");
+    do_report_failure("Capture failed", "The core file is missing or empty");
 
     return 1;
   }
@@ -552,7 +552,7 @@ GoodCore::execute(const ExecContext               &ec,
   for (let const &path : paths) {
     print_progress(ec, "copying " + path.view(), progress_mode);
     if (!copy_into_root(stage, path.view())) {
-      do_report_failure("cannot copy required file", path.view());
+      do_report_failure("Cannot copy required file", path.view());
 
       return 1;
     }
@@ -586,7 +586,7 @@ GoodCore::execute(const ExecContext               &ec,
 
   metadata_path.append("INFO.txt");
   if (!write_text_file(metadata_path.view(), metadata.view())) {
-    do_report_failure("cannot write metadata", os::last_system_error_message());
+    do_report_failure("Cannot write metadata", os::last_system_error_message());
 
     return 1;
   }
@@ -606,8 +606,8 @@ GoodCore::execute(const ExecContext               &ec,
   if (output.is_same_file_as(Path{binary->view(), allocator}) ||
       (!has_pid && output.is_same_file_as(Path{operands[0].view(), allocator})))
   {
-    do_report_failure("unsafe output path",
-                      "the archive cannot replace an input file");
+    do_report_failure("Unsafe output path",
+                      "The archive cannot replace an input file");
 
     return 1;
   }
@@ -615,7 +615,8 @@ GoodCore::execute(const ExecContext               &ec,
   let const tar = resolve_util_program(cxt, "tar");
 
   if (!tar.has_value()) {
-    do_report_failure("tar is unavailable", "install tar or place it on PATH");
+    do_report_failure("The tar program is unavailable",
+                      "Install tar or place it on PATH");
 
     return 1;
   }
@@ -626,7 +627,7 @@ GoodCore::execute(const ExecContext               &ec,
       os::write_to_named_temp_file(output.parent(), ".goodcore", StringView{});
 
   if (!temporary_output.has_value()) {
-    do_report_failure("cannot create temporary archive",
+    do_report_failure("Cannot create temporary archive",
                       os::last_system_error_message());
 
     return 1;
@@ -658,7 +659,7 @@ GoodCore::execute(const ExecContext               &ec,
         output.parent(), ".goodcore-tar", StringView{});
 
     if (!temporary_tar.has_value()) {
-      do_report_failure("cannot create temporary archive",
+      do_report_failure("Cannot create temporary archive",
                         os::last_system_error_message());
 
       return 1;
@@ -691,14 +692,14 @@ GoodCore::execute(const ExecContext               &ec,
   }
 
   if (!did_archive) {
-    do_report_failure("archive creation failed",
-                      "the selected archiver returned a failure");
+    do_report_failure("Archive creation failed",
+                      "The selected archiver returned a failure");
 
     return 1;
   }
 
   if (!os::rename_path(temporary_output->view(), output.view())) {
-    do_report_failure("cannot publish archive",
+    do_report_failure("Cannot publish archive",
                       os::last_system_error_message());
 
     return 1;

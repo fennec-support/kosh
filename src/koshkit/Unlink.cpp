@@ -30,7 +30,7 @@ Unlink::execute(const ExecContext               &ec,
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
-                            "extra operand '" + operands[1] + "'");
+                            "Extra operand '" + operands[1] + "'");
 
     return 1;
   }
@@ -41,7 +41,7 @@ Unlink::execute(const ExecContext               &ec,
       target_path.is_directory() && !target_path.is_symbolic_link();
 
   if (is_real_directory) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "cannot unlink '" + target +
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Cannot unlink '" + target +
                                                       "': it is a directory");
 
     return 1;

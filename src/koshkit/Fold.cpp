@@ -83,9 +83,9 @@ Fold::execute(const ExecContext               &ec,
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_FOLD_WIDTH.value_location(),
-          "invalid width '" +
+          "Invalid width '" +
               String{cxt.scratch_allocator(), FLAG_FOLD_WIDTH.value()} + "'",
-          "use a positive decimal width");
+          "Use a positive decimal width");
 
       return 1;
     }

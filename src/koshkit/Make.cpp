@@ -4527,7 +4527,7 @@ Make::execute(const ExecContext               &ec,
     {
       report_soft_koshkit_util_error(
           ec, cxt, FLAG_MAKE_DIR.value_location(), args[0].view(),
-          "unable to change to the directory '" +
+          "Unable to change to the directory '" +
               String{cxt.scratch_allocator(), FLAG_MAKE_DIR.value()} +
               "': " + os::last_system_error_message());
 
@@ -4573,7 +4573,7 @@ Make::execute(const ExecContext               &ec,
       report_soft_koshkit_util_error(
           ec, cxt, requested_makefile_locations[makefile_position],
           args[0].view(),
-          "unable to read the makefile '" + makefile_path +
+          "Unable to read the makefile '" + makefile_path +
               "': " + os::last_system_error_message());
 
       return 2;

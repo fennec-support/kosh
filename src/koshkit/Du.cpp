@@ -156,7 +156,7 @@ report_unreadable_path(const ExecContext &ec,
 {
   let const is_permission_denied = os::last_system_error_is_permission_denied();
   let const message =
-      "cannot read '" + path.text() + "': " + os::last_system_error_message();
+      "Cannot read '" + path.text() + "': " + os::last_system_error_message();
 
   if (is_permission_denied) {
     report_soft_koshkit_warning(ec, cxt, message);
@@ -173,7 +173,7 @@ report_too_large_path(const ExecContext &ec,
                       const Path        &path) throws -> void
 {
   report_soft_koshkit_util_error(ec, cxt, "du",
-                                 "cannot read '" + path.text() +
+                                 "Cannot read '" + path.text() +
                                      "': the total size is too large");
 }
 

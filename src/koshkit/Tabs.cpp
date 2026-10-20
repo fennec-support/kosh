@@ -30,8 +30,8 @@ Tabs::execute(const ExecContext               &ec,
 
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(
-        operand_locations[1], "extra operand '" + operands[1] + "'",
-        "provide one tab interval, stop list, or template name");
+        operand_locations[1], "Extra operand '" + operands[1] + "'",
+        "Provide one tab interval, stop list, or template name");
 
     return 1;
   }
@@ -61,8 +61,8 @@ Tabs::execute(const ExecContext               &ec,
 
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > 160) {
       KOSHKIT_REPORT_ERROR_AT(
-          operand_locations[0], "invalid tab interval '" + operands[0] + "'",
-          "use - followed by a decimal interval from 1 through 160");
+          operand_locations[0], "Invalid tab interval '" + operands[0] + "'",
+          "Use - followed by a decimal interval from 1 through 160");
 
       return 1;
     }
@@ -90,8 +90,8 @@ Tabs::execute(const ExecContext               &ec,
 
       if (parsed.is_error() || parsed.value() == 0) {
         KOSHKIT_REPORT_ERROR_AT(
-            operand_locations[0], "invalid tab stop in '" + operands[0] + "'",
-            "use a template name or comma-separated positive decimal columns"
+            operand_locations[0], "Invalid tab stop in '" + operands[0] + "'",
+            "Use a template name or comma-separated positive decimal columns"
             ", with + for relative stops");
 
         return 1;
@@ -109,9 +109,9 @@ Tabs::execute(const ExecContext               &ec,
       if (stop <= previous_stop || stop > 160) {
         KOSHKIT_REPORT_ERROR_AT(
             operand_locations[0],
-            "tab stops do not increase within column 160 in '" + operands[0] +
+            "Tab stops do not increase within column 160 in '" + operands[0] +
                 "'",
-            "list each stop after the previous stop and no later than column "
+            "List each stop after the previous stop and no later than column "
             "160");
 
         return 1;

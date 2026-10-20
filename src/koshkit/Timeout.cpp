@@ -325,16 +325,15 @@ Timeout::execute(const ExecContext               &ec,
   if (!os::is_process_signal_supported(timeout_signal))
     throw ErrorWithLocation{
         FLAG_TIMEOUT_SIGNAL.value_location(),
-        "timeout cannot deliver signal " +
-            String::from(timeout_signal, cxt.scratch_allocator()) +
-            " on this platform"};
+        "Signal " + String::from(timeout_signal, cxt.scratch_allocator()) +
+            " cannot be delivered on this platform"};
 
   let const program_path =
       checked_timeout_program(operands[1].view(), operand_locations[1], cxt);
 
   if (!program_path.has_value()) {
     report_soft_koshkit_util_error(ec, cxt, operand_locations[1], "timeout",
-                                   "command '" + operands[1] +
+                                   "Command '" + operands[1] +
                                        "' was not found");
 
     return 127;

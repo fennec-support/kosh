@@ -115,7 +115,7 @@ else
   expected_tree="└─┬ locked-tree
   └─┬ open
     └── file"
-  locked_errors=$(grep -c "cannot read 'locked-tree/locked'" locked.err)
+  locked_errors=$(grep -c "Cannot read 'locked-tree/locked'" locked.err)
   if [ "$locked_tree" != "$expected_tree" ] || [ "$locked_status" != 1 ] ||
     [ "$locked_errors" != 1 ]; then
     echo "locked-failed: status=$locked_status errors=$locked_errors"
@@ -147,7 +147,7 @@ else
   locked_output=$("$BIN" -c 'koshkit du -s locked' 2>&1)
   locked_status=$?
   case $locked_output in
-    *'warning: Koshkit `du`: cannot read'*) severity=warning ;;
+    *'warning: Koshkit `du`: Cannot read'*) severity=warning ;;
     *) severity=other ;;
   esac
   echo "permission-severity=$severity status=$locked_status"

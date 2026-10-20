@@ -148,8 +148,8 @@ Cal::execute(const ExecContext               &ec,
 
   if (operands.count() > 2) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[2],
-                            "extra operand '" + operands[2] + "'",
-                            "use `cal [-a] [month] year`");
+                            "Extra operand '" + operands[2] + "'",
+                            "Use `cal [-a] [month] year`");
 
     return 1;
   }
@@ -175,8 +175,8 @@ Cal::execute(const ExecContext               &ec,
           parsed_month.value() > 12)
       {
         KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                                "invalid month '" + operands[0] + "'",
-                                "use a month from 1 through 12");
+                                "Invalid month '" + operands[0] + "'",
+                                "Use a month from 1 through 12");
 
         return 1;
       }
@@ -193,8 +193,8 @@ Cal::execute(const ExecContext               &ec,
     {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[year_index],
-          "invalid year '" + operands[year_index] + "'",
-          "use a positive decimal year no greater than 9223372036854775807");
+          "Invalid year '" + operands[year_index] + "'",
+          "Use a positive decimal year no greater than 9223372036854775807");
 
       return 1;
     }

@@ -189,7 +189,7 @@ done
 printf '\n' >> "$dir/oversized"
 echo "== an oversized decoded record is reported =="
 KOSH_HISTORY_FILE="$dir/oversized" "$BIN" --no-init-files -c 'history' 2>&1 | \
-  grep -c "cannot read history at "
+  grep -c "Cannot read history at "
 KOSH_HISTORY_FILE="$dir/oversized" "$BIN" --no-init-files -c \
   'history; echo "rc=$?"' 2>/dev/null
 
@@ -352,16 +352,16 @@ history'
 printf 'good\n\001bad\n' > "$dir/damaged"
 echo "== a bare listing reports a damaged backing file =="
 KOSH_HISTORY_FILE="$dir/damaged" "$BIN" --no-init-files -c 'history' 2>&1 | \
-  grep -c "cannot read history at .*: the file contains invalid data"
+  grep -c "Cannot read history at .*: the file contains invalid data"
 KOSH_HISTORY_FILE="$dir/damaged" "$BIN" --no-init-files -c 'history' 2>/dev/null
 echo "rc=$?"
 
 echo "== an operandless read names the resolved backing file =="
 KOSH_HISTORY_FILE="$dir/no-such-backing" "$BIN" --no-init-files -c \
-  'history -r' 2>&1 | grep -c "cannot read history at "
+  'history -r' 2>&1 | grep -c "Cannot read history at "
 mkdir "$dir/backing-directory"
 KOSH_HISTORY_FILE="$dir/backing-directory" "$BIN" --no-init-files -c \
-  'history -r' 2>&1 | grep -c "cannot read history at "
+  'history -r' 2>&1 | grep -c "Cannot read history at "
 
 : > "$dir/multiline"
 echo "== a stored multiline event keeps its submitted shape =="
@@ -391,7 +391,7 @@ if [ -d "$1" ]; then echo "directory intact"; fi; history' history-test \
   "$dir/backing-directory" 2>/dev/null
 KOSH_HISTORY_FILE="$dir/write-fail-backing" "$BIN" --no-init-files -c \
   'history -w "$1"' history-test "$dir/backing-directory" 2>&1 | \
-  grep -c "cannot write history to '"
+  grep -c "Cannot write history to '"
 
 echo "== a named append to a directory fails =="
 KOSH_HISTORY_FILE="$dir/append-fail-backing" "$BIN" --no-init-files -c \
@@ -400,7 +400,7 @@ KOSH_HISTORY_FILE="$dir/append-fail-backing" "$BIN" --no-init-files -c \
 
 echo "== an operandless write names the resolved backing file =="
 KOSH_HISTORY_FILE="$dir/backing-directory" "$BIN" --no-init-files -c \
-  'history -w; echo "rc=$?"' 2>&1 | grep -c "cannot write history at "
+  'history -w; echo "rc=$?"' 2>&1 | grep -c "Cannot write history at "
 
 printf 'append base\n' > "$dir/append-limit-target"
 echo "== a named append is bounded by KOSH_HISTORY_SIZE =="
@@ -645,7 +645,7 @@ echo "== a history read reports its owned failure cause =="
 KOSH_HISTORY_FILE="$dir/exact-failure" "$BIN" --no-init-files -c \
   'koshkit cat "$1" >/dev/null 2>&1; history -r' history-test \
   "$dir/no-such-file" 2>&1 | \
-  grep -c "cannot read history at .*: the file contains invalid data"
+  grep -c "Cannot read history at .*: the file contains invalid data"
 
 printf 'trunc one\ntrunc two\ntrunc three\n' > "$dir/peer-truncate"
 echo "== a peer truncation keeps the private branch and its recall =="

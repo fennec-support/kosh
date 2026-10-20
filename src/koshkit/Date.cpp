@@ -34,7 +34,7 @@ Date::execute(const ExecContext               &ec,
   {
     report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
                                    args[0].view(),
-                                   "setting the system clock is unsupported");
+                                   "Setting the system clock is unsupported");
 
     return 1;
   }
@@ -45,7 +45,7 @@ Date::execute(const ExecContext               &ec,
 
   if (broken_down == nullptr) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "cannot convert the current time");
+                                   "Cannot convert the current time");
 
     return 1;
   }
@@ -65,7 +65,7 @@ Date::execute(const ExecContext               &ec,
 
     report_soft_koshkit_util_error(
         ec, cxt, location, args[0].view(),
-        "formatted output exceeds the supported line length");
+        "Formatted output exceeds the supported line length");
 
     return 1;
   }

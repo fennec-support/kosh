@@ -1,15 +1,15 @@
 == newgrp is blocked:
--c:1:1: error: Builtin `newgrp`: newgrp is forbidden in a restricted shell.
+-c:1:1: error: Builtin `newgrp`: This builtin is forbidden in a restricted shell.
      1 |  newgrp; echo "status=$?"
        |  ^~~~~~
 status=1
 == bench is blocked:
--c:1:1: error: Builtin `bench`: bench is forbidden in a restricted shell.
+-c:1:1: error: Builtin `bench`: This builtin is forbidden in a restricted shell.
      1 |  bench --no-shell /bin/echo; echo "status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~
 status=1
 == assimilate is blocked:
--c:1:1: error: Builtin `assimilate`: assimilate is forbidden in a restricted shell.
+-c:1:1: error: Builtin `assimilate`: This builtin is forbidden in a restricted shell.
      1 |  assimilate root@example.com; echo "status=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~
 status=1

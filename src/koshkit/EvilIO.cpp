@@ -1444,8 +1444,8 @@ EvilIO::execute(const ExecContext               &ec,
     }
 
     KOSHKIT_REPORT_ERROR_AT(
-        operand_locations[operand_index], "unexpected operand",
-        "use at most one sample duration and one -NUMBER limit");
+        operand_locations[operand_index], "Unexpected operand",
+        "Use at most one sample duration and one -NUMBER limit");
 
     return 1;
   }
@@ -1453,8 +1453,8 @@ EvilIO::execute(const ExecContext               &ec,
   if (sample_duration_operand.has_value() &&
       !FLAG_EVILIO_CUMULATIVE.is_enabled())
   {
-    KOSHKIT_REPORT_ERROR_AT(*sample_duration_location, "unexpected operand",
-                            "a sample duration requires --cumulative");
+    KOSHKIT_REPORT_ERROR_AT(*sample_duration_location, "Unexpected operand",
+                            "A sample duration requires --cumulative");
 
     return 1;
   }
@@ -1464,8 +1464,8 @@ EvilIO::execute(const ExecContext               &ec,
   if (sample_duration_operand.has_value()) {
     let const parsed_duration = live_report_options::parse_window_seconds(
         ec, cxt, args[0].view(), *sample_duration_operand,
-        *sample_duration_location, "invalid duration",
-        "the duration must be greater than zero", allocator);
+        *sample_duration_location, "Invalid duration",
+        "The duration must be greater than zero", allocator);
 
     if (!parsed_duration.has_value()) return 1;
 
@@ -1482,8 +1482,8 @@ EvilIO::execute(const ExecContext               &ec,
       {
         conflict_location = FLAG_EVILIO_COUNT.value_location();
       }
-      KOSHKIT_REPORT_ERROR_AT(conflict_location, "conflicting process limits",
-                              "use either -NUMBER or --count");
+      KOSHKIT_REPORT_ERROR_AT(conflict_location, "Conflicting process limits",
+                              "Use either -NUMBER or --count");
 
       return 1;
     }
@@ -1492,8 +1492,8 @@ EvilIO::execute(const ExecContext               &ec,
         process_limit_operand->substring(1), nullptr, int_base::decimal);
 
     if (parsed.is_error() || parsed.value() < 1 || parsed.value() > 100000) {
-      KOSHKIT_REPORT_ERROR_AT(*process_limit_location, "invalid count",
-                              "the count must be from 1 through 100000");
+      KOSHKIT_REPORT_ERROR_AT(*process_limit_location, "Invalid count",
+                              "The count must be from 1 through 100000");
 
       return 1;
     }
@@ -1507,8 +1507,8 @@ EvilIO::execute(const ExecContext               &ec,
 
     if (parsed.is_error() || parsed.value() < 1 || parsed.value() > 100000) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILIO_COUNT.value_location(),
-                              "invalid count",
-                              "the count must be from 1 through 100000");
+                              "Invalid count",
+                              "The count must be from 1 through 100000");
 
       return 1;
     }
@@ -1524,8 +1524,8 @@ EvilIO::execute(const ExecContext               &ec,
 
     if (parsed.is_error() || parsed.value() <= 0) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILIO_PID.value_location(),
-                              "invalid process id",
-                              "the process id must be a positive integer");
+                              "Invalid process id",
+                              "The process id must be a positive integer");
 
       return 1;
     }
@@ -1564,7 +1564,7 @@ EvilIO::execute(const ExecContext               &ec,
     if (!report_unresolved_sort_key(
             ec, cxt, FLAG_EVILIO_SORT.value_location(), args[0].view(),
             resolved.match_count, resolved.matches.view(),
-            "use pid, read, write, read-ops, write-ops, busy, read-latency, "
+            "Use pid, read, write, read-ops, write-ops, busy, read-latency, "
             "write-latency, average-queue, queue, errors, or retries"))
       return 1;
 
@@ -1575,8 +1575,8 @@ EvilIO::execute(const ExecContext               &ec,
     if (should_show_processes && (spec == nullptr || !spec->is_process_metric))
     {
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILIO_SORT.value_location(),
-                              "sort key is unavailable for process reports",
-                              "use pid, read, write, read-ops, or write-ops");
+                              "Sort key is unavailable for process reports",
+                              "Use pid, read, write, read-ops, or write-ops");
 
       return 1;
     }
@@ -1584,8 +1584,8 @@ EvilIO::execute(const ExecContext               &ec,
     if (!should_show_processes && (spec == nullptr || !spec->is_disk_metric)) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EVILIO_SORT.value_location(),
-          "sort key is unavailable for disk reports",
-          "use read, write, read-ops, write-ops, busy, read-latency, "
+          "Sort key is unavailable for disk reports",
+          "Use read, write, read-ops, write-ops, busy, read-latency, "
           "write-latency, average-queue, queue, errors, or retries");
 
       return 1;
@@ -1597,8 +1597,8 @@ EvilIO::execute(const ExecContext               &ec,
     {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EVILIO_SORT.value_location(),
-          "sort key is unavailable without sampling",
-          "use --all, --cumulative, or --live with busy, read-latency, "
+          "Sort key is unavailable without sampling",
+          "Use --all, --cumulative, or --live with busy, read-latency, "
           "write-latency, or average-queue");
 
       return 1;
@@ -1618,8 +1618,8 @@ EvilIO::execute(const ExecContext               &ec,
       conflict_location = FLAG_EVILIO_LIVE.value_location();
     }
 
-    KOSHKIT_REPORT_ERROR_AT(conflict_location, "conflicting report modes",
-                            "use --all without --cumulative or --live");
+    KOSHKIT_REPORT_ERROR_AT(conflict_location, "Conflicting report modes",
+                            "Use --all without --cumulative or --live");
 
     return 1;
   }

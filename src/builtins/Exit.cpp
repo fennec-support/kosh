@@ -36,8 +36,9 @@ Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   return finish_exit_builtin(ec, cxt, status, {},
                              cxt.runtime_state().is_posix_mode()
                                  ? StringView{}
-                                 : StringView{"too many arguments"},
-                             "exit takes at most one status, e.g. `exit 1`");
+                                 : StringView{"Too many arguments"},
+                             "At most one status is accepted, e.g. "
+                             "`exit 1`");
 }
 
 } /* namespace koshka */

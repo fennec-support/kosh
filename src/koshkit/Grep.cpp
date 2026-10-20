@@ -1866,7 +1866,7 @@ Grep::execute(const ExecContext               &ec,
 
   if (FLAG_GREP_EXTENDED.is_enabled() && FLAG_GREP_FIXED.is_enabled()) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "the -E and -F options conflict");
+                                   "The -E and -F options conflict");
 
     return 2;
   }
@@ -1989,7 +1989,7 @@ Grep::execute(const ExecContext               &ec,
     report_soft_koshkit_util_error(
         ec, cxt, has_pattern_flag ? ec.source_location() : operand_locations[0],
         args[0].view(),
-        "the pattern '" + String{cxt.scratch_allocator(), *invalid_pattern} +
+        "The pattern '" + String{cxt.scratch_allocator(), *invalid_pattern} +
             "' is not a valid regex");
 
     return 2;

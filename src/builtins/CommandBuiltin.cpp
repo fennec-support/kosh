@@ -53,7 +53,7 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
       cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
   {
     throw ErrorWithLocation{ec.source_location(),
-                            "command -p is forbidden in a restricted shell"};
+                            "`command -p` is forbidden in a restricted shell"};
   }
 
   if (args.count() < 2) return 0;

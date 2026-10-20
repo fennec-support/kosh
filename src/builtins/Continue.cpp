@@ -84,7 +84,7 @@ Continue::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (!cxt.runtime_state().is_bash_compatible()) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
-                                "continue count '" + ec.args()[1] +
+                                "The count '" + ec.args()[1] +
                                     "' is out of range");
       cxt.request_continue(1, ec.source_location());
 

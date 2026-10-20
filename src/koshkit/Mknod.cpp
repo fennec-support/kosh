@@ -94,7 +94,7 @@ Mknod::execute(const ExecContext               &ec,
             ? FLAG_MKNOD_CHARACTER.value_location()
             : FLAG_MKNOD_BLOCK.value_location(),
         "Conflicting node types",
-        "choose one of --type, --fifo, --character, or --block");
+        "Choose one of --type, --fifo, --character, or --block");
 
     return 1;
   }
@@ -116,7 +116,7 @@ Mknod::execute(const ExecContext               &ec,
     type_location = operand_locations[1];
   } else {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Missing node type",
-                            "use p, c, b, fifo, character, or block");
+                            "Use p, c, b, fifo, character, or block");
 
     return 1;
   }
@@ -127,7 +127,7 @@ Mknod::execute(const ExecContext               &ec,
     KOSHKIT_REPORT_ERROR_AT(type_location,
                             "Invalid node type '" +
                                 String{allocator, type_text} + "'",
-                            "use p, c, b, fifo, character, or block");
+                            "Use p, c, b, fifo, character, or block");
 
     return 1;
   }
@@ -139,7 +139,7 @@ Mknod::execute(const ExecContext               &ec,
         FLAG_MKNOD_MAJOR.is_set() ? FLAG_MKNOD_MAJOR.value_location()
                                   : FLAG_MKNOD_MINOR.value_location(),
         "Device numbers require a character or block node",
-        "remove --major and --minor or choose a device node type");
+        "Remove --major and --minor or choose a device node type");
 
     return 1;
   }
@@ -200,7 +200,7 @@ Mknod::execute(const ExecContext               &ec,
 
     if (!has_major_text) {
       KOSHKIT_REPORT_ERROR_AT(type_location, "Missing major device number",
-                              "provide a major device number");
+                              "Provide a major device number");
 
       return 1;
     }
@@ -210,7 +210,7 @@ Mknod::execute(const ExecContext               &ec,
       KOSHKIT_REPORT_ERROR_AT(major_location,
                               "Invalid major device number '" +
                                   String{allocator, major_text} + "'",
-                              "use an unsigned decimal integer");
+                              "Use an unsigned decimal integer");
 
       return 1;
     }
@@ -223,7 +223,7 @@ Mknod::execute(const ExecContext               &ec,
 
     if (!has_minor_text) {
       KOSHKIT_REPORT_ERROR_AT(type_location, "Missing minor device number",
-                              "provide a minor device number");
+                              "Provide a minor device number");
 
       return 1;
     }
@@ -233,7 +233,7 @@ Mknod::execute(const ExecContext               &ec,
       KOSHKIT_REPORT_ERROR_AT(minor_location,
                               "Invalid minor device number '" +
                                   String{allocator, minor_text} + "'",
-                              "use an unsigned decimal integer");
+                              "Use an unsigned decimal integer");
 
       return 1;
     }
@@ -243,7 +243,7 @@ Mknod::execute(const ExecContext               &ec,
                               "Major device number '" +
                                   String{allocator, major_text} +
                                   "' is out of range",
-                              "use a major device number that fits 12 bits");
+                              "Use a major device number that fits 12 bits");
 
       return 1;
     }
@@ -253,7 +253,7 @@ Mknod::execute(const ExecContext               &ec,
                               "Minor device number '" +
                                   String{allocator, minor_text} +
                                   "' is out of range",
-                              "use a minor device number that fits 20 bits");
+                              "Use a minor device number that fits 20 bits");
 
       return 1;
     }
@@ -262,14 +262,14 @@ Mknod::execute(const ExecContext               &ec,
   if (operands.count() > next_operand_index) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[next_operand_index],
                             "Too many operands",
-                            "provide one name and one node specification");
+                            "Provide one name and one node specification");
 
     return 1;
   }
 
   if (name_operand_index == SIZE_MAX) {
     KOSHKIT_REPORT_ERROR_AT(type_location, "Missing node name",
-                            "provide the path to create");
+                            "Provide the path to create");
 
     return 1;
   }
@@ -285,7 +285,7 @@ Mknod::execute(const ExecContext               &ec,
 
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_MKNOD_MODE.value_location(), "Invalid mode",
-                              "use an octal or symbolic permission mode");
+                              "Use an octal or symbolic permission mode");
 
       return 1;
     }

@@ -48,8 +48,8 @@ Expand::execute(const ExecContext               &ec,
 
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
-          FLAG_EXPAND_TABS.value_location(), "invalid tab list",
-          "use increasing positive columns separated by commas or blanks");
+          FLAG_EXPAND_TABS.value_location(), "Invalid tab list",
+          "Use increasing positive columns separated by commas or blanks");
 
       return 1;
     }

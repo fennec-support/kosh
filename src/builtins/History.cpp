@@ -58,7 +58,7 @@ report_history_file_failure(const ExecContext &ec,
   }
 
   report_soft_builtin_error(ec, cxt, ec.source_location(),
-                            StringView{"cannot "} + action + " history at '" +
+                            StringView{"Cannot "} + action + " history at '" +
                                 path->text().view() + "': " + failure_message);
 }
 
@@ -102,7 +102,7 @@ history_target_needs_separator(const Path &target) throws
   if (*read_byte_count != 1) {
     unused(os::close_fd(fd));
 
-    return Error{"the file changed"};
+    return Error{"The file changed"};
   }
 
   if (!os::close_fd(fd)) return Error{os::last_system_error_message()};
@@ -458,7 +458,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     LOG(Debug, "history synchronizing the private branch");
     if (args.count() > 1) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
-                                "history sync takes no operand");
+                                "The sync form takes no operand");
 
       return 1;
     }
@@ -485,7 +485,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (!source_text.has_value()) {
         report_soft_builtin_error(
             ec, cxt, ec.arg_location_at(1),
-            StringView{"cannot read history from '"} + args[1].view() +
+            StringView{"Cannot read history from '"} + args[1].view() +
                 "': " + os::last_system_error_message(),
             "Pass a readable history file, e.g. `history -r ~/.kosh_history`");
 
@@ -494,7 +494,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       if (!toiletline::is_history_contents_valid(source_text->view())) {
         report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
-                                  StringView{"cannot read history from '"} +
+                                  StringView{"Cannot read history from '"} +
                                       args[1].view() +
                                       "': the file contains invalid data",
                                   "Pass a text history file");
@@ -555,7 +555,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       {
         report_soft_builtin_error(
             ec, cxt, ec.arg_location_at(1),
-            StringView{"cannot write history to '"} + args[1].view() +
+            StringView{"Cannot write history to '"} + args[1].view() +
                 "': " + result.error().message(),
             "Pass a writable path, e.g. `history -w ~/.kosh_history`");
 

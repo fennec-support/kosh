@@ -196,7 +196,7 @@ Od::execute(const ExecContext               &ec,
 
     if (!is_valid_radix) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_OD_ADDRESS.value_location(),
-                              "the address radix must be d, o, x, or n");
+                              "The address radix must be d, o, x, or n");
 
       return 1;
     }
@@ -211,9 +211,9 @@ Od::execute(const ExecContext               &ec,
 
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_OD_SKIP.value_location(),
-                              "invalid skip count '" + FLAG_OD_SKIP.value() +
+                              "Invalid skip count '" + FLAG_OD_SKIP.value() +
                                   "'",
-                              "use decimal, leading-zero octal, or 0x "
+                              "Use decimal, leading-zero octal, or 0x "
                               "hexadecimal, with optional b, k, or m units");
 
       return 1;
@@ -229,9 +229,9 @@ Od::execute(const ExecContext               &ec,
 
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_OD_COUNT.value_location(),
-                              "invalid byte count '" + FLAG_OD_COUNT.value() +
+                              "Invalid byte count '" + FLAG_OD_COUNT.value() +
                                   "'",
-                              "use decimal, leading-zero octal, or 0x "
+                              "Use decimal, leading-zero octal, or 0x "
                               "hexadecimal bytes");
 
       return 1;
@@ -304,8 +304,8 @@ Od::execute(const ExecContext               &ec,
     if (parsed.is_error() || parsed.value() > UINT64_MAX / multiplier) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[operand_count - 1],
-          "invalid legacy offset '" + operands.back() + "'",
-          "use [+]OCTAL, [+]DECIMAL., or either form followed by b");
+          "Invalid legacy offset '" + operands.back() + "'",
+          "Use [+]OCTAL, [+]DECIMAL., or either form followed by b");
 
       return 1;
     }
@@ -342,8 +342,8 @@ Od::execute(const ExecContext               &ec,
 
     if (format.is_empty() || format.length > 2) {
       KOSHKIT_REPORT_ERROR_AT(
-          format_location, "unsupported output type '" + format + "'",
-          "use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, "
+          format_location, "Unsupported output type '" + format + "'",
+          "Use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, "
           "I, or L");
 
       return 1;
@@ -372,8 +372,8 @@ Od::execute(const ExecContext               &ec,
 
       default:
         KOSHKIT_REPORT_ERROR_AT(format_location,
-                                "unsupported integer width in '" + format + "'",
-                                "use 1, 2, 4, 8, C, S, I, or L");
+                                "Unsupported integer width in '" + format + "'",
+                                "Use 1, 2, 4, 8, C, S, I, or L");
 
         return 1;
       }
@@ -427,8 +427,8 @@ Od::execute(const ExecContext               &ec,
 
     default: {
       KOSHKIT_REPORT_ERROR_AT(
-          format_location, "unsupported output type '" + format + "'",
-          "use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, "
+          format_location, "Unsupported output type '" + format + "'",
+          "Use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, "
           "I, or L");
 
       return 1;
@@ -634,7 +634,7 @@ Od::execute(const ExecContext               &ec,
   if (skipped_count < skip_count) {
     ec.print_to_stdout(output);
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "cannot skip past end of combined input");
+                                   "Cannot skip past end of combined input");
 
     return 1;
   }

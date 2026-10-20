@@ -100,7 +100,7 @@ Id::execute(const ExecContext               &ec,
     if (!resolved.has_value()) {
       report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
                                      args[0].view(),
-                                     "unknown user '" + operands[0] + "'");
+                                     "Unknown user '" + operands[0] + "'");
 
       return 1;
     }

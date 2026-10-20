@@ -142,8 +142,8 @@ parse_sed_delimited(StringView script,
     if (byte == delimiter) return text;
     if (byte == '\n')
       throw SedParseError{
-          position - 1, "unterminated delimited expression",
-          "close the expression before the end of the script line"};
+          position - 1, "Unterminated delimited expression",
+          "Close the expression before the end of the script line"};
     if (byte == '\\' && position < script.length) {
       let const escaped = script[position++];
 
@@ -158,8 +158,8 @@ parse_sed_delimited(StringView script,
     }
   }
 
-  throw SedParseError{position, "unterminated delimited expression",
-                      "close the expression with the delimiter that opened it"};
+  throw SedParseError{position, "Unterminated delimited expression",
+                      "Close the expression with the delimiter that opened it"};
 }
 
 static fn
@@ -176,10 +176,10 @@ compile_sed_expression(StringView     expression,
 
   if (!result.has_value()) {
     throw SedParseError{position,
-                        "invalid regular expression '" + expression + "'",
+                        "Invalid regular expression '" + expression + "'",
                         regex_mode == sed_regex_mode::Extended
-                            ? "use a valid extended regular expression"
-                            : "use a valid basic regular expression"};
+                            ? "Use a valid extended regular expression"
+                            : "Use a valid basic regular expression"};
   }
 
   return *result;
@@ -204,14 +204,14 @@ parse_sed_address(StringView     script,
 
       if (line_number > (UINT64_MAX - digit) / 10)
         throw SedParseError{
-            digit_position, "line address is too large",
-            "use a decimal line number from 1 through 18446744073709551615"};
+            digit_position, "Line address is too large",
+            "Use a decimal line number from 1 through 18446744073709551615"};
       line_number = line_number * 10 + digit;
     }
 
     if (line_number == 0)
-      throw SedParseError{position - 1, "line addresses begin at one",
-                          "use a positive decimal line number"};
+      throw SedParseError{position - 1, "Line addresses begin at one",
+                          "Use a positive decimal line number"};
     address.kind        = sed_address_kind::Line;
     address.line_number = line_number;
 
@@ -289,8 +289,8 @@ parse_sed_script(StringView              script,
       has_second_address = parse_sed_address(script, position, allocator,
                                              second_address, regex_mode);
       if (!has_second_address)
-        throw SedParseError{position, "missing second address",
-                            "write an address after the comma"};
+        throw SedParseError{position, "Missing second address",
+                            "Write an address after the comma"};
     }
 
     while (position < script.length &&
@@ -313,8 +313,8 @@ parse_sed_script(StringView              script,
     }
 
     if (position == script.length || script[position] == '\n') {
-      throw SedParseError{position, "missing command",
-                          "write a sed command after the address"};
+      throw SedParseError{position, "Missing command",
+                          "Write a sed command after the address"};
     }
 
     let const   command_position = position;
@@ -379,8 +379,8 @@ parse_sed_script(StringView              script,
       command.kind = sed_command_kind::Translate;
       if (position == script.length)
         throw SedParseError{
-            position, "translation lacks a delimiter",
-            "write a delimiter and two translation strings after y"};
+            position, "Translation lacks a delimiter",
+            "Write a delimiter and two translation strings after y"};
       let const delimiter = script[position++];
 
       command.replacement =
@@ -391,8 +391,8 @@ parse_sed_script(StringView              script,
 
       if (command.replacement.length() != destination.length())
         throw SedParseError{
-            position, "translation strings have different lengths",
-            "use translation strings with the same number of bytes"};
+            position, "Translation strings have different lengths",
+            "Use translation strings with the same number of bytes"};
       command.replacement += destination.view();
 
       let const source_length = command.replacement.length() / 2;
@@ -413,8 +413,8 @@ parse_sed_script(StringView              script,
       command.kind = sed_command_kind::Substitute;
       if (position == script.length)
         throw SedParseError{
-            position, "substitution lacks a delimiter",
-            "write a delimiter, a pattern, and a replacement after s"};
+            position, "Substitution lacks a delimiter",
+            "Write a delimiter, a pattern, and a replacement after s"};
       let const delimiter           = script[position++];
       let const expression_position = position;
       let const expression =
@@ -436,11 +436,11 @@ parse_sed_script(StringView              script,
         } else if (script[position] != ' ' && script[position] != '\t') {
           throw SedParseError{
               position,
-              "unsupported substitution flag '" +
+              "Unsupported substitution flag '" +
                   String{allocator, script.substring_of_length(position, 1)}
                   +
                   "'",
-              "use g to replace every match or p to print changed lines"
+              "Use g to replace every match or p to print changed lines"
           };
         }
 
@@ -452,10 +452,10 @@ parse_sed_script(StringView              script,
     default:
       throw SedParseError{
           command_position,
-          "unsupported command '" +
+          "Unsupported command '" +
               String{allocator, StringView{&command_byte, 1}}
               + "'",
-          "use a, c, d, i, p, q, s, y, =, or a supported address"
+          "Use a, c, d, i, p, q, s, y, =, or a supported address"
       };
     }
 
@@ -698,10 +698,10 @@ Sed::execute(const ExecContext               &ec,
 
     if (!file_script.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_SED_FILE.get_location(file_index),
-                              "cannot read script file '" +
+                              "Cannot read script file '" +
                                   FLAG_SED_FILE.get(file_index) +
                                   "': " + os::last_system_error_message(),
-                              "pass a readable sed script file after -f");
+                              "Pass a readable sed script file after -f");
 
       return 1;
     }

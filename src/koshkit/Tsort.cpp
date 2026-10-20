@@ -57,7 +57,7 @@ Tsort::execute(const ExecContext               &ec,
 
   if ((tokens.count() & 1u) != 0) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "input contains an odd number of tokens");
+                                   "Input contains an odd number of tokens");
 
     return 1;
   }
@@ -147,7 +147,7 @@ Tsort::execute(const ExecContext               &ec,
 
   if (emitted_count != vertices.count()) {
     report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "input contains a cycle");
+                                   "Input contains a cycle");
     status = 1;
 
     for (let const &vertex : vertices)

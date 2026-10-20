@@ -64,7 +64,7 @@ tail
 --- strings flushes large output in source order ---
 839252499 105012
 --- strings reads later files after a missing operand ---
--c:1:1: error: Koshkit `strings`: cannot read 'missing.txt': No such file or directory.
+-c:1:1: error: Koshkit `strings`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit strings cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 first
@@ -76,7 +76,7 @@ tail
  c3 a9 7a 0a
  c3 a9 0a
 --- cut reads later files after a missing operand ---
--c:1:1: error: Koshkit `cut`: cannot read 'missing.txt': No such file or directory.
+-c:1:1: error: Koshkit `cut`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit cut -c 1-5 cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 first
@@ -91,7 +91,7 @@ status=1
 --- diff reads standard input on the right ---
 status=0
 --- diff reports a missing second operand ---
--c:1:1: error: Koshkit `diff`: cannot read 'missing.txt': No such file or directory.
+-c:1:1: error: Koshkit `diff`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit diff batch-input.txt missing.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 status=2
@@ -117,7 +117,7 @@ status=1
 4
 --- cksum multi-chunk input with a missing operand ---
 3231941463 108894 batch-input.txt
--c:1:1: error: Koshkit `cksum`: cannot read 'missing.txt': No such file or directory.
+-c:1:1: error: Koshkit `cksum`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit cksum batch-input.txt missing.txt empty.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 4294967295 0 empty.txt
@@ -144,7 +144,7 @@ banana
 apple
 apple
 --- sort multiple files with a missing operand ---
--c:1:1: error: Koshkit `sort`: cannot read 'missing.txt': No such file or directory.
+-c:1:1: error: Koshkit `sort`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit sort sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 alpha
@@ -156,7 +156,7 @@ status=2
 alpha
 delta
 --- paste multiple files with a missing operand ---
--c:1:1: error: Koshkit `paste`: cannot read 'missing.txt': No such file or directory.
+-c:1:1: error: Koshkit `paste`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit paste -d , sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 zulu,,middle
@@ -165,7 +165,7 @@ status=1
 --- paste repeated standard input ---
 left,right
 --- pr merge with a missing operand ---
--c:1:1: error: Koshkit `pr`: cannot read 'missing.txt': No such file or directory.
+-c:1:1: error: Koshkit `pr`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit pr -t -m -s, sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 zulu,middle
@@ -181,7 +181,7 @@ status=1
     1	first
     1	last
 --- pr reads later files after a missing operand ---
--c:1:1: error: Koshkit `pr`: cannot read 'missing.txt': No such file or directory.
+-c:1:1: error: Koshkit `pr`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit pr -t sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 zulu
@@ -196,7 +196,7 @@ middle
 beta
 status=1
 --- grep invalid pattern status ---
--c:1:14: error: Koshkit `grep`: the pattern '[' is not a valid regex.
+-c:1:14: error: Koshkit `grep`: The pattern '[' is not a valid regex.
      1 |  koshkit grep "[" fruit.txt; printf "status=%s\n" "$?"
        |               ^~~
 status=2
@@ -242,10 +242,10 @@ abc
 --- tr -d digits ---
 abc
 --- tr reverse range ---
--c:1:16: error: Koshkit `tr`: reverse range in set 'z-x'.
+-c:1:16: error: Koshkit `tr`: Reverse range in set 'z-x'.
      1 |  koshkit tr a-c z-x
        |                 ^~~
-note: order the endpoints from the lower byte to the higher byte.
+note: Order the endpoints from the lower byte to the higher byte.
 --- tr squeeze and complement ---
 ab  c d11
 aabb
@@ -462,10 +462,10 @@ x:3:b
 y:1:a
 z:2:c
 --- sort invalid key ---
--c:1:16: error: Koshkit `sort`: invalid key definition '0'.
+-c:1:16: error: Koshkit `sort`: Invalid key definition '0'.
      1 |  koshkit sort -k0 sort-keys.txt; printf "status=%s\n" "$?"
        |                 ^
-note: use F[.C][bdfinr][,F[.C][bdfinr]] with fields starting at 1.
+note: Use F[.C][bdfinr][,F[.C][bdfinr]] with fields starting at 1.
 status=2
 --- uniq repeated unique fields and characters ---
 uniq -c
@@ -571,7 +571,7 @@ status=0
 --- head reads later files after a missing operand ---
 ==> cat-first.txt <==
 first
--c:1:1: error: Koshkit `head`: cannot open 'missing.txt': No such file or directory.
+-c:1:1: error: Koshkit `head`: Cannot open 'missing.txt': No such file or directory.
      1 |  koshkit head -n 1 cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

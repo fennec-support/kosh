@@ -464,8 +464,8 @@ Evil::execute(const ExecContext               &ec,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "unexpected operand",
-                            "this utility takes no operand");
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Unexpected operand",
+                            "This utility takes no operand");
 
     return 1;
   }

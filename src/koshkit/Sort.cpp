@@ -551,7 +551,7 @@ Sort::execute(const ExecContext               &ec,
   if (FLAG_SORT_SEPARATOR.is_set()) {
     if (FLAG_SORT_SEPARATOR.value().length != 1) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_SORT_SEPARATOR.value_location(),
-                              "the separator must be one byte");
+                              "The separator must be one byte");
 
       return 2;
     }
@@ -566,10 +566,10 @@ Sort::execute(const ExecContext               &ec,
     if (!parse_sort_key(FLAG_SORT_KEY.get(key_index), key)) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_SORT_KEY.get_location(key_index),
-          "invalid key definition '" +
+          "Invalid key definition '" +
               String{cxt.scratch_allocator(), FLAG_SORT_KEY.get(key_index)} +
               "'",
-          "use F[.C][bdfinr][,F[.C][bdfinr]] with fields starting at 1");
+          "Use F[.C][bdfinr][,F[.C][bdfinr]] with fields starting at 1");
 
       return 2;
     }
@@ -696,7 +696,7 @@ Sort::execute(const ExecContext               &ec,
       {
         did_write_fail = true;
         report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "write error: " +
+                                       "Write error: " +
                                            os::last_system_error_message());
       }
     } else {

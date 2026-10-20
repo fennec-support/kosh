@@ -373,8 +373,8 @@ Head::execute(const ExecContext               &ec,
           if (is_directory_operand) do_print_header(source_index);
 
           let const message =
-              StringView{is_directory_operand ? "cannot read '"
-                                              : "cannot open '"} +
+              StringView{is_directory_operand ? "Cannot read '"
+                                              : "Cannot open '"} +
               String{cxt.scratch_allocator(), sources[source_index]} +
               "': " + error_message;
 
@@ -462,7 +462,7 @@ Head::execute(const ExecContext               &ec,
         os::set_last_system_error(chunk.error_number);
         report_soft_koshkit_util_error(
             ec, cxt, args[0].view(),
-            StringView{has_failed_open ? "cannot open '" : "cannot read '"} +
+            StringView{has_failed_open ? "Cannot open '" : "Cannot read '"} +
                 sources[chunk.source_index] +
                 "': " + os::last_system_error_message());
         status = 1;

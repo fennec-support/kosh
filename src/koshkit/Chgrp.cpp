@@ -65,8 +65,8 @@ Chgrp::execute(const ExecContext               &ec,
 
   if (!group_id.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "invalid group '" + operands[0] + "'",
-                            "use a group name or an unsigned decimal group id");
+                            "Invalid group '" + operands[0] + "'",
+                            "Use a group name or an unsigned decimal group id");
 
     return 1;
   }

@@ -1335,8 +1335,8 @@ bc_execute_simple(StringView         statement,
 
     if (!parsed.has_value() || *parsed < 2 || *parsed > 16) {
       report_soft_koshkit_util_error(
-          ec, cxt, "bc", "invalid ibase",
-          "ibase must evaluate to an integer from 2 through 16");
+          ec, cxt, "bc", "Invalid ibase",
+          "The ibase must evaluate to an integer from 2 through 16");
       runtime.status = 1;
     } else {
       runtime.input_base = *parsed;
@@ -1353,8 +1353,8 @@ bc_execute_simple(StringView         statement,
 
     if (!parsed.has_value() || *parsed < 2 || *parsed > 16) {
       report_soft_koshkit_util_error(
-          ec, cxt, "bc", "invalid obase",
-          "obase must evaluate to an integer from 2 through 16");
+          ec, cxt, "bc", "Invalid obase",
+          "The obase must evaluate to an integer from 2 through 16");
       runtime.status = 1;
     } else {
       runtime.output_base = *parsed;
@@ -1371,8 +1371,8 @@ bc_execute_simple(StringView         statement,
 
     if (!parsed.has_value() || *parsed > 100000) {
       report_soft_koshkit_util_error(
-          ec, cxt, "bc", "invalid scale",
-          "scale must evaluate to an integer from 0 through 100000");
+          ec, cxt, "bc", "Invalid scale",
+          "The scale must evaluate to an integer from 0 through 100000");
       runtime.status = 1;
     } else {
       runtime.scale = *parsed;
@@ -1567,8 +1567,8 @@ bc_execute_statement(StringView         statement,
 
     if (part_count != 3) {
       report_soft_koshkit_util_error(
-          ec, cxt, "bc", "invalid for statement",
-          "for requires three clauses separated by semicolons");
+          ec, cxt, "bc", "Invalid for statement",
+          "The for statement requires three clauses separated by semicolons");
       runtime.status = 1;
       return bc_flow::Normal;
     }
@@ -1695,8 +1695,8 @@ Bc::execute(const ExecContext               &ec,
   if (os::INTERRUPT_REQUESTED) return 130;
   if (flow == bc_flow::Break || flow == bc_flow::Return) {
     report_soft_koshkit_util_error(ec, cxt, "bc",
-                                   "break or return outside a loop or function",
-                                   "the program stops at this statement");
+                                   "Break or return outside a loop or function",
+                                   "The program stops at this statement");
     runtime.status = 1;
   }
 

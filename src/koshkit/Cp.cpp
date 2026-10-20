@@ -203,7 +203,7 @@ copy_path(const ExecContext                &ec,
 
       if (is_destination_blocking_symlink && !os::remove_file(destination)) {
         throw Error{
-            "unable to remove '" + String{allocator, destination}
+            "Unable to remove '" + String{allocator, destination}
               +
             "': " + os::last_system_error_message()
         };
@@ -211,7 +211,7 @@ copy_path(const ExecContext                &ec,
 
       if (!os::create_symlink(target->view(), destination)) {
         throw Error{
-            "unable to create the symlink '" + String{allocator, destination}
+            "Unable to create the symlink '" + String{allocator, destination}
               +
             "': " + os::last_system_error_message()
         };
@@ -289,7 +289,7 @@ copy_path(const ExecContext                &ec,
 
       if (is_destination_inside_source) {
         throw ErrorWithDetails{
-            "cannot copy '" + String{allocator, source}
+            "Cannot copy '" + String{allocator, source}
               + "' into itself",
             "The destination is inside the source directory"
         };
@@ -305,7 +305,7 @@ copy_path(const ExecContext                &ec,
             identity.file_id == source_status->file_id)
         {
           throw Error{
-              "cannot copy cyclic symbolic link '" + String{allocator, source}
+              "Cannot copy cyclic symbolic link '" + String{allocator, source}
                 +
               "'"
           };
@@ -325,7 +325,7 @@ copy_path(const ExecContext                &ec,
 
     if (!did_destination_exist && !os::make_directory(destination, 0700)) {
       throw Error{
-          "unable to create the directory '" + String{allocator, destination}
+          "Unable to create the directory '" + String{allocator, destination}
             +
           "': " + os::last_system_error_message()
       };
@@ -358,7 +358,7 @@ copy_path(const ExecContext                &ec,
 
       if (!names.has_value())
         throw Error{
-            "unable to read the directory '" + String{allocator, source}
+            "Unable to read the directory '" + String{allocator, source}
               +
             "': " + os::last_system_error_message()
         };
@@ -411,7 +411,7 @@ copy_path(const ExecContext                &ec,
                              source_status->modification_nanoseconds}))
     {
       throw Error{
-          "unable to preserve timestamps for '" +
+          "Unable to preserve timestamps for '" +
           String{allocator, destination}
           +
           "': " + os::last_system_error_message()
@@ -437,7 +437,7 @@ copy_path(const ExecContext                &ec,
 
     if (!os::make_fifo(destination, source_status->mode & 0777)) {
       throw Error{
-          "unable to create the FIFO '" + String{allocator, destination}
+          "Unable to create the FIFO '" + String{allocator, destination}
             +
           "': " + os::last_system_error_message()
       };
@@ -456,7 +456,7 @@ copy_path(const ExecContext                &ec,
       !os::remove_file(destination))
   {
     throw Error{
-        "unable to remove '" + String{allocator, destination}
+        "Unable to remove '" + String{allocator, destination}
           +
         "': " + os::last_system_error_message()
     };
@@ -486,7 +486,7 @@ copy_path(const ExecContext                &ec,
                            source_status->modification_nanoseconds}))
   {
     throw Error{
-        "unable to preserve timestamps for '" + String{allocator, destination}
+        "Unable to preserve timestamps for '" + String{allocator, destination}
           +
         "': " + os::last_system_error_message()
     };

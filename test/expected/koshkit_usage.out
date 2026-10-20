@@ -5,7 +5,7 @@
 note: Try `getopts --help` for more info.
 rc=2
 --- builtin let with no expression ---
--c:1:1: error: Builtin `let`: expression expected.
+-c:1:1: error: Builtin `let`: Expression expected.
      1 |  let
        |  ^~~
 rc=1
@@ -64,34 +64,34 @@ rc=2
 note: Try `watch --help` for more info.
 rc=2
 --- goodcore locates an invalid process id ---
--c:1:24: error: Koshkit `goodcore`: invalid process id.
+-c:1:24: error: Koshkit `goodcore`: Invalid process id.
      1 |  koshkit goodcore --pid nope
        |                         ^~~~
-note: the process id must be a positive integer.
+note: The process id must be a positive integer.
 rc=1
 --- goodcore locates conflicting flags ---
--c:1:35: error: Koshkit `goodcore`: conflicting flags.
+-c:1:35: error: Koshkit `goodcore`: Conflicting flags.
      1 |  koshkit goodcore --pid 1 --binary program
        |                                    ^~~~~~~
 note: --binary applies only when packaging an existing core file.
 rc=2
 --- goodcore locates conflicting input ---
--c:1:26: error: Koshkit `goodcore`: conflicting input.
+-c:1:26: error: Koshkit `goodcore`: Conflicting input.
      1 |  koshkit goodcore --pid 1 core
        |                           ^~~~
-note: pass either one running pid or one core file.
+note: Pass either one running pid or one core file.
 rc=2
 --- goodcore locates an extra core operand ---
--c:1:24: error: Koshkit `goodcore`: extra operand 'second'.
+-c:1:24: error: Koshkit `goodcore`: Extra operand 'second'.
      1 |  koshkit goodcore first second
        |                         ^~~~~~
-note: pass exactly one core file.
+note: Pass exactly one core file.
 rc=2
 --- goodnode locates an invalid inode ---
--c:1:26: error: Koshkit `goodnode`: invalid inode.
+-c:1:26: error: Koshkit `goodnode`: Invalid inode.
      1 |  koshkit goodnode --inode nope
        |                           ^~~~
-note: the inode must be a non-negative integer.
+note: The inode must be a non-negative integer.
 rc=1
 --- goodnode locates an invalid color mode ---
 -c:1:17: error: koshkit: invalid color mode 'rainbow'.
@@ -123,7 +123,7 @@ rc=2
 note: Try `mkdir --help` for more info.
 rc=2
 --- the bash mood locates a missing path ---
--c:1:1: error: Koshkit `ls`: cannot access '/no/such/path': no such file or directory.
+-c:1:1: error: Koshkit `ls`: Cannot access '/no/such/path': no such file or directory.
      1 |  koshkit ls /no/such/path
        |  ^~~~~~~~~~~~~~~~~~~~~~~~
 rc=2

@@ -40,7 +40,7 @@ if [ "${TARGET:-$(uname -s)}" = Linux ] && [ -d /dev/pts ] &&
   "$BIN" -c 'koshkit rm -r -x --dry-run /dev' > device.out 2> device.err
   device_status=$?
   [ "$device_status" -eq 1 ] || echo "rm -x device status=$device_status"
-  grep -q "skipping '/dev/pts', since it's on a different device" device.err ||
+  grep -q "Skipping '/dev/pts', since it's on a different device" device.err ||
     echo "rm -x did not report /dev/pts"
   ! grep -q "would remove '/dev/pts" device.out ||
     echo "rm -x descended into /dev/pts"
@@ -60,9 +60,9 @@ unset KOSH_FLAGS
 dir=$(mktemp -d)
 : > "$dir/keep"
 echo "== rm -rf . is refused (count of the refusal):"
-"$BIN" -c "cd '$dir' || exit; koshkit rm -rf --dry-run ." </dev/null 2>&1 | grep -c "refusing to remove"
+"$BIN" -c "cd '$dir' || exit; koshkit rm -rf --dry-run ." </dev/null 2>&1 | grep -c "Refusing to remove"
 echo "== rm -rf .. is refused (count):"
-"$BIN" -c "cd '$dir' || exit; koshkit rm -rf --dry-run .." </dev/null 2>&1 | grep -c "refusing to remove"
+"$BIN" -c "cd '$dir' || exit; koshkit rm -rf --dry-run .." </dev/null 2>&1 | grep -c "Refusing to remove"
 echo "== the directory contents survive:"
 "$BIN" -c "if [ -e '$dir/keep' ]; then echo keep-survives; else echo keep-gone; fi" </dev/null
 [ -n "$dir" ] && rm -rf "$dir"

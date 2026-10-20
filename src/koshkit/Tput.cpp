@@ -94,16 +94,16 @@ Tput::execute(const ExecContext               &ec,
     /* the output writes row + 1, which overflows at UINT64_MAX. */
     if (row.is_error() || row.value() == UINT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
-          operand_locations[1], "invalid row '" + operands[1] + "'",
-          "use a decimal integer from 0 through 18446744073709551614");
+          operand_locations[1], "Invalid row '" + operands[1] + "'",
+          "Use a decimal integer from 0 through 18446744073709551614");
 
       return 1;
     }
 
     if (column.is_error() || column.value() == UINT64_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
-          operand_locations[2], "invalid column '" + operands[2] + "'",
-          "use a decimal integer from 0 through 18446744073709551614");
+          operand_locations[2], "Invalid column '" + operands[2] + "'",
+          "Use a decimal integer from 0 through 18446744073709551614");
 
       return 1;
     }
@@ -139,7 +139,7 @@ Tput::execute(const ExecContext               &ec,
   }
 
   report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "tput",
-                                 "unknown capability '" + operands[0] + "'");
+                                 "Unknown capability '" + operands[0] + "'");
 
   return 1;
 }

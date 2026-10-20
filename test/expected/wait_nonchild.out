@@ -1,4 +1,4 @@
-2:6: error: Builtin `wait`: pid 99999 is not a child of this shell.
+2:6: error: Builtin `wait`: The pid 99999 is not a child of this shell.
      2 |  wait 99999
        |       ^~~~~
 note: List the running jobs with `jobs -l`.

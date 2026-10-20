@@ -81,9 +81,8 @@ Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (ec.args().count() > 2 && !is_posix_mode) {
-    ErrorWithLocation located{
-        ec.arg_location_at(2),
-        StringView{"break accepts at most one loop count"}};
+    ErrorWithLocation located{ec.arg_location_at(2),
+                              StringView{"At most one loop count is accepted"}};
 
     located.set_script_fatal();
     located.set_command_status(1);

@@ -48,8 +48,8 @@ Seq::execute(const ExecContext               &ec,
     if (parsed.is_error() || is_out_of_range) {
       KOSHKIT_REPORT_ERROR_AT(
           operand_locations[operand_position],
-          "invalid integer argument '" + operands[operand_position] + "'",
-          "use a decimal integer from -9223372036854775808 through "
+          "Invalid integer argument '" + operands[operand_position] + "'",
+          "Use a decimal integer from -9223372036854775808 through "
           "9223372036854775807");
 
       return false;
@@ -78,16 +78,16 @@ Seq::execute(const ExecContext               &ec,
     break;
   default:
     KOSHKIT_REPORT_ERROR_AT(
-        operand_locations[3], "extra operand '" + operands[3] + "'",
-        "use `seq LAST`, `seq FIRST LAST`, or `seq FIRST STEP LAST`");
+        operand_locations[3], "Extra operand '" + operands[3] + "'",
+        "Use `seq LAST`, `seq FIRST LAST`, or `seq FIRST STEP LAST`");
 
     return 1;
   }
 
   if (increment == 0) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
-                            "the increment must not be zero",
-                            "use a nonzero step, such as `seq 1 2 10`");
+                            "The increment must not be zero",
+                            "Use a nonzero step, such as `seq 1 2 10`");
 
     return 1;
   }

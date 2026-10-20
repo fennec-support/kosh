@@ -252,7 +252,7 @@ Cmp::execute(const ExecContext               &ec,
       has_difference = true;
       if (!FLAG_CMP_SILENT.is_enabled())
         report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "end of file on '" +
+                                       "End of file on '" +
                                            (left_result == byte_read_result::End
                                                 ? operands[0]
                                                 : operands[1]) +

@@ -66,7 +66,7 @@ file-link
 --- find a long path ---
 long/abcdefghijklmnopqrstuvwxyz/segment/leaf
 --- find unknown predicate ---
--c:1:16: error: Koshkit `find`: unknown predicate '-bogus'.
+-c:1:16: error: Koshkit `find`: Unknown predicate '-bogus'.
      1 |  koshkit find . -bogus
        |                 ^~~~~~
 note: Use `-name`, `-iname`, `-type`, `-maxdepth`, `-mindepth`, `-xdev`, or `-print`.

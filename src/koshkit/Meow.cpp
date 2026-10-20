@@ -1947,7 +1947,7 @@ Meow::execute(const ExecContext               &ec,
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "extra operand '" + operands[0] + "'");
+                            "Extra operand '" + operands[0] + "'");
 
     return 1;
   }
@@ -1963,7 +1963,7 @@ Meow::execute(const ExecContext               &ec,
         parsed.value() > MAXIMUM_FRAMES_PER_SECOND)
     {
       KOSHKIT_REPORT_ERROR_AT(FLAG_MEOW_FPS.value_location(),
-                              "invalid frame rate '" +
+                              "Invalid frame rate '" +
                                   String{allocator, FLAG_MEOW_FPS.value()} +
                                   "', expected 1 to 240");
 
@@ -1980,7 +1980,7 @@ Meow::execute(const ExecContext               &ec,
         parsed.value() > MAXIMUM_SPEED)
     {
       KOSHKIT_REPORT_ERROR_AT(FLAG_MEOW_SPEED.value_location(),
-                              "invalid speed '" +
+                              "Invalid speed '" +
                                   String{allocator, FLAG_MEOW_SPEED.value()} +
                                   "', expected 0.1 to 10");
 
@@ -1997,7 +1997,7 @@ Meow::execute(const ExecContext               &ec,
         parsed.value() > MAXIMUM_CAT_COUNT)
     {
       KOSHKIT_REPORT_ERROR_AT(FLAG_MEOW_CATS.value_location(),
-                              "invalid cat count '" +
+                              "Invalid cat count '" +
                                   String{allocator, FLAG_MEOW_CATS.value()} +
                                   "', expected 1 to 8");
 

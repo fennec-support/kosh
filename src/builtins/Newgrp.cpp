@@ -35,8 +35,8 @@ Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   ASSERT(!args.is_empty());
 
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
-    report_soft_builtin_error(ec, cxt,
-                              "newgrp is forbidden in a restricted shell");
+    report_soft_builtin_error(
+        ec, cxt, "This builtin is forbidden in a restricted shell");
 
     return 1;
   }
@@ -84,7 +84,7 @@ Newgrp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   report_soft_builtin_error(
-      ec, cxt, "the file is not an executable and has no interpreter");
+      ec, cxt, "The file is not an executable and has no interpreter");
 
   return 126;
 }

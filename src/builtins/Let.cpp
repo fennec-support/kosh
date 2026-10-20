@@ -32,7 +32,7 @@ Let::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
   if (ec.args().count() < 2) {
     report_soft_builtin_error(ec, cxt, ec.arg_location_at(0),
-                              "expression expected");
+                              "Expression expected");
 
     return 1;
   }

@@ -38,7 +38,7 @@ move_directory_across_devices(const ExecContext &ec,
 
   if (!temporary_directory.has_value())
     throw Error{
-        "unable to create a temporary directory beside '" +
+        "Unable to create a temporary directory beside '" +
         String{allocator, target}
         + "': " + os::last_system_error_message()
     };
@@ -55,7 +55,7 @@ move_directory_across_devices(const ExecContext &ec,
                           temporary_directory->view(), allocator))
   {
     throw Error{
-        "unable to copy '" + String{allocator, source}
+        "Unable to copy '" + String{allocator, source}
           +
         "' to another file system"
     };
@@ -65,7 +65,7 @@ move_directory_across_devices(const ExecContext &ec,
      and was_published is false, so the defer removes the copy on error. */
   if (!os::rename_path(temporary_directory->view(), target))
     throw Error{
-        "unable to publish '" + String{allocator, target}
+        "Unable to publish '" + String{allocator, target}
           +
         "': " + os::last_system_error_message()
     };
@@ -73,7 +73,7 @@ move_directory_across_devices(const ExecContext &ec,
 
   if (!remove_path(source, allocator, removal_mode::Recursive))
     throw Error{
-        "unable to remove '" + String{allocator, source}
+        "Unable to remove '" + String{allocator, source}
           +
         "': " + os::last_system_error_message()
     };
@@ -106,7 +106,7 @@ move_across_devices(const ExecContext &ec,
 
   if (!temporary_path.has_value())
     throw Error{
-        "unable to create a temporary file beside '" +
+        "Unable to create a temporary file beside '" +
         String{allocator, target}
         + "': " + os::last_system_error_message()
     };
@@ -120,7 +120,7 @@ move_across_devices(const ExecContext &ec,
 
     if (!link_target.has_value())
       throw Error{
-          "unable to read the symlink '" + String{allocator, source}
+          "Unable to read the symlink '" + String{allocator, source}
             +
           "': " + os::last_system_error_message()
       };
@@ -129,7 +129,7 @@ move_across_devices(const ExecContext &ec,
         !os::create_symlink(link_target->view(), temporary_path->text().view()))
     {
       throw Error{
-          "unable to create a temporary symlink beside '" +
+          "Unable to create a temporary symlink beside '" +
           String{allocator, target}
           + "': " + os::last_system_error_message()
       };
@@ -144,7 +144,7 @@ move_across_devices(const ExecContext &ec,
         !os::set_file_mode(temporary_path->text().view(), source_status.mode))
     {
       throw Error{
-          "unable to preserve the mode of '" + String{allocator, source}
+          "Unable to preserve the mode of '" + String{allocator, source}
             +
           "': " + os::last_system_error_message()
       };
@@ -153,14 +153,14 @@ move_across_devices(const ExecContext &ec,
 
   if (!os::rename_path(temporary_path->text().view(), target))
     throw Error{
-        "unable to publish '" + String{allocator, target}
+        "Unable to publish '" + String{allocator, target}
           +
         "': " + os::last_system_error_message()
     };
 
   if (!os::remove_file(source))
     throw Error{
-        "unable to remove '" + String{allocator, source}
+        "Unable to remove '" + String{allocator, source}
           +
         "': " + os::last_system_error_message()
     };
@@ -188,7 +188,7 @@ Mv::execute(const ExecContext               &ec,
   if (operands.count() > 2 && !is_destination_directory) {
     report_soft_koshkit_util_error(
         ec, cxt, operand_locations[operands.count() - 1], args[0].view(),
-        "the destination '" + String{cxt.scratch_allocator(), destination} +
+        "The destination '" + String{cxt.scratch_allocator(), destination} +
             "' is not a directory, so it cannot hold several sources");
 
     return 1;
@@ -233,7 +233,7 @@ Mv::execute(const ExecContext               &ec,
         if (errno != EXDEV) {
           report_soft_koshkit_util_error(
               ec, cxt, operand_locations[i], args[0].view(),
-              "unable to move '" + String{cxt.scratch_allocator(), source} +
+              "Unable to move '" + String{cxt.scratch_allocator(), source} +
                   "' to '" + target + "' because " +
                   os::last_system_error_message());
           status = 1;

@@ -449,12 +449,12 @@ Pr::execute(const ExecContext               &ec,
       if (is_invalid) {
         KOSHKIT_REPORT_ERROR_AT(
             arg_locations[index],
-            StringView{is_page ? "invalid page range '"
-                               : "invalid column count '"} +
+            StringView{is_page ? "Invalid page range '"
+                               : "Invalid column count '"} +
                 (argument.starts_with("--") ? numeric : argument) + "'",
-            is_page ? "use a positive first page, optionally followed by a "
+            is_page ? "Use a positive first page, optionally followed by a "
                       "colon and a last page that is not smaller"
-                    : "use a positive decimal integer within the platform "
+                    : "Use a positive decimal integer within the platform "
                       "size limit");
 
         return 1;
@@ -485,8 +485,8 @@ Pr::execute(const ExecContext               &ec,
     if (!parsed.has_value() || *parsed == 0) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_PR_LENGTH.value_location(),
-          "invalid page length '" + FLAG_PR_LENGTH.value() + "'",
-          "use a positive decimal integer within the platform size limit");
+          "Invalid page length '" + FLAG_PR_LENGTH.value() + "'",
+          "Use a positive decimal integer within the platform size limit");
 
       return 1;
     }
@@ -502,8 +502,8 @@ Pr::execute(const ExecContext               &ec,
     if (!parsed.has_value() || *parsed == 0) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_PR_WIDTH.value_location(),
-          "invalid page width '" + FLAG_PR_WIDTH.value() + "'",
-          "use a positive decimal integer within the platform size limit");
+          "Invalid page width '" + FLAG_PR_WIDTH.value() + "'",
+          "Use a positive decimal integer within the platform size limit");
 
       return 1;
     }
@@ -519,8 +519,8 @@ Pr::execute(const ExecContext               &ec,
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_PR_OFFSET.value_location(),
-          "invalid indentation '" + FLAG_PR_OFFSET.value() + "'",
-          "use a nonnegative decimal integer within the platform size limit");
+          "Invalid indentation '" + FLAG_PR_OFFSET.value() + "'",
+          "Use a nonnegative decimal integer within the platform size limit");
 
       return 1;
     }
@@ -532,15 +532,15 @@ Pr::execute(const ExecContext               &ec,
 
   if (is_merge && column_count_location.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(*column_count_location,
-                            "a column count cannot be combined with -m",
-                            "drop the column count or -m");
+                            "A column count cannot be combined with -m",
+                            "Drop the column count or -m");
 
     return 1;
   }
 
   if (is_merge && FLAG_PR_ACROSS.is_enabled()) {
     KOSHKIT_REPORT_ERROR_AT(FLAG_PR_ACROSS.value_location(),
-                            "-a cannot be combined with -m", "drop -a or -m");
+                            "-a cannot be combined with -m", "Drop -a or -m");
 
     return 1;
   }
@@ -669,16 +669,16 @@ Pr::execute(const ExecContext               &ec,
                                                   : 0;
 
     if (layout.column_width == 0) {
-      KOSHKIT_REPORT_ERROR("the page width is too narrow for the columns",
-                           "use a larger width with -w or fewer columns");
+      KOSHKIT_REPORT_ERROR("The page width is too narrow for the columns",
+                           "Use a larger width with -w or fewer columns");
 
       return 1;
     }
   }
 
   if (rows_per_page > SIZE_MAX / effective_column_count) {
-    KOSHKIT_REPORT_ERROR("the column count exceeds the page capacity",
-                         "reduce the column count or the page length");
+    KOSHKIT_REPORT_ERROR("The column count exceeds the page capacity",
+                         "Reduce the column count or the page length");
 
     return 1;
   }

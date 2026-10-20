@@ -108,7 +108,7 @@ Fuser::execute(const ExecContext               &ec,
     if (!os::process_file_query_is_supported(file_status, match_scope)) {
       report_soft_koshkit_util_error(
           ec, cxt, operand_locations[operand_position], args[0].view(),
-          "filesystem and directory queries are unsupported on Windows");
+          "Filesystem and directory queries are unsupported on Windows");
       status = 1;
       continue;
     }
@@ -137,7 +137,7 @@ Fuser::execute(const ExecContext               &ec,
 
     report_soft_koshkit_util_error(ec, cxt, operand_locations[operand_position],
                                    args[0].view(),
-                                   "unable to inspect running processes: " +
+                                   "Unable to inspect running processes: " +
                                        os::last_system_error_message());
 
     return 1;

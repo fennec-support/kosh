@@ -653,8 +653,8 @@ render_process_snapshot(const ExecContext               &ec,
     -> i32
 {
   if (unordered_nodes.is_empty()) {
-    report_soft_koshkit_error(ec, cxt, "the process listing is unavailable",
-                              "this platform exposes no process table");
+    report_soft_koshkit_error(ec, cxt, "The process listing is unavailable",
+                              "This platform exposes no process table");
 
     return 1;
   }
@@ -690,8 +690,8 @@ render_process_snapshot(const ExecContext               &ec,
 
     if (parsed.is_error()) {
       report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "evilps",
-                                     "invalid process id '" + operands[0] + "'",
-                                     "provide a decimal process id");
+                                     "Invalid process id '" + operands[0] + "'",
+                                     "Provide a decimal process id");
 
       return 1;
     }
@@ -731,8 +731,8 @@ render_process_snapshot(const ExecContext               &ec,
 
   if (!operands.is_empty()) {
     report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "evilps",
-                                   "no process has the id " + operands[0],
-                                   "read the current identifiers with ps");
+                                   "No process has the id " + operands[0],
+                                   "List the current identifiers with ps");
 
     return 1;
   }
@@ -917,8 +917,8 @@ EvilPS::execute(const ExecContext               &ec,
     if (parsed.is_error() || parsed.value() <= 0 ||
         static_cast<u64>(parsed.value()) > SIZE_MAX)
     {
-      KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "invalid process limit",
-                              "the limit must be a positive integer");
+      KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Invalid process limit",
+                              "The limit must be a positive integer");
 
       return 1;
     }
@@ -929,8 +929,8 @@ EvilPS::execute(const ExecContext               &ec,
   }
 
   if (operands.count() > 1) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "too many operands",
-                            "specify at most one process id");
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[1], "Too many operands",
+                            "Specify at most one process id");
 
     return 1;
   }
@@ -941,8 +941,8 @@ EvilPS::execute(const ExecContext               &ec,
     sort_key = resolve_sort_key(FLAG_EVILPS_SORT.value());
     if (!sort_key.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_EVILPS_SORT.value_location(),
-                              "invalid sort key",
-                              "use name, pid, cpu, or memory");
+                              "Invalid sort key",
+                              "Use name, pid, cpu, or memory");
 
       return 1;
     }

@@ -120,7 +120,7 @@ Split::execute(const ExecContext               &ec,
 
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > maximum) {
       KOSHKIT_REPORT_ERROR_AT(flag.value_location(),
-                              "invalid " + name + " '" + flag.value() + "'",
+                              "Invalid " + name + " '" + flag.value() + "'",
                               note);
 
       return false;
@@ -135,7 +135,7 @@ Split::execute(const ExecContext               &ec,
 
   if (FLAG_SPLIT_SUFFIX_LENGTH.is_set() &&
       !do_parse_count(FLAG_SPLIT_SUFFIX_LENGTH, "suffix length", 64,
-                      "use a decimal integer from 1 through 64", suffix_length))
+                      "Use a decimal integer from 1 through 64", suffix_length))
   {
     return 1;
   }
@@ -145,14 +145,14 @@ Split::execute(const ExecContext               &ec,
 
   if (is_byte_mode &&
       !do_parse_count(FLAG_SPLIT_BYTES, "byte count", UINT64_MAX,
-                      "use a positive decimal integer", unit_limit))
+                      "Use a positive decimal integer", unit_limit))
   {
     return 1;
   }
 
   if (FLAG_SPLIT_LINES.is_set() &&
       !do_parse_count(FLAG_SPLIT_LINES, "line count", UINT64_MAX,
-                      "use a positive decimal integer", unit_limit))
+                      "Use a positive decimal integer", unit_limit))
   {
     return 1;
   }

@@ -47,7 +47,7 @@ path_error_message(StringView verb,
                    Allocator  allocator) throws -> String
 {
   let const reason  = os::last_system_error_message();
-  let       message = String{allocator, "cannot "};
+  let       message = String{allocator, "Cannot "};
 
   message += verb;
   message += " '";

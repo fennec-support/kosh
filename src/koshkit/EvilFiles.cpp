@@ -391,8 +391,8 @@ EvilFiles::execute(const ExecContext               &ec,
   let const allocator = cxt.scratch_allocator();
 
   if (!os::has_process_open_file_listing()) {
-    report_soft_koshkit_error(ec, cxt, "open file listing is unavailable",
-                              "this platform exposes no open file table");
+    report_soft_koshkit_error(ec, cxt, "Open file listing is unavailable",
+                              "This platform exposes no open file table");
 
     return 1;
   }
@@ -407,9 +407,9 @@ EvilFiles::execute(const ExecContext               &ec,
     if (parsed.is_error()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EVILFILES_PID.value_location(),
-          "invalid process id '" +
+          "Invalid process id '" +
               String{allocator, FLAG_EVILFILES_PID.value()} + "'",
-          "provide a decimal process id");
+          "Provide a decimal process id");
 
       return 1;
     }
@@ -424,9 +424,9 @@ EvilFiles::execute(const ExecContext               &ec,
     if (!wanted_owner.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EVILFILES_USER.value_location(),
-          "no such user '" + String{allocator, FLAG_EVILFILES_USER.value()} +
+          "No such user '" + String{allocator, FLAG_EVILFILES_USER.value()} +
               "'",
-          "provide a user name or numeric uid");
+          "Provide a user name or numeric uid");
 
       return 1;
     }
@@ -435,8 +435,8 @@ EvilFiles::execute(const ExecContext               &ec,
   let const processes = os::enumerate_processes();
 
   if (processes.is_empty()) {
-    report_soft_koshkit_error(ec, cxt, "the process listing is unavailable",
-                              "this platform exposes no process table");
+    report_soft_koshkit_error(ec, cxt, "The process listing is unavailable",
+                              "This platform exposes no process table");
 
     return 1;
   }

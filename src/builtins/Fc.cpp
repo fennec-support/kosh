@@ -138,9 +138,9 @@ report_fc_selection_error(const ExecContext    &ec,
 {
   if (error == fc_selection_error::OutOfRange) {
     report_soft_builtin_error(ec, cxt, location,
-                              "history specification out of range");
+                              "History specification out of range");
   } else {
-    report_soft_builtin_error(ec, cxt, location, "no command found");
+    report_soft_builtin_error(ec, cxt, location, "No command found");
   }
 
   return 1;
@@ -298,7 +298,7 @@ execute_fc_command(const ExecContext               &ec,
       operand_position + 1 < args.count())
   {
     report_soft_builtin_error(ec, cxt, operand_locations[operand_position + 1],
-                              "too many arguments");
+                              "Too many arguments");
 
     return 1;
   }
@@ -318,7 +318,7 @@ execute_fc_command(const ExecContext               &ec,
       !remember_fc_command(cxt, events, active_index, command.view()))
   {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
-                              "cannot replace the history event");
+                              "Cannot replace the history event");
 
     return 1;
   }
@@ -398,7 +398,7 @@ edit_fc_commands(const ExecContext                          &ec,
 
   if (!temp_path.has_value()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
-                              "cannot create the editor file");
+                              "Cannot create the editor file");
 
     return 1;
   }
@@ -432,14 +432,14 @@ edit_fc_commands(const ExecContext                          &ec,
 
   if (!edited.has_value()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
-                              "cannot read the editor file");
+                              "Cannot read the editor file");
 
     return 1;
   }
 
   if (!os::remove_file(temp_path->text().view())) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
-                              "cannot remove the editor file");
+                              "Cannot remove the editor file");
 
     return 1;
   }

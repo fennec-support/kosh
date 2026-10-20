@@ -54,8 +54,8 @@ csplit_output_name(const csplit_name_format &format,
 
   if (digits.length() > format.digit_count) {
     throw ErrorWithLocationAndDetails{format.width_location,
-                                      "output file suffixes are exhausted",
-                                      "increase the suffix width with -n"};
+                                      "Output file suffixes are exhausted",
+                                      "Increase the suffix width with -n"};
   }
 
   String name{allocator, format.prefix};
@@ -86,7 +86,7 @@ write_csplit_part(const ExecContext           &ec,
 
   if (!descriptor.has_value()) {
     report_soft_koshkit_util_error(ec, cxt, "csplit",
-                                   "cannot create '" + name +
+                                   "Cannot create '" + name +
                                        "': " + os::last_system_error_message());
 
     return false;
@@ -117,7 +117,7 @@ write_csplit_part(const ExecContext           &ec,
     if (!os::write_all(*descriptor, part_start, byte_count)) {
       report_soft_koshkit_util_error(
           ec, cxt, "csplit",
-          "cannot write '" + name + "': " + os::last_system_error_message());
+          "Cannot write '" + name + "': " + os::last_system_error_message());
 
       return false;
     }
@@ -148,8 +148,8 @@ Csplit::execute(const ExecContext               &ec,
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_CSPLIT_DIGITS.value_location(),
-          "invalid suffix width '" + FLAG_CSPLIT_DIGITS.value() + "'",
-          "use a positive decimal integer within the platform size limit");
+          "Invalid suffix width '" + FLAG_CSPLIT_DIGITS.value() + "'",
+          "Use a positive decimal integer within the platform size limit");
 
       return 1;
     }
@@ -184,8 +184,8 @@ Csplit::execute(const ExecContext               &ec,
                              : FLAG_CSPLIT_DIGITS.value_location();
 
     KOSHKIT_REPORT_ERROR_AT(
-        location, "the output filename component is too long",
-        "shorten the output prefix or reduce the suffix width");
+        location, "The output filename component is too long",
+        "Shorten the output prefix or reduce the suffix width");
 
     return 1;
   }
@@ -225,8 +225,8 @@ Csplit::execute(const ExecContext               &ec,
     if (!numeric.is_error()) {
       if (numeric.value() == 0) {
         throw ErrorWithLocationAndDetails{
-            pattern_location, "line number is outside the input",
-            "use a positive line number within the input"};
+            pattern_location, "Line number is outside the input",
+            "Use a positive line number within the input"};
       }
 
       u64 numeric_target = numeric.value() - 1;
@@ -238,8 +238,8 @@ Csplit::execute(const ExecContext               &ec,
           }
 
           throw ErrorWithLocationAndDetails{
-              pattern_location, "line number is outside the input",
-              "use a repeat that stays within the remaining input"};
+              pattern_location, "Line number is outside the input",
+              "Use a repeat that stays within the remaining input"};
         }
 
         numeric_target = static_cast<u64>(current_line) + numeric.value();
@@ -251,8 +251,8 @@ Csplit::execute(const ExecContext               &ec,
         }
 
         throw ErrorWithLocationAndDetails{
-            pattern_location, "line number is outside the input",
-            "use a positive line number within the input"};
+            pattern_location, "Line number is outside the input",
+            "Use a positive line number within the input"};
       }
 
       target_line = static_cast<usize>(numeric_target);
@@ -283,12 +283,12 @@ Csplit::execute(const ExecContext               &ec,
 
       if (delimiter_position >= pattern.length) {
         let note = String{cxt.scratch_allocator(),
-                          "close the expression with the same "};
+                          "Close the expression with the same "};
 
         note += delimiter;
         note += " delimiter";
         throw ErrorWithLocationAndDetails{
-            pattern_location, "unterminated regular expression", note.view()};
+            pattern_location, "Unterminated regular expression", note.view()};
       }
 
       should_write_part = pattern[0] == '/';
@@ -302,8 +302,8 @@ Csplit::execute(const ExecContext               &ec,
 
         if (parsed_offset.is_error() || is_offset_out_of_range) {
           throw ErrorWithLocationAndDetails{
-              pattern_location, "invalid regular expression offset",
-              "use an optional signed decimal offset after the closing "
+              pattern_location, "Invalid regular expression offset",
+              "Use an optional signed decimal offset after the closing "
               "delimiter"};
         }
 
@@ -315,8 +315,8 @@ Csplit::execute(const ExecContext               &ec,
 
       if (!maybe_compiled.has_value()) {
         throw ErrorWithLocationAndDetails{
-            pattern_location, "invalid regular expression",
-            "use a valid basic regular expression"};
+            pattern_location, "Invalid regular expression",
+            "Use a valid basic regular expression"};
       }
 
       let &compiled = *maybe_compiled;
@@ -345,8 +345,8 @@ Csplit::execute(const ExecContext               &ec,
         }
 
         throw ErrorWithLocationAndDetails{
-            pattern_location, "regular expression did not match",
-            "use a pattern that matches a remaining input line"};
+            pattern_location, "Regular expression did not match",
+            "Use a pattern that matches a remaining input line"};
       }
 
       let const adjusted_line = static_cast<i128>(matched_line) + offset;
@@ -357,15 +357,15 @@ Csplit::execute(const ExecContext               &ec,
         }
 
         throw ErrorWithLocationAndDetails{
-            pattern_location, "regular expression offset is outside the input",
-            "use an offset that selects a line within the input"};
+            pattern_location, "Regular expression offset is outside the input",
+            "Use an offset that selects a line within the input"};
       }
 
       target_line = static_cast<usize>(adjusted_line);
     } else {
       throw ErrorWithLocationAndDetails{
-          pattern_location, "invalid pattern '" + pattern + "'",
-          "use a positive line number, /BRE/[offset], %BRE%[offset], or "
+          pattern_location, "Invalid pattern '" + pattern + "'",
+          "Use a positive line number, /BRE/[offset], %BRE%[offset], or "
           "{count}"};
     }
 
@@ -377,8 +377,8 @@ Csplit::execute(const ExecContext               &ec,
 
     if (target_line < current_line) {
       throw ErrorWithLocationAndDetails{
-          pattern_location, "split point precedes the current segment",
-          "choose a split point at or after the current segment"};
+          pattern_location, "Split point precedes the current segment",
+          "Choose a split point at or after the current segment"};
     }
 
     /* at this point: current_line <= target_line <= lines.count(). */
@@ -410,8 +410,8 @@ Csplit::execute(const ExecContext               &ec,
       if (!has_previous_nonrepeat_pattern) {
         throw ErrorWithLocationAndDetails{
             operand_locations[pattern_index],
-            "repeat has no preceding line or regular expression pattern",
-            "place the repeat immediately after the pattern it repeats"};
+            "Repeat has no preceding line or regular expression pattern",
+            "Place the repeat immediately after the pattern it repeats"};
       }
 
       let const repeat = pattern.substring_of_length(1, pattern.length - 2);
@@ -427,8 +427,8 @@ Csplit::execute(const ExecContext               &ec,
         if (repeat_count.is_error()) {
           throw ErrorWithLocationAndDetails{
               operand_locations[pattern_index],
-              "invalid repeat count '" + repeat + "'",
-              "use a nonnegative decimal repeat count or *"};
+              "Invalid repeat count '" + repeat + "'",
+              "Use a nonnegative decimal repeat count or *"};
         }
 
         for (u64 repetition = 0; repetition < repeat_count.value();

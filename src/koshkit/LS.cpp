@@ -885,7 +885,7 @@ render_directory_block(StringView             directory,
 
   if (!entries.has_value()) {
     report_soft_koshkit_util_error(run.ec, run.cxt, "ls",
-                                   "cannot open directory '" +
+                                   "Cannot open directory '" +
                                        String{allocator, directory} + "'");
     run.status = 2;
 
@@ -939,9 +939,9 @@ resolve_depth_limit(const ExecContext &ec,
   if (parsed.is_error() || parsed.value() < 1) {
     report_soft_koshkit_util_error(
         ec, cxt, utility_name,
-        "invalid level '" +
+        "Invalid level '" +
             String{cxt.scratch_allocator(), FLAG_LS_LEVEL.value()} + "'",
-        "the level is a positive whole number");
+        "The level is a positive whole number");
 
     return false;
   }
@@ -1060,7 +1060,7 @@ LS::execute(const ExecContext               &ec,
 
     if (target_results[index].error_number != 0) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "cannot access '" +
+                                     "Cannot access '" +
                                          String{allocator, target} +
                                          "': no such file or directory");
       run.status = 2;

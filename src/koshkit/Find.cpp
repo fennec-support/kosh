@@ -681,7 +681,7 @@ Find::execute(const ExecContext               &ec,
 
     if (!predicate_kind.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(arg_locations[index],
-                              "unknown predicate '" +
+                              "Unknown predicate '" +
                                   String{cxt.scratch_allocator(), predicate} +
                                   "'",
                               "Use `-name`, `-iname`, `-type`, `-maxdepth`, "

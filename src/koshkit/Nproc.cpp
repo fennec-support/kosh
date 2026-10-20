@@ -36,8 +36,8 @@ Nproc::execute(const ExecContext               &ec,
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "unexpected operand '" + operands[0] + "'",
-                            "nproc accepts flags without operands");
+                            "Unexpected operand '" + operands[0] + "'",
+                            "Only flags are accepted, without operands");
 
     return 1;
   }
@@ -50,9 +50,9 @@ Nproc::execute(const ExecContext               &ec,
     if (parsed.is_error()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_NPROC_IGNORE.value_location(),
-          "invalid number '" +
+          "Invalid number '" +
               String{cxt.scratch_allocator(), FLAG_NPROC_IGNORE.value()} + "'",
-          "use an unsigned decimal count");
+          "Use an unsigned decimal count");
 
       return 1;
     }

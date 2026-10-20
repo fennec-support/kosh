@@ -140,7 +140,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     /* at this point: target parses as an i64 and does not start with %. */
     if (!cxt.runtime_state().is_posix_mode()) {
       report_soft_builtin_error(ec, cxt, operand_locations[i],
-                                "pid " + target +
+                                "The pid " + target +
                                     " is not a child of this shell",
                                 "List the running jobs with `jobs -l`");
     }

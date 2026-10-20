@@ -64,16 +64,16 @@ echo second
 first
 second
 == selection errors ==
-121:7: error: Builtin `fc`: no command found.
+121:7: error: Builtin `fc`: No command found.
    121 |  fc -s missing-prefix
        |        ^~~~~~~~~~~~~~
 missing-rc=1
-123:7: error: Builtin `fc`: no command found.
+123:7: error: Builtin `fc`: No command found.
    123 |  fc -s -0
        |        ^~
 zero-rc=1
 return 7
-fc:1:1: error: Builtin `return`: can only `return' from a function or sourced script.
+fc:1:1: error: Builtin `return`: Can only `return' from a function or sourced script.
      1 |  return 7
        |  ^~~~~~~~
 129:1: trace:
