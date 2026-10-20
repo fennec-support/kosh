@@ -320,7 +320,8 @@ struct make_rule
 {
   explicit make_rule(Allocator allocator)
       : target(allocator), prerequisites(allocator), recipe_lines(allocator),
-        variable_assignments(allocator), prerequisite_line_locations(allocator)
+        variable_assignments(allocator), prerequisite_line_locations(allocator),
+        recipe_line_locations(allocator)
   {}
 
   String                    target;
@@ -328,6 +329,9 @@ struct make_rule
   ArrayList<String>         recipe_lines;
   ArrayList<String>         variable_assignments;
   ArrayList<SourceLocation> prerequisite_line_locations;
+  /* The makefile line of each recipe line, or an empty location for a
+     built-in rule. */
+  ArrayList<SourceLocation> recipe_line_locations;
 };
 
 struct make_dependent
@@ -2661,12 +2665,17 @@ parse_makefile_into(EvalContext                     &cxt,
 
       if (!line.is_empty() && line[0] == '\t') {
         if (do_is_active()) {
-          for (usize index : current_rule_indices)
+          for (usize index : current_rule_indices) {
             mk.rules[index].recipe_lines.push_managed(line.substring(1));
+            mk.rules[index].recipe_line_locations.push(logical.source_span);
+          }
 
-          for (usize index : current_pattern_indices)
+          for (usize index : current_pattern_indices) {
             mk.pattern_rules[index].rule.recipe_lines.push_managed(
                 line.substring(1));
+            mk.pattern_rules[index].rule.recipe_line_locations.push(
+                logical.source_span);
+          }
         }
 
         continue;
@@ -3062,6 +3071,7 @@ parse_makefile_into(EvalContext                     &cxt,
                 existing->prerequisites.clear();
                 existing->prerequisite_line_locations.clear();
                 existing->recipe_lines.clear();
+                existing->recipe_line_locations.clear();
               }
 
               for (String &prerequisite : new_prerequisites) {
@@ -3098,12 +3108,17 @@ parse_makefile_into(EvalContext                     &cxt,
         }
 
         if (!inline_recipe.is_empty()) {
-          for (usize index : current_rule_indices)
+          for (usize index : current_rule_indices) {
             mk.rules[index].recipe_lines.push_managed(inline_recipe);
+            mk.rules[index].recipe_line_locations.push(mk.active_source_span);
+          }
 
-          for (usize index : current_pattern_indices)
+          for (usize index : current_pattern_indices) {
             mk.pattern_rules[index].rule.recipe_lines.push_managed(
                 inline_recipe);
+            mk.pattern_rules[index].rule.recipe_line_locations.push(
+                mk.active_source_span);
+          }
         }
 
         continue;
@@ -3233,6 +3248,7 @@ parse_makefile(EvalContext                     &cxt,
         }
 
         rule.recipe_lines.push_managed(recipe_line);
+        rule.recipe_line_locations.push(SourceLocation{});
       }
 
       mk.add_rule(steal(rule));
@@ -3413,16 +3429,28 @@ build_target(const ExecContext        &ec,
         "' is part of a dependency cycle"
     };
 
-  ArrayList<String> recipe_lines{cxt.scratch_allocator()};
-  ArrayList<String> prerequisites{cxt.scratch_allocator()};
-  ArrayList<String> target_assignments{cxt.scratch_allocator()};
-  ArrayList<String> explicit_prerequisites{cxt.scratch_allocator()};
-  String            target_stem{cxt.scratch_allocator()};
-  String            inferred_first_prerequisite{cxt.scratch_allocator()};
-  const make_rule  *explicit_rule     = mk.find_rule(goal);
-  bool              has_explicit_rule = explicit_rule != nullptr;
-  String            automatic_target{cxt.scratch_allocator(), goal};
-  String            archive_member{cxt.scratch_allocator()};
+  ArrayList<String>         recipe_lines{cxt.scratch_allocator()};
+  ArrayList<SourceLocation> recipe_locations{cxt.scratch_allocator()};
+  ArrayList<String>         prerequisites{cxt.scratch_allocator()};
+  ArrayList<String>         target_assignments{cxt.scratch_allocator()};
+  ArrayList<String>         explicit_prerequisites{cxt.scratch_allocator()};
+  String                    target_stem{cxt.scratch_allocator()};
+
+  let const do_take_recipe = [&](const make_rule &rule) throws {
+    recipe_lines.clear();
+    recipe_locations.clear();
+    for (usize index = 0; index < rule.recipe_lines.count(); index++) {
+      recipe_lines.push(rule.recipe_lines[index].clone());
+      recipe_locations.push(index < rule.recipe_line_locations.count()
+                                ? rule.recipe_line_locations[index]
+                                : SourceLocation{});
+    }
+  };
+  String           inferred_first_prerequisite{cxt.scratch_allocator()};
+  const make_rule *explicit_rule     = mk.find_rule(goal);
+  bool             has_explicit_rule = explicit_rule != nullptr;
+  String           automatic_target{cxt.scratch_allocator(), goal};
+  String           archive_member{cxt.scratch_allocator()};
 
   if (let const open = goal.find_character('('); open.has_value() &&
                                                  goal.length > *open + 1 &&
@@ -3443,8 +3471,7 @@ build_target(const ExecContext        &ec,
     for (let const &prerequisite : explicit_rule->prerequisites)
       explicit_prerequisites.push(prerequisite.clone());
 
-    for (let const &recipe : explicit_rule->recipe_lines)
-      recipe_lines.push(recipe.clone());
+    do_take_recipe(*explicit_rule);
 
     for (let const &assignment : explicit_rule->variable_assignments)
       target_assignments.push(assignment.clone());
@@ -3503,6 +3530,9 @@ build_target(const ExecContext        &ec,
       for (let const &recipe : stored_pattern_rule.rule.recipe_lines)
         pattern_rule.rule.recipe_lines.push(recipe.clone());
 
+      for (let const location : stored_pattern_rule.rule.recipe_line_locations)
+        pattern_rule.rule.recipe_line_locations.push(location);
+
       for (let const &assignment :
            stored_pattern_rule.rule.variable_assignments)
         pattern_rule.rule.variable_assignments.push(assignment.clone());
@@ -3548,10 +3578,7 @@ build_target(const ExecContext        &ec,
       for (String &prerequisite : candidate)
         inferred_prerequisites.push(steal(prerequisite));
 
-      recipe_lines.clear();
-
-      for (let const &recipe : pattern.recipe_lines)
-        recipe_lines.push(recipe.clone());
+      do_take_recipe(pattern);
 
       target_assignments.clear();
 
@@ -3617,10 +3644,7 @@ build_target(const ExecContext        &ec,
 
         inferred_first_prerequisite = source.clone();
         prerequisites.push(steal(source));
-        recipe_lines.clear();
-
-        for (let const &recipe : suffix_rule->recipe_lines)
-          recipe_lines.push(recipe.clone());
+        do_take_recipe(*suffix_rule);
 
         target_stem = stem.clone();
         break;
@@ -3631,8 +3655,7 @@ build_target(const ExecContext        &ec,
       if (const make_rule *fallback = mk.find_rule(".DEFAULT");
           fallback != nullptr)
       {
-        for (let const &recipe : fallback->recipe_lines)
-          recipe_lines.push(recipe.clone());
+        do_take_recipe(*fallback);
 
         inferred_first_prerequisite = String{cxt.scratch_allocator(), goal};
       } else {
@@ -3914,11 +3937,15 @@ build_target(const ExecContext        &ec,
   let const should_ignore_target_errors =
       options.should_ignore_errors || mk.ignored_targets.find(goal).has_value();
 
-  for (let const &recipe : recipe_lines) {
-    let  body                 = recipe.view();
-    bool is_silent            = false;
-    bool should_ignore_errors = false;
-    bool should_force_run     = false;
+  for (usize recipe_index = 0; recipe_index < recipe_lines.count();
+       recipe_index++)
+  {
+    let const &recipe               = recipe_lines[recipe_index];
+    let const  recipe_location      = recipe_locations[recipe_index];
+    let        body                 = recipe.view();
+    bool       is_silent            = false;
+    bool       should_ignore_errors = false;
+    bool       should_force_run     = false;
 
     while (!body.is_empty() &&
            (body[0] == '@' || body[0] == '-' || body[0] == '+'))
@@ -3975,7 +4002,9 @@ build_target(const ExecContext        &ec,
       }
     }
 
-    let subshell_command = String{cxt.scratch_allocator(), "(\n"};
+    /* The subshell opens on the recipe line, so a trace through it shows the
+       recipe and not a line of its own. */
+    let subshell_command = String{cxt.scratch_allocator(), "( "};
 
     subshell_command += recipe_source.view();
     subshell_command += "\n)";
@@ -3990,9 +4019,10 @@ build_target(const ExecContext        &ec,
     i32 status = 0;
 
     try {
-      status = cxt.run_source(subshell_command.view(), "make",
-                              ec.source_location(), StringView{"make"}, nullptr,
-                              nullptr, return_handling::Consume);
+      status = cxt.run_source(
+          subshell_command.view(), "make",
+          recipe_location.length != 0 ? recipe_location : ec.source_location(),
+          StringView{"make"}, nullptr, nullptr, return_handling::Consume);
       if (os::INTERRUPT_REQUESTED || status == 130) {
         os::INTERRUPT_REQUESTED = 0;
 
