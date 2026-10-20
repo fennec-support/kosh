@@ -27,7 +27,8 @@ loads, changes, and writes these settings.
 .PP
 Startup shell code belongs in the startup files listed under FILES. The
 .B kosh
-mood sources none unless init_moods selects some. See STARTUP MOODS.
+mood sources only ~/.koshrc unless init_moods selects more. See STARTUP MOODS
+and KOSHRC.
 .SH FILES
 .TP
 .IR /etc/kosh.conf " or " %ProgramData%\kosh\kosh.conf
@@ -183,7 +184,7 @@ mood, so loading it never produces a warning.
 init_moods lists the moods whose startup files an interactive or login
 shell sources, in order, each file parsed under the grammar of its mood.
 It is empty by default, which sources the files of the session mood and so
-none in the
+only ~/.koshrc in the
 .B kosh
 mood. It is the configured form of
 .BR \-L ,
