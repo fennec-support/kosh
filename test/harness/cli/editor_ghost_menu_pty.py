@@ -468,8 +468,14 @@ class Report:
 
 
 def clear_line(session):
-    session.send(CTRL_C)
-    session.wait_until(is_line(""))
+    # A Ctrl-C that only closes an open menu leaves the line, so the empty
+    # line must last a moment before the next keys go out.
+    for _ in range(3):
+        session.send(CTRL_C)
+        session.wait_until(is_line(""))
+        settle(session, 0.05)
+        if is_line("")(session.screen):
+            return
 
 def type_text(session, text):
     for byte in text:
