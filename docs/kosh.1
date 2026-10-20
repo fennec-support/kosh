@@ -3787,8 +3787,10 @@ applies a value to the current session.
 .TP
 .BR KOSH_WELCOME ", " KOSH_FAREWELL
 A value is printed once at interactive startup (KOSH_WELCOME) or exit
-(KOSH_FAREWELL), prefixed with the shell name. A value of zero display width
-prints nothing. When unset, the shell prints a built-in greeting and farewell.
+(KOSH_FAREWELL), prefixed with the shell name. An unset value or a value of
+zero display width prints nothing. An interactive shell sets both to a
+greeting and a farewell unless the environment holds them, so an exported
+empty value disables the message.
 .TP
 .B KOSH_ANSI_*
 The variables BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, their

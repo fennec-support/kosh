@@ -322,6 +322,32 @@ def run_message_checks(binary, directory, command_directory, report):
         os.remove(configuration)
 
 
+def run_message_default_checks(binary, directory, command_directory, report):
+    session = Session(binary, directory, command_directory, COLUMNS)
+    try:
+        session.wait_until(lambda screen: screen.get_prompt_row() >= 0)
+        session.send(b'echo "${KOSH_WELCOME:+w}${KOSH_FAREWELL:+f}"\r')
+        report.record("interactive-shell-sets-the-messages", session,
+                      has_rows(["wf"]))
+    finally:
+        session.close()
+
+    session = Session(binary, directory, command_directory, COLUMNS,
+                      extra_environment={"KOSH_WELCOME": "",
+                                         "KOSH_FAREWELL": ""})
+    try:
+        report.record("exported-empty-welcome-prints-no-row", session,
+                      lambda screen: screen.get_prompt_row() == 0)
+        mark = len(session.raw)
+        session.send(b"exit\r")
+        session.wait_until(lambda screen: False)
+        report.record("exported-empty-farewell-prints-no-row", session,
+                      lambda screen: bytes(session.raw[mark:]).count(b"\n")
+                      <= 1)
+    finally:
+        session.close()
+
+
 def run_job_notice_checks(binary, directory, report):
     sleep_path = shutil.which("sleep")
     if sleep_path is None:
@@ -402,6 +428,8 @@ def main():
         run_job_notice_checks(binary, directory, report)
         run_prompt_pad_checks(binary, directory, command_directory, report)
         run_message_checks(binary, directory, command_directory, report)
+        run_message_default_checks(binary, directory, command_directory,
+                                   report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1

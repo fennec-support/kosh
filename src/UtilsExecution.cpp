@@ -873,12 +873,10 @@ quit(i32 code, farewell_policy farewell) throws -> void
     {
       let const farewell = QUIT_CONTEXT->get_variable_value("KOSH_FAREWELL");
 
-      if (!farewell.has_value() ||
+      if (farewell.has_value() &&
           toiletline::get_display_width(farewell->view()) > 0)
       {
-        let message = farewell.has_value()
-                          ? String{heap_allocator(), farewell->view()}
-                          : String{heap_allocator(), "Goodbye :c"};
+        let message = String{heap_allocator(), farewell->view()};
 
         if (code != 0) {
           message += " (Code ";

@@ -1774,6 +1774,22 @@ seed_session_variables(EvalContext                 &context,
                                toiletline::get_default_prompt_template());
   }
 
+  if (is_interactive && !os::has_environment_variable("KOSH_WELCOME")) {
+    StringView welcome;
+
+    switch (identity.session_mood) {
+    case mimic_mood::Posix:     welcome = "POSIX me harder!"; break;
+    case mimic_mood::Bash:
+    case mimic_mood::BashPosix: welcome = "Bash me harder!"; break;
+    case mimic_mood::Default:   welcome = "Welcome :3"; break;
+    }
+
+    context.set_shell_variable("KOSH_WELCOME", welcome);
+  }
+
+  if (is_interactive && !os::has_environment_variable("KOSH_FAREWELL"))
+    context.set_shell_variable("KOSH_FAREWELL", "Goodbye :c");
+
   if (!os::has_environment_variable("PS2"))
     context.set_shell_variable("PS2", "> ");
   if (!os::has_environment_variable("PS4"))
@@ -2185,8 +2201,7 @@ enter_line_editor(EvalContext &context) throws -> void
 }
 
 static fn
-start_line_editor(EvalContext               &context,
-                  const invocation_identity &identity) throws -> void
+start_line_editor(EvalContext &context) throws -> void
 {
   if (toiletline::is_active()) return;
 
@@ -2197,16 +2212,9 @@ start_line_editor(EvalContext               &context,
   toiletline::enable_job_notifications(context);
   toiletline::set_colors_enabled(colors::stdout_wants_color());
   if (let const welcome = context.get_variable_value("KOSH_WELCOME");
-      welcome.has_value())
+      welcome.has_value() && toiletline::get_display_width(welcome->view()) > 0)
   {
-    if (toiletline::get_display_width(welcome->view()) > 0)
-      show_message(welcome->view());
-  } else {
-    show_message(identity.session_mood == mimic_mood::Posix ? "POSIX me harder!"
-                 : (identity.session_mood == mimic_mood::Bash ||
-                    identity.session_mood == mimic_mood::BashPosix)
-                     ? "Bash me harder!"
-                     : "Welcome :3");
+    show_message(welcome->view());
   }
 
   toiletline::exit_raw_mode();
@@ -2315,14 +2323,13 @@ struct interactive_session
   history_expansion_state expansion_state{};
 
   fn
-  read_line(EvalContext               &context,
-            BumpArena                 &ast_arena,
-            const invocation_identity &identity,
-            const command_line        &line,
-            i32                        exit_code,
-            script_chunk              &chunk) throws -> void
+  read_line(EvalContext        &context,
+            BumpArena          &ast_arena,
+            const command_line &line,
+            i32                 exit_code,
+            script_chunk       &chunk) throws -> void
   {
-    start_line_editor(context, identity);
+    start_line_editor(context);
 
     context.notify_done_jobs();
 
@@ -2976,7 +2983,7 @@ kosh_main(int argc, char **argv) -> int
       } else if (input.should_read_files) {
         cursor.read_next_file(context, chunk);
       } else if (input.should_be_interactive) {
-        session.read_line(context, ast_arena, identity, line, exit_code, chunk);
+        session.read_line(context, ast_arena, line, exit_code, chunk);
       } else {
         unreachable("the input loop has no configured input source");
       }

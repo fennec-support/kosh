@@ -284,7 +284,7 @@ class Screen:
 
 class Session:
     def __init__(self, binary, directory, command_directory, columns=COLUMNS,
-                 rows=ROWS, rcfile="/dev/null"):
+                 rows=ROWS, rcfile="/dev/null", extra_environment=None):
         environment = {
             "PATH": command_directory,
             "HOME": directory,
@@ -293,6 +293,7 @@ class Session:
             "LANG": "C.UTF-8",
             "RPS1": "",
         }
+        environment.update(extra_environment or {})
         self.screen = Screen()
         self.raw = bytearray()
         self.pid, self.fd = pty.fork()

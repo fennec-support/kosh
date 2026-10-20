@@ -305,12 +305,12 @@ inline constexpr static_string_entry<shell_variable_description>
          {"The value specifies the z frecency store.",
           shell_variable_fact::Plain}                                        },
         {SSK("KOSH_WELCOME"),
-         {"A nonempty value is printed once at interactive startup, and an "
-          "empty value prints nothing.",
+         {"The value is printed once at interactive startup, and an unset or "
+          "zero-width value prints nothing.",
           shell_variable_fact::Plain}                                        },
         {SSK("KOSH_FAREWELL"),
-         {"A nonempty value is printed once at exit, and an empty value prints "
-          "nothing.",
+         {"The value is printed once at exit, and an unset or zero-width value "
+          "prints nothing.",
           shell_variable_fact::Plain}                                        },
         {SSK("KOSH_GIT_BRANCH"),
          {"The branch name is read from the repository that contains the "

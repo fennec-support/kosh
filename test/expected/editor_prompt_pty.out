@@ -31,4 +31,7 @@ interactive-menu-pads-an-empty-prompt PASS
 plain-selector-drops-the-pad PASS
 zero-width-welcome-prints-no-row PASS
 zero-width-farewell-prints-no-row PASS
+interactive-shell-sets-the-messages PASS
+exported-empty-welcome-prints-no-row PASS
+exported-empty-farewell-prints-no-row PASS
 status=0
