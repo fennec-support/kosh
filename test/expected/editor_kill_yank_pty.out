@@ -112,6 +112,10 @@ slurp-vi-write-quit-saves PASS
 slurp-leaves-a-text-file-unnumbered PASS
 slurp-vi-quit-leaves-the-file PASS
 slurp-refuses-a-binary-file PASS
+slurp-tall-file-shows-the-rows-around-the-caret PASS
+slurp-tall-file-follows-the-caret-up PASS
+slurp-up-on-the-first-line-recalls-no-history PASS
+slurp-tall-file-saves-every-line PASS
 abort-at-the-prompt-restores-the-terminal PASS
 segfault-at-the-prompt-restores-the-terminal PASS
 status=0

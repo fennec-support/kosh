@@ -28,6 +28,9 @@
 # Ctrl-C ends the shell in emacs mode.
 # slurp numbers the lines of a script, saves it on a second Enter or on :wq,
 # leaves it on :q!, leaves a text file unnumbered, and refuses a binary file.
+# A file taller than the terminal shows a window of rows that follows the
+# caret, Up on its first line recalls no shell history, and saving keeps every
+# line.
 # :set turns an option off with a no prefix, shows it with a question mark,
 # and completes the option with Tab, and M-x set-option lists the matching
 # options, completes the option with Tab, and sets it. :format formats the
@@ -60,7 +63,7 @@ import time
 from editor_ghost_menu_pty import (BACKSPACE, LEFT, WAIT_SECONDS, Report,
                                    Session, clear_line, has_hint,
                                    get_state, has_hint_header, is_line,
-                                   settle)
+                                   settle, UP)
 
 
 CTRL_A = b"\x01"
@@ -882,6 +885,46 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.close()
 
 
+def has_numbered_rows(first, last):
+    def do_check(screen):
+        numbers = [int(line.split()[0]) for line in screen.get_lines()
+                   if line.strip() and line.split()[0].isdigit()]
+        return numbers == list(range(first, last + 1))
+    return do_check
+
+
+def run_tall_slurp_checks(binary, directory, command_directory, report):
+    script = os.path.join(directory, "slurp-tall.sh")
+    with open(script, "w") as handle:
+        handle.write("#!/bin/sh\n")
+        for number in range(2, 61):
+            handle.write("echo line%d\n" % number)
+    session = Session(binary, directory, command_directory, rows=20)
+    try:
+        session.wait_until(is_line(""))
+        session.send(b"slurp slurp-tall.sh\r")
+        report.record("slurp-tall-file-shows-the-rows-around-the-caret",
+                      session, has_numbered_rows(43, 60))
+        session.send(UP * 30)
+        report.record("slurp-tall-file-follows-the-caret-up", session,
+                      has_numbered_rows(30, 47))
+        session.send(b"X")
+        session.send(UP * 40)
+        report.record("slurp-up-on-the-first-line-recalls-no-history", session,
+                      lambda screen: has_numbered_rows(1, 18)(screen)
+                      and any(line.rstrip() == "   1 #!/bin/sh"
+                              for line in screen.get_lines()))
+        session.send(b"\r")
+        session.wait_until(has_hint("press enter again to save it"))
+        session.send(b"\r")
+        report.record("slurp-tall-file-saves-every-line", session,
+                      lambda screen: is_line("")(screen)
+                      and read_slurped(script).count("\n") == 60
+                      and "echo line30X\n" in read_slurped(script))
+    finally:
+        session.close()
+
+
 def run_fatal_signal_checks(binary, directory, command_directory, report):
     for name, signal_number in (("abort", signal.SIGABRT),
                                 ("segfault", signal.SIGSEGV)):
@@ -933,6 +976,7 @@ def main():
         run_checks(binary, directory, command_directory, report)
         run_ctrl_x_mode_checks(binary, directory, command_directory, report)
         run_slurp_checks(binary, directory, command_directory, report)
+        run_tall_slurp_checks(binary, directory, command_directory, report)
         run_fatal_signal_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)

@@ -1980,9 +1980,13 @@ private:
 
 static CalcHistorySwap CALC_HISTORY_SWAP{};
 
+/* True between enter_empty_history() and leave_empty_history(). */
+static bool IS_SHELL_HISTORY_HIDDEN = false;
+
 static fn
 get_active_history_file_path() -> koshka::Maybe<koshka::Path>
 {
+  if (IS_SHELL_HISTORY_HIDDEN) return koshka::None;
   if (CALC_HISTORY_SWAP.is_active()) return get_calc_history_file_path();
 
   return get_history_file_path();
@@ -2008,6 +2012,10 @@ enter_empty_history() -> void
   capture_history_snapshot(HIDDEN_SHELL_HISTORY);
   ::itl_g_history_free();
   ::itl_g_history_enabled = false;
+  IS_SHELL_HISTORY_HIDDEN = true;
+  /* Up and Down also walk a snapshot of the history file, so its provider is
+     detached until the history returns. */
+  ::tl_set_history_search_snapshot_callback(nullptr);
 }
 
 fn
@@ -2016,7 +2024,9 @@ leave_empty_history() -> void
   if (!HIDDEN_SHELL_HISTORY.is_valid) return;
 
   restore_history_snapshot(HIDDEN_SHELL_HISTORY);
-  HIDDEN_SHELL_HISTORY = history_snapshot{};
+  HIDDEN_SHELL_HISTORY    = history_snapshot{};
+  IS_SHELL_HISTORY_HIDDEN = false;
+  ::tl_set_history_search_snapshot_callback(provide_history_search_snapshot);
 }
 
 fn

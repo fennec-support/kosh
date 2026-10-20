@@ -1598,7 +1598,7 @@ Ctrl\-X Ctrl\-C, and Ctrl\-D on an empty buffer leave without saving, and
 Ctrl\-C leaves with status 130. Every colon and M\-x command works. The
 .BR \-\-mode " vi or " "\-\-mode emacs"
 option selects the key set for the session. Up and Down do not recall shell
-history. A file with a NUL byte or invalid UTF\-8, a file longer than 65535
+history. A file taller than the terminal shows the lines around the caret. A file with a NUL byte or invalid UTF\-8, a file longer than 65535
 bytes, and a restricted shell are refused. A file with CRLF line endings keeps
 them, and the final newline of the file is kept.
 .TP
@@ -2813,6 +2813,10 @@ The interactive editor starts in emacs mode.
 selects vi mode and
 .B set \-o emacs
 restores emacs mode.
+.PP
+Input taller than the terminal shows only the rows around the caret, leaving
+two rows for hints, and the shown rows follow the caret as it moves. The ghost
+suggestion and the right prompt are not drawn while the input is that tall.
 .PP
 With a ghost suggestion at the end of the line, the right arrow and
 End accept all of it. Ctrl\-Right and Alt\-F accept only its next word.
