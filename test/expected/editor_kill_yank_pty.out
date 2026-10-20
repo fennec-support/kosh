@@ -103,6 +103,7 @@ prompt-command-sees-the-usual-terminal PASS
 extended-keys-requested-after-the-prompt-command PASS
 kitty-ctrl-d-ends-the-shell PASS
 vi-mode-ignores-ctrl-x PASS
+vi-ex-edit-replaces-the-line PASS
 ctrl-x-ctrl-c-ends-the-shell PASS
 slurp-numbers-the-lines-of-a-script PASS
 slurp-asks-for-a-second-enter-to-save PASS

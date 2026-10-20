@@ -2835,7 +2835,9 @@ not found or exits with another status, the line is unchanged and a message
 appears above the prompt. The key does nothing under
 .BR \-T .
 Ctrl\-X Ctrl\-U undoes the last edit. The Ctrl\-X chords work in emacs mode
-only.
+only, and the vi command
+.B :e
+opens the line in the editor in their place.
 .PP
 A key waiting for another key, such as Ctrl\-X or a vi operator, shows the keys
 that complete it on the hint rows below the input until the next key arrives.
@@ -3395,6 +3397,10 @@ Format the row of the caret, or the whole buffer, the way
 .B \-\-format
 does, as one undo step. A source that does not parse stays as it is, and its
 first error appears on the hint rows.
+.TP
+.BR :e ", " :edit
+Open the line in the editor selected by VISUAL, EDITOR, or vi, as Ctrl\-X
+Ctrl\-E does in emacs mode.
 .TP
 .BR :u ", " :undo
 Undo.

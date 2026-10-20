@@ -24,7 +24,8 @@
 # every match with g, and :u undoes it. Alt-X opens the M-x minibuffer, whose
 # hint lists the commands, Tab completes a command, replace-string replaces
 # every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat.
-# Vi mode ignores Ctrl-X, and Ctrl-X Ctrl-C ends the shell in emacs mode.
+# Vi mode ignores Ctrl-X, :e opens the line in VISUAL there, and Ctrl-X
+# Ctrl-C ends the shell in emacs mode.
 # slurp numbers the lines of a script, saves it on a second Enter or on :wq,
 # leaves it on :q!, leaves a text file unnumbered, and refuses a binary file.
 # :set turns an option off with a no prefix, shows it with a question mark,
@@ -790,6 +791,20 @@ def run_ctrl_x_mode_checks(binary, directory, command_directory, report):
                       and get_state(screen)[0] == "ab"
                       and CTRL_X_HEADER not in "\n".join(
                           screen.get_lines()))
+        session.send(KITTY_CTRL_C)
+        session.wait_until(is_line(""))
+        session.send(("VISUAL=%s\r" % os.path.join(command_directory,
+                                                   "fake-visual")).encode())
+        session.wait_until(is_line(""))
+        session.send(b"echo draft")
+        session.wait_until(is_line("echo draft"))
+        mark = len(session.raw)
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                           in get_raw_since(session, mark))
+        session.send(b":e\r")
+        report.record("vi-ex-edit-replaces-the-line", session,
+                      is_line("echo draft EDITED"))
         session.send(KITTY_CTRL_C)
         session.wait_until(is_line(""))
         session.send(b"set -o emacs; echo vi-chord-off\r")
