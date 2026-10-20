@@ -14,6 +14,7 @@
 #include "Koshkit.hpp"
 #include "LanguageServerProtocol.hpp"
 #include "Utils.hpp"
+#include "base/Hive.hpp"
 
 namespace koshka::language_server {
 
@@ -148,7 +149,7 @@ public:
   DocumentStore() : m_documents(heap_allocator()) {}
 
   pure fn
-  get_documents() wontthrow -> ArrayList<Document> &
+  get_documents() wontthrow -> Hive<Document> &
   {
     return m_documents;
   }
@@ -171,7 +172,9 @@ public:
   close(StringView uri) throws -> void;
 
 private:
-  ArrayList<Document> m_documents;
+  /* A Document handed out by pointer stays at its address while other
+     documents open and close. */
+  Hive<Document> m_documents;
 };
 
 pure fn
@@ -220,9 +223,8 @@ DocumentStore::open(StringView uri,
   if (document.path.has_value())
     document.canonical_path = os::canonical_path(*document.path);
   document.mood = mood_for(document);
-  m_documents.push(steal(document));
 
-  return &m_documents.back();
+  return m_documents.emplace(steal(document));
 }
 
 fn
@@ -245,11 +247,8 @@ DocumentStore::change(StringView uri,
 fn
 DocumentStore::close(StringView uri) throws -> void
 {
-  for (usize index = 0; index < m_documents.count(); index++) {
-    if (m_documents[index].uri != uri) continue;
-    m_documents.remove(index);
-    break;
-  }
+  if (let *document = find(uri); document != nullptr)
+    m_documents.erase(document);
 }
 
 class AuxiliaryDiagnostics
