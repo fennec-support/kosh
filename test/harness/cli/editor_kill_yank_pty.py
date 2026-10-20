@@ -24,8 +24,9 @@
 # every match with g, and :u undoes it. Alt-X opens the M-x minibuffer, whose
 # hint lists the commands, Tab completes a command, replace-string replaces
 # every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat.
-# :set turns an option off with a no prefix and shows it with a question
-# mark, and M-x set-option completes the option with Tab and sets it. A
+# :set turns an option off with a no prefix, shows it with a question mark,
+# and completes the option with Tab, and M-x set-option lists the matching
+# options, completes the option with Tab, and sets it. A
 # pasted script longer than 16 kilobytes runs whole. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
 # the external editor, and the option turns the request off. Every editing
@@ -415,6 +416,14 @@ def run_vi_ex_checks(session, report):
     session.send(b"set editor.auto_close_brackets_and_quotes?\r")
     report.record("vi-ex-set-query-shows-the-value", session,
                   has_minibuffer("editor.auto_close_brackets_and_quotes=off"))
+    session.send(b":")
+    session.wait_until(has_minibuffer(":"))
+    session.send(b"set editor.auto_cl\t")
+    report.record("vi-ex-set-completes-the-option", session,
+                  has_minibuffer(":set editor.auto_close_brackets_and_quotes"))
+    session.send(KITTY_ESCAPE)
+    session.wait_until(lambda screen: not has_minibuffer(
+        ":set editor.auto_close_brackets_and_quotes")(screen))
     session.send(b"i")
     session.send(KITTY_CTRL_C)
     session.wait_until(is_line(""))
@@ -455,7 +464,10 @@ def run_minibuffer_checks(session, report):
     clear_line(session)
     session.send(ALT_X + b"set-option\r")
     session.wait_until(has_minibuffer("Set option:"))
-    session.send(b"editor.auto_close_br\t")
+    session.send(b"editor.auto_close_br")
+    report.record("alt-x-set-option-lists-matching-options", session,
+                  has_hint("editor.auto_close_brackets_and_quotes"))
+    session.send(b"\t")
     report.record("alt-x-set-option-completes-the-option", session,
                   has_minibuffer(
                       "Set option: editor.auto_close_brackets_and_quotes"))

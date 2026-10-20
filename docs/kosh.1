@@ -3338,7 +3338,8 @@ shows its value. A bare
 .I option
 turns a boolean option on and shows any other one, and
 .BI no option
-turns a boolean option off. The result appears on the hint rows until the next
+turns a boolean option off. Tab completes the option, and the hint rows list
+the options that match it. The result appears on the hint rows until the next
 key.
 .TP
 .BR :save " [\fIoption\fR]"
@@ -3384,7 +3385,8 @@ Run the last M\-x command again with the same answers, as Ctrl\-X z does.
 .BR set\-option ", " get\-option
 Ask for a
 .B koshconf
-option, which Tab completes, and for
+option, which Tab completes from the matching options listed on the hint
+rows, and for
 .B set\-option
 its new value, then set or show it. The result appears on the hint rows until
 the next key.

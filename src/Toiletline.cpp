@@ -938,6 +938,22 @@ complete_option_name(koshka::StringView prefix) throws -> const char *
 }
 
 fn
+list_option_names(koshka::StringView prefix) throws -> const char *
+{
+  OPTION_RESULT = koshka::String{koshka::heap_allocator()};
+
+  for (let const &option : koshka::get_option_registry()) {
+    let const name = koshka::StringView{option.koshconf_name};
+
+    if (name.is_empty() || !name.starts_with(prefix)) continue;
+    if (!OPTION_RESULT.is_empty()) OPTION_RESULT += '\n';
+    OPTION_RESULT += name;
+  }
+
+  return OPTION_RESULT.c_str();
+}
+
+fn
 describe_unknown_option(koshka::StringView name) throws -> const char *
 {
   let const suggestion = koshka::suggest_koshconf_option_name(name);
@@ -1032,6 +1048,9 @@ kosh_option_callback(tl_option_action action,
   try {
     if (action == TL_OPTION_COMPLETE) {
       return complete_option_name(koshka::StringView{name, strlen(name)});
+    }
+    if (action == TL_OPTION_LIST) {
+      return list_option_names(koshka::StringView{name, strlen(name)});
     }
 
     let const is_restricted = cxt.runtime_state().option_is_enabled(
