@@ -55,7 +55,9 @@
 # case pattern end before the closer of its subshell while a parenthesized
 # pattern steps over its own. A file name with control bytes completes in the
 # $'...' form, and neither the ghost nor the menu writes those bytes raw to the
-# terminal. Every wait polls for the expected final
+# terminal. A koshconf option menu keeps narrowing when the first letter typed
+# after Tab matches nothing alone, as q or a does. Every wait polls for the
+# expected final
 # state under a deadline, so a failure reports the last screen instead of
 # hanging. Each check prints one stable PASS line for the golden output.
 
@@ -1206,6 +1208,20 @@ def run_checks(binary, directory, command_directory, report):
         session.send(b"uotes")
         report.record("menu-finds-a-subsequence-after-an-empty-byte", session,
                       is_menu(["editor.auto_close_brackets_and_quotes"]))
+        session.send(ESCAPE)
+        session.wait_until(is_menu_closed)
+        clear_line(session)
+
+        session.send(b"koshconf set \t")
+        session.wait_until(lambda screen: screen.get_menu() is not None)
+        settle(session, 0.5)
+        session.send(b"a")
+        settle(session, 0.5)
+        session.send(b"uto_close")
+        report.record("menu-keeps-matches-typed-after-a-first-letter", session,
+                      lambda screen: screen.get_menu() is not None
+                      and "editor.auto_close_brackets_and_quotes"
+                      in screen.get_menu()[0])
         session.send(ESCAPE)
         session.wait_until(is_menu_closed)
         clear_line(session)
