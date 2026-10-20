@@ -25,7 +25,8 @@
 # hint lists the commands, Tab completes a command, replace-string replaces
 # every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat.
 # :set turns an option off with a no prefix and shows it with a question
-# mark, and M-x set-option completes the option with Tab and sets it. The prompt asks for the kitty and
+# mark, and M-x set-option completes the option with Tab and sets it. A
+# pasted script longer than 16 kilobytes runs whole. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
 # the external editor, and the option turns the request off. Every editing
 # Ctrl and Alt key in the table acts the same in its legacy bytes, which a
@@ -710,6 +711,11 @@ def run_checks(binary, directory, command_directory, report):
 
         run_vi_ex_checks(session, report)
         run_minibuffer_checks(session, report)
+
+        script = "x=0\n" + "x=$((x + 1))\n" * 1500 + "echo total=$x"
+        session.send(b"\x1b[200~" + script.encode() + b"\x1b[201~\r")
+        report.record("pasted-long-script-runs-whole", session,
+                      has_output("total=1500", 1))
         run_key_table_checks(session, report)
         run_extended_key_checks(session, report, directory)
     finally:

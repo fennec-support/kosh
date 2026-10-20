@@ -59,6 +59,7 @@ ctrl-x-z-repeats-the-replacement PASS
 alt-x-undo-undoes-the-repeat PASS
 alt-x-set-option-completes-the-option PASS
 alt-x-set-option-sets-the-value PASS
+pasted-long-script-runs-whole PASS
 ctrl-a-acts-the-same-in-every-encoding PASS
 ctrl-b-acts-the-same-in-every-encoding PASS
 ctrl-d-acts-the-same-in-every-encoding PASS

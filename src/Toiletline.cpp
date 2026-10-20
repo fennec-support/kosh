@@ -119,6 +119,8 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 #endif
 #define TL_ASSERT           ASSERT
 #define TL_HISTORY_MAX_SIZE (1024 * 4)
+/* A whole shell script fits in one buffer. */
+#define TL_STRING_MAX_LEN 65535
 
 } /* namespace */
 

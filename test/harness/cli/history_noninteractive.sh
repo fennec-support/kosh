@@ -180,12 +180,7 @@ echo "== history rejects a truncated UTF-8 imported sequence =="
 "$BIN" -c 'history -r "$1"; echo "rc=$?"' history-test \
   "$dir/invalid-utf8" 2>/dev/null
 
-: > "$dir/oversized"
-byte_count=0
-while [ "$byte_count" -lt 4096 ]; do
-  printf x >> "$dir/oversized"
-  byte_count=$((byte_count + 1))
-done
+head -c 65536 /dev/zero | tr '\000' x > "$dir/oversized"
 printf '\n' >> "$dir/oversized"
 echo "== an oversized decoded record is reported =="
 KOSH_HISTORY_FILE="$dir/oversized" "$BIN" --no-init-files -c 'history' 2>&1 | \
