@@ -20,7 +20,10 @@
 # an arrow keeps the arrow. Ctrl-Z undoes at the prompt and leaves the shell
 # running, Ctrl-Shift-Z in its kitty and xterm encodings redoes, and
 # Alt-T keeps trailing blanks in place. Leaving the vi : command line by
-# Escape or Backspace keeps the caret where the colon was typed. The prompt asks for the kitty and
+# Escape or Backspace keeps the caret where the colon was typed, :s replaces
+# every match with g, and :u undoes it. Alt-X opens the M-x minibuffer, whose
+# hint lists the commands, Tab completes a command, replace-string replaces
+# every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
 # the external editor, and the option turns the request off. Every editing
 # Ctrl and Alt key in the table acts the same in its legacy bytes, which a
@@ -65,6 +68,7 @@ CTRL_X_HEADER = "pressed ctrl-x"
 CTRL_X_HINT = "waiting for ctrl-e (edit in $VISUAL)"
 ALT_DOT = b"\x1b."
 ALT_T = b"\x1bt"
+ALT_X = b"\x1bx"
 ALT_Y = b"\x1by"
 EXTENDED_KEYS_ON = b"\x1b[>1u\x1b[>4;1m"
 EXTENDED_KEYS_OFF = b"\x1b[<u\x1b[>4m"
@@ -376,8 +380,59 @@ def run_vi_ex_checks(session, report):
                       is_line("echo bcd"))
         session.send(KITTY_CTRL_C)
         session.wait_until(is_line(""))
+    session.send(b"echo foo foo")
+    session.wait_until(is_line("echo foo foo"))
+    mark = len(session.raw)
+    session.send(KITTY_ESCAPE)
+    session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                       in get_raw_since(session, mark))
+    session.send(b":")
+    session.wait_until(has_minibuffer(":"))
+    session.send(b"s/foo/bar/g\r")
+    report.record("vi-ex-substitute-replaces-every-match", session,
+                  is_line("echo bar bar"))
+    session.send(b":")
+    session.wait_until(has_minibuffer(":"))
+    session.send(b"u\r")
+    report.record("vi-ex-undo-restores-the-line", session,
+                  is_line("echo foo foo"))
+    session.send(KITTY_CTRL_C)
+    session.wait_until(is_line(""))
     session.send(b"set -o emacs; echo vi-ex-off\r")
     session.wait_until(has_output("vi-ex-off", 1))
+
+
+def has_minibuffer(text):
+    return lambda screen: any(line.strip() == text
+                              for line in screen.get_lines())
+
+
+def run_minibuffer_checks(session, report):
+    session.send(b"echo aa aa")
+    session.wait_until(is_line("echo aa aa"))
+    session.send(ALT_X)
+    report.record("alt-x-hint-lists-commands", session,
+                  lambda screen: has_minibuffer("pressed M-x")(screen)
+                  and has_hint("replace-string")(screen))
+    session.send(b"replace-s\t")
+    report.record("alt-x-tab-completes-the-command", session,
+                  has_minibuffer("M-x replace-string"))
+    session.send(b"\r")
+    session.wait_until(has_minibuffer("Replace string:"))
+    session.send(b"aa\r")
+    session.wait_until(has_minibuffer("Replace string aa with:"))
+    session.send(b"b\r")
+    report.record("alt-x-replace-string-replaces-every-match", session,
+                  is_line("echo b b"))
+    session.send(b" aa")
+    session.wait_until(is_line("echo b b aa"))
+    session.send(CTRL_X + b"z")
+    report.record("ctrl-x-z-repeats-the-replacement", session,
+                  is_line("echo b b b"))
+    session.send(ALT_X + b"undo\r")
+    report.record("alt-x-undo-undoes-the-repeat", session,
+                  is_line("echo b b aa"))
+    clear_line(session)
 
 
 def run_checks(binary, directory, command_directory, report):
@@ -626,6 +681,7 @@ def run_checks(binary, directory, command_directory, report):
                       and b"runtime error" not in bytes(session.raw[mark:]))
 
         run_vi_ex_checks(session, report)
+        run_minibuffer_checks(session, report)
         run_key_table_checks(session, report)
         run_extended_key_checks(session, report, directory)
     finally:

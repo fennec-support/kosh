@@ -3105,6 +3105,13 @@ Redo.
 .B Ctrl\-X Ctrl\-E
 Edit the line in the editor selected by VISUAL or EDITOR.
 .TP
+.B Alt\-X
+Open the M\-x minibuffer, described under
+.BR "Emacs M\-x commands" .
+.TP
+.B Ctrl\-X z
+Run the last M\-x command again.
+.TP
 .B Ctrl\-R
 Search the history.
 .TP
@@ -3123,7 +3130,8 @@ Enter multi-cursor mode.
 .B Paste
 Insert bracketed paste text without running it.
 .SS Vi insert mode keys
-Every emacs mode key works except Ctrl\-V, which does nothing.
+Every emacs mode key works except Ctrl\-V, Alt\-X, and Ctrl\-X z, which do
+nothing.
 .TP
 .B Escape
 Enter command mode, moving one character left.
@@ -3281,7 +3289,7 @@ Leave the selection and act as in emacs mode.
 .SS Vi colon commands
 The colon key in command mode opens a command line under the buffer. Enter
 runs it, and Escape, Ctrl\-C, Ctrl\-D, or Backspace on an empty command closes
-it. Only a substitution changes the line.
+it. Only a substitution, an undo, and a redo change the line.
 .TP
 .BR :q ", " :q! ", " :quit ", " :wq ", " :wq! ", " :x
 Leave the shell with the status of the last command.
@@ -3304,8 +3312,72 @@ through
 .B \e9
 for its groups. The substitution is one undo step.
 .TP
+.BR :& ", " :&& ", " :s
+Repeat the last substitution on the row of the caret,
+.B :&&
+with its
+.B g
+flag and the others without it.
+.B :%&
+and
+.B :%&&
+act on every row.
+.TP
+.BR :u ", " :undo
+Undo.
+.TP
+.BR :red ", " :redo
+Redo.
+.TP
 .I other
 Do nothing and report nothing, ranges and arguments included.
+.SS Emacs M\-x commands
+Alt\-X in emacs mode opens a minibuffer under the buffer that takes the
+command to run. Tab completes the command, Enter runs it, and Escape,
+Ctrl\-C, Ctrl\-D, or Backspace on an empty minibuffer closes it. The hint rows
+list the commands that start with the text typed so far. An unknown command
+does nothing.
+.TP
+.B replace\-string
+Ask for a text and its replacement, then replace every occurrence of the text
+in the buffer as one undo step.
+.TP
+.B replace\-regexp
+Ask for a basic regular expression and its replacement, then replace every
+match in the buffer as one undo step. In the replacement,
+.B \e&
+stands for the match and
+.B \e1
+through
+.B \e9
+for its groups.
+.TP
+.B repeat
+Run the last M\-x command again with the same answers, as Ctrl\-X z does.
+.TP
+.B kill\-kosh
+Leave the shell with the status of the last command.
+.TP
+.BR undo ", " undo\-redo
+Undo, or redo.
+.TP
+.BR beginning\-of\-line ", " end\-of\-line ", " forward\-word ", " backward\-word
+Move the caret as Ctrl\-A, Ctrl\-E, Alt\-F, and Alt\-B do.
+.TP
+.BR beginning\-of\-history ", " end\-of\-history
+Recall the first or the last history entry, as Alt\-< and Alt\-> do.
+.TP
+.BR delete\-char ", " backward\-delete\-char ", " kill\-word ", " backward\-kill\-word
+Delete as Delete, Backspace, Alt\-D, and Ctrl\-W do.
+.TP
+.BR kill\-line ", " unix\-line\-discard ", " yank ", " yank\-last\-arg
+Kill or yank as Ctrl\-K, Ctrl\-U, Ctrl\-Y, and Alt\-. do.
+.TP
+.BR transpose\-chars ", " transpose\-words
+Transpose as Ctrl\-T and Alt\-T do.
+.TP
+.B clear\-screen
+Clear the screen as Ctrl\-L does.
 .SS Emacs multi-cursor keys
 .TP
 .BR Up ", " Down ", " Ctrl\-P ", " Ctrl\-N

@@ -48,6 +48,13 @@ repeated-stop-editor-is-ended PASS
 arithmetic-brackets-highlight-cleanly PASS
 vi-ex-escape-keeps-the-caret PASS
 vi-ex-backspace-keeps-the-caret PASS
+vi-ex-substitute-replaces-every-match PASS
+vi-ex-undo-restores-the-line PASS
+alt-x-hint-lists-commands PASS
+alt-x-tab-completes-the-command PASS
+alt-x-replace-string-replaces-every-match PASS
+ctrl-x-z-repeats-the-replacement PASS
+alt-x-undo-undoes-the-repeat PASS
 ctrl-a-acts-the-same-in-every-encoding PASS
 ctrl-b-acts-the-same-in-every-encoding PASS
 ctrl-d-acts-the-same-in-every-encoding PASS
