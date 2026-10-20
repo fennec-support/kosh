@@ -7,6 +7,11 @@
      1 |  koshkit bc
        |  ^~~~~~~~~~
 note: An operand is missing.
+=== bc unknown function keeps the typed name ===
+-c:1:1: error: Koshkit `bc`: Unknown calculator function 'x'.
+     1 |  koshkit bc
+       |  ^~~~~~~~~~
+note: Check the spelling, or use a function that the calculator supports.
 === killall arg count ===
 -c:1:19: error: Koshkit `killall`: expects one process name.
      1 |  koshkit killall a b

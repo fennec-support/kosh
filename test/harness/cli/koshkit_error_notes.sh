@@ -10,6 +10,9 @@ printf "'a\\n" | "$BIN" -c 'koshkit xargs echo' 2>&1
 echo "=== bc expression note follows the excerpt ==="
 printf '1+\n' | "$BIN" -c 'koshkit bc' 2>&1
 
+echo "=== bc unknown function keeps the typed name ==="
+printf 'x(\n' | "$BIN" -c 'koshkit bc' 2>&1
+
 echo "=== killall arg count ==="
 "$BIN" -c 'koshkit killall a b' 2>&1
 

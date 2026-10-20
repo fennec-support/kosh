@@ -48,6 +48,46 @@ bc_digit_value(char byte) wontthrow -> u32
 /* memory: one String in allocator, returned to the caller.
    time:   O(program.length), one pass with constant work per byte.
            the output is no longer than program. */
+/* The text of an evaluator message without the prefix that bc adds to its
+   variable and function words. */
+static fn
+strip_bc_prefix(StringView text, Allocator allocator) throws -> String
+{
+  let const prefix   = StringView{"__bc_"};
+  let       result   = String{allocator};
+  usize     position = 0;
+
+  while (position < text.length) {
+    if (text.substring(position).starts_with(prefix)) {
+      position += prefix.length;
+      continue;
+    }
+    result.push(text[position]);
+    position++;
+  }
+
+  return result;
+}
+
+static fn
+report_bc_error(const ExecContext &ec,
+                EvalContext       &cxt,
+                const Error       &error) throws -> void
+{
+  let const message =
+      strip_bc_prefix(error.message().view(), cxt.scratch_allocator());
+
+  if (error.detail_message().is_empty()) {
+    report_soft_koshkit_util_error(ec, cxt, "bc", message.view());
+    return;
+  }
+
+  let const note =
+      strip_bc_prefix(error.detail_message(), cxt.scratch_allocator());
+
+  report_soft_koshkit_util_error(ec, cxt, "bc", message.view(), note.view());
+}
+
 static fn
 bc_strip_comments(StringView program, Allocator allocator) throws
     -> String
@@ -1254,12 +1294,7 @@ bc_try_function_call(StringView         statement,
   try {
     result = bc_evaluate_function_call(statement, ec, cxt, runtime);
   } catch (const Error &error) {
-    if (error.detail_message().is_empty()) {
-      report_soft_koshkit_util_error(ec, cxt, "bc", error.message());
-    } else {
-      report_soft_koshkit_util_error(ec, cxt, "bc", error.message(),
-                                     error.detail_message());
-    }
+    report_bc_error(ec, cxt, error);
     runtime.status = 1;
     return true;
   }
@@ -1358,12 +1393,7 @@ bc_execute_simple(StringView         statement,
 
     bc_print_result(steal(result), ec, cxt, runtime);
   } catch (const Error &error) {
-    if (error.detail_message().is_empty()) {
-      report_soft_koshkit_util_error(ec, cxt, "bc", error.message());
-    } else {
-      report_soft_koshkit_util_error(ec, cxt, "bc", error.message(),
-                                     error.detail_message());
-    }
+    report_bc_error(ec, cxt, error);
     runtime.status = 1;
   }
 }
