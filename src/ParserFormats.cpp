@@ -688,7 +688,9 @@ template_construct_end(StringView source,
     }
 
     for (; at + 1 < end && source[at] != '\n'; at++) {
-      if (source[at] == '>' && source[at + 1] == '>') return at + 2;
+      if (source[at] == '>' && source[at + 1] == '>') {
+        return at + 2;
+      }
     }
   }
 
@@ -1262,8 +1264,9 @@ find_child_shell(StringView source,
 
     let const indent = parser_format_leading_spaces(line);
 
-    if (parent_indent != static_cast<usize>(-1) && indent <= parent_indent)
+    if (parent_indent != static_cast<usize>(-1) && indent <= parent_indent) {
       break;
+    }
     if (child_indent == static_cast<usize>(-1)) child_indent = indent;
     if (indent != child_indent) continue;
     if (!yaml_line_value(line, child_key).has_value()) continue;
@@ -1337,8 +1340,9 @@ selected_workflow_mood(StringView source,
       let const candidate = source.next_line(position);
 
       if (candidate.trim_blanks().is_empty()) continue;
-      if (!is_first && parser_format_leading_spaces(candidate) < key_column)
+      if (!is_first && parser_format_leading_spaces(candidate) < key_column) {
         break;
+      }
       is_first = false;
       if (yaml_key_position(candidate) != key_column) continue;
       if (let const shell = yaml_line_value(candidate, "shell")) {

@@ -1541,7 +1541,8 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws -
       if (!is_duplicate && item.terminator != case_terminator::ContinueMatch) {
         earlier_patterns.set(raw_pattern.view(), pattern->source_location());
       }
-      if (pattern_word.segments.count() == 1 &&
+      if (item.terminator != case_terminator::ContinueMatch &&
+          pattern_word.segments.count() == 1 &&
           pattern_word.segments[0].kind == WordSegment::Kind::UnquotedText &&
           !literal.is_empty() && literal[literal.count() - 1] == '*')
       {

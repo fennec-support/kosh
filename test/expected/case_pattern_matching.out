@@ -6,13 +6,6 @@ note: Add a `*)` branch, or write `*) ;;` to ignore other input.
     11 |  case hi in
        |       ^~
 note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-14:3: warning: An earlier `case` pattern is broader than this pattern and matches first. (SC2222)
-    14 |    hi) echo exact ;;
-       |    ^~
-12:3: details:
-    12 |    h*) echo h ;;&
-       |    ^~ this broader pattern shadows the later pattern.
-note: Move the specific pattern before the broader pattern.
 17:6: warning: This `case` has no default `*)` branch. (SC2249)
     17 |  case x in #comment
        |       ^
@@ -41,14 +34,7 @@ note: Add a `*)` branch, or write `*) ;;` to ignore other input.
     41 |  case x in a) echo hi;; esac
        |       ^
 note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-57:1: warning: An earlier `case` pattern is broader than this pattern and matches first. (SC2222)
-    57 |  hello) marks+="3" ;;
-       |  ^~~~~
-55:1: details:
-    55 |  h*) marks+="1" ;;&
-       |  ^~ this broader pattern shadows the later pattern.
-note: Move the specific pattern before the broader pattern.
-Encountered 11 warnings.
+Encountered 9 warnings.
 match
 b
 c

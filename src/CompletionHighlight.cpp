@@ -1464,7 +1464,7 @@ internal::scan_highlight_range(
     {
       if (c == '\n') {
         do_commit_pending_assignments();
-        is_command_position    = !is_case_pattern_expected;
+        is_command_position = !is_case_pattern_expected && !is_in_array_value;
         is_time_option_pending = false;
         highlight_command_word = StringView{};
         i++;

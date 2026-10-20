@@ -20,3 +20,12 @@ result=$("$BIN" --debug-highlight-at 'arr=("$HOME/bin"); if true; then :; fi')
 printf '%s\n' "$result" | grep -Fx "\$HOME${tab}variable"
 printf '%s\n' "$result" | grep -E "^if${tab}keyword$"
 printf '%s\n' "$result" | grep -E "^fi${tab}keyword$"
+
+result=$("$BIN" --debug-highlight-at 'arr=(
+then
+if
+); echo ok')
+printf '%s\n' "$result" | grep -E "^echo${tab}resolved-command$"
+if printf '%s\n' "$result" | grep -qE "${tab}(keyword|invalid-syntax)$"; then
+  printf 'a multi-line array element was read as a keyword\n'
+fi

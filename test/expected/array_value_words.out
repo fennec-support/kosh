@@ -5,3 +5,4 @@ echo	resolved-command
 $HOME	variable
 if	keyword
 fi	keyword
+echo	resolved-command
