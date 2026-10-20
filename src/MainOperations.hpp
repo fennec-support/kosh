@@ -2472,10 +2472,13 @@ source_init_moods(EvalContext                 &context,
           !context.runtime_state().option_is_enabled(
               shell_option_id::Privileged))
       {
-        if (let const rcfile = selected_rcfile(); rcfile.has_value())
+        if (let const rcfile = selected_rcfile(); rcfile.has_value()) {
           source_custom_rcfile(*rcfile, context);
-        else
-          source_home_file(".koshrc", context);
+        } else if (let const script = get_user_rc_script_path();
+                   script.has_value())
+        {
+          source_file(*script, context);
+        }
       }
 
       break;

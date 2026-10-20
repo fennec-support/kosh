@@ -16,6 +16,7 @@ link-kept
 editor.hints.show_command_synopsis=off
 == no temporary file is left in either directory:
 kosh.conf
+scripts
 kosh.conf
 kosh.conf.bak
 == an existing mode is kept:

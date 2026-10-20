@@ -500,8 +500,10 @@ replace_koshconf_target(const Path &target, StringView contents) throws
 
 } /* namespace */
 
-fn
-get_user_koshconf_path() throws -> Maybe<Path>
+/* The user Koshka configuration directory, or None for the superuser on
+   POSIX and when no base directory is known. */
+static fn
+get_user_kosh_directory() throws -> Maybe<Path>
 {
 #if !defined _WIN32
   if (os::get_effective_user_id() == 0) {
@@ -527,9 +529,31 @@ get_user_koshconf_path() throws -> Maybe<Path>
      from XDG_CONFIG_HOME, and on POSIX the effective user id is not 0. */
 
   config_home->append("kosh");
-  config_home->append("kosh.conf");
 
   return config_home;
+}
+
+fn
+get_user_koshconf_path() throws -> Maybe<Path>
+{
+  let path = get_user_kosh_directory();
+
+  if (path.has_value()) path->append("kosh.conf");
+
+  return path;
+}
+
+fn
+get_user_rc_script_path() throws -> Maybe<Path>
+{
+  let path = get_user_kosh_directory();
+
+  if (path.has_value()) {
+    path->append("scripts");
+    path->append("rc.kosh");
+  }
+
+  return path;
 }
 
 fn

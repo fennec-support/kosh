@@ -85,6 +85,7 @@ constexpr static_string_entry<mimic_mood> KOSHCONF_PRESET_ENTRIES[] = {
 constexpr StaticStringMap KOSHCONF_PRESETS{KOSHCONF_PRESET_ENTRIES};
 
 constexpr StringView LIST_HEADING{"# name=value"};
+constexpr StringView DEFAULT_RC_SCRIPT{". ~/.profile\n. ~/.bashrc\n"};
 
 struct koshconf_operands
 {
@@ -233,6 +234,22 @@ run_create(const ExecContext       &ec,
 
   report_written_file(ec, cxt, StringView{"preset="} + mood_name(*preset),
                       *path);
+
+  let const script = get_user_rc_script_path();
+
+  if (!script.has_value() || script->exists()) return 0;
+
+  /* at this point: the configuration file was written, and the user rc
+     script is absent, so its default is written. */
+  try {
+    write_koshconf_file(*script, DEFAULT_RC_SCRIPT);
+  } catch (const Error &error) {
+    report_caught_error(ec, cxt, ec.source_location(), error);
+
+    return 1;
+  }
+
+  report_written_file(ec, cxt, StringView{}, *script);
 
   return 0;
 }

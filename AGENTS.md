@@ -135,7 +135,8 @@ KOSHCONF, then removes KOSHCONF from the environment. It settles a configured
 mood before the input plan and applies configured init_moods for an interactive
 or login shell after it. A release build has no system-file override. Restricted
 or privileged invocations ignore KOSHCONF. An interactive non-login kosh
-mood reads ~/.koshrc and no system rc file.
+mood reads scripts/rc.kosh from the user configuration directory and no system
+rc file.
 
 A koshkit utility runs through run_as_multicall before shell startup. The chunk
 loop uses script_cursor, interactive_session, and lint_run. run_script_contents

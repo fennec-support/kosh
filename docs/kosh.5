@@ -27,8 +27,8 @@ loads, changes, and writes these settings.
 .PP
 Startup shell code belongs in the startup files listed under FILES. The
 .B kosh
-mood sources only ~/.koshrc unless init_moods selects more. See STARTUP MOODS
-and KOSHRC.
+mood sources only the user rc script unless init_moods selects more. See
+STARTUP MOODS and RC SCRIPT.
 .SH FILES
 .TP
 .IR /etc/kosh.conf " or " %ProgramData%\kosh\kosh.conf
@@ -56,10 +56,11 @@ final target is written. The written file keeps the permission bits of the
 file it replaces, and a new file is created with mode 0644 less the file
 creation mask. The directory is created when missing.
 .TP
-.I ~/.koshrc
-The user rc file of an interactive non-login
+.IR $XDG_CONFIG_HOME/kosh/scripts/rc.kosh " or " ~/.config/kosh/scripts/rc.kosh
+The user rc script of an interactive non-login
 .B kosh
-mood, described under KOSHRC.
+mood, described under RC SCRIPT. The base directory follows the same rules
+as the user settings file.
 .TP
 .I /etc/profile
 The system login file of the
@@ -184,7 +185,7 @@ mood, so loading it never produces a warning.
 init_moods lists the moods whose startup files an interactive or login
 shell sources, in order, each file parsed under the grammar of its mood.
 It is empty by default, which sources the files of the session mood and so
-only ~/.koshrc in the
+only the user rc script in the
 .B kosh
 mood. It is the configured form of
 .BR \-L ,
@@ -259,18 +260,31 @@ without an equals sign, an unknown option, an invalid value, an unclosed
 quote, text after a closing quote, and an option a file cannot hold each
 produce a warning identifying the file and line, and the line is skipped.
 A settings file never stops the shell.
-.SH KOSHRC
+.SH RC SCRIPT
 An interactive non-login shell in the
 .B kosh
-mood sources ~/.koshrc after the settings files, as the
+mood sources scripts/rc.kosh in the user configuration directory after the
+settings files, as the
 .B bash
-mood sources ~/.bashrc. /etc/koshrc is not read.
+mood sources ~/.bashrc. No system rc script, ~/.koshrc, or /etc/koshrc is
+read.
 .B \-\-rcfile
-replaces the file, and
+replaces the script, and
 .B \-\-norc
-or the privileged option skips it. Use ~/.koshrc only for what a settings file
-cannot hold, such as functions, aliases, and variables. Options belong in
+or the privileged option skips it. Use the script only for what a settings
+file cannot hold, such as functions, aliases, and variables. Options belong in
 .IR kosh.conf .
+.PP
+.B koshconf create
+writes the script when it is missing and never replaces it. The written
+script sources the POSIX and Bash rc files:
+.PP
+.RS
+.EX
+\&. ~/.profile
+\&. ~/.bashrc
+.EE
+.RE
 .PP
 A KOSH_WELCOME or KOSH_FAREWELL value of zero display width disables that
 message:

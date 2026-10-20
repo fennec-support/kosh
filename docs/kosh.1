@@ -212,12 +212,13 @@ Option parsing ends, and the next operand is the script.
 .TP
 .BR \-\-init\-file " " \fIFILE\fR ", " \-\-rcfile " " \fIFILE\fR
 FILE is the interactive rc file. The file replaces ~/.bashrc in an
-interactive non-login Bash mood, and ~/.koshrc in an interactive non-login
+interactive non-login Bash mood, and the user rc script in an interactive
+non-login
 .B kosh
 mood.
 .TP
 .B \-\-norc
-The interactive non-login Bash rc, ~/.koshrc, and a custom rc file are
+The interactive non-login Bash rc, the user rc script, and a custom rc file are
 skipped. Login profiles and BASH_ENV processing are unchanged.
 .TP
 .BR \-O " " \fINAME\fR ", " +O " " \fINAME\fR
@@ -962,7 +963,7 @@ line keep their values.
 .PP
 An interactive non-login shell in the
 .B kosh
-mood sources ~/.koshrc, as described in
+mood sources ~/.config/kosh/scripts/rc.kosh, as described in
 .BR kosh (5).
 No system rc file is sourced.
 A
@@ -1510,6 +1511,7 @@ preset to the user configuration file described in
 .BR kosh (5),
 and refuses to replace an existing file without
 .BR \-\-force .
+It also writes the default user rc script when that script is missing.
 .B set
 changes the option in the current session. With
 .BR \-\-persist ,

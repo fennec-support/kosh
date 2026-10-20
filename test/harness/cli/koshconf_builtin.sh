@@ -36,12 +36,18 @@ echo "rc=$?"
 grep -v -e '^#' -e '^$' "$conf" | grep -vc '^[a-z0-9_.]*='
 grep -c '^mood=kosh$' "$conf"
 do_compare_preset kosh
+echo "== create writes the default rc script, which sources the rc files:"
+script="$XDG_CONFIG_HOME/kosh/scripts/rc.kosh"
+grep -c -e '^\. ~/\.profile$' -e '^\. ~/\.bashrc$' "$script"
 echo "== create refuses an existing file without --force:"
 "$BIN" -c 'koshconf create bash' 2>&1 | sed "s|$config|CONFIG|; s|\\\\|/|g"
 echo "rc=${PIPESTATUS[0]}"
+printf 'echo mine\n' >"$script"
 "$BIN" -c 'koshconf create --force bash'
 echo "rc=$?"
 grep '^mood=' "$conf"
+echo "== create --force keeps an existing rc script:"
+cat "$script"
 echo "== the bash preset matches a fresh bash session:"
 do_compare_preset bash
 echo "== the bash preset leaves the alias default to the session:"
