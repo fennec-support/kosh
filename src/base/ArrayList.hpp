@@ -304,8 +304,7 @@ public:
   hot fn
   push(T value) throws -> void
   {
-    if constexpr (requires { value.move_to_allocator(m_allocator); })
-      value.move_to_allocator(m_allocator);
+    if constexpr (is_allocator_movable<T>) value.move_to_allocator(m_allocator);
 
     if (m_length == m_capacity) rarely
       reserve(static_cast<usize>(m_length) + 1);
@@ -1057,7 +1056,7 @@ public:
   hot fn
   push(T value) throws -> void
   {
-    if constexpr (requires { value.move_to_allocator(Base::allocator()); })
+    if constexpr (is_allocator_movable<T>)
       value.move_to_allocator(Base::allocator());
 
     let const index = lower_bound(value);

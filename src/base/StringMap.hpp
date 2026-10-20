@@ -203,7 +203,7 @@ public:
     moved.reserve(m_count);
 
     for_each([&](StringView key, Value &value) throws {
-      if constexpr (requires { value.move_to_allocator(allocator); })
+      if constexpr (is_allocator_movable<Value>)
         value.move_to_allocator(allocator);
 
       moved.set_value(key, steal(value));
