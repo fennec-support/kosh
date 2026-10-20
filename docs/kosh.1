@@ -3281,10 +3281,28 @@ Leave the selection and act as in emacs mode.
 .SS Vi colon commands
 The colon key in command mode opens a command line under the buffer. Enter
 runs it, and Escape, Ctrl\-C, Ctrl\-D, or Backspace on an empty command closes
-it. The line and the caret always stay unchanged.
+it. Only a substitution changes the line.
 .TP
 .BR :q ", " :q! ", " :quit ", " :wq ", " :wq! ", " :x
 Leave the shell with the status of the last command.
+.TP
+.BI :s/ old / new / \fR[\fBg\fR]
+Replace the first match of the basic regular expression
+.I old
+on the row of the caret with
+.IR new ,
+or every match with
+.BR g .
+.B :%s
+acts on every row of the buffer. Any punctuation byte can replace the slash,
+and a backslash keeps the delimiter literal. In
+.IR new ,
+.B &
+stands for the match and
+.B \e1
+through
+.B \e9
+for its groups. The substitution is one undo step.
 .TP
 .I other
 Do nothing and report nothing, ranges and arguments included.

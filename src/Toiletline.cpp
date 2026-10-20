@@ -112,6 +112,9 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 
 #define TL_NO_SUSPEND
 #define TL_CTRL_Z_UNDO
+#if defined _WIN32
+#define TL_REGEX_HEADER "../../vendor/regex/regex.h"
+#endif
 #define TL_ASSERT           ASSERT
 #define TL_HISTORY_MAX_SIZE (1024 * 4)
 
