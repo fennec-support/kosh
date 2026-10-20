@@ -3758,6 +3758,8 @@ The value specifies the command history file. The default is ~/.kosh_history.
 A value inherited from the environment overrides editor.history.file_path in
 the settings files. Like bash's HISTFILE, it is not exported unless inherited
 or exported explicitly. HISTFILE itself has no effect on the history file.
+A record longer than 65535 bytes is skipped when the file is read, and the
+other records stay available.
 .TP
 .B KOSH_HISTORY_SIZE
 The value limits the number of history events retained for recall, listing, and
