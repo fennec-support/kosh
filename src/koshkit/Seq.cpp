@@ -60,19 +60,23 @@ Seq::execute(const ExecContext               &ec,
     return true;
   };
 
-  if (operands.count() == 1) {
+  switch (operands.count()) {
+  case 1:
     if (!do_parse_integer(0, last)) return 1;
-  } else if (operands.count() == 2) {
+    break;
+  case 2:
     if (!do_parse_integer(0, first) || !do_parse_integer(1, last)) {
       return 1;
     }
-  } else if (operands.count() == 3) {
+    break;
+  case 3:
     if (!do_parse_integer(0, first) || !do_parse_integer(1, increment) ||
         !do_parse_integer(2, last))
     {
       return 1;
     }
-  } else {
+    break;
+  default:
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[3], "extra operand '" + operands[3] + "'",
         "use `seq LAST`, `seq FIRST LAST`, or `seq FIRST STEP LAST`");

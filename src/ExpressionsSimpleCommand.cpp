@@ -695,16 +695,20 @@ assign_redirected_fd(ExecContext                       &ec,
   Maybe<os::descriptor> *slot             = nullptr;
   bool                  *is_slot_borrowed = nullptr;
 
-  if (fd == 0) {
+  switch (fd) {
+  case 0:
     slot             = &ec.in_fd;
     is_slot_borrowed = &ec.is_in_fd_borrowed;
-  } else if (fd == 1) {
+    break;
+  case 1:
     slot             = &ec.out_fd;
     is_slot_borrowed = &ec.is_out_fd_borrowed;
-  } else if (fd == 2) {
+    break;
+  case 2:
     slot             = &ec.err_fd;
     is_slot_borrowed = &ec.is_err_fd_borrowed;
-  } else {
+    break;
+  default:
     bind_nonstandard_fd(
         nonstandard, nonstandard_descriptor{file_fd, fd, -1, is_file_borrowed});
 
@@ -1316,15 +1320,14 @@ match_reprinted_redirection(StringView source,
   if (byte == '>') {
     redirection.default_fd = 1;
 
-    if (next_byte == '&') {
+    switch (next_byte) {
+    case '&':
       redirection.spelling       = StringView{">&"};
       redirection.is_duplication = true;
-    } else if (next_byte == '>') {
-      redirection.spelling = StringView{">>"};
-    } else if (next_byte == '|') {
-      redirection.spelling = StringView{">|"};
-    } else {
-      redirection.spelling = StringView{">"};
+      break;
+    case '>': redirection.spelling = StringView{">>"}; break;
+    case '|': redirection.spelling = StringView{">|"}; break;
+    default:  redirection.spelling = StringView{">"}; break;
     }
   } else if (byte == '<') {
     redirection.default_fd = 0;

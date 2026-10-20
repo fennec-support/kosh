@@ -873,7 +873,14 @@ parse_file_mode(StringView     expression,
       case 'u':
       case 'g':
       case 'o': {
-        let const shift  = byte == 'u' ? 6u : byte == 'g' ? 3u : 0u;
+        u32 shift = 0;
+
+        switch (byte) {
+        case 'u': shift = 6; break;
+        case 'g': shift = 3; break;
+        default:  shift = 0; break;
+        }
+
         let const source = (mode >> shift) & 7;
 
         if ((selected_classes & 0700) != 0) requested_bits |= source << 6;

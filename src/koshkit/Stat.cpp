@@ -296,9 +296,13 @@ render_file_directive(String               &output,
   case 'r': {
     let const device_id =
         spec.letter == 'd' ? status.device_id : status.special_device_id;
-    let const value = spec.sub_field == 'H'   ? os::device_major(device_id)
-                      : spec.sub_field == 'L' ? os::device_minor(device_id)
-                                              : device_id;
+    u64 value = device_id;
+
+    switch (spec.sub_field) {
+    case 'H': value = os::device_major(device_id); break;
+    case 'L': value = os::device_minor(device_id); break;
+    default:  break;
+    }
 
     append_padded(output, decimal_of(value, allocator).view(), spec,
                   stat_value_kind::Numeric);

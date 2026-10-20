@@ -1106,15 +1106,18 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
                                    !is_in_double_quote &&
                                    !was_in_parameter_expansion;
 
-      if (byte == '{') {
+      switch (byte) {
+      case '{':
         if (is_unquoted_byte) has_open_brace = true;
-      } else if (byte == '.') {
+        break;
+      case '.':
         if (is_unquoted_byte && position + 1 < source_text.length &&
             source_text[position + 1] == '.')
         {
           has_double_dot = true;
         }
-      } else if (byte == '$') {
+        break;
+      case '$':
         if (is_unquoted_byte) has_dollar_byte = true;
         if (position + 1 < source_text.length &&
             source_text[position + 1] == '[')
@@ -1141,6 +1144,8 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
             is_expansion_in_quotes = is_in_double_quote;
           parameter_expansion_depth++;
         }
+        break;
+      default: break;
       }
     }
 

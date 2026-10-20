@@ -541,12 +541,20 @@ internal::advance_shell_keyword_state(StringView           word,
 
     let phase = highlight_construct_phase::condition;
 
-    if (spec->construct == highlight_construct::for_)
+    switch (spec->construct) {
+    case highlight_construct::for_:
       phase = highlight_construct_phase::for_variable;
-    else if (spec->construct == highlight_construct::function)
+      break;
+    case highlight_construct::function:
       phase = highlight_construct_phase::function_name;
-    else if (spec->construct == highlight_construct::conditional)
+      break;
+    case highlight_construct::conditional:
       phase = highlight_construct_phase::body;
+      break;
+    case highlight_construct::if_:
+    case highlight_construct::while_until:
+    case highlight_construct::case_:       break;
+    }
 
     state.constructs.push(
         shell_lexical_construct{frame_depth, spec->construct, phase});

@@ -767,9 +767,15 @@ Server::append_diagnostic(String                  &output,
     output.push('}');
   };
 
-  let const severity = diagnostic.severity == error_severity::error     ? 1
-                       : diagnostic.severity == error_severity::warning ? 2
-                                                                        : 3;
+  u8 severity = 3;
+
+  switch (diagnostic.severity) {
+  case error_severity::error:   severity = 1; break;
+  case error_severity::warning: severity = 2; break;
+  case error_severity::note:
+  case error_severity::details:
+  case error_severity::trace:   severity = 3; break;
+  }
 
   if (!diagnostic.message.is_empty())
     do_append_diagnostic(diagnostic.location, severity,

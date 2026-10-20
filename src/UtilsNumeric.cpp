@@ -948,9 +948,13 @@ get_printable_character_length(StringView text,
   if (!is_utf8_locale) return 0;
 
   let const decoded             = decode_utf8(text, position, 0);
-  let const smallest_code_point = decoded.length == 2   ? u32{0x80}
-                                  : decoded.length == 3 ? u32{0x800}
-                                                        : u32{0x10000};
+  u32       smallest_code_point = 0;
+
+  switch (decoded.length) {
+  case 2:  smallest_code_point = 0x80; break;
+  case 3:  smallest_code_point = 0x800; break;
+  default: smallest_code_point = 0x10000; break;
+  }
 
   if (decoded.length < 2 || decoded.value < smallest_code_point ||
       decoded.value > 0x10ffff ||

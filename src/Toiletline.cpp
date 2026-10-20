@@ -2835,9 +2835,13 @@ set_title(StringView title) -> void
 
     if (sequence.count() + codepoint_length > MAX_TITLE_LENGTH + 4) break;
 
-    let const minimum_codepoint = codepoint_length == 2   ? 0x80u
-                                  : codepoint_length == 3 ? 0x800u
-                                                          : 0x10000u;
+    u32 minimum_codepoint = 0;
+
+    switch (codepoint_length) {
+    case 2:  minimum_codepoint = 0x80u; break;
+    case 3:  minimum_codepoint = 0x800u; break;
+    default: minimum_codepoint = 0x10000u; break;
+    }
 
     if (!is_valid || codepoint < minimum_codepoint || codepoint > 0x10ffffu ||
         (codepoint >= 0xd800u && codepoint <= 0xdfffu) ||

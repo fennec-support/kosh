@@ -486,11 +486,9 @@ make_invocation_identity(String program_path) throws
       static_cast<int>(program_basename.length), program_basename.data);
 
   let session_mood = resolve_session_mood(invocation_mood);
-  LOG(Info, "selecting the %s mood",
-      session_mood == mimic_mood::Posix       ? "posix"
-      : session_mood == mimic_mood::Bash      ? "bash"
-      : session_mood == mimic_mood::BashPosix ? "bash-posix"
-                                              : "default");
+  LOG(Info, "selecting the %.*s mood",
+      static_cast<int>(mood_name(session_mood).length),
+      mood_name(session_mood).data);
 
   let const is_login_shell = FLAG_LOGIN.is_enabled() || is_login_name;
   LOG(Info, "the shell %s a login shell", is_login_shell ? "is" : "is not");

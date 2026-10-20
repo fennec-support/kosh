@@ -2415,10 +2415,13 @@ parser_format_add_json_fragment(parsed_format_document &document,
         continue;
       }
 
-      run[run_count++] = escaped == 'n'   ? '\n'
-                         : escaped == 't' ? '\t'
-                         : escaped == 'r' ? ' '
-                                          : escaped;
+      switch (escaped) {
+      case 'n': run[run_count++] = '\n'; break;
+      case 't': run[run_count++] = '\t'; break;
+      case 'r': run[run_count++] = ' '; break;
+      default:  run[run_count++] = escaped; break;
+      }
+
       run_end += 2;
     }
 

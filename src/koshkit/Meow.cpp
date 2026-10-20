@@ -1555,11 +1555,18 @@ draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
     let const paddle_frame =
         static_cast<usize>(cat.phase_seconds / PADDLE_SECONDS) %
         art.paddle_frame_count;
-    let const *leg_pixels =
-        cat.activity == cat_activity::Dashing ? art.dash
-        : cat.activity == cat_activity::Bracing
-            ? art.tucked
-            : art.paddle + (paddle_frame * art.leg_row_count);
+    let const *leg_pixels = art.paddle + (paddle_frame * art.leg_row_count);
+
+    switch (cat.activity) {
+    case cat_activity::Dashing:  leg_pixels = art.dash; break;
+    case cat_activity::Bracing:  leg_pixels = art.tucked; break;
+    case cat_activity::Floating:
+    case cat_activity::Chasing:
+    case cat_activity::Curling:
+    case cat_activity::Loafing:
+    case cat_activity::Dizzy:
+    case cat_activity::Hissing:  break;
+    }
 
     for (usize index = 0; index < art.leg_row_count; index++)
       draw_pixels(canvas,

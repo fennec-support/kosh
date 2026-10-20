@@ -1834,7 +1834,8 @@ evaluate_make_function(EvalContext                 &cxt,
     bool      has_word = false;
 
     for (StringView word : split_word_views(source.view(), allocator)) {
-      if (spec.kind == make_function_kind::Dir) {
+      switch (spec.kind) {
+      case make_function_kind::Dir: {
         let const separator = last_path_separator(word);
 
         append_make_word(result,
@@ -1842,23 +1843,31 @@ evaluate_make_function(EvalContext                 &cxt,
                              ? word.substring_of_length(0, *separator + 1)
                              : StringView{"./"},
                          has_word);
-      } else if (spec.kind == make_function_kind::Notdir) {
+        break;
+      }
+      case make_function_kind::Notdir: {
         let const separator = last_path_separator(word);
 
         append_make_word(result,
                          separator.has_value() ? word.substring(*separator + 1)
                                                : word,
                          has_word);
-      } else if (spec.kind == make_function_kind::Suffix) {
+        break;
+      }
+      case make_function_kind::Suffix: {
         if (let const suffix = last_suffix_position(word); suffix.has_value())
           append_make_word(result, word.substring(*suffix), has_word);
-      } else {
+        break;
+      }
+      default: {
         let const suffix = last_suffix_position(word);
 
         append_make_word(
             result,
             suffix.has_value() ? word.substring_of_length(0, *suffix) : word,
             has_word);
+        break;
+      }
       }
     }
 

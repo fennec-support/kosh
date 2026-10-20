@@ -547,16 +547,17 @@ cleaned_synopsis_of_page(StringView source) throws -> String
       if (byte == '\\' && j + 1 < line.length) {
         let const escaped = line[j + 1];
 
-        if (escaped == 'f') {
-          j += 2;
-        } else if (escaped == '-') {
+        switch (escaped) {
+        case 'f': j += 2; break;
+        case '-':
           synopsis.push('-');
           j++;
-        } else if (escaped == '&') {
-          j++;
-        } else {
+          break;
+        case '&': j++; break;
+        default:
           synopsis.push(escaped);
           j++;
+          break;
         }
 
         continue;

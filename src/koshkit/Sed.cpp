@@ -348,9 +348,11 @@ parse_sed_script(StringView              script,
     case 'a':
     case 'i':
     case 'c': {
-      command.kind = command_byte == 'a'   ? sed_command_kind::Append
-                     : command_byte == 'i' ? sed_command_kind::Insert
-                                           : sed_command_kind::Change;
+      switch (command_byte) {
+      case 'a': command.kind = sed_command_kind::Append; break;
+      case 'i': command.kind = sed_command_kind::Insert; break;
+      default:  command.kind = sed_command_kind::Change; break;
+      }
 
       while (position < script.length &&
              (script[position] == ' ' || script[position] == '\t'))

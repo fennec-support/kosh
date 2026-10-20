@@ -312,9 +312,11 @@ Nl::execute(const ExecContext               &ec,
           line.substring_of_length(position * delimiter.length,
                                           delimiter.length) == delimiter;
     if (is_section_delimiter) {
-      section_style = delimiter_count == 3   ? *header_style
-                             : delimiter_count == 2 ? *body_style
-                                                    : *footer_style;
+      switch (delimiter_count) {
+      case 3:  section_style = *header_style; break;
+      case 2:  section_style = *body_style; break;
+      default: section_style = *footer_style; break;
+      }
       if (!FLAG_NL_NO_RESET.is_enabled())
         number = static_cast<i64>(start_value);
       blank_count = 0;

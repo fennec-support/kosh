@@ -37,12 +37,12 @@ parse_paste_delimiters(StringView text, Allocator allocator) throws
 
     if (byte == '\\' && position + 1 < text.length) {
       byte = text[++position];
-      if (byte == 'n')
-        byte = '\n';
-      else if (byte == 't')
-        byte = '\t';
-      else if (byte == '0')
-        byte = '\0';
+      switch (byte) {
+      case 'n': byte = '\n'; break;
+      case 't': byte = '\t'; break;
+      case '0': byte = '\0'; break;
+      default:  break;
+      }
     }
 
     delimiters += byte;

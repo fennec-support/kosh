@@ -2449,11 +2449,9 @@ source_init_moods(EvalContext                 &context,
     }
 
     if (context.runtime_control_store().init_mood_sourcing(flavor)) {
-      LOG(Info, "skipping the %s mood, its startup files are already sourcing",
-          flavor == mimic_mood::Bash        ? "bash"
-          : flavor == mimic_mood::Posix     ? "posix"
-          : flavor == mimic_mood::BashPosix ? "bash-posix"
-                                            : "kosh");
+      LOG(Info,
+          "skipping the %.*s mood, its startup files are already sourcing",
+          static_cast<int>(mood_name(flavor).length), mood_name(flavor).data);
       continue;
     }
 
@@ -2466,11 +2464,8 @@ source_init_moods(EvalContext                 &context,
        is_login_shell, should_be_interactive, or should_consider_bash_env
        holds. */
     context.runtime_state().set_mood(flavor);
-    LOG(Info, "sourcing the startup files for the %s mood",
-        flavor == mimic_mood::Bash        ? "bash"
-        : flavor == mimic_mood::Posix     ? "posix"
-        : flavor == mimic_mood::BashPosix ? "bash-posix"
-                                          : "kosh");
+    LOG(Info, "sourcing the startup files for the %.*s mood",
+        static_cast<int>(mood_name(flavor).length), mood_name(flavor).data);
     switch (flavor) {
     case mimic_mood::Default:
       if (should_be_interactive && !is_login_shell && !FLAG_NORC.is_enabled() &&
