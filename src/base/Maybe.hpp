@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "Allocator.hpp"
 #include "Common.hpp"
 #include "Debug.hpp"
 
@@ -45,6 +46,17 @@ public:
     if (!m_has_value) return None;
 
     return Maybe{clone_value(reference())};
+  }
+
+  /* Moves the storage of the value to allocator when the value owns any. */
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    if constexpr (is_allocator_movable<T>) {
+      if (m_has_value) reference().move_to_allocator(allocator);
+    } else {
+      unused(allocator);
+    }
   }
 
   fn

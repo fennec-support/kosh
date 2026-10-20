@@ -56,6 +56,17 @@ public:
     return ErrorOr{*this};
   }
 
+  /* Moves the storage of the value to allocator when the value owns any. */
+  cold fn
+  move_to_allocator(Allocator allocator) throws -> void
+  {
+    if constexpr (is_allocator_movable<T>) {
+      if (!m_is_error) value_reference().move_to_allocator(allocator);
+    } else {
+      unused(allocator);
+    }
+  }
+
   ErrorOr &
   operator=(const ErrorOr &) = delete;
   ErrorOr &

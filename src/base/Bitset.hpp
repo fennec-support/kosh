@@ -143,6 +143,12 @@ public:
     m_words.move_to_allocator(allocator);
   }
 
+  mustuse cold fn
+  clone() const throws -> Bitset
+  {
+    return Bitset{*this};
+  }
+
   hot mustuse pure fn
   any() const wontthrow -> bool
   {
