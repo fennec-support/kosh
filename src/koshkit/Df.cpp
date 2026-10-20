@@ -48,11 +48,25 @@ Df::execute(const ExecContext               &ec,
                           : FLAG_DF_KIBIBYTES.is_enabled() ? 1024u
                                                            : 512u;
 
-  ec.print_to_stdout(
-      is_human ? "Filesystem Size Used Avail Use% Mounted on\n"
-      : FLAG_DF_KIBIBYTES.is_enabled()
-          ? "Filesystem 1024-blocks Used Available Capacity Mounted on\n"
-          : "Filesystem 512-blocks Used Available Capacity Mounted on\n");
+  static constexpr usize COLUMN_COUNT = 6;
+
+  let       rows       = ArrayList<ArrayList<String>>{cxt.scratch_allocator()};
+  let const do_add_row = [&](ArrayList<String> row) throws {
+    rows.push(steal(row));
+  };
+  let header = ArrayList<String>{cxt.scratch_allocator()};
+
+  header.push(String{cxt.scratch_allocator(), "Filesystem"});
+  header.push(String{cxt.scratch_allocator(), is_human ? "Size"
+                                              : FLAG_DF_KIBIBYTES.is_enabled()
+                                                  ? "1024-blocks"
+                                                  : "512-blocks"});
+  header.push(String{cxt.scratch_allocator(), "Used"});
+  header.push(
+      String{cxt.scratch_allocator(), is_human ? "Avail" : "Available"});
+  header.push(String{cxt.scratch_allocator(), is_human ? "Use%" : "Capacity"});
+  header.push(String{cxt.scratch_allocator(), "Mounted on"});
+  do_add_row(steal(header));
 
   i32 status = 0;
 
@@ -97,10 +111,45 @@ Df::execute(const ExecContext               &ec,
                  : String::from(value, cxt.scratch_allocator());
     };
 
-    ec.print_to_stdout(mounted.source + " " + do_format(total) + " " +
-                       do_format(used) + " " + do_format(available) + " " +
-                       String::from(capacity, cxt.scratch_allocator()) + "% " +
-                       mounted.target + "\n");
+    let row = ArrayList<String>{cxt.scratch_allocator()};
+
+    row.push(mounted.source.clone());
+    row.push(do_format(total));
+    row.push(do_format(used));
+    row.push(do_format(available));
+    row.push(String::from(capacity, cxt.scratch_allocator()) + "%");
+    row.push(mounted.target.clone());
+    do_add_row(steal(row));
+  }
+
+  /* The filesystem and the mount point are left-aligned and the figures are
+     right-aligned, and the last column takes no padding. */
+  usize widths[COLUMN_COUNT] = {};
+
+  for (let const &row : rows)
+    for (usize column = 0; column < COLUMN_COUNT; column++)
+      if (row[column].length() > widths[column])
+        widths[column] = row[column].length();
+
+  for (let const &row : rows) {
+    let line = String{cxt.scratch_allocator()};
+
+    for (usize column = 0; column < COLUMN_COUNT; column++) {
+      let const padding = widths[column] - row[column].length();
+
+      if (column > 0) line.push(' ');
+      if (column == 0) {
+        line += row[column].view();
+        line.append_repeated(' ', padding);
+      } else if (column + 1 == COLUMN_COUNT) {
+        line += row[column].view();
+      } else {
+        line.append_repeated(' ', padding);
+        line += row[column].view();
+      }
+    }
+    line.push('\n');
+    ec.print_to_stdout(line);
   }
 
   return status;

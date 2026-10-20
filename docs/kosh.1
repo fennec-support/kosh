@@ -2262,7 +2262,8 @@ Mounted filesystems or the filesystems of the operands are reported. The
 \fB\-k\fR and \fB\-P\fR options select 1024-byte blocks and the POSIX header.
 The \fB\-h\fR, \fB\-\-human\-readable\fR
 option prints sizes in powers of 1024, and the \fB\-H\fR, \fB\-\-si\fR
-option does the same in powers of 1000.
+option does the same in powers of 1000. The rows form a table whose figures are
+right-aligned, and filesystems that cannot be read are reported before it.
 .TP
 .B diff
 Two files are compared line by line. The

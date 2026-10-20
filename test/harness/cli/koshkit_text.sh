@@ -330,17 +330,21 @@ echo "--- grep color modes keep plain output when redirected ---"
 echo "--- diff color modes keep plain output when redirected ---"
 "$BIN" -c 'koshkit diff --color=never color-left.txt color-right.txt'
 "$BIN" -c 'koshkit diff -u -L left -L right color-left.txt color-right.txt'
-echo "--- df human readable header and unit shape ---"
+echo "--- df human readable header and aligned rows ---"
 "$BIN" -c 'koshkit df -h . | koshkit head -n 1'
 "$BIN" -c 'koshkit df -H . | koshkit head -n 1'
 "$BIN" -c 'koshkit df -h . | koshkit tail -n 1' |
-  grep -Ev '^[^ ]+ [0-9.]+[KMGTP]? [0-9.]+[KMGTP]? [0-9.]+[KMGTP]? [0-9]+% .+$'
+  grep -Ev '^[^ ]+ +[0-9.]+[KMGTP]? +[0-9.]+[KMGTP]? +[0-9.]+[KMGTP]? +[0-9]+% .+$'
 echo "malformed-rows=$?"
 "$BIN" -c 'koshkit df -H . | koshkit tail -n 1' |
-  grep -Ev '^[^ ]+ [0-9.]+[kMGTP]? [0-9.]+[kMGTP]? [0-9.]+[kMGTP]? [0-9]+% .+$'
+  grep -Ev '^[^ ]+ +[0-9.]+[kMGTP]? +[0-9.]+[kMGTP]? +[0-9.]+[kMGTP]? +[0-9]+% .+$'
 echo "malformed-si-rows=$?"
 "$BIN" -c 'koshkit df -H . | koshkit tail -n 1' | grep -Eq '[0-9]K '
 echo "uppercase-si-kilo=$?"
+"$BIN" -c 'koshkit df -h . /' |
+  awk 'NR == 1 { start = index($0, "Mounted on") }
+       NR > 1 { if (index($0, "% ") + 2 != start) misaligned = 1 }
+       END { print "df-columns-aligned=" (misaligned ? 0 : 1) }'
 echo "--- chmod accepts leading zeros up to 7777 ---"
 : > chmod-zeros.txt
 "$BIN" -c 'koshkit chmod 00640 chmod-zeros.txt && koshkit stat -c %a chmod-zeros.txt'
