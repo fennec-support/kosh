@@ -3289,7 +3289,8 @@ Leave the selection and act as in emacs mode.
 .SS Vi colon commands
 The colon key in command mode opens a command line under the buffer. Enter
 runs it, and Escape, Ctrl\-C, Ctrl\-D, or Backspace on an empty command closes
-it. Only a substitution, an undo, and a redo change the line. The buffer keeps
+it. Only a substitution, an undo, and a redo change the line, and only the
+option commands change the settings. The buffer keeps
 its syntax highlighting while the command line is open, and the typed command
 is drawn in light green.
 .TP
@@ -3325,6 +3326,24 @@ and
 .B :%&&
 act on every row.
 .TP
+.BI ":set " option = value
+Set an option of
+.BR koshconf .
+.BI ":set " option ?
+shows its value. A bare
+.I option
+turns a boolean option on and shows any other one, and
+.BI no option
+turns a boolean option off. The result appears on the hint rows until the next
+key.
+.TP
+.BR :save " [\fIoption\fR]"
+Write the current value of
+.I option
+to
+.IR kosh.conf ,
+or every option when none is given.
+.TP
 .BR :u ", " :undo
 Undo.
 .TP
@@ -3357,6 +3376,19 @@ for its groups.
 .TP
 .B repeat
 Run the last M\-x command again with the same answers, as Ctrl\-X z does.
+.TP
+.BR set\-option ", " get\-option
+Ask for a
+.B koshconf
+option, which Tab completes, and for
+.B set\-option
+its new value, then set or show it. The result appears on the hint rows until
+the next key.
+.TP
+.B save\-option
+Ask for an option and write its current value to
+.IR kosh.conf ,
+or every option when the answer is empty.
 .TP
 .B kill\-kosh
 Leave the shell with the status of the last command.

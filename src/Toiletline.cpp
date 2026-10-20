@@ -18,7 +18,9 @@
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "ExecContext.hpp"
+#include "Koshconf.hpp"
 #include "Koshkit.hpp"
+#include "Options.hpp"
 #include "Platform.hpp"
 #include "ToiletlineHistory.hpp"
 #include "Utils.hpp"
@@ -889,6 +891,194 @@ run_line_editor(koshka::EvalContext &context,
 }
 
 koshka::String EDITED_LINE{koshka::heap_allocator()};
+koshka::String OPTION_RESULT{koshka::heap_allocator()};
+
+/* The text of the value that a koshconf file stores for option. */
+fn
+get_persisted_option_value(
+    const koshka::EvalContext       &cxt,
+    const koshka::option_descriptor &option) throws -> koshka::String
+{
+  let const text = koshka::read_option_text(cxt, option);
+
+  if (option.type == koshka::option_type::String) return text;
+
+  return koshka::format_option_number(
+      option, *koshka::parse_option_number(option, text.view()));
+}
+
+fn
+complete_option_name(koshka::StringView prefix) throws -> const char *
+{
+  bool has_match = false;
+
+  for (let const &option : koshka::get_option_registry()) {
+    let const name = koshka::StringView{option.koshconf_name};
+
+    if (name.is_empty() || !name.starts_with(prefix)) continue;
+    if (!has_match) {
+      OPTION_RESULT = koshka::String{koshka::heap_allocator(), name};
+      has_match     = true;
+      continue;
+    }
+
+    usize common = prefix.length;
+
+    while (common < OPTION_RESULT.length() && common < name.length &&
+           OPTION_RESULT[common] == name[common])
+    {
+      common++;
+    }
+    OPTION_RESULT.truncate(common);
+  }
+
+  return has_match ? OPTION_RESULT.c_str() : nullptr;
+}
+
+fn
+describe_unknown_option(koshka::StringView name) throws -> const char *
+{
+  let const suggestion = koshka::suggest_koshconf_option_name(name);
+
+  OPTION_RESULT = koshka::StringView{"Unknown option '"} + name + "'";
+  if (suggestion.has_value()) {
+    OPTION_RESULT += ", did you mean '";
+    OPTION_RESULT += suggestion->view();
+    OPTION_RESULT += "'?";
+  }
+
+  return OPTION_RESULT.c_str();
+}
+
+fn
+show_option(koshka::EvalContext             &cxt,
+            const koshka::option_descriptor &option) throws -> const
+    char *
+{
+  OPTION_RESULT = koshka::StringView{option.koshconf_name} + "=" +
+                  koshka::read_option_text(cxt, option);
+
+  return OPTION_RESULT.c_str();
+}
+
+fn
+set_option(koshka::EvalContext             &cxt,
+           const koshka::option_descriptor &option,
+           koshka::StringView               value) throws -> const char *
+{
+  if (let const problem = koshka::find_koshconf_value_problem(option, value);
+      problem.has_value())
+  {
+    OPTION_RESULT = koshka::String{koshka::heap_allocator(), problem->view()};
+    return OPTION_RESULT.c_str();
+  }
+  koshka::write_option_text(cxt, option, value,
+                            koshka::option_origin::Koshconf);
+
+  return show_option(cxt, option);
+}
+
+fn
+save_options(koshka::EvalContext &cxt, const char *name) throws -> const
+    char *
+{
+  let const path = koshka::get_user_koshconf_path();
+
+  if (!path.has_value()) {
+    OPTION_RESULT = koshka::String{koshka::heap_allocator(),
+                                   "The user configuration file is unknown"};
+    return OPTION_RESULT.c_str();
+  }
+  if (name == nullptr) {
+    koshka::persist_koshconf_snapshot(*path, cxt);
+    OPTION_RESULT = koshka::StringView{"Saved every option to "} + path->view();
+
+    return OPTION_RESULT.c_str();
+  }
+
+  let const *option = koshka::find_option_by_koshconf_name(
+      koshka::StringView{name, strlen(name)});
+
+  if (option == nullptr) {
+    return describe_unknown_option(koshka::StringView{name, strlen(name)});
+  }
+  if (!option->is_configurable()) {
+    OPTION_RESULT = koshka::StringView{"The '"} + option->koshconf_name +
+                    "' option cannot be saved";
+    return OPTION_RESULT.c_str();
+  }
+  koshka::persist_koshconf_setting(
+      *path, *option, get_persisted_option_value(cxt, *option).view());
+  OPTION_RESULT = koshka::StringView{"Saved '"} + option->koshconf_name +
+                  "' to " + path->view();
+
+  return OPTION_RESULT.c_str();
+}
+
+/* Answers the editor's option commands through the koshconf registry. A bare
+   name sets a boolean option on, a no prefix sets it off, and any other bare
+   name shows its value, as the vi :set command does. */
+fn
+kosh_option_callback(tl_option_action action,
+                     const char      *name,
+                     const char      *value) -> const char *
+{
+  if (COMPLETION_SESSION.context == nullptr) return nullptr;
+
+  let &cxt = *COMPLETION_SESSION.context;
+
+  try {
+    if (action == TL_OPTION_COMPLETE) {
+      return complete_option_name(koshka::StringView{name, strlen(name)});
+    }
+
+    let const is_restricted = cxt.runtime_state().option_is_enabled(
+        koshka::shell_option_id::Restricted);
+
+    if (is_restricted && action != TL_OPTION_GET) {
+      OPTION_RESULT =
+          koshka::String{koshka::heap_allocator(),
+                         "Changing options is forbidden in a restricted shell"};
+      return OPTION_RESULT.c_str();
+    }
+    if (action == TL_OPTION_SAVE) return save_options(cxt, name);
+
+    let const  text   = koshka::StringView{name, strlen(name)};
+    let const *option = koshka::find_option_by_koshconf_name(text);
+
+    if (action == TL_OPTION_GET) {
+      return option != nullptr ? show_option(cxt, *option)
+                               : describe_unknown_option(text);
+    }
+    if (value != nullptr) {
+      return option != nullptr
+                 ? set_option(cxt, *option,
+                              koshka::StringView{value, strlen(value)})
+                 : describe_unknown_option(text);
+    }
+    if (option != nullptr) {
+      return option->type == koshka::option_type::Boolean
+                 ? set_option(cxt, *option, "on")
+                 : show_option(cxt, *option);
+    }
+    if (text.starts_with("no")) {
+      let const *negated =
+          koshka::find_option_by_koshconf_name(text.substring(2));
+
+      if (negated != nullptr && negated->type == koshka::option_type::Boolean) {
+        return set_option(cxt, *negated, "off");
+      }
+    }
+
+    return describe_unknown_option(text);
+  } catch (const koshka::Error &error) {
+    OPTION_RESULT =
+        koshka::String{koshka::heap_allocator(), error.message().view()};
+    return OPTION_RESULT.c_str();
+  } catch (...) {
+    return nullptr;
+  }
+}
 
 fn
 kosh_edit_callback(const char *buffer, const char **out_edited) -> int
@@ -2894,6 +3084,7 @@ enable_completion(koshka::EvalContext &context) -> void
   ::tl_set_history_select_callback(kosh_history_select_callback);
   ::tl_set_edit_callback(kosh_edit_callback);
   ::tl_set_pair_role_callback(kosh_pair_role_callback);
+  ::tl_set_option_callback(kosh_option_callback);
 
   if (!context.get_variable_value(SELECTOR_COMMAND_VARIABLE).has_value())
     context.set_shell_variable(SELECTOR_COMMAND_VARIABLE,
@@ -2915,6 +3106,7 @@ disable_completion() -> void
   ::tl_set_history_select_callback(nullptr);
   ::tl_set_edit_callback(nullptr);
   ::tl_set_pair_role_callback(nullptr);
+  ::tl_set_option_callback(nullptr);
 }
 
 fn

@@ -23,7 +23,9 @@
 # Escape or Backspace keeps the caret where the colon was typed, :s replaces
 # every match with g, and :u undoes it. Alt-X opens the M-x minibuffer, whose
 # hint lists the commands, Tab completes a command, replace-string replaces
-# every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat. The prompt asks for the kitty and
+# every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat.
+# :set turns an option off with a no prefix and shows it with a question
+# mark, and M-x set-option completes the option with Tab and sets it. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
 # the external editor, and the option turns the request off. Every editing
 # Ctrl and Alt key in the table acts the same in its legacy bytes, which a
@@ -398,6 +400,23 @@ def run_vi_ex_checks(session, report):
                   is_line("echo foo foo"))
     session.send(KITTY_CTRL_C)
     session.wait_until(is_line(""))
+    mark = len(session.raw)
+    session.send(KITTY_ESCAPE)
+    session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                       in get_raw_since(session, mark))
+    session.send(b":")
+    session.wait_until(has_minibuffer(":"))
+    session.send(b"set noeditor.auto_close_brackets_and_quotes\r")
+    report.record("vi-ex-set-turns-an-option-off", session,
+                  has_minibuffer("editor.auto_close_brackets_and_quotes=off"))
+    session.send(b":")
+    session.wait_until(has_minibuffer(":"))
+    session.send(b"set editor.auto_close_brackets_and_quotes?\r")
+    report.record("vi-ex-set-query-shows-the-value", session,
+                  has_minibuffer("editor.auto_close_brackets_and_quotes=off"))
+    session.send(b"i")
+    session.send(KITTY_CTRL_C)
+    session.wait_until(is_line(""))
     session.send(b"set -o emacs; echo vi-ex-off\r")
     session.wait_until(has_output("vi-ex-off", 1))
 
@@ -433,6 +452,15 @@ def run_minibuffer_checks(session, report):
     report.record("alt-x-undo-undoes-the-repeat", session,
                   is_line("echo b b aa"))
     clear_line(session)
+    session.send(ALT_X + b"set-option\r")
+    session.wait_until(has_minibuffer("Set option:"))
+    session.send(b"editor.auto_close_br\t")
+    report.record("alt-x-set-option-completes-the-option", session,
+                  has_minibuffer(
+                      "Set option: editor.auto_close_brackets_and_quotes"))
+    session.send(b"\ron\r")
+    report.record("alt-x-set-option-sets-the-value", session,
+                  has_minibuffer("editor.auto_close_brackets_and_quotes=on"))
 
 
 def run_checks(binary, directory, command_directory, report):
