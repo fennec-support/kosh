@@ -2806,7 +2806,8 @@ replaces the line, and nothing runs until Enter is pressed. If the editor is
 not found or exits with another status, the line is unchanged and a message
 appears above the prompt. The key does nothing under
 .BR \-T .
-Ctrl\-X Ctrl\-U undoes the last edit.
+Ctrl\-X Ctrl\-U undoes the last edit. The Ctrl\-X chords work in emacs mode
+only.
 .PP
 A key waiting for another key, such as Ctrl\-X or a vi operator, shows the keys
 that complete it on the hint rows below the input until the next key arrives.
@@ -3117,6 +3118,11 @@ Open the M\-x minibuffer, described under
 .B Ctrl\-X z
 Run the last M\-x command again.
 .TP
+.B Ctrl\-X Ctrl\-C
+Leave the shell with the status of the last command, as M\-x
+.B kill\-kosh
+does.
+.TP
 .B Ctrl\-R
 Search the history.
 .TP
@@ -3135,8 +3141,8 @@ Enter multi-cursor mode.
 .B Paste
 Insert bracketed paste text without running it.
 .SS Vi insert mode keys
-Every emacs mode key works except Ctrl\-V, Alt\-X, and Ctrl\-X z, which do
-nothing.
+Every emacs mode key works except Ctrl\-V, Alt\-X, and the Ctrl\-X chords,
+which do nothing.
 .TP
 .B Escape
 Enter command mode, moving one character left.
@@ -3231,7 +3237,7 @@ Enter insert mode. Typed text does not overwrite existing text.
 .B .
 Repeat the last change. A yank is never repeated.
 .TP
-.BR u ", " Ctrl\-_ ", " Ctrl\-Z ", " "Ctrl\-X Ctrl\-U"
+.BR u ", " Ctrl\-_ ", " Ctrl\-Z
 Undo.
 .TP
 .BR Ctrl\-R ", " Ctrl\-^ ", " Ctrl\-Shift\-Z
@@ -3415,7 +3421,7 @@ and
 do.
 .TP
 .B kill\-kosh
-Leave the shell with the status of the last command.
+Leave the shell with the status of the last command, as Ctrl\-X Ctrl\-C does.
 .TP
 .BR undo ", " undo\-redo
 Undo, or redo.

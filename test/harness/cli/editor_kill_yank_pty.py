@@ -24,6 +24,7 @@
 # every match with g, and :u undoes it. Alt-X opens the M-x minibuffer, whose
 # hint lists the commands, Tab completes a command, replace-string replaces
 # every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat.
+# Vi mode ignores Ctrl-X, and Ctrl-X Ctrl-C ends the shell in emacs mode.
 # :set turns an option off with a no prefix, shows it with a question mark,
 # and completes the option with Tab, and M-x set-option lists the matching
 # options, completes the option with Tab, and sets it. :format formats the
@@ -55,7 +56,8 @@ import time
 
 from editor_ghost_menu_pty import (BACKSPACE, LEFT, WAIT_SECONDS, Report,
                                    Session, clear_line, has_hint,
-                                   has_hint_header, is_line)
+                                   get_state, has_hint_header, is_line,
+                                   settle)
 
 
 CTRL_A = b"\x01"
@@ -770,6 +772,33 @@ def is_restored_after_death(session, mark):
     return do_check
 
 
+def run_ctrl_x_mode_checks(binary, directory, command_directory, report):
+    session = Session(binary, directory, command_directory)
+    try:
+        session.wait_until(is_line(""))
+        session.send(b"set -o vi; echo vi-chord-on\r")
+        session.wait_until(has_output("vi-chord-on", 1))
+        session.send(b"a")
+        session.wait_until(is_line("a"))
+        session.send(CTRL_X)
+        settle(session, 0.3)
+        session.send(b"b")
+        report.record("vi-mode-ignores-ctrl-x", session,
+                      lambda screen: get_state(screen) is not None
+                      and get_state(screen)[0] == "ab"
+                      and CTRL_X_HEADER not in "\n".join(
+                          screen.get_lines()))
+        session.send(KITTY_CTRL_C)
+        session.wait_until(is_line(""))
+        session.send(b"set -o emacs\r")
+        session.wait_until(is_line(""))
+        session.send(CTRL_X + b"\x03")
+        report.record("ctrl-x-ctrl-c-ends-the-shell", session,
+                      has_exited(session))
+    finally:
+        session.close()
+
+
 def run_fatal_signal_checks(binary, directory, command_directory, report):
     for name, signal_number in (("abort", signal.SIGABRT),
                                 ("segfault", signal.SIGSEGV)):
@@ -819,6 +848,7 @@ def main():
         write_script(os.path.join(command_directory, "restopping-visual"),
                      "while :; do kill -STOP $$; done\n")
         run_checks(binary, directory, command_directory, report)
+        run_ctrl_x_mode_checks(binary, directory, command_directory, report)
         run_fatal_signal_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)

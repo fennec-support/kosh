@@ -102,6 +102,8 @@ option-off-sends-no-request PASS
 prompt-command-sees-the-usual-terminal PASS
 extended-keys-requested-after-the-prompt-command PASS
 kitty-ctrl-d-ends-the-shell PASS
+vi-mode-ignores-ctrl-x PASS
+ctrl-x-ctrl-c-ends-the-shell PASS
 abort-at-the-prompt-restores-the-terminal PASS
 segfault-at-the-prompt-restores-the-terminal PASS
 status=0
