@@ -329,9 +329,9 @@ combined.sh:2:1: trace:
 built
 rc=0
 == nested eval, bash mood
-eval:1:6: error: Division by zero.
+eval:1:10: error: Division by zero.
      1 |  echo $((1/0))
-       |       ^~~~~~~~
+       |           ^
 note: The right operand evaluated to 0.
 eval:1:1: trace:
      1 |  eval "echo \$((1/0))"
@@ -341,9 +341,9 @@ nested_eval.sh:2:1: trace:
        |  ^~~~~~~~~~~~~
 rc=1
 == nested eval, sh mood
-eval:1:6: error: Division by zero.
+eval:1:10: error: Division by zero.
      1 |  echo $((1/0))
-       |       ^~~~~~~~
+       |           ^
 note: The right operand evaluated to 0.
 eval:1:1: trace:
      1 |  eval "echo \$((1/0))"
@@ -353,9 +353,9 @@ nested_eval.sh:2:1: trace:
        |  ^~~~~~~~~~~~~
 rc=2
 == nested eval, kosh mood
-eval:1:6: error: Division by zero.
+eval:1:10: error: Division by zero.
      1 |  echo $((1/0))
-       |       ^~~~~~~~
+       |           ^
 note: The right operand evaluated to 0.
 eval:1:1: trace:
      1 |  eval "echo \$((1/0))"
@@ -365,23 +365,23 @@ nested_eval.sh:2:1: trace:
        |  ^~~~~~~~~~~~~
 rc=1
 == arithmetic errors in every substitution form
-substitutions.sh:1:12: error: Division by zero.
+substitutions.sh:1:16: error: Division by zero.
      1 |  one=$(echo $((1/0)))
-       |             ^~~~~~~~
+       |                 ^
 note: The right operand evaluated to 0.
 1:5: trace:
      1 |  one=$(echo $((1/0)))
        |      ^~~~~~~~~~~~~~~~
-substitutions.sh:2:11: error: Division by zero.
+substitutions.sh:2:15: error: Division by zero.
      2 |  two=`echo $((2/0))`
-       |            ^~~~~~~~
+       |                ^
 note: The right operand evaluated to 0.
 2:5: trace:
      2 |  two=`echo $((2/0))`
        |      ^~~~~~~~~~~~~~~
-substitutions.sh:3:21: error: Division by zero.
+substitutions.sh:3:25: error: Division by zero.
      3 |  three=$(echo $(echo $((3/0))))
-       |                      ^~~~~~~~
+       |                          ^
 note: The right operand evaluated to 0.
 3:14: trace:
      3 |  three=$(echo $(echo $((3/0))))
@@ -423,9 +423,9 @@ note: Probe for matches with compgen -G '*.zip' or relax it with shopt -u failgl
 *.zip
 rc=0
 == function called from a subshell reports once
-subshell_function.sh:3:8: error: Division by zero.
+subshell_function.sh:3:12: error: Division by zero.
      3 |    echo $((1/0))
-       |         ^~~~~~~~
+       |             ^
 note: The right operand evaluated to 0.
 5:3: trace:
      5 |  ( c )
@@ -452,9 +452,9 @@ subshell_nested.sh:2:1: trace:
 built
 rc=0
 == function in a pipeline stage
-pipeline.sh:3:8: error: Division by zero.
+pipeline.sh:3:12: error: Division by zero.
      3 |    echo $((1/0))
-       |         ^~~~~~~~
+       |             ^
 note: The right operand evaluated to 0.
 5:12: trace:
      5 |  echo one | c | cat
@@ -462,9 +462,9 @@ note: The right operand evaluated to 0.
 rc=0
 == multi-line eval text
 first
-eval:2:6: error: Division by zero.
+eval:2:10: error: Division by zero.
      2 |  echo $((1/0))
-       |       ^~~~~~~~
+       |           ^
 note: The right operand evaluated to 0.
 bash_c_string.sh:1:1: trace:
      1 |  eval "$(printf 'echo first\necho $((1/0))\n')"
@@ -476,15 +476,15 @@ first.sh:2:1: error: The command 'missing_first' was not found.
      2 |  missing_first
        |  ^~~~~~~~~~~~~
 == two command strings carry the command line frame
--c:1:6: error: Division by zero.
+-c:1:10: error: Division by zero.
      1 |  echo $((1/0))
-       |       ^~~~~~~~
+       |           ^
 note: The right operand evaluated to 0.
 1:0: trace:
      1 |  KOSH --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))'
--c:1:6: error: Division by zero.
+-c:1:10: error: Division by zero.
      1 |  echo $((2/0))
-       |       ^~~~~~~~
+       |           ^
 note: The right operand evaluated to 0.
 1:0: trace:
      1 |  KOSH --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))'

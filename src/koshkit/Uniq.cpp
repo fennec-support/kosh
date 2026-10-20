@@ -124,8 +124,14 @@ Uniq::execute(const ExecContext               &ec,
   let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
   let const input  = open_named_or_stdin(ec, source);
 
-  if (!input.has_value())
-    throw Error{path_error_message("read", source, cxt.scratch_allocator())};
+  if (!input.has_value()) {
+    if (operands.is_empty())
+      KOSHKIT_REPORT_PATH_ERROR("read", source);
+    else
+      KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[0], "read", source);
+
+    return 1;
+  }
   defer {
     if (input->mode == input_descriptor_mode::Owned)
       os::close_fd(input->descriptor);

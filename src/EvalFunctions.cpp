@@ -81,8 +81,9 @@ EvalContext::register_function(
   ASSERT(body_storage.get_body() != nullptr);
 
   if (function_store().readonly().contains(name)) {
-    throw Error{"Unable to redefine '" + name +
-                "' because it is a read only function"};
+    throw ErrorWithLocation{definition_location,
+                            "Unable to redefine '" + name +
+                                "' because it is a read only function"};
   }
 
   /* at this point: body_storage holds a non-null body, and the function being

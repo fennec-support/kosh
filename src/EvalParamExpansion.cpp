@@ -2578,9 +2578,18 @@ EvalContext::ParameterExpander::expand_list_test(
   case '-': return expand_word(word, m_quoting);
   case '+': return String{m_context.scratch_allocator()};
   case '=': {
-    if (is_positional)
-      throw Error{"Unable to assign to the positional parameters with '${" +
-                  m_spec + "}'"};
+    if (is_positional) {
+      let        spec_location = SourceLocation{};
+      let const *spec_pointer  = get_location_for(m_spec, spec_location);
+      let const  message =
+          "Unable to assign to the positional parameters with '${" + m_spec +
+          "}'";
+
+      if (spec_pointer != nullptr)
+        throw ErrorWithLocation{*spec_pointer, message.view()};
+
+      throw Error{message.view()};
+    }
 
     let error = ErrorWithDetails{
         "Unable to assign to '" + list_name +
@@ -3344,8 +3353,17 @@ EvalContext::compute_list_slice_bounds(
 {
   let const operands = parse_substring_operands(*this, slice, source_location);
 
-  return compute_substring_bounds(value_count, operands.offset, operands.length,
-                                  substring_subject::List);
+  if (source_location == nullptr) {
+    return compute_substring_bounds(value_count, operands.offset,
+                                    operands.length, substring_subject::List);
+  }
+
+  try {
+    return compute_substring_bounds(value_count, operands.offset,
+                                    operands.length, substring_subject::List);
+  } catch (const Error &error) {
+    throw ErrorWithLocation{*source_location, error.message().view()};
+  }
 }
 
 /* memory: subscripts holds one String per element of a sparse array, and the
@@ -3368,10 +3386,16 @@ EvalContext::compute_array_slice_bounds(
 
   let const operands = parse_substring_operands(*this, slice, source_location);
 
-  let const do_check_length = [&operands] {
+  let const do_check_length = [&operands, source_location] {
     if (operands.length.has_value() && *operands.length < 0) {
-      throw Error{"Unable to take the substring because the length ends at "
-                  "a point before the offset"};
+      let const message =
+          StringView{"Unable to take the substring because the length ends at "
+                     "a point before the offset"};
+
+      if (source_location != nullptr)
+        throw ErrorWithLocation{*source_location, message};
+
+      throw Error{message};
     }
   };
 

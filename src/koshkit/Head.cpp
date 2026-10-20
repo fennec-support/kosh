@@ -296,10 +296,12 @@ Head::execute(const ExecContext               &ec,
     let const parsed_value = parse_strict_count(magnitude);
 
     if (parsed_value.is_error()) {
-      throw ErrorWithDetails{
+      throw ErrorWithLocationAndDetails{
+          is_byte_mode ? FLAG_HEAD_BYTES.value_location()
+                       : FLAG_HEAD_LINES.value_location(),
           String{cxt.scratch_allocator(), is_byte_mode
-                                              ? "invalid byte count '"
-                                              : "invalid line count '"}
+                                              ? "Invalid byte count '"
+                                              : "Invalid line count '"}
           +
               raw + "'",
           "The count must be an integer"

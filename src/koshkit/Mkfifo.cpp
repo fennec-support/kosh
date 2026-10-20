@@ -39,10 +39,12 @@ Mkfifo::execute(const ExecContext               &ec,
                                               utils::file_kind_mode::Regular);
 
     if (!parsed.has_value())
-      throw Error{
-          "invalid mode '" +
-          String{cxt.scratch_allocator(), FLAG_MKFIFO_MODE.value()}
-          + "'"
+      throw ErrorWithLocationAndDetails{
+          FLAG_MKFIFO_MODE.value_location(),
+          "Invalid mode '" +
+              String{cxt.scratch_allocator(), FLAG_MKFIFO_MODE.value()}
+              + "'",
+          "A mode is octal such as 0644 or symbolic such as u=rw,go=r"
       };
     mode = *parsed;
   }

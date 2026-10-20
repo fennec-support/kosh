@@ -7,7 +7,7 @@ end-continue
 loop_done
 after-break
 after-continue
-19:24: error: break count '0' is out of range.
+19:24: error: Break count '0' is out of range.
     19 |  for i in 1 2; do break 0; echo unreached; done
        |                         ^
 after

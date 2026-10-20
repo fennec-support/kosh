@@ -598,7 +598,8 @@ EvalContext::unset_shell_variable(StringView name) throws -> void
     throw Error{"Unable to unset '" + name + "' because it is read only"};
   }
 
-  if (is_bash_argument_array(name)) throw Error{name + ": cannot unset"};
+  if (is_bash_argument_array(name))
+    throw Error{"Unable to unset '" + name + "'"};
 
   if (!runtime_state().is_shopt_enabled(shopt_option_id::LocalvarUnset) &&
       peel_caller_local_binding(name))

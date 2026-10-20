@@ -1,25 +1,25 @@
 == brace body ==
--c:1:12: error: Division by zero.
+-c:1:16: error: Division by zero.
      1 |  c() { echo $((1/0)); }; c
-       |             ^~~~~~~~
+       |                 ^
 note: The right operand evaluated to 0.
 1:25: trace:
      1 |  c() { echo $((1/0)); }; c
        |                          ^
 rc=1
 == function keyword ==
--c:1:19: error: Division by zero.
+-c:1:23: error: Division by zero.
      1 |  function d { echo $((1/0)); }; d
-       |                    ^~~~~~~~
+       |                        ^
 note: The right operand evaluated to 0.
 1:32: trace:
      1 |  function d { echo $((1/0)); }; d
        |                                 ^
 rc=1
 == subshell body ==
--c:1:12: error: Division by zero.
+-c:1:16: error: Division by zero.
      1 |  e() ( echo $((1/0)) ); e
-       |             ^~~~~~~~
+       |                 ^
 note: The right operand evaluated to 0.
 1:5: trace:
      1 |  e() ( echo $((1/0)) ); e
@@ -29,18 +29,18 @@ note: The right operand evaluated to 0.
        |                         ^
 rc=1
 == prefixed definition and trailing text ==
--c:1:18: error: Division by zero.
+-c:1:22: error: Division by zero.
      1 |  :; g() { :; echo $((1/0)); } ; g
-       |                   ^~~~~~~~
+       |                       ^
 note: The right operand evaluated to 0.
 1:32: trace:
      1 |  :; g() { :; echo $((1/0)); } ; g
        |                                 ^
 rc=1
 == multiline body ==
--c:2:8: error: Division by zero.
+-c:2:12: error: Division by zero.
      2 |    echo $((1/0))
-       |         ^~~~~~~~
+       |             ^
 note: The right operand evaluated to 0.
 4:1: trace:
      4 |  f

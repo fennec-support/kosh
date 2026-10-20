@@ -72,8 +72,8 @@ no files remaining.
 w1
 status=0
 --- invalid operands ---
-invalid number of seconds 'x'.
-invalid PID 'x'.
+Koshkit `tail`: Invalid number of seconds 'x'.
+Koshkit `tail`: Invalid PID 'x'.
 --- interrupt ends the wait ---
 w1
 status=130

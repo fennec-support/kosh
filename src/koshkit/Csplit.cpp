@@ -390,7 +390,7 @@ Csplit::execute(const ExecContext               &ec,
       if (!write_csplit_part(
               ec, cxt, csplit_name_format{prefix, digit_count, width_location},
               output_index++, lines, current_line, target_line, output_paths))
-        throw Error{"cannot write output"};
+        throw ErrorWithLocation{pattern_location, "Cannot write output"};
     }
 
     current_line        = target_line;

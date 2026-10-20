@@ -157,7 +157,7 @@ Cal::execute(const ExecContext               &ec,
   let const  now   = time(nullptr);
   let const *local = localtime(&now);
 
-  if (local == nullptr) throw Error{"cannot read the current date"};
+  if (local == nullptr) throw Error{"Unable to read the current date"};
 
   let const current_date = *local;
 

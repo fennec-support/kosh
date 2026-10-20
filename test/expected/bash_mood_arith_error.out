@@ -1,15 +1,15 @@
 == bash mood reports an arithmetic error and goes on to the next line, matching bash:
 before
--c:2:6: error: Division by zero.
+-c:2:10: error: Division by zero.
      2 |  echo $((1/0))
-       |       ^~~~~~~~
+       |           ^
 note: The right operand evaluated to 0.
 after
 rc=0
 == the strict default mood aborts the run on an arithmetic error:
--c:1:6: error: Division by zero.
+-c:1:10: error: Division by zero.
      1 |  echo $((1/0)); echo after
-       |       ^~~~~~~~
+       |           ^
 note: The right operand evaluated to 0.
 rc=1
 == the strict default mood aborts on an unset arithmetic operand:

@@ -47,11 +47,13 @@ Ln::execute(const ExecContext               &ec,
       Path{destination, cxt.scratch_allocator()}.is_directory();
 
   if (operands.count() > 2 && !is_destination_directory) {
-    throw Error{
-        "the destination '" + String{cxt.scratch_allocator(), destination}
-          +
-        "' is not a directory, so it cannot hold several links"
-    };
+    report_soft_koshkit_util_error(
+        ec, cxt, operand_locations[operands.count() - 1], args[0].view(),
+        "The destination '" + String{cxt.scratch_allocator(), destination} +
+            "' is not a directory",
+        "Pass a single target, or give a directory as the destination");
+
+    return 1;
   }
 
   /* at this point: operands holds at least two paths, and destination is a

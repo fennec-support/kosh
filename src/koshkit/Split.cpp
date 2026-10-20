@@ -30,11 +30,13 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Split);
 namespace koshka::koshkit {
 
 static fn
-split_output_name(StringView prefix,
-                  usize      suffix_length,
-                  bool       is_suffix_widened,
-                  u64        index,
-                  Allocator  allocator) throws -> String
+split_output_name(StringView            prefix,
+                  usize                 suffix_length,
+                  bool                  is_suffix_widened,
+                  u64                   index,
+                  Allocator             allocator,
+                  Maybe<SourceLocation> suffix_length_location =
+                      None) throws -> String
 {
   usize widened_count = 0;
 
@@ -76,7 +78,15 @@ split_output_name(StringView prefix,
     index /= 26;
   }
 
-  if (index != 0) throw Error{"output file suffixes are exhausted"};
+  if (index != 0) {
+    if (suffix_length_location.has_value()) {
+      throw ErrorWithLocationAndDetails{*suffix_length_location,
+                                        "Output file suffixes are exhausted",
+                                        "Increase the suffix length with -a"};
+    }
+
+    throw Error{"Output file suffixes are exhausted"};
+  }
 
   String name{allocator, prefix};
 
@@ -174,10 +184,13 @@ Split::execute(const ExecContext               &ec,
   let const do_open_output = [&]() throws -> bool {
     if (output_descriptor != KOSH_INVALID_FD) return true;
 
-    let const name =
-        split_output_name(prefix, static_cast<usize>(suffix_length),
-                          !FLAG_SPLIT_SUFFIX_LENGTH.is_set(), output_index++,
-                          cxt.scratch_allocator());
+    let const name = split_output_name(
+        prefix, static_cast<usize>(suffix_length),
+        !FLAG_SPLIT_SUFFIX_LENGTH.is_set(), output_index++,
+        cxt.scratch_allocator(),
+        FLAG_SPLIT_SUFFIX_LENGTH.is_set()
+            ? Maybe<SourceLocation>{FLAG_SPLIT_SUFFIX_LENGTH.value_location()}
+            : Maybe<SourceLocation>{});
 
     if (let const existing = os::open_file_descriptor(
             name.view(), os::file_open_mode::ReadNonblocking);

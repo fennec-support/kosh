@@ -4782,7 +4782,8 @@ Make::execute(const ExecContext               &ec,
     }
 
     if (mk.default_goal.is_empty())
-      throw ErrorWithDetails{
+      throw ErrorWithLocationAndDetails{
+          ec.source_location(),
           "The makefile defines no targets and no default goal",
           "Add a rule or specify a target on the command line"};
     goals.push(mk.default_goal.clone());

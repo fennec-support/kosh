@@ -60,9 +60,9 @@ note: use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format.
      1 |  koshkit ln a b
        |  ^~~~~~~~~~~~~~
 === tr one set ===
--c:1:1: error: tr expects two sets unless -d is given.
+-c:1:12: error: Koshkit `tr`: tr expects two sets unless -d is given.
      1 |  koshkit tr abc
-       |  ^~~~~~~~~~~~~~
+       |             ^~~
 note: Supply SET1 and SET2, or use `-d` with one set.
 === find bad -type ===
 -c:1:22: error: Koshkit `find`: -type expects one of f, d, or l.

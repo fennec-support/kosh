@@ -140,10 +140,10 @@ expand_posix_class(StringView set,
 }
 
 static fn
-expand_set(StringView   set,
-           Allocator    allocator,
-           Maybe<usize> repeat_target_length = None) throws
-    -> Maybe<String>
+expand_set(StringView     set,
+           Allocator      allocator,
+           Maybe<usize>   repeat_target_length = None,
+           SourceLocation set_location         = {}) throws -> Maybe<String>
 {
   String       expanded{allocator};
   Maybe<usize> fill_position;
@@ -192,8 +192,8 @@ expand_set(StringView   set,
 
           if (count == 0) {
             if (fill_position.has_value()) {
-              throw ErrorWithDetails{
-                  "tr allows one [c*] repeat in set2",
+              throw ErrorWithLocationAndDetails{
+                  set_location, "tr allows one [c*] repeat in set2",
                   "Remove the extra `[c*]` repeat from SET2"};
             }
 
@@ -272,8 +272,9 @@ Tr::execute(const ExecContext               &ec,
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
   if (!is_deleting && !is_squeezing && operands.count() < 2) {
-    throw ErrorWithDetails{"tr expects two sets unless -d is given",
-                           "Supply SET1 and SET2, or use `-d` with one set"};
+    throw ErrorWithLocationAndDetails{
+        operand_locations[0], "tr expects two sets unless -d is given",
+        "Supply SET1 and SET2, or use `-d` with one set"};
   }
 
   if (operands.count() > 2 ||
@@ -310,8 +311,9 @@ Tr::execute(const ExecContext               &ec,
   let set2 = String{cxt.scratch_allocator()};
 
   if (operands.count() >= 2) {
-    let expanded_set2 = expand_set(operands[1].view(), cxt.scratch_allocator(),
-                                   set1->count() > 0 ? set1->count() : 1);
+    let expanded_set2 =
+        expand_set(operands[1].view(), cxt.scratch_allocator(),
+                   set1->count() > 0 ? set1->count() : 1, operand_locations[1]);
 
     if (!expanded_set2.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(

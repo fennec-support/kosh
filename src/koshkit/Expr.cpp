@@ -41,7 +41,9 @@ public:
   {
     let result = parse_or();
 
-    if (m_position != m_tokens.count()) throw Error{"syntax error"};
+    if (m_position != m_tokens.count()) {
+      throw ErrorWithLocation{token_location(m_position), "Syntax error"};
+    }
 
     return result;
   }
@@ -86,6 +88,17 @@ private:
   }
 
   pure fn
+  token_location(usize position) const wontthrow -> SourceLocation
+  {
+    if (m_token_locations.is_empty()) return SourceLocation{};
+    if (position >= m_token_locations.count()) {
+      return m_token_locations[m_token_locations.count() - 1];
+    }
+
+    return m_token_locations[position];
+  }
+
+  pure fn
   peek(StringView token) const wontthrow -> bool
   {
     return m_position < m_tokens.count() &&
@@ -95,7 +108,9 @@ private:
   fn
   take() throws -> String
   {
-    if (m_position == m_tokens.count()) throw Error{"missing operand"};
+    if (m_position == m_tokens.count()) {
+      throw ErrorWithLocation{token_location(m_position), "Missing operand"};
+    }
 
     return String{m_allocator, m_tokens[m_position++].view()};
   }
@@ -192,14 +207,15 @@ private:
 
     while (peek("+") || peek("-")) {
       let const operation    = take();
+      let const location     = token_location(m_position - 1);
       let const right        = parse_multiplication();
-      let const left_number  = require_number(left.view());
-      let const right_number = require_number(right.view());
+      let const left_number  = require_number(left.view(), location);
+      let const right_number = require_number(right.view(), location);
       let const result       = operation.view() == "+"
                                    ? static_cast<i128>(left_number) + right_number
                                    : static_cast<i128>(left_number) - right_number;
 
-      left = number_string(result);
+      left = number_string(result, location);
     }
 
     return left;
@@ -212,13 +228,14 @@ private:
 
     while (peek("*") || peek("/") || peek("%")) {
       let const operation     = take();
+      let const location      = token_location(m_position - 1);
       let const right         = parse_match();
-      let const left_number   = require_number(left.view());
-      let const right_number  = require_number(right.view());
+      let const left_number   = require_number(left.view(), location);
+      let const right_number  = require_number(right.view(), location);
       let const operator_byte = operation.view()[0];
 
       if ((operator_byte == '/' || operator_byte == '%') && right_number == 0) {
-        throw Error{"division by zero"};
+        throw ErrorWithLocation{location, "Division by zero"};
       }
 
       i128 result = 0;
@@ -228,7 +245,7 @@ private:
 
       case '/':
         if (left_number == INT64_MIN && right_number == -1) {
-          throw Error{"integer overflow"};
+          throw ErrorWithLocation{location, "Integer overflow"};
         }
 
         /* at this point: right_number is not 0, and the quotient fits in
@@ -243,7 +260,7 @@ private:
         break;
       }
 
-      left = number_string(result);
+      left = number_string(result, location);
     }
 
     return left;
@@ -274,8 +291,8 @@ private:
 
       if (!compiled.has_value()) {
         throw ErrorWithLocationAndDetails{
-            m_token_locations[pattern_position], "invalid regular expression",
-            "use a valid basic regular expression"};
+            m_token_locations[pattern_position], "Invalid regular expression",
+            "Use a valid basic regular expression"};
       }
 
       defer { os::free_regex(*compiled); };
@@ -286,7 +303,8 @@ private:
       /* e.g. left = "abc", pattern = "a\(b\)" gives anchored = "^a\(b\)".
               spans[0] covers 0..2 and spans[1] covers 1..2, so left = "b". */
       if (match.result == os::regex_match_result::Error)
-        throw Error{"" + match.error_message};
+        throw ErrorWithLocation{m_token_locations[pattern_position],
+                                match.error_message.view()};
       if (match.result == os::regex_match_result::NoMatch) {
         left = String{m_allocator, "0"};
       } else if (match.spans.count() > 1) {
@@ -315,7 +333,10 @@ private:
 
       let result = parse_or();
 
-      if (!peek(")")) throw Error{"missing closing parenthesis"};
+      if (!peek(")")) {
+        throw ErrorWithLocation{token_location(m_position),
+                                "Missing closing parenthesis"};
+      }
       m_position++;
 
       return result;
@@ -327,23 +348,25 @@ private:
   }
 
   fn
-  require_number(StringView value) const throws -> i64
+  require_number(StringView value, const SourceLocation &location) const throws -> i64
   {
     bool      is_out_of_range = false;
     let const parsed = utils::parse_decimal_i64(value, &is_out_of_range);
 
     if (parsed.is_error() || is_out_of_range) {
-      throw Error{"expected integer, got '" + value + "'"};
+      throw ErrorWithLocation{location,
+                              "Expected integer, got '" + value + "'"};
     }
 
     return parsed.value();
   }
 
   fn
-  number_string(i128 value) const throws -> String
+  number_string(i128 value, const SourceLocation &location) const throws
+      -> String
   {
     if (value < INT64_MIN || value > INT64_MAX) {
-      throw Error{"integer overflow"};
+      throw ErrorWithLocation{location, "Integer overflow"};
     }
 
     return String::from(static_cast<i64>(value), m_allocator);

@@ -138,7 +138,8 @@ private:
       let const read_byte_count = os::read_fd(m_fd, chunk, sizeof(chunk));
 
       if (!read_byte_count.has_value())
-        throw Error{"read error: " + os::last_system_error_message()};
+        throw Error{"Unable to read the input: " +
+                    os::last_system_error_message()};
       if (*read_byte_count == 0) {
         m_is_at_end = true;
 
@@ -199,7 +200,7 @@ private:
         if (byte == quote) {
           quote = '\0';
         } else {
-          if (byte == '\n') throw Error{"unmatched quote before newline"};
+          if (byte == '\n') throw Error{"Unmatched quote before newline"};
           value += byte;
         }
 
@@ -214,7 +215,7 @@ private:
       if (byte == '\\') {
         let const escaped = take();
 
-        if (!escaped.has_value()) throw Error{"trailing backslash"};
+        if (!escaped.has_value()) throw Error{"Trailing backslash"};
         if (*escaped == '\n')
           m_line_number++;
         else
@@ -230,7 +231,7 @@ private:
       value += byte;
     }
 
-    if (quote != '\0') throw Error{"unmatched quote"};
+    if (quote != '\0') throw Error{"Unmatched quote"};
 
     return xargs_item{steal(value), item_line};
   }
@@ -519,7 +520,8 @@ Xargs::execute(const ExecContext               &ec,
           }
 
           if (FLAG_XARGS_EXIT.is_enabled())
-            throw Error{"one argument exceeds the size limit"};
+            throw ErrorWithLocation{ec.source_location(),
+                                    "One argument exceeds the size limit"};
           command.push(steal(item->value));
           command_locations.push(ec.source_location());
           added_count++;
@@ -544,7 +546,9 @@ Xargs::execute(const ExecContext               &ec,
     if (FLAG_XARGS_TRACE.is_enabled())
       trace_xargs_command(ec, command, cxt.scratch_allocator());
     if (FLAG_XARGS_PROMPT.is_enabled())
-      throw Error{"interactive prompting requires a controlling terminal"};
+      throw ErrorWithLocation{
+          ec.source_location(),
+          "Interactive prompting requires a controlling terminal"};
 
     Maybe<ExecContext> sub;
 

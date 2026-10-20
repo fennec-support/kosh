@@ -91,8 +91,9 @@ Mkdir::execute(const ExecContext               &ec,
                                               utils::file_kind_mode::Directory);
 
     if (!parsed.has_value()) {
-      throw ErrorWithDetails{
-          "invalid mode '" +
+      throw ErrorWithLocationAndDetails{
+          FLAG_MKDIR_MODE.value_location(),
+          "Invalid mode '" +
               String{cxt.scratch_allocator(), FLAG_MKDIR_MODE.value()}
               + "'",
           "A mode is octal such as 0755 or symbolic such as u=rwx,go=rx"

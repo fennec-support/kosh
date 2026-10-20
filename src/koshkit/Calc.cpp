@@ -331,8 +331,11 @@ Calc::execute(const ExecContext               &ec,
        (!has_expression && os::is_stdin_a_tty() && os::is_stdout_a_tty()));
 
   if (has_expression && (should_pipe || is_interactive)) {
-    throw ErrorWithDetails{
-        "calc -i and -p read expressions from their input, not operands",
+    throw ErrorWithLocationAndDetails{
+        operand_locations.is_empty() ? ec.source_location()
+                                     : operand_locations[0],
+        "The -i and -p flags of calc read expressions from their input, not "
+        "operands",
         "Remove the operands, or evaluate them without -i or -p"};
   }
 
@@ -344,8 +347,8 @@ Calc::execute(const ExecContext               &ec,
   }
 
   if (!has_expression) {
-    throw ErrorWithDetails{
-        "calc has no expression to evaluate",
+    throw ErrorWithLocationAndDetails{
+        ec.source_location(), "There is no expression for calc to evaluate",
         "Pass an expression such as `calc '2 + 2'`, read a pipe with `-p`, or "
         "enter the interactive prompt with `-i`"};
   }

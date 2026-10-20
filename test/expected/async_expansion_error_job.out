@@ -13,8 +13,8 @@ plain=unset
 z=7
 n=5
 status=0
--c:1:6: error: Unfinished expression.
+-c:1:12: error: Unfinished expression.
      1 |  echo $(( 1 + )) &
-       |       ^~~~~~~~~~
+       |             ^
 note: An operand is missing.
 sh-arithmetic=2

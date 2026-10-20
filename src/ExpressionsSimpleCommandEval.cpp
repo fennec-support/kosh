@@ -1483,8 +1483,9 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
         if (append_variable_declaration(cxt, assignment.name, line)) {
           if (!os::write_all(KOSH_STDOUT, line.data(), line.count()))
-            throw Error{"Unable to write to stdout: " +
-                        os::last_system_error_message()};
+            throw ErrorWithLocation{source_location(),
+                                    "Unable to write to stdout: " +
+                                        os::last_system_error_message()};
         }
       }
     }

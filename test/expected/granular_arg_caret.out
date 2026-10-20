@@ -8,7 +8,7 @@ note: Pass `--ignore-exit-code` to benchmark it regardless.
      1 |  kill notapid
        |       ^~~~~~~
 == break points at the bad count, not the whole break line:
--c:1:24: error: break count '0' is out of range.
+-c:1:24: error: Break count '0' is out of range.
      1 |  for i in 1 2; do break 0; done
        |                         ^
 == exit points at the bad status, not the whole exit line:

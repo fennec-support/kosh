@@ -29,7 +29,7 @@ report_break_out_of_range(const ExecContext &ec,
 {
   let message = String{cxt.scratch_allocator()};
 
-  message += "break count '";
+  message += "Break count '";
   message.append(count);
   message += "' is out of range";
 

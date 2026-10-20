@@ -102,26 +102,26 @@ c
 c
 status=1
 --- counts accept only plain decimal digits ---
-tail -n [-c:1:1: error: invalid line count '99999999999999999999'.] status=1
-tail -c [-c:1:1: error: invalid byte count '99999999999999999999'.] status=1
-head -n [-c:1:1: error: invalid line count '99999999999999999999'.] status=1
-head -c [-c:1:1: error: invalid byte count '99999999999999999999'.] status=1
-tail -n [-c:1:1: error: invalid line count '1 '.] status=1
-tail -c [-c:1:1: error: invalid byte count '1 '.] status=1
-head -n [-c:1:1: error: invalid line count '1 '.] status=1
-head -c [-c:1:1: error: invalid byte count '1 '.] status=1
-tail -n [-c:1:1: error: invalid line count '++1'.] status=1
-tail -c [-c:1:1: error: invalid byte count '++1'.] status=1
-head -n [-c:1:1: error: invalid line count '++1'.] status=1
-head -c [-c:1:1: error: invalid byte count '++1'.] status=1
-tail -n [-c:1:1: error: invalid line count '+99999999999999999999'.] status=1
-tail -c [-c:1:1: error: invalid byte count '+99999999999999999999'.] status=1
-head -n [-c:1:1: error: invalid line count '+99999999999999999999'.] status=1
-head -c [-c:1:1: error: invalid byte count '+99999999999999999999'.] status=1
-tail -n [-c:1:1: error: invalid line count ''.] status=1
-tail -c [-c:1:1: error: invalid byte count ''.] status=1
-head -n [-c:1:1: error: invalid line count ''.] status=1
-head -c [-c:1:1: error: invalid byte count ''.] status=1
+tail -n [-c:1:17: error: Koshkit `tail`: Invalid line count '99999999999999999999'.] status=1
+tail -c [-c:1:17: error: Koshkit `tail`: Invalid byte count '99999999999999999999'.] status=1
+head -n [-c:1:17: error: Koshkit `head`: Invalid line count '99999999999999999999'.] status=1
+head -c [-c:1:17: error: Koshkit `head`: Invalid byte count '99999999999999999999'.] status=1
+tail -n [-c:1:17: error: Koshkit `tail`: Invalid line count '1 '.] status=1
+tail -c [-c:1:17: error: Koshkit `tail`: Invalid byte count '1 '.] status=1
+head -n [-c:1:17: error: Koshkit `head`: Invalid line count '1 '.] status=1
+head -c [-c:1:17: error: Koshkit `head`: Invalid byte count '1 '.] status=1
+tail -n [-c:1:17: error: Koshkit `tail`: Invalid line count '++1'.] status=1
+tail -c [-c:1:17: error: Koshkit `tail`: Invalid byte count '++1'.] status=1
+head -n [-c:1:17: error: Koshkit `head`: Invalid line count '++1'.] status=1
+head -c [-c:1:17: error: Koshkit `head`: Invalid byte count '++1'.] status=1
+tail -n [-c:1:17: error: Koshkit `tail`: Invalid line count '+99999999999999999999'.] status=1
+tail -c [-c:1:17: error: Koshkit `tail`: Invalid byte count '+99999999999999999999'.] status=1
+head -n [-c:1:17: error: Koshkit `head`: Invalid line count '+99999999999999999999'.] status=1
+head -c [-c:1:17: error: Koshkit `head`: Invalid byte count '+99999999999999999999'.] status=1
+tail -n [-c:1:17: error: Koshkit `tail`: Invalid line count ''.] status=1
+tail -c [-c:1:17: error: Koshkit `tail`: Invalid byte count ''.] status=1
+head -n [-c:1:17: error: Koshkit `head`: Invalid line count ''.] status=1
+head -c [-c:1:17: error: Koshkit `head`: Invalid byte count ''.] status=1
 c
 a
 c

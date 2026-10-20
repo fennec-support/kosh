@@ -328,7 +328,7 @@ public:
   fail_at(usize      start_position,
           usize      length,
           StringView message,
-          StringView note = {}) throws -> void
+          StringView note = {}) const throws -> void
   {
     if (precise_base.has_value()) {
       const SourceLocation location{precise_base->position + start_position,
@@ -487,6 +487,20 @@ public:
     char              resolved_subscript[24]{};
   };
 
+  fn
+  get_associative_array_of(const Lvalue &target) const throws -> String
+  {
+    try {
+      return associative_array_for_expanded_subscript(*context, target.name,
+                                                      *target.subscript);
+    } catch (const ErrorWithLocation &) {
+      throw;
+    } catch (const ErrorBase &error) {
+      fail_at(target.name_position, target.name.length, error.message().view(),
+              error.detail_message());
+    }
+  }
+
   /* Evaluates an indexed subscript once so that a read and a write of the
      same lvalue use one index. */
   fn
@@ -575,9 +589,8 @@ public:
       ASSERT(context != nullptr);
 
       if (utils::has_command_substitution(*target.subscript)) {
-        let const array_name = associative_array_for_expanded_subscript(
-            *context, target.name, *target.subscript);
-        let const value = context->lookup_associative_element(
+        let const array_name = get_associative_array_of(target);
+        let const value      = context->lookup_associative_element(
             array_name.view(), *target.subscript);
 
         return evaluate_operand_value(value.has_value() ? value->view()
@@ -606,8 +619,7 @@ public:
       let const text = value.to_string(context->scratch_allocator());
 
       if (utils::has_command_substitution(*target.subscript)) {
-        let const array_name = associative_array_for_expanded_subscript(
-            *context, target.name, *target.subscript);
+        let const array_name = get_associative_array_of(target);
 
         context->set_associative_element(array_name.view(), *target.subscript,
                                          text.view());
@@ -1919,6 +1931,14 @@ public:
     unreachable();
   }
 
+  pure fn
+  get_radix_prefix_length(usize number_start) const wontthrow -> usize
+  {
+    return arithmetic_internal::count_leading_digits(
+               source.substring(number_start), 10) +
+           1;
+  }
+
   fn
   reject_invalid_digit(usize number_start) throws -> void
   {
@@ -1983,7 +2003,14 @@ public:
       if (is_exact) {
         let value = ArithmeticValue{};
 
-        pos += lex_exact_arith_number(source.substring(pos), &value, arena);
+        try {
+          pos += lex_exact_arith_number(source.substring(pos), &value, arena);
+        } catch (const ErrorWithLocation &) {
+          throw;
+        } catch (const ErrorBase &error) {
+          fail_at(number_start, get_radix_prefix_length(number_start),
+                  error.message().view(), error.detail_message());
+        }
         reject_invalid_digit(number_start);
 
         return value;
@@ -1991,7 +2018,14 @@ public:
 
       i64 value = 0;
 
-      pos += lex_arith_number(source.substring(pos), &value);
+      try {
+        pos += lex_arith_number(source.substring(pos), &value);
+      } catch (const ErrorWithLocation &) {
+        throw;
+      } catch (const ErrorBase &error) {
+        fail_at(number_start, get_radix_prefix_length(number_start),
+                error.message().view(), error.detail_message());
+      }
       reject_invalid_digit(number_start);
 
       return ArithmeticValue{value};
@@ -2610,6 +2644,34 @@ public:
   BumpArena                    &arena;
   static constexpr usize        MAX_DEPTH = 128;
   usize                         binary_depth{0};
+  StringView                    source{};
+  Maybe<SourceLocation>         precise_base{};
+
+  wontreturn cold fn
+  fail_at_token(usize      token_index,
+                StringView message,
+                StringView note = {}) const throws -> void
+  {
+    if (precise_base.has_value() && !toks.is_empty()) {
+      let const &token =
+          toks[token_index < toks.count() ? token_index : toks.count() - 1];
+
+      if (token.text.data >= source.data &&
+          token.text.data + token.text.length <= source.data + source.length)
+      {
+        let const offset = static_cast<usize>(token.text.data - source.data);
+        SourceLocation location{precise_base->position + offset,
+                                token.text.length,
+                                precise_base->source_name_index};
+
+        if (note.is_empty()) throw ErrorWithLocation{location, message};
+        throw ErrorWithLocationAndDetails{location, message, note};
+      }
+    }
+
+    if (note.is_empty()) throw Error{message};
+    throw ErrorWithDetails{message, note};
+  }
 
   pure fn
   at_op(StringView s) wontthrow -> bool
@@ -2624,7 +2686,9 @@ public:
     depth++;
     defer { depth--; };
 
-    if (depth > MAX_DEPTH) throw Error{"Expression nested too deeply"};
+    if (depth > MAX_DEPTH) {
+      fail_at_token(ti, "Expression nested too deeply");
+    }
 
     if (at_op("+")) {
       ti++;
@@ -2660,7 +2724,7 @@ public:
       let const value = parse_binary(1);
 
       if (!at_op(")")) {
-        throw ErrorWithDetails{"Expected ')'", "An opening '(' is unmatched"};
+        fail_at_token(ti, "Expected ')'", "An opening '(' is unmatched");
       }
 
       ti++;
@@ -2689,10 +2753,11 @@ public:
       return arith_read_variable(context, name, is_exact, arena);
     }
 
-    if (ti >= toks.count())
-      throw ErrorWithDetails{"Unfinished expression", "An operand is missing"};
-    throw ErrorWithDetails{"Unexpected character in the arithmetic expression",
-                           "This is not a valid operator or operand"};
+    if (ti >= toks.count()) {
+      fail_at_token(ti, "Unfinished expression", "An operand is missing");
+    }
+    fail_at_token(ti, "Unexpected character in the arithmetic expression",
+                  "This is not a valid operator or operand");
   }
 
   fn
@@ -2702,8 +2767,7 @@ public:
     defer { binary_depth--; };
 
     if (binary_depth > MAX_OPERATOR_CHAIN_DEPTH) {
-      throw ErrorWithDetails{"Expression nested too deeply",
-                             OPERATOR_CHAIN_HINT};
+      fail_at_token(ti, "Expression nested too deeply", OPERATOR_CHAIN_HINT);
     }
 
     let lhs = parse_operand();
@@ -2716,6 +2780,9 @@ public:
       let const op = arith_unpacked_binop(toks[ti].value);
 
       if (op.precedence < min_precedence) return lhs;
+
+      let const op_index = ti;
+
       ti++;
 
       let const rhs =
@@ -2723,7 +2790,9 @@ public:
 
       try {
         lhs = arith_apply_binop(op.kind, lhs, rhs, is_exact, arena);
-      } catch (const ErrorBase &) {
+      } catch (const ErrorWithLocation &) {
+        throw;
+      } catch (const ErrorBase &error) {
         let const is_invalid_tail =
             ti < toks.count() &&
             (toks[ti].k != arith_token::kind::op ||
@@ -2731,12 +2800,13 @@ public:
               arith_unpacked_binop(toks[ti].value).precedence == 0));
 
         if (is_invalid_tail) {
-          throw ErrorWithDetails{"Unexpected '" + toks[ti].text +
-                                     "' after the expression",
-                                 "An operator is missing between two values"};
+          fail_at_token(
+              ti, "Unexpected '" + toks[ti].text + "' after the expression",
+              "An operator is missing between two values");
         }
 
-        throw;
+        if (!precise_base.has_value()) throw;
+        fail_at_token(op_index, error.message().view(), error.detail_message());
       }
     }
   }
@@ -2779,9 +2849,9 @@ public:
     let const result = parse_binary(1);
 
     if (ti != toks.count()) {
-      throw ErrorWithDetails{"Unexpected '" + toks[ti].text +
-                                 "' after the expression",
-                             "An operator is missing between two values"};
+      fail_at_token(ti,
+                    "Unexpected '" + toks[ti].text + "' after the expression",
+                    "An operator is missing between two values");
     }
 
     return result;
@@ -3017,6 +3087,9 @@ evaluate_arithmetic_cached_value(EvalContext            *context,
   /* at this point: is_tokenized and is_simple are both true, so tokens
      holds a complete tokenization that arith_tokens_are_simple() accepted. */
   ArithmeticTokenEvaluator evaluator{context, tokens, is_exact, arena};
+
+  evaluator.source = expression;
+  if (source_location != nullptr) evaluator.precise_base = *source_location;
 
   return evaluator.run();
 }

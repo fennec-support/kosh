@@ -91,25 +91,25 @@ note: The digit is not valid in base 10.
     13 |  (echo $((1a)))
        |  ^
 decimal=1
-15:7: error: Division by zero.
+15:11: error: Division by zero.
     15 |  (echo $((1%0)))
-       |        ^~~~~~~~
+       |            ^
 note: The right operand evaluated to 0.
 15:1: trace:
     15 |  (echo $((1%0)))
        |  ^
 modzero=1
-17:7: error: Shift count is negative.
+17:12: error: Shift count is negative.
     17 |  (echo $((1 << -1)))
-       |        ^~~~~~~~~~~~
+       |             ^~
 note: An exact shift requires a non-negative count.
 17:1: trace:
     17 |  (echo $((1 << -1)))
        |  ^
 negative_shift=1
-19:7: error: Unexpected '2' after the expression.
+19:12: error: Unexpected '2' after the expression.
     19 |  (echo $((1 2)))
-       |        ^~~~~~~~
+       |             ^
 note: An operator is missing between two values.
 19:1: trace:
     19 |  (echo $((1 2)))
@@ -140,17 +140,17 @@ note: An operator is missing between two values.
        |  ^
 command_token=1
 268
-28:2: error: Unexpected '4' after the expression.
+28:9: error: Unexpected '4' after the expression.
     28 |  (y=$((3 4)); echo "$y")
-       |   ^~~~~~~~~~
+       |          ^
 note: An operator is missing between two values.
 28:1: trace:
     28 |  (y=$((3 4)); echo "$y")
        |  ^
 assignment=1
-30:9: error: Unexpected '6' after the expression.
+30:16: error: Unexpected '6' after the expression.
     30 |  (export z=$((5 6)))
-       |          ^~~~~~~~~~
+       |                 ^
 note: An operator is missing between two values.
 30:1: trace:
     30 |  (export z=$((5 6)))

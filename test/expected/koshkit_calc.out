@@ -137,7 +137,7 @@ note: The result cannot fit in addressable memory.
        |                          ^~~~~~~~~~~~~~~~~~~~
 note: The result cannot fit in addressable memory.
 === no expression ===
--c:1:1: error: calc has no expression to evaluate.
+-c:1:1: error: Koshkit `calc`: There is no expression for calc to evaluate.
      1 |  koshkit calc
        |  ^~~~~~~~~~~~
 note: Pass an expression such as `calc '2 + 2'`, read a pipe with `-p`, or enter the interactive prompt with `-i`.

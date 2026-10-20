@@ -152,10 +152,12 @@ struct tail_options
 
       parsed_count = parse_tail_count(spec);
       if (!parsed_count.has_value()) {
-        throw ErrorWithDetails{
+        throw ErrorWithLocationAndDetails{
+            is_bytes_overriding_lines ? FLAG_TAIL_BYTES.value_location()
+                                      : FLAG_TAIL_LINES.value_location(),
             String{allocator, is_bytes_overriding_lines
-                                  ? "invalid byte count '"
-                                  : "invalid line count '"}
+                                  ? "Invalid byte count '"
+                                  : "Invalid line count '"}
             +
                 spec + "'",
             "The count must be a non-negative integer"
@@ -180,8 +182,9 @@ struct tail_options
           utils::parse_decimal_f64(String{allocator, FLAG_TAIL_SLEEP.value()});
 
       if (parsed_seconds.is_error() || !(parsed_seconds.value() >= 0.0)) {
-        throw ErrorWithDetails{
-            "invalid number of seconds '" +
+        throw ErrorWithLocationAndDetails{
+            FLAG_TAIL_SLEEP.value_location(),
+            "Invalid number of seconds '" +
                 String{allocator, FLAG_TAIL_SLEEP.value()}
                 + "'",
             "The interval must be a non-negative number"
@@ -197,8 +200,9 @@ struct tail_options
       if (parsed_process_id.is_error() ||
           parsed_process_id.value() > static_cast<u64>(INT32_MAX))
       {
-        throw ErrorWithDetails{
-            "invalid PID '" + String{allocator, FLAG_TAIL_PID.value()}
+        throw ErrorWithLocationAndDetails{
+            FLAG_TAIL_PID.value_location(),
+            "Invalid PID '" + String{allocator, FLAG_TAIL_PID.value()}
               + "'",
             "The process identifier must be a non-negative integer"
         };
