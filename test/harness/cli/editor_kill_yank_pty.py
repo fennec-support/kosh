@@ -790,8 +790,8 @@ def run_ctrl_x_mode_checks(binary, directory, command_directory, report):
                           screen.get_lines()))
         session.send(KITTY_CTRL_C)
         session.wait_until(is_line(""))
-        session.send(b"set -o emacs\r")
-        session.wait_until(is_line(""))
+        session.send(b"set -o emacs; echo vi-chord-off\r")
+        session.wait_until(has_output("vi-chord-off", 1))
         session.send(CTRL_X + b"\x03")
         report.record("ctrl-x-ctrl-c-ends-the-shell", session,
                       has_exited(session))
