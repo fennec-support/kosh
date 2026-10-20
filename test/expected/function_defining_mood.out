@@ -20,3 +20,8 @@ failglob=on
 == propagated mood carries its strictness:
 mood=sh unset=[]
 rc-done
+== source --mood runs a file in that mood and restores the mood:
+inside=bash unset=[]
+after=kosh status=0
+inside=sh unset=[]
+unknown-mood-status=1

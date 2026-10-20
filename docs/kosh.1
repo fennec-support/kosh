@@ -1410,6 +1410,16 @@ umask unalias unset wait\fR
 prints the physical working directory in the Windows form with forward slashes,
 as MSYS does. On other systems, it is the same as
 .BR "pwd \-P" .
+.PP
+.BI "source \-\-mood " "MOOD FILE"
+and
+.BI "source \-\-mood=" "MOOD FILE"
+run FILE in MOOD, one of kosh, bash, sh, and bash\-posix, instead of the mood
+detected from its shebang or name, and return to the previous mood afterwards.
+A startup file of another shell that rc.kosh sources this way runs without the
+diagnostics of the
+.B kosh
+mood.
 .SS Shell-specific builtins
 .TP
 .BI "assimilate " TARGET

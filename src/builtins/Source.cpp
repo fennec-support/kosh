@@ -11,17 +11,23 @@
 #include "../Builtin.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
+#include "../MimicMood.hpp"
 #include "../Utils.hpp"
 #include "../base/Trace.hpp"
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("file");
+HELP_SYNOPSIS_DECL("[--mood mood] file");
 
 HELP_DESCRIPTION_DECL(
     "The specified file can be run in the current shell with this builtin.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
+FLAG(SOURCE_MOOD,
+     String,
+     '\0',
+     "mood",
+     "Run the file in the given mood instead of the detected one.");
 
 REGISTER_BUILTIN_FLAGS(Source);
 
@@ -38,9 +44,31 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (ec.args().count() < 2) return report_usage_error(ec, cxt, ec.program());
 
-  usize path_index = 1;
+  usize path_index  = 1;
+  let   forced_mood = Maybe<mimic_mood>{None};
 
-  if (ec.args()[1] == "--") path_index = 2;
+  /* --mood is read by hand, since every word after the file is passed to it
+     as a positional parameter. */
+  if (ec.args()[1] == "--mood" || ec.args()[1].view().starts_with("--mood=")) {
+    let const has_inline_value = ec.args()[1].view().starts_with("--mood=");
+    let const value_index      = has_inline_value ? usize{1} : usize{2};
+
+    if (value_index >= ec.args().count())
+      return report_usage_error(ec, cxt, ec.program());
+
+    let const value = has_inline_value ? ec.args()[1].view().substring(7)
+                                       : ec.args()[2].view();
+
+    forced_mood = parse_mood_name(value);
+    if (!forced_mood.has_value()) {
+      throw make_error_for_arg(
+          ec, value_index, StringView{"Unknown mood '"} + value + "'",
+          "Pass one of 'kosh', 'bash', 'sh', or 'bash-posix'");
+    }
+    path_index = value_index + 1;
+  }
+  if (path_index < ec.args().count() && ec.args()[path_index] == "--")
+    path_index++;
   if (path_index >= ec.args().count())
     return report_usage_error(ec, cxt, ec.program());
 
@@ -71,8 +99,11 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                 "': " + os::last_system_error_message()};
 
   /* at this point: contents holds the bytes of source_path. */
-  let const mimicked_mood = detect_sourced_file_mood(
-      source_path.view(), contents->view(), cxt.runtime_state().get_mood());
+  let const mimicked_mood =
+      forced_mood.has_value()
+          ? forced_mood
+          : detect_sourced_file_mood(source_path.view(), contents->view(),
+                                     cxt.runtime_state().get_mood());
   let const previous_mood = cxt.runtime_state().get_mood();
   let const should_mimic =
       mimicked_mood.has_value() && *mimicked_mood != previous_mood;

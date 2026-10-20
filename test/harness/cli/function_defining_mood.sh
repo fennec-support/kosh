@@ -1,7 +1,8 @@
 unset KOSH_FLAGS
 directory=
 trap 'test -n "$directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"' EXIT
-# A function runs in the mood it was defined in. A function defined in bash mood
+# A function runs in the mood it was defined in. source --mood runs a file in
+# the given mood and returns to the previous one. A function defined in bash mood
 # expands an unset variable to empty even after the session switches to the
 # strict default, and a function defined in the default mood stays strict even
 # when it is called from bash mood. Switching back to the default mood restores
@@ -48,3 +49,13 @@ printf "mood=%s unset=[%s]\n" "$(set -M)" "$NEVER_SET"
 test -n "$directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"
 directory=
 echo "rc-done"
+echo "== source --mood runs a file in that mood and restores the mood:"
+directory=$(mktemp -d)
+printf 'echo "inside=$(set -M) unset=[$NEVER_SET_EITHER]"\n' > "$directory/lax.sh"
+"$BIN" -c 'source --mood bash "$1"; echo "after=$(set -M) status=$?"' lax \
+  "$directory/lax.sh" 2>&1
+"$BIN" -c 'source --mood=sh "$1"' lax "$directory/lax.sh" 2>&1
+"$BIN" -c 'source --mood nope "$1"' lax "$directory/lax.sh" >/dev/null 2>&1
+echo "unknown-mood-status=$?"
+test -n "$directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"
+directory=
