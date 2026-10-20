@@ -334,10 +334,13 @@ Head::execute(const ExecContext               &ec,
 
   let const should_print_headers = sources.count() > 1;
 
+  bool has_printed_any_header = false;
+
   let const do_print_header = [&](usize source_index) throws -> void {
     if (!should_print_headers) return;
 
-    if (source_index > 0) output += '\n';
+    if (has_printed_any_header) output += '\n';
+    has_printed_any_header = true;
     output += "==> ";
     output += sources[source_index] == "-" ? StringView{"standard input"}
                                            : sources[source_index];

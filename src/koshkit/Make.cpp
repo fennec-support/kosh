@@ -656,12 +656,9 @@ split_words(StringView text, Allocator allocator) throws
     -> ArrayList<String>
 {
   ArrayList<String> words{allocator};
-  usize             text_position = 0;
 
-  while (text_position < text.length) {
-    let const word = text.next_ascii_whitespace_word(text_position);
-    if (!word.is_empty()) words.push_managed(word);
-  }
+  text.for_each_ascii_whitespace_word(
+      [&](StringView word) throws { words.push_managed(word); });
 
   return words;
 }
@@ -828,21 +825,21 @@ archive_member_modification_time(const Path &archive,
 
     /* at this point: timestamp and member_byte_count hold parsed values, and
        the member fits in contents after content_position. */
-    u64 extended_name_length = 0;
+    u64 extended_name_byte_count = 0;
 
     if (member_name.starts_with(StringView{"#1/"})) {
-      let const parsed_name_length =
+      let const parsed_name_byte_count =
           utils::parse_decimal_u64(member_name.substring(3));
 
-      if (parsed_name_length.is_error() ||
-          parsed_name_length.value() > member_byte_count.value())
+      if (parsed_name_byte_count.is_error() ||
+          parsed_name_byte_count.value() > member_byte_count.value())
       {
         return None;
       }
 
-      extended_name_length = parsed_name_length.value();
-      member_name          = contents->view().substring_of_length(
-          content_position, static_cast<usize>(extended_name_length));
+      extended_name_byte_count = parsed_name_byte_count.value();
+      member_name              = contents->view().substring_of_length(
+          content_position, static_cast<usize>(extended_name_byte_count));
     } else if (let const special = SPECIAL_MEMBERS.find(member_name);
                special.has_value())
     {
@@ -1083,12 +1080,9 @@ split_word_views(StringView text, Allocator allocator) throws
     -> ArrayList<StringView>
 {
   ArrayList<StringView> words{allocator};
-  usize                 text_position = 0;
 
-  while (text_position < text.length) {
-    let const word = text.next_ascii_whitespace_word(text_position);
-    if (!word.is_empty()) words.push(word);
-  }
+  text.for_each_ascii_whitespace_word(
+      [&](StringView word) throws { words.push(word); });
 
   return words;
 }
@@ -2316,7 +2310,7 @@ apply_assignment(EvalContext &cxt,
           variable.flavor == make_variable_flavor::Simple
               ? expand(cxt, mk, trimmed_value, 0)
               : String{cxt.scratch_allocator(), trimmed_value};
-      variable.value += " ";
+      if (!variable.value.is_empty()) variable.value += " ";
       variable.value += appended_value.view();
     } else {
       let value_to_store = operator_character == ':'
@@ -2744,7 +2738,8 @@ parse_makefile_into(EvalContext                     &cxt,
                                   "A define line must specify a variable"};
 
         String value{cxt.scratch_allocator()};
-        usize  define_depth = 1;
+        usize  define_depth  = 1;
+        bool   is_first_line = true;
 
         while (source_frame.line_position < source_frame.lines.count()) {
           let const definition_line =
@@ -2758,7 +2753,8 @@ parse_makefile_into(EvalContext                     &cxt,
             if (define_depth == 0) break;
           }
 
-          if (!value.is_empty()) value += '\n';
+          if (!is_first_line) value += '\n';
+          is_first_line = false;
           value += definition_line;
         }
 
@@ -3699,6 +3695,12 @@ build_target(const ExecContext        &ec,
   let saved_variables =
       ArrayList<make_variable_snapshot>{cxt.scratch_allocator()};
 
+  defer {
+    for (usize i = saved_variables.count(); i-- > 0;) {
+      restore_make_variable(mk, saved_variables[i], cxt.scratch_allocator());
+    }
+  };
+
   for (let const &assignment : target_assignments) {
     let const name = assignment_variable_name(assignment.view());
 
@@ -3708,12 +3710,6 @@ build_target(const ExecContext        &ec,
     apply_assignment(cxt, mk, assignment.view().substring_of_length(0, *equals),
                      assignment.view().substring(*equals));
   }
-
-  defer {
-    for (usize i = saved_variables.count(); i-- > 0;) {
-      restore_make_variable(mk, saved_variables[i], cxt.scratch_allocator());
-    }
-  };
 
   ArrayList<String> normal_prerequisites{cxt.scratch_allocator()};
   ArrayList<String> order_only_prerequisites{cxt.scratch_allocator()};
@@ -4296,6 +4292,8 @@ makefile_shell_analysis_source(
       position++;
       continue;
     }
+
+    is_escaped = false;
 
     if (source[position + 1] == '$') {
       analysis_source.append(" $");

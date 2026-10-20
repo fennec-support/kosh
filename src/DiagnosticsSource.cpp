@@ -616,6 +616,7 @@ check_source_bytes(AnalysisContext &actx, StringView source) throws
       switch (byte) {
       case '"':  state = source_scan_state::Normal; break;
       case '\\': at++; break;
+      case '\n': break;
 
       case '$': {
         if (at + 1 >= source.length || source[at + 1] != '(' ||

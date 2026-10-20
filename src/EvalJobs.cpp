@@ -627,6 +627,9 @@ JobTable::forget_done_jobs() throws -> void
       m_jobs.count());
   m_jobs            = steal(kept);
   m_has_waited_jobs = false;
+
+  for (let const &entry : m_jobs)
+    if (entry.was_waited) m_has_waited_jobs = true;
 }
 
 fn

@@ -2157,6 +2157,7 @@ Parser::parse_simple_command(const Token *leading_token) throws
 
     case Token::Kind::LeftParen:
       if (args_accumulator.count() == 1 && local_vars.is_empty() &&
+          redirections.is_empty() &&
           args_accumulator[0]->kind() == Token::Kind::Word)
       {
         return parse_function_definition(args_accumulator[0]);

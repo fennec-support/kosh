@@ -1863,8 +1863,11 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
       saved_descriptors.push(saved);
       os::close_fd(r.opened_fd);
       if (!saved.is_dup2_ok) {
-        throw ErrorWithLocation{redir.target->source_location(),
-                                "Bad file descriptor"};
+        let const location = redir.target != nullptr
+                                 ? redir.target->source_location()
+                                 : source_location();
+
+        throw ErrorWithLocation{location, "Bad file descriptor"};
       }
 
       break;

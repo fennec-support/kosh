@@ -631,7 +631,9 @@ EvilFiles::execute(const ExecContext               &ec,
       widths.size + 2 + widths.offset + 2 + widths.node + 2 + widths.endpoint +
       2;
 
-  let const fixed_width = other_columns_width + 3;
+  /* rows start with a two-space indentation, and a clamped name keeps three
+     cells for its ellipsis. */
+  let const fixed_width = other_columns_width + 5;
 
   if (line_width_limit > fixed_width + 4) {
     let const command_limit = line_width_limit - fixed_width;

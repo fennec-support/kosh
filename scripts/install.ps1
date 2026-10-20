@@ -127,6 +127,9 @@
             $B = [int]$W[$I]
             if ($A -ne $B) { return $A -gt $B }
         }
+        if ($Have -match "-" -and $Want -match "-") {
+            return [int]$H[3] -ge [int]$W[3]
+        }
         return -not ($Have -match "-" -and $Want -notmatch "-")
     }
 

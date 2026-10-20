@@ -217,7 +217,11 @@ append_completion_specification_line(String                &output,
                               spec.command.view());
   if (spec.has_argument(completion_argument::Function)) {
     output += "-F ";
-    output += spec.function_name.view();
+
+    if (!spec.function_name.is_empty()) {
+      append_shell_quoted_arg(output, spec.function_name.view());
+    }
+
     output += ' ';
   }
 

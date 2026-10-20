@@ -1128,7 +1128,7 @@ Server::complete(const JsonValue *id, const JsonValue *params) throws
     {
       if (KEYWORDS.find(candidate.view()).has_value()) {
         response.append(",\"kind\":14,\"data\":{\"command\":");
-      } else if (search_builtin(candidate.view()).has_value() ||
+      } else if (m_context.find_enabled_builtin(candidate.view()).has_value() ||
                  m_context.function_store()
                      .find_function(candidate.view())
                      .has_value() ||
@@ -2310,9 +2310,12 @@ clipped_line_span(StringView text,
 
   /* at this point: text[position] is the newline that ends the kept lines, and
      at least one byte follows it. */
-  for (usize scan = position; scan < text.length; scan++) {
+  for (usize scan = position + 1; scan < text.length; scan++) {
     if (text[scan] == '\n') dropped_line_count++;
   }
+
+  /* the final dropped line has no newline when text does not end with one. */
+  if (text[text.length - 1] != '\n') dropped_line_count++;
 
   return text.substring_of_length(0, position);
 }

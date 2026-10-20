@@ -1262,8 +1262,8 @@ struct function_definition_info
 
 struct function_arena_stats
 {
-  usize bytes_used{0};
-  usize bytes_capacity{0};
+  usize used_byte_count{0};
+  usize capacity_byte_count{0};
   usize block_count{0};
   usize destructor_count{0};
   usize destructor_capacity{0};

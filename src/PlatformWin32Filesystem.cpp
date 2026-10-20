@@ -1452,7 +1452,7 @@ touch_file_times(StringView path) wontthrow -> bool
 
   HANDLE handle =
       CreateFileW(wide_path->begin(), FILE_WRITE_ATTRIBUTES, FILE_SHARE_READ,
-                  nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+                  nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
 
   if (handle == INVALID_HANDLE_VALUE) return false;
 

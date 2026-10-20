@@ -1350,25 +1350,14 @@ next_history_word(StringView source, usize &position) throws
         continue;
       }
 
-      if (quote_byte != 0) {
-        position++;
-        if (byte == quote_byte) quote_byte = 0;
-        continue;
-      }
-
-      if (byte == '\'' || byte == '"' || byte == '`') {
-        quote_byte = byte;
-        position++;
-        continue;
-      }
-
       char closing_byte = 0;
 
-      if (byte == '$' && position + 1 < source.length &&
+      if (quote_byte != '\'' && byte == '$' && position + 1 < source.length &&
           (source[position + 1] == '(' || source[position + 1] == '{'))
       {
         closing_byte = source[position + 1] == '(' ? ')' : '}';
-      } else if ((lexer::is_extglob_operator(byte) || byte == '<' ||
+      } else if (quote_byte == 0 &&
+                 (lexer::is_extglob_operator(byte) || byte == '<' ||
                   byte == '>') &&
                  position + 1 < source.length && source[position + 1] == '(')
       {
@@ -1380,6 +1369,18 @@ next_history_word(StringView source, usize &position) throws
             source, position + 2, closing_byte);
 
         position = end_position.value_or(source.length);
+        continue;
+      }
+
+      if (quote_byte != 0) {
+        position++;
+        if (byte == quote_byte) quote_byte = 0;
+        continue;
+      }
+
+      if (byte == '\'' || byte == '"' || byte == '`') {
+        quote_byte = byte;
+        position++;
         continue;
       }
 
@@ -2780,10 +2781,10 @@ print_applied_fix_summary(
             return ENUM(left.id) < ENUM(right.id);
           });
 
-  usize warning_count = 0;
-  usize error_count   = 0;
-  usize label_width   = 0;
-  let   labels        = ArrayList<String>{heap_allocator()};
+  usize warning_count        = 0;
+  usize error_count          = 0;
+  usize max_label_byte_count = 0;
+  let   labels               = ArrayList<String>{heap_allocator()};
 
   for (let const &tally : tallies) {
     if (tally.severity == error_severity::warning)
@@ -2794,7 +2795,8 @@ print_applied_fix_summary(
     let label = String{heap_allocator()};
 
     append_applied_fix_label(label, tally.id);
-    if (label.count() > label_width) label_width = label.count();
+    if (label.count() > max_label_byte_count)
+      max_label_byte_count = label.count();
     labels.push(steal(label));
   }
 
@@ -2836,8 +2838,8 @@ print_applied_fix_summary(
 
     line.append(labels[tally_index].view());
 
-    for (usize padding = labels[tally_index].count(); padding < label_width;
-         padding++)
+    for (usize padding = labels[tally_index].count();
+         padding < max_label_byte_count; padding++)
       line.push(' ');
 
     line.append("  ");

@@ -26,9 +26,8 @@ Logname::execute(const ExecContext               &ec,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (!operands.is_empty()) {
-    report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
-                                   args[0].view(),
-                                   "unexpected operand '" + operands[0] + "'");
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
+                            "unexpected operand '" + operands[0] + "'");
 
     return 2;
   }

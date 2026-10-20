@@ -79,8 +79,12 @@ json_object_end(StringView source, usize object_start) wontthrow -> usize
       continue;
     }
 
-    if (byte == '{' || byte == '[') depth++;
-    if ((byte == '}' || byte == ']') && --depth == 0) return position + 1;
+    if (byte == '{' || byte == '[') {
+      depth++;
+    }
+    if ((byte == '}' || byte == ']') && --depth == 0) {
+      return position + 1;
+    }
   }
 
   return source.length;
@@ -96,7 +100,9 @@ is_windows_override(StringView source, usize object_start) wontthrow -> bool
           source[position - 1] == '\n' || source[position - 1] == '\r'))
     position--;
 
-  if (position == 0 || source[position - 1] != ':') return false;
+  if (position == 0 || source[position - 1] != ':') {
+    return false;
+  }
   position--;
 
   while (position > 0 &&

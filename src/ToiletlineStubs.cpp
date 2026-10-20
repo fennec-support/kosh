@@ -941,7 +941,7 @@ get_newest_history_event_number() -> koshka::ErrorOr<koshka::Maybe<usize>>
   let const path = get_history_path();
 
   if (!path.has_value()) return koshka::Maybe<usize>{koshka::None};
-  TRY(koshka::internal::ensure_no_editor_history_loaded(*path, false));
+  TRY(koshka::internal::ensure_no_editor_history_loaded(*path, true));
 
   let const &state = koshka::internal::get_no_editor_history_state();
 

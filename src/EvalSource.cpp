@@ -369,16 +369,25 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
   let const do_render_error = [&](const std::exception_ptr &error) {
     try {
       std::rethrow_exception(error);
-    } catch (const ErrorWithLocationAndDetails &detailed_error) {
-      show_message(detailed_error.to_string(contents->view(), this));
-      show_message(detailed_error.details_to_string(contents->view(), this));
-      print_source_backtrace(detailed_error.location());
-    } catch (const ErrorWithLocation &located_error) {
-      show_message(located_error.to_string(contents->view(), this));
-      print_source_backtrace(located_error.location());
-    } catch (const Error &caught_error) {
-      show_message(caught_error.to_string());
-      print_source_backtrace();
+    } catch (ErrorWithLocationAndDetails &detailed_error) {
+      if (!detailed_error.was_rendered()) {
+        show_message(detailed_error.to_string(contents->view(), this));
+        show_message(detailed_error.details_to_string(contents->view(), this));
+        print_source_backtrace(detailed_error.location());
+        detailed_error.set_rendered();
+      }
+    } catch (ErrorWithLocation &located_error) {
+      if (!located_error.was_rendered()) {
+        show_message(located_error.to_string(contents->view(), this));
+        print_source_backtrace(located_error.location());
+        located_error.set_rendered();
+      }
+    } catch (Error &caught_error) {
+      if (!caught_error.was_rendered()) {
+        show_message(caught_error.to_string());
+        print_source_backtrace();
+        caught_error.set_rendered();
+      }
     }
   };
 

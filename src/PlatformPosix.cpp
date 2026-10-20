@@ -74,19 +74,17 @@ linux_socket_address(StringView             encoded,
     u8 bytes[16]{};
 
     /* e.g. encoded = "00000000000000000000000001000000" for ::1. word 3 parses
-       to 0x01000000, and the byte loop stores its low byte first, so bytes[12]
-       through bytes[15] are 00 00 00 01 and inet_ntop() prints ::1. */
+       to the host-order value the kernel printed, so memcpy() restores
+       bytes[12] through bytes[15] as 00 00 00 01 on either byte order. */
     for (usize word_index = 0; word_index < 4; word_index++) {
       let const word = utils::parse_integer_in_base_u64(
           encoded.substring_of_length(word_index * 8, 8), int_base::hex);
 
       if (word.is_error()) return None;
 
-      let const value = word.value();
+      let const value = static_cast<u32>(word.value());
 
-      for (usize byte_index = 0; byte_index < 4; byte_index++)
-        bytes[word_index * 4 + byte_index] =
-            static_cast<u8>((value >> (byte_index * 8)) & 0xff);
+      memcpy(bytes + word_index * 4, &value, sizeof(value));
     }
 
     char text[INET6_ADDRSTRLEN]{};
@@ -701,13 +699,42 @@ system_log_priority(StringView priority) wontthrow -> int
       {SSK("info"),    LOG_INFO   },
       {SSK("debug"),   LOG_DEBUG  },
   };
-  static constexpr StaticStringMap PRIORITIES{PRIORITY_ENTRIES};
-  let                              name = priority;
+  static constexpr StaticStringMap          PRIORITIES{PRIORITY_ENTRIES};
+  static constexpr static_string_entry<int> FACILITY_ENTRIES[] = {
+      {SSK("auth"),     LOG_AUTH    },
+      {SSK("authpriv"), LOG_AUTHPRIV},
+      {SSK("cron"),     LOG_CRON    },
+      {SSK("daemon"),   LOG_DAEMON  },
+      {SSK("ftp"),      LOG_FTP     },
+      {SSK("kern"),     LOG_KERN    },
+      {SSK("local0"),   LOG_LOCAL0  },
+      {SSK("local1"),   LOG_LOCAL1  },
+      {SSK("local2"),   LOG_LOCAL2  },
+      {SSK("local3"),   LOG_LOCAL3  },
+      {SSK("local4"),   LOG_LOCAL4  },
+      {SSK("local5"),   LOG_LOCAL5  },
+      {SSK("local6"),   LOG_LOCAL6  },
+      {SSK("local7"),   LOG_LOCAL7  },
+      {SSK("lpr"),      LOG_LPR     },
+      {SSK("mail"),     LOG_MAIL    },
+      {SSK("news"),     LOG_NEWS    },
+      {SSK("syslog"),   LOG_SYSLOG  },
+      {SSK("user"),     LOG_USER    },
+      {SSK("uucp"),     LOG_UUCP    },
+  };
+  static constexpr StaticStringMap FACILITIES{FACILITY_ENTRIES};
+  let                              name     = priority;
+  let                              facility = LOG_USER;
 
   if (let const separator = priority.find_character('.'); separator.has_value())
-    name = priority.substring(*separator + 1);
+  {
+    let const facility_name = priority.substring_of_length(0, *separator);
 
-  return PRIORITIES.find(name).value_or(LOG_NOTICE);
+    name     = priority.substring(*separator + 1);
+    facility = FACILITIES.find(facility_name).value_or(LOG_USER);
+  }
+
+  return PRIORITIES.find(name).value_or(LOG_NOTICE) | facility;
 }
 
 fn
@@ -2644,6 +2671,8 @@ apply_terminal_settings(descriptor               terminal,
     }
     case terminal_setting_kind::Minimum:
     case terminal_setting_kind::Time:    {
+      if (is_disabled)
+        return {terminal_settings_apply_kind::InvalidSetting, index};
       if (++index == settings.count())
         return {terminal_settings_apply_kind::InvalidSetting, index - 1};
       let const parsed = utils::parse_decimal_u64(settings[index].view());

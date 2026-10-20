@@ -160,8 +160,9 @@ is_history_contents_valid(StringView contents) -> bool
 
     switch (byte) {
     case '\n':
+      if (is_escape_pending) break;
+
       decoded_byte_count = 0;
-      is_escape_pending  = false;
       byte_offset++;
       continue;
     case '\r':

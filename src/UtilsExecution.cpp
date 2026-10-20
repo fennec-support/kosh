@@ -473,8 +473,10 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
     if (stage_index > 0) {
       if (!ec.in_fd)
         ec.in_fd = last_stdin;
-      else
+      else {
         os::close_fd(last_stdin);
+        last_stdin = KOSH_INVALID_FD;
+      }
     }
 
     if (!is_last) {
@@ -824,7 +826,7 @@ print_memory_report() wontthrow -> void
     fprintf(stderr,
             "Function arenas: used %zu, reserved %zu, blocks %zu, "
             "destructors %zu of %zu\n",
-            stats.bytes_used, stats.bytes_capacity, stats.block_count,
+            stats.used_byte_count, stats.capacity_byte_count, stats.block_count,
             stats.destructor_count, stats.destructor_capacity);
   }
 

@@ -2357,17 +2357,17 @@ apply_source_fixes(StringView                   source,
     }
   }
 
-  let   output        = String{heap_allocator()};
-  usize output_length = source.length;
+  let   output            = String{heap_allocator()};
+  usize output_byte_count = source.length;
 
   for (let const *selected_edit : nonconflicting) {
     let const &edit = *selected_edit;
 
-    output_length -= edit.end_position - edit.start_position;
-    output_length += edit.replacement.count();
+    output_byte_count -= edit.end_position - edit.start_position;
+    output_byte_count += edit.replacement.count();
   }
 
-  output.reserve(output_length);
+  output.reserve(output_byte_count);
 
   usize source_position = 0;
 
@@ -2629,6 +2629,16 @@ negated_test_operator_fix(diagnostic_id         diagnostic,
   {
     return None;
   }
+
+  let const operand_start = skip_source_blanks(source, operator_end);
+
+  if (operand_start == operator_end) return None;
+
+  let const operand_end = source_word_end(source, operand_start);
+  let const operand =
+      source.substring_of_length(operand_start, operand_end - operand_start);
+
+  if (operand.is_empty() || operand == "]") return None;
 
   /* at this point: the negation is "!", and the bytes from operator_start to
      operator_end equal written_operator. */

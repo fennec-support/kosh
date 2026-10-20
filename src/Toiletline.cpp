@@ -945,11 +945,11 @@ completion_session::complete(const char    *buffer,
       koshka::os::INTERRUPT_REQUESTED = 0;
     };
 
-    const usize byte_length = strlen(buffer);
-    let         line        = koshka::StringView{buffer, byte_length};
+    const usize byte_count = strlen(buffer);
+    let         line       = koshka::StringView{buffer, byte_count};
 
     const usize byte_cursor =
-        toiletline::get_codepoint_byte_offset(buffer, byte_length, cursor);
+        toiletline::get_codepoint_byte_offset(buffer, byte_count, cursor);
 
     koshka::arm_message_leading_newline(true);
     result->candidates.clear();
@@ -1047,8 +1047,8 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
   if (!is_highlight_color_enabled) return 0;
 
   try {
-    const usize byte_length = strlen(buffer);
-    let         line        = koshka::StringView{buffer, byte_length};
+    const usize byte_count = strlen(buffer);
+    let         line       = koshka::StringView{buffer, byte_count};
 
     if (!has_highlighted_spans || highlighted_line.view() != line) {
       let const result = koshka::completion::highlight_line(line, *context);
@@ -1162,7 +1162,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       covered_end = span.end;
     }
 
-    do_push_styled(covered_end, byte_length, koshka::StringView{});
+    do_push_styled(covered_end, byte_count, koshka::StringView{});
 
     out->count = filled;
 
@@ -1217,10 +1217,10 @@ completion_session::validate_ghost(const char *entry) const -> int
 {
   if (context == nullptr) return 1;
   try {
-    const usize byte_length = strlen(entry);
+    const usize byte_count = strlen(entry);
 
     return koshka::completion::command_word_resolves(
-               koshka::StringView{entry, byte_length}, *context)
+               koshka::StringView{entry, byte_count}, *context)
                ? 1
                : 0;
   } catch (...) {
@@ -1240,14 +1240,14 @@ completion_session::hint(const char *buffer, size_t cursor) -> const char *
   if (context == nullptr) return nullptr;
 
   try {
-    let const byte_length = strlen(buffer);
-    let const line        = koshka::StringView{buffer, byte_length};
+    let const byte_count = strlen(buffer);
+    let const line       = koshka::StringView{buffer, byte_count};
 
     if (should_show_diagnostics) {
       let const mood                  = context->runtime_state().get_mood();
-      let const is_cursor_at_line_end = cursor == byte_length &&
-                                        byte_length > 0 &&
-                                        buffer[byte_length - 1] == '\\';
+      let const is_cursor_at_line_end = cursor == byte_count &&
+                                        byte_count > 0 &&
+                                        buffer[byte_count - 1] == '\\';
 
       if (!has_syntax_checked_line || syntax_checked_line.view() != line ||
           syntax_checked_mood != mood ||
@@ -4191,13 +4191,18 @@ build_prompt(EvalContext &context) -> String
     return finish_prompt_dropping_width_markers(PROMPT_CACHE.expansion.view());
   }
 
-  String expanded = expand_prompt_variable(context, "PS1", ps1_template.view(),
-                                           decoded.view());
-  String rendered = finish_prompt_dropping_width_markers(expanded.view());
+  let expanded = expand_decoded_prompt(context, "PS1", decoded.view());
 
   PROMPT_CACHE.invalidate();
+  if (!expanded.has_value()) {
+    return finish_prompt_dropping_width_markers(
+        decode_prompt(ps1_template.view(), context, false).view());
+  }
+
+  String rendered = finish_prompt_dropping_width_markers(expanded->view());
+
   if (is_cacheable)
-    PROMPT_CACHE.store(decoded, steal(scanned_inputs), steal(expanded),
+    PROMPT_CACHE.store(decoded, steal(scanned_inputs), steal(*expanded),
                        context);
 
   return rendered;

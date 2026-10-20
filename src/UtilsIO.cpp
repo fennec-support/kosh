@@ -666,15 +666,40 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
 
   local_ref.append(result.branch.view());
 
-  let const local_sha = read_git_ref_sha(git_dir, local_ref.view());
+  /* refs and config live in the common directory, which equals git_dir
+     outside a linked worktree. */
+  let common_dir     = git_dir.clone();
+  let commondir_file = git_dir.clone();
+
+  commondir_file.append("commondir");
+  if (let const commondir = commondir_file.read_entire_file()) {
+    let text = commondir->view();
+
+    while (!text.is_empty() &&
+           (text[text.length - 1] == '\n' || text[text.length - 1] == '\r'))
+    {
+      text = text.substring_of_length(0, text.length - 1);
+    }
+
+    let resolved_common_dir = Path{text};
+
+    if (!resolved_common_dir.is_absolute()) {
+      resolved_common_dir = git_dir.clone();
+      resolved_common_dir.append(text);
+    }
+
+    common_dir = steal(resolved_common_dir);
+  }
+
+  let const local_sha = read_git_ref_sha(common_dir, local_ref.view());
 
   if (local_sha.is_empty()) return result;
 
-  let const upstream = git_upstream_ref(git_dir, result.branch.view());
+  let const upstream = git_upstream_ref(common_dir, result.branch.view());
 
   if (upstream.is_empty()) return result;
 
-  let const upstream_sha = read_git_ref_sha(git_dir, upstream.view());
+  let const upstream_sha = read_git_ref_sha(common_dir, upstream.view());
 
   if (upstream_sha.is_empty()) return result;
 

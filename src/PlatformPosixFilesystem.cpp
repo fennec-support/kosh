@@ -113,7 +113,12 @@ stat_matches_type(StringView path, mode_t expected_type) wontthrow -> bool
 cold fn
 path_is_directory(StringView path) wontthrow -> bool
 {
-  return stat_matches_type(path, S_IFDIR);
+  let const saved_errno  = errno;
+  let const is_directory = stat_matches_type(path, S_IFDIR);
+
+  errno = saved_errno;
+
+  return is_directory;
 }
 
 fn

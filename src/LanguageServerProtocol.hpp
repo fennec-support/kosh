@@ -598,7 +598,7 @@ public:
         header_end = find_header_end();
         if (header_end != static_cast<usize>(-1)) break;
         if (!read_more()) return None;
-        if (m_buffer.count() - m_offset > MAX_HEADER_LENGTH) return None;
+        if (m_buffer.count() - m_offset > MAX_HEADER_BYTE_COUNT) return None;
       }
 
       let const headers =
@@ -611,9 +611,9 @@ public:
 
       let const body_start = header_end + 4;
 
-      if (*content_length > MAX_MESSAGE_LENGTH) {
+      if (*content_length > MAX_MESSAGE_BYTE_COUNT) {
         LOG(Info, "skipping a %zu byte message above the %zu byte limit",
-            *content_length, MAX_MESSAGE_LENGTH);
+            *content_length, MAX_MESSAGE_BYTE_COUNT);
         if (!skip_body(body_start, *content_length)) return None;
         continue;
       }
@@ -630,8 +630,8 @@ public:
   }
 
 private:
-  static constexpr usize MAX_HEADER_LENGTH  = 16 * 1024;
-  static constexpr usize MAX_MESSAGE_LENGTH = 16 * 1024 * 1024;
+  static constexpr usize MAX_HEADER_BYTE_COUNT  = 16 * 1024;
+  static constexpr usize MAX_MESSAGE_BYTE_COUNT = 16 * 1024 * 1024;
 
   fn
   find_header_end() wontthrow -> usize

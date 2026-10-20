@@ -218,8 +218,7 @@ Uniq::execute(const ExecContext               &ec,
       return;
     }
 
-    if (should_show_count)
-      output += count_prefix(run_length, cxt.scratch_allocator());
+    if (should_show_count) output += count_prefix(run_length, heap_allocator());
     output += previous.view();
     output += '\n';
     if (output.count() >= OUTPUT_FLUSH_BYTE_COUNT) do_write_output();

@@ -443,6 +443,9 @@ copy_path(const ExecContext                &ec,
       };
     }
 
+    if (options.should_preserve)
+      os::set_file_mode(destination, source_status->mode & 0777);
+
     return true;
   }
 
@@ -558,7 +561,8 @@ Cp::execute(const ExecContext               &ec,
 
   /* at this point: operands holds at least two entries, and destination is a
      directory whenever more than one source is given. */
-  ArrayList<cp_directory_identity> active_directories{cxt.scratch_allocator()};
+  /* the list may grow inside a child scratch mark, so it uses the heap. */
+  ArrayList<cp_directory_identity> active_directories{heap_allocator()};
   i32                              status = 0;
 
   for (usize i = 0; i + 1 < operands.count(); i++) {

@@ -602,7 +602,7 @@ run_captured_program(const ArrayList<String> &arguments,
   loop {
     switch (capture->step()) {
     case os::ProgramCapture::State::Finished:
-      return {capture->exit_status(), capture->take_output()};
+      return {capture->get_exit_status(), capture->take_output()};
     case os::ProgramCapture::State::Failed:
       return {None, capture->take_output()};
     case os::ProgramCapture::State::Running:

@@ -124,11 +124,19 @@ stripped_root(StringView path) wontthrow -> StringView
 }
 
 fn
-copy_into_root(const Path &stage,
-               StringView  source,
-               Allocator   allocator) throws -> bool
+is_followed_regular_file(StringView path) wontthrow -> bool
 {
-  if (!Path{source, allocator}.is_regular_file()) return false;
+  os::file_status status{};
+
+  if (!os::stat_path_following(path, status)) return false;
+
+  return os::file_type_letter(status.mode) == '-';
+}
+
+fn
+copy_into_root(const Path &stage, StringView source) throws -> bool
+{
+  if (!is_followed_regular_file(source)) return false;
 
   let const relative = stripped_root(source);
 
@@ -164,7 +172,8 @@ append_unique_path(ArrayList<String> &paths,
 
   /* at this point: normalized is absolute, has no parent references, and is
      not yet in paths. */
-  if (normalized.is_regular_file()) paths.push_managed(normalized.view());
+  if (is_followed_regular_file(normalized.view()))
+    paths.push_managed(normalized.view());
 }
 
 fn
@@ -234,7 +243,7 @@ infer_binary(EvalContext &cxt,
 
     let const candidate = remainder.substring_of_length(0, *end_position);
 
-    if (Path{candidate, allocator}.is_regular_file())
+    if (is_followed_regular_file(candidate))
       return Path{candidate, allocator}.to_absolute().text().clone();
 
     let const matches =
@@ -397,8 +406,7 @@ GoodCore::execute(const ExecContext               &ec,
     binary = infer_binary(cxt, operands[0].view(), allocator);
   }
 
-  if (!binary.has_value() || !Path{binary->view(), allocator}.is_regular_file())
-  {
+  if (!binary.has_value() || !is_followed_regular_file(binary->view())) {
     let const error_location = FLAG_GOODCORE_BINARY.is_set()
                                    ? FLAG_GOODCORE_BINARY.value_location()
                                : has_pid ? FLAG_GOODCORE_PID.value_location()
@@ -538,7 +546,7 @@ GoodCore::execute(const ExecContext               &ec,
 
   for (let const &path : paths) {
     print_progress(ec, "copying " + path.view(), progress_mode);
-    if (!copy_into_root(stage, path.view(), allocator)) {
+    if (!copy_into_root(stage, path.view())) {
       do_report_failure("cannot copy required file", path.view());
 
       return 1;

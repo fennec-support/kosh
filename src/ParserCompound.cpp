@@ -945,6 +945,7 @@ Parser::parse_subshell(Token *open) throws -> Command *
   ASSERT(close != nullptr);
 
   if (close->kind() != Token::Kind::RightParen) {
+    unused(close_analysis_scope(scope_mark));
     throw ErrorWithLocationAndDetails{
         open->source_location(), "This subshell has no closing ')'",
         close->source_location(), "expected ')' here"};

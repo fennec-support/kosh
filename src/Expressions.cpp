@@ -2058,17 +2058,16 @@ expressions::internal::analyze_followed_source(
   child_options.should_silence_unresolved_commands =
       actx.effects.should_silence_unresolved_commands;
 
-  let const analyzed = analyze_ast(
-      ast, contents->view(), actx.functions.defined, actx.functions.aliases,
-      actx.eval_context, child_options, directives,
-      {actx.followed_source_paths, actx.followed_source_effects_cache},
-      {&actx, should_merge_parent_state, should_merge_parent_uncertainty,
-       &effects},
-      {nullptr, actx.reporter.sink, nullptr}, actx.source_provider);
+  analyze_ast(ast, contents->view(), actx.functions.defined,
+              actx.functions.aliases, actx.eval_context, child_options,
+              directives,
+              {actx.followed_source_paths, actx.followed_source_effects_cache},
+              {&actx, should_merge_parent_state,
+               should_merge_parent_uncertainty, &effects},
+              {nullptr, actx.reporter.sink, nullptr}, actx.source_provider);
 
   do_name_child_diagnostics();
 
-  if (!analyzed) actx.reporter.has_fatal = true;
   /* an analysis under an unknown path or working directory depends on the
      caller state, so its effects are not cached for other callers. */
   if (!was_analyzed_under_uncertainty) {
@@ -2165,6 +2164,7 @@ enum class bracket_scan_state : u8
 {
   Outside,
   AfterOpen,
+  AfterNegation,
   InsideClass,
 };
 
@@ -2175,8 +2175,8 @@ expressions::internal::word_has_malformed_glob_bracket(const Word &word)
 {
   /* e.g. word text "[!a" with live glob characters in its only segment
        '[' moves Outside to AfterOpen
-       '!' moves AfterOpen to InsideClass and does not close the class
-       'a' leaves InsideClass unchanged
+       '!' moves AfterOpen to AfterNegation
+       'a' moves AfterNegation to InsideClass
        the end of the word is in InsideClass, so the result is true */
   let state = bracket_scan_state::Outside;
 
@@ -2195,22 +2195,30 @@ expressions::internal::word_has_malformed_glob_bracket(const Word &word)
         break;
 
       case bracket_scan_state::AfterOpen:
-        state = bracket_scan_state::InsideClass;
-        if (byte == '!' || byte == '^') {
-          break;
+        if (is_glob_active && (byte == '!' || byte == '^')) {
+          state = bracket_scan_state::AfterNegation;
+        } else {
+          state = bracket_scan_state::InsideClass;
         }
 
-        if (byte == ']') state = bracket_scan_state::Outside;
+        break;
+
+      case bracket_scan_state::AfterNegation:
+        state = bracket_scan_state::InsideClass;
         break;
 
       case bracket_scan_state::InsideClass:
-        if (byte == ']') state = bracket_scan_state::Outside;
+        if (is_glob_active && byte == ']') {
+          state = bracket_scan_state::Outside;
+        }
+
         break;
       }
     }
   }
 
-  return state == bracket_scan_state::InsideClass;
+  return state == bracket_scan_state::InsideClass ||
+         state == bracket_scan_state::AfterNegation;
 }
 
 fn

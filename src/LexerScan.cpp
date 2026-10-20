@@ -91,8 +91,9 @@ unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
 
     if (quote != 0 && byte == quote) {
       quote = 0;
-    } else if (byte == '\\' && (quote == 0 || quote == '"') &&
-               position + 1 < word.length)
+    } else if (byte == '\\' && position + 1 < word.length &&
+               (quote == 0 || (quote == '"' && is_backtick_escape_stripped(
+                                                   word[position + 1], true))))
     {
       delimiter.push(word[++position]);
     } else if (quote == 0 && (byte == '\'' || byte == '"')) {

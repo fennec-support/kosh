@@ -68,7 +68,9 @@ collect_shell_moods(StringView               source,
   while (position < source.length) {
     let const line = source.next_line(position);
 
-    if (line.is_empty() || line[0] == '\t' || line[0] == '#') continue;
+    if (line.is_empty() || line[0] == '\t' || line[0] == '#') {
+      continue;
+    }
     if (shell_assignment_mood(line, mood)) continue;
 
     let const colon = line.find_character(':');
@@ -212,7 +214,9 @@ recipe_prefix_source(StringView source) throws -> prefixed_source
     else
       continue;
 
-    if (value.length != 1 || value[0] == '\t') continue;
+    if (value.length != 1 || value[0] == '\t') {
+      continue;
+    }
     result.prefix = value[0];
     after         = position;
     break;

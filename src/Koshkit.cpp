@@ -448,13 +448,13 @@ copy_file_contents(StringView      source,
   char buffer[64 * 1024];
 
   loop {
-    let const read_count =
+    let const read_byte_count =
         os::read_fd(*source_descriptor, buffer, sizeof(buffer));
 
-    if (!read_count.has_value()) return copy_file_result::ReadFailed;
-    if (*read_count == 0) return copy_file_result::Success;
+    if (!read_byte_count.has_value()) return copy_file_result::ReadFailed;
+    if (*read_byte_count == 0) return copy_file_result::Success;
 
-    if (!os::write_all(*destination_descriptor, buffer, *read_count))
+    if (!os::write_all(*destination_descriptor, buffer, *read_byte_count))
       return copy_file_result::WriteFailed;
   }
 }
@@ -1098,13 +1098,13 @@ file_crc32c(const ExecContext &ec,
   char buffer[65536];
 
   loop {
-    let const read_count =
+    let const read_byte_count =
         os::read_fd(input->descriptor, buffer, sizeof(buffer));
 
-    if (!read_count.has_value()) return None;
-    if (*read_count == 0) break;
+    if (!read_byte_count.has_value()) return None;
+    if (*read_byte_count == 0) break;
 
-    crc = os::crc32c_update(crc, buffer, *read_count);
+    crc = os::crc32c_update(crc, buffer, *read_byte_count);
     if (os::INTERRUPT_REQUESTED) return None;
   }
 
@@ -1462,10 +1462,11 @@ format_signal_list() throws -> String
     out += number;
     out += ") SIG";
     out += numbered[index].name;
-    out += (index + 1) % COLUMN_COUNT == 0 ? '\n' : '\t';
-  }
+    let const is_row_end =
+        (index + 1) % COLUMN_COUNT == 0 || index + 1 == numbered.count();
 
-  if (numbered.count() % COLUMN_COUNT != 0) out += '\n';
+    out += is_row_end ? '\n' : '\t';
+  }
 
   return out;
 }

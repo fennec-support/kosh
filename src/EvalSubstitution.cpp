@@ -538,13 +538,16 @@ EvalContext::setup_process_substitution(
       set_child_source_origin(bootstrap, substitution_source.view(),
                               SourceLocation{});
 
+      let const launch_direction =
+          is_command_pipe_writer
+              ? os::process_substitution_direction::CommandWrites
+              : os::process_substitution_direction::CommandReads;
+
       return os::launch_process_substitution(os::process_substitution_options{
           .source               = substitution_source.view(),
           .should_trace_sources = diagnostics_store().source_traces_enabled(),
           .evaluator            = evaluator,
-          .direction            = is_command_pipe_writer
-                                      ? os::process_substitution_direction::CommandWrites
-                                      : os::process_substitution_direction::CommandReads});
+          .direction            = launch_direction});
     } catch (const ErrorBase &error) {
       if (!segment_location.has_value() ||
           source_store().current_source() == nullptr)
@@ -1470,6 +1473,8 @@ EvalContext::run_function_substitution(
     return reply;
   }
 
+  koshka::flush();
+
   let const pipe = os::make_pipe();
 
   if (!pipe) throw Error{"Could not open a pipe for function substitution"};
@@ -1488,7 +1493,6 @@ EvalContext::run_function_substitution(
 
   /* at this point: pipe is open at both ends, and the reader thread drains
      pipe->in into drain_context. */
-  koshka::flush();
 
   let const saved = os::redirect_stdout(pipe->out);
   let const error = do_evaluate_body();

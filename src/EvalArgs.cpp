@@ -148,16 +148,14 @@ parse_brace_sequence(StringView content, Allocator alloc) throws
                                       : -static_cast<i128>(magnitude);
     const bool should_pad =
         start_int->has_leading_zero || end_int->has_leading_zero;
-    let const width         = should_pad
-                                  ? (start_int->field_width > end_int->field_width
-                                         ? start_int->field_width
-                                         : end_int->field_width)
-                                  : 0;
-    let       elements      = ArrayList<String>{alloc};
-    let const distance      = from <= to
-                                  ? static_cast<u128>(static_cast<i128>(to) - from)
-                                  : static_cast<u128>(static_cast<i128>(from) - to);
-    let const element_count = distance / magnitude + 1;
+    let const widest_field_width = start_int->field_width > end_int->field_width
+                                       ? start_int->field_width
+                                       : end_int->field_width;
+    let const width              = should_pad ? widest_field_width : 0;
+    let       elements           = ArrayList<String>{alloc};
+    let const span               = static_cast<i128>(to) - from;
+    let const distance           = static_cast<u128>(span < 0 ? -span : span);
+    let const element_count      = distance / magnitude + 1;
 
     if (element_count > static_cast<u128>(static_cast<usize>(-1))) return None;
     /* at this point: element_count fits in usize, so the cast in reserve()

@@ -183,8 +183,8 @@ live_function_storage_stats() wontthrow -> function_arena_stats
   {
     let const &arena = *storage->arena;
 
-    total.bytes_used += arena.bytes_used();
-    total.bytes_capacity += arena.bytes_capacity();
+    total.used_byte_count += arena.bytes_used();
+    total.capacity_byte_count += arena.bytes_capacity();
     total.block_count += arena.block_count();
     total.destructor_count += arena.destructor_count();
     total.destructor_capacity += arena.destructor_capacity();

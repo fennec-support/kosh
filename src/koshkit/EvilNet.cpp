@@ -23,14 +23,12 @@ KOSHKIT_UTIL_DECL(
 
 FLAG(EVILNET_ALL, Bool, 'a', "all", "Include interface traffic and TCP data.");
 FLAG(EVILNET_TRAFFIC, Bool, 't', "traffic", "Show interface traffic only.");
-FLAG(
-    EVILNET_SORT,
-    String,
-    '\0',
-    "sort",
-    "Sort traffic by a unique prefix of the interface name, receive, transmit, "
-    "packet, "
-    "error, or dropped packet counters.");
+FLAG(EVILNET_SORT,
+     String,
+     '\0',
+     "sort",
+     "Sort traffic by name, receive or transmit bytes, packet counts, errors, "
+     "or drops, using the shortest unambiguous prefix of the key name.");
 FLAG_OPTIONAL(EVILNET_LIVE,
               'l',
               "live",

@@ -1229,12 +1229,7 @@ append_batch_quoted_arg(String &out, StringView arg) throws -> bool
     if (c == '\\') {
       backslash_count++;
     } else {
-      if (c == '"') {
-        for (usize k = 0; k < backslash_count; k++)
-          out += '\\';
-
-        out += '"';
-      } else if (c == '%' || c == '\r') {
+      if (c == '%' || c == '\r') {
         out.append(StringView{"%%cd:~,"});
       }
 
@@ -2232,23 +2227,23 @@ next_relay_write_length(const substitution_relay &relay) wontthrow -> DWORD
 {
   /* e.g. posted = 260000, tail = 270000, is_bulk = false, and the first newline
      is at ring offset 260100.
-       start = 260000 % 262144 = 260000; length = 270000 - 260000 = 10000
-       wrap limit 262144 - 260000 = 2144, so length = 2144
-       chunk limit 65536 does not apply to length 2144
+       start = 260000 % 262144 = 260000; byte_count = 270000 - 260000 = 10000
+       wrap limit 262144 - 260000 = 2144, so byte_count = 2144
+       chunk limit 65536 does not apply to byte_count 2144
        memchr() finds the newline 100 bytes past line_start, so it returns
      101 */
-  let const start  = relay.posted % SUBSTITUTION_RELAY_RING_BYTES;
-  let       length = relay.tail - relay.posted;
-  if (length > SUBSTITUTION_RELAY_RING_BYTES - start)
-    length = SUBSTITUTION_RELAY_RING_BYTES - start;
-  if (length > SUBSTITUTION_RELAY_CHUNK_BYTES)
-    length = SUBSTITUTION_RELAY_CHUNK_BYTES;
-  if (relay.is_bulk) return static_cast<DWORD>(length);
+  let const start      = relay.posted % SUBSTITUTION_RELAY_RING_BYTES;
+  let       byte_count = relay.tail - relay.posted;
+  if (byte_count > SUBSTITUTION_RELAY_RING_BYTES - start)
+    byte_count = SUBSTITUTION_RELAY_RING_BYTES - start;
+  if (byte_count > SUBSTITUTION_RELAY_CHUNK_BYTES)
+    byte_count = SUBSTITUTION_RELAY_CHUNK_BYTES;
+  if (relay.is_bulk) return static_cast<DWORD>(byte_count);
 
   let const line_start = relay.ring + start;
   let const newline    = static_cast<const char *>(
-      memchr(line_start, '\n', static_cast<usize>(length)));
-  if (newline == nullptr) return static_cast<DWORD>(length);
+      memchr(line_start, '\n', static_cast<usize>(byte_count)));
+  if (newline == nullptr) return static_cast<DWORD>(byte_count);
 
   return static_cast<DWORD>(newline - line_start + 1);
 }
@@ -2264,27 +2259,27 @@ start_relay_writes(substitution_relay &relay) wontthrow -> void
          relay.write_count < SUBSTITUTION_RELAY_WRITE_COUNT &&
          relay.posted < relay.tail)
   {
-    let const length = next_relay_write_length(relay);
-    let const slot   = (relay.oldest_write + relay.write_count) %
+    let const byte_count = next_relay_write_length(relay);
+    let const slot       = (relay.oldest_write + relay.write_count) %
                      SUBSTITUTION_RELAY_WRITE_COUNT;
     let      &write      = relay.writes[slot];
     let const overlapped = prepare_relay_operation(
         write.operation, relay_operation_kind::Write, slot);
     write.start                  = relay.posted;
-    write.end                    = relay.posted + length;
+    write.end                    = relay.posted + byte_count;
     write.transferred_byte_count = 0;
     write.is_done                = false;
     write.did_succeed            = false;
     let const was_started        = WriteFile(
         client.pipe, relay.ring + relay.posted % SUBSTITUTION_RELAY_RING_BYTES,
-        length, nullptr, overlapped);
+        byte_count, nullptr, overlapped);
     if (!note_relay_operation(write.operation, was_started)) {
       close_relay_client(client);
 
       return;
     }
 
-    if (write.operation.was_immediate && length > 1) {
+    if (write.operation.was_immediate && byte_count > 1) {
       relay.is_bulk = true;
     }
 
@@ -2303,14 +2298,14 @@ start_relay_body_read(substitution_relay &relay) wontthrow -> void
   let const used = relay.tail - relay.head;
   if (used >= SUBSTITUTION_RELAY_RING_BYTES) return;
 
-  let const start  = relay.tail % SUBSTITUTION_RELAY_RING_BYTES;
-  let       length = SUBSTITUTION_RELAY_RING_BYTES - used;
-  if (length > SUBSTITUTION_RELAY_RING_BYTES - start)
-    length = SUBSTITUTION_RELAY_RING_BYTES - start;
+  let const start      = relay.tail % SUBSTITUTION_RELAY_RING_BYTES;
+  let       byte_count = SUBSTITUTION_RELAY_RING_BYTES - used;
+  if (byte_count > SUBSTITUTION_RELAY_RING_BYTES - start)
+    byte_count = SUBSTITUTION_RELAY_RING_BYTES - start;
   let const overlapped = prepare_relay_operation(
       relay.body_read, relay_operation_kind::BodyRead, 0);
   let const was_started =
-      ReadFile(relay.body, relay.ring + start, static_cast<DWORD>(length),
+      ReadFile(relay.body, relay.ring + start, static_cast<DWORD>(byte_count),
                nullptr, overlapped);
   if (!note_relay_operation(relay.body_read, was_started)) {
     relay.is_body_finished = true;
@@ -3833,6 +3828,7 @@ run_measured(const ArrayList<String> &argv,
 
   return run_measured_with_options(argv, output, options);
 }
+
 fn
 enumerate_processes(process_detail detail) throws
     -> ArrayList<process_entry>

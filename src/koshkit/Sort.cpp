@@ -147,7 +147,11 @@ parse_sort_count(StringView text, usize &position, usize &value)
   value = 0;
 
   while (position < text.length && lexer::is_number(text[position])) {
-    value = value * 10 + static_cast<usize>(text[position] - '0');
+    let const digit = static_cast<usize>(text[position] - '0');
+
+    if (value > (static_cast<usize>(-1) - digit) / 10) return false;
+
+    value = value * 10 + digit;
     position++;
   }
 
@@ -288,7 +292,7 @@ extract_sort_key(StringView            line,
   if (modifiers.is_start_blank_skipping) start = skip_sort_blanks(line, start);
 
   if (key.start_character > 1)
-    start = start + key.start_character - 1 < line.length
+    start = key.start_character - 1 < line.length - start
                 ? start + key.start_character - 1
                 : line.length;
 
@@ -306,7 +310,7 @@ extract_sort_key(StringView            line,
       if (modifiers.is_end_blank_skipping)
         position = skip_sort_blanks(line, position);
 
-      end = position + key.end_character < line.length
+      end = key.end_character < line.length - position
                 ? position + key.end_character
                 : line.length;
     }

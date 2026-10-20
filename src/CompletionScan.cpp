@@ -1333,10 +1333,10 @@ complete_from_flags_in_line(StringView      line,
       }
 
       if (option->storage == option_storage::InitMoods) {
-        let const comma        = token.find_last_character(',');
-        let const listed_count = comma.has_value() ? *comma + 1 : 0;
-        let const listed       = token.substring_of_length(0, listed_count);
-        let const typed        = token.substring(listed_count);
+        let const comma             = token.find_last_character(',');
+        let const listed_byte_count = comma.has_value() ? *comma + 1 : 0;
+        let const listed = token.substring_of_length(0, listed_byte_count);
+        let const typed  = token.substring(listed_byte_count);
 
         for (let const mood_value : {"kosh", "sh", "bash", "bash-posix"}) {
           let const mood_text = StringView{mood_value};
@@ -1670,7 +1670,8 @@ mark_spec_directory_candidates(ArrayList<String>       &candidates,
   if (!context.execution_store().should_mark_completion_directories()) return;
 
   for (let &candidate : candidates) {
-    if (os::is_directory_separator(candidate[candidate.length() - 1]) ||
+    if (candidate.is_empty() ||
+        os::is_directory_separator(candidate[candidate.length() - 1]) ||
         descriptions.find(candidate.view()).has_value())
     {
       continue;

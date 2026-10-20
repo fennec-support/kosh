@@ -412,6 +412,10 @@ execute_program(ExecContext                     &ec,
 
       try {
         os::replace_process(steal(ec));
+        if (!should_allow_script_fallback) {
+          throw_exec_failure_error(ec.source_location(), ec.program_path(),
+                                   ENOEXEC);
+        }
         unused(os::write_fd(outcome_pipe->out, "f", 1));
         os::close_fd(outcome_pipe->out);
         os::exit_process_immediately(0);
@@ -2349,7 +2353,9 @@ parse_proc_sched_millis(StringView text) wontthrow -> Maybe<u64>
     u64       scale    = 100000;
 
     for (usize i = 0; i < fraction.length && scale > 0; i++) {
-      if (fraction[i] < '0' || fraction[i] > '9') return None;
+      if (fraction[i] < '0' || fraction[i] > '9') {
+        return None;
+      }
       fraction_nanos += static_cast<u64>(fraction[i] - '0') * scale;
       scale /= 10;
     }
@@ -2665,8 +2671,9 @@ run_tracer(const char *const *raw_argv,
 
   int status = 0;
 
-  if (waitpid(target, &status, __WALL) != target || !WIFSTOPPED(status))
+  if (waitpid(target, &status, __WALL) != target || !WIFSTOPPED(status)) {
     _exit(127);
+  }
 
   let const options = PTRACE_O_TRACESYSGOOD | PTRACE_O_TRACECLONE |
                       PTRACE_O_TRACEFORK | PTRACE_O_TRACEVFORK |
@@ -2833,7 +2840,7 @@ run_tracer(const char *const *raw_argv,
   }
 
   do_account();
-  counts.average_active_task_millis =
+  counts.average_active_task_milli_count =
       observed_nanos == 0
           ? 1000
           : static_cast<u64>(active_nanos_sum * 1000 / observed_nanos);

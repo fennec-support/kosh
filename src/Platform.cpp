@@ -210,7 +210,7 @@ program_exits_successfully(const ArrayList<String> &argv,
   loop {
     switch (capture->step()) {
     case ProgramCapture::State::Finished:
-      return capture->exit_status().value_or(-1) == 0;
+      return capture->get_exit_status().value_or(-1) == 0;
     case ProgramCapture::State::Failed:  return false;
     case ProgramCapture::State::Running: capture->wait(timeout_nanos); break;
     }

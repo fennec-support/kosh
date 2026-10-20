@@ -233,15 +233,7 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     }
 
     for (let const i : unknown_targets) {
-      let const &target = args[i];
-
-      if (!target.is_empty() && target[0] == '%') {
-        unused(do_report_unknown_target(i));
-      } else {
-        report_soft_builtin_error(ec, cxt, operand_locations[i],
-                                  "'" + target +
-                                      "': not a pid or valid job spec");
-      }
+      unused(do_report_unknown_target(i));
     }
 
     let const do_has_done_target_job = [&]() throws -> bool {

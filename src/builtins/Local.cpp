@@ -303,7 +303,11 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
           !cxt.is_bash_directory_stack_special(name))
       {
-        cxt.set_indexed_array(name, ArrayList<String>{heap_allocator()});
+        let values = ArrayList<String>{heap_allocator()};
+
+        if (equals_position.has_value())
+          values.push_managed(arg.substring(*equals_position + 1));
+        cxt.set_indexed_array(name, steal(values));
       }
     } else if (equals_position.has_value()) {
       let const value = arg.substring(*equals_position + 1);

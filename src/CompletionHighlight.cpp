@@ -2150,7 +2150,8 @@ internal::scan_highlight_range(
         do_push(word_start, word_end, do_command_role(word));
       }
 
-      is_command_position = false;
+      /* A pipeline negation '!' is followed by a command. */
+      is_command_position = word == "!";
       continue;
     }
 

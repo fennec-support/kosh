@@ -2636,7 +2636,7 @@ struct traced_counts
   u64 process_count{0};
   u64 exec_count{0};
   u64 peak_task_count{0};
-  u64 average_active_task_millis{0};
+  u64 average_active_task_milli_count{0};
 };
 
 fn
@@ -2757,7 +2757,7 @@ public:
   take_output() wontthrow -> String;
 
   pure fn
-  exit_status() const wontthrow -> Maybe<i32>
+  get_exit_status() const wontthrow -> Maybe<i32>
   {
     return m_exit_status;
   }

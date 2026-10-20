@@ -442,6 +442,8 @@ parse_justfile_format(const parser_format_input &input,
     let const indent     = indentation_length(line);
 
     if (!line.is_empty() && indent == 0) {
+      if (line[0] == '#') continue;
+
       do_flush_script();
       is_body_started = false;
 

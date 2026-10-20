@@ -567,9 +567,9 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
 
     value.has_locale_translation_quote = has_locale_translation_quote;
     value.segments.push(WordSegment{
-        WordSegment::Kind::UnquotedText,
+        segment.kind,
         SegmentText{heap_allocator(), after.substring(value_start)},
-        false
+        segment.is_in_double_quotes != 0
     });
 
     for (usize j = i + 1; j < segments.count(); j++)

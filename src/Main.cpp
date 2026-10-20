@@ -674,7 +674,9 @@ enter_rescue_mode(command_line &line) throws -> void
     line.operands = ArrayList<String>{heap_allocator()};
     if (line.argc > 0) line.operands.push_managed(line.argv[0]);
 
-    if (has_flag_word(line.argc, line.argv, 'r', "restricted")) {
+    if (has_flag_word(line.get_parse_argc(), line.get_parse_argv(), 'r',
+                      "restricted"))
+    {
       LOG(Info, "keeping the rescue shell restricted");
       FLAG_RESTRICTED.enable();
     }
@@ -1854,11 +1856,12 @@ run_startup(EvalContext               &context,
       FLAG_LINT.is_enabled() || FLAG_FORMAT.is_enabled() || is_fresh_evaluator)
   {
     LOG(Info, "skipping every startup config file in %s mode",
-        line.is_rescue_mode       ? "rescue"
-        : is_fresh_evaluator      ? "fresh evaluator"
-        : FLAG_CLEAN.is_enabled() ? "clean"
-        : FLAG_LINT.is_enabled()  ? "lint"
-                                  : "privileged");
+        line.is_rescue_mode        ? "rescue"
+        : is_fresh_evaluator       ? "fresh evaluator"
+        : FLAG_CLEAN.is_enabled()  ? "clean"
+        : FLAG_FORMAT.is_enabled() ? "format"
+        : FLAG_LINT.is_enabled()   ? "lint"
+                                   : "privileged");
 
     return;
   }

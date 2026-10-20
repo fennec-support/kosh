@@ -449,7 +449,13 @@ bc_parse_register(StringView   value,
 
   let const translated = bc_translate_expression(value, input_base, output_base,
                                                  0, false, cxt, allocator);
-  let const result = cxt.evaluate_calculator_arithmetic_text(translated.view());
+  String    result{allocator};
+
+  try {
+    result = cxt.evaluate_calculator_arithmetic_text(translated.view());
+  } catch (const Error &) {
+    return {};
+  }
   let const parsed = utils::parse_decimal_u64(result.view());
 
   if (parsed.is_error() || parsed.value() > ~u32{0}) {
@@ -1239,7 +1245,15 @@ bc_try_function_call(StringView         statement,
                      bc_runtime        &runtime,
                      bc_output_mode     output_mode) throws -> bool
 {
-  let result = bc_evaluate_function_call(statement, ec, cxt, runtime);
+  Maybe<String> result{};
+
+  try {
+    result = bc_evaluate_function_call(statement, ec, cxt, runtime);
+  } catch (const Error &error) {
+    report_soft_koshkit_util_error(ec, cxt, "bc", error.to_string());
+    runtime.status = 1;
+    return true;
+  }
 
   if (!result.has_value()) return false;
   if (output_mode == bc_output_mode::Print)
@@ -1424,7 +1438,21 @@ bc_execute_statement(StringView         statement,
 
     if (value.length >= 2 && value[0] == '(' && value[value.length - 1] == ')')
     {
-      value = value.substring_of_length(1, value.length - 2).trim_blanks();
+      usize depth    = 0;
+      usize position = 0;
+
+      for (; position < value.length - 1; position++) {
+        if (value[position] == '(')
+          depth++;
+        else if (value[position] == ')')
+          depth--;
+
+        if (depth == 0) break;
+      }
+
+      if (position == value.length - 1) {
+        value = value.substring_of_length(1, value.length - 2).trim_blanks();
+      }
     }
 
     runtime.return_value = value.is_empty()
@@ -1483,7 +1511,10 @@ bc_execute_statement(StringView         statement,
         continue;
       }
 
-      if (part_count >= 3) return bc_flow::Normal;
+      if (part_count == 3) {
+        part_count++;
+        break;
+      }
       parts[part_count++] =
           header.substring_of_length(part_start, position - part_start)
               .trim_blanks();

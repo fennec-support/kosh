@@ -51,7 +51,7 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   for (usize i = 1; i < args.count(); i++) {
     if (i > 1) command.push(' ');
-    command.append(args[i].view());
+    append_shell_quoted_arg(command, args[i].view());
   }
 
   LOG(Debug, "time running command '%s' under the clock", command.c_str());

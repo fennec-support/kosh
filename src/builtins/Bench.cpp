@@ -151,7 +151,9 @@ read_perf(const measured &result) wontthrow -> Maybe<double>
 {
   let const &value = result.perf.*Field;
 
-  if (!result.has_perf || !value.has_value()) return None;
+  if (!result.has_perf || !value.has_value()) {
+    return None;
+  }
 
   return static_cast<double>(*value);
 }
@@ -160,8 +162,9 @@ fn
 read_quotient(Maybe<double> numerator, Maybe<double> denominator) wontthrow
     -> Maybe<double>
 {
-  if (!numerator.has_value() || !denominator.has_value() || *denominator <= 0)
+  if (!numerator.has_value() || !denominator.has_value() || *denominator <= 0) {
     return None;
+  }
 
   return *numerator / *denominator;
 }
@@ -218,7 +221,9 @@ read_involuntary_share(const measured &result) wontthrow -> Maybe<double>
   let const involuntary =
       read_resource<&usage::involuntary_context_switch_count>(result);
 
-  if (!voluntary.has_value() || !involuntary.has_value()) return None;
+  if (!voluntary.has_value() || !involuntary.has_value()) {
+    return None;
+  }
 
   return read_quotient(involuntary, *voluntary + *involuntary);
 }
@@ -922,6 +927,8 @@ sample_command(StringView shell_binary,
     samples.push(sample);
   }
 
+  let present = ArrayList<bench_sample>{allocator};
+
   for (usize k = 0; k < METRIC_COUNT; k++) {
     /* when the perf counters cover only the measured process, the process
        cycles and instructions repeat the perf rows, so they are skipped. */
@@ -931,7 +938,7 @@ sample_command(StringView shell_binary,
 
     if (is_duplicate) continue;
 
-    let present = ArrayList<bench_sample>{allocator};
+    present.clear();
 
     for (usize i = 0; i < samples.count(); i++) {
       if (samples[i].is_present[k]) present.push(samples[i]);
@@ -954,7 +961,8 @@ sample_command(StringView shell_binary,
 
   let const active_task_count =
       result.traced.has_value()
-          ? static_cast<double>(result.traced->average_active_task_millis) /
+          ? static_cast<double>(
+                result.traced->average_active_task_milli_count) /
                 1000.0
           : 0.0;
 
@@ -1093,7 +1101,7 @@ append_summary(String              &out,
     do_push_traced("peak tasks", static_cast<double>(traced.peak_task_count),
                    metric_unit::Count);
     let const average_active_tasks =
-        static_cast<double>(traced.average_active_task_millis) / 1000.0;
+        static_cast<double>(traced.average_active_task_milli_count) / 1000.0;
 
     do_push_traced("average active tasks", average_active_tasks,
                    metric_unit::Count);
@@ -1156,7 +1164,9 @@ is_compared_metric(usize                k,
                    const CommandResult &other,
                    bool                 is_extended) wontthrow -> bool
 {
-  if (!first.has_metric[k] || !other.has_metric[k]) return false;
+  if (!first.has_metric[k] || !other.has_metric[k]) {
+    return false;
+  }
   if (!is_extended) return k == CPU_CYCLES_METRIC || k == INSTRUCTIONS_METRIC;
 
   let const unit = METRICS[k].unit;

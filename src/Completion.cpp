@@ -791,7 +791,7 @@ build_filesystem_candidate(StringView                       directory_part,
       raw_token[raw_token.length - 1] == decoded_word.last_quote_character;
 
   if (decoded_word.quote_character != 0 || has_closed_quote_at_token_end) {
-    let decoded_candidate =
+    let const decoded_candidate =
         String{completion_allocator(), directory_part} + entry_name;
     let candidate = rebuild_shell_syntax_candidate(raw_token, decoded_word,
                                                    decoded_candidate.view());
@@ -935,8 +935,8 @@ collect_filesystem_matches(
     utils::directory_validation      validation) throws -> void
 {
   let const is_inside_quote = text_mode != path_text_mode::ShellSyntax;
-  let listing = open_filesystem_listing(decoded_word, base_directory, context,
-                                        validation);
+  let const listing = open_filesystem_listing(decoded_word, base_directory,
+                                              context, validation);
 
   if (!listing.has_value()) return;
 
@@ -992,7 +992,7 @@ collect_filesystem_matches(
           }
 
           let const name      = entry.name.view();
-          let       candidate = build_filesystem_candidate(
+          let const candidate = build_filesystem_candidate(
               parts.directory_part, raw_directory_part, name,
               eligible_entry->is_directory, token, decoded_word, suffix_mode,
               text_mode);
@@ -1230,9 +1230,10 @@ complete_glob(StringView                       token,
               filesystem_entry_filter          filter) throws
     -> ArrayList<String>
 {
-  let candidates = ArrayList<String>{completion_allocator()};
-  let listing = open_filesystem_listing(decoded_word, base_directory, context,
-                                        utils::directory_validation::Cached);
+  let       candidates = ArrayList<String>{completion_allocator()};
+  let const listing =
+      open_filesystem_listing(decoded_word, base_directory, context,
+                              utils::directory_validation::Cached);
 
   if (!listing.has_value()) return candidates;
 
@@ -1328,7 +1329,7 @@ complete_variable(StringView                   token,
 {
   let candidates = ArrayList<String>{completion_allocator()};
 
-  let       has_brace  = token.length >= 2 && token[1] == '{';
+  let const has_brace  = token.length >= 2 && token[1] == '{';
   usize     name_start = has_brace ? 2 : 1;
   let const prefix     = token.substring(name_start);
 
@@ -1677,7 +1678,7 @@ complete(StringView                   line,
   let const is_leading_tilde_active =
       !has_open_quote && decoded_token.leading.is_tilde_active;
 
-  let const token_has_path_separator =
+  let const has_path_separator =
       os::has_directory_separator(decoded_token.text.view());
   let const is_builtin_only =
       is_command && is_after_builtin_prefix(line, token_start);
@@ -1757,13 +1758,13 @@ complete(StringView                   line,
 
       candidates.clear();
       candidates.push(steal(joined));
-    } else if (is_command && !token_has_path_separator) {
+    } else if (is_command && !has_path_separator) {
       candidates =
           complete_command_names(stage_token, context, extra_command_names,
                                  command_match_mode::Glob, is_builtin_only);
       should_rebuild_shell_syntax_candidates = true;
     }
-  } else if (is_command && !token_has_path_separator) {
+  } else if (is_command && !has_path_separator) {
     let from_initial_word = Maybe<ArrayList<String>>{None};
 
     if (!is_posix_completion && !is_builtin_only &&

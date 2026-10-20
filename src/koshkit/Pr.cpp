@@ -960,6 +960,10 @@ Pr::execute(const ExecContext               &ec,
         source == "-" ? start_time : opened_modification_time;
 
     if (!do_append_source(source, *reader, modification_time)) return 130;
+
+    for (let const descriptor : owned_inputs)
+      os::close_fd(descriptor);
+    owned_inputs.clear();
   }
 
   ec.print_to_stdout(output);

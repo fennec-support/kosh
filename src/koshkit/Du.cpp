@@ -1058,29 +1058,29 @@ Du::execute(const ExecContext               &ec,
     return status;
   }
 
-  usize shared_path_prefix_length = 0;
+  usize shared_path_prefix_byte_count = 0;
 
   if (!output_rows.is_empty()) {
     let const first_path = output_rows[0].path.view();
 
-    shared_path_prefix_length = first_path.length;
+    shared_path_prefix_byte_count = first_path.length;
 
     for (usize row_index = 1; row_index < output_rows.count(); row_index++) {
       let const path = output_rows[row_index].path.view();
 
-      if (path.length < shared_path_prefix_length)
-        shared_path_prefix_length = path.length;
+      if (path.length < shared_path_prefix_byte_count)
+        shared_path_prefix_byte_count = path.length;
 
       usize prefix_index = 0;
 
-      while (prefix_index < shared_path_prefix_length &&
+      while (prefix_index < shared_path_prefix_byte_count &&
              first_path[prefix_index] == path[prefix_index])
       {
         prefix_index++;
       }
 
-      shared_path_prefix_length = prefix_index;
-      if (shared_path_prefix_length == 0) break;
+      shared_path_prefix_byte_count = prefix_index;
+      if (shared_path_prefix_byte_count == 0) break;
     }
   }
 
@@ -1092,8 +1092,8 @@ Du::execute(const ExecContext               &ec,
     let const &row = output_rows[row_index];
 
     collected_output_order.push(du_sort_key{
-        row.byte_count, row.path.view().substring(shared_path_prefix_length),
-        row_index});
+        row.byte_count,
+        row.path.view().substring(shared_path_prefix_byte_count), row_index});
   }
 
   let const output_order =

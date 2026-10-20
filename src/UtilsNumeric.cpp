@@ -87,9 +87,15 @@ format_minutes_seconds(double seconds, i32 decimal_count) throws
 {
   if (seconds < 0.0) seconds = 0.0;
 
-  const i64    minutes   = static_cast<i64>(seconds) / 60;
-  const double remainder = seconds - static_cast<double>(minutes * 60);
-  char         buffer[64];
+  char buffer[64];
+
+  /* Round before splitting, so 59.9996 with three decimals gives 1m0.000s. */
+  snprintf(buffer, sizeof(buffer), "%.*f", static_cast<int>(decimal_count),
+           seconds);
+
+  let const    rounded_seconds = ::strtod(buffer, nullptr);
+  const i64    minutes         = static_cast<i64>(rounded_seconds) / 60;
+  const double remainder = rounded_seconds - static_cast<double>(minutes * 60);
 
   snprintf(buffer, sizeof(buffer), "%ldm%.*fs", static_cast<long>(minutes),
            static_cast<int>(decimal_count), remainder);

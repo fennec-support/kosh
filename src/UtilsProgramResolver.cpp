@@ -1273,7 +1273,7 @@ ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
   let const cached_status =
       is_cached_runnable ? Status::Runnable : Status::Blocked;
   let const paths = search(normalized_name.view(), SearchMode::First,
-                           Requirement::Regular, CachePolicy::Bypass);
+                           Requirement::Execution, CachePolicy::Bypass);
   let const current_status =
       paths.is_empty()
           ? Status::Missing

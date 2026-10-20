@@ -979,8 +979,9 @@ linux_process_real_uid(StringView process_directory,
     if (position != text.length && text[position] != '\n') {
       continue;
     }
-    let const line      = text.substring_of_length(line_start_position,
-                                                   position - line_start_position);
+    let const line = text.substring_of_length(line_start_position,
+                                              position - line_start_position);
+
     line_start_position = position + 1;
 
     if (parent_pid_out != nullptr && line.length > 5 &&
@@ -2317,12 +2318,11 @@ read_network_interface_statistics() throws
   }
 
 #elif defined __linux__
-  char      buffer[65536];
-  let const length = read_small_file("/proc/net/dev", buffer, sizeof(buffer));
+  let const contents = Path{"/proc/net/dev"}.read_entire_file();
 
-  if (length == 0) return result;
+  if (!contents.has_value()) return result;
 
-  let const text     = StringView{buffer, length};
+  let const text     = contents->view();
   usize     position = 0;
 
   while (position < text.length) {
@@ -2547,7 +2547,7 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
   disk_io_snapshot snapshot{ArrayList<disk_io_status>{allocator},
                             monotonic_nanos()};
 #if defined __APPLE__
-  let *matching = IOServiceMatching(kIOBlockStorageDriverClass);
+  let const *matching = IOServiceMatching(kIOBlockStorageDriverClass);
 
   if (matching == nullptr) return snapshot;
   io_iterator_t iterator = IO_OBJECT_NULL;

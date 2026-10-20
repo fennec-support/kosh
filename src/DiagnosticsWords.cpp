@@ -1268,6 +1268,7 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
 
   case command_name_id::Su: {
     let is_command_value_next = false;
+    let is_option_value_next  = false;
     let has_seen_user         = false;
 
     for (usize i = 1; i < args.count(); i++) {
@@ -1289,9 +1290,20 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
         break;
       }
 
+      if (is_option_value_next) {
+        is_option_value_next = false;
+        continue;
+      }
+
       if (!view.is_empty() && view[0] == '-') {
         if (view == "-c" || view == "--command") {
           is_command_value_next = true;
+        } else if (view == "-g" || view == "-G" || view == "-s" ||
+                   view == "-w" || view == "--group" ||
+                   view == "--supp-group" || view == "--shell" ||
+                   view == "--whitelist-environment")
+        {
+          is_option_value_next = true;
         }
 
         continue;

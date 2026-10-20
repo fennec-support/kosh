@@ -428,7 +428,10 @@ parse_dockerfile_format(const parser_format_input &input,
        Healthcheck with a CMD, and content_position is inside line. */
     let items = ArrayList<docker_json_item>{heap_allocator()};
 
-    if (is_exec_form(line.substring(content_position)) &&
+    let const command_text = line.substring(content_position).trim_blanks();
+
+    if (is_exec_form(command_text) &&
+        command_text[command_text.length - 1] == ']' &&
         read_docker_json_array(line, content_position, items))
     {
       if (items.count() < 3) continue;
@@ -498,8 +501,10 @@ parse_dockerfile_format(const parser_format_input &input,
 
     if (!mood.has_value()) continue;
 
-    usize shell_end    = line_start + line.length;
-    let   is_continued = !line.is_empty() && line[line.length - 1] == '\\';
+    usize     shell_end = line_start + line.length;
+    let const line_text = line.trim_blanks();
+    let       is_continued =
+        !line_text.is_empty() && line_text[line_text.length - 1] == '\\';
 
     while (is_continued && position < input.source.length) {
       let const continuation_start = position;
@@ -510,8 +515,8 @@ parse_dockerfile_format(const parser_format_input &input,
       if (!continuation_text.is_empty() && continuation_text[0] == '#')
         continue;
 
-      is_continued = !continuation.is_empty() &&
-                     continuation[continuation.length - 1] == '\\';
+      is_continued = !continuation_text.is_empty() &&
+                     continuation_text[continuation_text.length - 1] == '\\';
     }
 
     let const shell_start = line_start + content_position;

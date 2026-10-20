@@ -681,10 +681,9 @@ render_columns(const ArrayList<listing_entry> &entries,
   /* e.g. widths = [3, 5, 2, 4, 6], terminal_width = 20. shortest_name_length
      is 2, so max_columns = 20 / (2 + 2) = 5.
      columns = 5: rows = 1, column widths sum to 20, gaps add 4 * 2, total = 28.
-     columns = 4: rows = 2, column widths are 5, 4, 6, 0, gaps add 3 * 2,
-                  total = 21 > 20.
-     columns = 3: rows = 2, column widths are 5, 4, 6, gaps add 2 * 2,
-                  total = 19 <= 20, so best_columns = 3.
+     columns = 4: rows = 2, column widths are 5, 4, 6, 0. The empty fourth
+                  column adds no gap, so gaps add 2 * 2, total = 19 <= 20,
+                  so best_columns = 4.
      row 0 holds indices 0, 2, 4 and row 1 holds indices 1, 3. */
   for (usize columns = max_columns;; columns--) {
     let const rows  = (count + columns - 1) / columns;
@@ -692,7 +691,9 @@ render_columns(const ArrayList<listing_entry> &entries,
 
     for (usize c = 0; c < columns; c++) {
       total += column_width(widths, c, rows);
-      if (c + 1 < columns) total += COLUMN_GAP;
+      if (c + 1 < columns && (c + 1) * rows < count) {
+        total += COLUMN_GAP;
+      }
     }
 
     if (total <= terminal_width) {

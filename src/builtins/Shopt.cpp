@@ -228,12 +228,11 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         continue;
       }
 
-      if (is_quiet) {
-        status = 1;
-      } else {
-        throw ErrorWithLocation{location, StringView{"Unknown shopt option '"} +
-                                              name + "'"};
-      }
+      status = 1;
+      if (!is_quiet)
+        report_soft_builtin_error(ec, cxt, location,
+                                  StringView{"Unknown shopt option '"} + name +
+                                      "'");
     }
 
     return status;

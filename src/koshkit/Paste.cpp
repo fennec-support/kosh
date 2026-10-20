@@ -132,8 +132,8 @@ Paste::execute(const ExecContext               &ec,
     columns.push(reader);
   }
 
-  static constexpr usize OUTPUT_FLUSH_LENGTH = 64 * 1024;
-  let                    output              = String{cxt.scratch_allocator()};
+  static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
+  let                    output = String{cxt.scratch_allocator()};
 
   let const do_read_line =
       [&](usize column_index) throws -> Maybe<StringView> {
@@ -153,7 +153,10 @@ Paste::execute(const ExecContext               &ec,
       status = 1;
     }
 
-    reader = nullptr;
+    let const exhausted_reader = reader;
+
+    for (let &column : columns)
+      if (column == exhausted_reader) column = nullptr;
 
     return None;
   };
@@ -172,7 +175,7 @@ Paste::execute(const ExecContext               &ec,
           append_paste_delimiter(output, delimiters.view(), line_index - 1);
         output += *line;
         line_index++;
-        if (output.length() >= OUTPUT_FLUSH_LENGTH) {
+        if (output.length() >= OUTPUT_FLUSH_BYTE_COUNT) {
           ec.print_to_stdout(output);
           output.clear();
         }
@@ -207,7 +210,7 @@ Paste::execute(const ExecContext               &ec,
       }
 
       output += '\n';
-      if (output.length() >= OUTPUT_FLUSH_LENGTH) {
+      if (output.length() >= OUTPUT_FLUSH_BYTE_COUNT) {
         ec.print_to_stdout(output);
         output.clear();
       }

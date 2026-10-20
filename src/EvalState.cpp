@@ -3653,9 +3653,9 @@ EvalContext::make_stats_string() const throws -> String
 
   let const function_stats = function_storage_stats();
 
-  do_append_size_line("Function arenas used", function_stats.bytes_used);
+  do_append_size_line("Function arenas used", function_stats.used_byte_count);
   do_append_size_line("Function arenas capacity",
-                      function_stats.bytes_capacity);
+                      function_stats.capacity_byte_count);
   do_append_count_line("Function arena blocks", function_stats.block_count);
   do_append_count_line("Function destructors", function_stats.destructor_count);
   do_append_count_line("Shell variables",

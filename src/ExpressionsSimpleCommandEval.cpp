@@ -199,7 +199,8 @@ SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
 }
 
 hot fn
-SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result
+SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
+    throws -> status_result
 {
   ASSERT(m_args.count() > 0 || !m_redirections.is_empty() ||
          m_local_vars.count() > 0 || !m_array_args.is_empty());
@@ -407,9 +408,17 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
         if (is_bare_exec) {
           cxt.snapshot_subshell_descriptor(redir.fd);
           koshka::flush();
-          os::replace_descriptor(redir.fd, body_fd);
+          let const was_replaced = os::replace_descriptor(redir.fd, body_fd);
+
           if (!os::descriptor_is_shell_fd(body_fd, redir.fd))
             os::close_fd(body_fd);
+          if (!was_replaced) {
+            did_redirection_open_fail = true;
+            throw ErrorWithLocation{redir.target->source_location(),
+                                    String::from(redir.fd, heap_allocator()) +
+                                        ": Bad file descriptor"};
+          }
+
           break;
         }
 
@@ -1103,12 +1112,12 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
         cxt.leave_function_scope();
       };
 
-      let const saved_terminal_exec =
+      let const was_terminal_exec =
           cxt.execution_store().is_terminal_exec_allowed();
 
       cxt.execution_store().is_terminal_exec_allowed() = false;
       defer {
-        cxt.execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
+        cxt.execution_store().is_terminal_exec_allowed() = was_terminal_exec;
       };
 
       let const *const definition_info =
@@ -1353,6 +1362,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
     let should_unmark_lowercase   = false;
     let should_mark_uppercase     = false;
     let should_unmark_uppercase   = false;
+    let should_unexport_request   = false;
 
     if (is_declare || is_local || is_readonly_kind) {
       let text_storage = String{heap_allocator()};
@@ -1407,7 +1417,12 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
             break;
 
           case 'x':
-            if (is_set_request) is_export_request = true;
+            if (is_set_request) {
+              is_export_request = true;
+            } else {
+              should_unexport_request = true;
+            }
+
             break;
 
           default: break;
@@ -1459,6 +1474,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const 
         cxt.declare_associative_array(assignment.name);
       cxt.assign_indexed_array_elements(
           assignment.name, values, assignment.update_mode, &subscript_flags);
+      if (should_unexport_request) cxt.unexport_shell_variable(assignment.name);
       if (is_export_request) cxt.mark_exported(assignment.name);
       if (is_readonly_request)
         cxt.variable_store().attributes().mark_readonly(assignment.name);

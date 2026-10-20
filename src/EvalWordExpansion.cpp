@@ -1427,6 +1427,8 @@ EvalContext::expand_wordlist_to_fields(
       {
         brace_depth++;
         i++;
+      } else if (character == '(' && paren_depth > 0) {
+        paren_depth++;
       } else if (character == ')' && paren_depth > 0) {
         paren_depth--;
       } else if (character == '}' && brace_depth > 0) {

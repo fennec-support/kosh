@@ -1476,13 +1476,13 @@ append_remote_report(String                                   &output,
 
             if (is_known) continue;
 
-            constexpr usize cgroup_copy_limit = 120 * 8 + 1;
+            constexpr usize cgroup_copy_byte_limit = 120 * 8 + 1;
 
-            if (context.cgroups.length() >= cgroup_copy_limit) break;
+            if (context.cgroups.length() >= cgroup_copy_byte_limit) break;
             if (!context.cgroups.is_empty()) context.cgroups += ',';
 
             let const remaining_byte_count =
-                cgroup_copy_limit - context.cgroups.length();
+                cgroup_copy_byte_limit - context.cgroups.length();
             let const path = membership.path.view();
 
             context.cgroups += path.substring_of_length(

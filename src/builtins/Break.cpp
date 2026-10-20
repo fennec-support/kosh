@@ -101,7 +101,14 @@ Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (level < 1) {
     report_break_out_of_range(ec, cxt, ec.args()[1].view());
-    cxt.request_break(1, ec.source_location());
+
+    /* bash leaves every enclosing loop for a count below one. */
+    if (cxt.runtime_state().is_bash_compatible()) {
+      cxt.request_break(static_cast<i64>(cxt.execution_store().loop_depth()),
+                        ec.source_location());
+    } else {
+      cxt.request_break(1, ec.source_location());
+    }
 
     return 1;
   }

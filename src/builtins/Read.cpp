@@ -208,6 +208,15 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return (answer == 'y' || answer == 'Y') ? 0 : 1;
   }
 
+  if (FLAG_READ_ARRAY.is_set() &&
+      !name_is_valid_identifier(FLAG_READ_ARRAY.value()))
+  {
+    report_invalid_identifier(ec, cxt, FLAG_READ_ARRAY.value_location(),
+                              FLAG_READ_ARRAY.value());
+
+    return 1;
+  }
+
   let const has_operands = names.count() > 1;
 
   for (usize index = 1; index < names.count(); index++) {

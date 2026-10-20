@@ -153,8 +153,6 @@
     if [ -x "$BIN_DIR/kosh$EXT" ]
     then
       printf '%s' "$BIN_DIR/kosh$EXT"
-    else
-      command -v kosh || :
     fi
   }
 

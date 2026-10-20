@@ -809,10 +809,10 @@ mounted_filesystems() throws -> ArrayList<mounted_filesystem>
   return result;
 }
 
-static fn
-find_mounted_filesystem(StringView                           path,
-                        const ArrayList<mounted_filesystem> &filesystems,
-                        StringView                           required_type = {}) throws
+maybeunused static fn
+find_mounted_filesystem(
+    StringView                           path,
+    const ArrayList<mounted_filesystem> &filesystems) throws
     -> Maybe<usize>
 {
   let const    absolute_path = Path{path}.to_absolute();
@@ -820,10 +820,6 @@ find_mounted_filesystem(StringView                           path,
 
   for (usize index = 0; index < filesystems.count(); index++) {
     let const &filesystem = filesystems[index];
-
-    if (!required_type.is_empty() && filesystem.type != required_type) {
-      continue;
-    }
 
     let const target        = filesystem.target.view();
     let const subject       = absolute_path.view();
@@ -837,8 +833,9 @@ find_mounted_filesystem(StringView                           path,
       continue;
     }
 
+    /* A later mount at the same target is stacked above an earlier one. */
     if (!selected_index.has_value() ||
-        target.length > filesystems[*selected_index].target.view().length)
+        target.length >= filesystems[*selected_index].target.view().length)
     {
       selected_index = index;
     }

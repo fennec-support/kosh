@@ -961,8 +961,15 @@ extract_dash_flags(StringView option_part) throws -> ArrayList<String>
 
     let flag = option_part.substring_of_length(token_start, k - token_start);
 
-    if (let const equals = flag.find_character('='); equals.has_value())
-      flag = flag.substring_of_length(0, *equals);
+    usize name_end = 0;
+
+    while (name_end < flag.length && flag[name_end] != '=' &&
+           flag[name_end] != '[')
+    {
+      name_end++;
+    }
+
+    flag = flag.substring_of_length(0, name_end);
     if (flag.length >= 2 && flag[0] == '-') {
       flags.push_managed(flag);
     }

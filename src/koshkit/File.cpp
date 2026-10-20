@@ -413,9 +413,12 @@ append_magic_database(StringView                  path,
                       ArrayList<file_magic_rule> &rules,
                       Allocator                   allocator) throws -> bool
 {
-  let const contents = Path{path, allocator}.read_entire_file();
+  let contents = Path{path, allocator}.read_entire_file();
 
   if (!contents.has_value()) return false;
+
+  /* a CRLF pair would leave a carriage return in the rule messages. */
+  contents->normalize_crlf_line_endings();
 
   usize position = 0;
 
@@ -1267,13 +1270,13 @@ File::execute(const ExecContext               &ec,
             reader.finish_source(chunk.source_index);
             result.completion = source_completion_state::Complete;
           } else if (result.completion != source_completion_state::Complete) {
-            let const remaining_count =
+            let const remaining_byte_count =
                 sample_byte_count - result.content->length();
 
-            reader.set_source_read_byte_count(chunk.source_index,
-                                              remaining_count < read_byte_count
-                                                  ? remaining_count
-                                                  : read_byte_count);
+            reader.set_source_read_byte_count(
+                chunk.source_index, remaining_byte_count < read_byte_count
+                                        ? remaining_byte_count
+                                        : read_byte_count);
           }
         }
 

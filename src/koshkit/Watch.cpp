@@ -183,6 +183,12 @@ Watch::execute(const ExecContext               &ec,
   };
 
   loop {
+    let const scratch_mark = cxt.expansion_store().scratch_arena().mark();
+
+    defer {
+      cxt.expansion_store().scratch_arena().release(scratch_mark);
+    };
+
     u32 column_count = FALLBACK_COLUMN_COUNT;
     u32 row_count    = 0;
 

@@ -161,18 +161,25 @@ static pure fn
 session_heredoc_delimiter(StringView line) wontthrow -> StringView
 {
   for (usize position = 0; position + 2 < line.length; position++) {
-    if (line[position] != '<' || line[position + 1] != '<' ||
-        line[position + 2] == '<')
-    {
+    if (line[position] != '<' || line[position + 1] != '<') {
+      continue;
+    }
+
+    if (line[position + 2] == '<') {
+      position += 2;
       continue;
     }
 
     usize at = position + 2;
 
-    if (at < line.length && line[at] == '-') at++;
+    if (at < line.length && line[at] == '-') {
+      at++;
+    }
     while (at < line.length && line[at] == ' ')
       at++;
-    if (at < line.length && (line[at] == '\'' || line[at] == '"')) at++;
+    if (at < line.length && (line[at] == '\'' || line[at] == '"')) {
+      at++;
+    }
 
     let const word_start = at;
 

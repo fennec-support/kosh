@@ -1210,13 +1210,13 @@ shell_quoted_arg_length(StringView arg) wontthrow -> usize
 {
   if (!arg_needs_shell_quoting(arg)) return arg.length;
 
-  usize count = 2;
+  usize quoted_byte_count = 2;
 
   for (usize i = 0; i < arg.length; i++) {
-    count += arg[i] == '\'' ? 4 : 1;
+    quoted_byte_count += arg[i] == '\'' ? 4 : 1;
   }
 
-  return count;
+  return quoted_byte_count;
 }
 
 fn

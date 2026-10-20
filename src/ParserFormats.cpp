@@ -2213,7 +2213,9 @@ find_yaml_sibling_items(StringView                   source,
       if (candidate.trim_blanks().is_empty()) continue;
       if (parser_format_leading_spaces(candidate) < key_column &&
           !do_is_item_start(candidate))
+      {
         break;
+      }
       if (do_matches(candidate)) {
         collect_yaml_key_items(source, candidate_start, candidate, items);
 
@@ -2349,7 +2351,9 @@ static pure fn
 json_ascii_escape(StringView source, usize backslash, usize end) wontthrow
     -> Maybe<char>
 {
-  if (backslash + 6 > end || source[backslash + 1] != 'u') return None;
+  if (backslash + 6 > end || source[backslash + 1] != 'u') {
+    return None;
+  }
 
   /* at this point: source[backslash + 1] is 'u', and the four bytes after it
      lie before end. */
@@ -2369,7 +2373,9 @@ json_ascii_escape(StringView source, usize backslash, usize end) wontthrow
       return None;
   }
 
-  if (code < 0x20 || code >= 0x7f) return None;
+  if (code < 0x20 || code >= 0x7f) {
+    return None;
+  }
 
   return static_cast<char>(code);
 }
@@ -2627,7 +2633,9 @@ parser_format_extract_json_keys(parsed_format_document       &document,
       let const &candidate = keys[key_index];
 
       if (candidate.name != key) continue;
-      if (candidate.depth != 0 && candidate.depth != stack.count()) continue;
+      if (candidate.depth != 0 && candidate.depth != stack.count()) {
+        continue;
+      }
       bool has_container = candidate.container_key.is_empty();
       bool is_excluded   = false;
 
@@ -2855,7 +2863,7 @@ encode_continued(const parser_format_fragment &fragment,
     let const is_case_pattern = is_expecting_case_pattern && first != "esac";
     let const is_case_header  = first == "case" && last == "in";
 
-    if (!is_wrapped) {
+    if (is_case_header || !is_wrapped) {
       is_expecting_case_pattern =
           is_case_header || ARM_TERMINATORS.contains(last);
     }
