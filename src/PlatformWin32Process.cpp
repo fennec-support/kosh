@@ -1207,7 +1207,7 @@ append_batch_quoted_arg(String &out, StringView arg) throws -> bool
   for (usize i = 0; i < arg.count(); i++) {
     let const c = static_cast<unsigned char>(arg[i]);
 
-    if (c == '\0' || c == '\n' || c == '"') {
+    if (c == '\0' || c == '\n') {
       return false;
     }
 
@@ -1229,7 +1229,12 @@ append_batch_quoted_arg(String &out, StringView arg) throws -> bool
     if (c == '\\') {
       backslash_count++;
     } else {
-      if (c == '%' || c == '\r') {
+      if (c == '"') {
+        for (usize k = 0; k < backslash_count; k++)
+          out += '\\';
+
+        out += '"';
+      } else if (c == '%' || c == '\r') {
         out.append(StringView{"%%cd:~,"});
       }
 
