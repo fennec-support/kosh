@@ -109,6 +109,8 @@ slurp-numbers-the-lines-of-a-script PASS
 slurp-asks-for-a-second-enter-to-save PASS
 slurp-enter-saves-the-file PASS
 slurp-vi-write-quit-saves PASS
+slurp-save-keeps-the-file-mode PASS
+slurp-failed-save-keeps-the-original PASS
 slurp-leaves-a-text-file-unnumbered PASS
 slurp-vi-quit-leaves-the-file PASS
 slurp-refuses-a-binary-file PASS

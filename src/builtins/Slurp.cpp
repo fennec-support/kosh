@@ -12,6 +12,7 @@
 #include "../Eval.hpp"
 #include "../MimicMood.hpp"
 #include "../Toiletline.hpp"
+#include "../ToiletlineHistory.hpp"
 #include "../Utils.hpp"
 
 FLAG_LIST_DECL();
@@ -97,11 +98,18 @@ make_first_line_prompt(usize width) throws -> String
   return prompt;
 }
 
+/* An existing file is replaced by a complete copy written beside it, so a
+   failed write leaves the original in place. A missing file is created
+   directly. */
 fn
-save_file(StringView path, StringView contents) throws -> bool
+save_file(const Path &path, StringView contents) throws -> bool
 {
+  if (path.exists()) {
+    return toiletline::write_history_file_atomically(path, ".slurp", contents);
+  }
+
   let const descriptor =
-      os::open_file_descriptor(path, os::file_open_mode::Truncate);
+      os::open_file_descriptor(path.view(), os::file_open_mode::Truncate);
 
   if (!descriptor.has_value()) return false;
 
@@ -279,7 +287,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       saved.push('\n');
     }
 
-    if (!save_file(args[1].view(), saved.view())) {
+    if (!save_file(path, saved.view())) {
       report_soft_builtin_error(ec, cxt, location,
                                 StringView{"Unable to write '"} + args[1] +
                                     "': " + os::last_system_error_message());

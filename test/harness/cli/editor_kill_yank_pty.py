@@ -28,6 +28,8 @@
 # Ctrl-C ends the shell in emacs mode.
 # slurp numbers the lines of a script, saves it on a second Enter or on :wq,
 # leaves it on :q!, leaves a text file unnumbered, and refuses a binary file.
+# A save keeps the file mode, and a save that cannot write its replacement
+# beside the file leaves the original unchanged.
 # A file taller than the terminal shows a window of rows that follows the
 # caret, Up on its first line recalls no shell history, and saving keeps every
 # line.
@@ -834,6 +836,12 @@ def run_slurp_checks(binary, directory, command_directory, report):
         handle.write("first note\nsecond note\n")
     with open(binary_file, "wb") as handle:
         handle.write(b"a\0b")
+    locked_directory = os.path.join(directory, "slurp-locked")
+    locked = os.path.join(locked_directory, "kept.txt")
+    os.mkdir(locked_directory)
+    with open(locked, "w") as handle:
+        handle.write("original\n")
+    os.chmod(locked_directory, 0o555)
     session = Session(binary, directory, command_directory)
     try:
         session.wait_until(is_line(""))
@@ -850,6 +858,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       and read_slurped(script)
                       == "#!/bin/sh\necho one\necho two # edited\n")
 
+        os.chmod(script, 0o751)
         session.send(b"slurp --mode vi slurp-script.sh\r")
         session.wait_until(lambda screen: any(
             line.rstrip() == "   3 echo two # edited"
@@ -862,6 +871,18 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("slurp-vi-write-quit-saves", session,
                       lambda screen: is_line("")(screen)
                       and read_slurped(script).endswith("# edited!\n"))
+        report.record("slurp-save-keeps-the-file-mode", session,
+                      lambda screen: os.stat(script).st_mode & 0o7777 == 0o751)
+
+        session.send(b"slurp slurp-locked/kept.txt\r")
+        session.wait_until(lambda screen: any(line.rstrip() == "original"
+                                              for line in screen.get_lines()))
+        session.send(b" changed\r")
+        report.record("slurp-failed-save-keeps-the-original", session,
+                      lambda screen: any("Unable to write" in line
+                                         for line in screen.get_lines())
+                      and is_line("")(screen)
+                      and read_slurped(locked) == "original\n")
 
         session.send(b"slurp --mode vi slurp-notes.txt\r")
         report.record("slurp-leaves-a-text-file-unnumbered", session,
@@ -883,6 +904,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       and is_line("")(screen))
     finally:
         session.close()
+        os.chmod(locked_directory, 0o755)
 
 
 def has_numbered_rows(first, last):

@@ -1598,7 +1598,11 @@ Ctrl\-X Ctrl\-C, and Ctrl\-D on an empty buffer leave without saving, and
 Ctrl\-C leaves with status 130. Every colon and M\-x command works. The
 .BR \-\-mode " vi or " "\-\-mode emacs"
 option selects the key set for the session. Up and Down do not recall shell
-history. A file taller than the terminal shows the lines around the caret. A file with a NUL byte or invalid UTF\-8, a file longer than 65535
+history. A file taller than the terminal shows the lines around the caret.
+Saving an existing file writes a complete copy in its directory and renames it
+over the file, which keeps the file mode and follows a symbolic link to its
+target. A save that cannot finish reports the error and leaves the file as it
+was. A file with a NUL byte or invalid UTF\-8, a file longer than 65535
 bytes, and a restricted shell are refused. A file with CRLF line endings keeps
 them, and the final newline of the file is kept.
 .TP
