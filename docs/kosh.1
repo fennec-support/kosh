@@ -3289,7 +3289,9 @@ Leave the selection and act as in emacs mode.
 .SS Vi colon commands
 The colon key in command mode opens a command line under the buffer. Enter
 runs it, and Escape, Ctrl\-C, Ctrl\-D, or Backspace on an empty command closes
-it. Only a substitution, an undo, and a redo change the line.
+it. Only a substitution, an undo, and a redo change the line. The buffer keeps
+its syntax highlighting while the command line is open, and the typed command
+is drawn in light green.
 .TP
 .BR :q ", " :q! ", " :quit ", " :wq ", " :wq! ", " :x
 Leave the shell with the status of the last command.
@@ -3336,7 +3338,8 @@ Alt\-X in emacs mode opens a minibuffer under the buffer that takes the
 command to run. Tab completes the command, Enter runs it, and Escape,
 Ctrl\-C, Ctrl\-D, or Backspace on an empty minibuffer closes it. The hint rows
 list the commands that start with the text typed so far. An unknown command
-does nothing.
+does nothing. The buffer keeps its syntax highlighting, and the text typed into
+the minibuffer is drawn in light green.
 .TP
 .B replace\-string
 Ask for a text and its replacement, then replace every occurrence of the text

@@ -109,6 +109,7 @@ hint-stops-at-the-closing-backtick PASS
 hint-explains-a-builtin PASS
 hint-skips-a-word-without-description PASS
 tab-completes-option-name-by-subsequence PASS
+menu-finds-a-subsequence-after-an-empty-byte PASS
 hint-absent-for-uncached-command PASS
 hint-path-program-hides-bundled-synopsis PASS
 hint-koshkit-explains-the-utility PASS

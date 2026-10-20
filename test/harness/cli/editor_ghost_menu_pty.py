@@ -30,7 +30,8 @@
 # Down with its option switched off, a Ctrl-R menu that flags a miss and cuts
 # a long entry with an ellipsis, and the inline synopsis rows for a command and
 # the flag under the caret, a word without a description left out, a koshconf
-# option that Tab finds by subsequence, their synopsis header and the
+# option that Tab finds by subsequence, an open menu that finds one after a
+# byte that matched nothing, their synopsis header and the
 # two-column indent, their absence inside the command word, for an uncached
 # command, and for a bundled utility that a PATH program shadows unless the
 # word follows koshkit, their yielding to the menu, their erasure on submit,
@@ -1187,6 +1188,18 @@ def run_checks(binary, directory, command_directory, report):
                       and get_state(screen)[0].startswith(
                           "koshconf get editor.history.max_entries"))
         session.wait_until(lambda screen: screen.get_menu() is not None)
+        session.send(ESCAPE)
+        session.wait_until(is_menu_closed)
+        clear_line(session)
+
+        session.send(b"koshconf set \t")
+        session.wait_until(lambda screen: screen.get_menu() is not None)
+        settle(session, 0.5)
+        session.send(b"q")
+        settle(session, 0.5)
+        session.send(b"uotes")
+        report.record("menu-finds-a-subsequence-after-an-empty-byte", session,
+                      is_menu(["editor.auto_close_brackets_and_quotes"]))
         session.send(ESCAPE)
         session.wait_until(is_menu_closed)
         clear_line(session)
