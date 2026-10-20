@@ -50,6 +50,11 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   /* --mood is read by hand, since every word after the file is passed to it
      as a positional parameter. */
   if (ec.args()[1] == "--mood" || ec.args()[1].view().starts_with("--mood=")) {
+    if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
+      throw make_error_for_arg(
+          ec, 1, "Changing the mood is forbidden in a restricted shell");
+    }
+
     let const has_inline_value = ec.args()[1].view().starts_with("--mood=");
     let const value_index      = has_inline_value ? usize{1} : usize{2};
 

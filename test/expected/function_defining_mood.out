@@ -25,3 +25,4 @@ inside=bash unset=[]
 after=kosh status=0
 inside=sh unset=[]
 unknown-mood-status=1
+1

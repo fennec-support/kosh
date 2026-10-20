@@ -1419,7 +1419,8 @@ detected from its shebang or name, and return to the previous mood afterwards.
 A startup file of another shell that rc.kosh sources this way runs without the
 diagnostics of the
 .B kosh
-mood.
+mood. A restricted shell rejects
+.BR \-\-mood .
 .SS Shell-specific builtins
 .TP
 .BI "assimilate " TARGET

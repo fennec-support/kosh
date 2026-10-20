@@ -57,5 +57,7 @@ printf 'echo "inside=$(set -M) unset=[$NEVER_SET_EITHER]"\n' > "$directory/lax.s
 "$BIN" -c 'source --mood=sh "$1"' lax "$directory/lax.sh" 2>&1
 "$BIN" -c 'source --mood nope "$1"' lax "$directory/lax.sh" >/dev/null 2>&1
 echo "unknown-mood-status=$?"
+"$BIN" -r -c 'source --mood bash "$1"' lax "$directory/lax.sh" 2>&1 |
+  grep -c "Changing the mood is forbidden in a restricted shell"
 test -n "$directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"
 directory=
