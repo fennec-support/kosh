@@ -13,7 +13,7 @@ and workflow changes update this file.
 ## Writing
 
 Write direct, grammatical sentences with explicit subjects and objects. Keep
-technical names, commands, conditions, exceptions, and uncertainty exact.
+technical terms, commands, conditions, exceptions, and uncertainty exact.
 Remove process commentary, conversation references, change descriptions, filler,
 forced humor, and duplicated claims. Use a modal or a stated condition when a
 behavior depends on one. Keep present simple for behavior that holds every time.
@@ -26,8 +26,8 @@ use fn name(...) throws -> ret. Pure virtual functions use abstract. Compare
 pointers with nullptr.
 
 Boolean names start with is_, should_, was_, did_, or has_. Counts end with
-_count. Byte counts end with _byte_count. Measurements name their units. Lambdas
-start with do_. Accessors start with get_ or set_.
+_count. Byte counts end with _byte_count. Measurement variables include their
+units. Lambdas start with do_. Accessors start with get_ or set_.
 
 Free structs and enums use lower snake case. Classes and nested types use camel
 case. File operations accept Path. Project-owned C and C++ files carry the
@@ -72,10 +72,10 @@ followed by internal.
 
 src/Options.cpp owns the option registry. set, shopt, koshconf, the -o test,
 SHELLOPTS, BASHOPTS, and $- read and write through it. Koshka settings without a
-Bash letter belong to koshconf. Canonical names are written; legacy aliases
-resolve to the same registry entry. The kosh mood fixes nounset, pipefail,
-failglob, and extended arithmetic on, and nullglob off. Explicit option states
-survive changes between other moods.
+Bash letter belong to koshconf. Settings are written under their canonical
+spelling, and legacy aliases resolve to the same registry entry. The kosh mood
+fixes nounset, pipefail, failglob, and extended arithmetic on, and nullglob off.
+Explicit option states survive changes between other moods.
 
 src/Koshconf.cpp owns kosh.conf, its presets, and the KOSHCONF encoding. A write
 resolves symlinks, preserves the target mode, writes beside the target, renames
@@ -197,7 +197,7 @@ Focused tests use direct Make targets with matching MODE, BIN, and TARGET. The
 owning runner controls setup, comparison, cleanup, and result paths. Refill
 records output but does not validate behavior. Validate every changed golden
 against output, status, diagnostics, side effects, and platform branches. A
-direct fixture target can return success when the fixture failed, so inspect the
+direct test target can return success when the test failed, so inspect the
 runner's final status line.
 
 Kosh has no native unit tests. Behavior is covered by shell and utility cases.
@@ -246,7 +246,7 @@ change the main checkout from a review agent. Give parallel worktrees private
 scratch directories. Check disk space before parallel builds and remove merged
 worktrees.
 
-Run PTY fixtures through their shell wrappers. Judge direct fixture targets by
+Run PTY tests through their shell wrappers. Judge direct test targets by
 their final status line. Keep process cleanup tied to an exit marker. Preserve
 platform-specific file attribute semantics when simplifying filesystem code.
 
@@ -258,8 +258,8 @@ each process separately. A shell filter must read its input to the end when the
 producer can report EPIPE. Use a fresh tmux socket after stopping a server and
 poll for text the pane is known to show.
 
-Create named symlinks one at a time when the destination directory does not yet
-exist. A full path assertion uses long directory output. A link attribute check
+Create symlinks one at a time when the destination directory does not yet
+exist. A full path assertion needs long directory output. A link attribute check
 must preserve Windows behavior and must not be replaced blindly with a stat that
 follows links.
 
@@ -268,6 +268,6 @@ host shell and WINEDEBUG=-all. A Windows runner receives its test binary through
 BIN, not as the runner interpreter. PowerShell environment assignments use its
 own syntax.
 
-Read fixture wrappers before invoking Make. A .py PTY probe runs through its
-.sh wrapper. Direct fixture status is judged from the final status line. An
-editor fixture waits for an exit marker instead of a fixed sleep.
+Read test wrappers before invoking Make. A .py PTY probe runs through its
+.sh wrapper. Judge direct test status from the final status line. An
+editor test waits for an exit marker instead of a fixed sleep.

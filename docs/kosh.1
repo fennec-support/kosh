@@ -218,8 +218,7 @@ mood.
 .TP
 .B \-\-norc
 The interactive non-login Bash rc, ~/.koshrc, and a custom rc file are
-skipped. Login
-profiles and BASH_ENV processing are unchanged.
+skipped. Login profiles and BASH_ENV processing are unchanged.
 .TP
 .BR \-O " " \fINAME\fR ", " +O " " \fINAME\fR
 The shopt option NAME is turned on, or off with
@@ -275,9 +274,9 @@ standard input, or
 .TP
 .BR \-L ", " \-\-init\-moods =\fILIST\fR
 Startup files for each listed mood are sourced in order. LIST is a
-comma-separated list of moods. When the option is omitted,
-an interactive or login shell uses init_moods from the configuration,
-and otherwise the selected runtime mood.
+comma-separated list of moods. When the option is omitted, an interactive or
+login shell uses init_moods from the configuration, and any other shell uses
+the selected runtime mood.
 .TP
 .BR \-I ", " \-\-enable\-mimicry
 A script run as a command with a recognized shell shebang runs under the
@@ -365,8 +364,8 @@ every non-conflicting safe fix in the open document.
 The server recognizes embedded shell regions in the host formats described
 under
 .BR \-\-lint ,
-and language features operate only inside them. Rename updates variables, functions, and aliases
-throughout the open document. A reference written as
+and language features operate only inside them. Rename updates variables,
+functions, and aliases throughout the open document. A reference written as
 .B $name
 or
 .B ${name}
@@ -393,8 +392,7 @@ No settings file is read, and KOSHCONF from the environment is ignored and
 removed. PATH and the shell startup files are unchanged.
 .TP
 .BR \-W ", " \-WW ", " \-WWW
-Analysis has strict, lenient, and annoying tiers. In the default
-mood, strict and lenient diagnostics are errors, while annoying diagnostics are
+Analysis has strict, lenient, and annoying tiers. In the default mood, strict and lenient diagnostics are errors, while annoying diagnostics are
 warnings. The
 .B \-W
 form retains those severities,
@@ -429,8 +427,7 @@ Diagnostics and warnings are suppressed while startup files are sourced. The
 previous settings are restored before interactive input begins.
 .TP
 .B \-\-no\-traces
-Source backtraces are suppressed. This turns
-optimizer.show_source_traces off.
+Source backtraces are suppressed. This turns optimizer.show_source_traces off.
 .TP
 .BR \-T ", " \-\-no\-completion
 Tab completion, ghost text, and syntax coloring are disabled. This turns
@@ -538,7 +535,7 @@ When neither
 .B \-s
 nor
 .B \-c
-selects another source, the first operand specifies the script file. A lone
+selects another source, the first operand is the script file. A lone
 .B \-
 operand selects standard input. A directory operand fails with status 126. A
 file that cannot be opened fails with status 127.
@@ -574,12 +571,12 @@ report an error for any other value and suggest
 .BR "koshconf set mood bash" ,
 but accept the value already held, so
 .B set \-euo pipefail
-still runs. Every other option changing evaluation remains toggleable. In the
+still runs. Every other option that changes evaluation can be toggled. In the
 .BR bash ,
 .BR bash-posix ,
 and
 .B sh
-moods every Bash option is toggleable through
+moods, every Bash option can be toggled through
 .B set
 and
 .BR shopt .
@@ -640,8 +637,8 @@ and the
 test share one registry. Each option has a numeric id, a koshconf name, a type,
 a class, and, when it has them, a Bash spelling and a letter. An interactive
 option affects only the editor, the history, or the presentation of
-diagnostics. Every other option is
-semantic and can change what a script does or writes.
+diagnostics. Every other option is semantic
+and can change what a script does or writes.
 .PP
 A koshconf name starts with its topic. The topics are
 .B mood
@@ -953,7 +950,7 @@ Every shell applies the configuration files before any shell startup file.
 These are /etc/kosh.conf (%ProgramData%\kosh\kosh.conf on Windows), then
 $XDG_CONFIG_HOME/kosh/kosh.conf (~/.config/kosh/kosh.conf when XDG_CONFIG_HOME
 is unset, empty, or relative). The system file is skipped with a warning unless
-only the system administrator can change it. The files are not shell code, and
+only the system administrator can change it. The files are not shell code.
 .BR kosh (5)
 describes their format. A
 .B KOSHCONF
@@ -1016,8 +1013,8 @@ Clean, rescue, lint, format, and language server shells skip every startup and
 configuration file, as do
 .B \-Q
 and a shell whose real and effective identities differ. The privileged option
-suppresses ENV and BASH_ENV processing. The restrictions of restricted mode and
-the strictness of the selected mood take effect after startup finishes.
+suppresses ENV and BASH_ENV processing. Restricted mode and the strictness of the
+selected mood take effect after startup finishes.
 .PP
 Missing startup files are skipped. An unreadable custom rc or BASH_ENV file
 also produces a diagnostic.
@@ -1104,7 +1101,7 @@ Every mood except
 .B sh
 accepts a coprocess. The command runs asynchronously and two pipes connect
 it to the shell. NAME[0] is read from, NAME[1] is written to, and NAME_PID holds
-the process id. The default is COPROC. A word before the command is the
+the process id. The default NAME is COPROC. A word before the command is the
 identifier only when a compound command follows it. The launch returns status
 zero.
 .SH QUOTING
@@ -1145,8 +1142,8 @@ ${m[key]} expands to it. The form ${!m[@]} lists keys. The command
 removes one element.
 .PP
 The key order of an associative array is unspecified and may differ from Bash.
-The shell lists keys in the order first assigned. A script that depends on an
-order should sort the keys.
+The shell lists keys in the order first assigned, and a script that depends on
+an order should sort the keys.
 .PP
 The
 .B export
@@ -1483,9 +1480,9 @@ they do not share the processor counters with the default set. On Linux, one
 extra untimed run under ptrace counts system calls, started threads and
 processes, execs, the peak number of tasks, and the average number of active
 tasks, where a task that waits for a child counts as idle. Thread efficiency
-is CPU usage divided by that average. These rows are marked (traced). Run as root,
-Linux counts system calls on every run, and macOS reads the processor counters
-system-wide. A row marked * counts only the measured process, not the
+is CPU usage divided by that average. These rows are marked (traced). Run as
+root, Linux counts system calls on every run, and macOS samples the processor
+counters system-wide. A row marked * counts only the measured process, not the
 processes it started. A row the platform cannot report is omitted.
 .TP
 .BI "koshconf create " "PRESET " "\fR[\fB\-\-force\fR]"
@@ -1600,7 +1597,7 @@ prints current states and
 .B set +o
 prints reusable commands. A long option such as
 .B \-\-mood
-is rejected with a pointer to
+is rejected, and the message refers to
 .BR koshconf .
 The
 .BR \-E ,
@@ -1785,8 +1782,8 @@ option clears the cache. The
 option records path as the location of each command, and a restricted shell
 rejects it. The
 .B \-t
-option prints the remembered location of each command and fails for a command with no
-remembered location.
+option prints the remembered location of each command and fails for a command
+with no remembered location.
 .TP
 .B "history [\-cnrwaps] [\-d selector] [operand]"
 .br
@@ -1980,9 +1977,9 @@ sets the quantum, 5000 records by default.
 .B printf
 The
 .B \-v
-option assigns the formatted result to a variable.
-In every mood the numeric locale is taken from the first nonempty value of
-LC_ALL, LC_NUMERIC, and LANG as the shell holds them at each call. Floating operands are parsed and printed
+option assigns the formatted result to a variable. In every mood, the numeric
+locale is taken from the first nonempty value of LC_ALL, LC_NUMERIC, and LANG
+as the shell holds them at each call. Floating operands are parsed and printed
 with the decimal point of that locale. The
 .B \(aq
 flag groups the digits of integer and floating conversions with the thousands
@@ -2376,8 +2373,8 @@ auto. Without the option, the color mode of koshkit applies. When color is on,
 GREP_COLORS holds colon-separated GNU capabilities such as
 .BR ms=01;31 .
 The capabilities ms, mt, sl, cx, fn, ln, se, and rv take effect, an unknown
-capability is ignored, and an empty value turns that color off. The deprecated GREP_COLOR sets the match
-color below GREP_COLORS.
+capability is ignored, and an empty value turns that color off. The deprecated
+GREP_COLOR sets the match color at a lower precedence than GREP_COLORS.
 .PP
 The \fB\-i\fR, \fB\-v\fR, \fB\-r\fR, \fB\-n\fR, and \fB\-h\fR
 options ignore case, invert matches, recurse into directories, show line
@@ -2484,7 +2481,7 @@ prerequisite that holds *, ?, or [ expand through the pathname expansion of the
 shell, and a prerequisite pattern without a match stays as written.
 .TP
 .B meow
-A screensaver of pixel-art cats. The
+A screensaver of pixel-art cats is shown. The
 \fB\-f\fR or \fB\-\-fps\fR
 option sets the frames drawn per second, from 1 to 240, with 60 by default. The
 \fB\-s\fR or \fB\-\-speed\fR
@@ -2718,7 +2715,8 @@ Visible TCP, UDP, and Unix-domain sockets are printed in a table. Address
 family, protocol, listening state, process identifiers, and the header can be
 selected with ss-compatible options. The \fB\-\-live\fR option, which has no
 short form, refreshes the table
-every optional number of seconds until interrupted, defaulting to 0.5 seconds.
+until interrupted. Its optional value is the number of seconds between
+refreshes, and defaults to 0.5.
 .TP
 .B goodstat
 File metadata is printed as a labeled report. The \fB\-L\fR option follows
@@ -2791,9 +2789,8 @@ kills join into one entry. Ctrl\-K on an empty line kills the newline after it,
 so the next line moves up to the cursor. On an empty last line, Ctrl\-K removes
 the line and moves the cursor to the end of the previous line. Ctrl\-Y inserts
 the newest entry, and Alt\-Y right after a yank replaces it with the next older
-entry. Alt\-. and Alt\-_ insert the
-last word of the newest history entry, and each further press uses an older
-entry.
+entry. Alt\-. and Alt\-_ insert the last word of the newest history entry, and each
+further press uses an older entry.
 Undo reverts a yank or a last-word insertion with all of its replacements in
 one step.
 .PP
@@ -2813,9 +2810,8 @@ and
 .B editor.hints.show_live_diagnostics
 turns these rows off too.
 .PP
-Ctrl\-Z undoes while the editor collects a line, the same as Ctrl\-_. In a
-foreground program Ctrl\-Z stops it and
-the shell reports the stopped job. Ctrl\-Shift\-Z redoes when the terminal
+Ctrl\-Z undoes while the editor collects a line, the same as Ctrl\-_. In a foreground program, Ctrl\-Z stops it and the shell reports the stopped
+job. Ctrl\-Shift\-Z redoes when the terminal
 reports it apart from Ctrl\-Z. While the editor collects a line, it requests
 such reports through the kitty keyboard protocol and xterm modifyOtherKeys. Inside tmux, the
 modifyOtherKeys request takes effect when the tmux
@@ -2970,10 +2966,10 @@ for a snapshot of the shared history file. Opening the search does not
 replace or merge the session's private history.
 .PP
 A printable key is inserted into the token, and the menu is drawn again from the
-candidates that still match. A command-name, path, or koshconf option-name list
+candidates that still match. A command, path, or koshconf option list
 keeps the best of three tiers: the candidates the token opens exactly, then
-those it opens in smart case, then those holding the bytes of a name-like token
-in order. Any other completion list keeps every candidate the token opens,
+those it opens in smart case, then those holding the bytes of an identifier-like
+token in order. Any other completion list keeps every candidate the token opens,
 comparing letters without case. In the history search, an entry matches when the
 query opens it, appears inside it whole, or appears inside it as bytes in
 order. Backspace erases the last character of the token and widens the list. A
@@ -3415,8 +3411,7 @@ A job reported by
 .BR jobs ,
 or a notification leaves the job table, and a later
 .B wait
-with that process returns the remembered status again. The shell remembers the 1024 most
-recent statuses.
+with that process returns the remembered status again. The shell remembers the 1024 most recent statuses.
 .B wait
 reports 127 and a diagnostic for a process that is not a child of the shell or
 a job that does not exist. With several operands, the last operand decides the
@@ -3463,7 +3458,7 @@ When a trapped signal arrives while
 .B wait
 blocks, the wait ends and
 .B wait
-will report 128 plus the signal number. The awaited job is left running.
+reports 128 plus the signal number. The awaited job is left running.
 .SH DIAGNOSTICS
 Errors, warnings, and analysis diagnostics include source locations when a
 mapping exists.
@@ -3543,7 +3538,7 @@ child process receives a longer value cut to that limit.
 The value supplies default command-line options.
 .TP
 .B KOSH_ANALYSIS
-The variable carries the analysis settings changed with
+The variable passes the analysis settings changed with
 .B set
 to launched shells. Each use of
 .B set
@@ -3651,9 +3646,9 @@ The command runs before each interactive prompt. When the variable is an
 indexed array, each nonempty element runs as a command in index order. Every
 element sees the status and $_ of the previous command, and neither the status
 nor $_ of a hook replaces them. PROMPT_COMMAND is deprecated and discouraged.
-The prompt escapes cover its usual uses without running a command: \\g inserts the git branch, \\L the
-duration of the last command, and \\M its memory use, and the KOSH_PS1_
-variables hold the same values for parameter expansion.
+The prompt escapes cover its usual uses without running a command: \\g inserts
+the git branch, \\L the duration of the last command, and \\M its memory use.
+The KOSH_PS1_ variables hold the same values for parameter expansion.
 .TP
 .BR PS0 ", " PS1 ", " PS2 ", " PS3 ", " PS4
 These variables provide the pre-execution, primary, continuation, select, and
@@ -3794,8 +3789,8 @@ empty value disables the message.
 .TP
 .B KOSH_ANSI_*
 The variables BLACK, RED, GREEN, YELLOW, BLUE, MAGENTA, CYAN, WHITE, their
-BRIGHT_ forms, BOLD, DIM, and RESET supply terminal escapes. A recognized variable
-is empty when color is disabled. An explicit assignment takes precedence.
+BRIGHT_ forms, BOLD, DIM, and RESET supply terminal escapes. A recognized
+variable is empty when color is disabled. An explicit assignment takes precedence.
 .TP
 .BR RANDOM ", " SRANDOM ", " SECONDS ", " EPOCHSECONDS ", " EPOCHREALTIME
 These dynamic values supply random numbers, elapsed time, and wall clock time.
@@ -3858,8 +3853,8 @@ mood.
 .B BASH_ALIASES
 This associative array contains the current aliases. Assigning an element
 defines or replaces that alias. Unsetting an element has no effect. Unsetting
-the whole variable disconnects the array without deleting the aliases. The variable
-is unavailable in the
+the whole variable disconnects the array without deleting the aliases. The
+variable is unavailable in the
 .B sh
 mood.
 .TP
@@ -3915,7 +3910,7 @@ under the cursor. COMP_LINE contains the complete line. COMP_POINT is the
 cursor byte offset. COMP_WORDBREAKS contains the bytes that split a word.
 Trailing spaces are removed from each COMPREPLY entry. The
 completion.add_space_after_completed_word option and the nospace option
-of the completion control the space after an accepted candidate. The spec's
+of the completion spec control the space after an accepted candidate. The spec's
 .B \-X
 filter and its
 .B \-P

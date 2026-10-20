@@ -21,7 +21,7 @@ represented by the shared parser.
 
 Use `report_soft_koshkit_error` for recoverable diagnostics, and
 `KOSHKIT_REPORT_PATH_ERROR` when a path operation fails with a system error.
-`visit_ordered_sources` hands each whole source over in operand order. Use
+`visit_ordered_sources` passes each whole source in operand order. Use
 `ExecContext` for standard streams and output.
 
 ## Register one utility
@@ -44,5 +44,5 @@ utilities may appear as setup commands without becoming behavior owners.
 Literal help output has no golden.
 
 A new utility updates the root `AGENTS.md`, `docs/kosh.1`, and
-`completions/kosh.bash`. Add its name to the existing koshkit completion data.
-Registered flags feed runtime completion.
+`completions/kosh.bash`. Add the utility to the existing koshkit completion
+data. Registered flags feed runtime completion.
