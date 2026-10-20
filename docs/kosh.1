@@ -3353,6 +3353,12 @@ to
 .IR kosh.conf ,
 or every option when none is given.
 .TP
+.BR :format ", " :%format
+Format the row of the caret, or the whole buffer, the way
+.B \-\-format
+does, as one undo step. A source that does not parse stays as it is, and its
+first error appears on the hint rows.
+.TP
 .BR :u ", " :undo
 Undo.
 .TP
@@ -3399,6 +3405,13 @@ the next key.
 Ask for an option and write its current value to
 .IR kosh.conf ,
 or every option when the answer is empty.
+.TP
+.BR format ", " format\-buffer
+Format the row of the caret, or the whole buffer, as
+.B :format
+and
+.B :%format
+do.
 .TP
 .B kill\-kosh
 Leave the shell with the status of the last command.

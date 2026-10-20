@@ -53,6 +53,7 @@ vi-ex-undo-restores-the-line PASS
 vi-ex-set-turns-an-option-off PASS
 vi-ex-set-query-shows-the-value PASS
 vi-ex-set-completes-the-option PASS
+vi-ex-format-formats-the-row PASS
 alt-x-hint-lists-commands PASS
 alt-x-tab-completes-the-command PASS
 alt-x-replace-string-replaces-every-match PASS
@@ -61,6 +62,7 @@ alt-x-undo-undoes-the-repeat PASS
 alt-x-set-option-lists-matching-options PASS
 alt-x-set-option-completes-the-option PASS
 alt-x-set-option-sets-the-value PASS
+alt-x-format-reports-a-parse-error PASS
 pasted-long-script-runs-whole PASS
 ctrl-a-acts-the-same-in-every-encoding PASS
 ctrl-b-acts-the-same-in-every-encoding PASS

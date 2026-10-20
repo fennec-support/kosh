@@ -18,6 +18,7 @@
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "ExecContext.hpp"
+#include "Formatter.hpp"
 #include "Koshconf.hpp"
 #include "Koshkit.hpp"
 #include "Options.hpp"
@@ -1031,6 +1032,50 @@ save_options(koshka::EvalContext &cxt, const char *name) throws -> const
                   "' to " + path->view();
 
   return OPTION_RESULT.c_str();
+}
+
+koshka::String FORMAT_RESULT{koshka::heap_allocator()};
+
+/* Formats a row or the whole buffer for the editor's format commands in the
+   mood the shell runs in. A source that does not parse reports its first
+   error. */
+fn
+kosh_format_callback(const char *text, const char **out_text) -> int
+{
+  *out_text = nullptr;
+  if (COMPLETION_SESSION.context == nullptr) return 0;
+
+  let &cxt = *COMPLETION_SESSION.context;
+
+  try {
+    let arena     = koshka::BumpArena{};
+    let errors    = koshka::ArrayList<koshka::String>{koshka::heap_allocator()};
+    let formatted = koshka::format_shell_source(
+        koshka::StringView{text, strlen(text)}, arena, errors, nullptr,
+        cxt.arena_store().function_arena(), cxt.runtime_state().get_mood());
+
+    if (!formatted.has_value()) {
+      FORMAT_RESULT = errors.is_empty()
+                          ? koshka::String{koshka::heap_allocator(),
+                                           "Unable to format the source"}
+                          : errors[0].clone();
+      *out_text     = FORMAT_RESULT.c_str();
+
+      return 0;
+    }
+    FORMAT_RESULT = steal(*formatted);
+    *out_text     = FORMAT_RESULT.c_str();
+
+    return 1;
+  } catch (const koshka::Error &error) {
+    FORMAT_RESULT =
+        koshka::String{koshka::heap_allocator(), error.message().view()};
+    *out_text = FORMAT_RESULT.c_str();
+
+    return 0;
+  } catch (...) {
+    return 0;
+  }
 }
 
 /* Answers the editor's option commands through the koshconf registry. A bare
@@ -3106,6 +3151,7 @@ enable_completion(koshka::EvalContext &context) -> void
   ::tl_set_edit_callback(kosh_edit_callback);
   ::tl_set_pair_role_callback(kosh_pair_role_callback);
   ::tl_set_option_callback(kosh_option_callback);
+  ::tl_set_format_callback(kosh_format_callback);
 
   if (!context.get_variable_value(SELECTOR_COMMAND_VARIABLE).has_value())
     context.set_shell_variable(SELECTOR_COMMAND_VARIABLE,
@@ -3128,6 +3174,7 @@ disable_completion() -> void
   ::tl_set_edit_callback(nullptr);
   ::tl_set_pair_role_callback(nullptr);
   ::tl_set_option_callback(nullptr);
+  ::tl_set_format_callback(nullptr);
 }
 
 fn

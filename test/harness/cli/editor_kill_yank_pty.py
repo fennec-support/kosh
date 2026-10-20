@@ -26,7 +26,8 @@
 # every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat.
 # :set turns an option off with a no prefix, shows it with a question mark,
 # and completes the option with Tab, and M-x set-option lists the matching
-# options, completes the option with Tab, and sets it. A
+# options, completes the option with Tab, and sets it. :format formats the
+# row, and M-x format leaves a source that does not parse and reports it. A
 # pasted script longer than 16 kilobytes runs whole. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
 # the external editor, and the option turns the request off. Every editing
@@ -427,6 +428,20 @@ def run_vi_ex_checks(session, report):
     session.send(b"i")
     session.send(KITTY_CTRL_C)
     session.wait_until(is_line(""))
+    session.send(b"echo   formatted")
+    session.wait_until(is_line("echo   formatted"))
+    mark = len(session.raw)
+    session.send(KITTY_ESCAPE)
+    session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                       in get_raw_since(session, mark))
+    session.send(b":")
+    session.wait_until(has_minibuffer(":"))
+    session.send(b"format\r")
+    report.record("vi-ex-format-formats-the-row", session,
+                  is_line("echo formatted"))
+    session.send(b"i")
+    session.send(KITTY_CTRL_C)
+    session.wait_until(is_line(""))
     session.send(b"set -o emacs; echo vi-ex-off\r")
     session.wait_until(has_output("vi-ex-off", 1))
 
@@ -474,6 +489,13 @@ def run_minibuffer_checks(session, report):
     session.send(b"\ron\r")
     report.record("alt-x-set-option-sets-the-value", session,
                   has_minibuffer("editor.auto_close_brackets_and_quotes=on"))
+    session.send(b"echo (")
+    session.wait_until(is_line("echo ("))
+    session.send(ALT_X + b"format\r")
+    report.record("alt-x-format-reports-a-parse-error", session,
+                  lambda screen: has_minibuffer("M-x format")(screen)
+                  and is_line("echo (")(screen))
+    clear_line(session)
 
 
 def run_checks(binary, directory, command_directory, report):
