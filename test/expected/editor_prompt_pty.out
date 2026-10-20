@@ -26,9 +26,10 @@ fg-interrupt-ends-its-row PASS
 signaled-job-notice-names-the-signal PASS
 persist-names-the-written-file PASS
 interactive-menu-leaves-a-wide-prompt-row PASS
-interactive-menu-pads-a-prompt-ending-in-a-newline PASS
-interactive-menu-pads-an-empty-prompt PASS
-plain-selector-drops-the-pad PASS
+interactive-menu-keeps-a-prompt-ending-in-a-newline PASS
+interactive-menu-keeps-an-empty-prompt PASS
+empty-prompt-menu-starts-on-the-first-column PASS
+plain-selector-keeps-the-prompt PASS
 zero-width-welcome-prints-no-row PASS
 zero-width-farewell-prints-no-row PASS
 interactive-shell-sets-the-messages PASS

@@ -50,7 +50,6 @@ CTRL_C = b"\x03"
 CTRL_Z = b"\x1a"
 SLEEP_TITLE = b"]0;sleep 30\x07"
 BULLET = "•"
-PAD = "\u00a0"
 SHORT_PROMPT = "# " if os.geteuid() == 0 else "$ "
 CONTROL_DIRECTORY = b"d\x07\x1b[31mRED\x1b]2;PWNED\x07z"
 CONTROL_DIRECTORY_VISIBLE = "d^G^[[31mRED^[]2;PWNED^Gz"
@@ -81,6 +80,11 @@ def has_rows(expected):
     return do_check
 
 
+def is_menu_on_first_column():
+    return lambda screen: any(line.startswith("selecting completions")
+                              for line in screen.get_lines())
+
+
 def is_submitted(expected, prompt_line):
     return lambda screen: (has_rows(expected)(screen)
                            and is_prompt_line(prompt_line)(screen))
@@ -99,7 +103,7 @@ def run_checks(binary, directory, command_directory, report):
                              lambda screen: screen.get_prompt_row() >= 0):
             return
 
-        # The plain selector draws the prompt without its menu pad.
+        # The plain selector draws the prompt as written.
         session.send(b"koshconf set completion.menu_style plain\r")
         session.wait_until(lambda screen: screen.get_lines()[-1].endswith(
             BULLET))
@@ -278,17 +282,21 @@ def run_prompt_pad_checks(binary, directory, command_directory, report):
         session.send(CTRL_C)
         session.send(b"PS1=$'top\\n'\r")
         session.send(b"echo zq2")
-        report.record("interactive-menu-pads-a-prompt-ending-in-a-newline",
-                      session, has_rows([PAD + "top", PAD + "echo zq2"]))
+        report.record("interactive-menu-keeps-a-prompt-ending-in-a-newline",
+                      session, has_rows(["top", "echo zq2"]))
         session.send(CTRL_C)
         session.send(b"PS1='\\[\\]'\r")
         session.send(b"echo zq3")
-        report.record("interactive-menu-pads-an-empty-prompt", session,
-                      has_rows([PAD + "echo zq3"]))
+        report.record("interactive-menu-keeps-an-empty-prompt", session,
+                      has_rows(["echo zq3"]))
+        session.send(CTRL_C)
+        session.send(b"ech\t")
+        report.record("empty-prompt-menu-starts-on-the-first-column", session,
+                      is_menu_on_first_column())
         session.send(CTRL_C)
         session.send(b"koshconf set completion.menu_style plain\r")
         session.send(b"echo zq4")
-        report.record("plain-selector-drops-the-pad", session,
+        report.record("plain-selector-keeps-the-prompt", session,
                       has_rows(["echo zq4"]))
     finally:
         session.close()
