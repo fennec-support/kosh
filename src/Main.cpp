@@ -2495,7 +2495,7 @@ struct interactive_session
           should_execute = expanded->should_execute;
         }
       } catch (const Error &error) {
-        show_message(error.to_string());
+        show_message(error.to_string(chunk.contents.view()));
 
         return false;
       }

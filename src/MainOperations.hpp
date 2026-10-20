@@ -1418,9 +1418,10 @@ find_history_search_word(StringView command, StringView needle) throws
 cold wontreturn static fn
 throw_bad_history_word_specifier(StringView spelling) throws -> void
 {
-  let message = String{heap_allocator(), spelling};
+  let message = String{heap_allocator(), "Bad word specifier '"};
 
-  message += ": bad word specifier";
+  message += spelling;
+  message += "'";
   throw Error{message.view()};
 }
 
@@ -1573,10 +1574,11 @@ cold wontreturn static fn
 throw_history_modifier_error(StringView spelling,
                              StringView reason) throws -> void
 {
-  let message = String{heap_allocator(), spelling};
+  let message = String{heap_allocator(), reason};
 
-  message += ": ";
-  message += reason;
+  message += " '";
+  message += spelling;
+  message += "'";
   throw Error{message.view()};
 }
 
@@ -1786,7 +1788,7 @@ apply_history_modifiers(StringView               source,
     let const modifier_start_position = position++;
 
     if (position >= source.length)
-      throw_history_modifier_error(":", "unrecognized history modifier");
+      throw_history_modifier_error(":", "Unrecognized history modifier");
 
     let  scope                  = history_substitution_scope::First;
     bool has_substitution_scope = false;
@@ -1801,7 +1803,7 @@ apply_history_modifiers(StringView               source,
       if (position >= source.length)
         throw_history_modifier_error(
             source.substring(modifier_start_position + 1),
-            "unrecognized history modifier");
+            "Unrecognized history modifier");
     }
 
     let const modifier = source[position++];
@@ -1810,7 +1812,7 @@ apply_history_modifiers(StringView               source,
       throw_history_modifier_error(
           source.substring_of_length(modifier_start_position + 1,
                                      position - modifier_start_position - 1),
-          "unrecognized history modifier");
+          "Unrecognized history modifier");
     }
 
     if (modifier == 'h' || modifier == 't' || modifier == 'r' ||
@@ -1842,7 +1844,7 @@ apply_history_modifiers(StringView               source,
 
     if (modifier == 's') {
       if (position >= source.length)
-        throw_history_modifier_error("s", "unrecognized history modifier");
+        throw_history_modifier_error("s", "Unrecognized history modifier");
 
       let const delimiter         = source[position++];
       bool      has_old_delimiter = false;
@@ -1853,7 +1855,7 @@ apply_history_modifiers(StringView               source,
         throw_history_modifier_error(
             source.substring_of_length(modifier_start_position,
                                        position - modifier_start_position),
-            "substitution failed");
+            "Substitution failed for");
 
       parsed_replacement = parse_history_substitution_field(
           source, position, delimiter, allocator, nullptr);
@@ -1865,12 +1867,12 @@ apply_history_modifiers(StringView               source,
         throw_history_modifier_error(
             source.substring_of_length(modifier_start_position,
                                        position - modifier_start_position),
-            "substitution failed");
+            "Substitution failed for");
       old_text    = state.last_substitution->old_text.view();
       replacement = state.last_substitution->replacement_text.view();
     } else {
       throw_history_modifier_error(source.substring_of_length(position - 1, 1),
-                                   "unrecognized history modifier");
+                                   "Unrecognized history modifier");
     }
 
     if (!apply_history_substitution(selected, old_text, replacement, scope,
@@ -1879,7 +1881,7 @@ apply_history_modifiers(StringView               source,
       throw_history_modifier_error(
           source.substring_of_length(modifier_start_position,
                                      position - modifier_start_position),
-          "substitution failed");
+          "Substitution failed for");
     }
 
     selected = output.view();
@@ -1925,10 +1927,11 @@ is_history_expansion_inhibited(StringView source, usize position) wontthrow
 }
 
 static fn
-expand_interactive_history(StringView               source,
-                           Maybe<usize>             accepted_event_number,
-                           history_expansion_state &state,
-                           EvalContext             &context) throws
+expand_interactive_history_spans(StringView               source,
+                                 Maybe<usize>             accepted_event_number,
+                                 history_expansion_state &state,
+                                 EvalContext             &context,
+                                 usize                   &designator_start) throws
     -> Maybe<interactive_history_expansion>
 {
   let const scratch_mark = context.expansion_store().scratch_arena().mark();
@@ -1946,10 +1949,13 @@ expand_interactive_history(StringView               source,
   let   expanded         = String{heap_allocator()};
 
   if (!source.is_empty() && source[0] == '^') {
+    designator_start = 0;
+
     let const selected_event = toiletline::get_relative_history_event(
         context.scratch_allocator(), 1, accepted_event_number);
 
-    if (!selected_event.has_value()) throw Error{"!!: event not found"};
+    if (!selected_event.has_value())
+      throw Error{"History event '!!' was not found"};
 
     usize     substitution_position = 1;
     bool      has_old_delimiter     = false;
@@ -1961,12 +1967,13 @@ expand_interactive_history(StringView               source,
                                          context.scratch_allocator(), nullptr);
     let const effective_old_text =
         resolve_history_substitution_old_text(old_text.view(), state);
-    let quick_spelling = String{context.scratch_allocator(), ":s"};
+    if (!has_old_delimiter) {
+      let message = String{heap_allocator(), "The quick substitution '"};
 
-    quick_spelling.append(source);
-    if (!has_old_delimiter)
-      throw_history_modifier_error(quick_spelling.view(),
-                                   "substitution failed");
+      message += source;
+      message += "' has no '^' after the old text";
+      throw Error{message.view()};
+    }
 
     let substituted = String{context.scratch_allocator()};
 
@@ -1974,8 +1981,12 @@ expand_interactive_history(StringView               source,
             selected_event->command.view(), effective_old_text,
             replacement.view(), history_substitution_scope::First, substituted))
     {
-      throw_history_modifier_error(quick_spelling.view(),
-                                   "substitution failed");
+      let message =
+          String{heap_allocator(), "The previous command does not contain '"};
+
+      message += effective_old_text;
+      message += "'";
+      throw Error{message.view()};
     }
 
     let next_substitution = history_substitution{
@@ -2058,6 +2069,8 @@ expand_interactive_history(StringView               source,
     {
       continue;
     }
+
+    designator_start = position;
 
     usize      reference_end_position = position + 2;
     StringView replacement{};
@@ -2240,11 +2253,11 @@ expand_interactive_history(StringView               source,
             context.scratch_allocator(), first_modifier_buffer,
             second_modifier_buffer, should_execute);
       } else {
-        let message = String{heap_allocator(),
-                             source.substring_of_length(
-                                 position, reference_end_position - position)};
+        let message = String{heap_allocator(), "History event '"};
 
-        message += ": event not found";
+        message += source.substring_of_length(position, reference_end_position -
+                                                            position);
+        message += "' was not found";
         throw Error{steal(message)};
       }
     }
@@ -2264,6 +2277,41 @@ expand_interactive_history(StringView               source,
   expanded.append(source.substring(copied_position));
 
   return interactive_history_expansion{steal(expanded), should_execute};
+}
+
+/* Expands the history designators of an interactive line. An error that a
+   designator raises points at that designator in the line and notes how to
+   take it literally. */
+static fn
+expand_interactive_history(StringView               source,
+                           Maybe<usize>             accepted_event_number,
+                           history_expansion_state &state,
+                           EvalContext             &context) throws
+    -> Maybe<interactive_history_expansion>
+{
+  usize designator_start = 0;
+
+  try {
+    return expand_interactive_history_spans(source, accepted_event_number,
+                                            state, context, designator_start);
+  } catch (const ErrorWithLocation &) {
+    throw;
+  } catch (const Error &error) {
+    usize designator_end = designator_start + 1;
+
+    while (designator_end < source.length &&
+           !is_ascii_whitespace(source[designator_end]))
+    {
+      designator_end++;
+    }
+
+    throw ErrorWithLocationAndDetails{
+        SourceLocation{designator_start, designator_end - designator_start},
+        error.message().view(),
+        "Quote the '!' or a leading '^', or turn history expansion off with "
+        "`set +H`, to keep it literal"
+    };
+  }
 }
 
 enum class startup_file_requirement : u8

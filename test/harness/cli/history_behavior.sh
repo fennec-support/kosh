@@ -196,7 +196,7 @@ out=$({
     run_interactive 'exec "$BIN" -i -M bash --rcfile /dev/null') || exit 1
 [ "$(cat "$input_status")" = 0 ] || exit 1
 case "$out" in
-*HISTORY_EXPANSION_MARKER*PUNCTUATION_HISTORY_MARKER*'event not found'*'<!!>'*)
+*HISTORY_EXPANSION_MARKER*PUNCTUATION_HISTORY_MARKER*'was not found'*'<!!>'*)
   if grep -q '!#\|^!echo\|MISSING_HISTORY_EVENT' "$expansion_hist"; then
     echo "history expansion broken"
   else
@@ -248,7 +248,7 @@ case "$out" in
 *'WA=4,alpha,needle'*'WR=2,alpha,beta'*'WR0=3,marker,beta'*\
 *'WRS=3,beta,needle'*'WRD=3,beta,needle'*'WRL=2,beta,gamma'*'WP=1,gamma'*\
 *'WPP=<gamma>'*'WPS=<<(printf x)>'*'WPT=<tail>'*'WINHIBIT=<!(>'*\
-*'!marker=tail: event not found'*':99: bad word specifier'*'WSTATUS=1'*\
+*"History event '!marker=tail' was not found"*"Bad word specifier ':99'"*'WSTATUS=1'*\
 *'WBRACKET=<>'*'WINDIRECT=<wvar>'*'WBANG=<xy>'*\
 *'WOPEN=<[marker <(printf x) tail>'*)
   echo "history words ok" ;;
@@ -335,8 +335,8 @@ case "$out" in
     elif ! grep -qx 'printf P_EXECUTED > "$HISTORY_P_MARKER"' \
       "$modifier_stderr_log" ||
       ! grep -qx 'echo alpha W omega tail' "$modifier_stderr_log" ||
-      ! grep -qx 'error: z: unrecognized history modifier.' "$modifier_stderr_log" ||
-      ! grep -qx 'error: :s/MISSING/repl/: substitution failed.' \
+      ! grep -q "error: Unrecognized history modifier 'z'." "$modifier_stderr_log" ||
+      ! grep -q "error: Substitution failed for ':s/MISSING/repl/'." \
         "$modifier_stderr_log"; then
       printf 'history modifier diagnostics:\n%.4096s\n' \
         "$(cat "$modifier_stderr_log")" >&2
