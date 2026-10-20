@@ -309,14 +309,15 @@ run_util(Utility::Kind                    chosen,
 }
 
 wontreturn fn
-rethrow_with_prefix(const ErrorWithLocation &error,
-                    StringView               prefix) throws -> void
+rethrow_with_prefix(const Error   &error,
+                    SourceLocation location,
+                    StringView     prefix) throws -> void
 {
   let const message = prefix + ": " + error.message();
 
   if (!error.detail_message().is_empty()) {
-    let rewrapped = ErrorWithLocationAndDetails{
-        error.location(), message.view(), error.detail_message()};
+    let rewrapped = ErrorWithLocationAndDetails{location, message.view(),
+                                                error.detail_message()};
 
     if (error.is_script_fatal()) rewrapped.set_script_fatal();
     rewrapped.take_line_discard_marks(error);
@@ -324,7 +325,7 @@ rethrow_with_prefix(const ErrorWithLocation &error,
     throw rewrapped;
   }
 
-  let rewrapped = ErrorWithLocation{error.location(), message.view()};
+  let rewrapped = ErrorWithLocation{location, message.view()};
 
   if (error.is_script_fatal()) rewrapped.set_script_fatal();
   rewrapped.take_line_discard_marks(error);
@@ -365,18 +366,19 @@ dispatch(const ExecContext   &ec,
     shifted_locations.push(ec.arg_location_at(i));
   }
 
+  let const do_get_invocation_name = [&]() throws -> String {
+    return ec.is_multicall ? String{heap_allocator(), name}
+                           : String{heap_allocator(), "Koshkit `"} + name + "`";
+  };
+
   try {
     return run_util(*chosen, ec, cxt, shifted, shifted_locations);
   } catch (const BrokenPipeExit &) {
     throw;
   } catch (const ErrorWithLocation &e) {
-    let const invocation_name =
-        ec.is_multicall ? String{heap_allocator(), name}
-                        : String{heap_allocator(), "Koshkit `"} + name + "`";
-
-    rethrow_with_prefix(e, invocation_name);
+    rethrow_with_prefix(e, e.location(), do_get_invocation_name());
   } catch (const Error &error) {
-    relocate_error(error, ec.source_location());
+    rethrow_with_prefix(error, ec.source_location(), do_get_invocation_name());
   }
 }
 

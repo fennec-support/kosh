@@ -1,7 +1,14 @@
 # The koshkit usage errors carry a how-to-fix note under the located message.
+# An error about input data carries the utility label at the command.
 # Each utility is reached through `koshkit <name>` so a binary on PATH does not
 # shadow the bundled one.
 unset KOSH_FLAGS
+
+echo "=== xargs input error carries the utility label ==="
+printf "'a\\n" | "$BIN" -c 'koshkit xargs echo' 2>&1
+
+echo "=== bc expression note follows the excerpt ==="
+printf '1+\n' | "$BIN" -c 'koshkit bc' 2>&1
 
 echo "=== killall arg count ==="
 "$BIN" -c 'koshkit killall a b' 2>&1

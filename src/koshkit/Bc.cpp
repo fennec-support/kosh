@@ -1254,7 +1254,12 @@ bc_try_function_call(StringView         statement,
   try {
     result = bc_evaluate_function_call(statement, ec, cxt, runtime);
   } catch (const Error &error) {
-    report_soft_koshkit_util_error(ec, cxt, "bc", error.to_string());
+    if (error.detail_message().is_empty()) {
+      report_soft_koshkit_util_error(ec, cxt, "bc", error.message());
+    } else {
+      report_soft_koshkit_util_error(ec, cxt, "bc", error.message(),
+                                     error.detail_message());
+    }
     runtime.status = 1;
     return true;
   }
@@ -1353,7 +1358,12 @@ bc_execute_simple(StringView         statement,
 
     bc_print_result(steal(result), ec, cxt, runtime);
   } catch (const Error &error) {
-    report_soft_koshkit_util_error(ec, cxt, "bc", error.to_string());
+    if (error.detail_message().is_empty()) {
+      report_soft_koshkit_util_error(ec, cxt, "bc", error.message());
+    } else {
+      report_soft_koshkit_util_error(ec, cxt, "bc", error.message(),
+                                     error.detail_message());
+    }
     runtime.status = 1;
   }
 }

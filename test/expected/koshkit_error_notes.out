@@ -1,3 +1,12 @@
+=== xargs input error carries the utility label ===
+-c:1:1: error: Koshkit `xargs`: Unmatched quote before newline.
+     1 |  koshkit xargs echo
+       |  ^~~~~~~~~~~~~~~~~~
+=== bc expression note follows the excerpt ===
+-c:1:1: error: Koshkit `bc`: Unfinished expression.
+     1 |  koshkit bc
+       |  ^~~~~~~~~~
+note: An operand is missing.
 === killall arg count ===
 -c:1:19: error: Koshkit `killall`: expects one process name.
      1 |  koshkit killall a b
