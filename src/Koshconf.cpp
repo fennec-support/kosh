@@ -544,13 +544,13 @@ get_user_koshconf_path() throws -> Maybe<Path>
 }
 
 fn
-get_user_rc_script_path() throws -> Maybe<Path>
+get_user_script_path(StringView name) throws -> Maybe<Path>
 {
   let path = get_user_kosh_directory();
 
   if (path.has_value()) {
     path->append("scripts");
-    path->append("rc.kosh");
+    path->append(name);
   }
 
   return path;

@@ -8,8 +8,8 @@ editor.history.file_path=/history
 rc=0
 0
 1
-== create writes the default rc script, which sources the rc files:
-2
+== create writes the default rc script:
+written
 == create refuses an existing file without --force:
 -c:1:1: error: Builtin `koshconf`: The configuration file 'CONFIG/user/kosh/kosh.conf' already exists.
      1 |  koshconf create bash

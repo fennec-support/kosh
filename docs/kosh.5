@@ -57,7 +57,7 @@ file it replaces, and a new file is created with mode 0644 less the file
 creation mask. The directory is created when missing.
 .TP
 .IR $XDG_CONFIG_HOME/kosh/scripts/rc.kosh " or " ~/.config/kosh/scripts/rc.kosh
-The user rc script of an interactive non-login
+The user rc script of a login or interactive
 .B kosh
 mood, described under RC SCRIPT. The base directory follows the same rules
 as the user settings file.
@@ -261,28 +261,56 @@ quote, text after a closing quote, and an option a file cannot hold each
 produce a warning identifying the file and line, and the line is skipped.
 A settings file never stops the shell.
 .SH RC SCRIPT
-An interactive non-login shell in the
+A login shell and an interactive shell in the
 .B kosh
-mood sources scripts/rc.kosh in the user configuration directory after the
-settings files, as the
-.B bash
-mood sources ~/.bashrc. No system rc script, ~/.koshrc, or /etc/koshrc is
-read.
+mood source scripts/rc.kosh in the user configuration directory after the
+settings files. The script can test
+.B shopt \-q login_shell
+to run login commands. No system rc script, ~/.koshrc, or /etc/koshrc is
+read. In an interactive non-login shell,
 .B \-\-rcfile
 replaces the script, and
 .B \-\-norc
-or the privileged option skips it. Use the script only for what a settings
-file cannot hold, such as functions, aliases, and variables. Options belong in
+or the privileged option skips it. Shell code belongs in the script, and
+options belong in
 .IR kosh.conf .
+.PP
+A file that the
+.B kosh
+mood sources with
+.B .
+runs in the
+.B bash
+mood with its lax options when it is a Bash startup file (.bashrc,
+\&.bash_profile, .bash_login, .bash_logout, .profile, or /etc/profile), and in
+the mood its shebang selects otherwise. The
+.B kosh
+mood and its options return when the file ends, while the variables,
+functions, and aliases it defines stay. Analysis does not follow such a file,
+and a syntax error in it fails the
+.B .
+command without ending the shell. Files that it sources in turn keep its mood.
 .PP
 .B koshconf create
 writes the script when it is missing and never replaces it. The written
-script sources the POSIX and Bash rc files:
+script sources the files Bash reads at login in a login shell, and ~/.profile
+and ~/.bashrc otherwise:
 .PP
 .RS
 .EX
-\&. ~/.profile
-\&. ~/.bashrc
+if shopt \-q login_shell; then
+  [ \-r /etc/profile ] && . /etc/profile
+  if [ \-r ~/.bash_profile ]; then
+    . ~/.bash_profile
+  elif [ \-r ~/.bash_login ]; then
+    . ~/.bash_login
+  elif [ \-r ~/.profile ]; then
+    . ~/.profile
+  fi
+else
+  [ \-r ~/.profile ] && . ~/.profile
+  [ \-r ~/.bashrc ] && . ~/.bashrc
+fi
 .EE
 .RE
 .PP

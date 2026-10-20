@@ -71,6 +71,39 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                 "': " + os::last_system_error_message()};
 
   /* at this point: contents holds the bytes of source_path. */
+  let const mimicked_mood = detect_sourced_file_mood(
+      source_path.view(), contents->view(), cxt.runtime_state().get_mood());
+  let const previous_mood = cxt.runtime_state().get_mood();
+  let const should_mimic =
+      mimicked_mood.has_value() && *mimicked_mood != previous_mood;
+  let const was_error_unset = cxt.runtime_state().error_unset();
+  let const was_pipefail    = cxt.runtime_state().pipefail();
+  let const was_failglob    = cxt.runtime_state().failglob();
+
+  /* A mimicked file runs in its own mood with that mood's strictness, and the
+     mood and the strict options return afterwards, while every other change
+     the file makes stays. */
+  if (should_mimic) {
+    let const is_strict = *mimicked_mood == mimic_mood::Default;
+
+    LOG(Debug, "source mimicking the %.*s mood for '%s'",
+        static_cast<int>(mood_name(*mimicked_mood).length),
+        mood_name(*mimicked_mood).data, path.c_str());
+    cxt.runtime_state().set_mood(*mimicked_mood);
+    cxt.runtime_state().set_error_unset(is_strict);
+    cxt.runtime_state().set_pipefail(is_strict);
+    cxt.runtime_state().set_failglob(is_strict);
+  }
+
+  defer {
+    if (should_mimic) {
+      cxt.runtime_state().set_mood(previous_mood);
+      cxt.runtime_state().set_error_unset(was_error_unset);
+      cxt.runtime_state().set_pipefail(was_pipefail);
+      cxt.runtime_state().set_failglob(was_failglob);
+    }
+  };
+
   let const has_extra_args = !cxt.runtime_state().is_posix_mode() &&
                              ec.args().count() > path_index + 1;
   let saved_params = ArrayList<String>{heap_allocator()};
@@ -113,8 +146,9 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         *contents, "the file '" + path + "'", ec.arg_location_at(path_index),
         source_name, &status_before_return, nullptr, return_handling::Consume,
         history_recording::Disabled, nullptr,
-        ec.is_called_through_command ? syntax_error_reach::Command
-                                     : syntax_error_reach::PosixScript);
+        ec.is_called_through_command || should_mimic
+            ? syntax_error_reach::Command
+            : syntax_error_reach::PosixScript);
   }
 
   cxt.execution_store().restore_current_command(saved_command);

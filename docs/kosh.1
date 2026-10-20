@@ -961,9 +961,12 @@ A mood chosen by the configuration selects the startup files below unless the
 command line or the invocation name selects one. Options given on the command
 line keep their values.
 .PP
-An interactive non-login shell in the
+A login shell and an interactive shell in the
 .B kosh
-mood sources ~/.config/kosh/scripts/rc.kosh, as described in
+mood source ~/.config/kosh/scripts/rc.kosh, and a Bash startup file that
+the script sources runs in the
+.B bash
+mood, as described in
 .BR kosh (5).
 No system rc file is sourced.
 A

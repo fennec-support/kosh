@@ -78,12 +78,20 @@ printf 'echo koshrc-ran\n' >"$home/.config/kosh/scripts/rc.kosh"
 printf 'echo old-koshrc-ran\n' >"$home/.koshrc"
 printf 'mood=kosh\n' >"$conf"
 printf 'set -L kosh\n' | "$BIN" -i 2>/dev/null | grep -c '^koshrc-ran$'
-echo "== --norc, -l, -p, -Q, and a non-interactive shell skip the rc script:"
+echo "== a login shell sources the rc script:"
+"$BIN" -l -c : 2>/dev/null | grep -c '^koshrc-ran$'
+echo "== --norc, -p, -Q, and a non-interactive shell skip the rc script:"
 "$BIN" --norc -i </dev/null 2>/dev/null | grep -c koshrc-ran
-"$BIN" -l -i </dev/null 2>/dev/null | grep -c koshrc-ran
 "$BIN" -p -i </dev/null 2>/dev/null | grep -c koshrc-ran
 "$BIN" -Q -i </dev/null 2>/dev/null | grep -c koshrc-ran
 "$BIN" -c : 2>/dev/null | grep -c koshrc-ran
+echo "== the rc script runs ~/.bashrc in the bash mood and returns to kosh:"
+printf '. ~/.bashrc\necho "after=$(set -M) $(shopt -po nounset)"\n' \
+  >"$home/.config/kosh/scripts/rc.kosh"
+printf 'echo "bashrc=$(set -M) x${UNSET_BY_TEST}y"\n' >"$home/.bashrc"
+"$BIN" -l -c : 2>&1
+printf 'echo koshrc-ran\n' >"$home/.config/kosh/scripts/rc.kosh"
+: >"$home/.bashrc"
 echo "== a configured bash mood sources the bash rc:"
 printf 'echo bashrc-ran\n' >"$home/.bashrc"
 printf 'mood=bash\n' >"$conf"

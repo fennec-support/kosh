@@ -33,9 +33,9 @@ struct koshconf_reading
 
 fn
 get_user_koshconf_path() throws -> Maybe<Path>;
-/* $XDG_CONFIG_HOME/kosh/scripts/rc.kosh, or None as for kosh.conf. */
+/* $XDG_CONFIG_HOME/kosh/scripts/NAME, or None as for kosh.conf. */
 fn
-get_user_rc_script_path() throws -> Maybe<Path>;
+get_user_script_path(StringView name) throws -> Maybe<Path>;
 fn
 read_koshconf_text(StringView        text,
                    StringView        origin_name,

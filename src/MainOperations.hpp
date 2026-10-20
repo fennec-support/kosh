@@ -2468,13 +2468,15 @@ source_init_moods(EvalContext                 &context,
         static_cast<int>(mood_name(flavor).length), mood_name(flavor).data);
     switch (flavor) {
     case mimic_mood::Default:
-      if (should_be_interactive && !is_login_shell && !FLAG_NORC.is_enabled() &&
-          !context.runtime_state().option_is_enabled(
-              shell_option_id::Privileged))
+      if (is_login_shell || (should_be_interactive && !FLAG_NORC.is_enabled() &&
+                             !context.runtime_state().option_is_enabled(
+                                 shell_option_id::Privileged)))
       {
-        if (let const rcfile = selected_rcfile(); rcfile.has_value()) {
+        if (let const rcfile = selected_rcfile();
+            rcfile.has_value() && !is_login_shell)
+        {
           source_custom_rcfile(*rcfile, context);
-        } else if (let const script = get_user_rc_script_path();
+        } else if (let const script = get_user_script_path("rc.kosh");
                    script.has_value())
         {
           source_file(*script, context);

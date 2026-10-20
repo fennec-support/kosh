@@ -10,6 +10,7 @@
 #include "MimicMood.hpp"
 
 #include "base/PackedStringKey.hpp"
+#include "base/Path.hpp"
 
 namespace koshka {
 
@@ -111,6 +112,36 @@ detect_mimic_shell_from_source(StringView source) throws
   static constexpr StaticStringMap SHELL_MOODS{SHELL_ENTRIES};
 
   return SHELL_MOODS.find(shell);
+}
+
+/* The mood a file sourced from the kosh mood is written for: its shebang, or
+   the Bash startup file it is known as. Other moods keep their mood, as Bash
+   runs every file it sources as Bash. */
+fn
+detect_sourced_file_mood(StringView path,
+                         StringView contents,
+                         mimic_mood current_mood) throws
+    -> Maybe<mimic_mood>
+{
+  if (current_mood != mimic_mood::Default) return None;
+
+  if (let const mood = detect_mimic_shell_from_source(contents);
+      mood.has_value())
+  {
+    return mood;
+  }
+
+  let const filename = Path::filename(path);
+
+  for (let const name : {".bashrc", ".bash_profile", ".bash_login",
+                         ".bash_logout", ".profile", "bash.bashrc", "bashrc"})
+  {
+    if (filename == StringView{name}) return mimic_mood::Bash;
+  }
+
+  if (path == StringView{"/etc/profile"}) return mimic_mood::Bash;
+
+  return None;
 }
 
 } /* namespace koshka */

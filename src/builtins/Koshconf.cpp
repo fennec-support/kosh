@@ -9,6 +9,7 @@
 
 #include "../Koshconf.hpp"
 
+#include "../BakedScripts.hpp"
 #include "../Builtin.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
@@ -85,7 +86,6 @@ constexpr static_string_entry<mimic_mood> KOSHCONF_PRESET_ENTRIES[] = {
 constexpr StaticStringMap KOSHCONF_PRESETS{KOSHCONF_PRESET_ENTRIES};
 
 constexpr StringView LIST_HEADING{"# name=value"};
-constexpr StringView DEFAULT_RC_SCRIPT{". ~/.profile\n. ~/.bashrc\n"};
 
 struct koshconf_operands
 {
@@ -235,7 +235,7 @@ run_create(const ExecContext       &ec,
   report_written_file(ec, cxt, StringView{"preset="} + mood_name(*preset),
                       *path);
 
-  let const script = get_user_rc_script_path();
+  let const script = get_user_script_path("rc.kosh");
 
   if (!script.has_value() || script->exists()) return 0;
 

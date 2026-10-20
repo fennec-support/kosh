@@ -60,12 +60,16 @@ bash
 rc=0
 == an interactive kosh mood sources the rc script once, not ~/.koshrc:
 1
-== --norc, -l, -p, -Q, and a non-interactive shell skip the rc script:
+== a login shell sources the rc script:
+1
+== --norc, -p, -Q, and a non-interactive shell skip the rc script:
 0
 0
 0
 0
-0
+== the rc script runs ~/.bashrc in the bash mood and returns to kosh:
+bashrc=bash xy
+after=kosh set +o nounset
 == a configured bash mood sources the bash rc:
 1
 == an inherited KOSH_HISTORY_SIZE is the editor.history.max_entries option:
