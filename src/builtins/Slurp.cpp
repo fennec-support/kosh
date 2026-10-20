@@ -98,13 +98,43 @@ make_first_line_prompt(usize width) throws -> String
   return prompt;
 }
 
-/* An existing file is replaced by a complete copy written beside it, so a
-   failed write leaves the original in place. A missing file is created
-   directly. */
+/* True when a copy written beside path can replace it with nothing lost: the
+   saving user owns the file, which has no other link, and only the owner of
+   its directory, the saving user or root, can add or swap files there unless
+   the directory is sticky. */
+fn
+is_replaceable_by_copy(const Path &path) throws -> bool
+{
+  let       status = os::file_status{};
+  let const euid   = static_cast<u64>(os::get_effective_user_id());
+
+  if (!os::stat_path_following(path.view(), status)) return false;
+  if (status.owner_id != euid || status.link_count > 1) return false;
+
+  let target = Path{path.view()};
+
+  if (let resolved = os::canonical_path(path); resolved.has_value())
+    target = steal(*resolved);
+
+  let directory = os::file_status{};
+
+  if (!os::stat_path_following(target.parent_or_current().view(), directory))
+    return false;
+
+  let const is_owned = directory.owner_id == euid || directory.owner_id == 0;
+  let const is_shared_writable = (directory.mode & 0022) != 0;
+  let const is_sticky          = (directory.mode & 01000) != 0;
+
+  return is_owned && (!is_shared_writable || is_sticky);
+}
+
+/* A file that is_replaceable_by_copy() accepts is replaced by a complete copy
+   written beside it, so a failed write leaves the original in place. Any
+   other file is rewritten in place, which keeps its owner, group, and links. */
 fn
 save_file(const Path &path, StringView contents) throws -> bool
 {
-  if (path.exists()) {
+  if (path.exists() && is_replaceable_by_copy(path)) {
     return toiletline::write_history_file_atomically(path, ".slurp", contents);
   }
 
