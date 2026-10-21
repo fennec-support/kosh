@@ -2278,9 +2278,11 @@ configure_line_editor(EvalContext &context) throws -> void
 
   if (is_tab_completion_enabled && !toiletline::is_completion_enabled()) {
     toiletline::enable_completion(context);
-  } else if (!is_tab_completion_enabled && toiletline::is_completion_enabled())
-  {
-    toiletline::disable_completion();
+  } else if (!is_tab_completion_enabled) {
+    if (toiletline::is_completion_enabled()) {
+      toiletline::disable_shell_completion();
+    }
+    toiletline::enable_editor_commands(context);
   }
 
   let const should_highlight =

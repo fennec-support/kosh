@@ -41,7 +41,8 @@
 # A file taller than the terminal shows a window of rows that follows the
 # caret, Up on its first line recalls no shell history, and saving keeps every
 # line. The completion menu in slurp covers the rows under the caret and gives
-# them back when it closes.
+# them back when it closes. M-x get-option in slurp on a text file shows the
+# option.
 # :set turns an option off with a no prefix, shows it with a question mark,
 # and completes the option with Tab, and M-x set-option lists the matching
 # options, completes the option with Tab, and sets it. :format formats the
@@ -956,6 +957,16 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("slurp-vi-quit-leaves-the-file", session,
                       lambda screen: is_line("")(screen)
                       and read_slurped(notes) == "first note\nsecond note\n")
+
+        session.send(b"slurp slurp-notes.txt\r")
+        session.wait_until(has_row("second note"))
+        session.send(ALT_X + b"get-option\r")
+        session.wait_until(has_text("Get option:"))
+        session.send(b"mood\r")
+        report.record("slurp-text-file-gets-an-option", session,
+                      has_text("mood="))
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
 
         session.send(b"slurp slurp-notes.txt\r")
         session.wait_until(lambda screen: any(line.rstrip() == "second note"

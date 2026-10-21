@@ -76,6 +76,8 @@ emit_command_start_marks(koshka::EvalContext &context, StringView command_line)
     -> void;
 
 fn
+enable_editor_commands(koshka::EvalContext &context) -> void;
+fn
 enable_completion(koshka::EvalContext &context) -> void;
 fn
 disable_completion() -> void;

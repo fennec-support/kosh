@@ -120,6 +120,7 @@ slurp-save-keeps-the-file-mode PASS
 slurp-failed-save-keeps-the-original PASS
 slurp-shows-the-text-file PASS
 slurp-vi-quit-leaves-the-file PASS
+slurp-text-file-gets-an-option PASS
 slurp-ctrl-x-s-saves PASS
 slurp-ctrl-c-asks-before-dropping-edits PASS
 slurp-second-ctrl-c-drops-the-edits PASS

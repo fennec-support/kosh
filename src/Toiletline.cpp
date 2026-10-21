@@ -893,8 +893,9 @@ run_line_editor(koshka::EvalContext &context,
   return true;
 }
 
-koshka::String EDITED_LINE{koshka::heap_allocator()};
-koshka::String OPTION_RESULT{koshka::heap_allocator()};
+koshka::EvalContext *EDITOR_COMMAND_CONTEXT = nullptr;
+koshka::String       EDITED_LINE{koshka::heap_allocator()};
+koshka::String       OPTION_RESULT{koshka::heap_allocator()};
 
 /* The text of the value that a koshconf file stores for option. */
 fn
@@ -1043,9 +1044,9 @@ fn
 kosh_format_callback(const char *text, const char **out_text) -> int
 {
   *out_text = nullptr;
-  if (COMPLETION_SESSION.context == nullptr) return 0;
+  if (EDITOR_COMMAND_CONTEXT == nullptr) return 0;
 
-  let &cxt = *COMPLETION_SESSION.context;
+  let &cxt = *EDITOR_COMMAND_CONTEXT;
 
   try {
     let arena     = koshka::BumpArena{};
@@ -1086,9 +1087,9 @@ kosh_option_callback(tl_option_action action,
                      const char      *name,
                      const char      *value) -> const char *
 {
-  if (COMPLETION_SESSION.context == nullptr) return nullptr;
+  if (EDITOR_COMMAND_CONTEXT == nullptr) return nullptr;
 
-  let &cxt = *COMPLETION_SESSION.context;
+  let &cxt = *EDITOR_COMMAND_CONTEXT;
 
   try {
     if (action == TL_OPTION_COMPLETE) {
@@ -1149,10 +1150,10 @@ kosh_option_callback(tl_option_action action,
 fn
 kosh_edit_callback(const char *buffer, const char **out_edited) -> int
 {
-  if (COMPLETION_SESSION.context == nullptr) return 0;
+  if (EDITOR_COMMAND_CONTEXT == nullptr) return 0;
 
   try {
-    if (!run_line_editor(*COMPLETION_SESSION.context,
+    if (!run_line_editor(*EDITOR_COMMAND_CONTEXT,
                          koshka::StringView{buffer, strlen(buffer)},
                          EDITED_LINE))
     {
@@ -3206,6 +3207,15 @@ set_idle_title() -> void
 }
 
 fn
+enable_editor_commands(koshka::EvalContext &context) -> void
+{
+  EDITOR_COMMAND_CONTEXT = &context;
+  ::tl_set_edit_callback(kosh_edit_callback);
+  ::tl_set_option_callback(kosh_option_callback);
+  ::tl_set_format_callback(kosh_format_callback);
+}
+
+fn
 enable_completion(koshka::EvalContext &context) -> void
 {
   COMPLETION_SESSION.context = &context;
@@ -3214,10 +3224,8 @@ enable_completion(koshka::EvalContext &context) -> void
   ::tl_set_highlight_follows_cursor(1);
   ::tl_set_ghost_validate_callback(kosh_ghost_validate_callback);
   ::tl_set_history_select_callback(kosh_history_select_callback);
-  ::tl_set_edit_callback(kosh_edit_callback);
   ::tl_set_pair_role_callback(kosh_pair_role_callback);
-  ::tl_set_option_callback(kosh_option_callback);
-  ::tl_set_format_callback(kosh_format_callback);
+  enable_editor_commands(context);
 
   if (!context.get_variable_value(SELECTOR_COMMAND_VARIABLE).has_value())
     context.set_shell_variable(SELECTOR_COMMAND_VARIABLE,
@@ -3244,6 +3252,7 @@ fn
 disable_completion() -> void
 {
   disable_shell_completion();
+  EDITOR_COMMAND_CONTEXT = nullptr;
   ::tl_set_edit_callback(nullptr);
   ::tl_set_option_callback(nullptr);
   ::tl_set_format_callback(nullptr);

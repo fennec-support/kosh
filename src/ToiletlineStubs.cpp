@@ -579,6 +579,12 @@ using koshka::String;
 using koshka::StringView;
 
 fn
+enable_editor_commands(koshka::EvalContext &context) -> void
+{
+  unused(context);
+}
+
+fn
 enable_completion(koshka::EvalContext &context) -> void
 {
   unused(context);
