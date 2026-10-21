@@ -130,12 +130,12 @@ write_backup(StringView contents) throws -> Maybe<Path>
    other file is rewritten in place, which keeps its owner, group, and links.
    Either way the save goes ahead only while the file is still the one that
    opened describes, so a file swapped for another meanwhile is left alone.
-   The current contents of a file rewritten in place go
-   to a private backup first, which a successful write removes and a failed
-   one leaves in kept_backup, and without a backup nothing is written. A file
-   that was missing when slurp loaded it is created only if nothing has taken
-   its place, and a regular file created so is removed again when the write
-   fails. A save keeps the identity of the file it wrote in written. */
+   The current contents of a file rewritten in place go to a private backup
+   first, which a successful write removes and a failed one leaves in
+   kept_backup, and without a backup nothing is written. A file that was
+   missing when slurp loaded it is created only if nothing has taken its
+   place, and a regular file created so is removed again when the write fails.
+   A save keeps the identity of the file it wrote in written. */
 fn
 save_file(const Path                   &path,
           StringView                    contents,
@@ -285,7 +285,9 @@ save_buffer(const char *text, const char **out_message) -> int
     let       saved  = String{heap_allocator()};
 
     for (usize i = 0; i < buffer.length; i++) {
-      if (buffer[i] == '\n' && session.has_crlf) saved.push('\r');
+      if (buffer[i] == '\n' && session.has_crlf) {
+        saved.push('\r');
+      }
       saved.push(buffer[i]);
     }
     if (session.has_final_newline &&
@@ -301,13 +303,19 @@ save_buffer(const char *text, const char **out_message) -> int
                                   written, kept_backup);
 
     if (outcome == save_outcome::Saved) {
-      session.opened     = written;
-      session.saved_text = String{heap_allocator(), buffer};
-      session.status     = make_status(session, saved.length());
-      session.message    = String{heap_allocator(), "wrote "};
-      session.message.append(
+      let saved_text = String{heap_allocator(), buffer};
+      let message    = String{heap_allocator(), "wrote "};
+
+      message.append(
           String::from(static_cast<u64>(saved.length()), heap_allocator()));
-      session.message.append(" bytes");
+      message.append(" bytes");
+
+      let status = make_status(session, saved.length());
+
+      session.opened     = written;
+      session.saved_text = steal(saved_text);
+      session.status     = steal(status);
+      session.message    = steal(message);
       toiletline::set_saved_text(session.saved_text.c_str());
       toiletline::set_status(session.status.c_str());
       *out_message = session.message.c_str();
@@ -434,7 +442,9 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   for (usize i = 0; i < contents.length(); i++) {
     if (contents[i] != '\n') continue;
     newline_count++;
-    if (i > 0 && contents[i - 1] == '\r') crlf_count++;
+    if (i > 0 && contents[i - 1] == '\r') {
+      crlf_count++;
+    }
   }
 
   /* Only a file whose every line ends in CRLF is edited with LF and saved
@@ -467,7 +477,12 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     title.append(FLAG_SLURP_MODE.value());
     title.append(" ");
   }
-  title.append(args[1].view());
+  if (!utils::append_ansi_c_quote_if_needed(
+          title, args[1].view(),
+          cxt.get_glob_charset_for(args[1].view()) == glob_charset::Utf8))
+  {
+    title.append(args[1].view());
+  }
 
   let session = slurp_session{
       .path              = Path{path.view()},
@@ -492,7 +507,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   toiletline::enter_empty_history();
   ACTIVE_SESSION = &session;
   toiletline::set_save_callback(save_buffer);
-  toiletline::set_title(title.c_str());
+  toiletline::set_editor_title(title.c_str());
   toiletline::set_status(session.status.c_str());
   toiletline::set_full_screen(true);
   if (!is_shell_script && was_completion_enabled) {
@@ -510,7 +525,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     ACTIVE_SESSION = nullptr;
     toiletline::set_saved_text(nullptr);
     toiletline::set_full_screen(false);
-    toiletline::set_title(nullptr);
+    toiletline::set_editor_title(nullptr);
     toiletline::set_status(nullptr);
     toiletline::leave_empty_history();
     try {
@@ -522,18 +537,18 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* The session runs on the alternate screen, which it leaves before any
      report so that the report stays on the main screen. */
-  bool is_on_alternate_screen = true;
+  flush();
+
+  bool is_on_alternate_screen = enter_alternate_screen(ec);
 
   let const do_leave_alternate_screen = [&]() throws -> void {
     if (!is_on_alternate_screen) return;
 
     is_on_alternate_screen = false;
-    print("\x1b[?1049l");
     flush();
+    leave_alternate_screen(ec);
   };
 
-  print("\x1b[?1049h\x1b[H");
-  flush();
   defer { do_leave_alternate_screen(); };
 
   toiletline::set_input(contents);
@@ -541,7 +556,6 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let result = toiletline::get_input(String{heap_allocator()});
 
-  toiletline::emit_newlines(result.text);
   do_leave_alternate_screen();
 
   if (result.code == TL_PRESSED_INTERRUPT) return 130;

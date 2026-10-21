@@ -661,7 +661,7 @@ set_saved_text(const char *text) -> void
 }
 
 fn
-set_title(const char *title) -> void
+set_editor_title(const char *title) -> void
 {
   unused(title);
 }

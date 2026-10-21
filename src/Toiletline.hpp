@@ -111,7 +111,7 @@ set_saved_text(const char *text) -> void;
 /* Shows title on the top row of the full-screen layout, or no title when
    title is null. title must outlive its use. */
 fn
-set_title(const char *title) -> void;
+set_editor_title(const char *title) -> void;
 /* Keeps status, one line about the edited file, for the rows under the
    full-screen input. status must outlive its use. */
 fn
