@@ -39,7 +39,8 @@
 # beside the file leaves the original unchanged.
 # A file taller than the terminal shows a window of rows that follows the
 # caret, Up on its first line recalls no shell history, and saving keeps every
-# line.
+# line. The completion menu in slurp covers the rows under the caret and gives
+# them back when it closes.
 # :set turns an option off with a no prefix, shows it with a question mark,
 # and completes the option with Tab, and M-x set-option lists the matching
 # options, completes the option with Tab, and sets it. :format formats the
@@ -72,7 +73,7 @@ import time
 from editor_ghost_menu_pty import (BACKSPACE, LEFT, WAIT_SECONDS, Report,
                                    Session, clear_line, has_hint,
                                    get_state, has_hint_header, is_line,
-                                   settle, UP)
+                                   settle, UP, ESCAPE)
 
 
 CTRL_A = b"\x01"
@@ -849,6 +850,10 @@ def run_ctrl_x_mode_checks(binary, directory, command_directory, report):
         session.close()
 
 
+def has_text(text):
+    return lambda screen: any(text in line for line in screen.get_lines())
+
+
 def read_slurped(path):
     with open(path) as handle:
         return handle.read()
@@ -885,7 +890,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
                                          for line in screen.get_lines()))
         session.send(b" # edited\r")
         report.record("slurp-asks-for-a-second-enter-to-save", session,
-                      has_hint("press enter again to save it"))
+                      has_text("press enter again to save it"))
         session.send(b"\r")
         report.record("slurp-enter-saves-the-file", session,
                       lambda screen: is_line("")(screen)
@@ -1048,23 +1053,57 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(is_line(""))
         session.send(b"slurp slurp-tall.sh\r")
         report.record("slurp-tall-file-shows-the-rows-around-the-caret",
-                      session, has_numbered_rows(43, 60))
+                      session, has_numbered_rows(45, 60))
         session.send(UP * 30)
         report.record("slurp-tall-file-follows-the-caret-up", session,
-                      has_numbered_rows(30, 47))
+                      has_numbered_rows(30, 45))
         session.send(b"X")
         session.send(UP * 40)
         report.record("slurp-up-on-the-first-line-recalls-no-history", session,
-                      lambda screen: has_numbered_rows(1, 18)(screen)
+                      lambda screen: has_numbered_rows(1, 16)(screen)
                       and any(line.rstrip() == "   1 #!/bin/sh"
                               for line in screen.get_lines()))
         session.send(b"\r")
-        session.wait_until(has_hint("press enter again to save it"))
+        session.wait_until(has_text("press enter again to save it"))
         session.send(b"\r")
         report.record("slurp-tall-file-saves-every-line", session,
                       lambda screen: is_line("")(screen)
                       and read_slurped(script).count("\n") == 60
                       and "echo line30X\n" in read_slurped(script))
+
+        session.send(b"slurp slurp-tall.sh\r")
+        session.wait_until(has_numbered_rows(45, 60))
+        session.send(UP * 31 + b"\x05; read -")
+        session.wait_until(lambda screen: any(line.endswith("; read -")
+                                              for line in screen.get_lines()))
+        session.send(b"\t")
+
+        def do_find_caret_row(screen):
+            lines = [line.rstrip() for line in screen.get_lines()]
+            rows = [index for index, line in enumerate(lines)
+                    if line.endswith("; read -")]
+            return (lines, rows[0]) if rows else (lines, None)
+
+        def is_menu_over_next_row(screen):
+            lines, row = do_find_caret_row(screen)
+            return (row is not None and row + 1 < len(lines)
+                    and lines[row + 1].startswith("  30 ")
+                    and "selecting completions" in lines[row + 1]
+                    and "  44 echo line44" in lines)
+
+        report.record("slurp-menu-covers-the-rows-under-the-caret", session,
+                      is_menu_over_next_row)
+        session.send(ESCAPE)
+
+        def is_next_row_restored(screen):
+            lines, row = do_find_caret_row(screen)
+            return (row is not None and row + 1 < len(lines)
+                    and lines[row + 1] == "  30 echo line30X")
+
+        report.record("slurp-closed-menu-restores-the-rows", session,
+                      is_next_row_restored)
+        session.send(KITTY_CTRL_C)
+        session.wait_until(is_line(""))
     finally:
         session.close()
 

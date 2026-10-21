@@ -358,6 +358,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   toiletline::set_line_numbers(number_width);
   toiletline::set_submit_verb("save");
   toiletline::set_save_keys(true);
+  toiletline::set_full_screen(true);
   if (!is_shell_script && was_completion_enabled)
     toiletline::disable_completion();
   if (mode.has_value()) toiletline::set_edit_mode(*mode);
@@ -370,6 +371,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     toiletline::set_line_numbers(0);
     toiletline::set_submit_verb(nullptr);
     toiletline::set_save_keys(false);
+    toiletline::set_full_screen(false);
     toiletline::leave_empty_history();
     try {
       toiletline::exit_raw_mode();

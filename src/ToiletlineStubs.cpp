@@ -667,6 +667,12 @@ set_save_keys(bool is_enabled) -> void
 }
 
 fn
+set_full_screen(bool is_enabled) -> void
+{
+  unused(is_enabled);
+}
+
+fn
 leave_calc_history() -> void
 {}
 

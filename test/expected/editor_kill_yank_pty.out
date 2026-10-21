@@ -129,6 +129,8 @@ slurp-tall-file-shows-the-rows-around-the-caret PASS
 slurp-tall-file-follows-the-caret-up PASS
 slurp-up-on-the-first-line-recalls-no-history PASS
 slurp-tall-file-saves-every-line PASS
+slurp-menu-covers-the-rows-under-the-caret PASS
+slurp-closed-menu-restores-the-rows PASS
 abort-at-the-prompt-restores-the-terminal PASS
 segfault-at-the-prompt-restores-the-terminal PASS
 status=0

@@ -1599,7 +1599,10 @@ Ctrl\-X Ctrl\-C, and Ctrl\-D on an empty buffer leave without saving, and
 Ctrl\-C leaves with status 130. Every colon and M\-x command works. The
 .BR \-\-mode " vi or " "\-\-mode emacs"
 option selects the key set for the session. Up and Down do not recall shell
-history. A file taller than the terminal shows the lines around the caret.
+history. The file fills every row of the terminal but the last four, which
+hold the hints, and a file taller than that shows the lines around the caret.
+The completion menu opens over the lines under the caret, or over the lines
+above it when few rows remain below, and they return when it closes.
 Saving an existing file writes a complete copy in its directory and renames it
 over the file, which keeps the file mode and follows a symbolic link to its
 target. A save that cannot finish reports the error and leaves the file as it

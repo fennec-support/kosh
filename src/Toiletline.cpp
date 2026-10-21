@@ -2049,6 +2049,12 @@ set_save_keys(bool is_enabled) -> void
 }
 
 fn
+set_full_screen(bool is_enabled) -> void
+{
+  ::tl_set_full_screen(is_enabled ? 1 : 0);
+}
+
+fn
 get_history_path() -> koshka::Maybe<koshka::Path>
 {
   return get_history_file_path();
