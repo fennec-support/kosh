@@ -279,6 +279,7 @@ editor.history.arrow_keys_search_by_typed_prefix \
 editor.history.file_path \
 editor.history.max_entries \
 editor.request_extended_key_reports \
+editor.wrap_width \
 init_moods \
 interpreter.arithmetic_uses_big_numbers \
 interpreter.mimic_shebang \

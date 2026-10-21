@@ -158,7 +158,7 @@ EvalContext::record_history_event(StringView command) throws -> bool
   }
 
   toiletline::set_history_limit(
-      variable_store().history_limit("KOSH_HISTORY_SIZE", 4096));
+      variable_store().get_variable_count("KOSH_HISTORY_SIZE", 4096));
 
   return toiletline::append_history_event(command).has_value();
 }

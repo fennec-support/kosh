@@ -2617,7 +2617,7 @@ public:
   }
 
   fn
-  history_limit(StringView name, usize fallback) const wontthrow -> usize
+  get_variable_count(StringView name, usize fallback) const wontthrow -> usize
   {
     let const value = shell_variables().find(name);
     if (!value.has_value()) return fallback;

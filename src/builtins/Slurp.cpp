@@ -510,6 +510,8 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   toiletline::set_editor_title(title.c_str());
   toiletline::set_status(session.status.c_str());
   toiletline::set_full_screen(true);
+  toiletline::set_wrap_width(
+      cxt.variable_store().get_variable_count("KOSH_WRAP_WIDTH", 80));
   if (!is_shell_script) toiletline::disable_shell_completion();
   if (mode.has_value()) toiletline::set_edit_mode(*mode);
 

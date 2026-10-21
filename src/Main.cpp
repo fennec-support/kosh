@@ -1749,6 +1749,8 @@ seed_session_variables(EvalContext                 &context,
 
   if (!context.get_variable_value("KOSH_HISTORY_SIZE").has_value())
     context.set_shell_variable("KOSH_HISTORY_SIZE", "4096");
+  if (!context.get_variable_value("KOSH_WRAP_WIDTH").has_value())
+    context.set_shell_variable("KOSH_WRAP_WIDTH", "80");
   toiletline::set_history_persistent(is_interactive);
 
   let identity_mode = shell_identity_mode::Native;
@@ -2316,7 +2318,9 @@ configure_line_editor(EvalContext &context) throws -> void
   toiletline::set_auto_pair(
       context.runtime_state().option_is_enabled(shell_option_id::AutoPair));
   toiletline::set_history_limit(
-      context.variable_store().history_limit("KOSH_HISTORY_SIZE", 4096));
+      context.variable_store().get_variable_count("KOSH_HISTORY_SIZE", 4096));
+  toiletline::set_wrap_width(
+      context.variable_store().get_variable_count("KOSH_WRAP_WIDTH", 80));
 }
 
 struct interactive_session

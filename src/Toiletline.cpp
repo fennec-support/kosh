@@ -3310,6 +3310,12 @@ set_auto_pair(bool is_enabled) -> void
 }
 
 fn
+set_wrap_width(usize column_count) -> void
+{
+  ::tl_set_wrap_width(column_count);
+}
+
+fn
 set_extended_keys(bool is_enabled) -> void
 {
   ::tl_set_extended_keys(is_enabled ? 1 : 0);

@@ -1090,6 +1090,23 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
         177, "bash.legacy.cmdhist", INTERACTIVE, "cmdhist", true),
     ignored_shopt_flag(
         178, "bash.legacy.lithist", INTERACTIVE, "lithist", false),
+    with_default_text(
+        make_entry(179,
+                   "editor.wrap_width",
+                   option_type::String,
+                   INTERACTIVE,
+                   option_storage::Variable,
+                   NO_SHELL_OPTION,
+                   entry_shape{
+                       {},
+                       {},
+                       "KOSH_WRAP_WIDTH",
+                       "Wrap lines at this many columns in vi gq and "
+                       "M-x fill-paragraph. KOSH_WRAP_WIDTH supplies "
+                       "the value."},
+                   0,
+                   0),
+        "80"),
 
     set_only(posix_flag(68,
                         "posix.interpreter.remember_command_paths",

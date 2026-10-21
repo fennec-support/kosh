@@ -630,6 +630,12 @@ set_auto_pair(bool is_enabled) -> void
 }
 
 fn
+set_wrap_width(usize column_count) -> void
+{
+  unused(column_count);
+}
+
+fn
 set_extended_keys(bool is_enabled) -> void
 {
   unused(is_enabled);

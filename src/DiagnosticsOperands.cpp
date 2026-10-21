@@ -720,6 +720,7 @@ constexpr PackedStringKey SHELL_MAINTAINED_VARIABLE_KEYS[] = {
     SSK("KOSH_TRANSIENT_RPS1"),
     SSK("KOSH_VERSION"),
     SSK("KOSH_WELCOME"),
+    SSK("KOSH_WRAP_WIDTH"),
     SSK("LANG"),
     SSK("LC_ALL"),
     SSK("LC_COLLATE"),

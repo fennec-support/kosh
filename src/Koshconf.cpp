@@ -30,6 +30,7 @@ constexpr u32        MAX_CODEPOINT            = 0x10ffff;
 constexpr u32        INVALID_CODEPOINT        = MAX_CODEPOINT + 1;
 constexpr StringView UTF8_BYTE_ORDER_MARK{"\xef\xbb\xbf"};
 constexpr StringView HISTORY_MAX_ENTRIES_NAME{"editor.history.max_entries"};
+constexpr StringView WRAP_WIDTH_NAME{"editor.wrap_width"};
 constexpr u64        HISTORY_MAX_ENTRIES_LIMIT = 2147483647;
 
 enum class escape_style : u8
@@ -590,7 +591,9 @@ parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
 pure fn
 koshconf_option_takes_count(const option_descriptor &option) wontthrow -> bool
 {
-  return StringView{option.koshconf_name} == HISTORY_MAX_ENTRIES_NAME;
+  let const name = StringView{option.koshconf_name};
+
+  return name == HISTORY_MAX_ENTRIES_NAME || name == WRAP_WIDTH_NAME;
 }
 
 fn

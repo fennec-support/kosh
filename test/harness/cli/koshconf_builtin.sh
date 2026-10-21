@@ -120,7 +120,13 @@ echo "rc=$?"
 koshconf set editor.history.file_path $'"'"'a\xffb'"'"'
 echo "rc=$?"
 koshconf set editor.history.max_entries 0
-koshconf get editor.history.max_entries'
+koshconf get editor.history.max_entries
+koshconf set editor.wrap_width 12x
+echo "rc=$?"
+koshconf get editor.wrap_width
+koshconf set editor.wrap_width 72
+koshconf get editor.wrap_width
+echo "KOSH_WRAP_WIDTH=$KOSH_WRAP_WIDTH"'
 echo "== list escapes a value the file cannot hold:"
 KOSH_HISTORY_FILE=$'a\nb\x01"\'' "$BIN" -c 'koshconf list |
   grep "^editor.history.file_path="

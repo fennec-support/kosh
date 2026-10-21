@@ -298,6 +298,10 @@ inline constexpr static_string_entry<shell_variable_description>
         {SSK("KOSH_HISTORY_SIZE"),
          {"The value limits the number of retained history events.",
           shell_variable_fact::Plain}                                        },
+        {SSK("KOSH_WRAP_WIDTH"),
+         {"The value is the column at which vi gq and M-x fill-paragraph wrap "
+          "lines, and the default is 80.",
+          shell_variable_fact::Plain}                                        },
         {SSK("KOSH_CALC_HISTORY"),
          {"The value specifies the interactive calc history file.",
           shell_variable_fact::Plain}                                        },
