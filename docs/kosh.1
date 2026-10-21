@@ -1587,7 +1587,8 @@ accepts
 .TP
 .BI "slurp " FILE
 FILE is edited in the line editor of the interactive shell, and a missing FILE
-starts empty. A shell script, recognized by its shebang or its
+starts empty. The session runs on the alternate screen of the terminal, which
+it leaves before reporting a result, so the main screen keeps only the command. A shell script, recognized by its shebang or its
 extension, keeps its syntax highlighting and shows a number before each line.
 Enter saves the file and leaves, and an edited buffer of several lines asks for
 a second Enter first. The vi commands
