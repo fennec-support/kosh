@@ -122,6 +122,11 @@ slurp-shows-the-text-file PASS
 slurp-vi-quit-leaves-the-file PASS
 slurp-text-file-gets-an-option PASS
 slurp-text-file-is-not-formatted PASS
+slurp-ctrl-r-finds-backward PASS
+slurp-ctrl-s-steps-to-the-next-match PASS
+slurp-vi-slash-finds-forward PASS
+slurp-vi-n-finds-again PASS
+slurp-vi-gq-wraps-the-line PASS
 slurp-ctrl-x-s-saves PASS
 slurp-ctrl-c-asks-before-dropping-edits PASS
 slurp-second-ctrl-c-drops-the-edits PASS
@@ -133,7 +138,7 @@ slurp-copy-save-refuses-a-swapped-file PASS
 slurp-keeps-editing-after-a-refused-save PASS
 slurp-keeps-mixed-line-endings PASS
 slurp-keeps-a-lone-newline PASS
-slurp-draws-a-tab-as-a-marker PASS
+slurp-draws-a-tab-as-blank-columns PASS
 slurp-tab-inserts-a-tab-in-a-text-file PASS
 vi-o-j-J-and-brace-keys-edit-the-file PASS
 vi-visual-colon-opens-a-range-prompt PASS

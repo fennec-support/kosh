@@ -31,38 +31,36 @@
 # directory in place and removes its backup, refuses to write over a file
 # that another file replaced while it was open and keeps editing, and refuses
 # a binary file. Tab inserts a tab while only blanks come before the caret,
-# and a tab draws as a marker. A colon command opened from a vi visual selection acts on the
-# selected lines only, and o, j, J, and } edit the lines of a file. Ctrl-X s
-# does nothing at the shell prompt. Alt-U, Alt-C, and Alt-L change the case of
-# the next word, also from a kitty report, and Alt-\ deletes the spaces around
-# the cursor.
-# A save keeps the file mode, and a save that cannot write its replacement
-# beside the file leaves the original unchanged.
-# A file taller than the terminal shows a window of rows that follows the
-# caret, Up on its first line recalls no shell history, and saving keeps every
-# line. The completion menu in slurp covers the rows under the caret and gives
-# them back when it closes. M-x get-option in slurp on a text file shows the
-# option, and M-x format-buffer leaves the text file as it is.
-# :set turns an option off with a no prefix, shows it with a question mark,
-# and completes the option with Tab, and M-x set-option lists the matching
-# options, completes the option with Tab, and sets it. :format formats the
-# row, and M-x format leaves a source that does not parse and reports it. A
-# pasted script longer than 16 kilobytes runs whole. The prompt asks for the kitty and
+# and a tab draws as blank columns. A colon command opened from a vi visual
+# selection acts on the selected lines only, and o, j, J, and } edit the lines
+# of a file. Ctrl-X s does nothing at the shell prompt. Alt-U, Alt-C, and Alt-L
+# change the case of the next word, also from a kitty report, and Alt-\ deletes
+# the spaces around the cursor. A save keeps the file mode, and a save that
+# cannot write its replacement beside the file leaves the original unchanged. A
+# file taller than the terminal shows a window of rows that follows the caret,
+# Up on its first line recalls no shell history, and saving keeps every line.
+# The completion menu in slurp covers the rows under the caret and gives them
+# back when it closes. M-x get-option in slurp on a text file shows the option,
+# and M-x format-buffer leaves the text file as it is. Ctrl-R and Ctrl-S find
+# text backward and forward, vi / and n find it, and gqq wraps a long line at 80
+# columns. :set turns an option off with a no prefix, shows it with a question
+# mark, and completes the option with Tab, and M-x set-option lists the matching
+# options, completes the option with Tab, and sets it. :format formats the row,
+# and M-x format leaves a source that does not parse and reports it. A pasted
+# script longer than 16 kilobytes runs whole. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
-# the external editor, and the option turns the request off. Every editing
-# Ctrl and Alt key in the table acts the same in its legacy bytes, which a
-# terminal that ignores the request sends, its kitty form, and its
-# modifyOtherKeys form, with Ctrl-^ as the legacy redo. PROMPT_COMMAND
-# sees the terminal in its usual mode, and the request follows its output.
-# Kitty-encoded
-# Enter, Ctrl-C, Ctrl-A, Ctrl-D, Ctrl-W, Ctrl-X, Ctrl-U, Ctrl-Z, Alt-B, and
-# Escape act as their legacy bytes in the line, the menu, the chord, and vi
-# mode, a bracketed paste still arrives, and Ctrl-D on an empty line ends the
-# shell after the withdrawal. A shell that dies of SIGABRT or SIGSEGV at the
-# prompt still withdraws the requests and restores the terminal modes. The
-# terminal model and session come from the
-# ghost and menu probe. Each check prints one stable PASS line for the golden
-# output.
+# the external editor, and the option turns the request off. Every editing Ctrl
+# and Alt key in the table acts the same in its legacy bytes, which a terminal
+# that ignores the request sends, its kitty form, and its modifyOtherKeys form,
+# with Ctrl-^ as the legacy redo. PROMPT_COMMAND sees the terminal in its usual
+# mode, and the request follows its output. Kitty-encoded Enter, Ctrl-C, Ctrl-A,
+# Ctrl-D, Ctrl-W, Ctrl-X, Ctrl-U, Ctrl-Z, Alt-B, and Escape act as their legacy
+# bytes in the line, the menu, the chord, and vi mode, a bracketed paste still
+# arrives, and Ctrl-D on an empty line ends the shell after the withdrawal. A
+# shell that dies of SIGABRT or SIGSEGV at the prompt still withdraws the
+# requests and restores the terminal modes. The terminal model and session come
+# from the ghost and menu probe. Each check prints one stable PASS line for the
+# golden output.
 
 import os
 import re
@@ -972,6 +970,40 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       has_row("second note;x!"))
         do_discard(session)
 
+        found = os.path.join(directory, "slurp-find.txt")
+        with open(found, "w") as handle:
+            handle.write("alpha beta\ngamma beta\n" + " ".join(
+                "word%02d" % index for index in range(16)) + "\n")
+        session.send(b"slurp slurp-find.txt\r")
+        session.wait_until(has_text("line 3 of 3"))
+        session.send(b"\x12alpha\r")
+        report.record("slurp-ctrl-r-finds-backward", session,
+                      has_text("line 1 of 3, column 1,"))
+        session.send(b"\x13beta\x13\r")
+        report.record("slurp-ctrl-s-steps-to-the-next-match", session,
+                      has_text("line 2 of 3, column 7,"))
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
+
+        session.send(b"slurp --mode vi slurp-find.txt\r")
+        session.wait_until(has_text("line 3 of 3"))
+        session.send(KITTY_ESCAPE)
+        settle(session, 0.2)
+        session.send(b"gg/beta\r")
+        report.record("slurp-vi-slash-finds-forward", session,
+                      has_text("line 1 of 3, column 7,"))
+        session.send(b"n")
+        report.record("slurp-vi-n-finds-again", session,
+                      has_text("line 2 of 3, column 7,"))
+        session.send(b"Ggqq")
+        report.record("slurp-vi-gq-wraps-the-line", session,
+                      lambda screen: has_row("word00 word01 word02 word03 "
+                                             "word04 word05 word06 word07 "
+                                             "word08 word09 word10")(screen)
+                      and has_row("word11 word12 word13 word14 word15")(screen))
+        session.send(b":q!\r")
+        session.wait_until(is_line(""))
+
         session.send(b"slurp slurp-notes.txt\r")
         session.wait_until(lambda screen: any(line.rstrip() == "second note"
                                               for line in screen.get_lines()))
@@ -1116,7 +1148,9 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(has_text("line 2 of 2"))
         session.send(UP + b"\t")
         session.wait_until(has_text("line 1 of 2, column 3"))
-        report.record("slurp-draws-a-tab-as-a-marker", session, has_row("x>"))
+        report.record("slurp-draws-a-tab-as-blank-columns", session,
+                      lambda screen: has_row("x")(screen)
+                      and not has_text("x>")(screen))
         session.send(CTRL_X + b"s")
         report.record("slurp-tab-inserts-a-tab-in-a-text-file", session,
                       lambda screen: has_text("wrote")(screen)
