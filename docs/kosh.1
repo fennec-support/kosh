@@ -1587,52 +1587,59 @@ accepts
 .TP
 .BI "slurp " FILE
 FILE is edited in the line editor of the interactive shell, and a missing FILE
-starts empty. The session runs on the alternate screen of the terminal, which
-it leaves before reporting a result, so the main screen keeps only the
-command. A shell script, recognized by its shebang or its extension, keeps its
-syntax highlighting and shows a number before each line.
-Enter saves the file and leaves, and a buffer that differs from the file asks
-for a second Enter first. Tab completes in a shell script and inserts a tab in
-any other file. The vi commands
-.BR :wq ", " :wq! ", " :wqa ", " :wqa! ", and " :x
-also save and leave, as Ctrl\-X s and Ctrl\-X Ctrl\-S do in emacs mode, while
-.BR :q ", " :q! ,
+starts empty. The session runs on the alternate screen of the terminal and
+leaves it before any result is reported, so the main screen keeps only the
+command. Every line is shown with its number, and a shell script, recognized by
+its shebang or its extension, also keeps its syntax highlighting. Enter starts
+a new line, as Shift\-Enter does, and in vi normal mode it moves down a line.
+Tab completes in a shell script and inserts a tab in any other file. Ctrl\-X s
+and Ctrl\-X Ctrl\-S save the file and leave in emacs mode, and so do the vi
+commands
+.BR :wq ", " :wq! ", " :wqa ", " :wqa! ", and " :x .
+The commands
+.BR :q " and " :q! ,
 Ctrl\-X Ctrl\-C, and Ctrl\-D on an empty buffer leave without saving, and
-Ctrl\-C leaves with status 130. When the buffer differs from the file,
+Ctrl\-C leaves with status 130. While the buffer differs from the file,
 .BR :q " and " :quit
-refuse to leave, the other keys and M\-x kill\-kosh leave only when pressed
-twice in a row, and
+will refuse to leave, the other keys and M\-x kill\-kosh will leave only when
+they are pressed twice in a row, and
 .B :q!
-leaves at once. Every colon and M\-x command works. The
+will leave at once. Every colon and M\-x command can be used. The
 .BR \-\-mode " vi or " "\-\-mode emacs"
-option selects the key set for the session. Up and Down do not recall shell
-history. The top row repeats the prompt and the command. The file fills every
-row under it but the last four, and a file taller than that shows the lines
-around the caret. The last four rows show the file, the caret line and column
-with the edit mode, the kind of file, and the keys that save and leave.
-Ctrl\-X i in emacs mode shows the hint of the word under the caret on those
-rows until the next key, and so does Ctrl\-I in vi insert mode when the
-terminal reports Ctrl\-I apart from TAB. The M\-x and colon command lines
-open on the same rows and leave the view as it was. A mouse click on the file
-moves the caret there, and the wheel moves it three lines.
-The completion menu opens over the lines under the caret, or over the lines
-above it when few rows remain below, and they return when it closes.
-Saving an existing file writes a complete copy in its directory and renames it
-over the file, which keeps the file mode and follows a symbolic link to its
-target. A save that cannot finish reports the error and leaves the file as it
-was. A file that another user owns, a file with more than one link, and a file
-in a directory that other users can write to without the sticky bit are
-rewritten in place instead, which keeps their owner, group, and links. Such a
-save first copies the current contents to a private file in the home
+option selects the key set for the session, and Up and Down do not recall
+shell history.
+.IP
+The top row repeats the prompt and the command. The file fills every row under
+it but the last four, and a file taller than that is shown around the caret.
+The last four rows describe the kind of file, its line endings, and its size,
+then give the caret line and column with the edit mode, and after an empty row
+they list the keys that open the key menu and the commands. Ctrl\-X i in emacs
+mode shows the hint of the word under the caret on those rows until the next
+key, and Ctrl\-I in vi insert mode does the same when the terminal reports
+Ctrl\-I apart from TAB. The M\-x and colon command lines open on the same rows
+and leave the view as it was. A mouse click on the file moves the caret there,
+and the wheel scrolls the view by three lines, moving the caret only when it
+would leave the view. The completion menu opens over the lines under the caret,
+or over the lines above it when few rows remain below, and those lines return
+when it closes.
+.IP
+An existing file is saved by writing a complete copy in its directory and
+renaming it over the file, which keeps the file mode and follows a symbolic
+link to its target. A save that cannot finish is reported, and the file is left
+as it was. A file that another user owns, a file with more than one link, and a
+file in a directory that other users can write to without the sticky bit are
+rewritten in place instead, which keeps their owner, group, and links. Before
+such a save, the current contents are copied to a private file in the home
 directory, or in the temporary directory when the home directory takes none,
-and removes the copy once the write succeeds. When the write fails, the error
-gives the path of the copy, and when no copy can be made, nothing is written.
-The save is refused when another file has replaced the one that slurp
-loaded. When a save is refused or fails, the edits go to a private file in the
-same place as the backup, and the error gives its path. A file with a NUL byte or invalid UTF\-8, a file longer than 65534
-bytes, and a restricted shell are refused. A file whose every line ends in
-CRLF keeps those endings, a file that mixes them keeps each carriage return as
-text, and the final newline of the file is kept.
+and the copy is removed once the write succeeds. When the write fails, the
+error gives the path of the copy, and when no copy can be made, nothing is
+written. The save is refused when another file has replaced the one that slurp
+loaded. When a save is refused or fails, the edits are written to a private
+file in the same place as the backup, and the error gives its path. A file with
+a NUL byte or invalid UTF\-8, a file longer than 65534 bytes, and a restricted
+shell are refused. A file whose every line ends in CRLF keeps those endings, a
+file that mixes them keeps each carriage return as text, and the final newline
+of the file is kept.
 .TP
 .B z
 The current directory is changed to one selected from the directories that

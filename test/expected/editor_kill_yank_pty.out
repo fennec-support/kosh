@@ -111,12 +111,12 @@ kitty-alt-l-downcases-the-next-word PASS
 alt-backslash-deletes-the-spaces-around-the-cursor PASS
 ctrl-x-ctrl-c-ends-the-shell PASS
 slurp-numbers-the-lines-of-a-script PASS
-slurp-asks-for-a-second-enter-to-save PASS
-slurp-enter-saves-the-file PASS
+slurp-enter-starts-a-new-line PASS
+slurp-ctrl-x-s-saves-the-new-line PASS
 slurp-vi-write-quit-saves PASS
 slurp-save-keeps-the-file-mode PASS
 slurp-failed-save-keeps-the-original PASS
-slurp-leaves-a-text-file-unnumbered PASS
+slurp-numbers-the-lines-of-a-text-file PASS
 slurp-vi-quit-leaves-the-file PASS
 slurp-ctrl-x-s-saves PASS
 slurp-ctrl-c-asks-before-dropping-edits PASS
@@ -145,6 +145,7 @@ slurp-status-rows-show-the-caret-line PASS
 slurp-ctrl-x-i-shows-the-hint PASS
 slurp-command-line-keeps-the-view PASS
 slurp-mouse-press-moves-the-caret PASS
+slurp-wheel-scrolls-the-view PASS
 abort-at-the-prompt-restores-the-terminal PASS
 segfault-at-the-prompt-restores-the-terminal PASS
 status=0

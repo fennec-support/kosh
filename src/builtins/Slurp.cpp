@@ -377,14 +377,11 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (contents[i] == '\n') line_count++;
 
   let const digit_count  = count_digits(line_count * 2);
-  let const number_width = !is_shell_script  ? usize{0}
-                           : digit_count > 3 ? digit_count
-                                             : usize{3};
-  let const prompt = number_width > 0 ? make_first_line_prompt(number_width + 1)
-                                      : String{heap_allocator()};
+  let const number_width = digit_count > 3 ? digit_count : usize{3};
+  let const prompt       = make_first_line_prompt(number_width + 1);
 
-  /* The top row repeats the prompt and the command, and the status rows keep
-     the file and what it holds. */
+  /* The top row repeats the prompt and the command, and the status row
+     describes the kind of file, its line endings, and its size. */
   let const last_prompt     = toiletline::get_last_prompt();
   let const prompt_line_end = last_prompt.find_last_character('\n');
   let       title =
@@ -400,10 +397,10 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
   title.append(args[1].view());
 
-  let status = String{heap_allocator(), args[1].view()};
+  let status =
+      String{heap_allocator(), is_shell_script ? "shell script, " : "text, "};
 
-  status.append(is_shell_script ? "\nshell script, " : "\ntext, ");
-  status.append(has_crlf ? "CRLF line endings, " : "LF line endings, ");
+  status.append(has_crlf ? "CRLF endings, " : "LF endings, ");
   if (opened.has_value()) {
     status.append(
         String::from(static_cast<u64>(original_byte_count), heap_allocator()));
@@ -418,7 +415,6 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   toiletline::enter_raw_mode();
   toiletline::enter_empty_history();
   toiletline::set_line_numbers(number_width);
-  toiletline::set_submit_verb("save");
   toiletline::set_save_keys(true);
   toiletline::set_title(title.c_str());
   toiletline::set_status(status.c_str());
@@ -435,7 +431,6 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       toiletline::enable_completion(cxt);
     }
     toiletline::set_line_numbers(0);
-    toiletline::set_submit_verb(nullptr);
     toiletline::set_save_keys(false);
     toiletline::set_saved_text(nullptr);
     toiletline::set_full_screen(false);

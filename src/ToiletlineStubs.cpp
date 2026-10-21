@@ -648,12 +648,6 @@ set_line_numbers(usize width) -> void
 }
 
 fn
-set_submit_verb(const char *verb) -> void
-{
-  unused(verb);
-}
-
-fn
 set_save_keys(bool is_enabled) -> void
 {
   unused(is_enabled);

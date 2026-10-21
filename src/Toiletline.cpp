@@ -2037,12 +2037,6 @@ set_line_numbers(usize width) -> void
 }
 
 fn
-set_submit_verb(const char *verb) -> void
-{
-  ::tl_set_submit_verb(verb);
-}
-
-fn
 set_save_keys(bool is_enabled) -> void
 {
   ::tl_set_save_keys(is_enabled ? 1 : 0);

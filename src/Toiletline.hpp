@@ -101,10 +101,6 @@ leave_empty_history() -> void;
  */
 fn
 set_line_numbers(usize width) -> void;
-/* The verb of the hint that asks for a second Enter, or "run" when verb is
-   null. verb must outlive its use. */
-fn
-set_submit_verb(const char *verb) -> void;
 /* Turns Ctrl-X s and Ctrl-X Ctrl-S on as save keys, or off. */
 fn
 set_save_keys(bool is_enabled) -> void;
@@ -116,8 +112,8 @@ set_saved_text(const char *text) -> void;
    title is null. title must outlive its use. */
 fn
 set_title(const char *title) -> void;
-/* Keeps status for the rows under the full-screen input: the file on the
-   first line and what it holds on the next. status must outlive its use. */
+/* Keeps status, one line about the edited file, for the rows under the
+   full-screen input. status must outlive its use. */
 fn
 set_status(const char *status) -> void;
 /* The prompt of the last line read outside the full-screen layout. */

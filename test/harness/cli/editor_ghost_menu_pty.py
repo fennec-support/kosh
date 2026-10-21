@@ -83,7 +83,7 @@ MENU_HELP = ("selecting completions, enter to run, tab to accept, esc to close, 
              "ctrl-g to restore")
 MENU_FOOTER = "showing "
 HISTORY_HEADER = "incremental history search"
-HISTORY_NO_MATCH = "no matches, erase to widen the search"
+HISTORY_NO_MATCH = "no matches, backspace to widen the search"
 RIGHT = b"\x1b[C"
 LEFT = b"\x1b[D"
 HOME = b"\x1b[H"
