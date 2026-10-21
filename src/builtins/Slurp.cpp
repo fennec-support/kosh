@@ -180,7 +180,7 @@ save_file(const Path                   &path,
        already there and is not removed. */
     let       created    = os::file_status{};
     let const is_created = os::stat_descriptor(*descriptor, created) &&
-                           os::file_type_letter(created.mode) == '-';
+                           (created.mode & 0170000u) == 0100000u;
     let const did_write =
         os::write_all(*descriptor, contents.data, contents.length);
 
