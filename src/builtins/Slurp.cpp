@@ -135,11 +135,12 @@ write_backup(StringView contents) throws -> Maybe<Path>
    one leaves in kept_backup, and without a backup nothing is written. A file
    that was missing when slurp loaded it is created only if nothing has taken
    its place, and a regular file created so is removed again when the write
-   fails. */
+   fails. A save keeps the identity of the file it wrote in written. */
 fn
 save_file(const Path                   &path,
           StringView                    contents,
           const Maybe<os::file_status> &opened,
+          Maybe<os::file_status>       &written,
           Maybe<Path>                  &kept_backup) throws -> save_outcome
 {
   if (!opened.has_value()) {
@@ -156,7 +157,11 @@ save_file(const Path                   &path,
     let const did_write =
         os::write_all(*descriptor, contents.data, contents.length);
 
-    if (os::close_fd(*descriptor) && did_write) return save_outcome::Saved;
+    if (os::close_fd(*descriptor) && did_write) {
+      if (is_created) written = created;
+
+      return save_outcome::Saved;
+    }
     if (is_created) unused(os::remove_file(path.view()));
 
     return save_outcome::Failed;
@@ -175,9 +180,16 @@ save_file(const Path                   &path,
   if (do_is_other_file(current)) return save_outcome::Replaced;
 
   if (is_replaceable_by_copy(path)) {
-    return toiletline::write_history_file_atomically(path, ".slurp", contents)
-               ? save_outcome::Saved
-               : save_outcome::Failed;
+    let replacement = os::file_status{};
+
+    if (!toiletline::write_history_file_atomically(path, ".slurp", contents,
+                                                   &replacement))
+    {
+      return save_outcome::Failed;
+    }
+    written = replacement;
+
+    return save_outcome::Saved;
   }
 
   let const descriptor =
@@ -215,6 +227,7 @@ save_file(const Path                   &path,
 
   if (os::close_fd(*descriptor) && did_write) {
     unused(os::remove_file(backup->view()));
+    written = current;
 
     return save_outcome::Saved;
   }
@@ -283,14 +296,12 @@ save_buffer(const char *text, const char **out_message) -> int
     }
 
     let       kept_backup = Maybe<Path>{None};
-    let const outcome =
-        save_file(session.path, saved.view(), session.opened, kept_backup);
+    let       written     = Maybe<os::file_status>{None};
+    let const outcome = save_file(session.path, saved.view(), session.opened,
+                                  written, kept_backup);
 
     if (outcome == save_outcome::Saved) {
-      let status = os::file_status{};
-
-      if (os::stat_path_following(session.path.view(), status))
-        session.opened = status;
+      session.opened     = written;
       session.saved_text = String{heap_allocator(), buffer};
       session.status     = make_status(session, saved.length());
       session.message    = String{heap_allocator(), "wrote "};

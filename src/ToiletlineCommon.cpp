@@ -262,9 +262,11 @@ encode_history_record(String &output, StringView command) -> void
 }
 
 fn
-write_history_file_atomically(const koshka::Path &path,
-                              StringView          name_prefix,
-                              StringView          contents) throws -> bool
+write_history_file_atomically(const koshka::Path      &path,
+                              StringView               name_prefix,
+                              StringView               contents,
+                              koshka::os::file_status *written) throws
+    -> bool
 {
   /* memory: target and replacement own their path strings, freed on return.
              the temporary file is removed when set_file_mode(),
@@ -288,6 +290,8 @@ write_history_file_atomically(const koshka::Path &path,
   if ((has_status &&
        !koshka::os::set_file_mode(replacement->view(), status.mode & 07777)) ||
       !koshka::os::sync_path(replacement->view(), koshka::os::sync_mode::All) ||
+      (written != nullptr &&
+       !koshka::os::stat_path_following(replacement->view(), *written)) ||
       !koshka::os::rename_path(replacement->view(), target.view()))
   {
     unused(koshka::os::remove_file(replacement->view()));
