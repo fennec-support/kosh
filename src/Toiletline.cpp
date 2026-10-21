@@ -3246,6 +3246,7 @@ disable_shell_completion() -> void
   ::tl_set_ghost_validate_callback(nullptr);
   ::tl_set_history_select_callback(nullptr);
   ::tl_set_pair_role_callback(nullptr);
+  ::tl_set_format_callback(nullptr);
 }
 
 fn
