@@ -510,16 +510,18 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   toiletline::set_editor_title(title.c_str());
   toiletline::set_status(session.status.c_str());
   toiletline::set_full_screen(true);
-  if (!is_shell_script && was_completion_enabled) {
-    toiletline::disable_shell_completion();
-  }
+  if (!is_shell_script) toiletline::disable_shell_completion();
   if (mode.has_value()) toiletline::set_edit_mode(*mode);
 
   defer {
     toiletline::set_edit_mode(was_vi ? toiletline::edit_mode::Vi
                                      : toiletline::edit_mode::Emacs);
-    if (!is_shell_script && was_completion_enabled) {
-      toiletline::enable_completion(cxt);
+    if (!is_shell_script) {
+      if (was_completion_enabled) {
+        toiletline::enable_completion(cxt);
+      } else {
+        toiletline::enable_editor_commands(cxt);
+      }
     }
     toiletline::set_save_callback(nullptr);
     ACTIVE_SESSION = nullptr;

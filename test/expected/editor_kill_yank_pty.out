@@ -122,10 +122,12 @@ slurp-shows-the-text-file PASS
 slurp-vi-quit-leaves-the-file PASS
 slurp-text-file-gets-an-option PASS
 slurp-text-file-is-not-formatted PASS
+slurp-text-file-without-completion-is-not-formatted PASS
 slurp-ctrl-r-finds-backward PASS
 slurp-ctrl-s-steps-to-the-next-match PASS
 slurp-vi-slash-finds-forward PASS
 slurp-vi-n-finds-again PASS
+slurp-vi-closed-find-keeps-the-direction PASS
 slurp-vi-gq-wraps-the-line PASS
 slurp-ctrl-x-s-saves PASS
 slurp-ctrl-c-asks-before-dropping-edits PASS

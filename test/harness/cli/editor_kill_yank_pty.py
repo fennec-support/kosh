@@ -41,8 +41,9 @@
 # Up on its first line recalls no shell history, and saving keeps every line.
 # The completion menu in slurp covers the rows under the caret and gives them
 # back when it closes. M-x get-option in slurp on a text file shows the option,
-# and M-x format-buffer leaves the text file as it is. Ctrl-R and Ctrl-S find
-# text backward and forward, vi / and n find it, and gqq wraps a long line at 80
+# and M-x format-buffer leaves the text file as it is, also with tab completion
+# off. Ctrl-R and Ctrl-S find text backward and forward, vi / and n find it, a
+# closed ? find keeps the direction of n, and gqq wraps a long line at 80
 # columns. :set turns an option off with a no prefix, shows it with a question
 # mark, and completes the option with Tab, and M-x set-option lists the matching
 # options, completes the option with Tab, and sets it. :format formats the row,
@@ -970,6 +971,19 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       has_row("second note;x!"))
         do_discard(session)
 
+        session.send(b"koshconf set completion.on_tab off\r")
+        session.wait_until(is_line(""))
+        session.send(b"slurp slurp-notes.txt\r")
+        session.wait_until(has_row("second note"))
+        session.send(b";x")
+        session.wait_until(has_row("second note;x"))
+        session.send(ALT_X + b"format-buffer\r!")
+        report.record("slurp-text-file-without-completion-is-not-formatted",
+                      session, has_row("second note;x!"))
+        do_discard(session)
+        session.send(b"koshconf set completion.on_tab on\r")
+        session.wait_until(is_line(""))
+
         found = os.path.join(directory, "slurp-find.txt")
         with open(found, "w") as handle:
             handle.write("alpha beta\ngamma beta\n" + " ".join(
@@ -995,6 +1009,9 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(b"n")
         report.record("slurp-vi-n-finds-again", session,
                       has_text("line 2 of 3, column 7,"))
+        session.send(b"gg/a\rn?\x7fn")
+        report.record("slurp-vi-closed-find-keeps-the-direction", session,
+                      has_text("line 1 of 3, column 10,"))
         session.send(b"Ggqq")
         report.record("slurp-vi-gq-wraps-the-line", session,
                       lambda screen: has_row("word00 word01 word02 word03 "

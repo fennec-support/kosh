@@ -1594,7 +1594,8 @@ syntax highlighting. Enter and Shift\-Enter start a new line, and in vi normal
 mode Enter moves down a line. Tab inserts a tab when only blanks come before
 the caret on its line or the file is not a shell script, and completes
 otherwise. A tab is drawn as four blank columns on a shaded background, and the
-blanks that end a line are shaded too. Ctrl\-X s and Ctrl\-X Ctrl\-S in emacs
+blanks that end a line are shaded too. Each empty line after the last text of
+the file has its first column shaded. Ctrl\-X s and Ctrl\-X Ctrl\-S in emacs
 mode and
 .BR :w " and " :write
 in vi mode save the file and keep the session open, and the empty status row
@@ -3218,8 +3219,8 @@ save the file and keep editing. Elsewhere the keys do nothing.
 Find text in the buffer as it is typed into a minibuffer, forward from the
 cursor and past the end around to the start. Text without a capital letter
 matches either case. Ctrl\-S moves to the next match, Ctrl\-R to the one
-before, Enter leaves the cursor on the match, and Escape returns it. Ctrl\-S
-or Ctrl\-R on empty text finds the text of the last find.
+before, Enter leaves the cursor on the match, and Escape returns the cursor to
+where it was. Ctrl\-S or Ctrl\-R on empty text finds the text of the last find.
 .TP
 .B Ctrl\-R
 Search the history. In
@@ -3577,12 +3578,13 @@ do.
 .TP
 .B fill\-paragraph
 Wrap the lines of the paragraph that holds the cursor, up to a blank line or
-an end of the buffer, at 80 columns as
+the start or the end of the buffer, at 80 columns as
 .B gq
 does in vi mode.
 .TP
 .BR isearch\-forward ", " isearch\-backward
-Find text in the buffer forward as Ctrl\-S does, or backward.
+Find text in the buffer forward as Ctrl\-S does, or backward as Ctrl\-R does in
+slurp.
 .TP
 .B kill\-kosh
 Leave the shell with the status of the last command, as Ctrl\-X Ctrl\-C does.
