@@ -537,18 +537,18 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* The session runs on the alternate screen, which it leaves before any
      report so that the report stays on the main screen. */
-  flush();
-
-  bool is_on_alternate_screen = enter_alternate_screen(ec);
+  bool is_on_alternate_screen = true;
 
   let const do_leave_alternate_screen = [&]() throws -> void {
     if (!is_on_alternate_screen) return;
 
     is_on_alternate_screen = false;
+    print("\x1b[?1049l");
     flush();
-    leave_alternate_screen(ec);
   };
 
+  print("\x1b[?1049h");
+  flush();
   defer { do_leave_alternate_screen(); };
 
   toiletline::set_input(contents);
