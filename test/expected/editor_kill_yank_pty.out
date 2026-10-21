@@ -119,6 +119,10 @@ slurp-failed-save-keeps-the-original PASS
 slurp-leaves-a-text-file-unnumbered PASS
 slurp-vi-quit-leaves-the-file PASS
 slurp-ctrl-x-s-saves PASS
+slurp-ctrl-c-asks-before-dropping-edits PASS
+slurp-second-ctrl-c-drops-the-edits PASS
+slurp-vi-quit-refuses-to-drop-edits PASS
+slurp-ctrl-x-ctrl-c-leaves-an-unedited-file PASS
 slurp-in-place-save-removes-its-backup PASS
 slurp-refuses-a-file-swapped-while-open PASS
 vi-o-j-J-and-brace-keys-edit-the-file PASS

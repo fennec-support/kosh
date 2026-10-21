@@ -77,6 +77,7 @@ from editor_ghost_menu_pty import (BACKSPACE, LEFT, WAIT_SECONDS, Report,
 
 
 CTRL_A = b"\x01"
+CTRL_C = b"\x03"
 CTRL_K = b"\x0b"
 CTRL_T = b"\x14"
 CTRL_W = b"\x17"
@@ -948,6 +949,45 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       lambda screen: is_line("")(screen)
                       and read_slurped(notes)
                       == "first note\nsecond note saved\n")
+
+        session.send(b"slurp slurp-notes.txt\r")
+        session.wait_until(lambda screen: any(
+            line.rstrip() == "second note saved"
+            for line in screen.get_lines()))
+        session.send(b" lost")
+        session.wait_until(lambda screen: any(
+            line.rstrip() == "second note saved lost"
+            for line in screen.get_lines()))
+        session.send(CTRL_C)
+        report.record("slurp-ctrl-c-asks-before-dropping-edits", session,
+                      has_text("press ctrl-c again to discard them"))
+        session.send(CTRL_C)
+        report.record("slurp-second-ctrl-c-drops-the-edits", session,
+                      lambda screen: is_line("")(screen)
+                      and read_slurped(notes)
+                      == "first note\nsecond note saved\n")
+
+        session.send(b"slurp --mode vi slurp-notes.txt\r")
+        session.wait_until(lambda screen: any(
+            line.rstrip() == "second note saved"
+            for line in screen.get_lines()))
+        session.send(b"?")
+        settle(session, 0.2)
+        session.send(KITTY_ESCAPE)
+        settle(session, 0.2)
+        session.send(b":q\r")
+        report.record("slurp-vi-quit-refuses-to-drop-edits", session,
+                      has_text("use :q! to discard them"))
+        session.send(b":q!\r")
+        session.wait_until(is_line(""))
+
+        session.send(b"slurp slurp-notes.txt\r")
+        session.wait_until(lambda screen: any(
+            line.rstrip() == "second note saved"
+            for line in screen.get_lines()))
+        session.send(CTRL_X + CTRL_C)
+        report.record("slurp-ctrl-x-ctrl-c-leaves-an-unedited-file", session,
+                      is_line(""))
 
         session.send(b"slurp slurp-shared/doc.txt\r")
         session.wait_until(lambda screen: any(line.rstrip() == "doc"

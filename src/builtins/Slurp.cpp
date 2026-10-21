@@ -371,6 +371,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     toiletline::set_line_numbers(0);
     toiletline::set_submit_verb(nullptr);
     toiletline::set_save_keys(false);
+    toiletline::set_saved_text(nullptr);
     toiletline::set_full_screen(false);
     toiletline::leave_empty_history();
     try {
@@ -397,6 +398,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   defer { do_leave_alternate_screen(); };
 
   toiletline::set_input(contents);
+  toiletline::set_saved_text(contents.c_str());
 
   loop {
     let result = toiletline::get_input(prompt);

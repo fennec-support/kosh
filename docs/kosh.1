@@ -1596,7 +1596,12 @@ a second Enter first. The vi commands
 also save and leave, as Ctrl\-X s and Ctrl\-X Ctrl\-S do in emacs mode, while
 .BR :q ", " :q! ,
 Ctrl\-X Ctrl\-C, and Ctrl\-D on an empty buffer leave without saving, and
-Ctrl\-C leaves with status 130. Every colon and M\-x command works. The
+Ctrl\-C leaves with status 130. When the buffer differs from the file,
+.BR :q " and " :quit
+refuse to leave, the other keys and M\-x kill\-kosh leave only when pressed
+twice in a row, and
+.B :q!
+leaves at once. Every colon and M\-x command works. The
 .BR \-\-mode " vi or " "\-\-mode emacs"
 option selects the key set for the session. Up and Down do not recall shell
 history. The file fills every row of the terminal but the last four, which

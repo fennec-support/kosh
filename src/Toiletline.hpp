@@ -104,6 +104,10 @@ set_submit_verb(const char *verb) -> void;
 /* Turns Ctrl-X s and Ctrl-X Ctrl-S on as save keys, or off. */
 fn
 set_save_keys(bool is_enabled) -> void;
+/* Keeps text as the saved file contents that quit keys compare the buffer
+   against, or forgets them when text is null. text must outlive its use. */
+fn
+set_saved_text(const char *text) -> void;
 /* Lays the editor out over the whole terminal for editing a file, with the
    hints on the last four rows and the menu over the input. */
 fn

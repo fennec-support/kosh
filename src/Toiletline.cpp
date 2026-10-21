@@ -2049,6 +2049,12 @@ set_save_keys(bool is_enabled) -> void
 }
 
 fn
+set_saved_text(const char *text) -> void
+{
+  ::tl_set_saved_text(text);
+}
+
+fn
 set_full_screen(bool is_enabled) -> void
 {
   ::tl_set_full_screen(is_enabled ? 1 : 0);

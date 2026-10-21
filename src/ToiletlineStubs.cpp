@@ -667,6 +667,12 @@ set_save_keys(bool is_enabled) -> void
 }
 
 fn
+set_saved_text(const char *text) -> void
+{
+  unused(text);
+}
+
+fn
 set_full_screen(bool is_enabled) -> void
 {
   unused(is_enabled);
