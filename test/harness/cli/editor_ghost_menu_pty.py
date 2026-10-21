@@ -115,6 +115,7 @@ class Screen:
         self.pending = b""
         self.saved_screen = None
         self.saved_cursor = (0, 0)
+        self.margins = None
 
     def get_cells(self):
         while len(self.rows) <= self.row:
@@ -148,6 +149,29 @@ class Screen:
 
     def get_top_row(self):
         return max(0, len(self.rows) - self.height)
+
+    def get_margin_rows(self):
+        top = self.get_top_row()
+        first, last = self.margins or (1, self.height)
+        while len(self.rows) < top + last:
+            self.rows.append([])
+        return top + first - 1, top + last - 1
+
+    def index(self):
+        first, last = self.get_margin_rows()
+        if self.row == last:
+            del self.rows[first]
+            self.rows.insert(last, [])
+        else:
+            self.row += 1
+
+    def reverse_index(self):
+        first, last = self.get_margin_rows()
+        if self.row == first:
+            del self.rows[last]
+            self.rows.insert(first, [])
+        else:
+            self.row = max(0, self.row - 1)
 
     def apply_private_csi(self, parameter_text, final):
         if parameter_text != "?1049":
@@ -198,6 +222,11 @@ class Screen:
             self.column += count
         elif final == "D":
             self.column = max(0, self.column - count)
+        elif final == "r":
+            self.margins = ((parameters[0] or 1, parameters[1] or self.height)
+                            if len(parameters) == 2 else None)
+            self.row = self.get_top_row()
+            self.column = 0
 
     def feed(self, data):
         data = self.pending + data
@@ -220,7 +249,11 @@ class Screen:
                         break
                     index = end + 1
                     continue
-                if data[index + 1] == ord("7"):
+                if data[index + 1] == ord("D"):
+                    self.index()
+                elif data[index + 1] == ord("M"):
+                    self.reverse_index()
+                elif data[index + 1] == ord("7"):
                     self.saved_cursor = (self.row, self.column)
                 elif data[index + 1] == ord("8"):
                     self.row, self.column = self.saved_cursor

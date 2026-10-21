@@ -125,6 +125,8 @@ slurp-text-file-is-not-formatted PASS
 slurp-text-file-without-completion-is-not-formatted PASS
 slurp-ctrl-r-finds-backward PASS
 slurp-ctrl-s-steps-to-the-next-match PASS
+slurp-alt-less-goes-to-the-start PASS
+slurp-ctrl-end-goes-to-the-end PASS
 slurp-vi-slash-finds-forward PASS
 slurp-vi-n-finds-again PASS
 slurp-vi-closed-find-keeps-the-direction PASS

@@ -42,14 +42,15 @@
 # The completion menu in slurp covers the rows under the caret and gives them
 # back when it closes. M-x get-option in slurp on a text file shows the option,
 # and M-x format-buffer leaves the text file as it is, also with tab completion
-# off. Ctrl-R and Ctrl-S find text backward and forward, vi / and n find it, a
-# closed ? find keeps the direction of n, and gqq wraps a long line at 80
-# columns or at the width that editor.wrap_width sets, and . repeats a visual
-# gq. :set turns an option off with a no prefix, shows it with a question
-# mark, and completes the option with Tab, and M-x set-option lists the matching
-# options, completes the option with Tab, and sets it. :format formats the row,
-# and M-x format leaves a source that does not parse and reports it. A pasted
-# script longer than 16 kilobytes runs whole. The prompt asks for the kitty and
+# off. Ctrl-R and Ctrl-S find text backward and forward, Alt-< and Ctrl-End
+# go to the start and the end of the file, vi / and n find it, a closed ? find
+# keeps the direction of n, and gqq wraps a long line at 80 columns or at the
+# width that editor.wrap_width sets, and . repeats a visual gq. :set turns an
+# option off with a no prefix, shows it with a question mark, and completes the
+# option with Tab, and M-x set-option lists the matching options, completes the
+# option with Tab, and sets it. :format formats the row, and M-x format leaves
+# a source that does not parse and reports it. A pasted script longer than 16
+# kilobytes runs whole. The prompt asks for the kitty and
 # xterm extended keys and withdraws them before a command's output and around
 # the external editor, and the option turns the request off. Every editing Ctrl
 # and Alt key in the table acts the same in its legacy bytes, which a terminal
@@ -997,6 +998,12 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(b"\x13beta\x13\r")
         report.record("slurp-ctrl-s-steps-to-the-next-match", session,
                       has_text("line 2 of 3, column 7,"))
+        session.send(b"\x1b<")
+        report.record("slurp-alt-less-goes-to-the-start", session,
+                      has_text("line 1 of 3, column 1,"))
+        session.send(b"\x1b[1;5F")
+        report.record("slurp-ctrl-end-goes-to-the-end", session,
+                      has_text("line 3 of 3, column 112,"))
         session.send(CTRL_X + CTRL_C)
         session.wait_until(is_line(""))
 

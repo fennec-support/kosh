@@ -1309,12 +1309,50 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
   try {
     const usize byte_count = strlen(buffer);
     let         line       = koshka::StringView{buffer, byte_count};
+    /* The scan runs left to right, so the spans of a prefix do not depend on
+       the text after it. Only the text through the line under the drawn rows
+       is needed. */
+    usize needed_byte_count = byte_count;
 
-    if (!has_highlighted_spans || highlighted_line.view() != line) {
-      let const result = koshka::completion::highlight_line(line, *context);
+    if (out->visible_end != SIZE_MAX) {
+      usize codepoint_count = 0;
+
+      needed_byte_count = 0;
+      while (needed_byte_count < byte_count) {
+        if ((static_cast<unsigned char>(buffer[needed_byte_count]) & 0xC0) !=
+            0x80)
+        {
+          if (codepoint_count == out->visible_end) break;
+
+          codepoint_count++;
+        }
+        needed_byte_count++;
+      }
+      while (needed_byte_count < byte_count &&
+             buffer[needed_byte_count] != '\n')
+      {
+        needed_byte_count++;
+      }
+      if (needed_byte_count < byte_count) needed_byte_count++;
+    }
+
+    let const needed = line.substring_of_length(0, needed_byte_count);
+    /* Cached text longer than the buffer holds spans past its end. */
+    let const is_cached = has_highlighted_spans &&
+                          highlighted_line.length() <= byte_count &&
+                          highlighted_line.view().starts_with(needed);
+
+    if (!is_cached) {
+      /* Text that only grew past the scanned part is scanned whole once, so
+         the window can move over it without another scan. */
+      let const scanned =
+          has_highlighted_spans && line.starts_with(highlighted_line.view())
+              ? line
+              : needed;
+      let const result = koshka::completion::highlight_line(scanned, *context);
 
       highlighted_line.clear();
-      highlighted_line.append(line);
+      highlighted_line.append(scanned);
       highlighted_spans.clear();
       highlighted_spans.reserve(result.count());
 
@@ -1418,6 +1456,14 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
     usize covered_end = 0;
 
     for (let const &span : highlighted_spans) {
+      if (filled >= out->capacity) break;
+      /* A byte offset is never below its codepoint offset, so a span that
+         ends at or before visible_start in bytes is above the drawn rows. */
+      if (span.end <= out->visible_start) {
+        covered_end = span.end;
+        continue;
+      }
+
       do_push_styled(covered_end, span.start, koshka::StringView{});
       do_push_styled(span.start, span.end, theme.style_for(span.role));
       covered_end = span.end;

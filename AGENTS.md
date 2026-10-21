@@ -161,6 +161,10 @@ Inline hints use builtin and koshkit registrations, aliases, functions, manpage
 caches, and help caches. They do not search PATH or open files. The editor owns
 hint layout and keeps rows within the terminal space available below the input.
 
+The full-screen layout redraws only the rows that differ from its previous
+frame and scrolls moved rows with a scroll region. The stored rows hold while
+the terminal size is the same and nothing else flushed since that frame.
+
 Raw mode handles kitty disambiguation, xterm modifyOtherKeys, signal keys,
 terminal restoration, and legacy key conversion. The interactive loop enters
 raw mode only after job reports, PROMPT_COMMAND, prompt expansion, and the

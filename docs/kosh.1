@@ -3112,6 +3112,9 @@ Move to the start of the current line of the buffer.
 Move to the end of the current line, or accept the whole ghost suggestion at
 the buffer end.
 .TP
+.BR Ctrl\-Home ", " Ctrl\-End
+Move to the start or the end of the buffer.
+.TP
 .BR Ctrl\-B ", " Left
 Move one character left.
 .TP
@@ -3133,10 +3136,14 @@ takes a second press before it is left for history.
 Move down a row, or recall a newer history entry from the last row.
 .TP
 .BR Alt\-< ", " Alt\-,
-Recall the oldest history entry.
+Recall the oldest history entry. In
+.BR slurp ,
+move to the start of the file.
 .TP
 .B Alt\->
-Recall the newest history entry.
+Recall the newest history entry. In
+.BR slurp ,
+move to the end of the file.
 .TP
 .BR Enter ", " Ctrl\-J ", " Ctrl\-M
 Run the line, or continue it on a new row after a trailing backslash. A buffer
