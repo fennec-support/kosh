@@ -79,6 +79,10 @@ fn
 enable_completion(koshka::EvalContext &context) -> void;
 fn
 disable_completion() -> void;
+/* Turns off completion, highlighting, and the other shell-syntax callbacks,
+   and keeps the external editor, the option commands, and the formatter. */
+fn
+disable_shell_completion() -> void;
 
 fn
 is_completion_enabled() -> bool;

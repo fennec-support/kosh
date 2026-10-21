@@ -137,6 +137,27 @@ _kosh_slurp_complete ()
 }
 
 complete -o filenames -F _kosh_slurp_complete slurp
+_kosh_source_complete ()
+{
+  local current_word=${COMP_WORDS[COMP_CWORD]}
+  local previous_word=${COMP_WORDS[COMP_CWORD - 1]}
+
+  if [[ $previous_word == --mood && $COMP_CWORD -eq 2 ]]
+  then
+    _kosh_compgen -W "kosh bash sh bash-posix" -- "$current_word"
+    return
+  fi
+
+  if [[ $current_word == -* && $COMP_CWORD -eq 1 ]]
+  then
+    _kosh_compgen -W "--mood" -- "$current_word"
+    return
+  fi
+
+  _kosh_compgen -f -- "$current_word"
+}
+
+complete -o filenames -F _kosh_source_complete source .
 _kosh_set_complete ()
 {
   local current_word=${COMP_WORDS[COMP_CWORD]}

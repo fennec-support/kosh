@@ -33,7 +33,7 @@ namespace koshka {
 namespace {
 
 /* The editor holds a buffer of at most this many bytes. */
-constexpr usize SLURP_MAX_BYTE_COUNT = 65535;
+constexpr usize SLURP_MAX_BYTE_COUNT = 65534;
 
 /* True when text has no NUL byte and is well-formed UTF-8. */
 fn
@@ -155,13 +155,14 @@ write_backup(StringView contents) throws -> Maybe<Path>
 
 /* A file that is_replaceable_by_copy() accepts is replaced by a complete copy
    written beside it, so a failed write leaves the original in place. Any
-   other file is rewritten in place, which keeps its owner, group, and links,
-   but only while it is still the file that opened describes, so a file
-   swapped for another in the meantime is left alone. Its current contents go
+   other file is rewritten in place, which keeps its owner, group, and links.
+   Either way the save goes ahead only while the file is still the one that
+   opened describes, so a file swapped for another meanwhile is left alone.
+   The current contents of a file rewritten in place go
    to a private backup first, which a successful write removes and a failed
    one leaves in kept_backup, and without a backup nothing is written. A file
-   that was missing when slurp read it is created only if nothing has taken
-   its place. */
+   that was missing when slurp loaded it is created only if nothing has taken
+   its place, and removed again when the write fails. */
 fn
 save_file(const Path                   &path,
           StringView                    contents,
@@ -177,9 +178,23 @@ save_file(const Path                   &path,
     let const did_write =
         os::write_all(*descriptor, contents.data, contents.length);
 
-    return os::close_fd(*descriptor) && did_write ? save_outcome::Saved
-                                                  : save_outcome::Failed;
+    if (os::close_fd(*descriptor) && did_write) return save_outcome::Saved;
+    unused(os::remove_file(path.view()));
+
+    return save_outcome::Failed;
   }
+
+  let const do_is_other_file = [&](const os::file_status &current) -> bool {
+    return opened->has_file_identity &&
+           (current.device_id != opened->device_id ||
+            current.file_id != opened->file_id);
+  };
+
+  let current = os::file_status{};
+
+  if (!os::stat_path_following(path.view(), current))
+    return save_outcome::Failed;
+  if (do_is_other_file(current)) return save_outcome::Replaced;
 
   if (is_replaceable_by_copy(path)) {
     return toiletline::write_history_file_atomically(path, ".slurp", contents)
@@ -192,17 +207,13 @@ save_file(const Path                   &path,
 
   if (!descriptor.has_value()) return save_outcome::Failed;
 
-  let current = os::file_status{};
-
   if (!os::stat_descriptor(*descriptor, current)) {
     unused(os::close_fd(*descriptor));
 
     return save_outcome::Failed;
   }
 
-  if (opened->has_file_identity && (current.device_id != opened->device_id ||
-                                    current.file_id != opened->file_id))
-  {
+  if (do_is_other_file(current)) {
     unused(os::close_fd(*descriptor));
 
     return save_outcome::Replaced;
@@ -211,8 +222,9 @@ save_file(const Path                   &path,
   let const original = os::read_fd_to_string(*descriptor, heap_allocator());
   let       backup   = Maybe<Path>{None};
 
-  if (original.has_value() && os::seek_descriptor_from_start(*descriptor, 0))
+  if (original.has_value() && os::seek_descriptor_from_start(*descriptor, 0)) {
     backup = write_backup(original->view());
+  }
   if (!backup.has_value()) {
     unused(os::close_fd(*descriptor));
 
@@ -273,7 +285,8 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const path     = Path{args[1].view()};
 
   if (!toiletline::is_active() ||
-      !os::is_fd_a_tty(ec.in_fd.value_or(KOSH_STDIN)))
+      !os::is_fd_a_tty(ec.in_fd.value_or(KOSH_STDIN)) ||
+      !os::is_fd_a_tty(KOSH_STDOUT))
   {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "The line editor needs an interactive terminal",
@@ -327,11 +340,24 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* at this point: contents is text that the editor can hold. */
   let const original_byte_count = contents.length();
-  let const has_crlf = contents.view().find_substring("\r\n").has_value();
+  usize     newline_count       = 0;
+  usize     crlf_count          = 0;
+
+  for (usize i = 0; i < contents.length(); i++) {
+    if (contents[i] != '\n') continue;
+    newline_count++;
+    if (i > 0 && contents[i - 1] == '\r') crlf_count++;
+  }
+
+  /* Only a file whose every line ends in CRLF is edited with LF and saved
+     with CRLF again. A file that mixes them keeps each carriage return as
+     text. */
+  let const has_crlf = newline_count > 0 && crlf_count == newline_count;
 
   if (has_crlf) contents.normalize_crlf_line_endings();
 
   let const has_final_newline = contents.is_empty() || contents.back() == '\n';
+  let const is_single_newline = contents.length() == 1 && contents[0] == '\n';
 
   if (!contents.is_empty() && contents.back() == '\n') contents.pop_back();
 
@@ -391,15 +417,17 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   toiletline::set_title(title.c_str());
   toiletline::set_status(status.c_str());
   toiletline::set_full_screen(true);
-  if (!is_shell_script && was_completion_enabled)
-    toiletline::disable_completion();
+  if (!is_shell_script && was_completion_enabled) {
+    toiletline::disable_shell_completion();
+  }
   if (mode.has_value()) toiletline::set_edit_mode(*mode);
 
   defer {
     toiletline::set_edit_mode(was_vi ? toiletline::edit_mode::Vi
                                      : toiletline::edit_mode::Emacs);
-    if (!is_shell_script && was_completion_enabled)
+    if (!is_shell_script && was_completion_enabled) {
       toiletline::enable_completion(cxt);
+    }
     toiletline::set_line_numbers(0);
     toiletline::set_submit_verb(nullptr);
     toiletline::set_save_keys(false);
@@ -445,6 +473,16 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     toiletline::emit_newlines(result.text);
     do_leave_alternate_screen();
 
+    if (result.code < 0) {
+      report_soft_builtin_error(
+          ec, cxt, location,
+          StringView{"Unable to write '"} + args[1] +
+              "': the text is longer than " +
+              String::from(SLURP_MAX_BYTE_COUNT, cxt.scratch_allocator()) +
+              " bytes");
+
+      return 1;
+    }
     if (result.code == TL_PRESSED_INTERRUPT) return 130;
     if (result.code != TL_PRESSED_ENTER && result.code != TL_PRESSED_WRITE_QUIT)
     {
@@ -458,7 +496,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       if (result.text[i] == '\n' && has_crlf) saved.push('\r');
       saved.push(result.text[i]);
     }
-    if (has_final_newline && !saved.is_empty()) {
+    if (has_final_newline && (!saved.is_empty() || is_single_newline)) {
       if (has_crlf) saved.push('\r');
       saved.push('\n');
     }

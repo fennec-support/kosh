@@ -1984,13 +1984,14 @@ private:
 
 static CalcHistorySwap CALC_HISTORY_SWAP{};
 
-/* True between enter_empty_history() and leave_empty_history(). */
-static bool IS_SHELL_HISTORY_HIDDEN = false;
+/* The shell history that enter_empty_history() set aside, valid until
+   leave_empty_history() brings it back. */
+static history_snapshot HIDDEN_SHELL_HISTORY{};
 
 static fn
 get_active_history_file_path() -> koshka::Maybe<koshka::Path>
 {
-  if (IS_SHELL_HISTORY_HIDDEN) return koshka::None;
+  if (HIDDEN_SHELL_HISTORY.is_valid) return koshka::None;
   if (CALC_HISTORY_SWAP.is_active()) return get_calc_history_file_path();
 
   return get_history_file_path();
@@ -2008,15 +2009,12 @@ leave_calc_history() -> void
   CALC_HISTORY_SWAP.leave();
 }
 
-static history_snapshot HIDDEN_SHELL_HISTORY{};
-
 fn
 enter_empty_history() -> void
 {
   capture_history_snapshot(HIDDEN_SHELL_HISTORY);
   ::itl_g_history_free();
   ::itl_g_history_enabled = false;
-  IS_SHELL_HISTORY_HIDDEN = true;
   /* Up and Down also walk a snapshot of the history file, so its provider is
      detached until the history returns. */
   ::tl_set_history_search_snapshot_callback(nullptr);
@@ -2028,8 +2026,7 @@ leave_empty_history() -> void
   if (!HIDDEN_SHELL_HISTORY.is_valid) return;
 
   restore_history_snapshot(HIDDEN_SHELL_HISTORY);
-  HIDDEN_SHELL_HISTORY    = history_snapshot{};
-  IS_SHELL_HISTORY_HIDDEN = false;
+  HIDDEN_SHELL_HISTORY = history_snapshot{};
   ::tl_set_history_search_snapshot_callback(provide_history_search_snapshot);
 }
 
@@ -3243,7 +3240,7 @@ enable_completion(koshka::EvalContext &context) -> void
 }
 
 fn
-disable_completion() -> void
+disable_shell_completion() -> void
 {
   COMPLETION_SESSION.context = nullptr;
   ::tl_set_complete_callback(nullptr);
@@ -3251,8 +3248,14 @@ disable_completion() -> void
   ::tl_set_highlight_follows_cursor(0);
   ::tl_set_ghost_validate_callback(nullptr);
   ::tl_set_history_select_callback(nullptr);
-  ::tl_set_edit_callback(nullptr);
   ::tl_set_pair_role_callback(nullptr);
+}
+
+fn
+disable_completion() -> void
+{
+  disable_shell_completion();
+  ::tl_set_edit_callback(nullptr);
   ::tl_set_option_callback(nullptr);
   ::tl_set_format_callback(nullptr);
 }

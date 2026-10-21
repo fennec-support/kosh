@@ -125,6 +125,10 @@ slurp-vi-quit-refuses-to-drop-edits PASS
 slurp-ctrl-x-ctrl-c-leaves-an-unedited-file PASS
 slurp-in-place-save-removes-its-backup PASS
 slurp-refuses-a-file-swapped-while-open PASS
+slurp-copy-save-refuses-a-swapped-file PASS
+slurp-keeps-mixed-line-endings PASS
+slurp-keeps-a-lone-newline PASS
+slurp-tab-inserts-a-tab-in-a-text-file PASS
 vi-o-j-J-and-brace-keys-edit-the-file PASS
 vi-visual-colon-opens-a-range-prompt PASS
 vi-visual-range-substitutes-only-its-lines PASS

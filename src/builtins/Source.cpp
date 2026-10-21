@@ -47,22 +47,25 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   usize path_index  = 1;
   let   forced_mood = Maybe<mimic_mood>{None};
 
-  /* --mood is read by hand, since every word after the file is passed to it
-     as a positional parameter. */
-  if (ec.args()[1] == "--mood" || ec.args()[1].view().starts_with("--mood=")) {
+  /* --mood is parsed by hand, since every word after the file is passed to
+     it as a positional parameter. */
+  let const has_inline_value = ec.args()[1].view().starts_with("--mood=");
+
+  if (ec.args()[1] == "--mood" || has_inline_value) {
     if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
       throw make_error_for_arg(
           ec, 1, "Changing the mood is forbidden in a restricted shell");
     }
 
-    let const has_inline_value = ec.args()[1].view().starts_with("--mood=");
-    let const value_index      = has_inline_value ? usize{1} : usize{2};
+    let const value_index = has_inline_value ? usize{1} : usize{2};
 
     if (value_index >= ec.args().count())
       return report_usage_error(ec, cxt, ec.program());
 
-    let const value = has_inline_value ? ec.args()[1].view().substring(7)
-                                       : ec.args()[2].view();
+    let const value =
+        has_inline_value
+            ? ec.args()[1].view().substring(StringView{"--mood="}.length)
+            : ec.args()[2].view();
 
     forced_mood = parse_mood_name(value);
     if (!forced_mood.has_value()) {
@@ -72,8 +75,9 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
     path_index = value_index + 1;
   }
-  if (path_index < ec.args().count() && ec.args()[path_index] == "--")
+  if (path_index < ec.args().count() && ec.args()[path_index] == "--") {
     path_index++;
+  }
   if (path_index >= ec.args().count())
     return report_usage_error(ec, cxt, ec.program());
 

@@ -917,7 +917,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(b"slurp slurp-locked/kept.txt\r")
         session.wait_until(lambda screen: any(line.rstrip() == "original"
                                               for line in screen.get_lines()))
-        session.send(b" changed\r")
+        session.send(b" changed\r\r")
         report.record("slurp-failed-save-keeps-the-original", session,
                       lambda screen: any("Unable to write" in line
                                          for line in screen.get_lines())
@@ -992,7 +992,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(b"slurp slurp-shared/doc.txt\r")
         session.wait_until(lambda screen: any(line.rstrip() == "doc"
                                               for line in screen.get_lines()))
-        session.send(b" kept\r")
+        session.send(b" kept\r\r")
         report.record("slurp-in-place-save-removes-its-backup", session,
                       lambda screen: is_line("")(screen)
                       and read_slurped(shared) == "doc kept\n"
@@ -1005,12 +1005,62 @@ def run_slurp_checks(binary, directory, command_directory, report):
         with open(swapped, "w") as handle:
             handle.write("other\n")
         os.replace(swapped, shared)
-        session.send(b" edit\r")
+        session.send(b" edit\r\r")
         report.record("slurp-refuses-a-file-swapped-while-open", session,
                       lambda screen: any("another file took its place" in line
                                          for line in screen.get_lines())
                       and is_line("")(screen)
                       and read_slurped(shared) == "other\n")
+
+        private = os.path.join(directory, "slurp-private.txt")
+        with open(private, "w") as handle:
+            handle.write("mine\n")
+        session.send(b"slurp slurp-private.txt\r")
+        session.wait_until(lambda screen: any(line.rstrip() == "mine"
+                                              for line in screen.get_lines()))
+        swapped = os.path.join(directory, "slurp-swapped.txt")
+        with open(swapped, "w") as handle:
+            handle.write("theirs\n")
+        os.replace(swapped, private)
+        session.send(b" edit\r\r")
+        report.record("slurp-copy-save-refuses-a-swapped-file", session,
+                      lambda screen: any("another file took its place" in line
+                                         for line in screen.get_lines())
+                      and is_line("")(screen)
+                      and read_slurped(private) == "theirs\n")
+
+        mixed = os.path.join(directory, "slurp-mixed.txt")
+        with open(mixed, "wb") as handle:
+            handle.write(b"one\r\ntwo\nthree\n")
+        session.send(b"slurp slurp-mixed.txt\r")
+        session.wait_until(lambda screen: any(line.rstrip() == "three"
+                                              for line in screen.get_lines()))
+        session.send(b"\r")
+        report.record("slurp-keeps-mixed-line-endings", session,
+                      lambda screen: is_line("")(screen)
+                      and read_bytes(mixed) == b"one\r\ntwo\nthree\n")
+
+        blank = os.path.join(directory, "slurp-blank.txt")
+        with open(blank, "w") as handle:
+            handle.write("\n")
+        session.send(b"slurp slurp-blank.txt\r")
+        session.wait_until(has_text("line 1 of 1"))
+        session.send(b"\r")
+        report.record("slurp-keeps-a-lone-newline", session,
+                      lambda screen: is_line("")(screen)
+                      and read_bytes(blank) == b"\n")
+
+        tabbed = os.path.join(directory, "slurp-tabbed.txt")
+        with open(tabbed, "w") as handle:
+            handle.write("x\ny\n")
+        session.send(b"slurp slurp-tabbed.txt\r")
+        session.wait_until(has_text("line 2 of 2"))
+        session.send(UP + b"\t")
+        session.wait_until(has_text("line 1 of 2, column 3"))
+        session.send(b"\r\r")
+        report.record("slurp-tab-inserts-a-tab-in-a-text-file", session,
+                      lambda screen: is_line("")(screen)
+                      and read_bytes(tabbed) == b"x\t\ny\n")
 
         keyed = os.path.join(directory, "slurp-keyed.txt")
         with open(keyed, "w") as handle:

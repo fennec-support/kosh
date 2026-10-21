@@ -111,39 +111,6 @@ get_history_durable_record_byte_offset(const no_editor_history_state &state,
 }
 
 static fn
-get_history_record_span(const no_editor_history_state &state,
-                        usize record_index) -> history_record_span
-{
-  ASSERT(record_index < state.record_byte_offsets.count());
-
-  let const contents = state.branch_contents.view();
-  let const start_byte_offset =
-      get_history_record_byte_offset(state, record_index);
-  usize end_byte_offset   = start_byte_offset;
-  bool  is_escape_pending = false;
-
-  /* The record ends at its own unescaped newline, since a skipped record can
-     lie between it and the next retained one. */
-  while (end_byte_offset < contents.length) {
-    let const byte = contents[end_byte_offset++];
-
-    if (is_escape_pending) {
-      is_escape_pending = false;
-      continue;
-    }
-    if (byte == '\\') {
-      is_escape_pending = true;
-      continue;
-    }
-    if (byte == '\n') break;
-  }
-
-  ASSERT(start_byte_offset < end_byte_offset);
-
-  return {start_byte_offset, end_byte_offset};
-}
-
-static fn
 push_history_record_byte_offset(no_editor_history_state &state,
                                 usize                    byte_offset,
                                 usize durable_byte_offset) -> void
@@ -209,6 +176,28 @@ next_history_record(StringView           contents,
   }
 
   return false;
+}
+
+static fn
+get_history_record_span(const no_editor_history_state &state,
+                        usize record_index) -> history_record_span
+{
+  ASSERT(record_index < state.record_byte_offsets.count());
+
+  usize byte_offset = get_history_record_byte_offset(state, record_index);
+  let   span        = history_record_span{};
+  bool  is_valid    = true;
+
+  /* A retained record passed next_history_record when the file was scanned,
+     and it ends at its own newline, since a skipped record can lie between it
+     and the next retained one. */
+  let const did_find = next_history_record(state.branch_contents.view(),
+                                           byte_offset, span, is_valid);
+
+  ASSERT(did_find);
+  unused(did_find);
+
+  return span;
 }
 
 static fn
@@ -594,6 +583,10 @@ enable_completion(koshka::EvalContext &context) -> void
 {
   unused(context);
 }
+
+fn
+disable_shell_completion() -> void
+{}
 
 fn
 disable_completion() -> void
