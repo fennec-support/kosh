@@ -26,8 +26,8 @@
 # every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat.
 # Vi mode ignores Ctrl-X, :e opens the line in VISUAL there, and Ctrl-X
 # Ctrl-C ends the shell in emacs mode.
-# slurp numbers the lines of a script, saves it on a second Enter or on :wq,
-# leaves it on :q!, leaves a text file unnumbered, saves on Ctrl-X s, rewrites
+# slurp numbers the lines of every file, starts a new line on Enter, saves on
+# Ctrl-X s or :wq, leaves it on :q!, rewrites
 # a file in a shared directory in place and removes its backup, refuses to
 # write over a file that another file replaced while it was open, and refuses
 # a binary file. A colon command opened from a vi visual selection acts on the
@@ -1129,6 +1129,21 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("vi-visual-range-substitutes-only-its-lines", session,
                       lambda screen: is_line("")(screen)
                       and read_slurped(ranged) == "x a\ny b\ny c\nx d\n")
+
+        stepped = os.path.join(directory, "slurp-stepped.txt")
+        with open(stepped, "w") as handle:
+            handle.write("abcdef\nxy\nlonger line\n")
+        session.send(b"slurp --mode vi slurp-stepped.txt\r")
+        session.wait_until(has_text("line 3 of 3"))
+        mark = len(session.raw)
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                           in get_raw_since(session, mark))
+        session.send(b"gg$\r\r")
+        report.record("vi-enter-steps-down-like-j", session,
+                      has_text("line 3 of 3, column 6, as vi normal"))
+        session.send(b":q\r")
+        session.wait_until(is_line(""))
 
         session.send(b"slurp slurp-binary\r")
         report.record("slurp-refuses-a-binary-file", session,

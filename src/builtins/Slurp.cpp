@@ -180,7 +180,7 @@ save_file(const Path                   &path,
        already there and is not removed. */
     let       created    = os::file_status{};
     let const is_created = os::stat_descriptor(*descriptor, created) &&
-                           (created.mode & 0170000u) == 0100000u;
+                           os::file_type_letter(created.mode) == '-';
     let const did_write =
         os::write_all(*descriptor, contents.data, contents.length);
 
@@ -479,11 +479,9 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
   if (result.code == TL_PRESSED_INTERRUPT) return 130;
-  if (result.code != TL_PRESSED_ENTER && result.code != TL_PRESSED_WRITE_QUIT) {
-    return 0;
-  }
+  if (result.code != TL_PRESSED_WRITE_QUIT) return 0;
 
-  /* at this point: Enter or a write command asks to save the buffer. */
+  /* at this point: a write command asks to save the buffer. */
   let saved = String{heap_allocator()};
 
   for (usize i = 0; i < result.text.length(); i++) {
@@ -505,8 +503,8 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           ? String{heap_allocator(), "another file took its place"}
           : os::last_system_error_message();
 
-  /* The edits go to a private file, so a refused or failed save loses none of
-     them. */
+  /* The edits of a refused or failed save go to a private file when one can
+     be made. */
   let const kept_edits = write_backup(saved.view());
   let       hint       = String{heap_allocator()};
 
@@ -514,10 +512,11 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     hint.append("The edits are in '");
     hint.append(kept_edits->view());
     hint.append("'");
+  } else {
+    hint.append("The edits could not be kept");
   }
   if (kept_backup.has_value()) {
-    hint.append(hint.is_empty() ? "The previous contents are in '"
-                                : ", and the previous contents are in '");
+    hint.append(", and the previous contents are in '");
     hint.append(kept_backup->view());
     hint.append("'");
   }
@@ -525,11 +524,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const message =
       StringView{"Unable to write '"} + args[1] + "': " + reason;
 
-  if (hint.is_empty()) {
-    report_soft_builtin_error(ec, cxt, location, message);
-  } else {
-    report_soft_builtin_error(ec, cxt, location, message, hint);
-  }
+  report_soft_builtin_error(ec, cxt, location, message, hint);
 
   return 1;
 }

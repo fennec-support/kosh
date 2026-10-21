@@ -1590,8 +1590,8 @@ FILE is edited in the line editor of the interactive shell, and a missing FILE
 starts empty. The session runs on the alternate screen of the terminal and
 leaves it before any result is reported, so the main screen keeps only the
 command. Every line is shown with its number, and a shell script, recognized by
-its shebang or its extension, also keeps its syntax highlighting. Enter starts
-a new line, as Shift\-Enter does, and in vi normal mode it moves down a line.
+its shebang or its extension, also keeps its syntax highlighting. Enter and
+Shift\-Enter start a new line, and in vi normal mode Enter moves down a line.
 Tab completes in a shell script and inserts a tab in any other file. Ctrl\-X s
 and Ctrl\-X Ctrl\-S save the file and leave in emacs mode, and so do the vi
 commands
@@ -1635,7 +1635,8 @@ and the copy is removed once the write succeeds. When the write fails, the
 error gives the path of the copy, and when no copy can be made, nothing is
 written. The save is refused when another file has replaced the one that slurp
 loaded. When a save is refused or fails, the edits are written to a private
-file in the same place as the backup, and the error gives its path. A file with
+file in the same place as the backup, and the error gives its path. A buffer
+that grows past 65534 bytes cannot be saved, and its edits are lost. A file with
 a NUL byte or invalid UTF\-8, a file longer than 65534 bytes, and a restricted
 shell are refused. A file whose every line ends in CRLF keeps those endings, a
 file that mixes them keeps each carriage return as text, and the final newline

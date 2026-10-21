@@ -133,6 +133,7 @@ slurp-tab-inserts-a-tab-in-a-text-file PASS
 vi-o-j-J-and-brace-keys-edit-the-file PASS
 vi-visual-colon-opens-a-range-prompt PASS
 vi-visual-range-substitutes-only-its-lines PASS
+vi-enter-steps-down-like-j PASS
 slurp-refuses-a-binary-file PASS
 slurp-tall-file-shows-the-rows-around-the-caret PASS
 slurp-tall-file-follows-the-caret-up PASS
