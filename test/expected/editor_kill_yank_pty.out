@@ -135,6 +135,11 @@ slurp-up-on-the-first-line-recalls-no-history PASS
 slurp-tall-file-saves-every-line PASS
 slurp-menu-covers-the-rows-under-the-caret PASS
 slurp-closed-menu-restores-the-rows PASS
+slurp-top-row-shows-the-command PASS
+slurp-status-rows-show-the-caret-line PASS
+slurp-ctrl-x-i-shows-the-hint PASS
+slurp-command-line-keeps-the-view PASS
+slurp-mouse-press-moves-the-caret PASS
 abort-at-the-prompt-restores-the-terminal PASS
 segfault-at-the-prompt-restores-the-terminal PASS
 status=0

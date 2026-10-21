@@ -1093,14 +1093,14 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(is_line(""))
         session.send(b"slurp slurp-tall.sh\r")
         report.record("slurp-tall-file-shows-the-rows-around-the-caret",
-                      session, has_numbered_rows(45, 60))
+                      session, has_numbered_rows(46, 60))
         session.send(UP * 30)
         report.record("slurp-tall-file-follows-the-caret-up", session,
-                      has_numbered_rows(30, 45))
+                      has_numbered_rows(30, 44))
         session.send(b"X")
         session.send(UP * 40)
         report.record("slurp-up-on-the-first-line-recalls-no-history", session,
-                      lambda screen: has_numbered_rows(1, 16)(screen)
+                      lambda screen: has_numbered_rows(1, 15)(screen)
                       and any(line.rstrip() == "   1 #!/bin/sh"
                               for line in screen.get_lines()))
         session.send(b"\r")
@@ -1112,7 +1112,7 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
                       and "echo line30X\n" in read_slurped(script))
 
         session.send(b"slurp slurp-tall.sh\r")
-        session.wait_until(has_numbered_rows(45, 60))
+        session.wait_until(has_numbered_rows(46, 60))
         session.send(UP * 31 + b"\x05; read -")
         session.wait_until(lambda screen: any(line.endswith("; read -")
                                               for line in screen.get_lines()))
@@ -1129,7 +1129,7 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
             return (row is not None and row + 1 < len(lines)
                     and lines[row + 1].startswith("  30 ")
                     and "selecting completions" in lines[row + 1]
-                    and "  44 echo line44" in lines)
+                    and "  43 echo line43" in lines)
 
         report.record("slurp-menu-covers-the-rows-under-the-caret", session,
                       is_menu_over_next_row)
@@ -1142,6 +1142,28 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
 
         report.record("slurp-closed-menu-restores-the-rows", session,
                       is_next_row_restored)
+        report.record("slurp-top-row-shows-the-command", session,
+                      lambda screen: screen.get_lines()[0].endswith(
+                          "slurp slurp-tall.sh"))
+        report.record("slurp-status-rows-show-the-caret-line", session,
+                      has_text("line 29 of 60, column 20, emacs"))
+        session.send(CTRL_X + b"i")
+        report.record("slurp-ctrl-x-i-shows-the-hint", session,
+                      lambda screen: has_text("synopsis")(screen)
+                      and not has_text("line 29 of 60")(screen))
+        session.send(b"\x1bx")
+        report.record("slurp-command-line-keeps-the-view", session,
+                      lambda screen: screen.get_lines()[1]
+                      == "  29 echo line29; read -"
+                      and any(line.strip() == "M-x"
+                              for line in screen.get_lines()))
+        session.send(ESCAPE)
+        session.wait_until(has_text("line 29 of 60"))
+        session.send(b"\x1b[<0;8;4M\x1b[<0;8;4m")
+        report.record("slurp-mouse-press-moves-the-caret", session,
+                      has_text("line 31 of 60, column 3,"))
+        session.send(KITTY_CTRL_C)
+        session.wait_until(has_text("press ctrl-c again"))
         session.send(KITTY_CTRL_C)
         session.wait_until(is_line(""))
     finally:

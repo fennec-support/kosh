@@ -1604,8 +1604,15 @@ twice in a row, and
 leaves at once. Every colon and M\-x command works. The
 .BR \-\-mode " vi or " "\-\-mode emacs"
 option selects the key set for the session. Up and Down do not recall shell
-history. The file fills every row of the terminal but the last four, which
-hold the hints, and a file taller than that shows the lines around the caret.
+history. The top row repeats the prompt and the command. The file fills every
+row under it but the last four, and a file taller than that shows the lines
+around the caret. The last four rows show the file, the caret line and column
+with the edit mode, the kind of file, and the keys that save and leave.
+Ctrl\-X i in emacs mode shows the hint of the word under the caret on those
+rows until the next key, and so does Ctrl\-I in vi insert mode when the
+terminal reports Ctrl\-I apart from TAB. The M\-x and colon command lines
+open on the same rows and leave the view as it was. A mouse click on the file
+moves the caret there, and the wheel moves it three lines.
 The completion menu opens over the lines under the caret, or over the lines
 above it when few rows remain below, and they return when it closes.
 Saving an existing file writes a complete copy in its directory and renames it

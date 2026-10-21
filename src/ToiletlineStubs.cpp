@@ -673,6 +673,24 @@ set_saved_text(const char *text) -> void
 }
 
 fn
+set_title(const char *title) -> void
+{
+  unused(title);
+}
+
+fn
+set_status(const char *status) -> void
+{
+  unused(status);
+}
+
+fn
+get_last_prompt() -> koshka::StringView
+{
+  return koshka::StringView{""};
+}
+
+fn
 set_full_screen(bool is_enabled) -> void
 {
   unused(is_enabled);

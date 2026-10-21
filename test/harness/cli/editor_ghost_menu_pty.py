@@ -106,12 +106,15 @@ CSI_PATTERN = re.compile(rb"\x1b\[([0-9;<=>?]*)([ -/]*[@-~])")
 
 
 class Screen:
-    def __init__(self):
+    def __init__(self, height=ROWS):
+        self.height = height
         self.rows = [[]]
         self.row = 0
         self.column = 0
         self.is_dim = False
         self.pending = b""
+        self.saved_screen = None
+        self.saved_cursor = (0, 0)
 
     def get_cells(self):
         while len(self.rows) <= self.row:
@@ -143,8 +146,26 @@ class Screen:
                 self.is_dim = False
             index += 1
 
+    def get_top_row(self):
+        return max(0, len(self.rows) - self.height)
+
+    def apply_private_csi(self, parameter_text, final):
+        if parameter_text != "?1049":
+            return
+        if final == "h" and self.saved_screen is None:
+            self.saved_screen = (self.rows, self.row, self.column)
+            self.rows = [[]]
+            self.row = 0
+            self.column = 0
+        elif final == "l" and self.saved_screen is not None:
+            self.rows, self.row, self.column = self.saved_screen
+            self.saved_screen = None
+
     def apply_csi(self, parameter_text, final):
-        if parameter_text[:1] in ("<", "=", ">", "?"):
+        if parameter_text[:1] == "?":
+            self.apply_private_csi(parameter_text, final)
+            return
+        if parameter_text[:1] in ("<", "=", ">"):
             return
         parameters = [int(part) if part else 0
                       for part in parameter_text.split(";")] if parameter_text else []
@@ -163,6 +184,12 @@ class Screen:
             del self.rows[self.row + 1:]
         elif final == "G":
             self.column = count - 1
+        elif final == "H":
+            row = parameters[0] if parameters and parameters[0] else 1
+            column = (parameters[1] if len(parameters) > 1 and parameters[1]
+                      else 1)
+            self.row = self.get_top_row() + row - 1
+            self.column = column - 1
         elif final == "A":
             self.row = max(0, self.row - count)
         elif final == "B":
@@ -193,6 +220,10 @@ class Screen:
                         break
                     index = end + 1
                     continue
+                if data[index + 1] == ord("7"):
+                    self.saved_cursor = (self.row, self.column)
+                elif data[index + 1] == ord("8"):
+                    self.row, self.column = self.saved_cursor
                 index += 2
                 continue
             if byte == 13:
@@ -297,7 +328,7 @@ class Session:
             "RPS1": "",
         }
         environment.update(extra_environment or {})
-        self.screen = Screen()
+        self.screen = Screen(rows)
         self.raw = bytearray()
         self.pid, self.fd = pty.fork()
         if self.pid == 0:

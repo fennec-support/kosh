@@ -1764,6 +1764,9 @@ get_calc_history_file_path() -> koshka::Maybe<koshka::Path>
 
 static String HISTORY_SEARCH_SNAPSHOT{koshka::heap_allocator()};
 
+/* The prompt of the last line read outside the full-screen layout. */
+static String LAST_PROMPT{koshka::heap_allocator()};
+
 static fn
 get_active_history_file_path() -> koshka::Maybe<koshka::Path>;
 
@@ -2052,6 +2055,24 @@ fn
 set_saved_text(const char *text) -> void
 {
   ::tl_set_saved_text(text);
+}
+
+fn
+set_title(const char *title) -> void
+{
+  ::tl_set_title(title);
+}
+
+fn
+set_status(const char *status) -> void
+{
+  ::tl_set_status(status);
+}
+
+fn
+get_last_prompt() -> koshka::StringView
+{
+  return LAST_PROMPT.view();
 }
 
 fn
@@ -3485,6 +3506,8 @@ get_input(const String        &prompt,
   let const previous_history_tracking    = HISTORY_FILE;
 
   ::itl_g_tty_changed_size = 1;
+  if (!::itl_g_full_screen)
+    LAST_PROMPT = String{koshka::heap_allocator(), prompt.view()};
 
   i32 code = ::tl_get_input(TL_BUFFER, sizeof(TL_BUFFER), prompt.c_str());
 

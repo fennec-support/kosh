@@ -108,6 +108,17 @@ set_save_keys(bool is_enabled) -> void;
    against, or forgets them when text is null. text must outlive its use. */
 fn
 set_saved_text(const char *text) -> void;
+/* Shows title on the top row of the full-screen layout, or no title when
+   title is null. title must outlive its use. */
+fn
+set_title(const char *title) -> void;
+/* Keeps status for the rows under the full-screen input: the file on the
+   first line and what it holds on the next. status must outlive its use. */
+fn
+set_status(const char *status) -> void;
+/* The prompt of the last line read outside the full-screen layout. */
+fn
+get_last_prompt() -> koshka::StringView;
 /* Lays the editor out over the whole terminal for editing a file, with the
    hints on the last four rows and the menu over the input. */
 fn
