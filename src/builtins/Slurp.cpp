@@ -161,15 +161,16 @@ write_backup(StringView contents) throws -> Maybe<Path>
    The current contents of a file rewritten in place go
    to a private backup first, which a successful write removes and a failed
    one leaves in kept_backup, and without a backup nothing is written. A file
-   that was missing when slurp loaded it is created only if nothing has taken
-   its place, and removed again when the write fails. */
+   that was missing when slurp loaded it, or that is gone by the save, is
+   created only if nothing has taken its place, and removed again when the
+   write fails. */
 fn
 save_file(const Path                   &path,
           StringView                    contents,
           const Maybe<os::file_status> &opened,
           Maybe<Path>                  &kept_backup) throws -> save_outcome
 {
-  if (!opened.has_value()) {
+  if (!opened.has_value() || !path.exists()) {
     let const descriptor = os::open_file_descriptor(
         path.view(), os::file_open_mode::TruncateNoClobber);
 
@@ -462,74 +463,66 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   toiletline::set_input(contents);
   toiletline::set_saved_text(contents.c_str());
 
-  loop {
-    let result = toiletline::get_input(prompt);
+  let result = toiletline::get_input(prompt);
 
-    if (result.code == TL_PRESSED_TAB) {
-      toiletline::set_input(result.text);
-      continue;
-    }
+  toiletline::emit_newlines(result.text);
+  do_leave_alternate_screen();
 
-    toiletline::emit_newlines(result.text);
-    do_leave_alternate_screen();
+  if (result.code < 0) {
+    report_soft_builtin_error(
+        ec, cxt, location,
+        StringView{"Unable to write '"} + args[1] +
+            "': the text is longer than " +
+            String::from(SLURP_MAX_BYTE_COUNT, cxt.scratch_allocator()) +
+            " bytes");
 
-    if (result.code < 0) {
-      report_soft_builtin_error(
-          ec, cxt, location,
-          StringView{"Unable to write '"} + args[1] +
-              "': the text is longer than " +
-              String::from(SLURP_MAX_BYTE_COUNT, cxt.scratch_allocator()) +
-              " bytes");
-
-      return 1;
-    }
-    if (result.code == TL_PRESSED_INTERRUPT) return 130;
-    if (result.code != TL_PRESSED_ENTER && result.code != TL_PRESSED_WRITE_QUIT)
-    {
-      return 0;
-    }
-
-    /* at this point: Enter or a write command asks to save the buffer. */
-    let saved = String{heap_allocator()};
-
-    for (usize i = 0; i < result.text.length(); i++) {
-      if (result.text[i] == '\n' && has_crlf) saved.push('\r');
-      saved.push(result.text[i]);
-    }
-    if (has_final_newline && (!saved.is_empty() || is_single_newline)) {
-      if (has_crlf) saved.push('\r');
-      saved.push('\n');
-    }
-
-    let       kept_backup = Maybe<Path>{None};
-    let const outcome     = save_file(path, saved.view(), opened, kept_backup);
-
-    if (outcome == save_outcome::Replaced) {
-      report_soft_builtin_error(ec, cxt, location,
-                                StringView{"Unable to write '"} + args[1] +
-                                    "': another file took its place");
-
-      return 1;
-    }
-    if (outcome == save_outcome::Failed && kept_backup.has_value()) {
-      report_soft_builtin_error(ec, cxt, location,
-                                StringView{"Unable to write '"} + args[1] +
-                                    "': " + os::last_system_error_message(),
-                                StringView{"The previous contents are in '"} +
-                                    kept_backup->view() + "'");
-
-      return 1;
-    }
-    if (outcome == save_outcome::Failed) {
-      report_soft_builtin_error(ec, cxt, location,
-                                StringView{"Unable to write '"} + args[1] +
-                                    "': " + os::last_system_error_message());
-
-      return 1;
-    }
-
+    return 1;
+  }
+  if (result.code == TL_PRESSED_INTERRUPT) return 130;
+  if (result.code != TL_PRESSED_ENTER && result.code != TL_PRESSED_WRITE_QUIT) {
     return 0;
   }
+
+  /* at this point: Enter or a write command asks to save the buffer. */
+  let saved = String{heap_allocator()};
+
+  for (usize i = 0; i < result.text.length(); i++) {
+    if (result.text[i] == '\n' && has_crlf) saved.push('\r');
+    saved.push(result.text[i]);
+  }
+  if (has_final_newline && (!saved.is_empty() || is_single_newline)) {
+    if (has_crlf) saved.push('\r');
+    saved.push('\n');
+  }
+
+  let       kept_backup = Maybe<Path>{None};
+  let const outcome     = save_file(path, saved.view(), opened, kept_backup);
+
+  if (outcome == save_outcome::Replaced) {
+    report_soft_builtin_error(ec, cxt, location,
+                              StringView{"Unable to write '"} + args[1] +
+                                  "': another file took its place");
+
+    return 1;
+  }
+  if (outcome == save_outcome::Failed && kept_backup.has_value()) {
+    report_soft_builtin_error(ec, cxt, location,
+                              StringView{"Unable to write '"} + args[1] +
+                                  "': " + os::last_system_error_message(),
+                              StringView{"The previous contents are in '"} +
+                                  kept_backup->view() + "'");
+
+    return 1;
+  }
+  if (outcome == save_outcome::Failed) {
+    report_soft_builtin_error(ec, cxt, location,
+                              StringView{"Unable to write '"} + args[1] +
+                                  "': " + os::last_system_error_message());
+
+    return 1;
+  }
+
+  return 0;
 }
 
 } /* namespace koshka */

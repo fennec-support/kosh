@@ -1029,6 +1029,17 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       and is_line("")(screen)
                       and read_slurped(private) == "theirs\n")
 
+        gone = os.path.join(directory, "slurp-gone.txt")
+        with open(gone, "w") as handle:
+            handle.write("kept\n")
+        session.send(b"slurp slurp-gone.txt\r")
+        session.wait_until(has_text("line 1 of 1"))
+        os.unlink(gone)
+        session.send(b" again\r\r")
+        report.record("slurp-recreates-a-file-deleted-while-open", session,
+                      lambda screen: is_line("")(screen)
+                      and read_bytes(gone) == b"kept again\n")
+
         mixed = os.path.join(directory, "slurp-mixed.txt")
         with open(mixed, "wb") as handle:
             handle.write(b"one\r\ntwo\nthree\n")
