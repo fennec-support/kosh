@@ -3226,6 +3226,7 @@ cursor and past the end around to the start. Text without a capital letter
 matches either case. Ctrl\-S moves to the next match, Ctrl\-R to the one
 before, Enter leaves the cursor on the match, and Escape returns the cursor to
 where it was. Ctrl\-S or Ctrl\-R on empty text finds the text of the last find.
+The hint shows which match of how many in the buffer the cursor is on.
 .TP
 .B Ctrl\-R
 Search the history. In
@@ -3372,8 +3373,8 @@ Redo.
 .B /
 Search the history. In
 .BR slurp ,
-find text in the buffer as Ctrl\-S does in emacs mode, and Enter leaves the
-cursor on the match.
+find text in the buffer as Ctrl\-S does in emacs mode, starting after the
+cursor, and Enter leaves the cursor on the match.
 .TP
 .B ?
 In
@@ -3423,6 +3424,8 @@ Yank the selection.
 Wrap the lines the selection touches as
 .B gq
 does in command mode.
+.B .
+then wraps as many lines from the cursor.
 .TP
 .BR Escape ", " v
 Leave the selection, as does any other unrecognized key.

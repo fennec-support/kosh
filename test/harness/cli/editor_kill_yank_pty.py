@@ -44,7 +44,8 @@
 # and M-x format-buffer leaves the text file as it is, also with tab completion
 # off. Ctrl-R and Ctrl-S find text backward and forward, vi / and n find it, a
 # closed ? find keeps the direction of n, and gqq wraps a long line at 80
-# columns or at the width that editor.wrap_width sets. :set turns an option off with a no prefix, shows it with a question
+# columns or at the width that editor.wrap_width sets, and . repeats a visual
+# gq. :set turns an option off with a no prefix, shows it with a question
 # mark, and completes the option with Tab, and M-x set-option lists the matching
 # options, completes the option with Tab, and sets it. :format formats the row,
 # and M-x format leaves a source that does not parse and reports it. A pasted
@@ -1011,7 +1012,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       has_text("line 2 of 3, column 7,"))
         session.send(b"gg/a\rn?\x7fn")
         report.record("slurp-vi-closed-find-keeps-the-direction", session,
-                      has_text("line 1 of 3, column 10,"))
+                      has_text("line 2 of 3, column 2,"))
         session.send(b"Ggqq")
         report.record("slurp-vi-gq-wraps-the-line", session,
                       lambda screen: has_row("word00 word01 word02 word03 "
@@ -1031,6 +1032,21 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("slurp-vi-gq-wraps-at-the-set-width", session,
                       lambda screen: has_row("word00 word01 word02")(screen)
                       and has_row("word15")(screen))
+        session.send(b":q!\r")
+        session.wait_until(is_line(""))
+
+        wrapped = os.path.join(directory, "slurp-wrap.txt")
+        with open(wrapped, "w") as handle:
+            handle.write("aaaa bbbb cccc dddd eeee ffff\n\n"
+                         "aaaa bbbb cccc dddd eeee ffff\n")
+        session.send(b"slurp --mode vi slurp-wrap.txt\r")
+        session.wait_until(has_text("line 3 of 3"))
+        session.send(KITTY_ESCAPE)
+        settle(session, 0.2)
+        session.send(b"ggVgqG.")
+        report.record("slurp-vi-dot-repeats-a-visual-gq", session,
+                      lambda screen: sum(line.rstrip() == "eeee ffff"
+                                         for line in screen.get_lines()) == 2)
         session.send(b":q!\r")
         session.wait_until(is_line(""))
         session.send(b"koshconf set editor.wrap_width 80\r")

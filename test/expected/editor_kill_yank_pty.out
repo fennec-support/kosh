@@ -130,6 +130,7 @@ slurp-vi-n-finds-again PASS
 slurp-vi-closed-find-keeps-the-direction PASS
 slurp-vi-gq-wraps-the-line PASS
 slurp-vi-gq-wraps-at-the-set-width PASS
+slurp-vi-dot-repeats-a-visual-gq PASS
 slurp-ctrl-x-s-saves PASS
 slurp-ctrl-c-asks-before-dropping-edits PASS
 slurp-second-ctrl-c-drops-the-edits PASS
