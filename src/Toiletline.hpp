@@ -101,6 +101,9 @@ set_line_numbers(usize width) -> void;
    null. verb must outlive its use. */
 fn
 set_submit_verb(const char *verb) -> void;
+/* Turns Ctrl-X s and Ctrl-X Ctrl-S on as save keys, or off. */
+fn
+set_save_keys(bool is_enabled) -> void;
 
 fn
 get_history_path() -> koshka::Maybe<koshka::Path>;

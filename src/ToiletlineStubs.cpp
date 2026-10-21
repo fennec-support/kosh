@@ -661,6 +661,12 @@ set_submit_verb(const char *verb) -> void
 }
 
 fn
+set_save_keys(bool is_enabled) -> void
+{
+  unused(is_enabled);
+}
+
+fn
 leave_calc_history() -> void
 {}
 

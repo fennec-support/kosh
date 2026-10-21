@@ -2619,6 +2619,17 @@ stat_path(StringView path, file_status &status) wontthrow -> bool
 }
 
 fn
+truncate_descriptor(os::descriptor fd, u64 byte_count) wontthrow -> bool
+{
+  LARGE_INTEGER position{};
+
+  position.QuadPart = static_cast<LONGLONG>(byte_count);
+
+  return SetFilePointerEx(fd, position, nullptr, FILE_BEGIN) != FALSE &&
+         SetEndOfFile(fd) != FALSE;
+}
+
+fn
 stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
 {
   BY_HANDLE_FILE_INFORMATION identity{};

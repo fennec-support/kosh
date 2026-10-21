@@ -1281,6 +1281,9 @@ fn
 stat_path_following(StringView path, file_status &status) wontthrow -> bool;
 fn
 stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool;
+/* Cuts or extends the file open at fd to byte_count bytes. */
+fn
+truncate_descriptor(os::descriptor fd, u64 byte_count) wontthrow -> bool;
 
 enum class process_file_match_scope : u8
 {

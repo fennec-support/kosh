@@ -128,25 +128,70 @@ is_replaceable_by_copy(const Path &path) throws -> bool
   return is_owned && (!is_shared_writable || is_sticky);
 }
 
+enum class save_outcome : u8
+{
+  Saved,
+  Failed,
+  Replaced,
+};
+
 /* A file that is_replaceable_by_copy() accepts is replaced by a complete copy
    written beside it, so a failed write leaves the original in place. Any
-   other file is rewritten in place, which keeps its owner, group, and links. */
+   other file is rewritten in place, which keeps its owner, group, and links,
+   but only while it is still the file that opened describes, so a file
+   swapped for another in the meantime is left alone. A file that was missing
+   when slurp read it is created only if nothing has taken its place. */
 fn
-save_file(const Path &path, StringView contents) throws -> bool
+save_file(const Path                   &path,
+          StringView                    contents,
+          const Maybe<os::file_status> &opened) throws -> save_outcome
 {
-  if (path.exists() && is_replaceable_by_copy(path)) {
-    return toiletline::write_history_file_atomically(path, ".slurp", contents);
+  if (!opened.has_value()) {
+    let const descriptor = os::open_file_descriptor(
+        path.view(), os::file_open_mode::TruncateNoClobber);
+
+    if (!descriptor.has_value()) return save_outcome::Failed;
+
+    let const did_write =
+        os::write_all(*descriptor, contents.data, contents.length);
+
+    return os::close_fd(*descriptor) && did_write ? save_outcome::Saved
+                                                  : save_outcome::Failed;
+  }
+
+  if (is_replaceable_by_copy(path)) {
+    return toiletline::write_history_file_atomically(path, ".slurp", contents)
+               ? save_outcome::Saved
+               : save_outcome::Failed;
   }
 
   let const descriptor =
-      os::open_file_descriptor(path.view(), os::file_open_mode::Truncate);
+      os::open_file_descriptor(path.view(), os::file_open_mode::ReadWrite);
 
-  if (!descriptor.has_value()) return false;
+  if (!descriptor.has_value()) return save_outcome::Failed;
+
+  let current = os::file_status{};
+
+  if (!os::stat_descriptor(*descriptor, current)) {
+    unused(os::close_fd(*descriptor));
+
+    return save_outcome::Failed;
+  }
+
+  if (opened->has_file_identity && (current.device_id != opened->device_id ||
+                                    current.file_id != opened->file_id))
+  {
+    unused(os::close_fd(*descriptor));
+
+    return save_outcome::Replaced;
+  }
 
   let const did_write =
-      os::write_all(*descriptor, contents.data, contents.length);
+      os::write_all(*descriptor, contents.data, contents.length) &&
+      os::truncate_descriptor(*descriptor, contents.length);
 
-  return os::close_fd(*descriptor) && did_write;
+  return os::close_fd(*descriptor) && did_write ? save_outcome::Saved
+                                                : save_outcome::Failed;
 }
 
 } /* namespace */
@@ -199,6 +244,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   let contents = String{heap_allocator()};
+  let opened   = Maybe<os::file_status>{None};
 
   if (path.exists()) {
     if (path.is_directory()) {
@@ -218,6 +264,10 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 1;
     }
     contents = steal(*read);
+
+    let status = os::file_status{};
+
+    if (os::stat_path_following(path.view(), status)) opened = status;
   }
 
   if (!is_text(contents.view())) {
@@ -268,6 +318,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   toiletline::enter_empty_history();
   toiletline::set_line_numbers(number_width);
   toiletline::set_submit_verb("save");
+  toiletline::set_save_keys(true);
   if (!is_shell_script && was_completion_enabled)
     toiletline::disable_completion();
   if (mode.has_value()) toiletline::set_edit_mode(*mode);
@@ -279,6 +330,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       toiletline::enable_completion(cxt);
     toiletline::set_line_numbers(0);
     toiletline::set_submit_verb(nullptr);
+    toiletline::set_save_keys(false);
     toiletline::leave_empty_history();
     try {
       toiletline::exit_raw_mode();
@@ -317,7 +369,16 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       saved.push('\n');
     }
 
-    if (!save_file(path, saved.view())) {
+    let const outcome = save_file(path, saved.view(), opened);
+
+    if (outcome == save_outcome::Replaced) {
+      report_soft_builtin_error(ec, cxt, location,
+                                StringView{"Unable to write '"} + args[1] +
+                                    "': another file took its place");
+
+      return 1;
+    }
+    if (outcome == save_outcome::Failed) {
       report_soft_builtin_error(ec, cxt, location,
                                 StringView{"Unable to write '"} + args[1] +
                                     "': " + os::last_system_error_message());

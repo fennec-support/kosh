@@ -104,6 +104,7 @@ extended-keys-requested-after-the-prompt-command PASS
 kitty-ctrl-d-ends-the-shell PASS
 vi-mode-ignores-ctrl-x PASS
 vi-ex-edit-replaces-the-line PASS
+ctrl-x-s-does-nothing-at-the-prompt PASS
 ctrl-x-ctrl-c-ends-the-shell PASS
 slurp-numbers-the-lines-of-a-script PASS
 slurp-asks-for-a-second-enter-to-save PASS
@@ -113,6 +114,8 @@ slurp-save-keeps-the-file-mode PASS
 slurp-failed-save-keeps-the-original PASS
 slurp-leaves-a-text-file-unnumbered PASS
 slurp-vi-quit-leaves-the-file PASS
+slurp-ctrl-x-s-saves PASS
+slurp-refuses-a-file-swapped-while-open PASS
 slurp-refuses-a-binary-file PASS
 slurp-tall-file-shows-the-rows-around-the-caret PASS
 slurp-tall-file-follows-the-caret-up PASS

@@ -2043,6 +2043,12 @@ set_submit_verb(const char *verb) -> void
 }
 
 fn
+set_save_keys(bool is_enabled) -> void
+{
+  ::tl_set_save_keys(is_enabled ? 1 : 0);
+}
+
+fn
 get_history_path() -> koshka::Maybe<koshka::Path>
 {
   return get_history_file_path();

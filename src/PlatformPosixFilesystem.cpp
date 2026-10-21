@@ -1994,6 +1994,15 @@ stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool
 }
 
 fn
+truncate_descriptor(os::descriptor fd, u64 byte_count) wontthrow -> bool
+{
+  loop {
+    if (::ftruncate(fd, static_cast<off_t>(byte_count)) == 0) return true;
+    if (errno != EINTR) return false;
+  }
+}
+
+fn
 file_type_letter(u32 mode) wontthrow -> char
 {
   const mode_t bits = static_cast<mode_t>(mode);

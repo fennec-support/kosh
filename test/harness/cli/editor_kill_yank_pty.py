@@ -27,7 +27,9 @@
 # Vi mode ignores Ctrl-X, :e opens the line in VISUAL there, and Ctrl-X
 # Ctrl-C ends the shell in emacs mode.
 # slurp numbers the lines of a script, saves it on a second Enter or on :wq,
-# leaves it on :q!, leaves a text file unnumbered, and refuses a binary file.
+# leaves it on :q!, leaves a text file unnumbered, saves on Ctrl-X s, refuses
+# to write over a file that another file replaced while it was open, and
+# refuses a binary file. Ctrl-X s does nothing at the shell prompt.
 # A save keeps the file mode, and a save that cannot write its replacement
 # beside the file leaves the original unchanged.
 # A file taller than the terminal shows a window of rows that follows the
@@ -814,6 +816,11 @@ def run_ctrl_x_mode_checks(binary, directory, command_directory, report):
         session.wait_until(is_line(""))
         session.send(b"set -o emacs; echo vi-chord-off\r")
         session.wait_until(has_output("vi-chord-off", 1))
+        session.send(CTRL_X + b"s")
+        settle(session, 0.3)
+        session.send(b"echo still-here\r")
+        report.record("ctrl-x-s-does-nothing-at-the-prompt", session,
+                      has_output("still-here", 1))
         session.send(CTRL_X + b"\x03")
         report.record("ctrl-x-ctrl-c-ends-the-shell", session,
                       has_exited(session))
@@ -842,6 +849,12 @@ def run_slurp_checks(binary, directory, command_directory, report):
     with open(locked, "w") as handle:
         handle.write("original\n")
     os.chmod(locked_directory, 0o555)
+    shared_directory = os.path.join(directory, "slurp-shared")
+    shared = os.path.join(shared_directory, "doc.txt")
+    os.mkdir(shared_directory)
+    os.chmod(shared_directory, 0o777)
+    with open(shared, "w") as handle:
+        handle.write("doc\n")
     session = Session(binary, directory, command_directory)
     try:
         session.wait_until(is_line(""))
@@ -896,6 +909,33 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("slurp-vi-quit-leaves-the-file", session,
                       lambda screen: is_line("")(screen)
                       and read_slurped(notes) == "first note\nsecond note\n")
+
+        session.send(b"slurp slurp-notes.txt\r")
+        session.wait_until(lambda screen: any(line.rstrip() == "second note"
+                                              for line in screen.get_lines()))
+        session.send(b" saved")
+        session.wait_until(lambda screen: any(
+            line.rstrip() == "second note saved"
+            for line in screen.get_lines()))
+        session.send(CTRL_X + b"s")
+        report.record("slurp-ctrl-x-s-saves", session,
+                      lambda screen: is_line("")(screen)
+                      and read_slurped(notes)
+                      == "first note\nsecond note saved\n")
+
+        session.send(b"slurp slurp-shared/doc.txt\r")
+        session.wait_until(lambda screen: any(line.rstrip() == "doc"
+                                              for line in screen.get_lines()))
+        swapped = os.path.join(shared_directory, "swapped.txt")
+        with open(swapped, "w") as handle:
+            handle.write("other\n")
+        os.replace(swapped, shared)
+        session.send(b" edit\r")
+        report.record("slurp-refuses-a-file-swapped-while-open", session,
+                      lambda screen: any("another file took its place" in line
+                                         for line in screen.get_lines())
+                      and is_line("")(screen)
+                      and read_slurped(shared) == "other\n")
 
         session.send(b"slurp slurp-binary\r")
         report.record("slurp-refuses-a-binary-file", session,
