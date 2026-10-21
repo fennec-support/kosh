@@ -3247,7 +3247,8 @@ Repeat the last find in the same or the opposite direction.
 Move between buffer rows.
 .TP
 .BR k ", " j
-Recall an older or a newer history entry.
+Move up or down a buffer row as Up and Down do, which recall an older or a
+newer history entry from the first or the last row.
 .TP
 .BR gg ", " G
 Move to the first non-blank character of the first or the last buffer row, or
@@ -3313,9 +3314,13 @@ Act as in emacs mode.
 .BR h ", " l ", " w ", " W ", " b ", " B ", " e ", " E ", " 0 ", " ^ ", " $ ", " f ", " F ", " t ", " T ", " ; ", " ,
 Move the end of the selection, without a count.
 .TP
-.BR Left ", " Right ", " Home ", " End ", " Up ", " Down
+.BR Left ", " Right ", " Home ", " End ", " Up ", " Down ", " k ", " j
 Move the end of the selection by character, line end, or buffer row. Ctrl\-B,
 Ctrl\-F, Ctrl\-A, Ctrl\-E, Ctrl\-P, and Ctrl\-N act as these keys.
+.TP
+.B :
+Open the colon command line for the lines the selection touches, shown as
+:'<,'>. A substitution and a format act on those lines only.
 .TP
 .BR d ", " x
 Delete the selection.
@@ -3356,7 +3361,8 @@ Leave the selection and act as in emacs mode.
 The colon key in command mode opens a command line under the buffer. Enter
 runs it, and Escape, Ctrl\-C, Ctrl\-D, or Backspace on an empty command closes
 it. Only a substitution, an undo, and a redo change the line, and only the
-option commands change the settings. The buffer keeps
+option commands change the settings. Opened from a visual selection, the command
+line acts on the selected lines. The buffer keeps
 its syntax highlighting while the command line is open, and the typed command
 is drawn in light green.
 .TP

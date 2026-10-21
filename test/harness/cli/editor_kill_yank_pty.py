@@ -30,7 +30,8 @@
 # leaves it on :q!, leaves a text file unnumbered, saves on Ctrl-X s, rewrites
 # a file in a shared directory in place and removes its backup, refuses to
 # write over a file that another file replaced while it was open, and refuses
-# a binary file. Ctrl-X s does nothing at the shell prompt.
+# a binary file. A colon command opened from a vi visual selection acts on the
+# selected lines only. Ctrl-X s does nothing at the shell prompt.
 # A save keeps the file mode, and a save that cannot write its replacement
 # beside the file leaves the original unchanged.
 # A file taller than the terminal shows a window of rows that follows the
@@ -946,6 +947,28 @@ def run_slurp_checks(binary, directory, command_directory, report):
                                          for line in screen.get_lines())
                       and is_line("")(screen)
                       and read_slurped(shared) == "other\n")
+
+        ranged = os.path.join(directory, "slurp-ranged.txt")
+        with open(ranged, "w") as handle:
+            handle.write("x a\nx b\nx c\nx d\n")
+        session.send(b"slurp --mode vi slurp-ranged.txt\r")
+        session.wait_until(lambda screen: any(line.rstrip() == "x d"
+                                              for line in screen.get_lines()))
+        mark = len(session.raw)
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                           in get_raw_since(session, mark))
+        session.send(b"ggjVj:")
+        report.record("vi-visual-colon-opens-a-range-prompt", session,
+                      lambda screen: any(line.strip() == ":'<,'>"
+                                         for line in screen.get_lines()))
+        session.send(b"s/x/y/\r")
+        session.wait_until(lambda screen: any(line.rstrip() == "y c"
+                                              for line in screen.get_lines()))
+        session.send(b":wq\r")
+        report.record("vi-visual-range-substitutes-only-its-lines", session,
+                      lambda screen: is_line("")(screen)
+                      and read_slurped(ranged) == "x a\ny b\ny c\nx d\n")
 
         session.send(b"slurp slurp-binary\r")
         report.record("slurp-refuses-a-binary-file", session,
