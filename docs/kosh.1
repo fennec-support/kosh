@@ -3145,6 +3145,13 @@ Swap the characters around the cursor.
 .B Alt\-T
 Swap the words around the cursor.
 .TP
+.BR Alt\-U ", " Alt\-L ", " Alt\-C
+Raise, lower, or capitalize the letters of the next word, from the cursor
+to the end of that word, and move after it.
+.TP
+.B Alt\-\e
+Delete the spaces and tabs around the cursor.
+.TP
 .BR Alt\-. ", " Alt\-_
 Insert the last word of an older history entry on each press.
 .TP
@@ -3276,6 +3283,17 @@ Toggle the case under the cursor and move right.
 .TP
 .BR p ", " P
 Paste after or before the cursor.
+.TP
+.BR o ", " O
+Open an empty line below or above the current line and insert there.
+.TP
+.B J
+Join the next line to the current one with a single space in place of the
+line break and the indentation after it.
+.TP
+.BR { ", " }
+Move to the previous or the next empty line, or to the start or the end of the
+buffer.
 .TP
 .BR i ", " a
 Insert before or after the cursor.
@@ -3503,6 +3521,9 @@ Kill or yank as Ctrl\-K, Ctrl\-U, Ctrl\-Y, and Alt\-. do.
 .TP
 .BR transpose\-chars ", " transpose\-words
 Transpose as Ctrl\-T and Alt\-T do.
+.TP
+.BR upcase\-word ", " downcase\-word ", " capitalize\-word ", " delete\-horizontal\-space
+Change case or delete spaces as Alt\-U, Alt\-L, Alt\-C, and Alt\-\e do.
 .TP
 .B clear\-screen
 Clear the screen as Ctrl\-L does.

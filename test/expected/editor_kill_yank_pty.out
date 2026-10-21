@@ -105,6 +105,10 @@ kitty-ctrl-d-ends-the-shell PASS
 vi-mode-ignores-ctrl-x PASS
 vi-ex-edit-replaces-the-line PASS
 ctrl-x-s-does-nothing-at-the-prompt PASS
+alt-u-upcases-the-next-word PASS
+alt-c-capitalizes-the-next-word PASS
+kitty-alt-l-downcases-the-next-word PASS
+alt-backslash-deletes-the-spaces-around-the-cursor PASS
 ctrl-x-ctrl-c-ends-the-shell PASS
 slurp-numbers-the-lines-of-a-script PASS
 slurp-asks-for-a-second-enter-to-save PASS
@@ -117,6 +121,7 @@ slurp-vi-quit-leaves-the-file PASS
 slurp-ctrl-x-s-saves PASS
 slurp-in-place-save-removes-its-backup PASS
 slurp-refuses-a-file-swapped-while-open PASS
+vi-o-j-J-and-brace-keys-edit-the-file PASS
 vi-visual-colon-opens-a-range-prompt PASS
 vi-visual-range-substitutes-only-its-lines PASS
 slurp-refuses-a-binary-file PASS

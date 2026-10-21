@@ -31,7 +31,10 @@
 # a file in a shared directory in place and removes its backup, refuses to
 # write over a file that another file replaced while it was open, and refuses
 # a binary file. A colon command opened from a vi visual selection acts on the
-# selected lines only. Ctrl-X s does nothing at the shell prompt.
+# selected lines only, and o, j, J, and } edit the lines of a file. Ctrl-X s
+# does nothing at the shell prompt. Alt-U, Alt-C, and Alt-L change the case of
+# the next word, also from a kitty report, and Alt-\ deletes the spaces around
+# the cursor.
 # A save keeps the file mode, and a save that cannot write its replacement
 # beside the file leaves the original unchanged.
 # A file taller than the terminal shows a window of rows that follows the
@@ -823,6 +826,22 @@ def run_ctrl_x_mode_checks(binary, directory, command_directory, report):
         session.send(b"echo still-here\r")
         report.record("ctrl-x-s-does-nothing-at-the-prompt", session,
                       has_output("still-here", 1))
+        session.send(b"foo bar")
+        session.wait_until(is_line("foo bar"))
+        session.send(b"\x01\x1bu")
+        report.record("alt-u-upcases-the-next-word", session,
+                      is_line("FOO bar"))
+        session.send(b"\x1bc")
+        report.record("alt-c-capitalizes-the-next-word", session,
+                      is_line("FOO Bar"))
+        session.send(b"\x01" + kitty_key(ord("l"), 3))
+        report.record("kitty-alt-l-downcases-the-next-word", session,
+                      is_line("foo Bar"))
+        session.send(b"\x05" + LEFT * 3 + b"   " + b"\x1b\\")
+        report.record("alt-backslash-deletes-the-spaces-around-the-cursor",
+                      session, is_line("fooBar"))
+        session.send(KITTY_CTRL_C)
+        session.wait_until(is_line(""))
         session.send(CTRL_X + b"\x03")
         report.record("ctrl-x-ctrl-c-ends-the-shell", session,
                       has_exited(session))
@@ -947,6 +966,36 @@ def run_slurp_checks(binary, directory, command_directory, report):
                                          for line in screen.get_lines())
                       and is_line("")(screen)
                       and read_slurped(shared) == "other\n")
+
+        keyed = os.path.join(directory, "slurp-keyed.txt")
+        with open(keyed, "w") as handle:
+            handle.write("one\ntwo\n  three\n\nfour\n")
+        session.send(b"slurp --mode vi slurp-keyed.txt\r")
+        session.wait_until(lambda screen: any(line.rstrip() == "four"
+                                              for line in screen.get_lines()))
+        mark = len(session.raw)
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                           in get_raw_since(session, mark))
+        session.send(b"ggonew")
+        session.wait_until(lambda screen: any(line.rstrip() == "new"
+                                              for line in screen.get_lines()))
+        mark = len(session.raw)
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                           in get_raw_since(session, mark))
+        session.send(b"jJ}iX")
+        session.wait_until(lambda screen: any(line.rstrip() == "X"
+                                              for line in screen.get_lines()))
+        mark = len(session.raw)
+        session.send(KITTY_ESCAPE)
+        session.wait_until(lambda screen: VI_COMMAND_CURSOR
+                           in get_raw_since(session, mark))
+        session.send(b":wq\r")
+        report.record("vi-o-j-J-and-brace-keys-edit-the-file", session,
+                      lambda screen: is_line("")(screen)
+                      and read_slurped(keyed)
+                      == "one\nnew\ntwo three\nX\nfour\n")
 
         ranged = os.path.join(directory, "slurp-ranged.txt")
         with open(ranged, "w") as handle:
