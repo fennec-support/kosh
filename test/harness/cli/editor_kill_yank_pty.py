@@ -26,11 +26,12 @@
 # every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat.
 # Vi mode ignores Ctrl-X, :e opens the line in VISUAL there, and Ctrl-X
 # Ctrl-C ends the shell in emacs mode.
-# slurp numbers the lines of every file, starts a new line on Enter, saves on
-# Ctrl-X s or :wq, leaves it on :q!, rewrites
-# a file in a shared directory in place and removes its backup, refuses to
-# write over a file that another file replaced while it was open, and refuses
-# a binary file. A colon command opened from a vi visual selection acts on the
+# slurp starts a new line on Enter, saves on Ctrl-X s and keeps editing,
+# saves and leaves on :wq, leaves the file on :q!, rewrites a file in a shared
+# directory in place and removes its backup, refuses to write over a file
+# that another file replaced while it was open and keeps editing, and refuses
+# a binary file. Tab inserts a tab while only blanks come before the caret,
+# and a tab draws as a marker. A colon command opened from a vi visual selection acts on the
 # selected lines only, and o, j, J, and } edit the lines of a file. Ctrl-X s
 # does nothing at the shell prompt. Alt-U, Alt-C, and Alt-L change the case of
 # the next word, also from a kitty report, and Alt-\ deletes the spaces around
@@ -63,6 +64,7 @@
 # output.
 
 import os
+import re
 import shutil
 import signal
 import sys
@@ -855,6 +857,18 @@ def has_text(text):
     return lambda screen: any(text in line for line in screen.get_lines())
 
 
+def has_row(text):
+    return lambda screen: any(line.rstrip() == text
+                              for line in screen.get_lines())
+
+
+def do_discard(session):
+    session.send(CTRL_C)
+    session.wait_until(has_text("ctrl-c again"))
+    session.send(CTRL_C)
+    session.wait_until(is_line(""))
+
+
 def read_slurped(path):
     with open(path) as handle:
         return handle.read()
@@ -886,24 +900,30 @@ def run_slurp_checks(binary, directory, command_directory, report):
     try:
         session.wait_until(is_line(""))
         session.send(b"slurp slurp-script.sh\r")
-        report.record("slurp-numbers-the-lines-of-a-script", session,
-                      lambda screen: any(line.rstrip() == "   2 echo one"
-                                         for line in screen.get_lines()))
+        report.record("slurp-shows-the-script-without-line-numbers", session,
+                      has_row("echo one"))
         session.send(b" # edited\r")
         report.record("slurp-enter-starts-a-new-line", session,
-                      lambda screen: any(line.rstrip() == "   4"
-                                         for line in screen.get_lines()))
+                      has_text("line 4 of 4"))
         session.send(CTRL_X + b"s")
-        report.record("slurp-ctrl-x-s-saves-the-new-line", session,
-                      lambda screen: is_line("")(screen)
+        report.record("slurp-ctrl-x-s-saves-and-keeps-editing", session,
+                      lambda screen: has_text("wrote 38 bytes")(screen)
+                      and has_text("line 4 of 4")(screen)
                       and read_slurped(script)
                       == "#!/bin/sh\necho one\necho two # edited\n\n")
+        session.send(b"\t")
+        report.record("slurp-tab-on-a-blank-line-inserts-a-tab", session,
+                      lambda screen: has_text("line 4 of 4, column 2")(screen)
+                      and not has_text("selecting completions")(screen))
+        session.send(BACKSPACE)
+        session.wait_until(has_text("line 4 of 4, column 1"))
+        session.send(CTRL_X + CTRL_C)
+        report.record("slurp-leaves-a-saved-buffer-at-once", session,
+                      is_line(""))
 
         os.chmod(script, 0o751)
         session.send(b"slurp --mode vi slurp-script.sh\r")
-        session.wait_until(lambda screen: any(
-            line.rstrip() == "   3 echo two # edited"
-            for line in screen.get_lines()))
+        session.wait_until(has_row("echo two # edited"))
         session.send(b"!")
         settle(session, 0.2)
         session.send(KITTY_ESCAPE)
@@ -916,19 +936,18 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       lambda screen: os.stat(script).st_mode & 0o7777 == 0o751)
 
         session.send(b"slurp slurp-locked/kept.txt\r")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" original")
+        session.wait_until(lambda screen: any(line.rstrip() == "original"
                                               for line in screen.get_lines()))
         session.send(b" changed" + CTRL_X + b"s")
         report.record("slurp-failed-save-keeps-the-original", session,
-                      lambda screen: any("Unable to write" in line
-                                         for line in screen.get_lines())
-                      and is_line("")(screen)
+                      lambda screen: has_text("unable to write the file")(screen)
+                      and has_text("line 1 of 1")(screen)
                       and read_slurped(locked) == "original\n")
+        do_discard(session)
 
         session.send(b"slurp --mode vi slurp-notes.txt\r")
-        report.record("slurp-numbers-the-lines-of-a-text-file", session,
-                      lambda screen: any(line.rstrip() == "   2 second note"
-                                         for line in screen.get_lines()))
+        report.record("slurp-shows-the-text-file", session,
+                      has_row("second note"))
         session.send(b"?")
         settle(session, 0.2)
         session.send(KITTY_ESCAPE)
@@ -939,25 +958,27 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       and read_slurped(notes) == "first note\nsecond note\n")
 
         session.send(b"slurp slurp-notes.txt\r")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" second note")
+        session.wait_until(lambda screen: any(line.rstrip() == "second note"
                                               for line in screen.get_lines()))
         session.send(b" saved")
         session.wait_until(lambda screen: any(
-            line.rstrip().endswith(" second note saved")
+            line.rstrip() == "second note saved"
             for line in screen.get_lines()))
         session.send(CTRL_X + b"s")
         report.record("slurp-ctrl-x-s-saves", session,
-                      lambda screen: is_line("")(screen)
+                      lambda screen: has_text("wrote")(screen)
                       and read_slurped(notes)
                       == "first note\nsecond note saved\n")
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
 
         session.send(b"slurp slurp-notes.txt\r")
         session.wait_until(lambda screen: any(
-            line.rstrip().endswith(" second note saved")
+            line.rstrip() == "second note saved"
             for line in screen.get_lines()))
         session.send(b" lost")
         session.wait_until(lambda screen: any(
-            line.rstrip().endswith(" second note saved lost")
+            line.rstrip() == "second note saved lost"
             for line in screen.get_lines()))
         session.send(CTRL_C)
         report.record("slurp-ctrl-c-asks-before-dropping-edits", session,
@@ -970,7 +991,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
 
         session.send(b"slurp --mode vi slurp-notes.txt\r")
         session.wait_until(lambda screen: any(
-            line.rstrip().endswith(" second note saved")
+            line.rstrip() == "second note saved"
             for line in screen.get_lines()))
         session.send(b"?")
         settle(session, 0.2)
@@ -984,7 +1005,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
 
         session.send(b"slurp slurp-notes.txt\r")
         session.wait_until(lambda screen: any(
-            line.rstrip().endswith(" second note saved")
+            line.rstrip() == "second note saved"
             for line in screen.get_lines()))
         session.send(CTRL_X + CTRL_C)
         report.record("slurp-ctrl-x-ctrl-c-leaves-an-unedited-file", session,
@@ -993,9 +1014,11 @@ def run_slurp_checks(binary, directory, command_directory, report):
         backups = {name for name in os.listdir(directory)
                    if name.startswith(".kosh-slurp-backup")}
         session.send(b"slurp slurp-shared/doc.txt\r")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" doc")
+        session.wait_until(lambda screen: any(line.rstrip() == "doc"
                                               for line in screen.get_lines()))
         session.send(b" kept" + CTRL_X + b"s")
+        session.wait_until(has_text("wrote"))
+        session.send(CTRL_X + CTRL_C)
         report.record("slurp-in-place-save-removes-its-backup", session,
                       lambda screen: is_line("")(screen)
                       and read_slurped(shared) == "doc kept\n"
@@ -1004,23 +1027,23 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       == backups)
 
         session.send(b"slurp slurp-shared/doc.txt\r")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" doc kept") for line in screen.get_lines()))
+        session.wait_until(has_row("doc kept"))
         swapped = os.path.join(shared_directory, "swapped.txt")
         with open(swapped, "w") as handle:
             handle.write("other\n")
         os.replace(swapped, shared)
         session.send(b" edit" + CTRL_X + b"s")
         report.record("slurp-refuses-a-file-swapped-while-open", session,
-                      lambda screen: any("another file took its place" in line
-                                         for line in screen.get_lines())
-                      and is_line("")(screen)
+                      lambda screen: has_text("another file took its place")(
+                          screen)
                       and read_slurped(shared) == "other\n")
+        do_discard(session)
 
         private = os.path.join(directory, "slurp-private.txt")
         with open(private, "w") as handle:
             handle.write("mine\n")
         session.send(b"slurp slurp-private.txt\r")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" mine")
+        session.wait_until(lambda screen: any(line.rstrip() == "mine"
                                               for line in screen.get_lines()))
         swapped = os.path.join(directory, "slurp-swapped.txt")
         with open(swapped, "w") as handle:
@@ -1028,10 +1051,10 @@ def run_slurp_checks(binary, directory, command_directory, report):
         os.replace(swapped, private)
         session.send(b" edit" + CTRL_X + b"s")
         report.record("slurp-copy-save-refuses-a-swapped-file", session,
-                      lambda screen: any("another file took its place" in line
-                                         for line in screen.get_lines())
-                      and is_line("")(screen)
+                      lambda screen: has_text("another file took its place")(
+                          screen)
                       and read_slurped(private) == "theirs\n")
+        do_discard(session)
 
         gone = os.path.join(directory, "slurp-gone.txt")
         with open(gone, "w") as handle:
@@ -1040,21 +1063,24 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(has_text("line 1 of 1"))
         os.unlink(gone)
         session.send(b" again" + CTRL_X + b"s")
-        report.record("slurp-keeps-the-edits-of-a-refused-save", session,
-                      lambda screen: has_text("The edits are in")(screen)
-                      and is_line("")(screen)
+        report.record("slurp-keeps-editing-after-a-refused-save", session,
+                      lambda screen: has_text("unable to write the file")(screen)
+                      and has_text("line 1 of 1, column 11")(screen)
                       and not os.path.exists(gone))
+        do_discard(session)
 
         mixed = os.path.join(directory, "slurp-mixed.txt")
         with open(mixed, "wb") as handle:
             handle.write(b"one\r\ntwo\nthree\n")
         session.send(b"slurp slurp-mixed.txt\r")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" three")
+        session.wait_until(lambda screen: any(line.rstrip() == "three"
                                               for line in screen.get_lines()))
         session.send(CTRL_X + b"s")
         report.record("slurp-keeps-mixed-line-endings", session,
-                      lambda screen: is_line("")(screen)
+                      lambda screen: has_text("wrote")(screen)
                       and read_bytes(mixed) == b"one\r\ntwo\nthree\n")
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
 
         blank = os.path.join(directory, "slurp-blank.txt")
         with open(blank, "w") as handle:
@@ -1063,8 +1089,10 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(has_text("line 1 of 1"))
         session.send(CTRL_X + b"s")
         report.record("slurp-keeps-a-lone-newline", session,
-                      lambda screen: is_line("")(screen)
+                      lambda screen: has_text("wrote")(screen)
                       and read_bytes(blank) == b"\n")
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
 
         tabbed = os.path.join(directory, "slurp-tabbed.txt")
         with open(tabbed, "w") as handle:
@@ -1073,30 +1101,33 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(has_text("line 2 of 2"))
         session.send(UP + b"\t")
         session.wait_until(has_text("line 1 of 2, column 3"))
+        report.record("slurp-draws-a-tab-as-a-marker", session, has_row("x>"))
         session.send(CTRL_X + b"s")
         report.record("slurp-tab-inserts-a-tab-in-a-text-file", session,
-                      lambda screen: is_line("")(screen)
+                      lambda screen: has_text("wrote")(screen)
                       and read_bytes(tabbed) == b"x\t\ny\n")
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
 
         keyed = os.path.join(directory, "slurp-keyed.txt")
         with open(keyed, "w") as handle:
             handle.write("one\ntwo\n  three\n\nfour\n")
         session.send(b"slurp --mode vi slurp-keyed.txt\r")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" four")
+        session.wait_until(lambda screen: any(line.rstrip() == "four"
                                               for line in screen.get_lines()))
         mark = len(session.raw)
         session.send(KITTY_ESCAPE)
         session.wait_until(lambda screen: VI_COMMAND_CURSOR
                            in get_raw_since(session, mark))
         session.send(b"ggonew")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" new")
+        session.wait_until(lambda screen: any(line.rstrip() == "new"
                                               for line in screen.get_lines()))
         mark = len(session.raw)
         session.send(KITTY_ESCAPE)
         session.wait_until(lambda screen: VI_COMMAND_CURSOR
                            in get_raw_since(session, mark))
         session.send(b"jJ}iX")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" X")
+        session.wait_until(lambda screen: any(line.rstrip() == "X"
                                               for line in screen.get_lines()))
         mark = len(session.raw)
         session.send(KITTY_ESCAPE)
@@ -1112,7 +1143,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         with open(ranged, "w") as handle:
             handle.write("x a\nx b\nx c\nx d\n")
         session.send(b"slurp --mode vi slurp-ranged.txt\r")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" x d")
+        session.wait_until(lambda screen: any(line.rstrip() == "x d"
                                               for line in screen.get_lines()))
         mark = len(session.raw)
         session.send(KITTY_ESCAPE)
@@ -1123,7 +1154,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       lambda screen: any(line.strip() == ":'<,'>"
                                          for line in screen.get_lines()))
         session.send(b"s/x/y/\r")
-        session.wait_until(lambda screen: any(line.rstrip().endswith(" y c")
+        session.wait_until(lambda screen: any(line.rstrip() == "y c"
                                               for line in screen.get_lines()))
         session.send(b":wq\r")
         report.record("vi-visual-range-substitutes-only-its-lines", session,
@@ -1157,8 +1188,13 @@ def run_slurp_checks(binary, directory, command_directory, report):
 
 def has_numbered_rows(first, last):
     def do_check(screen):
-        numbers = [int(line.split()[0]) for line in screen.get_lines()
-                   if line.strip() and line.split()[0].isdigit()]
+        numbers = []
+        for line in screen.get_lines():
+            match = re.match(r"echo line(\d+)", line)
+            if line.rstrip() == "#!/bin/sh":
+                numbers.append(1)
+            elif match:
+                numbers.append(int(match.group(1)))
         return numbers == list(range(first, last + 1))
     return do_check
 
@@ -1182,13 +1218,14 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
         session.send(UP * 40)
         report.record("slurp-up-on-the-first-line-recalls-no-history", session,
                       lambda screen: has_numbered_rows(1, 15)(screen)
-                      and any(line.rstrip() == "   1 #!/bin/sh"
-                              for line in screen.get_lines()))
+                      and has_row("#!/bin/sh")(screen))
         session.send(CTRL_X + b"s")
         report.record("slurp-tall-file-saves-every-line", session,
-                      lambda screen: is_line("")(screen)
+                      lambda screen: has_text("wrote")(screen)
                       and read_slurped(script).count("\n") == 60
                       and "echo line30X\n" in read_slurped(script))
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
 
         session.send(b"slurp slurp-tall.sh\r")
         session.wait_until(has_numbered_rows(46, 60))
@@ -1206,9 +1243,8 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
         def is_menu_over_next_row(screen):
             lines, row = do_find_caret_row(screen)
             return (row is not None and row + 1 < len(lines)
-                    and lines[row + 1].startswith("  30 ")
                     and "selecting completions" in lines[row + 1]
-                    and "  43 echo line43" in lines)
+                    and "echo line43" in lines)
 
         report.record("slurp-menu-covers-the-rows-under-the-caret", session,
                       is_menu_over_next_row)
@@ -1217,7 +1253,7 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
         def is_next_row_restored(screen):
             lines, row = do_find_caret_row(screen)
             return (row is not None and row + 1 < len(lines)
-                    and lines[row + 1] == "  30 echo line30X")
+                    and lines[row + 1] == "echo line30X")
 
         report.record("slurp-closed-menu-restores-the-rows", session,
                       is_next_row_restored)
@@ -1233,14 +1269,14 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
         session.send(b"\x1bx")
         report.record("slurp-command-line-keeps-the-view", session,
                       lambda screen: screen.get_lines()[1]
-                      == "  29 echo line29; read -"
+                      == "echo line29; read -"
                       and any(line.strip() == "M-x"
                               for line in screen.get_lines()))
         session.send(ESCAPE)
         session.wait_until(has_text("line 29 of 60"))
         session.send(b"\x1b[<0;8;4M\x1b[<0;8;4m")
         report.record("slurp-mouse-press-moves-the-caret", session,
-                      has_text("line 31 of 60, column 3,"))
+                      has_text("line 31 of 60, column 8,"))
         session.send(b"\x1b[<65;8;4M")
         report.record("slurp-wheel-scrolls-the-view", session,
                       lambda screen: has_numbered_rows(32, 46)(screen)

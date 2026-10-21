@@ -97,13 +97,11 @@ fn
 enter_empty_history() -> void;
 fn
 leave_empty_history() -> void;
-/* Numbers the buffer lines in width columns, or turns the numbers off with 0.
- */
+/* Saves the edited file through callback for Ctrl-X s and the vi write
+   commands, or turns saving off when callback is null. */
 fn
-set_line_numbers(usize width) -> void;
-/* Turns Ctrl-X s and Ctrl-X Ctrl-S on as save keys, or off. */
-fn
-set_save_keys(bool is_enabled) -> void;
+set_save_callback(int (*callback)(const char *text, const char **out_message))
+    -> void;
 /* Keeps text as the saved file contents that quit keys compare the buffer
    against, or forgets them when text is null. text must outlive its use. */
 fn

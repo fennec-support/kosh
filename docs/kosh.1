@@ -1589,14 +1589,17 @@ accepts
 FILE is edited in the line editor of the interactive shell, and a missing FILE
 starts empty. The session runs on the alternate screen of the terminal and
 leaves it before any result is reported, so the main screen keeps only the
-command. Every line is shown with its number, and a shell script, recognized by
-its shebang or its extension, also keeps its syntax highlighting. Enter and
-Shift\-Enter start a new line, and in vi normal mode Enter moves down a line.
-Tab completes in a shell script and inserts a tab in any other file. Ctrl\-X s
-and Ctrl\-X Ctrl\-S save the file and leave in emacs mode, and so do the vi
-commands
-.BR :wq ", " :wq! ", " :wqa ", " :wqa! ", and " :x .
-The commands
+command. A shell script, recognized by its shebang or its extension, keeps its
+syntax highlighting. Enter and Shift\-Enter start a new line, and in vi normal
+mode Enter moves down a line. Tab inserts a tab when only blanks come before
+the caret on its line or the file is not a shell script, and completes
+otherwise. A tab is drawn as a faint marker four columns wide. Ctrl\-X s and
+Ctrl\-X Ctrl\-S in emacs mode and
+.BR :w " and " :write
+in vi mode save the file and keep the session open, and the empty status row
+reports the save. The vi commands
+.BR :wq ", " :wq! ", " :wqa ", " :wqa! ", and " :x
+save the file and leave when the save succeeds. The commands
 .BR :q " and " :q! ,
 Ctrl\-X Ctrl\-C, and Ctrl\-D on an empty buffer leave without saving, and
 Ctrl\-C leaves with status 130. While the buffer differs from the file,
@@ -1634,13 +1637,11 @@ directory, or in the temporary directory when the home directory takes none,
 and the copy is removed once the write succeeds. When the write fails, the
 error gives the path of the copy, and when no copy can be made, nothing is
 written. The save is refused when another file has replaced the one that slurp
-loaded. When a save is refused or fails, the edits are written to a private
-file in the same place as the backup, and the error gives its path. A buffer
-that grows past 65534 bytes cannot be saved, and its edits are lost. A file with
-a NUL byte or invalid UTF\-8, a file longer than 65534 bytes, and a restricted
-shell are refused. A file whose every line ends in CRLF keeps those endings, a
-file that mixes them keeps each carriage return as text, and the final newline
-of the file is kept.
+loaded. A refused or failed save is reported on the last four rows, and the
+session stays open with the edits. A file with a NUL byte or invalid UTF\-8, a
+file longer than 65534 bytes, and a restricted shell are refused. A file whose
+every line ends in CRLF keeps those endings, a file that mixes them keeps each
+carriage return as text, and the final newline of the file is kept.
 .TP
 .B z
 The current directory is changed to one selected from the directories that
@@ -3207,7 +3208,7 @@ does.
 .BR "Ctrl\-X s" ", " "Ctrl\-X Ctrl\-S"
 In
 .BR slurp ,
-save the file and leave. Elsewhere the keys do nothing.
+save the file and keep editing. Elsewhere the keys do nothing.
 .TP
 .B Ctrl\-R
 Search the history.
@@ -3415,7 +3416,12 @@ is drawn in light green.
 .BR :q ", " :q! ", " :quit ", " :wq ", " :wq! ", " :wqa ", " :wqa! ", " :x
 Leave the shell with the status of the last command. In
 .BR slurp ,
-the w forms save the file first.
+the w forms save the file first and leave only when the save succeeds.
+.TP
+.BR :w ", " :write
+In
+.BR slurp ,
+save the file and keep editing.
 .TP
 .BI :s/ old / new / \fR[\fBg\fR]
 Replace the first match of the basic regular expression

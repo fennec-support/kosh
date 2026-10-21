@@ -2031,15 +2031,10 @@ leave_empty_history() -> void
 }
 
 fn
-set_line_numbers(usize width) -> void
+set_save_callback(int (*callback)(const char *text, const char **out_message))
+    -> void
 {
-  ::tl_set_line_numbers(width);
-}
-
-fn
-set_save_keys(bool is_enabled) -> void
-{
-  ::tl_set_save_keys(is_enabled ? 1 : 0);
+  ::tl_set_save_callback(callback);
 }
 
 fn

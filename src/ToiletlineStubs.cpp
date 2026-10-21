@@ -642,15 +642,10 @@ leave_empty_history() -> void
 {}
 
 fn
-set_line_numbers(usize width) -> void
+set_save_callback(int (*callback)(const char *text, const char **out_message))
+    -> void
 {
-  unused(width);
-}
-
-fn
-set_save_keys(bool is_enabled) -> void
-{
-  unused(is_enabled);
+  unused(callback);
 }
 
 fn

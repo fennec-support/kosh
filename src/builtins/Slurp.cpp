@@ -3,12 +3,11 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the slurp builtin, which edits a text file in the line
- * editor. A shell script keeps its syntax highlighting and numbered lines, and
- * Enter or a colon write command saves the file.
+ * editor. A shell script keeps its syntax highlighting, and Ctrl-X s or a
+ * colon write command saves the file.
  */
 
 #include "../Builtin.hpp"
-#include "../CLIColors.hpp"
 #include "../Eval.hpp"
 #include "../MimicMood.hpp"
 #include "../Toiletline.hpp"
@@ -20,8 +19,9 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[--mode vi|emacs] file");
 
 HELP_DESCRIPTION_DECL(
-    "This builtin edits a text file in the line editor. Enter saves the file "
-    "and leaves, and so do :wq, :x, and the other write commands of vi mode.");
+    "This builtin edits a text file in the line editor. Ctrl-X s in emacs "
+    "mode and :w in vi mode save the file and keep editing, and :wq, :x, and "
+    "the other write-and-quit commands of vi mode save it and leave.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(SLURP_MODE, String, '\0', "mode", "Edit in vi or emacs mode.");
@@ -68,34 +68,6 @@ is_text(StringView text) wontthrow -> bool
   }
 
   return true;
-}
-
-fn
-count_digits(usize value) wontthrow -> usize
-{
-  usize digit_count = 1;
-
-  while (value >= 10) {
-    value /= 10;
-    digit_count++;
-  }
-
-  return digit_count;
-}
-
-/* The prompt that numbers the first line, dimmed when colors are on. */
-fn
-make_first_line_prompt(usize width) throws -> String
-{
-  let prompt = String{heap_allocator()};
-
-  if (colors::stdout_wants_color()) prompt += "\x1b[90m";
-  prompt.append_repeated(' ', width - 1);
-  prompt += "1";
-  if (colors::stdout_wants_color()) prompt += "\x1b[0m";
-  prompt += " ";
-
-  return prompt;
 }
 
 /* True when a copy written beside path can replace it with nothing lost: the
@@ -251,6 +223,104 @@ save_file(const Path                   &path,
   return save_outcome::Failed;
 }
 
+/* The file a slurp session edits and what a save needs to write it back. */
+struct slurp_session
+{
+  Path                   path;
+  Maybe<os::file_status> opened;
+  bool                   has_crlf;
+  bool                   has_final_newline;
+  bool                   is_single_newline;
+  bool                   is_shell_script;
+  String                 saved_text;
+  String                 status;
+  String                 message;
+};
+
+slurp_session *ACTIVE_SESSION = nullptr;
+
+/* Describes the kind of file, its line endings, and its size in byte_count,
+   or a new file when byte_count is empty. */
+fn
+make_status(const slurp_session &session,
+            Maybe<usize>         byte_count) throws -> String
+{
+  let status = String{heap_allocator(),
+                      session.is_shell_script ? "shell script, " : "text, "};
+
+  status.append(session.has_crlf ? "CRLF endings, " : "LF endings, ");
+  if (byte_count.has_value()) {
+    status.append(
+        String::from(static_cast<u64>(*byte_count), heap_allocator()));
+    status.append(" bytes");
+  } else {
+    status.append("new file");
+  }
+
+  return status;
+}
+
+/* Writes text to the file of the active session with the line endings it was
+   loaded with, and leaves a line for the hint rows in out_message. */
+fn
+save_buffer(const char *text, const char **out_message) -> int
+{
+  let &session = *ACTIVE_SESSION;
+
+  try {
+    let const buffer = StringView{text, strlen(text)};
+    let       saved  = String{heap_allocator()};
+
+    for (usize i = 0; i < buffer.length; i++) {
+      if (buffer[i] == '\n' && session.has_crlf) saved.push('\r');
+      saved.push(buffer[i]);
+    }
+    if (session.has_final_newline &&
+        (!saved.is_empty() || session.is_single_newline))
+    {
+      if (session.has_crlf) saved.push('\r');
+      saved.push('\n');
+    }
+
+    let       kept_backup = Maybe<Path>{None};
+    let const outcome =
+        save_file(session.path, saved.view(), session.opened, kept_backup);
+
+    if (outcome == save_outcome::Saved) {
+      let status = os::file_status{};
+
+      if (os::stat_path_following(session.path.view(), status))
+        session.opened = status;
+      session.saved_text = String{heap_allocator(), buffer};
+      session.status     = make_status(session, saved.length());
+      session.message    = String{heap_allocator(), "wrote "};
+      session.message.append(
+          String::from(static_cast<u64>(saved.length()), heap_allocator()));
+      session.message.append(" bytes");
+      toiletline::set_saved_text(session.saved_text.c_str());
+      toiletline::set_status(session.status.c_str());
+      *out_message = session.message.c_str();
+
+      return 1;
+    }
+
+    session.message = String{heap_allocator(), "unable to write the file: "};
+    session.message.append(outcome == save_outcome::Replaced
+                               ? StringView{"another file took its place"}
+                               : os::last_system_error_message().view());
+    if (kept_backup.has_value()) {
+      session.message.append("\nthe previous contents are in '");
+      session.message.append(kept_backup->view());
+      session.message.append("'");
+    }
+  } catch (const Error &error) {
+    session.message = String{heap_allocator(), error.message().view()};
+  }
+  *out_message = session.message.c_str();
+
+  return 0;
+}
+
 } /* namespace */
 
 fn
@@ -339,7 +409,8 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         ec, cxt, location,
         StringView{"'"} + args[1] + "' is longer than " +
             String::from(SLURP_MAX_BYTE_COUNT, cxt.scratch_allocator()) +
-            " bytes");
+            " bytes",
+        "Install a normal editor");
 
     return 1;
   }
@@ -371,17 +442,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       detect_mimic_shell_from_source(contents.view()).has_value() ||
       detect_mimic_shell_from_extension(path.extension()).has_value();
 
-  usize line_count = 1;
-
-  for (usize i = 0; i < contents.length(); i++)
-    if (contents[i] == '\n') line_count++;
-
-  let const digit_count  = count_digits(line_count * 2);
-  let const number_width = digit_count > 3 ? digit_count : usize{3};
-  let const prompt       = make_first_line_prompt(number_width + 1);
-
-  /* The top row repeats the prompt and the command, and the status row
-     describes the kind of file, its line endings, and its size. */
+  /* The top row repeats the prompt and the command. */
   let const last_prompt     = toiletline::get_last_prompt();
   let const prompt_line_end = last_prompt.find_last_character('\n');
   let       title =
@@ -397,27 +458,31 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
   title.append(args[1].view());
 
-  let status =
-      String{heap_allocator(), is_shell_script ? "shell script, " : "text, "};
+  let session = slurp_session{
+      .path              = Path{path.view()},
+      .opened            = opened,
+      .has_crlf          = has_crlf,
+      .has_final_newline = has_final_newline,
+      .is_single_newline = is_single_newline,
+      .is_shell_script   = is_shell_script,
+      .saved_text        = String{heap_allocator(), contents.view()},
+      .status            = String{heap_allocator()},
+      .message           = String{heap_allocator()},
+  };
 
-  status.append(has_crlf ? "CRLF endings, " : "LF endings, ");
-  if (opened.has_value()) {
-    status.append(
-        String::from(static_cast<u64>(original_byte_count), heap_allocator()));
-    status.append(" bytes");
-  } else {
-    status.append("new file");
-  }
+  session.status = make_status(session, opened.has_value()
+                                            ? Maybe<usize>{original_byte_count}
+                                            : Maybe<usize>{None});
 
   let const was_completion_enabled = toiletline::is_completion_enabled();
   let const was_vi = cxt.runtime_state().option_is_enabled(shell_option_id::Vi);
 
   toiletline::enter_raw_mode();
   toiletline::enter_empty_history();
-  toiletline::set_line_numbers(number_width);
-  toiletline::set_save_keys(true);
+  ACTIVE_SESSION = &session;
+  toiletline::set_save_callback(save_buffer);
   toiletline::set_title(title.c_str());
-  toiletline::set_status(status.c_str());
+  toiletline::set_status(session.status.c_str());
   toiletline::set_full_screen(true);
   if (!is_shell_script && was_completion_enabled) {
     toiletline::disable_shell_completion();
@@ -430,8 +495,8 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (!is_shell_script && was_completion_enabled) {
       toiletline::enable_completion(cxt);
     }
-    toiletline::set_line_numbers(0);
-    toiletline::set_save_keys(false);
+    toiletline::set_save_callback(nullptr);
+    ACTIVE_SESSION = nullptr;
     toiletline::set_saved_text(nullptr);
     toiletline::set_full_screen(false);
     toiletline::set_title(nullptr);
@@ -461,72 +526,16 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   defer { do_leave_alternate_screen(); };
 
   toiletline::set_input(contents);
-  toiletline::set_saved_text(contents.c_str());
+  toiletline::set_saved_text(session.saved_text.c_str());
 
-  let result = toiletline::get_input(prompt);
+  let result = toiletline::get_input(String{heap_allocator()});
 
   toiletline::emit_newlines(result.text);
   do_leave_alternate_screen();
 
-  if (result.code < 0) {
-    report_soft_builtin_error(
-        ec, cxt, location,
-        StringView{"Unable to write '"} + args[1] +
-            "': the text is longer than " +
-            String::from(SLURP_MAX_BYTE_COUNT, cxt.scratch_allocator()) +
-            " bytes");
-
-    return 1;
-  }
   if (result.code == TL_PRESSED_INTERRUPT) return 130;
-  if (result.code != TL_PRESSED_WRITE_QUIT) return 0;
 
-  /* at this point: a write command asks to save the buffer. */
-  let saved = String{heap_allocator()};
-
-  for (usize i = 0; i < result.text.length(); i++) {
-    if (result.text[i] == '\n' && has_crlf) saved.push('\r');
-    saved.push(result.text[i]);
-  }
-  if (has_final_newline && (!saved.is_empty() || is_single_newline)) {
-    if (has_crlf) saved.push('\r');
-    saved.push('\n');
-  }
-
-  let       kept_backup = Maybe<Path>{None};
-  let const outcome     = save_file(path, saved.view(), opened, kept_backup);
-
-  if (outcome == save_outcome::Saved) return 0;
-
-  let const reason =
-      outcome == save_outcome::Replaced
-          ? String{heap_allocator(), "another file took its place"}
-          : os::last_system_error_message();
-
-  /* The edits of a refused or failed save go to a private file when one can
-     be made. */
-  let const kept_edits = write_backup(saved.view());
-  let       hint       = String{heap_allocator()};
-
-  if (kept_edits.has_value()) {
-    hint.append("The edits are in '");
-    hint.append(kept_edits->view());
-    hint.append("'");
-  } else {
-    hint.append("The edits could not be kept");
-  }
-  if (kept_backup.has_value()) {
-    hint.append(", and the previous contents are in '");
-    hint.append(kept_backup->view());
-    hint.append("'");
-  }
-
-  let const message =
-      StringView{"Unable to write '"} + args[1] + "': " + reason;
-
-  report_soft_builtin_error(ec, cxt, location, message, hint);
-
-  return 1;
+  return 0;
 }
 
 } /* namespace koshka */
