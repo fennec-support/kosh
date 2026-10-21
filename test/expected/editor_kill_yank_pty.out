@@ -115,6 +115,7 @@ slurp-failed-save-keeps-the-original PASS
 slurp-leaves-a-text-file-unnumbered PASS
 slurp-vi-quit-leaves-the-file PASS
 slurp-ctrl-x-s-saves PASS
+slurp-in-place-save-removes-its-backup PASS
 slurp-refuses-a-file-swapped-while-open PASS
 slurp-refuses-a-binary-file PASS
 slurp-tall-file-shows-the-rows-around-the-caret PASS

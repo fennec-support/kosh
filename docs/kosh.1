@@ -1605,7 +1605,11 @@ target. A save that cannot finish reports the error and leaves the file as it
 was. A file that another user owns, a file with more than one link, and a file
 in a directory that other users can write to without the sticky bit are
 rewritten in place instead, which keeps their owner, group, and links. Such a
-save is refused when another file has replaced the one that slurp read. A file with a NUL byte or invalid UTF\-8, a file longer than 65535
+save first copies the current contents to a private file in the home
+directory, or in the temporary directory when the home directory takes none,
+and removes the copy once the write succeeds. When the write fails, the error
+gives the path of the copy, and when no copy can be made, nothing is written.
+The save is refused when another file has replaced the one that slurp read. A file with a NUL byte or invalid UTF\-8, a file longer than 65535
 bytes, and a restricted shell are refused. A file with CRLF line endings keeps
 them, and the final newline of the file is kept.
 .TP

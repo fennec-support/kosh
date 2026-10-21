@@ -135,16 +135,38 @@ enum class save_outcome : u8
   Replaced,
 };
 
+/* Writes contents to a new private file in the home directory, or in the
+   temporary directory when the home directory takes none. */
+fn
+write_backup(StringView contents) throws -> Maybe<Path>
+{
+  if (let const home = os::get_home_directory(); home.has_value()) {
+    if (let backup =
+            os::write_to_named_temp_file(*home, ".kosh-slurp-backup", contents);
+        backup.has_value())
+    {
+      return backup;
+    }
+  }
+
+  return os::write_to_named_temp_file(Path::temp_directory(),
+                                      "kosh-slurp-backup", contents);
+}
+
 /* A file that is_replaceable_by_copy() accepts is replaced by a complete copy
    written beside it, so a failed write leaves the original in place. Any
    other file is rewritten in place, which keeps its owner, group, and links,
    but only while it is still the file that opened describes, so a file
-   swapped for another in the meantime is left alone. A file that was missing
-   when slurp read it is created only if nothing has taken its place. */
+   swapped for another in the meantime is left alone. Its current contents go
+   to a private backup first, which a successful write removes and a failed
+   one leaves in kept_backup, and without a backup nothing is written. A file
+   that was missing when slurp read it is created only if nothing has taken
+   its place. */
 fn
 save_file(const Path                   &path,
           StringView                    contents,
-          const Maybe<os::file_status> &opened) throws -> save_outcome
+          const Maybe<os::file_status> &opened,
+          Maybe<Path>                  &kept_backup) throws -> save_outcome
 {
   if (!opened.has_value()) {
     let const descriptor = os::open_file_descriptor(
@@ -186,12 +208,29 @@ save_file(const Path                   &path,
     return save_outcome::Replaced;
   }
 
+  let const original = os::read_fd_to_string(*descriptor, heap_allocator());
+  let       backup   = Maybe<Path>{None};
+
+  if (original.has_value() && os::seek_descriptor_from_start(*descriptor, 0))
+    backup = write_backup(original->view());
+  if (!backup.has_value()) {
+    unused(os::close_fd(*descriptor));
+
+    return save_outcome::Failed;
+  }
+
   let const did_write =
       os::write_all(*descriptor, contents.data, contents.length) &&
       os::truncate_descriptor(*descriptor, contents.length);
 
-  return os::close_fd(*descriptor) && did_write ? save_outcome::Saved
-                                                : save_outcome::Failed;
+  if (os::close_fd(*descriptor) && did_write) {
+    unused(os::remove_file(backup->view()));
+
+    return save_outcome::Saved;
+  }
+  kept_backup = steal(backup);
+
+  return save_outcome::Failed;
 }
 
 } /* namespace */
@@ -369,12 +408,22 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       saved.push('\n');
     }
 
-    let const outcome = save_file(path, saved.view(), opened);
+    let       kept_backup = Maybe<Path>{None};
+    let const outcome     = save_file(path, saved.view(), opened, kept_backup);
 
     if (outcome == save_outcome::Replaced) {
       report_soft_builtin_error(ec, cxt, location,
                                 StringView{"Unable to write '"} + args[1] +
                                     "': another file took its place");
+
+      return 1;
+    }
+    if (outcome == save_outcome::Failed && kept_backup.has_value()) {
+      report_soft_builtin_error(ec, cxt, location,
+                                StringView{"Unable to write '"} + args[1] +
+                                    "': " + os::last_system_error_message(),
+                                StringView{"The previous contents are in '"} +
+                                    kept_backup->view() + "'");
 
       return 1;
     }

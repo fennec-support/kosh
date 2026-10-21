@@ -27,9 +27,10 @@
 # Vi mode ignores Ctrl-X, :e opens the line in VISUAL there, and Ctrl-X
 # Ctrl-C ends the shell in emacs mode.
 # slurp numbers the lines of a script, saves it on a second Enter or on :wq,
-# leaves it on :q!, leaves a text file unnumbered, saves on Ctrl-X s, refuses
-# to write over a file that another file replaced while it was open, and
-# refuses a binary file. Ctrl-X s does nothing at the shell prompt.
+# leaves it on :q!, leaves a text file unnumbered, saves on Ctrl-X s, rewrites
+# a file in a shared directory in place and removes its backup, refuses to
+# write over a file that another file replaced while it was open, and refuses
+# a binary file. Ctrl-X s does nothing at the shell prompt.
 # A save keeps the file mode, and a save that cannot write its replacement
 # beside the file leaves the original unchanged.
 # A file taller than the terminal shows a window of rows that follows the
@@ -926,6 +927,15 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(b"slurp slurp-shared/doc.txt\r")
         session.wait_until(lambda screen: any(line.rstrip() == "doc"
                                               for line in screen.get_lines()))
+        session.send(b" kept\r")
+        report.record("slurp-in-place-save-removes-its-backup", session,
+                      lambda screen: is_line("")(screen)
+                      and read_slurped(shared) == "doc kept\n"
+                      and not any(name.startswith(".kosh-slurp-backup")
+                                  for name in os.listdir(directory)))
+
+        session.send(b"slurp slurp-shared/doc.txt\r")
+        session.wait_until(lambda screen: screen.count_lines("doc kept") == 2)
         swapped = os.path.join(shared_directory, "swapped.txt")
         with open(swapped, "w") as handle:
             handle.write("other\n")
