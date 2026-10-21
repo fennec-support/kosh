@@ -161,26 +161,31 @@ write_backup(StringView contents) throws -> Maybe<Path>
    The current contents of a file rewritten in place go
    to a private backup first, which a successful write removes and a failed
    one leaves in kept_backup, and without a backup nothing is written. A file
-   that was missing when slurp loaded it, or that is gone by the save, is
-   created only if nothing has taken its place, and removed again when the
-   write fails. */
+   that was missing when slurp loaded it is created only if nothing has taken
+   its place, and a regular file created so is removed again when the write
+   fails. */
 fn
 save_file(const Path                   &path,
           StringView                    contents,
           const Maybe<os::file_status> &opened,
           Maybe<Path>                  &kept_backup) throws -> save_outcome
 {
-  if (!opened.has_value() || !path.exists()) {
+  if (!opened.has_value()) {
     let const descriptor = os::open_file_descriptor(
         path.view(), os::file_open_mode::TruncateNoClobber);
 
     if (!descriptor.has_value()) return save_outcome::Failed;
 
+    /* The exclusive open created a regular file. Any other kind of file was
+       already there and is not removed. */
+    let       created    = os::file_status{};
+    let const is_created = os::stat_descriptor(*descriptor, created) &&
+                           (created.mode & 0170000u) == 0100000u;
     let const did_write =
         os::write_all(*descriptor, contents.data, contents.length);
 
     if (os::close_fd(*descriptor) && did_write) return save_outcome::Saved;
-    unused(os::remove_file(path.view()));
+    if (is_created) unused(os::remove_file(path.view()));
 
     return save_outcome::Failed;
   }
@@ -498,31 +503,40 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let       kept_backup = Maybe<Path>{None};
   let const outcome     = save_file(path, saved.view(), opened, kept_backup);
 
-  if (outcome == save_outcome::Replaced) {
-    report_soft_builtin_error(ec, cxt, location,
-                              StringView{"Unable to write '"} + args[1] +
-                                  "': another file took its place");
+  if (outcome == save_outcome::Saved) return 0;
 
-    return 1;
+  let const reason =
+      outcome == save_outcome::Replaced
+          ? String{heap_allocator(), "another file took its place"}
+          : os::last_system_error_message();
+
+  /* The edits go to a private file, so a refused or failed save loses none of
+     them. */
+  let const kept_edits = write_backup(saved.view());
+  let       hint       = String{heap_allocator()};
+
+  if (kept_edits.has_value()) {
+    hint.append("The edits are in '");
+    hint.append(kept_edits->view());
+    hint.append("'");
   }
-  if (outcome == save_outcome::Failed && kept_backup.has_value()) {
-    report_soft_builtin_error(ec, cxt, location,
-                              StringView{"Unable to write '"} + args[1] +
-                                  "': " + os::last_system_error_message(),
-                              StringView{"The previous contents are in '"} +
-                                  kept_backup->view() + "'");
-
-    return 1;
-  }
-  if (outcome == save_outcome::Failed) {
-    report_soft_builtin_error(ec, cxt, location,
-                              StringView{"Unable to write '"} + args[1] +
-                                  "': " + os::last_system_error_message());
-
-    return 1;
+  if (kept_backup.has_value()) {
+    hint.append(hint.is_empty() ? "The previous contents are in '"
+                                : ", and the previous contents are in '");
+    hint.append(kept_backup->view());
+    hint.append("'");
   }
 
-  return 0;
+  let const message =
+      StringView{"Unable to write '"} + args[1] + "': " + reason;
+
+  if (hint.is_empty()) {
+    report_soft_builtin_error(ec, cxt, location, message);
+  } else {
+    report_soft_builtin_error(ec, cxt, location, message, hint);
+  }
+
+  return 1;
 }
 
 } /* namespace koshka */

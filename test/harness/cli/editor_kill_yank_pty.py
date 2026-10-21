@@ -989,6 +989,8 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("slurp-ctrl-x-ctrl-c-leaves-an-unedited-file", session,
                       is_line(""))
 
+        backups = {name for name in os.listdir(directory)
+                   if name.startswith(".kosh-slurp-backup")}
         session.send(b"slurp slurp-shared/doc.txt\r")
         session.wait_until(lambda screen: any(line.rstrip() == "doc"
                                               for line in screen.get_lines()))
@@ -996,8 +998,9 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("slurp-in-place-save-removes-its-backup", session,
                       lambda screen: is_line("")(screen)
                       and read_slurped(shared) == "doc kept\n"
-                      and not any(name.startswith(".kosh-slurp-backup")
-                                  for name in os.listdir(directory)))
+                      and {name for name in os.listdir(directory)
+                           if name.startswith(".kosh-slurp-backup")}
+                      == backups)
 
         session.send(b"slurp slurp-shared/doc.txt\r")
         session.wait_until(lambda screen: screen.count_lines("doc kept") == 2)
@@ -1036,9 +1039,10 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(has_text("line 1 of 1"))
         os.unlink(gone)
         session.send(b" again\r\r")
-        report.record("slurp-recreates-a-file-deleted-while-open", session,
-                      lambda screen: is_line("")(screen)
-                      and read_bytes(gone) == b"kept again\n")
+        report.record("slurp-keeps-the-edits-of-a-refused-save", session,
+                      lambda screen: has_text("The edits are in")(screen)
+                      and is_line("")(screen)
+                      and not os.path.exists(gone))
 
         mixed = os.path.join(directory, "slurp-mixed.txt")
         with open(mixed, "wb") as handle:

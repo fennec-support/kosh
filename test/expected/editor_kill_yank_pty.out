@@ -126,7 +126,7 @@ slurp-ctrl-x-ctrl-c-leaves-an-unedited-file PASS
 slurp-in-place-save-removes-its-backup PASS
 slurp-refuses-a-file-swapped-while-open PASS
 slurp-copy-save-refuses-a-swapped-file PASS
-slurp-recreates-a-file-deleted-while-open PASS
+slurp-keeps-the-edits-of-a-refused-save PASS
 slurp-keeps-mixed-line-endings PASS
 slurp-keeps-a-lone-newline PASS
 slurp-tab-inserts-a-tab-in-a-text-file PASS
