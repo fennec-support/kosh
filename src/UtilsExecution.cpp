@@ -860,7 +860,7 @@ quit(i32 code, farewell_policy farewell) throws -> void
       try {
         let const history_size_limit =
             QUIT_CONTEXT != nullptr
-                ? QUIT_CONTEXT->variable_store().get_variable_count(
+                ? QUIT_CONTEXT->variable_store().history_limit(
                       "KOSH_HISTORY_SIZE", 4096)
                 : 4096;
 

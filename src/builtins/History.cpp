@@ -436,7 +436,7 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
   toiletline::set_history_limit(
-      cxt.variable_store().get_variable_count("KOSH_HISTORY_SIZE", 4096));
+      cxt.variable_store().history_limit("KOSH_HISTORY_SIZE", 4096));
 
   let did_maintain_list = false;
 

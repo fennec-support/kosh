@@ -96,13 +96,17 @@ rc=0
        |                                        ^~~~~~~~~
 rc=1
 0
--c:15:32: error: Builtin `koshconf`: Invalid value '12x' for 'editor.wrap_width', expected a decimal integer from 0 to 2147483647.
+-c:15:32: error: Builtin `koshconf`: Invalid value '12x' for 'editor.wrap_width', expected a decimal integer from 0 to 65535.
     15 |  koshconf set editor.wrap_width 12x
        |                                 ^~~
 rc=1
+-c:17:32: error: Builtin `koshconf`: Invalid value '65536' for 'editor.wrap_width', expected a decimal integer from 0 to 65535.
+    17 |  koshconf set editor.wrap_width 65536
+       |                                 ^~~~~
+rc=1
 80
 72
-KOSH_WRAP_WIDTH=72
+72
 == list escapes a value the file cannot hold:
 editor.history.file_path=$'a\nb\x01"\''
 rc=0
@@ -195,10 +199,11 @@ warning: Skipping an invalid value of 'editor.history.max_entries' in KOSHCONF.
 on
 4096
 == KOSHCONF carries the mood and interactive options to another shell:
-AQECAgEBAwEBBAEBBQEABwEBCAEBCgI3NwsBAQwBAA0BARgBARkBARoBAUEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQGwAQEBsQEBAbIBAQCzAQI4MA==
+AQECAgEBAwEBBAEBBQEABwEBCAEBCgI3NwsBAQwBAA0BARgBARkBARoBAUEBAFUBAFcBAIABAQGDAQEAhQEBAIYBAQGHAQEBiAEBAIkBAQCRAQEBlQEBAJYBAQCXAQEAmAEBAZkBAQCbAQEBoAEBAKEBAQCmAQEBpwEBAKgBAQGwAQEBsQEBAbIBAQCzAQI2NA==
 bash
 external
 77
+64
 off
 external
 == KOSHCONF is never exported and a subshell sees the same value:

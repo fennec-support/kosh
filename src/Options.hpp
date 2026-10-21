@@ -48,6 +48,7 @@ enum class option_storage : u8
   Analysis,
   SourceTraces,
   InitMoods,
+  WrapWidth,
   Login,
   RestrictedShell,
   Variable,

@@ -123,10 +123,12 @@ koshconf set editor.history.max_entries 0
 koshconf get editor.history.max_entries
 koshconf set editor.wrap_width 12x
 echo "rc=$?"
+koshconf set editor.wrap_width 65536
+echo "rc=$?"
 koshconf get editor.wrap_width
 koshconf set editor.wrap_width 72
 koshconf get editor.wrap_width
-echo "KOSH_WRAP_WIDTH=$KOSH_WRAP_WIDTH"'
+(koshconf get editor.wrap_width) & wait "$!"'
 echo "== list escapes a value the file cannot hold:"
 KOSH_HISTORY_FILE=$'a\nb\x01"\'' "$BIN" -c 'koshconf list |
   grep "^editor.history.file_path="
@@ -190,12 +192,14 @@ echo "== KOSHCONF carries the mood and interactive options to another shell:"
 encoded=$("$BIN" -c 'koshconf set mood bash
 koshconf set completion.menu_style external
 koshconf set editor.history.max_entries 77
+koshconf set editor.wrap_width 64
 koshconf set posix.interpreter.exit_on_command_failure on
 printf %s "$KOSHCONF"')
 printf '%s\n' "$encoded"
 KOSHCONF=$encoded "$BIN" -c 'koshconf get mood
 koshconf get completion.menu_style
 koshconf get editor.history.max_entries
+koshconf get editor.wrap_width
 koshconf get posix.interpreter.exit_on_command_failure'
 "$BIN" -c "koshconf load '$encoded'; koshconf get completion.menu_style"
 echo "== KOSHCONF is never exported and a subshell sees the same value:"

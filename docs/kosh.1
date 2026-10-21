@@ -934,9 +934,9 @@ assoc_expand_once.
 The mood option takes one of kosh, sh, bash, and bash-posix.
 completion.menu_style takes one of interactive, external, and plain.
 optimizer.warning_level takes one of 0, 1, 2, and 3. editor.base_mode takes
-emacs or vi. editor.history.file_path, editor.history.max_entries, and
-editor.wrap_width are the KOSH_HISTORY_FILE, KOSH_HISTORY_SIZE, and
-KOSH_WRAP_WIDTH variables. init_moods is a
+emacs or vi. editor.history.file_path and editor.history.max_entries are the
+KOSH_HISTORY_FILE and KOSH_HISTORY_SIZE variables. editor.wrap_width is a
+decimal integer from 0 to 65535, 80 by default. init_moods is a
 comma-separated list of the moods accepted by
 .BR \-L ,
 empty by default. It applies only to an interactive or login shell at startup
@@ -1086,10 +1086,9 @@ or the invocation name rbash ignores and removes
 .B KOSHCONF
 with a warning. The configuration files apply only presentation and diagnostic
 options. When a file sets the mood, a semantic option,
-editor.history.file_path, editor.history.max_entries, or editor.wrap_width, the
-shell warns and ignores it. A child shell inherits the restrictions, and a
-sourced script retains them. A shell script found through PATH and executed as
-a command runs
+editor.history.file_path, or editor.history.max_entries, the shell warns and
+ignores it. A child shell inherits the restrictions, and a sourced script
+retains them. A shell script found through PATH and executed as a command runs
 without them.
 .SH SHELL GRAMMAR
 The shell accepts the POSIX Shell Command Language and the Bash extensions
@@ -1570,9 +1569,9 @@ and allows a plain
 .BR save .
 .IP
 A boolean is written as on or off and also accepted as true, false, 1, or 0.
-editor.history.max_entries and editor.wrap_width are decimal integers from 0
-to 2147483647. An unknown option or value, or a file that cannot be read or
-written, is an error
+editor.history.max_entries is a decimal integer from 0 to 2147483647, and
+editor.wrap_width one from 0 to 65535. An unknown option or value, or a file
+that cannot be read or written, is an error
 with status 1, and a malformed form exits with status 2. An interactive shell
 reports on standard error the file written by
 .BR create ,
@@ -3315,10 +3314,10 @@ Delete, change, or yank over the next motion. Doubling the key, or j, k, Up,
 or Down, acts on whole lines.
 .TP
 .B gq
-Wrap the lines that the next motion touches at the column that KOSH_WRAP_WIDTH
-sets, 80 by default. Blank lines separate the paragraphs, and every line of a
-paragraph starts with the indentation of its first line. A word wider than the
-width keeps a line of its own.
+Wrap the lines that the next motion touches at the column that
+editor.wrap_width sets, 80 by default. Blank lines separate the paragraphs, and
+every line of a paragraph starts with the indentation of its first line. A word
+wider than the width keeps a line of its own.
 .B gqq
 wraps the current line.
 .TP
@@ -3586,7 +3585,7 @@ do.
 .TP
 .B fill\-paragraph
 Wrap the lines of the paragraph that holds the cursor, up to a blank line or
-the start or the end of the buffer, at the KOSH_WRAP_WIDTH column as
+the start or the end of the buffer, at the editor.wrap_width column as
 .B gq
 does in vi mode.
 .TP
@@ -3913,12 +3912,6 @@ The value limits the number of history events retained for recall, listing, and
 storage. The default is 4096, and zero disables retention and storage. A value
 inherited from the environment overrides editor.history.max_entries in the
 settings files, and it is exported only when inherited or exported explicitly.
-.TP
-.B KOSH_WRAP_WIDTH
-The value is the column at which vi
-.B gq
-and M\-x fill\-paragraph wrap lines. The default is 80. A value inherited from
-the environment overrides editor.wrap_width in the settings files.
 .TP
 .B KOSH_SHELL_INTEGRATION
 An interactive shell on a terminal marks each prompt, command, exit status, and

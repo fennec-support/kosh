@@ -105,9 +105,9 @@ the blanks at the end of the line. A value cannot span lines.
 .PP
 A boolean is written as on or off and is also accepted as true, false, 1, or
 0. An enumeration is written by its value. A string must be valid UTF-8
-without a NUL byte. editor.history.max_entries and editor.wrap_width are
-decimal integers from 0 to 2147483647. init_moods is a comma-separated list of
-moods accepted by
+without a NUL byte. editor.history.max_entries is a decimal integer from 0 to
+2147483647, and editor.wrap_width one from 0 to 65535. init_moods is a
+comma-separated list of moods accepted by
 .BR \-L ,
 such as kosh, sh, bash, and bash-posix.
 .B koshconf
@@ -146,10 +146,9 @@ line, such as
 .BR "\-u" ", " "\-e" ", " "\-o pipefail" ", or " "\-L" ,
 keeps the command-line value, so
 .B kosh +e script
-runs without errexit whatever a file says. Likewise, a KOSH_HISTORY_FILE,
-KOSH_HISTORY_SIZE, or KOSH_WRAP_WIDTH variable inherited from the environment
-keeps its value over editor.history.file_path, editor.history.max_entries, or
-editor.wrap_width. A later line
+runs without errexit whatever a file says. Likewise, a KOSH_HISTORY_FILE
+or KOSH_HISTORY_SIZE variable inherited from the environment keeps its value
+over editor.history.file_path or editor.history.max_entries. A later line
 replaces an earlier one, and the user file and KOSHCONF replace the system
 file.
 .PP

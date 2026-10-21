@@ -1215,6 +1215,7 @@ RuntimeState::append_wire(String &output) const throws -> void
     payload.push(static_cast<char>(m_reporting.warning_level));
     payload.push(static_cast<char>(m_tab_selector));
     payload.push(static_cast<char>(get_wire_flags()));
+    append_subshell_bootstrap_u64(payload, m_wrap_width);
     append_subshell_bootstrap_u64(payload, m_shell_options);
     append_subshell_bootstrap_u64(payload, m_shopt.overrides);
     append_subshell_bootstrap_u64(payload, m_shopt.values);
@@ -1850,6 +1851,7 @@ RuntimeState::from_wire(subshell_bootstrap_reader &reader,
   let const warning_level = payload.read_u8();
   let const tab_selector  = payload.read_u8();
   let const flags         = payload.read_u8();
+  let const wrap_width    = payload.read_u64();
   let const shell_options = payload.read_u64();
   let const shopt         = shopt_state{payload.read_u64(), payload.read_u64()};
 
@@ -1861,18 +1863,20 @@ RuntimeState::from_wire(subshell_bootstrap_reader &reader,
   if (!payload.is_fully_read() ||
       mood > static_cast<u8>(mimic_mood::BashPosix) || warning_level > 3 ||
       tab_selector > static_cast<u8>(tab_selector_mode::Plain) ||
-      (flags & ~ALL_FLAGS) != 0 ||
+      (flags & ~ALL_FLAGS) != 0 || wrap_width > UINT16_MAX ||
       (shell_options & ~valid_shell_options) != 0 || !shopt.is_valid())
   {
     return false;
   }
 
-  /* at this point: mood, warning_level, tab_selector, flags, shell_options,
-     and shopt are valid, and the payload has no unread bytes. */
+  /* at this point: mood, warning_level, tab_selector, flags, wrap_width,
+     shell_options, and shopt are valid, and the payload has no unread
+     bytes. */
   runtime.m_mood                    = static_cast<mimic_mood>(mood);
   runtime.m_reporting.warning_level = warning_level;
   runtime.m_tab_selector = static_cast<tab_selector_mode>(tab_selector);
   runtime.set_wire_flags(flags);
+  runtime.m_wrap_width    = static_cast<u16>(wrap_width);
   runtime.m_shell_options = shell_options;
   runtime.m_shopt         = shopt;
 

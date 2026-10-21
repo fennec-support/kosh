@@ -382,6 +382,18 @@ public:
   }
 
   fn
+  set_wrap_width(u16 column_count) wontthrow -> void
+  {
+    m_wrap_width = column_count;
+  }
+
+  pure fn
+  get_wrap_width() const wontthrow -> u16
+  {
+    return m_wrap_width;
+  }
+
+  fn
   set_warning_level(u8 level) wontthrow -> void
   {
     m_reporting.warning_level = level;
@@ -589,6 +601,7 @@ private:
   tab_selector_mode m_tab_selector{tab_selector_mode::Interactive};
   u8                m_flags{0};
   reporting_state   m_reporting{};
+  u16               m_wrap_width{80};
   u64         m_shell_options{option_mask(shell_option_id::ExtendedArithmetic) |
                       option_mask(shell_option_id::Failglob) |
                       option_mask(shell_option_id::Hashall) |
@@ -2617,7 +2630,7 @@ public:
   }
 
   fn
-  get_variable_count(StringView name, usize fallback) const wontthrow -> usize
+  history_limit(StringView name, usize fallback) const wontthrow -> usize
   {
     let const value = shell_variables().find(name);
     if (!value.has_value()) return fallback;

@@ -672,7 +672,9 @@ find_koshconf_value_problem(const option_descriptor &option,
     return message;
   };
 
-  if (option.type != option_type::String) {
+  if (option.type != option_type::String ||
+      option.storage == option_storage::WrapWidth)
+  {
     if (parse_option_number(option, value).has_value()) return None;
 
     return do_describe(describe_option_values(option).view());

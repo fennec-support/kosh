@@ -109,10 +109,9 @@ env | grep -c "^KOSH_HISTORY_" || :'
 echo "$(koshconf get editor.history.file_path) $(koshconf get editor.history.max_entries)"
 env | grep "^KOSH_HISTORY_" | sort'
 )
-echo "== an inherited KOSH_WRAP_WIDTH wins over the file:"
+echo "== a file sets editor.wrap_width:"
 printf 'editor.wrap_width=60\n' >"$conf"
 "$BIN" -c 'koshconf get editor.wrap_width'
-KOSH_WRAP_WIDTH=40 "$BIN" -c 'koshconf get editor.wrap_width'
 echo "== an inherited KOSH is replaced and no longer exported:"
 KOSH=/elsewhere KOSH_VERSION=0 "$BIN" -c '[ "$KOSH" != /elsewhere ] && echo replaced
 env | grep -c -e "^KOSH=" -e "^KOSH_VERSION=" || :

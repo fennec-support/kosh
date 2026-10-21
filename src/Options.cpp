@@ -1090,23 +1090,21 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
         177, "bash.legacy.cmdhist", INTERACTIVE, "cmdhist", true),
     ignored_shopt_flag(
         178, "bash.legacy.lithist", INTERACTIVE, "lithist", false),
-    with_default_text(
-        make_entry(179,
-                   "editor.wrap_width",
-                   option_type::String,
-                   INTERACTIVE,
-                   option_storage::Variable,
-                   NO_SHELL_OPTION,
-                   entry_shape{
-                       {},
-                       {},
-                       "KOSH_WRAP_WIDTH",
-                       "Wrap lines at this many columns in vi gq and "
-                       "M-x fill-paragraph. KOSH_WRAP_WIDTH supplies "
-                       "the value."},
-                   0,
-                   0),
-        "80"),
+    with_default_text(make_entry(179,
+                                 "editor.wrap_width",
+                                 option_type::String,
+                                 INTERACTIVE,
+                                 option_storage::WrapWidth,
+                                 NO_SHELL_OPTION,
+                                 entry_shape{
+                                     {},
+                                     {},
+                                     {},
+                                     "Wrap lines at this many columns in vi gq "
+                                     "and M-x fill-paragraph."},
+                                 0,
+                                 0),
+                      "80"),
 
     set_only(posix_flag(68,
                         "posix.interpreter.remember_command_paths",
@@ -1472,6 +1470,7 @@ read_boolean(const EvalContext       &cxt,
   case option_storage::RestrictedShell:
     return cxt.startup_store().is_restricted_shell();
   case option_storage::InitMoods:
+  case option_storage::WrapWidth:
   case option_storage::Mood:
   case option_storage::TabSelector:
   case option_storage::WarningLevel:
@@ -1578,6 +1577,7 @@ write_boolean(EvalContext             &cxt,
   case option_storage::Login:
   case option_storage::RestrictedShell:
   case option_storage::InitMoods:
+  case option_storage::WrapWidth:
   case option_storage::Mood:
   case option_storage::TabSelector:
   case option_storage::WarningLevel:
@@ -1857,6 +1857,7 @@ read_option_number(const EvalContext       &cxt,
   case option_storage::TabSelector:
     return static_cast<u32>(state.get_tab_selector());
   case option_storage::WarningLevel: return state.get_warning_level();
+  case option_storage::WrapWidth:    return state.get_wrap_width();
   case option_storage::Variable:
   case option_storage::InitMoods:    return 0;
   case option_storage::EditorMode:
@@ -1939,6 +1940,20 @@ parse_option_number(const option_descriptor &option,
     if (mood.has_value()) return Maybe<u32>{static_cast<u32>(*mood)};
   }
 
+  if (option.storage == option_storage::WrapWidth && !text.is_empty()) {
+    constexpr u32 WRAP_WIDTH_LIMIT = UINT16_MAX;
+    u32           column_count     = 0;
+
+    for (usize position = 0; position < text.count(); position++) {
+      if (text[position] < '0' || text[position] > '9') return None;
+
+      column_count = column_count * 10 + static_cast<u32>(text[position] - '0');
+      if (column_count > WRAP_WIDTH_LIMIT) return None;
+    }
+
+    return Maybe<u32>{column_count};
+  }
+
   return None;
 }
 
@@ -1950,6 +1965,9 @@ describe_option_values(const option_descriptor &option) throws -> String
   if (option.type == option_type::Boolean)
     return String{heap_allocator(),
                   "'on', 'off', 'true', 'false', '1', or '0'"};
+
+  if (option.storage == option_storage::WrapWidth)
+    return String{heap_allocator(), "a decimal integer from 0 to 65535"};
 
   let description = String{heap_allocator()};
 
@@ -2019,6 +2037,10 @@ write_option_number(EvalContext             &cxt,
   case option_storage::WarningLevel:
     cxt.runtime_control_store().note_warning_option_mutation();
     state.set_warning_level(static_cast<u8>(value));
+
+    return;
+  case option_storage::WrapWidth:
+    state.set_wrap_width(static_cast<u16>(value));
 
     return;
   case option_storage::Variable:
