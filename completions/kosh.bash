@@ -550,7 +550,7 @@ _koshkit_util_flags ()
       echo "-b -c -C -d -f -g -h -i -k -M -m -n -o -r -s -t -u -V -z --general-numeric-sort --human-numeric-sort --month-sort --version-sort --zero-terminated"
     ;;
     uniq)
-      echo "-c -d -f -s -u"
+      echo "-c -d -D -f -i -s -u -w -z --all-repeated --group --ignore-case --check-chars --zero-terminated"
     ;;
     timeout)
       echo "-s --signal -k --kill-after -p --preserve-status"

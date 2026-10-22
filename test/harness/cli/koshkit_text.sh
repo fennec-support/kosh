@@ -266,6 +266,19 @@ for uniq_args in -c -d -u -f1 '-f1 -c' -s2 '-s 2 -d' -cd -du; do
   "$BIN" -c "koshkit uniq $uniq_args uniq-input.txt"
 done
 "$BIN" -c 'koshkit uniq -d uniq-input.txt uniq-output.txt; koshkit cat uniq-output.txt'
+echo "--- uniq case, check length, all repeated, and groups ---"
+printf 'a 1\na 2\nb 3\nc 3\nc 3\nApple\napple\nAPPLE x\nfoo1\nfoo2\nfoo2\n' \
+  > uniq-groups.txt
+for uniq_args in -i -ic -iu -w1 '-w 3 -c' -D -Du '-D -w1' \
+  --all-repeated=separate --all-repeated=p --group --group=prepend \
+  --group=append '--group=both -i' '-f1 -w1 -D'; do
+  echo "uniq $uniq_args"
+  "$BIN" -c "koshkit uniq $uniq_args uniq-groups.txt"
+done
+"$BIN" -c 'koshkit uniq --group -c uniq-groups.txt 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit uniq -Dc uniq-groups.txt 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit uniq -w x uniq-groups.txt 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c "printf 'a\\0A\\0b\\nx\\0b\\ny' | koshkit uniq -zic | koshkit od -c"
 echo "--- wc characters ---"
 printf 'h\303\251llo wor\n' > wc-utf8.txt
 "$BIN" -c 'koshkit wc -m wc-utf8.txt'

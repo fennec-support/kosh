@@ -676,6 +676,178 @@ uniq -cd
       2 c 3
 uniq -du
 c 3
+--- uniq case, check length, all repeated, and groups ---
+uniq -i
+a 1
+a 2
+b 3
+c 3
+Apple
+APPLE x
+foo1
+foo2
+uniq -ic
+      1 a 1
+      1 a 2
+      1 b 3
+      2 c 3
+      2 Apple
+      1 APPLE x
+      1 foo1
+      2 foo2
+uniq -iu
+a 1
+a 2
+b 3
+APPLE x
+foo1
+uniq -w1
+a 1
+b 3
+c 3
+Apple
+apple
+APPLE x
+foo1
+uniq -w 3 -c
+      1 a 1
+      1 a 2
+      1 b 3
+      2 c 3
+      1 Apple
+      1 apple
+      1 APPLE x
+      3 foo1
+uniq -D
+c 3
+c 3
+foo2
+foo2
+uniq -Du
+c 3
+foo2
+uniq -D -w1
+a 1
+a 2
+c 3
+c 3
+foo1
+foo2
+foo2
+uniq --all-repeated=separate
+c 3
+c 3
+
+foo2
+foo2
+uniq --all-repeated=p
+
+c 3
+c 3
+
+foo2
+foo2
+uniq --group
+a 1
+
+a 2
+
+b 3
+
+c 3
+c 3
+
+Apple
+
+apple
+
+APPLE x
+
+foo1
+
+foo2
+foo2
+uniq --group=prepend
+
+a 1
+
+a 2
+
+b 3
+
+c 3
+c 3
+
+Apple
+
+apple
+
+APPLE x
+
+foo1
+
+foo2
+foo2
+uniq --group=append
+a 1
+
+a 2
+
+b 3
+
+c 3
+c 3
+
+Apple
+
+apple
+
+APPLE x
+
+foo1
+
+foo2
+foo2
+
+uniq --group=both -i
+
+a 1
+
+a 2
+
+b 3
+
+c 3
+c 3
+
+Apple
+apple
+
+APPLE x
+
+foo1
+
+foo2
+foo2
+
+uniq -f1 -w1 -D
+a 1
+a 2
+b 3
+c 3
+c 3
+Apple
+apple
+foo1
+foo2
+foo2
+status=1
+status=1
+status=1
+0000000                           2       a  \0                        
+0000020   1       b  \n   x  \0                           1       b  \n
+0000040   y  \0
+0000042
 --- wc characters ---
 10 wc-utf8.txt
  1 10 11 wc-utf8.txt

@@ -2750,7 +2750,16 @@ last set into one byte.
 Adjacent equal lines are collapsed. The \fB\-c\fR option prints run counts.
 The \fB\-d\fR and \fB\-u\fR options write only lines that have a repeat or only
 lines that have none. The \fB\-f\fR and \fB\-s\fR options ignore leading fields
-and characters when comparing lines. A second operand is the output file.
+and characters when comparing lines. The \fB\-w\fR option compares at most
+the given number of characters after them, and \fB\-i\fR compares ASCII
+letters without case. The \fB\-D\fR option writes every line of each run
+that has a repeat, and \fB\-\-all\-repeated\fR does the same with an empty
+line before each run for prepend or between runs for separate. The
+\fB\-\-group\fR option writes every line with an empty line between runs,
+before each run for prepend, after each run for append, or both, and cannot
+be combined with \fB\-c\fR, \fB\-d\fR, \fB\-D\fR, or \fB\-u\fR. The
+\fB\-z\fR option separates input and output lines with NUL. A second operand
+is the output file.
 .TP
 .B unlink
 One non-directory path is removed.
