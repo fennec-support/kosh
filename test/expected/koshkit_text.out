@@ -1255,3 +1255,7 @@ grep: grep-late-nul.dat: binary file matches
 0000011
 status=1
 always
+--- a short flag keeps an attached = and an empty value is a null byte ---
+a
+0000000   a  \0   b  \n
+b

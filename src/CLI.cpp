@@ -975,7 +975,7 @@ parse_flags(const FlagList                  &flags,
 
           let value = StringView{value_offset};
 
-          if (!value.is_empty() && value[0] == '=') {
+          if (is_long && !value.is_empty() && value[0] == '=') {
             value = value.substring(1);
           }
 
@@ -1028,19 +1028,11 @@ parse_flags(const FlagList                  &flags,
             flag->set_value_location(argument_location(
                 argv, static_cast<usize>(i), base_position, arg_locations));
           } else {
-            if (*value_offset == '=') {
+            /* a long flag takes its value after =, which may be empty, and a
+               short flag takes the rest of its argument as it is, as GNU
+               getopt does, so -d= gives the value =. */
+            if (is_long && *value_offset == '=') {
               value_offset++;
-
-              if (*value_offset == '\0') {
-                let error = ErrorWithLocation{
-                    argument_location(argv, static_cast<usize>(i),
-                                      base_position, arg_locations),
-                    "No value provided for '" + flag_name(flag, is_long) +
-                        "' flag"};
-
-                error.set_command_status(2);
-                throw error;
-              }
             } else if (is_long) {
               let error = ErrorWithLocation{
                   argument_location(argv, static_cast<usize>(i), base_position,

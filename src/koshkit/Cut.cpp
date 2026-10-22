@@ -110,14 +110,17 @@ Cut::execute(const ExecContext               &ec,
 
   char delimiter = '\t';
 
+  /* an empty delimiter is one null byte, as in GNU cut. */
   if (FLAG_CUT_DELIMITER.is_set()) {
-    if (FLAG_CUT_DELIMITER.value().length != 1) {
+    if (FLAG_CUT_DELIMITER.value().length > 1) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_CUT_DELIMITER.value_location(),
                               "The delimiter must be one byte");
 
       return 1;
     }
-    delimiter = FLAG_CUT_DELIMITER.value()[0];
+    delimiter = FLAG_CUT_DELIMITER.value().is_empty()
+                    ? '\0'
+                    : FLAG_CUT_DELIMITER.value()[0];
   }
 
   let output_delimiter =
