@@ -13,7 +13,8 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL("-b list [-n] | -c list | -f list [-d delim] [-s] [file ...]",
+KOSHKIT_UTIL_DECL("-b list [-n] | -c list | -f list [-d delim] [-s] "
+                  "[--complement] [--output-delimiter=str] [-z] [file ...]",
                   "The cut utility can select bytes, characters, or fields.");
 
 FLAG(CUT_BYTES, String, 'b', "bytes", "Select byte positions.");
@@ -26,6 +27,22 @@ FLAG(CUT_SUPPRESS,
      's',
      "only-delimited",
      "Suppress lines without a delimiter.");
+
+FLAG(CUT_COMPLEMENT,
+     Bool,
+     '\0',
+     "complement",
+     "Select the positions outside the list.");
+FLAG(CUT_OUTPUT_DELIMITER,
+     String,
+     '\0',
+     "output-delimiter",
+     "Join selected ranges or fields with this string.");
+FLAG(CUT_ZERO_TERMINATED,
+     Bool,
+     'z',
+     "zero-terminated",
+     "End input and output lines with NUL.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Cut);
 
@@ -61,8 +78,7 @@ Cut::execute(const ExecContext               &ec,
 
   let const list          = list_flag.value();
   let const list_location = list_flag.value_location();
-  let const ranges =
-      utils::parse_text_position_ranges(list, cxt.scratch_allocator());
+  let ranges = utils::parse_text_position_ranges(list, cxt.scratch_allocator());
 
   if (!ranges.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(
@@ -74,7 +90,23 @@ Cut::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let const last_selected_position = (*ranges)[ranges->count() - 1].last;
+  if (FLAG_CUT_COMPLEMENT.is_enabled()) {
+    let   gaps = ArrayList<utils::text_position_range>{cxt.scratch_allocator()};
+    usize first_unselected = 1;
+
+    /* an open-ended range wraps first_unselected to 0. */
+    for (let const range : *ranges) {
+      if (range.first > first_unselected)
+        gaps.push({first_unselected, range.first - 1});
+      first_unselected = range.last + 1;
+    }
+
+    if (first_unselected != 0) gaps.push({first_unselected, SIZE_MAX});
+    ranges = steal(gaps).make_sorted(sort_order::ascending);
+  }
+
+  let const last_selected_position =
+      ranges->is_empty() ? 0 : (*ranges)[ranges->count() - 1].last;
 
   char delimiter = '\t';
 
@@ -88,8 +120,15 @@ Cut::execute(const ExecContext               &ec,
     delimiter = FLAG_CUT_DELIMITER.value()[0];
   }
 
+  let const output_delimiter =
+      FLAG_CUT_OUTPUT_DELIMITER.is_set() ? FLAG_CUT_OUTPUT_DELIMITER.value()
+      : FLAG_CUT_FIELDS.is_set()         ? StringView{&delimiter, 1}
+                                         : StringView{};
+  let const line_delimiter =
+      FLAG_CUT_ZERO_TERMINATED.is_enabled() ? '\0' : '\n';
+
   /* at this point: exactly one of -b, -c, or -f is set, ranges holds the
-     parsed position list, and delimiter is one byte. */
+     selected positions, and delimiter is one byte. */
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
   let       output                       = String{cxt.scratch_allocator()};
@@ -104,6 +143,33 @@ Cut::execute(const ExecContext               &ec,
 
   let const do_process_line = [&](StringView line_view) throws -> void {
     if (!is_field_mode) {
+      usize range_index             = 0;
+      usize last_output_range_index = SIZE_MAX;
+
+      let const do_append_if_selected =
+          [&](usize position, StringView text) throws -> void {
+        while (range_index < ranges->count() &&
+               (*ranges)[range_index].last < position)
+        {
+          range_index++;
+        }
+
+        if (range_index == ranges->count() ||
+            position < (*ranges)[range_index].first)
+        {
+          return;
+        }
+
+        if (last_output_range_index != SIZE_MAX &&
+            last_output_range_index != range_index)
+        {
+          output += output_delimiter;
+        }
+
+        output += text;
+        last_output_range_index = range_index;
+      };
+
       if (is_byte_mode) {
         if (should_keep_characters_whole) {
           usize byte_position = 0;
@@ -111,13 +177,9 @@ Cut::execute(const ExecContext               &ec,
           while (byte_position < line_view.length) {
             let const decoded = utils::decode_utf8(line_view, byte_position, 0);
 
-            if (utils::text_position_is_selected(byte_position + decoded.length,
-                                                 *ranges))
-            {
-              output +=
-                  line_view.substring_of_length(byte_position, decoded.length);
-            }
-
+            do_append_if_selected(
+                byte_position + decoded.length,
+                line_view.substring_of_length(byte_position, decoded.length));
             byte_position += decoded.length;
           }
         } else {
@@ -127,6 +189,7 @@ Cut::execute(const ExecContext               &ec,
             let const last =
                 range.last < line_view.length ? range.last : line_view.length;
 
+            if (range.first != (*ranges)[0].first) output += output_delimiter;
             output += line_view.substring_of_length(range.first - 1,
                                                     last - range.first + 1);
           }
@@ -140,22 +203,22 @@ Cut::execute(const ExecContext               &ec,
         {
           let const decoded = utils::decode_utf8(line_view, byte_position, 0);
 
-          if (utils::text_position_is_selected(character_position, *ranges))
-            output +=
-                line_view.substring_of_length(byte_position, decoded.length);
+          do_append_if_selected(
+              character_position,
+              line_view.substring_of_length(byte_position, decoded.length));
           byte_position += decoded.length;
           character_position++;
         }
       }
 
-      output += '\n';
+      output += line_delimiter;
     } else {
       let const first_delimiter = line_view.find_character(delimiter);
 
       if (!first_delimiter.has_value()) {
         if (!should_suppress_undelimited) {
           output += line_view;
-          output += '\n';
+          output += line_delimiter;
         }
       } else {
         /* e.g. line = "a:b::c", delimiter ':', list = "2,4". first_delimiter is
@@ -177,7 +240,7 @@ Cut::execute(const ExecContext               &ec,
           }
 
           if (utils::text_position_is_selected(field_number, *ranges)) {
-            if (has_output_field) output += delimiter;
+            if (has_output_field) output += output_delimiter;
 
             output += line_view.substring_of_length(field_start,
                                                     position - field_start);
@@ -188,7 +251,7 @@ Cut::execute(const ExecContext               &ec,
           field_number++;
         }
 
-        output += '\n';
+        output += line_delimiter;
       }
     }
 
@@ -209,9 +272,9 @@ Cut::execute(const ExecContext               &ec,
 
       while (position < chunk.content.length) {
         let const delimiter_position =
-            position +
-            chunk.content.substring(position).find_character('\n').value_or(
-                chunk.content.length - position);
+            position + chunk.content.substring(position)
+                           .find_character(line_delimiter)
+                           .value_or(chunk.content.length - position);
 
         line.append(chunk.content.substring_of_length(
             position, delimiter_position - position));

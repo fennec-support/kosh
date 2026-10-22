@@ -2695,6 +2695,18 @@ File times are updated. The \fB\-a\fR, \fB\-c\fR, \fB\-m\fR, \fB\-r\fR, and
 select the modification time, specify a reference file, and set an explicit
 timestamp.
 .TP
+.B cut
+Bytes, characters, or fields are selected from each line with \fB\-b\fR,
+\fB\-c\fR, or \fB\-f\fR. The \fB\-d\fR option sets the field delimiter, and
+\fB\-s\fR skips lines without one. The
+.B \-\-complement
+option selects the positions outside the list. The
+.BI \-\-output\-delimiter= str
+option joins selected fields, and separate byte or character ranges, with
+.IR str .
+The \fB\-z\fR, \fB\-\-zero\-terminated\fR option ends input and output
+lines with a null byte.
+.TP
 .B tr
 Input bytes are translated with ranges and character classes. The \fB\-d\fR
 option deletes bytes, \fB\-c\fR and \fB\-C\fR replace the first set with every

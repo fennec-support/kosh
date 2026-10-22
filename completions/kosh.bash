@@ -399,7 +399,7 @@ _koshkit_util_flags ()
     ;;
     cut)
       echo \
-        "-b --bytes -c --characters -f --fields -d --delimiter -n --no-split -s --only-delimited"
+        "-b --bytes -c --characters -f --fields -d --delimiter -n --no-split -s --only-delimited --complement --output-delimiter -z --zero-terminated"
     ;;
     diff)
       echo "-u --unified -w --ignore-all-space -a --text -L --label --color"

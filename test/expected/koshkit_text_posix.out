@@ -9,6 +9,16 @@ abd
 é
 a
 éz
+ab:cd:fgh
+ab
+a:c:fgh
+a
+abcde
+  \n
+a--c
+xyz
+  \n
+   b  \0   d  \n   x  \0   e  \0
 a   b
 123456789
 a   b
@@ -103,8 +113,8 @@ one	 :three
 two	 :four
 one	 :two
 three	 :four
-75:3: error: Koshkit `pr`: The page width is too narrow for the columns.
-    75 |    koshkit pr -t -l 1 -18446744073709551615
+82:3: error: Koshkit `pr`: The page width is too narrow for the columns.
+    82 |    koshkit pr -t -l 1 -18446744073709551615
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use a larger width with -w or fewer columns.
 left-one      :right-one

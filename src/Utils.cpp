@@ -149,16 +149,16 @@ parse_text_position_ranges(StringView text, Allocator allocator) throws
     if (text[position] == ',') return None;
   }
 
-  /* e.g. text is "5-,1-3,2", which parses to {5, SIZE_MAX}, {1, 3}, {2, 2}.
-     sorted by first, these are {1, 3}, {2, 2}, {5, SIZE_MAX}. {2, 2} joins
-     {1, 3} because 2 <= 3 + 1, and {5, SIZE_MAX} stays because 5 > 4.
-     the merge gives {1, 3}, {5, SIZE_MAX}. */
+  /* e.g. text is "4-,1-3,2", which parses to {4, SIZE_MAX}, {1, 3}, {2, 2}.
+     sorted by first, these are {1, 3}, {2, 2}, {4, SIZE_MAX}. {2, 2} joins
+     {1, 3} because they overlap, and {4, SIZE_MAX} stays because 4 > 3.
+     the merge gives {1, 3}, {4, SIZE_MAX}. */
   let   ranges       = steal(parsed_ranges).make_sorted(sort_order::ascending);
   usize output_count = 0;
 
   for (let const range : ranges) {
     if (output_count != 0 && (ranges[output_count - 1].last == SIZE_MAX ||
-                              range.first <= ranges[output_count - 1].last + 1))
+                              range.first <= ranges[output_count - 1].last))
     {
       if (range.last > ranges[output_count - 1].last)
         ranges[output_count - 1].last = range.last;
