@@ -120,10 +120,16 @@ Cut::execute(const ExecContext               &ec,
     delimiter = FLAG_CUT_DELIMITER.value()[0];
   }
 
-  let const output_delimiter =
-      FLAG_CUT_OUTPUT_DELIMITER.is_set() ? FLAG_CUT_OUTPUT_DELIMITER.value()
-      : FLAG_CUT_FIELDS.is_set()         ? StringView{&delimiter, 1}
-                                         : StringView{};
+  let output_delimiter =
+      FLAG_CUT_FIELDS.is_set() ? StringView{&delimiter, 1} : StringView{};
+
+  if (FLAG_CUT_OUTPUT_DELIMITER.is_set()) {
+    output_delimiter = FLAG_CUT_OUTPUT_DELIMITER.value();
+
+    /* an empty output delimiter is one null byte, as in GNU cut. */
+    if (output_delimiter.is_empty()) output_delimiter = StringView{"", 1};
+  }
+
   let const line_delimiter =
       FLAG_CUT_ZERO_TERMINATED.is_enabled() ? '\0' : '\n';
 
