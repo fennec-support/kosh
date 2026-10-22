@@ -34,3 +34,12 @@ body() {
 }
 
 body 2>&1 | sed 's|/dev/fd/[0-9]*|/dev/fd/N|' | LC_ALL=C sort
+
+# The EXIT trap traces at the level of the shell that runs it, and a mapfile
+# callback one level deeper.
+(
+  set -x
+  trap 'echo exit-trap' EXIT
+  cb() { :; }
+  printf 'a\nb\n' | mapfile -t -C cb -c 1 lines
+) 2>&1 | LC_ALL=C sort

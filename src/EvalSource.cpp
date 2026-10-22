@@ -611,8 +611,17 @@ EvalContext::run_source(StringView                source,
   enter_source(call_site ? *call_site : SourceLocation{0, 0});
   defer { leave_source(); };
 
+  /* eval, a sourced file, a trap, and a mapfile callback trace one level
+     deeper, as bash does. The EXIT trap does so only in a ( ) subshell, not
+     at the top level or as the innermost command substitution. */
+  let const is_exit_trap_indented =
+      execution_store().subshell_depth() > 0 &&
+      execution_store().subshell_depth() !=
+          execution_store().substitution_subshell_depth();
   let const should_indent_xtrace =
-      should_reject_return || origin == "eval" ||
+      (should_reject_return &&
+       (origin != "the EXIT trap" || is_exit_trap_indented)) ||
+      origin == "eval" || origin == "mapfile callback" ||
       (should_consume_return && filename.has_value() && !filename->is_empty());
 
   if (should_indent_xtrace) execution_store().xtrace_indirection_depth()++;

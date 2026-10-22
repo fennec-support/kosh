@@ -532,6 +532,10 @@ EvalContext::setup_process_substitution(
   let const do_launch =
       [&]() throws -> os::process_substitution_launch {
     try {
+      /* the substitution traces one level deeper than its parent. */
+      execution_store().xtrace_indirection_depth()++;
+      defer { execution_store().xtrace_indirection_depth()--; };
+
       let const evaluator = make_child_evaluator_state(bootstrap);
 
       bootstrap.evaluation_mode = root_evaluation_mode::ContainedSubstitution;
@@ -577,6 +581,8 @@ EvalContext::setup_process_substitution(
 
     enter_subshell();
     execution_store().xtrace_indirection_depth()++;
+    execution_store().substitution_subshell_depth() =
+        execution_store().subshell_depth();
     hide_coprocess_descriptors();
     job_table_store().inherit_parent_jobs(false);
 
@@ -1036,6 +1042,8 @@ EvalContext::run_captured_substitution(
         execution_store().set_shell_is_interactive(false);
         enter_subshell();
         execution_store().xtrace_indirection_depth()++;
+        execution_store().substitution_subshell_depth() =
+            execution_store().subshell_depth();
         hide_coprocess_descriptors();
         job_table_store().inherit_parent_jobs(!runtime_state().is_posix_mode());
         if (runtime_state().get_mood() == mimic_mood::Bash &&
@@ -1178,10 +1186,15 @@ EvalContext::run_captured_substitution(
     os::descriptor saved_stdout                 = KOSH_INVALID_FD;
     let const      was_interactive = execution_store().shell_is_interactive();
 
+    let const saved_substitution_depth =
+        execution_store().substitution_subshell_depth();
+
     let const do_cleanup = [&]() wontthrow -> void {
       if (did_enter_subshell) {
         leave_subshell();
         execution_store().xtrace_indirection_depth()--;
+        execution_store().substitution_subshell_depth() =
+            saved_substitution_depth;
         did_enter_subshell = false;
       }
 
@@ -1227,6 +1240,8 @@ EvalContext::run_captured_substitution(
 
     enter_subshell();
     execution_store().xtrace_indirection_depth()++;
+    execution_store().substitution_subshell_depth() =
+        execution_store().subshell_depth();
     did_enter_subshell = true;
     hide_coprocess_descriptors();
     if (runtime_state().get_mood() == mimic_mood::Bash &&

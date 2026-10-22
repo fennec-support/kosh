@@ -1258,6 +1258,8 @@ ExecutionStore::append_wire(String &output) const throws -> void
     if (m_execution_string.has_value())
       append_subshell_bootstrap_text(payload, m_execution_string->view());
     append_subshell_bootstrap_text(payload, m_last_argument.view());
+    append_subshell_bootstrap_u32(payload,
+                                  static_cast<u32>(m_xtrace_indirection_depth));
   });
 }
 
@@ -1925,7 +1927,8 @@ ExecutionStore::from_wire(subshell_bootstrap_reader &reader,
     return false;
   if (has_execution_string)
     wire.execution_string = String{heap_allocator(), payload.read_text()};
-  wire.last_argument = String{heap_allocator(), payload.read_text()};
+  wire.last_argument            = String{heap_allocator(), payload.read_text()};
+  wire.xtrace_indirection_depth = payload.read_u32();
 
   return payload.is_fully_read();
 }

@@ -1348,8 +1348,9 @@ public:
   fn
   apply_wire(execution_wire wire) wontthrow -> void
   {
-    m_execution_string = steal(wire.execution_string);
-    m_last_argument    = steal(wire.last_argument);
+    m_execution_string         = steal(wire.execution_string);
+    m_last_argument            = steal(wire.last_argument);
+    m_xtrace_indirection_depth = wire.xtrace_indirection_depth;
   }
 
   fn
@@ -1430,6 +1431,14 @@ public:
   xtrace_indirection_depth() wontthrow -> usize &
   {
     return m_xtrace_indirection_depth;
+  }
+
+  /* the subshell depth of the innermost command or process substitution, or
+     SIZE_MAX outside one. */
+  fn
+  substitution_subshell_depth() wontthrow -> usize &
+  {
+    return m_substitution_subshell_depth;
   }
 
   fn
@@ -1624,6 +1633,7 @@ private:
   u64                 m_last_command_peak_rss_byte_count{0};
   usize               m_subshell_depth{0};
   usize               m_xtrace_indirection_depth{0};
+  usize               m_substitution_subshell_depth{SIZE_MAX};
   usize               m_condition_depth{0};
   usize               m_loop_depth{0};
   usize               m_terminal_exec_subshell_depth{0};

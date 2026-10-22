@@ -1843,8 +1843,9 @@ struct history_file_tracking
   fn
   invalidate() -> void
   {
-    has_status    = false;
-    is_rewritable = false;
+    has_status                 = false;
+    is_rewritable              = false;
+    was_write_failure_reported = false;
   }
 
   fn
