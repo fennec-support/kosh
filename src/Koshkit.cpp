@@ -292,90 +292,6 @@ print_environment(const ExecContext &ec, EvalContext &cxt) throws
   ec.print_to_stdout(output);
 }
 
-/* the status a flag error or a missing operand exits with: that of the
-   program the utility mirrors, measured with an invalid option. kosh's own
-   utilities keep 2. */
-static pure fn
-gnu_usage_status(Utility::Kind kind) wontthrow -> i32
-{
-  switch (kind) {
-  case Utility::Kind::Env:
-  case Utility::Kind::Nice:
-  case Utility::Kind::Nohup:
-  case Utility::Kind::Timeout:  return 125;
-  case Utility::Kind::Flock:
-  case Utility::Kind::Locale:   return 64;
-  case Utility::Kind::Basename:
-  case Utility::Kind::Bc:
-  case Utility::Kind::Cal:
-  case Utility::Kind::Cat:
-  case Utility::Kind::Chgrp:
-  case Utility::Kind::Chmod:
-  case Utility::Kind::Chown:
-  case Utility::Kind::Cksum:
-  case Utility::Kind::Comm:
-  case Utility::Kind::Cp:
-  case Utility::Kind::Csplit:
-  case Utility::Kind::Cut:
-  case Utility::Kind::Date:
-  case Utility::Kind::Df:
-  case Utility::Kind::Dirname:
-  case Utility::Kind::Du:
-  case Utility::Kind::Expand:
-  case Utility::Kind::File:
-  case Utility::Kind::Find:
-  case Utility::Kind::Fold:
-  case Utility::Kind::Fuser:
-  case Utility::Kind::Head:
-  case Utility::Kind::Id:
-  case Utility::Kind::Killall:
-  case Utility::Kind::Link:
-  case Utility::Kind::Ln:
-  case Utility::Kind::Logger:
-  case Utility::Kind::Logname:
-  case Utility::Kind::Mkdir:
-  case Utility::Kind::Mkfifo:
-  case Utility::Kind::Mknod:
-  case Utility::Kind::More:
-  case Utility::Kind::Mv:
-  case Utility::Kind::Nl:
-  case Utility::Kind::Nproc:
-  case Utility::Kind::Od:
-  case Utility::Kind::Paste:
-  case Utility::Kind::Pathchk:
-  case Utility::Kind::Pr:
-  case Utility::Kind::Readlink:
-  case Utility::Kind::Realpath:
-  case Utility::Kind::Renice:
-  case Utility::Kind::Rm:
-  case Utility::Kind::Rmdir:
-  case Utility::Kind::Sed:
-  case Utility::Kind::Seq:
-  case Utility::Kind::Sleep:
-  case Utility::Kind::Split:
-  case Utility::Kind::Stat:
-  case Utility::Kind::Strings:
-  case Utility::Kind::Stty:
-  case Utility::Kind::Sync:
-  case Utility::Kind::Tabs:
-  case Utility::Kind::Tail:
-  case Utility::Kind::Tee:
-  case Utility::Kind::Touch:
-  case Utility::Kind::Tr:
-  case Utility::Kind::Tsort:
-  case Utility::Kind::Uname:
-  case Utility::Kind::Unexpand:
-  case Utility::Kind::Uniq:
-  case Utility::Kind::Unlink:
-  case Utility::Kind::Wc:
-  case Utility::Kind::Who:
-  case Utility::Kind::WhoAmI:
-  case Utility::Kind::Xargs:
-  case Utility::Kind::Yes:      return 1;
-  default:                      return 2;
-  }
-}
-
 fn
 run_util(Utility::Kind                    chosen,
          const ExecContext               &ec,
@@ -385,9 +301,6 @@ run_util(Utility::Kind                    chosen,
 {
   LOG(Debug, "dispatching koshkit utility %d with %zu arguments", ENUM(chosen),
       args.count());
-
-  let const previous_status = set_flag_usage_status(gnu_usage_status(chosen));
-  defer { unused(set_flag_usage_status(previous_status)); };
 
   switch (chosen) {
     UTILITY_SWITCH_CASES();

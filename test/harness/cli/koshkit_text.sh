@@ -569,21 +569,9 @@ printf 'q\0abc\n' | "$BIN" -c 'koshkit grep abc'
 "$BIN" -c 'koshkit grep abc grep-late-nul.dat'
 "$BIN" -c 'koshkit grep -a abc grep-binary.dat' | od -c | sed -n 1,2p
 
-echo "--- an optional flag value is taken only when attached ---"
-printf 'abcdefgh\n' > od-width.txt
-"$BIN" -c 'koshkit od -w4 od-width.txt'
-"$BIN" -c 'koshkit od -w 4 od-width.txt 2>/dev/null; printf "status=%s\n" "$?"'
-printf 'always\nx\n' > always
-"$BIN" -c 'koshkit grep --color always always'
-
 echo "--- seq counts long integers exactly ---"
 "$BIN" -c 'koshkit seq 99999999999999999999 100000000000000000001'
 "$BIN" -c 'koshkit seq 18446744073709551615 18446744073709551617'
-
-echo "--- uniq group methods are taken only when attached ---"
-printf 'x\nx\ny\n' > a
-"$BIN" -c 'koshkit uniq --group a'
-"$BIN" -c 'koshkit uniq --all-repeated a'
 
 echo "--- comm reports one disorder for a paired line ---"
 printf 'b\na\n' > disorder

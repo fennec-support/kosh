@@ -1293,19 +1293,6 @@ abc tail
 grep: grep-late-nul.dat: binary file matches
 0000000   a   b   c  \0   d   e   f  \n   x   y   z       a   b   c  \n
 0000020
---- an optional flag value is taken only when attached ---
-0000000 061141 062143
-0000004 063145 064147
-0000010 000012
-0000011
-0000000 061141 062143 063145 064147 000012
-0000011
-status=1
-always
---- a short flag keeps an attached = and an empty value is a null byte ---
-a
-0000000   a  \0   b  \n
-b
 --- seq counts long integers exactly ---
 99999999999999999999
 100000000000000000000
@@ -1313,13 +1300,6 @@ b
 18446744073709551615
 18446744073709551616
 18446744073709551617
---- uniq group methods are taken only when attached ---
-x
-x
-
-y
-x
-x
 --- comm reports one disorder for a paired line ---
 		b
 status=1

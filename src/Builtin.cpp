@@ -226,11 +226,6 @@ execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
 
   defer { ec.close_fds(); };
 
-  /* a builtin that a koshkit utility runs, as env does, reports its usage
-     errors with the builtin status 2, and a koshkit utility sets its own. */
-  let const previous_usage_status = set_flag_usage_status(2);
-  defer { unused(set_flag_usage_status(previous_usage_status)); };
-
   let saved_descriptors = ArrayList<os::saved_descriptor>{heap_allocator()};
 
   if (ec.in_fd.has_value() || ec.out_fd.has_value() || ec.err_fd.has_value() ||
@@ -473,7 +468,7 @@ show_usage_error(EvalContext   &cxt,
   }
                    .to_string());
 
-  return get_flag_usage_status();
+  return 2;
 }
 
 fn

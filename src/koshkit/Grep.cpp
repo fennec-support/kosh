@@ -76,14 +76,13 @@ FLAG(GREP_LINE_NUMBER,
      "Prefix matching lines with numbers.");
 FLAG(
     GREP_NO_FILENAME, Bool, 'h', "no-filename", "Suppress file-name prefixes.");
-FLAG_OPTIONAL_ATTACHED(
-    GREP_COLOR,
-    '\0',
-    "color",
-    "Color matches, filenames, numbers, and separators; the default "
-    "is auto.",
-    koshka::koshkit::is_koshkit_color_when,
-    "auto|always|never");
+FLAG_OPTIONAL(GREP_COLOR,
+              '\0',
+              "color",
+              "Color matches, filenames, numbers, and separators; the default "
+              "is auto.",
+              koshka::koshkit::is_koshkit_color_when,
+              "auto|always|never");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Grep);
 
@@ -121,8 +120,8 @@ static constexpr StaticStringMap GREP_REPEATED_CLASSES{
 
 constexpr usize GREP_UNKNOWN_BATCH_COUNT = 512;
 constexpr usize GREP_READ_BYTE_COUNT     = 256 * 1024;
-/* GNU grep reads a file in buffers of this size, and the lines of the
-   buffers before the one with the first NUL byte print as text. */
+/* a file is read in blocks of this size, and the lines of the blocks before
+   the one with the first NUL byte print as text. */
 constexpr usize GREP_BINARY_BUFFER_BYTE_COUNT = 96 * 1024;
 
 static pure fn

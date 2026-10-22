@@ -531,26 +531,6 @@ find_flag(const FlagList &flags,
            caller.
    time:   O(args.count()) to collect the argument pointers, then one
            parse_flags() call. */
-/* the status of a flag error, 2 unless a utility mirrors a program whose
-   usage errors exit with another status. */
-static i32 FLAG_USAGE_STATUS = 2;
-
-fn
-get_flag_usage_status() wontthrow -> i32
-{
-  return FLAG_USAGE_STATUS;
-}
-
-fn
-set_flag_usage_status(i32 status) wontthrow -> i32
-{
-  let const previous = FLAG_USAGE_STATUS;
-
-  FLAG_USAGE_STATUS = status;
-
-  return previous;
-}
-
 fn
 parse_flags_vec(const FlagList                  &flags,
                 const ArrayList<String>         &args,
@@ -831,7 +811,7 @@ parse_flags(const FlagList                  &flags,
                                                   base_position, arg_locations),
                                 prefixed_message(program_name, message.view())};
 
-          error.set_command_status(FLAG_USAGE_STATUS);
+          error.set_command_status(2);
           throw error;
         }
 
@@ -949,7 +929,7 @@ parse_flags(const FlagList                  &flags,
                                                    flag_name(flag, is_long) +
                                                    "' does not take a value")};
 
-            error.set_command_status(FLAG_USAGE_STATUS);
+            error.set_command_status(2);
             throw error;
           }
 
@@ -1019,7 +999,7 @@ parse_flags(const FlagList                  &flags,
                     "Invalid value '" + String{heap_allocator(), value} +
                         "' for '" + flag_name(flag, is_long) + "'")};
 
-            error.set_command_status(FLAG_USAGE_STATUS);
+            error.set_command_status(2);
             throw error;
           } else if (!value.is_empty()) {
             ++flag_offset;
@@ -1071,7 +1051,7 @@ parse_flags(const FlagList                  &flags,
                   "value. Try using '" +
                       flag_name(flag, is_long) + "=" + value_offset + "'"};
 
-              error.set_command_status(FLAG_USAGE_STATUS);
+              error.set_command_status(2);
               throw error;
             }
 
@@ -1106,7 +1086,7 @@ parse_flags(const FlagList                  &flags,
           let error = Error{prefixed_message(
               program_name, "Missing space between '-' and other options")};
 
-          error.set_command_status(FLAG_USAGE_STATUS);
+          error.set_command_status(2);
           throw error;
         } else {
           let error_message = String{heap_allocator()};
@@ -1150,7 +1130,7 @@ parse_flags(const FlagList                  &flags,
               argument_location(argv, arg_index, base_position, arg_locations),
               prefixed_message(program_name, error_message), details};
 
-          error.set_command_status(FLAG_USAGE_STATUS);
+          error.set_command_status(2);
           throw error;
         }
       }
@@ -1171,7 +1151,7 @@ parse_flags(const FlagList                  &flags,
         prefixed_message(program_name,
                          "No value provided for '" + name + "' flag")};
 
-    error.set_command_status(FLAG_USAGE_STATUS);
+    error.set_command_status(2);
     throw error;
   }
 

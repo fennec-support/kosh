@@ -42,13 +42,12 @@ is_od_width(koshka::StringView value) wontthrow -> bool
          (value[0] == '+' || (value[0] >= '0' && value[0] <= '9'));
 }
 
-FLAG_OPTIONAL_ATTACHED(
-    OD_WIDTH,
-    'w',
-    "width",
-    "Write this many bytes per output line. The default is 32.",
-    is_od_width,
-    "count");
+FLAG_OPTIONAL(OD_WIDTH,
+              'w',
+              "width",
+              "Write this many bytes per output line. The default is 32.",
+              is_od_width,
+              "count");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Od);
 

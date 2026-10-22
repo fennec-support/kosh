@@ -52,8 +52,8 @@
                           acceptor, value_name)                                \
   T__FLAG_OPTIONAL7(var_name, short_name, long_name, NoSection, description,   \
                     acceptor, value_name)
-/* an optional value that only an attached form gives, -wN or --width=N, as
-   GNU getopt reads it; the next argument stays an operand. */
+/* an optional value that only an attached form gives, -iR or --replace=R;
+   the next argument stays an operand. */
 #define FLAG_OPTIONAL_ATTACHED(var_name, short_name, long_name, description,   \
                                acceptor, value_name)                           \
   static koshka::FlagOptionalValue concat_literal(FLAG_, var_name)             \
@@ -463,13 +463,6 @@ struct util_operands_result
   ArrayList<String>         operands;
   ArrayList<SourceLocation> operand_locations;
 };
-
-/* sets the status of a flag or operand count error and returns the previous
-   one. */
-fn
-set_flag_usage_status(i32 status) wontthrow -> i32;
-fn
-get_flag_usage_status() wontthrow -> i32;
 
 fn
 parse_util_operands(const FlagList                  &flags,

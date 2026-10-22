@@ -5,7 +5,7 @@ dangling=missing-target
 chain=readlink-link
 nonlink=1
 missing=1
-no-operand=1
+no-operand=2
 several=[relative-target
 readlink-link
 ]
