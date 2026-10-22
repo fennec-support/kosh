@@ -2421,6 +2421,15 @@ printed. The \fB\-i\fR option starts with an empty environment, and each
 .BR PATH ,
 or through /usr/bin:/bin when it has none.
 .TP
+.BR expand ", " unexpand
+Tabs are converted to spaces, or runs of blanks to tabs. The \fB\-t\fR option
+takes ascending tab stops separated by commas or blanks. A single value sets a
+tab every that many columns. A last value written /N adds a stop at every
+multiple of N after the last explicit stop, and +N adds a stop every N columns
+after it. Without \fB\-t\fR, a tab stop falls every eight columns. The
+\fB\-a\fR option of unexpand converts blanks after the first nonblank
+character, and \fB\-t\fR implies it.
+.TP
 .B xargs
 Arguments read from standard input are appended to a command. The \fB\-0\fR
 option splits the input on null bytes, \fB\-r\fR skips the command when the

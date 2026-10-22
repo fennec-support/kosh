@@ -331,7 +331,7 @@ note: Use a decimal integer from 0 through 18446744073709551614.
 -c:1:21: error: Koshkit `unexpand`: Invalid tab list.
      1 |  koshkit unexpand -t 8,4
        |                      ^~~
-note: Use increasing positive columns separated by commas or blanks.
+note: Use increasing positive columns separated by commas or blanks, and optionally /N or +N as the last value.
 === date operand location ===
 -c:1:14: error: Koshkit `date`: Setting the system clock is unsupported.
      1 |  koshkit date 2026
@@ -628,7 +628,7 @@ note: Positions start at 1 and use N, N-M, -M, or N- separated by commas or blan
 -c:1:19: error: Koshkit `expand`: Invalid tab list.
      1 |  koshkit expand -t 8,4
        |                    ^~~
-note: Use increasing positive columns separated by commas or blanks.
+note: Use increasing positive columns separated by commas or blanks, and optionally /N or +N as the last value.
 === fold width location ===
 -c:1:17: error: Koshkit `fold`: Invalid width '0'.
      1 |  koshkit fold -w 0

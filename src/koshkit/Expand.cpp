@@ -40,7 +40,8 @@ Expand::execute(const ExecContext               &ec,
              output can hold one line past that length.
      time:   O(b + k * t) for b input bytes, k tabs, and t tab stops, from the
              scan in get_next_tab_column() for each tab. */
-  let tab_stops = ArrayList<usize>{cxt.scratch_allocator()};
+  let tab_stops =
+      utils::tab_stop_list{ArrayList<usize>{cxt.scratch_allocator()}};
 
   if (FLAG_EXPAND_TABS.is_set()) {
     let const parsed = utils::parse_tab_stop_list(FLAG_EXPAND_TABS.value(),
@@ -49,7 +50,8 @@ Expand::execute(const ExecContext               &ec,
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_EXPAND_TABS.value_location(), "Invalid tab list",
-          "Use increasing positive columns separated by commas or blanks");
+          "Use increasing positive columns separated by commas or blanks, "
+          "and optionally /N or +N as the last value");
 
       return 1;
     }

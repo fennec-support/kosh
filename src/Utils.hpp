@@ -270,11 +270,20 @@ text_position_is_selected(
                           order_comparator<text_position_range>>
         &ranges) wontthrow -> bool;
 
+/* extend_width places stops at its multiples past the last explicit stop, and
+   increment_width places them at that distance from the last explicit stop. */
+struct tab_stop_list
+{
+  ArrayList<usize> stops;
+  usize            extend_width{0};
+  usize            increment_width{0};
+};
+
 fn
 parse_tab_stop_list(StringView text, Allocator allocator) throws
-    -> Maybe<ArrayList<usize>>;
+    -> Maybe<tab_stop_list>;
 pure fn
-get_next_tab_column(usize column, const ArrayList<usize> &tab_stops) wontthrow
+get_next_tab_column(usize column, const tab_stop_list &tab_stops) wontthrow
     -> usize;
 
 pure alwaysinline fn

@@ -22,11 +22,11 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Unexpand);
 namespace koshka::koshkit {
 
 static fn
-append_unexpanded_blanks(String                 &output,
-                         usize                   start_column,
-                         usize                   end_column,
-                         bool                    has_input_tab,
-                         const ArrayList<usize> &tab_stops) throws
+append_unexpanded_blanks(String                     &output,
+                         usize                       start_column,
+                         usize                       end_column,
+                         bool                        has_input_tab,
+                         const utils::tab_stop_list &tab_stops) throws
     -> void
 {
   /* e.g. start_column = 3, end_column = 10, and tab_stops is empty
@@ -59,7 +59,8 @@ Unexpand::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let tab_stops = ArrayList<usize>{cxt.scratch_allocator()};
+  let tab_stops =
+      utils::tab_stop_list{ArrayList<usize>{cxt.scratch_allocator()}};
 
   if (FLAG_UNEXPAND_TABS.is_set()) {
     let const parsed = utils::parse_tab_stop_list(FLAG_UNEXPAND_TABS.value(),
@@ -68,7 +69,8 @@ Unexpand::execute(const ExecContext               &ec,
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_UNEXPAND_TABS.value_location(), "Invalid tab list",
-          "Use increasing positive columns separated by commas or blanks");
+          "Use increasing positive columns separated by commas or blanks, "
+          "and optionally /N or +N as the last value");
 
       return 1;
     }

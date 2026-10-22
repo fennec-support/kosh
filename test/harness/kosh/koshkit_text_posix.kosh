@@ -239,4 +239,19 @@ printf 'x\n\\:\ny\n' | koshkit nl -d '' -ba
 printf 'a\n\n\n\nb\n' | koshkit nl -l2 -bp'^$'
 printf 'a\nb\nc\n' | koshkit nl -v 9223372036854775806 2>/dev/null; echo "status=$?"
 
+echo "--- tab list forms"
+printf '                                        x\n  a       b               c\n' > tabrun
+printf 'a\tb\tc\td\te\n' > tabbed
+koshkit unexpand -t 2,/8 tabrun | koshkit od -c
+koshkit unexpand -t 2,+8 tabrun | koshkit od -c
+koshkit unexpand -t '3 /6' tabrun | koshkit od -c
+koshkit unexpand -t +3 tabrun | koshkit od -c
+koshkit unexpand -t '' tabrun | koshkit od -c
+koshkit expand -t 3,/5 tabbed
+koshkit expand -t 2,+3 tabbed
+koshkit expand -t 2,/0 tabbed
+koshkit unexpand -t /4,8 tabrun 2>/dev/null; echo "status=$?"
+koshkit unexpand -t 2,/4,+3 tabrun 2>/dev/null; echo "status=$?"
+koshkit expand -t 8/4 tabbed 2>/dev/null; echo "status=$?"
+
 cd .. || exit 1

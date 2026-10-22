@@ -565,3 +565,25 @@ x$
 9223372036854775806	a
 9223372036854775807	b
 status=1
+--- tab list forms
+0000000  \t  \t  \t  \t  \t  \t   x  \n  \t   a  \t           b  \t  \t
+0000020           c  \n
+0000024
+0000000  \t  \t  \t  \t  \t                           x  \n  \t   a  \t
+0000020   b  \t  \t   c  \n
+0000025
+0000000  \t  \t  \t  \t  \t  \t  \t                   x  \n           a
+0000020  \t                   b  \t  \t  \t           c  \n
+0000035
+0000000  \t  \t  \t  \t  \t  \t  \t  \t  \t  \t  \t  \t  \t       x  \n
+0000020           a  \t  \t       b  \t  \t  \t  \t  \t           c  \n
+0000040
+0000000  \t  \t  \t  \t  \t   x  \n           a  \t           b  \t  \t
+0000020           c  \n
+0000024
+a  b c    d    e
+a b  c  d  e
+a b c d e
+status=1
+status=1
+status=1

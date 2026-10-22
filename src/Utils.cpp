@@ -189,60 +189,104 @@ text_position_is_selected(
   return false;
 }
 
+/* e.g. "2,/8" -> stops 2, then 8, 16, 24, and so on.
+        "2,+8" -> stops 2, then 10, 18, 26, and so on. a '/' or '+' prefix
+        stays in effect for every later value. */
 fn
 parse_tab_stop_list(StringView text, Allocator allocator) throws
-    -> Maybe<ArrayList<usize>>
+    -> Maybe<tab_stop_list>
 {
-  let   stops    = ArrayList<usize>{allocator};
-  usize position = 0;
+  let   list      = tab_stop_list{ArrayList<usize>{allocator}};
+  usize value     = 0;
+  bool  has_value = false;
+  char  prefix    = '\0';
 
-  while (position < text.length) {
-    while (position < text.length &&
-           (text[position] == ',' || text[position] == ' ' ||
-            text[position] == '\t'))
-    {
-      position++;
+  let const do_finish_value = [&]() throws -> bool {
+    if (!has_value) return true;
+
+    has_value = false;
+
+    if (prefix == '\0') {
+      list.stops.push(value);
+
+      return true;
     }
 
-    if (position == text.length) break;
+    let &width = prefix == '/' ? list.extend_width : list.increment_width;
 
-    let const stop = parse_positive_position(text, position);
+    if (width != 0) return false;
 
-    if (!stop.has_value()) return None;
-    if (!stops.is_empty() && *stop <= stops.back()) {
-      return None;
-    }
+    width = value;
 
-    stops.push(*stop);
+    return true;
+  };
 
-    if (position < text.length && text[position] != ',' &&
-        text[position] != ' ' && text[position] != '\t')
-    {
+  for (usize position = 0; position < text.length; position++) {
+    let const byte = text[position];
+
+    if (byte == ',' || byte == ' ' || byte == '\t') {
+      if (!do_finish_value()) return None;
+    } else if (byte == '/' || byte == '+') {
+      if (has_value) return None;
+
+      prefix = byte;
+    } else if (byte >= '0' && byte <= '9') {
+      let const digit = static_cast<usize>(byte - '0');
+
+      if (!has_value) {
+        value     = 0;
+        has_value = true;
+      }
+
+      if (value > (SIZE_MAX - digit) / 10) return None;
+
+      value = value * 10 + digit;
+    } else {
       return None;
     }
   }
 
-  if (stops.is_empty()) return None;
+  if (!do_finish_value()) return None;
+  if (list.extend_width != 0 && list.increment_width != 0) return None;
 
-  /* at this point: stops holds positive tab stops, strictly ascending. */
+  for (usize index = 0; index < list.stops.count(); index++) {
+    if (list.stops[index] == 0) return None;
+    if (index != 0 && list.stops[index] <= list.stops[index - 1]) return None;
+  }
 
-  return stops;
+  /* at this point: stops holds positive tab stops, strictly ascending, and at
+     most one of extend_width and increment_width is nonzero. */
+
+  return list;
 }
 
 pure fn
-get_next_tab_column(usize column, const ArrayList<usize> &tab_stops) wontthrow
+get_next_tab_column(usize column, const tab_stop_list &tab_stops) wontthrow
     -> usize
 {
-  if (tab_stops.is_empty()) return column + (8 - column % 8);
+  let const &stops = tab_stops.stops;
 
-  for (let const stop : tab_stops)
-    if (stop > column) return stop;
-
-  if (tab_stops.count() == 1) {
-    let const width = tab_stops[0];
+  if (stops.is_empty() || (stops.count() == 1 && tab_stops.extend_width == 0 &&
+                           tab_stops.increment_width == 0))
+  {
+    let const width = !stops.is_empty()             ? stops[0]
+                      : tab_stops.extend_width != 0 ? tab_stops.extend_width
+                      : tab_stops.increment_width != 0
+                          ? tab_stops.increment_width
+                          : 8;
 
     return column + (width - column % width);
   }
+
+  for (let const stop : stops)
+    if (stop > column) return stop;
+
+  if (tab_stops.extend_width != 0)
+    return column + (tab_stops.extend_width - column % tab_stops.extend_width);
+
+  if (tab_stops.increment_width != 0)
+    return column + (tab_stops.increment_width -
+                     (column - stops.back()) % tab_stops.increment_width);
 
   return column;
 }
