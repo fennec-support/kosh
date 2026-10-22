@@ -280,7 +280,15 @@ check_redirection_lints(AnalysisContext          &actx,
               ->word()
               .to_literal_string();
 
-      if (!read_target.is_empty() && write_target.view() == read_target.view())
+      /* a device such as /dev/null is never truncated by a redirect. */
+      let const target = read_target.view();
+      let const is_device_path =
+          target == "/dev/null" || target == "/dev/zero" ||
+          target == "/dev/tty" || target.starts_with("/dev/std") ||
+          target.starts_with("/dev/fd/");
+
+      if (!read_target.is_empty() && !is_device_path &&
+          write_target.view() == read_target.view())
       {
         actx.report_diagnostic(
             diagnostic_id::sc2094, redirection.target->source_location(),

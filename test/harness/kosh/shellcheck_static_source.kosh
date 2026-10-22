@@ -102,6 +102,7 @@ compound_redirection_diagnostics() {
   { echo claimed; } > claim.log > claim.log
   while true; do echo looped; done < same.txt > same.txt
   if true; then echo branched; fi > "file$((index++))"
+  while true; do echo quiet; done < /dev/null 2> /dev/null
 }
 
 escaped_heredoc_delimiter_diagnostics() {

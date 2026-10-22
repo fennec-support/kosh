@@ -196,12 +196,12 @@ note: Write to a temporary file, then move it over the original with `mv`.
    104 |    if true; then echo branched; fi > "file$((index++))"
        |                                      ^~~~~~~~~~~~~~~~~~
 note: Update the variable before forming the redirect path.
-111:8: warning: The Unicode quote 'U+201C' opens no quoted string. (SC1110)
-   111 |    echo “after heredoc”
+112:8: warning: The Unicode quote 'U+201C' opens no quoted string. (SC1110)
+   112 |    echo “after heredoc”
        |         ^
 note: Delete it and retype an ASCII quote.
-111:22: warning: The Unicode quote 'U+201D' opens no quoted string. (SC1110)
-   111 |    echo “after heredoc”
+112:22: warning: The Unicode quote 'U+201D' opens no quoted string. (SC1110)
+   112 |    echo “after heredoc”
        |                       ^
 note: Delete it and retype an ASCII quote.
 Encountered 50 warnings.
