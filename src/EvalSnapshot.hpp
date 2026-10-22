@@ -21,6 +21,7 @@
 #include "base/Bitset.hpp"
 #include "base/Common.hpp"
 #include "base/Containers.hpp"
+#include "base/CopyOnWrite.hpp"
 #include "base/Maybe.hpp"
 #include "base/Path.hpp"
 #include "base/StaticStringMap.hpp"
@@ -223,6 +224,12 @@ struct completion_spec
   }
 
   fn
+  clone() const throws -> completion_spec
+  {
+    return clone(heap_allocator());
+  }
+
+  fn
   clone(Allocator allocator) const throws -> completion_spec
   {
     let copy = completion_spec{};
@@ -262,15 +269,22 @@ struct variable_snapshot
 
 struct completion_snapshot
 {
-  StringMap<completion_spec> specs;
-  Maybe<completion_spec>     default_spec;
-  Maybe<completion_spec>     empty_spec;
-  Maybe<completion_spec>     initial_spec;
+  StringMap<completion_spec> specs{heap_allocator()};
+  Maybe<completion_spec>     default_spec{};
+  Maybe<completion_spec>     empty_spec{};
+  Maybe<completion_spec>     initial_spec{};
+
+  fn
+  clone() const throws -> completion_snapshot
+  {
+    return completion_snapshot{specs.clone(), default_spec.clone(),
+                               empty_spec.clone(), initial_spec.clone()};
+  }
 };
 
 struct scope_snapshot
 {
-  StringMap<String>                   aliases;
+  CopyOnWrite<StringMap<String>>      aliases;
   ArrayList<ArrayList<local_binding>> local_scopes;
   usize                               local_scope_depth;
   ArrayList<Maybe<u64>>               saved_scope_shell_options;
@@ -285,8 +299,8 @@ struct execution_snapshot
 
 struct trap_snapshot
 {
-  StringMap<trap_definition> traps;
-  trap_install_state         install;
+  CopyOnWrite<StringMap<trap_definition>> traps;
+  trap_install_state                      install;
 };
 
 struct runtime_control_snapshot
@@ -306,7 +320,7 @@ struct runtime_control_wire
 struct eval_state_snapshot
 {
   variable_snapshot                          variables;
-  completion_snapshot                        completion;
+  CopyOnWrite<completion_snapshot>           completion;
   CopyOnWrite<StringMap<FunctionBodyHandle>> functions;
   scope_snapshot                             scopes;
   execution_snapshot                         execution;

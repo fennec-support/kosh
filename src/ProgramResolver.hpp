@@ -17,6 +17,7 @@
 #include "base/Bitset.hpp"
 #include "base/Common.hpp"
 #include "base/Containers.hpp"
+#include "base/CopyOnWrite.hpp"
 #include "base/Maybe.hpp"
 #include "base/Path.hpp"
 
@@ -110,6 +111,12 @@ public:
     Path                  path;
     os::program_extension extension{os::program_extension::None};
 
+    fn
+    clone() const throws -> CachedPath
+    {
+      return CachedPath{path.clone(), extension};
+    }
+
     cold fn
     move_to_allocator(Allocator allocator) throws -> void
     {
@@ -121,6 +128,12 @@ public:
   {
     ArrayList<CachedPath> paths{heap_allocator()};
     Maybe<usize>          bare_path_position{};
+
+    fn
+    clone() const throws -> CacheEntry
+    {
+      return CacheEntry{paths.clone(), bare_path_position};
+    }
   };
 
   ProgramResolver();
@@ -134,7 +147,7 @@ public:
   fn
   apply_wire(StringMap<CacheEntry> execution_cache) wontthrow -> void
   {
-    m_execution_cache = steal(execution_cache);
+    m_execution_cache.assign(steal(execution_cache));
   }
 
   fn
@@ -186,9 +199,16 @@ public:
   fn
   for_each_command_name(auto callback) const throws -> void
   {
-    for (let const &name : m_command_names)
+    for (let const &name : derived().command_names)
       callback(name);
   }
+
+  /* restores the state saved before an in-process substitution or subshell.
+     the remembered locations always return to the saved ones. the indexes
+     built meanwhile stay when PATH, the working directory, and the forced
+     invalidations are the same as at the save. */
+  fn
+  restore(ProgramResolver saved) throws -> void;
 
 private:
   struct DirectoryProbe
@@ -197,7 +217,74 @@ private:
     u64    generation{0};
     Bitset regular_entries{heap_allocator()};
     Bitset executable_entries{heap_allocator()};
+
+    fn
+    clone() const throws -> DirectoryProbe
+    {
+      return DirectoryProbe{directory.clone(), generation,
+                            regular_entries.clone(),
+                            executable_entries.clone()};
+    }
   };
+
+  using NameList = SortedArrayList<String, program_name_comparator>;
+
+  struct DerivedIndexes
+  {
+    StringMap<Status>         command_statuses{heap_allocator()};
+    ArrayList<DirectoryProbe> directory_probes{heap_allocator()};
+    NameList command_names{heap_allocator(), program_name_comparator{}};
+    NameList regular_names{heap_allocator(), program_name_comparator{}};
+    ArrayList<String> path_dirs{heap_allocator()};
+    ArrayList<String> index_path_dirs{heap_allocator()};
+    ArrayList<u64>    path_directory_generations{heap_allocator()};
+    String            validated_prefix{heap_allocator()};
+
+    fn
+    clone() const throws -> DerivedIndexes
+    {
+      return DerivedIndexes{command_statuses.clone(),
+                            directory_probes.clone(),
+                            command_names.clone(),
+                            regular_names.clone(),
+                            path_dirs.clone(),
+                            index_path_dirs.clone(),
+                            path_directory_generations.clone(),
+                            validated_prefix.clone()};
+    }
+  };
+
+  pure fn
+  execution_cache() const wontthrow -> const StringMap<CacheEntry> &
+  {
+    return m_execution_cache.read();
+  }
+
+  fn
+  mutable_execution_cache() throws -> StringMap<CacheEntry> &
+  {
+    return m_execution_cache.write();
+  }
+
+  fn
+  clear_execution_cache() throws -> void
+  {
+    if (execution_cache().count() == 0) return;
+
+    m_execution_cache.assign(StringMap<CacheEntry>{heap_allocator()});
+  }
+
+  pure fn
+  derived() const wontthrow -> const DerivedIndexes &
+  {
+    return m_derived.read();
+  }
+
+  fn
+  mutable_derived() throws -> DerivedIndexes &
+  {
+    return m_derived.write();
+  }
 
   fn
   mark_command_name_indexes_stale() wontthrow -> void;
@@ -252,20 +339,12 @@ private:
                            os::program_extension wanted_extension) const wontthrow
       -> const Path *;
 
-  StringMap<CacheEntry>     m_execution_cache{heap_allocator()};
-  StringMap<Status>         m_command_statuses{heap_allocator()};
-  ArrayList<DirectoryProbe> m_directory_probes{heap_allocator()};
+  CopyOnWrite<StringMap<CacheEntry>> m_execution_cache{
+      heap_allocator(), StringMap<CacheEntry>{heap_allocator()}};
+  CopyOnWrite<DerivedIndexes> m_derived{heap_allocator(), DerivedIndexes{}};
 
-  SortedArrayList<String, program_name_comparator> m_command_names{
-      heap_allocator(), program_name_comparator{}};
-  SortedArrayList<String, program_name_comparator> m_regular_names{
-      heap_allocator(), program_name_comparator{}};
-
-  Maybe<String>     m_path;
-  ArrayList<String> m_path_dirs{heap_allocator()};
-  ArrayList<String> m_index_path_dirs{heap_allocator()};
-  ArrayList<u64>    m_path_directory_generations{heap_allocator()};
-  String            m_validated_prefix{heap_allocator()};
+  Maybe<String> m_path;
+  u64           m_invalidation_count{0};
 
   bool m_is_path_directory_list_valid{false};
   bool m_is_path_generation_list_valid{false};

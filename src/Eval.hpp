@@ -941,15 +941,15 @@ class ScopeStore
 {
 public:
   fn
-  aliases() wontthrow -> StringMap<String> &
+  aliases() throws -> StringMap<String> &
   {
-    return m_aliases;
+    return m_aliases.write();
   }
 
   pure fn
   aliases() const wontthrow -> const StringMap<String> &
   {
-    return m_aliases;
+    return m_aliases.read();
   }
 
   fn
@@ -1067,14 +1067,14 @@ public:
   fn
   set_alias(StringView name, StringView value) throws -> void
   {
-    m_aliases.set(name, value);
+    m_aliases.write().set(name, value);
   }
 
   fn
   remove_alias(StringView name) throws -> bool
   {
-    if (!m_aliases.find(name).has_value()) return false;
-    m_aliases.erase(name);
+    if (!m_aliases.read().find(name).has_value()) return false;
+    m_aliases.write().erase(name);
 
     return true;
   }
@@ -1082,7 +1082,7 @@ public:
   pure fn
   has_aliases() const wontthrow -> bool
   {
-    return m_aliases.count() != 0;
+    return m_aliases.read().count() != 0;
   }
 
   /* memory: one String copy of the alias value in heap_allocator(). the caller
@@ -1091,7 +1091,7 @@ public:
   fn
   get_alias(StringView name) const throws -> Maybe<String>
   {
-    if (let const value = m_aliases.find(name); value.has_value())
+    if (let const value = m_aliases.read().find(name); value.has_value())
       return String{heap_allocator(), value->view()};
 
     return None;
@@ -1100,7 +1100,7 @@ public:
   pure fn
   find_alias(StringView name) const wontthrow -> Maybe<StringView>
   {
-    if (let const value = m_aliases.find(name); value.has_value())
+    if (let const value = m_aliases.read().find(name); value.has_value())
       return value->view();
 
     return None;
@@ -1120,7 +1120,7 @@ public:
       -> SortedArrayList<String, order_comparator<String>>
   {
     let out = ArrayList<String>{heap_allocator()};
-    m_aliases.for_each([&out](StringView key, const String &value) {
+    m_aliases.read().for_each([&out](StringView key, const String &value) {
       let definition = String{heap_allocator(), key};
       definition.push('=');
       append_shell_quoted_arg(definition, value.view());
@@ -1146,7 +1146,7 @@ public:
   fn
   for_each_alias_name(Callback callback) const throws -> void
   {
-    m_aliases.for_each(
+    m_aliases.read().for_each(
         [&](StringView name, const String &value) throws {
           unused(value);
           callback(name);
@@ -1190,7 +1190,9 @@ public:
   }
 
 private:
-  StringMap<String>                   m_aliases{heap_allocator()};
+  CopyOnWrite<StringMap<String>> m_aliases{heap_allocator(),
+                                           StringMap<String>{heap_allocator()}};
+
   ArrayList<ArrayList<local_binding>> m_local_scopes{heap_allocator()};
   ArrayList<Maybe<u64>> m_saved_scope_shell_options{heap_allocator()};
   usize                 m_local_scope_depth{0};
@@ -2855,7 +2857,7 @@ public:
   fn
   register_spec(StringView command, completion_spec spec) throws -> void
   {
-    m_specs.set(command, steal(spec));
+    m_data.write().specs.set(command, steal(spec));
   }
 
   fn
@@ -2868,13 +2870,13 @@ public:
   pure fn
   lookup_spec(StringView command) const wontthrow -> const completion_spec *
   {
-    return m_specs.find(command).value_or(nullptr);
+    return m_data.read().specs.find(command).value_or(nullptr);
   }
 
   fn
-  lookup_spec(StringView command) wontthrow -> completion_spec *
+  lookup_spec(StringView command) throws -> completion_spec *
   {
-    return m_specs.find(command).value_or(nullptr);
+    return m_data.write().specs.find(command).value_or(nullptr);
   }
 
   pure fn
@@ -2887,7 +2889,7 @@ public:
   }
 
   fn
-  get_slot_spec(completion_spec_slot slot) wontthrow -> completion_spec *
+  get_slot_spec(completion_spec_slot slot) throws -> completion_spec *
   {
     let &spec = get_slot(slot);
 
@@ -2897,15 +2899,15 @@ public:
   fn
   remove_spec(StringView command) throws -> bool
   {
-    if (!m_specs.find(command).has_value()) return false;
+    if (!m_data.read().specs.find(command).has_value()) return false;
 
-    m_specs.erase(command);
+    m_data.write().specs.erase(command);
 
     return true;
   }
 
   fn
-  remove_slot_spec(completion_spec_slot slot) wontthrow -> bool
+  remove_slot_spec(completion_spec_slot slot) throws -> bool
   {
     let &spec = get_slot(slot);
     if (!spec.has_value()) return false;
@@ -2916,34 +2918,27 @@ public:
   }
 
   fn
-  remove_all_specs() wontthrow -> void
+  remove_all_specs() throws -> void
   {
-    m_specs.clear();
-    m_default_spec.reset();
-    m_empty_spec.reset();
-    m_initial_spec.reset();
+    m_data.assign(completion_snapshot{});
   }
 
   pure fn
   specs() const wontthrow -> const StringMap<completion_spec> &
   {
-    return m_specs;
+    return m_data.read().specs;
   }
 
   fn
-  snapshot() const throws -> completion_snapshot
+  snapshot() const wontthrow -> CopyOnWrite<completion_snapshot>
   {
-    return completion_snapshot{m_specs, m_default_spec, m_empty_spec,
-                               m_initial_spec};
+    return m_data;
   }
 
   fn
-  restore(completion_snapshot snapshot) wontthrow -> void
+  restore(CopyOnWrite<completion_snapshot> snapshot) wontthrow -> void
   {
-    m_specs        = steal(snapshot.specs);
-    m_default_spec = steal(snapshot.default_spec);
-    m_empty_spec   = steal(snapshot.empty_spec);
-    m_initial_spec = steal(snapshot.initial_spec);
+    m_data = steal(snapshot);
   }
 
   fn
@@ -2954,12 +2949,14 @@ public:
 
 private:
   fn
-  get_slot(completion_spec_slot slot) wontthrow -> Maybe<completion_spec> &
+  get_slot(completion_spec_slot slot) throws -> Maybe<completion_spec> &
   {
+    let &data = m_data.write();
+
     switch (slot) {
-    case completion_spec_slot::Default: return m_default_spec;
-    case completion_spec_slot::Empty:   return m_empty_spec;
-    case completion_spec_slot::Initial: return m_initial_spec;
+    case completion_spec_slot::Default: return data.default_spec;
+    case completion_spec_slot::Empty:   return data.empty_spec;
+    case completion_spec_slot::Initial: return data.initial_spec;
     }
     unreachable();
   }
@@ -2968,18 +2965,18 @@ private:
   get_slot(completion_spec_slot slot) const wontthrow
       -> const Maybe<completion_spec> &
   {
+    let const &data = m_data.read();
+
     switch (slot) {
-    case completion_spec_slot::Default: return m_default_spec;
-    case completion_spec_slot::Empty:   return m_empty_spec;
-    case completion_spec_slot::Initial: return m_initial_spec;
+    case completion_spec_slot::Default: return data.default_spec;
+    case completion_spec_slot::Empty:   return data.empty_spec;
+    case completion_spec_slot::Initial: return data.initial_spec;
     }
     unreachable();
   }
 
-  StringMap<completion_spec> m_specs{heap_allocator()};
-  Maybe<completion_spec>     m_default_spec{};
-  Maybe<completion_spec>     m_empty_spec{};
-  Maybe<completion_spec>     m_initial_spec{};
+  CopyOnWrite<completion_snapshot> m_data{heap_allocator(),
+                                          completion_snapshot{}};
 };
 
 struct function_call_frame
@@ -3164,7 +3161,7 @@ public:
   fn
   set(StringView condition, trap_definition definition) throws -> void
   {
-    m_traps.set(condition, steal(definition));
+    m_traps.write().set(condition, steal(definition));
     if (condition == StringView{"EXIT", 4}) m_held_exit_action = None;
     refresh_flags();
   }
@@ -3183,7 +3180,7 @@ public:
   fn
   reset(StringView condition) throws -> void
   {
-    m_traps.erase(condition);
+    m_traps.write().erase(condition);
     m_held_exit_action = None;
     refresh_flags();
   }
@@ -3191,11 +3188,11 @@ public:
   fn
   hold_exit_trap_for_listing() throws -> void
   {
-    let const found = m_traps.find(StringView{"EXIT", 4});
+    let const found = m_traps.read().find(StringView{"EXIT", 4});
     if (!found.has_value()) return;
 
     let held = String{heap_allocator(), found.value()->action_text.view()};
-    m_traps.erase(StringView{"EXIT", 4});
+    m_traps.write().erase(StringView{"EXIT", 4});
     refresh_flags();
     m_held_exit_action = steal(held);
   }
@@ -3209,14 +3206,14 @@ public:
   pure fn
   find(StringView condition) const wontthrow -> Maybe<const trap_definition *>
   {
-    return m_traps.find(condition);
+    return m_traps.read().find(condition);
   }
 
   pure fn
   find_active(StringView condition) const wontthrow
       -> Maybe<const trap_definition *>
   {
-    let const found = m_traps.find(condition);
+    let const found = m_traps.read().find(condition);
     if (found.has_value() && found.value()->action_text.count() > 0) {
       return found;
     }
@@ -3227,7 +3224,7 @@ public:
   pure fn
   find_definition(StringView condition) const wontthrow -> Maybe<trap_definition>
   {
-    let const found = m_traps.find(condition);
+    let const found = m_traps.read().find(condition);
     if (!found.has_value() || !found.value()->has_location) {
       return None;
     }
@@ -3243,27 +3240,27 @@ public:
   pure fn
   count() const wontthrow -> usize
   {
-    return m_traps.count();
+    return m_traps.read().count();
   }
 
   template <typename Callback>
   fn
   list(Callback do_callback) const throws -> void
   {
-    m_traps.for_each(do_callback);
+    m_traps.read().for_each(do_callback);
   }
 
   fn
   discard_signal_traps() throws -> void
   {
     ArrayList<String> discarded{heap_allocator()};
-    m_traps.for_each([&](StringView condition, const trap_definition &) {
+    m_traps.read().for_each([&](StringView condition, const trap_definition &) {
       if (!os::signal_number_from_name(condition).has_value()) return;
       discarded.push_managed(condition);
     });
 
     for (let const &condition : discarded)
-      m_traps.erase(condition.view());
+      m_traps.write().erase(condition.view());
 
     m_held_exit_action = None;
     refresh_flags();
@@ -3494,8 +3491,8 @@ private:
   fn
   refresh_flags() wontthrow -> void
   {
-    m_has_debug_trap = m_traps.find(StringView{"DEBUG", 5}).has_value();
-    m_has_err_trap   = m_traps.find(StringView{"ERR", 3}).has_value();
+    m_has_debug_trap = m_traps.read().find(StringView{"DEBUG", 5}).has_value();
+    m_has_err_trap   = m_traps.read().find(StringView{"ERR", 3}).has_value();
 
     let const child_action = find_active(StringView{"CHLD", 4});
     let const arming       = child_action.has_value()
@@ -3504,17 +3501,18 @@ private:
     os::set_child_trap_armed(arming);
   }
 
-  bool                          m_has_debug_trap{false};
-  bool                          m_has_err_trap{false};
-  trap_install_state            m_install_state{};
-  bool                          m_is_replaying_inherited_state{false};
-  bool                          m_did_exit_trap_run{false};
-  u64                           m_startup_ignored_signals{0};
-  u32                           m_pending_child_trap_count{0};
-  trap_action_frame             m_action_frame{};
-  i32                           m_last_trap_action_status{0};
-  i32                           m_status_before_return{0};
-  StringMap<trap_definition>    m_traps{heap_allocator()};
+  bool                                    m_has_debug_trap{false};
+  bool                                    m_has_err_trap{false};
+  trap_install_state                      m_install_state{};
+  bool                                    m_is_replaying_inherited_state{false};
+  bool                                    m_did_exit_trap_run{false};
+  u64                                     m_startup_ignored_signals{0};
+  u32                                     m_pending_child_trap_count{0};
+  trap_action_frame                       m_action_frame{};
+  i32                                     m_last_trap_action_status{0};
+  i32                                     m_status_before_return{0};
+  CopyOnWrite<StringMap<trap_definition>> m_traps{
+      heap_allocator(), StringMap<trap_definition>{heap_allocator()}};
   Maybe<String>                 m_held_exit_action;
   StringMap<FunctionBodyHandle> m_cached_bodies{heap_allocator()};
 };

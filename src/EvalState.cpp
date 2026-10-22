@@ -1025,18 +1025,18 @@ EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
   execution_store().restore(steal(snapshot.execution));
   snapshot.runtime.restore(*this);
   enabled_command_store() = snapshot.enabled_commands;
-  program_resolver()      = steal(snapshot.program_resolver);
+  program_resolver().restore(steal(snapshot.program_resolver));
   runtime_control_store().restore(snapshot.control);
   dynamic_runtime_store().set_clock(snapshot.clock);
   job_table_store().restore_snapshot(steal(snapshot.jobs));
   expansion_store().set_getopts_cursor(snapshot.getopts);
   subshell_store().coprocess() = snapshot.coprocess;
 
-  if (trap_store().count() != 0 || snapshot.traps.traps.count() != 0) {
+  if (trap_store().count() != 0 || snapshot.traps.traps.read().count() != 0) {
     trap_store().list([&](StringView condition, const trap_definition &trap) {
       unused(trap);
       if (condition == "EXIT") return;
-      if (snapshot.traps.traps.find(condition).has_value()) return;
+      if (snapshot.traps.traps.read().find(condition).has_value()) return;
       if (let const number = os::signal_number_from_name(condition))
         os::clear_trap_handler(*number);
     });
@@ -1474,8 +1474,8 @@ ProgramResolver::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Programs, [&](String &payload) {
     append_subshell_bootstrap_u32(payload,
-                                  static_cast<u32>(m_execution_cache.count()));
-    m_execution_cache.for_each(
+                                  static_cast<u32>(execution_cache().count()));
+    execution_cache().for_each(
         [&](StringView name, const CacheEntry &entry) throws {
           append_subshell_bootstrap_text(payload, name);
           append_subshell_bootstrap_u32(
@@ -1496,14 +1496,15 @@ ProgramResolver::append_wire(String &output) const throws -> void
 /* memory: one heap copy per command string, freed when the section writer
            returns.
    time:   O(n log n) for the sort of n command strings, then one
-           m_specs.find() per command string. */
+           specs.find() per command string. */
 fn
 CompletionStore::append_wire(String &output) const throws -> void
 {
   append_wire_section(output, wire_section::Completion, [&](String &payload) {
-    let collected_names = ArrayList<String>{heap_allocator()};
+    let        collected_names = ArrayList<String>{heap_allocator()};
+    let const &data            = m_data.read();
 
-    m_specs.for_each([&](StringView command, const completion_spec &) {
+    data.specs.for_each([&](StringView command, const completion_spec &) {
       collected_names.push_managed(command);
     });
 
@@ -1527,7 +1528,7 @@ CompletionStore::append_wire(String &output) const throws -> void
     };
 
     for (let const &command : names) {
-      let const spec = m_specs.find(command.view());
+      let const spec = data.specs.find(command.view());
 
       ASSERT(spec.has_value());
       append_subshell_bootstrap_text(payload, command.view());
@@ -1535,7 +1536,7 @@ CompletionStore::append_wire(String &output) const throws -> void
     }
 
     for (let const *slot_spec :
-         {&m_default_spec, &m_empty_spec, &m_initial_spec})
+         {&data.default_spec, &data.empty_spec, &data.initial_spec})
     {
       payload.push(static_cast<char>(slot_spec->has_value()));
       if (slot_spec->has_value()) do_append_spec(**slot_spec);
@@ -3451,11 +3452,10 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
   let  enabled_commands         = EnabledCommandStore{};
   let  functions                = function_wire{};
   let  local_scopes = ArrayList<ArrayList<local_binding>>{heap_allocator()};
-  let  completion   = completion_snapshot{
-      StringMap<completion_spec>{heap_allocator()}, None, None, None};
-  u64 startup_ignored_signals = 0;
-  let control                 = runtime_control_wire{};
-  let execution_cache =
+  let  completion   = completion_snapshot{};
+  u64  startup_ignored_signals = 0;
+  let  control                 = runtime_control_wire{};
+  let  execution_cache =
       StringMap<ProgramResolver::CacheEntry>{heap_allocator()};
 
   if (!ExecutionStore::from_wire(reader, execution) ||
@@ -3535,7 +3535,8 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
         name.view(), storage != nullptr ? *storage : FunctionBodyHandle{});
   }
 
-  completion_store().restore(steal(completion));
+  completion_store().restore(
+      CopyOnWrite<completion_snapshot>{heap_allocator(), steal(completion)});
   job_table_store().apply_wire(steal(jobs));
   job_table_store().inherit_parent_jobs(false);
   bootstrap.release_process_ownership();

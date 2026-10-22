@@ -791,6 +791,13 @@ struct trap_definition
   isize          line_offset{0};
   bool           has_location{false};
 
+  fn
+  clone() const throws -> trap_definition
+  {
+    return trap_definition{action_text.clone(), line_source.clone(), location,
+                           line_offset, has_location};
+  }
+
   static fn
   empty(Allocator allocator) throws -> trap_definition
   {

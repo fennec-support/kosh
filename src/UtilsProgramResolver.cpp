@@ -76,7 +76,7 @@ ProgramResolver::cache_resolved_path(StringView            name,
                                      ProgramPathKind       kind) throws
     -> void
 {
-  let &entry = m_execution_cache.get_or_create(name, CacheEntry{});
+  let &entry = mutable_execution_cache().get_or_create(name, CacheEntry{});
 
   for (usize position = 0; position < entry.paths.count(); position++) {
     let &cached = entry.paths[position];
@@ -525,8 +525,8 @@ ProgramResolver::ProgramResolver(Maybe<String> path) : m_path(steal(path)) {}
 fn
 ProgramResolver::mark_command_name_indexes_stale() wontthrow -> void
 {
-  m_validated_prefix.clear();
-  m_command_statuses.clear();
+  mutable_derived().validated_prefix.clear();
+  mutable_derived().command_statuses.clear();
   m_is_command_name_list_valid     = false;
   m_command_names_validation_epoch = 0;
   m_prefix_validation_epoch        = 0;
@@ -535,8 +535,8 @@ ProgramResolver::mark_command_name_indexes_stale() wontthrow -> void
 fn
 ProgramResolver::clear_command_name_indexes() wontthrow -> void
 {
-  m_command_names.clear();
-  m_regular_names.clear();
+  mutable_derived().command_names.clear();
+  mutable_derived().regular_names.clear();
   mark_command_name_indexes_stale();
 }
 
@@ -544,7 +544,7 @@ fn
 ProgramResolver::mark_derived_indexes_stale() wontthrow -> void
 {
   mark_command_name_indexes_stale();
-  m_path_directory_generations.clear();
+  mutable_derived().path_directory_generations.clear();
   m_is_path_generation_list_valid     = false;
   m_path_directories_validation_epoch = 0;
 }
@@ -552,8 +552,8 @@ ProgramResolver::mark_derived_indexes_stale() wontthrow -> void
 fn
 ProgramResolver::clear_derived_indexes() wontthrow -> void
 {
-  m_command_names.clear();
-  m_regular_names.clear();
+  mutable_derived().command_names.clear();
+  mutable_derived().regular_names.clear();
   mark_derived_indexes_stale();
 }
 
@@ -563,20 +563,41 @@ ProgramResolver::assign_path(Maybe<String> path) throws -> void
   if (m_path.has_value() == path.has_value() &&
       (!m_path.has_value() || m_path->view() == path->view()))
   {
-    m_execution_cache.clear();
+    clear_execution_cache();
 
     return;
   }
 
   m_path                         = steal(path);
   m_is_path_directory_list_valid = false;
-  m_execution_cache.clear();
+  m_invalidation_count++;
+  clear_execution_cache();
+}
+
+fn
+ProgramResolver::restore(ProgramResolver saved) throws -> void
+{
+  let const is_path_same =
+      m_path.has_value() == saved.m_path.has_value() &&
+      (!m_path.has_value() || m_path->view() == saved.m_path->view());
+
+  if (!is_path_same || m_invalidation_count != saved.m_invalidation_count) {
+    *this = steal(saved);
+
+    return;
+  }
+
+  /* at this point: the indexes describe the same PATH and directories as at
+     the save, so they stay valid. */
+  m_execution_cache           = steal(saved.m_execution_cache);
+  m_explicit_completion_depth = saved.m_explicit_completion_depth;
 }
 
 fn
 ProgramResolver::invalidate() throws -> void
 {
-  m_execution_cache.clear();
+  m_invalidation_count++;
+  clear_execution_cache();
   clear_derived_indexes();
   clear_directory_listing_cache();
 }
@@ -592,7 +613,7 @@ ProgramResolver::remember_path(StringView name, const Path &path) throws
 fn
 ProgramResolver::find_remembered_path(StringView name) wontthrow -> const Path *
 {
-  let const cached = m_execution_cache.find(name);
+  let const cached = execution_cache().find(name);
 
   if (!cached.has_value()) return nullptr;
 
@@ -654,19 +675,20 @@ ProgramResolver::deduplicate_path_dirs(
 fn
 ProgramResolver::get_path_dirs() throws -> const ArrayList<String> &
 {
-  if (m_is_path_directory_list_valid) return m_path_dirs;
+  if (m_is_path_directory_list_valid) return derived().path_dirs;
 
-  m_path_dirs =
+  mutable_derived().path_dirs =
       split_path_dirs(m_path.has_value() ? m_path->view() : StringView{});
 
-  let       index_path_dirs         = deduplicate_path_dirs(m_path_dirs);
-  let const has_path_search_changed = m_index_path_dirs != index_path_dirs;
+  let       index_path_dirs = deduplicate_path_dirs(derived().path_dirs);
+  let const has_path_search_changed =
+      derived().index_path_dirs != index_path_dirs;
 
-  m_index_path_dirs              = steal(index_path_dirs);
-  m_is_path_directory_list_valid = true;
+  mutable_derived().index_path_dirs = steal(index_path_dirs);
+  m_is_path_directory_list_valid    = true;
   if (has_path_search_changed) clear_derived_indexes();
 
-  return m_path_dirs;
+  return derived().path_dirs;
 }
 
 fn
@@ -675,17 +697,18 @@ ProgramResolver::get_index_path_dirs() throws
 {
   unused(get_path_dirs());
 
-  return m_index_path_dirs;
+  return derived().index_path_dirs;
 }
 
 fn
 ProgramResolver::working_directory_changed() throws -> void
 {
+  m_invalidation_count++;
   begin_directory_validation_epoch();
 
   for (let const &directory : get_index_path_dirs())
     if (!Path{directory.view()}.is_absolute()) {
-      m_execution_cache.clear();
+      clear_execution_cache();
       mark_derived_indexes_stale();
 
       return;
@@ -746,7 +769,7 @@ collect_directory_generations(const ArrayList<String> &directory_texts)
 fn
 ProgramResolver::refresh_path_directory_generations() throws -> void
 {
-  m_path_directory_generations =
+  mutable_derived().path_directory_generations =
       collect_directory_generations(get_index_path_dirs());
   m_is_path_generation_list_valid     = true;
   m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
@@ -839,9 +862,10 @@ ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh)
     clear_command_name_indexes();
   }
 
-  let previous_probes = steal(m_directory_probes);
+  let previous_probes = steal(mutable_derived().directory_probes);
 
-  m_directory_probes = ArrayList<DirectoryProbe>{heap_allocator()};
+  mutable_derived().directory_probes =
+      ArrayList<DirectoryProbe>{heap_allocator()};
   if (refresh == CompletionRefresh::Fresh) previous_probes.clear();
 
   let command_names = ArrayList<String>{heap_allocator()};
@@ -858,7 +882,7 @@ ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh)
     let const generation      = directory_listing_generation(directory);
     let       is_listed_twice = false;
 
-    for (let const &listed : m_directory_probes)
+    for (let const &listed : derived().directory_probes)
       if (listed.generation == generation) is_listed_twice = true;
 
     if (is_listed_twice) continue;
@@ -904,11 +928,13 @@ ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh)
       command_names.push(steal(normalized_name));
     }
 
-    m_directory_probes.push(steal(probe));
+    mutable_derived().directory_probes.push(steal(probe));
   }
 
-  m_command_names = sort_and_deduplicate_names(steal(command_names));
-  m_regular_names = sort_and_deduplicate_names(steal(regular_names));
+  mutable_derived().command_names =
+      sort_and_deduplicate_names(steal(command_names));
+  mutable_derived().regular_names =
+      sort_and_deduplicate_names(steal(regular_names));
   m_is_command_name_list_valid        = true;
   m_command_names_validation_epoch    = DIRECTORY_VALIDATION_EPOCH;
   m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
@@ -988,26 +1014,26 @@ ProgramResolver::validate_path_directory_generations() throws -> bool
     return false;
   }
 
-  bool did_change =
-      !m_is_path_generation_list_valid ||
-      m_path_directory_generations.count() != get_index_path_dirs().count();
+  bool did_change = !m_is_path_generation_list_valid ||
+                    derived().path_directory_generations.count() !=
+                        get_index_path_dirs().count();
   let observed_generations =
       collect_directory_generations(get_index_path_dirs());
 
   for (usize directory_position = 0;
        directory_position < observed_generations.count(); directory_position++)
   {
-    if (directory_position >= m_path_directory_generations.count() ||
-        m_path_directory_generations[directory_position] !=
+    if (directory_position >= derived().path_directory_generations.count() ||
+        derived().path_directory_generations[directory_position] !=
             observed_generations[directory_position])
     {
       did_change = true;
     }
   }
 
-  m_path_directory_generations        = steal(observed_generations);
-  m_is_path_generation_list_valid     = true;
-  m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
+  mutable_derived().path_directory_generations = steal(observed_generations);
+  m_is_path_generation_list_valid              = true;
+  m_path_directories_validation_epoch          = DIRECTORY_VALIDATION_EPOCH;
 
   return did_change;
 }
@@ -1112,9 +1138,12 @@ ProgramResolver::revalidate_command_prefix(StringView prefix) throws
     }
   }
 
-  m_command_names           = sort_and_deduplicate_names(steal(command_names));
-  m_regular_names           = sort_and_deduplicate_names(steal(regular_names));
-  m_validated_prefix        = String{m_validated_prefix.allocator(), prefix};
+  mutable_derived().command_names =
+      sort_and_deduplicate_names(steal(command_names));
+  mutable_derived().regular_names =
+      sort_and_deduplicate_names(steal(regular_names));
+  mutable_derived().validated_prefix =
+      String{mutable_derived().validated_prefix.allocator(), prefix};
   m_prefix_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
 }
 
@@ -1146,19 +1175,19 @@ ProgramResolver::prepare_complete_path_cache(
 
     if (!m_is_path_generation_list_valid) {
       refresh_path_directory_generations();
-      m_execution_cache.clear();
+      clear_execution_cache();
     } else if (m_path_directories_validation_epoch !=
                DIRECTORY_VALIDATION_EPOCH)
     {
       if (validate_path_directory_generations()) {
-        m_execution_cache.clear();
+        clear_execution_cache();
         clear_command_name_indexes();
       }
     }
 
-    if (!m_validated_prefix.is_empty() &&
+    if (!derived().validated_prefix.is_empty() &&
         m_prefix_validation_epoch == DIRECTORY_VALIDATION_EPOCH &&
-        validation_prefix.starts_with(m_validated_prefix.view()))
+        validation_prefix.starts_with(derived().validated_prefix.view()))
     {
       return;
     }
@@ -1171,7 +1200,7 @@ ProgramResolver::prepare_complete_path_cache(
   if (m_explicit_completion_depth == 0) return;
   if (m_command_names_validation_epoch == DIRECTORY_VALIDATION_EPOCH) return;
 
-  if (validate_path_directory_generations()) m_execution_cache.clear();
+  if (validate_path_directory_generations()) clear_execution_cache();
   if (validation_scope == ValidationScope::Prefix &&
       !validation_prefix.is_empty())
   {
@@ -1191,7 +1220,7 @@ ProgramResolver::get_command_names(
 {
   prepare_complete_path_cache(validation_prefix, validation_scope);
 
-  return m_command_names;
+  return derived().command_names;
 }
 
 fn
@@ -1207,15 +1236,16 @@ ProgramResolver::command_name_has_prefix(StringView prefix) throws
   let const normalized_prefix_view = normalized_prefix.view();
 
   if (token_has_uppercase(normalized_prefix_view)) {
-    let const position = m_command_names.lower_bound(normalized_prefix_view);
+    let const position =
+        derived().command_names.lower_bound(normalized_prefix_view);
 
-    if (position >= m_command_names.count()) return false;
+    if (position >= derived().command_names.count()) return false;
 
-    return smart_case_prefix_matches(m_command_names[position].view(),
+    return smart_case_prefix_matches(derived().command_names[position].view(),
                                      normalized_prefix_view);
   }
 
-  for (let const &name : m_command_names)
+  for (let const &name : derived().command_names)
     if (smart_case_prefix_matches(name.view(), normalized_prefix_view, false))
       return true;
 
@@ -1251,22 +1281,22 @@ ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
   }
 
   let const is_cached_runnable =
-      m_command_names.find(normalized_name.view()).has_value();
+      derived().command_names.find(normalized_name.view()).has_value();
   let const is_cached_regular =
-      m_regular_names.find(normalized_name.view()).has_value();
+      derived().regular_names.find(normalized_name.view()).has_value();
 
   if (!is_cached_runnable && !is_cached_regular) {
     return Status::Missing;
   }
 
   if (m_statuses_validation_epoch != DIRECTORY_VALIDATION_EPOCH) {
-    m_command_statuses.clear();
+    mutable_derived().command_statuses.clear();
     m_statuses_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
   }
 
   /* at this point: normalized_name is a cached command or regular name, and
-     m_command_statuses holds only statuses of the current epoch. */
-  if (let const known = m_command_statuses.find(normalized_name.view());
+     derived().command_statuses holds only statuses of the current epoch. */
+  if (let const known = derived().command_statuses.find(normalized_name.view());
       known.has_value())
     return *known.value();
 
@@ -1281,10 +1311,11 @@ ProgramResolver::get_status(StringView name, StatusLookup lookup) throws
 
   if (current_status != cached_status) {
     mark_command_name_indexes_stale();
-    m_directory_probes.clear();
+    mutable_derived().directory_probes.clear();
   }
 
-  m_command_statuses.set(normalized_name.view(), current_status);
+  mutable_derived().command_statuses.set(normalized_name.view(),
+                                         current_status);
 
   return current_status;
 }
@@ -1521,7 +1552,7 @@ ProgramResolver::search(StringView               program_name,
   let const stem =
       normalized_name.substring_of_length(0, name_info.stem_length);
 
-  if (let const cached = m_execution_cache.find(stem); cached.has_value()) {
+  if (let const cached = execution_cache().find(stem); cached.has_value()) {
     let       result = ArrayList<Path>{heap_allocator()};
     let const path =
         find_cached_program_path(*cached.value(), name_info.extension);
@@ -1530,7 +1561,7 @@ ProgramResolver::search(StringView               program_name,
       if (cache_policy != CachePolicy::RememberUnchecked &&
           (!path->is_regular_file() || !path->is_executable()))
       {
-        m_execution_cache.erase(stem);
+        mutable_execution_cache().erase(stem);
 
         return resolve_along_path(program_name, SearchMode::First, requirement,
                                   cache_policy, path_override);
