@@ -350,8 +350,22 @@ get_codepoint_byte_offset(const char *bytes,
        the first loop consumes c3, a lead byte -> byte_offset 1, seen 1
        the second loop skips a9, a continuation byte -> byte_offset 2
        e4 is a lead byte, so the result is 2, the start of U+4E2D */
-  usize byte_offset          = 0;
-  usize seen_codepoint_count = 0;
+  static constexpr u64 HIGH_BITS            = 0x8080808080808080ULL;
+  usize                byte_offset          = 0;
+  usize                seen_codepoint_count = 0;
+
+  /* A word without a high bit holds eight one-byte codepoints. */
+  while (byte_offset + sizeof(u64) <= byte_count &&
+         seen_codepoint_count + sizeof(u64) <= codepoint_index)
+  {
+    u64 word;
+
+    memcpy(&word, bytes + byte_offset, sizeof(word));
+    if ((word & HIGH_BITS) != 0) break;
+
+    seen_codepoint_count += sizeof(u64);
+    byte_offset += sizeof(u64);
+  }
 
   while (byte_offset < byte_count && seen_codepoint_count < codepoint_index) {
     if ((static_cast<unsigned char>(bytes[byte_offset]) & 0xC0) != 0x80)

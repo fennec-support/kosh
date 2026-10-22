@@ -47,6 +47,9 @@ get_codepoint_byte_offset(const char *bytes,
 fn
 get_escape_sequence_end(koshka::StringView text, usize byte_offset) -> usize;
 
+fn
+get_utf8_length(const char *bytes, usize byte_count) -> usize;
+
 } /* namespace toiletline */
 
 #if !defined KOSH_NO_TOILETLINE
@@ -1315,25 +1318,15 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
     usize needed_byte_count = byte_count;
 
     if (out->visible_end != SIZE_MAX) {
-      usize codepoint_count = 0;
+      needed_byte_count = toiletline::get_codepoint_byte_offset(
+          buffer, byte_count, out->visible_end);
 
-      needed_byte_count = 0;
-      while (needed_byte_count < byte_count) {
-        if ((static_cast<unsigned char>(buffer[needed_byte_count]) & 0xC0) !=
-            0x80)
-        {
-          if (codepoint_count == out->visible_end) break;
+      let const *line_feed = static_cast<const char *>(memchr(
+          buffer + needed_byte_count, '\n', byte_count - needed_byte_count));
 
-          codepoint_count++;
-        }
-        needed_byte_count++;
-      }
-      while (needed_byte_count < byte_count &&
-             buffer[needed_byte_count] != '\n')
-      {
-        needed_byte_count++;
-      }
-      if (needed_byte_count < byte_count) needed_byte_count++;
+      needed_byte_count = line_feed != nullptr
+                              ? static_cast<usize>(line_feed - buffer) + 1
+                              : byte_count;
     }
 
     let const needed = line.substring_of_length(0, needed_byte_count);
@@ -1386,11 +1379,11 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
     usize  codepoint_position = 0;
 
     let const do_advance = [&](usize target) -> void {
-      while (byte_position < target) {
-        if ((static_cast<unsigned char>(buffer[byte_position]) & 0xC0) != 0x80)
-          codepoint_position++;
-        byte_position++;
-      }
+      if (target <= byte_position) return;
+
+      codepoint_position += toiletline::get_utf8_length(buffer + byte_position,
+                                                        target - byte_position);
+      byte_position = target;
     };
 
     let const do_push = [&](usize start, usize end, const char *sgr) -> void {
