@@ -60,6 +60,7 @@ enum class nl_style : uchar
   All,
   NonEmpty,
   None,
+  Matching,
 };
 
 static constexpr static_string_entry<nl_style> NL_STYLE_ENTRIES[] = {
@@ -69,15 +70,28 @@ static constexpr static_string_entry<nl_style> NL_STYLE_ENTRIES[] = {
 };
 static constexpr StaticStringMap NL_STYLES{NL_STYLE_ENTRIES};
 
-static fn
-nl_style_numbers(nl_style style,
-                 bool     is_empty,
-                 u64     &blank_count,
-                 u64      blank_group) wontthrow -> bool
+struct nl_section
 {
+  nl_style                  style{nl_style::None};
+  Maybe<os::compiled_regex> regex{};
+};
+
+static fn
+nl_section_numbers(nl_section &section,
+                   StringView  line,
+                   u64        &blank_count,
+                   u64         blank_group) throws -> bool
+{
+  let const is_empty = line.is_empty();
+
   /* e.g. style All, blank_group 2, lines "", "", "a" -> false, true, true */
-  switch (style) {
+  switch (section.style) {
   case nl_style::None: return false;
+
+  case nl_style::Matching:
+    blank_count = 0;
+
+    return os::regex_matches(*section.regex, line);
 
   case nl_style::All:
     if (!is_empty) {
@@ -138,25 +152,59 @@ Nl::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const body_style = NL_STYLES.find(
-      FLAG_NL_BODY.is_set() ? FLAG_NL_BODY.value() : StringView{"t"});
-  let const header_style = NL_STYLES.find(
-      FLAG_NL_HEADER.is_set() ? FLAG_NL_HEADER.value() : StringView{"n"});
-  let const footer_style = NL_STYLES.find(
-      FLAG_NL_FOOTER.is_set() ? FLAG_NL_FOOTER.value() : StringView{"n"});
+  nl_section header_section;
+  nl_section body_section;
+  nl_section footer_section;
 
-  if (!body_style.has_value() || !header_style.has_value() ||
-      !footer_style.has_value())
+  defer {
+    if (header_section.regex.has_value()) os::free_regex(*header_section.regex);
+    if (body_section.regex.has_value()) os::free_regex(*body_section.regex);
+    if (footer_section.regex.has_value()) os::free_regex(*footer_section.regex);
+  };
+
+  let const do_parse_section = [&](const FlagString &flag,
+                                   StringView        default_style,
+                                   nl_section       &section) throws -> bool {
+    let const text = flag.is_set() ? flag.value() : default_style;
+
+    if (!text.is_empty() && text[0] == 'p') {
+      section.regex = os::compile_basic_regex(text.substring(1),
+                                              os::case_sensitivity::Sensitive);
+      if (!section.regex.has_value()) {
+        KOSHKIT_REPORT_ERROR_AT(flag.value_location(),
+                                "Invalid regular expression '" +
+                                    text.substring(1) + "'",
+                                "Use a valid basic regular expression");
+
+        return false;
+      }
+
+      section.style = nl_style::Matching;
+
+      return true;
+    }
+
+    let const style = NL_STYLES.find(text);
+
+    if (!style.has_value()) {
+      KOSHKIT_REPORT_ERROR_AT(
+          flag.value_location(),
+          "Unsupported numbering style '" + flag.value() + "'",
+          "Use a for all lines, t for nonempty lines, n for no lines, or "
+          "pBRE for lines that match BRE");
+
+      return false;
+    }
+
+    section.style = *style;
+
+    return true;
+  };
+
+  if (!do_parse_section(FLAG_NL_HEADER, "n", header_section) ||
+      !do_parse_section(FLAG_NL_BODY, "t", body_section) ||
+      !do_parse_section(FLAG_NL_FOOTER, "n", footer_section))
   {
-    let const *invalid_flag = !body_style.has_value()     ? &FLAG_NL_BODY
-                              : !header_style.has_value() ? &FLAG_NL_HEADER
-                                                          : &FLAG_NL_FOOTER;
-
-    KOSHKIT_REPORT_ERROR_AT(
-        invalid_flag->value_location(),
-        "Unsupported numbering style '" + invalid_flag->value() + "'",
-        "Use a for all lines, t for nonempty lines, or n for no lines");
-
     return 1;
   }
 
@@ -180,21 +228,35 @@ Nl::execute(const ExecContext               &ec,
     return 1;
   }
 
-  u64 increment = 1;
+  let const do_parse_number = [&](const FlagString &flag, StringView name,
+                                  i64 &number) throws -> bool {
+    if (!flag.is_set()) return true;
 
-  if (FLAG_NL_INCREMENT.is_set()) {
-    let const parsed = utils::parse_decimal_u64(FLAG_NL_INCREMENT.value());
+    bool      is_out_of_range = false;
+    let const parsed = utils::parse_decimal_i64(flag.value(), &is_out_of_range);
 
-    if (parsed.is_error() || parsed.value() > INT64_MAX) {
-      KOSHKIT_REPORT_ERROR_AT(
-          FLAG_NL_INCREMENT.value_location(),
-          "Invalid increment '" + FLAG_NL_INCREMENT.value() + "'",
-          "Use a decimal integer from 0 through 9223372036854775807");
+    if (parsed.is_error() || is_out_of_range) {
+      KOSHKIT_REPORT_ERROR_AT(flag.value_location(),
+                              "Invalid " + name + " '" + flag.value() + "'",
+                              "Use a decimal integer from "
+                              "-9223372036854775808 through "
+                              "9223372036854775807");
 
-      return 1;
+      return false;
     }
 
-    increment = parsed.value();
+    number = parsed.value();
+
+    return true;
+  };
+
+  i64 increment   = 1;
+  i64 start_value = 1;
+
+  if (!do_parse_number(FLAG_NL_INCREMENT, "increment", increment) ||
+      !do_parse_number(FLAG_NL_START, "starting line number", start_value))
+  {
+    return 1;
   }
 
   u64 blank_group = 1;
@@ -231,44 +293,26 @@ Nl::execute(const ExecContext               &ec,
     width_value = parsed.value();
   }
 
-  u64 start_value = 1;
-
-  if (FLAG_NL_START.is_set()) {
-    let const parsed = utils::parse_decimal_u64(FLAG_NL_START.value());
-
-    if (parsed.is_error() || parsed.value() > INT64_MAX) {
-      KOSHKIT_REPORT_ERROR_AT(
-          FLAG_NL_START.value_location(),
-          "Invalid starting line number '" + FLAG_NL_START.value() + "'",
-          "Use a decimal integer from 0 through 9223372036854775807");
-
-      return 1;
-    }
-
-    start_value = parsed.value();
-  }
-
   let const separator =
       FLAG_NL_SEPARATOR.is_set() ? FLAG_NL_SEPARATOR.value() : StringView{"\t"};
-  let const delimiter = FLAG_NL_DELIMITER.is_set() ? FLAG_NL_DELIMITER.value()
-                                                   : StringView{"\\:"};
+  let delimiter_text =
+      String{cxt.scratch_allocator(), FLAG_NL_DELIMITER.is_set()
+                                          ? FLAG_NL_DELIMITER.value()
+                                          : StringView{"\\:"}};
 
-  if (delimiter.length != 2) {
-    KOSHKIT_REPORT_ERROR_AT(FLAG_NL_DELIMITER.value_location(),
-                            "The section delimiter must be two bytes");
+  if (delimiter_text.length() == 1) delimiter_text += ':';
 
-    return 1;
-  }
-
+  let const delimiter = delimiter_text.view();
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
-  let      output        = String{cxt.scratch_allocator()};
-  nl_style section_style = *body_style;
-  i64      number        = static_cast<i64>(start_value);
-  u64      blank_count   = 0;
-  i32      status        = 0;
+  let  output                = String{cxt.scratch_allocator()};
+  let *section               = &body_section;
+  i64  number                = start_value;
+  bool has_number_overflowed = false;
+  u64  blank_count           = 0;
+  i32  status                = 0;
 
-  /* at this point: delimiter is two bytes and width_value is positive. */
+  /* at this point: width_value is positive. */
   for (let const source : sources) {
     let const input = open_named_or_stdin(ec, source);
 
@@ -305,8 +349,9 @@ Nl::execute(const ExecContext               &ec,
 
       let const line = reader.get_line();
       /* e.g. line = \:\:\:, delimiter = \:, delimiter_count = 3, header */
-      let const delimiter_count = line.length / delimiter.length;
-      bool      is_section_delimiter =
+      let const delimiter_count =
+          delimiter.is_empty() ? 0 : line.length / delimiter.length;
+      bool is_section_delimiter =
           delimiter_count >= 1 && delimiter_count <= 3 &&
           line.length == delimiter_count * delimiter.length;
 
@@ -317,26 +362,31 @@ Nl::execute(const ExecContext               &ec,
                                      delimiter.length) == delimiter;
       if (is_section_delimiter) {
         switch (delimiter_count) {
-        case 3:  section_style = *header_style; break;
-        case 2:  section_style = *body_style; break;
-        default: section_style = *footer_style; break;
+        case 3:  section = &header_section; break;
+        case 2:  section = &body_section; break;
+        default: section = &footer_section; break;
         }
-        if (!FLAG_NL_NO_RESET.is_enabled())
-          number = static_cast<i64>(start_value);
+        if (!FLAG_NL_NO_RESET.is_enabled()) {
+          number                = start_value;
+          has_number_overflowed = false;
+        }
         blank_count = 0;
         output += '\n';
         continue;
       }
 
-      if (nl_style_numbers(section_style, line.is_empty(), blank_count,
-                           blank_group))
-      {
+      if (nl_section_numbers(*section, line, blank_count, blank_group)) {
+        if (has_number_overflowed) {
+          ec.print_to_stdout(output);
+          KOSHKIT_REPORT_ERROR("Line number overflow");
+
+          return 1;
+        }
+
         append_nl_number(output, number, static_cast<usize>(width_value),
                          separator, *number_format);
-        if (increment > static_cast<u64>(INT64_MAX - number))
-          number = INT64_MAX;
-        else
-          number += static_cast<i64>(increment);
+        has_number_overflowed =
+            __builtin_add_overflow(number, increment, &number);
       } else {
         output.append_repeated(' ', static_cast<usize>(width_value) +
                                         separator.length);

@@ -2662,6 +2662,22 @@ numbers, and the \fB\-m\fR option sets the permission mode.
 .B mv
 Sources are renamed with \fB\-f\fR, \fB\-i\fR, and \fB\-v\fR.
 .TP
+.B nl
+Input lines are numbered within logical pages. Lines that consist only of the
+section delimiter repeated three, two, or one times start a header, body, or
+footer section and are written as empty lines. The \fB\-d\fR option sets the
+delimiter, which defaults to \e: and gains a colon when one character is given.
+An empty delimiter disables sections. The \fB\-h\fR, \fB\-b\fR, and \fB\-f\fR
+options select the header, body, and footer style: a numbers every line, t
+nonempty lines, n no lines, and p\fIBRE\fR lines that match the basic regular
+expression. The defaults are n, t, and n. Each section restarts the numbering
+at the \fB\-v\fR value unless \fB\-p\fR is given. The \fB\-i\fR option sets the
+increment, and both values can be negative. The \fB\-l\fR option numbers only
+every given empty line of a run under the a style. The \fB\-w\fR,
+\fB\-n\fR, and \fB\-s\fR options set the number width, the ln, rn, or rz
+format, and the separator, which can be empty. A line number that overflows
+stops the run with status 1 before the next numbered line.
+.TP
 .B nproc
 The available logical processor count is printed. The \fB\-\-all\fR and
 \fB\-\-ignore=COUNT\fR options are supported.

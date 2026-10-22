@@ -226,4 +226,17 @@ koshkit cat -E catfmt | koshkit od -c
 koshkit cat -sE catblank catblank
 printf 'a\r' | koshkit cat -E - catblank
 
+echo "--- nl sections and styles"
+printf 'h1\n\\:\\:\\:\nhead\n\n\\:\\:\nbody a\n\nfoo b\n\\:\nfoot\n\\:\\:\\:\nh2\n\\:\\:\nb2\nlast' > nlpages
+koshkit nl -ba nlpages
+koshkit nl -p -ha -fa nlpages
+koshkit nl -hpe -fpo -bp'^foo' nlpages
+koshkit nl -v -3 -i -2 -s '' nlpages
+koshkit nl -v +3 -i 0 -nrz -w3 nlpages
+printf 'x\n@:\ny\n@@\nz\n' | koshkit nl -d@
+printf 'x\nabcabc\ny\nabc\nz\n' | koshkit nl -dabc -fa
+printf 'x\n\\:\ny\n' | koshkit nl -d '' -ba
+printf 'a\n\n\n\nb\n' | koshkit nl -l2 -bp'^$'
+printf 'a\nb\nc\n' | koshkit nl -v 9223372036854775806 2>/dev/null; echo "status=$?"
+
 cd .. || exit 1

@@ -468,3 +468,100 @@ x$
 a^M$
 $
 x$
+--- nl sections and styles
+     1	h1
+
+       head
+       
+
+     1	body a
+     2	
+     3	foo b
+
+       foot
+
+       h2
+
+     1	b2
+     2	last
+     1	h1
+
+     2	head
+     3	
+
+     4	body a
+       
+     5	foo b
+
+     6	foot
+
+     7	h2
+
+     8	b2
+     9	last
+       h1
+
+     1	head
+       
+
+       body a
+       
+     1	foo b
+
+     1	foot
+
+       h2
+
+       b2
+       last
+    -3h1
+
+      head
+      
+
+    -3body a
+      
+    -5foo b
+
+      foot
+
+      h2
+
+    -3b2
+    -5last
+003	h1
+
+    head
+    
+
+003	body a
+    
+003	foo b
+
+    foot
+
+    h2
+
+003	b2
+003	last
+     1	x
+
+       y
+       @@
+       z
+     1	x
+
+     1	y
+
+     1	z
+     1	x
+     2	\:
+     3	y
+       a
+     1	
+     2	
+     3	
+       b
+9223372036854775806	a
+9223372036854775807	b
+status=1
