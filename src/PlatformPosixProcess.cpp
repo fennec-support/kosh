@@ -306,16 +306,16 @@ throw_exec_failure_error(SourceLocation location,
   throw error;
 }
 
-static bool DID_SPAWN_FAIL = false;
+static Maybe<i32> SPAWN_FAILURE_STATUS{};
 
 fn
-take_spawn_failure() wontthrow -> bool
+take_spawn_failure_status() wontthrow -> Maybe<i32>
 {
-  let const did_fail = DID_SPAWN_FAIL;
+  let const status = SPAWN_FAILURE_STATUS;
 
-  DID_SPAWN_FAIL = false;
+  SPAWN_FAILURE_STATUS = None;
 
-  return did_fail;
+  return status;
 }
 
 cold fn
@@ -329,7 +329,7 @@ spawn_failure_child(SourceLocation     location,
   LOG(Debug, "forking a child to report the spawn failure for '%s'",
       program_path.c_str());
 
-  DID_SPAWN_FAIL = true;
+  SPAWN_FAILURE_STATUS = spawn_error == ENOENT ? 127 : 126;
 
   const pid_t child_pid = check_syscall(fork());
 

@@ -119,6 +119,9 @@ static constexpr StaticStringMap GREP_REPEATED_CLASSES{
 
 constexpr usize GREP_UNKNOWN_BATCH_COUNT = 512;
 constexpr usize GREP_READ_BYTE_COUNT     = 256 * 1024;
+/* GNU grep reads a file in buffers of this size, and the lines of the
+   buffers before the one with the first NUL byte print as text. */
+constexpr usize GREP_BINARY_BUFFER_BYTE_COUNT = 96 * 1024;
 
 static pure fn
 is_literal_search_pattern(StringView pattern) wontthrow -> bool
@@ -1410,8 +1413,8 @@ public:
         m_pattern_text(steal(pattern_text)), m_matchers(m_allocator),
         m_recursive_storage(m_allocator), m_sources(m_allocator),
         m_source_line_numbers(m_allocator), m_source_match_counts(m_allocator),
-        m_source_binary_states(m_allocator), m_output(m_allocator),
-        m_line(m_allocator)
+        m_source_binary_states(m_allocator), m_source_byte_offsets(m_allocator),
+        m_output(m_allocator), m_line(m_allocator)
   {
     m_matchers.reserve(pattern_spans.count());
 
@@ -1512,8 +1515,10 @@ public:
     if (m_options.output_mode == grep_output_mode::Lines) {
       m_source_binary_states.reserve(m_sources.count());
 
-      for (usize index = 0; index < m_sources.count(); index++)
+      for (usize index = 0; index < m_sources.count(); index++) {
         m_source_binary_states.push(binary_state::Text);
+        m_source_byte_offsets.push(0);
+      }
     }
 
     if (m_options.output_mode == grep_output_mode::Count ||
@@ -1937,20 +1942,56 @@ private:
   process_chunk(const SourceBatchReader::Chunk &chunk) throws -> void
   {
     let const source = m_sources[chunk.source_index];
+    let const do_split =
+        [&](const SourceBatchReader::Chunk &part) throws {
+          let const scanned_length = m_candidate_literal.is_empty()
+                                         ? 0
+                                         : scan_chunk_candidates(part, source);
 
+          split_chunk(part, source, scanned_length);
+        };
+    let rest = chunk;
+
+    /* the complete lines before the GNU buffer that holds the first NUL byte
+       print as text, and the rest of the source counts as binary. */
     if (m_options.output_mode == grep_output_mode::Lines &&
         m_source_binary_states[chunk.source_index] == binary_state::Text &&
-        chunk.content.length > 0 &&
-        memchr(chunk.content.data, '\0', chunk.content.length) != nullptr)
+        chunk.content.length > 0)
     {
-      m_source_binary_states[chunk.source_index] = binary_state::Binary;
+      let const *nul = static_cast<const char *>(
+          memchr(chunk.content.data, '\0', chunk.content.length));
+      let const chunk_offset = m_source_byte_offsets[chunk.source_index];
+
+      m_source_byte_offsets[chunk.source_index] += chunk.content.length;
+      if (nul != nullptr) {
+        let const nul_offset =
+            chunk_offset + static_cast<usize>(nul - chunk.content.data);
+        let const boundary = nul_offset / GREP_BINARY_BUFFER_BYTE_COUNT *
+                             GREP_BINARY_BUFFER_BYTE_COUNT;
+        usize text_length = 0;
+
+        if (boundary > chunk_offset) {
+          for (usize end = boundary - chunk_offset; end > 0; end--) {
+            if (chunk.content[end - 1] == '\n') {
+              text_length = end;
+              break;
+            }
+          }
+        }
+
+        if (text_length > 0) {
+          let head        = chunk;
+          head.content    = chunk.content.substring_of_length(0, text_length);
+          head.completion = source_completion_state::Pending;
+          do_split(head);
+          rest.content = chunk.content.substring(text_length);
+        }
+
+        m_source_binary_states[chunk.source_index] = binary_state::Binary;
+      }
     }
 
-    let const scanned_length = m_candidate_literal.is_empty()
-                                   ? 0
-                                   : scan_chunk_candidates(chunk, source);
-
-    split_chunk(chunk, source, scanned_length);
+    do_split(rest);
 
     if (chunk.completion != source_completion_state::Complete) return;
 
@@ -2007,6 +2048,7 @@ private:
     Reported,
   };
   ArrayList<binary_state> m_source_binary_states;
+  ArrayList<usize>        m_source_byte_offsets;
   String                  m_output;
   String                  m_line;
   StringView              m_candidate_literal;

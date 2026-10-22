@@ -622,11 +622,24 @@ Xargs::execute(const ExecContext               &ec,
     i32       command_status = 0;
     let const is_external    = !sub->is_builtin();
 
-    unused(os::take_spawn_failure());
+    unused(os::take_spawn_failure_status());
 
     try {
       command_status =
           utils::execute_context(steal(*sub), cxt, execution_mode::Foreground);
+    } catch (const ErrorWithLocation &error) {
+      cxt.leave_subshell();
+      cxt.restore_state(steal(snapshot));
+
+      /* a platform that reports a failed spawn by throwing stops the run with
+         the status of the failure. */
+      let const spawn_status = os::take_spawn_failure_status();
+
+      if (!spawn_status.has_value() || !is_external) throw;
+      show_message(
+          error.to_string(cxt.source_store().current_source_view(), &cxt));
+
+      return *spawn_status;
     } catch (...) {
       cxt.leave_subshell();
       cxt.restore_state(steal(snapshot));
@@ -644,7 +657,9 @@ Xargs::execute(const ExecContext               &ec,
 
     /* only the spawn of the command itself stops the run with 126 or 127. a
        command that returns those statuses gives 123 below. */
-    if (os::take_spawn_failure() && is_external) return command_status;
+    if (os::take_spawn_failure_status().has_value() && is_external) {
+      return command_status;
+    }
 
     if (command_status == 255) {
       report_soft_koshkit_util_error(

@@ -2086,8 +2086,10 @@ get_user_primary_group_id(u32 user_id) wontthrow -> Maybe<u32>;
 fn
 get_user_group_ids(u32 user_id, Allocator allocator) throws
     -> Maybe<ArrayList<u32>>;
+/* the status of the last program spawn that failed since the previous call,
+   127 when the program was not found and 126 otherwise, and clears it. */
 fn
-take_spawn_failure() wontthrow -> bool;
+take_spawn_failure_status() wontthrow -> Maybe<i32>;
 
 fn
 machine_type() throws -> String;

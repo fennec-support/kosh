@@ -840,3 +840,6 @@ status=0
 2
 status=1
 grep: (standard input): binary file matches
+abc
+abc tail
+grep: grep-late-nul.dat: binary file matches

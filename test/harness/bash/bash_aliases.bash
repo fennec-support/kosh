@@ -58,3 +58,9 @@ expanded_alias
 chained_alias
 blank_alias word_alias word_alias
 piped_alias | tr b B
+alias chain_head_alias='chain_tail_alias '
+alias chain_tail_alias=echo
+alias cycle_one_alias=cycle_two_alias
+alias cycle_two_alias=cycle_one_alias
+blank_alias chain_head_alias chain_head_alias
+blank_alias cycle_one_alias

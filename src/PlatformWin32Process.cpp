@@ -1283,6 +1283,10 @@ get_command_processor_path() throws -> Maybe<String>
            them. command line and path strings are heap_allocator() storage.
    time:   O(argument bytes) to build and convert the command line. one
            create_process_utf8() call, which takes launch_lock. */
+/* the status of the last spawn that failed, taken by
+   take_spawn_failure_status(). */
+static Maybe<i32> SPAWN_FAILURE_STATUS{};
+
 fn
 execute_program(ExecContext                     &ec,
                 const program_execution_options &options) throws
@@ -1444,6 +1448,13 @@ execute_program(ExecContext                     &ec,
 
       return KOSH_INVALID_PROCESS;
     }
+
+    let const spawn_error = GetLastError();
+
+    SPAWN_FAILURE_STATUS = spawn_error == ERROR_FILE_NOT_FOUND ||
+                                   spawn_error == ERROR_PATH_NOT_FOUND
+                               ? 127
+                               : 126;
     throw ErrorWithLocation{ec.source_location(), last_system_error_message()};
   }
 
@@ -3520,9 +3531,13 @@ get_user_group_ids(u32 user_id, Allocator allocator) throws
 }
 
 fn
-take_spawn_failure() wontthrow -> bool
+take_spawn_failure_status() wontthrow -> Maybe<i32>
 {
-  return false;
+  let const status = SPAWN_FAILURE_STATUS;
+
+  SPAWN_FAILURE_STATUS = None;
+
+  return status;
 }
 
 fn

@@ -219,6 +219,47 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       return cxt.scope_store().get_alias(*name);
     };
 
+    /* the first word of a replacement is an alias too when it names one, as
+       bash reads the replacement again. each alias joins the chain once. */
+    let const do_expand_head =
+        [&](String text, StringView replaced_word) throws -> String {
+      let chain = ArrayList<String>{cxt.scratch_allocator()};
+
+      chain.push(String{cxt.scratch_allocator(), replaced_word});
+
+      loop {
+        usize word_end = 0;
+
+        while (word_end < text.count() && text[word_end] != ' ' &&
+               text[word_end] != '\t')
+        {
+          word_end++;
+        }
+
+        let const word       = StringView{text.data(), word_end};
+        bool      is_chained = false;
+
+        for (let const &chained : chain)
+          if (chained.view() == word) is_chained = true;
+
+        if (word.is_empty() || is_chained ||
+            cxt.scope_store().is_alias_expanding(word))
+        {
+          return text;
+        }
+
+        let const replacement = cxt.scope_store().get_alias(word);
+
+        if (!replacement.has_value()) return text;
+
+        let expanded = String{heap_allocator(), replacement->view()};
+
+        expanded.append(text.view().substring(word_end));
+        chain.push(String{cxt.scratch_allocator(), word});
+        text = steal(expanded);
+      }
+    };
+
     if (let const first_body = do_find_body(0); first_body.has_value()) {
       let const source_index = m_args[0]->source_location().source_name_index;
       let       text         = String{cxt.scratch_allocator()};
@@ -241,6 +282,10 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
         index += 1;
         body = is_blank_ended ? do_find_body(index) : Maybe<String>{};
+        if (body.has_value()) {
+          body =
+              do_expand_head(steal(*body), *static_command_name(m_args[index]));
+        }
       }
 
       text.append(cxt.source_text_in_span(

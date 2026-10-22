@@ -468,3 +468,5 @@ printf 'abc\0def\nxyz abc\n' > grep-binary.dat
 "$BIN" -c 'koshkit grep -c abc grep-binary.dat'
 "$BIN" -c 'koshkit grep zzz grep-binary.dat; printf "status=%s\n" "$?"'
 printf 'q\0abc\n' | "$BIN" -c 'koshkit grep abc'
+{ printf 'abc\n'; head -c 98290 /dev/zero | tr '\0' x; printf '\nabc tail\nzz\0\nabc after\n'; } > grep-late-nul.dat
+"$BIN" -c 'koshkit grep abc grep-late-nul.dat'

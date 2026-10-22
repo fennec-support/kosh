@@ -248,7 +248,7 @@ execute_context(ExecContext  &&ec,
 
     /* the script ran, so a spawn that failed inside it is not a failure to
        run the program. */
-    unused(os::take_spawn_failure());
+    unused(os::take_spawn_failure_status());
 
     return status;
   }
