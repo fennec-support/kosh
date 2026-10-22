@@ -301,6 +301,99 @@ run_util(Utility::Kind                    chosen,
 {
   LOG(Debug, "dispatching koshkit utility %d with %zu arguments", ENUM(chosen),
       args.count());
+
+  /* a flag error exits with the status of the program the utility mirrors,
+     measured with an invalid option. kosh's own utilities keep 2. */
+  struct usage_status
+  {
+    StringView name;
+    i32        status;
+  };
+  static constexpr usage_status USAGE_STATUSES[] = {
+      {"basename", 1  },
+      {"cat",      1  },
+      {"chgrp",    1  },
+      {"chmod",    1  },
+      {"chown",    1  },
+      {"cksum",    1  },
+      {"comm",     1  },
+      {"cp",       1  },
+      {"csplit",   1  },
+      {"cut",      1  },
+      {"date",     1  },
+      {"df",       1  },
+      {"dirname",  1  },
+      {"du",       1  },
+      {"env",      125},
+      {"expand",   1  },
+      {"file",     1  },
+      {"find",     1  },
+      {"flock",    64 },
+      {"fold",     1  },
+      {"fuser",    1  },
+      {"head",     1  },
+      {"id",       1  },
+      {"killall",  1  },
+      {"link",     1  },
+      {"ln",       1  },
+      {"locale",   64 },
+      {"logger",   1  },
+      {"logname",  1  },
+      {"mkdir",    1  },
+      {"mkfifo",   1  },
+      {"mknod",    1  },
+      {"more",     1  },
+      {"mv",       1  },
+      {"nice",     125},
+      {"nl",       1  },
+      {"nohup",    125},
+      {"nproc",    1  },
+      {"od",       1  },
+      {"paste",    1  },
+      {"pathchk",  1  },
+      {"pr",       1  },
+      {"readlink", 1  },
+      {"realpath", 1  },
+      {"renice",   1  },
+      {"rm",       1  },
+      {"rmdir",    1  },
+      {"sed",      1  },
+      {"seq",      1  },
+      {"sleep",    1  },
+      {"split",    1  },
+      {"stat",     1  },
+      {"strings",  1  },
+      {"stty",     1  },
+      {"sync",     1  },
+      {"tabs",     1  },
+      {"tail",     1  },
+      {"tee",      1  },
+      {"timeout",  125},
+      {"touch",    1  },
+      {"tr",       1  },
+      {"tsort",    1  },
+      {"uname",    1  },
+      {"uniq",     1  },
+      {"unexpand", 1  },
+      {"unlink",   1  },
+      {"wc",       1  },
+      {"who",      1  },
+      {"whoami",   1  },
+      {"xargs",    1  },
+      {"yes",      1  },
+      {"cal",      1  },
+      {"bc",       1  },
+  };
+  i32 status = 2;
+
+  if (!args.is_empty()) {
+    for (let const &entry : USAGE_STATUSES)
+      if (entry.name == args[0].view()) status = entry.status;
+  }
+
+  let const previous_status = set_flag_usage_status(status);
+  defer { unused(set_flag_usage_status(previous_status)); };
+
   switch (chosen) {
     UTILITY_SWITCH_CASES();
   }

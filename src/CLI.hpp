@@ -463,6 +463,13 @@ struct util_operands_result
   ArrayList<SourceLocation> operand_locations;
 };
 
+/* sets the status of a flag or operand count error and returns the previous
+   one. */
+fn
+set_flag_usage_status(i32 status) wontthrow -> i32;
+fn
+get_flag_usage_status() wontthrow -> i32;
+
 fn
 parse_util_operands(const FlagList                  &flags,
                     const ArrayList<String>         &args,

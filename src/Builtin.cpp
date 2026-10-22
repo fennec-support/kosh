@@ -468,7 +468,7 @@ show_usage_error(EvalContext   &cxt,
   }
                    .to_string());
 
-  return 2;
+  return get_flag_usage_status();
 }
 
 fn
