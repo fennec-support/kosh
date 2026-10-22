@@ -438,8 +438,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                      {},
                      "Let the bash and sh moods run a bundled koshkit "
                      "utility by its plain name when PATH has no program "
-                     "of that name. The kosh mood always does, whatever "
-                     "this value."},
+                     "of that name. The kosh mood always does, regardless "
+                     "of this value."},
          false),
     fixed_in_kosh(
         make_entry(16,
@@ -1114,8 +1114,8 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                                     {},
                                     {},
                                     "Report command path hashing as enabled. "
-                                    "Koshka caches command paths whether this "
-                                    "option is enabled or disabled.",
+                                    "The setting does not change command path "
+                                    "caching.",
                                     'h'},
                         true)),
     set_only(posix_flag(86,
@@ -1654,7 +1654,7 @@ get_legacy_koshconf_alias(const option_descriptor &option) throws
     return None;
   }
 
-  /* An option whose koshconf name is already a legacy spelling has no second
+  /* an option whose koshconf name is already a legacy spelling has no second
      spelling. */
   let const koshconf_name = StringView{option.koshconf_name};
 
@@ -1945,7 +1945,9 @@ parse_option_number(const option_descriptor &option,
     u32           column_count     = 0;
 
     for (usize position = 0; position < text.count(); position++) {
-      if (text[position] < '0' || text[position] > '9') return None;
+      if (text[position] < '0' || text[position] > '9') {
+        return None;
+      }
 
       column_count = column_count * 10 + static_cast<u32>(text[position] - '0');
       if (column_count > WRAP_WIDTH_LIMIT) return None;

@@ -501,7 +501,9 @@ total_size(const ExecContext        &ec,
     }
   }
 
-  if (os::INTERRUPT_REQUESTED || !root_result.should_emit) return None;
+  if (os::INTERRUPT_REQUESTED || !root_result.should_emit) {
+    return None;
+  }
 
   return root_result;
 }

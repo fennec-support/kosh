@@ -14,7 +14,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[n]");
 
-HELP_DESCRIPTION_DECL("An enclosing loop can be exited with this builtin.");
+HELP_DESCRIPTION_DECL("An enclosing loop can be exited.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

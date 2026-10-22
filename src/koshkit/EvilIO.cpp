@@ -33,7 +33,7 @@ FLAG_OPTIONAL(EVILIO_CUMULATIVE,
               'C',
               "cumulative",
               Live,
-              "Report sampled activity over an M-second window; the default "
+              "Report sampled activity over an M-second window. The default "
               "is one second. Without --live, wait M seconds first. With "
               "--live the window rolls and does not set the refresh rate.",
               koshka::koshkit::is_koshkit_sample_duration,
@@ -43,7 +43,7 @@ FLAG_OPTIONAL(EVILIO_LIVE,
               'l',
               "live",
               Live,
-              "Sample and refresh live output every N seconds; the default is "
+              "Sample and refresh live output every N seconds. The default is "
               "0.5 seconds.",
               koshka::koshkit::is_koshkit_sample_duration,
               "seconds");

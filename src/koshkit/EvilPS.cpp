@@ -57,21 +57,21 @@ FLAG(EVILPS_SORT,
      String,
      '\0',
      "sort",
-     "Sort process trees by name, pid, cpu, or memory; show descendants "
+     "Sort process trees by name, pid, cpu, or memory. Show descendants "
      "beneath the highest-ranked process.");
 FLAG_OPTIONAL(EVILPS_LIVE,
               'l',
               "live",
               Live,
               "Sample and refresh the process tree every N seconds until "
-              "interrupted; the default is 0.5 seconds.",
+              "interrupted. The default is 0.5 seconds.",
               koshka::koshkit::is_koshkit_sample_duration,
               "seconds");
 FLAG_OPTIONAL(EVILPS_CUMULATIVE,
               'C',
               "cumulative",
               Live,
-              "Average CPU use over an M-second window; the default is one "
+              "Average CPU use over an M-second window. The default is one "
               "second. With --live the window rolls and does not set the "
               "refresh rate. Without --live, compare snapshots across M "
               "seconds.",
@@ -727,7 +727,9 @@ render_process_snapshot(const ExecContext               &ec,
   }
 
   /* the root exists, so the search hides its whole tree. */
-  if (!operands.is_empty() && root_position < nodes.count()) return 0;
+  if (!operands.is_empty() && root_position < nodes.count()) {
+    return 0;
+  }
 
   if (!operands.is_empty()) {
     report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "evilps",

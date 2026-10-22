@@ -38,7 +38,7 @@ FLAG_OPTIONAL(EVILSS_LIVE,
               "live",
               Live,
               "Read the sockets again and refresh the table every N seconds "
-              "until interrupted; the default is 0.5 seconds.",
+              "until interrupted. The default is 0.5 seconds.",
               koshka::koshkit::is_koshkit_sample_duration,
               "seconds");
 

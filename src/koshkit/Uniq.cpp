@@ -62,7 +62,9 @@ parse_uniq_count(StringView text) wontthrow -> Maybe<usize>
   usize value = 0;
 
   for (usize i = 0; i < text.length; i++) {
-    if (text[i] < '0' || text[i] > '9') return {};
+    if (text[i] < '0' || text[i] > '9') {
+      return {};
+    }
 
     let const digit = static_cast<usize>(text[i] - '0');
 

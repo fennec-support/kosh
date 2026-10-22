@@ -23,7 +23,7 @@ inline constexpr int HISTORY_RACE_ATTEMPT_COUNT = 3;
 inline constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT =
     koshka::os::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT;
 
-/* Replaces path with contents through a temporary file renamed over it, and
+/* replaces path with contents through a temporary file renamed over it, and
    keeps the identity of that file in written when written is not null. */
 fn
 write_history_file_atomically(

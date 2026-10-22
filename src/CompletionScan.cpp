@@ -705,7 +705,7 @@ internal::complete_from_tools_with_targets(StringView      line,
 
       if (!contents.has_value()) return names;
 
-      /* Every generator provides all and clean without a target directory.
+      /* every generator provides all and clean without a target directory.
          A target directory sits under the last CMakeFiles component, and a
          target such as install/local keeps its slash there. */
       names.push_managed("all");
@@ -1069,7 +1069,7 @@ complete_from_flags_in_line(StringView      line,
       }
     }
 
-    /* A getconf program on PATH takes the same POSIX variables as the
+    /* a getconf program on PATH takes the same POSIX variables as the
        bundled utility. */
     if (!util_for_flags.has_value() && !is_koshkit_builtin &&
         command == "getconf" && previous_word == command && is_operand_wanted)

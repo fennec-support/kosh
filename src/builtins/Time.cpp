@@ -18,8 +18,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-p|--posix] [-R] command [argument ...]");
 
-HELP_DESCRIPTION_DECL(
-    "A command can be run and its elapsed time reported with this builtin.");
+HELP_DESCRIPTION_DECL("A command can be run and its elapsed time reported.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(TIME_POSIX, Bool, 'p', "posix", "Use the POSIX time report.");
@@ -32,7 +31,7 @@ namespace koshka {
 /* memory: command is a String in scratch_allocator(), owned by
            scratch_arena().
    time:   O(operand bytes) to join the operands. the joined command runs
-   once. */
+           once. */
 cold fn
 Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

@@ -17,8 +17,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-p] [-S] [mask]");
 
-HELP_DESCRIPTION_DECL(
-    "The file creation mask can be printed or set with this builtin.");
+HELP_DESCRIPTION_DECL("The file creation mask can be printed or set.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(UMASK_REUSABLE,

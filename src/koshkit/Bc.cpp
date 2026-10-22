@@ -48,7 +48,7 @@ bc_digit_value(char byte) wontthrow -> u32
 /* memory: one String in allocator, returned to the caller.
    time:   O(program.length), one pass with constant work per byte.
            the output is no longer than program. */
-/* The text of an evaluator message without the prefix that bc adds to its
+/* the text of an evaluator message without the prefix that bc adds to its
    variable and function words. */
 static fn
 strip_bc_prefix(StringView text, Allocator allocator) throws -> String

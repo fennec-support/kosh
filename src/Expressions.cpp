@@ -1982,7 +1982,7 @@ expressions::internal::analyze_followed_source(
   /* positions in the lexer, analysis, and diagnostics assume LF endings. */
   contents->normalize_crlf_line_endings();
 
-  /* A file that runs in another mood is not followed, since its grammar and
+  /* a file that runs in another mood is not followed, since its grammar and
      strictness are not those of the analyzed source. */
   let const current_mood = actx.eval_context->runtime_state().get_mood();
   let const sourced_mood = detect_sourced_file_mood(

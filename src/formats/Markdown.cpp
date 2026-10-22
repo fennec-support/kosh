@@ -99,7 +99,9 @@ static pure fn
 is_placeholder_end(StringView line, usize open, usize &close) wontthrow -> bool
 {
   if (open + 2 >= line.length || line[open + 1] == '<' || line[open + 1] == '(')
+  {
     return false;
+  }
   if (open > 0 && line[open - 1] != ' ' && line[open - 1] != '=' &&
       line[open - 1] != '"' && line[open - 1] != '\'' && line[open - 1] != '/')
   {
@@ -117,7 +119,9 @@ is_placeholder_end(StringView line, usize open, usize &close) wontthrow -> bool
     position++;
 
   if (position == open + 1 || position >= line.length || line[position] != '>')
+  {
     return false;
+  }
 
   let const after = position + 1;
 

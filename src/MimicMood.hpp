@@ -35,7 +35,7 @@ pure fn
 detect_mimic_shell_from_extension(StringView dotted_extension) throws
     -> Maybe<mimic_mood>;
 
-/* The mood a file sourced from current_mood runs in, or None to keep it. */
+/* the mood a file sourced from current_mood runs in, or None to keep it. */
 fn
 detect_sourced_file_mood(StringView path,
                          StringView contents,

@@ -15,7 +15,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[name[=value] ...]");
 
-HELP_DESCRIPTION_DECL("Aliases can be defined or printed with this builtin.");
+HELP_DESCRIPTION_DECL("Aliases can be defined or printed.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

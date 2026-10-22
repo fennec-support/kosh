@@ -466,9 +466,9 @@ LiveView::get_default_key_action(live_view_key key) const wontthrow
 }
 
 /* memory: buffer[512] on the stack. no heap allocation.
-   time: one wait_for_fd_readable() call bounded by wait_nanoseconds, or one
-         sleep when m_has_input is false, then at most one read_fd(). the key
-         loop is O(bytes read). */
+   time:   one wait_for_fd_readable() call bounded by wait_nanoseconds, or
+           one sleep when m_has_input is false, then at most one read_fd().
+           the key loop is O(bytes read). */
 fn
 LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
     -> bool

@@ -18,10 +18,10 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-o|+o option] [-DEI] [name ...]");
 HELP_DESCRIPTION_DECL(
-    "Options can be changed for completion specs selected by its "
-    "operands, by -D, -E, or -I, or, inside a completion function with no name "
-    "operand, by the current completion. With no option, it prints a form that "
-    "can be replayed.");
+    "Options can be changed for the completion specs selected by the operands "
+    "or by -D, -E, or -I. Inside a completion function with no operand, the "
+    "current completion is changed. With no option, a replayable form is "
+    "printed.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(COMPOPT_OPTION,

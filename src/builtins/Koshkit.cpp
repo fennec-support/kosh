@@ -21,7 +21,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[--color when] [utility] [arg ...]");
 
-HELP_DESCRIPTION_DECL("A bundled utility can be run with this builtin.");
+HELP_DESCRIPTION_DECL("A bundled utility can be run.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help and list the utilities.");
 FLAG(KOSHKIT_LIST, Bool, '\0', "list", "List the utilities, one per line.");

@@ -42,14 +42,18 @@ json_member_string(StringView source,
              (source[position] == ' ' || source[position] == '\t'))
         position++;
 
-      if (position >= object_end || source[position] != ':') continue;
+      if (position >= object_end || source[position] != ':') {
+        continue;
+      }
 
       position++;
       while (position < object_end &&
              (source[position] == ' ' || source[position] == '\t'))
         position++;
 
-      if (position >= object_end || source[position] != '"') return None;
+      if (position >= object_end || source[position] != '"') {
+        return None;
+      }
       /* at this point: key is a direct member of the object at object_start,
          and position is the opening quote of its value, before object_end. */
 
@@ -158,7 +162,9 @@ extract_shell_args(const parser_format_input &input,
         (source[array] == ' ' || source[array] == ':' || source[array] == '\t'))
       array++;
 
-    if (array >= source.length || source[array] != '[') continue;
+    if (array >= source.length || source[array] != '[') {
+      continue;
+    }
 
     let const object_start = objects.back();
 

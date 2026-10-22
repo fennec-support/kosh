@@ -338,8 +338,9 @@ detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::DevContainer;
   }
 
-  if (path_ends_with(path, ".spec") || path_ends_with(path, ".spec.in"))
+  if (path_ends_with(path, ".spec") || path_ends_with(path, ".spec.in")) {
     return parser_format_kind::RpmSpec;
+  }
   if (path_ends_with(path, ".md") || path_ends_with(path, ".markdown") ||
       path_ends_with(path, ".mdx") || path_ends_with(path, ".mdc") ||
       named_kind == parser_format_kind::Markdown ||
@@ -1512,7 +1513,9 @@ heredoc_delimiter_at(StringView line, usize &position) wontthrow
       continue;
     }
 
-    if (position < line.length && line[position] == '-') position++;
+    if (position < line.length && line[position] == '-') {
+      position++;
+    }
 
     while (position < line.length && line[position] == ' ')
       position++;
@@ -1614,7 +1617,9 @@ align_indented_heredoc_terminators(StringView source,
 static pure fn
 yaml_block_indicator(StringView value) wontthrow -> Maybe<bool>
 {
-  if (value.is_empty() || (value[0] != '|' && value[0] != '>')) return None;
+  if (value.is_empty() || (value[0] != '|' && value[0] != '>')) {
+    return None;
+  }
 
   usize position = 1;
 
@@ -1627,7 +1632,9 @@ yaml_block_indicator(StringView value) wontthrow -> Maybe<bool>
          (value[position] == ' ' || value[position] == '\t'))
     position++;
 
-  if (position < value.length && value[position] != '#') return None;
+  if (position < value.length && value[position] != '#') {
+    return None;
+  }
 
   /* at this point: value[0] is '|' or '>', and the rest of value holds only
      indicator characters, blanks, and an optional comment. */
@@ -1647,7 +1654,9 @@ skip_yaml_value_decorations(StringView line,
       position++;
 
     if (position >= line.length) return position;
-    if (line[position] != '&' && line[position] != '!') return position;
+    if (line[position] != '&' && line[position] != '!') {
+      return position;
+    }
 
     let const decoration_start = position;
 
@@ -1940,7 +1949,9 @@ collect_flow_sequence_items(StringView                   source,
            (source[position] == ' ' || source[position] == ','))
       position++;
 
-    if (position >= line_end || source[position] == ']') return;
+    if (position >= line_end || source[position] == ']') {
+      return;
+    }
 
     let const byte = source[position];
 
@@ -2156,10 +2167,14 @@ parser_format_extract_yaml_value_at(parsed_format_document &document,
 static pure fn
 is_shell_command_flag(StringView word) wontthrow -> bool
 {
-  if (word.length < 2 || word[0] != '-' || word[1] == '-') return false;
+  if (word.length < 2 || word[0] != '-' || word[1] == '-') {
+    return false;
+  }
 
   for (usize position = 1; position < word.length; position++) {
-    if (word[position] < 'a' || word[position] > 'z') return false;
+    if (word[position] < 'a' || word[position] > 'z') {
+      return false;
+    }
   }
 
   return word.find_character('c').has_value();
@@ -2340,14 +2355,18 @@ parser_format_extract_yaml_exec_keys(parsed_format_document &document,
     for (usize index = first + 1; index + 1 < argv.count(); index++) {
       let const word = yaml_item_text(source, argv[index]);
 
-      if (word.is_empty() || word[0] != '-') break;
+      if (word.is_empty() || word[0] != '-') {
+        break;
+      }
       if (is_shell_command_flag(word)) {
         script_index = index + 1;
         break;
       }
     }
 
-    if (script_index == 0 || script_index < prefix.count()) continue;
+    if (script_index == 0 || script_index < prefix.count()) {
+      continue;
+    }
     add_yaml_scalar_fragment(document, source, argv[script_index], *mood,
                              template_syntax);
   }
@@ -2539,7 +2558,9 @@ parser_format_json_string_end(StringView source, usize position) wontthrow
     -> usize
 {
   while (position < source.length && source[position] != '"') {
-    if (source[position] == '\\' && position + 1 < source.length) position++;
+    if (source[position] == '\\' && position + 1 < source.length) {
+      position++;
+    }
     position++;
   }
 
@@ -2654,7 +2675,9 @@ parser_format_extract_json_keys(parsed_format_document       &document,
         }
       }
 
-      if (!has_container || is_excluded) continue;
+      if (!has_container || is_excluded) {
+        continue;
+      }
 
       return &candidate;
     }

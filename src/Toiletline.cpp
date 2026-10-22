@@ -9,7 +9,7 @@
  * KOSH_NO_TOILETLINE builds.
  */
 
-/* The toiletline configuration macros are defined here, so Toiletline.hpp is
+/* the toiletline configuration macros are defined here, so Toiletline.hpp is
    not included. */
 
 #include "CLI.hpp"
@@ -123,7 +123,7 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 #endif
 #define TL_ASSERT           ASSERT
 #define TL_HISTORY_MAX_SIZE (1024 * 4)
-/* A whole shell script fits in one buffer. */
+/* a whole shell script fits in one buffer. */
 #define TL_STRING_MAX_LEN 65535
 
 } /* namespace */
@@ -902,7 +902,7 @@ koshka::EvalContext *EDITOR_COMMAND_CONTEXT = nullptr;
 koshka::String       EDITED_LINE{koshka::heap_allocator()};
 koshka::String       OPTION_RESULT{koshka::heap_allocator()};
 
-/* The text of the value that a koshconf file stores for option. */
+/* the text of the value that a koshconf file stores for option. */
 fn
 get_persisted_option_value(
     const koshka::EvalContext       &cxt,
@@ -924,7 +924,9 @@ complete_option_name(koshka::StringView prefix) throws -> const char *
   for (let const &option : koshka::get_option_registry()) {
     let const name = koshka::StringView{option.koshconf_name};
 
-    if (name.is_empty() || !name.starts_with(prefix)) continue;
+    if (name.is_empty() || !name.starts_with(prefix)) {
+      continue;
+    }
     if (!has_match) {
       OPTION_RESULT = koshka::String{koshka::heap_allocator(), name};
       has_match     = true;
@@ -938,6 +940,7 @@ complete_option_name(koshka::StringView prefix) throws -> const char *
     {
       common++;
     }
+
     OPTION_RESULT.truncate(common);
   }
 
@@ -952,7 +955,9 @@ list_option_names(koshka::StringView prefix) throws -> const char *
   for (let const &option : koshka::get_option_registry()) {
     let const name = koshka::StringView{option.koshconf_name};
 
-    if (name.is_empty() || !name.starts_with(prefix)) continue;
+    if (name.is_empty() || !name.starts_with(prefix)) {
+      continue;
+    }
     if (!OPTION_RESULT.is_empty()) OPTION_RESULT += '\n';
     OPTION_RESULT += name;
   }
@@ -995,8 +1000,10 @@ set_option(koshka::EvalContext             &cxt,
       problem.has_value())
   {
     OPTION_RESULT = koshka::String{koshka::heap_allocator(), problem->view()};
+
     return OPTION_RESULT.c_str();
   }
+
   koshka::write_option_text(cxt, option, value,
                             koshka::option_origin::Koshconf);
 
@@ -1012,8 +1019,10 @@ save_options(koshka::EvalContext &cxt, const char *name) throws -> const
   if (!path.has_value()) {
     OPTION_RESULT = koshka::String{koshka::heap_allocator(),
                                    "The user configuration file is unknown"};
+
     return OPTION_RESULT.c_str();
   }
+
   if (name == nullptr) {
     koshka::persist_koshconf_snapshot(*path, cxt);
     OPTION_RESULT = koshka::StringView{"Saved every option to "} + path->view();
@@ -1030,8 +1039,10 @@ save_options(koshka::EvalContext &cxt, const char *name) throws -> const
   if (!option->is_configurable()) {
     OPTION_RESULT = koshka::StringView{"The '"} + option->koshconf_name +
                     "' option cannot be saved";
+
     return OPTION_RESULT.c_str();
   }
+
   koshka::persist_koshconf_setting(
       *path, *option, get_persisted_option_value(cxt, *option).view());
   OPTION_RESULT = koshka::StringView{"Saved '"} + option->koshconf_name +
@@ -1042,7 +1053,7 @@ save_options(koshka::EvalContext &cxt, const char *name) throws -> const
 
 koshka::String FORMAT_RESULT{koshka::heap_allocator()};
 
-/* Formats a row or the whole buffer for the editor's format commands in the
+/* formats a row or the whole buffer for the editor's format commands in the
    mood the shell runs in. A source that does not parse reports its first
    error. */
 fn
@@ -1069,6 +1080,7 @@ kosh_format_callback(const char *text, const char **out_text) -> int
 
       return 0;
     }
+
     FORMAT_RESULT = steal(*formatted);
     *out_text     = FORMAT_RESULT.c_str();
 
@@ -1084,7 +1096,7 @@ kosh_format_callback(const char *text, const char **out_text) -> int
   }
 }
 
-/* Answers the editor's option commands through the koshconf registry. A bare
+/* answers the editor's option commands through the koshconf registry. A bare
    name sets a boolean option on, a no prefix sets it off, and any other bare
    name shows its value, as the vi :set command does. */
 fn
@@ -1111,8 +1123,10 @@ kosh_option_callback(tl_option_action action,
       OPTION_RESULT =
           koshka::String{koshka::heap_allocator(),
                          "Changing options is forbidden in a restricted shell"};
+
       return OPTION_RESULT.c_str();
     }
+
     if (action == TL_OPTION_SAVE) return save_options(cxt, name);
 
     let const  text   = koshka::StringView{name, strlen(name)};
@@ -1314,7 +1328,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
   try {
     const usize byte_count = strlen(buffer);
     let         line       = koshka::StringView{buffer, byte_count};
-    /* The scan runs left to right, so the spans of a prefix do not depend on
+    /* the scan runs left to right, so the spans of a prefix do not depend on
        the text after it. Only the text through the line under the drawn rows
        is needed. */
     usize needed_byte_count = byte_count;
@@ -1332,19 +1346,19 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
     }
 
     let const needed = line.substring_of_length(0, needed_byte_count);
-    /* Cached text longer than the buffer holds spans past its end. */
+    /* cached text longer than the buffer holds spans past its end. */
     let const is_cached = has_highlighted_spans &&
                           highlighted_line.length() <= byte_count &&
                           highlighted_line.view().starts_with(needed);
 
     if (!is_cached) {
-      /* Text that only grew past the scanned part is scanned whole once, so
+      /* text that only grew past the scanned part is scanned whole once, so
          the window can move over it without another scan. */
       let const scanned =
           has_highlighted_spans && line.starts_with(highlighted_line.view())
               ? line
               : needed;
-      /* The scan starts again from the last restart point before the first
+      /* the scan starts again from the last restart point before the first
          changed byte, and the spans before that point stay. */
       usize same_byte_count = 0;
 
@@ -1436,7 +1450,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       do_advance(end);
       out->spans[filled].end = codepoint_position;
       out->spans[filled].sgr = sgr;
-      /* A span above the drawn rows keeps no slot. */
+      /* a span above the drawn rows keeps no slot. */
       if (codepoint_position > out->visible_start) filled++;
     };
 
@@ -1490,7 +1504,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 
     for (let const &span : highlighted_spans) {
       if (filled >= out->capacity) break;
-      /* A byte offset is never below its codepoint offset, so a span that
+      /* a byte offset is never below its codepoint offset, so a span that
          ends at or before visible_start in bytes is above the drawn rows. */
       if (span.end <= out->visible_start) {
         covered_end = span.end;
@@ -1844,7 +1858,7 @@ get_calc_history_file_path() -> koshka::Maybe<koshka::Path>
 
 static String HISTORY_SEARCH_SNAPSHOT{koshka::heap_allocator()};
 
-/* The prompt of the last line read outside the full-screen layout. */
+/* the prompt of the last line read outside the full-screen layout. */
 static String LAST_PROMPT{koshka::heap_allocator()};
 
 static fn
@@ -2064,7 +2078,7 @@ private:
 
 static CalcHistorySwap CALC_HISTORY_SWAP{};
 
-/* The shell history that enter_empty_history() set aside, valid until
+/* the shell history that enter_empty_history() set aside, valid until
    leave_empty_history() brings it back. */
 static history_snapshot HIDDEN_SHELL_HISTORY{};
 
@@ -3779,7 +3793,7 @@ append_prompt_data(String    &out,
                    StringView data,
                    bool       should_quote) throws -> void;
 
-/* The checksum of the full hostname picks the starting hue and the direction
+/* the checksum of the full hostname picks the starting hue and the direction
    of the gradient, so a host keeps its colors in every session. A truecolor
    terminal draws the exact colors, a 256-color terminal the nearest color of
    the color cube, and another terminal seven colors ordered by hue that
@@ -4638,7 +4652,7 @@ build_prompt(EvalContext &context) -> String
         decode_prompt(ps1_template.view(), context, false).view());
   }
 
-  String rendered = finish_prompt_dropping_width_markers(expanded->view());
+  let rendered = finish_prompt_dropping_width_markers(expanded->view());
 
   if (is_cacheable)
     PROMPT_CACHE.store(decoded, steal(scanned_inputs), steal(*expanded),

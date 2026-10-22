@@ -100,7 +100,9 @@ static pure fn
 macro_end(StringView source, usize position, usize end)
     wontthrow -> Maybe<usize>
 {
-  if (position + 1 >= end || source[position] != '%') return None;
+  if (position + 1 >= end || source[position] != '%') {
+    return None;
+  }
 
   if (source[position + 1] == '{') {
     usize depth = 0;
@@ -108,7 +110,9 @@ macro_end(StringView source, usize position, usize end)
     for (usize at = position + 1; at < end; at++) {
       if (source[at] == '\n') return None;
       if (source[at] == '{') depth++;
-      if (source[at] == '}' && --depth == 0) return at + 1;
+      if (source[at] == '}' && --depth == 0) {
+        return at + 1;
+      }
     }
 
     return None;
@@ -132,7 +136,9 @@ macro_end(StringView source, usize position, usize end)
   let const word =
       source.substring_of_length(position + 1, word_end - position - 1);
 
-  if (word.length > 1 && word[0] == '_') return word_end;
+  if (word.length > 1 && word[0] == '_') {
+    return word_end;
+  }
 
   for (let const macro : BARE_MACROS) {
     if (word == macro) return word_end;
@@ -217,7 +223,9 @@ parse_rpm_spec_format(const parser_format_input &input,
     let const line      = input.source.next_line(position);
     bool      is_script = false;
 
-    if (!is_section_header(line, is_script) || !is_script) continue;
+    if (!is_section_header(line, is_script) || !is_script) {
+      continue;
+    }
 
     let const mood        = section_interpreter_mood(line);
     let const shell_start = position;
@@ -235,7 +243,9 @@ parse_rpm_spec_format(const parser_format_input &input,
       }
     }
 
-    if (!mood.has_value() || shell_start >= shell_end) continue;
+    if (!mood.has_value() || shell_start >= shell_end) {
+      continue;
+    }
     /* at this point: mood holds a shell mood, shell_start is the byte after
        the script section header, and shell_start < shell_end. */
 

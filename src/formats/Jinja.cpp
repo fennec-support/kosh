@@ -58,7 +58,9 @@ parse_jinja_format(const parser_format_input &input,
   let const mood       = jinja_template_shell_mood(
       inner_name.has_value() ? *inner_name : StringView{}, input.source);
 
-  if (!mood.has_value() || input.source.is_empty()) return;
+  if (!mood.has_value() || input.source.is_empty()) {
+    return;
+  }
 
   bool did_mask        = false;
   let  analysis_source = parser_format_masked_template_source(

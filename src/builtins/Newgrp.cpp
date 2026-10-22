@@ -19,7 +19,7 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[group]");
-HELP_DESCRIPTION_DECL("The shell can change its group with this builtin.");
+HELP_DESCRIPTION_DECL("The shell can change its group.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

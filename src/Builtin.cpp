@@ -187,7 +187,7 @@ is_declaration_builtin_kind(Builtin::Kind kind) wontthrow -> bool
   }
 }
 
-/* True when location points inside the words of the builtin command itself,
+/* true when location points inside the words of the builtin command itself,
    so the error belongs to the builtin. A builtin that runs other code passes
    that code's errors through. */
 static fn
@@ -375,7 +375,7 @@ report_soft_builtin_error(const ExecContext &ec,
   show_message(Note{note}.to_string());
 }
 
-/* Without a located diagnostic, the caller prints the plain message. */
+/* without a located diagnostic, the caller prints the plain message. */
 static fn
 show_with_current_source(EvalContext             &cxt,
                          const ErrorWithLocation &located) throws
@@ -476,7 +476,7 @@ report_usage_error(const ExecContext &ec,
                    EvalContext       &cxt,
                    StringView         program_name) throws -> i32
 {
-  /* A multicall run uses the bare utility name. */
+  /* a multicall run uses the bare utility name. */
   let context = String{heap_allocator(), program_name};
 
   if (!ec.is_multicall && ec.is_builtin()) {

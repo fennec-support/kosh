@@ -59,7 +59,7 @@ public:
     if (name == StringView{"PIPESTATUS"}) m_has_pipestatus = false;
   }
 
-  /* Whether PIPESTATUS is declared. */
+  /* whether PIPESTATUS is declared. */
   pure fn
   has_pipestatus() const wontthrow -> bool
   {

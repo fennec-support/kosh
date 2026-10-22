@@ -80,7 +80,7 @@ Wait::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
            each pass calls table.update_jobs() and scans table.jobs() with a
            linear job_ids find per job, O(jobs * job_ids). the pass then waits
            for a child state change, or sleeps 5 ms where that wait is
-   absent. */
+           absent. */
 static fn
 wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
 {

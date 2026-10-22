@@ -16,10 +16,9 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-n] [+N | -N]");
 HELP_DESCRIPTION_DECL(
-    "The top directory can be removed from the stack before changing to "
-    "the new top. With +N or -N, it removes the Nth entry, counting from the "
-    "top for +N and from the bottom for -N. It changes directory if the "
-    "removed entry is current.");
+    "The top directory can be removed from the stack before changing to the "
+    "new top. With +N or -N, the Nth entry from the top or the bottom is "
+    "removed, and the directory changes if that entry is current.");
 
 FLAG(NO_CHANGE,
      Bool,

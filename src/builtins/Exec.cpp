@@ -19,8 +19,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[command [argument ...]]");
 
-HELP_DESCRIPTION_DECL(
-    "The shell can be replaced by the specified command with this builtin.");
+HELP_DESCRIPTION_DECL("The shell can be replaced by the specified command.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(EXEC_LOGIN,
@@ -77,9 +76,9 @@ report_exec_resolution_error(ExecContext   &ec,
 }
 
 /* memory: argv copies on heap_allocator(), owned by command.
-   time: O(args) to copy argv, one PATH search that may stat each PATH entry
-         when command_name has no directory separator, and three descriptor
-         saves. no locks. */
+   time:   O(args) to copy argv, one PATH search that may stat each PATH
+           entry when command_name has no directory separator, and three
+           descriptor saves. no locks. */
 fn
 Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

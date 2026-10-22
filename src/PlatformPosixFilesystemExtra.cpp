@@ -833,7 +833,7 @@ find_mounted_filesystem(
       continue;
     }
 
-    /* A later mount at the same target is stacked above an earlier one. */
+    /* a later mount at the same target is stacked above an earlier one. */
     if (!selected_index.has_value() ||
         target.length >= filesystems[*selected_index].target.view().length)
     {

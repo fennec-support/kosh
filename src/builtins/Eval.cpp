@@ -17,8 +17,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[arg ...]");
 
 HELP_DESCRIPTION_DECL(
-    "The arguments can be run as a command in the current shell with this "
-    "builtin.");
+    "The arguments can be run as a command in the current shell.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

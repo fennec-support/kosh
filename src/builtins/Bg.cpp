@@ -18,8 +18,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[%job]");
 
-HELP_DESCRIPTION_DECL(
-    "A stopped job can be resumed in the background with this builtin.");
+HELP_DESCRIPTION_DECL("A stopped job can be resumed in the background.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

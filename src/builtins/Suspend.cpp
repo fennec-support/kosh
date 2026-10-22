@@ -17,8 +17,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-f]");
 
-HELP_DESCRIPTION_DECL(
-    "The shell can be stopped until it receives SIGCONT with this builtin.");
+HELP_DESCRIPTION_DECL("The shell can be stopped until it receives SIGCONT.");
 
 FLAG(FORCE,
      Bool,

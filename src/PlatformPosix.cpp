@@ -2985,7 +2985,7 @@ get_entry_ignored_signals() wontthrow -> u64
 static constexpr usize STACK_RESERVE_BYTE_COUNT   = 256 * 1024;
 static constexpr usize UNLIMITED_STACK_BYTE_COUNT = 8 * 1024 * 1024;
 
-/* Returns the lowest usable stack address of the calling thread, or zero when
+/* returns the lowest usable stack address of the calling thread, or zero when
    the platform does not report it. */
 static fn
 probe_stack_floor() wontthrow -> uintptr_t

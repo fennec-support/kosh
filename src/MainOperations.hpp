@@ -2279,7 +2279,7 @@ expand_interactive_history_spans(StringView               source,
   return interactive_history_expansion{steal(expanded), should_execute};
 }
 
-/* Expands the history designators of an interactive line. An error that a
+/* expands the history designators of an interactive line. An error that a
    designator raises points at that designator in the line and notes how to
    take it literally. */
 static fn

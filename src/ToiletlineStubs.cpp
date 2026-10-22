@@ -188,7 +188,7 @@ get_history_record_span(const no_editor_history_state &state,
   let   span        = history_record_span{};
   bool  is_valid    = true;
 
-  /* A retained record passed next_history_record when the file was scanned,
+  /* a retained record passed next_history_record when the file was scanned,
      and it ends at its own newline, since a skipped record can lie between it
      and the next retained one. */
   let const did_find = next_history_record(state.branch_contents.view(),
@@ -273,7 +273,7 @@ scan_no_editor_history(const Path &path,
   history_record_span span{};
   let                 decoded = String{heap_allocator()};
 
-  /* A record longer than the line buffer is skipped, as the editor skips it,
+  /* a record longer than the line buffer is skipped, as the editor skips it,
      so the other records stay readable. */
   while (next_history_record(contents, byte_offset, span, is_valid)) {
     if (!decode_history_record(decoded, contents, span)) continue;

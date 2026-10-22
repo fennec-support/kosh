@@ -79,7 +79,7 @@ fn
 is_after_builtin_prefix(StringView line, usize token_start) wontthrow -> bool;
 pure fn
 command_segment_start(StringView line, usize cursor) wontthrow -> usize;
-/* The byte after the last of the command segment that holds position, where
+/* the byte after the last of the command segment that holds position, where
    an unquoted separator or parenthesis ends it. */
 pure fn
 command_segment_end(StringView line, usize position) wontthrow -> usize;
@@ -146,7 +146,7 @@ advance_shell_keyword_state(
     usize                            frame_depth,
     completion::shell_lexical_state &state) throws -> Maybe<bool>;
 
-/* Where a top-level highlight scan records its restart points. A point is
+/* where a top-level highlight scan records its restart points. A point is
    recorded at least HIGHLIGHT_RESTART_GAP_BYTE_COUNT bytes after the last. */
 constexpr usize HIGHLIGHT_RESTART_GAP_BYTE_COUNT = 4096;
 

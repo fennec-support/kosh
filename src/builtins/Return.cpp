@@ -15,8 +15,8 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[n]");
 
-HELP_DESCRIPTION_DECL("The current function or sourced file can be stopped "
-                      "with a returned status.");
+HELP_DESCRIPTION_DECL(
+    "The current function or sourced file can be stopped with a status.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

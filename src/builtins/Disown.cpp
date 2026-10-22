@@ -17,8 +17,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-a] [-r] [-h] [%job ...]");
 
-HELP_DESCRIPTION_DECL(
-    "A job can be removed from the job table with this builtin.");
+HELP_DESCRIPTION_DECL("A job can be removed from the job table.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(ALL, Bool, 'a', "all", "Remove every job.");
@@ -49,7 +48,9 @@ Disown::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   {
     if (names.count() <= 1 &&
         cxt.job_table_store().most_recent_job() == nullptr)
+    {
       throw Error{"There is no such job"};
+    }
 
     for (usize i = 1; i < names.count(); i++) {
       if (cxt.job_table_store().find_job_by_spec(names[i]) == nullptr)

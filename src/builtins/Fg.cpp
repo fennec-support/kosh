@@ -18,8 +18,7 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[%job]");
-HELP_DESCRIPTION_DECL(
-    "A job can be brought to the foreground and awaited with this builtin.");
+HELP_DESCRIPTION_DECL("A job can be brought to the foreground and awaited.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 
@@ -29,10 +28,11 @@ namespace koshka {
 
 /* memory: one temporary String for command and a newline, released after
            the print call.
-   time: blocks in wait_for_job_processes() until the job exits or stops, so
-         the wait is not bounded. when the shell is interactive, has a
-         controlling terminal, and job->process_group_id is positive, the job's
-         process group holds the controlling terminal during the wait. */
+   time:   blocks in wait_for_job_processes() until the job exits or stops,
+           so the wait is not bounded. when the shell is interactive, has a
+           controlling terminal, and job->process_group_id is positive, the
+           job's process group holds the controlling terminal during the
+           wait. */
 fn
 Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

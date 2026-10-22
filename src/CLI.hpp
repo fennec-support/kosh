@@ -465,7 +465,7 @@ append_shell_quoted_arg(String    &out,
 fn
 reset_flags(const FlagList &flags) throws -> void;
 
-/* Both lookups return nullptr when no registered flag matches. The long lookup
+/* both lookups return nullptr when no registered flag matches. The long lookup
    compares the whole name, without any "=value" suffix. */
 pure fn
 find_short_flag(const FlagList &flags, char letter) wontthrow -> Flag *;
@@ -477,7 +477,7 @@ find_long_flag(const FlagList &flags, StringView name) wontthrow -> Flag *;
 pure fn
 takes_separate_value(const Flag &flag) wontthrow -> bool;
 
-/* Whether argv[1..] up to the first "--" holds the word --long_name or a short
+/* whether argv[1..] up to the first "--" holds the word --long_name or a short
    cluster containing the letter. The check does not consult the registry, so a
    letter inside another flag's value counts. */
 pure fn
@@ -486,7 +486,7 @@ has_flag_word(int                argc,
               char               short_name,
               StringView         long_name) wontthrow -> bool;
 
-/* A short cluster, without its leading dash, takes the next word as a value
+/* a short cluster, without its leading dash, takes the next word as a value
    when its first value-taking flag is its last letter. Unknown letters are
    skipped. */
 pure fn

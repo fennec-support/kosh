@@ -15,8 +15,8 @@
 
 KOSHKIT_UTIL_DECL(
     "[-e|-m] path ...",
-    "Print the absolute, normalized form of each path. "
-    "Every component but the last must exist unless -e or -m is given.");
+    "Print the absolute, normalized form of each path. By default, every "
+    "component but the last must exist.");
 
 FLAG(REALPATH_EXISTING,
      Bool,

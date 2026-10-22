@@ -175,7 +175,9 @@ is_recipe_gap(StringView gap) wontthrow -> bool
   while (position < gap.length) {
     if (gap[position] != '\n') return false;
     position++;
-    if (position >= gap.length || gap[position] != '\t') return false;
+    if (position >= gap.length || gap[position] != '\t') {
+      return false;
+    }
     position++;
 
     while (

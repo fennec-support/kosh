@@ -26,8 +26,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-abcdefgjksuv] [-o option] [-V varname] [-W wordlist] "
                    "[-G glob] [-A action] [-P prefix] [-S suffix] "
                    "[-X filterpat] [-F function] [-C command] [word]");
-HELP_DESCRIPTION_DECL(
-    "Completion candidates for a word can be written with this builtin.");
+HELP_DESCRIPTION_DECL("Completion candidates for a word can be written.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(COMPGEN_WORDLIST,

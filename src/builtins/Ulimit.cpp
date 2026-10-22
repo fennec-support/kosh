@@ -18,8 +18,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-HSacdflmnpstuvw] [limit]");
 
-HELP_DESCRIPTION_DECL(
-    "A resource limit for the shell can be printed or set with this builtin.");
+HELP_DESCRIPTION_DECL("A resource limit for the shell can be printed or set.");
 
 FLAG(CPU_TIME, Bool, 't', "", "The maximum CPU time in seconds.");
 FLAG(FILE_SIZE,

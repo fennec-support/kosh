@@ -163,7 +163,9 @@ public:
 
       let const parsed = StringView{buffer, digit_count}.to<u64>();
 
-      if (digit_count > 0 && !parsed.is_error()) return parsed.value();
+      if (digit_count > 0 && !parsed.is_error()) {
+        return parsed.value();
+      }
     }
 
     return None;

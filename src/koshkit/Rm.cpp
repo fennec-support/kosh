@@ -39,9 +39,9 @@ static constexpr StaticStringMap INTERACTION_WORDS{INTERACTION_WORD_ENTRIES};
 KOSHKIT_UTIL_DECL(
     "[-dfIiRrvx] [--interactive[=when]] [--preserve-root[=all]] "
     "[--no-preserve-root] [--dry-run] path ...",
-    "Ask before removing a write protected file when standard input is a "
-    "terminal unless removal is forced. The last force or interaction flag "
-    "determines whether to ask.");
+    "Remove each path. A write protected file is confirmed first when standard "
+    "input is a terminal, unless removal is forced. The last force or "
+    "interaction flag decides.");
 
 static fn
 is_interaction_word(koshka::StringView word) -> bool

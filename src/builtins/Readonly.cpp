@@ -15,8 +15,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-aAf] [-p] [name[=value] ...]");
 
-HELP_DESCRIPTION_DECL(
-    "Each variable operand can be marked read-only with this builtin.");
+HELP_DESCRIPTION_DECL("Each variable operand can be marked read-only.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(READONLY_PRINT,

@@ -21,8 +21,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-aAfFgilnprtux] [+i] [name[=value] ...]");
 
-HELP_DESCRIPTION_DECL(
-    "Variables and their attributes can be declared with this builtin.");
+HELP_DESCRIPTION_DECL("Variables and their attributes can be declared.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(DECLARE_INDEXED, Bool, 'a', "", "Declare an indexed array.");

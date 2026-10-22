@@ -135,7 +135,7 @@ rc=$?
 missing_count=$(printf '%s\n' "$output" |
   grep -c "Could not open 'missing.bash'")
 directory_count=$(printf '%s\n' "$output" |
-  grep -c 'because the file is a directory')
+  grep -c ': it is a directory')
 after_open_error=$(printf '%s\n' "$output" |
   grep -c "The variable 'LINT_FILE_TWO'")
 printf 'missing=%s directory=%s continued=%s rc=%s\n' \

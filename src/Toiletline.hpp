@@ -81,7 +81,7 @@ fn
 enable_completion(koshka::EvalContext &context) -> void;
 fn
 disable_completion() -> void;
-/* Turns off completion, highlighting, the formatter, and the other
+/* turns off completion, highlighting, the formatter, and the other
    shell-syntax callbacks, and keeps the external editor and the option
    commands. */
 fn
@@ -94,33 +94,41 @@ fn
 enter_calc_history() -> void;
 fn
 leave_calc_history() -> void;
-/* Hides the shell history from the editor until leave_empty_history(), so Up
+
+/* hides the shell history from the editor until leave_empty_history(), so Up
    and Down cannot replace a buffer with a command. */
 fn
 enter_empty_history() -> void;
+
 fn
 leave_empty_history() -> void;
-/* Saves the edited file through callback for Ctrl-X s and the vi write
+
+/* saves the edited file through callback for Ctrl-X s and the vi write
    commands, or turns saving off when callback is null. */
 fn
 set_save_callback(int (*callback)(const char *text, const char **out_message))
     -> void;
-/* Keeps text as the saved file contents that quit keys compare the buffer
+
+/* keeps text as the saved file contents that quit keys compare the buffer
    against, or forgets them when text is null. text must outlive its use. */
 fn
 set_saved_text(const char *text) -> void;
-/* Shows title on the top row of the full-screen layout, or no title when
+
+/* shows title on the top row of the full-screen layout, or no title when
    title is null. title must outlive its use. */
 fn
 set_editor_title(const char *title) -> void;
-/* Keeps status, one line about the edited file, for the rows under the
+
+/* keeps status, one line about the edited file, for the rows under the
    full-screen input. status must outlive its use. */
 fn
 set_status(const char *status) -> void;
-/* The prompt of the last line read outside the full-screen layout. */
+
+/* the prompt of the last line read outside the full-screen layout. */
 fn
 get_last_prompt() -> koshka::StringView;
-/* Lays the editor out over the whole terminal for editing a file, with the
+
+/* lays the editor out over the whole terminal for editing a file, with the
    hints on the last four rows and the menu over the input. */
 fn
 set_full_screen(bool is_enabled) -> void;

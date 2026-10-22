@@ -29,10 +29,10 @@ namespace koshka {
 
 namespace {
 
-/* The editor holds a buffer of at most this many bytes. */
+/* the editor holds a buffer of at most this many bytes. */
 constexpr usize SLURP_MAX_BYTE_COUNT = 65534;
 
-/* True when text has no NUL byte and is well-formed UTF-8. */
+/* true when text has no NUL byte and is well-formed UTF-8. */
 fn
 is_text(StringView text) wontthrow -> bool
 {
@@ -58,16 +58,19 @@ is_text(StringView text) wontthrow -> bool
     } else {
       return false;
     }
+
     if (position + continuation_count >= text.length) return false;
+
     for (usize i = 1; i <= continuation_count; i++)
       if ((static_cast<u8>(text[position + i]) & 0xc0) != 0x80) return false;
+
     position += continuation_count + 1;
   }
 
   return true;
 }
 
-/* True when a copy written beside path can replace it with nothing lost: the
+/* true when a copy written beside path can replace it with nothing lost: the
    saving user owns the file, which has no other link, and only the owner of
    its directory, the saving user or root, can add or swap files there unless
    the directory is sticky. */
@@ -78,7 +81,9 @@ is_replaceable_by_copy(const Path &path) throws -> bool
   let const euid   = static_cast<u64>(os::get_effective_user_id());
 
   if (!os::stat_path_following(path.view(), status)) return false;
-  if (status.owner_id != euid || status.link_count > 1) return false;
+  if (status.owner_id != euid || status.link_count > 1) {
+    return false;
+  }
 
   let target = Path{path.view()};
 
@@ -104,8 +109,10 @@ enum class save_outcome : u8
   Replaced,
 };
 
-/* Writes contents to a new private file in the home directory, or in the
-   temporary directory when the home directory takes none. */
+/* writes contents to a new private file in the home directory, or in the
+   temporary directory when the home directory takes none.
+   memory: the returned Path on heap_allocator(), owned by the caller.
+   time:   one or two temporary file writes of contents. */
 fn
 write_backup(StringView contents) throws -> Maybe<Path>
 {
@@ -122,17 +129,14 @@ write_backup(StringView contents) throws -> Maybe<Path>
                                       "kosh-slurp-backup", contents);
 }
 
-/* A file that is_replaceable_by_copy() accepts is replaced by a complete copy
-   written beside it, so a failed write leaves the original in place. Any
-   other file is rewritten in place, which keeps its owner, group, and links.
-   Either way the save goes ahead only while the file is still the one that
-   opened describes, so a file swapped for another meanwhile is left alone.
-   The current contents of a file rewritten in place go to a private backup
-   first, which a successful write removes and a failed one leaves in
-   kept_backup, and without a backup nothing is written. A file that was
-   missing when slurp loaded it is created only if nothing has taken its
-   place, and a regular file created so is removed again when the write fails.
-   A save keeps the identity of the file it wrote in written. */
+/* writes contents to path while it is still the file opened describes. A file
+   that is_replaceable_by_copy() accepts is replaced by a copy written beside
+   it, and any other file is rewritten in place after a private backup, which a
+   failed write leaves in kept_backup. A file missing at load is created only
+   if nothing took its place. written keeps the identity of the file saved.
+   memory: the read original and the backup Path on heap_allocator().
+   time:   O(contents.length) plus O(file size) for a backup, and a few stat,
+           open, and rename calls. */
 fn
 save_file(const Path                   &path,
           StringView                    contents,
@@ -146,7 +150,7 @@ save_file(const Path                   &path,
 
     if (!descriptor.has_value()) return save_outcome::Failed;
 
-    /* The exclusive open created a regular file. Any other kind of file was
+    /* the exclusive open created a regular file. Any other kind of file was
        already there and is not removed. */
     let       created    = os::file_status{};
     let const is_created = os::stat_descriptor(*descriptor, created) &&
@@ -159,6 +163,7 @@ save_file(const Path                   &path,
 
       return save_outcome::Saved;
     }
+
     if (is_created) unused(os::remove_file(path.view()));
 
     return save_outcome::Failed;
@@ -184,6 +189,7 @@ save_file(const Path                   &path,
     {
       return save_outcome::Failed;
     }
+
     written = replacement;
 
     return save_outcome::Saved;
@@ -228,12 +234,13 @@ save_file(const Path                   &path,
 
     return save_outcome::Saved;
   }
+
   kept_backup = steal(backup);
 
   return save_outcome::Failed;
 }
 
-/* The file a slurp session edits and what a save needs to write it back. */
+/* the file a slurp session edits and what a save needs to write it back. */
 struct slurp_session
 {
   Path                   path;
@@ -249,7 +256,7 @@ struct slurp_session
 
 slurp_session *ACTIVE_SESSION = nullptr;
 
-/* Describes the kind of file, its line endings, and its size in byte_count,
+/* describes the kind of file, its line endings, and its size in byte_count,
    or a new file when byte_count is empty. */
 fn
 make_status(const slurp_session &session,
@@ -259,6 +266,7 @@ make_status(const slurp_session &session,
                       session.is_shell_script ? "shell script, " : "text, "};
 
   status.append(session.has_crlf ? "CRLF endings, " : "LF endings, ");
+
   if (byte_count.has_value()) {
     status.append(
         String::from(static_cast<u64>(*byte_count), heap_allocator()));
@@ -270,8 +278,10 @@ make_status(const slurp_session &session,
   return status;
 }
 
-/* Writes text to the file of the active session with the line endings it was
-   loaded with, and leaves a line for the hint rows in out_message. */
+/* writes text to the file of the active session with the line endings it was
+   loaded with, and leaves a line for the hint rows in out_message.
+   memory: the converted text and the message String on heap_allocator().
+   time:   O(text length) plus one save_file() call. */
 fn
 save_buffer(const char *text, const char **out_message) -> int
 {
@@ -287,6 +297,7 @@ save_buffer(const char *text, const char **out_message) -> int
       }
       saved.push(buffer[i]);
     }
+
     if (session.has_final_newline &&
         (!saved.is_empty() || session.is_single_newline))
     {
@@ -339,6 +350,10 @@ save_buffer(const char *text, const char **out_message) -> int
 
 } /* namespace */
 
+/* memory: the file contents, the title, and the session Strings on
+           heap_allocator(), released when the session ends.
+   time:   O(file size) to load, check, and split the file, then one editor
+           session. */
 fn
 Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -444,7 +459,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
-  /* Only a file whose every line ends in CRLF is edited with LF and saved
+  /* only a file whose every line ends in CRLF is edited with LF and saved
      with CRLF again. A file that mixes them keeps each carriage return as
      text. */
   let const has_crlf = newline_count > 0 && crlf_count == newline_count;
@@ -454,13 +469,15 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const has_final_newline = contents.is_empty() || contents.back() == '\n';
   let const is_single_newline = contents.length() == 1 && contents[0] == '\n';
 
-  if (!contents.is_empty() && contents.back() == '\n') contents.pop_back();
+  if (!contents.is_empty() && contents.back() == '\n') {
+    contents.pop_back();
+  }
 
   let const is_shell_script =
       detect_mimic_shell_from_source(contents.view()).has_value() ||
       detect_mimic_shell_from_extension(path.extension()).has_value();
 
-  /* The top row repeats the prompt and the command. */
+  /* the top row repeats the prompt and the command. */
   let const last_prompt     = toiletline::get_last_prompt();
   let const prompt_line_end = last_prompt.find_last_character('\n');
   let       title =
@@ -535,7 +552,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   };
 
-  /* The session runs on the alternate screen, which it leaves before any
+  /* the session runs on the alternate screen, which it leaves before any
      report so that the report stays on the main screen. */
   bool is_on_alternate_screen = true;
 

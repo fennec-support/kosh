@@ -505,10 +505,10 @@ Evil::execute(const ExecContext               &ec,
   let const distribution = read_os_release_name(allocator);
 
   if (distribution.has_value()) {
-    let const named    = distribution->view();
-    let const unquoted = named.length >= 2 && named[0] == '"'
-                             ? named.substring_of_length(1, named.length - 2)
-                             : named;
+    let const quoted   = distribution->view();
+    let const unquoted = quoted.length >= 2 && quoted[0] == '"'
+                             ? quoted.substring_of_length(1, quoted.length - 2)
+                             : quoted;
 
     identity.add("Distribution", unquoted);
   }

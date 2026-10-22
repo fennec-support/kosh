@@ -25,7 +25,9 @@ is_bench_warmup_count(StringView value) wontthrow -> bool
   if (value.is_empty()) return false;
 
   for (usize index = 0; index < value.length; index++)
-    if (value[index] < '0' || value[index] > '9') return false;
+    if (value[index] < '0' || value[index] > '9') {
+      return false;
+    }
 
   return true;
 }
@@ -175,7 +177,9 @@ read_cpu_nanos(const measured &result) wontthrow -> Maybe<double>
   let const &resources = result.resources;
 
   if (!resources.user_nanos.has_value() || !resources.system_nanos.has_value())
+  {
     return None;
+  }
 
   return static_cast<double>(*resources.user_nanos + *resources.system_nanos);
 }
@@ -314,6 +318,7 @@ constexpr bench_metric METRICS[] = {
 /* clang-format on */
 
 constexpr usize METRIC_COUNT = countof(METRICS);
+
 consteval fn
 metric_index(reader read) -> usize
 {
@@ -735,8 +740,9 @@ detect_outliers(const ArrayList<bench_sample> &samples,
   for (let const &sample : samples) {
     let const score = do_score(sample.wall_nanos);
 
-    if (score > OUTLIER_SCORE_THRESHOLD || score < -OUTLIER_SCORE_THRESHOLD)
+    if (score > OUTLIER_SCORE_THRESHOLD || score < -OUTLIER_SCORE_THRESHOLD) {
       result.has_outliers = true;
+    }
   }
 }
 
@@ -916,7 +922,9 @@ sample_command(StringView shell_binary,
         result.is_perf_process_only || measured->is_perf_process_only;
 
     for (usize k = 0; k < METRIC_COUNT; k++) {
-      if (METRICS[k].is_extended && !should_collect_extended) continue;
+      if (METRICS[k].is_extended && !should_collect_extended) {
+        continue;
+      }
 
       if (let const value = METRICS[k].read(*measured)) {
         sample.values[k]     = *value;
@@ -1053,8 +1061,9 @@ append_summary(String              &out,
         metric.scope == metric_scope::Process ||
         (metric.scope == metric_scope::Perf && result.is_perf_process_only);
 
-    if (metric.scope == metric_scope::Perf && result.is_perf_system_wide)
+    if (metric.scope == metric_scope::Perf && result.is_perf_system_wide) {
       row.name += " (system)";
+    }
     if (is_process_only) {
       row.name += " *";
       has_process_row = true;
@@ -1154,7 +1163,7 @@ append_summary(String              &out,
   }
 }
 
-/* Whether the comparison lists metric k. The default comparison lists cycles
+/* whether the comparison lists metric k. The default comparison lists cycles
    and instructions. The extended one lists every time, count, size, and
    energy that both commands measured, since a lower value is better for each
    of them, and leaves out ratios and shares. */

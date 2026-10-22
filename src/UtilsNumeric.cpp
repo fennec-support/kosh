@@ -89,7 +89,7 @@ format_minutes_seconds(double seconds, i32 decimal_count) throws
 
   char buffer[64];
 
-  /* Round before splitting, so 59.9996 with three decimals gives 1m0.000s. */
+  /* round before splitting, so 59.9996 with three decimals gives 1m0.000s. */
   snprintf(buffer, sizeof(buffer), "%.*f", static_cast<int>(decimal_count),
            seconds);
 

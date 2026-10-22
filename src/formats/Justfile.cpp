@@ -147,8 +147,9 @@ script_attribute(StringView line, mimic_mood fallback) wontthrow
 
     if (word.is_empty()) return None;
     if (word == "script") {
-      if (position < line.length && line[position] == '(')
+      if (position < line.length && line[position] == '(') {
         return interpreter_from_quoted_list(line.substring(position), fallback);
+      }
 
       return recipe_interpreter{recipe_language::Shell, fallback};
     }
@@ -165,7 +166,9 @@ script_attribute(StringView line, mimic_mood fallback) wontthrow
           continue;
         }
 
-        if (byte == '"' || byte == '\'') quote = byte;
+        if (byte == '"' || byte == '\'') {
+          quote = byte;
+        }
         if (byte == '(') depth++;
         if (byte == ')' && --depth == 0) {
           position++;
@@ -202,7 +205,9 @@ attribute_has_word(StringView line, StringView word) wontthrow -> bool
            line[position] != ']')
       position++;
 
-    if (position < line.length && line[position] == ']') position++;
+    if (position < line.length && line[position] == ']') {
+      position++;
+    }
   }
 
   return false;
@@ -290,7 +295,9 @@ collect_justfile_variables(StringView         source,
     let line = source.next_line(position);
 
     if (line.starts_with("export ")) line = line.substring(7);
-    if (line.is_empty() || !is_recipe_variable_start(line[0])) continue;
+    if (line.is_empty() || !is_recipe_variable_start(line[0])) {
+      continue;
+    }
 
     usize end = 0;
 
@@ -318,7 +325,9 @@ is_recipe_header(StringView line) wontthrow -> bool
   let const colon = line.find_character(':');
 
   if (!colon.has_value()) return false;
-  if (*colon + 1 < line.length && line[*colon + 1] == '=') return false;
+  if (*colon + 1 < line.length && line[*colon + 1] == '=') {
+    return false;
+  }
 
   /* at this point: line is nonempty and has a colon not followed by =. */
   let const first = line[0];
@@ -465,7 +474,9 @@ parse_justfile_format(const parser_format_input &input,
       }
 
       is_recipe = is_recipe_header(line) && !is_windows_only;
-      if (is_recipe && has_script_attribute) body_script = script_interpreter;
+      if (is_recipe && has_script_attribute) {
+        body_script = script_interpreter;
+      }
       has_script_attribute = false;
       is_windows_only      = false;
       exported_names.clear();

@@ -114,7 +114,7 @@ detect_mimic_shell_from_source(StringView source) throws
   return SHELL_MOODS.find(shell);
 }
 
-/* The mood a file sourced from the kosh mood is written for: its shebang, or
+/* the mood a file sourced from the kosh mood is written for: its shebang, or
    the Bash startup file it is known as. Other moods keep their mood, as Bash
    runs every file it sources as Bash. */
 fn

@@ -3612,7 +3612,7 @@ public:
     return m_parameter_expansion_depth;
   }
 
-  /* A nonzero depth means a subscript taken from data is being expanded
+  /* a nonzero depth means a subscript taken from data is being expanded
      again, and a substitution that runs commands is refused. */
   fn
   data_expansion_depth() wontthrow -> usize &
@@ -4919,7 +4919,7 @@ private:
   Kind             m_kind;
 };
 
-/* Raises the data expansion depth while it lives, so a command, function, or
+/* raises the data expansion depth while it lives, so a command, function, or
    process substitution reached from a subscript taken from data is refused. */
 class DataExpansionScope
 {
@@ -6108,7 +6108,7 @@ public:
   guard_restricted_path(StringView            path,
                         const SourceLocation &location,
                         restricted_path_use   use) const throws -> void;
-  /* A subscript from an expanded operand or a name reference target is
+  /* a subscript from an expanded operand or a name reference target is
      expanded again. The kosh mood rejects one that runs a command or follows
      an indirection, and the returned scope refuses any substitution that runs
      a command while the caller expands the subscript. */

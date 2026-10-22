@@ -12,7 +12,7 @@
 
 namespace koshka {
 
-/* The default user rc script. A login shell sources the files Bash reads at
+/* the default user rc script. A login shell sources the files Bash reads at
    login, and an interactive shell sources the POSIX and Bash rc files. */
 constexpr StringView DEFAULT_RC_SCRIPT{
     R"(#!/usr/bin/env kosh

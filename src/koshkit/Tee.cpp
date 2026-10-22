@@ -14,8 +14,8 @@
 
 KOSHKIT_UTIL_DECL(
     "[-a] [file ...]",
-    "Copy standard input to standard output and to each "
-    "file. With -a it appends to the files. The default truncates them.");
+    "Copy standard input to standard output and to each file. The files are "
+    "truncated unless -a is given.");
 
 FLAG(TEE_APPEND, Bool, 'a', "", "Append to the files.");
 

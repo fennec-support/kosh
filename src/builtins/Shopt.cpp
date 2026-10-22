@@ -17,8 +17,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-supqo] [optname ...]");
 
-HELP_DESCRIPTION_DECL(
-    "Bash shell options can be set, unset, or queried with this builtin.");
+HELP_DESCRIPTION_DECL("Bash shell options can be set, unset, or queried.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(SHOPT_SET, Bool, 's', "", "Enable each given option.");

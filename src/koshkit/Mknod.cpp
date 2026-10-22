@@ -17,10 +17,7 @@
 
 KOSHKIT_UTIL_DECL(
     "[-m mode] [--type type --major N --minor N] name [type [major minor]]",
-    "Create FIFO, character, and block special files.\n"
-    "Examples: mknod pipe p; mknod --fifo pipe; "
-    "mknod --character --major 1 --minor 3 device; "
-    "mknod --block 1 2 device.");
+    "Create FIFO, character, and block special files.");
 
 FLAG(MKNOD_MODE, String, 'm', "mode", "Set the node permission mode.");
 FLAG(MKNOD_TYPE,

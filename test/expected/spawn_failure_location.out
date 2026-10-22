@@ -31,7 +31,7 @@ note: `/bin/sh` followed by a carriage return does not exist.
      1 |  ./crlfshebang
        |  ^~~~~~~~~~~~~
 == script argument is a directory:
-1:9: error: Unable to execute `scriptdir` because the file is a directory.
+1:9: error: Unable to execute `scriptdir`: it is a directory.
      1 |  ./shell scriptdir
        |          ^~~~~~~~~
 rc=126

@@ -505,7 +505,7 @@ replace_koshconf_target(const Path &target, StringView contents) throws
 
 } /* namespace */
 
-/* The user Koshka configuration directory, or None for the superuser on
+/* the user Koshka configuration directory, or None for the superuser on
    POSIX and when no base directory is known. */
 static fn
 get_user_kosh_directory() throws -> Maybe<Path>

@@ -3610,7 +3610,7 @@ longest_possible_pattern_match(StringView    pattern,
   return length;
 }
 
-/* The literal text that every match of a pattern starts and ends with. A
+/* the literal text that every match of a pattern starts and ends with. A
    pattern with an extglob group or an active backslash has neither. A pattern
    with an active bracket has no tail. */
 struct pattern_affixes
@@ -3666,7 +3666,7 @@ get_pattern_affixes(StringView    pattern,
                              : pattern.substring(last_glob_position + 1)};
 }
 
-/* Returns the end offset of the last occurrence of the tail in the value, or
+/* returns the end offset of the last occurrence of the tail in the value, or
    zero when the tail does not occur. An empty tail returns value.length. */
 static fn
 get_last_tail_end(StringView value, StringView tail) wontthrow -> usize

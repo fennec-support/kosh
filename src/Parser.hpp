@@ -123,7 +123,7 @@ public:
 private:
   StringView             m_display_source{};
   static constexpr usize MAX_COMMAND_DEPTH = 512;
-  /* The cap spans every collecting call on one parser, so a streamed script
+  /* the cap spans every collecting call on one parser, so a streamed script
      stops recovering after this many errors in total. */
   static constexpr usize MAX_RECOVERED_ERROR_COUNT = 100;
 
@@ -181,7 +181,7 @@ private:
   skip_failed_statement(ArrayList<Token::Kind> &open_closers,
                         u64                     mask) throws -> void;
 
-  /* Takes the next token unless it is a closer that an enclosing list owns
+  /* takes the next token unless it is a closer that an enclosing list owns
      and that expected_mask does not hold, so the owner can still close. */
   fn
   next_token_or_foreign_closer(u64 expected_mask) throws -> Token *;
@@ -196,7 +196,7 @@ private:
   cold fn
   report_soft_error(const ErrorWithLocationAndDetails &error) throws
       -> void;
-  /* Peeks the next token and collects shellcheck directives while
+  /* peeks the next token and collects shellcheck directives while
      should_collect is set. The collection mode returns to disabled on every
      exit. */
   fn
@@ -210,7 +210,7 @@ private:
   fn
   end_error_collection() wontthrow -> void;
 
-  /* The closer stays on the stack when do_parse throws, so
+  /* the closer stays on the stack when do_parse throws, so
      recover_failed_statement sees the constructs that the failed statement
      left open. */
   template <class ParseFn>

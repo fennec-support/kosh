@@ -19,8 +19,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[--mood mood] file");
 
-HELP_DESCRIPTION_DECL(
-    "The specified file can be run in the current shell with this builtin.");
+HELP_DESCRIPTION_DECL("The specified file can be run in the current shell.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(SOURCE_MOOD,
@@ -68,13 +67,16 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             : ec.args()[2].view();
 
     forced_mood = parse_mood_name(value);
+
     if (!forced_mood.has_value()) {
       throw make_error_for_arg(
           ec, value_index, StringView{"Unknown mood '"} + value + "'",
           "Pass one of 'kosh', 'bash', 'sh', or 'bash-posix'");
     }
+
     path_index = value_index + 1;
   }
+
   if (path_index < ec.args().count() && ec.args()[path_index] == "--") {
     path_index++;
   }
@@ -120,7 +122,7 @@ Source::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const was_pipefail    = cxt.runtime_state().pipefail();
   let const was_failglob    = cxt.runtime_state().failglob();
 
-  /* A mimicked file runs in its own mood with that mood's strictness, and the
+  /* a mimicked file runs in its own mood with that mood's strictness, and the
      mood and the strict options return afterwards, while every other change
      the file makes stays. */
   if (should_mimic) {

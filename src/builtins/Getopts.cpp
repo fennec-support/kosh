@@ -17,8 +17,9 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("optstring name [argument ...]");
 
-HELP_DESCRIPTION_DECL("Positional arguments can be parsed according to "
-                      "optstring and stores the result in name.");
+HELP_DESCRIPTION_DECL(
+    "Positional arguments can be parsed according to optstring, and the result "
+    "is stored in name.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

@@ -14,7 +14,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-a] name [name ...]");
 
-HELP_DESCRIPTION_DECL("Each named alias can be removed with this builtin.");
+HELP_DESCRIPTION_DECL("Each given alias can be removed.");
 
 FLAG(ALL, Bool, 'a', "", "Remove every alias.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");

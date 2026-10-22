@@ -53,8 +53,9 @@ mach_ticks_to_nanos(u64 ticks) wontthrow -> u64
 {
   static mach_timebase_info_data_t timebase{};
 
-  if (timebase.denom == 0 && mach_timebase_info(&timebase) != KERN_SUCCESS)
+  if (timebase.denom == 0 && mach_timebase_info(&timebase) != KERN_SUCCESS) {
     return ticks;
+  }
   if (timebase.denom == 0) return ticks;
 
   return static_cast<u64>(static_cast<u128>(ticks) * timebase.numer /
@@ -2830,8 +2831,9 @@ run_tracer(const char *const *raw_argv,
         known_tasks[known_count++] = task;
       }
 
-      if (!was_new_task && !is_early_task)
+      if (!was_new_task && !is_early_task) {
         injected = static_cast<uintptr_t>(signal_number);
+      }
     } else if (signal_number != SIGTRAP) {
       injected = static_cast<uintptr_t>(signal_number);
     }

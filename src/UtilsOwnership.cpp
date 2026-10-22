@@ -55,7 +55,7 @@ change_entry_ownership(void                      *context,
 {
   let const &state = *static_cast<ownership_state *>(context);
 
-  /* A symlink is followed only when the mode asks for it. A nested entry
+  /* a symlink is followed only when the mode asks for it. A nested entry
      keeps a swapped-in symlink from redirecting the change outside the
      tree. */
   let const follow_mode =

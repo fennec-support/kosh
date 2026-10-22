@@ -50,7 +50,7 @@ change_mode(void *context, const os::tree_walk_entry &entry) throws
 
   os::file_status status = *entry.status;
 
-  /* A symlink operand is changed through its target. A nested symlink is
+  /* a symlink operand is changed through its target. A nested symlink is
      skipped. */
   if (os::file_type_letter(status.mode) == 'l') {
     if (!entry.is_operand) return true;

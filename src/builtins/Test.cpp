@@ -20,8 +20,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("expression", "[ expression ]");
 
 HELP_DESCRIPTION_DECL(
-    "An expression can be evaluated and reported as true or false with this "
-    "builtin.");
+    "An expression can be evaluated and reported as true or false.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

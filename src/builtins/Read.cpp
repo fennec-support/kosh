@@ -19,8 +19,8 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-ers] [-a name] [-d delim] [-n count] [-N count] "
                    "[-p prompt] "
                    "[-t timeout] [-u fd] [-q] [name ...]");
-HELP_DESCRIPTION_DECL("One line from standard input can be stored in the "
-                      "specified variables with this builtin.");
+HELP_DESCRIPTION_DECL(
+    "One line from standard input can be stored in the specified variables.");
 
 FLAG(READ_RAW, Bool, 'r', "\0", "Do not treat a backslash as an escape.");
 FLAG(READ_ARRAY,
@@ -343,7 +343,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         while (was_newline_terminated && do_trailing_backslash_count() % 2 == 1)
         {
-          /* A newline delimiter continues the line, so its backslash is
+          /* a newline delimiter continues the line, so its backslash is
              removed. Any other escaped delimiter stays in the line with its
              backslash. */
           if (delimiter == '\n') {

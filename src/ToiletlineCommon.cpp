@@ -354,7 +354,7 @@ get_codepoint_byte_offset(const char *bytes,
   usize                byte_offset          = 0;
   usize                seen_codepoint_count = 0;
 
-  /* A word without a high bit holds eight one-byte codepoints. */
+  /* a word without a high bit holds eight one-byte codepoints. */
   while (byte_offset + sizeof(u64) <= byte_count &&
          seen_codepoint_count + sizeof(u64) <= codepoint_index)
   {
@@ -401,7 +401,9 @@ get_escape_sequence_end(StringView text, usize byte_offset) -> usize
       byte_offset++;
     }
 
-    if (byte_offset < text.length && text[byte_offset] != '\0') byte_offset++;
+    if (byte_offset < text.length && text[byte_offset] != '\0') {
+      byte_offset++;
+    }
   } else if (text[byte_offset] == ']') {
     byte_offset++;
 

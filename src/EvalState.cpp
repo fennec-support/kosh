@@ -3403,11 +3403,11 @@ EvalContext::register_inherited_source_origin(
 }
 
 /* memory: the decoded wire values are locals, and the stores take their
-   contents through apply_wire() and steal(). bootstrap is taken by value and
-   still owns its processes until release_process_ownership() runs, so a throw
-   closes them.
-   time: O(payload bytes) to decode each section once, plus one run_source()
-   call that parses and evaluates the replayed source. */
+           contents through apply_wire() and steal(). bootstrap is taken by
+           value and still owns its processes until
+           release_process_ownership() runs, so a throw closes them.
+   time:   O(payload bytes) to decode each section once, plus one
+           run_source() call that parses and evaluates the replayed source. */
 fn
 EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
     throws -> void

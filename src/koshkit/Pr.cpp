@@ -17,10 +17,8 @@
 KOSHKIT_UTIL_DECL(
     "[+first[:last]] [-column] [-adFfmrt] [-D format] [-h header] "
     "[-l length] [-n] [-o offset] [-s[separator]] [-w width] [file ...]",
-    "Paginate text files. Each page has a header with the "
-    "date, the file name, and the page number. Columns have equal widths, "
-    "are filled down unless -a is given, and are truncated to fit unless "
-    "-s is given without -w.");
+    "Paginate text files. Each page has a header with the date, the file name, "
+    "and the page number.");
 
 FLAG(PR_ACROSS, Bool, 'a', "across", "Write columns across each row.");
 FLAG(PR_DOUBLE_SPACE, Bool, 'd', "double-space", "Double-space output lines.");

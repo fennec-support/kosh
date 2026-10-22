@@ -264,9 +264,9 @@ fn
 highlight_line(StringView line, EvalContext &context) throws
     -> ArrayList<highlight_span>;
 
-/* A line start where the highlight scan holds no open construct, with the
-   assigned variable names and the function names it collected before it. A
-   scan that starts there colors the rest as a scan from the start does. */
+/* a line start where the highlight scan holds no open construct, with the
+   assigned variables and the functions it collected before it. A scan that
+   starts there colors the rest as a scan from the start does. */
 struct highlight_restart
 {
   usize   position;
@@ -274,7 +274,7 @@ struct highlight_restart
   HashSet function_names;
 };
 
-/* Highlights line from begin, which is 0 or the position of restart, and adds
+/* highlights line from begin, which is 0 or the position of restart, and adds
    the restart points the scan passes to restarts. */
 fn
 highlight_line_from(StringView                    line,

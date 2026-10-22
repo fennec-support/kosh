@@ -217,7 +217,7 @@ scan_balanced_shell_region(StringView source,
                            bool      *was_nesting_too_deep) throws
     -> Maybe<usize>
 {
-  /* A quoted substitution recurses here. The recursion stops at the
+  /* a quoted substitution recurses here. The recursion stops at the
      substitution nesting limit of the lexer. */
   if (nesting_depth > MAX_SUBSTITUTION_NESTING_DEPTH) {
     if (was_nesting_too_deep != nullptr) *was_nesting_too_deep = true;

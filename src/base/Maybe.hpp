@@ -48,7 +48,7 @@ public:
     return Maybe{clone_value(reference())};
   }
 
-  /* Moves the storage of the value to allocator when the value owns any. */
+  /* moves the storage of the value to allocator when the value owns any. */
   cold fn
   move_to_allocator(Allocator allocator) throws -> void
   {

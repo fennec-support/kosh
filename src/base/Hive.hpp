@@ -71,7 +71,7 @@ public:
     usize     index;
 
     if (is_reused) {
-      /* The element overwrites the link, so the slot leaves the free list
+      /* the element overwrites the link, so the slot leaves the free list
          first and returns to it when construction throws. */
       index  = m_free->index;
       m_free = m_free->next;
@@ -137,7 +137,7 @@ public:
     return m_count == 0;
   }
 
-  /* One past the highest index ever taken. Indices below it are live or
+  /* one past the highest index ever taken. Indices below it are live or
      erased. */
   mustuse pure fn
   slot_count() const wontthrow -> usize
@@ -172,7 +172,7 @@ public:
         const_cast<Hive *>(this)->slot_storage(index));
   }
 
-  /* The index of element, which must live in this hive.
+  /* the index of element, which must live in this hive.
      time: O(block count). */
   mustuse pure fn
   index_of(const T *element) const wontthrow -> usize
@@ -248,7 +248,7 @@ public:
     }
 
   private:
-    /* Moves to the next live slot, a whole block at a time through the live
+    /* moves to the next live slot, a whole block at a time through the live
        mask. */
     fn
     skip_dead() wontthrow -> void
@@ -296,14 +296,14 @@ public:
     return Iterator<const T>{this, m_slot_end};
   }
 
-  /* Destroys every element and frees the blocks. */
+  /* destroys every element and frees the blocks. */
   fn
   clear() wontthrow -> void
   {
     destroy_all();
   }
 
-  /* A copy whose elements sit at the same indices.
+  /* a copy whose elements sit at the same indices.
      memory: the blocks and block table of the copy. */
   mustuse cold fn
   clone() const throws -> Hive
@@ -317,7 +317,7 @@ public:
     return copy;
   }
 
-  /* Moves every element into blocks from allocator. Elements keep their
+  /* moves every element into blocks from allocator. Elements keep their
      indices, but pointers to them no longer stay valid. */
   cold fn
   move_to_allocator(Allocator allocator) throws -> void
@@ -333,7 +333,7 @@ public:
   }
 
 private:
-  /* An erased slot keeps the index of the next erased slot in its own bytes,
+  /* an erased slot keeps the index of the next erased slot in its own bytes,
      so a live element carries no bookkeeping beyond one bit of its block. */
   struct FreeLink
   {
@@ -404,7 +404,7 @@ private:
     m_blocks[m_block_count++] = added;
   }
 
-  /* Builds this empty hive as a copy of other's indices, constructing each
+  /* builds this empty hive as a copy of other's indices, constructing each
      live element from do_take(element) and keeping the erased slots free. */
   template <class Take>
   fn

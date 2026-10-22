@@ -21,8 +21,7 @@ HELP_SYNOPSIS_DECL(
     "[-C callback] [-c quantum] [array]");
 
 HELP_DESCRIPTION_DECL(
-    "Lines from standard input can be stored in an indexed array with this "
-    "builtin.");
+    "Lines from standard input can be stored in an indexed array.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(MAPFILE_TRIM, Bool, 't', "", "Strip the trailing newline from each line.");

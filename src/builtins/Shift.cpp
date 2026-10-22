@@ -17,8 +17,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[n]");
 
 HELP_DESCRIPTION_DECL(
-    "Leading positional parameters can be dropped and the rest renumbered with "
-    "this builtin.");
+    "Leading positional parameters can be dropped and the rest renumbered.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

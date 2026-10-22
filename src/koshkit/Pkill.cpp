@@ -106,7 +106,9 @@ Pkill::execute(const ExecContext               &ec,
 
   for (let const &process : processes) {
     /* pid 0 is the kernel on macOS, and kill(0) signals the caller's group. */
-    if (process.pid <= 0 || process.pid == self_pid) continue;
+    if (process.pid <= 0 || process.pid == self_pid) {
+      continue;
+    }
     if (process.name.find_substring(pattern, 0).has_value()) {
       if (os::signal_process(os::process_from_pid(process.pid), signal_number))
       {

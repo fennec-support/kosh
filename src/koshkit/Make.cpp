@@ -329,7 +329,7 @@ struct make_rule
   ArrayList<String>         recipe_lines;
   ArrayList<String>         variable_assignments;
   ArrayList<SourceLocation> prerequisite_line_locations;
-  /* The makefile line of each recipe line, or an empty location for a
+  /* the makefile line of each recipe line, or an empty location for a
      built-in rule. */
   ArrayList<SourceLocation> recipe_line_locations;
 };
@@ -3439,6 +3439,7 @@ build_target(const ExecContext        &ec,
   let const do_take_recipe = [&](const make_rule &rule) throws {
     recipe_lines.clear();
     recipe_locations.clear();
+
     for (usize index = 0; index < rule.recipe_lines.count(); index++) {
       recipe_lines.push(rule.recipe_lines[index].clone());
       recipe_locations.push(index < rule.recipe_line_locations.count()
@@ -4002,7 +4003,7 @@ build_target(const ExecContext        &ec,
       }
     }
 
-    /* The subshell opens on the recipe line, so a trace through it shows the
+    /* the subshell opens on the recipe line, so a trace through it shows the
        recipe and not a line of its own. */
     let subshell_command = String{cxt.scratch_allocator(), "( "};
 

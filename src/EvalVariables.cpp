@@ -858,7 +858,7 @@ EvalContext::is_generated_nameref(StringView name) const wontthrow -> bool
 fn
 EvalContext::warn_circular_nameref(StringView name) const throws -> void
 {
-  /* The warning path updates diagnostic state that const callers share. */
+  /* the warning path updates diagnostic state that const callers share. */
   const_cast<EvalContext *>(this)->show_runtime_warning_at(
       source_store().current_location(),
       "The name reference '" + name + "' is circular");

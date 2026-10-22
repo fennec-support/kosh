@@ -28,9 +28,9 @@ HELP_SYNOPSIS_DECL("create <bash|sh|kosh> [--force]",
                    "save [--persist]");
 
 HELP_DESCRIPTION_DECL(
-    "Koshka settings and their binary KOSHCONF form can be read and written "
-    "here. The save form can print the current settings for a child kosh. "
-    "With --persist, it also writes them to the user configuration file.");
+    "Koshka settings and their binary KOSHCONF form can be read and written. "
+    "The save form can print the current settings for a child kosh, and with "
+    "--persist it also writes them to the user configuration file.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(ALL,
@@ -237,7 +237,9 @@ run_create(const ExecContext       &ec,
 
   let const script = get_user_script_path("rc.kosh");
 
-  if (!script.has_value() || script->exists()) return 0;
+  if (!script.has_value() || script->exists()) {
+    return 0;
+  }
 
   /* at this point: the configuration file was written, and the user rc
      script is absent, so its default is written. */

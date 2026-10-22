@@ -128,7 +128,7 @@ first_word_resolves(StringView word, EvalContext &context) throws
      keyword, enabled builtin, function, alias, PATH program, or reachable
      koshkit utility. */
 
-  /* With autocd, a directory or a run of two or more dots becomes a cd. */
+  /* with autocd, a directory or a run of two or more dots becomes a cd. */
   if (!context.is_shopt_enabled(shopt_option_id::Autocd)) return false;
   if (dot_parent_steps(word).has_value()) return true;
 
@@ -1474,9 +1474,10 @@ internal::scan_highlight_range(
           pending_heredocs.clear();
         }
 
-        /* A line start with no open construct is a point a later scan can
-           start from, with the names collected so far. The end of the text
-           is none, since an unterminated heredoc body also ends there. */
+        /* a line start with no open construct is a point a later scan can
+           start from, with the variables and functions collected so far. The
+           end of the text is none, since an unterminated heredoc body also ends
+           there. */
         let const is_restart_point =
             restart_sink != nullptr && i < end && stack.is_empty() &&
             parenthesis_depth == 0 && !is_in_array_value &&
@@ -1609,7 +1610,9 @@ internal::scan_highlight_range(
         do_commit_pending_assignments();
       }
 
-      if (has_opener && !is_case_pattern_expected) parenthesis_depth++;
+      if (has_opener && !is_case_pattern_expected) {
+        parenthesis_depth++;
+      }
       if (has_closer) {
         if (is_case_pattern_expected && !stack.is_empty() &&
             stack.back() == highlight_construct::case_)
@@ -2173,7 +2176,7 @@ internal::scan_highlight_range(
         do_push(word_start, word_end, do_command_role(word));
       }
 
-      /* A pipeline negation '!' is followed by a command. */
+      /* a pipeline negation '!' is followed by a command. */
       is_command_position = word == "!";
       continue;
     }

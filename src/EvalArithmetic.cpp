@@ -31,7 +31,7 @@ static constexpr usize  MAX_OPERATOR_CHAIN_DEPTH = 1024;
 static const StringView OPERATOR_CHAIN_HINT =
     "An operator chain this long needs parentheses or a loop";
 
-/* A command substitution left in a subscript after the whole expression has
+/* a command substitution left in a subscript after the whole expression has
    been expanded came from data. It is a literal key of an associative array,
    reached directly or through a nameref, and an indexed array rejects it. */
 static fn
@@ -501,7 +501,7 @@ public:
     }
   }
 
-  /* Evaluates an indexed subscript once so that a read and a write of the
+  /* evaluates an indexed subscript once so that a read and a write of the
      same lvalue use one index. */
   fn
   resolve_lvalue_subscript(Lvalue &target) throws -> void
@@ -2214,7 +2214,7 @@ arith_classify_binop(StringView t) wontthrow -> arith_binop
   return {0, 0};
 }
 
-/* The binary operator class of an operator token, packed into its value as
+/* the binary operator class of an operator token, packed into its value as
    precedence << 8 | kind. */
 static pure fn
 arith_packed_binop(StringView t) wontthrow -> i64
@@ -2888,7 +2888,7 @@ evaluate_arithmetic_value(
       context->runtime_state().bash_additions_enabled() &&
       expression.find_character('"').has_value();
 
-  /* A variable's value is data and is parsed without expansion. Bash also
+  /* a variable's value is data and is parsed without expansion. Bash also
      rejects a '$' or '`' in an operand taken from a value. */
   let const is_plain_text = !expression.find_character('$').has_value() &&
                             !expression.find_character('`').has_value() &&

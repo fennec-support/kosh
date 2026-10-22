@@ -61,19 +61,19 @@ stderr_is_a_terminal() wontthrow -> bool;
 fn
 terminal_wants_color(bool is_output_terminal) throws -> bool;
 
-/* A terminal draws 24-bit color when COLORTERM contains truecolor or 24bit,
+/* a terminal draws 24-bit color when COLORTERM contains truecolor or 24bit,
    and the 256-color palette in that case or when TERM contains 256color or
    direct. */
 fn
 terminal_supports_true_color() wontthrow -> bool;
 fn
 terminal_supports_256_color() wontthrow -> bool;
-/* An ordinary color becomes its 24-bit pastel form on a truecolor terminal
+/* an ordinary color becomes its 24-bit pastel form on a truecolor terminal
    and its pastel 256-color form on a terminal that draws the 256-color
    palette. Any other style is returned unchanged. */
 fn
 soft(StringView style) wontthrow -> StringView;
-/* The prompt keeps the 256-color pastel form on every terminal that draws
+/* the prompt keeps the 256-color pastel form on every terminal that draws
    the 256-color palette, including truecolor terminals. */
 fn
 prompt_soft(StringView style) wontthrow -> StringView;

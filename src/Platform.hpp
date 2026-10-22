@@ -547,7 +547,7 @@ enum class file_open_mode : u8
   Truncate,
   TruncateNoClobber,
   Append,
-  /* Append, and on POSIX create a missing file with mode 0600. Windows opens
+  /* append, and on POSIX create a missing file with mode 0600. Windows opens
      it as Append. */
   AppendPrivate,
   Read,
@@ -828,7 +828,7 @@ enum class tree_walk_failure : u8
   Loop,
 };
 
-/* An entry is addressed through its parent directory descriptor and its name
+/* an entry is addressed through its parent directory descriptor and its name
    in that directory, so a parent replaced by a symlink during the walk cannot
    redirect a change. A command-line operand has the working directory as its
    parent. Windows has no descriptors and addresses the entry by path. */
@@ -851,7 +851,7 @@ struct tree_walk_options
   bool should_descend_after_failure{false};
 };
 
-/* The walk visits each entry before its children. The entry status does not
+/* the walk visits each entry before its children. The entry status does not
    follow a symlink, and a visit that returns false makes the walk fail. */
 struct tree_walk_hooks
 {
@@ -882,7 +882,7 @@ fn
 walk_tree(StringView               path,
           const tree_walk_options &options,
           const tree_walk_hooks   &hooks) throws -> bool;
-/* An operand follows a symlink. Any other entry does not. */
+/* an operand follows a symlink. Any other entry does not. */
 fn
 set_tree_entry_mode(const tree_walk_entry &entry, u32 mode) wontthrow -> bool;
 fn
@@ -1215,7 +1215,7 @@ current_executable_path() wontthrow -> Maybe<String>;
 fn
 crc32c_update(u32 crc, const void *data, usize length) wontthrow -> u32;
 
-/* Returns the finished CRC-32C of the file content, or None when the file
+/* returns the finished CRC-32C of the file content, or None when the file
    cannot be read. */
 fn
 crc32c_of_file(StringView path) throws -> Maybe<u32>;
@@ -1249,7 +1249,7 @@ struct directory_status_entry
   bool                 has_status{false};
 };
 
-/* The caller owns directory when it has a value and closes it with
+/* the caller owns directory when it has a value and closes it with
    close_fd(). */
 struct directory_batch_listing
 {
@@ -1281,7 +1281,7 @@ fn
 stat_path_following(StringView path, file_status &status) wontthrow -> bool;
 fn
 stat_descriptor(os::descriptor fd, file_status &status) wontthrow -> bool;
-/* Cuts or extends the file open at fd to byte_count bytes. */
+/* cuts or extends the file open at fd to byte_count bytes. */
 fn
 truncate_descriptor(os::descriptor fd, u64 byte_count) wontthrow -> bool;
 
@@ -1860,7 +1860,7 @@ temp_directory_path() throws -> String;
 fn
 set_path_compatibility(bool should_map_dev_null,
                        bool should_map_slash_tmp) wontthrow -> void;
-/* Whether path is the null device, which a directory listing never holds. */
+/* whether path is the null device, which a directory listing never holds. */
 fn
 is_null_device(StringView path) wontthrow -> bool;
 
@@ -2434,7 +2434,7 @@ constexpr i32 ENTRY_IGNORED_SIGNAL_LIMIT = 64;
 fn
 get_entry_ignored_signals() wontthrow -> u64;
 
-/* Reports whether the calling thread has used all but a reserve of its stack.
+/* reports whether the calling thread has used all but a reserve of its stack.
    Deep recursion checks it to fail with an error before a stack overflow. */
 fn
 is_stack_nearly_exhausted() wontthrow -> bool;

@@ -654,7 +654,7 @@ canonical_path(const Path &path) wontthrow -> Maybe<Path>
 fn
 directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
 {
-  /* A relative directory comes from a '.' or an empty PATH entry and resolves
+  /* a relative directory comes from a '.' or an empty PATH entry and resolves
      against the current directory. A cloned repository can control it. */
   if (!directory.is_absolute()) {
     LOG(Debug, "trust check failed because '%s' is relative",
@@ -1235,7 +1235,7 @@ private:
   BumpArena                 m_arena{};
 };
 
-/* Opens a directory relative to its parent and fails with ESTALE when the
+/* opens a directory relative to its parent and fails with ESTALE when the
    opened directory is not the one that expected_status describes. */
 static fn
 open_expected_directory(int                parent_descriptor,
@@ -1270,7 +1270,7 @@ open_expected_directory(int                parent_descriptor,
   return directory;
 }
 
-/* Lists a directory descriptor without consuming it. A false result means the
+/* lists a directory descriptor without consuming it. A false result means the
    directory could not be opened for listing. A listing that fails midway keeps
    the entries read so far and clears is_complete with errno set. */
 static fn
@@ -1322,7 +1322,7 @@ read_directory_children(int                            directory,
   }
 }
 
-/* A walk past the depth limit closes the parent descriptor while it visits
+/* a walk past the depth limit closes the parent descriptor while it visits
    the children and reopens it afterwards, so the descriptors held stay
    bounded. The working-directory operand is never closed. */
 static fn
@@ -1338,7 +1338,7 @@ release_parent_descriptor(int &parent_descriptor, usize depth) wontthrow -> bool
   return true;
 }
 
-/* The reopened parent must have the identity of the released one, and a
+/* the reopened parent must have the identity of the released one, and a
    mismatch fails with ESTALE and leaves the descriptor closed. */
 static fn
 reopen_parent_descriptor(int                directory,
@@ -1740,7 +1740,7 @@ walk_tree_entry(tree_walk_state   &walk,
     did_succeed = false;
   }
 
-  /* The ".." of a followed symlink target is not the traversal parent, so
+  /* the ".." of a followed symlink target is not the traversal parent, so
      that level keeps its parent descriptor open. */
   let const should_release_parent =
       !is_symlink && release_parent_descriptor(parent_descriptor, depth);
@@ -1792,7 +1792,7 @@ walk_tree(StringView               path,
 fn
 set_tree_entry_mode(const tree_walk_entry &entry, u32 mode) wontthrow -> bool
 {
-  /* An operand follows a symlink. Any other entry is changed without
+  /* an operand follows a symlink. Any other entry is changed without
      following one. The flag is rejected by glibc before 2.32 and without
      /proc, and the fallback fails closed when it cannot open the entry without
      following a symlink. */

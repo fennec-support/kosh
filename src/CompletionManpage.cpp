@@ -584,7 +584,7 @@ cleaned_synopsis_of_page(StringView source) throws -> String
 
 static constexpr usize HINT_SYNOPSIS_MAX_BYTES = 400;
 
-/* The words of the section of rendered page text under heading, joined by
+/* the words of the section of rendered page text under heading, joined by
    single spaces and cut at HINT_SYNOPSIS_MAX_BYTES. */
 static fn
 rendered_section_of_page(StringView text, StringView heading) throws
@@ -2045,7 +2045,7 @@ struct hint_source
   const ArrayList<help_entry> *help_entries{nullptr};
 };
 
-/* The description of flag in source, from the registered flags first and then
+/* the description of flag in source, from the registered flags first and then
    the manual and help entries. */
 static fn
 flag_description(const hint_source &source, StringView flag) wontthrow
@@ -2055,15 +2055,17 @@ flag_description(const hint_source &source, StringView flag) wontthrow
 
   if (source.flags != nullptr)
     description = registered_flag_description(*source.flags, flag);
-  if (description.is_empty() && source.manpage_entries != nullptr)
+  if (description.is_empty() && source.manpage_entries != nullptr) {
     description = cached_flag_description(*source.manpage_entries, flag);
-  if (description.is_empty() && source.help_entries != nullptr)
+  }
+  if (description.is_empty() && source.help_entries != nullptr) {
     description = cached_flag_description(*source.help_entries, flag);
+  }
 
   return description;
 }
 
-/* The first sentence of text without its closing period. A period after a
+/* the first sentence of text without its closing period. A period after a
    blank is a word of its own, as in "entries starting with .", and stays. */
 static pure fn
 first_sentence(StringView text) wontthrow -> StringView
@@ -2136,13 +2138,13 @@ locate_hint_target(StringView line, usize cursor) throws
   target.between =
       segment.substring_of_length(command_end, bounds.start - command_end);
 
-  /* The substitution range ends at the word under the caret, so the words
+  /* the substitution range ends at the word under the caret, so the words
      after it are read from the whole line up to the end of the segment. */
   let const after_start =
       static_cast<usize>(segment.data - whole_line.data) + bounds.end;
   let after_end = command_segment_end(whole_line, after_start);
 
-  /* Inside a backtick substitution the segment ends at its closing
+  /* inside a backtick substitution the segment ends at its closing
      backtick. */
   if (substitution.start > 0 && whole_line[substitution.start - 1] == '`') {
     for (usize position = after_start; position < after_end; position++) {
@@ -2229,7 +2231,7 @@ struct explain_row
   bool   is_caret{false};
 };
 
-/* The part of a flag word before '='. */
+/* the part of a flag word before '='. */
 static pure fn
 flag_name_of(StringView word) wontthrow -> StringView
 {
@@ -2238,7 +2240,7 @@ flag_name_of(StringView word) wontthrow -> StringView
   return equals.has_value() ? word.substring_of_length(0, *equals) : word;
 }
 
-/* Lay the words of a command out as explain rows: the command and its
+/* lay the words of a command out as explain rows: the command and its
    description, a subcommand with its own description, and each flag of the
    command with its description, before and after the caret. A cluster of
    short flags without an entry of its own takes one row per letter, and a
@@ -2345,7 +2347,7 @@ compose_explain_rows(StringView         command,
 
   if (!has_description) return false;
 
-  /* The window keeps the row at the caret, or the first row after it, in its
+  /* the window keeps the row at the caret, or the first row after it, in its
      middle, and moves to an edge only when the rows run out. */
   usize first = 0;
 

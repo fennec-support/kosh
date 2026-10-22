@@ -18,8 +18,7 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("expression ...");
 
 HELP_DESCRIPTION_DECL(
-    "Each argument can be evaluated as an arithmetic expression with this "
-    "builtin.");
+    "Each argument can be evaluated as an arithmetic expression.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 

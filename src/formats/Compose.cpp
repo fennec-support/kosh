@@ -37,7 +37,9 @@ parse_compose_format(const parser_format_input &input,
 
     let const value = text.substring(18).trim_blanks();
 
-    if (value.is_empty() || (value[0] != '|' && value[0] != '>')) continue;
+    if (value.is_empty() || (value[0] != '|' && value[0] != '>')) {
+      continue;
+    }
 
     let const key_indent = parser_format_leading_spaces(line);
 

@@ -166,7 +166,9 @@ skip_docker_flags(StringView line, usize position) wontthrow -> usize
 static pure fn
 is_exec_form(StringView command) wontthrow -> bool
 {
-  if (command.is_empty() || command[0] != '[') return false;
+  if (command.is_empty() || command[0] != '[') {
+    return false;
+  }
 
   usize position = 1;
 
@@ -201,8 +203,12 @@ read_docker_json_array(StringView                   line,
             line[position] == ','))
       position++;
 
-    if (position < line.length && line[position] == ']') return true;
-    if (position >= line.length || line[position] != '"') return false;
+    if (position < line.length && line[position] == ']') {
+      return true;
+    }
+    if (position >= line.length || line[position] != '"') {
+      return false;
+    }
 
     let const start = ++position;
 
@@ -239,7 +245,9 @@ blanked_comment_source(StringView source, usize start, usize end) throws
     let const line = source.next_line(position);
     let const text = line.trim_blanks();
 
-    if (!text.is_empty() && text[0] == '#') has_comment = true;
+    if (!text.is_empty() && text[0] == '#') {
+      has_comment = true;
+    }
   }
 
   if (!has_comment) return None;
@@ -305,7 +313,9 @@ collect_docker_variables(StringView         source,
       if (at == start) break;
       names.push(String{heap_allocator(),
                         text.substring_of_length(start, at - start)});
-      if (at >= text.length || text[at] != '=') break;
+      if (at >= text.length || text[at] != '=') {
+        break;
+      }
       at++;
       if (at < text.length && (text[at] == '"' || text[at] == '\'')) {
         let const quote = text[at++];
@@ -427,7 +437,9 @@ parse_dockerfile_format(const parser_format_input &input,
       }
     }
 
-    if (!is_shell_instruction || content_position >= line.length) continue;
+    if (!is_shell_instruction || content_position >= line.length) {
+      continue;
+    }
 
     /* at this point: instruction is Run, Command, or Entrypoint, or a
        Healthcheck with a CMD, and content_position is inside line. */
@@ -514,8 +526,9 @@ parse_dockerfile_format(const parser_format_input &input,
       let const continuation_text  = continuation.trim_blanks();
 
       shell_end = continuation_start + continuation.length;
-      if (!continuation_text.is_empty() && continuation_text[0] == '#')
+      if (!continuation_text.is_empty() && continuation_text[0] == '#') {
         continue;
+      }
 
       is_continued = !continuation_text.is_empty() &&
                      continuation_text[continuation_text.length - 1] == '\\';

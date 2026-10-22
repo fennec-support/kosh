@@ -18,10 +18,10 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-n] [dir | +N | -N]");
 HELP_DESCRIPTION_DECL(
-    "The current directory can be saved on the stack before changing to "
-    "dir. With no argument, it swaps the top two directories. With +N, it "
-    "rotates the stack and makes the Nth entry from the top current. With -N, "
-    "it counts from the bottom.");
+    "The current directory can be saved on the stack before changing to dir. "
+    "With no argument, the top two directories are swapped. With +N or -N, the "
+    "stack is rotated to make the Nth entry from the top or the bottom "
+    "current.");
 
 FLAG(NO_CHANGE,
      Bool,

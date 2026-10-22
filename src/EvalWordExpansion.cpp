@@ -1403,7 +1403,7 @@ EvalContext::expand_wordlist_to_fields(
       let const character = wordlist[i];
 
       if (quote != 0) {
-        /* Inside double quotes, a backslash escapes the next byte. */
+        /* inside double quotes, a backslash escapes the next byte. */
         if (character == '\\' && quote == '"') {
           i++;
         } else if (character == quote) {

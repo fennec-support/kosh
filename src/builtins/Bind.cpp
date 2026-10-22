@@ -17,9 +17,7 @@ HELP_SYNOPSIS_DECL("[-lmrvpPsSq] [-f filename] [-q function] [-u function] "
                    "[keyseq: function ...]");
 
 HELP_DESCRIPTION_DECL(
-    "Readline key binding forms are accepted, but they do not change "
-    "the editor. Koshka uses the toiletline editor, which this builtin does "
-    "not configure.");
+    "Readline key binding forms are accepted and do not change the editor.");
 
 FLAG(LIST_NAMES, Bool, 'l', "\0", "List key identifiers, with no effect.");
 FLAG(READLINE_META,

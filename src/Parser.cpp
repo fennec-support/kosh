@@ -220,7 +220,7 @@ internal::throw_unterminated(const SourceLocation        &opener,
       opener, what, end, "expected '" + keyword + "' here to close it"};
 }
 
-/* The slot of a closer that the parser records when a command takes it as an
+/* the slot of a closer that the parser records when a command takes it as an
    argument. */
 pure static fn
 get_swallowed_closer_slot(Token::Kind closer) wontthrow -> usize
@@ -257,7 +257,7 @@ Parser::get_swallowed_closer(Token::Kind           closer,
                              const SourceLocation &end) const wontthrow
     -> Maybe<SourceLocation>
 {
-  /* A closer taken as an argument leaves the construct open to the end of
+  /* a closer taken as an argument leaves the construct open to the end of
      the input, and only then does it explain the error. */
   if (end.position < m_lexer.source().length) return None;
 
@@ -440,7 +440,7 @@ Parser::skip_semicolons_and_newlines() throws -> void
   }
 }
 
-/* The closer a token expects when it opens a compound command in command
+/* the closer a token expects when it opens a compound command in command
    position, or None. */
 pure static fn
 get_opened_closer(const Token *token) wontthrow -> Maybe<Token::Kind>
@@ -461,7 +461,7 @@ get_opened_closer(const Token *token) wontthrow -> Maybe<Token::Kind>
   return None;
 }
 
-/* The closer kind of a token in command position, with '}' spelled as
+/* the closer kind of a token in command position, with '}' spelled as
    RightBracket, or None. */
 pure static fn
 get_closer_kind(const Token *token) wontthrow -> Maybe<Token::Kind>
@@ -503,7 +503,7 @@ is_command_position_start(Token::Kind kind) wontthrow -> bool
   }
 }
 
-/* The terminators of the condition list that a skipped opener starts, or
+/* the terminators of the condition list that a skipped opener starts, or
    zero when the opener has no condition list. */
 pure static fn
 get_skipped_condition_mask(Token::Kind opener) wontthrow -> u64
@@ -519,7 +519,7 @@ get_skipped_condition_mask(Token::Kind opener) wontthrow -> u64
   }
 }
 
-/* The terminators of the body list that a token starts inside a skipped
+/* the terminators of the body list that a token starts inside a skipped
    construct whose closer is expected_closer, or zero. */
 pure static fn
 get_skipped_body_mask(Token::Kind expected_closer,
@@ -543,7 +543,7 @@ get_skipped_body_mask(Token::Kind expected_closer,
 
     return 0;
   case Token::Kind::Esac:
-    /* Bodies parse as lists, so a ')' the skip reaches ends a pattern. */
+    /* bodies parse as lists, so a ')' the skip reaches ends a pattern. */
     if (kind == Token::Kind::RightParen) {
       return token_kind_mask(
           Token::Kind::DoubleSemicolon, Token::Kind::SemicolonAmpersand,
@@ -555,7 +555,7 @@ get_skipped_body_mask(Token::Kind expected_closer,
   }
 }
 
-/* Skips the rest of a failed statement. open_closers holds the closers the
+/* skips the rest of a failed statement. open_closers holds the closers the
    failed statement still expects. Skipping stops after the statement's
    separator, or before a terminator of this list or an enclosing list that
    no skipped construct expects. */
@@ -592,7 +592,7 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
 
     is_command_position = is_command_position_start(token->kind());
 
-    /* Inside a case, a parenthesis in command position delimits a pattern. */
+    /* inside a case, a parenthesis in command position delimits a pattern. */
     if (was_command_position && !(is_paren && is_inside_case)) {
       let const closer = get_closer_kind(token);
 
@@ -619,7 +619,7 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
       }
     }
 
-    /* A body inside the skipped construct still parses, so its errors are
+    /* a body inside the skipped construct still parses, so its errors are
        reported. The list stops before the closer, which the skip consumes. */
     let const body_mask =
         open_closers.is_empty()
@@ -637,7 +637,7 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
     let const is_separator = token->kind() == Token::Kind::Newline ||
                              token->kind() == Token::Kind::Semicolon;
 
-    /* An orphan keyword that starts a list ends the skip after itself, and an
+    /* an orphan keyword that starts a list ends the skip after itself, and an
        orphan elif also takes its condition and then. */
     if (open_closers.is_empty()) {
       switch (token->kind()) {
@@ -681,7 +681,7 @@ Parser::next_token_or_foreign_closer(u64 expected_mask) throws
   return token;
 }
 
-/* Runs inside a catch block, since record_error() rethrows the active
+/* runs inside a catch block, since record_error() rethrows the active
    error to render it. */
 cold fn
 Parser::record_caught_error(const ErrorWithLocation &error) throws
@@ -689,7 +689,7 @@ Parser::record_caught_error(const ErrorWithLocation &error) throws
 {
   if (m_is_input_exhausted) return;
 
-  /* Nested constructs that one foreign closer ends all point their details
+  /* nested constructs that one foreign closer ends all point their details
      at that closer, and only the innermost one is reported. */
   try {
     throw;
@@ -750,7 +750,7 @@ Parser::recover_failed_statement(const ErrorWithLocation &error,
   LOG(Debug, "recovering from a parse error with %zu unclosed constructs",
       open_closers.count());
 
-  /* A second failure at the same token would repeat forever, so that token
+  /* a second failure at the same token would repeat forever, so that token
      is skipped first. */
   if (failure_position == last_recovery_position)
     m_lexer.advance_past_last_peek();
@@ -940,7 +940,7 @@ Parser::construct_ast(
   if (token == nullptr)
     return m_lexer.arena().create<DummyExpression>(SourceLocation{});
 
-  /* The top-level list recovers from its own errors, so it returns at the end
+  /* the top-level list recovers from its own errors, so it returns at the end
      of the input, or throws after a failure that exhausts the input. */
   Expression *ast = nullptr;
 
@@ -1039,7 +1039,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
         "Move the inner commands into a function"};
   }
 
-  /* A closer of an enclosing list also ends this list, so a construct
+  /* a closer of an enclosing list also ends this list, so a construct
      missing its own closer reports that instead of an orphan. */
   let const enclosing_mask = m_enclosing_terminator_mask;
 
@@ -1621,7 +1621,7 @@ Parser::build_here_string_redirection(
   redir.kind    = expressions::Redirection::Kind::HereString;
   Token *target = m_lexer.peek_shell_token();
 
-  /* A keyword after <<< is the word itself, as in `cat <<< fi`. */
+  /* a keyword after <<< is the word itself, as in `cat <<< fi`. */
   if (token_kind_is_keyword(target->kind())) {
     m_lexer.advance_past_last_peek();
     redir.target =

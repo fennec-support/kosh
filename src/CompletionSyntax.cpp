@@ -466,7 +466,7 @@ internal::command_segment_end(StringView line, usize position)
       continue;
     }
 
-    /* A backtick or $( substitution inside the segment is skipped whole. */
+    /* a backtick or $( substitution inside the segment is skipped whole. */
     if (c == '`') {
       for (k++; k < line.length && line[k] != '`'; k++) {}
 
@@ -564,7 +564,7 @@ internal::resolve_completion_command(StringView   command,
 /* memory: one String per word, allocated in completion_allocator(). the words
            live until COMPLETION_ARENA resets or a mark is released.
    time:   O(line.length). i only moves forward, so each byte is scanned
-   once. */
+           once. */
 fn
 internal::split_completion_words(StringView line,
                                  usize      cursor,

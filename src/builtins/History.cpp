@@ -22,8 +22,7 @@ HELP_SYNOPSIS_DECL("[-c] [-d offset] [-r|-n|-a|-w] [-p arg ...] [count]",
                    "-s [arg ...]",
                    "-S|--sync");
 HELP_DESCRIPTION_DECL(
-    "The interactive command history can be listed and maintained with this "
-    "builtin.");
+    "The interactive command history can be listed and maintained.");
 
 FLAG(HISTORY_CLEAR, Bool, 'c', "", "Clear the history list.");
 FLAG(HISTORY_DELETE, String, 'd', "", "Delete an event or event range.");

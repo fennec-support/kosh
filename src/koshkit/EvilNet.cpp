@@ -33,7 +33,7 @@ FLAG_OPTIONAL(EVILNET_LIVE,
               'l',
               "live",
               Live,
-              "Sample and refresh live traffic every N seconds; the default "
+              "Sample and refresh live traffic every N seconds. The default "
               "is 0.5 seconds.",
               koshka::koshkit::is_koshkit_sample_duration,
               "seconds");
@@ -41,7 +41,7 @@ FLAG_OPTIONAL(EVILNET_CUMULATIVE,
               'C',
               "cumulative",
               Live,
-              "Report traffic over an M-second window; the default is one "
+              "Report traffic over an M-second window. The default is one "
               "second. Without --live, wait M seconds first. With --live the "
               "window rolls and does not set the refresh rate.",
               koshka::koshkit::is_koshkit_sample_duration,
@@ -629,7 +629,7 @@ network_counter_reset(
     const os::network_interface_statistics_entry &before,
     const os::network_interface_statistics_entry &after) wontthrow -> bool
 {
-  /* Index 0 is the name key, which has no counter. */
+  /* index 0 is the name key, which has no counter. */
   for (usize index = 1; index < countof(EVILNET_SORT_SPECS); index++) {
     let const &spec = EVILNET_SORT_SPECS[index];
 
@@ -677,7 +677,7 @@ sample_network_statistics(
     if (previous_index.has_value()) {
       let const &previous = before[*previous_index];
 
-      /* Index 0 is the name key, which has no counter. */
+      /* index 0 is the name key, which has no counter. */
       for (usize index = 1; index < countof(EVILNET_SORT_SPECS); index++) {
         let const &spec = EVILNET_SORT_SPECS[index];
 
@@ -742,7 +742,7 @@ get_network_window_status(const live_network_row &row,
         sampled.*member = network_counter_delta(*baseline, newest.*member);
       };
 
-  /* Index 0 is the name key, which has no counter. */
+  /* index 0 is the name key, which has no counter. */
   for (usize index = 1; index < countof(EVILNET_SORT_SPECS); index++) {
     let const &spec = EVILNET_SORT_SPECS[index];
 

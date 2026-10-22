@@ -1589,7 +1589,7 @@ scaled_filesystem_blocks(u64 block_count,
 fn
 filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64
 {
-  /* A sum above UINT64_MAX halves both terms, so the divisor fits in u64. */
+  /* a sum above UINT64_MAX halves both terms, so the divisor fits in u64. */
   let const capacity_base = static_cast<u128>(used) + available;
   let const is_wide       = capacity_base > UINT64_MAX;
   let const divisor       = is_wide ? capacity_base >> 1u : capacity_base;

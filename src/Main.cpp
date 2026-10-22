@@ -604,7 +604,7 @@ splice_environment_flags(command_line &line) throws -> void
         return;
       }
 
-      /* The c letter drops itself and its value, attached or the next word,
+      /* the c letter drops itself and its value, attached or the next word,
          and the s letter drops itself. The other letters stay. */
       let kept          = String{heap_allocator()};
       should_keep_value = true;
@@ -864,7 +864,7 @@ resolve_invocation_options(ArrayList<invocation_option> &options) throws
   return None;
 }
 
-/* Locates a flag in the parsed command line. A short flag also matches inside
+/* locates a flag in the parsed command line. A short flag also matches inside
    a group such as `-si`. */
 static fn
 find_flag_location(const command_line &line,
@@ -892,7 +892,7 @@ find_flag_location(const command_line &line,
   return None;
 }
 
-/* The diagnostic points at the flag in the invocation when the flag is
+/* the diagnostic points at the flag in the invocation when the flag is
    present, and stands alone otherwise. */
 static fn
 show_flag_diagnostic(const command_line &line,
@@ -2111,7 +2111,7 @@ struct script_cursor
 
       show_operand_error(&operand_location, cli_invocation.view(), context,
                          "Unable to " + verb + " `" + file_name.view() +
-                             "` because the file is a directory");
+                             "`: it is a directory");
       if (!FLAG_LINT.is_enabled()) {
         utils::quit(126, utils::farewell_policy::Goodbye);
       }

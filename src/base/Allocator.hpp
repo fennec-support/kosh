@@ -417,7 +417,7 @@ fake_allocator() wontthrow -> Allocator
   return Allocator{static_cast<uintptr>(Allocator::Kind::Fake)};
 }
 
-/* A type whose storage can move to another allocator. */
+/* a type whose storage can move to another allocator. */
 template <class T>
 concept is_allocator_movable = requires(T &value, Allocator allocator) {
   value.move_to_allocator(allocator);

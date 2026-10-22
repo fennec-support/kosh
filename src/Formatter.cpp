@@ -2638,7 +2638,9 @@ negated_test_operator_fix(diagnostic_id         diagnostic,
   let const operand =
       source.substring_of_length(operand_start, operand_end - operand_start);
 
-  if (operand.is_empty() || operand == "]") return None;
+  if (operand.is_empty() || operand == "]") {
+    return None;
+  }
 
   /* at this point: the negation is "!", and the bytes from operator_start to
      operator_end equal written_operator. */

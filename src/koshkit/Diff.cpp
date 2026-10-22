@@ -28,7 +28,7 @@ FLAG(DIFF_LABEL, ManyStrings, 'L', "label", "Use this file label.");
 FLAG_OPTIONAL(DIFF_COLOR,
               '\0',
               "color",
-              "Color the differences; the default is auto.",
+              "Color the differences. The default is auto.",
               koshka::koshkit::is_koshkit_color_when,
               "auto|always|never");
 

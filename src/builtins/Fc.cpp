@@ -21,8 +21,8 @@ FLAG_LIST_DECL();
 HELP_SYNOPSIS_DECL("[-e editor] [-lnr] [first [last]]",
                    "-s [old=new ...] [command]");
 
-HELP_DESCRIPTION_DECL("Commands from history can be listed, edited, or "
-                      "executed with this builtin.");
+HELP_DESCRIPTION_DECL(
+    "Commands from history can be listed, edited, or executed.");
 
 FLAG(FC_EDITOR, String, 'e', "", "Use editor to edit the selected commands.");
 FLAG(FC_LIST, Bool, 'l', "", "List the selected commands.");
@@ -147,9 +147,9 @@ report_fc_selection_error(const ExecContext    &ec,
 }
 
 /* memory: result String in allocator, owned by the caller.
-   time: O(source.length * pattern.length) in the worst case, since each
-         position compares at most pattern.length bytes. an empty pattern
-         appends replacement once per byte of source. */
+   time:   O(source.length * pattern.length) in the worst case, since each
+           position compares at most pattern.length bytes. an empty pattern
+           appends replacement once per byte of source. */
 static fn
 replace_all(StringView source,
             StringView pattern,
@@ -510,9 +510,9 @@ edit_fc_commands(const ExecContext                          &ec,
 
 /* memory: every history event and its command string in
            cxt.scratch_allocator(), freed when the scratch arena resets.
-   time: O(H) to decode the H entries of the history file, plus the file load
-         on first use. each text specification scans the events in
-         resolve_fc_selection(), which is O(H) per specification. */
+   time:   O(H) to decode the H entries of the history file, plus the file
+           load on first use. each text specification scans the events in
+           resolve_fc_selection(), which is O(H) per specification. */
 fn
 Fc::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {

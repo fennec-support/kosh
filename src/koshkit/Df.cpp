@@ -122,7 +122,7 @@ Df::execute(const ExecContext               &ec,
     do_add_row(steal(row));
   }
 
-  /* The filesystem and the mount point are left-aligned and the figures are
+  /* the filesystem and the mount point are left-aligned and the figures are
      right-aligned, and the last column takes no padding. */
   usize widths[COLUMN_COUNT] = {};
 

@@ -163,7 +163,7 @@ public:
          CachePolicy              cache_policy  = CachePolicy::Bypass,
          const Maybe<StringView> &path_override = None) throws
       -> ArrayList<Path>;
-  /* A program the shell starts on its own is accepted only from a trusted
+  /* a program the shell starts on its own is accepted only from a trusted
      absolute directory, so a tool planted in the current directory never
      runs. */
   fn

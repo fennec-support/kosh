@@ -17,8 +17,7 @@
 FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[-lnprs] [jobspec ...]");
-HELP_DESCRIPTION_DECL(
-    "Background jobs and their state can be listed with this builtin.");
+HELP_DESCRIPTION_DECL("Background jobs and their state can be listed.");
 
 FLAG(JOBS_LONG,
      Bool,

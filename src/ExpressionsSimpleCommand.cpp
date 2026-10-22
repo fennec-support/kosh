@@ -392,7 +392,7 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
       }
     }
 
-    /* A plain assignment passes the entry it checked to set_shell_variable().
+    /* a plain assignment passes the entry it checked to set_shell_variable().
      */
     let const is_plain_assignment =
         !resolved_name.has_value() &&

@@ -26,7 +26,7 @@ namespace koshka {
 
 namespace utils {
 
-/* Inspiration taken from https://github.com/tsoding/glob.h
+/* inspiration taken from https://github.com/tsoding/glob.h
  * This fragment is under MIT License (c) Alexey Kutepov <reximkut@gmail.com> */
 static pure fn
 is_glob_char_active(const Bitset &glob_active, usize index) wontthrow -> bool
