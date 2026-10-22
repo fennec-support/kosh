@@ -97,11 +97,35 @@ struct tr_error
   StringView note;
 };
 
+/* count copies of byte, from the element at element_index of its set. a
+   [c*n] repeat is one run, so a large count costs no memory. */
+struct tr_run
+{
+  u8    byte;
+  usize count;
+  usize element_index;
+};
+
 struct tr_set
 {
   ArrayList<tr_element> elements;
-  String                bytes;
-  ArrayList<usize>      element_indices;
+  ArrayList<tr_run>     runs;
+  usize                 length{0};
+
+  fn
+  push_run(u8 byte, usize count, usize element_index) throws -> void
+  {
+    if (count == 0) return;
+    runs.push(tr_run{byte, count, element_index});
+    length = count > SIZE_MAX - length ? SIZE_MAX : length + count;
+  }
+
+  fn
+  clear_runs() wontthrow -> void
+  {
+    runs.clear();
+    length = 0;
+  }
 };
 
 /* e.g. set = "a\\n\\101" gives the bytes "a\nA", and the last two are
@@ -353,44 +377,42 @@ parse_tr_set(StringView             set,
   return None;
 }
 
-/* a [c*n] repeat in set1 holds at most 1048576 bytes, and a larger one is an
-   error. a repeat in set2 needs at most one byte more than set1, which keeps
-   every mapping and every length comparison with set1. */
-static constexpr usize SET1_REPEAT_LIMIT = 1048576;
-
 static fn
-expand_tr_set(tr_set &set, usize repeat_limit) throws -> void
+expand_tr_set(tr_set &set) throws -> void
 {
-  set.bytes.clear();
-  set.element_indices.clear();
+  set.clear_runs();
 
   for (usize index = 0; index < set.elements.count(); index++) {
     let const &element = set.elements[index];
 
-    let const do_push = [&](int byte) throws {
-      set.bytes.push(static_cast<char>(byte));
-      set.element_indices.push(index);
-    };
-
     switch (element.kind) {
     case tr_element_kind::Byte:
-    case tr_element_kind::Equivalence: do_push(element.first_byte); break;
+    case tr_element_kind::Equivalence:
+      set.push_run(element.first_byte, 1, index);
+      break;
     case tr_element_kind::Range:
       for (int byte = element.first_byte; byte <= element.last_byte; byte++)
-        do_push(byte);
+        set.push_run(static_cast<u8>(byte), 1, index);
       break;
     case tr_element_kind::Class:
       for (int byte = 0; byte < 256; byte++) {
-        if (element.test(static_cast<u8>(byte))) do_push(byte);
+        if (element.test(static_cast<u8>(byte)))
+          set.push_run(static_cast<u8>(byte), 1, index);
       }
       break;
     case tr_element_kind::Repeat:
-      for (usize n = 0; n < std::min(element.repeat_count, repeat_limit); n++)
-        do_push(element.first_byte);
+      set.push_run(element.first_byte, element.repeat_count, index);
       break;
     }
   }
 }
+
+/* a position in the runs of a set: the run and the offset into it. */
+struct tr_cursor
+{
+  usize run_index{0};
+  usize offset{0};
+};
 
 /* an [:upper:] or [:lower:] class in set2 must start where an [:upper:] or
    [:lower:] class starts in set1. the two sets are walked one byte at a
@@ -399,41 +421,70 @@ static pure fn
 are_case_classes_aligned(const tr_set &set1, const tr_set &set2)
     wontthrow -> bool
 {
-  let const do_get_case = [](const tr_set &set,
-                             usize         position) wontthrow -> tr_case_class {
-    return position < set.bytes.count()
-               ? set.elements[set.element_indices[position]].case_class
-               : tr_case_class::None;
+  let const do_is_at_end = [](const tr_set    &set,
+                              const tr_cursor &cursor) wontthrow -> bool {
+    return cursor.run_index >= set.runs.count();
   };
-  let const do_skip_element = [](const tr_set &set, usize &position) wontthrow {
-    let const index = set.element_indices[position];
+  let const do_get_case =
+      [&](const tr_set &set, const tr_cursor &cursor)
+          wontthrow -> tr_case_class {
+    return do_is_at_end(set, cursor)
+               ? tr_case_class::None
+               : set.elements[set.runs[cursor.run_index].element_index]
+                     .case_class;
+  };
+  let const do_skip_element = [&](const tr_set &set,
+                                  tr_cursor    &cursor) wontthrow {
+    if (do_is_at_end(set, cursor)) return;
 
-    while (position < set.bytes.count() &&
-           set.element_indices[position] == index)
+    let const index = set.runs[cursor.run_index].element_index;
+
+    while (!do_is_at_end(set, cursor) &&
+           set.runs[cursor.run_index].element_index == index)
     {
-      position++;
+      cursor.run_index++;
+    }
+    cursor.offset = 0;
+  };
+  let const do_is_element_start = [&](const tr_set    &set,
+                                      const tr_cursor &cursor)
+                                      wontthrow -> bool {
+    return do_is_at_end(set, cursor) ||
+           (cursor.offset == 0 &&
+            (cursor.run_index == 0 ||
+             set.runs[cursor.run_index].element_index !=
+                 set.runs[cursor.run_index - 1].element_index));
+  };
+  let const do_remaining = [&](const tr_set    &set,
+                               const tr_cursor &cursor) wontthrow -> usize {
+    return do_is_at_end(set, cursor)
+               ? 1
+               : set.runs[cursor.run_index].count - cursor.offset;
+  };
+  let const do_advance = [&](const tr_set &set, tr_cursor &cursor,
+                             usize count) wontthrow {
+    if (do_is_at_end(set, cursor)) return;
+
+    cursor.offset += count;
+    if (cursor.offset == set.runs[cursor.run_index].count) {
+      cursor.run_index++;
+      cursor.offset = 0;
     }
   };
-  let const do_is_element_start = [](const tr_set &set,
-                                     usize         position) wontthrow -> bool {
-    return position == 0 || position >= set.bytes.count() ||
-           set.element_indices[position] != set.element_indices[position - 1];
-  };
 
-  usize position1 = 0;
-  usize position2 = 0;
-  let   case1     = tr_case_class::None;
-  let   case2     = tr_case_class::None;
-  bool  has_ended = false;
+  tr_cursor cursor1;
+  tr_cursor cursor2;
+  let       case1     = tr_case_class::None;
+  let       case2     = tr_case_class::None;
+  bool      has_ended = false;
 
   while (!has_ended) {
-    let const is_new1 = do_is_element_start(set1, position1);
-    let const is_new2 = do_is_element_start(set2, position2);
+    let const is_new1 = do_is_element_start(set1, cursor1);
+    let const is_new2 = do_is_element_start(set2, cursor2);
 
-    has_ended =
-        position1 >= set1.bytes.count() || position2 >= set2.bytes.count();
-    if (is_new1) case1 = do_get_case(set1, position1);
-    if (is_new2) case2 = do_get_case(set2, position2);
+    has_ended = do_is_at_end(set1, cursor1) || do_is_at_end(set2, cursor2);
+    if (is_new1) case1 = do_get_case(set1, cursor1);
+    if (is_new2) case2 = do_get_case(set2, cursor2);
 
     if (is_new2 && case2 != tr_case_class::None &&
         !(is_new1 && case1 != tr_case_class::None))
@@ -442,13 +493,18 @@ are_case_classes_aligned(const tr_set &set1, const tr_set &set2)
     }
 
     if (case2 != tr_case_class::None) {
-      do_skip_element(set1, position1);
-      do_skip_element(set2, position2);
+      do_skip_element(set1, cursor1);
+      do_skip_element(set2, cursor2);
       continue;
     }
 
-    position1++;
-    position2++;
+    /* no element starts inside a run, so both sets move to the nearer run
+       end at once. */
+    let const step =
+        std::min(do_remaining(set1, cursor1), do_remaining(set2, cursor2));
+
+    do_advance(set1, cursor1, step);
+    do_advance(set2, cursor2, step);
   }
 
   return true;
@@ -515,10 +571,10 @@ Tr::execute(const ExecContext               &ec,
 
   let const allocator      = cxt.scratch_allocator();
   let const is_translating = operands.count() == 2 && !is_deleting;
-  let       set1 = tr_set{ArrayList<tr_element>{allocator}, String{allocator},
-                    ArrayList<usize>{allocator}};
-  let       set2 = tr_set{ArrayList<tr_element>{allocator}, String{allocator},
-                    ArrayList<usize>{allocator}};
+  let       set1 =
+      tr_set{ArrayList<tr_element>{allocator}, ArrayList<tr_run>{allocator}};
+  let set2 =
+      tr_set{ArrayList<tr_element>{allocator}, ArrayList<tr_run>{allocator}};
 
   for (usize index = 0; index < operands.count(); index++) {
     let const error =
@@ -536,16 +592,9 @@ Tr::execute(const ExecContext               &ec,
                      "The [c*] repeat cannot appear in set1",
                      "Give the repeat a count, such as `[c*3]`");
     }
-
-    if (element.kind == tr_element_kind::Repeat &&
-        element.repeat_count > SET1_REPEAT_LIMIT)
-    {
-      return do_fail(operand_locations[0],
-                     "A repeat in set1 can hold at most 1048576 bytes");
-    }
   }
 
-  expand_tr_set(set1, SET1_REPEAT_LIMIT);
+  expand_tr_set(set1);
 
   bool has_class_in_set1 = false;
 
@@ -555,13 +604,13 @@ Tr::execute(const ExecContext               &ec,
 
   bool is_listed[256] = {};
 
-  for (usize i = 0; i < set1.bytes.count(); i++)
-    is_listed[static_cast<u8>(set1.bytes[i])] = true;
+  for (let const &run : set1.runs)
+    is_listed[run.byte] = true;
 
   if (is_complementing) {
-    set1.bytes.clear();
+    set1.clear_runs();
     for (int byte = 0; byte < 256; byte++) {
-      if (!is_listed[byte]) set1.bytes.push(static_cast<char>(byte));
+      if (!is_listed[byte]) set1.push_run(static_cast<u8>(byte), 1, SIZE_MAX);
     }
   }
 
@@ -573,7 +622,7 @@ Tr::execute(const ExecContext               &ec,
     bool has_equivalence      = false;
     bool has_restricted_class = false;
 
-    expand_tr_set(set2, set1.bytes.count() + 1);
+    expand_tr_set(set2);
     for (let const &element : set2.elements) {
       if (element.kind == tr_element_kind::Repeat && element.is_indefinite) {
         indefinite_count++;
@@ -587,7 +636,7 @@ Tr::execute(const ExecContext               &ec,
       }
     }
 
-    fixed_length = set2.bytes.count();
+    fixed_length = set2.length;
     if (indefinite_count > 1) {
       return do_fail(location, "One [c*] repeat is allowed in set2",
                      "Remove the extra `[c*]` repeat from "
@@ -610,14 +659,14 @@ Tr::execute(const ExecContext               &ec,
                                "translating");
     }
 
-    if (indefinite_count == 1 && set1.bytes.count() > fixed_length) {
+    if (indefinite_count == 1 && set1.length > fixed_length) {
       for (let &element : set2.elements) {
         if (element.kind == tr_element_kind::Repeat && element.is_indefinite) {
-          element.repeat_count = set1.bytes.count() - fixed_length;
+          element.repeat_count = set1.length - fixed_length;
         }
       }
 
-      expand_tr_set(set2, set1.bytes.count() + 1);
+      expand_tr_set(set2);
     }
 
     if (is_translating) {
@@ -625,8 +674,8 @@ Tr::execute(const ExecContext               &ec,
         return do_fail(location, "Misaligned [:upper:] or [:lower:] construct");
       }
 
-      if (set1.bytes.count() > set2.bytes.count() && !is_truncating) {
-        if (set2.bytes.is_empty()) {
+      if (set1.length > set2.length && !is_truncating) {
+        if (set2.runs.is_empty()) {
           return do_fail(location, "Set2 must not be empty unless -t is given",
                          "Supply SET2, or use `-t` to truncate SET1");
         }
@@ -637,14 +686,14 @@ Tr::execute(const ExecContext               &ec,
                          "End SET2 with a byte to repeat");
         }
 
-        set2.bytes.append_repeated(set2.bytes.back(),
-                                   set1.bytes.count() - set2.bytes.count());
+        set2.push_run(set2.runs.back().byte, set1.length - set2.length,
+                      set2.runs.back().element_index);
       }
 
-      bool is_homogeneous = set2.bytes.count() == set1.bytes.count();
+      bool is_homogeneous = set2.length == set1.length;
 
-      for (usize i = 1; i < set2.bytes.count(); i++) {
-        if (set2.bytes[i] != set2.bytes[0]) is_homogeneous = false;
+      for (let const &run : set2.runs) {
+        if (run.byte != set2.runs[0].byte) is_homogeneous = false;
       }
 
       if (is_complementing && has_class_in_set1 && !is_homogeneous) {
@@ -657,8 +706,8 @@ Tr::execute(const ExecContext               &ec,
     }
   }
 
-  /* at this point: set1.bytes holds the first set, complemented when -c or
-     -C is given, and set2.bytes holds the second set, extended to the
+  /* at this point: set1.runs holds the first set, complemented when -c or
+     -C is given, and set2.runs holds the second set, extended to the
      length of set1 unless -t is given, or is empty. */
   static constexpr usize BYTE_VALUE_COUNT             = 256;
   bool                   is_in_set1[BYTE_VALUE_COUNT] = {};
@@ -667,22 +716,43 @@ Tr::execute(const ExecContext               &ec,
   for (usize i = 0; i < BYTE_VALUE_COUNT; i++)
     translation[i] = static_cast<unsigned char>(i);
 
-  for (usize i = 0; i < set1.bytes.count(); i++) {
-    let const from = static_cast<unsigned char>(set1.bytes[i]);
+  for (let const &run : set1.runs)
+    is_in_set1[run.byte] = true;
 
-    is_in_set1[from] = true;
-    if (is_translating && i < set2.bytes.count()) {
-      translation[from] = static_cast<unsigned char>(set2.bytes[i]);
+  /* the runs of both sets are walked by position, and a later position
+     overrides an earlier mapping of the same byte. */
+  if (is_translating) {
+    usize index1  = 0;
+    usize index2  = 0;
+    usize offset1 = 0;
+    usize offset2 = 0;
+
+    while (index1 < set1.runs.count() && index2 < set2.runs.count()) {
+      let const &run1 = set1.runs[index1];
+      let const &run2 = set2.runs[index2];
+      let const  step = std::min(run1.count - offset1, run2.count - offset2);
+
+      translation[run1.byte] = run2.byte;
+      offset1 += step;
+      offset2 += step;
+      if (offset1 == run1.count) {
+        index1++;
+        offset1 = 0;
+      }
+      if (offset2 == run2.count) {
+        index2++;
+        offset2 = 0;
+      }
     }
   }
 
   bool is_squeezed[BYTE_VALUE_COUNT] = {};
 
   if (is_squeezing) {
-    let const &squeeze_source = operands.count() >= 2 ? set2.bytes : set1.bytes;
+    let const &squeeze_source = operands.count() >= 2 ? set2.runs : set1.runs;
 
-    for (usize i = 0; i < squeeze_source.count(); i++)
-      is_squeezed[static_cast<unsigned char>(squeeze_source[i])] = true;
+    for (let const &run : squeeze_source)
+      is_squeezed[run.byte] = true;
   }
 
   int last_byte = -1;
