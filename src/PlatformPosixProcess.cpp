@@ -552,7 +552,12 @@ execute_program(ExecContext                     &ec,
   sigset_t default_signals;
 
   sigemptyset(&default_signals);
-  if (!IS_INTERRUPT_SIGNAL_IGNORED) sigaddset(&default_signals, SIGINT);
+  let const is_interrupt_ignored =
+      should_ignore_interrupts(options.process_group);
+
+  if (!IS_INTERRUPT_SIGNAL_IGNORED && !is_interrupt_ignored) {
+    sigaddset(&default_signals, SIGINT);
+  }
   sigaddset(&default_signals, SIGCHLD);
   if (!IS_PIPE_SIGNAL_IGNORED_BY_TRAP && !WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY) {
     sigaddset(&default_signals, SIGPIPE);
@@ -578,12 +583,31 @@ execute_program(ExecContext                     &ec,
 
   note_spawn_launch();
 
+  /* the child inherits an ignored disposition, so the parent ignores both
+     signals for the spawn and restores its own actions after it. */
+  struct sigaction saved_interrupt_action = {};
+  struct sigaction saved_quit_action      = {};
+
+  if (is_interrupt_ignored) {
+    struct sigaction ignored = {};
+
+    ignored.sa_handler = SIG_IGN;
+    sigemptyset(&ignored.sa_mask);
+    sigaction(SIGINT, &ignored, &saved_interrupt_action);
+    sigaction(SIGQUIT, &ignored, &saved_quit_action);
+  }
+
   const int spawn_error =
       posix_spawn(&child_pid, ec.program_path().c_str(), &file_actions, &attr,
                   const_cast<char *const *>(child_args.begin()),
                   ec.should_use_empty_environment
                       ? const_cast<char *const *>(empty_environment)
                       : environ);
+
+  if (is_interrupt_ignored) {
+    sigaction(SIGINT, &saved_interrupt_action, nullptr);
+    sigaction(SIGQUIT, &saved_quit_action, nullptr);
+  }
 
   if (spawn_error == ENOEXEC && should_allow_script_fallback) {
     was_fds_handed_to_fallback = true;
@@ -886,6 +910,12 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
           process_group == process_group_mode::Join)
       {
         IS_TERMINAL_OWNER = false;
+      }
+
+      if (should_ignore_interrupts(process_group)) {
+        signal(SIGINT, SIG_IGN);
+        signal(SIGQUIT, SIG_IGN);
+        IS_INTERRUPT_SIGNAL_IGNORED = true;
       }
 
       let const do_lift_above_standard = [](Maybe<descriptor> &fd,
@@ -1411,10 +1441,14 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
                                 ? String{heap_allocator(), sig_str}
                                 : String{heap_allocator(), "Unknown"};
 
-    /* the newline after ^C goes to the terminal, never into a pipe or a
+    /* the newline after ^C goes to a terminal, never into a pipe or a
        command substitution. */
     if (sig == SIGINT) {
-      if (is_fd_a_tty(KOSH_STDERR)) koshka::print_error("\n");
+      if (is_fd_a_tty(KOSH_STDERR)) {
+        koshka::print_error("\n");
+      } else if (is_fd_a_tty(KOSH_STDOUT)) {
+        koshka::print("\n");
+      }
     } else if (sig != SIGPIPE) {
       koshka::print_error(
           "[Process " + String::from(changed_pid, heap_allocator()) + ": " +

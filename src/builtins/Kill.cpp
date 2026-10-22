@@ -58,7 +58,7 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       /* 0 and EXIT are the exit trap, as bash lists them. */
       if (spec == "0") {
         name = String{cxt.scratch_allocator(), "EXIT"};
-      } else if (uppercased == "EXIT" || uppercased == "SIGEXIT") {
+      } else if (uppercased == "EXIT") {
         name = String{cxt.scratch_allocator(), "0"};
       } else if (StringView{spec}.is_all_decimal_digits()) {
         let const parsed = StringView{spec}.to<i64>();

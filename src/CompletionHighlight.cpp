@@ -1640,7 +1640,12 @@ internal::scan_highlight_range(
         is_case_pattern_expected = true;
       }
 
+      /* inside [[ ]], && || and ( join tests and start no command. */
+      let const is_in_conditional =
+          !stack.is_empty() && stack.back() == highlight_construct::conditional;
+
       if (!is_in_array_value && !is_case_pattern_expected &&
+          !is_in_conditional &&
           (has_opener || (has_separator && !has_redirect)))
       {
         is_command_position    = true;

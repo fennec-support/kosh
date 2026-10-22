@@ -62,3 +62,4 @@ $"cat"	resolved-command
 "overlong-utility"	unknown-command
 "cat	string
 koshkit static operands are classified
+ls	resolved-command

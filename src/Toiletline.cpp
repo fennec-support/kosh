@@ -140,6 +140,8 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 
 static_assert(toiletline::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT ==
               ITL_STRING_MAX_LEN);
+static_assert(toiletline::HISTORY_ENTRY_MAX_BYTE_COUNT ==
+              ITL_HISTORY_ENTRY_MAX_BYTES);
 
 namespace {
 

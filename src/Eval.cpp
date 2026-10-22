@@ -114,7 +114,7 @@ fn
 RuntimeState::restore(EvalContext &context) const wontthrow -> void
 {
   context.runtime_state() = *this;
-  publish_path_compatibility();
+  publish_platform_options();
 }
 
 RuntimeStateScope::RuntimeStateScope(EvalContext &context)

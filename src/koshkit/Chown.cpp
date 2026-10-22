@@ -114,8 +114,8 @@ Chown::execute(const ExecContext               &ec,
     group_id = *resolved;
   }
 
-  /* at this point: owner_id and group_id are resolved ids or -1, and at least
-     one of them is a resolved id. */
+  /* at this point: owner_id and group_id are resolved ids or -1, and -1 for
+     both changes nothing. */
   return utils::change_operands_ownership(
       ec, cxt, operands,
       {owner_id, group_id, FLAG_CHOWN_RECURSIVE.is_enabled(),

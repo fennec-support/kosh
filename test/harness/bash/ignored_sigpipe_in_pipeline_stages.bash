@@ -20,3 +20,8 @@ trap '' INT
 ( kill -INT $BASHPID; echo "subshell-ignores-int=$?" )
 /bin/sh -c 'kill -INT $$; echo "program-ignores-int=$?"'
 trap - INT
+
+# Without job control, an asynchronous command starts with SIGINT ignored.
+/bin/sh -c 'kill -INT $$; echo "async-ignores-int=$?"' &
+wait $!
+echo "async-status=$?"

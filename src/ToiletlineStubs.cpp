@@ -19,7 +19,8 @@
 
 namespace koshka::internal {
 
-static constexpr usize NO_EDITOR_HISTORY_ENTRY_MAX_BYTE_COUNT = 2048;
+static constexpr usize NO_EDITOR_HISTORY_ENTRY_MAX_BYTE_COUNT =
+    toiletline::HISTORY_ENTRY_MAX_BYTE_COUNT;
 static constexpr usize NO_EDITOR_HISTORY_DECODED_MAX_BYTE_COUNT =
     toiletline::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT;
 static constexpr char NO_EDITOR_HISTORY_FILE[] = ".kosh_history";

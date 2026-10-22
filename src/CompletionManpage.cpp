@@ -2102,6 +2102,14 @@ locate_hint_target(StringView line, usize cursor) throws
 {
   if (cursor > line.length) cursor = line.length;
 
+  /* the body of an open heredoc holds no command. */
+  {
+    let state = shell_lexical_state{completion_allocator()};
+
+    internal::advance_shell_lexical_state(line, cursor, state);
+    if (state.is_in_heredoc) return None;
+  }
+
   let const whole_line   = line;
   let const substitution = command_substitution_range(line, cursor);
 

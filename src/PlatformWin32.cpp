@@ -289,6 +289,10 @@ static bool SHOULD_MAP_DEV_NULL  = true;
 static bool SHOULD_MAP_SLASH_TMP = true;
 
 fn
+set_job_control_enabled(bool) wontthrow -> void
+{}
+
+fn
 set_path_compatibility(bool should_map_dev_null,
                        bool should_map_slash_tmp) wontthrow -> void
 {

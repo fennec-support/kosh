@@ -783,6 +783,23 @@ static bool WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY = false;
 /* trap '' INT, or an ignored SIGINT at entry, keeps SIGINT ignored in every
    child, as POSIX asks of an ignored signal. */
 static bool IS_INTERRUPT_SIGNAL_IGNORED = false;
+static bool IS_JOB_CONTROL_ENABLED      = false;
+
+fn
+set_job_control_enabled(bool is_enabled) wontthrow -> void
+{
+  IS_JOB_CONTROL_ENABLED = is_enabled;
+}
+
+/* true when a child in process_group runs asynchronously in a shell without
+   job control. */
+static fn
+should_ignore_interrupts(process_group_mode process_group) wontthrow -> bool
+{
+  return !IS_JOB_CONTROL_ENABLED &&
+         (process_group == process_group_mode::NewBackground ||
+          process_group == process_group_mode::Join);
+}
 
 } /* namespace os */
 } /* namespace koshka */

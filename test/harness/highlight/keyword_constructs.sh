@@ -48,3 +48,8 @@ printf '%s\n' "$koshkit_result" |
     grep -Fx '"overlong-utility"'"${tab}unknown-command"
 printf '%s\n' "$koshkit_result" | grep -Fx '"cat'"${tab}string"
 echo "koshkit static operands are classified"
+
+# Inside [[ ]], && || and ( join tests, so the words after them are no
+# commands, and the command after ]] && is one.
+"$BIN" --debug-highlight-at '[[ a == b && c ]] && ls; [[ -f x || ( zzz == y ) ]]' |
+    grep -E "${tab}(resolved-command|unknown-command)$"

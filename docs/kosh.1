@@ -1651,12 +1651,13 @@ The copy is removed once the write succeeds. When the write fails, the
 error gives the path of the copy, and when no copy can be made, nothing is
 written. The save is refused when another file has replaced the one that slurp
 loaded. A refused or failed save is reported on the last four rows, and the
-session stays open with the edits. A directory, an unreadable file, a file with
-a NUL byte or invalid UTF\-8, a file longer than 65534 bytes, a restricted
-shell, and a session whose standard input or output is not a terminal are
-refused with status 1. A file whose
-every line ends in CRLF keeps those endings, a file that mixes them keeps each
-carriage return as text, and the final newline of the file is kept.
+session stays open with the edits. An empty operand, a directory, a special
+file, an unreadable file, a file with a NUL byte or invalid UTF\-8, a file
+longer than 65534 bytes, a restricted shell, and a session whose standard input
+or output is not a terminal are refused with status 1. A wrong operand count or
+an unknown mode exits with status 2. A file whose every line ends in CRLF keeps
+those endings, a file that mixes them keeps each carriage return as text, and
+the final newline of the file is kept.
 .TP
 .B z
 The current directory is changed to one selected from the directories that

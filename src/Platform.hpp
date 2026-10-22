@@ -1860,6 +1860,10 @@ temp_directory_path() throws -> String;
 fn
 set_path_compatibility(bool should_map_dev_null,
                        bool should_map_slash_tmp) wontthrow -> void;
+/* without job control, an asynchronous command starts with SIGINT and SIGQUIT
+   ignored, as POSIX asks. */
+fn
+set_job_control_enabled(bool is_enabled) wontthrow -> void;
 /* whether path is the null device, which a directory listing never holds. */
 fn
 is_null_device(StringView path) wontthrow -> bool;
