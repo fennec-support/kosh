@@ -672,7 +672,7 @@ _koshkit_complete ()
   if [[ $COMP_CWORD -eq 1 ]]
   then
     _kosh_compgen \
-                  -W "$_koshkit_utils --list --assimilate --help" \
+                  -W "$_koshkit_utils --list --assimilate --color --help" \
                   -- "$current_word"
     return
   fi

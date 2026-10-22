@@ -520,11 +520,9 @@ The ghost completion result for LINE is printed. The shell then exits.
 The bracket pair matched at each caret offset of LINE is printed. The shell
 then exits.
 .TP
-.B \-\-debug\-arena\-lifetimes
-Arena lifetimes are checked.
-.TP
-.B \-\-debug\-toiletline\-allocation
-Allocation failure handling in the line editor is checked.
+.BR \-\-debug\-hint\-at =\fILINE\fR
+The inline hint row for LINE is printed with the caret at its end. The shell
+then exits.
 .TP
 .BR \-\-ftrace ", " \-\-strace
 Function or system-call tracing is enabled. These options are available only in
@@ -1403,11 +1401,11 @@ With no operand,
 groups the builtins under POSIX, BASH, and Koshka headings. The Koshka section
 holds assimilate, bench, koshconf, koshkit, slurp, and z.
 .PP
-\fB: . [ alias bg break builtin cd command complete compgen compopt continue
-declare dirs disown echo eval exec exit export false fc fg getopts history jobs
-kill let local mapfile newgrp popd printf pushd pwd read readarray readonly
-return set shift shopt source test time times trap true type typeset ulimit
-umask unalias unset wait\fR
+\fB: . [ alias bg bind break builtin caller cd command complete compgen compopt
+continue declare dirs disown echo enable eval exec exit export false fc fg
+getopts hash help history jobs kill let local logout mapfile newgrp popd printf
+pushd pwd read readarray readonly return set shift shopt source suspend test
+time times trap true type typeset ulimit umask unalias unset wait\fR
 .PP
 .B pwd \-W
 prints the physical working directory in the Windows form with forward slashes,

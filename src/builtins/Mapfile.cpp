@@ -163,6 +163,42 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         was_terminal_exec_allowed;
   };
 
+  /* without a line limit or a callback, the input is read to its end in
+     large reads, since nothing else can take bytes after the last line. */
+  let       whole_input      = Maybe<String>{None};
+  usize     whole_position   = 0;
+  let const should_read_rest = max_lines == 0 && !has_callback;
+
+  if (should_read_rest) {
+    whole_input = os::read_fd_to_string(read_fd, heap_allocator());
+
+    if (!whole_input.has_value()) {
+      report_soft_builtin_error(ec, cxt, ec.source_location(),
+                                StringView{"Unable to read mapfile input: "} +
+                                    os::last_system_error_message());
+
+      return 1;
+    }
+  }
+
+  let const do_next_line = [&]() throws -> utils::read_line_result {
+    if (!should_read_rest) return utils::read_line_from_fd(read_fd, delimiter);
+
+    let const rest = whole_input->view().substring(whole_position);
+
+    if (rest.is_empty()) return utils::read_line_result{};
+
+    let const end    = rest.find_character(delimiter);
+    let const length = end.has_value() ? *end : rest.length;
+
+    whole_position += length + (end.has_value() ? 1 : 0);
+
+    return utils::read_line_result{
+        String{heap_allocator(), rest.substring_of_length(0, length)},
+        end.has_value()
+    };
+  };
+
   usize read_count = 0;
 
   loop {
@@ -170,7 +206,7 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       break;
     }
 
-    let read = utils::read_line_from_fd(read_fd, delimiter);
+    let read = do_next_line();
 
     if (read.did_read_fail) {
       report_soft_builtin_error(ec, cxt, ec.source_location(),

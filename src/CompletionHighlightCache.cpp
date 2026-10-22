@@ -136,6 +136,27 @@ byte_is_escaped(StringView line, usize position) wontthrow -> bool
   return backslash_count % 2 == 1;
 }
 
+/* true when position is one of positions, which ascend. */
+static pure fn
+is_sorted_position(const ArrayList<usize> &positions, usize position) wontthrow
+    -> bool
+{
+  usize low  = 0;
+  usize high = positions.count();
+
+  while (low < high) {
+    let const middle = low + (high - low) / 2;
+
+    if (positions[middle] < position) {
+      low = middle + 1;
+    } else {
+      high = middle;
+    }
+  }
+
+  return low < positions.count() && positions[low] == position;
+}
+
 static fn
 find_bracket_partner(StringView                       line,
                      const ArrayList<highlight_span> &spans,
@@ -152,7 +173,7 @@ find_bracket_partner(StringView                       line,
       [&](usize scan, bracket_byte bracket,
           bool is_literal) throws -> bool {
     if (is_literal || byte_is_escaped(line, scan) ||
-        case_pattern_ends.find(scan).has_value())
+        is_sorted_position(case_pattern_ends, scan))
     {
       return false;
     }
@@ -252,7 +273,7 @@ find_matching_bracket(StringView                       line,
 
   let const do_is_code_bracket = [&](usize position) throws -> bool {
     if (byte_is_escaped(line, position) ||
-        case_pattern_ends.find(position).has_value())
+        is_sorted_position(case_pattern_ends, position))
     {
       return false;
     }
