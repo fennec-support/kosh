@@ -76,13 +76,14 @@ FLAG(GREP_LINE_NUMBER,
      "Prefix matching lines with numbers.");
 FLAG(
     GREP_NO_FILENAME, Bool, 'h', "no-filename", "Suppress file-name prefixes.");
-FLAG_OPTIONAL(GREP_COLOR,
-              '\0',
-              "color",
-              "Color matches, filenames, numbers, and separators; the default "
-              "is auto.",
-              koshka::koshkit::is_koshkit_color_when,
-              "auto|always|never");
+FLAG_OPTIONAL_ATTACHED(
+    GREP_COLOR,
+    '\0',
+    "color",
+    "Color matches, filenames, numbers, and separators; the default "
+    "is auto.",
+    koshka::koshkit::is_koshkit_color_when,
+    "auto|always|never");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Grep);
 

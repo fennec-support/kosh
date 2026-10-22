@@ -320,33 +320,37 @@ FlagManyStrings::reset() throws -> void
   m_value_position = 0;
 }
 
-FlagOptionalValue::FlagOptionalValue(char           short_name,
-                                     StringView     long_name,
-                                     flag_section   section,
-                                     StringView     description,
-                                     value_acceptor should_accept_value,
-                                     StringView     value_name)
+FlagOptionalValue::FlagOptionalValue(char            short_name,
+                                     StringView      long_name,
+                                     flag_section    section,
+                                     StringView      description,
+                                     value_acceptor  should_accept_value,
+                                     StringView      value_name,
+                                     value_placement placement)
     : Flag(Flag::Kind::OptionalValue,
            short_name,
            long_name,
            section,
            description),
-      m_should_accept_value(should_accept_value), m_value_name(value_name)
+      m_should_accept_value(should_accept_value), m_value_name(value_name),
+      m_placement(placement)
 {}
 
-FlagOptionalValue::FlagOptionalValue(FlagList      &flags,
-                                     char           short_name,
-                                     StringView     long_name,
-                                     flag_section   section,
-                                     StringView     description,
-                                     value_acceptor should_accept_value,
-                                     StringView     value_name)
+FlagOptionalValue::FlagOptionalValue(FlagList       &flags,
+                                     char            short_name,
+                                     StringView      long_name,
+                                     flag_section    section,
+                                     StringView      description,
+                                     value_acceptor  should_accept_value,
+                                     StringView      value_name,
+                                     value_placement placement)
     : FlagOptionalValue(short_name,
                         long_name,
                         section,
                         description,
                         should_accept_value,
-                        value_name)
+                        value_name,
+                        placement)
 {
   flags.push(this);
 }
@@ -980,22 +984,29 @@ parse_flags(const FlagList                  &flags,
             optional_flag->set_value_location(attached_flag_value_location(
                 argv, static_cast<usize>(i), value.data, base_position,
                 arg_locations));
-          } else if (!value.is_empty() && is_long) {
+          } else if (!value.is_empty() &&
+                     (is_long ||
+                      optional_flag->get_placement() ==
+                          FlagOptionalValue::value_placement::AttachedOnly))
+          {
             let error = ErrorWithLocation{
                 argument_location(argv, static_cast<usize>(i), base_position,
                                   arg_locations),
-                prefixed_message(program_name,
-                                 "Invalid value '" +
-                                     String{heap_allocator(), value} +
-                                     "' for '" + flag_name(flag, true) + "'")};
+                prefixed_message(
+                    program_name,
+                    "Invalid value '" + String{heap_allocator(), value} +
+                        "' for '" + flag_name(flag, is_long) + "'")};
 
             error.set_command_status(2);
             throw error;
           } else if (!value.is_empty()) {
             ++flag_offset;
             should_repeat = true;
-          } else if (i + 1 < argc && optional_flag->should_accept_value(
-                                         StringView{argv[i + 1]}))
+          } else if (i + 1 < argc &&
+                     optional_flag->get_placement() ==
+                         FlagOptionalValue::value_placement::AttachedOrNext &&
+                     optional_flag->should_accept_value(
+                         StringView{argv[i + 1]}))
           {
             i++;
             let const value_location = argument_location(

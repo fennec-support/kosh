@@ -471,3 +471,10 @@ printf 'q\0abc\n' | "$BIN" -c 'koshkit grep abc'
 { printf 'abc\n'; head -c 98290 /dev/zero | tr '\0' x; printf '\nabc tail\nzz\0\nabc after\n'; } > grep-late-nul.dat
 "$BIN" -c 'koshkit grep abc grep-late-nul.dat'
 "$BIN" -c 'koshkit grep -a abc grep-binary.dat' | od -c | sed -n 1,2p
+
+echo "--- an optional flag value is taken only when attached ---"
+printf 'abcdefgh\n' > od-width.txt
+"$BIN" -c 'koshkit od -w4 od-width.txt'
+"$BIN" -c 'koshkit od -w 4 od-width.txt 2>/dev/null; printf "status=%s\n" "$?"'
+printf 'always\nx\n' > always
+"$BIN" -c 'koshkit grep --color always always'

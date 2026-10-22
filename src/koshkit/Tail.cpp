@@ -41,12 +41,13 @@ FLAG(TAIL_FOLLOW_NAME,
      'F',
      "",
      "Follow each file name and retry when the file is replaced or missing.");
-FLAG_OPTIONAL(TAIL_FOLLOW_MODE,
-              '\0',
-              "follow",
-              "Follow by descriptor or by name. The default is descriptor.",
-              is_tail_follow_mode,
-              "descriptor|name");
+FLAG_OPTIONAL_ATTACHED(
+    TAIL_FOLLOW_MODE,
+    '\0',
+    "follow",
+    "Follow by descriptor or by name. The default is descriptor.",
+    is_tail_follow_mode,
+    "descriptor|name");
 FLAG(TAIL_RETRY,
      Bool,
      '\0',

@@ -25,12 +25,12 @@ FLAG(DIFF_IGNORE_SPACE,
      "Ignore whitespace differences.");
 FLAG(DIFF_TEXT, Bool, 'a', "text", "Treat every file as text.");
 FLAG(DIFF_LABEL, ManyStrings, 'L', "label", "Use this file label.");
-FLAG_OPTIONAL(DIFF_COLOR,
-              '\0',
-              "color",
-              "Color the differences. The default is auto.",
-              koshka::koshkit::is_koshkit_color_when,
-              "auto|always|never");
+FLAG_OPTIONAL_ATTACHED(DIFF_COLOR,
+                       '\0',
+                       "color",
+                       "Color the differences. The default is auto.",
+                       koshka::koshkit::is_koshkit_color_when,
+                       "auto|always|never");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Diff);
 

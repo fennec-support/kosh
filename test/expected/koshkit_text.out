@@ -845,3 +845,12 @@ abc tail
 grep: grep-late-nul.dat: binary file matches
 0000000   a   b   c  \0   d   e   f  \n   x   y   z       a   b   c  \n
 0000020
+--- an optional flag value is taken only when attached ---
+0000000 061141 062143
+0000004 063145 064147
+0000010 000012
+0000011
+0000000 061141 062143 063145 064147 000012
+0000011
+status=1
+always
