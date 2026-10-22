@@ -211,4 +211,19 @@ printf 'apple\nzzz\n' | koshkit grep -l apple - b
 echo "--- error output"
 koshkit grep -c apple missing a 2>&1 | koshkit grep -c 'No such file'
 koshkit grep -sc apple missing a 2>&1 | koshkit grep -c 'No such file'
+echo "--- cat formatting"
+printf 'a\tb\r\n\n\n\nc\001\177\200\211\377\240 d\r\ne\r' > catfmt
+printf '\n\nx\n' > catblank
+koshkit cat -A catfmt catblank
+koshkit cat -e catfmt
+echo
+koshkit cat -t catfmt | koshkit cat -E
+koshkit cat -vT catfmt | koshkit cat -E
+koshkit cat -bs catfmt catblank | koshkit cat -A
+koshkit cat -ns catblank catblank
+koshkit cat -nb catblank
+koshkit cat -E catfmt | koshkit od -c
+koshkit cat -sE catblank catblank
+printf 'a\r' | koshkit cat -E - catblank
+
 cd .. || exit 1

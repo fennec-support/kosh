@@ -420,3 +420,51 @@ b
 --- error output
 2
 0
+--- cat formatting
+a^Ib^M$
+$
+$
+$
+c^A^?M-^@M-^IM-^?M-  d^M$
+e^M$
+$
+x$
+a	b^M$
+$
+$
+$
+c^A^?M-^@M-^IM-^?M-  d^M$
+e^M
+a^Ib^M$
+$
+$
+$
+c^A^?M-^@M-^IM-^?M-  d^M$
+e^Ma^Ib^M$
+$
+$
+$
+c^A^?M-^@M-^IM-^?M-  d^M$
+e^M     1^Ia^Ib^M$
+$
+     2^Ic^A^?M-^@M-^IM-^?M-  d^M$
+     3^Ie^M$
+$
+     4^Ix$
+     1	
+     2	x
+     3	
+     4	x
+
+
+     1	x
+0000000   a  \t   b   ^   M   $  \n   $  \n   $  \n   $  \n   c 001 177
+0000020 200 211 377 240       d   ^   M   $  \n   e  \r
+0000034
+$
+x$
+$
+x$
+a^M$
+$
+x$

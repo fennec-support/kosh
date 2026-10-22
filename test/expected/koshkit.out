@@ -55,6 +55,11 @@ mv
 == every help flag of a listed utility is completed:
 ok: koshkit flags complete
 == cat flags through koshkit:
+--show-all
+--show-ends
+--show-nonprinting
+--show-tabs
+--squeeze-blank
 --syntax-highlighting
 == date format directives through koshkit:
 +%%

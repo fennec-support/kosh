@@ -513,7 +513,8 @@ _koshkit_util_flags ()
       echo "-a --all -g --save"
     ;;
     cat)
-      echo "-n -u --syntax-highlighting"
+      echo \
+        "-A --show-all -b --number-nonblank -e -E --show-ends -n --number -s --squeeze-blank -t -T --show-tabs -u -v --show-nonprinting --syntax-highlighting"
     ;;
     tee)
       echo "-a"

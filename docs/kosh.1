@@ -2332,7 +2332,13 @@ and sin and selects a scale of 20.
 .TP
 .B cat
 Files or standard input are concatenated, with line numbering (\fB\-n\fR)
-continuing across files. The \fB\-u\fR option is accepted. The
+continuing across files. The \fB\-b\fR option numbers only nonempty lines, and
+\fB\-s\fR writes one empty line for each run of empty lines. The \fB\-v\fR
+option writes control bytes in ^ notation and bytes above 127 with an M\-
+prefix, except tab and newline. The \fB\-E\fR option writes $ at the end of
+each line, and a carriage return before a newline as ^M. The \fB\-T\fR option
+writes a tab as ^I. The \fB\-e\fR, \fB\-t\fR, and \fB\-A\fR options act as
+\fB\-vE\fR, \fB\-vT\fR, and \fB\-vET\fR. The \fB\-u\fR option is accepted. The
 \fB\-\-syntax\-highlighting\fR
 option colors recognized shell source when standard output is a terminal.
 .TP
