@@ -146,6 +146,16 @@ advance_shell_keyword_state(
     usize                            frame_depth,
     completion::shell_lexical_state &state) throws -> Maybe<bool>;
 
+/* Where a top-level highlight scan records its restart points. A point is
+   recorded at least HIGHLIGHT_RESTART_GAP_BYTE_COUNT bytes after the last. */
+constexpr usize HIGHLIGHT_RESTART_GAP_BYTE_COUNT = 4096;
+
+struct highlight_restart_sink
+{
+  ArrayList<highlight_restart> *restarts;
+  usize                         last_position;
+};
+
 fn
 scan_highlight_range(
     StringView                 line,
@@ -155,7 +165,8 @@ scan_highlight_range(
     ArrayList<highlight_span> &spans,
     HashSet                   &line_variable_names,
     HashSet                   &function_names,
-    bool should_stop_at_closing_parenthesis = false) throws -> usize;
+    bool                       should_stop_at_closing_parenthesis = false,
+    highlight_restart_sink    *restart_sink = nullptr) throws -> usize;
 
 fn
 second_word_of(StringView line) wontthrow -> Maybe<StringView>;

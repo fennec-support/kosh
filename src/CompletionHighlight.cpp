@@ -1383,7 +1383,8 @@ internal::scan_highlight_range(
     ArrayList<highlight_span> &spans,
     HashSet                   &line_variable_names,
     HashSet                   &function_names,
-    bool                       should_stop_at_closing_parenthesis) throws -> usize
+    bool                       should_stop_at_closing_parenthesis,
+    highlight_restart_sink    *restart_sink) throws -> usize
 {
   let const do_push = [&](usize start, usize stop,
                           highlight_role role) throws -> void {
@@ -1471,6 +1472,28 @@ internal::scan_highlight_range(
         if (!pending_heredocs.is_empty()) {
           i = scan_heredoc_bodies(line, i, end, pending_heredocs, spans);
           pending_heredocs.clear();
+        }
+
+        /* A line start with no open construct is a point a later scan can
+           start from, with the names collected so far. The end of the text
+           is none, since an unterminated heredoc body also ends there. */
+        let const is_restart_point =
+            restart_sink != nullptr && i < end && stack.is_empty() &&
+            parenthesis_depth == 0 && !is_in_array_value &&
+            !is_case_pattern_expected && !expecting_in &&
+            !for_variable_pending && !for_do_expected &&
+            !function_name_pending && !is_unsetting_functions &&
+            i - restart_sink->last_position >= HIGHLIGHT_RESTART_GAP_BYTE_COUNT;
+
+        if (is_restart_point) {
+          let variable_names = line_variable_names.clone();
+          let function_set   = function_names.clone();
+
+          variable_names.move_to_allocator(heap_allocator());
+          function_set.move_to_allocator(heap_allocator());
+          restart_sink->restarts->push(
+              highlight_restart{i, steal(variable_names), steal(function_set)});
+          restart_sink->last_position = i;
         }
         continue;
       }

@@ -60,6 +60,36 @@ highlight_line(StringView line, EvalContext &context) throws
   return spans;
 }
 
+fn
+highlight_line_from(StringView                    line,
+                    const highlight_restart      *restart,
+                    EvalContext                  &context,
+                    ArrayList<highlight_restart> &restarts) throws
+    -> ArrayList<highlight_span>
+{
+  HIGHLIGHT_ARENA.reset();
+
+  let const arena          = bump_allocator(HIGHLIGHT_ARENA);
+  let       spans          = ArrayList<highlight_span>{arena};
+  let       variable_names = HashSet{arena};
+  let       function_names = HashSet{arena};
+  let const begin          = restart != nullptr ? restart->position : 0;
+  let       sink           = highlight_restart_sink{&restarts, begin};
+
+  if (line.length > UINT32_MAX) return spans;
+  if (restart != nullptr) {
+    restart->variable_names.for_each(
+        [&](StringView name) throws { variable_names.add(name); });
+    restart->function_names.for_each(
+        [&](StringView name) throws { function_names.add(name); });
+  }
+
+  scan_highlight_range(line, begin, line.length, context, spans, variable_names,
+                       function_names, false, &sink);
+
+  return spans;
+}
+
 struct bracket_byte
 {
   usize kind;

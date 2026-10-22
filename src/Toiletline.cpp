@@ -212,6 +212,8 @@ struct completion_session
   koshka::String     highlighted_line{koshka::heap_allocator()};
   koshka::ArrayList<koshka::highlight_span> highlighted_spans{
       koshka::heap_allocator()};
+  koshka::ArrayList<koshka::completion::highlight_restart> highlighted_restarts{
+      koshka::heap_allocator()};
   bool  has_highlighted_spans{false};
   char  bracket_styles[4][48]{};
   usize bracket_style_count{0};
@@ -1342,12 +1344,50 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
           has_highlighted_spans && line.starts_with(highlighted_line.view())
               ? line
               : needed;
-      let const result = koshka::completion::highlight_line(scanned, *context);
+      /* The scan starts again from the last restart point before the first
+         changed byte, and the spans before that point stay. */
+      usize same_byte_count = 0;
+
+      if (has_highlighted_spans) {
+        let const scanned_before = highlighted_line.view();
+
+        while (same_byte_count < scanned_before.length &&
+               same_byte_count < scanned.length &&
+               scanned_before[same_byte_count] == scanned[same_byte_count])
+        {
+          same_byte_count++;
+        }
+      }
+
+      usize kept_restart_count = 0;
+
+      while (kept_restart_count < highlighted_restarts.count() &&
+             highlighted_restarts[kept_restart_count].position <=
+                 same_byte_count)
+      {
+        kept_restart_count++;
+      }
+      highlighted_restarts.truncate(kept_restart_count);
+
+      let const *restart         = kept_restart_count > 0
+                                       ? &highlighted_restarts[kept_restart_count - 1]
+                                       : nullptr;
+      let const  begin           = restart != nullptr ? restart->position : 0;
+      usize      kept_span_count = 0;
+
+      while (kept_span_count < highlighted_spans.count() &&
+             highlighted_spans[kept_span_count].start < begin)
+      {
+        kept_span_count++;
+      }
+      highlighted_spans.truncate(kept_span_count);
+
+      let const result = koshka::completion::highlight_line_from(
+          scanned, restart, *context, highlighted_restarts);
 
       highlighted_line.clear();
       highlighted_line.append(scanned);
-      highlighted_spans.clear();
-      highlighted_spans.reserve(result.count());
+      highlighted_spans.reserve(kept_span_count + result.count());
 
       for (let const &span : result)
         highlighted_spans.push(span);
