@@ -134,7 +134,116 @@ SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
   return &*m_literal_command_lookup;
 }
 
-hot fn
+hot /* the source of command with an alias of its command word replaced by the
+   alias body, or None when the word is no alias. a body that ends in a blank
+   also replaces the next word when it is an alias, and the first word of such
+   a replacement is an alias too when it names one, as bash reads the
+   replacement again. each alias joins a chain once. */
+static fn
+alias_expanded_source(const SimpleCommand &command,
+                      EvalContext         &cxt,
+                      bool                 is_async) throws -> Maybe<String>
+{
+  let const &args = command.args();
+
+  if (args.is_empty() || args[0]->kind() != Token::Kind::Word ||
+      !cxt.scope_store().has_aliases() ||
+      !cxt.is_shopt_enabled(shopt_option_id::ExpandAliases))
+  {
+    return None;
+  }
+
+  let const do_find_body = [&](usize index) throws -> Maybe<String> {
+    if (index >= args.count() || args[index]->kind() != Token::Kind::Word) {
+      return None;
+    }
+
+    let const name = static_command_name(args[index]);
+
+    if (!name.has_value() || cxt.scope_store().is_alias_expanding(*name)) {
+      return None;
+    }
+
+    return cxt.scope_store().get_alias(*name);
+  };
+
+  let const do_expand_head =
+      [&](String text, StringView replaced_word) throws -> String {
+    let chain = ArrayList<String>{cxt.scratch_allocator()};
+
+    chain.push(String{cxt.scratch_allocator(), replaced_word});
+
+    loop {
+      usize word_end = 0;
+
+      while (word_end < text.count() && text[word_end] != ' ' &&
+             text[word_end] != '\t')
+      {
+        word_end++;
+      }
+
+      let const word       = StringView{text.data(), word_end};
+      bool      is_chained = false;
+
+      for (let const &chained : chain)
+        if (chained.view() == word) is_chained = true;
+
+      if (word.is_empty() || is_chained ||
+          cxt.scope_store().is_alias_expanding(word))
+      {
+        return text;
+      }
+
+      let const replacement = cxt.scope_store().get_alias(word);
+
+      if (!replacement.has_value()) return text;
+
+      let expanded = String{heap_allocator(), replacement->view()};
+
+      expanded.append(text.view().substring(word_end));
+      chain.push(String{cxt.scratch_allocator(), word});
+      text = steal(expanded);
+    }
+  };
+
+  let body = do_find_body(0);
+
+  if (!body.has_value()) return None;
+
+  let const source_index = args[0]->source_location().source_name_index;
+  let       text         = String{heap_allocator()};
+  usize     copied_end   = command.full_source_start_position();
+  usize     index        = 0;
+
+  while (body.has_value()) {
+    let const word_location = args[index]->source_location();
+
+    text.append(cxt.source_text_in_span(
+        SourceLocation{static_cast<u32>(copied_end), 0, source_index},
+        word_location.position));
+    text.append(body->view());
+    copied_end = usize{word_location.position} + word_location.length;
+
+    let const is_blank_ended =
+        !body->is_empty() && ((*body)[body->count() - 1] == ' ' ||
+                              (*body)[body->count() - 1] == '\t');
+
+    index += 1;
+    body = is_blank_ended ? do_find_body(index) : Maybe<String>{};
+    if (body.has_value()) {
+      body = do_expand_head(steal(*body), *static_command_name(args[index]));
+    }
+  }
+
+  text.append(cxt.source_text_in_span(
+      SourceLocation{static_cast<u32>(copied_end), 0, source_index},
+      command.full_source_end_position()));
+  if (is_async) text.append(" &");
+
+  return text;
+}
+
+fn
 SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
     throws -> status_result
 {
@@ -197,115 +306,22 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
   }
 
   /* an alias of the command word runs as the source of this command with the
-     alias body in place of the word, so the body may hold any shell syntax.
-     a body that ends in a blank also replaces the next word when it is an
-     alias, as bash does. */
-  if (!m_args.is_empty() && m_args[0]->kind() == Token::Kind::Word &&
-      cxt.scope_store().has_aliases() &&
-      cxt.is_shopt_enabled(shopt_option_id::ExpandAliases))
+     alias body in place of the word, so the body may hold any shell syntax. */
+  if (let const text = alias_expanded_source(*this, cxt, is_async_command);
+      text.has_value())
   {
-    let const do_find_body = [&](usize index) throws -> Maybe<String> {
-      if (index >= m_args.count() || m_args[index]->kind() != Token::Kind::Word)
-      {
-        return None;
-      }
+    let const name = *static_command_name(m_args[0]);
 
-      let const name = static_command_name(m_args[index]);
+    LOG(Debug, "expanding the alias '%.*s'", static_cast<int>(name.length),
+        name.data);
+    cxt.scope_store().begin_alias_expansion(name);
+    defer { cxt.scope_store().end_alias_expansion(); };
 
-      if (!name.has_value() || cxt.scope_store().is_alias_expanding(*name)) {
-        return None;
-      }
+    cxt.run_source(text->view(), "an alias", source_location(),
+                   StringView{"alias"}, nullptr, nullptr,
+                   return_handling::Propagate);
 
-      return cxt.scope_store().get_alias(*name);
-    };
-
-    /* the first word of a replacement is an alias too when it names one, as
-       bash reads the replacement again. each alias joins the chain once. */
-    let const do_expand_head =
-        [&](String text, StringView replaced_word) throws -> String {
-      let chain = ArrayList<String>{cxt.scratch_allocator()};
-
-      chain.push(String{cxt.scratch_allocator(), replaced_word});
-
-      loop {
-        usize word_end = 0;
-
-        while (word_end < text.count() && text[word_end] != ' ' &&
-               text[word_end] != '\t')
-        {
-          word_end++;
-        }
-
-        let const word       = StringView{text.data(), word_end};
-        bool      is_chained = false;
-
-        for (let const &chained : chain)
-          if (chained.view() == word) is_chained = true;
-
-        if (word.is_empty() || is_chained ||
-            cxt.scope_store().is_alias_expanding(word))
-        {
-          return text;
-        }
-
-        let const replacement = cxt.scope_store().get_alias(word);
-
-        if (!replacement.has_value()) return text;
-
-        let expanded = String{heap_allocator(), replacement->view()};
-
-        expanded.append(text.view().substring(word_end));
-        chain.push(String{cxt.scratch_allocator(), word});
-        text = steal(expanded);
-      }
-    };
-
-    if (let const first_body = do_find_body(0); first_body.has_value()) {
-      let const source_index = m_args[0]->source_location().source_name_index;
-      let       text         = String{cxt.scratch_allocator()};
-      usize     copied_end   = full_source_start_position();
-      let       body         = Maybe<String>{first_body->clone()};
-      usize     index        = 0;
-
-      while (body.has_value()) {
-        let const word_location = m_args[index]->source_location();
-
-        text.append(cxt.source_text_in_span(
-            SourceLocation{static_cast<u32>(copied_end), 0, source_index},
-            word_location.position));
-        text.append(body->view());
-        copied_end = usize{word_location.position} + word_location.length;
-
-        let const is_blank_ended =
-            !body->is_empty() && ((*body)[body->count() - 1] == ' ' ||
-                                  (*body)[body->count() - 1] == '\t');
-
-        index += 1;
-        body = is_blank_ended ? do_find_body(index) : Maybe<String>{};
-        if (body.has_value()) {
-          body =
-              do_expand_head(steal(*body), *static_command_name(m_args[index]));
-        }
-      }
-
-      text.append(cxt.source_text_in_span(
-          SourceLocation{static_cast<u32>(copied_end), 0, source_index},
-          full_source_end_position()));
-      if (is_async_command) text.append(" &");
-
-      let const name = *static_command_name(m_args[0]);
-
-      LOG(Debug, "expanding the alias '%.*s'", static_cast<int>(name.length),
-          name.data);
-      cxt.scope_store().begin_alias_expansion(name);
-      defer { cxt.scope_store().end_alias_expansion(); };
-
-      cxt.run_source(text.view(), "an alias", source_location(),
-                     StringView{"alias"}, nullptr, nullptr,
-                     return_handling::Propagate);
-
-      return cxt.execution_store().last_exit_status();
-    }
+    return cxt.execution_store().last_exit_status();
   }
 
   /* at this point: the command word is not a glob pattern, or a non-default

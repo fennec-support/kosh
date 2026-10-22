@@ -525,8 +525,10 @@ ProgramResolver::ProgramResolver(Maybe<String> path) : m_path(steal(path)) {}
 fn
 ProgramResolver::mark_command_name_indexes_stale() throws -> void
 {
-  mutable_derived().validated_prefix.clear();
-  mutable_derived().command_statuses.clear();
+  let &derived = mutable_derived();
+
+  derived.validated_prefix.clear();
+  derived.command_statuses.clear();
   m_is_command_name_list_valid     = false;
   m_command_names_validation_epoch = 0;
   m_prefix_validation_epoch        = 0;
@@ -535,8 +537,10 @@ ProgramResolver::mark_command_name_indexes_stale() throws -> void
 fn
 ProgramResolver::clear_command_name_indexes() throws -> void
 {
-  mutable_derived().command_names.clear();
-  mutable_derived().regular_names.clear();
+  let &derived = mutable_derived();
+
+  derived.command_names.clear();
+  derived.regular_names.clear();
   mark_command_name_indexes_stale();
 }
 
@@ -552,8 +556,10 @@ ProgramResolver::mark_derived_indexes_stale() throws -> void
 fn
 ProgramResolver::clear_derived_indexes() throws -> void
 {
-  mutable_derived().command_names.clear();
-  mutable_derived().regular_names.clear();
+  let &derived = mutable_derived();
+
+  derived.command_names.clear();
+  derived.regular_names.clear();
   mark_derived_indexes_stale();
 }
 
@@ -931,10 +937,9 @@ ProgramResolver::rebuild_path_command_index(CompletionRefresh refresh)
     mutable_derived().directory_probes.push(steal(probe));
   }
 
-  mutable_derived().command_names =
-      sort_and_deduplicate_names(steal(command_names));
-  mutable_derived().regular_names =
-      sort_and_deduplicate_names(steal(regular_names));
+  let &derived          = mutable_derived();
+  derived.command_names = sort_and_deduplicate_names(steal(command_names));
+  derived.regular_names = sort_and_deduplicate_names(steal(regular_names));
   m_is_command_name_list_valid        = true;
   m_command_names_validation_epoch    = DIRECTORY_VALIDATION_EPOCH;
   m_path_directories_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
@@ -1138,12 +1143,11 @@ ProgramResolver::revalidate_command_prefix(StringView prefix) throws
     }
   }
 
-  mutable_derived().command_names =
-      sort_and_deduplicate_names(steal(command_names));
-  mutable_derived().regular_names =
-      sort_and_deduplicate_names(steal(regular_names));
-  mutable_derived().validated_prefix =
-      String{mutable_derived().validated_prefix.allocator(), prefix};
+  let &derived          = mutable_derived();
+  derived.command_names = sort_and_deduplicate_names(steal(command_names));
+  derived.regular_names = sort_and_deduplicate_names(steal(regular_names));
+  derived.validated_prefix =
+      String{derived.validated_prefix.allocator(), prefix};
   m_prefix_validation_epoch = DIRECTORY_VALIDATION_EPOCH;
 }
 
