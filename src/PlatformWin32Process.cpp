@@ -3545,6 +3545,15 @@ take_spawn_failure_status() wontthrow -> Maybe<i32>
   return status;
 }
 
+/* Windows process ids are multiples of 4, so 4n + 1 is never one. */
+fn
+placeholder_process_id() wontthrow -> i64
+{
+  static i64 next_index = 0;
+
+  return 4 * next_index++ + 1;
+}
+
 fn
 machine_type() throws -> String
 {

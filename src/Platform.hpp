@@ -2091,6 +2091,11 @@ get_user_group_ids(u32 user_id, Allocator allocator) throws
 fn
 take_spawn_failure_status() wontthrow -> Maybe<i32>;
 
+/* a process id that no process of the system can hold, for a background
+   command that failed before a process started. */
+fn
+placeholder_process_id() wontthrow -> i64;
+
 fn
 machine_type() throws -> String;
 fn

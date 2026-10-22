@@ -318,6 +318,16 @@ take_spawn_failure_status() wontthrow -> Maybe<i32>
   return status;
 }
 
+/* a POSIX spawn failure runs in a forked child, which holds a real process
+   id, so a placeholder lies above the largest possible pid. */
+fn
+placeholder_process_id() wontthrow -> i64
+{
+  static i64 next_index = 0;
+
+  return i64{INT32_MAX} + 1 + next_index++;
+}
+
 cold fn
 spawn_failure_child(SourceLocation     location,
                     const Path        &program_path,

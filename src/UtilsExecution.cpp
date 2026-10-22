@@ -228,15 +228,39 @@ execute_context(ExecContext  &&ec,
   cxt.prepare_child_environment();
   cxt.job_table_store().forget_waited_jobs();
 
-  os::process p = os::execute_program(
-      ec, os::program_execution_options{
-              .source        = source_view,
-              .fallback      = is_async ? os::script_fallback_policy::Reject
-                                        : os::script_fallback_policy::Allow,
-              .process_group = is_async ? os::process_group_mode::NewBackground
-                               : is_foreground_job
-                                   ? os::process_group_mode::New
-                                   : os::process_group_mode::Inherit});
+  os::process p = KOSH_INVALID_PROCESS;
+
+  /* a program that the system refuses to start, as Windows does with access
+     denied, is reported and fails the command with its spawn status, as a
+     failed exec in a forked child does. */
+  try {
+    p = os::execute_program(
+        ec, os::program_execution_options{
+                .source   = source_view,
+                .fallback = is_async ? os::script_fallback_policy::Reject
+                                     : os::script_fallback_policy::Allow,
+                .process_group =
+                    is_async            ? os::process_group_mode::NewBackground
+                    : is_foreground_job ? os::process_group_mode::New
+                                        : os::process_group_mode::Inherit});
+  } catch (const ErrorWithLocation &error) {
+    let const spawn_status = os::take_spawn_failure_status();
+
+    if (!spawn_status.has_value()) throw;
+    show_message(error.to_string(source_view, &cxt));
+
+    /* a background command still sets $!, and wait reports its status. */
+    if (is_async) {
+      let const process_id = os::placeholder_process_id();
+
+      cxt.job_table_store().remember_finished_status(process_id, *spawn_status);
+      cxt.job_table_store().set_last_background_pid(process_id);
+
+      return 0;
+    }
+
+    return *spawn_status;
+  }
 
   if (p == KOSH_INVALID_PROCESS) {
     LOG(Debug, "running the file as a shell script in this process");
