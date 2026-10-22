@@ -145,6 +145,9 @@ four
    f   o   u   r  \n
    b  \0   c
    b  \0   c
+   a   ,   a  \0   b   ,   b  \0   c   ,   c  \0
+   a  \t   b  \t   c  \0   o   n   e  \n   t   w   o  \n   t   h
+   r   e   e  \n   f   o   u   r  \n  \0
 one
 two
 three
@@ -157,8 +160,8 @@ one	 :three
 two	 :four
 one	 :two
 three	 :four
-112:3: error: Koshkit `pr`: The page width is too narrow for the columns.
-   112 |    koshkit pr -t -l 1 -18446744073709551615
+114:3: error: Koshkit `pr`: The page width is too narrow for the columns.
+   114 |    koshkit pr -t -l 1 -18446744073709551615
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use a larger width with -w or fewer columns.
 left-one      :right-one

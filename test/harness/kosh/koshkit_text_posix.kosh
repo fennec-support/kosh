@@ -101,6 +101,8 @@ koshkit tail -q -v -n 1 lines
 koshkit tail -z -n 1 nul-lines lines | koshkit od -An -c
 koshkit tail -z -n +2 nul-lines | koshkit od -An -c
 koshkit cat nul-lines | koshkit tail -z -n 2 | koshkit od -An -c
+koshkit paste -z -d , nul-lines nul-lines | koshkit od -An -c
+koshkit paste -s -z nul-lines lines | koshkit od -An -c
 
 koshkit split -l 2 lines part
 koshkit cat partaa partab

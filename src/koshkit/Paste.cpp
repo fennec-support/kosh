@@ -12,7 +12,7 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-s] [-d list] [file ...]",
+KOSHKIT_UTIL_DECL("[-sz] [-d list] [file ...]",
                   "Merge corresponding or serial lines.");
 
 FLAG(PASTE_DELIMITERS,
@@ -21,6 +21,11 @@ FLAG(PASTE_DELIMITERS,
      "delimiters",
      "Cycle through these delimiters.");
 FLAG(PASTE_SERIAL, Bool, 's', "serial", "Paste one file at a time.");
+FLAG(PASTE_ZERO_TERMINATED,
+     Bool,
+     'z',
+     "zero-terminated",
+     "End lines with NUL instead of newline.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Paste);
 
@@ -91,6 +96,8 @@ Paste::execute(const ExecContext               &ec,
       parse_paste_delimiters(delimiter_text, cxt.scratch_allocator());
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
+  let const line_delimiter =
+      FLAG_PASTE_ZERO_TERMINATED.is_enabled() ? '\0' : '\n';
   i32 status = 0;
 
   let &scratch_arena = cxt.expansion_store().scratch_arena();
@@ -126,7 +133,7 @@ Paste::execute(const ExecContext               &ec,
       owned_inputs.push(input->descriptor);
 
     let *const reader = scratch_arena.create<utils::BufferedLineReader>(
-        input->descriptor, bump_allocator(scratch_arena));
+        input->descriptor, bump_allocator(scratch_arena), line_delimiter);
 
     if (source == "-") stdin_reader = reader;
     columns.push(reader);
@@ -185,7 +192,7 @@ Paste::execute(const ExecContext               &ec,
       }
 
       if (os::INTERRUPT_REQUESTED) return 130;
-      output += '\n';
+      output += line_delimiter;
     }
   } else {
     loop {
@@ -212,7 +219,7 @@ Paste::execute(const ExecContext               &ec,
         break;
       }
 
-      output += '\n';
+      output += line_delimiter;
       if (output.length() >= OUTPUT_FLUSH_BYTE_COUNT) {
         ec.print_to_stdout(output);
         output.clear();

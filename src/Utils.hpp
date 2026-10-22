@@ -592,7 +592,9 @@ public:
     Error,
   };
 
-  BufferedLineReader(os::descriptor descriptor, Allocator allocator);
+  BufferedLineReader(os::descriptor descriptor,
+                     Allocator      allocator,
+                     char           line_delimiter = '\n');
 
   fn
   next() throws -> Result;
@@ -611,6 +613,7 @@ private:
   usize          m_buffer_length{0};
   bool           m_is_at_end{false};
   bool           m_was_line_terminated{false};
+  char           m_line_delimiter;
   char           m_buffer[65536];
 };
 

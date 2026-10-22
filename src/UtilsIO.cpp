@@ -248,8 +248,10 @@ read_line_from_fd(os::descriptor fd,
 }
 
 BufferedLineReader::BufferedLineReader(os::descriptor descriptor,
-                                       Allocator      allocator)
-    : m_descriptor(descriptor), m_line(allocator)
+                                       Allocator      allocator,
+                                       char           line_delimiter)
+    : m_descriptor(descriptor), m_line(allocator),
+      m_line_delimiter(line_delimiter)
 {}
 
 /* memory: m_line keeps its capacity between calls and grows only when a line
@@ -265,7 +267,7 @@ BufferedLineReader::next() throws -> Result
     let const pending = StringView{m_buffer + m_buffer_position,
                                    m_buffer_length - m_buffer_position};
     let const line_length =
-        pending.find_character('\n').value_or(pending.length);
+        pending.find_character(m_line_delimiter).value_or(pending.length);
 
     m_line.append(pending.substring_of_length(0, line_length));
     m_buffer_position += line_length;

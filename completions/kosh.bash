@@ -621,7 +621,7 @@ _koshkit_util_flags ()
         "-b --body-numbering -d --section-delimiter -f --footer-numbering -h --header-numbering -i --line-increment -l --join-blank-lines -n --number-format -p --no-renumber -s --number-separator -v --starting-line-number -w --number-width"
     ;;
     paste)
-      echo "-d --delimiters -s --serial"
+      echo "-d --delimiters -s --serial -z --zero-terminated"
     ;;
     pathchk)
       echo "-P --leading-hyphen -p --portable -W --windows"
