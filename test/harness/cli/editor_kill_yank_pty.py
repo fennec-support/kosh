@@ -1187,6 +1187,39 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(CTRL_X + CTRL_C)
         session.wait_until(is_line(""))
 
+        crlf = os.path.join(directory, "slurp-crlf.txt")
+        with open(crlf, "wb") as handle:
+            handle.write(b"a\r\nb\r\n")
+        session.send(b"slurp slurp-crlf.txt\r")
+        session.wait_until(has_text("CRLF endings"))
+        session.send(b"x" + CTRL_X + b"s")
+        report.record("slurp-keeps-crlf-endings", session,
+                      lambda screen: has_text("wrote")(screen)
+                      and read_bytes(crlf) == b"a\r\nbx\r\n")
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
+
+        unterminated = os.path.join(directory, "slurp-unterminated.txt")
+        with open(unterminated, "wb") as handle:
+            handle.write(b"abc")
+        session.send(b"slurp slurp-unterminated.txt\r")
+        session.wait_until(has_text("line 1 of 1"))
+        session.send(b"d" + CTRL_X + b"s")
+        report.record("slurp-keeps-a-missing-final-newline", session,
+                      lambda screen: has_text("wrote")(screen)
+                      and read_bytes(unterminated) == b"abcd")
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
+
+        oversized = os.path.join(directory, "slurp-oversized.txt")
+        with open(oversized, "wb") as handle:
+            handle.write(b"a" * 65535)
+        session.send(b"slurp slurp-oversized.txt\r")
+        report.record("slurp-refuses-a-file-over-the-limit", session,
+                      lambda screen: any("is longer than" in line
+                                         for line in screen.get_lines())
+                      and is_line("")(screen))
+
         blank = os.path.join(directory, "slurp-blank.txt")
         with open(blank, "w") as handle:
             handle.write("\n")

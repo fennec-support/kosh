@@ -29,6 +29,11 @@ grep '^mood=' "$dotfiles/kosh.conf"
 echo "== an override keeps the previous file in .bak:"
 [ -f "$dotfiles/kosh.conf.bak" ] && echo backup-created
 grep '^mood=' "$dotfiles/kosh.conf.bak"
+echo "== each set --persist keeps the file it replaces in .bak:"
+"$BIN" -c 'koshconf set editor.history.max_entries 5 --persist'
+grep -c '^mood=sh$' "$dotfiles/kosh.conf.bak"
+"$BIN" -c 'koshconf set editor.history.max_entries 6 --persist'
+grep -c '^editor.history.max_entries=5$' "$dotfiles/kosh.conf.bak"
 echo "== a dangling link gets its target created:"
 "$BIN_DIR/invoke-koshkit" rm -f -- "$dotfiles/kosh.conf"
 "$BIN" -c 'koshconf set editor.hints.show_command_synopsis off --persist'

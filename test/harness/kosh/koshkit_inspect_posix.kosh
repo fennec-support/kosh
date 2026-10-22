@@ -102,6 +102,9 @@ koshkit od -An -tc text
 printf '1234567890abcdef1234567890abcdef' > repeated
 koshkit od -A n -t x1 repeated
 koshkit od -v -A n -t x1 repeated
+koshkit od -A x -t x1 repeated
+koshkit od -A d -t x1 repeated
+koshkit od -A o -t x1 repeated
 printf '\1\2\3\4\5\6\7\10' > od-types
 koshkit od -A n -t c -t d -t o -t u -t x -t d1 -t d2 -t d4 -t d8 od-types
 koshkit od text +1

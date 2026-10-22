@@ -133,6 +133,57 @@ run_debug_highlight_driver(StringView   driver_line,
   return 0;
 }
 
+/* prints the number of restart points the highlight scan of driver_text
+   records and the number of spans that a scan from one of them colors
+   differently from the scan from the start. */
+static fn
+run_debug_highlight_restart_driver(StringView   driver_text,
+                                   EvalContext &context) throws -> i32
+{
+  let restarts = ArrayList<completion::highlight_restart>{heap_allocator()};
+  let full     = ArrayList<highlight_span>{heap_allocator()};
+
+  for (let const &span :
+       completion::highlight_line_from(driver_text, nullptr, context, restarts))
+    full.push(span);
+
+  usize mismatch_count = 0;
+
+  for (usize r = 0; r < restarts.count(); r++) {
+    let ignored = ArrayList<completion::highlight_restart>{heap_allocator()};
+    let const begin   = restarts[r].position;
+    let const resumed = completion::highlight_line_from(
+        driver_text, &restarts[r], context, ignored);
+    usize full_index = 0;
+
+    while (full_index < full.count() && full[full_index].start < begin) {
+      full_index++;
+    }
+
+    if (full.count() - full_index != resumed.count()) {
+      mismatch_count++;
+      continue;
+    }
+
+    for (usize i = 0; i < resumed.count(); i++) {
+      let const &expected = full[full_index + i];
+
+      if (resumed[i].start != expected.start ||
+          resumed[i].end != expected.end || resumed[i].role != expected.role)
+      {
+        mismatch_count++;
+        break;
+      }
+    }
+  }
+
+  print("restart-points=" + String::from(restarts.count(), heap_allocator()) +
+        " mismatches=" + String::from(mismatch_count, heap_allocator()) + "\n");
+  flush();
+
+  return mismatch_count == 0 ? 0 : 1;
+}
+
 static fn
 run_debug_bracket_driver(StringView   driver_line,
                          EvalContext &context) throws -> i32

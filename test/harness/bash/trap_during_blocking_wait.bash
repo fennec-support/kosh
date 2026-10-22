@@ -63,9 +63,9 @@ echo wait-that-no-signal-reaches-done
 
 echo wait-under-an-ignored-signal
 trap '' USR1
-( /bin/sleep 1; kill -USR1 $$ ) &
+( /bin/sleep 0.3; kill -USR1 $$ ) &
 notifier=$!
-/bin/sh -c '/bin/sleep 2; exit 6' &
+/bin/sh -c '/bin/sleep 0.8; exit 6' &
 ignored=$!
 wait "$ignored"
 echo "ignored-status=$?"
@@ -75,8 +75,8 @@ echo wait-under-an-ignored-signal-done
 
 echo wait-with-a-child-arrival
 trap 'echo chld-fired' CHLD
-/bin/sh -c '/bin/sleep 1; exit 4' &
-/bin/sh -c '/bin/sleep 3; exit 6' &
+/bin/sh -c '/bin/sleep 0.3; exit 4' &
+/bin/sh -c '/bin/sleep 0.8; exit 6' &
 slow=$!
 wait "$slow"
 echo "chld-status=$?"

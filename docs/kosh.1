@@ -524,6 +524,11 @@ then exits.
 The inline hint row for LINE is printed with the caret at its end. The shell
 then exits.
 .TP
+.BR \-\-debug\-highlight\-restarts\-at =\fITEXT\fR
+TEXT is highlighted from each of its restart points, and the number of restart
+points and of scans that color the rest differently from a scan from the
+start are printed. The shell then exits with status 1 when any scan differs.
+.TP
 .BR \-\-ftrace ", " \-\-strace
 Function or system-call tracing is enabled. These options are available only in
 a Cosmopolitan build.

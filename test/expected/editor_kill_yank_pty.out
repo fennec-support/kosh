@@ -143,6 +143,9 @@ slurp-refuses-a-file-swapped-while-open PASS
 slurp-copy-save-refuses-a-swapped-file PASS
 slurp-keeps-editing-after-a-refused-save PASS
 slurp-keeps-mixed-line-endings PASS
+slurp-keeps-crlf-endings PASS
+slurp-keeps-a-missing-final-newline PASS
+slurp-refuses-a-file-over-the-limit PASS
 slurp-keeps-a-lone-newline PASS
 slurp-draws-a-tab-as-blank-columns PASS
 slurp-tab-inserts-a-tab-in-a-text-file PASS

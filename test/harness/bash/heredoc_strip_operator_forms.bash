@@ -26,4 +26,10 @@ echo "missing-delimiter=$?"
 eval 'echo trailing\'
 printf 'echo file-end \\' > trailing-backslash.sh
 . ./trailing-backslash.sh
+cat <<$'ansi end'
+ansi-body
+ansi end
+cat <<"quoted end"
+quoted-body
+quoted end
 cd / && rm -rf -- "$work"

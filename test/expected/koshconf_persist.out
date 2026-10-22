@@ -10,6 +10,9 @@ mood=sh
 == an override keeps the previous file in .bak:
 backup-created
 mood=kosh
+== each set --persist keeps the file it replaces in .bak:
+1
+1
 == a dangling link gets its target created:
 rc=0
 link-kept

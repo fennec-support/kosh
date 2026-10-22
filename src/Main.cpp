@@ -409,6 +409,13 @@ FLAG(DEBUG_HINT_AT,
      Debug,
      "Print the inline hint row for the given line with the caret at its end, "
      "then exit. The hint row test driver.");
+FLAG(DEBUG_HIGHLIGHT_RESTARTS_AT,
+     String,
+     '\0',
+     "debug-highlight-restarts-at",
+     Debug,
+     "Highlight the given text from each of its restart points and compare "
+     "the spans with a scan from the start, then exit.");
 #endif
 
 #include "MainOperations.hpp"
@@ -559,7 +566,8 @@ splice_environment_flags(command_line &line) throws -> void
         SSK("--debug-highlight-at"),
         SSK("--debug-ghost-at"),
         SSK("--debug-brackets-at"),
-        SSK("--debug-hint-at")};
+        SSK("--debug-hint-at"),
+        SSK("--debug-highlight-restarts-at")};
     static constexpr StaticStringSet IGNORED_KOSH_FLAGS{IGNORED_KOSH_FLAG_KEYS};
     let const                        view              = kosh_flags->view();
     bool                             is_value_next     = false;
@@ -729,7 +737,8 @@ is_debug_driver_run() wontthrow -> bool
 
   return FLAG_DEBUG_COMPLETE_AT.is_set() || FLAG_DEBUG_HIGHLIGHT_AT.is_set() ||
          FLAG_DEBUG_GHOST_AT.is_set() || FLAG_DEBUG_BRACKETS_AT.is_set() ||
-         FLAG_DEBUG_HINT_AT.is_set();
+         FLAG_DEBUG_HINT_AT.is_set() ||
+         FLAG_DEBUG_HIGHLIGHT_RESTARTS_AT.is_set();
 #else
 
   return false;
@@ -2644,6 +2653,11 @@ exit_after_final_chunk(EvalContext &context,
 
   if (FLAG_DEBUG_HINT_AT.is_set() && !os::is_child_process()) {
     exit_code = run_debug_hint_driver(FLAG_DEBUG_HINT_AT.value(), context);
+  }
+
+  if (FLAG_DEBUG_HIGHLIGHT_RESTARTS_AT.is_set() && !os::is_child_process()) {
+    exit_code = run_debug_highlight_restart_driver(
+        FLAG_DEBUG_HIGHLIGHT_RESTARTS_AT.value(), context);
   }
 #endif
   LOG(Info, "exiting after the final chunk with code %d", exit_code);
