@@ -46,8 +46,7 @@ Sync::execute(const ExecContext               &ec,
     return 1;
   }
 
-  /* -d needs a file, and -f without one flushes every filesystem, as GNU sync
-     does. */
+  /* -d needs a file, and -f without one flushes every filesystem. */
   if (operands.is_empty()) {
     if (FLAG_SYNC_DATA.is_enabled()) {
       return report_usage_error(ec, cxt, args[0].view());

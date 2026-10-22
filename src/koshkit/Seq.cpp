@@ -433,8 +433,8 @@ Seq::execute(const ExecContext               &ec,
   }
 
   /* non-negative integers of any length count exactly as decimal text with
-     an increment below 200, as GNU seq does; other operands take the long
-     double path below. */
+     an increment below 200; other operands take the long double path
+     below. */
   let const do_trim_zeros = [](StringView digits) wontthrow -> StringView {
     while (digits.length > 1 && digits[0] == '0')
       digits = digits.substring(1);

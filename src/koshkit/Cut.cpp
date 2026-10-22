@@ -126,7 +126,7 @@ Cut::execute(const ExecContext               &ec,
   if (FLAG_CUT_OUTPUT_DELIMITER.is_set()) {
     output_delimiter = FLAG_CUT_OUTPUT_DELIMITER.value();
 
-    /* an empty output delimiter is one null byte, as in GNU cut. */
+    /* an empty output delimiter is one null byte. */
     if (output_delimiter.is_empty()) output_delimiter = StringView{"", 1};
   }
 

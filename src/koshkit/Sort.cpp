@@ -1090,9 +1090,9 @@ Sort::execute(const ExecContext               &ec,
     return status;
   }
 
-  /* -m merges the sources as given, as GNU sort does: each step takes the
-     least first line among the sources, and an earlier source wins a tie, so
-     a source that is not sorted keeps its own order. */
+  /* -m merges the sources as given: each step takes the least first line
+     among the sources, and an earlier source wins a tie, so a source that is
+     not sorted keeps its own order. */
   if (FLAG_SORT_MERGE.is_enabled()) {
     source_starts.push(collected_lines.count());
 
