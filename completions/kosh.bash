@@ -532,7 +532,7 @@ _koshkit_util_flags ()
       echo "-s -h -x -T --one-file-system --tree --top-largest"
     ;;
     head)
-      echo "-n -c"
+      echo "-n -c -q -v -z --quiet --silent --verbose --zero-terminated"
     ;;
     tail)
       echo "-n -c -f -F -q -v -s --follow --retry --pid --sleep-interval --quiet --silent --verbose"

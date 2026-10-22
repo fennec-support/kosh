@@ -778,6 +778,11 @@ source_list_from_operands(const ArrayList<String> &operands,
 
 fn
 parse_strict_count(StringView text) throws -> ErrorOr<u64>;
+/* parses a count with an optional multiplier suffix: b is 512, k, K, m, M, G,
+   T, P, E, Z, Y, R, and Q are powers of 1024, and a following B or D selects
+   powers of 1000 instead. */
+fn
+parse_count_with_size_suffix(StringView text) throws -> ErrorOr<u64>;
 
 pure fn
 network_socket_state_name(os::network_socket_state state)

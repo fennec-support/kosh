@@ -2520,8 +2520,16 @@ other locale, they match one byte.
 .B head
 The first ten lines are printed by default. The \fB\-n\fR
 option selects a line count and \fB\-c\fR
-a byte count. A first argument of a dash and digits, such as \fB\-5\fR,
-is the same as \fB\-n 5\fR.
+a byte count. A count with a leading dash prints all but that many trailing
+lines or bytes. A count may end in b for 512, in k, K, m, M, G, T, P, E, Z,
+Y, R, or Q for a power of 1024, or in one of those letters followed by B for a
+power of 1000, such as \fB1kB\fR, or by iB, such as \fB1KiB\fR. A first
+argument of a dash and digits, such as \fB\-5\fR, is the same as
+\fB\-n 5\fR. Filename headers are printed for several files. The \fB\-q\fR,
+\fB\-\-quiet\fR, and \fB\-\-silent\fR options never print them, and \fB\-v\fR,
+\fB\-\-verbose\fR always print them. The last of these options takes effect.
+The \fB\-z\fR, \fB\-\-zero\-terminated\fR option ends lines with a null
+byte.
 .TP
 .B tail
 The last ten lines are printed by default, with \fB\-n\fR, \fB\-c\fR, and the

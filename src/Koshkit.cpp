@@ -1164,6 +1164,65 @@ parse_strict_count(StringView text) throws -> ErrorOr<u64>
   return utils::parse_decimal_u64(digits);
 }
 
+fn
+parse_count_with_size_suffix(StringView text) throws -> ErrorOr<u64>
+{
+  static constexpr StringView POWER_LETTERS = "kKmMGTPEZYRQ";
+
+  let const do_is_suffix_letter = [](char letter) wontthrow -> bool {
+    return letter == 'b' || POWER_LETTERS.find_character(letter).has_value();
+  };
+
+  usize suffix_position = 0;
+  u64   value           = 1;
+
+  if (text.is_empty() || !do_is_suffix_letter(text[0])) {
+    while (suffix_position < text.length &&
+           !do_is_suffix_letter(text[suffix_position]))
+    {
+      suffix_position++;
+    }
+
+    let const parsed =
+        parse_strict_count(text.substring_of_length(0, suffix_position));
+
+    if (parsed.is_error()) return parsed;
+    value = parsed.value();
+  }
+
+  let suffix = text.substring(suffix_position);
+
+  if (suffix.is_empty()) return value;
+
+  u64   unit_base   = 1024;
+  usize power_count = 1;
+
+  if (suffix[0] == 'b') {
+    unit_base = 512;
+    suffix    = suffix.substring(1);
+  } else {
+    let const letter_index = *POWER_LETTERS.find_character(suffix[0]);
+
+    power_count = letter_index < 4 ? letter_index / 2 + 1 : letter_index - 1;
+    suffix      = suffix.substring(1);
+    if (suffix == "iB") {
+      suffix = {};
+    } else if (suffix == "B" || suffix == "D") {
+      unit_base = 1000;
+      suffix    = {};
+    }
+  }
+
+  if (!suffix.is_empty()) return Error{"invalid count suffix"};
+
+  for (usize power_index = 0; power_index < power_count; power_index++) {
+    if (value > UINT64_MAX / unit_base) return Error{"count too large"};
+    value *= unit_base;
+  }
+
+  return value;
+}
+
 #else
 
 fn

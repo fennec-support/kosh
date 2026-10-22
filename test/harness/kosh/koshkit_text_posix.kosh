@@ -72,6 +72,26 @@ koshkit grep 'a*c' < wide | koshkit wc -l
 printf 'ab\n' | koshkit sed -E 's/a|b/x/g'
 printf 'ab\n' | koshkit sed 's/a*/x/g'
 
+koshkit seq 3000 > counted
+printf 'a\0b\0c' > nul-lines
+koshkit head -c 1kB counted | koshkit wc -c
+koshkit head -c 2b counted | koshkit wc -c
+koshkit head -c -1KiB counted | koshkit wc -c
+koshkit head -n k counted | koshkit wc -l
+(koshkit head -c 1x counted)
+echo "suffix-status=$?"
+(koshkit head -c 1bB counted) 2>/dev/null
+echo "suffix-status=$?"
+(koshkit head -c 1Q counted) 2>/dev/null
+echo "suffix-status=$?"
+koshkit head -q -n 1 lines records
+koshkit head -v -n 1 lines
+koshkit head -q -v -n 1 lines records
+koshkit head -v --silent -n 1 lines records
+koshkit head -z -n 2 nul-lines | koshkit od -An -c
+koshkit head -z -n -1 nul-lines lines | koshkit od -An -c
+koshkit cat nul-lines | koshkit head -z -n -1 | koshkit od -An -c
+
 koshkit split -l 2 lines part
 koshkit cat partaa partab
 

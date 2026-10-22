@@ -13,11 +13,19 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL("[-n count] [-c count] [file ...]",
+KOSHKIT_UTIL_DECL("[-qvz] [-n count] [-c count] [file ...]",
                   "The head utility can write the first lines of each file.");
 
 FLAG(HEAD_LINES, String, 'n', "", "Write the first count lines.");
 FLAG(HEAD_BYTES, String, 'c', "", "Write the first count bytes.");
+FLAG(HEAD_QUIET, Bool, 'q', "quiet", "Never write file name headers.");
+FLAG(HEAD_SILENT, Bool, '\0', "silent", "Never write file name headers.");
+FLAG(HEAD_VERBOSE, Bool, 'v', "verbose", "Always write file name headers.");
+FLAG(HEAD_ZERO_TERMINATED,
+     Bool,
+     'z',
+     "zero-terminated",
+     "End lines with NUL instead of newline.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Head);
 
@@ -40,16 +48,17 @@ read_all(os::descriptor fd, Allocator allocator) throws -> Maybe<String>
 }
 
 static fn
-line_prefix_length_dropping_last(StringView text, u64 drop_count) wontthrow
-    -> usize
+line_prefix_length_dropping_last(StringView text,
+                                 u64        drop_count,
+                                 char       line_delimiter) wontthrow -> usize
 {
   u64 total_line_count = 0;
 
   for (usize i = 0; i < text.length; i++) {
-    if (text[i] == '\n') total_line_count++;
+    if (text[i] == line_delimiter) total_line_count++;
   }
 
-  if (text.length > 0 && text[text.length - 1] != '\n') {
+  if (text.length > 0 && text[text.length - 1] != line_delimiter) {
     total_line_count++;
   }
 
@@ -63,7 +72,7 @@ line_prefix_length_dropping_last(StringView text, u64 drop_count) wontthrow
   u64 lines_seen = 0;
 
   for (usize i = 0; i < text.length; i++) {
-    if (text[i] == '\n') {
+    if (text[i] == line_delimiter) {
       lines_seen++;
       if (lines_seen == keep_count) return i + 1;
     }
@@ -85,7 +94,8 @@ static fn
 read_all_but_last(os::descriptor fd,
                   u64            drop_count,
                   Allocator      allocator,
-                  head_unit      unit) throws -> Maybe<String>
+                  head_unit      unit,
+                  char           line_delimiter) throws -> Maybe<String>
 {
   let text = read_all(fd, allocator);
 
@@ -94,7 +104,8 @@ read_all_but_last(os::descriptor fd,
   let const keep_length =
       unit == head_unit::Bytes
           ? byte_prefix_length_dropping_last(text->view(), drop_count)
-          : line_prefix_length_dropping_last(text->view(), drop_count);
+          : line_prefix_length_dropping_last(text->view(), drop_count,
+                                             line_delimiter);
 
   text->truncate(keep_length);
 
@@ -106,7 +117,8 @@ read_regular_all_but_last(os::descriptor fd,
                           u64            file_byte_count,
                           u64            drop_count,
                           Allocator      allocator,
-                          head_unit      unit) throws -> Maybe<String>
+                          head_unit      unit,
+                          char           line_delimiter) throws -> Maybe<String>
 {
   constexpr usize block_byte_count  = 64 * 1024;
   constexpr usize batch_block_count = 16;
@@ -157,10 +169,11 @@ read_regular_all_but_last(os::descriptor fd,
       }
 
       if (read_result.transferred_byte_count != byte_count)
-        return read_all_but_last(fd, drop_count, allocator, unit);
+        return read_all_but_last(fd, drop_count, allocator, unit,
+                                 line_delimiter);
 
       for (usize position = byte_count; position > 0; position--) {
-        if (block[position - 1] != '\n') continue;
+        if (block[position - 1] != line_delimiter) continue;
 
         let const absolute = offset + position - 1;
 
@@ -218,7 +231,8 @@ read_regular_all_but_last(os::descriptor fd,
       }
 
       if (read_result.transferred_byte_count != byte_counts[result_index])
-        return read_all_but_last(fd, drop_count, allocator, unit);
+        return read_all_but_last(fd, drop_count, allocator, unit,
+                                 line_delimiter);
     }
 
     for (usize result_index = 0; result_index < results.count(); result_index++)
@@ -248,6 +262,8 @@ Head::execute(const ExecContext               &ec,
       has_bytes_flag && (!has_lines_flag || FLAG_HEAD_BYTES.position() >
                                                 FLAG_HEAD_LINES.position());
   let const unit = is_byte_mode ? head_unit::Bytes : head_unit::Lines;
+  let const line_delimiter =
+      FLAG_HEAD_ZERO_TERMINATED.is_enabled() ? '\0' : '\n';
 
   u64  count           = 10;
   bool is_all_but_last = false;
@@ -259,7 +275,7 @@ Head::execute(const ExecContext               &ec,
     is_all_but_last = raw.length > 0 && raw[0] == '-';
 
     let const magnitude    = is_all_but_last ? raw.substring(1) : raw;
-    let const parsed_value = parse_strict_count(magnitude);
+    let const parsed_value = parse_count_with_size_suffix(magnitude);
 
     if (parsed_value.is_error()) {
       throw ErrorWithLocationAndDetails{
@@ -270,7 +286,7 @@ Head::execute(const ExecContext               &ec,
                                               : "Invalid line count '"}
           +
               raw + "'",
-          "The count must be an integer"
+          "The count must be an integer with an optional size suffix"
       };
     }
 
@@ -300,7 +316,13 @@ Head::execute(const ExecContext               &ec,
     ec.print_to_stdout(text);
   };
 
-  let const should_print_headers = sources.count() > 1;
+  let const quiet_position =
+      FLAG_HEAD_QUIET.position() > FLAG_HEAD_SILENT.position()
+          ? FLAG_HEAD_QUIET.position()
+          : FLAG_HEAD_SILENT.position();
+  let const should_print_headers =
+      FLAG_HEAD_VERBOSE.position() > quiet_position ||
+      (sources.count() > 1 && quiet_position == 0);
 
   bool has_printed_any_header = false;
 
@@ -359,8 +381,10 @@ Head::execute(const ExecContext               &ec,
       let const text =
           file_byte_count.has_value()
               ? read_regular_all_but_last(fd, *file_byte_count, count,
-                                          cxt.scratch_allocator(), unit)
-              : read_all_but_last(fd, count, cxt.scratch_allocator(), unit);
+                                          cxt.scratch_allocator(), unit,
+                                          line_delimiter)
+              : read_all_but_last(fd, count, cxt.scratch_allocator(), unit,
+                                  line_delimiter);
       let const read_error = os::get_last_system_error_number();
 
       if (was_opened) os::close_fd(fd);
@@ -445,8 +469,8 @@ Head::execute(const ExecContext               &ec,
       } else {
         usize byte_index = 0;
 
-        while (let const newline =
-                   chunk.content.substring(byte_index).find_character('\n'))
+        while (let const newline = chunk.content.substring(byte_index)
+                                       .find_character(line_delimiter))
         {
           byte_index += *newline + 1;
           line_count++;
