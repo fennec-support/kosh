@@ -350,7 +350,7 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
       trace += m_assignment->get_update_mode() == assignment_update_mode::Append
                    ? "+="
                    : "=";
-      append_shell_quoted_arg(trace, value.view());
+      cxt.append_xtrace_quoted(trace, value.view());
       cxt.write_xtrace(trace.view());
     }
 
@@ -592,8 +592,7 @@ SimpleCommand::can_evaluate_in_process_substitution(
     -> bool
 {
   if (is_async() || is_timed() || !m_redirections.is_empty() ||
-      !m_array_args.is_empty() || cxt.scope_store().has_aliases() ||
-      m_args.is_empty())
+      !m_array_args.is_empty() || m_args.is_empty())
   {
     return false;
   }
@@ -610,6 +609,15 @@ SimpleCommand::can_evaluate_in_process_substitution(
   let const command_name = static_command_name(m_args[0]);
 
   if (!command_name.has_value()) return false;
+
+  /* an alias of the command word expands at run time into any command, so
+     only a word that is no alias is checked by its name. */
+  if (cxt.scope_store().has_aliases() &&
+      cxt.is_shopt_enabled(shopt_option_id::ExpandAliases) &&
+      cxt.scope_store().get_alias(*command_name).has_value())
+  {
+    return false;
+  }
 
   /* at this point: command_name is the static name of m_args[0], and every
      word argument is safe for in-process substitution. */

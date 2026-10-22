@@ -1085,6 +1085,29 @@ public:
     return m_aliases.read().count() != 0;
   }
 
+  /* the aliases whose bodies are being evaluated. an alias does not expand
+     inside its own body, as bash does. */
+  pure fn
+  is_alias_expanding(StringView name) const wontthrow -> bool
+  {
+    for (let const &expanding : m_expanding_aliases)
+      if (expanding.view() == name) return true;
+
+    return false;
+  }
+
+  fn
+  begin_alias_expansion(StringView name) throws -> void
+  {
+    m_expanding_aliases.push(String{heap_allocator(), name});
+  }
+
+  fn
+  end_alias_expansion() wontthrow -> void
+  {
+    m_expanding_aliases.pop_back();
+  }
+
   /* memory: one String copy of the alias value in heap_allocator(). the caller
              owns the copy and frees it when the returned Maybe is destroyed.
      time:   one find() on the alias map, then O(value length) for the copy. */
@@ -1192,6 +1215,7 @@ public:
 private:
   CopyOnWrite<StringMap<String>> m_aliases{heap_allocator(),
                                            StringMap<String>{heap_allocator()}};
+  ArrayList<String>              m_expanding_aliases{heap_allocator()};
 
   ArrayList<ArrayList<local_binding>> m_local_scopes{heap_allocator()};
   ArrayList<Maybe<u64>> m_saved_scope_shell_options{heap_allocator()};
@@ -6109,6 +6133,13 @@ public:
   write_xtrace(StringView command) throws -> void;
   fn
   write_xtrace(const ArrayList<String> &args) throws -> void;
+  /* appends word to out the way xtrace shows it, as bash does. An element of
+     an array assignment is never shown in $'...' form. */
+  fn
+  append_xtrace_quoted(String    &out,
+                       StringView word,
+                       bool       is_array_element = false) const throws
+      -> void;
   fn
   set_startup_finished() wontthrow -> void
   {

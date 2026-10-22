@@ -1010,10 +1010,52 @@ EvalContext::write_xtrace(const ArrayList<String> &args) throws -> void
 
   for (usize i = 0; i < args.count(); i++) {
     if (i > 0) command.push(' ');
-    append_shell_quoted_arg(command, args[i].view());
+    append_xtrace_quoted(command, args[i].view());
   }
 
   write_xtrace(command.view());
+}
+
+/* e.g. a word with a newline or bytes the locale cannot show takes the
+        $'...' form, a word of letters, digits, and _@%+=:,./- stays bare,
+        and UTF-8 text stays bare in a UTF-8 locale. other words are single
+        quoted. */
+fn
+EvalContext::append_xtrace_quoted(String    &out,
+                                  StringView word,
+                                  bool       is_array_element) const throws
+    -> void
+{
+  let const is_utf8_locale =
+      is_array_element || get_glob_charset() == glob_charset::Utf8;
+
+  if (!is_array_element &&
+      utils::append_ansi_c_quote_if_needed(out, word, is_utf8_locale))
+  {
+    return;
+  }
+
+  bool is_bare = !word.is_empty();
+
+  for (usize i = 0; i < word.length && is_bare; i++) {
+    let const byte = static_cast<u8>(word[i]);
+
+    if (byte >= 0x80) {
+      is_bare = is_utf8_locale;
+    } else {
+      is_bare = (byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
+                (byte >= '0' && byte <= '9') ||
+                StringView{"_@%+=:,./-"}.find_character(word[i]).has_value();
+    }
+  }
+
+  if (is_bare) {
+    out.append(word);
+
+    return;
+  }
+
+  append_shell_quoted_arg(out, word, true);
 }
 
 } /* namespace koshka */

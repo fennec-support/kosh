@@ -834,3 +834,9 @@ status=0
 x
 *x
 x
+--- grep reports a match in a file with a NUL byte without its lines ---
+grep: grep-binary.dat: binary file matches
+status=0
+2
+status=1
+grep: (standard input): binary file matches

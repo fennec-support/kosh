@@ -678,6 +678,10 @@ lowercase_for_glob(StringView   text,
 
 fn
 locale_name_is_utf8(StringView locale_name) wontthrow -> bool;
+/* whether setting locale_name can succeed: C, POSIX, the C.UTF-8 forms, or a
+   locale the system has installed. */
+fn
+locale_name_is_usable(StringView locale_name) wontthrow -> bool;
 
 pure fn
 utf8_character_length(StringView text, usize position) wontthrow -> usize;

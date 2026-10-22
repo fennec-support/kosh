@@ -468,11 +468,6 @@ publish_simple_command(EvalContext         &cxt,
                        const SimpleCommand &command,
                        root_evaluation_mode mode =
                            root_evaluation_mode::Normal) throws -> bool;
-fn
-expand_command_aliases(EvalContext               &cxt,
-                       ArrayList<String>         &args,
-                       ArrayList<SourceLocation> &arg_locations) throws
-    -> void;
 
 pure fn
 is_shell_maintained_variable(StringView name) wontthrow -> bool;

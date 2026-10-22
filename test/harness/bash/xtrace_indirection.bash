@@ -43,3 +43,12 @@ body 2>&1 | sed 's|/dev/fd/[0-9]*|/dev/fd/N|' | LC_ALL=C sort
   cb() { :; }
   printf 'a\nb\n' | mapfile -t -C cb -c 1 lines
 ) 2>&1 | LC_ALL=C sort
+
+# A word with a control character traces in $'...' form, other words keep
+# single quotes, and an array element never takes the $'...' form.
+(
+  set -x
+  : $'a\nb' $'t\tx' '' 'a b' a=b
+  y=$'q\tw'
+  a=($'\n' z 'p q')
+) 2>&1

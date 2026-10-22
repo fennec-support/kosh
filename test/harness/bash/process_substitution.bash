@@ -93,3 +93,9 @@ wait
 echo "no-operand=$?"
 wait "$substituted" 2>/dev/null
 echo "forgotten=$?"
+
+# A process substitution runs its own EXIT trap, also after exit, and does
+# not run the trap of its parent.
+cat <(trap 'echo child-exit-trap' EXIT; echo child-body)
+cat <(trap 'echo child-exit-after-exit' EXIT; exit 4)
+(trap 'echo parent-exit-trap' EXIT; cat <(echo inner))

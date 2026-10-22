@@ -532,6 +532,18 @@ locale_name_is_utf8(StringView locale_name) wontthrow -> bool
   return locale_is_installed(locale_name);
 }
 
+fn
+locale_name_is_usable(StringView locale_name) wontthrow -> bool
+{
+  if (locale_name == "C" || locale_name == "POSIX" ||
+      locale_name == "C.UTF-8" || locale_name == "C.utf8")
+  {
+    return true;
+  }
+
+  return locale_is_installed(locale_name);
+}
+
 pure fn
 utf8_character_length(StringView text, usize position) wontthrow -> usize
 {

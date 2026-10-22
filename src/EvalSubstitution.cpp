@@ -590,8 +590,21 @@ EvalContext::setup_process_substitution(
     let const source_scope = enter_source_scope(
         &substitution_source, String{heap_allocator(), "process substitution"});
 
+    clear_inherited_exit_trap();
+    reset_inherited_signal_traps();
+
+    /* the child runs its own EXIT trap before it exits, as a command
+       substitution does. */
     try {
       ast->evaluate(*this);
+      if (control_flow_store().has_pending()) {
+        if (control_flow_store().pending().kind == control_flow::Kind::Exit) {
+          execution_store().set_last_exit_status(
+              static_cast<i32>(control_flow_store().pending().value));
+        }
+        control_flow_store().clear();
+      }
+      unused(run_subshell_exit_trap());
       status = execution_store().last_exit_status();
     } catch (...) {
       LOG(Debug,
@@ -602,6 +615,7 @@ EvalContext::setup_process_substitution(
       status = 1;
     }
 
+    koshka::flush();
     os::exit_process_immediately(status);
   }
 

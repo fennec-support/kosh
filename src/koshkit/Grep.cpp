@@ -1410,7 +1410,8 @@ public:
         m_pattern_text(steal(pattern_text)), m_matchers(m_allocator),
         m_recursive_storage(m_allocator), m_sources(m_allocator),
         m_source_line_numbers(m_allocator), m_source_match_counts(m_allocator),
-        m_output(m_allocator), m_line(m_allocator)
+        m_source_binary_states(m_allocator), m_output(m_allocator),
+        m_line(m_allocator)
   {
     m_matchers.reserve(pattern_spans.count());
 
@@ -1506,6 +1507,13 @@ public:
 
       for (usize index = 0; index < m_sources.count(); index++)
         m_source_line_numbers.push(1);
+    }
+
+    if (m_options.output_mode == grep_output_mode::Lines) {
+      m_source_binary_states.reserve(m_sources.count());
+
+      for (usize index = 0; index < m_sources.count(); index++)
+        m_source_binary_states.push(binary_state::Text);
     }
 
     if (m_options.output_mode == grep_output_mode::Count ||
@@ -1713,6 +1721,20 @@ private:
       m_has_any_match = true;
       switch (m_options.output_mode) {
       case grep_output_mode::Lines:
+        /* a source with a NUL byte reports one match without its lines, as
+           GNU grep does. */
+        if (m_source_binary_states[source_index] != binary_state::Text) {
+          if (m_source_binary_states[source_index] == binary_state::Binary) {
+            m_source_binary_states[source_index] = binary_state::Reported;
+            m_output += "grep: ";
+            m_output += source == "-" ? StringView{"(standard input)"} : source;
+            m_output += ": binary file matches\n";
+            flush_output_if_full();
+          }
+
+          break;
+        }
+
         if (m_should_print_names) {
           append_source_name(source);
           append_separator();
@@ -1914,7 +1936,16 @@ private:
   fn
   process_chunk(const SourceBatchReader::Chunk &chunk) throws -> void
   {
-    let const source         = m_sources[chunk.source_index];
+    let const source = m_sources[chunk.source_index];
+
+    if (m_options.output_mode == grep_output_mode::Lines &&
+        m_source_binary_states[chunk.source_index] == binary_state::Text &&
+        chunk.content.length > 0 &&
+        memchr(chunk.content.data, '\0', chunk.content.length) != nullptr)
+    {
+      m_source_binary_states[chunk.source_index] = binary_state::Binary;
+    }
+
     let const scanned_length = m_candidate_literal.is_empty()
                                    ? 0
                                    : scan_chunk_candidates(chunk, source);
@@ -1967,15 +1998,24 @@ private:
   ArrayList<StringView>            m_sources;
   ArrayList<usize>                 m_source_line_numbers;
   ArrayList<usize>                 m_source_match_counts;
-  String                           m_output;
-  String                           m_line;
-  StringView                       m_candidate_literal;
-  i32                              m_status{0};
-  grep_palette                     m_palette{};
-  bool                             m_is_literal_hit_sufficient{false};
-  bool                             m_has_utf8_regex{false};
-  bool                             m_should_print_names{false};
-  bool                             m_has_any_match{false};
+  /* Text until a chunk of the source holds a NUL byte, then Binary until its
+     first match prints the binary file message. */
+  enum class binary_state : u8
+  {
+    Text,
+    Binary,
+    Reported,
+  };
+  ArrayList<binary_state> m_source_binary_states;
+  String                  m_output;
+  String                  m_line;
+  StringView              m_candidate_literal;
+  i32                     m_status{0};
+  grep_palette            m_palette{};
+  bool                    m_is_literal_hit_sufficient{false};
+  bool                    m_has_utf8_regex{false};
+  bool                    m_should_print_names{false};
+  bool                    m_has_any_match{false};
 };
 
 fn

@@ -32,70 +32,6 @@ namespace expressions {
 
 using namespace internal;
 
-fn
-internal::expand_command_aliases(
-    EvalContext               &cxt,
-    ArrayList<String>         &args,
-    ArrayList<SourceLocation> &arg_locations) throws -> void
-{
-  if (!cxt.scope_store().has_aliases() ||
-      !cxt.is_shopt_enabled(shopt_option_id::ExpandAliases))
-  {
-    return;
-  }
-
-  HashSet already_expanded{heap_allocator()};
-
-  while (!args.is_empty()) {
-    let const &word = args[0];
-
-    if (already_expanded.contains(word.view())) break;
-
-    let const body = cxt.scope_store().get_alias(word);
-
-    if (!body.has_value()) break;
-    already_expanded.add(word.view());
-    LOG(Debug, "expanding the alias '%s'", word.c_str());
-
-    let        rebuilt           = ArrayList<String>{heap_allocator()};
-    let        rebuilt_locations = ArrayList<SourceLocation>{heap_allocator()};
-    let        current           = String{cxt.scratch_allocator()};
-    let const &body_value        = *body;
-    let const  body_location =
-        !arg_locations.is_empty() ? arg_locations[0] : SourceLocation{};
-
-    for (usize i = 0; i < body_value.count(); i++) {
-      let const c = body_value[i];
-
-      if (c == ' ' || c == '\t') {
-        if (!current.is_empty()) {
-          rebuilt.push_managed(StringView{current.data(), current.count()});
-          rebuilt_locations.push(body_location);
-          current.clear();
-        }
-      } else {
-        current += c;
-      }
-    }
-
-    if (!current.is_empty()) {
-      rebuilt.push_managed(StringView{current.data(), current.count()});
-      rebuilt_locations.push(body_location);
-    }
-
-    for (usize i = 1; i < args.count(); i++) {
-      rebuilt.push(steal(args[i]));
-      if (i < arg_locations.count())
-        rebuilt_locations.push(arg_locations[i]);
-      else
-        rebuilt_locations.push(body_location);
-    }
-
-    args          = steal(rebuilt);
-    arg_locations = steal(rebuilt_locations);
-  }
-}
-
 namespace {
 
 static fn
@@ -260,6 +196,73 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
     }
   }
 
+  /* an alias of the command word runs as the source of this command with the
+     alias body in place of the word, so the body may hold any shell syntax.
+     a body that ends in a blank also replaces the next word when it is an
+     alias, as bash does. */
+  if (!m_args.is_empty() && m_args[0]->kind() == Token::Kind::Word &&
+      cxt.scope_store().has_aliases() &&
+      cxt.is_shopt_enabled(shopt_option_id::ExpandAliases))
+  {
+    let const do_find_body = [&](usize index) throws -> Maybe<String> {
+      if (index >= m_args.count() || m_args[index]->kind() != Token::Kind::Word)
+      {
+        return None;
+      }
+
+      let const name = static_command_name(m_args[index]);
+
+      if (!name.has_value() || cxt.scope_store().is_alias_expanding(*name)) {
+        return None;
+      }
+
+      return cxt.scope_store().get_alias(*name);
+    };
+
+    if (let const first_body = do_find_body(0); first_body.has_value()) {
+      let const source_index = m_args[0]->source_location().source_name_index;
+      let       text         = String{cxt.scratch_allocator()};
+      usize     copied_end   = full_source_start_position();
+      let       body         = Maybe<String>{first_body->clone()};
+      usize     index        = 0;
+
+      while (body.has_value()) {
+        let const word_location = m_args[index]->source_location();
+
+        text.append(cxt.source_text_in_span(
+            SourceLocation{static_cast<u32>(copied_end), 0, source_index},
+            word_location.position));
+        text.append(body->view());
+        copied_end = usize{word_location.position} + word_location.length;
+
+        let const is_blank_ended =
+            !body->is_empty() && ((*body)[body->count() - 1] == ' ' ||
+                                  (*body)[body->count() - 1] == '\t');
+
+        index += 1;
+        body = is_blank_ended ? do_find_body(index) : Maybe<String>{};
+      }
+
+      text.append(cxt.source_text_in_span(
+          SourceLocation{static_cast<u32>(copied_end), 0, source_index},
+          full_source_end_position()));
+      if (is_async_command) text.append(" &");
+
+      let const name = *static_command_name(m_args[0]);
+
+      LOG(Debug, "expanding the alias '%.*s'", static_cast<int>(name.length),
+          name.data);
+      cxt.scope_store().begin_alias_expansion(name);
+      defer { cxt.scope_store().end_alias_expansion(); };
+
+      cxt.run_source(text.view(), "an alias", source_location(),
+                     StringView{"alias"}, nullptr, nullptr,
+                     return_handling::Propagate);
+
+      return cxt.execution_store().last_exit_status();
+    }
+  }
+
   /* at this point: the command word is not a glob pattern, or a non-default
      mood has already shown its warning. */
   if (cxt.runtime_state().should_echo()) {
@@ -305,8 +308,6 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
   let program_args =
       cxt.process_args(*argument_tokens, &program_arg_locations,
                        argument_lifetime::Transient, argument_context::Command);
-
-  expand_command_aliases(cxt, program_args, program_arg_locations);
 
   if (!is_async_command && !cxt.job_table_store().is_in_pipeline_stage()) {
     utils::set_foreground_program_title(program_args, cxt);
@@ -669,7 +670,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
     let trace = String{cxt.scratch_allocator(), name};
 
     trace += update_mode == assignment_update_mode::Append ? "+=" : "=";
-    append_shell_quoted_arg(trace, value);
+    cxt.append_xtrace_quoted(trace, value);
     cxt.write_xtrace(trace.view());
   };
 
@@ -685,7 +686,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
     for (usize i = 0; i < values.count(); i++) {
       if (i > 0) trace.push(' ');
-      append_shell_quoted_arg(trace, values[i].view());
+      cxt.append_xtrace_quoted(trace, values[i].view(), true);
     }
 
     trace.push(')');

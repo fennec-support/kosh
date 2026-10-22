@@ -101,3 +101,12 @@ hash -t stateprobe 2>/dev/null || echo "not hashed after lookup inside"
 stateprobe
 hash -t stateprobe | sed "s|$dir|DIR|"
 PATH=$sys
+
+# An alias of the command word still applies inside a substitution, and an
+# unrelated alias leaves the substitution output unchanged.
+shopt -s expand_aliases
+alias unrelated_alias=true
+alias greet_alias='echo greeted'
+plain=$(echo plain)
+greeted=$(greet_alias)
+echo "with-aliases plain=$plain greeted=$greeted"

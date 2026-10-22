@@ -996,6 +996,27 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
       (m_has_assignment_only_stage &&
        cxt.runtime_state().get_mood() != mimic_mood::Default);
 
+  /* a stage whose command word is an alias runs in its own process, where
+     the alias body is evaluated as shell source. */
+  if (!has_compound_stage && cxt.scope_store().has_aliases() &&
+      cxt.is_shopt_enabled(shopt_option_id::ExpandAliases))
+  {
+    for (let const stage : m_commands) {
+      let const *simple = static_cast<const SimpleCommand *>(stage);
+
+      if (simple->args().is_empty()) continue;
+
+      let const name = static_command_name(simple->args()[0]);
+
+      if (name.has_value() && !cxt.scope_store().is_alias_expanding(*name) &&
+          cxt.scope_store().get_alias(*name).has_value())
+      {
+        has_compound_stage = true;
+        break;
+      }
+    }
+  }
+
   if (!has_compound_stage && cxt.function_store().has_functions()) {
     for (let const stage : m_commands) {
       let const *simple = static_cast<const SimpleCommand *>(stage);
@@ -1116,8 +1137,6 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
 
       continue;
     }
-
-    expand_command_aliases(cxt, stage_args, stage_arg_locations);
 
     if (stage_args.is_empty()) {
       if (cxt.runtime_state().get_mood() == mimic_mood::Default) {
