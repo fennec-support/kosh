@@ -98,24 +98,6 @@ size_text(u64 size, Allocator allocator) throws -> String
 }
 
 fn
-percent_used(const os::filesystem_status &filesystem) wontthrow -> u64
-{
-  if (filesystem.total_blocks == 0) return 0;
-
-  let const used = filesystem.total_blocks -
-                   (filesystem.free_blocks > filesystem.total_blocks
-                        ? filesystem.total_blocks
-                        : filesystem.free_blocks);
-  let const whole_percent = used / filesystem.total_blocks;
-  let const remainder     = used % filesystem.total_blocks;
-
-  return whole_percent * 100 +
-         static_cast<u64>((static_cast<u128>(remainder) * 100 +
-                           filesystem.total_blocks / 2) /
-                          filesystem.total_blocks);
-}
-
-fn
 append_subject(String                    &output,
                StringView                 operand,
                const os::file_status     &status,
@@ -211,7 +193,12 @@ append_subject(String                    &output,
     let filesystem = os::filesystem_status{};
 
     if (os::stat_filesystem(operand, filesystem)) {
-      let const type_name = StringView{filesystem.type_name};
+      let const type_name   = StringView{filesystem.type_name};
+      let const free_blocks = filesystem.free_blocks < filesystem.total_blocks
+                                  ? filesystem.free_blocks
+                                  : filesystem.total_blocks;
+      let const capacity    = filesystem_usage_percent(
+          filesystem.total_blocks - free_blocks, filesystem.available_blocks);
 
       do_append_field("Filesystem",
                       type_name.is_empty() ? StringView{"unknown"} : type_name,
@@ -221,8 +208,7 @@ append_subject(String                    &output,
           String::from(filesystem.block_byte_count, allocator).view(),
           colors::soft(colors::ansi::BOLD_CYAN));
       do_append_field("Filesystem capacity",
-                      String::from(percent_used(filesystem), allocator).view() +
-                          "%",
+                      String::from(capacity, allocator).view() + "%",
                       colors::soft(colors::ansi::BOLD_CYAN));
       do_append_field("Filesystem blocks",
                       String::from(filesystem.total_blocks, allocator).view(),

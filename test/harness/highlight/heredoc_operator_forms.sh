@@ -41,3 +41,8 @@ cat <<-"DONE"
 body
 _ACEOF
 echo tail' | grep -E "${tab}(heredoc|heredoc-delimiter|resolved-command)$"
+
+"$BIN" --debug-highlight-at 'cat <<"END MARK"
+END
+END MARK
+echo tail' | grep -E "${tab}(heredoc|heredoc-delimiter|resolved-command)$"

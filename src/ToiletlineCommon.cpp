@@ -24,19 +24,20 @@ struct codepoint_interval
 static constexpr u32 NARROW_CODEPOINT_LIMIT = 0x0300;
 
 static constexpr codepoint_interval ZERO_WIDTH_INTERVALS[] = {
-    {0x0300, 0x036f},
-    {0x0483, 0x0489},
-    {0x0591, 0x05bd},
-    {0x0610, 0x061a},
-    {0x064b, 0x065f},
-    {0x0670, 0x0670},
-    {0x06d6, 0x06dc},
-    {0x0e31, 0x0e31},
-    {0x0e34, 0x0e3a},
-    {0x200b, 0x200f},
-    {0x2060, 0x2064},
-    {0xfe00, 0xfe0f},
-    {0xfe20, 0xfe2f},
+    {0x0300,  0x036f },
+    {0x0483,  0x0489 },
+    {0x0591,  0x05bd },
+    {0x0610,  0x061a },
+    {0x064b,  0x065f },
+    {0x0670,  0x0670 },
+    {0x06d6,  0x06dc },
+    {0x0e31,  0x0e31 },
+    {0x0e34,  0x0e3a },
+    {0x200b,  0x200f },
+    {0x2060,  0x2064 },
+    {0xfe00,  0xfe0f },
+    {0xfe20,  0xfe2f },
+    {0x1f3fb, 0x1f3ff},
 };
 
 static constexpr codepoint_interval WIDE_INTERVALS[] = {
@@ -121,16 +122,24 @@ display_width_walk(StringView text, usize stop_after, usize *out_byte_offset)
     byte_offset++;
   }
 
-  usize width = byte_offset;
+  usize width           = byte_offset;
+  bool  is_after_joiner = false;
 
   while (byte_offset < text.length && text[byte_offset] != '\0') {
     if (static_cast<u8>(text[byte_offset]) == 0x1b) {
-      byte_offset = toiletline::get_escape_sequence_end(text, byte_offset);
+      byte_offset     = toiletline::get_escape_sequence_end(text, byte_offset);
+      is_after_joiner = false;
       continue;
     }
 
+    /* a character after a zero-width joiner draws on the cell of the emoji
+       before the joiner, as the editor counts it. */
     let const decoded = koshka::utils::decode_utf8(text, byte_offset, 0xfffd);
-    let const character_width = codepoint_display_width(decoded.value);
+    let const character_width = is_after_joiner && decoded.length > 1
+                                    ? 0
+                                    : codepoint_display_width(decoded.value);
+
+    is_after_joiner = decoded.value == 0x200d;
 
     if (character_width > 0 && width >= stop_after) {
       break;

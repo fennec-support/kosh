@@ -261,26 +261,6 @@ byte_precedes_comment(char byte) wontthrow -> bool
   }
 }
 
-pure fn
-byte_ends_here_document_delimiter(char byte) wontthrow -> bool
-{
-  switch (byte) {
-  case ' ':
-  case '\t':
-  case '\n':
-  case '\r':
-  case ';':
-  case '&':
-  case '|':
-  case '<':
-  case '>':
-  case '(':
-  case ')':  return true;
-
-  default: return false;
-  }
-}
-
 fn
 skip_here_document(StringView source, usize at) throws -> usize
 {
@@ -293,27 +273,8 @@ skip_here_document(StringView source, usize at) throws -> usize
     cursor++;
 
   let const delimiter_start = cursor;
-  char      quote           = 0;
 
-  while (cursor < source.length) {
-    let const byte = source[cursor];
-
-    if (quote != 0) {
-      if (byte == quote) quote = 0;
-      cursor++;
-      continue;
-    }
-
-    if (byte == '\'' || byte == '"') {
-      quote = byte;
-    } else if (byte == '\\' && cursor + 1 < source.length) {
-      cursor++;
-    } else if (byte_ends_here_document_delimiter(byte)) {
-      break;
-    }
-
-    cursor++;
-  }
+  cursor = lexer::balanced_scan_delimiter_end(source, cursor);
 
   if (cursor == delimiter_start) return at + 2;
 

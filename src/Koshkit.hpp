@@ -800,6 +800,14 @@ filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64;
 
 pure fn
 file_type_name(const os::file_status &status) wontthrow -> StringView;
+/* rewrites a first operand -NUM into -n NUM, as head and tail accept the
+   obsolete line count form. */
+fn
+expand_obsolete_line_count(
+    const ArrayList<String>         &args,
+    const ArrayList<SourceLocation> &arg_locations,
+    ArrayList<String>               &expanded_args,
+    ArrayList<SourceLocation>       &expanded_locations) throws -> void;
 fn
 describe_file_type(StringView             path,
                    const os::file_status &status,

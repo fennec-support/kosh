@@ -87,8 +87,8 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   usize first_target  = 1;
   let   signal_number = os::signal_number_from_name("TERM").value_or(15);
 
-  let const do_resolve_signal = [&ec](StringView spec,
-                                      usize      index) throws -> i32 {
+  let const do_resolve_signal = [&ec, &cxt](StringView spec,
+                                            usize      index) throws -> i32 {
     if (let const parsed = spec.to<i64>(); !parsed.is_error() &&
                                            spec[0] >= '0' && spec[0] <= '9' &&
                                            parsed.value() <= INT32_MAX)
@@ -96,7 +96,10 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return static_cast<i32>(parsed.value());
     }
 
-    if (let const resolved = os::signal_number_from_name(spec);
+    let uppercased = String{cxt.scratch_allocator(), spec};
+
+    uppercased.uppercase_ascii();
+    if (let const resolved = os::signal_number_from_name(uppercased.view());
         resolved.has_value())
     {
       return *resolved;

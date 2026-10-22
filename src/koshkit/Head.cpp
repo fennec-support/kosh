@@ -229,40 +229,6 @@ read_regular_all_but_last(os::descriptor fd,
   return result;
 }
 
-static fn
-expand_obsolete_line_count(
-    const ArrayList<String>         &args,
-    const ArrayList<SourceLocation> &arg_locations,
-    ArrayList<String>               &expanded_args,
-    ArrayList<SourceLocation>       &expanded_locations) throws -> void
-{
-  for (usize index = 0; index < args.count(); index++) {
-    let const argument = args[index].view();
-    let const location =
-        index < arg_locations.count() ? arg_locations[index] : SourceLocation{};
-    bool is_obsolete_count =
-        index == 1 && argument.length > 1 && argument[0] == '-';
-
-    for (usize position = 1; is_obsolete_count && position < argument.length;
-         position++)
-    {
-      is_obsolete_count =
-          argument[position] >= '0' && argument[position] <= '9';
-    }
-
-    if (is_obsolete_count) {
-      expanded_args.push_managed("-n");
-      expanded_locations.push(location);
-      expanded_args.push_managed(argument.substring(1));
-      expanded_locations.push(location);
-      continue;
-    }
-
-    expanded_args.push_managed(argument);
-    expanded_locations.push(location);
-  }
-}
-
 fn
 Head::execute(const ExecContext               &ec,
               EvalContext                     &cxt,

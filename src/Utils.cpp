@@ -355,20 +355,10 @@ shell_word_expansion_end(StringView word, usize expansion_start) wontthrow
 
   usize position = expansion_start + 1;
 
-  if ((next_byte >= 'a' && next_byte <= 'z') ||
-      (next_byte >= 'A' && next_byte <= 'Z') || next_byte == '_')
-  {
+  if (lexer::is_variable_name_start(next_byte)) {
     position++;
 
-    while (position < word.length) {
-      let const byte = word[position];
-
-      if (!((byte >= 'a' && byte <= 'z') || (byte >= 'A' && byte <= 'Z') ||
-            (byte >= '0' && byte <= '9') || byte == '_'))
-      {
-        break;
-      }
-
+    while (position < word.length && lexer::is_variable_name(word[position])) {
       position++;
     }
 

@@ -123,7 +123,7 @@ rc=2
 note: Try `mkdir --help` for more info.
 rc=2
 --- the bash mood locates a missing path ---
--c:1:1: error: Koshkit `ls`: Cannot access '/no/such/path': no such file or directory.
+-c:1:1: error: Koshkit `ls`: Cannot access '/no/such/path': No such file or directory.
      1 |  koshkit ls /no/such/path
        |  ^~~~~~~~~~~~~~~~~~~~~~~~
 rc=2

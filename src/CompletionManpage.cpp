@@ -2770,7 +2770,7 @@ start_next_idle_load(StringView   line,
 
   let const name = resolve_completion_alias(target->command, context);
 
-  if (search_builtin(name.view()).has_value()) return false;
+  if (context.find_enabled_builtin(name.view()).has_value()) return false;
   if (context.function_store().find_storage(name.view()) != nullptr)
     return false;
   if (context.program_resolver()

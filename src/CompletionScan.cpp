@@ -2137,37 +2137,10 @@ collect_shell_heredoc(StringView           source,
     position++;
   }
 
-  let const word_start      = position;
-  char      delimiter_quote = 0;
+  let const word_start = position;
 
-  while (position < end) {
-    let const delimiter_byte = source[position];
-
-    if (delimiter_byte == '\\' && delimiter_quote != '\'') {
-      position = position + 2 < end ? position + 2 : end;
-      continue;
-    }
-
-    if (delimiter_quote != 0) {
-      if (delimiter_byte == delimiter_quote) delimiter_quote = 0;
-      position++;
-      continue;
-    }
-
-    if (delimiter_byte == '\'' || delimiter_byte == '"') {
-      delimiter_quote = delimiter_byte;
-      position++;
-      continue;
-    }
-
-    if (lexer::is_whitespace(delimiter_byte) ||
-        lexer::is_shell_sentinel(delimiter_byte))
-    {
-      break;
-    }
-
-    position++;
-  }
+  position = lexer::balanced_scan_delimiter_end(
+      source.substring_of_length(0, end), position);
 
   let delimiter = lexer::unquote_heredoc_delimiter(
       source.substring_of_length(word_start, position - word_start),

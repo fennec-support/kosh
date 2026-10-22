@@ -37,4 +37,10 @@ pure fn
 match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
     -> heredoc_line_match;
 
+/* the end of the heredoc delimiter word that starts at position. Quotes and
+   backslashes keep blanks and operators inside the word. */
+pure fn
+balanced_scan_delimiter_end(StringView source, usize position)
+    wontthrow -> usize;
+
 } /* namespace koshka::lexer */

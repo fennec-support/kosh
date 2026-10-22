@@ -1062,7 +1062,7 @@ LS::execute(const ExecContext               &ec,
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
                                      "Cannot access '" +
                                          String{allocator, target} +
-                                         "': no such file or directory");
+                                         "': No such file or directory");
       run.status = 2;
       continue;
     }

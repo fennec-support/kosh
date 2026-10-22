@@ -3457,7 +3457,7 @@ initialize() -> void
 
     if (result.is_error()) {
       koshka::show_message(koshka::Warning{
-          koshka::StringView{"Unable to read the history at '"} +
+          koshka::StringView{"Cannot read history from '"} +
           kosh_history->text().view() + "': " + result.error().message()}
                                .to_string());
     }
@@ -3540,7 +3540,7 @@ exit(usize history_size_limit) -> void
           "Remove or repair the file to record history again"};
       koshka::show_message(error.to_string());
     } else {
-      koshka::Error error{"Toiletline: Could not save history: " +
+      koshka::Error error{"Toiletline: could not save history: " +
                           koshka::os::last_system_error_message()};
       koshka::show_message(error.to_string());
     }

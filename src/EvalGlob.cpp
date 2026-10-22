@@ -776,7 +776,7 @@ EvalContext::expand_tilde(WordSegment &leading_segment,
   let const directory = resolve_tilde_prefix(name);
 
   if (name.is_empty() && !directory.has_value()) {
-    throw Error{"Could not figure out home directory"};
+    throw Error{"Cannot determine the home directory"};
   }
 
   if (!directory.has_value()) return;

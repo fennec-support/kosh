@@ -18,3 +18,8 @@ cat	resolved-command
 	heredoc
 _ACEOF	heredoc-delimiter
 echo	resolved-command
+cat	resolved-command
+"END MARK"	heredoc-delimiter
+	heredoc
+END MARK	heredoc-delimiter
+echo	resolved-command

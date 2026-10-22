@@ -99,8 +99,8 @@ More::execute(const ExecContext               &ec,
 
     if (tagged_source.is_empty()) {
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "Tag not found '" + FLAG_MORE_TAG.value() +
-                                         "'");
+                                     "Tag '" + FLAG_MORE_TAG.value() +
+                                         "' was not found");
 
       return 1;
     }

@@ -110,16 +110,14 @@ namespace koshka::koshkit {
 static pure fn
 removal_type_name(const os::file_status &status) wontthrow -> StringView
 {
-  switch (os::file_type_letter(status.mode)) {
-  case '-': return status.size == 0 ? "regular empty file" : "regular file";
-  case 'd': return "directory";
-  case 'l': return "symbolic link";
-  case 'p': return "fifo";
-  case 's': return "socket";
-  case 'c': return "character special file";
-  case 'b': return "block special file";
-  default:  return "weird file";
+  if (StringView{"-dlpscb"}
+          .find_character(os::file_type_letter(status.mode))
+          .has_value())
+  {
+    return file_type_name(status);
   }
+
+  return "weird file";
 }
 
 static pure fn

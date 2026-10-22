@@ -1545,9 +1545,8 @@ internal::scan_highlight_range(
 
       let const delimiter_start = i;
 
-      while (i < end && !position_is_highlight_word_break(line, i, end)) {
-        i++;
-      }
+      i = lexer::balanced_scan_delimiter_end(line.substring_of_length(0, end),
+                                             i);
 
       let const delimiter_word =
           line.substring_of_length(delimiter_start, i - delimiter_start);

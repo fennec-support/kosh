@@ -10,3 +10,8 @@ kill -l 4294967311 > /dev/null 2>&1
 echo "wrapped-listing=$?"
 kill -0 $$
 echo "own-pid=$?"
+# A signal name is accepted in any case, as in bash.
+kill -s cont $$
+echo "lowercase-name=$?"
+kill -s sigcont $$
+echo "lowercase-prefixed-name=$?"

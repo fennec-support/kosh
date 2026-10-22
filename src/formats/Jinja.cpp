@@ -39,7 +39,9 @@ jinja_template_shell_mood(StringView inner_name, StringView source) wontthrow
 {
   if (has_suffix(inner_name, ".bash")) return mimic_mood::Bash;
   if (has_suffix(inner_name, ".kosh")) return mimic_mood::Default;
-  if (has_suffix(inner_name, ".sh")) return mimic_mood::Posix;
+  if (has_suffix(inner_name, ".sh") || has_suffix(inner_name, ".dash")) {
+    return mimic_mood::Posix;
+  }
   if (!source.starts_with("#!")) return None;
 
   usize     line_end = 0;

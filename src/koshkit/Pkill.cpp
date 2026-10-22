@@ -52,15 +52,15 @@ resolve_koshkit_signal(StringView     spelled,
 
   uppercased.uppercase_ascii();
 
-  let const named = os::signal_number_from_name(uppercased.view());
+  let const resolved = os::signal_number_from_name(uppercased.view());
 
-  if (!named.has_value()) {
+  if (!resolved.has_value()) {
     throw ErrorWithLocationAndDetails{
         location, "Unknown signal '" + spelled + "'",
         "Use a signal name such as TERM or a number such as 15"};
   }
 
-  return *named;
+  return *resolved;
 }
 
 fn

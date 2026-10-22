@@ -408,7 +408,8 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (path.exists()) {
     if (path.is_directory()) {
       report_soft_builtin_error(ec, cxt, location,
-                                StringView{"'"} + args[1] + "' is a directory");
+                                StringView{"Cannot edit '"} + args[1] +
+                                    "': it is a directory");
 
       return 1;
     }
@@ -417,7 +418,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (!read.has_value()) {
       report_soft_builtin_error(ec, cxt, location,
-                                StringView{"Unable to read '"} + args[1] +
+                                StringView{"Cannot read '"} + args[1] +
                                     "': " + os::last_system_error_message());
 
       return 1;
