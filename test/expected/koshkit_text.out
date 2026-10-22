@@ -815,3 +815,22 @@ status=123
 a
 b
 status=123
+--- xargs stops only when its own command cannot run ---
+status=123
+ok
+ok
+status=0
+--- unexpand copies blanks past the last tab stop ---
+0000000   a   b   c   d   e      \t   x  \n
+0000000   a   b   c   d   e          \t       x  \n
+--- xargs -I keeps empty quotes and rejects an open quote ---
+[ x]
+[]
+[q]
+-c:1:1: error: Koshkit `xargs`: Unmatched quote.
+     1 |  koshkit xargs -I{} echo "[{}]" 2>/dev/null; printf "status=%s\n" "$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--- grep -E reads a repetition after ^ ---
+x
+*x
+x

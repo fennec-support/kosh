@@ -37,6 +37,7 @@ ignoreeof=10
 shellopts-options-on
 histexpand-letter-off
 ignoreeof=unset
+ignoreeof-rebound=10
 == keyword assignments enter only the command environment:
 K=value argc=2 args=one,two,unset
 K=base argc=2 args=Q=value,tail,unset

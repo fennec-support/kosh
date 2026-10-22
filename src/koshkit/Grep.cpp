@@ -540,11 +540,23 @@ append_extended_pattern(String &output, StringView pattern) throws
     -> void
 {
   bool is_at_start = true;
+  /* the output length before an unescaped ^ that the last token emitted. a
+     repetition of ^ that allows zero matches drops the anchor, and one that
+     needs a match keeps it, the way GNU grep reads ^* and ^+. */
+  let caret_start = Maybe<usize>{};
 
   for (usize index = 0; index < pattern.length;) {
-    let const character = pattern[index];
+    let const character   = pattern[index];
+    let const after_caret = caret_start;
 
-    if (character == '\\' && index + 1 < pattern.length) {
+    caret_start = None;
+
+    if (character == '^') {
+      caret_start = output.length();
+      output += character;
+      index++;
+      is_at_start = false;
+    } else if (character == '\\' && index + 1 < pattern.length) {
       output += character;
       output += pattern[index + 1];
       index += 2;
@@ -588,7 +600,11 @@ append_extended_pattern(String &output, StringView pattern) throws
       index++;
       is_at_start = true;
     } else if (character == '*' || character == '+' || character == '?') {
-      if (!is_at_start) output += character;
+      if (after_caret.has_value()) {
+        if (character != '+') output.truncate(*after_caret);
+      } else if (!is_at_start) {
+        output += character;
+      }
       index++;
     } else if (character == '{') {
       let const interval_length = get_interval_length(pattern.substring(index));
@@ -598,8 +614,15 @@ append_extended_pattern(String &output, StringView pattern) throws
         index++;
         is_at_start = false;
       } else {
-        if (!is_at_start)
+        if (after_caret.has_value()) {
+          if (index + 1 < pattern.length &&
+              (pattern[index + 1] == '0' || pattern[index + 1] == ','))
+          {
+            output.truncate(*after_caret);
+          }
+        } else if (!is_at_start) {
           output += pattern.substring_of_length(index, interval_length);
+        }
         index += interval_length;
       }
     } else {

@@ -240,12 +240,17 @@ execute_context(ExecContext  &&ec,
 
   if (p == KOSH_INVALID_PROCESS) {
     LOG(Debug, "running the file as a shell script in this process");
-    const mimic_mood mode = cxt.runtime_state().get_mood();
+    const mimic_mood mode   = cxt.runtime_state().get_mood();
+    let const        status = cxt.run_program_fallback(
+        ec, mode,
+        should_replace_shell ? script_isolation::Shared
+                                    : script_isolation::Isolated);
 
-    return cxt.run_program_fallback(ec, mode,
-                                    should_replace_shell
-                                        ? script_isolation::Shared
-                                        : script_isolation::Isolated);
+    /* the script ran, so a spawn that failed inside it is not a failure to
+       run the program. */
+    unused(os::take_spawn_failure());
+
+    return status;
   }
 
   if (is_async) {

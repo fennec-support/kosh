@@ -287,14 +287,14 @@ private:
   }
 
   fn
-  mark_command_name_indexes_stale() wontthrow -> void;
+  mark_command_name_indexes_stale() throws -> void;
   fn
-  clear_command_name_indexes() wontthrow -> void;
+  clear_command_name_indexes() throws -> void;
 
   fn
-  mark_derived_indexes_stale() wontthrow -> void;
+  mark_derived_indexes_stale() throws -> void;
   fn
-  clear_derived_indexes() wontthrow -> void;
+  clear_derived_indexes() throws -> void;
 
   fn
   split_path_dirs(StringView path) throws -> ArrayList<String>;

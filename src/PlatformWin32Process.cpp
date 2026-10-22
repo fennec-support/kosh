@@ -3503,15 +3503,20 @@ get_supplementary_group_ids(Allocator allocator) throws
 }
 
 fn
-get_user_primary_group_id(u32) wontthrow -> Maybe<u32>
+get_user_primary_group_id(u32 user_id) wontthrow -> Maybe<u32>
 {
-  return None;
+  if (user_id != 0) return None;
+
+  return static_cast<u32>(get_real_group_id());
 }
 
 fn
-get_user_group_ids(u32, Allocator) throws -> Maybe<ArrayList<u32>>
+get_user_group_ids(u32 user_id, Allocator allocator) throws
+    -> Maybe<ArrayList<u32>>
 {
-  return None;
+  if (user_id != 0) return None;
+
+  return get_supplementary_group_ids(allocator);
 }
 
 fn

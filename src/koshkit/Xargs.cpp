@@ -267,9 +267,10 @@ private:
     loop {
       if (!peek().has_value()) return None;
 
-      let       value     = String{allocator};
-      let const item_line = m_line_number;
-      char      quote     = '\0';
+      let       value       = String{allocator};
+      let const item_line   = m_line_number;
+      char      quote       = '\0';
+      bool      has_content = false;
 
       loop {
         let const taken = take();
@@ -293,8 +294,9 @@ private:
           break;
         }
 
-        if (value.is_empty() && (byte == ' ' || byte == '\t')) continue;
+        if (!has_content && (byte == ' ' || byte == '\t')) continue;
 
+        has_content = true;
         if (byte == '\'' || byte == '"') {
           quote = byte;
           continue;
@@ -312,7 +314,8 @@ private:
         value += byte;
       }
 
-      if (!value.is_empty()) return xargs_item{steal(value), item_line};
+      if (quote != '\0') throw Error{"Unmatched quote"};
+      if (has_content) return xargs_item{steal(value), item_line};
     }
   }
 
@@ -616,7 +619,8 @@ Xargs::execute(const ExecContext               &ec,
 
     cxt.enter_subshell();
 
-    i32 command_status = 0;
+    i32       command_status = 0;
+    let const is_external    = !sub->is_builtin();
 
     unused(os::take_spawn_failure());
 
@@ -638,7 +642,9 @@ Xargs::execute(const ExecContext               &ec,
     cxt.leave_subshell();
     cxt.restore_state(steal(snapshot));
 
-    if (os::take_spawn_failure()) return command_status;
+    /* only the spawn of the command itself stops the run with 126 or 127. a
+       command that returns those statuses gives 123 below. */
+    if (os::take_spawn_failure() && is_external) return command_status;
 
     if (command_status == 255) {
       report_soft_koshkit_util_error(

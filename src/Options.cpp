@@ -1524,9 +1524,9 @@ write_shell_option(EvalContext             &cxt,
   if (option.shell_option == shell_option_id::Ignoreeof) {
     let const value = cxt.get_variable_value("IGNOREEOF");
 
-    if (is_enabled && !value.has_value()) {
+    if (is_enabled) {
       cxt.set_shell_variable("IGNOREEOF", "10");
-    } else if (!is_enabled && value.has_value()) {
+    } else if (value.has_value()) {
       cxt.disable_ignoreeof();
     }
 

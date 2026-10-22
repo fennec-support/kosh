@@ -443,3 +443,21 @@ printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 ./xargs-noexec.sh >/dev/null 2>&
 printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 ./xargs-badshebang.sh >/dev/null 2>&1; printf "status=%s\n" "$?"'
 printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 sh -c "echo \$0; exit 127" 2>&1; printf "status=%s\n" "$?"'
 printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 sh -c "echo \$0; exit 126" 2>&1; printf "status=%s\n" "$?"'
+
+echo "--- xargs stops only when its own command cannot run ---"
+printf './xargs-noexec.sh 2>/dev/null; echo ok\n' > xargs-script && chmod 755 xargs-script
+printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 env ./xargs-noexec.sh 2>/dev/null; printf "status=%s\n" "$?"'
+printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 ./xargs-script; printf "status=%s\n" "$?"'
+
+echo "--- unexpand copies blanks past the last tab stop ---"
+printf 'abcde \tx\n' | "$BIN" -c 'koshkit unexpand -t 2,4' | od -c | sed -n 1p
+printf 'abcde  \t x\n' | "$BIN" -c 'koshkit unexpand -t 2,4' | od -c | sed -n 1p
+
+echo "--- xargs -I keeps empty quotes and rejects an open quote ---"
+printf '"" x\n' | "$BIN" -c 'koshkit xargs -I{} echo "[{}]"'
+printf '""\nq\n' | "$BIN" -c 'koshkit xargs -I{} echo "[{}]"'
+printf '"abc' | "$BIN" -c 'koshkit xargs -I{} echo "[{}]" 2>/dev/null; printf "status=%s\n" "$?"'
+
+echo "--- grep -E reads a repetition after ^ ---"
+printf 'x\n*x\n' | "$BIN" -c 'koshkit grep -E "^*x"'
+printf 'x\n+x\nax\n' | "$BIN" -c 'koshkit grep -E "^+x"'

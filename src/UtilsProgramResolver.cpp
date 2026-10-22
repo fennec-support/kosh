@@ -523,7 +523,7 @@ ProgramResolver::ProgramResolver()
 ProgramResolver::ProgramResolver(Maybe<String> path) : m_path(steal(path)) {}
 
 fn
-ProgramResolver::mark_command_name_indexes_stale() wontthrow -> void
+ProgramResolver::mark_command_name_indexes_stale() throws -> void
 {
   mutable_derived().validated_prefix.clear();
   mutable_derived().command_statuses.clear();
@@ -533,7 +533,7 @@ ProgramResolver::mark_command_name_indexes_stale() wontthrow -> void
 }
 
 fn
-ProgramResolver::clear_command_name_indexes() wontthrow -> void
+ProgramResolver::clear_command_name_indexes() throws -> void
 {
   mutable_derived().command_names.clear();
   mutable_derived().regular_names.clear();
@@ -541,7 +541,7 @@ ProgramResolver::clear_command_name_indexes() wontthrow -> void
 }
 
 fn
-ProgramResolver::mark_derived_indexes_stale() wontthrow -> void
+ProgramResolver::mark_derived_indexes_stale() throws -> void
 {
   mark_command_name_indexes_stale();
   mutable_derived().path_directory_generations.clear();
@@ -550,7 +550,7 @@ ProgramResolver::mark_derived_indexes_stale() wontthrow -> void
 }
 
 fn
-ProgramResolver::clear_derived_indexes() wontthrow -> void
+ProgramResolver::clear_derived_indexes() throws -> void
 {
   mutable_derived().command_names.clear();
   mutable_derived().regular_names.clear();

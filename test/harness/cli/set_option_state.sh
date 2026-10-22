@@ -200,6 +200,9 @@ set +o ignoreeof
 set +o nolog
 case $- in *H*) exit 1;; *) echo histexpand-letter-off;; esac
 printf "ignoreeof=%s\n" "${IGNOREEOF-unset}"
+IGNOREEOF=3
+set -o ignoreeof
+printf "ignoreeof-rebound=%s\n" "$IGNOREEOF"
 '
 
 echo "== keyword assignments enter only the command environment:"

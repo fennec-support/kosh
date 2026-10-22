@@ -44,9 +44,6 @@ append_unexpanded_blanks(String                 &output,
     if (is_run_convertible && target > column && target <= end_column) {
       output += '\t';
       column = target;
-    } else if (has_input_tab && target == column) {
-      output += '\t';
-      column++;
     } else {
       output += ' ';
       column++;
@@ -106,6 +103,16 @@ Unexpand::execute(const ExecContext               &ec,
       let const should_convert = should_convert_all || !has_nonblank;
 
       if (should_convert && (byte == ' ' || byte == '\t')) {
+        /* past the last tab stop no tab can stand for blanks, so they are
+           copied as they are. */
+        if (utils::get_next_tab_column(column, tab_stops) == column) {
+          do_flush_blanks();
+          output += byte;
+          column++;
+
+          continue;
+        }
+
         if (!has_pending_blanks) {
           blank_start_column = column;
           has_pending_blanks = true;
