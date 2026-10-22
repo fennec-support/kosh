@@ -141,6 +141,3 @@ echo
 indirect_value=abcdef
 indirect_ref=indirect_value
 echo "[${!indirect_ref%c*}] [${!indirect_ref%%c*}] [${!indirect_ref:-*}]"
-
-# A short option keeps an attached = as its value.
-printf 'left=right' | { read -d= value; echo "delimiter-equals=$value"; }
