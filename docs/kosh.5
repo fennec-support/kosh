@@ -112,13 +112,19 @@ without a NUL byte. editor.history.max_entries is a decimal integer from 0 to
 2147483647, and editor.wrap_width one from 0 to 65535. init_moods is a
 comma-separated list of moods accepted by
 .BR \-L ,
-such as kosh, sh, bash, and bash-posix.
+such as kosh, sh, bash, and bash-posix. A list with an empty element, such as
+bash,,sh, is invalid.
 .B koshconf
 quotes a written value that starts with a quote or starts or ends with a
 blank. A value containing a newline cannot be written to a file, nor can a
 value containing both quote characters if it needs quoting.
 .B koshconf set \-\-persist
-rejects either value before changing the session.
+rejects either value before changing the session. A line added to a file whose
+lines end in CRLF ends in CRLF. Setting mood to kosh with
+.B \-\-persist
+also removes the lines of the options that the
+.B kosh
+mood fixes, so loading the file produces no warning.
 .PP
 A file may set every option except those fixed by how the shell started,
 such as bash.interpreter.login_shell and

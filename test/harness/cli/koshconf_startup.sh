@@ -169,3 +169,5 @@ echo "== koshconf set validates the list:"
 : >"$conf"
 "$BIN" -c 'koshconf set init_moods sh,bash-posix; koshconf get init_moods
 koshconf set init_moods bash,ksh' 2>&1 | grep -v '^ '
+echo "== an empty element in the list is refused:"
+"$BIN" -c 'koshconf set init_moods bash,,sh' 2>&1 | grep -v '^ '

@@ -13,7 +13,7 @@ do_quiet() {
 }
 
 echo "== an invalid KOSHCONF names the reason:"
-for blob in '%%%' AQ== gQA= BQEAAQEA; do
+for blob in '%%%' AQ== gQA= BQEAAQEA gICAgBA= gICAgJAA; do
   KOSHCONF=$blob do_quiet -c :
   do_quiet -c "koshconf load $blob"
 done
@@ -32,6 +32,21 @@ printf 'mood=bash\r\neditor.auto_close_brackets_and_quotes=off\r\n' >"$conf"
 "$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes on --persist
 koshconf set editor.history.max_entries 9 --persist'
 od -An -c "$conf" | tr -s ' ' | sed 's/ *$//' | grep -v '^$'
+echo "== --persist ends an unterminated last line with the CRLF of the file:"
+printf 'mood=bash\r\neditor.auto_close_brackets_and_quotes=off' >"$conf"
+"$BIN" -c 'koshconf set editor.history.max_entries 9 --persist'
+od -An -c "$conf" | tr -s ' ' | sed 's/ *$//' | grep -v '^$'
+echo "== --persist of the kosh mood drops the lines the mood fixes:"
+printf '%s\n' mood=bash editor.history.max_entries=9 \
+  posix.interpreter.unset_variable_is_error=off \
+  posix.interpreter.pipeline_fails_on_any_stage=off \
+  bash.interpreter.glob_no_match_is_error=off \
+  bash.interpreter.glob_no_match_expands_to_nothing=on \
+  interpreter.arithmetic_uses_big_numbers=off >"$conf"
+"$BIN" -c 'koshconf set mood kosh --persist'
+cat "$conf"
+"$BIN" -c ':' 2>&1
+echo "startup-rc=$?"
 echo "== --persist fills a commented placeholder in place:"
 printf '# Store history here.\n# editor.history.file_path=\nmood=bash\n' >"$conf"
 "$BIN" -c 'koshconf set editor.history.file_path /tmp/h --persist'

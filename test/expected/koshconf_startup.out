@@ -135,3 +135,5 @@ HOME/.config/kosh/kosh.conf:1:12: warning: Unknown mood 'zsh' in the value of 'i
 == koshconf set validates the list:
 sh,bash-posix
 -c:2:25: error: Builtin `koshconf`: Unknown mood 'ksh' in the value of 'init_moods', expected a comma-separated list of 'kosh', 'sh', 'bash', and 'bash-posix'.
+== an empty element in the list is refused:
+-c:1:25: error: Builtin `koshconf`: Invalid value 'bash,,sh' for 'init_moods', expected a comma-separated list of moods without empty elements.

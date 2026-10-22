@@ -692,6 +692,24 @@ find_koshconf_value_problem(const option_descriptor &option,
   if (option.storage == option_storage::InitMoods) {
     let moods = ArrayList<mimic_mood>{heap_allocator()};
 
+    if (!value.trim_blanks().is_empty()) {
+      usize element_start = 0;
+
+      for (usize position = 0; position <= value.count(); position++) {
+        if (position != value.count() && value[position] != ',') continue;
+
+        if (value.substring_of_length(element_start, position - element_start)
+                .trim_blanks()
+                .is_empty())
+        {
+          return do_describe("a comma-separated list of moods without empty "
+                             "elements");
+        }
+
+        element_start = position + 1;
+      }
+    }
+
     if (let const bad_name = parse_mood_list(value, moods);
         bad_name.has_value())
     {
@@ -984,7 +1002,13 @@ read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws
 
   let const do_describe_bad_varint = [&](usize start) -> StringView {
     for (usize scanned = start; scanned < bytes.count(); scanned++) {
-      if ((static_cast<u8>(bytes[scanned]) & 0x80) == 0) {
+      let const byte = static_cast<u8>(bytes[scanned]);
+
+      if (scanned - start == 4 && (byte & 0xf0) != 0) {
+        return "a varint overflows 32 bits";
+      }
+
+      if ((byte & 0x80) == 0) {
         return "a varint is not in its shortest form";
       }
     }
@@ -1466,10 +1490,30 @@ persist_koshconf_setting(const Path              &path,
     }
   }
 
+  let const selected_mood = option.storage == option_storage::Mood
+                                ? parse_mood_name(value.trim_blanks())
+                                : Maybe<mimic_mood>{};
+  let const should_drop_fixed_lines =
+      selected_mood.has_value() && *selected_mood == mimic_mood::Default;
   let did_replace = false;
 
   for (usize position = 0; position < text.count();) {
-    let const line = text.next_line(position);
+    let const line           = text.next_line(position);
+    let const has_terminator = text[position - 1] == '\n';
+
+    if (should_drop_fixed_lines) {
+      let const declared = declared_name(line);
+      let const fixed    = declared.has_value()
+                               ? find_option_by_koshconf_name(*declared)
+                               : nullptr;
+
+      if (fixed != nullptr && fixed->is_fixed_in_kosh_mood &&
+          fixed->type != option_type::String)
+      {
+        continue;
+      }
+    }
+
     let const name = did_replace && !has_setting_line
                          ? Maybe<StringView>{}
                          : do_find_name(line, !has_setting_line);
@@ -1488,7 +1532,7 @@ persist_koshconf_setting(const Path              &path,
     }
 
     contents += line;
-    contents += '\n';
+    contents += has_terminator ? StringView{"\n"} : line_end;
   }
 
   if (!did_replace) {
