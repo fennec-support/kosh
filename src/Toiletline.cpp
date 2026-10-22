@@ -1388,6 +1388,17 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 
       if (has_highlighted_spans) {
         let const scanned_before = highlighted_line.view();
+        let const shorter_length = scanned_before.length < scanned.length
+                                       ? scanned_before.length
+                                       : scanned.length;
+
+        /* whole blocks first, then the bytes of the block that differs. */
+        while (same_byte_count + 256 <= shorter_length &&
+               memcmp(scanned_before.data + same_byte_count,
+                      scanned.data + same_byte_count, 256) == 0)
+        {
+          same_byte_count += 256;
+        }
 
         while (same_byte_count < scanned_before.length &&
                same_byte_count < scanned.length &&
@@ -1433,9 +1444,17 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       for (let const &span : result)
         highlighted_spans.push(span);
 
-      highlighted_codepoint_marks.clear();
-      for (usize mark = 0; mark <= highlighted_line.length();
-           mark += CODEPOINT_MARK_BYTE_COUNT)
+      /* the marks at or before the first changed byte still hold. */
+      let const kept_mark_count =
+          same_byte_count / CODEPOINT_MARK_BYTE_COUNT + 1;
+
+      if (kept_mark_count < highlighted_codepoint_marks.count()) {
+        highlighted_codepoint_marks.truncate(kept_mark_count);
+      }
+
+      for (usize mark =
+               highlighted_codepoint_marks.count() * CODEPOINT_MARK_BYTE_COUNT;
+           mark <= highlighted_line.length(); mark += CODEPOINT_MARK_BYTE_COUNT)
       {
         let const previous = highlighted_codepoint_marks.is_empty()
                                  ? 0
@@ -1557,18 +1576,32 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       }
     };
 
-    usize covered_end = 0;
+    /* a byte offset is never below its codepoint offset, so a span that ends
+       at or before visible_start in bytes is above the drawn rows. the spans
+       are sorted and apart, so their ends are sorted too. */
+    usize first_drawn = 0;
+    usize last_above  = highlighted_spans.count();
 
-    for (let const &span : highlighted_spans) {
+    while (first_drawn < last_above) {
+      let const middle = first_drawn + (last_above - first_drawn) / 2;
+
+      if (highlighted_spans[middle].end <= out->visible_start)
+        first_drawn = middle + 1;
+      else
+        last_above = middle;
+    }
+
+    usize covered_end =
+        first_drawn > 0 ? highlighted_spans[first_drawn - 1].end : 0;
+
+    for (usize span_index = first_drawn; span_index < highlighted_spans.count();
+         span_index++)
+    {
+      let const &span = highlighted_spans[span_index];
+
       if (filled >= out->capacity) break;
       /* the spans below the drawn rows color nothing on screen. */
       if (codepoint_position >= out->visible_end) break;
-      /* a byte offset is never below its codepoint offset, so a span that
-         ends at or before visible_start in bytes is above the drawn rows. */
-      if (span.end <= out->visible_start) {
-        covered_end = span.end;
-        continue;
-      }
 
       do_push_styled(covered_end, span.start, koshka::StringView{});
       do_push_styled(span.start, span.end, theme.style_for(span.role));
