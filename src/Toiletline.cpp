@@ -824,7 +824,14 @@ run_line_editor(koshka::EvalContext &context,
   let const temp_path = koshka::os::write_to_named_temp_file(
       koshka::Path::temp_directory(), "kosh-edit", line);
 
-  if (!temp_path.has_value()) return false;
+  if (!temp_path.has_value()) {
+    report_selector_failure_above_repainted_prompt(
+        koshka::StringView{"Unable to write the line to a temporary file: "} +
+            koshka::os::last_system_error_message(),
+        LINE_EDITOR_NOTE, true);
+
+    return false;
+  }
   defer {
     unused(koshka::os::remove_file(temp_path->text().view()));
   };
@@ -885,7 +892,15 @@ run_line_editor(koshka::EvalContext &context,
 
   let edited = temp_path->read_entire_file();
 
-  if (!edited.has_value()) return false;
+  if (!edited.has_value()) {
+    report_selector_failure_above_repainted_prompt(
+        koshka::StringView{"Unable to read the edited line from '"} +
+            temp_path->text().view() +
+            "': " + koshka::os::last_system_error_message(),
+        LINE_EDITOR_NOTE, false);
+
+    return false;
+  }
 
   edited->normalize_crlf_line_endings();
 

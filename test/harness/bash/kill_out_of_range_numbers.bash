@@ -15,3 +15,8 @@ kill -s cont $$
 echo "lowercase-name=$?"
 kill -s sigcont $$
 echo "lowercase-prefixed-name=$?"
+# A -- after the signal ends the options, as in bash.
+kill -0 -- $$
+echo "dashes-after-signal=$?"
+kill -s 0 -- $$
+echo "dashes-after-named-signal=$?"

@@ -32,7 +32,8 @@ namespace {
 /* the editor holds a buffer of at most this many bytes. */
 constexpr usize SLURP_MAX_BYTE_COUNT = 65534;
 
-/* true when text has no NUL byte and is well-formed UTF-8. */
+/* true when text has no NUL byte and is well-formed UTF-8, with no overlong
+   form, surrogate, or codepoint above U+10FFFF, as the editor requires. */
 fn
 is_text(StringView text) wontthrow -> bool
 {
@@ -48,21 +49,40 @@ is_text(StringView text) wontthrow -> bool
     }
 
     usize continuation_count = 0;
+    u32   codepoint          = 0;
 
-    if ((lead & 0xe0) == 0xc0 && lead >= 0xc2) {
+    if ((lead & 0xe0) == 0xc0) {
       continuation_count = 1;
+      codepoint          = lead & 0x1f;
     } else if ((lead & 0xf0) == 0xe0) {
       continuation_count = 2;
-    } else if ((lead & 0xf8) == 0xf0 && lead <= 0xf4) {
+      codepoint          = lead & 0x0f;
+    } else if ((lead & 0xf8) == 0xf0) {
       continuation_count = 3;
+      codepoint          = lead & 0x07;
     } else {
       return false;
     }
 
     if (position + continuation_count >= text.length) return false;
 
-    for (usize i = 1; i <= continuation_count; i++)
-      if ((static_cast<u8>(text[position + i]) & 0xc0) != 0x80) return false;
+    for (usize i = 1; i <= continuation_count; i++) {
+      let const byte = static_cast<u8>(text[position + i]);
+
+      if ((byte & 0xc0) != 0x80) return false;
+
+      codepoint = (codepoint << 6) | (byte & 0x3f);
+    }
+
+    let const minimum = continuation_count == 1   ? 0x80u
+                        : continuation_count == 2 ? 0x800u
+                                                  : 0x10000u;
+
+    if (codepoint < minimum || codepoint > 0x10ffff ||
+        (codepoint >= 0xd800 && codepoint <= 0xdfff))
+    {
+      return false;
+    }
 
     position += continuation_count + 1;
   }

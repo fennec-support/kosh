@@ -583,6 +583,16 @@ Sort::execute(const ExecContext               &ec,
   let const is_last_resort_enabled =
       !FLAG_SORT_STABLE.is_enabled() && !is_unique;
 
+  if (is_check && operands.count() > 1) {
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
+                            "The operand '" +
+                                String{cxt.scratch_allocator(), operands[1]} +
+                                "' is not allowed with a check",
+                            "Check one file at a time");
+
+    return 2;
+  }
+
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
 
@@ -628,6 +638,9 @@ Sort::execute(const ExecContext               &ec,
           sort_entry{content.next_line(position), collected_lines.count()});
     }
   }
+
+  /* an input that cannot be read leaves no partial output. */
+  if (status != 0) return status;
 
   if (is_check) {
     for (usize index = 1; index < collected_lines.count(); index++) {

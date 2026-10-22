@@ -147,10 +147,6 @@ apple
 -c:1:1: error: Koshkit `sort`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit sort sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-alpha
-beta
-middle
-zulu
 status=2
 --- sort repeated standard input ---
 alpha
@@ -448,10 +444,11 @@ status=1
      1 |  koshkit sort -c sort-keys.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 status=1
--c:1:1: error: Koshkit `sort`: sort-a.txt:2: disorder: alpha.
+-c:1:28: error: Koshkit `sort`: The operand 'sort-b.txt' is not allowed with a check.
      1 |  koshkit sort -c sort-a.txt sort-b.txt; printf "status=%s\n" "$?"
-       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-status=1
+       |                             ^~~~~~~~~~
+note: Check one file at a time.
+status=2
 -c:1:1: error: Koshkit `sort`: sort-keys.txt:2: disorder: a 10 y.
      1 |  koshkit sort -u -c sort-keys.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

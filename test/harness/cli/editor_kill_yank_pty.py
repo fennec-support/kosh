@@ -886,6 +886,9 @@ def run_slurp_checks(binary, directory, command_directory, report):
         handle.write("first note\nsecond note\n")
     with open(binary_file, "wb") as handle:
         handle.write(b"a\0b")
+    surrogate_file = os.path.join(directory, "slurp-surrogate")
+    with open(surrogate_file, "wb") as handle:
+        handle.write(b"keep\xed\xa0\x80me\n")
     locked_directory = os.path.join(directory, "slurp-locked")
     locked = os.path.join(locked_directory, "kept.txt")
     os.mkdir(locked_directory)
@@ -1284,6 +1287,14 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("slurp-refuses-a-binary-file", session,
                       lambda screen: any("is not a text file" in line
                                          for line in screen.get_lines())
+                      and is_line("")(screen))
+
+        # The editor holds no surrogate, so a file with one is refused
+        # instead of opening empty.
+        session.send(b"slurp slurp-surrogate\r")
+        report.record("slurp-refuses-a-surrogate", session,
+                      lambda screen: sum("is not a text file" in line
+                                         for line in screen.get_lines()) == 2
                       and is_line("")(screen))
     finally:
         session.close()

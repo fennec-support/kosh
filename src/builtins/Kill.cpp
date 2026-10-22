@@ -123,6 +123,12 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       signal_number = do_resolve_signal(args[1].substring(1), 1);
       first_target  = 2;
     }
+
+    if (first_target > 1 && first_target < args.count() &&
+        args[first_target] == "--" && args[1] != "--")
+    {
+      first_target++;
+    }
   }
 
   if (first_target >= args.count())
