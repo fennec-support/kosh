@@ -593,3 +593,11 @@ printf 'x\nx\ny\n' > a
 echo "--- comm reports one disorder for a paired line ---"
 printf 'b\na\n' > disorder
 "$BIN" -c 'koshkit comm --check-order disorder disorder 2>/dev/null; printf "status=%s\n" "$?"'
+
+echo "--- sort -m merges the sources as given ---"
+printf 'c\na\nb\n' > merge1
+printf 'b\nd\na\n' > merge2
+"$BIN" -c 'koshkit sort -m merge1 merge2'
+
+echo "--- tr maps past a long set1 repeat ---"
+echo ab | "$BIN" -c "koshkit tr '[a*70000]b' '[x*69999]yz'"

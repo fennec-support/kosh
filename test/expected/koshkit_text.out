@@ -1323,3 +1323,12 @@ x
 --- comm reports one disorder for a paired line ---
 		b
 status=1
+--- sort -m merges the sources as given ---
+b
+c
+a
+b
+d
+a
+--- tr maps past a long set1 repeat ---
+yz

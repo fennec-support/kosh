@@ -1036,11 +1036,14 @@ Sort::execute(const ExecContext               &ec,
   }
 
   let collected_lines = ArrayList<sort_entry>{cxt.scratch_allocator()};
+  let source_starts   = ArrayList<usize>{cxt.scratch_allocator()};
 
   collected_lines.reserve(line_count);
 
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let &source_result = source_results[source_index];
+
+    source_starts.push(collected_lines.count());
 
     if (!source_result.content.has_value()) {
       os::set_last_system_error(source_result.error_number);
@@ -1087,10 +1090,48 @@ Sort::execute(const ExecContext               &ec,
     return status;
   }
 
-  collected_lines.sort([&](const sort_entry &left, const sort_entry &right) {
-    return compare_sort_entries(left, right, settings, is_last_resort_enabled) <
-           0;
-  });
+  /* -m merges the sources as given, as GNU sort does: each step takes the
+     least first line among the sources, and an earlier source wins a tie, so
+     a source that is not sorted keeps its own order. */
+  if (FLAG_SORT_MERGE.is_enabled()) {
+    source_starts.push(collected_lines.count());
+
+    let merged = ArrayList<sort_entry>{cxt.scratch_allocator()};
+    let heads  = ArrayList<usize>{cxt.scratch_allocator()};
+
+    merged.reserve(collected_lines.count());
+    for (usize source_index = 0; source_index < sources.count(); source_index++)
+      heads.push(source_starts[source_index]);
+
+    loop {
+      usize chosen = SIZE_MAX;
+
+      for (usize source_index = 0; source_index < heads.count(); source_index++)
+      {
+        if (heads[source_index] == source_starts[source_index + 1]) continue;
+
+        if (chosen == SIZE_MAX ||
+            compare_sort_entries(collected_lines[heads[source_index]],
+                                 collected_lines[heads[chosen]], settings,
+                                 is_last_resort_enabled) < 0)
+        {
+          chosen = source_index;
+        }
+      }
+
+      if (chosen == SIZE_MAX) break;
+
+      merged.push(collected_lines[heads[chosen]]);
+      heads[chosen]++;
+    }
+
+    collected_lines = steal(merged);
+  } else {
+    collected_lines.sort([&](const sort_entry &left, const sort_entry &right) {
+      return compare_sort_entries(left, right, settings,
+                                  is_last_resort_enabled) < 0;
+    });
+  }
 
   let output_descriptor = Maybe<os::descriptor>{};
 

@@ -353,10 +353,10 @@ parse_tr_set(StringView             set,
   return None;
 }
 
-/* a [c*n] repeat in set1 expands to at most 65536 bytes. a repeat in set2
-   needs at most one byte more than set1, which keeps every mapping and every
-   length comparison with set1. */
-static constexpr usize SET1_REPEAT_LIMIT = 65536;
+/* a [c*n] repeat in set1 holds at most 1048576 bytes, and a larger one is an
+   error. a repeat in set2 needs at most one byte more than set1, which keeps
+   every mapping and every length comparison with set1. */
+static constexpr usize SET1_REPEAT_LIMIT = 1048576;
 
 static fn
 expand_tr_set(tr_set &set, usize repeat_limit) throws -> void
@@ -535,6 +535,13 @@ Tr::execute(const ExecContext               &ec,
       return do_fail(operand_locations[0],
                      "The [c*] repeat cannot appear in set1",
                      "Give the repeat a count, such as `[c*3]`");
+    }
+
+    if (element.kind == tr_element_kind::Repeat &&
+        element.repeat_count > SET1_REPEAT_LIMIT)
+    {
+      return do_fail(operand_locations[0],
+                     "A repeat in set1 can hold at most 1048576 bytes");
     }
   }
 
