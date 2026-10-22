@@ -212,9 +212,14 @@ struct completion_session
   bool               has_syntax_checked_line{false};
   bool               was_syntax_checked_at_line_end{false};
   koshka::String     analyzed_line{koshka::heap_allocator()};
-  koshka::String     analysis_finding{koshka::heap_allocator()};
-  bool               has_analyzed_line{false};
-  koshka::String     highlighted_line{koshka::heap_allocator()};
+  /* the line and caret of the last idle documentation step that started no
+     load, so the same line does not look for one again. */
+  koshka::String idle_settled_line{koshka::heap_allocator()};
+  usize          idle_settled_cursor{0};
+  bool           has_idle_settled_line{false};
+  koshka::String analysis_finding{koshka::heap_allocator()};
+  bool           has_analyzed_line{false};
+  koshka::String highlighted_line{koshka::heap_allocator()};
   koshka::ArrayList<koshka::highlight_span> highlighted_spans{
       koshka::heap_allocator()};
   koshka::ArrayList<koshka::completion::highlight_restart> highlighted_restarts{
@@ -1794,12 +1799,25 @@ completion_session::idle(const char *buffer, size_t cursor) -> int
       return outcome;
     }
 
+    if (has_idle_settled_line && !has_pending_gather &&
+        idle_settled_cursor == cursor && idle_settled_line.view() == line)
+    {
+      return outcome;
+    }
+
     let const progress = koshka::completion::step_idle_documentation(
         line, cursor, *context, !has_pending_gather);
 
     if (progress.did_finish_load) outcome |= TL_IDLE_REFRESH;
     if (progress.is_loading) outcome |= TL_IDLE_AGAIN;
     if (!progress.is_loading) has_pending_gather = false;
+
+    has_idle_settled_line = !progress.is_loading && !progress.did_finish_load;
+    if (has_idle_settled_line) {
+      idle_settled_line.clear();
+      idle_settled_line.append(line);
+      idle_settled_cursor = cursor;
+    }
 
     return outcome;
   } catch (...) {
