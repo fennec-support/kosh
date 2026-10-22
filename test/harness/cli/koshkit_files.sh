@@ -351,3 +351,9 @@ if [ "${OS-}" != Windows_NT ]; then
   : > chown-login.txt
   "$BIN" -c 'koshkit chown "$(koshkit id -un):" chown-login.txt; printf "status=%s\n" "$?"'
 fi
+
+echo "--- rm takes an optional flag value only when attached ---"
+mkdir rm-attached && touch rm-attached/never rm-attached/other
+"$BIN" -c 'cd rm-attached && koshkit rm --interactive never other </dev/null 2>/dev/null; koshkit ls'
+"$BIN" -c 'cd rm-attached && koshkit rm --interactive=never never; koshkit ls'
+"$BIN" -c 'koshkit rm -r rm-attached'

@@ -53,7 +53,8 @@
   T__FLAG_OPTIONAL7(var_name, short_name, long_name, NoSection, description,   \
                     acceptor, value_name)
 /* an optional value that only an attached form gives, -iR or --replace=R;
-   the next argument stays an operand. */
+   the next argument stays an operand, so an operand that matches a value,
+   such as a file called never after rm --interactive, is never taken. */
 #define FLAG_OPTIONAL_ATTACHED(var_name, short_name, long_name, description,   \
                                acceptor, value_name)                           \
   static koshka::FlagOptionalValue concat_literal(FLAG_, var_name)             \

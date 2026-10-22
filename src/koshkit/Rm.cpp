@@ -73,25 +73,26 @@ FLAG(RM_INTERACTIVE_ONCE,
      'I',
      "",
      "Ask once before removing more than three paths or a tree.");
-FLAG_OPTIONAL(RM_INTERACTIVE_WHEN,
-              '\0',
-              "interactive",
-              "Ask never, once as with -I, or always as with -i.",
-              is_interaction_word,
-              "when");
+FLAG_OPTIONAL_ATTACHED(RM_INTERACTIVE_WHEN,
+                       '\0',
+                       "interactive",
+                       "Ask never, once as with -I, or always as with -i.",
+                       is_interaction_word,
+                       "when");
 FLAG(RM_VERBOSE, Bool, 'v', "verbose", "Print each removed path.");
 FLAG(RM_ONE_FILE_SYSTEM,
      Bool,
      'x',
      "one-file-system",
      "Skip a directory on another file system.");
-FLAG_OPTIONAL(RM_PRESERVE_ROOT,
-              '\0',
-              "preserve-root",
-              "Refuse to remove '/' recursively; with all, also refuse an "
-              "operand on another device than its parent.",
-              is_preserve_root_word,
-              "all");
+FLAG_OPTIONAL_ATTACHED(
+    RM_PRESERVE_ROOT,
+    '\0',
+    "preserve-root",
+    "Refuse to remove '/' recursively; with all, also refuse an "
+    "operand on another device than its parent.",
+    is_preserve_root_word,
+    "all");
 FLAG(RM_NO_PRESERVE_ROOT,
      Bool,
      '\0',

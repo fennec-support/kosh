@@ -160,3 +160,7 @@ status=1
 root
 --- chown owner colon sets the login group ---
 status=0
+--- rm takes an optional flag value only when attached ---
+never
+other
+other
