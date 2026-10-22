@@ -15,6 +15,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
+#include "../UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[-46aHlnptux] [--live [seconds]]",
                   "The evilss utility can report visible network sockets.");
@@ -78,12 +79,6 @@ struct socket_row
   String process_id;
   String process_name;
   String owner;
-};
-
-struct owner_text_entry
-{
-  u32    owner_id;
-  String text;
 };
 
 struct process_pid_order
@@ -198,22 +193,9 @@ append_network_socket_report(String                              &output,
 
   let const processes = os::describe_processes(owner_process_ids)
                             .make_sorted(process_pid_order{});
-  let owner_texts = ArrayList<owner_text_entry>{allocator};
 
   let const do_get_owner_text = [&](u32 owner_id) throws -> String {
-    for (let const &entry : owner_texts) {
-      if (entry.owner_id == owner_id)
-        return String{allocator, entry.text.view()};
-    }
-
-    let const owner_name = os::uid_to_username(owner_id);
-
-    owner_texts.push(owner_text_entry{
-        owner_id, owner_name.has_value() ? String{allocator, owner_name->view()}
-                                         : String::from(owner_id, allocator)
-    });
-
-    return String{allocator, owner_texts.back().text.view()};
+    return utils::user_name_or_id(owner_id, allocator);
   };
 
   let rows                = ArrayList<socket_row>{allocator};

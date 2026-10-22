@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "base/Allocator.hpp"
 #include "base/Common.hpp"
 #include "base/Maybe.hpp"
 #include "base/Path.hpp"
@@ -24,6 +25,14 @@ fn
 resolve_user_id(StringView text) throws -> Maybe<u32>;
 fn
 resolve_group_id(StringView text) throws -> Maybe<u32>;
+
+/* the account or group name of id, or its decimal text when no entry exists.
+   The result is allocated in allocator. A small per-thread cache answers
+   repeated ids for one second. */
+fn
+user_name_or_id(u32 id, Allocator allocator) throws -> String;
+fn
+group_name_or_id(u32 id, Allocator allocator) throws -> String;
 
 struct ownership_request
 {

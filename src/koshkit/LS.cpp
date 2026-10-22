@@ -16,6 +16,7 @@
 #include "../Platform.hpp"
 #include "../Toiletline.hpp"
 #include "../Utils.hpp"
+#include "../UtilsOwnership.hpp"
 #include "../base/Path.hpp"
 #include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
@@ -192,58 +193,6 @@ struct long_entry
   String name;
   u64    blocks{0};
 };
-
-struct id_name_entry
-{
-  id_name_entry(u32 id, String name) : id(id), name(steal(name)) {}
-
-  u32    id;
-  String name;
-};
-
-enum class id_name_kind : u8
-{
-  Owner,
-  Group,
-};
-
-struct id_name_cache
-{
-  explicit id_name_cache(Allocator allocator)
-      : uid_cache(allocator), gid_cache(allocator)
-  {}
-
-  ArrayList<id_name_entry> uid_cache;
-  ArrayList<id_name_entry> gid_cache;
-};
-
-/* memory: a miss pushes one id_name_entry onto cache and allocates its name in
-           allocator. the cache keeps every entry until its id_name_cache is
-           destroyed.
-   time:   O(k) for the linear scan, where k is the number of cached ids of
-           the same kind. a miss calls os::uid_to_username() or
-           os::gid_to_groupname() once, which may read the account database. */
-static fn
-cached_id_name(u32            id,
-               id_name_kind   kind,
-               id_name_cache &id_names,
-               Allocator      allocator) throws -> StringView
-{
-  let &cache =
-      kind == id_name_kind::Owner ? id_names.uid_cache : id_names.gid_cache;
-
-  for (let const &entry : cache)
-    if (entry.id == id) return entry.name.view();
-
-  let const looked_up = kind == id_name_kind::Owner ? os::uid_to_username(id)
-                                                    : os::gid_to_groupname(id);
-  let       name = looked_up.has_value() ? String{allocator, looked_up->view()}
-                                         : String::from(id, allocator);
-
-  cache.push(id_name_entry{id, steal(name)});
-
-  return cache.back().name.view();
-}
 
 static fn
 append_padded(String    &output,
@@ -520,7 +469,6 @@ collect_directory(const Path            &directory,
 static fn
 build_long_entry_or_sparse_row(const listing_entry   &entry,
                                const listing_options &options,
-                               id_name_cache         &id_names,
                                Allocator              allocator) throws -> long_entry
 {
   long_entry row{allocator};
@@ -546,12 +494,8 @@ build_long_entry_or_sparse_row(const listing_entry   &entry,
     row.owner = String::from(status.owner_id, allocator);
     row.group = String::from(status.group_id, allocator);
   } else {
-    row.owner = String{row.owner.allocator(),
-                       cached_id_name(status.owner_id, id_name_kind::Owner,
-                                      id_names, allocator)};
-    row.group = String{row.group.allocator(),
-                       cached_id_name(status.group_id, id_name_kind::Group,
-                                      id_names, allocator)};
+    row.owner = utils::user_name_or_id(status.owner_id, allocator);
+    row.group = utils::group_name_or_id(status.group_id, allocator);
   }
 
   row.size   = FLAG_LS_HUMAN.is_enabled()
@@ -750,7 +694,6 @@ static fn
 render_entries(const ArrayList<listing_entry> &entries,
                const listing_options          &options,
                bool                            should_print_total,
-               id_name_cache                  &id_names,
                String                         &output,
                Allocator                       allocator) throws -> void
 {
@@ -765,8 +708,7 @@ render_entries(const ArrayList<listing_entry> &entries,
   rows.reserve(entries.count());
 
   for (let const &entry : entries)
-    rows.push(
-        build_long_entry_or_sparse_row(entry, options, id_names, allocator));
+    rows.push(build_long_entry_or_sparse_row(entry, options, allocator));
 
   if (should_print_total) {
     output += long_total_in_1k_blocks(rows, allocator);
@@ -852,12 +794,11 @@ render_tree_level(StringView             directory,
 struct ls_run
 {
   ls_run(const ExecContext &ec, EvalContext &cxt, Allocator allocator)
-      : ec(ec), cxt(cxt), id_names(allocator), output(allocator)
+      : ec(ec), cxt(cxt), output(allocator)
   {}
 
   const ExecContext &ec;
   EvalContext       &cxt;
-  id_name_cache      id_names;
   String             output;
   i32                status{0};
   bool               has_printed_block{false};
@@ -901,7 +842,7 @@ render_directory_block(StringView             directory,
 
   run.has_printed_block = true;
 
-  render_entries(*entries, options, true, run.id_names, run.output, allocator);
+  render_entries(*entries, options, true, run.output, allocator);
 
   if (!options.is_recursive) return;
 
@@ -1136,8 +1077,7 @@ LS::execute(const ExecContext               &ec,
     let const sorted_file_entries = prepare_entries(
         steal(file_entries), options, StringView{}, allocator, true);
 
-    render_entries(sorted_file_entries, options, false, run.id_names,
-                   run.output, allocator);
+    render_entries(sorted_file_entries, options, false, run.output, allocator);
     run.has_printed_block = true;
   }
 

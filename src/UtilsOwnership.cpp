@@ -12,6 +12,8 @@
 #include "Eval.hpp"
 #include "Koshkit.hpp"
 #include "Platform.hpp"
+#include "base/ArrayList.hpp"
+#include "base/String.hpp"
 
 namespace koshka::utils {
 
@@ -105,6 +107,77 @@ resolve_group_id(StringView text) throws -> Maybe<u32>
     return numeric;
 
   return os::groupname_to_gid(text);
+}
+
+namespace {
+
+struct id_name_entry
+{
+  id_name_entry(u32 id, String name) : id(id), name(steal(name)) {}
+
+  u32    id;
+  String name;
+};
+
+struct id_name_cache
+{
+  static constexpr usize ENTRY_LIMIT = 64;
+  static constexpr u64   LIFETIME_NS = 1'000'000'000;
+
+  id_name_cache() : users(heap_allocator()), groups(heap_allocator()) {}
+
+  ArrayList<id_name_entry> users;
+  ArrayList<id_name_entry> groups;
+  u64                      filled_nanos{0};
+};
+
+} /* namespace */
+
+static fn
+cached_name_or_id(u32 id, bool is_group, Allocator allocator) throws
+    -> String
+{
+  static thread_local id_name_cache cache;
+
+  let const now = os::monotonic_nanos();
+
+  if (cache.filled_nanos == 0 ||
+      now - cache.filled_nanos > id_name_cache::LIFETIME_NS)
+  {
+    cache.users.clear();
+    cache.groups.clear();
+    cache.filled_nanos = now;
+  }
+
+  let &entries = is_group ? cache.groups : cache.users;
+
+  for (let const &entry : entries) {
+    if (entry.id == id) return String{allocator, entry.name.view()};
+  }
+
+  let const looked_up =
+      is_group ? os::gid_to_groupname(id) : os::uid_to_username(id);
+
+  if (entries.count() >= id_name_cache::ENTRY_LIMIT) entries.clear();
+
+  entries.push(id_name_entry{
+      id, looked_up.has_value() ? String{heap_allocator(), looked_up->view()}
+                                : String::from(id, heap_allocator())
+  });
+
+  return String{allocator, entries.back().name.view()};
+}
+
+fn
+user_name_or_id(u32 id, Allocator allocator) throws -> String
+{
+  return cached_name_or_id(id, false, allocator);
+}
+
+fn
+group_name_or_id(u32 id, Allocator allocator) throws -> String
+{
+  return cached_name_or_id(id, true, allocator);
 }
 
 fn

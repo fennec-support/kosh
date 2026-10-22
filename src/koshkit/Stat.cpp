@@ -13,6 +13,7 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 #include "../Utils.hpp"
+#include "../UtilsOwnership.hpp"
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL("[-Lft] [-c format] [--printf=format] file ...",
@@ -334,12 +335,8 @@ render_file_directive(String               &output,
     return;
 
   case 'G': {
-    let const name = os::gid_to_groupname(status.group_id);
-
     append_padded(output,
-                  name.has_value()
-                      ? name->view()
-                      : decimal_of(status.group_id, allocator).view(),
+                  utils::group_name_or_id(status.group_id, allocator).view(),
                   spec, stat_value_kind::Text);
 
     return;
@@ -434,12 +431,8 @@ render_file_directive(String               &output,
     return;
 
   case 'U': {
-    let const name = os::uid_to_username(status.owner_id);
-
     append_padded(output,
-                  name.has_value()
-                      ? name->view()
-                      : decimal_of(status.owner_id, allocator).view(),
+                  utils::user_name_or_id(status.owner_id, allocator).view(),
                   spec, stat_value_kind::Text);
 
     return;

@@ -7,4 +7,13 @@
   koshkit stat -c '%n=%F' stat-file stat-link
   koshkit stat -c '%n=%s' stat-file stat-file stat-missing stat-file-two stat-file
   printf 'duplicate-status=%s\n' "$?"
+  stat_owner=$(koshkit stat -c '%U:%G' stat-file)
+  id_owner=$(koshkit id -un):$(koshkit id -gn)
+  ls_line=$(koshkit ls -l stat-file)
+  read -r _ _ ls_user ls_group _ <<< "$ls_line"
+  ls_owner=$ls_user:$ls_group
+  [[ $stat_owner == "$id_owner" ]]
+  printf 'stat-owner-is-id=%s\n' "$?"
+  [[ $ls_owner == "$id_owner" ]]
+  printf 'ls-owner-is-id=%s\n' "$?"
 )

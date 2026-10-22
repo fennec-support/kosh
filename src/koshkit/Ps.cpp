@@ -12,6 +12,7 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 #include "../Utils.hpp"
+#include "../UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[aux]", "List the running processes.");
 
@@ -25,30 +26,6 @@ FLAG(PS_WIDE, Bool, 'w', "", "Use a wide output format.");
 REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(Ps);
 
 namespace koshka::koshkit {
-
-struct uid_name_cache_entry
-{
-  uid_name_cache_entry(u32 uid, String name) : uid(uid), name(steal(name)) {}
-  u32    uid;
-  String name;
-};
-
-static fn
-owner_name_for_uid(u32                              uid,
-                   ArrayList<uid_name_cache_entry> &cache,
-                   Allocator                        allocator) throws -> String
-{
-  for (let const &entry : cache)
-    if (entry.uid == uid) return entry.name.clone();
-
-  let const looked_up = os::uid_to_username(uid);
-  let       name = looked_up.has_value() ? String{allocator, looked_up->view()}
-                                         : String::from(uid, allocator);
-
-  cache.push(uid_name_cache_entry{uid, name.clone()});
-
-  return name;
-}
 
 static fn
 append_left(String &output, StringView text, usize width) throws -> void
@@ -65,18 +42,15 @@ append_right(String &output, StringView text, usize width) throws
   output += text;
 }
 
-/* memory: uid_cache, owners, and the number texts are allocated in allocator.
-   time:   one owner_name_for_uid() call per process. each call scans the cache
-           linearly, so the lookups cost O(processes * distinct uids). one
-           os::uid_to_username() call runs for each distinct uid. */
+/* memory: owners and the number texts are allocated in allocator.
+   time:   one user_name_or_id() call per process. */
 static fn
 render_aux_without_sampled_columns(
     const ArrayList<os::process_entry> &processes,
     String                             &output,
     Allocator                           allocator) throws -> void
 {
-  ArrayList<uid_name_cache_entry> uid_cache{allocator};
-  ArrayList<String>               owners{allocator};
+  ArrayList<String> owners{allocator};
 
   owners.reserve(processes.count());
 
@@ -86,7 +60,7 @@ render_aux_without_sampled_columns(
   usize rss_width  = 3;
 
   for (let const &process : processes) {
-    let owner = owner_name_for_uid(process.owner_id, uid_cache, allocator);
+    let owner = utils::user_name_or_id(process.owner_id, allocator);
 
     if (owner.count() > user_width) user_width = owner.count();
 

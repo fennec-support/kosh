@@ -10,3 +10,5 @@ stat-file=4
 stat-file-two=4
 stat-file=4
 duplicate-status=1
+stat-owner-is-id=0
+ls-owner-is-id=0

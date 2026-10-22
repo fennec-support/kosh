@@ -17,6 +17,7 @@
 #include "../Platform.hpp"
 #include "../Toiletline.hpp"
 #include "../Utils.hpp"
+#include "../UtilsOwnership.hpp"
 #include "../base/Arena.hpp"
 #include "../base/StaticStringMap.hpp"
 
@@ -424,14 +425,11 @@ append_label(String                      &output,
   }
 
   if (FLAG_EVILPS_ALL.is_enabled() || FLAG_EVILPS_OWNER.is_enabled()) {
-    let const owner = os::uid_to_username(node.owner_id);
+    let const owner = utils::user_name_or_id(node.owner_id, allocator);
 
     output += ",";
-    append_report_text(output,
-                       owner.has_value()
-                           ? owner->view()
-                           : String::from(node.owner_id, allocator).view(),
-                       colors::soft(colors::ansi::YELLOW), should_color);
+    append_report_text(output, owner.view(), colors::soft(colors::ansi::YELLOW),
+                       should_color);
   }
 
   let const should_show_cpu =
