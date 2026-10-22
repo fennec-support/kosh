@@ -134,7 +134,7 @@ SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
   return &*m_literal_command_lookup;
 }
 
-hot /* the source of command with an alias of its command word replaced by the
+/* the source of command with an alias of its command word replaced by the
    alias body, or None when the word is no alias. a body that ends in a blank
    also replaces the next word when it is an alias, and the first word of such
    a replacement is an alias too when it names one, as bash reads the
@@ -243,7 +243,7 @@ alias_expanded_source(const SimpleCommand &command,
   return text;
 }
 
-fn
+hot fn
 SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
     throws -> status_result
 {

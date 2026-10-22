@@ -292,6 +292,90 @@ print_environment(const ExecContext &ec, EvalContext &cxt) throws
   ec.print_to_stdout(output);
 }
 
+/* the status a flag error or a missing operand exits with: that of the
+   program the utility mirrors, measured with an invalid option. kosh's own
+   utilities keep 2. */
+static pure fn
+gnu_usage_status(Utility::Kind kind) wontthrow -> i32
+{
+  switch (kind) {
+  case Utility::Kind::Env:
+  case Utility::Kind::Nice:
+  case Utility::Kind::Nohup:
+  case Utility::Kind::Timeout:  return 125;
+  case Utility::Kind::Flock:
+  case Utility::Kind::Locale:   return 64;
+  case Utility::Kind::Basename:
+  case Utility::Kind::Bc:
+  case Utility::Kind::Cal:
+  case Utility::Kind::Cat:
+  case Utility::Kind::Chgrp:
+  case Utility::Kind::Chmod:
+  case Utility::Kind::Chown:
+  case Utility::Kind::Cksum:
+  case Utility::Kind::Comm:
+  case Utility::Kind::Cp:
+  case Utility::Kind::Csplit:
+  case Utility::Kind::Cut:
+  case Utility::Kind::Date:
+  case Utility::Kind::Df:
+  case Utility::Kind::Dirname:
+  case Utility::Kind::Du:
+  case Utility::Kind::Expand:
+  case Utility::Kind::File:
+  case Utility::Kind::Find:
+  case Utility::Kind::Fold:
+  case Utility::Kind::Fuser:
+  case Utility::Kind::Head:
+  case Utility::Kind::Id:
+  case Utility::Kind::Killall:
+  case Utility::Kind::Link:
+  case Utility::Kind::Ln:
+  case Utility::Kind::Logger:
+  case Utility::Kind::Logname:
+  case Utility::Kind::Mkdir:
+  case Utility::Kind::Mkfifo:
+  case Utility::Kind::Mknod:
+  case Utility::Kind::More:
+  case Utility::Kind::Mv:
+  case Utility::Kind::Nl:
+  case Utility::Kind::Nproc:
+  case Utility::Kind::Od:
+  case Utility::Kind::Paste:
+  case Utility::Kind::Pathchk:
+  case Utility::Kind::Pr:
+  case Utility::Kind::Readlink:
+  case Utility::Kind::Realpath:
+  case Utility::Kind::Renice:
+  case Utility::Kind::Rm:
+  case Utility::Kind::Rmdir:
+  case Utility::Kind::Sed:
+  case Utility::Kind::Seq:
+  case Utility::Kind::Sleep:
+  case Utility::Kind::Split:
+  case Utility::Kind::Stat:
+  case Utility::Kind::Strings:
+  case Utility::Kind::Stty:
+  case Utility::Kind::Sync:
+  case Utility::Kind::Tabs:
+  case Utility::Kind::Tail:
+  case Utility::Kind::Tee:
+  case Utility::Kind::Touch:
+  case Utility::Kind::Tr:
+  case Utility::Kind::Tsort:
+  case Utility::Kind::Uname:
+  case Utility::Kind::Unexpand:
+  case Utility::Kind::Uniq:
+  case Utility::Kind::Unlink:
+  case Utility::Kind::Wc:
+  case Utility::Kind::Who:
+  case Utility::Kind::WhoAmI:
+  case Utility::Kind::Xargs:
+  case Utility::Kind::Yes:      return 1;
+  default:                      return 2;
+  }
+}
+
 fn
 run_util(Utility::Kind                    chosen,
          const ExecContext               &ec,
@@ -302,96 +386,7 @@ run_util(Utility::Kind                    chosen,
   LOG(Debug, "dispatching koshkit utility %d with %zu arguments", ENUM(chosen),
       args.count());
 
-  /* a flag error exits with the status of the program the utility mirrors,
-     measured with an invalid option. kosh's own utilities keep 2. */
-  struct usage_status
-  {
-    StringView name;
-    i32        status;
-  };
-  static constexpr usage_status USAGE_STATUSES[] = {
-      {"basename", 1  },
-      {"cat",      1  },
-      {"chgrp",    1  },
-      {"chmod",    1  },
-      {"chown",    1  },
-      {"cksum",    1  },
-      {"comm",     1  },
-      {"cp",       1  },
-      {"csplit",   1  },
-      {"cut",      1  },
-      {"date",     1  },
-      {"df",       1  },
-      {"dirname",  1  },
-      {"du",       1  },
-      {"env",      125},
-      {"expand",   1  },
-      {"file",     1  },
-      {"find",     1  },
-      {"flock",    64 },
-      {"fold",     1  },
-      {"fuser",    1  },
-      {"head",     1  },
-      {"id",       1  },
-      {"killall",  1  },
-      {"link",     1  },
-      {"ln",       1  },
-      {"locale",   64 },
-      {"logger",   1  },
-      {"logname",  1  },
-      {"mkdir",    1  },
-      {"mkfifo",   1  },
-      {"mknod",    1  },
-      {"more",     1  },
-      {"mv",       1  },
-      {"nice",     125},
-      {"nl",       1  },
-      {"nohup",    125},
-      {"nproc",    1  },
-      {"od",       1  },
-      {"paste",    1  },
-      {"pathchk",  1  },
-      {"pr",       1  },
-      {"readlink", 1  },
-      {"realpath", 1  },
-      {"renice",   1  },
-      {"rm",       1  },
-      {"rmdir",    1  },
-      {"sed",      1  },
-      {"seq",      1  },
-      {"sleep",    1  },
-      {"split",    1  },
-      {"stat",     1  },
-      {"strings",  1  },
-      {"stty",     1  },
-      {"sync",     1  },
-      {"tabs",     1  },
-      {"tail",     1  },
-      {"tee",      1  },
-      {"timeout",  125},
-      {"touch",    1  },
-      {"tr",       1  },
-      {"tsort",    1  },
-      {"uname",    1  },
-      {"uniq",     1  },
-      {"unexpand", 1  },
-      {"unlink",   1  },
-      {"wc",       1  },
-      {"who",      1  },
-      {"whoami",   1  },
-      {"xargs",    1  },
-      {"yes",      1  },
-      {"cal",      1  },
-      {"bc",       1  },
-  };
-  i32 status = 2;
-
-  if (!args.is_empty()) {
-    for (let const &entry : USAGE_STATUSES)
-      if (entry.name == args[0].view()) status = entry.status;
-  }
-
-  let const previous_status = set_flag_usage_status(status);
+  let const previous_status = set_flag_usage_status(gnu_usage_status(chosen));
   defer { unused(set_flag_usage_status(previous_status)); };
 
   switch (chosen) {

@@ -580,3 +580,16 @@ echo "--- a short flag keeps an attached = and an empty value is a null byte ---
 echo 'a=b' | "$BIN" -c 'koshkit cut -d= -f1'
 printf 'a:b\n' | "$BIN" -c 'koshkit cut -d: -f1,2 --output-delimiter=' | od -c | sed -n 1p
 printf 'a\0b\n' | "$BIN" -c 'koshkit cut -d "" -f2'
+
+echo "--- seq counts long integers exactly ---"
+"$BIN" -c 'koshkit seq 99999999999999999999 100000000000000000001'
+"$BIN" -c 'koshkit seq 18446744073709551615 18446744073709551617'
+
+echo "--- uniq group methods are taken only when attached ---"
+printf 'x\nx\ny\n' > a
+"$BIN" -c 'koshkit uniq --group a'
+"$BIN" -c 'koshkit uniq --all-repeated a'
+
+echo "--- comm reports one disorder for a paired line ---"
+printf 'b\na\n' > disorder
+"$BIN" -c 'koshkit comm --check-order disorder disorder 2>/dev/null; printf "status=%s\n" "$?"'

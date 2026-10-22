@@ -166,7 +166,7 @@ Comm::execute(const ExecContext               &ec,
     result                  = reader.next();
     if (result != utils::BufferedLineReader::Result::Line ||
         is_check_disabled || (!is_check_forced && !has_seen_unpairable_line) ||
-        was_disorder_reported[side] ||
+        did_fail_order || was_disorder_reported[side] ||
         !(reader.get_line() < previous_lines[side].view()))
     {
       return;

@@ -1306,3 +1306,20 @@ always
 a
 0000000   a  \0   b  \n
 b
+--- seq counts long integers exactly ---
+99999999999999999999
+100000000000000000000
+100000000000000000001
+18446744073709551615
+18446744073709551616
+18446744073709551617
+--- uniq group methods are taken only when attached ---
+x
+x
+
+y
+x
+x
+--- comm reports one disorder for a paired line ---
+		b
+status=1

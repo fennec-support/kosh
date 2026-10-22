@@ -432,6 +432,87 @@ Seq::execute(const ExecContext               &ec,
     return 0;
   }
 
+  /* non-negative integers of any length count exactly as decimal text with
+     an increment below 200, as GNU seq does; other operands take the long
+     double path below. */
+  let const do_trim_zeros = [](StringView digits) wontthrow -> StringView {
+    while (digits.length > 1 && digits[0] == '0')
+      digits = digits.substring(1);
+
+    return digits;
+  };
+  let const do_is_less = [](StringView left, StringView right) wontthrow {
+    return left.length != right.length
+               ? left.length < right.length
+               : memcmp(left.data, right.data, left.length) < 0;
+  };
+  let const do_is_digits = [](const String &operand) wontthrow -> bool {
+    return !operand.is_empty() && operand.view().is_all_decimal_digits();
+  };
+  bool is_long_integer_sequence = !has_format && !is_equal_width;
+
+  for (let const &operand : operands) {
+    is_long_integer_sequence =
+        is_long_integer_sequence && do_is_digits(operand);
+  }
+
+  if (is_long_integer_sequence && increment.value > 0 && increment.value < 200)
+  {
+    let const first_text = do_trim_zeros(operands[0].view());
+    let       value      = ArrayList<char>{cxt.scratch_allocator()};
+
+    for (usize position = 0; position < first_text.length; position++)
+      value.push(first_text[position]);
+    let const last_text = do_trim_zeros(operands.back().view());
+    let const step      = static_cast<u32>(increment.value);
+
+    let const do_value_view = [&]() wontthrow -> StringView {
+      return StringView{value.begin(), value.count()};
+    };
+
+    if (do_is_less(last_text, do_value_view())) return 0;
+
+    loop {
+      output += do_value_view();
+
+      /* value += step, from the last digit with the carry. */
+      u32 carry = step;
+
+      for (usize position = value.count(); position > 0 && carry != 0;
+           position--)
+      {
+        let const sum = static_cast<u32>(value[position - 1] - '0') + carry;
+
+        value[position - 1] = static_cast<char>('0' + sum % 10);
+        carry               = sum / 10;
+      }
+      /* a carry past the first digit widens the value, which happens once per
+         new digit. */
+      if (carry != 0) {
+        let widened    = ArrayList<char>{cxt.scratch_allocator()};
+        let carry_text = String{cxt.scratch_allocator()};
+
+        for (; carry != 0; carry /= 10)
+          carry_text.push(static_cast<char>('0' + carry % 10));
+        for (usize position = carry_text.count(); position > 0; position--)
+          widened.push(carry_text[position - 1]);
+        for (let const digit : value)
+          widened.push(digit);
+        value = steal(widened);
+      }
+
+      if (do_is_less(last_text, do_value_view())) break;
+
+      output += separator;
+      if (!do_flush()) return 130;
+    }
+
+    output += '\n';
+    ec.print_to_stdout(output);
+
+    return 0;
+  }
+
   if (!has_format) {
     let const precision =
         std::max(first.fraction_digit_count, increment.fraction_digit_count);

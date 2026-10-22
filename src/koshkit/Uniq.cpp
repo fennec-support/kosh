@@ -75,21 +75,23 @@ FLAG(UNIQ_ALL_REPEATED,
      'D',
      "",
      "Write every line of each run that has a repeat.");
-FLAG_OPTIONAL(UNIQ_ALL_REPEATED_METHOD,
-              '\0',
-              "all-repeated",
-              "Write every repeated line as -D, with an empty line before "
-              "each run or between runs.",
-              is_uniq_all_repeated_method,
-              "none|prepend|separate");
+FLAG_OPTIONAL_ATTACHED(
+    UNIQ_ALL_REPEATED_METHOD,
+    '\0',
+    "all-repeated",
+    "Write every repeated line as -D, with an empty line before "
+    "each run or between runs.",
+    is_uniq_all_repeated_method,
+    "none|prepend|separate");
 FLAG(UNIQ_UNIQUE, Bool, 'u', "", "Write only lines that occur once.");
-FLAG_OPTIONAL(UNIQ_GROUP,
-              '\0',
-              "group",
-              "Write every line and an empty line between, before, or after "
-              "runs.",
-              is_uniq_group_method,
-              "separate|prepend|append|both");
+FLAG_OPTIONAL_ATTACHED(
+    UNIQ_GROUP,
+    '\0',
+    "group",
+    "Write every line and an empty line between, before, or after "
+    "runs.",
+    is_uniq_group_method,
+    "separate|prepend|append|both");
 FLAG(UNIQ_IGNORE_CASE,
      Bool,
      'i',

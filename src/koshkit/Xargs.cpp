@@ -654,26 +654,34 @@ Xargs::execute(const ExecContext               &ec,
     return None;
   };
 
-  /* e.g. running holds children 10 and 11, and 11 has exited: 11 is reaped
-     and removed. when none has exited, the call waits for 10. */
+  /* e.g. running holds children 10 and 11: whichever exits first is reaped
+     and removed, so a long command keeps only its own slot. a signal besides
+     a child exit ends the wait with 128 plus its number, as wait does. */
   let const do_wait_for_child = [&]() throws -> i32 {
-    for (usize index = 0; index < running.count(); index++) {
-      i32 child_status = 0;
+    loop {
+      for (usize index = 0; index < running.count(); index++) {
+        i32 child_status = 0;
 
-      if (os::poll_process(running[index], child_status) ==
-          os::process_state::Exited)
-      {
-        running.remove(index);
+        if (os::poll_process(running[index], child_status) ==
+            os::process_state::Exited)
+        {
+          running.remove(index);
 
-        return child_status;
+          return child_status;
+        }
       }
+
+      if (let const number = os::peek_pending_signal_besides_child();
+          number != 0)
+      {
+        return 128 + number;
+      }
+
+      if constexpr (os::HAS_CHILD_STATE_CHANGE_WAIT)
+        os::wait_for_child_state_change();
+      else
+        os::sleep_for_seconds(0.005);
     }
-
-    let const child_status = os::wait_and_monitor_process(running[0]);
-
-    running.remove(0);
-
-    return child_status;
   };
 
   let const do_wait_for_children = [&]() throws -> Maybe<i32> {
