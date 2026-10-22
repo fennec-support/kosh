@@ -363,6 +363,9 @@ printf 'kept\n' | "$BIN" -c \
 "$BIN" -c 'koshkit cat tee-working.txt'
 echo "--- seq with step ---"
 "$BIN" -c 'koshkit seq 2 2 8'
+echo "--- seq with fractions, widths, and formats ---"
+"$BIN" -c 'koshkit seq -s, 1 0.5 3; koshkit seq 0.1 0.1 0.4; koshkit seq -w -1 0.5 1; koshkit seq 1.5e1 17; koshkit seq -f "a%5.2fb" 1 2; koshkit seq -s "" 3; koshkit seq -- -0 1; koshkit seq 0 0.000001 0.000003; koshkit seq 3 1; koshkit seq 0x10 0x11'
+"$BIN" -c 'koshkit seq -f %d 1; echo "status=$?"; koshkit seq -f "%g%" 1; echo "status=$?"; koshkit seq 1 0 x; echo "status=$?"; koshkit seq nan; echo "status=$?"' 2>/dev/null
 printf 'alpha foo beta\nplain\nFOO and foo\n' > color-input.txt
 printf 'a\nb\nc\n' > color-left.txt
 printf 'a\nB\nc\nd\n' > color-right.txt

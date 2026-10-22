@@ -578,6 +578,9 @@ _koshkit_util_flags ()
     dirname)
       echo "-z --zero"
     ;;
+    seq)
+      echo "-f --format -s --separator -w --equal-width"
+    ;;
     readlink)
       echo "-n --no-newline"
     ;;

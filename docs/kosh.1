@@ -2739,7 +2739,14 @@ Empty directories are removed. The
 option also removes empty parent directories.
 .TP
 .B seq
-Signed integer sequences are printed with a nonzero step.
+A sequence of numbers is printed with a nonzero step. Integer operands print
+exactly. Decimal, exponent, and hexadecimal operands print with the most
+fraction digits of the first operand and the step. The \fB\-w\fR,
+\fB\-\-equal\-width\fR option pads every value with leading zeros to one
+width. The \fB\-s\fR, \fB\-\-separator\fR option places a string between
+values, and the final value still ends with a newline. The \fB\-f\fR,
+\fB\-\-format\fR option formats each value with one printf %e, %f, %g, or
+%a conversion and cannot be combined with \fB\-w\fR.
 .TP
 .B sleep
 Execution pauses for summed durations with optional s, m, h, or d suffixes.

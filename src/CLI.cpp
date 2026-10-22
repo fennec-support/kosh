@@ -874,9 +874,11 @@ parse_flags(const FlagList                  &flags,
 
     let const argument = StringView{argv[i]};
     let const is_negative_number_operand =
-        parse_options.should_accept_negative_number_operand &&
         argument.length > 1 && argument[0] == '-' &&
-        argument.substring(1).is_all_decimal_digits();
+        ((parse_options.should_accept_negative_number_operand &&
+          argument.substring(1).is_all_decimal_digits()) ||
+         (parse_options.should_accept_negative_decimal_operand &&
+          (argument[1] == '.' || (argument[1] >= '0' && argument[1] <= '9'))));
 
     if (should_ignore_rest || argv[i][0] != '-' || i == 0 ||
         is_negative_number_operand)
