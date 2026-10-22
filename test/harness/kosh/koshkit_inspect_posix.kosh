@@ -105,6 +105,11 @@ koshkit od -v -A n -t x1 repeated
 koshkit od -A x -t x1 repeated
 koshkit od -A d -t x1 repeated
 koshkit od -A o -t x1 repeated
+koshkit od -w repeated
+koshkit od -w6 -t x2 -c repeated
+koshkit od -w12 -t x4 -t x1 repeated
+koshkit od -w3 -t x2 repeated 2>/dev/null
+koshkit od --width=8 -A d -t u1 repeated
 printf '\1\2\3\4\5\6\7\10' > od-types
 koshkit od -A n -t c -t d -t o -t u -t x -t d1 -t d2 -t d4 -t d8 od-types
 koshkit od text +1

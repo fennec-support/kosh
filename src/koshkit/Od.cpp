@@ -15,7 +15,7 @@
 #include "../Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-bcdosvx] [-A base] [-j skip] [-N count] [-t type]... "
-                  "[file ...]",
+                  "[-w[count]] [file ...]",
                   "Write formatted file bytes.");
 
 FLAG(OD_ADDRESS, String, 'A', "address-radix", "Use d, o, x, or n addresses.");
@@ -34,6 +34,20 @@ FLAG(
 FLAG(OD_OCTAL_WORDS, Bool, 'o', "", "Write octal words, as -t o2.");
 FLAG(OD_SIGNED_WORDS, Bool, 's', "", "Write signed decimal words, as -t d2.");
 FLAG(OD_HEX_WORDS, Bool, 'x', "", "Write hexadecimal words, as -t x2.");
+
+static pure fn
+is_od_width(koshka::StringView value) wontthrow -> bool
+{
+  return !value.is_empty() &&
+         (value[0] == '+' || (value[0] >= '0' && value[0] <= '9'));
+}
+
+FLAG_OPTIONAL(OD_WIDTH,
+              'w',
+              "width",
+              "Write this many bytes per output line. The default is 32.",
+              is_od_width,
+              "count");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Od);
 
@@ -439,13 +453,48 @@ Od::execute(const ExecContext               &ec,
         od_format{base, unit_byte_count, width_columns, false, is_signed});
   }
 
-  /* at this point: every format has a unit_byte_count of 1, 2, 4, or 8, so
-     OD_ROW_LENGTH splits into whole fields for each format. */
-  static constexpr usize OD_ROW_LENGTH     = 16;
-  usize                  row_width_columns = 0;
+  usize largest_unit_byte_count = 1;
 
   for (let const &format : formats) {
-    let const field_count      = OD_ROW_LENGTH / format.unit_byte_count;
+    if (format.unit_byte_count > largest_unit_byte_count)
+      largest_unit_byte_count = format.unit_byte_count;
+  }
+
+  usize row_byte_count = 16;
+
+  if (FLAG_OD_WIDTH.has_value()) {
+    let const parsed = parse_strict_count(FLAG_OD_WIDTH.value());
+
+    if (parsed.is_error() || parsed.value() == 0 || parsed.value() > UINT32_MAX)
+    {
+      KOSHKIT_REPORT_ERROR_AT(FLAG_OD_WIDTH.value_location(),
+                              "Invalid width '" + FLAG_OD_WIDTH.value() + "'",
+                              "The width must be a positive byte count");
+
+      return 1;
+    }
+
+    row_byte_count = static_cast<usize>(parsed.value());
+  } else if (FLAG_OD_WIDTH.is_enabled()) {
+    row_byte_count = 32;
+  }
+
+  if (row_byte_count % largest_unit_byte_count != 0) {
+    report_soft_koshkit_warning(
+        ec, cxt,
+        "Invalid width " +
+            String::from(row_byte_count, cxt.scratch_allocator()) + "; using " +
+            String::from(largest_unit_byte_count, cxt.scratch_allocator()) +
+            " instead");
+    row_byte_count = largest_unit_byte_count;
+  }
+
+  /* at this point: every format has a unit_byte_count of 1, 2, 4, or 8, and
+     row_byte_count splits into whole fields for each format. */
+  usize row_width_columns = 0;
+
+  for (let const &format : formats) {
+    let const field_count      = row_byte_count / format.unit_byte_count;
     let const format_row_width = (format.width_columns + 1) * field_count;
 
     if (format_row_width > row_width_columns)
@@ -453,7 +502,7 @@ Od::execute(const ExecContext               &ec,
   }
 
   for (let &format : formats) {
-    let const field_count = OD_ROW_LENGTH / format.unit_byte_count;
+    let const field_count = row_byte_count / format.unit_byte_count;
 
     format.pad_columns = row_width_columns - format.width_columns * field_count;
   }
@@ -464,10 +513,15 @@ Od::execute(const ExecContext               &ec,
   let const              address_width           = address_radix == 'x' ? 6 : 7;
   let const              is_verbose              = FLAG_OD_VERBOSE.is_enabled();
   static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
-  char                   previous_row_bytes[OD_ROW_LENGTH];
-  usize                  previous_row_length = 0;
-  bool                   has_previous_row    = false;
-  bool                   did_suppress        = false;
+  let                    row_storage = ArrayList<char>{cxt.scratch_allocator()};
+
+  row_storage.reserve(row_byte_count * 2);
+
+  let const row_bytes           = row_storage.begin();
+  let const previous_row_bytes  = row_storage.begin() + row_byte_count;
+  usize     previous_row_length = 0;
+  bool      has_previous_row    = false;
+  bool      did_suppress        = false;
 
   let const do_emit_row = [&](StringView row,
                               u64        row_offset) throws -> void {
@@ -497,7 +551,7 @@ Od::execute(const ExecContext               &ec,
       }
 
       let const &format      = formats[format_index];
-      let const  field_count = OD_ROW_LENGTH / format.unit_byte_count;
+      let const  field_count = row_byte_count / format.unit_byte_count;
 
       let const do_append_field_pad =
           [&](usize field_index) throws -> void {
@@ -560,7 +614,6 @@ Od::execute(const ExecContext               &ec,
     }
   };
 
-  char  row_bytes[OD_ROW_LENGTH];
   usize row_length    = 0;
   u64   skipped_count = 0;
   u64   dumped_count  = 0;
@@ -617,15 +670,15 @@ Od::execute(const ExecContext               &ec,
         if (byte_limit - dumped_count < available)
           available = static_cast<usize>(byte_limit - dumped_count);
 
-        let const taken = OD_ROW_LENGTH - row_length < available
-                              ? OD_ROW_LENGTH - row_length
+        let const taken = row_byte_count - row_length < available
+                              ? row_byte_count - row_length
                               : available;
 
         memcpy(row_bytes + row_length, chunk + position, taken);
         row_length += taken;
         position += taken;
         dumped_count += taken;
-        if (row_length == OD_ROW_LENGTH) {
+        if (row_length == row_byte_count) {
           do_emit_row(StringView{row_bytes, row_length},
                       skip_count + dumped_count - row_length);
           row_length = 0;

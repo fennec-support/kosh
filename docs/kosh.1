@@ -2419,6 +2419,14 @@ fails, 124 when one exits with 255, 125 when a signal ends one, and 126 or
 Input bytes are written in the formats selected by \fB\-t\fR. The \fB\-b\fR,
 \fB\-c\fR, \fB\-d\fR, \fB\-o\fR, \fB\-s\fR, and \fB\-x\fR options select the o1,
 c, u2, o2, d2, and x2 formats.
+Each output line holds 16 bytes. The
+.BR \-w [ \fIcount\fR ]
+or
+.BR \-\-width [= \fIcount\fR ]
+option writes
+.I count
+bytes per line, or 32 without a count. A count that is not a multiple of the
+largest selected unit size is replaced by that size with a warning.
 .TP
 .B paste
 Corresponding lines of the files are joined with tabs. The \fB\-d\fR option

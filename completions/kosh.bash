@@ -496,7 +496,7 @@ _koshkit_util_flags ()
     ;;
     od)
       echo \
-        "-A --address-radix -b -c -d -j --skip-bytes -N --read-bytes -o -s -t --format -v --output-duplicates -x"
+        "-A --address-radix -b -c -d -j --skip-bytes -N --read-bytes -o -s -t --format -v --output-duplicates -w --width -x"
     ;;
     env)
       echo "-i --ignore-environment -u --unset"
