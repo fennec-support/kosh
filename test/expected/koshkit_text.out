@@ -236,7 +236,7 @@ abc
 --- tr -d digits ---
 abc
 --- tr reverse range ---
--c:1:16: error: Koshkit `tr`: Reverse range in set 'z-x'.
+-c:1:16: error: Koshkit `tr`: Range endpoints of 'z-x' are in reverse order.
      1 |  koshkit tr a-c z-x
        |                 ^~~
 note: Order the endpoints from the lower byte to the higher byte.
@@ -247,6 +247,24 @@ cc
 d
 aabb__cc_d___aabbccdb  cc d11
 x  cc d11
+--- tr truncation, repeats, and class checks ---
+Hello World 123 xyc
+Hello World 123 ABc
+hELLO wORLD 123 ABC
+Hello World 123 zzz
+xelloxxorldxxxxxabc
+Hexxo Worxd 123 abc
+status=1
+status=1
+status=1
+status=1
+status=1
+status=1
+status=1
+status=1
+status=1
+status=1
+status=1
 --- sort keys and orderings ---
 sort -n
 -1.50

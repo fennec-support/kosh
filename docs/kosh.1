@@ -2819,10 +2819,17 @@ The \fB\-z\fR, \fB\-\-zero\-terminated\fR option ends input and output
 lines with a null byte.
 .TP
 .B tr
-Input bytes are translated with ranges and character classes. The \fB\-d\fR
-option deletes bytes, \fB\-c\fR and \fB\-C\fR replace the first set with every
-byte outside it, and \fB\-s\fR squeezes each run of a repeated byte from the
-last set into one byte.
+Input bytes are translated with ranges, character classes, [=c=] equivalence
+classes, and [c*n] repeats. The \fB\-d\fR option deletes bytes, \fB\-c\fR
+and \fB\-C\fR replace the first set with every byte outside it, and
+\fB\-s\fR squeezes each run of a repeated byte from the last set into one
+byte. When the first set is longer, the second set is extended with its last
+byte, unless \fB\-t\fR, \fB\-\-truncate\-set1\fR limits the translation to
+the length of the second set. When translating, the second set accepts only
+the [:upper:] and [:lower:] classes, each aligned with an [:upper:] or
+[:lower:] class in the first set, and it accepts one [c*] repeat that fills
+the second set to the length of the first. A [c*] repeat in the first set is
+an error.
 .TP
 .B uniq
 Adjacent equal lines are collapsed. The \fB\-c\fR option prints run counts.

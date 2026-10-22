@@ -204,6 +204,38 @@ printf 'aabb  cc d11\n' | "$BIN" -c 'koshkit tr -c a-z _'
 printf 'aabb  cc d11\n' | "$BIN" -c 'koshkit tr -cd a-z'
 printf 'aabb  cc d11\n' | "$BIN" -c 'koshkit tr -ds a b'
 printf 'aabb  cc d11\n' | "$BIN" -c 'koshkit tr -s ab x'
+echo "--- tr truncation, repeats, and class checks ---"
+printf 'Hello World 123 abc\n' > tr-input.txt
+"$BIN" -c '
+koshkit tr -t abcdef xy < tr-input.txt
+koshkit tr -t "[:lower:]" AB < tr-input.txt
+koshkit tr "[:lower:][:upper:]" "[:upper:][:lower:]" < tr-input.txt
+koshkit tr "[a*3]bc" xyz < tr-input.txt
+koshkit tr -c "[:lower:]\n" "[x*]" < tr-input.txt
+koshkit tr "[=l=]\101-\103" "x" < tr-input.txt
+koshkit tr "a-z" "[:upper:]" < tr-input.txt
+echo "status=$?"
+koshkit tr "a" "[:digit:]" < tr-input.txt
+echo "status=$?"
+koshkit tr "[:upper:]0-9" "[:lower:]" < tr-input.txt
+echo "status=$?"
+koshkit tr "-c" "[:lower:]" "xy" < tr-input.txt
+echo "status=$?"
+koshkit tr "[:foo:]" "x" < tr-input.txt
+echo "status=$?"
+koshkit tr "[a*]" "x" < tr-input.txt
+echo "status=$?"
+koshkit tr "a" "[b*x]" < tr-input.txt
+echo "status=$?"
+koshkit tr "a" "[=x=]" < tr-input.txt
+echo "status=$?"
+koshkit tr "-ds" "a" "[b*]" < tr-input.txt
+echo "status=$?"
+koshkit tr "-t" "abc" "[:upper:]" < tr-input.txt
+echo "status=$?"
+koshkit tr a "" < tr-input.txt
+echo "status=$?"
+' 2>/dev/null
 echo "--- sort keys and orderings ---"
 printf 'b 2 x\na 10 y\nc 1 z\na 10 y\nB 3 w\n  d  -5\n10\n9\n-1.50\n2.5\n' \
   > sort-keys.txt

@@ -11,9 +11,10 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
+#include "../Lexer.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-cCds] set1 [set2]",
+KOSHKIT_UTIL_DECL("[-cCdst] set1 [set2]",
                   "Translate the bytes in set1 to the matching bytes in "
                   "set2.");
 
@@ -33,6 +34,12 @@ FLAG(TR_SQUEEZE,
      's',
      "",
      "Collapse each run of one repeated byte from the final set into one.");
+
+FLAG(TR_TRUNCATE_SET1,
+     Bool,
+     't',
+     "truncate-set1",
+     "Translate only the bytes of set1 that have a byte in set2.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tr);
 
@@ -57,196 +64,394 @@ constexpr static_string_entry<posix_class_test> TR_POSIX_CLASS_ENTRIES[] = {
 
 constexpr StaticStringMap TR_POSIX_CLASSES{TR_POSIX_CLASS_ENTRIES};
 
-struct decoded_char
+enum class tr_element_kind : u8
 {
-  unsigned char byte;
-  usize         width_count;
+  Byte,
+  Range,
+  Class,
+  Equivalence,
+  Repeat,
 };
 
-static fn
-decode_escaped_char(StringView set, usize position) wontthrow -> decoded_char
+enum class tr_case_class : u8
 {
-  if (set[position] != '\\' || position + 1 >= set.length) {
-    return {static_cast<unsigned char>(set[position]), 1};
-  }
+  None,
+  Upper,
+  Lower,
+};
 
-  let const escaped = set[position + 1];
-
-  switch (escaped) {
-  case 'a':  return {'\a', 2};
-  case 'b':  return {'\b', 2};
-  case 'f':  return {'\f', 2};
-  case 'n':  return {'\n', 2};
-  case 'r':  return {'\r', 2};
-  case 't':  return {'\t', 2};
-  case 'v':  return {'\v', 2};
-  case '\\': return {'\\', 2};
-  }
-
-  if (escaped >= '0' && escaped <= '7') {
-    int   value       = 0;
-    usize digit_count = 0;
-
-    while (digit_count < 3 && position + 1 + digit_count < set.length) {
-      let const digit = set[position + 1 + digit_count];
-
-      if (digit < '0' || digit > '7') {
-        break;
-      }
-      value = value * 8 + (digit - '0');
-      digit_count++;
-    }
-
-    return {static_cast<unsigned char>(value), 1 + digit_count};
-  }
-
-  return {static_cast<unsigned char>(escaped), 2};
-}
-
-static fn
-expand_posix_class(StringView set,
-                   usize      position,
-                   String    &expanded) throws -> usize
+struct tr_element
 {
-  if (set[position] != '[' || position + 1 >= set.length ||
-      set[position + 1] != ':')
-  {
-    return 0;
-  }
+  tr_element_kind  kind;
+  u8               first_byte;
+  u8               last_byte;
+  posix_class_test test;
+  tr_case_class    case_class;
+  usize            repeat_count;
+  bool             is_indefinite;
+};
 
-  usize scan = position + 2;
-
-  while (scan + 1 < set.length && !(set[scan] == ':' && set[scan + 1] == ']')) {
-    scan++;
-  }
-
-  if (scan + 1 >= set.length || set[scan] != ':' || set[scan + 1] != ']') {
-    return 0;
-  }
-
-  let const name_start = position + 2;
-  let const class_name = set.substring_of_length(name_start, scan - name_start);
-  let const test       = TR_POSIX_CLASSES.find(class_name);
-
-  if (!test.has_value()) return 0;
-
-  /* at this point: the [:class:] token ends at set[scan + 1], and test
-     holds the predicate of a known class. */
-  for (int byte = 0; byte < 256; byte++) {
-    if ((*test)(static_cast<u8>(byte))) expanded.push(static_cast<char>(byte));
-  }
-
-  return scan + 2 - position;
-}
-
-static fn
-expand_set(StringView     set,
-           Allocator      allocator,
-           Maybe<usize>   repeat_target_length = None,
-           SourceLocation set_location         = {}) throws -> Maybe<String>
+struct tr_error
 {
-  String       expanded{allocator};
-  Maybe<usize> fill_position;
-  Maybe<char>  fill_byte;
-  usize        i = 0;
+  String     message;
+  StringView note;
+};
 
-  /* e.g. set = "x[y*]z", repeat_target_length = 5
-          "x" pushes 'x', so expanded = "x".
-          "[y*]" has no count, so fill_position = 1 and fill_byte = 'y'.
-          "z" pushes 'z', so expanded = "xz".
-          the fill inserts 5 - 2 = 3 'y' bytes at position 1: "xyyyz". */
-  while (i < set.length) {
-    if (let const class_width = expand_posix_class(set, i, expanded);
-        class_width > 0)
-    {
-      i += class_width;
+struct tr_set
+{
+  ArrayList<tr_element> elements;
+  String                bytes;
+  ArrayList<usize>      element_indices;
+};
+
+/* e.g. set = "a\\n\\101" gives the bytes "a\nA", and the last two are
+   escaped. an octal escape takes a third digit only when the value stays
+   below 256. */
+static fn
+unescape_tr_set(StringView       set,
+                String          &bytes,
+                ArrayList<bool> &is_escaped) throws -> void
+{
+  for (usize i = 0; i < set.length; i++) {
+    if (set[i] != '\\') {
+      bytes.push(set[i]);
+      is_escaped.push(false);
       continue;
     }
 
-    if (repeat_target_length.has_value() && set[i] == '[' && i + 1 < set.length)
-    {
-      let const repeated = decode_escaped_char(set, i + 1);
-      let       star     = i + 1 + repeated.width_count;
+    if (i + 1 == set.length) {
+      bytes.push('\\');
+      is_escaped.push(true);
+      continue;
+    }
 
-      if (star < set.length && set[star] == '*') {
-        usize close = star + 1;
+    let  escaped = set[++i];
+    char byte    = escaped;
 
-        while (close < set.length && set[close] >= '0' && set[close] <= '9') {
-          close++;
+    switch (escaped) {
+    case 'a': byte = '\a'; break;
+    case 'b': byte = '\b'; break;
+    case 'f': byte = '\f'; break;
+    case 'n': byte = '\n'; break;
+    case 'r': byte = '\r'; break;
+    case 't': byte = '\t'; break;
+    case 'v': byte = '\v'; break;
+    }
+
+    if (escaped >= '0' && escaped <= '7') {
+      int value = escaped - '0';
+
+      for (int digit_count = 1; digit_count < 3 && i + 1 < set.length;
+           digit_count++)
+      {
+        let const digit = set[i + 1];
+
+        if (digit < '0' || digit > '7' || value * 8 + (digit - '0') > 255) {
+          break;
         }
 
-        if (close < set.length && set[close] == ']') {
-          let const digits =
-              set.substring_of_length(star + 1, close - star - 1);
-          let const base  = !digits.is_empty() && digits[0] == '0'
-                                ? int_base::octal
-                                : int_base::decimal;
-          let       count = usize{0};
+        value = value * 8 + (digit - '0');
+        i++;
+      }
 
-          if (!digits.is_empty()) {
-            let const parsed = utils::parse_integer_in_base_u64(digits, base);
+      byte = static_cast<char>(value);
+    }
 
-            count = parsed.is_error() ? *repeat_target_length
-                                      : static_cast<usize>(parsed.value());
+    bytes.push(byte);
+    is_escaped.push(true);
+  }
+}
+
+/* memory: the unescaped bytes and their escape markers use allocator.
+   time:   O(set length) plus O(n) for each [c*n] count and class name. */
+static fn
+parse_tr_set(StringView             set,
+             ArrayList<tr_element> &elements,
+             Allocator              allocator) throws -> Maybe<tr_error>
+{
+  let  bytes      = String{allocator};
+  let  is_escaped = ArrayList<bool>{allocator};
+  let &p          = bytes;
+
+  unescape_tr_set(set, bytes, is_escaped);
+
+  let const length   = bytes.count();
+  let const do_match = [&](usize position, char wanted) wontthrow -> bool {
+    return position < length && p[position] == wanted && !is_escaped[position];
+  };
+  let const do_append = [&](tr_element_kind kind,
+                            u8              first_byte) throws {
+    elements.push(tr_element{kind, first_byte, first_byte, nullptr,
+                             tr_case_class::None, 0, false});
+  };
+
+  /* e.g. "[x*5]" at position gives a repeat of 'x' five times, "[x*]" an
+     indefinite repeat, and "[x*y]" an invalid count. */
+  Maybe<tr_error> repeat_error;
+
+  let const do_parse_repeat =
+      [&](usize position) throws -> Maybe<usize> {
+    if (!do_match(position + 2, '*')) return None;
+
+    for (usize close = position + 3; close < length && !is_escaped[close];
+         close++)
+    {
+      if (p[close] != ']') continue;
+
+      let const digits =
+          p.view().substring_of_length(position + 3, close - position - 3);
+      let element = tr_element{tr_element_kind::Repeat,
+                               static_cast<u8>(p[position + 1]),
+                               static_cast<u8>(p[position + 1]),
+                               nullptr,
+                               tr_case_class::None,
+                               0,
+                               true};
+
+      if (!digits.is_empty()) {
+        let const base = digits[0] == '0' ? int_base::octal : int_base::decimal;
+        let const parsed = utils::parse_integer_in_base_u64(digits, base);
+
+        if (parsed.is_error() || parsed.value() > SIZE_MAX / 2) {
+          repeat_error = tr_error{
+              "Invalid repeat count '" + String{allocator, digits}
+                +
+                  "' in [c*n] construct",
+              "Write the count in decimal, or in octal with a leading 0"
+          };
+
+          return None;
+        }
+
+        element.repeat_count  = static_cast<usize>(parsed.value());
+        element.is_indefinite = element.repeat_count == 0;
+      }
+
+      elements.push(element);
+
+      return close + 1;
+    }
+
+    return None;
+  };
+
+  let const do_is_star_digits_close = [&](usize position) wontthrow -> bool {
+    if (!do_match(position, '*')) return false;
+
+    for (usize i = position + 1; i < length; i++) {
+      if (!lexer::is_number(p[i]) || is_escaped[i]) return do_match(i, ']');
+    }
+
+    return false;
+  };
+
+  usize i = 0;
+
+  while (i + 2 < length) {
+    if (do_match(i, '[')) {
+      let const delimiter = p[i + 1];
+
+      if (do_match(i + 1, ':') || do_match(i + 1, '=')) {
+        Maybe<usize> close;
+
+        for (usize scan = i + 2; scan + 1 < length; scan++) {
+          if (do_match(scan, delimiter) && do_match(scan + 1, ']')) {
+            close = scan;
+            break;
+          }
+        }
+
+        if (close.has_value()) {
+          let const operand =
+              p.view().substring_of_length(i + 2, *close - i - 2);
+
+          if (operand.is_empty()) {
+            return tr_error{
+                String{allocator,
+                       delimiter == ':'
+                           ? "Missing character class name '[::]'"
+                           : "Missing equivalence class character '[==]'"},
+                {}
+            };
           }
 
-          if (count == 0) {
-            if (fill_position.has_value()) {
-              throw ErrorWithLocationAndDetails{
-                  set_location, "One [c*] repeat is allowed in set2",
-                  "Remove the extra `[c*]` repeat from SET2"};
+          if (delimiter == ':') {
+            let const test = TR_POSIX_CLASSES.find(operand);
+
+            if (test.has_value()) {
+              let const case_class = operand == "upper"   ? tr_case_class::Upper
+                                     : operand == "lower" ? tr_case_class::Lower
+                                                          : tr_case_class::None;
+
+              elements.push(tr_element{tr_element_kind::Class, 0, 0, *test,
+                                       case_class, 0, false});
+              i = *close + 2;
+              continue;
             }
 
-            fill_position = expanded.count();
-            fill_byte     = static_cast<char>(repeated.byte);
-          } else {
-            let const capped =
-                count < *repeat_target_length ? count : *repeat_target_length;
-
-            for (usize n = 0; n < capped; n++)
-              expanded.push(static_cast<char>(repeated.byte));
+            if (!do_is_star_digits_close(i + 2)) {
+              return tr_error{
+                  "Invalid character class '" + String{allocator, operand}
+                    +
+                      "'",
+                  "Use alnum, alpha, blank, cntrl, digit, graph, lower, "
+                  "print, punct, space, upper, or xdigit"
+              };
+            }
+          } else if (operand.length == 1) {
+            do_append(tr_element_kind::Equivalence,
+                      static_cast<u8>(operand[0]));
+            i = *close + 2;
+            continue;
+          } else if (!do_is_star_digits_close(i + 2)) {
+            return tr_error{
+                "'" + String{allocator, operand}
+                  +
+                    "': An equivalence class operand must be a "
+                    "single character",
+                {}
+            };
           }
-
-          i = close + 1;
-          continue;
         }
       }
-    }
 
-    let const first = decode_escaped_char(set, i);
-    let const after = i + first.width_count;
-
-    if (after < set.length && set[after] == '-' && after + 1 < set.length) {
-      let const second = decode_escaped_char(set, after + 1);
-
-      if (first.byte > second.byte) {
-        return None;
+      if (let const next = do_parse_repeat(i); next.has_value()) {
+        i = *next;
+        continue;
       }
 
-      for (int c = first.byte; c <= second.byte; c++)
-        expanded.push(static_cast<char>(c));
+      if (repeat_error.has_value()) return repeat_error;
+    }
 
-      i = after + 1 + second.width_count;
+    if (do_match(i + 1, '-')) {
+      let const first_byte = static_cast<u8>(p[i]);
+      let const last_byte  = static_cast<u8>(p[i + 2]);
+
+      if (first_byte > last_byte) {
+        return tr_error{
+            "Range endpoints of '" +
+                String{allocator, p.view().substring_of_length(i, 3)}
+                +
+                "' are in reverse order",
+            "Order the endpoints from the lower byte to the higher byte"
+        };
+      }
+
+      elements.push(tr_element{tr_element_kind::Range, first_byte, last_byte,
+                               nullptr, tr_case_class::None, 0, false});
+      i += 3;
       continue;
     }
 
-    expanded.push(static_cast<char>(first.byte));
-    i = after;
+    do_append(tr_element_kind::Byte, static_cast<u8>(p[i]));
+    i++;
   }
 
-  if (fill_position.has_value() && *repeat_target_length > expanded.count()) {
-    let filled = String{allocator};
+  for (; i < length; i++)
+    do_append(tr_element_kind::Byte, static_cast<u8>(p[i]));
 
-    filled.append(expanded.view().substring_of_length(0, *fill_position));
+  return None;
+}
 
-    for (usize n = expanded.count(); n < *repeat_target_length; n++)
-      filled.push(*fill_byte);
+/* a [c*n] repeat in set1 expands to at most 65536 bytes. a repeat in set2
+   needs at most one byte more than set1, which keeps every mapping and every
+   length comparison with set1. */
+static constexpr usize SET1_REPEAT_LIMIT = 65536;
 
-    filled.append(expanded.view().substring(*fill_position));
-    expanded = steal(filled);
+static fn
+expand_tr_set(tr_set &set, usize repeat_limit) throws -> void
+{
+  set.bytes.clear();
+  set.element_indices.clear();
+
+  for (usize index = 0; index < set.elements.count(); index++) {
+    let const &element = set.elements[index];
+
+    let const do_push = [&](int byte) throws {
+      set.bytes.push(static_cast<char>(byte));
+      set.element_indices.push(index);
+    };
+
+    switch (element.kind) {
+    case tr_element_kind::Byte:
+    case tr_element_kind::Equivalence: do_push(element.first_byte); break;
+    case tr_element_kind::Range:
+      for (int byte = element.first_byte; byte <= element.last_byte; byte++)
+        do_push(byte);
+      break;
+    case tr_element_kind::Class:
+      for (int byte = 0; byte < 256; byte++) {
+        if (element.test(static_cast<u8>(byte))) do_push(byte);
+      }
+      break;
+    case tr_element_kind::Repeat:
+      for (usize n = 0; n < std::min(element.repeat_count, repeat_limit); n++)
+        do_push(element.first_byte);
+      break;
+    }
+  }
+}
+
+/* an [:upper:] or [:lower:] class in set2 must start where an [:upper:] or
+   [:lower:] class starts in set1. the two sets are walked one byte at a
+   time, and a pair of case classes is passed over as one step. */
+static pure fn
+are_case_classes_aligned(const tr_set &set1, const tr_set &set2)
+    wontthrow -> bool
+{
+  let const do_get_case = [](const tr_set &set,
+                             usize         position) wontthrow -> tr_case_class {
+    return position < set.bytes.count()
+               ? set.elements[set.element_indices[position]].case_class
+               : tr_case_class::None;
+  };
+  let const do_skip_element = [](const tr_set &set, usize &position) wontthrow {
+    let const index = set.element_indices[position];
+
+    while (position < set.bytes.count() &&
+           set.element_indices[position] == index)
+    {
+      position++;
+    }
+  };
+  let const do_is_element_start = [](const tr_set &set,
+                                     usize         position) wontthrow -> bool {
+    return position == 0 || position >= set.bytes.count() ||
+           set.element_indices[position] != set.element_indices[position - 1];
+  };
+
+  usize position1 = 0;
+  usize position2 = 0;
+  let   case1     = tr_case_class::None;
+  let   case2     = tr_case_class::None;
+  bool  has_ended = false;
+
+  while (!has_ended) {
+    let const is_new1 = do_is_element_start(set1, position1);
+    let const is_new2 = do_is_element_start(set2, position2);
+
+    has_ended =
+        position1 >= set1.bytes.count() || position2 >= set2.bytes.count();
+    if (is_new1) case1 = do_get_case(set1, position1);
+    if (is_new2) case2 = do_get_case(set2, position2);
+
+    if (is_new2 && case2 != tr_case_class::None &&
+        !(is_new1 && case1 != tr_case_class::None))
+    {
+      return false;
+    }
+
+    if (case2 != tr_case_class::None) {
+      do_skip_element(set1, position1);
+      do_skip_element(set2, position2);
+      continue;
+    }
+
+    position1++;
+    position2++;
   }
 
-  return expanded;
+  return true;
 }
 
 /* memory: input and output are 64 KiB stack arrays, 128 KiB together. set1
@@ -264,70 +469,190 @@ Tr::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const is_deleting  = FLAG_TR_DELETE.is_enabled();
-  let const is_squeezing = FLAG_TR_SQUEEZE.is_enabled();
+  let const is_deleting   = FLAG_TR_DELETE.is_enabled();
+  let const is_squeezing  = FLAG_TR_SQUEEZE.is_enabled();
+  let const is_truncating = FLAG_TR_TRUNCATE_SET1.is_enabled();
   let const is_complementing =
       FLAG_TR_COMPLEMENT.is_enabled() || FLAG_TR_COMPLEMENT_VALUES.is_enabled();
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
-  if (!is_deleting && !is_squeezing && operands.count() < 2) {
-    throw ErrorWithLocationAndDetails{
-        operand_locations[0], "Expects two sets unless -d is given",
-        "Supply SET1 and SET2, or use `-d` with one set"};
+  let const do_fail = [&](SourceLocation location, StringView message,
+                          StringView note = {}) throws -> i32 {
+    if (note.is_empty()) {
+      KOSHKIT_REPORT_ERROR_AT(location, message);
+    } else {
+      KOSHKIT_REPORT_ERROR_AT(location, message, note);
+    }
+
+    return 1;
+  };
+
+  let const minimum_operand_count =
+      usize{is_deleting == is_squeezing ? 2u : 1u};
+  let const maximum_operand_count =
+      usize{is_deleting && !is_squeezing ? 1u : 2u};
+
+  if (operands.count() < minimum_operand_count) {
+    return do_fail(operand_locations[0],
+                   is_squeezing ? "Expects two sets when deleting and squeezing"
+                                : "Expects two sets unless -d is given",
+                   is_squeezing
+                       ? "Supply SET1 to delete and SET2 to squeeze"
+                       : "Supply SET1 and SET2, or use `-d` with one set");
   }
 
-  if (operands.count() > 2 ||
-      (is_deleting && operands.count() != (is_squeezing ? 2 : 1)))
-  {
-    return report_usage_error(ec, cxt, args[0].view());
-  }
-
-  let set1 = expand_set(operands[0].view(), cxt.scratch_allocator());
-
-  if (!set1.has_value()) {
-    KOSHKIT_REPORT_ERROR_AT(
-        operand_locations[0], "Reverse range in set '" + operands[0] + "'",
-        "Order the endpoints from the lower byte to the higher byte");
+  if (operands.count() > maximum_operand_count) {
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[maximum_operand_count],
+                            "Extra operand '" +
+                                operands[maximum_operand_count] + "'",
+                            maximum_operand_count == 1
+                                ? "One set is accepted when deleting without -s"
+                                : "Supply at most two sets");
 
     return 1;
   }
 
+  let const allocator      = cxt.scratch_allocator();
+  let const is_translating = operands.count() == 2 && !is_deleting;
+  let       set1 = tr_set{ArrayList<tr_element>{allocator}, String{allocator},
+                    ArrayList<usize>{allocator}};
+  let       set2 = tr_set{ArrayList<tr_element>{allocator}, String{allocator},
+                    ArrayList<usize>{allocator}};
+
+  for (usize index = 0; index < operands.count(); index++) {
+    let const error =
+        parse_tr_set(operands[index].view(),
+                     index == 0 ? set1.elements : set2.elements, allocator);
+
+    if (error.has_value()) {
+      return do_fail(operand_locations[index], error->message, error->note);
+    }
+  }
+
+  for (let const &element : set1.elements) {
+    if (element.kind == tr_element_kind::Repeat && element.is_indefinite) {
+      return do_fail(operand_locations[0],
+                     "The [c*] repeat cannot appear in set1",
+                     "Give the repeat a count, such as `[c*3]`");
+    }
+  }
+
+  expand_tr_set(set1, SET1_REPEAT_LIMIT);
+
+  bool has_class_in_set1 = false;
+
+  for (let const &element : set1.elements) {
+    if (element.kind == tr_element_kind::Class) has_class_in_set1 = true;
+  }
+
+  bool is_listed[256] = {};
+
+  for (usize i = 0; i < set1.bytes.count(); i++)
+    is_listed[static_cast<u8>(set1.bytes[i])] = true;
+
   if (is_complementing) {
-    bool is_listed[256] = {};
-
-    for (usize i = 0; i < set1->count(); i++)
-      is_listed[static_cast<unsigned char>(set1->view()[i])] = true;
-
-    let complement = String{cxt.scratch_allocator()};
-
+    set1.bytes.clear();
     for (int byte = 0; byte < 256; byte++) {
-      if (!is_listed[byte]) complement.push(static_cast<char>(byte));
+      if (!is_listed[byte]) set1.bytes.push(static_cast<char>(byte));
     }
-
-    set1 = steal(complement);
   }
 
-  let set2 = String{cxt.scratch_allocator()};
+  if (operands.count() == 2) {
+    let const location         = operand_locations[1];
+    usize     indefinite_count = 0;
+    usize     fixed_length     = 0;
 
-  if (operands.count() >= 2) {
-    let expanded_set2 =
-        expand_set(operands[1].view(), cxt.scratch_allocator(),
-                   set1->count() > 0 ? set1->count() : 1, operand_locations[1]);
+    bool has_equivalence      = false;
+    bool has_restricted_class = false;
 
-    if (!expanded_set2.has_value()) {
-      KOSHKIT_REPORT_ERROR_AT(
-          operand_locations[1], "Reverse range in set '" + operands[1] + "'",
-          "Order the endpoints from the lower byte to the higher byte");
+    expand_tr_set(set2, set1.bytes.count() + 1);
+    for (let const &element : set2.elements) {
+      if (element.kind == tr_element_kind::Repeat && element.is_indefinite) {
+        indefinite_count++;
+      }
 
-      return 1;
+      if (element.kind == tr_element_kind::Equivalence) has_equivalence = true;
+      if (element.kind == tr_element_kind::Class &&
+          element.case_class == tr_case_class::None)
+      {
+        has_restricted_class = true;
+      }
     }
 
-    set2 = steal(*expanded_set2);
+    fixed_length = set2.bytes.count();
+    if (indefinite_count > 1) {
+      return do_fail(location, "One [c*] repeat is allowed in set2",
+                     "Remove the extra `[c*]` repeat from "
+                     "SET2");
+    }
+
+    if (is_translating && has_equivalence) {
+      return do_fail(location, "[=c=] cannot appear in set2 when translating");
+    }
+
+    if (is_translating && has_restricted_class) {
+      return do_fail(location,
+                     "Only the upper and lower classes can appear in set2 when "
+                     "translating",
+                     "Use `[:upper:]` or `[:lower:]` in SET2");
+    }
+
+    if (indefinite_count == 1 && !is_translating) {
+      return do_fail(location, "The [c*] repeat can appear in set2 only when "
+                               "translating");
+    }
+
+    if (indefinite_count == 1 && set1.bytes.count() > fixed_length) {
+      for (let &element : set2.elements) {
+        if (element.kind == tr_element_kind::Repeat && element.is_indefinite) {
+          element.repeat_count = set1.bytes.count() - fixed_length;
+        }
+      }
+
+      expand_tr_set(set2, set1.bytes.count() + 1);
+    }
+
+    if (is_translating) {
+      if (!is_complementing && !are_case_classes_aligned(set1, set2)) {
+        return do_fail(location, "Misaligned [:upper:] or [:lower:] construct");
+      }
+
+      if (set1.bytes.count() > set2.bytes.count() && !is_truncating) {
+        if (set2.bytes.is_empty()) {
+          return do_fail(location, "Set2 must not be empty unless -t is given",
+                         "Supply SET2, or use `-t` to truncate SET1");
+        }
+
+        if (set2.elements.back().kind == tr_element_kind::Class) {
+          return do_fail(location,
+                         "Set2 must not end with a class when set1 is longer",
+                         "End SET2 with a byte to repeat");
+        }
+
+        set2.bytes.append_repeated(set2.bytes.back(),
+                                   set1.bytes.count() - set2.bytes.count());
+      }
+
+      bool is_homogeneous = set2.bytes.count() == set1.bytes.count();
+
+      for (usize i = 1; i < set2.bytes.count(); i++) {
+        if (set2.bytes[i] != set2.bytes[0]) is_homogeneous = false;
+      }
+
+      if (is_complementing && has_class_in_set1 && !is_homogeneous) {
+        return do_fail(
+            location,
+            "Set2 must map every byte to one byte when complementing a "
+            "class",
+            "Use one byte or `[c*]` in SET2");
+      }
+    }
   }
 
-  /* at this point: set1 holds the first set, complemented when -c or -C
-     is given, and set2 holds the expanded second set or is empty. */
+  /* at this point: set1.bytes holds the first set, complemented when -c or
+     -C is given, and set2.bytes holds the second set, extended to the
+     length of set1 unless -t is given, or is empty. */
   static constexpr usize BYTE_VALUE_COUNT             = 256;
   bool                   is_in_set1[BYTE_VALUE_COUNT] = {};
   unsigned char          translation[BYTE_VALUE_COUNT];
@@ -335,24 +660,22 @@ Tr::execute(const ExecContext               &ec,
   for (usize i = 0; i < BYTE_VALUE_COUNT; i++)
     translation[i] = static_cast<unsigned char>(i);
 
-  for (usize i = 0; i < set1->count(); i++) {
-    let const from = static_cast<unsigned char>(set1->view()[i]);
+  for (usize i = 0; i < set1.bytes.count(); i++) {
+    let const from = static_cast<unsigned char>(set1.bytes[i]);
 
     is_in_set1[from] = true;
-    if (!is_deleting && set2.count() > 0) {
-      let const index = i < set2.count() ? i : set2.count() - 1;
-
-      translation[from] = static_cast<unsigned char>(set2.view()[index]);
+    if (is_translating && i < set2.bytes.count()) {
+      translation[from] = static_cast<unsigned char>(set2.bytes[i]);
     }
   }
 
   bool is_squeezed[BYTE_VALUE_COUNT] = {};
 
   if (is_squeezing) {
-    let const &squeeze_source = operands.count() >= 2 ? set2 : *set1;
+    let const &squeeze_source = operands.count() >= 2 ? set2.bytes : set1.bytes;
 
     for (usize i = 0; i < squeeze_source.count(); i++)
-      is_squeezed[static_cast<unsigned char>(squeeze_source.view()[i])] = true;
+      is_squeezed[static_cast<unsigned char>(squeeze_source[i])] = true;
   }
 
   int last_byte = -1;
