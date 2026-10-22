@@ -13,8 +13,21 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL(
-    "path [suffix]",
+    "[-z] path [suffix] | [-az] [-s suffix] path ...",
     "The basename utility can print the final component of a path.");
+
+FLAG(
+    BASENAME_MULTIPLE, Bool, 'a', "multiple", "Treat every operand as a path.");
+FLAG(BASENAME_SUFFIX,
+     String,
+     's',
+     "suffix",
+     "Remove a trailing suffix from every path. Implies -a.");
+FLAG(BASENAME_ZERO,
+     Bool,
+     'z',
+     "zero",
+     "End each output entry with a NUL byte instead of a newline.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Basename);
 
@@ -46,7 +59,11 @@ Basename::execute(const ExecContext               &ec,
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
-  if (operands.count() > 2) {
+
+  let const is_multiple =
+      FLAG_BASENAME_MULTIPLE.is_enabled() || FLAG_BASENAME_SUFFIX.is_set();
+
+  if (!is_multiple && operands.count() > 2) {
     KOSHKIT_REPORT_ERROR_AT(
         operand_locations[2], "Extra operand '" + operands[2] + "'",
         "A path and an optional suffix are accepted, e.g. `basename a.c .c`");
@@ -54,10 +71,16 @@ Basename::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let name = basename_component(operands[0].view());
+  let const suffix     = FLAG_BASENAME_SUFFIX.is_set()
+                             ? FLAG_BASENAME_SUFFIX.value()
+                         : !is_multiple && operands.count() > 1 ? operands[1].view()
+                                                                : StringView{};
+  let const path_count = is_multiple ? operands.count() : usize{1};
+  let const terminator = FLAG_BASENAME_ZERO.is_enabled() ? '\0' : '\n';
+  let       output     = String{cxt.scratch_allocator()};
 
-  if (operands.count() > 1) {
-    let const suffix = operands[1].view();
+  for (usize i = 0; i < path_count; i++) {
+    let name = basename_component(operands[i].view());
 
     if (suffix.length < name.length &&
         name.substring_of_length(name.length - suffix.length, suffix.length) ==
@@ -65,9 +88,12 @@ Basename::execute(const ExecContext               &ec,
     {
       name = name.substring_of_length(0, name.length - suffix.length);
     }
+
+    output.append(name);
+    output.push(terminator);
   }
 
-  ec.print_to_stdout(String{cxt.scratch_allocator(), name} + "\n");
+  ec.print_to_stdout(output);
 
   return 0;
 }

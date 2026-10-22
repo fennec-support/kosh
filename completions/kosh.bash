@@ -572,6 +572,9 @@ _koshkit_util_flags ()
     fuser)
       echo "-c -f -u"
     ;;
+    basename)
+      echo "-a --multiple -s --suffix -z --zero"
+    ;;
     readlink)
       echo "-n --no-newline"
     ;;

@@ -61,6 +61,14 @@ du-hardlinks=matched
 du-unreadable=ok
 --- basename ---
 libfoo
+b
+d
+/
+
+y
+.c
+a
+b|b|c|
 --- dirname ---
 /usr/local
 /a

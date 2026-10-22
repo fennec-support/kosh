@@ -252,6 +252,9 @@ if [ "${TARGET:-$(uname -s)}" = Linux ]; then
 fi
 echo "--- basename ---"
 "$BIN" -c 'koshkit basename /usr/local/libfoo.so .so'
+"$BIN" -c 'koshkit basename -a a/b c/d/ / ""; koshkit basename -s .c x/y.c/ .c a.c; koshkit basename -z a/b .b; koshkit basename -az a/b c' |
+  tr '\0' '|'
+echo
 echo "--- dirname ---"
 "$BIN" -c 'koshkit dirname /usr/local/libfoo.so'
 "$BIN" -c 'koshkit dirname /a/b c/d e'

@@ -2308,7 +2308,11 @@ and otherwise acts as the koshkit builtin. Either form skips the shell
 startup, loading no settings or startup file and ignoring KOSH_FLAGS.
 .TP
 .B basename
-The final path component is printed, minus an optional suffix operand.
+The final path component is printed, minus an optional suffix operand. The
+\fB\-a\fR, \fB\-\-multiple\fR option treats every operand as a path, and
+\fB\-s\fR, \fB\-\-suffix\fR removes its suffix from every path and implies
+\fB\-a\fR. The \fB\-z\fR, \fB\-\-zero\fR option ends each entry with a NUL
+byte.
 .TP
 .B cal
 A Gregorian month or year is printed, each week starting on Sunday. The
