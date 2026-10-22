@@ -1104,12 +1104,11 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       };
 
       cxt.enter_function_scope();
+      defer { cxt.leave_function_scope(); };
+
       cxt.push_function_call_name(program_name.view(),
                                   command_function_storage);
-      defer {
-        cxt.pop_function_call_name();
-        cxt.leave_function_scope();
-      };
+      defer { cxt.pop_function_call_name(); };
 
       let const was_terminal_exec =
           cxt.execution_store().is_terminal_exec_allowed();

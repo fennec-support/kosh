@@ -254,11 +254,10 @@ EvalContext::run_completion_function(
   defer { execution_store().loop_depth() = saved_loop_depth; };
 
   enter_function_scope();
+  defer { leave_function_scope(); };
+
   push_function_call_name(function_name, body_storage);
-  defer {
-    pop_function_call_name();
-    leave_function_scope();
-  };
+  defer { pop_function_call_name(); };
 
   let const was_terminal_exec_allowed =
       execution_store().is_terminal_exec_allowed();

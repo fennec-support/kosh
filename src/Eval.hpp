@@ -1174,8 +1174,15 @@ public:
             ArrayList<ArrayList<local_binding>> &local_scopes) throws
       -> bool;
   fn
-  apply_wire(ArrayList<ArrayList<local_binding>> local_scopes) wontthrow -> void
+  apply_wire(ArrayList<ArrayList<local_binding>> local_scopes) throws
+      -> void
   {
+    /* every inherited frame has a saved shell options slot, as
+       enter_function_scope() gives one. */
+    m_saved_scope_shell_options.clear();
+    for (usize i = 0; i < local_scopes.count(); i++)
+      m_saved_scope_shell_options.push(None);
+
     m_local_scope_depth = local_scopes.count();
     m_local_scopes      = steal(local_scopes);
   }

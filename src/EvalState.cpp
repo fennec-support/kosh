@@ -917,6 +917,15 @@ EvalContext::snapshot_state() throws -> eval_state_snapshot
   if (!working_directory.is_valid())
     throw Error{"Could not preserve the current working directory"};
 
+  /* the job table moves out last, so a throw while copying another store
+     leaves the jobs in place. */
+  let getopts_cursor = expansion_store().get_getopts_cursor();
+  let coprocess      = subshell_store().coprocess();
+  let environment    = environment_store().snapshot();
+  let runtime        = runtime_state();
+  let enabled        = enabled_command_store();
+  let resolver       = program_resolver();
+
   return eval_state_snapshot{variable_store().snapshot(),
                              completion_store().snapshot(),
                              function_store().snapshot(),
@@ -926,12 +935,12 @@ EvalContext::snapshot_state() throws -> eval_state_snapshot
                              runtime_control_store().snapshot(),
                              dynamic_runtime_store().get_clock(),
                              job_table_store().take_snapshot(),
-                             expansion_store().get_getopts_cursor(),
-                             subshell_store().coprocess(),
-                             environment_store().snapshot(),
-                             runtime_state(),
-                             enabled_command_store(),
-                             program_resolver(),
+                             steal(getopts_cursor),
+                             steal(coprocess),
+                             steal(environment),
+                             steal(runtime),
+                             steal(enabled),
+                             steal(resolver),
                              steal(working_directory),
                              os::get_file_creation_mask()};
 }

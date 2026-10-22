@@ -1638,8 +1638,9 @@ when it closes.
 An existing file is saved by writing a complete copy in its directory and
 renaming it over the file, which keeps the file mode and follows a symbolic
 link to its target. A save that cannot finish is reported, and the file is left
-as it was. A file that another user owns, a file with more than one link, and a
-file in a directory that other users can write to without the sticky bit are
+as it was. A file that another user owns, a file with more than one link, a
+file in a directory that neither the saving user nor root owns, and a file in a
+directory that other users can write to without the sticky bit are
 rewritten in place instead, which keeps their owner, group, and links. Before
 such a save, the current contents are copied to a private file in the home
 directory, or in the temporary directory when the home directory takes none.
@@ -1647,8 +1648,10 @@ The copy is removed once the write succeeds. When the write fails, the
 error gives the path of the copy, and when no copy can be made, nothing is
 written. The save is refused when another file has replaced the one that slurp
 loaded. A refused or failed save is reported on the last four rows, and the
-session stays open with the edits. A file with a NUL byte or invalid UTF\-8, a
-file longer than 65534 bytes, and a restricted shell are refused. A file whose
+session stays open with the edits. A directory, an unreadable file, a file with
+a NUL byte or invalid UTF\-8, a file longer than 65534 bytes, a restricted
+shell, and a session whose standard input or output is not a terminal are
+refused with status 1. A file whose
 every line ends in CRLF keeps those endings, a file that mixes them keeps each
 carriage return as text, and the final newline of the file is kept.
 .TP
@@ -2886,8 +2889,7 @@ Ctrl\-X Ctrl\-E opens the line in a temporary file with the editor selected by
 VISUAL, EDITOR, or vi. When the editor exits with status 0, the saved text
 replaces the line, and nothing runs until Enter is pressed. If the editor is
 not found or exits with another status, the line is unchanged and a message
-appears above the prompt. The key does nothing under
-.BR \-T .
+appears above the prompt.
 Ctrl\-X Ctrl\-U undoes the last edit. The Ctrl\-X chords work in emacs mode
 only, and the vi command
 .B :e
@@ -2926,7 +2928,7 @@ command turns this off. The option is on by default.
 Once the cursor is past the command word, the rows directly below the input
 explain the command under the cursor under a
 .B synopsis
-header. Each of up to three rows pairs a word of the command with its
+header. Each of up to 16 rows pairs a word of the command with its
 meaning: the command itself, a subcommand such as
 .BR "git commit" ,
 and each flag of the command, before or after the cursor. The word under the
@@ -3205,7 +3207,7 @@ Undo.
 Redo.
 .TP
 .B Ctrl\-X Ctrl\-E
-Edit the line in the editor selected by VISUAL or EDITOR.
+Edit the line in the editor selected by VISUAL, EDITOR, or vi.
 .TP
 .B Alt\-X
 Open the M\-x minibuffer, described under
@@ -3999,7 +4001,9 @@ behind counts, then the user, host, and working directory, and it ends with a
 bullet.
 The shell expands the backslash escapes \\u,
 \\h, \\H, \\k, \\K, \\w, \\W, \\P, \\g, \\$, \\?, \\j, \\L, \\M, \\., \\t, \\T,
-\\@, \\A, \\d, \\s, \\v, \\V, \\!, \\#, \\l, \\n, \\r, \\e, \\a, \\[, and \\].
+\\@, \\A, \\d, \\D{format}, \\s, \\v, \\V, \\!, \\#, \\l, \\n, \\r, \\e, \\a,
+\\[, \\], \\\\, and \\nnn. The \\nnn escape inserts the byte with the octal
+value nnn, from one to three digits.
 The \\k and \\K escapes insert the hostname as \\h and \\H do, colored when
 standard output is a color terminal. The \\s escape inserts the last component
 of the path the shell was started with, without a leading login dash or an .exe

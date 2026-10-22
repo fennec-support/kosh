@@ -1395,6 +1395,9 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
         kept_span_count++;
       }
       highlighted_spans.truncate(kept_span_count);
+      /* a throw from the scan leaves the cache empty, so the next call
+         scans from the start. */
+      has_highlighted_spans = false;
 
       let const result = koshka::completion::highlight_line_from(
           scanned, restart, *context, highlighted_restarts);
