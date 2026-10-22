@@ -45,7 +45,8 @@ shell_assignment_mood(StringView line, Maybe<mimic_mood> &mood)
   while (word_end < value.length && value[word_end] != ' ')
     word_end++;
 
-  mood = parser_format_shell_mood(value.substring_of_length(0, word_end));
+  mood =
+      detect_mimic_shell_from_program(value.substring_of_length(0, word_end));
 
   return true;
 }

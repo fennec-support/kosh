@@ -581,6 +581,17 @@ EOT
 SHELL ["powershell", "-Command"]
 RUN if ($x) { }
 EOF
+cat > "$cases/Dockerfile-shebang" <<'EOF'
+FROM alpine
+RUN <<EOT
+#!/bin/ash
+[[ -n x ]]
+EOT
+RUN <<EOT
+#!/usr/bin/env -i bash
+if true; then
+EOT
+EOF
 cat > "$cases/azure-pipelines-ci.yml" <<'EOF'
 steps:
 - task: PowerShell@2
@@ -628,6 +639,10 @@ for case_file in .github/workflows/shells.yml roles/web/tasks/main.yml \
   (cd "$cases" && "$BIN" --lint --no-traces "$case_file" 2>&1) |
     grep -E '^[^ ].*: (error|warning): '
 done
+# the ash heredoc is POSIX and reports the bash extension. The env -i bash
+# heredoc is analyzed and reports its unclosed if.
+(cd "$cases" && "$BIN" --lint --no-traces Dockerfile-shebang 2>&1) |
+  grep -E '^[^ ].*: error: '
 
 more="$root/more"
 mkdir -p "$more/hooks" "$more/.vscode" "$more/make" "$more/compose"

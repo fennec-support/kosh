@@ -45,6 +45,8 @@ azure-pipelines-ci.yml:8:13: error: This 'if' has no closing 'fi'.
 cloudbuild-prod.yaml:4:51: error: This 'if' has no closing 'fi'.
 .gitlab-ci.yaml:4:7: error: This 'if' has no closing 'fi'.
 compose.override.yml:3:15: error: This 'case' has no closing 'esac'.
+Dockerfile-shebang:4:1: error: The [[ conditional is a bash extension.
+Dockerfile-shebang:8:1: error: This 'if' has no closing 'fi'.
 hooks/package.json:3:39: error: This 'case' has no closing 'esac'.
 hooks/package.json:4:36: error: This loop has no closing 'done'.
 configmap.yaml:6:5: error: This 'if' has no closing 'fi'.

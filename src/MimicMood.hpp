@@ -28,12 +28,22 @@ fn
 get_shebang_line(StringView source) wontthrow -> Maybe<StringView>;
 
 fn
-detect_mimic_shell_from_source(StringView source) throws
-    -> Maybe<mimic_mood>;
+detect_mimic_shell_from_source(StringView source)
+    wontthrow -> Maybe<mimic_mood>;
 
 pure fn
-detect_mimic_shell_from_extension(StringView dotted_extension) throws
+detect_mimic_shell_from_extension(StringView dotted_extension) wontthrow
     -> Maybe<mimic_mood>;
+
+/* the program is a shell word such as bash, /bin/ash, or dash.exe. */
+pure fn
+detect_mimic_shell_from_program(StringView program) wontthrow
+    -> Maybe<mimic_mood>;
+
+/* the line starts with "#!". The result is the interpreter word after the env
+   program, its options, and its VAR=value words, or empty without a shebang. */
+pure fn
+get_shebang_program(StringView line) wontthrow -> StringView;
 
 /* the mood a file sourced from current_mood runs in, or None to keep it. */
 fn

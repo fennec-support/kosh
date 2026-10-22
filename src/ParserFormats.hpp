@@ -182,10 +182,6 @@ parser_format_ascii_equal(StringView left, StringView right) wontthrow -> bool;
 pure fn
 parser_format_leading_spaces(StringView line) wontthrow -> usize;
 pure fn
-parser_format_shell_mood(StringView program) wontthrow -> Maybe<mimic_mood>;
-pure fn
-parser_format_shebang_program(StringView line) wontthrow -> StringView;
-pure fn
 parser_format_json_string_end(StringView source, usize position) wontthrow
     -> usize;
 

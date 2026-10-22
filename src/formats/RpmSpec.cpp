@@ -93,7 +93,7 @@ section_interpreter_mood(StringView header) wontthrow -> Maybe<mimic_mood>
   while (end < program.length && program[end] != ' ')
     end++;
 
-  return parser_format_shell_mood(program.substring_of_length(0, end));
+  return detect_mimic_shell_from_program(program.substring_of_length(0, end));
 }
 
 static pure fn

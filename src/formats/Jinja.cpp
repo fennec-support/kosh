@@ -37,17 +37,15 @@ pure fn
 jinja_template_shell_mood(StringView inner_name, StringView source) wontthrow
     -> Maybe<mimic_mood>
 {
-  if (has_suffix(inner_name, ".bash")) return mimic_mood::Bash;
-  if (has_suffix(inner_name, ".kosh")) return mimic_mood::Default;
-  if (has_suffix(inner_name, ".sh") || has_suffix(inner_name, ".dash")) {
-    return mimic_mood::Posix;
+  if (let const dot = inner_name.find_last_character('.')) {
+    if (let const mood =
+            detect_mimic_shell_from_extension(inner_name.substring(*dot)))
+      return mood;
   }
+
   if (!source.starts_with("#!")) return None;
 
-  usize     line_end = 0;
-  let const line     = source.next_line(line_end);
-
-  return parser_format_shell_mood(parser_format_shebang_program(line));
+  return detect_mimic_shell_from_source(source);
 }
 
 fn

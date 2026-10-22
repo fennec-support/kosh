@@ -14,8 +14,18 @@
 
 namespace koshka {
 
+static pure fn
+basename_of(StringView token) wontthrow -> StringView
+{
+  if (let const slash = token.find_last_character('/')) {
+    return token.substring(*slash + 1);
+  }
+
+  return token;
+}
+
 pure fn
-detect_mimic_shell_from_extension(StringView extension) throws
+detect_mimic_shell_from_extension(StringView extension) wontthrow
     -> Maybe<mimic_mood>
 {
   static constexpr static_string_entry<mimic_mood> EXTENSION_ENTRIES[] = {
@@ -48,29 +58,42 @@ get_shebang_line(StringView source) wontthrow -> Maybe<StringView>
   return source.substring_of_length(2, line_end - 2);
 }
 
-fn
-detect_mimic_shell_from_source(StringView source) throws
-    -> Maybe<mimic_mood>
+pure fn
+detect_mimic_shell_from_program(StringView program)
+    wontthrow -> Maybe<mimic_mood>
 {
-  let const shebang_line = get_shebang_line(source);
+  program = basename_of(program);
 
-  if (!shebang_line.has_value()) return None;
+  if (program.length > 4) {
+    let const suffix = program.substring(program.length - 4);
 
-  let const has_carriage_return =
-      !shebang_line->is_empty() &&
-      (*shebang_line)[shebang_line->length - 1] == '\r';
-  let const line = shebang_line->substring_of_length(
-      0, shebang_line->length - (has_carriage_return ? 1 : 0));
+    if (suffix[0] == '.' && (suffix[1] == 'e' || suffix[1] == 'E') &&
+        (suffix[2] == 'x' || suffix[2] == 'X') &&
+        (suffix[3] == 'e' || suffix[3] == 'E'))
+    {
+      program = program.substring_of_length(0, program.length - 4);
+    }
+  }
 
-  let const do_basename_of = [](StringView token) -> StringView {
-    let const last_slash = token.find_last_character('/');
-
-    return last_slash.has_value() ? token.substring(*last_slash + 1) : token;
+  static constexpr static_string_entry<mimic_mood> SHELL_ENTRIES[] = {
+      {SSK("ash"),  mimic_mood::Posix  },
+      {SSK("bash"), mimic_mood::Bash   },
+      {SSK("dash"), mimic_mood::Posix  },
+      {SSK("kosh"), mimic_mood::Default},
+      {SSK("sh"),   mimic_mood::Posix  },
   };
+  static constexpr StaticStringMap SHELL_MOODS{SHELL_ENTRIES};
 
-  usize position = 0;
+  return SHELL_MOODS.find(program);
+}
 
-  let const do_next_token = [&]() -> StringView {
+pure fn
+get_shebang_program(StringView line) wontthrow -> StringView
+{
+  if (!line.starts_with("#!")) return {};
+
+  usize     position     = 2;
+  let const do_next_word = [&]() {
     while (position < line.length &&
            (line[position] == ' ' || line[position] == '\t'))
     {
@@ -80,7 +103,8 @@ detect_mimic_shell_from_source(StringView source) throws
     let const start = position;
 
     while (position < line.length && line[position] != ' ' &&
-           line[position] != '\t')
+           line[position] != '\t' && line[position] != '\r' &&
+           line[position] != '\n')
     {
       position++;
     }
@@ -88,30 +112,40 @@ detect_mimic_shell_from_source(StringView source) throws
     return line.substring_of_length(start, position - start);
   };
 
-  let shell = do_basename_of(do_next_token());
+  /* "#!/usr/bin/env -i -S A=1 bash -e" gives "bash". The options -u, -C, and
+     -P take the next word as their argument. */
+  let program = do_next_word();
 
-  if (shell == "env") {
-    loop {
-      let const token = do_next_token();
+  if (basename_of(program) != "env") return program;
 
-      if (token.is_empty()) return None;
-      if (token[0] == '-') continue;
-      shell = do_basename_of(token);
-      break;
+  loop {
+    program = do_next_word();
+
+    if (program.is_empty()) return program;
+
+    if (program[0] == '-') {
+      if (program == "-u" || program == "-C" || program == "-P") {
+        do_next_word();
+      }
+
+      continue;
     }
+
+    if (program.find_character('=').has_value()) continue;
+
+    return program;
   }
+}
 
-  /* at this point: shell is the basename of the command word, or of the
-     word after env and its options. */
-  static constexpr static_string_entry<mimic_mood> SHELL_ENTRIES[] = {
-      {SSK("sh"),   mimic_mood::Posix  },
-      {SSK("dash"), mimic_mood::Posix  },
-      {SSK("bash"), mimic_mood::Bash   },
-      {SSK("kosh"), mimic_mood::Default},
-  };
-  static constexpr StaticStringMap SHELL_MOODS{SHELL_ENTRIES};
+fn
+detect_mimic_shell_from_source(StringView source) wontthrow -> Maybe<mimic_mood>
+{
+  let const shebang_line = get_shebang_line(source);
 
-  return SHELL_MOODS.find(shell);
+  if (!shebang_line.has_value()) return None;
+
+  return detect_mimic_shell_from_program(get_shebang_program(
+      source.substring_of_length(0, 2 + shebang_line->length)));
 }
 
 /* the mood a file sourced from the kosh mood is written for: its shebang, or

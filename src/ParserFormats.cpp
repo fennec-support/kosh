@@ -1043,58 +1043,6 @@ previous_line(StringView source, usize &position) wontthrow -> StringView
   return source.substring_of_length(start, end - start);
 }
 
-pure fn
-parser_format_shell_mood(StringView program) wontthrow -> Maybe<mimic_mood>
-{
-  if (let const slash = program.find_last_character('/'))
-    program = program.substring(*slash + 1);
-  if (path_ends_with(program, ".exe"))
-    program = program.substring_of_length(0, program.length - 4);
-
-  if (program == "bash") return mimic_mood::Bash;
-  if (program == "kosh") return mimic_mood::Default;
-  if (program == "sh" || program == "dash" || program == "ash") {
-    return mimic_mood::Posix;
-  }
-
-  return None;
-}
-
-pure fn
-parser_format_shebang_program(StringView line) wontthrow -> StringView
-{
-  if (!line.starts_with("#!")) return {};
-
-  usize     position     = 2;
-  let const do_next_word = [&]() {
-    while (position < line.length &&
-           (line[position] == ' ' || line[position] == '\t'))
-      position++;
-
-    let const start = position;
-
-    while (position < line.length && line[position] != ' ' &&
-           line[position] != '\t' && line[position] != '\r')
-      position++;
-
-    return line.substring_of_length(start, position - start);
-  };
-
-  /* e.g. "#!/usr/bin/env -S bash -e": the first word is "/usr/bin/env", the
-     word "-S" is skipped, and "bash" is returned. */
-  let       program = do_next_word();
-  let const slash   = program.find_last_character('/');
-  let const basename =
-      slash.has_value() ? program.substring(*slash + 1) : program;
-
-  if (basename == "env") {
-    program = do_next_word();
-    if (program == "-S") program = do_next_word();
-  }
-
-  return program;
-}
-
 struct interpreter_choice
 {
   bool              is_found{false};
@@ -1124,7 +1072,8 @@ interpreter_of_value(StringView value) wontthrow -> interpreter_choice
     word = word.substring_of_length(0, word.length - 4);
 
   /* at this point: word holds no '/' or '@' character. */
-  if (let const mood = parser_format_shell_mood(word)) return {true, *mood};
+  if (let const mood = detect_mimic_shell_from_program(word))
+    return {true, *mood};
 
   static constexpr StringView OTHERS[] = {
       "pwsh",   "powershell", "azurepowershell",
@@ -1246,7 +1195,7 @@ workflow_shell_mood(StringView value) wontthrow -> interpreter_choice
   if (word.is_empty()) return {};
 
   /* at this point: word is non-empty and holds no quote characters. */
-  return {true, parser_format_shell_mood(word)};
+  return {true, detect_mimic_shell_from_program(word)};
 }
 
 static fn
@@ -1865,8 +1814,7 @@ add_yaml_scalar_fragment(parsed_format_document &document,
       first_line.substring(parser_format_leading_spaces(first_line));
 
   if (first_content.starts_with("#!")) {
-    let const choice =
-        interpreter_of_value(parser_format_shebang_program(first_content));
+    let const choice = interpreter_of_value(get_shebang_program(first_content));
 
     if (!choice.mood.has_value()) return;
     mood = *choice.mood;
@@ -2345,7 +2293,7 @@ parser_format_extract_yaml_exec_keys(parsed_format_document &document,
     if (argv.count() < first + 3) continue;
 
     let const mood =
-        parser_format_shell_mood(yaml_item_text(source, argv[first]));
+        detect_mimic_shell_from_program(yaml_item_text(source, argv[first]));
 
     if (!mood.has_value()) continue;
 
@@ -2629,7 +2577,7 @@ add_json_exec_array(parsed_format_document       &document,
 
   /* at this point: item_count is at least 3, so starts[0] to starts[2] and
      ends[0] to ends[2] bound the mood, flag, and script strings. */
-  let const mood = parser_format_shell_mood(
+  let const mood = detect_mimic_shell_from_program(
       source.substring_of_length(starts[0], ends[0] - starts[0]));
   let const flag = source.substring_of_length(starts[1], ends[1] - starts[1]);
 

@@ -41,7 +41,7 @@ interpreter_from_word(StringView word, mimic_mood fallback) wontthrow
     -> recipe_interpreter
 {
   if (word.is_empty()) return {recipe_language::Shell, fallback};
-  if (let const mood = parser_format_shell_mood(word))
+  if (let const mood = detect_mimic_shell_from_program(word))
     return {recipe_language::Shell, *mood};
 
   return {recipe_language::Other, fallback};
@@ -67,7 +67,7 @@ pure fn
 interpreter_from_shebang(StringView line, mimic_mood fallback) wontthrow
     -> recipe_interpreter
 {
-  return interpreter_from_word(parser_format_shebang_program(line), fallback);
+  return interpreter_from_word(get_shebang_program(line), fallback);
 }
 
 fn

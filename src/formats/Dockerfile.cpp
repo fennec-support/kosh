@@ -231,7 +231,7 @@ docker_shebang_mood(StringView line, Maybe<mimic_mood> fallback) wontthrow
 {
   if (!line.starts_with("#!")) return fallback;
 
-  return parser_format_shell_mood(parser_format_shebang_program(line));
+  return detect_mimic_shell_from_program(get_shebang_program(line));
 }
 
 static fn
@@ -409,7 +409,7 @@ parse_dockerfile_format(const parser_format_input &input,
 
       read_docker_json_array(line, content_position, items);
       if (!items.is_empty()) {
-        mood = parser_format_shell_mood(line.substring_of_length(
+        mood = detect_mimic_shell_from_program(line.substring_of_length(
             items[0].start, items[0].end - items[0].start));
       }
 
@@ -453,10 +453,11 @@ parse_dockerfile_format(const parser_format_input &input,
     {
       if (items.count() < 3) continue;
 
-      let const exec_mood = parser_format_shell_mood(line.substring_of_length(
-          items[0].start, items[0].end - items[0].start));
-      let const flag      = line.substring_of_length(items[1].start,
-                                                     items[1].end - items[1].start);
+      let const exec_mood =
+          detect_mimic_shell_from_program(line.substring_of_length(
+              items[0].start, items[0].end - items[0].start));
+      let const flag = line.substring_of_length(items[1].start,
+                                                items[1].end - items[1].start);
 
       if (!exec_mood.has_value() || flag.length < 2 || flag[0] != '-' ||
           !flag.find_character('c').has_value())
@@ -502,7 +503,7 @@ parse_dockerfile_format(const parser_format_input &input,
       let const first_line     = input.source.next_line(first_position);
       let       body_mood      = docker_shebang_mood(first_line, mood);
       if (!heredoc->is_shell_body)
-        body_mood = parser_format_shell_mood(heredoc->command);
+        body_mood = detect_mimic_shell_from_program(heredoc->command);
 
       if (body_mood.has_value() && body_start < body_end) {
         parser_format_add_fragment(document, input.source, body_start, body_end,

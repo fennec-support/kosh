@@ -175,7 +175,7 @@ extract_shell_args(const parser_format_input &input,
 
     if (!command.has_value()) continue;
 
-    let const mood = parser_format_shell_mood(*command);
+    let const mood = detect_mimic_shell_from_program(*command);
 
     if (!mood.has_value()) continue;
 

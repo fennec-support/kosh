@@ -4,6 +4,12 @@ bash
 sh
 == an env shebang selects the named shell:
 sh
+== an ash shebang selects the posix mood:
+sh
+== env options are skipped:
+bash
+== env assignments, option arguments, and an exe suffix are skipped:
+sh
 == a script with no shebang keeps the session mood:
 kosh
 == a script operand reads its shebang without -I:

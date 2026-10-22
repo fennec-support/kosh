@@ -62,7 +62,7 @@ argo_source_mood(StringView source, usize line_start, usize indent) wontthrow
            value[end] != '\'' && value[end] != ',' && value[end] != ' ')
       end++;
 
-    return parser_format_shell_mood(value.substring_of_length(0, end));
+    return detect_mimic_shell_from_program(value.substring_of_length(0, end));
   }
 
   return None;
