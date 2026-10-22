@@ -289,7 +289,36 @@ canonical_path(const Path &path) wontthrow -> Maybe<Path>
     let const handle = open_path_for_query(wide_candidate->begin(), 0,
                                            FILE_FLAG_BACKUP_SEMANTICS);
 
-    if (handle == INVALID_HANDLE_VALUE) return koshka::None;
+    /* a file that cannot be opened even for a query, but whose attributes
+       read, still exists, and its full path stands for its final one. */
+    if (handle == INVALID_HANDLE_VALUE) {
+      if (GetFileAttributesW(wide_candidate->begin()) ==
+          INVALID_FILE_ATTRIBUTES)
+      {
+        return koshka::None;
+      }
+
+      let const full_length =
+          GetFullPathNameW(wide_candidate->begin(), 0, nullptr, nullptr);
+
+      if (full_length == 0) return koshka::None;
+
+      let full = ArrayList<wchar_t>{heap_allocator()};
+
+      full.reserve(full_length);
+
+      let const written = GetFullPathNameW(wide_candidate->begin(), full_length,
+                                           full.begin(), nullptr);
+
+      if (written == 0 || written >= full_length) return koshka::None;
+
+      let const full_text = wide_to_utf8(
+          full.begin(), static_cast<usize>(written), heap_allocator());
+
+      if (!full_text.has_value()) return koshka::None;
+
+      return Path{full_text->view()};
+    }
     defer {
       let const error = GetLastError();
 

@@ -1455,7 +1455,12 @@ execute_program(ExecContext                     &ec,
                                    spawn_error == ERROR_PATH_NOT_FOUND
                                ? 127
                                : 126;
-    throw ErrorWithLocation{ec.source_location(), last_system_error_message()};
+
+    let error =
+        ErrorWithLocation{ec.source_location(), last_system_error_message()};
+
+    error.set_command_status(*SPAWN_FAILURE_STATUS);
+    throw error;
   }
 
   /* at this point: process_info holds a created child process, and no fallback
