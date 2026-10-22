@@ -120,17 +120,17 @@ note: Use a decimal integer from -2147483648 through 2147483647.
 -c:1:15: error: Koshkit `nl`: Unsupported numbering style 'invalid'.
      1 |  koshkit nl -b invalid
        |                ^~~~~~~
-note: Use a for all lines, t for nonempty lines, or n for no lines.
+note: Use a for all lines, t for nonempty lines, n for no lines, or pBRE for lines that match BRE.
 === nl header style location ===
 -c:1:15: error: Koshkit `nl`: Unsupported numbering style 'invalid'.
      1 |  koshkit nl -h invalid
        |                ^~~~~~~
-note: Use a for all lines, t for nonempty lines, or n for no lines.
+note: Use a for all lines, t for nonempty lines, n for no lines, or pBRE for lines that match BRE.
 === nl footer style location ===
 -c:1:15: error: Koshkit `nl`: Unsupported numbering style 'invalid'.
      1 |  koshkit nl -f invalid
        |                ^~~~~~~
-note: Use a for all lines, t for nonempty lines, or n for no lines.
+note: Use a for all lines, t for nonempty lines, n for no lines, or pBRE for lines that match BRE.
 === nl number format location ===
 -c:1:15: error: Koshkit `nl`: Invalid number format 'invalid'.
      1 |  koshkit nl -n invalid
@@ -140,12 +140,12 @@ note: Use ln, rn, or rz.
 -c:1:15: error: Koshkit `nl`: Invalid increment 'invalid'.
      1 |  koshkit nl -i invalid
        |                ^~~~~~~
-note: Use a decimal integer from 0 through 9223372036854775807.
+note: Use a decimal integer from -9223372036854775808 through 9223372036854775807.
 === nl increment limit ===
 -c:1:15: error: Koshkit `nl`: Invalid increment '9223372036854775808'.
      1 |  koshkit nl -i 9223372036854775808
        |                ^~~~~~~~~~~~~~~~~~~
-note: Use a decimal integer from 0 through 9223372036854775807.
+note: Use a decimal integer from -9223372036854775808 through 9223372036854775807.
 === nl blank group location ===
 -c:1:15: error: Koshkit `nl`: Invalid blank group '0'.
      1 |  koshkit nl -l 0
@@ -160,11 +160,12 @@ note: Use a positive decimal integer within the platform size limit.
 -c:1:15: error: Koshkit `nl`: Invalid starting line number '9223372036854775808'.
      1 |  koshkit nl -v 9223372036854775808
        |                ^~~~~~~~~~~~~~~~~~~
-note: Use a decimal integer from 0 through 9223372036854775807.
-=== nl delimiter location ===
--c:1:15: error: Koshkit `nl`: The section delimiter must be two bytes.
-     1 |  koshkit nl -d :
-       |                ^
+note: Use a decimal integer from -9223372036854775808 through 9223372036854775807.
+=== nl regular expression location ===
+-c:1:14: error: Koshkit `nl`: Invalid regular expression '['.
+     1 |  koshkit nl -bp[
+       |               ^~
+note: Use a valid basic regular expression.
 === od address radix location ===
 -c:1:15: error: Koshkit `od`: The address radix must be d, o, x, or n.
      1 |  koshkit od -A invalid

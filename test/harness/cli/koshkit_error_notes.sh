@@ -102,8 +102,8 @@ echo "=== nl width location ==="
 echo "=== nl start limit ==="
 "$BIN" -c 'koshkit nl -v 9223372036854775808' 2>&1
 
-echo "=== nl delimiter location ==="
-"$BIN" -c 'koshkit nl -d :' 2>&1
+echo "=== nl regular expression location ==="
+"$BIN" -c 'koshkit nl -bp[' 2>&1
 
 echo "=== od address radix location ==="
 "$BIN" -c 'koshkit od -A invalid' 2>&1
