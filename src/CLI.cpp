@@ -398,7 +398,7 @@ FlagOptionalValue::value_name() const wontthrow -> StringView
 pure fn
 FlagOptionalValue::should_accept_value(StringView value) const wontthrow -> bool
 {
-  return m_should_accept_value(value);
+  return m_should_accept_value == nullptr || m_should_accept_value(value);
 }
 
 fn

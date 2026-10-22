@@ -2431,16 +2431,29 @@ after it. Without \fB\-t\fR, a tab stop falls every eight columns. The
 character, and \fB\-t\fR implies it.
 .TP
 .B xargs
-Arguments read from standard input are appended to a command. The \fB\-0\fR
-option splits the input on null bytes, \fB\-r\fR skips the command when the
-input is empty, \fB\-E\fR sets the end-of-input marker, and \fB\-I\fR replaces a
-string in the command with each input line. The \fB\-L\fR, \fB\-n\fR, and
+Arguments read from standard input are appended to a command. The
+\fB\-a\fR, \fB\-\-arg\-file\fR
+option reads the arguments from a file instead, and the command keeps standard
+input. The \fB\-0\fR option splits the input on null bytes, and
+\fB\-d\fR, \fB\-\-delimiter\fR
+splits it on one character, which can be an escape such as \en, \et, \ex41,
+or \e0. Both keep quotes and backslashes literal and disable the end-of-input
+marker. The \fB\-r\fR option skips the command when the input is empty. The
+\fB\-E\fR option sets the end-of-input marker, and
+\fB\-e\fR[\fIEOF\fR], \fB\-\-eof\fR[=\fIEOF\fR]
+sets it from an attached value or removes it. The \fB\-I\fR option replaces a
+string in the command with each input line, and
+\fB\-i\fR[\fIR\fR], \fB\-\-replace\fR[=\fIR\fR]
+does the same with an attached string or {}. The \fB\-L\fR, \fB\-n\fR, and
 \fB\-s\fR options limit each command to a number of lines, arguments, or bytes.
-The \fB\-p\fR option asks before each command runs, \fB\-t\fR traces each
-command, and \fB\-x\fR fails when a command does not fit in the size limit. The
-status is 123 when a command
+The \fB\-P\fR, \fB\-\-max\-procs\fR
+option runs up to that many external commands at once, or as many as possible
+for 0, and their output can interleave. The \fB\-p\fR option asks before each
+command runs, \fB\-t\fR traces each command, and \fB\-x\fR fails when a
+command does not fit in the size limit. The status is 123 when a command
 fails, 124 when one exits with 255, 125 when a signal ends one, and 126 or
-127 when one cannot run.
+127 when one cannot run. With \fB\-P\fR, a command that cannot run stops the
+run after the running commands finish.
 .TP
 .B od
 Input bytes are written in the formats selected by \fB\-t\fR. The \fB\-b\fR,

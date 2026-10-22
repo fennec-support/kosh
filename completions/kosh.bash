@@ -503,7 +503,7 @@ _koshkit_util_flags ()
     ;;
     xargs)
       echo \
-        "-0 --null -r --no-run-if-empty -E --eof -I --replace -L --max-lines -n --max-args -p --prompt -s --max-size -t --trace -x --exit"
+        "-0 --null -a --arg-file -d --delimiter -r --no-run-if-empty -E -e --eof -I -i --replace -L --max-lines -n --max-args -P --max-procs -p --prompt -s --max-size -t --trace -x --exit"
     ;;
     pr)
       echo \

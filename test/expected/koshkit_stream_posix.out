@@ -5,3 +5,51 @@
 [plain value]
 xonex
 xtwox
+--- xargs delimiters
+<a b
+c><><d
+>
+<a><b>
+a b
+a b
+a b
+a b
+status=1
+<a><"b"><c
+>
+a END b
+a b
+--- xargs end markers and replacement
+a
+a
+a END b
+a
+[a]
+[b]
+[a]
+[b]
+[a]
+[b]
+[Za]
+[Zb]
+--- xargs argument files
+f1 f2
+stdin
+f1
+f2
+status=1
+--- xargs parallel commands
+1
+2
+3
+4
+5
+6
+status=123
+status=124
+status=125
+status=127
+status=126
+script a
+script b
+status=1

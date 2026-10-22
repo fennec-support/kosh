@@ -1,3 +1,43 @@
 printf 'one two three\n' | koshkit xargs -n 1 printf '<%s>\n'
 printf "'hello world' plain\\ value\n" | koshkit xargs printf '[%s]\n'
 printf 'one\ntwo\n' | koshkit xargs -I '{}' printf 'x%sx\n' '{}'
+root=$(mktemp -d)
+cd "$root" || exit 1
+echo "--- xargs delimiters"
+printf 'a b\nc,,d\n' | koshkit xargs -d , printf '<%s>'; echo
+printf 'a\nb\n' | koshkit xargs -d '\n' printf '<%s>'; echo
+printf 'aAb' | koshkit xargs -d '\x41' echo
+printf 'a\tb' | koshkit xargs -d '\t' echo
+printf 'a\0b\0' | koshkit xargs -d '\0' echo
+printf 'a1b' | koshkit xargs -d '\061' echo
+printf 'x' | koshkit xargs -d ab echo 2>/dev/null; echo "status=$?"
+printf 'a "b" c\n' | koshkit xargs -d ' ' printf '<%s>'; echo
+printf 'a\nEND\nb\n' | koshkit xargs -d '\n' -E END echo 2>/dev/null
+printf 'axb' | koshkit xargs -0 -d x echo
+echo "--- xargs end markers and replacement"
+printf 'a END b\n' | koshkit xargs -eEND echo
+printf 'a END b\n' | koshkit xargs --eof=END echo
+printf 'a END b\n' | koshkit xargs -E END -e echo
+printf 'a END b\n' | koshkit xargs -e -E END echo
+printf 'a\nb\n' | koshkit xargs -i echo '[{}]'
+printf 'a\nb\n' | koshkit xargs -iX echo '[X]'
+printf 'a\nb\n' | koshkit xargs --replace=Y echo '[Y]'
+printf 'a\nb\n' | koshkit xargs -I Z -i echo '[Z{}]'
+echo "--- xargs argument files"
+printf 'f1\nf2\n' > argfile
+printf 'stdin\n' | koshkit xargs -a argfile sh -c 'echo "$@"; cat' sh
+koshkit xargs --arg-file=argfile -n 1 echo
+koshkit xargs -a missing-file echo 2>/dev/null; echo "status=$?"
+echo "--- xargs parallel commands"
+printf '1\n2\n3\n4\n5\n6\n' | koshkit xargs -P 3 -n 1 sh -c 'echo "$1"' sh | koshkit sort
+printf '1\n2\n3\n' | koshkit xargs -P 0 -n 1 sh -c 'exit $1' sh; echo "status=$?"
+printf '1\n255\n' | koshkit xargs -P 2 -n 1 sh -c 'exit $1' sh 2>/dev/null; echo "status=$?"
+printf '1\n2\n' | koshkit xargs -P 2 -n 1 sh -c 'kill -9 $$' sh 2>/dev/null; echo "status=$?"
+printf '1\n2\n' | koshkit xargs -P 2 -n 1 ./no-such-program 2>/dev/null; echo "status=$?"
+printf 'echo hi\n' > noexec.sh
+printf 'a\nb\n' | koshkit xargs -P 2 -n 1 ./noexec.sh 2>/dev/null; echo "status=$?"
+printf 'echo script $1\n' > shebangless.sh
+koshkit chmod 755 shebangless.sh
+printf 'a\nb\n' | koshkit xargs -P 2 -n 1 ./shebangless.sh | koshkit sort
+printf '1\n' | koshkit xargs -P x echo 2>/dev/null; echo "status=$?"
+cd .. || exit 1

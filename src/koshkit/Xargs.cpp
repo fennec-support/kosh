@@ -15,16 +15,45 @@
 #include "../Platform.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-0prtx] [-E eof] [-I replace] [-L lines] [-n count] [-s "
-                  "bytes] [utility [argument ...]]",
+KOSHKIT_UTIL_DECL("[-0prtx] [-a file] [-d delim] [-E eof] [-e[eof]] "
+                  "[-I replace] [-i[replace]] [-L lines] [-n count] "
+                  "[-P procs] [-s bytes] [utility [argument ...]]",
                   "Build and invoke argument lists from standard input.");
 
-FLAG(XARGS_EOF, String, 'E', "eof", "Stop at this logical argument.");
+FLAG(XARGS_ARG_FILE,
+     String,
+     'a',
+     "arg-file",
+     "Read input items from this file instead of standard input.");
+FLAG(XARGS_DELIMITER,
+     String,
+     'd',
+     "delimiter",
+     "Separate input items with this character and keep quotes literal.");
+FLAG(XARGS_EOF, String, 'E', "", "Stop at this logical argument.");
+FLAG_OPTIONAL_ATTACHED(XARGS_EOF_OPTIONAL,
+                       'e',
+                       "eof",
+                       "Stop at this attached logical argument, or use none.",
+                       nullptr,
+                       "EOF");
 FLAG(XARGS_REPLACE,
      String,
      'I',
-     "replace",
+     "",
      "Replace this string with each input line.");
+FLAG_OPTIONAL_ATTACHED(
+    XARGS_REPLACE_OPTIONAL,
+    'i',
+    "replace",
+    "Replace the attached string, or {}, with each input line.",
+    nullptr,
+    "R");
+FLAG(XARGS_MAX_PROCS,
+     String,
+     'P',
+     "max-procs",
+     "Run up to this many commands at once, or as many as possible for 0.");
 FLAG(XARGS_MAX_LINES,
      String,
      'L',
@@ -90,7 +119,7 @@ parse_xargs_limit(const ExecContext &ec,
 enum class xargs_item_format : u8
 {
   Quoted,
-  NullSeparated,
+  Delimited,
   Lines,
 };
 
@@ -99,8 +128,9 @@ class XargsReader
 public:
   XargsReader(os::descriptor    fd,
               xargs_item_format format,
+              char              delimiter,
               Allocator         allocator) throws
-      : m_fd{fd}, m_format{format}, m_buffer{allocator}
+      : m_fd{fd}, m_format{format}, m_delimiter{delimiter}, m_buffer{allocator}
   {
     m_buffer.reserve(READ_CHUNK_BYTE_COUNT);
   }
@@ -109,10 +139,9 @@ public:
   next(Allocator allocator) throws -> Maybe<xargs_item>
   {
     switch (m_format) {
-    case xargs_item_format::Quoted: return next_quoted(allocator);
-    case xargs_item_format::NullSeparated:
-      return next_null_separated(allocator);
-    case xargs_item_format::Lines: return next_line(allocator);
+    case xargs_item_format::Quoted:    return next_quoted(allocator);
+    case xargs_item_format::Delimited: return next_delimited(allocator);
+    case xargs_item_format::Lines:     return next_line(allocator);
     }
 
     return None;
@@ -237,20 +266,24 @@ private:
   }
 
   fn
-  next_null_separated(Allocator allocator) throws -> Maybe<xargs_item>
+  next_delimited(Allocator allocator) throws -> Maybe<xargs_item>
   {
     if (!peek().has_value()) return None;
 
-    let value = String{allocator};
+    let  value    = String{allocator};
+    bool has_null = false;
 
-    loop {
+    /* an argument ends at a null byte, so the rest of the item is dropped. */
+    loop
+    {
       let const byte = take();
 
-      if (!byte.has_value() || *byte == '\0') {
+      if (!byte.has_value() || *byte == m_delimiter) {
         break;
       }
 
-      value += *byte;
+      if (*byte == '\0') has_null = true;
+      if (!has_null) value += *byte;
     }
 
     return xargs_item{steal(value), 0};
@@ -323,6 +356,7 @@ private:
 
   os::descriptor    m_fd;
   xargs_item_format m_format;
+  char              m_delimiter;
   String            m_buffer;
   usize             m_position{0};
   usize             m_line_number{0};
@@ -400,12 +434,101 @@ Xargs::execute(const ExecContext               &ec,
 
   if (FLAG_XARGS_PROMPT.is_enabled()) FLAG_XARGS_TRACE.enable();
 
-  let const format = FLAG_XARGS_NULL.is_enabled()
-                         ? xargs_item_format::NullSeparated
-                     : FLAG_XARGS_REPLACE.is_set() ? xargs_item_format::Lines
-                                                   : xargs_item_format::Quoted;
-  let       reader = XargsReader{ec.in_fd.value_or(KOSH_STDIN), format,
-                           cxt.scratch_allocator()};
+  /* the later of -I and -i, and of -E and -e, takes effect. */
+  Maybe<StringView> replace_text;
+
+  if (FLAG_XARGS_REPLACE.position() > FLAG_XARGS_REPLACE_OPTIONAL.position())
+    replace_text = FLAG_XARGS_REPLACE.value();
+  else if (FLAG_XARGS_REPLACE_OPTIONAL.is_enabled())
+    replace_text = FLAG_XARGS_REPLACE_OPTIONAL.has_value()
+                       ? FLAG_XARGS_REPLACE_OPTIONAL.value()
+                       : StringView{"{}"};
+
+  Maybe<StringView> eof_text;
+
+  if (FLAG_XARGS_EOF.position() > FLAG_XARGS_EOF_OPTIONAL.position())
+    eof_text = FLAG_XARGS_EOF.value();
+  else if (FLAG_XARGS_EOF_OPTIONAL.has_value())
+    eof_text = FLAG_XARGS_EOF_OPTIONAL.value();
+  if (eof_text.has_value() && eof_text->is_empty()) eof_text = None;
+
+  char delimiter = '\0';
+
+  if (FLAG_XARGS_DELIMITER.position() > FLAG_XARGS_NULL.position()) {
+    let const text    = FLAG_XARGS_DELIMITER.value();
+    let       decoded = String{cxt.scratch_allocator()};
+
+    if (text.length > 1 && text[0] == '\\')
+      utils::decode_ansi_c_escapes(decoded, text);
+    else
+      decoded += text;
+
+    if (decoded.length() != 1) {
+      report_soft_koshkit_util_error(
+          ec, cxt, FLAG_XARGS_DELIMITER.value_location(), "xargs",
+          "Invalid input delimiter '" + text + "'",
+          "Use a single character or an escape sequence starting with \\");
+
+      return 1;
+    }
+
+    delimiter = decoded[0];
+  }
+
+  let const is_delimited =
+      FLAG_XARGS_NULL.is_enabled() || FLAG_XARGS_DELIMITER.is_set();
+
+  if (is_delimited && eof_text.has_value()) {
+    report_soft_koshkit_warning(
+        ec, cxt, "xargs: the -E option has no effect if -0 or -d is used");
+    eof_text = None;
+  }
+
+  usize maximum_process_count = 1;
+
+  if (FLAG_XARGS_MAX_PROCS.is_set()) {
+    let const parsed = utils::parse_decimal_u64(FLAG_XARGS_MAX_PROCS.value());
+
+    if (parsed.is_error() || parsed.value() > SIZE_MAX) {
+      report_soft_koshkit_util_error(
+          ec, cxt, FLAG_XARGS_MAX_PROCS.value_location(), "xargs",
+          "Invalid process count '" + FLAG_XARGS_MAX_PROCS.value() + "'",
+          "Use a decimal integer, or 0 for no limit");
+
+      return 1;
+    }
+
+    maximum_process_count =
+        parsed.value() == 0 ? SIZE_MAX : static_cast<usize>(parsed.value());
+  }
+
+  Maybe<input_descriptor> argument_file;
+
+  if (FLAG_XARGS_ARG_FILE.is_set()) {
+    argument_file = open_named_or_stdin(ec, FLAG_XARGS_ARG_FILE.value());
+    if (!argument_file.has_value()) {
+      KOSHKIT_REPORT_PATH_ERROR_AT(FLAG_XARGS_ARG_FILE.value_location(), "open",
+                                   FLAG_XARGS_ARG_FILE.value());
+
+      return 1;
+    }
+  }
+
+  defer {
+    if (argument_file.has_value() &&
+        argument_file->mode == input_descriptor_mode::Owned)
+    {
+      os::close_fd(argument_file->descriptor);
+    }
+  };
+
+  let const format = is_delimited               ? xargs_item_format::Delimited
+                     : replace_text.has_value() ? xargs_item_format::Lines
+                                                : xargs_item_format::Quoted;
+  let       reader =
+      XargsReader{argument_file.has_value() ? argument_file->descriptor
+                                            : ec.in_fd.value_or(KOSH_STDIN),
+                  format, delimiter, cxt.scratch_allocator()};
 
   let base           = operands.clone();
   let base_locations = operand_locations.clone();
@@ -453,7 +576,7 @@ Xargs::execute(const ExecContext               &ec,
   if (base_byte_count > maximum_byte_count) {
     report_soft_koshkit_util_error(
         ec, cxt, args[0].view(),
-        FLAG_XARGS_REPLACE.is_set()
+        replace_text.has_value()
             ? "Argument list too long"
             : "Cannot fit single argument within argument list size limit");
 
@@ -483,8 +606,8 @@ Xargs::execute(const ExecContext               &ec,
 
     let item = reader.next(allocator);
 
-    if (item.has_value() && FLAG_XARGS_EOF.is_set() &&
-        item->value.view() == FLAG_XARGS_EOF.value())
+    if (item.has_value() && eof_text.has_value() &&
+        item->value.view() == *eof_text)
     {
       has_reached_eof_item = true;
 
@@ -504,6 +627,64 @@ Xargs::execute(const ExecContext               &ec,
   let &scratch_arena   = cxt.expansion_store().scratch_arena();
   bool has_run_command = false;
   i32  status          = 0;
+  let  running         = ArrayList<os::process>{heap_allocator()};
+
+  defer {
+    for (let const child : running) {
+      try {
+        os::reap_process_quietly(child);
+      } catch (...) {}
+    }
+  };
+
+  /* a status that stops the run is returned. */
+  let const do_apply_status =
+      [&](i32 command_status) throws -> Maybe<i32> {
+    if (command_status == 255) {
+      report_soft_koshkit_util_error(
+          ec, cxt, args[0].view(),
+          "A command exited with status 255; stopping");
+
+      return 124;
+    }
+
+    if (command_status > 128) return 125;
+    if (command_status != 0) status = 123;
+
+    return None;
+  };
+
+  /* e.g. running holds children 10 and 11, and 11 has exited: 11 is reaped
+     and removed. when none has exited, the call waits for 10. */
+  let const do_wait_for_child = [&]() throws -> i32 {
+    for (usize index = 0; index < running.count(); index++) {
+      i32 child_status = 0;
+
+      if (os::poll_process(running[index], child_status) ==
+          os::process_state::Exited)
+      {
+        running.remove(index);
+
+        return child_status;
+      }
+    }
+
+    let const child_status = os::wait_and_monitor_process(running[0]);
+
+    running.remove(0);
+
+    return child_status;
+  };
+
+  let const do_wait_for_children = [&]() throws -> Maybe<i32> {
+    while (!running.is_empty()) {
+      let const stop_status = do_apply_status(do_wait_for_child());
+
+      if (stop_status.has_value()) return stop_status;
+    }
+
+    return None;
+  };
 
   loop {
     let const batch_mark = scratch_arena.mark();
@@ -513,7 +694,7 @@ Xargs::execute(const ExecContext               &ec,
     let command           = base.clone();
     let command_locations = base_locations.clone();
 
-    if (FLAG_XARGS_REPLACE.is_set()) {
+    if (replace_text.has_value()) {
       let const item = do_read_item(cxt.scratch_allocator());
 
       if (!item.has_value()) break;
@@ -521,14 +702,14 @@ Xargs::execute(const ExecContext               &ec,
       for (usize index = 1; index < command.count(); index++) {
         let replaced = String{cxt.scratch_allocator()};
 
-        append_replaced(replaced, command[index].view(),
-                                  FLAG_XARGS_REPLACE.value(), item->value.view());
+        append_replaced(replaced, command[index].view(), *replace_text,
+                        item->value.view());
         command[index] = steal(replaced);
       }
 
       if (xargs_command_size(command) > maximum_byte_count) {
         report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                                 "Argument list too long");
+                                       "Argument list too long");
 
         return 1;
       }
@@ -561,8 +742,8 @@ Xargs::execute(const ExecContext               &ec,
         let const candidate_byte_count =
             command_byte_count == SIZE_MAX ||
                     argument_byte_count > SIZE_MAX - command_byte_count - 1
-                                 ? SIZE_MAX
-                                 : command_byte_count + argument_byte_count + 1;
+                       ? SIZE_MAX
+                       : command_byte_count + argument_byte_count + 1;
 
         if (candidate_byte_count > maximum_byte_count) {
           if (added_count != 0) {
@@ -574,7 +755,7 @@ Xargs::execute(const ExecContext               &ec,
             throw ErrorWithLocation{ec.source_location(),
                                     "One argument exceeds the size limit"};
           report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                                          "Argument line too long");
+                                                "Argument line too long");
 
           return 1;
         }
@@ -613,6 +794,58 @@ Xargs::execute(const ExecContext               &ec,
           cxt.source_store().current_source_view(), &cxt));
 
       return static_cast<i32>(resolution_error.command_status());
+    }
+
+    if (maximum_process_count > 1 && !sub->is_builtin()) {
+      while (running.count() >= maximum_process_count) {
+        let const stop_status = do_apply_status(do_wait_for_child());
+
+        if (stop_status.has_value()) return *stop_status;
+      }
+
+      cxt.prepare_child_environment();
+      unused(os::take_spawn_failure_status());
+
+      os::process child = KOSH_INVALID_PROCESS;
+
+      try {
+        child = os::execute_program(
+            *sub, os::program_execution_options{
+                      .source   = cxt.source_store().current_source_view(),
+                      .fallback = os::script_fallback_policy::Allow});
+      } catch (const ErrorWithLocation &error) {
+        let const spawn_status = os::take_spawn_failure_status();
+
+        if (!spawn_status.has_value()) throw;
+        show_message(
+            error.to_string(cxt.source_store().current_source_view(), &cxt));
+        unused(do_wait_for_children());
+
+        return *spawn_status;
+      }
+
+      if (child == KOSH_INVALID_PROCESS) {
+        let const fallback_status = cxt.run_program_fallback(
+            *sub, cxt.runtime_state().get_mood(), script_isolation::Isolated);
+        let const stop_status = do_apply_status(fallback_status);
+
+        if (stop_status.has_value()) return *stop_status;
+        continue;
+      }
+
+      running.push(child);
+
+      /* a failed spawn stops the run with its status after every running
+         command finishes. */
+      let const spawn_status = os::take_spawn_failure_status();
+
+      if (spawn_status.has_value()) {
+        unused(do_wait_for_children());
+
+        return *spawn_status;
+      }
+
+      continue;
     }
 
     let snapshot = cxt.snapshot_state();
@@ -661,17 +894,14 @@ Xargs::execute(const ExecContext               &ec,
       return command_status;
     }
 
-    if (command_status == 255) {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          "A command exited with status 255; stopping");
+    let const stop_status = do_apply_status(command_status);
 
-      return 124;
-    }
-
-    if (command_status > 128) return 125;
-    if (command_status != 0) status = 123;
+    if (stop_status.has_value()) return *stop_status;
   }
+
+  let const stop_status = do_wait_for_children();
+
+  if (stop_status.has_value()) return *stop_status;
 
   return status;
 }

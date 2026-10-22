@@ -406,6 +406,7 @@ public:
   value() const wontthrow -> StringView;
   pure fn
   value_name() const wontthrow -> StringView;
+  /* a flag without an acceptor takes any value. */
   pure fn
   should_accept_value(StringView value) const wontthrow -> bool;
 
