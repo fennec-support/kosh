@@ -19,7 +19,7 @@
 #include <ctype.h>
 
 KOSHKIT_UTIL_DECL(
-    "[-EFivrnhcqslx] [--color[=when]] [--one-file-system] "
+    "[-aEFivrnhcqslx] [--color[=when]] [--one-file-system] "
     "[-e pattern] [-f file] [pattern] [file ...]",
     "The grep utility can print the lines of each file that match a pattern.");
 
@@ -29,6 +29,7 @@ FLAG(GREP_EXTENDED,
      "extended-regexp",
      "Read patterns as extended regular expressions.");
 FLAG(GREP_FIXED, Bool, 'F', "fixed-strings", "Read patterns as fixed strings.");
+FLAG(GREP_TEXT, Bool, 'a', "text", "Read a file with NUL bytes as text.");
 FLAG(GREP_EXPRESSION,
      ManyStrings,
      'e',
@@ -650,6 +651,7 @@ struct grep_options
   bool                is_extended{false};
   bool                is_fixed{false};
   bool                is_whole_line{false};
+  bool                should_read_binary_as_text{false};
   bool                should_color{false};
   bool                should_highlight{false};
 };
@@ -1955,6 +1957,7 @@ private:
     /* the complete lines before the GNU buffer that holds the first NUL byte
        print as text, and the rest of the source counts as binary. */
     if (m_options.output_mode == grep_output_mode::Lines &&
+        !m_options.should_read_binary_as_text &&
         m_source_binary_states[chunk.source_index] == binary_state::Text &&
         chunk.content.length > 0)
     {
@@ -2104,7 +2107,8 @@ Grep::execute(const ExecContext               &ec,
   options.is_extended   = FLAG_GREP_EXTENDED.is_enabled();
   options.is_fixed      = FLAG_GREP_FIXED.is_enabled();
   options.is_whole_line = FLAG_GREP_LINE_REGEXP.is_enabled();
-  options.should_color  = resolve_koshkit_color_flag(
+  options.should_read_binary_as_text = FLAG_GREP_TEXT.is_enabled();
+  options.should_color               = resolve_koshkit_color_flag(
       FLAG_GREP_COLOR.is_enabled(), FLAG_GREP_COLOR.has_value(),
       FLAG_GREP_COLOR.value());
   options.should_highlight = options.should_color && !options.should_invert &&

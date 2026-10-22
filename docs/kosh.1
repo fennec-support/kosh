@@ -2506,7 +2506,13 @@ option prints each file with a selected line once, and takes precedence over
 \fB\-c\fR. The \fB\-q\fR
 option prints nothing and exits with status 0 at the first selected line. The
 \fB\-s\fR
-option suppresses messages about unreadable files. The exit status is 0 when a
+option suppresses messages about unreadable files. A file with a NUL byte is
+a binary file: the lines that GNU grep would read before the first NUL byte
+print, and a later match prints
+.B "grep: FILE: binary file matches"
+once instead of its lines. The
+.BR \-a " (" \-\-text )
+option reads such a file as text. The exit status is 0 when a
 line is selected, 1 when no line is selected, and 2 on an error. In a UTF-8
 locale, a dot and a bracket expression match one whole character. In every
 other locale, they match one byte.

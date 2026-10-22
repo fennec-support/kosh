@@ -544,7 +544,7 @@ _koshkit_util_flags ()
       echo "-c -C -d -s"
     ;;
     grep)
-      echo "-i -v -r -n -h -E -F -e -f -c -l -q -s -x -rnh --recursive --line-number --no-filename --extended-regexp --fixed-strings --regexp --file --count --files-with-matches --quiet --no-messages --line-regexp --one-file-system --color"
+      echo "-a -i -v -r -n -h -E -F -e -f -c -l -q -s -x -rnh --text --recursive --line-number --no-filename --extended-regexp --fixed-strings --regexp --file --count --files-with-matches --quiet --no-messages --line-regexp --one-file-system --color"
     ;;
     sort)
       echo "-b -c -C -d -f -i -k -m -n -o -r -s -t -u"
