@@ -3503,6 +3503,24 @@ get_supplementary_group_ids(Allocator allocator) throws
 }
 
 fn
+get_user_primary_group_id(u32) wontthrow -> Maybe<u32>
+{
+  return None;
+}
+
+fn
+get_user_group_ids(u32, Allocator) throws -> Maybe<ArrayList<u32>>
+{
+  return None;
+}
+
+fn
+take_spawn_failure() wontthrow -> bool
+{
+  return false;
+}
+
+fn
 machine_type() throws -> String
 {
   SYSTEM_INFO information{};

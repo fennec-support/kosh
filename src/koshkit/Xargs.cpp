@@ -256,6 +256,11 @@ private:
     return xargs_item{steal(value), 0};
   }
 
+  /* e.g. input a "b c" d\ e followed by a newline:
+       the quoted run keeps its blank, and the escaped blank stays literal
+       the newline ends the item
+     the result is item "a b c d e". leading blanks are dropped and the rest
+     of the blanks stay. */
   fn
   next_line(Allocator allocator) throws -> Maybe<xargs_item>
   {
@@ -264,21 +269,47 @@ private:
 
       let       value     = String{allocator};
       let const item_line = m_line_number;
+      char      quote     = '\0';
 
       loop {
-        let const byte = take();
+        let const taken = take();
 
-        if (!byte.has_value()) break;
-        if (*byte == '\n') {
+        if (!taken.has_value()) break;
+
+        let const byte = *taken;
+
+        if (quote != '\0') {
+          if (byte == '\n') throw Error{"Unmatched quote before newline"};
+          if (byte == quote)
+            quote = '\0';
+          else
+            value += byte;
+
+          continue;
+        }
+
+        if (byte == '\n') {
           m_line_number++;
           break;
         }
 
-        if (value.is_empty() && (*byte == ' ' || *byte == '\t')) {
+        if (value.is_empty() && (byte == ' ' || byte == '\t')) continue;
+
+        if (byte == '\'' || byte == '"') {
+          quote = byte;
           continue;
         }
 
-        value += *byte;
+        if (byte == '\\') {
+          let const escaped = take();
+
+          if (!escaped.has_value()) throw Error{"Trailing backslash"};
+          if (*escaped == '\n') m_line_number++;
+          value += *escaped;
+          continue;
+        }
+
+        value += byte;
       }
 
       if (!value.is_empty()) return xargs_item{steal(value), item_line};
@@ -416,6 +447,16 @@ Xargs::execute(const ExecContext               &ec,
     return 1;
   }
 
+  if (base_byte_count > maximum_byte_count) {
+    report_soft_koshkit_util_error(
+        ec, cxt, args[0].view(),
+        FLAG_XARGS_REPLACE.is_set()
+            ? "Argument list too long"
+            : "Cannot fit single argument within argument list size limit");
+
+    return 1;
+  }
+
   /* at this point: base holds the utility, or echo, followed by the operands.
      reader takes its input from ec.in_fd or KOSH_STDIN, and the three limits
      are positive and fit in usize. */
@@ -481,6 +522,13 @@ Xargs::execute(const ExecContext               &ec,
                                   FLAG_XARGS_REPLACE.value(), item->value.view());
         command[index] = steal(replaced);
       }
+
+      if (xargs_command_size(command) > maximum_byte_count) {
+        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                                 "Argument list too long");
+
+        return 1;
+      }
     } else {
       usize first_line         = 0;
       let   command_byte_count = base_byte_count;
@@ -522,10 +570,10 @@ Xargs::execute(const ExecContext               &ec,
           if (FLAG_XARGS_EXIT.is_enabled())
             throw ErrorWithLocation{ec.source_location(),
                                     "One argument exceeds the size limit"};
-          command.push(steal(item->value));
-          command_locations.push(ec.source_location());
-          added_count++;
-          break;
+          report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                                          "Argument line too long");
+
+          return 1;
         }
 
         command.push(steal(item->value));
@@ -570,6 +618,8 @@ Xargs::execute(const ExecContext               &ec,
 
     i32 command_status = 0;
 
+    unused(os::take_spawn_failure());
+
     try {
       command_status =
           utils::execute_context(steal(*sub), cxt, execution_mode::Foreground);
@@ -588,16 +638,14 @@ Xargs::execute(const ExecContext               &ec,
     cxt.leave_subshell();
     cxt.restore_state(steal(snapshot));
 
+    if (os::take_spawn_failure()) return command_status;
+
     if (command_status == 255) {
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
           "A command exited with status 255; stopping");
 
       return 124;
-    }
-
-    if (command_status == 126 || command_status == 127) {
-      return command_status;
     }
 
     if (command_status > 128) return 125;

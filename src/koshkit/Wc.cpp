@@ -87,41 +87,6 @@ struct wc_counts
     character_count += other.character_count;
     byte_count += other.byte_count;
   }
-
-  fn
-  get_maximum(wc_count_selection selection) const wontthrow -> u64
-  {
-    u64 maximum = 0;
-
-    if (has_wc_count(selection, wc_count_selection::Lines) &&
-        line_count > maximum)
-    {
-      maximum = line_count;
-    }
-    if (has_wc_count(selection, wc_count_selection::Words) &&
-        word_count > maximum)
-    {
-      maximum = word_count;
-    }
-    if (has_wc_count(selection, wc_count_selection::Characters) &&
-        character_count > maximum)
-    {
-      maximum = character_count;
-    }
-    if (has_wc_count(selection, wc_count_selection::Bytes) &&
-        byte_count > maximum)
-    {
-      maximum = byte_count;
-    }
-
-    return maximum;
-  }
-};
-
-struct wc_row
-{
-  StringView name;
-  wc_counts  counts;
 };
 
 struct wc_source_state
@@ -237,6 +202,42 @@ decimal_digit_count(u64 value) wontthrow -> usize
   }
 
   return digit_count;
+}
+
+/* every count shares one width: the digit count of the summed sizes when each
+   readable input is a regular file, and 7 when any readable input is not. an
+   unreadable input does not take part. */
+static fn
+get_wc_field_width(const ExecContext           &ec,
+                   const ArrayList<StringView> &sources,
+                   wc_count_selection           selection) wontthrow -> usize
+{
+  let const count_bits = static_cast<u8>(selection);
+
+  if (sources.count() == 1 && (count_bits & (count_bits - 1)) == 0) return 1;
+
+  u64 regular_byte_count = 0;
+  let width              = usize{1};
+
+  for (let const source : sources) {
+    if (source == "-") {
+      let const byte_count =
+          os::regular_file_byte_count(ec.in_fd.value_or(KOSH_STDIN));
+
+      if (byte_count.has_value())
+        regular_byte_count += *byte_count;
+      else
+        width = 7;
+    } else if (os::path_is_regular_file(source)) {
+      regular_byte_count += os::path_file_size(source).value_or(0);
+    } else if (os::path_exists(source)) {
+      width = 7;
+    }
+  }
+
+  let const digit_count = decimal_digit_count(regular_byte_count);
+
+  return digit_count > width ? digit_count : width;
 }
 
 static fn
@@ -383,36 +384,34 @@ Wc::execute(const ExecContext               &ec,
     }
   }
 
-  ArrayList<wc_row> rows{cxt.scratch_allocator()};
-  wc_counts         totals;
-  i32               status = 0;
+  wc_counts totals;
+  i32       status = 0;
+
+  let const field_width = get_wc_field_width(ec, sources, selection);
+  let       output      = String{cxt.scratch_allocator()};
 
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let const &state = source_states[source_index];
 
     if (state.error_number != 0) {
+      ec.print_to_stdout(output);
+      output.clear();
       os::set_last_system_error(state.error_number);
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
           String{cxt.scratch_allocator(), sources[source_index]} + ": " +
               os::last_system_error_message());
       status = 1;
-      continue;
+
+      if (!os::path_is_directory(sources[source_index])) continue;
     }
 
     totals.add(state.counts);
 
     let const name = operands.is_empty() ? StringView{} : sources[source_index];
 
-    rows.push(wc_row{name, state.counts});
+    append_counts(output, state.counts, name, field_width, selection);
   }
-
-  let const field_width = decimal_digit_count(totals.get_maximum(selection));
-
-  let output = String{cxt.scratch_allocator()};
-
-  for (let const &row : rows)
-    append_counts(output, row.counts, row.name, field_width, selection);
 
   if (sources.count() > 1)
     append_counts(output, totals, StringView{"total"}, field_width, selection);

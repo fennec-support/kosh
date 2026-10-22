@@ -784,11 +784,13 @@ Rm::execute(const ExecContext               &ec,
 
     let const target = Path{operand.view(), allocator};
 
-    if (!target.exists() && !target.is_symbolic_link()) {
+    os::file_status target_status{};
+
+    if (!os::stat_path(operand.view(), target_status)) {
       if (should_ignore_missing) continue;
       report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "Cannot remove '" + operand +
-                                         "': No such file or directory");
+                                     "Cannot remove '" + operand + "': " +
+                                         os::last_system_error_message());
       status = 1;
       continue;
     }

@@ -877,6 +877,16 @@ regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>
 }
 
 fn
+regular_file_byte_count(os::descriptor fd) wontthrow -> Maybe<u64>
+{
+  struct stat info{};
+
+  if (fstat(fd, &info) != 0 || !S_ISREG(info.st_mode)) return None;
+
+  return static_cast<u64>(info.st_size);
+}
+
+fn
 rewind_descriptor(os::descriptor fd, usize byte_count) wontthrow -> bool
 {
   return lseek(fd, -static_cast<off_t>(byte_count), SEEK_CUR) !=

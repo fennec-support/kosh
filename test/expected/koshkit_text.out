@@ -96,23 +96,23 @@ status=0
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 status=2
 --- wc multi-chunk input with a missing operand ---
+108894 batch-input.txt
 -c:1:1: error: Koshkit `wc`: missing.txt: No such file or directory.
      1 |  koshkit wc -c batch-input.txt missing.txt empty.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-108894 batch-input.txt
      0 empty.txt
 108894 total
 status=1
 --- wc counts newlines across vector blocks ---
-20000 batch-input.txt
-    1 cat-first.txt
-    0 transform-first.txt
-20001 total
+ 20000 batch-input.txt
+     1 cat-first.txt
+     0 transform-first.txt
+ 20001 total
 20000
 --- wc repeated explicit standard input ---
-4 -
-0 -
-4 total
+      4 -
+      0 -
+      4 total
 --- wc implicit standard input ---
 4
 --- cksum multi-chunk input with a missing operand ---
@@ -709,3 +709,109 @@ xzaab
 		b
 a
 status=1
+--- wc pads every count to one width ---
+ 2  5 wc-width.txt
+2 wc-width.txt
+ 2 wc-width.txt
+ 2 wc-width.txt
+ 4 total
+     2 wc-width.txt
+100000 wc-width-big.txt
+100002 total
+    24 wc-width.txt
+588895 wc-width-big.txt
+588919 total
+ 2  5 24
+ 2  5
+2
+      2       3       6
+      2       3
+--- wc counts a directory as an empty input ---
+      2       5      24 wc-width.txt
+-c:1:1: error: Koshkit `wc`: .: Is a directory.
+     1 |  koshkit wc wc-width.txt . 2>&1; printf "status=%s\n" "$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~
+      0       0       0 .
+      2       5      24 total
+status=1
+--- nl leaves unnumbered lines without a separator ---
+                                   a  \n                        
+          \n                                   b  \n
+                       1   :       a  \n                        
+          \n                       2   :       b  \n
+--- nl numbers several files as one stream ---
+     1	a
+       
+     2	b
+-c:1:1: error: Koshkit `nl`: Cannot read 'missing.txt': No such file or directory.
+     1 |  koshkit nl nl-blank.txt missing.txt nl-blank.txt 2>&1; printf "status=%s\n" "$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     3	a
+       
+     4	b
+status=1
+--- unexpand with a tab list converts every blank run ---
+   a  \t   b  \n
+   a  \t   b  \n
+   a  \t  \t               b  \n
+   a  \t  \t               b  \n
+   a   b  \t  \t   c  \n
+   a   b  \t  \t   c  \n
+--- grep with an empty pattern file ---
+status=1
+2
+status=0
+--- grep -E accepts a leading or dangling repetition ---
+a
+*a
+b+
+a{1
+status=0
+a
+*a
+a{1
+status=0
+a
+*a
+b+
+a{1
+status=0
+a
+*a
+a{1
+status=0
+a
+*a
+a{1
+status=0
+a{1
+status=0
+--- xargs -I unquotes the line and keeps inner blanks ---
+[a b c d e f g h]
+[lead  trail  ]
+[x
+y]
+status=0
+--- xargs size limit statuses ---
+-c:1:1: error: Koshkit `xargs`: Cannot fit single argument within argument list size limit.
+     1 |  koshkit xargs -s 1 echo 2>&1; printf "status=%s\n" "$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~
+status=1
+-c:1:1: error: Koshkit `xargs`: Argument line too long.
+     1 |  koshkit xargs -s 5 echo 2>&1; printf "status=%s\n" "$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~
+status=1
+a
+-c:1:1: error: Koshkit `xargs`: Argument line too long.
+     1 |  koshkit xargs -s 8 echo 2>&1; printf "status=%s\n" "$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~
+status=1
+--- xargs separates exec failure from command status ---
+status=126
+status=127
+a
+b
+status=123
+a
+b
+status=123

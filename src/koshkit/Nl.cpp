@@ -138,8 +138,6 @@ Nl::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  if (operands.count() > 1) return report_usage_error(ec, cxt, args[0].view());
-
   let const body_style = NL_STYLES.find(
       FLAG_NL_BODY.is_set() ? FLAG_NL_BODY.value() : StringView{"t"});
   let const header_style = NL_STYLES.find(
@@ -262,93 +260,100 @@ Nl::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let const source = operands.is_empty() ? StringView{"-"} : operands[0].view();
-  let const input  = open_named_or_stdin(ec, source);
-
-  if (!input.has_value()) {
-    KOSHKIT_REPORT_PATH_ERROR("read", source);
-
-    return 1;
-  }
-
-  defer {
-    if (input->mode == input_descriptor_mode::Owned)
-      os::close_fd(input->descriptor);
-  };
-
-  /* at this point: input holds an open descriptor, delimiter is two bytes,
-     and width_value is positive. */
-  let reader =
-      utils::BufferedLineReader{input->descriptor, cxt.scratch_allocator()};
+  let const sources =
+      source_list_from_operands(operands, cxt.scratch_allocator());
   let      output        = String{cxt.scratch_allocator()};
   nl_style section_style = *body_style;
   i64      number        = static_cast<i64>(start_value);
   u64      blank_count   = 0;
+  i32      status        = 0;
 
-  loop {
-    let const result = reader.next();
+  /* at this point: delimiter is two bytes and width_value is positive. */
+  for (let const source : sources) {
+    let const input = open_named_or_stdin(ec, source);
 
-    if (result == utils::BufferedLineReader::Result::End) break;
-    if (result == utils::BufferedLineReader::Result::Error) {
-      if (os::INTERRUPT_REQUESTED) return 130;
-
+    if (!input.has_value()) {
       ec.print_to_stdout(output);
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                            os::last_system_error_message());
+      output.clear();
+      KOSHKIT_REPORT_PATH_ERROR("read", source);
+      status = 1;
 
-      return 1;
-    }
-
-    let const line = reader.get_line();
-    /* e.g. line = \:\:\:, delimiter = \:, delimiter_count = 3, header */
-    let const delimiter_count = line.length / delimiter.length;
-    bool      is_section_delimiter =
-        delimiter_count >= 1 && delimiter_count <= 3 &&
-        line.length == delimiter_count * delimiter.length;
-
-    for (usize position = 0; position < delimiter_count && is_section_delimiter;
-         position++)
-      is_section_delimiter =
-          line.substring_of_length(position * delimiter.length,
-                                          delimiter.length) == delimiter;
-    if (is_section_delimiter) {
-      switch (delimiter_count) {
-      case 3:  section_style = *header_style; break;
-      case 2:  section_style = *body_style; break;
-      default: section_style = *footer_style; break;
-      }
-      if (!FLAG_NL_NO_RESET.is_enabled())
-        number = static_cast<i64>(start_value);
-      blank_count = 0;
-      output += '\n';
       continue;
     }
 
-    if (nl_style_numbers(section_style, line.is_empty(), blank_count,
-                                blank_group))
-    {
-      append_nl_number(output, number, static_cast<usize>(width_value),
-                              separator, *number_format);
-      if (increment > static_cast<u64>(INT64_MAX - number))
-        number = INT64_MAX;
-      else
-        number += static_cast<i64>(increment);
-    } else {
-      output.append_repeated(' ', static_cast<usize>(width_value));
-      output += line.is_empty() ? StringView{" "} : separator;
-    }
+    defer {
+      if (input->mode == input_descriptor_mode::Owned)
+        os::close_fd(input->descriptor);
+    };
 
-    output += line;
-    output += '\n';
-    if (output.count() >= 65536) {
-      ec.print_to_stdout(output);
-      output.clear();
+    let reader =
+        utils::BufferedLineReader{input->descriptor, cxt.scratch_allocator()};
+
+    loop {
+      let const result = reader.next();
+
+      if (result == utils::BufferedLineReader::Result::End) break;
+      if (result == utils::BufferedLineReader::Result::Error) {
+        if (os::INTERRUPT_REQUESTED) return 130;
+
+        ec.print_to_stdout(output);
+        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                       os::last_system_error_message());
+
+        return 1;
+      }
+
+      let const line = reader.get_line();
+      /* e.g. line = \:\:\:, delimiter = \:, delimiter_count = 3, header */
+      let const delimiter_count = line.length / delimiter.length;
+      bool      is_section_delimiter =
+          delimiter_count >= 1 && delimiter_count <= 3 &&
+          line.length == delimiter_count * delimiter.length;
+
+      for (usize position = 0;
+           position < delimiter_count && is_section_delimiter; position++)
+        is_section_delimiter =
+            line.substring_of_length(position * delimiter.length,
+                                     delimiter.length) == delimiter;
+      if (is_section_delimiter) {
+        switch (delimiter_count) {
+        case 3:  section_style = *header_style; break;
+        case 2:  section_style = *body_style; break;
+        default: section_style = *footer_style; break;
+        }
+        if (!FLAG_NL_NO_RESET.is_enabled())
+          number = static_cast<i64>(start_value);
+        blank_count = 0;
+        output += '\n';
+        continue;
+      }
+
+      if (nl_style_numbers(section_style, line.is_empty(), blank_count,
+                           blank_group))
+      {
+        append_nl_number(output, number, static_cast<usize>(width_value),
+                         separator, *number_format);
+        if (increment > static_cast<u64>(INT64_MAX - number))
+          number = INT64_MAX;
+        else
+          number += static_cast<i64>(increment);
+      } else {
+        output.append_repeated(' ', static_cast<usize>(width_value) +
+                                        separator.length);
+      }
+
+      output += line;
+      output += '\n';
+      if (output.count() >= 65536) {
+        ec.print_to_stdout(output);
+        output.clear();
+      }
     }
   }
 
   ec.print_to_stdout(output);
 
-  return 0;
+  return status;
 }
 
 } /* namespace koshka::koshkit */

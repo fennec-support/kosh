@@ -70,14 +70,8 @@ Chown::execute(const ExecContext               &ec,
       colon.has_value() ? specification.substring(*colon + 1) : StringView{};
 
   /* an empty specification and a lone colon change nothing, as in GNU
-     chown, and the files are still checked. */
-  if (colon.has_value() && group_text.is_empty() && !owner_text.is_empty()) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "Invalid specification '" + operands[0] + "'",
-                            "Use owner, owner:group, or :group");
-
-    return 1;
-  }
+     chown, and the files are still checked. an owner followed by a colon
+     also sets the group to the login group of the owner. */
 
   /* -1 leaves an id unchanged, because fchownat() treats (uid_t)-1 and
      (gid_t)-1 as no change. */
@@ -97,6 +91,20 @@ Chown::execute(const ExecContext               &ec,
     }
 
     owner_id = *resolved;
+
+    if (colon.has_value() && group_text.is_empty()) {
+      let const login_group = os::get_user_primary_group_id(*resolved);
+
+      if (!login_group.has_value()) {
+        KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
+                                "Invalid specification '" + operands[0] + "'",
+                                "Use owner, owner:group, or :group");
+
+        return 1;
+      }
+
+      group_id = *login_group;
+    }
   }
 
   if (!group_text.is_empty()) {

@@ -402,3 +402,44 @@ echo "--- comm reports unsorted input ---"
 printf 'b\na\n' > comm-unsorted-1.txt
 printf 'a\nb\n' > comm-unsorted-2.txt
 "$BIN" -c 'koshkit comm comm-unsorted-1.txt comm-unsorted-2.txt 2>/dev/null; printf "status=%s\n" "$?"'
+echo "--- wc pads every count to one width ---"
+printf 'hello world\nfoo bar baz\n' > wc-width.txt
+seq 1 100000 > wc-width-big.txt
+"$BIN" -c 'koshkit wc -lw wc-width.txt; koshkit wc -l wc-width.txt; koshkit wc -l wc-width.txt wc-width.txt'
+"$BIN" -c 'koshkit wc -l wc-width.txt wc-width-big.txt; koshkit wc -c wc-width.txt wc-width-big.txt'
+"$BIN" -c 'koshkit wc < wc-width.txt; koshkit wc -lw < wc-width.txt; koshkit wc -l < wc-width.txt'
+"$BIN" -c 'printf "a b\nc\n" | koshkit wc; printf "a b\nc\n" | koshkit wc -lw'
+echo "--- wc counts a directory as an empty input ---"
+"$BIN" -c 'koshkit wc wc-width.txt . 2>&1; printf "status=%s\n" "$?"'
+echo "--- nl leaves unnumbered lines without a separator ---"
+printf 'a\n\nb\n' > nl-blank.txt
+"$BIN" -c 'koshkit nl -b n -s ": " nl-blank.txt | od -An -c; koshkit nl -b t -s ": " nl-blank.txt | od -An -c'
+echo "--- nl numbers several files as one stream ---"
+"$BIN" -c 'koshkit nl nl-blank.txt missing.txt nl-blank.txt 2>&1; printf "status=%s\n" "$?"'
+echo "--- unexpand with a tab list converts every blank run ---"
+printf 'a\tb\n' > unexpand-tab.txt
+printf 'a        b\n' > unexpand-spaces.txt
+printf 'ab\t\tc\n' > unexpand-tabs.txt
+"$BIN" -c 'for f in unexpand-tab.txt unexpand-spaces.txt unexpand-tabs.txt; do koshkit unexpand -t 2,6 "$f" | od -An -c; koshkit unexpand -a -t 2,6 "$f" | od -An -c; done'
+echo "--- grep with an empty pattern file ---"
+printf 'a\nb\n' > grep-lines.txt
+"$BIN" -c 'koshkit grep -c -f empty.txt grep-lines.txt; printf "status=%s\n" "$?"; koshkit grep -vc -f empty.txt grep-lines.txt; printf "status=%s\n" "$?"'
+echo "--- grep -E accepts a leading or dangling repetition ---"
+printf 'a\n*a\nb+\na{1\n' > grep-repeat.txt
+for pattern in '+' '*a' 'a|*b' '(+a)' '{1}a' 'a{1'; do
+  "$BIN" -c 'koshkit grep -E "$1" grep-repeat.txt 2>/dev/null; printf "status=%s\n" "$?"' _ "$pattern"
+done
+echo "--- xargs -I unquotes the line and keeps inner blanks ---"
+printf 'a b "c d" '"'"'e f'"'"' g\\ h\n  lead  trail  \nx\\\ny\n' > xargs-quoted.txt
+"$BIN" -c "koshkit xargs -I{} echo '[{}]' < xargs-quoted.txt; printf 'status=%s\n' \"\$?\""
+echo "--- xargs size limit statuses ---"
+printf 'a b\n' | "$BIN" -c 'koshkit xargs -s 1 echo 2>&1; printf "status=%s\n" "$?"'
+printf 'a b\n' | "$BIN" -c 'koshkit xargs -s 5 echo 2>&1; printf "status=%s\n" "$?"'
+printf 'a bbbbbbbbbbbbbbbbbbbbbb\n' | "$BIN" -c 'koshkit xargs -s 8 echo 2>&1; printf "status=%s\n" "$?"'
+echo "--- xargs separates exec failure from command status ---"
+printf 'echo hi\n' > xargs-noexec.sh && chmod 644 xargs-noexec.sh
+printf '#!/nonexistent/interpreter\n' > xargs-badshebang.sh && chmod 755 xargs-badshebang.sh
+printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 ./xargs-noexec.sh >/dev/null 2>&1; printf "status=%s\n" "$?"'
+printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 ./xargs-badshebang.sh >/dev/null 2>&1; printf "status=%s\n" "$?"'
+printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 sh -c "echo \$0; exit 127" 2>&1; printf "status=%s\n" "$?"'
+printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 sh -c "echo \$0; exit 126" 2>&1; printf "status=%s\n" "$?"'

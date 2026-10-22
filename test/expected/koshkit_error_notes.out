@@ -573,9 +573,9 @@ note: Use an octal mode up to 7777 or symbolic clauses such as u+x,g-w.
        |                ^~~~~~~~~~~~~~~~~
 note: Use an owner name or an unsigned decimal user id.
 === chown specification location ===
--c:1:15: error: Koshkit `chown`: Invalid specification '0:'.
-     1 |  koshkit chown 0: LICENSE
-       |                ^~
+-c:1:15: error: Koshkit `chown`: Invalid specification '4000000000:'.
+     1 |  koshkit chown 4000000000: LICENSE
+       |                ^~~~~~~~~~~
 note: Use owner, owner:group, or :group.
 === chown group location ===
 -c:1:15: error: Koshkit `chown`: Invalid group 'KOSH_MISSING_GROUP'.

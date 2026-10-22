@@ -105,7 +105,18 @@ Id::execute(const ExecContext               &ec,
       return 1;
     }
 
-    user_id = *resolved;
+    let const primary_group = os::get_user_primary_group_id(*resolved);
+
+    if (!primary_group.has_value()) {
+      report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
+                                     args[0].view(),
+                                     "Unknown user '" + operands[0] + "'");
+
+      return 1;
+    }
+
+    user_id  = *resolved;
+    group_id = *primary_group;
   }
 
   /* at this point: user_id holds the selected user, group_id holds the real or
@@ -127,10 +138,30 @@ Id::execute(const ExecContext               &ec,
     return 0;
   }
 
-  let groups = os::get_supplementary_group_ids(cxt.scratch_allocator());
+  let groups = operands.is_empty()
+                   ? os::get_supplementary_group_ids(cxt.scratch_allocator())
+                   : os::get_user_group_ids(user_id, cxt.scratch_allocator())
+                         .value_or(ArrayList<u32>{cxt.scratch_allocator()});
 
   if (FLAG_ID_GROUPS.is_enabled()) {
     let output = String{cxt.scratch_allocator()};
+
+    /* a named user lists the primary group first, then the others. */
+    if (!operands.is_empty()) {
+      output += id_group_text(group_id, cxt.scratch_allocator(), name_mode);
+
+      for (let const other_group : groups) {
+        if (other_group == group_id) continue;
+        output += ' ';
+        output +=
+            id_group_text(other_group, cxt.scratch_allocator(), name_mode);
+      }
+
+      output += '\n';
+      ec.print_to_stdout(output);
+
+      return 0;
+    }
 
     for (usize index = 0; index < groups.count(); index++) {
       if (index != 0) output += ' ';

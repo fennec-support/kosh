@@ -357,7 +357,7 @@ echo "=== chown owner location ==="
 "$BIN" -c 'koshkit chown KOSH_MISSING_USER LICENSE' 2>&1
 
 echo "=== chown specification location ==="
-"$BIN" -c 'koshkit chown 0: LICENSE' 2>&1
+"$BIN" -c 'koshkit chown 4000000000: LICENSE' 2>&1
 
 echo "=== chown group location ==="
 "$BIN" -c 'koshkit chown :KOSH_MISSING_GROUP LICENSE' 2>&1

@@ -1583,6 +1583,8 @@ descriptor_is_seekable(os::descriptor fd) wontthrow -> bool;
 fn
 regular_descriptor_file_size(os::descriptor fd) wontthrow -> Maybe<u64>;
 fn
+regular_file_byte_count(os::descriptor fd) wontthrow -> Maybe<u64>;
+fn
 rewind_descriptor(os::descriptor fd, usize byte_count) wontthrow -> bool;
 fn
 seek_descriptor_from_start(os::descriptor fd, u64 byte_offset)
@@ -2079,6 +2081,13 @@ get_effective_group_id() wontthrow -> i64;
 fn
 get_supplementary_group_ids(Allocator allocator) throws
     -> ArrayList<u32>;
+fn
+get_user_primary_group_id(u32 user_id) wontthrow -> Maybe<u32>;
+fn
+get_user_group_ids(u32 user_id, Allocator allocator) throws
+    -> Maybe<ArrayList<u32>>;
+fn
+take_spawn_failure() wontthrow -> bool;
 
 fn
 machine_type() throws -> String;

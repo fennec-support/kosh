@@ -503,6 +503,113 @@ enum class grep_output_mode : u8
   Quiet,
 };
 
+/* returns the length of the interval expression at the start of text, or 0
+   when text does not begin with a valid {n}, {n,}, {,m}, or {n,m}. */
+static fn
+get_interval_length(StringView text) wontthrow -> usize
+{
+  usize index       = 1;
+  usize digit_count = 0;
+  bool  has_comma   = false;
+
+  if (text.length == 0 || text[0] != '{') return 0;
+
+  for (; index < text.length; index++) {
+    let const character = text[index];
+
+    if (character >= '0' && character <= '9') {
+      digit_count++;
+    } else if (character == ',' && !has_comma) {
+      has_comma = true;
+    } else {
+      break;
+    }
+  }
+
+  if (index >= text.length || text[index] != '}') return 0;
+  if (digit_count == 0 && !has_comma) return 0;
+
+  return index + 1;
+}
+
+/* e.g. pattern = "*a|{1}b|c{1", extended: the repetition operators that begin
+   an expression apply to nothing and are dropped, and a brace that does not
+   open a valid interval is literal. the result is "a|b|c\{1". */
+static fn
+append_extended_pattern(String &output, StringView pattern) throws
+    -> void
+{
+  bool is_at_start = true;
+
+  for (usize index = 0; index < pattern.length;) {
+    let const character = pattern[index];
+
+    if (character == '\\' && index + 1 < pattern.length) {
+      output += character;
+      output += pattern[index + 1];
+      index += 2;
+      is_at_start = false;
+    } else if (character == '[') {
+      usize end = index + 1;
+
+      if (end < pattern.length && pattern[end] == '^') end++;
+      if (end < pattern.length && pattern[end] == ']') end++;
+
+      while (end < pattern.length && pattern[end] != ']') {
+        if (pattern[end] == '[' && end + 1 < pattern.length &&
+            (pattern[end + 1] == ':' || pattern[end + 1] == '.' ||
+             pattern[end + 1] == '='))
+        {
+          let terminator = end + 2;
+
+          while (terminator + 1 < pattern.length &&
+                 !(pattern[terminator] == pattern[end + 1] &&
+                   pattern[terminator + 1] == ']'))
+          {
+            terminator++;
+          }
+
+          end = terminator + 2;
+
+          continue;
+        }
+
+        end++;
+      }
+
+      if (end < pattern.length) end++;
+      if (end > pattern.length) end = pattern.length;
+
+      output += pattern.substring_of_length(index, end - index);
+      index       = end;
+      is_at_start = false;
+    } else if (character == '(' || character == '|') {
+      output += character;
+      index++;
+      is_at_start = true;
+    } else if (character == '*' || character == '+' || character == '?') {
+      if (!is_at_start) output += character;
+      index++;
+    } else if (character == '{') {
+      let const interval_length = get_interval_length(pattern.substring(index));
+
+      if (interval_length == 0) {
+        output += "\\{";
+        index++;
+        is_at_start = false;
+      } else {
+        if (!is_at_start)
+          output += pattern.substring_of_length(index, interval_length);
+        index += interval_length;
+      }
+    } else {
+      output += character;
+      index++;
+      is_at_start = false;
+    }
+  }
+}
+
 struct grep_options
 {
   StringView          pattern;
@@ -1906,6 +2013,15 @@ Grep::execute(const ExecContext               &ec,
                               !is_ascii_pattern(pattern);
     let const start = pattern_text.count();
 
+    if (options.is_extended && !options.is_fixed) {
+      append_extended_pattern(pattern_text, pattern);
+      pattern_spans.push({static_cast<u32>(start),
+                          static_cast<u32>(pattern_text.count() - start),
+                          false});
+
+      return;
+    }
+
     for (usize index = 0; index < pattern.length; index++) {
       if (should_escape && is_basic_regex_special(pattern[index])) {
         pattern_text += '\\';
@@ -1956,6 +2072,8 @@ Grep::execute(const ExecContext               &ec,
       list = list.substring_of_length(0, list.length - 1);
     do_add_pattern_list(list);
   }
+
+  if (pattern_spans.is_empty() && !options.should_invert) return 1;
 
   let search                = GrepSearch{ec,
                           cxt,

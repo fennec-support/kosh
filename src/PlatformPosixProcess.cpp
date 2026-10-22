@@ -19,6 +19,8 @@
 #include "base/Debug.hpp"
 #include "base/Trace.hpp"
 
+#include <grp.h>
+
 #if defined __linux__
 #include <sys/auxv.h>
 #endif
@@ -304,6 +306,18 @@ throw_exec_failure_error(SourceLocation location,
   throw error;
 }
 
+static bool DID_SPAWN_FAIL = false;
+
+fn
+take_spawn_failure() wontthrow -> bool
+{
+  let const did_fail = DID_SPAWN_FAIL;
+
+  DID_SPAWN_FAIL = false;
+
+  return did_fail;
+}
+
 cold fn
 spawn_failure_child(SourceLocation     location,
                     const Path        &program_path,
@@ -314,6 +328,8 @@ spawn_failure_child(SourceLocation     location,
 {
   LOG(Debug, "forking a child to report the spawn failure for '%s'",
       program_path.c_str());
+
+  DID_SPAWN_FAIL = true;
 
   const pid_t child_pid = check_syscall(fork());
 
@@ -1975,6 +1991,74 @@ get_supplementary_group_ids(Allocator allocator) throws
   let const effective_group = static_cast<u32>(getegid());
 
   if (!groups.find(effective_group).has_value()) groups.push(effective_group);
+
+  return groups;
+}
+
+fn
+get_user_primary_group_id(u32 user_id) wontthrow -> Maybe<u32>
+{
+  struct passwd  entry{};
+  struct passwd *result = nullptr;
+  char           buffer[16384];
+
+  if (getpwuid_r(static_cast<uid_t>(user_id), &entry, buffer, sizeof(buffer),
+                 &result) != 0 ||
+      result == nullptr)
+  {
+    return None;
+  }
+
+  return static_cast<u32>(result->pw_gid);
+}
+
+fn
+get_user_group_ids(u32 user_id, Allocator allocator) throws
+    -> Maybe<ArrayList<u32>>
+{
+  struct passwd  entry{};
+  struct passwd *result = nullptr;
+  char           buffer[16384];
+
+  if (getpwuid_r(static_cast<uid_t>(user_id), &entry, buffer, sizeof(buffer),
+                 &result) != 0 ||
+      result == nullptr)
+  {
+    return None;
+  }
+
+#if defined __APPLE__
+  typedef int group_list_entry;
+#else
+  typedef gid_t group_list_entry;
+#endif
+
+  let native_groups = ArrayList<group_list_entry>{allocator};
+  int group_count   = 64;
+
+  loop {
+    native_groups.clear();
+    for (int index = 0; index < group_count; index++)
+      native_groups.push(0);
+
+    int capacity = group_count;
+
+    if (getgrouplist(result->pw_name, result->pw_gid, native_groups.begin(),
+                       &capacity) >= 0)
+    {
+      group_count = capacity;
+      break;
+    }
+
+    if (capacity <= group_count) return None;
+
+    group_count = capacity;
+  }
+
+  let groups = ArrayList<u32>{allocator};
+
+  for (int index = 0; index < group_count; index++)
+    groups.push(static_cast<u32>(native_groups[static_cast<usize>(index)]));
 
   return groups;
 }

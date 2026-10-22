@@ -25,6 +25,7 @@ static fn
 append_unexpanded_blanks(String                 &output,
                          usize                   start_column,
                          usize                   end_column,
+                         bool                    has_input_tab,
                          const ArrayList<usize> &tab_stops) throws
     -> void
 {
@@ -35,12 +36,17 @@ append_unexpanded_blanks(String                 &output,
           ' ' is emitted twice and column = 10. output = "\t  ". */
   usize column = start_column;
 
+  let const is_run_convertible = has_input_tab || end_column - start_column > 1;
+
   while (column < end_column) {
     let const target = utils::get_next_tab_column(column, tab_stops);
 
-    if (target > column + 1 && target <= end_column) {
+    if (is_run_convertible && target > column && target <= end_column) {
       output += '\t';
       column = target;
+    } else if (has_input_tab && target == column) {
+      output += '\t';
+      column++;
     } else {
       output += ' ';
       column++;
@@ -73,6 +79,8 @@ Unexpand::execute(const ExecContext               &ec,
     tab_stops = steal(*parsed);
   }
 
+  let const should_convert_all =
+      FLAG_UNEXPAND_ALL.is_enabled() || FLAG_UNEXPAND_TABS.is_set();
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
   let output = String{cxt.scratch_allocator()};
@@ -82,18 +90,20 @@ Unexpand::execute(const ExecContext               &ec,
     usize column             = 0;
     usize blank_start_column = 0;
     bool  has_pending_blanks = false;
+    bool  has_pending_tab    = false;
     bool  has_nonblank       = false;
 
     let const do_flush_blanks = [&]() throws -> void {
       if (!has_pending_blanks) return;
-      append_unexpanded_blanks(output, blank_start_column, column, tab_stops);
+      append_unexpanded_blanks(output, blank_start_column, column,
+                               has_pending_tab, tab_stops);
       has_pending_blanks = false;
+      has_pending_tab    = false;
     };
 
     for (usize position = 0; position < content.length; position++) {
-      let const byte = content[position];
-      let const should_convert =
-          FLAG_UNEXPAND_ALL.is_enabled() || !has_nonblank;
+      let const byte           = content[position];
+      let const should_convert = should_convert_all || !has_nonblank;
 
       if (should_convert && (byte == ' ' || byte == '\t')) {
         if (!has_pending_blanks) {
@@ -104,6 +114,7 @@ Unexpand::execute(const ExecContext               &ec,
         if (byte == ' ')
           column++;
         else {
+          has_pending_tab  = true;
           let const target = utils::get_next_tab_column(column, tab_stops);
 
           column = target == column ? column + 1 : target;

@@ -312,3 +312,13 @@ if [ "${OS-}" != Windows_NT ]; then
   "$BIN" -c "koshkit chown -R -x $ofs_user:$ofs_group ofs-src && koshkit chown -R --one-file-system $ofs_user ofs-src" ||
     echo "chown-one-file-system=failed"
 fi
+echo "--- rm reports the error of the failed lookup ---"
+: > rm-plain.txt
+"$BIN" -c 'koshkit rm rm-plain.txt/x 2>&1; printf "status=%s\n" "$?"; koshkit rm rm-missing.txt 2>&1; printf "status=%s\n" "$?"'
+if [ "${OS-}" != Windows_NT ]; then
+  echo "--- id looks up the given user ---"
+  "$BIN" -c 'koshkit id -g root; koshkit id -G root | { read -r first rest; printf "%s\n" "$first"; }; koshkit id -un 0'
+  echo "--- chown owner colon sets the login group ---"
+  : > chown-login.txt
+  "$BIN" -c 'koshkit chown "$(koshkit id -un):" chown-login.txt; printf "status=%s\n" "$?"'
+fi
