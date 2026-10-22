@@ -3100,13 +3100,9 @@ parse_format_document(const parser_format_input &input) throws
   case parser_format_kind::Shell:
   case parser_format_kind::UnknownHost: break;
   case parser_format_kind::GithubActions:
-    parse_github_actions_format(input, document);
-    break;
   case parser_format_kind::GiteaActions:
-    parse_gitea_actions_format(input, document);
-    break;
   case parser_format_kind::ForgejoActions:
-    parse_forgejo_actions_format(input, document);
+    parse_workflow_actions_format(input, document);
     break;
   case parser_format_kind::GitlabCi:
     parse_gitlab_ci_format(input, document);

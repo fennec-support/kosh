@@ -288,16 +288,8 @@ parser_format_add_json_fragment(parsed_format_document &document,
                                 mimic_mood              mood) throws -> void;
 
 fn
-parse_github_actions_format(const parser_format_input &input,
-                            parsed_format_document    &document) throws
-    -> void;
-fn
-parse_gitea_actions_format(const parser_format_input &input,
-                           parsed_format_document    &document) throws
-    -> void;
-fn
-parse_forgejo_actions_format(const parser_format_input &input,
-                             parsed_format_document    &document) throws
+parse_workflow_actions_format(const parser_format_input &input,
+                              parsed_format_document    &document) throws
     -> void;
 fn
 parse_gitlab_ci_format(const parser_format_input &input,
