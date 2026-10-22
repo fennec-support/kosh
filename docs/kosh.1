@@ -1493,8 +1493,8 @@ scheduler statistics are enabled. macOS adds cycles, instructions,
 performance-core counters, run-queue wait, wakeups, energy, page-ins, peak
 footprint, storage bytes, and logical writes. Windows counts the whole process
 tree through a job object and adds peak commit, other IO calls, and the number
-of processes. The extended hardware counters are sampled on alternate runs, so
-they do not share the processor counters with the default set. On Linux, one
+of processes. The extended hardware counters are sampled on alternate runs.
+On Linux, one
 extra untimed run under ptrace counts system calls, started threads and
 processes, execs, the peak number of tasks, and the average number of active
 tasks, where a task that waits for a child counts as idle. Thread efficiency
@@ -1610,10 +1610,10 @@ save the file and leave when the save succeeds. The commands
 Ctrl\-X Ctrl\-C, and Ctrl\-D on an empty buffer leave without saving, and
 Ctrl\-C leaves with status 130. While the buffer differs from the file,
 .BR :q " and " :quit
-will refuse to leave, the other keys and M\-x kill\-kosh will leave only when
-they are pressed twice in a row, and
+refuse to leave, the other keys and M\-x kill\-kosh leave only when pressed
+twice in a row, and
 .B :q!
-will leave at once. Every colon and M\-x command can be used, and the format
+leaves at once. Every colon and M\-x command can be used, and the format
 commands change only a shell script. Ctrl\-S and Ctrl\-R in emacs mode and
 .BR / " and " ?
 in vi mode find text in the file as it is typed. The
@@ -1642,8 +1642,8 @@ as it was. A file that another user owns, a file with more than one link, and a
 file in a directory that other users can write to without the sticky bit are
 rewritten in place instead, which keeps their owner, group, and links. Before
 such a save, the current contents are copied to a private file in the home
-directory, or in the temporary directory when the home directory takes none,
-and the copy is removed once the write succeeds. When the write fails, the
+directory, or in the temporary directory when the home directory takes none.
+The copy is removed once the write succeeds. When the write fails, the
 error gives the path of the copy, and when no copy can be made, nothing is
 written. The save is refused when another file has replaced the one that slurp
 loaded. A refused or failed save is reported on the last four rows, and the
@@ -2791,7 +2791,7 @@ until interrupted, with N as for evilio. On a terminal, the scroll keys of
 evilio apply, \fBs\fR cycles the sort key, and \fB/\fR starts a search, applied
 with Enter and cleared with Escape. The \fB\-\-cumulative\fR option sets a
 window of M seconds, defaulting to one second. Without \fB\-\-live\fR, two
-snapshots are taken M seconds apart and the report will show the average
+snapshots are taken M seconds apart and the report shows the average
 processor utilization between them.
 .TP
 .B evilss
@@ -3013,12 +3013,10 @@ is hidden when the row has no room for it or when its expansion holds a control
 character other than a color sequence. It is never part of the submitted line.
 .PP
 A nonempty KOSH_TRANSIENT_PS1 makes Enter redraw the submitted line, and
-Ctrl\-C the interrupted line before its ^C, after its expansion instead of PS1.
-A nonempty KOSH_TRANSIENT_RPS1 replaces the right prompt on that line with its
-expansion. When either variable is unset or empty, its side of the line stays
-as it was drawn. An interactive shell that starts with KOSH_TRANSIENT_RPS1
-unset sets it to \\[\\], which expands to nothing, and the right prompt
-is removed from the line that stays in the scrollback.
+Ctrl\-C redraw the interrupted line before its ^C, with its expansion in place
+of PS1. KOSH_TRANSIENT_RPS1 does the same for the right prompt. See both
+variables under
+.BR ENVIRONMENT .
 .PP
 Ghost text uses prefix matches from completion and history. Tab also offers
 smart-case and subsequence matches. An empty command position includes
@@ -3465,8 +3463,7 @@ runs it, and Escape, Ctrl\-C, Ctrl\-D, or Backspace on an empty command closes
 it. Only a substitution, an undo, a redo, a format, and the external editor
 change the line, and only the option commands change the settings. Opened from
 a visual selection, the command line acts on the selected lines. The buffer
-keeps its syntax highlighting while the command line is open, and the typed
-command is drawn in light green.
+keeps its syntax highlighting while the command line is open.
 .TP
 .BR :q ", " :q! ", " :quit ", " :wq ", " :wq! ", " :wqa ", " :wqa! ", " :x
 Leave the shell with the status of the last command. In
@@ -3549,8 +3546,7 @@ Alt\-X in emacs mode opens a minibuffer under the buffer that takes the
 command to run. Tab completes the command, Enter runs it, and Escape,
 Ctrl\-C, Ctrl\-D, or Backspace on an empty minibuffer closes it. The hint rows
 list the commands that start with the text typed so far. An unknown command
-does nothing. The buffer keeps its syntax highlighting, and the text typed into
-the minibuffer is drawn in light green.
+does nothing. The buffer keeps its syntax highlighting.
 .TP
 .B replace\-string
 Ask for a text and its replacement, then replace every occurrence of the text
@@ -3993,7 +3989,6 @@ element sees the status and $_ of the previous command, and neither the status
 nor $_ of a hook replaces them. PROMPT_COMMAND is deprecated and discouraged.
 The prompt escapes cover its usual uses without running a command: \\g inserts
 the git branch, \\L the duration of the last command, and \\M its memory use.
-The KOSH_PS1_ variables hold the same values for parameter expansion.
 .TP
 .BR PS0 ", " PS1 ", " PS2 ", " PS3 ", " PS4
 These variables provide the pre-execution, primary, continuation, select, and

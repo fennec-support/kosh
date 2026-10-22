@@ -1717,7 +1717,6 @@ struct yaml_scalar_item
   usize start{0};
   usize end{0};
   char  quote{'\0'};
-  bool  is_block{false};
   bool  is_folded{false};
   usize block_indent{0};
 };
@@ -1766,8 +1765,8 @@ read_yaml_scalar(StringView        source,
       return false;
     }
 
-    item = yaml_scalar_item{block_start, block_end,  '\0',
-                            true,        *is_folded, content_indent};
+    item = yaml_scalar_item{block_start, block_end, '\0', *is_folded,
+                            content_indent};
 
     return true;
   }
@@ -1883,7 +1882,7 @@ add_yaml_scalar_fragment(parsed_format_document &document,
 
   let const masked = analysis.clone();
 
-  if (item.is_block) {
+  if (item.block_indent != 0) {
     if (item.is_folded) {
       analysis = replace_analysis_newlines(analysis.view(), item.start,
                                            item.end, item.block_indent, true);

@@ -555,7 +555,7 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
   let        has_keyword_span = false;
 
   for (let const &span : *keyword_spans) {
-    LOG(All, "the cached diagnostic span covers %zu through %zu as role %u",
+    LOG(All, "the cached diagnostic span covers %u through %u as role %u",
         span.start, span.end, static_cast<unsigned>(span.role));
     if (span.start == 0 && span.end == 4 &&
         span.role == highlight_role::keyword)

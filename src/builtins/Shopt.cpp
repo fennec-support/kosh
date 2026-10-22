@@ -237,30 +237,29 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return status;
   }
 
-  if (should_enable || should_disable || names.is_empty()) {
-    if (names.is_empty()) {
-      if (!is_quiet) {
-        let listing = String{cxt.scratch_allocator()};
+  if (names.is_empty()) {
+    if (!is_quiet) {
+      let listing = String{cxt.scratch_allocator()};
 
-        for (let const &option : get_option_registry()) {
-          if (option.shopt_name.is_empty()) continue;
+      for (let const &option : get_option_registry()) {
+        if (option.shopt_name.is_empty()) continue;
 
-          let const is_on = shopt_is_on(cxt, option);
+        let const is_on = shopt_is_on(cxt, option);
 
-          if ((should_enable && !is_on) || (should_disable && is_on)) {
-            continue;
-          }
-
-          listing.append(
-              do_format_status_line(option.shopt_name, is_on).view());
+        if ((should_enable && !is_on) || (should_disable && is_on)) {
+          continue;
         }
 
-        ec.print_to_stdout(listing.view());
+        listing.append(do_format_status_line(option.shopt_name, is_on).view());
       }
 
-      return 0;
+      ec.print_to_stdout(listing.view());
     }
 
+    return 0;
+  }
+
+  if (should_enable || should_disable) {
     for (usize n = 0; n < names.count(); n++) {
       let const *option = do_find_or_reject(names[n], name_locations[n]);
 

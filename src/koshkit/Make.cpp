@@ -1451,12 +1451,9 @@ run_make_shell_function(EvalContext &cxt,
     }
   }
 
-  let source_name = StringView{"make"};
-
-  if (let const active_name =
-          source_name_at(mk.active_source_span.source_name_index);
-      active_name.has_value())
-    source_name = *active_name;
+  let const source_name =
+      source_name_at(mk.active_source_span.source_name_index)
+          .value_or(StringView{"make"});
 
   let const captured = cxt.capture_command_substitution(source, source_name);
   let       folded   = String{cxt.scratch_allocator()};
@@ -3442,9 +3439,7 @@ build_target(const ExecContext        &ec,
 
     for (usize index = 0; index < rule.recipe_lines.count(); index++) {
       recipe_lines.push(rule.recipe_lines[index].clone());
-      recipe_locations.push(index < rule.recipe_line_locations.count()
-                                ? rule.recipe_line_locations[index]
-                                : SourceLocation{});
+      recipe_locations.push(rule.recipe_line_locations[index]);
     }
   };
   String           inferred_first_prerequisite{cxt.scratch_allocator()};

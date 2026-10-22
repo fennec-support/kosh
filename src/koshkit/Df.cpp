@@ -50,10 +50,7 @@ Df::execute(const ExecContext               &ec,
 
   static constexpr usize COLUMN_COUNT = 6;
 
-  let       rows       = ArrayList<ArrayList<String>>{cxt.scratch_allocator()};
-  let const do_add_row = [&](ArrayList<String> row) throws {
-    rows.push(steal(row));
-  };
+  let rows   = ArrayList<ArrayList<String>>{cxt.scratch_allocator()};
   let header = ArrayList<String>{cxt.scratch_allocator()};
 
   header.push(String{cxt.scratch_allocator(), "Filesystem"});
@@ -66,7 +63,7 @@ Df::execute(const ExecContext               &ec,
       String{cxt.scratch_allocator(), is_human ? "Avail" : "Available"});
   header.push(String{cxt.scratch_allocator(), is_human ? "Use%" : "Capacity"});
   header.push(String{cxt.scratch_allocator(), "Mounted on"});
-  do_add_row(steal(header));
+  rows.push(steal(header));
 
   i32 status = 0;
 
@@ -119,7 +116,7 @@ Df::execute(const ExecContext               &ec,
     row.push(do_format(available));
     row.push(String::from(capacity, cxt.scratch_allocator()) + "%");
     row.push(mounted.target.clone());
-    do_add_row(steal(row));
+    rows.push(steal(row));
   }
 
   /* the filesystem and the mount point are left-aligned and the figures are

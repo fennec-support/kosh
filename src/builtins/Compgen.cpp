@@ -337,8 +337,7 @@ run_compgen_actions(EvalContext     &cxt,
       let const is_listed =
           do_wants(compgen_action::HelpTopic) ||
           (!is_hidden_by_mood &&
-           (should_list_every_builtin ||
-            (is_disabled ? should_list_disabled : should_list_enabled)));
+           (is_disabled ? should_list_disabled : should_list_enabled));
 
       if (is_listed) listed_names.push(builtin_name_list[i].view());
     }
