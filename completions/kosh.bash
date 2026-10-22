@@ -585,7 +585,8 @@ _koshkit_util_flags ()
       echo "-n --no-newline"
     ;;
     realpath)
-      echo "-e --canonicalize-existing -m --canonicalize-missing"
+      echo \
+        "-e --canonicalize-existing -m --canonicalize-missing -L --logical -P --physical -s --no-symlinks --strip -q --quiet -z --zero --relative-to= --relative-base="
     ;;
     chgrp | chown)
       echo "-H --dereference-arguments -L --dereference -P --physical -R --recursive -h --no-dereference -x --one-file-system"

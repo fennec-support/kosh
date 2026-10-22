@@ -82,6 +82,25 @@ absent
 status=1
 status=1
 b
+--- realpath link modes, relative output, quiet, and zero ---
+.
+.
+d
+d/e
+l
+missing/x
+d
+../f
+e
+.
+f
+/
+../f
+absolute
+f|d|
+status=1
+status=1
+status=1
 --- ls a after rmdir ---
 rmdir-parents=missing
 --- unlink removes a single file ---

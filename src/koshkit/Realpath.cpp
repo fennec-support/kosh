@@ -14,7 +14,8 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL(
-    "[-e|-m] path ...",
+    "[-e|-m] [-L|-P|-s] [-qz] [--relative-to=dir] [--relative-base=dir] path "
+    "...",
     "Print the absolute, normalized form of each path. By default, every "
     "component but the last must exist.");
 
@@ -28,6 +29,42 @@ FLAG(REALPATH_MISSING,
      'm',
      "canonicalize-missing",
      "Allow any component of the path to be missing.");
+FLAG(REALPATH_LOGICAL,
+     Bool,
+     'L',
+     "logical",
+     "Resolve '..' components before symbolic links.");
+FLAG(REALPATH_PHYSICAL,
+     Bool,
+     'P',
+     "physical",
+     "Resolve symbolic links as they are encountered.");
+FLAG(REALPATH_NO_SYMLINKS,
+     Bool,
+     's',
+     "no-symlinks",
+     "Do not expand symbolic links.");
+FLAG(REALPATH_STRIP, Bool, '\0', "strip", "Same as --no-symlinks.");
+FLAG(REALPATH_QUIET,
+     Bool,
+     'q',
+     "quiet",
+     "Do not report paths that cannot be resolved.");
+FLAG(REALPATH_ZERO,
+     Bool,
+     'z',
+     "zero",
+     "End each output entry with a NUL byte instead of a newline.");
+FLAG(REALPATH_RELATIVE_TO,
+     String,
+     '\0',
+     "relative-to",
+     "Print each path relative to a directory.");
+FLAG(REALPATH_RELATIVE_BASE,
+     String,
+     '\0',
+     "relative-base",
+     "Print paths below a directory relative to it, and others absolute.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Realpath);
 
@@ -154,6 +191,258 @@ resolve_with_missing_components(StringView    operand,
   }
 }
 
+enum class realpath_links : u8
+{
+  Physical,
+  Logical,
+  Ignored,
+};
+
+static fn
+resolve_physically(StringView    operand,
+                   realpath_mode mode,
+                   Allocator     allocator) throws -> Maybe<Path>
+{
+  let resolved = os::canonical_path(Path{operand, allocator});
+
+  if (!resolved.has_value() && (mode == realpath_mode::Missing ||
+                                (mode == realpath_mode::AllButLast &&
+                                 os::last_system_error_is_missing_file())))
+  {
+    resolved = resolve_with_missing_components(operand, mode, allocator);
+  }
+
+  return resolved;
+}
+
+/* a component followed by a trailing separator, a "." component, or a ".."
+   component must be a directory. */
+static pure fn
+suffix_requires_directory(StringView suffix) wontthrow -> bool
+{
+  usize position = 0;
+
+  while (position < suffix.length &&
+         os::is_directory_separator(suffix[position]))
+  {
+    while (position < suffix.length &&
+           os::is_directory_separator(suffix[position]))
+    {
+      position++;
+    }
+
+    if (position == suffix.length) return true;
+    if (suffix[position] != '.') return false;
+
+    position++;
+    if (position == suffix.length ||
+        os::is_directory_separator(suffix[position]))
+    {
+      return true;
+    }
+
+    if (suffix[position] == '.' &&
+        (position + 1 == suffix.length ||
+         os::is_directory_separator(suffix[position + 1])))
+    {
+      return true;
+    }
+
+    return false;
+  }
+
+  return false;
+}
+
+/* memory: candidate and probe Paths are allocated in allocator for each
+           component.
+   time:   at most one canonical_path() call per component. */
+static fn
+resolve_without_links(StringView    operand,
+                      realpath_mode mode,
+                      Allocator     allocator) throws -> Maybe<Path>
+{
+  let absolute = Path{operand, allocator};
+
+  if (!absolute.is_absolute()) {
+    absolute = Path{os::read_current_directory().text().view(), allocator};
+    absolute.append(operand);
+  }
+
+  let const text        = absolute.text().view();
+  let const root_length = os::path_root_length(text);
+  let   resolved = Path{text.substring_of_length(0, root_length), allocator};
+  usize position = root_length;
+
+  loop {
+    while (position < text.length && os::is_directory_separator(text[position]))
+    {
+      position++;
+    }
+
+    if (position == text.length) return resolved;
+
+    let const start = position;
+
+    while (position < text.length &&
+           !os::is_directory_separator(text[position]))
+    {
+      position++;
+    }
+
+    let const component = text.substring_of_length(start, position - start);
+
+    if (component == ".") continue;
+
+    if (component == "..") {
+      if (resolved.text().length() > root_length) resolved = resolved.parent();
+      continue;
+    }
+
+    let candidate = Path{resolved.text().view(), allocator};
+
+    candidate.append(component);
+    if (mode != realpath_mode::Missing) {
+      let const suffix  = text.substring(position);
+      let       is_last = true;
+
+      for (usize i = 0; i < suffix.length; i++) {
+        if (!os::is_directory_separator(suffix[i])) is_last = false;
+      }
+
+      let const should_require_directory = suffix_requires_directory(suffix);
+
+      if (should_require_directory || is_last) {
+        let probe = Path{candidate.view(), allocator};
+
+        if (should_require_directory) {
+          probe.append_raw(StringView{&os::DIRECTORY_SEPARATOR, 1});
+        }
+
+        let const is_missing_last_allowed =
+            mode == realpath_mode::AllButLast && is_last;
+
+        if (!os::canonical_path(probe).has_value() &&
+            !(is_missing_last_allowed &&
+              os::last_system_error_is_missing_file()))
+        {
+          return None;
+        }
+      }
+    }
+
+    resolved = steal(candidate);
+  }
+}
+
+static fn
+resolve_operand(StringView     operand,
+                realpath_mode  mode,
+                realpath_links links,
+                Allocator      allocator) throws -> Maybe<Path>
+{
+  if (links == realpath_links::Physical) {
+    return resolve_physically(operand, mode, allocator);
+  }
+
+  let resolved = resolve_without_links(operand, mode, allocator);
+
+  if (links == realpath_links::Ignored || !resolved.has_value()) {
+    return resolved;
+  }
+
+  return resolve_physically(resolved->view(), mode, allocator);
+}
+
+/* e.g. prefix = "/a/b" holds for path = "/a/b" and "/a/b/c" but not for
+   path = "/a/bc". */
+static pure fn
+is_path_prefix(StringView prefix, StringView path) wontthrow -> bool
+{
+  let const root_length = os::path_root_length(prefix);
+
+  if (prefix.length == root_length) {
+    return path.length >= root_length &&
+           path.substring_of_length(0, root_length) == prefix;
+  }
+
+  if (path.length < prefix.length ||
+      path.substring_of_length(0, prefix.length) != prefix)
+  {
+    return false;
+  }
+
+  return path.length == prefix.length ||
+         os::is_directory_separator(path[prefix.length]);
+}
+
+/* e.g. path = "/a/b/c" and directory = "/a/d/e" give "../../b/c", and equal
+   paths give ".". paths with no common root give false. */
+static fn
+append_relative_path(String    &output,
+                     StringView path,
+                     StringView directory) throws -> bool
+{
+  usize common_length = 0;
+  usize position      = 0;
+
+  while (position < path.length && position < directory.length &&
+         path[position] == directory[position])
+  {
+    if (os::is_directory_separator(path[position])) {
+      common_length = position + 1;
+    }
+
+    position++;
+  }
+
+  let const is_path_end      = position == path.length;
+  let const is_directory_end = position == directory.length;
+
+  if ((is_path_end && is_directory_end) ||
+      (is_path_end && os::is_directory_separator(directory[position])) ||
+      (is_directory_end && os::is_directory_separator(path[position])))
+  {
+    common_length = position;
+  }
+
+  if (common_length == 0) return false;
+
+  let path_suffix      = path.substring(common_length);
+  let directory_suffix = directory.substring(common_length);
+
+  if (!path_suffix.is_empty() && os::is_directory_separator(path_suffix[0])) {
+    path_suffix = path_suffix.substring(1);
+  }
+
+  if (!directory_suffix.is_empty() &&
+      os::is_directory_separator(directory_suffix[0]))
+  {
+    directory_suffix = directory_suffix.substring(1);
+  }
+
+  if (directory_suffix.is_empty()) {
+    output += path_suffix.is_empty() ? StringView{"."} : path_suffix;
+
+    return true;
+  }
+
+  output += "..";
+  for (usize i = 0; i < directory_suffix.length; i++) {
+    if (os::is_directory_separator(directory_suffix[i])) {
+      output += os::DIRECTORY_SEPARATOR;
+      output += "..";
+    }
+  }
+
+  if (!path_suffix.is_empty()) {
+    output += os::DIRECTORY_SEPARATOR;
+    output += path_suffix;
+  }
+
+  return true;
+}
+
 cold fn
 Realpath::execute(const ExecContext               &ec,
                   EvalContext                     &cxt,
@@ -168,43 +457,108 @@ Realpath::execute(const ExecContext               &ec,
                    : FLAG_REALPATH_EXISTING.is_enabled()
                        ? realpath_mode::Existing
                        : realpath_mode::AllButLast;
-  let const allocator = cxt.scratch_allocator();
-  let       output    = String{allocator};
-  i32       status    = 0;
+
+  /* the last of -L, -P, and -s wins. */
+  let       links           = realpath_links::Physical;
+  usize     links_position  = 0;
+  let const do_select_links = [&](const FlagBool &flag,
+                                  realpath_links  selected) wontthrow {
+    if (flag.is_enabled() && flag.position() >= links_position) {
+      links          = selected;
+      links_position = flag.position();
+    }
+  };
+
+  do_select_links(FLAG_REALPATH_LOGICAL, realpath_links::Logical);
+  do_select_links(FLAG_REALPATH_PHYSICAL, realpath_links::Physical);
+  do_select_links(FLAG_REALPATH_NO_SYMLINKS, realpath_links::Ignored);
+  do_select_links(FLAG_REALPATH_STRIP, realpath_links::Ignored);
+
+  let const allocator  = cxt.scratch_allocator();
+  let const terminator = FLAG_REALPATH_ZERO.is_enabled() ? '\0' : '\n';
+  let const is_quiet   = FLAG_REALPATH_QUIET.is_enabled();
+  let       output     = String{allocator};
+  i32       status     = 0;
+
+  let const do_resolve = [&](StringView operand, SourceLocation location,
+                             bool should_report) throws -> Maybe<Path> {
+    let resolved = operand.is_empty()
+                       ? Maybe<Path>{}
+                       : resolve_operand(operand, mode, links, allocator);
+
+    if (!resolved.has_value() && should_report) {
+      KOSHKIT_REPORT_ERROR_AT(
+          location, "'" + String{allocator, operand} + "': " +
+                        (operand.is_empty() ? String{allocator, "No such file "
+                                                                "or directory"}
+                                            : os::last_system_error_message()));
+    }
+
+    return resolved;
+  };
+
+  let const do_resolve_directory =
+      [&](const FlagString &flag) throws -> Maybe<Path> {
+    let directory = do_resolve(flag.value(), flag.value_location(), true);
+
+    if (directory.has_value() && mode == realpath_mode::Existing &&
+        !directory->is_directory())
+    {
+      KOSHKIT_REPORT_ERROR_AT(flag.value_location(),
+                              "'" + String{allocator, flag.value()} +
+                                  "': Not a directory");
+
+      return None;
+    }
+
+    return directory;
+  };
+
+  Maybe<Path> relative_to;
+  Maybe<Path> relative_base;
+
+  if (FLAG_REALPATH_RELATIVE_TO.is_set()) {
+    relative_to = do_resolve_directory(FLAG_REALPATH_RELATIVE_TO);
+    if (!relative_to.has_value()) return 1;
+  }
+
+  if (FLAG_REALPATH_RELATIVE_BASE.is_set()) {
+    relative_base = do_resolve_directory(FLAG_REALPATH_RELATIVE_BASE);
+    if (!relative_base.has_value()) return 1;
+
+    if (!relative_to.has_value()) {
+      relative_to = Path{relative_base->view(), allocator};
+    } else if (!is_path_prefix(relative_base->view(), relative_to->view())) {
+      /* a --relative-to outside --relative-base prints every path
+         absolute. */
+      relative_to = None;
+    }
+  }
 
   for (usize operand_index = 0; operand_index < operands.count();
        operand_index++)
   {
-    let const &operand = operands[operand_index];
+    let const resolved =
+        do_resolve(operands[operand_index].view(),
+                   operand_locations[operand_index], !is_quiet);
 
-    if (operand.is_empty()) {
-      KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
-                              "'': No such file or directory");
+    if (!resolved.has_value()) {
       status = 1;
       continue;
     }
 
-    let resolved = os::canonical_path(Path{operand.view(), allocator});
+    let const path = resolved->view();
 
-    if (!resolved.has_value() && (mode == realpath_mode::Missing ||
-                                  (mode == realpath_mode::AllButLast &&
-                                   os::last_system_error_is_missing_file())))
+    let const is_below_base = !relative_base.has_value() ||
+                              is_path_prefix(relative_base->view(), path);
+
+    if (!relative_to.has_value() || !is_below_base ||
+        !append_relative_path(output, path, relative_to->view()))
     {
-      resolved =
-          resolve_with_missing_components(operand.view(), mode, allocator);
+      output += path;
     }
 
-    if (!resolved) {
-      KOSHKIT_REPORT_ERROR_AT(operand_locations[operand_index],
-                              "'" + operand +
-                                  "': " + os::last_system_error_message());
-      status = 1;
-      continue;
-    }
-
-    /* at this point: operand is not empty, and resolved holds a path. */
-    output += resolved->text().view();
-    output += '\n';
+    output += terminator;
   }
 
   ec.print_to_stdout(output);

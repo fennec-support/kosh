@@ -2722,7 +2722,17 @@ option suppresses the trailing newline of a single file.
 .B realpath
 The canonical absolute form of each path is printed. Every component but the
 last must exist, every component must exist with \fB\-e\fR, and none needs to
-exist with \fB\-m\fR.
+exist with \fB\-m\fR. Symbolic links are resolved as they are encountered, or
+with \fB\-P\fR, \fB\-\-physical\fR. The \fB\-L\fR, \fB\-\-logical\fR
+option resolves '..' components before symbolic links, and \fB\-s\fR,
+\fB\-\-no\-symlinks\fR, \fB\-\-strip\fR leaves symbolic links unresolved.
+The last of these three options applies. The \fB\-\-relative\-to\fR option
+prints each path relative to a directory. The \fB\-\-relative\-base\fR option
+prints paths below a directory relative to it and other paths absolute. With
+both options, paths are printed relative to the first directory when it is
+below the base directory, and absolute otherwise. The \fB\-q\fR,
+\fB\-\-quiet\fR option omits the error messages for unresolved paths, and
+\fB\-z\fR, \fB\-\-zero\fR ends each entry with a NUL byte.
 .TP
 .B rm
 Paths are removed with \fB\-r\fR, \fB\-R\fR, \fB\-f\fR, \fB\-i\fR, and
