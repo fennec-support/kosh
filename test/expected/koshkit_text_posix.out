@@ -131,6 +131,20 @@ alpha:one
    =  \n   a  \0   b  \0  \n   =   =   >       l   i   n   e   s
        <   =   =  \n
    a  \0   b  \0
+1000
+12870
+953
+suffix-status=1
+four
+gamma:three
+==> lines <==
+four
+   =   =   >       n   u   l   -   l   i   n   e   s       <   =
+   =  \n   c  \n   =   =   >       l   i   n   e   s       <   =
+   =  \n   o   n   e  \n   t   w   o  \n   t   h   r   e   e  \n
+   f   o   u   r  \n
+   b  \0   c
+   b  \0   c
 one
 two
 three
@@ -143,8 +157,8 @@ one	 :three
 two	 :four
 one	 :two
 three	 :four
-102:3: error: Koshkit `pr`: The page width is too narrow for the columns.
-   102 |    koshkit pr -t -l 1 -18446744073709551615
+112:3: error: Koshkit `pr`: The page width is too narrow for the columns.
+   112 |    koshkit pr -t -l 1 -18446744073709551615
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use a larger width with -w or fewer columns.
 left-one      :right-one

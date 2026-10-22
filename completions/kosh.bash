@@ -535,7 +535,7 @@ _koshkit_util_flags ()
       echo "-n -c -q -v -z --quiet --silent --verbose --zero-terminated"
     ;;
     tail)
-      echo "-n -c -f -F -q -v -s --follow --retry --pid --sleep-interval --quiet --silent --verbose"
+      echo "-n -c -f -F -q -v -z -s --follow --retry --pid --sleep-interval --quiet --silent --verbose --zero-terminated"
     ;;
     wc)
       echo "-l -w -c -m"

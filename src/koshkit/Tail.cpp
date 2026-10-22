@@ -17,7 +17,7 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL("[-fFqv] [-n count] [-c count] [-s seconds] [--pid pid] "
+KOSHKIT_UTIL_DECL("[-fFqvz] [-n count] [-c count] [-s seconds] [--pid pid] "
                   "[file ...]",
                   "Write the last lines of each file.");
 
@@ -61,6 +61,11 @@ FLAG(TAIL_PID, String, '\0', "pid", "Stop following when this process exits.");
 FLAG(TAIL_QUIET, Bool, 'q', "quiet", "Never write file name headers.");
 FLAG(TAIL_SILENT, Bool, '\0', "silent", "Never write file name headers.");
 FLAG(TAIL_VERBOSE, Bool, 'v', "verbose", "Always write file name headers.");
+FLAG(TAIL_ZERO_TERMINATED,
+     Bool,
+     'z',
+     "zero-terminated",
+     "End lines with NUL instead of newline.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tail);
 
@@ -92,18 +97,11 @@ parse_tail_count(StringView spec) throws -> Maybe<parsed_tail_count>
 
   if (digits.length > 0 && digits[0] == '+') {
     origin = count_origin::FromStart;
-    digits = digits.substring(1);
   } else if (digits.length > 0 && digits[0] == '-') {
     digits = digits.substring(1);
   }
 
-  if (origin == count_origin::FromStart && digits.length > 0 &&
-      digits[0] == '+')
-  {
-    return None;
-  }
-
-  let const parsed = parse_strict_count(digits);
+  let const parsed = parse_count_with_size_suffix(digits);
 
   if (parsed.is_error()) return None;
 
@@ -126,6 +124,7 @@ struct tail_options
   tail_unit    unit{tail_unit::Lines};
   i64          count{10};
   count_origin origin{count_origin::FromEnd};
+  char         line_delimiter{'\n'};
   bool         is_following{false};
   bool         should_follow_name{false};
   bool         should_retry{false};
@@ -160,13 +159,15 @@ struct tail_options
                                   : "Invalid line count '"}
             +
                 spec + "'",
-            "The count must be a non-negative integer"
+            "The count must be a non-negative integer with an optional size "
+            "suffix"
         };
       }
     }
 
     options.origin = parsed_count->origin;
     options.count  = parsed_count->count;
+    if (FLAG_TAIL_ZERO_TERMINATED.is_enabled()) options.line_delimiter = '\0';
 
     options.should_follow_name = FLAG_TAIL_FOLLOW_NAME.is_enabled() ||
                                  (FLAG_TAIL_FOLLOW_MODE.has_value() &&
@@ -247,6 +248,7 @@ struct positioned_tail_state
            rounds and scans at most file_byte_count bytes. */
 static fn
 find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
+                          char                              line_delimiter,
                           Allocator                         allocator) throws -> void
 {
   let batch            = os::Batch{allocator};
@@ -302,7 +304,7 @@ find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
       let const block_offset = state.scan_offset - state.read_byte_count;
 
       for (usize position = transferred; position > 0; position--) {
-        if (state.buffer.begin()[position - 1] != '\n') continue;
+        if (state.buffer.begin()[position - 1] != line_delimiter) continue;
 
         let const absolute = block_offset + position - 1;
 
@@ -331,6 +333,7 @@ find_tail_starts_from_end(ArrayList<positioned_tail_state> &states,
            most file_byte_count bytes. */
 static fn
 find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
+                            char                              line_delimiter,
                             Allocator                         allocator) throws -> void
 {
   let batch            = os::Batch{allocator};
@@ -388,7 +391,8 @@ find_tail_starts_from_start(ArrayList<positioned_tail_state> &states,
       let const block    = StringView{state.buffer.begin(), transferred};
       usize     position = 0;
 
-      while (let const newline = block.substring(position).find_character('\n'))
+      while (let const newline =
+                 block.substring(position).find_character(line_delimiter))
       {
         position += *newline + 1;
         if (--state.remaining_newline_count == 0) {
@@ -487,10 +491,13 @@ Tail::execute(const ExecContext               &ec,
     ec.print_to_stdout(text);
   };
 
+  let const quiet_position =
+      FLAG_TAIL_QUIET.position() > FLAG_TAIL_SILENT.position()
+          ? FLAG_TAIL_QUIET.position()
+          : FLAG_TAIL_SILENT.position();
   let const should_print_headers =
-      FLAG_TAIL_VERBOSE.is_enabled() ||
-      (sources.count() > 1 && !FLAG_TAIL_QUIET.is_enabled() &&
-       !FLAG_TAIL_SILENT.is_enabled());
+      FLAG_TAIL_VERBOSE.position() > quiet_position ||
+      (sources.count() > 1 && quiet_position == 0);
   Maybe<usize> last_header_source_index = None;
 
   let const do_write_header = [&](usize source_index) throws -> void {
@@ -685,7 +692,7 @@ Tail::execute(const ExecContext               &ec,
       usize remaining_newline_count = options.count > 0 ? wanted_count - 1 : 0;
 
       while (start < text.length && remaining_newline_count > 0) {
-        if (text[start] == '\n') remaining_newline_count--;
+        if (text[start] == options.line_delimiter) remaining_newline_count--;
         start++;
       }
 
@@ -697,12 +704,14 @@ Tail::execute(const ExecContext               &ec,
 
       usize remaining_newline_count = wanted_count;
 
-      if (start > 0 && text[start - 1] == '\n') {
+      if (start > 0 && text[start - 1] == options.line_delimiter) {
         start--;
       }
 
       while (start > 0) {
-        if (text[start - 1] == '\n' && --remaining_newline_count == 0) {
+        if (text[start - 1] == options.line_delimiter &&
+            --remaining_newline_count == 0)
+        {
           break;
         }
         start--;
@@ -727,9 +736,9 @@ Tail::execute(const ExecContext               &ec,
     if (options.unit == tail_unit::Lines &&
         options.origin == count_origin::FromEnd)
     {
-      find_tail_starts_from_end(states, allocator);
+      find_tail_starts_from_end(states, options.line_delimiter, allocator);
     } else if (options.unit == tail_unit::Lines) {
-      find_tail_starts_from_start(states, allocator);
+      find_tail_starts_from_start(states, options.line_delimiter, allocator);
     }
 
     if (os::INTERRUPT_REQUESTED) return 130;

@@ -91,6 +91,16 @@ koshkit head -v --silent -n 1 lines records
 koshkit head -z -n 2 nul-lines | koshkit od -An -c
 koshkit head -z -n -1 nul-lines lines | koshkit od -An -c
 koshkit cat nul-lines | koshkit head -z -n -1 | koshkit od -An -c
+koshkit tail -c 1kB counted | koshkit wc -c
+koshkit tail -c +1k counted | koshkit wc -c
+koshkit tail -n +2k counted | koshkit wc -l
+(koshkit tail -c +k counted) 2>/dev/null
+echo "suffix-status=$?"
+koshkit tail -v -q -n 1 lines records
+koshkit tail -q -v -n 1 lines
+koshkit tail -z -n 1 nul-lines lines | koshkit od -An -c
+koshkit tail -z -n +2 nul-lines | koshkit od -An -c
+koshkit cat nul-lines | koshkit tail -z -n 2 | koshkit od -An -c
 
 koshkit split -l 2 lines part
 koshkit cat partaa partab
