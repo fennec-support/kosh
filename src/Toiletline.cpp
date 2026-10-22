@@ -147,6 +147,9 @@ namespace {
 
 enum class selector_outcome : u8;
 
+/* the byte distance between the codepoint marks of the highlight cache. */
+constexpr usize CODEPOINT_MARK_BYTE_COUNT = 4096;
+
 struct completion_session
 {
   koshka::EvalContext                   *context{nullptr};
@@ -215,6 +218,10 @@ struct completion_session
   koshka::ArrayList<koshka::highlight_span> highlighted_spans{
       koshka::heap_allocator()};
   koshka::ArrayList<koshka::completion::highlight_restart> highlighted_restarts{
+      koshka::heap_allocator()};
+  /* entry i holds the codepoint count of the first i * 4096 bytes of
+     highlighted_line, filled when the spans are scanned. */
+  koshka::ArrayList<usize> highlighted_codepoint_marks{
       koshka::heap_allocator()};
   bool  has_highlighted_spans{false};
   char  bracket_styles[4][48]{};
@@ -1426,6 +1433,23 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       for (let const &span : result)
         highlighted_spans.push(span);
 
+      highlighted_codepoint_marks.clear();
+      for (usize mark = 0; mark <= highlighted_line.length();
+           mark += CODEPOINT_MARK_BYTE_COUNT)
+      {
+        let const previous = highlighted_codepoint_marks.is_empty()
+                                 ? 0
+                                 : highlighted_codepoint_marks.back();
+        let const counted =
+            mark == 0
+                ? 0
+                : toiletline::get_utf8_length(highlighted_line.data() + mark -
+                                                  CODEPOINT_MARK_BYTE_COUNT,
+                                              CODEPOINT_MARK_BYTE_COUNT);
+
+        highlighted_codepoint_marks.push(previous + counted);
+      }
+
       has_highlighted_spans = true;
     }
 
@@ -1454,6 +1478,19 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 
     let const do_advance = [&](usize target) -> void {
       if (target <= byte_position) return;
+
+      /* the cached text matches the buffer through needed, so a mark before
+         target there skips the count up to it. */
+      let const mark =
+          (target < needed_byte_count ? target : needed_byte_count) /
+          CODEPOINT_MARK_BYTE_COUNT;
+
+      if (mark < highlighted_codepoint_marks.count() &&
+          mark * CODEPOINT_MARK_BYTE_COUNT > byte_position)
+      {
+        byte_position      = mark * CODEPOINT_MARK_BYTE_COUNT;
+        codepoint_position = highlighted_codepoint_marks[mark];
+      }
 
       codepoint_position += toiletline::get_utf8_length(buffer + byte_position,
                                                         target - byte_position);
@@ -1524,6 +1561,8 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
 
     for (let const &span : highlighted_spans) {
       if (filled >= out->capacity) break;
+      /* the spans below the drawn rows color nothing on screen. */
+      if (codepoint_position >= out->visible_end) break;
       /* a byte offset is never below its codepoint offset, so a span that
          ends at or before visible_start in bytes is above the drawn rows. */
       if (span.end <= out->visible_start) {
@@ -1536,7 +1575,9 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       covered_end = span.end;
     }
 
-    do_push_styled(covered_end, byte_count, koshka::StringView{});
+    if (codepoint_position < out->visible_end) {
+      do_push_styled(covered_end, byte_count, koshka::StringView{});
+    }
 
     out->count = filled;
 
@@ -1797,6 +1838,7 @@ struct history_file_tracking
   os::file_status status{};
   bool            has_status{false};
   bool            is_rewritable{false};
+  bool            was_write_failure_reported{false};
 
   fn
   invalidate() -> void
@@ -1960,6 +2002,7 @@ struct history_snapshot
   usize                    buffer_start_byte_offset{0};
   bool                     is_enabled{true};
   bool                     is_file_bad{false};
+  int                      file_errno{0};
   bool                     has_trailing_newline{true};
   bool                     has_buffer{false};
   bool                     is_buffer_loaded{false};
@@ -2000,6 +2043,7 @@ capture_history_snapshot(history_snapshot &snapshot) -> void
   snapshot.buffer_start_byte_offset = ::itl_g_history_read_buffer_start;
   snapshot.is_enabled               = ::itl_g_history_enabled;
   snapshot.is_file_bad              = ::itl_g_history_file_is_bad;
+  snapshot.file_errno               = ::itl_g_history_file_errno;
   snapshot.has_trailing_newline     = ::itl_g_history_ends_with_newline;
   snapshot.is_buffer_loaded         = ::itl_g_history_read_buffer_loaded;
   snapshot.is_valid                 = true;
@@ -2030,6 +2074,7 @@ restore_history_snapshot(const history_snapshot &snapshot) -> void
   ::itl_g_history_limit             = snapshot.entry_limit;
   ::itl_g_history_enabled           = snapshot.is_enabled;
   ::itl_g_history_file_is_bad       = snapshot.is_file_bad;
+  ::itl_g_history_file_errno        = snapshot.file_errno;
   ::itl_g_history_ends_with_newline = snapshot.has_trailing_newline;
 
   if (snapshot.has_buffer) {
@@ -2210,6 +2255,7 @@ reset_private_history(const Path &path) -> void
   memcpy(::itl_g_history_path, path.text().data(), path.text().count());
   ::itl_g_history_path[path.text().count()] = '\0';
   ::itl_g_history_file_is_bad               = false;
+  ::itl_g_history_file_errno                = 0;
   ::itl_g_history_read_buffer               = ::itl_char_buf_alloc();
   ::itl_g_history_read_buffer_loaded        = true;
   ::itl_g_history_read_buffer_offset        = 0;
@@ -2413,6 +2459,7 @@ load_history(const Path &path, bool should_allow_missing)
           ::itl_g_history_file_size          = 0;
           ::itl_g_history_ends_with_newline  = true;
           ::itl_g_history_file_is_bad        = false;
+          ::itl_g_history_file_errno         = 0;
           HISTORY_FILE.is_rewritable         = false;
           ::itl_g_history_read_buffer        = ::itl_char_buf_alloc();
           ::itl_g_history_read_buffer_loaded = true;
@@ -2915,7 +2962,22 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
   let const was_empty         = ::itl_g_history_total_count == 0;
   let const previous_tracking = HISTORY_FILE;
 
-  if (!::itl_history_append_to_file(entry, false, false)) return koshka::None;
+  if (!::itl_history_append_to_file(entry, false, false)) {
+    /* the first write failure is reported once; later commands are not
+       recorded until the file is loaded again. */
+    if (::itl_g_history_file_is_bad && ::itl_g_history_file_errno != 0 &&
+        !HISTORY_FILE.was_write_failure_reported)
+    {
+      HISTORY_FILE.was_write_failure_reported = true;
+      let const reason = StringView{strerror(::itl_g_history_file_errno)};
+
+      koshka::show_message(
+          koshka::Error{"Toiletline: could not save history: " + reason}
+              .to_string());
+    }
+
+    return koshka::None;
+  }
   HISTORY_FILE.note_append(*path, previous_tracking, was_empty,
                            ::itl_g_history_file_size);
 
@@ -3553,15 +3615,19 @@ fn
 exit(usize history_size_limit) -> void
 {
   if (!compact_history_file_from_locked_reread(history_size_limit)) {
-    if (::itl_g_history_file_is_bad) {
+    if (::itl_g_history_file_is_bad && ::itl_g_history_file_errno == 0) {
       koshka::ErrorWithDetails error{
           "Toiletline: history was not saved because the history file "
           "contains invalid data",
           "Remove or repair the file to record history again"};
       koshka::show_message(error.to_string());
     } else {
-      koshka::Error error{"Toiletline: could not save history: " +
-                          koshka::os::last_system_error_message()};
+      let const message =
+          ::itl_g_history_file_errno != 0
+              ? koshka::String{koshka::heap_allocator(),
+                               StringView{strerror(::itl_g_history_file_errno)}}
+              : koshka::os::last_system_error_message();
+      koshka::Error error{"Toiletline: could not save history: " + message};
       koshka::show_message(error.to_string());
     }
   }
