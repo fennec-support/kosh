@@ -36,9 +36,10 @@ echo "rc=$?"
 grep -v -e '^#' -e '^$' "$conf" | grep -vc '^[a-z0-9_.]*='
 grep -c '^mood=kosh$' "$conf"
 do_compare_preset kosh
-echo "== create writes the default rc script:"
+echo "== create writes the default rc script with a kosh shebang:"
 script="$XDG_CONFIG_HOME/kosh/scripts/rc.kosh"
 [ -s "$script" ] && echo written
+head -n 1 "$script"
 echo "== create refuses an existing file without --force:"
 "$BIN" -c 'koshconf create bash' 2>&1 | sed "s|$config|CONFIG|; s|\\\\|/|g"
 echo "rc=${PIPESTATUS[0]}"

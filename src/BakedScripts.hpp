@@ -15,7 +15,8 @@ namespace koshka {
 /* The default user rc script. A login shell sources the files Bash reads at
    login, and an interactive shell sources the POSIX and Bash rc files. */
 constexpr StringView DEFAULT_RC_SCRIPT{
-    R"(if shopt -q login_shell; then
+    R"(#!/usr/bin/env kosh
+if shopt -q login_shell; then
   [ -r /etc/profile ] && . /etc/profile
   if [ -r ~/.bash_profile ]; then
     . ~/.bash_profile

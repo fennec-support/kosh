@@ -18,10 +18,7 @@ FLAG_LIST_DECL();
 
 HELP_SYNOPSIS_DECL("[--mode vi|emacs] file");
 
-HELP_DESCRIPTION_DECL(
-    "This builtin edits a text file in the line editor. Ctrl-X s in emacs "
-    "mode and :w in vi mode save the file and keep editing, and :wq, :x, and "
-    "the other write-and-quit commands of vi mode save it and leave.");
+HELP_DESCRIPTION_DECL("This builtin edits a text file in the line editor.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(SLURP_MODE, String, '\0', "mode", "Edit in vi or emacs mode.");
