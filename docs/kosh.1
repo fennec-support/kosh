@@ -2438,7 +2438,7 @@ character, and \fB\-t\fR implies it.
 .B xargs
 Arguments read from standard input are appended to a command. The
 \fB\-a\fR, \fB\-\-arg\-file\fR
-option reads the arguments from a file instead, and the command keeps standard
+option takes the arguments from a file instead, and the command keeps standard
 input. The \fB\-0\fR option splits the input on null bytes, and
 \fB\-d\fR, \fB\-\-delimiter\fR
 splits it on one character, which can be an escape such as \en, \et, \ex41,
@@ -2470,8 +2470,9 @@ or
 .BR \-\-width [= \fIcount\fR ]
 option writes
 .I count
-bytes per line, or 32 without a count. A count that is not a multiple of the
-largest selected unit size is replaced by that size with a warning.
+bytes per line, up to 65536, or 32 without a count. A count that is not a
+multiple of the largest selected unit size is replaced by that size with a
+warning.
 .TP
 .B paste
 Corresponding lines of the files are joined with tabs. The \fB\-d\fR option
@@ -2570,7 +2571,7 @@ a binary file: matching lines before the line that holds its first NUL byte
 print, the first match on or after that line shows one warning instead, and
 later matches print nothing. The
 .BR \-a " (" \-\-text )
-option reads such a file as text. The exit status is 0 when a
+option treats such a file as text. The exit status is 0 when a
 line is selected, 1 when no line is selected, and 2 on an error. In a UTF-8
 locale, a dot and a bracket expression match one whole character. In every
 other locale, they match one byte.
@@ -2701,8 +2702,9 @@ at the \fB\-v\fR value unless \fB\-p\fR is given. The \fB\-i\fR option sets the
 increment, and both values can be negative. The \fB\-l\fR option numbers only
 every given empty line of a run under the a style. The \fB\-w\fR,
 \fB\-n\fR, and \fB\-s\fR options set the number width, the ln, rn, or rz
-format, and the separator, which can be empty. A line number that overflows
-stops the run with status 1 before the next numbered line.
+format, and the separator, which can be empty. The width is at most 65536.
+A line number that overflows stops the run with status 1 before the next
+numbered line.
 .TP
 .B nproc
 The available logical processor count is printed. The \fB\-\-all\fR and
@@ -2723,8 +2725,9 @@ The canonical absolute form of each path is printed. Every component but the
 last must exist, every component must exist with \fB\-e\fR, and none needs to
 exist with \fB\-m\fR. Symbolic links are resolved as they are encountered, or
 with \fB\-P\fR, \fB\-\-physical\fR. The \fB\-L\fR, \fB\-\-logical\fR
-option resolves '..' components before symbolic links, and \fB\-s\fR,
-\fB\-\-no\-symlinks\fR, \fB\-\-strip\fR leaves symbolic links unresolved.
+option resolves '..' components before symbolic links, and the \fB\-s\fR,
+\fB\-\-no\-symlinks\fR, and \fB\-\-strip\fR options leave symbolic links
+unresolved.
 The last of these three options applies. The \fB\-\-relative\-to\fR option
 prints each path relative to a directory. The \fB\-\-relative\-base\fR option
 prints paths below a directory relative to it and other paths absolute. With

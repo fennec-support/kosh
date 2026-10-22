@@ -210,7 +210,7 @@ else
 fi
 rm -rf "$locale_dir"
 
-# Length modifiers are accepted and ignored, as bash does.
+# Length modifiers are accepted and ignored.
 printf '%ld|%lld|%hd|%zu|%jd|%lx|%hhd\n' 1 2 3 4 5 255 7
 
 # A % conversion with a flag, width, precision, or length modifier is invalid

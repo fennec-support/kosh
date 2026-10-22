@@ -155,7 +155,12 @@ note: Use a positive decimal integer.
 -c:1:15: error: Koshkit `nl`: Invalid width '0'.
      1 |  koshkit nl -w 0
        |                ^
-note: Use a positive decimal integer within the platform size limit.
+note: Use a positive decimal integer up to 65536.
+=== uniq count location ===
+-c:1:17: error: Koshkit `uniq`: Invalid compared character count 'x'.
+     1 |  koshkit uniq -w x
+       |                  ^
+note: Use a non-negative decimal integer.
 === nl start limit ===
 -c:1:15: error: Koshkit `nl`: Invalid starting line number '9223372036854775808'.
      1 |  koshkit nl -v 9223372036854775808

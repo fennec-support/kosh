@@ -513,7 +513,9 @@ get_interval_length(StringView text) wontthrow -> usize
   usize digit_count = 0;
   bool  has_comma   = false;
 
-  if (text.length == 0 || text[0] != '{') return 0;
+  if (text.length == 0 || text[0] != '{') {
+    return 0;
+  }
 
   for (; index < text.length; index++) {
     let const character = text[index];
@@ -527,8 +529,13 @@ get_interval_length(StringView text) wontthrow -> usize
     }
   }
 
-  if (index >= text.length || text[index] != '}') return 0;
-  if (digit_count == 0 && !has_comma) return 0;
+  if (index >= text.length || text[index] != '}') {
+    return 0;
+  }
+
+  if (digit_count == 0 && !has_comma) {
+    return 0;
+  }
 
   return index + 1;
 }
@@ -543,7 +550,7 @@ append_extended_pattern(String &output, StringView pattern) throws
   bool is_at_start = true;
   /* the output length before an unescaped ^ that the last token emitted. a
      repetition of ^ that allows zero matches drops the anchor, and one that
-     needs a match keeps it, the way GNU grep reads ^* and ^+. */
+     needs a match keeps it. */
   let caret_start = Maybe<usize>{};
 
   for (usize index = 0; index < pattern.length;) {
@@ -565,8 +572,13 @@ append_extended_pattern(String &output, StringView pattern) throws
     } else if (character == '[') {
       usize end = index + 1;
 
-      if (end < pattern.length && pattern[end] == '^') end++;
-      if (end < pattern.length && pattern[end] == ']') end++;
+      if (end < pattern.length && pattern[end] == '^') {
+        end++;
+      }
+
+      if (end < pattern.length && pattern[end] == ']') {
+        end++;
+      }
 
       while (end < pattern.length && pattern[end] != ']') {
         if (pattern[end] == '[' && end + 1 < pattern.length &&
@@ -1527,7 +1539,7 @@ public:
       m_source_binary_states.reserve(m_sources.count());
 
       for (usize index = 0; index < m_sources.count(); index++)
-        m_source_binary_states.push(binary_state::Text);
+        m_source_binary_states.push(BinaryState::Text);
     }
 
     if (m_options.output_mode == grep_output_mode::Count ||
@@ -1769,9 +1781,9 @@ private:
       case grep_output_mode::Lines:
         /* the first match on or after the line with the first NUL byte
            reports one warning, and later matches print nothing. */
-        if (m_source_binary_states[source_index] != binary_state::Text) {
-          if (m_source_binary_states[source_index] == binary_state::Binary) {
-            m_source_binary_states[source_index] = binary_state::Reported;
+        if (m_source_binary_states[source_index] != BinaryState::Text) {
+          if (m_source_binary_states[source_index] == BinaryState::Binary) {
+            m_source_binary_states[source_index] = BinaryState::Reported;
             report_binary_match(source_index, source);
           }
 
@@ -1994,7 +2006,7 @@ private:
        as text, and the rest of the source counts as binary. */
     if (m_options.output_mode == grep_output_mode::Lines &&
         !m_options.should_read_binary_as_text &&
-        m_source_binary_states[chunk.source_index] == binary_state::Text &&
+        m_source_binary_states[chunk.source_index] == BinaryState::Text &&
         chunk.content.length > 0)
     {
       let const *nul = static_cast<const char *>(
@@ -2016,11 +2028,19 @@ private:
           rest.content = chunk.content.substring(text_length);
         }
 
-        m_source_binary_states[chunk.source_index] = binary_state::Binary;
+        m_source_binary_states[chunk.source_index] = BinaryState::Binary;
       }
     }
 
-    do_split(rest);
+    /* the lines of a source whose binary match was reported print nothing,
+       so they are not searched. */
+    if (m_options.output_mode == grep_output_mode::Lines &&
+        m_source_binary_states[chunk.source_index] == BinaryState::Reported)
+    {
+      m_line.clear();
+    } else {
+      do_split(rest);
+    }
 
     if (chunk.completion != source_completion_state::Complete) return;
 
@@ -2066,13 +2086,13 @@ private:
   ArrayList<usize>                 m_source_match_counts;
   /* Text until a chunk of the source holds a NUL byte, then Binary until its
      first match reports the binary match warning. */
-  enum class binary_state : u8
+  enum class BinaryState : u8
   {
     Text,
     Binary,
     Reported,
   };
-  ArrayList<binary_state> m_source_binary_states;
+  ArrayList<BinaryState> m_source_binary_states;
   /* the operand index of each source of a recursive search. */
   ArrayList<usize> m_source_operand_indices;
   String           m_output;
@@ -2205,7 +2225,9 @@ Grep::execute(const ExecContext               &ec,
     do_add_pattern_list(list);
   }
 
-  if (pattern_spans.is_empty() && !options.should_invert) return 1;
+  if (pattern_spans.is_empty() && !options.should_invert) {
+    return 1;
+  }
 
   let search                = GrepSearch{ec,
                           cxt,

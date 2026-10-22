@@ -247,11 +247,15 @@ parse_tab_stop_list(StringView text, Allocator allocator) throws
   }
 
   if (!do_finish_value()) return None;
-  if (list.extend_width != 0 && list.increment_width != 0) return None;
+  if (list.extend_width != 0 && list.increment_width != 0) {
+    return None;
+  }
 
   for (usize index = 0; index < list.stops.count(); index++) {
     if (list.stops[index] == 0) return None;
-    if (index != 0 && list.stops[index] <= list.stops[index - 1]) return None;
+    if (index != 0 && list.stops[index] <= list.stops[index - 1]) {
+      return None;
+    }
   }
 
   /* at this point: stops holds positive tab stops, strictly ascending, and at

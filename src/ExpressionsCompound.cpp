@@ -967,7 +967,7 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
 
       const SimpleCommand *simple = static_cast<const SimpleCommand *>(stage);
 
-      /* a stage that reads BASHPID expands its words in its own process. */
+      /* a stage that uses BASHPID expands its words in its own process. */
       if (full_source_text(cxt, *stage)
               .find_substring(StringView{"BASHPID"})
               .has_value())
@@ -1009,7 +1009,7 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
       let const name = static_command_name(simple->args()[0]);
 
       if (name.has_value() && !cxt.scope_store().is_alias_expanding(*name) &&
-          cxt.scope_store().get_alias(*name).has_value())
+          cxt.scope_store().find_alias(*name).has_value())
       {
         has_compound_stage = true;
         break;

@@ -377,6 +377,8 @@ execute_program(ExecContext                     &ec,
                 const program_execution_options &options) throws
     -> process
 {
+  SPAWN_FAILURE_STATUS = None;
+
   let const should_allow_script_fallback =
       options.fallback == script_fallback_policy::Allow;
   let const should_create_process_group =

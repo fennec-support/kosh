@@ -10,17 +10,17 @@ kill -l 4294967311 > /dev/null 2>&1
 echo "wrapped-listing=$?"
 kill -0 $$
 echo "own-pid=$?"
-# A signal name is accepted in any case, as in bash.
+# A signal name is accepted in any case.
 kill -s cont $$
 echo "lowercase-name=$?"
 kill -s sigcont $$
 echo "lowercase-prefixed-name=$?"
-# A -- after the signal ends the options, as in bash.
+# A -- after the signal ends the options.
 kill -0 -- $$
 echo "dashes-after-signal=$?"
 kill -s 0 -- $$
 echo "dashes-after-named-signal=$?"
-# kill -l takes 0, EXIT, and lowercase names, and -s takes an attached signal.
+# kill -l takes 0, EXIT, and lowercase signals, and -s takes an attached signal.
 kill -l 0 EXIT int
 kill -sCONT $$
 echo "attached-signal=$?"

@@ -463,8 +463,8 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
-      /* ${!prefix*} lists names only when prefix is a name, so ${!ref%c*}
-         stays an indirect expansion with an operator. */
+      /* ${!prefix*} lists variables only when prefix is a valid identifier, so
+         ${!ref%c*} stays an indirect expansion with an operator. */
       if (segment_text.length >= 2 && segment_text[0] == '!' &&
           (segment_text[segment_text.length - 1] == '@' ||
            segment_text[segment_text.length - 1] == '*') &&

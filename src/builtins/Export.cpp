@@ -232,7 +232,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         cxt.variable_store().indexed_arrays().find(name.view()).has_value() ||
         cxt.is_associative_array(name.view());
 
-    /* an unset name is marked for export and stays unset, as in bash, so it
+    /* an unset name is marked for export and stays unset, so it
        reaches the environment only once it is assigned. */
     if (!has_new_value && !is_array &&
         !cxt.get_variable_value(name).has_value())

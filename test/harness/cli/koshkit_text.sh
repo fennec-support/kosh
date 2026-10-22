@@ -555,7 +555,7 @@ printf '"" x\n' | "$BIN" -c 'koshkit xargs -I{} echo "[{}]"'
 printf '""\nq\n' | "$BIN" -c 'koshkit xargs -I{} echo "[{}]"'
 printf '"abc' | "$BIN" -c 'koshkit xargs -I{} echo "[{}]" 2>/dev/null; printf "status=%s\n" "$?"'
 
-echo "--- grep -E reads a repetition after ^ ---"
+echo "--- grep -E takes a repetition after ^ ---"
 printf 'x\n*x\n' | "$BIN" -c 'koshkit grep -E "^*x"'
 printf 'x\n+x\nax\n' | "$BIN" -c 'koshkit grep -E "^+x"'
 
@@ -575,6 +575,12 @@ printf 'abc\0\n' > grep-binary-dir/b.dat
 echo "--- seq counts long integers exactly ---"
 "$BIN" -c 'koshkit seq 99999999999999999999 100000000000000000001'
 "$BIN" -c 'koshkit seq 18446744073709551615 18446744073709551617'
+"$BIN" -c 'koshkit seq 0000000000000000003'
+"$BIN" -c 'koshkit seq 1e-99999999999999999999 1 1 | koshkit wc -c'
+
+echo "--- nl and od take widths up to 65536 ---"
+"$BIN" -c 'printf "a\n" | koshkit nl -w 65536 | koshkit wc -c'
+"$BIN" -c 'koshkit od -w65537 /dev/null 2>&1; printf "status=%s\n" "$?"'
 
 echo "--- comm reports one disorder for a paired line ---"
 printf 'b\na\n' > disorder

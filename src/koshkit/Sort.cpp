@@ -482,7 +482,9 @@ get_sort_unit_order(StringView text, bool is_folding) wontthrow -> int
     do_scan_digits();
   }
 
-  if (largest_digit <= '0' || position >= text.length) return 0;
+  if (largest_digit <= '0' || position >= text.length) {
+    return 0;
+  }
 
   static constexpr char UNITS[] = "KMGTPEZYRQ";
 
@@ -597,7 +599,10 @@ get_sort_month(StringView text) wontthrow -> int
   for (usize offset = 0; offset < 3; offset++) {
     let ch = text[position + offset];
 
-    if (ch >= 'a' && ch <= 'z') ch = static_cast<char>(ch - 'a' + 'A');
+    if (ch >= 'a' && ch <= 'z') {
+      ch = static_cast<char>(ch - 'a' + 'A');
+    }
+
     abbreviation[offset] = ch;
   }
 
@@ -658,7 +663,9 @@ compare_sort_version_parts(StringView left,
       ch = static_cast<char>(ch - 'a' + 'A');
     }
 
-    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) return ch;
+    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) {
+      return ch;
+    }
 
     if (ch == '~') return -2;
 
@@ -808,23 +815,39 @@ compare_sort_text(StringView            left,
   } else if (modifiers.is_version &&
              (modifiers.is_dictionary || modifiers.is_printable_only))
   {
-    let const do_filter = [&](StringView text) throws -> String {
-      let   filtered = String{heap_allocator()};
-      usize position = 0;
+    /* a filtered key is never longer than its text, so a short key fits the
+       stack buffer. */
+    char left_buffer[256];
+    char right_buffer[256];
+    let  left_storage  = ArrayList<char>{heap_allocator()};
+    let  right_storage = ArrayList<char>{heap_allocator()};
+
+    let const do_filter =
+        [&](StringView text, char *buffer,
+            ArrayList<char> &storage) throws -> StringView {
+      let const is_short = text.length <= sizeof(left_buffer);
+      usize     position = 0;
+      usize     length   = 0;
 
       loop {
         let const ch = next_sort_character(text, position, modifiers);
 
         if (ch < 0) break;
 
-        filtered += static_cast<char>(ch);
+        if (is_short) {
+          buffer[length++] = static_cast<char>(ch);
+        } else {
+          storage.push(static_cast<char>(ch));
+        }
       }
 
-      return filtered;
+      return is_short ? StringView{buffer, length}
+                      : StringView{storage.begin(), storage.count()};
     };
 
-    result = compare_sort_versions(do_filter(left).view(),
-                                   do_filter(right).view(), false);
+    result = compare_sort_versions(
+        do_filter(left, left_buffer, left_storage),
+        do_filter(right, right_buffer, right_storage), false);
   } else if (modifiers.is_version) {
     result = compare_sort_versions(left, right, modifiers.is_folding);
   } else if (is_plain) {

@@ -99,6 +99,9 @@ echo "=== nl blank group location ==="
 echo "=== nl width location ==="
 "$BIN" -c 'koshkit nl -w 0' 2>&1
 
+echo "=== uniq count location ==="
+"$BIN" -c 'koshkit uniq -w x' 2>&1
+
 echo "=== nl start limit ==="
 "$BIN" -c 'koshkit nl -v 9223372036854775808' 2>&1
 

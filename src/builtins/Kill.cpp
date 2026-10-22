@@ -55,7 +55,7 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       uppercased.uppercase_ascii();
 
-      /* 0 and EXIT are the exit trap, as bash lists them. */
+      /* 0 and EXIT are the exit trap. */
       if (spec == "0") {
         name = String{cxt.scratch_allocator(), "EXIT"};
       } else if (uppercased == "EXIT") {
@@ -130,7 +130,7 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       signal_number = do_resolve_signal(args[2], 2);
       first_target  = 3;
     } else if (args[1].length() > 2 && args[1].starts_with("-s")) {
-      /* bash takes the signal attached to the option, as in -sTERM. */
+      /* a signal attached to the option, as in -sTERM, is accepted. */
       signal_number = do_resolve_signal(args[1].substring(2), 1);
       first_target  = 2;
     } else if (args[1].length() > 1 && args[1][0] == '-') {

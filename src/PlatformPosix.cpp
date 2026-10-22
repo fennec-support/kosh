@@ -781,7 +781,7 @@ static sigset_t SIGNALS_WITH_TRAP_ACTION = {};
 static bool IS_PIPE_SIGNAL_IGNORED_BY_TRAP   = false;
 static bool WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY = false;
 /* trap '' INT, or an ignored SIGINT at entry, keeps SIGINT ignored in every
-   child, as POSIX asks of an ignored signal. */
+   child. */
 static bool IS_INTERRUPT_SIGNAL_IGNORED = false;
 static bool IS_JOB_CONTROL_ENABLED      = false;
 
@@ -881,7 +881,9 @@ regular_file_byte_count(os::descriptor fd) wontthrow -> Maybe<u64>
 {
   struct stat info{};
 
-  if (fstat(fd, &info) != 0 || !S_ISREG(info.st_mode)) return None;
+  if (fstat(fd, &info) != 0 || !S_ISREG(info.st_mode)) {
+    return None;
+  }
 
   return static_cast<u64>(info.st_size);
 }

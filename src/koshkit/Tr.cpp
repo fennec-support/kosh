@@ -87,8 +87,8 @@ struct tr_element
   u8               last_byte;
   posix_class_test test;
   tr_case_class    case_class;
-  usize            repeat_count;
-  bool             is_indefinite;
+  /* zero for an indefinite [c*] repeat until set2 is sized. */
+  usize repeat_count;
 };
 
 struct tr_error
@@ -206,7 +206,7 @@ parse_tr_set(StringView             set,
   let const do_append = [&](tr_element_kind kind,
                             u8              first_byte) throws {
     elements.push(tr_element{kind, first_byte, first_byte, nullptr,
-                             tr_case_class::None, 0, false});
+                             tr_case_class::None, 0});
   };
 
   /* e.g. "[x*5]" at position gives a repeat of 'x' five times, "[x*]" an
@@ -229,8 +229,7 @@ parse_tr_set(StringView             set,
                                static_cast<u8>(p[position + 1]),
                                nullptr,
                                tr_case_class::None,
-                               0,
-                               true};
+                               0};
 
       if (!digits.is_empty()) {
         let const base = digits[0] == '0' ? int_base::octal : int_base::decimal;
@@ -246,8 +245,7 @@ parse_tr_set(StringView             set,
           return None;
         }
 
-        element.repeat_count  = static_cast<usize>(parsed.value());
-        element.is_indefinite = element.repeat_count == 0;
+        element.repeat_count = static_cast<usize>(parsed.value());
       }
 
       elements.push(element);
@@ -262,7 +260,9 @@ parse_tr_set(StringView             set,
     if (!do_match(position, '*')) return false;
 
     for (usize i = position + 1; i < length; i++) {
-      if (!lexer::is_number(p[i]) || is_escaped[i]) return do_match(i, ']');
+      if (!lexer::is_number(p[i]) || is_escaped[i]) {
+        return do_match(i, ']');
+      }
     }
 
     return false;
@@ -307,7 +307,7 @@ parse_tr_set(StringView             set,
                                                           : tr_case_class::None;
 
               elements.push(tr_element{tr_element_kind::Class, 0, 0, *test,
-                                       case_class, 0, false});
+                                       case_class, 0});
               i = *close + 2;
               continue;
             }
@@ -361,7 +361,7 @@ parse_tr_set(StringView             set,
       }
 
       elements.push(tr_element{tr_element_kind::Range, first_byte, last_byte,
-                               nullptr, tr_case_class::None, 0, false});
+                               nullptr, tr_case_class::None, 0});
       i += 3;
       continue;
     }
@@ -587,7 +587,7 @@ Tr::execute(const ExecContext               &ec,
   }
 
   for (let const &element : set1.elements) {
-    if (element.kind == tr_element_kind::Repeat && element.is_indefinite) {
+    if (element.kind == tr_element_kind::Repeat && element.repeat_count == 0) {
       return do_fail(operand_locations[0],
                      "The [c*] repeat cannot appear in set1",
                      "Give the repeat a count, such as `[c*3]`");
@@ -624,7 +624,8 @@ Tr::execute(const ExecContext               &ec,
 
     expand_tr_set(set2);
     for (let const &element : set2.elements) {
-      if (element.kind == tr_element_kind::Repeat && element.is_indefinite) {
+      if (element.kind == tr_element_kind::Repeat && element.repeat_count == 0)
+      {
         indefinite_count++;
       }
 
@@ -661,7 +662,9 @@ Tr::execute(const ExecContext               &ec,
 
     if (indefinite_count == 1 && set1.length > fixed_length) {
       for (let &element : set2.elements) {
-        if (element.kind == tr_element_kind::Repeat && element.is_indefinite) {
+        if (element.kind == tr_element_kind::Repeat &&
+            element.repeat_count == 0)
+        {
           element.repeat_count = set1.length - fixed_length;
         }
       }

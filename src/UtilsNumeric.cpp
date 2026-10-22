@@ -898,24 +898,13 @@ decode_ansi_c_escapes(String &out, StringView body) throws -> void
     } break;
     case 'u':
     case 'U': {
-      const i32 max_digit_count = e == 'u' ? 4 : 8;
-      u32       codepoint       = 0;
-      i32       digit_count     = 0;
+      let letter_index = i - 1;
 
-      while (digit_count < max_digit_count && i < body.length) {
-        let const digit = hex_digit_value(body[i]);
-
-        if (!digit.has_value()) break;
-        codepoint = codepoint * 16 + *digit;
-        i++;
-        digit_count++;
-      }
-
-      if (digit_count == 0) {
+      if (append_unicode_escape(out, body, letter_index)) {
+        i = letter_index + 1;
+      } else {
         out.push('\\');
         out.push(e);
-      } else {
-        append_utf8(out, codepoint);
       }
     } break;
 

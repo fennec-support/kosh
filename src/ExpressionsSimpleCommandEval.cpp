@@ -137,8 +137,8 @@ SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
 /* the source of command with an alias of its command word replaced by the
    alias body, or None when the word is no alias. a body that ends in a blank
    also replaces the next word when it is an alias, and the first word of such
-   a replacement is an alias too when it names one, as bash reads the
-   replacement again. each alias joins a chain once. */
+   a replacement is expanded again when it is an alias. each alias joins a
+   chain once. */
 static fn
 alias_expanded_source(const SimpleCommand &command,
                       EvalContext         &cxt,

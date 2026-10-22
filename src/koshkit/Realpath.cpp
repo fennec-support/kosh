@@ -220,38 +220,30 @@ resolve_physically(StringView    operand,
 static pure fn
 suffix_requires_directory(StringView suffix) wontthrow -> bool
 {
-  usize position = 0;
+  if (suffix.is_empty() || !os::is_directory_separator(suffix[0])) {
+    return false;
+  }
+
+  usize position = 1;
 
   while (position < suffix.length &&
          os::is_directory_separator(suffix[position]))
   {
-    while (position < suffix.length &&
-           os::is_directory_separator(suffix[position]))
-    {
-      position++;
-    }
-
-    if (position == suffix.length) return true;
-    if (suffix[position] != '.') return false;
-
     position++;
-    if (position == suffix.length ||
-        os::is_directory_separator(suffix[position]))
-    {
-      return true;
-    }
-
-    if (suffix[position] == '.' &&
-        (position + 1 == suffix.length ||
-         os::is_directory_separator(suffix[position + 1])))
-    {
-      return true;
-    }
-
-    return false;
   }
 
-  return false;
+  if (position == suffix.length) return true;
+  if (suffix[position] != '.') return false;
+
+  position++;
+  if (position == suffix.length || os::is_directory_separator(suffix[position]))
+  {
+    return true;
+  }
+
+  return suffix[position] == '.' &&
+         (position + 1 == suffix.length ||
+          os::is_directory_separator(suffix[position + 1]));
 }
 
 /* memory: candidate and probe Paths are allocated in allocator for each
@@ -275,22 +267,9 @@ resolve_without_links(StringView    operand,
   usize position = root_length;
 
   loop {
-    while (position < text.length && os::is_directory_separator(text[position]))
-    {
-      position++;
-    }
+    let const component = Path::next_component(text, position).text;
 
-    if (position == text.length) return resolved;
-
-    let const start = position;
-
-    while (position < text.length &&
-           !os::is_directory_separator(text[position]))
-    {
-      position++;
-    }
-
-    let const component = text.substring_of_length(start, position - start);
+    if (component.is_empty()) return resolved;
 
     if (component == ".") continue;
 

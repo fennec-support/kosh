@@ -320,13 +320,13 @@ FlagManyStrings::reset() throws -> void
   m_value_position = 0;
 }
 
-FlagOptionalValue::FlagOptionalValue(char            short_name,
-                                     StringView      long_name,
-                                     flag_section    section,
-                                     StringView      description,
-                                     value_acceptor  should_accept_value,
-                                     StringView      value_name,
-                                     value_placement placement)
+FlagOptionalValue::FlagOptionalValue(char           short_name,
+                                     StringView     long_name,
+                                     flag_section   section,
+                                     StringView     description,
+                                     value_acceptor should_accept_value,
+                                     StringView     value_name,
+                                     ValuePlacement placement)
     : Flag(Flag::Kind::OptionalValue,
            short_name,
            long_name,
@@ -336,14 +336,14 @@ FlagOptionalValue::FlagOptionalValue(char            short_name,
       m_placement(placement)
 {}
 
-FlagOptionalValue::FlagOptionalValue(FlagList       &flags,
-                                     char            short_name,
-                                     StringView      long_name,
-                                     flag_section    section,
-                                     StringView      description,
-                                     value_acceptor  should_accept_value,
-                                     StringView      value_name,
-                                     value_placement placement)
+FlagOptionalValue::FlagOptionalValue(FlagList      &flags,
+                                     char           short_name,
+                                     StringView     long_name,
+                                     flag_section   section,
+                                     StringView     description,
+                                     value_acceptor should_accept_value,
+                                     StringView     value_name,
+                                     ValuePlacement placement)
     : FlagOptionalValue(short_name,
                         long_name,
                         section,
@@ -989,7 +989,7 @@ parse_flags(const FlagList                  &flags,
           } else if (!value.is_empty() &&
                      (is_long ||
                       optional_flag->get_placement() ==
-                          FlagOptionalValue::value_placement::AttachedOnly))
+                          FlagOptionalValue::ValuePlacement::AttachedOnly))
           {
             let error = ErrorWithLocation{
                 argument_location(argv, static_cast<usize>(i), base_position,
@@ -1006,7 +1006,7 @@ parse_flags(const FlagList                  &flags,
             should_repeat = true;
           } else if (i + 1 < argc &&
                      optional_flag->get_placement() ==
-                         FlagOptionalValue::value_placement::AttachedOrNext &&
+                         FlagOptionalValue::ValuePlacement::AttachedOrNext &&
                      optional_flag->should_accept_value(
                          StringView{argv[i + 1]}))
           {

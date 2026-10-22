@@ -182,8 +182,9 @@ append_formatted_cat_source(String           &output,
           if (format.should_squeeze_blank) continue;
         }
 
-        if (format.should_number && !format.should_number_nonblank)
+        if (format.should_number && !format.should_number_nonblank) {
           append_number_prefix(output, state.line_number++);
+        }
       }
 
       if (format.should_show_ends) output += '$';
@@ -191,8 +192,10 @@ append_formatted_cat_source(String           &output,
       continue;
     }
 
-    if (state.newline_count >= 0 && format.should_number)
+    if (state.newline_count >= 0 && format.should_number) {
       append_number_prefix(output, state.line_number++);
+    }
+
     state.newline_count = -1;
 
     if (!is_cat_byte_special(byte, format)) {

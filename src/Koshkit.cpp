@@ -1208,7 +1208,7 @@ parse_count_with_size_suffix(StringView text) throws -> ErrorOr<u64>
     suffix      = suffix.substring(1);
     if (suffix == "iB") {
       suffix = {};
-    } else if (suffix == "B" || suffix == "D") {
+    } else if (suffix == "B") {
       unit_base = 1000;
       suffix    = {};
     }

@@ -612,7 +612,7 @@ EvalContext::run_source(StringView                source,
   defer { leave_source(); };
 
   /* eval, a sourced file, a trap, and a mapfile callback trace one level
-     deeper, as bash does. The EXIT trap does so only in a ( ) subshell, not
+     deeper. The EXIT trap does so only in a ( ) subshell, not
      at the top level or as the innermost command substitution. */
   let const is_exit_trap_indented =
       execution_store().subshell_depth() > 0 &&

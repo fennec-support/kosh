@@ -146,7 +146,7 @@ Id::execute(const ExecContext               &ec,
   if (FLAG_ID_GROUPS.is_enabled()) {
     let output = String{cxt.scratch_allocator()};
 
-    /* a named user lists the primary group first, then the others. */
+    /* a user operand lists the primary group first, then the others. */
     if (!operands.is_empty()) {
       output += id_group_text(group_id, cxt.scratch_allocator(), name_mode);
 

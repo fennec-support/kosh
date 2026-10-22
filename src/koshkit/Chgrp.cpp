@@ -61,7 +61,7 @@ Chgrp::execute(const ExecContext               &ec,
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
-  /* an empty group changes nothing, as in GNU chgrp. */
+  /* an empty group changes nothing. */
   let group_id = Maybe<i64>{-1};
 
   if (!operands[0].is_empty()) {

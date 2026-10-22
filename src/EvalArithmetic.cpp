@@ -2888,8 +2888,8 @@ evaluate_arithmetic_value(
       context->runtime_state().bash_additions_enabled() &&
       expression.find_character('"').has_value();
 
-  /* a variable's value is data and is parsed without expansion. Bash also
-     rejects a '$' or '`' in an operand taken from a value. */
+  /* a variable's value is data and is parsed without expansion, and a
+     '$' or '`' in an operand taken from a value is rejected. */
   let const is_plain_text = !expression.find_character('$').has_value() &&
                             !expression.find_character('`').has_value() &&
                             !has_removable_quote;

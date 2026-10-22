@@ -69,9 +69,9 @@ Chown::execute(const ExecContext               &ec,
   let const group_text =
       colon.has_value() ? specification.substring(*colon + 1) : StringView{};
 
-  /* an empty specification and a lone colon change nothing, as in GNU
-     chown, and the files are still checked. an owner followed by a colon
-     also sets the group to the login group of the owner. */
+  /* an empty specification and a lone colon change nothing, and the files
+     are still checked. an owner followed by a colon also sets the group to
+     the login group of the owner. */
 
   /* -1 leaves an id unchanged, because fchownat() treats (uid_t)-1 and
      (gid_t)-1 as no change. */

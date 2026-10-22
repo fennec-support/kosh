@@ -331,7 +331,7 @@ EvalContext::guard_restricted_path(StringView            path,
     -> void
 {
   if (!runtime_state().option_is_enabled(shell_option_id::Restricted)) return;
-  /* history and hash -p operands are always forbidden, as in bash. hash -p
+  /* history and hash -p operands are always forbidden. hash -p
      can bind a name to any file, including one in the current directory. */
   let const is_always_forbidden =
       use == restricted_path_use::History || use == restricted_path_use::Hash;

@@ -230,9 +230,8 @@ execute_context(ExecContext  &&ec,
 
   os::process p = KOSH_INVALID_PROCESS;
 
-  /* a program that the system refuses to start, as Windows does with access
-     denied, is reported and fails the command with its spawn status, as a
-     failed exec in a forked child does. */
+  /* a program that the system refuses to start is reported and fails the
+     command with its spawn status. */
   try {
     p = os::execute_program(
         ec, os::program_execution_options{

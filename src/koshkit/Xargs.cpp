@@ -327,7 +327,9 @@ private:
           break;
         }
 
-        if (!has_content && (byte == ' ' || byte == '\t')) continue;
+        if (!has_content && (byte == ' ' || byte == '\t')) {
+          continue;
+        }
 
         has_content = true;
         if (byte == '\'' || byte == '"') {
@@ -450,7 +452,9 @@ Xargs::execute(const ExecContext               &ec,
     eof_text = FLAG_XARGS_EOF.value();
   else if (FLAG_XARGS_EOF_OPTIONAL.has_value())
     eof_text = FLAG_XARGS_EOF_OPTIONAL.value();
-  if (eof_text.has_value() && eof_text->is_empty()) eof_text = None;
+  if (eof_text.has_value() && eof_text->is_empty()) {
+    eof_text = None;
+  }
 
   char delimiter = '\0';
 
@@ -458,10 +462,11 @@ Xargs::execute(const ExecContext               &ec,
     let const text    = FLAG_XARGS_DELIMITER.value();
     let       decoded = String{cxt.scratch_allocator()};
 
-    if (text.length > 1 && text[0] == '\\')
+    if (text.length > 1 && text[0] == '\\') {
       utils::decode_ansi_c_escapes(decoded, text);
-    else
+    } else {
       decoded += text;
+    }
 
     if (decoded.length() != 1) {
       report_soft_koshkit_util_error(
@@ -809,7 +814,6 @@ Xargs::execute(const ExecContext               &ec,
       }
 
       cxt.prepare_child_environment();
-      unused(os::take_spawn_failure_status());
 
       os::process child = KOSH_INVALID_PROCESS;
 
@@ -860,6 +864,8 @@ Xargs::execute(const ExecContext               &ec,
     i32       command_status = 0;
     let const is_external    = !sub->is_builtin();
 
+    /* a mimicked script runs without a spawn, so a status left by an earlier
+       spawn is cleared first. */
     unused(os::take_spawn_failure_status());
 
     try {
@@ -873,7 +879,10 @@ Xargs::execute(const ExecContext               &ec,
          the status of the failure. */
       let const spawn_status = os::take_spawn_failure_status();
 
-      if (!spawn_status.has_value() || !is_external) throw;
+      if (!spawn_status.has_value() || !is_external) {
+        throw;
+      }
+
       show_message(
           error.to_string(cxt.source_store().current_source_view(), &cxt));
 

@@ -14,6 +14,8 @@
 #include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
 
+constexpr u64 NL_WIDTH_LIMIT = 65536;
+
 KOSHKIT_UTIL_DECL("[-p] [-b type] [-d delim] [-f type] [-h type] "
                   "[-i incr] [-l num] [-n format] [-s sep] [-v start] "
                   "[-w width] [file]",
@@ -281,11 +283,12 @@ Nl::execute(const ExecContext               &ec,
   if (FLAG_NL_WIDTH.is_set()) {
     let const parsed = utils::parse_decimal_u64(FLAG_NL_WIDTH.value());
 
-    if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
-      KOSHKIT_REPORT_ERROR_AT(
-          FLAG_NL_WIDTH.value_location(),
-          "Invalid width '" + FLAG_NL_WIDTH.value() + "'",
-          "Use a positive decimal integer within the platform size limit");
+    if (parsed.is_error() || parsed.value() == 0 ||
+        parsed.value() > NL_WIDTH_LIMIT)
+    {
+      KOSHKIT_REPORT_ERROR_AT(FLAG_NL_WIDTH.value_location(),
+                              "Invalid width '" + FLAG_NL_WIDTH.value() + "'",
+                              "Use a positive decimal integer up to 65536");
 
       return 1;
     }

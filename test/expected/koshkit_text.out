@@ -1278,7 +1278,7 @@ status=0
 -c:1:1: error: Koshkit `xargs`: Unmatched quote.
      1 |  koshkit xargs -I{} echo "[{}]" 2>/dev/null; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
---- grep -E reads a repetition after ^ ---
+--- grep -E takes a repetition after ^ ---
 x
 *x
 x
@@ -1309,6 +1309,17 @@ abc tail
 18446744073709551615
 18446744073709551616
 18446744073709551617
+1
+2
+3
+9938
+--- nl and od take widths up to 65536 ---
+65539
+-c:1:14: error: Koshkit `od`: Invalid width '65537'.
+     1 |  koshkit od -w65537 /dev/null 2>&1; printf "status=%s\n" "$?"
+       |               ^~~~~
+note: The width must be a byte count from 1 to 65536.
+status=1
 --- comm reports one disorder for a paired line ---
 		b
 status=1

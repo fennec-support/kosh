@@ -214,7 +214,9 @@ get_wc_field_width(const ExecContext           &ec,
 {
   let const count_bits = static_cast<u8>(selection);
 
-  if (sources.count() == 1 && (count_bits & (count_bits - 1)) == 0) return 1;
+  if (sources.count() == 1 && (count_bits & (count_bits - 1)) == 0) {
+    return 1;
+  }
 
   u64 regular_byte_count = 0;
   let width              = usize{1};

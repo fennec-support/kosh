@@ -614,7 +614,7 @@ SimpleCommand::can_evaluate_in_process_substitution(
      only a word that is no alias is checked by its name. */
   if (cxt.scope_store().has_aliases() &&
       cxt.is_shopt_enabled(shopt_option_id::ExpandAliases) &&
-      cxt.scope_store().get_alias(*command_name).has_value())
+      cxt.scope_store().find_alias(*command_name).has_value())
   {
     return false;
   }

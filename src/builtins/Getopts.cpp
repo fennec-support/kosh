@@ -69,7 +69,7 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     optind = parsed_value.is_error() ? 1 : parsed_value.value();
   }
 
-  /* bash starts again at the first operand for an OPTIND below 1. */
+  /* an OPTIND below 1 starts again at the first operand. */
   if (optind < 1) optind = 1;
 
   LOG(Debug, "getopts parsing into '%s' at OPTIND %lld of %zu operands",

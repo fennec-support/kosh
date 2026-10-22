@@ -14,6 +14,8 @@
 #include "../Koshkit.hpp"
 #include "../Utils.hpp"
 
+constexpr u64 OD_WIDTH_LIMIT = 65536;
+
 KOSHKIT_UTIL_DECL("[-bcdosvx] [-A base] [-j skip] [-N count] [-t type]... "
                   "[-w[count]] [file ...]",
                   "Write formatted file bytes.");
@@ -465,11 +467,12 @@ Od::execute(const ExecContext               &ec,
   if (FLAG_OD_WIDTH.has_value()) {
     let const parsed = parse_strict_count(FLAG_OD_WIDTH.value());
 
-    if (parsed.is_error() || parsed.value() == 0 || parsed.value() > UINT32_MAX)
+    if (parsed.is_error() || parsed.value() == 0 ||
+        parsed.value() > OD_WIDTH_LIMIT)
     {
       KOSHKIT_REPORT_ERROR_AT(FLAG_OD_WIDTH.value_location(),
                               "Invalid width '" + FLAG_OD_WIDTH.value() + "'",
-                              "The width must be a positive byte count");
+                              "The width must be a byte count from 1 to 65536");
 
       return 1;
     }
@@ -509,7 +512,7 @@ Od::execute(const ExecContext               &ec,
 
   let const address_base         = od_base(address_radix);
   let const should_print_address = address_radix != 'n';
-  /* GNU od pads hexadecimal addresses to 6 digits and the others to 7. */
+  /* hexadecimal addresses pad to 6 digits and the others to 7. */
   let const              address_width           = address_radix == 'x' ? 6 : 7;
   let const              is_verbose              = FLAG_OD_VERBOSE.is_enabled();
   static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;

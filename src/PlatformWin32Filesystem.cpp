@@ -310,7 +310,9 @@ canonical_path(const Path &path) wontthrow -> Maybe<Path>
       let const written = GetFullPathNameW(wide_candidate->begin(), full_length,
                                            full.begin(), nullptr);
 
-      if (written == 0 || written >= full_length) return koshka::None;
+      if (written == 0 || written >= full_length) {
+        return koshka::None;
+      }
 
       let const full_text = wide_to_utf8(
           full.begin(), static_cast<usize>(written), heap_allocator());

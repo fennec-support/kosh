@@ -696,7 +696,9 @@ find_koshconf_value_problem(const option_descriptor &option,
       usize element_start = 0;
 
       for (usize position = 0; position <= value.count(); position++) {
-        if (position != value.count() && value[position] != ',') continue;
+        if (position != value.count() && value[position] != ',') {
+          continue;
+        }
 
         if (value.substring_of_length(element_start, position - element_start)
                 .trim_blanks()

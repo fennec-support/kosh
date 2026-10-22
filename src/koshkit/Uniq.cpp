@@ -231,7 +231,9 @@ Uniq::execute(const ExecContext               &ec,
 
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_UNIQ_FIELDS.value_location(),
-                              "Invalid number of fields to skip");
+                              "Invalid field skip count '" +
+                                  FLAG_UNIQ_FIELDS.value() + "'",
+                              "Use a non-negative decimal integer");
 
       return 1;
     }
@@ -246,7 +248,9 @@ Uniq::execute(const ExecContext               &ec,
 
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_UNIQ_CHARS.value_location(),
-                              "Invalid number of characters to skip");
+                              "Invalid character skip count '" +
+                                  FLAG_UNIQ_CHARS.value() + "'",
+                              "Use a non-negative decimal integer");
 
       return 1;
     }
@@ -277,6 +281,15 @@ Uniq::execute(const ExecContext               &ec,
         *find_uniq_method(FLAG_UNIQ_GROUP.value(), UNIQ_GROUP_METHODS);
   }
 
+  let const should_delimit_before_repeats  = all_repeated_method == 1;
+  let const should_delimit_between_repeats = all_repeated_method == 2;
+  let const should_delimit_before_groups =
+      group_method == 1 || group_method == 3;
+  let const should_delimit_between_groups =
+      group_method == 0 || group_method == 2;
+  let const should_delimit_after_groups =
+      group_method == 2 || group_method == 3;
+
   let const should_show_unique =
       !FLAG_UNIQ_REPEATED.is_enabled() && !is_all_repeated;
   let const should_show_first_repeated = !FLAG_UNIQ_UNIQUE.is_enabled();
@@ -306,7 +319,9 @@ Uniq::execute(const ExecContext               &ec,
 
     if (!parsed.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_UNIQ_CHECK_CHARS.value_location(),
-                              "Invalid number of characters to compare");
+                              "Invalid compared character count '" +
+                                  FLAG_UNIQ_CHECK_CHARS.value() + "'",
+                              "Use a non-negative decimal integer");
 
       return 1;
     }
@@ -441,12 +456,16 @@ Uniq::execute(const ExecContext               &ec,
     if (is_plain) {
       let const is_new_group = !has_previous || do_is_different(line);
       let const should_delimit =
-          group_method == 1 || group_method == 3 ||
-          (has_printed_group && (group_method == 0 || group_method == 2));
+          should_delimit_before_groups ||
+          (has_printed_group && should_delimit_between_groups);
 
-      if (is_new_group && is_grouping && should_delimit) do_append({});
+      if (is_new_group && is_grouping && should_delimit) {
+        do_append({});
+      }
 
-      if (!is_new_group && !is_grouping) continue;
+      if (!is_new_group && !is_grouping) {
+        continue;
+      }
 
       do_append(line);
       previous.clear();
@@ -466,19 +485,21 @@ Uniq::execute(const ExecContext               &ec,
 
     if (is_match) match_count++;
 
-    if (all_repeated_method != 0) {
+    if (should_delimit_before_repeats || should_delimit_between_repeats) {
       if (!is_match) {
         if (match_count != 0) is_first_delimiter = false;
       } else if (match_count == 1) {
-        if (all_repeated_method == 1 ||
-            (all_repeated_method == 2 && !is_first_delimiter))
+        if (should_delimit_before_repeats ||
+            (should_delimit_between_repeats && !is_first_delimiter))
         {
           do_append({});
         }
       }
     }
 
-    if (is_match && !should_show_later_repeated) continue;
+    if (is_match && !should_show_later_repeated) {
+      continue;
+    }
 
     do_write_previous(is_match, match_count);
     previous.clear();
@@ -487,9 +508,7 @@ Uniq::execute(const ExecContext               &ec,
   }
 
   if (is_plain) {
-    if (is_grouping && has_printed_group &&
-        (group_method == 2 || group_method == 3))
-    {
+    if (is_grouping && has_printed_group && should_delimit_after_groups) {
       do_append({});
     }
   } else if (has_previous) {

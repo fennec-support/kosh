@@ -56,8 +56,7 @@ EvalContext::get_glob_charset() const throws -> glob_charset
       continue;
     }
 
-    /* a locale the system cannot set leaves the next variable in charge, as
-       bash keeps its locale when a setting fails. */
+    /* a locale the system cannot set leaves the next variable in charge. */
     if (!utils::locale_name_is_usable(value->view())) continue;
 
     return utils::locale_name_is_utf8(value->view()) ? glob_charset::Utf8

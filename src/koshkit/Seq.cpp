@@ -14,6 +14,10 @@
 #include "../Lexer.hpp"
 #include "../Utils.hpp"
 
+/* the decimal exponent of the smallest subnormal quad long double. a larger
+   exponent of a finite operand is never needed. */
+constexpr i64 SEQ_EXPONENT_LIMIT = 4966;
+
 KOSHKIT_UTIL_DECL("[-w] [-f format] [-s separator] [first [increment]] last",
                   "Print a sequence of numbers from first to last.");
 
@@ -60,7 +64,10 @@ scan_seq_operand(const String &text, seq_operand &operand) wontthrow -> bool
 
   let const was_out_of_range = errno == ERANGE;
 
-  if (end == start || *end != '\0') return false;
+  if (end == start || *end != '\0') {
+    return false;
+  }
+
   if (was_out_of_range && (operand.value <= -1 || operand.value >= 1)) {
     return false;
   }
@@ -119,6 +126,9 @@ scan_seq_operand(const String &text, seq_operand &operand) wontthrow -> bool
      operand prints as "150" in 3 columns with no fraction digits. */
   let exponent = static_cast<i64>(
       strtol(arg.substring(*exponent_position + 1).data, nullptr, 10));
+
+  if (exponent > SEQ_EXPONENT_LIMIT) exponent = SEQ_EXPONENT_LIMIT;
+  if (exponent < -SEQ_EXPONENT_LIMIT) exponent = -SEQ_EXPONENT_LIMIT;
 
   if (exponent < 0) {
     operand.fraction_digit_count -= exponent;
@@ -459,7 +469,9 @@ Seq::execute(const ExecContext               &ec,
 
   if (is_long_integer_sequence && increment.value > 0 && increment.value < 200)
   {
-    let const first_text = do_trim_zeros(operands[0].view());
+    let const first_text = operands.count() == 1
+                               ? StringView{"1"}
+                               : do_trim_zeros(operands[0].view());
     let       value      = ArrayList<char>{cxt.scratch_allocator()};
 
     for (usize position = 0; position < first_text.length; position++)
@@ -531,9 +543,17 @@ Seq::execute(const ExecContext               &ec,
       let last_width =
           last.column_count + (precision - last.fraction_digit_count);
 
-      if (last.fraction_digit_count != 0 && precision == 0) last_width--;
-      if (last.fraction_digit_count == 0 && precision != 0) last_width++;
-      if (first.fraction_digit_count == 0 && precision != 0) first_width++;
+      if (last.fraction_digit_count != 0 && precision == 0) {
+        last_width--;
+      }
+
+      if (last.fraction_digit_count == 0 && precision != 0) {
+        last_width++;
+      }
+
+      if (first.fraction_digit_count == 0 && precision != 0) {
+        first_width++;
+      }
 
       let const width = first_width > last_width ? first_width : last_width;
 

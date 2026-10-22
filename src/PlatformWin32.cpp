@@ -677,7 +677,9 @@ regular_file_byte_count(os::descriptor fd) wontthrow -> Maybe<u64>
 
   LARGE_INTEGER size{};
 
-  if (GetFileSizeEx(fd, &size) == FALSE || size.QuadPart < 0) return None;
+  if (GetFileSizeEx(fd, &size) == FALSE || size.QuadPart < 0) {
+    return None;
+  }
 
   return static_cast<u64>(size.QuadPart);
 }

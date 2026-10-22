@@ -61,7 +61,7 @@
   {                                                                            \
     FLAG_LIST, short_name, long_name, koshka::flag_section::NoSection,         \
         description, acceptor, value_name,                                     \
-        koshka::FlagOptionalValue::value_placement::AttachedOnly               \
+        koshka::FlagOptionalValue::ValuePlacement::AttachedOnly                \
   }
 #define T__FLAG_OPTIONAL7(var_name, short_name, long_name, section,            \
                           description, acceptor, value_name)                   \
@@ -365,32 +365,30 @@ public:
 
   /* where the value of the flag may stand: attached to it, or also as the
      next argument when the acceptor takes that argument. */
-  enum class value_placement : u8
+  enum class ValuePlacement : u8
   {
     AttachedOrNext,
     AttachedOnly,
   };
 
-  FlagOptionalValue(
-      FlagList       &flags,
-      char            short_name,
-      StringView      long_name,
-      flag_section    section,
-      StringView      description,
-      value_acceptor  should_accept_value,
-      StringView      value_name = "...",
-      value_placement placement  = value_placement::AttachedOrNext);
-  FlagOptionalValue(
-      char            short_name,
-      StringView      long_name,
-      flag_section    section,
-      StringView      description,
-      value_acceptor  should_accept_value,
-      StringView      value_name = "...",
-      value_placement placement  = value_placement::AttachedOrNext);
+  FlagOptionalValue(FlagList      &flags,
+                    char           short_name,
+                    StringView     long_name,
+                    flag_section   section,
+                    StringView     description,
+                    value_acceptor should_accept_value,
+                    StringView     value_name = "...",
+                    ValuePlacement placement  = ValuePlacement::AttachedOrNext);
+  FlagOptionalValue(char           short_name,
+                    StringView     long_name,
+                    flag_section   section,
+                    StringView     description,
+                    value_acceptor should_accept_value,
+                    StringView     value_name = "...",
+                    ValuePlacement placement  = ValuePlacement::AttachedOrNext);
 
   pure fn
-  get_placement() const wontthrow -> value_placement
+  get_placement() const wontthrow -> ValuePlacement
   {
     return m_placement;
   }
@@ -415,12 +413,12 @@ public:
   reset() throws -> void;
 
 private:
-  bool            m_is_enabled{false};
-  bool            m_has_value{false};
-  String          m_value{heap_allocator()};
-  value_acceptor  m_should_accept_value;
-  StringView      m_value_name;
-  value_placement m_placement{value_placement::AttachedOrNext};
+  bool           m_is_enabled{false};
+  bool           m_has_value{false};
+  String         m_value{heap_allocator()};
+  value_acceptor m_should_accept_value;
+  StringView     m_value_name;
+  ValuePlacement m_placement{ValuePlacement::AttachedOrNext};
 };
 
 struct flag_parse_options

@@ -1086,7 +1086,7 @@ public:
   }
 
   /* the aliases whose bodies are being evaluated. an alias does not expand
-     inside its own body, as bash does. */
+     inside its own body. */
   pure fn
   is_alias_expanding(StringView name) const wontthrow -> bool
   {
@@ -6133,7 +6133,7 @@ public:
   write_xtrace(StringView command) throws -> void;
   fn
   write_xtrace(const ArrayList<String> &args) throws -> void;
-  /* appends word to out the way xtrace shows it, as bash does. An element of
+  /* appends word to out in the form xtrace shows it. An element of
      an array assignment is never shown in $'...' form. */
   fn
   append_xtrace_quoted(String    &out,
