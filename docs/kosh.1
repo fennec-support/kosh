@@ -2350,6 +2350,18 @@ option changes directories and their contents without following symbolic
 links. The \fB\-\-one\-file\-system\fR option skips directories on a file system
 other than that of the operand. It has no short form.
 .TP
+.B comm
+Two sorted files are merged into columns of lines only in the first file, only
+in the second file, and in both. The \fB\-1\fR, \fB\-2\fR, and \fB\-3\fR
+options suppress those columns. A line out of order after an unpaired line is
+reported once per file, and the status is 1. The \fB\-\-check\-order\fR
+option stops at the first line out of order even when every line pairs, and
+\fB\-\-nocheck\-order\fR skips the check; the later of the two applies. The
+\fB\-\-output\-delimiter\fR option separates columns with its value instead of
+a tab, or with NUL when the value is empty. The \fB\-\-total\fR option ends
+the output with the count of each column and the word total. The \fB\-z\fR
+option separates input and output lines with NUL.
+.TP
 .B cp
 Files and directory trees are copied. The \fB\-r\fR, \fB\-R\fR, \fB\-f\fR,
 \fB\-i\fR, \fB\-p\fR, and \fB\-v\fR options are supported. A recursive copy

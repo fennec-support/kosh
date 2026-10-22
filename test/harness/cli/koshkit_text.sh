@@ -446,6 +446,24 @@ echo "--- comm reports unsorted input ---"
 printf 'b\na\n' > comm-unsorted-1.txt
 printf 'a\nb\n' > comm-unsorted-2.txt
 "$BIN" -c 'koshkit comm comm-unsorted-1.txt comm-unsorted-2.txt 2>/dev/null; printf "status=%s\n" "$?"'
+echo "--- comm order checks, delimiters, totals, and NUL lines ---"
+printf 'a\nb\nd\ne\n' > comm-left.txt
+printf 'b\nc\ne\nf\n' > comm-right.txt
+printf 'b\na\n' > comm-paired.txt
+for comm_args in --total '--total -12' --output-delimiter=:: \
+  '--output-delimiter=+ --total -2'; do
+  echo "comm $comm_args"
+  "$BIN" -c "koshkit comm $comm_args comm-left.txt comm-right.txt"
+done
+"$BIN" -c "koshkit comm --output-delimiter '' comm-left.txt comm-right.txt | koshkit od -c"
+"$BIN" -c 'koshkit comm --output-delimiter=: --output-delimiter=, comm-left.txt comm-right.txt 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit comm comm-paired.txt comm-paired.txt; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit comm --check-order comm-paired.txt comm-paired.txt 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit comm --check-order --total comm-unsorted-1.txt comm-unsorted-2.txt 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit comm --total comm-unsorted-1.txt comm-unsorted-2.txt 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit comm --check-order --nocheck-order comm-unsorted-1.txt comm-unsorted-2.txt; printf "status=%s\n" "$?"'
+"$BIN" -c "printf 'a\\0b\\nx\\0d' > comm-zero-1.txt; printf 'b\\nx\\0c\\0d\\0' > comm-zero-2.txt"
+"$BIN" -c 'koshkit comm -z --total comm-zero-1.txt comm-zero-2.txt | koshkit od -c'
 echo "--- wc pads every count to one width ---"
 printf 'hello world\nfoo bar baz\n' > wc-width.txt
 seq 1 100000 > wc-width-big.txt

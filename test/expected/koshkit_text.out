@@ -1060,6 +1060,56 @@ xzaab
 		b
 a
 status=1
+--- comm order checks, delimiters, totals, and NUL lines ---
+comm --total
+a
+		b
+	c
+d
+		e
+	f
+2	2	2	total
+comm --total -12
+b
+e
+2	2	2	total
+comm --output-delimiter=::
+a
+::::b
+::c
+d
+::::e
+::f
+comm --output-delimiter=+ --total -2
+a
++b
+d
++e
+2+2+2+total
+0000000   a  \n  \0  \0   b  \n  \0   c  \n   d  \n  \0  \0   e  \n  \0
+0000020   f  \n
+0000022
+status=1
+		b
+		a
+status=0
+		b
+status=1
+	a
+		b
+status=1
+	a
+		b
+a
+1	1	1	total
+status=1
+	a
+		b
+a
+status=0
+0000000   a  \0  \t  \t   b  \n   x  \0  \t   c  \0  \t  \t   d  \0   1
+0000020  \t   1  \t   2  \t   t   o   t   a   l  \0
+0000033
 --- wc pads every count to one width ---
  2  5 wc-width.txt
 2 wc-width.txt

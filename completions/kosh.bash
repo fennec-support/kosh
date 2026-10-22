@@ -587,7 +587,7 @@ _koshkit_util_flags ()
       echo "-l --verbose -s --silent"
     ;;
     comm)
-      echo "-1 --hide-first -2 --hide-second -3 --hide-common"
+      echo "-1 --hide-first -2 --hide-second -3 --hide-common -z --check-order --nocheck-order --output-delimiter --total --zero-terminated"
     ;;
     csplit)
       echo "-f --prefix -k --keep-files -n --digits -s --silent"
