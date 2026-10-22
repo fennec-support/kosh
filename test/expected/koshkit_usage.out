@@ -14,7 +14,7 @@ rc=1
      1 |  koshkit cp onlyone
        |  ^~~~~~~~~~~~~~~~~~
 note: Try `cp --help` for more info.
-rc=2
+rc=1
 --- koshkit grep with no pattern ---
 -c:1:1: error: Koshkit `grep`: Not enough arguments.
      1 |  koshkit grep
@@ -56,7 +56,7 @@ rc=2
      1 |  koshkit stat
        |  ^~~~~~~~~~~~
 note: Try `stat --help` for more info.
-rc=2
+rc=1
 --- koshkit watch with no required argument ---
 -c:1:1: error: Koshkit `watch`: Not enough arguments.
      1 |  koshkit watch
@@ -103,25 +103,25 @@ rc=2
      1 |  koshkit sync -d
        |  ^~~~~~~~~~~~~~~
 note: Try `sync --help` for more info.
-rc=2
+rc=1
 --- koshkit sync filesystem mode with no file ---
 -c:1:1: error: Koshkit `sync`: Not enough arguments.
      1 |  koshkit sync -f
        |  ^~~~~~~~~~~~~~~
 note: Try `sync --help` for more info.
-rc=2
+rc=1
 --- the bash mood locates the note ---
 -c:1:1: error: Koshkit `mkdir`: Not enough arguments.
      1 |  koshkit mkdir
        |  ^~~~~~~~~~~~~
 note: Try `mkdir --help` for more info.
-rc=2
+rc=1
 --- the sh mood locates the note ---
 -c:1:1: error: Koshkit `mkdir`: Not enough arguments.
      1 |  koshkit mkdir
        |  ^~~~~~~~~~~~~
 note: Try `mkdir --help` for more info.
-rc=2
+rc=1
 --- the bash mood locates a missing path ---
 -c:1:1: error: Koshkit `ls`: Cannot access '/no/such/path': No such file or directory.
      1 |  koshkit ls /no/such/path
