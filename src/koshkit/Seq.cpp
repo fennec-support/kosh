@@ -14,11 +14,6 @@
 #include "../Lexer.hpp"
 #include "../Utils.hpp"
 
-#include <cerrno>
-#include <cmath>
-#include <cstdio>
-#include <cstdlib>
-
 KOSHKIT_UTIL_DECL("[-w] [-f format] [-s separator] [first [increment]] last",
                   "Print a sequence of numbers from first to last.");
 
@@ -70,7 +65,7 @@ scan_seq_operand(const String &text, seq_operand &operand) wontthrow -> bool
     return false;
   }
 
-  if (std::isnan(operand.value)) return true;
+  if (__builtin_isnan(operand.value)) return true;
 
   let arg = text.view();
 
@@ -88,7 +83,7 @@ scan_seq_operand(const String &text, seq_operand &operand) wontthrow -> bool
           : AUTOMATIC_FRACTION_DIGIT_COUNT;
 
   if (arg.find_character('x').has_value() ||
-      arg.find_character('X').has_value() || !std::isfinite(operand.value))
+      arg.find_character('X').has_value() || !__builtin_isfinite(operand.value))
   {
     return true;
   }
@@ -125,9 +120,14 @@ scan_seq_operand(const String &text, seq_operand &operand) wontthrow -> bool
   let exponent = static_cast<i64>(
       strtol(arg.substring(*exponent_position + 1).data, nullptr, 10));
 
-  operand.fraction_digit_count +=
-      exponent < 0 ? -exponent
-                   : -std::min(operand.fraction_digit_count, exponent);
+  if (exponent < 0) {
+    operand.fraction_digit_count -= exponent;
+  } else {
+    operand.fraction_digit_count -= operand.fraction_digit_count < exponent
+                                        ? operand.fraction_digit_count
+                                        : exponent;
+  }
+
   operand.column_count -= length - static_cast<i64>(*exponent_position);
   if (exponent < 0) {
     if (!decimal_point.has_value() || *exponent_position == *decimal_point + 1)
@@ -143,7 +143,9 @@ scan_seq_operand(const String &text, seq_operand &operand) wontthrow -> bool
       operand.column_count--;
     }
 
-    exponent = -std::min(operand.fraction_digit_count, exponent);
+    if (operand.fraction_digit_count < exponent)
+      exponent = operand.fraction_digit_count;
+    exponent = -exponent;
   }
 
   operand.column_count += exponent;
@@ -326,17 +328,16 @@ Seq::execute(const ExecContext               &ec,
                           seq_operand &operand) throws -> bool {
     if (!scan_seq_operand(operands[position], operand)) {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[position],
-                              "Invalid floating point argument '" +
-                                  operands[position] + "'",
+                              "Invalid number '" + operands[position] + "'",
                               "Use a decimal or hexadecimal number");
 
       return false;
     }
 
-    if (std::isnan(operand.value)) {
+    if (__builtin_isnan(operand.value)) {
       KOSHKIT_REPORT_ERROR_AT(operand_locations[position],
-                              "Invalid not-a-number argument '" +
-                                  operands[position] + "'");
+                              "The argument '" + operands[position] +
+                                  "' is not a number");
 
       return false;
     }
@@ -515,7 +516,9 @@ Seq::execute(const ExecContext               &ec,
 
   if (!has_format) {
     let const precision =
-        std::max(first.fraction_digit_count, increment.fraction_digit_count);
+        first.fraction_digit_count > increment.fraction_digit_count
+            ? first.fraction_digit_count
+            : increment.fraction_digit_count;
     char format[64];
 
     if (precision == AUTOMATIC_FRACTION_DIGIT_COUNT ||
@@ -532,7 +535,7 @@ Seq::execute(const ExecContext               &ec,
       if (last.fraction_digit_count == 0 && precision != 0) last_width++;
       if (first.fraction_digit_count == 0 && precision != 0) first_width++;
 
-      let const width = std::max(first_width, last_width);
+      let const width = first_width > last_width ? first_width : last_width;
 
       if (first_width < 0 || last_width < 0 || width > INT32_MAX) {
         snprintf(format, sizeof(format), "%%Lg");

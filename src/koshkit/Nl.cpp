@@ -378,7 +378,7 @@ Nl::execute(const ExecContext               &ec,
       if (nl_section_numbers(*section, line, blank_count, blank_group)) {
         if (has_number_overflowed) {
           ec.print_to_stdout(output);
-          KOSHKIT_REPORT_ERROR("Line number overflow");
+          KOSHKIT_REPORT_ERROR("The line number is too large");
 
           return 1;
         }

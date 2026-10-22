@@ -23,12 +23,12 @@ note: Pass one name, e.g. `killall firefox`.
        |                ^
 note: Use a nonzero step, such as `seq 1 2 10`.
 === seq integer location ===
--c:1:13: error: Koshkit `seq`: Invalid floating point argument 'nope'.
+-c:1:13: error: Koshkit `seq`: Invalid number 'nope'.
      1 |  koshkit seq nope
        |              ^~~~
 note: Use a decimal or hexadecimal number.
 === seq negative location preservation ===
--c:1:16: error: Koshkit `seq`: Invalid floating point argument 'nope'.
+-c:1:16: error: Koshkit `seq`: Invalid number 'nope'.
      1 |  koshkit seq -2 nope
        |                 ^~~~
 note: Use a decimal or hexadecimal number.

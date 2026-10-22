@@ -856,6 +856,12 @@ report_soft_koshkit_warning(const ExecContext &ec,
                             StringView         message) throws -> void;
 
 cold noinline fn
+report_soft_koshkit_warning(const ExecContext &ec,
+                            EvalContext       &cxt,
+                            SourceLocation     location,
+                            StringView         message) throws -> void;
+
+cold noinline fn
 report_soft_koshkit_util_error(const ExecContext &ec,
                                EvalContext       &cxt,
                                StringView         utility_name,

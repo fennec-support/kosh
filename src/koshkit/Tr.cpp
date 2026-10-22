@@ -239,8 +239,7 @@ parse_tr_set(StringView             set,
         if (parsed.is_error() || parsed.value() > SIZE_MAX / 2) {
           repeat_error = tr_error{
               "Invalid repeat count '" + String{allocator, digits}
-                +
-                  "' in [c*n] construct",
+                + "'",
               "Write the count in decimal, or in octal with a leading 0"
           };
 
@@ -293,8 +292,8 @@ parse_tr_set(StringView             set,
             return tr_error{
                 String{allocator,
                        delimiter == ':'
-                           ? "Missing character class name '[::]'"
-                           : "Missing equivalence class character '[==]'"},
+                           ? "The character class '[::]' is empty"
+                           : "The equivalence class '[==]' is empty"},
                 {}
             };
           }
@@ -353,10 +352,10 @@ parse_tr_set(StringView             set,
 
       if (first_byte > last_byte) {
         return tr_error{
-            "Range endpoints of '" +
+            "The range '" +
                 String{allocator, p.view().substring_of_length(i, 3)}
                 +
-                "' are in reverse order",
+                "' is in reverse order",
             "Order the endpoints from the lower byte to the higher byte"
         };
       }
@@ -500,8 +499,9 @@ are_case_classes_aligned(const tr_set &set1, const tr_set &set2)
 
     /* no element starts inside a run, so both sets move to the nearer run
        end at once. */
-    let const step =
-        std::min(do_remaining(set1, cursor1), do_remaining(set2, cursor2));
+    let const remaining1 = do_remaining(set1, cursor1);
+    let const remaining2 = do_remaining(set2, cursor2);
+    let const step       = remaining1 < remaining2 ? remaining1 : remaining2;
 
     do_advance(set1, cursor1, step);
     do_advance(set2, cursor2, step);
@@ -671,7 +671,9 @@ Tr::execute(const ExecContext               &ec,
 
     if (is_translating) {
       if (!is_complementing && !are_case_classes_aligned(set1, set2)) {
-        return do_fail(location, "Misaligned [:upper:] or [:lower:] construct");
+        return do_fail(location, "A [:upper:] or [:lower:] class in SET2 does "
+                                 "not start at a [:upper:] or [:lower:] class "
+                                 "in SET1");
       }
 
       if (set1.length > set2.length && !is_truncating) {
@@ -728,9 +730,11 @@ Tr::execute(const ExecContext               &ec,
     usize offset2 = 0;
 
     while (index1 < set1.runs.count() && index2 < set2.runs.count()) {
-      let const &run1 = set1.runs[index1];
-      let const &run2 = set2.runs[index2];
-      let const  step = std::min(run1.count - offset1, run2.count - offset2);
+      let const &run1       = set1.runs[index1];
+      let const &run2       = set2.runs[index2];
+      let const  remaining1 = run1.count - offset1;
+      let const  remaining2 = run2.count - offset2;
+      let const  step       = remaining1 < remaining2 ? remaining1 : remaining2;
 
       translation[run1.byte] = run2.byte;
       offset1 += step;

@@ -479,8 +479,8 @@ Xargs::execute(const ExecContext               &ec,
       FLAG_XARGS_NULL.is_enabled() || FLAG_XARGS_DELIMITER.is_set();
 
   if (is_delimited && eof_text.has_value()) {
-    report_soft_koshkit_warning(
-        ec, cxt, "xargs: the -E option has no effect if -0 or -d is used");
+    report_soft_koshkit_warning(ec, cxt,
+                                "The option -E has no effect with -0 or -d");
     eof_text = None;
   }
 
@@ -574,11 +574,8 @@ Xargs::execute(const ExecContext               &ec,
   }
 
   if (base_byte_count > maximum_byte_count) {
-    report_soft_koshkit_util_error(
-        ec, cxt, args[0].view(),
-        replace_text.has_value()
-            ? "Argument list too long"
-            : "Cannot fit single argument within argument list size limit");
+    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
+                                   "The command exceeds the size limit");
 
     return 1;
   }
@@ -643,7 +640,7 @@ Xargs::execute(const ExecContext               &ec,
     if (command_status == 255) {
       report_soft_koshkit_util_error(
           ec, cxt, args[0].view(),
-          "A command exited with status 255; stopping");
+          "Stopped after a command exited with status 255");
 
       return 124;
     }
@@ -717,7 +714,7 @@ Xargs::execute(const ExecContext               &ec,
 
       if (xargs_command_size(command) > maximum_byte_count) {
         report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "Argument list too long");
+                                       "The command exceeds the size limit");
 
         return 1;
       }
@@ -762,8 +759,8 @@ Xargs::execute(const ExecContext               &ec,
           if (FLAG_XARGS_EXIT.is_enabled())
             throw ErrorWithLocation{ec.source_location(),
                                     "One argument exceeds the size limit"};
-          report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                                "Argument line too long");
+
+          KOSHKIT_REPORT_ERROR("One argument exceeds the size limit");
 
           return 1;
         }

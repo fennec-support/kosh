@@ -2566,10 +2566,9 @@ option prints each file with a selected line once, and takes precedence over
 option prints nothing and exits with status 0 at the first selected line. The
 \fB\-s\fR
 option suppresses messages about unreadable files. A file with a NUL byte is
-a binary file: matching lines in the 96 KiB blocks before the block that
-holds its first NUL byte print, and a later match prints
-.B "grep: FILE: binary file matches"
-once instead of its lines. The
+a binary file: matching lines before the line that holds its first NUL byte
+print, the first match on or after that line shows one warning instead, and
+later matches print nothing. The
 .BR \-a " (" \-\-text )
 option reads such a file as text. The exit status is 0 when a
 line is selected, 1 when no line is selected, and 2 on an error. In a UTF-8

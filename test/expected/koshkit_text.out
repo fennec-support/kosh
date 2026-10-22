@@ -236,7 +236,7 @@ abc
 --- tr -d digits ---
 abc
 --- tr reverse range ---
--c:1:16: error: Koshkit `tr`: Range endpoints of 'z-x' are in reverse order.
+-c:1:16: error: Koshkit `tr`: The range 'z-x' is in reverse order.
      1 |  koshkit tr a-c z-x
        |                 ^~~
 note: Order the endpoints from the lower byte to the higher byte.
@@ -1241,16 +1241,16 @@ status=0
 y]
 status=0
 --- xargs size limit statuses ---
--c:1:1: error: Koshkit `xargs`: Cannot fit single argument within argument list size limit.
+-c:1:1: error: Koshkit `xargs`: The command exceeds the size limit.
      1 |  koshkit xargs -s 1 echo 2>&1; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~
 status=1
--c:1:1: error: Koshkit `xargs`: Argument line too long.
+-c:1:1: error: Koshkit `xargs`: One argument exceeds the size limit.
      1 |  koshkit xargs -s 5 echo 2>&1; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~
 status=1
 a
--c:1:1: error: Koshkit `xargs`: Argument line too long.
+-c:1:1: error: Koshkit `xargs`: One argument exceeds the size limit.
      1 |  koshkit xargs -s 8 echo 2>&1; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~
 status=1
@@ -1283,14 +1283,23 @@ x
 *x
 x
 --- grep reports a match in a file with a NUL byte without its lines ---
-grep: grep-binary.dat: binary file matches
+-c:1:18: warning: Koshkit `grep`: 'grep-binary.dat' holds a NUL byte, so matching lines from the line with that byte on are not shown.
+     1 |  koshkit grep abc grep-binary.dat fruit.txt; printf "status=%s\n" "$?"
+       |                   ^~~~~~~~~~~~~~~
 status=0
 2
 status=1
-grep: (standard input): binary file matches
+-c:1:1: warning: Koshkit `grep`: Standard input holds a NUL byte, so matching lines from the line with that byte on are not shown.
+     1 |  koshkit grep abc
+       |  ^~~~~~~~~~~~~~~~
 abc
 abc tail
-grep: grep-late-nul.dat: binary file matches
+-c:1:18: warning: Koshkit `grep`: 'grep-late-nul.dat' holds a NUL byte, so matching lines from the line with that byte on are not shown.
+     1 |  koshkit grep abc grep-late-nul.dat
+       |                   ^~~~~~~~~~~~~~~~~
+-c:1:31: warning: Koshkit `grep`: 'grep-binary-dir/b.dat' holds a NUL byte, so matching lines from the line with that byte on are not shown.
+     1 |  koshkit grep -r abc grep-tree grep-binary-dir
+       |                                ^~~~~~~~~~~~~~~
 0000000   a   b   c  \0   d   e   f  \n   x   y   z       a   b   c  \n
 0000020
 --- seq counts long integers exactly ---

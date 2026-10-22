@@ -120,9 +120,6 @@ static constexpr StaticStringMap GREP_REPEATED_CLASSES{
 
 constexpr usize GREP_UNKNOWN_BATCH_COUNT = 512;
 constexpr usize GREP_READ_BYTE_COUNT     = 256 * 1024;
-/* a file is read in blocks of this size, and the lines of the blocks before
-   the one with the first NUL byte print as text. */
-constexpr usize GREP_BINARY_BUFFER_BYTE_COUNT = 96 * 1024;
 
 static pure fn
 is_literal_search_pattern(StringView pattern) wontthrow -> bool
@@ -1415,8 +1412,9 @@ public:
         m_pattern_text(steal(pattern_text)), m_matchers(m_allocator),
         m_recursive_storage(m_allocator), m_sources(m_allocator),
         m_source_line_numbers(m_allocator), m_source_match_counts(m_allocator),
-        m_source_binary_states(m_allocator), m_source_byte_offsets(m_allocator),
-        m_output(m_allocator), m_line(m_allocator)
+        m_source_binary_states(m_allocator),
+        m_source_operand_indices(m_allocator), m_output(m_allocator),
+        m_line(m_allocator)
   {
     m_matchers.reserve(pattern_spans.count());
 
@@ -1475,9 +1473,16 @@ public:
     bool has_directory_operand = false;
 
     if (is_recursive) {
-      for (let const source : operand_sources) {
+      ArrayList<usize> walked_operand_indices{m_allocator};
+
+      for (usize operand_index = 0; operand_index < operand_sources.count();
+           operand_index++)
+      {
+        let const source = operand_sources[operand_index];
+
         if (source == "-") {
           m_sources.push(source);
+          m_source_operand_indices.push(operand_index);
           continue;
         }
 
@@ -1488,9 +1493,13 @@ public:
         collect_recursive_sources(
             m_ec, m_cxt, source_path, Path::EntryKind::Unknown, m_allocator,
             m_recursive_storage, m_status, !m_options.should_suppress_messages);
+        while (walked_operand_indices.count() < m_recursive_storage.count())
+          walked_operand_indices.push(operand_index);
       }
 
       m_sources.reserve(m_recursive_storage.count() + 1);
+      for (let const operand_index : walked_operand_indices)
+        m_source_operand_indices.push(operand_index);
 
       for (let const &source : m_recursive_storage) {
         let const view = source.view();
@@ -1517,10 +1526,8 @@ public:
     if (m_options.output_mode == grep_output_mode::Lines) {
       m_source_binary_states.reserve(m_sources.count());
 
-      for (usize index = 0; index < m_sources.count(); index++) {
+      for (usize index = 0; index < m_sources.count(); index++)
         m_source_binary_states.push(binary_state::Text);
-        m_source_byte_offsets.push(0);
-      }
     }
 
     if (m_options.output_mode == grep_output_mode::Count ||
@@ -1613,6 +1620,38 @@ private:
     return m_options.should_invert && m_palette.is_reversed
                ? m_palette.context_line
                : m_palette.selected_line;
+  }
+
+  fn
+  source_location_of(usize source_index) const throws -> SourceLocation
+  {
+    let const operand_index =
+        m_first_source_index + (m_source_operand_indices.is_empty()
+                                    ? source_index
+                                    : m_source_operand_indices[source_index]);
+
+    return operand_index < m_operand_locations.count()
+               ? m_operand_locations[operand_index]
+               : m_ec.source_location();
+  }
+
+  fn
+  report_binary_match(usize source_index, StringView source) throws
+      -> void
+  {
+    let message = String{m_cxt.scratch_allocator()};
+
+    if (source == "-")
+      message += "Standard input";
+    else
+      message = String{m_cxt.scratch_allocator(), "'"} + source + "'";
+    message += " holds a NUL byte, so matching lines from the line with that "
+               "byte on are not shown";
+
+    m_ec.print_to_stdout(m_output);
+    m_output.clear();
+    report_soft_koshkit_warning(m_ec, m_cxt, source_location_of(source_index),
+                                message.view());
   }
 
   fn
@@ -1728,15 +1767,12 @@ private:
       m_has_any_match = true;
       switch (m_options.output_mode) {
       case grep_output_mode::Lines:
-        /* a source with a NUL byte reports one match without its lines, as
-           GNU grep does. */
+        /* the first match on or after the line with the first NUL byte
+           reports one warning, and later matches print nothing. */
         if (m_source_binary_states[source_index] != binary_state::Text) {
           if (m_source_binary_states[source_index] == binary_state::Binary) {
             m_source_binary_states[source_index] = binary_state::Reported;
-            m_output += "grep: ";
-            m_output += source == "-" ? StringView{"(standard input)"} : source;
-            m_output += ": binary file matches\n";
-            flush_output_if_full();
+            report_binary_match(source_index, source);
           }
 
           break;
@@ -1954,8 +1990,8 @@ private:
         };
     let rest = chunk;
 
-    /* the complete lines before the GNU buffer that holds the first NUL byte
-       print as text, and the rest of the source counts as binary. */
+    /* the complete lines before the line that holds the first NUL byte print
+       as text, and the rest of the source counts as binary. */
     if (m_options.output_mode == grep_output_mode::Lines &&
         !m_options.should_read_binary_as_text &&
         m_source_binary_states[chunk.source_index] == binary_state::Text &&
@@ -1963,27 +1999,17 @@ private:
     {
       let const *nul = static_cast<const char *>(
           memchr(chunk.content.data, '\0', chunk.content.length));
-      let const chunk_offset = m_source_byte_offsets[chunk.source_index];
 
-      m_source_byte_offsets[chunk.source_index] += chunk.content.length;
       if (nul != nullptr) {
-        let const nul_offset =
-            chunk_offset + static_cast<usize>(nul - chunk.content.data);
-        let const boundary = nul_offset / GREP_BINARY_BUFFER_BYTE_COUNT *
-                             GREP_BINARY_BUFFER_BYTE_COUNT;
-        usize text_length = 0;
+        let const last_newline =
+            chunk.content
+                .substring_of_length(
+                    0, static_cast<usize>(nul - chunk.content.data))
+                .find_last_character('\n');
 
-        if (boundary > chunk_offset) {
-          for (usize end = boundary - chunk_offset; end > 0; end--) {
-            if (chunk.content[end - 1] == '\n') {
-              text_length = end;
-              break;
-            }
-          }
-        }
-
-        if (text_length > 0) {
-          let head        = chunk;
+        if (last_newline.has_value()) {
+          let const text_length = *last_newline + 1;
+          let       head        = chunk;
           head.content    = chunk.content.substring_of_length(0, text_length);
           head.completion = source_completion_state::Pending;
           do_split(head);
@@ -2005,11 +2031,7 @@ private:
 
       os::set_last_system_error(chunk.error_number);
 
-      let const source_location =
-          chunk.source_index + m_first_source_index <
-                  m_operand_locations.count()
-              ? m_operand_locations[chunk.source_index + m_first_source_index]
-              : m_ec.source_location();
+      let const source_location = source_location_of(chunk.source_index);
 
       m_ec.print_to_stdout(m_output);
       m_output.clear();
@@ -2043,7 +2065,7 @@ private:
   ArrayList<usize>                 m_source_line_numbers;
   ArrayList<usize>                 m_source_match_counts;
   /* Text until a chunk of the source holds a NUL byte, then Binary until its
-     first match prints the binary file message. */
+     first match reports the binary match warning. */
   enum class binary_state : u8
   {
     Text,
@@ -2051,16 +2073,17 @@ private:
     Reported,
   };
   ArrayList<binary_state> m_source_binary_states;
-  ArrayList<usize>        m_source_byte_offsets;
-  String                  m_output;
-  String                  m_line;
-  StringView              m_candidate_literal;
-  i32                     m_status{0};
-  grep_palette            m_palette{};
-  bool                    m_is_literal_hit_sufficient{false};
-  bool                    m_has_utf8_regex{false};
-  bool                    m_should_print_names{false};
-  bool                    m_has_any_match{false};
+  /* the operand index of each source of a recursive search. */
+  ArrayList<usize> m_source_operand_indices;
+  String           m_output;
+  String           m_line;
+  StringView       m_candidate_literal;
+  i32              m_status{0};
+  grep_palette     m_palette{};
+  bool             m_is_literal_hit_sufficient{false};
+  bool             m_has_utf8_regex{false};
+  bool             m_should_print_names{false};
+  bool             m_has_any_match{false};
 };
 
 fn

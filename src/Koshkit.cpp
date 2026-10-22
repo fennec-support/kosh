@@ -1968,7 +1968,16 @@ report_soft_koshkit_warning(const ExecContext &ec,
                             EvalContext       &cxt,
                             StringView         message) throws -> void
 {
-  show_soft_koshkit_error(ec, cxt, ec.source_location(),
+  report_soft_koshkit_warning(ec, cxt, ec.source_location(), message);
+}
+
+cold noinline fn
+report_soft_koshkit_warning(const ExecContext &ec,
+                            EvalContext       &cxt,
+                            SourceLocation     location,
+                            StringView         message) throws -> void
+{
+  show_soft_koshkit_error(ec, cxt, steal(location),
                           make_koshkit_report_text(ec, cxt, message),
                           soft_report_severity::Warning);
 }
