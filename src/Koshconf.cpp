@@ -572,8 +572,8 @@ parse_mood_list(StringView list, ArrayList<mimic_mood> &moods) throws
       continue;
     }
 
-    let const name =
-        list.substring_of_length(name_start, position - name_start);
+    let const name = list.substring_of_length(name_start, position - name_start)
+                         .trim_blanks();
 
     name_start = position + 1;
     if (name.is_empty()) continue;

@@ -23,3 +23,20 @@ cat	resolved-command
 	heredoc
 END MARK	heredoc-delimiter
 echo	resolved-command
+cat	resolved-command
+EOF	heredoc-delimiter
+	heredoc
+EOF	heredoc-delimiter
+ls	resolved-command
+echo	resolved-command
+cat	resolved-command
+$'a b'	heredoc-delimiter
+	heredoc
+a b	heredoc-delimiter
+echo	resolved-command
+cat	resolved-command
+$'a\'b'	heredoc-delimiter
+echo	resolved-command
+	heredoc
+a'b	heredoc-delimiter
+echo	resolved-command

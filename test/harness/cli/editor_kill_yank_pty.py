@@ -1296,6 +1296,13 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       lambda screen: sum("is not a text file" in line
                                          for line in screen.get_lines()) == 2
                       and is_line("")(screen))
+
+        # A special file can stream forever, so it is refused before reading.
+        session.send(b"slurp /dev/zero\r")
+        report.record("slurp-refuses-a-special-file", session,
+                      lambda screen: any("is not a regular file" in line
+                                         for line in screen.get_lines())
+                      and is_line("")(screen))
     finally:
         session.close()
         os.chmod(locked_directory, 0o755)

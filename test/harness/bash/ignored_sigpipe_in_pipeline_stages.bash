@@ -14,3 +14,9 @@ trap - PIPE
 echo "builtin-default=${PIPESTATUS[*]}"
 yes | head -1
 echo "program-default=${PIPESTATUS[*]}"
+
+# trap '' INT keeps SIGINT ignored in a subshell and in a program, as POSIX asks.
+trap '' INT
+( kill -INT $BASHPID; echo "subshell-ignores-int=$?" )
+/bin/sh -c 'kill -INT $$; echo "program-ignores-int=$?"'
+trap - INT

@@ -89,3 +89,11 @@ export listed_map
 export -p | grep -e ' arr=' -e ' listed_map='
 export -n listed_map
 export -p | grep -c ' listed_map='
+
+# export without a value marks an unset name and leaves it unset, so it reaches
+# the environment only when assigned.
+export unset_export
+echo "unset-export=[${unset_export-unset}]"
+export -p | grep -c ' unset_export$'
+unset_export=assigned
+env | grep '^unset_export='

@@ -220,7 +220,10 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let element = read.line.take();
 
-    if (!should_strip_newline && read.was_delimiter_terminated) {
+    /* a NUL delimiter is never kept, since a shell value holds no NUL. */
+    if (!should_strip_newline && read.was_delimiter_terminated &&
+        delimiter != '\0')
+    {
       element.push(delimiter);
     }
 

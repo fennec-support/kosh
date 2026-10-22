@@ -61,7 +61,18 @@ Chgrp::execute(const ExecContext               &ec,
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
-  let const group_id = utils::resolve_group_id(operands[0].view());
+  /* an empty group changes nothing, as in GNU chgrp. */
+  let group_id = Maybe<i64>{-1};
+
+  if (!operands[0].is_empty()) {
+    let const resolved = utils::resolve_group_id(operands[0].view());
+
+    if (resolved.has_value()) {
+      group_id = static_cast<i64>(*resolved);
+    } else {
+      group_id = None;
+    }
+  }
 
   if (!group_id.has_value()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],

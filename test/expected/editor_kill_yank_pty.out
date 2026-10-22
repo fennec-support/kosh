@@ -152,6 +152,7 @@ vi-visual-range-substitutes-only-its-lines PASS
 vi-enter-steps-down-like-j PASS
 slurp-refuses-a-binary-file PASS
 slurp-refuses-a-surrogate PASS
+slurp-refuses-a-special-file PASS
 slurp-tall-file-shows-the-rows-around-the-caret PASS
 slurp-tall-file-follows-the-caret-up PASS
 slurp-up-on-the-first-line-recalls-no-history PASS

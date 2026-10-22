@@ -46,3 +46,17 @@ echo tail' | grep -E "${tab}(heredoc|heredoc-delimiter|resolved-command)$"
 END
 END MARK
 echo tail' | grep -E "${tab}(heredoc|heredoc-delimiter|resolved-command)$"
+
+crlf_source=$(printf 'cat <<EOF\r\nx\r\nEOF\r\nls\r\necho tail')
+"$BIN" --debug-highlight-at "$crlf_source" |
+  grep -E "${tab}(heredoc|heredoc-delimiter|resolved-command)$"
+
+"$BIN" --debug-highlight-at "cat <<\$'a b'
+x
+a b
+echo tail" | grep -E "${tab}(heredoc|heredoc-delimiter|resolved-command)$"
+
+"$BIN" --debug-highlight-at "cat <<\$'a\\'b' ; echo X
+body
+a'b
+echo tail" | grep -E "${tab}(heredoc|heredoc-delimiter|resolved-command)$"

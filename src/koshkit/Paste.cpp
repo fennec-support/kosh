@@ -132,6 +132,9 @@ Paste::execute(const ExecContext               &ec,
     columns.push(reader);
   }
 
+  /* a file that cannot be opened leaves no partial rows, as in GNU paste. */
+  if (status != 0) return status;
+
   static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
   let                    output = String{cxt.scratch_allocator()};
 

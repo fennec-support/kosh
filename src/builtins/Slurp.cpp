@@ -422,14 +422,45 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
+  if (args[1].is_empty()) {
+    report_soft_builtin_error(ec, cxt, location, "The file operand is empty",
+                              "Pass the path of a file to edit");
+
+    return 1;
+  }
+
   let contents = String{heap_allocator()};
   let opened   = Maybe<os::file_status>{None};
 
   if (path.exists()) {
+    let status = os::file_status{};
+
     if (path.is_directory()) {
       report_soft_builtin_error(ec, cxt, location,
                                 StringView{"Cannot edit '"} + args[1] +
                                     "': it is a directory");
+
+      return 1;
+    }
+
+    /* a special file such as /dev/zero or a FIFO is refused before reading,
+       since it may never end. */
+    if (os::stat_path_following(path.view(), status) &&
+        (status.mode & 0170000u) != 0100000u)
+    {
+      report_soft_builtin_error(ec, cxt, location,
+                                StringView{"Cannot edit '"} + args[1] +
+                                    "': it is not a regular file");
+
+      return 1;
+    }
+    if (status.size > SLURP_MAX_BYTE_COUNT) {
+      report_soft_builtin_error(
+          ec, cxt, location,
+          StringView{"'"} + args[1] + "' is longer than " +
+              String::from(SLURP_MAX_BYTE_COUNT, cxt.scratch_allocator()) +
+              " bytes",
+          "Install a normal editor");
 
       return 1;
     }
@@ -444,8 +475,6 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 1;
     }
     contents = steal(*read);
-
-    let status = os::file_status{};
 
     if (os::stat_path_following(path.view(), status)) opened = status;
   }

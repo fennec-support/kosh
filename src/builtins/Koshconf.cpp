@@ -308,6 +308,23 @@ run_set(const ExecContext       &ec,
     }
   }
 
+  /* the file is written first, so a write that fails leaves the session
+     unchanged. */
+  let path = Maybe<Path>{None};
+
+  if (should_persist) {
+    path = require_user_path(ec, cxt);
+
+    if (!path.has_value()) return 1;
+    try {
+      persist_koshconf_setting(*path, *option, persisted_value.view());
+    } catch (const Error &error) {
+      report_caught_error(ec, cxt, ec.source_location(), error);
+
+      return 1;
+    }
+  }
+
   try {
     write_option_text(cxt, *option, value, option_origin::Koshconf);
   } catch (const Error &error) {
@@ -316,21 +333,10 @@ run_set(const ExecContext       &ec,
     return 1;
   }
 
-  if (!should_persist) return 0;
-
-  let const path = require_user_path(ec, cxt);
-
-  if (!path.has_value()) return 1;
-  try {
-    persist_koshconf_setting(*path, *option, persisted_value.view());
-  } catch (const Error &error) {
-    report_caught_error(ec, cxt, ec.source_location(), error);
-
-    return 1;
+  if (should_persist) {
+    report_written_file(
+        ec, cxt, format_koshconf_line(*option, persisted_value.view()), *path);
   }
-
-  report_written_file(
-      ec, cxt, format_koshconf_line(*option, persisted_value.view()), *path);
 
   return 0;
 }

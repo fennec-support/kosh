@@ -582,6 +582,8 @@ note: Use owner, owner:group, or :group.
      1 |  koshkit chown :KOSH_MISSING_GROUP LICENSE
        |                ^~~~~~~~~~~~~~~~~~~
 note: Use a group name or an unsigned decimal group id.
+=== empty chown and chgrp specifications change nothing ===
+status=0
 === mknod major value location ===
 -c:1:31: error: Koshkit `mknod`: Invalid major device number 'not-a-major'.
      1 |  koshkit mknod --block --major not-a-major --minor 2 node

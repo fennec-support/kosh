@@ -260,6 +260,8 @@ printf '  x y \nz\n' | "$BIN" -c "koshkit xargs -I{} echo '[{}]'"
 printf 'a stop b\n' | "$BIN" -c 'koshkit xargs -E stop echo'
 printf 'aaa bbb ccc\n' | "$BIN" -c 'koshkit xargs -s 12 echo'
 printf 'x\n' | "$BIN" -c 'koshkit xargs false; printf "fails=%s\n" "$?"'
+echo "--- xargs runs every batch after a command returns 127 ---"
+printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 sh -c "echo \$0; exit 127"; printf "status=%s\n" "$?"'
 echo "--- xargs runs each batch before the input ends ---"
 "$BIN" -c 'koshkit yes | koshkit xargs echo | koshkit head -c 10'
 echo

@@ -121,12 +121,17 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let listed_names = os::environment_names();
 
-    if (is_declare_form) {
-      cxt.variable_store().exported_names().for_each(
-          [&](StringView name, const auto &) throws -> void {
-            if (do_is_array(name)) listed_names.push_managed(name);
-          });
-    }
+    /* an exported array, and an exported name that has no value yet, are not
+       in the environment. */
+    cxt.variable_store().exported_names().for_each(
+        [&](StringView name, const auto &) throws -> void {
+          if ((is_declare_form && do_is_array(name)) ||
+              (!do_is_array(name) &&
+               !os::get_environment_variable(name).has_value()))
+          {
+            listed_names.push_managed(name);
+          }
+        });
 
     let const names = steal(listed_names).make_sorted(sort_order::ascending);
 
@@ -138,11 +143,17 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         continue;
       }
 
-      let const value = os::get_environment_variable(name).value_or(
-          String{cxt.scratch_allocator()});
+      let const environment_value = os::get_environment_variable(name);
 
       out += is_declare_form ? "declare -x " : "export ";
       out += name;
+      if (!environment_value.has_value()) {
+        out += "\n";
+        continue;
+      }
+
+      let const &value = *environment_value;
+
       out += '=';
       if (is_declare_form) {
         append_declare_value(out, value.view(),
@@ -220,6 +231,17 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const is_array =
         cxt.variable_store().indexed_arrays().find(name.view()).has_value() ||
         cxt.is_associative_array(name.view());
+
+    /* an unset name is marked for export and stays unset, as in bash, so it
+       reaches the environment only once it is assigned. */
+    if (!has_new_value && !is_array &&
+        !cxt.get_variable_value(name).has_value())
+    {
+      cxt.variable_store().attributes().mark_declared(name);
+      cxt.record_environment_change(name);
+      cxt.mark_exported(name);
+      continue;
+    }
 
     if (is_array && !(has_new_value && cxt.is_readonly(name))) {
       if (has_new_value) {

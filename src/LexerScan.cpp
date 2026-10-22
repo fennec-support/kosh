@@ -89,6 +89,29 @@ unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
   for (usize position = 0; position < word.length; position++) {
     let const byte = word[position];
 
+    /* $'...' decodes its escapes, and $"..." quotes as "..." does. */
+    if (quote == 0 && byte == '$' && position + 1 < word.length &&
+        word[position + 1] == '\'')
+    {
+      let const body_start = position + 2;
+      usize     body_end   = body_start;
+
+      while (body_end < word.length && word[body_end] != '\'') {
+        body_end += word[body_end] == '\\' ? 2 : 1;
+      }
+      body_end = body_end < word.length ? body_end : word.length;
+      utils::decode_ansi_c_escapes(
+          delimiter,
+          word.substring_of_length(body_start, body_end - body_start));
+      position = body_end;
+      continue;
+    }
+    if (quote == 0 && byte == '$' && position + 1 < word.length &&
+        word[position + 1] == '"')
+    {
+      continue;
+    }
+
     if (quote != 0 && byte == quote) {
       quote = 0;
     } else if (byte == '\\' && position + 1 < word.length &&
@@ -120,27 +143,46 @@ pure fn
 balanced_scan_delimiter_end(StringView source, usize position)
     wontthrow -> usize
 {
-  char quote = 0;
+  char quote         = 0;
+  bool is_ansi_quote = false;
 
   while (position < source.length) {
     let const byte = source[position];
 
     if (quote != 0) {
-      if (byte == '\\' && quote == '"' && position + 1 < source.length) {
+      if (byte == '\\' && (quote == '"' || is_ansi_quote) &&
+          position + 1 < source.length)
+      {
         position += 2;
         continue;
       }
 
       position++;
-      if (byte == quote) quote = 0;
+      if (byte == quote) {
+        quote         = 0;
+        is_ansi_quote = false;
+      }
       continue;
     }
 
     switch (byte) {
     case '\\': position += position + 1 < source.length ? 2 : 1; continue;
+    case '$':
+      is_ansi_quote =
+          position + 1 < source.length && source[position + 1] == '\'';
+      position++;
+      continue;
     case '\'':
     case '"':
       quote = byte;
+      position++;
+      continue;
+    case '\r':
+      /* a carriage return before a line feed ends the word, as the line
+         feed does, in text that keeps its CRLF line endings. */
+      if (position + 1 < source.length && source[position + 1] == '\n') {
+        return position;
+      }
       position++;
       continue;
     case ' ':

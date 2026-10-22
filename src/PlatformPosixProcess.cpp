@@ -552,7 +552,7 @@ execute_program(ExecContext                     &ec,
   sigset_t default_signals;
 
   sigemptyset(&default_signals);
-  sigaddset(&default_signals, SIGINT);
+  if (!IS_INTERRUPT_SIGNAL_IGNORED) sigaddset(&default_signals, SIGINT);
   sigaddset(&default_signals, SIGCHLD);
   if (!IS_PIPE_SIGNAL_IGNORED_BY_TRAP && !WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY) {
     sigaddset(&default_signals, SIGPIPE);
@@ -1411,8 +1411,10 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
                                 ? String{heap_allocator(), sig_str}
                                 : String{heap_allocator(), "Unknown"};
 
+    /* the newline after ^C goes to the terminal, never into a pipe or a
+       command substitution. */
     if (sig == SIGINT) {
-      koshka::print("\n");
+      if (is_fd_a_tty(KOSH_STDERR)) koshka::print_error("\n");
     } else if (sig != SIGPIPE) {
       koshka::print_error(
           "[Process " + String::from(changed_pid, heap_allocator()) + ": " +

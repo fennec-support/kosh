@@ -155,8 +155,6 @@ delta
 -c:1:1: error: Koshkit `paste`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit paste -d , sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-zulu,,middle
-alpha,,beta
 status=1
 --- paste repeated standard input ---
 left,right
@@ -546,6 +544,10 @@ aaa
 bbb
 ccc
 fails=123
+--- xargs runs every batch after a command returns 127 ---
+a
+b
+status=123
 --- xargs runs each batch before the input ends ---
 y y y y y 
 --- env clears and removes variables ---

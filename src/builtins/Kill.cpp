@@ -51,7 +51,16 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const    &spec = args[i];
       Maybe<String> name = koshka::None;
 
-      if (StringView{spec}.is_all_decimal_digits()) {
+      let uppercased = String{cxt.scratch_allocator(), spec};
+
+      uppercased.uppercase_ascii();
+
+      /* 0 and EXIT are the exit trap, as bash lists them. */
+      if (spec == "0") {
+        name = String{cxt.scratch_allocator(), "EXIT"};
+      } else if (uppercased == "EXIT" || uppercased == "SIGEXIT") {
+        name = String{cxt.scratch_allocator(), "0"};
+      } else if (StringView{spec}.is_all_decimal_digits()) {
         let const parsed = StringView{spec}.to<i64>();
 
         if (!parsed.is_error() && parsed.value() <= INT32_MAX) {
@@ -62,7 +71,8 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             name = os::signal_name_from_number(number - 128);
           }
         }
-      } else if (let const number = os::signal_number_from_name(spec);
+      } else if (let const number =
+                     os::signal_number_from_name(uppercased.view());
                  number.has_value())
       {
         name = String::from(*number, cxt.scratch_allocator());
@@ -119,6 +129,10 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       signal_number = do_resolve_signal(args[2], 2);
       first_target  = 3;
+    } else if (args[1].length() > 2 && args[1].starts_with("-s")) {
+      /* bash takes the signal attached to the option, as in -sTERM. */
+      signal_number = do_resolve_signal(args[1].substring(2), 1);
+      first_target  = 2;
     } else if (args[1].length() > 1 && args[1][0] == '-') {
       signal_number = do_resolve_signal(args[1].substring(1), 1);
       first_target  = 2;

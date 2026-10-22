@@ -458,8 +458,10 @@ Od::execute(const ExecContext               &ec,
     format.pad_columns = row_width_columns - format.width_columns * field_count;
   }
 
-  let const              address_base            = od_base(address_radix);
-  let const              should_print_address    = address_radix != 'n';
+  let const address_base         = od_base(address_radix);
+  let const should_print_address = address_radix != 'n';
+  /* GNU od pads hexadecimal addresses to 6 digits and the others to 7. */
+  let const              address_width           = address_radix == 'x' ? 6 : 7;
   let const              is_verbose              = FLAG_OD_VERBOSE.is_enabled();
   static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
   char                   previous_row_bytes[OD_ROW_LENGTH];
@@ -488,7 +490,8 @@ Od::execute(const ExecContext               &ec,
     for (usize format_index = 0; format_index < format_count; format_index++) {
       if (should_print_address) {
         if (format_index == 0)
-          append_od_padded(output, row_offset, false, 7, '0', address_base);
+          append_od_padded(output, row_offset, false, address_width, '0',
+                           address_base);
         else
           output += "       ";
       }
@@ -643,8 +646,8 @@ Od::execute(const ExecContext               &ec,
     do_emit_row(StringView{row_bytes, row_length},
                 skip_count + dumped_count - row_length);
   if (should_print_address) {
-    append_od_padded(output, skip_count + dumped_count, false, 7, '0',
-                     address_base);
+    append_od_padded(output, skip_count + dumped_count, false, address_width,
+                     '0', address_base);
     output += '\n';
   }
 

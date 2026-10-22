@@ -780,6 +780,9 @@ static sigset_t SIGNALS_WITH_TRAP_ACTION = {};
 
 static bool IS_PIPE_SIGNAL_IGNORED_BY_TRAP   = false;
 static bool WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY = false;
+/* trap '' INT, or an ignored SIGINT at entry, keeps SIGINT ignored in every
+   child, as POSIX asks of an ignored signal. */
+static bool IS_INTERRUPT_SIGNAL_IGNORED = false;
 
 } /* namespace os */
 } /* namespace koshka */
@@ -2924,7 +2927,14 @@ reset_signal_handlers() throws -> void
   sa.sa_handler    = SIG_DFL;
   CHILD_TRAP_ARMED = 0;
   install_child_state_handler();
-  check_syscall(sigaction(SIGINT, &sa, nullptr));
+  if (IS_INTERRUPT_SIGNAL_IGNORED) {
+    struct sigaction ignored = {};
+
+    ignored.sa_handler = SIG_IGN;
+    check_syscall(sigaction(SIGINT, &ignored, nullptr));
+  } else {
+    check_syscall(sigaction(SIGINT, &sa, nullptr));
+  }
 
   for (i32 signal_number = 1; signal_number < SIGNAL_FLAG_COUNT;
        signal_number++)
@@ -2973,6 +2983,7 @@ capture_entry_ignored_signals() wontthrow -> void
     LOG(Info, "signal %d is already ignored at shell entry", signal_number);
     ENTRY_IGNORED_SIGNALS |= u64{1} << (signal_number - 1);
     if (signal_number == SIGPIPE) WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY = true;
+    if (signal_number == SIGINT) IS_INTERRUPT_SIGNAL_IGNORED = true;
   }
 }
 
@@ -3205,6 +3216,7 @@ set_trap_handler(i32 signal_number) throws -> void
   LOG(Info, "installing the trap handler for signal %d", signal_number);
 
   if (signal_number == SIGPIPE) IS_PIPE_SIGNAL_IGNORED_BY_TRAP = false;
+  if (signal_number == SIGINT) IS_INTERRUPT_SIGNAL_IGNORED = false;
   if (signal_number == SIGCHLD) {
     install_child_state_handler();
   } else {
@@ -3229,6 +3241,7 @@ set_trap_ignore(i32 signal_number) throws -> void
   install_signal_disposition(signal_number, SIG_IGN);
   sigdelset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
   if (signal_number == SIGPIPE) IS_PIPE_SIGNAL_IGNORED_BY_TRAP = true;
+  if (signal_number == SIGINT) IS_INTERRUPT_SIGNAL_IGNORED = true;
 }
 
 fn
@@ -3237,6 +3250,7 @@ clear_trap_handler(i32 signal_number) throws -> void
   if (!is_trappable_signal(signal_number)) return;
   LOG(Info, "clearing the trap for signal %d", signal_number);
   if (signal_number == SIGPIPE) IS_PIPE_SIGNAL_IGNORED_BY_TRAP = false;
+  if (signal_number == SIGINT) IS_INTERRUPT_SIGNAL_IGNORED = false;
 
   reblock_signal_after_trap(signal_number);
 

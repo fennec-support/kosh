@@ -362,6 +362,9 @@ echo "=== chown specification location ==="
 echo "=== chown group location ==="
 "$BIN" -c 'koshkit chown :KOSH_MISSING_GROUP LICENSE' 2>&1
 
+echo "=== empty chown and chgrp specifications change nothing ==="
+"$BIN" -c 'koshkit chown "" .; koshkit chown : .; koshkit chgrp "" .; printf "status=%s\n" "$?"' 2>&1
+
 echo "=== mknod major value location ==="
 "$BIN" -c 'koshkit mknod --block --major not-a-major --minor 2 node' 2>&1
 

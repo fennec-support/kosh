@@ -69,7 +69,7 @@ warning: Unable to read 'CONFIG/blocked/kosh/kosh.conf': Is a directory.
      1 |  koshconf set editor.hints.show_command_synopsis off --persist || echo "rc=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
-off
+on
 -c:3:1: error: Builtin `koshconf`: Unable to read the configuration before replacing 'CONFIG/blocked/kosh/kosh.conf': Is a directory.
      3 |  koshconf create --force kosh || echo "rc=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~

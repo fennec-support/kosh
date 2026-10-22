@@ -20,3 +20,7 @@ kill -0 -- $$
 echo "dashes-after-signal=$?"
 kill -s 0 -- $$
 echo "dashes-after-named-signal=$?"
+# kill -l takes 0, EXIT, and lowercase names, and -s takes an attached signal.
+kill -l 0 EXIT int
+kill -sCONT $$
+echo "attached-signal=$?"

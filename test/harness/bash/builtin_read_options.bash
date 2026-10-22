@@ -131,3 +131,13 @@ IFS=- read a b c d <<IN
 w-x-y-z
 IN
 echo "[$a][$b][$c][$d]"
+
+# mapfile -d '' drops the NUL delimiter even without -t.
+mapfile -d '' nul_items < <(printf 'a\0b\0')
+printf '[%s]' "${nul_items[@]}"
+echo
+
+# ${!ref%op*} applies the operator to the referenced value.
+indirect_value=abcdef
+indirect_ref=indirect_value
+echo "[${!indirect_ref%c*}] [${!indirect_ref%%c*}] [${!indirect_ref:-*}]"

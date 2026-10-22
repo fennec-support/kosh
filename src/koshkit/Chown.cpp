@@ -69,15 +69,9 @@ Chown::execute(const ExecContext               &ec,
   let const group_text =
       colon.has_value() ? specification.substring(*colon + 1) : StringView{};
 
-  if (specification.is_empty()) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "Invalid owner '" + operands[0] + "'",
-                            "Use an owner name or an unsigned decimal user id");
-
-    return 1;
-  }
-
-  if (colon.has_value() && group_text.is_empty()) {
+  /* an empty specification and a lone colon change nothing, as in GNU
+     chown, and the files are still checked. */
+  if (colon.has_value() && group_text.is_empty() && !owner_text.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
                             "Invalid specification '" + operands[0] + "'",
                             "Use owner, owner:group, or :group");

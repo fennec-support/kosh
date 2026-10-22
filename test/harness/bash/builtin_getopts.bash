@@ -94,3 +94,8 @@ mapfile mapfile_first mapfile_ignored <<< x
 echo "mapfile-extra=${#mapfile_first[@]}"
 compgen -W 'alpha beta' alpha ignored
 echo "compgen-extra=$?"
+
+# An OPTIND below 1 starts again at the first operand.
+OPTIND=0
+getopts a opt -a
+echo "zero-optind=$? opt=$opt OPTIND=$OPTIND"

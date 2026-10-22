@@ -789,6 +789,12 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         do_push_field_size();
       }
 
+      /* length modifiers are accepted and ignored, as bash does, since every
+         number is converted at full width. */
+      while (i < fmt.length() && strchr("hlLjzt", fmt[i]) != nullptr) {
+        i++;
+      }
+
       if (cxt.runtime_state().bash_additions_enabled() && i < fmt.length() &&
           fmt[i] == '(')
       {

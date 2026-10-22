@@ -9,13 +9,12 @@ KOSHCONF: a shell started with
 .B \-Q
 or
 .BR \-\-no\-config ,
+a shell started in privileged mode with
+.BR \-p ,
 a lint, format, or language server run, rescue mode, a shell whose real and
 effective ids differ, a subshell that receives its state from its parent,
 and a binary started as a koshkit utility or as
 .BR koshkit .
-Privileged mode,
-.BR \-p ,
-loads the files but ignores KOSHCONF.
 .PP
 The configured mood also applies to
 .B kosh \-c
@@ -54,7 +53,11 @@ and
 write this file. When the file is a symbolic link, the link is kept and its
 final target is written. The written file keeps the permission bits of the
 file it replaces, and a new file is created with mode 0644 less the file
-creation mask. The directory is created when missing.
+creation mask. The directory is created when missing. A write that replaces
+an existing file first copies it to
+.I kosh.conf.bak
+beside it. A settings file larger than 1 MiB, or one that is not a regular
+file, is skipped with a warning.
 .TP
 .IR $XDG_CONFIG_HOME/kosh/scripts/rc.kosh " or " ~/.config/kosh/scripts/rc.kosh
 The user rc script of a login or interactive

@@ -596,10 +596,8 @@ Xargs::execute(const ExecContext               &ec,
       return 124;
     }
 
-    if (command_status == 126 || command_status == 127) {
-      return command_status;
-    }
-
+    /* a command that cannot be found or run fails its resolution above, so
+       126 and 127 here are statuses the command itself returned. */
     if (command_status > 128) return 125;
     if (command_status != 0) status = 123;
   }

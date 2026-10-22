@@ -209,3 +209,6 @@ else
   echo numeric-locale-unavailable
 fi
 rm -rf "$locale_dir"
+
+# Length modifiers are accepted and ignored, as bash does.
+printf '%ld|%lld|%hd|%zu|%jd|%lx|%hhd\n' 1 2 3 4 5 255 7
