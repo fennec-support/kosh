@@ -3002,7 +3002,8 @@ automatic newline.
 .TP
 .B sync
 Dirty filesystem data is flushed. The \fB\-d\fR option flushes file data for
-each operand, and \fB\-f\fR flushes the filesystem containing each operand.
+each operand and needs one. The \fB\-f\fR option flushes the filesystem
+containing each operand, and every filesystem without one.
 .TP
 .B watch
 A command is run at a fixed interval. The \fB\-n\fR, \fB\-t\fR, \fB\-g\fR, and

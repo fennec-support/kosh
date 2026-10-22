@@ -104,12 +104,8 @@ rc=2
        |  ^~~~~~~~~~~~~~~
 note: Try `sync --help` for more info.
 rc=1
---- koshkit sync filesystem mode with no file ---
--c:1:1: error: Koshkit `sync`: Not enough arguments.
-     1 |  koshkit sync -f
-       |  ^~~~~~~~~~~~~~~
-note: Try `sync --help` for more info.
-rc=1
+--- koshkit sync filesystem mode with no file flushes every filesystem ---
+rc=0
 --- the bash mood locates the note ---
 -c:1:1: error: Koshkit `mkdir`: Not enough arguments.
      1 |  koshkit mkdir
