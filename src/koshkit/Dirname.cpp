@@ -14,8 +14,14 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL(
-    "path ...",
+    "[-z] path ...",
     "The dirname utility can print the directory part of each path.");
+
+FLAG(DIRNAME_ZERO,
+     Bool,
+     'z',
+     "zero",
+     "End each output entry with a NUL byte instead of a newline.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Dirname);
 
@@ -84,11 +90,12 @@ Dirname::execute(const ExecContext               &ec,
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
-  let output = String{cxt.scratch_allocator()};
+  let const terminator = FLAG_DIRNAME_ZERO.is_enabled() ? '\0' : '\n';
+  let       output     = String{cxt.scratch_allocator()};
 
   for (let const &operand : operands) {
     output.append(directory_part_of(operand.view()));
-    output.push('\n');
+    output.push(terminator);
   }
 
   ec.print_to_stdout(output);

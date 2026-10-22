@@ -258,6 +258,8 @@ echo
 echo "--- dirname ---"
 "$BIN" -c 'koshkit dirname /usr/local/libfoo.so'
 "$BIN" -c 'koshkit dirname /a/b c/d e'
+"$BIN" -c 'koshkit dirname -z //a//b// a/ / ""' | tr '\0' '|'
+echo
 echo "--- realpath lexical basename ---"
 "$BIN" -c 'koshkit mkdir -p usr/lib; resolved=$(koshkit realpath ./usr/../usr/lib) || exit; koshkit basename "$resolved"'
 echo "--- realpath with missing components ---"

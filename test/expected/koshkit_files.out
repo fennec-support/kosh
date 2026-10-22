@@ -74,6 +74,7 @@ b|b|c|
 /a
 c
 .
+//a|.|/|.|
 --- realpath lexical basename ---
 lib
 --- realpath with missing components ---

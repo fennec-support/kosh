@@ -575,6 +575,9 @@ _koshkit_util_flags ()
     basename)
       echo "-a --multiple -s --suffix -z --zero"
     ;;
+    dirname)
+      echo "-z --zero"
+    ;;
     readlink)
       echo "-n --no-newline"
     ;;
