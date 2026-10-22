@@ -838,7 +838,6 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
   bool                   was_ifs_assigned = false;
   String                 saved_ifs_separators{cxt.scratch_allocator()};
   Maybe<ProgramResolver> saved_program_resolver{};
-  Maybe<bool>            previous_ignoreeof_state{};
 
   defer {
     for (usize i = saved_env.count(); i > 0; i--) {
@@ -850,7 +849,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
             restore.previous_special_definition_location);
       if (restore.previous_value) {
         os::set_environment_variable(restore.name.view(),
-                                                restore.previous_value->view());
+                                     restore.previous_value->view());
         cxt.mark_exported(restore.name.view());
       } else {
         os::unset_environment_variable(restore.name.view());
@@ -866,9 +865,6 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       cxt.program_resolver() = steal(*saved_program_resolver);
     if (was_ifs_assigned)
       cxt.variable_store().set_field_separators(saved_ifs_separators.view());
-    if (previous_ignoreeof_state.has_value())
-      cxt.runtime_state().set_option(shell_option_id::Ignoreeof,
-                                                *previous_ignoreeof_state);
   };
 
   let const has_prefix_assignments =
@@ -998,10 +994,6 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
             previous_special_definition_location =
                 cxt.special_variable_definition_location(name);
-            if (name == "IGNOREEOF" && !previous_ignoreeof_state.has_value()) {
-              previous_ignoreeof_state = cxt.runtime_state().option_is_enabled(
-                  shell_option_id::Ignoreeof);
-            }
 
             cxt.set_shell_variable(name, expanded_value.view());
           }

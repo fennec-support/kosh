@@ -174,17 +174,13 @@ EvalContext::assign_variable(StringView              name,
 
   let const first_byte              = name.is_empty() ? '\0' : name[0];
   let       is_field_separator_name = false;
-  let       is_ignoreeof_name       = false;
   let       is_path_name            = false;
   let       is_glob_ignore_name     = false;
 
   switch (first_byte) {
   case 'G': is_glob_ignore_name = name == "GLOBIGNORE"; break;
 
-  case 'I':
-    is_field_separator_name = name == "IFS";
-    is_ignoreeof_name       = name == "IGNOREEOF";
-    break;
+  case 'I': is_field_separator_name = name == "IFS"; break;
 
   case 'P':
   case 'p': is_path_name = utils::environment_name_is_path(name); break;
@@ -220,9 +216,6 @@ EvalContext::assign_variable(StringView              name,
 
   if (is_path_name)
     program_resolver().assign_path(String{heap_allocator(), value});
-  if (is_ignoreeof_name) {
-    runtime_state().set_option(shell_option_id::Ignoreeof, true);
-  }
 
   let &target = entry.has_value()
                     ? **entry
@@ -273,8 +266,6 @@ EvalContext::begin_confined_variable_writes() wontthrow -> usize
 
   if (environment_store().confined_write_depth() == 0) {
     environment_store().confined_clock() = dynamic_runtime_store().get_clock();
-    environment_store().was_confined_ignoreeof_enabled() =
-        runtime_state().option_is_enabled(shell_option_id::Ignoreeof);
   }
 
   environment_store().confined_write_depth()++;
@@ -330,9 +321,6 @@ EvalContext::rollback_confined_variable_writes(usize mark) wontthrow -> void
 
   if (environment_store().confined_write_depth() == 0) {
     dynamic_runtime_store().set_clock(environment_store().confined_clock());
-    runtime_state().set_option(
-        shell_option_id::Ignoreeof,
-        environment_store().was_confined_ignoreeof_enabled());
   }
 }
 
@@ -1227,8 +1215,6 @@ EvalContext::force_unset_shell_variable(StringView name) throws -> void
   switch (name.is_empty() ? '\0' : name[0]) {
   case 'I':
     if (name == "IFS") variable_store().set_field_separators(" \t\n");
-    if (name == "IGNOREEOF")
-      runtime_state().set_option(shell_option_id::Ignoreeof, false);
     break;
 
   case 'G':

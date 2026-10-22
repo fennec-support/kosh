@@ -49,6 +49,12 @@ keyword-ifs=2
 == ignoreeof option disable can remove a readonly variable:
 option-status=0 value=unset state=off
 unset-status=1 value=3 state=on
+== ignoreeof option follows the IGNOREEOF variable:
+assigned=on
+unset=off
+local=on after=off
+prefix-after=off
+on
 == interactive state is independent of hashall:
 interactive
 == command substitution isolates startup state:

@@ -2426,19 +2426,13 @@ struct interactive_session
         if (input.is_empty()) {
           i64 ignored_eof_limit_count = 0;
 
-          if (context.runtime_state().option_is_enabled(
-                  shell_option_id::Ignoreeof))
+          if (let const value = context.get_variable_value("IGNOREEOF");
+              value.has_value())
           {
-            ignored_eof_limit_count = 10;
-            if (let const value = context.get_variable_value("IGNOREEOF");
-                value.has_value())
-            {
-              let const parsed = utils::parse_decimal_i64(value->view());
+            let const parsed = utils::parse_decimal_i64(value->view());
 
-              if (!parsed.is_error() && parsed.value() >= 0) {
-                ignored_eof_limit_count = parsed.value();
-              }
-            }
+            ignored_eof_limit_count =
+                !parsed.is_error() && parsed.value() >= 0 ? parsed.value() : 10;
           }
 
           if (ignored_eof_count < static_cast<usize>(ignored_eof_limit_count)) {

@@ -1472,6 +1472,10 @@ read_boolean(const EvalContext       &cxt,
 {
   let const &state = cxt.runtime_state();
 
+  if (option.shell_option == shell_option_id::Ignoreeof) {
+    return cxt.get_variable_value("IGNOREEOF").has_value();
+  }
+
   switch (option.storage) {
   case option_storage::ShellOption:
   case option_storage::EditorMode:
@@ -1525,6 +1529,10 @@ write_shell_option(EvalContext             &cxt,
     } else if (!is_enabled && value.has_value()) {
       cxt.disable_ignoreeof();
     }
+
+    cxt.runtime_control_store().option_mutations().note(option.shell_option);
+
+    return;
   }
 
   cxt.runtime_control_store().option_mutations().note(option.shell_option);

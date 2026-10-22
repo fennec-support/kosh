@@ -254,6 +254,20 @@ printf "unset-status=%s value=%s state=%s\n" "$?" \
   "${IGNOREEOF-unset}" "$([[ -o ignoreeof ]] && echo on || echo off)"
 ' 2>/dev/null
 
+echo "== ignoreeof option follows the IGNOREEOF variable:"
+"$BIN" -M bash -c '
+state() { [[ -o ignoreeof ]] && echo on || echo off; }
+IGNOREEOF=3
+echo "assigned=$(state)"
+unset IGNOREEOF
+echo "unset=$(state)"
+f() { local IGNOREEOF=2; state; }
+echo "local=$(f) after=$(state)"
+IGNOREEOF=5 true
+echo "prefix-after=$(state)"
+IGNOREEOF=5 eval state
+'
+
 wait_for_prompt()
 {
     local raw_mode_marker attempt_count=0

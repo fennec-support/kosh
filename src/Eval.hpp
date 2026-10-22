@@ -4251,18 +4251,6 @@ public:
     return m_confined_clock;
   }
 
-  fn
-  was_confined_ignoreeof_enabled() wontthrow -> bool &
-  {
-    return m_was_confined_ignoreeof_enabled;
-  }
-
-  pure fn
-  was_confined_ignoreeof_enabled() const wontthrow -> bool
-  {
-    return m_was_confined_ignoreeof_enabled;
-  }
-
   pure fn
   snapshot() const wontthrow -> usize
   {
@@ -4275,7 +4263,6 @@ public:
 private:
   usize                             m_confined_write_depth{0};
   dynamic_clock_state               m_confined_clock{};
-  bool                              m_was_confined_ignoreeof_enabled{false};
   ArrayList<environment_undo_entry> m_environment_undo_log{heap_allocator()};
   ArrayList<environment_undo_entry> m_confined_write_log{heap_allocator()};
 };
