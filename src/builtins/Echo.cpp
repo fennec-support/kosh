@@ -116,33 +116,6 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       j++;
       switch (escaped) {
-      case 'a': output += '\a'; break;
-
-      case 'b': output += '\b'; break;
-
-      case 'f': output += '\f'; break;
-
-      case 'n': output += '\n'; break;
-
-      case 'r': output += '\r'; break;
-
-      case 't': output += '\t'; break;
-
-      case 'v': output += '\v'; break;
-
-      case 'e':
-      case 'E':
-        if (cxt.runtime_state().is_posix_mode()) {
-          output += '\\';
-          output += escaped;
-        } else {
-          output += '\x1b';
-        }
-
-        break;
-
-      case '\\': output += '\\'; break;
-
       case 'c': should_stop = true; break;
 
       case 'x': {
@@ -196,9 +169,20 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         output += static_cast<char>(value);
       } break;
 
+      case 'u':
+      case 'U':
+        if (cxt.runtime_state().is_posix_mode() ||
+            !utils::append_unicode_escape(output, arg.view(), j))
+        {
+          output += '\\';
+          output += escaped;
+        }
+
+        break;
+
       default:
-        output += '\\';
-        output += escaped;
+        utils::append_simple_escape(output, escaped,
+                                    !cxt.runtime_state().is_posix_mode());
         break;
       }
 

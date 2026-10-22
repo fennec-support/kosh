@@ -14,7 +14,7 @@ bash.legacy.extglob=on
 --
 posix.interpreter.exit_on_command_failure=off
 posix.legacy.errexit=off
-73
+82
 == every alias reads the value of its option:
 == set-only options appear as posix aliases:
 posix.legacy.hashall=on

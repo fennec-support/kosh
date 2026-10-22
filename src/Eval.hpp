@@ -1424,6 +1424,14 @@ public:
     return m_subshell_depth;
   }
 
+  /* The count of command substitutions, process substitutions, eval and
+     source calls, and trap actions that enclose the running command. */
+  fn
+  xtrace_indirection_depth() wontthrow -> usize &
+  {
+    return m_xtrace_indirection_depth;
+  }
+
   fn
   condition_depth() wontthrow -> usize &
   {
@@ -1615,6 +1623,7 @@ private:
   u64                 m_last_command_duration_nanos{0};
   u64                 m_last_command_peak_rss_byte_count{0};
   usize               m_subshell_depth{0};
+  usize               m_xtrace_indirection_depth{0};
   usize               m_condition_depth{0};
   usize               m_loop_depth{0};
   usize               m_terminal_exec_subshell_depth{0};

@@ -270,46 +270,6 @@ complete_numeric_format(String    &spec,
 }
 
 fn
-append_simple_escape(String &out,
-                     char    e,
-                     bool    should_use_bash_escapes) throws -> void
-{
-  switch (e) {
-  case 'n': out += '\n'; break;
-
-  case 't': out += '\t'; break;
-
-  case 'r': out += '\r'; break;
-
-  case 'a': out += '\a'; break;
-
-  case 'b': out += '\b'; break;
-
-  case 'f': out += '\f'; break;
-
-  case 'v': out += '\v'; break;
-
-  case 'e':
-  case 'E':
-    if (should_use_bash_escapes) {
-      out += '\x1b';
-    } else {
-      out += '\\';
-      out += e;
-    }
-
-    break;
-
-  case '\\': out += '\\'; break;
-
-  default:
-    out += '\\';
-    out += e;
-    break;
-  }
-}
-
-fn
 append_escape(String       &out,
               const String &fmt,
               usize        &i,
@@ -355,27 +315,9 @@ append_escape(String       &out,
     return;
   }
 
-  if ((e == 'u' || e == 'U') && i + 1 < fmt.length() &&
-      utils::hex_digit_value(fmt[i + 1]).has_value())
-  {
-    usize max_digit_count = e == 'u' ? 4 : 8;
-    u32   code_point      = 0;
-    usize digit_count     = 0;
+  if (utils::append_unicode_escape(out, fmt.view(), i)) return;
 
-    while (digit_count < max_digit_count && i + 1 < fmt.length() &&
-           utils::hex_digit_value(fmt[i + 1]).has_value())
-    {
-      i++;
-      code_point = code_point * 16 + *utils::hex_digit_value(fmt[i]);
-      digit_count++;
-    }
-
-    utils::append_utf8(out, code_point);
-
-    return;
-  }
-
-  append_simple_escape(out, e, should_use_bash_escapes);
+  utils::append_simple_escape(out, e, should_use_bash_escapes);
 }
 
 fn
@@ -444,7 +386,7 @@ append_b_argument(String       &out,
     }
 
     i++;
-    append_simple_escape(out, e, should_use_bash_escapes);
+    utils::append_simple_escape(out, e, should_use_bash_escapes);
   }
 
   return false;
@@ -758,6 +700,8 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       i++;
 
+      let const conversion_start = i;
+
       bool has_grouping_flag = false;
 
       while (i < fmt.length() && strchr("-+ 0#'", fmt[i]) != nullptr) {
@@ -840,9 +784,16 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       let const conv = fmt[i];
 
-      if (conv == '%') {
+      if (conv == '%' && i == conversion_start) {
         out += '%';
         continue;
+      }
+
+      if (conv == '%') {
+        report_soft_builtin_error(ec, cxt, "`%': invalid format character");
+        exit_status = 1;
+        should_stop = true;
+        break;
       }
 
       if (conv == '(') {

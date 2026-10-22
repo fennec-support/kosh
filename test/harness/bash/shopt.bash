@@ -69,3 +69,17 @@ shopt -s extglob
 echo "extglob-on=${value##+(a)}"
 shopt -u extglob
 echo "extglob-off=${value##+(a)}"
+
+# The compatibility levels and the Bash 5.3 options are accepted. Each one
+# sets, reports, and unsets on its own.
+for option in compat31 compat32 compat40 compat41 compat42 compat43 compat44 \
+  array_expand_once noexpand_translation bash_source_fullpath; do
+  shopt -s "$option"
+  echo "$option set=$?"
+  shopt -q "$option"
+  echo "$option query=$?"
+  shopt -u "$option"
+  shopt -q "$option"
+  echo "$option unset=$?"
+done
+shopt -p compat42 noexpand_translation bash_source_fullpath

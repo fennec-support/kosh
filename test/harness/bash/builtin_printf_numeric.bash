@@ -212,3 +212,29 @@ rm -rf "$locale_dir"
 
 # Length modifiers are accepted and ignored, as bash does.
 printf '%ld|%lld|%hd|%zu|%jd|%lx|%hhd\n' 1 2 3 4 5 255 7
+
+# A % conversion with a flag, width, precision, or length modifier is invalid
+# and ends the output.
+printf '%5%|'
+echo "width status=$?"
+printf 'ab%-%|%s\n' x y
+echo "flag status=$?"
+printf '%.2%|'
+echo "precision status=$?"
+printf '%l%|'
+echo "length status=$?"
+printf '%%|%s\n' x
+echo "plain status=$?"
+
+# echo -e decodes u escapes of up to four digits and U escapes of up to eight
+# digits as UTF-8.
+(
+  export LC_ALL=C.UTF-8
+  echo -e '\U0001F600' | od -An -c
+  echo -e '\u00e9' | od -An -c
+  echo -e '\U000000e9x' | od -An -c
+  echo -e '\u00e9123' | od -An -c
+  echo -e '\u12345' | od -An -c
+  echo -e 'a\U1F600z' | od -An -c
+  echo -e '\ux' | od -An -c
+)

@@ -1260,6 +1260,8 @@ apply_inherited_shell(inherited_shell &inherited,
     context.execution_store().set_last_exit_status(
         inherited.state->previous_exit_status);
     context.set_subshell_depth(inherited.state->subshell_depth);
+    context.execution_store().xtrace_indirection_depth() =
+        inherited.state->subshell_depth;
   }
 
   return None;

@@ -611,6 +611,16 @@ EvalContext::run_source(StringView                source,
   enter_source(call_site ? *call_site : SourceLocation{0, 0});
   defer { leave_source(); };
 
+  let const should_indent_xtrace =
+      should_reject_return || origin == "eval" ||
+      (should_consume_return && filename.has_value() && !filename->is_empty());
+
+  if (should_indent_xtrace) execution_store().xtrace_indirection_depth()++;
+
+  defer {
+    if (should_indent_xtrace) execution_store().xtrace_indirection_depth()--;
+  };
+
   let const parent_source =
       call_site ? source_store().current_source() : nullptr;
   let const is_sourced_file_frame =

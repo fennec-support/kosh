@@ -2,7 +2,7 @@
 1
 mood=kosh
 33
-60
+69
 editor.history.file_path=/history
 == the kosh preset matches a fresh kosh session:
 rc=0

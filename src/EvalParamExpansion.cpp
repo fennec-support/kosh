@@ -3806,7 +3806,11 @@ EvalContext::pattern_replace_value(
     remainder          = remainder.substring(1);
   }
 
-  let const separator            = find_replacement_separator(remainder);
+  /* a slash that follows the // operator starts the pattern. */
+  let const separator =
+      should_replace_all && !remainder.is_empty() && remainder[0] == '/'
+          ? 1 + find_replacement_separator(remainder.substring(1))
+          : find_replacement_separator(remainder);
   let const pattern_word         = remainder.substring_of_length(0, separator);
   let       pattern_location     = SourceLocation{};
   let       pattern_active       = Bitset{scratch_allocator()};

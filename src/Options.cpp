@@ -1105,6 +1105,30 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                                  0,
                                  0),
                       "80"),
+    ignored_shopt_flag(
+        180, "bash.legacy.compat31", SEMANTIC, "compat31", false),
+    ignored_shopt_flag(
+        181, "bash.legacy.compat32", SEMANTIC, "compat32", false),
+    ignored_shopt_flag(
+        182, "bash.legacy.compat40", SEMANTIC, "compat40", false),
+    ignored_shopt_flag(
+        183, "bash.legacy.compat41", SEMANTIC, "compat41", false),
+    ignored_shopt_flag(
+        184, "bash.legacy.compat42", SEMANTIC, "compat42", false),
+    ignored_shopt_flag(
+        185, "bash.legacy.compat43", SEMANTIC, "compat43", false),
+    ignored_shopt_flag(
+        186, "bash.legacy.compat44", SEMANTIC, "compat44", false),
+    ignored_shopt_flag(187,
+                       "bash.legacy.noexpand_translation",
+                       SEMANTIC,
+                       "noexpand_translation",
+                       false),
+    ignored_shopt_flag(188,
+                       "bash.legacy.bash_source_fullpath",
+                       SEMANTIC,
+                       "bash_source_fullpath",
+                       false),
 
     set_only(posix_flag(68,
                         "posix.interpreter.remember_command_paths",

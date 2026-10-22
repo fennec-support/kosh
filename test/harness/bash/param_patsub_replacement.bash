@@ -42,3 +42,11 @@ printf 'replace-one=[%s]\n' "${v/$e/-}"
 w=hi
 printf 'prefix=[%s]\n' "${w/#/X}"
 printf 'suffix=[%s]\n' "${w/%/Z}"
+
+# A slash right after the // operator belongs to the pattern.
+s=a/b/c
+printf 'slash-pattern=[%s]\n' "${s////|}"
+printf 'slash-delete=[%s]\n' "${s///}"
+printf 'slash-pattern-delete=[%s]\n' "${s///x/y}"
+printf 'slash-escaped=[%s]\n' "${s//\//|}"
+printf 'slash-empty-pattern=[%s]\n' "${s//}"

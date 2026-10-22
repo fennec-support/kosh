@@ -237,10 +237,18 @@ bash.interpreter.trap_debug_and_return_inherited_by_functions \
 bash.interpreter.trap_err_inherited_by_functions \
 bash.interpreter.verify_remembered_command_paths \
 bash.legacy.assoc_expand_once \
+bash.legacy.bash_source_fullpath \
 bash.legacy.cdspell \
 bash.legacy.checkjobs \
 bash.legacy.checkwinsize \
 bash.legacy.cmdhist \
+bash.legacy.compat31 \
+bash.legacy.compat32 \
+bash.legacy.compat40 \
+bash.legacy.compat41 \
+bash.legacy.compat42 \
+bash.legacy.compat43 \
+bash.legacy.compat44 \
 bash.legacy.complete_fullquote \
 bash.legacy.direxpand \
 bash.legacy.dirspell \
@@ -257,6 +265,7 @@ bash.legacy.huponexit \
 bash.legacy.lithist \
 bash.legacy.mailwarn \
 bash.legacy.no_empty_cmd_completion \
+bash.legacy.noexpand_translation \
 bash.legacy.promptvars \
 bash.legacy.varredir_close \
 compatibility.dev_null \

@@ -18,3 +18,15 @@ g=$(f)
 [ "$g" = "$parent" ] && echo "function substitution matches"
 [ "$(echo "$BASHPID")" != "$BASHPID" ] && echo "bashpid differs in substitution"
 [ "$(echo "$SRANDOM")" -ge 0 ] && echo "srandom readable"
+
+# BASHPID is the process of the stage that expands it, not the shell.
+shell_pid=$BASHPID
+first=$(echo "$BASHPID" | cat)
+[ "$first" != "$shell_pid" ] && echo "bashpid differs in a builtin stage"
+second=$(echo x | echo "$BASHPID")
+[ "$second" != "$shell_pid" ] && echo "bashpid differs in a trailing builtin stage"
+third=$(echo "$$ $BASHPID" | cat)
+[ "${third%% *}" = "$$" ] && echo "dollar dollar keeps the shell"
+f() { echo "$BASHPID"; }
+fourth=$(f | cat)
+[ "$fourth" != "$shell_pid" ] && echo "bashpid differs in a function stage"

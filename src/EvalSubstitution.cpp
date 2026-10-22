@@ -576,6 +576,7 @@ EvalContext::setup_process_substitution(
     }
 
     enter_subshell();
+    execution_store().xtrace_indirection_depth()++;
     hide_coprocess_descriptors();
     job_table_store().inherit_parent_jobs(false);
 
@@ -1034,6 +1035,7 @@ EvalContext::run_captured_substitution(
         os::close_fd(pipe->in);
         execution_store().set_shell_is_interactive(false);
         enter_subshell();
+        execution_store().xtrace_indirection_depth()++;
         hide_coprocess_descriptors();
         job_table_store().inherit_parent_jobs(!runtime_state().is_posix_mode());
         if (runtime_state().get_mood() == mimic_mood::Bash &&
@@ -1179,6 +1181,7 @@ EvalContext::run_captured_substitution(
     let const do_cleanup = [&]() wontthrow -> void {
       if (did_enter_subshell) {
         leave_subshell();
+        execution_store().xtrace_indirection_depth()--;
         did_enter_subshell = false;
       }
 
@@ -1223,6 +1226,7 @@ EvalContext::run_captured_substitution(
     did_change_interactive_state = true;
 
     enter_subshell();
+    execution_store().xtrace_indirection_depth()++;
     did_enter_subshell = true;
     hide_coprocess_descriptors();
     if (runtime_state().get_mood() == mimic_mood::Bash &&

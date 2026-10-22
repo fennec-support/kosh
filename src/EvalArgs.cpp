@@ -955,7 +955,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
 
 /* memory: trace uses scratch_allocator() and is freed with the enclosing
            scratch mark. ps4 is a local String freed on return.
-   time:   O(subshell_depth + ps4.length + command.length) to build trace. a
+   time:   O(indirection depth + ps4.length + command.length) to build trace. a
            write of trace.length bytes then goes to BASH_XTRACEFD or the error
            stream. */
 fn
@@ -968,7 +968,7 @@ EvalContext::write_xtrace(StringView command) throws -> void
       get_variable_value("PS4").value_or(String{heap_allocator(), "+ "});
 
   if (!ps4.is_empty()) {
-    for (usize i = 0; i < execution_store().subshell_depth(); i++)
+    for (usize i = 0; i < execution_store().xtrace_indirection_depth(); i++)
       trace.push(ps4[0]);
 
     trace.append(ps4.view());

@@ -931,6 +931,24 @@ assoc_expand_once.
        shopt lithist, interactive
 179  editor.wrap_width
        interactive
+180  bash.legacy.compat31
+       shopt compat31, semantic
+181  bash.legacy.compat32
+       shopt compat32, semantic
+182  bash.legacy.compat40
+       shopt compat40, semantic
+183  bash.legacy.compat41
+       shopt compat41, semantic
+184  bash.legacy.compat42
+       shopt compat42, semantic
+185  bash.legacy.compat43
+       shopt compat43, semantic
+186  bash.legacy.compat44
+       shopt compat44, semantic
+187  bash.legacy.noexpand_translation
+       shopt noexpand_translation, semantic
+188  bash.legacy.bash_source_fullpath
+       shopt bash_source_fullpath, semantic
 .ft R
 .fi
 .PP
@@ -4000,7 +4018,8 @@ the git branch, \\L the duration of the last command, and \\M its memory use.
 These variables provide the pre-execution, primary, continuation, select, and
 xtrace prompts. PS0 defaults to empty. PS2 defaults to "> ". PS3 defaults to
 "#? ". PS4 defaults to "+ ". The first byte of PS4 is repeated once per
-enclosing subshell. The default PS1 shows the git branch with its ahead and
+enclosing command substitution, process substitution, eval, source, and trap
+action. The default PS1 shows the git branch with its ahead and
 behind counts, then the user, host, and working directory, and it ends with a
 bullet.
 The shell expands the backslash escapes \\u,

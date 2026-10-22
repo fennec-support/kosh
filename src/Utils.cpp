@@ -1193,6 +1193,78 @@ append_utf8(String &output, u32 codepoint) throws -> void
 }
 
 fn
+append_simple_escape(String &output,
+                     char    escape,
+                     bool    should_use_bash_escapes) throws -> void
+{
+  switch (escape) {
+  case 'n': output += '\n'; break;
+
+  case 't': output += '\t'; break;
+
+  case 'r': output += '\r'; break;
+
+  case 'a': output += '\a'; break;
+
+  case 'b': output += '\b'; break;
+
+  case 'f': output += '\f'; break;
+
+  case 'v': output += '\v'; break;
+
+  case 'e':
+  case 'E':
+    if (should_use_bash_escapes) {
+      output += '\x1b';
+    } else {
+      output += '\\';
+      output += escape;
+    }
+
+    break;
+
+  case '\\': output += '\\'; break;
+
+  default:
+    output += '\\';
+    output += escape;
+    break;
+  }
+}
+
+fn
+append_unicode_escape(String    &output,
+                      StringView text,
+                      usize     &index) throws -> bool
+{
+  ASSERT(index < text.length);
+
+  let const letter = text[index];
+
+  if ((letter != 'u' && letter != 'U') || index + 1 >= text.length ||
+      !hex_digit_value(text[index + 1]).has_value())
+  {
+    return false;
+  }
+
+  let const max_digit_count = letter == 'u' ? usize{4} : usize{8};
+  u32       code_point      = 0;
+  usize     digit_count     = 0;
+
+  while (digit_count < max_digit_count && index + 1 < text.length &&
+         hex_digit_value(text[index + 1]).has_value())
+  {
+    index++;
+    code_point = code_point * 16 + *hex_digit_value(text[index]);
+    digit_count++;
+  }
+
+  append_utf8(output, code_point);
+
+  return true;
+}
+
+fn
 split_lines(StringView           text,
             Allocator            allocator,
             line_terminator_mode terminators) throws

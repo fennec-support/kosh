@@ -325,6 +325,22 @@ decode_utf8(StringView source, usize position, u32 invalid_codepoint) wontthrow
 fn
 append_utf8(String &output, u32 codepoint) throws -> void;
 
+/* Appends the character that a simple backslash escape stands for. The
+   escape is the byte after the backslash. e and E decode only with
+   should_use_bash_escapes. Any other byte is appended after a backslash. */
+fn
+append_simple_escape(String &output,
+                     char    escape,
+                     bool    should_use_bash_escapes) throws -> void;
+
+/* Decodes a u or U escape whose letter is at text[index]. A match consumes up
+   to four or eight hex digits, appends the code point as UTF-8, and leaves
+   index on the last digit. */
+fn
+append_unicode_escape(String    &output,
+                      StringView text,
+                      usize     &index) throws -> bool;
+
 enum class line_terminator_mode : u8
 {
   Discard,
