@@ -460,8 +460,187 @@ z:2:c
 -c:1:16: error: Koshkit `sort`: Invalid key definition '0'.
      1 |  koshkit sort -k0 sort-keys.txt; printf "status=%s\n" "$?"
        |                 ^
-note: Use F[.C][bdfinr][,F[.C][bdfinr]] with fields starting at 1.
+note: Use F[.C][bdfghiMnrV][,F[.C][bdfghiMnrV]] with fields starting at 1.
 status=2
+--- sort general, human, month, and version orderings ---
+sort -g
+
+abc
+nan
+-inf
+-1e-2
+.5
+2
+  3.0
++4
+1E2
+1.5e3
+inf
+sort -gr
+inf
+1.5e3
+1E2
++4
+  3.0
+2
+.5
+-1e-2
+-inf
+nan
+abc
+
+sort -gu
+abc
+nan
+-inf
+-1e-2
+.5
+2
+  3.0
++4
+1E2
+1.5e3
+inf
+sort -h
+a 1M
+b 2K
+c 1k
+d 1.5K
+e 500
+f -2G
+g 0K
+h 2K
+sort -k2h
+f -2G
+g 0K
+e 500
+c 1k
+d 1.5K
+b 2K
+h 2K
+a 1M
+sort -k2hr
+a 1M
+b 2K
+h 2K
+d 1.5K
+c 1k
+e 500
+g 0K
+f -2G
+sort -k2,2h -u
+f -2G
+g 0K
+e 500
+c 1k
+d 1.5K
+b 2K
+a 1M
+sort -k2,2h -k1r
+f -2G
+g 0K
+e 500
+c 1k
+d 1.5K
+h 2K
+b 2K
+a 1M
+sort -M
+foo
+ma
+Jan 1
+january
+  feb
+Aug
+sEp x
+DEC
+sort -Mr
+DEC
+sEp x
+Aug
+  feb
+january
+Jan 1
+ma
+foo
+sort -k1,1M
+foo
+ma
+Jan 1
+january
+  feb
+Aug
+sEp x
+DEC
+sort -V
+.
+..
+.hidden
+1.0~rc1
+1.0
+1.0a
+B2
+a1.2
+a1.10
+b10
+f-1.2.tar.gz
+f-1.10.tar.gz
+v001
+v1
+sort -Vr
+v1
+v001
+f-1.10.tar.gz
+f-1.2.tar.gz
+b10
+a1.10
+a1.2
+B2
+1.0a
+1.0
+1.0~rc1
+.hidden
+..
+.
+sort -fV
+.
+..
+.hidden
+1.0~rc1
+1.0
+1.0a
+a1.2
+a1.10
+B2
+b10
+f-1.2.tar.gz
+f-1.10.tar.gz
+v001
+v1
+sort -Vd
+.
+..
+1.0
+1.0a
+1.0~rc1
+B2
+a1.2
+a1.10
+b10
+f-1.2.tar.gz
+f-1.10.tar.gz
+.hidden
+v001
+v1
+status=0
+status=1
+status=2
+status=0
+--- sort NUL-separated lines ---
+0000000   a  \0   b  \0   c  \n   x  \0
+0000010
+0000000   c  \n   x  \0   b  \0   a  \0
+0000010
 --- uniq repeated unique fields and characters ---
 uniq -c
       1 a 1

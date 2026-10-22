@@ -283,7 +283,7 @@ public:
   substring_of_length(usize start, usize byte_count) const wontthrow
       -> StringView;
   mustuse fn
-  next_line(usize &position) const wontthrow -> StringView;
+  next_line(usize &position, char delimiter = '\n') const wontthrow -> StringView;
   mustuse fn
   next_ascii_whitespace_word(usize &position) const wontthrow -> StringView;
 

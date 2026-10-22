@@ -228,6 +228,37 @@ echo "--- sort output file ---"
 "$BIN" -c 'koshkit sort -o sort-fields.txt sort-fields.txt; koshkit cat sort-fields.txt'
 echo "--- sort invalid key ---"
 "$BIN" -c 'koshkit sort -k0 sort-keys.txt; printf "status=%s\n" "$?"' 2>&1
+echo "--- sort general, human, month, and version orderings ---"
+printf '1.5e3\n2\n-1e-2\nabc\n\n  3.0\ninf\n-inf\nnan\n+4\n1E2\n.5\n' \
+  > sort-general.txt
+printf 'b 2K\na 1M\nc 1k\nd 1.5K\ne 500\nf -2G\ng 0K\nh 2K\n' > sort-human.txt
+printf 'Jan 1\njanuary\nfoo\nDEC\n  feb\nma\nsEp x\nAug\n' > sort-month.txt
+printf 'a1.10\na1.2\n1.0~rc1\n1.0\n1.0a\n.\n..\n.hidden\nf-1.10.tar.gz\n' \
+  > sort-version.txt
+printf 'f-1.2.tar.gz\nB2\nb10\nv001\nv1\n' >> sort-version.txt
+for sort_args in -g -gr -gu; do
+  echo "sort $sort_args"
+  "$BIN" -c "koshkit sort $sort_args sort-general.txt"
+done
+for sort_args in -h -k2h -k2hr '-k2,2h -u' '-k2,2h -k1r'; do
+  echo "sort $sort_args"
+  "$BIN" -c "koshkit sort $sort_args sort-human.txt"
+done
+for sort_args in -M -Mr -k1,1M; do
+  echo "sort $sort_args"
+  "$BIN" -c "koshkit sort $sort_args sort-month.txt"
+done
+for sort_args in -V -Vr -fV -Vd; do
+  echo "sort $sort_args"
+  "$BIN" -c "koshkit sort $sort_args sort-version.txt"
+done
+"$BIN" -c 'koshkit sort -V sort-version.txt | koshkit sort -CV; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit sort -CV sort-version.txt; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit sort -gn sort-general.txt 2>/dev/null; printf "status=%s\n" "$?"'
+"$BIN" -c 'koshkit sort -k1Vi sort-version.txt >/dev/null; printf "status=%s\n" "$?"'
+echo "--- sort NUL-separated lines ---"
+"$BIN" -c "printf 'b\\0a\\0c\\nx\\0a\\0' | koshkit sort -zu | koshkit od -c"
+"$BIN" -c "printf 'b\\0a\\0c\\nx' | koshkit sort -zr | koshkit od -c"
 echo "--- uniq repeated unique fields and characters ---"
 printf 'a 1\na 2\nb 3\nc 3\nc 3\nd\n' > uniq-input.txt
 for uniq_args in -c -d -u -f1 '-f1 -c' -s2 '-s 2 -d' -cd -du; do

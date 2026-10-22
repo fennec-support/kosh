@@ -4,8 +4,8 @@
  *
  * This file implements the sort utility. It collects lines from files or
  * standard input and orders them by whole line or by -k keys with the b, d, f,
- * i, n, and r ordering options. It can merge, check order, drop duplicate
- * keys, and write to an output file.
+ * g, h, i, M, n, r, and V ordering options. It can merge, check order, drop
+ * duplicate keys, separate lines with NUL, and write to an output file.
  */
 
 #include "../CLI.hpp"
@@ -15,13 +15,39 @@
 #include "../Lexer.hpp"
 #include "../Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-bcCdfimnrsu] [-o output] [-t separator] [-k keydef]... "
-                  "[file ...]",
-                  "Write input lines in byte order or in the "
-                  "order selected by its keys and ordering options.");
+KOSHKIT_UTIL_DECL(
+    "[-bcCdfghiMmnrsuVz] [-o output] [-t separator] [-k keydef]... "
+    "[file ...]",
+    "Write input lines in byte order or in the "
+    "order selected by its keys and ordering options.");
 
 FLAG(SORT_REVERSE, Bool, 'r', "", "Reverse the order of the output.");
 FLAG(SORT_NUMERIC, Bool, 'n', "", "Compare leading numbers by value.");
+FLAG(SORT_GENERAL_NUMERIC,
+     Bool,
+     'g',
+     "general-numeric-sort",
+     "Compare leading floating point numbers by value.");
+FLAG(SORT_HUMAN_NUMERIC,
+     Bool,
+     'h',
+     "human-numeric-sort",
+     "Compare numbers with SI suffixes such as 2K and 1G.");
+FLAG(SORT_MONTH,
+     Bool,
+     'M',
+     "month-sort",
+     "Compare month abbreviations, with unknown text first.");
+FLAG(SORT_VERSION,
+     Bool,
+     'V',
+     "version-sort",
+     "Compare version numbers within text.");
+FLAG(SORT_ZERO_TERMINATED,
+     Bool,
+     'z',
+     "zero-terminated",
+     "Separate lines with NUL instead of newline.");
 FLAG(SORT_UNIQUE,
      Bool,
      'u',
@@ -67,6 +93,10 @@ struct sort_modifiers
   bool is_folding{false};
   bool is_printable_only{false};
   bool is_numeric{false};
+  bool is_general_numeric{false};
+  bool is_human_numeric{false};
+  bool is_month{false};
+  bool is_version{false};
   bool is_reversed{false};
 };
 
@@ -98,7 +128,7 @@ struct sort_settings
 pure static fn
 is_sort_blank(char ch) wontthrow -> bool
 {
-  return ch == ' ' || ch == '\t';
+  return ch == ' ' || ch == '\t' || ch == '\n';
 }
 
 pure static fn
@@ -197,6 +227,26 @@ parse_sort_endpoint(StringView text,
 
     case 'n':
       key.modifiers.is_numeric = true;
+      key.has_ordering         = true;
+      break;
+
+    case 'g':
+      key.modifiers.is_general_numeric = true;
+      key.has_ordering                 = true;
+      break;
+
+    case 'h':
+      key.modifiers.is_human_numeric = true;
+      key.has_ordering               = true;
+      break;
+
+    case 'M':
+      key.modifiers.is_month = true;
+      key.has_ordering       = true;
+      break;
+
+    case 'V':
+      key.modifiers.is_version = true;
       key.has_ordering         = true;
       break;
 
@@ -408,6 +458,305 @@ compare_sort_numbers(StringView left, StringView right) wontthrow -> int
   return left_number.is_negative ? -result : result;
 }
 
+/* e.g. "1.5K" has unit order 1, "2M" has 2, "0K" and "12" have 0, and "-3G"
+   has -3. */
+pure static fn
+get_sort_unit_order(StringView text, bool is_folding) wontthrow -> int
+{
+  usize     position      = skip_sort_blanks(text, 0);
+  let const is_negative   = position < text.length && text[position] == '-';
+  char      largest_digit = '\0';
+
+  if (is_negative) position++;
+
+  let const do_scan_digits = [&]() -> void {
+    while (position < text.length && lexer::is_number(text[position])) {
+      if (largest_digit < text[position]) largest_digit = text[position];
+      position++;
+    }
+  };
+
+  do_scan_digits();
+  if (position < text.length && text[position] == '.') {
+    position++;
+    do_scan_digits();
+  }
+
+  if (largest_digit <= '0' || position >= text.length) return 0;
+
+  static constexpr char UNITS[] = "KMGTPEZYRQ";
+
+  let unit = text[position];
+
+  if (unit == 'k' || (is_folding && unit >= 'a' && unit <= 'z')) {
+    unit = static_cast<char>(unit - 'a' + 'A');
+  }
+
+  for (usize index = 0; index < sizeof(UNITS) - 1; index++) {
+    if (UNITS[index] != unit) continue;
+
+    let const order = static_cast<int>(index) + 1;
+
+    return is_negative ? -order : order;
+  }
+
+  return 0;
+}
+
+pure static fn
+compare_sort_human_numbers(StringView left,
+                           StringView right,
+                           bool       is_folding) wontthrow -> int
+{
+  let const left_order  = get_sort_unit_order(left, is_folding);
+  let const right_order = get_sort_unit_order(right, is_folding);
+
+  if (left_order != right_order) return left_order < right_order ? -1 : 1;
+
+  return compare_sort_numbers(left, right);
+}
+
+/* text that does not start with a number sorts first, then NaN values, then
+   numbers in value order. */
+static fn
+compare_sort_general_numbers(StringView left, StringView right) throws
+    -> int
+{
+  struct parsed_number
+  {
+    long double value;
+    bool        is_number;
+  };
+
+  let const do_parse = [](StringView text) throws -> parsed_number {
+    char  stack_buffer[128];
+    let   heap_buffer = String{heap_allocator()};
+    char *start       = stack_buffer;
+
+    if (text.length < sizeof(stack_buffer)) {
+      memcpy(stack_buffer, text.data, text.length);
+      stack_buffer[text.length] = '\0';
+    } else {
+      heap_buffer.append(text);
+      start = const_cast<char *>(heap_buffer.c_str());
+    }
+
+    char     *end   = nullptr;
+    let const value = ::strtold(start, &end);
+
+    return parsed_number{value, end != start};
+  };
+
+  let const left_number  = do_parse(left);
+  let const right_number = do_parse(right);
+
+  if (!left_number.is_number) return right_number.is_number ? -1 : 0;
+
+  if (!right_number.is_number) return 1;
+
+  let const left_value  = left_number.value;
+  let const right_value = right_number.value;
+
+  if (left_value < right_value) return -1;
+
+  if (left_value > right_value) return 1;
+
+  if (left_value == right_value) return 0;
+
+  if (right_value == right_value) return -1;
+
+  if (left_value == left_value) return 1;
+
+  char left_text[32];
+  char right_text[32];
+
+  ::snprintf(left_text, sizeof(left_text), "%f",
+             static_cast<double>(left_value));
+  ::snprintf(right_text, sizeof(right_text), "%f",
+             static_cast<double>(right_value));
+
+  let const result = strcmp(left_text, right_text);
+
+  return result < 0 ? -1 : result > 0 ? 1 : 0;
+}
+
+/* e.g. "  feb" is 2, "JANUARY" is 1, and "Ju" is 0. */
+pure static fn
+get_sort_month(StringView text) wontthrow -> int
+{
+  static constexpr StringView MONTHS[] = {"JAN", "FEB", "MAR", "APR",
+                                          "MAY", "JUN", "JUL", "AUG",
+                                          "SEP", "OCT", "NOV", "DEC"};
+
+  let const position = skip_sort_blanks(text, 0);
+
+  if (text.length - position < 3) return 0;
+
+  char abbreviation[3];
+
+  for (usize offset = 0; offset < 3; offset++) {
+    let ch = text[position + offset];
+
+    if (ch >= 'a' && ch <= 'z') ch = static_cast<char>(ch - 'a' + 'A');
+    abbreviation[offset] = ch;
+  }
+
+  for (usize index = 0; index < countof(MONTHS); index++) {
+    if (MONTHS[index] == StringView{abbreviation, 3})
+      return static_cast<int>(index) + 1;
+  }
+
+  return 0;
+}
+
+/* returns the length of text without its file suffix, the longest match of
+   (\.[A-Za-z~][A-Za-z0-9~]*)*$. */
+pure static fn
+get_sort_version_prefix_length(StringView text) wontthrow -> usize
+{
+  let const do_is_alpha = [](char ch) -> bool {
+    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z');
+  };
+
+  usize prefix_length = 0;
+  usize position      = 0;
+
+  while (position < text.length) {
+    position++;
+    prefix_length = position;
+
+    while (position + 1 < text.length && text[position] == '.' &&
+           (do_is_alpha(text[position + 1]) || text[position + 1] == '~'))
+    {
+      position += 2;
+      while (position < text.length &&
+             (is_sort_alphanumeric(text[position]) || text[position] == '~'))
+      {
+        position++;
+      }
+    }
+  }
+
+  return prefix_length;
+}
+
+/* compares runs of non-digits by byte with letters first and '~' before the
+   end, then runs of digits by value. */
+pure static fn
+compare_sort_version_parts(StringView left,
+                           StringView right,
+                           bool       is_folding) wontthrow -> int
+{
+  let const do_order = [&](StringView text, usize position) -> int {
+    if (position == text.length) return -1;
+
+    let ch = text[position];
+
+    if (lexer::is_number(ch)) return 0;
+
+    if (is_folding && ch >= 'a' && ch <= 'z') {
+      ch = static_cast<char>(ch - 'a' + 'A');
+    }
+
+    if ((ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z')) return ch;
+
+    if (ch == '~') return -2;
+
+    return static_cast<unsigned char>(ch) + 256;
+  };
+
+  let const do_is_digit_at = [](StringView text, usize position) -> bool {
+    return position < text.length && lexer::is_number(text[position]);
+  };
+
+  usize left_position  = 0;
+  usize right_position = 0;
+
+  while (left_position < left.length || right_position < right.length) {
+    int first_difference = 0;
+
+    while ((left_position < left.length &&
+            !lexer::is_number(left[left_position])) ||
+           (right_position < right.length &&
+            !lexer::is_number(right[right_position])))
+    {
+      let const left_order  = do_order(left, left_position);
+      let const right_order = do_order(right, right_position);
+
+      if (left_order != right_order) return left_order - right_order;
+
+      left_position++;
+      right_position++;
+    }
+
+    while (left_position < left.length && left[left_position] == '0') {
+      left_position++;
+    }
+
+    while (right_position < right.length && right[right_position] == '0') {
+      right_position++;
+    }
+
+    while (do_is_digit_at(left, left_position) &&
+           do_is_digit_at(right, right_position))
+    {
+      if (first_difference == 0)
+        first_difference = left[left_position] - right[right_position];
+      left_position++;
+      right_position++;
+    }
+
+    if (do_is_digit_at(left, left_position)) return 1;
+
+    if (do_is_digit_at(right, right_position)) return -1;
+
+    if (first_difference != 0) return first_difference;
+  }
+
+  return 0;
+}
+
+/* "." sorts first, then "..", then other text that starts with a dot. other
+   text compares without file suffixes first and then whole. */
+pure static fn
+compare_sort_versions(StringView left,
+                      StringView right,
+                      bool       is_folding) wontthrow -> int
+{
+  if (left.is_empty()) return right.is_empty() ? 0 : -1;
+
+  if (right.is_empty()) return 1;
+
+  if (left[0] == '.') {
+    if (right[0] != '.') return -1;
+
+    if (left == ".") return right == "." ? 0 : -1;
+
+    if (right == ".") return 1;
+
+    if (left == "..") return right == ".." ? 0 : -1;
+
+    if (right == "..") return 1;
+  } else if (right[0] == '.') {
+    return 1;
+  }
+
+  let const left_prefix_length  = get_sort_version_prefix_length(left);
+  let const right_prefix_length = get_sort_version_prefix_length(right);
+  let const result              = compare_sort_version_parts(
+      left.substring_of_length(0, left_prefix_length),
+      right.substring_of_length(0, right_prefix_length), is_folding);
+
+  if (result != 0) return result;
+
+  if (left_prefix_length == left.length && right_prefix_length == right.length)
+  {
+    return 0;
+  }
+
+  return compare_sort_version_parts(left, right, is_folding);
+}
+
 static fn
 next_sort_character(StringView            text,
                     usize                &position,
@@ -436,10 +785,10 @@ next_sort_character(StringView            text,
   return -1;
 }
 
-pure static fn
+static fn
 compare_sort_text(StringView            left,
                   StringView            right,
-                  const sort_modifiers &modifiers) wontthrow -> int
+                  const sort_modifiers &modifiers) throws -> int
 {
   int       result   = 0;
   let const is_plain = !modifiers.is_dictionary && !modifiers.is_folding &&
@@ -447,6 +796,37 @@ compare_sort_text(StringView            left,
 
   if (modifiers.is_numeric) {
     result = compare_sort_numbers(left, right);
+  } else if (modifiers.is_general_numeric) {
+    result = compare_sort_general_numbers(left, right);
+  } else if (modifiers.is_human_numeric) {
+    result = compare_sort_human_numbers(left, right, modifiers.is_folding);
+  } else if (modifiers.is_month) {
+    let const left_month  = get_sort_month(left);
+    let const right_month = get_sort_month(right);
+
+    if (left_month != right_month) result = left_month < right_month ? -1 : 1;
+  } else if (modifiers.is_version &&
+             (modifiers.is_dictionary || modifiers.is_printable_only))
+  {
+    let const do_filter = [&](StringView text) throws -> String {
+      let   filtered = String{heap_allocator()};
+      usize position = 0;
+
+      loop {
+        let const ch = next_sort_character(text, position, modifiers);
+
+        if (ch < 0) break;
+
+        filtered += static_cast<char>(ch);
+      }
+
+      return filtered;
+    };
+
+    result = compare_sort_versions(do_filter(left).view(),
+                                   do_filter(right).view(), false);
+  } else if (modifiers.is_version) {
+    result = compare_sort_versions(left, right, modifiers.is_folding);
   } else if (is_plain) {
     if (left != right) result = left < right ? -1 : 1;
   } else {
@@ -471,10 +851,10 @@ compare_sort_text(StringView            left,
   return modifiers.is_reversed ? -result : result;
 }
 
-pure static fn
+static fn
 compare_sort_keys(const sort_entry    &left,
                   const sort_entry    &right,
-                  const sort_settings &settings) wontthrow -> int
+                  const sort_settings &settings) throws -> int
 {
   if (settings.keys.is_empty()) {
     let const do_trim = [&](StringView line) -> StringView {
@@ -506,11 +886,11 @@ compare_sort_keys(const sort_entry    &left,
   return 0;
 }
 
-pure static fn
+static fn
 compare_sort_entries(const sort_entry    &left,
                      const sort_entry    &right,
                      const sort_settings &settings,
-                     bool                 is_last_resort_enabled) wontthrow -> int
+                     bool                 is_last_resort_enabled) throws -> int
 {
   let const key_result = compare_sort_keys(left, right, settings);
 
@@ -546,7 +926,11 @@ Sort::execute(const ExecContext               &ec,
   settings.global.is_folding              = FLAG_SORT_FOLD.is_enabled();
   settings.global.is_printable_only       = FLAG_SORT_PRINTABLE.is_enabled();
   settings.global.is_numeric              = FLAG_SORT_NUMERIC.is_enabled();
-  settings.global.is_reversed             = FLAG_SORT_REVERSE.is_enabled();
+  settings.global.is_general_numeric = FLAG_SORT_GENERAL_NUMERIC.is_enabled();
+  settings.global.is_human_numeric   = FLAG_SORT_HUMAN_NUMERIC.is_enabled();
+  settings.global.is_month           = FLAG_SORT_MONTH.is_enabled();
+  settings.global.is_version         = FLAG_SORT_VERSION.is_enabled();
+  settings.global.is_reversed        = FLAG_SORT_REVERSE.is_enabled();
 
   if (FLAG_SORT_SEPARATOR.is_set()) {
     if (FLAG_SORT_SEPARATOR.value().length != 1) {
@@ -569,13 +953,48 @@ Sort::execute(const ExecContext               &ec,
           "Invalid key definition '" +
               String{cxt.scratch_allocator(), FLAG_SORT_KEY.get(key_index)} +
               "'",
-          "Use F[.C][bdfinr][,F[.C][bdfinr]] with fields starting at 1");
+          "Use F[.C][bdfghiMnrV][,F[.C][bdfghiMnrV]] with fields starting at "
+          "1");
 
       return 2;
     }
 
     settings.keys.push(key);
   }
+
+  let const do_is_incompatible = [](const sort_modifiers &modifiers) -> bool {
+    let const ordering_count =
+        static_cast<int>(modifiers.is_numeric) +
+        static_cast<int>(modifiers.is_general_numeric) +
+        static_cast<int>(modifiers.is_human_numeric) +
+        static_cast<int>(modifiers.is_month) +
+        static_cast<int>(modifiers.is_version || modifiers.is_dictionary ||
+                         modifiers.is_printable_only);
+
+    return ordering_count > 1;
+  };
+
+  static constexpr StringView INCOMPATIBLE_MESSAGE =
+      "The ordering options are incompatible";
+  static constexpr StringView INCOMPATIBLE_HINT =
+      "Use at most one of g, h, M, and n, and none of them with d, i, or V";
+
+  if (do_is_incompatible(settings.global)) {
+    KOSHKIT_REPORT_ERROR(INCOMPATIBLE_MESSAGE, INCOMPATIBLE_HINT);
+
+    return 2;
+  }
+
+  for (usize key_index = 0; key_index < settings.keys.count(); key_index++) {
+    if (!do_is_incompatible(settings.keys[key_index].modifiers)) continue;
+
+    KOSHKIT_REPORT_ERROR_AT(FLAG_SORT_KEY.get_location(key_index),
+                            INCOMPATIBLE_MESSAGE, INCOMPATIBLE_HINT);
+
+    return 2;
+  }
+
+  let const delimiter = FLAG_SORT_ZERO_TERMINATED.is_enabled() ? '\0' : '\n';
 
   let const is_check =
       FLAG_SORT_CHECK.is_enabled() || FLAG_SORT_CHECK_QUIET.is_enabled();
@@ -611,7 +1030,7 @@ Sort::execute(const ExecContext               &ec,
     usize     position = 0;
 
     while (position < content.length) {
-      unused(content.next_line(position));
+      unused(content.next_line(position, delimiter));
       line_count++;
     }
   }
@@ -634,8 +1053,8 @@ Sort::execute(const ExecContext               &ec,
     usize     position = 0;
 
     while (position < content.length) {
-      collected_lines.push(
-          sort_entry{content.next_line(position), collected_lines.count()});
+      collected_lines.push(sort_entry{content.next_line(position, delimiter),
+                                      collected_lines.count()});
     }
   }
 
@@ -723,7 +1142,7 @@ Sort::execute(const ExecContext               &ec,
     if (output.count() + line.count() + 1 > OUTPUT_BUFFER_LENGTH) do_flush();
 
     output += line;
-    output += '\n';
+    output += delimiter;
   };
 
   let const do_visit = [&](usize index, const sort_entry *previous) -> bool {

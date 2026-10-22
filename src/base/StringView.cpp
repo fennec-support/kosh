@@ -206,14 +206,15 @@ StringView::substring_of_length(usize start, usize byte_count) const wontthrow
 }
 
 fn
-StringView::next_line(usize &position) const wontthrow -> StringView
+StringView::next_line(usize &position, char delimiter) const wontthrow
+    -> StringView
 {
   /* e.g. text "ab\ncd" from position 0, then from position 3
        first call:  remaining "ab\ncd", newline 2, line "ab", position 3
        second call: remaining "cd", no newline, line "cd", position 5 */
   let const remaining   = substring(position);
-  let const newline     = remaining.find_character('\n');
-  let const line_length = newline.has_value() ? *newline : remaining.length;
+  let const found       = remaining.find_character(delimiter);
+  let const line_length = found.has_value() ? *found : remaining.length;
   let const line        = remaining.substring_of_length(0, line_length);
 
   position += line_length;

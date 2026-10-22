@@ -2687,12 +2687,21 @@ Execution pauses for summed durations with optional s, m, h, or d suffixes.
 Input lines are sorted in byte order, or by the keys given with
 .BR \-k .
 A key is
-.IR F[.C][bdfinr][,F[.C][bdfinr]] .
+.IR F[.C][bdfghiMnrV][,F[.C][bdfghiMnrV]] .
 The \fB\-t\fR option sets the field separator byte. The \fB\-b\fR, \fB\-d\fR,
 \fB\-f\fR, \fB\-i\fR, \fB\-n\fR, and \fB\-r\fR options ignore leading blanks,
 compare only blanks and alphanumeric characters, fold lowercase letters,
 compare only printable characters, compare leading numbers by value, and
-reverse the result. The \fB\-u\fR option writes the first of each run of equal
+reverse the result. The \fB\-g\fR option compares leading floating point
+numbers, including exponents, infinities, and NaN, and places text without a
+number first. The \fB\-h\fR option compares numbers with the K, M, G, T, P,
+E, Z, Y, R, and Q suffixes, so 2K sorts before 1M. The \fB\-M\fR option
+compares three-letter month abbreviations in any case and places other text
+first. The \fB\-V\fR option compares runs of digits by value within text, as
+version numbers. At most one of \fB\-g\fR, \fB\-h\fR, \fB\-M\fR, and
+\fB\-n\fR applies to a key, and none of them combines with \fB\-d\fR,
+\fB\-i\fR, or \fB\-V\fR. The \fB\-z\fR option separates input and output
+lines with NUL. The \fB\-u\fR option writes the first of each run of equal
 keys. The \fB\-c\fR option checks that the input is sorted and reports the
 first line out of order, and \fB\-C\fR checks it without a message. The
 \fB\-o\fR option writes the result to a file. The \fB\-s\fR option skips the
