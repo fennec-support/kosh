@@ -159,6 +159,10 @@ vi-visual-range-substitutes-only-its-lines PASS
 vi-enter-steps-down-like-j PASS
 slurp-emacs-shift-right-selects PASS
 slurp-emacs-backspace-erases-the-selection PASS
+slurp-emacs-ctrl-shift-right-selects PASS
+slurp-emacs-ctrl-shift-e-selects-to-the-line-end PASS
+slurp-emacs-ctrl-shift-e-selection-erases PASS
+slurp-ctrl-down-moves-to-the-next-paragraph PASS
 slurp-emacs-drag-selects PASS
 slurp-emacs-ctrl-w-kills-the-selection PASS
 slurp-vi-drag-enters-visual-mode PASS

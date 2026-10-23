@@ -1388,6 +1388,19 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("slurp-emacs-backspace-erases-the-selection", session,
                       lambda screen: has_row("beta gamma")(screen)
                       and not has_text("ctrl-w to cut")(screen))
+        session.send(b"\x1b[1;6C")
+        report.record("slurp-emacs-ctrl-shift-right-selects", session,
+                      has_text("ctrl-w to cut"))
+        session.send(b"\x07" + kitty_key(101, CTRL_SHIFT))
+        report.record("slurp-emacs-ctrl-shift-e-selects-to-the-line-end",
+                      session, has_text("ctrl-w to cut"))
+        session.send(BACKSPACE)
+        report.record("slurp-emacs-ctrl-shift-e-selection-erases", session,
+                      lambda screen: not has_text("gamma")(screen)
+                      and has_row("second line")(screen))
+        session.send(b"\x1b[1;5H\x1b[1;5B")
+        report.record("slurp-ctrl-down-moves-to-the-next-paragraph", session,
+                      has_text("line 2 of 2"))
         row = find_row(session, "second line")
         session.send(mouse(0, 1, row) + mouse(32, 4, row) + mouse(32, 7, row)
                      + mouse(0, 7, row, True))

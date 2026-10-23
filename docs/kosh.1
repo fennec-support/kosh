@@ -1668,7 +1668,12 @@ the three options can be given. Up and Down do not recall shell history.
 .IP
 A press of the first mouse button moves the caret, and a drag from the press
 selects the text between, in visual mode with the vi key set. With the emacs
-key set, Shift with an arrow, Home, End, Page Up, or Page Down also selects.
+key set, Shift with an arrow, Home, End, Page Up, or Page Down also selects,
+and so does Shift with Ctrl or Alt and an arrow, Ctrl\-Shift with A, E, F, B,
+N, P, or V, and Alt\-Shift with F or B, when the terminal reports those keys.
+Ctrl\-Up and Ctrl\-Down move to the previous and next empty line, as vi
+.BR { " and " }
+do.
 Backspace and Delete erase the selection, Ctrl\-W cuts it to the kill ring,
 Alt\-W copies it there, and typed text replaces it. Ctrl\-G, Esc, or a caret
 move without Shift leaves the selection.
