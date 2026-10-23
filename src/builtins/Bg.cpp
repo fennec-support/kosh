@@ -45,6 +45,7 @@ Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   ASSERT(!args.is_empty());
 
   cxt.job_table_store().forget_waited_jobs();
+  cxt.job_table_store().update_jobs();
 
   if (args.count() <= 1) {
     job *job = cxt.job_table_store().most_recent_job();
@@ -64,6 +65,10 @@ Bg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (job == nullptr)
       throw make_error_for_arg(ec, arg_position, "There is no such job",
                                "List jobs with `jobs`");
+    if (job->state == job::State::Done) {
+      throw make_error_for_arg(ec, arg_position, "The job has already finished",
+                               "List jobs with `jobs`");
+    }
 
     resume_job_in_background(ec, cxt, job);
   }

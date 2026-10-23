@@ -2454,8 +2454,18 @@ environment_names() -> ArrayList<String>
 fn
 sleep_for_seconds(double seconds) wontthrow -> void
 {
-  if (seconds <= 0.0) return;
-  Sleep(static_cast<DWORD>(seconds * 1000.0));
+  constexpr double STEP_SECONDS = 60.0 * 60.0 * 24.0;
+
+  /* each Sleep() takes at most one day, so its DWORD milliseconds never
+     overflow. Sleep() does not return on an interrupt, so a pending interrupt
+     ends the wait after the current step. */
+  while (seconds > 0.0) {
+    let const step_seconds = seconds < STEP_SECONDS ? seconds : STEP_SECONDS;
+
+    seconds -= step_seconds;
+    Sleep(static_cast<DWORD>(step_seconds * 1000.0));
+    if (INTERRUPT_REQUESTED) return;
+  }
 }
 
 FileWatcher::FileWatcher() wontthrow {}

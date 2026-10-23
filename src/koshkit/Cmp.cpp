@@ -75,13 +75,13 @@ refill_readers(buffered_byte_reader        &left,
     if (do_has_bytes(*reader)) continue;
 
     if (!reader->is_seekable) {
-      let const read_count = os::read_fd(reader->descriptor, reader->buffer,
-                                         sizeof(reader->buffer));
+      let const read_byte_count = os::read_fd(
+          reader->descriptor, reader->buffer, sizeof(reader->buffer));
 
-      if (!read_count.has_value()) return false;
+      if (!read_byte_count.has_value()) return false;
       reader->position  = 0;
-      reader->length    = *read_count;
-      reader->has_ended = *read_count == 0;
+      reader->length    = *read_byte_count;
+      reader->has_ended = *read_byte_count == 0;
       continue;
     }
 

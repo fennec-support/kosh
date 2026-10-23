@@ -819,7 +819,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                SEMANTIC,
                "cdable_vars",
                "Treat a cd operand that is not a directory as a variable "
-               "naming one.",
+               "that holds a directory path.",
                false,
                false),
     ignored_shopt_flag(

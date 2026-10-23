@@ -1962,16 +1962,16 @@ read_kubernetes_metadata(StringView name, Allocator allocator) throws
   defer { unused(os::close_fd(*descriptor)); };
 
   char      bytes[KUBERNETES_METADATA_BYTE_LIMIT]{};
-  let const read_count = os::read_fd(*descriptor, bytes, sizeof(bytes));
+  let const read_byte_count = os::read_fd(*descriptor, bytes, sizeof(bytes));
 
-  if (!read_count.has_value() || *read_count == 0) {
+  if (!read_byte_count.has_value() || *read_byte_count == 0) {
     return String{allocator};
   }
 
-  /* at this point: bytes holds *read_count bytes, between 1 and
+  /* at this point: bytes holds *read_byte_count bytes, between 1 and
      KUBERNETES_METADATA_BYTE_LIMIT, and the descriptor is closed by the defer
      on return. */
-  return sanitize_kubernetes_metadata(StringView{bytes, *read_count},
+  return sanitize_kubernetes_metadata(StringView{bytes, *read_byte_count},
                                       allocator);
 }
 

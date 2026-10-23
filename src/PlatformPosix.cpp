@@ -3798,19 +3798,28 @@ path_component_length(StringView component) wontthrow -> Maybe<usize>
 fn
 sleep_for_seconds(double seconds) wontthrow -> void
 {
-  if (seconds <= 0.0) return;
+  constexpr double STEP_SECONDS = 60.0 * 60.0 * 24.0;
 
-  struct timespec requested;
+  /* each nanosleep() takes at most one day, so tv_sec always fits time_t. An
+     interrupt that arrives during a step ends the wait. */
+  while (seconds > 0.0) {
+    let const step_seconds = seconds < STEP_SECONDS ? seconds : STEP_SECONDS;
 
-  requested.tv_sec  = static_cast<time_t>(seconds);
-  requested.tv_nsec = static_cast<long>(
-      (seconds - static_cast<double>(requested.tv_sec)) * 1000000000.0);
+    seconds -= step_seconds;
 
-  struct timespec remaining;
+    struct timespec requested;
 
-  while (nanosleep(&requested, &remaining) == -1 && errno == EINTR) {
-    if (INTERRUPT_REQUESTED) break;
-    requested = remaining;
+    requested.tv_sec  = static_cast<time_t>(step_seconds);
+    requested.tv_nsec = static_cast<long>(
+        (step_seconds - static_cast<double>(requested.tv_sec)) * 1000000000.0);
+
+    struct timespec remaining;
+
+    while (nanosleep(&requested, &remaining) == -1 && errno == EINTR) {
+      if (INTERRUPT_REQUESTED) return;
+      requested = remaining;
+    }
+    if (INTERRUPT_REQUESTED) return;
   }
 }
 

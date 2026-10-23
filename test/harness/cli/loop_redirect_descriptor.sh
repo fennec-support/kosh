@@ -93,4 +93,9 @@ truncate_script="$dir/truncate.kosh"
 } > "$truncate_script"
 "$BIN" --mood bash "$truncate_script" "$dir"
 
+echo "== an append to the descriptor it opens on writes every iteration:"
+"$BIN" --mood bash -c "cd '$dir' || exit 1
+for i in 1 2 3; do echo \"\$i\" 3>>same-number.log >&3; done
+tr '\\n' , < same-number.log; echo" 2>&1
+
 echo done

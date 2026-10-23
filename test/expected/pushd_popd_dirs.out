@@ -40,6 +40,10 @@ D/a
 D/b D/a
 == the home directory abbreviates to ~:
 ~/a ~
+== pushd and popd refuse a second operand:
+rc=1
+D
+rc=1
 == popd on an empty stack reports an error:
 error: Builtin `popd`: The directory stack is empty.
      1 |  cd 'D' || exit; popd

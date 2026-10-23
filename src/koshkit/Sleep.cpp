@@ -40,7 +40,7 @@ Sleep::execute(const ExecContext               &ec,
         cxt.scratch_allocator());
   }
 
-  sleep_in_day_steps(total_seconds);
+  if (!os::INTERRUPT_REQUESTED) os::sleep_for_seconds(total_seconds);
 
   return os::INTERRUPT_REQUESTED ? 130 : 0;
 }

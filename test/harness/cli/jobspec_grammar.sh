@@ -12,3 +12,5 @@ echo "== wait resolves a job by its command name:"
 "$BIN" --mood bash -c 'sleep 0.2 & wait %sleep; echo rc=$?' 2>&1
 echo "== bg by name resumes a stopped job:"
 "$BIN" --mood bash -c 'sleep 0.3 & kill -STOP %sleep; bg %sleep; echo rc=$?; wait' 2>&1
+echo "== bg refuses a job that has already finished:"
+"$BIN" --mood bash -c 'sleep 0.1 & sleep 0.5; bg %1 2>/dev/null; echo rc=$?' 2>&1

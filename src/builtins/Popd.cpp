@@ -41,6 +41,11 @@ Popd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
+  if (args.count() > 2) {
+    throw ErrorWithLocationAndDetails{
+        operand_locations[2], "Too many arguments", "Pass one +N or -N index"};
+  }
+
   let &stack = cxt.variable_store().directory_stack();
 
   if (stack.is_empty()) {

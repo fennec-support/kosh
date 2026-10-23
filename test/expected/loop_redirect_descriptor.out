@@ -5,4 +5,6 @@ err=err-1,err-2,err-3,
 bound=40 lines=40
 reopen=a,b,c,d,
 truncate=3,
+== an append to the descriptor it opens on writes every iteration:
+1,2,3,
 done

@@ -39,5 +39,8 @@ echo "== a forged PWD does not change the saved directory:"
 "$BIN" -c "cd '$dir/a' || exit; PWD='$dir/c'; pushd '$dir/b' >/dev/null; dirs" 2>&1 | scrub
 echo "== the home directory abbreviates to ~:"
 HOME="$dir" "$BIN" -c "cd '$dir' || exit; pushd '$dir/a'" 2>&1 | scrub
+echo "== pushd and popd refuse a second operand:"
+"$BIN" --mood bash -c "cd '$dir' || exit; pushd '$dir/a' '$dir/b'; echo rc=\$?; pwd" 2>/dev/null | scrub
+"$BIN" --mood bash -c "cd '$dir' || exit; pushd -n '$dir/a' >/dev/null; popd +0 +1; echo rc=\$?" 2>/dev/null | scrub
 echo "== popd on an empty stack reports an error:"
 "$BIN" -c "cd '$dir' || exit; popd" 2>&1 | scrub | sed 's/^-c:[0-9]*:[0-9]*: //'

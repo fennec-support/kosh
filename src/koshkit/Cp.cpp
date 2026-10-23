@@ -630,7 +630,8 @@ copy_tree_for_move(const ExecContext &ec,
       .root_device_id             = None,
       .should_report_mode_failure = false,
   };
-  let active_directories = ArrayList<cp_directory_identity>{allocator};
+  /* the list may grow inside a child scratch mark, so it uses the heap. */
+  let active_directories = ArrayList<cp_directory_identity>{heap_allocator()};
 
   return copy_path(ec, cxt, source, destination, options, allocator, nullptr,
                    active_directories);

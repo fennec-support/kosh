@@ -1077,8 +1077,10 @@ internal::resolve_redirection(const Redirection    &redir,
      an open descriptor that the returned resolved_redirection carries. */
   let const file_fd = opened.take();
 
+  /* a descriptor that already sits at the redirected number is closed when
+     the command finishes, so the loop cannot keep it. */
   let const is_retained =
-      should_memoize_append &&
+      should_memoize_append && !os::descriptor_is_shell_fd(file_fd, redir.fd) &&
       cxt.retain_loop_redirect_fd(redir.fd, target_path, mode, file_fd);
 
   return resolved_redirection{redirection_outcome::OpenedFile, redir.fd,

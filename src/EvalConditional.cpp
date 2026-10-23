@@ -328,9 +328,9 @@ struct conditional_evaluator
             subscript.find_character('$').has_value() ||
             subscript.find_character('`').has_value();
 
-        /* as in Bash, the subscript of an expanded operand is not expanded
-           again. an associative array takes it as a literal key, and an
-           indexed array cannot evaluate it. */
+        /* the subscript of an expanded operand is not expanded again. an
+           associative array takes it as a literal key, and an indexed array
+           cannot evaluate it. */
         if (has_expansion_text) {
           if (cxt.is_associative_array(name)) {
             return cxt.lookup_associative_element(name, subscript).has_value();

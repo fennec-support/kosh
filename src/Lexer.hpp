@@ -472,9 +472,9 @@ public:
   }
 
   fn
-  drop_pending_heredocs_after(usize count) wontthrow -> void
+  drop_pending_heredocs_after(usize heredoc_count) wontthrow -> void
   {
-    while (m_pending_heredocs.count() > count)
+    while (m_pending_heredocs.count() > heredoc_count)
       m_pending_heredocs.pop_back();
   }
 

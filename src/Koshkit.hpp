@@ -823,10 +823,6 @@ format_file_timestamp(i64       seconds,
 fn
 get_init_system_name(Allocator allocator) throws -> String;
 
-/* sleeps for seconds, any amount, until an interrupt is requested. */
-fn
-sleep_in_day_steps(f64 seconds) wontthrow -> void;
-
 fn
 parse_koshkit_duration_seconds(StringView     text,
                                SourceLocation location,

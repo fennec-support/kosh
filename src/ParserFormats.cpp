@@ -982,13 +982,13 @@ yaml_key_match(StringView        line,
 pure fn
 parser_format_leading_spaces(StringView line) wontthrow -> usize
 {
-  usize count = 0;
+  usize space_count = 0;
 
-  while (count < line.length && line[count] == ' ') {
-    count++;
+  while (space_count < line.length && line[space_count] == ' ') {
+    space_count++;
   }
 
-  return count;
+  return space_count;
 }
 
 static pure fn
