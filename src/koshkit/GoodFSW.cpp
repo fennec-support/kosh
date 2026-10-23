@@ -2,8 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the goodfsw utility. It scans watched paths at fixed
- * intervals and reports creation, removal, content, and attribute changes.
+ * This file implements the goodfsw utility. It scans watched paths when a
+ * filesystem notification arrives or the latency passes, and reports creation,
+ * removal, content, and attribute changes.
  */
 
 #include "../CLI.hpp"
@@ -49,7 +50,7 @@ FLAG(GOODFSW_LATENCY,
      String,
      'l',
      "latency",
-     "Wait this many seconds between scans. The default is one.");
+     "Wait at most this many seconds between scans. The default is one.");
 FLAG(GOODFSW_EXCLUDE,
      String,
      'e',
@@ -361,7 +362,8 @@ scan_path(StringView                path,
            each cycle swaps them, and recycled_entries keeps the storage of the
            older list for the next scan. output is a String in watch_allocator
            that is cleared each cycle.
-   time:   each cycle sleeps latency_seconds, then scans E entries with one
+   time:   each cycle waits for a watcher event or latency_seconds, then scans
+           E entries with one
            stat per path without a known status, sorts the scan in O(E log E)
            with make_sorted(), and merges both lists in O(E). */
 fn
@@ -463,13 +465,33 @@ GoodFSW::execute(const ExecContext               &ec,
       steal(collected_previous).make_sorted(watched_entry_comparator{});
   let recycled_entries = ArrayList<watched_entry>{watch_allocator};
   let output           = String{watch_allocator};
+  let watcher          = os::FileWatcher{};
+  let watched_paths    = HashSet{watch_allocator};
+
+  let const do_watch_directories =
+      [&](const ArrayList<watched_entry> &entries) throws {
+        for (let const &entry : entries) {
+          if (os::file_type_letter(entry.mode) != 'd' ||
+              watched_paths.contains(entry.path.view()))
+          {
+            continue;
+          }
+
+          watcher.watch(entry.path.view());
+          watched_paths.add(entry.path.view());
+        }
+      };
+
+  for (let const &operand : operands)
+    watcher.watch(operand.view());
+  do_watch_directories(previous);
 
   let const should_color = koshkit_should_color();
 
   bool was_interrupted = false;
 
   loop {
-    os::sleep_for_seconds(latency_seconds);
+    watcher.wait(latency_seconds);
     if (os::INTERRUPT_REQUESTED != 0) {
       was_interrupted         = true;
       os::INTERRUPT_REQUESTED = 0;
@@ -494,6 +516,8 @@ GoodFSW::execute(const ExecContext               &ec,
 
     let current =
         steal(recycled_entries).make_sorted(watched_entry_comparator{});
+
+    do_watch_directories(current);
 
     let const scan_microseconds = os::realtime_microseconds();
     let const scan_time = static_cast<i64>(scan_microseconds / 1000000u);

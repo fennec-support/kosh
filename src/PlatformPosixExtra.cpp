@@ -4221,9 +4221,12 @@ FileWatcher::watch(StringView path) wontthrow -> void
 
 #if defined __linux__
   inotify_add_watch(m_descriptor, file_path,
-                    IN_MODIFY | IN_ATTRIB | IN_DELETE_SELF | IN_MOVE_SELF);
+                    IN_MASK_ADD | IN_MODIFY | IN_ATTRIB | IN_DELETE_SELF |
+                        IN_MOVE_SELF | IN_CREATE | IN_DELETE | IN_MOVED_FROM |
+                        IN_MOVED_TO);
   inotify_add_watch(m_descriptor, directory_path,
-                    IN_CREATE | IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
+                    IN_MASK_ADD | IN_CREATE | IN_DELETE | IN_MOVED_FROM |
+                        IN_MOVED_TO);
 #else
   usize slot = 0;
 
