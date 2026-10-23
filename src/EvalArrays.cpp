@@ -89,23 +89,6 @@ for_each_sparse_index(const StringMap<String> &sparse,
   });
 }
 
-static fn
-sparse_array_has_entries(const StringMap<String> &sparse,
-                         StringView               name,
-                         Allocator                allocator) throws -> bool
-{
-  let has_entries = false;
-
-  for_each_sparse_index(sparse, name, allocator,
-                        [&](usize index, const String &value) {
-                          unused(index);
-                          unused(value);
-                          has_entries = true;
-                        });
-
-  return has_entries;
-}
-
 struct sparse_array_entry
 {
   usize  index;
@@ -155,8 +138,8 @@ EvalContext::clear_sparse_array(StringView name) throws -> void
                         });
 
   for (let const index : indices)
-    variable_store().sparse_arrays().values().erase(
-        sparse_array_key(name, index, scratch_allocator()).view());
+    variable_store().sparse_arrays().erase_counted(
+        name, sparse_array_key(name, index, scratch_allocator()).view());
 
   variable_store().sparse_arrays().forget(name);
 }
@@ -404,8 +387,6 @@ EvalContext::set_array_element(StringView name,
 
     if (!variable_store().sparse_arrays().has(name)) return;
 
-    bool did_migrate = false;
-
     loop {
       let const key =
           sparse_array_key(name, dense->count(), scratch_allocator());
@@ -414,18 +395,11 @@ EvalContext::set_array_element(StringView name,
 
       if (!migrated.has_value()) break;
       dense->push_managed(migrated->view());
-      variable_store().sparse_arrays().values().erase(key.view());
-      did_migrate = true;
+      variable_store().sparse_arrays().erase_counted(name, key.view());
     }
 
-    /* the sparse entries of name only shrink when one migrated, and the scan
-       below walks every sparse entry of every array. */
-    if (did_migrate &&
-        !sparse_array_has_entries(variable_store().sparse_arrays().values(),
-                                  name, scratch_allocator()))
-    {
+    if (variable_store().sparse_arrays().get_entry_count(name) == 0)
       variable_store().sparse_arrays().forget(name);
-    }
 
     return;
   }
@@ -433,8 +407,8 @@ EvalContext::set_array_element(StringView name,
   LOG(All, "holding element %zu of '%.*s' sparsely past the dense run of %zu",
       index, static_cast<int>(name.length), name.data, dense_count);
   variable_store().sparse_arrays().declare(name);
-  variable_store().sparse_arrays().values().set(
-      sparse_array_key(name, index, scratch_allocator()).view(), value);
+  variable_store().sparse_arrays().put_counted(
+      name, sparse_array_key(name, index, scratch_allocator()).view(), value);
 }
 
 fn
@@ -918,20 +892,19 @@ EvalContext::unset_array_element(StringView name,
 
       for (usize i = static_cast<usize>(resolved) + 1;
            i < static_cast<usize>(array_count); i++)
-        variable_store().sparse_arrays().values().set(
-            sparse_array_key(name, i, scratch_allocator()).view(),
+        variable_store().sparse_arrays().put_counted(
+            name, sparse_array_key(name, i, scratch_allocator()).view(),
             (*array.value())[i].view());
 
       while (array->count() > static_cast<usize>(resolved))
         array->remove(array->count() - 1);
     } else {
-      variable_store().sparse_arrays().values().erase(
-          sparse_array_key(name, static_cast<usize>(resolved),
-                           scratch_allocator())
-              .view());
+      variable_store().sparse_arrays().erase_counted(
+          name, sparse_array_key(name, static_cast<usize>(resolved),
+                                 scratch_allocator())
+                    .view());
       if (variable_store().sparse_arrays().has(name) &&
-          !sparse_array_has_entries(variable_store().sparse_arrays().values(),
-                                    name, scratch_allocator()))
+          variable_store().sparse_arrays().get_entry_count(name) == 0)
       {
         variable_store().sparse_arrays().forget(name);
       }

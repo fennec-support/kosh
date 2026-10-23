@@ -113,11 +113,44 @@ public:
     return found.has_value() ? *found.value() : u64{0};
   }
 
+  fn
+  put_counted(StringView name,
+              StringView composite,
+              StringView value) throws -> void
+  {
+    if (!m_values.find(composite).has_value())
+      m_entry_counts.set(name, get_entry_count(name) + 1);
+    m_values.set(composite, value);
+  }
+
+  fn
+  erase_counted(StringView name, StringView composite) throws -> void
+  {
+    if (!m_values.find(composite).has_value()) return;
+    m_values.erase(composite);
+
+    let const entry_count = get_entry_count(name);
+
+    if (entry_count <= 1)
+      m_entry_counts.erase(name);
+    else
+      m_entry_counts.set(name, entry_count - 1);
+  }
+
+  pure fn
+  get_entry_count(StringView name) const wontthrow -> usize
+  {
+    let const found = m_entry_counts.find(name);
+
+    return found.has_value() ? *found.value() : usize{0};
+  }
+
 private:
   HashSet           m_names{heap_allocator()};
   bool              m_has_pipestatus{false};
   StringMap<String> m_values{heap_allocator()};
   StringMap<u64>    m_sequences{heap_allocator()};
+  StringMap<usize>  m_entry_counts{heap_allocator()};
   u64               m_next_sequence{1};
 };
 
