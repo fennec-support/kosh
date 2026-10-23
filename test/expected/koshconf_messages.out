@@ -45,3 +45,7 @@ startup-rc=0
 # Store history here.
 editor.history.file_path=/tmp/h
 mood=bash
+== a missing configuration base reports the exact environment state:
+-c:1:1: error: Builtin `koshconf`: The user configuration file cannot be located because XDG_CONFIG_HOME is unset and HOME is unset.
+-c:1:1: error: Builtin `koshconf`: The user configuration file cannot be located because XDG_CONFIG_HOME holds the relative path 'relative' and HOME is unset.
+-c:1:1: error: Builtin `koshconf`: The user configuration file cannot be located because XDG_CONFIG_HOME is empty and HOME is unset.

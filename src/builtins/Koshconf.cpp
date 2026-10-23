@@ -166,12 +166,31 @@ require_user_path(const ExecContext &ec, EvalContext &cxt) throws
 {
   let path = get_user_koshconf_path();
 
-  if (!path.has_value())
+  if (path.has_value()) return path;
+
+  let const xdg = os::get_environment_variable("XDG_CONFIG_HOME");
+  let const has_absolute_xdg =
+      xdg.has_value() && !xdg->is_empty() && Path{xdg->view()}.is_absolute();
+
+  if (has_absolute_xdg || os::get_home_directory().has_value()) {
     report_soft_builtin_error(
         ec, cxt,
         "The user configuration file cannot be located because the shell "
-        "runs as the superuser or because neither an absolute XDG_CONFIG_HOME "
-        "nor HOME is set");
+        "runs as the superuser, which reads no user configuration file");
+
+    return path;
+  }
+
+  let const xdg_state =
+      !xdg.has_value()  ? String{heap_allocator(), "XDG_CONFIG_HOME is unset"}
+      : xdg->is_empty() ? String{heap_allocator(), "XDG_CONFIG_HOME is empty"}
+                        : "XDG_CONFIG_HOME holds the relative path '" + *xdg +
+                              "'";
+
+  report_soft_builtin_error(ec, cxt,
+                            "The user configuration file cannot be located "
+                            "because " +
+                                xdg_state + " and HOME is unset");
 
   return path;
 }

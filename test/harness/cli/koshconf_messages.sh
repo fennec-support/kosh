@@ -51,3 +51,7 @@ echo "== --persist fills a commented placeholder in place:"
 printf '# Store history here.\n# editor.history.file_path=\nmood=bash\n' >"$conf"
 "$BIN" -c 'koshconf set editor.history.file_path /tmp/h --persist'
 cat "$conf"
+echo "== a missing configuration base reports the exact environment state:"
+env -u HOME -u XDG_CONFIG_HOME "$BIN" --mood bash -c 'koshconf create kosh' 2>&1 | head -n 1
+env -u HOME XDG_CONFIG_HOME=relative "$BIN" --mood bash -c 'koshconf create kosh' 2>&1 | head -n 1
+env -u HOME XDG_CONFIG_HOME= "$BIN" --mood bash -c 'koshconf create kosh' 2>&1 | head -n 1
