@@ -2292,9 +2292,10 @@ With no utility,
 groups the catalog under POSIX and Koshka headings.
 .PP
 The bundled set contains basename, bc, cal, calc, cat, chgrp, chmod, chown,
-cksum, cmp, comm, cp, csplit, cut, date, df, diff, dirname, du, env, evil,
+cksum, cmp, comm, cp, csplit, cut, date, df, diff, dirname, du, egrep, env,
+evil,
 evildisk, evilfiles, evilfs, evilio, eviliso, evillogs, evilnet, evilps, evilss,
-expand, expr, file, find, flock, fold, fuser, getconf, goodcore, goodfsw,
+expand, expr, fgrep, file, find, flock, fold, fuser, getconf, goodcore, goodfsw,
 goodnode, goodstat, grep, head, id, killall, link, ln, locale, logger,
 logname, ls, make,
 man, meow, mkdir, mkfifo, more, mv, nice, nl, nohup, nproc, od, paste, pathchk,
@@ -2558,6 +2559,10 @@ option selects a supported POSIX environment.
 .TP
 .B grep
 Regular-expression matches are printed. The
+.B egrep
+and
+.B fgrep
+names run grep with \fB\-E\fR and \fB\-F\fR. The
 .BR \-\-color [= \fIWHEN\fR ]
 option colors matches. WHEN is auto, always, or never, and a bare option means
 auto. Without the option, the color mode of koshkit applies. When color is on,

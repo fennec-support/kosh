@@ -177,7 +177,7 @@ class Utility
 {
 public:
 #define T__KOSHKIT_KIND(util, name) util,
-  enum class Kind : u8
+  enum class Kind : u16
   {
     KOSHKIT_UTILITY_LIST(T__KOSHKIT_KIND)
   };
@@ -198,6 +198,19 @@ inline constexpr static_string_entry<Utility::Kind> KOSHKIT_ENTRIES[] = {
 #undef T__KOSHKIT_ENTRY
 
 inline constexpr StaticStringMap KOSHKIT_UTILS{KOSHKIT_ENTRIES};
+
+struct koshkit_alias
+{
+  Utility::Kind kind;
+  StringView    implied_argument;
+};
+
+inline constexpr static_string_entry<koshkit_alias> KOSHKIT_ALIAS_ENTRIES[] = {
+    {SSK("egrep"), {Utility::Kind::Grep, "-E"}},
+    {SSK("fgrep"), {Utility::Kind::Grep, "-F"}},
+};
+
+inline constexpr StaticStringMap KOSHKIT_ALIASES{KOSHKIT_ALIAS_ENTRIES};
 
 inline constexpr usize KOSHKIT_UTIL_COUNT = countof(KOSHKIT_ENTRIES);
 

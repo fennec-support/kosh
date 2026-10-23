@@ -369,7 +369,7 @@ complete -W '-c -d -n -r -a -w -p -s -S --sync --help' history
 complete -W '-r -R -t -p --help' hash
 complete -c -W '--help --posix -p -R' time
 _koshkit_utils="basename bc cal calc cat chgrp chmod chown cksum cmp comm cp csplit cut date df diff \
-dirname du env evil evildisk evilfiles evilfs evilio evillogs evilnet evilps evilss expand expr file find flock \
+dirname du egrep env evil evildisk evilfiles evilfs evilio evillogs evilnet evilps evilss expand expr fgrep file find flock \
 fold fuser getconf goodcore goodfsw goodnode goodstat eviliso grep head id killall link ln locale logger logname ls make man meow mkdir mkfifo mknod more \
 mv nice nl nohup nproc od paste pathchk pkill pr printenv ps readlink realpath renice retry rm rmdir sed seq \
 sleep sort split stat strings stty sync tabs tail tee timeout touch tput tr tsort tty uname unexpand uniq \

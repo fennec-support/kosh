@@ -88,7 +88,12 @@ report_unresolved_sort_key(const ExecContext &ec,
 flatten fn
 find_util(StringView name) throws -> Maybe<Utility::Kind>
 {
-  return KOSHKIT_UTILS.find(name);
+  if (let const kind = KOSHKIT_UTILS.find(name); kind.has_value()) return kind;
+
+  if (let const alias = KOSHKIT_ALIASES.find(name); alias.has_value())
+    return alias->kind;
+
+  return None;
 }
 
 static thread_local cli_color_mode KOSHKIT_COLOR_MODE = cli_color_mode::Auto;
@@ -290,6 +295,14 @@ print_environment(const ExecContext &ec, EvalContext &cxt) throws
   ec.print_to_stdout(output);
 }
 
+static fn
+execute_util_kind(Utility::Kind                    chosen,
+                  const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) throws
+    -> i32;
+
 fn
 run_util(Utility::Kind                    chosen,
          const ExecContext               &ec,
@@ -300,6 +313,51 @@ run_util(Utility::Kind                    chosen,
   LOG(Debug, "dispatching koshkit utility %d with %zu arguments", ENUM(chosen),
       args.count());
 
+  if (!args.is_empty()) {
+    let const invoked   = args[0].view();
+    let const separator = invoked.find_last_character('/');
+    let const alias     = KOSHKIT_ALIASES.find(
+        separator.has_value() ? invoked.substring(*separator + 1) : invoked);
+
+    if (alias.has_value() && alias->kind == chosen) {
+      LOG(Debug, "running the alias '%s' with the implied argument '%.*s'",
+          args[0].c_str(), static_cast<int>(alias->implied_argument.length),
+          alias->implied_argument.data);
+
+      let aliased_args = ArrayList<String>{cxt.scratch_allocator()};
+      let aliased_locations =
+          ArrayList<SourceLocation>{cxt.scratch_allocator()};
+
+      aliased_args.push(args[0].clone());
+      aliased_args.push(
+          String{cxt.scratch_allocator(), alias->implied_argument});
+      aliased_locations.push(arg_locations.is_empty() ? SourceLocation{}
+                                                      : arg_locations[0]);
+      aliased_locations.push(aliased_locations[0]);
+
+      for (usize index = 1; index < args.count(); index++) {
+        aliased_args.push(args[index].clone());
+        aliased_locations.push(index < arg_locations.count()
+                                   ? arg_locations[index]
+                                   : SourceLocation{});
+      }
+
+      return execute_util_kind(chosen, ec, cxt, aliased_args,
+                               aliased_locations);
+    }
+  }
+
+  return execute_util_kind(chosen, ec, cxt, args, arg_locations);
+}
+
+static fn
+execute_util_kind(Utility::Kind                    chosen,
+                  const ExecContext               &ec,
+                  EvalContext                     &cxt,
+                  const ArrayList<String>         &args,
+                  const ArrayList<SourceLocation> &arg_locations) throws
+    -> i32
+{
   switch (chosen) {
     UTILITY_SWITCH_CASES();
   }

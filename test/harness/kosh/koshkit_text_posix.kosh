@@ -46,6 +46,8 @@ koshkit grep -n needle boundary
 koshkit grep -vn x boundary
 printf 'xac\nxabbc\nzzz\n' | koshkit grep 'xab*c'
 printf 'xac\nzzz\n' | koshkit grep -vn 'xab*c'
+printf 'a.c\nabc\naxc\n' | koshkit fgrep 'a.c'
+printf 'abc\naxc\nayc\n' | koshkit egrep 'a(x|y)c'
 printf 'ac\nabc\n' | koshkit grep 'ab\{0,1\}c'
 printf 'cat\ndog\nbird\n' | koshkit grep 'cat\|dog'
 printf 'abde\nabxe\n' | koshkit grep 'ab[cd]e'
