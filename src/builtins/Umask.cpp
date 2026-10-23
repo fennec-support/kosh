@@ -39,18 +39,6 @@ namespace {
 
 constexpr u32 PERMISSION_BITS = 0777u;
 
-pure fn
-group_mask(char who) wontthrow -> u32
-{
-  switch (who) {
-  case 'u': return 0700u;
-  case 'g': return 0070u;
-  case 'o': return 0007u;
-  case 'a': return 0777u;
-  default:  return 0;
-  }
-}
-
 fn
 mask_to_symbolic(u32 mask, Allocator allocator) throws -> String
 {
@@ -72,73 +60,6 @@ mask_to_symbolic(u32 mask, Allocator allocator) throws -> String
   }
 
   return out;
-}
-
-fn
-apply_symbolic_mask(StringView spec, u32 current_mask) throws
-    -> Maybe<u32>
-{
-  if (spec.is_empty()) return None;
-
-  u32   allowed = (~current_mask) & PERMISSION_BITS;
-  usize i       = 0;
-
-  /* e.g. spec = "g+w,o=", current_mask = 022 starts with allowed = 0755.
-     "g+w" gives permission_bits = 020, so allowed = 0775. "o=" gives
-     permission_bits = 0, so allowed = 0770 and the returned mask is 0007. */
-  while (i < spec.length) {
-    u32 who = 0;
-
-    while (i < spec.length && (spec[i] == 'u' || spec[i] == 'g' ||
-                               spec[i] == 'o' || spec[i] == 'a'))
-    {
-      who |= group_mask(spec[i]);
-      i++;
-    }
-
-    if (who == 0) who = PERMISSION_BITS;
-
-    if (i >= spec.length) return None;
-
-    let const op = spec[i];
-
-    if (op != '+' && op != '-' && op != '=') {
-      return None;
-    }
-
-    i++;
-
-    u32 permission = 0;
-
-    while (i < spec.length &&
-           (spec[i] == 'r' || spec[i] == 'w' || spec[i] == 'x'))
-    {
-      if (spec[i] == 'r') permission |= 4u;
-      if (spec[i] == 'w') permission |= 2u;
-      if (spec[i] == 'x') permission |= 1u;
-      i++;
-    }
-
-    u32 permission_bits = 0;
-
-    if (who & 0700u) permission_bits |= permission << 6;
-    if (who & 0070u) permission_bits |= permission << 3;
-    if (who & 0007u) permission_bits |= permission;
-
-    if (op == '=')
-      allowed = (allowed & ~who) | permission_bits;
-    else if (op == '+')
-      allowed |= permission_bits;
-    else
-      allowed &= ~permission_bits;
-
-    if (i < spec.length) {
-      if (spec[i] != ',') return None;
-      i++;
-    }
-  }
-
-  return (~allowed) & PERMISSION_BITS;
 }
 
 } /* namespace */
@@ -211,14 +132,15 @@ Umask::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
-  let const new_mask =
-      apply_symbolic_mask(requested.view(), os::get_file_creation_mask());
+  let const allowed_mode = utils::parse_file_mode(
+      requested.view(), ~os::get_file_creation_mask() & PERMISSION_BITS, 0,
+      utils::file_kind_mode::Regular);
 
-  if (!new_mask.has_value())
+  if (!allowed_mode.has_value())
     throw make_error_for_arg(ec, 1,
                              "Unable to set the file creation mask because '" +
                                  requested + "' is not a valid symbolic mask");
-  os::set_file_creation_mask(*new_mask);
+  os::set_file_creation_mask(~*allowed_mode & PERMISSION_BITS);
 
   return 0;
 }
