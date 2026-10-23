@@ -339,34 +339,6 @@ fill_file_status(const struct stat &info, file_status &status)
     wontthrow -> void;
 
 cold fn
-list_directory(StringView dir) throws -> Maybe<ArrayList<String>>
-{
-  return list_directory(dir, heap_allocator());
-}
-
-cold fn
-list_directory(StringView dir, Allocator allocator) throws
-    -> Maybe<ArrayList<String>>
-{
-  const String dir_string{allocator, dir};
-  let          entries = list_directory_typed(dir, allocator);
-
-  if (!entries.has_value()) return None;
-
-  let names = ArrayList<String>{allocator};
-
-  names.reserve(entries->count());
-
-  for (let &entry : *entries)
-    names.push(steal(entry.name));
-
-  LOG(All, "read %zu entries from the directory '%s'", names.count(),
-      dir_string.c_str());
-
-  return names;
-}
-
-cold fn
 list_directory_typed(StringView dir) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
 {

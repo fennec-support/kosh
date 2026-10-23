@@ -1690,15 +1690,9 @@ expand_obsolete_line_count(
     let const argument = args[index].view();
     let const location =
         index < arg_locations.count() ? arg_locations[index] : SourceLocation{};
-    bool is_obsolete_count =
-        index == 1 && argument.length > 1 && argument[0] == '-';
-
-    for (usize position = 1; is_obsolete_count && position < argument.length;
-         position++)
-    {
-      is_obsolete_count =
-          argument[position] >= '0' && argument[position] <= '9';
-    }
+    let const is_obsolete_count = index == 1 && argument.length > 1 &&
+                                  argument[0] == '-' &&
+                                  argument.substring(1).is_all_decimal_digits();
 
     if (is_obsolete_count) {
       expanded_args.push_managed("-n");

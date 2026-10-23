@@ -2440,18 +2440,6 @@ for_each_environment_name(opaque                   *context,
 }
 
 fn
-environment_names() -> ArrayList<String>
-{
-  ArrayList<String> names{heap_allocator()};
-
-  for_each_environment_name(&names, [](opaque *context, StringView name) {
-    static_cast<ArrayList<String> *>(context)->push_managed(name);
-  });
-
-  return names;
-}
-
-fn
 sleep_for_seconds(double seconds) wontthrow -> void
 {
   constexpr double STEP_SECONDS = 60.0 * 60.0 * 24.0;

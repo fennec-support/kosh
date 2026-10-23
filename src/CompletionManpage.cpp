@@ -634,12 +634,6 @@ rendered_section_of_page(StringView text, StringView heading) throws
   return synopsis;
 }
 
-static fn
-rendered_synopsis_of_page(StringView text) throws -> String
-{
-  return rendered_section_of_page(text, StringView{"SYNOPSIS"});
-}
-
 /* e.g. the NAME section "ls - list directory contents" -> "list directory
    contents". A NAME section without a dash separator gives nothing. */
 static fn
@@ -1147,7 +1141,8 @@ static fn
 store_manpage_options(StringView page_name, StringView page) throws
     -> const ArrayList<help_entry> &
 {
-  MANPAGE_CACHE.synopses.set(page_name, rendered_synopsis_of_page(page));
+  MANPAGE_CACHE.synopses.set(
+      page_name, rendered_section_of_page(page, StringView{"SYNOPSIS"}));
   MANPAGE_CACHE.descriptions.set(page_name, rendered_description_of_page(page));
 
   return *MANPAGE_CACHE.option_entries.set(page_name,

@@ -64,8 +64,8 @@ parser_format_ascii_equal(StringView left, StringView right) wontthrow -> bool
   return true;
 }
 
-static pure fn
-path_ends_with(StringView path, StringView suffix) wontthrow -> bool
+pure fn
+parser_format_ends_with(StringView path, StringView suffix) wontthrow -> bool
 {
   return suffix.length <= path.length &&
          parser_format_ascii_equal(path.substring(path.length - suffix.length),
@@ -89,7 +89,7 @@ known_host_extension(StringView path) wontthrow -> bool
   };
 
   for (let const extension : EXTENSIONS)
-    if (path_ends_with(path, extension)) return true;
+    if (parser_format_ends_with(path, extension)) return true;
 
   return false;
 }
@@ -167,7 +167,8 @@ path_has_directory(StringView path, StringView directory) wontthrow -> bool
 static pure fn
 has_yaml_extension(StringView path) wontthrow -> bool
 {
-  return path_ends_with(path, ".yml") || path_ends_with(path, ".yaml");
+  return parser_format_ends_with(path, ".yml") ||
+         parser_format_ends_with(path, ".yaml");
 }
 
 static pure fn
@@ -183,16 +184,16 @@ filename_pattern_kind(StringView path, StringView filename) wontthrow
 
     if (path_starts_with(filename, "compose.") ||
         path_starts_with(filename, "docker-compose.") ||
-        path_ends_with(filename, ".compose.yml") ||
-        path_ends_with(filename, ".compose.yaml"))
+        parser_format_ends_with(filename, ".compose.yml") ||
+        parser_format_ends_with(filename, ".compose.yaml"))
     {
       return parser_format_kind::Compose;
     }
 
     if (path_starts_with(filename, "cloudbuild-") ||
         path_starts_with(filename, "cloudbuild.") ||
-        path_ends_with(filename, ".cloudbuild.yml") ||
-        path_ends_with(filename, ".cloudbuild.yaml"))
+        parser_format_ends_with(filename, ".cloudbuild.yml") ||
+        parser_format_ends_with(filename, ".cloudbuild.yaml"))
     {
       return parser_format_kind::CloudBuild;
     }
@@ -206,9 +207,10 @@ filename_pattern_kind(StringView path, StringView filename) wontthrow
     }
   }
 
-  if (path_ends_with(filename, ".devcontainer.json"))
+  if (parser_format_ends_with(filename, ".devcontainer.json"))
     return parser_format_kind::DevContainer;
-  if (path_ends_with(filename, ".make")) return parser_format_kind::Makefile;
+  if (parser_format_ends_with(filename, ".make"))
+    return parser_format_kind::Makefile;
   if (path_starts_with(filename, "dockerfile-") ||
       path_starts_with(filename, "dockerfile_") ||
       path_starts_with(filename, "containerfile-") ||
@@ -237,7 +239,7 @@ has_top_level_key(StringView source, StringView key) wontthrow -> bool
 static pure fn
 path_has_tail(StringView path, StringView tail) wontthrow -> bool
 {
-  if (!path_ends_with(path, tail)) return false;
+  if (!parser_format_ends_with(path, tail)) return false;
   if (path.length == tail.length) return true;
 
   let const separator = path[path.length - tail.length - 1];
@@ -302,8 +304,8 @@ detect_format_kind(const parser_format_input &input) throws
   if (named_kind == parser_format_kind::Taskfile)
     return parser_format_kind::Taskfile;
   if (named_kind == parser_format_kind::Dockerfile ||
-      path_ends_with(filename, ".dockerfile") ||
-      path_ends_with(filename, ".containerfile") ||
+      parser_format_ends_with(filename, ".dockerfile") ||
+      parser_format_ends_with(filename, ".containerfile") ||
       path_starts_with(filename, "dockerfile.") ||
       path_starts_with(filename, "containerfile."))
   {
@@ -311,13 +313,13 @@ detect_format_kind(const parser_format_input &input) throws
   }
 
   if (named_kind == parser_format_kind::Makefile ||
-      path_ends_with(filename, ".mk"))
+      parser_format_ends_with(filename, ".mk"))
   {
     return parser_format_kind::Makefile;
   }
 
   if (named_kind == parser_format_kind::Justfile ||
-      path_ends_with(filename, ".just"))
+      parser_format_ends_with(filename, ".just"))
   {
     return parser_format_kind::Justfile;
   }
@@ -334,16 +336,20 @@ detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::VscodeTasks;
   if (named_kind == parser_format_kind::DevContainer &&
       (path_has_directory(path, ".devcontainer/") ||
-       path_ends_with(filename, ".devcontainer.json")))
+       parser_format_ends_with(filename, ".devcontainer.json")))
   {
     return parser_format_kind::DevContainer;
   }
 
-  if (path_ends_with(path, ".spec") || path_ends_with(path, ".spec.in")) {
+  if (parser_format_ends_with(path, ".spec") ||
+      parser_format_ends_with(path, ".spec.in"))
+  {
     return parser_format_kind::RpmSpec;
   }
-  if (path_ends_with(path, ".md") || path_ends_with(path, ".markdown") ||
-      path_ends_with(path, ".mdx") || path_ends_with(path, ".mdc") ||
+  if (parser_format_ends_with(path, ".md") ||
+      parser_format_ends_with(path, ".markdown") ||
+      parser_format_ends_with(path, ".mdx") ||
+      parser_format_ends_with(path, ".mdc") ||
       named_kind == parser_format_kind::Markdown ||
       parser_format_ascii_equal(language_id, "markdown"))
   {
@@ -1069,7 +1075,7 @@ interpreter_of_value(StringView value) wontthrow -> interpreter_choice
     word = word.substring(*slash + 1);
   if (let const at = word.find_character('@'))
     word = word.substring_of_length(0, *at);
-  if (path_ends_with(word, ".exe"))
+  if (parser_format_ends_with(word, ".exe"))
     word = word.substring_of_length(0, word.length - 4);
 
   /* at this point: word holds no '/' or '@' character. */

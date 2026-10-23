@@ -2832,18 +2832,6 @@ for_each_environment_name(opaque                   *context,
 }
 
 fn
-environment_names() throws -> ArrayList<String>
-{
-  ArrayList<String> names{heap_allocator()};
-
-  for_each_environment_name(&names, [](opaque *context, StringView name) {
-    static_cast<ArrayList<String> *>(context)->push_managed(name);
-  });
-
-  return names;
-}
-
-fn
 check_syscall_impl(i32 status, StringView invocation) throws -> i32
 {
   if (status == -1) {

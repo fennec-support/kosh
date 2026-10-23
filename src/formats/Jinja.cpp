@@ -11,21 +11,15 @@
 
 namespace koshka {
 
-static pure fn
-has_suffix(StringView text, StringView suffix) wontthrow -> bool
-{
-  return text.length >= suffix.length &&
-         parser_format_ascii_equal(text.substring(text.length - suffix.length),
-                                   suffix);
-}
-
 pure fn
 jinja_template_inner_name(StringView filename) wontthrow -> Maybe<StringView>
 {
   static constexpr StringView SUFFIXES[] = {".j2", ".jinja2", ".jinja"};
 
   for (let const suffix : SUFFIXES) {
-    if (filename.length > suffix.length && has_suffix(filename, suffix)) {
+    if (filename.length > suffix.length &&
+        parser_format_ends_with(filename, suffix))
+    {
       return filename.substring_of_length(0, filename.length - suffix.length);
     }
   }

@@ -110,6 +110,45 @@ get_environment_epoch() wontthrow -> u64
 namespace koshka {
 namespace os {
 
+cold fn
+list_directory(StringView dir) throws -> Maybe<ArrayList<String>>
+{
+  return list_directory(dir, heap_allocator());
+}
+
+cold fn
+list_directory(StringView dir, Allocator allocator) throws
+    -> Maybe<ArrayList<String>>
+{
+  let entries = list_directory_typed(dir, allocator);
+
+  if (!entries.has_value()) return None;
+
+  let names = ArrayList<String>{allocator};
+
+  names.reserve(entries->count());
+
+  for (let &entry : *entries)
+    names.push(steal(entry.name));
+
+  LOG(All, "read %zu entries from the directory '%.*s'", names.count(),
+      static_cast<int>(dir.length), dir.data);
+
+  return names;
+}
+
+fn
+environment_names() throws -> ArrayList<String>
+{
+  ArrayList<String> names{heap_allocator()};
+
+  for_each_environment_name(&names, [](opaque *context, StringView name) {
+    static_cast<ArrayList<String> *>(context)->push_managed(name);
+  });
+
+  return names;
+}
+
 subshell_bootstrap::subshell_bootstrap(subshell_bootstrap &&other) noexcept
     : payload(steal(other.payload)), source_origin(steal(other.source_origin)),
       processes(steal(other.processes)), source_length(other.source_length),
