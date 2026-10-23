@@ -4165,6 +4165,42 @@ list_process_open_files(i64                      pid,
 
 constexpr f64 FILE_WATCHER_SLICE_SECONDS = 0.1;
 
+/* fills child_ids with the process ids of every child of this process, zombies
+   included, and returns false when the system cannot list them. */
+static fn
+list_child_process_ids(ArrayList<pid_t> &child_ids) throws -> bool
+{
+#if defined __linux__
+  let path = String{heap_allocator(), "/proc/self/task/"};
+
+  path.append(String::from(static_cast<i64>(getpid()), heap_allocator()));
+  path.append("/children");
+
+  let const contents = Path{path.view()}.read_entire_file();
+
+  if (!contents.has_value()) return false;
+
+  let const text     = contents->view();
+  usize     position = 0;
+
+  loop {
+    let const word = text.next_ascii_whitespace_word(position);
+
+    if (word.is_empty()) break;
+
+    let const parsed = word.to<i64>();
+
+    if (!parsed.is_error()) child_ids.push(static_cast<pid_t>(parsed.value()));
+  }
+
+  return true;
+#else
+  unused(child_ids);
+
+  return false;
+#endif
+}
+
 fn
 FileWatcher::reports_child_changes() const wontthrow -> bool
 {
@@ -4238,7 +4274,7 @@ FileWatcher::watch(StringView path) wontthrow -> void
                             IN_MOVED_FROM | IN_MOVED_TO) < 0)
   {
     LOG(Info, "watching '%s' failed: %s", file_path, strerror(errno));
-    m_has_failed_watch = true;
+    if (errno != ENOENT && errno != ENOTDIR) m_has_failed_watch = true;
   }
 
   struct stat watched_status{};

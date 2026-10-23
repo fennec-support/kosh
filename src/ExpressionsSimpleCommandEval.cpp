@@ -1202,6 +1202,20 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
       i64 function_ret = 0;
 
+      let const do_render_function_error = [&](ErrorWithLocation &error) {
+        if (error.was_rendered()) return;
+
+        let const trace_location = error.location();
+        let const windowed       = window_function_body_error(cxt, error);
+        let const rendered_source =
+            windowed.has_value() ? *windowed
+                                 : cxt.source_store().current_source_view();
+
+        show_message(error.to_string(rendered_source, &cxt));
+        cxt.print_source_backtrace(trace_location);
+        error.set_rendered();
+      };
+
       try {
         function_ret = function_body->evaluate(cxt);
         if (cxt.should_run_return_trap()) {
@@ -1230,18 +1244,16 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         }
 
         throw;
-      } catch (ErrorWithLocation &error) {
-        if (!error.was_rendered()) {
-          let const trace_location = error.location();
-          let const windowed       = window_function_body_error(cxt, error);
-          let const rendered_source =
-              windowed.has_value() ? *windowed
-                                   : cxt.source_store().current_source_view();
-
-          show_message(error.to_string(rendered_source, &cxt));
-          cxt.print_source_backtrace(trace_location);
+      } catch (InterruptErrorWithLocation &error) {
+        if (os::TERMINATION_SIGNAL != 0) {
           error.set_rendered();
+        } else {
+          do_render_function_error(error);
         }
+
+        throw;
+      } catch (ErrorWithLocation &error) {
+        do_render_function_error(error);
 
         throw;
       }

@@ -1693,11 +1693,31 @@ reap_unowned_children() wontthrow -> void
     }
   }
 
+  let child_ids = ArrayList<pid_t>{heap_allocator()};
+
+  try {
+    if (list_child_process_ids(child_ids)) {
+      for (let const child_id : child_ids) {
+        if (spawned_children.find(child_id).has_value()) continue;
+        if (::waitpid(child_id, nullptr, WNOHANG) == child_id) {
+          LOG(Info, "pid 1 reaped the orphan pid %d",
+              static_cast<int>(child_id));
+        }
+      }
+
+      return;
+    }
+  } catch (...) {
+    LOG(Info, "listing the children of pid 1 failed, so it scans for zombies");
+  }
+
   loop {
     siginfo_t info{};
 
     if (::waitid(P_ALL, 0, &info, WEXITED | WNOHANG | WNOWAIT) != 0) break;
-    if (info.si_pid == 0 || spawned_children.find(info.si_pid).has_value()) {
+    if (info.si_pid == 0) break;
+    if (spawned_children.find(info.si_pid).has_value()) {
+      ORPHAN_REAP_PENDING = 1;
       break;
     }
     if (::waitpid(info.si_pid, nullptr, WNOHANG) != info.si_pid) break;
