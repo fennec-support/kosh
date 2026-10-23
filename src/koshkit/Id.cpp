@@ -44,9 +44,9 @@ static fn
 id_user_text(u32 id, Allocator allocator, id_name_mode name_mode) throws
     -> String
 {
-  if (name_mode == id_name_mode::Name)
-    if (let const name = os::uid_to_username(id); name.has_value())
-      return *name;
+  if (name_mode == id_name_mode::Name) {
+    return utils::user_name_or_id(id, allocator);
+  }
 
   return String::from(id, allocator);
 }
@@ -56,9 +56,9 @@ id_group_text(u32          id,
               Allocator    allocator,
               id_name_mode name_mode) throws -> String
 {
-  if (name_mode == id_name_mode::Name)
-    if (let const name = os::gid_to_groupname(id); name.has_value())
-      return *name;
+  if (name_mode == id_name_mode::Name) {
+    return utils::group_name_or_id(id, allocator);
+  }
 
   return String::from(id, allocator);
 }
