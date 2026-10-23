@@ -377,9 +377,7 @@ GoodNode::execute(const ExecContext               &ec,
 
     if (report_results[index].error_number != 0) {
       os::set_last_system_error(report_results[index].error_number);
-      report_soft_koshkit_error(ec, cxt,
-                                "Cannot inspect '" + path +
-                                    "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("inspect", path.view());
       exit_status = 1;
       continue;
     }

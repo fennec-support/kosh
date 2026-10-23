@@ -56,9 +56,10 @@ change_mode(void *context, const os::tree_walk_entry &entry) throws
     if (!entry.is_operand) return true;
 
     if (!os::stat_path_following(entry.path, status)) {
-      report_soft_koshkit_error(state.ec, state.cxt,
-                                "Cannot access '" + entry.path +
-                                    "': " + os::last_system_error_message());
+      report_soft_koshkit_error(
+          state.ec, state.cxt,
+          path_error_message("access", entry.path,
+                             state.cxt.scratch_allocator()));
 
       return false;
     }
@@ -78,8 +79,8 @@ change_mode(void *context, const os::tree_walk_entry &entry) throws
   if (os::set_tree_entry_mode(entry, *parsed)) return true;
 
   report_soft_koshkit_error(state.ec, state.cxt,
-                            "Cannot change mode of '" + entry.path +
-                                "': " + os::last_system_error_message());
+                            path_error_message("change mode of", entry.path,
+                                               state.cxt.scratch_allocator()));
 
   return false;
 }

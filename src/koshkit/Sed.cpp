@@ -703,9 +703,9 @@ Sed::execute(const ExecContext               &ec,
 
     if (!file_script.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_SED_FILE.get_location(file_index),
-                              "Cannot read script file '" +
-                                  FLAG_SED_FILE.get(file_index) +
-                                  "': " + os::last_system_error_message(),
+                              path_error_message("read script file",
+                                                 FLAG_SED_FILE.get(file_index),
+                                                 cxt.scratch_allocator()),
                               "Pass a readable sed script file after -f");
 
       return 1;
