@@ -1253,7 +1253,8 @@ def run_slurp_checks(binary, directory, command_directory, report):
             handle.write(b"alpha\n")
         session.send(b"koshkit vi +2 slurp-first.txt slurp-second.txt\r")
         report.record("vi-opens-the-line-in-normal-mode", session,
-                      has_text("line 2 of 3, column 1, as vi normal"))
+                      lambda screen: has_text("line 2 of 3, column 1, byte 1")(
+                          screen) and has_text("emulating vi normal")(screen))
         session.send(b"iZ")
         settle(session, 0.2)
         session.send(KITTY_ESCAPE)
@@ -1370,7 +1371,8 @@ def run_slurp_checks(binary, directory, command_directory, report):
                            in get_raw_since(session, mark))
         session.send(b"gg$\r\r")
         report.record("vi-enter-steps-down-like-j", session,
-                      has_text("line 3 of 3, column 6, as vi normal"))
+                      lambda screen: has_text("line 3 of 3, column 6,")(screen)
+                      and has_text("emulating vi normal")(screen))
         session.send(b":q\r")
         session.wait_until(is_line(""))
 
@@ -1401,11 +1403,11 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(mouse(0, 1, row) + mouse(32, 5, row)
                      + mouse(0, 5, row, True))
         report.record("slurp-vi-drag-enters-visual-mode", session,
-                      has_text("as vi visual"))
+                      has_text("emulating vi visual"))
         session.send(b"d")
         report.record("slurp-vi-drag-selection-deletes", session,
                       lambda screen: has_row(" beta gamma")(screen)
-                      and has_text("as vi normal")(screen))
+                      and has_text("emulating vi normal")(screen))
         session.send(b":q!\r")
         session.wait_until(is_line(""))
 
@@ -1458,14 +1460,14 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
         session.wait_until(is_line(""))
         session.send(b"slurp slurp-tall.sh\r")
         report.record("slurp-tall-file-shows-the-rows-around-the-caret",
-                      session, has_numbered_rows(46, 60))
+                      session, has_numbered_rows(44, 60))
         session.send(UP * 30)
         report.record("slurp-tall-file-follows-the-caret-up", session,
-                      has_numbered_rows(30, 44))
+                      has_numbered_rows(30, 46))
         session.send(b"X")
         session.send(UP * 40)
         report.record("slurp-up-on-the-first-line-recalls-no-history", session,
-                      lambda screen: has_numbered_rows(1, 15)(screen)
+                      lambda screen: has_numbered_rows(1, 17)(screen)
                       and has_row("#!/bin/sh")(screen))
         session.send(CTRL_X + b"s")
         report.record("slurp-tall-file-saves-every-line", session,
@@ -1509,7 +1511,8 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
                       lambda screen: screen.get_lines()[0].endswith(
                           "slurp slurp-tall.sh"))
         report.record("slurp-status-rows-show-the-caret-line", session,
-                      has_text("line 29 of 60, column 20, as emacs"))
+                      lambda screen: has_text("line 29 of 60, column 20,")(screen)
+                      and has_text("emulating emacs")(screen))
         session.send(CTRL_X + b"i")
         report.record("slurp-ctrl-x-i-shows-the-hint", session,
                       lambda screen: has_text("synopsis")(screen)
@@ -1527,7 +1530,7 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
                       has_text("line 31 of 60, column 8,"))
         session.send(b"\x1b[<65;8;4M")
         report.record("slurp-wheel-scrolls-the-view", session,
-                      lambda screen: has_numbered_rows(32, 46)(screen)
+                      lambda screen: has_numbered_rows(32, 48)(screen)
                       and has_text("line 32 of 60")(screen))
         session.send(KITTY_CTRL_C)
         session.wait_until(has_text("ctrl-c again"))

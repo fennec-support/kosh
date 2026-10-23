@@ -1674,11 +1674,11 @@ Alt\-W copies it there, and typed text replaces it. Ctrl\-G, Esc, or a caret
 move without Shift leaves the selection.
 .IP
 The top row repeats the prompt and the command. The file fills every row under
-it but the last rows, and a file taller than that is shown around the caret.
-The last rows describe the kind of file, its line endings, and its size, then
-give the caret line and column with the edit mode, show the result of the last
-save while one is set, and list the keys that open the key menu and the
-commands. Ctrl\-X i in emacs
+it but the last two rows, and a file taller than that is shown around the
+caret. The first of those rows describes the kind of file, its line endings,
+and its size, then gives the caret line, column, and byte. The second names
+the emulated key set, then shows the result of the last save while one is set,
+or the keys that open the key menu and the commands. Ctrl\-X i in emacs
 mode shows the hint of the word under the caret on those rows until the next
 key, and Ctrl\-I in vi insert mode does the same when the terminal reports
 Ctrl\-I apart from TAB. The M\-x and colon command lines open on the same rows
