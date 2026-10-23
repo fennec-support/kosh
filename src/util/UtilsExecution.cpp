@@ -877,6 +877,7 @@ quit(i32 code, farewell_policy farewell) throws -> void
     LOG(Info, "replacing exit code %d after signal %d", code,
         static_cast<int>(os::TERMINATION_SIGNAL));
     code = 128 + os::TERMINATION_SIGNAL;
+    os::wait_for_every_child();
   }
 
   LOG(Info, "quitting with code %d", code);

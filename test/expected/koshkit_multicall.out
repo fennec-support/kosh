@@ -47,6 +47,8 @@ rc=1
 rc=2
 == the kosh binary was installed:
 kosh-installed
+== a utility that PATH already provides is not linked:
+uname-kept
 == the egrep alias link runs grep -E:
 axb
 == a symlink was installed for head:

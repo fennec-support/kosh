@@ -259,11 +259,18 @@ Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    if (koshkit::KOSHKIT_ALIASES.find(name.view()).has_value()) {
-      report_soft_builtin_error(ec, cxt, location,
-                                StringView{"'"} + name +
-                                    "' is an alias of a bundled utility, so "
-                                    "enable changes the utility it runs");
+    let const alias = koshkit::KOSHKIT_ALIASES.find(name.view());
+    let const alias_index =
+        alias.has_value() ? static_cast<usize>(alias->kind) : usize{0};
+
+    if (alias.has_value() && alias_index < koshkit::util_names().count()) {
+      let const &utility_word = koshkit::util_names()[alias_index];
+
+      report_soft_builtin_error(
+          ec, cxt, location,
+          StringView{"'"} + name + "' is an alias of the bundled utility '" +
+              utility_word + "', so enable accepts only '" + utility_word +
+              "'");
       status = 1;
 
       continue;

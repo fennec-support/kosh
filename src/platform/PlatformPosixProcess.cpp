@@ -342,6 +342,12 @@ note_spawned_child(pid_t child_pid) wontthrow -> void
 
   LOG(Debug, "pid 1 records its child %d", static_cast<int>(child_pid));
 
+  if (TERMINATION_SIGNAL != 0) {
+    LOG(Info, "pid 1 forwards signal %d to the new child %d",
+        static_cast<int>(TERMINATION_SIGNAL), static_cast<int>(child_pid));
+    (void) kill(child_pid, TERMINATION_SIGNAL);
+  }
+
   try {
     get_spawned_children().push(child_pid);
   } catch (...) {
@@ -358,6 +364,30 @@ fork_tracked() wontthrow -> pid_t
   if (child_pid > 0) note_spawned_child(child_pid);
 
   return child_pid;
+}
+
+fn
+forget_spawned_child(i64 process_id) wontthrow -> void
+{
+  let &spawned_children = get_spawned_children();
+
+  if (let const index = spawned_children.find(static_cast<pid_t>(process_id));
+      index.has_value())
+  {
+    LOG(Debug, "pid 1 forgets its child %lld",
+        static_cast<long long>(process_id));
+    spawned_children.remove(*index);
+  }
+}
+
+fn
+wait_for_every_child() wontthrow -> void
+{
+  if (getpid() != 1) return;
+
+  LOG(Info, "pid 1 waits for every child before it exits");
+
+  while (::waitpid(-1, nullptr, 0) > 0 || errno == EINTR) {}
 }
 
 /* a POSIX spawn failure runs in a forked child, which holds a real process
@@ -1264,8 +1294,6 @@ replace_process(ExecContext &&ec) throws -> void
   let const        saved_interrupt_requested = INTERRUPT_REQUESTED;
   let const        saved_termination_signal  = TERMINATION_SIGNAL;
   let const        saved_orphan_reap_pending = ORPHAN_REAP_PENDING;
-  let const        was_termination_handler_installed =
-      IS_TERMINATION_HANDLER_INSTALLED;
 
   check_syscall(sigprocmask(SIG_SETMASK, nullptr, &saved_signal_mask));
   check_syscall(sigaction(SIGCHLD, nullptr, &saved_sigchild_action));
@@ -1277,10 +1305,9 @@ replace_process(ExecContext &&ec) throws -> void
     sigaction(SIGINT, &saved_sigint_action, nullptr);
     sigaction(SIGPIPE, &saved_sigpipe_action, nullptr);
     sigaction(SIGTERM, &saved_sigterm_action, nullptr);
-    INTERRUPT_REQUESTED              = saved_interrupt_requested;
-    TERMINATION_SIGNAL               = saved_termination_signal;
-    ORPHAN_REAP_PENDING              = saved_orphan_reap_pending;
-    IS_TERMINATION_HANDLER_INSTALLED = was_termination_handler_installed;
+    INTERRUPT_REQUESTED = saved_interrupt_requested;
+    TERMINATION_SIGNAL  = saved_termination_signal;
+    ORPHAN_REAP_PENDING = saved_orphan_reap_pending;
     sigprocmask(SIG_SETMASK, &saved_signal_mask, nullptr);
   };
 
@@ -1507,9 +1534,23 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 
   i32           status{};
   struct rusage usage{};
-  const int     wait_flags  = was_stopped != nullptr ? WUNTRACED : 0;
-  let const     changed_pid = retry_interrupted(
-      [&] { return wait4(pid, &status, wait_flags, &usage); });
+  const int     wait_flags = was_stopped != nullptr ? WUNTRACED : 0;
+  let const     do_wait    = [&] throws -> pid_t {
+    if (getpid() != 1) {
+      return retry_interrupted(
+          [&] { return wait4(pid, &status, wait_flags, &usage); });
+    }
+
+    loop {
+      let const waited = retry_interrupted(
+          [&] { return wait4(pid, &status, wait_flags | WNOHANG, &usage); });
+
+      if (waited != 0) return waited;
+
+      wait_for_child_state_change();
+    }
+  };
+  let const changed_pid = do_wait();
 
   check_syscall(changed_pid);
 
@@ -1579,6 +1620,7 @@ wait_for_child_state_change() wontthrow -> void
 
   CHILD_STATE_CHANGED = 0;
   (void) sigprocmask(SIG_SETMASK, &previous_mask, nullptr);
+  reap_unowned_children();
 }
 
 fn
@@ -1612,8 +1654,12 @@ reap_process_quietly(process pid) throws -> i32
 }
 
 fn
-reap_unowned_children() wontthrow -> usize
+reap_unowned_children() wontthrow -> void
 {
+  if (ORPHAN_REAP_PENDING == 0) return;
+
+  ORPHAN_REAP_PENDING = 0;
+
   let  &spawned_children = get_spawned_children();
   usize reaped_count     = 0;
 
@@ -1641,7 +1687,7 @@ reap_unowned_children() wontthrow -> usize
     reaped_count++;
   }
 
-  return reaped_count;
+  LOG(Info, "pid 1 reaped %zu orphans", reaped_count);
 }
 
 fn

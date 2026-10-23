@@ -64,12 +64,18 @@ echo "rc=$?"
 unset KOSH_FLAGS
 # assimilate without a target installs kosh into a local directory with a
 # symlink for each utility, the busybox-style install. A symlinked invocation
-# routes its own flags to the utility rather than the shell CLI. A hermetic temp
-# directory keeps it stable, and it is left in place so the test never runs rm.
-dir=$(mktemp -d)
-"$BIN" -c 'assimilate -y --install-directory "$1"' _ "$dir" </dev/null >/dev/null
+# routes its own flags to the utility rather than the shell CLI. The directory
+# lives in the runner's work directory, which the runner removes.
+dir=$TEST_MKTEMP_DIRECTORY/multicall-assimilate
+provider=$TEST_MKTEMP_DIRECTORY/multicall-provider
+mkdir -p "$dir" "$provider" || exit 1
+ln -sf "$(command -v uname)" "$provider/uname"
+PATH="$dir:$provider" "$BIN" -c 'assimilate -y --install-directory "$1"' _ \
+  "$dir" </dev/null >/dev/null 2>&1
 echo "== the kosh binary was installed:"
 [ -x "$dir/kosh" ] && [ ! -L "$dir/kosh" ] && echo kosh-installed
+echo "== a utility that PATH already provides is not linked:"
+[ -L "$dir/uname" ] && echo uname-shadowed || echo uname-kept
 echo "== the egrep alias link runs grep -E:"
 printf 'axb\nab\n' | "$dir/egrep" 'a(x|y)b'
 echo "== a symlink was installed for head:"

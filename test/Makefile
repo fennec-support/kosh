@@ -56,7 +56,7 @@ SKIPPED_TESTS := \
 	procsub_contexts_matrix \
 	shell_executable_path \
 	analysis_environment_inheritance progcomp_alias_ghost koshconf_persist \
-	koshconf_system_file koshconf_system_layer child_signal_mask \
+	koshconf_system_file koshconf_system_layer child_signal_mask pid_one \
 	fd_allocation_failure process_substitution_release \
 	tsh_session_probe koshkit_files_posix ctrl_c_koshkit_pty
 else ifneq ($(TARGET), Linux)
@@ -65,7 +65,7 @@ SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
 	editor_prompt_pty editor_pending_tab_pty background_terminal_pty \
 	koshkit_evilfiles_parity \
 	prompt_hooks_pty startup_chain_pty trap_during_blocking_open \
-	koshconf_system_file koshconf_system_layer child_signal_mask \
+	koshconf_system_file koshconf_system_layer child_signal_mask pid_one \
 	process_substitution_release
 else
 SKIPPED_TESTS :=
@@ -118,6 +118,9 @@ SKIPPED_TESTS += koshconf_system_file
 endif
 ifneq ($(shell unshare --map-root-user --map-auto -m true 2>/dev/null && echo available),available)
 SKIPPED_TESTS += koshconf_system_layer
+endif
+ifneq ($(shell unshare --map-root-user --pid --fork --mount-proc true 2>/dev/null && echo available),available)
+SKIPPED_TESTS += pid_one
 endif
 endif
 ifeq ($(shell command -v python3),)

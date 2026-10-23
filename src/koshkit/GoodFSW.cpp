@@ -2,9 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the goodfsw utility. It scans watched paths when a
- * filesystem notification arrives or the latency passes, and reports creation,
- * removal, content, and attribute changes.
+ * This file implements the goodfsw utility. It scans watched paths at least one
+ * latency apart, after an inotify notification on Linux or on a timer, and
+ * reports creation, removal, content, and attribute changes.
  */
 
 #include "../CLI.hpp"
@@ -505,6 +505,7 @@ GoodFSW::execute(const ExecContext               &ec,
     let const did_change = watcher.wait(latency_seconds) || should_rescan;
 
     should_rescan = false;
+
     if (os::INTERRUPT_REQUESTED != 0) {
       was_interrupted         = true;
       os::INTERRUPT_REQUESTED = 0;
@@ -522,6 +523,7 @@ GoodFSW::execute(const ExecContext               &ec,
 
     if (scan_gap_seconds < latency_seconds)
       os::sleep_for_seconds(latency_seconds - scan_gap_seconds);
+
     last_scan_nanos = os::monotonic_nanos();
 
     recycled_entries.clear();
@@ -542,8 +544,6 @@ GoodFSW::execute(const ExecContext               &ec,
 
     let current =
         steal(recycled_entries).make_sorted(watched_entry_comparator{});
-
-    do_watch_directories(current);
 
     let const scan_microseconds = os::realtime_microseconds();
     let const scan_time = static_cast<i64>(scan_microseconds / 1000000u);
@@ -608,6 +608,9 @@ GoodFSW::execute(const ExecContext               &ec,
                       scan_nanoseconds, timestamp_format, should_color);
       }
 
+      if (previous_entry.file_id != current_entry.file_id)
+        watched_paths.remove(current_entry.path.view());
+
       previous_position++;
       current_position++;
     }
@@ -616,6 +619,8 @@ GoodFSW::execute(const ExecContext               &ec,
       os::INTERRUPT_REQUESTED = 0;
       break;
     }
+
+    do_watch_directories(current);
 
     recycled_entries = steal(previous).into_array_list();
     previous         = steal(current);

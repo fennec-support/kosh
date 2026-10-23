@@ -1455,8 +1455,10 @@ skipped. Without TARGET, the executable is installed the same way into the
 first usable local PATH directory, and a relative symbolic link to
 .B kosh
 is created for each bundled utility and utility alias whose name is free in
-that directory or already links to it. A name that another entry holds is
-kept and reported in one warning. The
+that directory or already links to it. A name that another entry in that
+directory holds, or that a program elsewhere on PATH already provides, is left
+unlinked, so no existing command is replaced or shadowed. Each group is
+reported in one warning. The
 .BI \-\-link\-mood= MOOD
 option requests a relative bash, dash, sh, or kosh link. It may be repeated and
 accepts comma-separated values. The
@@ -1464,8 +1466,8 @@ accepts comma-separated values. The
 option installs into DIR instead, even when it contains sbin.
 .PP
 The shell asks for confirmation with the target, when one is given, and the
-full path of the new binary. Only an answer that begins with y or Y continues, and any other answer
-exits with status 1. The
+full path of the new binary. Only an answer that begins with y or Y continues,
+and any other answer exits with status 1. The
 .BR \-y " or " \-\-yes
 option skips the question. The
 .BR \-x " or " \-\-trace
@@ -1475,8 +1477,8 @@ and
 .BI \-\-scp\-command= COMMAND
 options replace ssh and scp, and they are rejected without TARGET.
 .PP
-The copied candidate is validated before the installed binary is replaced. A failed
-installation restores the previous file or symlink.
+The copied candidate is validated before the installed binary is replaced. A
+failed installation restores the previous file or symlink.
 .TP
 .B bench
 Each command is run through
@@ -1866,7 +1868,9 @@ mood time is not a keyword and is resolved on the command search path.
 .B "enable [\-a] [\-d] [\-n] [\-p] [\-s] [\-f filename] [name ...]"
 Each operand is enabled, or disabled with
 .BR \-n .
-An operand can be a builtin or a bundled utility. Each builtin word is a
+An operand can be a builtin or a bundled utility. A utility alias such as
+.B egrep
+is rejected, and its utility covers it. Each builtin word is a
 separate entry, and disabling
 .B test
 leaves
@@ -2314,10 +2318,10 @@ the options. The env, expr, flock, nice, nohup, retry, timeout, watch, and
 xargs utilities end their options at the first operand, so the command or
 expression after it keeps its own options.
 .PP
-The
+Without a target, the
 .B assimilate
-builtin installs the utility links. When direct koshkit lookup is enabled, a
-PATH program takes precedence over a bundled utility. A shell
+builtin also links each utility to kosh. When direct koshkit lookup is enabled,
+a PATH program takes precedence over a bundled utility. A shell
 started under a utility name runs that utility. Started as
 .BR koshkit ,
 the link that
@@ -3027,7 +3031,8 @@ filesystem capacity report, respectively.
 Path changes are reported by scanning filesystem metadata, and scans start at
 least one latency period apart. On Linux, a scan runs after an inotify
 notification for a watched directory, and a quiet tree is rescanned every 30
-latency periods. Elsewhere, a scan runs every latency period. Machine-readable
+latency periods. Elsewhere, or after a watch fails, a scan runs every latency
+period. Machine-readable
 output is the default, and each record contains the Unix scan time, a numeric
 event mask, and the path. The \fB\-h\fR and \fB\-\-human-readable\fR options use
 formatted timestamps and descriptive event labels, and \fB\-m\fR and

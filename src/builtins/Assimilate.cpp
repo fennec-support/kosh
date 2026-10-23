@@ -379,6 +379,7 @@ link_local_utilities(const ExecContext &ec,
   kosh_path.append("kosh");
 
   let skipped_names = String{cxt.scratch_allocator()};
+  let shadow_names  = String{cxt.scratch_allocator()};
   i32 status        = 0;
 
   let const do_link_name = [&](StringView name) throws {
@@ -389,9 +390,25 @@ link_local_utilities(const ExecContext &ec,
     if (link.is_symbolic_link() && link.is_same_file_as(kosh_path)) {
       return;
     }
+
     if (link.exists() || link.is_symbolic_link()) {
       if (!skipped_names.is_empty()) skipped_names += ", ";
       skipped_names += name;
+
+      return;
+    }
+
+    let const matches =
+        cxt.program_resolver().search(name, ProgramResolver::SearchMode::First,
+                                      ProgramResolver::Requirement::Runnable,
+                                      ProgramResolver::CachePolicy::Bypass);
+
+    if (!matches.is_empty() && !matches[0].is_same_file_as(kosh_path)) {
+      LOG(Debug, "assimilate keeps '%s' for the utility '%s'",
+          matches[0].c_str(), String{cxt.scratch_allocator(), name}.c_str());
+      if (!shadow_names.is_empty()) shadow_names += ", ";
+      shadow_names += name;
+
       return;
     }
 
@@ -416,6 +433,14 @@ link_local_utilities(const ExecContext &ec,
             String{cxt.scratch_allocator(), install_directory} +
             "' already holds another entry with the same name: " +
             skipped_names);
+  }
+
+  if (!shadow_names.is_empty()) {
+    report_soft_builtin_warning(
+        ec, cxt,
+        "These utilities were not linked because PATH already provides a "
+        "program with the same name: " +
+            shadow_names);
   }
 
   return status;

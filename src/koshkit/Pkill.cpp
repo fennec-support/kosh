@@ -41,7 +41,7 @@ is_signal_spelling(StringView spelled, Allocator allocator) throws
     -> bool
 {
   return spelled.is_all_decimal_digits() ||
-         find_koshkit_signal_name(spelled, allocator).has_value();
+         find_koshkit_signal_number(spelled, allocator).has_value();
 }
 
 fn

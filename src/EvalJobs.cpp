@@ -716,11 +716,15 @@ JobTable::remove_job(i32 id) throws -> bool
   m_detached_job_processes.reserve(m_detached_job_processes.count() +
                                    detached_count);
 
-  if (removed.is_primary_process_active)
+  if (removed.is_primary_process_active) {
     m_detached_job_processes.push(removed.pid);
+    os::forget_spawned_child(os::process_id_of(removed.pid));
+  }
 
-  for (let const process : removed.earlier_pipeline_processes)
+  for (let const process : removed.earlier_pipeline_processes) {
     m_detached_job_processes.push(process);
+    os::forget_spawned_child(os::process_id_of(process));
+  }
 
   m_jobs.remove(*removed_index);
 

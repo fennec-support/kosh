@@ -4240,9 +4240,15 @@ FileWatcher::watch(StringView path) wontthrow -> void
     LOG(Info, "watching '%s' failed: %s", file_path, strerror(errno));
     m_has_failed_watch = true;
   }
-  inotify_add_watch(m_descriptor, directory_path,
-                    IN_MASK_ADD | IN_MODIFY | IN_ATTRIB | IN_CREATE |
-                        IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
+
+  struct stat watched_status{};
+
+  if (stat(file_path, &watched_status) != 0 || !S_ISDIR(watched_status.st_mode))
+  {
+    inotify_add_watch(m_descriptor, directory_path,
+                      IN_MASK_ADD | IN_MODIFY | IN_ATTRIB | IN_CREATE |
+                          IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
+  }
 #else
   usize slot = 0;
 

@@ -755,10 +755,8 @@ read_recent_system_log_records(StringView log_name,
 volatile sig_atomic_t INTERRUPT_REQUESTED = 0;
 volatile sig_atomic_t TERMINATION_SIGNAL  = 0;
 volatile sig_atomic_t ORPHAN_REAP_PENDING = 0;
-
-static bool           IS_TERMINATION_HANDLER_INSTALLED = false;
-volatile sig_atomic_t CHILD_STATE_CHANGED              = 0;
-volatile sig_atomic_t SIGNAL_PENDING                   = 0;
+volatile sig_atomic_t CHILD_STATE_CHANGED = 0;
+volatile sig_atomic_t SIGNAL_PENDING      = 0;
 
 static constexpr i32         SIGNAL_FLAG_COUNT                       = 128;
 static constexpr i32         CHILD_SIGNAL_NUMBER                     = SIGCHLD;
@@ -2891,6 +2889,9 @@ install_child_state_handler() throws -> void
 }
 
 static fn
+handle_termination(int s) wontthrow -> void;
+
+static fn
 reset_signal_handlers() throws -> void
 {
   LOG(Debug, "restoring signal dispositions for a child process");
@@ -2927,12 +2928,16 @@ reset_signal_handlers() throws -> void
 
   sigemptyset(&SIGNALS_WITH_TRAP_ACTION);
 
-  if (IS_TERMINATION_HANDLER_INSTALLED) {
+  struct sigaction termination_action = {};
+
+  if (sigaction(SIGTERM, nullptr, &termination_action) == 0 &&
+      termination_action.sa_handler == handle_termination)
+  {
     (void) sigaction(SIGTERM, &sa, nullptr);
-    IS_TERMINATION_HANDLER_INSTALLED = false;
-    TERMINATION_SIGNAL               = 0;
-    ORPHAN_REAP_PENDING              = 0;
   }
+
+  TERMINATION_SIGNAL  = 0;
+  ORPHAN_REAP_PENDING = 0;
 
   if (IS_PIPE_SIGNAL_IGNORED_BY_TRAP || WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY) {
     sa.sa_handler = SIG_IGN;
@@ -2953,6 +2958,14 @@ static fn
 handle_termination(int s) wontthrow -> void
 {
   let const saved_errno = errno;
+
+  if (getpid() != 1) {
+    (void) signal(s, SIG_DFL);
+    (void) raise(s);
+    errno = saved_errno;
+
+    return;
+  }
 
   TERMINATION_SIGNAL  = s;
   INTERRUPT_REQUESTED = 1;
@@ -3089,7 +3102,6 @@ set_default_signal_handlers(signal_profile profile) throws -> void
 
     st.sa_handler = handle_termination;
     check_syscall(sigaction(SIGTERM, &st, nullptr));
-    IS_TERMINATION_HANDLER_INSTALLED = true;
   }
 
   install_child_state_handler();
@@ -3227,7 +3239,6 @@ set_trap_handler(i32 signal_number) throws -> void
 
   if (signal_number == SIGPIPE) IS_PIPE_SIGNAL_IGNORED_BY_TRAP = false;
   if (signal_number == SIGINT) IS_INTERRUPT_SIGNAL_IGNORED = false;
-  if (signal_number == SIGTERM) IS_TERMINATION_HANDLER_INSTALLED = false;
   if (signal_number == SIGCHLD) {
     install_child_state_handler();
   } else {
@@ -3253,7 +3264,6 @@ set_trap_ignore(i32 signal_number) throws -> void
   sigdelset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
   if (signal_number == SIGPIPE) IS_PIPE_SIGNAL_IGNORED_BY_TRAP = true;
   if (signal_number == SIGINT) IS_INTERRUPT_SIGNAL_IGNORED = true;
-  if (signal_number == SIGTERM) IS_TERMINATION_HANDLER_INSTALLED = false;
 }
 
 fn
@@ -3276,7 +3286,6 @@ clear_trap_handler(i32 signal_number) throws -> void
 
   if (signal_number == SIGTERM && getpid() == 1) {
     install_signal_disposition(SIGTERM, handle_termination);
-    IS_TERMINATION_HANDLER_INSTALLED = true;
 
     return;
   }

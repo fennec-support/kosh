@@ -2475,7 +2475,11 @@ extern volatile sig_atomic_t TERMINATION_SIGNAL;
 extern volatile sig_atomic_t ORPHAN_REAP_PENDING;
 
 fn
-reap_unowned_children() wontthrow -> usize;
+reap_unowned_children() wontthrow -> void;
+fn
+forget_spawned_child(i64 process_id) wontthrow -> void;
+fn
+wait_for_every_child() wontthrow -> void;
 
 extern volatile sig_atomic_t CHILD_STATE_CHANGED;
 

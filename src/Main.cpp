@@ -2957,10 +2957,7 @@ kosh_main(int argc, char **argv) -> int
     ASSERT(!koshka::os::can_fork_evaluator() ||
            !koshka::os::is_child_process());
 
-    if (koshka::os::ORPHAN_REAP_PENDING) {
-      koshka::os::ORPHAN_REAP_PENDING = 0;
-      unused(koshka::os::reap_unowned_children());
-    }
+    koshka::os::reap_unowned_children();
 
     if (koshka::os::TERMINATION_SIGNAL != 0) {
       LOG(Info, "pid 1 received signal %d, so the shell exits",

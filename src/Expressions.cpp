@@ -581,10 +581,7 @@ Expression::evaluate_root_status(EvalContext         &cxt,
                                  root_evaluation_mode mode) const throws
     -> status_result
 {
-  if (os::ORPHAN_REAP_PENDING) {
-    os::ORPHAN_REAP_PENDING = 0;
-    unused(os::reap_unowned_children());
-  }
+  if (os::ORPHAN_REAP_PENDING) os::reap_unowned_children();
 
   if (os::INTERRUPT_REQUESTED) {
     os::INTERRUPT_REQUESTED = 0;

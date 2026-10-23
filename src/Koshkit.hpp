@@ -845,8 +845,8 @@ parse_koshkit_duration_seconds(StringView     text,
                                Allocator      allocator) throws -> f64;
 
 fn
-find_koshkit_signal_name(StringView spelled, Allocator allocator) throws
-    -> Maybe<i32>;
+find_koshkit_signal_number(StringView spelled,
+                           Allocator  allocator) throws -> Maybe<i32>;
 
 fn
 resolve_koshkit_signal(StringView     spelled,

@@ -1,0 +1,14 @@
+== lastpipe stages keep their statuses:
+ps=7 0
+last=b ps=0 0
+== a pending process substitution keeps its status:
+x
+rc=3
+== orphans are reaped while the shell waits:
+zombies=0
+== SIGTERM ends the foreground command and exits with 143:
+exit-trap
+rc=143
+== a killed subshell dies without signalling other processes:
+victim=143
+bystander=0

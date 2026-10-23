@@ -3010,10 +3010,18 @@ reap_process_quietly(process p) -> i32
 }
 
 fn
-reap_unowned_children() wontthrow -> usize
+reap_unowned_children() wontthrow -> void
+{}
+
+fn
+forget_spawned_child(i64 process_id) wontthrow -> void
 {
-  return 0;
+  unused(process_id);
 }
+
+fn
+wait_for_every_child() wontthrow -> void
+{}
 
 fn
 poll_process(process              p,

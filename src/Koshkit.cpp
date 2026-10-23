@@ -1549,8 +1549,8 @@ struct signal_number_comparator
 };
 
 fn
-find_koshkit_signal_name(StringView spelled, Allocator allocator) throws
-    -> Maybe<i32>
+find_koshkit_signal_number(StringView spelled,
+                           Allocator  allocator) throws -> Maybe<i32>
 {
   let uppercased = String{allocator, spelled};
 
@@ -1578,7 +1578,7 @@ resolve_koshkit_signal(StringView     spelled,
     return static_cast<i32>(parsed.value());
   }
 
-  let const resolved = find_koshkit_signal_name(spelled, allocator);
+  let const resolved = find_koshkit_signal_number(spelled, allocator);
 
   if (!resolved.has_value()) {
     throw ErrorWithLocationAndDetails{
