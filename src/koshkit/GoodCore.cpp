@@ -615,8 +615,9 @@ GoodCore::execute(const ExecContext               &ec,
   lldb_script += quoted_executable.view();
   lldb_script += " \"$@\"\n";
 
-  let const do_write_script = [&](StringView script_name,
-                                  StringView script_text) throws -> bool {
+  let const do_write_script =
+      [&](StringView script_name,
+          StringView script_text) throws -> bool {
     let script_path = stage.clone();
 
     script_path.append(script_name);
