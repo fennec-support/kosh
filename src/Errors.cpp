@@ -649,6 +649,41 @@ resolve_rendered_site(StringView            source,
                        resolved.line_offset};
 }
 
+cold static fn
+append_location_prefix(String                            &result,
+                       const rendered_site               &site,
+                       bool                               is_filename_hidden,
+                       const utils::source_line_position &line_position,
+                       usize                              byte_position,
+                       const diagnostic_color            &color,
+                       StringView                         severity_word) throws -> void
+{
+  const usize column =
+      toiletline::get_utf8_length(site.source.data + line_position.line_start,
+                                  byte_position - line_position.line_start) +
+      1;
+
+  result += color.location;
+  if (let const name = site.location.get_filename();
+      name.has_value() && !is_filename_hidden)
+  {
+    result += *name;
+    result += ':';
+  }
+
+  result += String::from(
+      reported_line_number(line_position.line_number, site.line_offset),
+      heap_allocator());
+  result += ':';
+  result += String::from(column, heap_allocator());
+  result += ':';
+  result += color.get_reset();
+  result += ' ';
+  result += color.severity;
+  result += severity_word;
+  result += color.get_reset();
+}
+
 fn
 ErrorWithLocation::to_string(StringView source, EvalContext *context) const
     throws -> String
@@ -687,33 +722,12 @@ ErrorWithLocation::to_string(StringView source, EvalContext *context) const
 
   let const line_position =
       utils::source_line_position_at(source, byte_position);
-  const usize line_byte_position =
-      toiletline::get_utf8_length(source.data + line_position.line_start,
-                                  byte_position - line_position.line_start) +
-      1;
   let const color = diagnostic_colors_for(severity);
 
   let result = String{heap_allocator()};
 
-  result += color.location;
-  if (let const name = site.location.get_filename();
-      name.has_value() && !m_is_filename_hidden)
-  {
-    result += *name;
-    result += ':';
-  }
-
-  result += String::from(
-      reported_line_number(line_position.line_number, site.line_offset),
-      heap_allocator());
-  result += ':';
-  result += String::from(line_byte_position, heap_allocator());
-  result += ':';
-  result += color.get_reset();
-  result += ' ';
-  result += color.severity;
-  result += severity_word;
-  result += color.get_reset();
+  append_location_prefix(result, site, m_is_filename_hidden, line_position,
+                         byte_position, color, severity_word);
   if (!m_message.is_empty()) {
     result += ": ";
     append_diagnostic_message(result, m_message.view(), color);
@@ -861,11 +875,6 @@ DetailsWithLocation::to_string(StringView source, EvalContext *context) const
 
   let const details_line_position =
       utils::source_line_position_at(source, byte_position);
-  const usize details_line_byte_position =
-      toiletline::get_utf8_length(
-          source.data + details_line_position.line_start,
-          byte_position - details_line_position.line_start) +
-      1;
 
   let const severity      = get_severity();
   let const severity_word = get_error_severity_word(severity);
@@ -873,25 +882,9 @@ DetailsWithLocation::to_string(StringView source, EvalContext *context) const
 
   let result = String{heap_allocator()};
 
-  result += color.location;
-  if (let const name = site.location.get_filename();
-      name.has_value() && !m_is_filename_hidden)
-  {
-    result += *name;
-    result += ':';
-  }
-
-  result += String::from(
-      reported_line_number(details_line_position.line_number, site.line_offset),
-      heap_allocator());
-  result += ':';
-  result += String::from(details_line_byte_position, heap_allocator());
-  result += ':';
-  result += color.get_reset();
-  result += ' ';
-  result += color.severity;
-  result += severity_word;
-  result += color.get_reset();
+  append_location_prefix(result, site, m_is_filename_hidden,
+                         details_line_position, byte_position, color,
+                         severity_word);
   result += ":\n";
 
   result += get_context_pointing_to(source, byte_position, byte_count,
