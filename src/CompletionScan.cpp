@@ -21,14 +21,14 @@
 #include "MimicMood.hpp"
 #include "Options.hpp"
 #include "Parser.hpp"
-#include "Platform.hpp"
 #include "Tokens.hpp"
-#include "Utils.hpp"
 #include "base/Arena.hpp"
 #include "base/Debug.hpp"
 #include "base/HashSet.hpp"
 #include "base/Path.hpp"
 #include "base/Trace.hpp"
+#include "platform/Platform.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 

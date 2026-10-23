@@ -11,7 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-a] [-n number] [-t format] [file ...]",
                   "Write printable byte sequences.");

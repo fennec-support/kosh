@@ -15,8 +15,8 @@
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "ProgramResolver.hpp"
-#include "Utils.hpp"
 #include "base/Trace.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 

@@ -10,9 +10,9 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
 #include "../base/Path.hpp"
 #include "../base/Trace.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-p] [-m mode] directory ...",
                   "Create each specified directory.");

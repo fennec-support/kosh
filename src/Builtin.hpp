@@ -13,9 +13,9 @@
 
 #include "CLI.hpp"
 #include "MimicMood.hpp"
-#include "Platform.hpp"
 #include "base/Common.hpp"
 #include "base/Maybe.hpp"
+#include "platform/Platform.hpp"
 
 namespace koshka {
 

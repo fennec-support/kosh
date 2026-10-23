@@ -12,7 +12,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-uwa] [--color[=when]] [-L label] file1 file2",
                   "The diff utility can compare two files line by line.");

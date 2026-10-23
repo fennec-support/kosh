@@ -13,10 +13,10 @@
 #include "Parser.hpp"
 #include "ParserInternal.hpp"
 #include "Tokens.hpp"
-#include "Utils.hpp"
 #include "base/Arena.hpp"
 #include "base/Debug.hpp"
 #include "base/Trace.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 

@@ -11,8 +11,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
-#include "../Utils.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-m mode] file ...", "Create FIFO special files.");
 

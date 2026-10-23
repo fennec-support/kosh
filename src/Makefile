@@ -5,20 +5,22 @@ ARCH ?= $(shell uname -m)
 NO_TOILETLINE ?= 0
 NO_KOSHKIT ?= 0
 
-ROUTED_SOURCES := PlatformPosix.cpp PlatformPosixExtra.cpp \
-	PlatformPosixFilesystem.cpp PlatformPosixFilesystemExtra.cpp \
-	PlatformPosixProcess.cpp PlatformWin32.cpp \
-	PlatformWin32Filesystem.cpp PlatformWin32Process.cpp
-SOURCES := $(filter-out $(ROUTED_SOURCES),$(wildcard *.cpp))
+ROUTED_SOURCES := platform/PlatformPosix.cpp platform/PlatformPosixExtra.cpp \
+	platform/PlatformPosixFilesystem.cpp \
+	platform/PlatformPosixFilesystemExtra.cpp platform/PlatformPosixProcess.cpp \
+	platform/PlatformWin32.cpp platform/PlatformWin32Filesystem.cpp \
+	platform/PlatformWin32Process.cpp
+SOURCES := $(wildcard *.cpp)
 HEADERS := $(wildcard *.hpp)
 
 SOURCE_DIRECTORIES := $(wildcard */.)
 
 SOURCES += $(wildcard */**.cpp)
 HEADERS += $(wildcard */**.hpp)
+SOURCES := $(filter-out $(ROUTED_SOURCES),$(SOURCES))
 
 ifeq ($(NO_KOSHKIT), 1)
-SOURCES := $(filter-out koshkit/% CLILive.cpp UtilsOwnership.cpp,$(SOURCES))
+SOURCES := $(filter-out koshkit/% CLILive.cpp util/UtilsOwnership.cpp,$(SOURCES))
 endif
 
 # The host OS, Windows_NT on Windows and the uname elsewhere.

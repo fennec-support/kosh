@@ -15,12 +15,12 @@
 #include "Expressions.hpp"
 #include "Lexer.hpp"
 #include "Parser.hpp"
-#include "Platform.hpp"
-#include "Utils.hpp"
 #include "base/Arena.hpp"
 #include "base/Debug.hpp"
 #include "base/Path.hpp"
 #include "base/Trace.hpp"
+#include "platform/Platform.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 

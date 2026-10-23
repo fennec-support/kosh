@@ -10,7 +10,7 @@
 #include "Diagnostics.hpp"
 
 #include "Lexer.hpp"
-#include "Utils.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 

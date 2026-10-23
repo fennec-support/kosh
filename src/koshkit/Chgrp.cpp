@@ -11,7 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../UtilsOwnership.hpp"
+#include "../util/UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[-hRx] [-H|-L|-P] group file ...",
                   "The chgrp utility can change file group ownership.");

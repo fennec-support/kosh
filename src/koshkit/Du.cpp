@@ -12,12 +12,12 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
 #include "../base/Arena.hpp"
 #include "../base/HashSet.hpp"
 #include "../base/Path.hpp"
 #include "../base/StringMap.hpp"
 #include "../base/Trace.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-shxT] [--tree] [path ...]",
                   "The du utility can print the disk usage of each path.");

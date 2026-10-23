@@ -12,11 +12,11 @@
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "Expressions.hpp"
-#include "Platform.hpp"
-#include "Utils.hpp"
 #include "base/Common.hpp"
 #include "base/String.hpp"
 #include "base/StringView.hpp"
+#include "platform/Platform.hpp"
+#include "util/Utils.hpp"
 
 #define SET_AND_RETURN_EXIT_STATUS(cxt, status)                                \
   return ::koshka::expressions::internal::set_and_return_exit_status(          \

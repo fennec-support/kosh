@@ -11,16 +11,16 @@
  * file as the general Win32 backend.
  */
 
-#include "CLI.hpp"
-#include "Errors.hpp"
-#include "Eval.hpp"
-#include "EvalVariablesInternal.hpp"
+#include "../CLI.hpp"
+#include "../Errors.hpp"
+#include "../Eval.hpp"
+#include "../EvalVariablesInternal.hpp"
+#include "../base/Common.hpp"
+#include "../base/Debug.hpp"
+#include "../base/StaticStringMap.hpp"
+#include "../base/Trace.hpp"
+#include "../util/Utils.hpp"
 #include "Platform.hpp"
-#include "Utils.hpp"
-#include "base/Common.hpp"
-#include "base/Debug.hpp"
-#include "base/StaticStringMap.hpp"
-#include "base/Trace.hpp"
 
 #include <fcntl.h>
 #include <ntsecapi.h>

@@ -10,9 +10,9 @@
 #include "../CLI.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
-#include "../Platform.hpp"
-#include "../Utils.hpp"
 #include "../base/Trace.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
 
 FLAG_LIST_DECL();
 

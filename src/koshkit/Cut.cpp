@@ -11,7 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("-b list [-n] | -c list | -f list [-d delim] [-s] "
                   "[--complement] [--output-delimiter=str] [-z] [file ...]",

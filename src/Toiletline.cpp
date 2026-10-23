@@ -22,14 +22,14 @@
 #include "Koshconf.hpp"
 #include "Koshkit.hpp"
 #include "Options.hpp"
-#include "Platform.hpp"
 #include "ToiletlineHistory.hpp"
-#include "Utils.hpp"
 #include "base/Allocator.hpp"
 #include "base/Debug.hpp"
 #include "base/ErrorOr.hpp"
 #include "base/Path.hpp"
 #include "base/Trace.hpp"
+#include "platform/Platform.hpp"
+#include "util/Utils.hpp"
 
 namespace toiletline {
 

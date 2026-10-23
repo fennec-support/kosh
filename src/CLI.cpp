@@ -12,12 +12,12 @@
 #include "CLIColors.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
-#include "Platform.hpp"
 #include "Toiletline.hpp"
-#include "Utils.hpp"
 #include "base/Common.hpp"
 #include "base/Debug.hpp"
 #include "base/Trace.hpp"
+#include "platform/Platform.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 

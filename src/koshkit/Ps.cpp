@@ -10,9 +10,9 @@
 #include "../CLI.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
-#include "../Utils.hpp"
-#include "../UtilsOwnership.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
+#include "../util/UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[aux]", "List the running processes.");
 

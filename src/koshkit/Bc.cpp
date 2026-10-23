@@ -12,8 +12,8 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Lexer.hpp"
-#include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-lq] [file ...]",
                   "The bc utility can evaluate decimal arithmetic statements.");

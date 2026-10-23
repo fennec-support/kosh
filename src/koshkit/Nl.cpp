@@ -11,8 +11,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
+#include "../util/Utils.hpp"
 
 constexpr u64 NL_WIDTH_LIMIT = 65536;
 

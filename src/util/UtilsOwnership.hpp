@@ -8,11 +8,11 @@
 
 #pragma once
 
-#include "base/Allocator.hpp"
-#include "base/Common.hpp"
-#include "base/Maybe.hpp"
-#include "base/Path.hpp"
-#include "base/StringView.hpp"
+#include "../base/Allocator.hpp"
+#include "../base/Common.hpp"
+#include "../base/Maybe.hpp"
+#include "../base/Path.hpp"
+#include "../base/StringView.hpp"
 
 namespace koshka {
 

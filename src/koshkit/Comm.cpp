@@ -11,7 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-123z] [--check-order | --nocheck-order] "
                   "[--output-delimiter=string] [--total] file1 file2",

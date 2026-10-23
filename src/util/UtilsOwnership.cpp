@@ -9,11 +9,11 @@
 
 #include "UtilsOwnership.hpp"
 
-#include "Eval.hpp"
-#include "Koshkit.hpp"
-#include "Platform.hpp"
-#include "base/ArrayList.hpp"
-#include "base/String.hpp"
+#include "../Eval.hpp"
+#include "../Koshkit.hpp"
+#include "../base/ArrayList.hpp"
+#include "../base/String.hpp"
+#include "../platform/Platform.hpp"
 
 namespace koshka::utils {
 

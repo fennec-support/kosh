@@ -12,7 +12,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
+#include "../platform/Platform.hpp"
 
 KOSHKIT_UTIL_DECL(
     "[-n] [--transaction-held-lock] path command [argument ...]",

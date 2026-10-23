@@ -12,8 +12,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../MimicMood.hpp"
-#include "../Utils.hpp"
 #include "../base/Trace.hpp"
+#include "../util/Utils.hpp"
 
 FLAG_LIST_DECL();
 

@@ -15,10 +15,10 @@
 #include "../EvalOperations.hpp"
 #include "../Koshkit.hpp"
 #include "../Lexer.hpp"
-#include "../Platform.hpp"
 #include "../Toiletline.hpp"
-#include "../Utils.hpp"
 #include "../base/Trace.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL(
     "[-i] [-p] [expression ...]",

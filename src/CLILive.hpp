@@ -15,10 +15,10 @@
 #include "CLI.hpp"
 #include "Eval.hpp"
 #include "ExecContext.hpp"
-#include "Platform.hpp"
 #include "base/Arena.hpp"
 #include "base/ArrayList.hpp"
 #include "base/Maybe.hpp"
+#include "platform/Platform.hpp"
 
 #include <type_traits>
 

@@ -15,7 +15,6 @@
 #include "Builtin.hpp"
 #include "Errors.hpp"
 #include "MimicMood.hpp"
-#include "Platform.hpp"
 #include "base/Arena.hpp"
 #include "base/Bitset.hpp"
 #include "base/Common.hpp"
@@ -24,6 +23,7 @@
 #include "base/Hive.hpp"
 #include "base/Maybe.hpp"
 #include "base/Path.hpp"
+#include "platform/Platform.hpp"
 
 namespace koshka {
 

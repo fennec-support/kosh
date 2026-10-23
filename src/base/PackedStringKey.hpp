@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "../Platform.hpp"
+#include "../platform/Platform.hpp"
 #include "Common.hpp"
 #include "String.hpp"
 #include "StringView.hpp"

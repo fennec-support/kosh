@@ -11,11 +11,11 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
 #include "../base/Arena.hpp"
 #include "../base/Path.hpp"
 #include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL(
     "[path ...] [-name glob] [-iname glob] [-type fdl] "

@@ -12,8 +12,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
 #include "../base/Path.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-AbeEnstTuv] [--syntax-highlighting] [file ...]",
                   "The cat utility can write each file to standard output.");

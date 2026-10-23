@@ -12,9 +12,9 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
-#include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
 
 FLAG_LIST_DECL();
 

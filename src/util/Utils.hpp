@@ -10,13 +10,13 @@
 
 #pragma once
 
-#include "Builtin.hpp"
-#include "Eval.hpp"
-#include "Platform.hpp"
-#include "Tokens.hpp"
-#include "base/Common.hpp"
-#include "base/ErrorOr.hpp"
-#include "base/Path.hpp"
+#include "../Builtin.hpp"
+#include "../Eval.hpp"
+#include "../Tokens.hpp"
+#include "../base/Common.hpp"
+#include "../base/ErrorOr.hpp"
+#include "../base/Path.hpp"
+#include "../platform/Platform.hpp"
 
 namespace koshka {
 

@@ -14,9 +14,9 @@
 #include "Heredoc.hpp"
 #include "Lexer.hpp"
 #include "MimicMood.hpp"
-#include "Utils.hpp"
 #include "base/Path.hpp"
 #include "base/StaticStringMap.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 

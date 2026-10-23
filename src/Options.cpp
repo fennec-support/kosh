@@ -12,9 +12,9 @@
 #include "Completion.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
-#include "Platform.hpp"
 #include "base/StaticStringMap.hpp"
 #include "base/Trace.hpp"
+#include "platform/Platform.hpp"
 
 namespace koshka {
 

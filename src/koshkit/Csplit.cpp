@@ -11,8 +11,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
 #include "../base/Path.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-ks] [-f prefix] [-n digits] file pattern ...",
                   "The csplit utility can divide a file at selected lines.");

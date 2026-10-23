@@ -10,8 +10,8 @@
  * FileWatcher through inotify and kqueue.
  */
 
-#include "Utils.hpp"
-#include "base/Trace.hpp"
+#include "../base/Trace.hpp"
+#include "../util/Utils.hpp"
 
 #if defined __APPLE__
 #include <grp.h>

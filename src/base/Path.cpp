@@ -10,7 +10,7 @@
 #include "Path.hpp"
 
 #include "../MimicMood.hpp"
-#include "../Platform.hpp"
+#include "../platform/Platform.hpp"
 #include "PackedStringKey.hpp"
 #include "StaticStringMap.hpp"
 #include "Trace.hpp"

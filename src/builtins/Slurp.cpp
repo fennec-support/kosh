@@ -12,7 +12,7 @@
 #include "../MimicMood.hpp"
 #include "../Toiletline.hpp"
 #include "../ToiletlineHistory.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 FLAG_LIST_DECL();
 

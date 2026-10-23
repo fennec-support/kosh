@@ -201,8 +201,8 @@ fn collectSources(b: *std.Build) []const []const u8 {
         // As in src/Makefile, sources sit in src or one directory below it,
         // and the routed platform fragments compile through Platform.cpp.
         if (std.mem.count(u8, entry.path, std.fs.path.sep_str) > 1) continue;
-        if (std.mem.startsWith(u8, entry.path, "PlatformPosix")) continue;
-        if (std.mem.startsWith(u8, entry.path, "PlatformWin32")) continue;
+        if (std.mem.startsWith(u8, std.fs.path.basename(entry.path), "PlatformPosix")) continue;
+        if (std.mem.startsWith(u8, std.fs.path.basename(entry.path), "PlatformWin32")) continue;
         sources.append(b.allocator, b.dupe(entry.path)) catch @panic("out of memory");
     }
 

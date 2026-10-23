@@ -9,7 +9,7 @@
 
 #include "String.hpp"
 
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 #include "ErrorOr.hpp"
 
 namespace koshka {

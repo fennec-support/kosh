@@ -12,7 +12,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Lexer.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 /* the decimal exponent of the smallest subnormal quad long double. a larger
    exponent of a finite operand is never needed. */

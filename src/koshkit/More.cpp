@@ -11,8 +11,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
-#include "../Utils.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-ceisu] [-n lines] [-p command] [-t tag] [file ...]",
                   "Display text one screen at a time.");

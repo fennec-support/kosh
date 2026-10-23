@@ -104,12 +104,13 @@ trap definitions. Source locations use 32-bit positions and interned source
 indices. Syntax nodes store end positions separately. Diagnostics and LINENO
 share a line index.
 
-src/Platform.cpp selects POSIX or Windows code. Platform calls and types stay
-behind src/Platform.hpp and os wrappers. Routed platform fragments compile
-through Platform.o. Windows path conversion and named-pipe behavior stay behind
-the platform wrappers. Recursive chmod, chown, and chgrp walk through
-os::walk_tree, which addresses each entry through its parent directory
-descriptor.
+Platform sources live in src/platform, and shared utility sources live in
+src/util. src/platform/Platform.cpp selects POSIX or Windows code. Platform
+calls and types stay behind src/platform/Platform.hpp and os wrappers. Routed
+platform fragments compile through platform/Platform.o. Windows path
+conversion and named-pipe behavior stay behind the platform wrappers.
+Recursive chmod, chown, and chgrp walk through os::walk_tree, which addresses
+each entry through its parent directory descriptor.
 
 src/Completion.cpp owns completion scanning and the completion sources.
 Completion, highlighting, diagnostics, and koshkit cat share the tolerant

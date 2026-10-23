@@ -14,8 +14,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
-#include "../UtilsOwnership.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[-46aHlnptux] [--live [seconds]]",
                   "The evilss utility can report visible network sockets.");

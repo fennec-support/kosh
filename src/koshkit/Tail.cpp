@@ -14,8 +14,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
 #include "../base/Path.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-fFqvz] [-n count] [-c count] [-s seconds] [--pid pid] "
                   "[file ...]",

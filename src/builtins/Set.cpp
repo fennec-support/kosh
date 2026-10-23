@@ -13,10 +13,10 @@
 #include "../Eval.hpp"
 #include "../Koshconf.hpp"
 #include "../Options.hpp"
-#include "../Platform.hpp"
-#include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
 
 FLAG_LIST_DECL();
 

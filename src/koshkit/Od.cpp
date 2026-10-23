@@ -12,7 +12,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 constexpr u64 OD_WIDTH_LIMIT = 65536;
 

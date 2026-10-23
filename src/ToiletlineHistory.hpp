@@ -8,12 +8,12 @@
 
 #pragma once
 
-#include "Platform.hpp"
 #include "base/ArrayList.hpp"
 #include "base/Common.hpp"
 #include "base/Path.hpp"
 #include "base/String.hpp"
 #include "base/StringView.hpp"
+#include "platform/Platform.hpp"
 
 namespace toiletline {
 

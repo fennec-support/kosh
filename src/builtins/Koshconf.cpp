@@ -14,9 +14,9 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Options.hpp"
-#include "../Utils.hpp"
 #include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
+#include "../util/Utils.hpp"
 
 FLAG_LIST_DECL();
 

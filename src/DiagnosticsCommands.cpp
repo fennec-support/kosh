@@ -11,9 +11,9 @@
 #include "DiagnosticsChecksInternal.hpp"
 #include "Lexer.hpp"
 #include "Tokens.hpp"
-#include "Utils.hpp"
 #include "base/PackedStringKey.hpp"
 #include "base/StaticStringMap.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 

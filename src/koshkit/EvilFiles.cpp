@@ -12,11 +12,11 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
 #include "../Toiletline.hpp"
-#include "../Utils.hpp"
-#include "../UtilsOwnership.hpp"
 #include "../base/StaticStringMap.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
+#include "../util/UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL(
     "[-itw] [-p pid] [-u user] [-c command] [path ...]",

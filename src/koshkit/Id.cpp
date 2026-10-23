@@ -11,7 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../UtilsOwnership.hpp"
+#include "../util/UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[-Ggu] [-nr] [user]",
                   "The id utility can write user and group identities.");

@@ -14,13 +14,13 @@
 
 #include "Builtin.hpp"
 #include "CLI.hpp"
-#include "Platform.hpp"
 #include "base/Common.hpp"
 #include "base/Maybe.hpp"
 #include "base/PackedStringKey.hpp"
 #include "base/StaticStringMap.hpp"
 #include "base/String.hpp"
 #include "base/StringView.hpp"
+#include "platform/Platform.hpp"
 
 namespace koshka {
 

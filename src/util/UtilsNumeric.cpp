@@ -8,18 +8,18 @@
  * from process, filesystem-input, glob, and command-resolution helpers.
  */
 
-#include "Builtin.hpp"
-#include "CLI.hpp"
-#include "Errors.hpp"
-#include "Eval.hpp"
-#include "Koshkit.hpp"
-#include "Lexer.hpp"
-#include "Platform.hpp"
-#include "Toiletline.hpp"
+#include "../Builtin.hpp"
+#include "../CLI.hpp"
+#include "../Errors.hpp"
+#include "../Eval.hpp"
+#include "../Koshkit.hpp"
+#include "../Lexer.hpp"
+#include "../Toiletline.hpp"
+#include "../base/Containers.hpp"
+#include "../base/Debug.hpp"
+#include "../base/Trace.hpp"
+#include "../platform/Platform.hpp"
 #include "Utils.hpp"
-#include "base/Containers.hpp"
-#include "base/Debug.hpp"
-#include "base/Trace.hpp"
 
 namespace koshka {
 

@@ -14,12 +14,12 @@
 #include "EvalExtendedArithmetic.hpp"
 #include "Lexer.hpp"
 #include "Tokens.hpp"
-#include "Utils.hpp"
 #include "base/Common.hpp"
 #include "base/Debug.hpp"
 #include "base/ErrorOr.hpp"
 #include "base/Maybe.hpp"
 #include "base/Trace.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 

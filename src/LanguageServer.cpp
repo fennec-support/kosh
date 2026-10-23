@@ -13,8 +13,8 @@
 #include "Formatter.hpp"
 #include "Koshkit.hpp"
 #include "LanguageServerProtocol.hpp"
-#include "Utils.hpp"
 #include "base/Hive.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka::language_server {
 

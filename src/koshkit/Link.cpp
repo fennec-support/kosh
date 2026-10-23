@@ -10,7 +10,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
+#include "../platform/Platform.hpp"
 
 KOSHKIT_UTIL_DECL("file1 file2",
                   "The link utility can create a hard link to a file.");

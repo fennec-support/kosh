@@ -9,7 +9,7 @@
 
 #pragma once
 
-#include "base/Common.hpp"
+#include "../base/Common.hpp"
 
 #define KOSH_PLATFORM_POSIX 0b1
 #define KOSH_PLATFORM_WIN32 0b10
@@ -141,7 +141,7 @@ extern "C" void __lsan_enable(void);
 #include <restartmanager.h>
 #include <sys/stat.h>
 #include <tlhelp32.h>
-#include "../vendor/regex/regex.h"
+#include "../../vendor/regex/regex.h"
 #define KOSH_SUPPORT_VECTOR (KOSH_PLATFORM_WIN32)
 #endif
 /* clang-format on */
@@ -192,10 +192,10 @@ read_native_endian_bytes(const char *bytes, usize count) wontthrow -> u64
 
 } /* namespace koshka::os */
 
-#include "base/ArrayList.hpp"
-#include "base/Maybe.hpp"
-#include "base/Path.hpp"
-#include "base/String.hpp"
+#include "../base/ArrayList.hpp"
+#include "../base/Maybe.hpp"
+#include "../base/Path.hpp"
+#include "../base/String.hpp"
 
 namespace koshka {
 

@@ -11,9 +11,9 @@
 #include "CLIColors.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
-#include "Platform.hpp"
 #include "Toiletline.hpp"
-#include "Utils.hpp"
+#include "platform/Platform.hpp"
+#include "util/Utils.hpp"
 
 #if defined KOSH_NO_TOILETLINE
 

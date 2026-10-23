@@ -9,15 +9,15 @@
  * and job-control dependencies to one backend fragment.
  */
 
-#include "CLI.hpp"
-#include "Errors.hpp"
-#include "Eval.hpp"
-#include "MimicMood.hpp"
+#include "../CLI.hpp"
+#include "../Errors.hpp"
+#include "../Eval.hpp"
+#include "../MimicMood.hpp"
+#include "../base/Common.hpp"
+#include "../base/Debug.hpp"
+#include "../base/Trace.hpp"
+#include "../util/Utils.hpp"
 #include "Platform.hpp"
-#include "Utils.hpp"
-#include "base/Common.hpp"
-#include "base/Debug.hpp"
-#include "base/Trace.hpp"
 
 #if defined __linux__
 #include <sys/auxv.h>

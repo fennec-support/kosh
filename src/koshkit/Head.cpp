@@ -10,8 +10,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
 #include "../base/Path.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-qvz] [-n count] [-c count] [file ...]",
                   "The head utility can write the first lines of each file.");

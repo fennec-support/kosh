@@ -12,8 +12,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
-#include "../Utils.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-0prtx] [-a file] [-d delim] [-E eof] [-e[eof]] "
                   "[-I replace] [-i[replace]] [-L lines] [-n count] "

@@ -11,7 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../UtilsOwnership.hpp"
+#include "../util/UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[-hRx] [-H|-L|-P] owner[:group] file ...",
                   "The chown utility can change file owner and group.");

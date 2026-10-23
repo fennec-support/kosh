@@ -13,7 +13,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Lexer.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL(
     "[-bcCdfghiMmnrsuVz] [-o output] [-t separator] [-k keydef]... "

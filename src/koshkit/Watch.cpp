@@ -12,7 +12,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
+#include "../platform/Platform.hpp"
 
 KOSHKIT_UTIL_DECL("[-tgex] [-n seconds] command [argument ...]",
                   "Run a command at fixed intervals and show its output.");

@@ -12,7 +12,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Lexer.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-cCdst] set1 [set2]",
                   "Translate the bytes in set1 to the matching bytes in "

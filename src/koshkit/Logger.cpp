@@ -11,8 +11,8 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
 #include "../base/StaticStringMap.hpp"
+#include "../platform/Platform.hpp"
 
 KOSHKIT_UTIL_DECL("[-is] [-f file] [-p priority] [-t tag] [message ...]",
                   "The logger utility can write a message to the system log.");

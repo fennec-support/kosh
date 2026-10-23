@@ -10,7 +10,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL("[-bs] [-w width] [file ...]",
                   "The fold utility can wrap input lines.");

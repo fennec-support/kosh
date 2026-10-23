@@ -12,7 +12,7 @@
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../Toiletline.hpp"
-#include "../Utils.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL(
     "[+first[:last]] [-column] [-adFfmrt] [-D format] [-h header] "

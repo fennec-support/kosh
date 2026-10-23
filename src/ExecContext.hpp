@@ -13,7 +13,6 @@
 #include "Errors.hpp"
 #include "EvalTypes.hpp"
 #include "MimicMood.hpp"
-#include "Platform.hpp"
 #include "ProgramResolver.hpp"
 #include "base/Arena.hpp"
 #include "base/Bitset.hpp"
@@ -21,6 +20,7 @@
 #include "base/Containers.hpp"
 #include "base/Maybe.hpp"
 #include "base/Path.hpp"
+#include "platform/Platform.hpp"
 
 namespace koshka {
 

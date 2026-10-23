@@ -9,7 +9,7 @@
 #include "../CLI.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
+#include "../platform/Platform.hpp"
 
 KOSHKIT_UTIL_DECL("[-n] file ...", "Print the target of a symbolic link.");
 

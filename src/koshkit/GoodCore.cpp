@@ -13,10 +13,10 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
 #include "../ProgramResolver.hpp"
-#include "../Utils.hpp"
 #include "../base/Path.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL(
     "[-q] [-b executable] [-o archive] [--no-compress] "

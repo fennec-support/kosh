@@ -14,13 +14,13 @@
 #include "Eval.hpp"
 #include "Expressions.hpp"
 #include "Lexer.hpp"
-#include "Platform.hpp"
 #include "Toiletline.hpp"
-#include "Utils.hpp"
 #include "base/Arena.hpp"
 #include "base/Common.hpp"
 #include "base/Debug.hpp"
 #include "base/Trace.hpp"
+#include "platform/Platform.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 

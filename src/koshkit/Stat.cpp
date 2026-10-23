@@ -11,10 +11,10 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
-#include "../Platform.hpp"
-#include "../Utils.hpp"
-#include "../UtilsOwnership.hpp"
 #include "../base/Path.hpp"
+#include "../platform/Platform.hpp"
+#include "../util/Utils.hpp"
+#include "../util/UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[-Lft] [-c format] [--printf=format] file ...",
                   "Display the status of a file or a filesystem.");
