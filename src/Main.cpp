@@ -2982,6 +2982,16 @@ kosh_main(int argc, char **argv) -> int
       } else {
         unreachable("the input loop has no configured input source");
       }
+    } catch (const koshka::InterruptErrorWithLocation &e) {
+      if (input.should_be_interactive) {
+        LOG(Info, "an interrupt arrived while reading input, so the prompt "
+                  "starts again");
+        koshka::os::INTERRUPT_REQUESTED = 0;
+        continue;
+      }
+
+      koshka::show_message(static_cast<const koshka::Error &>(e).to_string());
+      koshka::utils::quit(130);
     } catch (const koshka::Error &e) {
       koshka::show_message(e.to_string());
       koshka::utils::quit(EXIT_FAILURE);
@@ -3045,6 +3055,12 @@ kosh_main(int argc, char **argv) -> int
 
       exit_code = koshka::run_chunk(chunk, context, ast_arena, lint,
                                     inherited.take_evaluation_mode());
+    }
+
+    if (input.should_be_interactive && koshka::os::INTERRUPT_REQUESTED) {
+      LOG(Debug, "clearing the interrupt that ended the command with status %d",
+          exit_code);
+      koshka::os::INTERRUPT_REQUESTED = 0;
     }
 
     if (FLAG_LINT.is_enabled())

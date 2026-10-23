@@ -1,0 +1,4 @@
+PASS koshkit yes leaves the shell running
+PASS koshkit sleep leaves the shell running
+PASS koshkit cat leaves the shell running
+status=0
