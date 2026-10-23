@@ -107,6 +107,89 @@ get_environment_epoch() wontthrow -> u64
 #error Unsupported platform
 #endif
 
+extern "C" fn
+__cxa_current_exception_type() wontthrow -> opaque *;
+
+static fn
+write_terminate_text(koshka::StringView text) wontthrow -> void
+{
+  unused(koshka::os::write_all(KOSH_STDERR, text.data, text.length));
+}
+
+static fn
+write_terminate_number(i64 value) wontthrow -> void
+{
+  char buffer[24];
+
+  write_terminate_text(
+      koshka::utils::int_to_text_into(value, buffer, sizeof(buffer)));
+}
+
+/* The C++ runtime's default terminate handlers demangle the type of the
+   active exception, which links a demangler of about 115 KB. These
+   definitions replace the default handler variables of libsupc++ and of
+   libc++abi, so neither runtime object with the demangler is linked. The
+   handler reports the escaped exception and the process state without
+   allocating, then aborts. */
+static fn
+koshka_terminate() wontthrow -> void
+{
+  using namespace koshka;
+
+  write_terminate_text("error: The shell stopped because an exception "
+                       "reached no handler.\n");
+  if (__cxa_current_exception_type() == nullptr) {
+    write_terminate_text("note: No exception was active, so the runtime "
+                         "called terminate directly.\n");
+  } else {
+    try {
+      throw;
+    } catch (const ErrorBase &error) {
+      write_terminate_text("note: The exception is a shell error: ");
+      write_terminate_text(error.message().view());
+      write_terminate_text("\n");
+    } catch (...) {
+      write_terminate_text("note: The exception is not a shell error.\n");
+    }
+  }
+
+  let const counts = os::get_process_launch_counts();
+
+  write_terminate_text("note: Process ");
+  write_terminate_number(os::get_current_process_id());
+  write_terminate_text(", shell process ");
+  write_terminate_number(os::get_shell_process_id());
+  write_terminate_text(", parent process ");
+  write_terminate_number(os::get_parent_process_id());
+  write_terminate_text(os::is_child_process() ? ", in a forked child.\n"
+                                              : ", in the shell itself.\n");
+  write_terminate_text("note: The shell forked ");
+  write_terminate_number(static_cast<i64>(counts.fork_count));
+  write_terminate_text(" times and replaced a process image ");
+  write_terminate_number(static_cast<i64>(counts.exec_count));
+  write_terminate_text(" times.\n");
+  write_terminate_text("note: Build " KOSH_BUILD_MODE
+                       " at commit " KOSH_COMMIT_HASH ".\n");
+  abort();
+}
+
+namespace __cxxabiv1 {
+extern void (*__terminate_handler)();
+void (*__terminate_handler)() = koshka_terminate;
+} /* namespace __cxxabiv1 */
+
+/* libc++abi keeps these three variables in one object, so all of them are
+   defined here. A null new handler is the libc++abi default. */
+extern "C"
+{
+extern void (*__cxa_terminate_handler)();
+extern void (*__cxa_unexpected_handler)();
+extern void (*__cxa_new_handler)();
+void (*__cxa_terminate_handler)()  = koshka_terminate;
+void (*__cxa_unexpected_handler)() = koshka_terminate;
+void (*__cxa_new_handler)()        = nullptr;
+}
+
 namespace koshka {
 namespace os {
 

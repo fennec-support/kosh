@@ -4579,6 +4579,14 @@ returns 2.
 .SH ERRORS
 An unavailable command or pathname is reported through its first unavailable
 component when that component can be identified.
+.PP
+An internal exception that no handler catches stops the shell with an
+.B error:
+line, then
+.B note:
+lines with the message of the exception when it is a shell error, the current,
+shell, and parent process ids, whether the process is a forked child, the
+fork and exec counts, and the build mode and commit. The shell then aborts.
 .SH FILES
 .TP
 .I ~/.kosh_history
