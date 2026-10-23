@@ -1149,15 +1149,22 @@ open_file_descriptor_until_signal(StringView     path,
 
 /* memory: one ArrayList<wchar_t> for the absolute lock path, freed on return.
            the returned descriptor belongs to the caller.
-   time:   no deadline. sleeps 10 milliseconds per retry while CreateFileW()
-           fails with a sharing or lock violation. other errors and an
-           interrupt request return None. */
+   time:   a Blocking wait has no deadline and sleeps 10 milliseconds per
+           retry while CreateFileW() fails with a sharing or lock violation.
+           an Immediate wait returns None on the first violation. other errors
+           and an interrupt request return None. */
 fn
-acquire_process_lock(StringView path) throws -> Maybe<descriptor>
+acquire_process_lock(StringView       path,
+                     lock_inheritance inheritance,
+                     lock_wait        wait) throws -> Maybe<descriptor>
 {
   let const wide_path = path_to_wide(path, heap_allocator());
 
   if (!wide_path.has_value()) return None;
+
+  let const path_attributes = GetFileAttributesW(wide_path->begin());
+  let const is_directory    = path_attributes != INVALID_FILE_ATTRIBUTES &&
+                           (path_attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
   constexpr wchar_t LOCK_NAME[]      = L".kosh-flock.lock";
   constexpr usize   LOCK_NAME_LENGTH = countof(LOCK_NAME) - 1;
@@ -1177,20 +1184,27 @@ acquire_process_lock(StringView path) throws -> Maybe<descriptor>
     return None;
   }
 
-  if (absolute_path.begin()[length - 1] != L'\\' &&
-      absolute_path.begin()[length - 1] != L'/')
-  {
-    absolute_path.begin()[length++] = L'\\';
+  if (is_directory) {
+    if (absolute_path.begin()[length - 1] != L'\\' &&
+        absolute_path.begin()[length - 1] != L'/')
+    {
+      absolute_path.begin()[length++] = L'\\';
+    }
+
+    memcpy(absolute_path.begin() + length, LOCK_NAME, sizeof(LOCK_NAME));
   }
 
-  memcpy(absolute_path.begin() + length, LOCK_NAME, sizeof(LOCK_NAME));
-
-  SECURITY_ATTRIBUTES attributes{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+  SECURITY_ATTRIBUTES attributes{
+      sizeof(SECURITY_ATTRIBUTES), nullptr,
+      inheritance == lock_inheritance::Inherited ? TRUE : FALSE};
 
   loop {
-    let const lock = CreateFileW(
-        absolute_path.begin(), GENERIC_READ | GENERIC_WRITE, 0, &attributes,
-        OPEN_ALWAYS, FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_NORMAL, nullptr);
+    let const lock =
+        CreateFileW(absolute_path.begin(), GENERIC_READ | GENERIC_WRITE, 0,
+                    &attributes, is_directory ? OPEN_ALWAYS : OPEN_EXISTING,
+                    is_directory ? FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_NORMAL
+                                 : FILE_ATTRIBUTE_NORMAL,
+                    nullptr);
 
     if (lock != INVALID_HANDLE_VALUE) return lock;
 
@@ -1200,7 +1214,7 @@ acquire_process_lock(StringView path) throws -> Maybe<descriptor>
       return None;
     }
 
-    if (INTERRUPT_REQUESTED) return None;
+    if (wait == lock_wait::Immediate || INTERRUPT_REQUESTED) return None;
 
     Sleep(10);
   }

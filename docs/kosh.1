@@ -2533,7 +2533,13 @@ after
 receives the matched paths in batches.
 .TP
 .B flock
-A command runs while a directory lock is held. The
+A command runs while a lock on a file or a directory is held, and the command
+inherits the lock descriptor. The
+.B \-n
+and
+.B \-\-nonblock
+options fail with status 1 instead of waiting when another process holds the
+lock. The
 .B \-\-transaction\-held\-lock
 option keeps the lock after the process that launched the transaction exits.
 .TP

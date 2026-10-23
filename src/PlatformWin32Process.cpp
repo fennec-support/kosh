@@ -3340,6 +3340,14 @@ last_system_error_is_descriptor_quota() wontthrow -> bool
 }
 
 fn
+last_system_error_is_lock_held() wontthrow -> bool
+{
+  let const error = GetLastError();
+
+  return error == ERROR_SHARING_VIOLATION || error == ERROR_LOCK_VIOLATION;
+}
+
+fn
 set_last_system_error(i32 error_number) wontthrow -> void
 {
   SetLastError(static_cast<DWORD>(error_number));

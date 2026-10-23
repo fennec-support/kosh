@@ -14,9 +14,15 @@
 #include "../Platform.hpp"
 
 KOSHKIT_UTIL_DECL(
-    "[--transaction-held-lock] directory command [argument ...]",
-    "The flock utility can run a command while holding a directory lock.");
+    "[-n] [--transaction-held-lock] path command [argument ...]",
+    "The flock utility can run a command while holding a file or directory "
+    "lock.");
 
+FLAG(FLOCK_NONBLOCK,
+     Bool,
+     'n',
+     "nonblock",
+     "Fail instead of waiting when another process holds the lock.");
 FLAG(TRANSACTION_HELD_LOCK,
      Bool,
      '\0',
@@ -30,7 +36,8 @@ namespace koshka::koshkit {
 /* memory: the keeper and command arrays are in the scratch arena and are
            released with it.
    time:   acquire_process_lock() blocks in flock(LOCK_EX) until the lock on
-           operands[0] is free. run_measured() then waits for the command to
+           operands[0] is free, or fails at once with -n. run_measured() then
+           waits for the command to
            exit. with --transaction-held-lock, a keeper child takes the lock,
            and this process waits for that child instead. */
 fn
@@ -73,7 +80,7 @@ Flock::execute(const ExecContext               &ec,
 
     let keeper = ArrayList<String>{cxt.scratch_allocator()};
 
-    keeper.reserve(operands.count() + 7);
+    keeper.reserve(operands.count() + 8);
     keeper.push_managed(executable->view());
     keeper.push_managed("-p");
     keeper.push_managed("--mood");
@@ -81,6 +88,7 @@ Flock::execute(const ExecContext               &ec,
     keeper.push_managed("-c");
     keeper.push_managed("koshkit flock \"$@\"");
     keeper.push_managed("kosh");
+    if (FLAG_FLOCK_NONBLOCK.is_enabled()) keeper.push_managed("-n");
 
     for (let const &operand : operands)
       keeper.push(operand.clone());
@@ -99,17 +107,29 @@ Flock::execute(const ExecContext               &ec,
     return static_cast<i32>(result->exit_status);
   }
 
-  let const lock = os::acquire_process_lock(operands[0].view());
+  let const lock = os::acquire_process_lock(
+      operands[0].view(), os::lock_inheritance::Inherited,
+      FLAG_FLOCK_NONBLOCK.is_enabled() ? os::lock_wait::Immediate
+                                       : os::lock_wait::Blocking);
 
   if (!lock.has_value()) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "Cannot acquire directory lock");
+    if (FLAG_FLOCK_NONBLOCK.is_enabled() &&
+        os::last_system_error_is_lock_held())
+    {
+      KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
+                              "Another process holds the lock on '" +
+                                  operands[0] + "'");
+    } else {
+      KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
+                              "Cannot lock '" + operands[0] +
+                                  "': " + os::last_system_error_message());
+    }
 
     return 1;
   }
 
-  /* at this point: lock is the held directory lock on operands[0], and the
-     defer below releases it on every return path. */
+  /* at this point: lock is the held lock on operands[0], and the defer below
+     releases it on every return path. */
   defer { os::release_process_lock(*lock); };
 
   let command = ArrayList<String>{cxt.scratch_allocator()};

@@ -563,7 +563,7 @@ _koshkit_util_flags ()
       echo "-name -iname -type -maxdepth -mindepth -xdev -mount -print -print0 -exec"
     ;;
     flock)
-      echo "--transaction-held-lock"
+      echo "-n --nonblock --transaction-held-lock"
     ;;
     fuser)
       echo "-c -f -u"

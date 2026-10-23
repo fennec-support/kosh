@@ -150,6 +150,8 @@ if [ "$probe_status" -eq 1 ]; then
 else
     exit 1
 fi
+"$BIN" -c 'koshkit flock -n "$1" true' _ "$directory" >/dev/null 2>&1
+echo "nonblock while held=$?"
 
 : > "$directory/release"
 wait_for_path "$directory/finished" || exit 1

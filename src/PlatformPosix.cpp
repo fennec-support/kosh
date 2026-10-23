@@ -2826,6 +2826,12 @@ last_system_error_is_descriptor_quota() wontthrow -> bool
 }
 
 fn
+last_system_error_is_lock_held() wontthrow -> bool
+{
+  return errno == EWOULDBLOCK;
+}
+
+fn
 set_last_system_error(i32 error_number) wontthrow -> void
 {
   errno = error_number;

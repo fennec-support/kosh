@@ -562,8 +562,23 @@ open_file_descriptor_until_signal(StringView     path,
                                   file_open_mode mode,
                                   bool          &did_signal_arrive) throws
     -> Maybe<descriptor>;
+enum class lock_inheritance : u8
+{
+  Private,
+  Inherited,
+};
+
+enum class lock_wait : u8
+{
+  Blocking,
+  Immediate,
+};
+
 fn
-acquire_process_lock(StringView path) throws -> Maybe<descriptor>;
+acquire_process_lock(StringView       path,
+                     lock_inheritance inheritance = lock_inheritance::Private,
+                     lock_wait        wait        = lock_wait::Blocking) throws
+    -> Maybe<descriptor>;
 fn
 release_process_lock(descriptor lock) wontthrow -> void;
 
@@ -595,6 +610,8 @@ fn
 last_system_error_is_permission_denied() wontthrow -> bool;
 fn
 last_system_error_is_descriptor_quota() wontthrow -> bool;
+fn
+last_system_error_is_lock_held() wontthrow -> bool;
 fn
 set_last_system_error(i32 error_number) wontthrow -> void;
 

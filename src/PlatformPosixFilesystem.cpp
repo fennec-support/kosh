@@ -797,18 +797,28 @@ open_file_descriptor_until_signal(StringView     path,
 /* memory: path_string is a heap_allocator() copy of path, freed on return.
            the returned descriptor is owned by the caller, who passes it to
            release_process_lock().
-   time:   one open() and one blocking flock() with LOCK_EX. the call waits
-           without a timeout until the current holder releases the lock. a
-           signal that interrupts flock() returns None. */
+   time:   one open() and one flock() with LOCK_EX. a Blocking wait has no
+           timeout and lasts until the current holder releases the lock, and
+           an Immediate wait fails with EWOULDBLOCK instead. a signal that
+           interrupts flock() returns None. */
 fn
-acquire_process_lock(StringView path) throws -> Maybe<descriptor>
+acquire_process_lock(StringView       path,
+                     lock_inheritance inheritance,
+                     lock_wait        wait) throws -> Maybe<descriptor>
 {
   const String path_string{heap_allocator(), path};
-  let const    lock = ::open(path_string.c_str(), O_RDONLY | O_DIRECTORY);
+  let const    open_flags =
+      O_RDONLY | (inheritance == lock_inheritance::Private ? O_CLOEXEC : 0);
+  let const lock_flags = LOCK_EX | (wait == lock_wait::Immediate ? LOCK_NB : 0);
+  let const lock       = ::open(path_string.c_str(), open_flags);
 
   if (lock < 0) return None;
-  if (::flock(lock, LOCK_EX) == 0) return lock;
+  if (::flock(lock, lock_flags) == 0) return lock;
+
+  let const saved_errno = errno;
+
   ::close(lock);
+  errno = saved_errno;
 
   return None;
 }
