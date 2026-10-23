@@ -19,25 +19,50 @@ class Nothing
 
 inline constexpr Nothing None{};
 
+/* a value whose copy is a plain byte copy, so a Maybe of it is trivially
+   copyable and destructible and can be constant data. */
+template <class T>
+concept is_trivial_maybe_value =
+    std::is_trivially_copyable_v<T> && std::is_trivially_destructible_v<T> &&
+    !is_cloneable<T>;
+
 template <class T>
 class mustuse Maybe
 {
 public:
   static_assert(std::is_nothrow_destructible_v<T>);
 
-  Maybe() noexcept : m_has_value(false) {}
-  Maybe(Nothing) noexcept : m_has_value(false) {}
-  Maybe(T value) : m_has_value(true) { new (&m_storage) T(steal(value)); }
+  constexpr Maybe() noexcept : m_has_value(false), m_empty(0) {}
+  constexpr Maybe(Nothing) noexcept : m_has_value(false), m_empty(0) {}
+  constexpr Maybe(T value) : m_has_value(true), m_value(steal(value)) {}
+
+  Maybe(const Maybe &other)
+    requires is_trivial_maybe_value<T>
+  = default;
+  Maybe(Maybe &&other)
+    requires is_trivial_maybe_value<T>
+  = default;
+  fn
+  operator=(const Maybe &other) -> Maybe &
+    requires is_trivial_maybe_value<T>
+  = default;
+  fn
+  operator=(Maybe &&other) -> Maybe &
+    requires is_trivial_maybe_value<T>
+  = default;
+  ~Maybe()
+    requires is_trivial_maybe_value<T>
+  = default;
 
   Maybe(const Maybe &other) : m_has_value(other.m_has_value)
   {
-    if (m_has_value) new (&m_storage) T(copy_of(other.reference()));
+    if (m_has_value) new (&m_value) T(copy_of(other.reference()));
   }
 
   Maybe(Maybe &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
       : m_has_value(other.m_has_value)
   {
-    if (m_has_value) new (&m_storage) T(steal(other.reference()));
+    if (m_has_value) new (&m_value) T(steal(other.reference()));
   }
 
   mustuse fn
@@ -65,7 +90,7 @@ public:
     if (this != &other) {
       reset();
       if (other.m_has_value) {
-        new (&m_storage) T(copy_of(other.reference()));
+        new (&m_value) T(copy_of(other.reference()));
         m_has_value = true;
       }
     }
@@ -80,7 +105,7 @@ public:
     if (this != &other) {
       reset();
       if (other.m_has_value) {
-        new (&m_storage) T(steal(other.reference()));
+        new (&m_value) T(steal(other.reference()));
         m_has_value = true;
       }
     }
@@ -200,26 +225,31 @@ private:
   fn
   reference() wontthrow -> T &
   {
-    return *reinterpret_cast<T *>(&m_storage);
+    return m_value;
   }
 
   fn
   reference() const wontthrow -> const T &
   {
-    return *reinterpret_cast<const T *>(&m_storage);
+    return m_value;
   }
 
   bool m_has_value;
-  alignas(T) unsigned char m_storage[sizeof(T)];
+
+  union
+  {
+    unsigned char m_empty;
+    T             m_value;
+  };
 };
 
 template <class T>
 class mustuse Maybe<T *>
 {
 public:
-  Maybe() noexcept = default;
-  Maybe(Nothing) noexcept {}
-  Maybe(T *value) noexcept : m_value(value) {}
+  constexpr Maybe() noexcept = default;
+  constexpr Maybe(Nothing) noexcept {}
+  constexpr Maybe(T *value) noexcept : m_value(value) {}
 
   hot mustuse pure fn
   has_value() const wontthrow -> bool
