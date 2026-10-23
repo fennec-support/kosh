@@ -64,13 +64,104 @@ pub fn build(b: *std.Build) void {
         .flags = flags.items,
     });
 
-    b.installArtifact(exe);
+    // As in src/Makefile, Windows links the vendored regex and the system
+    // libraries that the GNU ABI leaves out, and Darwin links two frameworks.
+    switch (target.result.os.tag) {
+        .windows => {
+            module.addCSourceFiles(.{
+                .root = b.path("vendor/regex"),
+                .files = &.{ "regcomp.c", "regerror.c", "regexec.c", "tre-mem.c" },
+                .flags = &.{"-std=c11"},
+            });
+            module.addIncludePath(b.path("vendor/regex"));
+            for ([_][]const u8{ "userenv", "advapi32", "shell32", "ole32", "uuid", "iphlpapi", "rstrtmgr", "ws2_32" }) |library| {
+                module.linkSystemLibrary(library, .{});
+            }
+            exe.mingw_unicode_entry_point = true;
+        },
+        .macos => {
+            module.linkFramework("CoreFoundation", .{});
+            module.linkFramework("IOKit", .{});
+        },
+        else => {},
+    }
+
+    const install_exe = b.addInstallArtifact(exe, .{});
+    b.getInstallStep().dependOn(&install_exe.step);
+
+    if (b.option([]const u8, "link-moods", "Link bash, dash, or sh to kosh in the bin directory, separated by commas")) |list| {
+        addMoodLinks(b, install_exe, list, target.result.os.tag == .windows);
+    }
 
     const run_step = b.step("run", "Build and run kosh");
     const run_cmd = b.addRunArtifact(exe);
     if (b.args) |args| run_cmd.addArgs(args);
     run_step.dependOn(&run_cmd.step);
 }
+
+/// Each mood becomes a relative link to the executable beside it in bin, or a
+/// copy named MOOD.exe on Windows. A file that is not such a link stays and
+/// fails the install.
+fn addMoodLinks(b: *std.Build, install_exe: *std.Build.Step.InstallArtifact, list: []const u8, is_windows: bool) void {
+    const exe = install_exe.artifact;
+    var moods: std.ArrayList([]const u8) = .empty;
+    var names = std.mem.splitScalar(u8, list, ',');
+
+    while (names.next()) |name| {
+        if (std.mem.eql(u8, name, "kosh")) continue;
+        if (!std.mem.eql(u8, name, "bash") and !std.mem.eql(u8, name, "dash") and !std.mem.eql(u8, name, "sh")) {
+            const fail = b.addFail(b.fmt("-Dlink-moods takes bash, dash, sh, or kosh, not '{s}'", .{name}));
+            b.getInstallStep().dependOn(&fail.step);
+            return;
+        }
+        moods.append(b.allocator, name) catch @panic("out of memory");
+    }
+
+    if (is_windows) {
+        for (moods.items) |mood| {
+            b.getInstallStep().dependOn(&b.addInstallBinFile(exe.getEmittedBin(), b.fmt("{s}.exe", .{mood})).step);
+        }
+        return;
+    }
+
+    const links = b.allocator.create(MoodLinks) catch @panic("out of memory");
+    links.* = .{
+        .step = std.Build.Step.init(.{ .id = .custom, .name = "link moods", .owner = b, .makeFn = MoodLinks.make }),
+        .exe_name = exe.name,
+        .moods = moods.items,
+    };
+    links.step.dependOn(&install_exe.step);
+    b.getInstallStep().dependOn(&links.step);
+}
+
+const MoodLinks = struct {
+    step: std.Build.Step,
+    exe_name: []const u8,
+    moods: []const []const u8,
+
+    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
+        _ = options;
+        const links: *MoodLinks = @fieldParentPtr("step", step);
+        const b = step.owner;
+        const io = b.graph.io;
+        const bin_path = b.getInstallPath(.bin, "");
+        var dir = try std.Io.Dir.cwd().openDir(io, bin_path, .{});
+        defer dir.close(io);
+
+        for (links.moods) |mood| {
+            dir.symLink(io, links.exe_name, mood, .{}) catch |err| switch (err) {
+                error.PathAlreadyExists => {
+                    var buffer: [std.fs.max_path_bytes]u8 = undefined;
+                    const length = dir.readLink(io, mood, &buffer) catch 0;
+                    if (!std.mem.eql(u8, buffer[0..length], links.exe_name)) {
+                        return step.fail("{s}/{s} is not a link to {s}", .{ bin_path, mood, links.exe_name });
+                    }
+                },
+                else => |e| return e,
+            };
+        }
+    }
+};
 
 fn gitCommitHash(b: *std.Build) []const u8 {
     const result = std.process.run(b.allocator, b.graph.io, .{
@@ -107,9 +198,11 @@ fn collectSources(b: *std.Build) []const []const u8 {
     while (walker.next(b.graph.io) catch @panic("unable to walk src")) |entry| {
         if (entry.kind != .file) continue;
         if (!std.mem.endsWith(u8, entry.path, ".cpp")) continue;
-        if (std.mem.eql(u8, entry.path, "PlatformPosix.cpp")) continue;
-        if (std.mem.eql(u8, entry.path, "PlatformPosixExtra.cpp")) continue;
-        if (std.mem.eql(u8, entry.path, "PlatformWin32.cpp")) continue;
+        // As in src/Makefile, sources sit in src or one directory below it,
+        // and the routed platform fragments compile through Platform.cpp.
+        if (std.mem.count(u8, entry.path, std.fs.path.sep_str) > 1) continue;
+        if (std.mem.startsWith(u8, entry.path, "PlatformPosix")) continue;
+        if (std.mem.startsWith(u8, entry.path, "PlatformWin32")) continue;
         sources.append(b.allocator, b.dupe(entry.path)) catch @panic("out of memory");
     }
 

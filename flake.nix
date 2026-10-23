@@ -37,7 +37,14 @@
         (versionValue "KOSH_VER_PATCH")
       ] + versionSuffix;
 
-      mkPackage = { pkgs, mode ? "rel" }:
+      linkableMoods = [ "bash" "dash" "sh" ];
+
+      # Each mood becomes a relative link to kosh beside it in bin, as in
+      # kosh.override { linkMoods = [ "sh" ]; }.
+      mkPackage = nixpkgs.lib.makeOverridable ({ pkgs, mode ? "rel", linkMoods ? [] }:
+        assert nixpkgs.lib.assertMsg
+          (builtins.all (mood: builtins.elem mood linkableMoods) linkMoods)
+          "linkMoods takes bash, dash, or sh";
         pkgs.stdenv.mkDerivation {
           pname = "kosh";
           version = packageVersion;
@@ -64,6 +71,9 @@
             runHook preInstall
             mkdir -p $out/bin
             cp ./kosh $out/bin/
+            for mood in ${nixpkgs.lib.escapeShellArgs linkMoods}; do
+              ln -s kosh "$out/bin/$mood"
+            done
             runHook postInstall
           '';
 
@@ -74,11 +84,36 @@
             mainProgram = "kosh";
             platforms = platforms.unix;
           };
-        };
+        });
+
+      mkMoodLinks = pkgs: package: linkMoods:
+        pkgs.runCommand "kosh-mood-links" { } ''
+          mkdir -p $out/bin
+          for mood in ${nixpkgs.lib.escapeShellArgs linkMoods}; do
+            ln -s ${package}/bin/kosh "$out/bin/$mood"
+          done
+        '';
+
+      # A string that starts or ends with a blank or starts with a quote is
+      # quoted, as kosh(5) requires.
+      formatSetting = lib: name: value:
+        let
+          text =
+            if builtins.isBool value then (if value then "on" else "off")
+            else if builtins.isInt value then toString value
+            else value;
+          needsQuotes = text != lib.strings.trim text
+            || lib.hasPrefix "\"" text || lib.hasPrefix "'" text;
+          quote = if lib.hasInfix "\"" text then "'" else "\"";
+        in
+        assert lib.assertMsg (!lib.hasInfix "\n" text)
+          "programs.kosh.settings.${name} holds a newline";
+        "${name}=${if needsQuotes then quote + text + quote else text}";
 
       mkSystemModule = { config, lib, pkgs, ... }:
         let
           cfg = config.programs.kosh;
+          moodLinks = mkMoodLinks pkgs cfg.package cfg.linkMoods;
         in
         {
           options.programs.kosh = {
@@ -88,11 +123,36 @@
               default = mkPackage { inherit pkgs; };
               description = "The kosh package to use";
             };
+            linkMoods = lib.mkOption {
+              type = lib.types.listOf (lib.types.enum linkableMoods);
+              default = [ ];
+              example = [ "sh" "dash" ];
+              description = ''
+                Moods linked to kosh in the system bin directory. The links
+                take priority over another package that provides the same
+                command.
+              '';
+            };
+            settings = lib.mkOption {
+              type = with lib.types; attrsOf (oneOf [ bool int str ]);
+              default = { };
+              example = { mood = "bash"; "completion.on_tab" = false; };
+              description = ''
+                Settings written to /etc/kosh.conf. A user file and KOSHCONF
+                replace each setting they also set.
+              '';
+            };
           };
 
           config = lib.mkIf cfg.enable {
-            environment.systemPackages = [ cfg.package ];
-            environment.shells = [ "${cfg.package}/bin/kosh" ];
+            environment.systemPackages = [ cfg.package ]
+              ++ lib.optional (cfg.linkMoods != [ ]) (lib.hiPrio moodLinks);
+            environment.shells = [ "${cfg.package}/bin/kosh" ]
+              ++ map (mood: "${moodLinks}/bin/${mood}") cfg.linkMoods;
+            environment.etc."kosh.conf" = lib.mkIf (cfg.settings != { }) {
+              text = lib.concatStringsSep "\n"
+                (lib.mapAttrsToList (formatSetting lib) cfg.settings) + "\n";
+            };
           };
         };
     in
@@ -148,10 +208,18 @@
               default = mkPackage { inherit pkgs; };
               description = "The kosh package to use";
             };
+            linkMoods = lib.mkOption {
+              type = lib.types.listOf (lib.types.enum linkableMoods);
+              default = [ ];
+              example = [ "sh" "dash" ];
+              description = "Moods linked to kosh beside it in the profile bin directory";
+            };
           };
 
           config = lib.mkIf cfg.enable {
-            home.packages = [ cfg.package ];
+            home.packages = [ cfg.package ]
+              ++ lib.optional (cfg.linkMoods != [ ])
+                (lib.hiPrio (mkMoodLinks pkgs cfg.package cfg.linkMoods));
           };
         };
     };
