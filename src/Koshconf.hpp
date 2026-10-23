@@ -42,13 +42,13 @@ read_koshconf_text(StringView        text,
                    koshconf_reading &reading) throws -> void;
 fn
 read_koshconf_file(const Path &path, koshconf_reading &reading) throws
-    -> bool;
+    -> void;
 /* /etc/kosh.conf, the ProgramData file on Windows, or the debug override. */
 fn
 find_system_koshconf_path() throws -> Maybe<Path>;
 fn
 read_system_koshconf_file(const Path       &path,
-                          koshconf_reading &reading) throws -> bool;
+                          koshconf_reading &reading) throws -> void;
 
 fn
 read_koshconf_blob(StringView encoded, koshconf_reading &reading) throws

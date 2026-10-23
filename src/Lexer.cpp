@@ -387,11 +387,11 @@ Lexer::peek_cache_is_live() const wontthrow -> bool
 }
 
 hot fn
-Lexer::advance_past_last_peek() throws -> usize
+Lexer::advance_past_last_peek() throws -> void
 {
   ASSERT(m_cursor_position + m_cached_offset <= m_source.length);
 
-  let const result = advance_forward(m_cached_offset);
+  advance_forward(m_cached_offset);
 
   m_cached_offset = 0;
   m_peek_cache    = nullptr;
@@ -403,8 +403,6 @@ Lexer::advance_past_last_peek() throws -> usize
     m_was_last_shell_token_newline = false;
     collect_pending_heredocs();
   }
-
-  return result;
 }
 
 cold fn
@@ -687,12 +685,10 @@ Lexer::skip_whitespace() throws -> void
 }
 
 hot alwaysinline fn
-Lexer::advance_forward(usize offset) wontthrow -> usize
+Lexer::advance_forward(usize offset) wontthrow -> void
 {
   ASSERT(m_cursor_position + offset <= m_source.length);
   m_cursor_position += offset;
-
-  return offset;
 }
 
 hot alwaysinline fn

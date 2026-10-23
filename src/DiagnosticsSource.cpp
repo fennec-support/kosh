@@ -264,25 +264,17 @@ byte_precedes_comment(char byte) wontthrow -> bool
 fn
 skip_here_document(StringView source, usize at) throws -> usize
 {
-  usize     cursor            = at + 2;
-  let const should_strip_tabs = cursor < source.length && source[cursor] == '-';
+  let const tail   = lexer::read_heredoc_operator_tail(source, at + 2);
+  usize     cursor = tail.word_end;
 
-  if (should_strip_tabs) cursor++;
-
-  while (cursor < source.length && lexer::is_whitespace(source[cursor]))
-    cursor++;
-
-  let const delimiter_start = cursor;
-
-  cursor = lexer::balanced_scan_delimiter_end(source, cursor);
-
-  if (cursor == delimiter_start) return at + 2;
+  if (tail.word_end == tail.word_start) return at + 2;
 
   let const heredoc = lexer::pending_heredoc{
       lexer::unquote_heredoc_delimiter(
-          source.substring_of_length(delimiter_start, cursor - delimiter_start),
+          source.substring_of_length(tail.word_start,
+                                     tail.word_end - tail.word_start),
           heap_allocator()),
-      should_strip_tabs};
+      tail.should_strip_tabs};
 
   while (cursor < source.length && source[cursor] != '\n') {
     cursor++;

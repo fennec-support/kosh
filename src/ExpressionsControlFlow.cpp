@@ -761,6 +761,10 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
   cxt.execution_store().is_terminal_exec_allowed() = false;
   cxt.source_store().set_current_location(source_location());
 
+  let const substitution_mark = cxt.mark_process_substitutions();
+
+  defer { cxt.cleanup_process_substitutions(substitution_mark); };
+
   let const values = m_has_in_clause ? cxt.process_args(m_words)
                                      : cxt.variable_store().positional_params();
 
@@ -1782,6 +1786,12 @@ CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
       os::close_fd(toward_child->out);
     else
       os::close_shell_fd(write_fd);
+
+    /* the child is not a job yet, so it is stopped and reaped here. */
+    let children = ArrayList<os::process>{cxt.scratch_allocator()};
+
+    children.push(child);
+    utils::terminate_and_reap_processes(children);
 
     throw ErrorWithLocation{source_location(),
                             "Could not place the coprocess descriptors"};

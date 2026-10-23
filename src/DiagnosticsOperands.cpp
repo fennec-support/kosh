@@ -463,16 +463,19 @@ substitution_runs_pattern_matcher(StringView body) throws -> bool
       COMMAND_GROUP_PATTERN_MATCHER);
 }
 
+pure fn
+segment_is_literal(const WordSegment &segment) wontthrow -> bool
+{
+  return segment.kind == WordSegment::Kind::LiteralText ||
+         segment.kind == WordSegment::Kind::UnquotedText ||
+         segment.kind == WordSegment::Kind::DoubleQuotedText;
+}
+
 cold fn
 word_is_fully_literal(const Word &word) wontthrow -> bool
 {
   for (let const &segment : word.segments)
-    if (segment.kind != WordSegment::Kind::LiteralText &&
-        segment.kind != WordSegment::Kind::UnquotedText &&
-        segment.kind != WordSegment::Kind::DoubleQuotedText)
-    {
-      return false;
-    }
+    if (!segment_is_literal(segment)) return false;
 
   return true;
 }

@@ -67,6 +67,9 @@ view_settles_echo_escapes(StringView view) wontthrow -> bool;
 
 cold fn
 substitution_runs_pattern_matcher(StringView body) throws -> bool;
+/* a literal, unquoted, or double-quoted text segment with no expansion. */
+pure fn
+segment_is_literal(const WordSegment &segment) wontthrow -> bool;
 cold fn
 word_is_fully_literal(const Word &word) wontthrow -> bool;
 cold fn

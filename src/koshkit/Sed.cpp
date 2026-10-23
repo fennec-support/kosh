@@ -277,7 +277,8 @@ parse_sed_script(StringView              script,
     sed_address address{};
     defer { free_sed_address(address); };
 
-    unused(parse_sed_address(script, position, allocator, address, regex_mode));
+    let const has_first_address =
+        parse_sed_address(script, position, allocator, address, regex_mode);
 
     sed_address second_address{};
     defer { free_sed_address(second_address); };
@@ -285,6 +286,10 @@ parse_sed_script(StringView              script,
     bool has_second_address = false;
 
     if (position < script.length && script[position] == ',') {
+      if (!has_first_address)
+        throw SedParseError{position, "Missing first address",
+                            "Write an address before the comma"};
+
       position++;
       has_second_address = parse_sed_address(script, position, allocator,
                                              second_address, regex_mode);

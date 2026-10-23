@@ -409,10 +409,7 @@ Wc::execute(const ExecContext               &ec,
       ec.print_to_stdout(output);
       output.clear();
       os::set_last_system_error(state.error_number);
-      report_soft_koshkit_error(
-          ec, cxt,
-          koshka::koshkit::path_error_message("read", sources[source_index],
-                                              cxt.scratch_allocator()));
+      KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
       status = 1;
 
       if (!os::path_is_directory(sources[source_index])) continue;

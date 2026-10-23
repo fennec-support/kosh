@@ -178,20 +178,15 @@ session_heredoc(StringView line) throws -> Maybe<lexer::pending_heredoc>
       continue;
     }
 
-    usize     at                = position + 2;
-    let const should_strip_tabs = at < line.length && line[at] == '-';
+    let const tail = lexer::read_heredoc_operator_tail(line, position + 2);
 
-    if (should_strip_tabs) at++;
-    while (at < line.length && (line[at] == ' ' || line[at] == '\t'))
-      at++;
-
-    let const word_end = lexer::balanced_scan_delimiter_end(line, at);
-
-    if (word_end > at) {
+    if (tail.word_end > tail.word_start) {
       return lexer::pending_heredoc{
           lexer::unquote_heredoc_delimiter(
-              line.substring_of_length(at, word_end - at), heap_allocator()),
-          should_strip_tabs};
+              line.substring_of_length(tail.word_start,
+                                       tail.word_end - tail.word_start),
+              heap_allocator()),
+          tail.should_strip_tabs};
     }
   }
 

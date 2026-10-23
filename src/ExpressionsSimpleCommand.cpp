@@ -1144,9 +1144,17 @@ internal::allocate_redirection_descriptor(
     };
   }
 
+  /* the opened target or staged body is not placed yet, so a throw from here
+     on closes it. */
+  let const do_close_unplaced = [&] wontthrow {
+    if (resolved.kind != redirection_outcome::Duplicate && !resolved.is_cached)
+      os::close_fd(resolved.opened_fd);
+  };
+
   let const allocated_fd = os::allocate_free_shell_fd(10);
 
   if (allocated_fd < 0) {
+    do_close_unplaced();
     if (did_open_or_stage_fail != nullptr) *did_open_or_stage_fail = true;
     throw ErrorWithLocation{location, "Could not allocate a file descriptor"};
   }
@@ -1155,12 +1163,17 @@ internal::allocate_redirection_descriptor(
      target variable. */
   let const allocated_text = String::from(allocated_fd, heap_allocator());
 
-  if (target->has_subscript) {
-    cxt.assign_array_element(target->name, target->subscript,
-                             allocated_text.view(),
-                             assignment_update_mode::Replace);
-  } else {
-    cxt.set_shell_variable(target->name, allocated_text.view());
+  try {
+    if (target->has_subscript) {
+      cxt.assign_array_element(target->name, target->subscript,
+                               allocated_text.view(),
+                               assignment_update_mode::Replace);
+    } else {
+      cxt.set_shell_variable(target->name, allocated_text.view());
+    }
+  } catch (...) {
+    do_close_unplaced();
+    throw;
   }
 
   return allocated_fd;

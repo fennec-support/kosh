@@ -443,21 +443,14 @@ EvalContext::run_named_trap(
       source_store().source_frames().count() + 1, function_store().call_depth(),
       saved_exit_status);
 
-  let const current_pipe_statuses =
-      variable_store().indexed_arrays().find("PIPESTATUS");
-  let const         has_saved_pipe_statuses = current_pipe_statuses.has_value();
-  ArrayList<String> saved_pipe_statuses{heap_allocator()};
-
-  if (has_saved_pipe_statuses)
-    saved_pipe_statuses = current_pipe_statuses->clone();
+  let saved_pipe_statuses = snapshot_trap_pipe_statuses();
 
   defer {
     trap_store().last_trap_action_status() =
         execution_store().last_exit_status();
     execution_store().last_exit_status() = saved_exit_status;
 
-    restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                               steal(saved_pipe_statuses));
+    restore_trap_pipe_statuses(steal(saved_pipe_statuses));
   };
 
   let const cached_action = cached_trap_body(condition, action);
@@ -472,13 +465,23 @@ EvalContext::run_named_trap(
 }
 
 fn
-EvalContext::restore_trap_pipe_statuses(
-    bool has_saved_pipe_statuses, ArrayList<String> saved_pipe_statuses)
+EvalContext::snapshot_trap_pipe_statuses() const throws
+    -> Maybe<ArrayList<String>>
+{
+  let const current = variable_store().indexed_arrays().find("PIPESTATUS");
+
+  if (!current.has_value()) return None;
+
+  return current->clone();
+}
+
+fn
+EvalContext::restore_trap_pipe_statuses(Maybe<ArrayList<String>> saved)
     wontthrow
     -> void
 {
   try {
-    if (!has_saved_pipe_statuses) {
+    if (!saved.has_value()) {
       variable_store().indexed_arrays().erase("PIPESTATUS");
 
       return;
@@ -486,7 +489,7 @@ EvalContext::restore_trap_pipe_statuses(
 
     if (let const current =
             variable_store().indexed_arrays().find("PIPESTATUS");
-        current.has_value() && **current == saved_pipe_statuses)
+        current.has_value() && **current == *saved)
     {
       return;
     }
@@ -495,13 +498,12 @@ EvalContext::restore_trap_pipe_statuses(
             variable_store().indexed_arrays().find_for_write("PIPESTATUS");
         current.has_value())
     {
-      *current.value() = steal(saved_pipe_statuses);
+      *current.value() = steal(*saved);
 
       return;
     }
 
-    variable_store().indexed_arrays().set("PIPESTATUS",
-                                          steal(saved_pipe_statuses));
+    variable_store().indexed_arrays().set("PIPESTATUS", steal(*saved));
   } catch (...) {
     LOG(Info, "the PIPESTATUS restore of a trap action could not allocate");
   }
@@ -863,19 +865,12 @@ EvalContext::run_pending_traps() throws -> void
     os::clear_reaped_child_arrival();
   }
 
-  let const current_pipe_statuses =
-      variable_store().indexed_arrays().find("PIPESTATUS");
-  let const         has_saved_pipe_statuses = current_pipe_statuses.has_value();
-  ArrayList<String> saved_pipe_statuses{heap_allocator()};
-
-  if (has_saved_pipe_statuses)
-    saved_pipe_statuses = current_pipe_statuses->clone();
+  let saved_pipe_statuses = snapshot_trap_pipe_statuses();
 
   defer {
     execution_store().last_exit_status() = saved_exit_status;
 
-    restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                               steal(saved_pipe_statuses));
+    restore_trap_pipe_statuses(steal(saved_pipe_statuses));
   };
 
   for (i32 number = os::take_pending_signal(); number != 0;
@@ -971,19 +966,12 @@ EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
   let const action_scope =
       TrapActionScope::enter(trap_store(), saved_exit_status);
 
-  let const current_pipe_statuses =
-      variable_store().indexed_arrays().find("PIPESTATUS");
-  let const         has_saved_pipe_statuses = current_pipe_statuses.has_value();
-  ArrayList<String> saved_pipe_statuses{heap_allocator()};
-
-  if (has_saved_pipe_statuses)
-    saved_pipe_statuses = current_pipe_statuses->clone();
+  let saved_pipe_statuses = snapshot_trap_pipe_statuses();
 
   defer {
     execution_store().last_exit_status() = saved_exit_status;
 
-    restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                               steal(saved_pipe_statuses));
+    restore_trap_pipe_statuses(steal(saved_pipe_statuses));
   };
 
   if (let const trap = trap_store().find_active(StringView{"EXIT", 4});
@@ -1024,13 +1012,7 @@ EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
   let const action_scope =
       TrapActionScope::enter(trap_store(), saved_exit_status);
 
-  let const current_pipe_statuses =
-      variable_store().indexed_arrays().find("PIPESTATUS");
-  let const         has_saved_pipe_statuses = current_pipe_statuses.has_value();
-  ArrayList<String> saved_pipe_statuses{heap_allocator()};
-
-  if (has_saved_pipe_statuses)
-    saved_pipe_statuses = current_pipe_statuses->clone();
+  let saved_pipe_statuses = snapshot_trap_pipe_statuses();
 
   let requested_status = Maybe<i32>{None};
 
@@ -1038,8 +1020,7 @@ EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
     execution_store().last_exit_status() =
         requested_status.has_value() ? *requested_status : saved_exit_status;
 
-    restore_trap_pipe_statuses(has_saved_pipe_statuses,
-                               steal(saved_pipe_statuses));
+    restore_trap_pipe_statuses(steal(saved_pipe_statuses));
   };
 
   if (let const trap = trap_store().find_active(StringView{"EXIT", 4});

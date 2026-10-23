@@ -36,6 +36,17 @@ static bool IS_TERMINAL_OWNER = true;
 
 static u64 COMMAND_PEAK_RSS_BYTE_COUNT = 0;
 
+/* a forked child unblocks every signal before exec, since an interactive
+   shell blocks the termination and stop signals in itself. */
+static fn
+clear_child_signal_mask() wontthrow -> void
+{
+  sigset_t empty_mask;
+
+  sigemptyset(&empty_mask);
+  (void) sigprocmask(SIG_SETMASK, &empty_mask, nullptr);
+}
+
 static fn
 note_reaped_child_usage(const struct rusage &usage) wontthrow -> void
 {
@@ -161,7 +172,7 @@ is_child_process() wontthrow -> bool
   return getpid() != PARENT_SHELL_PID;
 }
 
-fn
+static fn
 is_running_setuid() wontthrow -> bool
 {
   return geteuid() != getuid() || getegid() != getgid();
@@ -709,7 +720,13 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
   sigemptyset(&default_signals);
   sigaddset(&default_signals, SIGPIPE);
   posix_spawnattr_setsigdefault(&attr, &default_signals);
-  posix_spawnattr_setflags(&attr, POSIX_SPAWN_SETSIGDEF);
+
+  sigset_t empty_mask;
+
+  sigemptyset(&empty_mask);
+  posix_spawnattr_setsigmask(&attr, &empty_mask);
+  posix_spawnattr_setflags(&attr,
+                           POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK);
 
   pid_t child_pid = 0;
 
@@ -2355,6 +2372,7 @@ spawn_measured_child(const ArrayList<String> &argv,
   if (child_pid == 0) {
     close(ready_descriptors[0]);
     close(start_descriptors[1]);
+    clear_child_signal_mask();
     signal(SIGPIPE, SIG_DFL);
     redirect_child_output(output);
 
@@ -2791,6 +2809,7 @@ run_tracer(const char *const *raw_argv,
 
   if (target == 0) {
     close(report_descriptor);
+    clear_child_signal_mask();
     signal(SIGPIPE, SIG_DFL);
     redirect_child_output(output);
 
@@ -3106,6 +3125,7 @@ run_through_error_pipe(const auto  &raw_argv,
 
   if (child == 0) {
     close(exec_error_pipe[0]);
+    clear_child_signal_mask();
     do_prepare_child(exec_error_pipe[1]);
     execvp(raw_argv[0], const_cast<char *const *>(raw_argv.begin()));
 

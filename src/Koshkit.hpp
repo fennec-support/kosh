@@ -177,7 +177,7 @@ class Utility
 {
 public:
 #define T__KOSHKIT_KIND(util, name) util,
-  enum class Kind : uint8_t
+  enum class Kind : u8
   {
     KOSHKIT_UTILITY_LIST(T__KOSHKIT_KIND)
   };

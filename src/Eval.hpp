@@ -5375,10 +5375,12 @@ public:
       -> FunctionBodyHandle;
   fn
   run_return_trap(i32 status_before_return) throws -> void;
+  /* PIPESTATUS before a trap action runs, or None when it is unset. */
   fn
-  restore_trap_pipe_statuses(bool              has_saved_pipe_statuses,
-                             ArrayList<String> saved_pipe_statuses) wontthrow
-      -> void;
+  snapshot_trap_pipe_statuses() const throws
+      -> Maybe<ArrayList<String>>;
+  fn
+  restore_trap_pipe_statuses(Maybe<ArrayList<String>> saved) wontthrow -> void;
   pure fn
   should_run_err_trap() const wontthrow -> bool
   {

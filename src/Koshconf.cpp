@@ -907,7 +907,7 @@ read_koshconf_text(StringView        text,
 
 fn
 read_koshconf_file(const Path &path, koshconf_reading &reading) throws
-    -> bool
+    -> void
 {
   static constexpr u64 MAXIMUM_KOSHCONF_BYTE_COUNT = 1U << 20;
   let                  status                      = os::file_status{};
@@ -920,7 +920,7 @@ read_koshconf_file(const Path &path, koshconf_reading &reading) throws
                                     "': it is not a regular file"}
                                 .to_string());
 
-      return false;
+      return;
     }
 
     if (type_letter == '-' && status.size > MAXIMUM_KOSHCONF_BYTE_COUNT) {
@@ -928,28 +928,26 @@ read_koshconf_file(const Path &path, koshconf_reading &reading) throws
                                     "': it is larger than 1 MiB"}
                                 .to_string());
 
-      return false;
+      return;
     }
   } else if (os::last_system_error_is_missing_file()) {
-    return false;
+    return;
   }
 
   let const contents = path.read_entire_file();
 
   if (!contents.has_value()) {
-    if (os::last_system_error_is_missing_file()) return false;
+    if (os::last_system_error_is_missing_file()) return;
 
     reading.warnings.push(Warning{"Unable to read '" + path.text() +
                                   "': " + os::last_system_error_message()}
                               .to_string());
 
-    return false;
+    return;
   }
 
   LOG(Info, "reading the koshconf file '%s'", path.text().c_str());
   read_koshconf_text(contents->view(), path.text().view(), reading);
-
-  return true;
 }
 
 fn
@@ -969,7 +967,7 @@ find_system_koshconf_path() throws -> Maybe<Path>
 
 fn
 read_system_koshconf_file(const Path       &path,
-                          koshconf_reading &reading) throws -> bool
+                          koshconf_reading &reading) throws -> void
 {
   let system_file = os::read_system_owned_file(path);
 
@@ -977,12 +975,10 @@ read_system_koshconf_file(const Path       &path,
     reading.warnings.push(Warning{system_file.rejection.view()}.to_string());
   }
 
-  if (!system_file.contents.has_value()) return false;
+  if (!system_file.contents.has_value()) return;
 
   LOG(Info, "reading the system koshconf file '%s'", path.text().c_str());
   read_koshconf_text(system_file.contents->view(), path.text().view(), reading);
-
-  return true;
 }
 
 fn
@@ -1409,7 +1405,7 @@ make_koshconf_snapshot(const EvalContext &cxt) throws -> String
   if (let const system_path = find_system_koshconf_path();
       system_path.has_value())
   {
-    unused(read_system_koshconf_file(*system_path, system_layer));
+    read_system_koshconf_file(*system_path, system_layer);
   }
 
   return compose_koshconf_text("save", mimic_mood::Default, &cxt,

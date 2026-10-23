@@ -202,7 +202,8 @@ Split::execute(const ExecContext               &ec,
       os::close_fd(*existing);
       if (is_input) {
         report_soft_koshkit_error(
-            ec, cxt, "'" + name + "' would overwrite the input; aborting");
+            ec, cxt, "The output file '" + name + "' is the input file",
+            "Choose another prefix");
 
         return false;
       }

@@ -61,32 +61,28 @@ Chgrp::execute(const ExecContext               &ec,
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
-  /* an empty group changes nothing. */
-  let group_id = Maybe<i64>{-1};
+  /* an empty group changes nothing, which group_id -1 means. */
+  i64 group_id = -1;
 
   if (!operands[0].is_empty()) {
     let const resolved = utils::resolve_group_id(operands[0].view());
 
-    if (resolved.has_value()) {
-      group_id = static_cast<i64>(*resolved);
-    } else {
-      group_id = None;
+    if (!resolved.has_value()) {
+      KOSHKIT_REPORT_ERROR_AT(
+          operand_locations[0], "Invalid group '" + operands[0] + "'",
+          "Use a group name or an unsigned decimal group id");
+
+      return 1;
     }
-  }
 
-  if (!group_id.has_value()) {
-    KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                            "Invalid group '" + operands[0] + "'",
-                            "Use a group name or an unsigned decimal group id");
-
-    return 1;
+    group_id = static_cast<i64>(*resolved);
   }
 
   /* at this point: operands holds a group operand and at least one file
      operand, and group_id holds the resolved group id. */
   return utils::change_operands_ownership(
       ec, cxt, operands,
-      {-1, *group_id, FLAG_CHGRP_RECURSIVE.is_enabled(),
+      {-1, group_id, FLAG_CHGRP_RECURSIVE.is_enabled(),
        FLAG_CHGRP_ONE_FILE_SYSTEM.is_enabled(),
        FLAG_CHGRP_NO_DEREFERENCE.is_enabled(),
        FLAG_CHGRP_COMMAND_LINE_FOLLOW.position(), FLAG_CHGRP_FOLLOW.position(),

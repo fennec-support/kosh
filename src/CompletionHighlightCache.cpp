@@ -494,12 +494,15 @@ ShellHighlightCache::spans_for(StringView   source,
       source.data != m_source.data || source.length != m_source.length;
 
   if (has_source_changed) {
-    m_source = source;
+    /* m_source changes only after the pieces are complete, so a scan that
+       throws leaves the next call to scan again. */
+    m_source = StringView{};
     m_pieces = ArrayList<highlight_span>{m_allocator};
     HIGHLIGHT_ARENA.reset();
     scan_highlight_source(source, context, m_pieces);
     HIGHLIGHT_ARENA.reset();
     split_spans_at_lines(source, m_pieces);
+    m_source = source;
   }
 
   /* at this point: m_pieces holds the pieces of m_source sorted by start.

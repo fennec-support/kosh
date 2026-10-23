@@ -404,6 +404,8 @@ EvalContext::set_array_element(StringView name,
 
     if (!variable_store().sparse_arrays().has(name)) return;
 
+    bool did_migrate = false;
+
     loop {
       let const key =
           sparse_array_key(name, dense->count(), scratch_allocator());
@@ -413,9 +415,13 @@ EvalContext::set_array_element(StringView name,
       if (!migrated.has_value()) break;
       dense->push_managed(migrated->view());
       variable_store().sparse_arrays().values().erase(key.view());
+      did_migrate = true;
     }
 
-    if (!sparse_array_has_entries(variable_store().sparse_arrays().values(),
+    /* the sparse entries of name only shrink when one migrated, and the scan
+       below walks every sparse entry of every array. */
+    if (did_migrate &&
+        !sparse_array_has_entries(variable_store().sparse_arrays().values(),
                                   name, scratch_allocator()))
     {
       variable_store().sparse_arrays().forget(name);

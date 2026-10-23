@@ -788,3 +788,24 @@ output with $( unbalanced
 MARKDOWN
 "$BIN" --lint --no-traces "$root/session.md" 2>&1 |
   grep -c ': error: ' || true
+
+# A heredoc in a YAML block closes at its indented terminator even when the
+# delimiter is not a variable name, so the next line is analyzed as code.
+mkdir -p "$root/dash-delimiter/.github/workflows"
+cat > "$root/dash-delimiter/.github/workflows/check.yml" <<'YAML'
+on: push
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          cat <<'---'
+          body
+          ---
+          echo "$DASH_DELIMITER_UNSET"
+YAML
+dash_output=$(cd "$root/dash-delimiter" &&
+  "$BIN" --lint --no-traces .github/workflows/check.yml 2>&1)
+printf 'dash-delimiter unset=%s unclosed=%s\n' \
+  "$(printf '%s\n' "$dash_output" | grep -c "variable 'DASH_DELIMITER_UNSET'")" \
+  "$(printf '%s\n' "$dash_output" | grep -c 'does not close')"

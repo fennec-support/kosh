@@ -1162,10 +1162,7 @@ Sort::execute(const ExecContext               &ec,
     output_descriptor = os::open_file_descriptor(FLAG_SORT_OUTPUT.value(),
                                                  os::file_open_mode::Truncate);
     if (!output_descriptor.has_value()) {
-      report_soft_koshkit_error(
-          ec, cxt,
-          koshka::koshkit::path_error_message("open", FLAG_SORT_OUTPUT.value(),
-                                              cxt.scratch_allocator()));
+      KOSHKIT_REPORT_PATH_ERROR("open", FLAG_SORT_OUTPUT.value());
 
       return 2;
     }

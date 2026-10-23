@@ -16,7 +16,7 @@
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL(
-    "[-hmrtx1] [-l latency] [-e substring] path ...",
+    "[-hmrx1] [-l latency] [-e substring] path ...",
     "The goodfsw utility can report changes under watched paths.");
 
 FLAG(GOODFSW_RECURSIVE, Bool, 'r', "recursive", "Watch every subdirectory.");
@@ -30,11 +30,6 @@ FLAG(GOODFSW_MACHINE,
      'm',
      "machine-readable",
      "Use Unix timestamps and numeric event masks.");
-FLAG(GOODFSW_TIMESTAMP,
-     Bool,
-     't',
-     "timestamp",
-     "Prefix every record with the Unix scan timestamp.");
 FLAG(GOODFSW_EVENT_FLAGS,
      Bool,
      '\0',

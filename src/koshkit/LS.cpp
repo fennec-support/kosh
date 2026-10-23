@@ -405,22 +405,27 @@ collect_directory(const Path            &directory,
       (options.should_load_type &&
        (options.should_color || options.should_classify));
 
+  let const do_push_dot_entries =
+      [&](usize child_count) throws -> void {
+    entries.reserve(child_count + 2);
+    if (!options.is_listing_dot_and_dotdot) return;
+
+    entries.push(make_entry(directory, StringView{"."}, options,
+                            Path::EntryKind::Directory, allocator));
+
+    let parent = Path{directory_text, allocator};
+
+    parent.append(StringView{".."});
+    entries.push(make_entry(parent, StringView{".."}, options,
+                            Path::EntryKind::Directory, allocator));
+  };
+
   if (should_collect_status) {
     let const children = os::list_directory_status(directory_text, allocator);
 
     if (!children.has_value()) return None;
 
-    entries.reserve(children->count() + 2);
-    if (options.is_listing_dot_and_dotdot) {
-      entries.push(make_entry(directory, StringView{"."}, options,
-                              Path::EntryKind::Directory, allocator));
-
-      let parent = Path{directory_text, allocator};
-
-      parent.append(StringView{".."});
-      entries.push(make_entry(parent, StringView{".."}, options,
-                              Path::EntryKind::Directory, allocator));
-    }
+    do_push_dot_entries(children->count());
 
     for (let const &child : *children) {
       if (!options.is_showing_dot_names && child.child.name.starts_with(".")) {
@@ -441,18 +446,7 @@ collect_directory(const Path            &directory,
   /* at this point: children holds the entries of directory, and entries is
      empty. */
 
-  entries.reserve(children->count() + 2);
-
-  if (options.is_listing_dot_and_dotdot) {
-    entries.push(make_entry(directory, StringView{"."}, options,
-                            Path::EntryKind::Directory, allocator));
-
-    let parent = Path{directory_text, allocator};
-
-    parent.append(StringView{".."});
-    entries.push(make_entry(parent, StringView{".."}, options,
-                            Path::EntryKind::Directory, allocator));
-  }
+  do_push_dot_entries(children->count());
 
   for (let const &child : *children) {
     if (!options.is_showing_dot_names && child.name.starts_with(".")) {

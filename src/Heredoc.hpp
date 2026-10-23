@@ -2,8 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file declares pending heredoc state and the test for its terminating
- * line. The lexer, highlighter, and completion scanner share them.
+ * This file declares pending heredoc state, the reader of a heredoc operator
+ * and its delimiter word, and the test for the terminating line. Every reader
+ * of shell source shares them.
  */
 
 #pragma once
@@ -42,5 +43,19 @@ match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
 pure fn
 balanced_scan_delimiter_end(StringView source, usize position)
     wontthrow -> usize;
+
+/* the parts of a heredoc operator after its <<: the end of the operator with
+   its optional -, and the delimiter word after the blanks that follow it. */
+struct heredoc_operator_tail
+{
+  usize operator_end;
+  usize word_start;
+  usize word_end;
+  bool  should_strip_tabs;
+};
+
+pure fn
+read_heredoc_operator_tail(StringView source, usize after_operator) wontthrow
+    -> heredoc_operator_tail;
 
 } /* namespace koshka::lexer */

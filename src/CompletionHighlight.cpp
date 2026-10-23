@@ -1527,38 +1527,23 @@ internal::scan_highlight_range(
         !(i + 2 < end && line[i + 2] == '<'))
     {
       let const operator_start = i;
+      let const tail           = lexer::read_heredoc_operator_tail(
+          line.substring_of_length(0, end), i + 2);
 
-      i += 2;
+      do_push(operator_start, tail.operator_end, highlight_role::operator_);
+      i = tail.word_end;
 
-      let should_strip_tabs = false;
-
-      if (i < end && line[i] == '-') {
-        should_strip_tabs = true;
-        i++;
-      }
-
-      do_push(operator_start, i, highlight_role::operator_);
-
-      while (i < end && (line[i] == ' ' || line[i] == '\t')) {
-        i++;
-      }
-
-      let const delimiter_start = i;
-
-      i = lexer::balanced_scan_delimiter_end(line.substring_of_length(0, end),
-                                             i);
-
-      let const delimiter_word =
-          line.substring_of_length(delimiter_start, i - delimiter_start);
+      let const delimiter_word = line.substring_of_length(
+          tail.word_start, tail.word_end - tail.word_start);
 
       if (!delimiter_word.is_empty()) {
-        do_push(delimiter_start, i, highlight_role::heredoc_delimiter);
+        do_push(tail.word_start, i, highlight_role::heredoc_delimiter);
 
         let delimiter = lexer::unquote_heredoc_delimiter(
             delimiter_word, bump_allocator(HIGHLIGHT_ARENA));
 
         pending_heredocs.push(
-            lexer::pending_heredoc{steal(delimiter), should_strip_tabs});
+            lexer::pending_heredoc{steal(delimiter), tail.should_strip_tabs});
       }
 
       continue;

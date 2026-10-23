@@ -395,10 +395,7 @@ Cat::execute(const ExecContext               &ec,
         }
 
         os::set_last_system_error(chunk.error_number);
-        report_soft_koshkit_error(
-            ec, cxt,
-            koshka::koshkit::path_error_message(
-                "read", sources[chunk.source_index], cxt.scratch_allocator()));
+        KOSHKIT_REPORT_PATH_ERROR("read", sources[chunk.source_index]);
         status = 1;
       }
     }
@@ -425,10 +422,7 @@ Cat::execute(const ExecContext               &ec,
           state = source_state;
 
           os::set_last_system_error(chunk.error_number);
-          report_soft_koshkit_error(ec, cxt,
-                                            koshka::koshkit::path_error_message(
-                                        "read", sources[chunk.source_index],
-                                        cxt.scratch_allocator()));
+          KOSHKIT_REPORT_PATH_ERROR("read", sources[chunk.source_index]);
           status = 1;
         } else {
           append_formatted_cat_source(output, chunk.content, format, state);
@@ -465,10 +459,7 @@ Cat::execute(const ExecContext               &ec,
         let const source = sources[source_index];
 
         if (!content.has_value()) {
-          report_soft_koshkit_error(
-              ec, cxt,
-              koshka::koshkit::path_error_message("read", source,
-                                                  cxt.scratch_allocator()));
+          KOSHKIT_REPORT_PATH_ERROR("read", source);
           status = 1;
 
           return;

@@ -84,6 +84,13 @@ flock_directory=$(mktemp -d)
   sed "s|$flock_directory|DIR|g"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$flock_directory"
 
+echo "=== sed range without a first address ==="
+printf 'a\nb\n' | "$BIN" -c "koshkit sed -n ',2p'" 2>&1
+echo "status=$?"
+echo "=== which without an operand ==="
+"$BIN" -c 'koshkit which' >/dev/null 2>&1
+echo "status=$?"
+
 echo "=== nl body style location ==="
 "$BIN" -c 'koshkit nl -b invalid' 2>&1
 

@@ -29,33 +29,77 @@ enum class fold_break_mode : u8
   Blank,
 };
 
+/* the column after byte, for a line that reached column. a tab advances to
+   the next multiple of 8, a backspace steps back one column, a carriage
+   return returns to the first column, and a UTF-8 continuation byte stays in
+   its character's column. with is_byte_count, every byte is one column. */
+static pure fn
+advance_fold_column(usize column, char byte, bool is_byte_count) wontthrow
+    -> usize
+{
+  if (is_byte_count) return column + 1;
+
+  switch (byte) {
+  case '\t': return column + 8 - column % 8;
+  case '\b': return column > 0 ? column - 1 : 0;
+  case '\r': return 0;
+  default:   break;
+  }
+
+  return (static_cast<u8>(byte) & 0xC0) == 0x80 ? column : column + 1;
+}
+
 static fn
 append_folded_line(String         &output,
                    StringView      line,
                    usize           width,
                    fold_break_mode break_mode,
+                   bool            is_byte_count,
                    bool            has_newline) throws -> void
 {
-  usize start = 0;
+  usize start  = 0;
+  usize column = 0;
 
   /* e.g. line = "aaa bbb ccc", width = 5, break_mode is Blank
-     start 0: the blank at index 3 gives break_length 4, output "aaa ".
-     start 4: the blank at index 7 gives break_length 4, output "bbb ".
-     start 8: 3 bytes remain, output "ccc". */
-  while (line.length - start > width) {
-    usize break_length = width;
+     at index 5 the column would pass 5, so the blank at index 3 ends the
+     piece "aaa ". the same happens at index 9 for "bbb ", and "ccc" fits. */
+  usize position = 0;
+
+  while (position < line.length) {
+    let const next_column =
+        advance_fold_column(column, line[position], is_byte_count);
+
+    if (next_column <= width || position == start) {
+      column = next_column;
+      position++;
+      continue;
+    }
+
+    usize break_position = position;
 
     if (break_mode == fold_break_mode::Blank) {
-      for (usize offset = width; offset > 0; offset--)
-        if (isspace(static_cast<u8>(line[start + offset - 1])) != 0) {
-          break_length = offset;
+      for (usize at = position; at > start; at--)
+        if (isspace(static_cast<u8>(line[at - 1])) != 0) {
+          break_position = at;
           break;
         }
     }
 
-    output += line.substring_of_length(start, break_length);
+    /* a continuation byte stays with its lead byte. */
+    if (!is_byte_count) {
+      while (break_position > start + 1 &&
+             (static_cast<u8>(line[break_position]) & 0xC0) == 0x80)
+        break_position--;
+    }
+
+    output += line.substring_of_length(start, break_position - start);
     output += '\n';
-    start += break_length;
+
+    /* the piece after the break is measured again from the first column,
+       since a tab's width depends on where it starts. */
+    start    = break_position;
+    position = break_position;
+    column   = 0;
   }
 
   output += line.substring(start);
@@ -64,8 +108,9 @@ append_folded_line(String         &output,
 
 /* memory: each source's text is a heap String, released after its visit.
            folded lines accumulate in the scratch arena and are printed once.
-   time:   O(n) for n input bytes in width mode. blank mode scans back up to
-           width bytes for each break, so O(n * width) in the worst case.
+   time:   O(n) for n input bytes without -s, since each break rescans only
+           the bytes of the new piece. -s scans back up to the piece for each
+           break, so O(n * width) in the worst case.
    syscalls: reads each source through visit_ordered_sources(). */
 fn
 Fold::execute(const ExecContext               &ec,
@@ -115,7 +160,7 @@ Fold::execute(const ExecContext               &ec,
           content.substring_of_length(line_start, line_end - line_start), width,
           FLAG_FOLD_SPACES.is_enabled() ? fold_break_mode::Blank
                                         : fold_break_mode::Width,
-          line_end < content.length);
+          FLAG_FOLD_BYTES.is_enabled(), line_end < content.length);
       line_start = line_end < content.length ? line_end + 1 : line_end;
     }
   };

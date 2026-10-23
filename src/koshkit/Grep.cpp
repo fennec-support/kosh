@@ -326,9 +326,7 @@ collect_recursive_sources(const ExecContext &ec,
   if (path_kind == Path::EntryKind::Unknown) {
     if (!os::stat_path(path.view(), file_status)) {
       if (should_report_errors) {
-        report_soft_koshkit_error(
-            ec, cxt,
-            path_error_message("read", path.text(), cxt.scratch_allocator()));
+        KOSHKIT_REPORT_PATH_ERROR("read", path.text());
       }
 
       status = 2;
@@ -375,9 +373,7 @@ collect_recursive_sources(const ExecContext &ec,
 
   if (!children.has_value()) {
     if (should_report_errors) {
-      report_soft_koshkit_error(
-          ec, cxt,
-          path_error_message("read", path.text(), cxt.scratch_allocator()));
+      KOSHKIT_REPORT_PATH_ERROR("read", path.text());
     }
 
     status = 2;
@@ -440,11 +436,8 @@ collect_recursive_sources(const ExecContext &ec,
           kind = Path::EntryKind::Other;
           if (should_report_errors) {
             os::set_last_system_error(results[index].error_number);
-            report_soft_koshkit_error(
-                ec, cxt,
-                path_error_message("read",
-                                   child_paths[unknown_indices[index]].text(),
-                                   cxt.scratch_allocator()));
+            KOSHKIT_REPORT_PATH_ERROR(
+                "read", child_paths[unknown_indices[index]].text());
           }
 
           status = 2;
@@ -2204,9 +2197,8 @@ Grep::execute(const ExecContext               &ec,
         Path{file_name, cxt.scratch_allocator()}.read_entire_file();
 
     if (!contents.has_value()) {
-      report_soft_koshkit_error(
-          ec, cxt, FLAG_GREP_PATTERN_FILE.get_location(index),
-          path_error_message("read", file_name, cxt.scratch_allocator()));
+      KOSHKIT_REPORT_PATH_ERROR_AT(FLAG_GREP_PATTERN_FILE.get_location(index),
+                                   "read", file_name);
 
       return 2;
     }

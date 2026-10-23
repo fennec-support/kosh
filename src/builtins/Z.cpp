@@ -349,14 +349,14 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    if (!Path{entry.path.view()}.to_absolute().normalized().is_directory())
-      continue;
-
     let const tier  = do_match_tier(entry.path.view());
     let const score = static_cast<double>(entry.rank) *
                       recency_weight(now - entry.last_access);
 
+    /* only an entry that would win is checked for a live directory. */
     if (tier > best_tier || (tier == best_tier && score > best_score)) {
+      if (!Path{entry.path.view()}.to_absolute().is_directory()) continue;
+
       best_tier  = tier;
       best_score = score;
       best       = &entry;

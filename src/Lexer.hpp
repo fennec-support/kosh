@@ -394,7 +394,7 @@ public:
   fn
   drop_peek_cache() wontthrow -> void;
   fn
-  advance_past_last_peek() throws -> usize;
+  advance_past_last_peek() throws -> void;
 
   fn
   set_is_lexing_array_literal(bool is_lexing) wontthrow -> void
@@ -528,7 +528,7 @@ protected:
   fn
   skip_whitespace() throws -> void;
   fn
-  advance_forward(usize offset) wontthrow -> usize;
+  advance_forward(usize offset) wontthrow -> void;
   fn
   chop_character(usize offset = 0) wontthrow -> char;
   fn

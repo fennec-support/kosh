@@ -164,6 +164,48 @@ source_file_status(StringView source) throws -> Maybe<os::file_status>
   return status;
 }
 
+/* gives a copy its mode, the source mode without the creation mask for a
+   new destination, and with -p the source mode and times. cp -p fails when the
+   mode or times cannot be preserved. */
+static fn
+apply_copied_attributes(const Maybe<os::file_status> &source_status,
+                        StringView                    destination,
+                        const cp_options             &options,
+                        bool                          did_destination_exist,
+                        Allocator                     allocator) throws -> void
+{
+  if (!source_status.has_value()) return;
+
+  if ((options.should_preserve || !did_destination_exist) &&
+      !os::set_file_mode(destination,
+                         options.should_preserve
+                             ? source_status->mode & 0777
+                             : source_status->mode & 0777 &
+                                   ~os::get_file_creation_mask()) &&
+      options.should_preserve && options.should_report_mode_failure)
+  {
+    throw Error{
+        "Unable to preserve the mode of '" + String{allocator, destination}
+          +
+        "': " + os::last_system_error_message()
+    };
+  }
+
+  if (options.should_preserve &&
+      !os::set_file_times(destination,
+                          {source_status->access_time,
+                           source_status->access_nanoseconds,
+                           source_status->modification_time,
+                           source_status->modification_nanoseconds}))
+  {
+    throw Error{
+        "Unable to preserve timestamps for '" + String{allocator, destination}
+          +
+        "': " + os::last_system_error_message()
+    };
+  }
+}
+
 static fn
 copy_path(const ExecContext                &ec,
           EvalContext                      &cxt,
@@ -393,36 +435,8 @@ copy_path(const ExecContext                &ec,
       }
     }
 
-    if (source_status.has_value() &&
-        (options.should_preserve || !did_destination_exist) &&
-        !os::set_file_mode(destination,
-                           options.should_preserve
-                               ? source_status->mode & 0777
-                               : source_status->mode & 0777 &
-                                     ~os::get_file_creation_mask()) &&
-        options.should_preserve && options.should_report_mode_failure)
-    {
-      throw Error{
-          "Unable to preserve the mode of '" + String{allocator, destination}
-            +
-          "': " + os::last_system_error_message()
-      };
-    }
-
-    if (source_status.has_value() && options.should_preserve &&
-        !os::set_file_times(destination,
-                            {source_status->access_time,
-                             source_status->access_nanoseconds,
-                             source_status->modification_time,
-                             source_status->modification_nanoseconds}))
-    {
-      throw Error{
-          "Unable to preserve timestamps for '" +
-          String{allocator, destination}
-          +
-          "': " + os::last_system_error_message()
-      };
-    }
+    apply_copied_attributes(source_status, destination, options,
+                            did_destination_exist, allocator);
 
     return did_succeed;
   }
@@ -483,35 +497,8 @@ copy_path(const ExecContext                &ec,
 
   copy_file(ec, source, destination, options, allocator);
 
-  if (source_status.has_value() &&
-      (options.should_preserve || !did_destination_exist) &&
-      !os::set_file_mode(destination,
-                         options.should_preserve
-                             ? source_status->mode & 0777
-                             : source_status->mode & 0777 &
-                                   ~os::get_file_creation_mask()) &&
-      options.should_preserve && options.should_report_mode_failure)
-  {
-    throw Error{
-        "Unable to preserve the mode of '" + String{allocator, destination}
-          +
-        "': " + os::last_system_error_message()
-    };
-  }
-
-  if (source_status.has_value() && options.should_preserve &&
-      !os::set_file_times(destination,
-                          {source_status->access_time,
-                           source_status->access_nanoseconds,
-                           source_status->modification_time,
-                           source_status->modification_nanoseconds}))
-  {
-    throw Error{
-        "Unable to preserve timestamps for '" + String{allocator, destination}
-          +
-        "': " + os::last_system_error_message()
-    };
-  }
+  apply_copied_attributes(source_status, destination, options,
+                          did_destination_exist, allocator);
 
   return true;
 }

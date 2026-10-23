@@ -164,17 +164,17 @@ is_uniq_blank(char ch) wontthrow -> bool
 }
 
 static fn
-get_uniq_key(StringView line, usize skipped_fields, usize skipped_chars)
-    wontthrow
-    -> StringView
+get_uniq_key(StringView line,
+             usize      skipped_field_count,
+             usize      skipped_char_count) wontthrow -> StringView
 {
-  /* e.g. line = "  a  bb   c", skipped_fields = 2, skipped_chars = 1
+  /* e.g. line = "  a  bb   c", skipped_field_count = 2, skipped_char_count = 1
           field 0 skips "  a" and stops at position 3.
           field 1 skips "  bb" and stops at position 7.
-          skipped_chars moves position to 8, so the key is "  c". */
+          skipped_char_count moves position to 8, so the key is "  c". */
   usize position = 0;
 
-  for (usize field = 0; field < skipped_fields && position < line.length;
+  for (usize field = 0; field < skipped_field_count && position < line.length;
        field++)
   {
     while (position < line.length && is_uniq_blank(line[position])) {
@@ -186,8 +186,9 @@ get_uniq_key(StringView line, usize skipped_fields, usize skipped_chars)
     }
   }
 
-  position = skipped_chars < line.length - position ? position + skipped_chars
-                                                    : line.length;
+  position = skipped_char_count < line.length - position
+                 ? position + skipped_char_count
+                 : line.length;
 
   return line.substring(position);
 }
@@ -224,7 +225,7 @@ Uniq::execute(const ExecContext               &ec,
 
   static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 
-  usize skipped_fields = 0;
+  usize skipped_field_count = 0;
 
   if (FLAG_UNIQ_FIELDS.is_set()) {
     let const parsed = parse_uniq_count(FLAG_UNIQ_FIELDS.value());
@@ -238,10 +239,10 @@ Uniq::execute(const ExecContext               &ec,
       return 1;
     }
 
-    skipped_fields = *parsed;
+    skipped_field_count = *parsed;
   }
 
-  usize skipped_chars = 0;
+  usize skipped_char_count = 0;
 
   if (FLAG_UNIQ_CHARS.is_set()) {
     let const parsed = parse_uniq_count(FLAG_UNIQ_CHARS.value());
@@ -255,7 +256,7 @@ Uniq::execute(const ExecContext               &ec,
       return 1;
     }
 
-    skipped_chars = *parsed;
+    skipped_char_count = *parsed;
   }
 
   let const delimiter = FLAG_UNIQ_ZERO_TERMINATED.is_enabled() ? '\0' : '\n';
@@ -312,7 +313,7 @@ Uniq::execute(const ExecContext               &ec,
     return 1;
   }
 
-  usize checked_chars = SIZE_MAX;
+  usize checked_char_count = SIZE_MAX;
 
   if (FLAG_UNIQ_CHECK_CHARS.is_set()) {
     let const parsed = parse_uniq_count(FLAG_UNIQ_CHECK_CHARS.value());
@@ -326,7 +327,7 @@ Uniq::execute(const ExecContext               &ec,
       return 1;
     }
 
-    checked_chars = *parsed;
+    checked_char_count = *parsed;
   }
 
   if (operands.count() > 2) return report_usage_error(ec, cxt, args[0].view());
@@ -395,13 +396,14 @@ Uniq::execute(const ExecContext               &ec,
   };
 
   let const do_is_different = [&](StringView line) -> bool {
-    let left  = get_uniq_key(previous.view(), skipped_fields, skipped_chars);
-    let right = get_uniq_key(line, skipped_fields, skipped_chars);
+    let left =
+        get_uniq_key(previous.view(), skipped_field_count, skipped_char_count);
+    let right = get_uniq_key(line, skipped_field_count, skipped_char_count);
 
-    if (left.length > checked_chars)
-      left = left.substring_of_length(0, checked_chars);
-    if (right.length > checked_chars)
-      right = right.substring_of_length(0, checked_chars);
+    if (left.length > checked_char_count)
+      left = left.substring_of_length(0, checked_char_count);
+    if (right.length > checked_char_count)
+      right = right.substring_of_length(0, checked_char_count);
 
     if (left.length != right.length) return true;
 

@@ -11,6 +11,7 @@
 
 #include "ParserFormats.hpp"
 
+#include "Heredoc.hpp"
 #include "Lexer.hpp"
 #include "MimicMood.hpp"
 #include "Utils.hpp"
@@ -1446,9 +1447,11 @@ decode_yaml_quoted_analysis(StringView source,
   return result;
 }
 
-static pure fn
-heredoc_delimiter_at(StringView line, usize &position) wontthrow
-    -> Maybe<StringView>
+/* the delimiter of the next heredoc operator at or after position, read with
+   the lexer's word and quote rules, with position left after the word. */
+static fn
+heredoc_delimiter_at(StringView line, usize &position) throws
+    -> Maybe<String>
 {
   while (position + 1 < line.length) {
     if (line[position] != '<' || line[position + 1] != '<') {
@@ -1462,39 +1465,15 @@ heredoc_delimiter_at(StringView line, usize &position) wontthrow
       continue;
     }
 
-    if (position < line.length && line[position] == '-') {
-      position++;
+    let const tail = lexer::read_heredoc_operator_tail(line, position);
+
+    position = tail.word_end;
+    if (tail.word_end > tail.word_start) {
+      return lexer::unquote_heredoc_delimiter(
+          line.substring_of_length(tail.word_start,
+                                   tail.word_end - tail.word_start),
+          heap_allocator());
     }
-
-    while (position < line.length && line[position] == ' ')
-      position++;
-
-    if (position < line.length &&
-        (line[position] == '\'' || line[position] == '"'))
-    {
-      position++;
-    }
-
-    if (position < line.length && line[position] == '\\') {
-      position++;
-    }
-
-    let const word_start = position;
-
-    if (position >= line.length ||
-        !(lexer::is_variable_name_start(line[position])))
-    {
-      continue;
-    }
-
-    /* at this point: line[position] starts a variable name at word_start. */
-
-    while (position < line.length && !lexer::is_whitespace(line[position]) &&
-           !lexer::is_shell_sentinel(line[position]) &&
-           line[position] != '\'' && line[position] != '"')
-      position++;
-
-    return line.substring_of_length(word_start, position - word_start);
   }
 
   return None;
@@ -1509,12 +1488,13 @@ align_indented_heredoc_terminators(StringView source,
                                    usize      start,
                                    usize      end) throws -> String
 {
-  let        rewritten = String{heap_allocator()};
-  StringView pending[16]{};
-  usize      pending_count = 0;
-  usize      pending_index = 0;
-  usize      position      = start;
-  bool       has_rewrite   = false;
+  static constexpr usize MAXIMUM_PENDING_COUNT = 16;
+
+  let   rewritten     = String{heap_allocator()};
+  let   pending       = ArrayList<String>{heap_allocator()};
+  usize pending_index = 0;
+  usize position      = start;
+  bool  has_rewrite   = false;
 
   rewritten.reserve(source.length);
 
@@ -1522,11 +1502,11 @@ align_indented_heredoc_terminators(StringView source,
     let const line_start = position;
     let const line       = source.next_line(position);
 
-    if (pending_index < pending_count) {
+    if (pending_index < pending.count()) {
       let const content = line.trim_blanks();
       let const indent  = parser_format_leading_spaces(line);
 
-      if (content == pending[pending_index] && indent > 0) {
+      if (content == pending[pending_index].view() && indent > 0) {
         rewritten.append(source.substring_of_length(
             rewritten.length(), line_start - 1 - rewritten.length()));
         rewritten.append_repeated(' ', indent);
@@ -1534,12 +1514,12 @@ align_indented_heredoc_terminators(StringView source,
         rewritten.append(line.substring(indent));
         has_rewrite = true;
         pending_index++;
-      } else if (content == pending[pending_index]) {
+      } else if (content == pending[pending_index].view()) {
         pending_index++;
       }
 
-      if (pending_index == pending_count) {
-        pending_count = 0;
+      if (pending_index == pending.count()) {
+        pending.clear();
         pending_index = 0;
       }
 
@@ -1548,11 +1528,11 @@ align_indented_heredoc_terminators(StringView source,
 
     usize scan = 0;
 
-    while (pending_count < countof(pending)) {
-      let const delimiter = heredoc_delimiter_at(line, scan);
+    while (pending.count() < MAXIMUM_PENDING_COUNT) {
+      let delimiter = heredoc_delimiter_at(line, scan);
 
       if (!delimiter.has_value()) break;
-      pending[pending_count++] = *delimiter;
+      pending.push(steal(*delimiter));
     }
   }
 

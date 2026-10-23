@@ -52,9 +52,7 @@ Tee::execute(const ExecContext               &ec,
     let const fd = os::open_file_descriptor(operand.view(), mode);
 
     if (!fd.has_value()) {
-      report_soft_koshkit_error(ec, cxt,
-                                koshka::koshkit::path_error_message(
-                                    "open", operand, cxt.scratch_allocator()));
+      KOSHKIT_REPORT_PATH_ERROR("open", operand);
       status = 1;
       continue;
     }

@@ -661,12 +661,6 @@ is_child_process() wontthrow -> bool
 }
 
 fn
-is_running_setuid() wontthrow -> bool
-{
-  return false;
-}
-
-fn
 drop_elevated_identity() wontthrow -> bool
 {
   return true;
@@ -1604,7 +1598,7 @@ send_internal_pipe(StringView path,
 {
   let const wide_path = utf8_to_wide(path, heap_allocator());
   if (!wide_path.has_value()) return false;
-  let const deadline = GetTickCount64() + 5000;
+  let const deadline_milliseconds = GetTickCount64() + 5000;
 
   for (;;) {
     if (WaitNamedPipeW(wide_path->begin(), 50) != FALSE) {
@@ -1627,7 +1621,7 @@ send_internal_pipe(StringView path,
       return was_written;
     }
     if (WaitForSingleObject(child, 0) == WAIT_OBJECT_0) return false;
-    if (GetTickCount64() >= deadline) return false;
+    if (GetTickCount64() >= deadline_milliseconds) return false;
     Sleep(1);
   }
 }

@@ -122,6 +122,14 @@ note: Use a decimal integer from -2147483648 through 2147483647.
 -c:1:20: error: Koshkit `flock`: Command 'KOSH_MISSING_COMMAND' was not found.
      1 |  koshkit flock "$1" KOSH_MISSING_COMMAND
        |                     ^~~~~~~~~~~~~~~~~~~~
+=== sed range without a first address ===
+-c:1:16: error: Koshkit `sed`: Missing first address.
+     1 |  koshkit sed -n ',2p'
+       |                 ^~~~~
+note: Write an address before the comma.
+status=1
+=== which without an operand ===
+status=2
 === nl body style location ===
 -c:1:15: error: Koshkit `nl`: Unsupported numbering style 'invalid'.
      1 |  koshkit nl -b invalid

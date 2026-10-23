@@ -90,3 +90,4 @@ jobs:|
           {%- if x %}echo a{%- endif %}|
       - run: echo done|
 0
+dash-delimiter unset=1 unclosed=0

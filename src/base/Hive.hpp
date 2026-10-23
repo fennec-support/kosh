@@ -137,14 +137,6 @@ public:
     return m_count == 0;
   }
 
-  /* one past the highest index ever taken. Indices below it are live or
-     erased. */
-  mustuse pure fn
-  slot_count() const wontthrow -> usize
-  {
-    return m_slot_end;
-  }
-
   mustuse pure fn
   is_live(usize index) const wontthrow -> bool
   {

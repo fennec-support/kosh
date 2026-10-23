@@ -140,6 +140,25 @@ heredoc_line_content(StringView line) wontthrow -> StringView
 }
 
 pure fn
+read_heredoc_operator_tail(StringView source, usize after_operator) wontthrow
+    -> heredoc_operator_tail
+{
+  usize     position = after_operator;
+  let const should_strip_tabs =
+      position < source.length && source[position] == '-';
+
+  if (should_strip_tabs) position++;
+
+  let const operator_end = position;
+
+  while (position < source.length && is_whitespace(source[position]))
+    position++;
+
+  return {operator_end, position, balanced_scan_delimiter_end(source, position),
+          should_strip_tabs};
+}
+
+pure fn
 balanced_scan_delimiter_end(StringView source, usize position)
     wontthrow -> usize
 {
@@ -435,30 +454,18 @@ scan_balanced_shell_region(StringView source,
           (previous_byte == 0 || is_whitespace(previous_byte) ||
            is_shell_sentinel(previous_byte)))
       {
-        position++;
-        bool should_strip_tabs = false;
+        let const tail = read_heredoc_operator_tail(source, position + 1);
 
-        if (position < source.length && source[position] == '-') {
-          should_strip_tabs = true;
-          position++;
-        }
-
-        while (position < source.length && is_whitespace(source[position])) {
-          position++;
-        }
-
-        let const delimiter_start = position;
-
-        position = balanced_scan_delimiter_end(source, position);
+        position = tail.word_end;
 
         let delimiter = unquote_heredoc_delimiter(
-            source.substring_of_length(delimiter_start,
-                                       position - delimiter_start),
+            source.substring_of_length(tail.word_start,
+                                       tail.word_end - tail.word_start),
             heap_allocator());
 
         if (!delimiter.is_empty()) {
           pending_heredocs.push(
-              pending_heredoc{steal(delimiter), should_strip_tabs});
+              pending_heredoc{steal(delimiter), tail.should_strip_tabs});
         }
 
         previous_byte = source[position - 1];

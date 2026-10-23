@@ -2123,32 +2123,19 @@ collect_shell_heredoc(StringView           source,
                       usize                end,
                       shell_lexical_state &state) throws -> void
 {
-  position += 2;
-  let should_strip_tabs = false;
+  let const tail = lexer::read_heredoc_operator_tail(
+      source.substring_of_length(0, end), position + 2);
 
-  if (position < end && source[position] == '-') {
-    should_strip_tabs = true;
-    position++;
-  }
-
-  while (position < end &&
-         (source[position] == ' ' || source[position] == '\t'))
-  {
-    position++;
-  }
-
-  let const word_start = position;
-
-  position = lexer::balanced_scan_delimiter_end(
-      source.substring_of_length(0, end), position);
+  position = tail.word_end;
 
   let delimiter = lexer::unquote_heredoc_delimiter(
-      source.substring_of_length(word_start, position - word_start),
+      source.substring_of_length(tail.word_start,
+                                 tail.word_end - tail.word_start),
       state.pending_heredocs.allocator());
 
   if (!delimiter.is_empty())
     state.pending_heredocs.push(
-        lexer::pending_heredoc{steal(delimiter), should_strip_tabs});
+        lexer::pending_heredoc{steal(delimiter), tail.should_strip_tabs});
 }
 
 fn

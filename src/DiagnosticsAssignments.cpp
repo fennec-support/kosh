@@ -1002,14 +1002,6 @@ option_letter_index(char letter) wontthrow -> u32
 }
 
 pure fn
-segment_is_literal(const WordSegment &segment) wontthrow -> bool
-{
-  return segment.kind == WordSegment::Kind::LiteralText ||
-         segment.kind == WordSegment::Kind::UnquotedText ||
-         segment.kind == WordSegment::Kind::DoubleQuotedText;
-}
-
-pure fn
 literal_run_length(const Word &case_word, usize start, usize end) wontthrow
     -> usize
 {

@@ -33,6 +33,8 @@ Which::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
+  if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
+
   let const is_quiet        = FLAG_QUIET.is_enabled();
   let       output          = String{cxt.scratch_allocator()};
   bool      has_missing_any = false;

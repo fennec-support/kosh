@@ -56,7 +56,8 @@ SKIPPED_TESTS := \
 	procsub_contexts_matrix \
 	shell_executable_path \
 	analysis_environment_inheritance progcomp_alias_ghost koshconf_persist \
-	koshconf_system_file koshconf_system_layer process_substitution_release \
+	koshconf_system_file koshconf_system_layer child_signal_mask \
+	fd_allocation_failure process_substitution_release \
 	tsh_session_probe
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
@@ -64,7 +65,8 @@ SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
 	editor_prompt_pty editor_pending_tab_pty background_terminal_pty \
 	koshkit_evilfiles_parity \
 	prompt_hooks_pty startup_chain_pty trap_during_blocking_open \
-	koshconf_system_file koshconf_system_layer process_substitution_release
+	koshconf_system_file koshconf_system_layer child_signal_mask \
+	process_substitution_release
 else
 SKIPPED_TESTS :=
 endif
@@ -123,7 +125,7 @@ SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas editor_ghost_menu_pty \
 	editor_kill_yank_pty editor_prompt_pty editor_pending_tab_pty \
 	shell_integration_marks_pty background_terminal_pty \
 	prompt_function_substitution_pty \
-	prompt_hooks_pty startup_chain_pty
+	prompt_hooks_pty startup_chain_pty child_signal_mask
 endif
 
 ifeq ($(OS), Windows_NT)
