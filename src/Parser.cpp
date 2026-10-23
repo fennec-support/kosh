@@ -373,7 +373,7 @@ is_compound_list_separator(Token::Kind kind) wontthrow -> bool
   }
 }
 
-flatten fn
+fn
 Parser::construct_ast() throws -> Expression *
 {
   return parse_command_list(0);
