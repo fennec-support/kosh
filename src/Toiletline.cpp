@@ -1876,7 +1876,28 @@ struct input_result
   koshka::Maybe<usize> history_event_number{koshka::None};
 };
 
-static char TL_BUFFER[ITL_STRING_MAX_LEN];
+static char *TL_BUFFER            = nullptr;
+static usize TL_BUFFER_BYTE_COUNT = 0;
+
+/* Grows the input buffer to hold the longest line the editor allows and a
+   terminator. */
+static fn
+reserve_input_buffer() -> void
+{
+  let const wanted_byte_count = ::itl_g_line_max + 1;
+
+  if (TL_BUFFER_BYTE_COUNT >= wanted_byte_count) return;
+
+  let const grown = static_cast<char *>(realloc(TL_BUFFER, wanted_byte_count));
+
+  if (grown == nullptr) {
+    throw koshka::Error{"Toiletline: cannot allocate the input buffer: " +
+                        koshka::os::last_system_error_message()};
+  }
+
+  TL_BUFFER            = grown;
+  TL_BUFFER_BYTE_COUNT = wanted_byte_count;
+}
 
 static constexpr char DEFAULT_HISTORY_FILE[] = ".kosh_history";
 
@@ -2295,6 +2316,12 @@ fn
 set_full_screen(bool is_enabled) -> void
 {
   ::tl_set_full_screen(is_enabled ? 1 : 0);
+}
+
+fn
+set_line_max(usize byte_count) -> void
+{
+  ::tl_set_line_max(byte_count);
 }
 
 fn
@@ -3761,7 +3788,9 @@ get_input(const String        &prompt,
   if (!::itl_g_full_screen)
     LAST_PROMPT = String{koshka::heap_allocator(), prompt.view()};
 
-  i32 code = ::tl_get_input(TL_BUFFER, sizeof(TL_BUFFER), prompt.c_str());
+  reserve_input_buffer();
+
+  i32 code = ::tl_get_input(TL_BUFFER, ::itl_g_line_max + 1, prompt.c_str());
 
   try {
     koshka::completion::abandon_idle_documentation();

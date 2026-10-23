@@ -1231,9 +1231,23 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(CTRL_X + CTRL_C)
         session.wait_until(is_line(""))
 
+        large = os.path.join(directory, "slurp-large.txt")
+        large_contents = b"x" * 79 + b"\n"
+        with open(large, "wb") as handle:
+            handle.write(large_contents * 1300)
+        session.send(b"slurp slurp-large.txt\r")
+        session.wait_until(has_text("line 1 of 1300"))
+        session.send(b"y" + CTRL_X + b"s")
+        report.record("slurp-edits-a-file-over-64-kib", session,
+                      lambda screen: has_text("wrote")(screen)
+                      and len(read_bytes(large)) == 80 * 1300 + 1
+                      and read_bytes(large).count(b"y") == 1)
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
+
         oversized = os.path.join(directory, "slurp-oversized.txt")
         with open(oversized, "wb") as handle:
-            handle.write(b"a" * 65535)
+            handle.write(b"a" * (16 * 1024 * 1024 + 1))
         session.send(b"slurp slurp-oversized.txt\r")
         report.record("slurp-refuses-a-file-over-the-limit", session,
                       lambda screen: any("is longer than" in line

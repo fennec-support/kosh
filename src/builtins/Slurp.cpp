@@ -30,8 +30,8 @@ namespace koshka {
 
 namespace {
 
-/* the editor holds a buffer of at most this many bytes. */
-constexpr usize SLURP_MAX_BYTE_COUNT = 65534;
+/* the longest file and buffer in bytes a session edits. */
+constexpr usize SLURP_MAX_BYTE_COUNT = 16 * 1024 * 1024;
 
 /* true when text has no NUL byte and is well-formed UTF-8, with no overlong
    form, surrogate, or codepoint above U+10FFFF, as the editor requires. */
@@ -539,6 +539,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   toiletline::set_editor_title(title.c_str());
   toiletline::set_status(session.status.c_str());
   toiletline::set_full_screen(true);
+  toiletline::set_line_max(SLURP_MAX_BYTE_COUNT);
   toiletline::set_wrap_width(cxt.runtime_state().get_wrap_width());
   if (!is_shell_script) toiletline::disable_shell_completion();
   if (mode.has_value()) toiletline::set_edit_mode(*mode);
@@ -557,6 +558,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     ACTIVE_SESSION = nullptr;
     toiletline::set_saved_text(nullptr);
     toiletline::set_full_screen(false);
+    toiletline::set_line_max(0);
     toiletline::set_editor_title(nullptr);
     toiletline::set_status(nullptr);
     toiletline::leave_empty_history();

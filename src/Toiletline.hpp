@@ -129,9 +129,13 @@ fn
 get_last_prompt() -> koshka::StringView;
 
 /* lays the editor out over the whole terminal for editing a file, with the
-   hints on the last four rows and the menu over the input. */
+   status and hints on the last rows and the menu over the input. */
 fn
 set_full_screen(bool is_enabled) -> void;
+
+/* sets the longest line in bytes the editor holds, never below the default. */
+fn
+set_line_max(usize byte_count) -> void;
 
 fn
 get_history_path() -> koshka::Maybe<koshka::Path>;

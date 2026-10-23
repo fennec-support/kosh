@@ -1660,10 +1660,11 @@ Alt\-W copies it there, and typed text replaces it. Ctrl\-G, Esc, or a caret
 move without Shift leaves the selection.
 .IP
 The top row repeats the prompt and the command. The file fills every row under
-it but the last four, and a file taller than that is shown around the caret.
-The last four rows describe the kind of file, its line endings, and its size,
-then give the caret line and column with the edit mode, and after an empty row
-they list the keys that open the key menu and the commands. Ctrl\-X i in emacs
+it but the last rows, and a file taller than that is shown around the caret.
+The last rows describe the kind of file, its line endings, and its size, then
+give the caret line and column with the edit mode, show the result of the last
+save while one is set, and list the keys that open the key menu and the
+commands. Ctrl\-X i in emacs
 mode shows the hint of the word under the caret on those rows until the next
 key, and Ctrl\-I in vi insert mode does the same when the terminal reports
 Ctrl\-I apart from TAB. The M\-x and colon command lines open on the same rows
@@ -1685,10 +1686,10 @@ directory, or in the temporary directory when the home directory takes none.
 The copy is removed once the write succeeds. When the write fails, the
 error gives the path of the copy, and when no copy can be made, nothing is
 written. The save is refused when another file has replaced the one that slurp
-loaded. A refused or failed save is reported on the last four rows, and the
+loaded. A refused or failed save is reported on the last rows, and the
 session stays open with the edits. An empty operand, a directory, a special
 file, an unreadable file, a file with a NUL byte or invalid UTF\-8, a file
-longer than 65534 bytes, a restricted shell, and a session whose standard input
+longer than 16777216 bytes, a restricted shell, and a session whose standard input
 or output is not a terminal are refused with status 1. A wrong operand count or
 an unknown mode exits with status 2. A file whose every line ends in CRLF keeps
 those endings, a file that mixes them keeps each carriage return as text, and

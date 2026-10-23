@@ -694,6 +694,12 @@ set_full_screen(bool is_enabled) -> void
 }
 
 fn
+set_line_max(usize byte_count) -> void
+{
+  unused(byte_count);
+}
+
+fn
 leave_calc_history() -> void
 {}
 
