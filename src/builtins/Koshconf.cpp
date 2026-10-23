@@ -182,10 +182,10 @@ require_user_path(const ExecContext &ec, EvalContext &cxt) throws
   }
 
   let const xdg_state =
-      !xdg.has_value()  ? String{heap_allocator(), "XDG_CONFIG_HOME is unset"}
-      : xdg->is_empty() ? String{heap_allocator(), "XDG_CONFIG_HOME is empty"}
-                        : "XDG_CONFIG_HOME holds the relative path '" + *xdg +
-                              "'";
+      !xdg.has_value() ? String{heap_allocator(), "XDG_CONFIG_HOME is unset"}
+      : xdg->is_empty()
+          ? String{heap_allocator(), "XDG_CONFIG_HOME is empty"}
+          : "XDG_CONFIG_HOME holds the relative path '" + *xdg + "'";
 
   report_soft_builtin_error(ec, cxt,
                             "The user configuration file cannot be located "
