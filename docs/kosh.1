@@ -2871,7 +2871,11 @@ selects identity fields, \fB\-u\fR prints every local user account, and
 .TP
 .B goodcore
 A running process can be captured with \fB\-p\fR, and an existing core can be
-packaged with its executable through \fB\-b\fR.
+packaged with its executable through \fB\-b\fR. The archive holds the core in
+\fBdump/core\fR, the executable and its libraries under \fBroot/\fR, and the
+scripts \fBdebug-gdb.sh\fR and \fBdebug-lldb.sh\fR, which open the core in gdb
+or lldb with \fBroot/\fR as the system root. Arguments to a script are passed
+to the debugger.
 .TP
 .B eviliso
 Isolation information is grouped into namespace, cgroup, login-session, remote

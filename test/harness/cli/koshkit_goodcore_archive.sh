@@ -21,13 +21,17 @@ printf 'report-layout=%s\n' "$report_shape"
 
 contents=$(tar -tf "$uncompressed")
 archive_shape=matched
-for required_entry in './dump/core' './INFO.txt' './root/'; do
+for required_entry in './dump/core' './INFO.txt' './root/' './debug-gdb.sh' \
+  './debug-lldb.sh'; do
   case $contents in
     *"$required_entry"*) ;;
     *) archive_shape=wrong ;;
   esac
 done
 printf 'uncompressed-contents=%s\n' "$archive_shape"
+
+script_modes=$(tar -tvf "$uncompressed" | grep -c '^-rwxr-xr-x .*debug-\(gdb\|lldb\)\.sh$')
+printf 'debugger-scripts-executable=%s\n' "$script_modes"
 
 quiet_status=0
 $BIN -c 'koshkit goodcore --quiet --binary "$1" --output "$2" --no-compress "$3"' \

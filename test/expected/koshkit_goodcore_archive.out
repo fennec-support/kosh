@@ -1,6 +1,7 @@
 uncompressed-status=0
 report-layout=matched
 uncompressed-contents=matched
+debugger-scripts-executable=2
 quiet-status=0
 compressed-status=0
 compressed-layout=matched

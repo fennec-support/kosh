@@ -581,12 +581,62 @@ GoodCore::execute(const ExecContext               &ec,
     }
   }
 
+  metadata += "Debug: ./debug-gdb.sh or ./debug-lldb.sh from the extracted "
+              "archive\n";
+
   let metadata_path = stage.clone();
 
   metadata_path.append("INFO.txt");
   if (!write_text_file(metadata_path.view(), metadata.view())) {
     do_report_failure("Cannot write metadata", os::last_system_error_message());
 
+    return 1;
+  }
+
+  let quoted_executable = String{allocator};
+
+  utils::append_shell_quoted(quoted_executable, stripped_root(binary->view()),
+                             true);
+
+  let const script_prelude =
+      String{allocator, "#!/bin/sh\nroot=$(CDPATH= cd -- \"$(dirname -- "
+                        "\"$0\")\" && pwd -P) || exit 1\n"};
+  let gdb_script = script_prelude.clone();
+
+  gdb_script += "exec gdb -ex \"set sysroot $root/root\" -ex \"set "
+                "solib-search-path $root/root\" \"$root/root/\"";
+  gdb_script += quoted_executable.view();
+  gdb_script += " \"$root/dump/core\" \"$@\"\n";
+
+  let lldb_script = script_prelude.clone();
+
+  lldb_script += "exec lldb -O \"platform select host --sysroot '$root/root'\" "
+                 "--core \"$root/dump/core\" \"$root/root/\"";
+  lldb_script += quoted_executable.view();
+  lldb_script += " \"$@\"\n";
+
+  let const do_write_script = [&](StringView script_name,
+                                  StringView script_text) throws -> bool {
+    let script_path = stage.clone();
+
+    script_path.append(script_name);
+    LOG(Debug, "writing the debugger script '%s'", script_path.c_str());
+    if (write_text_file(script_path.view(), script_text) &&
+        os::set_file_mode(script_path.view(), 0755))
+    {
+      return true;
+    }
+
+    do_report_failure("Cannot write the debugger script '" +
+                          script_path.text() + "'",
+                      os::last_system_error_message());
+
+    return false;
+  };
+
+  if (!do_write_script("debug-gdb.sh", gdb_script.view()) ||
+      !do_write_script("debug-lldb.sh", lldb_script.view()))
+  {
     return 1;
   }
 
