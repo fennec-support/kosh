@@ -9,8 +9,10 @@
 #pragma once
 
 #include "Platform.hpp"
+#include "base/ArrayList.hpp"
 #include "base/Common.hpp"
 #include "base/Path.hpp"
+#include "base/String.hpp"
 #include "base/StringView.hpp"
 
 namespace toiletline {
@@ -34,5 +36,17 @@ write_history_file_atomically(
     koshka::StringView       name_prefix,
     koshka::StringView       contents,
     koshka::os::file_status *written = nullptr) throws -> bool;
+
+struct history_record_span
+{
+  usize start_byte_offset;
+  usize end_byte_offset;
+};
+
+fn
+splice_history_spans(koshka::String                               &output,
+                     koshka::StringView                            contents,
+                     const koshka::ArrayList<history_record_span> &spans,
+                     koshka::StringView inserted) throws -> usize;
 
 } /* namespace toiletline */

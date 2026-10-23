@@ -203,6 +203,10 @@ fn
 rewrite_history_event(usize                            number,
                       StringView                       expected,
                       const koshka::ArrayList<String> &replacements) -> bool;
+fn
+rewrite_history_events(usize                                        number,
+                       const koshka::ArrayList<koshka::StringView> &expected,
+                       const koshka::ArrayList<String> &replacements) -> bool;
 
 fn
 enable_job_notifications(koshka::EvalContext &context) -> void;

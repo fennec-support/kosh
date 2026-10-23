@@ -39,11 +39,7 @@ struct no_editor_history_state
   bool             is_loaded{false};
 };
 
-struct history_record_span
-{
-  usize start_byte_offset;
-  usize end_byte_offset;
-};
+using toiletline::history_record_span;
 
 enum class history_scan_outcome : u8
 {
@@ -408,13 +404,13 @@ find_no_editor_history_event(Allocator    allocator,
            when the history is not loaded, the load adds O(file bytes) of
    reads. */
 static fn
-rewrite_no_editor_history_event(usize                    wanted_number,
-                                StringView               expected,
-                                const ArrayList<String> &replacements) -> bool
+rewrite_no_editor_history_events(usize                        wanted_number,
+                                 const ArrayList<StringView> &expected,
+                                 const ArrayList<String> &replacements) -> bool
 {
   let const path = resolve_no_editor_history_path();
 
-  if (!path.has_value()) return false;
+  if (!path.has_value() || expected.is_empty()) return false;
 
   let &state = get_no_editor_history_state();
 
@@ -422,28 +418,34 @@ rewrite_no_editor_history_event(usize                    wanted_number,
 
   let const retained_record_count = state.record_byte_offsets.count();
 
-  let const first_number = state.total_count - retained_record_count + 1;
+  let const first_number  = state.total_count - retained_record_count + 1;
+  let const removed_count = expected.count();
 
   if (wanted_number < first_number ||
-      wanted_number >= first_number + retained_record_count)
+      wanted_number - first_number + removed_count > retained_record_count)
   {
     return false;
   }
 
   let const retained_index = wanted_number - first_number;
-  let const private_span   = get_history_record_span(state, retained_index);
   let       decoded        = String{heap_allocator()};
+  let       private_spans  = ArrayList<history_record_span>{heap_allocator()};
 
-  if (!decode_history_record(decoded, state.branch_contents.view(),
-                             private_span) ||
-      decoded.view() != expected)
-  {
-    return false;
+  for (usize offset = 0; offset < removed_count; offset++) {
+    let const span = get_history_record_span(state, retained_index + offset);
+
+    if (!decode_history_record(decoded, state.branch_contents.view(), span) ||
+        decoded.view() != expected[offset])
+    {
+      return false;
+    }
+
+    private_spans.push(span);
   }
 
-  /* at this point: the history is loaded, retained_index is a retained
-     record whose text equals expected, and private_span covers that
-     record. */
+  /* at this point: the history is loaded, the removed_count records from
+     retained_index hold the expected texts in order, and private_spans
+     covers each of them. */
   let encoded_replacements     = String{heap_allocator()};
   let replacement_byte_offsets = ArrayList<usize>{heap_allocator()};
 
@@ -459,23 +461,20 @@ rewrite_no_editor_history_event(usize                    wanted_number,
   }
 
   /* e.g. branch "ls\npwd\necho\n" with \n as a newline byte, and
-          wanted_number 2, so private_span is [3, 7). the replacements are
-          "git status" and "date".
+          wanted_number 2, so private_spans holds [3, 7). the replacements
+          are "git status" and "date".
      -> encoded_replacements "git status\ndate\n" (16 bytes), offsets [0, 11]
      -> private_rewritten "ls\ngit status\ndate\necho\n" (24 bytes)
      -> private_offsets [0, 3, 14, 19] */
   let private_rewritten = String{heap_allocator()};
 
-  private_rewritten.append(state.branch_contents.substring_of_length(
-      0, private_span.start_byte_offset));
-  private_rewritten.append(encoded_replacements.view());
-  private_rewritten.append(
-      state.branch_contents.substring(private_span.end_byte_offset));
+  let const private_start_byte_offset  = private_spans[0].start_byte_offset;
+  let const private_removed_byte_count = toiletline::splice_history_spans(
+      private_rewritten, state.branch_contents.view(), private_spans,
+      encoded_replacements.view());
 
-  let       private_offsets = ArrayList<usize>{heap_allocator()};
-  let       durable_offsets = ArrayList<usize>{heap_allocator()};
-  let const private_removed_byte_count =
-      private_span.end_byte_offset - private_span.start_byte_offset;
+  let private_offsets = ArrayList<usize>{heap_allocator()};
+  let durable_offsets = ArrayList<usize>{heap_allocator()};
 
   for (usize old_index = 0; old_index < retained_index; old_index++) {
     private_offsets.push(get_history_record_byte_offset(state, old_index));
@@ -484,13 +483,12 @@ rewrite_no_editor_history_event(usize                    wanted_number,
   }
 
   for (let const replacement_byte_offset : replacement_byte_offsets) {
-    private_offsets.push(private_span.start_byte_offset +
-                         replacement_byte_offset);
+    private_offsets.push(private_start_byte_offset + replacement_byte_offset);
     durable_offsets.push(toiletline::UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET);
   }
 
-  for (usize old_index = retained_index + 1; old_index < retained_record_count;
-       old_index++)
+  for (usize old_index = retained_index + removed_count;
+       old_index < retained_record_count; old_index++)
   {
     private_offsets.push(get_history_record_byte_offset(state, old_index) -
                          private_removed_byte_count +
@@ -499,7 +497,8 @@ rewrite_no_editor_history_event(usize                    wanted_number,
         get_history_durable_record_byte_offset(state, old_index));
   }
 
-  state.total_count = state.total_count - 1 + replacement_byte_offsets.count();
+  state.total_count =
+      state.total_count - removed_count + replacement_byte_offsets.count();
 
   let const retained_count       = private_offsets.count() < state.entry_limit
                                        ? private_offsets.count()
@@ -1169,13 +1168,13 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
 }
 
 fn
-rewrite_history_event(usize                                    number,
-                      StringView                               expected,
-                      const koshka::ArrayList<koshka::String> &replacements)
+rewrite_history_events(usize                                        number,
+                       const koshka::ArrayList<koshka::StringView> &expected,
+                       const koshka::ArrayList<koshka::String> &replacements)
     -> bool
 {
-  return koshka::internal::rewrite_no_editor_history_event(number, expected,
-                                                           replacements);
+  return koshka::internal::rewrite_no_editor_history_events(number, expected,
+                                                            replacements);
 }
 
 fn

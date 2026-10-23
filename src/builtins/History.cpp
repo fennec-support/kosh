@@ -612,19 +612,24 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return 1;
     }
 
-    for (usize index = selection->last_index + 1;
-         index-- > selection->first_index;)
+    let expected_commands = ArrayList<StringView>{cxt.scratch_allocator()};
+    let replacements      = ArrayList<String>{cxt.scratch_allocator()};
+
+    for (usize index = selection->first_index; index <= selection->last_index;
+         index++)
     {
-      let const &event = events[index];
+      expected_commands.push(events[index].command.view());
+    }
 
-      if (!toiletline::rewrite_history_event(event.number, event.command.view(),
-                                             ""))
-      {
-        report_soft_builtin_error(ec, cxt, FLAG_HISTORY_DELETE.value_location(),
-                                  "Unable to delete the history event");
+    if (!toiletline::rewrite_history_events(
+            events[selection->first_index].number, expected_commands,
+            replacements))
+    {
+      report_soft_builtin_error(ec, cxt, FLAG_HISTORY_DELETE.value_location(),
+                                FLAG_HISTORY_DELETE.value() +
+                                    ": unable to delete the history events");
 
-        return 1;
-      }
+      return 1;
     }
 
     did_maintain_list = true;

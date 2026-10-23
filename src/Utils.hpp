@@ -336,6 +336,9 @@ struct decoded_codepoint
 pure fn
 decode_utf8(StringView source, usize position, u32 invalid_codepoint) wontthrow
     -> decoded_codepoint;
+pure fn
+decode_strict_utf8(StringView source, usize position) wontthrow
+    -> Maybe<decoded_codepoint>;
 fn
 append_utf8(String &output, u32 codepoint) throws -> void;
 

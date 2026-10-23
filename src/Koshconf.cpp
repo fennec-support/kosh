@@ -26,8 +26,6 @@ constexpr usize      KOSHCONF_COMMENT_WIDTH   = 80;
 constexpr u32        KOSHCONF_FILE_MODE       = 0644;
 constexpr u32        KOSHCONF_PERMISSION_BITS = 07777;
 constexpr usize      KOSHCONF_LINK_LIMIT      = 40;
-constexpr u32        MAX_CODEPOINT            = 0x10ffff;
-constexpr u32        INVALID_CODEPOINT        = MAX_CODEPOINT + 1;
 constexpr StringView UTF8_BYTE_ORDER_MARK{"\xef\xbb\xbf"};
 constexpr StringView HISTORY_MAX_ENTRIES_NAME{"editor.history.max_entries"};
 constexpr StringView WRAP_WIDTH_NAME{"editor.wrap_width"};
@@ -54,30 +52,13 @@ quote_for_value(StringView value) wontthrow -> Maybe<char>
 }
 
 fn
-decode_strict_utf8(StringView text, usize position) wontthrow
-    -> utils::decoded_codepoint
-{
-  let const decoded     = utils::decode_utf8(text, position, INVALID_CODEPOINT);
-  let const is_overlong = (decoded.length == 2 && decoded.value < 0x80) ||
-                          (decoded.length == 3 && decoded.value < 0x800) ||
-                          (decoded.length == 4 && decoded.value < 0x10000);
-  let const is_surrogate = decoded.value >= 0xd800 && decoded.value <= 0xdfff;
-
-  if (is_overlong || is_surrogate || decoded.value > MAX_CODEPOINT) {
-    return {INVALID_CODEPOINT, 1};
-  }
-
-  return decoded;
-}
-
-fn
 is_valid_utf8(StringView text) wontthrow -> bool
 {
   for (usize position = 0; position < text.count();) {
-    let const decoded = decode_strict_utf8(text, position);
+    let const decoded = utils::decode_strict_utf8(text, position);
 
-    if (decoded.value == INVALID_CODEPOINT) return false;
-    position += decoded.length;
+    if (!decoded.has_value()) return false;
+    position += decoded->length;
   }
 
   return true;
@@ -111,11 +92,11 @@ append_escaped_text(String      &out,
 
   for (usize position = 0; position < text.count();) {
     let const byte    = static_cast<u8>(text[position]);
-    let const decoded = decode_strict_utf8(text, position);
+    let const decoded = utils::decode_strict_utf8(text, position);
 
-    if (byte >= 0x80 && decoded.value != INVALID_CODEPOINT) {
-      out += text.substring_of_length(position, decoded.length);
-      position += decoded.length;
+    if (byte >= 0x80 && decoded.has_value()) {
+      out += text.substring_of_length(position, decoded->length);
+      position += decoded->length;
       continue;
     }
 
@@ -174,7 +155,7 @@ make_printable_copy(StringView text) throws -> String
 
   for (usize position = 0; position < text.count();) {
     let const byte    = static_cast<u8>(text[position]);
-    let const decoded = decode_strict_utf8(text, position);
+    let const decoded = utils::decode_strict_utf8(text, position);
     let const is_control =
         (byte < 0x20 && byte != '\t' && byte != '\n') || byte == 0x7f;
 
@@ -183,13 +164,13 @@ make_printable_copy(StringView text) throws -> String
       continue;
     }
 
-    if (decoded.value == INVALID_CODEPOINT || is_control) {
+    if (!decoded.has_value() || is_control) {
       copy.push('?');
     } else {
-      copy += text.substring_of_length(position, decoded.length);
+      copy += text.substring_of_length(position, decoded->length);
     }
 
-    position += decoded.length;
+    position += decoded.has_value() ? decoded->length : 1;
   }
 
   return copy;

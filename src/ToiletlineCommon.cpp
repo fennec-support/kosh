@@ -203,43 +203,12 @@ is_history_contents_valid(StringView contents) -> bool
       continue;
     }
 
-    usize codepoint_byte_count = 1;
-    u32   codepoint            = byte;
-    u32   minimum_codepoint    = 0;
+    let const decoded =
+        koshka::utils::decode_strict_utf8(contents, byte_offset);
 
-    if (byte >= 0xc2 && byte <= 0xdf) {
-      codepoint_byte_count = 2;
-      codepoint            = byte & 0x1f;
-      minimum_codepoint    = 0x80u;
-    } else if (byte >= 0xe0 && byte <= 0xef) {
-      codepoint_byte_count = 3;
-      codepoint            = byte & 0x0f;
-      minimum_codepoint    = 0x800u;
-    } else if (byte >= 0xf0 && byte <= 0xf4) {
-      codepoint_byte_count = 4;
-      codepoint            = byte & 0x07;
-      minimum_codepoint    = 0x10000u;
-    } else if (byte >= 0x80) {
-      return false;
-    }
+    if (!decoded.has_value()) return false;
 
-    if (byte_offset + codepoint_byte_count > contents.length) return false;
-
-    for (usize continuation_index = 1;
-         continuation_index < codepoint_byte_count; continuation_index++)
-    {
-      let const continuation_byte =
-          static_cast<u8>(contents[byte_offset + continuation_index]);
-
-      if ((continuation_byte & 0xc0) != 0x80) return false;
-      codepoint = (codepoint << 6) | (continuation_byte & 0x3f);
-    }
-
-    if (codepoint < minimum_codepoint || codepoint > 0x10ffffu ||
-        (codepoint >= 0xd800u && codepoint <= 0xdfffu))
-    {
-      return false;
-    }
+    let const codepoint_byte_count = decoded->length;
 
     decoded_byte_count += escaped_byte_count + codepoint_byte_count;
     if (decoded_byte_count > HISTORY_RECORD_MAX_DECODED_BYTE_COUNT)
@@ -470,6 +439,31 @@ get_byte_offset_at_or_before_display_cell(StringView text,
 }
 
 fn
+splice_history_spans(String                                       &output,
+                     StringView                                    contents,
+                     const koshka::ArrayList<history_record_span> &spans,
+                     StringView inserted) throws -> usize
+{
+  usize removed_byte_count = 0;
+  usize copied_byte_offset = 0;
+
+  for (usize span_index = 0; span_index < spans.count(); span_index++) {
+    let const &span = spans[span_index];
+
+    output.append(contents.substring_of_length(
+        copied_byte_offset, span.start_byte_offset - copied_byte_offset));
+    if (span_index == 0) output.append(inserted);
+
+    removed_byte_count += span.end_byte_offset - span.start_byte_offset;
+    copied_byte_offset = span.end_byte_offset;
+  }
+
+  output.append(contents.substring(copied_byte_offset));
+
+  return removed_byte_count;
+}
+
+fn
 rewrite_history_event(usize number, StringView expected, StringView replacement)
     -> bool
 {
@@ -480,6 +474,20 @@ rewrite_history_event(usize number, StringView expected, StringView replacement)
     replacements.push(koshka::String{koshka::heap_allocator(), replacement});
 
   return rewrite_history_event(number, expected, replacements);
+}
+
+fn
+rewrite_history_event(usize                                    number,
+                      StringView                               expected,
+                      const koshka::ArrayList<koshka::String> &replacements)
+    -> bool
+{
+  let expected_commands =
+      koshka::ArrayList<koshka::StringView>{koshka::heap_allocator()};
+
+  expected_commands.push(expected);
+
+  return rewrite_history_events(number, expected_commands, replacements);
 }
 
 } /* namespace toiletline */

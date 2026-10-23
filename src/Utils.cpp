@@ -1221,6 +1221,25 @@ decode_utf8(StringView source, usize position, u32 invalid_codepoint) wontthrow
 }
 
 fn
+decode_strict_utf8(StringView source, usize position) wontthrow
+    -> Maybe<decoded_codepoint>
+{
+  static constexpr u32 INVALID_CODEPOINT = 0x110000;
+
+  let const decoded     = decode_utf8(source, position, INVALID_CODEPOINT);
+  let const is_overlong = (decoded.length == 2 && decoded.value < 0x80) ||
+                          (decoded.length == 3 && decoded.value < 0x800) ||
+                          (decoded.length == 4 && decoded.value < 0x10000);
+  let const is_surrogate = decoded.value >= 0xd800 && decoded.value <= 0xdfff;
+
+  if (is_overlong || is_surrogate || decoded.value >= INVALID_CODEPOINT) {
+    return None;
+  }
+
+  return decoded;
+}
+
+fn
 append_utf8(String &output, u32 codepoint) throws -> void
 {
   if (codepoint <= 0x7f) {

@@ -3037,9 +3037,9 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
 }
 
 fn
-rewrite_history_event(usize                                    number,
-                      StringView                               expected,
-                      const koshka::ArrayList<koshka::String> &replacements)
+rewrite_history_events(usize                                        number,
+                       const koshka::ArrayList<koshka::StringView> &expected,
+                       const koshka::ArrayList<koshka::String> &replacements)
     -> bool
 {
   /* memory: contents holds the durable file when should_rewrite_file is set,
@@ -3052,7 +3052,7 @@ rewrite_history_event(usize                                    number,
              count. */
   let const path = get_history_file_path();
 
-  if (!path.has_value()) return false;
+  if (!path.has_value() || expected.is_empty()) return false;
 
   let const parent = path->parent_or_current();
   let       lock   = os::acquire_process_lock(parent.view());
@@ -3065,20 +3065,41 @@ rewrite_history_event(usize                                    number,
 
   let const first_number =
       ::itl_g_history_total_count - ::itl_g_history_count + 1;
+  let const removed_count = expected.count();
 
-  if (number < first_number || number >= first_number + ::itl_g_history_count) {
+  if (number < first_number ||
+      number - first_number + removed_count > ::itl_g_history_count)
+  {
     return false;
   }
 
-  let const index = number - first_number;
-  let const slot  = (::itl_g_history_head + index) % TL_HISTORY_MAX_SIZE;
-  let const private_start_offset = ::itl_g_history_offsets[slot];
-  let const durable_start_offset = ::itl_g_history_durable_offsets[slot];
-  let const should_rewrite_file =
-      is_history_persistent() &&
-      durable_start_offset != UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET;
-  let   contents           = String{koshka::heap_allocator()};
-  usize durable_end_offset = durable_start_offset;
+  let const index       = number - first_number;
+  let const do_get_slot = [&](usize offset_from_index) {
+    return (::itl_g_history_head + index + offset_from_index) %
+           TL_HISTORY_MAX_SIZE;
+  };
+  let const private_start_offset = ::itl_g_history_offsets[do_get_slot(0)];
+  let       private_spans =
+      koshka::ArrayList<history_record_span>{koshka::heap_allocator()};
+  let durable_spans =
+      koshka::ArrayList<history_record_span>{koshka::heap_allocator()};
+
+  bool should_rewrite_file = false;
+
+  if (is_history_persistent()) {
+    for (usize offset_from_index = 0; offset_from_index < removed_count;
+         offset_from_index++)
+    {
+      if (::itl_g_history_durable_offsets[do_get_slot(offset_from_index)] !=
+          UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET)
+      {
+        should_rewrite_file = true;
+        break;
+      }
+    }
+  }
+
+  let contents = String{koshka::heap_allocator()};
 
   if (should_rewrite_file) {
     let read_contents = path->read_entire_file();
@@ -3093,12 +3114,38 @@ rewrite_history_event(usize                                    number,
 
     contents = read_contents.take();
 
-    let const end_offset =
-        find_history_record_end(contents.view(), durable_start_offset);
+    let expected_encoded = koshka::String{koshka::heap_allocator()};
 
-    if (!end_offset.has_value()) return false;
+    for (usize offset_from_index = 0; offset_from_index < removed_count;
+         offset_from_index++)
+    {
+      let const durable_offset =
+          ::itl_g_history_durable_offsets[do_get_slot(offset_from_index)];
 
-    durable_end_offset = *end_offset;
+      if (durable_offset == UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET) continue;
+
+      let const end_offset =
+          find_history_record_end(contents.view(), durable_offset);
+
+      if (!end_offset.has_value()) return false;
+      if (!durable_spans.is_empty() &&
+          durable_offset < durable_spans.back().end_byte_offset)
+      {
+        return false;
+      }
+
+      expected_encoded.clear();
+      encode_history_record(expected_encoded, expected[offset_from_index]);
+
+      if (contents.view().substring_of_length(durable_offset,
+                                              *end_offset - durable_offset) !=
+          expected_encoded.view())
+      {
+        return false;
+      }
+
+      durable_spans.push(history_record_span{durable_offset, *end_offset});
+    }
   }
 
   if (!::itl_history_ensure_read_buffer() ||
@@ -3110,22 +3157,31 @@ rewrite_history_event(usize                                    number,
                                           ::itl_g_history_read_buffer->size};
   let const private_start_offset_in_buffer =
       private_start_offset - ::itl_g_history_read_buffer_offset;
-  let const private_end_offset =
-      find_history_record_end(private_contents, private_start_offset_in_buffer);
-
-  if (!private_end_offset.has_value()) return false;
-
-  let const private_end_offset_in_buffer = *private_end_offset;
 
   char  decoded[ITL_STRING_MAX_LEN + 1];
   usize decoded_byte_count = 0;
 
-  if (!::itl_history_decode_entry_buffered(private_start_offset, decoded,
-                                           sizeof(decoded),
-                                           &decoded_byte_count) ||
-      koshka::StringView{decoded, decoded_byte_count} != expected)
+  for (usize offset_from_index = 0; offset_from_index < removed_count;
+       offset_from_index++)
   {
-    return false;
+    let const private_offset =
+        ::itl_g_history_offsets[do_get_slot(offset_from_index)];
+
+    if (!::itl_history_decode_entry_buffered(
+            private_offset, decoded, sizeof(decoded), &decoded_byte_count) ||
+        koshka::StringView{decoded, decoded_byte_count} !=
+            expected[offset_from_index])
+    {
+      return false;
+    }
+
+    let const start_in_buffer =
+        private_offset - ::itl_g_history_read_buffer_offset;
+    let const end_in_buffer =
+        find_history_record_end(private_contents, start_in_buffer);
+
+    if (!end_in_buffer.has_value()) return false;
+    private_spans.push(history_record_span{start_in_buffer, *end_in_buffer});
   }
 
   let encoded_replacements = koshka::String{koshka::heap_allocator()};
@@ -3144,44 +3200,23 @@ rewrite_history_event(usize                                    number,
   }
 
   let durable_rewritten = koshka::String{koshka::heap_allocator()};
-
-  if (should_rewrite_file) {
-    let expected_encoded = koshka::String{koshka::heap_allocator()};
-    encode_history_record(expected_encoded, expected);
-
-    let const durable_record = contents.view().substring_of_length(
-        durable_start_offset, durable_end_offset - durable_start_offset);
-
-    if (durable_record != expected_encoded.view()) return false;
-
-    durable_rewritten.reserve(contents.count() -
-                              (durable_end_offset - durable_start_offset) +
-                              encoded_replacements.count());
-    durable_rewritten.append(
-        contents.view().substring_of_length(0, durable_start_offset));
-    durable_rewritten.append(encoded_replacements.view());
-    durable_rewritten.append(contents.view().substring(durable_end_offset));
-  }
-
   let private_rewritten = koshka::String{koshka::heap_allocator()};
 
-  private_rewritten.reserve(
-      private_contents.length -
-      (private_end_offset_in_buffer - private_start_offset_in_buffer) +
-      encoded_replacements.count());
-  private_rewritten.append(
-      private_contents.substring_of_length(0, private_start_offset_in_buffer));
-  private_rewritten.append(encoded_replacements.view());
-  private_rewritten.append(
-      private_contents.substring(private_end_offset_in_buffer));
+  let const durable_start_offset =
+      durable_spans.is_empty() ? usize{0} : durable_spans[0].start_byte_offset;
+  let const durable_removed_byte_count =
+      should_rewrite_file
+          ? splice_history_spans(durable_rewritten, contents.view(),
+                                 durable_spans, encoded_replacements.view())
+          : usize{0};
+  let const private_removed_byte_count =
+      splice_history_spans(private_rewritten, private_contents, private_spans,
+                           encoded_replacements.view());
 
   let private_offsets = koshka::ArrayList<usize>{koshka::heap_allocator()};
   let durable_offsets = koshka::ArrayList<usize>{koshka::heap_allocator()};
-  let const private_removed_byte_count =
-      private_end_offset_in_buffer - private_start_offset_in_buffer;
-  let const durable_removed_byte_count =
-      durable_end_offset - durable_start_offset;
-  let const resulting_count = ::itl_g_history_count - 1 + replacements.count();
+  let const resulting_count =
+      ::itl_g_history_count - removed_count + replacements.count();
 
   private_offsets.reserve(resulting_count);
   durable_offsets.reserve(resulting_count);
@@ -3203,8 +3238,8 @@ rewrite_history_event(usize                                    number,
                              : UNWRITTEN_HISTORY_RECORD_BYTE_OFFSET);
   }
 
-  for (usize old_index = index + 1; old_index < ::itl_g_history_count;
-       old_index++)
+  for (usize old_index = index + removed_count;
+       old_index < ::itl_g_history_count; old_index++)
   {
     let const old_slot =
         (::itl_g_history_head + old_index) % TL_HISTORY_MAX_SIZE;
@@ -3238,7 +3273,7 @@ rewrite_history_event(usize                                    number,
      durable_rewritten when should_rewrite_file is set, and the in-memory
      offsets still describe the records from before the replacement. */
   let const new_total_count =
-      ::itl_g_history_total_count - 1 + replacements.count();
+      ::itl_g_history_total_count - removed_count + replacements.count();
   let const retained_count = private_offsets.count() < ::itl_g_history_limit
                                  ? private_offsets.count()
                                  : ::itl_g_history_limit;
@@ -3341,64 +3376,20 @@ set_title(StringView title) -> void
       continue;
     }
 
-    usize codepoint_byte_count = 0;
-    u32   codepoint            = 0;
+    let const decoded = utils::decode_strict_utf8(title, position);
 
-    if (unsigned_byte >= 0xc2 && unsigned_byte <= 0xdf) {
-      codepoint_byte_count = 2;
-      codepoint            = unsigned_byte & 0x1f;
-    } else if (unsigned_byte >= 0xe0 && unsigned_byte <= 0xef) {
-      codepoint_byte_count = 3;
-      codepoint            = unsigned_byte & 0x0f;
-    } else if (unsigned_byte >= 0xf0 && unsigned_byte <= 0xf4) {
-      codepoint_byte_count = 4;
-      codepoint            = unsigned_byte & 0x07;
-    }
-
-    if (codepoint_byte_count == 0 ||
-        position + codepoint_byte_count > title.count())
+    if (!decoded.has_value() ||
+        (decoded->value >= 0x80u && decoded->value <= 0x9fu))
     {
       position++;
       continue;
     }
 
-    bool is_valid = true;
+    if (sequence.count() + decoded->length > MAX_TITLE_LENGTH + 4) break;
 
-    for (usize continuation_index = 1;
-         continuation_index < codepoint_byte_count; continuation_index++)
-    {
-      let const continuation_byte =
-          static_cast<unsigned char>(title[position + continuation_index]);
-
-      if ((continuation_byte & 0xc0) != 0x80) {
-        is_valid = false;
-        break;
-      }
-
-      codepoint = (codepoint << 6) | (continuation_byte & 0x3f);
-    }
-
-    if (sequence.count() + codepoint_byte_count > MAX_TITLE_LENGTH + 4) break;
-
-    u32 minimum_codepoint = 0;
-
-    switch (codepoint_byte_count) {
-    case 2:  minimum_codepoint = 0x80u; break;
-    case 3:  minimum_codepoint = 0x800u; break;
-    default: minimum_codepoint = 0x10000u; break;
-    }
-
-    if (!is_valid || codepoint < minimum_codepoint || codepoint > 0x10ffffu ||
-        (codepoint >= 0xd800u && codepoint <= 0xdfffu) ||
-        (codepoint >= 0x80u && codepoint <= 0x9fu))
-    {
-      position++;
-      continue;
-    }
-
-    sequence.append(title.substring_of_length(position, codepoint_byte_count));
+    sequence.append(title.substring_of_length(position, decoded->length));
     was_space_appended = false;
-    position += codepoint_byte_count;
+    position += decoded->length;
   }
 
   sequence.push('\a');

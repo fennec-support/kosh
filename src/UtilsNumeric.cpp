@@ -942,27 +942,17 @@ get_printable_character_length(StringView text,
   if (byte < 0x80) return byte < 0x20 || byte == 0x7f ? 0 : 1;
   if (!is_utf8_locale) return 0;
 
-  let const decoded             = decode_utf8(text, position, 0);
-  u32       smallest_code_point = 0;
+  let const decoded = decode_strict_utf8(text, position);
 
-  switch (decoded.length) {
-  case 2:  smallest_code_point = 0x80; break;
-  case 3:  smallest_code_point = 0x800; break;
-  default: smallest_code_point = 0x10000; break;
-  }
-
-  if (decoded.length < 2 || decoded.value < smallest_code_point ||
-      decoded.value > 0x10ffff ||
-      (decoded.value >= 0xd800 && decoded.value <= 0xdfff) ||
-      !os::code_point_is_in_class("print", decoded.value))
+  if (!decoded.has_value() ||
+      !os::code_point_is_in_class("print", decoded->value))
   {
     return 0;
   }
 
-  /* at this point: is_utf8_locale is true, decoded.length is at least 2,
-     and decoded.value is printable, not a surrogate, and at least the
-     smallest code point for its length. */
-  return decoded.length;
+  /* at this point: is_utf8_locale is true, and decoded holds a printable
+     code point of at least 2 bytes in its shortest form. */
+  return decoded->length;
 }
 
 fn
