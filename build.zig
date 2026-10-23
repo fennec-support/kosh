@@ -27,7 +27,8 @@ pub fn build(b: *std.Build) void {
         "-Wall",
         "-Wextra",
         "-Wdouble-promotion",
-        "-Wno-format",
+        "-Wformat",
+        "-Wformat-security",
         "-Wno-unused-command-line-argument",
         "-Wno-deprecated",
         "-Wno-unknown-warning-option",
@@ -55,6 +56,24 @@ pub fn build(b: *std.Build) void {
     flags.appendSlice(b.allocator, &defines) catch @panic("out of memory");
     if (!is_release) {
         flags.append(b.allocator, "-DKOSH_DEBUG_SYSTEM_KOSHCONF_OVERRIDE") catch @panic("out of memory");
+    }
+
+    // As in src/Makefile, release builds protect the stack everywhere, add
+    // stack clash probes and control-flow protection on Linux, and link a
+    // position-independent, eagerly bound image there.
+    if (is_release) {
+        flags.append(b.allocator, "-fstack-protector-strong") catch @panic("out of memory");
+        if (target.result.os.tag == .linux) {
+            flags.append(b.allocator, "-fstack-clash-protection") catch @panic("out of memory");
+            switch (target.result.cpu.arch) {
+                .x86_64 => flags.append(b.allocator, "-fcf-protection=full") catch @panic("out of memory"),
+                .aarch64 => flags.append(b.allocator, "-mbranch-protection=standard") catch @panic("out of memory"),
+                else => {},
+            }
+            exe.pie = true;
+            exe.link_z_relro = true;
+            exe.link_z_lazy = false;
+        }
     }
 
     const sources = collectSources(b);

@@ -141,6 +141,7 @@ endif
 ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
 CXX := zig c++ -target $(LINUX_TARGET_ARCHITECTURE)-linux-musl
 endif
+OBJCOPY ?= objcopy
 
 # A Darwin cross build uses osxcross for arm64. An environment CXX serves host
 # builds, so only a command-line CXX replaces oa64-clang++, and the compiler
@@ -211,8 +212,44 @@ export KOSH_HAS_USER_CXXFLAGS := 1
 unexport CXXFLAGS
 USER_CXXFLAGS := $(ENVCXXFLAGS)
 # A distribution that sets its own fortify level, as Arch's makepkg does with
-# -Wp,-D_FORTIFY_SOURCE=3, keeps it; otherwise release builds use level 2.
-FORTIFY_FLAGS := $(if $(findstring _FORTIFY_SOURCE,$(USER_CXXFLAGS)),,-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2)
+# -Wp,-D_FORTIFY_SOURCE=3, keeps it. Otherwise release builds use level 3
+# against glibc and Darwin and level 2 elsewhere.
+ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
+FORTIFY_LEVEL := 2
+else ifneq ($(filter Linux Darwin,$(TARGET)),)
+FORTIFY_LEVEL := 3
+else
+FORTIFY_LEVEL := 2
+endif
+FORTIFY_FLAGS := $(if $(findstring _FORTIFY_SOURCE,$(USER_CXXFLAGS)),,-U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=$(FORTIFY_LEVEL))
+
+# Release hardening: stack protection everywhere, stack clash probes and
+# control-flow protection where the target supports them, and a read-only,
+# eagerly bound, non-executable-stack image with packed relative relocations
+# on Linux.
+TARGET_MACHINE := $(or $(LINUX_TARGET_ARCHITECTURE),$(HOST_MACHINE))
+# zig ignores -static-pie and spells a static position-independent executable
+# as a static PIE link.
+ZIG_STATIC_PIE_FLAGS := -static -fPIE -pie
+HARDENING_FLAGS := -fstack-protector-strong
+HARDENING_LINK_FLAGS := # nothing
+ifeq ($(TARGET), Linux)
+HARDENING_FLAGS += -fstack-clash-protection
+HARDENING_LINK_FLAGS += -Wl,-z,relro,-z,now,-z,noexecstack
+ifneq ($(IS_LINUX_CROSS_COMPILATION), 1)
+HARDENING_LINK_FLAGS += -Wl,-z,pack-relative-relocs
+endif
+ifeq ($(TARGET_MACHINE), x86_64)
+HARDENING_FLAGS += -fcf-protection=full
+else ifeq ($(TARGET_MACHINE), aarch64)
+HARDENING_FLAGS += -mbranch-protection=standard
+endif
+endif
+ifeq ($(TARGET), Windows_NT)
+ifneq ($(IS_WINDOWS_GNU_ABI),)
+HARDENING_LINK_FLAGS += -lssp
+endif
+endif
 CXXFLAGS := # nothing
 
 encode_build_metadata = $(1)
@@ -237,7 +274,8 @@ CXXFLAGS := \
 	-Wall \
 	-Wextra \
 	-Wdouble-promotion \
-	-Wno-format \
+	-Wformat \
+	-Wformat-security \
 	-Werror \
 	-Wno-unused-command-line-argument \
 	-Wno-deprecated \
@@ -301,7 +339,16 @@ CXXFLAGS += \
 	-DNDEBUG \
 	-O3 \
 	-funroll-loops \
+	-ffunction-sections \
+	-fdata-sections \
+	$(HARDENING_FLAGS) \
 	$(FORTIFY_FLAGS)
+LINK_LIBRARIES += $(HARDENING_LINK_FLAGS)
+ifeq ($(TARGET), Darwin)
+LINK_LIBRARIES += -Wl,-dead_strip
+else
+LINK_LIBRARIES += -Wl,--gc-sections
+endif
 ifneq ($(TARGET), Windows_NT)
 ifneq ($(TARGET), Darwin)
 CXXFLAGS += -flto
@@ -310,8 +357,9 @@ CXXFLAGS += -flto
 endif
 endif
 ifeq ($(TARGET), Linux)
+SHOULD_SPLIT_DEBUG_INFO := 1
 ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
-CXXFLAGS += -static
+CXXFLAGS += $(ZIG_STATIC_PIE_FLAGS)
 else ifeq ($(SHOULD_LINK_STATIC_LINUX), 1)
 CXXFLAGS += \
 	-static-pie \
@@ -329,7 +377,9 @@ CXXFLAGS += \
 	-fdata-sections \
 	-fno-asynchronous-unwind-tables \
 	-fmerge-all-constants \
+	$(HARDENING_FLAGS) \
 	$(FORTIFY_FLAGS)
+LINK_LIBRARIES += $(HARDENING_LINK_FLAGS)
 ifneq ($(TARGET), Windows_NT)
 ifneq ($(TARGET), Darwin)
 CXXFLAGS += -flto
@@ -344,12 +394,10 @@ LINK_LIBRARIES += -Wl,--gc-sections -s
 endif
 ifeq ($(TARGET), Linux)
 ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
-CXXFLAGS += -static
+CXXFLAGS += $(ZIG_STATIC_PIE_FLAGS)
 else ifeq ($(SHOULD_LINK_STATIC_LINUX), 1)
 CXXFLAGS += \
-	-static \
-	-fno-pie \
-	-no-pie \
+	-static-pie \
 	-nostdlib++
 LINK_LIBRARIES += -lsupc++
 endif
@@ -397,7 +445,9 @@ CXXFLAGS += \
 	-DNDEBUG \
 	-fno-omit-frame-pointer \
 	-flto \
-	-funroll-loops
+	-funroll-loops \
+	$(HARDENING_FLAGS)
+LINK_LIBRARIES += $(HARDENING_LINK_FLAGS)
 ifneq ($(TARGET), Windows_NT)
 CXXFLAGS += \
 	-O3 \
@@ -525,6 +575,10 @@ ifeq ($(TARGET), Windows_NT)
 		-o $(abspath $@)
 else
 	$(CXX) $(CXXFLAGS) $(LINKER_SELECTION_FLAG) $(OBJECTS) $(LINK_LIBRARIES) -o $@
+endif
+ifeq ($(SHOULD_SPLIT_DEBUG_INFO), 1)
+	$(OBJCOPY) --only-keep-debug $@ $@.debug
+	$(OBJCOPY) --strip-all --add-gnu-debuglink=$@.debug $@
 endif
 
 dirs: $(SOURCE_DIRECTORIES)
