@@ -502,6 +502,20 @@ clear_reaped_child_arrival() wontthrow -> void
   DID_REAPED_CHILD_ARRIVE = false;
 }
 
+static original_arguments ORIGINAL_ARGUMENTS{};
+
+fn
+set_original_arguments(int count, char **values) wontthrow -> void
+{
+  ORIGINAL_ARGUMENTS = original_arguments{count, values};
+}
+
+fn
+get_original_arguments() wontthrow -> original_arguments
+{
+  return ORIGINAL_ARGUMENTS;
+}
+
 fn
 get_shell_process_id() wontthrow -> i64
 {
