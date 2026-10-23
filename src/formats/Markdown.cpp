@@ -97,7 +97,7 @@ markdown_quote_depth(StringView line) wontthrow -> usize
   return depth;
 }
 
-static pure fn
+static fn
 is_placeholder_end(StringView line, usize open, usize &close) wontthrow -> bool
 {
   if (open + 2 >= line.length || line[open + 1] == '<' || line[open + 1] == '(')

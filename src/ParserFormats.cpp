@@ -510,7 +510,7 @@ parser_format_add_fragment(parsed_format_document &document,
    time:   O(end - position) per call, since do_find() scans to end. the
            caller parser_format_masked_template_source() makes one call for
            each position it visits. */
-static pure fn
+static fn
 template_construct_end(StringView source,
                        usize      position,
                        usize      end,
@@ -1576,7 +1576,7 @@ yaml_block_indicator(StringView value) wontthrow -> Maybe<bool>
   return value[0] == '>';
 }
 
-static pure fn
+static fn
 skip_yaml_value_decorations(StringView line,
                             usize      position,
                             bool      &is_skipped) wontthrow -> usize

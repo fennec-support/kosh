@@ -56,7 +56,7 @@ section_word(StringView line) wontthrow -> StringView
   return line.substring_of_length(0, end);
 }
 
-static pure fn
+static fn
 is_section_header(StringView line, bool &is_script) wontthrow -> bool
 {
   let const word = section_word(line);
