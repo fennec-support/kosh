@@ -2633,8 +2633,14 @@ are listed with \fB\-s\fR, \fB\-\-signal\fR, \fB\-l\fR, and
 \fB\-\-list\fR.
 .TP
 .B pkill
-Processes whose short command (comm) contains the pattern are signaled, with
-the signal selected and listed as for killall.
+Processes whose short command (comm) contains the pattern are signaled. The
+signal is selected with \fB\-\-signal\fR or with a \fB\-\fISIGNAL\fR argument
+such as \fB\-TERM\fR or \fB\-9\fR, and \fB\-l\fR and \fB\-\-list\fR list the
+signals. \fB\-s\fR and \fB\-\-session\fR take a comma-separated list of session
+ids, where 0 is the session of pkill itself, and select only processes in those
+sessions. The pattern may be omitted when a session list is given.
+\fB\-\-inverse\fR signals every process that the pattern and the session list
+do not select.
 .TP
 .B ln
 Hard links are created by default. The \fB\-s\fR, \fB\-f\fR, \fB\-L\fR, and

@@ -3910,6 +3910,13 @@ enumerate_processes(process_detail detail) throws
     process.parent_pid   = static_cast<i64>(entry.th32ParentProcessID);
     process.name         = name.take();
     process.command_line = process.name.clone();
+
+    if (DWORD session_id = 0;
+        ProcessIdToSessionId(entry.th32ProcessID, &session_id) != FALSE)
+    {
+      process.session_id = static_cast<i64>(session_id);
+    }
+
     if (detail == process_detail::ResourceStats) {
       let const handle =
           OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ,

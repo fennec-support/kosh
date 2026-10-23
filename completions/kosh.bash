@@ -549,7 +549,10 @@ _koshkit_util_flags ()
     timeout)
       echo "-s --signal -k --kill-after -p --preserve-status"
     ;;
-    pkill | killall)
+    pkill)
+      echo "-s --session --signal --inverse -l --list"
+    ;;
+    killall)
       echo "-s --signal -l --list"
     ;;
     make)

@@ -2520,6 +2520,17 @@ get_current_process_id() wontthrow -> i64
 }
 
 fn
+get_current_session_id() wontthrow -> i64
+{
+  DWORD session_id = 0;
+
+  if (ProcessIdToSessionId(GetCurrentProcessId(), &session_id) == FALSE)
+    return -1;
+
+  return static_cast<i64>(session_id);
+}
+
+fn
 register_platform_flags(FlagList &flags) throws -> void
 {
   unused(flags);

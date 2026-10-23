@@ -1,7 +1,7 @@
 # The remaining utilities, sleep with a zero duration, env applying an
 # assignment and running a command, and the pkill and killall error paths. The
-# process matchers use a name that matches nothing, so no real process is
-# signalled.
+# error paths use a name that matches nothing. The session case signals only a
+# sleep started under a unique command name.
 unset KOSH_FLAGS
 
 echo "--- sleep zero ---"
@@ -54,6 +54,17 @@ echo "rc=$?"
 echo "--- pkill with no match ---"
 "$BIN" -c 'koshkit pkill no_such_process_xyz_123'
 echo "rc=$?"
+
+echo "--- pkill -s 0 selects the own session and -KILL selects the signal ---"
+probe_dir=$(mktemp -d)
+probe_name="kpk$$"
+ln -s "$(command -v sleep)" "$probe_dir/$probe_name"
+"$BIN" -c '"$1" 30 & probe=$!
+koshkit pkill -s 0,1 -KILL "$2"
+echo "pkill=$?"
+wait "$probe"
+echo "probe=$?"' _ "$probe_dir/$probe_name" "$probe_name" 2>&1 | grep -v '^\['
+"$BIN_DIR/invoke-koshkit" rm -rf -- "$probe_dir"
 
 echo "--- killall with no match ---"
 "$BIN" -c 'koshkit killall no_such_process_xyz_123' 2>&1

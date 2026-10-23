@@ -661,11 +661,12 @@ struct process_entry
   u64    resident_kib{0};
   u64    cpu_milliseconds{0};
   u64    start_token{0};
+  i64    session_id{-1};
   u32    owner_id{0};
   char   state{'?'};
 };
 
-static_assert(sizeof(usize) != 8 || sizeof(process_entry) == 168);
+static_assert(sizeof(usize) != 8 || sizeof(process_entry) == 176);
 
 fn
 enumerate_processes(process_detail detail = process_detail::Basic)
@@ -2062,6 +2063,8 @@ fn
 set_shell_process_id(i64 pid) wontthrow -> void;
 fn
 get_current_process_id() wontthrow -> i64;
+fn
+get_current_session_id() wontthrow -> i64;
 fn
 get_shell_parent_process_id() wontthrow -> i64;
 fn

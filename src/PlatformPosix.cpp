@@ -3677,6 +3677,12 @@ get_current_process_id() wontthrow -> i64
 }
 
 fn
+get_current_session_id() wontthrow -> i64
+{
+  return static_cast<i64>(::getsid(0));
+}
+
+fn
 register_platform_flags(FlagList &flags) throws -> void
 {
 #if KOSH_PLATFORM_IS KOSH_PLATFORM_COSMO

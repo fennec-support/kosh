@@ -1253,8 +1253,9 @@ enumerate_processes(process_detail detail) throws
     process.parent_pid = static_cast<i64>(record.kp_eproc.e_ppid);
     process.name =
         String{process.name.allocator(), StringView{record.kp_proc.p_comm}};
-    process.owner_id = static_cast<u32>(record.kp_eproc.e_ucred.cr_uid);
-    process.state    = process_state_letter(record.kp_proc.p_stat);
+    process.owner_id   = static_cast<u32>(record.kp_eproc.e_ucred.cr_uid);
+    process.state      = process_state_letter(record.kp_proc.p_stat);
+    process.session_id = static_cast<i64>(::getsid(record.kp_proc.p_pid));
     process.start_token =
         static_cast<u64>(record.kp_proc.p_starttime.tv_sec) * 1000000 +
         static_cast<u64>(record.kp_proc.p_starttime.tv_usec);
@@ -1494,6 +1495,12 @@ enumerate_processes(process_detail detail) throws
         let const state  = nth_space_field(fields, 0);
 
         if (!state.is_empty()) process.state = state[0];
+
+        if (let const session = nth_space_field(fields, 3).to<i64>();
+            !session.is_error())
+        {
+          process.session_id = session.value();
+        }
 
         if (let const start_ticks = nth_space_field(fields, 19).to<i64>();
             !start_ticks.is_error() && start_ticks.value() >= 0)

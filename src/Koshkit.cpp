@@ -1494,6 +1494,40 @@ struct signal_number_comparator
 };
 
 fn
+resolve_koshkit_signal(StringView     spelled,
+                       SourceLocation location,
+                       Allocator      allocator) throws -> i32
+{
+  if (spelled.is_empty()) return SIGTERM;
+
+  let const parsed = spelled.to<i64>();
+
+  if (!parsed.is_error()) {
+    if (parsed.value() < INT32_MIN || parsed.value() > INT32_MAX) {
+      throw ErrorWithLocationAndDetails{
+          location, "Signal number is out of range",
+          "Use a signal name such as TERM or a number such as 15"};
+    }
+
+    return static_cast<i32>(parsed.value());
+  }
+
+  let uppercased = String{allocator, spelled};
+
+  uppercased.uppercase_ascii();
+
+  let const resolved = os::signal_number_from_name(uppercased.view());
+
+  if (!resolved.has_value()) {
+    throw ErrorWithLocationAndDetails{
+        location, "Unknown signal '" + spelled + "'",
+        "Use a signal name such as TERM or a number such as 15"};
+  }
+
+  return *resolved;
+}
+
+fn
 format_signal_list() throws -> String
 {
   static const usize COLUMN_COUNT = 5;
@@ -1742,6 +1776,7 @@ get_init_system_name(Allocator allocator) throws -> String
       {SSK("tini"),        "tini"       },
       {SSK("docker-init"), "docker-init"},
       {SSK("dumb-init"),   "dumb-init"  },
+      {SSK("kosh"),        "kosh"       },
       {SSK("bash"),        "shell"      },
       {SSK("sh"),          "shell"      },
   };
