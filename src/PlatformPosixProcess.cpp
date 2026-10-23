@@ -1577,9 +1577,11 @@ poll_process(process              p,
 
   if (result == 0) return process_state::Unchanged;
   if (result == -1) {
-    status_out = 0;
+    LOG(Info, "polling pid %lld failed, so its status is lost: %s",
+        static_cast<long long>(p), strerror(errno));
+    status_out = 127;
 
-    return process_state::Exited;
+    return process_state::Lost;
   }
 
   if (WIFSTOPPED(status)) {

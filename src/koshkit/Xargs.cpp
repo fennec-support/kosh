@@ -657,10 +657,11 @@ Xargs::execute(const ExecContext               &ec,
   let const do_wait_for_child = [&]() throws -> i32 {
     loop {
       for (usize index = 0; index < running.count(); index++) {
-        i32 child_status = 0;
+        i32       child_status = 0;
+        let const state        = os::poll_process(running[index], child_status);
 
-        if (os::poll_process(running[index], child_status) ==
-            os::process_state::Exited)
+        if (state == os::process_state::Exited ||
+            state == os::process_state::Lost)
         {
           running.remove(index);
 

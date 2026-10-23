@@ -683,10 +683,14 @@ EvalContext::release_finished_held_process_substitutions() wontthrow -> void
     process_substitution &sub = held[i - 1];
 
     if (sub.child != KOSH_INVALID_PROCESS) {
-      i32 status = 0;
+      i32       status = 0;
+      let const state  = os::poll_process(sub.child, status);
 
-      if (os::poll_process(sub.child, status) != os::process_state::Exited)
+      if (state != os::process_state::Exited &&
+          state != os::process_state::Lost)
+      {
         continue;
+      }
       sub.child = KOSH_INVALID_PROCESS;
       job_table_store().remember_finished_status(sub.process_id, status);
     }
@@ -712,8 +716,13 @@ EvalContext::wait_for_process_substitution(i64  process_id,
     i32 status = 127;
 
     if (!should_block) {
-      if (os::poll_process(sub.child, status) != os::process_state::Exited)
+      let const state = os::poll_process(sub.child, status);
+
+      if (state != os::process_state::Exited &&
+          state != os::process_state::Lost)
+      {
         return false;
+      }
     } else {
       try {
         status = os::reap_process_quietly(sub.child);

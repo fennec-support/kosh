@@ -3016,10 +3016,11 @@ poll_process(process              p,
   let const wait_result = WaitForSingleObject(p, 0);
   if (wait_result == WAIT_TIMEOUT) return process_state::Running;
   if (wait_result != WAIT_OBJECT_0) {
-    status_out = 0;
+    LOG(Info, "polling a child process failed, so its status is lost");
+    status_out = 127;
     CloseHandle(p);
 
-    return process_state::Exited;
+    return process_state::Lost;
   }
   /* at this point: wait_result is WAIT_OBJECT_0, so p has exited and
      p is still open. */

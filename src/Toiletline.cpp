@@ -537,7 +537,9 @@ read_while_continuing_program(
           unused(koshka::os::reap_process_quietly(child));
           out_exit_status = status;
         }
-      } else if (state == koshka::os::process_state::Exited) {
+      } else if (state == koshka::os::process_state::Exited ||
+                 state == koshka::os::process_state::Lost)
+      {
         out_exit_status = status;
       }
 

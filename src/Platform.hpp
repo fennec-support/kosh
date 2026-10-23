@@ -611,6 +611,7 @@ enum class process_state : u8
 {
   Running,
   Exited,
+  Lost,
   Stopped,
   Unchanged,
 };

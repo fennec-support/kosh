@@ -324,9 +324,10 @@ poll_owned_processes(ArrayList<os::process> &processes) wontthrow -> Maybe<i32>
     i32       status = 0;
     let const state = os::poll_process(processes[process_position - 1], status);
 
-    if (state == os::process_state::Exited)
+    if (state == os::process_state::Exited || state == os::process_state::Lost)
+    {
       processes.remove(process_position - 1);
-    else if (state == os::process_state::Stopped)
+    } else if (state == os::process_state::Stopped)
       stopped_status = status;
   }
 
@@ -363,6 +364,12 @@ JobTable::update_jobs() throws -> void
         job.is_primary_process_active = false;
         job.last_status               = status;
         job.termination               = termination;
+        break;
+
+      case os::process_state::Lost:
+        LOG(Info, "job %d lost its primary process to another wait", job.id);
+        job.is_primary_process_active = false;
+        job.last_status               = status;
         break;
 
       case os::process_state::Stopped:

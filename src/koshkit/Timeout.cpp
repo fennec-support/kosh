@@ -88,7 +88,8 @@ wait_for_process_until(os::process     child,
 
     if (!has_child_exited) {
       let const state  = os::poll_process(child, status);
-      has_child_exited = state == os::process_state::Exited;
+      has_child_exited = state == os::process_state::Exited ||
+                         state == os::process_state::Lost;
     }
 
     if (has_child_exited && (!should_wait_for_process_group ||
@@ -442,10 +443,14 @@ Timeout::execute(const ExecContext               &ec,
   if (!signal_supervised_process(child, process_group, has_child_exited,
                                  timeout_signal))
   {
-    if (!has_child_exited &&
-        os::poll_process(child, status) == os::process_state::Exited)
-    {
-      return status;
+    if (!has_child_exited) {
+      let const state = os::poll_process(child, status);
+
+      if (state == os::process_state::Exited ||
+          state == os::process_state::Lost)
+      {
+        return status;
+      }
     }
 
     signal_supervised_process(child, process_group, has_child_exited, 9);
@@ -472,10 +477,14 @@ Timeout::execute(const ExecContext               &ec,
 
   if (wait_result == supervision_wait_result::TimedOut) {
     if (!signal_supervised_process(child, process_group, has_child_exited, 9)) {
-      if (!has_child_exited &&
-          os::poll_process(child, status) == os::process_state::Exited)
-      {
-        return timeout_expiration_status(status, timeout_signal);
+      if (!has_child_exited) {
+        let const state = os::poll_process(child, status);
+
+        if (state == os::process_state::Exited ||
+            state == os::process_state::Lost)
+        {
+          return timeout_expiration_status(status, timeout_signal);
+        }
       }
 
       return 125;
