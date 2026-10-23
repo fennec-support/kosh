@@ -50,7 +50,7 @@ Nice::execute(const ExecContext               &ec,
           "Invalid increment '" + FLAG_NICE_INCREMENT.value() + "'",
           "Use a decimal integer from -2147483648 through 2147483647");
 
-      return 2;
+      return 1;
     }
 
     increment = parsed.value();

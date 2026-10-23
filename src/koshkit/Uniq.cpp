@@ -334,12 +334,30 @@ Uniq::execute(const ExecContext               &ec,
   let output_descriptor = Maybe<os::descriptor>{};
 
   if (operands.count() == 2) {
+    /* the output opens truncated, so an output that is the input is refused
+       before anything is lost. */
+    if (let const existing = os::open_file_descriptor(
+            operands[1].view(), os::file_open_mode::ReadNonblocking);
+        existing.has_value())
+    {
+      let const is_input =
+          os::descriptors_refer_to_same_file(*existing, input->descriptor);
+
+      os::close_fd(*existing);
+      if (is_input) {
+        KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
+                                "The output file '" + operands[1] +
+                                    "' is the input file",
+                                "Write the output to another file");
+
+        return 1;
+      }
+    }
+
     output_descriptor = os::open_file_descriptor(operands[1].view(),
                                                  os::file_open_mode::Truncate);
     if (!output_descriptor.has_value()) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     operands[1] + ": " +
-                                         os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[1], "create", operands[1]);
 
       return 1;
     }
@@ -360,9 +378,8 @@ Uniq::execute(const ExecContext               &ec,
           !os::write_all(*output_descriptor, output.data(), output.count()))
       {
         did_write_fail = true;
-        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "Write error: " +
-                                           os::last_system_error_message());
+        report_soft_koshkit_error(
+            ec, cxt, "Write error: " + os::last_system_error_message());
       }
     } else {
       ec.print_to_stdout(output);
@@ -441,10 +458,7 @@ Uniq::execute(const ExecContext               &ec,
 
     if (!has_line.has_value()) {
       if (os::INTERRUPT_REQUESTED) return 130;
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                             String{cxt.scratch_allocator(), source} +
-                                                 ": " +
-                                                 os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR("read", source);
 
       return 1;
     }

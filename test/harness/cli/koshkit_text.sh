@@ -17,6 +17,9 @@ echo "--- wc ---"
 "$BIN" -c 'koshkit wc fruit.txt'
 echo "--- wc -l ---"
 "$BIN" -c 'koshkit wc -l fruit.txt'
+echo "--- wc -w in a UTF-8 locale counts UTF-8 words and skips stray continuation bytes ---"
+printf '\320\277\321\200\320\270 \346\227\245 x\n\200\201 a\n' |
+  LC_ALL=C.UTF-8 "$BIN" -c 'koshkit wc -w'
 "$BIN" -c 'koshkit seq 20000' > batch-input.txt
 : > empty.txt
 printf 'first\n' > cat-first.txt

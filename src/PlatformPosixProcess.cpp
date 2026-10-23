@@ -19,8 +19,6 @@
 #include "base/Debug.hpp"
 #include "base/Trace.hpp"
 
-#include <grp.h>
-
 #if defined __linux__
 #include <sys/auxv.h>
 #endif

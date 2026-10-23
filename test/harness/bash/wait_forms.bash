@@ -7,8 +7,9 @@
 # to finish, -p stores the process whose status is returned, and -f waits for
 # termination. A trapped signal ends a blocking wait -n with 128 plus its
 # number. A finished process substitution among the operands of wait -n
-# returns before a running job, and -p with operands replaces a name
-# reference with a plain variable. Gate FIFOs order the jobs without timing.
+# returns before a running job or a running process substitution, and -p
+# with operands replaces a name reference with a plain variable. Gate FIFOs
+# order the jobs without timing.
 
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
@@ -155,6 +156,17 @@ echo release > "$dir/held"
 wait "$held_job"
 echo "job=$?"
 exec {held_fd}<&-
+
+echo substitution-before-substitution
+mkfifo "$dir/slow"
+exec {slow_fd}< <(read -r _ < "$dir/slow"; exit 8)
+slow_substitution=$!
+exec {fast_fd}< <(exit 9)
+fast_substitution=$!
+wait -n -p fast_who "$slow_substitution" "$fast_substitution"
+echo "next=$? fast=$([ "$fast_who" = "$fast_substitution" ] && echo yes)"
+echo release > "$dir/slow"
+exec {slow_fd}<&- {fast_fd}<&-
 
 echo pid-reference
 declare -n pid_ref=pid_target

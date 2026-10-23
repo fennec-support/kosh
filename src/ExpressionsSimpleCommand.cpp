@@ -1827,7 +1827,9 @@ heredoc_terminator(const Redirection &redir) throws -> String
           ->word()
           .to_literal_string();
 
-  if (redir.should_strip_heredoc_tabs && !terminator.is_empty()) {
+  if (redir.should_strip_heredoc_tabs && !redir.has_separated_strip_operator &&
+      !terminator.is_empty())
+  {
     return String{heap_allocator(), terminator.view().substring(1)};
   }
 
@@ -1903,7 +1905,7 @@ append_one_redirection(EvalContext       &cxt,
 
   case Redirection::Kind::Heredoc:
     append_redirection_descriptor(out, redir, 0);
-    out += "<<";
+    out += redir.has_separated_strip_operator ? "<<-" : "<<";
     if (redir.heredoc_delimiter != nullptr)
       append_word_source_text(cxt, out, *redir.heredoc_delimiter);
 

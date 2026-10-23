@@ -174,9 +174,9 @@ Comm::execute(const ExecContext               &ec,
 
     ec.print_to_stdout(output);
     output.clear();
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   side == 0 ? "File 1 is not in sorted order"
-                                             : "File 2 is not in sorted order");
+    report_soft_koshkit_error(ec, cxt,
+                              side == 0 ? "File 1 is not in sorted order"
+                                        : "File 2 is not in sorted order");
     was_disorder_reported[side] = true;
     did_fail_order              = is_check_forced;
   };
@@ -202,8 +202,7 @@ Comm::execute(const ExecContext               &ec,
         right_result == utils::BufferedLineReader::Result::Error)
     {
       if (os::INTERRUPT_REQUESTED) return 130;
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     os::last_system_error_message());
+      report_soft_koshkit_error(ec, cxt, os::last_system_error_message());
 
       return 2;
     }
@@ -261,8 +260,7 @@ Comm::execute(const ExecContext               &ec,
 
   ec.print_to_stdout(output);
   if (was_disorder_reported[0] || was_disorder_reported[1]) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "Input is not in sorted order");
+    report_soft_koshkit_error(ec, cxt, "Input is not in sorted order");
 
     return 1;
   }

@@ -235,7 +235,6 @@ LiveView::get_wait_nanoseconds(u64 now_nanoseconds,
 fn
 live_report_options::parse_window_seconds(const ExecContext &ec,
                                           EvalContext       &cxt,
-                                          StringView         utility_name,
                                           StringView         text,
                                           SourceLocation     location,
                                           StringView         title,
@@ -246,8 +245,7 @@ live_report_options::parse_window_seconds(const ExecContext &ec,
   let const seconds = parse_koshkit_duration_seconds(text, location, allocator);
 
   if (seconds <= 0.0) {
-    report_soft_koshkit_util_error(ec, cxt, location, utility_name, title,
-                                   note);
+    report_soft_koshkit_error(ec, cxt, location, title, note);
 
     return None;
   }
@@ -258,7 +256,6 @@ live_report_options::parse_window_seconds(const ExecContext &ec,
 fn
 live_report_options::parse_with_window(const ExecContext       &ec,
                                        EvalContext             &cxt,
-                                       StringView               utility_name,
                                        const FlagOptionalValue &live_flag,
                                        bool                     is_cumulative,
                                        f64                      window_seconds,
@@ -273,7 +270,7 @@ live_report_options::parse_with_window(const ExecContext       &ec,
   if (!live_flag.has_value()) return options;
 
   let const interval = parse_window_seconds(
-      ec, cxt, utility_name, live_flag.value(), live_flag.value_location(),
+      ec, cxt, live_flag.value(), live_flag.value_location(),
       "invalid live interval", "use a positive number of seconds", allocator);
 
   if (!interval.has_value()) return None;
@@ -288,13 +285,12 @@ live_report_options::parse_with_window(const ExecContext       &ec,
 fn
 live_report_options::parse(const ExecContext       &ec,
                            EvalContext             &cxt,
-                           StringView               utility_name,
                            const FlagOptionalValue &live_flag,
                            const FlagOptionalValue &cumulative_flag,
                            Allocator                allocator) throws
     -> Maybe<live_report_options>
 {
-  let options = parse_with_window(ec, cxt, utility_name, live_flag,
+  let options = parse_with_window(ec, cxt, live_flag,
                                   cumulative_flag.is_enabled(), 1.0, allocator);
 
   if (!options.has_value() || !cumulative_flag.has_value()) {
@@ -302,9 +298,9 @@ live_report_options::parse(const ExecContext       &ec,
   }
 
   let const window = parse_window_seconds(
-      ec, cxt, utility_name, cumulative_flag.value(),
-      cumulative_flag.value_location(), "invalid cumulative interval",
-      "use a positive number of seconds", allocator);
+      ec, cxt, cumulative_flag.value(), cumulative_flag.value_location(),
+      "invalid cumulative interval", "use a positive number of seconds",
+      allocator);
 
   if (!window.has_value()) return None;
   /* at this point: options holds a value, cumulative_flag has a value, and

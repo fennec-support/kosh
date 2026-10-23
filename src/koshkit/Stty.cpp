@@ -40,9 +40,8 @@ Stty::execute(const ExecContext               &ec,
   let const should_encode     = FLAG_STTY_ENCODE.is_enabled();
 
   if (should_report_all && should_encode) {
-    report_soft_koshkit_util_error(ec, cxt, FLAG_STTY_ENCODE.value_location(),
-                                   args[0].view(),
-                                   "-a and -g cannot be used together");
+    report_soft_koshkit_error(ec, cxt, FLAG_STTY_ENCODE.value_location(),
+                              "-a and -g cannot be used together");
 
     return 1;
   }
@@ -60,8 +59,7 @@ Stty::execute(const ExecContext               &ec,
         os::terminal_settings(terminal, cxt.scratch_allocator(), output_mode);
 
     if (!output.has_value()) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "Standard input is not a terminal");
+      report_soft_koshkit_error(ec, cxt, "Standard input is not a terminal");
 
       return 1;
     }
@@ -71,8 +69,7 @@ Stty::execute(const ExecContext               &ec,
 
   if (!operands.is_empty()) {
     if (!os::is_fd_a_tty(terminal)) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "Standard input is not a terminal");
+      report_soft_koshkit_error(ec, cxt, "Standard input is not a terminal");
 
       return 1;
     }
@@ -81,15 +78,14 @@ Stty::execute(const ExecContext               &ec,
     let const result = os::apply_terminal_settings(terminal, operands);
 
     if (result.kind == os::terminal_settings_apply_kind::SystemError) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     os::last_system_error_message());
+      report_soft_koshkit_error(ec, cxt, os::last_system_error_message());
 
       return 1;
     }
 
     if (result.kind == os::terminal_settings_apply_kind::InvalidSetting) {
-      report_soft_koshkit_util_error(
-          ec, cxt, operand_locations[result.setting_position], args[0].view(),
+      report_soft_koshkit_error(
+          ec, cxt, operand_locations[result.setting_position],
           "Invalid terminal setting",
           "Read the current terminal settings with `stty -a`");
 

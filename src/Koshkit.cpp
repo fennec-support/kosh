@@ -62,7 +62,6 @@ fn
 report_unresolved_sort_key(const ExecContext &ec,
                            EvalContext       &cxt,
                            SourceLocation     location,
-                           StringView         utility_name,
                            usize              match_count,
                            StringView         matches,
                            StringView         invalid_note) throws -> bool
@@ -70,19 +69,18 @@ report_unresolved_sort_key(const ExecContext &ec,
   if (match_count == 1) return true;
 
   if (match_count == 0) {
-    report_soft_koshkit_util_error(ec, cxt, location, utility_name,
-                                   "invalid sort key", invalid_note);
+    report_soft_koshkit_error(ec, cxt, location, "Invalid sort key",
+                              invalid_note);
 
     return false;
   }
   /* at this point: match_count is greater than one. */
 
-  let note = String{cxt.scratch_allocator(), "matches "};
+  let note = String{cxt.scratch_allocator(), "Use a longer prefix of "};
 
   note += matches;
-  note += "; use a longer prefix";
-  report_soft_koshkit_util_error(ec, cxt, location, utility_name,
-                                 "ambiguous sort key", note.view());
+  report_soft_koshkit_error(ec, cxt, location, "Ambiguous sort key",
+                            note.view());
 
   return false;
 }
@@ -245,7 +243,7 @@ static fn
 get_exported_spelling(const Value &value, StringView environment_name) wontthrow
     -> StringView
 {
-  if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
+  if constexpr (os::IS_ENVIRONMENT_CASE_SENSITIVE) {
     unused(value);
 
     return environment_name;
@@ -266,7 +264,7 @@ print_environment(const ExecContext &ec, EvalContext &cxt) throws
   for (let const &name : os::environment_names()) {
     let display_name = name.view();
 
-    if constexpr (!os::ENVIRONMENT_IS_CASE_SENSITIVE) {
+    if constexpr (!os::IS_ENVIRONMENT_CASE_SENSITIVE) {
       let const folded_name =
           name.view().to_lower_ascii(cxt.scratch_allocator());
 
@@ -1983,49 +1981,23 @@ report_soft_koshkit_warning(const ExecContext &ec,
 }
 
 cold noinline fn
-report_soft_koshkit_util_error(const ExecContext &ec,
-                               EvalContext       &cxt,
-                               StringView         utility_name,
-                               StringView         message) throws -> void
+report_soft_koshkit_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          SourceLocation     location,
+                          StringView         message) throws -> void
 {
-  unused(utility_name);
-  report_soft_koshkit_error(ec, cxt, message);
-}
-
-cold noinline fn
-report_soft_koshkit_util_error(const ExecContext &ec,
-                               EvalContext       &cxt,
-                               StringView         utility_name,
-                               StringView         message,
-                               StringView         note) throws -> void
-{
-  report_soft_koshkit_util_error(ec, cxt, utility_name, message);
-  show_soft_koshkit_note(note);
-}
-
-cold noinline fn
-report_soft_koshkit_util_error(const ExecContext &ec,
-                               EvalContext       &cxt,
-                               SourceLocation     location,
-                               StringView         utility_name,
-                               StringView         message) throws -> void
-{
-  unused(utility_name);
-
   show_soft_koshkit_error(ec, cxt, steal(location),
                           make_koshkit_report_text(ec, cxt, message));
 }
 
 cold noinline fn
-report_soft_koshkit_util_error(const ExecContext &ec,
-                               EvalContext       &cxt,
-                               SourceLocation     location,
-                               StringView         utility_name,
-                               StringView         message,
-                               StringView         note) throws -> void
+report_soft_koshkit_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          SourceLocation     location,
+                          StringView         message,
+                          StringView         note) throws -> void
 {
-  report_soft_koshkit_util_error(ec, cxt, steal(location), utility_name,
-                                 message);
+  report_soft_koshkit_error(ec, cxt, steal(location), message);
   show_soft_koshkit_note(note);
 }
 

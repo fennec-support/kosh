@@ -98,9 +98,8 @@ Id::execute(const ExecContext               &ec,
     let const resolved = utils::resolve_user_id(operands[0].view());
 
     if (!resolved.has_value()) {
-      report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
-                                     args[0].view(),
-                                     "Unknown user '" + operands[0] + "'");
+      report_soft_koshkit_error(ec, cxt, operand_locations[0],
+                                "Unknown user '" + operands[0] + "'");
 
       return 1;
     }
@@ -108,9 +107,8 @@ Id::execute(const ExecContext               &ec,
     let const primary_group = os::get_user_primary_group_id(*resolved);
 
     if (!primary_group.has_value()) {
-      report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
-                                     args[0].view(),
-                                     "Unknown user '" + operands[0] + "'");
+      report_soft_koshkit_error(ec, cxt, operand_locations[0],
+                                "Unknown user '" + operands[0] + "'");
 
       return 1;
     }

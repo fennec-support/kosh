@@ -55,22 +55,26 @@ struct word_byte_table
   u8 values[256];
 };
 
+/* in a UTF-8 locale, a lead byte starts a character as a printable byte does,
+   and a continuation byte stays inside the character. */
 static consteval fn
-make_word_byte_table() -> word_byte_table
+make_word_byte_table(bool is_utf8) -> word_byte_table
 {
   word_byte_table table{};
 
   for (u32 byte = 0; byte < 256; byte++) {
     let const is_blank     = byte == ' ' || (byte >= '\t' && byte <= '\r');
     let const is_printable = byte > ' ' && byte < 0x7f;
+    let const is_utf8_lead = is_utf8 && byte >= 0xc2 && byte <= 0xf4;
 
-    table.values[byte] = is_printable ? 1 : (is_blank ? 0 : 2);
+    table.values[byte] = is_printable || is_utf8_lead ? 1 : (is_blank ? 0 : 2);
   }
 
   return table;
 }
 
-inline constexpr word_byte_table WORD_BYTE_TABLE = make_word_byte_table();
+inline constexpr word_byte_table BYTE_WORD_TABLE = make_word_byte_table(false);
+inline constexpr word_byte_table UTF8_WORD_TABLE = make_word_byte_table(true);
 
 struct wc_counts
 {
@@ -145,7 +149,9 @@ count_newlines(StringView content) wontthrow -> u64
 }
 
 static fn
-count_words(wc_source_state &state, StringView content) wontthrow -> void
+count_words(wc_source_state       &state,
+            StringView             content,
+            const word_byte_table &table) wontthrow -> void
 {
   u32 is_in_word = state.is_in_word ? 1 : 0;
   u64 word_count = 0;
@@ -153,7 +159,7 @@ count_words(wc_source_state &state, StringView content) wontthrow -> void
   for (usize byte_position = 0; byte_position < content.length; byte_position++)
   {
     let const entry = static_cast<u32>(
-        WORD_BYTE_TABLE.values[static_cast<u8>(content.data[byte_position])]);
+        table.values[static_cast<u8>(content.data[byte_position])]);
     let const does_start_word = entry & 1;
 
     word_count += does_start_word & (is_in_word ^ 1);
@@ -165,9 +171,10 @@ count_words(wc_source_state &state, StringView content) wontthrow -> void
 }
 
 static fn
-update_wc_source(wc_source_state   &state,
-                 StringView         content,
-                 wc_count_selection selection) wontthrow -> void
+update_wc_source(wc_source_state       &state,
+                 StringView             content,
+                 wc_count_selection     selection,
+                 const word_byte_table &word_table) wontthrow -> void
 {
   if (has_wc_count(selection, wc_count_selection::Bytes))
     state.counts.byte_count += content.length;
@@ -188,7 +195,7 @@ update_wc_source(wc_source_state   &state,
   if (has_wc_count(selection, wc_count_selection::Lines))
     state.counts.line_count += count_newlines(content);
   if (has_wc_count(selection, wc_count_selection::Words))
-    count_words(state, content);
+    count_words(state, content, word_table);
 }
 
 static fn
@@ -296,7 +303,10 @@ Wc::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  let const requested_selection =
+  let const &word_table = cxt.get_glob_charset() == glob_charset::Utf8
+                              ? UTF8_WORD_TABLE
+                              : BYTE_WORD_TABLE;
+  let const  requested_selection =
       (FLAG_WC_LINES.is_enabled() ? wc_count_selection::Lines
                                   : wc_count_selection::None) |
       (FLAG_WC_WORDS.is_enabled() ? wc_count_selection::Words
@@ -381,7 +391,7 @@ Wc::execute(const ExecContext               &ec,
           continue;
         }
 
-        update_wc_source(state, chunk.content, selection);
+        update_wc_source(state, chunk.content, selection, word_table);
       }
     }
   }
@@ -399,10 +409,10 @@ Wc::execute(const ExecContext               &ec,
       ec.print_to_stdout(output);
       output.clear();
       os::set_last_system_error(state.error_number);
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          String{cxt.scratch_allocator(), sources[source_index]} + ": " +
-              os::last_system_error_message());
+      report_soft_koshkit_error(
+          ec, cxt,
+          koshka::koshkit::path_error_message("read", sources[source_index],
+                                              cxt.scratch_allocator()));
       status = 1;
 
       if (!os::path_is_directory(sources[source_index])) continue;

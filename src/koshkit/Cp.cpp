@@ -74,6 +74,8 @@ struct cp_options
   bool              is_one_file_system;
   Maybe<u64>        root_device_id;
   bool              is_operand_root{true};
+  /* cp -p fails when the mode cannot be preserved, and mv keeps going. */
+  bool should_report_mode_failure{true};
 
   fn
   for_child() const -> cp_options
@@ -93,18 +95,16 @@ struct cp_options
 static fn
 report_copy_error(const ExecContext &ec,
                   EvalContext       &cxt,
-                  StringView         utility_name,
                   const Error       &error) throws -> void
 {
   if (error.detail_message().is_empty()) {
-    report_soft_koshkit_util_error(ec, cxt, utility_name,
-                                   error.message().view());
+    report_soft_koshkit_error(ec, cxt, error.message().view());
 
     return;
   }
 
-  report_soft_koshkit_util_error(ec, cxt, utility_name, error.message().view(),
-                                 error.detail_message());
+  report_soft_koshkit_error(ec, cxt, error.message().view(),
+                            error.detail_message());
 }
 
 static fn
@@ -167,7 +167,6 @@ source_file_status(StringView source) throws -> Maybe<os::file_status>
 static fn
 copy_path(const ExecContext                &ec,
           EvalContext                      &cxt,
-          StringView                        utility_name,
           StringView                        source,
           StringView                        destination,
           const cp_options                 &options,
@@ -378,15 +377,15 @@ copy_path(const ExecContext                &ec,
             destination, entry.child.name.view(), allocator);
 
         try {
-          if (!copy_path(ec, cxt, utility_name, child_source.view(),
-                         child_destination.view(), child_options, allocator,
+          if (!copy_path(ec, cxt, child_source.view(), child_destination.view(),
+                         child_options, allocator,
                          entry.has_status ? &entry.status : nullptr,
                          active_directories))
             did_succeed = false;
         } catch (const BrokenPipeExit &) {
           throw;
         } catch (const Error &error) {
-          report_copy_error(ec, cxt, utility_name, error);
+          report_copy_error(ec, cxt, error);
           did_succeed = false;
         }
 
@@ -395,12 +394,19 @@ copy_path(const ExecContext                &ec,
     }
 
     if (source_status.has_value() &&
-        (options.should_preserve || !did_destination_exist))
+        (options.should_preserve || !did_destination_exist) &&
+        !os::set_file_mode(destination,
+                           options.should_preserve
+                               ? source_status->mode & 0777
+                               : source_status->mode & 0777 &
+                                     ~os::get_file_creation_mask()) &&
+        options.should_preserve && options.should_report_mode_failure)
     {
-      os::set_file_mode(destination, options.should_preserve
-                                         ? source_status->mode & 0777
-                                         : source_status->mode & 0777 &
-                                               ~os::get_file_creation_mask());
+      throw Error{
+          "Unable to preserve the mode of '" + String{allocator, destination}
+            +
+          "': " + os::last_system_error_message()
+      };
     }
 
     if (source_status.has_value() && options.should_preserve &&
@@ -443,8 +449,16 @@ copy_path(const ExecContext                &ec,
       };
     }
 
-    if (options.should_preserve)
-      os::set_file_mode(destination, source_status->mode & 0777);
+    if (options.should_preserve &&
+        !os::set_file_mode(destination, source_status->mode & 0777) &&
+        options.should_report_mode_failure)
+    {
+      throw Error{
+          "Unable to preserve the mode of '" + String{allocator, destination}
+            +
+          "': " + os::last_system_error_message()
+      };
+    }
 
     return true;
   }
@@ -470,12 +484,19 @@ copy_path(const ExecContext                &ec,
   copy_file(ec, source, destination, options, allocator);
 
   if (source_status.has_value() &&
-      (options.should_preserve || !did_destination_exist))
+      (options.should_preserve || !did_destination_exist) &&
+      !os::set_file_mode(destination,
+                         options.should_preserve
+                             ? source_status->mode & 0777
+                             : source_status->mode & 0777 &
+                                   ~os::get_file_creation_mask()) &&
+      options.should_preserve && options.should_report_mode_failure)
   {
-    os::set_file_mode(destination, options.should_preserve
-                                       ? source_status->mode & 0777
-                                       : source_status->mode & 0777 &
-                                             ~os::get_file_creation_mask());
+    throw Error{
+        "Unable to preserve the mode of '" + String{allocator, destination}
+          +
+        "': " + os::last_system_error_message()
+    };
   }
 
   if (source_status.has_value() && options.should_preserve &&
@@ -589,13 +610,13 @@ Cp::execute(const ExecContext               &ec,
     }
 
     try {
-      if (!copy_path(ec, cxt, args[0].view(), source, target.view(), options,
+      if (!copy_path(ec, cxt, source, target.view(), options,
                      cxt.scratch_allocator(), nullptr, active_directories))
         status = 1;
     } catch (const BrokenPipeExit &) {
       throw;
     } catch (const Error &error) {
-      report_copy_error(ec, cxt, args[0].view(), error);
+      report_copy_error(ec, cxt, error);
       status = 1;
     }
 
@@ -608,24 +629,24 @@ Cp::execute(const ExecContext               &ec,
 fn
 copy_tree_for_move(const ExecContext &ec,
                    EvalContext       &cxt,
-                   StringView         utility_name,
                    StringView         source,
                    StringView         destination,
                    Allocator          allocator) throws -> bool
 {
   let const options = cp_options{
-      .should_force       = false,
-      .should_preserve    = true,
-      .is_verbose         = false,
-      .recursive_mode     = cp_recursive_mode::Recursive,
-      .symlink_mode       = cp_symlink_mode::Preserve,
-      .is_one_file_system = false,
-      .root_device_id     = None,
+      .should_force               = false,
+      .should_preserve            = true,
+      .is_verbose                 = false,
+      .recursive_mode             = cp_recursive_mode::Recursive,
+      .symlink_mode               = cp_symlink_mode::Preserve,
+      .is_one_file_system         = false,
+      .root_device_id             = None,
+      .should_report_mode_failure = false,
   };
   let active_directories = ArrayList<cp_directory_identity>{allocator};
 
-  return copy_path(ec, cxt, utility_name, source, destination, options,
-                   allocator, nullptr, active_directories);
+  return copy_path(ec, cxt, source, destination, options, allocator, nullptr,
+                   active_directories);
 }
 
 } /* namespace koshka::koshkit */

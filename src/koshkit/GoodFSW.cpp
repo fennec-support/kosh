@@ -15,8 +15,6 @@
 #include "../Utils.hpp"
 #include "../base/Path.hpp"
 
-#include <ctime>
-
 KOSHKIT_UTIL_DECL(
     "[-hmrtx1] [-l latency] [-e substring] path ...",
     "The goodfsw utility can report changes under watched paths.");

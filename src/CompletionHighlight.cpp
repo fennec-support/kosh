@@ -67,7 +67,7 @@ find_listed_path_state(StringView directory, StringView name) throws
       return listed_path_state::Missing;
     }
 
-    if (os::FILESYSTEM_IS_CASE_SENSITIVE && entry.name.view() != name) {
+    if (os::IS_FILESYSTEM_CASE_SENSITIVE && entry.name.view() != name) {
       continue;
     }
 
@@ -683,7 +683,7 @@ path_partial_prefixes_entry(StringView word,
   let const do_name_starts_with = [&](StringView name) wontthrow {
     if (name.starts_with(partial)) return true;
 
-    return !os::FILESYSTEM_IS_CASE_SENSITIVE;
+    return !os::IS_FILESYSTEM_CASE_SENSITIVE;
   };
 
   let entry_position =
@@ -1658,7 +1658,7 @@ internal::scan_highlight_range(
 
     let const word_start = i;
     let word_spans = ArrayList<highlight_span>{bump_allocator(HIGHLIGHT_ARENA)};
-    let word_has_shell_syntax = false;
+    let has_word_shell_syntax = false;
 
     while (i < end && !position_is_highlight_word_break(line, i, end)) {
       let const d = line[i];
@@ -1736,12 +1736,12 @@ internal::scan_highlight_range(
         i = color_dollar(line, i, end, word_spans, context, line_variable_names,
                          function_names);
       } else if (d == '\\' && i + 1 < end) {
-        word_has_shell_syntax = true;
+        has_word_shell_syntax = true;
         i += 2;
       } else if (lexer::is_extglob_operator(d) && i + 1 < end &&
                  line[i + 1] == '(')
       {
-        word_has_shell_syntax = true;
+        has_word_shell_syntax = true;
         let const group_end   = lexer::scan_balanced_shell_region(
             line.substring_of_length(0, end), i + 2, ')');
 
@@ -1754,7 +1754,7 @@ internal::scan_highlight_range(
     let const word_end = i;
     let const word =
         line.substring_of_length(word_start, word_end - word_start);
-    let const is_plain      = word_spans.is_empty() && !word_has_shell_syntax;
+    let const is_plain      = word_spans.is_empty() && !has_word_shell_syntax;
     let const is_assignment = lexer::word_looks_like_assignment(word);
     let const is_word_terminated =
         word_end < end && position_is_highlight_word_break(line, word_end, end);
@@ -2084,7 +2084,7 @@ internal::scan_highlight_range(
       continue;
     }
 
-    if (is_command_position && word_spans.is_empty() && word_has_shell_syntax &&
+    if (is_command_position && word_spans.is_empty() && has_word_shell_syntax &&
         !is_assignment)
     {
       decoded_command_word =

@@ -61,7 +61,6 @@ fn
 report_unresolved_sort_key(const ExecContext &ec,
                            EvalContext       &cxt,
                            SourceLocation     location,
-                           StringView         utility_name,
                            usize              match_count,
                            StringView         matches,
                            StringView         invalid_note) throws -> bool;
@@ -351,11 +350,10 @@ print_util_help(const ExecContext &ec,
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args)
 
 #define KOSHKIT_REPORT_ERROR_AT(location, ...)                                 \
-  report_soft_koshkit_util_error((ec), (cxt), (location), (args)[0].view(),    \
-                                 __VA_ARGS__)
+  report_soft_koshkit_error((ec), (cxt), (location), __VA_ARGS__)
 
 #define KOSHKIT_REPORT_ERROR(...)                                              \
-  report_soft_koshkit_util_error((ec), (cxt), (args)[0].view(), __VA_ARGS__)
+  report_soft_koshkit_error((ec), (cxt), __VA_ARGS__)
 
 #define KOSHKIT_REPORT_PATH_ERROR(verb, path)                                  \
   KOSHKIT_REPORT_ERROR(koshka::koshkit::path_error_message(                    \
@@ -436,7 +434,6 @@ copy_file_or_throw(StringView      source,
 fn
 copy_tree_for_move(const ExecContext &ec,
                    EvalContext       &cxt,
-                   StringView         utility_name,
                    StringView         source,
                    StringView         destination,
                    Allocator          allocator) throws -> bool;
@@ -862,32 +859,17 @@ report_soft_koshkit_warning(const ExecContext &ec,
                             StringView         message) throws -> void;
 
 cold noinline fn
-report_soft_koshkit_util_error(const ExecContext &ec,
-                               EvalContext       &cxt,
-                               StringView         utility_name,
-                               StringView         message) throws -> void;
+report_soft_koshkit_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          SourceLocation     location,
+                          StringView         message) throws -> void;
 
 cold noinline fn
-report_soft_koshkit_util_error(const ExecContext &ec,
-                               EvalContext       &cxt,
-                               StringView         utility_name,
-                               StringView         message,
-                               StringView         note) throws -> void;
-
-cold noinline fn
-report_soft_koshkit_util_error(const ExecContext &ec,
-                               EvalContext       &cxt,
-                               SourceLocation     location,
-                               StringView         utility_name,
-                               StringView         message) throws -> void;
-
-cold noinline fn
-report_soft_koshkit_util_error(const ExecContext &ec,
-                               EvalContext       &cxt,
-                               SourceLocation     location,
-                               StringView         utility_name,
-                               StringView         message,
-                               StringView         note) throws -> void;
+report_soft_koshkit_error(const ExecContext &ec,
+                          EvalContext       &cxt,
+                          SourceLocation     location,
+                          StringView         message,
+                          StringView         note) throws -> void;
 
 } /* namespace koshkit */
 

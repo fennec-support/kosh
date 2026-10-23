@@ -104,9 +104,9 @@ parse_xargs_limit(const ExecContext &ec,
   let const parsed = utils::parse_decimal_u64(flag.value());
 
   if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
-    report_soft_koshkit_util_error(
-        ec, cxt, flag.value_location(), "xargs",
-        "Invalid " + name + " '" + flag.value() + "'", note);
+    report_soft_koshkit_error(ec, cxt, flag.value_location(),
+                              "Invalid " + name + " '" + flag.value() + "'",
+                              note);
 
     return false;
   }
@@ -469,8 +469,8 @@ Xargs::execute(const ExecContext               &ec,
     }
 
     if (decoded.length() != 1) {
-      report_soft_koshkit_util_error(
-          ec, cxt, FLAG_XARGS_DELIMITER.value_location(), "xargs",
+      report_soft_koshkit_error(
+          ec, cxt, FLAG_XARGS_DELIMITER.value_location(),
           "Invalid input delimiter '" + text + "'",
           "Use a single character or an escape sequence starting with \\");
 
@@ -495,10 +495,10 @@ Xargs::execute(const ExecContext               &ec,
     let const parsed = utils::parse_decimal_u64(FLAG_XARGS_MAX_PROCS.value());
 
     if (parsed.is_error() || parsed.value() > SIZE_MAX) {
-      report_soft_koshkit_util_error(
-          ec, cxt, FLAG_XARGS_MAX_PROCS.value_location(), "xargs",
-          "Invalid process count '" + FLAG_XARGS_MAX_PROCS.value() + "'",
-          "Use a decimal integer, or 0 for no limit");
+      report_soft_koshkit_error(ec, cxt, FLAG_XARGS_MAX_PROCS.value_location(),
+                                "Invalid process count '" +
+                                    FLAG_XARGS_MAX_PROCS.value() + "'",
+                                "Use a decimal integer, or 0 for no limit");
 
       return 1;
     }
@@ -579,8 +579,7 @@ Xargs::execute(const ExecContext               &ec,
   }
 
   if (base_byte_count > maximum_byte_count) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "The command exceeds the size limit");
+    report_soft_koshkit_error(ec, cxt, "The command exceeds the size limit");
 
     return 1;
   }
@@ -643,9 +642,8 @@ Xargs::execute(const ExecContext               &ec,
   let const do_apply_status =
       [&](i32 command_status) throws -> Maybe<i32> {
     if (command_status == 255) {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          "Stopped after a command exited with status 255");
+      report_soft_koshkit_error(
+          ec, cxt, "Stopped after a command exited with status 255");
 
       return 124;
     }
@@ -718,8 +716,8 @@ Xargs::execute(const ExecContext               &ec,
       }
 
       if (xargs_command_size(command) > maximum_byte_count) {
-        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "The command exceeds the size limit");
+        report_soft_koshkit_error(ec, cxt,
+                                  "The command exceeds the size limit");
 
         return 1;
       }

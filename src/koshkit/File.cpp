@@ -1368,10 +1368,9 @@ File::execute(const ExecContext               &ec,
                !default_samples[operand_position].is_empty())
     {
       if (default_sample_errors[operand_position]) {
-        report_soft_koshkit_util_error(
-            ec, cxt, operand_locations[operand_position], args[0].view(),
-            "Cannot read '" + operand +
-                "': " + default_samples[operand_position]);
+        report_soft_koshkit_error(ec, cxt, operand_locations[operand_position],
+                                  "Cannot read '" + operand + "': " +
+                                      default_samples[operand_position]);
         status = 1;
         continue;
       }
@@ -1393,8 +1392,8 @@ File::execute(const ExecContext               &ec,
       if (custom_sample_errors[operand_position]) {
         os::set_last_system_error(
             custom_sample_error_numbers[operand_position]);
-        report_soft_koshkit_util_error(
-            ec, cxt, operand_locations[operand_position], args[0].view(),
+        report_soft_koshkit_error(
+            ec, cxt, operand_locations[operand_position],
             StringView{custom_sample_open_errors[operand_position]
                            ? "Cannot open '"
                            : "Cannot read '"} +

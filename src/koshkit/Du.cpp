@@ -164,7 +164,7 @@ report_unreadable_path(const ExecContext &ec,
     return;
   }
 
-  report_soft_koshkit_util_error(ec, cxt, "du", message);
+  report_soft_koshkit_error(ec, cxt, message);
 }
 
 static fn
@@ -172,9 +172,9 @@ report_too_large_path(const ExecContext &ec,
                       EvalContext       &cxt,
                       const Path        &path) throws -> void
 {
-  report_soft_koshkit_util_error(ec, cxt, "du",
-                                 "Cannot read '" + path.text() +
-                                     "': the total size is too large");
+  report_soft_koshkit_error(ec, cxt,
+                            "Cannot read '" + path.text() +
+                                "': the total size is too large");
 }
 
 static fn

@@ -332,9 +332,10 @@ Cat::execute(const ExecContext               &ec,
     if (output_byte_count.has_value() && *output_byte_count > 0 &&
         do_is_output(source))
     {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     String{cxt.scratch_allocator(), source} +
-                                         ": input file is output file");
+      report_soft_koshkit_error(ec, cxt,
+                                "The input file '" +
+                                    String{cxt.scratch_allocator(), source} +
+                                    "' is the output file");
       input_status = 1;
       continue;
     }
@@ -394,10 +395,10 @@ Cat::execute(const ExecContext               &ec,
         }
 
         os::set_last_system_error(chunk.error_number);
-        report_soft_koshkit_util_error(
-            ec, cxt, args[0].view(),
-            String{cxt.scratch_allocator(), sources[chunk.source_index]} +
-                ": " + os::last_system_error_message());
+        report_soft_koshkit_error(
+            ec, cxt,
+            koshka::koshkit::path_error_message(
+                "read", sources[chunk.source_index], cxt.scratch_allocator()));
         status = 1;
       }
     }
@@ -424,10 +425,10 @@ Cat::execute(const ExecContext               &ec,
           state = source_state;
 
           os::set_last_system_error(chunk.error_number);
-          report_soft_koshkit_util_error(
-              ec, cxt, args[0].view(),
-              String{cxt.scratch_allocator(), sources[chunk.source_index]} +
-                  ": " + os::last_system_error_message());
+          report_soft_koshkit_error(ec, cxt,
+                                            koshka::koshkit::path_error_message(
+                                        "read", sources[chunk.source_index],
+                                        cxt.scratch_allocator()));
           status = 1;
         } else {
           append_formatted_cat_source(output, chunk.content, format, state);
@@ -464,10 +465,10 @@ Cat::execute(const ExecContext               &ec,
         let const source = sources[source_index];
 
         if (!content.has_value()) {
-          report_soft_koshkit_util_error(
-              ec, cxt, args[0].view(),
-              String{cxt.scratch_allocator(), source} + ": " +
-                  os::last_system_error_message());
+          report_soft_koshkit_error(
+              ec, cxt,
+              koshka::koshkit::path_error_message("read", source,
+                                                  cxt.scratch_allocator()));
           status = 1;
 
           return;

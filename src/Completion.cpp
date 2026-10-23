@@ -950,7 +950,7 @@ collect_filesystem_matches(
         token.substring_of_length(0, decoded_word.raw_directory_end);
   }
 
-  let const is_case_sensitive = os::FILESYSTEM_IS_CASE_SENSITIVE &&
+  let const is_case_sensitive = os::IS_FILESYSTEM_CASE_SENSITIVE &&
                                 utils::token_has_uppercase(parts.basename_part);
 
   LOG(Debug, "completing filesystem token '%.*s', dir '%.*s', base '%.*s'",
@@ -1253,7 +1253,7 @@ complete_glob(StringView                       token,
   let normalized_pattern = String{completion_allocator()};
   let match_pattern      = parts.basename_part;
 
-  if (!os::FILESYSTEM_IS_CASE_SENSITIVE) {
+  if (!os::IS_FILESYSTEM_CASE_SENSITIVE) {
     normalized_pattern.assign_lowercase_ascii(match_pattern);
     match_pattern = normalized_pattern.view();
   }
@@ -1268,7 +1268,7 @@ complete_glob(StringView                       token,
 
     let match_name = name;
 
-    if (!os::FILESYSTEM_IS_CASE_SENSITIVE) {
+    if (!os::IS_FILESYSTEM_CASE_SENSITIVE) {
       candidate_name.assign_lowercase_ascii(match_name);
       match_name = candidate_name.view();
     }
@@ -1872,7 +1872,7 @@ complete(StringView                   line,
           split_path_token(decoded_token.text.view()).basename_part;
 
       should_ignore_common_prefix_case =
-          !basename.is_empty() && (!os::FILESYSTEM_IS_CASE_SENSITIVE ||
+          !basename.is_empty() && (!os::IS_FILESYSTEM_CASE_SENSITIVE ||
                                    !utils::token_has_uppercase(basename));
       is_tier_ranked = true;
       candidates =

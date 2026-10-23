@@ -692,8 +692,8 @@ Od::execute(const ExecContext               &ec,
 
   if (skipped_count < skip_count) {
     ec.print_to_stdout(output);
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "Cannot skip past end of combined input");
+    report_soft_koshkit_error(ec, cxt,
+                              "Cannot skip past end of combined input");
 
     return 1;
   }

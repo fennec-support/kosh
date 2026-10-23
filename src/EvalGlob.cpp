@@ -63,7 +63,7 @@ EvalContext::get_glob_charset() const throws -> glob_charset
                                                      : glob_charset::Bytes;
   }
 
-  return os::DEFAULT_LOCALE_IS_UTF8 ? glob_charset::Utf8 : glob_charset::Bytes;
+  return os::IS_DEFAULT_LOCALE_UTF8 ? glob_charset::Utf8 : glob_charset::Bytes;
 }
 
 hot fn

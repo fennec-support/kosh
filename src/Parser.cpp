@@ -1752,8 +1752,9 @@ Parser::build_heredoc_redirection(
   redir.dup_fd            = -1;
   redir.heredoc =
       m_lexer.register_heredoc(delimiter, tab_policy, should_expand);
-  redir.should_expand_heredoc     = should_expand;
-  redir.should_strip_heredoc_tabs = tab_policy == heredoc_tab_policy::Strip;
+  redir.should_expand_heredoc        = should_expand;
+  redir.should_strip_heredoc_tabs    = tab_policy == heredoc_tab_policy::Strip;
+  redir.has_separated_strip_operator = is_separated_strip_operator;
   out.push(redir);
 }
 

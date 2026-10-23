@@ -868,7 +868,7 @@ EvalContext::suggest_similar_variable_name(StringView name) const throws
   variable_store().exported_names().for_each(
       [&suggestion](StringView  key,
                     const auto &display_name) throws -> void {
-        if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
+        if constexpr (os::IS_ENVIRONMENT_CASE_SENSITIVE) {
           unused(display_name);
           suggestion.consider(key);
         } else {
@@ -2788,7 +2788,7 @@ EvalContext::make_subshell_bootstrap() const throws
       [&](StringView key, const auto &display_name) throws -> void {
         let name = key;
 
-        if constexpr (!os::ENVIRONMENT_IS_CASE_SENSITIVE) {
+        if constexpr (!os::IS_ENVIRONMENT_CASE_SENSITIVE) {
           if (!display_name.is_empty()) name = display_name.view();
         } else {
           unused(display_name);

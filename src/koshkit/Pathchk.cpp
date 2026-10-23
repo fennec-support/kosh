@@ -314,8 +314,7 @@ Pathchk::execute(const ExecContext               &ec,
     }
 
     if (!reason.is_empty()) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     operand + ": " + reason);
+      report_soft_koshkit_error(ec, cxt, operand + ": " + reason);
       status = 1;
     }
   }

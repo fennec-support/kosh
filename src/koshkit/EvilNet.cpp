@@ -854,7 +854,7 @@ EvilNet::execute(const ExecContext               &ec,
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Unexpected operand",
-                            "This utility accepts no operands");
+                            "This utility takes no operand");
 
     return 1;
   }
@@ -870,8 +870,8 @@ EvilNet::execute(const ExecContext               &ec,
         resolve_evilnet_sort_key(FLAG_EVILNET_SORT.value(), allocator);
 
     if (!report_unresolved_sort_key(
-            ec, cxt, FLAG_EVILNET_SORT.value_location(), args[0].view(),
-            resolved.match_count, resolved.matches.view(),
+            ec, cxt, FLAG_EVILNET_SORT.value_location(), resolved.match_count,
+            resolved.matches.view(),
             "Use name, rx, tx, rx-packets, tx-packets, rx-errors, "
             "tx-errors, rx-drops, or tx-drops"))
       return 1;
@@ -886,9 +886,8 @@ EvilNet::execute(const ExecContext               &ec,
     return 2;
   }
 
-  let const report_options =
-      live_report_options::parse(ec, cxt, args[0].view(), FLAG_EVILNET_LIVE,
-                                 FLAG_EVILNET_CUMULATIVE, allocator);
+  let const report_options = live_report_options::parse(
+      ec, cxt, FLAG_EVILNET_LIVE, FLAG_EVILNET_CUMULATIVE, allocator);
 
   if (!report_options.has_value()) return 1;
 

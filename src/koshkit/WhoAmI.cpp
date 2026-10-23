@@ -48,9 +48,9 @@ WhoAmI::execute(const ExecContext               &ec,
     return 0;
   }
 
-  report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                 "Cannot determine the effective user: " +
-                                     os::last_system_error_message());
+  report_soft_koshkit_error(ec, cxt,
+                            "Cannot determine the effective user: " +
+                                os::last_system_error_message());
 
   return 1;
 }

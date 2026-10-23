@@ -56,8 +56,8 @@ Tsort::execute(const ExecContext               &ec,
       [&](StringView word) throws -> void { tokens.push(word); });
 
   if ((tokens.count() & 1u) != 0) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "Input contains an odd number of tokens");
+    report_soft_koshkit_error(ec, cxt,
+                              "Input contains an odd number of tokens");
 
     return 1;
   }
@@ -146,8 +146,7 @@ Tsort::execute(const ExecContext               &ec,
   i32 status = 0;
 
   if (emitted_count != vertices.count()) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "Input contains a cycle");
+    report_soft_koshkit_error(ec, cxt, "Input contains a cycle");
     status = 1;
 
     for (let const &vertex : vertices)

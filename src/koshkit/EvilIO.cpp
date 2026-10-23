@@ -1463,9 +1463,9 @@ EvilIO::execute(const ExecContext               &ec,
 
   if (sample_duration_operand.has_value()) {
     let const parsed_duration = live_report_options::parse_window_seconds(
-        ec, cxt, args[0].view(), *sample_duration_operand,
-        *sample_duration_location, "Invalid duration",
-        "The duration must be greater than zero", allocator);
+        ec, cxt, *sample_duration_operand, *sample_duration_location,
+        "Invalid duration", "The duration must be greater than zero",
+        allocator);
 
     if (!parsed_duration.has_value()) return 1;
 
@@ -1535,9 +1535,8 @@ EvilIO::execute(const ExecContext               &ec,
 
   let const should_color   = koshkit_should_color();
   let const report_options = live_report_options::parse_with_window(
-      ec, cxt, args[0].view(), FLAG_EVILIO_LIVE,
-      FLAG_EVILIO_CUMULATIVE.is_enabled(), cumulative_duration_seconds,
-      allocator);
+      ec, cxt, FLAG_EVILIO_LIVE, FLAG_EVILIO_CUMULATIVE.is_enabled(),
+      cumulative_duration_seconds, allocator);
 
   if (!report_options.has_value()) return 1;
 
@@ -1562,8 +1561,8 @@ EvilIO::execute(const ExecContext               &ec,
                                           should_show_processes, allocator);
 
     if (!report_unresolved_sort_key(
-            ec, cxt, FLAG_EVILIO_SORT.value_location(), args[0].view(),
-            resolved.match_count, resolved.matches.view(),
+            ec, cxt, FLAG_EVILIO_SORT.value_location(), resolved.match_count,
+            resolved.matches.view(),
             "Use pid, read, write, read-ops, write-ops, busy, read-latency, "
             "write-latency, average-queue, queue, errors, or retries"))
       return 1;

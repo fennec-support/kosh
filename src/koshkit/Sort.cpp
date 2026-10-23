@@ -1100,8 +1100,8 @@ Sort::execute(const ExecContext               &ec,
       if (is_in_order) continue;
 
       if (FLAG_SORT_CHECK.is_enabled()) {
-        report_soft_koshkit_util_error(
-            ec, cxt, args[0].view(),
+        report_soft_koshkit_error(
+            ec, cxt,
             String{cxt.scratch_allocator(), sources[0]} + ":" +
                 String::from(index + 1, cxt.scratch_allocator()) +
                 ": disorder: " + String{cxt.scratch_allocator(), current.line});
@@ -1162,10 +1162,10 @@ Sort::execute(const ExecContext               &ec,
     output_descriptor = os::open_file_descriptor(FLAG_SORT_OUTPUT.value(),
                                                  os::file_open_mode::Truncate);
     if (!output_descriptor.has_value()) {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          String{cxt.scratch_allocator(), FLAG_SORT_OUTPUT.value()} + ": " +
-              os::last_system_error_message());
+      report_soft_koshkit_error(
+          ec, cxt,
+          koshka::koshkit::path_error_message("open", FLAG_SORT_OUTPUT.value(),
+                                              cxt.scratch_allocator()));
 
       return 2;
     }
@@ -1191,9 +1191,8 @@ Sort::execute(const ExecContext               &ec,
           !os::write_all(*output_descriptor, output.data(), output.count()))
       {
         did_write_fail = true;
-        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "Write error: " +
-                                           os::last_system_error_message());
+        report_soft_koshkit_error(
+            ec, cxt, "Write error: " + os::last_system_error_message());
       }
     } else {
       ec.print_to_stdout(output);

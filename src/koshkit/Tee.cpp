@@ -52,9 +52,9 @@ Tee::execute(const ExecContext               &ec,
     let const fd = os::open_file_descriptor(operand.view(), mode);
 
     if (!fd.has_value()) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     operand + ": " +
-                                         os::last_system_error_message());
+      report_soft_koshkit_error(ec, cxt,
+                                koshka::koshkit::path_error_message(
+                                    "open", operand, cxt.scratch_allocator()));
       status = 1;
       continue;
     }
@@ -80,9 +80,8 @@ Tee::execute(const ExecContext               &ec,
 
     if (!read_byte_count.has_value()) {
       if (os::INTERRUPT_REQUESTED) return 130;
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "Read failed: " +
-                                         os::last_system_error_message());
+      report_soft_koshkit_error(
+          ec, cxt, "Read failed: " + os::last_system_error_message());
 
       return 1;
     }
@@ -142,10 +141,11 @@ Tee::execute(const ExecContext               &ec,
           reason = String{reason.allocator(), "write made no progress"};
         }
 
-        report_soft_koshkit_util_error(
-            ec, cxt, args[0].view(),
-            String{cxt.scratch_allocator(), output_names[output_position]} +
-                ": " + reason);
+        report_soft_koshkit_error(
+            ec, cxt,
+            "Cannot write '" +
+                String{cxt.scratch_allocator(), output_names[output_position]} +
+                "': " + reason);
         os::close_fd(output_descriptors[output_position]);
         output_descriptors.remove(output_position);
         output_names.remove(output_position);

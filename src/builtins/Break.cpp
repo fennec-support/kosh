@@ -22,28 +22,6 @@ REGISTER_BUILTIN_FLAGS(Break);
 
 namespace koshka {
 
-static fn
-report_break_out_of_range(const ExecContext &ec,
-                          EvalContext       &cxt,
-                          StringView         count) throws -> void
-{
-  let message = String{cxt.scratch_allocator()};
-
-  message += "Break count '";
-  message.append(count);
-  message += "' is out of range";
-
-  const ErrorWithLocation located{ec.arg_location_at(1), message.view()};
-
-  if (const String *source = cxt.source_store().current_source();
-      source != nullptr)
-  {
-    show_message(located.to_string(source->view(), &cxt));
-  } else {
-    show_message(Error{message.view()}.to_string());
-  }
-}
-
 fn
 Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -99,9 +77,11 @@ Break::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (level < 1) {
-    report_break_out_of_range(ec, cxt, ec.args()[1].view());
+    report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
+                              "The count '" + ec.args()[1] +
+                                  "' is out of range");
 
-    /* bash leaves every enclosing loop for a count below one. */
+    /* a bash mood leaves every enclosing loop for a count below one. */
     if (cxt.runtime_state().is_bash_compatible()) {
       cxt.request_break(static_cast<i64>(cxt.execution_store().loop_depth()),
                         ec.source_location());

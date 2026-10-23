@@ -55,9 +55,8 @@ Yes::execute(const ExecContext               &ec,
     if (!os::write_all(out_fd, output.data(), output.count())) {
       if (errno == EPIPE) return KOSH_BROKEN_PIPE_EXIT_STATUS;
 
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "Write error: " +
-                                         os::last_system_error_message());
+      report_soft_koshkit_error(
+          ec, cxt, "Write error: " + os::last_system_error_message());
 
       return 1;
     }

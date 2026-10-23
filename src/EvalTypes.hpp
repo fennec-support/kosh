@@ -34,7 +34,7 @@ enum class assignment_update_mode : u8
 };
 
 using exported_name_value =
-    std::conditional_t<os::ENVIRONMENT_IS_CASE_SENSITIVE, Nothing, String>;
+    std::conditional_t<os::IS_ENVIRONMENT_CASE_SENSITIVE, Nothing, String>;
 
 class CompositeKeyArrays
 {

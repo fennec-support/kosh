@@ -1519,11 +1519,10 @@ persist_koshconf_setting(const Path              &path,
   }
 
   let const first_line_end = text.find_character('\n');
-  let const line_end    = first_line_end.has_value() && *first_line_end > 0 &&
+  let const line_end = first_line_end.has_value() && *first_line_end > 0 &&
                                text[*first_line_end - 1] == '\r'
-                              ? StringView{"\r\n"}
-                              : StringView{"\n"};
-  let const option_name = StringView{option.koshconf_name};
+                           ? StringView{"\r\n"}
+                           : StringView{"\n"};
 
   let const do_find_name = [](StringView line, bool is_commented) {
     if (!is_commented) return declared_name(line);
@@ -1542,7 +1541,7 @@ persist_koshconf_setting(const Path              &path,
   for (usize position = 0; position < text.count();) {
     let const name = do_find_name(text.next_line(position), false);
 
-    if (name.has_value() && *name == option_name) {
+    if (name.has_value() && find_option_by_koshconf_name(*name) == &option) {
       has_setting_line = true;
     }
   }

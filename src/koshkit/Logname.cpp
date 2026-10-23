@@ -35,8 +35,7 @@ Logname::execute(const ExecContext               &ec,
   let const name = os::get_login_user();
 
   if (!name.has_value()) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "Login name is unavailable");
+    report_soft_koshkit_error(ec, cxt, "Login name is unavailable");
 
     return 1;
   }

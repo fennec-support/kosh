@@ -360,7 +360,7 @@ EvilSS::execute(const ExecContext               &ec,
 
   if (!operands.is_empty()) {
     KOSHKIT_REPORT_ERROR_AT(operand_locations[0], "Unexpected operand",
-                            "This utility accepts no operands");
+                            "This utility takes no operand");
 
     return 1;
   }
@@ -392,7 +392,7 @@ EvilSS::execute(const ExecContext               &ec,
 
   if (FLAG_EVILSS_LIVE.is_enabled()) {
     let const live_options = live_report_options::parse_with_window(
-        ec, cxt, args[0].view(), FLAG_EVILSS_LIVE, false, 1.0, allocator);
+        ec, cxt, FLAG_EVILSS_LIVE, false, 1.0, allocator);
 
     if (!live_options.has_value()) return 1;
 

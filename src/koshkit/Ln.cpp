@@ -47,8 +47,8 @@ Ln::execute(const ExecContext               &ec,
       Path{destination, cxt.scratch_allocator()}.is_directory();
 
   if (operands.count() > 2 && !is_destination_directory) {
-    report_soft_koshkit_util_error(
-        ec, cxt, operand_locations[operands.count() - 1], args[0].view(),
+    report_soft_koshkit_error(
+        ec, cxt, operand_locations[operands.count() - 1],
         "The destination '" + String{cxt.scratch_allocator(), destination} +
             "' is not a directory",
         "Pass a single target, or give a directory as the destination");
@@ -92,10 +92,9 @@ Ln::execute(const ExecContext               &ec,
                              target_status.file_id == link_status.file_id;
 
     if (is_same_file) {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          "'" + String{cxt.scratch_allocator(), target} + "' and '" + link +
-              "' are the same file");
+      report_soft_koshkit_error(ec, cxt,
+                                "'" + String{cxt.scratch_allocator(), target} +
+                                    "' and '" + link + "' are the same file");
       status = 1;
       continue;
     }
@@ -123,9 +122,8 @@ Ln::execute(const ExecContext               &ec,
               ? String{cxt.scratch_allocator(), "No such file or directory"}
               : os::last_system_error_message();
 
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "Cannot create link '" + link +
-                                         "': " + reason);
+      report_soft_koshkit_error(ec, cxt,
+                                "Cannot create link '" + link + "': " + reason);
       status = 1;
     }
   }

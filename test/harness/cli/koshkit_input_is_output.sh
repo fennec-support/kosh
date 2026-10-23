@@ -4,10 +4,10 @@ mkdir -p "$root"
 trap 'cd / && [ -n "$root" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$root"' EXIT
 cd "$root" || exit 1
 
-# split refuses an output name that is its input, cat refuses to read the
-# regular file it writes to unless that file is empty, sort -o and uniq
-# report a failed write instead of succeeding, and head leaves the rest of
-# a seekable standard input for the next reader.
+# split and uniq refuse an output name that is their input, cat refuses to
+# read the regular file it writes to unless that file is empty, sort -o and
+# uniq report a failed write instead of succeeding, and head leaves the rest
+# of a seekable standard input for the next reader.
 
 echo "--- split ---"
 printf '1\n2\n3\n4\n' > xab
@@ -45,6 +45,11 @@ if [ -c /dev/full ] && [ "${OS-}" != Windows_NT ]; then
 else
   printf 'sort-full=2\nuniq-full=1\nyes-full=1\n'
 fi
+
+echo "--- uniq output ---"
+printf 'a\na\nb\n' > same
+"$BIN" -c 'koshkit uniq same same' 2> /dev/null
+echo "same=$? kept=$("$BIN_DIR/invoke-koshkit" wc -l < same | "$BIN_DIR/invoke-koshkit" tr -d ' ')"
 
 echo "--- head ---"
 printf '1\n2\n3\n4\n5\n' > s5

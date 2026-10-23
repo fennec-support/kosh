@@ -14,8 +14,6 @@
 #include "base/String.hpp"
 #include "base/StringView.hpp"
 
-#include <type_traits>
-
 namespace koshka::arithmetic_internal {
 
 class ArithmeticValue

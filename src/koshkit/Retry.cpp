@@ -135,8 +135,8 @@ Retry::execute(const ExecContext               &ec,
     if (parsed.is_error() || parsed.value() < 1 ||
         parsed.value() > MAXIMUM_ATTEMPT_COUNT)
     {
-      report_soft_koshkit_util_error(
-          ec, cxt, FLAG_RETRY_ATTEMPTS.value_location(), "retry",
+      report_soft_koshkit_error(
+          ec, cxt, FLAG_RETRY_ATTEMPTS.value_location(),
           "Invalid attempt count '" +
               String{allocator, FLAG_RETRY_ATTEMPTS.value()} + "'",
           "The value must be a positive attempt count");
@@ -166,8 +166,8 @@ Retry::execute(const ExecContext               &ec,
 
   if (FLAG_RETRY_BACKOFF.is_set()) {
     if (!parse_backoff_factor(FLAG_RETRY_BACKOFF.value(), backoff_factor)) {
-      report_soft_koshkit_util_error(
-          ec, cxt, FLAG_RETRY_BACKOFF.value_location(), "retry",
+      report_soft_koshkit_error(
+          ec, cxt, FLAG_RETRY_BACKOFF.value_location(),
           "Invalid backoff factor '" +
               String{allocator, FLAG_RETRY_BACKOFF.value()} + "'",
           "The value is a multiplier between one and sixty");

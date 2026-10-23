@@ -78,14 +78,14 @@ report_bc_error(const ExecContext &ec,
       strip_bc_prefix(error.message().view(), cxt.scratch_allocator());
 
   if (error.detail_message().is_empty()) {
-    report_soft_koshkit_util_error(ec, cxt, "bc", message.view());
+    report_soft_koshkit_error(ec, cxt, message.view());
     return;
   }
 
   let const note =
       strip_bc_prefix(error.detail_message(), cxt.scratch_allocator());
 
-  report_soft_koshkit_util_error(ec, cxt, "bc", message.view(), note.view());
+  report_soft_koshkit_error(ec, cxt, message.view(), note.view());
 }
 
 static fn
@@ -586,9 +586,9 @@ bc_format_in_base(StringView   decimal,
   /* at this point: decimal has no leading '-' and at least one digit after
      its '.', and formatted holds the sign and the integer digits. */
 
-  let const output_digit_count = static_cast<usize>(
-      std::ceil(static_cast<double>(fraction_digits) * std::log(10.0) /
-                std::log(static_cast<double>(output_base))));
+  let const output_digit_count =
+      static_cast<usize>(ceil(static_cast<double>(fraction_digits) * log(10.0) /
+                              log(static_cast<double>(output_base))));
   let fraction = String{allocator, "0."};
 
   fraction += decimal.substring(*point + 1);
@@ -1334,8 +1334,8 @@ bc_execute_simple(StringView         statement,
                                          runtime.output_base, cxt, allocator);
 
     if (!parsed.has_value() || *parsed < 2 || *parsed > 16) {
-      report_soft_koshkit_util_error(
-          ec, cxt, "bc", "Invalid ibase",
+      report_soft_koshkit_error(
+          ec, cxt, "Invalid ibase",
           "The ibase must evaluate to an integer from 2 through 16");
       runtime.status = 1;
     } else {
@@ -1352,8 +1352,8 @@ bc_execute_simple(StringView         statement,
                                          runtime.output_base, cxt, allocator);
 
     if (!parsed.has_value() || *parsed < 2 || *parsed > 16) {
-      report_soft_koshkit_util_error(
-          ec, cxt, "bc", "Invalid obase",
+      report_soft_koshkit_error(
+          ec, cxt, "Invalid obase",
           "The obase must evaluate to an integer from 2 through 16");
       runtime.status = 1;
     } else {
@@ -1370,8 +1370,8 @@ bc_execute_simple(StringView         statement,
                                          runtime.output_base, cxt, allocator);
 
     if (!parsed.has_value() || *parsed > 100000) {
-      report_soft_koshkit_util_error(
-          ec, cxt, "bc", "Invalid scale",
+      report_soft_koshkit_error(
+          ec, cxt, "Invalid scale",
           "The scale must evaluate to an integer from 0 through 100000");
       runtime.status = 1;
     } else {
@@ -1566,8 +1566,8 @@ bc_execute_statement(StringView         statement,
     }
 
     if (part_count != 3) {
-      report_soft_koshkit_util_error(
-          ec, cxt, "bc", "Invalid for statement",
+      report_soft_koshkit_error(
+          ec, cxt, "Invalid for statement",
           "The for statement requires three clauses separated by semicolons");
       runtime.status = 1;
       return bc_flow::Normal;
@@ -1694,9 +1694,9 @@ Bc::execute(const ExecContext               &ec,
 
   if (os::INTERRUPT_REQUESTED) return 130;
   if (flow == bc_flow::Break || flow == bc_flow::Return) {
-    report_soft_koshkit_util_error(ec, cxt, "bc",
-                                   "Break or return outside a loop or function",
-                                   "The program stops at this statement");
+    report_soft_koshkit_error(ec, cxt,
+                              "Break or return outside a loop or function",
+                              "The program stops at this statement");
     runtime.status = 1;
   }
 

@@ -55,8 +55,8 @@ Fuser::execute(const ExecContext               &ec,
             ? FLAG_FUSER_FILESYSTEM.value_location()
             : FLAG_FUSER_FILE.value_location();
 
-    report_soft_koshkit_util_error(ec, cxt, conflict_location, args[0].view(),
-                                   "-c and -f cannot be used together");
+    report_soft_koshkit_error(ec, cxt, conflict_location,
+                              "-c and -f cannot be used together");
 
     return 2;
   }
@@ -95,10 +95,9 @@ Fuser::execute(const ExecContext               &ec,
   {
     if (results[operand_position].error_number != 0) {
       os::set_last_system_error(results[operand_position].error_number);
-      report_soft_koshkit_util_error(
-          ec, cxt, operand_locations[operand_position], args[0].view(),
-          "'" + operands[operand_position] +
-              "': " + os::last_system_error_message());
+      report_soft_koshkit_error(ec, cxt, operand_locations[operand_position],
+                                "'" + operands[operand_position] +
+                                    "': " + os::last_system_error_message());
       status = 1;
       continue;
     }
@@ -106,8 +105,8 @@ Fuser::execute(const ExecContext               &ec,
     let const &file_status = file_statuses[operand_position];
 
     if (!os::process_file_query_is_supported(file_status, match_scope)) {
-      report_soft_koshkit_util_error(
-          ec, cxt, operand_locations[operand_position], args[0].view(),
+      report_soft_koshkit_error(
+          ec, cxt, operand_locations[operand_position],
           "Filesystem and directory queries are unsupported on Windows");
       status = 1;
       continue;
@@ -135,10 +134,9 @@ Fuser::execute(const ExecContext               &ec,
   if (failed_query_position.has_value()) {
     let const operand_position = static_cast<usize>(*failed_query_position);
 
-    report_soft_koshkit_util_error(ec, cxt, operand_locations[operand_position],
-                                   args[0].view(),
-                                   "Unable to inspect running processes: " +
-                                       os::last_system_error_message());
+    report_soft_koshkit_error(ec, cxt, operand_locations[operand_position],
+                              "Unable to inspect running processes: " +
+                                  os::last_system_error_message());
 
     return 1;
   }

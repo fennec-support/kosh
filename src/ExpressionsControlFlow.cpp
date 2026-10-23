@@ -1708,15 +1708,27 @@ CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
   cxt.set_child_source_origin(bootstrap, body_text, body_location);
 
-  let const launch = os::launch_compound_stage(os::compound_stage_options{
-      .source            = body_text,
-      .in_fd             = toward_child->in,
-      .out_fd            = away_from_child->out,
-      .location          = source_location(),
-      .diagnostic_source = source_view,
-      .evaluator         = evaluator,
-      .process_group     = os::process_group_mode::NewBackground});
-  let const child  = launch.child;
+  /* a launch that throws, such as a failed fork, leaves both pipes to this
+     shell, so they close before the error propagates. */
+  let const launch = [&] throws {
+    try {
+      return os::launch_compound_stage(os::compound_stage_options{
+          .source            = body_text,
+          .in_fd             = toward_child->in,
+          .out_fd            = away_from_child->out,
+          .location          = source_location(),
+          .diagnostic_source = source_view,
+          .evaluator         = evaluator,
+          .process_group     = os::process_group_mode::NewBackground});
+    } catch (...) {
+      os::close_fd(toward_child->in);
+      os::close_fd(toward_child->out);
+      os::close_fd(away_from_child->in);
+      os::close_fd(away_from_child->out);
+      throw;
+    }
+  }();
+  let const child = launch.child;
 
   if (launch.should_evaluate_child) {
     os::close_fd(toward_child->out);

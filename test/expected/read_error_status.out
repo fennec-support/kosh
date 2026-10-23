@@ -6,3 +6,7 @@ tail=1
 uniq=1
 wc=1
 source=1
+status=1 line=[]
+1
+status=1
+status=1

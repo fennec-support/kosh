@@ -107,6 +107,8 @@ note: Pass `f`, `d`, or `l` after `-type`.
      1 |  koshkit nice -n nope true
        |                  ^~~~
 note: Use a decimal integer from -2147483648 through 2147483647.
+status=1
+renice-status=1
 === nice increment range ===
 -c:1:17: error: Koshkit `nice`: Invalid increment '2147483648'.
      1 |  koshkit nice -n 2147483648 true
@@ -116,6 +118,10 @@ note: Use a decimal integer from -2147483648 through 2147483647.
 -c:1:14: error: Koshkit `nice`: Cannot run 'KOSH_MISSING_COMMAND': No such file or directory.
      1 |  koshkit nice KOSH_MISSING_COMMAND
        |               ^~~~~~~~~~~~~~~~~~~~
+=== flock missing command location ===
+-c:1:20: error: Koshkit `flock`: Command 'KOSH_MISSING_COMMAND' was not found.
+     1 |  koshkit flock "$1" KOSH_MISSING_COMMAND
+       |                     ^~~~~~~~~~~~~~~~~~~~
 === nl body style location ===
 -c:1:15: error: Koshkit `nl`: Unsupported numbering style 'invalid'.
      1 |  koshkit nl -b invalid
@@ -260,7 +266,7 @@ note: Use a larger width with -w or fewer columns.
      1 |  koshkit grep '['
        |               ^~~
 === grep file location ===
--c:1:20: error: Koshkit `grep`: KOSH_MISSING_FILE: No such file or directory.
+-c:1:20: error: Koshkit `grep`: Cannot read 'KOSH_MISSING_FILE': No such file or directory.
      1 |  koshkit grep value KOSH_MISSING_FILE
        |                     ^~~~~~~~~~~~~~~~~
 === mv source location ===
@@ -382,7 +388,7 @@ note: This utility takes no operand.
 -c:1:16: error: Koshkit `evilfs`: Unexpected operand.
      1 |  koshkit evilfs extra
        |                 ^~~~~
-note: This utility accepts no operands.
+note: This utility takes no operand.
 === evillogs operand location ===
 -c:1:18: error: Koshkit `evillogs`: Unexpected operand.
      1 |  koshkit evillogs extra
@@ -392,12 +398,12 @@ note: This utility takes no operand.
 -c:1:17: error: Koshkit `evilnet`: Unexpected operand.
      1 |  koshkit evilnet extra
        |                  ^~~~~
-note: This utility accepts no operands.
+note: This utility takes no operand.
 === evilss operand location ===
 -c:1:16: error: Koshkit `evilss`: Unexpected operand.
      1 |  koshkit evilss extra
        |                 ^~~~~
-note: This utility accepts no operands.
+note: This utility takes no operand.
 === evilps limit location ===
 -c:1:16: error: Koshkit `evilps`: Invalid process limit.
      1 |  koshkit evilps -0
@@ -501,20 +507,20 @@ note: Use --all without --cumulative or --live.
        |                       ^~~~~~
 note: Use --all without --cumulative or --live.
 === evilio invalid sort location ===
--c:1:23: error: Koshkit `evilio`: invalid sort key.
+-c:1:23: error: Koshkit `evilio`: Invalid sort key.
      1 |  koshkit evilio --sort nowhere
        |                        ^~~~~~~
 note: Use pid, read, write, read-ops, write-ops, busy, read-latency, write-latency, average-queue, queue, errors, or retries.
 === evilio ambiguous sort location ===
--c:1:23: error: Koshkit `evilio`: ambiguous sort key.
+-c:1:23: error: Koshkit `evilio`: Ambiguous sort key.
      1 |  koshkit evilio --sort r
        |                        ^
-note: matches read, read-latency, read-ops, retries; use a longer prefix.
+note: Use a longer prefix of read, read-latency, read-ops, retries.
 === evilio process ambiguous sort location ===
--c:1:28: error: Koshkit `evilio`: ambiguous sort key.
+-c:1:28: error: Koshkit `evilio`: Ambiguous sort key.
      1 |  koshkit evilio --ps --sort w
        |                             ^
-note: matches write, write-ops; use a longer prefix.
+note: Use a longer prefix of write, write-ops.
 === evilio process sort mode location ===
 -c:1:28: error: Koshkit `evilio`: Sort key is unavailable for process reports.
      1 |  koshkit evilio --ps --sort busy

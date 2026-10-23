@@ -14,8 +14,6 @@
 #include "../Koshkit.hpp"
 #include "../Platform.hpp"
 
-#include <cmath>
-
 KOSHKIT_UTIL_DECL(
     "[-f fps] [-s speed] [-n cats]",
     "Show cats floating in a night sky until a non-control key is pressed.");
@@ -643,7 +641,7 @@ overlay(u16 style) wontthrow -> u16
 pure fn
 approach(f64 value, f64 target, f64 rate, f64 step_seconds) wontthrow -> f64
 {
-  return target + ((value - target) * std::exp(-rate * step_seconds));
+  return target + ((value - target) * exp(-rate * step_seconds));
 }
 
 pure fn
@@ -712,8 +710,8 @@ explode(scene_state &scene, f64 column, f64 row) wontthrow -> void
     let const power = scene.noise.next_between(10.0, 32.0);
 
     spawn_particle(
-        scene, particle_kind::Debris, column, row, std::cos(angle) * power,
-        std::sin(angle) * power * 0.5, scene.noise.next_between(0.8, 1.5),
+        scene, particle_kind::Debris, column, row, cos(angle) * power,
+        sin(angle) * power * 0.5, scene.noise.next_between(0.8, 1.5),
         DEBRIS_COLORS[scene.noise.next_index(countof(DEBRIS_COLORS))],
         "#%*+"[scene.noise.next_index(4)]);
   }
@@ -771,13 +769,12 @@ place_cats(scene_state &scene) wontthrow -> void
     cat.column =
         scene.noise.next_between(0.0, cat_last_column(scene.column_count));
     cat.row = scene.noise.next_between(1.0, cat_last_row(scene.row_count));
-    cat.wander_radians = scene.noise.next_between(0.0, 2.0 * PI);
-    cat.cruise_factor  = scene.noise.next_between(0.75, 1.3);
-    cat.columns_per_second =
-        std::cos(cat.wander_radians) * DRIFT_COLUMNS_PER_SECOND;
-    cat.rows_per_second = std::sin(cat.wander_radians) * DRIFT_ROWS_PER_SECOND;
-    cat.is_facing_right = cat.columns_per_second > 0.0;
-    cat.phase_seconds   = scene.noise.next_between(0.0, BLINK_PERIOD_SECONDS);
+    cat.wander_radians     = scene.noise.next_between(0.0, 2.0 * PI);
+    cat.cruise_factor      = scene.noise.next_between(0.75, 1.3);
+    cat.columns_per_second = cos(cat.wander_radians) * DRIFT_COLUMNS_PER_SECOND;
+    cat.rows_per_second    = sin(cat.wander_radians) * DRIFT_ROWS_PER_SECOND;
+    cat.is_facing_right    = cat.columns_per_second > 0.0;
+    cat.phase_seconds = scene.noise.next_between(0.0, BLINK_PERIOD_SECONDS);
   }
 
   scene.yarn.column =
@@ -842,8 +839,8 @@ keep_cat_inside(scene_state &scene, cat_state &cat) wontthrow -> void
     hit_wall(scene, cat, middle_column, 0.0);
   }
 
-  cat.column = std::fmax(0.0, std::fmin(last_column, cat.column));
-  cat.row    = std::fmax(1.0, std::fmin(last_row, cat.row));
+  cat.column = fmax(0.0, fmin(last_column, cat.column));
+  cat.row    = fmax(1.0, fmin(last_row, cat.row));
 }
 
 fn
@@ -879,11 +876,11 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
     cat.wall_cooldown_seconds -= step_seconds;
   }
 
-  let const head_column        = cat_head_column(cat);
-  let const yarn_columns       = scene.yarn.column - head_column;
-  let const reachable_yarn_row = std::fmax(
-      1.0 + CAT_HEAD_ROW,
-      std::fmin(cat_last_row(scene.row_count) + CAT_HEAD_ROW, scene.yarn.row));
+  let const head_column  = cat_head_column(cat);
+  let const yarn_columns = scene.yarn.column - head_column;
+  let const reachable_yarn_row =
+      fmax(1.0 + CAT_HEAD_ROW,
+           fmin(cat_last_row(scene.row_count) + CAT_HEAD_ROW, scene.yarn.row));
   let const yarn_rows = reachable_yarn_row - (cat.row + CAT_HEAD_ROW);
   let       target_columns_per_second = 0.0;
   let       target_rows_per_second    = 0.0;
@@ -893,10 +890,10 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
   case cat_activity::Floating:
     cat.wander_radians += scene.noise.next_between(-1.0, 1.0) *
                           WANDER_RADIANS_PER_SECOND * step_seconds * 3.0;
-    target_columns_per_second = std::cos(cat.wander_radians) *
-                                DRIFT_COLUMNS_PER_SECOND * cat.cruise_factor;
-    target_rows_per_second = std::sin(cat.wander_radians) *
-                             DRIFT_ROWS_PER_SECOND * cat.cruise_factor;
+    target_columns_per_second =
+        cos(cat.wander_radians) * DRIFT_COLUMNS_PER_SECOND * cat.cruise_factor;
+    target_rows_per_second =
+        sin(cat.wander_radians) * DRIFT_ROWS_PER_SECOND * cat.cruise_factor;
 
     if (scene.noise.next_unit() < CURL_RATE_PER_SECOND * step_seconds) {
       set_activity(
@@ -912,16 +909,16 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
     break;
 
   case cat_activity::Chasing: {
-    let const distance = std::sqrt((yarn_columns * yarn_columns) +
-                                   (yarn_rows * yarn_rows * 4.0)) +
-                         0.001;
+    let const distance =
+        sqrt((yarn_columns * yarn_columns) + (yarn_rows * yarn_rows * 4.0)) +
+        0.001;
 
     target_columns_per_second =
         CHASE_COLUMNS_PER_SECOND * yarn_columns / distance;
     target_rows_per_second =
         CHASE_COLUMNS_PER_SECOND * yarn_rows * 2.0 / distance * 0.5;
 
-    if (std::fabs(yarn_columns) < 16.0 && std::fabs(yarn_rows) < 2.5) {
+    if (fabs(yarn_columns) < 16.0 && fabs(yarn_rows) < 2.5) {
       set_activity(cat, cat_activity::Bracing, BRACE_SECONDS);
     } else if (cat.activity_seconds > cat.activity_limit_seconds) {
       set_activity(cat, cat_activity::Floating, 0.0);
@@ -945,7 +942,7 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
     target_columns_per_second = cat.columns_per_second;
     target_rows_per_second    = cat.rows_per_second;
 
-    if (std::fabs(yarn_columns) < 6.0 && std::fabs(yarn_rows) < 3.0) {
+    if (fabs(yarn_columns) < 6.0 && fabs(yarn_rows) < 3.0) {
       kick_yarn(scene, cat);
       set_activity(cat, cat_activity::Floating, 0.0);
     } else if (cat.activity_seconds > cat.activity_limit_seconds) {
@@ -1006,9 +1003,8 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
   case cat_activity::Hissing:
     steering = COAST_STEERING_PER_SECOND;
     target_columns_per_second =
-        std::cos(cat.wander_radians) * DRIFT_COLUMNS_PER_SECOND;
-    target_rows_per_second =
-        std::sin(cat.wander_radians) * DRIFT_ROWS_PER_SECOND;
+        cos(cat.wander_radians) * DRIFT_COLUMNS_PER_SECOND;
+    target_rows_per_second = sin(cat.wander_radians) * DRIFT_ROWS_PER_SECOND;
 
     if (cat.activity_seconds > cat.activity_limit_seconds) {
       set_activity(cat, cat_activity::Floating, 0.0);
@@ -1022,16 +1018,15 @@ advance_cat(scene_state &scene, cat_state &cat, f64 step_seconds) wontthrow
   cat.rows_per_second = approach(cat.rows_per_second, target_rows_per_second,
                                  steering, step_seconds);
   cat.columns_per_second =
-      std::fmax(-MAXIMUM_COLUMNS_PER_SECOND,
-                std::fmin(MAXIMUM_COLUMNS_PER_SECOND, cat.columns_per_second));
+      fmax(-MAXIMUM_COLUMNS_PER_SECOND,
+           fmin(MAXIMUM_COLUMNS_PER_SECOND, cat.columns_per_second));
   cat.rows_per_second =
-      std::fmax(-MAXIMUM_ROWS_PER_SECOND,
-                std::fmin(MAXIMUM_ROWS_PER_SECOND, cat.rows_per_second));
+      fmax(-MAXIMUM_ROWS_PER_SECOND,
+           fmin(MAXIMUM_ROWS_PER_SECOND, cat.rows_per_second));
   cat.column += cat.columns_per_second * step_seconds;
   cat.row += cat.rows_per_second * step_seconds;
 
-  if (cat.activity != cat_activity::Dizzy &&
-      std::fabs(cat.columns_per_second) > 0.8)
+  if (cat.activity != cat_activity::Dizzy && fabs(cat.columns_per_second) > 0.8)
   {
     cat.is_facing_right = cat.columns_per_second > 0.0;
   }
@@ -1047,9 +1042,9 @@ meet_cats(scene_state &scene) wontthrow -> void
       let &left_cat  = scene.cats[first];
       let &right_cat = scene.cats[second];
 
-      let const is_close = std::fabs(left_cat.column - right_cat.column) <
+      let const is_close = fabs(left_cat.column - right_cat.column) <
                                static_cast<f64>(CAT_PIXEL_WIDTH) - 8.0 &&
-                           std::fabs(left_cat.row - right_cat.row) <
+                           fabs(left_cat.row - right_cat.row) <
                                static_cast<f64>(CAT_ROW_COUNT) - 1.0;
 
       if (!is_close) continue;
@@ -1071,9 +1066,9 @@ meet_cats(scene_state &scene) wontthrow -> void
       let const middle_row    = (left_cat.row + right_cat.row) / 2.0;
       let const apart_columns = right_cat.column - left_cat.column;
       let const apart_rows    = (right_cat.row - left_cat.row) * 2.0;
-      let const apart_length  = std::sqrt((apart_columns * apart_columns) +
-                                          (apart_rows * apart_rows)) +
-                               0.001;
+      let const apart_length =
+          sqrt((apart_columns * apart_columns) + (apart_rows * apart_rows)) +
+          0.001;
       let const push_columns = COLLISION_IMPULSE * apart_columns / apart_length;
       let const push_rows =
           COLLISION_IMPULSE * apart_rows / apart_length * 0.5 +
@@ -1086,7 +1081,7 @@ meet_cats(scene_state &scene) wontthrow -> void
 
       for (let *cat : {&left_cat, &right_cat}) {
         cat->wander_radians =
-            std::atan2(cat->rows_per_second, cat->columns_per_second);
+            atan2(cat->rows_per_second, cat->columns_per_second);
 
         if (is_friendly) {
           cat->happy_seconds = HAPPY_SECONDS;
@@ -1105,7 +1100,7 @@ meet_cats(scene_state &scene) wontthrow -> void
 
         spawn_particle(
             scene, particle_kind::Sparkle, middle_column, middle_row + 2.0,
-            std::cos(angle) * power, std::sin(angle) * power * 0.5, 0.7,
+            cos(angle) * power, sin(angle) * power * 0.5, 0.7,
             is_friendly ? HEART_COLOR : 226, "*+x"[scene.noise.next_index(3)]);
       }
 
@@ -1130,9 +1125,9 @@ advance_yarn(scene_state &scene, f64 step_seconds) wontthrow -> void
   yarn.column += yarn.columns_per_second * step_seconds;
   yarn.row += yarn.rows_per_second * step_seconds;
   yarn.spin_seconds +=
-      step_seconds * (1.0 + (std::fabs(yarn.columns_per_second) / 8.0));
+      step_seconds * (1.0 + (fabs(yarn.columns_per_second) / 8.0));
 
-  let const damping = std::exp(-YARN_FRICTION_PER_SECOND * step_seconds);
+  let const damping = exp(-YARN_FRICTION_PER_SECOND * step_seconds);
 
   yarn.columns_per_second *= damping;
   yarn.rows_per_second *= damping;
@@ -1140,18 +1135,17 @@ advance_yarn(scene_state &scene, f64 step_seconds) wontthrow -> void
       scene.noise.next_between(-1.0, 1.0) * 2.0 * step_seconds;
 
   let const drift_speed =
-      std::sqrt((yarn.columns_per_second * yarn.columns_per_second) +
-                (4.0 * yarn.rows_per_second * yarn.rows_per_second));
+      sqrt((yarn.columns_per_second * yarn.columns_per_second) +
+           (4.0 * yarn.rows_per_second * yarn.rows_per_second));
 
   if (drift_speed < YARN_DRIFT_PER_SECOND) {
-    yarn.columns_per_second =
-        approach(yarn.columns_per_second,
-                 std::cos(yarn.drift_radians) * YARN_DRIFT_PER_SECOND, 1.5,
-                 step_seconds);
+    yarn.columns_per_second = approach(
+        yarn.columns_per_second,
+        cos(yarn.drift_radians) * YARN_DRIFT_PER_SECOND, 1.5, step_seconds);
     yarn.rows_per_second =
         approach(yarn.rows_per_second,
-                 std::sin(yarn.drift_radians) * YARN_DRIFT_PER_SECOND * 0.4,
-                 1.5, step_seconds);
+                 sin(yarn.drift_radians) * YARN_DRIFT_PER_SECOND * 0.4, 1.5,
+                 step_seconds);
   }
 
   let const last_column = static_cast<f64>(scene.column_count) - 2.0;
@@ -1159,12 +1153,12 @@ advance_yarn(scene_state &scene, f64 step_seconds) wontthrow -> void
   let const last_row    = cat_last_row(scene.row_count) + CAT_HEAD_ROW;
 
   if (yarn.column < 1.0 || yarn.column > last_column) {
-    yarn.column = std::fmax(1.0, std::fmin(last_column, yarn.column));
+    yarn.column             = fmax(1.0, fmin(last_column, yarn.column));
     yarn.columns_per_second = -yarn.columns_per_second * 0.9;
   }
 
   if (yarn.row < first_row || yarn.row > last_row) {
-    yarn.row             = std::fmax(first_row, std::fmin(last_row, yarn.row));
+    yarn.row             = fmax(first_row, fmin(last_row, yarn.row));
     yarn.rows_per_second = -yarn.rows_per_second * 0.9;
   }
 
@@ -1199,7 +1193,7 @@ advance_scene(scene_state &scene, f64 step_seconds) wontthrow -> void
   meet_cats(scene);
   advance_yarn(scene, step_seconds);
 
-  let const drag = std::exp(-1.4 * step_seconds);
+  let const drag = exp(-1.4 * step_seconds);
 
   for (let &each_particle : scene.particles) {
     if (each_particle.seconds_left <= 0.0) continue;
@@ -1306,11 +1300,11 @@ draw_moon(scene_canvas &canvas) wontthrow -> void
     for (isize column = -7; column <= 7; column++) {
       let const row_offset    = static_cast<f64>(pixel_row) - center_row;
       let const column_offset = static_cast<f64>(column);
-      let const distance      = std::sqrt((row_offset * row_offset) +
-                                          (column_offset * column_offset));
+      let const distance =
+          sqrt((row_offset * row_offset) + (column_offset * column_offset));
       let const shadow_distance =
-          std::sqrt(((row_offset + 1.5) * (row_offset + 1.5)) +
-                    ((column_offset + 3.5) * (column_offset + 3.5)));
+          sqrt(((row_offset + 1.5) * (row_offset + 1.5)) +
+               ((column_offset + 3.5) * (column_offset + 3.5)));
 
       if (distance > radius || shadow_distance < radius - 0.5) {
         continue;
@@ -1358,7 +1352,7 @@ draw_yarn(scene_canvas &canvas, const scene_state &scene) wontthrow -> void
     if (!point.is_used) continue;
 
     let const wave =
-        std::sin((static_cast<f64>(age) * 0.7) + (scene.elapsed_seconds * 3.0));
+        sin((static_cast<f64>(age) * 0.7) + (scene.elapsed_seconds * 3.0));
 
     canvas.put_pixel(static_cast<isize>((point.row * 2.0) + 1.0 + wave),
                      static_cast<isize>(point.column), THREAD_COLOR);
@@ -1452,7 +1446,7 @@ cat_eye_color(const cat_state &cat) wontthrow -> u8
     break;
 
   case cat_activity::Loafing:
-    if (std::fmod(cat.activity_seconds, SLOW_BLINK_PERIOD_SECONDS) >
+    if (fmod(cat.activity_seconds, SLOW_BLINK_PERIOD_SECONDS) >
         SLOW_BLINK_PERIOD_SECONDS - SLOW_BLINK_SECONDS)
     {
       return palette.dark;
@@ -1465,7 +1459,7 @@ cat_eye_color(const cat_state &cat) wontthrow -> u8
   }
 
   if (cat.happy_seconds > 0.0) return palette.dark;
-  if (std::fmod(cat.phase_seconds, BLINK_PERIOD_SECONDS) < BLINK_SECONDS) {
+  if (fmod(cat.phase_seconds, BLINK_PERIOD_SECONDS) < BLINK_SECONDS) {
     return palette.body;
   }
 
@@ -1508,7 +1502,7 @@ draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
   let const is_mirrored = cat.is_facing_right != is_tumbling;
   let const column      = static_cast<isize>(cat.column);
   let const bob_pixels  = static_cast<isize>(
-      std::lround(std::sin(cat.phase_seconds * BOB_RADIANS_PER_SECOND) * 1.2));
+      lround(sin(cat.phase_seconds * BOB_RADIANS_PER_SECOND) * 1.2));
   let const pixel_row = static_cast<isize>(cat.row * 2.0) + bob_pixels;
 
   if (cat.activity == cat_activity::Curling ||
@@ -1583,10 +1577,9 @@ draw_cat(scene_canvas &canvas, const cat_state &cat) wontthrow -> void
     for (usize index = 0; index < 3; index++) {
       let const orbit = angle + (2.0 * PI * static_cast<f64>(index) / 3.0);
 
-      canvas.put(
-          row - 1 + static_cast<isize>(std::sin(orbit) * 1.2),
-          static_cast<isize>(cat_head_column(cat) + std::cos(orbit) * 5.0), '*',
-          overlay(bold(DIZZY_STAR_COLOR)));
+      canvas.put(row - 1 + static_cast<isize>(sin(orbit) * 1.2),
+                 static_cast<isize>(cat_head_column(cat) + cos(orbit) * 5.0),
+                 '*', overlay(bold(DIZZY_STAR_COLOR)));
     }
   }
 
@@ -1617,8 +1610,8 @@ draw_explosions(scene_canvas &canvas, const scene_state &scene)
         fraction * static_cast<f64>(countof(SHOCKWAVE_COLORS) - 1))];
     let const fire_radius =
         blast.age_seconds < FIREBALL_SECONDS
-            ? std::fmin(blast.age_seconds * FIREBALL_GROWTH,
-                        FIREBALL_MAXIMUM_RADIUS) *
+            ? fmin(blast.age_seconds * FIREBALL_GROWTH,
+                   FIREBALL_MAXIMUM_RADIUS) *
                   (1.0 - ((blast.age_seconds / FIREBALL_SECONDS) * 0.5))
             : 0.0;
     let const reach = static_cast<isize>(shock_radius) + 2;
@@ -1627,7 +1620,7 @@ draw_explosions(scene_canvas &canvas, const scene_state &scene)
       for (isize column_offset = -reach; column_offset <= reach;
            column_offset++)
       {
-        let const distance  = std::sqrt(static_cast<f64>(
+        let const distance  = sqrt(static_cast<f64>(
             (row_offset * row_offset) + (column_offset * column_offset)));
         let const pixel_row = static_cast<isize>(center_row) + row_offset;
         let const pixel_column =
@@ -1644,7 +1637,7 @@ draw_explosions(scene_canvas &canvas, const scene_state &scene)
           continue;
         }
 
-        if (std::fabs(distance - shock_radius) < 0.6) {
+        if (fabs(distance - shock_radius) < 0.6) {
           canvas.put_pixel(pixel_row, pixel_column, shock_color);
         }
       }
@@ -2049,9 +2042,9 @@ Meow::execute(const ExecContext               &ec,
         dimensions.rows > 1 ? static_cast<usize>(dimensions.rows) - 1 : 1;
 
     let const now_nanoseconds = os::monotonic_nanos();
-    let const step_seconds    = std::fmin(
-        static_cast<f64>(now_nanoseconds - last_frame_nanoseconds) / 1e9,
-        LONGEST_STEP_SECONDS);
+    let const step_seconds =
+        fmin(static_cast<f64>(now_nanoseconds - last_frame_nanoseconds) / 1e9,
+             LONGEST_STEP_SECONDS);
 
     last_frame_nanoseconds = now_nanoseconds;
 
@@ -2084,14 +2077,14 @@ Meow::execute(const ExecContext               &ec,
 
     case '+':
     case '=':
-      scene.speed = std::fmin(scene.speed * SPEED_STEP, MAXIMUM_SPEED);
+      scene.speed = fmin(scene.speed * SPEED_STEP, MAXIMUM_SPEED);
       scene.speed_notice_seconds = SPEED_NOTICE_SECONDS;
 
       return live_view_key_action::Redraw;
 
     case '-':
     case '_':
-      scene.speed = std::fmax(scene.speed / SPEED_STEP, MINIMUM_SPEED);
+      scene.speed = fmax(scene.speed / SPEED_STEP, MINIMUM_SPEED);
       scene.speed_notice_seconds = SPEED_NOTICE_SECONDS;
 
       return live_view_key_action::Redraw;

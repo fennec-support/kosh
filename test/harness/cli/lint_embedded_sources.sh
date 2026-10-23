@@ -773,3 +773,18 @@ jobs:
       - run: echo done
 EOF
 (cd "$templates" && "$BIN" --format .github/workflows/push.yml) | sed 's/ *$/|/'
+
+# A session heredoc with a quoted delimiter that holds a blank ends at its
+# terminator, so the output line after it is not analyzed.
+cat > "$root/session.md" <<'MARKDOWN'
+# Session
+
+```console
+$ cat <<"E O"
+body
+E O
+output with $( unbalanced
+```
+MARKDOWN
+"$BIN" --lint --no-traces "$root/session.md" 2>&1 |
+  grep -c ': error: ' || true

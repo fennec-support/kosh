@@ -32,9 +32,8 @@ Date::execute(const ExecContext               &ec,
   if (operands.count() > 1) return report_usage_error(ec, cxt, args[0].view());
   if (!operands.is_empty() && (operands[0].is_empty() || operands[0][0] != '+'))
   {
-    report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
-                                   args[0].view(),
-                                   "Setting the system clock is unsupported");
+    report_soft_koshkit_error(ec, cxt, operand_locations[0],
+                              "Setting the system clock is unsupported");
 
     return 1;
   }
@@ -44,8 +43,7 @@ Date::execute(const ExecContext               &ec,
       FLAG_DATE_UTC.is_enabled() ? gmtime(&now) : localtime(&now);
 
   if (broken_down == nullptr) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "Cannot convert the current time");
+    report_soft_koshkit_error(ec, cxt, "Cannot convert the current time");
 
     return 1;
   }
@@ -63,8 +61,8 @@ Date::execute(const ExecContext               &ec,
     let const location =
         operands.is_empty() ? ec.source_location() : operand_locations[0];
 
-    report_soft_koshkit_util_error(
-        ec, cxt, location, args[0].view(),
+    report_soft_koshkit_error(
+        ec, cxt, location,
         "Formatted output exceeds the supported line length");
 
     return 1;

@@ -289,7 +289,7 @@ get_next_tab_column(usize column, const tab_stop_list &tab_stops) wontthrow
 pure alwaysinline fn
 environment_name_is_path(StringView name) wontthrow -> bool
 {
-  if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) return name == "PATH";
+  if constexpr (os::IS_ENVIRONMENT_CASE_SENSITIVE) return name == "PATH";
 
   return name.length == 4 && ascii_to_lower(name[0]) == 'p' &&
          ascii_to_lower(name[1]) == 'a' && ascii_to_lower(name[2]) == 't' &&

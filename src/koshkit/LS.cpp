@@ -825,9 +825,9 @@ render_directory_block(StringView             directory,
       collect_directory(Path{directory, allocator}, options, allocator);
 
   if (!entries.has_value()) {
-    report_soft_koshkit_util_error(run.ec, run.cxt, "ls",
-                                   "Cannot open directory '" +
-                                       String{allocator, directory} + "'");
+    report_soft_koshkit_error(run.ec, run.cxt,
+                              "Cannot open directory '" +
+                                  String{allocator, directory} + "'");
     run.status = 2;
 
     return;
@@ -869,7 +869,6 @@ render_directory_block(StringView             directory,
 static fn
 resolve_depth_limit(const ExecContext &ec,
                     EvalContext       &cxt,
-                    StringView         utility_name,
                     listing_options   &options) throws -> bool
 {
   if (!FLAG_LS_LEVEL.is_set()) return true;
@@ -878,8 +877,8 @@ resolve_depth_limit(const ExecContext &ec,
                                                   nullptr, int_base::decimal);
 
   if (parsed.is_error() || parsed.value() < 1) {
-    report_soft_koshkit_util_error(
-        ec, cxt, utility_name,
+    report_soft_koshkit_error(
+        ec, cxt,
         "Invalid level '" +
             String{cxt.scratch_allocator(), FLAG_LS_LEVEL.value()} + "'",
         "The level is a positive whole number");
@@ -913,7 +912,7 @@ LS::execute(const ExecContext               &ec,
 
   options.should_color = koshkit_should_color();
 
-  if (!resolve_depth_limit(ec, cxt, args[0].view(), options)) return 2;
+  if (!resolve_depth_limit(ec, cxt, options)) return 2;
 
   options.should_classify =
       FLAG_LS_CLASSIFY.is_enabled() || FLAG_LS_MARK_DIRECTORIES.is_enabled();
@@ -1000,10 +999,9 @@ LS::execute(const ExecContext               &ec,
     let const target = targets[index];
 
     if (target_results[index].error_number != 0) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "Cannot access '" +
-                                         String{allocator, target} +
-                                         "': No such file or directory");
+      report_soft_koshkit_error(ec, cxt,
+                                "Cannot access '" + String{allocator, target} +
+                                    "': No such file or directory");
       run.status = 2;
       continue;
     }

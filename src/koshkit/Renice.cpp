@@ -86,7 +86,7 @@ Renice::execute(const ExecContext               &ec,
         "Invalid increment '" + FLAG_RENICE_INCREMENT.value() + "'",
         "Use a decimal integer from -2147483648 through 2147483647");
 
-    return 2;
+    return 1;
   }
 
   /* at this point: operands is not empty, at most one selector is set, and

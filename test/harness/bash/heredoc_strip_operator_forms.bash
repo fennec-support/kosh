@@ -1,8 +1,9 @@
 #!/bin/bash
 # The tab-stripping operator takes its delimiter after a blank as well as
 # attached, a delimiter starting with a dash after << is an ordinary
-# delimiter, <<- with no delimiter is a syntax error, and a lone backslash
-# at the end of the input is literal.
+# delimiter, <<- with no delimiter is a syntax error, a lone backslash at
+# the end of the input is literal, and BASH_COMMAND keeps the operator and
+# the delimiter of both <<- forms.
 work=$(mktemp -d)
 cd "$work" || exit 1
 cat <<- EOF
@@ -32,4 +33,12 @@ ansi end
 cat <<"quoted end"
 quoted-body
 quoted end
+trap 'printf "[%s]\n" "$BASH_COMMAND"' DEBUG
+cat <<- EOF > /dev/null
+	traced-spaced
+	EOF
+cat <<-EOF > /dev/null
+	traced-attached
+	EOF
+trap - DEBUG
 cd / && rm -rf -- "$work"

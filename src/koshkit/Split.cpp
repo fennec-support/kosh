@@ -201,9 +201,8 @@ Split::execute(const ExecContext               &ec,
 
       os::close_fd(*existing);
       if (is_input) {
-        report_soft_koshkit_util_error(
-            ec, cxt, args[0].view(),
-            "'" + name + "' would overwrite the input; aborting");
+        report_soft_koshkit_error(
+            ec, cxt, "'" + name + "' would overwrite the input; aborting");
 
         return false;
       }
@@ -239,8 +238,7 @@ Split::execute(const ExecContext               &ec,
 
     if (!read_byte_count.has_value()) {
       if (os::INTERRUPT_REQUESTED) return 130;
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     os::last_system_error_message());
+      report_soft_koshkit_error(ec, cxt, os::last_system_error_message());
 
       return 1;
     }
@@ -286,8 +284,7 @@ Split::execute(const ExecContext               &ec,
       if (!os::write_all(output_descriptor, buffer + segment_start,
                          segment_end - segment_start))
       {
-        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       os::last_system_error_message());
+        report_soft_koshkit_error(ec, cxt, os::last_system_error_message());
 
         return 1;
       }

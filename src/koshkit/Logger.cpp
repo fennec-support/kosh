@@ -116,9 +116,8 @@ Logger::execute(const ExecContext               &ec,
                            : StringView{"user.notice"};
 
   if (!logger_priority_is_valid(priority)) {
-    report_soft_koshkit_util_error(
-        ec, cxt, FLAG_LOGGER_PRIORITY.value_location(), args[0].view(),
-        "Invalid priority '" + priority + "'");
+    report_soft_koshkit_error(ec, cxt, FLAG_LOGGER_PRIORITY.value_location(),
+                              "Invalid priority '" + priority + "'");
 
     return 1;
   }
@@ -133,9 +132,9 @@ Logger::execute(const ExecContext               &ec,
                              ? FLAG_LOGGER_PRIORITY.value_location()
                              : arg_locations[0];
 
-    report_soft_koshkit_util_error(ec, cxt, location, args[0].view(),
-                                   "Cannot write to the system log: " +
-                                       os::last_system_error_message());
+    report_soft_koshkit_error(ec, cxt, location,
+                              "Cannot write to the system log: " +
+                                  os::last_system_error_message());
 
     return 1;
   }

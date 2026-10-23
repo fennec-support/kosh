@@ -332,9 +332,8 @@ Timeout::execute(const ExecContext               &ec,
       checked_timeout_program(operands[1].view(), operand_locations[1], cxt);
 
   if (!program_path.has_value()) {
-    report_soft_koshkit_util_error(ec, cxt, operand_locations[1], "timeout",
-                                   "Command '" + operands[1] +
-                                       "' was not found");
+    report_soft_koshkit_error(ec, cxt, operand_locations[1],
+                              "Command '" + operands[1] + "' was not found");
 
     return 127;
   }

@@ -773,9 +773,8 @@ Tr::execute(const ExecContext               &ec,
 
     if (!read_count.has_value()) {
       if (os::INTERRUPT_REQUESTED) return 130;
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "Read failed: " +
-                                         os::last_system_error_message());
+      report_soft_koshkit_error(
+          ec, cxt, "Read failed: " + os::last_system_error_message());
 
       return 1;
     }

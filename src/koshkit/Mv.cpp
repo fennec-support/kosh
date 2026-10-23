@@ -27,7 +27,6 @@ namespace koshka::koshkit {
 static fn
 move_directory_across_devices(const ExecContext &ec,
                               EvalContext       &cxt,
-                              StringView         utility_name,
                               StringView         source,
                               StringView         target,
                               Allocator          allocator) throws -> void
@@ -51,8 +50,8 @@ move_directory_across_devices(const ExecContext &ec,
                          removal_mode::Recursive));
   };
 
-  if (!copy_tree_for_move(ec, cxt, utility_name, source,
-                          temporary_directory->view(), allocator))
+  if (!copy_tree_for_move(ec, cxt, source, temporary_directory->view(),
+                          allocator))
   {
     throw Error{
         "Unable to copy '" + String{allocator, source}
@@ -82,7 +81,6 @@ move_directory_across_devices(const ExecContext &ec,
 static fn
 move_across_devices(const ExecContext &ec,
                     EvalContext       &cxt,
-                    StringView         utility_name,
                     StringView         source,
                     StringView         target,
                     Allocator          allocator) throws -> void
@@ -91,8 +89,7 @@ move_across_devices(const ExecContext &ec,
   let const is_source_symbolic_link = source_path.is_symbolic_link();
 
   if (!is_source_symbolic_link && source_path.is_directory()) {
-    move_directory_across_devices(ec, cxt, utility_name, source, target,
-                                  allocator);
+    move_directory_across_devices(ec, cxt, source, target, allocator);
 
     return;
   }
@@ -186,8 +183,8 @@ Mv::execute(const ExecContext               &ec,
        FLAG_MV_INTERACTIVE.position() > FLAG_MV_FORCE.position());
 
   if (operands.count() > 2 && !is_destination_directory) {
-    report_soft_koshkit_util_error(
-        ec, cxt, operand_locations[operands.count() - 1], args[0].view(),
+    report_soft_koshkit_error(
+        ec, cxt, operand_locations[operands.count() - 1],
         "The destination '" + String{cxt.scratch_allocator(), destination} +
             "' is not a directory, so it cannot hold several sources");
 
@@ -213,10 +210,9 @@ Mv::execute(const ExecContext               &ec,
     if (Path{source, cxt.scratch_allocator()}.is_same_file_as(
             Path{target.view(), cxt.scratch_allocator()}))
     {
-      report_soft_koshkit_util_error(
-          ec, cxt, operand_locations[i], args[0].view(),
-          "'" + String{cxt.scratch_allocator(), source} + "' and '" + target +
-              "' are the same file");
+      report_soft_koshkit_error(ec, cxt, operand_locations[i],
+                                "'" + String{cxt.scratch_allocator(), source} +
+                                    "' and '" + target + "' are the same file");
       status = 1;
       continue;
     }
@@ -231,8 +227,8 @@ Mv::execute(const ExecContext               &ec,
     try {
       if (!os::rename_path(source, target.view())) {
         if (errno != EXDEV) {
-          report_soft_koshkit_util_error(
-              ec, cxt, operand_locations[i], args[0].view(),
+          report_soft_koshkit_error(
+              ec, cxt, operand_locations[i],
               "Unable to move '" + String{cxt.scratch_allocator(), source} +
                   "' to '" + target + "' because " +
                   os::last_system_error_message());
@@ -240,12 +236,12 @@ Mv::execute(const ExecContext               &ec,
           continue;
         }
 
-        move_across_devices(ec, cxt, args[0].view(), source, target.view(),
+        move_across_devices(ec, cxt, source, target.view(),
                             cxt.scratch_allocator());
       }
     } catch (Error &error) {
-      report_soft_koshkit_util_error(ec, cxt, operand_locations[i],
-                                     args[0].view(), error.message().view());
+      report_soft_koshkit_error(ec, cxt, operand_locations[i],
+                                error.message().view());
       status = 1;
       continue;
     }

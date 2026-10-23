@@ -17,7 +17,7 @@ stderr:
 --- name follow without retry drops a deleted file ---
 status=1
 gone
-TMPDIR/g.txt: No such file or directory.
+Cannot access 'TMPDIR/g.txt': No such file or directory.
 No files remaining.
 --- retry opens a file that appears later ---
 late

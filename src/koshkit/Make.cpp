@@ -16,8 +16,6 @@
 #include "../base/Path.hpp"
 #include "../base/StaticStringMap.hpp"
 
-#include <cstdio>
-
 KOSHKIT_UTIL_DECL(
     "[-BeiknpqrSst] [-j[jobs]] [-C directory] [-f makefile]... "
     "[macro=value ...] "
@@ -4521,8 +4519,8 @@ Make::execute(const ExecContext               &ec,
             Path{FLAG_MAKE_DIR.value(), cxt.scratch_allocator()})
             .is_error())
     {
-      report_soft_koshkit_util_error(
-          ec, cxt, FLAG_MAKE_DIR.value_location(), args[0].view(),
+      report_soft_koshkit_error(
+          ec, cxt, FLAG_MAKE_DIR.value_location(),
           "Unable to change to the directory '" +
               String{cxt.scratch_allocator(), FLAG_MAKE_DIR.value()} +
               "': " + os::last_system_error_message());
@@ -4566,9 +4564,8 @@ Make::execute(const ExecContext               &ec,
         Path{makefile_path.view(), cxt.scratch_allocator()}.read_entire_file();
 
     if (!part.has_value()) {
-      report_soft_koshkit_util_error(
+      report_soft_koshkit_error(
           ec, cxt, requested_makefile_locations[makefile_position],
-          args[0].view(),
           "Unable to read the makefile '" + makefile_path +
               "': " + os::last_system_error_message());
 
@@ -4851,8 +4848,8 @@ Make::execute(const ExecContext               &ec,
         if (!runtime_flags.should_keep_going) return 2;
       } catch (Error &error) {
         did_fail = true;
-        report_soft_koshkit_util_error(ec, cxt, goal_locations[goal_position],
-                                       args[0].view(), error.message().view());
+        report_soft_koshkit_error(ec, cxt, goal_locations[goal_position],
+                                  error.message().view());
         if (!runtime_flags.should_keep_going) return 2;
       }
     }

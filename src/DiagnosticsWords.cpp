@@ -3,10 +3,10 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file analyzes command words and operands after token collection. It
- * checks arithmetic, expansion portability, quoting, globbing, command-word
- * shapes, and command-specific operand patterns while recording assignment
- * targets. The split keeps per-word traversal separate from command dispatch
- * and whole-source dataflow checks.
+ * checks arithmetic, expansion portability, quoting, globbing, the form of
+ * command words, and command-specific operand patterns while recording
+ * assignment targets. The split keeps per-word traversal separate from command
+ * dispatch and whole-source dataflow checks.
  */
 
 #include "DiagnosticsChecksInternal.hpp"

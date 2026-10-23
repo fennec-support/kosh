@@ -353,7 +353,7 @@ is_same_directory_text(StringView left, StringView right) wontthrow -> bool
       continue;
     }
 
-    if (!os::FILESYSTEM_IS_CASE_SENSITIVE) {
+    if (!os::IS_FILESYSTEM_CASE_SENSITIVE) {
       left_byte  = ascii_to_lower(left_byte);
       right_byte = ascii_to_lower(right_byte);
     }
@@ -405,7 +405,7 @@ resolve_git_directory(StringView ceiling_directories) throws -> Path
 
     parent.append("..");
 
-    let normalized = parent.to_absolute().normalized();
+    let normalized = parent.to_absolute();
 
     if (normalized.text() == dir.text()) break;
 

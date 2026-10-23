@@ -43,10 +43,32 @@ Flock::execute(const ExecContext               &ec,
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
+  /* a command that cannot be found is reported here, since the spawned
+     child exits with 127 and no message when exec fails. */
+  let const is_command_found =
+      os::has_directory_separator(operands[1].view())
+          ? Path{operands[1].view()}.exists()
+          : !cxt.program_resolver()
+                 .search(operands[1].view(), ProgramResolver::SearchMode::First,
+                         ProgramResolver::Requirement::Runnable,
+                         ProgramResolver::CachePolicy::Bypass)
+                 .is_empty();
+
+  if (!is_command_found) {
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
+                            "Command '" + operands[1] + "' was not found");
+
+    return 127;
+  }
+
   if (FLAG_TRANSACTION_HELD_LOCK.is_enabled()) {
     let const executable = os::current_executable_path();
 
-    if (!executable.has_value()) return 126;
+    if (!executable.has_value()) {
+      KOSHKIT_REPORT_ERROR("Cannot find the path of the running shell");
+
+      return 126;
+    }
 
     let keeper = ArrayList<String>{cxt.scratch_allocator()};
 
@@ -67,7 +89,13 @@ Flock::execute(const ExecContext               &ec,
     let const result =
         os::run_measured(keeper, {}, os::measured_output::Inherit);
 
-    return result.has_value() ? static_cast<i32>(result->exit_status) : 126;
+    if (!result.has_value()) {
+      KOSHKIT_REPORT_PATH_ERROR("run", executable->view());
+
+      return 126;
+    }
+
+    return static_cast<i32>(result->exit_status);
   }
 
   let const lock = os::acquire_process_lock(operands[0].view());
@@ -95,7 +123,13 @@ Flock::execute(const ExecContext               &ec,
   let const result =
       os::run_measured(command, *lock, os::measured_output::Inherit);
 
-  return result.has_value() ? static_cast<i32>(result->exit_status) : 126;
+  if (!result.has_value()) {
+    KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[1], "run", operands[1]);
+
+    return 126;
+  }
+
+  return static_cast<i32>(result->exit_status);
 }
 
 } /* namespace koshka::koshkit */

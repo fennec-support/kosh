@@ -80,6 +80,10 @@ printf '# kept\nmood=bash\nmood=sh\n' >"$conf"
 "$BIN" -c "koshconf set editor.history.file_path ' padded ' --persist"
 "$BIN" -c 'koshconf set mood kosh --persist'
 cat "$conf"
+echo "== --persist rewrites a line spelled with an alias:"
+printf '# bash.interpreter.glob_extended_patterns=off\nbash.legacy.extglob=on\n' >"$conf"
+"$BIN" -c 'koshconf set bash.interpreter.glob_extended_patterns off --persist'
+cat "$conf"
 echo "== --persist creates the file and its directory:"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$XDG_CONFIG_HOME"
 "$BIN" -c 'koshconf set completion.add_space_after_completed_word on --persist'

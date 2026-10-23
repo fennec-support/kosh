@@ -208,8 +208,7 @@ Cmp::execute(const ExecContext               &ec,
     if (!refill_readers(left, right, batch, results)) {
       if (os::INTERRUPT_REQUESTED) return 130;
       if (!FLAG_CMP_SILENT.is_enabled())
-        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       os::last_system_error_message());
+        report_soft_koshkit_error(ec, cxt, os::last_system_error_message());
 
       return 2;
     }
@@ -251,12 +250,12 @@ Cmp::execute(const ExecContext               &ec,
       if (left_result == right_result) break;
       has_difference = true;
       if (!FLAG_CMP_SILENT.is_enabled())
-        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "End of file on '" +
-                                           (left_result == byte_read_result::End
-                                                ? operands[0]
-                                                : operands[1]) +
-                                           "'");
+        report_soft_koshkit_error(ec, cxt,
+                                  "End of file on '" +
+                                      (left_result == byte_read_result::End
+                                           ? operands[0]
+                                           : operands[1]) +
+                                      "'");
       break;
     }
 

@@ -1373,8 +1373,11 @@ public:
   Kind                    kind;
   bool                    should_expand_heredoc;
   bool                    should_strip_heredoc_tabs;
-  bool                    is_dup_filename_allowed;
-  bool                    is_both_streams_spelling;
+  /* the - of <<- is its own token, as in <<- EOF, so the delimiter word
+     holds no dash. */
+  bool has_separated_strip_operator;
+  bool is_dup_filename_allowed;
+  bool is_both_streams_spelling;
 
   pure fn
   opens_output_file() const wontthrow -> bool

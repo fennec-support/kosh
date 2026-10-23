@@ -74,7 +74,7 @@ evilio_ambiguous_sort=$(
   "$BIN" -c 'koshkit evilio --ps --sort r -1' 2>&1
 )
 case $evilio_ambiguous_sort in
-  *'ambiguous sort key'*'matches read, read-ops; use a longer prefix'*)
+  *'Ambiguous sort key'*'Use a longer prefix of read, read-ops'*)
     evilio_ambiguous_sort_status=matched
     ;;
   *) evilio_ambiguous_sort_status=wrong ;;
@@ -138,7 +138,7 @@ evilnet_ambiguous_sort=$(
   "$BIN" -c 'koshkit evilnet --traffic --sort r' 2>&1
 )
 case $evilnet_ambiguous_sort in
-  *'ambiguous sort key'*) evilnet_ambiguous_sort_status=matched ;;
+  *'Ambiguous sort key'*) evilnet_ambiguous_sort_status=matched ;;
   *) evilnet_ambiguous_sort_status=wrong ;;
 esac
 printf 'evilnet-ambiguous-sort=%s\n' "$evilnet_ambiguous_sort_status"

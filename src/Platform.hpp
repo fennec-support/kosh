@@ -21,6 +21,7 @@
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <grp.h>
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -308,11 +309,11 @@ constexpr char  DIRECTORY_SEPARATOR                   = '\\';
 constexpr bool  IS_BACKSLASH_A_SEPARATOR              = true;
 constexpr bool  HAS_WINDOWS_FILENAME_RULES            = true;
 constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 65535;
-constexpr bool  ENVIRONMENT_IS_CASE_SENSITIVE         = false;
+constexpr bool  IS_ENVIRONMENT_CASE_SENSITIVE         = false;
 constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT      = 32766;
-constexpr bool  FILESYSTEM_IS_CASE_SENSITIVE          = false;
+constexpr bool  IS_FILESYSTEM_CASE_SENSITIVE          = false;
 constexpr bool  HAS_CHILD_STATE_CHANGE_WAIT           = false;
-constexpr bool  DEFAULT_LOCALE_IS_UTF8                = false;
+constexpr bool  IS_DEFAULT_LOCALE_UTF8                = false;
 
 using process    = HANDLE;
 using descriptor = HANDLE;
@@ -332,14 +333,14 @@ constexpr char  DIRECTORY_SEPARATOR                   = '/';
 constexpr bool  IS_BACKSLASH_A_SEPARATOR              = false;
 constexpr bool  HAS_WINDOWS_FILENAME_RULES            = false;
 constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 65535;
-constexpr bool  ENVIRONMENT_IS_CASE_SENSITIVE         = true;
+constexpr bool  IS_ENVIRONMENT_CASE_SENSITIVE         = true;
 constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT      = SIZE_MAX;
-constexpr bool  FILESYSTEM_IS_CASE_SENSITIVE          = true;
+constexpr bool  IS_FILESYSTEM_CASE_SENSITIVE          = true;
 constexpr bool  HAS_CHILD_STATE_CHANGE_WAIT           = true;
 #if defined __linux__ && !defined __GLIBC__
-constexpr bool DEFAULT_LOCALE_IS_UTF8 = true;
+constexpr bool IS_DEFAULT_LOCALE_UTF8 = true;
 #else
-constexpr bool DEFAULT_LOCALE_IS_UTF8 = false;
+constexpr bool IS_DEFAULT_LOCALE_UTF8 = false;
 #endif
 
 using process    = pid_t;

@@ -299,15 +299,15 @@ Mknod::execute(const ExecContext               &ec,
                                       static_cast<u32>(*minor_number));
 
   if (!did_create) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "Cannot create '" + name +
-                                       "': " + os::last_system_error_message());
+    report_soft_koshkit_error(ec, cxt,
+                              "Cannot create '" + name +
+                                  "': " + os::last_system_error_message());
     status = 1;
   } else if (FLAG_MKNOD_MODE.is_set() && !os::set_file_mode(name.view(), mode))
   {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "Cannot set mode of '" + name +
-                                       "': " + os::last_system_error_message());
+    report_soft_koshkit_error(ec, cxt,
+                              "Cannot set mode of '" + name +
+                                  "': " + os::last_system_error_message());
     status = 1;
   }
 

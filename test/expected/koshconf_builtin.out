@@ -45,6 +45,9 @@ same line count
 # kept
 mood=kosh
 editor.history.file_path=" padded "
+== --persist rewrites a line spelled with an alias:
+# bash.interpreter.glob_extended_patterns=off
+bash.interpreter.glob_extended_patterns=off
 == --persist creates the file and its directory:
 completion.add_space_after_completed_word=on
 == --persist writes an option that changes evaluation:

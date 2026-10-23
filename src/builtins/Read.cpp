@@ -270,6 +270,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let was_newline_terminated = false;
   let was_read_successful    = false;
+  let read_error             = Maybe<String>{};
 
   let line            = String{cxt.scratch_allocator()};
   let is_literal_byte = ArrayList<bool>{cxt.scratch_allocator()};
@@ -281,6 +282,9 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       char      byte = 0;
       let const got  = do_read_byte(byte);
 
+      if (!got.has_value() && !was_timed_out && !os::INTERRUPT_REQUESTED) {
+        read_error = os::last_system_error_message();
+      }
       if (!got.has_value() || *got == 0) {
         break;
       }
@@ -289,6 +293,11 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         char      escaped_byte = 0;
         let const got_escaped  = do_read_byte(escaped_byte);
 
+        if (!got_escaped.has_value() && !was_timed_out &&
+            !os::INTERRUPT_REQUESTED)
+        {
+          read_error = os::last_system_error_message();
+        }
         if (!got_escaped.has_value() || *got_escaped == 0) {
           break;
         }
@@ -319,6 +328,9 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     was_newline_terminated = read_line_result.was_delimiter_terminated;
     was_timed_out          = read_line_result.was_timed_out;
+    if (read_line_result.did_read_fail && !os::INTERRUPT_REQUESTED) {
+      read_error = os::last_system_error_message();
+    }
 
     let read_line = steal(read_line_result.line);
 
@@ -357,6 +369,9 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
           was_newline_terminated = continued_result.was_delimiter_terminated;
           was_timed_out = was_timed_out || continued_result.was_timed_out;
+          if (continued_result.did_read_fail && !os::INTERRUPT_REQUESTED) {
+            read_error = os::last_system_error_message();
+          }
 
           let continued = steal(continued_result.line);
 
@@ -380,6 +395,11 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
       }
     }
+  }
+
+  /* the bytes read before a failure are still assigned, with status 1. */
+  if (read_error.has_value()) {
+    report_soft_builtin_error(ec, cxt, "Unable to read input: " + *read_error);
   }
 
   if (!was_read_successful) {
@@ -439,7 +459,9 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   };
 
   let const read_status =
-      was_timed_out ? 142 : (was_newline_terminated ? 0 : 1);
+      was_timed_out
+          ? 142
+          : (was_newline_terminated && !read_error.has_value() ? 0 : 1);
 
   if (is_exact_count && !FLAG_READ_ARRAY.is_set()) {
     for (usize i = 0; i < operand_count; i++)

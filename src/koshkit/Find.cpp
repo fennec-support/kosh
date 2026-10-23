@@ -231,10 +231,9 @@ public:
         Path::read_directory_typed(Path{path_text, m_allocator}, m_allocator);
 
     if (!children.has_value()) {
-      report_soft_koshkit_util_error(
-          m_ec, m_cxt, "find",
-          "'" + String{m_allocator, display} +
-              "': " + os::last_system_error_message());
+      report_soft_koshkit_error(m_ec, m_cxt,
+                                "'" + String{m_allocator, display} +
+                                    "': " + os::last_system_error_message());
       m_exit_status = 1;
 
       return;
@@ -606,10 +605,9 @@ private:
 
       if (m_unknown_results[index].error_number != 0) {
         os::set_last_system_error(m_unknown_results[index].error_number);
-        report_soft_koshkit_util_error(
-            m_ec, m_cxt, "find",
-            "'" + m_unknown_paths[index].text() +
-                "': " + os::last_system_error_message());
+        report_soft_koshkit_error(m_ec, m_cxt,
+                                  "'" + m_unknown_paths[index].text() +
+                                      "': " + os::last_system_error_message());
         m_exit_status = 1;
         kind          = Path::EntryKind::Other;
         continue;
@@ -910,9 +908,9 @@ Find::execute(const ExecContext               &ec,
 
     if (results[root_index].error_number != 0) {
       os::set_last_system_error(results[root_index].error_number);
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "'" + String{allocator, root} + "': " +
-                                         os::last_system_error_message());
+      report_soft_koshkit_error(ec, cxt,
+                                "'" + String{allocator, root} +
+                                    "': " + os::last_system_error_message());
       status = 1;
       continue;
     }

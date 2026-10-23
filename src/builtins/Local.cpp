@@ -204,7 +204,8 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let       name        = equals_position.has_value()
                                 ? arg.substring_of_length(0, *equals_position)
                                 : arg.view();
-    let const update_mode = !name.is_empty() && name[name.count() - 1] == '+'
+    let const update_mode = equals_position.has_value() && !name.is_empty() &&
+                                    name[name.count() - 1] == '+'
                                 ? assignment_update_mode::Append
                                 : assignment_update_mode::Replace;
 

@@ -141,7 +141,6 @@ struct removal_request
 {
   const ExecContext  &ec;
   EvalContext        &cxt;
-  StringView          utility_name;
   Allocator           allocator;
   removal_mode        mode;
   removal_interaction interaction;
@@ -232,9 +231,8 @@ struct removal_request
 
     /* at this point: known_status describes path, root_device_id is set, and
        path is on a different device from root_device_id. */
-    report_soft_koshkit_util_error(ec, cxt, utility_name,
-                                   "Skipping '" + path +
-                                       "', since it's on a different device");
+    report_soft_koshkit_error(
+        ec, cxt, "Skipping '" + path + "', since it's on a different device");
 
     return true;
   }
@@ -336,8 +334,7 @@ report_tree_removal_failure(void                    *context,
                 "': the directory was replaced while it was removed"
            : "Cannot remove '" + path + "': " + reason;
 
-  report_soft_koshkit_util_error(request.ec, request.cxt, request.utility_name,
-                                 message);
+  report_soft_koshkit_error(request.ec, request.cxt, message);
 }
 
 static fn
@@ -367,8 +364,8 @@ remove_path_with_prompt(const removal_request &request,
   }
 
   let const do_report_reason = [&](StringView reason) throws -> bool {
-    report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                   "Cannot remove '" + path + "': " + reason);
+    report_soft_koshkit_error(request.ec, cxt,
+                              "Cannot remove '" + path + "': " + reason);
 
     return false;
   };
@@ -435,8 +432,8 @@ report_dry_run_removal(const removal_request &request,
   let &cxt = request.cxt;
 
   let const do_report_reason = [&](StringView reason) throws -> bool {
-    report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                   "Cannot remove '" + path + "': " + reason);
+    report_soft_koshkit_error(request.ec, cxt,
+                              "Cannot remove '" + path + "': " + reason);
 
     return false;
   };
@@ -459,9 +456,9 @@ report_dry_run_removal(const removal_request &request,
     let names = os::list_directory_status(path, request.allocator);
 
     if (!names.has_value()) {
-      report_soft_koshkit_util_error(request.ec, cxt, request.utility_name,
-                                     "Cannot read directory '" + path + "': " +
-                                         os::last_system_error_message());
+      report_soft_koshkit_error(request.ec, cxt,
+                                "Cannot read directory '" + path +
+                                    "': " + os::last_system_error_message());
 
       return false;
     }
@@ -709,7 +706,6 @@ Rm::execute(const ExecContext               &ec,
   let const request = removal_request{
       ec,
       cxt,
-      args[0].view(),
       allocator,
       is_recursive ? removal_mode::Recursive : removal_mode::SinglePath,
       interaction,
@@ -743,11 +739,10 @@ Rm::execute(const ExecContext               &ec,
   for (let const &operand : operands) {
     if (os::INTERRUPT_REQUESTED) return 130;
     if (is_recursive && is_dot_or_dot_dot(operand.view())) {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
-          "Refusing to remove '.' or '..' directory: "
-          "skipping '" +
-              operand + "'");
+      report_soft_koshkit_error(ec, cxt,
+                                "Refusing to remove '.' or '..' directory: "
+                                "skipping '" +
+                                    operand + "'");
       status = 1;
       continue;
     }
@@ -763,8 +758,8 @@ Rm::execute(const ExecContext               &ec,
       let const subject = is_root_alias ? "'" + operand + "' (same as '/')"
                                         : "'" + operand + "'";
 
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
+      report_soft_koshkit_error(
+          ec, cxt,
           "It is dangerous to operate recursively on " + subject +
               "; use --no-preserve-root to override this failsafe");
       status = 1;
@@ -774,8 +769,8 @@ Rm::execute(const ExecContext               &ec,
     if (is_recursive && should_preserve_all_roots &&
         is_on_other_device_than_parent(operand.view(), allocator))
     {
-      report_soft_koshkit_util_error(
-          ec, cxt, args[0].view(),
+      report_soft_koshkit_error(
+          ec, cxt,
           "Skipping '" + operand +
               "', since it's on a different device and --preserve-root=all "
               "is in effect");
@@ -789,9 +784,9 @@ Rm::execute(const ExecContext               &ec,
 
     if (!os::stat_path(operand.view(), target_status)) {
       if (should_ignore_missing) continue;
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "Cannot remove '" + operand + "': " +
-                                         os::last_system_error_message());
+      report_soft_koshkit_error(ec, cxt,
+                                "Cannot remove '" + operand +
+                                    "': " + os::last_system_error_message());
       status = 1;
       continue;
     }

@@ -175,14 +175,12 @@ struct live_report_options
   static fn
   parse(const ExecContext       &ec,
         EvalContext             &cxt,
-        StringView               utility_name,
         const FlagOptionalValue &live_flag,
         const FlagOptionalValue &cumulative_flag,
         Allocator                allocator) throws -> Maybe<live_report_options>;
   static fn
   parse_with_window(const ExecContext       &ec,
                     EvalContext             &cxt,
-                    StringView               utility_name,
                     const FlagOptionalValue &live_flag,
                     bool                     is_cumulative,
                     f64                      window_seconds,
@@ -191,7 +189,6 @@ struct live_report_options
   static fn
   parse_window_seconds(const ExecContext &ec,
                        EvalContext       &cxt,
-                       StringView         utility_name,
                        StringView         text,
                        SourceLocation     location,
                        StringView         title,

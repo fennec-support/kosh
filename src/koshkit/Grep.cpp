@@ -326,9 +326,9 @@ collect_recursive_sources(const ExecContext &ec,
   if (path_kind == Path::EntryKind::Unknown) {
     if (!os::stat_path(path.view(), file_status)) {
       if (should_report_errors) {
-        report_soft_koshkit_util_error(ec, cxt, "grep",
-                                       path.text() + ": " +
-                                           os::last_system_error_message());
+        report_soft_koshkit_error(
+            ec, cxt,
+            path_error_message("read", path.text(), cxt.scratch_allocator()));
       }
 
       status = 2;
@@ -375,9 +375,9 @@ collect_recursive_sources(const ExecContext &ec,
 
   if (!children.has_value()) {
     if (should_report_errors) {
-      report_soft_koshkit_util_error(ec, cxt, "grep",
-                                     path.text() + ": " +
-                                         os::last_system_error_message());
+      report_soft_koshkit_error(
+          ec, cxt,
+          path_error_message("read", path.text(), cxt.scratch_allocator()));
     }
 
     status = 2;
@@ -440,10 +440,11 @@ collect_recursive_sources(const ExecContext &ec,
           kind = Path::EntryKind::Other;
           if (should_report_errors) {
             os::set_last_system_error(results[index].error_number);
-            report_soft_koshkit_util_error(
-                ec, cxt, "grep",
-                child_paths[unknown_indices[index]].text() + ": " +
-                    os::last_system_error_message());
+            report_soft_koshkit_error(
+                ec, cxt,
+                path_error_message("read",
+                                   child_paths[unknown_indices[index]].text(),
+                                   cxt.scratch_allocator()));
           }
 
           status = 2;
@@ -1411,15 +1412,13 @@ class GrepSearch
 public:
   GrepSearch(const ExecContext                  &ec,
              EvalContext                        &cxt,
-             const ArrayList<String>            &args,
              const ArrayList<SourceLocation>    &operand_locations,
              const grep_options                 &options,
              String                              pattern_text,
              const ArrayList<grep_pattern_span> &pattern_spans,
              usize                               first_source_index) throws
-      : m_ec(ec), m_cxt(cxt), m_args(args),
-        m_operand_locations(operand_locations), m_options(options),
-        m_first_source_index(first_source_index),
+      : m_ec(ec), m_cxt(cxt), m_operand_locations(operand_locations),
+        m_options(options), m_first_source_index(first_source_index),
         m_allocator(cxt.scratch_allocator()),
         m_pattern_text(steal(pattern_text)), m_matchers(m_allocator),
         m_recursive_storage(m_allocator), m_sources(m_allocator),
@@ -2055,10 +2054,9 @@ private:
 
       m_ec.print_to_stdout(m_output);
       m_output.clear();
-      report_soft_koshkit_util_error(
-          m_ec, m_cxt, source_location, m_args[0].view(),
-          String{m_cxt.scratch_allocator(), source} + ": " +
-              os::last_system_error_message());
+      report_soft_koshkit_error(
+          m_ec, m_cxt, source_location,
+          path_error_message("read", source, m_cxt.scratch_allocator()));
 
       return;
     }
@@ -2073,7 +2071,6 @@ private:
 
   const ExecContext               &m_ec;
   EvalContext                     &m_cxt;
-  const ArrayList<String>         &m_args;
   const ArrayList<SourceLocation> &m_operand_locations;
   grep_options                     m_options;
   usize                            m_first_source_index;
@@ -2123,8 +2120,7 @@ Grep::execute(const ExecContext               &ec,
   }
 
   if (FLAG_GREP_EXTENDED.is_enabled() && FLAG_GREP_FIXED.is_enabled()) {
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "The -E and -F options conflict");
+    report_soft_koshkit_error(ec, cxt, "The -E and -F options conflict");
 
     return 2;
   }
@@ -2208,10 +2204,9 @@ Grep::execute(const ExecContext               &ec,
         Path{file_name, cxt.scratch_allocator()}.read_entire_file();
 
     if (!contents.has_value()) {
-      report_soft_koshkit_util_error(
-          ec, cxt, FLAG_GREP_PATTERN_FILE.get_location(index), args[0].view(),
-          String{cxt.scratch_allocator(), file_name} + ": " +
-              os::last_system_error_message());
+      report_soft_koshkit_error(
+          ec, cxt, FLAG_GREP_PATTERN_FILE.get_location(index),
+          path_error_message("read", file_name, cxt.scratch_allocator()));
 
       return 2;
     }
@@ -2231,7 +2226,6 @@ Grep::execute(const ExecContext               &ec,
 
   let search                = GrepSearch{ec,
                           cxt,
-                          args,
                           operand_locations,
                           options,
                           steal(pattern_text),
@@ -2258,9 +2252,8 @@ Grep::execute(const ExecContext               &ec,
   let const invalid_pattern = search.find_invalid_pattern();
 
   if (invalid_pattern.has_value()) {
-    report_soft_koshkit_util_error(
+    report_soft_koshkit_error(
         ec, cxt, has_pattern_flag ? ec.source_location() : operand_locations[0],
-        args[0].view(),
         "The pattern '" + String{cxt.scratch_allocator(), *invalid_pattern} +
             "' is not a valid regex");
 

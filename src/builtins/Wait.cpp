@@ -250,7 +250,9 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
       return false;
     };
 
-    while (!job_ids.is_empty() && !other_pids.is_empty()) {
+    /* process substitutions are polled, so the first of them or of the jobs
+       to finish answers, whichever kinds the operands hold. */
+    while (!other_pids.is_empty()) {
       for (let const process_id : other_pids) {
         if (let const status =
                 cxt.wait_for_process_substitution(process_id, false);

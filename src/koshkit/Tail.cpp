@@ -526,7 +526,7 @@ Tail::execute(const ExecContext               &ec,
                         "': " + os::last_system_error_message();
 
     do_flush_output();
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(), message);
+    report_soft_koshkit_error(ec, cxt, message);
     status = 1;
   };
 
@@ -804,8 +804,7 @@ Tail::execute(const ExecContext               &ec,
 
     if (sources[source_index] == "-") {
       if (options.should_follow_name) {
-        report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                       "Cannot follow '-' by name");
+        report_soft_koshkit_error(ec, cxt, "Cannot follow '-' by name");
         status = 1;
         continue;
       }
@@ -867,8 +866,7 @@ Tail::execute(const ExecContext               &ec,
   if (active_count == 0) {
     if (failed_open_count == 0) return status;
 
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                   "No files remaining");
+    report_soft_koshkit_error(ec, cxt, "No files remaining");
 
     return 1;
   }
@@ -879,7 +877,7 @@ Tail::execute(const ExecContext               &ec,
   let const do_report_follow_message =
       [&](const String &message) throws -> void {
     do_flush_output();
-    report_soft_koshkit_util_error(ec, cxt, args[0].view(), message.view());
+    report_soft_koshkit_error(ec, cxt, message.view());
   };
 
   let const do_quote_source = [&](usize source_index) throws -> String {
@@ -1001,8 +999,9 @@ Tail::execute(const ExecContext               &ec,
             unused(os::close_fd(entry.descriptor));
             entry.descriptor = KOSH_INVALID_FD;
           } else {
-            do_report_follow_message(String{allocator, sources[source_index]} +
-                                     ": " + message);
+            do_report_follow_message("Cannot access " +
+                                     do_quote_source(source_index) + ": " +
+                                     message);
             do_deactivate(source_index);
           }
 
@@ -1033,8 +1032,7 @@ Tail::execute(const ExecContext               &ec,
     if (is_watched_process_gone) return status;
 
     if (active_count == 0) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "No files remaining");
+      report_soft_koshkit_error(ec, cxt, "No files remaining");
 
       return 1;
     }

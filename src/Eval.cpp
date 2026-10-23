@@ -1284,7 +1284,7 @@ store_exported_name(StringMap<Value> &names,
                     StringView        key,
                     StringView        spelling) throws -> void
 {
-  if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
+  if constexpr (os::IS_ENVIRONMENT_CASE_SENSITIVE) {
     unused(spelling);
     names.set(key, Nothing{});
   } else {
@@ -1302,7 +1302,7 @@ EvalContext::mark_exported(StringView name) throws -> void
 {
   LOG(All, "marking '%.*s' as exported", static_cast<int>(name.length),
       name.data);
-  if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
+  if constexpr (os::IS_ENVIRONMENT_CASE_SENSITIVE) {
     store_exported_name(variable_store().exported_names(), name, name);
 
     return;
@@ -1318,7 +1318,7 @@ EvalContext::mark_exported(StringView name) throws -> void
 fn
 EvalContext::unmark_exported(StringView name) throws -> void
 {
-  if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE) {
+  if constexpr (os::IS_ENVIRONMENT_CASE_SENSITIVE) {
     variable_store().exported_names().erase(name);
 
     return;
@@ -1498,7 +1498,7 @@ EvalContext::unexport_shell_variable(StringView name) throws -> void
 fn
 EvalContext::is_exported(StringView name) const throws -> bool
 {
-  if constexpr (os::ENVIRONMENT_IS_CASE_SENSITIVE)
+  if constexpr (os::IS_ENVIRONMENT_CASE_SENSITIVE)
     return variable_store().exported_names().find(name).has_value();
 
   char folded[EXPORTED_NAME_FOLD_BYTES];

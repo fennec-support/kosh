@@ -215,9 +215,8 @@ Man::execute(const ExecContext               &ec,
                          cxt.scratch_allocator());
 
     if (!page.has_value()) {
-      report_soft_koshkit_util_error(ec, cxt, args[0].view(),
-                                     "No manual entry for '" +
-                                         operands[name_position] + "'");
+      report_soft_koshkit_error(
+          ec, cxt, "No manual entry for '" + operands[name_position] + "'");
       status = 1;
       continue;
     }

@@ -85,9 +85,9 @@ write_csplit_part(const ExecContext           &ec,
       os::open_file_descriptor(name.view(), os::file_open_mode::Truncate);
 
   if (!descriptor.has_value()) {
-    report_soft_koshkit_util_error(ec, cxt, "csplit",
-                                   "Cannot create '" + name +
-                                       "': " + os::last_system_error_message());
+    report_soft_koshkit_error(ec, cxt,
+                              "Cannot create '" + name +
+                                  "': " + os::last_system_error_message());
 
     return false;
   }
@@ -115,9 +115,9 @@ write_csplit_part(const ExecContext           &ec,
                                     lines[last - 1].length - part_start);
 
     if (!os::write_all(*descriptor, part_start, byte_count)) {
-      report_soft_koshkit_util_error(
-          ec, cxt, "csplit",
-          "Cannot write '" + name + "': " + os::last_system_error_message());
+      report_soft_koshkit_error(ec, cxt,
+                                "Cannot write '" + name +
+                                    "': " + os::last_system_error_message());
 
       return false;
     }

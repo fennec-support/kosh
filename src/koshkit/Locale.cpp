@@ -145,9 +145,8 @@ Locale::execute(const ExecContext               &ec,
     let const  keyword = LOCALE_KEYWORDS.find(operand.view());
 
     if (!keyword.has_value()) {
-      report_soft_koshkit_util_error(
-          ec, cxt, operand_locations[operand_position], args[0].view(),
-          "Unknown name '" + operand + "'");
+      report_soft_koshkit_error(ec, cxt, operand_locations[operand_position],
+                                "Unknown name '" + operand + "'");
 
       return 1;
     }

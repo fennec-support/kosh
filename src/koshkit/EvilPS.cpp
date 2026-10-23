@@ -687,9 +687,9 @@ render_process_snapshot(const ExecContext               &ec,
                                                     int_base::decimal);
 
     if (parsed.is_error()) {
-      report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "evilps",
-                                     "Invalid process id '" + operands[0] + "'",
-                                     "Provide a decimal process id");
+      report_soft_koshkit_error(ec, cxt, operand_locations[0],
+                                "Invalid process id '" + operands[0] + "'",
+                                "Provide a decimal process id");
 
       return 1;
     }
@@ -730,9 +730,9 @@ render_process_snapshot(const ExecContext               &ec,
   }
 
   if (!operands.is_empty()) {
-    report_soft_koshkit_util_error(ec, cxt, operand_locations[0], "evilps",
-                                   "No process has the id " + operands[0],
-                                   "List the current identifiers with ps");
+    report_soft_koshkit_error(ec, cxt, operand_locations[0],
+                              "No process has the id " + operands[0],
+                              "List the current identifiers with ps");
 
     return 1;
   }
@@ -959,9 +959,8 @@ EvilPS::execute(const ExecContext               &ec,
                                            : evilps_resource_mode::Basic;
   let const            should_color  = koshkit_should_color();
 
-  let const report_options =
-      live_report_options::parse(ec, cxt, args[0].view(), FLAG_EVILPS_LIVE,
-                                 FLAG_EVILPS_CUMULATIVE, allocator);
+  let const report_options = live_report_options::parse(
+      ec, cxt, FLAG_EVILPS_LIVE, FLAG_EVILPS_CUMULATIVE, allocator);
 
   if (!report_options.has_value()) return 1;
 

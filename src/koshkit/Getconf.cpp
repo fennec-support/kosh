@@ -372,14 +372,13 @@ fn
 report_configuration_query_error(const ExecContext &ec,
                                  EvalContext       &cxt,
                                  SourceLocation     location,
-                                 StringView         utility_name,
                                  StringView         variable_name) throws -> i32
 {
   let const reason = os::last_system_error_message();
 
-  report_soft_koshkit_util_error(ec, cxt, location, utility_name,
-                                 "Cannot query variable '" + variable_name +
-                                     "': " + reason);
+  report_soft_koshkit_error(ec, cxt, location,
+                            "Cannot query variable '" + variable_name +
+                                "': " + reason);
 
   return 1;
 }
@@ -404,17 +403,16 @@ Getconf::execute(const ExecContext               &ec,
   } else if (operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());
   } else if (operands.count() > 2) {
-    report_soft_koshkit_util_error(ec, cxt, operand_locations[2],
-                                   args[0].view(),
-                                   "Unexpected operand '" + operands[2] + "'");
+    report_soft_koshkit_error(ec, cxt, operand_locations[2],
+                              "Unexpected operand '" + operands[2] + "'");
 
     return 1;
   }
 
   let const do_reject_path_operand = [&]() throws -> i32 {
-    report_soft_koshkit_util_error(
-        ec, cxt, operand_locations[1], args[0].view(),
-        "The variable '" + operands[0] + "' takes no path operand");
+    report_soft_koshkit_error(ec, cxt, operand_locations[1],
+                              "The variable '" + operands[0] +
+                                  "' takes no path operand");
 
     return 1;
   };
@@ -423,10 +421,10 @@ Getconf::execute(const ExecContext               &ec,
       FLAG_GETCONF_SPECIFICATION.value() != "POSIX_V7_LP64_OFF64" &&
       FLAG_GETCONF_SPECIFICATION.value() != "POSIX_V7_ILP32_OFFBIG")
   {
-    report_soft_koshkit_util_error(
-        ec, cxt, FLAG_GETCONF_SPECIFICATION.value_location(), args[0].view(),
-        "Unsupported specification '" + FLAG_GETCONF_SPECIFICATION.value() +
-            "'");
+    report_soft_koshkit_error(ec, cxt,
+                              FLAG_GETCONF_SPECIFICATION.value_location(),
+                              "Unsupported specification '" +
+                                  FLAG_GETCONF_SPECIFICATION.value() + "'");
 
     return 2;
   }
@@ -445,7 +443,7 @@ Getconf::execute(const ExecContext               &ec,
         if (!output.is_empty()) ec.print_to_stdout(output);
 
         return report_configuration_query_error(ec, cxt, error_location,
-                                                args[0].view(), name.view());
+                                                name.view());
       }
 
       append_numeric_configuration_row(output, name.view(), result,
@@ -461,7 +459,7 @@ Getconf::execute(const ExecContext               &ec,
         if (!output.is_empty()) ec.print_to_stdout(output);
 
         return report_configuration_query_error(ec, cxt, error_location,
-                                                args[0].view(), name.view());
+                                                name.view());
       }
 
       append_configuration_row(output, name.view(),
@@ -481,7 +479,7 @@ Getconf::execute(const ExecContext               &ec,
         if (!output.is_empty()) ec.print_to_stdout(output);
 
         return report_configuration_query_error(ec, cxt, error_location,
-                                                args[0].view(), name.view());
+                                                name.view());
       }
 
       append_numeric_configuration_row(output, name.view(), result,
@@ -502,8 +500,8 @@ Getconf::execute(const ExecContext               &ec,
         os::query_string_configuration(*string_key, cxt.scratch_allocator());
 
     if (value.status == os::configuration_query_status::Error) {
-      return report_configuration_query_error(
-          ec, cxt, operand_locations[0], args[0].view(), operands[0].view());
+      return report_configuration_query_error(ec, cxt, operand_locations[0],
+                                              operands[0].view());
     }
 
     if (value.status == os::configuration_query_status::Undefined) {
@@ -528,25 +526,24 @@ Getconf::execute(const ExecContext               &ec,
              path_key.has_value())
   {
     if (operands.count() != 2) {
-      report_soft_koshkit_util_error(
-          ec, cxt, operand_locations[0], args[0].view(),
-          "The variable '" + operands[0] + "' needs a path operand");
+      report_soft_koshkit_error(ec, cxt, operand_locations[0],
+                                "The variable '" + operands[0] +
+                                    "' needs a path operand");
 
       return 1;
     }
 
     result = os::query_path_configuration(operands[1].view(), *path_key);
   } else {
-    report_soft_koshkit_util_error(ec, cxt, operand_locations[0],
-                                   args[0].view(),
-                                   "Unknown variable '" + operands[0] + "'");
+    report_soft_koshkit_error(ec, cxt, operand_locations[0],
+                              "Unknown variable '" + operands[0] + "'");
 
     return 1;
   }
 
   if (result.status == os::configuration_query_status::Error) {
     return report_configuration_query_error(ec, cxt, operand_locations[0],
-                                            args[0].view(), operands[0].view());
+                                            operands[0].view());
   }
 
   if (result.status == os::configuration_query_status::Undefined)

@@ -70,10 +70,19 @@ echo "=== logname operand location ==="
 
 echo "=== nice increment location ==="
 "$BIN" -c 'koshkit nice -n nope true' 2>&1
+echo "status=$?"
+"$BIN" -c 'koshkit renice -n nope 1' 2> /dev/null
+echo "renice-status=$?"
 echo "=== nice increment range ==="
 "$BIN" -c 'koshkit nice -n 2147483648 true' 2>&1
 echo "=== nice command location ==="
 "$BIN" -c 'koshkit nice KOSH_MISSING_COMMAND' 2>&1
+
+echo "=== flock missing command location ==="
+flock_directory=$(mktemp -d)
+"$BIN" -c 'koshkit flock "$1" KOSH_MISSING_COMMAND' sh "$flock_directory" 2>&1 |
+  sed "s|$flock_directory|DIR|g"
+"$BIN_DIR/invoke-koshkit" rm -rf -- "$flock_directory"
 
 echo "=== nl body style location ==="
 "$BIN" -c 'koshkit nl -b invalid' 2>&1

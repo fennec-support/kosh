@@ -367,7 +367,7 @@ Head::execute(const ExecContext               &ec,
               "': " + error_message;
 
           do_flush_output();
-          report_soft_koshkit_util_error(ec, cxt, args[0].view(), message);
+          report_soft_koshkit_error(ec, cxt, message);
           status = 1;
           continue;
         }
@@ -450,8 +450,8 @@ Head::execute(const ExecContext               &ec,
       if (chunk.error_number != 0) {
         do_flush_output();
         os::set_last_system_error(chunk.error_number);
-        report_soft_koshkit_util_error(
-            ec, cxt, args[0].view(),
+        report_soft_koshkit_error(
+            ec, cxt,
             StringView{has_failed_open ? "Cannot open '" : "Cannot read '"} +
                 sources[chunk.source_index] +
                 "': " + os::last_system_error_message());

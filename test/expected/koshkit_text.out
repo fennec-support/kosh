@@ -7,14 +7,16 @@
  4  4 26 fruit.txt
 --- wc -l ---
 4 fruit.txt
+--- wc -w in a UTF-8 locale counts UTF-8 words and skips stray continuation bytes ---
+4
 --- cat multi-chunk input with a missing operand ---
--c:1:1: error: Koshkit `cat`: missing.txt: No such file or directory.
+-c:1:1: error: Koshkit `cat`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit cat batch-input.txt cat-first.txt missing.txt cat-last.txt > cat-output.txt; printf "status=%s\n" "$?"; koshkit cksum cat-output.txt
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 status=1
 578497766 108905 cat-output.txt
 --- numbered cat reads later files after a missing operand ---
--c:1:1: error: Koshkit `cat`: missing.txt: No such file or directory.
+-c:1:1: error: Koshkit `cat`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit cat -n cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      1	first
@@ -97,7 +99,7 @@ status=0
 status=2
 --- wc multi-chunk input with a missing operand ---
 108894 batch-input.txt
--c:1:1: error: Koshkit `wc`: missing.txt: No such file or directory.
+-c:1:1: error: Koshkit `wc`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit wc -c batch-input.txt missing.txt empty.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
      0 empty.txt
@@ -226,7 +228,7 @@ pear.txt:pear
 65541
 --- grep multiple files with a missing operand ---
 sort-a.txt:alpha
--c:1:27: error: Koshkit `grep`: missing.txt: No such file or directory.
+-c:1:27: error: Koshkit `grep`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit grep a sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |                            ^~~~~~~~~~~
 sort-b.txt:beta
@@ -1176,7 +1178,7 @@ status=0
       2       3
 --- wc counts a directory as an empty input ---
       2       5      24 wc-width.txt
--c:1:1: error: Koshkit `wc`: .: Is a directory.
+-c:1:1: error: Koshkit `wc`: Cannot read '.': Is a directory.
      1 |  koshkit wc wc-width.txt . 2>&1; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~
       0       0       0 .

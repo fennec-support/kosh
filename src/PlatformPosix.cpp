@@ -3364,7 +3364,23 @@ uid_to_username(u32 uid) throws -> Maybe<String>
 fn
 gid_to_groupname(u32 gid) throws -> Maybe<String>
 {
+#if defined __APPLE__
+  struct group  entry{};
+  struct group *result = nullptr;
+  char          buffer[16384];
+
+  if (getgrgid_r(static_cast<gid_t>(gid), &entry, buffer, sizeof(buffer),
+                 &result) != 0 ||
+      result == nullptr || result->gr_name == nullptr)
+  {
+    return None;
+  }
+
+  return String{heap_allocator(), result->gr_name};
+#else
+
   return lookup_name_by_id("/etc/group", gid, 2);
+#endif
 }
 
 fn
@@ -3376,13 +3392,45 @@ username_to_uid(StringView username) throws -> Maybe<u32>
     return static_cast<u32>(get_real_user_id());
   }
 
+#if defined __APPLE__
+  let const      name = String{heap_allocator(), username};
+  struct passwd  entry{};
+  struct passwd *result = nullptr;
+  char           buffer[16384];
+
+  if (getpwnam_r(name.c_str(), &entry, buffer, sizeof(buffer), &result) != 0 ||
+      result == nullptr)
+  {
+    return None;
+  }
+
+  return static_cast<u32>(result->pw_uid);
+#else
+
   return lookup_id_by_name("/etc/passwd", username, 2);
+#endif
 }
 
 fn
 groupname_to_gid(StringView groupname) throws -> Maybe<u32>
 {
+#if defined __APPLE__
+  let const     name = String{heap_allocator(), groupname};
+  struct group  entry{};
+  struct group *result = nullptr;
+  char          buffer[16384];
+
+  if (getgrnam_r(name.c_str(), &entry, buffer, sizeof(buffer), &result) != 0 ||
+      result == nullptr)
+  {
+    return None;
+  }
+
+  return static_cast<u32>(result->gr_gid);
+#else
+
   return lookup_id_by_name("/etc/group", groupname, 2);
+#endif
 }
 
 static constexpr int SYSTEM_CONFIGURATION_KEYS[] = {

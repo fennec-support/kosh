@@ -7,6 +7,8 @@
  * and angle-bracket placeholders and elision lines are masked.
  */
 
+#include "../Heredoc.hpp"
+#include "../Lexer.hpp"
 #include "../ParserFormats.hpp"
 
 namespace koshka {
@@ -161,8 +163,10 @@ starts_with_prompt(StringView source,
   return false;
 }
 
-static pure fn
-session_heredoc_delimiter(StringView line) wontthrow -> StringView
+/* the heredoc that a session command line opens, read with the lexer's
+   delimiter rules, or None when the line opens none. */
+static fn
+session_heredoc(StringView line) throws -> Maybe<lexer::pending_heredoc>
 {
   for (usize position = 0; position + 2 < line.length; position++) {
     if (line[position] != '<' || line[position + 1] != '<') {
@@ -174,30 +178,24 @@ session_heredoc_delimiter(StringView line) wontthrow -> StringView
       continue;
     }
 
-    usize at = position + 2;
+    usize     at                = position + 2;
+    let const should_strip_tabs = at < line.length && line[at] == '-';
 
-    if (at < line.length && line[at] == '-') {
+    if (should_strip_tabs) at++;
+    while (at < line.length && (line[at] == ' ' || line[at] == '\t'))
       at++;
+
+    let const word_end = lexer::balanced_scan_delimiter_end(line, at);
+
+    if (word_end > at) {
+      return lexer::pending_heredoc{
+          lexer::unquote_heredoc_delimiter(
+              line.substring_of_length(at, word_end - at), heap_allocator()),
+          should_strip_tabs};
     }
-    while (at < line.length && line[at] == ' ')
-      at++;
-    if (at < line.length && (line[at] == '\'' || line[at] == '"')) {
-      at++;
-    }
-
-    let const word_start = at;
-
-    while (at < line.length &&
-           ((line[at] >= 'A' && line[at] <= 'Z') ||
-            (line[at] >= 'a' && line[at] <= 'z') ||
-            (line[at] >= '0' && line[at] <= '9') || line[at] == '_'))
-      at++;
-
-    if (at > word_start)
-      return line.substring_of_length(word_start, at - word_start);
   }
 
-  return {};
+  return None;
 }
 
 /* memory: String of end bytes from heap_allocator(), reserved up front and
@@ -223,9 +221,9 @@ markdown_analysis_source(StringView        source,
   for (usize position = 0; position < start; position++)
     analysis.push(source[position] == '\n' ? '\n' : ' ');
 
-  usize      position        = start;
-  bool       is_continuation = false;
-  StringView heredoc_delimiter{};
+  usize position        = start;
+  bool  is_continuation = false;
+  let   heredoc         = Maybe<lexer::pending_heredoc>{};
 
   while (position < end) {
     let const line_start = position;
@@ -242,9 +240,11 @@ markdown_analysis_source(StringView        source,
     }
 
     if (language.is_session) {
-      if (!heredoc_delimiter.is_empty()) {
+      if (heredoc.has_value()) {
         is_kept = true;
-        if (trimmed == heredoc_delimiter) heredoc_delimiter = {};
+        if (lexer::match_heredoc_line(content, *heredoc).is_terminator) {
+          heredoc = None;
+        }
       } else if (is_continuation) {
         is_kept = true;
       } else if (content.starts_with("$ ") || content.starts_with("% ")) {
@@ -255,9 +255,7 @@ markdown_analysis_source(StringView        source,
 
       is_continuation =
           is_kept && !trimmed.is_empty() && trimmed[trimmed.length - 1] == '\\';
-      if (is_kept && heredoc_delimiter.is_empty()) {
-        heredoc_delimiter = session_heredoc_delimiter(content);
-      }
+      if (is_kept && !heredoc.has_value()) heredoc = session_heredoc(content);
     }
 
     /* e.g. line = "cp <src> dir" with no session prompt and quote_depth 0.

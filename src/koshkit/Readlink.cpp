@@ -41,9 +41,9 @@ Readlink::execute(const ExecContext               &ec,
     let target = os::read_symlink(operands[i].view(), cxt.scratch_allocator());
 
     if (!target.has_value()) {
-      report_soft_koshkit_util_error(
-          ec, cxt, operand_locations[i], args[0].view(),
-          "'" + operands[i] + "': " + os::last_system_error_message());
+      report_soft_koshkit_error(ec, cxt, operand_locations[i],
+                                "'" + operands[i] +
+                                    "': " + os::last_system_error_message());
       status = 1;
       continue;
     }
