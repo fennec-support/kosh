@@ -936,8 +936,9 @@ validate_invocation(const command_line      &line,
 {
   if (FLAG_MOOD.is_set() && !parse_mood_name(FLAG_MOOD.value())) {
     show_unknown_flag_value("--mood ", FLAG_MOOD.value(),
-                            "Unknown --mood value, expected one of 'kosh', "
-                            "'bash', 'sh', or 'bash-posix'");
+                            "Unknown --mood value '" + FLAG_MOOD.value() +
+                                "', expected one of 'kosh', 'bash', 'sh', or "
+                                "'bash-posix'");
 
     return 2;
   }
