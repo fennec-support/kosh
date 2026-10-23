@@ -1463,8 +1463,8 @@ accepts comma-separated values. The
 .BI \-\-install\-directory= DIR
 option installs into DIR instead, even when it contains sbin.
 .PP
-The shell asks for confirmation with the target and the full path of the new
-binary. Only an answer that begins with y or Y continues, and any other answer
+The shell asks for confirmation with the target, when one is given, and the
+full path of the new binary. Only an answer that begins with y or Y continues, and any other answer
 exits with status 1. The
 .BR \-y " or " \-\-yes
 option skips the question. The
@@ -1475,7 +1475,7 @@ and
 .BI \-\-scp\-command= COMMAND
 options replace ssh and scp, and they are rejected without TARGET.
 .PP
-The uploaded candidate is validated before the target is replaced. A failed
+The copied candidate is validated before the installed binary is replaced. A failed
 installation restores the previous file or symlink.
 .TP
 .B bench
@@ -2314,11 +2314,10 @@ the options. The env, expr, flock, nice, nohup, retry, timeout, watch, and
 xargs utilities end their options at the first operand, so the command or
 expression after it keeps its own options.
 .PP
-The command
+The
 .B assimilate
-without a target installs kosh with one symlink per utility. When direct
-koshkit lookup is
-enabled, a PATH program takes precedence over a bundled utility. A shell
+builtin installs the utility links. When direct koshkit lookup is enabled, a
+PATH program takes precedence over a bundled utility. A shell
 started under a utility name runs that utility. Started as
 .BR koshkit ,
 the link that
@@ -4024,9 +4023,9 @@ blocks, the wait ends and
 reports 128 plus the signal number. The awaited job is left running.
 .PP
 When the shell runs as process 1, it reaps, before each command, the orphaned
-children that no job or process substitution owns. SIGTERM interrupts the
-running command, and the shell then exits with status 143 instead of ignoring
-the signal.
+children that the shell did not start. SIGTERM is forwarded to every other
+process, the running command is interrupted, and the shell then exits with
+status 143 instead of ignoring the signal.
 .SH DIAGNOSTICS
 Errors, warnings, and analysis diagnostics include source locations when a
 mapping exists.

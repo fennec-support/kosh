@@ -583,7 +583,7 @@ Expression::evaluate_root_status(EvalContext         &cxt,
 {
   if (os::ORPHAN_REAP_PENDING) {
     os::ORPHAN_REAP_PENDING = 0;
-    cxt.reap_unowned_children();
+    unused(os::reap_unowned_children());
   }
 
   if (os::INTERRUPT_REQUESTED) {

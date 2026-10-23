@@ -467,15 +467,16 @@ GoodFSW::execute(const ExecContext               &ec,
      no interrupt request is pending. */
   let previous =
       steal(collected_previous).make_sorted(watched_entry_comparator{});
-  let recycled_entries = ArrayList<watched_entry>{watch_allocator};
-  let output           = String{watch_allocator};
-  let watcher          = os::FileWatcher{};
-  let watched_paths    = HashSet{watch_allocator};
+  let  recycled_entries = ArrayList<watched_entry>{watch_allocator};
+  let  output           = String{watch_allocator};
+  let  watcher          = os::FileWatcher{};
+  let  watched_paths    = HashSet{watch_allocator};
+  bool should_rescan    = true;
 
   let const do_watch_directories =
       [&](const ArrayList<watched_entry> &entries) throws {
         for (let const &entry : entries) {
-          if (!watcher.can_watch_more()) return;
+          if (!watcher.reports_child_changes()) return;
           if (os::file_type_letter(entry.mode) != 'd' ||
               watched_paths.contains(entry.path.view()))
           {
@@ -484,23 +485,26 @@ GoodFSW::execute(const ExecContext               &ec,
 
           watcher.watch(entry.path.view());
           watched_paths.add(entry.path.view());
+          should_rescan = true;
         }
       };
 
-  for (let const &operand : operands)
-    watcher.watch(operand.view());
+  if (watcher.reports_child_changes()) {
+    for (let const &operand : operands)
+      watcher.watch(operand.view());
+  }
+
   do_watch_directories(previous);
 
   let const should_color = koshkit_should_color();
 
   bool was_interrupted = false;
-
-  let const is_event_driven = watcher.reports_child_changes();
-  u64       last_scan_nanos = os::monotonic_nanos();
+  u64  last_scan_nanos = os::monotonic_nanos();
 
   loop {
-    let const did_change = watcher.wait(latency_seconds);
+    let const did_change = watcher.wait(latency_seconds) || should_rescan;
 
+    should_rescan = false;
     if (os::INTERRUPT_REQUESTED != 0) {
       was_interrupted         = true;
       os::INTERRUPT_REQUESTED = 0;
@@ -510,7 +514,7 @@ GoodFSW::execute(const ExecContext               &ec,
     let const scan_gap_seconds =
         static_cast<f64>(os::monotonic_nanos() - last_scan_nanos) / 1e9;
 
-    if (!did_change && is_event_driven &&
+    if (!did_change && watcher.reports_child_changes() &&
         scan_gap_seconds < latency_seconds * EVENT_DRIVEN_RESCAN_FACTOR)
     {
       continue;
@@ -528,7 +532,7 @@ GoodFSW::execute(const ExecContext               &ec,
         break;
       }
       scan_path(operands[index].view(), recycled_entries, 0, watch_allocator,
-                      operand_statuses[index].device_id, nullptr);
+                 operand_statuses[index].device_id, nullptr);
     }
 
     if (was_interrupted) {
@@ -571,8 +575,8 @@ GoodFSW::execute(const ExecContext               &ec,
         let const &entry = previous[previous_position];
 
         report_event(output, entry.path.view(), entry.mode,
-                           watch_event::Removed, scan_time, scan_nanoseconds,
-                           timestamp_format, should_color);
+                      watch_event::Removed, scan_time, scan_nanoseconds,
+                      timestamp_format, should_color);
         watched_paths.remove(entry.path.view());
         previous_position++;
         continue;
@@ -585,8 +589,8 @@ GoodFSW::execute(const ExecContext               &ec,
         let const &entry = current[current_position];
 
         report_event(output, entry.path.view(), entry.mode,
-                           watch_event::Created, scan_time, scan_nanoseconds,
-                           timestamp_format, should_color);
+                      watch_event::Created, scan_time, scan_nanoseconds,
+                      timestamp_format, should_color);
         current_position++;
         continue;
       }
@@ -596,12 +600,12 @@ GoodFSW::execute(const ExecContext               &ec,
 
       if (!is_same_content(previous_entry, current_entry)) {
         report_event(output, current_entry.path.view(), current_entry.mode,
-                           watch_event::Updated, scan_time, scan_nanoseconds,
-                           timestamp_format, should_color);
+                      watch_event::Updated, scan_time, scan_nanoseconds,
+                      timestamp_format, should_color);
       } else if (!is_same_attributes(previous_entry, current_entry)) {
         report_event(output, current_entry.path.view(), current_entry.mode,
-                           watch_event::AttributeModified, scan_time,
-                           scan_nanoseconds, timestamp_format, should_color);
+                      watch_event::AttributeModified, scan_time,
+                      scan_nanoseconds, timestamp_format, should_color);
       }
 
       previous_position++;

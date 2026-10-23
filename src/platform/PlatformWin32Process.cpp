@@ -3010,12 +3010,8 @@ reap_process_quietly(process p) -> i32
 }
 
 fn
-reap_unowned_children(opaque *context, child_owner_predicate is_owned) wontthrow
-    -> usize
+reap_unowned_children() wontthrow -> usize
 {
-  unused(context);
-  unused(is_owned);
-
   return 0;
 }
 

@@ -31,6 +31,10 @@ kind, the name entry, the switch case, the class declaration, and the count.
 The source file belongs directly below `src/koshkit`. The source Makefile
 discovers it automatically.
 
+An alias such as egrep is one entry in `KOSHKIT_ALIAS_ENTRIES` with its utility
+kind and implied argument. It joins the koshkit completion data and the bundled
+list in `docs/kosh.1` like a utility.
+
 Do not invoke a host utility to implement bundled behavior. goodcore is the
 known exception: it runs the host tar and zstd until bundled codecs exist. Do
 not duplicate a reader, writer, traversal, numeric parser, signal parser, or

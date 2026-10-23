@@ -1642,9 +1642,19 @@ kosh_wake_callback(int phase) -> int
   try {
     if (phase == 0) {
       if (koshka::os::TERMINATION_SIGNAL != 0) {
+        let const exit_code = 128 + koshka::os::TERMINATION_SIGNAL;
+
         LOG(Info, "pid 1 received signal %d at the prompt, so the shell exits",
             static_cast<int>(koshka::os::TERMINATION_SIGNAL));
-        koshka::utils::quit(128 + koshka::os::TERMINATION_SIGNAL);
+        ::tl_restore_terminal_for_exit();
+
+        try {
+          if (JOB_CONTEXT != nullptr) JOB_CONTEXT->run_exit_trap(exit_code);
+        } catch (...) {
+          LOG(Info, "the EXIT trap failed while pid 1 exits on a signal");
+        }
+
+        koshka::utils::quit(exit_code);
       }
 
       if (koshka::os::CHILD_STATE_CHANGED == 0) return 0;
@@ -3052,8 +3062,9 @@ rewrite_history_events(usize                                        number,
 {
   /* memory: contents holds the durable file when should_rewrite_file is set,
              durable_rewritten and private_rewritten hold the rewritten
-             contents, and the offset arrays hold one usize per record. all are
-             freed on return. the process lock is released by defer.
+             contents, the span arrays hold one entry per removed record, and
+             the offset arrays hold one usize per record. all are freed on
+             return. the process lock is released by defer.
      time:   O(F + B) bytes for the reads, the copies, and the atomic write,
              where F is the durable file size and B is the private buffer size.
              the offset loops take O(count) steps, where count is the record

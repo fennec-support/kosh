@@ -1207,10 +1207,13 @@ acquire_process_lock(StringView       path,
     if (file == INVALID_HANDLE_VALUE) return None;
 
     loop {
-      OVERLAPPED whole_file{};
+      OVERLAPPED lock_range{};
+
+      lock_range.Offset     = MAXDWORD - 1;
+      lock_range.OffsetHigh = MAXDWORD;
 
       if (LockFileEx(file, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
-                     0, MAXDWORD, MAXDWORD, &whole_file) != 0)
+                     0, 1, 0, &lock_range) != 0)
       {
         return file;
       }

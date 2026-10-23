@@ -2473,12 +2473,6 @@ FileWatcher::watch(StringView path) wontthrow -> void
 }
 
 fn
-FileWatcher::can_watch_more() const wontthrow -> bool
-{
-  return false;
-}
-
-fn
 FileWatcher::wait(f64 timeout_seconds) wontthrow -> bool
 {
   /* time:   about timeout_seconds / SLICE_SECONDS sleep calls, fewer when

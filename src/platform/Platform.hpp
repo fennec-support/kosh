@@ -1684,12 +1684,11 @@ public:
   fn
   wait(f64 timeout_seconds) wontthrow -> bool;
   pure fn
-  can_watch_more() const wontthrow -> bool;
-  pure fn
   reports_child_changes() const wontthrow -> bool;
 
 private:
   maybeunused descriptor m_descriptor{KOSH_INVALID_FD};
+  maybeunused bool       m_has_failed_watch{false};
   ArrayList<descriptor>  m_watched_descriptors{heap_allocator()};
   ArrayList<String>      m_watched_paths{heap_allocator()};
 };
@@ -2475,11 +2474,8 @@ extern volatile sig_atomic_t TERMINATION_SIGNAL;
 
 extern volatile sig_atomic_t ORPHAN_REAP_PENDING;
 
-using child_owner_predicate = bool (*)(opaque *context, i64 process_id);
-
 fn
-reap_unowned_children(opaque *context, child_owner_predicate is_owned) wontthrow
-    -> usize;
+reap_unowned_children() wontthrow -> usize;
 
 extern volatile sig_atomic_t CHILD_STATE_CHANGED;
 

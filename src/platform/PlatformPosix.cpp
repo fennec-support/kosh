@@ -2952,8 +2952,12 @@ handle_interrupt(int s) wontthrow -> void
 static fn
 handle_termination(int s) wontthrow -> void
 {
+  let const saved_errno = errno;
+
   TERMINATION_SIGNAL  = s;
   INTERRUPT_REQUESTED = 1;
+  (void) kill(-1, s);
+  errno = saved_errno;
 }
 
 static u64 ENTRY_IGNORED_SIGNALS = 0;
@@ -3223,6 +3227,7 @@ set_trap_handler(i32 signal_number) throws -> void
 
   if (signal_number == SIGPIPE) IS_PIPE_SIGNAL_IGNORED_BY_TRAP = false;
   if (signal_number == SIGINT) IS_INTERRUPT_SIGNAL_IGNORED = false;
+  if (signal_number == SIGTERM) IS_TERMINATION_HANDLER_INSTALLED = false;
   if (signal_number == SIGCHLD) {
     install_child_state_handler();
   } else {
@@ -3248,6 +3253,7 @@ set_trap_ignore(i32 signal_number) throws -> void
   sigdelset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
   if (signal_number == SIGPIPE) IS_PIPE_SIGNAL_IGNORED_BY_TRAP = true;
   if (signal_number == SIGINT) IS_INTERRUPT_SIGNAL_IGNORED = true;
+  if (signal_number == SIGTERM) IS_TERMINATION_HANDLER_INSTALLED = false;
 }
 
 fn
@@ -3266,9 +3272,17 @@ clear_trap_handler(i32 signal_number) throws -> void
     return;
   }
 
+  sigdelset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
+
+  if (signal_number == SIGTERM && getpid() == 1) {
+    install_signal_disposition(SIGTERM, handle_termination);
+    IS_TERMINATION_HANDLER_INSTALLED = true;
+
+    return;
+  }
+
   install_signal_disposition(
       signal_number, signal_number == SIGINT ? handle_interrupt : SIG_DFL);
-  sigdelset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
 }
 
 static constexpr int SYSTEM_CONFIGURATION_KEYS[] = {

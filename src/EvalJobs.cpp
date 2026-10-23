@@ -611,43 +611,6 @@ JobTable::most_recent_job() wontthrow -> job *
   return nullptr;
 }
 
-fn
-EvalContext::reap_unowned_children() throws -> void
-{
-  job_table_store().update_jobs();
-
-  let const do_is_owned = [](opaque *context, i64 process_id) wontthrow {
-    let const &cxt = *static_cast<const EvalContext *>(context);
-
-    for (let const &entry : cxt.job_table_store().jobs()) {
-      if (entry.is_primary_process_active && entry.process_id == process_id) {
-        return true;
-      }
-
-      for (let const process : entry.earlier_pipeline_processes) {
-        if (os::process_id_of(process) == process_id) return true;
-      }
-    }
-
-    for (let const process : cxt.job_table_store().detached_job_processes()) {
-      if (os::process_id_of(process) == process_id) return true;
-    }
-
-    for (let const &held : cxt.expansion_store().held_process_substitutions()) {
-      if (held.child != KOSH_INVALID_PROCESS && held.process_id == process_id) {
-        return true;
-      }
-    }
-
-    return false;
-  };
-
-  let const reaped_count = os::reap_unowned_children(this, do_is_owned);
-
-  if (reaped_count != 0)
-    LOG(Info, "reaped %zu orphaned children as pid 1", reaped_count);
-}
-
 /* memory: a new ArrayList from m_jobs.allocator() holds the kept jobs.
            assigning it to m_jobs frees the previous buffer.
    time:   O(J) moves over m_jobs. each removed job that was not waited adds

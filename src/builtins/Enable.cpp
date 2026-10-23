@@ -259,6 +259,16 @@ Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
+    if (koshkit::KOSHKIT_ALIASES.find(name.view()).has_value()) {
+      report_soft_builtin_error(ec, cxt, location,
+                                StringView{"'"} + name +
+                                    "' is an alias of a bundled utility, so "
+                                    "enable changes the utility it runs");
+      status = 1;
+
+      continue;
+    }
+
     report_soft_builtin_error(
         ec, cxt, location, StringView{"'"} + name + "' is not a shell builtin");
     status = 1;

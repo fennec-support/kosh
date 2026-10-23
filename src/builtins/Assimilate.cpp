@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the assimilate builtin, which installs this shell on a
- * remote SSH target.
+ * remote SSH target, or on this host when no target is given.
  */
 
 #include "../BakedScripts.hpp"
@@ -346,7 +346,7 @@ take_install_directory(const ExecContext &ec,
           append_printable_text(printable_directory, directory);
 
       if (directory.is_empty() || directory[0] != '/' || did_replace_control) {
-        LOG(Info, "ignoring a remote install directory that is relative or "
+        LOG(Info, "ignoring an install directory that is relative or "
                   "contains control characters");
         install_directory = None;
       } else {

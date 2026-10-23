@@ -5621,8 +5621,6 @@ public:
   release_finished_coprocess() throws -> void;
   fn
   hide_coprocess_descriptors() throws -> void;
-  fn
-  reap_unowned_children() throws -> void;
 
   fn
   request_loop_control(control_flow::Kind kind,

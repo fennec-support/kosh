@@ -4163,27 +4163,13 @@ list_process_open_files(i64                      pid,
 #endif
 }
 
-constexpr f64               FILE_WATCHER_SLICE_SECONDS     = 0.1;
-maybeunused constexpr usize FILE_WATCHER_KQUEUE_PATH_LIMIT = 64;
+constexpr f64 FILE_WATCHER_SLICE_SECONDS = 0.1;
 
 fn
 FileWatcher::reports_child_changes() const wontthrow -> bool
 {
 #if defined __linux__
-  return m_descriptor != KOSH_INVALID_FD;
-#else
-  return false;
-#endif
-}
-
-fn
-FileWatcher::can_watch_more() const wontthrow -> bool
-{
-#if defined __linux__
-  return m_descriptor != KOSH_INVALID_FD;
-#elif defined __APPLE__ || defined __FreeBSD__
-  return m_descriptor != KOSH_INVALID_FD &&
-         m_watched_paths.count() < FILE_WATCHER_KQUEUE_PATH_LIMIT;
+  return m_descriptor != KOSH_INVALID_FD && !m_has_failed_watch;
 #else
   return false;
 #endif
@@ -4246,13 +4232,17 @@ FileWatcher::watch(StringView path) wontthrow -> void
   }
 
 #if defined __linux__
-  inotify_add_watch(m_descriptor, file_path,
-                    IN_MASK_ADD | IN_MODIFY | IN_ATTRIB | IN_DELETE_SELF |
-                        IN_MOVE_SELF | IN_CREATE | IN_DELETE | IN_MOVED_FROM |
-                        IN_MOVED_TO);
+  if (inotify_add_watch(m_descriptor, file_path,
+                        IN_MASK_ADD | IN_MODIFY | IN_ATTRIB | IN_DELETE_SELF |
+                            IN_MOVE_SELF | IN_CREATE | IN_DELETE |
+                            IN_MOVED_FROM | IN_MOVED_TO) < 0)
+  {
+    LOG(Info, "watching '%s' failed: %s", file_path, strerror(errno));
+    m_has_failed_watch = true;
+  }
   inotify_add_watch(m_descriptor, directory_path,
-                    IN_MASK_ADD | IN_CREATE | IN_DELETE | IN_MOVED_FROM |
-                        IN_MOVED_TO);
+                    IN_MASK_ADD | IN_MODIFY | IN_ATTRIB | IN_CREATE |
+                        IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
 #else
   usize slot = 0;
 

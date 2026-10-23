@@ -40,13 +40,8 @@ static fn
 is_signal_spelling(StringView spelled, Allocator allocator) throws
     -> bool
 {
-  if (spelled.is_all_decimal_digits()) return true;
-
-  let uppercased = String{allocator, spelled};
-
-  uppercased.uppercase_ascii();
-
-  return os::signal_number_from_name(uppercased.view()).has_value();
+  return spelled.is_all_decimal_digits() ||
+         find_koshkit_signal_name(spelled, allocator).has_value();
 }
 
 fn

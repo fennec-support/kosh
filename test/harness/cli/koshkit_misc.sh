@@ -67,8 +67,7 @@ echo "own-session=$?"
 wait "$probe"
 echo "probe=$?"' _ "$probe_dir/$probe_name" "$probe_name" 2>&1 | grep -v '^\['
 echo "--- pkill rejects an empty session id ---"
-"$BIN" -c 'koshkit pkill -s 1,,2 x' >/dev/null 2>&1
-echo "rc=$?"
+"$BIN" -c 'koshkit pkill -s 1,,2 x' 2>&1 | grep -c "Invalid session id ''"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$probe_dir"
 
 echo "--- killall with no match ---"

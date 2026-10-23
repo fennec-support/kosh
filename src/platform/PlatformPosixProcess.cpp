@@ -327,6 +327,39 @@ take_spawn_failure_status() wontthrow -> Maybe<i32>
   return status;
 }
 
+static fn
+get_spawned_children() wontthrow -> ArrayList<pid_t> &
+{
+  static ArrayList<pid_t> SPAWNED_CHILDREN{heap_allocator()};
+
+  return SPAWNED_CHILDREN;
+}
+
+static fn
+note_spawned_child(pid_t child_pid) wontthrow -> void
+{
+  if (getpid() != 1) return;
+
+  LOG(Debug, "pid 1 records its child %d", static_cast<int>(child_pid));
+
+  try {
+    get_spawned_children().push(child_pid);
+  } catch (...) {
+    LOG(Info, "recording the child %d failed, so the orphan reaper may reap it",
+        static_cast<int>(child_pid));
+  }
+}
+
+static fn
+fork_tracked() wontthrow -> pid_t
+{
+  let const child_pid = fork();
+
+  if (child_pid > 0) note_spawned_child(child_pid);
+
+  return child_pid;
+}
+
 /* a POSIX spawn failure runs in a forked child, which holds a real process
    id, so a placeholder lies above the largest possible pid. */
 fn
@@ -350,7 +383,7 @@ spawn_failure_child(SourceLocation     location,
 
   SPAWN_FAILURE_STATUS = spawn_error == ENOENT ? 127 : 126;
 
-  const pid_t child_pid = check_syscall(fork());
+  const pid_t child_pid = check_syscall(fork_tracked());
 
   if (child_pid == 0) {
     if (process_group != process_group_mode::Inherit) {
@@ -660,6 +693,8 @@ execute_program(ExecContext                     &ec,
                                options.process_group_id, options.process_group);
 
   /* at this point: spawn_error is 0, and child_pid is the spawned child. */
+  note_spawned_child(child_pid);
+
   return child_pid;
 }
 
@@ -745,6 +780,8 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
 
     return None;
   }
+
+  note_spawned_child(child_pid);
 
   /* at this point: child_pid is a spawned child, read_end is the open read end
      of the output pipe, and write_end and devnull_fd are closed. */
@@ -934,7 +971,7 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
 
   note_fork_launch();
 
-  const pid_t child_pid = check_syscall(fork());
+  const pid_t child_pid = check_syscall(fork_tracked());
 
   if (child_pid == 0) {
     try {
@@ -1025,7 +1062,7 @@ fork_job_process() throws -> process
 
   note_fork_launch();
 
-  const pid_t child_pid = check_syscall(fork());
+  const pid_t child_pid = check_syscall(fork_tracked());
 
   if (child_pid == 0) {
     try {
@@ -1223,17 +1260,27 @@ replace_process(ExecContext &&ec) throws -> void
   struct sigaction saved_sigchild_action     = {};
   struct sigaction saved_sigint_action       = {};
   struct sigaction saved_sigpipe_action      = {};
+  struct sigaction saved_sigterm_action      = {};
   let const        saved_interrupt_requested = INTERRUPT_REQUESTED;
+  let const        saved_termination_signal  = TERMINATION_SIGNAL;
+  let const        saved_orphan_reap_pending = ORPHAN_REAP_PENDING;
+  let const        was_termination_handler_installed =
+      IS_TERMINATION_HANDLER_INSTALLED;
 
   check_syscall(sigprocmask(SIG_SETMASK, nullptr, &saved_signal_mask));
   check_syscall(sigaction(SIGCHLD, nullptr, &saved_sigchild_action));
   check_syscall(sigaction(SIGINT, nullptr, &saved_sigint_action));
   check_syscall(sigaction(SIGPIPE, nullptr, &saved_sigpipe_action));
+  check_syscall(sigaction(SIGTERM, nullptr, &saved_sigterm_action));
   defer {
     sigaction(SIGCHLD, &saved_sigchild_action, nullptr);
     sigaction(SIGINT, &saved_sigint_action, nullptr);
     sigaction(SIGPIPE, &saved_sigpipe_action, nullptr);
-    INTERRUPT_REQUESTED = saved_interrupt_requested;
+    sigaction(SIGTERM, &saved_sigterm_action, nullptr);
+    INTERRUPT_REQUESTED              = saved_interrupt_requested;
+    TERMINATION_SIGNAL               = saved_termination_signal;
+    ORPHAN_REAP_PENDING              = saved_orphan_reap_pending;
+    IS_TERMINATION_HANDLER_INSTALLED = was_termination_handler_installed;
     sigprocmask(SIG_SETMASK, &saved_signal_mask, nullptr);
   };
 
@@ -1565,16 +1612,27 @@ reap_process_quietly(process pid) throws -> i32
 }
 
 fn
-reap_unowned_children(opaque *context, child_owner_predicate is_owned) wontthrow
-    -> usize
+reap_unowned_children() wontthrow -> usize
 {
-  usize reaped_count = 0;
+  let  &spawned_children = get_spawned_children();
+  usize reaped_count     = 0;
+
+  for (usize index = spawned_children.count(); index > 0; index--) {
+    siginfo_t info{};
+
+    if (::waitid(P_PID, static_cast<id_t>(spawned_children[index - 1]), &info,
+                 WEXITED | WSTOPPED | WCONTINUED | WNOHANG | WNOWAIT) != 0 &&
+        errno == ECHILD)
+    {
+      spawned_children.remove(index - 1);
+    }
+  }
 
   loop {
     siginfo_t info{};
 
     if (::waitid(P_ALL, 0, &info, WEXITED | WNOHANG | WNOWAIT) != 0) break;
-    if (info.si_pid == 0 || is_owned(context, info.si_pid)) {
+    if (info.si_pid == 0 || spawned_children.find(info.si_pid).has_value()) {
       break;
     }
     if (::waitpid(info.si_pid, nullptr, WNOHANG) != info.si_pid) break;
@@ -2314,7 +2372,7 @@ spawn_measured_child(const ArrayList<String> &argv,
 
   note_spawn_launch();
 
-  const pid_t child_pid = fork();
+  const pid_t child_pid = fork_tracked();
 
   if (child_pid == -1) {
     close(ready_descriptors[0]);
@@ -2974,7 +3032,7 @@ run_traced(const ArrayList<String> &argv, measured_output output) throws
 
   note_spawn_launch();
 
-  let const tracer = fork();
+  let const tracer = fork_tracked();
 
   if (tracer == -1) {
     close(report_descriptors[0]);
@@ -3067,7 +3125,7 @@ run_through_error_pipe(const auto  &raw_argv,
 
   note_spawn_launch();
 
-  let const child = fork();
+  let const child = fork_tracked();
 
   if (child == -1) {
     let const saved_errno = errno;

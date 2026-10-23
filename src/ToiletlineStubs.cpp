@@ -394,9 +394,10 @@ find_no_editor_history_event(Allocator    allocator,
 }
 
 /* memory: encoded_replacements and replacement_byte_offsets hold the
-           replacements. private_rewritten copies the whole branch with the
-           record replaced. private_offsets and durable_offsets hold one entry
-           per retained record and per replacement. the retained_* arrays hold
+           replacements. private_spans holds one span per removed record, and
+           private_rewritten copies the whole branch without the removed
+           records. private_offsets and durable_offsets hold one entry per
+           retained record and per replacement. the retained_* arrays hold
            at most entry_limit entries. steal() frees the previous
            branch_contents. the temporaries are freed on return.
    time:   O(replacement bytes) to encode, O(branch bytes) for the splice and
