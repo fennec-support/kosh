@@ -40,46 +40,6 @@ parser_format_filename(StringView path) wontthrow -> StringView
   return path.substring(start);
 }
 
-pure fn
-parser_format_ascii_equal(StringView left, StringView right) wontthrow -> bool
-{
-  if (left.length != right.length) return false;
-
-  for (usize position = 0; position < left.length; position++) {
-    let left_byte  = left[position];
-    let right_byte = right[position];
-
-    if (left_byte == right_byte) continue;
-    if (left_byte >= 'A' && left_byte <= 'Z') {
-      left_byte += 'a' - 'A';
-    }
-
-    if (right_byte >= 'A' && right_byte <= 'Z') {
-      right_byte += 'a' - 'A';
-    }
-
-    if (left_byte != right_byte) return false;
-  }
-
-  return true;
-}
-
-pure fn
-parser_format_ends_with(StringView path, StringView suffix) wontthrow -> bool
-{
-  return suffix.length <= path.length &&
-         parser_format_ascii_equal(path.substring(path.length - suffix.length),
-                                   suffix);
-}
-
-static pure fn
-path_starts_with(StringView path, StringView prefix) wontthrow -> bool
-{
-  return prefix.length <= path.length &&
-         parser_format_ascii_equal(path.substring_of_length(0, prefix.length),
-                                   prefix);
-}
-
 static pure fn
 known_host_extension(StringView path) wontthrow -> bool
 {
@@ -89,7 +49,7 @@ known_host_extension(StringView path) wontthrow -> bool
   };
 
   for (let const extension : EXTENSIONS)
-    if (parser_format_ends_with(path, extension)) return true;
+    if (utils::ends_with_ascii_ignoring_case(path, extension)) return true;
 
   return false;
 }
@@ -143,8 +103,8 @@ static pure fn
 path_has_directory(StringView path, StringView directory) wontthrow -> bool
 {
   if (path.length >= directory.length &&
-      parser_format_ascii_equal(path.substring_of_length(0, directory.length),
-                                directory))
+      utils::equals_ascii_ignoring_case(
+          path.substring_of_length(0, directory.length), directory))
   {
     return true;
   }
@@ -153,7 +113,7 @@ path_has_directory(StringView path, StringView directory) wontthrow -> bool
        position++)
   {
     if ((path[position] == '/' || path[position] == '\\') &&
-        parser_format_ascii_equal(
+        utils::equals_ascii_ignoring_case(
             path.substring_of_length(position + 1, directory.length),
             directory))
     {
@@ -167,8 +127,8 @@ path_has_directory(StringView path, StringView directory) wontthrow -> bool
 static pure fn
 has_yaml_extension(StringView path) wontthrow -> bool
 {
-  return parser_format_ends_with(path, ".yml") ||
-         parser_format_ends_with(path, ".yaml");
+  return utils::ends_with_ascii_ignoring_case(path, ".yml") ||
+         utils::ends_with_ascii_ignoring_case(path, ".yaml");
 }
 
 static pure fn
@@ -182,24 +142,24 @@ filename_pattern_kind(StringView path, StringView filename) wontthrow
       return parser_format_kind::GitlabCi;
     }
 
-    if (path_starts_with(filename, "compose.") ||
-        path_starts_with(filename, "docker-compose.") ||
-        parser_format_ends_with(filename, ".compose.yml") ||
-        parser_format_ends_with(filename, ".compose.yaml"))
+    if (utils::starts_with_ascii_ignoring_case(filename, "compose.") ||
+        utils::starts_with_ascii_ignoring_case(filename, "docker-compose.") ||
+        utils::ends_with_ascii_ignoring_case(filename, ".compose.yml") ||
+        utils::ends_with_ascii_ignoring_case(filename, ".compose.yaml"))
     {
       return parser_format_kind::Compose;
     }
 
-    if (path_starts_with(filename, "cloudbuild-") ||
-        path_starts_with(filename, "cloudbuild.") ||
-        parser_format_ends_with(filename, ".cloudbuild.yml") ||
-        parser_format_ends_with(filename, ".cloudbuild.yaml"))
+    if (utils::starts_with_ascii_ignoring_case(filename, "cloudbuild-") ||
+        utils::starts_with_ascii_ignoring_case(filename, "cloudbuild.") ||
+        utils::ends_with_ascii_ignoring_case(filename, ".cloudbuild.yml") ||
+        utils::ends_with_ascii_ignoring_case(filename, ".cloudbuild.yaml"))
     {
       return parser_format_kind::CloudBuild;
     }
 
-    if (path_starts_with(filename, "azure-pipelines-") ||
-        path_starts_with(filename, "azure-pipelines.") ||
+    if (utils::starts_with_ascii_ignoring_case(filename, "azure-pipelines-") ||
+        utils::starts_with_ascii_ignoring_case(filename, "azure-pipelines.") ||
         path_has_directory(path, ".azure-pipelines/") ||
         path_has_directory(path, ".azuredevops/"))
     {
@@ -207,14 +167,14 @@ filename_pattern_kind(StringView path, StringView filename) wontthrow
     }
   }
 
-  if (parser_format_ends_with(filename, ".devcontainer.json"))
+  if (utils::ends_with_ascii_ignoring_case(filename, ".devcontainer.json"))
     return parser_format_kind::DevContainer;
-  if (parser_format_ends_with(filename, ".make"))
+  if (utils::ends_with_ascii_ignoring_case(filename, ".make"))
     return parser_format_kind::Makefile;
-  if (path_starts_with(filename, "dockerfile-") ||
-      path_starts_with(filename, "dockerfile_") ||
-      path_starts_with(filename, "containerfile-") ||
-      path_starts_with(filename, "containerfile_"))
+  if (utils::starts_with_ascii_ignoring_case(filename, "dockerfile-") ||
+      utils::starts_with_ascii_ignoring_case(filename, "dockerfile_") ||
+      utils::starts_with_ascii_ignoring_case(filename, "containerfile-") ||
+      utils::starts_with_ascii_ignoring_case(filename, "containerfile_"))
   {
     return parser_format_kind::Dockerfile;
   }
@@ -239,7 +199,7 @@ has_top_level_key(StringView source, StringView key) wontthrow -> bool
 static pure fn
 path_has_tail(StringView path, StringView tail) wontthrow -> bool
 {
-  if (!parser_format_ends_with(path, tail)) return false;
+  if (!utils::ends_with_ascii_ignoring_case(path, tail)) return false;
   if (path.length == tail.length) return true;
 
   let const separator = path[path.length - tail.length - 1];
@@ -304,22 +264,22 @@ detect_format_kind(const parser_format_input &input) throws
   if (named_kind == parser_format_kind::Taskfile)
     return parser_format_kind::Taskfile;
   if (named_kind == parser_format_kind::Dockerfile ||
-      parser_format_ends_with(filename, ".dockerfile") ||
-      parser_format_ends_with(filename, ".containerfile") ||
-      path_starts_with(filename, "dockerfile.") ||
-      path_starts_with(filename, "containerfile."))
+      utils::ends_with_ascii_ignoring_case(filename, ".dockerfile") ||
+      utils::ends_with_ascii_ignoring_case(filename, ".containerfile") ||
+      utils::starts_with_ascii_ignoring_case(filename, "dockerfile.") ||
+      utils::starts_with_ascii_ignoring_case(filename, "containerfile."))
   {
     return parser_format_kind::Dockerfile;
   }
 
   if (named_kind == parser_format_kind::Makefile ||
-      parser_format_ends_with(filename, ".mk"))
+      utils::ends_with_ascii_ignoring_case(filename, ".mk"))
   {
     return parser_format_kind::Makefile;
   }
 
   if (named_kind == parser_format_kind::Justfile ||
-      parser_format_ends_with(filename, ".just"))
+      utils::ends_with_ascii_ignoring_case(filename, ".just"))
   {
     return parser_format_kind::Justfile;
   }
@@ -336,31 +296,31 @@ detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::VscodeTasks;
   if (named_kind == parser_format_kind::DevContainer &&
       (path_has_directory(path, ".devcontainer/") ||
-       parser_format_ends_with(filename, ".devcontainer.json")))
+       utils::ends_with_ascii_ignoring_case(filename, ".devcontainer.json")))
   {
     return parser_format_kind::DevContainer;
   }
 
-  if (parser_format_ends_with(path, ".spec") ||
-      parser_format_ends_with(path, ".spec.in"))
+  if (utils::ends_with_ascii_ignoring_case(path, ".spec") ||
+      utils::ends_with_ascii_ignoring_case(path, ".spec.in"))
   {
     return parser_format_kind::RpmSpec;
   }
-  if (parser_format_ends_with(path, ".md") ||
-      parser_format_ends_with(path, ".markdown") ||
-      parser_format_ends_with(path, ".mdx") ||
-      parser_format_ends_with(path, ".mdc") ||
+  if (utils::ends_with_ascii_ignoring_case(path, ".md") ||
+      utils::ends_with_ascii_ignoring_case(path, ".markdown") ||
+      utils::ends_with_ascii_ignoring_case(path, ".mdx") ||
+      utils::ends_with_ascii_ignoring_case(path, ".mdc") ||
       named_kind == parser_format_kind::Markdown ||
-      parser_format_ascii_equal(language_id, "markdown"))
+      utils::equals_ascii_ignoring_case(language_id, "markdown"))
   {
     return parser_format_kind::Markdown;
   }
 
-  if (parser_format_ascii_equal(language_id, "dockercompose"))
+  if (utils::equals_ascii_ignoring_case(language_id, "dockercompose"))
     return parser_format_kind::Compose;
 
   if (has_yaml_extension(path) ||
-      parser_format_ascii_equal(language_id, "yaml"))
+      utils::equals_ascii_ignoring_case(language_id, "yaml"))
   {
     let const is_ansible_task_file =
         (path_has_directory(path, "tasks/") ||
@@ -417,18 +377,18 @@ detect_format_kind(const parser_format_input &input) throws
     return parser_format_kind::UnknownHost;
   }
 
-  if (parser_format_ascii_equal(language_id, "dockerfile"))
+  if (utils::equals_ascii_ignoring_case(language_id, "dockerfile"))
     return parser_format_kind::Dockerfile;
-  if (parser_format_ascii_equal(language_id, "makefile"))
+  if (utils::equals_ascii_ignoring_case(language_id, "makefile"))
     return parser_format_kind::Makefile;
-  if (parser_format_ascii_equal(language_id, "json") ||
-      parser_format_ascii_equal(language_id, "jsonc"))
+  if (utils::equals_ascii_ignoring_case(language_id, "json") ||
+      utils::equals_ascii_ignoring_case(language_id, "jsonc"))
   {
     return parser_format_kind::UnknownHost;
   }
 
   if (known_host_extension(path) ||
-      parser_format_ascii_equal(filename, "jenkinsfile"))
+      utils::equals_ascii_ignoring_case(filename, "jenkinsfile"))
   {
     return parser_format_kind::UnknownHost;
   }
@@ -1075,7 +1035,7 @@ interpreter_of_value(StringView value) wontthrow -> interpreter_choice
     word = word.substring(*slash + 1);
   if (let const at = word.find_character('@'))
     word = word.substring_of_length(0, *at);
-  if (parser_format_ends_with(word, ".exe"))
+  if (utils::ends_with_ascii_ignoring_case(word, ".exe"))
     word = word.substring_of_length(0, word.length - 4);
 
   /* at this point: word holds no '/' or '@' character. */
@@ -1091,7 +1051,7 @@ interpreter_of_value(StringView value) wontthrow -> interpreter_choice
   };
 
   for (let const other : OTHERS) {
-    if (parser_format_ascii_equal(word, other)) return {true, None};
+    if (utils::equals_ascii_ignoring_case(word, other)) return {true, None};
   }
 
   return {};

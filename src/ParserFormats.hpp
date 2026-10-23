@@ -178,10 +178,6 @@ parser_format_has_substring(StringView source, StringView wanted) wontthrow
 pure fn
 parser_format_filename(StringView path) wontthrow -> StringView;
 pure fn
-parser_format_ascii_equal(StringView left, StringView right) wontthrow -> bool;
-pure fn
-parser_format_ends_with(StringView path, StringView suffix) wontthrow -> bool;
-pure fn
 parser_format_leading_spaces(StringView line) wontthrow -> usize;
 pure fn
 parser_format_json_string_end(StringView source, usize position) wontthrow

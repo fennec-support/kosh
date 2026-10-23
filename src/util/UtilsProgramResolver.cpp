@@ -236,13 +236,7 @@ pure fn
 directory_entry_name_has_casefold_prefix(StringView name,
                                          StringView prefix) wontthrow -> bool
 {
-  if (name.length < prefix.length) return false;
-
-  for (usize position = 0; position < prefix.length; position++)
-    if (ascii_to_lower(name[position]) != ascii_to_lower(prefix[position]))
-      return false;
-
-  return true;
+  return starts_with_ascii_ignoring_case(name, prefix);
 }
 
 static fn

@@ -171,13 +171,6 @@ write_frecency_store(const ArrayList<frecency_entry> &entries,
       *path, ".kosh_directory_history_write", out.view()));
 }
 
-static fn
-equals_ignore_case(StringView text, StringView folded_needle) wontthrow -> bool
-{
-  return text.length == folded_needle.length &&
-         utils::contains_case_insensitive_ascii(text, folded_needle);
-}
-
 } /* namespace */
 
 /* memory: the entries and candidates live in allocator. the file text is
@@ -332,8 +325,10 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const folded_query = query.view().to_lower_ascii(cxt.scratch_allocator());
 
   let const do_match_tier = [&](StringView path) wontthrow -> i32 {
-    if (equals_ignore_case(path, folded_query.view())) return 2;
-    if (equals_ignore_case(Path::filename(path), folded_query.view())) return 1;
+    if (utils::equals_ascii_ignoring_case(path, folded_query.view())) return 2;
+    if (utils::equals_ascii_ignoring_case(Path::filename(path),
+                                          folded_query.view()))
+      return 1;
 
     return 0;
   };

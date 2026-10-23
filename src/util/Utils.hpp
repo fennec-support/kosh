@@ -250,6 +250,37 @@ pure fn
 contains_case_insensitive_ascii(StringView value,
                                 StringView folded_pattern) wontthrow -> bool;
 
+pure inline fn
+starts_with_ascii_ignoring_case(StringView text, StringView prefix) wontthrow
+    -> bool
+{
+  if (text.length < prefix.length) return false;
+
+  for (usize position = 0; position < prefix.length; position++) {
+    if (ascii_to_lower(text[position]) != ascii_to_lower(prefix[position])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+pure inline fn
+equals_ascii_ignoring_case(StringView left, StringView right) wontthrow -> bool
+{
+  return left.length == right.length &&
+         starts_with_ascii_ignoring_case(left, right);
+}
+
+pure inline fn
+ends_with_ascii_ignoring_case(StringView text, StringView suffix) wontthrow
+    -> bool
+{
+  return suffix.length <= text.length &&
+         equals_ascii_ignoring_case(text.substring(text.length - suffix.length),
+                                    suffix);
+}
+
 struct text_position_range
 {
   usize first;

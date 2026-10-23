@@ -8,6 +8,7 @@
  */
 
 #include "../ParserFormats.hpp"
+#include "../util/Utils.hpp"
 
 namespace koshka {
 
@@ -18,7 +19,7 @@ jinja_template_inner_name(StringView filename) wontthrow -> Maybe<StringView>
 
   for (let const suffix : SUFFIXES) {
     if (filename.length > suffix.length &&
-        parser_format_ends_with(filename, suffix))
+        utils::ends_with_ascii_ignoring_case(filename, suffix))
     {
       return filename.substring_of_length(0, filename.length - suffix.length);
     }

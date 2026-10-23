@@ -9,6 +9,7 @@
 
 #include "../Lexer.hpp"
 #include "../ParserFormats.hpp"
+#include "../util/Utils.hpp"
 
 namespace koshka {
 
@@ -46,15 +47,15 @@ docker_instruction(StringView line, usize &content_position) wontthrow
       line.substring_of_length(instruction_start, position - instruction_start);
   let kind = docker_instruction_kind::None;
 
-  if (parser_format_ascii_equal(instruction, "CMD"))
+  if (utils::equals_ascii_ignoring_case(instruction, "CMD"))
     kind = docker_instruction_kind::Command;
-  else if (parser_format_ascii_equal(instruction, "ENTRYPOINT"))
+  else if (utils::equals_ascii_ignoring_case(instruction, "ENTRYPOINT"))
     kind = docker_instruction_kind::Entrypoint;
-  else if (parser_format_ascii_equal(instruction, "HEALTHCHECK"))
+  else if (utils::equals_ascii_ignoring_case(instruction, "HEALTHCHECK"))
     kind = docker_instruction_kind::Healthcheck;
-  else if (parser_format_ascii_equal(instruction, "RUN"))
+  else if (utils::equals_ascii_ignoring_case(instruction, "RUN"))
     kind = docker_instruction_kind::Run;
-  else if (parser_format_ascii_equal(instruction, "SHELL"))
+  else if (utils::equals_ascii_ignoring_case(instruction, "SHELL"))
     kind = docker_instruction_kind::Shell;
 
   if (kind == docker_instruction_kind::None) return kind;
@@ -293,9 +294,11 @@ collect_docker_variables(StringView         source,
       keyword++;
 
     let const word   = text.substring_of_length(0, keyword);
-    let const is_env = parser_format_ascii_equal(word, "ENV");
+    let const is_env = utils::equals_ascii_ignoring_case(word, "ENV");
 
-    if (!is_continued && !is_env && !parser_format_ascii_equal(word, "ARG")) {
+    if (!is_continued && !is_env &&
+        !utils::equals_ascii_ignoring_case(word, "ARG"))
+    {
       continue;
     }
 
@@ -393,8 +396,8 @@ parse_dockerfile_format(const parser_format_input &input,
              trimmed[word_end] != '\t')
         word_end++;
 
-      if (parser_format_ascii_equal(trimmed.substring_of_length(0, word_end),
-                                    "ONBUILD"))
+      if (utils::equals_ascii_ignoring_case(
+              trimmed.substring_of_length(0, word_end), "ONBUILD"))
       {
         let const base = leading_blank_count(line) + word_end;
 
