@@ -31,8 +31,10 @@ kind, the name entry, the switch case, the class declaration, and the count.
 The source file belongs directly below `src/koshkit`. The source Makefile
 discovers it automatically.
 
-Do not invoke a host utility to implement bundled behavior. Do not duplicate a
-reader, writer, traversal, numeric parser, signal parser, or process helper.
+Do not invoke a host utility to implement bundled behavior. goodcore is the
+known exception: it runs the host tar and zstd until bundled codecs exist. Do
+not duplicate a reader, writer, traversal, numeric parser, signal parser, or
+process helper.
 Multi-file utilities preserve the established aggregate status and interrupt
 behavior.
 
