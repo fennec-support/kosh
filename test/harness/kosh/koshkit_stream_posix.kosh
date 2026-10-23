@@ -34,8 +34,6 @@ printf '1\n2\n3\n' | koshkit xargs -P 0 -n 1 sh -c 'exit $1' sh; echo "status=$?
 printf '1\n255\n' | koshkit xargs -P 2 -n 1 sh -c 'exit $1' sh 2>/dev/null; echo "status=$?"
 printf '1\n2\n' | koshkit xargs -P 2 -n 1 sh -c 'kill -9 $$' sh 2>/dev/null; echo "status=$?"
 printf '1\n2\n' | koshkit xargs -P 2 -n 1 ./no-such-program 2>/dev/null; echo "status=$?"
-printf 'echo hi\n' > noexec.sh
-printf 'a\nb\n' | koshkit xargs -P 2 -n 1 ./noexec.sh 2>/dev/null; echo "status=$?"
 printf 'echo script $1\n' > shebangless.sh
 koshkit chmod 755 shebangless.sh
 printf 'a\nb\n' | koshkit xargs -P 2 -n 1 ./shebangless.sh | koshkit sort

@@ -513,14 +513,14 @@ echo "--- wc counts a directory as an empty input ---"
 "$BIN" -c 'koshkit wc wc-width.txt . 2>&1; printf "status=%s\n" "$?"'
 echo "--- nl leaves unnumbered lines without a separator ---"
 printf 'a\n\nb\n' > nl-blank.txt
-"$BIN" -c 'koshkit nl -b n -s ": " nl-blank.txt | od -An -c; koshkit nl -b t -s ": " nl-blank.txt | od -An -c'
+"$BIN" -c 'koshkit nl -b n -s ": " nl-blank.txt | koshkit od -An -c; koshkit nl -b t -s ": " nl-blank.txt | koshkit od -An -c'
 echo "--- nl numbers several files as one stream ---"
 "$BIN" -c 'koshkit nl nl-blank.txt missing.txt nl-blank.txt 2>&1; printf "status=%s\n" "$?"'
 echo "--- unexpand with a tab list converts every blank run ---"
 printf 'a\tb\n' > unexpand-tab.txt
 printf 'a        b\n' > unexpand-spaces.txt
 printf 'ab\t\tc\n' > unexpand-tabs.txt
-"$BIN" -c 'for f in unexpand-tab.txt unexpand-spaces.txt unexpand-tabs.txt; do koshkit unexpand -t 2,6 "$f" | od -An -c; koshkit unexpand -a -t 2,6 "$f" | od -An -c; done'
+"$BIN" -c 'for f in unexpand-tab.txt unexpand-spaces.txt unexpand-tabs.txt; do koshkit unexpand -t 2,6 "$f" | koshkit od -An -c; koshkit unexpand -a -t 2,6 "$f" | koshkit od -An -c; done'
 echo "--- grep with an empty pattern file ---"
 printf 'a\nb\n' > grep-lines.txt
 "$BIN" -c 'koshkit grep -c -f empty.txt grep-lines.txt; printf "status=%s\n" "$?"; koshkit grep -vc -f empty.txt grep-lines.txt; printf "status=%s\n" "$?"'
@@ -550,7 +550,7 @@ printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 env ./xargs-noexec.sh 2>/dev/nul
 printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 ./xargs-script; printf "status=%s\n" "$?"'
 
 echo "--- unexpand copies blanks past the last tab stop ---"
-printf 'abcde \tx\n' | "$BIN" -c 'koshkit unexpand -t 2,4' | od -c | sed -n 1p
+printf 'abcde \tx\n' | "$BIN" -c 'koshkit unexpand -t 2,4 | koshkit od -c' | sed -n 1p
 printf 'abcde  \t x\n' | "$BIN" -c 'koshkit unexpand -t 2,4' | od -c | sed -n 1p
 
 echo "--- xargs -I keeps empty quotes and rejects an open quote ---"

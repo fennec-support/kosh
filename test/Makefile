@@ -58,7 +58,7 @@ SKIPPED_TESTS := \
 	analysis_environment_inheritance progcomp_alias_ghost koshconf_persist \
 	koshconf_system_file koshconf_system_layer child_signal_mask \
 	fd_allocation_failure process_substitution_release \
-	tsh_session_probe
+	tsh_session_probe koshkit_files_posix ctrl_c_koshkit_pty
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
 	koshkit_live_deltas editor_ghost_menu_pty editor_kill_yank_pty \

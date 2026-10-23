@@ -1,0 +1,15 @@
+--- rm reports the error of the failed lookup ---
+-c:1:1: error: Koshkit `rm`: Cannot remove 'rm-plain.txt/x': Not a directory.
+     1 |  koshkit rm rm-plain.txt/x 2>&1; printf "status=%s\n" "$?"; koshkit rm rm-missing.txt 2>&1; printf "status=%s\n" "$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~
+status=1
+-c:1:60: error: Koshkit `rm`: Cannot remove 'rm-missing.txt': No such file or directory.
+     1 |  koshkit rm rm-plain.txt/x 2>&1; printf "status=%s\n" "$?"; koshkit rm rm-missing.txt 2>&1; printf "status=%s\n" "$?"
+       |                                                             ^~~~~~~~~~~~~~~~~~~~~~~~~
+status=1
+--- id looks up the given user ---
+0
+0
+root
+--- chown owner colon sets the login group ---
+status=0

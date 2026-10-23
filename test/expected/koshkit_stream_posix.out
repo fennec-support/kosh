@@ -49,7 +49,6 @@ status=123
 status=124
 status=125
 status=127
-status=126
 script a
 script b
 status=1

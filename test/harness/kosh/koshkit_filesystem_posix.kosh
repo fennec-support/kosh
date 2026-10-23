@@ -141,6 +141,10 @@ echo "mv-directory=$?"
 echo "mv-directory-source=$?"
 echo "mv-directory-tree=$(koshkit stat -c %a "$moved_tree/inner") $(koshkit cat "$moved_tree/link")"
 
+printf 'echo hi\n' > "$root/noexec.sh"
+printf 'a\nb\n' | koshkit xargs -P 2 -n 1 "$root/noexec.sh" 2> "$TEST_NULL_DEVICE"
+echo "xargs-not-executable=$?"
+
 if [[ -n "$root" ]]; then
   "$BIN_DIR/invoke-koshkit" rm -rf -- "$root" "$moved_tree"
 fi

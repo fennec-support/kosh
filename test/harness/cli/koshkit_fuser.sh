@@ -87,7 +87,7 @@ esac
 cwd_status=$?
 if [ "${OS-}" = Windows_NT ]; then
   case $cwd_status:$(cat "$d/cwd-stderr") in
-    1:*"filesystem and directory queries are unsupported on Windows"*) echo cwd-use=passed ;;
+    1:*"Filesystem and directory queries are unsupported on Windows"*) echo cwd-use=passed ;;
     *) echo cwd-use=failed ;;
   esac
 else
@@ -145,7 +145,7 @@ if [ "${OS-}" = Windows_NT ]; then
   "$BIN" -c 'koshkit fuser -c "$1"' fuser "$d/held" > "$d/device" 2>&1
   device_status=$?
   case $device_status:$(cat "$d/device") in
-    1:*"filesystem and directory queries are unsupported on Windows"*) echo device=passed ;;
+    1:*"Filesystem and directory queries are unsupported on Windows"*) echo device=passed ;;
     *) echo device=failed ;;
   esac
 else
