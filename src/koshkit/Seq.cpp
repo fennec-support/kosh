@@ -249,23 +249,7 @@ append_seq_value(String     &output,
                  long double value,
                  Allocator   allocator) throws -> void
 {
-  char      buffer[128];
-  let const needed = snprintf(buffer, sizeof(buffer), format, value);
-
-  if (needed < 0) return;
-  if (static_cast<usize>(needed) < sizeof(buffer)) {
-    output.append(StringView{buffer, static_cast<usize>(needed)});
-
-    return;
-  }
-
-  let const size = static_cast<usize>(needed) + 1;
-  char *const heap_buffer = allocator.alloc_array<char>(size);
-
-  defer { allocator.free_array(heap_buffer, size); };
-
-  snprintf(heap_buffer, size, format, value);
-  output.append(StringView{heap_buffer, static_cast<usize>(needed)});
+  utils::append_formatted(output, format, value, allocator);
 }
 
 /* memory: output grows to about 64 KiB from the scratch arena, which is reset

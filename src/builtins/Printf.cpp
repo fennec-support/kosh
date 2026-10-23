@@ -485,8 +485,6 @@ append_conversion(String                &out,
                   i32                   &exit_status,
                   Allocator              allocator) throws -> void
 {
-  char buffer[256];
-
   if (!is_printf_field_in_range(spec.view())) {
     let message = String{allocator, "The field width or precision in `"};
 
@@ -501,21 +499,7 @@ append_conversion(String                &out,
 
   let const do_append_formatted = [&](const char *format,
                                       auto        value) throws {
-    const int needed = snprintf(buffer, sizeof(buffer), format, value);
-
-    if (needed >= 0 && static_cast<usize>(needed) < sizeof(buffer)) {
-      out += StringView{buffer, static_cast<usize>(needed)};
-    } else if (needed > 0) {
-      let const   size        = static_cast<usize>(needed) + 1;
-      char *const heap_buffer = allocator.alloc_array<char>(size);
-
-      if (heap_buffer != nullptr) {
-        defer { allocator.free_array(heap_buffer, size); };
-
-        snprintf(heap_buffer, size, format, value);
-        out += StringView{heap_buffer, static_cast<usize>(needed)};
-      }
-    }
+    utils::append_formatted(out, format, value, allocator);
   };
 
   switch (conv) {

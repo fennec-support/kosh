@@ -402,6 +402,35 @@ fn
 uint_to_text_into(u64 value, char *buffer, usize buffer_byte_count) wontthrow
     -> StringView;
 
+/* appends value formatted by the printf format to out. Text longer than the
+   stack buffer is formatted again into a block from allocator. */
+template <class T>
+fn
+append_formatted(String     &out,
+                 const char *format,
+                 T           value,
+                 Allocator   allocator) throws -> void
+{
+  char      buffer[256];
+  let const needed = snprintf(buffer, sizeof(buffer), format, value);
+
+  if (needed < 0) return;
+  if (static_cast<usize>(needed) < sizeof(buffer)) {
+    out.append(StringView{buffer, static_cast<usize>(needed)});
+
+    return;
+  }
+
+  let const   size        = static_cast<usize>(needed) + 1;
+  char *const heap_buffer = allocator.alloc_array<char>(size);
+
+  if (heap_buffer == nullptr) return;
+  defer { allocator.free_array(heap_buffer, size); };
+
+  snprintf(heap_buffer, size, format, value);
+  out.append(StringView{heap_buffer, static_cast<usize>(needed)});
+}
+
 fn
 format_minutes_seconds(double seconds, i32 decimal_count = 3) throws
     -> String;
