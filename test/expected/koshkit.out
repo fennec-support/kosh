@@ -100,7 +100,6 @@ ok: koshkit flags complete
 +%y
 +%z
 == koshkit own flags:
---assimilate
 --color
 --help
 --list

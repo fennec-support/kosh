@@ -3,8 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements bundled utility selection, help and sorted listings,
- * direct bare-name dispatch, and multicall symlink installation for the
- * koshkit builtin.
+ * and direct bare-name dispatch for the koshkit builtin.
  */
 
 #include "../Koshkit.hpp"
@@ -25,12 +24,6 @@ HELP_DESCRIPTION_DECL("A bundled utility can be run.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help and list the utilities.");
 FLAG(KOSHKIT_LIST, Bool, '\0', "list", "List the utilities, one per line.");
-FLAG(KOSHKIT_ASSIMILATE,
-     String,
-     '\0',
-     "assimilate",
-     "Install a symlink to this binary for each utility into the given "
-     "directory.");
 FLAG(KOSHKIT_COLOR,
      String,
      '\0',
@@ -91,8 +84,7 @@ get_utility_section(koshkit::Utility::Kind kind) wontthrow -> utility_section
 
 /* memory: the help listing and the --list output are allocated in
            scratch_allocator() and are released when the scratch arena is reset.
-   time:   --assimilate makes one link check and one create_symlink() call per
-           utility, so O(utilities) syscalls. */
+   time:   O(utilities) for a listing. */
 fn
 Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 {
@@ -158,49 +150,6 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
-  if (FLAG_KOSHKIT_ASSIMILATE.is_set()) {
-    if (FLAG_KOSHKIT_ASSIMILATE.value().is_empty())
-      return report_usage_error(ec, cxt, ec.program());
-
-    let const target = os::current_executable_path();
-
-    if (!target.has_value()) {
-      report_soft_builtin_error(
-          ec, cxt, "Cannot resolve this binary's path to assimilate");
-
-      return 1;
-    }
-
-    if (!Path{FLAG_KOSHKIT_ASSIMILATE.value()}.is_directory()) {
-      report_soft_builtin_error(
-          ec, cxt,
-          "Cannot assimilate into '" +
-              String{cxt.scratch_allocator(), FLAG_KOSHKIT_ASSIMILATE.value()} +
-              "': not a directory");
-
-      return 1;
-    }
-
-    /* at this point: target holds the path of this binary, and
-       FLAG_KOSHKIT_ASSIMILATE.value() is a directory. */
-    i32 status = 0;
-
-    for (let const &name : sorted_names) {
-      let link = Path{FLAG_KOSHKIT_ASSIMILATE.value()};
-
-      link.append(name.view());
-      if (link.is_symbolic_link()) os::remove_file(link.view());
-      if (!os::create_symlink(target->view(), link.view())) {
-        report_soft_builtin_error(ec, cxt,
-                                  "Cannot link '" + link.text() +
-                                      "': " + os::last_system_error_message());
-        status = 1;
-      }
-    }
-
-    return status;
-  }
-
   if (FLAG_HELP.is_enabled() || utility_index == ec.args().count()) {
     let listing = String{cxt.scratch_allocator()};
 
@@ -210,7 +159,6 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     listing += "  koshkit [utility] [arg ...]\n";
     listing += "  koshkit --color when [utility] [arg ...]\n";
     listing += "  koshkit --list\n";
-    listing += "  koshkit --assimilate DIR\n";
     listing += "\nUTILITIES\n\n";
 
     let posix_names  = ArrayList<StringView>{cxt.scratch_allocator()};

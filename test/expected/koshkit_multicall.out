@@ -45,6 +45,8 @@ rc=1
      1 |  koshkit --color bogus seq 1
        |                  ^~~~~
 rc=2
+== the kosh binary was installed:
+kosh-installed
 == a symlink was installed for head:
 head-linked
 == a symlinked head routes its own -c flag to the utility:

@@ -1447,11 +1447,16 @@ mood. A restricted shell rejects
 .BR \-\-mood .
 .SS Shell-specific builtins
 .TP
-.BI "assimilate " TARGET
+.BI "assimilate " \fR[\fITARGET\fR]
 The running executable is copied through scp to TARGET and installed as
 .B kosh
 in the first usable remote PATH directory. A path containing sbin is
-skipped. The
+skipped. Without TARGET, the executable is installed the same way into the
+first usable local PATH directory, and a relative symbolic link to
+.B kosh
+is created for each bundled utility and utility alias whose name is free in
+that directory or already links to it. A name that another entry holds is
+kept and reported in one warning. The
 .BI \-\-link\-mood= MOOD
 option requests a relative bash, dash, sh, or kosh link. It may be repeated and
 accepts comma-separated values. The
@@ -1468,7 +1473,7 @@ option prints remote progress. The
 .BI \-\-ssh\-command= COMMAND
 and
 .BI \-\-scp\-command= COMMAND
-options replace ssh and scp.
+options replace ssh and scp, and they are rejected without TARGET.
 .PP
 The uploaded candidate is validated before the target is replaced. A failed
 installation restores the previous file or symlink.
@@ -2310,8 +2315,9 @@ xargs utilities end their options at the first operand, so the command or
 expression after it keeps its own options.
 .PP
 The command
-.BI "koshkit \-\-assimilate " DIR
-installs one symlink per utility into DIR. When direct koshkit lookup is
+.B assimilate
+without a target installs kosh with one symlink per utility. When direct
+koshkit lookup is
 enabled, a PATH program takes precedence over a bundled utility. A shell
 started under a utility name runs that utility. Started as
 .BR koshkit ,

@@ -17,11 +17,12 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[option ...] target");
+HELP_SYNOPSIS_DECL("[option ...] [target]");
 HELP_DESCRIPTION_DECL(
-    "This builtin installs the shell on a remote SSH target.");
+    "This builtin installs the shell on a remote SSH target, or on this host "
+    "with links for the bundled utilities when no target is given.");
 
-FLAG(TRACE, Bool, 'x', "trace", "Trace the remote installation commands.");
+FLAG(TRACE, Bool, 'x', "trace", "Trace the installation commands.");
 FLAG(SSH_COMMAND,
      String,
      '\0',
@@ -41,7 +42,7 @@ FLAG(INSTALL_DIRECTORY,
      String,
      '\0',
      "install-directory",
-     "Install into this remote directory instead of the first writable PATH "
+     "Install into this directory instead of the first writable PATH "
      "directory.");
 FLAG(YES, Bool, 'y', "yes", "Install without asking for confirmation.");
 FLAG(HELP, Bool, '\0', "help", "Display help.");
@@ -58,6 +59,19 @@ enum class trace_output : u8
   Enabled,
 };
 
+enum class install_side : u8
+{
+  Remote,
+  Local,
+};
+
+pure fn
+get_side_word(install_side side) wontthrow -> StringView
+{
+  return side == install_side::Local ? StringView{"local"}
+                                     : StringView{"remote"};
+}
+
 constexpr char REMOTE_DIRECTORY_FUNCTIONS_TEXT[] =
     R"SH(install_rejection=
 directory_is_install_candidate() {
@@ -67,7 +81,7 @@ directory_is_install_candidate() {
     return 1
   fi
   if [ ! -e "$proposed_directory" ] && [ ! -L "$proposed_directory" ]; then
-    install_rejection="'$proposed_directory' does not exist on the remote host"
+    install_rejection="'$proposed_directory' does not exist on the $assimilate_side host"
     return 1
   fi
   if [ ! -d "$proposed_directory" ]; then
@@ -76,12 +90,12 @@ directory_is_install_candidate() {
   fi
   if [ ! -w "$proposed_directory" ]; then
     remote_user=$(id -un 2>/dev/null) || remote_user=unknown
-    install_rejection="the remote user '$remote_user' cannot write to '$proposed_directory'"
+    install_rejection="the $assimilate_side user '$remote_user' cannot write to '$proposed_directory'"
     return 1
   fi
   if [ ! -x "$proposed_directory" ]; then
     remote_user=$(id -un 2>/dev/null) || remote_user=unknown
-    install_rejection="the remote user '$remote_user' cannot search '$proposed_directory' because it lacks execute permission"
+    install_rejection="the $assimilate_side user '$remote_user' cannot search '$proposed_directory' because it lacks execute permission"
     return 1
   fi
   if ! install_dir=$(cd "$proposed_directory" && pwd -P); then
@@ -368,11 +382,11 @@ constexpr char       REMOTE_PREFLIGHT_TEXT[] = R"SH(set -eu
 expected_system=$2
 expected_machine=$3
 if ! remote_system=$(uname -s 2>/dev/null); then
-  printf '%s\n' 'assimilate-error=Cannot determine the remote operating system'
+  printf 'assimilate-error=Cannot determine the %s operating system\n' "$assimilate_side"
   exit 125
 fi
 if ! remote_machine=$(uname -m 2>/dev/null); then
-  printf '%s\n' 'assimilate-error=Cannot determine the remote architecture'
+  printf 'assimilate-error=Cannot determine the %s architecture\n' "$assimilate_side"
   exit 125
 fi
 case $expected_machine in
@@ -439,7 +453,7 @@ select_install_directory() {
     esac
     [ "$has_more" -eq 1 ] || break
   done
-  printf '%s\n' 'assimilate-error=The remote PATH has no writable directory for kosh'
+  printf 'assimilate-error=The %s PATH has no writable directory for kosh\n' "$assimilate_side"
   return 1
 }
 select_install_directory || exit 1
@@ -539,6 +553,7 @@ remote_command(StringView   upload_name,
                StringView   expected_identity,
                StringView   link_moods,
                StringView   install_directory,
+               install_side side,
                trace_output trace,
                Allocator    allocator) throws -> String
 {
@@ -568,8 +583,11 @@ remote_command(StringView   upload_name,
   do_append_argument("sh");
   do_append_argument("-c");
 
-  let transaction_script = String{allocator, REMOTE_DIRECTORY_FUNCTIONS};
+  let transaction_script = String{allocator, "assimilate_side="};
 
+  transaction_script += get_side_word(side);
+  transaction_script += '\n';
+  transaction_script += REMOTE_DIRECTORY_FUNCTIONS;
   transaction_script += REMOTE_TRANSACTION;
   do_append_argument(transaction_script.view());
   do_append_argument("kosh");
@@ -589,6 +607,7 @@ preflight_command(StringView   executable_system,
                   StringView   executable_machine,
                   StringView   requested_directory,
                   StringView   link_moods,
+                  install_side side,
                   trace_output trace,
                   Allocator    allocator) throws -> String
 {
@@ -605,7 +624,9 @@ preflight_command(StringView   executable_system,
   append_shell_quoted_arg(command, requested_directory);
   command += ' ';
   append_shell_quoted_arg(command, link_moods);
-  command += "; ";
+  command += "; assimilate_side=";
+  command += get_side_word(side);
+  command += "\n";
   command += REMOTE_DIRECTORY_FUNCTIONS;
   command += REMOTE_PREFLIGHT;
 
@@ -734,6 +755,59 @@ take_install_directory(const ExecContext &ec,
   return install_directory;
 }
 
+fn
+link_local_utilities(const ExecContext &ec,
+                     EvalContext       &cxt,
+                     StringView         install_directory,
+                     trace_output       trace) throws -> i32
+{
+  trace_stage(ec, trace, "utility links");
+
+  let kosh_path = Path{install_directory};
+
+  kosh_path.append("kosh");
+
+  let skipped_names = String{cxt.scratch_allocator()};
+  i32 status        = 0;
+
+  let const do_link_name = [&](StringView name) throws {
+    let link = Path{install_directory};
+
+    link.append(name);
+
+    if (link.is_symbolic_link() && link.is_same_file_as(kosh_path)) return;
+    if (link.exists() || link.is_symbolic_link()) {
+      if (!skipped_names.is_empty()) skipped_names += ", ";
+      skipped_names += name;
+      return;
+    }
+
+    if (!os::create_symlink("kosh", link.view())) {
+      report_soft_builtin_error(ec, cxt,
+                                "Cannot link '" + link.text() + "' to kosh: " +
+                                    os::last_system_error_message());
+      status = 1;
+    }
+  };
+
+  for (let const &name : koshkit::sorted_util_names())
+    do_link_name(name.view());
+
+  for (let const &alias : koshkit::KOSHKIT_ALIAS_ENTRIES)
+    do_link_name(alias.key.to_string(cxt.scratch_allocator()).view());
+
+  if (!skipped_names.is_empty()) {
+    report_soft_builtin_warning(
+        ec, cxt,
+        "These utilities were not linked because '" +
+            String{cxt.scratch_allocator(), install_directory} +
+            "' already holds another entry with the same name: " +
+            skipped_names);
+  }
+
+  return status;
+}
+
 } /* namespace */
 
 fn
@@ -801,10 +875,22 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
 
   if (is_inside_host_literal) has_invalid_target_character = true;
 
-  if (arguments.count() != 2 || arguments[1].is_empty() ||
-      arguments[1][0] == '-' || has_invalid_target_character)
+  let const is_local = arguments.count() == 1;
+  let const side     = is_local ? install_side::Local : install_side::Remote;
+
+  if (arguments.count() > 2 ||
+      (!is_local && (arguments[1].is_empty() || arguments[1][0] == '-' ||
+                     has_invalid_target_character)))
   {
     return report_usage_error(ec, cxt, ec.program());
+  }
+
+  if (is_local && (FLAG_SSH_COMMAND.is_set() || FLAG_SCP_COMMAND.is_set())) {
+    report_soft_builtin_error(ec, cxt,
+                              "--ssh-command and --scp-command apply only to a "
+                              "remote target, and no target was given");
+
+    return 2;
   }
 
   let const executable = os::current_executable_path();
@@ -819,18 +905,37 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   let const allocator = cxt.scratch_allocator();
   let const trace =
       FLAG_TRACE.is_enabled() ? trace_output::Enabled : trace_output::Disabled;
-  let const scp_command = parse_transport_command(
-      FLAG_SCP_COMMAND.is_set() ? FLAG_SCP_COMMAND.value() : StringView{"scp"},
-      cxt.program_resolver(), allocator);
-  let const ssh_command = parse_transport_command(
-      FLAG_SSH_COMMAND.is_set() ? FLAG_SSH_COMMAND.value() : StringView{"ssh"},
-      cxt.program_resolver(), allocator);
+  let const scp_command =
+      is_local ? Maybe<ArrayList<String>>{}
+               : parse_transport_command(FLAG_SCP_COMMAND.is_set()
+                                             ? FLAG_SCP_COMMAND.value()
+                                             : StringView{"scp"},
+                                         cxt.program_resolver(), allocator);
+  let const ssh_command =
+      is_local ? Maybe<ArrayList<String>>{}
+               : parse_transport_command(FLAG_SSH_COMMAND.is_set()
+                                             ? FLAG_SSH_COMMAND.value()
+                                             : StringView{"ssh"},
+                                         cxt.program_resolver(), allocator);
 
-  if (!scp_command.has_value() || !ssh_command.has_value()) {
+  if (!is_local && (!scp_command.has_value() || !ssh_command.has_value())) {
     report_soft_builtin_error(ec, cxt, "Cannot find the scp or ssh command");
 
     return 127;
   }
+
+  let const do_build_local_shell = [&](String script) throws {
+    let local_arguments = ArrayList<String>{allocator};
+
+    local_arguments.push_managed(executable->view());
+    local_arguments.push_managed("-p");
+    local_arguments.push_managed("--mood");
+    local_arguments.push_managed("sh");
+    local_arguments.push_managed("-c");
+    local_arguments.push(steal(script));
+
+    return local_arguments;
+  };
 
   constexpr PackedStringKey LINK_MOOD_KEYS[] = {
       SSK("bash"),
@@ -890,8 +995,8 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   let const executable_system  = os::executable_system_name();
   let const executable_machine = os::executable_machine_name();
 
-  if (executable_system.view() == "Darwin" ||
-      executable_system.view() == "Windows")
+  if (!is_local && (executable_system.view() == "Darwin" ||
+                    executable_system.view() == "Windows"))
   {
     let warning = String{allocator, "This kosh binary is built for "};
 
@@ -902,14 +1007,20 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
     report_soft_builtin_warning(ec, cxt, warning.view());
   }
 
+  let preflight_script = preflight_command(
+      is_local ? StringView{"any"} : executable_system.view(),
+      is_local ? StringView{"any"} : executable_machine.view(),
+      requested_directory, link_moods.view(), side, trace, allocator);
   let preflight_arguments = ArrayList<String>{allocator};
 
-  append_arguments(preflight_arguments, *ssh_command);
-  preflight_arguments.push_managed("--");
-  preflight_arguments.push(arguments[1].clone());
-  preflight_arguments.push(preflight_command(
-      executable_system.view(), executable_machine.view(), requested_directory,
-      link_moods.view(), trace, allocator));
+  if (is_local) {
+    preflight_arguments = do_build_local_shell(steal(preflight_script));
+  } else {
+    append_arguments(preflight_arguments, *ssh_command);
+    preflight_arguments.push_managed("--");
+    preflight_arguments.push(arguments[1].clone());
+    preflight_arguments.push(steal(preflight_script));
+  }
 
   let const preflight =
       run_captured_program(preflight_arguments, ec, trace, "preflight");
@@ -917,9 +1028,12 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
       take_install_directory(ec, cxt, preflight.output.view(), allocator);
 
   if (!preflight.status.has_value()) {
-    report_soft_builtin_error(ec, cxt,
-                              "The remote check did not finish or could not "
-                              "start the ssh command");
+    report_soft_builtin_error(
+        ec, cxt,
+        is_local ? StringView{"The local check did not finish or could not "
+                              "start this shell's executable"}
+                 : StringView{"The remote check did not finish or could not "
+                              "start the ssh command"});
 
     return 126;
   }
@@ -927,24 +1041,31 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   if (*preflight.status != 0) return *preflight.status;
 
   if (!install_directory.has_value()) {
-    report_soft_builtin_error(
-        ec, cxt, "The remote host did not report an install directory");
+    report_soft_builtin_error(ec, cxt,
+                              "The " + get_side_word(side) +
+                                  " check did not report an install directory");
 
     return 1;
   }
 
   /* at this point: install_directory is an absolute path with no control
-     characters, and the remote preflight exited 0. */
-  LOG(Info, "assimilate chose the remote directory '%s'",
+     characters, and the preflight exited 0. */
+  LOG(Info, "assimilate chose the %.*s directory '%s'",
+      static_cast<int>(get_side_word(side).length), get_side_word(side).data,
       install_directory->c_str());
 
   if (!FLAG_YES.is_enabled()) {
     let prompt = String{allocator, "Install kosh to "};
 
-    prompt += arguments[1].view();
-    prompt += ':';
+    if (!is_local) {
+      prompt += arguments[1].view();
+      prompt += ':';
+    }
+
     prompt += install_directory->view();
-    prompt += "/kosh? [y/N] ";
+    prompt += is_local ? StringView{"/kosh with links for the koshkit "
+                                    "utilities? [y/N] "}
+                       : StringView{"/kosh? [y/N] "};
 
     if (!koshkit::confirm_koshkit_action(ec, prompt.view())) {
       report_soft_builtin_warning(ec, cxt, "The installation was cancelled");
@@ -960,28 +1081,43 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
       "-" + String::from(os::realtime_microseconds(), allocator);
   let const upload_name = String{heap_allocator(), ".kosh-assimilate-"} +
                           transaction_id + ".upload";
-  let const destination = arguments[1].view() + ":" + upload_name;
-
-  let scp_arguments = ArrayList<String>{allocator};
-
-  append_arguments(scp_arguments, *scp_command);
-  scp_arguments.push_managed("-p");
-  scp_arguments.push_managed("--");
-  scp_arguments.push_managed(executable->view());
-  scp_arguments.push_managed(destination.view());
-  status = run_program(scp_arguments, ec, cxt, trace, "upload");
-  if (status != 0) return status;
-
-  let ssh_arguments = ArrayList<String>{allocator};
-
-  append_arguments(ssh_arguments, *ssh_command);
-  ssh_arguments.push_managed("--");
-  ssh_arguments.push(arguments[1].clone());
-  ssh_arguments.push(remote_command(
+  let install_command = remote_command(
       upload_name.view(), transaction_id.view(), expected_identity->view(),
-      link_moods.view(), install_directory->view(), trace, allocator));
+      link_moods.view(), install_directory->view(), side, trace, allocator);
 
-  status = run_program(ssh_arguments, ec, cxt, trace, "install");
+  if (is_local) {
+    let local_command = String{allocator, "cd -- "};
+
+    append_shell_quoted_arg(local_command, install_directory->view());
+    local_command += " && koshkit cp -p -- ";
+    append_shell_quoted_arg(local_command, executable->view());
+    local_command += ' ';
+    append_shell_quoted_arg(
+        local_command, (String{allocator, "./"} + upload_name.view()).view());
+    local_command += " && ";
+    local_command += install_command.view();
+    status = run_program(do_build_local_shell(steal(local_command)), ec, cxt,
+                         trace, "install");
+  } else {
+    let const destination   = arguments[1].view() + ":" + upload_name;
+    let       scp_arguments = ArrayList<String>{allocator};
+
+    append_arguments(scp_arguments, *scp_command);
+    scp_arguments.push_managed("-p");
+    scp_arguments.push_managed("--");
+    scp_arguments.push_managed(executable->view());
+    scp_arguments.push_managed(destination.view());
+    status = run_program(scp_arguments, ec, cxt, trace, "upload");
+    if (status != 0) return status;
+
+    let ssh_arguments = ArrayList<String>{allocator};
+
+    append_arguments(ssh_arguments, *ssh_command);
+    ssh_arguments.push_managed("--");
+    ssh_arguments.push(arguments[1].clone());
+    ssh_arguments.push(steal(install_command));
+    status = run_program(ssh_arguments, ec, cxt, trace, "install");
+  }
 
   /* the install stage exits 3 when the chosen directory can no longer be
      used, so the message is reported here with a location. */
@@ -990,15 +1126,17 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
   if (status == INSTALL_DIRECTORY_LOST_STATUS) {
     report_soft_builtin_error(
         ec, cxt,
-        "Cannot install into " + install_directory->view() +
-            ": the remote install step rejected the directory after the "
-            "preflight accepted it, and the remote host printed the reason "
-            "above");
+        "Cannot install into " + install_directory->view() + ": the " +
+            get_side_word(side) +
+            " install step rejected the directory after the preflight "
+            "accepted it, and the install step printed the reason above");
 
     return 1;
   }
 
-  return status;
+  if (status != 0 || !is_local) return status;
+
+  return link_local_utilities(ec, cxt, install_directory->view(), trace);
 }
 
 } /* namespace koshka */

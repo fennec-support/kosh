@@ -62,12 +62,14 @@ XDG_CONFIG_HOME="$d/conf" KOSH_FLAGS=-x ./koshkit --list 2>&1 | grep -c '^seq$'
 echo "rc=$?"
 
 unset KOSH_FLAGS
-# koshkit --assimilate installs a symlink to the binary called for each utility
-# into a directory, the busybox-style install. A symlinked invocation routes its
-# own flags to the utility rather than the shell CLI. A hermetic temp directory
-# keeps it stable, and it is left in place so the test never runs rm.
+# assimilate without a target installs kosh into a local directory with a
+# symlink for each utility, the busybox-style install. A symlinked invocation
+# routes its own flags to the utility rather than the shell CLI. A hermetic temp
+# directory keeps it stable, and it is left in place so the test never runs rm.
 dir=$(mktemp -d)
-"$BIN" -c "koshkit --assimilate '$dir'" </dev/null
+"$BIN" -c 'assimilate -y --install-directory "$1"' _ "$dir" </dev/null >/dev/null
+echo "== the kosh binary was installed:"
+[ -x "$dir/kosh" ] && [ ! -L "$dir/kosh" ] && echo kosh-installed
 echo "== a symlink was installed for head:"
 [ -L "$dir/head" ] && echo head-linked || echo head-missing
 echo "== a symlinked head routes its own -c flag to the utility:"
