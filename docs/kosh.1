@@ -4008,6 +4008,11 @@ When a trapped signal arrives while
 blocks, the wait ends and
 .B wait
 reports 128 plus the signal number. The awaited job is left running.
+.PP
+When the shell runs as process 1, it reaps orphaned children that no job or
+process substitution owns before each command. SIGTERM interrupts the running
+command, and the shell then exits with status 143 instead of ignoring the
+signal.
 .SH DIAGNOSTICS
 Errors, warnings, and analysis diagnostics include source locations when a
 mapping exists.

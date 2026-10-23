@@ -1565,6 +1565,26 @@ reap_process_quietly(process pid) throws -> i32
 }
 
 fn
+reap_unowned_children(opaque *context, child_owner_predicate is_owned) wontthrow
+    -> usize
+{
+  usize reaped_count = 0;
+
+  loop {
+    siginfo_t info{};
+
+    if (::waitid(P_ALL, 0, &info, WEXITED | WNOHANG | WNOWAIT) != 0) break;
+    if (info.si_pid == 0 || is_owned(context, info.si_pid)) break;
+    if (::waitpid(info.si_pid, nullptr, WNOHANG) != info.si_pid) break;
+
+    LOG(Debug, "reaped the orphan pid %d", static_cast<int>(info.si_pid));
+    reaped_count++;
+  }
+
+  return reaped_count;
+}
+
+fn
 poll_process(process              p,
              i32                 &status_out,
              process_termination *termination_out) wontthrow -> process_state

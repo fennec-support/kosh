@@ -753,6 +753,7 @@ read_recent_system_log_records(StringView log_name,
 }
 
 volatile sig_atomic_t INTERRUPT_REQUESTED = 0;
+volatile sig_atomic_t TERMINATION_SIGNAL  = 0;
 volatile sig_atomic_t CHILD_STATE_CHANGED = 0;
 volatile sig_atomic_t SIGNAL_PENDING      = 0;
 
@@ -2937,6 +2938,13 @@ handle_interrupt(int s) wontthrow -> void
   INTERRUPT_REQUESTED = 1;
 }
 
+static fn
+handle_termination(int s) wontthrow -> void
+{
+  TERMINATION_SIGNAL  = s;
+  INTERRUPT_REQUESTED = 1;
+}
+
 static u64 ENTRY_IGNORED_SIGNALS = 0;
 
 static fn
@@ -3050,10 +3058,22 @@ set_default_signal_handlers(signal_profile profile) throws -> void
   LOG(Info, "installing the shell signal handlers, interactive %d",
       is_interactive ? 1 : 0);
 
+  let const is_process_one = getpid() == 1;
+
   if (is_interactive) {
     sigset_t sm = make_sigset(SIGTERM, SIGQUIT, SIGSTOP, SIGTSTP);
 
+    if (is_process_one) sigdelset(&sm, SIGTERM);
     check_syscall(sigprocmask(SIG_BLOCK, &sm, nullptr));
+  }
+
+  if (is_process_one) {
+    LOG(Info, "running as pid 1, so TERM ends the shell between commands");
+
+    struct sigaction st = {};
+
+    st.sa_handler = handle_termination;
+    check_syscall(sigaction(SIGTERM, &st, nullptr));
   }
 
   install_child_state_handler();

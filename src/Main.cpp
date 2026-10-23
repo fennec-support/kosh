@@ -2956,6 +2956,17 @@ kosh_main(int argc, char **argv) -> int
     ASSERT(!koshka::os::can_fork_evaluator() ||
            !koshka::os::is_child_process());
 
+    if (koshka::os::get_current_process_id() == 1) {
+      context.reap_unowned_children();
+
+      if (koshka::os::TERMINATION_SIGNAL != 0) {
+        LOG(Info, "pid 1 received signal %d, so the shell exits",
+            static_cast<int>(koshka::os::TERMINATION_SIGNAL));
+        koshka::exit_after_final_chunk(
+            context, 128 + koshka::os::TERMINATION_SIGNAL, lint);
+      }
+    }
+
     let  chunk               = koshka::script_chunk{};
     bool did_register_origin = false;
 

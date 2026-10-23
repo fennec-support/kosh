@@ -2456,6 +2456,14 @@ install_fatal_exit_hook(void (*hook)()) throws -> void;
 
 extern volatile sig_atomic_t INTERRUPT_REQUESTED;
 
+extern volatile sig_atomic_t TERMINATION_SIGNAL;
+
+using child_owner_predicate = bool (*)(opaque *context, i64 process_id);
+
+fn
+reap_unowned_children(opaque *context, child_owner_predicate is_owned) wontthrow
+    -> usize;
+
 extern volatile sig_atomic_t CHILD_STATE_CHANGED;
 
 extern volatile sig_atomic_t SIGNAL_PENDING;

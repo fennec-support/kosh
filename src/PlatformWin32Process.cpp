@@ -209,6 +209,7 @@ run_nohup(const ArrayList<String> &argv,
 }
 
 volatile sig_atomic_t INTERRUPT_REQUESTED = 0;
+volatile sig_atomic_t TERMINATION_SIGNAL  = 0;
 volatile sig_atomic_t CHILD_STATE_CHANGED = 0;
 volatile sig_atomic_t SIGNAL_PENDING      = 0;
 
@@ -3005,6 +3006,16 @@ reap_process_quietly(process p) -> i32
   GetExitCodeProcess(p, &code);
 
   return static_cast<i32>(code);
+}
+
+fn
+reap_unowned_children(opaque *context, child_owner_predicate is_owned) wontthrow
+    -> usize
+{
+  unused(context);
+  unused(is_owned);
+
+  return 0;
 }
 
 fn
