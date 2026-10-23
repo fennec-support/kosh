@@ -78,14 +78,31 @@ jobs:
           docker run --rm -v "$PWD:/src" -w /src -e "VERSION=$VERSION" "$IMAGE" \
             sh -euc '
               mkdir -p dist
+              check_hardened_elf() {
+                binary=$1
+                debug_file=$2
+                readelf -h "$binary" | grep -Eq "Type:[[:space:]]+DYN" ||
+                  { echo "$binary is not position independent"; exit 1; }
+                readelf -lW "$binary" | grep -Eq "GNU_STACK.* RW " ||
+                  { echo "$binary has an executable stack"; exit 1; }
+                readelf -s "$debug_file" | grep -Eq " __stack_chk_fail$" ||
+                  { echo "$binary has no stack protector"; exit 1; }
+              }
               make -C src MODE=rel TARGET=Linux ARCH=x86_64 LINUX_ZIG=1
               install -m 755 kosh "dist/kosh-linux-amd64-$VERSION"
+              check_hardened_elf "dist/kosh-linux-amd64-$VERSION" \
+                src/o/Linux/x86_64/rel/kosh.debug
               make -C src MODE=rel TARGET=Linux ARCH=aarch64
               install -m 755 kosh "dist/kosh-linux-aarch64-$VERSION"
               readelf -h "dist/kosh-linux-aarch64-$VERSION" |
                 grep -Eq "Machine:[[:space:]]+AArch64"
+              check_hardened_elf "dist/kosh-linux-aarch64-$VERSION" \
+                src/o/Linux/aarch64/rel/kosh.debug
               make -C src MODE=rel TARGET=Windows_NT ARCH=x86_64
               install -m 755 kosh.exe "dist/kosh-win32-amd64-$VERSION.exe"
+              llvm-nm "dist/kosh-win32-amd64-$VERSION.exe" |
+                grep -q stack_chk_fail ||
+                { echo "The Windows binary has no stack protector"; exit 1; }
               make -C src MODE=rel TARGET=Darwin ARCH=aarch64
               install -m 755 kosh "dist/kosh-darwin-aarch64-$VERSION"
               llvm-strip dist/kosh-*
