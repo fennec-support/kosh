@@ -76,6 +76,9 @@ namespace koshka {
 class ExecContext;
 class Flag;
 
+/* returns to the first column and erases a progress line on a terminal. */
+inline constexpr StringView CLEAR_PROGRESS_LINE{"\r\x1b[2K"};
+
 class SynopsisList
 {
 public:

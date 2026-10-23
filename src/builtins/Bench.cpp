@@ -659,8 +659,7 @@ parse_count_flag(const FlagString &flag, StringView flag_name) throws
   return parsed.value();
 }
 
-constexpr u64    PROGRESS_INTERVAL_NANOS = 16ULL * 1000000ULL;
-const StringView CLEAR_PROGRESS_LINE{"\r\x1b[2K"};
+constexpr u64 PROGRESS_INTERVAL_NANOS = 16ULL * 1000000ULL;
 
 fn
 draw_progress(StringView command,

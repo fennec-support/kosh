@@ -61,7 +61,7 @@ print_progress(const ExecContext     &ec,
   let const should_color = colors::stderr_wants_color();
   let       output       = String{heap_allocator()};
 
-  if (is_terminal) output += "\r\x1b[2K";
+  if (is_terminal) output += CLEAR_PROGRESS_LINE;
   append_report_text(output,
                      "goodcore: ", colors::soft(colors::ansi::BOLD_CYAN),
                      should_color);
@@ -77,7 +77,7 @@ clear_progress(const ExecContext     &ec,
   if (mode == goodcore_progress_mode::Hidden) return;
   if (!colors::stderr_is_a_terminal()) return;
 
-  ec.print_to_stderr("\r\x1b[2K");
+  ec.print_to_stderr(CLEAR_PROGRESS_LINE);
 }
 
 fn
