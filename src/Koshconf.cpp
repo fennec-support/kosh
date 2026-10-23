@@ -409,78 +409,32 @@ lock_koshconf_directory(const Path &target) throws -> os::descriptor
 /* memory: the existing contents of the target, M bytes in a heap string freed
            on return, and two temporary path strings.
    time:   O(N + M) bytes for N new bytes and M existing bytes. syscalls: one
-           stat(), one temporary write, one mode change, and one sync. when the
-           target exists, also one read, one backup write, a mode change, a
-           sync, and a rename. the last step is one rename over the target. */
+           stat() and one replace_file_beside() call, which writes, sets the
+           mode, syncs, renames, and syncs the directory. when the target
+           exists, one read and a replace_file_beside() call for the backup
+           come first. */
 fn
 replace_koshconf_target(const Path &target, StringView contents) throws
     -> void
 {
-  let       status    = os::file_status{};
-  let const mode      = os::stat_path_following(target.view(), status)
-                            ? status.mode & KOSHCONF_PERMISSION_BITS
-                            : KOSHCONF_FILE_MODE & ~os::get_file_creation_mask();
-  let const directory = target.parent_or_current();
-  let const temporary =
-      os::write_to_named_temp_file(directory, ".kosh.conf", contents);
-
-  if (!temporary.has_value()) {
-    throw Error{"Unable to write a file in '" + directory.text() +
-                "': " + os::last_system_error_message()};
-  }
-
-  let const do_discard = [&](StringView action) throws {
-    let const message = os::last_system_error_message();
-
-    unused(os::remove_file(temporary->view()));
-    throw Error{StringView{"Unable to "} + action + " '" + target.text() +
-                "': " + message};
-  };
-
-  if (!os::set_file_mode(temporary->view(), mode))
-    do_discard("set the mode of");
-  if (!os::sync_path(temporary->view(), os::sync_mode::All)) {
-    do_discard("flush the replacement of");
-  }
+  let       status = os::file_status{};
+  let const mode   = os::stat_path_following(target.view(), status)
+                         ? status.mode & KOSHCONF_PERMISSION_BITS
+                         : KOSHCONF_FILE_MODE & ~os::get_file_creation_mask();
 
   if (os::path_exists(target.view())) {
-    let const backup_path = Path{String{target.text()} + ".bak"};
-    let const existing    = target.read_entire_file();
+    let const existing = target.read_entire_file();
 
     if (!existing.has_value()) {
-      do_discard("read the configuration before replacing");
+      throw Error{"Unable to read the configuration '" + target.text() +
+                  "' before replacing it: " + os::last_system_error_message()};
     }
 
-    let const backup_temporary = os::write_to_named_temp_file(
-        directory, ".kosh.conf.bak", existing->view());
-
-    if (!backup_temporary.has_value()) {
-      do_discard("write the configuration backup");
-    }
-
-    let const do_discard_backup = [&](StringView action) throws {
-      let const message = os::last_system_error_message();
-
-      unused(os::remove_file(backup_temporary->view()));
-      unused(os::remove_file(temporary->view()));
-      throw Error{StringView{"Unable to "} + action + " '" + target.text() +
-                  "': " + message};
-    };
-
-    if (!os::set_file_mode(backup_temporary->view(), mode))
-      do_discard_backup("set the backup mode of");
-    if (!os::sync_path(backup_temporary->view(), os::sync_mode::All))
-      do_discard_backup("flush the configuration backup");
-    if (!os::rename_path(backup_temporary->view(), backup_path.view()))
-      do_discard_backup("replace the configuration backup");
-  }
-  /* at this point: temporary holds the synced replacement beside target, and
-     target.bak holds the previous contents when target existed. */
-
-  if (!os::rename_path(temporary->view(), target.view())) {
-    do_discard("replace");
+    utils::replace_file_beside(Path{String{target.text()} + ".bak"},
+                               ".kosh.conf.bak", existing->view(), mode);
   }
 
+  utils::replace_file_beside(target, ".kosh.conf", contents, mode);
   LOG(Info, "wrote the koshconf file '%s'", target.text().c_str());
 }
 

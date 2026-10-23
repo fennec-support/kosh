@@ -73,7 +73,7 @@ warning: Unable to read 'CONFIG/blocked/kosh/kosh.conf': Is a directory.
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
 on
--c:3:1: error: Builtin `koshconf`: Unable to read the configuration before replacing 'CONFIG/blocked/kosh/kosh.conf': Is a directory.
+-c:3:1: error: Builtin `koshconf`: Unable to read the configuration 'CONFIG/blocked/kosh/kosh.conf' before replacing it: Is a directory.
      3 |  koshconf create --force kosh || echo "rc=$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
 rc=1
