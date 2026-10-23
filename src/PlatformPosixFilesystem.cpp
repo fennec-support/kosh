@@ -820,26 +820,37 @@ release_process_lock(descriptor lock) wontthrow -> void
   unused(::close(lock));
 }
 
+static fn
+make_temp_template(const Path &directory, StringView prefix) throws
+    -> ArrayList<char>
+{
+  let name = String{heap_allocator(), prefix};
+
+  name += "_XXXXXX";
+
+  let path_template_path = Path{directory.text()};
+
+  path_template_path.append(name.view());
+
+  let path_template = ArrayList<char>{heap_allocator()};
+
+  path_template.reserve(path_template_path.count() + 1);
+
+  for (usize index = 0; index < path_template_path.count(); index++)
+    path_template.push(path_template_path.c_str()[index]);
+
+  path_template.push('\0');
+
+  return path_template;
+}
+
 fn
 write_to_temp_file(StringView content) throws -> Maybe<descriptor>
 {
   LOG(Debug, "writing %zu bytes into an anonymous temp file", content.count());
 
-  let const temp_dir = Path::temp_directory();
-
-  let path_template_path = Path{temp_dir.text()};
-
-  path_template_path.append("kosh_heredoc_XXXXXX");
-
-  const String   &path_template_text = path_template_path.text();
-  ArrayList<char> path_template{heap_allocator()};
-
-  path_template.reserve(path_template_text.count() + 1);
-
-  for (usize i = 0; i < path_template_text.count(); i++)
-    path_template.push(path_template_text.c_str()[i]);
-
-  path_template.push('\0');
+  let path_template =
+      make_temp_template(Path::temp_directory(), "kosh_heredoc");
 
   let const fd = mkstemp(path_template.begin());
 
@@ -867,22 +878,7 @@ write_to_named_temp_file(const Path &directory,
 {
   if (prefix.find_character('/').has_value()) return None;
 
-  let file_name = String{heap_allocator(), prefix};
-
-  file_name += "_XXXXXX";
-
-  let path_template_path = Path{directory.text()};
-
-  path_template_path.append(file_name.view());
-
-  let path_template = ArrayList<char>{heap_allocator()};
-
-  path_template.reserve(path_template_path.count() + 1);
-
-  for (usize index = 0; index < path_template_path.count(); index++)
-    path_template.push(path_template_path.c_str()[index]);
-
-  path_template.push('\0');
+  let path_template = make_temp_template(directory, prefix);
 
   let const fd = ::mkstemp(path_template.begin());
 
@@ -908,22 +904,7 @@ make_temp_directory(const Path &directory, StringView prefix) throws
 {
   if (prefix.find_character('/').has_value()) return None;
 
-  let directory_name = String{heap_allocator(), prefix};
-
-  directory_name += "_XXXXXX";
-
-  let path_template_path = Path{directory.text()};
-
-  path_template_path.append(directory_name.view());
-
-  let path_template = ArrayList<char>{heap_allocator()};
-
-  path_template.reserve(path_template_path.count() + 1);
-
-  for (usize index = 0; index < path_template_path.count(); index++)
-    path_template.push(path_template_path.c_str()[index]);
-
-  path_template.push('\0');
+  let path_template = make_temp_template(directory, prefix);
 
   if (::mkdtemp(path_template.begin()) == nullptr) return None;
 
