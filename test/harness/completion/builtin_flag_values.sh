@@ -1,4 +1,4 @@
-echo "== kill -s signal names:"
+echo "== kill -s signals:"
 signal_names=$("$BIN" --debug-complete-at 'kill -s ' </dev/null)
 printf '%s\n' "$signal_names" | grep -E '^(KILL|TERM)$'
 if [ "${OS-}" != Windows_NT ]; then
@@ -17,11 +17,11 @@ echo "== trap condition after the print flag:"
 "$BIN" --debug-complete-at 'trap -p RET' </dev/null
 echo "== trap action position is a filename:"
 "$BIN" --debug-complete-at 'trap ' </dev/null | grep -c '^EXIT$'
-echo "== shopt -o reads the set option names:"
+echo "== shopt -o loads the set options:"
 "$BIN" --debug-complete-at 'shopt -o pipe' </dev/null
 echo "== shopt operand stays a shopt name:"
 "$BIN" --debug-complete-at 'shopt xpg' </dev/null
-echo "== enable builtin names:"
+echo "== enable builtins:"
 "$BIN" --debug-complete-at 'enable ech' </dev/null
 echo "== complete -o options:"
 "$BIN" --debug-complete-at 'complete -o ' </dev/null
@@ -30,7 +30,7 @@ echo "== compopt -o and +o options:"
 "$BIN" --debug-complete-at 'compopt +o no' </dev/null
 echo "== compgen -o joined form:"
 "$BIN" --debug-complete-at 'compgen -o=d' </dev/null
-echo "== compgen -V names a variable:"
+echo "== compgen -V completes a variable:"
 "$BIN" -c 'completion_probe_var=1' --debug-complete-at 'compgen -V completion_probe' </dev/null
 echo "== compgen -V joined form:"
 "$BIN" --debug-complete-at 'compgen -V=KOSH_ANSI_RE' </dev/null
@@ -52,7 +52,7 @@ echo "== debug logging levels:"
 "$BIN" --debug-complete-at 'kosh -X ' </dev/null
 echo "== debug logging joined form:"
 "$BIN" --debug-complete-at 'kosh --debug-logging=de' </dev/null
-echo "== every signal flag reads the platform table:"
+echo "== every signal flag uses the platform table:"
 signal_name=$("$BIN" --debug-complete-at 'kill -s ' </dev/null | tail -n 1)
 signal_prefix=$(printf '%s' "$signal_name" | cut -c1-2)
 agreement=yes

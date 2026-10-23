@@ -1,4 +1,4 @@
-== a call passes nothing to a body that reads its arguments:
+== a call passes nothing to a body that uses its arguments:
 -c:2:15: warning: The function 'greet' uses arguments, and no call passes any. (SC2120)
      2 |    echo "hello $1"
        |                ^~
@@ -13,7 +13,7 @@ note: Pass the values 'greet' expects, or forward `"$@"`.
 Encountered 2 warnings.
 == one call with arguments clears every call of that function:
 rc=0
-== a body that reads no argument stays quiet:
+== a body that uses no argument stays quiet:
 rc=0
 == a definition that no call reaches stays quiet:
 rc=0
@@ -58,7 +58,7 @@ note: Pass the arguments at the call.
        |                ^~ the body uses $@ here.
 note: Pass the values 'walk' expects, or forward `"$@"`.
 Encountered 2 warnings.
-== a positional star read names its exact expansion:
+== a positional star read gives its exact expansion:
 -c:2:18: warning: The function 'join' uses arguments, and no call passes any. (SC2120)
      2 |    printf "%s\n" "$*"
        |                   ^~

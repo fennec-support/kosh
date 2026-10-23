@@ -1,5 +1,5 @@
 #!/bin/bash
-# read -N reads exactly the given byte count past any delimiter. It keeps the
+# read -N consumes exactly the given byte count past any delimiter. It keeps the
 # text unsplit and untrimmed in the first name, removes backslashes without -r,
 # and fails when the input ends first, as in bash.
 printf "ab cd\nef" | { read -N 4 a b; echo "rc=$? a=[$a] b=[$b]"; read -N 10 c; echo "rc=$? c=[$c]"; }

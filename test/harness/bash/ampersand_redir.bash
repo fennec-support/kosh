@@ -58,7 +58,7 @@ echo literal {brace} stays a word
 
 # The descriptor variable is allowed an array subscript, and the allocated
 # number is written into that element. An indexed subscript, an associative key,
-# and an arithmetic subscript are each accepted, and the close form reads the
+# and an arithmetic subscript are each accepted, and the close form loads the
 # number back from the element. A base that is not an identifier, a doubled
 # subscript, and an unclosed subscript are rejected the way an unknown command
 # is.
@@ -253,7 +253,7 @@ printf 'from three\n' > "$nonstd_in"
 /bin/sh -c 'echo closed >&3' 3>&- 2>/dev/null | cat
 echo "nonstd_closed_status=$?"
 # The builtin stage runs inside the shell. Its binding is put back before the
-# next command reads the same descriptor.
+# next command uses the same descriptor.
 exec 3>"$nonstd"
 echo replaced 3>/dev/null | cat
 echo still_mine >&3

@@ -40,9 +40,9 @@ from_text=$RANDOM
 RANDOM=0
 from_zero=$RANDOM
 if [ "$from_text" = "$from_zero" ]; then
-  echo text=reads-as-zero
+  echo text=equals-zero
 else
-  echo text=reads-as-something-else
+  echo text=differs-from-zero
 fi
 echo text-value-done
 

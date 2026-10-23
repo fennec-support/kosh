@@ -87,7 +87,7 @@ case $default_report in
   *CPU*|*PAGING*|*SCHEDULER*|*STALLS*|*Activity*) default_scope=extra ;;
   *) default_scope=instant ;;
 esac
-printf 'evilio-default-shape=%s\n' "$default_shape"
+printf 'evilio-default-layout=%s\n' "$default_shape"
 printf 'evilio-default-scope=%s\n' "$default_scope"
 
 disk_report=$("$BIN" -c 'koshkit --color never evilio --cumulative 0.05')
@@ -101,7 +101,7 @@ case $disk_report in
   *CPU*|*MEMORY*|*PAGING*|*SCHEDULER*|*STALLS*|*SWAP*) disk_scope=extra ;;
   *) disk_scope=only-io ;;
 esac
-printf 'evilio-disk-shape=%s\n' "$disk_shape"
+printf 'evilio-disk-layout=%s\n' "$disk_shape"
 printf 'evilio-disk-scope=%s\n' "$disk_scope"
 disk_first_row=$(printf '%s\n' "$disk_report" | sed -n '2p')
 case $disk_first_row in
@@ -156,7 +156,7 @@ case $process_report in
     ;;
   *) process_scope=only-io ;;
 esac
-printf 'evilio-process-shape=%s\n' "$process_shape"
+printf 'evilio-process-layout=%s\n' "$process_shape"
 printf 'evilio-process-scope=%s\n' "$process_scope"
 
 process_report_path=$TEST_TEMP_DIRECTORY/evilio-process-report

@@ -17,7 +17,7 @@ case $report in
   *Archive*Executable*Files*) report_shape=matched ;;
   *) report_shape=wrong ;;
 esac
-printf 'report-shape=%s\n' "$report_shape"
+printf 'report-layout=%s\n' "$report_shape"
 
 contents=$(tar -tf "$uncompressed")
 archive_shape=matched
@@ -51,4 +51,4 @@ if [ -f "$compressed_target" ]; then
 else
   compressed_shape=wrong
 fi
-printf 'compressed-shape=%s\n' "$compressed_shape"
+printf 'compressed-layout=%s\n' "$compressed_shape"

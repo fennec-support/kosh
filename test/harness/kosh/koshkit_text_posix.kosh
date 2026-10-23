@@ -202,7 +202,7 @@ g -s -c apple missing
 g -c apple - b
 g -l apple -
 
-echo "--- stdin names"
+echo "--- stdin label"
 printf 'apple\nzzz\n' | koshkit grep -c apple
 printf 'apple\nzzz\n' | koshkit grep -l apple
 printf 'apple\nzzz\n' | koshkit grep -c apple - b

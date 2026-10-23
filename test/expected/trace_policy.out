@@ -1,4 +1,4 @@
-named traces=0 errors=1
+traces=0 errors=1
 stdin traces=0 errors=1
 eval traces=1 errors=1
 long-command traces=1 errors=1

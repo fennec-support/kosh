@@ -1,9 +1,9 @@
-# The builtin flag stage reads the registered FLAG lists, the set option
+# The builtin flag stage loads the registered FLAG lists, the set option
 # table, the shopt options, kill's signals, and the shell binary's own
 # flags, all without a manpage.
 echo "== set switches:"
 "$BIN" --debug-complete-at 'set -' </dev/null
-echo "== set -o names by prefix:"
+echo "== set -o options by prefix:"
 "$BIN" --debug-complete-at 'set -o no' </dev/null
 echo "== set -o offers no Koshka name:"
 "$BIN" --debug-complete-at 'set -o annoying-' </dev/null
@@ -13,7 +13,7 @@ echo "== kosh no-annoying flag:"
 "$BIN" --debug-complete-at 'kosh --no-a' </dev/null
 echo "== declare letters:"
 "$BIN" --debug-complete-at 'declare -' </dev/null
-echo "== kill signal names:"
+echo "== kill signals:"
 signal_names=$("$BIN" --debug-complete-at 'kill -' </dev/null)
 printf '%s\n' "$signal_names" | grep -E '^-(KILL|TERM)$'
 if [ "${OS-}" != Windows_NT ]; then
@@ -26,7 +26,7 @@ if [ "${OS-}" != Windows_NT ]; then
       printf 'missing-signal=%s\n' "$signal_name"
   done
 fi
-echo "== shopt names by prefix:"
+echo "== shopt options by prefix:"
 "$BIN" --debug-complete-at 'shopt glob' </dev/null
 echo "== read flags:"
 "$BIN" --debug-complete-at 'read -' </dev/null

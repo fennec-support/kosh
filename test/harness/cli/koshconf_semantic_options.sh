@@ -8,7 +8,7 @@ mkdir -p "$work/sub" "$work/config/kosh"
 cd "$work" || exit 1
 export HOME="$work" XDG_CONFIG_HOME="$work/config"
 
-echo "== a script does not change into a directory named as a command:"
+echo "== a script does not change into a directory used as a command word:"
 printf 'sub\necho "status=$?"\n' >script.sh
 "$BIN" --no-diagnostics script.sh 2>&1 | grep -v '^ '
 report_directory='case $PWD in *sub) echo in-sub ;; *) echo not-in-sub ;; esac'

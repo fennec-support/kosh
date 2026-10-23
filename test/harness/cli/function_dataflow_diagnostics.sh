@@ -2,7 +2,7 @@
 
 unset KOSH_FLAGS
 
-echo '== a call passes nothing to a body that reads its arguments:'
+echo '== a call passes nothing to a body that uses its arguments:'
 "$BIN" -n -WWW -c 'greet() {
   echo "hello $1"
 }
@@ -16,7 +16,7 @@ greet world
 greet' 2>&1
 echo "rc=$?"
 
-echo '== a body that reads no argument stays quiet:'
+echo '== a body that uses no argument stays quiet:'
 "$BIN" -n -WWW -c 'greet() {
   echo hello
 }
@@ -54,7 +54,7 @@ echo '== a positional read in a for loop word counts:'
 }
 walk' 2>&1
 
-echo '== a positional star read names its exact expansion:'
+echo '== a positional star read gives its exact expansion:'
 "$BIN" -n -WWW -c 'join() {
   printf "%s\n" "$*"
 }

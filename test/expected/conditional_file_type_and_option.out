@@ -1,6 +1,6 @@
 == file-type primaries follow the platform:
 file-types-ok
-== -o reads the real state of a shell option:
+== -o reports the real state of a shell option:
 pipefail-on
 pipefail-off
 emacs-off

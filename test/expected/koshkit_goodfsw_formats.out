@@ -1,8 +1,8 @@
 machine-status=0
-machine-shape=matched
+machine-layout=matched
 human-status=0
-human-shape=matched
+human-layout=matched
 machine-explicit-status=0
-machine-explicit-shape=matched
+machine-explicit-layout=matched
 human-utc-status=0
-human-utc-shape=matched
+human-utc-layout=matched

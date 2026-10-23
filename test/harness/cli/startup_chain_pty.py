@@ -8,7 +8,7 @@
 # sources a bash startup file with nounset saved and restored. The startup
 # file installs terminal integration hooks the way shell integrations do,
 # appending to PROMPT_COMMAND by its type and adding a preexec hook to PS0
-# that reads the command from history. Each check prints one stable PASS
+# that loads the command from history. Each check prints one stable PASS
 # line.
 
 import os

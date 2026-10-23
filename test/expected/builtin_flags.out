@@ -30,7 +30,7 @@
 -u
 -v
 -x
-== set -o names by prefix:
+== set -o options by prefix:
 noclobber
 noexec
 noglob
@@ -57,10 +57,10 @@ nounset
 -t
 -u
 -x
-== kill signal names:
+== kill signals:
 -KILL
 -TERM
-== shopt names by prefix:
+== shopt options by prefix:
 globasciiranges
 globskipdots
 globstar

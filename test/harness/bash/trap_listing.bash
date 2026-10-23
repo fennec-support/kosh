@@ -251,8 +251,9 @@ echo out-of-range-single
 ( trap 9999; echo out-of-range-single-status=$? ) 2>/dev/null
 echo after-out-of-range-single=$?
 
-# The options are read the way getopt reads them. A joined cluster is accepted,
-# the separator ends the options, and the list form wins over the print form.
+# The options are parsed the way getopt parses them. A joined cluster is
+# accepted, the separator ends the options, and the list form wins over the
+# print form.
 echo print-separator-condition
 ( trap 'echo D' DEBUG; trap -p -- DEBUG; echo print-separator-status=$? )
 echo after-print-separator-condition=$?

@@ -22,7 +22,7 @@ PATH="$dir/linked:$PATH" MANPATH="$dir/man" "$BIN" \
 echo "== koshkit man:"
 PATH="$dir/plain:$PATH" MANPATH="$dir/man" "$BIN" \
   --debug-complete-at 'koshkit man zqpage-b' </dev/null
-echo "== a word that names no page completes a file:"
+echo "== a word that matches no page completes a file:"
 PATH="$dir/plain:$PATH" MANPATH="$dir/man" "$BIN" \
   --debug-complete-at 'man zqf' </dev/null
 cd / || exit 1

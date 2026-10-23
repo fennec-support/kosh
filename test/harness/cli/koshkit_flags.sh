@@ -30,7 +30,7 @@ echo "--- ls -l prints bytes ---"
 "$BIN" -c 'koshkit ls -l big.txt' | sed 's/^-rw-rw-rw- /-rw-r--r-- /; s/^\([^[:space:]]*\)[[:space:]][[:space:]]*\([^[:space:]]*\)[[:space:]][[:space:]]*[^[:space:]]*[[:space:]][[:space:]]*[^[:space:]]*[[:space:]][[:space:]]*\([^[:space:]]*\).*[^[:space:]][[:space:]][[:space:]]*\([^[:space:]]*\)$/\1 \2 \3 \4/'
 echo "--- ls -lh is human-readable ---"
 "$BIN" -c 'koshkit ls -lh big.txt' | sed 's/^-rw-rw-rw- /-rw-r--r-- /; s/^\([^[:space:]]*\)[[:space:]][[:space:]]*\([^[:space:]]*\)[[:space:]][[:space:]]*[^[:space:]]*[[:space:]][[:space:]]*[^[:space:]]*[[:space:]][[:space:]]*\([^[:space:]]*\).*[^[:space:]][[:space:]][[:space:]]*\([^[:space:]]*\)$/\1 \2 \3 \4/'
-echo "--- cp -v names the copy ---"
+echo "--- cp -v prints the copy ---"
 "$BIN" -c 'koshkit cp -v big.txt copy.txt'
-echo "--- mv -v names the move ---"
+echo "--- mv -v prints the move ---"
 "$BIN" -c 'koshkit mv -v copy.txt moved.txt'

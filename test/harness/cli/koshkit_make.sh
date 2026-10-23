@@ -1,4 +1,4 @@
-# The barebones make reads a Makefile, expands its variables, and runs each
+# The barebones make parses a Makefile, expands its variables, and runs each
 # recipe through the shell. The recipe lines echo before they run, and a @ prefix
 # silences that echo.
 unset KOSH_FLAGS MAKEFLAGS MFLAGS MAKELEVEL
@@ -1038,7 +1038,7 @@ report: globbed/*/*.c
 	echo dirs are $(DIRS) and sources are $^
 EOF
 "$BIN" -c 'shopt -s dotglob; koshkit make'
-echo "--- a missing prerequisite names the rule line that needs it ---"
+echo "--- a missing prerequisite cites the rule line that needs it ---"
 : > present-input
 cat > Makefile <<'EOF'
 all: needs
@@ -1054,7 +1054,7 @@ unset KOSH_FLAGS
 dir=$TEST_MKTEMP_DIRECTORY/koshkit-make-error
 "$BIN_DIR/invoke-koshkit" mkdir -p "$dir"
 printf 'V := $(shell nonexistent_prog_zzz)\nall:\n\techo $(V)\n' > "$dir/Makefile"
-echo "== the \$(shell) error names the make source (count):"
+echo "== the \$(shell) error cites the make source (count):"
 result=$("$BIN" -c "cd '$dir'; koshkit make" 2>&1)
 result_status=$?
 test -n "$dir" && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"

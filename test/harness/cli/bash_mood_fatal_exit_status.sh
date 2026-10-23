@@ -33,7 +33,7 @@ printf 'echo ${x:?m}; echo after\n' > file_fatal.sh
 echo "file rc=$?"
 "$BIN" --mood bash < file_fatal.sh 2>/dev/null
 echo "stdin rc=$?"
-echo "== the EXIT trap reads the status a fatal expansion error ends with =="
+echo "== the EXIT trap receives the status a fatal expansion error ends with =="
 for mood in kosh bash bash-posix sh; do
   for script in trap_report.sh trap_setu.sh trap_arith.sh; do
     "$BIN" --mood "$mood" "$script" 2>/dev/null

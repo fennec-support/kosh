@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file defines the option registry, its name, letter, and id lookups, and
- * the compact shopt indexes. It reads and writes each option through the
+ * the compact shopt indexes. It loads and stores each option through the
  * runtime state that owns its value.
  */
 

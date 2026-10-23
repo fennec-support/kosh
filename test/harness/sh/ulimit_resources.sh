@@ -1,5 +1,5 @@
 #!/bin/sh
-# ulimit reads resource limits and the -a table, checked against dash. The
+# ulimit reports resource limits and the -a table, checked against dash. The
 # values come from the same kernel, so kosh and dash report the same numbers.
 # The -u flag is a bash-style alias the test avoids, since dash has none.
 

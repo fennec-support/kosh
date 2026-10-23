@@ -1,4 +1,4 @@
-== an unset name near a set name names it:
+== an unset name near a set name suggests it:
 -c:1:24: warning: The variable 'output_fil' is never assigned, and 'output_file' is assigned. (SC2153)
      1 |  output_file=out; echo "$output_fil"
        |                         ^~~~~~~~~~~
@@ -11,7 +11,7 @@ note: Correct the spelling or assign 'output_fil'.
        |                         ^~~~~~~~~~~
 note: The variable 'output_file' is set. Correct the spelling, or write ${output_fil-} if an empty expansion is intended.
 
-== a transposed pair names the set name:
+== a transposed pair suggests the set name:
 -c:1:30: warning: The variable 'destinaton_path' is never assigned, and 'destination_path' is assigned. (SC2153)
      1 |  destination_path=/tmp; echo "$destinaton_path"
        |                               ^~~~~~~~~~~~~~~~
@@ -34,7 +34,7 @@ note: Assign 'zzzzzzzzzzzzzz' before this use, or set it in the environment.
        |                               ^~~~~~~~~~~~~~~
 note: Replace it with ${zzzzzzzzzzzzzz-} if empty expansion is desired.
 
-== nounset names the set name in its fatal note:
+== nounset gives the set name in its fatal note:
 -c:1:40: error: The variable 'configuration_rot' is never assigned, and 'configuration_root' is assigned. (SC2153)
      1 |  set -u; configuration_root=/etc; echo "$configuration_rot"
        |                                         ^~~~~~~~~~~~~~~~~~

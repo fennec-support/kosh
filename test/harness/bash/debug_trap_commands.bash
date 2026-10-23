@@ -383,7 +383,7 @@ time echo timed
 trap - DEBUG
 echo time-keyword-done
 
-# An action reads the status of the command before the traced one.
+# An action receives the status of the command before the traced one.
 echo action-status
 saved_status=0
 trap 'saved_status=$?; echo "S-$saved_status-[$BASH_COMMAND]"' DEBUG

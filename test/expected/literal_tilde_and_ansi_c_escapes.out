@@ -1,4 +1,4 @@
-== an escaped tilde completes the escaped names:
+== an escaped tilde completes the escaped words:
 \~
 \~zq_root
 == an ANSI C quote escapes a backslash:

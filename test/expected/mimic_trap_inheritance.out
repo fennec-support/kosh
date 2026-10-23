@@ -60,7 +60,7 @@ TMPDIR/bash-script:8:8: error: Builtin `trap`: DEBUG: invalid signal specificati
 note: List the signals with `trap -l`.
 body
 rc=0
-== a mimicked script run as a command reads the same shebang:
+== a mimicked script run as a command uses the same shebang:
 TMPDIR/sh-script:2:20: error: Builtin `trap`: ERR: invalid signal specification.
      2 |  trap "echo action" ERR
        |                     ^~~

@@ -1,10 +1,10 @@
-== export completes variable names without an equals suffix:
+== export completes variable words without an equals suffix:
 KOSH_EXPORT_COMPLETION_UNIQUE
 export-candidate=plain
-== an assignment value is not completed with variable names:
+== an assignment value is not completed with variable words:
 export-value=none
 export-value-prefix=none
-== binding builtins complete variable names after their options:
+== binding builtins complete variable words after their options:
 export -n=plain
 readonly=plain
 readonly -a=plain
@@ -15,7 +15,7 @@ typeset=plain
 typeset -r=plain
 local=plain
 local -i=plain
-== function selecting options do not complete variable names:
+== function selecting options do not complete variable words:
 declare -f=none
 declare -F=none
 declare -fx=none

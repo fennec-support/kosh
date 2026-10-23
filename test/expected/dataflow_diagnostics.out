@@ -19,7 +19,7 @@ note: Correct the spelling or assign 'myvalue'.
      1 |  output_file=out
        |  ^~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'OUTPUTFILE'.
-== a transposed pair still names the assigned variable:
+== a transposed pair still identifies the assigned variable:
 -c:2:7: warning: The variable 'outupt_length' is never assigned, and 'output_length' is assigned. (SC2153)
      2 |  echo "$outupt_length"
        |        ^~~~~~~~~~~~~~
@@ -27,7 +27,7 @@ note: Correct the spelling or assign 'OUTPUTFILE'.
      1 |  output_length=1
        |  ^~~~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'outupt_length'.
-== a dropped byte still names the assigned variable:
+== a dropped byte still identifies the assigned variable:
 -c:2:7: warning: The variable 'destinaton_path' is never assigned, and 'destination_path' is assigned. (SC2153)
      2 |  echo "$destinaton_path"
        |        ^~~~~~~~~~~~~~~~
@@ -105,7 +105,7 @@ note: Assign 'or_value' before this use, or set it in the environment.
 Encountered 2 warnings.
 == a prefix assignment counts as an assignment:
 rc=0
-== the shell maintains these names itself:
+== the shell maintains these variables itself:
 rc=0
 == an exact environment value stays quiet:
 rc=0
@@ -116,7 +116,7 @@ rc=0
 note: Assign 'DATAFLOW_EXPORTED_VLAUE' before this use, or set it in the environment.
 == a KOSH_ name is maintained by the shell:
 rc=0
-== misspelled KOSH and ANSI names are unresolved:
+== misspelled KOSH and ANSI variables are unresolved:
 -c:1:7: warning: The variable 'KOSH_GIT_BRNACH' is never assigned, and the shell provides 'KOSH_GIT_BRANCH'. (SC2153)
      1 |  echo "$KOSH_GIT_BRNACH $KOSH_ANSI_REDD $KOSH_VERSOIN $OPTNID"
        |        ^~~~~~~~~~~~~~~~
@@ -139,7 +139,7 @@ Encountered 4 warnings.
      1 |  echo "$BASH_VERSOIN"
        |        ^~~~~~~~~~~~~
 note: Assign 'BASH_VERSOIN' before this use, or set it in the environment.
-== unavailable catalog names are not suggested:
+== unavailable catalog entries are not suggested:
 -c:1:7: warning: The variable 'BASHOPTZ' is never assigned, and the shell provides 'BASHOPTS'. (SC2153)
      1 |  echo "$BASHOPTZ"
        |        ^~~~~~~~~
@@ -237,7 +237,7 @@ rc=0
        |        ^~~~~~~~~~~~~~
 note: Assign 'rejected_name' before this use, or set it in the environment.
 rc=1
-== a read before a later assignment names that assignment:
+== a read before a later assignment identifies that assignment:
 -c:1:7: warning: The variable 'greeting_text' is used before it is assigned.
      1 |  echo "$greeting_text"
        |        ^~~~~~~~~~~~~~

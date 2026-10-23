@@ -106,7 +106,7 @@ echo x | { cat; }
 # A while-read on the right of a pipe consumes the producer.
 printf 'a\nb\nc\n' | while read l; do echo "got $l"; done
 
-# A brace group reads several lines from the pipe.
+# A brace group consumes several lines from the pipe.
 seq 1 3 | { read a; read b; echo "$a-$b"; }
 
 # The stage runs in a subshell, so its variable changes do not escape.
@@ -135,17 +135,17 @@ count_up | cat | head -2
 # The pipe ends must reach the real fd 0, 1, and 2 so the sub-command the
 # builtin spawns inherits them.
 
-# eval running an external command reads the pipe and writes the next stage.
+# eval running an external command consumes the pipe and writes the next stage.
 printf 'axbxc\n' | eval sed 's/x/_/g'
 
 # eval running cat consumes the producer rather than the terminal.
 echo hi | eval cat
 echo hi | eval 'cat'
 
-# eval running a compound command reads every line of the pipe.
+# eval running a compound command consumes every line of the pipe.
 printf 'a\nb\n' | eval 'while read l; do echo "[$l]"; done'
 
-# command running an external command reads the pipe too.
+# command running an external command consumes the pipe too.
 echo data | command cat
 
 # eval feeding a counting stage sees the whole input.

@@ -56,7 +56,7 @@ echo "cksum-status=$?"
 wait' shell "$directory" "$directory/cksum" 2>&1
 echo "rc=$?"
 
-echo "== grep reads an earlier regular file before opening a later pipe:"
+echo "== grep opens an earlier regular file before opening a later pipe:"
 "$BIN" -c 'koshkit seq 40000' > "$directory/grep-first"
 (cd "$directory" && exec "$BIN" --no-traces --mood bash -c \
   'koshkit grep . grep-first grep') > "$directory/grep-output" 2>/dev/null &

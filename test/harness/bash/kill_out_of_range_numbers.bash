@@ -19,7 +19,7 @@ echo "lowercase-prefixed-name=$?"
 kill -0 -- $$
 echo "dashes-after-signal=$?"
 kill -s 0 -- $$
-echo "dashes-after-named-signal=$?"
+echo "dashes-after-signal-name=$?"
 # kill -l takes 0, EXIT, and lowercase signals, and -s takes an attached signal.
 kill -l 0 EXIT int
 kill -sCONT $$

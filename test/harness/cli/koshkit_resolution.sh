@@ -28,7 +28,7 @@ echo "=== sh mood, empty PATH, not found ==="
     printf 'rc=%s\n' "$?"
 } | "invoke-normalize-trace" "$BIN"
 
-echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on turns bare names on ==="
+echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on turns bare commands on ==="
 "$BIN" -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on; seq 3'
 
 echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on passes bare Koshka utility flags ==="
@@ -41,7 +41,7 @@ esac
 echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on passes bare POSIX utility flags ==="
 "$BIN" -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on; ls --help' >/dev/null
 
-echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on leaves unknown names unresolved ==="
+echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on leaves unknown commands unresolved ==="
 "$BIN" -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on; command -v KOSH_NOT_A_UTILITY; echo "rc=$?"'
 
 echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on preserves builtin precedence ==="
@@ -53,7 +53,7 @@ echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on preser
 echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on preserves function precedence ==="
 "$BIN" -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on; seq() { echo function; }; seq'
 
-echo "=== --enable-koshkit turns bare names on ==="
+echo "=== --enable-koshkit turns bare commands on ==="
 "$BIN" --enable-koshkit -c 'PATH=; seq 3'
 
 echo "=== --enable-koshkit prefers a PATH binary ==="
@@ -87,7 +87,7 @@ echo "=== unknown utility errors ==="
 "$BIN" -c 'koshkit nope' 2>&1
 echo "rc=$?"
 
-echo "=== a utility named by one expanded word ==="
+echo "=== a utility selected by one expanded word ==="
 "$BIN" -c 'set -- koshkit seq 2 3; "$@"' 2>&1
 echo "rc=$?"
 "$BIN" -c 'set -- koshkit --color never seq 4 4; "$@"' 2>&1

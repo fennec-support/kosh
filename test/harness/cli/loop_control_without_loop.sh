@@ -2,7 +2,7 @@ unset KOSH_FLAGS
 # break and continue with no enclosing loop report under the bash mood, stay
 # silent under the posix mood, and never carry a jump out of the construct that
 # holds them.
-echo "== the bash mood names the builtin and keeps running:"
+echo "== the bash mood reports the builtin and keeps running:"
 "$BIN" --mood bash -c 'echo a; break; echo b; continue; echo c'; echo "rc=$?"
 echo "== the status of each report is zero:"
 "$BIN" --mood bash -c 'break; echo break_rc=$?; continue; echo continue_rc=$?'

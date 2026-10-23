@@ -3,7 +3,7 @@
 # reduced to nothing by the gate falls through to the filesystem. A function
 # spec that replies nothing, returns status 124, or replies only options for an
 # operand never claims the completion, so the operand falls to the filesystem.
-# The dash token still reads the spec's options.
+# The dash token still consults the spec's options.
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 touch "$dir/datafile"

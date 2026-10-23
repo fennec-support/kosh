@@ -4,7 +4,7 @@ reply:unnamed:one
 unnamed wait:0
 reply:two!
 reply:three!
-named wait:0
+NAME wait:0
 reply:subshell:four
 subshell wait:3
 reply:five

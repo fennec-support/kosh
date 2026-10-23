@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 # The kill builtin and the killall and pkill utilities list the signals
-# under -l and --list, all through one shared formatter that reads the platform
+# under -l and --list, all through one shared formatter that uses the platform
 # signal table.
 echo "== kill -l lists SIGTERM (count):"
 "$BIN" -c 'kill -l' 2>&1 | grep -c ') SIGTERM'

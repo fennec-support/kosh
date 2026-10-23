@@ -13,9 +13,9 @@ false || or_assignment=four
 echo separators-ok
 
 # A lone assignment expands its value before it resets the status, so a $? in
-# the value reads the prior command's status the way bash does. The assignment
-# itself then reports zero, while a command substitution in the value reports
-# the substitution's status.
+# the value expands to the prior command's status the way bash does. The
+# assignment itself then reports zero, while a command substitution in the
+# value reports the substitution's status.
 false; x=$?; echo "after_false=$x"
 true; x=$?; echo "after_true=$x"
 (exit 7); x=$?; echo "after_exit7=$x"

@@ -7,7 +7,7 @@ printf '' | "$BIN" -c 'read -r -n 2 x; echo "rc=$? x=[$x]"'
 
 unset KOSH_FLAGS
 # A prefix IFS=... on read must split on that IFS even when a prior assignment
-# left a different IFS in the store. sdkman reads its comma-separated candidate
+# left a different IFS in the store. sdkman parses its comma-separated candidate
 # list this way after setting IFS to a newline, so a stale IFS broke its PATH
 # setup.
 echo "== a prefix IFS splits read after the global IFS was changed:"

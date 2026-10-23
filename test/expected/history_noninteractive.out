@@ -61,12 +61,12 @@ continued
 history is a shell builtin
 == clear empties the list ==
 cleared
-== history -r reads a named file into the list ==
+== history -r loads a given file into the list ==
     1  existing one
     2  existing two
     3  merged alpha
     4  merged beta
-== history -a separates and appends the list to a named file ==
+== history -a separates and appends the list to a given file ==
 rc=0
 named base
 existing one
@@ -81,7 +81,7 @@ rc=0
 rc=0
     1  existing one
     2  existing two
-== history -w replaces a named file with the list ==
+== history -w replaces a given file with the list ==
 rc=0
 existing one
 existing two
@@ -235,13 +235,13 @@ rc=1
 == a bare listing reports a damaged backing file ==
 1
 rc=1
-== an operandless read names the resolved backing file ==
+== an operandless read selects the resolved backing file ==
 1
 1
-== a stored multiline event keeps its submitted shape ==
+== a stored multiline event keeps its submitted layout ==
     1  line one
 line two
-== a repeated named append stores only the events not written yet ==
+== a repeated append to a given file stores only the events not written yet ==
 rc=0
 named base
 one
@@ -252,16 +252,16 @@ first target
 alpha
 second target
 alpha
-== a named write to a directory fails and leaves the directory in place ==
+== a write to a directory fails and leaves the directory in place ==
 rc=1
 directory intact
     1  kept
 1
-== a named append to a directory fails ==
+== an append to a directory fails ==
 rc=1
-== an operandless write names the resolved backing file ==
+== an operandless write selects the resolved backing file ==
 1
-== a named append is bounded by KOSH_HISTORY_SIZE ==
+== an append to a given file is bounded by KOSH_HISTORY_SIZE ==
 rc=0
 append base
 two
@@ -278,7 +278,7 @@ three
 rc=0
 four
 five
-== a named write is bounded by KOSH_HISTORY_SIZE ==
+== a write to a given file is bounded by KOSH_HISTORY_SIZE ==
 rc=0
 four
 five
@@ -306,7 +306,7 @@ rc=0
 == a peer unterminated tail stays separate from a local append ==
     1  tail one
     2  local-tail
-== a new shell reads separate peer and local tail records ==
+== a new shell loads separate peer and local tail records ==
     1  tail one
     2  peer-tail
     3  local-tail
@@ -337,16 +337,16 @@ rc=0
 rc=0 link=0 mode=640
 linked base
 linked
-== a named write preserves a symlink target ==
+== a write to a given file preserves a symlink target ==
 rc=0 link=0
 symlinked
-== a named write preserves hardlink identity ==
+== a write to a given file preserves hardlink identity ==
 rc=0 same=0
 hardlinked
-== a named write preserves the target mode ==
+== a write to a given file preserves the target mode ==
 rc=0 mode=0
 modekept
-== new reads share state across equivalent path spellings ==
+== new loads share state across equivalent path spellings ==
     1  new one
     2  new two
 == a rewritten new-read source restarts from the beginning ==
@@ -356,15 +356,15 @@ modekept
 == a replaced new-read source restarts from the beginning ==
     1  before replacement
     2  after replacement
-== named appends share state across equivalent path spellings ==
+== appends to a given file share state across equivalent path spellings ==
 rc=0
 append base
 aliasone
 aliastwo
-== concurrent named appends keep complete records ==
+== concurrent appends to a given file keep complete records ==
 rc=0,0
 2
-== a concurrent named write and append leave readable history ==
+== a concurrent write and append to a given file leave readable history ==
 rc=0,0
 rc=0
 == a history read reports its owned failure cause ==

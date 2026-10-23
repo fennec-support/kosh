@@ -1,8 +1,8 @@
 #!/bin/bash
 # Bash associative array operations beyond the basics, checked byte-for-byte
 # against bash. A declare -A with an inline element initializes the map, append
-# concatenates onto an existing value, a missing key reads empty with a zero
-# count, and a for loop reads a value back by its key. A subshell leaves the
+# concatenates onto an existing value, a missing key yields empty with a zero
+# count, and a for loop fetches a value back by its key. A subshell leaves the
 # parent's elements alone, and repeated unset and set keeps the map consistent.
 declare -A cap
 cap[france]=paris

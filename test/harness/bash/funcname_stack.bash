@@ -1,6 +1,6 @@
 #!/bin/bash
-# FUNCNAME reads the call stack, the scalar the innermost frame, the array the
-# whole stack, and the name is unset outside a function.
+# FUNCNAME holds the call stack, the scalar the innermost frame, the array the
+# whole stack, and the variable is unset outside a function.
 f() { echo "in=$FUNCNAME"; g; }
 g() { echo "g0=${FUNCNAME[0]} g1=${FUNCNAME[1]} depth=${#FUNCNAME[@]}"; }
 f
@@ -93,8 +93,8 @@ printf 'bash-toggle-return argc=<%s> argv=<%s>\n' \
   "${BASH_ARGC[*]}" "${BASH_ARGV[*]}"
 
 
-# FUNCNAME reads inside a function in its scalar and array forms, and OSTYPE
-# reads the platform, the dynamic variables a sourced config relies on.
+# FUNCNAME expands inside a function in its scalar and array forms, and OSTYPE
+# expands to the platform, the dynamic variables a sourced config relies on.
 outer() {
   echo "scalar=${FUNCNAME}"
   echo "zero=${FUNCNAME[0]}"
@@ -111,7 +111,7 @@ f() { unset -f "$FUNCNAME"; }
 f
 command -v f >/dev/null || echo "unset_self=gone"
 
-# $_ reads the last argument of the previous simple command, checked
+# $_ expands to the last argument of the previous simple command, checked
 # byte-for-byte against bash.
 true alpha beta
 echo "after_true=[$_]"

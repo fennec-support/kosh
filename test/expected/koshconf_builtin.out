@@ -124,7 +124,7 @@ vi             	on
 emacs
 emacs          	on
 vi             	off
-== malformed forms and unknown names:
+== malformed forms and unknown options:
 -c:1:1: error: Builtin `koshconf`: A subcommand is required.
      1 |  koshconf
        |  ^~~~~~~~

@@ -66,10 +66,10 @@ case $human_utc_line in
 esac
 
 printf 'machine-status=%s\n' "$machine_status"
-printf 'machine-shape=%s\n' "$machine_shape"
+printf 'machine-layout=%s\n' "$machine_shape"
 printf 'human-status=%s\n' "$human_status"
-printf 'human-shape=%s\n' "$human_shape"
+printf 'human-layout=%s\n' "$human_shape"
 printf 'machine-explicit-status=%s\n' "$machine_explicit_status"
-printf 'machine-explicit-shape=%s\n' "$machine_explicit_shape"
+printf 'machine-explicit-layout=%s\n' "$machine_explicit_shape"
 printf 'human-utc-status=%s\n' "$human_utc_status"
-printf 'human-utc-shape=%s\n' "$human_utc_shape"
+printf 'human-utc-layout=%s\n' "$human_utc_shape"

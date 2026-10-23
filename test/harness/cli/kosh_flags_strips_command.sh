@@ -17,7 +17,7 @@ KOSH_FLAGS='--mood sh' "$BIN" -c 'set -M; echo flagged' 2>&1
 echo "rc=$?"
 echo "== a short flag keeps its separate value:"
 KOSH_FLAGS='-M sh' "$BIN" -c 'set -M' 2>&1
-# The kosh mood reads no rc file, so the rc cases run in the bash mood.
+# The kosh mood loads no rc file, so the rc cases run in the bash mood.
 echo "== an rc file from KOSH_FLAGS is not sourced:"
 rc_file=$TEST_TEMP_DIRECTORY/kosh-flags-rcfile
 printf 'echo rcfile-sourced\n' > "$rc_file"

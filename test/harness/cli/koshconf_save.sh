@@ -21,7 +21,7 @@ echo "== list has no class column:"
 echo "== list -a adds the alias after each canonical line:"
 "$BIN" -c 'koshconf list -a' | grep -A1 -E '^(posix\.interpreter\.exit_on_command_failure|bash\.interpreter\.glob_extended_patterns)='
 "$BIN" -c 'koshconf list --all' | grep -c -E '^(bash|posix)\.legacy\.'
-echo "== every alias reads the value of its option:"
+echo "== every alias returns the value of its option:"
 "$BIN" -c 'koshconf list -a' >"$config/all.txt"
 # An option ignored by Koshka has a legacy spelling as its canonical name, so
 # the plain list tells canonical lines from aliases.

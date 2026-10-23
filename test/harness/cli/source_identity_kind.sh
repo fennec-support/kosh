@@ -18,6 +18,6 @@ echo "== function defined in a command string =="
 "$BIN" --mood bash -c 'string_function() { [ "${BASH_SOURCE[0]}" = "$0" ] && echo "shell name"; }; string_function' 2>&1
 printf 'rc=%s\n' "$?"
 
-echo "== type -V names the file and the command string =="
+echo "== type -V reports the file and the command string =="
 "$BIN" --mood bash -c '. -- -c; type -V file_function | head -n 1; string_function() { :; }; type -V string_function | head -n 1' 2>&1
 printf 'rc=%s\n' "$?"

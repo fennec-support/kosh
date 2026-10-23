@@ -1,7 +1,7 @@
 #!/bin/bash
 # Process substitutions, <( ) and >( ), in every word and command context,
-# checked against bash. Each case reads the substituted path back or checks
-# its shape, so no descriptor number reaches the output. The bodies print
+# checked against bash. Each case prints the substituted path back or checks
+# its layout, so no descriptor number reaches the output. The bodies print
 # nothing, several lines, spaces, glob characters, fail, and nest. A wait on
 # $! after a pipeline stage's substitution must not hang. That substitution
 # belongs to the stage's subshell, so neither shell waits for it, and the case

@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the ls utility. It reads and sorts directory entries,
+ * This file implements the ls utility. It lists and sorts directory entries,
  * filters hidden entries, resolves owner and group labels, classifies and
  * colors entries by file type, and renders compact, long, recursive, or tree
  * listings.

@@ -44,7 +44,7 @@ fi
 # A redirection of another descriptor leaves the substitution path readable.
 cat <(echo beside-redirection) 3</dev/null
 
-# A process substitution sets $! to its process, and wait reads its status
+# A process substitution sets $! to its process, and wait returns its status
 # after the command reaped it, also a second time. jobs does not list one, a
 # later background job replaces $!, and wait with no operand forgets them.
 # Bash may prune the status of an older one depending on when it reaps it,

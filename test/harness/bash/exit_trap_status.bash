@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# The EXIT trap reads the status the shell is ending with, checked against
+# The EXIT trap receives the status the shell is ending with, checked against
 # bash. The operand of the exit builtin reaches the action through $?, and an
-# operand outside one byte range is masked before the action reads it.
+# operand outside one byte range is masked before the action sees it.
 
 echo before_trap
 

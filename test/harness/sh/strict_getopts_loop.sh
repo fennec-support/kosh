@@ -1,5 +1,5 @@
 #!/bin/sh
-# The getopts builtin parses a clustered option string, reads an option argument
+# The getopts builtin parses a clustered option string, puts an option argument
 # into OPTARG, advances OPTIND, and reports the rest after a shift, checked
 # against dash. A leading colon in the option string selects the silent mode.
 

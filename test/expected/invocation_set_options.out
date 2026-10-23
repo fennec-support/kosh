@@ -10,7 +10,7 @@ nocasematch
 hBc pipefail=on extglob=on editor=vi
 ehBc pipefail=on extglob=on editor=vi
 huBc pipefail=on extglob=on editor=vi
-== -euo pipefail names pipefail with -o:
+== -euo pipefail sets pipefail with -o:
 ehuBc
 pipefail
 == -o posix acts as --posix:
@@ -36,7 +36,7 @@ note: Switch to the bash mood with `koshconf set mood bash` to change it.
 rc=2
 == a plus word after the script is an operand:
 operand=+e
-== --no-config reads no settings file and drops KOSHCONF:
+== --no-config loads no settings file and drops KOSHCONF:
 kosh
 huBc
 0

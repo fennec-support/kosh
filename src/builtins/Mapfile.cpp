@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file reads delimited records from a selected descriptor into an indexed
+ * This file loads delimited records from a selected descriptor into an indexed
  * array for the mapfile builtin. It owns record limits, skipped records,
  * starting indexes, delimiter trimming, and callbacks before assignment.
  */

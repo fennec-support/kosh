@@ -28,7 +28,7 @@ read -r reply <&"${UPPER[0]}"
 printf '%s\n' "reply:$reply"
 exec {UPPER[1]}>&-
 wait "$upper_pid"
-printf '%s\n' "named wait:$?"
+printf '%s\n' "NAME wait:$?"
 
 coproc ( read -r line; printf 'subshell:%s\n' "$line"; read -r _; exit 3 )
 subshell_pid=$COPROC_PID

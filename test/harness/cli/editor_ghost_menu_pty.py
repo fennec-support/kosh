@@ -10,7 +10,7 @@
 # without Tab, its acceptance through Right, End, and Ctrl-E, a cd operand
 # found under CDPATH once a pause has indexed it, a file a background job
 # creates after the prompt reaching Tab, an empty Enter refreshing the
-# listings the ghost reads, menu narrowing and
+# listings the ghost shows, menu narrowing and
 # widening on every keystroke, Ctrl-W and Alt-Backspace refreshing an open menu
 # down to an empty line, Escape and Ctrl-C afterwards, and session functions and
 # aliases in ghost and Tab completion. A complete -C command runs once while a
@@ -583,7 +583,7 @@ def run_idle_hint_checks(session, report, directory):
                   lambda screen: is_explained(["act"])(screen)
                   and "act [command] [flags]" in screen.get_hint())
     session.send(b"-f")
-    report.record("idle-hint-names-flag-value", session,
+    report.record("idle-hint-shows-flag-value", session,
                   lambda screen: is_explained(["act", "> -f"])(screen)
                   and "read the workflow from FILE" in screen.get_hint())
     clear_line(session)
@@ -615,7 +615,7 @@ def run_idle_hint_checks(session, report, directory):
     session.send(b"source ./zzdefs.sh\r")
     session.wait_until(is_line(""))
     session.send(b"zzfile ")
-    report.record("hint-names-function-file", session,
+    report.record("hint-shows-function-file", session,
                   lambda screen: is_explained(["zzfile"])(screen)
                   and "function, defined at ./zzdefs.sh:2" in screen.get_hint())
     clear_line(session)

@@ -2,7 +2,7 @@
 
 # The NAME form binds NAME[0], NAME[1], and NAME_PID. Raw descriptor numbers
 # are never printed, because the numbers a shell picks are its own business.
-echo "== named compound =="
+echo "== NAME compound =="
 coproc UPPER { while read -r line; do printf '%s\n' "${line}!"; done; }
 upper_pid=$UPPER_PID
 printf '%s\n' "elements:${#UPPER[@]}"
@@ -16,11 +16,11 @@ read -r reply <&"${UPPER[0]}"
 printf '%s\n' "reply:$reply"
 
 # The read loop ends at end of file. The write descriptor is closed to reach it,
-# otherwise the wait below never returns. Each wait reads a saved copy of the
+# otherwise the wait below never returns. Each wait uses a saved copy of the
 # process id, because a reaped coprocess unsets the variable that holds it.
 eval "exec ${UPPER[1]}>&-"
 wait "$upper_pid"
-printf '%s\n' "named wait status:$?"
+printf '%s\n' "NAME wait status:$?"
 printf '%s\n' "COPROC unset:${COPROC+set}"
 
 echo "== unnamed simple =="
@@ -129,8 +129,8 @@ printf '%s\n' "element wait status:$?"
 
 # A wait that reaps the coprocess closes both of its descriptors and unsets the
 # array and the process id variable, so the next coprocess gets the same two
-# numbers. A descriptor the script closed itself reads as -1 and is not closed
-# again, so a later descriptor that took its number stays open.
+# numbers. A descriptor the script closed itself has the value -1 and is not
+# closed again, so a later descriptor that took its number stays open.
 echo "== release on reap =="
 for round in 1 2 3; do
   coproc ROUND { read -r line; printf '%s\n' "round:$line"; }

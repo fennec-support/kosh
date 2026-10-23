@@ -1,7 +1,7 @@
 #!/bin/env kosh
 # shellcheck disable=constant-case-word,unquoted-case-pattern
 # A quoted or escaped metacharacter inside a bracket class is a literal member,
-# not a class operator, and the matcher reads the same per-byte active mask the
+# not a class operator, and the matcher uses the same per-byte active mask the
 # rest of glob expansion uses. A high byte at or above 0x80 compares as itself,
 # so a range whose bound is a non-ASCII byte still matches.
 #

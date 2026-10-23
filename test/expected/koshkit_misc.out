@@ -41,7 +41,7 @@ rc=1
      1 |  koshkit kill
        |          ^~~~
 rc=1
---- list prints sorted unique utility names ---
+--- list prints sorted unique utility entries ---
 sorted-unique=0
 0
-invalid-names-status=1
+invalid-entries-status=1

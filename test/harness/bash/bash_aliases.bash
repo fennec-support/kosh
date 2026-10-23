@@ -1,6 +1,6 @@
 #!/bin/bash
 # Bash BASH_ALIASES behavior, checked byte-for-byte against bash. This covers
-# live reads, element and scalar writes, element and whole-array unsets, alias
+# live lookups, element and scalar writes, element and whole-array unsets, alias
 # removal, alias preservation after whole-array unset, and an ordinary
 # associative array created by redeclaring the disconnected name. An alias body
 # is read as shell source.

@@ -11,7 +11,7 @@ if [ "$(uname -s)" = Linux ]; then
     *) failure_shape=wrong ;;
   esac
 fi
-printf 'failure-shape=%s\n' "$failure_shape"
+printf 'failure-layout=%s\n' "$failure_shape"
 case $report in
   *'NAME'*'RX'*'TX'*) scope_shape=extra ;;
   *) scope_shape=isolated ;;
@@ -36,11 +36,11 @@ case $help in
   *"--failures"*) help_shape=matched ;;
   *) help_shape=wrong ;;
 esac
-printf 'help-shape=%s\n' "$help_shape"
+printf 'help-layout=%s\n' "$help_shape"
 case $help in
   *'LIVE OPTIONS'*'--live[=<seconds>]'*'--cumulative[=<seconds>]'*)
     sampling_help_shape=matched
     ;;
   *) sampling_help_shape=wrong ;;
 esac
-printf 'sampling-help-shape=%s\n' "$sampling_help_shape"
+printf 'sampling-help-layout=%s\n' "$sampling_help_shape"

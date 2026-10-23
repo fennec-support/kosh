@@ -153,7 +153,7 @@ koshconf set editor.base_mode emacs
 koshconf get editor.base_mode
 set -o | grep -E "^(emacs|vi) "'
 
-echo "== malformed forms and unknown names:"
+echo "== malformed forms and unknown options:"
 "$BIN" -c 'koshconf'
 echo "rc=$?"
 "$BIN" -c 'koshconf bogus'

@@ -77,16 +77,16 @@ case $disk_window_report in
 esac
 
 printf 'status=%s\n' "$process_live_status"
-printf 'shape=%s\n' "$live_shape"
-printf 'process-window-shape=%s\n' "$process_window_shape"
+printf 'layout=%s\n' "$live_shape"
+printf 'process-window-layout=%s\n' "$process_window_shape"
 printf 'suffix-status=%s\n' "$suffix_live_status"
-printf 'suffix-shape=%s\n' "$suffix_live_shape"
+printf 'suffix-layout=%s\n' "$suffix_live_shape"
 printf 'scope=%s\n' "$live_scope"
 printf 'disk-status=%s\n' "$disk_live_status"
-printf 'disk-shape=%s\n' "$disk_live_shape"
+printf 'disk-layout=%s\n' "$disk_live_shape"
 printf 'disk-scope=%s\n' "$disk_live_scope"
 printf 'disk-margin=%s\n' "$disk_live_margin"
-printf 'disk-window-shape=%s\n' "$disk_window_shape"
+printf 'disk-window-layout=%s\n' "$disk_window_shape"
 
 $BIN -c 'koshkit evilio --live=bad' > /dev/null 2>&1
 printf 'rejected-live-status=%s\n' "$?"

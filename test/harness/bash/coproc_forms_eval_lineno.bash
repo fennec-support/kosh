@@ -27,7 +27,7 @@ printf 'done\n' >&"${COPROC[1]}"
 wait "$subshell_pid"
 printf '%s\n' "wait:$?"
 
-echo "== named brace group =="
+echo "== brace group with a given name =="
 coproc NAMED { read -r line; printf '%s\n' "named:$line"; read -r _; }
 named_pid=$NAMED_PID
 printf '%s\n' "elements:${#NAMED[@]} pid:${NAMED_PID:+set}"
@@ -38,7 +38,7 @@ printf 'done\n' >&"${NAMED[1]}"
 wait "$named_pid"
 printf '%s\n' "wait:$?"
 
-echo "== named subshell =="
+echo "== subshell with a given name =="
 coproc PAREN ( read -r line; printf '%s\n' "paren:$line"; read -r _ )
 paren_pid=$PAREN_PID
 printf 'four\n' >&"${PAREN[1]}"
@@ -54,7 +54,7 @@ echo "== word before a simple command =="
 WORDY() { read -r line; printf '%s\n' "wordy:$*:$line"; read -r _; }
 coproc WORDY a b
 wordy_pid=$COPROC_PID
-printf '%s\n' "named array:${WORDY+set} pid:${WORDY_PID+set}"
+printf '%s\n' "array of the given name:${WORDY+set} pid:${WORDY_PID+set}"
 printf 'five\n' >&"${COPROC[1]}"
 read -r reply <&"${COPROC[0]}"
 printf '%s\n' "reply:$reply"
@@ -66,7 +66,7 @@ printf '%s\n' "wait:$?"
 # command, wherever the function is called.
 echo "== eval function lines =="
 eval 'evalfn() {
-  printf "%s\n" "line:$LINENO caller:${BASH_LINENO[*]} names:${FUNCNAME[*]}"
+  printf "%s\n" "line:$LINENO caller:${BASH_LINENO[*]} funcs:${FUNCNAME[*]}"
 }'
 evalfn
 outer() {

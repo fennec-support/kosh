@@ -18,7 +18,7 @@ c=$RANDOM
 [ "$BASH_MONOSECONDS" -gt 0 ] && echo "monoseconds positive"
 echo "hosttype=$HOSTTYPE"
 case $MACHTYPE in
-"$HOSTTYPE"-*-"$OSTYPE"*) echo "machtype names the host and system" ;;
+"$HOSTTYPE"-*-"$OSTYPE"*) echo "machtype holds the host and system" ;;
 *) echo "machtype=$MACHTYPE" ;;
 esac
 [ "$GROUPS" -ge 0 ] && echo "groups present"

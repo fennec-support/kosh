@@ -1,4 +1,4 @@
-detail-shape=matched
+detail-layout=matched
 remote-table=matched
 namespaces-scope=matched
 cgroups-selector=matched
@@ -7,5 +7,5 @@ sessions-scope=matched
 remote-selector=matched
 remote-scope=matched
 runtime-scope=matched
-help-shape=matched
+help-layout=matched
 unprivileged-status=0

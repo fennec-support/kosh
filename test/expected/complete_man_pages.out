@@ -6,5 +6,5 @@ zqpage-alpha
 zqpage-beta
 == koshkit man:
 zqpage-beta
-== a word that names no page completes a file:
+== a word that matches no page completes a file:
 zqfile.txt

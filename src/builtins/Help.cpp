@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file lists builtins and renders full, descriptive, synopsis, or
- * manpage-style help for the help builtin. It reads immutable help metadata
+ * manpage-style help for the help builtin. It takes immutable help metadata
  * from the builtin registry and delegates full help to the selected builtin.
  */
 

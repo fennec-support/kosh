@@ -306,9 +306,10 @@ and a syntax error in it fails the
 command without ending the shell. Files that it sources in turn keep its mood.
 .PP
 .B koshconf create
-writes the script when it is missing and never replaces it. The written
-script sources the files Bash reads at login in a login shell, and ~/.profile
-and ~/.bashrc otherwise:
+writes the script when it is missing and never replaces it. In a login
+shell, the written script sources /etc/profile and the first readable file of
+~/.bash_profile, ~/.bash_login, and ~/.profile, and ~/.profile and ~/.bashrc
+otherwise:
 .PP
 .RS
 .EX

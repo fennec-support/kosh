@@ -1,12 +1,12 @@
 unset KOSH_FLAGS
 export KOSH_FLAGS=--no-diagnostics
-# local rejects use outside a function and invalid names.
+# local rejects use outside a function and invalid identifiers.
 echo "== local outside a function is an error:"
 {
     "$BIN" -c 'local x=5' 2>&1
     printf 'rc=%s\n' "$?"
 } | "invoke-normalize-trace" "$BIN"
-echo "== invalid local names fail:"
+echo "== invalid local identifiers fail:"
 "$BIN" -c 'f(){
   local bad-name "" 3name 2>/dev/null
   echo "status=$?"

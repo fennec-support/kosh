@@ -144,7 +144,7 @@ echo "${#greet[1]}"
 
 # The ${name+"${name[@]}"} idiom with a bare scalar subject keeps one field per
 # element with the empty ones intact, the construct bash-completion's
-# _comp_get_words passes to _comp_upvars. The bare name reads as element zero,
+# _comp_get_words passes to _comp_upvars. The bare name stands for element zero,
 # so the plain form tests existence and the colon form the first element.
 w=(a "")
 set -- ${w+"${w[@]}"}

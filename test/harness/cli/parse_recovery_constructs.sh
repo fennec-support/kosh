@@ -4,7 +4,7 @@ unset KOSH_FLAGS KOSHCONF
 # the same body are still reported. A closer that an enclosing command owns
 # ends an inner command that lacks its own closer. Dialect errors, such as [[
 # in the sh mood, are reported while the command parses as usual. Recovery
-# reads tokens, so layout, heredoc bodies, and quoted text do not affect it.
+# works on tokens, so layout, heredoc bodies, and quoted text do not affect it.
 
 do_check() {
   echo "== $1"

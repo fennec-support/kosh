@@ -21,7 +21,7 @@ done
 rm nowhere .symlink-batch/nowhere
 : > sub/inner.txt
 : > sub/deep/leaf.txt
-# The size sort reads regular files alone, because the size a directory reports
+# The size sort uses regular files alone, because the size a directory reports
 # differs between filesystems.
 printf 'a\n' > sized/small
 printf 'bbbbb\n' > sized/medium
@@ -41,7 +41,7 @@ echo "--- almost all entries ---"
 "$BIN" -c 'koshkit ls -A'
 echo "--- multiple roots ---"
 "$BIN" -c 'koshkit ls plain.txt sub'
-echo "--- equal-size names ---"
+echo "--- equal-size files ---"
 "$BIN" -c 'koshkit ls -S sized'
 echo "--- long name ---"
 "$BIN" -c 'koshkit ls -1' | grep "$long_name"

@@ -25,7 +25,7 @@ fi
 trap 'rm -rf "$dir"' EXIT
 
 if ! mkfifo "$dir/first" 2> /dev/null; then
-  echo named-pipes-are-unavailable
+  echo fifos-are-unavailable
   echo trap-during-blocking-open-done
   exit 0
 fi

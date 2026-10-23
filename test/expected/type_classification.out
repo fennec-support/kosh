@@ -43,7 +43,7 @@ g ()
 {
   echo body
 }
-== -V names the file a sourced function came from:
+== -V gives the file a sourced function came from:
 named
 == -V describes a builtin:
 echo is a shell builtin
@@ -60,7 +60,7 @@ rc=0
 == -V applies to every -a resolution:
 tsort is a shell builtin
 2
-== the bash mood names a function and prints its body:
+== the bash mood reports a function and prints its body:
 f is a function
 f () 
 { 

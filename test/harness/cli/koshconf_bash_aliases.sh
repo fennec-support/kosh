@@ -38,11 +38,11 @@ printf 'mood=bash\nbash.interpreter.glob_extended_patterns=off\nbash.legacy.extg
   >config/kosh/kosh.conf
 "$BIN" -c 'shopt extglob' 2>&1
 
-echo "== list shows canonical names only:"
+echo "== list shows canonical spellings only:"
 "$BIN" -c 'koshconf list | grep -c "^bash\.legacy\.extglob="' 2>&1
 "$BIN" -c 'koshconf list | grep -c "^bash.interpreter.glob_extended_patterns="' 2>&1
 
-echo "== an unknown alias and the retired names are errors:"
+echo "== an unknown alias and the retired spellings are errors:"
 "$BIN" -c 'koshconf get bash.legacy.foo' 2>&1 | grep -v '^ '
 "$BIN" -c 'koshconf get bash.legacy.errexit' 2>&1 | grep -v '^ '
 "$BIN" -c 'koshconf get posix.legacy.extglob' 2>&1 | grep -v '^ '

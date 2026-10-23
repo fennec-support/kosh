@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the man utility. It searches MANPATH section
- * directories, performs keyword searches, reads manual sources, and sends
+ * directories, performs keyword searches, loads manual sources, and sends
  * selected pages to the pager.
  */
 

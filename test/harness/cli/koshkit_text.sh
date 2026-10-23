@@ -36,7 +36,7 @@ echo "--- cat multi-chunk input with a missing operand ---"
 "$BIN" -c \
   'koshkit cat batch-input.txt cat-first.txt missing.txt cat-last.txt > cat-output.txt; printf "status=%s\n" "$?"; koshkit cksum cat-output.txt' \
   2>&1
-echo "--- numbered cat reads later files after a missing operand ---"
+echo "--- numbered cat processes later files after a missing operand ---"
 "$BIN" -c \
   'koshkit cat -n cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"' \
   2>&1
@@ -58,7 +58,7 @@ echo "--- transformed utilities batch source windows ---"
 echo "--- od and bc batch source windows ---"
 "$BIN" -c 'koshkit od -An -tc batch-source-*.txt | koshkit cksum'
 "$BIN" -c 'koshkit bc bc-source-*.txt | koshkit cksum'
-echo "--- cat reads standard input between files ---"
+echo "--- cat processes standard input between files ---"
 printf 'middle\n' | "$BIN" -c \
   'koshkit cat cat-first.txt - cat-last.txt'
 "$BIN" -c "koshkit yes x | koshkit tr -d '\n' | koshkit head -c 65534" \
@@ -69,7 +69,7 @@ echo "--- strings preserves a run across chunks ---"
   'koshkit strings -t d strings-boundary.txt | koshkit wc -c; koshkit strings strings-boundary.txt | koshkit tail -c 5'
 echo "--- strings flushes large output in source order ---"
 "$BIN" -c 'koshkit strings batch-input.txt cat-first.txt | koshkit cksum'
-echo "--- strings reads later files after a missing operand ---"
+echo "--- strings processes later files after a missing operand ---"
 "$BIN" -c \
   'koshkit strings cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"' \
   2>&1
@@ -84,15 +84,15 @@ printf '\303\251z' >> cut-utf8-boundary.txt
 echo "--- cut preserves split UTF-8 at final line ---"
 "$BIN" -c \
   'koshkit cut -c 65536-65537 cut-utf8-boundary.txt | koshkit od -An -tx1; koshkit cut -b 65537 -n cut-utf8-boundary.txt | koshkit od -An -tx1'
-echo "--- cut reads later files after a missing operand ---"
+echo "--- cut processes later files after a missing operand ---"
 "$BIN" -c \
   'koshkit cut -c 1-5 cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"' \
   2>&1
 "$BIN" -c 'koshkit seq 19999; printf "20001\n"' > diff-right.txt
-echo "--- diff reads two multi-chunk files ---"
+echo "--- diff compares two multi-chunk files ---"
 "$BIN" -c \
   'koshkit diff batch-input.txt diff-right.txt; printf "status=%s\n" "$?"'
-echo "--- diff reads standard input on the right ---"
+echo "--- diff compares standard input on the right ---"
 printf 'first\n' | "$BIN" -c \
   'koshkit diff cat-first.txt -; printf "status=%s\n" "$?"'
 echo "--- diff reports a missing second operand ---"
@@ -150,7 +150,7 @@ echo "--- pr batches normal source windows ---"
 "$BIN" -c 'koshkit pr -t batch-source-*.txt | koshkit cksum'
 echo "--- pr numbering resets for each source ---"
 "$BIN" -c 'koshkit pr -t -n cat-first.txt cat-last.txt'
-echo "--- pr reads later files after a missing operand ---"
+echo "--- pr processes later files after a missing operand ---"
 "$BIN" -c \
   'koshkit pr -t sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"' \
   2>&1
@@ -170,7 +170,7 @@ echo "--- grep long recursive flags ---"
 "$BIN" -c 'koshkit grep --recursive --line-number --no-filename hello grep-tree'
 echo "--- grep one file system changes nothing on one file system ---"
 "$BIN" -c 'koshkit grep -rn --one-file-system hello grep-tree'
-echo "--- grep -r names the file of a one-file tree ---"
+echo "--- grep -r prints the file of a one-file tree ---"
 "$BIN" -c 'koshkit grep -rn again grep-tree/sub'
 echo "--- grep -r with no operand searches the working directory ---"
 (cd grep-tree/sub && "$BIN" -c 'koshkit grep -r again' < /dev/null)
@@ -361,7 +361,7 @@ echo "--- head streams large output with headers in source order ---"
 "$BIN" -c 'koshkit cat batch-input.txt | koshkit head -n 15000 | koshkit cksum'
 echo "--- head handles zero bytes without reading data ---"
 "$BIN" -c 'koshkit head -c 0 cat-first.txt; printf "status=%s\n" "$?"'
-echo "--- head reads later files after a missing operand ---"
+echo "--- head processes later files after a missing operand ---"
 "$BIN" -c \
   'koshkit head -n 1 cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"' \
   2>&1

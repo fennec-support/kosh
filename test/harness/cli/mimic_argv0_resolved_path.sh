@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-# A mimicked script found on PATH reads $0 as the resolved script path, the
+# A mimicked script found on PATH receives $0 as the resolved script path, the
 # argument the kernel hands a shebang interpreter, so realpath "$0" finds the
 # script's true directory the way envman derives its env dir.
 bin=$(mktemp -d)

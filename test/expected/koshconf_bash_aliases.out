@@ -17,10 +17,10 @@ extglob             	off
 noclobber      	on
 == both spellings in one file follow the later-line rule:
 extglob             	on
-== list shows canonical names only:
+== list shows canonical spellings only:
 0
 1
-== an unknown alias and the retired names are errors:
+== an unknown alias and the retired spellings are errors:
 -c:1:14: error: Builtin `koshconf`: Unknown option 'bash.legacy.foo'.
 note: Did you mean 'bash.legacy.force_fignore'?
 -c:1:14: error: Builtin `koshconf`: Unknown option 'bash.legacy.errexit'.

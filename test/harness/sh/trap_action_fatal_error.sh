@@ -1,6 +1,6 @@
 #!/bin/sh
 # A fatal expansion error inside a trap action ends the shell with status 2,
-# rather than only the action, checked against dash. The EXIT action reads
+# rather than only the action, checked against dash. The EXIT action receives
 # that status.
 trap 'echo exit-action-saw=$?' EXIT
 trap 'echo usr1-action; : ${zz?q}; echo after-in-action' USR1

@@ -25,8 +25,8 @@ echo "== noquote keeps blanks raw and still splices each control run:"
 "$BIN" -c "_f(){ :; }; complete -o default -o noquote -F _f cp" --debug-complete-at 'cp nq' </dev/null
 echo "== a spec word splices each control run:"
 "$BIN" -c "complete -W \"\$(printf 'w\\033x')\" cp" --debug-complete-at 'cp w' </dev/null
-echo "== compgen lists the names raw:"
+echo "== compgen lists the entries raw:"
 "$BIN" -c 'compgen -f os' | cat -v
-echo "== the completed word names the file:"
+echo "== the completed word is the file:"
 word=$("$BIN" --debug-complete-at 'cat os' </dev/null)
 "$BIN" -c "test -e $word && echo found" 2>&1

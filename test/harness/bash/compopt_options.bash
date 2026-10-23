@@ -35,7 +35,7 @@ echo "missing-name=$?"
 
 complete -W y bar
 compopt -o default foo missing bar
-echo "missing-among-names=$?"
+echo "missing-among-operands=$?"
 complete -p foo
 complete -p bar
 

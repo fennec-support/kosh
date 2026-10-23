@@ -370,7 +370,7 @@ cat "$root/shapes-formatted.sh"
 "$BIN" --format "$root/shapes-formatted.sh" > "$root/shapes-second.sh"
 shapes_original=$("$BIN" --no-diagnostics "$root/shapes.sh" alpha)
 shapes_formatted=$("$BIN" --no-diagnostics "$root/shapes-formatted.sh" alpha)
-printf 'shapes-equivalent=%s idempotent=%s\n' \
+printf 'layouts-equivalent=%s idempotent=%s\n' \
   "$([ "$shapes_original" = "$shapes_formatted" ] && printf yes)" \
   "$(cmp -s "$root/shapes-formatted.sh" "$root/shapes-second.sh" && \
       printf yes)"
@@ -380,7 +380,7 @@ first=one
 second=two 2> "$TEST_NULL_DEVICE"
 export third=three
 readonly fourth=four
-# The next command reads the declaration block.
+# The next command uses the declaration block.
 echo "$first $second $third $fourth"
 export -p > "$TEST_NULL_DEVICE"
 printf '%s\n' after-report

@@ -1,4 +1,4 @@
-== stdin reads one top-level command:
+== stdin supplies one top-level command:
 one
 == a command string runs as one input command:
 one

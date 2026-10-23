@@ -4,7 +4,7 @@ trap '[ -n "$d" ] && rm -rf "$d"' EXIT
 
 printf 'no_such_named_xyz\n' > "$d/direct"
 out=$("$BIN" "$d/direct" 2>&1)
-printf 'named traces=%s errors=%s\n' \
+printf 'traces=%s errors=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')"
 

@@ -30,7 +30,7 @@ rc=130
      1 |  directory=$1
        |  ^
 rc=130
-== grep reads an earlier regular file before opening a later pipe:
+== grep opens an earlier regular file before opening a later pipe:
 grep-status=143
 grep-first=printed
 grep-interrupt=preserved

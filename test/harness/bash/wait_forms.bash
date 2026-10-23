@@ -69,7 +69,7 @@ echo "fast-again=$?"
 wait -n "$slow"
 echo "next-remembered=$?"
 
-echo next-of-named
+echo next-of-p-variable
 (read -r _ < "$dir/gate"; exit 11) &
 held=$!
 (/bin/sleep 0.3; exit 12) &
@@ -77,13 +77,13 @@ free=$!
 (read -r _ < "$dir/second"; exit 13) &
 other=$!
 wait -n -p who "$held" "$free"
-echo "named=$? who-is-free=$([ "$who" = "$free" ] && echo yes)"
+echo "p-variable=$? who-is-free=$([ "$who" = "$free" ] && echo yes)"
 echo go > "$dir/gate"
 wait -n -p who "$held" 99999
-echo "named-with-unknown=$? who-is-held=$([ "$who" = "$held" ] && echo yes)"
+echo "p-variable-with-unknown=$? who-is-held=$([ "$who" = "$held" ] && echo yes)"
 echo go > "$dir/second"
 wait -n -p who %3
-echo "named-job=$? who-is-other=$([ "$who" = "$other" ] && echo yes)"
+echo "p-variable-job=$? who-is-other=$([ "$who" = "$other" ] && echo yes)"
 who=old
 wait -n 99999
 echo "next-unknown=$?"

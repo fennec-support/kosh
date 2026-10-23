@@ -2,7 +2,7 @@
 
 # A background group, a pipeline stage, and a process substitution start a
 # fresh evaluator on Windows. Each must search the parent's PATH for a program
-# the parent never ran, so the child keeps PATH and reads no startup file.
+# the parent never ran, so the child keeps PATH and loads no startup file.
 set -M bash
 d=$TEST_TEMP_DIRECTORY/fresh-evaluator-path
 koshkit mkdir -p "$d"

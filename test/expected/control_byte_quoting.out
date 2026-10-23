@@ -12,7 +12,7 @@ $'mix\'q\\b\x7fz'
 nq a$'\e'b
 == a spec word splices each control run:
 w$'\e'x
-== compgen lists the names raw:
+== compgen lists the entries raw:
 osc^[]0;title^Gx
-== the completed word names the file:
+== the completed word is the file:
 found

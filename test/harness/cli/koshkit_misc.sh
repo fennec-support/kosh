@@ -63,7 +63,7 @@ echo "--- kill is a builtin, not a koshkit utility ---"
 "$BIN" -c 'koshkit kill' 2>&1
 echo "rc=$?"
 
-echo "--- list prints sorted unique utility names ---"
+echo "--- list prints sorted unique utility entries ---"
 "$BIN" -c 'koshkit --list | koshkit sort -cu; echo "sorted-unique=$?"'
 "$BIN" -c 'koshkit --list | koshkit grep -vc "^[a-z0-9_-]*$"'
-echo "invalid-names-status=$?"
+echo "invalid-entries-status=$?"

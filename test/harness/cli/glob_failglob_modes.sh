@@ -7,7 +7,7 @@ unset KOSH_FLAGS
 BIN=$(cd "$(dirname "$BIN")" && pwd)/$(basename "$BIN")
 d=$(mktemp -d); cd "$d" || exit 1
 touch real_one real_two
-echo "== a matching glob expands to the sorted names:"; "$BIN" -c 'echo real_*'
+echo "== a matching glob expands to the sorted filenames:"; "$BIN" -c 'echo real_*'
 echo "== the default mood aborts on no match:"; "$BIN" -c 'echo no_match_*'; echo "rc=$?"
 echo "== the bash mood leaves it literal:"; "$BIN" --mood bash -c 'echo no_match_*'
 echo "== the sh mood leaves it literal:"; "$BIN" --mood sh -c 'echo no_match_*'

@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the more utility. It pages terminal input, handles
- * search and navigation commands, reads tags, controls screen layout, and
+ * search and navigation commands, loads tags, controls screen layout, and
  * streams directly when paging is unnecessary.
  */
 

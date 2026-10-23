@@ -51,7 +51,7 @@ sh [trap 'echo trap saw $?' EXIT; echo ${x:?m}] rc=2
 == a script file and standard input keep status 1 ==
 file rc=1
 stdin rc=1
-== the EXIT trap reads the status a fatal expansion error ends with ==
+== the EXIT trap receives the status a fatal expansion error ends with ==
 trap saw 1
 kosh trap_report.sh rc=1
 kosh trap_setu.sh rc=1

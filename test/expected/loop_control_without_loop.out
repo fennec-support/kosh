@@ -1,4 +1,4 @@
-== the bash mood names the builtin and keeps running:
+== the bash mood reports the builtin and keeps running:
 a
 -c:1:9: error: Builtin `break`: only meaningful in a `for', `while', or `until' loop.
      1 |  echo a; break; echo b; continue; echo c

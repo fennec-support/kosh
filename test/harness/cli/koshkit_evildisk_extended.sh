@@ -10,7 +10,7 @@ case $report in
     ;;
   *) extended_shape=wrong ;;
 esac
-printf 'extended-shape=%s\n' "$extended_shape"
+printf 'extended-layout=%s\n' "$extended_shape"
 
 default_report=$($BIN -c 'koshkit --color never evildisk "$1"' evildisk "$path" \
   2>/dev/null)

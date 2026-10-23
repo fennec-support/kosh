@@ -2,7 +2,7 @@
 # An operator after ${a[@]}, ${a[*]}, $@, or $* in a context that expands one
 # string, such as [[ ]], case, a here-document, or an assignment. The @ form
 # joins with a space and the * form with the first IFS character, a test
-# operator reads the joined value, and the other operators apply to each
+# operator uses the joined value, and the other operators apply to each
 # element before the join. The field forms keep their own words, and an
 # element subscript takes the same transformations and case toggles.
 

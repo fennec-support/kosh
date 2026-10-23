@@ -99,9 +99,9 @@ echo -e 'stop\cgone'
 echo 'no-e-literal\t.'
 echo -e 'oct\101'
 
-# Round-five review edge cases, checked byte-for-byte against bash. The bash echo
-# reads octal only in the \0NNN form so a bare \NNN stays literal, and assigning
-# an element to a scalar-valued name promotes the scalar to element zero.
+# echo interprets octal only in the \0NNN form, so a bare \NNN stays literal,
+# and assigning an element to a scalar-valued name promotes the scalar to
+# element zero.
 echo -e '\101 \0101'
 echo -e '\0102 end'
 echo -e 'lit\1eral'
@@ -187,7 +187,7 @@ echo "float_status=$?"
 printf '[%.1f]\n' '' 2>/dev/null
 echo "empty_float_status=$?"
 
-# printf reads the numeric locale from the first nonempty of LC_ALL,
+# printf takes the numeric locale from the first nonempty of LC_ALL,
 # LC_NUMERIC, and LANG for the decimal point of a floating operand and for the
 # decimal point and grouping of its output. Arithmetic expansion stays in the C
 # locale. localedef builds a comma locale in a temporary directory, and a shell

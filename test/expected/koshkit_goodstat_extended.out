@@ -1,11 +1,11 @@
 default-scope=portable
-filesystem-shape=matched
+filesystem-layout=matched
 filesystem-color=absent
-checksum-shape=matched
+checksum-layout=matched
 checksum-grid=matched
 unicode-grid=matched
 combined-status=0
-help-shape=matched
+help-layout=matched
 crc32c-767=8675228e
 crc32c-768=befd689e
 crc32c-24575=97e0264a

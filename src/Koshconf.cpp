@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file reads and writes the koshconf files, builds the preset files, and
+ * This file loads and writes the koshconf files, builds the preset files, and
  * encodes and decodes the binary KOSHCONF form. A malformed line or record
  * becomes a warning and never stops the shell.
  */

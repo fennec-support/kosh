@@ -15,7 +15,7 @@
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 status=1
 578497766 108905 cat-output.txt
---- numbered cat reads later files after a missing operand ---
+--- numbered cat processes later files after a missing operand ---
 -c:1:1: error: Koshkit `cat`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit cat -n cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -56,7 +56,7 @@ abcdef
 --- od and bc batch source windows ---
 2868944703 732
 229785650 36
---- cat reads standard input between files ---
+--- cat processes standard input between files ---
 first
 middle
 last
@@ -65,7 +65,7 @@ last
 tail
 --- strings flushes large output in source order ---
 839252499 105012
---- strings reads later files after a missing operand ---
+--- strings processes later files after a missing operand ---
 -c:1:1: error: Koshkit `strings`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit strings cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -77,20 +77,20 @@ tail
 --- cut preserves split UTF-8 at final line ---
  c3 a9 7a 0a
  c3 a9 0a
---- cut reads later files after a missing operand ---
+--- cut processes later files after a missing operand ---
 -c:1:1: error: Koshkit `cut`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit cut -c 1-5 cat-first.txt missing.txt cat-last.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 first
 last
 status=1
---- diff reads two multi-chunk files ---
+--- diff compares two multi-chunk files ---
 20000c20000
 < 20000
 ---
 > 20001
 status=1
---- diff reads standard input on the right ---
+--- diff compares standard input on the right ---
 status=0
 --- diff reports a missing second operand ---
 -c:1:1: error: Koshkit `diff`: Cannot read 'missing.txt': No such file or directory.
@@ -176,7 +176,7 @@ status=1
 --- pr numbering resets for each source ---
     1	first
     1	last
---- pr reads later files after a missing operand ---
+--- pr processes later files after a missing operand ---
 -c:1:1: error: Koshkit `pr`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit pr -t sort-a.txt missing.txt sort-b.txt; printf "status=%s\n" "$?"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -210,7 +210,7 @@ grep-tree/sub/b.txt:1:hello-again
 --- grep one file system changes nothing on one file system ---
 grep-tree/a.txt:1:hello
 grep-tree/sub/b.txt:1:hello-again
---- grep -r names the file of a one-file tree ---
+--- grep -r prints the file of a one-file tree ---
 grep-tree/sub/b.txt:1:hello-again
 --- grep -r with no operand searches the working directory ---
 b.txt:hello-again
@@ -934,7 +934,7 @@ empty-environment-status=0
 2187048818 78894
 --- head handles zero bytes without reading data ---
 status=0
---- head reads later files after a missing operand ---
+--- head processes later files after a missing operand ---
 ==> cat-first.txt <==
 first
 -c:1:1: error: Koshkit `head`: Cannot open 'missing.txt': No such file or directory.

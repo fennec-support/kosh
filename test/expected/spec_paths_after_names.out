@@ -1,4 +1,4 @@
-== names before paths:
+== words before paths:
 ls
 lsblk
 zcat
@@ -7,7 +7,7 @@ zcat
 ../up
 /abs
 ~/home
-== a name with a slash stays among the names:
+== a word with a slash stays among the words:
 feature/x
 main
 origin/main

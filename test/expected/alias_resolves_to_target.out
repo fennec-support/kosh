@@ -2,7 +2,7 @@
 check-ref-format
 == aliased options:
 --version
-== an alias of koshkit completes utility names:
+== an alias of koshkit completes utility words:
 mkdir
 mkfifo
 mknod

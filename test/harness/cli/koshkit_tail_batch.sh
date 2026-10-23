@@ -1,5 +1,5 @@
 # Tail keeps exact POSIX count semantics while batching regular-file metadata
-# and bounded positioned reads. The source order remains the operand order.
+# and bounded positioned I/O. The source order remains the operand order.
 unset KOSH_FLAGS
 d=$(mktemp -d)
 normalized_d=$(printf '%s\n' "$d" | tr '\\' '/')

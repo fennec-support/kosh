@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements the koshconf builtin, the only interface to the
- * settings Koshka owns. It creates preset files, reads, changes, and persists
+ * settings Koshka owns. It creates preset files, shows, changes, and persists
  * single options, lists the registry, and loads a binary KOSHCONF form.
  */
 

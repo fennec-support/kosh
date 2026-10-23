@@ -158,7 +158,7 @@ rc=1
 1:1: error: The variable 'nope' is not set.
      1 |  nope
        |  ^~~~
-== a set but empty variable reads zero, only an unset name is an error:
+== a set but empty variable evaluates to zero, only an unset name is an error:
 0
 == an empty assignment is rejected rather than binding an empty value:
 1:1: error: Assignment to 'z' needs a value.
@@ -169,7 +169,7 @@ rc=1
      1 |  1 / 0
        |      ^
 note: The right operand evaluated to 0.
-== an unset name inside a stored formula errors when the formula reads:
+== an unset name inside a stored formula errors when the formula runs:
 error: The variable 'base' is not set.
 == a decimal divisor preserves decimal arithmetic:
 1747.7

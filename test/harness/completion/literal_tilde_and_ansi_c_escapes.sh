@@ -9,7 +9,7 @@ trap '[ -n "$dir" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$dir"' EXIT
 : > "$dir/zq\\back"
 : > "$dir/zq'quote"
 cd "$dir"
-echo "== an escaped tilde completes the escaped names:"
+echo "== an escaped tilde completes the escaped words:"
 "$BIN" --debug-complete-at 'cat \~' </dev/null
 echo "== an ANSI C quote escapes a backslash:"
 "$BIN" --debug-complete-at "cat \$'zq\\\\b" </dev/null

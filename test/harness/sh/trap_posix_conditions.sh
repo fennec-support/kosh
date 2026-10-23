@@ -33,7 +33,7 @@ echo reset-return-status=$?
 
 # Dash accepts no trap option. Each option form ends the subshell with the
 # status a special builtin reports for a usage error. Every case runs in its
-# own subshell and the parent reads the status back.
+# own subshell and the parent collects the status.
 echo print-form
 ( trap 'echo U-fired' USR1; trap -p USR1; echo print-form-reached=$? ) 2>/dev/null
 echo print-form-status=$?

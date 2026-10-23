@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
-# KOSH_GIT_BRANCH reads the branch the \G prompt segment renders, from
-# .git/HEAD without forking git. The probe builds the repository shapes by
+# KOSH_GIT_BRANCH gets the branch the \G prompt segment renders, from
+# .git/HEAD without forking git. The probe builds the repository layouts by
 # hand, the attached ref, the detached hash, the worktree gitdir pointer,
 # and the walk up from a subdirectory, so no git binary is needed.
 root=../../kosh-git-branch-${PPID-0}-$$

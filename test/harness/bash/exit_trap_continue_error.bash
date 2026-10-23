@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # A continue with a count that is not a number ends a non-interactive shell
-# with status two, checked against bash. The EXIT action reads that status.
+# with status two, checked against bash. The EXIT action receives that status.
 
 echo before_trap
 

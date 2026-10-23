@@ -13,14 +13,14 @@ rc=0
        |         ^~~
 note: Did you mean 'set'?
 rc=127
-=== koshconf set interpreter.resolve_koshkit_applets_as_commands on turns bare names on ===
+=== koshconf set interpreter.resolve_koshkit_applets_as_commands on turns bare commands on ===
 1
 2
 3
 === koshconf set interpreter.resolve_koshkit_applets_as_commands on passes bare Koshka utility flags ===
 host-shape=matched
 === koshconf set interpreter.resolve_koshkit_applets_as_commands on passes bare POSIX utility flags ===
-=== koshconf set interpreter.resolve_koshkit_applets_as_commands on leaves unknown names unresolved ===
+=== koshconf set interpreter.resolve_koshkit_applets_as_commands on leaves unknown commands unresolved ===
 rc=1
 === koshconf set interpreter.resolve_koshkit_applets_as_commands on preserves builtin precedence ===
 builtin
@@ -28,7 +28,7 @@ builtin
 alias
 === koshconf set interpreter.resolve_koshkit_applets_as_commands on preserves function precedence ===
 function
-=== --enable-koshkit turns bare names on ===
+=== --enable-koshkit turns bare commands on ===
 1
 2
 3
@@ -60,7 +60,7 @@ rc=1
      1 |  koshkit nope
        |          ^~~~
 rc=1
-=== a utility named by one expanded word ===
+=== a utility selected by one expanded word ===
 2
 3
 rc=0

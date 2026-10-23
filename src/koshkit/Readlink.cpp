@@ -2,8 +2,8 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the readlink utility. It reads each symbolic-link target
- * through the platform interface and controls the trailing newline.
+ * This file implements the readlink utility. It resolves each symbolic link
+ * target through the platform interface and controls the trailing newline.
  */
 
 #include "../CLI.hpp"

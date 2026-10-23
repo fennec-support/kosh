@@ -3,7 +3,7 @@
  *    See the top-level LICENSE file for the licensing information.
  *
  * This file implements helpers that depend on stream or filesystem input. It
- * reads complete inputs and delimited lines, computes command and directory
+ * loads complete inputs and delimited lines, computes command and directory
  * suggestions, and derives Git branch and upstream status. It also parses the
  * octal and symbolic file modes that chmod, mkdir, mkfifo, and mknod apply,
  * with creation-mask filtering, copied permission classes, and special bits.

@@ -1,4 +1,4 @@
-echo "== stdin reads one top-level command:"
+echo "== stdin supplies one top-level command:"
 printf 'echo one\necho two\n' | "$BIN" -t
 
 echo "== a command string runs as one input command:"

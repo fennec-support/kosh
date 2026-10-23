@@ -1,6 +1,6 @@
 # shellcheck disable=unassigned-variable-read
 unset KOSH_FLAGS
-# A script operand under mimicry reads its own shebang. `kosh -I script.sh`
+# A script operand under mimicry uses its own shebang. `kosh -I script.sh`
 # analyzes and runs the file under the mood its interpreter gives, the same
 # mood the dispatch path picks for the script run as a command.
 directory=$(mktemp -d)
@@ -19,7 +19,7 @@ echo "== a bash shebang selects the bash mood:"
 "$BIN" --no-traces -I "$directory/bash-script"
 echo "== an sh shebang selects the posix mood:"
 "$BIN" --no-traces -I "$directory/sh-script"
-echo "== an env shebang selects the named shell:"
+echo "== an env shebang selects the shell it points to:"
 "$BIN" --no-traces -I "$directory/env-script"
 echo "== an ash shebang selects the posix mood:"
 "$BIN" --no-traces -I "$directory/ash-script"
@@ -29,7 +29,7 @@ echo "== env assignments, option arguments, and an exe suffix are skipped:"
 "$BIN" --no-traces -I "$directory/env-word-script"
 echo "== a script with no shebang keeps the session mood:"
 "$BIN" --no-traces -I "$directory/plain-script"
-echo "== a script operand reads its shebang without -I:"
+echo "== a script operand uses its shebang without -I:"
 "$BIN" --no-traces "$directory/bash-script"
 echo "== an explicit --mood wins:"
 "$BIN" --no-traces -I --mood kosh "$directory/bash-script"
@@ -65,7 +65,7 @@ printf '#!/bin/sh\n[[ x == x ]] && echo ok\n' > "$directory/sh-syntax"
 echo "== a bash shebang runs bash syntax without -I:"
 "$BIN" --no-traces "$directory/bash-syntax"
 echo "rc=$?"
-echo "== an env -S shebang selects the named shell:"
+echo "== an env -S shebang selects the shell it points to:"
 "$BIN" --no-traces "$directory/env-split"
 echo "rc=$?"
 echo "== an sh shebang rejects the bash conditional:"

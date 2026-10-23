@@ -1,7 +1,7 @@
 unset KOSH_FLAGS KOSHCONF
 # The shell accepts bash's invocation forms -o NAME, +o NAME, -O NAME,
 # +O NAME, and +letter. Each given option keeps its command-line value over
-# the settings files, and --no-config reads no settings file at all.
+# the settings files, and --no-config loads no settings file at all.
 work=$(mktemp -d)
 trap '[ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
 mkdir -p "$work/config/kosh"
@@ -29,7 +29,7 @@ echo "== the later of a letter and its name wins:"
 do_show -e +o errexit
 do_show +o errexit -e
 do_show +eu -o nounset
-echo "== -euo pipefail names pipefail with -o:"
+echo "== -euo pipefail sets pipefail with -o:"
 "$BIN" --no-config -euo pipefail -c 'echo "$-"; shopt -qo pipefail && echo pipefail'
 echo "== -o posix acts as --posix:"
 "$BIN" -o posix -c 'koshconf get mood'
@@ -50,7 +50,7 @@ echo "rc=$?"
 echo "== a plus word after the script is an operand:"
 printf 'echo "operand=$1"\n' >"$work/script.sh"
 "$BIN" "$work/script.sh" +e
-echo "== --no-config reads no settings file and drops KOSHCONF:"
+echo "== --no-config loads no settings file and drops KOSHCONF:"
 KOSHCONF=AQEB "$BIN" --no-config -c 'koshconf get mood; echo "$-"
 env | grep -c "^KOSHCONF=" || :'
 echo "== a flag after -c is parsed as a flag:"

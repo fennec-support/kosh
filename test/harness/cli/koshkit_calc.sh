@@ -128,19 +128,19 @@ echo "== a == comparison is not an assignment:"
 printf '5 == 5\n5 == 4\n' | "$BIN" -c 'koshkit calc -i' 2>&1
 echo "== an unset variable is a located capitalized error, not a silent zero:"
 printf 'nope\n' | "$BIN" -c 'koshkit calc -i' 2>&1
-echo "== a set but empty variable reads zero, only an unset name is an error:"
+echo "== a set but empty variable evaluates to zero, only an unset name is an error:"
 printf 'e\n' | "$BIN" -c 'e=; koshkit calc -i' 2>&1
 echo "== an empty assignment is rejected rather than binding an empty value:"
 printf 'z =\n' | "$BIN" -c 'koshkit calc -i' 2>&1
 echo "== a division by zero is a located capitalized error:"
 printf '1 / 0\n' | "$BIN" -c 'koshkit calc -i' 2>&1
-echo "== an unset name inside a stored formula errors when the formula reads:"
+echo "== an unset name inside a stored formula errors when the formula runs:"
 printf 'total = base + 1\ntotal\n' | "$BIN" -c 'koshkit calc -i' 2>&1
 
 unset KOSH_FLAGS
-# calc reports a located error with a caret under the offending token rather than
-# a flat message, and with -i it reads expressions interactively, evaluating each
-# piped line and continuing past a bad one.
+# calc reports a located error with a caret under the offending token rather
+# than a flat message, and with -i it takes expressions interactively,
+# evaluating each piped line and continuing past a bad one.
 echo "== a decimal divisor preserves decimal arithmetic:"
 "$BIN" -c 'koshkit calc 2312312 / 1323.0' 2>&1
 echo "== a leading decimal point is accepted:"
@@ -150,7 +150,7 @@ echo "== -i evaluates each piped line, continuing past a bad one:"
 printf '1 + 1\nbad +\n10 * 10\n' | "$BIN" -c 'koshkit calc -i' 2>&1
 
 unset KOSH_FLAGS
-# calc with -p reads and evaluates expressions from standard input one per line
+# calc with -p takes and evaluates expressions from standard input one per line
 # with no prompt, and a name = value line binds a variable for a later line.
 echo "== -p evaluates each piped line and binds a variable:"
 printf '2 + 2\nx = 5\nx * x\n' | "$BIN" -c 'koshkit calc -p' 2>&1

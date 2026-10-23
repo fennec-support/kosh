@@ -5,7 +5,7 @@
 # per word in a for loop, and reports itself to declare -p, ${!name},
 # [[ -R ]], test -R, and [ -R ].
 # unset acts on the target, unset -n on the reference and on nothing else, and
-# a circular chain reads as unset and fails an assignment. Through a circular
+# a circular chain counts as unset and fails an assignment. Through a circular
 # chain read, printf -v, and export fail, arithmetic, a prefix before a
 # builtin, and declare skip the write, a prefix before eval, a function, or an
 # external command binds a plain variable for that command only, an element or

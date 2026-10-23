@@ -51,7 +51,7 @@ status=0
 ./a/b/c/three.txt
 ./a/b/two.log
 ./long/abcdefghijklmnopqrstuvwxyz/segment/leaf
---- find a named root ---
+--- find one root ---
 a/b
 a/b/c
 a/b/c/three.txt

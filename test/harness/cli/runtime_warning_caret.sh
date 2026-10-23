@@ -1,5 +1,5 @@
 unset KOSH_FLAGS
-# A -WWW unset-variable warning carets the statement that reads the variable,
+# A -WWW unset-variable warning carets the statement that expands the variable,
 # so a read inside [[ ]], a case subject, (( )), a for word list, or an array
 # literal points at its own line rather than the statement before it.
 script=$(mktemp)

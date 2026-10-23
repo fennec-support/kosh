@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Socket fidelity, ss parity, and terminal width probes for evilfiles, evilss,
-and evilps. The process holds a pipe, a socketpair, a named Unix socket, and
-loopback TCP connections, then lists its own descriptors with the shell."""
+and evilps. The process holds a pipe, a socketpair, a Unix socket bound to a
+path, and loopback TCP connections, then lists its own descriptors with the
+shell."""
 
 import fcntl
 import os

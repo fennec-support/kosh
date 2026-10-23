@@ -13,7 +13,7 @@ compopt +o bashdefault +o default +o dirnames +o filenames +o fullquote +o noquo
 probe_dir/
 probe_file
 compopt +o bashdefault +o default +o dirnames -o filenames +o fullquote +o noquote +o nosort +o nospace +o plusdirs cp
-== a named compopt inside the function changes the spec:
+== a compopt with a command operand inside the function changes the spec:
 probe_dir/
 probe_file
 compopt +o bashdefault +o default +o dirnames +o filenames +o fullquote +o noquote +o nosort -o nospace +o plusdirs cp
@@ -26,18 +26,18 @@ zeta
 alpha
 mid
 zeta
-== a reply is quoted only as file names or with fullquote:
+== a reply is quoted only with filenames or with fullquote:
 a b
 'a b'
 a b
 'a b'
 'a b'
-== noquote leaves the fallback file names unquoted:
+== noquote leaves the fallback filenames unquoted:
 'spaced name'
 spaced name
 == bashdefault alone leaves a plain word empty:
 == bashdefault still completes a variable and a glob:
 $probe_variable
 'spaced name'
-== bashdefault with default falls back to file names:
+== bashdefault with default falls back to filenames:
 'spaced name'

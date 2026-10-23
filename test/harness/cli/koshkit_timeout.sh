@@ -380,7 +380,7 @@ else
     echo "$interrupt_result"
 fi
 
-echo "--- a supervised child reads input ---"
+echo "--- a supervised child consumes input ---"
 if [ "${OS-}" = Windows_NT ]; then
     terminal_output=$(printf 'probe\n' | "$BIN" -c \
         'koshkit timeout 1 "$1" -c '\''read -r value; echo received-"$value"'\''' \

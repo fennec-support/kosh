@@ -1,9 +1,10 @@
 unset KOSH_FLAGS
 # The KOSH_ANSI_ color variables expose the SGR escapes a prompt template uses.
 # The harness captures a pipe, so stdout_wants_color is false and a recognized
-# name reads back empty. The ${name-MISSING} form still separates a recognized
-# name, which is set and reads empty, from an unknown name, which is unset and
-# takes the default, so the probe locks the table membership without a terminal.
+# name expands to empty. The ${name-MISSING} form still separates a recognized
+# name, which is set and expands to empty, from an unknown name, which is unset
+# and takes the default, so the probe locks the table membership without a
+# terminal.
 names="BLACK RED GREEN YELLOW BLUE MAGENTA CYAN WHITE \
 BRIGHT_BLACK BRIGHT_RED BRIGHT_GREEN BRIGHT_YELLOW \
 BRIGHT_BLUE BRIGHT_MAGENTA BRIGHT_CYAN BRIGHT_WHITE BOLD DIM RESET BOGUS"

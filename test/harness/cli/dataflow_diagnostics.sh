@@ -13,11 +13,11 @@ echo '== case and underscore folding both count as a resemblance:'
 "$BIN" -n -WWW -c 'output_file=out
 echo "$OUTPUTFILE"' 2>&1
 
-echo '== a transposed pair still names the assigned variable:'
+echo '== a transposed pair still identifies the assigned variable:'
 "$BIN" -n -WWW -c 'output_length=1
 echo "$outupt_length"' 2>&1
 
-echo '== a dropped byte still names the assigned variable:'
+echo '== a dropped byte still identifies the assigned variable:'
 "$BIN" -n -WWW -c 'destination_path=1
 echo "$destinaton_path"' 2>&1
 
@@ -125,7 +125,7 @@ echo '== a prefix assignment counts as an assignment:'
 echo "$w$b"' 2>&1
 echo "rc=$?"
 
-echo '== the shell maintains these names itself:'
+echo '== the shell maintains these variables itself:'
 "$BIN" -n -WWW -c 'echo "$OPTIND $OPTARG $REPLY $RANDOM $LINENO $SECONDS $PPID"' 2>&1
 echo "rc=$?"
 
@@ -146,13 +146,13 @@ echo '== a KOSH_ name is maintained by the shell:'
 "$BIN" -n -WWW -c 'echo "$KOSH $KOSH_FLAGS $KOSH_GIT_BRANCH $KOSH_ANSI_RED"' 2>&1
 echo "rc=$?"
 
-echo '== misspelled KOSH and ANSI names are unresolved:'
+echo '== misspelled KOSH and ANSI variables are unresolved:'
 "$BIN" -n -WWW -c 'echo "$KOSH_GIT_BRNACH $KOSH_ANSI_REDD $KOSH_VERSOIN $OPTNID"' 2>&1
 
 echo '== sh mood does not suggest a Bash-only variable:'
 "$BIN" --mood sh -n -WWW -c 'echo "$BASH_VERSOIN"' 2>&1
 
-echo '== unavailable catalog names are not suggested:'
+echo '== unavailable catalog entries are not suggested:'
 "$BIN" --mood bash -n -WWW -c 'echo "$BASHOPTZ"' 2>&1
 "$BIN" --mood sh -n -WWW -c 'echo "$GLOBIGNROE"' 2>&1
 
@@ -198,7 +198,7 @@ echo '== the default mood rejects an unassigned read:'
 "$BIN" -n -c 'echo "$rejected_name"' 2>&1
 echo "rc=$?"
 
-echo '== a read before a later assignment names that assignment:'
+echo '== a read before a later assignment identifies that assignment:'
 "$BIN" -n -WWW -c 'echo "$greeting_text"
 greeting_text=hello' 2>&1
 

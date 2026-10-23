@@ -94,7 +94,7 @@ case "$hybrid_named_error" in
   *"Invalid major device number 'hybrid-major'"*) hybrid_named_check=ok ;;
   *) hybrid_named_check=missing ;;
 esac
-printf 'hybrid-named-check=%s\n' "$hybrid_named_check"
+printf 'hybrid-explicit-check=%s\n' "$hybrid_named_check"
 
 hybrid_major_error=$($BIN -c \
   'koshkit mknod --major 1 "$1/hybrid-major" b hybrid-minor' \
@@ -194,7 +194,7 @@ printf 'redirected-error=%s\n' "$redirected_error"
 
 "$BIN" -c 'koshkit mknod --fifo "$1/fifo-extra" p' mknod "$root" \
   >/dev/null 2>&1
-printf 'named-extra-status=%s\n' "$?"
+printf 'explicit-extra-status=%s\n' "$?"
 
 rm -f "$root/fifo-posix" "$root/fifo-modern"
 if test ! -e "$root/fifo-posix" && test ! -e "$root/fifo-modern"; then

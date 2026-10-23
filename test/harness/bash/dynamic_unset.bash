@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Unsetting SECONDS or RANDOM takes the dynamic reader away for the rest of the
-# shell. The name reads empty until something assigns to it, and after an
+# shell. The variable is empty until something assigns to it, and after an
 # assignment it holds that value without moving. The integer attribute is gone
 # too, and a subshell inherits the destroyed reader.
 

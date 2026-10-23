@@ -6,7 +6,7 @@ du-human=scaled
 -rw-r--r-- 1 1892 big.txt
 --- ls -lh is human-readable ---
 -rw-r--r-- 1 1.8K big.txt
---- cp -v names the copy ---
+--- cp -v prints the copy ---
 'big.txt' -> 'copy.txt'
---- mv -v names the move ---
+--- mv -v prints the move ---
 renamed 'copy.txt' -> 'moved.txt'

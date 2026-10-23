@@ -6,7 +6,7 @@ case $report in
   *'SOURCE'*'OPTIONS'*) detail_shape=matched ;;
   *) detail_shape=missing ;;
 esac
-printf 'detail-shape=%s\n' "$detail_shape"
+printf 'detail-layout=%s\n' "$detail_shape"
 
 case $report in
   *'warning:'*)

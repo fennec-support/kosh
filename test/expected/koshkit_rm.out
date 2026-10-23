@@ -42,7 +42,7 @@ rm: remove 4 arguments? status=0
 == rm -I asks once for a recursive removal:
 rm: remove 1 argument recursively? status=0
 
-== rm -i names the file type in its prompt:
+== rm -i states the file type in its prompt:
 rm: descend into directory 'tree'
  status=0
 rm: descend into directory 'single'

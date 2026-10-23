@@ -3,7 +3,7 @@
 # the third level lists that sub-subcommand's options. Completion forks each
 # level when the settled words name a parsed subcommand chain, capped at the
 # depth limit. A fake binary called an allowlisted command keeps the
-# candidates stable across machines. The help parser reads a bare SUBCOMMANDS
+# candidates stable across machines. The help parser accepts a bare SUBCOMMANDS
 # header with no colon (tailscale), a flags header at the margin that ends the
 # section, left-margin group headers that keep a section open (go shaped like
 # git), a "The commands are:" header followed by a blank line (go), and a

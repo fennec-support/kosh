@@ -15,7 +15,7 @@ SHELL="$inherited_shell" EXPECTED_SHELL="$inherited_shell" "$BIN" -c '
     if [ "$normalized_shell" = "$normalized_expected_shell" ]; then echo preserved; else echo "clobbered to $SHELL"; fi
 '
 
-echo "== environment names follow platform case rules:"
+echo "== environment keys follow platform case rules:"
 shell_environment_name=SHELL
 bash_environment_name=BASH
 bash_version_environment_name=BASH_VERSION
@@ -49,7 +49,7 @@ else
     bash_invocation=$dir/bash
     bash_pattern='*/bash'
 fi
-echo "== BASH names the invocation symlink while SHELL stays inherited:"
+echo "== BASH is the invocation symlink while SHELL stays inherited:"
 SHELL="$inherited_shell" EXPECTED_SHELL="$inherited_shell" \
     BASH_PATTERN="$bash_pattern" "$bash_invocation" -c \
     'case "$BASH" in $BASH_PATTERN) echo bash-is-invocation ;; *) echo "BASH=$BASH" ;; esac

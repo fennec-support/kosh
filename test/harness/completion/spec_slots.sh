@@ -21,10 +21,10 @@ echo "== -I leaves an argument alone:"
 echo "== -I with no match offers nothing:"
 env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$dir" \
   "$BIN" -c "complete -I -W 'initial_one'" --debug-complete-at 'compo' </dev/null
-echo "== -I -o bashdefault with no match falls back to command names:"
+echo "== -I -o bashdefault with no match falls back to command words:"
 env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$dir" \
   "$BIN" -c "complete -I -o bashdefault -W 'initial_one'" --debug-complete-at 'compo' </dev/null
-echo "== the -E and -I functions receive the bash slot names:"
+echo "== the -E and -I functions receive the bash slot words:"
 "$BIN" -c "f() { printf '[%s]' \"\$@\"; echo; COMPREPLY=(from_function); }; complete -E -F f; complete -I -F f" --debug-complete-at '' </dev/null
 "$BIN" -c "f() { printf '[%s]' \"\$@\"; echo; COMPREPLY=(from_function); }; complete -I -F f" --debug-complete-at 'ab' </dev/null
 echo "== -D lists its actions:"
@@ -33,7 +33,7 @@ echo "== -D lists its word list with the prefix:"
 "$BIN" -c "complete -D -W 'alpha beta' -P 'pre_'" --debug-complete-at 'unknown_command al' </dev/null
 echo "== a -D loader returning 124 restarts with the loaded spec:"
 "$BIN" -c "load() { complete -W 'loaded_one loaded_two' \"\$1\"; return 124; }; complete -D -F load -W 'default_word'" --debug-complete-at 'unknown_command lo' </dev/null
-echo "== complete -r removes a named spec:"
+echo "== complete -r removes the spec of a command:"
 "$BIN" -c "cd '$dir' || exit; complete -W 'word_one' cmd; complete -r cmd" --debug-complete-at 'cmd slot_f' </dev/null
 echo "== complete -r removes one slot:"
 "$BIN" -c "complete -W 'w' cmd; complete -E -W 'e'; complete -I -W 'i'; complete -r -E; complete -p cmd; complete -p -I; complete -p -E; echo status \$?" 2>/dev/null

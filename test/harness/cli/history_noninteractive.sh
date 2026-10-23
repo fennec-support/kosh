@@ -97,10 +97,10 @@ echo "== clear empties the list =="
 
 printf 'existing one\nexisting two\n' > "$dir/hist"
 printf 'merged alpha\nmerged beta\n' > "$dir/extra"
-echo "== history -r reads a named file into the list =="
+echo "== history -r loads a given file into the list =="
 "$BIN" -c 'history -r "$1"; history' history-test "$dir/extra"
 printf 'named base' > "$dir/named-append"
-echo "== history -a separates and appends the list to a named file =="
+echo "== history -a separates and appends the list to a given file =="
 "$BIN" -c 'history -a "$1"; echo "rc=$?"' history-test "$dir/named-append"
 cat "$dir/named-append"
 echo "== history -a leaves its backing file unchanged =="
@@ -112,7 +112,7 @@ echo "== history -a leaves an aliased backing file unchanged =="
 "$BIN" -c 'history -a "$1"; echo "rc=$?"; history' history-test \
   "$dir/history-alias"
 printf 'named base\n' > "$dir/named-write"
-echo "== history -w replaces a named file with the list =="
+echo "== history -w replaces a given file with the list =="
 "$BIN" -c 'history -w "$1"; echo "rc=$?"' history-test "$dir/named-write"
 cat "$dir/named-write"
 echo "== history -r on a missing file errors =="
@@ -356,7 +356,7 @@ KOSH_HISTORY_FILE="$dir/damaged" "$BIN" --no-init-files -c 'history' 2>&1 | \
 KOSH_HISTORY_FILE="$dir/damaged" "$BIN" --no-init-files -c 'history' 2>/dev/null
 echo "rc=$?"
 
-echo "== an operandless read names the resolved backing file =="
+echo "== an operandless read selects the resolved backing file =="
 KOSH_HISTORY_FILE="$dir/no-such-backing" "$BIN" --no-init-files -c \
   'history -r' 2>&1 | grep -c "Cannot read history at "
 mkdir "$dir/backing-directory"
@@ -364,12 +364,12 @@ KOSH_HISTORY_FILE="$dir/backing-directory" "$BIN" --no-init-files -c \
   'history -r' 2>&1 | grep -c "Cannot read history at "
 
 : > "$dir/multiline"
-echo "== a stored multiline event keeps its submitted shape =="
+echo "== a stored multiline event keeps its submitted layout =="
 KOSH_HISTORY_FILE="$dir/multiline" "$BIN" --no-init-files -c \
   "history -s \$'line one\\nline two'; history"
 
 printf 'named base\n' > "$dir/repeated-append"
-echo "== a repeated named append stores only the events not written yet =="
+echo "== a repeated append to a given file stores only the events not written yet =="
 KOSH_HISTORY_FILE="$dir/repeated-append-backing" "$BIN" --no-init-files -c \
   'history -s one; history -a "$1"; history -s two; history -a "$1"; \
 echo "rc=$?"' history-test "$dir/repeated-append"
@@ -384,7 +384,7 @@ KOSH_HISTORY_FILE="$dir/two-target-backing" "$BIN" --no-init-files -c \
 cat "$dir/append-one"
 cat "$dir/append-two"
 
-echo "== a named write to a directory fails and leaves the directory in place =="
+echo "== a write to a directory fails and leaves the directory in place =="
 KOSH_HISTORY_FILE="$dir/write-fail-backing" "$BIN" --no-init-files -c \
   'history -s kept; history -w "$1"; echo "rc=$?"; \
 if [ -d "$1" ]; then echo "directory intact"; fi; history' history-test \
@@ -393,17 +393,17 @@ KOSH_HISTORY_FILE="$dir/write-fail-backing" "$BIN" --no-init-files -c \
   'history -w "$1"' history-test "$dir/backing-directory" 2>&1 | \
   grep -c "Cannot write history to '"
 
-echo "== a named append to a directory fails =="
+echo "== an append to a directory fails =="
 KOSH_HISTORY_FILE="$dir/append-fail-backing" "$BIN" --no-init-files -c \
   'history -s kept; history -a "$1"; echo "rc=$?"' history-test \
   "$dir/backing-directory" 2>/dev/null
 
-echo "== an operandless write names the resolved backing file =="
+echo "== an operandless write selects the resolved backing file =="
 KOSH_HISTORY_FILE="$dir/backing-directory" "$BIN" --no-init-files -c \
   'history -w; echo "rc=$?"' 2>&1 | grep -c "Cannot write history at "
 
 printf 'append base\n' > "$dir/append-limit-target"
-echo "== a named append is bounded by KOSH_HISTORY_SIZE =="
+echo "== an append to a given file is bounded by KOSH_HISTORY_SIZE =="
 KOSH_HISTORY_FILE="$dir/append-limit" "$BIN" --no-init-files -c \
   'KOSH_HISTORY_SIZE=2; history -s one; history -s two; history -s three; \
 history -a "$1"; echo "rc=$?"' history-test "$dir/append-limit-target"
@@ -424,7 +424,7 @@ KOSH_HISTORY_FILE="$dir/write-trim" "$BIN" --no-init-files -c \
 cat "$dir/write-trim"
 
 printf 'one\ntwo\nthree\nfour\nfive\n' > "$dir/write-limit"
-echo "== a named write is bounded by KOSH_HISTORY_SIZE =="
+echo "== a write to a given file is bounded by KOSH_HISTORY_SIZE =="
 KOSH_HISTORY_FILE="$dir/write-limit" "$BIN" --no-init-files -c \
   'KOSH_HISTORY_SIZE=2; history -w "$1"; echo "rc=$?"' history-test \
   "$dir/write-limit-target"
@@ -495,7 +495,7 @@ echo "== a peer unterminated tail stays separate from a local append =="
 KOSH_HISTORY_FILE="$dir/unterminated-peer" "$BIN" --no-init-files -c \
   'history >/dev/null; printf peer-tail >> "$KOSH_HISTORY_FILE"; \
 history -s local-tail; history -a; history'
-echo "== a new shell reads separate peer and local tail records =="
+echo "== a new shell loads separate peer and local tail records =="
 KOSH_HISTORY_FILE="$dir/unterminated-peer" "$BIN" --no-init-files -c \
   'history'
 
@@ -547,7 +547,7 @@ cat "$dir/backing-link-target"
 printf 'old symlink\n' > "$dir/write-symlink-target"
 "$BIN" --no-init-files -c 'koshkit ln -s "$1" "$2"' history-test \
   "$dir/write-symlink-target" "$dir/write-symlink"
-echo "== a named write preserves a symlink target =="
+echo "== a write to a given file preserves a symlink target =="
 KOSH_HISTORY_FILE="$dir/write-symlink-backing" "$BIN" --no-init-files -c \
   'history -s symlinked; history -w "$1"; write_status=$?; \
 if [ -L "$1" ]; then link_status=0; else link_status=1; fi; \
@@ -558,7 +558,7 @@ cat "$dir/write-symlink-target"
 printf 'old hardlink\n' > "$dir/write-hardlink-target"
 "$BIN" --no-init-files -c 'koshkit ln "$1" "$2"' history-test \
   "$dir/write-hardlink-target" "$dir/write-hardlink"
-echo "== a named write preserves hardlink identity =="
+echo "== a write to a given file preserves hardlink identity =="
 KOSH_HISTORY_FILE="$dir/write-hardlink-backing" "$BIN" --no-init-files -c \
   'history -s hardlinked; history -w "$1"; write_status=$?; \
 if [ "$1" -ef "$2" ]; then same_status=0; else same_status=1; fi; \
@@ -569,7 +569,7 @@ cat "$dir/write-hardlink-target"
 printf 'old mode\n' > "$dir/write-mode"
 "$BIN" --no-init-files -c 'koshkit chmod 700 "$1"' history-test \
   "$dir/write-mode"
-echo "== a named write preserves the target mode =="
+echo "== a write to a given file preserves the target mode =="
 KOSH_HISTORY_FILE="$dir/write-mode-backing" "$BIN" --no-init-files -c \
   'history -s modekept; history -w "$1"; write_status=$?; \
 if [ -x "$1" ]; then mode_status=0; else mode_status=1; fi; \
@@ -578,7 +578,7 @@ printf "rc=%s mode=%s\n" "$write_status" "$mode_status"' history-test \
 cat "$dir/write-mode"
 
 printf 'new one\nnew two\n' > "$dir/import-alias-source"
-echo "== new reads share state across equivalent path spellings =="
+echo "== new loads share state across equivalent path spellings =="
 KOSH_HISTORY_FILE="$dir/import-alias-backing" "$BIN" --no-init-files -c \
   'history -n "$1"; history -n "$2"; history' history-test \
   "$dir/import-alias-source" "$dir/./import-alias-source"
@@ -597,7 +597,7 @@ KOSH_HISTORY_FILE="$dir/import-replaced-backing" "$BIN" --no-init-files -c \
   history-test "$dir/import-replaced-source" "$dir/import-source-replacement"
 
 printf 'append base\n' > "$dir/append-alias-target"
-echo "== named appends share state across equivalent path spellings =="
+echo "== appends to a given file share state across equivalent path spellings =="
 KOSH_HISTORY_FILE="$dir/append-alias-backing" "$BIN" --no-init-files -c \
   'history -s aliasone; history -a "$1"; history -s aliastwo; \
 history -a "$2"; echo "rc=$?"' history-test "$dir/append-alias-target" \
@@ -605,7 +605,7 @@ history -a "$2"; echo "rc=$?"' history-test "$dir/append-alias-target" \
 cat "$dir/append-alias-target"
 
 : > "$dir/concurrent-named-append"
-echo "== concurrent named appends keep complete records =="
+echo "== concurrent appends to a given file keep complete records =="
 KOSH_HISTORY_FILE="$dir/named-append-one" "$BIN" --no-init-files -c \
   'history -s appendone; history -a "$1"' history-test \
   "$dir/concurrent-named-append" &
@@ -623,7 +623,7 @@ KOSH_HISTORY_FILE="$dir/concurrent-named-append" "$BIN" --no-init-files -c \
   'history | koshkit wc -l'
 
 printf 'old\n' > "$dir/concurrent-named-write"
-echo "== a concurrent named write and append leave readable history =="
+echo "== a concurrent write and append to a given file leave readable history =="
 KOSH_HISTORY_FILE="$dir/named-write-backing" "$BIN" --no-init-files -c \
   'history -s written; history -w "$1"' history-test \
   "$dir/concurrent-named-write" &

@@ -10,7 +10,7 @@ cd "$d" || exit 1
 "$BIN" -c 'koshkit seq 1 > two.txt'
 ln -s "$BIN" ls
 
-echo "--- binary named ls acts as ls ---"
+echo "--- binary invoked as ls acts as ls ---"
 ./ls
 echo "rc=$?"
 
@@ -42,17 +42,17 @@ echo "--- a specialized utility locates an invalid operand ---"
 
 ln -s "$BIN" koshkit
 
-echo "--- a binary named koshkit runs the utility its first operand names ---"
+echo "--- a binary invoked as koshkit runs the utility its first operand selects ---"
 ./koshkit seq 2
 echo "rc=$?"
 
-echo "--- a binary named koshkit passes the rest to the utility ---"
+echo "--- a binary invoked as koshkit passes the rest to the utility ---"
 ./koshkit tail --bogus 2>&1 | head -1
-echo "--- a binary named koshkit without a utility acts as the builtin ---"
+echo "--- a binary invoked as koshkit without a utility acts as the builtin ---"
 ./koshkit --list | grep -c '^seq$'
 ./koshkit no-such-utility > /dev/null 2>&1
 echo "rc=$?"
-echo "--- the builtin form skips the startup and names koshkit in an error ---"
+echo "--- the builtin form skips the startup and cites koshkit in an error ---"
 mkdir -p conf/kosh
 printf 'bogus.option=on\n' > conf/kosh/kosh.conf
 XDG_CONFIG_HOME="$d/conf" KOSH_FLAGS=-x ./koshkit no-such-utility 2>&1

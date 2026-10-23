@@ -128,11 +128,11 @@ ok: koshkit flags complete
 -p
 -r
 -t
-== bare utility names in the default mood:
+== bare utility words in the default mood:
 whoami
 == bare utility flags in the default mood:
 -A
-== bare utility names stay hidden in bash mood:
-== bare utility names appear after koshconf set interpreter.resolve_koshkit_applets_as_commands on:
+== bare utility words stay hidden in bash mood:
+== bare utility words appear after koshconf set interpreter.resolve_koshkit_applets_as_commands on:
 whoami
 == a PATH program keeps its own flags:

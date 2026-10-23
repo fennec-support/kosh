@@ -107,7 +107,7 @@ echo
 echo "== rm -I asks once for a recursive removal:"
 printf "n\\n" | "$BIN" -c "koshkit rm -rI --dry-run tree; echo status=\$?" 2>&1
 echo
-echo "== rm -i names the file type in its prompt:"
+echo "== rm -i states the file type in its prompt:"
 printf "n\\n" | "$BIN" -c "koshkit rm -ri --dry-run tree; echo status=\$?" 2>&1 | tr "?" "\\n"
 printf "y\\nn\\ny\\n" | "$BIN" -c "koshkit rm -ri --dry-run single; echo status=\$?" 2>&1 |
   tr "?" "\\n" | tr '\\' '/'

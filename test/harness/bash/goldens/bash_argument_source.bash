@@ -1,5 +1,5 @@
 # This sourced helper exposes its BASH_ARGC and BASH_ARGV frame and one nested
-# function frame to the call-stack compatibility fixture.
+# function frame to the call-stack compatibility test.
 printf 'bash-source argc=<%s> argv=<%s> positional=<%s>\n' \
   "${BASH_ARGC[*]}" "${BASH_ARGV[*]}" "$*"
 bash_argument_source_function() {

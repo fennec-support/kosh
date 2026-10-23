@@ -311,10 +311,10 @@ all are a b c and first is a
 --- wildcard and prerequisite globs expand directory components ---
 echo dirs are globbed/one/. globbed/two/. and sources are globbed/one/x.c globbed/two/y.c
 dirs are globbed/one/. globbed/two/. and sources are globbed/one/x.c globbed/two/y.c
---- a missing prerequisite names the rule line that needs it ---
+--- a missing prerequisite cites the rule line that needs it ---
 Makefile:4:1: error: There is no rule to make the target 'missing-input', which 'needs' needs.
      4 |  needs: missing-input
        |  ^~~~~~~~~~~~~~~~~~~~
 status=2
-== the $(shell) error names the make source (count):
+== the $(shell) error cites the make source (count):
 1

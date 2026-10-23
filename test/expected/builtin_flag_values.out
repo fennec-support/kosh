@@ -1,4 +1,4 @@
-== kill -s signal names:
+== kill -s signals:
 KILL
 TERM
 == kill -s prefix:
@@ -12,11 +12,11 @@ EXIT
 RETURN
 == trap action position is a filename:
 0
-== shopt -o reads the set option names:
+== shopt -o loads the set options:
 pipefail
 == shopt operand stays a shopt name:
 xpg_echo
-== enable builtin names:
+== enable builtins:
 echo
 == complete -o options:
 bashdefault
@@ -36,7 +36,7 @@ nospace
 == compgen -o joined form:
 default
 dirnames
-== compgen -V names a variable:
+== compgen -V completes a variable:
 completion_probe_var
 == compgen -V joined form:
 KOSH_ANSI_RED
@@ -65,7 +65,7 @@ debug
 info
 == debug logging joined form:
 debug
-== every signal flag reads the platform table:
+== every signal flag uses the platform table:
 yes
 == set has no long mood flags:
 == set -M value:

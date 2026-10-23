@@ -1,4 +1,4 @@
-== a script does not change into a directory named as a command:
+== a script does not change into a directory used as a command word:
 script.sh:1:1: error: The command 'sub' was not found.
 status=127
 -c:1:1: error: The command 'sub' was not found.

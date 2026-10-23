@@ -4,7 +4,7 @@
        |  ^~~~~~~~~
 note: `local` only works inside a function body.
 rc=1
-== invalid local names fail:
+== invalid local identifiers fail:
 status=1
 == fresh name warns:
 1

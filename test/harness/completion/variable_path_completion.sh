@@ -7,7 +7,7 @@ mkdir -p "$DIRECTORY/Downloads" "$DIRECTORY/Documents"
 
 echo "== \${HOME}/ braced:"
 HOME="$DIRECTORY" "$BIN" --debug-complete-at 'cat ${HOME}/Doc' </dev/null
-echo "== a bare variable reference still completes names:"
+echo "== a bare variable reference still completes variables:"
 VARIABLE_COMPLETION_UNIQUE="$DIRECTORY" \
   "$BIN" --debug-complete-at 'echo $VARIABLE_COMPLETION_UNI' </dev/null
 echo "== kosh git dynamic variables complete:"

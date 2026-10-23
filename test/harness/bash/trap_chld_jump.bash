@@ -49,7 +49,7 @@ echo "--- a subshell leaves with the operand its action gave"
   echo sub_tail )
 echo "sub_status=$?"
 
-echo "--- the shell leaves with the status the action names"
+echo "--- the shell leaves with the status the action specifies"
 trap 'echo leaving; exit 7' CHLD
 /bin/echo last > /dev/null
 echo unreachable

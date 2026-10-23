@@ -1,4 +1,4 @@
-== a matching glob expands to the sorted names:
+== a matching glob expands to the sorted filenames:
 real_one real_two
 == the default mood aborts on no match:
 -c:1:6: error: The glob pattern 'no_match_*' matched no file, it expands to its literal text, which is rarely intended.

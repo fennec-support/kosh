@@ -1,6 +1,6 @@
-# z completion reads the frecency store, keeps live directories, and ignores
+# z completion loads the frecency store, keeps live directories, and ignores
 # entries whose directories no longer exist. The leading + appears only in the
-# entry names, so the subsequence tier cannot match letters of the temporary
+# entry text, so the subsequence tier cannot match letters of the temporary
 # directory path.
 d=$(mktemp -d); store=$(mktemp)
 mkdir "$d/+alpha" "$d/+beta"

@@ -46,7 +46,7 @@ echo "divmod $(( 17 / 5 )) $(( 17 % 5 )) $(( -17 / 5 )) $(( -17 % 5 ))"
 # A variable read inside arithmetic is re-evaluated as an arithmetic
 # expression, the same as bash. A value with surrounding blanks, an operator,
 # an indirect name, a sign, or a hex form all resolve, and an array subscript
-# reads the same way.
+# resolves the same way.
 x=" 5 "; echo $((x + 1))
 y="2*3"; echo $((y))
 a=c; c=7; echo $((a))
@@ -190,7 +190,7 @@ echo "mix $(( 16#A + 2#10 + 010 ))"
 
 # Bash let builtin arithmetic forms, checked byte-for-byte against bash. Covers a
 # parenthesized expression, the assignment operators through let, increment and
-# decrement, a bitwise shift, a multi-argument let where a later argument reads
+# decrement, a bitwise shift, a multi-argument let where a later argument uses
 # an earlier assignment, and the let exit status that follows the last argument
 # value.
 let "v = (3 + 4) * 2 - 1"
@@ -217,7 +217,7 @@ echo "bitwise r=$r"
 if (( 2 + 2 == 4 )); then echo "if true"; fi
 if (( 1 == 2 )); then echo nope; else echo "if false"; fi
 
-# A subscript with a side effect runs once, and a compound assignment reads
+# A subscript with a side effect runs once, and a compound assignment loads
 # the left value before it evaluates the right side.
 i=0; a=(0 0 0); (( a[i++]++ )); echo "$i ${a[*]}"
 i=0; a=(0 0 0); (( a[i++] += 2 )); echo "$i ${a[*]}"

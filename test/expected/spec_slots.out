@@ -9,9 +9,9 @@ initial_two
 == -I leaves an argument alone:
 slot_file
 == -I with no match offers nothing:
-== -I -o bashdefault with no match falls back to command names:
+== -I -o bashdefault with no match falls back to command words:
 compopt
-== the -E and -I functions receive the bash slot names:
+== the -E and -I functions receive the bash slot words:
 [_EmptycmD_][][]
 from_function
 [_InitialWorD_][ab][ab]
@@ -23,7 +23,7 @@ pre_alpha
 == a -D loader returning 124 restarts with the loaded spec:
 loaded_one
 loaded_two
-== complete -r removes a named spec:
+== complete -r removes the spec of a command:
 slot_file
 == complete -r removes one slot:
 complete -W 'w' cmd

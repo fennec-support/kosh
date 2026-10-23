@@ -1,5 +1,5 @@
 # The ps listing shows live processes, so the rows differ on every machine and
-# only the shape is asserted. The plain header is fixed, and the aux header and
+# only the layout is asserted. The plain header is fixed, and the aux header and
 # the presence of the running shell are matched rather than printed in full.
 unset KOSH_FLAGS
 

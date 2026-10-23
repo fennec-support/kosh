@@ -24,7 +24,7 @@ echo "words=$(echo case; echo in; echo esac)"
 echo "fall=$(case x in x) echo semi ;& *) echo next ;; esac)"
 echo "retry=$(case x in x) echo first ;;& x) echo again ;; esac)"
 
-# A case arm inside a process substitution reads through the same scanner.
+# A case arm inside a process substitution passes through the same scanner.
 cat < <(case x in x) echo procsub ;; esac)
 while read -r line; do
   echo "read:$line"

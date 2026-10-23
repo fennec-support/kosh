@@ -4,7 +4,7 @@ echo "== aliased subcommands:"
 echo "== aliased options:"
 "$BIN" -c 'complete -W "check-ref-format --version" target; alias g=target; shopt -s progcomp_alias' \
     --debug-complete-at 'g --vers' </dev/null
-echo "== an alias of koshkit completes utility names:"
+echo "== an alias of koshkit completes utility words:"
 "$BIN" -c 'alias kit=koshkit' --debug-complete-at 'kit mk' </dev/null
 echo "== an alias of koshkit completes the flags of its utility:"
 "$BIN" -c 'alias kit=koshkit' --debug-complete-at 'kit du --t' </dev/null

@@ -39,7 +39,7 @@ case $cgroup_detail_report in
   *"Membership unavailable"*) ;;
   *) detail_shape=missing ;;
 esac
-printf 'detail-shape=%s\n' "$detail_shape"
+printf 'detail-layout=%s\n' "$detail_shape"
 
 remote_report=$(run_report '--remote --all')
 case $remote_report in
@@ -144,7 +144,7 @@ esac
 case $help in
 *"--detail"*) help_shape=wrong ;;
 esac
-printf 'help-shape=%s\n' "$help_shape"
+printf 'help-layout=%s\n' "$help_shape"
 
 "$BIN" -c 'koshkit evilps >/dev/null; koshkit evilss -x >/dev/null; koshkit eviliso -n >/dev/null'
 echo "unprivileged-status=$?"

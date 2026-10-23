@@ -1,5 +1,5 @@
 #!/bin/sh
-# umask reads and sets the file-creation mask in octal and symbolic forms,
+# umask gets and sets the file-creation mask in octal and symbolic forms,
 # checked against dash. Each step sets the mask before reading it, so the result
 # does not depend on the inherited mask.
 

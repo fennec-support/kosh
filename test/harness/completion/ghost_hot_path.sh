@@ -34,7 +34,7 @@ command_result=$(env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$d/commands" \
     "$BIN" --debug-ghost-at 'probe')
 assert_field "$command_result" count 2
 assert_field "$command_result" prefix probe-alpha
-echo 'command ghost skips unrelated PATH names'
+echo 'command ghost skips unrelated PATH entries'
 
 missing_result=$(env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$d/commands" \
     "$BIN" --debug-ghost-at 'zzzz-missing')
@@ -69,7 +69,7 @@ mkdir "$d/slash"
 slash_result=$(PATH=/bin "$BIN" --debug-ghost-at "echo $d/slash/")
 assert_field "$slash_result" count 2
 assert_field "$slash_result" prefix "$d/slash/aaa_first"
-echo 'filesystem ghost reads a directory as soon as the slash is typed'
+echo 'filesystem ghost lists a directory as soon as the slash is typed'
 
 empty_result=$(PATH=/bin "$BIN" --debug-ghost-at 'echo ')
 assert_field "$empty_result" count 0

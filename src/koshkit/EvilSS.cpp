@@ -4,7 +4,7 @@
  *
  * This file implements the evilss utility. It filters the native socket
  * inventory and presents protocol, state, queues, endpoints, and optional
- * process owners. With --live it reads the inventory again for each frame of
+ * process owners. With --live it collects the inventory again for each frame of
  * the shared live view driver and renders the same table as a single report.
  */
 

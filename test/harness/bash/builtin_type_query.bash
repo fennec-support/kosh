@@ -55,8 +55,8 @@ printf 'time=%s\n' "$(type -t 'time')"
 printf 'if=%s\n' "$(type -t 'if')"
 printf 'echo=%s\n' "$(type -t 'echo')"
 
-# The parser reads coproc, select, and the double brackets as keywords, so type,
-# command, and compgen report them with the lexer keywords.
+# The parser treats coproc, select, and the double brackets as keywords, so
+# type, command, and compgen report them with the lexer keywords.
 type coproc
 type -t coproc
 type -a coproc

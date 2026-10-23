@@ -278,13 +278,13 @@ for name in one two
 do
   echo "${#name}"
 done
-shapes-equivalent=yes idempotent=yes
+layouts-equivalent=yes idempotent=yes
 first=one
 second=two 2>"$TEST_NULL_DEVICE"
 export third=three
 readonly fourth=four
 
-# The next command reads the declaration block.
+# The next command uses the declaration block.
 echo "$first $second $third $fourth"
 export -p >"$TEST_NULL_DEVICE"
 printf '%s\n' after-report

@@ -42,7 +42,7 @@ status=$?
 sed "s|$directory|TMPDIR|g" "$directory/out"
 echo "rc=$status"
 
-echo "== a mimicked script run as a command reads the same shebang:"
+echo "== a mimicked script run as a command uses the same shebang:"
 "$BIN" --no-traces -I -c '"$1"' shell "$directory/sh-script" \
     > "$directory/out" 2>&1
 status=$?

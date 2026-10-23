@@ -1,10 +1,10 @@
 #!/bin/bash
-# The caller builtin reads the same frame stacks FUNCNAME, BASH_SOURCE, and
+# The caller builtin uses the same frame stacks FUNCNAME, BASH_SOURCE, and
 # BASH_LINENO expose. A bare caller prints the call line and the source one
 # frame above it, and prints NULL when no such source exists. A caller with a
 # frame operand also prints the function name of the frame above. Every printed
-# path is reduced to its base name, because the two shells receive the fixture
-# through different path forms.
+# path is reduced to its base name, because the two shells receive the test
+# files through different path forms.
 
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT

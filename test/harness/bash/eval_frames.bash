@@ -7,7 +7,7 @@
 
 show()
 {
-  echo "$1: sources=${#BASH_SOURCE[@]} names=[${FUNCNAME[*]}] lines=[${BASH_LINENO[*]}]"
+  echo "$1: sources=${#BASH_SOURCE[@]} stack=[${FUNCNAME[*]}] lines=[${BASH_LINENO[*]}]"
 }
 
 show top

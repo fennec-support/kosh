@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the logger utility. It validates priorities, reads
+ * This file implements the logger utility. It validates priorities, takes
  * messages from operands, files, or standard input, and writes tagged records
  * through the platform system log.
  */

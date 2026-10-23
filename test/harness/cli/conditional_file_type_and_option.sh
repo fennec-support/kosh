@@ -30,7 +30,7 @@ else
 fi
 echo file-types-ok
 
-echo "== -o reads the real state of a shell option:"
+echo "== -o reports the real state of a shell option:"
 "$BIN" -c "set -o pipefail; if [[ -o pipefail ]]; then echo pipefail-on; else echo pipefail-off; fi" </dev/null
 "$BIN" -M bash -c "set +o pipefail; if [[ -o pipefail ]]; then echo pipefail-on; else echo pipefail-off; fi" </dev/null
 "$BIN" -c "if [[ -o emacs ]]; then echo emacs-on; else echo emacs-off; fi" </dev/null

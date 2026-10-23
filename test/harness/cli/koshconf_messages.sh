@@ -12,7 +12,7 @@ do_quiet() {
   "$BIN" "$@" 2>&1 | grep -v '^ '
 }
 
-echo "== an invalid KOSHCONF names the reason:"
+echo "== an invalid KOSHCONF gives the reason:"
 for blob in '%%%' AQ== gQA= BQEAAQEA gICAgBA= gICAgJAA; do
   KOSHCONF=$blob do_quiet -c :
   do_quiet -c "koshconf load $blob"
