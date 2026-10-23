@@ -32,75 +32,75 @@ enum class builtin_section : u8
 };
 
 #define KOSH_BUILTIN_KINDS(X)                                                  \
-  X(Echo, Posix, false)                                                        \
-  X(Cd, Posix, true)                                                           \
-  X(Exit, Posix, true)                                                         \
-  X(Pwd, Posix, false)                                                         \
-  X(Pushd, Bash, false)                                                        \
-  X(Popd, Bash, false)                                                         \
-  X(Dirs, Bash, false)                                                         \
-  X(Export, Posix, false)                                                      \
-  X(Break, Posix, true)                                                        \
-  X(Continue, Posix, true)                                                     \
-  X(Return, Posix, true)                                                       \
-  X(True, Posix, true)                                                         \
-  X(False, Posix, false)                                                       \
-  X(Test, Posix, false)                                                        \
-  X(Source, Posix, true)                                                       \
-  X(Eval, Posix, true)                                                         \
-  X(Set, Posix, false)                                                         \
-  X(Shift, Posix, true)                                                        \
-  X(Unset, Posix, false)                                                       \
-  X(Read, Posix, false)                                                        \
-  X(Printf, Posix, true)                                                       \
-  X(Umask, Posix, false)                                                       \
-  X(Getopts, Posix, true)                                                      \
-  X(Trap, Posix, true)                                                         \
-  X(Exec, Posix, true)                                                         \
-  X(Type, Posix, false)                                                        \
-  X(CommandBuiltin, Posix, false)                                              \
-  X(BuiltinBuiltin, Bash, false)                                               \
-  X(Readonly, Posix, false)                                                    \
-  X(Local, Bash, true)                                                         \
-  X(Declare, Bash, true)                                                       \
-  X(Mapfile, Bash, false)                                                      \
-  X(Shopt, Bash, false)                                                        \
-  X(Times, Posix, true)                                                        \
-  X(Let, Bash, true)                                                           \
-  X(Ulimit, Posix, false)                                                      \
-  X(Hash, Posix, false)                                                        \
-  X(Alias, Posix, false)                                                       \
-  X(Unalias, Posix, false)                                                     \
-  X(Jobs, Posix, false)                                                        \
-  X(Fg, Posix, true)                                                           \
-  X(Bg, Posix, true)                                                           \
-  X(Disown, Bash, false)                                                       \
-  X(Wait, Posix, true)                                                         \
-  X(Kill, Posix, true)                                                         \
-  X(Time, Bash, false)                                                         \
-  X(Bench, Koshka, false)                                                      \
-  X(Assimilate, Koshka, false)                                                 \
-  X(Newgrp, Posix, true)                                                       \
-  X(Z, Koshka, false)                                                          \
-  X(Complete, Bash, false)                                                     \
-  X(Compgen, Bash, false)                                                      \
-  X(Koshkit, Koshka, false)                                                    \
-  X(Compopt, Bash, true)                                                       \
-  X(History, Bash, false)                                                      \
-  X(Fc, Posix, false)                                                          \
-  X(Caller, Bash, false)                                                       \
-  X(Help, Bash, false)                                                         \
-  X(Logout, Bash, true)                                                        \
-  X(Suspend, Bash, false)                                                      \
-  X(Bind, Bash, false)                                                         \
-  X(Enable, Bash, false)                                                       \
-  X(Koshconf, Koshka, false)                                                   \
-  X(Slurp, Koshka, false)
+  X(Echo, "echo", Posix, false)                                                \
+  X(Cd, "cd", Posix, true)                                                     \
+  X(Exit, "exit", Posix, true)                                                 \
+  X(Pwd, "pwd", Posix, false)                                                  \
+  X(Pushd, "pushd", Bash, false)                                               \
+  X(Popd, "popd", Bash, false)                                                 \
+  X(Dirs, "dirs", Bash, false)                                                 \
+  X(Export, "export", Posix, false)                                            \
+  X(Break, "break", Posix, true)                                               \
+  X(Continue, "continue", Posix, true)                                         \
+  X(Return, "return", Posix, true)                                             \
+  X(True, "true", Posix, true)                                                 \
+  X(False, "false", Posix, false)                                              \
+  X(Test, "test", Posix, false)                                                \
+  X(Source, "source", Posix, true)                                             \
+  X(Eval, "eval", Posix, true)                                                 \
+  X(Set, "set", Posix, false)                                                  \
+  X(Shift, "shift", Posix, true)                                               \
+  X(Unset, "unset", Posix, false)                                              \
+  X(Read, "read", Posix, false)                                                \
+  X(Printf, "printf", Posix, true)                                             \
+  X(Umask, "umask", Posix, false)                                              \
+  X(Getopts, "getopts", Posix, true)                                           \
+  X(Trap, "trap", Posix, true)                                                 \
+  X(Exec, "exec", Posix, true)                                                 \
+  X(Type, "type", Posix, false)                                                \
+  X(CommandBuiltin, "command", Posix, false)                                   \
+  X(BuiltinBuiltin, "builtin", Bash, false)                                    \
+  X(Readonly, "readonly", Posix, false)                                        \
+  X(Local, "local", Bash, true)                                                \
+  X(Declare, "declare", Bash, true)                                            \
+  X(Mapfile, "mapfile", Bash, false)                                           \
+  X(Shopt, "shopt", Bash, false)                                               \
+  X(Times, "times", Posix, true)                                               \
+  X(Let, "let", Bash, true)                                                    \
+  X(Ulimit, "ulimit", Posix, false)                                            \
+  X(Hash, "hash", Posix, false)                                                \
+  X(Alias, "alias", Posix, false)                                              \
+  X(Unalias, "unalias", Posix, false)                                          \
+  X(Jobs, "jobs", Posix, false)                                                \
+  X(Fg, "fg", Posix, true)                                                     \
+  X(Bg, "bg", Posix, true)                                                     \
+  X(Disown, "disown", Bash, false)                                             \
+  X(Wait, "wait", Posix, true)                                                 \
+  X(Kill, "kill", Posix, true)                                                 \
+  X(Time, "time", Bash, false)                                                 \
+  X(Bench, "bench", Koshka, false)                                             \
+  X(Assimilate, "assimilate", Koshka, false)                                   \
+  X(Newgrp, "newgrp", Posix, true)                                             \
+  X(Z, "z", Koshka, false)                                                     \
+  X(Complete, "complete", Bash, false)                                         \
+  X(Compgen, "compgen", Bash, false)                                           \
+  X(Koshkit, "koshkit", Koshka, false)                                         \
+  X(Compopt, "compopt", Bash, true)                                            \
+  X(History, "history", Bash, false)                                           \
+  X(Fc, "fc", Posix, false)                                                    \
+  X(Caller, "caller", Bash, false)                                             \
+  X(Help, "help", Bash, false)                                                 \
+  X(Logout, "logout", Bash, true)                                              \
+  X(Suspend, "suspend", Bash, false)                                           \
+  X(Bind, "bind", Bash, false)                                                 \
+  X(Enable, "enable", Bash, false)                                             \
+  X(Koshconf, "koshconf", Koshka, false)                                       \
+  X(Slurp, "slurp", Koshka, false)
 
 class Builtin
 {
 public:
-#define T__BUILTIN_KIND(kind, section, should_dispatch_help) kind,
+#define T__BUILTIN_KIND(kind, name, section, should_dispatch_help) kind,
   enum class Kind : u8
   {
     KOSH_BUILTIN_KINDS(T__BUILTIN_KIND)
@@ -116,77 +116,20 @@ protected:
   Builtin() = default;
 };
 
+#define T__BUILTIN_ENTRY(kind, name, section, should_dispatch_help)            \
+  {SSK(name), Builtin::Kind::kind},
+/* every builtin under its own name, then the second names of five of them. */
+/* clang-format off */
 inline constexpr static_string_entry<Builtin::Kind> BUILTIN_ENTRIES[] = {
-    {SSK("echo"),       Builtin::Kind::Echo          },
-    {SSK("exit"),       Builtin::Kind::Exit          },
-    {SSK("cd"),         Builtin::Kind::Cd            },
-    {SSK("pwd"),        Builtin::Kind::Pwd           },
-    {SSK("pushd"),      Builtin::Kind::Pushd         },
-    {SSK("popd"),       Builtin::Kind::Popd          },
-    {SSK("dirs"),       Builtin::Kind::Dirs          },
-    {SSK("export"),     Builtin::Kind::Export        },
-    {SSK("break"),      Builtin::Kind::Break         },
-    {SSK("continue"),   Builtin::Kind::Continue      },
-    {SSK("return"),     Builtin::Kind::Return        },
-    {SSK(":"),          Builtin::Kind::True          },
-    {SSK("true"),       Builtin::Kind::True          },
-    {SSK("false"),      Builtin::Kind::False         },
-    {SSK("test"),       Builtin::Kind::Test          },
-    {SSK("["),          Builtin::Kind::Test          },
-    {SSK("."),          Builtin::Kind::Source        },
-    {SSK("source"),     Builtin::Kind::Source        },
-    {SSK("eval"),       Builtin::Kind::Eval          },
-    {SSK("set"),        Builtin::Kind::Set           },
-    {SSK("shift"),      Builtin::Kind::Shift         },
-    {SSK("unset"),      Builtin::Kind::Unset         },
-    {SSK("read"),       Builtin::Kind::Read          },
-    {SSK("printf"),     Builtin::Kind::Printf        },
-    {SSK("umask"),      Builtin::Kind::Umask         },
-    {SSK("getopts"),    Builtin::Kind::Getopts       },
-    {SSK("trap"),       Builtin::Kind::Trap          },
-    {SSK("exec"),       Builtin::Kind::Exec          },
-    {SSK("type"),       Builtin::Kind::Type          },
-    {SSK("command"),    Builtin::Kind::CommandBuiltin},
-    {SSK("builtin"),    Builtin::Kind::BuiltinBuiltin},
-    {SSK("readonly"),   Builtin::Kind::Readonly      },
-    {SSK("local"),      Builtin::Kind::Local         },
-    {SSK("declare"),    Builtin::Kind::Declare       },
-    {SSK("typeset"),    Builtin::Kind::Declare       },
-    {SSK("mapfile"),    Builtin::Kind::Mapfile       },
-    {SSK("readarray"),  Builtin::Kind::Mapfile       },
-    {SSK("shopt"),      Builtin::Kind::Shopt         },
-    {SSK("times"),      Builtin::Kind::Times         },
-    {SSK("let"),        Builtin::Kind::Let           },
-    {SSK("ulimit"),     Builtin::Kind::Ulimit        },
-    {SSK("hash"),       Builtin::Kind::Hash          },
-    {SSK("alias"),      Builtin::Kind::Alias         },
-    {SSK("unalias"),    Builtin::Kind::Unalias       },
-    {SSK("jobs"),       Builtin::Kind::Jobs          },
-    {SSK("fg"),         Builtin::Kind::Fg            },
-    {SSK("bg"),         Builtin::Kind::Bg            },
-    {SSK("disown"),     Builtin::Kind::Disown        },
-    {SSK("wait"),       Builtin::Kind::Wait          },
-    {SSK("kill"),       Builtin::Kind::Kill          },
-    {SSK("time"),       Builtin::Kind::Time          },
-    {SSK("bench"),      Builtin::Kind::Bench         },
-    {SSK("assimilate"), Builtin::Kind::Assimilate    },
-    {SSK("newgrp"),     Builtin::Kind::Newgrp        },
-    {SSK("z"),          Builtin::Kind::Z             },
-    {SSK("complete"),   Builtin::Kind::Complete      },
-    {SSK("compgen"),    Builtin::Kind::Compgen       },
-    {SSK("koshkit"),    Builtin::Kind::Koshkit       },
-    {SSK("compopt"),    Builtin::Kind::Compopt       },
-    {SSK("history"),    Builtin::Kind::History       },
-    {SSK("fc"),         Builtin::Kind::Fc            },
-    {SSK("caller"),     Builtin::Kind::Caller        },
-    {SSK("help"),       Builtin::Kind::Help          },
-    {SSK("logout"),     Builtin::Kind::Logout        },
-    {SSK("suspend"),    Builtin::Kind::Suspend       },
-    {SSK("bind"),       Builtin::Kind::Bind          },
-    {SSK("enable"),     Builtin::Kind::Enable        },
-    {SSK("koshconf"),   Builtin::Kind::Koshconf      },
-    {SSK("slurp"),      Builtin::Kind::Slurp         },
+    KOSH_BUILTIN_KINDS(T__BUILTIN_ENTRY)
+    {SSK(":"),         Builtin::Kind::True   },
+    {SSK("["),         Builtin::Kind::Test   },
+    {SSK("."),         Builtin::Kind::Source },
+    {SSK("typeset"),   Builtin::Kind::Declare},
+    {SSK("readarray"), Builtin::Kind::Mapfile},
 };
+/* clang-format on */
+#undef T__BUILTIN_ENTRY
 
 inline constexpr StaticStringMap BUILTINS{BUILTIN_ENTRIES};
 
@@ -213,7 +156,7 @@ inline constexpr auto BUILTIN_ENTRY_POSITION_TABLE =
 inline constexpr StaticStringMap BUILTIN_ENTRY_POSITIONS{
     BUILTIN_ENTRY_POSITION_TABLE.entries};
 
-#define T__BUILTIN_CASE(kind, section, should_dispatch_help)                   \
+#define T__BUILTIN_CASE(kind, name, section, should_dispatch_help)             \
   case Builtin::Kind::kind: {                                                  \
     kind builtin;                                                              \
     return builtin.execute(ec, cxt);                                           \
@@ -221,7 +164,7 @@ inline constexpr StaticStringMap BUILTIN_ENTRY_POSITIONS{
 
 #define BUILTIN_SWITCH_CASES() KOSH_BUILTIN_KINDS(T__BUILTIN_CASE)
 
-#define BUILTIN_STRUCT(kind, section, should_dispatch_help)                    \
+#define BUILTIN_STRUCT(kind, name, section, should_dispatch_help)              \
   class kind : public Builtin                                                  \
   {                                                                            \
   public:                                                                      \
@@ -231,13 +174,13 @@ inline constexpr StaticStringMap BUILTIN_ENTRY_POSITIONS{
 
 KOSH_BUILTIN_KINDS(BUILTIN_STRUCT)
 
-#define T__BUILTIN_SECTION(kind, section, should_dispatch_help)                \
+#define T__BUILTIN_SECTION(kind, name, section, should_dispatch_help)          \
   builtin_section::section,
 inline constexpr builtin_section BUILTIN_SECTIONS[] = {
     KOSH_BUILTIN_KINDS(T__BUILTIN_SECTION)};
 #undef T__BUILTIN_SECTION
 
-#define T__BUILTIN_HELP_DISPATCH(kind, section, should_dispatch_help)          \
+#define T__BUILTIN_HELP_DISPATCH(kind, name, section, should_dispatch_help)    \
   should_dispatch_help,
 inline constexpr bool SHOULD_DISPATCH_BUILTIN_HELP[] = {
     KOSH_BUILTIN_KINDS(T__BUILTIN_HELP_DISPATCH)};
