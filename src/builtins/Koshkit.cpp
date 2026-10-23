@@ -77,6 +77,7 @@ get_utility_section(koshkit::Utility::Kind kind) wontthrow -> utility_section
   case koshkit::Utility::Kind::Meow:
   case koshkit::Utility::Kind::GoodCore:
   case koshkit::Utility::Kind::EvilSS:
+  case koshkit::Utility::Kind::Slurp:
   case koshkit::Utility::Kind::GoodFSW:   return utility_section::Koshka;
   default:                                return utility_section::Posix;
   }
@@ -164,16 +165,33 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let posix_names  = ArrayList<StringView>{cxt.scratch_allocator()};
     let koshka_names = ArrayList<StringView>{cxt.scratch_allocator()};
 
-    for (let const &name : sorted_names) {
-      let const kind = koshkit::find_util(name.view());
+    let alias_names = ArrayList<String>{cxt.scratch_allocator()};
+
+    for (let const &alias : koshkit::KOSHKIT_ALIAS_ENTRIES)
+      alias_names.push(alias.key.to_string(cxt.scratch_allocator()));
+
+    let const do_add_name = [&](StringView name) throws {
+      let const kind = koshkit::find_util(name);
 
       ASSERT(kind.has_value());
       switch (get_utility_section(*kind)) {
-      case utility_section::Posix: posix_names.push(name.view()); break;
+      case utility_section::Posix: posix_names.push(name); break;
 
-      case utility_section::Koshka: koshka_names.push(name.view()); break;
+      case utility_section::Koshka: koshka_names.push(name); break;
       }
-    }
+    };
+
+    for (let const &name : sorted_names)
+      do_add_name(name.view());
+    for (let const &name : alias_names)
+      do_add_name(name.view());
+
+    let const do_is_name_before = [](StringView left, StringView right) {
+      return left < right;
+    };
+
+    posix_names.sort(do_is_name_before);
+    koshka_names.sort(do_is_name_before);
 
     let const should_color = koshkit::koshkit_should_color();
 
