@@ -318,20 +318,28 @@ public:
   }
 
   mustuse pure fn
-  trim_blanks() const wontthrow -> StringView
+  trim_leading_blanks() const wontthrow -> StringView
   {
     usize start = 0;
-    usize end   = length;
 
-    while (start < end && (data[start] == ' ' || data[start] == '\t')) {
+    while (start < length && (data[start] == ' ' || data[start] == '\t')) {
       start++;
     }
 
-    while (end > start && (data[end - 1] == ' ' || data[end - 1] == '\t')) {
+    return substring_of_length(start, length - start);
+  }
+
+  mustuse pure fn
+  trim_blanks() const wontthrow -> StringView
+  {
+    let const trimmed = trim_leading_blanks();
+    usize     end     = trimmed.length;
+
+    while (end > 0 && (trimmed[end - 1] == ' ' || trimmed[end - 1] == '\t')) {
       end--;
     }
 
-    return substring_of_length(start, end - start);
+    return trimmed.substring_of_length(0, end);
   }
 
   mustuse pure fn

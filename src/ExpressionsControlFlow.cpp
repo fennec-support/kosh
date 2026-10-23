@@ -1072,16 +1072,7 @@ ForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> v
         if (segment.is_in_double_quotes) break;
         has_unquoted_expansion = true;
 
-        let const body  = segment.text.view();
-        usize     start = 0;
-
-        while (start < body.length &&
-               (body[start] == ' ' || body[start] == '\t'))
-        {
-          start++;
-        }
-
-        let const trimmed = body.substring(start);
+        let const trimmed = segment.text.view().trim_leading_blanks();
 
         if (trimmed.starts_with(StringView{"ls "}) || trimmed == "ls") {
           actx.report_diagnostic(diagnostic_id::sc2045, t->source_location());

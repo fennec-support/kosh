@@ -439,13 +439,7 @@ internal::view_contains(StringView view, StringView needle) wontthrow -> bool
 cold pure fn
 substitution_body_is_bare_echo(StringView body) wontthrow -> bool
 {
-  usize start = 0;
-
-  while (start < body.length && (body[start] == ' ' || body[start] == '\t')) {
-    start++;
-  }
-
-  let const trimmed = body.substring(start);
+  let const trimmed = body.trim_leading_blanks();
 
   if (!trimmed.starts_with(StringView{"echo "}) && trimmed != "echo") {
     return false;

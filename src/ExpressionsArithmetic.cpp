@@ -696,20 +696,6 @@ is_blank_clause(StringView text) wontthrow -> bool
   return true;
 }
 
-static pure fn
-clause_without_leading_blanks(StringView clause) wontthrow -> StringView
-{
-  usize start = 0;
-
-  while (start < clause.length &&
-         (clause[start] == ' ' || clause[start] == '\t'))
-  {
-    start++;
-  }
-
-  return clause.substring_of_length(start, clause.length - start);
-}
-
 static fn
 arithmetic_clause_command_text(StringView clause) throws -> String
 {
@@ -958,8 +944,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
   } else {
     let const should_run_init = publish_command_and_run_debug_trap(cxt, [&] {
       return m_published_init_text.get(false, [&] {
-        return arithmetic_clause_command_text(
-            clause_without_leading_blanks(m_init));
+        return arithmetic_clause_command_text(m_init.trim_leading_blanks());
       });
     });
 
@@ -981,7 +966,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
         publish_command_and_run_debug_trap(cxt, [&] {
           return m_published_condition_text.get(false, [&] {
             return arithmetic_clause_command_text(
-                clause_without_leading_blanks(m_condition));
+                m_condition.trim_leading_blanks());
           });
         });
 
@@ -1021,8 +1006,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
       let const should_run_step = publish_command_and_run_debug_trap(cxt, [&] {
         return m_published_step_text.get(false, [&] {
-          return arithmetic_clause_command_text(
-              clause_without_leading_blanks(m_step));
+          return arithmetic_clause_command_text(m_step.trim_leading_blanks());
         });
       });
 
