@@ -40,20 +40,7 @@ Sleep::execute(const ExecContext               &ec,
         cxt.scratch_allocator());
   }
 
-  constexpr f64 STEP_SECONDS = 60.0 * 60.0 * 24.0;
-
-  f64 remaining_seconds = total_seconds;
-
-  /* the wait runs in steps of at most one day, so sleep_for_seconds() gets a
-     value that fits time_t and the DWORD milliseconds of Sleep(). Sleep() on
-     Windows does not return on an interrupt. */
-  while (remaining_seconds > 0.0 && !os::INTERRUPT_REQUESTED) {
-    let const step_seconds =
-        remaining_seconds < STEP_SECONDS ? remaining_seconds : STEP_SECONDS;
-
-    remaining_seconds -= step_seconds;
-    os::sleep_for_seconds(step_seconds);
-  }
+  sleep_in_day_steps(total_seconds);
 
   return os::INTERRUPT_REQUESTED ? 130 : 0;
 }

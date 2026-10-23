@@ -14,16 +14,6 @@
 
 namespace koshka {
 
-static pure fn
-basename_of(StringView token) wontthrow -> StringView
-{
-  if (let const slash = token.find_last_character('/')) {
-    return token.substring(*slash + 1);
-  }
-
-  return token;
-}
-
 pure fn
 detect_mimic_shell_from_extension(StringView extension) wontthrow
     -> Maybe<mimic_mood>
@@ -62,7 +52,7 @@ pure fn
 detect_mimic_shell_from_program(StringView program)
     wontthrow -> Maybe<mimic_mood>
 {
-  program = basename_of(program);
+  program = Path::filename(program);
 
   if (program.length > 4) {
     let const suffix = program.substring(program.length - 4);
@@ -116,7 +106,7 @@ get_shebang_program(StringView line) wontthrow -> StringView
      -P take the next word as their argument. */
   let program = do_next_word();
 
-  if (basename_of(program) != "env") return program;
+  if (Path::filename(program) != "env") return program;
 
   loop {
     program = do_next_word();

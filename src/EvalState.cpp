@@ -353,7 +353,7 @@ EvalContext::pop_root_source_frame() wontthrow -> void
     try {
       print_source_backtrace(frame.deferred_trace_location, false, true);
     } catch (...) {
-      LOG(Debug, "rendering a deferred root source trace failed");
+      LOG(Debug, "rendering a deferred source trace failed");
     }
   }
 

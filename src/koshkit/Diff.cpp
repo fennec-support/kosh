@@ -395,13 +395,14 @@ append_diff_line(const ExecContext &ec,
 }
 
 static fn
-append_normal_range(String &output, usize start, usize count) throws
-    -> void
+append_normal_range(String &output,
+                    usize   start,
+                    usize   line_count) throws -> void
 {
   append_diff_number(output, start + 1);
-  if (count > 1) {
+  if (line_count > 1) {
     output += ',';
-    append_diff_number(output, start + count);
+    append_diff_number(output, start + line_count);
   }
 }
 
@@ -488,13 +489,14 @@ append_normal_diff(const ExecContext          &ec,
 }
 
 static fn
-append_unified_range(String &output, usize start, usize count) throws
-    -> void
+append_unified_range(String &output,
+                     usize   start,
+                     usize   line_count) throws -> void
 {
-  append_diff_number(output, count == 0 ? start : start + 1);
-  if (count != 1) {
+  append_diff_number(output, line_count == 0 ? start : start + 1);
+  if (line_count != 1) {
     output += ',';
-    append_diff_number(output, count);
+    append_diff_number(output, line_count);
   }
 }
 

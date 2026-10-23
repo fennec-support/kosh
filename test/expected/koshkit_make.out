@@ -316,5 +316,9 @@ Makefile:4:1: error: There is no rule to make the target 'missing-input', which 
      4 |  needs: missing-input
        |  ^~~~~~~~~~~~~~~~~~~~
 status=2
+--- an append whose value runs $(eval) keeps every appended word ---
+71
+--- an assignment whose value undefines the variable stores the value ---
+[x] [y]
 == the $(shell) error cites the make source (count):
 1

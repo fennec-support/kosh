@@ -426,7 +426,6 @@ struct invocation_identity
 {
   String     program_path;
   String     executable_path;
-  mimic_mood invocation_mood;
   mimic_mood session_mood;
   bool       is_login_shell;
   bool       is_restricted_shell;
@@ -504,13 +503,10 @@ make_invocation_identity(String program_path) throws
       FLAG_MOOD.is_set() || FLAG_DUMB.is_enabled() ||
       FLAG_POSIX_COMPAT.is_enabled() || invocation_mood != mimic_mood::Default;
 
-  return invocation_identity{steal(program_path),
-                             steal(executable_path),
-                             invocation_mood,
-                             session_mood,
-                             is_login_shell,
-                             is_restricted_shell,
-                             was_mood_named_on_command_line};
+  return invocation_identity{
+      steal(program_path), steal(executable_path),
+      session_mood,        is_login_shell,
+      is_restricted_shell, was_mood_named_on_command_line};
 }
 
 struct command_line

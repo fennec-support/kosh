@@ -313,19 +313,7 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
   source_store().source_frames().back().should_defer_trace = true;
   source_store().source_frames().back().function_call_depth =
       function_store().call_frames().count();
-  defer {
-    let &frame = source_store().source_frames().back();
-
-    if (frame.has_deferred_trace) {
-      try {
-        print_source_backtrace(frame.deferred_trace_location, false, true);
-      } catch (...) {
-        LOG(Debug, "rendering a deferred source trace failed");
-      }
-    }
-
-    source_store().source_frames().pop_back();
-  };
+  defer { pop_root_source_frame(); };
 
   let parser = Parser{
       Lexer{contents->view(), *arena_store().parse_arena(), script_filename,
@@ -661,17 +649,7 @@ EvalContext::run_source(StringView                source,
       source_store().set_rejected_return_source_frames(
           source_store().rejected_return_source_frames() - 1);
 
-    let &frame = source_store().source_frames().back();
-
-    if (frame.has_deferred_trace) {
-      try {
-        print_source_backtrace(frame.deferred_trace_location, false, true);
-      } catch (...) {
-        LOG(Debug, "rendering a deferred source trace failed");
-      }
-    }
-
-    source_store().source_frames().pop_back();
+    pop_root_source_frame();
   };
 
   let const should_hold_line_discard =

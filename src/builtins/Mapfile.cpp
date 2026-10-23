@@ -134,15 +134,19 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   LOG(Debug, "mapfile reading lines into array '%.*s'",
       static_cast<int>(array_name.length), array_name.data);
 
+  let const do_report_read_failure = [&]() throws -> i32 {
+    report_soft_builtin_error(ec, cxt, ec.source_location(),
+                              StringView{"Unable to read mapfile input: "} +
+                                  os::last_system_error_message());
+
+    return 1;
+  };
+
   for (i64 skipped = 0; skipped < skip_count; skipped++) {
     let const skipped_line = utils::read_line_from_fd(read_fd, delimiter);
 
     if (skipped_line.did_read_fail) {
-      report_soft_builtin_error(ec, cxt, ec.source_location(),
-                                StringView{"Unable to read mapfile input: "} +
-                                    os::last_system_error_message());
-
-      return 1;
+      return do_report_read_failure();
     }
 
     if (!skipped_line.line.has_value()) break;
@@ -173,11 +177,7 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     whole_input = os::read_fd_to_string(read_fd, heap_allocator());
 
     if (!whole_input.has_value()) {
-      report_soft_builtin_error(ec, cxt, ec.source_location(),
-                                StringView{"Unable to read mapfile input: "} +
-                                    os::last_system_error_message());
-
-      return 1;
+      return do_report_read_failure();
     }
   }
 
@@ -209,11 +209,7 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let read = do_next_line();
 
     if (read.did_read_fail) {
-      report_soft_builtin_error(ec, cxt, ec.source_location(),
-                                StringView{"Unable to read mapfile input: "} +
-                                    os::last_system_error_message());
-
-      return 1;
+      return do_report_read_failure();
     }
 
     if (!read.line.has_value()) break;

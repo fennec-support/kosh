@@ -878,12 +878,7 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           children, last_child, "pipeline", process_group_id);
 
       did_register_job = true;
-      if (cxt.execution_store().shell_is_interactive())
-        koshka::print_error(
-            "[" + String::from(id, heap_allocator()) + "] " +
-            String::from(static_cast<u64>(os::process_id_of(last_child)),
-                         heap_allocator()) +
-            "\n");
+      utils::announce_background_job(cxt, id, os::process_id_of(last_child));
     }
 
     SET_AND_RETURN_EXIT_STATUS(cxt, 0);

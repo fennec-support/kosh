@@ -634,7 +634,7 @@ execute_program(ExecContext                     &ec,
     sigaction(SIGQUIT, &ignored, &saved_quit_action);
   }
 
-  const int spawn_error =
+  let const spawn_error =
       posix_spawn(&child_pid, ec.program_path().c_str(), &file_actions, &attr,
                   const_cast<char *const *>(child_args.begin()),
                   ec.should_use_empty_environment
@@ -686,7 +686,7 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
 
   if (!pipe.has_value()) return None;
 
-  const int read_end  = pipe->in;
+  let const read_end  = pipe->in;
   const int write_end = pipe->out;
 
   const int devnull_fd = open("/dev/null", O_RDONLY);
@@ -732,7 +732,7 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
 
   note_spawn_launch();
 
-  const int spawn_result =
+  let const spawn_result =
       posix_spawn(&child_pid, raw_args[0], &file_actions, &attr,
                   const_cast<char *const *>(raw_args.begin()), environ);
 
@@ -772,7 +772,7 @@ ProgramCapture::step() wontthrow -> State
     watch.events  = POLLIN;
     watch.revents = 0;
 
-    const int ready = poll(&watch, 1, 0);
+    let const ready = poll(&watch, 1, 0);
 
     if (ready < 0 && errno == EINTR) {
       continue;
@@ -1281,7 +1281,7 @@ make_pipe() wontthrow -> Maybe<pipe_ends>
   }
 
   for (descriptor end : p) {
-    const int flags = fcntl(end, F_GETFD);
+    let const flags = fcntl(end, F_GETFD);
 
     if (flags != -1) fcntl(end, F_SETFD, flags | FD_CLOEXEC);
   }
@@ -2299,7 +2299,7 @@ redirect_child_output(measured_output output) wontthrow -> void
 {
   if (output != measured_output::Suppress) return;
 
-  const int null_fd = open("/dev/null", O_WRONLY);
+  let const null_fd = open("/dev/null", O_WRONLY);
 
   if (null_fd == -1) return;
 

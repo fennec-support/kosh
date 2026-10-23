@@ -265,7 +265,7 @@ Head::execute(const ExecContext               &ec,
   let const line_delimiter =
       FLAG_HEAD_ZERO_TERMINATED.is_enabled() ? '\0' : '\n';
 
-  u64  count           = 10;
+  u64  unit_count      = 10;
   bool is_all_but_last = false;
 
   if (is_byte_mode || has_lines_flag) {
@@ -290,7 +290,7 @@ Head::execute(const ExecContext               &ec,
       };
     }
 
-    count = parsed_value.value();
+    unit_count = parsed_value.value();
   }
 
   let const sources =
@@ -342,48 +342,40 @@ Head::execute(const ExecContext               &ec,
   if (is_all_but_last) {
     for (usize source_index = 0; source_index < sources.count(); source_index++)
     {
-      os::descriptor fd;
-      bool           was_opened = false;
+      let const input = open_named_or_stdin(ec, sources[source_index]);
 
-      if (sources[source_index] == "-") {
-        fd = ec.in_fd.value_or(KOSH_STDIN);
-      } else {
-        let const opened_fd = os::open_file_descriptor(
-            sources[source_index], os::file_open_mode::Read);
+      if (!input.has_value()) {
+        if (os::INTERRUPT_REQUESTED) return 130;
 
-        if (!opened_fd.has_value()) {
-          if (os::INTERRUPT_REQUESTED) return 130;
+        let const error_message = os::last_system_error_message();
+        let const is_directory_operand =
+            os::path_is_directory(sources[source_index]);
 
-          let const error_message = os::last_system_error_message();
-          let const is_directory_operand =
-              os::path_is_directory(sources[source_index]);
+        if (is_directory_operand) do_print_header(source_index);
 
-          if (is_directory_operand) do_print_header(source_index);
+        let const message =
+            StringView{is_directory_operand ? "Cannot read '"
+                                            : "Cannot open '"} +
+            String{cxt.scratch_allocator(), sources[source_index]} +
+            "': " + error_message;
 
-          let const message =
-              StringView{is_directory_operand ? "Cannot read '"
-                                              : "Cannot open '"} +
-              String{cxt.scratch_allocator(), sources[source_index]} +
-              "': " + error_message;
-
-          do_flush_output();
-          report_soft_koshkit_error(ec, cxt, message);
-          status = 1;
-          continue;
-        }
-
-        fd         = *opened_fd;
-        was_opened = true;
+        do_flush_output();
+        report_soft_koshkit_error(ec, cxt, message);
+        status = 1;
+        continue;
       }
+
+      let const fd         = input->descriptor;
+      let const was_opened = input->mode == input_descriptor_mode::Owned;
 
       let const file_byte_count =
           was_opened ? os::regular_descriptor_file_size(fd) : Maybe<u64>{};
       let const text =
           file_byte_count.has_value()
-              ? read_regular_all_but_last(fd, *file_byte_count, count,
+              ? read_regular_all_but_last(fd, *file_byte_count, unit_count,
                                           cxt.scratch_allocator(), unit,
                                           line_delimiter)
-              : read_all_but_last(fd, count, cxt.scratch_allocator(), unit,
+              : read_all_but_last(fd, unit_count, cxt.scratch_allocator(), unit,
                                   line_delimiter);
       let const read_error = os::get_last_system_error_number();
 
@@ -411,8 +403,8 @@ Head::execute(const ExecContext               &ec,
 
   usize read_byte_count = is_byte_mode ? 64 * 1024 : 4096;
 
-  if (count == 0 || (is_byte_mode && count < read_byte_count)) {
-    read_byte_count = static_cast<usize>(count);
+  if (unit_count == 0 || (is_byte_mode && unit_count < read_byte_count)) {
+    read_byte_count = static_cast<usize>(unit_count);
   }
 
   let reader =
@@ -462,7 +454,7 @@ Head::execute(const ExecContext               &ec,
       usize append_count = chunk.content.length;
 
       if (is_byte_mode) {
-        let const remaining_count = count - byte_count;
+        let const remaining_count = unit_count - byte_count;
 
         if (remaining_count < append_count)
           append_count = static_cast<usize>(remaining_count);
@@ -474,7 +466,7 @@ Head::execute(const ExecContext               &ec,
         {
           byte_index += *newline + 1;
           line_count++;
-          if (line_count == count) {
+          if (line_count == unit_count) {
             append_count = byte_index;
             break;
           }
@@ -489,7 +481,7 @@ Head::execute(const ExecContext               &ec,
       if (chunk.completion == source_completion_state::Complete) continue;
 
       let const has_reached_limit =
-          is_byte_mode ? byte_count == count : line_count == count;
+          is_byte_mode ? byte_count == unit_count : line_count == unit_count;
 
       if (has_reached_limit) {
         reader.finish_source(chunk.source_index);
@@ -501,7 +493,7 @@ Head::execute(const ExecContext               &ec,
                                           unread_count));
         }
       } else if (is_byte_mode) {
-        let const remaining_count = count - byte_count;
+        let const remaining_count = unit_count - byte_count;
 
         reader.set_source_read_byte_count(
             chunk.source_index, remaining_count < read_byte_count

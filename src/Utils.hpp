@@ -198,6 +198,11 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
                             EvalContext             &cxt,
                             execution_mode           mode) throws -> i32;
 
+/* prints "[id] pid" to standard error when the shell is interactive. */
+fn
+announce_background_job(EvalContext &cxt, i32 id, i64 process_id) throws
+    -> void;
+
 fn
 terminate_and_reap_processes(const ArrayList<os::process> &processes,
                              usize first_process_position = 0)

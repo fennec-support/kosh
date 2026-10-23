@@ -1233,18 +1233,18 @@ append_remote_report(String                                   &output,
       steal(remote_identities_unsorted).make_sorted(sort_order::ascending);
 
   let const do_count_unique = [](const ArrayList<u64> &identities) {
-    usize count    = 0;
-    u64   previous = 0;
+    usize unique_count = 0;
+    u64   previous     = 0;
 
     for (let const identity : identities) {
-      if (count == 0 || identity != previous) {
-        count++;
+      if (unique_count == 0 || identity != previous) {
+        unique_count++;
       }
 
       previous = identity;
     }
 
-    return count;
+    return unique_count;
   };
 
   let const socket_count =

@@ -746,7 +746,7 @@ open_with_flags(StringView     path,
       mode == file_open_mode::AppendPrivate ? mode_t{0600} : mode_t{0666};
 
   loop {
-    const int fd = ::open(path_string.c_str(), flags, create_mode);
+    let const fd = ::open(path_string.c_str(), flags, create_mode);
 
     if (fd < 0 && errno == EINTR) {
       if (INTERRUPT_REQUESTED) return koshka::None;
@@ -869,7 +869,7 @@ write_to_temp_file(StringView content) throws -> Maybe<descriptor>
 
   path_template.push('\0');
 
-  const int fd = mkstemp(path_template.begin());
+  let const fd = mkstemp(path_template.begin());
 
   if (fd < 0) return koshka::None;
 
@@ -912,7 +912,7 @@ write_to_named_temp_file(const Path &directory,
 
   path_template.push('\0');
 
-  const int fd = ::mkstemp(path_template.begin());
+  let const fd = ::mkstemp(path_template.begin());
 
   if (fd < 0) return None;
 

@@ -6172,6 +6172,9 @@ protected:
   fn
   install_trap_dispositions() throws -> void;
 
+  /* fills BASH_ARGC and BASH_ARGV for the current source or call frame. */
+  fn
+  prepare_bash_argument_arrays() const throws -> void;
   fn
   initialize_bash_argument_arrays(bool should_include_current_frame) const
       throws -> void;

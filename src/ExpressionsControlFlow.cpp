@@ -211,11 +211,7 @@ Command::evaluate_async_with(EvalContext &cxt,
   let const id =
       cxt.job_table_store().register_job(child, command_text, process_id);
 
-  if (cxt.execution_store().shell_is_interactive()) {
-    koshka::print_error(
-        "[" + String::from(id, heap_allocator()) + "] " +
-        String::from(static_cast<u64>(process_id), heap_allocator()) + "\n");
-  }
+  utils::announce_background_job(cxt, id, process_id);
 
   cxt.publish_single_pipe_status(0);
   SET_AND_RETURN_EXIT_STATUS(cxt, 0);
@@ -1819,11 +1815,7 @@ CoprocCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
   let const id =
       cxt.job_table_store().register_job(child, command_text, process_id);
 
-  if (cxt.execution_store().shell_is_interactive()) {
-    koshka::print_error(
-        "[" + String::from(id, heap_allocator()) + "] " +
-        String::from(static_cast<u64>(process_id), heap_allocator()) + "\n");
-  }
+  utils::announce_background_job(cxt, id, process_id);
 
   cxt.publish_single_pipe_status(0);
   SET_AND_RETURN_EXIT_STATUS(cxt, 0);

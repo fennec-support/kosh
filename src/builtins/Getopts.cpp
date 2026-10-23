@@ -90,7 +90,7 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return code;
   };
 
-  if (optind < 1 || static_cast<usize>(optind) > operand_count) {
+  if (static_cast<usize>(optind) > operand_count) {
     cxt.set_shell_variable(name, "?");
 
     return do_finish(1);

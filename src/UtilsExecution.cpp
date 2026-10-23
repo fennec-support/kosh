@@ -283,11 +283,7 @@ execute_context(ExecContext  &&ec,
     const i32 id =
         cxt.job_table_store().register_job(p, command, process_group_id);
 
-    if (cxt.execution_store().shell_is_interactive())
-      koshka::print_error("[" + String::from(id, heap_allocator()) + "] " +
-                          String::from(static_cast<u64>(os::process_id_of(p)),
-                                       heap_allocator()) +
-                          "\n");
+    announce_background_job(cxt, id, os::process_id_of(p));
 
     return 0;
   }
@@ -322,6 +318,17 @@ execute_context(ExecContext  &&ec,
   if (was_interrupt_to_reraise_for_completion) os::INTERRUPT_REQUESTED = 1;
 
   return foreground_status;
+}
+
+fn
+announce_background_job(EvalContext &cxt, i32 id, i64 process_id) throws
+    -> void
+{
+  if (!cxt.execution_store().shell_is_interactive()) return;
+
+  koshka::print_error(
+      "[" + String::from(id, heap_allocator()) + "] " +
+      String::from(static_cast<u64>(process_id), heap_allocator()) + "\n");
 }
 
 fn
@@ -778,12 +785,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       /* the job table owns children after register_pipeline_job() returns, so
          unwinding must not reap them. */
       should_reap_children_on_unwind = false;
-      if (cxt.execution_store().shell_is_interactive())
-        koshka::print_error(
-            "[" + String::from(id, heap_allocator()) + "] " +
-            String::from(static_cast<u64>(os::process_id_of(last_child)),
-                         heap_allocator()) +
-            "\n");
+      announce_background_job(cxt, id, os::process_id_of(last_child));
     }
 
     return ret;

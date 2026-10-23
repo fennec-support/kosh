@@ -1439,7 +1439,9 @@ run_make_shell_function(EvalContext &cxt,
   if (const String *shell_value = mk.find_variable("SHELL");
       shell_value != nullptr)
   {
-    let const shell = expand(cxt, mk, shell_value->view(), 0);
+    let const shell =
+        expand(cxt, mk,
+               String{cxt.scratch_allocator(), shell_value->view()}.view(), 0);
 
     if (!shell.is_empty()) {
       source = String{cxt.scratch_allocator()};
@@ -2301,20 +2303,45 @@ apply_assignment(EvalContext &cxt,
   if (is_command_line) mk.command_variable_names.set(name, true);
 
   if (let const index = mk.variable_index.find(name); index.has_value()) {
-    make_variable &variable = mk.variables[*index.value()];
-
     if (operator_character == '?') return;
+
+    /* expand() can run $(eval ...), which may grow mk.variables or undefine
+       the variable, so the variable is looked up again after the expansion
+       and created when it is gone. */
     if (operator_character == '+') {
       let const appended_value =
-          variable.flavor == make_variable_flavor::Simple
+          mk.variables[*index.value()].flavor == make_variable_flavor::Simple
               ? expand(cxt, mk, trimmed_value, 0)
               : String{cxt.scratch_allocator(), trimmed_value};
-      if (!variable.value.is_empty()) variable.value += " ";
-      variable.value += appended_value.view();
-    } else {
-      let value_to_store = operator_character == ':'
-                               ? expand(cxt, mk, trimmed_value, 0)
-                               : String{cxt.scratch_allocator(), trimmed_value};
+
+      if (let const current = mk.variable_index.find(name); current.has_value())
+      {
+        make_variable &variable = mk.variables[*current.value()];
+
+        if (!variable.value.is_empty()) variable.value += " ";
+        variable.value += appended_value.view();
+
+        return;
+      }
+
+      mk.variable_index.set(name, mk.variables.count());
+      mk.variables.push(make_variable{
+          String{cxt.scratch_allocator(), name                 },
+          String{cxt.scratch_allocator(), appended_value.view()},
+          is_command_line ? make_variable_origin::CommandLine
+                          : make_variable_origin::File,
+          make_variable_flavor::Recursive
+      });
+
+      return;
+    }
+
+    let value_to_store = operator_character == ':'
+                             ? expand(cxt, mk, trimmed_value, 0)
+                             : String{cxt.scratch_allocator(), trimmed_value};
+
+    if (let const current = mk.variable_index.find(name); current.has_value()) {
+      make_variable &variable = mk.variables[*current.value()];
 
       variable.value  = steal(value_to_store);
       variable.origin = is_command_line ? make_variable_origin::CommandLine
@@ -2322,7 +2349,19 @@ apply_assignment(EvalContext &cxt,
       variable.flavor = operator_character == ':'
                             ? make_variable_flavor::Simple
                             : make_variable_flavor::Recursive;
+
+      return;
     }
+
+    mk.variable_index.set(name, mk.variables.count());
+    mk.variables.push(make_variable{
+        String{cxt.scratch_allocator(), name},
+        steal(value_to_store),
+        is_command_line ? make_variable_origin::CommandLine
+                        : make_variable_origin::File,
+        operator_character == ':' ? make_variable_flavor::Simple
+                                  : make_variable_flavor::Recursive
+    });
 
     return;
   }
@@ -3222,7 +3261,8 @@ parse_makefile(EvalContext                     &cxt,
   if (const String *makeflags = mk.find_variable("MAKEFLAGS");
       makeflags != nullptr)
   {
-    let const expanded_makeflags = expand(cxt, mk, makeflags->view(), 0);
+    let const expanded_makeflags = expand(
+        cxt, mk, String{cxt.scratch_allocator(), makeflags->view()}.view(), 0);
     apply_makeflags(expanded_makeflags.view(), makefile_flags,
                     cxt.scratch_allocator());
   }
@@ -3986,7 +4026,9 @@ build_target(const ExecContext        &ec,
     if (const String *shell_value = mk.find_variable("SHELL");
         shell_value != nullptr)
     {
-      let const shell = expand(cxt, mk, shell_value->view(), 0);
+      let const shell = expand(
+          cxt, mk, String{cxt.scratch_allocator(), shell_value->view()}.view(),
+          0);
 
       if (!shell.is_empty()) {
         recipe_source = String{cxt.scratch_allocator()};
@@ -4677,7 +4719,9 @@ Make::execute(const ExecContext               &ec,
   if (const String *parsed_makeflags = mk.find_variable("MAKEFLAGS");
       parsed_makeflags != nullptr)
   {
-    makeflags = expand(cxt, mk, parsed_makeflags->view(), 0);
+    makeflags = expand(
+        cxt, mk,
+        String{cxt.scratch_allocator(), parsed_makeflags->view()}.view(), 0);
     apply_makeflags(makeflags.view(), runtime_flags, cxt.scratch_allocator());
     os::set_environment_variable("MAKEFLAGS", makeflags.view());
   }

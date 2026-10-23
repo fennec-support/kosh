@@ -1049,6 +1049,17 @@ needs: missing-input
 EOF
 "$BIN" -c 'koshkit make' 2>&1
 echo "status=$?"
+echo "--- an append whose value runs \$(eval) keeps every appended word ---"
+{
+  echo 'A := 1'
+  for i in $(seq 1 70); do echo "A += \$(eval V$i=1)x"; done
+  echo 'all:'
+  printf '\t@echo $(words $(A))\n'
+} > Makefile
+"$BIN" -c 'koshkit make'
+echo "--- an assignment whose value undefines the variable stores the value ---"
+printf 'A := 1\nA := $(eval undefine A)x\nB := 1\nB += $(eval undefine B)y\nall:\n\t@echo [$(A)] [$(B)]\n' > Makefile
+"$BIN" -c 'koshkit make'
 
 unset KOSH_FLAGS
 dir=$TEST_MKTEMP_DIRECTORY/koshkit-make-error

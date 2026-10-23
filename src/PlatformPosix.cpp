@@ -944,7 +944,7 @@ wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
     watch.events  = POLLIN;
     watch.revents = 0;
 
-    const int ready = poll(&watch, 1, timeout_millis);
+    let const ready = poll(&watch, 1, timeout_millis);
 
     if (ready < 0) {
       if (errno == EINTR) {
@@ -970,7 +970,7 @@ wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
 fn
 close_fd(os::descriptor fd) wontthrow -> bool
 {
-  const int prior_errno = errno;
+  let const prior_errno = errno;
 
   if (close(fd) == -1) return false;
   errno = prior_errno;
@@ -1138,7 +1138,7 @@ save_descriptor_out_of_reach(i32 shell_fd) wontthrow -> saved_descriptor
 fn
 reopen_terminal_as_stdin() wontthrow -> bool
 {
-  const int tty_fd = open("/dev/tty", O_RDWR);
+  let const tty_fd = open("/dev/tty", O_RDWR);
 
   if (tty_fd == -1) return false;
 
@@ -2742,7 +2742,7 @@ apply_terminal_settings(descriptor               terminal,
 static fn
 make_fd_inheritable(descriptor fd) wontthrow -> void
 {
-  const int flags = fcntl(fd, F_GETFD);
+  let const flags = fcntl(fd, F_GETFD);
   if (flags != -1) fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
 }
 

@@ -2026,18 +2026,24 @@ EvalContext::bash_source_frame_count() const wontthrow -> usize
 }
 
 fn
+EvalContext::prepare_bash_argument_arrays() const throws -> void
+{
+  let const context = variable_store().bash_arguments().get_context();
+  let const should_include_current_frame =
+      context != nullptr ? context->has_flag(BashArgumentFrameFlag::IsSource)
+                         : function_store().call_frames().is_empty();
+
+  initialize_bash_argument_arrays(should_include_current_frame);
+  ASSERT(variable_store().bash_arguments().is_active());
+}
+
+fn
 EvalContext::dynamic_array_element_count(DynamicArray which) const throws -> usize
 {
   switch (which) {
   case DynamicArray::ArgumentCount:
   case DynamicArray::ArgumentValue: {
-    let const context = variable_store().bash_arguments().get_context();
-    let const should_include_current_frame =
-        context != nullptr ? context->has_flag(BashArgumentFrameFlag::IsSource)
-                           : function_store().call_frames().is_empty();
-
-    initialize_bash_argument_arrays(should_include_current_frame);
-    ASSERT(variable_store().bash_arguments().is_active());
+    prepare_bash_argument_arrays();
 
     return which == DynamicArray::ArgumentCount
                ? variable_store().bash_arguments().frame_counts().count()
@@ -2058,8 +2064,7 @@ EvalContext::dynamic_array_element_text(DynamicArray which,
 {
   switch (which) {
   case DynamicArray::ArgumentCount: {
-    unused(dynamic_array_element_count(which));
-    ASSERT(variable_store().bash_arguments().is_active());
+    prepare_bash_argument_arrays();
 
     let const &frame_counts = variable_store().bash_arguments().frame_counts();
 
@@ -2070,8 +2075,7 @@ EvalContext::dynamic_array_element_text(DynamicArray which,
     return String::from(frame_counts[storage_index], result_allocator);
   }
   case DynamicArray::ArgumentValue: {
-    unused(dynamic_array_element_count(which));
-    ASSERT(variable_store().bash_arguments().is_active());
+    prepare_bash_argument_arrays();
     let const &values = variable_store().bash_arguments().values();
 
     ASSERT(index < values.count());

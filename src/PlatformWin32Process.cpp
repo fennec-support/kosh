@@ -3644,7 +3644,7 @@ realtime_microseconds() wontthrow -> u64
 {
   FILETIME file_time;
   GetSystemTimePreciseAsFileTime(&file_time);
-  const u64 ticks              = filetime_ticks(file_time);
+  let const ticks              = filetime_ticks(file_time);
   const u64 epoch_offset_100ns = 116444736000000000ULL;
   if (ticks < epoch_offset_100ns) return 0;
 
@@ -3792,7 +3792,7 @@ run_measured_with_options(
        options.error.has_value());
   if (should_use_standard_handles) startup.dwFlags = STARTF_USESTDHANDLES;
 
-  const u64 start_nanos         = monotonic_nanos();
+  let const start_nanos         = monotonic_nanos();
   HANDLE    inherited_handles[] = {
       should_use_standard_handles ? startup.hStdInput : INVALID_HANDLE_VALUE,
       should_use_standard_handles ? startup.hStdOutput : INVALID_HANDLE_VALUE,

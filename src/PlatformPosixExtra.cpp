@@ -2713,41 +2713,41 @@ read_disk_io_snapshot(Allocator allocator) throws -> disk_io_snapshot
       return value * multiplier;
     };
 
-    let const read_bytes         = do_scale(values[2], 512);
-    let const written_bytes      = do_scale(values[6], 512);
-    let const read_time          = do_scale(values[3], 1000000);
-    let const write_time         = do_scale(values[7], 1000000);
-    let const busy_time          = do_scale(values[9], 1000000);
-    let const weighted_busy_time = do_scale(values[10], 1000000);
+    let const read_byte_count          = do_scale(values[2], 512);
+    let const written_byte_count       = do_scale(values[6], 512);
+    let const read_time_nanos          = do_scale(values[3], 1000000);
+    let const write_time_nanos         = do_scale(values[7], 1000000);
+    let const busy_time_nanos          = do_scale(values[9], 1000000);
+    let const weighted_busy_time_nanos = do_scale(values[10], 1000000);
     u32 available_fields = static_cast<u32>(disk_io_field::ReadOperations) |
                            static_cast<u32>(disk_io_field::WriteOperations) |
                            static_cast<u32>(disk_io_field::QueueDepth);
 
-    if (read_bytes.has_value())
+    if (read_byte_count.has_value())
       available_fields |= static_cast<u32>(disk_io_field::ReadBytes);
-    if (written_bytes.has_value())
+    if (written_byte_count.has_value())
       available_fields |= static_cast<u32>(disk_io_field::WrittenBytes);
-    if (read_time.has_value())
+    if (read_time_nanos.has_value())
       available_fields |= static_cast<u32>(disk_io_field::ReadTime);
-    if (write_time.has_value())
+    if (write_time_nanos.has_value())
       available_fields |= static_cast<u32>(disk_io_field::WriteTime);
-    if (busy_time.has_value())
+    if (busy_time_nanos.has_value())
       available_fields |= static_cast<u32>(disk_io_field::BusyTime);
-    if (weighted_busy_time.has_value()) {
+    if (weighted_busy_time_nanos.has_value()) {
       available_fields |= static_cast<u32>(disk_io_field::WeightedBusyTime);
     }
 
     snapshot.disks.push(disk_io_status{
         String{allocator, name},
-        read_bytes.value_or(0),
-        written_bytes.value_or(0),
+        read_byte_count.value_or(0),
+        written_byte_count.value_or(0),
         values[0],
         values[4],
-        read_time.value_or(0),
-        write_time.value_or(0),
-        busy_time.value_or(0),
+        read_time_nanos.value_or(0),
+        write_time_nanos.value_or(0),
+        busy_time_nanos.value_or(0),
         0,
-        weighted_busy_time.value_or(0),
+        weighted_busy_time_nanos.value_or(0),
         values[8],
         0,
         0,

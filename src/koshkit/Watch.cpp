@@ -232,7 +232,7 @@ Watch::execute(const ExecContext               &ec,
     previous_body     = String{heap_allocator(), body.view()};
     has_previous_body = true;
 
-    os::sleep_for_seconds(interval_seconds);
+    sleep_in_day_steps(interval_seconds);
     if (take_interrupt_request()) break;
   }
 
