@@ -60,6 +60,19 @@ start_probe evilss 'koshkit --color never evilss --live=0.02'
 
 sleep 2
 
+# a loaded host can take longer than the first sleep to draw a frame, so each
+# probe gets up to 30 more seconds to print one before it is interrupted.
+for probe_name in evilio-process evilio-disk evilnet evilps evilss
+do
+  attempt=0
+  while [ "$attempt" -lt 300 ] &&
+    ! grep -q '  LIVE  ' "$probe_directory/$probe_name.out" 2> /dev/null
+  do
+    attempt=$((attempt + 1))
+    sleep 0.1
+  done
+done
+
 for probe_name in evilio-process evilio-disk evilnet evilps evilss
 do
   finish_probe "$probe_name"
