@@ -1257,9 +1257,6 @@ allocate_free_shell_fd(i32 floor_fd) wontthrow -> i32
   return -1;
 }
 
-static fn
-passwd_field(StringView line, usize index) wontthrow -> StringView;
-
 fn
 get_current_user() throws -> Maybe<String>
 {
@@ -1267,18 +1264,6 @@ get_current_user() throws -> Maybe<String>
     return String{heap_allocator(), name};
   if (const char *name = getenv("USER"); name != nullptr)
     return String{heap_allocator(), name};
-
-  return uid_to_username(static_cast<u32>(getuid()));
-}
-
-fn
-get_login_user() throws -> Maybe<String>
-{
-  char name[256];
-
-  if (getlogin_r(name, sizeof(name)) == 0) {
-    return String{heap_allocator(), name};
-  }
 
   return uid_to_username(static_cast<u32>(getuid()));
 }
@@ -1660,27 +1645,7 @@ get_home_directory() throws -> Maybe<Path>
 fn
 get_system_koshconf_path() throws -> Maybe<Path>
 {
-  return Path{StringView{"/etc/kosh.conf"}};
-}
-
-static fn
-passwd_field(StringView line, usize index) wontthrow -> StringView
-{
-  usize field_start_position = 0;
-  usize field_index          = 0;
-
-  for (usize i = 0; i <= line.length; i++) {
-    if (i != line.length && line[i] != ':') {
-      continue;
-    }
-    if (field_index == index)
-      return line.substring_of_length(field_start_position,
-                                      i - field_start_position);
-    field_index++;
-    field_start_position = i + 1;
-  }
-
-  return StringView{};
+  return Path{"/etc/kosh.conf"};
 }
 
 fn
@@ -1688,7 +1653,7 @@ get_home_for_user(StringView username) throws -> Maybe<Path>
 {
   if (username.is_empty()) return koshka::None;
 
-  let const contents = Path{StringView{"/etc/passwd"}}.read_entire_file();
+  let const contents = Path{"/etc/passwd"}.read_entire_file();
 
   if (!contents) return koshka::None;
 
@@ -3280,145 +3245,6 @@ clear_trap_handler(i32 signal_number) throws -> void
   install_signal_disposition(
       signal_number, signal_number == SIGINT ? handle_interrupt : SIG_DFL);
   sigdelset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
-}
-
-static fn
-lookup_name_by_id(StringView database_path,
-                  u32        wanted_id,
-                  usize      id_field_index) throws -> Maybe<String>
-{
-  let const contents = Path{database_path}.read_entire_file();
-  if (!contents) return koshka::None;
-
-  let const wanted =
-      String::from(static_cast<u64>(wanted_id), heap_allocator());
-  let const text = contents->view();
-
-  for (let const &line : utils::split_lines(text)) {
-    if (passwd_field(line, id_field_index) != wanted.view()) continue;
-
-    let const name = passwd_field(line, 0);
-
-    if (!name.is_empty()) return String{heap_allocator(), name};
-  }
-
-  return koshka::None;
-}
-
-static fn
-lookup_id_by_name(StringView database_path,
-                  StringView wanted_name,
-                  usize      id_field_index) throws -> Maybe<u32>
-{
-  let const contents = Path{database_path}.read_entire_file();
-
-  if (!contents) return koshka::None;
-
-  for (let const &line : utils::split_lines(contents->view())) {
-    if (passwd_field(line, 0) != wanted_name) continue;
-
-    let const id = passwd_field(line, id_field_index).to<i64>();
-
-    if (!id.is_error() && id.value() >= 0 && id.value() <= UINT32_MAX) {
-      return static_cast<u32>(id.value());
-    }
-  }
-
-  return koshka::None;
-}
-
-fn
-uid_to_username(u32 uid) throws -> Maybe<String>
-{
-#if defined __APPLE__
-  struct passwd  entry{};
-  struct passwd *result = nullptr;
-  char           buffer[16384];
-
-  if (getpwuid_r(static_cast<uid_t>(uid), &entry, buffer, sizeof(buffer),
-                 &result) != 0 ||
-      result == nullptr || result->pw_name == nullptr)
-  {
-    return None;
-  }
-
-  return String{heap_allocator(), result->pw_name};
-#else
-
-  return lookup_name_by_id("/etc/passwd", uid, 2);
-#endif
-}
-
-fn
-gid_to_groupname(u32 gid) throws -> Maybe<String>
-{
-#if defined __APPLE__
-  struct group  entry{};
-  struct group *result = nullptr;
-  char          buffer[16384];
-
-  if (getgrgid_r(static_cast<gid_t>(gid), &entry, buffer, sizeof(buffer),
-                 &result) != 0 ||
-      result == nullptr || result->gr_name == nullptr)
-  {
-    return None;
-  }
-
-  return String{heap_allocator(), result->gr_name};
-#else
-
-  return lookup_name_by_id("/etc/group", gid, 2);
-#endif
-}
-
-fn
-username_to_uid(StringView username) throws -> Maybe<u32>
-{
-  if (let const current = get_current_user();
-      current.has_value() && current->view() == username)
-  {
-    return static_cast<u32>(get_real_user_id());
-  }
-
-#if defined __APPLE__
-  let const      name = String{heap_allocator(), username};
-  struct passwd  entry{};
-  struct passwd *result = nullptr;
-  char           buffer[16384];
-
-  if (getpwnam_r(name.c_str(), &entry, buffer, sizeof(buffer), &result) != 0 ||
-      result == nullptr)
-  {
-    return None;
-  }
-
-  return static_cast<u32>(result->pw_uid);
-#else
-
-  return lookup_id_by_name("/etc/passwd", username, 2);
-#endif
-}
-
-fn
-groupname_to_gid(StringView groupname) throws -> Maybe<u32>
-{
-#if defined __APPLE__
-  let const     name = String{heap_allocator(), groupname};
-  struct group  entry{};
-  struct group *result = nullptr;
-  char          buffer[16384];
-
-  if (getgrnam_r(name.c_str(), &entry, buffer, sizeof(buffer), &result) != 0 ||
-      result == nullptr)
-  {
-    return None;
-  }
-
-  return static_cast<u32>(result->gr_gid);
-#else
-
-  return lookup_id_by_name("/etc/group", groupname, 2);
-#endif
 }
 
 static constexpr int SYSTEM_CONFIGURATION_KEYS[] = {

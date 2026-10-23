@@ -21,13 +21,11 @@
 #include <arpa/inet.h>
 #include <dirent.h>
 #include <fcntl.h>
-#include <grp.h>
 #include <ifaddrs.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <poll.h>
 #include <pthread.h>
-#include <pwd.h>
 #include <regex.h>
 #include <spawn.h>
 #include <sys/ioctl.h>

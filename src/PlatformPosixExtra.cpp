@@ -5,12 +5,17 @@
  * This routed POSIX source fragment keeps target-specific headers and
  * conditionals out of the common POSIX backend. It implements performance
  * counters, resource statistics, CPU affinity, executable path discovery,
- * process enumeration, kernel socket tables, and file-user scans, with
- * fallbacks for missing facilities. It also implements the FileWatcher through
- * inotify and kqueue.
+ * process enumeration, kernel socket tables, file-user scans, and user and
+ * group lookups, with fallbacks for missing facilities. It also implements the
+ * FileWatcher through inotify and kqueue.
  */
 
+#include "Utils.hpp"
+#include "base/Trace.hpp"
+
 #if defined __APPLE__
+#include <grp.h>
+#include <pwd.h>
 #define st_mtim st_mtimespec
 #define st_atim st_atimespec
 #define st_ctim st_ctimespec
@@ -715,6 +720,395 @@ platform_peak_rss_bytes(long peak_rss) wontthrow -> u64
 }
 
 } /* namespace */
+
+static fn
+passwd_field(StringView line, usize index) wontthrow -> StringView
+{
+  usize field_start_position = 0;
+  usize field_index          = 0;
+
+  for (usize i = 0; i <= line.length; i++) {
+    if (i != line.length && line[i] != ':') {
+      continue;
+    }
+    if (field_index == index)
+      return line.substring_of_length(field_start_position,
+                                      i - field_start_position);
+    field_index++;
+    field_start_position = i + 1;
+  }
+
+  return StringView{};
+}
+
+#if defined __APPLE__
+fn
+uid_to_username(u32 uid) throws -> Maybe<String>
+{
+  struct passwd  entry{};
+  struct passwd *result = nullptr;
+  char           buffer[16384];
+
+  LOG(Debug, "looking up the user name of user id %u", uid);
+  if (getpwuid_r(static_cast<uid_t>(uid), &entry, buffer, sizeof(buffer),
+                 &result) != 0 ||
+      result == nullptr || result->pw_name == nullptr)
+  {
+    return None;
+  }
+
+  return String{heap_allocator(), result->pw_name};
+}
+
+fn
+gid_to_groupname(u32 gid) throws -> Maybe<String>
+{
+  struct group  entry{};
+  struct group *result = nullptr;
+  char          buffer[16384];
+
+  LOG(Debug, "looking up the group name of group id %u", gid);
+  if (getgrgid_r(static_cast<gid_t>(gid), &entry, buffer, sizeof(buffer),
+                 &result) != 0 ||
+      result == nullptr || result->gr_name == nullptr)
+  {
+    return None;
+  }
+
+  return String{heap_allocator(), result->gr_name};
+}
+
+fn
+username_to_uid(StringView username) throws -> Maybe<u32>
+{
+  if (let const current = get_current_user();
+      current.has_value() && current->view() == username)
+  {
+    return static_cast<u32>(get_real_user_id());
+  }
+
+  let const      name = String{heap_allocator(), username};
+  struct passwd  entry{};
+  struct passwd *result = nullptr;
+  char           buffer[16384];
+
+  LOG(Debug, "looking up the user id of '%s'", name.c_str());
+  if (getpwnam_r(name.c_str(), &entry, buffer, sizeof(buffer), &result) != 0 ||
+      result == nullptr)
+  {
+    return None;
+  }
+
+  return static_cast<u32>(result->pw_uid);
+}
+
+fn
+groupname_to_gid(StringView groupname) throws -> Maybe<u32>
+{
+  let const     name = String{heap_allocator(), groupname};
+  struct group  entry{};
+  struct group *result = nullptr;
+  char          buffer[16384];
+
+  LOG(Debug, "looking up the group id of '%s'", name.c_str());
+  if (getgrnam_r(name.c_str(), &entry, buffer, sizeof(buffer), &result) != 0 ||
+      result == nullptr)
+  {
+    return None;
+  }
+
+  return static_cast<u32>(result->gr_gid);
+}
+
+fn
+get_login_user() throws -> Maybe<String>
+{
+  char name[256];
+
+  if (getlogin_r(name, sizeof(name)) == 0) {
+    return String{heap_allocator(), name};
+  }
+
+  LOG(Debug, "reading the login user from the real user id");
+
+  return uid_to_username(static_cast<u32>(getuid()));
+}
+
+fn
+get_user_primary_group_id(u32 user_id) wontthrow -> Maybe<u32>
+{
+  struct passwd  entry{};
+  struct passwd *result = nullptr;
+  char           buffer[16384];
+
+  LOG(Debug, "looking up the primary group of user id %u", user_id);
+  if (getpwuid_r(static_cast<uid_t>(user_id), &entry, buffer, sizeof(buffer),
+                 &result) != 0 ||
+      result == nullptr)
+  {
+    return None;
+  }
+
+  return static_cast<u32>(result->pw_gid);
+}
+
+fn
+get_user_group_ids(u32 user_id, Allocator allocator) throws
+    -> Maybe<ArrayList<u32>>
+{
+  struct passwd  entry{};
+  struct passwd *result = nullptr;
+  char           buffer[16384];
+
+  LOG(Debug, "looking up the groups of user id %u", user_id);
+  if (getpwuid_r(static_cast<uid_t>(user_id), &entry, buffer, sizeof(buffer),
+                 &result) != 0 ||
+      result == nullptr)
+  {
+    return None;
+  }
+
+  let native_groups = ArrayList<int>{allocator};
+  int group_count   = 64;
+
+  loop {
+    native_groups.clear();
+    for (int index = 0; index < group_count; index++)
+      native_groups.push(0);
+
+    int capacity = group_count;
+
+    if (getgrouplist(result->pw_name, static_cast<int>(result->pw_gid),
+                       native_groups.begin(), &capacity) >= 0)
+    {
+      group_count = capacity;
+      break;
+    }
+
+    if (capacity <= group_count) return None;
+
+    group_count = capacity;
+  }
+
+  let groups = ArrayList<u32>{allocator};
+
+  for (int index = 0; index < group_count; index++)
+    groups.push(static_cast<u32>(native_groups[static_cast<usize>(index)]));
+
+  return groups;
+}
+#else
+/* glibc cannot look up a user without dragging in NSS shared libraries, which
+   a static binary does not have, so these lookups read /etc/passwd and
+   /etc/group themselves and leave glibc to its bloated misery. */
+static fn
+lookup_name_by_id(StringView database_path,
+                  u32        wanted_id,
+                  usize      id_field_index) throws -> Maybe<String>
+{
+  LOG(Debug, "looking up the name of id %u in %.*s", wanted_id,
+      static_cast<int>(database_path.length), database_path.data);
+
+  let const contents = Path{database_path}.read_entire_file();
+
+  if (!contents) return None;
+
+  let const wanted =
+      String::from(static_cast<u64>(wanted_id), heap_allocator());
+
+  for (let const &line : utils::split_lines(contents->view())) {
+    if (passwd_field(line, id_field_index) != wanted.view()) continue;
+
+    let const name = passwd_field(line, 0);
+
+    if (!name.is_empty()) return String{heap_allocator(), name};
+  }
+
+  return None;
+}
+
+static fn
+lookup_id_by_name(StringView database_path,
+                  StringView wanted_name,
+                  usize      id_field_index) throws -> Maybe<u32>
+{
+  LOG(Debug, "looking up the id of '%.*s' in %.*s",
+      static_cast<int>(wanted_name.length), wanted_name.data,
+      static_cast<int>(database_path.length), database_path.data);
+
+  let const contents = Path{database_path}.read_entire_file();
+
+  if (!contents) return None;
+
+  for (let const &line : utils::split_lines(contents->view())) {
+    if (passwd_field(line, 0) != wanted_name) continue;
+
+    let const id = passwd_field(line, id_field_index).to<i64>();
+
+    if (!id.is_error() && id.value() >= 0 && id.value() <= UINT32_MAX) {
+      return static_cast<u32>(id.value());
+    }
+  }
+
+  return None;
+}
+
+static fn
+read_passwd_user(u32 user_id, String &name, u32 &group_id) throws
+    -> bool
+{
+  LOG(Debug, "reading the passwd entry of user id %u from /etc/passwd",
+      user_id);
+
+  let const contents = Path{"/etc/passwd"}.read_entire_file();
+
+  if (!contents) return false;
+
+  let const wanted = String::from(static_cast<u64>(user_id), heap_allocator());
+
+  for (let const &line : utils::split_lines(contents->view())) {
+    if (passwd_field(line, 2) != wanted.view()) continue;
+
+    let const parsed_group_id = passwd_field(line, 3).to<i64>();
+
+    if (parsed_group_id.is_error() || parsed_group_id.value() < 0 ||
+        parsed_group_id.value() > UINT32_MAX)
+    {
+      return false;
+    }
+
+    name     = String{heap_allocator(), passwd_field(line, 0)};
+    group_id = static_cast<u32>(parsed_group_id.value());
+
+    return true;
+  }
+
+  return false;
+}
+
+fn
+uid_to_username(u32 uid) throws -> Maybe<String>
+{
+  return lookup_name_by_id("/etc/passwd", uid, 2);
+}
+
+fn
+gid_to_groupname(u32 gid) throws -> Maybe<String>
+{
+  return lookup_name_by_id("/etc/group", gid, 2);
+}
+
+fn
+username_to_uid(StringView username) throws -> Maybe<u32>
+{
+  if (let const current = get_current_user();
+      current.has_value() && current->view() == username)
+  {
+    return static_cast<u32>(get_real_user_id());
+  }
+
+  return lookup_id_by_name("/etc/passwd", username, 2);
+}
+
+fn
+groupname_to_gid(StringView groupname) throws -> Maybe<u32>
+{
+  return lookup_id_by_name("/etc/group", groupname, 2);
+}
+
+fn
+get_login_user() throws -> Maybe<String>
+{
+  if (let const contents = Path{"/proc/self/loginuid"}.read_entire_file()) {
+    let const login_uid = contents->view().trim_blanks().to<i64>();
+
+    if (!login_uid.is_error() && login_uid.value() >= 0 &&
+        login_uid.value() < UINT32_MAX)
+    {
+      LOG(Debug, "reading the login user from audit login uid %lld",
+          static_cast<long long>(login_uid.value()));
+      if (let name = uid_to_username(static_cast<u32>(login_uid.value())))
+        return name;
+    }
+  }
+
+  LOG(Debug, "reading the login user from the real user id");
+
+  return uid_to_username(static_cast<u32>(getuid()));
+}
+
+fn
+get_user_primary_group_id(u32 user_id) wontthrow -> Maybe<u32>
+{
+  try {
+    let name     = String{heap_allocator()};
+    u32 group_id = 0;
+
+    if (!read_passwd_user(user_id, name, group_id)) return None;
+
+    return group_id;
+  } catch (...) {
+    LOG(Info, "the passwd entry of user id %u could not be read", user_id);
+
+    return None;
+  }
+}
+
+fn
+get_user_group_ids(u32 user_id, Allocator allocator) throws
+    -> Maybe<ArrayList<u32>>
+{
+  let name             = String{heap_allocator()};
+  u32 primary_group_id = 0;
+
+  if (!read_passwd_user(user_id, name, primary_group_id)) return None;
+
+  let groups = ArrayList<u32>{allocator};
+
+  groups.push(primary_group_id);
+  LOG(Debug, "collecting the groups that list '%s' from /etc/group",
+      name.c_str());
+
+  let const contents = Path{"/etc/group"}.read_entire_file();
+
+  if (!contents) return groups;
+
+  for (let const &line : utils::split_lines(contents->view())) {
+    let members   = passwd_field(line, 3);
+    let is_member = false;
+
+    while (!members.is_empty()) {
+      let const comma = members.find_character(',');
+      let const member =
+          comma.has_value() ? members.substring_of_length(0, *comma) : members;
+
+      if (member == name.view()) {
+        is_member = true;
+        break;
+      }
+
+      members =
+          comma.has_value() ? members.substring(*comma + 1) : StringView{};
+    }
+
+    if (!is_member) continue;
+
+    let const group_id = passwd_field(line, 2).to<i64>();
+
+    if (group_id.is_error() || group_id.value() < 0 ||
+        group_id.value() > UINT32_MAX)
+    {
+      continue;
+    }
+
+    let const id = static_cast<u32>(group_id.value());
+
+    if (!groups.find(id).has_value()) groups.push(id);
+  }
+
+  return groups;
+}
+#endif
 
 /* memory: one CPU_ALLOC() set per attempt, released with CPU_FREE() before the
            next attempt, so at most one set is live. linux only.
