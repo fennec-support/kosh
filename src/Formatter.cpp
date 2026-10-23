@@ -305,15 +305,10 @@ without_trailing_line_continuation(StringView word) wontthrow -> StringView
   while (word.length >= 2 && word[word.length - 1] == '\n' &&
          word[word.length - 2] == '\\')
   {
-    usize backslash_count = 0;
-
-    while (backslash_count < word.length - 1 &&
-           word[word.length - 2 - backslash_count] == '\\')
-    {
-      backslash_count++;
+    if (lexer::count_backslashes_before(word, word.length - 1) % 2 == 0) {
+      break;
     }
 
-    if (backslash_count % 2 == 0) break;
     word = word.substring_of_length(0, word.length - 2);
   }
 

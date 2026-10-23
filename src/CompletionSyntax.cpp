@@ -50,15 +50,7 @@ opens_dollar_quote(StringView line, usize position) wontthrow -> bool
 
   if (line[position - 1] != '$') return false;
 
-  usize backslash_count = 0;
-  usize k               = position - 1;
-
-  while (k > 0 && line[k - 1] == '\\') {
-    backslash_count++;
-    k--;
-  }
-
-  return backslash_count % 2 == 0;
+  return lexer::count_backslashes_before(line, position - 1) % 2 == 0;
 }
 
 pure fn

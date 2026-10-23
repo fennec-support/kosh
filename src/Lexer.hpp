@@ -236,6 +236,19 @@ word_is_variable_name(StringView word) wontthrow -> bool;
 pure fn
 word_looks_like_assignment(StringView word) wontthrow -> bool;
 
+/* the number of backslashes directly before end in text. An odd count escapes
+   the byte at end. */
+pure inline fn
+count_backslashes_before(StringView text, usize end) wontthrow -> usize
+{
+  usize backslash_count = 0;
+
+  while (backslash_count < end && text[end - backslash_count - 1] == '\\')
+    backslash_count++;
+
+  return backslash_count;
+}
+
 pure inline fn
 skip_quoted_run(StringView text, usize position) wontthrow -> usize
 {

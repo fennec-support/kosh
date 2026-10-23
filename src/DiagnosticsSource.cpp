@@ -342,15 +342,7 @@ line_above_continues(StringView source, usize line_start) wontthrow -> bool
 
   if (source[ending - 1] == '\r') ending--;
 
-  usize backslash_count = 0;
-
-  while (backslash_count < ending &&
-         source[ending - 1 - backslash_count] == '\\')
-  {
-    backslash_count++;
-  }
-
-  return backslash_count % 2 == 1;
+  return lexer::count_backslashes_before(source, ending) % 2 == 1;
 }
 
 } /* namespace */

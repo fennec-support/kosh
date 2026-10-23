@@ -125,15 +125,7 @@ role_is_literal(highlight_role role) wontthrow -> bool
 static pure fn
 byte_is_escaped(StringView line, usize position) wontthrow -> bool
 {
-  usize backslash_count = 0;
-
-  while (backslash_count < position &&
-         line[position - backslash_count - 1] == '\\')
-  {
-    backslash_count++;
-  }
-
-  return backslash_count % 2 == 1;
+  return lexer::count_backslashes_before(line, position) % 2 == 1;
 }
 
 /* true when position is one of positions, which ascend. */

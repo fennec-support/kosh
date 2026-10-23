@@ -11,6 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
+#include "../Lexer.hpp"
 #include "../base/Path.hpp"
 #include "../base/StaticStringMap.hpp"
 #include "../platform/Platform.hpp"
@@ -2384,15 +2385,7 @@ apply_assignment(EvalContext &cxt,
 static fn
 ends_with_odd_backslash_run(StringView line) wontthrow -> bool
 {
-  usize backslash_count = 0;
-  usize k               = line.length;
-
-  while (k > 0 && line[k - 1] == '\\') {
-    backslash_count++;
-    k--;
-  }
-
-  return (backslash_count % 2) == 1;
+  return lexer::count_backslashes_before(line, line.length) % 2 == 1;
 }
 
 struct make_logical_line
