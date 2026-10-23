@@ -21,6 +21,7 @@ import time
 
 BIN = os.environ["BIN"]
 WAIT_SECONDS = 10.0
+PROMPT_START_MARK = b"\x1b]133;A"
 
 
 def read_until(descriptor, output, marker):
@@ -50,6 +51,8 @@ def survives_interrupt(command, home):
     os.write(descriptor, ("echo STARTED-$((1+1)); " + command).encode() + b"\r")
     output = read_until(descriptor, output, b"STARTED-2")
     os.write(descriptor, b"\x03")
+    interrupted = read_until(descriptor, b"", PROMPT_START_MARK)
+    output += interrupted
     os.write(descriptor, b"echo ALIVE-$((40+2))\r")
     output = read_until(descriptor, output, b"ALIVE-42")
     is_alive = b"ALIVE-42" in output
