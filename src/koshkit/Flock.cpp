@@ -7,6 +7,7 @@
  * transaction keeper.
  */
 
+#include "../BakedScripts.hpp"
 #include "../CLI.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
@@ -86,7 +87,7 @@ Flock::execute(const ExecContext               &ec,
     keeper.push_managed("--mood");
     keeper.push_managed("sh");
     keeper.push_managed("-c");
-    keeper.push_managed("koshkit flock \"$@\"");
+    keeper.push_managed(FLOCK_KEEPER_SCRIPT);
     keeper.push_managed("kosh");
     if (FLAG_FLOCK_NONBLOCK.is_enabled()) keeper.push_managed("-n");
 

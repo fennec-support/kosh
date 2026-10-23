@@ -7,6 +7,7 @@
  * metadata, and creates a compressed debugging archive.
  */
 
+#include "../BakedScripts.hpp"
 #include "../CLI.hpp"
 #include "../CLIColors.hpp"
 #include "../Errors.hpp"
@@ -598,22 +599,17 @@ GoodCore::execute(const ExecContext               &ec,
   utils::append_shell_quoted(quoted_executable, stripped_root(binary->view()),
                              true);
 
-  let const script_prelude =
-      String{allocator, "#!/bin/sh\nroot=$(CDPATH= cd -- \"$(dirname -- "
-                        "\"$0\")\" && pwd -P) || exit 1\n"};
-  let gdb_script = script_prelude.clone();
+  let gdb_script = String{allocator, GOODCORE_DEBUG_SCRIPT_PRELUDE};
 
-  gdb_script += "exec gdb -ex \"set sysroot $root/root\" -ex \"set "
-                "solib-search-path $root/root\" \"$root/root/\"";
+  gdb_script += GOODCORE_GDB_SCRIPT_HEAD;
   gdb_script += quoted_executable.view();
-  gdb_script += " \"$root/dump/core\" \"$@\"\n";
+  gdb_script += GOODCORE_GDB_SCRIPT_TAIL;
 
-  let lldb_script = script_prelude.clone();
+  let lldb_script = String{allocator, GOODCORE_DEBUG_SCRIPT_PRELUDE};
 
-  lldb_script += "exec lldb -O \"platform select host --sysroot '$root/root'\" "
-                 "--core \"$root/dump/core\" \"$root/root/\"";
+  lldb_script += GOODCORE_LLDB_SCRIPT_HEAD;
   lldb_script += quoted_executable.view();
-  lldb_script += " \"$@\"\n";
+  lldb_script += GOODCORE_LLDB_SCRIPT_TAIL;
 
   let const do_write_script =
       [&](StringView script_name,
