@@ -260,7 +260,7 @@ printf 'n\n' | PATH="$transport${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
     "$BIN" -c 'assimilate "$@"' kosh 'user@[2001:db8::1]' \
     >"$decline_output" 2>&1
 decline_status=$?
-if grep -q '^Install kosh to user@\[2001:db8::1\]:/.*/kosh? \[y/N\] ' \
+if grep -q '^kosh: Install kosh to user@\[2001:db8::1\]:/.*/kosh? \[Y/n\] ' \
         "$decline_output" &&
     ! grep -q '^scp-run$' "$ASSIMILATE_TRANSPORT_LOG" &&
     [ "$(cat "$install/kosh")" = declined-old ]; then

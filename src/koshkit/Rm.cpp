@@ -168,7 +168,7 @@ struct removal_request
 
     /* at this point: interaction is not Never, and the entry is write
        protected or interaction is Always. */
-    let       prompt = String{allocator, "rm: "};
+    let       prompt = String{allocator};
     let const protection =
         is_write_protected ? StringView{"write-protected "} : StringView{};
 
@@ -185,9 +185,9 @@ struct removal_request
     }
 
     prompt += entry.path;
-    prompt += "'? ";
+    prompt += "'?";
 
-    return confirm_koshkit_action(ec, prompt.view())
+    return confirm_koshkit_action(ec, prompt.view(), confirm_default::No)
                ? os::tree_removal_choice::Proceed
                : os::tree_removal_choice::Keep;
   }
@@ -723,12 +723,14 @@ Rm::execute(const ExecContext               &ec,
   if (interaction == removal_interaction::Once &&
       (is_recursive || operands.count() > 3))
   {
-    let prompt = String{allocator, "rm: remove "};
+    let prompt = String{allocator, "remove "};
 
     prompt += String::from(operands.count(), allocator).view();
     prompt += operands.count() == 1 ? " argument" : " arguments";
-    prompt += is_recursive ? " recursively? " : "? ";
-    if (!confirm_koshkit_action(ec, prompt.view())) return 0;
+    prompt += is_recursive ? " recursively?" : "?";
+    if (!confirm_koshkit_action(ec, prompt.view(), confirm_default::No)) {
+      return 0;
+    }
   }
 
   /* at this point: operands is not empty, and a required Once prompt was

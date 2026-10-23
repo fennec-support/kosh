@@ -406,10 +406,19 @@ path_error_message(StringView verb,
 
 KOSHKIT_UTILITY_LIST(UTILITY_STRUCT)
 
-/* clang-format off */
+enum class confirm_default : u8
+{
+  Yes,
+  No,
+};
+
+/* asks `kosh: <message> [Y/n]` or `[y/N]` on stderr, with the message
+   capitalized and green when stderr takes color, and returns the answer. An
+   empty line takes the default, and the end of input answers no. */
 fn
-confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws -> bool;
-/* clang-format on */
+confirm_koshkit_action(const ExecContext &ec,
+                       StringView         message,
+                       confirm_default    default_answer) throws -> bool;
 
 enum class removal_mode : u8
 {

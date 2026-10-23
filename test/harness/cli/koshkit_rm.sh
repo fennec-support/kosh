@@ -21,6 +21,8 @@ declined=$(printf 'n\n' | "$BIN" -c 'koshkit rm -i --dry-run keep.txt' 2>/dev/nu
 printf 'declined=%s\n' "${declined:-empty}"
 accepted=$(printf 'y\n' | "$BIN" -c 'koshkit rm -i --dry-run keep.txt' 2>/dev/null)
 printf 'accepted=%s\n' "$accepted"
+defaulted=$(printf '\n' | "$BIN" -c 'koshkit rm -i --dry-run keep.txt' 2>/dev/null)
+printf 'empty-line-declines=%s\n' "${defaulted:-empty}"
 echo "== --dry-run -r lists a tree in removal order without deleting it:"
 mkdir -p tree/sub
 : > tree/sub/b

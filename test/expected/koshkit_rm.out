@@ -6,6 +6,7 @@ keep.txt still present
 == rm -i honors both answers under --dry-run:
 declined=empty
 accepted=rm: would remove 'keep.txt'
+empty-line-declines=empty
 == --dry-run -r lists a tree in removal order without deleting it:
 rm: would remove 'tree/sub/b'
 rm: would remove 'tree/sub'
@@ -37,18 +38,18 @@ keep-survives
 rm: would remove 'keep'
 keep-survives
 == rm -I asks once for more than three operands:
-rm: remove 4 arguments? status=0
+kosh: Remove 4 arguments? [y/N] status=0
 
 == rm -I asks once for a recursive removal:
-rm: remove 1 argument recursively? status=0
+kosh: Remove 1 argument recursively? [y/N] status=0
 
 == rm -i states the file type in its prompt:
-rm: descend into directory 'tree'
- status=0
-rm: descend into directory 'single'
- rm: remove regular file 'single/full'
- rm: remove directory 'single'
- -c:1:1: error: Koshkit `rm`: Cannot remove 'single': Directory not empty.
+kosh: Descend into directory 'tree'
+ [y/N] status=0
+kosh: Descend into directory 'single'
+ [y/N] kosh: Remove regular file 'single/full'
+ [y/N] kosh: Remove directory 'single'
+ [y/N] -c:1:1: error: Koshkit `rm`: Cannot remove 'single': Directory not empty.
      1 |  koshkit rm -ri --dry-run single; echo status=$
 
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

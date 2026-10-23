@@ -591,7 +591,8 @@ Cp::execute(const ExecContext               &ec,
 
     if (should_prompt &&
         Path{target.view(), cxt.scratch_allocator()}.exists() &&
-        !confirm_koshkit_action(ec, "overwrite '" + target + "'? "))
+        !confirm_koshkit_action(ec, "overwrite '" + target + "'?",
+                                confirm_default::No))
     {
       continue;
     }

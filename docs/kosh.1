@@ -1465,8 +1465,8 @@ accepts comma-separated values. The
 option installs into DIR instead, even when it contains sbin.
 .PP
 The shell asks for confirmation with the target, when one is given, and the
-full path of the new binary. Only an answer that begins with y or Y continues,
-and any other answer exits with status 1. The
+full path of the new binary. An empty line or an answer that begins with y or
+Y continues, and any other answer or the end of input exits with status 1. The
 .BR \-y " or " \-\-yes
 option skips the question. The
 .BR \-x " or " \-\-trace
@@ -2334,6 +2334,17 @@ A utility accepts options before and after its operands, and \fB\-\-\fR ends
 the options. The env, expr, flock, nice, nohup, retry, timeout, watch, and
 xargs utilities end their options at the first operand, so the command or
 expression after it keeps its own options.
+.PP
+A question that asks for confirmation, such as one from
+.BR "rm \-i" ,
+.BR "cp \-i" ,
+.BR "mv \-i" ,
+or
+.BR assimilate ,
+is written to standard error as kosh: and the capitalized question, green
+when standard error takes color, followed by [y/N] or [Y/n] with the default
+in capitals. An empty line takes the default, an answer that begins with y or
+Y confirms, and any other answer or the end of input declines.
 .PP
 When direct koshkit lookup is enabled, a PATH program takes precedence over a
 bundled utility. A shell

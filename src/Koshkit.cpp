@@ -1379,9 +1379,21 @@ preflight_timeout_stage(const ExecContext &,
    time:   one read_fd() call per input byte, until a newline, end of input,
            or read error. */
 fn
-confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
-    -> bool
+confirm_koshkit_action(const ExecContext &ec,
+                       StringView         message,
+                       confirm_default    default_answer) throws -> bool
 {
+  let const should_color = colors::stderr_wants_color();
+  let       prompt       = String{heap_allocator(), "kosh: "};
+
+  if (should_color) prompt += colors::ansi::GREEN;
+  if (!message.is_empty()) {
+    prompt += static_cast<char>(toupper(static_cast<u8>(message[0])));
+    prompt += message.substring(1);
+  }
+  if (should_color) prompt += colors::ansi::RESET;
+  prompt += default_answer == confirm_default::Yes ? StringView{" [Y/n] "}
+                                                   : StringView{" [y/N] "};
   ec.print_to_stderr(prompt);
 
   char first_byte    = '\0';
@@ -1403,6 +1415,8 @@ confirm_koshkit_action(const ExecContext &ec, StringView prompt) throws
 
     if (byte == '\n') break;
   }
+
+  if (first_byte == '\n') return default_answer == confirm_default::Yes;
 
   return first_byte == 'y' || first_byte == 'Y';
 }

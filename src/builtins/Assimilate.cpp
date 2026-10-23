@@ -701,11 +701,13 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
     }
 
     prompt += install_directory->view();
-    prompt += is_local ? StringView{"/kosh with links for the koshkit "
-                                    "utilities? [y/N] "}
-                       : StringView{"/kosh? [y/N] "};
+    prompt += is_local
+                  ? StringView{"/kosh with links for the koshkit utilities?"}
+                  : StringView{"/kosh?"};
 
-    if (!koshkit::confirm_koshkit_action(ec, prompt.view())) {
+    if (!koshkit::confirm_koshkit_action(ec, prompt.view(),
+                                         koshkit::confirm_default::Yes))
+    {
       report_soft_builtin_warning(ec, cxt, "The installation was cancelled");
 
       return 1;
