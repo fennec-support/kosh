@@ -588,4 +588,24 @@ fn
 get_analysis_command_info(StringView name) throws
     -> analysis_command_info;
 
+class EvalContext;
+class BumpArena;
+struct SourceLocation;
+struct source_diagnostic;
+struct analysis_diagnostic_totals;
+
+fn
+run_lint_document_contents(
+    const String                 &source,
+    EvalContext                  &context,
+    BumpArena                    &ast_arena,
+    Maybe<StringView>             filename,
+    analysis_diagnostic_totals   *diagnostic_totals    = nullptr,
+    ArrayList<source_diagnostic> *diagnostic_sink      = nullptr,
+    bool                         *is_format_recognized = nullptr,
+    bool                          should_print_ast     = true,
+    Maybe<StringView>             shell_source_name    = None,
+    const SourceLocation         *operand_location     = nullptr,
+    StringView                    invocation           = {}) throws -> int;
+
 } /* namespace koshka */
