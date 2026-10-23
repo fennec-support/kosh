@@ -369,7 +369,8 @@ scan_path(StringView                path,
            after EVENT_DRIVEN_RESCAN_FACTOR latencies. a scan visits E entries
            with one stat per path without a known status, sorts them in
            O(E log E) with make_sorted(), and merges both lists in O(E). each
-           newly seen or replaced directory adds one watch() call. */
+           new or replaced directory adds one watch() call and one follow-up
+           scan, and each updated directory adds one watch() call. */
 fn
 GoodFSW::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,
@@ -490,10 +491,8 @@ GoodFSW::execute(const ExecContext               &ec,
       };
 
   if (watcher.reports_child_changes()) {
-    for (let const &operand : operands) {
+    for (let const &operand : operands)
       watcher.watch(operand.view());
-      watcher.watch(Path{operand.view()}.parent_or_current().view());
-    }
   }
 
   do_watch_directories(previous);
@@ -604,7 +603,13 @@ GoodFSW::execute(const ExecContext               &ec,
         report_event(output, current_entry.path.view(), current_entry.mode,
                       watch_event::Updated, scan_time, scan_nanoseconds,
                       timestamp_format, should_color);
-        watched_paths.remove(current_entry.path.view());
+        if (previous_entry.file_id != current_entry.file_id) {
+          watched_paths.remove(current_entry.path.view());
+        } else if (watcher.reports_child_changes() &&
+                   watched_paths.contains(current_entry.path.view()))
+        {
+          watcher.watch(current_entry.path.view());
+        }
       } else if (!is_same_attributes(previous_entry, current_entry)) {
         report_event(output, current_entry.path.view(), current_entry.mode,
                       watch_event::AttributeModified, scan_time,

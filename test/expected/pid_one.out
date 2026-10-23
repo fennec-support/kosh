@@ -7,9 +7,9 @@ rc=3
 == orphans are reaped while the shell waits:
 zombies=0
 == SIGTERM ends the foreground command and exits with 143:
-[Process 3: Terminated, signal 15]
 exit-trap
 rc=143
+interrupted-errors=0
 == a killed subshell dies without signalling other processes:
 victim=143
 bystander=0

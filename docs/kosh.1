@@ -4026,8 +4026,9 @@ blocks, the wait ends and
 reports 128 plus the signal number. The awaited job is left running.
 .PP
 When the shell runs as process 1, it reaps the orphaned children that it did
-not start, before each command and while it waits for a child. SIGTERM is
-forwarded to every other process, and the running command is interrupted. The
+not start, before each command and while it waits for a child. SIGTERM and
+then SIGCONT are sent to every other process, and the running command is
+interrupted. The
 shell then waits for every remaining child and exits with status 143 instead of
 ignoring the signal, so a child that ignores SIGTERM keeps the shell running.
 .SH DIAGNOSTICS

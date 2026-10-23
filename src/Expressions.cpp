@@ -583,7 +583,9 @@ Expression::evaluate_root_status(EvalContext         &cxt,
 {
   os::reap_unowned_children();
 
-  if (os::INTERRUPT_REQUESTED) {
+  if (os::INTERRUPT_REQUESTED ||
+      (os::TERMINATION_SIGNAL != 0 && !cxt.trap_store().did_exit_trap_run()))
+  {
     os::INTERRUPT_REQUESTED = 0;
     throw InterruptErrorWithLocation{source_location()};
   }

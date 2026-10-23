@@ -63,9 +63,9 @@ echo "rc=$?"
 
 unset KOSH_FLAGS
 # assimilate without a target installs kosh into a local directory and links
-# each utility whose name is free there and not provided on PATH. A symlinked invocation
-# routes its own flags to the utility rather than the shell CLI. The directory
-# lives in the runner's work directory, which the runner removes.
+# each utility whose name is free there and not provided on PATH. A symlinked
+# invocation routes its own flags to the utility rather than the shell CLI. The
+# directory lives in the runner's work directory, which the runner removes.
 dir=$TEST_MKTEMP_DIRECTORY/multicall-assimilate
 provider=$TEST_MKTEMP_DIRECTORY/multicall-provider
 mkdir -p "$dir" "$provider" || exit 1

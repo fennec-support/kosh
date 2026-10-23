@@ -31,11 +31,13 @@ echo "zombies=$zombie_count"'\'' &
 wait'
 
 echo "== SIGTERM ends the foreground command and exits with 143:"
+term_errors=$TEST_MKTEMP_DIRECTORY/pid-one-term.err
 run_as_pid_one 'trap "echo exit-trap" EXIT
 (sleep 0.3; kill -TERM 1) &
 /bin/sh -c "sleep 5"
-echo not-reached'
+echo not-reached' 2>"$term_errors"
 echo "rc=$?"
+echo "interrupted-errors=$(grep -c Interrupted "$term_errors")"
 
 echo "== a killed subshell dies without signalling other processes:"
 run_as_pid_one '( sleep 5 ) & victim=$!

@@ -377,6 +377,7 @@ forget_spawned_child(i64 process_id) wontthrow -> bool
   LOG(Debug, "pid 1 forgets its child %lld",
       static_cast<long long>(process_id));
   spawned_children.remove(*index);
+  ORPHAN_REAP_PENDING = 1;
 
   return true;
 }
@@ -387,6 +388,11 @@ wait_for_every_child() wontthrow -> void
   if (getpid() != 1) return;
 
   LOG(Info, "pid 1 waits for every child before it exits");
+
+  if (TERMINATION_SIGNAL != 0) {
+    (void) kill(-1, TERMINATION_SIGNAL);
+    (void) kill(-1, SIGCONT);
+  }
 
   while (::waitpid(-1, nullptr, 0) > 0 || errno == EINTR) {}
 }

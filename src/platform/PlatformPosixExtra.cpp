@@ -4242,13 +4242,13 @@ FileWatcher::watch(StringView path) wontthrow -> void
   }
 
   struct stat watched_status{};
+  let const   is_directory =
+      stat(file_path, &watched_status) == 0 && S_ISDIR(watched_status.st_mode);
+  let const entry_mask = is_directory ? 0u : IN_MODIFY | IN_ATTRIB;
 
-  if (stat(file_path, &watched_status) != 0 || !S_ISDIR(watched_status.st_mode))
-  {
-    inotify_add_watch(m_descriptor, directory_path,
-                      IN_MASK_ADD | IN_MODIFY | IN_ATTRIB | IN_CREATE |
-                          IN_DELETE | IN_MOVED_FROM | IN_MOVED_TO);
-  }
+  inotify_add_watch(m_descriptor, directory_path,
+                    IN_MASK_ADD | entry_mask | IN_CREATE | IN_DELETE |
+                        IN_MOVED_FROM | IN_MOVED_TO);
 #else
   usize slot = 0;
 

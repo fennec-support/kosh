@@ -3002,10 +3002,12 @@ kosh_main(int argc, char **argv) -> int
         continue;
       }
 
-      koshka::show_message(static_cast<const koshka::Error &>(e).to_string());
+      if (koshka::os::TERMINATION_SIGNAL == 0)
+        koshka::show_message(static_cast<const koshka::Error &>(e).to_string());
       koshka::utils::quit(130);
     } catch (const koshka::Error &e) {
-      koshka::show_message(e.to_string());
+      if (koshka::os::TERMINATION_SIGNAL == 0)
+        koshka::show_message(e.to_string());
       koshka::utils::quit(EXIT_FAILURE);
     } catch (const std::exception &e) {
       koshka::show_message(koshka::ErrorWithDetails{

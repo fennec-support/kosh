@@ -56,7 +56,8 @@ echo "--- pkill with no match ---"
 echo "rc=$?"
 
 echo "--- pkill -s 0 selects the own session and -KILL selects the signal ---"
-probe_dir=$(mktemp -d)
+probe_dir=$TEST_MKTEMP_DIRECTORY/pkill-probe
+mkdir -p "$probe_dir" || exit 1
 probe_name="kpk$$"
 ln -s "$(command -v sleep)" "$probe_dir/$probe_name"
 "$BIN" -c '"$1" 30 & probe=$!
@@ -68,7 +69,6 @@ wait "$probe"
 echo "probe=$?"' _ "$probe_dir/$probe_name" "$probe_name" 2>&1 | grep -v '^\['
 echo "--- pkill rejects an empty session id ---"
 "$BIN" -c 'koshkit pkill -s 1,,2 x' 2>&1 | grep -c "Invalid session id ''"
-"$BIN_DIR/invoke-koshkit" rm -rf -- "$probe_dir"
 
 echo "--- killall with no match ---"
 "$BIN" -c 'koshkit killall no_such_process_xyz_123' 2>&1
