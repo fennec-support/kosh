@@ -16,12 +16,13 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[--mode vi|emacs] file");
+HELP_SYNOPSIS_DECL("[-e|-v] file");
 
 HELP_DESCRIPTION_DECL("This builtin edits a text file in the line editor.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
-FLAG(SLURP_MODE, String, '\0', "mode", "Edit in vi or emacs mode.");
+FLAG(SLURP_EMACS, Bool, 'e', "emacs", "Edit with the emacs key set.");
+FLAG(SLURP_VI, Bool, 'v', "vi", "Edit with the vi key set.");
 
 REGISTER_BUILTIN_FLAGS(Slurp);
 
@@ -382,7 +383,23 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
 
-  if (args.count() != 2) return report_usage_error(ec, cxt, ec.program());
+  if (args.count() < 2) return report_usage_error(ec, cxt, ec.program());
+
+  if (args.count() > 2) {
+    report_soft_builtin_error(
+        ec, cxt, get_operand_location(ec, operand_locations, 2),
+        "Too many arguments", "Pass one file to edit, e.g. `slurp notes.txt`");
+
+    return 2;
+  }
+
+  if (FLAG_SLURP_EMACS.is_enabled() && FLAG_SLURP_VI.is_enabled()) {
+    report_soft_builtin_error(ec, cxt, FLAG_SLURP_VI.value_location(),
+                              "The emacs and vi key sets cannot be combined",
+                              "Pass -e or -v, not both");
+
+    return 2;
+  }
 
   if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
     report_soft_builtin_error(
@@ -393,20 +410,8 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   let mode = Maybe<toiletline::edit_mode>{None};
 
-  if (FLAG_SLURP_MODE.is_set()) {
-    if (FLAG_SLURP_MODE.value() == "vi") {
-      mode = toiletline::edit_mode::Vi;
-    } else if (FLAG_SLURP_MODE.value() == "emacs") {
-      mode = toiletline::edit_mode::Emacs;
-    } else {
-      report_soft_builtin_error(ec, cxt, FLAG_SLURP_MODE.value_location(),
-                                StringView{"Unknown mode '"} +
-                                    FLAG_SLURP_MODE.value() + "'",
-                                "Pass vi or emacs");
-
-      return 2;
-    }
-  }
+  if (FLAG_SLURP_EMACS.is_enabled()) mode = toiletline::edit_mode::Emacs;
+  if (FLAG_SLURP_VI.is_enabled()) mode = toiletline::edit_mode::Vi;
 
   let const location = get_operand_location(ec, operand_locations, 1);
   let const path     = Path{args[1].view()};
@@ -536,11 +541,8 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                    : last_prompt};
 
   title.append("slurp ");
-  if (FLAG_SLURP_MODE.is_set()) {
-    title.append("--mode ");
-    title.append(FLAG_SLURP_MODE.value());
-    title.append(" ");
-  }
+  if (FLAG_SLURP_EMACS.is_enabled()) title.append("-e ");
+  if (FLAG_SLURP_VI.is_enabled()) title.append("-v ");
   if (!utils::append_ansi_c_quote_if_needed(
           title, args[1].view(),
           cxt.get_glob_charset_for(args[1].view()) == glob_charset::Utf8))

@@ -119,17 +119,10 @@ complete -F _kosh_assimilate_complete assimilate
 _kosh_slurp_complete ()
 {
   local current_word=${COMP_WORDS[COMP_CWORD]}
-  local previous_word=${COMP_WORDS[COMP_CWORD - 1]}
-
-  if [[ $previous_word == --mode ]]
-  then
-    _kosh_compgen -W "vi emacs" -- "$current_word"
-    return
-  fi
 
   if [[ $current_word == -* ]]
   then
-    _kosh_compgen -W "--mode --help" -- "$current_word"
+    _kosh_compgen -W "-e -v --emacs --vi --help" -- "$current_word"
     return
   fi
 

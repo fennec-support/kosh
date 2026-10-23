@@ -864,6 +864,26 @@ def has_row(text):
                               for line in screen.get_lines())
 
 
+def find_row(session, text):
+    """Waits for a row that holds text and gives its 1-based screen row."""
+    found = []
+
+    def do_check(screen):
+        lines = [line.rstrip() for line in screen.get_lines()]
+        if text in lines:
+            found.append(lines.index(text) + 1)
+            return True
+        return False
+
+    session.wait_until(do_check)
+    return found[-1]
+
+
+def mouse(button, column, row, is_release=False):
+    return b"\x1b[<%d;%d;%d%s" % (button, column, row,
+                                   b"m" if is_release else b"M")
+
+
 def do_discard(session):
     session.send(CTRL_C)
     session.wait_until(has_text("ctrl-c again"))
@@ -927,7 +947,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       is_line(""))
 
         os.chmod(script, 0o751)
-        session.send(b"slurp --mode vi slurp-script.sh\r")
+        session.send(b"slurp -v slurp-script.sh\r")
         session.wait_until(has_row("echo two # edited"))
         session.send(b"!")
         settle(session, 0.2)
@@ -950,7 +970,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       and read_slurped(locked) == "original\n")
         do_discard(session)
 
-        session.send(b"slurp --mode vi slurp-notes.txt\r")
+        session.send(b"slurp -v slurp-notes.txt\r")
         report.record("slurp-shows-the-text-file", session,
                       has_row("second note"))
         session.send(b"?")
@@ -1010,7 +1030,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(CTRL_X + CTRL_C)
         session.wait_until(is_line(""))
 
-        session.send(b"slurp --mode vi slurp-find.txt\r")
+        session.send(b"slurp -v slurp-find.txt\r")
         session.wait_until(has_text("line 3 of 3"))
         session.send(KITTY_ESCAPE)
         settle(session, 0.2)
@@ -1034,7 +1054,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
 
         session.send(b"koshconf set editor.wrap_width 20\r")
         session.wait_until(is_line(""))
-        session.send(b"slurp --mode vi slurp-find.txt\r")
+        session.send(b"slurp -v slurp-find.txt\r")
         session.wait_until(has_text("line 3 of 3"))
         session.send(KITTY_ESCAPE)
         settle(session, 0.2)
@@ -1049,7 +1069,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         with open(wrapped, "w") as handle:
             handle.write("aaaa bbbb cccc dddd eeee ffff\n\n"
                          "aaaa bbbb cccc dddd eeee ffff\n")
-        session.send(b"slurp --mode vi slurp-wrap.txt\r")
+        session.send(b"slurp -v slurp-wrap.txt\r")
         session.wait_until(has_text("line 3 of 3"))
         session.send(KITTY_ESCAPE)
         settle(session, 0.2)
@@ -1094,7 +1114,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       and read_slurped(notes)
                       == "first note\nsecond note saved\n")
 
-        session.send(b"slurp --mode vi slurp-notes.txt\r")
+        session.send(b"slurp -v slurp-notes.txt\r")
         session.wait_until(lambda screen: any(
             line.rstrip() == "second note saved"
             for line in screen.get_lines()))
@@ -1252,7 +1272,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         keyed = os.path.join(directory, "slurp-keyed.txt")
         with open(keyed, "w") as handle:
             handle.write("one\ntwo\n  three\n\nfour\n")
-        session.send(b"slurp --mode vi slurp-keyed.txt\r")
+        session.send(b"slurp -v slurp-keyed.txt\r")
         session.wait_until(lambda screen: any(line.rstrip() == "four"
                                               for line in screen.get_lines()))
         mark = len(session.raw)
@@ -1282,7 +1302,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         ranged = os.path.join(directory, "slurp-ranged.txt")
         with open(ranged, "w") as handle:
             handle.write("x a\nx b\nx c\nx d\n")
-        session.send(b"slurp --mode vi slurp-ranged.txt\r")
+        session.send(b"slurp -v slurp-ranged.txt\r")
         session.wait_until(lambda screen: any(line.rstrip() == "x d"
                                               for line in screen.get_lines()))
         mark = len(session.raw)
@@ -1304,7 +1324,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         stepped = os.path.join(directory, "slurp-stepped.txt")
         with open(stepped, "w") as handle:
             handle.write("abcdef\nxy\nlonger line\n")
-        session.send(b"slurp --mode vi slurp-stepped.txt\r")
+        session.send(b"slurp -v slurp-stepped.txt\r")
         session.wait_until(has_text("line 3 of 3"))
         mark = len(session.raw)
         session.send(KITTY_ESCAPE)
@@ -1314,6 +1334,41 @@ def run_slurp_checks(binary, directory, command_directory, report):
         report.record("vi-enter-steps-down-like-j", session,
                       has_text("line 3 of 3, column 6, as vi normal"))
         session.send(b":q\r")
+        session.wait_until(is_line(""))
+
+        selected = os.path.join(directory, "slurp-select.txt")
+        with open(selected, "w") as handle:
+            handle.write("alpha beta gamma\nsecond line\n")
+        session.send(b"slurp slurp-select.txt\r")
+        session.wait_until(has_row("second line"))
+        session.send(b"\x1b[1;5H" + b"\x1b[1;2C" * 6)
+        report.record("slurp-emacs-shift-right-selects", session,
+                      has_text("ctrl-w to cut"))
+        session.send(BACKSPACE)
+        report.record("slurp-emacs-backspace-erases-the-selection", session,
+                      lambda screen: has_row("beta gamma")(screen)
+                      and not has_text("ctrl-w to cut")(screen))
+        row = find_row(session, "second line")
+        session.send(mouse(0, 1, row) + mouse(32, 4, row) + mouse(32, 7, row)
+                     + mouse(0, 7, row, True))
+        report.record("slurp-emacs-drag-selects", session,
+                      has_text("ctrl-w to cut"))
+        session.send(b"\x17\x05\x19")
+        report.record("slurp-emacs-ctrl-w-kills-the-selection", session,
+                      has_row(" linesecond"))
+        do_discard(session)
+
+        session.send(b"slurp -v slurp-select.txt\r")
+        row = find_row(session, "alpha beta gamma")
+        session.send(mouse(0, 1, row) + mouse(32, 5, row)
+                     + mouse(0, 5, row, True))
+        report.record("slurp-vi-drag-enters-visual-mode", session,
+                      has_text("as vi visual"))
+        session.send(b"d")
+        report.record("slurp-vi-drag-selection-deletes", session,
+                      lambda screen: has_row(" beta gamma")(screen)
+                      and has_text("as vi normal")(screen))
+        session.send(b":q!\r")
         session.wait_until(is_line(""))
 
         session.send(b"slurp slurp-binary\r")

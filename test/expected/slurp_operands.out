@@ -1,0 +1,30 @@
+== slurp:
+-c:1:1: error: Builtin `slurp`: Not enough arguments.
+     1 |  slurp
+       |  ^~~~~
+note: Try `slurp --help` for more info.
+rc=2
+== slurp a b:
+-c:1:9: error: Builtin `slurp`: Too many arguments.
+     1 |  slurp a b
+       |          ^
+note: Pass one file to edit, e.g. `slurp notes.txt`.
+rc=2
+== slurp -e -v a:
+-c:1:10: error: Builtin `slurp`: The emacs and vi key sets cannot be combined.
+     1 |  slurp -e -v a
+       |           ^~
+note: Pass -e or -v, not both.
+rc=2
+== slurp --emacs --vi a:
+-c:1:15: error: Builtin `slurp`: The emacs and vi key sets cannot be combined.
+     1 |  slurp --emacs --vi a
+       |                ^~~~
+note: Pass -e or -v, not both.
+rc=2
+== slurp --mode vi a:
+-c:1:7: error: Builtin `slurp`: Unknown flag '--mode'.
+     1 |  slurp --mode vi a
+       |        ^~~~~~
+note: Use `--` before an operand that begins with a dash.
+rc=2

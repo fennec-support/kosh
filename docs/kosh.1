@@ -1612,7 +1612,7 @@ and only
 accepts
 .BR \-\-force .
 .TP
-.BI "slurp " FILE
+.BR slurp " [" \-e | \-v "] " \fIFILE\fR
 FILE is edited in the line editor of the interactive shell, and a missing FILE
 starts empty. The session runs on the alternate screen of the terminal and
 leaves it before any result is reported, so the main screen keeps only the
@@ -1640,9 +1640,18 @@ leaves at once. Every colon and M\-x command can be used, and the format
 commands change only a shell script. Ctrl\-S and Ctrl\-R in emacs mode and
 .BR / " and " ?
 in vi mode find text in the file as it is typed. The
-.BR \-\-mode " vi or " "\-\-mode emacs"
-option selects the key set for the session, and Up and Down do not recall
-shell history.
+.BR \-e " or " \-\-emacs
+option selects the emacs key set for the session, and
+.BR \-v " or " \-\-vi
+selects the vi key set. The two options cannot be combined. Up and Down do
+not recall shell history.
+.IP
+A press of the first mouse button moves the caret, and a drag from the press
+selects the text between, in visual mode with the vi key set. With the emacs
+key set, Shift with an arrow, Home, End, Page Up, or Page Down also selects.
+Backspace and Delete erase the selection, Ctrl\-W cuts it to the kill ring,
+Alt\-W copies it there, and typed text replaces it. Ctrl\-G, Esc, or a caret
+move without Shift leaves the selection.
 .IP
 The top row repeats the prompt and the command. The file fills every row under
 it but the last four, and a file taller than that is shown around the caret.
