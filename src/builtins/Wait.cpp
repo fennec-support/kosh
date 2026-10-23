@@ -316,13 +316,17 @@ wait_for_operands(ExecContext &ec, EvalContext &cxt) throws -> i32
     for (job &job : table.jobs()) {
       if (job.is_inherited) continue;
 
-      let const status = table.wait_for_job_processes(
-          job, nullptr, should_wait_for_termination);
+      unused(table.wait_for_job_processes(job, nullptr,
+                                          should_wait_for_termination));
 
-      if (do_was_interrupted()) {
+      /* a job can finish while the signal is pending, so the status comes
+         from the signal rather than from the job. */
+      if (let const number = os::peek_pending_signal_besides_child();
+          number != 0)
+      {
         table.forget_done_jobs();
 
-        return status;
+        return 128 + number;
       }
     }
 
