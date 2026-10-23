@@ -45,6 +45,27 @@ bc_digit_value(char byte) wontthrow -> u32
   return ~u32{0};
 }
 
+static pure fn
+bc_find_matching_closer(StringView text,
+                        usize      position,
+                        char       opener,
+                        char       closer) wontthrow -> Maybe<usize>
+{
+  usize depth = 1;
+
+  while (position < text.length && depth != 0) {
+    if (text[position] == opener)
+      depth++;
+    else if (text[position] == closer)
+      depth--;
+    position++;
+  }
+
+  if (depth != 0) return None;
+
+  return position;
+}
+
 /* memory: one String in allocator, returned to the caller.
    time:   O(program.length), one pass with constant work per byte.
            the output is no longer than program. */
@@ -354,24 +375,16 @@ bc_translate_expression(StringView   expression,
     if (name_end < translated.count() && translated[name_end] == '(' &&
         SCALED_FUNCTIONS.contains(function_name))
     {
-      usize inner_position = name_end + 1;
-      usize depth          = 1;
+      let const inner_end =
+          bc_find_matching_closer(translated.view(), name_end + 1, '(', ')');
 
-      while (inner_position < translated.count() && depth != 0) {
-        if (translated[inner_position] == '(')
-          depth++;
-        else if (translated[inner_position] == ')')
-          depth--;
-        inner_position++;
-      }
-
-      if (depth == 0) {
+      if (inner_end.has_value()) {
         scaled += translated.view().substring_of_length(
-            position, inner_position - position - 1);
+            position, *inner_end - position - 1);
         scaled += ',';
         scaled += String::from(scale, allocator);
         scaled += ')';
-        position = inner_position;
+        position = *inner_end;
         continue;
       }
     }
@@ -406,19 +419,11 @@ bc_is_assignment(StringView statement) wontthrow -> bool
   }
 
   if (position < statement.length && statement[position] == '[') {
-    usize depth = 1;
+    let const index_end =
+        bc_find_matching_closer(statement, position + 1, '[', ']');
 
-    position++;
-
-    while (position < statement.length && depth != 0) {
-      if (statement[position] == '[')
-        depth++;
-      else if (statement[position] == ']')
-        depth--;
-      position++;
-    }
-
-    if (depth != 0) return false;
+    if (!index_end.has_value()) return false;
+    position = *index_end;
   }
 
   while (position < statement.length &&
@@ -904,17 +909,11 @@ bc_define_function(StringView  statement,
   }
 
   let const parameter_start = ++position;
-  usize     depth           = 1;
+  let const parameter_end =
+      bc_find_matching_closer(statement, parameter_start, '(', ')');
 
-  while (position < statement.length && depth != 0) {
-    if (statement[position] == '(')
-      depth++;
-    else if (statement[position] == ')')
-      depth--;
-    position++;
-  }
-
-  if (depth != 0) return false;
+  if (!parameter_end.has_value()) return false;
+  position = *parameter_end;
 
   let const parameters = statement.substring_of_length(
       parameter_start, position - parameter_start - 1);
@@ -930,22 +929,16 @@ bc_define_function(StringView  statement,
     return false;
   }
 
-  let const body_start  = ++position;
-  usize     brace_depth = 1;
+  let const body_start = ++position;
+  let const body_end = bc_find_matching_closer(statement, body_start, '{', '}');
 
-  while (position < statement.length && brace_depth != 0) {
-    if (statement[position] == '{')
-      brace_depth++;
-    else if (statement[position] == '}')
-      brace_depth--;
-    position++;
-  }
-
-  if (brace_depth != 0 ||
-      !statement.substring(position).trim_blanks().is_empty())
+  if (!body_end.has_value() ||
+      !statement.substring(*body_end).trim_blanks().is_empty())
   {
     return false;
   }
+
+  position = *body_end;
 
   /* at this point: statement has the form "define name(parameters) {body}",
      the braces are balanced, and only blanks follow the closing brace. */
@@ -1082,26 +1075,22 @@ bc_evaluate_function_call(StringView         statement,
   }
 
   let const arguments_start = ++position;
-  usize     depth           = 1;
+  let const arguments_end =
+      bc_find_matching_closer(statement, arguments_start, '(', ')');
 
-  while (position < statement.length && depth != 0) {
-    if (statement[position] == '(')
-      depth++;
-    else if (statement[position] == ')')
-      depth--;
-    position++;
-  }
-
-  if (depth != 0 || !statement.substring(position).trim_blanks().is_empty()) {
+  if (!arguments_end.has_value() ||
+      !statement.substring(*arguments_end).trim_blanks().is_empty())
+  {
     return {};
   }
+
+  position = *arguments_end;
 
   let const arguments_text = statement.substring_of_length(
       arguments_start, position - arguments_start - 1);
   let   arguments  = ArrayList<StringView>{cxt.scratch_allocator()};
   usize part_start = 0;
-
-  depth = 0;
+  usize depth      = 0;
 
   for (usize part_end = 0; part_end <= arguments_text.length; part_end++) {
     if (part_end != arguments_text.length) {
@@ -1244,22 +1233,17 @@ bc_expand_function_calls(StringView         expression,
       continue;
     }
 
-    usize call_end = opening_position + 1;
-    usize depth    = 1;
+    let const matched_call_end =
+        bc_find_matching_closer(expression, opening_position + 1, '(', ')');
 
-    while (call_end < expression.length && depth != 0) {
-      if (expression[call_end] == '(')
-        depth++;
-      else if (expression[call_end] == ')')
-        depth--;
-      call_end++;
-    }
-
-    if (depth != 0) {
+    if (!matched_call_end.has_value()) {
       expanded +=
           expression.substring_of_length(name_start, position - name_start);
       continue;
     }
+
+    let const call_end = *matched_call_end;
+
     /* at this point: name is a defined function, and call_end is one past
        the ')' that matches the '(' at opening_position. */
 
@@ -1440,17 +1424,11 @@ bc_control_parts(StringView  statement,
   }
 
   let const header_start = ++position;
-  usize     depth        = 1;
+  let const header_end =
+      bc_find_matching_closer(statement, header_start, '(', ')');
 
-  while (position < statement.length && depth != 0) {
-    if (statement[position] == '(')
-      depth++;
-    else if (statement[position] == ')')
-      depth--;
-    position++;
-  }
-
-  if (depth != 0) return false;
+  if (!header_end.has_value()) return false;
+  position = *header_end;
   header =
       statement.substring_of_length(header_start, position - header_start - 1);
   body = statement.substring(position).trim_blanks();
