@@ -57,7 +57,7 @@ SKIPPED_TESTS := \
 	shell_executable_path \
 	analysis_environment_inheritance progcomp_alias_ghost koshconf_persist \
 	koshconf_system_file koshconf_system_layer child_signal_mask pid_one \
-	fd_allocation_failure process_substitution_release \
+	goodfsw_events fd_allocation_failure process_substitution_release \
 	tsh_session_probe koshkit_files_posix ctrl_c_koshkit_pty
 else ifneq ($(TARGET), Linux)
 SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
@@ -66,7 +66,7 @@ SKIPPED_TESTS := koshkit_mknod koshkit_live_pty koshkit_live_sanitizers \
 	koshkit_evilfiles_parity \
 	prompt_hooks_pty startup_chain_pty trap_during_blocking_open \
 	koshconf_system_file koshconf_system_layer child_signal_mask pid_one \
-	process_substitution_release
+	goodfsw_events process_substitution_release
 else
 SKIPPED_TESTS :=
 endif

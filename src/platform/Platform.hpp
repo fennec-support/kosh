@@ -2476,8 +2476,10 @@ extern volatile sig_atomic_t ORPHAN_REAP_PENDING;
 
 fn
 reap_unowned_children() wontthrow -> void;
+
 fn
-forget_spawned_child(i64 process_id) wontthrow -> void;
+forget_spawned_child(i64 process_id) wontthrow -> bool;
+
 fn
 wait_for_every_child() wontthrow -> void;
 

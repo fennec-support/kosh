@@ -1089,8 +1089,16 @@ run_script_contents(
     }
 
     exit_code = exit_status_for(e, context, is_command_string);
-  } catch (const ErrorWithLocation &e) {
+  } catch (const InterruptErrorWithLocation &e) {
     if (!e.was_rendered() && os::TERMINATION_SIGNAL == 0) {
+      show_message(e.to_string(display_contents, &context));
+      if (is_contained_substitution)
+        context.print_source_backtrace(e.location());
+    }
+
+    exit_code = exit_status_for(e, context, is_command_string);
+  } catch (const ErrorWithLocation &e) {
+    if (!e.was_rendered()) {
       show_message(e.to_string(display_contents, &context));
       if (is_contained_substitution)
         context.print_source_backtrace(e.location());

@@ -2962,6 +2962,7 @@ kosh_main(int argc, char **argv) -> int
     if (koshka::os::TERMINATION_SIGNAL != 0) {
       LOG(Info, "pid 1 received signal %d, so the shell exits",
           static_cast<int>(koshka::os::TERMINATION_SIGNAL));
+      koshka::os::INTERRUPT_REQUESTED = 0;
       koshka::exit_after_final_chunk(
           context, 128 + koshka::os::TERMINATION_SIGNAL, lint);
     }

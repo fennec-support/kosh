@@ -1647,6 +1647,7 @@ kosh_wake_callback(int phase) -> int
         LOG(Info, "pid 1 received signal %d at the prompt, so the shell exits",
             static_cast<int>(koshka::os::TERMINATION_SIGNAL));
         ::tl_restore_terminal_for_exit();
+        koshka::os::INTERRUPT_REQUESTED = 0;
 
         try {
           if (JOB_CONTEXT != nullptr) JOB_CONTEXT->run_exit_trap(exit_code);

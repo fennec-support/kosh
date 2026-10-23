@@ -342,7 +342,7 @@ note_spawned_child(pid_t child_pid) wontthrow -> void
 
   LOG(Debug, "pid 1 records its child %d", static_cast<int>(child_pid));
 
-  if (TERMINATION_SIGNAL != 0) {
+  if (TERMINATION_SIGNAL != 0 && INTERRUPT_REQUESTED != 0) {
     LOG(Info, "pid 1 forwards signal %d to the new child %d",
         static_cast<int>(TERMINATION_SIGNAL), static_cast<int>(child_pid));
     (void) kill(child_pid, TERMINATION_SIGNAL);
@@ -367,17 +367,18 @@ fork_tracked() wontthrow -> pid_t
 }
 
 fn
-forget_spawned_child(i64 process_id) wontthrow -> void
+forget_spawned_child(i64 process_id) wontthrow -> bool
 {
-  let &spawned_children = get_spawned_children();
+  let      &spawned_children = get_spawned_children();
+  let const index = spawned_children.find(static_cast<pid_t>(process_id));
 
-  if (let const index = spawned_children.find(static_cast<pid_t>(process_id));
-      index.has_value())
-  {
-    LOG(Debug, "pid 1 forgets its child %lld",
-        static_cast<long long>(process_id));
-    spawned_children.remove(*index);
-  }
+  if (!index.has_value()) return false;
+
+  LOG(Debug, "pid 1 forgets its child %lld",
+      static_cast<long long>(process_id));
+  spawned_children.remove(*index);
+
+  return true;
 }
 
 fn
@@ -1525,6 +1526,10 @@ join_thread(thread t) wontthrow -> void
   pthread_mutex_unlock(&IDLE_WORKERS_MUTEX);
 }
 
+static fn
+suspend_until_child_state_change(bool should_stop_for_trapped_signal) wontthrow
+    -> void;
+
 fn
 wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 {
@@ -1547,7 +1552,7 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
 
       if (waited != 0) return waited;
 
-      wait_for_child_state_change();
+      suspend_until_child_state_change(false);
     }
   };
   let const changed_pid = do_wait();
@@ -1596,8 +1601,9 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
   }
 }
 
-fn
-wait_for_child_state_change() wontthrow -> void
+static fn
+suspend_until_child_state_change(bool should_stop_for_trapped_signal) wontthrow
+    -> void
 {
   sigset_t blocked_signals;
 
@@ -1611,7 +1617,9 @@ wait_for_child_state_change() wontthrow -> void
   /* SIGCHLD stays blocked while the flag and pending signals are checked.
      sigsuspend() unblocks it atomically, so a child that exits after the
      check leaves SIGCHLD pending and the suspend returns at once. */
-  while (CHILD_STATE_CHANGED == 0 && peek_pending_signal_besides_child() == 0) {
+  while (CHILD_STATE_CHANGED == 0 && (!should_stop_for_trapped_signal ||
+                                      peek_pending_signal_besides_child() == 0))
+  {
     let wait_mask = previous_mask;
 
     sigdelset(&wait_mask, SIGCHLD);
@@ -1621,6 +1629,12 @@ wait_for_child_state_change() wontthrow -> void
   CHILD_STATE_CHANGED = 0;
   (void) sigprocmask(SIG_SETMASK, &previous_mask, nullptr);
   reap_unowned_children();
+}
+
+fn
+wait_for_child_state_change() wontthrow -> void
+{
+  suspend_until_child_state_change(true);
 }
 
 fn
@@ -1660,8 +1674,7 @@ reap_unowned_children() wontthrow -> void
 
   ORPHAN_REAP_PENDING = 0;
 
-  let  &spawned_children = get_spawned_children();
-  usize reaped_count     = 0;
+  let &spawned_children = get_spawned_children();
 
   for (usize index = spawned_children.count(); index > 0; index--) {
     siginfo_t info{};
@@ -1683,11 +1696,8 @@ reap_unowned_children() wontthrow -> void
     }
     if (::waitpid(info.si_pid, nullptr, WNOHANG) != info.si_pid) break;
 
-    LOG(Debug, "reaped the orphan pid %d", static_cast<int>(info.si_pid));
-    reaped_count++;
+    LOG(Info, "pid 1 reaped the orphan pid %d", static_cast<int>(info.si_pid));
   }
-
-  LOG(Info, "pid 1 reaped %zu orphans", reaped_count);
 }
 
 fn

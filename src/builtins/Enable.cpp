@@ -259,12 +259,12 @@ Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    let const alias = koshkit::KOSHKIT_ALIASES.find(name.view());
-    let const alias_index =
-        alias.has_value() ? static_cast<usize>(alias->kind) : usize{0};
-
-    if (alias.has_value() && alias_index < koshkit::util_names().count()) {
-      let const &utility_word = koshkit::util_names()[alias_index];
+    if (let const alias = koshkit::KOSHKIT_ALIASES.find(name.view());
+        alias.has_value())
+    {
+      let const utility_word =
+          koshkit::KOSHKIT_ENTRIES[static_cast<usize>(alias->kind)]
+              .key.to_string(cxt.scratch_allocator());
 
       report_soft_builtin_error(
           ec, cxt, location,

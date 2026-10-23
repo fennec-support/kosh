@@ -3014,9 +3014,11 @@ reap_unowned_children() wontthrow -> void
 {}
 
 fn
-forget_spawned_child(i64 process_id) wontthrow -> void
+forget_spawned_child(i64 process_id) wontthrow -> bool
 {
   unused(process_id);
+
+  return false;
 }
 
 fn

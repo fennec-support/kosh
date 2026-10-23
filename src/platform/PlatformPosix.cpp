@@ -2970,6 +2970,7 @@ handle_termination(int s) wontthrow -> void
   TERMINATION_SIGNAL  = s;
   INTERRUPT_REQUESTED = 1;
   (void) kill(-1, s);
+  (void) kill(-1, SIGCONT);
   errno = saved_errno;
 }
 

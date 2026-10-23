@@ -179,7 +179,8 @@ pipeline owns and reaps every stage. POSIX stages share a process group. A
 background child, coprocess, or asynchronous stage does not own the terminal.
 As process 1, the shell records each child it forks or spawns in the platform
 layer, reaps only unrecorded zombies after SIGCHLD at statement and input
-boundaries, and forwards SIGTERM to every other process.
+boundaries and while it waits for a child, forwards SIGTERM to every other
+process, and waits for every child before it exits after SIGTERM.
 
 A pipe puts its writer and reader in different processes when either side can
 exceed the pipe buffer. Forked stages close descriptors owned by the parent

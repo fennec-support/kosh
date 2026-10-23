@@ -341,11 +341,13 @@ inline constexpr char       ASSIMILATE_PREFLIGHT_TEXT[] = R"SH(set -eu
 [ "$1" -eq 0 ] || set -x
 expected_system=$2
 expected_machine=$3
-if ! remote_system=$(uname -s 2>/dev/null); then
+remote_system=any
+remote_machine=any
+if [ "$expected_system" != any ] && ! remote_system=$(uname -s 2>/dev/null); then
   printf 'assimilate-error=Cannot determine the %s operating system\n' "$assimilate_side"
   exit 125
 fi
-if ! remote_machine=$(uname -m 2>/dev/null); then
+if [ "$expected_machine" != any ] && ! remote_machine=$(uname -m 2>/dev/null); then
   printf 'assimilate-error=Cannot determine the %s architecture\n' "$assimilate_side"
   exit 125
 fi

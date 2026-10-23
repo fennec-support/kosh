@@ -1457,8 +1457,7 @@ first usable local PATH directory, and a relative symbolic link to
 is created for each bundled utility and utility alias whose name is free in
 that directory or already links to it. A name that another entry in that
 directory holds, or that a program elsewhere on PATH already provides, is left
-unlinked, so no existing command is replaced or shadowed. Each group is
-reported in one warning. The
+unlinked. Each group is reported in one warning. The
 .BI \-\-link\-mood= MOOD
 option requests a relative bash, dash, sh, or kosh link. It may be repeated and
 accepts comma-separated values. The
@@ -1870,7 +1869,8 @@ Each operand is enabled, or disabled with
 .BR \-n .
 An operand can be a builtin or a bundled utility. A utility alias such as
 .B egrep
-is rejected, and its utility covers it. Each builtin word is a
+is rejected, and enabling or disabling its utility, grep, also applies to it.
+Each builtin word is a
 separate entry, and disabling
 .B test
 leaves
@@ -2318,10 +2318,8 @@ the options. The env, expr, flock, nice, nohup, retry, timeout, watch, and
 xargs utilities end their options at the first operand, so the command or
 expression after it keeps its own options.
 .PP
-Without a target, the
-.B assimilate
-builtin also links each utility to kosh. When direct koshkit lookup is enabled,
-a PATH program takes precedence over a bundled utility. A shell
+When direct koshkit lookup is enabled, a PATH program takes precedence over a
+bundled utility. A shell
 started under a utility name runs that utility. Started as
 .BR koshkit ,
 the link that
@@ -4027,10 +4025,11 @@ blocks, the wait ends and
 .B wait
 reports 128 plus the signal number. The awaited job is left running.
 .PP
-When the shell runs as process 1, it reaps, before each command, the orphaned
-children that the shell did not start. SIGTERM is forwarded to every other
-process, the running command is interrupted, and the shell then exits with
-status 143 instead of ignoring the signal.
+When the shell runs as process 1, it reaps the orphaned children that it did
+not start, before each command and while it waits for a child. SIGTERM is
+forwarded to every other process, and the running command is interrupted. The
+shell then waits for every remaining child and exits with status 143 instead of
+ignoring the signal, so a child that ignores SIGTERM keeps the shell running.
 .SH DIAGNOSTICS
 Errors, warnings, and analysis diagnostics include source locations when a
 mapping exists.

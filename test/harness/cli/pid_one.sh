@@ -20,22 +20,21 @@ wait $!
 echo "rc=$?"'
 
 echo "== orphans are reaped while the shell waits:"
-run_as_pid_one '/bin/sh -c "for i in 1 2 3; do (sleep 0.05 &); sleep 0.1; done
-sleep 0.3" &
-wait
-sleep 0.2
+run_as_pid_one '/bin/sh -c '\''for i in 1 2 3; do (sleep 0.05 &); sleep 0.1; done
+sleep 0.3
 zombie_count=0
 for stat in /proc/[0-9]*/stat; do
   read -r _ _ state _ < "$stat" 2>/dev/null || continue
-  [[ $state == Z ]] && zombie_count=$((zombie_count + 1))
+  [ "$state" = Z ] && zombie_count=$((zombie_count + 1))
 done
-echo "zombies=$zombie_count"'
+echo "zombies=$zombie_count"'\'' &
+wait'
 
 echo "== SIGTERM ends the foreground command and exits with 143:"
 run_as_pid_one 'trap "echo exit-trap" EXIT
 (sleep 0.3; kill -TERM 1) &
 /bin/sh -c "sleep 5"
-echo not-reached' 2>/dev/null
+echo not-reached'
 echo "rc=$?"
 
 echo "== a killed subshell dies without signalling other processes:"
