@@ -601,7 +601,7 @@ ErrorWithLocation::ErrorWithLocation(SourceLocation location,
                                      StringView     message)
     : Error(message), m_location(steal(location))
 {
-  LOG(Debug, "locating the error at byte %zu spanning %zu bytes",
+  LOG(Debug, "locating the error at byte %u spanning %u bytes",
       m_location.position, m_location.length);
 }
 
