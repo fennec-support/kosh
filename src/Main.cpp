@@ -1294,21 +1294,6 @@ keep_restricted_settings(koshconf_reading &reading) throws -> void
 }
 
 static fn
-find_system_koshconf_path() throws -> Maybe<Path>
-{
-#if defined KOSH_DEBUG_SYSTEM_KOSHCONF_OVERRIDE
-  if (let const debug_path =
-          os::get_environment_variable("KOSH_DEBUG_SYSTEM_KOSHCONF");
-      debug_path.has_value() && !debug_path->is_empty())
-  {
-    return Path{debug_path->view()};
-  }
-#endif
-
-  return os::get_system_koshconf_path();
-}
-
-static fn
 read_startup_configuration(const command_line        &line,
                            const inherited_shell     &inherited,
                            const invocation_identity &identity,

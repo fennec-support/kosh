@@ -1,0 +1,8 @@
+== create keeps only the mood active:
+mood=kosh
+off
+== save --persist writes the settings that differ from the system file:
+completion.on_tab=on
+editor.hints.show_command_synopsis=off
+on
+on

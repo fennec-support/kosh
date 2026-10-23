@@ -186,11 +186,14 @@ also prints each alias.
 .B koshconf create
 writes every option a file may hold, each after a
 .RI # " help"
-comment. A string option without a default is written commented out. The
+comment. Every line except the mood is written commented out with the
+value of the preset, so the system file still applies until a line is
+uncommented. A string option without a default is written as an empty
+commented-out line. The
 .B kosh
 preset writes the values held by the
 .B kosh
-mood, so loading it never produces a warning.
+mood, so uncommenting a line never produces a warning.
 .SH STARTUP MOODS
 init_moods lists the moods whose startup files an interactive or login
 shell sources, in order, each file parsed under the grammar of its mood.
@@ -233,8 +236,9 @@ or through a KOSHCONF variable in its environment.
 .B koshconf save
 prints the current form.
 .B koshconf save \-\-persist
-writes the settings that differ from the defaults of the current mood to the
-user settings file. A line in that file whose option this version does not
+writes to the user settings file each setting that differs from the system
+file or, when the system file does not set it, from the default of the
+current mood. A line in that file whose option this version does not
 recognize is kept at the end of the new file.
 A starting shell applies the variable after the settings files and removes it
 from the environment before any command runs:

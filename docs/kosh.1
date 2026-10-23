@@ -1547,6 +1547,7 @@ or
 .B sh
 preset to the user configuration file described in
 .BR kosh (5),
+with every setting except the mood commented out,
 and refuses to replace an existing file without
 .BR \-\-force .
 It also writes the default user rc script when that script is missing.
@@ -1582,8 +1583,9 @@ A kosh started with
 adopts them. With
 .BR \-\-persist ,
 .B save
-writes the user configuration file instead, holding the mood when it differs
-from kosh and every setting that differs from the default of the current mood.
+writes the user configuration file instead. The file holds each setting,
+the mood included, that differs from the system file or, when the system file
+does not set it, from the default of the current mood.
 A restricted shell refuses
 .B save \-\-persist
 and allows a plain

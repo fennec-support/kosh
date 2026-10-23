@@ -953,6 +953,21 @@ read_koshconf_file(const Path &path, koshconf_reading &reading) throws
 }
 
 fn
+find_system_koshconf_path() throws -> Maybe<Path>
+{
+#if defined KOSH_DEBUG_SYSTEM_KOSHCONF_OVERRIDE
+  if (let const debug_path =
+          os::get_environment_variable("KOSH_DEBUG_SYSTEM_KOSHCONF");
+      debug_path.has_value() && !debug_path->is_empty())
+  {
+    return Path{debug_path->view()};
+  }
+#endif
+
+  return os::get_system_koshconf_path();
+}
+
+fn
 read_system_koshconf_file(const Path       &path,
                           koshconf_reading &reading) throws -> bool
 {
@@ -1145,11 +1160,32 @@ get_preset_default_number(const option_descriptor &option,
 }
 
 static fn
-has_default_koshconf_value(const EvalContext       &cxt,
-                           const option_descriptor &option) throws
-    -> bool
+has_default_koshconf_value(
+    const EvalContext                 &cxt,
+    const option_descriptor           &option,
+    const ArrayList<koshconf_setting> &system_settings) throws -> bool
 {
   let const current_value = read_option_text(cxt, option);
+
+  /* the last system file line for an option is the value a shell without
+     the user file starts with. */
+  const koshconf_setting *system_setting = nullptr;
+
+  for (let const &setting : system_settings) {
+    if (setting.option == &option) system_setting = &setting;
+  }
+
+  if (system_setting != nullptr) {
+    if (option.type == option_type::String) {
+      return current_value.view() == system_setting->value.view();
+    }
+
+    let const number =
+        parse_option_number(option, system_setting->value.view());
+
+    return number.has_value() &&
+           current_value.view() == format_option_number(option, *number).view();
+  }
 
   if (option.type == option_type::String) {
     return current_value.view() == StringView{option.default_text};
@@ -1179,10 +1215,12 @@ has_default_koshconf_value(const EvalContext       &cxt,
            comparisons calls get_preset_group_first_id() twice, and each call
            scans R registry entries. the rendering loop is O(K R), since each
            editor option scans the registry for its set -o aliases. */
-fn
-compose_koshconf_text(StringView         description,
-                      mimic_mood         preset,
-                      const EvalContext *current) throws -> String
+static fn
+compose_koshconf_text(
+    StringView                         description,
+    mimic_mood                         preset,
+    const EvalContext                 *current,
+    const ArrayList<koshconf_setting> &system_settings) throws -> String
 {
   let contents =
       String{heap_allocator(), "# Koshka settings written by koshconf "};
@@ -1192,17 +1230,21 @@ compose_koshconf_text(StringView         description,
               "# Every shell loads this file, including the ones that run "
               "scripts.\n";
 
-  if (current != nullptr) {
-    contents += "# Settings that match the defaults of the saved mood are "
-                "left out.\n";
+  if (current == nullptr) {
+    contents += "# A commented-out line keeps the value of the system file or "
+                "the default.\n";
+  } else {
+    contents += "# Settings that match the system file or the defaults of "
+                "the saved mood are\n# left out.\n";
   }
 
   let ordered = ArrayList<const option_descriptor *>{heap_allocator()};
 
   for (let const &option : get_option_registry()) {
     if (!option.is_configurable()) continue;
-    if (current != nullptr && (option.is_kept_out_of_koshconf ||
-                               has_default_koshconf_value(*current, option)))
+    if (current != nullptr &&
+        (option.is_kept_out_of_koshconf ||
+         has_default_koshconf_value(*current, option, system_settings)))
     {
       LOG(Debug, "koshconf save leaves out '%.*s' at its default",
           static_cast<int>(option.koshconf_name.length),
@@ -1318,6 +1360,10 @@ compose_koshconf_text(StringView         description,
       continue;
     }
 
+    /* a preset line other than the mood stays commented out, so the system
+       file still applies to the option. */
+    if (option->storage != option_storage::Mood) contents += "# ";
+
     if (option->type == option_type::String && !option->default_text.is_empty())
     {
       contents += format_koshconf_line(*option, option->default_text);
@@ -1329,7 +1375,6 @@ compose_koshconf_text(StringView         description,
         (preset == mimic_mood::Bash &&
          option->is_bash_default_session_dependent))
     {
-      contents += "# ";
       contents += option->koshconf_name;
       contents += "=\n";
       continue;
@@ -1352,13 +1397,23 @@ make_koshconf_preset(mimic_mood preset) throws -> String
 
   description += mood_name(preset);
 
-  return compose_koshconf_text(description.view(), preset, nullptr);
+  return compose_koshconf_text(description.view(), preset, nullptr,
+                               ArrayList<koshconf_setting>{heap_allocator()});
 }
 
 fn
 make_koshconf_snapshot(const EvalContext &cxt) throws -> String
 {
-  return compose_koshconf_text("save", mimic_mood::Default, &cxt);
+  let system_layer = koshconf_reading{};
+
+  if (let const system_path = find_system_koshconf_path();
+      system_path.has_value())
+  {
+    unused(read_system_koshconf_file(*system_path, system_layer));
+  }
+
+  return compose_koshconf_text("save", mimic_mood::Default, &cxt,
+                               system_layer.settings);
 }
 
 fn
