@@ -2,9 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the slurp builtin, which edits a text file in the line
- * editor. A shell script keeps its syntax highlighting, and Ctrl-X s or a
- * colon write command saves the file.
+ * This file implements the slurp builtin, which edits text files in the line
+ * editor one after another. A shell script keeps its syntax highlighting, and
+ * Ctrl-X s or a colon write command saves the file.
  */
 
 #include "../Builtin.hpp"
@@ -16,13 +16,19 @@
 
 FLAG_LIST_DECL();
 
-HELP_SYNOPSIS_DECL("[-e|-v] file");
+HELP_SYNOPSIS_DECL("[-e|-v|-V] [+line] file ...");
 
-HELP_DESCRIPTION_DECL("This builtin edits a text file in the line editor.");
+HELP_DESCRIPTION_DECL("This builtin edits text files in the line editor, one "
+                      "after another.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(SLURP_EMACS, Bool, 'e', "emacs", "Edit with the emacs key set.");
 FLAG(SLURP_VI, Bool, 'v', "vi", "Edit with the vi key set.");
+FLAG(SLURP_VI_NORMAL,
+     Bool,
+     'V',
+     "vi-normal",
+     "Edit with the vi key set, starting in normal mode.");
 
 REGISTER_BUILTIN_FLAGS(Slurp);
 
@@ -334,63 +340,35 @@ save_buffer(const char *text, const char **out_message) -> int
 
 } /* namespace */
 
-/* memory: the file contents, the title, and the session Strings on
+/* the line number of a +LINE operand, or nothing for a file operand. */
+static fn
+parse_start_line(StringView operand) wontthrow -> Maybe<usize>
+{
+  if (operand.length < 2 || operand[0] != '+') return None;
+
+  let const parsed = operand.substring(1).to<i64>();
+
+  if (parsed.is_error() || parsed.value() < 0) return None;
+
+  return static_cast<usize>(parsed.value());
+}
+
+/* edits one file in the line editor and returns the builtin status.
+   memory: the file contents, the title, and the session Strings on
            heap_allocator(), released when the session ends.
    time:   O(file size) to load, check, and split the file, then one editor
            session. */
-fn
-Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+static fn
+edit_file(ExecContext                 &ec,
+          EvalContext                 &cxt,
+          const String                &operand,
+          const SourceLocation        &location,
+          usize                        start_line,
+          Maybe<toiletline::edit_mode> mode) throws -> i32
 {
-  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
-  let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
+  let const path = Path{operand.view()};
 
-  if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
-
-  if (args.count() < 2) return report_usage_error(ec, cxt, ec.program());
-
-  if (args.count() > 2) {
-    report_soft_builtin_error(
-        ec, cxt, get_operand_location(ec, operand_locations, 2),
-        "Too many arguments", "Pass one file to edit, e.g. `slurp notes.txt`");
-
-    return 2;
-  }
-
-  if (FLAG_SLURP_EMACS.is_enabled() && FLAG_SLURP_VI.is_enabled()) {
-    report_soft_builtin_error(ec, cxt, FLAG_SLURP_VI.value_location(),
-                              "The emacs and vi key sets cannot be combined",
-                              "Pass -e or -v, not both");
-
-    return 2;
-  }
-
-  if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
-    report_soft_builtin_error(
-        ec, cxt, "Editing files is forbidden in a restricted shell");
-
-    return 1;
-  }
-
-  let mode = Maybe<toiletline::edit_mode>{None};
-
-  if (FLAG_SLURP_EMACS.is_enabled()) mode = toiletline::edit_mode::Emacs;
-  if (FLAG_SLURP_VI.is_enabled()) mode = toiletline::edit_mode::Vi;
-
-  let const location = get_operand_location(ec, operand_locations, 1);
-  let const path     = Path{args[1].view()};
-
-  if (!toiletline::is_active() ||
-      !os::is_fd_a_tty(ec.in_fd.value_or(KOSH_STDIN)) ||
-      !os::is_fd_a_tty(KOSH_STDOUT))
-  {
-    report_soft_builtin_error(ec, cxt, ec.source_location(),
-                              "The line editor needs an interactive terminal",
-                              "Run slurp from an interactive shell");
-
-    return 1;
-  }
-
-  if (args[1].is_empty()) {
+  if (operand.is_empty()) {
     report_soft_builtin_error(ec, cxt, location, "The file operand is empty",
                               "Pass the path of a file to edit");
 
@@ -405,7 +383,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (path.is_directory()) {
       report_soft_builtin_error(ec, cxt, location,
-                                StringView{"Cannot edit '"} + args[1] +
+                                StringView{"Cannot edit '"} + operand +
                                     "': it is a directory");
 
       return 1;
@@ -417,7 +395,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         (status.mode & 0170000u) != 0100000u)
     {
       report_soft_builtin_error(ec, cxt, location,
-                                StringView{"Cannot edit '"} + args[1] +
+                                StringView{"Cannot edit '"} + operand +
                                     "': it is not a regular file");
 
       return 1;
@@ -425,7 +403,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (status.size > SLURP_MAX_BYTE_COUNT) {
       report_soft_builtin_error(
           ec, cxt, location,
-          StringView{"'"} + args[1] + "' is longer than " +
+          StringView{"'"} + operand + "' is longer than " +
               String::from(SLURP_MAX_BYTE_COUNT, cxt.scratch_allocator()) +
               " bytes",
           "Install a normal editor");
@@ -437,7 +415,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     if (!read.has_value()) {
       report_soft_builtin_error(ec, cxt, location,
-                                StringView{"Cannot read '"} + args[1] +
+                                StringView{"Cannot read '"} + operand +
                                     "': " + os::last_system_error_message());
 
       return 1;
@@ -449,14 +427,14 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (!is_text(contents.view())) {
     report_soft_builtin_error(
-        ec, cxt, location, StringView{"'"} + args[1] + "' is not a text file");
+        ec, cxt, location, StringView{"'"} + operand + "' is not a text file");
 
     return 1;
   }
   if (contents.length() > SLURP_MAX_BYTE_COUNT) {
     report_soft_builtin_error(
         ec, cxt, location,
-        StringView{"'"} + args[1] + "' is longer than " +
+        StringView{"'"} + operand + "' is longer than " +
             String::from(SLURP_MAX_BYTE_COUNT, cxt.scratch_allocator()) +
             " bytes",
         "Install a normal editor");
@@ -506,11 +484,12 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   title.append("slurp ");
   if (FLAG_SLURP_EMACS.is_enabled()) title.append("-e ");
   if (FLAG_SLURP_VI.is_enabled()) title.append("-v ");
+  if (FLAG_SLURP_VI_NORMAL.is_enabled()) title.append("-V ");
   if (!utils::append_ansi_c_quote_if_needed(
-          title, args[1].view(),
-          cxt.get_glob_charset_for(args[1].view()) == glob_charset::Utf8))
+          title, operand.view(),
+          cxt.get_glob_charset_for(operand.view()) == glob_charset::Utf8))
   {
-    title.append(args[1].view());
+    title.append(operand.view());
   }
 
   let session = slurp_session{
@@ -586,6 +565,10 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   defer { do_leave_alternate_screen(); };
 
   toiletline::set_input(contents);
+  /* vi normal mode opens a file on its first line, as vi does. */
+  toiletline::set_start_line(
+      start_line == 0 && mode == toiletline::edit_mode::ViNormal ? 1
+                                                                 : start_line);
   toiletline::set_saved_text(session.saved_text.c_str());
 
   let result = toiletline::get_input(String{heap_allocator()});
@@ -595,6 +578,117 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (result.code == TL_PRESSED_INTERRUPT) return 130;
 
   return 0;
+}
+
+struct slurp_target
+{
+  usize operand_index;
+  usize start_line;
+};
+
+fn
+Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
+{
+  let operand_locations = ArrayList<SourceLocation>{cxt.scratch_allocator()};
+  let const args = PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations);
+
+  if (FLAG_HELP.is_enabled()) SHOW_BUILTIN_HELP_AND_RETURN(ec);
+
+  if (args.count() < 2) return report_usage_error(ec, cxt, ec.program());
+
+  let const key_set_count = (FLAG_SLURP_EMACS.is_enabled() ? 1 : 0) +
+                            (FLAG_SLURP_VI.is_enabled() ? 1 : 0) +
+                            (FLAG_SLURP_VI_NORMAL.is_enabled() ? 1 : 0);
+
+  if (key_set_count > 1) {
+    report_soft_builtin_error(ec, cxt,
+                              FLAG_SLURP_VI_NORMAL.is_enabled()
+                                  ? FLAG_SLURP_VI_NORMAL.value_location()
+                                  : FLAG_SLURP_VI.value_location(),
+                              "Only one key set option can be given",
+                              "Pass one of -e, -v, or -V");
+
+    return 2;
+  }
+
+  let targets    = ArrayList<slurp_target>{cxt.scratch_allocator()};
+  let start_line = usize{0};
+
+  for (usize index = 1; index < args.count(); index++) {
+    if (let const line = parse_start_line(args[index].view()); line.has_value())
+    {
+      start_line = *line;
+      continue;
+    }
+
+    targets.push({index, start_line});
+    start_line = 0;
+  }
+
+  if (targets.is_empty() || start_line != 0) {
+    report_soft_builtin_error(
+        ec, cxt, get_operand_location(ec, operand_locations, args.count() - 1),
+        "A line number needs a file after it",
+        "Pass the file to open, e.g. `slurp +12 notes.txt`");
+
+    return 2;
+  }
+
+  if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted)) {
+    report_soft_builtin_error(
+        ec, cxt, "Editing files is forbidden in a restricted shell");
+
+    return 1;
+  }
+
+  if (!os::is_fd_a_tty(ec.in_fd.value_or(KOSH_STDIN)) ||
+      !os::is_fd_a_tty(KOSH_STDOUT))
+  {
+    report_soft_builtin_error(ec, cxt, ec.source_location(),
+                              "The line editor needs a terminal",
+                              "Run slurp with a terminal on both streams");
+
+    return 1;
+  }
+
+  let mode = Maybe<toiletline::edit_mode>{None};
+
+  if (FLAG_SLURP_EMACS.is_enabled()) mode = toiletline::edit_mode::Emacs;
+  if (FLAG_SLURP_VI.is_enabled()) mode = toiletline::edit_mode::Vi;
+  if (FLAG_SLURP_VI_NORMAL.is_enabled()) mode = toiletline::edit_mode::ViNormal;
+
+  /* a shell without an editor, such as kosh -c or a bundled utility, starts
+     one for these sessions and stops it afterwards. */
+  let const did_initialize_editor = !toiletline::is_active();
+
+  if (did_initialize_editor) {
+    toiletline::initialize();
+    toiletline::exit_raw_mode();
+  }
+
+  defer {
+    if (did_initialize_editor) {
+      try {
+        toiletline::exit();
+      } catch (const Error &error) {
+        show_message(error.to_string());
+      }
+    }
+  };
+
+  i32 status = 0;
+
+  for (let const &target : targets) {
+    let const file_status = edit_file(
+        ec, cxt, args[target.operand_index],
+        get_operand_location(ec, operand_locations, target.operand_index),
+        target.start_line, mode);
+
+    if (file_status == 130) return 130;
+    if (file_status != 0) status = file_status;
+  }
+
+  return status;
 }
 
 } /* namespace koshka */

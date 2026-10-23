@@ -122,7 +122,7 @@ _kosh_slurp_complete ()
 
   if [[ $current_word == -* ]]
   then
-    _kosh_compgen -W "-e -v --emacs --vi --help" -- "$current_word"
+    _kosh_compgen -W "-e -v -V --emacs --vi --vi-normal --help" -- "$current_word"
     return
   fi
 
@@ -369,11 +369,11 @@ complete -W '-c -d -n -r -a -w -p -s -S --sync --help' history
 complete -W '-r -R -t -p --help' hash
 complete -c -W '--help --posix -p -R' time
 _koshkit_utils="basename bc cal calc cat chgrp chmod chown cksum cmp comm cp csplit cut date df diff \
-dirname du egrep env evil evildisk evilfiles evilfs evilio evillogs evilnet evilps evilss expand expr fgrep file find flock \
+dirname du egrep emacs env evil evildisk evilfiles evilfs evilio evillogs evilnet evilps evilss expand expr fgrep file find flock \
 fold fuser getconf goodcore goodfsw goodnode goodstat eviliso grep head id killall link ln locale logger logname ls make man meow mkdir mkfifo mknod more \
 mv nice nl nohup nproc od paste pathchk pkill pr printenv ps readlink realpath renice retry rm rmdir sed seq \
-sleep sort split stat strings stty sync tabs tail tee timeout touch tput tr tsort tty uname unexpand uniq \
-unlink watch wc which who whoami xargs yes"
+sleep slurp sort split stat strings stty sync tabs tail tee timeout touch tput tr tsort tty uname unexpand uniq \
+unlink vi watch wc which who whoami xargs yes"
 
 _koshkit_util_flags ()
 {
@@ -536,6 +536,9 @@ _koshkit_util_flags ()
     ;;
     tr)
       echo "-c -C -d -s -t --truncate-set1"
+    ;;
+    slurp | vi | emacs)
+      echo "-e -v -V --emacs --vi --vi-normal"
     ;;
     grep | egrep | fgrep)
       echo "-a -i -v -r -n -h -E -F -e -f -c -l -q -s -x -rnh --text --recursive --line-number --no-filename --extended-regexp --fixed-strings --regexp --file --count --files-with-matches --quiet --no-messages --line-regexp --one-file-system --color"

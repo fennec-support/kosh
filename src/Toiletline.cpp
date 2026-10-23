@@ -37,6 +37,7 @@ enum class edit_mode : u8
 {
   Emacs,
   Vi,
+  ViNormal,
 };
 
 fn
@@ -2325,6 +2326,12 @@ set_line_max(usize byte_count) -> void
 }
 
 fn
+set_start_line(usize line_number) -> void
+{
+  ::tl_set_predefined_line(line_number);
+}
+
+fn
 get_history_path() -> koshka::Maybe<koshka::Path>
 {
   return get_history_file_path();
@@ -3603,8 +3610,11 @@ set_colors_enabled(bool is_enabled) -> void
 fn
 set_edit_mode(edit_mode mode) -> void
 {
-  ::tl_set_edit_mode(mode == edit_mode::Vi ? TL_EDIT_MODE_VI_INSERT
-                                           : TL_EDIT_MODE_EMACS);
+  switch (mode) {
+  case edit_mode::Emacs:    ::tl_set_edit_mode(TL_EDIT_MODE_EMACS); break;
+  case edit_mode::Vi:       ::tl_set_edit_mode(TL_EDIT_MODE_VI_INSERT); break;
+  case edit_mode::ViNormal: ::tl_set_edit_mode(TL_EDIT_MODE_VI_COMMAND); break;
+  }
 }
 
 fn

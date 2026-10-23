@@ -146,6 +146,9 @@ slurp-keeps-mixed-line-endings PASS
 slurp-keeps-crlf-endings PASS
 slurp-keeps-a-missing-final-newline PASS
 slurp-edits-a-file-over-64-kib PASS
+vi-opens-the-line-in-normal-mode PASS
+vi-opens-the-next-file-after-a-save PASS
+vi-colon-line-clamps-to-the-last-line PASS
 slurp-refuses-a-file-over-the-limit PASS
 slurp-keeps-a-lone-newline PASS
 slurp-draws-a-tab-as-blank-columns PASS

@@ -137,6 +137,11 @@ set_full_screen(bool is_enabled) -> void;
 fn
 set_line_max(usize byte_count) -> void;
 
+/* places the caret of the next get_input at the start of a line counted from
+   1, or at the end of the input for 0. */
+fn
+set_start_line(usize line_number) -> void;
+
 fn
 get_history_path() -> koshka::Maybe<koshka::Path>;
 fn
@@ -246,6 +251,7 @@ enum class edit_mode : u8
 {
   Emacs,
   Vi,
+  ViNormal,
 };
 
 fn

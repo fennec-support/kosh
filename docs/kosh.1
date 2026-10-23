@@ -1618,9 +1618,21 @@ and only
 accepts
 .BR \-\-force .
 .TP
-.BR slurp " [" \-e | \-v "] " \fIFILE\fR
-FILE is edited in the line editor of the interactive shell, and a missing FILE
-starts empty. The session runs on the alternate screen of the terminal and
+.BR slurp " [" \-e | \-v | \-V "] [" +\fILINE\fR "] " \fIFILE\fR " ..."
+Each FILE is edited in the line editor, one after another, and a missing FILE
+starts empty. Leaving one session opens the next FILE, and Ctrl\-C ends the
+whole run. A
+.BI + LINE
+operand opens the FILE after it with the caret at the start of that line, and
+the vi commands
+.BI : N
+and
+.B :$
+move the caret to line N and to the last line. A shell without a running line
+editor, such as
+.B "kosh \-c"
+or a bundled utility, starts one for the sessions and stops it afterwards.
+The session runs on the alternate screen of the terminal and
 leaves it before any result is reported, so the main screen keeps only the
 command. A shell script, recognized by its shebang or its extension, keeps its
 syntax highlighting. Enter and Shift\-Enter start a new line, and in vi normal
@@ -1631,8 +1643,8 @@ blanks that end a line are shaded too. Each empty line after the last text of
 the file has its first column shaded. Ctrl\-X s and Ctrl\-X Ctrl\-S in emacs
 mode and
 .BR :w " and " :write
-in vi mode save the file and keep the session open, and the empty status row
-reports the save. The vi commands
+in vi mode save the file and keep the session open, and a status row reports
+the save. The vi commands
 .BR :wq ", " :wq! ", " :wqa ", " :wqa! ", and " :x
 save the file and leave when the save succeeds. The commands
 .BR :q " and " :q! ,
@@ -1649,8 +1661,10 @@ in vi mode find text in the file as it is typed. The
 .BR \-e " or " \-\-emacs
 option selects the emacs key set for the session, and
 .BR \-v " or " \-\-vi
-selects the vi key set. The two options cannot be combined. Up and Down do
-not recall shell history.
+selects the vi key set, which starts in insert mode.
+.BR \-V " or " \-\-vi\-normal
+selects the vi key set and starts in normal mode on the first line. Only one of
+the three options can be given. Up and Down do not recall shell history.
 .IP
 A press of the first mouse button moves the caret, and a drag from the press
 selects the text between, in visual mode with the vi key set. With the emacs
@@ -1688,10 +1702,12 @@ error gives the path of the copy, and when no copy can be made, nothing is
 written. The save is refused when another file has replaced the one that slurp
 loaded. A refused or failed save is reported on the last rows, and the
 session stays open with the edits. An empty operand, a directory, a special
-file, an unreadable file, a file with a NUL byte or invalid UTF\-8, a file
-longer than 16777216 bytes, a restricted shell, and a session whose standard input
-or output is not a terminal are refused with status 1. A wrong operand count or
-an unknown mode exits with status 2. A file whose every line ends in CRLF keeps
+file, an unreadable file, a file with a NUL byte or invalid UTF\-8, and a file
+longer than 16777216 bytes are refused with status 1, and the next FILE still
+opens. A restricted shell and a standard input or output that is not a
+terminal are refused with status 1. A missing FILE operand, a
+.BI + LINE
+without a FILE after it, or more than one mode option exits with status 2. A file whose every line ends in CRLF keeps
 those endings, a file that mixes them keeps each carriage return as text, and
 the final newline of the file is kept.
 .TP
@@ -2302,17 +2318,17 @@ With no utility,
 groups the catalog under POSIX and Koshka headings.
 .PP
 The bundled set contains basename, bc, cal, calc, cat, chgrp, chmod, chown,
-cksum, cmp, comm, cp, csplit, cut, date, df, diff, dirname, du, egrep, env,
-evil,
+cksum, cmp, comm, cp, csplit, cut, date, df, diff, dirname, du, egrep, emacs,
+env, evil,
 evildisk, evilfiles, evilfs, evilio, eviliso, evillogs, evilnet, evilps, evilss,
 expand, expr, fgrep, file, find, flock, fold, fuser, getconf, goodcore, goodfsw,
 goodnode, goodstat, grep, head, id, killall, link, ln, locale, logger,
 logname, ls, make,
 man, meow, mkdir, mkfifo, more, mv, nice, nl, nohup, nproc, od, paste, pathchk,
 pkill, pr, printenv, ps, readlink, realpath, renice, retry, rm, rmdir, sed, seq,
-sleep, sort, split, stat, strings, stty, sync, tabs, tail, tee, timeout, touch,
-tput, tr, tsort, tty, uname, unexpand, uniq, unlink, watch, wc, which, who,
-whoami, xargs, and yes.
+sleep, slurp, sort, split, stat, strings, stty, sync, tabs, tail, tee, timeout,
+touch, tput, tr, tsort, tty, uname, unexpand, uniq, unlink, vi, watch, wc,
+which, who, whoami, xargs, and yes.
 .PP
 A utility accepts options before and after its operands, and \fB\-\-\fR ends
 the options. The env, expr, flock, nice, nohup, retry, timeout, watch, and
@@ -2805,6 +2821,15 @@ values, and the final value still ends with a newline. The \fB\-f\fR,
 .TP
 .B sleep
 Execution pauses for summed durations with optional s, m, h, or d suffixes.
+.TP
+.B slurp
+Text files are edited like the
+.B slurp
+builtin, with the same options and operands. Invoked as
+.BR vi ,
+slurp runs with \fB\-V\fR and starts in vi normal mode, and invoked as
+.BR emacs ,
+it runs with \fB\-e\fR.
 .TP
 .B sort
 Input lines are sorted in byte order, or by the keys given with

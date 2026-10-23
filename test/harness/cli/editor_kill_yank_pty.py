@@ -1245,6 +1245,30 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(CTRL_X + CTRL_C)
         session.wait_until(is_line(""))
 
+        first = os.path.join(directory, "slurp-first.txt")
+        second = os.path.join(directory, "slurp-second.txt")
+        with open(first, "wb") as handle:
+            handle.write(b"one\ntwo\nthree\n")
+        with open(second, "wb") as handle:
+            handle.write(b"alpha\n")
+        session.send(b"koshkit vi +2 slurp-first.txt slurp-second.txt\r")
+        report.record("vi-opens-the-line-in-normal-mode", session,
+                      has_text("line 2 of 3, column 1, as vi normal"))
+        session.send(b"iZ")
+        settle(session, 0.2)
+        session.send(KITTY_ESCAPE)
+        settle(session, 0.2)
+        session.send(b":wq\r")
+        report.record("vi-opens-the-next-file-after-a-save", session,
+                      lambda screen: has_text("line 1 of 1, column 1")(screen)
+                      and read_bytes(first) == b"one\nZtwo\nthree\n")
+        session.send(b"$")
+        session.send(b":3\r")
+        report.record("vi-colon-line-clamps-to-the-last-line", session,
+                      has_text("line 1 of 1, column 1"))
+        session.send(b":q\r")
+        session.wait_until(is_line(""))
+
         oversized = os.path.join(directory, "slurp-oversized.txt")
         with open(oversized, "wb") as handle:
             handle.write(b"a" * (16 * 1024 * 1024 + 1))

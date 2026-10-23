@@ -171,7 +171,8 @@ report_unresolved_sort_key(const ExecContext &ec,
   X(EvilLogs, "evillogs")                                                      \
   X(EvilSS, "evilss")                                                          \
   X(EvilIso, "eviliso")                                                        \
-  X(GoodCore, "goodcore")
+  X(GoodCore, "goodcore")                                                      \
+  X(Slurp, "slurp")
 
 class Utility
 {
@@ -206,8 +207,10 @@ struct koshkit_alias
 };
 
 inline constexpr static_string_entry<koshkit_alias> KOSHKIT_ALIAS_ENTRIES[] = {
-    {SSK("egrep"), {Utility::Kind::Grep, "-E"}},
-    {SSK("fgrep"), {Utility::Kind::Grep, "-F"}},
+    {SSK("egrep"), {Utility::Kind::Grep, "-E"} },
+    {SSK("fgrep"), {Utility::Kind::Grep, "-F"} },
+    {SSK("vi"),    {Utility::Kind::Slurp, "-V"}},
+    {SSK("emacs"), {Utility::Kind::Slurp, "-e"}},
 };
 
 inline constexpr StaticStringMap KOSHKIT_ALIASES{KOSHKIT_ALIAS_ENTRIES};

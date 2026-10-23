@@ -4,27 +4,57 @@
        |  ^~~~~
 note: Try `slurp --help` for more info.
 rc=2
-== slurp a b:
--c:1:9: error: Builtin `slurp`: Too many arguments.
-     1 |  slurp a b
-       |          ^
-note: Pass one file to edit, e.g. `slurp notes.txt`.
+== slurp +3:
+-c:1:7: error: Builtin `slurp`: A line number needs a file after it.
+     1 |  slurp +3
+       |        ^~
+note: Pass the file to open, e.g. `slurp +12 notes.txt`.
+rc=2
+== slurp a +3:
+-c:1:9: error: Builtin `slurp`: A line number needs a file after it.
+     1 |  slurp a +3
+       |          ^~
+note: Pass the file to open, e.g. `slurp +12 notes.txt`.
 rc=2
 == slurp -e -v a:
--c:1:10: error: Builtin `slurp`: The emacs and vi key sets cannot be combined.
+-c:1:10: error: Builtin `slurp`: Only one key set option can be given.
      1 |  slurp -e -v a
        |           ^~
-note: Pass -e or -v, not both.
+note: Pass one of -e, -v, or -V.
 rc=2
 == slurp --emacs --vi a:
--c:1:15: error: Builtin `slurp`: The emacs and vi key sets cannot be combined.
+-c:1:15: error: Builtin `slurp`: Only one key set option can be given.
      1 |  slurp --emacs --vi a
        |                ^~~~
-note: Pass -e or -v, not both.
+note: Pass one of -e, -v, or -V.
+rc=2
+== slurp -v -V a:
+-c:1:10: error: Builtin `slurp`: Only one key set option can be given.
+     1 |  slurp -v -V a
+       |           ^~
+note: Pass one of -e, -v, or -V.
 rc=2
 == slurp --mode vi a:
 -c:1:7: error: Builtin `slurp`: Unknown flag '--mode'.
      1 |  slurp --mode vi a
        |        ^~~~~~
 note: Use `--` before an operand that begins with a dash.
+rc=2
+== slurp a b:
+-c:1:1: error: Builtin `slurp`: The line editor needs a terminal.
+     1 |  slurp a b
+       |  ^~~~~~~~~
+note: Run slurp with a terminal on both streams.
+rc=1
+== koshkit slurp:
+-c:1:1: error: Builtin `slurp`: Not enough arguments.
+     1 |  koshkit slurp
+       |  ^~~~~~~~~~~~~
+note: Try `slurp --help` for more info.
+rc=2
+== koshkit vi -e a:
+-c:1:9: error: Builtin `slurp`: Only one key set option can be given.
+     1 |  koshkit vi -e a
+       |          ^~
+note: Pass one of -e, -v, or -V.
 rc=2

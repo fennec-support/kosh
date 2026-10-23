@@ -700,6 +700,12 @@ set_line_max(usize byte_count) -> void
 }
 
 fn
+set_start_line(usize line_number) -> void
+{
+  unused(line_number);
+}
+
+fn
 leave_calc_history() -> void
 {}
 
