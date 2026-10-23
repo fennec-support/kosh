@@ -33,28 +33,6 @@ namespace koshka::koshkit {
 
 namespace {
 
-/* memory: read_entire_file() copies the whole file to the heap, and the body
-           frees it on return. the returned String is in allocator.
-   time:   O(file size) to read the file, then O(first line length) to find
-           the newline. the caller reads /proc/loadavg. */
-fn
-read_first_line(StringView path, Allocator allocator) throws
-    -> Maybe<String>
-{
-  let const body = Path{path, allocator}.read_entire_file();
-
-  if (!body.has_value()) return None;
-
-  let const view     = body->view();
-  usize     line_end = 0;
-
-  while (line_end < view.length && view[line_end] != '\n') {
-    line_end++;
-  }
-
-  return String{allocator, view.substring_of_length(0, line_end)};
-}
-
 /* memory: the file is read into the heap and freed on return. the returned
            String is in allocator.
    time:   O(file size) to scan the lines until the NAME= line. */
@@ -748,10 +726,12 @@ Evil::execute(const ExecContext               &ec,
     }
   }
 
-  let const load = read_first_line("/proc/loadavg", allocator);
+  if (let const load = os::read_load_average(); load.has_value()) {
+    char load_text[64];
 
-  if (load.has_value() && !load->is_empty()) {
-    resources.add("Load", load->view());
+    snprintf(load_text, sizeof(load_text), "%.2f %.2f %.2f", load->one_minute,
+             load->five_minutes, load->fifteen_minutes);
+    resources.add("Load", StringView{load_text});
   }
 
   let const processes = os::enumerate_processes();

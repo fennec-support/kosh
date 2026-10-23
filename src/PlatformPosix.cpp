@@ -658,6 +658,20 @@ linux_network_sockets_from_file(
 
 #endif
 
+fn
+read_load_average() wontthrow -> Maybe<load_average>
+{
+  double samples[3] = {};
+
+  if (::getloadavg(samples, 3) != 3) {
+    LOG(Info, "getloadavg() returned fewer than three samples");
+
+    return None;
+  }
+
+  return load_average{samples[0], samples[1], samples[2]};
+}
+
 static pure fn
 system_log_priority(StringView priority) wontthrow -> int
 {

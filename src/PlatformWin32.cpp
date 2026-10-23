@@ -357,6 +357,12 @@ path_to_wide(StringView path, Allocator allocator) throws
 }
 
 fn
+read_load_average() wontthrow -> Maybe<load_average>
+{
+  return None;
+}
+
+fn
 logged_in_users() throws -> ArrayList<user_session>
 {
   let       result   = ArrayList<user_session>{heap_allocator()};

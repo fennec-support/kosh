@@ -2389,6 +2389,16 @@ struct user_session
 fn
 logged_in_users() throws -> ArrayList<user_session>;
 
+struct load_average
+{
+  f64 one_minute{0};
+  f64 five_minutes{0};
+  f64 fifteen_minutes{0};
+};
+
+fn
+read_load_average() wontthrow -> Maybe<load_average>;
+
 struct processor_counts
 {
   usize online_count{1};
