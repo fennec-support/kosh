@@ -729,6 +729,9 @@ fn
 open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
     -> Maybe<input_descriptor>;
 
+fn
+close_input_descriptor(const input_descriptor &input) wontthrow -> void;
+
 enum class source_line_outcome : u8
 {
   Complete,

@@ -328,10 +328,7 @@ Nl::execute(const ExecContext               &ec,
       continue;
     }
 
-    defer {
-      if (input->mode == input_descriptor_mode::Owned)
-        os::close_fd(input->descriptor);
-    };
+    defer { close_input_descriptor(*input); };
 
     let reader =
         utils::BufferedLineReader{input->descriptor, cxt.scratch_allocator()};

@@ -218,10 +218,7 @@ Uniq::execute(const ExecContext               &ec,
 
     return 1;
   }
-  defer {
-    if (input->mode == input_descriptor_mode::Owned)
-      os::close_fd(input->descriptor);
-  };
+  defer { close_input_descriptor(*input); };
 
   static constexpr usize OUTPUT_FLUSH_BYTE_COUNT = 64 * 1024;
 

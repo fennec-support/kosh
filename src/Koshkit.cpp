@@ -502,10 +502,7 @@ read_named_or_stdin(const ExecContext &ec, StringView path) throws
   let const input = open_named_or_stdin(ec, path);
 
   if (!input.has_value()) return None;
-  defer {
-    if (input->mode == input_descriptor_mode::Owned)
-      unused(os::close_fd(input->descriptor));
-  };
+  defer { close_input_descriptor(*input); };
 
   return os::read_fd_to_string(input->descriptor, heap_allocator());
 }
@@ -1044,6 +1041,13 @@ open_named_or_stdin(const ExecContext &ec, StringView path) wontthrow
 }
 
 fn
+close_input_descriptor(const input_descriptor &input) wontthrow -> void
+{
+  if (input.mode == input_descriptor_mode::Owned)
+    unused(os::close_fd(input.descriptor));
+}
+
+fn
 visit_source_lines_with(const ExecContext  &ec,
                         StringView          source,
                         Allocator           allocator,
@@ -1054,10 +1058,7 @@ visit_source_lines_with(const ExecContext  &ec,
   let const input = open_named_or_stdin(ec, source);
 
   if (!input.has_value()) return source_line_outcome::Failed;
-  defer {
-    if (input->mode == input_descriptor_mode::Owned)
-      unused(os::close_fd(input->descriptor));
-  };
+  defer { close_input_descriptor(*input); };
 
   let reader = utils::BufferedLineReader{input->descriptor, allocator};
 
@@ -1089,10 +1090,7 @@ file_crc32c(const ExecContext &ec,
   let const input = open_named_or_stdin(ec, path);
 
   if (!input.has_value()) return None;
-  defer {
-    if (input->mode == input_descriptor_mode::Owned)
-      unused(os::close_fd(input->descriptor));
-  };
+  defer { close_input_descriptor(*input); };
 
   u32  crc = 0xffffffffu;
   char buffer[65536];

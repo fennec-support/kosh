@@ -637,10 +637,7 @@ Od::execute(const ExecContext               &ec,
       continue;
     }
 
-    defer {
-      if (input->mode == input_descriptor_mode::Owned)
-        os::close_fd(input->descriptor);
-    };
+    defer { close_input_descriptor(*input); };
 
     while (do_need_bytes()) {
       let const read_count =

@@ -521,11 +521,7 @@ Xargs::execute(const ExecContext               &ec,
   }
 
   defer {
-    if (argument_file.has_value() &&
-        argument_file->mode == input_descriptor_mode::Owned)
-    {
-      os::close_fd(argument_file->descriptor);
-    }
+    if (argument_file.has_value()) close_input_descriptor(*argument_file);
   };
 
   let const format = is_delimited               ? xargs_item_format::Delimited

@@ -167,10 +167,7 @@ Split::execute(const ExecContext               &ec,
     return 1;
   }
 
-  defer {
-    if (input->mode == input_descriptor_mode::Owned)
-      os::close_fd(input->descriptor);
-  };
+  defer { close_input_descriptor(*input); };
 
   os::descriptor output_descriptor = KOSH_INVALID_FD;
 

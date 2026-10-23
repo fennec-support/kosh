@@ -156,10 +156,7 @@ Cmp::execute(const ExecContext               &ec,
     return 2;
   }
 
-  defer {
-    if (left_input->mode == input_descriptor_mode::Owned)
-      os::close_fd(left_input->descriptor);
-  };
+  defer { close_input_descriptor(*left_input); };
 
   let const right_input = open_named_or_stdin(ec, operands[1].view());
 
@@ -170,10 +167,7 @@ Cmp::execute(const ExecContext               &ec,
     return 2;
   }
 
-  defer {
-    if (right_input->mode == input_descriptor_mode::Owned)
-      os::close_fd(right_input->descriptor);
-  };
+  defer { close_input_descriptor(*right_input); };
 
   /* at this point: operands holds exactly two operands, -l and -s are not
      both set, and left_input and right_input have values. A borrowed
