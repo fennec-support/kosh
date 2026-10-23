@@ -713,13 +713,13 @@ private:
     while (remaining_length > 0) {
       let const wanted_length =
           remaining_length < sizeof(bytes) ? remaining_length : sizeof(bytes);
-      let const count = os::read_fd(KOSH_STDIN, bytes, wanted_length);
+      let const read_byte_count = os::read_fd(KOSH_STDIN, bytes, wanted_length);
 
-      if (!count.has_value() || *count == 0) {
+      if (!read_byte_count.has_value() || *read_byte_count == 0) {
         return false;
       }
 
-      remaining_length -= *count;
+      remaining_length -= *read_byte_count;
     }
 
     return true;
@@ -729,13 +729,13 @@ private:
   read_more() throws -> bool
   {
     char      bytes[8192];
-    let const count = os::read_fd(KOSH_STDIN, bytes, sizeof(bytes));
+    let const read_byte_count = os::read_fd(KOSH_STDIN, bytes, sizeof(bytes));
 
-    if (!count.has_value() || *count == 0) {
+    if (!read_byte_count.has_value() || *read_byte_count == 0) {
       return false;
     }
 
-    m_buffer.append(StringView{bytes, *count});
+    m_buffer.append(StringView{bytes, *read_byte_count});
 
     return true;
   }

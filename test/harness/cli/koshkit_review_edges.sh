@@ -49,3 +49,10 @@ printf 'a b\tcdefghij\n' | kk fold -s -w 10 | kk od -c
 printf '\320\277\321\200\320\270\320\262\320\265\321\202\n' | kk fold -w 4 | kk od -c
 printf 'abc' | kk od -j 4 2> /dev/null
 printf 'od-past-end=%s\n' "$?"
+printf 'abcdef\n' > cmp-left
+printf 'def\n' > cmp-right
+{
+  kk head -c 3 > /dev/null
+  kk cmp - cmp-right
+  printf 'cmp-consumed-stdin=%s\n' "$?"
+} < cmp-left

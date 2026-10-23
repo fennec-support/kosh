@@ -176,22 +176,17 @@ Cmp::execute(const ExecContext               &ec,
   };
 
   /* at this point: operands holds exactly two operands, -l and -s are not
-     both set, and left_input and right_input have values. */
-  buffered_byte_reader left{left_input->descriptor,
-                            0,
-                            0,
-                            0,
-                            os::descriptor_is_seekable(left_input->descriptor),
-                            false,
-                            {}};
-  buffered_byte_reader right{
-      right_input->descriptor,
-      0,
-      0,
-      0,
-      os::descriptor_is_seekable(right_input->descriptor),
-      false,
-      {}};
+     both set, and left_input and right_input have values. A borrowed
+     descriptor reads from its current position, so only a descriptor this
+     call opened takes positioned reads from offset zero. */
+  let const do_is_positioned = [](const input_descriptor &input) wontthrow {
+    return input.mode == input_descriptor_mode::Owned &&
+           os::descriptor_is_seekable(input.descriptor);
+  };
+  buffered_byte_reader left{left_input->descriptor,        0,     0, 0,
+                            do_is_positioned(*left_input), false, {}};
+  buffered_byte_reader right{right_input->descriptor,        0,     0, 0,
+                             do_is_positioned(*right_input), false, {}};
 
   u64       byte_position  = 1;
   u64       line_number    = 1;

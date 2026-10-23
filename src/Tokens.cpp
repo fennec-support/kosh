@@ -250,6 +250,26 @@ Word::plain_literal_kind() const wontthrow -> PlainLiteral
   return m_cached_plain_kind;
 }
 
+/* whether text[1, name_length) continues an assignment name: variable name
+   bytes, optionally followed by a subscript that ends at name_length. */
+static pure fn
+is_assignment_name_tail(StringView text, usize name_length) wontthrow -> bool
+{
+  usize name_cursor = 1;
+
+  while (name_cursor < name_length &&
+         lexer::is_variable_name(text[name_cursor]))
+  {
+    name_cursor++;
+  }
+
+  if (name_cursor < name_length && text[name_cursor] == '[') {
+    return text[name_length - 1] == ']' && name_length - name_cursor >= 3;
+  }
+
+  return name_cursor == name_length;
+}
+
 fn
 Word::constant_value() const throws -> StringView
 {
@@ -659,22 +679,8 @@ Word::get_assignment_split(Allocator allocator) const throws
 
   if (name_length == 0) return koshka::None;
 
-  usize name_cursor = 1;
-
-  while (name_cursor < name_length &&
-         lexer::is_variable_name(first.text[name_cursor]))
-  {
-    name_cursor++;
-  }
-
-  if (name_cursor < name_length && first.text[name_cursor] == '[') {
-    if (first.text[name_length - 1] != ']' || name_length - name_cursor < 3) {
-      return koshka::None;
-    }
-    name_cursor = name_length;
-  }
-
-  if (name_cursor != name_length) return koshka::None;
+  if (!is_assignment_name_tail(first.text.view(), name_length))
+    return koshka::None;
 
   /* at this point: first.text starts with a variable name, and its first
      name_length bytes form a valid assignment name. */
@@ -748,22 +754,7 @@ Word::get_quoted_assignment_split() const throws
 
   if (!lexer::is_variable_name_start(prefix_view[0])) return koshka::None;
 
-  usize name_cursor = 1;
-
-  while (name_cursor < name_length &&
-         lexer::is_variable_name(prefix_view[name_cursor]))
-  {
-    name_cursor++;
-  }
-
-  if (name_cursor < name_length && prefix_view[name_cursor] == '[') {
-    if (prefix_view[name_length - 1] != ']' || name_length - name_cursor < 3) {
-      return koshka::None;
-    }
-    name_cursor = name_length;
-  }
-
-  if (name_cursor != name_length) return koshka::None;
+  if (!is_assignment_name_tail(prefix_view, name_length)) return koshka::None;
 
   /* at this point: prefix_view starts with an assignment name of name_length
      bytes, and segments[equals_segment] holds the '=' at equals_position. */

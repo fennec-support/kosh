@@ -351,13 +351,13 @@ Batch::execute(ArrayList<batch_result> &results,
                                                m_canonical_positions, m_buckets)
           : 0;
 
+  results.clear();
+  results.reserve(m_operations.count());
+
+  for (usize index = 0; index < m_operations.count(); index++)
+    results.push({});
+
   if (unique_operation_count == 0) {
-    results.clear();
-    results.reserve(m_operations.count());
-
-    for (usize index = 0; index < m_operations.count(); index++)
-      results.push({});
-
     batch_internal::execute_batch_operations(
         m_operations.begin(), m_operations.count(), results.begin());
 
@@ -382,12 +382,6 @@ Batch::execute(ArrayList<batch_result> &results,
     m_canonical_positions[index] = m_optimized_operations.count();
     m_optimized_operations.push(m_operations[index]);
   }
-
-  results.clear();
-  results.reserve(m_operations.count());
-
-  for (usize index = 0; index < m_operations.count(); index++)
-    results.push({});
 
   batch_internal::execute_batch_operations(m_optimized_operations.begin(),
                                            m_optimized_operations.count(),

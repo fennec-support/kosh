@@ -633,8 +633,9 @@ ProgramResolver::split_path_dirs(StringView path) throws
   let directories = ArrayList<String>{heap_allocator()};
   let current     = String{heap_allocator()};
 
-  /* POSIX treats an empty entry as the current directory. Windows shells
-     skip an empty entry, and a trailing ';' cannot reach a planted program. */
+  /* an empty entry becomes "." when os::IS_EMPTY_PATH_ENTRY_CURRENT_DIRECTORY
+     is set and is dropped otherwise, so on Windows a trailing ';' cannot
+     reach a planted program. */
   let const do_push_entry = [&]() throws {
     if (!current.is_empty()) {
       directories.push_managed(current.view());

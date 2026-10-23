@@ -2312,17 +2312,10 @@ json_ascii_escape(StringView source, usize backslash, usize end) wontthrow
   u32 code = 0;
 
   for (usize at = backslash + 2; at < backslash + 6; at++) {
-    let const byte = source[at];
+    let const digit = utils::hex_digit_value(source[at]);
 
-    code <<= 4;
-    if (byte >= '0' && byte <= '9')
-      code |= static_cast<u32>(byte - '0');
-    else if (byte >= 'a' && byte <= 'f')
-      code |= static_cast<u32>(byte - 'a' + 10);
-    else if (byte >= 'A' && byte <= 'F')
-      code |= static_cast<u32>(byte - 'A' + 10);
-    else
-      return None;
+    if (!digit.has_value()) return None;
+    code = (code << 4) | *digit;
   }
 
   if (code < 0x20 || code >= 0x7f) {

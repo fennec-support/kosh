@@ -778,8 +778,6 @@ Rm::execute(const ExecContext               &ec,
       continue;
     }
 
-    let const target = Path{operand.view(), allocator};
-
     os::file_status target_status{};
 
     if (!os::stat_path(operand.view(), target_status)) {

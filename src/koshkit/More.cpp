@@ -223,17 +223,18 @@ More::execute(const ExecContext               &ec,
     char buffer[65536];
 
     loop {
-      let const count = os::read_fd(input->descriptor, buffer, sizeof(buffer));
+      let const read_byte_count =
+          os::read_fd(input->descriptor, buffer, sizeof(buffer));
 
-      if (!count.has_value()) {
+      if (!read_byte_count.has_value()) {
         if (!os::INTERRUPT_REQUESTED) KOSHKIT_REPORT_PATH_ERROR("read", source);
 
         status = 1;
         break;
       }
 
-      if (*count == 0) break;
-      ec.print_to_stdout(StringView{buffer, *count});
+      if (*read_byte_count == 0) break;
+      ec.print_to_stdout(StringView{buffer, *read_byte_count});
     }
   }
 

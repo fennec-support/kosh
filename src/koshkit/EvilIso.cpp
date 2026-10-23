@@ -493,9 +493,9 @@ struct process_cgroup_snapshot
   String                       command;
   ArrayList<cgroup_membership> memberships;
 
-  struct identity_evidence
+  struct IdentityEvidence
   {
-    identity_evidence(StringView path, Allocator allocator)
+    IdentityEvidence(StringView path, Allocator allocator)
         : runtime(allocator, "-"), container_id(allocator, "-"),
           pod_uid(allocator, "-"), qos(allocator, "-"), path(allocator, path)
     {}
@@ -508,8 +508,8 @@ struct process_cgroup_snapshot
     String path;
   };
 
-  ArrayList<identity_evidence> evidence;
-  process_snapshot_status      status{process_snapshot_status::Unavailable};
+  ArrayList<IdentityEvidence> evidence;
+  process_snapshot_status     status{process_snapshot_status::Unavailable};
 };
 
 pure fn
@@ -611,14 +611,14 @@ normalized_pod_uid(StringView component, Allocator allocator) throws
 }
 
 /* memory: the result strings come from allocator and are owned by the caller
-           through the returned identity_evidence.
+           through the returned IdentityEvidence.
    time:   O(len(path)) for one pass over the components. each component is
            checked against fixed tables and a 36-byte or 64-byte identifier. */
 fn
 parse_cgroup_identity(StringView path, Allocator allocator) throws
-    -> process_cgroup_snapshot::identity_evidence
+    -> process_cgroup_snapshot::IdentityEvidence
 {
-  let result = process_cgroup_snapshot::identity_evidence{path, allocator};
+  let result = process_cgroup_snapshot::IdentityEvidence{path, allocator};
   static constexpr static_string_entry<StringView> RUNTIME_ENTRIES[] = {
       {SSK("docker"),     "docker"    },
       {SSK("containerd"), "containerd"},

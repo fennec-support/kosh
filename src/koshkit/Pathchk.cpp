@@ -190,7 +190,7 @@ get_windows_root_length(StringView path) wontthrow -> usize
 static fn
 find_windows_path_problem(StringView path) wontthrow -> Maybe<StringView>
 {
-  usize     position        = get_windows_root_length(path);
+  let       position        = get_windows_root_length(path);
   let const is_literal_path = path.length >= 4 &&
                               is_windows_separator(path[0]) &&
                               is_windows_separator(path[1]) && path[2] == '?' &&

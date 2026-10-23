@@ -337,7 +337,7 @@ extract_sort_key(StringView            line,
   /* e.g. line = "  ab  cdef", key = 2.2,2. find_sort_field_start() returns 4,
      the blank before "cdef". start = 4 + 2 - 1 = 5. find_sort_field_end() of
      field 2 returns 10, so the key is line[5..10) = " cdef". */
-  usize start = find_sort_field_start(line, key.start_field, settings);
+  let start = find_sort_field_start(line, key.start_field, settings);
 
   if (modifiers.is_start_blank_skipping) start = skip_sort_blanks(line, start);
 
@@ -386,7 +386,7 @@ compare_sort_numbers(StringView left, StringView right) wontthrow -> int
   };
 
   let const do_parse = [](StringView text) -> parsed_number {
-    usize position = skip_sort_blanks(text, 0);
+    let position = skip_sort_blanks(text, 0);
 
     parsed_number number{};
 
@@ -463,7 +463,7 @@ compare_sort_numbers(StringView left, StringView right) wontthrow -> int
 pure static fn
 get_sort_unit_order(StringView text, bool is_folding) wontthrow -> int
 {
-  usize     position      = skip_sort_blanks(text, 0);
+  let       position      = skip_sort_blanks(text, 0);
   let const is_negative   = position < text.length && text[position] == '-';
   char      largest_digit = '\0';
 

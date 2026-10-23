@@ -715,9 +715,10 @@ wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
 
   if (file_type == FILE_TYPE_DISK) return 1;
 
-  let const     has_timeout = timeout_nanos >= 0;
-  let const     started_at  = has_timeout ? monotonic_nanos() : 0;
-  let const     timeout     = has_timeout ? static_cast<u64>(timeout_nanos) : 0;
+  let const has_timeout = timeout_nanos >= 0;
+  let const started_at  = has_timeout ? monotonic_nanos() : 0;
+  let const timeout_duration_nanos =
+      has_timeout ? static_cast<u64>(timeout_nanos) : 0;
   INPUT_RECORD *console_events         = nullptr;
   DWORD         console_event_capacity = 0;
 
@@ -756,7 +757,9 @@ wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
 
         if (GetNumberOfConsoleInputEvents(fd, &event_count) == FALSE) return -1;
         if (event_count == 0) {
-          if (has_timeout && monotonic_nanos() - started_at >= timeout) {
+          if (has_timeout &&
+              monotonic_nanos() - started_at >= timeout_duration_nanos)
+          {
             return 0;
           }
 
@@ -817,7 +820,8 @@ wait_for_fd_readable(os::descriptor fd, i64 timeout_nanos) wontthrow -> i32
       return -1;
     }
 
-    if (has_timeout && monotonic_nanos() - started_at >= timeout) {
+    if (has_timeout && monotonic_nanos() - started_at >= timeout_duration_nanos)
+    {
       return 0;
     }
 

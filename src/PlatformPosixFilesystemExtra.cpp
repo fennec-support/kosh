@@ -1158,11 +1158,7 @@ verify_filesystem_integrity(StringView path,
       return filesystem_verification_result::TimedOut;
     }
 
-    timespec pause{0, 50'000'000};
-
-    while (::nanosleep(&pause, &pause) == -1 && errno == EINTR) {
-      if (INTERRUPT_REQUESTED) break;
-    }
+    sleep_for_seconds(0.05);
   }
 #else
   unused(path);

@@ -1875,15 +1875,16 @@ read_pressure_totals(const char *path,
     let const total_position = line.find_substring("total=");
 
     if (!total_position.has_value()) continue;
-    let const total = leading_digits(line, *total_position + 6).to<u64>();
+    let const total_microseconds =
+        leading_digits(line, *total_position + 6).to<u64>();
 
-    if (total.is_error()) continue;
+    if (total_microseconds.is_error()) continue;
 
     if (line.starts_with("some ")) {
-      some_microseconds = total.value();
+      some_microseconds = total_microseconds.value();
       has_some          = true;
     } else if (line.starts_with("full ")) {
-      full_microseconds = total.value();
+      full_microseconds = total_microseconds.value();
       has_full          = true;
     }
   }
@@ -2766,10 +2767,10 @@ system_uptime_seconds() wontthrow -> Maybe<u64>
 {
 #if defined __APPLE__
   struct timeval boot_time{};
-  usize          boot_time_length = sizeof(boot_time);
-  int            name_mib[2]      = {CTL_KERN, KERN_BOOTTIME};
+  usize          boot_time_byte_count = sizeof(boot_time);
+  int            name_mib[2]          = {CTL_KERN, KERN_BOOTTIME};
 
-  if (::sysctl(name_mib, 2, &boot_time, &boot_time_length, nullptr, 0) != 0)
+  if (::sysctl(name_mib, 2, &boot_time, &boot_time_byte_count, nullptr, 0) != 0)
     return None;
   if (boot_time.tv_sec <= 0) return None;
 
@@ -2794,11 +2795,11 @@ fn
 read_memory_status(memory_status &status) wontthrow -> bool
 {
 #if defined __APPLE__
-  u64   memory_byte_count   = 0;
-  usize memory_bytes_length = sizeof(memory_byte_count);
+  u64   memory_byte_count        = 0;
+  usize memory_result_byte_count = sizeof(memory_byte_count);
 
-  if (::sysctlbyname("hw.memsize", &memory_byte_count, &memory_bytes_length,
-                     nullptr, 0) != 0)
+  if (::sysctlbyname("hw.memsize", &memory_byte_count,
+                     &memory_result_byte_count, nullptr, 0) != 0)
     return false;
   status.total_kib = memory_byte_count / 1024;
   status.available_fields |= static_cast<u32>(memory_status_field::Total);

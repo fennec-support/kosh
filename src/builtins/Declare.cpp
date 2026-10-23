@@ -37,7 +37,11 @@ FLAG(DECLARE_FUNCTION_NAMES,
      "",
      "Print only the identifiers of defined functions and report their "
      "existence through the exit status.");
-FLAG(DECLARE_GLOBAL, Bool, 'g', "", "Accepted without effect.");
+FLAG(DECLARE_GLOBAL,
+     Bool,
+     'g',
+     "",
+     "Declare or assign the variable at global scope inside a function.");
 FLAG(DECLARE_INTEGER,
      Bool,
      'i',
@@ -57,7 +61,7 @@ FLAG(DECLARE_NAMEREF,
      "Make the variable a reference to the variable its value selects. The +n "
      "form removes the reference and keeps the value.");
 FLAG(DECLARE_PRINT, Bool, 'p', "", "Print the matching declarations.");
-FLAG(DECLARE_READONLY, Bool, 'r', "", "Accepted without effect.");
+FLAG(DECLARE_READONLY, Bool, 'r', "", "Make the variable read-only.");
 FLAG(DECLARE_TRACE, Bool, 't', "", "Accepted without effect.");
 FLAG(DECLARE_UPPERCASE,
      Bool,
