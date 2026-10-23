@@ -1182,12 +1182,6 @@ internal::allocate_redirection_descriptor(
 }
 
 static pure fn
-is_reprint_blank(char byte) wontthrow -> bool
-{
-  return byte == ' ' || byte == '\t';
-}
-
-static pure fn
 should_reprint_source(StringView source, bool has_bash_additions) wontthrow
     -> bool
 {
@@ -1280,11 +1274,12 @@ find_double_quote_end(StringView source, usize position) throws -> usize
 static pure fn
 trimmed_reprint_body(StringView body) wontthrow -> StringView
 {
-  while (!body.is_empty() && (is_reprint_blank(body[0]) || body[0] == '\n')) {
+  while (!body.is_empty() && (lexer::is_whitespace(body[0]) || body[0] == '\n'))
+  {
     body = body.substring(1);
   }
 
-  while (!body.is_empty() && (is_reprint_blank(body[body.length - 1]) ||
+  while (!body.is_empty() && (lexer::is_whitespace(body[body.length - 1]) ||
                               body[body.length - 1] == '\n'))
   {
     body = body.substring_of_length(0, body.length - 1);
@@ -1390,7 +1385,7 @@ static pure fn
 has_reprint_remainder(StringView source, usize position) wontthrow -> bool
 {
   while (position < source.length) {
-    if (!is_reprint_blank(source[position]) && source[position] != '\n') {
+    if (!lexer::is_whitespace(source[position]) && source[position] != '\n') {
       return true;
     }
 
@@ -1460,8 +1455,9 @@ append_reprinted_source(String    &out,
       continue;
     }
 
-    if (should_collapse_blanks && is_reprint_blank(byte)) {
-      while (position < source.length && is_reprint_blank(source[position])) {
+    if (should_collapse_blanks && lexer::is_whitespace(byte)) {
+      while (position < source.length && lexer::is_whitespace(source[position]))
+      {
         position++;
       }
 
@@ -1589,7 +1585,8 @@ append_reprinted_source(String    &out,
 
       let do_skip_following_blanks = [&] {
         while (position < source.length &&
-               (is_reprint_blank(source[position]) || source[position] == '\n'))
+               (lexer::is_whitespace(source[position]) ||
+                source[position] == '\n'))
         {
           position++;
         }
