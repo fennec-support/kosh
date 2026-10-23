@@ -3076,6 +3076,13 @@ kosh_main(int argc, char **argv) -> int
       koshka::os::INTERRUPT_REQUESTED = 0;
     }
 
+    if (koshka::os::TERMINATION_SIGNAL != 0) {
+      LOG(Info, "pid 1 received signal %d during a command, so the shell exits",
+          static_cast<int>(koshka::os::TERMINATION_SIGNAL));
+      koshka::exit_after_final_chunk(
+          context, 128 + koshka::os::TERMINATION_SIGNAL, lint);
+    }
+
     if (FLAG_LINT.is_enabled())
       exit_code = lint.record(exit_code, cursor.should_quit);
 

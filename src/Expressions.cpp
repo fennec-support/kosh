@@ -581,6 +581,11 @@ Expression::evaluate_root_status(EvalContext         &cxt,
                                  root_evaluation_mode mode) const throws
     -> status_result
 {
+  if (os::ORPHAN_REAP_PENDING) {
+    os::ORPHAN_REAP_PENDING = 0;
+    cxt.reap_unowned_children();
+  }
+
   if (os::INTERRUPT_REQUESTED) {
     os::INTERRUPT_REQUESTED = 0;
     throw InterruptErrorWithLocation{source_location()};

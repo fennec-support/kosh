@@ -159,14 +159,14 @@ append_arguments(ArrayList<String>       &destination,
 }
 
 fn
-remote_command(StringView   upload_name,
-               StringView   transaction_id,
-               StringView   expected_identity,
-               StringView   link_moods,
-               StringView   install_directory,
-               install_side side,
-               trace_output trace,
-               Allocator    allocator) throws -> String
+transaction_command(StringView   upload_name,
+                    StringView   transaction_id,
+                    StringView   expected_identity,
+                    StringView   link_moods,
+                    StringView   install_directory,
+                    install_side side,
+                    trace_output trace,
+                    Allocator    allocator) throws -> String
 {
   let const should_trace = trace == trace_output::Enabled;
   let       command      = String{allocator};
@@ -386,7 +386,9 @@ link_local_utilities(const ExecContext &ec,
 
     link.append(name);
 
-    if (link.is_symbolic_link() && link.is_same_file_as(kosh_path)) return;
+    if (link.is_symbolic_link() && link.is_same_file_as(kosh_path)) {
+      return;
+    }
     if (link.exists() || link.is_symbolic_link()) {
       if (!skipped_names.is_empty()) skipped_names += ", ";
       skipped_names += name;
@@ -692,7 +694,7 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
       "-" + String::from(os::realtime_microseconds(), allocator);
   let const upload_name = String{heap_allocator(), ".kosh-assimilate-"} +
                           transaction_id + ".upload";
-  let install_command = remote_command(
+  let install_command = transaction_command(
       upload_name.view(), transaction_id.view(), expected_identity->view(),
       link_moods.view(), install_directory->view(), side, trace, allocator);
 
@@ -745,7 +747,9 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
     return 1;
   }
 
-  if (status != 0 || !is_local) return status;
+  if (status != 0 || !is_local) {
+    return status;
+  }
 
   return link_local_utilities(ec, cxt, install_directory->view(), trace);
 }

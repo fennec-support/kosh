@@ -1154,7 +1154,9 @@ logged_in_users() throws -> ArrayList<user_session>
     let const *user = records.data + offset + UTMP_USER_OFFSET;
     let const *line = records.data + offset + UTMP_LINE_OFFSET;
 
-    if (type != UTMP_USER_PROCESS || user[0] == '\0') continue;
+    if (type != UTMP_USER_PROCESS || user[0] == '\0') {
+      continue;
+    }
     if (session_pid > 0 && ::kill(session_pid, 0) != 0 && errno == ESRCH) {
       LOG(Debug, "skipping the utmp record of the exited pid %d", session_pid);
       continue;
@@ -4161,7 +4163,31 @@ list_process_open_files(i64                      pid,
 #endif
 }
 
-constexpr f64 FILE_WATCHER_SLICE_SECONDS = 0.1;
+constexpr f64               FILE_WATCHER_SLICE_SECONDS     = 0.1;
+maybeunused constexpr usize FILE_WATCHER_KQUEUE_PATH_LIMIT = 64;
+
+fn
+FileWatcher::reports_child_changes() const wontthrow -> bool
+{
+#if defined __linux__
+  return m_descriptor != KOSH_INVALID_FD;
+#else
+  return false;
+#endif
+}
+
+fn
+FileWatcher::can_watch_more() const wontthrow -> bool
+{
+#if defined __linux__
+  return m_descriptor != KOSH_INVALID_FD;
+#elif defined __APPLE__ || defined __FreeBSD__
+  return m_descriptor != KOSH_INVALID_FD &&
+         m_watched_paths.count() < FILE_WATCHER_KQUEUE_PATH_LIMIT;
+#else
+  return false;
+#endif
+}
 
 FileWatcher::FileWatcher() wontthrow
 {
@@ -4286,7 +4312,7 @@ FileWatcher::watch(StringView path) wontthrow -> void
            FILE_WATCHER_SLICE_SECONDS, so about timeout_seconds / 0.1 calls
            without events. returns after one readable event. no locks. */
 fn
-FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
+FileWatcher::wait(f64 timeout_seconds) wontthrow -> bool
 {
   f64 remaining_seconds = timeout_seconds;
 
@@ -4315,7 +4341,7 @@ FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
 
     while (read(m_descriptor, events, sizeof(events)) > 0) {}
 
-    return;
+    return true;
 #elif defined __APPLE__ || defined __FreeBSD__
     struct timespec timeout;
 
@@ -4325,11 +4351,13 @@ FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
 
     struct kevent event;
 
-    if (kevent(m_descriptor, nullptr, 0, &event, 1, &timeout) > 0) return;
+    if (kevent(m_descriptor, nullptr, 0, &event, 1, &timeout) > 0) return true;
 #else
     sleep_for_seconds(slice_seconds);
 #endif
   }
+
+  return false;
 }
 
 } /* namespace os */

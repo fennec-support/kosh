@@ -1574,7 +1574,9 @@ reap_unowned_children(opaque *context, child_owner_predicate is_owned) wontthrow
     siginfo_t info{};
 
     if (::waitid(P_ALL, 0, &info, WEXITED | WNOHANG | WNOWAIT) != 0) break;
-    if (info.si_pid == 0 || is_owned(context, info.si_pid)) break;
+    if (info.si_pid == 0 || is_owned(context, info.si_pid)) {
+      break;
+    }
     if (::waitpid(info.si_pid, nullptr, WNOHANG) != info.si_pid) break;
 
     LOG(Debug, "reaped the orphan pid %d", static_cast<int>(info.si_pid));

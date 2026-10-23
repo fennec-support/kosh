@@ -70,6 +70,8 @@ dir=$(mktemp -d)
 "$BIN" -c 'assimilate -y --install-directory "$1"' _ "$dir" </dev/null >/dev/null
 echo "== the kosh binary was installed:"
 [ -x "$dir/kosh" ] && [ ! -L "$dir/kosh" ] && echo kosh-installed
+echo "== the egrep alias link runs grep -E:"
+printf 'axb\nab\n' | "$dir/egrep" 'a(x|y)b'
 echo "== a symlink was installed for head:"
 [ -L "$dir/head" ] && echo head-linked || echo head-missing
 echo "== a symlinked head routes its own -c flag to the utility:"

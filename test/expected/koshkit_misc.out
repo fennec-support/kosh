@@ -32,8 +32,11 @@ rc=1
 --- pkill with no match ---
 rc=1
 --- pkill -s 0 selects the own session and -KILL selects the signal ---
-pkill=0
+other-session=1
+own-session=0
 probe=137
+--- pkill rejects an empty session id ---
+rc=1
 --- killall with no match ---
 -c:1:17: error: Koshkit `killall`: no_such_process_xyz_123: no process found.
      1 |  koshkit killall no_such_process_xyz_123

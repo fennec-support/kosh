@@ -1198,13 +1198,42 @@ acquire_process_lock(StringView       path,
       sizeof(SECURITY_ATTRIBUTES), nullptr,
       inheritance == lock_inheritance::Inherited ? TRUE : FALSE};
 
+  if (!is_directory) {
+    let const file =
+        CreateFileW(absolute_path.begin(), GENERIC_READ,
+                    FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                    &attributes, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+    if (file == INVALID_HANDLE_VALUE) return None;
+
+    loop {
+      OVERLAPPED whole_file{};
+
+      if (LockFileEx(file, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY,
+                     0, MAXDWORD, MAXDWORD, &whole_file) != 0)
+      {
+        return file;
+      }
+
+      let const error = GetLastError();
+
+      if (error != ERROR_LOCK_VIOLATION || wait == lock_wait::Immediate ||
+          INTERRUPT_REQUESTED)
+      {
+        CloseHandle(file);
+        SetLastError(error);
+
+        return None;
+      }
+
+      Sleep(10);
+    }
+  }
+
   loop {
-    let const lock =
-        CreateFileW(absolute_path.begin(), GENERIC_READ | GENERIC_WRITE, 0,
-                    &attributes, is_directory ? OPEN_ALWAYS : OPEN_EXISTING,
-                    is_directory ? FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_NORMAL
-                                 : FILE_ATTRIBUTE_NORMAL,
-                    nullptr);
+    let const lock = CreateFileW(
+        absolute_path.begin(), GENERIC_READ | GENERIC_WRITE, 0, &attributes,
+        OPEN_ALWAYS, FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_NORMAL, nullptr);
 
     if (lock != INVALID_HANDLE_VALUE) return lock;
 
@@ -1214,7 +1243,9 @@ acquire_process_lock(StringView       path,
       return None;
     }
 
-    if (wait == lock_wait::Immediate || INTERRUPT_REQUESTED) return None;
+    if (wait == lock_wait::Immediate || INTERRUPT_REQUESTED) {
+      return None;
+    }
 
     Sleep(10);
   }

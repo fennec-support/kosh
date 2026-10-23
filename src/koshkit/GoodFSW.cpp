@@ -50,7 +50,7 @@ FLAG(GOODFSW_LATENCY,
      String,
      'l',
      "latency",
-     "Wait at most this many seconds between scans. The default is one.");
+     "Start scans at least this many seconds apart. The default is one.");
 FLAG(GOODFSW_EXCLUDE,
      String,
      'e',
@@ -73,8 +73,9 @@ namespace koshka::koshkit {
 
 namespace {
 
-constexpr f64   DEFAULT_LATENCY_SECONDS = 1.0;
-constexpr usize MAXIMUM_SCAN_DEPTH      = 64;
+constexpr f64   DEFAULT_LATENCY_SECONDS    = 1.0;
+constexpr usize MAXIMUM_SCAN_DEPTH         = 64;
+constexpr f64   EVENT_DRIVEN_RESCAN_FACTOR = 30.0;
 
 enum class timestamp_timezone : u8
 {
@@ -361,11 +362,14 @@ scan_path(StringView                path,
 /* memory: previous and current are sorted ArrayList values in watch_allocator.
            each cycle swaps them, and recycled_entries keeps the storage of the
            older list for the next scan. output is a String in watch_allocator
-           that is cleared each cycle.
-   time:   each cycle waits for a watcher event or latency_seconds, then scans
-           E entries with one
-           stat per path without a known status, sorts the scan in O(E log E)
-           with make_sorted(), and merges both lists in O(E). */
+           that is cleared each cycle. watched_paths holds one String per
+           watched directory until the directory is removed.
+   time:   a scan starts at least latency_seconds after the previous one.
+           with an event-driven watcher, a cycle without an event scans only
+           after EVENT_DRIVEN_RESCAN_FACTOR latencies. a scan visits E entries
+           with one stat per path without a known status, sorts them in
+           O(E log E) with make_sorted(), and merges both lists in O(E). each
+           newly seen directory adds one watch() call. */
 fn
 GoodFSW::execute(const ExecContext               &ec,
                  EvalContext                     &cxt,
@@ -471,6 +475,7 @@ GoodFSW::execute(const ExecContext               &ec,
   let const do_watch_directories =
       [&](const ArrayList<watched_entry> &entries) throws {
         for (let const &entry : entries) {
+          if (!watcher.can_watch_more()) return;
           if (os::file_type_letter(entry.mode) != 'd' ||
               watched_paths.contains(entry.path.view()))
           {
@@ -490,13 +495,30 @@ GoodFSW::execute(const ExecContext               &ec,
 
   bool was_interrupted = false;
 
+  let const is_event_driven = watcher.reports_child_changes();
+  u64       last_scan_nanos = os::monotonic_nanos();
+
   loop {
-    watcher.wait(latency_seconds);
+    let const did_change = watcher.wait(latency_seconds);
+
     if (os::INTERRUPT_REQUESTED != 0) {
       was_interrupted         = true;
       os::INTERRUPT_REQUESTED = 0;
       break;
     }
+
+    let const scan_gap_seconds =
+        static_cast<f64>(os::monotonic_nanos() - last_scan_nanos) / 1e9;
+
+    if (!did_change && is_event_driven &&
+        scan_gap_seconds < latency_seconds * EVENT_DRIVEN_RESCAN_FACTOR)
+    {
+      continue;
+    }
+
+    if (scan_gap_seconds < latency_seconds)
+      os::sleep_for_seconds(latency_seconds - scan_gap_seconds);
+    last_scan_nanos = os::monotonic_nanos();
 
     recycled_entries.clear();
 
@@ -506,7 +528,7 @@ GoodFSW::execute(const ExecContext               &ec,
         break;
       }
       scan_path(operands[index].view(), recycled_entries, 0, watch_allocator,
-                operand_statuses[index].device_id, nullptr);
+                      operand_statuses[index].device_id, nullptr);
     }
 
     if (was_interrupted) {
@@ -549,8 +571,9 @@ GoodFSW::execute(const ExecContext               &ec,
         let const &entry = previous[previous_position];
 
         report_event(output, entry.path.view(), entry.mode,
-                     watch_event::Removed, scan_time, scan_nanoseconds,
-                     timestamp_format, should_color);
+                           watch_event::Removed, scan_time, scan_nanoseconds,
+                           timestamp_format, should_color);
+        watched_paths.remove(entry.path.view());
         previous_position++;
         continue;
       }
@@ -562,8 +585,8 @@ GoodFSW::execute(const ExecContext               &ec,
         let const &entry = current[current_position];
 
         report_event(output, entry.path.view(), entry.mode,
-                     watch_event::Created, scan_time, scan_nanoseconds,
-                     timestamp_format, should_color);
+                           watch_event::Created, scan_time, scan_nanoseconds,
+                           timestamp_format, should_color);
         current_position++;
         continue;
       }
@@ -573,12 +596,12 @@ GoodFSW::execute(const ExecContext               &ec,
 
       if (!is_same_content(previous_entry, current_entry)) {
         report_event(output, current_entry.path.view(), current_entry.mode,
-                     watch_event::Updated, scan_time, scan_nanoseconds,
-                     timestamp_format, should_color);
+                           watch_event::Updated, scan_time, scan_nanoseconds,
+                           timestamp_format, should_color);
       } else if (!is_same_attributes(previous_entry, current_entry)) {
         report_event(output, current_entry.path.view(), current_entry.mode,
-                     watch_event::AttributeModified, scan_time,
-                     scan_nanoseconds, timestamp_format, should_color);
+                           watch_event::AttributeModified, scan_time,
+                           scan_nanoseconds, timestamp_format, should_color);
       }
 
       previous_position++;

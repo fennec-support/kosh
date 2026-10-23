@@ -1469,7 +1469,7 @@ exits with status 1. The
 .BR \-y " or " \-\-yes
 option skips the question. The
 .BR \-x " or " \-\-trace
-option prints remote progress. The
+option prints installation progress. The
 .BI \-\-ssh\-command= COMMAND
 and
 .BI \-\-scp\-command= COMMAND
@@ -2564,11 +2564,11 @@ option prints every known variable as a name and value. The
 option selects a supported POSIX environment.
 .TP
 .B grep
-Regular-expression matches are printed. The
+Regular-expression matches are printed. Invoked as
 .B egrep
-and
-.B fgrep
-names run grep with \fB\-E\fR and \fB\-F\fR. The
+or
+.BR fgrep ,
+grep runs with \fB\-E\fR or \fB\-F\fR. The
 .BR \-\-color [= \fIWHEN\fR ]
 option colors matches. WHEN is auto, always, or never, and a bare option means
 auto. Without the option, the color mode of koshkit applies. When color is on,
@@ -2655,7 +2655,9 @@ signal is selected with \fB\-\-signal\fR or with a \fB\-\fISIGNAL\fR argument
 such as \fB\-TERM\fR or \fB\-9\fR, and \fB\-l\fR and \fB\-\-list\fR list the
 signals. \fB\-s\fR and \fB\-\-session\fR take a comma-separated list of session
 ids, where 0 is the session of pkill itself, and select only processes in those
-sessions. The pattern may be omitted when a session list is given.
+sessions. Windows reports no sessions, so session 0 is rejected there and no
+process matches another id. The pattern may be omitted when a session list is
+given.
 \fB\-\-inverse\fR signals every process that the pattern and the session list
 do not select.
 .TP
@@ -3023,9 +3025,10 @@ symbolic links. The \fB\-c\fR and \fB\-f\fR options add a CRC32C checksum and
 filesystem capacity report, respectively.
 .TP
 .B goodfsw
-Path changes are reported by scanning filesystem metadata. A scan runs when a
-filesystem notification arrives for a watched directory or when the latency
-period passes without one. Machine-readable
+Path changes are reported by scanning filesystem metadata, and scans start at
+least one latency period apart. On Linux, a scan runs after an inotify
+notification for a watched directory, and a quiet tree is rescanned every 30
+latency periods. Elsewhere, a scan runs every latency period. Machine-readable
 output is the default, and each record contains the Unix scan time, a numeric
 event mask, and the path. The \fB\-h\fR and \fB\-\-human-readable\fR options use
 formatted timestamps and descriptive event labels, and \fB\-m\fR and
@@ -3034,7 +3037,7 @@ formatted timestamps and descriptive event labels, and \fB\-m\fR and
 \fB\-\-precision\fR selects the fractional timestamp digits. The \fB\-r\fR,
 \fB\-\-event-flags\fR, \fB\-x\fR, \fB\-1\fR, \fB\-l\fR, and \fB\-e\fR
 options select recursion, appended event labels, one filesystem, one event
-batch, the longest wait between scans, and an excluded substring.
+batch, the latency period, and an excluded substring.
 .TP
 .B retry
 A command is repeated until it succeeds or its attempt limit is reached. The
@@ -4020,10 +4023,10 @@ blocks, the wait ends and
 .B wait
 reports 128 plus the signal number. The awaited job is left running.
 .PP
-When the shell runs as process 1, it reaps orphaned children that no job or
-process substitution owns before each command. SIGTERM interrupts the running
-command, and the shell then exits with status 143 instead of ignoring the
-signal.
+When the shell runs as process 1, it reaps, before each command, the orphaned
+children that no job or process substitution owns. SIGTERM interrupts the
+running command, and the shell then exits with status 143 instead of ignoring
+the signal.
 .SH DIAGNOSTICS
 Errors, warnings, and analysis diagnostics include source locations when a
 mapping exists.

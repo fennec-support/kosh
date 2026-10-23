@@ -410,7 +410,9 @@ rewrite_no_editor_history_events(usize                        wanted_number,
 {
   let const path = resolve_no_editor_history_path();
 
-  if (!path.has_value() || expected.is_empty()) return false;
+  if (!path.has_value() || expected.is_empty()) {
+    return false;
+  }
 
   let &state = get_no_editor_history_state();
 

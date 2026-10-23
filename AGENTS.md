@@ -54,7 +54,7 @@ EvalContext and constructors.
 ## Ownership
 
 src/Main.cpp owns flags, startup, scripts, and the interactive loop.
-src/BakedScripts.hpp holds every shell script built into Koshka.
+src/BakedScripts.hpp holds the fixed shell scripts built into Koshka.
 src/Lexer.cpp creates tokens. src/Parser.cpp creates the syntax tree.
 src/Optimizer.cpp folds constants and dead branches.
 

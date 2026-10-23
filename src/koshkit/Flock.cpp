@@ -38,9 +38,9 @@ namespace koshka::koshkit {
            released with it.
    time:   acquire_process_lock() blocks in flock(LOCK_EX) until the lock on
            operands[0] is free, or fails at once with -n. run_measured() then
-           waits for the command to
-           exit. with --transaction-held-lock, a keeper child takes the lock,
-           and this process waits for that child instead. */
+           waits for the command to exit. with --transaction-held-lock, a
+           keeper child takes the lock, and this process waits for that child
+           instead. */
 fn
 Flock::execute(const ExecContext               &ec,
                EvalContext                     &cxt,
@@ -121,9 +121,7 @@ Flock::execute(const ExecContext               &ec,
                               "Another process holds the lock on '" +
                                   operands[0] + "'");
     } else {
-      KOSHKIT_REPORT_ERROR_AT(operand_locations[0],
-                              "Cannot lock '" + operands[0] +
-                                  "': " + os::last_system_error_message());
+      KOSHKIT_REPORT_PATH_ERROR_AT(operand_locations[0], "lock", operands[0]);
     }
 
     return 1;

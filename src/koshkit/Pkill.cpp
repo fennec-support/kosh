@@ -27,7 +27,8 @@ FLAG(PKILL_SESSION,
      String,
      's',
      "session",
-     "Select processes in the listed sessions, where 0 is the own session.");
+     "Select processes in the listed sessions, where 0 is the session of "
+     "pkill itself.");
 FLAG(PKILL_INVERSE, Bool, '\0', "inverse", "Signal the unselected processes.");
 FLAG(PKILL_LIST, Bool, 'l', "list", "List the signals and exit.");
 
@@ -108,8 +109,9 @@ Pkill::execute(const ExecContext               &ec,
 
   let const has_pattern = !operands.is_empty();
 
-  if (!has_pattern && !FLAG_PKILL_SESSION.is_set())
+  if (!has_pattern && !FLAG_PKILL_SESSION.is_set()) {
     return report_usage_error(ec, cxt, args[0].view());
+  }
 
   let const pattern = has_pattern ? operands[0].view() : StringView{};
 
@@ -128,7 +130,9 @@ Pkill::execute(const ExecContext               &ec,
     usize     field_start = 0;
 
     for (usize position = 0; position <= list.length; position++) {
-      if (position != list.length && list[position] != ',') continue;
+      if (position != list.length && list[position] != ',') {
+        continue;
+      }
 
       let const field =
           list.substring_of_length(field_start, position - field_start);
@@ -145,8 +149,18 @@ Pkill::execute(const ExecContext               &ec,
         return 1;
       }
 
-      sessions.push(parsed.value() == 0 ? os::get_current_session_id()
-                                        : parsed.value());
+      let const session_id =
+          parsed.value() == 0 ? os::get_current_session_id() : parsed.value();
+
+      if (session_id < 0) {
+        KOSHKIT_REPORT_ERROR_AT(FLAG_PKILL_SESSION.value_location(),
+                                "Session 0 cannot be resolved because this "
+                                "system reports no session for pkill");
+
+        return 1;
+      }
+
+      sessions.push(session_id);
       field_start = position + 1;
     }
   }
@@ -173,12 +187,14 @@ Pkill::execute(const ExecContext               &ec,
       continue;
     }
 
-    let const does_name_match =
+    let const is_name_matched =
         !has_pattern || process.name.find_substring(pattern, 0).has_value();
-    let const does_session_match =
+    let const is_session_matched =
         sessions.is_empty() || sessions.find(process.session_id).has_value();
 
-    if ((does_name_match && does_session_match) == should_invert) continue;
+    if ((is_name_matched && is_session_matched) == should_invert) {
+      continue;
+    }
 
     if (os::signal_process(os::process_from_pid(process.pid), signal_number)) {
       did_signal_any = true;

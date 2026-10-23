@@ -327,8 +327,9 @@ poll_owned_processes(ArrayList<os::process> &processes) wontthrow -> Maybe<i32>
     if (state == os::process_state::Exited || state == os::process_state::Lost)
     {
       processes.remove(process_position - 1);
-    } else if (state == os::process_state::Stopped)
+    } else if (state == os::process_state::Stopped) {
       stopped_status = status;
+    }
   }
 
   return stopped_status;
@@ -613,12 +614,15 @@ JobTable::most_recent_job() wontthrow -> job *
 fn
 EvalContext::reap_unowned_children() throws -> void
 {
+  job_table_store().update_jobs();
+
   let const do_is_owned = [](opaque *context, i64 process_id) wontthrow {
     let const &cxt = *static_cast<const EvalContext *>(context);
 
     for (let const &entry : cxt.job_table_store().jobs()) {
-      if (entry.is_primary_process_active && entry.process_id == process_id)
+      if (entry.is_primary_process_active && entry.process_id == process_id) {
         return true;
+      }
 
       for (let const process : entry.earlier_pipeline_processes) {
         if (os::process_id_of(process) == process_id) return true;
@@ -630,8 +634,9 @@ EvalContext::reap_unowned_children() throws -> void
     }
 
     for (let const &held : cxt.expansion_store().held_process_substitutions()) {
-      if (held.child != KOSH_INVALID_PROCESS && held.process_id == process_id)
+      if (held.child != KOSH_INVALID_PROCESS && held.process_id == process_id) {
         return true;
+      }
     }
 
     return false;

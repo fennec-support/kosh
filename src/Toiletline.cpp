@@ -1641,6 +1641,12 @@ kosh_wake_callback(int phase) -> int
 {
   try {
     if (phase == 0) {
+      if (koshka::os::TERMINATION_SIGNAL != 0) {
+        LOG(Info, "pid 1 received signal %d at the prompt, so the shell exits",
+            static_cast<int>(koshka::os::TERMINATION_SIGNAL));
+        koshka::utils::quit(128 + koshka::os::TERMINATION_SIGNAL);
+      }
+
       if (koshka::os::CHILD_STATE_CHANGED == 0) return 0;
       if (JOB_CONTEXT == nullptr ||
           !JOB_CONTEXT->runtime_state().option_is_enabled(
@@ -3054,7 +3060,9 @@ rewrite_history_events(usize                                        number,
              count. */
   let const path = get_history_file_path();
 
-  if (!path.has_value() || expected.is_empty()) return false;
+  if (!path.has_value() || expected.is_empty()) {
+    return false;
+  }
 
   let const parent = path->parent_or_current();
   let       lock   = os::acquire_process_lock(parent.view());

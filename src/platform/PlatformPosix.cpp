@@ -754,8 +754,11 @@ read_recent_system_log_records(StringView log_name,
 
 volatile sig_atomic_t INTERRUPT_REQUESTED = 0;
 volatile sig_atomic_t TERMINATION_SIGNAL  = 0;
-volatile sig_atomic_t CHILD_STATE_CHANGED = 0;
-volatile sig_atomic_t SIGNAL_PENDING      = 0;
+volatile sig_atomic_t ORPHAN_REAP_PENDING = 0;
+
+static bool           IS_TERMINATION_HANDLER_INSTALLED = false;
+volatile sig_atomic_t CHILD_STATE_CHANGED              = 0;
+volatile sig_atomic_t SIGNAL_PENDING                   = 0;
 
 static constexpr i32         SIGNAL_FLAG_COUNT                       = 128;
 static constexpr i32         CHILD_SIGNAL_NUMBER                     = SIGCHLD;
@@ -2867,6 +2870,7 @@ sigchild_handler(int signal_number, siginfo_t *siginfo, opaque *context)
   unused(context);
   unused(siginfo);
   CHILD_STATE_CHANGED = 1;
+  if (getpid() == 1) ORPHAN_REAP_PENDING = 1;
 
   if (CHILD_TRAP_ARMED == 0) return;
 
@@ -2922,6 +2926,13 @@ reset_signal_handlers() throws -> void
   }
 
   sigemptyset(&SIGNALS_WITH_TRAP_ACTION);
+
+  if (IS_TERMINATION_HANDLER_INSTALLED) {
+    (void) sigaction(SIGTERM, &sa, nullptr);
+    IS_TERMINATION_HANDLER_INSTALLED = false;
+    TERMINATION_SIGNAL               = 0;
+    ORPHAN_REAP_PENDING              = 0;
+  }
 
   if (IS_PIPE_SIGNAL_IGNORED_BY_TRAP || WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY) {
     sa.sa_handler = SIG_IGN;
@@ -3074,6 +3085,7 @@ set_default_signal_handlers(signal_profile profile) throws -> void
 
     st.sa_handler = handle_termination;
     check_syscall(sigaction(SIGTERM, &st, nullptr));
+    IS_TERMINATION_HANDLER_INSTALLED = true;
   }
 
   install_child_state_handler();

@@ -150,8 +150,12 @@ if [ "$probe_status" -eq 1 ]; then
 else
     exit 1
 fi
-"$BIN" -c 'koshkit flock -n "$1" true' _ "$directory" >/dev/null 2>&1
-echo "nonblock while held=$?"
+"$BIN" -c 'koshkit timeout 10 "$1" -c "koshkit flock -n \"\$1\" true" _ "$2"' \
+    _ "$BIN" "$directory" 2>&1 | grep -c 'Another process holds the lock'
+: > "$directory/locked-file"
+"$BIN" -c 'koshkit flock "$2" "$1" -c "koshkit flock -n \"\$1\" true" _ "$2"' \
+    _ "$BIN" "$directory/locked-file" 2>&1 |
+    grep -c 'Another process holds the lock'
 
 : > "$directory/release"
 wait_for_path "$directory/finished" || exit 1

@@ -1,4 +1,5 @@
 normal=held list=1
 transaction child retains the process lock
-nonblock while held=1
+1
+1
 the next transaction acquires the released lock

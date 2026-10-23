@@ -60,10 +60,15 @@ probe_dir=$(mktemp -d)
 probe_name="kpk$$"
 ln -s "$(command -v sleep)" "$probe_dir/$probe_name"
 "$BIN" -c '"$1" 30 & probe=$!
-koshkit pkill -s 0,1 -KILL "$2"
-echo "pkill=$?"
+koshkit pkill -s 2147483646 -KILL "$2"
+echo "other-session=$?"
+koshkit pkill -s 0 -KILL "$2"
+echo "own-session=$?"
 wait "$probe"
 echo "probe=$?"' _ "$probe_dir/$probe_name" "$probe_name" 2>&1 | grep -v '^\['
+echo "--- pkill rejects an empty session id ---"
+"$BIN" -c 'koshkit pkill -s 1,,2 x' >/dev/null 2>&1
+echo "rc=$?"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$probe_dir"
 
 echo "--- killall with no match ---"

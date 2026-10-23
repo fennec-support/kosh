@@ -47,6 +47,8 @@ rc=1
 rc=2
 == the kosh binary was installed:
 kosh-installed
+== the egrep alias link runs grep -E:
+axb
 == a symlink was installed for head:
 head-linked
 == a symlinked head routes its own -c flag to the utility:

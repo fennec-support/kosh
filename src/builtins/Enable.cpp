@@ -237,7 +237,7 @@ Enable::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
-    if (let const utility = koshkit::find_util(name.view());
+    if (let const utility = koshkit::KOSHKIT_UTILS.find(name.view());
         utility.has_value())
     {
       if (is_restricted) {

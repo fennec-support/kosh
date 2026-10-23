@@ -873,6 +873,12 @@ quit(i32 code, farewell_policy farewell) throws -> void
 {
   let const should_goodbye = farewell == farewell_policy::Goodbye;
 
+  if (os::TERMINATION_SIGNAL != 0) {
+    LOG(Info, "replacing exit code %d after signal %d", code,
+        static_cast<int>(os::TERMINATION_SIGNAL));
+    code = 128 + os::TERMINATION_SIGNAL;
+  }
+
   LOG(Info, "quitting with code %d", code);
 
   if (QUIT_CONTEXT != nullptr) QUIT_CONTEXT->print_deferred_source_traces();

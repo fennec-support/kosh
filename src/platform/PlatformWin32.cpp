@@ -2473,7 +2473,13 @@ FileWatcher::watch(StringView path) wontthrow -> void
 }
 
 fn
-FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
+FileWatcher::can_watch_more() const wontthrow -> bool
+{
+  return false;
+}
+
+fn
+FileWatcher::wait(f64 timeout_seconds) wontthrow -> bool
 {
   /* time:   about timeout_seconds / SLICE_SECONDS sleep calls, fewer when
              INTERRUPT_REQUESTED is set. memory: none. */
@@ -2488,6 +2494,14 @@ FileWatcher::wait(f64 timeout_seconds) wontthrow -> void
     remaining_seconds -= slice_seconds;
     sleep_for_seconds(slice_seconds);
   }
+
+  return false;
+}
+
+fn
+FileWatcher::reports_child_changes() const wontthrow -> bool
+{
+  return false;
 }
 
 fn
@@ -2528,12 +2542,7 @@ get_current_process_id() wontthrow -> i64
 fn
 get_current_session_id() wontthrow -> i64
 {
-  DWORD session_id = 0;
-
-  if (ProcessIdToSessionId(GetCurrentProcessId(), &session_id) == FALSE)
-    return -1;
-
-  return static_cast<i64>(session_id);
+  return -1;
 }
 
 fn

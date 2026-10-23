@@ -1682,7 +1682,11 @@ public:
   fn
   watch(StringView path) wontthrow -> void;
   fn
-  wait(f64 timeout_seconds) wontthrow -> void;
+  wait(f64 timeout_seconds) wontthrow -> bool;
+  pure fn
+  can_watch_more() const wontthrow -> bool;
+  pure fn
+  reports_child_changes() const wontthrow -> bool;
 
 private:
   maybeunused descriptor m_descriptor{KOSH_INVALID_FD};
@@ -2468,6 +2472,8 @@ install_fatal_exit_hook(void (*hook)()) throws -> void;
 extern volatile sig_atomic_t INTERRUPT_REQUESTED;
 
 extern volatile sig_atomic_t TERMINATION_SIGNAL;
+
+extern volatile sig_atomic_t ORPHAN_REAP_PENDING;
 
 using child_owner_predicate = bool (*)(opaque *context, i64 process_id);
 

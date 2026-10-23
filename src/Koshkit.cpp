@@ -314,10 +314,7 @@ run_util(Utility::Kind                    chosen,
       args.count());
 
   if (!args.is_empty()) {
-    let const invoked   = args[0].view();
-    let const separator = invoked.find_last_character('/');
-    let const alias     = KOSHKIT_ALIASES.find(
-        separator.has_value() ? invoked.substring(*separator + 1) : invoked);
+    let const alias = KOSHKIT_ALIASES.find(args[0].view());
 
     if (alias.has_value() && alias->kind == chosen) {
       LOG(Debug, "running the alias '%s' with the implied argument '%.*s'",

@@ -1037,7 +1037,7 @@ Tail::execute(const ExecContext               &ec,
       return 1;
     }
 
-    watcher.wait(wait_seconds);
+    unused(watcher.wait(wait_seconds));
     if (os::INTERRUPT_REQUESTED) return 130;
   }
 }
