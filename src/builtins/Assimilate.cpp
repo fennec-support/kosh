@@ -59,13 +59,40 @@ enum class trace_output : u8
 };
 
 constexpr char REMOTE_DIRECTORY_FUNCTIONS_TEXT[] =
-    R"SH(directory_is_install_candidate() {
+    R"SH(install_rejection=
+directory_is_install_candidate() {
   proposed_directory=$1
-  [ -n "$proposed_directory" ] && [ -d "$proposed_directory" ] &&
-    [ -w "$proposed_directory" ] && [ -x "$proposed_directory" ] || return 1
-  install_dir=$(cd "$proposed_directory" && pwd -P) || return 1
+  if [ -z "$proposed_directory" ]; then
+    install_rejection='the directory path is empty'
+    return 1
+  fi
+  if [ ! -e "$proposed_directory" ] && [ ! -L "$proposed_directory" ]; then
+    install_rejection="'$proposed_directory' does not exist on the remote host"
+    return 1
+  fi
+  if [ ! -d "$proposed_directory" ]; then
+    install_rejection="'$proposed_directory' is not a directory"
+    return 1
+  fi
+  if [ ! -w "$proposed_directory" ]; then
+    remote_user=$(id -un 2>/dev/null) || remote_user=unknown
+    install_rejection="the remote user '$remote_user' cannot write to '$proposed_directory'"
+    return 1
+  fi
+  if [ ! -x "$proposed_directory" ]; then
+    remote_user=$(id -un 2>/dev/null) || remote_user=unknown
+    install_rejection="the remote user '$remote_user' cannot search '$proposed_directory' because it lacks execute permission"
+    return 1
+  fi
+  if ! install_dir=$(cd "$proposed_directory" && pwd -P); then
+    install_rejection="'$proposed_directory' cannot be resolved to a physical path"
+    return 1
+  fi
   target=$install_dir/kosh
-  [ ! -d "$target" ] || return 1
+  if [ -d "$target" ]; then
+    install_rejection="'$target' is a directory, so the kosh binary cannot be placed there"
+    return 1
+  fi
 }
 directory_accepts_links() {
   remaining_moods=$link_moods
@@ -76,8 +103,14 @@ directory_accepts_links() {
     esac
     [ "$link_name" = kosh ] && continue
     link_path=$install_dir/$link_name
-    if [ -e "$link_path" ] || [ -L "$link_path" ]; then
-      [ -L "$link_path" ] && [ "$link_path" -ef "$target" ] || return 1
+    if [ -L "$link_path" ]; then
+      if ! [ "$link_path" -ef "$target" ]; then
+        install_rejection="'$link_path' is a symbolic link that does not point to '$target', and assimilate does not replace it"
+        return 1
+      fi
+    elif [ -e "$link_path" ]; then
+      install_rejection="'$link_path' already exists and is not a symbolic link to '$target', and assimilate does not replace it"
+      return 1
     fi
   done
 }
@@ -237,7 +270,10 @@ recover_all_stale_locks() {
 try_install_directory() {
   directory_is_install_candidate "$1" || return 1
   lock_path=$install_dir/.kosh-assimilate.lock
-  recover_all_stale_locks || return 1
+  if ! recover_all_stale_locks; then
+    install_rejection="the lock '$lock_path' belongs to another install or cannot be recovered"
+    return 1
+  fi
   directory_accepts_links || return 1
 }
 trap cleanup 0
@@ -246,6 +282,7 @@ trap 'exit 130' 2
 trap 'exit 143' 15
 install_dir=
 if ! try_install_directory "${6-}"; then
+  printf 'assimilate: Cannot install into %s: %s\n' "${6-}" "$install_rejection" >&2
   exit 3
 fi
 candidate=$install_dir/.kosh-assimilate-$2.candidate
@@ -376,8 +413,8 @@ directory_is_usable() {
 select_install_directory() {
   if [ -n "$requested_directory" ]; then
     directory_is_usable "$requested_directory" && return 0
-    printf 'assimilate-error=Cannot install into %s, which is not a writable directory or already holds a requested link\n' \
-      "$requested_directory"
+    printf 'assimilate-error=Cannot install into %s: %s\n' \
+      "$requested_directory" "$install_rejection"
     return 1
   fi
   if path_contains_directory /usr/local/bin &&
@@ -954,8 +991,9 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
     report_soft_builtin_error(
         ec, cxt,
         "Cannot install into " + install_directory->view() +
-            ", which changed after it was chosen or holds a lock that "
-            "cannot be recovered");
+            ": the remote install step rejected the directory after the "
+            "preflight accepted it, and the remote host printed the reason "
+            "above");
 
     return 1;
   }

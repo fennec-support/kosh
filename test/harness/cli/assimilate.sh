@@ -294,5 +294,17 @@ ASSIMILATE_REMOVE_INSTALL=$lost \
     "$lost" 'user@[2001:db8::1]' >"$lost_output" 2>&1
 lost_status=$?
 lost_located=$(grep -c '^-c:1:1: error: .*Cannot install into ' "$lost_output")
-printf 'lost-directory-status=%s located=%s leftovers=%s\n' \
-    "$lost_status" "$lost_located" "$(leftovers)"
+lost_reason=$(grep -c "'$lost' does not exist on the remote host" "$lost_output")
+printf 'lost-directory-status=%s located=%s reason=%s leftovers=%s\n' \
+    "$lost_status" "$lost_located" "$lost_reason" "$(leftovers)"
+
+# A requested directory that does not exist is rejected with that reason.
+missing=$remote/missing
+missing_output=$root/missing.out
+PATH="$transport${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
+    "$BIN" -c 'assimilate --yes --install-directory "$1" "$2"' kosh \
+    "$missing" 'user@[2001:db8::1]' >"$missing_output" 2>&1
+missing_status=$?
+missing_reason=$(grep -c "Cannot install into $missing: '$missing' does not exist on the remote host" "$missing_output")
+printf 'missing-directory-status=%s reason=%s leftovers=%s\n' \
+    "$missing_status" "$missing_reason" "$(leftovers)"
