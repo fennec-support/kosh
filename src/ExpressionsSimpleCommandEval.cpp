@@ -496,6 +496,11 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         if (is_body_target_fd) {
           dup_saved_descriptors.push(
               os::saved_descriptor{.shell_fd = redir.fd, .was_open = false});
+          if (!os::keep_shell_fd_for_children(redir.fd)) {
+            did_redirection_open_fail = true;
+            throw ErrorWithLocation{source_location(), "Bad file descriptor"};
+          }
+
           break;
         }
 
@@ -653,6 +658,11 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         if (is_file_target_fd) {
           dup_saved_descriptors.push(
               os::saved_descriptor{.shell_fd = redir.fd, .was_open = false});
+          if (!os::keep_shell_fd_for_children(redir.fd)) {
+            did_redirection_open_fail = true;
+            throw ErrorWithLocation{redir.target->source_location(),
+                                    "Bad file descriptor"};
+          }
         } else {
           let const saved = os::save_and_replace_descriptor(redir.fd, file_fd);
 

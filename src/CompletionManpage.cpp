@@ -713,7 +713,7 @@ man_subcommand_page_is_valid(StringView command,
     return true;
   }
 
-  let source = Path{file_path->view()}.read_entire_file();
+  let source = Path{file_path->view()}.read_data_file();
 
   if (!source.has_value()) {
     MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), true);
@@ -734,7 +734,7 @@ man_subcommand_page_is_valid(StringView command,
     let target = Path{file_path->view()}.parent().parent();
 
     target.append(rest.substring_of_length(0, target_end));
-    source = target.read_entire_file();
+    source = target.read_data_file();
     if (!source.has_value()) {
       MANPAGE_CACHE.subcommand_page_validity.set(page_name.view(), true);
 

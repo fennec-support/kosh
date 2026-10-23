@@ -1396,6 +1396,43 @@ write_to_named_temp_file(const Path &directory,
 }
 
 fn
+replace_file_beside(const Path &target,
+                    StringView  name_prefix,
+                    StringView  contents,
+                    u32         mode) throws -> void
+{
+  let const directory = target.parent_or_current();
+  let const temporary =
+      write_to_named_temp_file(directory, name_prefix, contents);
+
+  if (!temporary.has_value()) {
+    throw Error{"Unable to write a file in '" + directory.text() +
+                "': " + last_system_error_message()};
+  }
+
+  let const do_discard = [&](StringView action)
+                             throws {
+    let const message = last_system_error_message();
+
+    unused(remove_file(temporary->view()));
+    throw Error{StringView{"Unable to "} + action + " '" + target.text() +
+                "': " + message};
+  };
+
+  if (!set_file_mode(temporary->view(), mode)) do_discard("set the mode of");
+  if (!sync_path(temporary->view(), sync_mode::All)) {
+    do_discard("flush the replacement of");
+  }
+
+  if (!rename_path(temporary->view(), target.view())) do_discard("replace");
+  if (!sync_path(directory.view(), sync_mode::All)) {
+    LOG(Info, "flushing the directory '%s' after replacing '%s' failed: %s",
+        directory.text().c_str(), target.text().c_str(),
+        last_system_error_message().c_str());
+  }
+}
+
+fn
 make_temp_directory(const Path &directory, StringView prefix) throws
     -> Maybe<Path>
 {
@@ -1606,6 +1643,11 @@ remove_tree_entry(StringView                path,
                   const tree_removal_hooks *hooks,
                   bool                     &is_kept) throws -> bool
 {
+  if (is_stack_nearly_exhausted()) {
+    throw Error{"The directory tree at '" + path +
+                "' is nested too deep to remove"};
+  }
+
   let const level_mark = arena.mark();
 
   defer { arena.release(level_mark); };
@@ -1819,6 +1861,11 @@ walk_tree_entry(tree_walk_state &walk,
 {
   let const &options      = walk.options;
   let        entry_status = file_status{};
+
+  if (is_stack_nearly_exhausted()) {
+    throw Error{"The directory tree at '" + path +
+                "' is nested too deep to walk"};
+  }
 
   if (!stat_path(path, entry_status)) {
     walk.hooks.report_failure(

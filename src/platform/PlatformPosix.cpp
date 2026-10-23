@@ -1069,7 +1069,7 @@ save_and_replace_descriptor_at(i32            shell_fd,
 
   /* at this point: target is open, and result records the state of shell_fd
      before the replacement, with is_dup2_ok set. */
-  result.is_dup2_ok = dup2(target, shell_fd) != -1;
+  result.is_dup2_ok = install_descriptor(target, shell_fd) != -1;
   note_descriptor_rebound();
 
   return result;
@@ -1126,7 +1126,7 @@ save_descriptor_out_of_reach(i32 shell_fd) wontthrow -> saved_descriptor
 fn
 reopen_terminal_as_stdin() wontthrow -> bool
 {
-  let const tty_fd = open("/dev/tty", O_RDWR);
+  let const tty_fd = open("/dev/tty", O_RDWR | O_CLOEXEC);
 
   if (tty_fd == -1) return false;
 
@@ -1140,6 +1140,12 @@ reopen_terminal_as_stdin() wontthrow -> bool
   if (tty_fd != STDIN_FILENO) close(tty_fd);
 
   return was_replaced && isatty(STDIN_FILENO) == 1;
+}
+
+fn
+keep_shell_fd_for_children(i32 shell_fd) wontthrow -> bool
+{
+  return install_descriptor(shell_fd, shell_fd) != -1;
 }
 
 fn
@@ -1201,9 +1207,7 @@ descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
 fn
 replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
 {
-  if (target == shell_fd) return true;
-
-  let const was_replaced = dup2(target, shell_fd) != -1;
+  let const was_replaced = install_descriptor(target, shell_fd) != -1;
 
   note_descriptor_rebound();
 

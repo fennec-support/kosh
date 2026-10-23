@@ -201,6 +201,12 @@ public:
 
   mustuse fn
   read_entire_file() const throws -> Maybe<String>;
+  static constexpr usize DATA_FILE_MAX_BYTE_COUNT = usize{16} << 20;
+
+  /* reads a regular file of at most max_byte_count bytes without blocking on
+     a FIFO or a device. returns None for any other file. */
+  mustuse fn
+  read_data_file(usize max_byte_count = DATA_FILE_MAX_BYTE_COUNT) const throws -> Maybe<String>;
 
   mustuse static fn
   canonicalize(StringView path) throws -> Maybe<Path>;

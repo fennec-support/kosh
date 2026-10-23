@@ -1507,6 +1507,16 @@ spawn_subshell_stage(StringView                   source,
                      process_group_mode           process_group) throws
     -> Maybe<process>;
 
+fn
+get_startup_random() wontthrow -> u64
+{
+  u64 value = 0;
+
+  if (RtlGenRandom(&value, sizeof(value)) == FALSE) value = 0;
+
+  return value ^ static_cast<u64>(reinterpret_cast<uintptr>(&value));
+}
+
 static fn
 make_internal_pipe_path() throws -> String
 {

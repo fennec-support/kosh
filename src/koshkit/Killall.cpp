@@ -61,12 +61,19 @@ Killall::execute(const ExecContext               &ec,
       FLAG_KILLALL_SIGNAL.value_location(), cxt.scratch_allocator());
 
   let const self_pid         = os::get_shell_process_id();
+  let const current_pid      = os::get_current_process_id();
   let const processes        = os::enumerate_processes();
   bool      has_matched_any  = false;
   bool      has_signaled_any = false;
 
   for (let const &process : processes) {
-    if (process.pid == self_pid) continue;
+    /* pid 0 is the kernel on macOS, and kill(0) signals the caller's group. */
+    if (process.pid <= 0 || process.pid == self_pid ||
+        process.pid == current_pid)
+    {
+      continue;
+    }
+
     if (process.name == wanted) {
       has_matched_any = true;
       if (os::signal_process(os::process_from_pid(process.pid), signal_number))

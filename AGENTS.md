@@ -182,8 +182,10 @@ layer, reaps only unrecorded zombies after SIGCHLD at statement and input
 boundaries and while it waits for a child, sends SIGTERM and then SIGCONT to
 every other process, and waits for every child before it exits after SIGTERM.
 
-A pipe puts its writer and reader in different processes when either side can
-exceed the pipe buffer. Forked stages close descriptors owned by the parent
+Every descriptor the shell creates is close-on-exec. A descriptor installed at
+its target number goes through install_descriptor, which clears the flag even
+when the open already returned the target. A pipe puts its writer and reader
+in different processes when either side can exceed the pipe buffer. Forked stages close descriptors owned by the parent
 before taking input. Parent processes close unused pipe endpoints after
 CreateProcess.
 

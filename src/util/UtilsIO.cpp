@@ -937,42 +937,6 @@ parse_file_mode(StringView     expression,
   return mode;
 }
 
-fn
-replace_file_beside(const Path &target,
-                    StringView  name_prefix,
-                    StringView  contents,
-                    u32         mode) throws -> void
-{
-  let const directory = target.parent_or_current();
-  let const temporary =
-      os::write_to_named_temp_file(directory, name_prefix, contents);
-
-  if (!temporary.has_value()) {
-    throw Error{"Unable to write a file in '" + directory.text() +
-                "': " + os::last_system_error_message()};
-  }
-
-  let const do_discard = [&](StringView action) throws {
-    let const message = os::last_system_error_message();
-
-    unused(os::remove_file(temporary->view()));
-    throw Error{StringView{"Unable to "} + action + " '" + target.text() +
-                "': " + message};
-  };
-
-  if (!os::set_file_mode(temporary->view(), mode))
-    do_discard("set the mode of");
-  if (!os::sync_path(temporary->view(), os::sync_mode::All))
-    do_discard("flush the replacement of");
-  if (!os::rename_path(temporary->view(), target.view())) do_discard("replace");
-
-  if (!os::sync_path(directory.view(), os::sync_mode::All)) {
-    LOG(Info, "flushing the directory '%s' after replacing '%s' failed: %s",
-        directory.text().c_str(), target.text().c_str(),
-        os::last_system_error_message().c_str());
-  }
-}
-
 } /* namespace utils */
 
 } /* namespace koshka */

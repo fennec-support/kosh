@@ -30,6 +30,10 @@ fn
 allocate_aligned(usize length, usize alignment) wontthrow -> opaque *;
 fn
 free_aligned(opaque *pointer) wontthrow -> void;
+/* 64 bits from the kernel's startup random bytes or the platform random
+   source, mixed with a stack address. */
+fn
+get_startup_random() wontthrow -> u64;
 } /* namespace os */
 
 namespace allocators {
@@ -79,7 +83,7 @@ public:
     if (m_bins[class_index] != nullptr) {
       let const reused = m_bins[class_index];
 
-      m_bins[class_index] = reused->next;
+      m_bins[class_index] = unmangle(reused);
       m_counts[class_index]--;
 
       return reused;
@@ -138,8 +142,11 @@ public:
        m_counts[class_index] is below class_limit. */
     let const recycled = static_cast<Node *>(pointer);
 
-    recycled->next      = m_bins[class_index];
-    m_bins[class_index] = recycled;
+    /* a block that is already the bin head was freed twice. */
+    if (recycled == m_bins[class_index]) t__debugtrap();
+
+    recycled->mangled_next = mangle(recycled, m_bins[class_index]);
+    m_bins[class_index]    = recycled;
     m_counts[class_index]++;
   }
 
@@ -150,13 +157,37 @@ private:
   static constexpr usize MAX_BLOCKS_PER_CLASS         = 512;
   static constexpr usize MAX_RETAINED_BYTES_PER_CLASS = 64 * 1024;
 
+  /* a freed block holds the next block of its bin as glibc safe-linking
+     stores it: xored with its own address shifted right by 12 and with a
+     startup secret. */
   struct Node
   {
-    Node *next;
+    uintptr mangled_next;
   };
 
-  Node *m_bins[CLASS_COUNT]   = {};
-  u16   m_counts[CLASS_COUNT] = {};
+  Node   *m_bins[CLASS_COUNT]   = {};
+  u16     m_counts[CLASS_COUNT] = {};
+  uintptr m_secret = static_cast<uintptr>(os::get_startup_random());
+
+  hot fn
+  mangle(const Node *node, const Node *next) const wontthrow -> uintptr
+  {
+    return reinterpret_cast<uintptr>(next) ^
+           (reinterpret_cast<uintptr>(node) >> 12) ^ m_secret;
+  }
+
+  /* traps on a link that does not decode to a malloc-aligned block, which a
+     write after free leaves behind. */
+  hot fn
+  unmangle(const Node *node) const wontthrow -> Node *
+  {
+    let const next =
+        node->mangled_next ^ (reinterpret_cast<uintptr>(node) >> 12) ^ m_secret;
+
+    if ((next & (alignof(max_align_t) - 1)) != 0) t__debugtrap();
+
+    return reinterpret_cast<Node *>(next);
+  }
 
   hot static fn
   class_shift_for(usize length) wontthrow -> usize

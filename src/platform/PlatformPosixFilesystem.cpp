@@ -441,7 +441,7 @@ cold fn
 list_directory_typed(descriptor directory, Allocator allocator) throws
     -> Maybe<ArrayList<Path::DirectoryChild>>
 {
-  let const duplicate = ::dup(directory);
+  let const duplicate = ::fcntl(directory, F_DUPFD_CLOEXEC, 0);
 
   if (duplicate < 0) return None;
 
@@ -713,6 +713,8 @@ open_with_flags(StringView     path,
   case file_open_mode::ReadWrite: flags = O_RDWR | O_CREAT; break;
   }
 
+  flags |= O_CLOEXEC;
+
   const String path_string{heap_allocator(), path};
   let const    create_mode =
       mode == file_open_mode::AppendPrivate ? mode_t{0600} : mode_t{0666};
@@ -738,7 +740,7 @@ open_with_flags(StringView     path,
       if (::stat(path_string.c_str(), &existing_status) == 0 &&
           !S_ISREG(existing_status.st_mode))
       {
-        flags = O_WRONLY;
+        flags = O_WRONLY | O_CLOEXEC;
         continue;
       }
 
@@ -747,7 +749,9 @@ open_with_flags(StringView     path,
 
     if (fd < 0) return koshka::None;
 
-    if (flags == O_WRONLY && mode == file_open_mode::TruncateNoClobber) {
+    if (flags == (O_WRONLY | O_CLOEXEC) &&
+        mode == file_open_mode::TruncateNoClobber)
+    {
       struct stat opened_status{};
 
       if (::fstat(fd, &opened_status) != 0 || S_ISREG(opened_status.st_mode)) {
@@ -759,7 +763,7 @@ open_with_flags(StringView     path,
     }
 
     if (fd <= STDERR_FILENO) {
-      let const lifted      = ::fcntl(fd, F_DUPFD, STDERR_FILENO + 1);
+      let const lifted      = ::fcntl(fd, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
       let const saved_errno = errno;
 
       ::close(fd);
@@ -862,7 +866,7 @@ write_to_temp_file(StringView content) throws -> Maybe<descriptor>
   let path_template =
       make_temp_template(Path::temp_directory(), "kosh_heredoc");
 
-  let const fd = mkstemp(path_template.begin());
+  let const fd = mkostemp(path_template.begin(), O_CLOEXEC);
 
   if (fd < 0) return koshka::None;
 
@@ -890,7 +894,7 @@ write_to_named_temp_file(const Path &directory,
 
   let path_template = make_temp_template(directory, prefix);
 
-  let const fd = ::mkstemp(path_template.begin());
+  let const fd = ::mkostemp(path_template.begin(), O_CLOEXEC);
 
   if (fd < 0) return None;
 
@@ -906,6 +910,70 @@ write_to_named_temp_file(const Path &directory,
   /* at this point: the file at path_template holds all of content, and fd
      is closed. */
   return Path{StringView{path_template.begin()}};
+}
+
+fn
+replace_file_beside(const Path &target,
+                    StringView  name_prefix,
+                    StringView  contents,
+                    u32         mode) throws -> void
+{
+  let const directory = target.parent_or_current();
+  let const directory_descriptor =
+      ::open(directory.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+
+  if (directory_descriptor < 0) {
+    throw Error{"Unable to open the directory '" + directory.text() +
+                "': " + last_system_error_message()};
+  }
+
+  defer { ::close(directory_descriptor); };
+
+  let       path_template = make_temp_template(directory, name_prefix);
+  let const fd            = ::mkostemp(path_template.begin(), O_CLOEXEC);
+
+  if (fd < 0) {
+    throw Error{"Unable to write a file in '" + directory.text() +
+                "': " + last_system_error_message()};
+  }
+
+  let const temporary_name = Path::filename(StringView{path_template.begin()});
+  let const target_name    = String{heap_allocator(), target.filename()};
+
+  let const do_discard = [&](StringView action)
+                             throws {
+    let const message = last_system_error_message();
+
+    ::close(fd);
+    unused(::unlinkat(directory_descriptor,
+                      String{heap_allocator(), temporary_name}.c_str(), 0));
+    throw Error{StringView{"Unable to "} + action + " '" + target.text() +
+                "': " + message};
+  };
+
+  if (!write_all(fd, contents.data, contents.count())) {
+    do_discard("write the replacement of");
+  }
+
+  if (::fchmod(fd, static_cast<mode_t>(mode)) != 0) {
+    do_discard("set the mode of");
+  }
+
+  if (::fsync(fd) != 0) do_discard("flush the replacement of");
+  if (::renameat(directory_descriptor,
+                 String{heap_allocator(), temporary_name}.c_str(),
+                 directory_descriptor, target_name.c_str()) != 0)
+  {
+    do_discard("replace");
+  }
+
+  ::close(fd);
+
+  if (::fsync(directory_descriptor) != 0) {
+    LOG(Info, "flushing the directory '%s' after replacing '%s' failed: %s",
+        directory.text().c_str(), target.text().c_str(),
+        last_system_error_message().c_str());
+  }
 }
 
 fn
@@ -1242,7 +1310,7 @@ read_directory_children(int                            directory,
                         ArrayList<tree_removal_child> &children,
                         bool                          &is_complete) throws -> bool
 {
-  let const listing = ::dup(directory);
+  let const listing = ::fcntl(directory, F_DUPFD_CLOEXEC, 0);
   let const handle  = listing < 0 ? nullptr : ::fdopendir(listing);
 
   if (handle == nullptr) {
@@ -1326,6 +1394,11 @@ remove_tree_entry(TreeRemovalWalk   &walk,
                   usize              depth,
                   bool              &is_kept) throws -> bool
 {
+  if (is_stack_nearly_exhausted()) {
+    throw Error{"The directory tree at '" + path +
+                "' is nested too deep to remove"};
+  }
+
   let entry = tree_removal_entry{};
 
   entry.path = path;
@@ -1591,6 +1664,11 @@ walk_tree_entry(tree_walk_state   &walk,
   let const  &options    = walk.options;
   let const   is_operand = depth == 0;
   struct stat link_status{};
+
+  if (is_stack_nearly_exhausted()) {
+    throw Error{"The directory tree at '" + path +
+                "' is nested too deep to walk"};
+  }
 
   if (::fstatat(parent_descriptor, name, &link_status, AT_SYMLINK_NOFOLLOW) !=
       0)

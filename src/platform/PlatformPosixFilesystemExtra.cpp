@@ -1077,7 +1077,7 @@ verify_filesystem_integrity(StringView path,
   if (::access(DISKUTIL_PATH, X_OK) != 0)
     return filesystem_verification_result::Unavailable;
 
-  let const null_descriptor = ::open("/dev/null", O_RDWR);
+  let const null_descriptor = ::open("/dev/null", O_RDWR | O_CLOEXEC);
 
   if (null_descriptor < 0) return filesystem_verification_result::Unavailable;
 

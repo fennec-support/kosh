@@ -20,7 +20,10 @@
 #include "Platform.hpp"
 
 #if defined __linux__
+#include <linux/capability.h>
 #include <sys/auxv.h>
+#include <sys/prctl.h>
+#include <sys/syscall.h>
 #endif
 
 namespace koshka {
@@ -192,12 +195,49 @@ is_running_secure() wontthrow -> bool
 }
 
 fn
+get_startup_random() wontthrow -> u64
+{
+  u64 value = 0;
+
+#if defined __linux__
+  let const bytes = reinterpret_cast<const u8 *>(getauxval(AT_RANDOM));
+
+  if (bytes != nullptr) memcpy(&value, bytes, sizeof(value));
+#elif defined __APPLE__ || defined __FreeBSD__ || defined __OpenBSD__ ||       \
+    defined __NetBSD__
+  arc4random_buf(&value, sizeof(value));
+#endif
+
+  return value ^ static_cast<u64>(reinterpret_cast<uintptr>(&value));
+}
+
+fn
 drop_elevated_identity() wontthrow -> bool
 {
   let const real_group_id = getgid();
   let const real_user_id  = getuid();
 
-#if defined __linux__ || defined __FreeBSD__ || defined __OpenBSD__
+#if defined __linux__
+  if (setresgid(real_group_id, real_group_id, real_group_id) != 0) return false;
+  if (setresuid(real_user_id, real_user_id, real_user_id) != 0) return false;
+  if (real_user_id == 0) return true;
+
+  /* file capabilities survive the id change, so a non-root user also clears
+     the capability sets. */
+  let header = __user_cap_header_struct{_LINUX_CAPABILITY_VERSION_3, 0};
+  __user_cap_data_struct data[_LINUX_CAPABILITY_U32S_3] = {};
+
+  if (syscall(SYS_capset, &header, data) != 0) return false;
+  if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0) != 0 &&
+      errno != EINVAL)
+  {
+    return false;
+  }
+
+  if (setuid(0) == 0) abort();
+
+  return true;
+#elif defined __FreeBSD__ || defined __OpenBSD__
   if (setresgid(real_group_id, real_group_id, real_group_id) != 0) return false;
 
   return setresuid(real_user_id, real_user_id, real_user_id) == 0;
@@ -761,7 +801,7 @@ ProgramCapture::start(const ArrayList<String> &argv, u64 timeout_nanos)
   let const read_end  = pipe->in;
   const int write_end = pipe->out;
 
-  const int devnull_fd = open("/dev/null", O_RDONLY);
+  const int devnull_fd = open("/dev/null", O_RDONLY | O_CLOEXEC);
 
   if (devnull_fd < 0) {
     close(read_end);
@@ -1041,7 +1081,7 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
           return;
         }
 
-        let const lifted = fcntl(*fd, F_DUPFD, STDERR_FILENO + 1);
+        let const lifted = fcntl(*fd, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
         check_syscall(lifted);
         check_syscall(close(*fd));
         fd = lifted;
@@ -1052,12 +1092,10 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
       do_lift_above_standard(err_fd, STDERR_FILENO);
 
       let const do_install = [](Maybe<descriptor> fd, descriptor target) {
-        if (!fd || *fd == target) {
-          return;
-        }
+        if (!fd) return;
 
-        check_syscall(dup2(*fd, target));
-        check_syscall(close(*fd));
+        check_syscall(install_descriptor(*fd, target));
+        if (*fd != target) check_syscall(close(*fd));
       };
 
       do_install(in_fd, STDIN_FILENO);
@@ -1259,17 +1297,8 @@ replace_process(ExecContext &&ec) throws -> void
   let const child_args = make_os_args(ec.args());
 
   let const do_install_for_exec = [](descriptor fd, descriptor target) {
-    if (fd != target) {
-      check_syscall(dup2(fd, target));
-      check_syscall(close(fd));
-
-      return;
-    }
-
-    let const flags = fcntl(fd, F_GETFD);
-    if (flags != -1 && (flags & FD_CLOEXEC) != 0) {
-      fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC);
-    }
+    check_syscall(install_descriptor(fd, target));
+    if (fd != target) check_syscall(close(fd));
   };
 
   if (ec.in_fd) do_install_for_exec(*ec.in_fd, STDIN_FILENO);
@@ -1285,7 +1314,7 @@ replace_process(ExecContext &&ec) throws -> void
 
   ec.apply_nonstandard_routing(
       [&](os::descriptor file_fd, i32 target_fd) {
-        check_syscall(dup2(file_fd, target_fd));
+        check_syscall(install_descriptor(file_fd, target_fd));
         if (file_fd != target_fd) check_syscall(close(file_fd));
       },
       [&](i32 dup_from_fd, i32 target_fd) {
@@ -1351,22 +1380,7 @@ make_pipe() wontthrow -> Maybe<pipe_ends>
 
   descriptor p[2] = {KOSH_INVALID_FD, KOSH_INVALID_FD};
 
-#if defined __linux__ || defined __FreeBSD__ || defined __NetBSD__ ||          \
-    defined __OpenBSD__ || defined __DragonFly__
-  if (pipe2(p, O_CLOEXEC) != 0) {
-    return koshka::None;
-  }
-#else
-  if (pipe(p) != 0) {
-    return koshka::None;
-  }
-
-  for (descriptor end : p) {
-    let const flags = fcntl(end, F_GETFD);
-
-    if (flags != -1) fcntl(end, F_SETFD, flags | FD_CLOEXEC);
-  }
-#endif
+  if (create_private_pipe(p) != 0) return koshka::None;
 
   /* ends at or below STDERR_FILENO move above it. a later dup2() onto
      stdin, stdout, or stderr would otherwise overwrite a pipe end. */
@@ -2395,12 +2409,12 @@ redirect_child_output(measured_output output) wontthrow -> void
 {
   if (output != measured_output::Suppress) return;
 
-  let const null_fd = open("/dev/null", O_WRONLY);
+  let const null_fd = open("/dev/null", O_WRONLY | O_CLOEXEC);
 
   if (null_fd == -1) return;
 
-  dup2(null_fd, STDOUT_FILENO);
-  dup2(null_fd, STDERR_FILENO);
+  install_descriptor(null_fd, STDOUT_FILENO);
+  install_descriptor(null_fd, STDERR_FILENO);
   if (null_fd != STDOUT_FILENO && null_fd != STDERR_FILENO) {
     close(null_fd);
   }
@@ -2441,11 +2455,11 @@ spawn_measured_child(const ArrayList<String> &argv,
 
   int ready_descriptors[2];
 
-  if (pipe(ready_descriptors) != 0) return false;
+  if (create_private_pipe(ready_descriptors) != 0) return false;
 
   int start_descriptors[2];
 
-  if (pipe(start_descriptors) != 0) {
+  if (create_private_pipe(start_descriptors) != 0) {
     close(ready_descriptors[0]);
     close(ready_descriptors[1]);
 
@@ -3110,7 +3124,7 @@ run_traced(const ArrayList<String> &argv, measured_output output) throws
   let const raw_argv = make_os_args(argv);
   int       report_descriptors[2];
 
-  if (pipe(report_descriptors) != 0) return None;
+  if (create_private_pipe(report_descriptors) != 0) return None;
 
   note_spawn_launch();
 
@@ -3194,16 +3208,7 @@ run_through_error_pipe(const auto  &raw_argv,
 {
   int exec_error_pipe[2];
 
-  if (pipe(exec_error_pipe) != 0) return None;
-  if (fcntl(exec_error_pipe[1], F_SETFD, FD_CLOEXEC) != 0) {
-    let const saved_errno = errno;
-
-    close(exec_error_pipe[0]);
-    close(exec_error_pipe[1]);
-    errno = saved_errno;
-
-    return None;
-  }
+  if (create_private_pipe(exec_error_pipe) != 0) return None;
 
   note_spawn_launch();
 
@@ -3314,15 +3319,16 @@ run_nohup(const ArrayList<String> &argv,
     int nohup_output = -1;
 
     if (isatty(child_input)) {
-      null_input = open("/dev/null", O_RDONLY);
+      null_input = open("/dev/null", O_RDONLY | O_CLOEXEC);
       if (null_input != -1) child_input = null_input;
     }
 
     if (isatty(child_output)) {
-      nohup_output = open("nohup.out", O_WRONLY | O_APPEND | O_CREAT, 0600);
+      nohup_output =
+          open("nohup.out", O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
       if (nohup_output == -1 && !options.home.is_empty()) {
-        nohup_output =
-            open(home_output.c_str(), O_WRONLY | O_APPEND | O_CREAT, 0600);
+        nohup_output = open(home_output.c_str(),
+                            O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0600);
       }
 
       if (nohup_output == -1) {
@@ -3337,9 +3343,9 @@ run_nohup(const ArrayList<String> &argv,
     }
 
     if (isatty(child_error)) child_error = child_output;
-    if (child_input != STDIN_FILENO) dup2(child_input, STDIN_FILENO);
-    if (child_output != STDOUT_FILENO) dup2(child_output, STDOUT_FILENO);
-    if (child_error != STDERR_FILENO) dup2(child_error, STDERR_FILENO);
+    install_descriptor(child_input, STDIN_FILENO);
+    install_descriptor(child_output, STDOUT_FILENO);
+    install_descriptor(child_error, STDERR_FILENO);
     if (null_input > STDERR_FILENO) close(null_input);
     if (nohup_output > STDERR_FILENO) close(nohup_output);
   });

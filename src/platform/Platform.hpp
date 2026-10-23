@@ -588,6 +588,15 @@ fn
 write_to_named_temp_file(const Path &directory,
                          StringView  prefix,
                          StringView  content) throws -> Maybe<Path>;
+/* writes contents to a new file beside target, gives it mode, flushes it, and
+   renames it over target, then flushes the directory. POSIX keeps the file
+   descriptor and the directory descriptor until the rename. throws on
+   failure and removes the new file. */
+fn
+replace_file_beside(const Path &target,
+                    StringView  name_prefix,
+                    StringView  contents,
+                    u32         mode) throws -> void;
 fn
 make_temp_directory(const Path &directory, StringView prefix) throws
     -> Maybe<Path>;
@@ -2023,6 +2032,11 @@ descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor;
 
 fn
 replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool;
+/* lets child processes inherit shell_fd when a redirection opened its file
+   directly at shell_fd. POSIX clears close-on-exec, and Windows needs no
+   change. */
+fn
+keep_shell_fd_for_children(i32 shell_fd) wontthrow -> bool;
 
 fn
 close_shell_fd(i32 shell_fd) wontthrow -> bool;

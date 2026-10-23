@@ -239,7 +239,9 @@ The shell becomes restricted after the startup files finish.
 Privileged mode is enabled. BASH_ENV is not sourced, KOSHCONF from the
 environment is ignored and removed, and the settings files are not read. A
 secure execution, such as a setuid or setgid invocation, always drops the
-elevated ids and skips every startup file and settings file.
+elevated ids and skips every startup file and settings file. On Linux, a shell
+whose real user is not root also clears its capability sets, including the
+ambient set, and aborts if it can still switch to root afterwards.
 .TP
 .B \-\-posix
 The bash-posix mood is selected.
@@ -2134,7 +2136,11 @@ with the decimal point of that locale. The
 .B \(aq
 flag groups the digits of integer and floating conversions with the thousands
 separator of the locale. The C and POSIX locales and every locale on Windows
-use a dot and no grouping. Arithmetic expansion does not use the locale.
+use a dot and no grouping. Arithmetic expansion does not use the locale. A
+field width or precision above 16777216, written in the format or taken from
+an operand by
+.BR * ,
+is an error, and that conversion prints nothing.
 .TP
 .B read
 The
@@ -2681,7 +2687,8 @@ with status 130.
 .B killall
 Processes are signaled by exact name. The signal is selected and the signals
 are listed with \fB\-s\fR, \fB\-\-signal\fR, \fB\-l\fR, and
-\fB\-\-list\fR.
+\fB\-\-list\fR. Process 0, the shell, and the utility itself are never
+signaled.
 .TP
 .B pkill
 Processes whose short command (comm) contains the pattern are signaled. The

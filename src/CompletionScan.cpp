@@ -324,8 +324,7 @@ collect_ssh_hosts() throws -> ArrayList<String>
   let config_path = home->clone();
 
   config_path.append(".ssh/config");
-  if (Maybe<String> config = config_path.read_entire_file(); config.has_value())
-  {
+  if (Maybe<String> config = config_path.read_data_file(); config.has_value()) {
     let const text = config->view();
     usize     i    = 0;
 
@@ -376,7 +375,7 @@ collect_ssh_hosts() throws -> ArrayList<String>
   let known_hosts_path = home->clone();
 
   known_hosts_path.append(".ssh/known_hosts");
-  if (Maybe<String> known = known_hosts_path.read_entire_file();
+  if (Maybe<String> known = known_hosts_path.read_data_file();
       known.has_value())
   {
     let const text = known->view();
@@ -701,7 +700,7 @@ internal::complete_from_tools_with_targets(StringView      line,
        targets are read from the list of target directories. */
     cached_targets = cached_targets_for(target_list, [&]() throws {
       let       names    = ArrayList<String>{heap_allocator()};
-      let const contents = target_list.read_entire_file();
+      let const contents = target_list.read_data_file();
 
       if (!contents.has_value()) return names;
 
@@ -746,7 +745,7 @@ internal::complete_from_tools_with_targets(StringView      line,
     let const package_path = Path{StringView{"package.json"}};
 
     cached_targets = cached_targets_for(package_path, [&]() throws {
-      let const contents = package_path.read_entire_file();
+      let const contents = package_path.read_data_file();
 
       return contents.has_value() ? parse_package_json_scripts(contents->view())
                                   : ArrayList<String>{heap_allocator()};

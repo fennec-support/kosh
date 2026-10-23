@@ -448,6 +448,30 @@ report_out_of_range(ExecContext  &ec,
   exit_status = 1;
 }
 
+static constexpr u64 PRINTF_FIELD_MAX = u64{1} << 24;
+
+/* Returns whether every width and precision in spec is at most
+   PRINTF_FIELD_MAX. */
+static pure fn
+is_printf_field_in_range(StringView spec) wontthrow -> bool
+{
+  u64 value = 0;
+
+  for (usize position = 0; position < spec.length; position++) {
+    let const byte = spec[position];
+
+    if (byte < '0' || byte > '9') {
+      value = 0;
+      continue;
+    }
+
+    value = value * 10 + static_cast<u64>(byte - '0');
+    if (value > PRINTF_FIELD_MAX) return false;
+  }
+
+  return true;
+}
+
 fn
 append_conversion(String                &out,
                   String                &spec,
@@ -462,6 +486,18 @@ append_conversion(String                &out,
                   Allocator              allocator) throws -> void
 {
   char buffer[256];
+
+  if (!is_printf_field_in_range(spec.view())) {
+    let message = String{allocator, "The field width or precision in `"};
+
+    message += spec.view();
+    message += "` exceeds ";
+    message += String::from(PRINTF_FIELD_MAX, allocator).view();
+    report_soft_builtin_error(ec, cxt, message.view());
+    exit_status = 1;
+
+    return;
+  }
 
   let const do_append_formatted = [&](const char *format,
                                       auto        value) throws {

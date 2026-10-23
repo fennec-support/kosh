@@ -193,7 +193,7 @@ t__string_from_struct(const T &value, AllocatorT allocator) throws
     t__unreachable();                                                          \
   } while (0)
 #else
-#define unreachable(...) t__unreachable()
+#define unreachable(...) t__debugtrap()
 #endif
 
 #if !defined NDEBUG

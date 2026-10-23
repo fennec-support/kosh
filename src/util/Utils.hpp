@@ -748,12 +748,6 @@ parse_file_mode(StringView     expression,
                 u32            creation_mask,
                 file_kind_mode kind) wontthrow -> Maybe<u32>;
 
-fn
-replace_file_beside(const Path &target,
-                    StringView  name_prefix,
-                    StringView  contents,
-                    u32         mode) throws -> void;
-
 } /* namespace utils */
 
 } /* namespace koshka */

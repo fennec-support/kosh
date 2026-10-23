@@ -1849,6 +1849,10 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
       if (os::descriptor_is_shell_fd(r.opened_fd, r.target_fd)) {
         saved_descriptors.push(
             os::saved_descriptor{.shell_fd = r.target_fd, .was_open = false});
+        if (!os::keep_shell_fd_for_children(r.target_fd)) {
+          throw ErrorWithLocation{source_location(), "Bad file descriptor"};
+        }
+
         break;
       }
 

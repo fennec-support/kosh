@@ -6,3 +6,6 @@ c-file:
 three
 d-file:
 four
+e-file:
+group_three
+heredoc_three

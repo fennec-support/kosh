@@ -49,3 +49,10 @@ printf '%x\n' 0xffffffffffffffffffff
 echo "rc=$?"
 printf '%d\n' 42
 echo "rc=$?"
+
+printf '[%2000000000d]\n' 1
+echo "rc=$?"
+printf '[%.*s]\n' 99999999999 abc
+echo "rc=$?"
+printf '[%*d]\n' -3 7
+echo "rc=$?"

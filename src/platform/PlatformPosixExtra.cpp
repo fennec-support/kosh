@@ -43,6 +43,50 @@ namespace koshka {
 namespace os {
 namespace {
 
+/* puts fd at target without close-on-exec. dup2() clears the flag on a
+   distinct target, and a descriptor that already is target has the flag
+   cleared in place. returns target, or -1 with errno set. */
+fn
+install_descriptor(int fd, int target) wontthrow -> int
+{
+  if (fd != target) return ::dup2(fd, target);
+
+  let const flags = ::fcntl(fd, F_GETFD);
+
+  if (flags == -1) return -1;
+  if ((flags & FD_CLOEXEC) == 0) return target;
+
+  return ::fcntl(fd, F_SETFD, flags & ~FD_CLOEXEC) == -1 ? -1 : target;
+}
+
+/* creates a pipe whose ends are close-on-exec. returns 0, or -1 with errno
+   set. */
+fn
+create_private_pipe(int descriptors[2]) wontthrow -> int
+{
+#if defined __linux__ || defined __FreeBSD__ || defined __NetBSD__ ||          \
+    defined __OpenBSD__ || defined __DragonFly__
+
+  return ::pipe2(descriptors, O_CLOEXEC);
+#else
+  if (::pipe(descriptors) != 0) return -1;
+
+  for (usize end = 0; end < 2; end++) {
+    if (::fcntl(descriptors[end], F_SETFD, FD_CLOEXEC) != 0) {
+      let const saved_errno = errno;
+
+      ::close(descriptors[0]);
+      ::close(descriptors[1]);
+      errno = saved_errno;
+
+      return -1;
+    }
+  }
+
+  return 0;
+#endif
+}
+
 fn
 open_current_directory_reference() wontthrow -> descriptor
 {

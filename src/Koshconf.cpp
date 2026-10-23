@@ -430,11 +430,11 @@ replace_koshconf_target(const Path &target, StringView contents) throws
                   "' before replacing it: " + os::last_system_error_message()};
     }
 
-    utils::replace_file_beside(Path{String{target.text()} + ".bak"},
-                               ".kosh.conf.bak", existing->view(), mode);
+    os::replace_file_beside(Path{String{target.text()} + ".bak"},
+                            ".kosh.conf.bak", existing->view(), mode);
   }
 
-  utils::replace_file_beside(target, ".kosh.conf", contents, mode);
+  os::replace_file_beside(target, ".kosh.conf", contents, mode);
   LOG(Info, "wrote the koshconf file '%s'", target.text().c_str());
 }
 

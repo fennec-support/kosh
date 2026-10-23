@@ -1072,6 +1072,14 @@ reclaim_controlling_terminal() wontthrow -> void
 {}
 
 fn
+keep_shell_fd_for_children(i32 shell_fd) wontthrow -> bool
+{
+  unused(shell_fd);
+
+  return true;
+}
+
+fn
 descriptor_for_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
 {
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);

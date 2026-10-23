@@ -577,6 +577,32 @@ Path::read_entire_file() const throws -> Maybe<String>
   return os::read_fd_to_string(*file, heap_allocator());
 }
 
+/* memory: the file is read into a String in heap_allocator(), at most
+           max_byte_count bytes. the caller owns it on success.
+   time:   one nonblocking open, one fstat, reads until a read returns 0, and
+           one close. */
+fn
+Path::read_data_file(usize max_byte_count) const throws -> Maybe<String>
+{
+  LOG(Debug, "reading the data file '%s'", c_str());
+
+  let const file = os::open_file_descriptor(
+      text().view(), os::file_open_mode::ReadNonblocking);
+
+  if (!file) return None;
+  defer { os::close_fd(*file); };
+
+  let const byte_count = os::regular_file_byte_count(*file);
+
+  if (!byte_count.has_value() || *byte_count > max_byte_count) return None;
+
+  let contents = os::read_fd_to_string(*file, heap_allocator());
+
+  if (contents.has_value() && contents->count() > max_byte_count) return None;
+
+  return contents;
+}
+
 /* memory: each candidate is a Path in the heap allocator. with_extension()
            replaces the candidate, which frees the old one. the returned Path
            owns the last candidate.
