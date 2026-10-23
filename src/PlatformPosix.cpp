@@ -24,7 +24,6 @@
 #include <locale.h>
 #include <pthread.h>
 #include <syslog.h>
-#include <utmpx.h>
 #include <wctype.h>
 
 #if defined __APPLE__ || defined __FreeBSD__
@@ -658,33 +657,6 @@ linux_network_sockets_from_file(
 }
 
 #endif
-
-fn
-logged_in_users() throws -> ArrayList<user_session>
-{
-  let result = ArrayList<user_session>{heap_allocator()};
-
-  setutxent();
-  defer { endutxent(); };
-
-  const struct utmpx *entry;
-
-  while ((entry = getutxent()) != nullptr) {
-    if (entry->ut_type != USER_PROCESS || entry->ut_user[0] == '\0') {
-      continue;
-    }
-    let const user_length = strnlen(entry->ut_user, sizeof(entry->ut_user));
-    let const line_length = strnlen(entry->ut_line, sizeof(entry->ut_line));
-
-    result.push(user_session{
-        String{heap_allocator(), StringView{entry->ut_user, user_length}},
-        String{heap_allocator(), StringView{entry->ut_line, line_length}},
-        static_cast<i64>(entry->ut_tv.tv_sec),
-    });
-  }
-
-  return result;
-}
 
 static pure fn
 system_log_priority(StringView priority) wontthrow -> int

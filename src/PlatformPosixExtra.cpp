@@ -28,6 +28,10 @@
 #include <sys/event.h>
 #endif
 
+#if !defined __linux__
+#include <utmpx.h>
+#endif
+
 #if defined __GLIBC__
 #if __GLIBC_PREREQ(2, 33)
 #define KOSH_HAS_MALLINFO2 1
@@ -1107,6 +1111,92 @@ get_user_group_ids(u32 user_id, Allocator allocator) throws
   }
 
   return groups;
+}
+#endif
+
+#if defined __linux__
+fn
+logged_in_users() throws -> ArrayList<user_session>
+{
+  static constexpr usize UTMP_RECORD_BYTE_COUNT = 384;
+  static constexpr usize UTMP_PID_OFFSET        = 4;
+  static constexpr usize UTMP_LINE_OFFSET       = 8;
+  static constexpr usize UTMP_LINE_BYTE_COUNT   = 32;
+  static constexpr usize UTMP_USER_OFFSET       = 44;
+  static constexpr usize UTMP_USER_BYTE_COUNT   = 32;
+  static constexpr usize UTMP_TIME_OFFSET       = 340;
+  static constexpr i16   UTMP_USER_PROCESS      = 7;
+
+  let result   = ArrayList<user_session>{heap_allocator()};
+  let contents = Path{"/run/utmp"}.read_entire_file();
+
+  if (!contents.has_value()) {
+    LOG(Info, "reading /run/utmp failed, so no session is listed");
+
+    return result;
+  }
+
+  let const records = contents->view();
+
+  for (usize offset = 0; offset + UTMP_RECORD_BYTE_COUNT <= records.length;
+       offset += UTMP_RECORD_BYTE_COUNT)
+  {
+    i16 type          = 0;
+    i32 session_pid   = 0;
+    i32 login_seconds = 0;
+
+    memcpy(&type, records.data + offset, sizeof(type));
+    memcpy(&session_pid, records.data + offset + UTMP_PID_OFFSET,
+           sizeof(session_pid));
+    memcpy(&login_seconds, records.data + offset + UTMP_TIME_OFFSET,
+           sizeof(login_seconds));
+
+    let const *user = records.data + offset + UTMP_USER_OFFSET;
+    let const *line = records.data + offset + UTMP_LINE_OFFSET;
+
+    if (type != UTMP_USER_PROCESS || user[0] == '\0') continue;
+    if (session_pid > 0 && ::kill(session_pid, 0) != 0 && errno == ESRCH) {
+      LOG(Debug, "skipping the utmp record of the exited pid %d", session_pid);
+      continue;
+    }
+
+    result.push(user_session{
+        String{heap_allocator(),
+               StringView{user, strnlen(user, UTMP_USER_BYTE_COUNT)}},
+        String{heap_allocator(),
+               StringView{line, strnlen(line, UTMP_LINE_BYTE_COUNT)}},
+        static_cast<i64>(login_seconds),
+    });
+  }
+
+  return result;
+}
+#else
+fn
+logged_in_users() throws -> ArrayList<user_session>
+{
+  let result = ArrayList<user_session>{heap_allocator()};
+
+  setutxent();
+  defer { endutxent(); };
+
+  const struct utmpx *entry;
+
+  while ((entry = getutxent()) != nullptr) {
+    if (entry->ut_type != USER_PROCESS || entry->ut_user[0] == '\0') {
+      continue;
+    }
+    let const user_length = strnlen(entry->ut_user, sizeof(entry->ut_user));
+    let const line_length = strnlen(entry->ut_line, sizeof(entry->ut_line));
+
+    result.push(user_session{
+        String{heap_allocator(), StringView{entry->ut_user, user_length}},
+        String{heap_allocator(), StringView{entry->ut_line, line_length}},
+        static_cast<i64>(entry->ut_tv.tv_sec),
+    });
+  }
+
+  return result;
 }
 #endif
 
