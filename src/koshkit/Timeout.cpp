@@ -248,7 +248,8 @@ preflight_timeout_stage(const ExecContext &ec,
   try {
     let[operands, operand_locations] = parse_util_operands(
         FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
-        {.should_accept_negative_number_operand = true});
+        {.should_accept_negative_number_operand = true,
+         .should_stop_at_first_operand          = true});
 
     if (FLAG_HELP.is_enabled() || operands.count() < 2) {
       return None;
@@ -298,8 +299,9 @@ Timeout::execute(const ExecContext               &ec,
                  const ArrayList<String>         &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(
-      args, arg_locations, {.should_accept_negative_number_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
+                                 {.should_accept_negative_number_operand = true,
+                                  .should_stop_at_first_operand = true});
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 

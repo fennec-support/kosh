@@ -48,7 +48,8 @@ Env::execute(const ExecContext               &ec,
              const ArrayList<String>         &args,
              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
+                                 {.should_stop_at_first_operand = true});
 
   cxt.prepare_child_environment();
 

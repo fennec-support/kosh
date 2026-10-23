@@ -426,6 +426,7 @@ struct flag_parse_options
   bool       should_accept_negative_number_operand{false};
   bool       should_accept_negative_decimal_operand{false};
   bool       should_allow_options_after_operands{false};
+  bool       should_stop_at_first_operand{false};
   bool       should_accept_unknown_flag_operand{false};
   bool       should_omit_program_name{false};
   StringView plus_letters{};

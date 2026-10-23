@@ -2303,6 +2303,11 @@ sleep, sort, split, stat, strings, stty, sync, tabs, tail, tee, timeout, touch,
 tput, tr, tsort, tty, uname, unexpand, uniq, unlink, watch, wc, which, who,
 whoami, xargs, and yes.
 .PP
+A utility accepts options before and after its operands, and \fB\-\-\fR ends
+the options. The env, expr, flock, nice, nohup, retry, timeout, watch, and
+xargs utilities end their options at the first operand, so the command or
+expression after it keeps its own options.
+.PP
 The command
 .BI "koshkit \-\-assimilate " DIR
 installs one symlink per utility into DIR. When direct koshkit lookup is

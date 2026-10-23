@@ -120,8 +120,10 @@ echo "--- cksum implicit standard input ---"
 printf 'abc\n' | "$BIN" -c 'koshkit cksum'
 echo "--- head -2 and tail -1 take the historical count form ---"
 "$BIN" -c 'koshkit head -2 fruit.txt; koshkit tail -1 fruit.txt'
-echo "--- a -2 after a file is a file operand ---"
-"$BIN" -c 'koshkit head fruit.txt -2 2>/dev/null; printf "status=%s\n" "$?"'
+echo "--- a -2 after -- is a file operand ---"
+"$BIN" -c 'koshkit head -- fruit.txt -2 2>/dev/null; printf "status=%s\n" "$?"'
+echo "--- a -2 after a file is an option ---"
+"$BIN" --mood bash -c 'koshkit head fruit.txt -2 2>/dev/null; printf "status=%s\n" "$?"'
 echo "--- sort -r ---"
 "$BIN" -c 'koshkit sort -r fruit.txt'
 printf 'zulu\nalpha\n' > sort-a.txt

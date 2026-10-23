@@ -1169,6 +1169,13 @@ parse_util_operands(const FlagList                  &flags,
   let operand_locations = ArrayList<SourceLocation>{allocator};
 
   parse_options.should_omit_program_name = true;
+  if (!parse_options.should_stop_at_first_operand)
+    parse_options.should_allow_options_after_operands = true;
+  LOG(Debug, "parsing utility operands, %s",
+      parse_options.should_allow_options_after_operands
+          ? "taking options after operands until --"
+          : "ending options at the first operand");
+
   let operands =
       parse_flags_vec(flags, args, 0, nullptr, arg_locations,
                       &operand_locations, {}, parse_options, allocator);

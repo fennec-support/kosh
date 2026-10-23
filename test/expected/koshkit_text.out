@@ -133,13 +133,15 @@ status=1
 banana
 apple
 apple
---- a -2 after a file is a file operand ---
+--- a -2 after -- is a file operand ---
 ==> fruit.txt <==
 banana
 apple
 cherry
 apple
 status=1
+--- a -2 after a file is an option ---
+status=2
 --- sort -r ---
 cherry
 banana
