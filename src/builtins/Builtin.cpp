@@ -112,6 +112,7 @@ print_builtin_columns(ExecContext &ec, Allocator allocator) throws
   append_report_name_section(out, "BASH", sections.bash_names, should_color);
   append_report_name_section(out, "Koshka", sections.koshka_names,
                              should_color);
+  out.pop_back();
   ec.print_to_stdout(out.view());
 }
 
