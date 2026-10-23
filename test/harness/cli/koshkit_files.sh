@@ -220,6 +220,10 @@ if [ "${TARGET:-$(uname -s)}" = Linux ]; then
     du_interrupt_directory=$((du_interrupt_directory + 1))
   done
   du_interrupt_expected_count=$((200 * 200 + 200 + 1))
+  du_interrupt_attempt=0
+  while [ "$du_interrupt_attempt" -lt 5 ]; do
+  du_interrupt_attempt=$((du_interrupt_attempt + 1))
+  rm -f du-interrupt.ready du-interrupt.done
   du_interrupt_status=$("$BIN" --no-traces --mood bash -c '
     shell_pid=$$
     (
@@ -242,6 +246,10 @@ if [ "${TARGET:-$(uname -s)}" = Linux ]; then
     wait
   ' 2> /dev/null; echo "$?")
   du_interrupt_line_count=$(wc -l < du-interrupt.out)
+  [ "$du_interrupt_status" -eq 0 ] &&
+    [ "$du_interrupt_line_count" -eq "$du_interrupt_expected_count" ] ||
+    break
+  done
   if [ "$du_interrupt_status" -eq 130 ] &&
     [ "$du_interrupt_line_count" -lt "$du_interrupt_expected_count" ] &&
     ! grep -q 'Interrupted system call' du-interrupt.err; then
