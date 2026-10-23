@@ -13,6 +13,7 @@ import fcntl
 import os
 import pty
 import select
+import shutil
 import struct
 import sys
 import tempfile
@@ -74,6 +75,13 @@ def check(name, is_ok):
 
 def main():
     home = tempfile.mkdtemp()
+    try:
+        run_checks(home)
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+
+
+def run_checks(home):
     output = run_session([
         'f() { n=$((n+1)); echo "hook$n"; }',
         "PS0='[${ f; }|${| REPLY=v$n; }]'",

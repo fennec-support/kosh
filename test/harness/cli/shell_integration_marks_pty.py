@@ -16,6 +16,7 @@ import os
 import pty
 import re
 import select
+import shutil
 import struct
 import sys
 import tempfile
@@ -90,6 +91,14 @@ def check(name, is_ok):
 def main():
     home = tempfile.mkdtemp()
     target = os.path.realpath(tempfile.mkdtemp())
+    try:
+        run_checks(home, target)
+    finally:
+        shutil.rmtree(home, ignore_errors=True)
+        shutil.rmtree(target, ignore_errors=True)
+
+
+def run_checks(home, target):
     output = run_session({}, ["false", "cd " + target], home)
     marks = get_marks(output)
     names = [mark[2:-1].decode() for mark in marks]

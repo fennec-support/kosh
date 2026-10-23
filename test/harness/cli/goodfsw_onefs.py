@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import shutil
 import signal
 import subprocess
 import tempfile
@@ -16,6 +17,7 @@ mounted = subprocess.run(
     stderr=subprocess.DEVNULL,
 ).returncode == 0
 if not mounted:
+    shutil.rmtree(root, ignore_errors=True)
     print("skipped")
     raise SystemExit(0)
 
@@ -50,5 +52,8 @@ try:
     traversed = "traversed" if "mounted-file" in traversed_output else "hidden"
     print(isolated + "/" + traversed)
 finally:
-    subprocess.run(["umount", mountpoint], stdout=subprocess.DEVNULL,
-                   stderr=subprocess.DEVNULL)
+    is_unmounted = subprocess.run(
+        ["umount", mountpoint], stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL).returncode == 0
+    if is_unmounted:
+        shutil.rmtree(root, ignore_errors=True)
