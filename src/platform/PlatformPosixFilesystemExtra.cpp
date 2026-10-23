@@ -10,7 +10,6 @@
 
 #if defined __linux__
 #include <linux/io_uring.h>
-#include <mntent.h>
 #include <sys/mman.h>
 #elif defined __APPLE__
 #include <aio.h>
@@ -731,22 +730,57 @@ append_mounted_filesystems(ArrayList<mounted_filesystem> &result) throws
     -> void
 {
 #if defined __linux__
-  let *mount_file = setmntent("/proc/self/mounts", "r");
+  let table = Path{"/proc/self/mounts"}.read_entire_file();
 
-  if (mount_file == nullptr) mount_file = setmntent("/etc/mtab", "r");
-  if (mount_file == nullptr) return;
-  defer { endmntent(mount_file); };
+  if (!table.has_value()) table = Path{"/etc/mtab"}.read_entire_file();
+  if (!table.has_value()) return;
 
-  mntent entry{};
-  char   buffer[8192];
+  let const text     = table->view();
+  usize     position = 0;
 
-  while (getmntent_r(mount_file, &entry, buffer, sizeof(buffer)) != nullptr) {
-    let filesystem = mounted_filesystem{
-        String{heap_allocator(), entry.mnt_fsname},
-        String{heap_allocator(), entry.mnt_dir   },
-        String{heap_allocator(), entry.mnt_type  },
-        String{heap_allocator(), entry.mnt_opts  }
+  while (position < text.length) {
+    let const line = text.next_line(position);
+    usize     at   = 0;
+
+    /* fields are separated by blanks, and a blank, tab, newline, or
+       backslash inside one is written as a three-digit octal escape. */
+    let const do_next_field = [&]() throws -> String {
+      let field = String{heap_allocator()};
+
+      while (at < line.length && (line[at] == ' ' || line[at] == '\t'))
+        at++;
+
+      while (at < line.length && line[at] != ' ' && line[at] != '\t') {
+        let const is_octal_escape =
+            line[at] == '\\' && at + 3 < line.length && line[at + 1] >= '0' &&
+            line[at + 1] <= '3' && line[at + 2] >= '0' && line[at + 2] <= '7' &&
+            line[at + 3] >= '0' && line[at + 3] <= '7';
+
+        if (is_octal_escape) {
+          field.push(static_cast<char>((line[at + 1] - '0') * 64 +
+                                       (line[at + 2] - '0') * 8 +
+                                       (line[at + 3] - '0')));
+          at += 4;
+          continue;
+        }
+
+        field.push(line[at++]);
+      }
+
+      return field;
     };
+
+    let source_text = do_next_field();
+    let directory   = do_next_field();
+    let type        = do_next_field();
+    let options     = do_next_field();
+
+    if (source_text.is_empty() || source_text[0] == '#' || type.is_empty()) {
+      continue;
+    }
+
+    let filesystem   = mounted_filesystem{steal(source_text), steal(directory),
+                                        steal(type), steal(options)};
     let const source = filesystem.source.view();
 
     if (source.starts_with("UUID="))
