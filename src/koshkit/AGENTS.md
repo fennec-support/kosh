@@ -38,8 +38,10 @@ behavior.
 
 ## Preserve one behavior owner
 
-The canonical native test is `test/kosh/koshkit_<utility>.kosh` unless the
-behavior requires a real executable boundary. Add cases to that owner. Other
+The canonical native test is the `test/harness/kosh/koshkit_<theme>.kosh` owner
+that already covers the utility, such as `koshkit_diff.kosh` or
+`koshkit_compare_posix.kosh`, unless the behavior requires a real executable
+boundary. Add cases to that owner. Other
 utilities may appear as setup commands without becoming behavior owners.
 Literal help output has no golden.
 
