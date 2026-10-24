@@ -151,6 +151,8 @@ export TEST_HOST_PATH_SEPARATOR := :
 export TEST_TEMP_DIRECTORY := .test-work
 ifeq ($(TARGET), Darwin)
 export TEST_TIMEOUT_SECONDS ?= 360
+else ifeq ($(MODE), dbg)
+export TEST_TIMEOUT_SECONDS ?= 360
 else
 export TEST_TIMEOUT_SECONDS ?= 180
 endif
