@@ -218,7 +218,8 @@ t__string_from_struct(const T &value, AllocatorT allocator) throws
 #elif defined KOSH_HARDENED
 #define ASSERT_INDEX(x, ...)                                                   \
   do {                                                                         \
-    if (!(x)) rarely __builtin_trap();                                         \
+    if (!(x)) rarely                                                           \
+      __builtin_trap();                                                        \
   } while (0)
 #else
 #define ASSERT_INDEX(...)
