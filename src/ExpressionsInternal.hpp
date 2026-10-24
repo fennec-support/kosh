@@ -397,6 +397,10 @@ append_word_source_text(EvalContext &cxt,
                         String      &out,
                         const Token &word) throws -> void;
 
+/* the line that ends the heredoc of redir. */
+fn
+heredoc_terminator(const Redirection &redir) throws -> String;
+
 fn
 append_redirections_text(
     EvalContext                   &cxt,

@@ -244,35 +244,12 @@ alias_expanded_source(const SimpleCommand &command,
   bool has_body = false;
 
   for (let const &redirection : command.redirections()) {
-    if (redirection.kind != Redirection::Kind::Heredoc ||
-        redirection.heredoc == nullptr)
-    {
-      continue;
-    }
-
-    let const &heredoc = *redirection.heredoc;
+    if (redirection.kind != Redirection::Kind::Heredoc) continue;
 
     if (!has_body) text += '\n';
     has_body = true;
-    if (heredoc.source_mapping == heredoc_source_mapping::Contiguous) {
-      text.append(cxt.source_text_in_span(
-          SourceLocation{static_cast<u32>(heredoc.source_position), 0,
-                         source_index},
-          heredoc.source_end_position));
-      continue;
-    }
-
-    let delimiter = redirection.heredoc_delimiter->raw_string();
-    let word      = delimiter.view();
-
-    if (redirection.should_strip_heredoc_tabs &&
-        !redirection.has_separated_strip_operator && word.starts_with("-"))
-    {
-      word = word.substring(1);
-    }
-
-    text.append(heredoc.text.view());
-    text.append(lexer::unquote_heredoc_delimiter(word, heap_allocator()));
+    text.append(redirection.heredoc->text.view());
+    text += heredoc_terminator(redirection);
     text += '\n';
   }
 
@@ -605,6 +582,9 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
             cxt.forget_coprocess_descriptor(redir.fd);
             break;
           }
+
+          /* exec n>&n changes nothing, even when n is closed. */
+          if (from_fd == redir.fd) break;
 
           if (!os::replace_descriptor(redir.fd,
                                       os::descriptor_for_shell_fd(from_fd)))

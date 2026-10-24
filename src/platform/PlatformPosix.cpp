@@ -1211,9 +1211,7 @@ replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
 
   note_descriptor_rebound();
 
-  /* duplicating a descriptor onto itself succeeds even when it is closed,
-     as in exec 7>&7. */
-  return was_replaced || static_cast<i32>(target) == shell_fd;
+  return was_replaced;
 }
 
 fn

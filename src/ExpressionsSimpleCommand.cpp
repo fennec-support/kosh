@@ -1830,8 +1830,8 @@ append_redirection_descriptor(String            &out,
   out += String::from(static_cast<i64>(redir.fd), heap_allocator());
 }
 
-static fn
-heredoc_terminator(const Redirection &redir) throws -> String
+fn
+internal::heredoc_terminator(const Redirection &redir) throws -> String
 {
   ASSERT(redir.heredoc_delimiter != nullptr);
   let terminator =
