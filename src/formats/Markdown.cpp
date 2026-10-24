@@ -178,7 +178,7 @@ session_heredoc(StringView line) throws -> Maybe<lexer::pending_heredoc>
       continue;
     }
 
-    if (lexer::is_shift_operator_at(line, position)) {
+    if (lexer::is_shift_or_comment_at(line, position)) {
       position++;
       continue;
     }

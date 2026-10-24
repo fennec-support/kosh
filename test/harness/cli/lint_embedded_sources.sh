@@ -28,6 +28,9 @@ jobs:
           cat <<SHIFT_TERMINATOR
           text
           SHIFT_TERMINATOR
+          echo "((" ; cat <<SHIFT_TERMINATOR
+          quoted
+          SHIFT_TERMINATOR
 EOF
 
 cat > "$root/README.md" <<'EOF'

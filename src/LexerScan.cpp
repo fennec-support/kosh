@@ -140,15 +140,37 @@ heredoc_line_content(StringView line) wontthrow -> StringView
 }
 
 pure fn
-is_shift_operator_at(StringView line, usize position) wontthrow -> bool
+is_shift_or_comment_at(StringView line, usize position) wontthrow -> bool
 {
   usize arithmetic_depth = 0;
+  char  quote            = '\0';
 
-  for (usize k = 0; k + 1 < position && k + 1 < line.length; k++) {
-    if (line[k] == '(' && line[k + 1] == '(') {
+  /* quoted text holds no (( and a comment holds no heredoc. */
+  for (usize k = 0; k < position; k++) {
+    let const byte = line[k];
+
+    if (quote != '\0') {
+      if (byte == quote) {
+        quote = '\0';
+      } else if (quote == '"' && byte == '\\') {
+        k++;
+      }
+
+      continue;
+    }
+
+    if (byte == '\\') {
+      k++;
+    } else if (byte == '\'' || byte == '"') {
+      quote = byte;
+    } else if (byte == '#' && (k == 0 || is_whitespace(line[k - 1]))) {
+      return true;
+    } else if (k + 1 < position && byte == '(' && line[k + 1] == '(') {
       arithmetic_depth++;
       k++;
-    } else if (line[k] == ')' && line[k + 1] == ')' && arithmetic_depth > 0) {
+    } else if (k + 1 < position && byte == ')' && line[k + 1] == ')' &&
+               arithmetic_depth > 0)
+    {
       arithmetic_depth--;
       k++;
     }

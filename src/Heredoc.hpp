@@ -58,9 +58,10 @@ pure fn
 read_heredoc_operator_tail(StringView source, usize after_operator) wontthrow
     -> heredoc_operator_tail;
 
-/* whether the << at position of line lies inside an unclosed (( on the line,
-   where it is a shift, as in $((1<<2)). */
+/* whether the << at position in line opens no heredoc: it lies inside an
+   unclosed (( outside quotes, where it is a shift as in $((1<<2)), or inside
+   a comment. */
 pure fn
-is_shift_operator_at(StringView line, usize position) wontthrow -> bool;
+is_shift_or_comment_at(StringView line, usize position) wontthrow -> bool;
 
 } /* namespace koshka::lexer */

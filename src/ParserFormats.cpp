@@ -1431,7 +1431,7 @@ heredoc_delimiter_at(StringView line, usize &position) throws
       continue;
     }
 
-    if (lexer::is_shift_operator_at(line, position - 2)) continue;
+    if (lexer::is_shift_or_comment_at(line, position - 2)) continue;
 
     let const tail = lexer::read_heredoc_operator_tail(line, position);
 
