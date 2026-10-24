@@ -25,14 +25,23 @@ eval:1:14: details:
 4:1: trace:
      4 |  eval 'echo $((1 + 2'
        |  ^~~~~~~~~~~~~~~~~~~~
+eval:1:6: error: Unterminated variable expansion.
+     1 |  echo ${abc
+       |       ^~~~~
+eval:1:11: details:
+     1 |  echo ${abc
+       |            ^ expected } here.
+5:1: trace:
+     5 |  eval 'echo ${abc'
+       |  ^~~~~~~~~~~~~~~~~
 eval:1:5: error: Unterminated process substitution.
      1 |  cat <(echo hi
        |      ^~~~~~~~~
 eval:1:14: details:
      1 |  cat <(echo hi
        |               ^ expected ) here.
-5:1: trace:
-     5 |  eval 'cat <(echo hi'
+6:1: trace:
+     6 |  eval 'cat <(echo hi'
        |  ^~~~~~~~~~~~~~~~~~~~
 eval:1:6: error: Unterminated $'...' string.
      1 |  echo $'abc\
@@ -40,8 +49,8 @@ eval:1:6: error: Unterminated $'...' string.
 eval:1:12: details:
      1 |  echo $'abc\
        |             ^ expected ' here.
-6:1: trace:
-     6 |  eval "echo \$'abc\\"
+7:1: trace:
+     7 |  eval "echo \$'abc\\"
        |  ^~~~~~~~~~~~~~~~~~~~
 eval:1:1: error: Unterminated string literal.
      1 |  "quote?
@@ -49,8 +58,8 @@ eval:1:1: error: Unterminated string literal.
 eval:1:8: details:
      1 |  "quote?
        |         ^ expected " here.
-7:1: trace:
-     7 |  eval '"quote?'
+8:1: trace:
+     8 |  eval '"quote?'
        |  ^~~~~~~~~~~~~~
 eval:1:11: error: Unterminated string literal.
      1 |  echo;hello"helloworld
@@ -58,6 +67,6 @@ eval:1:11: error: Unterminated string literal.
 eval:1:22: details:
      1 |  echo;hello"helloworld
        |                       ^ expected " here.
-8:1: trace:
-     8 |  eval 'echo;hello"helloworld'
+9:1: trace:
+     9 |  eval 'echo;hello"helloworld'
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~

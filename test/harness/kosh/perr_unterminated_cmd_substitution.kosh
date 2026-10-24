@@ -2,6 +2,7 @@
 eval 'echo $(echo hi'
 eval 'echo `echo hi'
 eval 'echo $((1 + 2'
+eval 'echo ${abc'
 eval 'cat <(echo hi'
 eval "echo \$'abc\\"
 eval '"quote?'

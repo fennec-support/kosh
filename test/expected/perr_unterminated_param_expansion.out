@@ -1,6 +1,0 @@
-3:1: error: Unterminated variable expansion.
-     3 |  
-       |  ^
-2:11: details:
-     2 |  echo ${abc
-       |            ^ expected } here.
