@@ -465,6 +465,24 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
   bool did_redirection_open_fail = false;
 
+  /* the staged body of a heredoc on descriptor 0 waits in redirect_in_fd
+     until the command runs, so a later redirection onto the descriptor
+     number it holds moves it to a free one first. */
+  let const do_move_input_off = [&](i32 target_fd) wontthrow -> void {
+    if (!redirect_in_fd ||
+        !os::descriptor_is_shell_fd(*redirect_in_fd, target_fd))
+    {
+      return;
+    }
+
+    let const moved = os::duplicate_shell_fd(target_fd);
+
+    if (moved == KOSH_INVALID_FD) return;
+
+    os::close_fd(*redirect_in_fd);
+    redirect_in_fd = moved;
+  };
+
   try {
     for (let const &original_redir : m_redirections) {
       let       redir = original_redir;
@@ -516,6 +534,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
           break;
         }
+
+        do_move_input_off(redir.fd);
 
         let const saved = os::save_and_replace_descriptor(redir.fd, body_fd);
 
@@ -608,6 +628,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
         koshka::flush();
 
+        do_move_input_off(redir.fd);
+
         if (from_fd == Redirection::DUP_FD_CLOSE) {
           let const saved = os::save_and_replace_descriptor(
               redir.fd, os::descriptor_for_shell_fd(redir.fd));
@@ -680,6 +702,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
                                     "Bad file descriptor"};
           }
         } else {
+          do_move_input_off(redir.fd);
+
           let const saved = os::save_and_replace_descriptor(redir.fd, file_fd);
 
           dup_saved_descriptors.push(saved);
