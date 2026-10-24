@@ -117,9 +117,9 @@ def display_width(text):
 def run_pty(command, columns, rows, live=False):
     pid, descriptor = pty.fork()
     if pid == 0:
+        fcntl.ioctl(0, termios.TIOCSWINSZ,
+                    struct.pack("HHHH", rows, columns, 0, 0))
         os.execv(BIN, [BIN, "-Q", "-c", command])
-    fcntl.ioctl(descriptor, termios.TIOCSWINSZ,
-                struct.pack("HHHH", rows, columns, 0, 0))
     output = bytearray()
     deadline = time.monotonic() + (1.5 if live else 15.0)
     while time.monotonic() < deadline:
