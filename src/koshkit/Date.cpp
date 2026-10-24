@@ -38,37 +38,26 @@ Date::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let const  now = time(nullptr);
-  let const *broken_down =
-      FLAG_DATE_UTC.is_enabled() ? gmtime(&now) : localtime(&now);
-
-  if (broken_down == nullptr) {
-    report_soft_koshkit_error(ec, cxt, "Cannot convert the current time");
-
-    return 1;
-  }
-
   /* at this point: operands holds no operand or one operand that starts with
-     '+', and broken_down points to the converted time. */
+     '+'. */
   let const format = operands.is_empty() ? StringView{"%a %b %e %H:%M:%S %Z %Y"}
                                          : operands[0].view().substring(1);
-  let const format_text = String{cxt.scratch_allocator(), format};
-  char      buffer[8192];
-  let const length =
-      strftime(buffer, sizeof(buffer), format_text.c_str(), broken_down);
+  let const formatted = os::format_time(
+      format, os::current_unix_seconds(),
+      FLAG_DATE_UTC.is_enabled() ? os::time_zone::Utc : os::time_zone::Local);
 
-  if (length == 0 && !format.is_empty()) {
+  if (!formatted.has_value()) {
     let const location =
         operands.is_empty() ? ec.source_location() : operand_locations[0];
 
-    report_soft_koshkit_error(
-        ec, cxt, location,
-        "Formatted output exceeds the supported line length");
+    report_soft_koshkit_error(ec, cxt, location,
+                              "Cannot format the current time, or the "
+                              "result exceeds 8192 bytes");
 
     return 1;
   }
 
-  ec.print_to_stdout(StringView{buffer, length});
+  ec.print_to_stdout(*formatted);
   ec.print_to_stdout("\n");
 
   return 0;

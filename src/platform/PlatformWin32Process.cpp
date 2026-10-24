@@ -3689,19 +3689,33 @@ realtime_microseconds() wontthrow -> u64
 }
 
 fn
-format_local_time(StringView format, i64 epoch) throws -> String
+format_time(StringView format, i64 epoch, time_zone zone) throws
+    -> Maybe<String>
 {
   const time_t when = static_cast<time_t>(epoch);
   struct tm    broken_down{};
-  if (localtime_s(&broken_down, &when) != 0) return String{heap_allocator()};
+  let const    status = zone == time_zone::Utc ? gmtime_s(&broken_down, &when)
+                                               : localtime_s(&broken_down, &when);
+
+  if (status != 0) return None;
+
   let const format_string = String{heap_allocator(), format};
-  char      buffer[512];
+  char      buffer[8192];
   let const written =
       strftime(buffer, sizeof(buffer), format_string.c_str(), &broken_down);
+
+  if (written == 0 && !format.is_empty()) return None;
 
   return String{
       heap_allocator(), StringView{buffer, written}
   };
+}
+
+fn
+format_local_time(StringView format, i64 epoch) throws -> String
+{
+  return format_time(format, epoch, time_zone::Local)
+      .value_or(String{heap_allocator()});
 }
 
 fn

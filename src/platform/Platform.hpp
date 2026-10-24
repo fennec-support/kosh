@@ -2558,6 +2558,18 @@ current_unix_seconds() wontthrow -> i64
   return static_cast<i64>(realtime_microseconds() / 1000000);
 }
 
+enum class time_zone : u8
+{
+  Local,
+  Utc,
+};
+
+/* formats epoch with strftime. returns None when the conversion fails or a
+   non-empty format produces no bytes within 8192 bytes. */
+fn
+format_time(StringView format, i64 epoch, time_zone zone) throws
+    -> Maybe<String>;
+
 fn
 format_local_time(StringView format, i64 epoch) throws -> String;
 
