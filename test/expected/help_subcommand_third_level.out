@@ -1,7 +1,7 @@
 == first-level subcommands:
 compose
 run
-== help fallback after a nonmatching man subcommand:
+== help lists a subcommand that the man page lacks:
 run
 == second-level sub-subcommands from 'docker compose --help':
 config

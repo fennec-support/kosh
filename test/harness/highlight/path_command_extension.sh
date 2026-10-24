@@ -54,8 +54,11 @@ mkdir "$dir/existing"
     PATH=/nonexistent "$BIN" --debug-highlight-at 'ech>./existing/out'
 ) | grep -E "${tab}(unknown-command|operator|existing-path|invalid-path)$"
 
-"$BIN" --debug-highlight-at './kos' |
-    grep -E "${tab}(existing-path|partial-path)$"
+: > "$dir/existing/kosprobe"
+(
+    cd "$dir/existing"
+    "$BIN" --debug-highlight-at './kos'
+) | grep -E "${tab}(existing-path|partial-path)$"
 "$BIN" --debug-highlight-at '~' | grep -Fx "~${tab}partial-path"
 
 if [ "${OS-}" != Windows_NT ]; then

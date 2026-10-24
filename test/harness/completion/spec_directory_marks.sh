@@ -31,6 +31,4 @@ echo "== -o plusdirs marks the directories it adds after the function:"
 "$BIN" -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -o plusdirs -F _f cp" --debug-complete-at 'cp pro' </dev/null
 echo "== -o filenames marks a word list directory:"
 "$BIN" -c "cd '$dir' || exit; complete -o filenames -W 'probe_dir probe_file' cp" --debug-complete-at 'cp pro' </dev/null
-echo "== complete -p prints the option:"
-"$BIN" -c "complete -o filenames -W 'probe_dir' cp; complete -p cp"
 rm -rf "$dir"

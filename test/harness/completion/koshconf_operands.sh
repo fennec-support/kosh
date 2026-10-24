@@ -17,6 +17,12 @@ echo "== koshconf set editor mode value:"
   </dev/null
 echo "== koshconf set enumeration value:"
 "$BIN" --debug-complete-at 'koshconf set mood ' </dev/null
+echo "== koshconf set completion.menu_style value:"
+"$BIN" --debug-complete-at 'koshconf set completion.menu_style ' \
+  </dev/null
+echo "== koshconf set completion.menu_style prefix:"
+"$BIN" --debug-complete-at 'koshconf set completion.menu_style e' \
+  </dev/null
 echo "== koshconf set boolean value:"
 "$BIN" --debug-complete-at 'koshconf set editor.hints.show_command_synopsis o' </dev/null
 echo "== koshconf flags:"

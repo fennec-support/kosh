@@ -19,6 +19,8 @@ clean:
 	true
 config.status: configure
 	true
+GNUmakefile: Makefile
+	true
 src/main.o: src/main.c
 	true
 MK

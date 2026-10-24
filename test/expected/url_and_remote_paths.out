@@ -2,3 +2,4 @@ https://example.com/a	url
 user@host:/dir/file	url
 missing:part	invalid-path
 root@alpha-box	url
+echo	resolved-command

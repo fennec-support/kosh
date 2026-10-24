@@ -10,8 +10,6 @@ checkout
 clean
 == a stale COMPREPLY does not leak into an appending spec:
 search
-== a repeated value collapses to one candidate:
-search
 == duplicates among distinct values are each collapsed:
 build
 flake

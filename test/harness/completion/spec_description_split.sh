@@ -20,9 +20,7 @@ echo "== trailing spaces are trimmed from a value:"
 echo "== a stale COMPREPLY does not leak into an appending spec:"
 "$BIN" -c "COMPREPLY=(stale_one stale_two); _f(){ COMPREPLY+=(search); }; complete -F _f gn" --debug-complete-at 'gn sea' </dev/null
 # A spec may return the same value many times, the way a wrapped
-# bash-completion helper does when it cannot narrow the current word. The
-# duplicates collapse to one candidate.
-echo "== a repeated value collapses to one candidate:"
-"$BIN" -c "_f(){ COMPREPLY=(search search search search); }; complete -F _f gn" --debug-complete-at 'gn sea' </dev/null
+# bash-completion helper does when it cannot narrow the current word. Repeats
+# collapse to one candidate, adjacent or not.
 echo "== duplicates among distinct values are each collapsed:"
 "$BIN" -c "_f(){ COMPREPLY=(build search profile search flake profile search); }; complete -F _f gn" --debug-complete-at 'gn ' </dev/null

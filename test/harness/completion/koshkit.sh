@@ -9,15 +9,9 @@ echo "== koshkit utilities by prefix:"
 "$BIN" --debug-complete-at 'koshkit m' </dev/null
 echo "== ls flags through koshkit:"
 "$BIN" --debug-complete-at 'koshkit ls -' </dev/null
-echo "== du flags through koshkit:"
-"$BIN" --debug-complete-at 'koshkit du -' </dev/null
-echo "== timeout flags through koshkit:"
-"$BIN" --debug-complete-at 'koshkit timeout -' </dev/null
-echo "== nproc flags through koshkit:"
-"$BIN" --debug-complete-at 'koshkit nproc -' </dev/null
 echo "== every help flag of a listed utility is completed:"
 missing_count=0
-for utility in evil evildisk evilfiles evilfs evilio evillogs eviliso evilnet evilps \
+for utility in cat date du ls nproc timeout evil evildisk evilfiles evilfs evilio evillogs eviliso evilnet evilps \
   evilss goodcore goodfsw goodnode goodstat retry stat sync watch; do
   offered=" $("$BIN" --debug-complete-at "koshkit $utility -" </dev/null |
     sed 's/=$//' | tr '\n' ' ') "
@@ -37,14 +31,12 @@ for utility in evil evildisk evilfiles evilfs evilio evillogs eviliso evilnet ev
   done
 done
 [ "$missing_count" -eq 0 ] && echo "ok: koshkit flags complete"
-echo "== cat flags through koshkit:"
-"$BIN" --debug-complete-at 'koshkit cat --s' </dev/null
 echo "== date format directives through koshkit:"
 "$BIN" --debug-complete-at 'koshkit date +' </dev/null
 echo "== koshkit own flags:"
 "$BIN" --debug-complete-at 'koshkit --' </dev/null
 echo "== bare utility flags under koshconf set interpreter.resolve_koshkit_applets_as_commands on:"
-"$BIN" -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on' --debug-complete-at 'ls -' </dev/null
+"$BIN" -M bash -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on' --debug-complete-at 'ls -' </dev/null
 echo "== bare utility words in the default mood:"
 "$BIN" -c 'PATH=' --debug-complete-at 'whoa' </dev/null
 echo "== bare utility flags in the default mood:"

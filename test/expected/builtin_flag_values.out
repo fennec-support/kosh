@@ -117,12 +117,6 @@ sh
 dash
 == assignment prefix is untouched:
 0
-== koshconf set completion.menu_style value:
-external
-interactive
-plain
-== koshconf set completion.menu_style prefix:
-external
 == kosh --tab-selector value:
 external
 interactive

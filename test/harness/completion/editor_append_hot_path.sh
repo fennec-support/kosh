@@ -199,7 +199,7 @@ send_unhighlighted_input | TERM=xterm-256color PATH="$d/path" \
     BIN="$BIN" run_editor "$d/unhighlighted-typescript" || fail "$LINENO"
 
 strings "$d/unhighlighted-typescript" | grep -q probe-alpha || fail "$LINENO"
-echo 'disabled highlighting defers PATH work until TAB'
+echo 'TAB offers PATH programs with syntax highlighting disabled'
 
 history_index=0
 while [ "$history_index" -lt 32 ]; do
@@ -431,11 +431,3 @@ do
     }
 done
 echo 'quoted replacement and smart-case TAB preserve the completed token'
-
-printf '#!/bin/sh\nprintf "actual-cwd-completion\\n"\n' > "$d/actual-cwd-probe"
-chmod +x "$d/actual-cwd-probe"
-actual_cwd_completion=$(
-    cd "$d" && PWD=invalid "$BIN" --debug-complete-at './actual-cwd-'
-)
-printf '%s\n' "$actual_cwd_completion" | grep -q actual-cwd-probe || fail "$LINENO"
-echo 'clobbered PWD completion uses the actual directory'

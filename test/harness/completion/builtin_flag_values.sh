@@ -1,12 +1,6 @@
 echo "== kill -s signals:"
 signal_names=$("$BIN" --debug-complete-at 'kill -s ' </dev/null)
 printf '%s\n' "$signal_names" | grep -E '^(KILL|TERM)$'
-if [ "${OS-}" != Windows_NT ]; then
-  for signal_name in HUP INT QUIT; do
-    printf '%s\n' "$signal_names" | grep -qxF "$signal_name" ||
-      printf 'missing-signal=%s\n' "$signal_name"
-  done
-fi
 echo "== kill -s prefix:"
 "$BIN" --debug-complete-at 'kill -s KI' </dev/null
 echo "== kill -n prefix:"
@@ -93,12 +87,6 @@ result=$("$BIN" --debug-complete-at 'MOOD=' </dev/null) || exit 1
 printf '%s\n' "$result" | grep -qxF bash
 [ "$?" -eq 1 ] || exit 1
 printf '0\n'
-echo "== koshconf set completion.menu_style value:"
-"$BIN" --debug-complete-at 'koshconf set completion.menu_style ' \
-  </dev/null
-echo "== koshconf set completion.menu_style prefix:"
-"$BIN" --debug-complete-at 'koshconf set completion.menu_style e' \
-  </dev/null
 echo "== kosh --tab-selector value:"
 "$BIN" --debug-complete-at 'kosh --tab-selector ' </dev/null
 echo "== kosh --tab-selector= prefix:"

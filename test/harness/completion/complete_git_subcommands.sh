@@ -1,9 +1,7 @@
-# A bare $MANPATH leaves the macOS CommandLineTools man root out, so the git
-# subcommand index misses the git-<command> pages even though they are
-# installed. The manpath command is now forked through the trusted gate and
-# merged into the section-1 directory list, so git subcommands complete from
-# the real manpages. A hermetic fake man tree under $MANPATH keeps the
-# candidates stable across machines.
+# The git subcommand index reads the git-<command> pages in the section-1
+# directories of $MANPATH, so git subcommands complete from the installed
+# manpages. A hermetic fake man tree under $MANPATH keeps the candidates
+# stable across machines.
 dir=$(mktemp -d)
 mandir="$dir/man/man1"
 mkdir -p "$mandir"

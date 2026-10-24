@@ -18,6 +18,9 @@ if [ "$1" = "compose" ] && [ "$2" = "config" ]; then
   echo "OPTIONS"
   echo "  --services   List the services"
   echo "  --volumes    List the volumes"
+elif [ "$1" = "compose" ] && [ "$2" = "bogus" ]; then
+  echo "OPTIONS"
+  echo "  --forked   Printed only when the unknown word forks"
 elif [ "$1" = "compose" ]; then
   echo "Commands:"
   echo "  up        Start the services"
@@ -35,19 +38,9 @@ cat > "$dir/man/man1/docker.1" <<'EOF'
 .SH SYNOPSIS
 \fBdocker\fR [OPTIONS] COMMAND
 EOF
-cat > "$dir/man/man1/docker-compose.1" <<'EOF'
-.TH DOCKER-COMPOSE 1
-.SH SYNOPSIS
-\fBdocker\fR \fBcompose\fR
-EOF
-cat > "$dir/man/man1/docker-run.1" <<'EOF'
-.TH DOCKER-RUN 1
-.SH SYNOPSIS
-\fBdocker\fR \fBrun\fR
-EOF
 echo "== first-level subcommands:"
 MANPATH="$dir/man" PATH="$dir${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" --debug-complete-at 'docker ' </dev/null
-echo "== help fallback after a nonmatching man subcommand:"
+echo "== help lists a subcommand that the man page lacks:"
 MANPATH="$dir/man" PATH="$dir${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" --debug-complete-at 'docker r' </dev/null
 echo "== second-level sub-subcommands from 'docker compose --help':"
 MANPATH="$dir/man" PATH="$dir${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" --debug-complete-at 'docker compose ' </dev/null

@@ -2,6 +2,8 @@
 ./run
 == command position offers a matching directory:
 ./sub/
+== a clobbered PWD completes in the actual directory:
+./run
 == argument position offers a matching data file:
 ./data.txt
 == PATH command completion offers a matching executable:

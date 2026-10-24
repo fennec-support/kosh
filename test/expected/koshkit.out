@@ -31,36 +31,8 @@ mv
 -p
 -r
 -t
-== du flags through koshkit:
---help
---one-file-system
---top-largest
---tree
--T
--h
--s
--x
-== timeout flags through koshkit:
---help
---kill-after
---preserve-status
---signal
--k
--p
--s
-== nproc flags through koshkit:
---all
---help
---ignore
 == every help flag of a listed utility is completed:
 ok: koshkit flags complete
-== cat flags through koshkit:
---show-all
---show-ends
---show-nonprinting
---show-tabs
---squeeze-blank
---syntax-highlighting
 == date format directives through koshkit:
 +%%
 +%A

@@ -12,6 +12,7 @@ a=(1 2 => [syntax error] This array assignment has no closing ')', close the lis
 { echo hi => [syntax error] This brace group has no closing '}', expected '}' here to close it
 f() { => [syntax error] This brace group has no closing '}', expected '}' here to close it
 [[ a == b => [syntax error] This '[[' has no closing ']]', expected ']]' here
+if => [syntax error] This 'if' has no condition, expected a command for the condition here
 if true => [syntax error] This 'if' has no 'then', expected 'then' here, after the condition
 if (true) => [syntax error] This 'if' has no 'then', expected 'then' here, after the condition
 if true; then => [syntax error] This 'if' has no closing 'fi', expected 'fi' here to close it
@@ -38,6 +39,7 @@ echo ) => [syntax error] ')' has no matching '(', a '(' above may be missing, or
 echo ;; => [syntax error] ';;' is only valid between the arms of a 'case'
 fi  => [syntax error] 'fi' has no matching 'if', an 'if' above may be missing, or another 'fi' may have closed it early
 echo; done  => [syntax error] 'done' has no matching 'while', 'until', or 'for', a loop above may be missing, or another 'done' may have closed it early
+echo; esac => [syntax error] 'esac' has no matching 'case', a 'case' above may be missing, or another 'esac' may have closed it early
 case x  => [syntax error] Expected an unquoted 'in' after the case word, write `case $var in pattern) command ;; esac`
 function  => [syntax error] Expected an identifier after the 'function' keyword, as in `function greet { echo hi; }`
 for 1x in a; do => [syntax error] The for loop variable '1x' is not a valid identifier, write a bare identifier, as in `for i in a b c`, without '$' or quotes
@@ -51,13 +53,6 @@ f() { } => [syntax error] The brace group between '{' and '}' is empty, put a co
 while true; do done  => [syntax error] The loop body between 'do' and 'done' is empty, put a command in the body, such as `:` to do nothing
 if true; then fi => [syntax error] The body after 'then' is empty, put a command after 'then', such as `:` to do nothing
 if :; then :; else fi => [syntax error] The body after 'else' is empty, put a command after 'else', such as `:` to do nothing
-== caret at the end of the erroneous word
-fi => [syntax error] 'fi' has no matching 'if', an 'if' above may be missing, or another 'fi' may have closed it early
-echo; esac => [syntax error] 'esac' has no matching 'case', a 'case' above may be missing, or another 'esac' may have closed it early
-case x => [syntax error] Expected an unquoted 'in' after the case word, write `case $var in pattern) command ;; esac`
-function => [syntax error] Expected an identifier after the 'function' keyword, as in `function greet { echo hi; }`
-if => [syntax error] This 'if' has no condition, expected a command for the condition here
-while :; do done => [syntax error] The loop body between 'do' and 'done' is empty, put a command in the body, such as `:` to do nothing
 == continued on enter
 echo \ => [synopsis] echo
 echo "abc\ => [synopsis] echo
@@ -65,7 +60,8 @@ echo "abc\ => [synopsis] echo
 echo "abc" "$(ls)" "${HOME}" => [synopsis] echo
 echo hi # "abc => [synopsis] echo
 echo \"abc => [synopsis] echo
-read x <<EOF => [error] A `read` without `-r` treats a backslash in the input as an escape. (SC2162)
+read -r x <<EOF => [synopsis] read
+  -r
 if true; then echo; fi => 
 f() { :; } => 
 == analysis findings of a paused line

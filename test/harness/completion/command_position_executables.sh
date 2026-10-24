@@ -23,6 +23,8 @@ echo "== command position offers a matching executable:"
 "$BIN" --debug-complete-at './r' </dev/null
 echo "== command position offers a matching directory:"
 "$BIN" --debug-complete-at './s' </dev/null
+echo "== a clobbered PWD completes in the actual directory:"
+PWD=invalid "$BIN" --debug-complete-at './r' </dev/null
 echo "== argument position offers a matching data file:"
 "$BIN" --debug-complete-at 'cat ./d' </dev/null
 echo "== PATH command completion offers a matching executable:"
@@ -74,6 +76,17 @@ if [ "${OS-}" = Windows_NT ]; then
     case "$glob_result" in
         *globcase.txt*) ;;
         *) exit 1 ;;
+    esac
+else
+    : > "$dir/globcase.txt"
+    glob_result=$("$BIN" --debug-complete-at 'cat globc*.txt' </dev/null)
+    case "$glob_result" in
+        *globcase.txt*) ;;
+        *) exit 1 ;;
+    esac
+    glob_result=$("$BIN" --debug-complete-at 'cat GLOBC*.TXT' </dev/null)
+    case "$glob_result" in
+        *globcase.txt*) exit 1 ;;
     esac
 fi
 echo "== native filesystem case matching completes globs"

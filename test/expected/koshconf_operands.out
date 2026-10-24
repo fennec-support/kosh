@@ -36,6 +36,12 @@ bash
 bash-posix
 kosh
 sh
+== koshconf set completion.menu_style value:
+external
+interactive
+plain
+== koshconf set completion.menu_style prefix:
+external
 == koshconf set boolean value:
 off
 on
