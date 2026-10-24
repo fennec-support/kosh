@@ -30,21 +30,21 @@ echo "== direct no-shebang exec honors an empty environment:"
 unset KOSH_FLAGS
 input=$(mktemp)
 trap 'rm -f "$input"' EXIT
-printf 'exec . <<EOF\nignored\nEOF\necho input-survived\nkill -PIPE $$\necho signal-survived\nexit\n' > "$input"
+printf 'exec . <<EOF\nignored\nEOF\necho input-$((20+22))\nkill -PIPE $$\necho signal-$((1+1))\nexit\n' > "$input"
 
 if script -qec true /dev/null >/dev/null 2>&1; then
     output=$(script -qec "$BIN --no-init-files" /dev/null < "$input" 2>/dev/null)
 elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
     output=$(script -q /dev/null "$BIN" --no-init-files < "$input" 2>/dev/null)
 else
-    output='input-survived signal-survived'
+    output=
 fi
 
 case "$output" in
-    *input-survived*) echo 'input survived' ;;
+    *input-42*) echo 'input survived' ;;
     *) echo 'input was lost' ;;
 esac
 case "$output" in
-    *signal-survived*) echo 'signal survived' ;;
+    *signal-2*) echo 'signal survived' ;;
     *) echo 'signal terminated the shell' ;;
 esac

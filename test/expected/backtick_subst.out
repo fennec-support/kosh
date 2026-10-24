@@ -1,76 +1,3 @@
-2:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
-     2 |  echo `echo hi`
-       |  ^~~~
-note: Run the command on its own.
-2:6: warning: Legacy backtick command substitution is hard to nest and to quote. (SC2006)
-     2 |  echo `echo hi`
-       |       ^~~~~~~~~
-note: Use `$(...)` for command substitution.
-2:6: warning: An unquoted command substitution splits its output into words and expands globs. (SC2046)
-     2 |  echo `echo hi`
-       |       ^~~~~~~~~
-note: Quote it to keep one argument.
-2:6: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
-     2 |  echo `echo hi`
-       |       ^~~~~~~~~
-note: Use the text directly without the command substitution.
-4:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
-     4 |  echo "`echo q`"
-       |  ^~~~
-note: Run the command on its own.
-4:6: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
-     4 |  echo "`echo q`"
-       |       ^~~~~~~~~~
-note: Use the text directly without the command substitution.
-5:6: warning: This `case` has no default `*)` branch. (SC2249)
-     5 |  case `echo x` in x) echo matched;; esac
-       |       ^~~~~~~~
-note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-6:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
-     6 |  echo `(echo y) 2>/dev/null`
-       |  ^~~~
-note: Run the command on its own.
-6:6: warning: Legacy backtick command substitution is hard to nest and to quote. (SC2006)
-     6 |  echo `(echo y) 2>/dev/null`
-       |       ^~~~~~~~~~~~~~~~~~~~~~
-note: Use `$(...)` for command substitution.
-6:6: warning: An unquoted command substitution splits its output into words and expands globs. (SC2046)
-     6 |  echo `(echo y) 2>/dev/null`
-       |       ^~~~~~~~~~~~~~~~~~~~~~
-note: Quote it to keep one argument.
-7:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
-     7 |  echo `echo "a b"`
-       |  ^~~~
-note: Run the command on its own.
-7:6: warning: Legacy backtick command substitution is hard to nest and to quote. (SC2006)
-     7 |  echo `echo "a b"`
-       |       ^~~~~~~~~~~~
-note: Use `$(...)` for command substitution.
-7:6: warning: An unquoted command substitution splits its output into words and expands globs. (SC2046)
-     7 |  echo `echo "a b"`
-       |       ^~~~~~~~~~~~
-note: Quote it to keep one argument.
-7:6: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
-     7 |  echo `echo "a b"`
-       |       ^~~~~~~~~~~~
-note: Use the text directly without the command substitution.
-9:10: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
-     9 |  foo=bar; echo `echo \$foo`
-       |           ^~~~
-note: Run the command on its own.
-9:15: warning: Legacy backtick command substitution is hard to nest and to quote. (SC2006)
-     9 |  foo=bar; echo `echo \$foo`
-       |                ^~~~~~~~~~~~
-note: Use `$(...)` for command substitution.
-9:15: warning: An unquoted command substitution splits its output into words and expands globs. (SC2046)
-     9 |  foo=bar; echo `echo \$foo`
-       |                ^~~~~~~~~~~~
-note: Quote it to keep one argument.
-9:15: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
-     9 |  foo=bar; echo `echo \$foo`
-       |                ^~~~~~~~~~~~
-note: Use the text directly without the command substitution.
-Encountered 18 warnings.
 hi
 abc
 q
@@ -79,3 +6,4 @@ y
 a b
 `echo no`
 bar
+nested

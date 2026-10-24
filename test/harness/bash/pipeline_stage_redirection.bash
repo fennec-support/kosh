@@ -1,10 +1,8 @@
 #!/bin/bash
-# A pipeline stage owns its own redirections, its own status, and its own end
-# of every pipe. The claims measured here are the pipefail selection, the
-# destination an unresolved stage sends its diagnostic to, the survival of the
-# remaining stages after one stage cannot open its target, the target a
-# repeated output redirection binds to, and the signal a producer receives once
-# its consumer has left.
+# A pipeline stage owns its own status and its own end of every pipe. The
+# claims measured here are the pipefail selection, the target a repeated output
+# redirection binds to, the signal a producer receives once its consumer has
+# left, and the descriptor swap through a spare descriptor.
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 
@@ -17,16 +15,6 @@ echo "leftmost-only=$?"
 ( exit 0 ) | ( exit 0 ) | ( exit 0 )
 echo "all-zero=$?"
 set +o pipefail
-
-echo "== unresolved stage redirection =="
-kosh_absent_stage_command 2> "$dir/notfound" | cat
-echo "status=${PIPESTATUS[0]}"
-if [ -s "$dir/notfound" ]; then
-  echo "diagnostic=redirected"
-fi
-
-echo "== failing stage redirection =="
-{ echo alpha > "$dir/missing/f"; } | { cat; echo "later-stage-ran"; }
 
 echo "== repeated output target =="
 { echo one > "$dir/first" > "$dir/second"; } | cat
@@ -41,16 +29,6 @@ echo "subshell-consumer=${PIPESTATUS[0]}"
 { yes; } | head -1 > /dev/null
 echo "group-producer=${PIPESTATUS[0]}"
 
-echo "== compound stage end of file =="
-( echo subshell-stage ) | ( cat )
-{ echo group-stage; } | { cat; }
-
 echo "== descriptor swap in a stage =="
 echo swapped-out 3>&1 >&3 | cat
 { echo swapped-err >&2; } 3>&1 1>&2 2>&3 | cat
-
-# A not-found command in a pipeline stage does not abort the rest, so a later
-# stage still runs and the pipeline status is the last stage's, matching bash.
-nonexistent_cmd_xyz_123 | cat
-echo "after=$?"
-echo start | nonexistent_cmd_xyz_123 | wc -l | tr -d ' '

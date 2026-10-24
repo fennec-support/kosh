@@ -1,4 +1,5 @@
 #!/bin/env kosh
+# shellcheck disable=SC2005,SC2006,SC2046,SC2116,SC2249
 echo `echo hi`
 x=`echo abc`; echo "$x"
 echo "`echo q`"
@@ -7,3 +8,4 @@ echo `(echo y) 2>/dev/null`
 echo `echo "a b"`
 echo '`echo no`'
 foo=bar; echo `echo \$foo`
+echo `echo \`echo nested\``

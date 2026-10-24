@@ -51,7 +51,7 @@ v=0
 show here-string-group
 
 v=0
-cat > "${ v=1; echo out; }"
+cat > "${ v=1; echo out; }" </dev/null
 show output-word-program
 
 v=0
@@ -154,7 +154,7 @@ read -r line <<< "${values[i++]}"
 show "subscript-builtin i=$i"
 
 unset x
-cat > "${x:=/dev/null}"
+cat > "${x:=/dev/null}" </dev/null
 show "output-assign-program x=${x-unset}"
 
 unset x

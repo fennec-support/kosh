@@ -1,7 +1,7 @@
 # A prefix assignment before a special builtin persists after the command in the
 # default mood, matching POSIX, while the same prefix before a regular command
 # stays temporary. A redirection that cannot open its target fails the command
-# with status 2 and the located error is printed, and the shell continues.
+# with status 2, and the shell continues.
 x=before
 x=after :
 echo "special=[$x]"

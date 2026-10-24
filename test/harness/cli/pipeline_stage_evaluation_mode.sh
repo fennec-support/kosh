@@ -1,8 +1,8 @@
 unset KOSH_FLAGS
 # A compound pipeline stage carries its evaluation mode into the process that
 # runs it. The mode decides whether the stage publishes one command boundary or
-# the boundary of every command inside it. POSIX forks the stage and Windows
-# relaunches a bootstrap child, and both transports produce the same trace.
+# the boundary of every command inside it. The POSIX fork of the stage keeps
+# the mode, and the test does not run on Windows.
 echo "== a compound stage publishes one boundary without functrace:"
 "$BIN" --no-traces --mood bash -c 'trap "echo debug=[\$BASH_COMMAND]" DEBUG
 { echo one; echo two; } | "$TEST_SHELL" -c cat

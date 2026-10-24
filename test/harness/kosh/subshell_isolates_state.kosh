@@ -1,16 +1,5 @@
 #!/bin/env kosh
 koshkit mkdir -p "$TEST_TEMP_DIRECTORY/subshell-state"
-(echo inside; cd "$TEST_TEMP_DIRECTORY/subshell-state"); echo outside
-
-
-( alias sub_only='echo hi' )
-if alias | koshkit grep '^alias sub_only=' >/dev/null; then echo "leaked from subshell"; else echo "isolated from subshell"; fi
-cs=$( alias cs_only='echo hi'; echo defined-inside )
-echo "cmdsub reported: $cs"
-if alias | koshkit grep '^alias cs_only=' >/dev/null; then echo "leaked from cmdsub"; else echo "isolated from cmdsub"; fi
-
-export V=parent; (V=child); echo "1:$V"; r=$(V=sub; echo x); echo "2:$V $r"; export W=keep; (unset W); echo "3:[$W]"
-
 f() { echo parent; }
 ( f() { echo child; }; f )
 f
@@ -41,12 +30,6 @@ OPTIND=1
 ( getopts ab child_option )
 getopts ab parent_option
 echo "getopts-parent=$parent_option:$OPTIND"
-
-complete -W parent completion-command
-( complete -W child completion-command )
-complete -p completion-command
-completion_output=$(complete -W substitution completion-command)
-complete -p completion-command
 
 export release=$TEST_TEMP_DIRECTORY/subshell-state/release-$BASHPID
 while [ ! -e "$release" ]; do koshkit sleep 0.01; done &

@@ -1,5 +1,8 @@
+descriptor 5 file:
 dyn-builtin
 lit-builtin
 dyn-extern
-separator
-to-stderr
+to-stderr-before
+error file after a dup written first:
+error file after a dup written last:
+to-stderr-after

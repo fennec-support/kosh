@@ -3,12 +3,13 @@
 # A process substitution in a [[ ]] operand, a case word or pattern, or the
 # operand word of a parameter expansion in an assignment value closes its
 # descriptor and reaps its child when that command finishes, at top level and
-# in while and until loops, checked against bash through /proc on Linux. A
-# process substitution in a pipeline stage is released once the pipeline is
-# reaped, so its output comes first and waiting for it returns, under a
-# watchdog that ends a shell that hangs. Each report runs a short sleep first,
-# because bash reaps a finished child only when it next waits, and under load
-# it could still hold one at the count.
+# in while and until loops, checked against bash through /proc on Linux. One
+# that an exec redirection held leaves no child behind once the descriptor
+# closes. A process substitution in a pipeline stage is released once the
+# pipeline is reaped, so its output comes first and waiting for it returns,
+# under a watchdog that ends a shell that hangs. Each report runs a short sleep
+# first, because bash reaps a finished child only when it next waits, and under
+# load it could still hold one at the count.
 count_fds() {
   local entries=(/proc/$$/fd/*)
   fd_count=${#entries[@]}
@@ -73,6 +74,11 @@ until ((i++ >= 20)); do
   a[1]=${u:-<(echo d)}
 done
 report until-loop
+
+exec 3< <(echo held)
+cat <&3
+exec 3<&-
+report exec-held
 
 [[ $(cat <(echo readable)) == readable ]] && echo "conditional-readable"
 case $(cat <(echo word)) in word) echo "case-readable" ;; esac

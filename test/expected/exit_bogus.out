@@ -1,12 +1,4 @@
-2:6: warning: The code 'hello world' is not a number from 0 to 255, and `exit` either rejects it or wraps it modulo 256. (SC2242)
-     2 |  exit "hello world" "hello world"
+3:6: error: Builtin `exit`: 'hello world' is not a numeric exit status.
+     3 |  exit "hello world"
        |       ^~~~~~~~~~~~~
-note: Use a number from 0 to 255.
-2:20: warning: This `exit` has extra operands, and the builtin takes one number from 0 to 255. (SC2241)
-     2 |  exit "hello world" "hello world"
-       |                     ^~~~~~~~~~~~~
-note: Write the other data to standard output.
-Encountered 2 warnings.
-2:6: error: Builtin `exit`: 'hello world' is not a numeric exit status.
-     2 |  exit "hello world" "hello world"
-       |       ^~~~~~~~~~~~~
+after-bad-status

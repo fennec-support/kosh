@@ -3,3 +3,11 @@ to-err
 both
 both
 more
+read=one two three
+straight through
+summed=12
+csh both streams:
+to-out
+to-err
+after
+fd3

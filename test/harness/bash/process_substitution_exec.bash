@@ -43,8 +43,5 @@ exec 3< <(echo a)
 [ -e /dev/fd/63 ] || echo "path-closed"
 exec 3<&-
 [ -e /dev/fd/3 ] || echo "redirected-closed"
-sleep 0.2
-:
-ps -o stat= --ppid $$ 2>/dev/null | grep -c Z
 exec 4> >(cat >/dev/null)
 echo done

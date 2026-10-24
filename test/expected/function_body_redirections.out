@@ -32,3 +32,17 @@ keyword ()
         :;
     done
 } > /dev/null
+-- plain
+hi
+-- truncated
+-- paired
+-- heredoc
+data
+-- herestring
+here
+-- keyword
+-- filed
+file:
+filed
+-- stderr_closed
+closed-status=2

@@ -1,2 +1,4 @@
 #!/bin/env kosh
-exit "hello world" "hello world"
+# shellcheck disable=SC2242
+exit "hello world"
+echo after-bad-status

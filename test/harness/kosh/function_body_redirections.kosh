@@ -15,3 +15,26 @@ declare -f closed
 declare -f heredoc
 declare -f herestring
 declare -f keyword
+koshkit mkdir -p "$TEST_TEMP_DIRECTORY"
+body_file=$TEST_TEMP_DIRECTORY/function-body-redirections
+filed() { echo filed; } >"$body_file"
+stderr_closed() { echo hidden >&2; echo "closed-status=$?"; } 2>&-
+echo "-- plain"
+plain
+echo "-- truncated"
+truncated
+echo "-- paired"
+paired
+echo "-- heredoc"
+heredoc
+echo "-- herestring"
+herestring
+echo "-- keyword"
+keyword
+echo "-- filed"
+filed
+echo "file:"
+cat "$body_file"
+echo "-- stderr_closed"
+stderr_closed
+koshkit unlink "$body_file"

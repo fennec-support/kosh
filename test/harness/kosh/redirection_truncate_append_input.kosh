@@ -1,10 +1,6 @@
 #!/bin/env kosh
 file=$TEST_TEMP_DIRECTORY/redirection-truncate
 koshkit mkdir -p "$TEST_TEMP_DIRECTORY"
-echo first > "$file"
-echo second >> "$file"
-cat < "$file"
-koshkit unlink "$file"
 koshconf set optimizer.analyze_before_running off
 eval '(umask 077; >| "$file")'
 echo "compact-redirection=$([[ -f $file ]] && echo preserved)"

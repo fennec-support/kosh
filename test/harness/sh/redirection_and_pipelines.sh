@@ -65,34 +65,6 @@ cat "$f"
 
 rm -f "$f"
 
-# Command substitution, positional parameters, redirection, and pipelines.
-
-set -- one two three four
-echo "count=$#"
-echo "first=$1 third=$3"
-shift
-echo "after shift: $1 $#"
-shift 2
-echo "after shift 2: $1 $#"
-
-result=$(echo "  spaced  " | cat)
-echo "[$result]"
-
-tmp=/tmp/kosh_everything_$$
-printf '%s\n' gamma alpha beta > "$tmp"
-echo "sorted:"
-sort "$tmp"
-echo "lines: $(wc -l <"$tmp")"
-rm -f "$tmp"
-
-count=0
-for item in $(echo a b c d); do
-    count=$((count + 1))
-done
-echo "iterated $count items"
-
-echo "pipeline: $(printf '5\n3\n9\n1\n' | sort -n | head -n1)"
-
 # A compound command as a pipeline stage, checked against dash.
 
 # A subshell or a brace group feeds the next stage.

@@ -142,7 +142,7 @@ report=/tmp/kosh_bashdiff_unresolved_$$
 { echo x | nosuchcmd_zzqq 2>/dev/null; } 2>"$report"
 echo "hidden_status=$? hidden_leak=$(( $(wc -c < "$report") > 0 ))"
 echo x | nosuchcmd_zzqq 2>"$report"
-echo "captured_status=$? captured=$(( $(wc -c < "$report") > 0 ))"
+echo "captured_status=$? captured_ps=${PIPESTATUS[1]} captured=$(( $(wc -c < "$report") > 0 ))"
 echo x | nosuchcmd_zzqq >"$report" 2>&1
 echo "merged_status=$? merged=$(( $(wc -c < "$report") > 0 ))"
 : > "$report"
@@ -153,6 +153,10 @@ echo "both_status=$? both=$(( $(wc -c < "$report") > 0 ))"
 echo "first_hidden_status=$? first_hidden_leak=$(( $(wc -c < "$report") > 0 ))"
 nosuchcmd_zzqq 2>"$report" | cat
 echo "first_captured_status=$? first_captured=$(( $(wc -c < "$report") > 0 ))"
+# A stage that does not resolve between two others leaves them running, and the
+# pipeline takes the status of its last stage.
+echo start | nosuchcmd_zzqq 2>/dev/null | wc -l | tr -d ' '
+echo "middle_ps=${PIPESTATUS[1]} ${PIPESTATUS[2]}"
 # A stage that merges its error into its output carries the diagnostic onto the
 # pipe, and the last stage of such a pipeline carries it onto the shell's own
 # standard output. The message text differs between the shells, the checks
@@ -213,6 +217,8 @@ ordered=/tmp/kosh_bashdiff_ordered_$$
 ordered_out=/tmp/kosh_bashdiff_ordered_out_$$
 ( echo x | /bin/sh -c 'echo E >&2; echo O' 2>&1 >"$ordered" ) >"$ordered_out"
 echo "ordered_file=[$(cat "$ordered")] ordered_inherited=[$(cat "$ordered_out")]"
+( /bin/sh -c 'echo E >&2; echo O' 2>&1 >"$ordered" ) >"$ordered_out"
+echo "plain_file=[$(cat "$ordered")] plain_inherited=[$(cat "$ordered_out")]"
 ( echo x | /bin/sh -c 'echo E >&2; echo O' >"$ordered" 2>&1 ) >"$ordered_out"
 echo "merged_file=[$(sort "$ordered" | tr '\n' ' ')] merged_inherited=[$(cat "$ordered_out")]"
 ( /bin/sh -c 'echo E >&2; echo O' 1>&2 2>"$ordered" ) 2>"$ordered_out"
