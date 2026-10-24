@@ -78,11 +78,6 @@ note: Use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format.
      1 |  koshkit tr abc
        |             ^~~
 note: Supply SET1 and SET2, or use `-d` with one set.
-=== find bad -type ===
--c:1:22: error: Koshkit `find`: -type expects one of f, d, or l.
-     1 |  koshkit find . -type x
-       |                       ^
-note: Pass `f`, `d`, or `l` after `-type`.
 === readlink failing operand locations ===
 -c:1:18: error: Koshkit `readlink`: 'first': No such file or directory.
      1 |  koshkit readlink first second
@@ -234,10 +229,15 @@ note: Use 1, 2, 4, 8, C, S, I, or L.
      1 |  koshkit od -t x1 -t invalid
        |                      ^~~~~~~
 note: Use c, d, o, u, or x with an optional width of 1, 2, 4, 8, C, S, I, or L.
-=== pr page number location ===
+=== pr invalid plus operand is a file ===
 -c:1:1: error: Koshkit `pr`: Cannot read '+0': No such file or directory.
      1 |  koshkit pr +0
        |  ^~~~~~~~~~~~~
+=== pr page range location ===
+-c:1:12: error: Koshkit `pr`: Invalid page range '0'.
+     1 |  koshkit pr --pages=0
+       |             ^~~~~~~~~
+note: Use a positive first page, optionally followed by a colon and a last page that is not smaller.
 === pr column count location ===
 -c:1:12: error: Koshkit `pr`: Invalid column count '-2x'.
      1 |  koshkit pr -2x
@@ -258,7 +258,6 @@ note: Use a positive decimal integer within the platform size limit.
      1 |  koshkit pr -o invalid
        |                ^~~~~~~
 note: Use a nonnegative decimal integer within the platform size limit.
-=== pr header capacity location ===
 === pr output capacity location ===
 -c:1:18: error: Koshkit `pr`: Invalid page length '0'.
      1 |  koshkit pr -t -l 0
@@ -367,10 +366,6 @@ note: Use increasing positive columns separated by commas or blanks, and optiona
 -c:1:12: error: Koshkit `id`: Unknown user 'KOSH_MISSING_USER'.
      1 |  koshkit id KOSH_MISSING_USER
        |             ^~~~~~~~~~~~~~~~~
-=== stty setting location ===
--c:1:1: error: Koshkit `stty`: Standard input is not a terminal.
-     1 |  koshkit stty KOSH_MISSING_SETTING
-       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 === stty conflicting flag location ===
 -c:1:17: error: Koshkit `stty`: -a and -g cannot be used together.
      1 |  koshkit stty -a -g
@@ -388,25 +383,24 @@ note: Use increasing positive columns separated by commas or blanks, and optiona
      1 |  koshkit evil extra
        |               ^~~~~
 note: This utility takes no operand.
-=== evil color value location ===
--c:1:17: error: koshkit: invalid color mode 'invalid'.
-     1 |  koshkit --color invalid evil
-       |                  ^~~~~~~
 === evilfs operand location ===
 -c:1:16: error: Koshkit `evilfs`: Unexpected operand.
      1 |  koshkit evilfs extra
        |                 ^~~~~
 note: This utility takes no operand.
+status=1
 === evillogs operand location ===
 -c:1:18: error: Koshkit `evillogs`: Unexpected operand.
      1 |  koshkit evillogs extra
        |                   ^~~~~
 note: This utility takes no operand.
+status=1
 === evilnet operand location ===
 -c:1:17: error: Koshkit `evilnet`: Unexpected operand.
      1 |  koshkit evilnet extra
        |                  ^~~~~
 note: This utility takes no operand.
+status=1
 === evilss operand location ===
 -c:1:16: error: Koshkit `evilss`: Unexpected operand.
      1 |  koshkit evilss extra
@@ -422,6 +416,7 @@ note: The limit must be a positive integer.
      1 |  koshkit evilps 1 2
        |                   ^
 note: Specify at most one process id.
+status=1
 === evilps sort value location ===
 -c:1:23: error: Koshkit `evilps`: Invalid sort key.
      1 |  koshkit evilps --sort invalid
@@ -495,10 +490,6 @@ note: The count must be from 1 through 100000.
      1 |  koshkit evilio --pid 0
        |                       ^
 note: The process id must be a positive integer.
-=== evilio color value location ===
--c:1:17: error: koshkit: invalid color mode 'invalid'.
-     1 |  koshkit --color invalid evilio
-       |                  ^~~~~~~
 === evilio report mode location ===
 -c:1:22: error: Koshkit `evilio`: Conflicting report modes.
      1 |  koshkit evilio --all --cumulative
@@ -609,21 +600,25 @@ status=0
      1 |  koshkit mknod --block --major not-a-major --minor 2 node
        |                                ^~~~~~~~~~~
 note: Use an unsigned decimal integer.
+status=1
 === mknod minor value location ===
 -c:1:24: error: Koshkit `mknod`: Invalid minor device number 'not-a-minor'.
      1 |  koshkit mknod node b 1 not-a-minor
        |                         ^~~~~~~~~~~
 note: Use an unsigned decimal integer.
+status=1
 === mknod unused operand location ===
 -c:1:48: error: Koshkit `mknod`: Too many operands.
      1 |  koshkit mknod --major 1 --minor 2 --block node extra
        |                                                 ^~~~~
 note: Provide one name and one node specification.
+status=1
 === mknod major range location ===
 -c:1:35: error: Koshkit `mknod`: Major device number '4096' is out of range.
      1 |  koshkit mknod --character --major 4096 --minor 2 node
        |                                    ^~~~
 note: Use a major device number that fits 12 bits.
+status=1
 === mknod large major range location ===
 -c:1:35: error: Koshkit `mknod`: Major device number '4294967296' is out of range.
      1 |  koshkit mknod --character --major 4294967296 --minor 2 node
@@ -663,10 +658,6 @@ note: Use an unsigned decimal count.
      1 |  koshkit nproc extra
        |                ^~~~~
 note: Only flags are accepted, without operands.
-=== evildisk color value location ===
--c:1:17: error: koshkit: invalid color mode 'invalid'.
-     1 |  koshkit --color invalid evildisk
-       |                  ^~~~~~~
 === evildisk path location ===
 -c:1:18: error: Koshkit `evildisk`: Cannot read 'KOSH_MISSING_FILESYSTEM': No such file or directory.
      1 |  koshkit evildisk KOSH_MISSING_FILESYSTEM
@@ -685,10 +676,6 @@ note: Provide a user name or numeric uid.
 -c:1:17: error: Koshkit `goodfsw`: Cannot watch 'KOSH_MISSING_PATH': No such file or directory.
      1 |  koshkit goodfsw KOSH_MISSING_PATH
        |                  ^~~~~~~~~~~~~~~~~
-=== goodstat color value location ===
--c:1:17: error: koshkit: invalid color mode 'invalid'.
-     1 |  koshkit --color invalid goodstat LICENSE
-       |                  ^~~~~~~
 === goodstat path location ===
 -c:1:18: error: Koshkit `goodstat`: Cannot stat 'KOSH_MISSING_PATH': No such file or directory.
      1 |  koshkit goodstat KOSH_MISSING_PATH
@@ -698,6 +685,7 @@ note: Provide a user name or numeric uid.
      1 |  koshkit sync -d -f LICENSE
        |                  ^~
 note: Select one of the two modes.
+status=1
 === sync later data flag location ===
 -c:1:17: error: Koshkit `sync`: Cannot combine -d with -f.
      1 |  koshkit sync -f -d LICENSE
@@ -749,6 +737,7 @@ note: The only operand form is `am i`.
 -c:1:17: error: Koshkit `killall`: KOSH_MISSING_PROCESS: no process found.
      1 |  koshkit killall KOSH_MISSING_PROCESS
        |                  ^~~~~~~~~~~~~~~~~~~~
+status=1
 === pkill extra pattern location ===
 -c:1:21: error: Koshkit `pkill`: Expects one pattern.
      1 |  koshkit pkill first second
@@ -759,6 +748,7 @@ note: Pass one pattern, e.g. `pkill ssh`.
      1 |  koshkit pkill ""
        |                ^~
 note: Pass a pattern, e.g. `pkill ssh`.
+status=1
 === link extra operand location ===
 -c:1:27: error: Koshkit `link`: Extra operand 'third'.
      1 |  koshkit link first second third

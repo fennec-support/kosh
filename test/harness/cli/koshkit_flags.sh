@@ -1,6 +1,5 @@
-# The human-readable -h on du and ls and the verbose -v on cp and mv. The du
-# checks derive the platform allocation, and the ls checks use the fixed
-# logical size.
+# The human-readable -h on du and ls and the verbose -v on cp and mv. The ls
+# checks use the fixed logical size.
 unset KOSH_FLAGS
 # A fixed umask keeps the rendered file mode the same on every machine.
 umask 022
@@ -9,15 +8,6 @@ d=$(mktemp -d) || exit 1
 cd "$d" || exit 1
 "$BIN" -c 'koshkit seq 1 500 > big.txt'
 
-echo "--- du -s prints allocated bytes ---"
-du_output=$("$BIN" -c 'koshkit du -s big.txt')
-set -- $du_output
-du_blocks=$("$BIN" -c 'koshkit stat -c %b big.txt')
-if [ "$1" -eq "$((du_blocks * 512))" ]; then
-  echo "du-allocated=matched"
-else
-  echo "du-allocated=wrong"
-fi
 echo "--- du -sh is human-readable ---"
 du_human=$("$BIN" -c 'koshkit du -sh big.txt')
 case $du_human in

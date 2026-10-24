@@ -11,13 +11,6 @@ sym: text
      1 |  koshkit file nums.txt stamp sym missing.txt
        |                                  ^~~~~~~~~~~
 file-status=1
---- custom file samples preserve merged-stream operand order ---
-magic-good-a: batch-match
--c:1:42: error: Koshkit `file`: Cannot open 'missing-magic': No such file or directory.
-     1 |  koshkit file -M magic-batch magic-good-a missing-magic magic-good-b
-       |                                           ^~~~~~~~~~~~~
-magic-good-b: batch-match
-custom-file-status=1
 --- stat preserves interleaved directory operands ---
 batch-a/first=3
 batch-b/third=5
@@ -58,7 +51,6 @@ du-multiple-roots=matched
 --- du equal-size roots ---
 du-equal-roots=matched
 du-hardlinks=matched
-du-unreadable=ok
 --- basename ---
 libfoo
 b

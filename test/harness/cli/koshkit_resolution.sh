@@ -39,7 +39,7 @@ case $host_line in
 esac
 
 echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on passes bare POSIX utility flags ==="
-"$BIN" -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on; ls --help' >/dev/null
+"$BIN" -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on; ls --help >/dev/null; echo "rc=$?"'
 
 echo "=== koshconf set interpreter.resolve_koshkit_applets_as_commands on leaves unknown commands unresolved ==="
 "$BIN" -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on; command -v KOSH_NOT_A_UTILITY; echo "rc=$?"'

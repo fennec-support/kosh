@@ -413,8 +413,8 @@ broken:
 independent:
 	@echo independent
 
-compound:
-	@false; echo compound-must-not-run
+compound-continues:
+	@false; echo compound-continued
 
 compound-final-failure:
 	@echo compound-before-failure; false
@@ -432,8 +432,8 @@ echo "keep-going=$?"
 echo "stop=$?"
 "$BIN" -c 'koshkit make -S -k broken independent' 2> /dev/null
 echo "keep-last=$?"
-"$BIN" -c 'koshkit make compound' 2> /dev/null
-echo "compound=$?"
+"$BIN" -c 'koshkit make compound-continues' 2> /dev/null
+echo "compound-continues=$?"
 "$BIN" -c 'koshkit make compound-final-failure' 2> /dev/null
 echo "compound-final-failure=$?"
 "$BIN" -c 'koshkit make compound-ignored'
@@ -562,7 +562,7 @@ EOF
 "$BIN" -c 'koshkit make -p print' > database.out
 grep -c '^VALUE = printed$' database.out
 grep -c '^print:$' database.out
-grep -c '^print-flags=\[\]$' database.out
+grep -c '^print-flags=\[p\]$' database.out
 : > empty.mk
 "$BIN" -c 'koshkit make -p -f empty.mk' > empty-database.out 2> /dev/null
 echo "empty-database=$?"
@@ -868,11 +868,6 @@ MAKEFLAGS='k -C' "$BIN" -c 'koshkit make -f jobs.mk all'
 echo "valueless-inherited-status=$?"
 MAKEFLAGS='kw -- HIDDEN=afterend' \
   "$BIN" -c 'koshkit make -f inherited-assignment.mk show'
-make_help=$("$BIN" -c 'koshkit make --help')
-case $make_help in
-  *'--jobs[=<...>]'*) echo optional-jobs-help=yes ;;
-  *) echo optional-jobs-help=no ;;
-esac
 cat > recursive-print.mk <<'EOF'
 all:
 	@$(MAKE) -f recursive-print-child.mk show

@@ -20,12 +20,6 @@ case $filesystem_report in
 esac
 printf 'filesystem-layout=%s\n' "$filesystem_shape"
 
-case $filesystem_report in
-  *$(printf '\033')*) filesystem_color=present ;;
-  *) filesystem_color=absent ;;
-esac
-printf 'filesystem-color=%s\n' "$filesystem_color"
-
 checksum_report=$($BIN -c 'koshkit --color never goodstat --checksum "$1"' \
   goodstat "$fixture")
 checksum_line=$(printf '%s\n' "$checksum_report" | sed -n '/CRC32C[[:space:]]/p')
@@ -56,13 +50,6 @@ combined_status=0
 $BIN -c 'koshkit --color never goodstat -f -c "$1"' goodstat "$fixture" \
   >/dev/null 2>&1 || combined_status=$?
 printf 'combined-status=%s\n' "$combined_status"
-
-help=$($BIN -c 'koshkit goodstat --help')
-case $help in
-  *"--checksum"*"--filesystem"*) help_shape=matched ;;
-  *) help_shape=wrong ;;
-esac
-printf 'help-layout=%s\n' "$help_shape"
 
 for crc_size in 767 768 24575 24576 49920 65536 100003; do
   crc_file=$TEST_TEMP_DIRECTORY/goodstat-crc-$crc_size

@@ -23,6 +23,7 @@ tree-leaf-size=matched
   │ └── small
   ├── x1
   └── x2
+tree-human=yes
 --- tree summary ---
 └── t
 └── t/c
@@ -100,6 +101,3 @@ ties-lines=26
 one-fs-local=same
 --- an unreadable directory is a warning ---
 permission-severity=warning status=1
---- help ---
---top-largest
---tree

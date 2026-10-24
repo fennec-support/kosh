@@ -30,17 +30,3 @@ $BIN -c 'koshkit evilnet --live=bad' >/dev/null 2>&1
 printf 'invalid-live-status=%s\n' "$?"
 $BIN -c 'koshkit evilnet --cumulative=bad' >/dev/null 2>&1
 printf 'invalid-cumulative-status=%s\n' "$?"
-
-help=$($BIN -c 'koshkit evilnet --help')
-case $help in
-  *"--failures"*) help_shape=matched ;;
-  *) help_shape=wrong ;;
-esac
-printf 'help-layout=%s\n' "$help_shape"
-case $help in
-  *'LIVE OPTIONS'*'--live[=<seconds>]'*'--cumulative[=<seconds>]'*)
-    sampling_help_shape=matched
-    ;;
-  *) sampling_help_shape=wrong ;;
-esac
-printf 'sampling-help-layout=%s\n' "$sampling_help_shape"

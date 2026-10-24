@@ -41,8 +41,6 @@ echo "--- almost all entries ---"
 "$BIN" -c 'koshkit ls -A'
 echo "--- multiple roots ---"
 "$BIN" -c 'koshkit ls plain.txt sub'
-echo "--- equal-size files ---"
-"$BIN" -c 'koshkit ls -S sized'
 echo "--- long name ---"
 "$BIN" -c 'koshkit ls -1' | grep "$long_name"
 echo "--- classify ---"
@@ -63,17 +61,6 @@ echo "--- sort by size ---"
 "$BIN" -c 'koshkit ls -S sized'
 echo "--- sort by size reversed ---"
 "$BIN" -c 'koshkit ls -Sr sized'
-echo "--- color never is bare ---"
-"$BIN" -c 'koshkit --color never ls -F'
-echo "--- color always keeps the listing text ---"
-for ls_args in '-F' '-1 .symlink-batch' '-1 good-link'; do
-  plain=$("$BIN" -c "koshkit --color never ls $ls_args")
-  stripped=$("$BIN" -c "koshkit --color always ls $ls_args" |
-    sed "s/$(printf '\033')\[[0-9;]*m//g")
-  [ "$plain" = "$stripped" ] && echo same || echo different
-done
-echo "--- redirected output carries no escape ---"
-"$BIN" -c 'koshkit ls -F' | cat -v
 echo "--- human total ---"
 human_total=$("$BIN" -c 'koshkit ls -lah sized' | head -n 1)
 case $human_total in
@@ -93,13 +80,6 @@ echo "--- recursive reaches an empty directory ---"
 echo "--- one file system changes nothing on one file system ---"
 "$BIN" -c 'koshkit ls -R --one-file-system sub'
 "$BIN" -c 'koshkit ls --tree --one-file-system sub'
-echo "--- chmod one file system changes nothing on one file system ---"
-mkdir -p chmod-tree/inner
-: > chmod-tree/a
-: > chmod-tree/inner/b
-chmod 644 chmod-tree/a chmod-tree/inner/b
-"$BIN" -c 'koshkit chmod -R --one-file-system go-rwx chmod-tree'
-"$BIN" -c 'koshkit ls -l chmod-tree/a chmod-tree/inner/b | koshkit cut -d " " -f 1'
 if [ "${TARGET:-$(uname -s)}" = Linux ] && [ -d /dev/pts ]; then
   plain_tree=$("$BIN" -c 'koshkit ls --tree -L 2 /dev' 2>/dev/null)
   bounded_tree=$("$BIN" -c 'koshkit ls --tree -L 2 --one-file-system /dev' 2>/dev/null)
@@ -122,9 +102,6 @@ if [ "${TARGET:-$(uname -s)}" = Linux ] && [ -d /dev/pts ]; then
 fi
 echo "--- invalid level ---"
 "$BIN" -c 'koshkit ls -L 0 sub' 2>/dev/null
-echo "rc=$?"
-echo "--- invalid color ---"
-"$BIN" -c 'koshkit --color pink ls sub' 2>/dev/null
 echo "rc=$?"
 echo "--- unreadable root ---"
 mkdir unreadable

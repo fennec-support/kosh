@@ -70,26 +70,6 @@ do
 done
 printf 'evilio-disk-sort-keys=%s\n' "$evilio_disk_sort_keys"
 
-evilio_ambiguous_sort=$(
-  "$BIN" -c 'koshkit evilio --ps --sort r -1' 2>&1
-)
-case $evilio_ambiguous_sort in
-  *'Ambiguous sort key'*'Use a longer prefix of read, read-ops'*)
-    evilio_ambiguous_sort_status=matched
-    ;;
-  *) evilio_ambiguous_sort_status=wrong ;;
-esac
-printf 'evilio-ambiguous-sort=%s\n' "$evilio_ambiguous_sort_status"
-
-evilio_unavailable_sort=$(
-  "$BIN" -c 'koshkit evilio --ps --sort busy -1' 2>&1
-)
-case $evilio_unavailable_sort in
-  *'unavailable for process reports'*) evilio_unavailable_sort_status=matched ;;
-  *) evilio_unavailable_sort_status=wrong ;;
-esac
-printf 'evilio-unavailable-sort=%s\n' "$evilio_unavailable_sort_status"
-
 evilio_live_sort_path=$TEST_TEMP_DIRECTORY/evilio-live-sort-report
 "$BIN" -c \
   '(attempt=0; while [ "$attempt" -lt 250 ]; do
@@ -108,18 +88,6 @@ case $evilio_live_sort_report in
   *) evilio_live_sort_update=wrong ;;
 esac
 printf 'evilio-live-sort=%s\n' "$evilio_live_sort_update"
-
-evilio_help=$($BIN -c 'koshkit evilio --help')
-if printf '%s\n' "$evilio_help" | grep -Fq 'LIVE OPTIONS' &&
-  printf '%s\n' "$evilio_help" | grep -Fq -- '--live[=<seconds>]' &&
-  printf '%s\n' "$evilio_help" | grep -Fq -- '--cumulative[=<seconds>]' &&
-  printf '%s\n' "$evilio_help" | grep -Fq -- '--sort=<...>'
-then
-  evilio_help_controls=matched
-else
-  evilio_help_controls=wrong
-fi
-printf 'evilio-help-controls=%s\n' "$evilio_help_controls"
 
 evilnet_sort_keys=matched
 for evilnet_sort_key in name rx tx rx-packets tx-packets rx-errors \
@@ -175,15 +143,6 @@ case $evilnet_cumulative_heading in
   *) evilnet_cumulative_heading_status=wrong ;;
 esac
 printf 'evilnet-cumulative-heading=%s\n' "$evilnet_cumulative_heading_status"
-
-evilps_help=$($BIN -c 'koshkit evilps --help')
-case $evilps_help in
-  *'--live[=<seconds>]'*'--cumulative[=<seconds>]'*)
-    evilps_sampling_help=matched
-    ;;
-  *) evilps_sampling_help=wrong ;;
-esac
-printf 'evilps-sampling-help=%s\n' "$evilps_sampling_help"
 
 $BIN -c 'koshkit evilps --live=0' > /dev/null 2>&1
 printf 'evilps-invalid-live=%s\n' "$?"

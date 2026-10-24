@@ -1,5 +1,10 @@
-koshkit retry -n 2 -d 0 -q printf retry-ok
-echo
+quiet_attempt=0
+retry_quiet()
+{
+  quiet_attempt=$((quiet_attempt + 1))
+  [ "$quiet_attempt" -eq 2 ] && echo retry-ok
+}
+koshkit retry -n 2 -d 0 -q retry_quiet
 
 attempt=0
 retry_once()

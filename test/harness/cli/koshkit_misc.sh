@@ -1,7 +1,7 @@
 # The remaining utilities, sleep with a zero duration, env applying an
-# assignment and running a command, and the pkill and killall error paths. The
-# error paths use a name that matches nothing. The session case signals only a
-# sleep started under a unique command name.
+# assignment and running a command, and the pkill error paths. The error paths
+# use a name that matches nothing. The session case signals only a sleep
+# started under a unique command name.
 unset KOSH_FLAGS
 
 echo "--- sleep zero ---"
@@ -47,10 +47,6 @@ echo "--- pkill with no pattern ---"
 "$BIN" -c 'koshkit pkill' 2>&1
 echo "rc=$?"
 
-echo "--- pkill rejects an empty pattern ---"
-"$BIN" -c 'koshkit pkill ""' 2>&1
-echo "rc=$?"
-
 echo "--- pkill with no match ---"
 "$BIN" -c 'koshkit pkill no_such_process_xyz_123'
 echo "rc=$?"
@@ -69,10 +65,6 @@ wait "$probe"
 echo "probe=$?"' _ "$probe_dir/$probe_name" "$probe_name" 2>&1 | grep -v '^\['
 echo "--- pkill rejects an empty session id ---"
 "$BIN" -c 'koshkit pkill -s 1,,2 x' 2>&1 | grep -c "Invalid session id ''"
-
-echo "--- killall with no match ---"
-"$BIN" -c 'koshkit killall no_such_process_xyz_123' 2>&1
-echo "rc=$?"
 
 echo "--- kill is a builtin, not a koshkit utility ---"
 "$BIN" -c 'koshkit kill' 2>&1

@@ -1,5 +1,3 @@
-(koshkit sync -d -f) 2> "$TEST_NULL_DEVICE"
-echo "conflicting-modes=$?"
 (
   cd "$TEST_TEMP_DIRECTORY" || exit
   printf data > sync-file

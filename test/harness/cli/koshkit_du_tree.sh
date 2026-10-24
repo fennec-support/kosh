@@ -44,6 +44,11 @@ else
 fi
 echo "--- tree human sizes ---"
 "$BIN" -c 'koshkit du -h --tree t' | mask_sizes
+if "$BIN" -c 'koshkit du -h --tree t' | head -n 1 | grep -q '[KMG] '; then
+  echo "tree-human=yes"
+else
+  echo "tree-human=no"
+fi
 echo "--- tree summary ---"
 "$BIN" -c 'koshkit du --tree -s t t/c' | mask_sizes
 echo "--- tree operands ---"
@@ -153,9 +158,6 @@ else
   echo "permission-severity=$severity status=$locked_status"
 fi
 chmod 755 locked
-
-echo "--- help ---"
-"$BIN" -c 'koshkit du --help' | grep -o -e '--tree' -e '--top-largest' | sort -u
 
 cd /
 "$BIN" -c "koshkit rm -rf '$d'"

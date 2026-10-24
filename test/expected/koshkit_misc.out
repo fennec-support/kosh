@@ -23,12 +23,6 @@ KOSHKIT_TESTVAR=present
        |  ^~~~~~~~~~~~~
 note: Try `pkill --help` for more info.
 rc=2
---- pkill rejects an empty pattern ---
--c:1:15: error: Koshkit `pkill`: Requires a non-empty pattern.
-     1 |  koshkit pkill ""
-       |                ^~
-note: Pass a pattern, e.g. `pkill ssh`.
-rc=1
 --- pkill with no match ---
 rc=1
 --- pkill -s 0 selects the own session and -KILL selects the signal ---
@@ -37,11 +31,6 @@ own-session=0
 probe=137
 --- pkill rejects an empty session id ---
 1
---- killall with no match ---
--c:1:17: error: Koshkit `killall`: no_such_process_xyz_123: no process found.
-     1 |  koshkit killall no_such_process_xyz_123
-       |                  ^~~~~~~~~~~~~~~~~~~~~~~
-rc=1
 --- kill is a builtin, not a koshkit utility ---
 -c:1:9: error: koshkit has no utility called 'kill'.
      1 |  koshkit kill

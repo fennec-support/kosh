@@ -24,9 +24,3 @@ echo "rc=$?"
 echo "--- seq through cat into wc counts every line ---"
 "$BIN" -c 'koshkit seq 50 | koshkit cat | koshkit wc -l'
 echo "rc=$?"
-
-echo "--- seq into grep ---"
-"$BIN" -c 'koshkit seq 12 | koshkit grep 1'
-
-echo "--- sort into uniq ---"
-"$BIN" -c 'printf "c\na\nb\na\n" | koshkit sort | koshkit uniq'

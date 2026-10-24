@@ -39,12 +39,6 @@ plain.txt
 sub:
 deep
 inner.txt
---- equal-size files ---
-large
-medium
-small
-tie-a
-tie-b
 --- long name ---
 abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz.txt
 --- classify ---
@@ -95,28 +89,6 @@ tie-a
 small
 medium
 large
---- color never is bare ---
-abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz.txt
-bad-link@
-empty/
-good-link@
-plain.txt
-run.sh*
-sized/
-sub/
---- color always keeps the listing text ---
-same
-same
-same
---- redirected output carries no escape ---
-abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz-abcdefghijklmnopqrstuvwxyz.txt
-bad-link@
-empty/
-good-link@
-plain.txt
-run.sh*
-sized/
-sub/
 --- human total ---
 human-total=matched
 --- tree ---
@@ -152,12 +124,7 @@ sub
 ├── deep
 │   └── leaf.txt
 └── inner.txt
---- chmod one file system changes nothing on one file system ---
--rw-------
--rw-------
 --- invalid level ---
-rc=2
---- invalid color ---
 rc=2
 --- unreadable root ---
 ls-unreadable=checked

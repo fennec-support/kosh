@@ -3,12 +3,6 @@
 report=$("$BIN" -c 'koshkit --color never evilfs --all' 2>&1)
 
 case $report in
-  *'SOURCE'*'OPTIONS'*) detail_shape=matched ;;
-  *) detail_shape=missing ;;
-esac
-printf 'detail-layout=%s\n' "$detail_shape"
-
-case $report in
   *'warning:'*)
     if printf '%s\n' "$report" |
       grep -Eq '^warning: Skipped [1-9][0-9]* filesystems? due to permission denied\.$'

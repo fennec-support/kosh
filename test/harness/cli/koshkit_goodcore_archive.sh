@@ -34,9 +34,11 @@ script_modes=$(tar -tvf "$uncompressed" | grep -c '^-rwxr-xr-x .*debug-\(gdb\|ll
 printf 'debugger-scripts-executable=%s\n' "$script_modes"
 
 quiet_status=0
-$BIN -c 'koshkit goodcore --quiet --binary "$1" --output "$2" --no-compress "$3"' \
-  goodcore "$BIN" "$work/quiet.tar" "$core" >/dev/null 2>&1 || quiet_status=$?
+quiet_output=$($BIN -c \
+  'koshkit goodcore --quiet --binary "$1" --output "$2" --no-compress "$3"' \
+  goodcore "$BIN" "$work/quiet.tar" "$core" 2>&1) || quiet_status=$?
 printf 'quiet-status=%s\n' "$quiet_status"
+printf 'quiet-output-bytes=%s\n' "${#quiet_output}"
 
 compressed_status=0
 if command -v zstd >/dev/null 2>&1; then

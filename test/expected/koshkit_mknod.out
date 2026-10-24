@@ -1,20 +1,14 @@
 posix-status=0 type=fifo
 modern-status=0 type=fifo mode=600
-invalid-mode-status=1
-invalid-device-status=1
 missing-major-status=1 check=ok
 missing-minor-status=1 check=ok
-invalid-major-status=1 check=ok
-invalid-minor-status=1 check=ok
 masked-major-check=ok
 fifo-number-check=ok
 hybrid-explicit-check=ok
 hybrid-major-check=ok
 hybrid-minor-check=ok
-unused-operand-check=ok
 posix-device-check=ok
 device-check=ok
 type-device-check=ok
-redirected-error=plain
+redirected-error=plain status=1
 explicit-extra-status=1
-cleanup=ok

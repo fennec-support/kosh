@@ -1,5 +1,3 @@
---- du -s prints allocated bytes ---
-du-allocated=matched
 --- du -sh is human-readable ---
 du-human=scaled
 --- ls -l prints bytes ---

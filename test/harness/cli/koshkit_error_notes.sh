@@ -55,9 +55,6 @@ echo "=== ln without -s ==="
 echo "=== tr one set ==="
 "$BIN" -c 'koshkit tr abc' 2>&1
 
-echo "=== find bad -type ==="
-"$BIN" -c 'koshkit find . -type x' 2>&1
-
 echo "=== readlink failing operand locations ==="
 "$BIN" -c 'koshkit readlink first second' 2>&1
 
@@ -154,8 +151,11 @@ echo "=== od integer width location ==="
 echo "=== od repeated output type location ==="
 "$BIN" -c 'koshkit od -t x1 -t invalid' 2>&1
 
-echo "=== pr page number location ==="
+echo "=== pr invalid plus operand is a file ==="
 "$BIN" -c 'koshkit pr +0' 2>&1
+
+echo "=== pr page range location ==="
+"$BIN" -c 'koshkit pr --pages=0' 2>&1
 
 echo "=== pr column count location ==="
 "$BIN" -c 'koshkit pr -2x' 2>&1
@@ -168,9 +168,6 @@ echo "=== pr page width location ==="
 
 echo "=== pr indentation location ==="
 "$BIN" -c 'koshkit pr -o invalid' 2>&1
-
-echo "=== pr header capacity location ==="
-"$BIN" -c 'koshkit pr -l 9' 2>&1 </dev/null
 
 echo "=== pr output capacity location ==="
 "$BIN" -c 'koshkit pr -t -l 0' 2>&1
@@ -240,9 +237,6 @@ echo "=== locale name location ==="
 echo "=== id user location ==="
 "$BIN" -c 'koshkit id KOSH_MISSING_USER' 2>&1
 
-echo "=== stty setting location ==="
-"$BIN" -c 'koshkit stty KOSH_MISSING_SETTING' 2>&1
-
 echo "=== stty conflicting flag location ==="
 "$BIN" -c 'koshkit stty -a -g' 2>&1
 
@@ -255,17 +249,17 @@ echo "=== nohup command location ==="
 echo "=== evil operand location ==="
 "$BIN" -c 'koshkit evil extra' 2>&1
 
-echo "=== evil color value location ==="
-"$BIN" -c 'koshkit --color invalid evil' 2>&1
-
 echo "=== evilfs operand location ==="
 "$BIN" -c 'koshkit evilfs extra' 2>&1
+echo "status=$?"
 
 echo "=== evillogs operand location ==="
 "$BIN" -c 'koshkit evillogs extra' 2>&1
+echo "status=$?"
 
 echo "=== evilnet operand location ==="
 "$BIN" -c 'koshkit evilnet extra' 2>&1
+echo "status=$?"
 
 echo "=== evilss operand location ==="
 "$BIN" -c 'koshkit evilss extra' 2>&1
@@ -275,6 +269,7 @@ echo "=== evilps limit location ==="
 
 echo "=== evilps extra operand location ==="
 "$BIN" -c 'koshkit evilps 1 2' 2>&1
+echo "status=$?"
 
 echo "=== evilps sort value location ==="
 "$BIN" -c 'koshkit evilps --sort invalid' 2>&1
@@ -320,9 +315,6 @@ echo "=== evilio count value location ==="
 
 echo "=== evilio process value location ==="
 "$BIN" -c 'koshkit evilio --pid 0' 2>&1
-
-echo "=== evilio color value location ==="
-"$BIN" -c 'koshkit --color invalid evilio' 2>&1
 
 echo "=== evilio report mode location ==="
 "$BIN" -c 'koshkit evilio --all --cumulative' 2>&1
@@ -386,15 +378,19 @@ echo "=== empty chown and chgrp specifications change nothing ==="
 
 echo "=== mknod major value location ==="
 "$BIN" -c 'koshkit mknod --block --major not-a-major --minor 2 node' 2>&1
+echo "status=$?"
 
 echo "=== mknod minor value location ==="
 "$BIN" -c 'koshkit mknod node b 1 not-a-minor' 2>&1
+echo "status=$?"
 
 echo "=== mknod unused operand location ==="
 "$BIN" -c 'koshkit mknod --major 1 --minor 2 --block node extra' 2>&1
+echo "status=$?"
 
 echo "=== mknod major range location ==="
 "$BIN" -c 'koshkit mknod --character --major 4096 --minor 2 node' 2>&1
+echo "status=$?"
 
 echo "=== mknod large major range location ==="
 "$BIN" -c 'koshkit mknod --character --major 4294967296 --minor 2 node' 2>&1
@@ -420,9 +416,6 @@ echo "=== nproc ignore count location ==="
 echo "=== nproc operand location ==="
 "$BIN" -c 'koshkit nproc extra' 2>&1
 
-echo "=== evildisk color value location ==="
-"$BIN" -c 'koshkit --color invalid evildisk' 2>&1
-
 echo "=== evildisk path location ==="
 "$BIN" -c 'koshkit evildisk KOSH_MISSING_FILESYSTEM' 2>&1 >/dev/null
 
@@ -435,14 +428,12 @@ echo "=== evilfiles user value location ==="
 echo "=== goodfsw path location ==="
 "$BIN" -c 'koshkit goodfsw KOSH_MISSING_PATH' 2>&1
 
-echo "=== goodstat color value location ==="
-"$BIN" -c 'koshkit --color invalid goodstat LICENSE' 2>&1
-
 echo "=== goodstat path location ==="
 "$BIN" -c 'koshkit goodstat KOSH_MISSING_PATH' 2>&1
 
 echo "=== sync later filesystem flag location ==="
 "$BIN" -c 'koshkit sync -d -f LICENSE' 2>&1
+echo "status=$?"
 
 echo "=== sync later data flag location ==="
 "$BIN" -c 'koshkit sync -f -d LICENSE' 2>&1
@@ -479,12 +470,14 @@ echo "=== who extra operand location ==="
 
 echo "=== killall missing process location ==="
 "$BIN" -c 'koshkit killall KOSH_MISSING_PROCESS' 2>&1
+echo "status=$?"
 
 echo "=== pkill extra pattern location ==="
 "$BIN" -c 'koshkit pkill first second' 2>&1
 
 echo "=== pkill empty pattern location ==="
 "$BIN" -c 'koshkit pkill ""' 2>&1
+echo "status=$?"
 
 echo "=== link extra operand location ==="
 "$BIN" -c 'koshkit link first second third' 2>&1

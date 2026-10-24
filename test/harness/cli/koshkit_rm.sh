@@ -110,9 +110,9 @@ echo "== rm -I asks once for a recursive removal:"
 printf "n\\n" | "$BIN" -c "koshkit rm -rI --dry-run tree; echo status=\$?" 2>&1
 echo
 echo "== rm -i states the file type in its prompt:"
-printf "n\\n" | "$BIN" -c "koshkit rm -ri --dry-run tree; echo status=\$?" 2>&1 | tr "?" "\\n"
+printf "n\\n" | "$BIN" -c "koshkit rm -ri --dry-run tree; echo status=\$?" 2>&1
 printf "y\\nn\\ny\\n" | "$BIN" -c "koshkit rm -ri --dry-run single; echo status=\$?" 2>&1 |
-  tr "?" "\\n" | tr '\\' '/'
+  tr '\\' '/'
 echo "== the last of -f and -i decides:"
 "$BIN" -c "koshkit rm -i -f --dry-run a" </dev/null 2>&1
 cd / || exit 1

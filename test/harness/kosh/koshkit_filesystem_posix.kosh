@@ -39,6 +39,14 @@ koshkit ln -s "$root/walk/outside" "$root/walk/operand"
 koshkit chmod -R o+rX "$root/walk/operand"
 outside_fields=$(koshkit ls -l "$root/walk/outside/file")
 echo "chmod-operand-link=${outside_fields%% *}"
+koshkit mkdir -p "$root/one-file-system/inner"
+: > "$root/one-file-system/a"
+: > "$root/one-file-system/inner/b"
+koshkit chmod 644 "$root/one-file-system/a" "$root/one-file-system/inner/b"
+koshkit chmod -R --one-file-system go-rwx "$root/one-file-system"
+top_fields=$(koshkit ls -l "$root/one-file-system/a")
+inner_fields=$(koshkit ls -l "$root/one-file-system/inner/b")
+echo "chmod-one-file-system=${top_fields%% *} ${inner_fields%% *}"
 deep="$root/deep"
 for level in {1..200}; do
   deep="$deep/d"

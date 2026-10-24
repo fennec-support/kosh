@@ -17,14 +17,6 @@ if test -p "$root/fifo-modern"; then modern_type=fifo; else modern_type=missing;
 modern_mode=$(stat_mode "$root/fifo-modern" 2>/dev/null || printf missing)
 printf 'modern-status=%s type=%s mode=%s\n' "$modern_status" "$modern_type" "$modern_mode"
 
-"$BIN" -c 'koshkit mknod --mode definitely-not-a-mode "$1/bad"' \
-  mknod "$root" >/dev/null 2>&1
-printf 'invalid-mode-status=%s\n' "$?"
-
-"$BIN" -c 'koshkit mknod --character --major 4096 --minor 0 "$1/device"' \
-  mknod "$root" >/dev/null 2>&1
-printf 'invalid-device-status=%s\n' "$?"
-
 missing_major_error=$($BIN -c 'koshkit mknod --block "$1/missing-major"' \
   mknod "$root" 2>&1 >/dev/null)
 missing_major_status=$?
@@ -45,28 +37,6 @@ case "$missing_minor_error" in
 esac
 printf 'missing-minor-status=%s check=%s\n' "$missing_minor_status" \
   "$missing_minor_check"
-
-invalid_major_error=$($BIN -c \
-  'koshkit mknod --block --major not-a-major --minor 2 "$1/invalid-major"' \
-  mknod "$root" 2>&1 >/dev/null)
-invalid_major_status=$?
-case "$invalid_major_error" in
-  *"Invalid major device number 'not-a-major'"*) invalid_major_check=ok ;;
-  *) invalid_major_check=missing ;;
-esac
-printf 'invalid-major-status=%s check=%s\n' "$invalid_major_status" \
-  "$invalid_major_check"
-
-invalid_minor_error=$($BIN -c \
-  'koshkit mknod "$1/invalid-minor" b 1 not-a-minor' \
-  mknod "$root" 2>&1 >/dev/null)
-invalid_minor_status=$?
-case "$invalid_minor_error" in
-  *"Invalid minor device number 'not-a-minor'"*) invalid_minor_check=ok ;;
-  *) invalid_minor_check=missing ;;
-esac
-printf 'invalid-minor-status=%s check=%s\n' "$invalid_minor_status" \
-  "$invalid_minor_check"
 
 masked_major_error=$($BIN -c \
   'koshkit mknod --block --major not-a-major "$1/missing-minor"' \
@@ -113,15 +83,6 @@ case "$hybrid_minor_error" in
   *) hybrid_minor_check=missing ;;
 esac
 printf 'hybrid-minor-check=%s\n' "$hybrid_minor_check"
-
-unused_error=$($BIN -c \
-  'koshkit mknod --major 1 --minor 2 --block 1 "$1/unused"' \
-  mknod "$root" 2>&1 >/dev/null)
-case "$unused_error" in
-  *"Too many operands"*) unused_check=ok ;;
-  *) unused_check=missing ;;
-esac
-printf 'unused-operand-check=%s\n' "$unused_check"
 
 posix_device_path=$root/device-posix
 posix_device_error=$($BIN -c 'koshkit mknod "$1" c 1 3' \
@@ -186,20 +147,14 @@ esac
 printf 'type-device-check=%s\n' "$type_device_check"
 
 error=$($BIN -c 'koshkit mknod --fifo --mode invalid "$1/bad"' mknod "$root" 2>&1 >/dev/null)
+invalid_mode_status=$?
 case "$error" in
   *"error:"*"Invalid mode"*) redirected_error=plain ;;
   *) redirected_error=missing ;;
 esac
-printf 'redirected-error=%s\n' "$redirected_error"
+printf 'redirected-error=%s status=%s\n' "$redirected_error" \
+  "$invalid_mode_status"
 
 "$BIN" -c 'koshkit mknod --fifo "$1/fifo-extra" p' mknod "$root" \
   >/dev/null 2>&1
 printf 'explicit-extra-status=%s\n' "$?"
-
-rm -f "$root/fifo-posix" "$root/fifo-modern"
-if test ! -e "$root/fifo-posix" && test ! -e "$root/fifo-modern"; then
-  cleanup=ok
-else
-  cleanup=failed
-fi
-printf 'cleanup=%s\n' "$cleanup"

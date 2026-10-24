@@ -20,6 +20,7 @@ rc=127
 === koshconf set interpreter.resolve_koshkit_applets_as_commands on passes bare Koshka utility flags ===
 host-shape=matched
 === koshconf set interpreter.resolve_koshkit_applets_as_commands on passes bare POSIX utility flags ===
+rc=0
 === koshconf set interpreter.resolve_koshkit_applets_as_commands on leaves unknown commands unresolved ===
 rc=1
 === koshconf set interpreter.resolve_koshkit_applets_as_commands on preserves builtin precedence ===

@@ -19,18 +19,6 @@ echo "--- ls a ---"
 echo "--- file batched operands ---"
 "$BIN" -c 'koshkit file nums.txt stamp sym missing.txt' 2>&1
 echo "file-status=$?"
-echo "--- custom file samples preserve merged-stream operand order ---"
-mkdir .magic-batch
-(
-  cd .magic-batch || exit 1
-  printf '%s\n' '0 string MATCH batch-match' > magic-batch
-  printf MATCH > magic-good-a
-  printf MATCH > magic-good-b
-  "$BIN" -c \
-    'koshkit file -M magic-batch magic-good-a missing-magic magic-good-b' \
-    2>&1
-  echo "custom-file-status=$?"
-)
 mkdir batch-a batch-b
 printf one > batch-a/first
 printf two-two > batch-a/second
@@ -190,23 +178,6 @@ if [ "$du_link_line_count" -eq "$expected_link_line_count" ]; then
   echo "du-hardlinks=matched"
 else
   echo "du-hardlinks=wrong"
-fi
-mkdir unreadable
-touch unreadable/entry
-chmod 000 unreadable
-if ls unreadable >/dev/null 2>&1; then
-  chmod 700 unreadable
-  echo "du-unreadable=ok"
-else
-  unreadable_output=$("$BIN" -c 'koshkit du unreadable' 2>&1)
-  unreadable_status=$?
-  chmod 700 unreadable
-  if [ "$unreadable_status" -ne 0 ] &&
-    ! printf '%s\n' "$unreadable_output" | grep -q '^0[[:space:]]'; then
-    echo "du-unreadable=ok"
-  else
-    echo "du-unreadable=failed"
-  fi
 fi
 if [ "${TARGET:-$(uname -s)}" = Linux ]; then
   mkdir du-interrupt

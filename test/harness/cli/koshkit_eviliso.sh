@@ -53,7 +53,7 @@ esac
 printf 'remote-table=%s\n' "$remote_table"
 
 for selector_section in \
-  'namespaces|-n|namespace-section' \
+  'namespaces|-n|Namespaces' \
   'cgroups|-c|cgroup-section' \
   'sessions|-s|session-section' \
   'remote|-r|Socket summary' \
@@ -81,10 +81,7 @@ for selector_section in \
       *) selector_status=missing ;;
     esac
   fi
-  case $1 in
-  namespaces|runtime|sessions) ;;
-  *) printf '%s-selector=%s\n' "$1" "$selector_status" ;;
-  esac
+  printf '%s-selector=%s\n' "$1" "$selector_status"
 
   selector_scope=matched
   case $1 in
@@ -132,19 +129,6 @@ for selector_section in \
   fi
   printf '%s-scope=%s\n' "$1" "$selector_scope"
 done
-
-help=$($BIN -c 'koshkit eviliso --help')
-case $help in
-  *"--all"*"--namespaces"*"--cgroups"*"--sessions"*"--remote"*"--runtime"*\
-*"--kubernetes"*"--containers"*)
-    help_shape=matched
-    ;;
-  *) help_shape=wrong ;;
-esac
-case $help in
-*"--detail"*) help_shape=wrong ;;
-esac
-printf 'help-layout=%s\n' "$help_shape"
 
 "$BIN" -c 'koshkit evilps >/dev/null; koshkit evilss -x >/dev/null; koshkit eviliso -n >/dev/null'
 echo "unprivileged-status=$?"

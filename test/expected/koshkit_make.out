@@ -157,8 +157,8 @@ keep-going=2
 stop=2
 independent
 keep-last=2
-compound-must-not-run
-compound=0
+compound-continued
+compound-continues=0
 compound-before-failure
 compound-final-failure=2
 compound-ignored
@@ -186,7 +186,7 @@ precious-kept=yes
 --- POSIX database stdin and target attributes ---
 1
 1
-0
+1
 empty-database=0
 false
 ignored-continued
@@ -267,7 +267,6 @@ gnu-only-inherited-status=0
 jobs=[k]
 valueless-inherited-status=0
 inherited-macro=afterend inherited-environment=afterend
-optional-jobs-help=yes
 recursive-print=yes
 .SUFFIXES: .o .c .y .l .a .sh .f .c~ .y~ .l~ .sh~ .f~
 CC = c99

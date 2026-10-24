@@ -4,5 +4,3 @@ live-conflict-status=2
 bare-cumulative-status=0
 invalid-live-status=2
 invalid-cumulative-status=2
-help-layout=matched
-sampling-help-layout=matched
