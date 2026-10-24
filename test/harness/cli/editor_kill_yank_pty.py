@@ -268,7 +268,7 @@ KEY_RESULTS = {
     "ctrl-underscore": "echo one two tXhree",
     "ctrl-shift-z": "echo one two Xhree",
     "ctrl-backspace": "echo one two Xhree",
-    "alt-b": "echo one twoX three",
+    "alt-b": "echo one two Xthree",
     "alt-f": "echo one two threeX",
     "alt-d": "echo one two tX",
     "alt-t": "echo one three twoX",
