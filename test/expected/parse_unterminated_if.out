@@ -1,6 +1,81 @@
-2:1: error: This 'if' has no closing 'fi'.
-     2 |  if true; then
+eval:1:1: error: This 'if' has no closing 'fi'.
+     1 |  if true; then
        |  ^~
-2:14: details:
-     2 |  if true; then
+eval:1:14: details:
+     1 |  if true; then
        |               ^ expected 'fi' here to close it.
+2:1: trace:
+     2 |  eval 'if true; then'
+       |  ^~~~~~~~~~~~~~~~~~~~
+eval:1:5: error: This array assignment has no closing ')'.
+     1 |  arr=(a b
+       |      ^
+note: Close the list with ')', as in `arr=(a b c)`.
+3:1: trace:
+     3 |  eval 'arr=(a b'
+       |  ^~~~~~~~~~~~~~~
+eval:1:1: error: This brace group has no closing '}'.
+     1 |  { echo hi
+       |  ^
+eval:1:10: details:
+     1 |  { echo hi
+       |           ^ expected '}' here to close it.
+4:1: trace:
+     4 |  eval '{ echo hi'
+       |  ^~~~~~~~~~~~~~~~
+eval:1:1: error: This 'case' has no closing 'esac'.
+     1 |  case x in
+       |  ^~~~
+eval:1:10: details:
+     1 |  case x in
+       |           ^ expected a pattern to start an arm, or 'esac' to end the case.
+5:1: trace:
+     5 |  eval 'case x in'
+       |  ^~~~~~~~~~~~~~~~
+eval:1:1: error: This '[[' has no closing ']]'.
+     1 |  [[ a == b
+       |  ^~
+eval:1:10: details:
+     1 |  [[ a == b
+       |           ^ expected ']]' here.
+6:1: trace:
+     6 |  eval '[[ a == b'
+       |  ^~~~~~~~~~~~~~~~
+eval:1:1: error: This for loop has no 'do'.
+     1 |  for x y
+       |  ^~~
+eval:1:7: details:
+     1 |  for x y
+       |        ^ expected 'do' or 'in WORDS' here, and a loop without 'in' iterates over the positional parameters.
+7:1: trace:
+     7 |  eval 'for x y'
+       |  ^~~~~~~~~~~~~~
+eval:1:1: error: This subshell has no closing ')'.
+     1 |  (echo hi
+       |  ^
+eval:1:9: details:
+     1 |  (echo hi
+       |          ^ expected ')' here.
+8:1: trace:
+     8 |  eval '(echo hi'
+       |  ^~~~~~~~~~~~~~~
+eval:1:1: error: Expected a compound command as the function body.
+     1 |  foo()
+       |  ^~~
+note: Write the body as a brace group, as in `greet() { echo hi; }`.
+9:1: trace:
+     9 |  eval 'foo()'
+       |  ^~~~~~~~~~~~
+eval:1:6: error: Expected ')' in a function definition.
+     1 |  foo( {
+       |       ^
+10:1: trace:
+    10 |  eval 'foo( {'
+       |  ^~~~~~~~~~~~~
+eval:1:19: error: Expected '|' or ')' after the case pattern.
+     1 |  case x in a) y;; b
+       |                    ^
+note: Close the pattern with ')', as in `a|b) command ;;`.
+11:1: trace:
+    11 |  eval 'case x in a) y;; b'
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~

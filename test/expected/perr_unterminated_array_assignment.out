@@ -1,4 +1,0 @@
-2:5: error: This array assignment has no closing ')'.
-     2 |  arr=(a b
-       |      ^
-note: Close the list with ')', as in `arr=(a b c)`.

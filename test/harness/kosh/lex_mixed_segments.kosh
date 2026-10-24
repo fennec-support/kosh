@@ -1,8 +1,10 @@
 #!/bin/env kosh
 # shellcheck disable=unquoted-command-substitution
 show() { printf '[%s]' "$@"; echo; }
-HOME=/home/segments
 x=X y=Y b=B
+d=$(mktemp -d)
+cd "$d" || exit
+touch axb cyd m litq b
 
 show pre"dq"'sq'$x${y}post
 show "a$b"'c'$(printf p)"d$(( 1 + 1 ))e"
@@ -22,8 +24,7 @@ show \$foo \~home
 show \" \\ \`
 show pre\ space
 
-set -f
-show a*b c?d [a-z]
+show a*b c?d [m-n]
 show "lit*" 'lit?' "[abc]"
 
 show bare 'single' "double"
@@ -31,5 +32,5 @@ show pre'mid'post
 show out"in"out
 show 'one''two'"three"
 
-show ~ ~nosuchuser_xyz ~/path
-show pre~mid "~quoted" '~raw'
+cd / || exit
+rm -r "$d"

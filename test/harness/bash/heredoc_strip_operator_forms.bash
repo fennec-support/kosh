@@ -1,9 +1,9 @@
 #!/bin/bash
 # The tab-stripping operator takes its delimiter after a blank as well as
-# attached, a delimiter starting with a dash after << is an ordinary
-# delimiter, <<- with no delimiter is a syntax error, a lone backslash at
-# the end of the input is literal, and BASH_COMMAND keeps the operator and
-# the delimiter of both <<- forms.
+# attached, a delimiter starting with a dash after << or <<- is an ordinary
+# delimiter whether it is quoted or not, <<- with no delimiter is a syntax
+# error, a lone backslash at the end of the input is literal, and
+# BASH_COMMAND keeps the operator and the delimiter of both <<- forms.
 work=$(mktemp -d)
 cd "$work" || exit 1
 cat <<- EOF
@@ -21,6 +21,12 @@ dash-delimited
 cat <<- -
 	stripped-dash
 	-
+cat <<'-EOF'
+quoted-dash
+-EOF
+cat <<-'-EOF'
+	quoted-stripped-dash
+	-EOF
 printf 'cat <<-\nx\n' > missing-delimiter.sh
 "$BASH" -n missing-delimiter.sh 2> /dev/null
 echo "missing-delimiter=$?"

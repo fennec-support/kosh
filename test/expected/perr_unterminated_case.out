@@ -1,6 +1,0 @@
-2:1: error: This 'case' has no closing 'esac'.
-     2 |  case x in
-       |  ^~~~
-2:10: details:
-     2 |  case x in
-       |           ^ expected a pattern to start an arm, or 'esac' to end the case.

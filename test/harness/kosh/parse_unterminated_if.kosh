@@ -1,2 +1,11 @@
 #!/bin/env kosh
-if true; then
+eval 'if true; then'
+eval 'arr=(a b'
+eval '{ echo hi'
+eval 'case x in'
+eval '[[ a == b'
+eval 'for x y'
+eval '(echo hi'
+eval 'foo()'
+eval 'foo( {'
+eval 'case x in a) y;; b'

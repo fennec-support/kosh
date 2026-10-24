@@ -43,7 +43,7 @@ echo "== list shows canonical spellings only:"
 "$BIN" -c 'koshconf list | grep -c "^bash.interpreter.glob_extended_patterns="' 2>&1
 
 echo "== an unknown alias and the retired spellings are errors:"
-"$BIN" -c 'koshconf get bash.legacy.foo' 2>&1 | grep -v '^ '
+"$BIN" -c 'koshconf get bash.legacy.foo' 2>&1 | grep -v -e '^ ' -e '^note'
 "$BIN" -c 'koshconf get bash.legacy.errexit' 2>&1 | grep -v '^ '
 "$BIN" -c 'koshconf get posix.legacy.extglob' 2>&1 | grep -v '^ '
 "$BIN" -c 'koshconf get legacy.glob_extended_''patterns' 2>/dev/null

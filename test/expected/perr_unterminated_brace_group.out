@@ -1,6 +1,0 @@
-2:1: error: This brace group has no closing '}'.
-     2 |  { echo hi
-       |  ^
-2:10: details:
-     2 |  { echo hi
-       |           ^ expected '}' here to close it.

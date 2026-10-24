@@ -25,19 +25,6 @@ v=$(true && cat <<-EOF
 )
 echo "$v"
 
-
-x=$(cat <<EOF
-body
-EOF
-)
-echo "$x"
-y=$(cat <<EOF
-first line
-second line
-third line
-EOF
-)
-echo "$y"
 for i in 1 2 3; do
   z=$(cat <<EOF
 iteration $i

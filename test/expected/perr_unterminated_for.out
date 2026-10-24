@@ -1,6 +1,0 @@
-2:1: error: This for loop has no 'do'.
-     2 |  for x y
-       |  ^~~
-2:7: details:
-     2 |  for x y
-       |        ^ expected 'do' or 'in WORDS' here, and a loop without 'in' iterates over the positional parameters.

@@ -8,8 +8,10 @@ canonical_dir=$(cd "$dir" && pwd -P)
 trap 'rm -rf "$dir"' EXIT
 printf '{\n  echo hi\n' > "$dir/unterminated"
 chmod +x "$dir/unterminated"
-"$BIN" --no-traces -c "$dir/unterminated" 2>&1 | sed 's|\\|/|g' | sed "s|$dir|TMPDIR|g"
-echo "rc=$?"
+"$BIN" --no-traces -c "$dir/unterminated" > "$dir/unterminated-output" 2>&1
+unterminated_status=$?
+sed 's|\\|/|g' "$dir/unterminated-output" | sed "s|$dir|TMPDIR|g"
+echo "rc=$unterminated_status"
 
 printf 'printf "incremental reached\\n"\nexit 0\n(\n' > "$dir/incremental"
 chmod +x "$dir/incremental"

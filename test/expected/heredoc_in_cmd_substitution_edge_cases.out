@@ -4,10 +4,6 @@ leading whitespace before delimiter
 pre
 semicolon sentinel
 tab stripped in substitution
-body
-first line
-second line
-third line
 iteration 1
 iteration 2
 iteration 3

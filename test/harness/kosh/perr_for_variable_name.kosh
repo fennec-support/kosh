@@ -1,2 +1,0 @@
-#!/bin/env kosh
-for "item" in a b c; do break; done

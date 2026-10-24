@@ -1,4 +1,0 @@
-2:5: error: The for loop variable 'item' is not a valid identifier.
-     2 |  for "item" in a b c; do break; done
-       |      ^~~~~~
-note: Write a bare identifier, as in `for i in a b c`, without '$' or quotes.

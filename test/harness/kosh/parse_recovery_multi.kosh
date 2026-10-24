@@ -5,3 +5,5 @@ done
 then
 do
 esac
+for "item" in a b c; do break; done
+while true; done

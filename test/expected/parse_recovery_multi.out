@@ -18,3 +18,13 @@ note: A loop above may be missing, or another 'done' may have closed it early.
      7 |  esac
        |  ^~~~
 note: A 'case' above may be missing, or another 'esac' may have closed it early.
+8:5: error: The for loop variable 'item' is not a valid identifier.
+     8 |  for "item" in a b c; do break; done
+       |      ^~~~~~
+note: Write a bare identifier, as in `for i in a b c`, without '$' or quotes.
+9:1: error: This loop has no 'do'.
+     9 |  while true; done
+       |  ^~~~~
+9:13: details:
+     9 |  while true; done
+       |              ^~~~ expected 'do' here, after the loop condition.

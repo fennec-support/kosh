@@ -1,7 +1,7 @@
 == process.sh
-process.sh:3:55: error: Expected a file after the redirection operator.
-     3 |  diff <(echo one) <(echo two; produce-two --now <S-D-.><><>)
-       |                                                        ^
+process.sh:3:50: error: Expected a filename after '<>'.
+     3 |  diff <(echo one) <(echo two; produce-two --now <><>)
+       |                                                   ^
 status=1
 == command.sh
 command.sh:1:12: error: Expected a filename after '<>'.
@@ -125,21 +125,11 @@ status=1
 == valid.sh
 0
 == escaped.sh
-1
+escaped.sh:6
 == run command.sh
 command.sh:1:12: error: Expected a filename after '<>'.
      1 |  x=$(echo <><>)
        |             ^
-status=2
-== run process.sh
-process.sh:3:55: error: Expected a file after the redirection operator.
-     3 |  diff <(echo one) <(echo two; produce-two --now <S-D-.><><>)
-       |                                                        ^
-status=2
-== run backtick.sh
-backtick.sh:2:11: error: Expected a filename after '<>'.
-     2 |  y=`echo <><>`
-       |            ^
 status=2
 == run -c
 -c:1:28: error: Expected a filename after '<>'.

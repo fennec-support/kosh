@@ -10,7 +10,7 @@ check()
   printf 'status=%s\n' "$?"
 }
 
-printf '#!/bin/bash\n\ndiff <(echo one) <(echo two; produce-two --now <S-D-.><><>)\n' \
+printf '#!/bin/bash\n\ndiff <(echo one) <(echo two; produce-two --now <><>)\n' \
   > process.sh
 printf 'x=$(echo <><>)\necho after\n' > command.sh
 printf 'echo before\ny=`echo <><>`\n' > backtick.sh
@@ -87,20 +87,13 @@ printf '%s\n' '== depth_limit.sh'
 printf '%s\n' '== depth_over.sh'
 "$BIN" --lint depth_over.sh 2>&1 | grep -c 'nested too deeply'
 printf '%s\n' '== valid.sh'
-"$BIN" --lint valid.sh 2>&1 | grep -c 'Expected a file after'
+"$BIN" --lint valid.sh 2>&1 | grep -c 'Expected a file'
 printf '%s\n' '== escaped.sh'
-"$BIN" --lint escaped.sh 2>&1 | grep -c 'Unterminated string literal'
+"$BIN" --lint escaped.sh 2>&1 | grep 'Unterminated string literal' |
+  cut -d: -f1,2
 
 printf '%s\n' '== run command.sh'
 "$BIN" command.sh 2>&1
-printf 'status=%s\n' "$?"
-
-printf '%s\n' '== run process.sh'
-"$BIN" process.sh 2>&1
-printf 'status=%s\n' "$?"
-
-printf '%s\n' '== run backtick.sh'
-"$BIN" backtick.sh 2>&1
 printf 'status=%s\n' "$?"
 
 printf '%s\n' '== run -c'

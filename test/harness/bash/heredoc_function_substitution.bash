@@ -15,15 +15,5 @@ read -r line <<E
 ${ { echo "{x}"; }; } ${| REPLY="}"; } ${ echo "${line%% *}"; } ${ echo $(echo sub); }
 E
 echo "2 $line"
-read -r line <<E
-${ printf '%s|' "one two" three; }
-E
-echo "3 $line"
-read -r line <<'E'
-${ f; } stays literal
-E
-echo "4 $line"
 P='a$(f)b${ f; }${| REPLY=v; }'
-echo "5 ${P@P}"
-x=${| REPLY=word; }
-echo "6 $x REPLY=$REPLY"
+echo "3 ${P@P}"

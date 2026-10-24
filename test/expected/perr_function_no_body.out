@@ -1,4 +1,0 @@
-2:1: error: Expected a compound command as the function body.
-     2 |  foo()
-       |  ^~~
-note: Write the body as a brace group, as in `greet() { echo hi; }`.

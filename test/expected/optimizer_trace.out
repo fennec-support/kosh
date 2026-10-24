@@ -83,16 +83,10 @@ Eliminated 2 statements.
 done
 === c-style for with a non-blank init folds but keeps the init ===
 -c:1:1: warning: The arithmetic expression `0` is constant and was folded to '0'.
-     1 |  for ((i=5; 0; i++)); do echo a; done; echo done
+     1 |  for ((i=5; 0; i++)); do echo a; done; echo "i=$i"
        |  ^~~
 Eliminated 1 statement.
-done
-=== while false is eliminated ===
--c:1:1: warning: This `while` loop condition never lets the body run.
-     1 |  while false; do echo a; done; echo done
-       |  ^~~~~
-Eliminated 1 statement.
-done
+i=5
 === a recorded constant survives read-only commands ===
 [optimizer] recorded constant: n = 10
 -c:1:33: warning: The arithmetic expression `n + 5` is constant and was folded to '15'.

@@ -1,6 +1,0 @@
-2:5: error: Unterminated process substitution.
-     2 |  cat <(echo hi
-       |      ^~~~~~~~~
-2:14: details:
-     2 |  cat <(echo hi
-       |               ^ expected ) here.

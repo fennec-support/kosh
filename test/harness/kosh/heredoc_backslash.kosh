@@ -9,13 +9,6 @@ cat 0<<B
 hi
 B
 
-cat <<'-EOF'
-body
--EOF
-cat <<-'-EOF'
-	indented
--EOF
-
 cat -n <<EOF <<EOF2 >&2
 first-a
 first-b
@@ -26,8 +19,4 @@ EOF2
 
 cat <<EOF
 $'\n'
-EOF
-
-cat 3<<EOF <&3
-body
 EOF

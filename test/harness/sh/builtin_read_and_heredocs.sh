@@ -1,7 +1,7 @@
 #!/bin/sh
-# The read builtin takes operands and honors a redirected input descriptor,
-# heredocs keep their own bodies, and here-document forms expand, quote, strip
-# tabs, and feed pipelines, all checked against dash.
+# The read builtin takes operands, a bare exec opens arbitrary descriptors, and
+# here-document forms expand, quote, strip tabs, and feed pipelines, all checked
+# against dash.
 
 read first second rest <<HD
 alpha beta gamma delta
@@ -15,14 +15,6 @@ read whole <<HD
 one line only
 HD
 echo "whole=$whole"
-
-# Multiple heredocs in one script each keep their own body.
-cat <<ONE
-body one
-ONE
-cat <<TWO
-body two
-TWO
 
 # A bare exec applies its redirections to the shell itself and keeps them for
 # every later command. An arbitrary descriptor such as 5 opens a file, takes

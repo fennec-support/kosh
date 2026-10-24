@@ -34,12 +34,6 @@ echo combined
 ok
 [CompoundList]
   [CompoundListCondition, None]
-    [SimpleCommand "echo" "apply"]
-[CompoundList]
-  [CompoundListCondition, None]
-    [SimpleCommand "echo" "both"]
-[CompoundList]
-  [CompoundListCondition, None]
     [SimpleCommand "echo" "embedded"]
 # heading
 

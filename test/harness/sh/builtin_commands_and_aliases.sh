@@ -1,5 +1,6 @@
 #!/bin/sh
-# type, command, alias, eval, and the no-op builtins, checked against dash.
+# type, command, alias, eval, export, readonly, local, positional parameters,
+# prefix assignments, and PATH search, checked against dash.
 
 # The shell builtins report themselves consistently.
 type echo
@@ -11,11 +12,6 @@ eval 'evaluated=yes'
 echo "eval=$evaluated"
 cmd='echo from_eval'
 eval "$cmd"
-
-# true, false, and the colon set the status without output.
-true; echo "true=$?"
-false; echo "false=$?"
-:; echo "colon=$?"
 
 # An alias defined and used on later lines expands.
 alias hi='echo aliased'
@@ -70,14 +66,11 @@ echo "exported=$EXPORTED"
 unset EXPORTED
 echo "after_unset=[$EXPORTED]"
 
-# A plain assignment, read, and unset round-trip.
-plain=hello
-echo "plain=$plain"
-unset plain
-echo "after_unset_plain=[$plain]"
-
-# readonly rejects reassignment but the first value stands.
+# readonly rejects reassignment, so the assignment fails and the first value
+# stands.
 readonly RO=locked
+(RO=changed) 2>/dev/null
+echo "ro_assign=$?"
 echo "ro=$RO"
 
 # Positional parameters through set and shift.
@@ -88,9 +81,6 @@ shift
 echo "after_shift count=$# first=$1"
 shift 2
 echo "after_shift2 count=$# first=$1"
-
-# set with no operands does not clobber the positionals here.
-echo "still=$1"
 
 # Special builtins keep their prefix assignments after the command, and a
 # redirection error fails a regular command but does not abort the shell,

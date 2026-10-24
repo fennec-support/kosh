@@ -1,2 +1,8 @@
 #!/bin/env kosh
-echo $(echo hi
+eval 'echo $(echo hi'
+eval 'echo `echo hi'
+eval 'echo $((1 + 2'
+eval 'cat <(echo hi'
+eval "echo \$'abc\\"
+eval '"quote?'
+eval 'echo;hello"helloworld'

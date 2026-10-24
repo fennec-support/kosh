@@ -12,3 +12,4 @@ rc=0
 rc=0
 == bg refuses a job that has already finished:
 rc=1
+-c:1:33: error: Builtin `bg`: The job has already finished.
