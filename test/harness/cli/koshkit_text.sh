@@ -486,6 +486,9 @@ echo "--- comm reports unsorted input ---"
 printf 'b\na\n' > comm-unsorted-1.txt
 printf 'a\nb\n' > comm-unsorted-2.txt
 "$BIN" -c 'koshkit comm comm-unsorted-1.txt comm-unsorted-2.txt 2>/dev/null; printf "status=%s\n" "$?"'
+printf 'c\nb\n' > comm-late-1.txt
+printf 'c\n' > comm-late-2.txt
+"$BIN" -c 'koshkit comm comm-late-1.txt comm-late-2.txt 2>/dev/null; printf "status=%s\n" "$?"'
 echo "--- comm order checks, delimiters, totals, and NUL lines ---"
 printf 'a\nb\nd\ne\n' > comm-left.txt
 printf 'b\nc\ne\nf\n' > comm-right.txt

@@ -1155,6 +1155,9 @@ xzaab
 		b
 a
 status=1
+		c
+b
+status=1
 --- comm order checks, delimiters, totals, and NUL lines ---
 comm --total
 a

@@ -147,21 +147,40 @@ Comm::execute(const ExecContext               &ec,
 
   String previous_lines[2]        = {String{cxt.scratch_allocator()},
                                      String{cxt.scratch_allocator()}};
+  String earlier_lines[2]         = {String{cxt.scratch_allocator()},
+                                     String{cxt.scratch_allocator()}};
   bool   has_previous_line[2]     = {false, false};
+  bool   has_earlier_line[2]      = {false, false};
   bool   was_disorder_reported[2] = {false, false};
   bool   has_seen_unpairable_line = false;
 
   let const do_advance =
       [&](usize side, utils::BufferedLineReader &reader,
           utils::BufferedLineReader::Result &result) throws -> void {
+    if (has_previous_line[side]) {
+      earlier_lines[side].clear();
+      earlier_lines[side].append(previous_lines[side].view());
+      has_earlier_line[side] = true;
+    }
+
     previous_lines[side].clear();
     previous_lines[side].append(reader.get_line());
     has_previous_line[side] = true;
     result                  = reader.next();
-    if (result != utils::BufferedLineReader::Result::Line ||
-        is_check_disabled || (!is_check_forced && !has_seen_unpairable_line) ||
-        did_fail_order || was_disorder_reported[side] ||
-        !(reader.get_line() < previous_lines[side].view()))
+    if (is_check_disabled || (!is_check_forced && !has_seen_unpairable_line) ||
+        did_fail_order || was_disorder_reported[side])
+    {
+      return;
+    }
+
+    /* a line is checked against the one before it when it is read. At the
+       end of a file the last two lines are checked, since an unpairable line
+       found after the last read can be out of order. */
+    if (result == utils::BufferedLineReader::Result::Line) {
+      if (!(reader.get_line() < previous_lines[side].view())) return;
+    } else if (result != utils::BufferedLineReader::Result::End ||
+               !has_earlier_line[side] ||
+               !(previous_lines[side].view() < earlier_lines[side].view()))
     {
       return;
     }
