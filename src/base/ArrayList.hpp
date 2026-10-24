@@ -621,6 +621,12 @@ public:
     apply_index_order(order);
   }
 
+  cold fn
+  sort_by_index() throws -> void
+  {
+    sort_by_index([](const T &a, const T &b) { return a < b; });
+  }
+
   template <class Compare>
   mustuse cold fn
   make_sorted(Compare compare) &&

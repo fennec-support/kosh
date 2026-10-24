@@ -3107,8 +3107,8 @@ parse_format_document(const parser_format_input &input) throws
     break;
   }
 
-  document.fragments.sort([](const parser_format_fragment &left,
-                             const parser_format_fragment &right) {
+  document.fragments.sort_by_index([](const parser_format_fragment &left,
+                                      const parser_format_fragment &right) {
     return left.host_start < right.host_start;
   });
 

@@ -187,7 +187,8 @@ z_completion_candidates(StringView query, Allocator allocator) throws
   /* e.g. (rank, age in seconds): A (3, 100), B (5, 172800), C (1, 10).
      the scores are 3 * 4.0 = 12.0, 5 * 0.5 = 2.5, and 1 * 4.0 = 4.0, so the
      order is A, C, B. */
-  entries.sort([now](const frecency_entry &left, const frecency_entry &right) {
+  entries.sort_by_index([now](const frecency_entry &left,
+                              const frecency_entry &right) {
     let const left_score =
         static_cast<double>(left.rank) * recency_weight(now - left.last_access);
     let const right_score = static_cast<double>(right.rank) *

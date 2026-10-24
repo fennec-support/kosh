@@ -875,7 +875,7 @@ sort_disk_rows(ArrayList<disk_io_row> &rows,
     return left.name.view() < right.name.view();
   };
 
-  rows.sort(do_compare);
+  rows.sort_by_index(do_compare);
 }
 
 pure fn

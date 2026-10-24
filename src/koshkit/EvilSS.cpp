@@ -176,7 +176,7 @@ append_network_socket_report(String                              &output,
       }
     }
 
-    owner_process_ids.sort();
+    owner_process_ids.sort_by_index();
 
     usize unique_count = 0;
 

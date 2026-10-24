@@ -875,7 +875,7 @@ Server::publish_diagnostics(Document &document) throws -> bool
                 options, directives, {&followed_paths, &source_effects}, {},
                 {nullptr, &diagnostics, &symbol_records}, this, nullptr,
                 format_document);
-    symbol_records.variable_occurrences.sort(
+    symbol_records.variable_occurrences.sort_by_index(
         [](const variable_occurrence_record &left,
            const variable_occurrence_record &right) {
           if (left.position != right.position)

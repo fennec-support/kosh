@@ -982,7 +982,7 @@ File::execute(const ExecContext               &ec,
   /* sorts the -m and -M paths by command-line position. match_magic_rules()
      returns the first matching top-level rule, so this order selects the
      magic file that wins. */
-  magic_paths.sort(
+  magic_paths.sort_by_index(
       [](const file_magic_path &left, const file_magic_path &right) {
         return left.position < right.position;
       });
