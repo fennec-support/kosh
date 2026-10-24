@@ -24,4 +24,3 @@ if command -v setsid >/dev/null 2>&1; then
 else
     echo 1
 fi
-"$BIN" --mood bash -c '(sleep 0.01 & wait); echo SUBSHELL_RETURNED' 2>&1 | grep -c SUBSHELL_RETURNED

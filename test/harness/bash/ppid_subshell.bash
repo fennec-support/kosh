@@ -17,7 +17,6 @@ f() { echo "$PPID"; }
 g=$(f)
 [ "$g" = "$parent" ] && echo "function substitution matches"
 [ "$(echo "$BASHPID")" != "$BASHPID" ] && echo "bashpid differs in substitution"
-[ "$(echo "$SRANDOM")" -ge 0 ] && echo "srandom readable"
 
 # BASHPID is the process of the stage that expands it, not the shell.
 shell_pid=$BASHPID

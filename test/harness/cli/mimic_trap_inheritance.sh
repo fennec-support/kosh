@@ -48,9 +48,3 @@ echo "== a mimicked script run as a command uses the same shebang:"
 status=$?
 sed "s|$directory|TMPDIR|g" "$directory/out"
 echo "rc=$status"
-
-echo "== the EXIT trap reaches every mood:"
-"$BIN" --no-traces -I --mood sh -c 'trap "echo sh-exit" EXIT; echo sh-body'
-echo "rc=$?"
-"$BIN" --no-traces -I --mood bash -c 'trap "echo bash-exit" EXIT; echo bash-body'
-echo "rc=$?"

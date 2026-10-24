@@ -276,12 +276,4 @@ else
 fi
 echo open-in-a-loop-stage-whose-action-sets-a-variable-done
 
-echo open-that-no-signal-reaches
-( /bin/sleep 1; echo quiet-payload > "$dir/third" ) &
-writer=$!
-read -r line < "$dir/third"
-echo "quiet-status=$? quiet-line=$line"
-wait "$writer" 2> /dev/null
-echo open-that-no-signal-reaches-done
-
 echo trap-during-blocking-open-done

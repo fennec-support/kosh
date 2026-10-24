@@ -6,3 +6,7 @@
 0
 == an unknown job id is an error:
 1
+== one stopped job survives disown -r:
+1
+== and no running job remains after disown -r:
+0

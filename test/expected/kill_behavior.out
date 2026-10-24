@@ -1,13 +1,9 @@
-== kill -l lists SIGTERM (count):
-1
 == kill --list lists SIGKILL (count):
 1
 == killall -l lists SIGHUP (count):
 1
 == pkill -l lists SIGINT (count):
 1
-== the list has the common signal set:
-complete
 == no target is required:
 -c:1:1: error: Builtin `kill`: Not enough arguments.
      1 |  kill
@@ -34,8 +30,3 @@ rc=1
      1 |  kill notanumber
        |       ^~~~~~~~~~
 rc=1
-== signal zero probes the current process:
-named=0
-numbered=0
-== signal zero rejects an exited process:
-exited=1

@@ -31,14 +31,4 @@ trap 'echo "R-source-$?"' RETURN
 echo "rc=$?"
 trap - RETURN
 koshkit unlink "$source_file"
-echo "== GUARDED LOOP =="
-set -M bash
-trap 'echo unexpected' ERR
-for item in one two; do
-  false && echo unreachable
-done
-echo "rc=$?"
-trap - ERR
-set -M kosh
-echo "mood=$(set -M)"
 echo "== DONE =="

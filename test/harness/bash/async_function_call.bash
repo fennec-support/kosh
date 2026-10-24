@@ -5,7 +5,9 @@
 # background variable, and wait reports the status the function returned or
 # exited with. An exit inside the function ends only the subshell, and the
 # variables the function assigns never reach the caller. A gate FIFO orders
-# the background output after the foreground output without timing.
+# the background output after the foreground output without timing. The words
+# of the call expand exactly once: a command substitution in an argument
+# appends one line to a counter file each time it runs.
 
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
@@ -93,5 +95,38 @@ report() {
 report "a b" c > "$dir/out" &
 wait "$!"
 cat "$dir/out"
+
+echo expansion-once
+show() {
+  echo "args=$# first=$1 second=$2"
+}
+
+echo substitution-argument
+show "$(echo hit >> "$dir/count"; echo value)" tail &
+wait "$!"
+echo "count=$(wc -l < "$dir/count" | tr -d ' ')"
+
+echo substitution-with-redirection
+: > "$dir/count"
+show "$(echo hit >> "$dir/count"; echo value)" tail > "$dir/out" &
+wait "$!"
+cat "$dir/out"
+echo "count=$(wc -l < "$dir/count" | tr -d ' ')"
+
+echo prefix-assignment
+: > "$dir/count"
+mark() {
+  echo "mark=$MARK first=$1"
+}
+MARK=set mark "$(echo hit >> "$dir/count"; echo value)" &
+wait "$!"
+echo "count=$(wc -l < "$dir/count" | tr -d ' ')"
+
+echo expanded-function-name
+: > "$dir/count"
+fn=show
+$fn "$(echo hit >> "$dir/count"; echo value)" tail &
+wait "$!"
+echo "count=$(wc -l < "$dir/count" | tr -d ' ')"
 
 echo async-function-done

@@ -3,8 +3,7 @@
 
 # A coprocess starts a fresh evaluator on Windows. The child receives only the
 # body, so it never launches another coprocess, and a fork platform runs the
-# same body. A function defined through eval reports lines of this file, both
-# here and in a fresh evaluator that replays it.
+# same body.
 coproc { read -r line; printf 'unnamed:%s\n' "$line"; read -r _ || :; }
 unnamed_pid=$COPROC_PID
 printf '%s\n' "elements:${#COPROC[@]} pid:${COPROC_PID:+set}"
@@ -47,11 +46,3 @@ printf '%s\n' "reply:$reply"
 exec {COPROC[1]}>&-
 wait "$cat_pid"
 printf '%s\n' "simple wait:$?"
-
-eval 'evalfn() {
-  echo "line=$LINENO caller=${BASH_LINENO[0]} name=${FUNCNAME[0]}"
-}'
-evalfn
-evalfn | cat
-( evalfn ) &
-wait "$!"

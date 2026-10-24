@@ -108,6 +108,16 @@ echo quoted-round-trip
   trap -p USR1 )
 echo after-quoted-round-trip=$?
 
+# The listing of an action with an embedded quote evaluates back to an action
+# that prints the same text when it runs.
+echo quoted-embedded-quote-round-trip
+( trap 'printf "quoted=<%s>\n" "a'\''b"' EXIT
+  saved=$(trap -p EXIT)
+  trap - EXIT
+  eval "$saved"
+  trap -p EXIT )
+echo after-quoted-embedded-quote-round-trip=$?
+
 # An empty listing prints nothing and reports success in both forms.
 echo empty-listing
 ( trap; echo empty-listing-status=$? )

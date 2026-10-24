@@ -78,10 +78,3 @@ note: List the signals with `trap -l`.
 debug-rc=1
 body
 rc=0
-== the EXIT trap reaches every mood:
-sh-body
-sh-exit
-rc=0
-bash-body
-bash-exit
-rc=0

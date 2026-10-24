@@ -20,6 +20,15 @@ kill -0 -- $$
 echo "dashes-after-signal=$?"
 kill -s 0 -- $$
 echo "dashes-after-signal-name=$?"
+# Signal zero probes a process. The numbered form accepts the shell itself, and
+# a process that was already waited for does not exist.
+kill -n 0 $$
+echo "numbered-zero=$?"
+: &
+child=$!
+wait "$child"
+kill -0 "$child" 2> /dev/null
+echo "exited-zero=$?"
 # kill -l takes 0, EXIT, and lowercase signals, and -s takes an attached signal.
 kill -l 0 EXIT int
 kill -sCONT $$

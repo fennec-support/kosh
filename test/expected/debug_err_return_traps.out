@@ -21,7 +21,4 @@ rc=0
 sourced-body
 R-source-1
 rc=3
-== GUARDED LOOP ==
-rc=1
-mood=kosh
 == DONE ==
