@@ -2754,9 +2754,9 @@ EvalContext::make_subshell_bootstrap() const throws
               : indexed.has_value() ? "declare -a"
                                     : "declare -";
     if (is_integer) source.push('i');
+    if (is_exported_value) source.push('x');
     if (is_lowercase) source.push('l');
     if (is_uppercase) source.push('u');
-    if (is_exported_value) source.push('x');
     if (!indexed.has_value() && !is_associative && !is_integer &&
         !is_lowercase && !is_uppercase && !is_exported_value)
     {

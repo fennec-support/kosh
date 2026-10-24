@@ -4141,10 +4141,10 @@ EvalContext::apply_parameter_transform_to_value(StringView text,
     let flags = String{scratch_allocator()};
 
     if (is_integer_variable(name)) flags.push('i');
-    if (variable_store().attributes().is_lowercase(name)) flags.push('l');
     if (is_readonly(name)) flags.push('r');
-    if (variable_store().attributes().is_uppercase(name)) flags.push('u');
     if (is_exported(name)) flags.push('x');
+    if (variable_store().attributes().is_lowercase(name)) flags.push('l');
+    if (variable_store().attributes().is_uppercase(name)) flags.push('u');
     if (!flags.is_empty()) {
       out += "declare -";
       out.append(flags.view());
@@ -4174,12 +4174,12 @@ EvalContext::apply_parameter_transform_to_value(StringView text,
 
     if (is_associative_array(attribute_name)) out.push('A');
     if (is_integer_variable(attribute_name)) out.push('i');
+    if (is_readonly(attribute_name)) out.push('r');
+    if (is_exported(attribute_name)) out.push('x');
     if (variable_store().attributes().is_lowercase(attribute_name))
       out.push('l');
-    if (is_readonly(attribute_name)) out.push('r');
     if (variable_store().attributes().is_uppercase(attribute_name))
       out.push('u');
-    if (is_exported(attribute_name)) out.push('x');
 
     return out;
   }

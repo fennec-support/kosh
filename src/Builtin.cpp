@@ -787,14 +787,17 @@ append_declare_key(String    &out,
   out += '"';
 }
 
+/* the letters come in the order Bash prints them. */
 static fn
 append_value_attribute_letters(EvalContext &cxt,
                                StringView   name,
+                               bool         is_exported,
                                String      &out) throws -> void
 {
   if (cxt.is_integer_variable(name)) out += 'i';
-  if (cxt.variable_store().attributes().is_lowercase(name)) out += 'l';
   if (cxt.is_readonly(name)) out += 'r';
+  if (is_exported) out += 'x';
+  if (cxt.variable_store().attributes().is_lowercase(name)) out += 'l';
   if (cxt.variable_store().attributes().is_uppercase(name)) out += 'u';
 }
 
@@ -803,8 +806,7 @@ append_array_attribute_letters(EvalContext &cxt,
                                StringView   name,
                                String      &out) throws -> void
 {
-  append_value_attribute_letters(cxt, name, out);
-  if (cxt.is_exported(name)) out += 'x';
+  append_value_attribute_letters(cxt, name, cxt.is_exported(name), out);
 }
 
 static fn
@@ -972,8 +974,8 @@ append_variable_declaration(EvalContext &cxt,
   if (const Maybe<String> value = cxt.get_variable_value(name)) {
     let attribute = String{cxt.scratch_allocator(), "-"};
 
-    append_value_attribute_letters(cxt, name, attribute);
-    if (os::get_environment_variable(name).has_value()) attribute += 'x';
+    append_value_attribute_letters(
+        cxt, name, os::get_environment_variable(name).has_value(), attribute);
     if (attribute.count() == 1) attribute += '-';
 
     let line = String{cxt.scratch_allocator(), "declare "};
@@ -998,8 +1000,7 @@ append_variable_declaration(EvalContext &cxt,
   {
     let attribute = String{cxt.scratch_allocator(), "-"};
 
-    append_value_attribute_letters(cxt, name, attribute);
-    if (cxt.is_exported(name)) attribute += 'x';
+    append_value_attribute_letters(cxt, name, cxt.is_exported(name), attribute);
     if (attribute.count() == 1) attribute += '-';
 
     let line = String{cxt.scratch_allocator(), "declare "};

@@ -60,7 +60,7 @@ EvalContext::EvalContext(startup_options   options,
   dynamic_runtime_store().shell_start_time() = static_cast<i64>(time(nullptr));
   trap_store().startup_ignored_signals()     = os::get_entry_ignored_signals();
 
-  /* one reservation replaces the rehashes of growing the map name by name. */
+  /* the exported name set reserves one slot for each environment entry. */
   usize environment_count = 0;
 
   os::for_each_environment_name(
