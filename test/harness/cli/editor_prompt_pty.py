@@ -276,8 +276,9 @@ def has_no_partial_line_marker(screen):
 def wait_for_terminal_job(session):
     for _ in range(500):
         attributes = termios.tcgetattr(session.fd)
-        is_cooked = (attributes[3] & termios.ICANON) != 0 and (
-            attributes[3] & termios.ECHO) != 0
+        cooked_flags = (termios.ICANON | termios.ECHO | termios.ISIG
+                        | termios.ECHOCTL)
+        is_cooked = (attributes[3] & cooked_flags) == cooked_flags
         if os.tcgetpgrp(session.fd) != session.pid and is_cooked:
             return True
         session.pump(0.02)
