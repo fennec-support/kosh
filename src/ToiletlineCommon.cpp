@@ -246,11 +246,9 @@ write_history_file_atomically(const koshka::Path      &path,
                               koshka::os::file_status *written) throws
     -> bool
 {
-  /* memory: target and replacement own their path strings, freed on return.
-             the temporary file is removed when set_file_mode(),
-             sync_path(), or rename_path() fails.
-     time:   O(contents.length) for the write, then one sync_path() and one
-             rename_path() of the temporary file. no locks are taken. */
+  /* memory: target owns its path string, freed on return.
+     time:   O(contents.length) for the write, then one replace_file_beside()
+             sequence. no locks are taken. */
   let target = koshka::Path{path.view()};
 
   if (let resolved = koshka::os::canonical_path(path); resolved.has_value())
@@ -258,26 +256,19 @@ write_history_file_atomically(const koshka::Path      &path,
 
   let       status     = koshka::os::file_status{};
   let const has_status = koshka::os::stat_path_following(target.view(), status);
-  let const replacement = koshka::os::write_to_named_temp_file(
-      target.parent_or_current(), name_prefix, contents);
 
-  if (!replacement.has_value()) return false;
-
-  /* at this point: replacement is a Path to a written temporary file in the
-     directory of target, and target is the canonical path when one resolves. */
-  if ((has_status &&
-       !koshka::os::set_file_mode(replacement->view(), status.mode & 07777)) ||
-      !koshka::os::sync_path(replacement->view(), koshka::os::sync_mode::All) ||
-      (written != nullptr &&
-       !koshka::os::stat_path_following(replacement->view(), *written)) ||
-      !koshka::os::rename_path(replacement->view(), target.view()))
-  {
-    unused(koshka::os::remove_file(replacement->view()));
+  try {
+    koshka::os::replace_file_beside(target, name_prefix, contents,
+                                    has_status ? status.mode & 07777 : 0600);
+  } catch (const koshka::ErrorBase &error) {
+    LOG(Info, "writing the history file '%s' failed: %s", target.text().c_str(),
+        error.message().c_str());
 
     return false;
   }
 
-  return true;
+  return written == nullptr ||
+         koshka::os::stat_path_following(target.view(), *written);
 }
 
 fn
