@@ -14,15 +14,15 @@ rc=130
        |          ^~~~~~~
 rc=130
 == wc buffers completed rows before an interrupted source:
-1:1: error: Interrupted.
-     1 |  directory=$1
-       |  ^
+-c:7:1: error: Interrupted.
+     7 |  echo "wc-status=$?"
+       |  ^~~~~~~~~~~~~~~~~~~
 rc=130
 == cksum prints completed rows before an interrupted source:
 2715464726 6 first
-1:1: error: Interrupted.
-     1 |  directory=$1
-       |  ^
+-c:7:1: error: Interrupted.
+     7 |  echo "cksum-status=$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~
 rc=130
 == grep opens an earlier regular file before opening a later pipe:
 grep-status=143

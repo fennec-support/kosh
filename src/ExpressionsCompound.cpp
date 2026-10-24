@@ -93,7 +93,21 @@ CompoundList::append_node(const CompoundListCondition *node) throws
 {
   ASSERT(node != nullptr);
 
-  m_location.length += node->source_location().length;
+  let const &location = node->command() != nullptr
+                            ? node->command()->source_location()
+                            : node->source_location();
+
+  /* the list starts at its first command and spans to the end of its last. */
+  if (m_nodes.is_empty()) {
+    m_location = location;
+  } else if (location.source_name_index == m_location.source_name_index &&
+             location.position + location.length >
+                 m_location.position + m_location.length)
+  {
+    m_location.length =
+        location.position + location.length - m_location.position;
+  }
+
   m_nodes.push(node);
 }
 
@@ -109,12 +123,23 @@ CompoundList::move_nodes_from(usize         first_index,
 {
   ASSERT(first_index <= m_nodes.count());
 
-  for (usize index = first_index; index < m_nodes.count(); index++) {
-    m_location.length -= m_nodes[index]->source_location().length;
+  for (usize index = first_index; index < m_nodes.count(); index++)
     destination.append_node(m_nodes[index]);
-  }
 
   m_nodes.truncate(first_index);
+  if (m_nodes.is_empty()) {
+    m_location = SourceLocation{};
+  } else {
+    let const &last = m_nodes.back()->command() != nullptr
+                          ? m_nodes.back()->command()->source_location()
+                          : m_nodes.back()->source_location();
+
+    if (last.source_name_index == m_location.source_name_index &&
+        last.position >= m_location.position)
+    {
+      m_location.length = last.position + last.length - m_location.position;
+    }
+  }
 }
 
 fn
