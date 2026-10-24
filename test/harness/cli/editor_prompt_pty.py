@@ -420,13 +420,13 @@ def run_job_notice_checks(binary, directory, report):
             session.send(b":\r")
             session.wait_until(lambda screen: b":" in session.raw[mark:]
                                and is_prompt_line(BULLET)(screen))
-        report.record("signaled-job-notice-names-the-signal", session,
+        report.record("signaled-job-notice-shows-the-signal", session,
                       is_noticed)
 
         mark = len(session.raw)
         session.send(b"koshconf set mood kosh --persist\r")
         written_note = b"mood=kosh ~/.config/kosh/kosh.conf"
-        report.record("persist-names-the-written-file", session,
+        report.record("persist-prints-the-written-file", session,
                       lambda screen: written_note in session.raw[mark:])
     finally:
         session.close()

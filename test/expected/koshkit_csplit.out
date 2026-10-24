@@ -8,6 +8,13 @@
  7 offset00
  9 offset01
 16 total
+13:43: error: Koshkit `csplit`: Line number is outside the input.
+    13 |  (koshkit csplit -s -f rejected repeated 3 99) 2>&1
+       |                                            ^~
+note: Use a positive line number within the input.
+13:1: trace:
+    13 |  (koshkit csplit -s -f rejected repeated 3 99) 2>&1
+       |  ^
 csplit-cleanup=0
 0 slash00
 9 slash01
@@ -45,33 +52,43 @@ csplit-width-first=0
 csplit-width-last=0
 csplit-width-exhausted=0
 csplit-zero-repeat=0
+ 8 zero-repeat00
+11 zero-repeat01
+19 total
+csplit-zero-repeat-pieces=0
 csplit-star-repeat=0
+ 2 star-repeat00
+ 4 star-repeat01
+ 4 star-repeat02
+ 6 star-repeat10
+16 total
+csplit-star-repeat-pieces=0
  0 stagnant00
 11 stagnant01
 11 total
-60:26: error: Koshkit `csplit`: Repeat has no preceding line or regular expression pattern.
-    60 |  (koshkit csplit -s lines '{1}') 2>&1
+66:26: error: Koshkit `csplit`: Repeat has no preceding line or regular expression pattern.
+    66 |  (koshkit csplit -s lines '{1}') 2>&1
        |                           ^~~~~
 note: Place the repeat immediately after the pattern it repeats.
-60:1: trace:
-    60 |  (koshkit csplit -s lines '{1}') 2>&1
+66:1: trace:
+    66 |  (koshkit csplit -s lines '{1}') 2>&1
        |  ^
-61:49: error: Koshkit `csplit`: Repeat has no preceding line or regular expression pattern.
-    61 |  (koshkit csplit -s -f consecutive lines 3 '{0}' '{0}') 2>&1
+67:49: error: Koshkit `csplit`: Repeat has no preceding line or regular expression pattern.
+    67 |  (koshkit csplit -s -f consecutive lines 3 '{0}' '{0}') 2>&1
        |                                                  ^~~~~
 note: Place the repeat immediately after the pattern it repeats.
-61:1: trace:
-    61 |  (koshkit csplit -s -f consecutive lines 3 '{0}' '{0}') 2>&1
+67:1: trace:
+    67 |  (koshkit csplit -s -f consecutive lines 3 '{0}' '{0}') 2>&1
        |  ^
-62:26: error: Koshkit `csplit`: Invalid regular expression offset.
-    62 |  (koshkit csplit -s lines '/one/+999999999999999999999') 2>&1
+68:26: error: Koshkit `csplit`: Invalid regular expression offset.
+    68 |  (koshkit csplit -s lines '/one/+999999999999999999999') 2>&1
        |                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use an optional signed decimal offset after the closing delimiter.
-62:1: trace:
-    62 |  (koshkit csplit -s lines '/one/+999999999999999999999') 2>&1
+68:1: trace:
+    68 |  (koshkit csplit -s lines '/one/+999999999999999999999') 2>&1
        |  ^
-71:28: error: Koshkit `csplit`: The output filename component is too long.
-    71 |  (koshkit csplit -s -n 1 -f "$long_prefix" lines 3) 2>&1
+77:28: error: Koshkit `csplit`: The output filename component is too long.
+    77 |  (koshkit csplit -s -n 1 -f "$long_prefix" lines 3) 2>&1
        |                             ^~~~~~~~~~~~~~
 note: Shorten the output prefix or reduce the suffix width.
 csplit-name-limit-clean=0

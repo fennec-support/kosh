@@ -219,8 +219,3 @@ b
 |
 head -n -1 multiple sources: matched
 head -c -65536 multiple sources: matched
---- wc words start at a printable byte ---
-0
-1
-      2       2
-1

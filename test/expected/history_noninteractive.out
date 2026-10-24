@@ -55,6 +55,10 @@ rc=2
 == the print flag echoes its operands and stores nothing ==
 alpha
 beta
+    1  echo one
+    2  ls
+    3  cd /tmp
+    4  git status
 == builtin history -a no longer reports an unknown builtin ==
 continued
 == type reports the builtin ==
@@ -75,12 +79,16 @@ existing two
 rc=0
     1  existing one
     2  existing two
+existing one
+existing two
 == a hard link aliases the backing file ==
 rc=0
 == history -a leaves an aliased backing file unchanged ==
 rc=0
     1  existing one
     2  existing two
+existing one
+existing two
 == history -w replaces a given file with the list ==
 rc=0
 existing one
@@ -149,6 +157,8 @@ rc=0,0,0
 == an equal size replacement refreshes append state ==
     1  first
     2  third
+second
+third
 == a mode change on the backing file keeps the store readable ==
 rc=0
     1  mode one

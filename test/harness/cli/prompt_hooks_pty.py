@@ -14,7 +14,9 @@
 # element of a PROMPT_COMMAND array runs in order with the status of the
 # last command, and with its $_ in the bash mood, a precmd hook appended as an element arms a preexec
 # DEBUG trap the way bash-preexec does, and a RETURN trap set by an element
-# runs. Each check prints one stable PASS line.
+# runs. A PS0 with ${ command; } and ${| command; } runs in the current shell
+# before each command, keeps its assignments, yields REPLY, and reports no
+# error. Each check prints one stable PASS line.
 
 import fcntl
 import os
@@ -150,12 +152,17 @@ def run_mood(binary, directory, mood, report):
         check_line(session, report, mood + "-ps0-expansions",
                    "echo \"answer-$((6 * 7))\"",
                    ["<ps0 zero 2 n>", "answer-42"])
-        session.run("mark() { echo '<mark>'; }; ps0_saved=$PS0")
-        check_line(session, report, mood + "-ps0-function-substitution",
-                   "PS0='<ps0 ${ mark; } ${| REPLY=reply; }>\\n'; true", [])
+        session.run("ps0_n=0; mark() { ps0_n=$((ps0_n + 1)); echo '<mark>'; };"
+                    " ps0_saved=$PS0")
+        session.run("PS0='<ps0 ${ mark; } ${| REPLY=reply; }>\\n'")
         check_line(session, report,
                    mood + "-ps0-function-substitution-runs", "echo after",
                    ["<ps0 <mark> reply>", "after"])
+        check_line(session, report,
+                   mood + "-ps0-function-substitution-keeps-assignments",
+                   "echo \"<ps0-count-$ps0_n>\"", ["<ps0-count-2>"])
+        report.check(mood + "-ps0-function-substitution-reports-no-error",
+                     session, not session.has_text("Unable to expand"))
         session.run("PS0=$ps0_saved")
         check_line(session, report, mood + "-return-trap",
                    "f() { trap 'echo \"<return-$((1 + 1))>\"' RETURN; }; f;"

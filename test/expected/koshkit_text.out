@@ -9,6 +9,11 @@
 4 fruit.txt
 --- wc -w in a UTF-8 locale counts UTF-8 words and skips stray continuation bytes ---
 4
+--- wc words start at a printable byte ---
+0
+1
+      2       2
+1
 --- cat multi-chunk input with a missing operand ---
 -c:1:1: error: Koshkit `cat`: Cannot read 'missing.txt': No such file or directory.
      1 |  koshkit cat batch-input.txt cat-first.txt missing.txt cat-last.txt > cat-output.txt; printf "status=%s\n" "$?"; koshkit cksum cat-output.txt
@@ -140,7 +145,7 @@ apple
 cherry
 apple
 status=1
---- a -2 after a file is an option ---
+--- a -2 after a file is rejected as a trailing option ---
 status=2
 --- sort -r ---
 cherry
@@ -258,16 +263,56 @@ hELLO wORLD 123 ABC
 Hello World 123 zzz
 xelloxxorldxxxxxabc
 Hexxo Worxd 123 abc
+-c:8:18: error: Koshkit `tr`: A [:upper:] or [:lower:] class in SET2 does not start at a [:upper:] or [:lower:] class in SET1.
+     8 |  koshkit tr "a-z" "[:upper:]" < tr-input.txt
+       |                   ^~~~~~~~~~~
 status=1
+-c:10:16: error: Koshkit `tr`: Only the upper and lower classes can appear in set2 when translating.
+    10 |  koshkit tr "a" "[:digit:]" < tr-input.txt
+       |                 ^~~~~~~~~~~
+note: Use `[:upper:]` or `[:lower:]` in SET2.
 status=1
+-c:12:27: error: Koshkit `tr`: Set2 must not end with a class when set1 is longer.
+    12 |  koshkit tr "[:upper:]0-9" "[:lower:]" < tr-input.txt
+       |                            ^~~~~~~~~~~
+note: End SET2 with a byte to repeat.
 status=1
+-c:14:29: error: Koshkit `tr`: Set2 must map every byte to one byte when complementing a class.
+    14 |  koshkit tr "-c" "[:lower:]" "xy" < tr-input.txt
+       |                              ^~~~
+note: Use one byte or `[c*]` in SET2.
 status=1
+-c:16:12: error: Koshkit `tr`: Invalid character class 'foo'.
+    16 |  koshkit tr "[:foo:]" "x" < tr-input.txt
+       |             ^~~~~~~~~
+note: Use alnum, alpha, blank, cntrl, digit, graph, lower, print, punct, space, upper, or xdigit.
 status=1
+-c:18:12: error: Koshkit `tr`: The [c*] repeat cannot appear in set1.
+    18 |  koshkit tr "[a*]" "x" < tr-input.txt
+       |             ^~~~~~
+note: Give the repeat a count, such as `[c*3]`.
 status=1
+-c:20:16: error: Koshkit `tr`: Invalid repeat count 'x'.
+    20 |  koshkit tr "a" "[b*x]" < tr-input.txt
+       |                 ^~~~~~~
+note: Write the count in decimal, or in octal with a leading 0.
 status=1
+-c:22:16: error: Koshkit `tr`: [=c=] cannot appear in set2 when translating.
+    22 |  koshkit tr "a" "[=x=]" < tr-input.txt
+       |                 ^~~~~~~
 status=1
+-c:24:22: error: Koshkit `tr`: The [c*] repeat can appear in set2 only when translating.
+    24 |  koshkit tr "-ds" "a" "[b*]" < tr-input.txt
+       |                       ^~~~~~
 status=1
+-c:26:23: error: Koshkit `tr`: A [:upper:] or [:lower:] class in SET2 does not start at a [:upper:] or [:lower:] class in SET1.
+    26 |  koshkit tr "-t" "abc" "[:upper:]" < tr-input.txt
+       |                        ^~~~~~~~~~~
 status=1
+-c:28:14: error: Koshkit `tr`: Set2 must not be empty unless -t is given.
+    28 |  koshkit tr a "" < tr-input.txt
+       |               ^~
+note: Supply SET2, or use `-t` to truncate SET1.
 status=1
 --- sort keys and orderings ---
 sort -n
@@ -1011,9 +1056,23 @@ a 2.00b
 0.000003
 16
 17
+-c:1:16: error: Koshkit `seq`: Format '%d' has an unknown directive.
+     1 |  koshkit seq -f %d 1; echo "status=$?"; koshkit seq -f "%g%" 1; echo "status=$?"; koshkit seq 1 0 x; echo "status=$?"; koshkit seq nan; echo "status=$?"
+       |                 ^~
+note: Use a %e, %f, %g, or %a conversion.
 status=1
+-c:1:55: error: Koshkit `seq`: Format '%g%' has too many % directives.
+     1 |  koshkit seq -f %d 1; echo "status=$?"; koshkit seq -f "%g%" 1; echo "status=$?"; koshkit seq 1 0 x; echo "status=$?"; koshkit seq nan; echo "status=$?"
+       |                                                        ^~~~~
 status=1
+-c:1:96: error: Koshkit `seq`: The increment must not be zero.
+     1 |  koshkit seq -f %d 1; echo "status=$?"; koshkit seq -f "%g%" 1; echo "status=$?"; koshkit seq 1 0 x; echo "status=$?"; koshkit seq nan; echo "status=$?"
+       |                                                                                                 ^
+note: Use a nonzero step, such as `seq 1 2 10`.
 status=1
+-c:1:131: error: Koshkit `seq`: The argument 'nan' is not a number.
+     1 |  koshkit seq -f %d 1; echo "status=$?"; koshkit seq -f "%g%" 1; echo "status=$?"; koshkit seq 1 0 x; echo "status=$?"; koshkit seq nan; echo "status=$?"
+       |                                                                                                                                    ^~~
 status=1
 --- grep color modes keep plain output when redirected ---
 1:alpha foo beta
@@ -1025,21 +1084,6 @@ status=1
 -c:1:14: error: Koshkit `grep`: Invalid value 'sometimes' for '--color'.
      1 |  koshkit grep --color=sometimes foo color-input.txt
        |               ^~~~~~~~~~~~~~~~~
---- diff color modes keep plain output when redirected ---
-2c2
-< b
----
-> B
-3a4
-> d
---- left
-+++ right
-@@ -1,3 +1,4 @@
- a
--b
-+B
- c
-+d
 --- df human readable header and aligned rows ---
 Filesystem Size Used Avail Use% Mounted on
 Filesystem Size Used Avail Use% Mounted on
@@ -1209,11 +1253,6 @@ status=1
    a  \t  \t               b  \n
    a   b  \t  \t   c  \n
    a   b  \t  \t   c  \n
---- grep with an empty pattern file ---
-0
-status=1
-2
-status=0
 --- grep -E accepts a leading or dangling repetition ---
 a
 *a
@@ -1324,9 +1363,6 @@ abc tail
      1 |  koshkit od -w65537 /dev/null 2>&1; printf "status=%s\n" "$?"
        |               ^~~~~
 note: The width must be a byte count from 1 to 65536.
-status=1
---- comm reports one disorder for a paired line ---
-		b
 status=1
 --- sort -m merges the sources as given ---
 b

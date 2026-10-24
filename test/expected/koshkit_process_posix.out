@@ -1,6 +1,8 @@
+nice-delta=1
 nice-ok
 nice=0
 nohup-ok
 nohup=0
 renice=0
+renice-delta=1
 logger=0

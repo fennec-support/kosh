@@ -10,7 +10,7 @@ koshkit csplit -s -f piece repeated '/mark/' '{1}'
 koshkit wc -c piece00 piece01 piece02
 koshkit csplit -s -f offset repeated '/mark/+1'
 koshkit wc -c offset00 offset01
-(koshkit csplit -s -f rejected repeated 3 99) 2> "$TEST_NULL_DEVICE"
+(koshkit csplit -s -f rejected repeated 3 99) 2>&1
 test ! -e rejected00
 echo "csplit-cleanup=$?"
 
@@ -50,8 +50,14 @@ echo "csplit-width-exhausted=$?"
 
 koshkit csplit -s -f zero-repeat lines 3 '{0}'
 echo "csplit-zero-repeat=$?"
+koshkit wc -c zero-repeat00 zero-repeat01
+test ! -e zero-repeat02
+echo "csplit-zero-repeat-pieces=$?"
 koshkit csplit -s -f star-repeat width-input 2 '{*}'
 echo "csplit-star-repeat=$?"
+koshkit wc -c star-repeat00 star-repeat01 star-repeat02 star-repeat10
+test ! -e star-repeat11
+echo "csplit-star-repeat-pieces=$?"
 
 printf 'a\nmark\nend\n' > stagnant-input
 koshkit csplit -s -f stagnant stagnant-input '/mark/-1' '{*}'

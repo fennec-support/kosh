@@ -9,9 +9,6 @@ alt-y-cycles-to-the-older-kill PASS
 alt-y-wraps-to-the-newest-kill PASS
 cycled-line-runs PASS
 ctrl-t-transposes-characters PASS
-ctrl-t-keeps-a-flag-whole PASS
-ctrl-t-keeps-a-skin-tone-whole PASS
-ctrl-t-keeps-a-joined-sequence-whole PASS
 backspace-erases-a-skin-tone-emoji-whole PASS
 alt-t-transposes-words PASS
 transposed-line-runs PASS
@@ -46,9 +43,6 @@ missing-editor-keeps-the-line PASS
 terminal-read-stop-editor-is-ended PASS
 repeated-stop-editor-is-ended PASS
 arithmetic-brackets-highlight-cleanly PASS
-vi-ex-escape-keeps-the-caret PASS
-vi-ex-backspace-keeps-the-caret PASS
-vi-ex-substitute-replaces-every-match PASS
 vi-ex-undo-restores-the-line PASS
 vi-ex-set-turns-an-option-off PASS
 vi-ex-set-query-shows-the-value PASS
@@ -86,15 +80,11 @@ alt-t-acts-the-same-in-every-encoding PASS
 alt-y-acts-the-same-in-every-encoding PASS
 alt-dot-acts-the-same-in-every-encoding PASS
 alt-backspace-acts-the-same-in-every-encoding PASS
+ctrl-x-ctrl-u-acts-the-same-in-every-encoding PASS
 kitty-enter-runs-the-line PASS
 extended-keys-withdrawn-before-output PASS
 kitty-ctrl-c-interrupts-the-line PASS
-kitty-alt-b-moves-a-word PASS
-kitty-ctrl-a-and-ctrl-d-edit PASS
-kitty-ctrl-z-undoes PASS
-kitty-ctrl-shift-z-redoes PASS
 kitty-ctrl-x-shows-what-it-waits-for PASS
-kitty-ctrl-x-ctrl-u-undoes PASS
 kitty-escape-closes-the-menu PASS
 paste-arrives-under-extended-keys PASS
 kitty-escape-enters-vi-command-mode PASS

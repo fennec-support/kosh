@@ -70,6 +70,28 @@ do
 done
 printf 'evilio-disk-sort-keys=%s\n' "$evilio_disk_sort_keys"
 
+evilio_process_sort_prefixes=matched
+for evilio_sort_key in p read-o write-o; do
+  if ! "$BIN" -c \
+    "koshkit --color never evilio --ps --sort $evilio_sort_key -3" \
+    > /dev/null 2>&1
+  then
+    evilio_process_sort_prefixes=wrong
+  fi
+done
+printf 'evilio-process-sort-prefixes=%s\n' "$evilio_process_sort_prefixes"
+
+evilio_disk_sort_prefixes=matched
+for evilio_sort_key in a b e q read-l read-o ret write-l write-o; do
+  if ! "$BIN" -c \
+    "koshkit --color never evilio --all --sort $evilio_sort_key" \
+    > /dev/null 2>&1
+  then
+    evilio_disk_sort_prefixes=wrong
+  fi
+done
+printf 'evilio-disk-sort-prefixes=%s\n' "$evilio_disk_sort_prefixes"
+
 evilio_live_sort_path=$TEST_TEMP_DIRECTORY/evilio-live-sort-report
 "$BIN" -c \
   '(attempt=0; while [ "$attempt" -lt 250 ]; do

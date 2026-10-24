@@ -26,8 +26,8 @@ transient-prompt-markers-take-no-columns PASS
 prompt-markers-are-not-drawn PASS
 stopped-job-notice-starts-a-row PASS
 fg-interrupt-ends-its-row PASS
-signaled-job-notice-names-the-signal PASS
-persist-names-the-written-file PASS
+signaled-job-notice-shows-the-signal PASS
+persist-prints-the-written-file PASS
 interactive-menu-leaves-a-wide-prompt-row PASS
 interactive-menu-keeps-a-prompt-ending-in-a-newline PASS
 interactive-menu-keeps-an-empty-prompt PASS

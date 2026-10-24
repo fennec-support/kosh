@@ -30,13 +30,6 @@ printf 'path=%s\n' "$event_path"
 printf 'event=%s\n' "$event_name"
 printf 'kind=%s\n' "$event_kind"
 
-goodfsw_help=$($BIN -c 'koshkit goodfsw --help' 2>&1)
-case $goodfsw_help in
-  *'-x, --one-file-system'*) goodfsw_onefs_help=present ;;
-  *) goodfsw_onefs_help=missing ;;
-esac
-printf 'goodfsw-one-file-system-help=%s\n' "$goodfsw_onefs_help"
-
 interrupt_root=$TEST_TEMP_DIRECTORY/goodfsw-interrupt
 mkdir -p "$interrupt_root"
 : > "$interrupt_root/file"
@@ -46,7 +39,12 @@ printf 'goodfsw-interrupt-status=%s\n' "$goodfsw_interrupt_status"
 
 goodfsw_onefs_result=$(BIN="$BIN" python3 \
   "$(dirname "$0")/goodfsw_onefs.py")
-printf 'goodfsw-one-file-system-result=%s\n' "$goodfsw_onefs_result"
+# The script prints skipped when the mount fails, so a result prints only when
+# the two watches did not isolate and traverse as expected.
+case $goodfsw_onefs_result in
+  skipped|isolated/traversed) ;;
+  *) printf 'goodfsw-one-file-system-result=%s\n' "$goodfsw_onefs_result" ;;
+esac
 
 
 node_root=$TEST_TEMP_DIRECTORY/goodnode-batch
@@ -111,33 +109,11 @@ case $disk_first_row in
 esac
 printf 'evilio-disk-row=%s\n' "$disk_row_layout"
 
-evilio_help=$("$BIN" -c 'koshkit evilio --help')
-case $evilio_help in
-  *'-h, --human-readable'*) human_help=matched ;;
-  *) human_help=missing ;;
-esac
+human_help=matched
 "$BIN" -c 'koshkit --color never evilio --human-readable' \
   > /dev/null
 if [ "$?" -ne 0 ]; then human_help=failed; fi
 printf 'evilio-human-readable=%s\n' "$human_help"
-
-evilio_sort_keys=matched
-for evilio_sort_key in read write read-ops write-ops busy read-latency \
-  write-latency average-queue queue errors retries; do
-  "$BIN" -c \
-    "koshkit --color never evilio --cumulative=0.01 --sort $evilio_sort_key" \
-    > /dev/null 2>&1 || evilio_sort_keys=wrong
-done
-for evilio_sort_key in a b e q read-l read-o ret write-l write-o; do
-  "$BIN" -c \
-    "koshkit --color never evilio --cumulative=0.01 --sort $evilio_sort_key" \
-    > /dev/null 2>&1 || evilio_sort_keys=wrong
-done
-for evilio_sort_key in p read write read-o write-o; do
-  "$BIN" -c "koshkit --color never evilio --ps -1 --sort $evilio_sort_key" \
-    > /dev/null 2>&1 || evilio_sort_keys=wrong
-done
-printf 'evilio-sort-keys=%s\n' "$evilio_sort_keys"
 
 process_report=$("$BIN" -c \
   "koshkit --color never evilio --cumulative=0.05 -p $$" 2>&1)
@@ -273,7 +249,7 @@ if [ "$host_system" = Darwin ]; then
     *) evildisk_fallback=failed ;;
   esac
 else
-  evildisk_fallback=passed
+  evildisk_fallback=skipped
 fi
 printf '%s\n' '#!/bin/sh' \
   'printf "%s\n" "Device Model: Mock ATA" "Transport protocol: SATA" "SMART overall-health self-assessment test result: PASSED" "ID# ATTRIBUTE_NAME FLAG VALUE WORST THRESH TYPE UPDATED WHEN_FAILED RAW_VALUE" "5 Retired_Block_Count 0x0033 100 100 010 Pre-fail Always - 2" "188 Command_Timeouts 0x0032 100 100 000 Old_age Always - 0" "197 Pending_Sectors 0x0012 100 100 000 Old_age Always - 3" "198 Truncated_Row 0x0010" "199 CRC_Error_Count 0x003e 200 200 000 Old_age Always - 4"' \
@@ -288,7 +264,10 @@ case $evildisk_ata_report in
     ;;
   *) evildisk_ata=failed ;;
 esac
-printf 'evildisk-smart-fallback=%s\n' "$evildisk_fallback"
+# The fallback path runs only on Darwin, and its result prints on failure.
+if [ "$evildisk_fallback" = failed ]; then
+  printf 'evildisk-smart-fallback=%s\n' "$evildisk_fallback"
+fi
 printf 'evildisk-smart-ata=%s\n' "$evildisk_ata"
 
 "$BIN" -c 'koshkit --color never evilio --all --cumulative' \

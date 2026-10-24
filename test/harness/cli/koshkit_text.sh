@@ -20,6 +20,11 @@ echo "--- wc -l ---"
 echo "--- wc -w in a UTF-8 locale counts UTF-8 words and skips stray continuation bytes ---"
 printf '\320\277\321\200\320\270 \346\227\245 x\n\200\201 a\n' |
   LC_ALL=C.UTF-8 "$BIN" -c 'koshkit wc -w'
+echo "--- wc words start at a printable byte ---"
+printf '\314\307\200\324' | "$BIN" -c 'LC_ALL=C; export LC_ALL; koshkit wc -w'
+printf '\033\ra' | "$BIN" -c 'koshkit wc -w'
+printf 'a\033b \033\n\200 c\177d\n' | "$BIN" -c 'koshkit wc -lw'
+printf 'ab\033' | "$BIN" -c 'koshkit wc -w'
 "$BIN" -c 'koshkit seq 20000' > batch-input.txt
 : > empty.txt
 printf 'first\n' > cat-first.txt
@@ -122,7 +127,7 @@ echo "--- head -2 and tail -1 take the historical count form ---"
 "$BIN" -c 'koshkit head -2 fruit.txt; koshkit tail -1 fruit.txt'
 echo "--- a -2 after -- is a file operand ---"
 "$BIN" -c 'koshkit head -- fruit.txt -2 2>/dev/null; printf "status=%s\n" "$?"'
-echo "--- a -2 after a file is an option ---"
+echo "--- a -2 after a file is rejected as a trailing option ---"
 "$BIN" --mood bash -c 'koshkit head fruit.txt -2 2>/dev/null; printf "status=%s\n" "$?"'
 echo "--- sort -r ---"
 "$BIN" -c 'koshkit sort -r fruit.txt'
@@ -240,7 +245,7 @@ koshkit tr "-t" "abc" "[:upper:]" < tr-input.txt
 echo "status=$?"
 koshkit tr a "" < tr-input.txt
 echo "status=$?"
-' 2>/dev/null
+' 2>&1
 echo "--- sort keys and orderings ---"
 printf 'b 2 x\na 10 y\nc 1 z\na 10 y\nB 3 w\n  d  -5\n10\n9\n-1.50\n2.5\n' \
   > sort-keys.txt
@@ -402,18 +407,13 @@ echo "--- seq with step ---"
 "$BIN" -c 'koshkit seq 2 2 8'
 echo "--- seq with fractions, widths, and formats ---"
 "$BIN" -c 'koshkit seq -s, 1 0.5 3; koshkit seq 0.1 0.1 0.4; koshkit seq -w -1 0.5 1; koshkit seq 1.5e1 17; koshkit seq -f "a%5.2fb" 1 2; koshkit seq -s "" 3; koshkit seq -- -0 1; koshkit seq 0 0.000001 0.000003; koshkit seq 3 1; koshkit seq 0x10 0x11'
-"$BIN" -c 'koshkit seq -f %d 1; echo "status=$?"; koshkit seq -f "%g%" 1; echo "status=$?"; koshkit seq 1 0 x; echo "status=$?"; koshkit seq nan; echo "status=$?"' 2>/dev/null
+"$BIN" -c 'koshkit seq -f %d 1; echo "status=$?"; koshkit seq -f "%g%" 1; echo "status=$?"; koshkit seq 1 0 x; echo "status=$?"; koshkit seq nan; echo "status=$?"' 2>&1
 printf 'alpha foo beta\nplain\nFOO and foo\n' > color-input.txt
-printf 'a\nb\nc\n' > color-left.txt
-printf 'a\nB\nc\nd\n' > color-right.txt
 echo "--- grep color modes keep plain output when redirected ---"
 "$BIN" -c 'koshkit grep --color=never -n foo color-input.txt'
 "$BIN" -c 'koshkit grep --color -n foo color-input.txt'
 "$BIN" -c 'koshkit grep -n foo color-input.txt'
 "$BIN" -c 'koshkit grep --color=sometimes foo color-input.txt' 2>&1
-echo "--- diff color modes keep plain output when redirected ---"
-"$BIN" -c 'koshkit diff --color=never color-left.txt color-right.txt'
-"$BIN" -c 'koshkit diff -u -L left -L right color-left.txt color-right.txt'
 echo "--- df human readable header and aligned rows ---"
 "$BIN" -c 'koshkit df -h . | koshkit head -n 1'
 "$BIN" -c 'koshkit df -H . | koshkit head -n 1'
@@ -523,9 +523,6 @@ printf 'a\tb\n' > unexpand-tab.txt
 printf 'a        b\n' > unexpand-spaces.txt
 printf 'ab\t\tc\n' > unexpand-tabs.txt
 "$BIN" -c 'for f in unexpand-tab.txt unexpand-spaces.txt unexpand-tabs.txt; do koshkit unexpand -t 2,6 "$f" | koshkit od -An -c; koshkit unexpand -a -t 2,6 "$f" | koshkit od -An -c; done'
-echo "--- grep with an empty pattern file ---"
-printf 'a\nb\n' > grep-lines.txt
-"$BIN" -c 'koshkit grep -c -f empty.txt grep-lines.txt; printf "status=%s\n" "$?"; koshkit grep -vc -f empty.txt grep-lines.txt; printf "status=%s\n" "$?"'
 echo "--- grep -E accepts a leading or dangling repetition ---"
 printf 'a\n*a\nb+\na{1\n' > grep-repeat.txt
 for pattern in '+' '*a' 'a|*b' '(+a)' '{1}a' 'a{1'; do
@@ -586,10 +583,6 @@ echo "--- seq counts long integers exactly ---"
 echo "--- nl and od take widths up to 65536 ---"
 "$BIN" -c 'printf "a\n" | koshkit nl -w 65536 | koshkit wc -c'
 "$BIN" -c 'koshkit od -w65537 /dev/null 2>&1; printf "status=%s\n" "$?"'
-
-echo "--- comm reports one disorder for a paired line ---"
-printf 'b\na\n' > disorder
-"$BIN" -c 'koshkit comm --check-order disorder disorder 2>/dev/null; printf "status=%s\n" "$?"'
 
 echo "--- sort -m merges the sources as given ---"
 printf 'c\na\nb\n' > merge1

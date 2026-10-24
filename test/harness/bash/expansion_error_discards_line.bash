@@ -17,6 +17,8 @@ echo a ${%}; echo same
 echo "bad-name=$?"
 echo a ${x.y}; echo same
 echo "bad-operator=$?"
+echo a ${}; echo same
+echo "bad-empty=$?"
 f() { echo in; echo ${x!y}; echo after; }
 f; echo same
 echo "function=$?"

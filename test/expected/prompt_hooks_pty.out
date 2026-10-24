@@ -1,8 +1,9 @@
 bash-prompt-hook PASS
 bash-ps1-expansions PASS
 bash-ps0-expansions PASS
-bash-ps0-function-substitution PASS
 bash-ps0-function-substitution-runs PASS
+bash-ps0-function-substitution-keeps-assignments PASS
+bash-ps0-function-substitution-reports-no-error PASS
 bash-return-trap PASS
 bash-debug-trap PASS
 bash-preexec-sees-the-command PASS
@@ -14,8 +15,9 @@ bash-prompt-command-element-return-trap PASS
 kosh-prompt-hook PASS
 kosh-ps1-expansions PASS
 kosh-ps0-expansions PASS
-kosh-ps0-function-substitution PASS
 kosh-ps0-function-substitution-runs PASS
+kosh-ps0-function-substitution-keeps-assignments PASS
+kosh-ps0-function-substitution-reports-no-error PASS
 kosh-return-trap PASS
 kosh-debug-trap PASS
 kosh-preexec-sees-the-command PASS

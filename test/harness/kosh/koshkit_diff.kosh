@@ -8,7 +8,7 @@ koshkit diff left left
 echo "equal=$?"
 koshkit diff -u --label left --label right left right
 echo "unified=$?"
-koshkit diff left right
+koshkit diff --color=never left right
 echo "normal=$?"
 
 printf 'a  b\r\n' > left

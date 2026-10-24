@@ -24,10 +24,11 @@ echo "=== arbitrary precision under the bash mood ==="
 echo "=== arbitrary precision with extended arithmetic off ==="
 "$BIN" -M bash -c 'koshconf set interpreter.arithmetic_uses_big_numbers off; koshkit calc "2 ** 100"'
 
-echo "=== signed 128-bit minimum ==="
+echo "=== negative values at and beyond the 128-bit boundary ==="
 "$BIN" -c 'koshkit calc -- "-170141183460469231731687303715884105728"'
 "$BIN" -c 'koshkit calc "(2 ** 127) / -1"'
 "$BIN" -c 'koshkit calc "(2 ** 127) % -1"'
+"$BIN" -c 'koshkit calc "(2 ** 300) / -1"'
 
 echo "=== decimal product past 64 bits ==="
 "$BIN" -c 'koshkit calc "999999999999999999999999999999.9 * 10.0"'

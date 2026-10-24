@@ -21,6 +21,8 @@ from prompt_hooks_pty import Report, Session, check_line
 
 BASHRC = r"""n=0
 PROMPT_COMMAND='n=$((n + 1)); echo "<ready-$n>"'
+PS0=
+set -u
 . "$HOME/.profile"
 [[ $- != *i* ]] && return
 if [[ $BASH_VERSION != *kosh* ]]; then
@@ -128,8 +130,7 @@ def run_checks(binary, directory, report):
         check_line(session, report, "startup-chain-aliases", "ll; lr",
                    ["<alias-ll>", "<alias-lr>"])
         check_line(session, report, "startup-chain-nounset-restored",
-                   "[[ $- == *u* ]] && echo '<nounset-on>'"
-                   " || echo '<nounset-off>'", ["<nounset-off>"])
+                   "echo \"<nounset-${-//[^u]/}>\"", ["<nounset-u>"])
     finally:
         session.close()
 

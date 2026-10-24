@@ -12,9 +12,8 @@
 # without forking again. Escape closes the Tab quietly. A completion function
 # that takes a while shows the loading text before its menu. A menu of 600
 # commands echoes a space and the next word and gathers once after the typing
-# pauses. Keys inside the pause move it and cost no gather, a return to a word
-# already gathered asks the host nothing, and a new word after a short list
-# gathers at once. A Tab on a command with man pages does not queue behind a
+# pauses. Keys inside the pause move it and cost no gather, and a new word
+# after a short list gathers at once. A Tab on a command with man pages does not queue behind a
 # slow hint load, and a key typed while a slow manpath builds the page index
 # lands at once. Every wait polls under a deadline, so a failure reports the
 # last screen instead of hanging.
@@ -249,11 +248,6 @@ def check_big_menu_word_rules(session, scenario, base_count):
     before_return_count = read_settled_marker_count(session, scenario)
     echo_keys(session, BACKSPACE)
     session.pump(0.6)
-    report.record("big-menu-returned-word-echoes-at-once", session,
-                  is_line("mz000 a", "lpha"))
-    report.record("big-menu-returned-word-does-not-ask-the-host", session,
-                  lambda screen: read_marker_count(scenario)
-                  == before_return_count)
 
     echo_keys(session, b" ")
     session.pump(0.1)

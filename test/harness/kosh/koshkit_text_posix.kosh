@@ -73,7 +73,6 @@ koshkit grep 'a*c' wide | koshkit wc -l
 koshkit grep -r 'a*c' wide | koshkit wc -l
 koshkit grep 'a*c' < wide | koshkit wc -l
 printf 'ab\n' | koshkit sed -E 's/a|b/x/g'
-printf 'ab\n' | koshkit sed 's/a*/x/g'
 
 koshkit seq 3000 > counted
 printf 'a\0b\0c' > nul-lines

@@ -87,7 +87,7 @@ echo "== a non-numeric count is rejected without printing the list =="
 echo "== a count past the list size still prints every entry, no overflow =="
 "$BIN" -c 'history 999999999999999999999999'
 echo "== the print flag echoes its operands and stores nothing =="
-"$BIN" -c 'history -p alpha beta'
+"$BIN" -c 'history -p alpha beta; history'
 echo "== builtin history -a no longer reports an unknown builtin =="
 "$BIN" -c 'builtin history -a; echo continued'
 echo "== type reports the builtin =="
@@ -104,13 +104,14 @@ echo "== history -a separates and appends the list to a given file =="
 "$BIN" -c 'history -a "$1"; echo "rc=$?"' history-test "$dir/named-append"
 cat "$dir/named-append"
 echo "== history -a leaves its backing file unchanged =="
-"$BIN" -c 'history -a "$KOSH_HISTORY_FILE"; echo "rc=$?"; history' history-test
+"$BIN" -c 'history -a "$KOSH_HISTORY_FILE"; echo "rc=$?"; history;
+koshkit cat "$KOSH_HISTORY_FILE"' history-test
 echo "== a hard link aliases the backing file =="
 "$BIN" -c 'koshkit ln "$1" "$2"; echo "rc=$?"' history-test "$dir/hist" \
   "$dir/history-alias"
 echo "== history -a leaves an aliased backing file unchanged =="
-"$BIN" -c 'history -a "$1"; echo "rc=$?"; history' history-test \
-  "$dir/history-alias"
+"$BIN" -c 'history -a "$1"; echo "rc=$?"; history; koshkit cat "$1"' \
+  history-test "$dir/history-alias"
 printf 'named base\n' > "$dir/named-write"
 echo "== history -w replaces a given file with the list =="
 "$BIN" -c 'history -w "$1"; echo "rc=$?"' history-test "$dir/named-write"
@@ -234,7 +235,8 @@ printf second > "$dir/equal-size-replacement"
 echo "== an equal size replacement refreshes append state =="
 KOSH_HISTORY_FILE="$dir/equal-size" "$BIN" --no-init-files -c \
   'history >/dev/null; koshkit mv "$1" "$KOSH_HISTORY_FILE"; \
-history -s third; history' history-test "$dir/equal-size-replacement"
+history -s third; history; history -a; koshkit cat "$KOSH_HISTORY_FILE"' \
+  history-test "$dir/equal-size-replacement"
 
 printf 'mode one\n' > "$dir/mode-change"
 echo "== a mode change on the backing file keeps the store readable =="

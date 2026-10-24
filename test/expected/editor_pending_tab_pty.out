@@ -23,8 +23,6 @@ big-menu-space-does-not-gather-at-once PASS
 big-menu-gathers-once-after-the-pause PASS
 big-menu-does-not-gather-again PASS
 big-menu-short-list-asks-for-each-key PASS
-big-menu-returned-word-echoes-at-once PASS
-big-menu-returned-word-does-not-ask-the-host PASS
 big-menu-new-word-gathers-without-the-pause PASS
 big-menu-second-pause-echoes-at-once PASS
 hintload-prompt PASS

@@ -20,7 +20,7 @@ trap cleanup EXIT
 # more entries than the in-memory ring. A missing parenthesis in
 # TL_HISTORY_MAX_SIZE once parsed the ring modulo as (x % 1024) * 4, so past 4096
 # entries the up arrow recalled a stale older line. The editor needs a tty, so
-# the run skips when script or the target terminal handles cannot provide one.
+# the run fails when script or the target terminal handles cannot provide one.
 script_mode=
 if script -qec true /dev/null >/dev/null 2>&1; then
   script_mode=gnu
@@ -130,7 +130,11 @@ case "$out" in
 *CMD_04200*) echo "recall ok" ;;
 *) echo "recall broken" ;;
 esac
-if grep -q 'fc -s' "$hist"; then
+# The command prints one line, fc prints the command it re-runs, and the re-run
+# prints one line.
+recall_count=$(printf '%s\n' "$out" | tr -d '\r' |
+  grep -c 'FC_ACTIVE_RECALL$')
+if grep -q 'fc -s' "$hist" || [ "$recall_count" -ne 3 ]; then
   echo "fc replacement broken"
 else
   echo "fc replacement ok"
@@ -580,14 +584,18 @@ rm -f "$ready"
 rm -f "$input_status"
 out=$({
   send_input_when_ready 'set +o history\r' \
-    'echo OMITTED_HISTORY_MARKER\r' 'set -o history\r' 'exit\r'
+    'echo OMITTED_$((1 + 1))_MARKER\r' 'set -o history\r' 'exit\r'
   printf '%s\n' "$?" > "$input_status"
 } |
   BIN="$BIN" READY="$ready" KOSH_HISTORY_FILE="$disabled_hist" \
     PROMPT_COMMAND='printf ready > "$READY"; unset PROMPT_COMMAND' \
     run_interactive 'exec "$BIN" -i -M bash --rcfile /dev/null') || exit 1
 [ "$(cat "$input_status")" = 0 ] || exit 1
-if grep -q OMITTED_HISTORY_MARKER "$disabled_hist"; then
+case "$out" in
+*OMITTED_2_MARKER*) was_marker_run=1 ;;
+*) was_marker_run= ;;
+esac
+if grep -q 'OMITTED_' "$disabled_hist" || [ -z "$was_marker_run" ]; then
   echo "history option broken"
 else
   echo "history option ok"
