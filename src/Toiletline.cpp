@@ -215,9 +215,10 @@ struct completion_session
   fn
   detach_prompt() -> void
   {
-    base_directory    = nullptr;
-    result            = nullptr;
-    has_analyzed_line = false;
+    base_directory        = nullptr;
+    result                = nullptr;
+    has_analyzed_line     = false;
+    has_idle_settled_line = false;
     analyzed_line.clear();
     analysis_finding.clear();
   }
