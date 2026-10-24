@@ -3367,11 +3367,14 @@ run_nohup(const ArrayList<String> &argv,
 
 } /* namespace koshka */
 
+#if !defined KOSH_FUZZ
 fn
 kosh_main(int argc, char **argv) -> int;
 
+/* a fuzz build links a harness that supplies its own entry point. */
 fn
 main(int argc, char **argv) -> int
 {
   return kosh_main(argc, argv);
 }
+#endif

@@ -6,6 +6,11 @@ NO_TOILETLINE ?= 0
 NO_KOSHKIT ?= 0
 # HARDENED=1 makes a release build trap on a container index past the end.
 HARDENED ?= 0
+# PGO=generate builds the instrumented release binary ../kosh-pgo-gen, which
+# merges its profile into ../pgo/profraw. PGO_PROFILE=file.profdata builds
+# the release binary with that profile.
+PGO ?=
+PGO_PROFILE ?=
 
 ROUTED_SOURCES := platform/PlatformPosix.cpp platform/PlatformPosixExtra.cpp \
 	platform/PlatformPosixFilesystem.cpp \
@@ -91,7 +96,13 @@ SHOULD_LINK_STATIC_LINUX := 1
 endif
 endif
 
-BUILD_VARIANT_SUFFIX := $(if $(filter 1,$(NO_TOILETLINE)),-no-toiletline,)$(if $(filter 1,$(NO_KOSHKIT)),-no-koshkit,)$(if $(filter 1,$(HARDENED)),-hardened,)
+BUILD_VARIANT_SUFFIX := $(if $(filter 1,$(NO_TOILETLINE)),-no-toiletline,)$(if $(filter 1,$(NO_KOSHKIT)),-no-koshkit,)$(if $(filter 1,$(HARDENED)),-hardened,)$(if $(filter generate,$(PGO)),-pgo-gen,)$(if $(PGO_PROFILE),-pgo,)
+
+ifneq ($(PGO)$(PGO_PROFILE),)
+ifneq ($(MODE), rel)
+$(error PGO and PGO_PROFILE only support MODE=rel)
+endif
+endif
 
 ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
 OBJ_DIR ?= o/$(TARGET)/$(LINUX_TARGET_ARCHITECTURE)/$(MODE)$(BUILD_VARIANT_SUFFIX)
@@ -104,7 +115,7 @@ REGEX_OBJECTS := $(REGEX_SOURCES:%=$(OBJECT_DIRECTORY)/vendor/regex/%.o)
 OBJECTS := $(SOURCES:%.cpp=$(OBJECT_DIRECTORY)/%.o) $(REGEX_OBJECTS)
 DEPENDENCY_FILES := $(OBJECTS:.o=.d)
 
-MODE_SUFFIX := $(if $(filter rel,$(MODE)),,-$(MODE))
+MODE_SUFFIX := $(if $(filter rel,$(MODE)),$(if $(filter generate,$(PGO)),-pgo-gen,),-$(MODE))
 ifeq ($(MODE), cosmo)
 OUTPUT_PATH := ../kosh$(MODE_SUFFIX).com
 else ifeq ($(TARGET), Windows_NT)
@@ -392,6 +403,15 @@ CXXFLAGS += \
 LINK_LIBRARIES += -lsupc++
 endif
 endif
+ifeq ($(PGO), generate)
+PGO_PROFILE_DIRECTORY := $(abspath ../pgo/profraw)
+CXXFLAGS += "-fprofile-instr-generate=$(PGO_PROFILE_DIRECTORY)/kosh-%4m.profraw"
+else ifneq ($(PGO_PROFILE),)
+CXXFLAGS += \
+	"-fprofile-instr-use=$(abspath $(PGO_PROFILE))" \
+	-Wno-profile-instr-unprofiled \
+	-Wno-profile-instr-out-of-date
+endif
 # MODE=tinyrel
 else ifeq ($(MODE), tinyrel)
 CXXFLAGS += \
@@ -508,8 +528,16 @@ CXXFLAGS += \
 LINK_LIBRARIES += -lsupc++
 endif
 endif
+# MODE=fuzz
+else ifeq ($(MODE), fuzz)
+CXXFLAGS += \
+	-DKOSH_FUZZ \
+	-fno-omit-frame-pointer \
+	-g \
+	-O1 \
+	-fsanitize=fuzzer-no-link,address,undefined
 else
-$(error Invalid MODE=$(MODE). Available modes are "dbg", "rel", "tinyrel", "prof", "cov", "cosmo", "cosmo_dbg")
+$(error Invalid MODE=$(MODE). Available modes are "dbg", "rel", "tinyrel", "prof", "cov", "fuzz", "cosmo", "cosmo_dbg")
 endif
 
 ifneq ($(TARGET), Windows_NT)
@@ -635,12 +663,32 @@ endif
 ifeq ($(MODE), cov)
 	mkdir -p "$(COVERAGE_PROFILE_DIRECTORY)"
 endif
+ifeq ($(PGO), generate)
+	mkdir -p "$(PGO_PROFILE_DIRECTORY)"
+endif
 
 kosh: dirs
 	$(MAKE) $(LINKED_OUTPUT_PATH)
 ifneq ($(LINKED_OUTPUT_PATH), $(OUTPUT_PATH))
 	cp $(LINKED_OUTPUT_PATH) $(OUTPUT_PATH)
 endif
+
+# MODE=fuzz links each harness in ../test/fuzz with the shell objects into
+# ../kosh-fuzz-NAME.
+FUZZ_HARNESSES := $(wildcard ../test/fuzz/Fuzz*.cpp)
+FUZZ_OUTPUTS := $(patsubst ../test/fuzz/Fuzz%.cpp,../kosh-fuzz-%,$(FUZZ_HARNESSES))
+
+# the shell objects carry no main in MODE=fuzz.
+../kosh-fuzz-%: ../test/fuzz/Fuzz%.cpp $(OBJECTS)
+	printf "\tLinking $@... %-64s\033[K\r" ' '
+	$(CXX) $(CXXFLAGS) -fsanitize=fuzzer -I. $< $(OBJECTS) \
+		$(LINK_LIBRARIES) -o $@
+
+fuzz: dirs
+ifneq ($(MODE), fuzz)
+	$(error The fuzz target needs MODE=fuzz)
+endif
+	$(MAKE) $(FUZZ_OUTPUTS)
 
 # INSTALL_MOOD_SYMLINKS="sh bash dash".
 PREFIX ?= /usr/local
@@ -712,7 +760,7 @@ clean:
 	rm -rf ../zig-out
 	rm -rf ../*.profraw ../*.profdata ../coverage # Coverage
 
-.PHONY: dirs force_commit_hash force_commit_hash_objects kosh install \
+.PHONY: dirs force_commit_hash force_commit_hash_objects kosh fuzz install \
 	uninstall tidy fmt clean
 
 -include $(DEPENDENCY_FILES)

@@ -85,6 +85,34 @@ completions:
 		> completions/kosh.bash.new
 	mv completions/kosh.bash.new completions/kosh.bash
 
+# pgo trains an instrumented release build on the benchmark workloads and
+# builds ./kosh with the merged profile.
+pgo:
+	echo Building a profile-guided release...
+	rm -f pgo/profraw/*.profraw
+	$(MAKE) $(AUTO_JOBS) -C src MODE=rel PGO=generate kosh
+	./scripts/pgo-train.sh ./kosh-pgo-gen pgo/work
+	./scripts/llvm-tool.sh llvm-profdata merge -o pgo/kosh.profdata \
+		pgo/profraw/*.profraw
+	$(MAKE) $(AUTO_JOBS) -C src MODE=rel \
+		PGO_PROFILE=$(abspath pgo/kosh.profdata) kosh
+
+# fuzz builds the libFuzzer harnesses in test/fuzz with ASan and UBSan and
+# runs each for FUZZ_SECONDS, keeping its corpus under fuzz/corpus.
+FUZZ_SECONDS ?= 60
+
+fuzz:
+	echo Fuzzing...
+	$(MAKE) $(AUTO_JOBS) -C src MODE=fuzz fuzz
+	for harness in ./kosh-fuzz-*; do \
+		name=$${harness#./kosh-fuzz-}; \
+		mkdir -p "fuzz/corpus/$$name" "fuzz/crashes/$$name"; \
+		echo "Running $$name for $(FUZZ_SECONDS) seconds..."; \
+		"$$harness" -max_total_time=$(FUZZ_SECONDS) -rss_limit_mb=2048 \
+			-print_final_stats=1 -artifact_prefix="fuzz/crashes/$$name/" \
+			"fuzz/corpus/$$name" || exit 1; \
+	done
+
 clean:
 	echo Cleaning up...
 	$(MAKE) $(AUTO_JOBS) -C src clean
@@ -92,4 +120,4 @@ clean:
 	$(MAKE) -C src/toiletline clean
 
 .PHONY: all kosh install uninstall tidy fmt toiletline_test test bench \
-	refill_tests completions clean
+	refill_tests completions pgo fuzz clean

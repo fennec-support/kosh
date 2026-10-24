@@ -207,7 +207,13 @@ koshkit --list-flags after a koshkit flag changes.
 
 NO_TOILETLINE=1 make, NO_KOSHKIT=1 make, and HARDENED=1 make use separate
 object directories. HARDENED=1 makes a release build trap on a container
-index past the end and is off by default because it slows sorting.
+index past the end and is off by default because it slows sorting. make pgo
+trains an instrumented release build with scripts/pgo-train.sh and builds
+./kosh with the merged profile in pgo/kosh.profdata. Code the training does
+not reach, such as the interactive editor, is compiled as cold code there.
+make fuzz builds the libFuzzer harnesses in test/fuzz with MODE=fuzz and runs
+each for FUZZ_SECONDS. A harness passes its input to one parser, and the shell
+objects carry no main in that mode.
 Rebuild the ordinary configuration before the next test run. Completion tests
 require debug. Bound interactive and long-running commands.
 

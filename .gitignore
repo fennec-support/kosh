@@ -27,6 +27,8 @@ MISTAKES.md
 garbage/
 src/o
 /coverage
+/pgo
+/fuzz
 zig-out/
 .zig-cache/
 

@@ -118,6 +118,31 @@ jobs:
             echo '</details>'
           } >> "$GITHUB_STEP_SUMMARY"
 
+  fuzz:
+    name: Fuzz the parsers
+    # musl has no ASan, so this job runs on the glibc runner itself.
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Install the toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 libclang-rt-18-dev make
+
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+
+      - name: Build and run the harnesses
+        run: make CXX=clang++-18 FUZZ_SECONDS=60 fuzz
+
+      - name: Keep the crash inputs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: fuzz/crashes
+
   debug-macos:
     name: Run debug build tests on macOS
     runs-on: macos-15
