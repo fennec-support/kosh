@@ -52,12 +52,23 @@ Flock::execute(const ExecContext               &ec,
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
-  /* a command that cannot be found is reported here, since the spawned
-     child exits with 127 and no message when exec fails. */
+  /* a command that cannot run is reported here, since the spawned child
+     exits with 127 and no message when exec fails. */
+  let const is_path      = os::has_directory_separator(operands[1].view());
+  let const command_path = Path{operands[1].view()};
+
+  if (is_path && command_path.exists() &&
+      (command_path.is_directory() || !command_path.is_executable()))
+  {
+    KOSHKIT_REPORT_ERROR_AT(operand_locations[1],
+                            "Command '" + operands[1] + "' cannot be run");
+
+    return 126;
+  }
+
   let const is_command_found =
-      os::has_directory_separator(operands[1].view())
-          ? Path{operands[1].view()}.is_executable() &&
-                !Path{operands[1].view()}.is_directory()
+      is_path
+          ? command_path.exists()
           : !cxt.program_resolver()
                  .search(operands[1].view(), ProgramResolver::SearchMode::First,
                          ProgramResolver::Requirement::Runnable,

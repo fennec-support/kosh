@@ -116,7 +116,8 @@ struct sort_key
 
 /* prefix holds the first eight characters that the first comparison orders,
    in big-endian order and padded with zero bytes, when that comparison is a
-   text comparison, or get_sort_number_prefix() of a -n first key. Two
+   text comparison, get_sort_number_prefix() of a -n first key, or the unit
+   order and a shortened number prefix of a parsed -h first key. Two
    different prefixes decide the comparison without reading the lines. The
    line length is a u32, so the entry stays 24 bytes. */
 struct sort_entry
@@ -183,8 +184,8 @@ struct sort_settings
   /* has_key_units or has_key_generals. */
   bool has_parsed_values{false};
   bool is_plain_whole_line{false};
-  /* the modifiers of the first comparison when it compares text or -n
-     numbers, or null. */
+  /* the modifiers of the first comparison when it compares text, -n
+     numbers, or parsed -h numbers, or null. */
   const sort_modifiers          *prefix_modifiers{nullptr};
   ArrayList<StringView>          key_texts{heap_allocator()};
   ArrayList<sort_number>         key_numbers{heap_allocator()};
@@ -1134,21 +1135,8 @@ compare_sort_entries(const sort_entry    &left,
   return left.index < right.index ? -1 : 1;
 }
 
-/* the comparison of two entries with has_parsed_values chosen at run time,
-   for callers that compare a linear number of pairs. */
-static fn
-compare_sort_entries_for(const sort_entry    &left,
-                         const sort_entry    &right,
-                         const sort_settings &settings,
-                         bool                 is_last_resort_enabled) throws -> int
-{
-  return settings.has_parsed_values
-             ? compare_sort_entries<true>(left, right, settings,
-                                          is_last_resort_enabled)
-             : compare_sort_entries<false>(left, right, settings,
-                                           is_last_resort_enabled);
-}
-
+/* the key comparison with has_parsed_values chosen at run time, for the
+   unique filter, which compares a linear number of pairs. */
 static fn
 compare_sort_keys_for(const sort_entry    &left,
                       const sort_entry    &right,
@@ -1483,9 +1471,9 @@ Sort::execute(const ExecContext               &ec,
       let const &previous = collected_lines[index - 1];
       let const &current  = collected_lines[index];
       let const  result =
-          is_unique ? compare_sort_keys_for(previous, current, settings)
-                     : compare_sort_entries_for(previous, current, settings,
-                                                is_last_resort_enabled);
+          is_unique ? compare_sort_keys<false>(previous, current, settings)
+                     : compare_sort_entries<false>(previous, current, settings,
+                                                   is_last_resort_enabled);
       let const is_in_order = result < 0;
 
       if (is_in_order) continue;
@@ -1526,9 +1514,9 @@ Sort::execute(const ExecContext               &ec,
         if (heads[source_index] == source_starts[source_index + 1]) continue;
 
         if (chosen == SIZE_MAX ||
-            compare_sort_entries_for(collected_lines[heads[source_index]],
-                                     collected_lines[heads[chosen]], settings,
-                                     is_last_resort_enabled) < 0)
+            compare_sort_entries<false>(collected_lines[heads[source_index]],
+                                        collected_lines[heads[chosen]],
+                                        settings, is_last_resort_enabled) < 0)
         {
           chosen = source_index;
         }
