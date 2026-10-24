@@ -101,95 +101,47 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let should_be_global                  = false;
   let has_trace_flag                    = false;
 
-  usize i      = 1;
-  i32   status = 0;
+  i32 status          = 0;
+  let operand_indices = ArrayList<usize>{cxt.scratch_allocator()};
 
-  for (; i < args.count(); i++) {
-    let const arg = args[i].view();
+  unused(parse_flags_vec(
+      FLAG_LIST, args, ec.source_location().position, nullptr,
+      &ec.arg_locations(), nullptr, builtin_error_context(ec.program()),
+      flag_parse_options{.should_stop_at_first_operand = true,
+                         .plus_letters                 = "aAfFgilnprtux"},
+      cxt.scratch_allocator(), &operand_indices));
+  defer { reset_flags(FLAG_LIST); };
 
-    if (arg.length < 2 || (arg[0] != '-' && arg[0] != '+')) {
-      break;
-    }
+  /* a + form removes i, l, u, n, and x, is ignored for r, and acts as the -
+     form for the other letters. */
+  let const do_is_given = [](const FlagBool &flag) wontthrow -> bool {
+    return flag.is_enabled() || flag.was_given_after_plus();
+  };
 
-    if (arg == "--") {
-      i++;
-      break;
-    }
+  should_make_associative         = do_is_given(FLAG_DECLARE_ASSOCIATIVE);
+  should_make_indexed             = do_is_given(FLAG_DECLARE_INDEXED);
+  should_export                   = FLAG_DECLARE_EXPORT.is_enabled();
+  should_unexport                 = FLAG_DECLARE_EXPORT.was_given_after_plus();
+  should_print                    = do_is_given(FLAG_DECLARE_PRINT);
+  should_mark_integer_attribute   = FLAG_DECLARE_INTEGER.is_enabled();
+  should_unmark_integer_attribute = FLAG_DECLARE_INTEGER.was_given_after_plus();
+  should_mark_lowercase_attribute = FLAG_DECLARE_LOWERCASE.is_enabled();
+  should_unmark_lowercase_attribute =
+      FLAG_DECLARE_LOWERCASE.was_given_after_plus();
+  should_mark_uppercase_attribute = FLAG_DECLARE_UPPERCASE.is_enabled();
+  should_unmark_uppercase_attribute =
+      FLAG_DECLARE_UPPERCASE.was_given_after_plus();
+  should_print_function_names_only = do_is_given(FLAG_DECLARE_FUNCTION_NAMES);
+  should_restrict_to_functions =
+      do_is_given(FLAG_DECLARE_FUNCTIONS) || should_print_function_names_only;
+  should_mark_readonly  = FLAG_DECLARE_READONLY.is_enabled();
+  should_be_global      = do_is_given(FLAG_DECLARE_GLOBAL);
+  should_mark_nameref   = FLAG_DECLARE_NAMEREF.is_enabled();
+  should_unmark_nameref = FLAG_DECLARE_NAMEREF.was_given_after_plus();
+  has_trace_flag        = do_is_given(FLAG_DECLARE_TRACE);
 
-    let const is_remove_form = arg[0] == '+';
-
-    for (usize c = 1; c < arg.length; c++) {
-      switch (arg[c]) {
-      case 'A': should_make_associative = true; break;
-
-      case 'a': should_make_indexed = true; break;
-
-      case 'x':
-        if (is_remove_form)
-          should_unexport = true;
-        else
-          should_export = true;
-        break;
-
-      case 'p': should_print = true; break;
-
-      case 'i':
-        if (is_remove_form)
-          should_unmark_integer_attribute = true;
-        else
-          should_mark_integer_attribute = true;
-        break;
-
-      case 'l':
-        if (is_remove_form)
-          should_unmark_lowercase_attribute = true;
-        else
-          should_mark_lowercase_attribute = true;
-        break;
-
-      case 'u':
-        if (is_remove_form)
-          should_unmark_uppercase_attribute = true;
-        else
-          should_mark_uppercase_attribute = true;
-        break;
-
-      case 'f': should_restrict_to_functions = true; break;
-
-      case 'F':
-        should_restrict_to_functions     = true;
-        should_print_function_names_only = true;
-        break;
-
-      case 'r':
-        if (!is_remove_form) should_mark_readonly = true;
-        break;
-
-      case 'g': should_be_global = true; break;
-
-      case 'n':
-        if (is_remove_form)
-          should_unmark_nameref = true;
-        else
-          should_mark_nameref = true;
-        break;
-
-      case 't': has_trace_flag = true; break;
-
-      default: {
-        let invalid = String{cxt.scratch_allocator()};
-
-        invalid += arg[0];
-        invalid += arg[c];
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
-                                  "'" + invalid +
-                                      "' is not a valid declare option");
-
-        return 2;
-      }
-      }
-    }
-  }
+  /* the first operand index belongs to the command word. */
+  usize i = operand_indices.count() < 2 ? args.count() : operand_indices[1];
 
   if (should_make_associative && should_make_indexed) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),

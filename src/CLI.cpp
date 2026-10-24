@@ -113,18 +113,32 @@ FlagBool::disable() wontthrow -> void
   m_is_enabled = false;
 }
 
+fn
+FlagBool::disable_after_plus() wontthrow -> void
+{
+  m_is_enabled           = false;
+  m_was_given_after_plus = true;
+}
+
 pure fn
 FlagBool::is_enabled() const wontthrow -> bool
 {
   return m_is_enabled;
 }
 
+pure fn
+FlagBool::was_given_after_plus() const wontthrow -> bool
+{
+  return m_was_given_after_plus;
+}
+
 fn
 FlagBool::reset() throws -> void
 {
-  m_position       = 0;
-  m_value_location = {};
-  m_is_enabled     = false;
+  m_position             = 0;
+  m_value_location       = {};
+  m_is_enabled           = false;
+  m_was_given_after_plus = false;
 }
 
 FlagRepeatedBool::FlagRepeatedBool(char         short_name,
@@ -794,7 +808,7 @@ parse_flags(const FlagList                  &flags,
                                   base_position, arg_locations);
 
         if (plus_match.flag->kind() == Flag::Kind::Bool) {
-          static_cast<FlagBool *>(plus_match.flag)->disable();
+          static_cast<FlagBool *>(plus_match.flag)->disable_after_plus();
           plus_match.flag->set_position(++position);
           plus_match.flag->set_value_location(flag_location);
           continue;

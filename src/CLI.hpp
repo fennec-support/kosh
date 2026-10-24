@@ -249,16 +249,23 @@ public:
   enable() wontthrow -> void;
   fn
   disable() wontthrow -> void;
+  /* records a +letter form. a later -letter enables the flag again but keeps
+     this record. */
+  fn
+  disable_after_plus() wontthrow -> void;
   fn
   toggle() throws -> void;
   pure fn
   is_enabled() const wontthrow -> bool;
+  pure fn
+  was_given_after_plus() const wontthrow -> bool;
 
   fn
   reset() throws -> void;
 
 private:
   bool m_is_enabled{false};
+  bool m_was_given_after_plus{false};
 };
 
 class FlagRepeatedBool : public Flag
