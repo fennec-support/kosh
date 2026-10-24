@@ -23,6 +23,11 @@ jobs:
         run: |
           Write-Output "$POWERSHELL_HOST"
       - run: target-only-ci-command
+      - run: |
+          echo $((1<<2))
+          cat <<SHIFT_TERMINATOR
+          text
+          SHIFT_TERMINATOR
 EOF
 
 cat > "$root/README.md" <<'EOF'
@@ -234,7 +239,7 @@ github=$(count_variable EMBEDDED_GITHUB "$root/.github/workflows/check.yml")
 github_output=$("$BIN" --lint --no-traces \
   "$root/.github/workflows/check.yml" 2>&1)
 github_host=$(printf '%s' "$github_output" | \
-  grep -Ec 'POWERSHELL_HOST|target-only-ci-command|positional parameter|Expected a command before the pipe')
+  grep -Ec 'POWERSHELL_HOST|target-only-ci-command|positional parameter|Expected a command before the pipe|SHIFT_TERMINATOR')
 set -- $(count_variable_and_missing_executable MARKDOWN_EMBEDDED \
   missing_markdown_executable "$root/README.md")
 markdown=$1

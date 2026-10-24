@@ -883,7 +883,7 @@ check_posix_parameter_expansion(AnalysisContext   &actx,
 
   let const name = text.substring_of_length(name_start, position - name_start);
 
-  if (is_undefined_in_sh(name) || is_bash_only_dynamic_variable_name(name)) {
+  if (is_undefined_in_sh(name)) {
     actx.report_diagnostic(diagnostic_id::sc3028, do_get_location(), {name});
 
     return;

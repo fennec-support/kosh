@@ -140,6 +140,24 @@ heredoc_line_content(StringView line) wontthrow -> StringView
 }
 
 pure fn
+is_shift_operator_at(StringView line, usize position) wontthrow -> bool
+{
+  usize arithmetic_depth = 0;
+
+  for (usize k = 0; k + 1 < position && k + 1 < line.length; k++) {
+    if (line[k] == '(' && line[k + 1] == '(') {
+      arithmetic_depth++;
+      k++;
+    } else if (line[k] == ')' && line[k + 1] == ')' && arithmetic_depth > 0) {
+      arithmetic_depth--;
+      k++;
+    }
+  }
+
+  return arithmetic_depth > 0;
+}
+
+pure fn
 read_heredoc_operator_tail(StringView source, usize after_operator) wontthrow
     -> heredoc_operator_tail
 {

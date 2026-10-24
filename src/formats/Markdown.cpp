@@ -178,6 +178,11 @@ session_heredoc(StringView line) throws -> Maybe<lexer::pending_heredoc>
       continue;
     }
 
+    if (lexer::is_shift_operator_at(line, position)) {
+      position++;
+      continue;
+    }
+
     let const tail = lexer::read_heredoc_operator_tail(line, position + 2);
 
     if (tail.word_end > tail.word_start) {
