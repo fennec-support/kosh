@@ -41,8 +41,9 @@
 # Up on its first line recalls no shell history, and saving keeps every line.
 # The completion menu in slurp covers the rows under the caret and gives them
 # back when it closes, and in a file larger than 64 KiB Tab opens it and
-# Ctrl-G puts the line back. M-x
-# get-option in slurp on a text file shows the option,
+# Ctrl-G puts the line back. Ctrl-I and Ctrl-K Ctrl-I in vi normal mode show
+# the hint of the word under the caret. M-x get-option in slurp on a text file
+# shows the option,
 # and M-x format-buffer leaves the text file as it is, also with tab completion
 # off. Ctrl-R and Ctrl-S find text backward and forward, Alt-< and Ctrl-End
 # go to the start and the end of the file, vi / and n find it, a closed ? find
@@ -1588,6 +1589,29 @@ def run_long_slurp_checks(binary, directory, command_directory, report):
         session.close()
 
 
+def run_vi_hover_checks(binary, directory, command_directory, report):
+    script = os.path.join(directory, "slurp-hover.sh")
+    with open(script, "w") as handle:
+        handle.write("echo hello\n")
+    session = Session(binary, directory, command_directory, rows=20)
+    try:
+        session.wait_until(is_line(""))
+        session.send(b"slurp -V slurp-hover.sh\r")
+        session.wait_until(has_text("emulating vi normal"))
+        session.send(b"$\t")
+        report.record("slurp-vi-ctrl-i-shows-the-hint", session,
+                      has_text("synopsis"))
+        session.send(b"0")
+        session.wait_until(lambda screen: not has_text("synopsis")(screen))
+        session.send(b"$\x0b\t")
+        report.record("slurp-vi-ctrl-k-ctrl-i-shows-the-hint", session,
+                      has_text("synopsis"))
+        session.send(b":q\r")
+        session.wait_until(is_line(""))
+    finally:
+        session.close()
+
+
 def run_fatal_signal_checks(binary, directory, command_directory, report):
     for name, signal_number in (("abort", signal.SIGABRT),
                                 ("segfault", signal.SIGSEGV)):
@@ -1641,6 +1665,7 @@ def main():
         run_slurp_checks(binary, directory, command_directory, report)
         run_tall_slurp_checks(binary, directory, command_directory, report)
         run_long_slurp_checks(binary, directory, command_directory, report)
+        run_vi_hover_checks(binary, directory, command_directory, report)
         run_fatal_signal_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
