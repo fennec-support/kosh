@@ -1056,6 +1056,9 @@ a 2.00b
 0.000003
 16
 17
+08,09,10
+148,149,150
+-10,-09,-08
 -c:1:16: error: Koshkit `seq`: Format '%d' has an unknown directive.
      1 |  koshkit seq -f %d 1; echo "status=$?"; koshkit seq -f "%g%" 1; echo "status=$?"; koshkit seq 1 0 x; echo "status=$?"; koshkit seq nan; echo "status=$?"
        |                 ^~

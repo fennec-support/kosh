@@ -145,20 +145,13 @@ scan_seq_operand(const String &text, seq_operand &operand) wontthrow -> bool
       operand.column_count++;
     }
 
-    exponent = -exponent;
-  } else {
-    if (decimal_point.has_value() && operand.fraction_digit_count == 0 &&
-        fraction_length != 0)
-    {
-      operand.column_count--;
-    }
-
-    if (operand.fraction_digit_count < exponent)
-      exponent = operand.fraction_digit_count;
-    exponent = -exponent;
+    operand.column_count -= exponent;
+  } else if (exponent >= static_cast<i64>(fraction_length)) {
+    /* every fraction digit moves before the point, so the point goes, and
+       the digits that the exponent adds past them print as zeros. */
+    if (fraction_length != 0) operand.column_count--;
+    operand.column_count += exponent - static_cast<i64>(fraction_length);
   }
-
-  operand.column_count += exponent;
 
   return true;
 }
