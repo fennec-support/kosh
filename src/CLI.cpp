@@ -24,15 +24,6 @@ namespace koshka {
 constexpr usize HELP_WRAP_WIDTH = 80;
 constexpr usize HELP_INDENT     = 2;
 
-Flag::Flag(Flag::Kind   kind,
-           char         short_name,
-           StringView   long_name,
-           flag_section section,
-           StringView   description)
-    : m_kind(kind), m_short_name(short_name), m_section(section),
-      m_long_name(long_name), m_description(description)
-{}
-
 pure fn
 Flag::kind() const wontthrow -> Flag::Kind
 {
@@ -174,23 +165,6 @@ FlagRepeatedBool::reset() throws -> void
   m_position       = 0;
   m_value_location = {};
   m_count          = 0;
-}
-
-FlagString::FlagString(char         short_name,
-                       StringView   long_name,
-                       flag_section section,
-                       StringView   description)
-    : Flag(Flag::Kind::String, short_name, long_name, section, description)
-{}
-
-FlagString::FlagString(FlagList    &flags,
-                       char         short_name,
-                       StringView   long_name,
-                       flag_section section,
-                       StringView   description)
-    : FlagString(short_name, long_name, section, description)
-{
-  flags.push(this);
 }
 
 fn

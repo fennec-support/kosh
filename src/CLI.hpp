@@ -82,6 +82,9 @@ inline constexpr StringView CLEAR_PROGRESS_LINE{"\r\x1b[2K"};
 class SynopsisList
 {
 public:
+  /* every help synopsis is built at startup, so the constructor stays inline
+     in sources compiled for size too. */
+  alwaysinline
   SynopsisList(std::initializer_list<StringView> lines) wontthrow
   {
     if (lines.size() > countof(m_lines))
@@ -215,7 +218,10 @@ protected:
        char         short_name,
        StringView   long_name,
        flag_section section,
-       StringView   description);
+       StringView   description)
+      : m_kind(type), m_short_name(short_name), m_section(section),
+        m_long_name(long_name), m_description(description)
+  {}
 
   Kind           m_kind;
   usize          m_position{0};
@@ -283,15 +289,25 @@ private:
 class FlagString : public Flag
 {
 public:
+  /* string flags are built at startup, so the constructors stay inline in
+     sources compiled for size too. */
+  alwaysinline
   FlagString(FlagList    &flags,
              char         short_name,
              StringView   long_name,
              flag_section section,
-             StringView   description);
+             StringView   description)
+      : FlagString(short_name, long_name, section, description)
+  {
+    flags.push(this);
+  }
+  alwaysinline
   FlagString(char         short_name,
              StringView   long_name,
              flag_section section,
-             StringView   description);
+             StringView   description)
+      : Flag(Kind::String, short_name, long_name, section, description)
+  {}
 
   fn
   set(StringView v) throws -> void;

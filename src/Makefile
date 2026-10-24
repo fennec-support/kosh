@@ -558,6 +558,24 @@ $(COMMIT_HASH_OBJECTS): $(COMMIT_HASH_STAMP)
 
 $(OBJECTS): | dirs
 
+# Cold sources compile for size in MODE=rel. Throughput utilities such as grep,
+# sort, wc, cat, tr, head, tail, cut, find, ls, and du stay at -O3.
+COLD_SIZE_OBJECTS := \
+	$(OBJECT_DIRECTORY)/koshkit/Evil%.o \
+	$(OBJECT_DIRECTORY)/koshkit/Good%.o \
+	$(OBJECT_DIRECTORY)/koshkit/Make.o \
+	$(OBJECT_DIRECTORY)/koshkit/File.o \
+	$(OBJECT_DIRECTORY)/koshkit/Pr.o \
+	$(OBJECT_DIRECTORY)/koshkit/Od.o \
+	$(OBJECT_DIRECTORY)/koshkit/Man.o \
+	$(OBJECT_DIRECTORY)/koshkit/Meow.o \
+	$(OBJECT_DIRECTORY)/builtins/Bench.o \
+	$(OBJECT_DIRECTORY)/LanguageServer.o \
+	$(OBJECT_DIRECTORY)/DiagnosticsCatalog.o
+ifeq ($(MODE), rel)
+$(COLD_SIZE_OBJECTS): CXXFLAGS += -Os -fno-unroll-loops
+endif
+
 $(OBJECT_DIRECTORY)/%.o: %.cpp Makefile
 	printf "\tCompiling %-12s\033[K\r" $@
 	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
