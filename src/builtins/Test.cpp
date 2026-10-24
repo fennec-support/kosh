@@ -154,15 +154,24 @@ public:
       return (operand_path.*(*predicate))();
 
     if (op == "-t") {
-      let const file_descriptor = parse_integer(operand.view());
+      bool      is_out_of_range = false;
+      let const file_descriptor =
+          utils::parse_decimal_i64(operand.view(), &is_out_of_range);
 
-      if (!file_descriptor.has_value() || *file_descriptor < 0 ||
-          *file_descriptor > 0x7fffffff)
+      if (file_descriptor.is_error() && !is_out_of_range) {
+        fail(StringView{"Unable to test '-t "} + operand +
+             "', the operand is not an integer");
+
+        return false;
+      }
+
+      if (is_out_of_range || file_descriptor.value() < 0 ||
+          file_descriptor.value() > 0x7fffffff)
       {
         return false;
       }
 
-      return os::shell_fd_is_a_tty(static_cast<int>(*file_descriptor));
+      return os::shell_fd_is_a_tty(static_cast<int>(file_descriptor.value()));
     }
 
     fail(
