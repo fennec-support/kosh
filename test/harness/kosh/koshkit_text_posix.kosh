@@ -25,6 +25,7 @@ koshkit expand -t 4 spaced
 koshkit unexpand -a -t 4 spaced | koshkit expand -t 4
 koshkit fold -w 4 lines
 koshkit fold -s -w 6 <<<'one two three'
+printf 'abc\rdefghij\n' | koshkit fold -s -w5 | koshkit od -An -c
 
 koshkit nl -ba -v 3 -i 2 -w 2 -s ': ' lines
 koshkit paste -d , records lines
@@ -234,6 +235,7 @@ koshkit nl -p -ha -fa nlpages
 koshkit nl -hpe -fpo -bp'^foo' nlpages
 koshkit nl -v -3 -i -2 -s '' nlpages
 koshkit nl -v +3 -i 0 -nrz -w3 nlpages
+printf 'a\nb\n' | koshkit nl -n rz -v -3 -i 2
 printf 'x\n@:\ny\n@@\nz\n' | koshkit nl -d@
 printf 'x\nabcabc\ny\nabc\nz\n' | koshkit nl -dabc -fa
 printf 'x\n\\:\ny\n' | koshkit nl -d '' -ba

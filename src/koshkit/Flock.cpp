@@ -56,7 +56,8 @@ Flock::execute(const ExecContext               &ec,
      child exits with 127 and no message when exec fails. */
   let const is_command_found =
       os::has_directory_separator(operands[1].view())
-          ? Path{operands[1].view()}.exists()
+          ? Path{operands[1].view()}.is_executable() &&
+                !Path{operands[1].view()}.is_directory()
           : !cxt.program_resolver()
                  .search(operands[1].view(), ProgramResolver::SearchMode::First,
                          ProgramResolver::Requirement::Runnable,

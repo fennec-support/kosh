@@ -117,6 +117,10 @@ note: Use a decimal integer from -2147483648 through 2147483647.
 -c:1:20: error: Koshkit `flock`: Command 'KOSH_MISSING_COMMAND' was not found.
      1 |  koshkit flock "$1" KOSH_MISSING_COMMAND
        |                     ^~~~~~~~~~~~~~~~~~~~
+-c:1:25: error: Koshkit `flock`: Command 'DIR/plain' was not found.
+     1 |  koshkit flock "$1/lock" "$1/plain"; echo "status=$?"
+       |                          ^~~~~~~~~~
+status=127
 === sed range without a first address ===
 -c:1:16: error: Koshkit `sed`: Missing first address.
      1 |  koshkit sed -n ',2p'

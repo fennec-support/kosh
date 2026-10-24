@@ -79,7 +79,7 @@ append_folded_line(String         &output,
 
     if (break_mode == fold_break_mode::Blank) {
       for (usize at = position; at > start; at--)
-        if (isspace(static_cast<u8>(line[at - 1])) != 0) {
+        if (line[at - 1] == ' ' || line[at - 1] == '\t') {
           break_position = at;
           break;
         }

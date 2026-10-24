@@ -79,6 +79,9 @@ echo "=== flock missing command location ==="
 flock_directory=$(mktemp -d)
 "$BIN" -c 'koshkit flock "$1" KOSH_MISSING_COMMAND' sh "$flock_directory" 2>&1 |
   sed "s|$flock_directory|DIR|g"
+: > "$flock_directory/plain"
+"$BIN" -c 'koshkit flock "$1/lock" "$1/plain"; echo "status=$?"' sh \
+  "$flock_directory" 2>&1 | sed "s|$flock_directory|DIR|g"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$flock_directory"
 
 echo "=== sed range without a first address ==="

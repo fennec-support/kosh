@@ -32,6 +32,7 @@ four
 one 
 two 
 three
+   a   b   c  \r   d   e   f   g   h  \n   i   j  \n
  3: one
  5: two
  7: three
@@ -108,12 +109,12 @@ xx
 1024
 12869
 1024
-83:18: error: Koshkit `head`: Invalid byte count '1x'.
-    83 |  (koshkit head -c 1x counted)
+84:18: error: Koshkit `head`: Invalid byte count '1x'.
+    84 |  (koshkit head -c 1x counted)
        |                   ^~
 note: The count must be an integer with an optional size suffix.
-83:1: trace:
-    83 |  (koshkit head -c 1x counted)
+84:1: trace:
+    84 |  (koshkit head -c 1x counted)
        |  ^
 suffix-status=1
 suffix-status=1
@@ -163,8 +164,8 @@ one	 :three
 two	 :four
 one	 :two
 three	 :four
-116:3: error: Koshkit `pr`: The page width is too narrow for the columns.
-   116 |    koshkit pr -t -l 1 -18446744073709551615
+117:3: error: Koshkit `pr`: The page width is too narrow for the columns.
+   117 |    koshkit pr -t -l 1 -18446744073709551615
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use a larger width with -w or fewer columns.
 left-one      :right-one
@@ -547,6 +548,8 @@ x$
 
 003	b2
 003	last
+-00003	a
+-00001	b
      1	x
 
        y

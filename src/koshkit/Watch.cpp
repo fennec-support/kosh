@@ -178,10 +178,6 @@ Watch::execute(const ExecContext               &ec,
     cxt.execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
   };
 
-  let const interval_nanoseconds =
-      static_cast<u64>(interval_seconds * 1000000000.0);
-  let const now_nanoseconds = os::monotonic_nanos();
-
   live_view_options options{};
 
   options.sample_interval_seconds         = interval_seconds;
@@ -190,10 +186,7 @@ Watch::execute(const ExecContext               &ec,
   options.should_show_header              = false;
   options.should_sample_with_cooked_input = true;
   options.interrupt_status                = 0;
-  /* the first run starts at once. */
-  options.started_at_nanoseconds = now_nanoseconds > interval_nanoseconds
-                                       ? now_nanoseconds - interval_nanoseconds
-                                       : 1;
+  options.should_sample_immediately       = true;
 
   let const do_sample = [&](u64, Allocator) throws -> Maybe<i32> {
     let const scratch_mark = cxt.expansion_store().scratch_arena().mark();

@@ -68,8 +68,10 @@ struct live_view_options
   u64        started_at_nanoseconds{0};
   bool       should_color{false};
   bool       should_render_first_frame_immediately{false};
-  bool       should_show_header{true};
-  bool       should_scroll{false};
+  /* the first loop iteration samples and renders without waiting. */
+  bool should_sample_immediately{false};
+  bool should_show_header{true};
+  bool should_scroll{false};
   /* the terminal reads cooked input while do_sample runs, for a sample that
      runs a command. */
   bool  should_sample_with_cooked_input{false};
@@ -263,7 +265,8 @@ run_live_view(const ExecContext       &ec,
     last_refresh_nanoseconds -= refresh_interval_nanoseconds;
   }
 
-  bool should_force_refresh = false;
+  bool should_sample_now    = options.should_sample_immediately;
+  bool should_force_refresh = should_sample_now;
 
   loop {
     let const frame_mark = frame_arena.mark();
@@ -307,9 +310,10 @@ run_live_view(const ExecContext       &ec,
     let const now_nanoseconds = os::monotonic_nanos();
 
     if (sample_interval_nanoseconds != 0 &&
-        now_nanoseconds - last_sample_nanoseconds >=
-            sample_interval_nanoseconds)
+        (should_sample_now || now_nanoseconds - last_sample_nanoseconds >=
+                                  sample_interval_nanoseconds))
     {
+      should_sample_now = false;
       if (options.should_sample_with_cooked_input) view.set_is_input_raw(false);
 
       let const status = do_sample(now_nanoseconds, frame_allocator);

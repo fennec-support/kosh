@@ -74,3 +74,8 @@ echo "--- list prints sorted unique utility entries ---"
 "$BIN" -c 'koshkit --list | koshkit sort -cu; echo "sorted-unique=$?"'
 "$BIN" -c 'koshkit --list | koshkit grep -vc "^[a-z0-9_-]*$"'
 echo "invalid-entries-status=$?"
+
+echo "--- watch runs the command at once with an interval past the uptime ---"
+"$BIN_DIR/invoke-koshkit" timeout 3 "$BIN" -c \
+  'koshkit watch -n 100000000 -t echo first-run' </dev/null 2>&1 |
+  "$BIN_DIR/invoke-koshkit" head -1
