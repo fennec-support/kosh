@@ -119,25 +119,17 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       case 'c': should_stop = true; break;
 
       case 'x': {
-        i32   value       = 0;
-        usize digit_count = 0;
+        let const scanned =
+            cxt.runtime_state().is_posix_mode()
+                ? utils::escape_digits{0, 0}
+                : utils::scan_escape_digits(arg.view(), j + 1, 16, 2);
 
-        while (!cxt.runtime_state().is_posix_mode() && digit_count < 2 &&
-               j + 1 < arg.length())
-        {
-          let const digit = utils::hex_digit_value(arg[j + 1]);
-
-          if (!digit.has_value()) break;
-          value = value * 16 + *digit;
-          j++;
-          digit_count++;
-        }
-
-        if (digit_count == 0) {
+        if (scanned.digit_count == 0) {
           output += '\\';
           output += escaped;
         } else {
-          output += static_cast<char>(value);
+          output += static_cast<char>(scanned.value);
+          j += scanned.digit_count;
         }
       } break;
 
@@ -155,18 +147,13 @@ Echo::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           break;
         }
 
-        i32   value       = escaped - '0';
-        usize digit_count = escaped == '0' ? 0 : 1;
+        let const first_digit_count = escaped == '0' ? usize{0} : usize{1};
+        let const scanned           = utils::scan_escape_digits(
+            arg.view(), j + 1, 8, 3 - first_digit_count,
+            static_cast<u32>(escaped - '0'));
 
-        while (digit_count < 3 && j + 1 < arg.length() && arg[j + 1] >= '0' &&
-               arg[j + 1] <= '7')
-        {
-          value = value * 8 + (arg[j + 1] - '0');
-          j++;
-          digit_count++;
-        }
-
-        output += static_cast<char>(value);
+        j += scanned.digit_count;
+        output += static_cast<char>(scanned.value);
       } break;
 
       case 'u':

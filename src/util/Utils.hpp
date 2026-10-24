@@ -369,6 +369,38 @@ hex_digit_value(char byte) wontthrow -> Maybe<u8>
   return None;
 }
 
+struct escape_digits
+{
+  u32   value;
+  usize digit_count;
+};
+
+/* reads up to max_digit_count digits of base 8 or 16 from text at position,
+   starting from value and stopping before a digit would exceed max_value. */
+pure inline fn
+scan_escape_digits(StringView text,
+                   usize      position,
+                   u32        base,
+                   usize      max_digit_count,
+                   u32        value     = 0,
+                   u32        max_value = UINT32_MAX) wontthrow -> escape_digits
+{
+  usize digit_count = 0;
+
+  while (digit_count < max_digit_count && position + digit_count < text.length)
+  {
+    let const digit = hex_digit_value(text[position + digit_count]);
+
+    if (!digit.has_value() || *digit >= base) break;
+    if (value > (max_value - *digit) / base) break;
+
+    value = value * base + *digit;
+    digit_count++;
+  }
+
+  return {value, digit_count};
+}
+
 pure fn
 token_has_uppercase(StringView token) wontthrow -> bool;
 pure fn

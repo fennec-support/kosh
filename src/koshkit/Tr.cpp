@@ -163,22 +163,11 @@ unescape_tr_set(StringView       set,
     }
 
     if (escaped >= '0' && escaped <= '7') {
-      int value = escaped - '0';
+      let const scanned = utils::scan_escape_digits(
+          set, i + 1, 8, 2, static_cast<u32>(escaped - '0'), 255);
 
-      for (int digit_count = 1; digit_count < 3 && i + 1 < set.length;
-           digit_count++)
-      {
-        let const digit = set[i + 1];
-
-        if (digit < '0' || digit > '7' || value * 8 + (digit - '0') > 255) {
-          break;
-        }
-
-        value = value * 8 + (digit - '0');
-        i++;
-      }
-
-      byte = static_cast<char>(value);
+      i += scanned.digit_count;
+      byte = static_cast<char>(scanned.value);
     }
 
     bytes.push(byte);

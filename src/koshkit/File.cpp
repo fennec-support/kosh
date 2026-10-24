@@ -154,40 +154,25 @@ decode_magic_text(StringView encoded, String &decoded) throws -> void
     case ' ': decoded.push(' '); break;
 
     case 'x': {
-      u8    value       = 0;
-      usize digit_count = 0;
+      let const scanned =
+          utils::scan_escape_digits(encoded, position + 1, 16, 2);
 
-      while (position + 1 < encoded.length && digit_count < 2) {
-        let const digit =
-            utils::hex_digit_value(encoded[position + 1]).value_or(0xff);
-
-        if (digit >= 16) break;
-        value = static_cast<u8>(value * 16 + digit);
-        position++;
-        digit_count++;
-      }
-
-      if (digit_count == 0) {
+      position += scanned.digit_count;
+      if (scanned.digit_count == 0) {
         decoded += "\\x";
       } else {
-        decoded.push(static_cast<char>(value));
+        decoded.push(static_cast<char>(scanned.value));
       }
 
       break;
     }
     default:
       if (escaped >= '0' && escaped <= '7') {
-        u8    value       = static_cast<u8>(escaped - '0');
-        usize digit_count = 1;
+        let const scanned = utils::scan_escape_digits(
+            encoded, position + 1, 8, 2, static_cast<u32>(escaped - '0'));
 
-        while (position + 1 < encoded.length && digit_count < 3 &&
-               encoded[position + 1] >= '0' && encoded[position + 1] <= '7')
-        {
-          value = static_cast<u8>(value * 8 + encoded[++position] - '0');
-          digit_count++;
-        }
-
-        decoded.push(static_cast<char>(value));
+        position += scanned.digit_count;
+        decoded.push(static_cast<char>(scanned.value));
       } else {
         decoded.push('\\');
         decoded.push(escaped);

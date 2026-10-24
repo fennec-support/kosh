@@ -279,39 +279,24 @@ append_escape(String       &out,
   let const e = fmt[i];
 
   if (e >= '0' && e <= '7') {
-    i32   value       = e - '0';
-    usize digit_count = 1;
+    let const scanned = utils::scan_escape_digits(fmt.view(), i + 1, 8, 2,
+                                                  static_cast<u32>(e - '0'));
 
-    while (digit_count < 3 && i + 1 < fmt.length() && fmt[i + 1] >= '0' &&
-           fmt[i + 1] <= '7')
-    {
-      i++;
-      value = value * 8 + (fmt[i] - '0');
-      digit_count++;
-    }
-
-    out += static_cast<char>(value);
+    i += scanned.digit_count;
+    out += static_cast<char>(scanned.value);
 
     return;
   }
 
-  if (e == 'x' && i + 1 < fmt.length() &&
-      utils::hex_digit_value(fmt[i + 1]).has_value())
-  {
-    i32   value       = 0;
-    usize digit_count = 0;
+  if (e == 'x') {
+    let const scanned = utils::scan_escape_digits(fmt.view(), i + 1, 16, 2);
 
-    while (digit_count < 2 && i + 1 < fmt.length() &&
-           utils::hex_digit_value(fmt[i + 1]).has_value())
-    {
-      i++;
-      value = value * 16 + *utils::hex_digit_value(fmt[i]);
-      digit_count++;
+    if (scanned.digit_count != 0) {
+      i += scanned.digit_count;
+      out += static_cast<char>(scanned.value);
+
+      return;
     }
-
-    out += static_cast<char>(value);
-
-    return;
   }
 
   if (utils::append_unicode_escape(out, fmt.view(), i)) return;
@@ -333,24 +318,14 @@ append_b_argument(String       &out,
     let const e = arg[i + 1];
 
     if (e == 'c') return true;
-    if (e == 'x' && i + 2 < arg.length() &&
-        utils::hex_digit_value(arg[i + 2]).has_value())
-    {
-      usize digit_index = i + 2;
-      i32   value       = 0;
-      usize digit_count = 0;
+    if (e == 'x') {
+      let const scanned = utils::scan_escape_digits(arg.view(), i + 2, 16, 2);
 
-      while (digit_count < 2 && digit_index < arg.length() &&
-             utils::hex_digit_value(arg[digit_index]).has_value())
-      {
-        value = value * 16 + *utils::hex_digit_value(arg[digit_index]);
-        digit_index++;
-        digit_count++;
+      if (scanned.digit_count != 0) {
+        out += static_cast<char>(scanned.value);
+        i += 1 + scanned.digit_count;
+        continue;
       }
-
-      out += static_cast<char>(value);
-      i = digit_index - 1;
-      continue;
     }
 
     if (should_use_bash_escapes && (e == 'u' || e == 'U') &&
@@ -368,19 +343,11 @@ append_b_argument(String       &out,
 
       if (arg[digit_index] == '0') digit_index++;
 
-      i32   value       = 0;
-      usize digit_count = 0;
+      let const scanned =
+          utils::scan_escape_digits(arg.view(), digit_index, 8, 3);
 
-      while (digit_count < 3 && digit_index < arg.length() &&
-             arg[digit_index] >= '0' && arg[digit_index] <= '7')
-      {
-        value = value * 8 + (arg[digit_index] - '0');
-        digit_index++;
-        digit_count++;
-      }
-
-      out += static_cast<char>(value);
-      i = digit_index - 1;
+      out += static_cast<char>(scanned.value);
+      i = digit_index + scanned.digit_count - 1;
       continue;
     }
 

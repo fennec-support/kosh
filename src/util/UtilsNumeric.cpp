@@ -853,23 +853,14 @@ decode_ansi_c_escapes(String &out, StringView body) throws -> void
     case '"':  out.push('"'); break;
     case '?':  out.push('?'); break;
     case 'x':  {
-      i32 value       = 0;
-      i32 digit_count = 0;
+      let const scanned = scan_escape_digits(body, i, 16, 2);
 
-      while (digit_count < 2 && i < body.length) {
-        let const digit = hex_digit_value(body[i]);
-
-        if (!digit.has_value()) break;
-        value = value * 16 + *digit;
-        i++;
-        digit_count++;
-      }
-
-      if (digit_count == 0) {
+      i += scanned.digit_count;
+      if (scanned.digit_count == 0) {
         out.push('\\');
         out.push('x');
       } else {
-        out.push(static_cast<char>(value));
+        out.push(static_cast<char>(scanned.value));
       }
     } break;
 
@@ -910,18 +901,11 @@ decode_ansi_c_escapes(String &out, StringView body) throws -> void
 
     default:
       if (e >= '0' && e <= '7') {
-        i32 value       = e - '0';
-        i32 digit_count = 1;
+        let const scanned =
+            scan_escape_digits(body, i, 8, 2, static_cast<u32>(e - '0'));
 
-        while (digit_count < 3 && i < body.length && body[i] >= '0' &&
-               body[i] <= '7')
-        {
-          value = value * 8 + (body[i] - '0');
-          i++;
-          digit_count++;
-        }
-
-        out.push(static_cast<char>(value));
+        i += scanned.digit_count;
+        out.push(static_cast<char>(scanned.value));
       } else {
         out.push('\\');
         out.push(e);
