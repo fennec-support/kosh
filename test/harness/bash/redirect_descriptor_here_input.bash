@@ -2,7 +2,8 @@
 # A numbered or {name} descriptor takes a here-string or a here-document the
 # way bash does, on exec, a command, a function, a group, and a subshell, and
 # a {name} allocation binds the name it gives. A here-document on standard
-# input keeps its body when a later redirection takes descriptor 3.
+# input keeps its body when a later redirection takes descriptor 3, and a
+# later redirection of standard input replaces it.
 echo "== numbered here-string on exec =="
 exec 7<<< "seven"
 /bin/cat <&7
@@ -72,5 +73,13 @@ A
 /bin/cat <<A 3<&-
 close-case
 A
+printf 'from-file\n' > here-input-file.txt
+/bin/cat <<A 0<here-input-file.txt
+replaced-by-file
+A
+/bin/cat 0<here-input-file.txt <<A
+heredoc-last
+A
+rm -f here-input-file.txt
 
 echo done

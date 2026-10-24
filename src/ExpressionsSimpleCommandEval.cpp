@@ -467,8 +467,17 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
   /* the staged body of a heredoc on descriptor 0 waits in redirect_in_fd
      until the command runs, so a later redirection onto the descriptor
-     number it holds moves it to a free one first. */
+     number it holds moves it to a free one first, and a later redirection
+     of descriptor 0 drops it. */
   let const do_move_input_off = [&](i32 target_fd) wontthrow -> void {
+    /* a later redirection of descriptor 0 replaces the heredoc. */
+    if (redirect_in_fd && target_fd == 0) {
+      os::close_fd(*redirect_in_fd);
+      redirect_in_fd = koshka::None;
+
+      return;
+    }
+
     if (!redirect_in_fd ||
         !os::descriptor_is_shell_fd(*redirect_in_fd, target_fd))
     {
