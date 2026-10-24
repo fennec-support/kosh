@@ -53,15 +53,11 @@ Eliminated 0 statements.
 Eliminated 0 statements.
 done
 === if with no reachable body is eliminated ===
--c:1:1: warning: Every condition of this `if` is statically false and the `else` body always runs.
-     1 |  if false; then echo a; fi; echo done
-       |  ^~
 -c:1:1: warning: Every condition of this `if` is statically false and it has no `else` body.
      1 |  if false; then echo a; fi; echo done
        |  ^~
 note: Remove the `if` or write a condition that can be true.
-Encountered 2 warnings.
-Eliminated 2 statements.
+Eliminated 1 statement.
 done
 === for over an empty list is eliminated ===
 -c:1:1: warning: This `for` loop iterates over an empty list and never runs its body.

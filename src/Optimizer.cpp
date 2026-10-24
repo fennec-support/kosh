@@ -754,6 +754,11 @@ rule_dead_branch_elimination(const Expression *node,
 
   LOG(All, "every if condition is statically false, folding to the else body");
   clause->set_folded_branch(clause->branches().count());
+
+  /* an if without an else is reported and counted once, when
+     rule_eliminate_compound_body removes it. */
+  if (clause->otherwise() == nullptr) return true;
+
   actx.optimizer_eliminated_count++;
   if (actx.options.should_report_optimizer_diagnostics)
     actx.report_diagnostic(diagnostic_id::optimizer_folded_else,
