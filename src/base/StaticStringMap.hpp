@@ -15,21 +15,22 @@
 
 namespace koshka {
 
-template <class Value>
+template <class Value, class Key = PackedStringKey>
 struct static_string_entry
 {
-  PackedStringKey key;
-  Value           value;
+  Key   key;
+  Value value;
 };
 
 struct static_string_prefilter
 {
   u64   leading_byte_mask[4]{};
-  usize shortest_key_length{PackedStringKey::BYTE_CAPACITY};
+  usize shortest_key_length{static_cast<usize>(-1)};
   usize longest_key_length{0};
 
+  template <class Key>
   constexpr fn
-  record(const PackedStringKey &key) wontthrow -> void
+  record(const Key &key) wontthrow -> void
   {
     let const key_length = key.packed_length();
 
@@ -58,19 +59,19 @@ struct static_string_prefilter
   }
 };
 
-template <class Value, usize Count>
+template <class Value, usize Count, class Key = PackedStringKey>
 class StaticStringMap
 {
 public:
-  static_string_entry<Value> entries[Count]{};
-  static_string_prefilter    prefilter{};
+  static_string_entry<Value, Key> entries[Count]{};
+  static_string_prefilter         prefilter{};
 
   /* memory: none at run time. the entries and prefilter are members.
      time:   O(Count) to copy and record each entry, plus O(Count^2) for the
              insertion sort of entries in the worst case. consteval, so this
              runs at compile time only. */
   consteval StaticStringMap(
-      const static_string_entry<Value> (&table)[Count]) wontthrow
+      const static_string_entry<Value, Key> (&table)[Count]) wontthrow
   {
     for (usize i = 0; i < Count; i++) {
       entries[i] = table[i];
@@ -95,7 +96,7 @@ public:
   {
     if (!prefilter.might_contain(text)) return None;
 
-    let const wanted = PackedStringKey::from_view(text);
+    let const wanted = Key::from_view(text);
 
     usize low  = 0;
     usize high = Count;
@@ -119,22 +120,22 @@ public:
   }
 };
 
-template <class Value, usize Count>
-StaticStringMap(const static_string_entry<Value> (&)[Count])
-    -> StaticStringMap<Value, Count>;
+template <class Value, class Key, usize Count>
+StaticStringMap(const static_string_entry<Value, Key> (&)[Count])
+    -> StaticStringMap<Value, Count, Key>;
 
-template <usize Count>
+template <usize Count, class Key = PackedStringKey>
 class StaticStringSet
 {
 public:
-  PackedStringKey         keys[Count]{};
+  Key                     keys[Count]{};
   static_string_prefilter prefilter{};
 
   /* memory: none at run time. the keys and prefilter are members.
      time:   O(Count) to copy and record each key, plus O(Count^2) for the
              insertion sort of keys in the worst case. consteval, so this
              runs at compile time only. */
-  consteval StaticStringSet(const PackedStringKey (&table)[Count]) wontthrow
+  consteval StaticStringSet(const Key (&table)[Count]) wontthrow
   {
     for (usize i = 0; i < Count; i++) {
       keys[i] = table[i];
@@ -159,7 +160,7 @@ public:
   {
     if (!prefilter.might_contain(text)) return None;
 
-    let const wanted = PackedStringKey::from_view(text);
+    let const wanted = Key::from_view(text);
 
     usize low  = 0;
     usize high = Count;
@@ -189,7 +190,7 @@ public:
   }
 };
 
-template <usize Count>
-StaticStringSet(const PackedStringKey (&)[Count]) -> StaticStringSet<Count>;
+template <class Key, usize Count>
+StaticStringSet(const Key (&)[Count]) -> StaticStringSet<Count, Key>;
 
 } /* namespace koshka */

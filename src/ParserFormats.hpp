@@ -185,9 +185,9 @@ pure fn
 parser_format_json_string_end(StringView source, usize position) wontthrow
     -> usize;
 
-template <class Value, usize Count>
+template <class Value, usize Count, class Key>
 fn
-parser_format_find_ascii_folded(const StaticStringMap<Value, Count> &map,
+parser_format_find_ascii_folded(const StaticStringMap<Value, Count, Key> &map,
                                 StringView text) throws -> Maybe<Value>
 {
   char folded[32];

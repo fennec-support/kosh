@@ -16,18 +16,28 @@
 
 namespace koshka {
 
-class PackedStringKey
+/* a key packed into WordCount little-endian words, zero-padded after its
+   last byte. a table picks the word count that holds its longest key. */
+template <usize WordCount>
+class BasicPackedStringKey
 {
 public:
-  static constexpr usize WORD_COUNT    = 8;
+  static constexpr usize WORD_COUNT    = WordCount;
   static constexpr usize BYTE_CAPACITY = WORD_COUNT * 8;
 
   u64 words[WORD_COUNT]{};
 
   static consteval fn
-  from_literal(const char *text) wontthrow -> PackedStringKey
+  from_literal(const char *text) wontthrow -> BasicPackedStringKey
   {
-    PackedStringKey key{};
+    BasicPackedStringKey key{};
+    usize                length = 0;
+
+    while (text[length] != '\0')
+      length++;
+
+    /* a longer literal fails here at compile time. */
+    if (length > BYTE_CAPACITY) TRAP("a packed key literal is too long");
 
     for (usize i = 0; text[i] != '\0' && i < BYTE_CAPACITY; i++)
       key.words[i / 8] |= static_cast<u64>(static_cast<u8>(text[i]))
@@ -37,10 +47,10 @@ public:
   }
 
   hot static fn
-  from_view(StringView text) wontthrow -> PackedStringKey
+  from_view(StringView text) wontthrow -> BasicPackedStringKey
   {
-    PackedStringKey key{};
-    let const       byte_count =
+    BasicPackedStringKey key{};
+    let const            byte_count =
         text.count() < BYTE_CAPACITY ? text.count() : BYTE_CAPACITY;
 
 #if defined __BYTE_ORDER__ && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
@@ -56,7 +66,7 @@ public:
   }
 
   hot mustuse constexpr fn
-  operator==(const PackedStringKey &other) const wontthrow -> bool
+  operator==(const BasicPackedStringKey &other) const wontthrow -> bool
   {
     if (words[0] != other.words[0]) return false;
 
@@ -70,7 +80,7 @@ public:
   }
 
   hot mustuse constexpr fn
-  operator<(const PackedStringKey &other) const wontthrow -> bool
+  operator<(const BasicPackedStringKey &other) const wontthrow -> bool
   {
     for (usize i = 0; i < WORD_COUNT; i++)
       if (words[i] != other.words[i]) return words[i] < other.words[i];
@@ -116,6 +126,11 @@ public:
     };
   }
 };
+
+/* the longest SSK() key is 33 bytes, so five words hold every one. */
+using PackedStringKey = BasicPackedStringKey<5>;
+/* option names reach 62 bytes. */
+using LongPackedStringKey = BasicPackedStringKey<8>;
 
 } /* namespace koshka */
 

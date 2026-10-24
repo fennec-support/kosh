@@ -1215,7 +1215,7 @@ static_assert(shopt_storage_count() <= 64);
 template <usize Count>
 struct name_entry_table
 {
-  static_string_entry<u8> entries[Count]{};
+  static_string_entry<u8, LongPackedStringKey> entries[Count]{};
 };
 
 enum class name_kind : u8
@@ -1259,8 +1259,8 @@ make_name_entries() wontthrow -> name_entry_table<name_count(Kind)>
     let const name = name_of(OPTION_REGISTRY[index], Kind);
 
     if (!name.is_empty())
-      result.entries[position++] = {PackedStringKey::from_literal(name.data),
-                                    static_cast<u8>(index)};
+      result.entries[position++] = {
+          LongPackedStringKey::from_literal(name.data), static_cast<u8>(index)};
   }
 
   return result;
@@ -1276,8 +1276,8 @@ constexpr StaticStringMap OPTIONS_BY_SHOPT_NAME{SHOPT_NAME_ENTRIES.entries};
 
 template <usize Count>
 consteval fn
-names_are_unique(const static_string_entry<u8> (&entries)[Count]) wontthrow
-    -> bool
+names_are_unique(const static_string_entry<u8, LongPackedStringKey> (
+    &entries)[Count]) wontthrow -> bool
 {
   for (usize left = 0; left < Count; left++)
     for (usize right = left + 1; right < Count; right++)
@@ -1313,7 +1313,7 @@ registry_is_valid() wontthrow -> bool
 
     for (let const name :
          {entry.koshconf_name, entry.set_name, entry.shopt_name})
-      if (name.length > PackedStringKey::BYTE_CAPACITY) return false;
+      if (name.length > LongPackedStringKey::BYTE_CAPACITY) return false;
 
     if (entry.type != option_type::String && entry.enum_values.name_count == 0)
     {
