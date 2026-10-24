@@ -1591,12 +1591,19 @@ complete(StringView                   line,
   let const is_line_empty = line.is_empty();
   let const whole_line    = line;
 
+  /* a document is cut at the line that holds the cursor, so a stray quote in
+     an earlier comment cannot join that line to an earlier command. */
+  let const statement_start = statement_line_start(line, cursor);
+
+  line = line.substring(statement_start);
+  cursor -= statement_start;
+
   let const command_range     = command_substitution_range(line, cursor);
-  let       completion_offset = command_range.start;
+  let       completion_offset = statement_start + command_range.start;
 
   line = line.substring_of_length(command_range.start,
                                   command_range.end - command_range.start);
-  cursor -= completion_offset;
+  cursor -= command_range.start;
 
   let const segment_start = command_segment_start(line, cursor);
 

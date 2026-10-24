@@ -55,6 +55,14 @@ stop
 restart
 start
 stop
+== spec command after a comment with an apostrophe:
+restart
+start
+stop
+== spec command after a heredoc body with an apostrophe:
+restart
+start
+stop
 == cd offers only directories on the next line:
 ZQdir_marker/
 adir/

@@ -5,7 +5,8 @@
 # while a matched paren closes a substitution and stays an argument. PATH is
 # pinned to an empty directory so a host binary such as exportfs cannot join the
 # command candidates. A command on a later physical line of a multi-line buffer
-# completes as its own command, and a cd there offers only directories. A
+# completes as its own command, also after a comment or a heredoc body that
+# holds an apostrophe, and a cd there offers only directories. A
 # separator inside quotes is not a command boundary, so the argument still
 # completes against the filesystem.
 dir=$(mktemp -d)
@@ -52,6 +53,10 @@ echo "== spec command after '&&' then a newline:"
 "$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf 'true &&\nsvc ')" </dev/null
 echo "== spec command in a loop body on the next line:"
 "$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf 'for x in a b; do\nsvc ')" </dev/null
+echo "== spec command after a comment with an apostrophe:"
+"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf "# don't\nsvc ")" </dev/null
+echo "== spec command after a heredoc body with an apostrophe:"
+"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf "cat <<EOF\nit's\nEOF\nsvc ")" </dev/null
 echo "== cd offers only directories on the next line:"
 "$BIN" --debug-complete-at "$(printf 'echo hi\ncd ')" </dev/null
 echo "== plain argument lists both markers:"

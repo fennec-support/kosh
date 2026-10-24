@@ -274,6 +274,12 @@ fn
 command_substitution_range(StringView line, usize cursor) throws
     -> completion_command_range;
 
+/* the start of the line that holds cursor, or of the first line a backslash
+   continues onto it, when that line starts outside quotes, comments,
+   heredocs, and substitutions. otherwise the start of the last such line. */
+fn
+statement_line_start(StringView line, usize cursor) throws -> usize;
+
 fn
 collect_case_pattern_ends(StringView        line,
                           ArrayList<usize> &positions) throws -> void;

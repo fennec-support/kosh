@@ -2106,6 +2106,11 @@ locate_hint_target(StringView line, usize cursor) throws
     if (state.is_in_heredoc) return None;
   }
 
+  let const statement_start = statement_line_start(line, cursor);
+
+  line = line.substring(statement_start);
+  cursor -= statement_start;
+
   let const whole_line   = line;
   let const substitution = command_substitution_range(line, cursor);
 

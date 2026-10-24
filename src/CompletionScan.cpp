@@ -2687,6 +2687,39 @@ internal::command_substitution_range(StringView line,
   return target.range;
 }
 
+/* memory: scanner state in COMPLETION_ARENA through completion_allocator().
+           the next COMPLETION_ARENA.reset() releases it.
+   time:   O(cursor). the scan resumes at each line feed, so each byte before
+           cursor is visited once. */
+fn
+internal::statement_line_start(StringView line, usize cursor) throws
+    -> usize
+{
+  usize start = 0;
+  let   state = shell_lexical_state{completion_allocator()};
+
+  for (usize k = 0; k < cursor && k < line.length; k++) {
+    if (line[k] != '\n') continue;
+
+    usize backslash_count = 0;
+
+    while (backslash_count < k && line[k - 1 - backslash_count] == '\\')
+      backslash_count++;
+
+    /* an odd run of backslashes continues the statement onto the next line. */
+    if (backslash_count % 2 != 0) continue;
+
+    advance_shell_lexical_state(line, k + 1, state);
+    if (state.source_position == k + 1 && state.quote == 0 &&
+        !state.is_in_comment && !state.is_in_heredoc && state.frames.is_empty())
+    {
+      start = k + 1;
+    }
+  }
+
+  return start;
+}
+
 /* memory: state in heap_allocator(), freed on return. positions grows by one
            entry for each case pattern end.
    time:   O(line.length). each call to advance_shell_lexical_state() resumes
