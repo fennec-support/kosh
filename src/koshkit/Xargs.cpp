@@ -832,14 +832,23 @@ Xargs::execute(const ExecContext               &ec,
       trace_xargs_command(ec, command, cxt.scratch_allocator());
 
     if (FLAG_XARGS_PROMPT.is_enabled()) {
-      let message = String{cxt.scratch_allocator(), "run '"};
+      let message = String{cxt.scratch_allocator(), "run "};
 
+      /* each argument is quoted, and a control byte is written as an
+         escape, so the question shows the exact command. */
       for (usize index = 0; index < command.count(); index++) {
+        let const argument = command[index].view();
+
         if (index != 0) message += ' ';
-        message += command[index].view();
+        if (!utils::append_ansi_c_quote_if_needed(
+                message, argument,
+                cxt.get_glob_charset_for(argument) == glob_charset::Utf8))
+        {
+          append_shell_quoted_arg(message, argument);
+        }
       }
 
-      message += "'?";
+      message += '?';
       if (!confirm_koshkit_action(ec, message.view(), confirm_default::No,
                                   terminal))
       {
