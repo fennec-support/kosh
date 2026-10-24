@@ -789,10 +789,13 @@ parse_flags(const FlagList                  &flags,
             plus_match.flag != nullptr;
 
         if (!is_known) {
-          let message = String{heap_allocator(), "The flag '+"};
+          let message = String{heap_allocator(), plus_match.flag == nullptr
+                                                     ? "Unknown flag '+"
+                                                     : "The flag '+"};
 
           message.push(*letter);
-          message += "' cannot be turned off";
+          message +=
+              plus_match.flag == nullptr ? "'" : "' cannot be turned off";
 
           let error =
               ErrorWithLocation{argument_location(argv, static_cast<usize>(i),

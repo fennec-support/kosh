@@ -101,16 +101,18 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let should_be_global                  = false;
   let has_trace_flag                    = false;
 
-  i32 status          = 0;
+  i32 status = 0;
   let operand_indices = ArrayList<usize>{cxt.scratch_allocator()};
 
-  unused(parse_flags_vec(
-      FLAG_LIST, args, ec.source_location().position, nullptr,
-      &ec.arg_locations(), nullptr, builtin_error_context(ec.program()),
-      flag_parse_options{.should_stop_at_first_operand = true,
-                         .plus_letters                 = "aAfFgilnprtux"},
-      cxt.scratch_allocator(), &operand_indices));
   defer { reset_flags(FLAG_LIST); };
+
+  if (!parse_builtin_flags_softly(ec, cxt, FLAG_LIST,
+                                  {.should_stop_at_first_operand = true,
+                                   .plus_letters = "aAfFgilnprtux"},
+                                  operand_indices))
+  {
+    return 2;
+  }
 
   /* a + form removes i, l, u, n, and x, is ignored for r, and acts as the -
      form for the other letters. */

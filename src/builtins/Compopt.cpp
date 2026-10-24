@@ -77,77 +77,48 @@ Compopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   ASSERT(!args.is_empty());
 
-  u32   enabled_mask     = 0;
-  u32   disabled_mask    = 0;
-  let   has_default_slot = false;
-  let   has_empty_slot   = false;
-  let   has_initial_slot = false;
-  usize name_index       = 1;
+  let operand_indices = ArrayList<usize>{cxt.scratch_allocator()};
 
-  for (; name_index < args.count(); name_index++) {
-    let const argument = args[name_index].view();
+  defer { reset_flags(FLAG_LIST); };
 
-    if (argument == "--") {
-      name_index++;
-      break;
+  if (!parse_builtin_flags_softly(
+          ec, cxt, FLAG_LIST,
+          {.should_stop_at_first_operand = true, .plus_letters = "oDEI"},
+          operand_indices))
+  {
+    return 2;
+  }
+
+  /* +D, +E, and +I select a slot as -D, -E, and -I do. */
+  let const do_is_given = [](const FlagBool &flag) wontthrow -> bool {
+    return flag.is_enabled() || flag.was_given_after_plus();
+  };
+
+  u32       enabled_mask     = 0;
+  u32       disabled_mask    = 0;
+  let const has_default_slot = do_is_given(FLAG_COMPOPT_DEFAULT);
+  let const has_empty_slot   = do_is_given(FLAG_COMPOPT_EMPTY);
+  let const has_initial_slot = do_is_given(FLAG_COMPOPT_INITIAL);
+  /* the first operand index belongs to the command word. */
+  usize name_index =
+      operand_indices.count() < 2 ? args.count() : operand_indices[1];
+
+  for (usize k = 0; k < FLAG_COMPOPT_OPTION.count(); k++) {
+    let const option_name = FLAG_COMPOPT_OPTION.get(k);
+    let const option      = COMPLETION_OPTIONS.find(option_name);
+
+    if (!option.has_value()) {
+      report_soft_builtin_error(ec, cxt, FLAG_COMPOPT_OPTION.get_location(k),
+                                StringView{"'"} + option_name +
+                                    "' is not a valid option name");
+
+      return 2;
     }
 
-    if (argument.length < 2 || (argument[0] != '-' && argument[0] != '+')) {
-      break;
-    }
-
-    let const is_enabling = argument[0] == '-';
-
-    for (usize k = 1; k < argument.length; k++) {
-      let const letter = argument[k];
-
-      switch (letter) {
-      case 'D': has_default_slot = true; continue;
-      case 'E': has_empty_slot = true; continue;
-      case 'I': has_initial_slot = true; continue;
-      default:  break;
-      }
-
-      if (letter != 'o') {
-        let invalid_option = String{cxt.scratch_allocator()};
-
-        invalid_option += argument[0];
-        invalid_option += letter;
-        report_soft_builtin_error(ec, cxt, ec.arg_location_at(name_index),
-                                  StringView{"'"} + invalid_option.view() +
-                                      "' is not a valid option");
-
-        return 2;
-      }
-
-      let option_name       = argument.substring(k + 1);
-      let option_name_index = name_index;
-
-      if (option_name.is_empty()) {
-        if (name_index + 1 >= args.count())
-          return report_usage_error(ec, cxt, ec.program());
-
-        name_index++;
-        option_name       = args[name_index].view();
-        option_name_index = name_index;
-      }
-
-      let const option = COMPLETION_OPTIONS.find(option_name);
-
-      if (!option.has_value()) {
-        report_soft_builtin_error(
-            ec, cxt, ec.arg_location_at(option_name_index),
-            StringView{"'"} + option_name + "' is not a valid option name");
-
-        return 2;
-      }
-
-      if (is_enabling)
-        enabled_mask |= completion_option_bit(*option);
-      else
-        disabled_mask |= completion_option_bit(*option);
-      break;
-    }
+    if (FLAG_COMPOPT_OPTION.was_given_after_plus(k))
+      disabled_mask |= completion_option_bit(*option);
+    else
+      enabled_mask |= completion_option_bit(*option);
   }
 
   let const should_print = enabled_mask == 0 && disabled_mask == 0;

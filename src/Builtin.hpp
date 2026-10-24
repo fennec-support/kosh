@@ -312,6 +312,17 @@ report_soft_builtin_error(const ExecContext &ec,
                           StringView         message,
                           StringView         note) throws -> void;
 
+/* parses the builtin flags of ec, stopping options where options says, and
+   pushes the index of each operand, the command word first. A bad flag is
+   reported as a soft error, and the result is then false. */
+fn
+parse_builtin_flags_softly(const ExecContext &ec,
+                           EvalContext       &cxt,
+                           const FlagList    &flags,
+                           flag_parse_options options,
+                           ArrayList<usize>  &operand_indices) throws
+    -> bool;
+
 fn
 report_soft_builtin_warning(const ExecContext &ec,
                             EvalContext       &cxt,

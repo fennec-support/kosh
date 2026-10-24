@@ -375,6 +375,37 @@ report_soft_builtin_error(const ExecContext &ec,
   show_message(Note{note}.to_string());
 }
 
+fn
+parse_builtin_flags_softly(const ExecContext &ec,
+                           EvalContext       &cxt,
+                           const FlagList    &flags,
+                           flag_parse_options options,
+                           ArrayList<usize>  &operand_indices) throws
+    -> bool
+{
+  try {
+    unused(parse_flags_vec(flags, ec.args(), ec.source_location().position,
+                           nullptr, &ec.arg_locations(), nullptr, StringView{},
+                           options, cxt.scratch_allocator(), &operand_indices));
+  } catch (const ErrorWithLocation &error) {
+    if (error.detail_message().is_empty()) {
+      report_soft_builtin_error(ec, cxt, error.location(),
+                                error.message().view());
+    } else {
+      report_soft_builtin_error(ec, cxt, error.location(),
+                                error.message().view(), error.detail_message());
+    }
+
+    return false;
+  } catch (const Error &error) {
+    report_soft_builtin_error(ec, cxt, error.message().view());
+
+    return false;
+  }
+
+  return true;
+}
+
 /* without a located diagnostic, the caller prints the plain message. */
 static fn
 show_with_current_source(EvalContext             &cxt,

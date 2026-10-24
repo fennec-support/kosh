@@ -36,8 +36,9 @@ public:
     while (text[length] != '\0')
       length++;
 
-    /* a longer literal fails here at compile time. */
-    if (length > BYTE_CAPACITY) TRAP("a packed key literal is too long");
+    /* abort is not constexpr, so a literal longer than BYTE_CAPACITY fails
+       here at compile time. */
+    if (length > BYTE_CAPACITY) abort();
 
     for (usize i = 0; text[i] != '\0' && i < BYTE_CAPACITY; i++)
       key.words[i / 8] |= static_cast<u64>(static_cast<u8>(text[i]))

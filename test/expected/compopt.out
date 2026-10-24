@@ -6,7 +6,7 @@ outside=1
      4 |  compopt -o bogus foo
        |             ^~~~~
 bad-name=2
-6:9: error: Builtin `compopt`: '+q' is not a valid option.
+6:9: error: Builtin `compopt`: Unknown flag '+q'.
      6 |  compopt +q foo
        |          ^~
 bad-letter=2
