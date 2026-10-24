@@ -251,6 +251,19 @@ ifeq ($(TARGET), Windows_NT)
 ifneq ($(IS_WINDOWS_GNU_ABI),)
 HARDENING_LINK_FLAGS += -lssp
 endif
+# control flow guard and a System32-only search for dependent DLLs, when the
+# compiler and linker accept them. GCC for mingw supports neither.
+WINDOWS_PROBE_LINK = $(shell probe="$${TMPDIR:-/tmp}/kosh-probe-$$$$.exe"; \
+	printf 'int main(){}\n' | $(CXX) -x c++ - $(1) -o "$$probe" \
+	>/dev/null 2>&1 && echo yes; rm -f "$$probe")
+WINDOWS_PROBE_COMMA := ,
+ifneq ($(call WINDOWS_PROBE_LINK,-mguard=cf),)
+HARDENING_FLAGS += -mguard=cf
+HARDENING_LINK_FLAGS += -mguard=cf
+endif
+ifneq ($(call WINDOWS_PROBE_LINK,-Wl$(WINDOWS_PROBE_COMMA)--dependent-load-flag=0x800),)
+HARDENING_LINK_FLAGS += -Wl,--dependent-load-flag=0x800
+endif
 endif
 CXXFLAGS := # nothing
 
