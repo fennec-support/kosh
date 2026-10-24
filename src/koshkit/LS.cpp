@@ -381,7 +381,7 @@ prepare_entries(ArrayList<listing_entry> entries,
     }
   }
 
-  return steal(entries).make_sorted(listing_entry_comparator{
+  return steal(entries).make_sorted_inline(listing_entry_comparator{
       options.key,
       options.is_reversed ? sort_order::descending : sort_order::ascending});
 }
@@ -958,7 +958,7 @@ LS::execute(const ExecContext               &ec,
       unsorted_targets.push(operand.view());
 
   let const targets =
-      steal(unsorted_targets).make_sorted(sort_order::ascending);
+      steal(unsorted_targets).make_sorted_inline(sort_order::ascending);
 
   let target_paths             = ArrayList<Path>{allocator};
   let target_statuses          = ArrayList<os::file_status>{allocator};
@@ -1049,7 +1049,7 @@ LS::execute(const ExecContext               &ec,
   }
 
   let const sorted_dir_targets =
-      steal(dir_targets).make_sorted(sort_order::ascending);
+      steal(dir_targets).make_sorted_inline(sort_order::ascending);
 
   for (let const target_index : file_target_indices) {
     let entry = listing_entry{allocator};

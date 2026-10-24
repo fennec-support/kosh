@@ -1933,7 +1933,7 @@ complete(StringView                   line,
         do_drop_repeats(candidates);
       } else {
         let sorted_candidates =
-            steal(candidates).make_sorted(sort_order::ascending);
+            steal(candidates).make_sorted_inline(sort_order::ascending);
 
         do_drop_repeats(sorted_candidates);
         candidates = steal(sorted_candidates).into_array_list();

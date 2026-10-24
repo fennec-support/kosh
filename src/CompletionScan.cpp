@@ -442,8 +442,9 @@ cached_targets_for(const Path &source_file, Collector collect) throws
   let targets = collect();
 
   return &BUILD_TARGET_CACHE
-              .set(key, cached_target_list{*mtime, steal(targets).make_sorted(
-                                                       sort_order::ascending)})
+              .set(key,
+                   cached_target_list{*mtime, steal(targets).make_sorted_inline(
+                                                  sort_order::ascending)})
               ->targets;
 }
 

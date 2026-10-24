@@ -67,6 +67,34 @@ template <class T, class Compare>
 class SortedArrayList;
 
 template <class T>
+class ArrayList;
+
+/* marks a list that is already in the order of its SortedArrayList. */
+struct presorted_list
+{};
+
+/* orders two element indices through a function pointer, so every element
+   type shares one sort instantiation. */
+struct index_comparator
+{
+  using compare_function = bool (*)(const void *context, u32 left, u32 right);
+
+  compare_function compare;
+  const void      *context;
+
+  fn
+  operator()(u32 left, u32 right) const throws -> bool
+  {
+    return compare(context, left, right);
+  }
+};
+
+/* sorts indices with the same algorithm as ArrayList::sort. */
+fn
+sort_indices(ArrayList<u32> &indices, index_comparator compare) throws
+    -> void;
+
+template <class T>
 class ArrayList
 {
 public:
@@ -557,6 +585,42 @@ public:
     sort([](const T &a, const T &b) { return a < b; });
   }
 
+  /* sorts a list of indices through sort_indices() and then moves each
+     element once into place. equal elements end in the order sort() gives
+     them. cold call sites use it to share one sort instantiation. */
+  template <typename Compare>
+  cold fn
+  sort_by_index(Compare is_less) throws -> void
+  {
+    if (m_length < 2) return;
+
+    let order = ArrayList<u32>{m_allocator};
+
+    order.reserve(m_length);
+    for (u32 index = 0; index < m_length; index++)
+      order.push(index);
+
+    struct sort_context
+    {
+      const T *data;
+      Compare *is_less;
+    };
+
+    let const context = sort_context{m_data, &is_less};
+
+    sort_indices(
+        order,
+        index_comparator{
+            [](const void *raw, u32 left, u32 right) throws -> bool {
+              let const *sorted = static_cast<const sort_context *>(raw);
+
+              return (*sorted->is_less)(sorted->data[left],
+                                        sorted->data[right]);
+            },
+            &context});
+    apply_index_order(order);
+  }
+
   template <class Compare>
   mustuse cold fn
   make_sorted(Compare compare) &&
@@ -576,6 +640,19 @@ public:
 
   mustuse cold fn
   make_sorted(sort_order order) const &
+      throws
+      -> SortedArrayList<T, order_comparator<T>>;
+
+  /* sorts with the inlined algorithm instead of sort_by_index(), for call
+     sites on throughput paths. */
+  template <class Compare>
+  mustuse fn
+  make_sorted_inline(Compare compare) &&
+      throws
+      -> SortedArrayList<T, std::decay_t<Compare>>;
+
+  mustuse fn
+  make_sorted_inline(sort_order order) &&
       throws
       -> SortedArrayList<T, order_comparator<T>>;
 
@@ -651,6 +728,33 @@ private:
 
     for (usize i = 0; i < m_length; i++)
       m_data[i].~T();
+  }
+
+  /* e.g. order = {2, 0, 1}: position 0 takes the element from 2, 2 takes it
+     from 1, and 1 takes the held element from 0, which closes the cycle.
+     order[position] becomes position as each slot is filled. */
+  cold fn
+  apply_index_order(ArrayList<u32> &order) throws -> void
+  {
+    for (u32 start = 0; start < m_length; start++) {
+      if (order[start] == start) continue;
+
+      T   held    = steal(m_data[start]);
+      u32 current = start;
+
+      loop {
+        let const source = order[current];
+
+        order[current] = current;
+        if (source == start) {
+          m_data[current] = steal(held);
+          break;
+        }
+
+        m_data[current] = steal(m_data[source]);
+        current         = source;
+      }
+    }
   }
 
   alwaysinline fn
@@ -988,11 +1092,15 @@ public:
   SortedArrayList(ArrayList<T> &&list, Compare compare)
       : Base(steal(list)), m_compare(steal(compare))
   {
-    Base::sort(m_compare);
+    Base::sort_by_index(m_compare);
   }
 
   SortedArrayList(ArrayList<T> &&list, sort_order order)
       : SortedArrayList(steal(list), Compare{order})
+  {}
+
+  SortedArrayList(ArrayList<T> &&list, Compare compare, presorted_list)
+      : Base(steal(list)), m_compare(steal(compare))
   {}
 
   SortedArrayList(const SortedArrayList &other)
@@ -1140,6 +1248,29 @@ ArrayList<T>::make_sorted(Compare compare) const &
   using sorted_type = SortedArrayList<T, std::decay_t<Compare>>;
 
   return sorted_type{clone(), steal(compare)};
+}
+
+template <class T>
+template <class Compare>
+mustuse auto
+ArrayList<T>::make_sorted_inline(Compare compare) &&
+    throws
+    -> SortedArrayList<T, std::decay_t<Compare>>
+{
+  using sorted_type = SortedArrayList<T, std::decay_t<Compare>>;
+
+  sort(compare);
+
+  return sorted_type{steal(*this), steal(compare), presorted_list{}};
+}
+
+template <class T>
+mustuse auto
+ArrayList<T>::make_sorted_inline(sort_order order) &&
+    throws
+    -> SortedArrayList<T, order_comparator<T>>
+{
+  return steal(*this).make_sorted_inline(order_comparator<T>{order});
 }
 
 template <class T>

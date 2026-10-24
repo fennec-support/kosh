@@ -906,7 +906,7 @@ EvalContext::sorted_variable_assignments() const throws
         assignments.push(steal(entry));
       });
 
-  return steal(assignments).make_sorted(sort_order::ascending);
+  return steal(assignments).make_sorted_inline(sort_order::ascending);
 }
 
 fn
@@ -1510,7 +1510,8 @@ CompletionStore::append_wire(String &output) const throws -> void
       collected_names.push_managed(command);
     });
 
-    let const names = steal(collected_names).make_sorted(sort_order::ascending);
+    let const names =
+        steal(collected_names).make_sorted_inline(sort_order::ascending);
 
     append_subshell_bootstrap_u32(payload, static_cast<u32>(names.count()));
 
@@ -2694,7 +2695,8 @@ EvalContext::make_subshell_bootstrap() const throws
   variable_names().for_each(
       [&](StringView name) { collected_names.push_managed(name); });
 
-  let const names = steal(collected_names).make_sorted(sort_order::ascending);
+  let const names =
+      steal(collected_names).make_sorted_inline(sort_order::ascending);
 
   let const do_append_assignment = [&](StringView name, StringView subscript,
                                        StringView value) throws {

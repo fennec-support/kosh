@@ -102,7 +102,7 @@ Cut::execute(const ExecContext               &ec,
     }
 
     if (first_unselected != 0) gaps.push({first_unselected, SIZE_MAX});
-    ranges = steal(gaps).make_sorted(sort_order::ascending);
+    ranges = steal(gaps).make_sorted_inline(sort_order::ascending);
   }
 
   let const last_selected_position =
