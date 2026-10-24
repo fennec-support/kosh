@@ -19,6 +19,7 @@ Benchmark: `/bin/echo direct` (2 runs)
 -c:1:14: error: Builtin `bench`: --runs expects a number from 1 through 100000.
      1 |  bench --runs 0 true
        |               ^
+rc=1
 -c:1:14: error: Builtin `bench`: --runs expects a number from 1 through 100000.
      1 |  bench --runs 100001 true
        |               ^~~~~~
@@ -28,6 +29,7 @@ Benchmark: `/bin/echo direct` (2 runs)
 -c:1:18: error: Builtin `bench`: --duration is too large.
      1 |  bench --duration 18446744073710 true
        |                   ^~~~~~~~~~~~~~
+rc=1
 -c:1:7: error: Builtin `bench`: --runs expects a number, got 'nope'.
      1 |  bench "--runs=nope" true
        |        ^~~~~~~~~~~~~

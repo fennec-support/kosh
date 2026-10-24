@@ -43,7 +43,8 @@ p='a*c'
 
 # Bash [[ ]] numeric comparison operators, checked byte-for-byte against bash.
 # Covers the full set -eq -ne -lt -le -gt -ge and a combination that mixes a
-# numeric test with a string test under && and ||.
+# numeric test with a string test under && and ||. An empty operand counts as
+# zero.
 [[ 5 -eq 5 ]] && echo eq
 [[ 5 -ne 6 ]] && echo ne
 [[ 3 -lt 4 ]] && echo lt
@@ -56,6 +57,9 @@ p='a*c'
 [[ abc == abc && 1 -eq 1 ]] && echo combine-and
 [[ x == y || 2 -gt 1 ]] && echo combine-or
 [[ ( 1 -eq 1 || 2 -eq 3 ) && abc == ab? ]] && echo paren-combine
+e=
+[[ $e -ne 0 ]]; echo "empty-ne=$?"
+[[ $e -eq 0 ]] && echo empty-is-zero
 
 declare -A cap=([france]=paris [japan]=tokyo)
 [[ -v cap[france] ]] && echo "france set" || echo "france unset"

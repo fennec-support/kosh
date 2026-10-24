@@ -26,3 +26,15 @@ wait $p; echo "after-subshell=$?"
 wait $p; echo "waited=$?"
 true | true
 wait $p; echo "after-pipeline=$?"
+
+# A backgrounded and-or list runs as one job in a subshell.
+sleep 0.2 && echo "and-left" &
+wait; echo "and-list=$?"
+false || echo "or-right" &
+wait $!; echo "or-list=$?"
+true && x=2 &
+wait; echo "isolated=x$x"
+y=1; y=2 && true &
+wait; echo "first-isolated=y$y"
+true && false &
+wait $!; echo "and-false=$?"

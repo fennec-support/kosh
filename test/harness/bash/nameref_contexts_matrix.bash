@@ -127,7 +127,7 @@ contexts=(
 writes=('ref=new' 'ref+=more' 'ref=(x y)' 'ref+=(z)' 'ref[1]=elem'
   'ref[2]=k' '((ref = 4 * 2))' '((ref++))' 'let ref+=3' 'read -r ref <<< rd'
   'read -ra ref <<< "r1 r2"' 'printf -v ref %s pv' 'mapfile -t ref <<< $'"'"'m1\nm2'"'"
-  ': ${ref:=assigned}' 'declare ref=declared' 'export ref=exported'
+  ': ${ref:=assigned}' 'declare ref=declared' 'export ref=exported' 'export ref+=3'
   'for ref in l1 l2; do :; done' 'unset ref' 'unset "ref[1]"' 'OPTIND=1; getopts ab ref -b'
   'f() { local -n lr=ref; lr=via_local; }; f'
   'f() { local -n lr=target; lr=via_name; }; f')

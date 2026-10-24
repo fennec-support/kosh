@@ -150,9 +150,9 @@ echo x | nosuchcmd_zzqq &>"$report"
 echo "both_status=$? both=$(( $(wc -c < "$report") > 0 ))"
 : > "$report"
 { nosuchcmd_zzqq 2>/dev/null | cat; } 2>"$report"
-echo "first_hidden_status=$? first_hidden_leak=$(( $(wc -c < "$report") > 0 ))"
+echo "first_hidden_status=$? first_hidden_ps=${PIPESTATUS[0]} first_hidden_leak=$(( $(wc -c < "$report") > 0 ))"
 nosuchcmd_zzqq 2>"$report" | cat
-echo "first_captured_status=$? first_captured=$(( $(wc -c < "$report") > 0 ))"
+echo "first_captured_status=$? first_ps=${PIPESTATUS[0]} first_captured=$(( $(wc -c < "$report") > 0 ))"
 # A stage that does not resolve between two others leaves them running, and the
 # pipeline takes the status of its last stage.
 echo start | nosuchcmd_zzqq 2>/dev/null | wc -l | tr -d ' '

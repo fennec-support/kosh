@@ -1,2 +1,6 @@
 complete -o nospace -W x foo
 compopt foo
+compopt -o bogus foo
+echo "bogus-rc=$?"
+compopt -D
+echo "default-rc=$?"

@@ -96,6 +96,8 @@ echo "empty status: $?"
 PATH=$B:$dir/a:$B
 echo "duplicate entries: $(pathprobe)"
 type -a -P pathprobe | sed "s|$dir|DIR|"
+type -a -p pathprobe | sed "s|$dir|DIR|"
+type -ap pathprobe | sed "s|$dir|DIR|"
 
 cd "$dir/a" || exit 1
 unset PATH

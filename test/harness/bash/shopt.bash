@@ -50,6 +50,12 @@ set +e; shopt -qo errexit; echo "e2=$?"
 shopt -qo nounset; echo "u=$?"
 set -u; shopt -qo nounset; echo "u2=$?"
 shopt -qs progcomp; echo "shopt-still-works=$?"
+# shopt -o displays a set -o option and returns 1 when the option is off.
+line=$(shopt -o noexec); echo "noexec-rc=$? "$line
+shopt -so noglob
+line=$(shopt -o noglob); echo "noglob-rc=$? "$line
+shopt -uo noglob
+line=$(shopt -o noglob); echo "noglob-unset-rc=$? "$line
 
 set +o interactive-comments
 shopt -q interactive_comments; echo "interactive-comments-off=$?"

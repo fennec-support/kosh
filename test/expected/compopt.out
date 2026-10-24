@@ -1,1 +1,9 @@
 compopt +o bashdefault +o default +o dirnames +o filenames +o fullquote +o noquote +o nosort -o nospace +o plusdirs foo
+3:12: error: Builtin `compopt`: 'bogus' is not a valid option name.
+     3 |  compopt -o bogus foo
+       |             ^~~~~
+bogus-rc=2
+5:1: error: Builtin `compopt`: The default completion specification was not found.
+     5 |  compopt -D
+       |  ^~~~~~~~~~
+default-rc=1

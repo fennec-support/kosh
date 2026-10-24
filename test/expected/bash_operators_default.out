@@ -9,5 +9,8 @@ summed=12
 csh both streams:
 to-out
 to-err
+csh program streams:
+program-out
+program-err
 after
 fd3

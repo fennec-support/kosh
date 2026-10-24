@@ -1,7 +1,8 @@
 #!/bin/env kosh
 # Binary literals, substitutions inside arithmetic, the (( )) command, and big
-# numbers in the default mood, and the lazy ternary of koshkit calc.
-# shellcheck disable=SC2086
+# numbers in the default mood, the exact operators of the kosh mood, and the
+# lazy ternary of koshkit calc.
+# shellcheck disable=SC2080,SC2086,SC2154,SC2219
 echo $(( 0b101 ))
 echo $(( 0b1010 * 2 ))
 echo $(( 0x10 + 0b10 ))
@@ -20,6 +21,22 @@ echo $(( $(echo 5)$(echo 0) ))
 echo $(( (1 + 2) * 3 ))
 
 x=7; echo $(( x++ + ++x ))
+
+# The kosh mood evaluates every operator through exact arithmetic.
+echo $(( -10 % 3 )) $(( 10 % -3 ))
+echo $(( ~0 )) $(( ~5 ))
+echo $(( 3 & 5 | 2 ^ 1 ))
+echo $(( 1 << 4 | 2 )) $(( -16 >> 2 )) $(( 256 >> 4 ))
+echo $(( 2 ** 3 ** 2 )) $(( -2 ** 2 ))
+echo $(( 0xff + 16#10 )) $(( 36#z )) $(( 010 ))
+echo $(( +-+5 )) $(( 1, 2 ))
+x=1; echo $(( 1 || (x=9) )) $x
+x=1; echo $(( 0 && (x=9) )) $x
+x=1; echo $(( 0 || (x=9) )) $x
+k=0; x=9; r=$(( k ? (x=77) : 5 )); echo $r $x
+let "f = 1" "f *= 5"; echo "let=$f"
+let 0; echo "let-zero=$?"
+((n = 1, n += 3, n *= 2)); echo "n=$n"
 
 koshkit calc '1 ? 5 : 1/0'
 koshkit calc '0 ? 1/0 : 7'

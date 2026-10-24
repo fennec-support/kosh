@@ -20,6 +20,9 @@ csh_file=$TEST_TEMP_DIRECTORY/bash-operators-csh
 { echo to-out; echo to-err >&2; } >&"$csh_file"
 echo "csh both streams:"
 cat "$csh_file"
+"$TEST_SHELL" -c 'echo program-out; echo program-err >&2' >&"$csh_file"
+echo "csh program streams:"
+cat "$csh_file"
 echo hi >&/dev/null
 echo after
 exec 3>&1

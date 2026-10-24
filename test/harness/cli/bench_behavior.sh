@@ -20,10 +20,10 @@ printf '%s\n' "$direct_output" | grep -E '^direct$|Benchmark:'
 echo "== invalid values carry granular carets:"
 "$BIN" -c 'bench --runs nope true' 2>&1
 "$BIN" -c 'bench --runs=nope true' 2>&1
-"$BIN" -c 'bench --runs 0 true' 2>&1
+"$BIN" -c 'bench --runs 0 true' 2>&1; echo "rc=$?"
 "$BIN" -c 'bench --runs 100001 true' 2>&1
 "$BIN" -c 'bench --runs 18446744073709551616 true' 2>&1
-"$BIN" -c 'bench --duration 18446744073710 true' 2>&1
+"$BIN" -c 'bench --duration 18446744073710 true' 2>&1; echo "rc=$?"
 "$BIN" -c 'bench "--runs=nope" true' 2>&1
 "$BIN" -c 'runs=nope; bench --runs=$runs true' 2>&1
 echo "== counter capability keeps one complete sample:"
