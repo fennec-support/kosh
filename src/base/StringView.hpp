@@ -209,7 +209,7 @@ public:
   hot mustuse pure fn
   operator[](usize i) const wontthrow -> char
   {
-    ASSERT(i < length, "string-view index is past the end");
+    ASSERT_INDEX(i < length, "string-view index is past the end");
 
     return data[i];
   }

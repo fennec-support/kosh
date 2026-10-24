@@ -205,7 +205,9 @@ POSIX, and Bash suites. make toiletline_test runs the editor suite. make
 completions rebuilds the generated koshkit block of completions/kosh.bash from
 koshkit --list-flags after a koshkit flag changes.
 
-NO_TOILETLINE=1 make and NO_KOSHKIT=1 make use separate object directories.
+NO_TOILETLINE=1 make, NO_KOSHKIT=1 make, and HARDENED=1 make use separate
+object directories. HARDENED=1 makes a release build trap on a container
+index past the end and is off by default because it slows sorting.
 Rebuild the ordinary configuration before the next test run. Completion tests
 require debug. Bound interactive and long-running commands.
 

@@ -4,6 +4,8 @@ TARGET ?= # Linux/Windows_NT/Darwin
 ARCH ?= $(shell uname -m)
 NO_TOILETLINE ?= 0
 NO_KOSHKIT ?= 0
+# HARDENED=1 makes a release build trap on a container index past the end.
+HARDENED ?= 0
 
 ROUTED_SOURCES := platform/PlatformPosix.cpp platform/PlatformPosixExtra.cpp \
 	platform/PlatformPosixFilesystem.cpp \
@@ -89,7 +91,7 @@ SHOULD_LINK_STATIC_LINUX := 1
 endif
 endif
 
-BUILD_VARIANT_SUFFIX := $(if $(filter 1,$(NO_TOILETLINE)),-no-toiletline,)$(if $(filter 1,$(NO_KOSHKIT)),-no-koshkit,)
+BUILD_VARIANT_SUFFIX := $(if $(filter 1,$(NO_TOILETLINE)),-no-toiletline,)$(if $(filter 1,$(NO_KOSHKIT)),-no-koshkit,)$(if $(filter 1,$(HARDENED)),-hardened,)
 
 ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
 OBJ_DIR ?= o/$(TARGET)/$(LINUX_TARGET_ARCHITECTURE)/$(MODE)$(BUILD_VARIANT_SUFFIX)
@@ -268,7 +270,8 @@ BUILD_DEFINITIONS := \
 	-DKOSH_ENVCXXFLAGS="\"$(call encode_build_metadata,$(USER_CXXFLAGS))\"" \
 	$(if $(filter tinyrel,$(MODE)),-DKOSH_TINYREL,) \
 	$(if $(filter 1,$(NO_TOILETLINE)),-DKOSH_NO_TOILETLINE,) \
-	$(if $(filter 1,$(NO_KOSHKIT)),-DKOSH_NO_KOSHKIT,)
+	$(if $(filter 1,$(NO_KOSHKIT)),-DKOSH_NO_KOSHKIT,) \
+	$(if $(filter 1,$(HARDENED)),-DKOSH_HARDENED,)
 
 CXXFLAGS := \
 	-Wall \

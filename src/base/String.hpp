@@ -182,7 +182,7 @@ public:
   hot mustuse pure fn
   operator[](usize i) const wontthrow -> char
   {
-    ASSERT(i < m_length, "string index is past the end");
+    ASSERT_INDEX(i < m_length, "string index is past the end");
 
     return m_data[i];
   }

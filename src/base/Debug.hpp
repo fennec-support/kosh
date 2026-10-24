@@ -210,3 +210,16 @@ t__string_from_struct(const T &value, AllocatorT allocator) throws
 #else
 #define ASSERT(...)
 #endif
+
+/* an index check of a container accessor. a debug build asserts it, and a
+   release build with KOSH_HARDENED traps on a failed check. */
+#if !defined NDEBUG
+#define ASSERT_INDEX(x, ...) ASSERT(x, __VA_ARGS__)
+#elif defined KOSH_HARDENED
+#define ASSERT_INDEX(x, ...)                                                   \
+  do {                                                                         \
+    if (!(x)) rarely __builtin_trap();                                         \
+  } while (0)
+#else
+#define ASSERT_INDEX(...)
+#endif
