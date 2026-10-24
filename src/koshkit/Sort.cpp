@@ -114,17 +114,26 @@ struct sort_key
   sort_modifiers effective{};
 };
 
-/* prefix holds the first four characters that the first comparison orders,
+/* prefix holds the first eight characters that the first comparison orders,
    in big-endian order and padded with zero bytes, when that comparison is a
    text comparison, or get_sort_number_prefix() of a -n first key. Two
    different prefixes decide the comparison without reading the lines. The
-   entry stays 24 bytes, so the sort moves no more data. */
+   line length is a u32, so the entry stays 24 bytes. */
 struct sort_entry
 {
-  StringView line;
-  u32        index;
-  u32        prefix;
+  const char *line_data;
+  u32         line_length;
+  u32         index;
+  u64         prefix;
+
+  pure fn
+  get_line() const wontthrow -> StringView
+  {
+    return StringView{line_data, line_length};
+  }
 };
+
+static_assert(sizeof(sort_entry) == 24);
 
 /* compares two lines byte by byte, as StringView ordering does. */
 pure static fn
@@ -132,9 +141,9 @@ compare_sort_lines(const sort_entry &left, const sort_entry &right) wontthrow
     -> int
 {
   if (left.prefix != right.prefix) return left.prefix < right.prefix ? -1 : 1;
-  if (left.line == right.line) return 0;
+  if (left.get_line() == right.get_line()) return 0;
 
-  return left.line < right.line ? -1 : 1;
+  return left.get_line() < right.get_line() ? -1 : 1;
 }
 
 /* a -n key reduced to its sign, its integer digits without leading zeros, and
@@ -486,27 +495,27 @@ compare_sort_numbers(StringView left, StringView right) wontthrow -> int
 }
 
 /* orders numbers as compare_parsed_sort_numbers() does whenever two prefixes
-   differ. bit 31 is set for a number that is not negative, bits 24 to 30
-   hold the integer digit count, and three bytes hold the first digits of the
-   integer and then the fraction as digit value plus one, with zero after the
-   last digit. a negative number inverts the low 31 bits, so a larger
+   differ. bit 63 is set for a number that is not negative, bits 56 to 62
+   hold the integer digit count, and seven bytes hold the first digits of
+   the integer and then the fraction as digit value plus one, with zero after
+   the last digit. a negative number inverts the low 63 bits, so a larger
    magnitude orders first. an integer of 127 digits or more keeps only its
    count, so such numbers tie and the full comparison decides.
-   e.g. 42 -> 0x82050300, 4.2 -> 0x81050300, -42 -> 0x7dfafcff */
+   e.g. 42 -> 0x8205030000000000, 4.2 -> 0x8105030000000000 */
 pure static fn
-get_sort_number_prefix(const sort_number &number) wontthrow -> u32
+get_sort_number_prefix(const sort_number &number) wontthrow -> u64
 {
   static constexpr usize MAX_COUNTED_DIGITS = 127;
 
   let const integer_digit_count = number.integer.length;
-  u32       magnitude           = 0;
+  u64       magnitude           = 0;
 
   if (integer_digit_count >= MAX_COUNTED_DIGITS) {
-    magnitude = static_cast<u32>(MAX_COUNTED_DIGITS) << 24;
+    magnitude = static_cast<u64>(MAX_COUNTED_DIGITS) << 56;
   } else {
-    magnitude = static_cast<u32>(integer_digit_count) << 24;
+    magnitude = static_cast<u64>(integer_digit_count) << 56;
 
-    for (usize slot = 0; slot < 3; slot++) {
+    for (usize slot = 0; slot < 7; slot++) {
       let const fraction_slot = slot - integer_digit_count;
       let const digit = slot < integer_digit_count ? number.integer[slot]
                         : fraction_slot < number.fraction.length
@@ -515,12 +524,12 @@ get_sort_number_prefix(const sort_number &number) wontthrow -> u32
 
       if (digit == '\0') break;
 
-      magnitude |= static_cast<u32>(digit - '0' + 1) << (16 - 8 * slot);
+      magnitude |= static_cast<u64>(digit - '0' + 1) << (48 - 8 * slot);
     }
   }
 
-  return number.is_negative ? ~magnitude & 0x7fffffffu
-                            : 0x80000000u | magnitude;
+  return number.is_negative ? ~magnitude & 0x7fffffffffffffffull
+                            : 0x8000000000000000ull | magnitude;
 }
 
 /* e.g. "1.5K" has unit order 1, "2M" has 2, "0K" and "12" have 0, and "-3G"
@@ -859,17 +868,17 @@ next_sort_character(StringView            text,
 
 static fn
 get_sort_text_prefix(StringView text, const sort_modifiers &modifiers) wontthrow
-    -> u32
+    -> u64
 {
-  u32   prefix   = 0;
+  u64   prefix   = 0;
   usize position = 0;
 
-  for (u32 shift = 24;; shift -= 8) {
+  for (u32 shift = 56;; shift -= 8) {
     let const ch = next_sort_character(text, position, modifiers);
 
     if (ch < 0) break;
 
-    prefix |= static_cast<u32>(ch) << shift;
+    prefix |= static_cast<u64>(ch) << shift;
     if (shift == 0) break;
   }
 
@@ -966,7 +975,8 @@ compare_sort_keys(const sort_entry    &left,
   let const count = settings.key_text_count;
 
   if (count == 0)
-    return compare_sort_text(left.line, right.line, settings.global);
+    return compare_sort_text(left.get_line(), right.get_line(),
+                             settings.global);
 
   let const left_base  = left.index * count;
   let const right_base = right.index * count;
@@ -1009,14 +1019,14 @@ compare_sort_entries(const sort_entry    &left,
 
   if (key_result != 0) return key_result;
 
-  if (is_last_resort_enabled && left.line != right.line) {
-    let const result = left.line < right.line ? -1 : 1;
+  if (is_last_resort_enabled && left.get_line() != right.get_line()) {
+    let const result = left.get_line() < right.get_line() ? -1 : 1;
 
     return settings.global.is_reversed ? -result : result;
   }
 
   /* at this point: the keys compare equal, and when is_last_resort_enabled
-     is true, left.line equals right.line. */
+     is true, the two lines are equal. */
   if (left.index == right.index) return 0;
 
   return left.index < right.index ? -1 : 1;
@@ -1237,12 +1247,21 @@ Sort::execute(const ExecContext               &ec,
 
       let const index = collected_lines.count();
 
+      /* sort_entry stores the line length and the index as u32. */
+      if (line.length > UINT32_MAX || index >= UINT32_MAX) {
+        KOSHKIT_REPORT_ERROR("The input has a line or a line count that is "
+                             "too large to sort",
+                             "Split the input with split -l");
+
+        return 2;
+      }
+
       if (settings.key_text_count != 0) do_store_key_texts(line);
 
       let const first_index = index * settings.key_text_count;
       let const first_text =
           settings.key_text_count != 0 ? settings.key_texts[first_index] : line;
-      u32 prefix = 0;
+      u64 prefix = 0;
 
       if (settings.prefix_modifiers == nullptr) {
         prefix = 0;
@@ -1252,7 +1271,8 @@ Sort::execute(const ExecContext               &ec,
         prefix = get_sort_text_prefix(first_text, *settings.prefix_modifiers);
       }
 
-      collected_lines.push(sort_entry{line, static_cast<u32>(index), prefix});
+      collected_lines.push(sort_entry{line.data, static_cast<u32>(line.length),
+                                      static_cast<u32>(index), prefix});
     }
   }
 
@@ -1276,7 +1296,8 @@ Sort::execute(const ExecContext               &ec,
             ec, cxt,
             String{cxt.scratch_allocator(), sources[0]} + ":" +
                 String::from(index + 1, cxt.scratch_allocator()) +
-                ": disorder: " + String{cxt.scratch_allocator(), current.line});
+                ": disorder: " +
+                String{cxt.scratch_allocator(), current.get_line()});
       }
 
       return 1;
@@ -1412,7 +1433,7 @@ Sort::execute(const ExecContext               &ec,
   for (usize index = 0; index < collected_lines.count(); index++) {
     if (!do_visit(index, previous_printed)) continue;
 
-    do_print_line(collected_lines[index].line);
+    do_print_line(collected_lines[index].get_line());
     previous_printed = &collected_lines[index];
   }
 
