@@ -2212,7 +2212,7 @@ Grep::execute(const ExecContext               &ec,
     do_add_pattern_list(list);
   }
 
-  let search               = GrepSearch{ec,
+  let search                = GrepSearch{ec,
                           cxt,
                           operand_locations,
                           options,

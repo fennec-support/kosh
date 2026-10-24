@@ -1310,7 +1310,7 @@ Lexer::lex_identifier() throws -> Token *
             rarely {
               throw ErrorWithLocationAndDetails{
                   here(m_cursor_position + expansion_start,
-                       byte_count - expansion_start),
+                              byte_count - expansion_start),
                   "Unterminated variable expansion",
                   here(m_cursor_position + byte_count, 1), "expected } here"};
             }
