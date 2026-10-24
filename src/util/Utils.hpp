@@ -281,6 +281,17 @@ ends_with_ascii_ignoring_case(StringView text, StringView suffix) wontthrow
                                     suffix);
 }
 
+/* returns hex for a 0x or 0X prefix, octal for a 0 followed by another byte,
+   and decimal otherwise. */
+pure inline fn
+detect_c_integer_base(StringView text) wontthrow -> int_base
+{
+  if (text.length < 2 || text[0] != '0') return int_base::decimal;
+  if (text[1] == 'x' || text[1] == 'X') return int_base::hex;
+
+  return int_base::octal;
+}
+
 struct text_position_range
 {
   usize first;

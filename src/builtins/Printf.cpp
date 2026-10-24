@@ -67,11 +67,10 @@ parse_printf_number(const String &arg,
     i++;
   }
 
-  let const is_hexadecimal = i + 1 < arg.count() && arg[i] == '0' &&
-                             (arg[i + 1] == 'x' || arg[i + 1] == 'X');
-  let const is_octal = !is_hexadecimal && i < arg.count() && arg[i] == '0' &&
-                       i + 1 < arg.count();
-  usize digit_start = i;
+  let const base = utils::detect_c_integer_base(arg.view().substring(i));
+  let const is_hexadecimal = base == int_base::hex;
+  let const is_octal       = base == int_base::octal;
+  usize     digit_start    = i;
 
   if (is_hexadecimal) {
     i += 2;

@@ -130,7 +130,7 @@ parse_od_byte_count(StringView text, bool has_unit_suffix) throws
     -> Maybe<u64>
 {
   let const is_hexadecimal =
-      text.length >= 2 && text[0] == '0' && (text[1] == 'x' || text[1] == 'X');
+      utils::detect_c_integer_base(text) == int_base::hex;
   u64 multiplier = 1;
 
   if (has_unit_suffix && !text.is_empty()) {
@@ -157,15 +157,10 @@ parse_od_byte_count(StringView text, bool has_unit_suffix) throws
   }
 
   /* e.g. text = "0x10b" with has_unit_suffix: the b stays in the text */
-  int_base base = int_base::decimal;
+  let const base = utils::detect_c_integer_base(text);
 
-  if (is_hexadecimal) {
-    base = int_base::hex;
-    text = text.substring(2);
-    /* -> base = hex and text = "10b", which parses to 267 */
-  } else if (text.length > 1 && text[0] == '0') {
-    base = int_base::octal;
-  }
+  /* -> base = hex and text = "10b", which parses to 267 */
+  if (base == int_base::hex) text = text.substring(2);
 
   if (text.is_empty()) return {};
 

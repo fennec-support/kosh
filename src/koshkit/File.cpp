@@ -88,16 +88,11 @@ parse_magic_number(StringView text) wontthrow -> Maybe<u64>
 
   if (position == text.length) return None;
 
-  u8 base = 10;
+  let const base =
+      static_cast<u8>(utils::detect_c_integer_base(text.substring(position)));
 
-  if (text.length - position > 2 && text[position] == '0' &&
-      (text[position + 1] == 'x' || text[position + 1] == 'X'))
-  {
-    base = 16;
-    position += 2;
-  } else if (text.length - position > 1 && text[position] == '0') {
-    base = 8;
-  }
+  if (base == 16) position += 2;
+  if (position == text.length) return None;
 
   /* at this point: text is not empty, and position is less than
      text.length, so the digit loop stays inside text. */
