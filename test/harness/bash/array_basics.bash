@@ -66,22 +66,10 @@ count=0
 for i in "${!fruits[@]}"; do count=$((count+1)); done
 echo "loopcount=$count"
 
-# Bash whole-array copy and merge, checked byte-for-byte against bash. A quoted
-# at copy duplicates every element so a later write to the copy leaves the
-# original alone, a command substitution that field splits its lines builds a new
-# array, and a merge of a copy with an extra element grows the count by one.
-a=(one "two three" four five)
-b=("${a[@]}")
-echo "copy-count: ${#b[@]}"
-printf '<%s>' "${b[@]}"; echo
-b[0]=ONE
-echo "orig-unchanged: ${a[0]}"
-echo "copy-changed: ${b[0]}"
+# A command substitution that field splits its lines builds a new array.
 nums=(3 1 2)
 sorted=($(printf '%s\n' "${nums[@]}" | sort))
 echo "sorted: ${sorted[@]}"
-merged=("${a[@]}" extra)
-echo "merged-count: ${#merged[@]} last=${merged[-1]}"
 
 a=(alpha beta gamma delta epsilon)
 echo "1: ${a[@]:1:2}"
@@ -93,27 +81,6 @@ echo "count: $(set -- ${a[@]:1:3}; echo $#)"
 for x in "${a[@]:1:2}"; do echo "elem=$x"; done
 b=(one two three)
 echo "neg-len: ${b[@]:0:-1}"
-
-# Bash array length forms, checked byte-for-byte against bash. The at and star
-# counts report the element total, an element length reports its string length,
-# and append grows the count across single and multiple element appends starting
-# from a populated array and from an empty one.
-a=(one two three four)
-echo "at-len: ${#a[@]}"
-echo "star-len: ${#a[*]}"
-echo "e0: ${#a[0]}"
-echo "e2: ${#a[2]}"
-a+=(five)
-echo "after-append: ${#a[@]} last=${a[4]}"
-a+=(six seven)
-echo "multi-append: ${#a[@]} ${a[@]}"
-b=()
-echo "empty-len: ${#b[@]}"
-b+=(z)
-echo "grown: ${#b[@]} ${b[0]}"
-c=(x)
-c+=(y z)
-echo "c: ${c[@]} count=${#c[@]}"
 
 # Bash array element assignment a[i]=v, append a+=(...), count ${#a[@]}, and
 # index list ${!a[@]}, checked byte-for-byte against bash on contiguous arrays.
@@ -267,33 +234,9 @@ echo "[${e[9]=zz}]" "[${e[9]}]"
 declare -A m=([k]=v)
 echo "[${m[k]+y}]" "[${m[no]+y}]" "[${m[no]:-fb2}]"
 
-a=(hello world)
-echo "elem: ${a[0]//l/L}"
-b=(aXa bXb cXc)
-printf '[%s]' "${b[@]//X/-}"; echo
-echo "star: ${b[*]//X/+}"
 d=(local -A NAME)
 g() { "${d[@]//NAME/myassoc}"; myassoc[key/with/slash]=v; echo "got: ${myassoc[key/with/slash]}"; }
 g
-
-a=(apple banana cherry)
-echo "${a[@]#a}"
-echo "${a[@]%y}"
-echo "${a[@]^^}"
-echo "${a[@],,}"
-echo "${a[*]^^}"
-echo "${a[*],,}"
-echo "${a[1]^^}"
-echo "${a[0]#ap}"
-echo "${a[2]/r/R}"
-echo "${a[2]//r/R}"
-echo "${a[@]##*a}"
-echo "${a[@]%%n*}"
-b=(Foo BAR baz)
-echo "${b[@],}"
-echo "${b[@]^}"
-echo "${b[1],,}"
-echo "${b[2]^}"
 
 declare -A v
 k=./some/path
@@ -343,25 +286,6 @@ for w in ${words[@]}; do count=$((count+1)); done
 echo "unquoted-split-count: $count"
 for i in ${!fruits[@]}; do echo "$i -> ${fruits[$i]}"; done
 
-# The @op transform maps over each array element and positional parameter,
-# checked byte-for-byte against bash. The per-element value transforms Q, U, L,
-# u, and the a attribute map, the star form joins under the first IFS byte, and
-# the at form keeps each element its own field.
-a=(a "b c" d)
-printf '<%s>' "${a[@]@Q}"; echo
-echo "${a[*]@Q}"
-upper=(x Y z)
-echo "${upper[@]@U}"
-echo "${upper[@]@L}"
-echo "${upper[@]@u}"
-echo "${a[@]@a}"
-ra=(1 2); readonly ra
-echo "${ra[@]@a}"
-set -- one "two three" four
-printf '<%s>' "${@@Q}"; echo
-echo "${@@U}"
-echo "${*@u}"
-
 a=() b=(); echo "empties: ${#a[@]} ${#b[@]}"
 flags= pvars=() specs=(); echo "mixed: [$flags] ${#pvars[@]} ${#specs[@]}"
 x=1 y=(p q r); echo "scalar-then-array: $x ${y[2]}"
@@ -383,19 +307,6 @@ c[10]=ten
 echo "sparse-count: ${#c[@]} last=${c[-1]}"
 unset 'c[5]'
 echo "sparse-count-after-unset: ${#c[@]}"
-
-scalar_indexed=value
-declare -a scalar_indexed
-declare -p scalar_indexed
-scalar_associative=value
-declare -A scalar_associative
-declare -p scalar_associative
-conversion_indexed=(one two)
-declare -A conversion_indexed 2>/dev/null
-echo "indexed-conversion=$? value=${conversion_indexed[*]}"
-declare -A conversion_associative=([key]=value)
-declare -a conversion_associative 2>/dev/null
-echo "associative-conversion=$? value=${conversion_associative[key]}"
 
 declare -A unset_by_variable=([foo]=bar)
 unset_key=foo

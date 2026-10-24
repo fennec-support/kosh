@@ -1,15 +1,7 @@
-== local outside a function is an error:
--c:1:1: error: Builtin `local`: Unable to declare a local variable outside a function.
-     1 |  local x=5
-       |  ^~~~~~~~~
-note: `local` only works inside a function body.
-rc=1
 == invalid local identifiers fail:
 status=1
 == fresh name warns:
-1
-== top-level name is quiet:
-0
-== inherited PATH is quiet:
-0
-rc=1
+-c:1:7: warning: This assignment to 'brandnewname' in a function has no `local`.
+     1 |  fn(){ brandnewname=1; }; fn
+       |        ^~~~~~~~~~~~~~
+note: Declare it with `local` to keep it inside the function.

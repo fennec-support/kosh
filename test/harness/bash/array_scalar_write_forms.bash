@@ -1,7 +1,9 @@
 #!/bin/bash
 # A scalar write to an array sets element 0 or key 0, an array append to a
 # scalar keeps the scalar at index 0, and unset of a subscript on a scalar
-# removes the scalar for index 0 and fails otherwise.
+# removes the scalar for index 0 and fails otherwise. Declaring a scalar as an
+# array keeps its value at index 0, and declaring an array as the other array
+# kind fails and keeps the array.
 export LC_ALL=C
 
 show() {
@@ -59,3 +61,16 @@ declare -A am=([k]=v)
 read -ra am <<< "r1 r2"
 echo "status=$?"
 show am
+
+scalar_indexed=value
+declare -a scalar_indexed
+declare -p scalar_indexed
+scalar_associative=value
+declare -A scalar_associative
+declare -p scalar_associative
+conversion_indexed=(one two)
+declare -A conversion_indexed 2>/dev/null
+echo "indexed-conversion=$? value=${conversion_indexed[*]}"
+declare -A conversion_associative=([key]=value)
+declare -a conversion_associative 2>/dev/null
+echo "associative-conversion=$? value=${conversion_associative[key]}"

@@ -2,3 +2,16 @@
 readonly x=1
 unset x
 echo "x=${x}"
+
+# readonly lists the marked variables, marks a variable with or without a
+# value, and a later assignment to a marked variable fails with status 1. The
+# list output is filtered to the test's own items.
+readonly listed=5
+readonly | grep "readonly listed="
+(listed=6)
+echo "rc=$?"
+marked=hi
+readonly marked
+(marked=bye)
+echo "rc=$?"
+readonly | grep "readonly marked="

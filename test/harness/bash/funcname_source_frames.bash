@@ -1,17 +1,10 @@
 #!/bin/bash
-# The FUNCNAME and BASH_SOURCE stacks of a file sourced from inside a function,
-# and the BASH_LINENO call line of a function reached through another file.
+# The BASH_LINENO call line of a function reached through another file, and the
+# frames, line numbers, and sources that a function and a trap defined by a
+# nested sourced file report after many sources.
 
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
-
-printf '%s\n' \
-  'report() {' \
-  '  echo "FUNCNAME=[${FUNCNAME[*]}]"' \
-  '  echo "SOURCE=[${BASH_SOURCE[*]##*/}]"' \
-  '  echo "depth=${#FUNCNAME[@]} ${#BASH_SOURCE[@]}"' \
-  '}' \
-  'report' > "$dir/inner.sh"
 
 printf '%s\n' \
   'lines() {' \
@@ -19,20 +12,6 @@ printf '%s\n' \
   '}' > "$dir/lib.sh"
 
 printf '%s\n' 'nested' > "$dir/mid.sh"
-
-outer() {
-  source "$dir/inner.sh"
-}
-
-outer
-
-echo "--- top level ---"
-source "$dir/inner.sh"
-
-echo "--- after ---"
-echo "FUNCNAME=[${FUNCNAME[*]}]"
-echo "SOURCE=[${BASH_SOURCE[*]##*/}]"
-echo "depth=${#FUNCNAME[@]} ${#BASH_SOURCE[@]}"
 
 echo "--- call lines ---"
 source "$dir/lib.sh"

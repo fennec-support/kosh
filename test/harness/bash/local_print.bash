@@ -2,7 +2,8 @@
 # The local -p listing, checked against bash. A bare local -p prints the
 # declaration of every name the running scope declared, in declaration order. A
 # name declared without a value still prints, and only the innermost scope is
-# listed.
+# listed. A bare identifier with a trailing plus is invalid for local, and
+# name+=value appends to the declared value.
 f() {
   local a=1
   local -i b=2
@@ -51,3 +52,12 @@ redeclared() {
   local -p
 }
 redeclared
+
+local_append() {
+  local plain+ 2> /dev/null
+  echo "bare=$? ${plain-unset}"
+  local joined=a
+  local joined+=b
+  echo "joined=$joined"
+}
+local_append

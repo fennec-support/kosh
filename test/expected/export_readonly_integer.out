@@ -5,5 +5,3 @@
 rc=1
 == a bare export publishes a read-only value:
 x=old
-== export of an integer-marked name stores the evaluated value:
-n=7

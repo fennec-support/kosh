@@ -103,3 +103,20 @@ echo "same line status $?"
 echo "error status $?"
 (set --; [[ ${@:?no parameters} ]]; echo "not reached")
 echo "positional error status $?"
+
+echo "== list and element operators"
+a=(apple banana cherry)
+echo "${a[@]##*a}"
+echo "${a[@]%%n*}"
+echo "${a[1]^^}"
+echo "${a[0]#ap}"
+echo "${a[2]/r/R}"
+echo "${a[2]//r/R}"
+echo "${a[0]//p/P}"
+b=(Foo BAR baz)
+echo "${b[@],}"
+echo "${b[1],,}"
+echo "${b[2]^}"
+c=(aXa bXb cXc)
+printf '[%s]' "${c[@]//X/-}"; echo
+echo "${c[*]//X/+}"

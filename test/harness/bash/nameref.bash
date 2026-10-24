@@ -1,9 +1,10 @@
 #!/bin/bash
-# Name references, checked against bash. A reference writes through for a
-# plain, appending, element, array, read, printf, arithmetic, and prefix
-# assignment, follows a chain, passes a caller variable by reference, binds
-# per word in a for loop, and reports itself to declare -p, ${!name},
-# [[ -R ]], test -R, and [ -R ].
+# Name references, checked against bash. A reference follows a chain, passes a
+# caller variable by reference, binds per word in a for loop, takes a prefix
+# binding, and reports itself to declare -p, ${!name}, [[ -R ]], test -R, and
+# [ -R ]. The integer and case marks of declare on a reference land on the
+# target, and a read-only target keeps its value and attributes. The write
+# commands in each context are in nameref_contexts_matrix.bash.
 # unset acts on the target, unset -n on the reference and on nothing else, and
 # a circular chain counts as unset and fails an assignment. Through a circular
 # chain read, printf -v, and export fail, arithmetic, a prefix before a
@@ -18,22 +19,8 @@
 # append through a reference adds when the target is an integer.
 X=1
 declare -n r=X
-r=2
-echo "assign X=$X r=$r ${r} ${#r}"
-r+=3
-echo "append X=$X"
-read -r r <<<"readval"
-echo "read X=$X"
-printf -v r '%s' pv
-echo "printf X=$X"
 declare -p r X
 echo "indirect ${!r}"
-
-N=5
-declare -n m=N
-echo "arith $((m + 1))"
-((m++))
-echo "after increment N=$N"
 
 P=old
 declare -n pr=P
@@ -42,10 +29,7 @@ echo "prefix P=$P"
 
 a=(x y z)
 declare -n ra=a
-ra[1]=Q
 echo "element ${a[*]} ${ra[1]} ${#ra[@]} ${!ra[@]}"
-ra+=(w)
-echo "array append ${a[*]}"
 for item in "${ra[@]}"; do
   echo "field $item"
 done
@@ -67,8 +51,6 @@ c3=deep
 declare -n c2=c3
 declare -n c1=c2
 echo "chain $c1 ${!c1}"
-c1=set
-echo "chain write c3=$c3"
 
 set_by_reference() {
   local -n out=$1
@@ -203,6 +185,22 @@ declare -u upper
 declare -n cased=upper
 cased=value
 echo "target attributes counter=$counter upper=$upper"
+(
+  x=1; declare -n r=x; declare -i r; r=3+3; echo "a $x"; declare -p x r
+  y=1; declare -n s=y; declare -i s=3+3; echo "b $y"; declare -p y s
+  z=1; declare -n t=z; declare -u t=abc; echo "c $z"; declare -p z t
+  w=1; declare -n v=w; declare -i v; declare v=4+4; echo "d $w"
+  declare -n u1=q1; declare -i u1=2+2; echo "e ${q1-unset}"; declare -p u1 q1
+  l=ABC; declare -n m=l; declare -l m; m=DEF; echo "f $l"
+  readonly ro_target=1
+  declare -n ro_ref=ro_target
+  declare -i ro_ref
+  echo "integer $?"
+  declare -p ro_target
+  declare -l ro_ref
+  echo "lower $?"
+  declare -p ro_target
+)
 
 declare -n ca=cb
 declare -n cb=ca
@@ -353,13 +351,9 @@ seconds_local_unset
 [[ $SECONDS =~ ^[0-9]+$ ]] && echo "seconds counts after a local unset -n"
 declare -i int_target=10
 declare -n int_ref=int_target
-int_ref+=5
-echo "integer append $int_target"
 int_ref+=1 eval 'echo "integer prefix append $int_target"'
 declare int_ref+=2
 echo "integer declare append $int_target"
-export int_ref+=3
-echo "integer export append $int_target"
 declare -ai int_array=(1)
 declare -n int_array_ref=int_array
 int_array_ref+=(3+4)

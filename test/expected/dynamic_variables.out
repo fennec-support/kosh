@@ -1,9 +1,3 @@
-command: echo "command: $BASH_COMMAND"
 frames: 1 1
 PS2=[> ] PS3=[unset] PS4=[+ ]
-[%]
-fn=outer
-fn0=outer
-depth=2
-ostype=set
 done

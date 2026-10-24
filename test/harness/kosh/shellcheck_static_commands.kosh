@@ -121,3 +121,8 @@ compound_list_diagnostics() {
 false && break
 false && continue
 :
+
+seeded=0
+seeded_quiet() {
+  seeded=1
+}

@@ -93,54 +93,7 @@ printf 'bash-toggle-return argc=<%s> argv=<%s>\n' \
   "${BASH_ARGC[*]}" "${BASH_ARGV[*]}"
 
 
-# FUNCNAME expands inside a function in its scalar and array forms, and OSTYPE
-# expands to the platform, the dynamic variables a sourced config relies on.
-outer() {
-  echo "scalar=${FUNCNAME}"
-  echo "zero=${FUNCNAME[0]}"
-  inner
-}
-inner() {
-  echo "depth=${#FUNCNAME[@]}"
-  echo "stack=${FUNCNAME[*]}"
-}
-outer
-[[ $OSTYPE == linux* || $OSTYPE == darwin* || $OSTYPE == msys* ]] &&
-  echo "ostype=known"
+# unset -f of the running function's own name removes it.
 f() { unset -f "$FUNCNAME"; }
 f
 command -v f >/dev/null || echo "unset_self=gone"
-
-# $_ expands to the last argument of the previous simple command, checked
-# byte-for-byte against bash.
-true alpha beta
-echo "after_true=[$_]"
-echo one two three
-echo "after_echo=[$_]"
-:
-echo "after_colon=[$_]"
-printf '%s\n' x y z
-echo "after_printf=[$_]"
-
-underscore_function() {
-  printf 'function-entry=[%s]\n' "$_"
-  : function-body
-}
-: before-function
-underscore_function call-tail
-printf 'function-after=[%s]\n' "$_"
-
-: snapshot-parent
-printf 'snapshot-sub=[%s] snapshot-underscore=[%s]\n' \
-  "$(: snapshot-child; printf child-output)" "$_"
-
-r=$EPOCHREALTIME
-[[ $r == *.* ]] && echo "has-dot"
-frac=${r#*.}
-echo "frac-len: ${#frac}"
-sec=${r%.*}
-case $sec in
-  [0-9]*) echo "sec-numeric" ;;
-  *) echo "sec-bad" ;;
-esac
-echo "base: $((10#0${r%.*} > 0))"

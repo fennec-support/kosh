@@ -2,3 +2,19 @@
      3 |  unset x
        |        ^
 x=1
+readonly listed='5'
+11:2: error: Unable to assign 'listed' because it is read only.
+    11 |  (listed=6)
+       |   ^~~~~~~~
+11:1: trace:
+    11 |  (listed=6)
+       |  ^
+rc=1
+15:2: error: Unable to assign 'marked' because it is read only.
+    15 |  (marked=bye)
+       |   ^~~~~~~~~~
+15:1: trace:
+    15 |  (marked=bye)
+       |  ^
+rc=1
+readonly marked='hi'

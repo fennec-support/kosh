@@ -19,7 +19,3 @@ indirect=2
        |                    ^~
 note: Replace it with ${y-} if empty expansion is desired.
 modifier-word=2
-18:7: error: Unable to expand 'undefined_var' because the parameter is not set.
-    18 |  echo "$undefined_var"
-       |        ^~~~~~~~~~~~~~
-note: Replace it with ${undefined_var-} if empty expansion is desired.

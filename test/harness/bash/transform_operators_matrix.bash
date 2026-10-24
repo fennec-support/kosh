@@ -118,3 +118,8 @@ for values in unset empty one_empty; do
     done
   done
 done
+
+echo "== attribute letters"
+ra=(1 2)
+readonly ra
+echo "${ra[@]@a}"

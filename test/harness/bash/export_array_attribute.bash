@@ -1,7 +1,8 @@
 #!/bin/bash
 # The export attribute on indexed and associative arrays: the array stays,
 # the attribute shows in declare -p and ${arr@a}, and no child environment
-# receives the array.
+# receives the array. An exported scalar that becomes an array leaves the
+# environment, and a sibling export stays.
 export LC_ALL=C
 
 show_environment() {
@@ -97,3 +98,23 @@ echo "unset-export=[${unset_export-unset}]"
 export -p | grep -c ' unset_export$'
 unset_export=assigned
 env | grep '^unset_export='
+
+echo "== an exported scalar becomes an array"
+export XX=1
+XX=(a b)
+env | grep '^XX=' || echo "XX absent"
+export YY=1
+declare -a YY
+env | grep '^YY=' || echo "YY absent"
+export WW=1
+declare -A WW
+env | grep '^WW=' || echo "WW absent"
+export ZZ=1
+ZZ[3]=x
+env | grep '^ZZ=' || echo "ZZ absent"
+echo "ZZ=${ZZ[*]}"
+export UU=first
+declare -A UU
+declare -p UU
+export VV=kept
+env | grep '^VV='

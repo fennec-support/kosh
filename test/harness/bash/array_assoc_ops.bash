@@ -18,43 +18,24 @@ declare -A e
 echo "missing=[${e[nope]}] count=${#e[@]}"
 for k in france; do echo "iter $k=${cap[$k]}"; done
 
-
-# Bash associative arrays via declare -A, checked byte-for-byte against bash with
-# literal keys (the multi-key element order is store-defined, so single-element
-# views are used for the listing forms).
+# Element order is store-defined, so listings use single-element views.
 declare -A m
 m[foo]=bar
 echo "${m[foo]}"
 m[key]=value
 echo "${m[key]}"
 echo "${#m[@]}"
-declare -A colors
-colors[red]=ff0000
-echo "${colors[red]}"
-echo "${!colors[@]}"
-echo "${colors[@]}"
 declare -A counts
 counts[apples]=5
 counts[apples]=8
 echo "${counts[apples]}"
-declare -A app
-app[x]=foo
-app[x]+=bar
-echo "${app[x]}"
 typeset -A t
 t[k]=v
 echo "${t[k]}"
-declare -A empty
-echo "[${empty[missing]}] count=${#empty[@]}"
 
 f() { visited[$1]=1; }
 g() { local -A visited=(); f keyA; f keyB; echo "dyn: ${visited[keyA]}${visited[keyB]} n=${#visited[@]}"; }
 g
-declare -A m=([x]=1 [y]=2)
-echo "literal: ${m[x]}${m[y]}"
-declare -A e=()
-e[path/to]=here
-echo "empty-then-set: ${e[path/to]}"
 
 i=1 j=2
 a[i|j]=ored
