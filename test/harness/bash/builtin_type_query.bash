@@ -36,6 +36,8 @@ command -v while
 command -v case
 command -v no_such_command_zzz
 echo "rc=$?"
+command -v missing-command-xyz echo printf
+echo "multiple-rc=$?"
 
 # Bash builtin keyword forcing the builtin past a function of the same name,
 # checked byte-for-byte against bash.

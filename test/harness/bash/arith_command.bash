@@ -139,7 +139,8 @@ echo "mask $(( (1 << 5) - 1 ))"
 # Bash ternary and comma arithmetic operators inside $(( )), checked
 # byte-for-byte against bash. Covers a plain ternary, a nested ternary, the
 # comma operator yielding its last value, and a comma sequence with side
-# effects.
+# effects. A ternary and the logical operators evaluate only the operand they
+# select, so a skipped assignment or division by zero never runs.
 echo "tern $(( 5 > 3 ? 10 : 20 )) $(( 5 < 3 ? 10 : 20 ))"
 echo "nest $(( 1 ? 2 ? 30 : 40 : 50 )) $(( 0 ? 2 : 3 ? 60 : 70 ))"
 echo "comma $(( 1 + 1, 2 + 2, 3 + 3 ))"
@@ -149,6 +150,16 @@ echo "after $a $b"
 n=2
 echo "ternassign $(( n > 0 ? (n = 100) : (n = -100) ))"
 echo "afterternary $n"
+c=1; x=9; r=$((c ? 5 : (x=99))); echo "lazy-false-arm $r $x"
+c=0; x=9; r=$((c ? (x=77) : 5)); echo "lazy-true-arm $r $x"
+c=1; x=9; r=$((c ? (x=77) : (x=88))); echo "true-arm $r $x"
+c=0; x=9; r=$((c ? (x=77) : (x=88))); echo "false-arm $r $x"
+echo "lazy-division $(( 1 ? 5 : 1/0 )) $(( 0 ? 1/0 : 7 ))"
+x=1; echo "or-skip $((1 || (x=9))) $x"
+x=1; echo "and-skip $((0 && (x=9))) $x"
+x=1; echo "or-run $((0 || (x=9))) $x"
+x=1; echo "and-run $((1 && (x=9))) $x"
+x=5; echo "or-chain $((1 || (x=9) || (x=10))) $x"
 
 # Bash arithmetic assignment operators inside (( )), checked byte-for-byte
 # against bash. Covers plain assignment and every compound form, the value the
@@ -192,7 +203,7 @@ echo "mix $(( 16#A + 2#10 + 010 ))"
 # parenthesized expression, the assignment operators through let, increment and
 # decrement, a bitwise shift, a multi-argument let where a later argument uses
 # an earlier assignment, and the let exit status that follows the last argument
-# value.
+# value. A let without arguments is an error.
 let "v = (3 + 4) * 2 - 1"
 echo "v $v"
 let w=10 "w += 5" "w *= 2"
@@ -210,6 +221,9 @@ let "0"; echo "rc-zero $?"
 let "9"; echo "rc-nonzero $?"
 let "r = (1 << 4) | 2"
 echo "bitwise r=$r"
+let; echo "empty rc=$?"
+let 'e = 2 > 3'; echo "rc=$?"
+( let 'x = 0' ); echo "subshell rc=$?"
 
 # Bash (( )) arithmetic command exit status, checked byte-for-byte against bash.
 # A negative value succeeds. Covers the status in $? and in an if.

@@ -385,10 +385,6 @@ MIMIC_SCRIPT="$dir/mimic-script" \
     "$MIMIC_SCRIPT"
     mimicprobe'
 
-"$BIN" --mood bash -c \
-    'command -v missing-command-xyz echo printf
-    printf "command-multiple=%s\n" "$?"'
-
 if [ "${OS-}" != Windows_NT ]; then
     mkdir "$dir/slash-path"
     printf '#!/bin/sh\n' > "$dir/slash-path/slashprobe"

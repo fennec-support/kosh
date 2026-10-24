@@ -16,13 +16,13 @@ SKIPPED_TESTS := \
 	koshkit_filesystem_posix koshkit_inspect_posix koshkit_system_posix \
 	koshkit_text_posix alias_unalias glob_dot_slash_prefix koshkit_getconf \
 	pipeline_compound_group redirect_high_fd \
-	shellcheck_bashisms_sh_shebang trap \
+	shellcheck_bashisms_sh_shebang \
 	bash_startup_restricted bash_xtracefd bench_behavior \
 	cd_suggestion chld_trap_after_return \
 	command_flag_forms command_p_restores_path \
 	command_substitution_interrupt command_substitution_strategy \
 	crlf_source ctrl_c_interrupts_bash_loop deep_nesting_guard \
-	diagnostic_levels disown_removes_jobs disown_running_only \
+	diagnostic_levels disown_removes_jobs \
 	env_runs_command_directly exec_behavior export_function \
 	export_readonly_integer fg_terminal_handoff granular_arg_caret \
 	history_behavior history_noninteractive \
@@ -44,7 +44,8 @@ SKIPPED_TESTS := \
 	pipeline_stage_evaluation_mode shopt_states \
 	subshell_spawn_state \
 	trace_policy trailing_separator_execution ulimit_validation \
-	ansi_c_quoted_word editor_append_hot_path executable_filtering_batch \
+	ansi_c_quoted_word editor_tab_ghost_and_help_loading \
+	executable_filtering_batch \
 	help_options_trusted_dir_only help_subcommand_third_level \
 	make_targets_fallback \
 	completion_glob_quoting path_quoting control_byte_quoting koshkit_mknod \
@@ -52,7 +53,7 @@ SKIPPED_TESTS := \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
 	editor_ghost_menu_pty editor_kill_yank_pty editor_prompt_pty \
 	editor_pending_tab_pty shell_integration_marks_pty background_terminal_pty \
-	prompt_function_substitution_pty prompt_hooks_pty startup_chain_pty \
+	prompt_hooks_pty startup_chain_pty \
 	procsub_contexts_matrix \
 	shell_executable_path \
 	analysis_environment_inheritance progcomp_alias_ghost koshconf_persist \
@@ -93,7 +94,7 @@ ifeq ($(KOSHKIT_BIN),)
 $(error NO_KOSHKIT=1 needs KOSHKIT_BIN set to a build that bundles koshkit)
 endif
 export KOSHKIT_BIN
-SKIPPED_TESTS += alias_unalias arith_decimal \
+SKIPPED_TESTS += alias_unalias \
 	bash_operators_default bash_source_stack builtin_list \
 	cd_paths command compound_redirect \
 	debug_err_return_traps fc fresh_evaluator_directories fresh_evaluator_jobs \
@@ -108,9 +109,9 @@ SKIPPED_TESTS += alias_unalias arith_decimal \
 	koshkit_whoami mood_arithmetic \
 	process_substitution_partial_reads process_substitution_readers \
 	process_substitution_traces \
-	redirect_csh_both_streams redirect_dynamic_fd \
+	redirect_dynamic_fd \
 	redirection_truncate_append_input \
-	rerr_redirect_to_directory subshell_isolates_state test_builtin trap
+	rerr_redirect_to_directory subshell_isolates_state test_builtin
 endif
 ifeq ($(TARGET), Linux)
 ifneq ($(shell unshare -rm true 2>/dev/null && echo available),available)
@@ -127,8 +128,8 @@ ifeq ($(shell command -v python3),)
 SKIPPED_TESTS += koshkit_live_pty koshkit_live_deltas editor_ghost_menu_pty \
 	editor_kill_yank_pty editor_prompt_pty editor_pending_tab_pty \
 	shell_integration_marks_pty background_terminal_pty \
-	prompt_function_substitution_pty \
-	prompt_hooks_pty startup_chain_pty child_signal_mask
+	prompt_hooks_pty startup_chain_pty child_signal_mask \
+	ctrl_c_koshkit_pty koshkit_process_tools interrupt_during_blocking_open
 endif
 
 ifeq ($(OS), Windows_NT)

@@ -19,13 +19,22 @@ before
        |                       ^~~~
 note: Replace it with ${nope-} if empty expansion is desired.
 rc=1
-== bash mood still continues past an ordinary command failure:
-after
-rc=0
-== bash mood abandons the line after a readonly reassignment, matching bash:
--c:1:15: error: Unable to assign 'r' because it is read only.
-     1 |  readonly r=1; r=2; echo after
-       |                ^~~
-rc=1
 == bash mood reports a stray token after an operand before evaluating:
 1
+== bash mood soft errors keep running:
+-- a soft builtin error carries a located caret
+-c:1:9: error: Builtin `builtin`: 'nosuchbuiltin' is not a shell builtin.
+     1 |  builtin nosuchbuiltin
+       |          ^~~~~~~~~~~~~
+rc=1
+-- the run keeps going past the soft error
+-c:1:9: error: Builtin `builtin`: 'nosuchbuiltin' is not a shell builtin.
+     1 |  builtin nosuchbuiltin; echo after
+       |          ^~~~~~~~~~~~~
+after
+-- a thrown builtin error is located and soft too
+-c:1:6: error: Builtin `read`: Unknown flag '-Z'.
+     1 |  read -Z; echo after
+       |       ^~
+note: Use `--` before an operand that begins with a dash.
+after

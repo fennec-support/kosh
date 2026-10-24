@@ -3,7 +3,6 @@ unset KOSH_FLAGS
 directory=
 trap 'test -n "$directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"' EXIT
 directory=$(mktemp -d)
-touch "$directory/apple.c" "$directory/apple.txt"
 
 echo "== callback keeps definition diagnostics:"
 completion_output=$("$BIN" -c "cd '$directory' || exit; set -WW; _helper(){ eval 'printf \"%s\\n\" no_match_*'; }; _f(){ _helper >/dev/null; COMPREPLY=(ok); }; complete -F _f vim; set -M bash" --debug-complete-at 'vim /etc/' </dev/null 2>"$directory/warnings")
@@ -25,14 +24,6 @@ echo "== word list keeps registration mood:"
 
 echo "== callback can replace its spec:"
 "$BIN" -M bash -c '_f(){ complete -W replacement selfcmd; COMPREPLY=(stable); }; complete -F _f selfcmd' --debug-complete-at 'selfcmd ' </dev/null
-
-echo "== compgen exclusion filter:"
-(
-    cd "$directory" || exit 1
-    "$BIN" -M bash -c "compgen -f -X '*.txt' -- app; compgen -f -X '!*.txt' -- app; compgen -f -X '&*.txt' -- app"
-    "$BIN" -M bash -c "compgen -W 'a* ax' -X 'a\\*' -- a; compgen -W 'a&x aax' -X '*\\&*' -- a; compgen -W '!a ba' -X '\\!*' -- ''"
-    "$BIN" -M bash -c "compgen -W 'a* a*foo' -X '&' -- 'a*'"
-)
 
 test -n "$directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$directory"
 directory=

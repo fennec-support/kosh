@@ -26,3 +26,7 @@ echo ~/a:~/b
 echo ~:~
 echo a:~
 echo "~:x"
+
+# A tilde inside a word or inside single quotes stays literal.
+echo pre~mid
+echo '~raw'

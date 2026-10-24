@@ -15,6 +15,10 @@ kill -s cont $$
 echo "lowercase-name=$?"
 kill -s sigcont $$
 echo "lowercase-prefixed-name=$?"
+# A trapped self-signal selected by name reaches its trap.
+trap 'echo caught-usr1' USR1
+kill -s USR1 $$
+trap - USR1
 # A -- after the signal ends the options.
 kill -0 -- $$
 echo "dashes-after-signal=$?"

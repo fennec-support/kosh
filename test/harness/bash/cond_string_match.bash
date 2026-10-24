@@ -2,8 +2,7 @@
 # Bash [[ ]] string comparison and pattern matching, checked byte-for-byte
 # against bash. Covers = == != with ASCII operands, the < and > collation order,
 # an unquoted right side that matches as a glob, and a quoted right side whose
-# operand equals it exactly. A reversed bracket range matches nothing, and a
-# hyphen after a range is literal.
+# operand equals it exactly.
 [[ apple = apple ]] && echo single-eq
 [[ apple == apple ]] && echo double-eq
 [[ apple != orange ]] && echo neq
@@ -97,6 +96,18 @@ re='(a+)(b+)'
 [[ "a+b" =~ a"+"b ]] && echo "BAD quoted plus" || echo "quoted-plus-literal"
 [[ "a+b" =~ a+b ]] && echo "unquoted-plus-live"
 [[ '^$' =~ "^$" ]] && echo "anchors-literal"
+
+# An alternation group takes the longest match, an unmatched optional group is
+# empty, nocasematch folds case, and groups capture whole UTF-8 characters.
+[[ aa =~ (a|aa) ]]; printf 'longest=%s\n' "${BASH_REMATCH[1]}"
+[[ b =~ (a)?b ]]; printf 'optional=<%s>\n' "${BASH_REMATCH[1]}"
+shopt -s nocasematch; [[ AbC =~ ^abc$ ]]; echo "nocase=$?"
+shopt -u nocasematch
+(
+  LC_ALL=C.UTF-8
+  [[ привет =~ ^пр(ив)ет$ ]]; printf 'unicode=%s\n' "${BASH_REMATCH[1]}"
+  [[ 𐍈𐍈 =~ ^(𐍈)+$ ]]; printf 'unicode-scalar=%s\n' "${BASH_REMATCH[1]}"
+)
 
 # Bash [[ ]] file tests, checked byte-for-byte against bash. Covers -e -r -w on
 # /dev/null and the negation of -f and -d there, then -e -f -s -d -r -w -x on a
@@ -198,12 +209,3 @@ ka=(x y); ki=1
 eval '[[ -v "ka[\$ki]" ]]' 2>/dev/null
 echo "indexed-dollar-status=$?"
 [[ -v ka[ki] ]] && echo indexed-arith-set
-
-case c in
-    [c-a]) echo reversed-range-match ;;
-    *) echo reversed-range-miss ;;
-esac
-case - in
-    [a-b-c]) echo hyphen-match ;;
-    *) echo hyphen-miss ;;
-esac

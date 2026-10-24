@@ -39,3 +39,14 @@ case b in a|b) echo match;; esac
 case c in a|b) echo match;; *) echo default;; esac
 
 case x in a) echo hi;; esac
+
+# A reversed bracket range matches nothing, and a hyphen after a range is
+# literal.
+case c in
+  [c-a]) echo reversed-range-match ;;
+  *) echo reversed-range-miss ;;
+esac
+case - in
+  [a-b-c]) echo hyphen-match ;;
+  *) echo hyphen-miss ;;
+esac

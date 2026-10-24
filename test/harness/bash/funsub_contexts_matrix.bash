@@ -2,7 +2,7 @@
 # Function substitutions, ${ cmd; } and ${| cmd; }, in every word and command
 # context, checked against bash. The bodies print nothing, spaces, glob
 # characters, quotes, and trailing newlines, change variables in the current
-# shell, fail, and nest.
+# shell, fail, and nest. Function definitions and directory changes persist.
 export LC_ALL=C
 cd "$(mktemp -d)" || exit 1
 error_file=$PWD/.error
@@ -83,3 +83,15 @@ for operator in '$(echo "$unset_name")' '${ echo "$unset_name"; }' \
     run_case "( set -u; ${contexts[context]//@E@/$operator} )"
   done
 done
+
+# A function definition and a cd inside a body persist in the current shell,
+# and an unquoted substitution splits on the current IFS.
+${ pf() { echo from_func; }; }
+pf
+start=$PWD
+echo "cwd=${ cd /; pwd; } now=$PWD"
+cd "$start" || exit 1
+IFS=-
+printf '<%s>' ${ echo p-q-r; }
+echo
+unset IFS

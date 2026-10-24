@@ -9,11 +9,3 @@ kosh
 bash-posix
 == callback can replace its spec:
 stable
-== compgen exclusion filter:
-apple.c
-apple.txt
-apple.c
-ax
-aax
-ba
-a*foo

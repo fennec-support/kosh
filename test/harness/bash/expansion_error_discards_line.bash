@@ -1,6 +1,7 @@
 #!/bin/bash
 # A failglob error, a bad substitution, and an assignment to a readonly
-# variable abandon the rest of the input line, as an arithmetic error does.
+# variable, including one through arithmetic in a case word, abandon the rest
+# of the input line, as an arithmetic error does.
 # A readonly loop variable fails only the loop, a readonly prefix assignment
 # still runs its command, and set -u or ${name:?} ends the script. In POSIX
 # mode a bad substitution and a readonly assignment end the shell instead,
@@ -51,6 +52,8 @@ echo "readonly-multiple=$?"
 readonly unset_readonly
 : ${unset_readonly:=2}; echo same
 echo "readonly-default=$?"
+case 1 in $((r++)) ) echo hi1 ;; *) echo hi2 ;; esac; echo same
+echo "readonly-case=$?"
 g() { echo in; r=2; echo after; }
 g; echo same
 echo "readonly-function=$?"

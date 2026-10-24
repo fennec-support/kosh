@@ -129,7 +129,8 @@ printf '[%d]\n' ''
 printf '%d\n' abc
 
 # The format string and a %b argument both decode the \NNN octal and \xHH hex
-# escapes, and a \x without a hex digit stays literal on stdout.
+# escapes, and a \x without a hex digit stays literal on stdout. A %b argument
+# passes a literal multibyte character through and encodes \U as UTF-8.
 printf 'a\0b\n' | od -An -tx1 | tr -s ' '
 printf '\101\102\060\n' | od -An -tx1 | tr -s ' '
 printf '\x41\x42\n' | od -An -tx1 | tr -s ' '
@@ -139,6 +140,7 @@ printf '%b' '\0101\n' | od -An -tx1 | tr -s ' '
 printf '%b' '\x4\n' | od -An -tx1 | tr -s ' '
 printf '%b' '\x\n' 2>/dev/null | od -An -tx1 | tr -s ' '
 printf '%b' 'a\0b\n' | od -An -tx1 | tr -s ' '
+printf '%b|%b\n' '☺' '\U0001F600' | od -An -tx1
 
 # The printf %(fmt)T time conversion, checked against bash. A fixed epoch
 # renders a fixed time so the result is stable, and both shells read the same

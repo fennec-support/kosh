@@ -10,11 +10,13 @@ echo "rc=$?"
 echo "== the strict default mood aborts on an unset arithmetic operand:"
 "$BIN" --mood kosh -c 'echo before; echo $((nope + 1)); echo not-reached'
 echo "rc=$?"
-echo "== bash mood still continues past an ordinary command failure:"
-"$BIN" --mood bash -c 'false; echo after'
-echo "rc=$?"
-echo "== bash mood abandons the line after a readonly reassignment, matching bash:"
-"$BIN" --mood bash -c 'readonly r=1; r=2; echo after'
-echo "rc=$?"
 echo "== bash mood reports a stray token after an operand before evaluating:"
 "$BIN" --mood bash -c 'n=src/Koshkit.cpp; echo $((n-2))' 2>&1 | grep -c "Unexpected '.cpp' after the expression"
+echo "== bash mood soft errors keep running:"
+echo "-- a soft builtin error carries a located caret"
+"$BIN" --mood bash -c 'builtin nosuchbuiltin'
+echo "rc=$?"
+echo "-- the run keeps going past the soft error"
+"$BIN" --mood bash -c 'builtin nosuchbuiltin; echo after'
+echo "-- a thrown builtin error is located and soft too"
+"$BIN" --mood bash -c 'read -Z; echo after'

@@ -15,3 +15,16 @@ compgen -G '*' -P x- Ap
 echo "prefixed=$?"
 compgen -G 'nothing*' n
 echo "no-match=$?"
+
+# A -X filter removes matches of its pattern, a leading ! keeps only the
+# matches, a & stands for the completed word, and a backslash quotes a
+# pattern character.
+: >apple.c
+: >apple.txt
+compgen -f -X '*.txt' -- app
+compgen -f -X '!*.txt' -- app
+compgen -f -X '&*.txt' -- app
+compgen -W 'a* ax' -X 'a\*' -- a
+compgen -W 'a&x aax' -X '*\&*' -- a
+compgen -W '!a ba' -X '\!*' -- ''
+compgen -W 'a* a*foo' -X '&' -- 'a*'

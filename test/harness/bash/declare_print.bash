@@ -80,6 +80,17 @@ grep "^q2=" /tmp/kosh_test_q2env_$$
 echo "prefix_restores=$q2"
 rm -f /tmp/kosh_test_q2env_$$
 
+# A prefix assignment on a pipeline stage reaches that stage's environment, the
+# plain, the append, and the integer-append forms, and does not persist after.
+x=zz env | grep -c "^x=zz"
+echo "x_after=[$x]"
+export y=ab
+y+=cd env | grep "^y="
+echo "y_after=$y"
+declare -ix w=5
+w+=3 env | grep "^w="
+echo "w_after=$w"
+
 # declare -i marks a name so every assignment evaluates as arithmetic, += adds
 # rather than concatenates, +i and unset clear the mark, and -p prints it.
 declare -i x=5

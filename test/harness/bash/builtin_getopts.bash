@@ -22,20 +22,6 @@ parse -x
 parse -b
 parse -a foo
 
-
-# kill -s selects the signal by name. A trapped self-signal proves the name
-# resolves without any process dying.
-trap 'echo caught-usr1' USR1
-kill -s USR1 $$
-
-# Bash let return status, checked byte-for-byte against bash. A let whose last
-# expression is zero returns status one, a nonzero result returns status zero,
-# and a relational expression returns the negation of its truth value.
-let 'd = 3 > 2'; echo "rc=$?"
-let 'e = 2 > 3'; echo "rc=$?"
-( let 'x = 0' ); echo "subshell rc=$?"
-let; echo "empty rc=$?"
-
 # return outside a function and outside a sourced file is rejected and the shell
 # continues, while return inside a function ends it with the status. The dot
 # command passes its trailing operands to the sourced file as positional

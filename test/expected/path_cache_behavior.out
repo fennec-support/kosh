@@ -40,9 +40,6 @@ equal-second
 equal-first
 mimic-second
 mimic-second
-echo
-printf
-command-multiple=0
 ./slashprobe
 ./slashprobe
 ./slashprobe
