@@ -155,12 +155,21 @@ struct sort_number
   bool       is_negative{false};
 };
 
+/* a -g key parsed by strtold. */
+struct sort_general_number
+{
+  long double value;
+  bool        is_number;
+};
+
 /* key_texts holds key_text_count extracted texts per line, at entry.index *
    key_text_count, so comparisons do not rescan the fields. It holds one text
    per key, or the line without its leading blanks when there are no keys and
-   blanks are skipped or -n applies. key_text_count is 0 when lines compare
-   whole. key_numbers parallels key_texts with the parsed -n value of each
-   numeric text when has_key_numbers is true. */
+   blanks are skipped or -n, -g, or -h applies. key_text_count is 0 when lines
+   compare whole. key_numbers parallels key_texts with the parsed value of
+   each -n or -h text when has_key_numbers is true, key_units with the unit
+   order of each -h text when has_key_units is true, and key_generals with
+   the strtold value of each -g text when has_key_generals is true. */
 struct sort_settings
 {
   ArrayList<sort_key> keys;
@@ -169,12 +178,18 @@ struct sort_settings
   char                separator{'\0'};
   usize               key_text_count{0};
   bool                has_key_numbers{false};
-  bool                is_plain_whole_line{false};
+  bool                has_key_units{false};
+  bool                has_key_generals{false};
+  /* has_key_units or has_key_generals. */
+  bool has_parsed_values{false};
+  bool is_plain_whole_line{false};
   /* the modifiers of the first comparison when it compares text or -n
      numbers, or null. */
-  const sort_modifiers  *prefix_modifiers{nullptr};
-  ArrayList<StringView>  key_texts{heap_allocator()};
-  ArrayList<sort_number> key_numbers{heap_allocator()};
+  const sort_modifiers          *prefix_modifiers{nullptr};
+  ArrayList<StringView>          key_texts{heap_allocator()};
+  ArrayList<sort_number>         key_numbers{heap_allocator()};
+  ArrayList<i8>                  key_units{heap_allocator()};
+  ArrayList<sort_general_number> key_generals{heap_allocator()};
 };
 
 pure static fn
@@ -592,40 +607,34 @@ compare_sort_human_numbers(StringView left,
   return compare_sort_numbers(left, right);
 }
 
+alwaysinline static fn
+parse_sort_general_number(StringView text) throws -> sort_general_number
+{
+  char  stack_buffer[128];
+  let   heap_buffer = String{heap_allocator()};
+  char *start       = stack_buffer;
+
+  if (text.length < sizeof(stack_buffer)) {
+    memcpy(stack_buffer, text.data, text.length);
+    stack_buffer[text.length] = '\0';
+  } else {
+    heap_buffer.append(text);
+    start = const_cast<char *>(heap_buffer.c_str());
+  }
+
+  char     *end   = nullptr;
+  let const value = ::strtold(start, &end);
+
+  return sort_general_number{value, end != start};
+}
+
 /* text that does not start with a number sorts first, then NaN values, then
    numbers in value order. */
 static fn
-compare_sort_general_numbers(StringView left, StringView right) throws
-    -> int
+compare_parsed_sort_general_numbers(
+    const sort_general_number &left_number,
+    const sort_general_number &right_number) wontthrow -> int
 {
-  struct parsed_number
-  {
-    long double value;
-    bool        is_number;
-  };
-
-  let const do_parse = [](StringView text) throws -> parsed_number {
-    char  stack_buffer[128];
-    let   heap_buffer = String{heap_allocator()};
-    char *start       = stack_buffer;
-
-    if (text.length < sizeof(stack_buffer)) {
-      memcpy(stack_buffer, text.data, text.length);
-      stack_buffer[text.length] = '\0';
-    } else {
-      heap_buffer.append(text);
-      start = const_cast<char *>(heap_buffer.c_str());
-    }
-
-    char     *end   = nullptr;
-    let const value = ::strtold(start, &end);
-
-    return parsed_number{value, end != start};
-  };
-
-  let const left_number  = do_parse(left);
-  let const right_number = do_parse(right);
-
   if (!left_number.is_number) return right_number.is_number ? -1 : 0;
 
   if (!right_number.is_number) return 1;
@@ -654,6 +663,14 @@ compare_sort_general_numbers(StringView left, StringView right) throws
   let const result = strcmp(left_text, right_text);
 
   return result < 0 ? -1 : result > 0 ? 1 : 0;
+}
+
+static fn
+compare_sort_general_numbers(StringView left, StringView right) throws
+    -> int
+{
+  return compare_parsed_sort_general_numbers(parse_sort_general_number(left),
+                                             parse_sort_general_number(right));
 }
 
 /* e.g. "  feb" is 2, "JANUARY" is 1, and "Ju" is 0. */
@@ -967,19 +984,102 @@ compare_sort_text(StringView            left,
   return modifiers.is_reversed ? -result : result;
 }
 
+/* appends the -h unit order and the -g value of text for the key that
+   modifiers describe. it stays out of line so the text and -n key storage
+   keeps its inlining. */
+noinline static fn
+store_parsed_sort_values(sort_settings        &settings,
+                         StringView            text,
+                         const sort_modifiers &modifiers) throws -> void
+{
+  if (settings.has_key_units) {
+    settings.key_units.push(
+        modifiers.is_human_numeric
+            ? static_cast<i8>(get_sort_unit_order(text, modifiers.is_folding))
+            : i8{0});
+  }
+
+  if (settings.has_key_generals) {
+    settings.key_generals.push(modifiers.is_general_numeric
+                                   ? parse_sort_general_number(text)
+                                   : sort_general_number{0.0L, false});
+  }
+}
+
+/* compare_sort_keys() for settings with a -g or -h comparison, which reads
+   the values parsed once per line. it stays out of line so the text and -n
+   comparisons in compare_sort_keys() keep their inlining. */
+noinline static fn
+compare_sort_keys_with_parsed_values(
+    const sort_entry    &left,
+    const sort_entry    &right,
+    const sort_settings &settings) throws -> int
+{
+  let const key_text_count = settings.key_text_count;
+  let const left_base      = left.index * key_text_count;
+  let const right_base     = right.index * key_text_count;
+
+  let const do_compare =
+      [&](usize                 key_index,
+          const sort_modifiers &modifiers) throws -> int {
+    let const left_slot  = left_base + key_index;
+    let const right_slot = right_base + key_index;
+    int       result     = 0;
+
+    if (modifiers.is_numeric) {
+      result = compare_parsed_sort_numbers(settings.key_numbers[left_slot],
+                                           settings.key_numbers[right_slot]);
+    } else if (modifiers.is_general_numeric) {
+      result = compare_parsed_sort_general_numbers(
+          settings.key_generals[left_slot], settings.key_generals[right_slot]);
+    } else if (modifiers.is_human_numeric) {
+      let const left_unit  = settings.key_units[left_slot];
+      let const right_unit = settings.key_units[right_slot];
+
+      result =
+          left_unit != right_unit
+              ? (left_unit < right_unit ? -1 : 1)
+              : compare_parsed_sort_numbers(settings.key_numbers[left_slot],
+                                            settings.key_numbers[right_slot]);
+    } else {
+      return compare_sort_text(settings.key_texts[left_slot],
+                               settings.key_texts[right_slot], modifiers);
+    }
+
+    return modifiers.is_reversed ? -result : result;
+  };
+
+  if (settings.keys.is_empty()) return do_compare(0, settings.global);
+
+  for (usize key_index = 0; key_index < key_text_count; key_index++) {
+    let const result =
+        do_compare(key_index, settings.keys[key_index].effective);
+
+    if (result != 0) return result;
+  }
+
+  return 0;
+}
+
+/* has_parsed_values is settings.has_parsed_values, fixed per instance so the
+   text and -n comparisons carry no extra branch. */
+template <bool has_parsed_values>
 static fn
 compare_sort_keys(const sort_entry    &left,
                   const sort_entry    &right,
                   const sort_settings &settings) throws -> int
 {
-  let const count = settings.key_text_count;
+  let const key_text_count = settings.key_text_count;
 
-  if (count == 0)
+  if (key_text_count == 0)
     return compare_sort_text(left.get_line(), right.get_line(),
                              settings.global);
 
-  let const left_base  = left.index * count;
-  let const right_base = right.index * count;
+  if constexpr (has_parsed_values)
+    return compare_sort_keys_with_parsed_values(left, right, settings);
+
+  let const left_base  = left.index * key_text_count;
+  let const right_base = right.index * key_text_count;
 
   let const do_compare =
       [&](usize                 key_index,
@@ -999,7 +1099,7 @@ compare_sort_keys(const sort_entry    &left,
 
   if (settings.keys.is_empty()) return do_compare(0, settings.global);
 
-  for (usize key_index = 0; key_index < count; key_index++) {
+  for (usize key_index = 0; key_index < key_text_count; key_index++) {
     let const result =
         do_compare(key_index, settings.keys[key_index].effective);
 
@@ -1009,13 +1109,15 @@ compare_sort_keys(const sort_entry    &left,
   return 0;
 }
 
+template <bool has_parsed_values>
 static fn
 compare_sort_entries(const sort_entry    &left,
                      const sort_entry    &right,
                      const sort_settings &settings,
                      bool                 is_last_resort_enabled) throws -> int
 {
-  let const key_result = compare_sort_keys(left, right, settings);
+  let const key_result =
+      compare_sort_keys<has_parsed_values>(left, right, settings);
 
   if (key_result != 0) return key_result;
 
@@ -1030,6 +1132,60 @@ compare_sort_entries(const sort_entry    &left,
   if (left.index == right.index) return 0;
 
   return left.index < right.index ? -1 : 1;
+}
+
+/* the comparison of two entries with has_parsed_values chosen at run time,
+   for callers that compare a linear number of pairs. */
+static fn
+compare_sort_entries_for(const sort_entry    &left,
+                         const sort_entry    &right,
+                         const sort_settings &settings,
+                         bool                 is_last_resort_enabled) throws -> int
+{
+  return settings.has_parsed_values
+             ? compare_sort_entries<true>(left, right, settings,
+                                          is_last_resort_enabled)
+             : compare_sort_entries<false>(left, right, settings,
+                                           is_last_resort_enabled);
+}
+
+static fn
+compare_sort_keys_for(const sort_entry    &left,
+                      const sort_entry    &right,
+                      const sort_settings &settings) throws -> int
+{
+  return settings.has_parsed_values
+             ? compare_sort_keys<true>(left, right, settings)
+             : compare_sort_keys<false>(left, right, settings);
+}
+
+/* sorts lines that are not plain whole lines. two different prefixes decide
+   the first key, and so the whole comparison. */
+template <bool has_parsed_values>
+static fn
+sort_keyed_lines(ArrayList<sort_entry> &lines,
+                 const sort_settings   &settings,
+                 bool                   is_last_resort_enabled) throws -> void
+{
+  if (settings.prefix_modifiers != nullptr) {
+    let const is_reversed = settings.prefix_modifiers->is_reversed;
+
+    lines.sort([&](const sort_entry &left, const sort_entry &right) {
+      if (left.prefix != right.prefix)
+        return is_reversed ? left.prefix > right.prefix
+                           : left.prefix < right.prefix;
+
+      return compare_sort_entries<has_parsed_values>(
+                 left, right, settings, is_last_resort_enabled) < 0;
+    });
+
+    return;
+  }
+
+  lines.sort([&](const sort_entry &left, const sort_entry &right) {
+    return compare_sort_entries<has_parsed_values>(left, right, settings,
+                                                   is_last_resort_enabled) < 0;
+  });
 }
 
 fn
@@ -1126,10 +1282,33 @@ Sort::execute(const ExecContext               &ec,
                                           settings.global.is_end_blank_skipping;
   }
 
-  settings.has_key_numbers =
-      settings.keys.is_empty() ? settings.global.is_numeric : false;
-  for (let const &key : settings.keys)
-    settings.has_key_numbers |= key.effective.is_numeric;
+  /* a check or a merge compares each line with one neighbour, so parsing
+     every -g and -h key up front costs more than it saves. */
+  let const should_parse_values = !FLAG_SORT_CHECK.is_enabled() &&
+                                  !FLAG_SORT_CHECK_QUIET.is_enabled() &&
+                                  !FLAG_SORT_MERGE.is_enabled();
+
+  if (settings.keys.is_empty()) {
+    settings.has_key_units =
+        should_parse_values && settings.global.is_human_numeric;
+    settings.has_key_generals =
+        should_parse_values && settings.global.is_general_numeric;
+    settings.has_key_numbers =
+        settings.global.is_numeric || settings.has_key_units;
+  }
+
+  for (let const &key : settings.keys) {
+    let const is_parsed_human =
+        should_parse_values && key.effective.is_human_numeric;
+
+    settings.has_key_units |= is_parsed_human;
+    settings.has_key_generals |=
+        should_parse_values && key.effective.is_general_numeric;
+    settings.has_key_numbers |= key.effective.is_numeric || is_parsed_human;
+  }
+
+  settings.has_parsed_values =
+      settings.has_key_units || settings.has_key_generals;
 
   let const &global = settings.global;
   settings.is_plain_whole_line =
@@ -1146,35 +1325,45 @@ Sort::execute(const ExecContext               &ec,
       !first_modifiers.is_human_numeric && !first_modifiers.is_month &&
       !first_modifiers.is_version;
 
-  if (is_first_text_comparison || first_modifiers.is_numeric)
+  if (is_first_text_comparison || first_modifiers.is_numeric ||
+      (settings.has_key_units && first_modifiers.is_human_numeric))
+  {
     settings.prefix_modifiers = &first_modifiers;
+  }
 
   settings.key_text_count =
       !settings.keys.is_empty()
           ? settings.keys.count()
           : static_cast<usize>(settings.global.is_start_blank_skipping ||
-                               settings.global.is_numeric);
+                               settings.global.is_numeric ||
+                               settings.has_parsed_values);
 
-  let const do_store_key_text = [&settings](StringView text,
-                                            bool       is_numeric) throws {
-    settings.key_texts.push(text);
-    if (settings.has_key_numbers) {
-      settings.key_numbers.push(is_numeric ? parse_sort_number(text)
-                                           : sort_number{});
-    }
-  };
+  let const do_store_key_text =
+      [&settings](StringView            text,
+                  const sort_modifiers &modifiers) throws {
+        settings.key_texts.push(text);
+        if (settings.has_key_numbers) {
+          settings.key_numbers.push(
+              modifiers.is_numeric ||
+                      (settings.has_key_units && modifiers.is_human_numeric)
+                  ? parse_sort_number(text)
+                  : sort_number{});
+        }
+        if (settings.has_parsed_values)
+          store_parsed_sort_values(settings, text, modifiers);
+      };
 
   let const do_store_key_texts = [&](StringView line) throws {
     if (settings.keys.is_empty()) {
       do_store_key_text(line.substring(skip_sort_blanks(line, 0)),
-                        settings.global.is_numeric);
+                        settings.global);
 
       return;
     }
 
     for (let const &key : settings.keys) {
       do_store_key_text(extract_sort_key(line, key, settings, key.effective),
-                        key.effective.is_numeric);
+                        key.effective);
     }
   };
 
@@ -1226,6 +1415,10 @@ Sort::execute(const ExecContext               &ec,
   settings.key_texts.reserve(line_count * settings.key_text_count);
   if (settings.has_key_numbers)
     settings.key_numbers.reserve(line_count * settings.key_text_count);
+  if (settings.has_key_units)
+    settings.key_units.reserve(line_count * settings.key_text_count);
+  if (settings.has_key_generals)
+    settings.key_generals.reserve(line_count * settings.key_text_count);
 
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let &source_result = source_results[source_index];
@@ -1267,6 +1460,12 @@ Sort::execute(const ExecContext               &ec,
         prefix = 0;
       } else if (settings.prefix_modifiers->is_numeric) {
         prefix = get_sort_number_prefix(settings.key_numbers[first_index]);
+      } else if (settings.prefix_modifiers->is_human_numeric) {
+        /* the unit order, offset to stay positive, takes the top five bits,
+           and the number prefix shifted down keeps its order below it. */
+        prefix =
+            (static_cast<u64>(settings.key_units[first_index] + 16) << 59) |
+            (get_sort_number_prefix(settings.key_numbers[first_index]) >> 5);
       } else {
         prefix = get_sort_text_prefix(first_text, *settings.prefix_modifiers);
       }
@@ -1281,13 +1480,13 @@ Sort::execute(const ExecContext               &ec,
 
   if (is_check) {
     for (usize index = 1; index < collected_lines.count(); index++) {
-      let const &previous    = collected_lines[index - 1];
-      let const &current     = collected_lines[index];
-      let const  result      = is_unique
-                                   ? compare_sort_keys(previous, current, settings)
-                                   : compare_sort_entries(previous, current, settings,
-                                                          is_last_resort_enabled);
-      let const  is_in_order = result < 0;
+      let const &previous = collected_lines[index - 1];
+      let const &current  = collected_lines[index];
+      let const  result =
+          is_unique ? compare_sort_keys_for(previous, current, settings)
+                     : compare_sort_entries_for(previous, current, settings,
+                                                is_last_resort_enabled);
+      let const is_in_order = result < 0;
 
       if (is_in_order) continue;
 
@@ -1327,9 +1526,9 @@ Sort::execute(const ExecContext               &ec,
         if (heads[source_index] == source_starts[source_index + 1]) continue;
 
         if (chosen == SIZE_MAX ||
-            compare_sort_entries(collected_lines[heads[source_index]],
-                                 collected_lines[heads[chosen]], settings,
-                                 is_last_resort_enabled) < 0)
+            compare_sort_entries_for(collected_lines[heads[source_index]],
+                                     collected_lines[heads[chosen]], settings,
+                                     is_last_resort_enabled) < 0)
         {
           chosen = source_index;
         }
@@ -1354,24 +1553,10 @@ Sort::execute(const ExecContext               &ec,
 
           return left.index < right.index;
         });
-  } else if (settings.prefix_modifiers != nullptr) {
-    /* two different prefixes decide the first key, and so the whole
-       comparison. */
-    let const is_reversed = settings.prefix_modifiers->is_reversed;
-
-    collected_lines.sort([&](const sort_entry &left, const sort_entry &right) {
-      if (left.prefix != right.prefix)
-        return is_reversed ? left.prefix > right.prefix
-                           : left.prefix < right.prefix;
-
-      return compare_sort_entries(left, right, settings,
-                                  is_last_resort_enabled) < 0;
-    });
+  } else if (settings.has_parsed_values) {
+    sort_keyed_lines<true>(collected_lines, settings, is_last_resort_enabled);
   } else {
-    collected_lines.sort([&](const sort_entry &left, const sort_entry &right) {
-      return compare_sort_entries(left, right, settings,
-                                  is_last_resort_enabled) < 0;
-    });
+    sort_keyed_lines<false>(collected_lines, settings, is_last_resort_enabled);
   }
 
   let output_descriptor = Maybe<os::descriptor>{};
@@ -1425,7 +1610,8 @@ Sort::execute(const ExecContext               &ec,
 
   let const do_visit = [&](usize index, const sort_entry *previous) -> bool {
     return previous == nullptr || !is_unique ||
-           compare_sort_keys(*previous, collected_lines[index], settings) != 0;
+           compare_sort_keys_for(*previous, collected_lines[index], settings) !=
+               0;
   };
 
   const sort_entry *previous_printed = nullptr;
