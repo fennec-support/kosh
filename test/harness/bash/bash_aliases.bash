@@ -3,7 +3,7 @@
 # live lookups, element and scalar writes, element and whole-array unsets, alias
 # removal, alias preservation after whole-array unset, and an ordinary
 # associative array created by redeclaring the disconnected name. An alias body
-# is read as shell source.
+# is read as shell source, and an aliased command keeps its heredoc bodies.
 alias first='echo one'
 alias second='echo two'
 printf 'first=%s second=%s count=%s\n' \
@@ -64,3 +64,12 @@ alias cycle_one_alias=cycle_two_alias
 alias cycle_two_alias=cycle_one_alias
 blank_alias chain_head_alias chain_head_alias
 blank_alias cycle_one_alias
+alias heredoc_cat_alias=cat
+heredoc_cat_alias <<EOF; echo after-heredoc
+body $((1 + 1))
+EOF
+heredoc_cat_alias <<-'EOF' <<TAIL
+	quoted $HOME
+	EOF
+tail
+TAIL
