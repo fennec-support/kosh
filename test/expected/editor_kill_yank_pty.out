@@ -183,6 +183,7 @@ slurp-command-line-keeps-the-view PASS
 slurp-mouse-press-moves-the-caret PASS
 slurp-wheel-scrolls-the-view PASS
 slurp-long-file-tab-opens-the-menu PASS
+slurp-long-file-ctrl-g-restores-the-line PASS
 abort-at-the-prompt-restores-the-terminal PASS
 segfault-at-the-prompt-restores-the-terminal PASS
 status=0

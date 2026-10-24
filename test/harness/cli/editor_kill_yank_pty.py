@@ -40,7 +40,8 @@
 # file taller than the terminal shows a window of rows that follows the caret,
 # Up on its first line recalls no shell history, and saving keeps every line.
 # The completion menu in slurp covers the rows under the caret and gives them
-# back when it closes, and Tab opens it in a file larger than 64 KiB. M-x
+# back when it closes, and in a file larger than 64 KiB Tab opens it and
+# Ctrl-G puts the line back. M-x
 # get-option in slurp on a text file shows the option,
 # and M-x format-buffer leaves the text file as it is, also with tab completion
 # off. Ctrl-R and Ctrl-S find text backward and forward, Alt-< and Ctrl-End
@@ -1570,7 +1571,15 @@ def run_long_slurp_checks(binary, directory, command_directory, report):
         session.send(b"\t")
         report.record("slurp-long-file-tab-opens-the-menu", session,
                       has_text("selecting completions"))
-        session.send(ESCAPE)
+        session.send(b"zz")
+        session.wait_until(lambda screen: any("read -" in line and "zz" in line
+                                              for line in screen.get_lines()))
+        session.send(b"\x07")
+        report.record("slurp-long-file-ctrl-g-restores-the-line", session,
+                      lambda screen: not has_text("zz")(screen)
+                      and any(line.startswith("read -")
+                              for line in screen.get_lines())
+                      and not has_text("selecting completions")(screen))
         session.send(KITTY_CTRL_C)
         session.wait_until(has_text("ctrl-c again"))
         session.send(KITTY_CTRL_C)
