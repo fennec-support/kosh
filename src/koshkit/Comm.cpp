@@ -157,11 +157,11 @@ Comm::execute(const ExecContext               &ec,
   let const do_advance =
       [&](usize side, utils::BufferedLineReader &reader,
           utils::BufferedLineReader::Result &result) throws -> void {
-    if (has_previous_line[side]) {
-      earlier_lines[side].clear();
-      earlier_lines[side].append(previous_lines[side].view());
-      has_earlier_line[side] = true;
-    }
+    /* the two buffers trade places, so neither line is copied twice. */
+    let held_line          = steal(earlier_lines[side]);
+    earlier_lines[side]    = steal(previous_lines[side]);
+    previous_lines[side]   = steal(held_line);
+    has_earlier_line[side] = has_previous_line[side];
 
     previous_lines[side].clear();
     previous_lines[side].append(reader.get_line());

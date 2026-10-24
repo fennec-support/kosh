@@ -2503,7 +2503,8 @@ after it. Without \fB\-t\fR, a tab stop falls every eight columns. The
 character, and \fB\-t\fR implies it.
 .TP
 .B xargs
-Arguments read from standard input are appended to a command. The
+Arguments read from standard input are appended to a command, and the
+command reads the null device. The
 \fB\-a\fR, \fB\-\-arg\-file\fR
 option takes the arguments from a file instead, and the command keeps standard
 input. The \fB\-0\fR option splits the input on null bytes, and
@@ -2518,10 +2519,13 @@ string in the command with each input line, and
 \fB\-i\fR[\fIR\fR], \fB\-\-replace\fR[=\fIR\fR]
 does the same with an attached string or {}. The \fB\-L\fR, \fB\-n\fR, and
 \fB\-s\fR options limit each command to a number of lines, arguments, or bytes.
+For \fB\-L\fR, an empty line does not count, and a line that ends with a
+blank continues on the next line.
 The \fB\-P\fR, \fB\-\-max\-procs\fR
 option runs up to that many external commands at once, or as many as possible
-for 0, and their output can interleave. The \fB\-p\fR option asks before each
-command runs, \fB\-t\fR traces each command, and \fB\-x\fR fails when a
+for 0, and their output can interleave. The \fB\-p\fR option asks on the
+terminal before each command runs and fails when no terminal can be opened,
+\fB\-t\fR traces each command, and \fB\-x\fR fails when a
 command does not fit in the size limit. The status is 123 when a command
 fails, 124 when one exits with 255, 125 when a signal ends one, and 126 or
 127 when one cannot run. With \fB\-P\fR, a command that cannot run stops the

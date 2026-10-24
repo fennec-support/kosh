@@ -210,7 +210,7 @@ private:
         break;
       }
 
-      if (*byte == '\n') end_quoted_line();
+      if (*byte == '\n') end_quoted_line(m_previous_byte);
       m_previous_byte = *byte;
       m_position++;
     }
@@ -253,12 +253,12 @@ private:
 
         if (!escaped.has_value()) throw Error{"Trailing backslash"};
         value += *escaped;
+        last_byte = *escaped;
         continue;
       }
 
       if (byte == ' ' || byte == '\t' || byte == '\n') {
-        m_previous_byte = before_byte;
-        if (byte == '\n') end_quoted_line();
+        if (byte == '\n') end_quoted_line(before_byte);
         m_previous_byte = byte;
         break;
       }
@@ -271,14 +271,15 @@ private:
     return xargs_item{steal(value), item_line};
   }
 
-  /* a newline ends a logical line of quoted input when the line holds an
-     item and its last byte is not a blank, so an empty line does not count
-     and a trailing blank continues the line, as -L counts them. */
+  /* a newline after previous_byte ends a logical line of quoted input when
+     the line holds an item and previous_byte is not a blank, so an empty
+     line does not count and a trailing blank continues the line, as -L
+     counts them. */
   fn
-  end_quoted_line() wontthrow -> void
+  end_quoted_line(char previous_byte) wontthrow -> void
   {
-    if (!m_has_line_item || m_previous_byte == ' ' || m_previous_byte == '\t' ||
-        m_previous_byte == '\n')
+    if (!m_has_line_item || previous_byte == ' ' || previous_byte == '\t' ||
+        previous_byte == '\n')
     {
       return;
     }
@@ -837,15 +838,8 @@ Xargs::execute(const ExecContext               &ec,
       /* each argument is quoted, and a control byte is written as an
          escape, so the question shows the exact command. */
       for (usize index = 0; index < command.count(); index++) {
-        let const argument = command[index].view();
-
         if (index != 0) message += ' ';
-        if (!utils::append_ansi_c_quote_if_needed(
-                message, argument,
-                cxt.get_glob_charset_for(argument) == glob_charset::Utf8))
-        {
-          append_shell_quoted_arg(message, argument);
-        }
+        cxt.append_xtrace_quoted(message, command[index].view());
       }
 
       message += '?';
