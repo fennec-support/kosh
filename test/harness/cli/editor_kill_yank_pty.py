@@ -40,7 +40,8 @@
 # file taller than the terminal shows a window of rows that follows the caret,
 # Up on its first line recalls no shell history, and saving keeps every line.
 # The completion menu in slurp covers the rows under the caret and gives them
-# back when it closes. M-x get-option in slurp on a text file shows the option,
+# back when it closes, and Tab opens it in a file larger than 64 KiB. M-x
+# get-option in slurp on a text file shows the option,
 # and M-x format-buffer leaves the text file as it is, also with tab completion
 # off. Ctrl-R and Ctrl-S find text backward and forward, Alt-< and Ctrl-End
 # go to the start and the end of the file, vi / and n find it, a closed ? find
@@ -1553,6 +1554,31 @@ def run_tall_slurp_checks(binary, directory, command_directory, report):
         session.close()
 
 
+def run_long_slurp_checks(binary, directory, command_directory, report):
+    script = os.path.join(directory, "slurp-long.sh")
+    with open(script, "w") as handle:
+        for number in range(1, 6001):
+            handle.write("echo line%d\n" % number)
+    session = Session(binary, directory, command_directory, rows=20)
+    try:
+        session.wait_until(is_line(""))
+        session.send(b"slurp slurp-long.sh\r")
+        session.wait_until(has_text("line 6000 of 6000"))
+        session.send(b"\x05\rread -")
+        session.wait_until(lambda screen: any(line.rstrip() == "read -"
+                                              for line in screen.get_lines()))
+        session.send(b"\t")
+        report.record("slurp-long-file-tab-opens-the-menu", session,
+                      has_text("selecting completions"))
+        session.send(ESCAPE)
+        session.send(KITTY_CTRL_C)
+        session.wait_until(has_text("ctrl-c again"))
+        session.send(KITTY_CTRL_C)
+        session.wait_until(is_line(""))
+    finally:
+        session.close()
+
+
 def run_fatal_signal_checks(binary, directory, command_directory, report):
     for name, signal_number in (("abort", signal.SIGABRT),
                                 ("segfault", signal.SIGSEGV)):
@@ -1605,6 +1631,7 @@ def main():
         run_ctrl_x_mode_checks(binary, directory, command_directory, report)
         run_slurp_checks(binary, directory, command_directory, report)
         run_tall_slurp_checks(binary, directory, command_directory, report)
+        run_long_slurp_checks(binary, directory, command_directory, report)
         run_fatal_signal_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
