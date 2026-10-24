@@ -202,8 +202,8 @@ Watch::execute(const ExecContext               &ec,
     if (FLAG_WATCH_ERROR_EXIT.is_enabled() && command_status != 0)
       pending_status = command_status;
 
-    if (FLAG_WATCH_CHANGE_EXIT.is_enabled() && has_previous_body &&
-        body.view() != output.view())
+    if (FLAG_WATCH_CHANGE_EXIT.is_enabled() && !pending_status.has_value() &&
+        has_previous_body && body.view() != output.view())
     {
       pending_status = 0;
     }

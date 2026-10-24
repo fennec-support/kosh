@@ -79,3 +79,11 @@ echo "--- watch runs the command at once with an interval past the uptime ---"
 "$BIN_DIR/invoke-koshkit" timeout 3 "$BIN" -c \
   'koshkit watch -n 100000000 -t echo first-run' </dev/null 2>&1 |
   "$BIN_DIR/invoke-koshkit" head -1
+
+echo "--- watch -e keeps a failing status when -g sees a change ---"
+watch_script=$TEST_TEMP_DIRECTORY/watch-error.sh
+printf 'if [ -e "$1" ]; then exit 3; fi\n: > "$1"\necho changed\n' \
+  > "$watch_script"
+"$BIN_DIR/invoke-koshkit" timeout 10 "$BIN" -c \
+  'koshkit watch -e -g -n 0.1 sh "$1" "$1.flag" >/dev/null; echo "status=$?"' \
+  _ "$watch_script" </dev/null

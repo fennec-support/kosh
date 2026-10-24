@@ -42,3 +42,5 @@ sorted-unique=0
 invalid-entries-status=1
 --- watch runs the command at once with an interval past the uptime ---
 first-run
+--- watch -e keeps a failing status when -g sees a change ---
+status=3

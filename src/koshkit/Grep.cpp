@@ -607,8 +607,11 @@ append_extended_pattern(String &output, StringView pattern) throws
       index++;
       is_at_start = true;
     } else if (character == '*' || character == '+' || character == '?') {
+      /* a quantifier after ^ applies to the anchor, so the next one does
+         too, as in ^**abc. */
       if (after_caret.has_value()) {
         if (character != '+') output.truncate(*after_caret);
+        caret_start = after_caret;
       } else if (!is_at_start) {
         output += character;
       }
@@ -627,6 +630,7 @@ append_extended_pattern(String &output, StringView pattern) throws
           {
             output.truncate(*after_caret);
           }
+          caret_start = after_caret;
         } else if (!is_at_start) {
           output += pattern.substring_of_length(index, interval_length);
         }

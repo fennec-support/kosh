@@ -1332,6 +1332,8 @@ status=0
 x
 *x
 x
+x
+ax
 --- grep reports a match in a file with a NUL byte without its lines ---
 -c:1:18: warning: Koshkit `grep`: 'grep-binary.dat' holds a NUL byte, so matching lines from the line with that byte on are not shown.
      1 |  koshkit grep abc grep-binary.dat fruit.txt; printf "status=%s\n" "$?"

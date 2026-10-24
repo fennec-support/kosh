@@ -564,6 +564,7 @@ printf '"abc' | "$BIN" -c 'koshkit xargs -I{} echo "[{}]" 2>/dev/null; printf "s
 echo "--- grep -E takes a repetition after ^ ---"
 printf 'x\n*x\n' | "$BIN" -c 'koshkit grep -E "^*x"'
 printf 'x\n+x\nax\n' | "$BIN" -c 'koshkit grep -E "^+x"'
+printf 'x\nax\n' | "$BIN" -c 'koshkit grep -E "^**x"'
 
 echo "--- grep reports a match in a file with a NUL byte without its lines ---"
 printf 'abc\0def\nxyz abc\n' > grep-binary.dat
