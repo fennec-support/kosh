@@ -359,11 +359,11 @@ case $remote_machine in
   arm64|aarch64) remote_machine=arm64 ;;
   x86_64|amd64) remote_machine=x86_64 ;;
 esac
-system_matches=0
-machine_matches=0
-[ "$expected_system" = any ] || [ "$expected_system" = "$remote_system" ] || system_matches=1
-[ "$expected_machine" = any ] || [ "$expected_machine" = "$remote_machine" ] || machine_matches=1
-if [ "$system_matches" -ne 0 ] || [ "$machine_matches" -ne 0 ]; then
+system_mismatch=0
+machine_mismatch=0
+[ "$expected_system" = any ] || [ "$expected_system" = "$remote_system" ] || system_mismatch=1
+[ "$expected_machine" = any ] || [ "$expected_machine" = "$remote_machine" ] || machine_mismatch=1
+if [ "$system_mismatch" -ne 0 ] || [ "$machine_mismatch" -ne 0 ]; then
   printf 'assimilate-error=Cannot install a %s/%s binary on %s/%s\n' \
     "$expected_system" "$expected_machine" "$remote_system" "$remote_machine"
   exit 126

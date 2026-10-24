@@ -2649,7 +2649,6 @@ exit_after_final_chunk(EvalContext &context,
 fn
 kosh_main(int argc, char **argv) -> int
 {
-  koshka::os::set_original_arguments(argc, argv);
   koshka::os::initialize_platform_runtime();
   koshka::os::register_platform_flags(FLAG_LIST);
 

@@ -2096,17 +2096,6 @@ environment_names() throws -> ArrayList<String>;
 fn
 is_child_process() wontthrow -> bool;
 
-struct original_arguments
-{
-  int    count{0};
-  char **values{nullptr};
-};
-
-fn
-set_original_arguments(int count, char **values) wontthrow -> void;
-fn
-get_original_arguments() wontthrow -> original_arguments;
-
 fn
 get_shell_process_id() wontthrow -> i64;
 fn

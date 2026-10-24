@@ -496,23 +496,23 @@ append_formatted(String     &out,
                  Allocator   allocator) throws -> void
 {
   char      buffer[256];
-  let const needed = snprintf(buffer, sizeof(buffer), format, value);
+  let const needed_byte_count = snprintf(buffer, sizeof(buffer), format, value);
 
-  if (needed < 0) return;
-  if (static_cast<usize>(needed) < sizeof(buffer)) {
-    out.append(StringView{buffer, static_cast<usize>(needed)});
+  /* a format that snprintf cannot encode appends nothing. */
+  if (needed_byte_count < 0) return;
+  if (static_cast<usize>(needed_byte_count) < sizeof(buffer)) {
+    out.append(StringView{buffer, static_cast<usize>(needed_byte_count)});
 
     return;
   }
 
-  let const   size        = static_cast<usize>(needed) + 1;
-  char *const heap_buffer = allocator.alloc_array<char>(size);
+  let const heap_byte_count = static_cast<usize>(needed_byte_count) + 1;
+  char *const heap_buffer = allocator.alloc_array<char>(heap_byte_count);
 
-  if (heap_buffer == nullptr) return;
-  defer { allocator.free_array(heap_buffer, size); };
+  defer { allocator.free_array(heap_buffer, heap_byte_count); };
 
-  snprintf(heap_buffer, size, format, value);
-  out.append(StringView{heap_buffer, static_cast<usize>(needed)});
+  snprintf(heap_buffer, heap_byte_count, format, value);
+  out.append(StringView{heap_buffer, static_cast<usize>(needed_byte_count)});
 }
 
 fn

@@ -121,8 +121,8 @@ struct id_name_entry
 
 struct id_name_cache
 {
-  static constexpr usize ENTRY_LIMIT = 64;
-  static constexpr u64   LIFETIME_NS = 1'000'000'000;
+  static constexpr usize ENTRY_LIMIT    = 64;
+  static constexpr u64   LIFETIME_NANOS = 1'000'000'000;
 
   id_name_cache() : users(heap_allocator()), groups(heap_allocator()) {}
 
@@ -142,7 +142,7 @@ cached_name_or_id(u32 id, bool is_group, Allocator allocator) throws
   let const now = os::monotonic_nanos();
 
   if (cache.filled_nanos == 0 ||
-      now - cache.filled_nanos > id_name_cache::LIFETIME_NS)
+      now - cache.filled_nanos > id_name_cache::LIFETIME_NANOS)
   {
     cache.users.clear();
     cache.groups.clear();

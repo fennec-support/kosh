@@ -946,9 +946,8 @@ get_user_group_ids(u32 user_id, Allocator allocator) throws
   return groups;
 }
 #else
-/* glibc cannot look up a user without dragging in NSS shared libraries, which
-   a static binary does not have, so these lookups read /etc/passwd and
-   /etc/group themselves and leave glibc to its bloated misery. */
+/* glibc looks up a user through NSS shared libraries, which a static binary
+   does not have, so these lookups parse /etc/passwd and /etc/group. */
 static fn
 lookup_name_by_id(StringView database_path,
                   u32        wanted_id,
