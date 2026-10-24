@@ -130,7 +130,7 @@ public:
 
 /* the longest SSK() key is 33 bytes, so five words hold every one. */
 using PackedStringKey = BasicPackedStringKey<5>;
-/* option names reach 62 bytes. */
+/* the longest option spelling is 62 bytes. */
 using LongPackedStringKey = BasicPackedStringKey<8>;
 
 } /* namespace koshka */

@@ -1738,15 +1738,20 @@ TerminalEchoGuard::did_succeed() const wontthrow -> bool
   return m_did_succeed;
 }
 
+/* the console mode of original without echo and line input. */
+static pure fn
+get_raw_input_mode(DWORD original) wontthrow -> DWORD
+{
+  return original & ~static_cast<DWORD>(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+}
+
 TerminalRawInputGuard::TerminalRawInputGuard(descriptor input) wontthrow
     : m_input(input)
 {
   if (GetConsoleMode(input, &m_original_mode) == FALSE) return;
 
-  let const raw_mode = m_original_mode & ~static_cast<DWORD>(ENABLE_ECHO_INPUT |
-                                                             ENABLE_LINE_INPUT);
-
-  if (SetConsoleMode(input, raw_mode) == FALSE) return;
+  if (SetConsoleMode(input, get_raw_input_mode(m_original_mode)) == FALSE)
+    return;
 
   m_should_restore = true;
 }
@@ -1767,10 +1772,8 @@ TerminalRawInputGuard::set_is_raw(bool is_raw) wontthrow -> void
 {
   if (!m_should_restore) return;
 
-  let const raw_mode = m_original_mode & ~static_cast<DWORD>(ENABLE_ECHO_INPUT |
-                                                             ENABLE_LINE_INPUT);
-
-  unused(SetConsoleMode(m_input, is_raw ? raw_mode : m_original_mode));
+  unused(SetConsoleMode(m_input, is_raw ? get_raw_input_mode(m_original_mode)
+                                        : m_original_mode));
 }
 
 fn
