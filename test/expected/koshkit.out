@@ -103,6 +103,7 @@ ok: koshkit flags complete
 --color
 --help
 --list
+--list-flags
 == bare utility flags under koshconf set interpreter.resolve_koshkit_applets_as_commands on:
 --classify
 --help
