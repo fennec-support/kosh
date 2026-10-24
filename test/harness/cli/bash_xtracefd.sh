@@ -13,5 +13,3 @@ echo "== without BASH_XTRACEFD the trace stays on stderr:"
 "$BIN" --mood bash -c 'set -x; echo hi; set +x' 2>&1 1>/dev/null
 echo "== an unparsable BASH_XTRACEFD falls back to stderr:"
 "$BIN" --mood bash -c 'BASH_XTRACEFD=nope; set -x; echo hi; set +x' 2>&1 1>/dev/null
-echo "== an array element with a blank traces in single quotes:"
-"$BIN" --mood bash -c 'set -x; arr=(one "two three"); set +x' 2>&1

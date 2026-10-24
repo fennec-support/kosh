@@ -855,7 +855,20 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
                        : argument_context::ArrayLiteral,
           &subscript_flags);
 
-      do_trace_array_assignment(assignment, values);
+      /* a compound assignment traces its words as written. */
+      if (cxt.runtime_state().should_echo_expanded()) {
+        let trace = String{cxt.scratch_allocator(), assignment.name.view()};
+
+        trace += assignment.update_mode == assignment_update_mode::Append
+                     ? "+=("
+                     : "=(";
+        for (usize i = 0; i < assignment.elements.count(); i++) {
+          if (i > 0) trace.push(' ');
+          append_word_source_text(cxt, trace, *assignment.elements[i]);
+        }
+        trace.push(')');
+        cxt.write_xtrace(trace.view());
+      }
 
       cxt.assign_indexed_array_elements(
           assignment.name, values, assignment.update_mode, &subscript_flags);

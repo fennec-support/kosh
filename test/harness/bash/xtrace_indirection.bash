@@ -59,7 +59,7 @@ body 2>&1 | sed 's|/dev/fd/[0-9]*|/dev/fd/N|' | LC_ALL=C sort
   set -x
   scalar=value
   scalar+=tail
-  arr=(one apt-get two)
+  arr=(one apt-get "two three" $scalar)
   empty=()
   arr+=(four)
   PFX=value printf '%s\n' ok

@@ -11,6 +11,3 @@ external
 == an unparsable BASH_XTRACEFD falls back to stderr:
 + echo hi
 + set +x
-== an array element with a blank traces in single quotes:
-+ arr=(one 'two three')
-+ set +x
