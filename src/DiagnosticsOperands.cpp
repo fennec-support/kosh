@@ -8,6 +8,7 @@
  */
 
 #include "DiagnosticsChecksInternal.hpp"
+#include "EvalVariables.hpp"
 #include "Lexer.hpp"
 #include "Tokens.hpp"
 #include "base/PackedStringKey.hpp"
@@ -772,14 +773,16 @@ is_shell_maintained_variable(StringView name) wontthrow -> bool
   return SHELL_MAINTAINED_VARIABLES.contains(name);
 }
 
-constexpr PackedStringKey BASH_ONLY_VARIABLE_KEYS[] = {
-    SSK("BASHOPTS"),     SSK("BASH_ALIASES"),   SSK("BASH_ARGC"),
-    SSK("BASH_ARGV"),    SSK("BASH_REMATCH"),   SSK("BASH_VERSINFO"),
-    SSK("BASH_VERSION"), SSK("COMP_CWORD"),     SSK("COMP_LINE"),
-    SSK("COMP_POINT"),   SSK("COMP_WORDS"),     SSK("DIRSTACK"),
-    SSK("PIPESTATUS"),   SSK("PROMPT_COMMAND"), SSK("SHLVL"),
-};
-constexpr StaticStringSet BASH_ONLY_VARIABLES{BASH_ONLY_VARIABLE_KEYS};
+pure fn
+is_undefined_in_sh(StringView name) wontthrow -> bool
+{
+  let const description = SHELL_VARIABLES.find(name);
+
+  return description.has_value() &&
+         has_shell_variable_fact(description->facts,
+                                 shell_variable_fact::BashOnly |
+                                     shell_variable_fact::ShUndefined);
+}
 
 constexpr PackedStringKey SHELL_ONLY_BUILTIN_KEYS[] = {
     SSK("."),    SSK("alias"),    SSK("cd"),      SSK("declare"), SSK("eval"),
@@ -880,9 +883,7 @@ check_posix_parameter_expansion(AnalysisContext   &actx,
 
   let const name = text.substring_of_length(name_start, position - name_start);
 
-  if (BASH_ONLY_VARIABLES.contains(name) ||
-      is_bash_only_dynamic_variable_name(name))
-  {
+  if (is_undefined_in_sh(name) || is_bash_only_dynamic_variable_name(name)) {
     actx.report_diagnostic(diagnostic_id::sc3028, do_get_location(), {name});
 
     return;

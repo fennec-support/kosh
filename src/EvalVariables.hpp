@@ -26,6 +26,9 @@ enum class shell_variable_fact : u8
   Exported = 1 << 3,
   BashOnly = 1 << 4,
   NotPosix = 1 << 5,
+  /* an sh script that expands it reads an undefined variable. every
+     BashOnly variable is also undefined there. */
+  ShUndefined = 1 << 6,
 };
 
 constexpr fn
@@ -121,7 +124,8 @@ inline constexpr static_string_entry<shell_variable_description>
         {SSK("SHLVL"),
          {"The value is the shell nesting depth, and a child shell increments "
           "it.",
-          shell_variable_fact::Exported | shell_variable_fact::NotPosix}     },
+          shell_variable_fact::Exported | shell_variable_fact::NotPosix |
+              shell_variable_fact::ShUndefined}                              },
         {SSK("ENV"),
          {"The value specifies the startup file an interactive shell sources. "
           "A restricted shell refuses to change it.",
@@ -168,7 +172,7 @@ inline constexpr static_string_entry<shell_variable_description>
          {"The command runs before each interactive prompt, and its status "
           "does not replace the previous status. It is deprecated in favor of "
           "the prompt escapes.",
-          shell_variable_fact::NotPosix}                                     },
+          shell_variable_fact::NotPosix | shell_variable_fact::ShUndefined}  },
         {SSK("COLUMNS"),
          {"The value is the terminal width an interactive shell recorded at "
           "startup.",
@@ -204,7 +208,8 @@ inline constexpr static_string_entry<shell_variable_description>
         {SSK("PIPESTATUS"),
          {"The elements are the exit status of every stage of the last "
           "pipeline.",
-          shell_variable_fact::Array | shell_variable_fact::NotPosix}        },
+          shell_variable_fact::Array | shell_variable_fact::NotPosix |
+              shell_variable_fact::ShUndefined}                              },
         {SSK("BASH_XTRACEFD"),
          {"The value selects the xtrace descriptor, and standard error is used "
           "when it is unset or invalid.",
@@ -523,26 +528,29 @@ inline constexpr static_string_entry<shell_variable_description>
         {SSK("BASH_VERSION"),
          {"The value is the advertised bash version, and it is seeded in the "
           "bash mood.",
-          shell_variable_fact::NotPosix}                                     },
+          shell_variable_fact::NotPosix | shell_variable_fact::ShUndefined}  },
         {SSK("BASH_VERSINFO"),
          {"The elements are the advertised bash version fields.",
-          shell_variable_fact::Array | shell_variable_fact::NotPosix}        },
+          shell_variable_fact::Array | shell_variable_fact::NotPosix |
+              shell_variable_fact::ShUndefined}                              },
         {SSK("BASH_REMATCH"),
          {"The elements are the groups of the last [[ =~ ]] match.",
-          shell_variable_fact::Array | shell_variable_fact::NotPosix}        },
+          shell_variable_fact::Array | shell_variable_fact::NotPosix |
+              shell_variable_fact::ShUndefined}                              },
 
         {SSK("COMP_WORDS"),
          {"The elements are the words on the line that is being completed.",
-          shell_variable_fact::Array | shell_variable_fact::NotPosix}        },
+          shell_variable_fact::Array | shell_variable_fact::NotPosix |
+              shell_variable_fact::ShUndefined}                              },
         {SSK("COMP_CWORD"),
          {"The value is the index of the word under the cursor.",
-          shell_variable_fact::NotPosix}                                     },
+          shell_variable_fact::NotPosix | shell_variable_fact::ShUndefined}  },
         {SSK("COMP_LINE"),
          {"The value is the complete line that is being completed.",
-          shell_variable_fact::NotPosix}                                     },
+          shell_variable_fact::NotPosix | shell_variable_fact::ShUndefined}  },
         {SSK("COMP_POINT"),
          {"The value is the cursor byte offset in the line.",
-          shell_variable_fact::NotPosix}                                     },
+          shell_variable_fact::NotPosix | shell_variable_fact::ShUndefined}  },
         {SSK("COMP_WORDBREAKS"),
          {"The value holds the bytes that split a word during completion.",
           shell_variable_fact::NotPosix}                                     },
