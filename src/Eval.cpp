@@ -60,6 +60,13 @@ EvalContext::EvalContext(startup_options   options,
   dynamic_runtime_store().shell_start_time() = static_cast<i64>(time(nullptr));
   trap_store().startup_ignored_signals()     = os::get_entry_ignored_signals();
 
+  /* one reservation replaces the rehashes of growing the map name by name. */
+  usize environment_count = 0;
+
+  os::for_each_environment_name(
+      &environment_count,
+      [](opaque *context, StringView) { (*static_cast<usize *>(context))++; });
+  variable_store().exported_names().reserve(environment_count);
   os::for_each_environment_name(this, [](opaque *context, StringView name) {
     static_cast<EvalContext *>(context)->mark_exported(name);
   });
