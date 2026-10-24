@@ -58,7 +58,7 @@ Killall::execute(const ExecContext               &ec,
   let const wanted        = operands[0].view();
   let const signal_number = resolve_koshkit_signal(
       FLAG_KILLALL_SIGNAL.is_set() ? FLAG_KILLALL_SIGNAL.value() : StringView{},
-      FLAG_KILLALL_SIGNAL.value_location(), cxt.scratch_allocator());
+      FLAG_KILLALL_SIGNAL.value_location());
 
   let const self_pid         = os::get_shell_process_id();
   let const current_pid      = os::get_current_process_id();

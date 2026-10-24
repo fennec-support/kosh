@@ -1078,7 +1078,7 @@ merge_tokens_to_string(const ArrayList<const Token *> &tokens) throws
 pure fn
 strip_sig_prefix(StringView name) wontthrow -> StringView
 {
-  if (name.starts_with("SIG")) return name.substring(3);
+  if (starts_with_ascii_ignoring_case(name, "SIG")) return name.substring(3);
 
   return name;
 }
@@ -1140,7 +1140,7 @@ find_signal_number(const signal_pair *pairs,
   let const bare = strip_sig_prefix(name);
 
   for (usize i = 0; i < pair_count; i++)
-    if (pairs[i].name == bare) return pairs[i].number;
+    if (equals_ascii_ignoring_case(pairs[i].name, bare)) return pairs[i].number;
 
   return None;
 }

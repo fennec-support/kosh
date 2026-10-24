@@ -37,11 +37,10 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Pkill);
 namespace koshka::koshkit {
 
 static fn
-is_signal_spelling(StringView spelled, Allocator allocator) throws
-    -> bool
+is_signal_spelling(StringView spelled) throws -> bool
 {
   return spelled.is_all_decimal_digits() ||
-         find_koshkit_signal_number(spelled, allocator).has_value();
+         os::signal_number_from_name(spelled).has_value();
 }
 
 fn
@@ -62,10 +61,10 @@ Pkill::execute(const ExecContext               &ec,
 
     if (argument == "--") is_after_separator = true;
 
-    let const is_dash_signal =
-        index > 0 && !is_after_separator && !has_dash_signal &&
-        argument.length > 1 && argument[0] == '-' && argument[1] != '-' &&
-        is_signal_spelling(argument.substring(1), cxt.scratch_allocator());
+    let const is_dash_signal = index > 0 && !is_after_separator &&
+                               !has_dash_signal && argument.length > 1 &&
+                               argument[0] == '-' && argument[1] != '-' &&
+                               is_signal_spelling(argument.substring(1));
 
     if (is_dash_signal) {
       dash_signal          = argument.substring(1);
@@ -162,11 +161,9 @@ Pkill::execute(const ExecContext               &ec,
 
   let const signal_number =
       has_dash_signal
-          ? resolve_koshkit_signal(dash_signal, dash_signal_location,
-                                   cxt.scratch_allocator())
+          ? resolve_koshkit_signal(dash_signal, dash_signal_location)
           : resolve_koshkit_signal(FLAG_PKILL_SIGNAL.value(),
-                                   FLAG_PKILL_SIGNAL.value_location(),
-                                   cxt.scratch_allocator());
+                                   FLAG_PKILL_SIGNAL.value_location());
 
   let const should_invert  = FLAG_PKILL_INVERSE.is_enabled();
   let const self_pid       = os::get_shell_process_id();

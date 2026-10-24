@@ -51,14 +51,10 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const    &spec = args[i];
       Maybe<String> name = koshka::None;
 
-      let uppercased = String{cxt.scratch_allocator(), spec};
-
-      uppercased.uppercase_ascii();
-
       /* 0 and EXIT are the exit trap. */
       if (spec == "0") {
         name = String{cxt.scratch_allocator(), "EXIT"};
-      } else if (uppercased == "EXIT") {
+      } else if (utils::equals_ascii_ignoring_case(spec, "EXIT")) {
         name = String{cxt.scratch_allocator(), "0"};
       } else if (StringView{spec}.is_all_decimal_digits()) {
         let const parsed = StringView{spec}.to<i64>();
@@ -71,8 +67,7 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             name = os::signal_name_from_number(number - 128);
           }
         }
-      } else if (let const number =
-                     os::signal_number_from_name(uppercased.view());
+      } else if (let const number = os::signal_number_from_name(spec);
                  number.has_value())
       {
         name = String::from(*number, cxt.scratch_allocator());
@@ -97,8 +92,8 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   usize first_target  = 1;
   let   signal_number = os::signal_number_from_name("TERM").value_or(15);
 
-  let const do_resolve_signal = [&ec, &cxt](StringView spec,
-                                            usize      index) throws -> i32 {
+  let const do_resolve_signal = [&ec](StringView spec,
+                                      usize      index) throws -> i32 {
     if (let const parsed = spec.to<i64>(); !parsed.is_error() &&
                                            spec[0] >= '0' && spec[0] <= '9' &&
                                            parsed.value() <= INT32_MAX)
@@ -106,10 +101,7 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return static_cast<i32>(parsed.value());
     }
 
-    let uppercased = String{cxt.scratch_allocator(), spec};
-
-    uppercased.uppercase_ascii();
-    if (let const resolved = os::signal_number_from_name(uppercased.view());
+    if (let const resolved = os::signal_number_from_name(spec);
         resolved.has_value())
     {
       return *resolved;

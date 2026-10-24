@@ -1563,20 +1563,8 @@ struct signal_number_comparator
 };
 
 fn
-find_koshkit_signal_number(StringView spelled,
-                           Allocator  allocator) throws -> Maybe<i32>
-{
-  let uppercased = String{allocator, spelled};
-
-  uppercased.uppercase_ascii();
-
-  return os::signal_number_from_name(uppercased.view());
-}
-
-fn
 resolve_koshkit_signal(StringView     spelled,
-                       SourceLocation location,
-                       Allocator      allocator) throws -> i32
+                       SourceLocation location) throws -> i32
 {
   if (spelled.is_empty()) return SIGTERM;
 
@@ -1592,7 +1580,7 @@ resolve_koshkit_signal(StringView     spelled,
     return static_cast<i32>(parsed.value());
   }
 
-  let const resolved = find_koshkit_signal_number(spelled, allocator);
+  let const resolved = os::signal_number_from_name(spelled);
 
   if (!resolved.has_value()) {
     throw ErrorWithLocationAndDetails{

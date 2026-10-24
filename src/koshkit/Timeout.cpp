@@ -271,7 +271,7 @@ preflight_timeout_stage(const ExecContext &ec,
       let const timeout_signal = resolve_koshkit_signal(
           FLAG_TIMEOUT_SIGNAL.is_set() ? FLAG_TIMEOUT_SIGNAL.value()
                                        : StringView{"TERM"},
-          FLAG_TIMEOUT_SIGNAL.value_location(), cxt.scratch_allocator());
+          FLAG_TIMEOUT_SIGNAL.value_location());
 
       if (!os::is_process_signal_supported(timeout_signal)) return None;
     } catch (const ErrorBase &) {
@@ -323,7 +323,7 @@ Timeout::execute(const ExecContext               &ec,
   let const timeout_signal = resolve_koshkit_signal(
       FLAG_TIMEOUT_SIGNAL.is_set() ? FLAG_TIMEOUT_SIGNAL.value()
                                    : StringView{"TERM"},
-      FLAG_TIMEOUT_SIGNAL.value_location(), cxt.scratch_allocator());
+      FLAG_TIMEOUT_SIGNAL.value_location());
 
   if (!os::is_process_signal_supported(timeout_signal))
     throw ErrorWithLocation{
