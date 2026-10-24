@@ -12,6 +12,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
+#include "../Toiletline.hpp"
 #include "../platform/Platform.hpp"
 
 KOSHKIT_UTIL_DECL("[-tgex] [-n seconds] command [argument ...]",
@@ -118,11 +119,13 @@ append_truncated_lines(String    &output,
       line_end++;
     }
 
-    let const line_length = line_end - position;
-    let const kept_length =
-        line_length > column_count ? column_count : line_length;
+    let const line = body.substring_of_length(position, line_end - position);
+    usize     kept_cell_count = 0;
+    let const kept_byte_count =
+        toiletline::get_byte_offset_at_or_before_display_cell(
+            line, column_count, kept_cell_count);
 
-    output += body.substring_of_length(position, kept_length);
+    output += line.substring_of_length(0, kept_byte_count);
     output += "\n";
     position = line_end < body.length ? line_end + 1 : body.length;
   }
