@@ -1,6 +1,6 @@
 unset KOSH_FLAGS
 # A login shell receives a dash-prefixed argv[0], a bare - or -kosh, the spawn
-# convention login and tmux use. SHELL and BASH must name a file a child can run,
+# convention login and tmux use. SHELL and BASH must refer to a file a child can run,
 # so the login dash is dropped from them, while $0 keeps the dashed spelling
 # verbatim the way bash does. The login shell is built through a dash-prefixed
 # symlink the way login starts one, and the output is filtered to the two markers

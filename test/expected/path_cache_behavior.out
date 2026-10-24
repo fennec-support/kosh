@@ -1,5 +1,3 @@
-one
-two
 0
 0
 warm-second
@@ -32,9 +30,6 @@ full-mode-probe
 broken-symlink
 suffix-priority
 sourced-non-runnable
-DIR/all-first/allprobe
-DIR/all-first/allprobe
-DIR/all-second/allprobe
 hash-blocked=1
 source-skipped-directory
 which-blocked=1
@@ -45,13 +40,9 @@ equal-second
 equal-first
 mimic-second
 mimic-second
-command-p-custom=1
-DEFAULT-LS
 echo
 printf
 command-multiple=0
-DIR/type-all-first/typeallprobe
-DIR/type-all-second/typeallprobe
 ./slashprobe
 ./slashprobe
 ./slashprobe

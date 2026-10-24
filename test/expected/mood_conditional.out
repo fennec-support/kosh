@@ -5,3 +5,9 @@ numeric
 rematch 12 3 whole=v12.3
 has-x
 no-missing
+plus
+star
+alt
+opt
+not-bar
+known

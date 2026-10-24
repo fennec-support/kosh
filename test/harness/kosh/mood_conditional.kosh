@@ -1,6 +1,7 @@
 #!/bin/env kosh
-# shellcheck disable=SC2050,SC2157
-# Bash [[ ]] conditionals work in the default strict mood, not only bash mode.
+# shellcheck disable=SC2050,SC2157,constant-case-word
+# Bash [[ ]] conditionals work in the default strict mood, not only bash mode,
+# and extended globs match in [[ ]] and case once shopt enables them.
 [[ "configure.sh" == *.sh ]] && echo glob-yes
 [[ "a*b" == "a*b" ]] && echo quoted-literal
 [[ -n "x" && ( -z "" || "a" == "a" ) ]] && echo grouped
@@ -11,3 +12,16 @@ fi
 x=set
 [[ -v x ]] && echo has-x
 [[ -v missing ]] || echo no-missing
+shopt -s extglob
+[[ "abbbc" == a+(b)c ]] && echo plus
+[[ "ac" == a*(b)c ]] && echo star
+[[ "abc" == a@(b|x)c ]] && echo alt
+[[ "ac" == a?(b)c ]] && echo opt
+case foo in
+!(bar)) echo not-bar ;;
+*) ;;
+esac
+case readme in
+@(readme|license)) echo known ;;
+*) ;;
+esac

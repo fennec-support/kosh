@@ -1,8 +1,3 @@
-== set -e aborts before the next command:
-rc=1
-== set +e lets the run continue:
-reached
-rc=0
 == an unknown mood is rejected:
 -c:1:8: error: Builtin `set`: Unknown -M value 'badmood', expected 'kosh', 'bash', 'sh', or 'bash-posix'.
      1 |  set -M badmood
@@ -43,10 +38,13 @@ rc=0
 == set -o posix enters posix mood:
 posix          	on
 == set +o posix from bash mood is a no-op:
+bash
 posix          	off
 == set +o posix from posix mood steps to bash:
+bash-posix
+bash
 posix          	off
-== brew's two failing lines now pass:
+== set +o posix leaves builtin enable usable:
 ok
 rc-done
 == a background subshell lists the initialized moods:

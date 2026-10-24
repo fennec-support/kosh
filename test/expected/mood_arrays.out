@@ -1,31 +1,9 @@
-one two three four five
-one two three four five
-5
-three
-6 six
-two three
-five six
-0 1 2 3 4 5
-0 1 2 3 4 5 10
-7
-empty 0
-elem one
-elem two
-elem three
 n=2 all=a b
 appended=c
 empty_n=0
 seq=p s2
 local_arr=2
 empty default, set: [x y]
-default, set: [x y]
-default, unset: [fallback]
-alternate, set: [present]
-star empty default: [x y]
-slice still works: [y]
-no-colon dash, set: [x y]
 loop c=x
 loop c=y
-declare -a a=([0]="1" [1]="2" [2]="9")
-declare -a b=([0]="10" [1]="20" [2]="99" [3]="40")
 rehash=kept

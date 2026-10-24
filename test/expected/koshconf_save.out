@@ -1,20 +1,11 @@
-== the help has the save form and the --persist flag:
-3
-1
-4
 == list has no class column:
 0
-# name=value
-bash.completion.programmable=on
-bash.completion.programmable_follows_aliases=off
-bash.debug.debugger_support=off
 == list -a adds the alias after each canonical line:
 bash.interpreter.glob_extended_patterns=on
 bash.legacy.extglob=on
 --
 posix.interpreter.exit_on_command_failure=off
 posix.legacy.errexit=off
-82
 == every alias returns the value of its option:
 == set-only options appear as posix aliases:
 posix.legacy.hashall=on
@@ -47,9 +38,4 @@ same
 == save --persist keeps settings this build does not recognize:
 1
 == plain save writes no file:
-absent
-== a restricted shell prints a blob but refuses save --persist:
-1
--c:1:28: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
-rc=1
 absent

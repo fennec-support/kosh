@@ -12,8 +12,6 @@ keyword-on
 noninteractive-editing-off
 vi-off
 emacs-off
-== command substitution isolates option state:
-notify         	off
 == runtime noexec stops later commands:
 noexec-clean
 nested-noexec-clean

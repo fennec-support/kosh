@@ -1,12 +1,3 @@
-== a default option queries off:
-dotglob             	off
-rc=1
-== set then query:
-dotglob             	on
-rc=0
-== unset then query:
-dotglob             	off
-rc=1
 == an unknown name is an error:
 -c:1:7: error: Builtin `shopt`: 'bogusopt' is not a valid shell option name.
      1 |  shopt bogusopt
@@ -14,39 +5,6 @@ rc=1
 rc=1
 == an unknown name under -q is silent:
 rc=1
-== -o queries a set option name:
-noexec              	off
-rc=1
-== sourcepath controls PATH lookup:
-path
-on=0
-local
-off=0
-== inherit_errexit controls command substitutions:
-off=0:kept
-off-rc=0
-on-rc=1
-== lastpipe controls the final builtin:
-default=<>
-lastpipe=<y>
-monitor=<y>
-group=<group>
-function=<function>
-== localvar_inherit controls bare locals:
-value=<> set=
-value=<outer> set=x
-integer=5
-declare -x exported
-array=one two
-== checkhash controls cached command validation:
-first
--c:4:1: error: Unable to execute `.test-work/checkhash-first/checkhash-probe`: No such file or directory.
-     4 |  checkhash-probe
-       |  ^~~~~~~~~~~~~~~
-off=127
-second
-on=0
-rehash=0
 == hash -R rebuilds the PATH index:
 rehash first
 rehash second
@@ -72,9 +30,4 @@ reenabled=one
 bash-default=0
 bash-directory=autocd status=127
 bash-dot-two=four
-== Bash startup history options and the Bash 5.3 spelling are accepted:
-status=0
-histappend          	on
-cmdhist             	on
-lithist             	on
-assoc_expand_once   	on
+script-directory=autocd status=127

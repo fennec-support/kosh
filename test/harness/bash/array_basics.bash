@@ -196,6 +196,12 @@ sparse_append+=([-1]=z)
 echo "literal-negative=${sparse_append[100]}"
 sparse_append[-1]+=q
 echo "element-negative=${sparse_append[100]}"
+dense_last=(1 2 3)
+dense_last+=([-1]=9)
+declare -p dense_last
+dense_middle=(10 20 30 40)
+dense_middle+=([-2]=99)
+declare -p dense_middle
 
 declare -ia sparse_integer=()
 sparse_integer[100]=4

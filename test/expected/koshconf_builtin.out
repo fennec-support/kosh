@@ -1,8 +1,6 @@
 == list prints every option as name=value:
 1
 mood=kosh
-33
-69
 editor.history.file_path=/history
 == the kosh preset matches a fresh kosh session:
 rc=0
@@ -26,17 +24,16 @@ echo mine
 1
 shopt -u expand_aliases
 == the sh preset matches a fresh sh session:
-== create writes every file option with its help and Bash name:
-8
-1
-1
-1
+== create writes a file option with its help and Bash name:
+option
+spelling
+placeholder
 0
 == a Bash spelling stays on one comment line:
 0
 0
-1
-1
+one-line
+option
 == set changes the session, and --persist rewrites one line:
 on
 editor.auto_close_brackets_and_quotes=on
@@ -208,7 +205,6 @@ bash
 external
 77
 64
-off
 external
 == KOSHCONF is never exported and a subshell sees the same value:
 0

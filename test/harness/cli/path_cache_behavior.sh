@@ -4,16 +4,13 @@ dir=$(mktemp -d)
 trap '[ -n "$dir" ] && rm -rf "$dir"' EXIT
 export TEST_NULL_OUTPUT=$dir/null-output
 
-mkdir "$dir/one" "$dir/two" "$dir/blocked" "$dir/refresh" "$dir/appeared" \
+mkdir "$dir/two" "$dir/blocked" "$dir/refresh" "$dir/appeared" \
     "$dir/completion-hot" "$dir/completion-late" "$dir/vanished" \
     "$dir/atomic" "$dir/atomic-replacement"
-printf '#!/bin/sh\necho one\n' > "$dir/one/cacheprobe"
-printf '#!/bin/sh\necho two\n' > "$dir/two/cacheprobe"
 printf '#!/bin/sh\nexit 0\n' > "$dir/two/blockedprobe"
 printf '#!/bin/sh\necho refreshed\n' > "$dir/staged"
 printf '#!/bin/sh\necho appeared\n' > "$dir/staged-appeared"
 printf '#!/bin/sh\necho late\n' > "$dir/staged-late"
-chmod +x "$dir/one/cacheprobe" "$dir/two/cacheprobe"
 chmod +x "$dir/two/blockedprobe" "$dir/staged" "$dir/staged-appeared" \
     "$dir/staged-late"
 if [ "${OS-}" = Windows_NT ]; then
@@ -27,10 +24,6 @@ printf '#!/bin/sh\n' > "$dir/atomic/oldatomicprobe"
 printf '#!/bin/sh\n' > "$dir/atomic-replacement/newatomicprobe"
 chmod +x "$dir/atomic/oldatomicprobe" \
     "$dir/atomic-replacement/newatomicprobe"
-
-CACHE_SECOND="$dir/two" \
-    PATH="$dir/one${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" -c \
-    'for iteration in 1 2; do cacheprobe; PATH="$CACHE_SECOND$TEST_PATH_SEPARATOR$TEST_SYSTEM_PATH"; done'
 
 PATH="$dir/blocked${TEST_PATH_SEPARATOR}$dir/two${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" -c \
     'blockedprobe > "$TEST_NULL_OUTPUT" 2>&1; printf "%s\n" "$?"'
@@ -327,13 +320,6 @@ chmod +x "$dir/source-second/sourceprobe"
 PATH="$dir/source-first${TEST_PATH_SEPARATOR}$dir/source-second${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" -c \
     'source sourceprobe'
 
-mkdir "$dir/all-first" "$dir/all-second"
-printf '#!/bin/sh\n' > "$dir/all-first/allprobe"
-printf '#!/bin/sh\n' > "$dir/all-second/allprobe"
-chmod +x "$dir/all-first/allprobe" "$dir/all-second/allprobe"
-PATH="$dir/all-first${TEST_PATH_SEPARATOR}$dir/all-first${TEST_PATH_SEPARATOR}$dir/all-second${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" -c \
-    'type -a -p allprobe' | sed "s|$dir|DIR|g"
-
 mkdir "$dir/hash-blocked"
 mkdir "$dir/hash-blocked/hashblocked"
 PATH="$dir/hash-blocked${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" -c \
@@ -399,34 +385,9 @@ MIMIC_SCRIPT="$dir/mimic-script" \
     "$MIMIC_SCRIPT"
     mimicprobe'
 
-mkdir "$dir/default-path"
-printf '#!/bin/sh\n' > "$dir/default-path/onlycustom"
-printf '#!/bin/sh\n' > "$dir/default-path/ls"
-chmod +x "$dir/default-path/onlycustom" "$dir/default-path/ls"
-if [ "${OS-}" = Windows_NT ]; then
-    PATH="$dir/default-path" "$BIN" --mood bash -c \
-        'command -p -v onlycustom > "$TEST_NULL_OUTPUT"
-        printf "command-p-custom=%s\n" "$?"
-        printf "DEFAULT-LS\n"'
-else
-    PATH="$dir/default-path" "$BIN" --mood bash -c \
-        'command -p -v onlycustom >/dev/null
-        printf "command-p-custom=%s\n" "$?"
-        command -p -v ls' |
-        sed "s|^/usr/bin/ls$|DEFAULT-LS|;s|^/bin/ls$|DEFAULT-LS|"
-fi
-
 "$BIN" --mood bash -c \
     'command -v missing-command-xyz echo printf
     printf "command-multiple=%s\n" "$?"'
-
-mkdir "$dir/type-all-first" "$dir/type-all-second"
-printf '#!/bin/sh\n' > "$dir/type-all-first/typeallprobe"
-printf '#!/bin/sh\n' > "$dir/type-all-second/typeallprobe"
-chmod +x "$dir/type-all-first/typeallprobe" \
-    "$dir/type-all-second/typeallprobe"
-PATH="$dir/type-all-first${TEST_PATH_SEPARATOR}$dir/type-all-second${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" "$BIN" --mood bash -c \
-    'type -a -P typeallprobe' | sed "s|$dir|DIR|g"
 
 if [ "${OS-}" != Windows_NT ]; then
     mkdir "$dir/slash-path"

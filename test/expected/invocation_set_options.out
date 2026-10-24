@@ -2,7 +2,7 @@
 ehBc pipefail=on extglob=on editor=vi
 == +e, +o, and +O keep the options off:
 hBc pipefail=off extglob=off editor=emacs
-== -o and -O name options the file leaves alone:
+== -o and -O turn on options the file leaves alone:
 ehBCc pipefail=on extglob=on editor=vi
 noclobber
 nocasematch
@@ -10,6 +10,9 @@ nocasematch
 hBc pipefail=on extglob=on editor=vi
 ehBc pipefail=on extglob=on editor=vi
 huBc pipefail=on extglob=on editor=vi
+== -u wins over a settings file that turns nounset off:
+off
+on
 == -euo pipefail sets pipefail with -o:
 ehuBc
 pipefail

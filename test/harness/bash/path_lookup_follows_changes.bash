@@ -120,3 +120,18 @@ unset PATH
 echo "after stage over unset: $(pathprobe)"
 PATH=$sys
 cd / || exit 1
+
+# command -p searches the default path whatever PATH holds.
+mkdir "$dir/default-path"
+printf '#!/bin/sh\n' > "$dir/default-path/onlycustom"
+printf '#!/bin/sh\n' > "$dir/default-path/ls"
+chmod +x "$dir/default-path/onlycustom" "$dir/default-path/ls"
+PATH=$dir/default-path
+command -p -v onlycustom >/dev/null
+echo "command-p-custom: $?"
+default_ls=$(command -p -v ls)
+PATH=$sys
+case $default_ls in
+  /usr/bin/ls | /bin/ls) echo "command-p-default: ls" ;;
+  *) echo "command-p-default: $default_ls" ;;
+esac

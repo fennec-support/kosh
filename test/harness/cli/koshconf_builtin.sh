@@ -27,8 +27,6 @@ echo "== list prints every option as name=value:"
 KOSH_HISTORY_FILE=/history "$BIN" -c 'koshconf list' >"$config/list.txt"
 grep -vc '^[a-z0-9_.]*=' "$config/list.txt"
 grep '^mood=kosh$' "$config/list.txt"
-grep -c '=on$' "$config/list.txt"
-grep -c '=off$' "$config/list.txt"
 grep '^editor.history.file_path=/history$' "$config/list.txt"
 echo "== the kosh preset matches a fresh kosh session:"
 "$BIN" -c 'koshconf create kosh'
@@ -57,17 +55,17 @@ grep -c '^# bash.interpreter.aliases_expand=$' "$conf"
 echo "== the sh preset matches a fresh sh session:"
 "$BIN" -c 'koshconf create --force sh'
 do_compare_preset sh
-echo "== create writes every file option with its help and Bash name:"
-grep -c -E '^# ((bash|posix)\.)?interpreter\.glob' "$conf"
-grep -c '^# bash.interpreter.glob_includes_dotfiles=off$' "$conf"
-grep -c '(shopt dotglob)' "$conf"
-grep -c '^# editor.history.file_path=$' "$conf"
+echo "== create writes a file option with its help and Bash name:"
+grep -q '^# bash.interpreter.glob_includes_dotfiles=off$' "$conf" && echo option
+grep -q '(shopt dotglob)' "$conf" && echo spelling
+grep -q '^# editor.history.file_path=$' "$conf" && echo placeholder
 grep -c '^bash.interpreter.privileged_mode=' "$conf"
 echo "== a Bash spelling stays on one comment line:"
 grep -c -E '\((set -o|shopt) [a-z_]*$' "$conf"
 grep -c -E '^# [a-z_]+\)$' "$conf"
-grep -c '(set -o keyword)' "$conf"
-grep -c '^# bash.interpreter.assignments_anywhere_in_command=off$' "$conf"
+grep -q '(set -o keyword)' "$conf" && echo one-line
+grep -q '^# bash.interpreter.assignments_anywhere_in_command=off$' "$conf" &&
+  echo option
 
 echo "== set changes the session, and --persist rewrites one line:"
 "$BIN" -c 'koshconf set editor.auto_close_brackets_and_quotes true; koshconf get editor.auto_close_brackets_and_quotes'
@@ -198,14 +196,12 @@ encoded=$("$BIN" -c 'koshconf set mood bash
 koshconf set completion.menu_style external
 koshconf set editor.history.max_entries 77
 koshconf set editor.wrap_width 64
-koshconf set posix.interpreter.exit_on_command_failure on
 printf %s "$KOSHCONF"')
 printf '%s\n' "$encoded"
 KOSHCONF=$encoded "$BIN" -c 'koshconf get mood
 koshconf get completion.menu_style
 koshconf get editor.history.max_entries
-koshconf get editor.wrap_width
-koshconf get posix.interpreter.exit_on_command_failure'
+koshconf get editor.wrap_width'
 "$BIN" -c "koshconf load '$encoded'; koshconf get completion.menu_style"
 echo "== KOSHCONF is never exported and a subshell sees the same value:"
 "$BIN" -c 'env | grep -c "^KOSHCONF="

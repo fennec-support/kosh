@@ -21,7 +21,7 @@ echo "after cd rc=$?"
 unset -- 2>/dev/null
 echo "continued"
 
-# Regression cover for the review fixes whose output bash defines exactly. The
+# Bash defines the output of the following forms exactly. The
 # PIPESTATUS array reports each stage by position, and a negative array index
 # counts back from the highest set index across the sparse elements rather than
 # the dense length.

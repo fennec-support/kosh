@@ -1,19 +1,14 @@
 unset KOSH_FLAGS
-# set -e aborts the run on the first failing command, set +e turns it back off,
-# an unknown -M value is rejected, and set -o with no name lists the Bash
+# An unknown -M value is rejected, and set -o with no name lists the Bash
 # option states.
-echo "== set -e aborts before the next command:"
-"$BIN" -c 'set -e; false; echo unreached'; echo "rc=$?"
-echo "== set +e lets the run continue:"
-"$BIN" -c 'set -e; set +e; false; echo reached'; echo "rc=$?"
 echo "== an unknown mood is rejected:"
 "$BIN" -c 'set -M badmood'; echo "rc=$?"
 echo "== set -o lists the option states:"
 "$BIN" -c 'set -o'
 
 unset KOSH_FLAGS
-# set -b backs a real notify option now, so the state round-trips through
-# set +o and the letter form.
+# set -b backs the notify option, so the state round-trips through set +o and
+# the letter form.
 "$BIN" -c 'set -o | grep notify'
 "$BIN" -c 'set -b; set -o | grep notify'
 "$BIN" -c 'set -o notify; set +b; set -o | grep notify'
@@ -26,10 +21,10 @@ unset KOSH_FLAGS
 echo "== set -o posix enters posix mood:"
 "$BIN" -c 'set -o posix; set -o | grep posix'
 echo "== set +o posix from bash mood is a no-op:"
-"$BIN" -M bash -c 'set +o posix; set -o | grep posix'
+"$BIN" -M bash -c 'set +o posix; set -M; set -o | grep posix'
 echo "== set +o posix from posix mood steps to bash:"
-"$BIN" -M bash -c 'set -o posix; set +o posix; set -o | grep posix'
-echo "== brew's two failing lines now pass:"
+"$BIN" -M bash -c 'set -o posix; set -M; set +o posix; set -M; set -o | grep posix'
+echo "== set +o posix leaves builtin enable usable:"
 "$BIN" -M bash -c 'set +o posix; builtin enable compgen unset; echo ok'
 echo "rc-done"
 

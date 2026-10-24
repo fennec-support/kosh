@@ -40,6 +40,13 @@ rc=0
 next status=1
 off
 rc=0
+== kosh -r: koshconf save --persist
+-c:1:1: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
+     1 |  koshconf save --persist; echo "next status=$?"
+       |  ^~~~~~~~~~~~~~~~~~~~~~~
+next status=1
+off
+rc=0
 == set -r refuses a later change:
 -c:1:9: error: Builtin `koshconf`: Changing settings with koshconf is forbidden in a restricted shell.
      1 |  set -r; koshconf set editor.auto_close_brackets_and_quotes on
@@ -59,8 +66,9 @@ posix status=0
 bash-posix
 bash
 off
-== get and list stay available:
+== get, list, and save stay available:
 kosh
+COUNT
 COUNT
 == no configuration file was written:
 absent

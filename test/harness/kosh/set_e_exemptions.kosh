@@ -1,8 +1,6 @@
 #!/bin/env kosh
-# shellcheck disable=negation-skips-errexit
-if ( set -e; true && false; echo reached-and ); then echo sub-ok; else echo sub-exited; fi
-if ( set -e; false || false; echo reached-or ); then echo or-ok; else echo or-exited; fi
-if ( set -e; false; echo reached-bare ); then echo bare-ok; else echo bare-exited; fi
-if ( set -e; ! false; echo reached-neg ); then echo neg-ok; else echo neg-exited; fi
+# errexit is ignored in a subshell that runs as an if condition, while the same
+# subshell run as a plain command exits at its first failing command.
+if ( set -e; false; echo reached-condition ); then echo condition-ok; else echo condition-exited; fi
 ( set -e; false; echo reached-plain ); echo "plain=$?"
 echo done

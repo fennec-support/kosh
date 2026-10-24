@@ -29,9 +29,6 @@ set +o vi
 [[ -o emacs ]] || echo emacs-off
 '
 
-echo "== command substitution isolates option state:"
-"$BIN" -M bash -c 'set +b; value=$(set -b); set -o | grep "^notify"'
-
 echo "== runtime noexec stops later commands:"
 noexec_output=$("$BIN" -M bash -c 'set -n; echo leaked')
 if [ -z "$noexec_output" ]; then

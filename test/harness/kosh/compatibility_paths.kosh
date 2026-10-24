@@ -2,7 +2,9 @@
 # compatibility.dev_null and compatibility.slash_tmp are on by default, and
 # turning them off ends the Windows mapping of /dev/null to the NUL device and
 # of /tmp to the TEMP directory. Other platforms have both paths themselves,
-# so the options change nothing there.
+# so the options change nothing there. While the option is on, a script can
+# create, read, list, and remove files under /tmp and change into it, and a
+# longer path such as /tmpx is not mapped.
 probe=/tmp/kosh-compatibility-$$
 echo hello >"$probe" || exit 1
 koshconf get compatibility.dev_null
@@ -21,4 +23,11 @@ fi
 koshconf set compatibility.dev_null on
 koshconf set compatibility.slash_tmp on
 [ -c /dev/null ] && echo "the null device is back"
+[ -d /tmp ] && echo "tmp is a directory"
+read -r line <"$probe" && echo "read=$line"
+koshkit mkdir -p "$probe-dir/inner" && [ -d "$probe-dir/inner" ] && echo "made a directory"
+(cd /tmp && echo "changed into it")
+koshkit rm -r -- "$probe-dir" && echo "removed the directory"
+[ -e "$probe-dir" ] || echo "gone"
+[ -d /tmpx ] || echo "a longer name is not mapped"
 koshkit rm -- "$probe" && echo "removed"

@@ -5,4 +5,11 @@ the temporary file is reachable
 the null device follows the option
 the temporary file follows the option
 the null device is back
+tmp is a directory
+read=hello
+made a directory
+changed into it
+removed the directory
+gone
+a longer name is not mapped
 removed

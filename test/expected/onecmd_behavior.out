@@ -4,5 +4,7 @@ one
 one
 two
 == a script can enable onecmd while reading:
+before
+rc=0
 == the option is queryable:
 onecmd         	on

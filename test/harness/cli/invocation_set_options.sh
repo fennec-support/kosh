@@ -21,7 +21,7 @@ echo "== the settings file applies:"
 do_show
 echo "== +e, +o, and +O keep the options off:"
 do_show +e +o pipefail +O extglob +o vi
-echo "== -o and -O name options the file leaves alone:"
+echo "== -o and -O turn on options the file leaves alone:"
 do_show -o noclobber -O nocasematch
 "$BIN" -o noclobber -O nocasematch -c 'shopt -qo noclobber && echo noclobber
 shopt -q nocasematch && echo nocasematch'
@@ -29,6 +29,12 @@ echo "== the later of a letter and its name wins:"
 do_show -e +o errexit
 do_show +o errexit -e
 do_show +eu -o nounset
+echo "== -u wins over a settings file that turns nounset off:"
+mkdir -p "$work/nounset/kosh"
+printf 'mood=bash\nposix.interpreter.unset_variable_is_error=off\n' \
+  >"$work/nounset/kosh/kosh.conf"
+XDG_CONFIG_HOME="$work/nounset" "$BIN" -c 'koshconf get posix.interpreter.unset_variable_is_error'
+XDG_CONFIG_HOME="$work/nounset" "$BIN" -u -c 'koshconf get posix.interpreter.unset_variable_is_error'
 echo "== -euo pipefail sets pipefail with -o:"
 "$BIN" --no-config -euo pipefail -c 'echo "$-"; shopt -qo pipefail && echo pipefail'
 echo "== -o posix acts as --posix:"

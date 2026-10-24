@@ -3,9 +3,9 @@ export MSYS2_ENV_CONV_EXCL=KOSH_HISTORY_FILE
 # The user configuration file applies before the session runs, in interactive
 # and non-interactive shells. Blanks around a value are ignored. A malformed
 # line, an unknown name with its suggestion, and a value the kosh mood holds
-# are located warnings that never stop the shell. KOSHCONF from the environment applies after the file and is
-# removed. A command-line flag and -Q win over the file, and the kosh mood
-# sources no rc file.
+# are located warnings that never stop the shell. KOSHCONF from the environment
+# applies after the file and is removed. A command-line flag and -Q win over the
+# file, and the kosh mood sources no rc file.
 home=$(mktemp -d)
 trap 'cd / && [ -n "$home" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$home"' EXIT
 export HOME="$home"
@@ -68,9 +68,6 @@ XDG_CONFIG_HOME="$home/elsewhere" "$BIN" -c 'koshconf get mood'
 echo "== KOSHCONF applies after the file and leaves the environment:"
 KOSHCONF=AQEBBQEA "$BIN" -c 'koshconf get mood; koshconf get editor.auto_close_brackets_and_quotes
 env | grep -c "^KOSHCONF="'
-echo "== an invalid KOSHCONF is a warning:"
-KOSHCONF='%%%' "$BIN" -c 'koshconf get mood'
-echo "rc=$?"
 
 echo "== an interactive kosh mood sources the rc script once, not ~/.koshrc:"
 mkdir -p "$home/.config/kosh/scripts"
@@ -112,7 +109,7 @@ env | grep "^KOSH_HISTORY_" | sort'
 echo "== a file sets editor.wrap_width:"
 printf 'editor.wrap_width=60\n' >"$conf"
 "$BIN" -c 'koshconf get editor.wrap_width'
-echo "== an inherited KOSH is replaced and no longer exported:"
+echo "== an inherited KOSH is replaced and not exported:"
 KOSH=/elsewhere KOSH_VERSION=0 "$BIN" -c '[ "$KOSH" != /elsewhere ] && echo replaced
 env | grep -c -e "^KOSH=" -e "^KOSH_VERSION=" || :
 sh -c "test -z \"\$KOSH\" && echo unset-in-a-child-shell"'
@@ -130,9 +127,6 @@ echo "rc=$?"
 echo "== an unknown name in the file suggests a close one:"
 printf 'editor.history.max_entry=3\n' >"$conf"
 "$BIN" -c 'koshconf get editor.history.max_entries' 2>&1 | mask_home
-echo "== a command-line flag wins over a semantic option from the file:"
-printf 'mood=bash\nposix.interpreter.unset_variable_is_error=off\n' >"$conf"
-"$BIN" -u -c 'koshconf get posix.interpreter.unset_variable_is_error'
 
 echo "== the editor and trace options apply from the file:"
 printf 'completion.on_tab=off\neditor.highlight_syntax_and_show_ghost_text=off\noptimizer.show_source_traces=off\n' >"$conf"

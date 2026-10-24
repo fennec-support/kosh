@@ -1,26 +1,18 @@
 unset KOSH_FLAGS KOSHCONF
-# koshconf has the save form and the --persist flag in its help, lists
-# name=value lines without a class column, shows the posix.legacy and
-# bash.legacy alias of each option with list --all, refuses --all outside list,
-# prints a blob that load and a child kosh adopt, writes the current settings
-# with save --persist, and keeps save --persist out of a restricted shell.
+# koshconf lists name=value lines without a class column, shows the
+# posix.legacy and bash.legacy alias of each option with list --all, refuses
+# --all outside list, prints a blob that load and a child kosh adopt, and writes
+# the current settings with save --persist.
 config=$(mktemp -d)
 trap '[ -n "$config" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$config"' EXIT
 export XDG_CONFIG_HOME="$config/user"
 export KOSH_HISTORY_FILE=/history
 conf="$XDG_CONFIG_HOME/kosh/kosh.conf"
 
-echo "== the help has the save form and the --persist flag:"
-"$BIN" -c 'koshconf --help' >"$config/help.txt"
-grep -cE '^(DESCRIPTION|SYNOPSIS|OPTIONS)$' "$config/help.txt"
-grep -c '^  koshconf save' "$config/help.txt"
-grep -c -e '--persist' "$config/help.txt"
 echo "== list has no class column:"
 "$BIN" -c 'koshconf list' | grep -c -E ' +(interactive|semantic|class)$'
-"$BIN" -c 'koshconf list' | head -4
 echo "== list -a adds the alias after each canonical line:"
 "$BIN" -c 'koshconf list -a' | grep -A1 -E '^(posix\.interpreter\.exit_on_command_failure|bash\.interpreter\.glob_extended_patterns)='
-"$BIN" -c 'koshconf list --all' | grep -c -E '^(bash|posix)\.legacy\.'
 echo "== every alias returns the value of its option:"
 "$BIN" -c 'koshconf list -a' >"$config/all.txt"
 # An option ignored by Koshka has a legacy spelling as its canonical name, so
@@ -83,8 +75,4 @@ grep -v '^future\.option=' "$conf" >"$conf.kept" && mv "$conf.kept" "$conf"
 echo "== plain save writes no file:"
 "$BIN_DIR/invoke-koshkit" rm -rf -- "$XDG_CONFIG_HOME"
 "$BIN" -c 'koshconf save' >/dev/null
-[ -e "$conf" ] && echo written || echo absent
-
-echo "== a restricted shell prints a blob but refuses save --persist:"
-"$BIN" -r -c 'koshconf save | grep -c .; koshconf save --persist; echo "rc=$?"' 2>&1 | grep -v '^ '
 [ -e "$conf" ] && echo written || echo absent

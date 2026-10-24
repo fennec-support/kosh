@@ -1,3 +1,4 @@
+# shellcheck disable=SC2005,SC2046,SC2116
 # The funsub ${ command; } rides the default mood, the same pure-addition
 # rule the other bash additions follow, running its body in the current
 # shell and splicing the captured output.

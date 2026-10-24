@@ -7,17 +7,15 @@ note: Switch to the bash mood with `koshconf set mood bash` to change it.
      3 |  (set +o pipefail); echo "off=$?"
        |  ^
 off=1
-one three count=3
 kosh
 mood=kosh args=mood-marker
 
 init=init-marker
 bundled=0
-after=1
-9:6: error: Builtin `set`: Unknown option '-Z'.
-     9 |  (set -Z); echo "bad=$?"
+7:6: error: Builtin `set`: Unknown option '-Z'.
+     7 |  (set -Z); echo "bad=$?"
        |       ^~
-9:1: trace:
-     9 |  (set -Z); echo "bad=$?"
+7:1: trace:
+     7 |  (set -Z); echo "bad=$?"
        |  ^
 bad=1
