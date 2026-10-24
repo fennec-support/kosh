@@ -4,8 +4,8 @@
  *
  * This file defines the immutable catalog that maps diagnostic identifiers to
  * slugs, messages, suggestions, severity tiers, delivery modes, and optional
- * ShellCheck codes. The static catalog remains outside traversal sources and
- * the public header.
+ * ShellCheck codes. The catalog is packed at compile time into one string
+ * pool with offsets, so the program needs no relocation for it at startup.
  */
 
 #include "Diagnostics.hpp"
@@ -13,7 +13,9 @@
 
 namespace koshka {
 
-const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
+namespace {
+
+constexpr diagnostic_definition DIAGNOSTIC_SOURCES[] = {
     D(1000,
       "literal-dollar-in-quotes",
       "a literal dollar sign is written with a backslash",
@@ -2800,7 +2802,128 @@ const diagnostic_definition DIAGNOSTIC_DEFINITIONS[] = {
 
 #undef D
 
-static_assert(countof(DIAGNOSTIC_DEFINITIONS) ==
+static_assert(countof(DIAGNOSTIC_SOURCES) ==
               static_cast<usize>(diagnostic_id::Count));
+
+/* marks an absent suggestion or related template. */
+constexpr u32 NO_CATALOG_TEXT = UINT32_MAX;
+
+struct packed_diagnostic_definition
+{
+  u32                 slug;
+  u32                 summary;
+  u32                 message_template;
+  u32                 suggestion_template;
+  u32                 related_template;
+  Maybe<u16>          shellcheck_code;
+  diagnostic_tier     tier;
+  diagnostic_delivery delivery;
+};
+
+consteval fn
+get_catalog_text_byte_count(const char *text) wontthrow -> usize
+{
+  usize byte_count = 0;
+
+  while (text[byte_count] != '\0')
+    byte_count++;
+
+  return byte_count + 1;
+}
+
+consteval fn
+get_catalog_pool_byte_count() wontthrow -> usize
+{
+  usize byte_count = 0;
+
+  for (let const &source : DIAGNOSTIC_SOURCES) {
+    byte_count += get_catalog_text_byte_count(source.slug);
+    byte_count += get_catalog_text_byte_count(source.summary);
+    byte_count += get_catalog_text_byte_count(source.message_template);
+    if (source.suggestion_template.has_value())
+      byte_count += get_catalog_text_byte_count(*source.suggestion_template);
+    if (source.related_template.has_value())
+      byte_count += get_catalog_text_byte_count(*source.related_template);
+  }
+
+  return byte_count;
+}
+
+constexpr usize CATALOG_ENTRY_COUNT     = countof(DIAGNOSTIC_SOURCES);
+constexpr usize CATALOG_POOL_BYTE_COUNT = get_catalog_pool_byte_count();
+
+struct packed_diagnostic_catalog
+{
+  packed_diagnostic_definition entries[CATALOG_ENTRY_COUNT];
+  char                         pool[CATALOG_POOL_BYTE_COUNT];
+};
+
+consteval fn
+pack_diagnostic_catalog() wontthrow -> packed_diagnostic_catalog
+{
+  packed_diagnostic_catalog catalog{};
+  usize                     used_byte_count = 0;
+
+  let const do_store = [&](const char *text) -> u32 {
+    let const offset = static_cast<u32>(used_byte_count);
+
+    for (usize i = 0; text[i] != '\0'; i++)
+      catalog.pool[used_byte_count++] = text[i];
+
+    catalog.pool[used_byte_count++] = '\0';
+
+    return offset;
+  };
+
+  for (usize index = 0; index < CATALOG_ENTRY_COUNT; index++) {
+    let const &source = DIAGNOSTIC_SOURCES[index];
+    let       &packed = catalog.entries[index];
+
+    packed.slug                = do_store(source.slug);
+    packed.summary             = do_store(source.summary);
+    packed.message_template    = do_store(source.message_template);
+    packed.suggestion_template = source.suggestion_template.has_value()
+                                     ? do_store(*source.suggestion_template)
+                                     : NO_CATALOG_TEXT;
+    packed.related_template    = source.related_template.has_value()
+                                     ? do_store(*source.related_template)
+                                     : NO_CATALOG_TEXT;
+    packed.shellcheck_code     = source.shellcheck_code;
+    packed.tier                = source.tier;
+    packed.delivery            = source.delivery;
+  }
+
+  return catalog;
+}
+
+constexpr packed_diagnostic_catalog DIAGNOSTIC_CATALOG =
+    pack_diagnostic_catalog();
+
+} /* namespace */
+
+pure fn
+get_diagnostic_definition(diagnostic_id id) wontthrow -> diagnostic_definition
+{
+  let const index = static_cast<usize>(id);
+
+  ASSERT(index < get_diagnostic_count());
+
+  let const &packed   = DIAGNOSTIC_CATALOG.entries[index];
+  let const *pool     = DIAGNOSTIC_CATALOG.pool;
+  let const  do_maybe = [pool](u32 offset) -> Maybe<const char *> {
+    if (offset == NO_CATALOG_TEXT) return None;
+
+    return pool + offset;
+  };
+
+  return {pool + packed.slug,
+          pool + packed.summary,
+          pool + packed.message_template,
+          do_maybe(packed.suggestion_template),
+          do_maybe(packed.related_template),
+          packed.shellcheck_code,
+          packed.tier,
+          packed.delivery};
+}
 
 } /* namespace koshka */

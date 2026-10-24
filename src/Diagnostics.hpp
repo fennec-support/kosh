@@ -436,11 +436,10 @@ struct analysis_scope_definition
   analysis_scope_definition_kind kind;
 };
 
-extern const diagnostic_definition DIAGNOSTIC_DEFINITIONS[];
-
+/* returns the catalog entry of id. its strings live in one constant pool for
+   the whole program. */
 pure fn
-get_diagnostic_definition(diagnostic_id id) wontthrow
-    -> const diagnostic_definition &;
+get_diagnostic_definition(diagnostic_id id) wontthrow -> diagnostic_definition;
 pure fn
 get_diagnostic_count() wontthrow -> usize;
 

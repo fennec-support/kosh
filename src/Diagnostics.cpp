@@ -15,17 +15,6 @@
 namespace koshka {
 
 pure fn
-get_diagnostic_definition(diagnostic_id id) wontthrow
-    -> const diagnostic_definition &
-{
-  let const index = static_cast<usize>(id);
-
-  ASSERT(index < get_diagnostic_count());
-
-  return DIAGNOSTIC_DEFINITIONS[index];
-}
-
-pure fn
 get_diagnostic_count() wontthrow -> usize
 {
   return static_cast<usize>(diagnostic_id::Count);

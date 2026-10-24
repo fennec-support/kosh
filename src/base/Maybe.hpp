@@ -251,7 +251,7 @@ public:
   constexpr Maybe(Nothing) noexcept {}
   constexpr Maybe(T *value) noexcept : m_value(value) {}
 
-  hot mustuse pure fn
+  hot mustuse pure constexpr fn
   has_value() const wontthrow -> bool
   {
     return m_value != nullptr;
@@ -285,7 +285,7 @@ public:
     return m_value;
   }
 
-  hot flatten mustuse pure fn
+  hot flatten mustuse pure constexpr fn
   operator*() const wontthrow -> T *const &
   {
     return m_value;

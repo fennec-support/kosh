@@ -394,7 +394,8 @@ print_help_or_version_status(const String &program_path) -> Maybe<int>
                                  : "\nNATIVE ANALYSIS DIAGNOSTICS\n";
 
       for (usize index = 0; index < get_diagnostic_count(); index++) {
-        let const &definition = DIAGNOSTIC_DEFINITIONS[index];
+        let const definition =
+            get_diagnostic_definition(static_cast<diagnostic_id>(index));
 
         if (definition.shellcheck_code.has_value() != is_shellcheck_section)
           continue;
