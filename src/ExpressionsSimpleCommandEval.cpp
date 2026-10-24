@@ -685,6 +685,9 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
     discard_child_redirection_state(cxt, redirection_snapshot);
 
     return cxt.execution_store().last_exit_status();
+  } catch (const InterruptErrorWithLocation &) {
+    discard_child_redirection_state(cxt, redirection_snapshot);
+    throw;
   } catch (const ErrorWithLocation &redirection_error) {
     discard_child_redirection_state(cxt, redirection_snapshot);
     if (!did_redirection_open_fail) throw;

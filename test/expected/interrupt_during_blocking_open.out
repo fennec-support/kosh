@@ -2,17 +2,11 @@
 -c:3:16: error: Interrupted.
      3 |  read -r line < "$fifo"
        |                 ^~~~~~~
-1:1: error: Interrupted.
-     1 |  fifo=$1
-       |  ^
 rc=130
 == an untrapped interrupt ends a blocking write open:
 -c:3:16: error: Interrupted.
      3 |  echo payload > "$fifo"
        |                 ^~~~~~~
-1:1: error: Interrupted.
-     1 |  fifo=$1
-       |  ^
 rc=130
 == an exec redirection reports the interrupt once:
 -c:3:9: error: Interrupted.
