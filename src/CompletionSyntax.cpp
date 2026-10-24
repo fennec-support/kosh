@@ -128,6 +128,13 @@ internal::find_token_bounds(StringView line, usize cursor) wontthrow
   while (i < cursor && i < line.length) {
     let const c = line[i];
 
+    /* a backslash before a line feed continues the line between words. */
+    if (c == '\\' && i + 1 < line.length && line[i + 1] == '\n') {
+      i += 2;
+      start = i;
+      continue;
+    }
+
     if (c == '\\' || c == '\'' || c == '"') {
       i = quoted_run_end(line, i) + 1;
       continue;
@@ -141,6 +148,8 @@ internal::find_token_bounds(StringView line, usize cursor) wontthrow
 
   while (end < line.length) {
     let const c = line[end];
+
+    if (c == '\\' && end + 1 < line.length && line[end + 1] == '\n') break;
 
     if (c == '\\' || c == '\'' || c == '"') {
       end = quoted_run_end(line, end) + 1;

@@ -63,6 +63,9 @@ stop
 restart
 start
 stop
+== a backslash continues the spec command onto the next line:
+start
+stop
 == cd offers only directories on the next line:
 ZQdir_marker/
 adir/
