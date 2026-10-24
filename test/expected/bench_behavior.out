@@ -40,7 +40,7 @@ counter capability passed
 counter fallback passed
 == --extended adds resource rows and the default output omits them:
 extended rows passed
-== a vanished command fails a later sample with status 127:
+== a vanished command fails later with status 127 on its own row:
 vanished command check complete
 == short flags, profile, and warmup:
 1 run

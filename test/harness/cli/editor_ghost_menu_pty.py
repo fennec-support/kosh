@@ -37,7 +37,8 @@
 # word follows koshkit, their yielding to the menu, their erasure on submit,
 # and their option. A path menu lists the last component of each path. A
 # narrow terminal keeps every synopsis row within its width and a submit erases
-# them, starts the menu at the left edge when the token is too far
+# them, wraps the menu help without losing a word, starts the menu at the left
+# edge when the token is too far
 # right for its help text to keep two rows, and a short
 # terminal keeps the input on screen with fewer rows. A pause loads
 # the --help usage, flag forms, and subcommand usage of a trusted allowlisted
@@ -50,9 +51,11 @@
 # and reports a misplaced closing keyword after the word and at its end.
 # Caret moves onto matched brackets keep the line and the caret,
 # so a key typed there lands in place. The auto-pair option inserts a
-# closer, leaves brackets and quotes plain inside quoted text, pairs $( and ${ inside a double quote it closed itself, and types a
-# case pattern end before the closer of its subshell while a parenthesized
-# pattern steps over its own. A file name with control bytes completes in the
+# closer, steps over it, erases an empty pair on Backspace, keeps a quote after
+# a word single, leaves brackets and quotes plain inside quoted text, pairs $(
+# and ${ inside a double quote it closed itself, and types a case pattern end
+# before the closer of its subshell while a parenthesized pattern steps over
+# its own. A file name with control bytes completes in the
 # $'...' form, and neither the ghost nor the menu writes those bytes raw to the
 # terminal. A koshconf option menu keeps narrowing when the first letter typed
 # after Tab matches nothing alone, as q or a does. Every wait polls for the
@@ -1367,13 +1370,16 @@ def run_checks(binary, directory, command_directory, report):
         type_text(session, b"echo (")
         report.record("auto-pair-inserts-closer", session, is_line("echo ()"))
         type_text(session, b"a)")
-        session.wait_until(is_line("echo (a)"))
+        report.record("auto-pair-steps-over-closer", session,
+                      is_line("echo (a)"))
         type_text(session, b" [")
         session.wait_until(is_line("echo (a) []"))
         session.send(BACKSPACE)
-        session.wait_until(is_line("echo (a)"))
+        report.record("auto-pair-backspace-deletes-pair", session,
+                      is_line("echo (a)"))
         type_text(session, b"don'")
-        session.wait_until(is_line("echo (a) don'"))
+        report.record("auto-pair-quote-after-word-stays-single", session,
+                      is_line("echo (a) don'"))
         type_text(session, b" (\" [")
         report.record("auto-pair-single-quoted-text-stays-plain", session,
                       is_line("echo (a) don' (\" ["))
@@ -1464,8 +1470,11 @@ def is_help_wrapped(columns):
         rows = get_help_rows(screen)
         if rows is None or len(rows) < 2 or MENU_HEADER not in rows[0]:
             return False
-        return not any(len(line) >= columns or line.strip().startswith(",")
-                       for line in rows)
+        word_count = len(" ".join(rows).split())
+        return (word_count == len(MENU_HELP.split())
+                and not any(len(line) >= columns
+                            or line.strip().startswith(",")
+                            for line in rows))
     return do_check
 
 

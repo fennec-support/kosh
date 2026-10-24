@@ -101,3 +101,4 @@ ties-lines=26
 one-fs-local=same
 --- an unreadable directory is a warning ---
 permission-severity=warning status=1
+unreadable-row-count=0

@@ -148,6 +148,7 @@ mkdir -p locked/inner
 chmod 000 locked
 if [ -r locked ]; then
   echo "permission-severity=warning status=1"
+  echo "unreadable-row-count=0"
 else
   locked_output=$("$BIN" -c 'koshkit du -s locked' 2>&1)
   locked_status=$?
@@ -156,6 +157,8 @@ else
     *) severity=other ;;
   esac
   echo "permission-severity=$severity status=$locked_status"
+  locked_row_count=$("$BIN" -c 'koshkit du locked' 2>/dev/null | wc -l)
+  echo "unreadable-row-count=$((locked_row_count))"
 fi
 chmod 755 locked
 

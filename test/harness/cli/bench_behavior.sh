@@ -125,7 +125,7 @@ plain_row_count=$(printf '%s\n' "$plain_output" |
 test "$extended_row_count" -gt "$plain_row_count" ||
     { echo "extended adds no rows"; exit 1; }
 echo "extended rows passed"
-echo "== a vanished command fails a later sample with status 127:"
+echo "== a vanished command fails later with status 127 on its own row:"
 cat > "$d/vanishing-environment" <<'SH'
 koshkit sleep 0.03 || exit 1
 rm -f "$BENCH_VANISHING_COMMAND" || exit 1
@@ -153,11 +153,17 @@ terminal_hex=$(od -An -tx1 "$d/typescript" | tr -d ' \n')
 if [ "$has_typescript" -eq 1 ]; then
     [ -n "$terminal_hex" ] || exit 1
     [ ! -e "$vanishing_command" ] && [ ! -L "$vanishing_command" ] || exit 1
-    typescript_text=$(tr -d '\r' < "$d/typescript")
+    # The visible rows drop styles, keep what follows the last line clear,
+    # and keep what follows the last carriage return.
+    esc=$(printf '\033')
+    cr=$(printf '\r')
+    typescript_text=$(sed -e "s/$esc\\[[0-9;]*m//g" -e "s/.*$esc\\[2K//" \
+        -e "s/$cr\$//" -e "s/.*$cr//" < "$d/typescript")
     vanishing_row=$(printf '%s\n' "$typescript_text" |
-        grep -F "$vanishing_command --mood bash -c true")
+        grep -F "$vanishing_command --mood bash -c true" |
+        grep -F 'exited with status 127.')
     case "$vanishing_row" in
-        *'exited with status 127.'*) ;;
+        -c:1:*) ;;
         *) exit 1 ;;
     esac
 fi

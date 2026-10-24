@@ -27,6 +27,10 @@ prompt-markers-are-not-drawn PASS
 stopped-job-notice-starts-a-row PASS
 fg-interrupt-ends-its-row PASS
 signaled-job-notice-shows-the-signal PASS
+command-title-drops-control-bytes PASS
+command-title-quotes-an-argument-with-spaces PASS
+idle-title-follows-the-command PASS
+idle-title-precedes-prompt-command PASS
 persist-prints-the-written-file PASS
 interactive-menu-leaves-a-wide-prompt-row PASS
 interactive-menu-keeps-a-prompt-ending-in-a-newline PASS

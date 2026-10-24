@@ -24,7 +24,10 @@
 # markers do. A job stopped by Ctrl-Z
 # reports on its own row below the echoed ^Z, and Ctrl-C on a job that fg
 # resumed ends its row before the next prompt. A background job that a signal
-# ended reports the signal description at the next prompt.
+# ended reports the signal description at the next prompt. A command title
+# drops control bytes and quotes an argument with spaces, and after the command
+# the idle title shows the user and the working directory before
+# PROMPT_COMMAND runs.
 # koshconf set --persist shows the file it wrote at an interactive prompt. An
 # edited buffer of several lines waits for a second Enter to run and a second
 # Up to leave it for history. The
@@ -34,6 +37,8 @@
 
 import fcntl
 import os
+import pwd
+import re
 import shutil
 import struct
 import sys
@@ -51,6 +56,7 @@ BACKSPACE = b"\x7f"
 CTRL_C = b"\x03"
 CTRL_Z = b"\x1a"
 SLEEP_TITLE = b"]0;sleep 30\x07"
+TITLE_PATTERN = re.compile(rb"\x1b\]0;([^\x07]*)\x07")
 BULLET = "•"
 SHORT_PROMPT = "# " if os.geteuid() == 0 else "$ "
 CONTROL_DIRECTORY = b"d\x07\x1b[31mRED\x1b]2;PWNED\x07z"
@@ -273,6 +279,11 @@ def has_no_partial_line_marker(screen):
     return not any("\\n" in line for line in screen.get_lines())
 
 
+def get_titles(session, mark):
+    return [match.group(1).decode("utf-8", "replace")
+            for match in TITLE_PATTERN.finditer(bytes(session.raw[mark:]))]
+
+
 def wait_for_terminal_job(session):
     for _ in range(500):
         attributes = termios.tcgetattr(session.fd)
@@ -422,6 +433,30 @@ def run_job_notice_checks(binary, directory, report):
                                and is_prompt_line(BULLET)(screen))
         report.record("signaled-job-notice-shows-the-signal", session,
                       is_noticed)
+
+        mark = len(session.raw)
+        session.send(b"PROMPT_COMMAND=\"printf '<p%s>' c\"\r")
+        session.wait_until(lambda screen: b"<pc>" in session.raw[mark:])
+        mark = len(session.raw)
+        session.send(b": $'a\\001\\302\\200\\033[31mb' 'x y'\r")
+        session.wait_until(lambda screen: b"<pc>" in session.raw[mark:])
+        titles = get_titles(session, mark)
+        command_title = titles[0] if titles else ""
+        report.record("command-title-drops-control-bytes", session,
+                      lambda screen: command_title.startswith(": 'ab' "))
+        report.record("command-title-quotes-an-argument-with-spaces", session,
+                      lambda screen: command_title.endswith(" 'x y'"))
+        idle_title = "%s @ %s" % (pwd.getpwuid(os.getuid()).pw_name,
+                                  os.path.realpath(directory))
+        report.record("idle-title-follows-the-command", session,
+                      lambda screen: titles[1:2] == [idle_title])
+        idle_sequence = b"\x1b]0;" + idle_title.encode() + b"\x07"
+        raw_since = bytes(session.raw[mark:])
+        report.record("idle-title-precedes-prompt-command", session,
+                      lambda screen: 0 <= raw_since.find(idle_sequence)
+                      < raw_since.find(b"<pc>"))
+        session.send(b"unset PROMPT_COMMAND\r")
+        session.wait_until(is_prompt_line(BULLET))
 
         mark = len(session.raw)
         session.send(b"koshconf set mood kosh --persist\r")

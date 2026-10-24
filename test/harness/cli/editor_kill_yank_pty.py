@@ -349,7 +349,7 @@ def run_extended_key_checks(session, report, directory):
     report.record("kitty-ctrl-x-shows-what-it-waits-for", session,
                   chord_hint.is_shown)
     session.send(KITTY_CTRL_U)
-    session.wait_until(is_line("echo ab"))
+    report.record("kitty-ctrl-x-ctrl-u-undoes", session, is_line("echo ab"))
     session.send(KITTY_CTRL_C)
     session.wait_until(is_line(""))
 
@@ -425,7 +425,8 @@ def run_vi_ex_checks(session, report):
     session.send(b":")
     session.wait_until(has_minibuffer(":"))
     session.send(b"s/foo/bar/g\r")
-    session.wait_until(is_line("echo bar bar"))
+    report.record("vi-ex-substitute-replaces-every-match", session,
+                  is_line("echo bar bar"))
     session.send(b":")
     session.wait_until(has_minibuffer(":"))
     session.send(b"u\r")

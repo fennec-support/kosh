@@ -134,6 +134,9 @@ bracket-caret-home-end-keeps-line PASS
 bracket-caret-line-runs PASS
 auto-pair-off-by-default PASS
 auto-pair-inserts-closer PASS
+auto-pair-steps-over-closer PASS
+auto-pair-backspace-deletes-pair PASS
+auto-pair-quote-after-word-stays-single PASS
 auto-pair-single-quoted-text-stays-plain PASS
 auto-pair-double-quoted-text-stays-plain PASS
 auto-pair-substitution-in-paired-quote PASS

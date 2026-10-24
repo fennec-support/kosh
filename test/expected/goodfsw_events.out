@@ -1,3 +1,6 @@
 status=124
 == the file created inside the replaced directory is reported:
 1
+one-fs-status=0
+== -x reports a file created on the same filesystem:
+1
