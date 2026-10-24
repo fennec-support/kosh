@@ -119,6 +119,9 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 
 #define TL_NO_SUSPEND
 #define TL_CTRL_Z_UNDO
+/* only the interactive loop reads lines, so the large editor buffers stay
+   out of the thread-local block that every process and worker clears. */
+#define TL_SHARED_EDITOR_BUFFERS
 #if defined _WIN32
 #define TL_REGEX_HEADER "../../vendor/regex/regex.h"
 #endif
