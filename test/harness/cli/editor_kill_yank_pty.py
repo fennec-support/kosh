@@ -42,7 +42,7 @@
 # The completion menu in slurp covers the rows under the caret and gives them
 # back when it closes, and in a file larger than 64 KiB Tab opens it and
 # Ctrl-G puts the line back. Ctrl-I and Ctrl-K Ctrl-I in vi normal mode show
-# the hint of the word under the caret. M-x get-option in slurp on a text file
+# the hint of the word under the caret, also on the command word. M-x get-option in slurp on a text file
 # shows the option,
 # and M-x format-buffer leaves the text file as it is, also with tab completion
 # off. Ctrl-R and Ctrl-S find text backward and forward, Alt-< and Ctrl-End
@@ -1606,6 +1606,11 @@ def run_vi_hover_checks(binary, directory, command_directory, report):
         session.send(b"$\x0b\t")
         report.record("slurp-vi-ctrl-k-ctrl-i-shows-the-hint", session,
                       has_text("synopsis"))
+        session.send(b"0")
+        session.wait_until(lambda screen: not has_text("synopsis")(screen))
+        session.send(b"\t")
+        report.record("slurp-vi-ctrl-i-on-the-command-word-shows-the-hint",
+                      session, has_text("synopsis"))
         session.send(b":q\r")
         session.wait_until(is_line(""))
     finally:

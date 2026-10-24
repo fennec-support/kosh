@@ -186,6 +186,7 @@ slurp-long-file-tab-opens-the-menu PASS
 slurp-long-file-ctrl-g-restores-the-line PASS
 slurp-vi-ctrl-i-shows-the-hint PASS
 slurp-vi-ctrl-k-ctrl-i-shows-the-hint PASS
+slurp-vi-ctrl-i-on-the-command-word-shows-the-hint PASS
 abort-at-the-prompt-restores-the-terminal PASS
 segfault-at-the-prompt-restores-the-terminal PASS
 status=0
