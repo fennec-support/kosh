@@ -129,7 +129,9 @@ internal::find_token_bounds(StringView line, usize cursor) wontthrow
     let const c = line[i];
 
     /* a backslash before a line feed continues the line between words. */
-    if (c == '\\' && i + 1 < line.length && line[i + 1] == '\n') {
+    if (c == '\\' && i + 1 < cursor && i + 1 < line.length &&
+        line[i + 1] == '\n')
+    {
       i += 2;
       start = i;
       continue;
