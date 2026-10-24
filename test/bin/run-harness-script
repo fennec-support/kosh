@@ -17,6 +17,7 @@ OUTPUT="$TEST_TEMP_DIRECTORY/$TEST_NAME.out"
 mkdir -p "$TEST_TEMP_DIRECTORY"
 "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
   "$TEST_SHELL" "$TEST_FILE" >"$OUTPUT" 2>&1
+TEST_STATUS=$?
 
 if diff "${DIFF_OPTIONS[@]}" "expected/$TEST_NAME.out" "$OUTPUT" >/dev/null 2>&1
 then
@@ -25,5 +26,10 @@ then
 fi
 
 diff "${DIFF_OPTIONS[@]}" "expected/$TEST_NAME.out" "$OUTPUT" >&2 || true
+if [ "$TEST_STATUS" -eq 124 ] || [ "$TEST_STATUS" -eq 137 ]
+then
+  printf 'note: The test was stopped after its %s second timeout.\n' \
+    "${TEST_TIMEOUT_SECONDS:-60}" >&2
+fi
 rm -f "$OUTPUT"
 exit 1
