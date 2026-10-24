@@ -243,15 +243,6 @@ parse_seq_format(StringView text, seq_format_layout &layout) throws
   return seq_format_error::None;
 }
 
-static fn
-append_seq_value(String     &output,
-                 const char *format,
-                 long double value,
-                 Allocator   allocator) throws -> void
-{
-  utils::append_formatted(output, format, value, allocator);
-}
-
 /* memory: output grows to about 64 KiB from the scratch arena, which is reset
            before the next script run.
    time:   O(V) for V values from first to last, each formatted in O(digits).
@@ -577,13 +568,13 @@ Seq::execute(const ExecContext               &ec,
   for (long double index = 1;; index++) {
     let const previous_value = value;
 
-    append_seq_value(output, format, value, allocator);
+    utils::append_formatted(output, format, value, allocator);
     value = first.value + index * increment.value;
     if (do_is_past_last(value)) {
       /* a value past last that prints as last, unlike the previous value,
          is printed, so that rounding does not drop the final value. */
       current_text.clear();
-      append_seq_value(current_text, format, value, allocator);
+      utils::append_formatted(current_text, format, value, allocator);
 
       let const trimmed = String{allocator, do_trim(current_text)};
       char     *end     = nullptr;
@@ -594,7 +585,7 @@ Seq::execute(const ExecContext               &ec,
       }
 
       previous_text.clear();
-      append_seq_value(previous_text, format, previous_value, allocator);
+      utils::append_formatted(previous_text, format, previous_value, allocator);
       if (do_trim(previous_text) == do_trim(current_text)) break;
 
       output += separator;
