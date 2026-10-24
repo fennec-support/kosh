@@ -109,20 +109,63 @@ struct sort_key
   bool           has_end{false};
   bool           has_ordering{false};
   sort_modifiers modifiers{};
+  /* the modifiers a comparison applies, resolved once against the global
+     options. */
+  sort_modifiers effective{};
 };
 
+/* prefix holds the first four characters that the first comparison orders,
+   in big-endian order and padded with zero bytes, when that comparison is a
+   text comparison, or get_sort_number_prefix() of a -n first key. Two
+   different prefixes decide the comparison without reading the lines. The
+   entry stays 24 bytes, so the sort moves no more data. */
 struct sort_entry
 {
   StringView line;
-  usize      index;
+  u32        index;
+  u32        prefix;
 };
 
+/* compares two lines byte by byte, as StringView ordering does. */
+pure static fn
+compare_sort_lines(const sort_entry &left, const sort_entry &right) wontthrow
+    -> int
+{
+  if (left.prefix != right.prefix) return left.prefix < right.prefix ? -1 : 1;
+  if (left.line == right.line) return 0;
+
+  return left.line < right.line ? -1 : 1;
+}
+
+/* a -n key reduced to its sign, its integer digits without leading zeros, and
+   its fraction digits without trailing zeros. */
+struct sort_number
+{
+  StringView integer;
+  StringView fraction;
+  bool       is_negative{false};
+};
+
+/* key_texts holds key_text_count extracted texts per line, at entry.index *
+   key_text_count, so comparisons do not rescan the fields. It holds one text
+   per key, or the line without its leading blanks when there are no keys and
+   blanks are skipped or -n applies. key_text_count is 0 when lines compare
+   whole. key_numbers parallels key_texts with the parsed -n value of each
+   numeric text when has_key_numbers is true. */
 struct sort_settings
 {
   ArrayList<sort_key> keys;
   sort_modifiers      global;
   bool                has_separator{false};
   char                separator{'\0'};
+  usize               key_text_count{0};
+  bool                has_key_numbers{false};
+  bool                is_plain_whole_line{false};
+  /* the modifiers of the first comparison when it compares text or -n
+     numbers, or null. */
+  const sort_modifiers  *prefix_modifiers{nullptr};
+  ArrayList<StringView>  key_texts{heap_allocator()};
+  ArrayList<sort_number> key_numbers{heap_allocator()};
 };
 
 pure static fn
@@ -374,88 +417,110 @@ extract_sort_key(StringView            line,
 }
 
 pure static fn
-compare_sort_numbers(StringView left, StringView right) wontthrow -> int
+parse_sort_number(StringView text) wontthrow -> sort_number
 {
-  struct parsed_number
-  {
-    bool  is_negative;
-    usize integer_start;
-    usize integer_end;
-    usize fraction_start;
-    usize fraction_end;
-  };
+  let  position    = skip_sort_blanks(text, 0);
+  bool is_negative = false;
 
-  let const do_parse = [](StringView text) -> parsed_number {
-    let position = skip_sort_blanks(text, 0);
+  if (position < text.length && text[position] == '-') {
+    is_negative = true;
+    position++;
+  }
 
-    parsed_number number{};
+  usize integer_start = position;
 
-    if (position < text.length && text[position] == '-') {
-      number.is_negative = true;
-      position++;
+  position = skip_sort_digits(text, position);
+
+  let const integer_end = position;
+
+  while (integer_start < integer_end) {
+    if (text[integer_start] != '0') break;
+    integer_start++;
+  }
+
+  usize fraction_start = position;
+  usize fraction_end   = position;
+
+  if (position < text.length && text[position] == '.') {
+    fraction_start = position + 1;
+    fraction_end   = skip_sort_digits(text, position + 1);
+
+    while (fraction_end > fraction_start) {
+      if (text[fraction_end - 1] != '0') break;
+      fraction_end--;
     }
+  }
 
-    number.integer_start = position;
-    position             = skip_sort_digits(text, position);
-    number.integer_end   = position;
+  let const has_digits =
+      integer_start != integer_end || fraction_start != fraction_end;
 
-    while (number.integer_start < number.integer_end) {
-      if (text[number.integer_start] != '0') break;
-      number.integer_start++;
-    }
+  return {
+      text.substring_of_length(integer_start, integer_end - integer_start),
+      text.substring_of_length(fraction_start, fraction_end - fraction_start),
+      is_negative && has_digits};
+}
 
-    number.fraction_start = position;
-    number.fraction_end   = position;
-    if (position < text.length && text[position] == '.') {
-      number.fraction_start = position + 1;
-      number.fraction_end   = skip_sort_digits(text, position + 1);
-
-      while (number.fraction_end > number.fraction_start) {
-        if (text[number.fraction_end - 1] != '0') break;
-        number.fraction_end--;
-      }
-    }
-
-    let const has_integer_digits = number.integer_start != number.integer_end;
-    let const has_fraction_digits =
-        number.fraction_start != number.fraction_end;
-
-    if (!has_integer_digits && !has_fraction_digits) {
-      number.is_negative = false;
-    }
-
-    return number;
-  };
-
-  let const left_number  = do_parse(left);
-  let const right_number = do_parse(right);
-
-  if (left_number.is_negative != right_number.is_negative)
-    return left_number.is_negative ? -1 : 1;
-
-  let const left_integer = left.substring_of_length(
-      left_number.integer_start,
-      left_number.integer_end - left_number.integer_start);
-  let const right_integer = right.substring_of_length(
-      right_number.integer_start,
-      right_number.integer_end - right_number.integer_start);
-  let const left_fraction = left.substring_of_length(
-      left_number.fraction_start,
-      left_number.fraction_end - left_number.fraction_start);
-  let const right_fraction = right.substring_of_length(
-      right_number.fraction_start,
-      right_number.fraction_end - right_number.fraction_start);
+pure static fn
+compare_parsed_sort_numbers(const sort_number &left,
+                            const sort_number &right) wontthrow -> int
+{
+  if (left.is_negative != right.is_negative) return left.is_negative ? -1 : 1;
 
   int result = 0;
 
-  if (left_integer.length != right_integer.length)
-    result = left_integer.length < right_integer.length ? -1 : 1;
-  else if (left_integer != right_integer)
-    result = left_integer < right_integer ? -1 : 1;
-  else if (left_fraction != right_fraction)
-    result = left_fraction < right_fraction ? -1 : 1;
+  if (left.integer.length != right.integer.length)
+    result = left.integer.length < right.integer.length ? -1 : 1;
+  else if (left.integer != right.integer)
+    result = left.integer < right.integer ? -1 : 1;
+  else if (left.fraction != right.fraction)
+    result = left.fraction < right.fraction ? -1 : 1;
 
-  return left_number.is_negative ? -result : result;
+  return left.is_negative ? -result : result;
+}
+
+pure static fn
+compare_sort_numbers(StringView left, StringView right) wontthrow -> int
+{
+  return compare_parsed_sort_numbers(parse_sort_number(left),
+                                     parse_sort_number(right));
+}
+
+/* orders numbers as compare_parsed_sort_numbers() does whenever two prefixes
+   differ. bit 31 is set for a number that is not negative, bits 24 to 30
+   hold the integer digit count, and three bytes hold the first digits of the
+   integer and then the fraction as digit value plus one, with zero after the
+   last digit. a negative number inverts the low 31 bits, so a larger
+   magnitude orders first. an integer of 127 digits or more keeps only its
+   count, so such numbers tie and the full comparison decides.
+   e.g. 42 -> 0x82050300, 4.2 -> 0x81050300, -42 -> 0x7dfafcff */
+pure static fn
+get_sort_number_prefix(const sort_number &number) wontthrow -> u32
+{
+  static constexpr usize MAX_COUNTED_DIGITS = 127;
+
+  let const integer_digit_count = number.integer.length;
+  u32       magnitude           = 0;
+
+  if (integer_digit_count >= MAX_COUNTED_DIGITS) {
+    magnitude = static_cast<u32>(MAX_COUNTED_DIGITS) << 24;
+  } else {
+    magnitude = static_cast<u32>(integer_digit_count) << 24;
+
+    for (usize slot = 0; slot < 3; slot++) {
+      let const fraction_slot = slot - integer_digit_count;
+      let const digit = slot < integer_digit_count ? number.integer[slot]
+                        : fraction_slot < number.fraction.length
+                            ? number.fraction[fraction_slot]
+                            : '\0';
+
+      if (digit == '\0') break;
+
+      magnitude |= static_cast<u32>(digit - '0' + 1) << (16 - 8 * slot);
+    }
+  }
+
+  return number.is_negative ? ~magnitude & 0x7fffffffu
+                            : 0x80000000u | magnitude;
 }
 
 /* e.g. "1.5K" has unit order 1, "2M" has 2, "0K" and "12" have 0, and "-3G"
@@ -793,6 +858,25 @@ next_sort_character(StringView            text,
 }
 
 static fn
+get_sort_text_prefix(StringView text, const sort_modifiers &modifiers) wontthrow
+    -> u32
+{
+  u32   prefix   = 0;
+  usize position = 0;
+
+  for (u32 shift = 24;; shift -= 8) {
+    let const ch = next_sort_character(text, position, modifiers);
+
+    if (ch < 0) break;
+
+    prefix |= static_cast<u32>(ch) << shift;
+    if (shift == 0) break;
+  }
+
+  return prefix;
+}
+
+static fn
 compare_sort_text(StringView            left,
                   StringView            right,
                   const sort_modifiers &modifiers) throws -> int
@@ -879,29 +963,35 @@ compare_sort_keys(const sort_entry    &left,
                   const sort_entry    &right,
                   const sort_settings &settings) throws -> int
 {
-  if (settings.keys.is_empty()) {
-    let const do_trim = [&](StringView line) -> StringView {
-      return settings.global.is_start_blank_skipping
-                 ? line.substring(skip_sort_blanks(line, 0))
-                 : line;
-    };
+  let const count = settings.key_text_count;
 
-    return compare_sort_text(do_trim(left.line), do_trim(right.line),
-                             settings.global);
-  }
+  if (count == 0)
+    return compare_sort_text(left.line, right.line, settings.global);
 
-  for (let const &key : settings.keys) {
-    let const &modifiers = key.has_ordering ? key.modifiers : settings.global;
-    sort_modifiers effective = modifiers;
+  let const left_base  = left.index * count;
+  let const right_base = right.index * count;
 
-    effective.is_start_blank_skipping = key.modifiers.is_start_blank_skipping ||
-                                        settings.global.is_start_blank_skipping;
-    effective.is_end_blank_skipping = key.modifiers.is_end_blank_skipping ||
-                                      settings.global.is_end_blank_skipping;
+  let const do_compare =
+      [&](usize                 key_index,
+          const sort_modifiers &modifiers) throws -> int {
+    if (settings.has_key_numbers && modifiers.is_numeric) {
+      let const result = compare_parsed_sort_numbers(
+          settings.key_numbers[left_base + key_index],
+          settings.key_numbers[right_base + key_index]);
 
-    let const result = compare_sort_text(
-        extract_sort_key(left.line, key, settings, effective),
-        extract_sort_key(right.line, key, settings, effective), effective);
+      return modifiers.is_reversed ? -result : result;
+    }
+
+    return compare_sort_text(settings.key_texts[left_base + key_index],
+                             settings.key_texts[right_base + key_index],
+                             modifiers);
+  };
+
+  if (settings.keys.is_empty()) return do_compare(0, settings.global);
+
+  for (usize key_index = 0; key_index < count; key_index++) {
+    let const result =
+        do_compare(key_index, settings.keys[key_index].effective);
 
     if (result != 0) return result;
   }
@@ -1017,6 +1107,67 @@ Sort::execute(const ExecContext               &ec,
     return 2;
   }
 
+  for (let &key : settings.keys) {
+    key.effective = key.has_ordering ? key.modifiers : settings.global;
+    key.effective.is_start_blank_skipping =
+        key.modifiers.is_start_blank_skipping ||
+        settings.global.is_start_blank_skipping;
+    key.effective.is_end_blank_skipping = key.modifiers.is_end_blank_skipping ||
+                                          settings.global.is_end_blank_skipping;
+  }
+
+  settings.has_key_numbers =
+      settings.keys.is_empty() ? settings.global.is_numeric : false;
+  for (let const &key : settings.keys)
+    settings.has_key_numbers |= key.effective.is_numeric;
+
+  let const &global = settings.global;
+  settings.is_plain_whole_line =
+      settings.keys.is_empty() && !global.is_start_blank_skipping &&
+      !global.is_dictionary && !global.is_folding &&
+      !global.is_printable_only && !global.is_numeric &&
+      !global.is_general_numeric && !global.is_human_numeric &&
+      !global.is_month && !global.is_version;
+
+  let const &first_modifiers =
+      settings.keys.is_empty() ? settings.global : settings.keys[0].effective;
+  let const is_first_text_comparison =
+      !first_modifiers.is_numeric && !first_modifiers.is_general_numeric &&
+      !first_modifiers.is_human_numeric && !first_modifiers.is_month &&
+      !first_modifiers.is_version;
+
+  if (is_first_text_comparison || first_modifiers.is_numeric)
+    settings.prefix_modifiers = &first_modifiers;
+
+  settings.key_text_count =
+      !settings.keys.is_empty()
+          ? settings.keys.count()
+          : static_cast<usize>(settings.global.is_start_blank_skipping ||
+                               settings.global.is_numeric);
+
+  let const do_store_key_text = [&settings](StringView text,
+                                            bool       is_numeric) throws {
+    settings.key_texts.push(text);
+    if (settings.has_key_numbers) {
+      settings.key_numbers.push(is_numeric ? parse_sort_number(text)
+                                           : sort_number{});
+    }
+  };
+
+  let const do_store_key_texts = [&](StringView line) throws {
+    if (settings.keys.is_empty()) {
+      do_store_key_text(line.substring(skip_sort_blanks(line, 0)),
+                        settings.global.is_numeric);
+
+      return;
+    }
+
+    for (let const &key : settings.keys) {
+      do_store_key_text(extract_sort_key(line, key, settings, key.effective),
+                        key.effective.is_numeric);
+    }
+  };
+
   let const delimiter = FLAG_SORT_ZERO_TERMINATED.is_enabled() ? '\0' : '\n';
 
   let const is_check =
@@ -1062,6 +1213,9 @@ Sort::execute(const ExecContext               &ec,
   let source_starts   = ArrayList<usize>{cxt.scratch_allocator()};
 
   collected_lines.reserve(line_count);
+  settings.key_texts.reserve(line_count * settings.key_text_count);
+  if (settings.has_key_numbers)
+    settings.key_numbers.reserve(line_count * settings.key_text_count);
 
   for (usize source_index = 0; source_index < sources.count(); source_index++) {
     let &source_result = source_results[source_index];
@@ -1079,8 +1233,26 @@ Sort::execute(const ExecContext               &ec,
     usize     position = 0;
 
     while (position < content.length) {
-      collected_lines.push(sort_entry{content.next_line(position, delimiter),
-                                      collected_lines.count()});
+      let const line = content.next_line(position, delimiter);
+
+      let const index = collected_lines.count();
+
+      if (settings.key_text_count != 0) do_store_key_texts(line);
+
+      let const first_index = index * settings.key_text_count;
+      let const first_text =
+          settings.key_text_count != 0 ? settings.key_texts[first_index] : line;
+      u32 prefix = 0;
+
+      if (settings.prefix_modifiers == nullptr) {
+        prefix = 0;
+      } else if (settings.prefix_modifiers->is_numeric) {
+        prefix = get_sort_number_prefix(settings.key_numbers[first_index]);
+      } else {
+        prefix = get_sort_text_prefix(first_text, *settings.prefix_modifiers);
+      }
+
+      collected_lines.push(sort_entry{line, static_cast<u32>(index), prefix});
     }
   }
 
@@ -1149,6 +1321,31 @@ Sort::execute(const ExecContext               &ec,
     }
 
     collected_lines = steal(merged);
+  } else if (settings.is_plain_whole_line) {
+    /* equal lines keep their input order, as the last resort leaves them. */
+    let const is_reversed = settings.global.is_reversed;
+
+    collected_lines.sort(
+        [is_reversed](const sort_entry &left, const sort_entry &right) {
+          let const result = compare_sort_lines(left, right);
+
+          if (result != 0) return is_reversed ? result > 0 : result < 0;
+
+          return left.index < right.index;
+        });
+  } else if (settings.prefix_modifiers != nullptr) {
+    /* two different prefixes decide the first key, and so the whole
+       comparison. */
+    let const is_reversed = settings.prefix_modifiers->is_reversed;
+
+    collected_lines.sort([&](const sort_entry &left, const sort_entry &right) {
+      if (left.prefix != right.prefix)
+        return is_reversed ? left.prefix > right.prefix
+                           : left.prefix < right.prefix;
+
+      return compare_sort_entries(left, right, settings,
+                                  is_last_resort_enabled) < 0;
+    });
   } else {
     collected_lines.sort([&](const sort_entry &left, const sort_entry &right) {
       return compare_sort_entries(left, right, settings,
