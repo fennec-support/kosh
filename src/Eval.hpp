@@ -6252,6 +6252,13 @@ protected:
 
   fn
   apply_parameter_transform(StringView name, char op) throws -> String;
+  /* the @A transform of name[subscript]: a declare command with the
+     attributes of the array, and the element value when it is set. */
+  fn
+  describe_array_element(StringView            name,
+                         StringView            subscript,
+                         const SourceLocation *source_location) throws
+      -> String;
   fn
   get_declaration_fields(StringView name) throws -> ArrayList<String>;
   fn

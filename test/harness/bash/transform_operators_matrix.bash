@@ -4,7 +4,7 @@
 # in each word context of a script, checked against bash. The values cover
 # unset and empty words, spaces, quotes, escapes, newlines, and control
 # bytes. The escape values avoid the prompt time escapes, whose output
-# changes every second. The bare array is a target only for @K and @k.
+# changes every second. A bare array name stands for its element 0.
 export LC_ALL=C
 cd "$(mktemp -d)" || exit 1
 error_file=$PWD/.error
@@ -97,7 +97,6 @@ for values in unset empty one_empty spaces quotes escapes newline control \
   echo "== $values"
   for operator in "${operators[@]}"; do
     for target in "${targets[@]}"; do
-      [[ $target == arr && $operator != [Kk] ]] && continue
       expression="\${$target@$operator}"
       for context in "${!contexts[@]}"; do
         run_case "${contexts[context]//@E@/$expression}"
@@ -112,7 +111,6 @@ for values in unset empty one_empty; do
   echo "== $extra $values"
   for operator in Q A K a E; do
     for target in "${targets[@]}"; do
-      [[ $target == arr && $operator != K ]] && continue
       expression="\${$target@$operator}"
       for context in 0 1 2; do
         run_case "( set -u; ${contexts[context]//@E@/$expression} )"

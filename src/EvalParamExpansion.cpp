@@ -2274,23 +2274,8 @@ EvalContext::ParameterExpander::expand_element_transform(
   }
 
   if (op == 'A') {
-    let out = String{m_context.scratch_allocator(),
-                     m_context.is_associative_array(m_name) ? "declare -A "
-                                                            : "declare -a "};
-
-    out.append(m_name);
-    if (is_set) {
-      out += '=';
-
-      let const value = m_context.apply_array_subscript(m_name, subscript,
-                                                        subscript_location);
-
-      utils::append_shell_quoted(out, value.view(),
-                                 m_context.get_glob_charset_for(value) ==
-                                     glob_charset::Utf8);
-    }
-
-    return out;
+    return m_context.describe_array_element(m_name, subscript,
+                                            subscript_location);
   }
 
   /* at this point: op is neither 'a' nor 'A', and is_set tells whether
@@ -4004,9 +3989,42 @@ EvalContext::pattern_replace_value(
 }
 
 fn
+EvalContext::describe_array_element(
+    StringView            name,
+    StringView            subscript,
+    const SourceLocation *source_location) throws -> String
+{
+  let out = String{scratch_allocator(), "declare -"};
+
+  out.append(apply_parameter_transform_to_value(StringView{}, 'a', name));
+  out += ' ';
+  out.append(name);
+  if (array_element_is_set(name, subscript)) {
+    let const value = apply_array_subscript(name, subscript, source_location);
+
+    out += '=';
+    utils::append_shell_quoted(
+        out, value.view(), get_glob_charset_for(value) == glob_charset::Utf8);
+  }
+
+  return out;
+}
+
+fn
 EvalContext::apply_parameter_transform(StringView name, char op) throws
     -> String
 {
+  /* a bare array name stands for its element 0. */
+  if (op == 'A' && (variable_store().indexed_arrays().find(name).has_value() ||
+                    variable_store().sparse_arrays().has(name) ||
+                    is_associative_array(name)))
+  {
+    if (!array_element_is_set(name, "0") && runtime_state().error_unset())
+      report_unset_reference(name);
+
+    return describe_array_element(name, "0", nullptr);
+  }
+
   let const value = get_variable_value_checked(name);
 
   if (!value.has_value()) {
@@ -4017,6 +4035,7 @@ EvalContext::apply_parameter_transform(StringView name, char op) throws
     let const base_name = is_reference ? resolve_nameref_base_for_write(name)
                                        : String{scratch_allocator(), name};
     let const has_no_scalar_value =
+        variable_store().indexed_arrays().find(base_name.view()).has_value() ||
         variable_store().sparse_arrays().has(base_name.view()) ||
         is_associative_array(base_name.view());
 
@@ -4155,7 +4174,11 @@ EvalContext::apply_parameter_transform_to_value(StringView text,
 
     if (is_associative_array(attribute_name)) out.push('A');
     if (is_integer_variable(attribute_name)) out.push('i');
+    if (variable_store().attributes().is_lowercase(attribute_name))
+      out.push('l');
     if (is_readonly(attribute_name)) out.push('r');
+    if (variable_store().attributes().is_uppercase(attribute_name))
+      out.push('u');
     if (is_exported(attribute_name)) out.push('x');
 
     return out;
