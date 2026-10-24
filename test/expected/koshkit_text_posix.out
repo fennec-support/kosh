@@ -386,6 +386,7 @@ status=0
 0
 status=1
 --- grep -f emptypats -c a
+0
 status=1
 --- grep -f emptypats -vc a
 6

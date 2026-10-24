@@ -2212,11 +2212,7 @@ Grep::execute(const ExecContext               &ec,
     do_add_pattern_list(list);
   }
 
-  if (pattern_spans.is_empty() && !options.should_invert) {
-    return 1;
-  }
-
-  let search                = GrepSearch{ec,
+  let search               = GrepSearch{ec,
                           cxt,
                           operand_locations,
                           options,

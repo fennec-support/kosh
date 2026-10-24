@@ -1210,6 +1210,7 @@ status=1
    a   b  \t  \t   c  \n
    a   b  \t  \t   c  \n
 --- grep with an empty pattern file ---
+0
 status=1
 2
 status=0
