@@ -268,8 +268,15 @@ struct conditional_evaluator
       escaped_pattern += pattern[i];
     }
 
+    /* a multibyte subject or pattern in a UTF-8 locale matches by
+       character, so . and bracket expressions take a whole code point. */
+    let const is_utf8 =
+        cxt.get_glob_charset_for(value) == glob_charset::Utf8 ||
+        cxt.get_glob_charset_for(escaped_pattern.view()) == glob_charset::Utf8;
+    let const scope = os::RegexUtf8Scope{is_utf8};
+
     os::compiled_regex *compiled =
-        cxt.cached_compiled_regex(escaped_pattern.view());
+        cxt.cached_compiled_regex(escaped_pattern.view(), is_utf8);
     let const match = os::execute_regex(
         *compiled, os::regex_execution_options{value, cxt.scratch_allocator()});
 
@@ -727,15 +734,17 @@ is_conditional_binary_operator(StringView text) wontthrow -> bool
 static constexpr usize REGEX_CACHE_CAP = 128;
 
 fn
-EvalContext::cached_compiled_regex(StringView pattern) throws
+EvalContext::cached_compiled_regex(StringView pattern,
+                                   bool       is_utf8) throws
     -> os::compiled_regex *
 {
   let const is_case_insensitive =
       is_shopt_enabled(shopt_option_id::Nocasematch);
   let key = String{scratch_allocator()};
 
-  key.reserve(pattern.length + 1);
+  key.reserve(pattern.length + 2);
   key += is_case_insensitive ? 'i' : 's';
+  key += is_utf8 ? 'u' : 'b';
   key += pattern;
 
   if (CompiledRegex *cached = expansion_store().find_cached_regex(key.view());

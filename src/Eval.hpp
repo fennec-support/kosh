@@ -5142,7 +5142,7 @@ public:
       -> bool;
 
   fn
-  cached_compiled_regex(StringView pattern) throws
+  cached_compiled_regex(StringView pattern, bool is_utf8) throws
       -> os::compiled_regex *;
 
   fn

@@ -107,6 +107,12 @@ shopt -u nocasematch
   LC_ALL=C.UTF-8
   [[ привет =~ ^пр(ив)ет$ ]]; printf 'unicode=%s\n' "${BASH_REMATCH[1]}"
   [[ 𐍈𐍈 =~ ^(𐍈)+$ ]]; printf 'unicode-scalar=%s\n' "${BASH_REMATCH[1]}"
+  [[ éa =~ ^(.)a$ ]]; printf 'unicode-dot=%s %s\n' "$?" "${BASH_REMATCH[1]}"
+  [[ é =~ ^[[:alpha:]]$ ]]; printf 'unicode-class=%s\n' "$?"
+)
+(
+  LC_ALL=C
+  [[ é =~ ^..$ ]]; printf 'byte-dot=%s\n' "$?"
 )
 
 # Bash [[ ]] file tests, checked byte-for-byte against bash. Covers -e -r -w on
