@@ -118,7 +118,8 @@ protected:
 
 #define T__BUILTIN_ENTRY(kind, name, section, should_dispatch_help)            \
   {SSK(name), Builtin::Kind::kind},
-/* every builtin under its own name, then the second names of five of them. */
+/* every builtin under its own spelling, then the second spellings of five of
+   them. */
 /* clang-format off */
 inline constexpr static_string_entry<Builtin::Kind> BUILTIN_ENTRIES[] = {
     KOSH_BUILTIN_KINDS(T__BUILTIN_ENTRY)

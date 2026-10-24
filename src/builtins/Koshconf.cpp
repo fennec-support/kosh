@@ -176,7 +176,7 @@ require_user_path(const ExecContext &ec, EvalContext &cxt) throws
     report_soft_builtin_error(
         ec, cxt,
         "The user configuration file cannot be located because the shell "
-        "runs as the superuser, which reads no user configuration file");
+        "runs as the superuser, which loads no user configuration file");
 
     return path;
   }

@@ -26,7 +26,7 @@ enum class shell_variable_fact : u8
   Exported = 1 << 3,
   BashOnly = 1 << 4,
   NotPosix = 1 << 5,
-  /* an sh script that expands it reads an undefined variable. every
+  /* an sh script that expands it finds an undefined variable. every
      BashOnly variable is also undefined there. */
   ShUndefined = 1 << 6,
 };
