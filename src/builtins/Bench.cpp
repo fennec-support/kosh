@@ -697,7 +697,7 @@ detect_outliers(const ArrayList<bench_sample> &samples,
   if (samples.count() < 2) return;
 
   let const do_median = [](ArrayList<double> &values) {
-    values.sort_by_index();
+    values.sort();
 
     let const middle = values.count() / 2;
 

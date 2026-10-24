@@ -273,7 +273,7 @@ Od::execute(const ExecContext               &ec,
   do_add_shorthand(FLAG_OD_OCTAL_WORDS, "o2");
   do_add_shorthand(FLAG_OD_SIGNED_WORDS, "d2");
   do_add_shorthand(FLAG_OD_HEX_WORDS, "x2");
-  type_requests.sort_by_index(
+  type_requests.sort(
       [](const od_type_request &left, const od_type_request &right) {
         return left.position < right.position;
       });

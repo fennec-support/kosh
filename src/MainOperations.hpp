@@ -1262,7 +1262,7 @@ format_document_source(StringView            source,
         fragment.host_start, fragment.host_end, encoded.take()});
   }
 
-  return parser_format_apply_replacements(source, steal(replacements));
+  return parser_format_apply_replacements(source, replacements);
 }
 
 /* memory: commands holds copies of the PROMPT_COMMAND elements and frees

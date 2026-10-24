@@ -190,8 +190,8 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       return left < right;
     };
 
-    posix_names.sort_by_index(do_is_name_before);
-    koshka_names.sort_by_index(do_is_name_before);
+    posix_names.sort(do_is_name_before);
+    koshka_names.sort(do_is_name_before);
 
     let const should_color = koshkit::koshkit_should_color();
 

@@ -667,7 +667,7 @@ order_tree_children(ArrayList<du_tree_node> &nodes,
           sorted order is node 2, node 1, node 3.
           child_order becomes 2, 1, 3. nodes[0] gets first_child 0 and
           child_count 2. nodes[2] gets first_child 2 and child_count 1. */
-  let const sorted = steal(keys).make_sorted_inline(
+  let const sorted = steal(keys).make_sorted(
       [](const du_tree_order_key &left, const du_tree_order_key &right) {
         if (left.parent_index != right.parent_index)
           return left.parent_index < right.parent_index;
@@ -753,7 +753,7 @@ keep_largest_tree_nodes(ArrayList<du_tree_node> &nodes,
   /* at this point: heap holds at most top_count keys, none of them roots, and
      every root node has is_kept set. */
   usize     kept_row_count = root_indices.count();
-  let const selected_keys  = steal(heap).make_sorted_inline(is_tree_key_before);
+  let const selected_keys  = steal(heap).make_sorted(is_tree_key_before);
 
   for (let const &selected : selected_keys) {
     usize added_row_count = 0;
@@ -933,9 +933,8 @@ print_tree_report(const du_tree_request &request,
                                      nodes[root_index].byte_count,
                                      nodes[root_index].path});
 
-  let const sorted_root_keys =
-      steal(root_keys).make_sorted_inline(is_tree_key_before);
-  let sorted_roots = ArrayList<usize>{allocator};
+  let const sorted_root_keys = steal(root_keys).make_sorted(is_tree_key_before);
+  let       sorted_roots     = ArrayList<usize>{allocator};
 
   for (let const &key : sorted_root_keys)
     sorted_roots.push(key.node_index);
@@ -1101,13 +1100,12 @@ Du::execute(const ExecContext               &ec,
 
   let const output_order =
       steal(collected_output_order)
-          .make_sorted_inline(
-              [](const du_sort_key &left, const du_sort_key &right) {
-                if (left.byte_count != right.byte_count)
-                  return left.byte_count > right.byte_count;
+          .make_sorted([](const du_sort_key &left, const du_sort_key &right) {
+            if (left.byte_count != right.byte_count)
+              return left.byte_count > right.byte_count;
 
-                return left.path_suffix < right.path_suffix;
-              });
+            return left.path_suffix < right.path_suffix;
+          });
 
   let const is_human       = FLAG_DU_HUMAN.is_enabled();
   let       rendered_sizes = ArrayList<String>{allocator};

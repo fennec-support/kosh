@@ -91,7 +91,11 @@ Cut::execute(const ExecContext               &ec,
   }
 
   if (FLAG_CUT_COMPLEMENT.is_enabled()) {
-    let   gaps = ArrayList<utils::text_position_range>{cxt.scratch_allocator()};
+    /* the ranges are ascending and disjoint, so the gaps arrive in order and
+       each push appends. */
+    let gaps = SortedArrayList<utils::text_position_range,
+                               order_comparator<utils::text_position_range>>{
+        cxt.scratch_allocator(), sort_order::ascending};
     usize first_unselected = 1;
 
     /* an open-ended range wraps first_unselected to 0. */
@@ -102,7 +106,7 @@ Cut::execute(const ExecContext               &ec,
     }
 
     if (first_unselected != 0) gaps.push({first_unselected, SIZE_MAX});
-    ranges = steal(gaps).make_sorted_inline(sort_order::ascending);
+    ranges = steal(gaps);
   }
 
   let const last_selected_position =

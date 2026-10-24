@@ -66,7 +66,7 @@ append_sorted_enable_lines(
     String &out, ArrayList<enable_listing_entry> &entries) throws
     -> void
 {
-  entries.sort_by_index(
+  entries.sort(
       [](const enable_listing_entry &left, const enable_listing_entry &right) {
         return left.name < right.name;
       });

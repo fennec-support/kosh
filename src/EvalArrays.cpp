@@ -120,7 +120,7 @@ collect_sparse_array_entries(const StringMap<String> &sparse,
                           });
                         });
 
-  return steal(out).make_sorted_inline(sparse_array_entry_comparator{});
+  return steal(out).make_sorted(sparse_array_entry_comparator{});
 }
 
 fn
@@ -1523,7 +1523,7 @@ EvalContext::matching_prefix_names(StringView prefix) const throws
   for (let const dynamic_name : dynamic_names)
     do_consider(dynamic_name);
 
-  return steal(names).make_sorted_inline(sort_order::ascending);
+  return steal(names).make_sorted(sort_order::ascending);
 }
 
 fn
@@ -1576,8 +1576,8 @@ EvalContext::collect_array_subscripts(StringView name) const throws
             collected_sparse_indices.push(index);
           });
 
-      let const sparse_indices = steal(collected_sparse_indices)
-                                     .make_sorted_inline(sort_order::ascending);
+      let const sparse_indices =
+          steal(collected_sparse_indices).make_sorted(sort_order::ascending);
 
       for (let const index : sparse_indices)
         out.push(String::from(index, heap_allocator()));

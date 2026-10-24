@@ -1332,8 +1332,9 @@ parse_makefile_shell_sources(StringView, Allocator allocator) throws
     -> SortedArrayList<make_shell_source_range,
                        order_comparator<make_shell_source_range>>
 {
-  return ArrayList<make_shell_source_range>{allocator}.make_sorted(
-      sort_order::ascending);
+  return SortedArrayList<make_shell_source_range,
+                         order_comparator<make_shell_source_range>>{
+      allocator, sort_order::ascending};
 }
 
 fn

@@ -160,10 +160,12 @@ parser_format_fragment_at(const parsed_format_document &document,
 fn
 parser_format_encode(const parser_format_fragment &fragment,
                      StringView replacement) throws -> Maybe<String>;
+/* replacements come in ascending start order, as the fragments of a parsed
+   document do. returns None when two overlap or one is out of order. */
 fn
 parser_format_apply_replacements(
-    StringView                           source,
-    ArrayList<parser_format_replacement> replacements) throws
+    StringView                                  source,
+    const ArrayList<parser_format_replacement> &replacements) throws
     -> Maybe<String>;
 fn
 parser_format_analysis_source(const parsed_format_document &document,

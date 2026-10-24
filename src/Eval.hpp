@@ -1150,7 +1150,7 @@ public:
       out.push(steal(definition));
     });
 
-    return steal(out).make_sorted_inline(sort_order::ascending);
+    return steal(out).make_sorted(sort_order::ascending);
   }
 
   /* memory: a HashSet in heap_allocator() with one entry per alias. the caller
@@ -3064,7 +3064,7 @@ public:
     out.reserve(m_definitions.read().count());
     for_each_name([&](StringView name) { out.push_managed(name); });
 
-    return steal(out).make_sorted_inline(sort_order::ascending);
+    return steal(out).make_sorted(sort_order::ascending);
   }
 
   fn
@@ -3104,7 +3104,7 @@ public:
       if (find_function(name).has_value()) out.push_managed(name);
     });
 
-    return steal(out).make_sorted_inline(sort_order::ascending);
+    return steal(out).make_sorted(sort_order::ascending);
   }
 
   fn

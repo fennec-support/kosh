@@ -698,7 +698,7 @@ analysis_reporter::flush(const analysis_report_site &site) throws
     }
 
     let const positions =
-        steal(collected_positions).make_sorted_inline(sort_order::ascending);
+        steal(collected_positions).make_sorted(sort_order::ascending);
 
     let *cache = eval_context->get_or_create_diagnostic_highlight_cache();
     Maybe<usize> previous_line_start;

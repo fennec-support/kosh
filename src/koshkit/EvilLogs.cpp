@@ -250,8 +250,10 @@ collect_dumps(StringView directory, Allocator allocator) throws
   let       dumps    = ArrayList<dump_entry>{allocator};
   let const children = os::list_directory_status(directory, allocator);
 
-  if (!children.has_value())
-    return steal(dumps).make_sorted(newest_named_entry_comparator{});
+  if (!children.has_value()) {
+    return SortedArrayList<dump_entry, newest_named_entry_comparator>{
+        allocator, newest_named_entry_comparator{}};
+  }
 
   dumps.reserve(children->count());
 
@@ -547,8 +549,10 @@ collect_log_entries(StringView directory, Allocator allocator) throws
   let       entries  = ArrayList<log_entry>{allocator};
   let const children = os::list_directory_status(directory, allocator);
 
-  if (!children.has_value())
-    return steal(entries).make_sorted(newest_named_entry_comparator{});
+  if (!children.has_value()) {
+    return SortedArrayList<log_entry, newest_named_entry_comparator>{
+        allocator, newest_named_entry_comparator{}};
+  }
 
   entries.reserve(children->count());
 

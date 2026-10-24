@@ -875,7 +875,7 @@ Server::publish_diagnostics(Document &document) throws -> bool
                 options, directives, {&followed_paths, &source_effects}, {},
                 {nullptr, &diagnostics, &symbol_records}, this, nullptr,
                 format_document);
-    symbol_records.variable_occurrences.sort_by_index(
+    symbol_records.variable_occurrences.sort(
         [](const variable_occurrence_record &left,
            const variable_occurrence_record &right) {
           if (left.position != right.position)
@@ -1266,7 +1266,7 @@ Server::format_document(const JsonValue *id,
 
     if (errors.is_empty())
       formatted = parser_format_apply_replacements(
-          document->normalized_source.view(), steal(replacements));
+          document->normalized_source.view(), replacements);
   }
 
   if (!formatted.has_value()) {

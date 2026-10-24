@@ -2853,17 +2853,10 @@ parser_format_encode(const parser_format_fragment &fragment,
 
 fn
 parser_format_apply_replacements(
-    StringView                           source,
-    ArrayList<parser_format_replacement> replacements) throws
+    StringView                                  source,
+    const ArrayList<parser_format_replacement> &replacements) throws
     -> Maybe<String>
 {
-  let const sorted_replacements =
-      steal(replacements)
-          .make_sorted([](const parser_format_replacement &left,
-                          const parser_format_replacement &right) {
-            return left.start_position < right.start_position;
-          });
-
   /* e.g. source = "abcdefgh", replacements = [(1, 3, "YY"), (5, 7, "X")]
        append "a" and "YY", position = 3
        append "de" and "X", position = 7
@@ -2871,7 +2864,7 @@ parser_format_apply_replacements(
   let   result   = String{heap_allocator()};
   usize position = 0;
 
-  for (let const &replacement : sorted_replacements) {
+  for (let const &replacement : replacements) {
     if (replacement.start_position < position ||
         replacement.end_position < replacement.start_position ||
         replacement.end_position > source.length)
@@ -3107,8 +3100,8 @@ parse_format_document(const parser_format_input &input) throws
     break;
   }
 
-  document.fragments.sort_by_index([](const parser_format_fragment &left,
-                                      const parser_format_fragment &right) {
+  document.fragments.sort([](const parser_format_fragment &left,
+                             const parser_format_fragment &right) {
     return left.host_start < right.host_start;
   });
 

@@ -481,7 +481,7 @@ static fn
 sort_and_deduplicate_names(ArrayList<String> names) throws
     -> SortedArrayList<String, program_name_comparator>
 {
-  let sorted_names = steal(names).make_sorted_inline(program_name_comparator{});
+  let   sorted_names = steal(names).make_sorted(program_name_comparator{});
   usize unique_count = 0;
 
   /* e.g. sorted_names = [cat, cat, ls, ls, pwd]

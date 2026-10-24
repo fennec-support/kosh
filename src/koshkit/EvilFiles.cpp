@@ -240,7 +240,7 @@ load_socket_directory(socket_directory &directory,
   }
 
   /* find_socket_description() binary searches entries by inode. */
-  directory.entries.sort_by_index(
+  directory.entries.sort(
       [](const socket_description &left, const socket_description &right) {
         return left.inode < right.inode;
       });

@@ -332,8 +332,8 @@ EvilDisk::execute(const ExecContext               &ec,
 
   if (operands.is_empty()) {
     filesystems = os::mounted_filesystems();
-    filesystems.sort_by_index([](const os::mounted_filesystem &left,
-                                 const os::mounted_filesystem &right) {
+    filesystems.sort([](const os::mounted_filesystem &left,
+                        const os::mounted_filesystem &right) {
       if (left.target != right.target) return left.target < right.target;
 
       return left.source < right.source;
