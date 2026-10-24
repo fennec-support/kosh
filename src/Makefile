@@ -327,7 +327,16 @@ endif
 ifeq ($(TARGET), Linux)
 ifeq ($(SHOULD_LINK_STATIC_LINUX), 1)
 ifneq ($(filter rel tinyrel prof cov,$(MODE)),)
+# static links use mold when it is installed and the default linker
+# otherwise. mold folds identical functions in release builds.
+ifneq ($(shell command -v mold 2>/dev/null),)
+USE_LD := -fuse-ld=mold
+ifneq ($(filter rel tinyrel,$(MODE)),)
+USE_LD += -Wl,--icf=all
+endif
+else
 USE_LD :=
+endif
 endif
 endif
 endif
