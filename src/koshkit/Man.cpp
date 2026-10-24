@@ -44,18 +44,17 @@ find_manual_page(StringView paths,
                  Allocator  allocator) throws -> Maybe<String>
 {
   /* e.g. paths = "/x:", section = "", name = "ls"
-          pass 1: path_start 0, remaining "/x:", path_length 2, directory "/x"
-          pass 2: path_start 3, remaining "", path_length 0, directory "."
+          pass 1: entry_start 0, entry "/x", directory "/x"
+          pass 2: entry_start 3, entry "", directory "."
           an empty entry searches the current directory. */
-  usize path_start = 0;
+  usize position = 0;
 
-  while (path_start <= paths.length) {
-    let const remaining = paths.substring(path_start);
-    let const path_length =
-        remaining.find_character(':').value_or(remaining.length);
-    let const directory = path_length == 0
-                              ? StringView{"."}
-                              : remaining.substring_of_length(0, path_length);
+  for (bool is_last_entry = false; !is_last_entry;) {
+    let const entry_start = position;
+    let const entry       = paths.next_line(position, ':');
+    let const directory   = entry.is_empty() ? StringView{"."} : entry;
+
+    is_last_entry = entry_start + entry.length == paths.length;
 
     for (usize candidate_section = 1; candidate_section <= 9;
          candidate_section++)
@@ -86,8 +85,6 @@ find_manual_page(StringView paths,
     /* at this point: no candidate section in directory holds a page for
        name, because each stat_path_following() call failed or the fixed
        section was the only candidate. */
-    if (path_length == remaining.length) break;
-    path_start += path_length + 1;
   }
 
   return None;
@@ -115,16 +112,15 @@ Man::execute(const ExecContext               &ec,
 
     keyword.lowercase_ascii();
 
-    let   output     = String{cxt.scratch_allocator()};
-    usize path_start = 0;
+    let   output   = String{cxt.scratch_allocator()};
+    usize position = 0;
 
-    while (path_start <= paths.length) {
-      let const remaining = paths.substring(path_start);
-      let const path_length =
-          remaining.find_character(':').value_or(remaining.length);
-      let const directory = path_length == 0
-                                ? StringView{"."}
-                                : remaining.substring_of_length(0, path_length);
+    for (bool is_last_entry = false; !is_last_entry;) {
+      let const entry_start = position;
+      let const entry       = paths.next_line(position, ':');
+      let const directory   = entry.is_empty() ? StringView{"."} : entry;
+
+      is_last_entry = entry_start + entry.length == paths.length;
 
       for (u32 section_number = 1; section_number <= 9; section_number++) {
         let manual_directory = String{cxt.scratch_allocator(), directory};
@@ -186,9 +182,6 @@ Man::execute(const ExecContext               &ec,
           output += '\n';
         }
       }
-
-      if (path_length == remaining.length) break;
-      path_start += path_length + 1;
     }
 
     ec.print_to_stdout(output);

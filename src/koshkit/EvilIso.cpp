@@ -103,8 +103,8 @@ struct namespace_relation
 };
 
 fn
-eviliso_namespace_proc_path(StringView suffix,
-                            Allocator  allocator) throws -> String
+eviliso_proc_path(StringView suffix, Allocator allocator) throws
+    -> String
 {
   let path = String{allocator, "/proc/"};
 
@@ -139,11 +139,11 @@ append_namespace_report(String                      &output,
                         ArrayList<namespace_process> processes,
                         eviliso_detail_mode          detail) throws -> void
 {
-  constexpr StringView names[]    = {"cgroup", "ipc",  "mnt",  "net",
-                                     "pid",    "time", "user", "uts"};
-  constexpr usize      NAME_COUNT = sizeof(names) / sizeof(*names);
-  let const            allocator  = processes.allocator();
-  let const namespace_path = eviliso_namespace_proc_path("self/ns", allocator);
+  constexpr StringView names[]        = {"cgroup", "ipc",  "mnt",  "net",
+                                         "pid",    "time", "user", "uts"};
+  constexpr usize      NAME_COUNT     = sizeof(names) / sizeof(*names);
+  let const            allocator      = processes.allocator();
+  let const            namespace_path = eviliso_proc_path("self/ns", allocator);
 
   if (!Path{namespace_path.view(), allocator}.is_directory()) {
     processes.clear();
@@ -162,7 +162,7 @@ append_namespace_report(String                      &output,
     self_suffix += type;
 
     let const self_target = os::read_symlink(
-        eviliso_namespace_proc_path(self_suffix.view(), allocator), allocator);
+        eviliso_proc_path(self_suffix.view(), allocator), allocator);
     let const self_failure_reason = self_target.has_value()
                                         ? String{allocator}
                                         : os::last_system_error_message();
@@ -182,8 +182,7 @@ append_namespace_report(String                      &output,
         process_suffix += "/ns/";
         process_suffix += type;
         target = os::read_symlink(
-            eviliso_namespace_proc_path(process_suffix.view(), allocator),
-            allocator);
+            eviliso_proc_path(process_suffix.view(), allocator), allocator);
         if (!target.has_value())
           failure_reason = os::last_system_error_message();
       }
@@ -371,17 +370,6 @@ struct cgroup_membership
   String controller;
   String path;
 };
-
-fn
-cgroup_proc_path(StringView suffix, Allocator allocator) throws
-    -> String
-{
-  let path = String{allocator, "/proc/"};
-
-  path += suffix;
-
-  return path;
-}
 
 fn
 container_marker_path(StringView suffix, Allocator allocator) throws
@@ -747,7 +735,7 @@ collect_process_cgroup_snapshot(
                              ? String{allocator, "self/cgroup"}
                              : String::from(process.pid, allocator) + "/cgroup";
       let const contents =
-          Path{cgroup_proc_path(suffix.view(), allocator), allocator}
+          Path{eviliso_proc_path(suffix.view(), allocator), allocator}
               .read_entire_file();
 
       if (!contents.has_value()) {
@@ -1330,10 +1318,10 @@ append_remote_report(String                                   &output,
     String name;
   };
 
-  let       process_contexts   = ArrayList<remote_process_context>{allocator};
-  let       user_contexts      = ArrayList<remote_user_context>{allocator};
-  let const self_net_namespace = os::read_symlink(
-      eviliso_namespace_proc_path("self/ns/net", allocator), allocator);
+  let       process_contexts = ArrayList<remote_process_context>{allocator};
+  let       user_contexts    = ArrayList<remote_user_context>{allocator};
+  let const self_net_namespace =
+      os::read_symlink(eviliso_proc_path("self/ns/net", allocator), allocator);
 
   let const do_get_user = [&](u32 process_id,
                               u32 owner_id) throws -> String {
@@ -1454,10 +1442,9 @@ append_remote_report(String                                   &output,
           let net_namespace_suffix = String::from(socket.process_id, allocator);
 
           net_namespace_suffix += "/ns/net";
-          if (let net_namespace =
-                  os::read_symlink(eviliso_namespace_proc_path(
-                                       net_namespace_suffix.view(), allocator),
-                                   allocator);
+          if (let net_namespace = os::read_symlink(
+                  eviliso_proc_path(net_namespace_suffix.view(), allocator),
+                  allocator);
               net_namespace.has_value())
           {
             context.net_namespace = steal(*net_namespace);
