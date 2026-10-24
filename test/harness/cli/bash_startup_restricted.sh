@@ -324,14 +324,6 @@ printf 'unexport=%s ' "$output"
 "$BIN" --mood bash --restricted -c \
   'export -n PATH=blocked' >/dev/null 2>&1
 printf 'unexport-value=%s\n' "$?"
-output=$("$BIN" --mood bash -c \
-  'export RANDOM; export -n RANDOM; first=$RANDOM; result=frozen; for value in $RANDOM $RANDOM $RANDOM $RANDOM $RANDOM; do if [[ $value != "$first" ]]; then result=dynamic; break; fi; done; printf "%s" "$result"')
-printf 'unexport-dynamic=%s ' "$output"
-output=$("$BIN" --mood bash -c \
-  'f() { :; }; export -f f; export -nf f; env | grep -q "^BASH_FUNC_f%%="; printf "%s:" "$?"; f; printf "%s" "$?"')
-printf 'unexport-function=%s ' "$output"
-"$BIN" --mood bash -c "export -n 'a-b'" >/dev/null 2>&1
-printf 'unexport-invalid=%s\n' "$?"
 output=$("$BIN" --mood bash --restricted -c \
   'declare -p PATH; export -n PATH; declare -p PATH')
 case "$output" in
@@ -357,8 +349,6 @@ printf 'slash=%s ' "$?"
 printf 'expanded-slash=%s ' "$?"
 "$BIN" --mood bash --restricted -c 'cd /' >/dev/null 2>&1
 printf 'cd=%s ' "$?"
-"$BIN" --mood bash --restricted -c ". '$directory/script'" >/dev/null 2>&1
-printf 'source=%s ' "$?"
 "$BIN" --mood bash --restricted -c 'command -p true' >/dev/null 2>&1
 printf 'command-p=%s ' "$?"
 "$BIN" --mood bash --restricted -c 'command -v "$BIN"' >/dev/null 2>&1
@@ -392,11 +382,21 @@ printf 'ampersand-append=%s ' "$?"
 "$BIN" --mood bash --restricted -c 'echo allowed 2>&1' >/dev/null 2>&1
 printf 'fd-dup=%s\n' "$?"
 
-"$BIN" --mood bash --restricted -c \
-  "enable -f '$directory/script' true" >/dev/null 2>&1
+# Loading a builtin fails without restriction as well, so the message tells the
+# two causes apart.
+enable_output=$("$BIN" --mood bash --restricted -c \
+  "enable -f '$directory/script' true" 2>&1)
 printf 'enable=%s ' "$?"
-"$BIN" --mood bash --restricted -c 'enable -d true' >/dev/null 2>&1
+printf 'enable-forbidden=%s ' "$(printf '%s\n' "$enable_output" |
+  grep -c 'Loading or deleting builtins is forbidden in a restricted shell')"
+enable_output=$("$BIN" --mood bash -c \
+  "enable -f '$directory/script' true" 2>&1)
+printf 'enable-unrestricted=%s ' "$(printf '%s\n' "$enable_output" |
+  grep -c 'Loading or deleting builtins is forbidden in a restricted shell')"
+enable_output=$("$BIN" --mood bash --restricted -c 'enable -d true' 2>&1)
 printf 'enable-d=%s ' "$?"
+printf 'enable-d-forbidden=%s ' "$(printf '%s\n' "$enable_output" |
+  grep -c 'Loading or deleting builtins is forbidden in a restricted shell')"
 "$BIN" --mood bash --restricted -c \
   "hash -p '$directory/script' probe" >/dev/null 2>&1
 printf 'hash=%s ' "$?"

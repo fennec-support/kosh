@@ -161,10 +161,15 @@ f() { native_slug_value=1; }
 echo native-slug-directive
 EOF
 native_slug_output=$(
-  "$BIN" "$temporary_directory/native-slug-directive.sh" 2>&1
+  "$BIN" -WWW "$temporary_directory/native-slug-directive.sh" 2>&1
 )
-echo "$native_slug_output"
+printf '%s\n' "$native_slug_output" | grep '^native-slug-directive$'
 echo "native-slug-warnings=$(printf '%s\n' "$native_slug_output" |
+  grep -c 'has no .local.')"
+printf '%s\n' 'f() { native_slug_value=1; }' 'echo native-slug-positive' \
+  > "$temporary_directory/native-slug-positive.sh"
+echo "native-slug-positive=$("$BIN" -WWW \
+  "$temporary_directory/native-slug-positive.sh" 2>&1 |
   grep -c 'has no .local.')"
 
 conditional_pattern_output=$(
@@ -232,9 +237,11 @@ runtime_warning_count=$(strings "$temporary_directory/typescript" |
 echo "runtime-level-two-warnings=$runtime_warning_count"
 
 echo "=== circular name reference location ==="
-"$BIN" -M bash -c 'declare -n a; a=a; echo $a' 2>&1 | grep -c '^-c:1:[0-9]*: warning: '
+"$BIN" -M bash -c 'declare -n a; a=a; echo $a' 2>&1 |
+  grep -c '^-c:1:[0-9]*: warning: The name reference .a. is circular'
 echo "=== substitution null byte location ==="
-"$BIN" -M bash -c 'echo $(printf "a\0b")' 2>&1 | grep -c '^-c:1:[0-9]*: warning: '
+"$BIN" -M bash -c 'echo $(printf "a\0b")' 2>&1 |
+  grep -c '^-c:1:[0-9]*: warning: The command substitution dropped the null bytes'
 
 echo "=== diagnostic catalog ==="
 catalog=$("$BIN" --list-diagnostics)

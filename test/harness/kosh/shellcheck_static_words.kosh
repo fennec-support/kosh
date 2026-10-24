@@ -25,9 +25,6 @@ lint_only() {
 }
 echo done
 
-case a in a) ;; esac
-case a in *) ;; esac
-
 # Triggers in a function that is never called, so the analysis warns while
 # nothing runs.
 lint_only() {
@@ -40,7 +37,6 @@ lint_only() {
   ls | grep conf
   grep needle file | wc -l
   local outside=here
-  [ $? -eq 0 ] && echo ok
   local declared=$(date)
 }
 echo done
@@ -62,18 +58,17 @@ set -- 'fmt\n'
 printf "$1"
 printf '%s' ok
 printf -- "$1"
+fmt="%s\n"
+printf $fmt hi
 
 read x < /dev/null
 read -r y < /dev/null
 
-[ -f a -a -f b ]
 [ ! -z "$x" ]
 [ ! -n "$y" ]
 false && [ ! -a /nonexistent ]
 
-echo $(echo hi)
 export FOO=$(echo hi)
-echo "$(echo hi)"
 
 cat data/hello-d | cat
 

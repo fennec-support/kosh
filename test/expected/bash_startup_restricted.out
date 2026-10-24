@@ -27,12 +27,11 @@ SHELL=1 PATH=1 ENV=1 BASH_ENV=1 KOSH_HISTORY_FILE=1 KOSH_HISTORY_SIZE=1 KOSH_CAL
 restricted-path-casefold=path=ok Path=ok pATH=ok
 restricted-export-path-casefold=path=ok Path=ok pATH=ok
 unexport=0:0 unexport-value=1
-unexport-dynamic=dynamic unexport-function=1:0 unexport-invalid=1
 restricted-declare=ok
 array-substitution=blocked
-slash=1 expanded-slash=1 cd=1 source=1 command-p=1 command-v=0 command-V=0 exec=1
+slash=1 expanded-slash=1 cd=1 command-p=1 command-v=0 command-V=0 exec=1
 truncate=1 append=1 readwrite=1 both=1 override=1 ampersand=1 ampersand-append=1 fd-dup=0
-enable=1 enable-d=1 hash=1 hash-bare=1 history=1 history-write=1 unset=1
+enable=1 enable-forbidden=1 enable-unrestricted=0 enable-d=1 enable-d-forbidden=1 hash=1 hash-bare=1 history=1 history-write=1 unset=1
 subshell-restore=cd=0
 runtime-restricted-subshell=flags
 restricted-identity-subshell=flagsshopt

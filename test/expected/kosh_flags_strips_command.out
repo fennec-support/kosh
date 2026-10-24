@@ -19,3 +19,6 @@ attached: sourced=0
 init-file: sourced=0
 == the other letters of a cluster with c survive:
 errexit-kept
+== an operating mode in KOSH_FLAGS does not replace the command:
+environment-options-filtered
+environment-filtered

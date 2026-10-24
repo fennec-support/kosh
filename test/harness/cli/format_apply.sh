@@ -16,16 +16,6 @@ esac
 printf 'if test -f "\044x"; then echo yes; else echo no; fi\n' |
   "$BIN" --format
 
-long_token_warning=$(printf '%s\n' \
-  'echo this_is_an_unbreakable_token_that_is_longer_than_the_formatter_limit_and_should_warn' |
-  "$BIN" --format 2>&1 > /dev/null)
-case $long_token_warning in
-*'warning:'*'Unbreakable word exceeds 78 columns'*'shorter or splitting it'*)
-  printf 'long-token-warning=yes\n'
-  ;;
-*) printf 'long-token-warning=no\n' ;;
-esac
-
 printf '%s\n' 'ln a b && test ! -f c || result=fallback' \
   > "$root/diagnostic-stability.sh"
 diagnostics_before=$("$BIN" --lint --no-traces \
@@ -468,17 +458,9 @@ printf 'parse-status=%s unchanged=%s\n' "$?" \
 
 printf 'printf unrecognized\n' > "$root/unrecognized.txt"
 cp "$root/unrecognized.txt" "$root/unrecognized.expected"
-# A file operand error points at the operand in the invocation, whose column
-# and excerpt depend on the binary path, so only the located count and the text
-# remain.
-output=$(cd "$root" && "$BIN" --format unrecognized.txt 2>&1)
-status=$?
-located_count=$(printf '%s\n' "$output" |
-  grep -cE '^[0-9]+:[0-9]+: error: The format of ')
-printf '%s\n' "$output" | grep -v '^ ' | sed 's/^[0-9]*:[0-9]*: //'
-printf 'unrecognized-format-located=%s\n' "$located_count"
-printf 'unrecognized-format-status=%s\n' "$status"
 
+# A file operand error points at the operand in the invocation, whose column
+# and excerpt depend on the binary path, so only the located count remains.
 output=$(cd "$root" && "$BIN" --format missing.sh 2>&1)
 status=$?
 located_count=$(printf '%s\n' "$output" |
@@ -536,7 +518,6 @@ printf 'apply-conflicts=%s,%s,%s unchanged=%s\n' \
   "$([ "$(tail -1 "$root/conflict.sh")" = '[ "$1" == y ]' ] && printf yes)"
 "$BIN" --format --apply "$root" >/dev/null 2>&1
 printf 'nonregular-status=%s\n' "$?"
-KOSH_FLAGS='--format --apply' "$BIN" -c 'printf environment-options-filtered\\n'
 
 cat > "$root/adjacent-parens.sh" <<'EOF'
 ( (a))

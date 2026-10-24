@@ -21,5 +21,7 @@ echo '== tab after a continuation:'
 "$BIN" -n -WWW "$d/tab-continuation.sh" 2>&1 | sed "s|$d|<tmp>|g"
 
 echo '== a clean continuation stays quiet:'
-"$BIN" -n -WWW "$d/clean-continuation.sh" 2>&1 | sed "s|$d|<tmp>|g"
-echo "rc=$?"
+clean_output=$("$BIN" -n -WWW "$d/clean-continuation.sh" 2>&1)
+clean_status=$?
+printf '%s' "$clean_output" | sed "s|$d|<tmp>|g"
+echo "rc=$clean_status"

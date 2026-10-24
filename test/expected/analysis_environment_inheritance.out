@@ -1,9 +1,9 @@
 plain: 0
-bash shebang: 7
-kosh shebang: 2
-operand: 7
+bash shebang: 1
+kosh shebang: 1
+operand: 1
 nested -c: warnings=3
-explicit -W: 4
+explicit -W: 0 1
 reset: 0
 unset: []
 mimicry: mimicry warnings=3

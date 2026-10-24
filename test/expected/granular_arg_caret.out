@@ -31,3 +31,23 @@ note: Pass `--ignore-exit-code` to benchmark it regardless.
 -c:1:3: error: Builtin `z`: No matching directory for 'no_such_dir_xyz'.
      1 |  z no_such_dir_xyz
        |    ^~~~~~~~~~~~~~~
+== alias points at the whole statement:
+-c:1:1: error: Builtin `alias`: The alias 'missing_name' was not found.
+     1 |  alias missing_name
+       |  ^~~~~~~~~~~~~~~~~~
+== hash points at the whole statement:
+-c:1:1: error: Builtin `hash`: The command 'missing_name' was not found.
+     1 |  hash missing_name
+       |  ^~~~~~~~~~~~~~~~~
+== command -V points at the whole statement:
+-c:1:1: error: Builtin `command`: The command 'missing_name' was not found.
+     1 |  command -V missing_name
+       |  ^~~~~~~~~~~~~~~~~~~~~~~
+== jobs points at the whole statement:
+-c:1:1: error: Builtin `jobs`: Unable to list the job '%999' because no such job exists.
+     1 |  jobs %999
+       |  ^~~~~~~~~
+== timeout points at the missing command:
+-c:1:19: error: Koshkit `timeout`: Command 'missing_name' was not found.
+     1 |  koshkit timeout 1 missing_name
+       |                    ^~~~~~~~~~~~

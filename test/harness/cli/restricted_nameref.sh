@@ -3,6 +3,8 @@ export SHELL=kept-shell
 # A restricted shell refuses every write that reaches a restricted variable
 # through a name reference, and refuses to make a restricted name a reference.
 # Each form runs in its own shell, and PATH, SHELL, and ENV keep their values.
+# The RANDOM, SECONDS, and KOSHCONF forms fail in an unrestricted shell as well,
+# and their messages show that reason.
 # MSYS turns SHELL into an absolute Windows path for a native child, so only
 # the part after the last separator is compared.
 for form in 'declare -n r=PATH; r=/tmp' 'declare -n r=PATH; r+=:/tmp' \
@@ -24,5 +26,5 @@ do
 echo \"after status=\$?\"
 [ \"\$PATH\" = \"\$PATH_BEFORE\" ] && echo PATH kept
 echo \"SHELL=\${SHELL##*[/\\\\]} ENV=\${ENV-unset} BASH_ENV=\${BASH_ENV-unset}\"" 2>&1 |
-    grep -e '^after' -e 'kept' -e '^SHELL' -e 'read only' -e 'read-only'
+    grep -e '^after' -e 'kept' -e '^SHELL' -e ': error: '
 done

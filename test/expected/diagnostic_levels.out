@@ -48,6 +48,7 @@ slug-variant-general=0
 slug-variant-test=1
 native-slug-directive
 native-slug-warnings=0
+native-slug-positive=1
 conditional-pattern-errors=0
 conditional-spacing-positive=1
 conditional-local-errors=0

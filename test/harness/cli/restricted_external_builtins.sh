@@ -21,6 +21,14 @@ env -u PATH \
 echo "== dot with a slash is blocked:"
 (cd "$work" && PATH=/usr/bin:/bin "$BIN" -r -c '. ./payload; echo "status=$?"' 2>&1)
 
+# The excerpt of an absolute path depends on the temporary directory, so the
+# located message is counted.
+echo "== dot with an absolute path is blocked:"
+absolute_output=$(PATH=/usr/bin:/bin "$BIN" -r -c ". '$work/payload'" 2>&1)
+absolute_status=$?
+echo "status=$absolute_status located=$(printf '%s\n' "$absolute_output" |
+  grep -c 'Source paths containing a directory separator are forbidden')"
+
 echo "== rescue mode keeps the shell restricted:"
 printf 'cd /\n' | "$BIN" -c 'exec -a -kosh "$1" -r --bogus' kosh "$BIN" 2>&1 |
   grep -c 'Changing the directory is forbidden in a restricted shell'

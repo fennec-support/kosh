@@ -28,5 +28,8 @@ EOF
 chmod +x "$inner"
 "$BIN" --mood bash -WWW -c '"$1"' trace-driver "$inner" 2>&1 |
     sed 's|[^ ]*wscinner|INNER|g' | "invoke-normalize-trace" "$BIN"
-"$BIN" -WWW -c '[[ x = "$UNSET_FLAT" ]]' 2>&1 | grep -Ec 'trace:'
+flat_output=$("$BIN" -WWW -c '[[ x = "$UNSET_FLAT" ]]' 2>&1)
+echo "flat-warning=$(printf '%s\n' "$flat_output" |
+  grep -c "warning: The variable 'UNSET_FLAT' is not set")"
+echo "flat-trace=$(printf '%s\n' "$flat_output" | grep -c 'trace:')"
 [ -n "$TEST_TEMP_DIRECTORY" ] && rm -f "$outer" "$inner"

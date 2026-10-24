@@ -13,5 +13,5 @@ echo "== without BASH_XTRACEFD the trace stays on stderr:"
 "$BIN" --mood bash -c 'set -x; echo hi; set +x' 2>&1 1>/dev/null
 echo "== an unparsable BASH_XTRACEFD falls back to stderr:"
 "$BIN" --mood bash -c 'BASH_XTRACEFD=nope; set -x; echo hi; set +x' 2>&1 1>/dev/null
-echo "== assignments, arrays, loops, and redirections trace by syntax owner:"
-"$BIN" --mood bash -c 'set -x; scalar=value; scalar+=tail; arr=(one apt-get "two three"); empty=(); arr+=(four); PFX=value printf "%s\n" ok; for i in a b; do : "$i"; done; printf done >/dev/null; set +x' 2>&1
+echo "== an array element with a blank traces in single quotes:"
+"$BIN" --mood bash -c 'set -x; arr=(one "two three"); set +x' 2>&1

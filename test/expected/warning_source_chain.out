@@ -25,4 +25,5 @@ note: Replace it with ${MIMIC_CHAIN_SECOND-} if empty expansion is desired.
 -c:1:1: trace:
      1 |  "$1"
        |  ^~~~
-0
+flat-warning=1
+flat-trace=0

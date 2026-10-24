@@ -35,3 +35,8 @@ rm -f "$rc_file"
 echo "== the other letters of a cluster with c survive:"
 KOSH_FLAGS='-ec injected_command' "$BIN" -c \
   'case $- in *e*) echo errexit-kept ;; *) echo errexit-lost ;; esac' 2>&1
+# The operating modes --format --apply and --as-language-server are dropped
+# too, so the real -c still runs.
+echo "== an operating mode in KOSH_FLAGS does not replace the command:"
+KOSH_FLAGS='--format --apply' "$BIN" -c 'echo environment-options-filtered' 2>&1
+KOSH_FLAGS=--as-language-server "$BIN" -c 'echo environment-filtered' 2>&1

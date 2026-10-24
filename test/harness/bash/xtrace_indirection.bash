@@ -52,3 +52,18 @@ body 2>&1 | sed 's|/dev/fd/[0-9]*|/dev/fd/N|' | LC_ALL=C sort
   y=$'q\tw'
   a=($'\n' z 'p q')
 ) 2>&1
+
+# Assignments, array assignments, a prefix assignment, a for loop, and a
+# redirection trace as the command that runs.
+(
+  set -x
+  scalar=value
+  scalar+=tail
+  arr=(one apt-get two)
+  empty=()
+  arr+=(four)
+  PFX=value printf '%s\n' ok
+  for i in a b; do : "$i"; done
+  printf done >/dev/null
+  set +x
+) 2>&1

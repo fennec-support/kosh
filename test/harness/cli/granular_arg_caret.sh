@@ -32,3 +32,23 @@ echo "== z points at the bad query, not the whole z line:"
 result=$("$BIN" -c 'z no_such_dir_xyz' 2>&1)
 [ "$?" -eq 1 ] || exit 1
 printf '%s\n' "$result"
+echo "== alias points at the whole statement:"
+result=$("$BIN" -c 'alias missing_name' 2>&1)
+[ "$?" -eq 1 ] || exit 1
+printf '%s\n' "$result"
+echo "== hash points at the whole statement:"
+result=$("$BIN" -c 'hash missing_name' 2>&1)
+[ "$?" -eq 1 ] || exit 1
+printf '%s\n' "$result"
+echo "== command -V points at the whole statement:"
+result=$("$BIN" -c 'command -V missing_name' 2>&1)
+[ "$?" -eq 1 ] || exit 1
+printf '%s\n' "$result"
+echo "== jobs points at the whole statement:"
+result=$("$BIN" -c 'jobs %999' 2>&1)
+[ "$?" -eq 1 ] || exit 1
+printf '%s\n' "$result"
+echo "== timeout points at the missing command:"
+result=$("$BIN" -c 'koshkit timeout 1 missing_name' 2>&1)
+[ "$?" -eq 127 ] || exit 1
+printf '%s\n' "$result"

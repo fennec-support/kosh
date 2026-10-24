@@ -15,6 +15,7 @@ echo "word=$(case esac in esac) echo pattern-esac ;; esac)"
 echo "loop=$(for item in one two; do case $item in one) echo first ;; *) echo rest ;; esac; done)"
 echo "cond=$(if true; then case x in x) echo conditional ;; esac; fi)"
 echo "brace=$( { case x in x) echo braced ;; esac; } )"
+echo "subshell=$( (case x in x) echo subshell ;; esac) )"
 echo "bang=$(! false && case x in x) echo negated ;; esac)"
 
 # A word that only looks like a keyword is not one.

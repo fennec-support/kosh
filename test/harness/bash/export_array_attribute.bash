@@ -2,7 +2,9 @@
 # The export attribute on indexed and associative arrays: the array stays,
 # the attribute shows in declare -p and ${arr@a}, and no child environment
 # receives the array. An exported scalar that becomes an array leaves the
-# environment, and a sibling export stays.
+# environment, and a sibling export stays. export -n also keeps a dynamic
+# variable dynamic, removes a function from the environment, and refuses an
+# invalid name.
 export LC_ALL=C
 
 show_environment() {
@@ -118,3 +120,31 @@ declare -A UU
 declare -p UU
 export VV=kept
 env | grep '^VV='
+
+echo "== export -n keeps RANDOM dynamic"
+export RANDOM
+export -n RANDOM
+first=$RANDOM
+result=frozen
+for value in $RANDOM $RANDOM $RANDOM $RANDOM $RANDOM; do
+  if [[ $value != "$first" ]]; then
+    result=dynamic
+    break
+  fi
+done
+echo "$result"
+
+echo "== export -nf removes the function from the environment"
+f() { :; }
+export -f f
+env | grep -q '^BASH_FUNC_f%%='
+echo "exported=$?"
+export -nf f
+env | grep -q '^BASH_FUNC_f%%='
+echo "unexported=$?"
+f
+echo "call=$?"
+
+echo "== export -n refuses an invalid name"
+export -n 'a-b' 2>/dev/null
+echo "status=$?"

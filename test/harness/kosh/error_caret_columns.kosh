@@ -1,3 +1,5 @@
 #!/bin/env kosh
+xy\
+zzy_undefined
 a=€
 echo юникод 👍🏽 👩‍💻; does_not_exist*

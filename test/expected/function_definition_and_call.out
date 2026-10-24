@@ -1,8 +1,7 @@
-hi
 == active body ==
 old-start
 new-body
-old-end=lifetime_fn:-:12
+old-end=lifetime_fn:-:10
 == snapshot body ==
 child-body
 parent-body

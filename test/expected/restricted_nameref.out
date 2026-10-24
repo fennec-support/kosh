@@ -74,10 +74,12 @@ after status=1
 PATH kept
 SHELL=kept-shell ENV=unset BASH_ENV=unset
 == kosh -r --mood bash: declare -n RANDOM=PATH; RANDOM=/tmp
+-c:1:25: error: Unable to assign 'RANDOM' because its generated value is not a variable name for the name reference.
 after status=1
 PATH kept
 SHELL=kept-shell ENV=unset BASH_ENV=unset
 == kosh -r --mood bash: declare -n SECONDS=PATH; read -r SECONDS <<<"/tmp"
+-c:1:26: error: Builtin `read`: Unable to assign 'SECONDS' because its generated value is not a variable name for the name reference.
 after status=1
 PATH kept
 SHELL=kept-shell ENV=unset BASH_ENV=unset
@@ -93,6 +95,7 @@ after status=1
 PATH kept
 SHELL=kept-shell ENV=unset BASH_ENV=unset
 == kosh -r --mood bash: declare -n KOSHCONF=PATH
+-c:1:12: error: Builtin `declare`: The shell variable 'KOSHCONF' cannot become a name reference.
 after status=1
 PATH kept
 SHELL=kept-shell ENV=unset BASH_ENV=unset

@@ -3,6 +3,8 @@ unset KOSH_FLAGS
 # source line, caret, note, and trace frames. Each script fails once, at its
 # last command, so the statuses of the moods stay out of the comparison. The
 # default mood output is the reference and any other mood prints its difference.
+# The scripts for unbound, readonly, and cd also print the reference output. The
+# rendering of frames for the other constructs is pinned by source_locations.
 d=$(mktemp -d)
 trap '[ -n "$d" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 cd "$d" || exit 1
@@ -27,8 +29,14 @@ compare()
         printf '%s dumb: differs\n' "$name"
         cat mood.diff
     fi
-    printf -- '-- reference\n'
-    sed "s|$d|DIR|g" reference.out
+    if [ "$2" = dump ]; then
+        printf -- '-- reference\n'
+        sed "s|$d|DIR|g" reference.out
+    elif grep -q ': error: ' reference.out; then
+        printf '%s reference: reports an error\n' "$name"
+    else
+        printf '%s reference: reports no error\n' "$name"
+    fi
 }
 
 printf 'echo before\neval '"'"'echo $((1/0))'"'"'\n' > eval.sh
@@ -57,13 +65,13 @@ printf 'cat <(echo $((1/0)))\n' > process.sh
 compare process.sh
 
 printf 'ref=undefined_name\nset -u\necho "${!ref}"\n' > unbound.sh
-compare unbound.sh
+compare unbound.sh dump
 
 printf 'readonly fixed=1\nfixed=2\n' > readonly.sh
-compare readonly.sh
+compare readonly.sh dump
 
 printf 'cd /no/such/directory_zz\n' > cd.sh
-compare cd.sh
+compare cd.sh dump
 
 printf '#!/bin/bash\nfiles=$(echo *.nomatch)\n' > glob.sh
 "$BIN" --mood kosh -WWW glob.sh > reference.out 2>&1
