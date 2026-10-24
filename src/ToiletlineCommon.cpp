@@ -408,6 +408,26 @@ get_display_width(StringView text) -> usize
 }
 
 fn
+get_width_interval(bool is_wide, usize index, u32 &first, u32 &last) -> bool
+{
+  using koshka::internal::WIDE_INTERVALS;
+  using koshka::internal::ZERO_WIDTH_INTERVALS;
+
+  let const count =
+      is_wide ? countof(WIDE_INTERVALS) : countof(ZERO_WIDTH_INTERVALS);
+
+  if (index >= count) return false;
+
+  let const &interval =
+      is_wide ? WIDE_INTERVALS[index] : ZERO_WIDTH_INTERVALS[index];
+
+  first = interval.first;
+  last  = interval.last;
+
+  return true;
+}
+
+fn
 get_byte_offset_at_or_before_display_cell(StringView text,
                                           usize      cell_position,
                                           usize &actual_cell_position) -> usize

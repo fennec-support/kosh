@@ -278,6 +278,11 @@ get_escape_sequence_end(StringView text, usize byte_offset) -> usize;
 fn
 get_display_width(StringView text) -> usize;
 
+/* reads the interval at index of the wide table when is_wide, or of the
+   zero-width table, and returns false past its end. */
+fn
+get_width_interval(bool is_wide, usize index, u32 &first, u32 &last) -> bool;
+
 fn
 get_byte_offset_at_or_before_display_cell(StringView text,
                                           usize      cell_position,

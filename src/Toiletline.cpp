@@ -147,6 +147,40 @@ static_assert(toiletline::HISTORY_RECORD_MAX_DECODED_BYTE_COUNT ==
 static_assert(toiletline::HISTORY_ENTRY_MAX_BYTE_COUNT ==
               ITL_HISTORY_ENTRY_MAX_BYTES);
 
+#if !defined NDEBUG
+namespace toiletline {
+
+fn
+get_width_interval(bool is_wide, usize index, u32 &first, u32 &last) -> bool;
+
+} /* namespace toiletline */
+
+template <usize Count>
+static fn
+does_width_table_match(bool is_wide,
+                       const itl_cp_interval_t (&intervals)[Count]) -> bool
+{
+  u32 first = 0;
+  u32 last  = 0;
+
+  for (usize i = 0; i < Count; i++) {
+    if (!toiletline::get_width_interval(is_wide, i, first, last)) return false;
+    if (first != intervals[i].first || last != intervals[i].last) return false;
+  }
+
+  return !toiletline::get_width_interval(is_wide, Count, first, last);
+}
+
+/* a debug build checks at startup that the width tables in
+   ToiletlineCommon.cpp copy the ones of the vendored editor. */
+[[maybe_unused]] static const bool ARE_WIDTH_TABLES_COPIED = [] {
+  ASSERT(does_width_table_match(false, itl_zero_width_intervals));
+  ASSERT(does_width_table_match(true, itl_wide_intervals));
+
+  return true;
+}();
+#endif
+
 namespace {
 
 enum class selector_outcome : u8;
