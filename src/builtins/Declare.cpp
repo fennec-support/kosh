@@ -82,25 +82,6 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   ASSERT(!args.is_empty());
 
-  let should_make_associative           = false;
-  let should_make_indexed               = false;
-  let should_export                     = false;
-  let should_unexport                   = false;
-  let should_print                      = false;
-  let should_mark_integer_attribute     = false;
-  let should_unmark_integer_attribute   = false;
-  let should_mark_lowercase_attribute   = false;
-  let should_unmark_lowercase_attribute = false;
-  let should_mark_uppercase_attribute   = false;
-  let should_unmark_uppercase_attribute = false;
-  let should_mark_readonly              = false;
-  let should_mark_nameref               = false;
-  let should_unmark_nameref             = false;
-  let should_restrict_to_functions      = false;
-  let should_print_function_names_only  = false;
-  let should_be_global                  = false;
-  let has_trace_flag                    = false;
-
   i32 status = 0;
   let operand_indices = ArrayList<usize>{cxt.scratch_allocator()};
 
@@ -120,27 +101,29 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return flag.is_enabled() || flag.was_given_after_plus();
   };
 
-  should_make_associative         = do_is_given(FLAG_DECLARE_ASSOCIATIVE);
-  should_make_indexed             = do_is_given(FLAG_DECLARE_INDEXED);
-  should_export                   = FLAG_DECLARE_EXPORT.is_enabled();
-  should_unexport                 = FLAG_DECLARE_EXPORT.was_given_after_plus();
-  should_print                    = do_is_given(FLAG_DECLARE_PRINT);
-  should_mark_integer_attribute   = FLAG_DECLARE_INTEGER.is_enabled();
-  should_unmark_integer_attribute = FLAG_DECLARE_INTEGER.was_given_after_plus();
-  should_mark_lowercase_attribute = FLAG_DECLARE_LOWERCASE.is_enabled();
-  should_unmark_lowercase_attribute =
+  let const should_make_associative = do_is_given(FLAG_DECLARE_ASSOCIATIVE);
+  let const should_make_indexed     = do_is_given(FLAG_DECLARE_INDEXED);
+  let const should_export           = FLAG_DECLARE_EXPORT.is_enabled();
+  let const should_unexport = FLAG_DECLARE_EXPORT.was_given_after_plus();
+  let const should_print    = do_is_given(FLAG_DECLARE_PRINT);
+  let const should_mark_integer_attribute = FLAG_DECLARE_INTEGER.is_enabled();
+  let const should_unmark_integer_attribute =
+      FLAG_DECLARE_INTEGER.was_given_after_plus();
+  let should_mark_lowercase_attribute = FLAG_DECLARE_LOWERCASE.is_enabled();
+  let should_unmark_lowercase_attribute =
       FLAG_DECLARE_LOWERCASE.was_given_after_plus();
-  should_mark_uppercase_attribute = FLAG_DECLARE_UPPERCASE.is_enabled();
-  should_unmark_uppercase_attribute =
+  let should_mark_uppercase_attribute = FLAG_DECLARE_UPPERCASE.is_enabled();
+  let should_unmark_uppercase_attribute =
       FLAG_DECLARE_UPPERCASE.was_given_after_plus();
-  should_print_function_names_only = do_is_given(FLAG_DECLARE_FUNCTION_NAMES);
-  should_restrict_to_functions =
+  let const should_print_function_names_only =
+      do_is_given(FLAG_DECLARE_FUNCTION_NAMES);
+  let const should_restrict_to_functions =
       do_is_given(FLAG_DECLARE_FUNCTIONS) || should_print_function_names_only;
-  should_mark_readonly  = FLAG_DECLARE_READONLY.is_enabled();
-  should_be_global      = do_is_given(FLAG_DECLARE_GLOBAL);
-  should_mark_nameref   = FLAG_DECLARE_NAMEREF.is_enabled();
-  should_unmark_nameref = FLAG_DECLARE_NAMEREF.was_given_after_plus();
-  has_trace_flag        = do_is_given(FLAG_DECLARE_TRACE);
+  let const should_mark_readonly  = FLAG_DECLARE_READONLY.is_enabled();
+  let const should_be_global      = do_is_given(FLAG_DECLARE_GLOBAL);
+  let const should_mark_nameref   = FLAG_DECLARE_NAMEREF.is_enabled();
+  let const should_unmark_nameref = FLAG_DECLARE_NAMEREF.was_given_after_plus();
+  let const has_trace_flag        = do_is_given(FLAG_DECLARE_TRACE);
 
   /* the first operand index belongs to the command word. */
   usize i = operand_indices.count() < 2 ? args.count() : operand_indices[1];

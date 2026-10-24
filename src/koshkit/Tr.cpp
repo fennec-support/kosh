@@ -97,12 +97,12 @@ struct tr_error
   StringView note;
 };
 
-/* count copies of byte, from the element at element_index of its set. a
-   [c*n] repeat is one run, so a large count costs no memory. */
+/* a run of copy_count copies of byte, from the element at element_index of
+   its set. a [c*n] repeat is one run, so a large repeat costs no memory. */
 struct tr_run
 {
   u8    byte;
-  usize count;
+  usize copy_count;
   usize element_index;
 };
 
@@ -113,11 +113,12 @@ struct tr_set
   usize                 length{0};
 
   fn
-  push_run(u8 byte, usize count, usize element_index) throws -> void
+  push_run(u8 byte, usize copy_count, usize element_index) throws
+      -> void
   {
-    if (count == 0) return;
-    runs.push(tr_run{byte, count, element_index});
-    length = count > SIZE_MAX - length ? SIZE_MAX : length + count;
+    if (copy_count == 0) return;
+    runs.push(tr_run{byte, copy_count, element_index});
+    length = copy_count > SIZE_MAX - length ? SIZE_MAX : length + copy_count;
   }
 
   fn
@@ -447,14 +448,14 @@ are_case_classes_aligned(const tr_set &set1, const tr_set &set2)
                                const tr_cursor &cursor) wontthrow -> usize {
     return do_is_at_end(set, cursor)
                ? 1
-               : set.runs[cursor.run_index].count - cursor.offset;
+               : set.runs[cursor.run_index].copy_count - cursor.offset;
   };
   let const do_advance = [&](const tr_set &set, tr_cursor &cursor,
-                             usize count) wontthrow {
+                             usize step_count) wontthrow {
     if (do_is_at_end(set, cursor)) return;
 
-    cursor.offset += count;
-    if (cursor.offset == set.runs[cursor.run_index].count) {
+    cursor.offset += step_count;
+    if (cursor.offset == set.runs[cursor.run_index].copy_count) {
       cursor.run_index++;
       cursor.offset = 0;
     }
@@ -724,18 +725,18 @@ Tr::execute(const ExecContext               &ec,
     while (index1 < set1.runs.count() && index2 < set2.runs.count()) {
       let const &run1       = set1.runs[index1];
       let const &run2       = set2.runs[index2];
-      let const  remaining1 = run1.count - offset1;
-      let const  remaining2 = run2.count - offset2;
+      let const  remaining1 = run1.copy_count - offset1;
+      let const  remaining2 = run2.copy_count - offset2;
       let const  step       = remaining1 < remaining2 ? remaining1 : remaining2;
 
       translation[run1.byte] = run2.byte;
       offset1 += step;
       offset2 += step;
-      if (offset1 == run1.count) {
+      if (offset1 == run1.copy_count) {
         index1++;
         offset1 = 0;
       }
-      if (offset2 == run2.count) {
+      if (offset2 == run2.copy_count) {
         index2++;
         offset2 = 0;
       }
