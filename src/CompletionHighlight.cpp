@@ -440,6 +440,7 @@ struct keyword_spec
   bool                should_expect_for_variable  = false;
   bool                should_set_function_pending = false;
   bool                is_non_posix_only           = false;
+  bool                is_bash_only                = false;
 };
 
 constexpr static_string_entry<keyword_spec> HIGHLIGHT_KEYWORD_ENTRIES[] = {
@@ -460,6 +461,12 @@ constexpr static_string_entry<keyword_spec> HIGHLIGHT_KEYWORD_ENTRIES[] = {
       .construct                  = highlight_construct::for_,
       .should_expect_in           = true,
       .should_expect_for_variable = true}                                     },
+    {SSK("select"),
+     {.role                       = keyword_role::open,
+      .construct                  = highlight_construct::for_,
+      .should_expect_in           = true,
+      .should_expect_for_variable = true,
+      .is_bash_only               = true}                                     },
     {SSK("case"),
      {.role             = keyword_role::open,
       .construct        = highlight_construct::case_,
@@ -2097,8 +2104,11 @@ internal::scan_highlight_range(
       let should_expect_for_variable = false;
 
       if (Maybe<keyword_spec> spec = HIGHLIGHT_KEYWORDS.find(word);
-          spec.has_value() && !(spec.value().is_non_posix_only &&
-                                context.runtime_state().is_posix_mode()))
+          spec.has_value() &&
+          !(spec.value().is_non_posix_only &&
+            context.runtime_state().is_posix_mode()) &&
+          !(spec.value().is_bash_only &&
+            !context.runtime_state().is_bash_compatible()))
       {
         let const &keyword = spec.value();
 
