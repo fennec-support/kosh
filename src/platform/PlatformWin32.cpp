@@ -1763,6 +1763,17 @@ TerminalRawInputGuard::is_active() const wontthrow -> bool
 }
 
 fn
+TerminalRawInputGuard::set_is_raw(bool is_raw) wontthrow -> void
+{
+  if (!m_should_restore) return;
+
+  let const raw_mode = m_original_mode & ~static_cast<DWORD>(ENABLE_ECHO_INPUT |
+                                                             ENABLE_LINE_INPUT);
+
+  unused(SetConsoleMode(m_input, is_raw ? raw_mode : m_original_mode));
+}
+
+fn
 allocate_aligned(usize length, usize alignment) wontthrow -> opaque *
 {
   return _aligned_malloc(length, alignment);

@@ -2,13 +2,14 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the watch utility. It clears the screen, renders the
- * interval and host title, runs the operand command on a fixed period, and
- * stops on an interrupt, on a failing status, or on a change of the output.
+ * This file implements the watch utility. It runs the operand command on a
+ * fixed period in a live view with the interval and host title, and stops on
+ * an interrupt, a q key, a failing status, or a change of the output.
  */
 
 #include "../CLI.hpp"
 #include "../CLIColors.hpp"
+#include "../CLILive.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -164,10 +165,9 @@ Watch::execute(const ExecContext               &ec,
     command += operand;
   }
 
-  let       previous_body     = String{allocator};
+  let       body              = String{heap_allocator()};
   bool      has_previous_body = false;
-  i32       status            = 0;
-  let const is_terminal       = colors::stdout_is_a_terminal();
+  let       pending_status    = Maybe<i32>{None};
   let const should_color      = koshkit_should_color();
 
   let const saved_terminal_exec =
@@ -178,69 +178,75 @@ Watch::execute(const ExecContext               &ec,
     cxt.execution_store().is_terminal_exec_allowed() = saved_terminal_exec;
   };
 
-  bool is_alternate_screen_active = false;
+  let const interval_nanoseconds =
+      static_cast<u64>(interval_seconds * 1000000000.0);
+  let const now_nanoseconds = os::monotonic_nanos();
 
-  if (is_terminal) is_alternate_screen_active = enter_alternate_screen(ec);
-  defer {
-    if (is_alternate_screen_active) leave_alternate_screen(ec);
-  };
+  live_view_options options{};
 
-  loop {
+  options.sample_interval_seconds         = interval_seconds;
+  options.refresh_interval_seconds        = interval_seconds;
+  options.should_color                    = should_color;
+  options.should_show_header              = false;
+  options.should_sample_with_cooked_input = true;
+  options.interrupt_status                = 0;
+  /* the first run starts at once. */
+  options.started_at_nanoseconds = now_nanoseconds > interval_nanoseconds
+                                       ? now_nanoseconds - interval_nanoseconds
+                                       : 1;
+
+  let const do_sample = [&](u64, Allocator) throws -> Maybe<i32> {
     let const scratch_mark = cxt.expansion_store().scratch_arena().mark();
 
     defer {
       cxt.expansion_store().scratch_arena().release(scratch_mark);
     };
 
-    u32 column_count = FALLBACK_COLUMN_COUNT;
-    u32 row_count    = 0;
-
-    if (let const dimensions = os::get_terminal_dimensions()) {
-      column_count = dimensions->columns;
-      row_count    = dimensions->rows;
-    }
-
-    let const body =
+    let const output =
         cxt.capture_command_substitution(command, StringView{"watch"});
     let const command_status = cxt.execution_store().last_exit_status();
 
-    let screen = String{allocator};
+    if (FLAG_WATCH_ERROR_EXIT.is_enabled() && command_status != 0)
+      pending_status = command_status;
+
+    if (FLAG_WATCH_CHANGE_EXIT.is_enabled() && has_previous_body &&
+        body.view() != output.view())
+    {
+      pending_status = 0;
+    }
+
+    body              = String{heap_allocator(), output.view()};
+    has_previous_body = true;
+
+    return None;
+  };
+
+  let const do_render = [&](String                     &frame,
+                            const live_view_dimensions &dimensions,
+                            Allocator allocator) throws -> Maybe<i32> {
+    u32 column_count = dimensions.columns;
+
+    if (column_count == 0) {
+      column_count = FALLBACK_COLUMN_COUNT;
+      if (let const queried = os::get_terminal_dimensions())
+        column_count = queried->columns;
+    }
 
     if (!FLAG_WATCH_NO_TITLE.is_enabled()) {
       let const title = build_title(command.view(), interval_seconds,
                                     column_count, allocator);
 
-      append_report_text(screen, title.view(),
+      append_report_text(frame, title.view(),
                          colors::soft(colors::ansi::BOLD_CYAN), should_color);
-      screen += "\n";
+      frame += "\n";
     }
 
-    append_truncated_lines(screen, body.view(), column_count);
-    if (is_terminal) {
-      write_screen_frame(ec, screen.view(), row_count, allocator);
-    } else {
-      ec.print_to_stdout(screen);
-    }
+    append_truncated_lines(frame, body.view(), column_count);
 
-    if (FLAG_WATCH_ERROR_EXIT.is_enabled() && command_status != 0) {
-      status = command_status;
-      break;
-    }
+    return pending_status;
+  };
 
-    if (FLAG_WATCH_CHANGE_EXIT.is_enabled() && has_previous_body &&
-        previous_body.view() != body.view())
-    {
-      break;
-    }
-
-    previous_body     = String{heap_allocator(), body.view()};
-    has_previous_body = true;
-
-    if (!os::INTERRUPT_REQUESTED) os::sleep_for_seconds(interval_seconds);
-    if (take_interrupt_request()) break;
-  }
-
-  return status;
+  return run_live_view(ec, options, do_sample, do_render);
 }
 
 } /* namespace koshka::koshkit */

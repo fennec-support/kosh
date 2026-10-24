@@ -70,7 +70,11 @@ struct live_view_options
   bool       should_render_first_frame_immediately{false};
   bool       should_show_header{true};
   bool       should_scroll{false};
-  usize      pinned_row_count{0};
+  /* the terminal reads cooked input while do_sample runs, for a sample that
+     runs a command. */
+  bool  should_sample_with_cooked_input{false};
+  usize pinned_row_count{0};
+  i32   interrupt_status{130};
 };
 
 struct live_view_scroll
@@ -136,6 +140,11 @@ public:
   mustuse fn
   wait_for_input(u64 wait_nanoseconds, live_view_input &input)
       wontthrow -> bool;
+  fn
+  set_is_input_raw(bool is_raw) wontthrow -> void
+  {
+    m_raw_input.set_is_raw(is_raw);
+  }
 
   fn
   append_frame_start(String                     &frame,
@@ -274,7 +283,7 @@ run_live_view(const ExecContext       &ec,
     if (!view.wait_for_input(wait_nanoseconds, input)) {
       os::INTERRUPT_REQUESTED = 0;
 
-      return 130;
+      return options.interrupt_status;
     }
 
     for (usize index = 0; index < input.key_count; index++) {
@@ -301,11 +310,12 @@ run_live_view(const ExecContext       &ec,
         now_nanoseconds - last_sample_nanoseconds >=
             sample_interval_nanoseconds)
     {
-      if (let const status = do_sample(now_nanoseconds, frame_allocator);
-          status.has_value())
-      {
-        return *status;
-      }
+      if (options.should_sample_with_cooked_input) view.set_is_input_raw(false);
+
+      let const status = do_sample(now_nanoseconds, frame_allocator);
+
+      if (options.should_sample_with_cooked_input) view.set_is_input_raw(true);
+      if (status.has_value()) return *status;
 
       last_sample_nanoseconds = now_nanoseconds;
     }
@@ -325,12 +335,8 @@ run_live_view(const ExecContext       &ec,
     view.append_frame_start(frame, dimensions, frame_allocator);
 
     let const body_start = frame.length();
-
-    if (let const status = do_render(frame, dimensions, frame_allocator);
-        status.has_value())
-    {
-      return *status;
-    }
+    /* a status from do_render ends the view after this frame is written. */
+    let const status = do_render(frame, dimensions, frame_allocator);
 
     /* at this point: frame holds the frame start followed by the rendered
        body from body_start, and its storage belongs to frame_arena until the
@@ -339,6 +345,7 @@ run_live_view(const ExecContext       &ec,
       view.clip_frame_rows(frame, body_start, dimensions, frame_allocator);
 
     view.write_frame(frame, dimensions);
+    if (status.has_value()) return *status;
   }
 }
 

@@ -1776,17 +1776,27 @@ TerminalEchoGuard::did_succeed() const wontthrow -> bool
   return m_did_succeed;
 }
 
+/* the raw input mode clears ECHO and ICANON and keeps ISIG. */
+static fn
+get_raw_input_mode(const termios &original) wontthrow -> termios
+{
+  let raw_mode = original;
+
+  raw_mode.c_lflag &= static_cast<tcflag_t>(~(ECHO | ICANON));
+  raw_mode.c_cc[VMIN]  = 1;
+  raw_mode.c_cc[VTIME] = 0;
+
+  return raw_mode;
+}
+
 TerminalRawInputGuard::TerminalRawInputGuard(descriptor input) wontthrow
     : m_input(input)
 {
   if (!is_fd_a_tty(input)) return;
   if (tcgetattr(input, &m_original_mode) != 0) return;
 
-  let raw_mode = m_original_mode;
+  let const raw_mode = get_raw_input_mode(m_original_mode);
 
-  raw_mode.c_lflag &= static_cast<tcflag_t>(~(ECHO | ICANON));
-  raw_mode.c_cc[VMIN]  = 1;
-  raw_mode.c_cc[VTIME] = 0;
   if (tcsetattr(input, TCSANOW, &raw_mode) != 0) return;
 
   /* at this point: ECHO and ICANON are cleared on input, and m_original_mode
@@ -1803,6 +1813,16 @@ pure fn
 TerminalRawInputGuard::is_active() const wontthrow -> bool
 {
   return m_should_restore;
+}
+
+fn
+TerminalRawInputGuard::set_is_raw(bool is_raw) wontthrow -> void
+{
+  if (!m_should_restore) return;
+
+  let const raw_mode = get_raw_input_mode(m_original_mode);
+
+  unused(tcsetattr(m_input, TCSANOW, is_raw ? &raw_mode : &m_original_mode));
 }
 
 fn

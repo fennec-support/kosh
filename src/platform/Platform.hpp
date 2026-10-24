@@ -395,6 +395,10 @@ public:
 
   mustuse fn
   is_active() const wontthrow -> bool;
+  /* switches an active guard between raw input and the original mode, so a
+     child process can read cooked input in between. */
+  fn
+  set_is_raw(bool is_raw) wontthrow -> void;
 
 private:
   descriptor m_input{KOSH_INVALID_FD};

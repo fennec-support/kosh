@@ -3110,7 +3110,8 @@ containing each operand, and every filesystem without one.
 A command is run at a fixed interval. The \fB\-n\fR, \fB\-t\fR, \fB\-g\fR, and
 \fB\-e\fR options set the interval, omit the title, exit after output changes,
 and exit after a command error. The \fB\-x\fR option is accepted for
-compatibility.
+compatibility. On a terminal, the q key or an interrupt ends watch with status
+0, and the command reads cooked terminal input while it runs.
 .PP
 Utilities with styled reports use color when their output stream is a terminal.
 Redirected output contains no terminal escape sequences.
