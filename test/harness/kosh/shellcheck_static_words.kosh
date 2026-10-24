@@ -177,3 +177,9 @@ RPROMPT='\033[2m<R>'
 KOSH_TRANSIENT_PS1='\x1b[1m> '
 RPS1='\[\e[2m\]<R>'
 PS2='\e[1m> '
+
+lint_only() {
+  set -- 'a b' c
+  printf '[%s]' $*
+  printf '[%s]' $@
+}

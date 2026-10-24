@@ -472,6 +472,12 @@ status=$?
 located_count=$(printf '%s\n' "$output" |
   grep -cE "^[0-9]+:[0-9]+: error: Unable to resolve 'missing.sh'")
 printf 'missing-apply-located=%s status=%s\n' "$located_count" "$status"
+
+output=$(cd "$root" && "$BIN" --format unrecognized.txt 2>&1)
+status=$?
+located_count=$(printf '%s\n' "$output" |
+  grep -cE '^[0-9]+:[0-9]+: error: The format of `unrecognized.txt`')
+printf 'unrecognized-format-located=%s status=%s\n' "$located_count" "$status"
 "$BIN" --format --apply "$root/unrecognized.txt" >/dev/null 2>&1
 format_apply_status=$?
 "$BIN" --lint --apply --no-traces "$root/unrecognized.txt" >/dev/null 2>&1

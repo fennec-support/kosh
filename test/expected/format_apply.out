@@ -365,6 +365,7 @@ substitution-wrap-idempotent=yes
 parse-status=1 unchanged=yes
 missing-format-located=1 status=1
 missing-apply-located=1 status=1
+unrecognized-format-located=1 status=1
 unrecognized-apply-status=1,1 unchanged=yes
 lint-parse-located=1
 lint-parse-status=1 unchanged=yes

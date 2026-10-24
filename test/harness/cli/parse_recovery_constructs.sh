@@ -5,6 +5,7 @@ unset KOSH_FLAGS KOSHCONF
 # ends an inner command that lacks its own closer. Dialect errors, such as [[
 # in the sh mood, are reported while the command parses as usual. Recovery
 # works on tokens, so layout, heredoc bodies, and quoted text do not affect it.
+# A script with a parse error runs none of its commands.
 
 do_check() {
   echo "== $1"
@@ -279,3 +280,15 @@ do
 done
 "$BIN" --mood bash --no-config -c \
   'x=fi; if true; then case $x in fi|"a;b") echo hit;; esac; fi'
+
+echo "== an unterminated construct stops the script before it runs"
+for test_text in 'echo $(echo hi' 'echo `echo hi' 'echo $((1 + 2' \
+  'cat <(echo hi' "echo \$'abc\\" '[[ a == b' '(echo hi' 'arr=(a b' \
+  'foo()' 'foo( {' 'case x in a) y;; b'
+do
+  echo "$test_text"
+  output=$("$BIN" --mood bash --no-config -c "echo ran; $test_text" 2>&1)
+  status=$?
+  printf '%s\n' "$output" | grep -E '^-c:[0-9]+:[0-9]+: error|^ran$'
+  echo "status $status"
+done

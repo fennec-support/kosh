@@ -11,6 +11,9 @@ warning: The KOSHCONF environment variable is ignored because a varint overflows
 -c:1:15: error: Builtin `koshconf`: The value is not a valid KOSHCONF encoding: a varint overflows 32 bits.
 warning: The KOSHCONF environment variable is ignored because a varint overflows 32 bits.
 -c:1:15: error: Builtin `koshconf`: The value is not a valid KOSHCONF encoding: a varint overflows 32 bits.
+== an invalid KOSHCONF does not stop startup:
+kosh
+rc=0
 == a Bash name points at its koshconf name:
 -c:1:14: error: Builtin `koshconf`: Unknown option 'pipefail'.
 note: 'pipefail' is the Bash name of 'posix.interpreter.pipeline_fails_on_any_stage'.

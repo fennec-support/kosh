@@ -13,12 +13,14 @@ chmod +x "$dir/lint.bash" "$dir/lint.kosh"
 PATH="$dir/bin:$PATH"
 export PATH
 
-# SC2005 appears with -WWW and not with -W. SC2046 appears with both.
+# SC2005 appears with -WWW and not with -W. SC2046 appears with both. The
+# unset-variable warning appears only with -WWW.
 count() { grep -c "$1" || true; }
 
 echo "plain: $("$BIN" -c "$dir/lint.bash" 2>&1 | count SC2005)"
 echo "bash shebang: $("$BIN" -c "set -WWW; $dir/lint.bash" 2>&1 | count SC2005)"
-echo "kosh shebang: $("$BIN" -c "set -WWW; $dir/lint.kosh" 2>&1 | count SC2086)"
+echo "kosh plain: $("$BIN" -c "$dir/lint.kosh" 2>&1 | count "variable '1' is not set")"
+echo "kosh shebang: $("$BIN" -c "set -WWW; $dir/lint.kosh" 2>&1 | count "variable '1' is not set")"
 echo "operand: $("$BIN" -c "set -WWW; \"$BIN\" $dir/lint.bash" 2>&1 | count SC2005)"
 echo "nested -c: $("$BIN" -c "set -WWW; \"$BIN\" -c 'echo \"\${KOSH_ANALYSIS-}\"'" 2>&1)"
 explicit_output=$("$BIN" -c "set -WWW; \"$BIN\" -W $dir/lint.bash" 2>&1)

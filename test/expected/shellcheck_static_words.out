@@ -510,7 +510,15 @@ note: Wrap nonprinting prompt escapes in `\[` and `\]`.
    177 |  KOSH_TRANSIENT_PS1='\x1b[1m> '
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Wrap nonprinting prompt escapes in `\[` and `\]`.
-Encountered 124 warnings.
+183:17: warning: `$*` loses the boundaries between positional parameters. (SC2048)
+   183 |    printf '[%s]' $*
+       |                  ^~
+note: Use quoted `"$@"` to preserve each argument.
+184:17: warning: An unquoted `$@` splits at whitespace and matches each argument as a glob. (SC2068)
+   184 |    printf '[%s]' $@
+       |                  ^~
+note: Quote it as `"$@"`.
+Encountered 126 warnings.
 done
 done
 done

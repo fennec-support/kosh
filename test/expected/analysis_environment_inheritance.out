@@ -1,5 +1,6 @@
 plain: 0
 bash shebang: 1
+kosh plain: 0
 kosh shebang: 1
 operand: 1
 nested -c: warnings=3

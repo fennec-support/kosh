@@ -1,7 +1,7 @@
 unset KOSH_FLAGS KOSHCONF
 # koshconf messages say why a value is refused and where a setting moved, and
 # --persist keeps a byte order mark, CRLF line ends, and a commented
-# placeholder in place.
+# placeholder in place. Startup ignores an invalid KOSHCONF and continues.
 work=$(mktemp -d)
 trap '[ -n "$work" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$work"' EXIT
 export XDG_CONFIG_HOME="$work/config"
@@ -17,6 +17,9 @@ for blob in '%%%' AQ== gQA= BQEAAQEA gICAgBA= gICAgJAA; do
   KOSHCONF=$blob do_quiet -c :
   do_quiet -c "koshconf load $blob"
 done
+echo "== an invalid KOSHCONF does not stop startup:"
+KOSHCONF=%%% "$BIN" -c 'koshconf get mood' 2>/dev/null
+echo "rc=$?"
 echo "== a Bash name points at its koshconf name:"
 do_quiet -c 'koshconf get pipefail; koshconf set extglob on'
 echo "== enumeration values read naturally:"

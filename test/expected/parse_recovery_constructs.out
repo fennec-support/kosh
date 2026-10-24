@@ -157,3 +157,37 @@ if true; then case $x in fi|`echo a`) ;; esac; fi => 0
 if true; then case $x in fi|'a)b') ;; esac; fi => 0
 if true; then case $x in fi | a | b) ;; esac; fi => 0
 hit
+== an unterminated construct stops the script before it runs
+echo $(echo hi
+-c:1:16: error: Unterminated command substitution.
+status 2
+echo `echo hi
+-c:1:16: error: Unterminated command substitution.
+status 2
+echo $((1 + 2
+-c:1:16: error: Unterminated arithmetic expansion.
+status 2
+cat <(echo hi
+-c:1:15: error: Unterminated process substitution.
+status 2
+echo $'abc\
+-c:1:16: error: Unterminated $'...' string.
+status 2
+[[ a == b
+-c:1:11: error: This '[[' has no closing ']]'.
+status 2
+(echo hi
+-c:1:11: error: This subshell has no closing ')'.
+status 2
+arr=(a b
+-c:1:15: error: This array assignment has no closing ')'.
+status 2
+foo()
+-c:1:11: error: Expected a compound command as the function body.
+status 2
+foo( {
+-c:1:16: error: Expected ')' in a function definition.
+status 2
+case x in a) y;; b
+-c:1:29: error: Expected '|' or ')' after the case pattern.
+status 2
