@@ -1,5 +1,7 @@
 === precedence ===
 14
+=== an operand that starts with a dash joins the expression ===
+1
 === parentheses and power ===
 27
 === 128-bit in the default mood ===

@@ -7,6 +7,9 @@ unset KOSH_FLAGS
 echo "=== precedence ==="
 "$BIN" -c 'koshkit calc "2 + 3 * 4"'
 
+echo "=== an operand that starts with a dash joins the expression ==="
+"$BIN" -c 'koshkit calc 3 -2'
+
 echo "=== parentheses and power ==="
 "$BIN" -c 'koshkit calc "(1 + 2) ** 3"'
 
