@@ -2,7 +2,7 @@
 # noclobber refuses only an existing regular file, so a device and a FIFO
 # still take output. A descriptor number past the 32-bit range is a bad
 # descriptor instead of wrapping onto a small one, and n>&m- moves m onto n,
-# closing m.
+# closing m. exec n>&n succeeds even when n is closed.
 work_dir=$(mktemp -d)
 cd "$work_dir" || exit 1
 
@@ -33,6 +33,11 @@ else
 fi
 echo via-five >&5
 exec 5>&-
+
+exec 7>&7
+echo "self-dup-closed=$?"
+exec 7<&7
+echo "self-dup-closed-input=$?"
 
 cd / || exit 1
 rm -r "$work_dir"
