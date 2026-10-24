@@ -120,56 +120,36 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       saved_options = cxt.runtime_state().get_shell_options();
   };
 
-  for (; first_name < args.count(); first_name++) {
-    let const arg = args[first_name].view();
+  let operand_indices = ArrayList<usize>{cxt.scratch_allocator()};
 
-    if (arg.is_empty() || arg[0] != '-') {
-      break;
-    }
+  unused(parse_flags_vec(
+      FLAG_LIST, args, ec.source_location().position, nullptr,
+      &ec.arg_locations(), nullptr, builtin_error_context(ec.program()),
+      flag_parse_options{.should_stop_at_first_operand = true},
+      cxt.scratch_allocator(), &operand_indices));
+  defer { reset_flags(FLAG_LIST); };
 
-    if (arg == "--") {
-      first_name++;
-      break;
-    }
+  should_make_indexed      = FLAG_LOCAL_INDEXED.is_enabled();
+  should_make_associative  = FLAG_LOCAL_ASSOCIATIVE.is_enabled();
+  should_mark_integer      = FLAG_LOCAL_INTEGER.is_enabled();
+  should_mark_lowercase    = FLAG_LOCAL_LOWERCASE.is_enabled();
+  should_print_declaration = FLAG_LOCAL_PRINT.is_enabled();
+  should_mark_readonly     = FLAG_LOCAL_READONLY.is_enabled();
+  should_mark_uppercase    = FLAG_LOCAL_UPPERCASE.is_enabled();
+  should_mark_export       = FLAG_LOCAL_EXPORT.is_enabled();
+  should_mark_nameref      = FLAG_LOCAL_NAMEREF.is_enabled();
+  /* the first operand index belongs to the command word. */
+  first_name = operand_indices.count() < 2 ? args.count() : operand_indices[1];
 
-    if (arg == "-") {
-      do_save_shell_options();
-      continue;
-    }
+  /* a lone - saves the shell options, unless -- ended the options. */
+  let const did_end_options = first_name > 1 && first_name <= args.count() &&
+                              args[first_name - 1] == "--";
 
-    for (usize c = 1; c < arg.length; c++) {
-      switch (arg[c]) {
-      case 'a': should_make_indexed = true; break;
-
-      case 'A': should_make_associative = true; break;
-
-      case 'i': should_mark_integer = true; break;
-
-      case 'l': should_mark_lowercase = true; break;
-
-      case 'p': should_print_declaration = true; break;
-
-      case 'r': should_mark_readonly = true; break;
-
-      case 'u': should_mark_uppercase = true; break;
-
-      case 'x': should_mark_export = true; break;
-
-      case 'n': should_mark_nameref = true; break;
-
-      default: {
-        let invalid = String{heap_allocator()};
-
-        invalid += arg[c];
-
-        let bad_option = make_error_for_arg(
-            ec, first_name, "'-" + invalid + "' is not a valid local option");
-
-        bad_option.set_command_status(2);
-        throw bad_option;
-      }
-      }
-    }
+  while (!did_end_options && first_name < args.count() &&
+         args[first_name] == "-")
+  {
+    do_save_shell_options();
+    first_name++;
   }
 
   if (should_mark_lowercase && should_mark_uppercase) {
