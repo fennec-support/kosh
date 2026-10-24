@@ -1699,7 +1699,7 @@ def run_control_name_checks(binary, directory, command_directory, report):
         session.send(b"cat ctl/ZQa")
         session.send(b"\t")
         report.record("control-name-completes-ansi-c-quoted", session,
-                      is_line("cat ctl/$'ZQa\\e]0;PWN\\ax'"))
+                      is_line("cat ctl/$'ZQa\\E]0;PWN\\ax'"))
         clear_line(session)
 
         session.send(b"cat ctl/ZQ")

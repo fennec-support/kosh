@@ -12,7 +12,7 @@ trap '[ -n "$dir" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 cd "$dir"
 echo "== an escape and a bell complete as escapes:"
 "$BIN" --debug-complete-at 'cat os' </dev/null
-echo "== a C1 control completes as hex escapes:"
+echo "== a C1 control completes as octal escapes:"
 "$BIN" --debug-complete-at 'cat cs' </dev/null
 echo "== a quote, a backslash, and DEL are escaped together:"
 "$BIN" --debug-complete-at 'cat mi' </dev/null

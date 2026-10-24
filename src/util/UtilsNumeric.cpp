@@ -1035,16 +1035,7 @@ append_shell_quoted(String    &out,
 {
   if (append_ansi_c_quote_if_needed(out, arg, is_utf8_locale)) return;
 
-  out.push('\'');
-
-  for (usize i = 0; i < arg.length; i++) {
-    if (arg[i] == '\'')
-      out += "'\\''";
-    else
-      out.push(arg[i]);
-  }
-
-  out.push('\'');
+  append_shell_quoted_arg(out, arg, true);
 }
 
 } /* namespace utils */
