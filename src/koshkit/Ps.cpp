@@ -27,22 +27,7 @@ REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(Ps);
 
 namespace koshka::koshkit {
 
-static fn
-append_left(String &output, StringView text, usize width) throws -> void
-{
-  output += text;
-  output.append_repeated(' ', width - text.length);
-}
-
-static fn
-append_right(String &output, StringView text, usize width) throws
-    -> void
-{
-  output.append_repeated(' ', width - text.length);
-  output += text;
-}
-
-/* memory: owners and the number texts are allocated in allocator.
+/* memory: the table and the cell texts are allocated in allocator.
    time:   one user_name_or_id() call per process. */
 static fn
 render_aux_without_sampled_columns(
@@ -50,64 +35,36 @@ render_aux_without_sampled_columns(
     String                             &output,
     Allocator                           allocator) throws -> void
 {
-  ArrayList<String> owners{allocator};
+  let table = ReportTable{allocator};
 
-  owners.reserve(processes.count());
-
-  usize user_width = 4;
-  usize pid_width  = 3;
-  usize vsz_width  = 3;
-  usize rss_width  = 3;
+  table.set_column_gap(1);
+  table.add_column("USER");
+  table.add_column("PID", report_table_alignment::Right);
+  table.add_column("VSZ", report_table_alignment::Right);
+  table.add_column("RSS", report_table_alignment::Right);
+  table.add_column("STAT");
+  table.add_column("COMMAND");
 
   for (let const &process : processes) {
-    let owner = utils::user_name_or_id(process.owner_id, allocator);
-
-    if (owner.count() > user_width) user_width = owner.count();
-
+    let const owner    = utils::user_name_or_id(process.owner_id, allocator);
     let const pid_text = String::from(process.pid, allocator);
-
-    if (pid_text.count() > pid_width) pid_width = pid_text.count();
-
     let const vsz_text = String::from(process.virtual_kib, allocator);
-
-    if (vsz_text.count() > vsz_width) vsz_width = vsz_text.count();
-
     let const rss_text = String::from(process.resident_kib, allocator);
+    let const state    = StringView{&process.state, 1};
+    let       cells    = ArrayList<report_table_cell_view>{allocator};
 
-    if (rss_text.count() > rss_width) rss_width = rss_text.count();
-
-    owners.push(steal(owner));
+    cells.push({owner.view(), {}});
+    cells.push({pid_text.view(), {}});
+    cells.push({vsz_text.view(), {}});
+    cells.push({rss_text.view(), {}});
+    cells.push({state, {}});
+    cells.push({process.command_line.is_empty() ? process.name.view()
+                                                : process.command_line.view(),
+                {}});
+    table.add_row(cells);
   }
 
-  append_left(output, "USER", user_width);
-  output += ' ';
-  append_right(output, "PID", pid_width);
-  output += ' ';
-  append_right(output, "VSZ", vsz_width);
-  output += ' ';
-  append_right(output, "RSS", rss_width);
-  output += " STAT COMMAND\n";
-
-  for (usize i = 0; i < processes.count(); i++) {
-    const os::process_entry &process = processes[i];
-
-    append_left(output, owners[i].view(), user_width);
-    output += ' ';
-    append_right(output, String::from(process.pid, allocator).view(),
-                 pid_width);
-    output += ' ';
-    append_right(output, String::from(process.virtual_kib, allocator).view(),
-                 vsz_width);
-    output += ' ';
-    append_right(output, String::from(process.resident_kib, allocator).view(),
-                 rss_width);
-    output += ' ';
-    output += process.state;
-    output += "    ";
-    output += process.command_line.is_empty() ? process.name.view()
-                                              : process.command_line.view();
-    output += '\n';
-  }
+  output += table.to_string(false, {});
 }
 
 fn

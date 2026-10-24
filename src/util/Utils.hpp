@@ -124,11 +124,15 @@ merge_args_to_string(const ArrayList<String> &args) throws -> String
   return result;
 }
 
+/* each row starts with indentation and two spaces, and available_width
+   bounds the cells after them. */
 template <class GetName>
 fn
-append_name_columns(String &output,
-                    usize   name_count,
-                    GetName do_get_name) throws -> void
+append_name_columns(String    &output,
+                    usize      name_count,
+                    GetName    do_get_name,
+                    StringView indentation     = {},
+                    usize      available_width = 78) throws -> void
 {
   usize longest_length = 0;
 
@@ -139,12 +143,18 @@ append_name_columns(String &output,
   }
 
   let const column_width = longest_length + 2;
-  let const column_count = column_width >= 78 ? usize{1} : 78 / column_width;
+  let const column_count = column_width >= available_width
+                               ? usize{1}
+                               : available_width / column_width;
 
   for (usize index = 0; index < name_count; index++) {
     let const name = do_get_name(index);
 
-    if (index % column_count == 0) output += "  ";
+    if (index % column_count == 0) {
+      output += indentation;
+      output += "  ";
+    }
+
     output += name;
 
     let const is_last_in_row =

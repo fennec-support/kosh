@@ -48,22 +48,22 @@ Df::execute(const ExecContext               &ec,
                           : FLAG_DF_KIBIBYTES.is_enabled() ? 1024u
                                                            : 512u;
 
-  static constexpr usize COLUMN_COUNT = 6;
+  /* the filesystem and the mount point are left-aligned, and the figures are
+     right-aligned. */
+  let table = ReportTable{cxt.scratch_allocator()};
 
-  let rows   = ArrayList<ArrayList<String>>{cxt.scratch_allocator()};
-  let header = ArrayList<String>{cxt.scratch_allocator()};
-
-  header.push(String{cxt.scratch_allocator(), "Filesystem"});
-  header.push(String{cxt.scratch_allocator(), is_human ? "Size"
-                                              : FLAG_DF_KIBIBYTES.is_enabled()
-                                                  ? "1024-blocks"
-                                                  : "512-blocks"});
-  header.push(String{cxt.scratch_allocator(), "Used"});
-  header.push(
-      String{cxt.scratch_allocator(), is_human ? "Avail" : "Available"});
-  header.push(String{cxt.scratch_allocator(), is_human ? "Use%" : "Capacity"});
-  header.push(String{cxt.scratch_allocator(), "Mounted on"});
-  rows.push(steal(header));
+  table.set_column_gap(1);
+  table.add_column("Filesystem");
+  table.add_column(is_human                         ? "Size"
+                   : FLAG_DF_KIBIBYTES.is_enabled() ? "1024-blocks"
+                                                    : "512-blocks",
+                   report_table_alignment::Right);
+  table.add_column("Used", report_table_alignment::Right);
+  table.add_column(is_human ? "Avail" : "Available",
+                   report_table_alignment::Right);
+  table.add_column(is_human ? "Use%" : "Capacity",
+                   report_table_alignment::Right);
+  table.add_column("Mounted on");
 
   i32 status = 0;
 
@@ -108,46 +108,23 @@ Df::execute(const ExecContext               &ec,
                  : String::from(value, cxt.scratch_allocator());
     };
 
-    let row = ArrayList<String>{cxt.scratch_allocator()};
+    let const total_text     = do_format(total);
+    let const used_text      = do_format(used);
+    let const available_text = do_format(available);
+    let const capacity_text =
+        String::from(capacity, cxt.scratch_allocator()) + "%";
+    let cells = ArrayList<report_table_cell_view>{cxt.scratch_allocator()};
 
-    row.push(mounted.source.clone());
-    row.push(do_format(total));
-    row.push(do_format(used));
-    row.push(do_format(available));
-    row.push(String::from(capacity, cxt.scratch_allocator()) + "%");
-    row.push(mounted.target.clone());
-    rows.push(steal(row));
+    cells.push({mounted.source.view(), {}});
+    cells.push({total_text.view(), {}});
+    cells.push({used_text.view(), {}});
+    cells.push({available_text.view(), {}});
+    cells.push({capacity_text.view(), {}});
+    cells.push({mounted.target.view(), {}});
+    table.add_row(cells);
   }
 
-  /* the filesystem and the mount point are left-aligned and the figures are
-     right-aligned, and the last column takes no padding. */
-  usize widths[COLUMN_COUNT] = {};
-
-  for (let const &row : rows)
-    for (usize column = 0; column < COLUMN_COUNT; column++)
-      if (row[column].length() > widths[column])
-        widths[column] = row[column].length();
-
-  for (let const &row : rows) {
-    let line = String{cxt.scratch_allocator()};
-
-    for (usize column = 0; column < COLUMN_COUNT; column++) {
-      let const padding = widths[column] - row[column].length();
-
-      if (column > 0) line.push(' ');
-      if (column == 0) {
-        line += row[column].view();
-        line.append_repeated(' ', padding);
-      } else if (column + 1 == COLUMN_COUNT) {
-        line += row[column].view();
-      } else {
-        line.append_repeated(' ', padding);
-        line += row[column].view();
-      }
-    }
-    line.push('\n');
-    ec.print_to_stdout(line);
-  }
+  ec.print_to_stdout(table.to_string(false, {}));
 
   return status;
 }

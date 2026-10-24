@@ -1778,40 +1778,14 @@ append_report_name_section(String                      &output,
                      should_color);
   output += '\n';
 
-  usize longest_length = 0;
-
-  for (let const name : names)
-    if (name.length > longest_length) longest_length = name.length;
-
-  let const column_width      = longest_length + 2;
   let const indentation_width = report_indentation_width(indentation) + 2;
   let const available_width   = indentation_width < HELP_WRAP_WIDTH
                                     ? HELP_WRAP_WIDTH - indentation_width
                                     : usize{1};
-  let const column_count      = column_width >= available_width
-                                    ? usize{1}
-                                    : available_width / column_width;
 
-  for (usize index = 0; index < names.count(); index++) {
-    let const name = names[index];
-
-    if (index % column_count == 0) {
-      output += indentation;
-      output += "  ";
-    }
-
-    output += name;
-
-    let const is_last_in_row =
-        index % column_count == column_count - 1 || index + 1 == names.count();
-
-    if (is_last_in_row) {
-      output += '\n';
-    } else {
-      output.append_repeated(' ', column_width - name.length);
-    }
-  }
-
+  utils::append_name_columns(
+      output, names.count(), [&](usize index) { return names[index]; },
+      indentation, available_width);
   output += '\n';
 }
 
