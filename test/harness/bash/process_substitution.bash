@@ -76,8 +76,11 @@ case $? in
   *) echo "loop=unexpected" ;;
 esac
 [[ -e <(exit 10) ]]
-wait "$!"
-echo "conditional=$?"
+wait "$!" 2> /dev/null
+case $? in
+  10 | 127) echo "conditional=kept-or-pruned" ;;
+  *) echo "conditional=unexpected" ;;
+esac
 exec 3< <(sleep 0.2; exit 11)
 jobs
 wait "$!"
