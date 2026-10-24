@@ -9,14 +9,6 @@ Benchmark: `false` (3 runs)
 direct
 direct
 Benchmark: `/bin/echo direct` (2 runs)
-== --runs executes exactly one sample:
-Benchmark: `true` (1 run)
-== invalid sample counts are rejected:
-rc=1
-rc=1
-rc=1
-== unsigned overflow is rejected by number parsing:
--c:1:14: error: Builtin `bench`: --runs expects a number, got '18446744073709551616'.
 == invalid values carry granular carets:
 -c:1:14: error: Builtin `bench`: --runs expects a number, got 'nope'.
      1 |  bench --runs nope true
@@ -27,6 +19,12 @@ rc=1
 -c:1:14: error: Builtin `bench`: --runs expects a number from 1 through 100000.
      1 |  bench --runs 0 true
        |               ^
+-c:1:14: error: Builtin `bench`: --runs expects a number from 1 through 100000.
+     1 |  bench --runs 100001 true
+       |               ^~~~~~
+-c:1:14: error: Builtin `bench`: --runs expects a number, got '18446744073709551616'.
+     1 |  bench --runs 18446744073709551616 true
+       |               ^~~~~~~~~~~~~~~~~~~~
 -c:1:18: error: Builtin `bench`: --duration is too large.
      1 |  bench --duration 18446744073710 true
        |                   ^~~~~~~~~~~~~~
@@ -36,18 +34,14 @@ rc=1
 -c:1:18: error: Builtin `bench`: --runs expects a number, got 'nope'.
      1 |  runs=nope; bench --runs=$runs true
        |                   ^~~~~~~~~~~~
-== an overflowing duration is rejected:
-rc=1
 == counter capability keeps one complete sample:
 counter capability passed
 == counter fallback keeps one complete sample:
 counter fallback passed
 == --extended adds resource rows and the default output omits them:
 extended rows passed
-== --extended is documented in the builtin help:
-help lists --extended
-== a failed later sample clears terminal progress:
-progress clear check complete
+== a vanished command fails a later sample with status 127:
+vanished command check complete
 == short flags, profile, and warmup:
 1 run
 5

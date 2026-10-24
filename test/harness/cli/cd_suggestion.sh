@@ -53,6 +53,12 @@ echo '== intermediate regular file:'
 echo '== direct regular file:'
 "$BIN" -c 'cd regular-file' 2>&1 | sed 's|\\|/|g'
 
+echo '== a failing cd ends a guarded script with status 1:'
+"$BIN" -c 'cd regular-file || exit; echo not-reached' >/dev/null 2>&1
+echo "file=$?"
+"$BIN" -c 'cd nowhere-near || exit; echo not-reached' >/dev/null 2>&1
+echo "miss=$?"
+
 echo '== option terminator and missing tail:'
 "$BIN" -c 'cd -- project/nseted/tail' 2>&1 | sed 's|\\|/|g'
 
@@ -107,28 +113,16 @@ echo '== CDPATH logical traversal preserves symlink traversal:'
 CDPATH="$d/cdpath" "$BIN" -c 'cd link/../sibling >/dev/null && pwd' 2>&1 |
     sed -e 's|\\|/|g' -e 's|/private/|/|g' -e "s|$d|<tmp>|g"
 
-if [ "${OS-}" = Windows_NT ]; then
-    native_pwd=$("$BIN" -c pwd | sed 's|\\|/|g')
-    drive_relative_operand="${native_pwd%%/*}missing/../other"
-else
-    drive_relative_operand='./missing/../other'
-fi
-out=$("$BIN" --no-diagnostics -c "$drive_relative_operand" 2>&1)
-printf 'raw traversal missing=%s caret=%s executed=%s\n' \
-    "$(printf '%s\n' "$out" | grep -Fc "The directory '${drive_relative_operand%%/../*}'")" \
-    "$(printf '%s\n' "$out" | grep -c '^       |    \^~~~~~~$')" \
-    "$(printf '%s\n' "$out" | grep -c 'should-not-run')"
+echo '== raw traversal reports the missing directory and runs nothing:'
+out=$("$BIN" --no-diagnostics -c './missing/../other' 2>&1)
+printf '%s\n' "$out" | sed 's|\\|/|g'
+printf 'executed=%s\n' "$(printf '%s\n' "$out" | grep -c 'should-not-run')"
 
 echo '== CDPATH physical traversal preserves symlink semantics:'
 CDPATH="$d/cdpath" "$BIN" -c 'cd -P link/../sibling && pwd' 2>&1 |
     sed -e 's|\\|/|g' -e "s|$d|<tmp>|g"
 
-if [ "${OS-}" = Windows_NT ]; then
-    path_separator='\'
-else
-    path_separator='/'
-fi
-native_operand="project${path_separator}nseted${path_separator}tail"
+native_operand=project/nseted/tail
 echo '== native separator:'
 "$BIN" -c "cd '$native_operand'" 2>&1 |
     sed 's|\\|/|g; s|`'"'"'project/nested'"'"'`|`project/nested`|'

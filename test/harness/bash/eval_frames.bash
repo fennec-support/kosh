@@ -44,13 +44,6 @@ substitution_source='printf substitution'
 printf 'substitution-reparse=%s,%s\n' "$($substitution_source)" \
     "$($substitution_source)"
 
-positional_parameter_substitution() {
-    printf 'positional-before=%s\n' "$1"
-    nested_value=$(true)
-    printf 'positional-after=%s\n' "$1"
-}
-positional_parameter_substitution alive
-
 persistent_substitution_cache() {
     printf 'persistent-cache=%s\n' "$(printf alive)"
 }

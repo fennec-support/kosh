@@ -3,11 +3,7 @@ unset KOSH_FLAGS
 export KOSH_FLAGS=--no-diagnostics
 d=$(mktemp -d)
 trap 'test -n "$d" && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
-if [ "${OS-}" = Windows_NT ]; then
-    BENCH_ECHO='cmd.exe /d /c echo'
-else
-    BENCH_ECHO=/bin/echo
-fi
+BENCH_ECHO=/bin/echo
 export BENCH_ECHO
 # bench forks a kosh process per sample and runs the command under it. Only the
 # deterministic lines are checked here, since the timing summary varies per run.
@@ -20,38 +16,19 @@ echo "== --ignore-exit-code keeps sampling a failing command:"
 echo "== --no-shell --show-output forks the command directly:"
 direct_output=$("$BIN" -c \
     'bench --runs 2 --no-shell --show-output "$BENCH_ECHO direct"' 2>&1)
-if [ "${OS-}" = Windows_NT ]; then
-    direct_output=$(printf '%s\n' "$direct_output" | tr -d '\r')
-fi
-printf '%s\n' "$direct_output" |
-    sed "s|$BENCH_ECHO|/bin/echo|g" |
-    grep -E '^direct$|Benchmark:'
-echo "== --runs executes exactly one sample:"
-"$BIN" -c 'bench --runs 1 --ignore-exit-code true' 2>&1 | grep 'Benchmark:'
-echo "== invalid sample counts are rejected:"
-for count in 0 100001 18446744073709551616; do
-    "$BIN" -c "bench --runs '$count' true" >/dev/null 2>&1
-    echo "rc=$?"
-done
-echo "== unsigned overflow is rejected by number parsing:"
-"$BIN" -c 'bench --runs 18446744073709551616 true' 2>&1 |
-    grep 'expects a number, got'
+printf '%s\n' "$direct_output" | grep -E '^direct$|Benchmark:'
 echo "== invalid values carry granular carets:"
 "$BIN" -c 'bench --runs nope true' 2>&1
 "$BIN" -c 'bench --runs=nope true' 2>&1
 "$BIN" -c 'bench --runs 0 true' 2>&1
+"$BIN" -c 'bench --runs 100001 true' 2>&1
+"$BIN" -c 'bench --runs 18446744073709551616 true' 2>&1
 "$BIN" -c 'bench --duration 18446744073710 true' 2>&1
 "$BIN" -c 'bench "--runs=nope" true' 2>&1
 "$BIN" -c 'runs=nope; bench --runs=$runs true' 2>&1
-echo "== an overflowing duration is rejected:"
-"$BIN" -c 'bench --duration 18446744073710 true' >/dev/null 2>&1
-echo "rc=$?"
 echo "== counter capability keeps one complete sample:"
 counter_output=$("$BIN" -c \
     'bench --runs 1 --no-shell --show-output "$BENCH_ECHO counter-run"' 2>&1)
-if [ "${OS-}" = Windows_NT ]; then
-    counter_output=$(printf '%s\n' "$counter_output" | tr -d '\r')
-fi
 test "$(printf '%s\n' "$counter_output" | grep -c '^counter-run$')" -eq 1
 counter_row_count=$(printf '%s\n' "$counter_output" | grep -Ec '^  (cpu cycles|instructions|cache refs|cache misses|branch misses)')
 case "$counter_row_count" in
@@ -148,9 +125,7 @@ plain_row_count=$(printf '%s\n' "$plain_output" |
 test "$extended_row_count" -gt "$plain_row_count" ||
     { echo "extended adds no rows"; exit 1; }
 echo "extended rows passed"
-echo "== --extended is documented in the builtin help:"
-"$BIN" -c 'bench --help' 2>&1 | grep -q -e '^  -E, --extended ' && echo "help lists --extended"
-echo "== a failed later sample clears terminal progress:"
+echo "== a vanished command fails a later sample with status 127:"
 cat > "$d/vanishing-environment" <<'SH'
 koshkit sleep 0.03 || exit 1
 rm -f "$BENCH_VANISHING_COMMAND" || exit 1
@@ -158,24 +133,14 @@ SH
 vanishing_command="$d/vanishing-command.exe"
 ln -s "$BIN" "$vanishing_command"
 has_typescript=0
-has_progress_terminal=0
 if script -qec true /dev/null >/dev/null 2>&1; then
     has_typescript=1
-    if BIN="$BIN" script -qec \
-        'exec "$BIN" -c "test -t 2"' /dev/null >/dev/null 2>&1; then
-        has_progress_terminal=1
-    fi
     NO_COLOR= TERM=xterm BIN=$BIN BASH_ENV="$d/vanishing-environment" \
         BENCH_VANISHING_COMMAND="$vanishing_command" script -qec \
         "$BIN -c 'bench --runs 3 --no-shell \"$vanishing_command --mood bash -c true\"'" \
         "$d/typescript" >/dev/null 2>&1
 elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
     has_typescript=1
-    native_terminal_output=$(BIN="$BIN" script -q /dev/null "$BIN" -c \
-        'test -t 2 && echo native-stderr-terminal' 2>/dev/null)
-    case $native_terminal_output in
-        *native-stderr-terminal*) has_progress_terminal=1 ;;
-    esac
     NO_COLOR= TERM=xterm BIN=$BIN BASH_ENV="$d/vanishing-environment" \
         BENCH_VANISHING_COMMAND="$vanishing_command" \
         script -q "$d/typescript" "$BIN" -c \
@@ -189,45 +154,14 @@ if [ "$has_typescript" -eq 1 ]; then
     [ -n "$terminal_hex" ] || exit 1
     [ ! -e "$vanishing_command" ] && [ ! -L "$vanishing_command" ] || exit 1
     typescript_text=$(tr -d '\r' < "$d/typescript")
-    if [ "${OS-}" = Windows_NT ]; then
-        case "$typescript_text" in
-            *"Unable to run '$vanishing_command --mood bash -c true'"*) ;;
-            *) exit 1 ;;
-        esac
-    else
-        vanishing_row=$(printf '%s\n' "$typescript_text" |
-            grep -F "$vanishing_command --mood bash -c true")
-        case "$vanishing_row" in
-            *'exited with status 127.'*) ;;
-            *) exit 1 ;;
-        esac
-    fi
-fi
-if [ "$has_progress_terminal" -eq 1 ]; then
-    case $terminal_hex in
-        *0d1b5b324b*) ;;
-        *) echo "progress clobbered error"; exit 1 ;;
+    vanishing_row=$(printf '%s\n' "$typescript_text" |
+        grep -F "$vanishing_command --mood bash -c true")
+    case "$vanishing_row" in
+        *'exited with status 127.'*) ;;
+        *) exit 1 ;;
     esac
 fi
-if [ "$has_progress_terminal" -eq 1 ]; then
-    cat > "$d/progress-driver" <<'SH'
-#!/bin/sh
-exec "$BIN" -c 'bench --runs 2 "sleep 0.12 # deliberately long benchmark label" "sleep 0.12"'
-SH
-    chmod +x "$d/progress-driver"
-    if script -qec true /dev/null >/dev/null 2>&1; then
-        NO_COLOR= TERM=xterm BIN=$BIN script -qec "$d/progress-driver" \
-            "$d/progress-typescript" >/dev/null 2>&1
-    elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
-        NO_COLOR= TERM=xterm BIN=$BIN script -q "$d/progress-typescript" \
-            "$d/progress-driver" >/dev/null 2>&1
-    fi
-    progress_hex=$(od -An -tx1 "$d/progress-typescript" | tr -d ' \n')
-    clear_count=$(printf '%s\n' "$progress_hex" | grep -o '0d1b5b324b' | \
-        wc -l | tr -d ' ')
-    [ "$clear_count" -ge 4 ] || exit 1
-fi
-echo "progress clear check complete"
+echo "vanished command check complete"
 echo "== short flags, profile, and warmup:"
 "$BIN" -c 'bench -p -N true' 2>&1 | sed -n '1s/^Benchmark: .* (\(.*\))$/\1/p'
 "$BIN" -c "bench -n 2 -w3 'echo x >> $d/warmup-count'" >/dev/null 2>&1

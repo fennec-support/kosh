@@ -3,7 +3,8 @@
 # scalar keeps the scalar at index 0, and unset of a subscript on a scalar
 # removes the scalar for index 0 and fails otherwise. Declaring a scalar as an
 # array keeps its value at index 0, and declaring an array as the other array
-# kind fails and keeps the array.
+# kind fails and keeps the array. An element write to a scalar promotes the
+# scalar to element zero.
 export LC_ALL=C
 
 show() {
@@ -21,6 +22,16 @@ read -r a <<< rd
 show a
 printf -v a %s pv
 show a
+
+sa=5
+sa[2]=99
+echo "${sa[0]} ${sa[1]} ${sa[2]}"
+sb=hello
+sb[0]=10
+echo "${sb[0]}"
+sc=world
+sc[1]=second
+echo "${sc[0]}-${sc[1]}-count=${#sc[@]}"
 
 declare -A m=([0]=v [k]=v)
 m=q

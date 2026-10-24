@@ -75,5 +75,11 @@ nested_defined
 ( nested_defined ) &
 wait "$!"
 
+eval 'evaluated_background() {
+  ( echo "evaluated_background=$LINENO"; echo "$unset_in_background" ) &
+  wait "$!"
+}'
+evaluated_background
+
 cd / || exit 1
 [ -n "$library_directory" ] && koshkit rm -r "$library_directory"

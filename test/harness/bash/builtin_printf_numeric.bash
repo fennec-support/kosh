@@ -1,7 +1,8 @@
 #!/bin/bash
 # Bash printf numeric conversions with field width and precision, checked
 # byte-for-byte against bash. Covers signed and unsigned bases, padding,
-# alignment, and a floating conversion.
+# alignment, a floating conversion, quoting, format reuse, printf -v, echo
+# escapes, and the numeric locale.
 
 # The numeric locale cases at the end of the file run here in a shell that
 # starts with LOCPATH naming the generated locale.
@@ -46,6 +47,9 @@ printf '%8.2f\n' 3.14159
 printf '%+d %+d\n' 5 -5
 printf '%c\n' A
 printf '%e\n' 12345.678
+printf '[%*.*f]\n' 8 2 3.5
+printf '%b' 'stop\chere'
+echo
 
 
 printf '%q\n' "hello world"
@@ -89,6 +93,10 @@ echo "floatv=$floatv"
 printf -v widthv "%*d" 6 7
 echo "widthv=[$widthv]"
 
+# Bash echo with -e, -E, -n, and xpg_echo, checked byte-for-byte against bash.
+# Escapes stay literal unless -e or xpg_echo asks for them, -E forces them off,
+# and echo interprets octal only in the \0NNN form, so a bare \NNN stays
+# literal.
 echo -e 'tab\there'
 echo -e 'a\nb'
 echo -e 'esc\e.E\E.'
@@ -97,42 +105,17 @@ echo
 echo -E 'kept\tliteral'
 echo -e 'stop\cgone'
 echo 'no-e-literal\t.'
-echo -e 'oct\101'
-
-# echo interprets octal only in the \0NNN form, so a bare \NNN stays literal,
-# and assigning an element to a scalar-valued name promotes the scalar to
-# element zero.
 echo -e '\101 \0101'
 echo -e '\0102 end'
 echo -e 'lit\1eral'
+echo plain words
+echo -e "bell\aafter" | od -An -c | tr -s ' '
 shopt -u xpg_echo
 echo 'xpg-off:\nvalue'
 shopt -s xpg_echo
 echo 'xpg-on:\nvalue'
 echo -E 'xpg-forced-off:\nvalue'
-a=5
-a[2]=99
-echo "${a[0]} ${a[1]} ${a[2]}"
-b=hello
-b[0]=10
-echo "${b[0]}"
-c=world
-c[1]=second
-echo "${c[0]}-${c[1]}-count=${#c[@]}"
-
-# Bash echo -e/-E/-n and printf -v, checked byte-for-byte against bash. The bash
-# echo leaves escapes literal unless -e, and printf -v stores into a variable.
-echo -e "line1\nline2"
-echo "no\tescapes here"
-echo -ne "x\ty\n"
-echo -E "stays\tliteral"
-echo plain words
-echo -e "bell\aafter" | od -An -c | tr -s ' '
-printf -v x "%d-%d" 3 5
-echo "x is $x"
-printf -v greeting "Hello, %s!" world
-echo "$greeting"
-printf "%s %s\n" direct output
+shopt -u xpg_echo
 
 # printf parses the leading numeric prefix of a malformed integer argument the
 # way bash does, including the diagnostic stream and final status.

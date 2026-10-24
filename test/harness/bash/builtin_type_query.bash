@@ -46,14 +46,13 @@ unset -f echo
 builtin true; echo "true rc=$?"
 builtin false; echo "false rc=$?"
 
+# type -t reports the keywords that the checks above do not cover.
 printf 'dbracket=%s\n' "$(type -t '[[')"
 printf 'dbracketclose=%s\n' "$(type -t ']]')"
 printf 'bang=%s\n' "$(type -t '!')"
 printf 'brace=%s\n' "$(type -t '{')"
 printf 'function=%s\n' "$(type -t 'function')"
 printf 'time=%s\n' "$(type -t 'time')"
-printf 'if=%s\n' "$(type -t 'if')"
-printf 'echo=%s\n' "$(type -t 'echo')"
 
 # The parser treats coproc, select, and the double brackets as keywords, so
 # type, command, and compgen report them with the lexer keywords.

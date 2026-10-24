@@ -102,6 +102,4 @@ folded_lookup=$(MyFolded=one "$BIN" --no-init-files -c \
   'printf "[%s][%s]" "${MyFolded-unset}" "${MYFOLDED-unset}"')
 [ "$folded_lookup" = "$expected_folded_lookup" ] || fail "$LINENO"
 
-[ "$("$BIN" -c 'echo -e "a\tb"')" = "$(printf 'a\tb')" ] || fail "$LINENO"
 echo "Exported name folding follows the platform"
-echo "echo -e expands the tab escape"

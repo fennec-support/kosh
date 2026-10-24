@@ -110,3 +110,12 @@ alias greet_alias='echo greeted'
 plain=$(echo plain)
 greeted=$(greet_alias)
 echo "with-aliases plain=$plain greeted=$greeted"
+
+# A substitution that runs a command leaves the positional parameters of the
+# calling function in place.
+positional_parameter_substitution() {
+  printf 'positional-before=%s\n' "$1"
+  nested_value=$(true)
+  printf 'positional-after=%s\n' "$1"
+}
+positional_parameter_substitution alive

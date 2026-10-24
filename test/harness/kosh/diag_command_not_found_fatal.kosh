@@ -30,3 +30,4 @@ cc -o or_generated_4242 missing.c || ./or_generated_4242
 if true; then cc -o branch_generated_4242 missing.c; fi
 ./branch_generated_4242
 ./never_generated_4242
+false && nosuchcmd_xyz

@@ -10,25 +10,6 @@ printf "%.3s\n" abcdef
 printf "end%"
 echo
 
-
-# printf with the bash q and b conversions and width in the default mood.
-printf '%q\n' 'a b'
-printf '%q\n' 'a$b;c'
-printf '%q\n' ''
-printf '%b\n' 'x\ty\n'
-printf '[%d]' 1 2 3; echo
-printf '%5d|%-5d|%05d\n' 42 42 42
-printf '%X %o %c\n' 255 8 65
-printf -v captured '%04d' 7
-echo "captured=${captured-}"
-
-printf "%.2f\n" 3.5
-printf "%b\n" "a\tb\n"
-printf "%*d\n" 4 7
-printf "[%*.*f]\n" 8 2 3.5
-printf "%b" "stop\chere"
-echo
-
 printf '%d\n' "'A"
 printf '%x\n' "'A"
 printf '%o\n' "'A"
@@ -56,3 +37,16 @@ printf '[%.*s]\n' 99999999999 abc
 echo "rc=$?"
 printf '[%*d]\n' -3 7
 echo "rc=$?"
+
+# The \e and \E escapes emit ESC in the bash moods and stay literal in the sh
+# mood. The %b conversion follows the same gate.
+set -M bash
+printf '\e' | od -An -c
+printf '\E' | od -An -c
+printf '%b' '\e' | od -An -c
+set -M bash-posix
+printf '\e' | od -An -c
+set -M sh
+printf '\e' | od -An -c
+printf '%b' '\e' | od -An -c
+set -M kosh

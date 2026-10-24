@@ -4,10 +4,10 @@ advanced
 ghost-missing
 == touch -r copies both timestamps:
 copied
-== touch -a preserves the modification time:
-preserved
-== touch -m preserves the access time:
-preserved
+== touch -a updates the access time and keeps the modification time:
+updated
+== touch -m updates the modification time and keeps the access time:
+updated
 == touch -t sets the requested timestamp:
 set
 == touch -t accepts an eight-digit timestamp:

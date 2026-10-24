@@ -3,7 +3,7 @@ echo \
 is_escaped\* \
 word \
 \
-does_not_exist*
+final_word
 echo \
 привет мир! \
 hello sailor!

@@ -32,16 +32,26 @@ if [ "$(stat_atime "$dir/copied")" -eq "$(stat_atime "$dir/reference")" ] &&
 else
   echo different
 fi
-echo "== touch -a preserves the modification time:"
-before=$(stat_mtime "$dir/copied")
+echo "== touch -a updates the access time and keeps the modification time:"
+before_atime=$(stat_atime "$dir/copied")
+before_mtime=$(stat_mtime "$dir/copied")
 "$BIN" -c "koshkit touch -a '$dir/copied'" </dev/null
-after=$(stat_mtime "$dir/copied")
-[ "$after" -eq "$before" ] && echo preserved || echo changed
-echo "== touch -m preserves the access time:"
-before=$(stat_atime "$dir/copied")
+if [ "$(stat_atime "$dir/copied")" -gt "$before_atime" ] &&
+  [ "$(stat_mtime "$dir/copied")" -eq "$before_mtime" ]; then
+  echo updated
+else
+  echo wrong
+fi
+echo "== touch -m updates the modification time and keeps the access time:"
+before_atime=$(stat_atime "$dir/copied")
+before_mtime=$(stat_mtime "$dir/copied")
 "$BIN" -c "koshkit touch -m '$dir/copied'" </dev/null
-after=$(stat_atime "$dir/copied")
-[ "$after" -eq "$before" ] && echo preserved || echo changed
+if [ "$(stat_mtime "$dir/copied")" -gt "$before_mtime" ] &&
+  [ "$(stat_atime "$dir/copied")" -eq "$before_atime" ]; then
+  echo updated
+else
+  echo wrong
+fi
 echo "== touch -t sets the requested timestamp:"
 "$BIN" -c "koshkit touch -t 200102030405.06 '$dir/copied'" </dev/null
 [ "$(stat_mtime "$dir/copied")" -eq "$(stat_mtime "$dir/reference")" ] && echo set || echo different

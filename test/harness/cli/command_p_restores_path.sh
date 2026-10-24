@@ -13,12 +13,6 @@ env -u PATH \
     "$TEST_PATH_ENVIRONMENT_NAME=$dir${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
     "$BIN" -c 'command -p nonexistent_xyz; probecmd' \
     2>"$COMMAND_P_OUTPUT"
-if [ "${OS-}" = Windows_NT ]; then
-    env -u PATH \
-        "$TEST_PATH_ENVIRONMENT_NAME=$dir${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
-        "$BIN" -c 'command -p "$BIN" -c true > "$COMMAND_P_OUTPUT"; probecmd'
-else
-    PATH="$dir${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
-        "$BIN" -c 'command -p ls > "$COMMAND_P_OUTPUT"; probecmd'
-fi
+PATH="$dir${TEST_PATH_SEPARATOR}$TEST_SYSTEM_PATH" \
+    "$BIN" -c 'command -p ls > "$COMMAND_P_OUTPUT"; probecmd'
 echo "rc=$?"

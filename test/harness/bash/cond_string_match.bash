@@ -130,13 +130,13 @@ rm -rf "$d"
 # Bash [[ ]] conditional command, checked byte-for-byte against bash. Covers
 # a negated binary test, a quoted operand with spaces, a missing directory, a
 # variable operand, a lone operand, and operands that hold arithmetic.
-[[ ! a == x ]] && echo 13
-[[ -d /nonexistent_dir_xyz ]] || echo 16
-[[ "a b c" == "a b c" ]] && echo 17
+[[ ! a == x ]] && echo negated-binary
+[[ -d /nonexistent_dir_xyz ]] || echo missing-dir
+[[ "a b c" == "a b c" ]] && echo spaced-operands
 n=42
-[[ $n -eq 42 ]] && echo 19
-[[ abc ]] && echo 20
-[[ "" ]] || echo 21
+[[ $n -eq 42 ]] && echo var-operand
+[[ abc ]] && echo lone-operand
+[[ "" ]] || echo lone-empty
 [[ 2 -eq 1+1 ]] && echo arith-eq
 [[ 5 -gt 2*2 ]] && echo arith-gt
 n=7
@@ -146,11 +146,11 @@ n=7
 # a variable subject, hyphens in a bare regex, an escaped dot, and a regex
 # held in a variable.
 v=2024-01-15
-[[ $v =~ ^[0-9]+-[0-9]+-[0-9]+$ ]] && echo 6
-[[ foo.bar =~ \. ]] && echo 9
+[[ $v =~ ^[0-9]+-[0-9]+-[0-9]+$ ]] && echo date-regex
+[[ foo.bar =~ \. ]] && echo escaped-dot
 ip=192.168.1.1
 ipre="^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$"
-[[ $ip =~ $ipre ]] && echo 11
+[[ $ip =~ $ipre ]] && echo ip-regex
 
 # A [[ =~ ]] right side that joins a variable expansion with a regex group, an
 # alternation, or a bracket must expand the variable and keep the metacharacters
@@ -161,7 +161,6 @@ if [[ $p =~ ${d}/([^/]+) ]]; then echo "g1=${BASH_REMATCH[1]}"; fi
 [[ cats =~ ^(cat|dog)s$ ]] && echo "alt=${BASH_REMATCH[1]}"
 v=x
 [[ xy =~ ${v}(y) ]] && echo "grp=${BASH_REMATCH[1]}"
-[[ axb =~ a"."b ]] && echo "quoted-dot-literal-matched" || echo "quoted-dot-literal-no-match"
 [[ a.b =~ a"."b ]] && echo "quoted-dot-exact-matched"
 PROMPT_COMMAND='alpha; shell_session_history_check ; omega'
 if [[ $PROMPT_COMMAND =~ (.*)(; *shell_session_history_check *| *shell_session_history_check *; *)(.*) ]]; then

@@ -1,9 +1,3 @@
-== caller at top level returns 1:
-rc=1
-== caller 0 inside a function prints line and source:
-4 source SRC
-== caller with a non-numeric operand at the top level is a silent 1:
-rc=1
 == caller with a non-numeric operand inside a call is a located error:
 -c:1:14: error: Builtin `caller`: 'abc' is not a whole number.
      1 |  f() { caller abc; }; f

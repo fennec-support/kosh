@@ -21,10 +21,3 @@ echo "PWD=$(koshkit basename "$PWD") OLDPWD=$(koshkit basename "$OLDPWD")"
 cd - >/dev/null || exit
 koshkit basename "$PWD"
 cd "$start" || exit
-koshkit mkdir -p "$TEST_TEMP_DIRECTORY/cd-fail-file"
-: > "$TEST_TEMP_DIRECTORY/cd-fail-file/tfile"
-"$BIN" -c 'cd "$1" || exit; echo not-reached' kosh "$TEST_TEMP_DIRECTORY/cd-fail-file/tfile" 2>&1
-echo "rc=$?"
-koshkit unlink "$TEST_TEMP_DIRECTORY/cd-fail-file/tfile"
-"$BIN" -c 'cd .test-work/nonexistent-xyz-dir || exit; echo not-reached' 2>&1
-echo "miss=$?"

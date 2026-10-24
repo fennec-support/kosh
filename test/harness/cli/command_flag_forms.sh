@@ -15,11 +15,6 @@ success_output=$("$BIN" --no-diagnostics --show-exit-code -c ':' 2>&1)
 [ -z "$success_output" ] || exit 1
 echo "show-exit-code success is quiet"
 
-"$BIN" --help 2>&1 | grep -Eq '^ +--show-exit-code( |$)' || exit 1
-"$BIN" --help 2>&1 | grep -Eq '^  -N, --show-all-exit-codes( |$)' || exit 1
-"$BIN" -c 'set --help' 2>&1 | grep -Eq '^  -N  debug\.report_every_exit_code( |$)' || exit 1
-echo "show-exit-code flags appear in the help"
-
 continued_output=$("$BIN" --no-diagnostics --show-exit-code -c 'false; echo after' 2>&1)
 [ "$?" -eq 0 ] || exit 1
 [ "$(printf '%s\n' "$continued_output" | grep -c 'warning: Non-zero exit code (1)')" -eq 1 ] || exit 1

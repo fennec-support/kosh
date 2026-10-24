@@ -1,7 +1,7 @@
 == env passes an assignment to the command:
 hello
 == env runs a shell builtin with the assignment applied:
-done
+msg=ok
 == the assignment does not leak past the command:
 [unset]
 == an unresolved command fails with status 127:

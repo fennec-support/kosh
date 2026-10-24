@@ -7,7 +7,7 @@ echo "== env passes an assignment to the command:"
 "$BIN" -c "koshkit env GREETING=hello printenv GREETING" </dev/null
 
 echo "== env runs a shell builtin with the assignment applied:"
-"$BIN" -c "koshkit env MSG=ok echo done" </dev/null
+"$BIN" -c "koshkit env MSG=ok eval 'echo \"msg=\${MSG-unset}\"'" </dev/null
 
 echo "== the assignment does not leak past the command:"
 "$BIN" -c "koshkit env LEAK=1 true; echo \"[\${LEAK-unset}]\"" </dev/null

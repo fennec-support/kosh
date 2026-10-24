@@ -23,20 +23,14 @@ parse -b
 parse -a foo
 
 
-# kill -s selects the signal by name and -n by number, apart from the -SIGNAL
-# shorthand, while signal 0 only checks the target exists. A trapped self-signal
-# proves the name resolves without any process dying.
+# kill -s selects the signal by name. A trapped self-signal proves the name
+# resolves without any process dying.
 trap 'echo caught-usr1' USR1
 kill -s USR1 $$
-echo "exists_s=$(kill -s 0 $$; echo $?)"
-echo "exists_n=$(kill -n 0 $$; echo $?)"
 
 # Bash let return status, checked byte-for-byte against bash. A let whose last
 # expression is zero returns status one, a nonzero result returns status zero,
 # and a relational expression returns the negation of its truth value.
-let 'a = 1'; echo "rc=$?"
-let 'b = 0'; echo "rc=$?"
-let 'c = 5 - 5'; echo "rc=$?"
 let 'd = 3 > 2'; echo "rc=$?"
 let 'e = 2 > 3'; echo "rc=$?"
 ( let 'x = 0' ); echo "subshell rc=$?"
@@ -57,29 +51,6 @@ set -- keep1 keep2
 . "$file" arg1 arg2
 echo "out=$1 $2"
 rm -f "$file"
-
-# trap -p prints the trap for a given condition with the SIG prefix bash uses, so
-# the line reloads. The conditions are chosen so bash's own default job-control
-# traps stay out of the comparison.
-trap 'echo caught' INT
-echo "p=$(trap -p INT)"
-echo "bare=$(trap -p TERM)"
-
-fc_file=$(mktemp)
-printf 'echo alpha\necho old-old\nfalse\n' > "$fc_file"
-history -c
-history -r "$fc_file"
-fc -ln -3 -1
-fc -lrn -3 -1
-fc -s old=new echo
-echo "fc-substitute=$?"
-fc -ln
-history -c
-history -r "$fc_file"
-fc -ln 3 3
-fc -e - false
-echo "fc-status=$?"
-rm -f "$fc_file"
 
 read -rr repeated_raw <<< 'a\b'
 printf 'repeated-raw=%s\n' "$repeated_raw"

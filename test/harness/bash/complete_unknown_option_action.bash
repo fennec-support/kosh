@@ -1,4 +1,7 @@
 #!/bin/bash
+# complete rejects an unknown -o option, an unknown option after a known one
+# without registering anything, and an unknown -A action. A valid
+# registration is the positive control.
 complete -o bogus foo
 echo "unknown-option=$?"
 complete -p foo 2>/dev/null

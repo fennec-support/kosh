@@ -22,8 +22,8 @@ bash_argument_source_path=harness/bash/goldens/bash_argument_source.bash
 (
   set -- root-one 'root two'
   source "$bash_argument_source_path" S1 S2
-  printf 'bash-source-args-return argc=<%s> argv=<%s>\n' \
-    "${BASH_ARGC[*]}" "${BASH_ARGV[*]}"
+  printf 'bash-source-args-return argc=<%s> argv=<%s> positional=<%s>\n' \
+    "${BASH_ARGC[*]}" "${BASH_ARGV[*]}" "$*"
 )
 bash_args_snapshot() {
   (shopt -s extdebug

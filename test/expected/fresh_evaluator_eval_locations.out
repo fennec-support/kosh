@@ -34,7 +34,10 @@
 75:3: warning: The command 'nested_defined' could not be verified after runtime code.
     75 |  ( nested_defined ) &
        |    ^~~~~~~~~~~~~~
-Encountered 12 warnings.
+82:1: warning: The command 'evaluated_background' could not be verified after runtime code.
+    82 |  evaluated_background
+       |  ^~~~~~~~~~~~~~~~~~~~
+Encountered 13 warnings.
 top=19
 eval:2:7: warning: The variable 'unset_in_top_eval' is not set and expands to an empty string.
      2 |  echo "$unset_in_top_eval"
@@ -210,4 +213,16 @@ note: Replace it with ${unset_in_nested_defined-} if empty expansion is desired.
 75:1: trace:
     75 |  ( nested_defined ) &
        |  ^
+
+evaluated_background=79
+eval:2:48: warning: The variable 'unset_in_background' is not set and expands to an empty string.
+     2 |    ( echo "evaluated_background=$LINENO"; echo "$unset_in_background" ) &
+       |                                                 ^~~~~~~~~~~~~~~~~~~~
+note: Replace it with ${unset_in_background-} if empty expansion is desired.
+eval:2:3: trace:
+     2 |    ( echo "evaluated_background=$LINENO"; echo "$unset_in_background" ) &
+       |    ^
+82:1: trace:
+    82 |  evaluated_background
+       |  ^~~~~~~~~~~~~~~~~~~~
 

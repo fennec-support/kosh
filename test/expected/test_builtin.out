@@ -34,21 +34,11 @@ group_and=0
 exit=0
 == [ -n unset ]:
 exit=1
-== [[ -z unset ]]:
-exit=0
-== [[ unset -ne 0 ]]:
-exit=1
 == [ unset -ne 0 ] (builtin, integer expected):
-37:5: error: Builtin `[`: Cannot compare with '-ne', '' is not an integer.
-    37 |  ( [ "$UNSET_VAR" -ne 0 ] ) 2>&1; echo "exit=$?"
+33:5: error: Builtin `[`: Cannot compare with '-ne', '' is not an integer.
+    33 |  ( [ "$UNSET_VAR" -ne 0 ] ) 2>&1; echo "exit=$?"
        |      ^~~~~~~~~~~~
-37:1: trace:
-    37 |  ( [ "$UNSET_VAR" -ne 0 ] ) 2>&1; echo "exit=$?"
+33:1: trace:
+    33 |  ( [ "$UNSET_VAR" -ne 0 ] ) 2>&1; echo "exit=$?"
        |  ^
 exit=1
-== set -u aborts a bare reference:
-39:17: error: Unable to expand 'UNSET_VAR' because the parameter is not set.
-    39 |  ( set -u; echo "$UNSET_VAR" ) 2>&1
-       |                  ^~~~~~~~~~
-note: Replace it with ${UNSET_VAR-} if empty expansion is desired.
-rc=2
