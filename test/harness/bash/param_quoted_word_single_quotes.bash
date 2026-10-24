@@ -6,7 +6,9 @@
 # keep treating quotes as quoting. A backslash inside a double-quoted part of a
 # quoted word is removed before any byte. Arithmetic expansion treats the word
 # as a here-document does, so a single quote or $'...' there is a syntax
-# error. Posix mode keeps $'...' literal inside double quotes.
+# error. A closing brace or parenthesis inside a quoted part or a command
+# substitution of a nested word belongs to the word. Posix mode keeps $'...'
+# literal inside double quotes.
 u=
 s=set
 printf '<%s>\n' "${u:-'x'}" "${u-'x'}" "${s:+'x'}" "${s+'x'}"
@@ -53,5 +55,11 @@ echo "$(( ${u:-'1'} ))"
 echo "arithmetic-single-quote=$?"
 echo "$(( ${u:-$'1'} ))"
 echo "arithmetic-ansi-c=$?"
+printf "[%s]" ${y:-${z:-"a}b"}}
+echo
+printf "[%s]" ${y:-${z:-$(echo "}")}}
+echo
+printf "[%s]" ${x:-$(printf ")")}
+echo
 set -o posix
 printf '<%s>\n' "${u:-$'a\tb'}" ${u:-$'a\tb'} "${u:-'x'}" "${u:-"\x"}"

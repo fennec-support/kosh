@@ -74,17 +74,22 @@ b'
 echo 'tab	and spaces   kept' | od -An -c | tr -s ' '
 
 # Bash treats a glob metacharacter as literal when it is quoted or backslash
-# escaped, so the word stays as written instead of matching a path. An unquoted
-# pattern that matches nothing stays literal too under the default nullglob off,
-# and these patterns are chosen to match nothing in any directory.
+# escaped, so the word stays as written instead of matching a path. The
+# directory holds files that each pattern would match if the quoting were
+# ignored.
+gd=$(mktemp -d)
+cd "$gd" || exit 1
+touch a b c f.nomatchxyz aXbYcd
 echo '*'
 echo "?"
 echo \[abc\]
 echo '*.nomatchxyz'
 echo "a*b?c[d]"
-echo /no_such_dir_zzz/*
+echo ./\*
 echo \*\?\[
 printf '[%s]\n' '*'
+cd / || exit 1
+rm -r "$gd"
 
 # Bash joins adjacent quoted and unquoted parts of one word with no separator.
 # A single-quoted part, a double-quoted part, an unquoted part, and a $'...'
@@ -171,3 +176,11 @@ echo "[$literal]"
 v=mid
 mixed=$(echo "a\\b\"$v\"c\\d")
 echo "[$mixed]"
+
+# A backslash-escaped quote inside a backtick substitution within double quotes
+# is unescaped before the command runs, so the quoted argument stays one word.
+PRG=/foo/bar/retrace
+set -- "`dirname \"$PRG\"`/.."
+for arg; do echo "arg=<$arg>"; done
+echo "`echo \"$PRG\"`"
+echo "`printf %s \"$PRG\"`"

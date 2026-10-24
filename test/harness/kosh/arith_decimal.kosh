@@ -18,7 +18,6 @@ echo $((999999999999999999999999999999.9 > 2.0))
 decimal_value=1.25
 ((decimal_value += 2.50))
 echo "$decimal_value"
-koshkit calc '999999999999999999999999999999.9 * 10.0'
 
 decimal_formula=999999999999999999999999999999.9
 

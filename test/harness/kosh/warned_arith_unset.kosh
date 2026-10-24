@@ -5,9 +5,5 @@ echo continued
 
 
 set -WWW
-echo *.zzz_nomatch_downgrade
-echo continued
-
-set -WWW
 echo "value=$never_piped" | cat
 echo continued

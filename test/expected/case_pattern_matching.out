@@ -1,40 +1,3 @@
-6:6: warning: This `case` has no default `*)` branch. (SC2249)
-     6 |  case b in
-       |       ^
-note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-11:6: warning: This `case` has no default `*)` branch. (SC2249)
-    11 |  case hi in
-       |       ^~
-note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-17:6: warning: This `case` has no default `*)` branch. (SC2249)
-    17 |  case x in #comment
-       |       ^
-note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-23:6: warning: This `case` has no default `*)` branch. (SC2249)
-    23 |  case b in
-       |       ^
-note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-31:6: warning: This `case` has no default `*)` branch. (SC2249)
-    31 |  case a in a) ;; esac
-       |       ^
-note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-34:6: warning: This `case` has no default `*)` branch. (SC2249)
-    34 |  case a in (a) echo match;; esac
-       |       ^
-note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-37:6: warning: This `case` has no default `*)` branch. (SC2249)
-    37 |  case a in a|b) echo match;; esac
-       |       ^
-note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-38:6: warning: This `case` has no default `*)` branch. (SC2249)
-    38 |  case b in a|b) echo match;; esac
-       |       ^
-note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-41:6: warning: This `case` has no default `*)` branch. (SC2249)
-    41 |  case x in a) echo hi;; esac
-       |       ^
-note: Add a `*)` branch, or write `*) ;;` to ignore other input.
-Encountered 9 warnings.
 match
 b
 c
@@ -52,5 +15,3 @@ default
 match
 match
 default
-fall=onetwo
-marks=123

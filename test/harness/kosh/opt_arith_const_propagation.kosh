@@ -43,3 +43,7 @@ echo $((pv + 0))
 pq=7
 printf '%s\n' hello
 echo $((pq + 1))
+
+# A post-increment inside an expansion is visible to the later reads.
+n=5
+echo $((n++)) $((n)) $((n))

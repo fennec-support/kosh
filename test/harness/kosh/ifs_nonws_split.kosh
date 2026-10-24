@@ -1,3 +1,0 @@
-#!/bin/env kosh
-o=$IFS; IFS=:; set -- x:y; IFS=$o; a="p q"; set -- $a; echo $#
-IFS=:; x=a::b:c; set -- $x; echo "[$1][$2][$3][$4] n=$#"

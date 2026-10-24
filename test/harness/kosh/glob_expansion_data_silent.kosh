@@ -1,8 +1,16 @@
 #!/bin/env kosh
 # shellcheck disable=SC2086
+# A glob made by an expansion is data and stays silent in the kosh and bash
+# moods, a literal glob warns in both, and an explicit failglob makes the data
+# glob fatal.
 pattern=$(printf 'zzz_data_*')
 echo $pattern
 echo zzz_literal_*
+set -M bash
+set -WWW
+echo $pattern
+echo zzz_literal_*
+set -M kosh
 shopt -s failglob
 echo $pattern
 echo not-reached

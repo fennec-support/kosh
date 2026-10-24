@@ -13,9 +13,4 @@ echo "== the bash mood leaves it literal:"; "$BIN" --mood bash -c 'echo no_match
 echo "== the sh mood leaves it literal:"; "$BIN" --mood sh -c 'echo no_match_*'
 echo "== an unclosed bracket stays literal in the bash mood:"
 "$BIN" --mood bash -c 'echo a[b'
-data_source='# shellcheck disable=SC2086
-pattern=$(printf "data_*"); echo $pattern; echo literal_*'
-echo "== a glob made by an expansion is data and warns nothing:"
-"$BIN" -WWW -c "$data_source" 2>&1
-"$BIN" --mood bash -WWW -c "$data_source" 2>&1
 cd /; rm -rf "$d"

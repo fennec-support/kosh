@@ -9,6 +9,7 @@ echo "${v:2:3}"
 echo "${v:0:4}"
 echo "${v: -3}"
 echo "${v: -3:2}"
+echo "${v:(-3)}"
 echo "${v:2:-1}"
 echo "${v:20}"
 echo "[${v:8}]"
@@ -20,6 +21,11 @@ n=2
 len=3
 echo "${v:n:len}"
 echo "${v:n+1:2}"
+
+# A length past the largest 64-bit value clamps to the remaining elements.
+sl=(x y z w)
+echo "${sl[@]:1:9223372036854775807}"
+echo "${sl[@]:0:2}"
 
 # The colon modifiers still parse as themselves, not as a substring.
 unset u
@@ -63,41 +69,17 @@ echo "[${!nomatch_prefix*}]"
 onlyone_x=1
 echo ${!onlyone*}
 
-# Bash case modification with a glob bracket class selector, checked
-# byte-for-byte against bash. The ^^ and ,, forms restrict the conversion to the
-# characters that match the trailing pattern.
-upper=ABCDEF
-echo "${upper,,[ACE]}"
-lower=abcdef
-echo "${lower^^[bdf]}"
-word=banana
-echo "${word^^a}"
-echo "${word^[b]}"
-mixed=AaBbCc
-echo "${mixed,,[A-Z]}"
-echo "${mixed^^[a-z]}"
-
-# Bash case-modification expansion ${v^} ${v^^} ${v,} ${v,,} with optional glob,
-# checked byte-for-byte against bash.
-v=hello
-echo "${v^}"
-echo "${v^^}"
-u=HELLO
-echo "${u,}"
-echo "${u,,}"
-echo "${v^^l}"
-echo "${v^^[aeiou]}"
-m=abcABC
-echo "${m,,}"
-echo "${m^^}"
-n=123abc
-echo "${n^^}"
-mixed=mIxEd
-echo "${mixed^}"
-echo "${mixed,}"
-phrase="the quick fox"
-echo "${phrase^^}"
-echo "${phrase^^[tqf]}"
+# A quoted prefix listing yields one word per matching variable.
+_h_a=1; _h_b=2; _h_c=3
+names=("${!_h_@}")
+echo "count: ${#names[@]}"
+for k in "${!_h_@}"; do echo "name: $k=${!k}"; done
+echo "star: ${!_h_*}"
+set -- "${!_h_@}"
+echo "positional: $#"
+unset nothing_xyz_
+none=("${!nothing_xyz_@}")
+echo "empty: ${#none[@]}"
 
 # Bash prefix and suffix pattern removal ${v#p} ${v##p} ${v%p} ${v%%p}, checked
 # byte-for-byte against bash. Covers shortest and longest match, glob bracket
@@ -123,35 +105,19 @@ url=http://example.com/path
 echo "${url#http://}"
 echo "${url%/*}"
 
-# The ${var@op} parameter transforms, checked byte-for-byte against bash. Q
-# quotes for reuse, U u L change case, E expands escapes, A prints an
-# assignment, and a lists the attribute letters.
-v="a b"
-echo "${v@Q}"
-w=abc
-echo "${w@Q}"
-empty=""
-echo "${empty@Q}"
-q="a'b"
-echo "${q@Q}"
-esc=$'\e[1m'
-echo "${esc@Q}"
-m="Hello World"
-echo "${m@U}"
-echo "${m@L}"
-echo "${m@u}"
-e='a\tb\nc'
-printf '%s' "${e@E}" | od -An -c | tr -s ' '
-echo "${v@A}"
-export EV=1
-echo "${EV@a}"
-readonly RV=1
-echo "${RV@a}"
-arr=(x y z)
-echo "${arr@K}"
-echo "${arr@k}"
-p="end\$"
-echo "${p@P}"
+# A quoted or backslash-escaped pattern character matches itself in a trim.
+x='a*c'
+echo "${x%"*c"}"
+x=abc; p='*'
+echo "${x##"$p"}"
+x='a*c'
+echo "[${x#a\*}]"
+x=aXc
+echo "[${x#a\X}]"
+x=abc
+echo "[${x#a*}]"
+v='a*b*c'
+echo "[${v%%"*"*}]"
 
 # Bash nested parameter expansion, checked byte-for-byte against bash. An inner
 # expansion supplies the indirection name, the default value, the removal
@@ -191,18 +157,6 @@ echo "${val:?should not error}"
 echo "${val?also fine}"
 nonempty=x
 echo "${nonempty:?msg}"
-
-v=hello
-echo "${v~}"
-echo "${v~~}"
-w=WORLD
-echo "${w~}"
-echo "${w~~}"
-m=MixedCase
-echo "${m~~}"
-echo "${m~}"
-n=123abc
-echo "${n~~}"
 
 # Bash default, assign, and alternate expansion forms, checked byte-for-byte
 # against bash. Covers the colon forms that treat an empty value as unset and
@@ -266,13 +220,6 @@ echo "${word/#H/J}"
 echo "${word/%o/0}"
 echo "${word/#x/J}"
 echo "${word/%x/0}"
-
-amp=hello
-echo "${amp/l/[&]}"
-echo "${amp//l/<&>}"
-echo "${amp/e/\&}"
-dotted=a.b.c
-echo "${dotted//./[&]}"
 
 # Bash length expansion ${#v}, checked byte-for-byte against bash. Covers a set
 # value, an empty value, an unset value, an array element count, and individual

@@ -1,10 +1,16 @@
 zzz_data_*
-5:6: warning: The glob pattern 'zzz_literal_*' matched no file, it expands to its literal text, which is rarely intended.
-     5 |  echo zzz_literal_*
+8:6: warning: The glob pattern 'zzz_literal_*' matched no file, it expands to its literal text, which is rarely intended.
+     8 |  echo zzz_literal_*
        |       ^~~~~~~~~~~~~
 note: Probe for matches with compgen -G 'zzz_literal_*' or relax it with shopt -u failglob outside the kosh mood.
 zzz_literal_*
-7:6: error: The glob pattern 'zzz_data_*' matched no file, it expands to its literal text, which is rarely intended.
-     7 |  echo $pattern
+zzz_data_*
+12:6: warning: The glob pattern 'zzz_literal_*' matched no file, it expands to its literal text, which is rarely intended.
+    12 |  echo zzz_literal_*
+       |       ^~~~~~~~~~~~~
+note: Probe for matches with compgen -G 'zzz_literal_*' or relax it with shopt -u failglob outside the kosh mood.
+zzz_literal_*
+15:6: error: The glob pattern 'zzz_data_*' matched no file, it expands to its literal text, which is rarely intended.
+    15 |  echo $pattern
        |       ^~~~~~~~
 note: Probe for matches with compgen -G 'zzz_data_*' or relax it with shopt -u failglob outside the kosh mood.

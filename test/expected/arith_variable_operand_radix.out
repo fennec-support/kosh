@@ -4,14 +4,27 @@
 rc=0
 18446744073709551617
 extended-rc=0
-value substitution blocked
+control bash: creates the marker
+control kosh: creates the marker
+value [[ $x -lt 1 ]]: blocked
+value declare -i n; n=$x: blocked
+value RANDOM=$x: blocked
+value y=$(( x )): blocked
 8
 9
 key substitution blocked
 2 9
-prompt expansion blocked
-indirect command blocked
+prompt arithmetic: blocked
+prompt unset: blocked
+indirect reference: blocked
+function substitution arithmetic: blocked
+function substitution unset: blocked
 indirect=2
-operand substitution blocked
+operand unset "a[$k]": blocked
+operand printf -v "a[$k]" x: blocked
+operand [[ -v "a[$k]" ]]: blocked
+operand declare "a[$k]=1": blocked
+operand declare -n r="a[$k]"; echo "$r": blocked
+operand declare -n r="a[$k]"; r=5: blocked
 r=new
 declare -a a=([0]="x" [1]="new")

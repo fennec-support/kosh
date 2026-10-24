@@ -58,7 +58,8 @@ fi
 # The test builtin's file comparison operators -ef, -nt, and -ot, checked
 # against dash. The timestamps are set explicitly so the ordering is stable.
 
-base=/tmp/kosh_filecmp_$$
+work=$(mktemp -d)
+base=$work/filecmp
 older="$base.old"
 newer="$base.new"
 rm -f "$older" "$newer" "$base.link"
@@ -84,8 +85,8 @@ test "$older" -ef "$base.gone" || echo "missing_not_ef"
 rm -f "$older" "$newer" "$base.link"
 
 # -L and -h test the symlink-ness of a path without following it.
-target=/tmp/kosh_symlink_target_fixed_$$
-link=/tmp/kosh_symlink_link_fixed_$$
+target=$work/symlink_target
+link=$work/symlink_link
 rm -f "$link"
 : > "$target"
 ln -s "$target" "$link"
@@ -95,6 +96,7 @@ ln -s "$target" "$link"
 [ -L "$target" ] || echo target_confirmed_plain
 [ ! -L "$link" ] || echo negation_of_symlink_false
 rm -f "$link" "$target"
+rm -rf "$work"
 # Other POSIX file-type primaries, deterministic against a redirected stdout.
 [ -c /dev/null ] && echo devnull_is_char
 [ -b /dev/null ] || echo devnull_not_block

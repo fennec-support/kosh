@@ -1,5 +1,6 @@
 #!/bin/env kosh
-# shellcheck disable=file-test-on-glob-in-test
+# shellcheck disable=file-test-on-glob-in-test,SC2184
+# An unmatched glob stays silent as an operand of [, test, and unset.
 d=$(mktemp -d)
 cd "$d" || exit
 if [ -e *.zzz ]; then echo bracket-exists; else echo bracket-no-match; fi
@@ -7,5 +8,8 @@ if test -e *.zzz; then echo test-exists; else echo test-no-match; fi
 touch real.zzz
 if [ -e *.zzz ]; then echo bracket-exists; else echo bracket-no-match; fi
 if test -e *.zzz; then echo test-exists; else echo test-no-match; fi
+a=(x y z)
+unset a[1]
+echo "${a[@]}"
 cd / || exit
 rm -r "$d"

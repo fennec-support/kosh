@@ -29,6 +29,9 @@ echo "=== signed 128-bit minimum ==="
 "$BIN" -c 'koshkit calc "(2 ** 127) / -1"'
 "$BIN" -c 'koshkit calc "(2 ** 127) % -1"'
 
+echo "=== decimal product past 64 bits ==="
+"$BIN" -c 'koshkit calc "999999999999999999999999999999.9 * 10.0"'
+
 echo "=== variable read ==="
 "$BIN" -c 'x=6; koshkit calc "x * 7"'
 

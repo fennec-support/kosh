@@ -5,3 +5,6 @@ printf '%s\n' \\;
 echo data/\*/\*;
 test -e ~/\* && echo no such file;
 test -d \~ && echo no such dir;
+echo "*"
+echo '*'
+echo a'''\ hello'\ \ world"lol" "\"";

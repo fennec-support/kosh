@@ -26,6 +26,10 @@ set -- abc bbb
 echo "positional:${@/b/<&>}:${*//b/<&>}"
 w=a/b
 echo "slash:${w/\//[&]}:${w//\//&&}"
+amp=hello
+echo "match:${amp/l/[&]}:${amp//l/<&>}:${amp/e/\&}"
+dotted=a.b.c
+echo "dot:${dotted//./[&]}"
 
 shopt -u patsub_replacement
 shopt patsub_replacement

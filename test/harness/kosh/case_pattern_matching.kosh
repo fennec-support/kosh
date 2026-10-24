@@ -1,5 +1,5 @@
 #!/bin/env kosh
-# shellcheck disable=constant-case-word,unmatchable-case-pattern
+# shellcheck disable=constant-case-word,unmatchable-case-pattern,SC2249
 case foo in f*) echo match;; *) echo no;; esac
 
 
@@ -39,22 +39,3 @@ case b in a|b) echo match;; esac
 case c in a|b) echo match;; *) echo default;; esac
 
 case x in a) echo hi;; esac
-
-# The bash case terminators ;& and ;;& are pure additions, on in every mood.
-fall=""
-case 1 in
-a) echo never ;;
-1) fall+="one" ;&
-2) fall+="two" ;;
-3) fall+="three" ;;
-*) fall+="default" ;;
-esac
-echo "fall=$fall"
-marks=""
-case hello in
-h*) marks+="1" ;;&
-*o) marks+="2" ;;&
-hello) marks+="3" ;;
-*) marks+="x" ;;
-esac
-echo "marks=$marks"

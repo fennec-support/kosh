@@ -2,8 +2,9 @@
 # compat-stderr: exact
 # Bash brace expansion of the comma-list form {a,b,c}, checked byte-for-byte
 # against bash. Covers a preamble and postamble, multiple groups in a cartesian
-# product, nesting, empty alternatives, a variable in an alternative, and the
-# non-group cases that stay literal.
+# product, nesting, empty alternatives, a variable in an alternative (a greedy
+# $foo merges with the postamble, ${foo} does not), and the non-group cases
+# that stay literal.
 echo {a,b,c}
 echo pre{a,b,c}post
 echo {a,b}{1,2}
@@ -14,6 +15,10 @@ echo {a,b,}
 echo {,a,b}
 v=hi
 echo {$v,x}
+foo=X; foobar=MERGED
+echo {$foo,b}bar
+echo {$foo,b}_end.tail
+echo ${foo}bar
 echo "{a,b}"
 echo '{a,b}'
 echo {a}

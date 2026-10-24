@@ -2,8 +2,8 @@
 # shellcheck disable=constant-case-word,unquoted-case-pattern
 # A quoted or escaped metacharacter inside a bracket class is a literal member,
 # not a class operator, and the matcher uses the same per-byte active mask the
-# rest of glob expansion uses. A high byte at or above 0x80 compares as itself,
-# so a range whose bound is a non-ASCII byte still matches.
+# rest of glob expansion uses. A range whose bound is a non-ASCII character
+# still matches in the byte-wise and the UTF-8 locale.
 #
 # The malformed-glob prepass keeps a leading member ] in view and skips a
 # leading ! or ^, mirroring the matcher. A negated class still negates, a
@@ -33,12 +33,15 @@ star="*"
 case foo in "$star") echo quoted_star_hit;; *) echo quoted_star_miss;; esac
 case foo in $star) echo unquoted_star_hit;; *) echo unquoted_star_miss;; esac
 
-# A range whose upper bound is a non-ASCII byte matches an ASCII byte that falls
-# inside it. With a signed comparison the high byte would read as negative and
-# the range would be empty.
-case b in [a-ÿ]) echo highrange_b_hit;; *) echo highrange_b_miss;; esac
-case A in [a-ÿ]) echo highrange_A_hit;; *) echo highrange_A_miss;; esac
-case = in [!a-ÿ]) echo neg_highrange_hit;; *) echo neg_highrange_miss;; esac
+# A range whose upper bound is a non-ASCII character matches an ASCII byte that
+# falls inside it, in the byte-wise C locale and in C.UTF-8. With a signed
+# comparison the high byte would read as negative and the range would be empty.
+for LC_ALL in C C.UTF-8; do
+  case b in [a-ÿ]) echo "$LC_ALL highrange_b_hit";; *) echo "$LC_ALL highrange_b_miss";; esac
+  case A in [a-ÿ]) echo "$LC_ALL highrange_A_hit";; *) echo "$LC_ALL highrange_A_miss";; esac
+  case = in [!a-ÿ]) echo "$LC_ALL neg_highrange_hit";; *) echo "$LC_ALL neg_highrange_miss";; esac
+done
+unset LC_ALL
 
 case b in [!a]) echo neg_b_hit;; *) echo neg_b_miss;; esac
 case a in [!a]) echo neg_a_hit;; *) echo neg_a_miss;; esac

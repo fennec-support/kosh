@@ -8,9 +8,12 @@ bang_member_hit
 bang_c_miss
 quoted_star_miss
 unquoted_star_hit
-highrange_b_hit
-highrange_A_miss
-neg_highrange_hit
+C highrange_b_hit
+C highrange_A_miss
+C neg_highrange_hit
+C.UTF-8 highrange_b_hit
+C.UTF-8 highrange_A_miss
+C.UTF-8 neg_highrange_hit
 neg_b_hit
 neg_a_miss
 member_close_hit

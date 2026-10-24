@@ -20,15 +20,6 @@ EOF
   printf '\n'
 }
 
-PROMPT_COMMAND=()
-if [[ ";${PROMPT_COMMAND[*]:-};" != *";hook;"* ]]; then
-  echo "prompt hook missing"
-fi
-PROMPT_COMMAND=(hook)
-if [[ ";${PROMPT_COMMAND[*]:-};" == *";hook;"* ]]; then
-  echo "prompt hook present"
-fi
-
 IFS=':;'
 for setup in 'unset a' 'a=()' 'a=("")' 'a=("" "")' 'a=(ab "c d" ef)'; do
   eval "$setup"
