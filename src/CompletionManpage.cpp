@@ -1112,7 +1112,7 @@ command_prefers_help_over_manpage(StringView command) throws -> bool
 {
   let argument = HELP_ALLOWLIST.find(command);
 
-  return argument.has_value() && StringView{*argument} != StringView{"--help"};
+  return argument.has_value() && *argument != help_argument::double_dash_help;
 }
 
 static fn
@@ -1328,9 +1328,9 @@ help_argv_for(EvalContext &context,
               StringView   command,
               StringView   subcommand) throws -> Maybe<ArrayList<String>>
 {
-  let help_argument = HELP_ALLOWLIST.find(command);
+  let const allowed_argument = HELP_ALLOWLIST.find(command);
 
-  if (!help_argument.has_value()) return None;
+  if (!allowed_argument.has_value()) return None;
 
   let const program = context.program_resolver().find_trusted(command);
 
@@ -1343,9 +1343,10 @@ help_argv_for(EvalContext &context,
     let const subcommand_help_argument =
         subcommand.is_empty() ? Maybe<const char *>{}
                               : SUBCOMMAND_HELP_ARGUMENTS.find(command);
-    let const help_words =
-        StringView{subcommand_help_argument.value_or(*help_argument)};
-    let argv = ArrayList<String>{heap_allocator()};
+    let const help_words = subcommand_help_argument.has_value()
+                               ? StringView{*subcommand_help_argument}
+                               : get_help_argument_text(*allowed_argument);
+    let       argv       = ArrayList<String>{heap_allocator()};
 
     if (subcommand_help_argument.has_value()) {
       LOG(Debug,
