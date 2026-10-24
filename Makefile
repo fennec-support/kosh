@@ -76,6 +76,15 @@ refill_tests: kosh
 	echo Refilling tests...
 	$(MAKE) $(AUTO_JOBS) -C test refill
 
+# completions/kosh.bash takes its koshkit utility and flag lists from a
+# release build.
+completions:
+	echo Generating completions...
+	$(MAKE) $(AUTO_JOBS) -C src MODE=rel kosh
+	./scripts/generate-completions.sh ./kosh completions/kosh.bash \
+		> completions/kosh.bash.new
+	mv completions/kosh.bash.new completions/kosh.bash
+
 clean:
 	echo Cleaning up...
 	$(MAKE) $(AUTO_JOBS) -C src clean
@@ -83,4 +92,4 @@ clean:
 	$(MAKE) -C src/toiletline clean
 
 .PHONY: all kosh install uninstall tidy fmt toiletline_test test bench \
-	refill_tests clean
+	refill_tests completions clean

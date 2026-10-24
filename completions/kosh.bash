@@ -368,317 +368,367 @@ complete -F _kosh_fc_complete fc
 complete -W '-c -d -n -r -a -w -p -s -S --sync --help' history
 complete -W '-r -R -t -p --help' hash
 complete -c -W '--help --posix -p -R' time
-_koshkit_utils="basename bc cal calc cat chgrp chmod chown cksum cmp comm cp csplit cut date df diff \
-dirname du egrep emacs env evil evildisk evilfiles evilfs evilio evillogs evilnet evilps evilss expand expr fgrep file find flock \
-fold fuser getconf goodcore goodfsw goodnode goodstat eviliso grep head id killall link ln locale logger logname ls make man meow mkdir mkfifo mknod more \
-mv nice nl nohup nproc od paste pathchk pkill pr printenv ps readlink realpath renice retry rm rmdir sed seq \
-sleep slurp sort split stat strings stty sync tabs tail tee timeout touch tput tr tsort tty uname unexpand uniq \
-unlink vi watch wc which who whoami xargs yes"
+# The block below is rebuilt by make completions.
+# BEGIN GENERATED KOSHKIT FLAGS
+_koshkit_utils="basename bc cal calc cat chgrp chmod chown cksum cmp comm cp \
+csplit cut date df diff dirname du egrep emacs env evil evildisk evilfiles \
+evilfs evilio eviliso evillogs evilnet evilps evilss expand expr fgrep file \
+find flock fold fuser getconf goodcore goodfsw goodnode goodstat grep head id \
+killall link ln locale logger logname ls make man meow mkdir mkfifo mknod more \
+mv nice nl nohup nproc od paste pathchk pkill pr printenv ps readlink realpath \
+renice retry rm rmdir sed seq sleep slurp sort split stat strings stty sync \
+tabs tail tee timeout touch tput tr tsort tty uname unexpand uniq unlink vi \
+watch wc which who whoami xargs yes"
 
 _koshkit_util_flags ()
 {
   case $1 in
+    basename)
+      printf "%s\n" "-a --multiple -s --suffix -z --zero"
+    ;;
     bc)
-      echo "-l --mathlib -q --quiet"
+      printf "%s\n" "-l --mathlib -q --quiet"
     ;;
     cal)
-      echo "-a --today"
+      printf "%s\n" "-a --today"
     ;;
     calc)
-      echo "-i --interactive -p --pipe"
-    ;;
-    cp)
-      echo "-r -R -f -H -i -L -P -p -v -x --one-file-system"
-    ;;
-    cut)
-      echo \
-        "-b --bytes -c --characters -f --fields -d --delimiter -n --no-split -s --only-delimited --complement --output-delimiter -z --zero-terminated"
-    ;;
-    diff)
-      echo "-u --unified -w --ignore-all-space -a --text -L --label --color"
-    ;;
-    file)
-      echo \
-        "-d --default-tests -h --no-dereference -i --regular-only -L --dereference -m --magic-file -M --magic-only"
-    ;;
-    getconf)
-      echo "-a --all -v --specification"
-    ;;
-    evil)
-      echo "-a --all -s --short -u --users"
-    ;;
-    goodcore)
-      echo "-p --pid -b --binary -o --output -q --quiet --no-compress"
-    ;;
-    eviliso)
-      echo \
-        "-a --all -n --namespaces -c --cgroups -s --sessions -r --remote -k --runtime --kubernetes --container --containers"
-    ;;
-    evildisk)
-      echo "-a --all"
-    ;;
-    evilfiles)
-      echo "-t --terse -p --pid -u --user -c --command -i --network -w --wide"
-    ;;
-    evilfs)
-      echo "-a --all"
-    ;;
-    evilio)
-      echo \
-        "-a --all -h --human-readable -C --cumulative -l --live --ps -n --count -p --pid --sort"
-    ;;
-    evillogs)
-      echo "--cores --logs"
-    ;;
-    evilnet)
-      echo \
-        "-a --all -t --traffic -l --live -C --cumulative -f --failures --sort"
-    ;;
-    goodnode)
-      echo "-i --inode -r --root --verify"
-    ;;
-    evilps)
-      echo \
-        "-p --show-pids -n --numeric-sort -a --all -A --arguments -c --cpu -U --show-owner -M --memory -w --wide --sort -l --live -C --cumulative"
-    ;;
-    goodstat)
-      echo "-L --dereference -c --checksum -f --filesystem"
-    ;;
-    goodfsw)
-      echo \
-        "-h --human-readable -m --machine-readable -r --recursive -x --one-file-system --event-flags -1 --one-event -l --latency -e --exclude --timezone --precision"
-    ;;
-    ls)
-      echo \
-        "-a -A -1 -d -g -k -l -h -n -o -p -F -t -S -r -R -L --classify --recursive --level --one-file-system --tree"
-    ;;
-    nproc)
-      echo "--all --ignore="
-    ;;
-    ln)
-      echo "-s -f -L -P"
-    ;;
-    locale)
-      echo \
-        "-a --all-locales -m --charmaps -c --category-name -k --keyword-name"
-    ;;
-    man)
-      echo "-k --keyword"
-    ;;
-    meow)
-      echo "-f --fps -s --speed -n --cats"
-    ;;
-    more)
-      echo \
-        "-c --clear -e --exit -i --ignore-case -s --squeeze -u --plain -n --lines -p --command -t --tag"
-    ;;
-    rm)
-      echo "-r --recursive -R -d --dir -f --force -i -I --interactive -v --verbose -x --one-file-system --preserve-root --no-preserve-root --dry-run"
-    ;;
-    rmdir)
-      echo "-p"
-    ;;
-    mkdir)
-      echo "-p -m"
-    ;;
-    mknod)
-      echo "-m --mode --type --fifo --character --block --major --minor"
-    ;;
-    mv)
-      echo "-f -i -v"
-    ;;
-    od)
-      echo \
-        "-A --address-radix -b -c -d -j --skip-bytes -N --read-bytes -o -s -t --format -v --output-duplicates -w --width -x"
-    ;;
-    env)
-      echo "-i --ignore-environment -u --unset"
-    ;;
-    xargs)
-      echo \
-        "-0 --null -a --arg-file -d --delimiter -r --no-run-if-empty -E -e --eof -I -i --replace -L --max-lines -n --max-args -P --max-procs -p --prompt -s --max-size -t --trace -x --exit"
-    ;;
-    pr)
-      echo \
-        "-a --across -d --double-space -D --date-format -F --form-feed -f --form-feed-alias -h --header -l --length -m --merge -n --number-lines -o --indent -r --no-file-warnings -t --omit-header -s --separator -w --width --columns --pages"
-    ;;
-    stty)
-      echo "-a --all -g --save"
+      printf "%s\n" "-i --interactive -p --pipe"
     ;;
     cat)
-      echo \
-        "-A --show-all -b --number-nonblank -e -E --show-ends -n --number -s --squeeze-blank -t -T --show-tabs -u -v --show-nonprinting --syntax-highlighting"
+      printf "%s\n" \
+        "-A --show-all -b --number-nonblank -e -E --show-ends -n --number -s --squeeze-blank -t -T --show-tabs -v --show-nonprinting -u --syntax-highlighting"
     ;;
-    tee)
-      echo "-a"
-    ;;
-    touch)
-      echo "-a -c -m -r -t"
-    ;;
-    tput)
-      echo "-T --terminal"
-    ;;
-    who)
-      echo \
-        "-a --all -b --boot -d --dead -H --heading -l --login -m --current -p --process -q --quick -r --runlevel -s --short -t --time -T --terminal-state -u --idle"
-    ;;
-    du)
-      echo "-s -h -x -T --one-file-system --tree --top-largest"
-    ;;
-    head)
-      echo "-n -c -q -v -z --quiet --silent --verbose --zero-terminated"
-    ;;
-    tail)
-      echo "-n -c -f -F -q -v -z -s --follow --retry --pid --sleep-interval --quiet --silent --verbose --zero-terminated"
-    ;;
-    wc)
-      echo "-l -w -c -m"
-    ;;
-    tr)
-      echo "-c -C -d -s -t --truncate-set1"
-    ;;
-    slurp | vi | emacs)
-      echo "-e -v -V --emacs --vi --vi-normal"
-    ;;
-    grep | egrep | fgrep)
-      echo "-a -i -v -r -n -h -E -F -e -f -c -l -q -s -x -rnh --text --recursive --line-number --no-filename --extended-regexp --fixed-strings --regexp --file --count --files-with-matches --quiet --no-messages --line-regexp --one-file-system --color"
-    ;;
-    sort)
-      echo "-b -c -C -d -f -g -h -i -k -M -m -n -o -r -s -t -u -V -z --general-numeric-sort --human-numeric-sort --month-sort --version-sort --zero-terminated"
-    ;;
-    uniq)
-      echo "-c -d -D -f -i -s -u -w -z --all-repeated --group --ignore-case --check-chars --zero-terminated"
-    ;;
-    timeout)
-      echo "-s --signal -k --kill-after -p --preserve-status"
-    ;;
-    pkill)
-      echo "-s --session --signal --inverse -l --list"
-    ;;
-    killall)
-      echo "-s --signal -l --list"
-    ;;
-    make)
-      echo \
-        "-f --file -C --directory -B --always-make -k --keep-going -e --environment-overrides -i --ignore-errors -S --stop -n --just-print -j --jobs -p --print-data-base -q --question -r --no-builtin-rules -s --silent -t --touch"
-    ;;
-    find)
-      echo "-name -iname -type -maxdepth -mindepth -xdev -mount -print -print0 -exec"
-    ;;
-    flock)
-      echo "-n --nonblock --transaction-held-lock"
-    ;;
-    fuser)
-      echo "-c -f -u"
-    ;;
-    basename)
-      echo "-a --multiple -s --suffix -z --zero"
-    ;;
-    dirname)
-      echo "-z --zero"
-    ;;
-    seq)
-      echo "-f --format -s --separator -w --equal-width"
-    ;;
-    readlink)
-      echo "-n --no-newline"
-    ;;
-    realpath)
-      echo \
-        "-e --canonicalize-existing -m --canonicalize-missing -L --logical -P --physical -s --no-symlinks --strip -q --quiet -z --zero --relative-to= --relative-base="
-    ;;
-    chgrp | chown)
-      echo "-H --dereference-arguments -L --dereference -P --physical -R --recursive -h --no-dereference -x --one-file-system"
+    chgrp)
+      printf "%s\n" \
+        "-h --no-dereference -R --recursive -H --dereference-arguments -L --dereference -P --physical -x --one-file-system"
     ;;
     chmod)
-      echo "-R --recursive --one-file-system"
+      printf "%s\n" "-R --recursive --one-file-system"
+    ;;
+    chown)
+      printf "%s\n" \
+        "-h --no-dereference -R --recursive -H --dereference-arguments -L --dereference -P --physical -x --one-file-system"
     ;;
     cmp)
-      echo "-l --verbose -s --silent"
+      printf "%s\n" "-l --verbose -s --silent"
     ;;
     comm)
-      echo "-1 --hide-first -2 --hide-second -3 --hide-common -z --check-order --nocheck-order --output-delimiter --total --zero-terminated"
+      printf "%s\n" \
+        "-1 --hide-first -2 --hide-second -3 --hide-common --check-order --nocheck-order --output-delimiter --total -z --zero-terminated"
+    ;;
+    cp)
+      printf "%s\n" "-r -R -f -i -p -v -H -L -P -x --one-file-system"
     ;;
     csplit)
-      echo "-f --prefix -k --keep-files -n --digits -s --silent"
+      printf "%s\n" "-k --keep-files -f --prefix -n --digits -s --silent"
+    ;;
+    cut)
+      printf "%s\n" \
+        "-b --bytes -c --characters -f --fields -d --delimiter -n --no-split -s --only-delimited --complement --output-delimiter -z --zero-terminated"
     ;;
     date)
-      echo "-u --utc"
+      printf "%s\n" "-u --utc"
     ;;
     df)
-      echo "-k --kilobytes -P --portability -h --human-readable -H --si"
+      printf "%s\n" \
+        "-k --kilobytes -P --portability -h --human-readable -H --si"
     ;;
-    expand | unexpand)
-      echo "-a --all -t --tabs"
+    diff)
+      printf "%s\n" \
+        "-u --unified -w --ignore-all-space -a --text -L --label --color"
     ;;
-    fold)
-      echo "-b --bytes -s --spaces -w --width"
+    dirname)
+      printf "%s\n" "-z --zero"
     ;;
-    id)
-      echo "-G --groups -g --group -n --name -r --real -u --user"
+    du)
+      printf "%s\n" "-s -h --tree -x --one-file-system -T --top-largest"
     ;;
-    logger)
-      echo "-f --file -i --id -p --priority -s --stderr -t --tag"
+    egrep)
+      printf "%s\n" \
+        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --color"
     ;;
-    mkfifo)
-      echo "-m --mode"
+    emacs)
+      printf "%s\n" "-e --emacs -v --vi -V --vi-normal"
     ;;
-    nice)
-      echo "-n --increment"
+    env)
+      printf "%s\n" "-i --ignore-environment -u --unset"
     ;;
-    nl)
-      echo \
-        "-b --body-numbering -d --section-delimiter -f --footer-numbering -h --header-numbering -i --line-increment -l --join-blank-lines -n --number-format -p --no-renumber -s --number-separator -v --starting-line-number -w --number-width"
+    evil)
+      printf "%s\n" "-a --all -s --short -u --users"
     ;;
-    paste)
-      echo "-d --delimiters -s --serial -z --zero-terminated"
+    evildisk)
+      printf "%s\n" "-a --all"
     ;;
-    pathchk)
-      echo "-P --leading-hyphen -p --portable -W --windows"
+    evilfiles)
+      printf "%s\n" \
+        "-t --terse -p --pid -u --user -c --command -i --network -w --wide"
     ;;
-    renice)
-      echo "-g --pgrp -n --increment -p --pid -u --user"
+    evilfs)
+      printf "%s\n" "-a --all"
     ;;
-    sed)
-      echo "-E --extended-regexp -e --expression -f --file -n --quiet"
+    evilio)
+      printf "%s\n" \
+        "-a --all -h --human-readable -C --cumulative --ps -l --live -n --count -p --pid --sort"
     ;;
-    split)
-      echo "-a --suffix-length -b --bytes -l --lines"
+    eviliso)
+      printf "%s\n" \
+        "-a --all -n --namespaces -c --cgroups -s --sessions -r --remote -k --runtime --kubernetes --container --containers"
     ;;
-    strings)
-      echo "-a --all -n --bytes -t --radix"
+    evillogs)
+      printf "%s\n" "--cores --logs"
     ;;
-    tty)
-      echo "-s --silent"
+    evilnet)
+      printf "%s\n" \
+        "-a --all -t --traffic --sort -l --live -C --cumulative -f --failures"
     ;;
-    uname)
-      echo \
-        "-a --all -m --machine -n --nodename -r --release -s --kernel-name -v --kernel-version"
-    ;;
-    ps)
-      echo "-a -u -x -w"
-    ;;
-    retry)
-      echo "-n --attempts -d --delay -b --backoff -m --max-delay -q --quiet"
+    evilps)
+      printf "%s\n" \
+        "-p --show-pids -n --numeric-sort -a --all -A --arguments -U --show-owner -c --cpu -M --memory -w --wide --sort -l --live -C --cumulative"
     ;;
     evilss)
-      echo \
-        "-4 --ipv4 -6 --ipv6 -a --all -H --no-header -l --listening --live -n --numeric -p --processes -t --tcp -u --udp -x --unix"
+      printf "%s\n" \
+        "-l --listening -a --all -t --tcp -u --udp -x --unix -p --processes -n --numeric -4 --ipv4 -6 --ipv6 -H --no-header --live"
+    ;;
+    expand)
+      printf "%s\n" "-t --tabs"
+    ;;
+    fgrep)
+      printf "%s\n" \
+        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --color"
+    ;;
+    file)
+      printf "%s\n" \
+        "-d --default-tests -h --no-dereference -i --regular-only -L --dereference -m --magic-file -M --magic-only"
+    ;;
+    flock)
+      printf "%s\n" "-n --nonblock --transaction-held-lock"
+    ;;
+    fold)
+      printf "%s\n" "-b --bytes -s --spaces -w --width"
+    ;;
+    fuser)
+      printf "%s\n" "-c -f -u"
+    ;;
+    getconf)
+      printf "%s\n" "-v --specification -a --all"
+    ;;
+    goodcore)
+      printf "%s\n" "-p --pid -b --binary -o --output -q --quiet --no-compress"
+    ;;
+    goodfsw)
+      printf "%s\n" \
+        "-r --recursive -h --human-readable -m --machine-readable --event-flags -1 --one-event -x --one-file-system -l --latency -e --exclude --timezone --precision"
+    ;;
+    goodnode)
+      printf "%s\n" "-i --inode -r --root --verify"
+    ;;
+    goodstat)
+      printf "%s\n" "-L --dereference -c --checksum -f --filesystem"
+    ;;
+    grep)
+      printf "%s\n" \
+        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --color"
+    ;;
+    head)
+      printf "%s\n" \
+        "-n -c -q --quiet --silent -v --verbose -z --zero-terminated"
+    ;;
+    id)
+      printf "%s\n" "-G --groups -g --group -n --name -r --real -u --user"
+    ;;
+    killall)
+      printf "%s\n" "-s --signal -l --list"
+    ;;
+    ln)
+      printf "%s\n" "-s -f -L -P"
+    ;;
+    locale)
+      printf "%s\n" \
+        "-a --all-locales -m --charmaps -c --category-name -k --keyword-name"
+    ;;
+    logger)
+      printf "%s\n" "-i --id -f --file -p --priority -s --stderr -t --tag"
+    ;;
+    ls)
+      printf "%s\n" \
+        "-a -A -1 -l -h -F --classify -d -p -n -g -o -k -t -S -r -R --recursive --tree -L --level --one-file-system"
+    ;;
+    make)
+      printf "%s\n" \
+        "-f --file -C --directory -B --always-make -k --keep-going -e --environment-overrides -i --ignore-errors -S --stop -n --just-print -p --print-data-base -q --question -r --no-builtin-rules -s --silent -t --touch -j --jobs"
+    ;;
+    man)
+      printf "%s\n" "-k --keyword"
+    ;;
+    meow)
+      printf "%s\n" "-f --fps -s --speed -n --cats"
+    ;;
+    mkdir)
+      printf "%s\n" "-p -m"
+    ;;
+    mkfifo)
+      printf "%s\n" "-m --mode"
+    ;;
+    mknod)
+      printf "%s\n" \
+        "-m --mode --type --fifo --character --block --major --minor"
+    ;;
+    more)
+      printf "%s\n" \
+        "-c --clear -e --exit -i --ignore-case -s --squeeze -u --plain -n --lines -p --command -t --tag"
+    ;;
+    mv)
+      printf "%s\n" "-f -i -v"
+    ;;
+    nice)
+      printf "%s\n" "-n --increment"
+    ;;
+    nl)
+      printf "%s\n" \
+        "-b --body-numbering -d --section-delimiter -f --footer-numbering -h --header-numbering -i --line-increment -l --join-blank-lines -n --number-format -p --no-renumber -s --number-separator -v --starting-line-number -w --number-width"
+    ;;
+    nproc)
+      printf "%s\n" "--all --ignore"
+    ;;
+    od)
+      printf "%s\n" \
+        "-A --address-radix -j --skip-bytes -N --read-bytes -t --format -v --output-duplicates -b -c -d -o -s -x -w --width"
+    ;;
+    paste)
+      printf "%s\n" "-d --delimiters -s --serial -z --zero-terminated"
+    ;;
+    pathchk)
+      printf "%s\n" "-p --portable -P --leading-hyphen -W --windows"
+    ;;
+    pkill)
+      printf "%s\n" "--signal -s --session --inverse -l --list"
+    ;;
+    pr)
+      printf "%s\n" \
+        "-a --across -d --double-space -D --date-format -F --form-feed -f --form-feed-alias -h --header -l --length -m --merge -n --number-lines -o --indent -r --no-file-warnings -t --omit-header -s --separator -w --width"
+    ;;
+    ps)
+      printf "%s\n" "-a -u -x -w"
+    ;;
+    readlink)
+      printf "%s\n" "-n"
+    ;;
+    realpath)
+      printf "%s\n" \
+        "-e --canonicalize-existing -m --canonicalize-missing -L --logical -P --physical -s --no-symlinks --strip -q --quiet -z --zero --relative-to --relative-base"
+    ;;
+    renice)
+      printf "%s\n" "-g --pgrp -p --pid -u --user -n --increment"
+    ;;
+    retry)
+      printf "%s\n" \
+        "-n --attempts -d --delay -b --backoff -m --max-delay -q --quiet"
+    ;;
+    rm)
+      printf "%s\n" \
+        "-r --recursive -R -d --dir -f --force -i -I --interactive -v --verbose -x --one-file-system --preserve-root --no-preserve-root --dry-run"
+    ;;
+    rmdir)
+      printf "%s\n" "-p"
+    ;;
+    sed)
+      printf "%s\n" "-E --extended-regexp -e --expression -f --file -n --quiet"
+    ;;
+    seq)
+      printf "%s\n" "-f --format -s --separator -w --equal-width"
+    ;;
+    slurp)
+      printf "%s\n" "-e --emacs -v --vi -V --vi-normal"
+    ;;
+    sort)
+      printf "%s\n" \
+        "-r -n -g --general-numeric-sort -h --human-numeric-sort -M --month-sort -V --version-sort -z --zero-terminated -u -b -d -f -i -c -C -m -s -o -t -k"
+    ;;
+    split)
+      printf "%s\n" "-a --suffix-length -b --bytes -l --lines"
     ;;
     stat)
-      echo "-L --dereference -f --file-system -t --terse -c --format --printf"
+      printf "%s\n" \
+        "-L --dereference -f --file-system -t --terse -c --format --printf"
+    ;;
+    strings)
+      printf "%s\n" "-a --all -n --bytes -t --radix"
+    ;;
+    stty)
+      printf "%s\n" "-a --all -g --save"
     ;;
     sync)
-      echo "-d --data -f --file-system"
+      printf "%s\n" "-d --data -f --file-system"
+    ;;
+    tail)
+      printf "%s\n" \
+        "-n -c -f -F --follow --retry -s --sleep-interval --pid -q --quiet --silent -v --verbose -z --zero-terminated"
+    ;;
+    tee)
+      printf "%s\n" "-a"
+    ;;
+    timeout)
+      printf "%s\n" "-s --signal -k --kill-after -p --preserve-status"
+    ;;
+    touch)
+      printf "%s\n" "-a -c -m -r -t"
+    ;;
+    tput)
+      printf "%s\n" "-T --terminal"
+    ;;
+    tr)
+      printf "%s\n" "-d -c -C -s -t --truncate-set1"
+    ;;
+    tty)
+      printf "%s\n" "-s --silent"
+    ;;
+    uname)
+      printf "%s\n" \
+        "-a --all -m --machine -n --nodename -r --release -s --kernel-name -v --kernel-version"
+    ;;
+    unexpand)
+      printf "%s\n" "-a --all -t --tabs"
+    ;;
+    uniq)
+      printf "%s\n" \
+        "-c -d -D --all-repeated -u --group -i --ignore-case -w --check-chars -z --zero-terminated -f -s"
+    ;;
+    vi)
+      printf "%s\n" "-e --emacs -v --vi -V --vi-normal"
     ;;
     watch)
-      echo "-n --interval -t --no-title -g --chgexit -e --errexit -x --exec"
+      printf "%s\n" \
+        "-n --interval -t --no-title -g --chgexit -e --errexit -x --exec"
+    ;;
+    wc)
+      printf "%s\n" "-l -w -c -m"
     ;;
     which)
-      echo "-a --all -q --quiet"
+      printf "%s\n" "-a --all -q --quiet"
     ;;
-    *)
-      echo ""
+    who)
+      printf "%s\n" \
+        "-a --all -b --boot -d --dead -H --heading -l --login -m --current -p --process -q --quick -r --runlevel -s --short -t --time -T --terminal-state -u --idle"
+    ;;
+    xargs)
+      printf "%s\n" \
+        "-a --arg-file -d --delimiter -E -e --eof -I -i --replace -P --max-procs -L --max-lines -n --max-args -p --prompt -s --max-size -t --trace -x --exit -0 --null -r --no-run-if-empty"
+    ;;
+  esac
+}
+# END GENERATED KOSHKIT FLAGS
+
+# Words that a utility reads before its flags are parsed.
+_koshkit_util_extra_flags ()
+{
+  case $1 in
+    find)
+      printf "%s\n" \
+        "-exec -iname -maxdepth -mindepth -mount -name -print -print0 -type -xdev"
+    ;;
+    pr)
+      printf "%s\n" "--columns --pages"
     ;;
   esac
 }
@@ -691,7 +741,7 @@ _koshkit_complete ()
   if [[ $COMP_CWORD -eq 1 ]]
   then
     _kosh_compgen \
-                  -W "$_koshkit_utils --list --color --help" \
+                  -W "$_koshkit_utils --list --list-flags --color --help" \
                   -- "$current_word"
     return
   fi
@@ -700,8 +750,8 @@ _koshkit_complete ()
 
   if [[ $current_word == -* ]]
   then
-    _kosh_compgen -W "$(_koshkit_util_flags "$util") --help" -- \
-      "$current_word"
+    _kosh_compgen -W "$(_koshkit_util_flags "$util") \
+$(_koshkit_util_extra_flags "$util") --help" -- "$current_word"
   else
     _kosh_compgen -f -- "$current_word"
   fi

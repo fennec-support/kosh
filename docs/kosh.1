@@ -2322,7 +2322,10 @@ builtin runs a bundled utility. An unknown utility is an error. Every utility
 supports \fB\-\-help\fR, and one invoked through a matching executable name also
 supports \fB\-\-version\fR. The
 .B koshkit \-\-list
-form prints the utilities one per line.
+form prints the utilities one per line. The
+.B koshkit \-\-list\-flags
+form prints each utility and alias followed by its short and long flags, one
+per line, without \fB\-\-help\fR.
 .PP
 With no utility,
 .B koshkit

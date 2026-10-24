@@ -24,6 +24,11 @@ HELP_DESCRIPTION_DECL("A bundled utility can be run.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help and list the utilities.");
 FLAG(KOSHKIT_LIST, Bool, '\0', "list", "List the utilities, one per line.");
+FLAG(KOSHKIT_LIST_FLAGS,
+     Bool,
+     '\0',
+     "list-flags",
+     "List each utility followed by its flags, one utility per line.");
 FLAG(KOSHKIT_COLOR,
      String,
      '\0',
@@ -151,6 +156,51 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* e.g. "bc -l --mathlib -q --quiet". an alias such as vi is listed with
+     the flags of its utility. --help is left out, since every utility takes
+     it. */
+  if (FLAG_KOSHKIT_LIST_FLAGS.is_enabled()) {
+    let output = String{cxt.scratch_allocator()};
+    let names  = ArrayList<String>{cxt.scratch_allocator()};
+
+    for (let const &name : sorted_names)
+      names.push(String{cxt.scratch_allocator(), name.view()});
+    for (let const &alias : koshkit::KOSHKIT_ALIAS_ENTRIES)
+      names.push(alias.key.to_string(cxt.scratch_allocator()));
+    names.sort();
+
+    for (let const &name : names) {
+      let const kind = koshkit::find_util(name.view());
+
+      ASSERT(kind.has_value());
+      output += name.view();
+
+      if (let const *flags = koshkit::koshkit_util_flag_list(*kind);
+          flags != nullptr)
+      {
+        for (let const *flag : *flags) {
+          if (flag->long_name() == "help") continue;
+
+          if (flag->short_name() != '\0') {
+            output += " -";
+            output += flag->short_name();
+          }
+
+          if (!flag->long_name().is_empty()) {
+            output += " --";
+            output += flag->long_name();
+          }
+        }
+      }
+
+      output += '\n';
+    }
+
+    ec.print_to_stdout(output);
+
+    return 0;
+  }
+
   if (FLAG_HELP.is_enabled() || utility_index == ec.args().count()) {
     let listing = String{cxt.scratch_allocator()};
 
@@ -160,6 +210,7 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     listing += "  koshkit [utility] [arg ...]\n";
     listing += "  koshkit --color when [utility] [arg ...]\n";
     listing += "  koshkit --list\n";
+    listing += "  koshkit --list-flags\n";
     listing += "\nUTILITIES\n\n";
 
     let posix_names  = ArrayList<StringView>{cxt.scratch_allocator()};

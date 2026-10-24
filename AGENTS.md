@@ -201,7 +201,9 @@ SYSTEM.
 Use root make targets. make MODE=rel builds ./kosh. make MODE=dbg builds the
 sanitized debug binary. make MODE=cov builds coverage. make MODE=tinyrel builds
 the size-focused binary. make test runs Kosh, CLI, completion, highlighting,
-POSIX, and Bash suites. make toiletline_test runs the editor suite.
+POSIX, and Bash suites. make toiletline_test runs the editor suite. make
+completions rebuilds the generated koshkit block of completions/kosh.bash from
+koshkit --list-flags after a koshkit flag changes.
 
 NO_TOILETLINE=1 make and NO_KOSHKIT=1 make use separate object directories.
 Rebuild the ordinary configuration before the next test run. Completion tests
