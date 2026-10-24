@@ -210,20 +210,27 @@ private:
         break;
       }
 
-      if (*byte == '\n') m_line_number++;
+      if (*byte == '\n') end_quoted_line();
+      m_previous_byte = *byte;
       m_position++;
     }
+
+    m_has_line_item = true;
 
     let       value     = String{allocator};
     let const item_line = m_line_number;
     char      quote     = '\0';
+    char      last_byte = '\0';
 
     loop {
       let const taken = take();
 
       if (!taken.has_value()) break;
 
-      let const byte = *taken;
+      let const byte        = *taken;
+      let const before_byte = last_byte;
+
+      last_byte = byte;
 
       if (quote != '\0') {
         if (byte == quote) {
@@ -245,15 +252,14 @@ private:
         let const escaped = take();
 
         if (!escaped.has_value()) throw Error{"Trailing backslash"};
-        if (*escaped == '\n')
-          m_line_number++;
-        else
-          value += *escaped;
+        value += *escaped;
         continue;
       }
 
       if (byte == ' ' || byte == '\t' || byte == '\n') {
-        if (byte == '\n') m_line_number++;
+        m_previous_byte = before_byte;
+        if (byte == '\n') end_quoted_line();
+        m_previous_byte = byte;
         break;
       }
 
@@ -263,6 +269,22 @@ private:
     if (quote != '\0') throw Error{"Unmatched quote"};
 
     return xargs_item{steal(value), item_line};
+  }
+
+  /* a newline ends a logical line of quoted input when the line holds an
+     item and its last byte is not a blank, so an empty line does not count
+     and a trailing blank continues the line, as -L counts them. */
+  fn
+  end_quoted_line() wontthrow -> void
+  {
+    if (!m_has_line_item || m_previous_byte == ' ' || m_previous_byte == '\t' ||
+        m_previous_byte == '\n')
+    {
+      return;
+    }
+
+    m_line_number++;
+    m_has_line_item = false;
   }
 
   fn
@@ -362,6 +384,8 @@ private:
   String            m_buffer;
   usize             m_position{0};
   usize             m_line_number{0};
+  char              m_previous_byte{'\0'};
+  bool              m_has_line_item{false};
   bool              m_is_at_end{false};
 };
 
@@ -434,8 +458,6 @@ Xargs::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
                                  {.should_stop_at_first_operand = true});
-
-  if (FLAG_XARGS_PROMPT.is_enabled()) FLAG_XARGS_TRACE.enable();
 
   /* the later of -I and -i, and of -E and -e, takes effect. */
   Maybe<StringView> replace_text;
@@ -523,6 +545,31 @@ Xargs::execute(const ExecContext               &ec,
   defer {
     if (argument_file.has_value()) close_input_descriptor(*argument_file);
   };
+
+  /* a command reads the null device unless -a leaves standard input free,
+     so it cannot take the unread arguments. -p reads its answers from the
+     terminal. */
+  Maybe<os::descriptor> command_input;
+  Maybe<os::descriptor> terminal;
+
+  defer {
+    if (command_input.has_value()) os::close_fd(*command_input);
+    if (terminal.has_value()) os::close_fd(*terminal);
+  };
+
+  if (!argument_file.has_value()) {
+    command_input =
+        os::open_file_descriptor("/dev/null", os::file_open_mode::Read);
+  }
+
+  if (FLAG_XARGS_PROMPT.is_enabled()) {
+    terminal = os::open_file_descriptor("/dev/tty", os::file_open_mode::Read);
+    if (!terminal.has_value()) {
+      throw ErrorWithLocation{
+          ec.source_location(),
+          "Interactive prompting requires a controlling terminal"};
+    }
+  }
 
   let const format = is_delimited               ? xargs_item_format::Delimited
                      : replace_text.has_value() ? xargs_item_format::Lines
@@ -781,12 +828,24 @@ Xargs::execute(const ExecContext               &ec,
 
     has_run_command = true;
 
-    if (FLAG_XARGS_TRACE.is_enabled())
+    if (FLAG_XARGS_TRACE.is_enabled() && !FLAG_XARGS_PROMPT.is_enabled())
       trace_xargs_command(ec, command, cxt.scratch_allocator());
-    if (FLAG_XARGS_PROMPT.is_enabled())
-      throw ErrorWithLocation{
-          ec.source_location(),
-          "Interactive prompting requires a controlling terminal"};
+
+    if (FLAG_XARGS_PROMPT.is_enabled()) {
+      let message = String{cxt.scratch_allocator(), "run '"};
+
+      for (usize index = 0; index < command.count(); index++) {
+        if (index != 0) message += ' ';
+        message += command[index].view();
+      }
+
+      message += "'?";
+      if (!confirm_koshkit_action(ec, message.view(), confirm_default::No,
+                                  terminal))
+      {
+        continue;
+      }
+    }
 
     Maybe<ExecContext> sub;
 
@@ -800,6 +859,11 @@ Xargs::execute(const ExecContext               &ec,
           cxt.source_store().current_source_view(), &cxt));
 
       return static_cast<i32>(resolution_error.command_status());
+    }
+
+    if (command_input.has_value()) {
+      sub->in_fd             = command_input;
+      sub->is_in_fd_borrowed = true;
     }
 
     if (maximum_process_count > 1 && !sub->is_builtin()) {

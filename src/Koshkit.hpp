@@ -413,12 +413,15 @@ enum class confirm_default : u8
 };
 
 /* asks `kosh: <message> [Y/n]` or `[y/N]` on stderr, with the message
-   capitalized and green when stderr takes color, and returns the answer. An
-   empty line takes the default, and the end of input answers no. */
+   capitalized and green when stderr takes color, and returns the answer read
+   from answer_fd, or from the standard input of ec. An empty line takes the
+   default, and the end of input answers no. */
 fn
-confirm_koshkit_action(const ExecContext &ec,
-                       StringView         message,
-                       confirm_default    default_answer) throws -> bool;
+confirm_koshkit_action(const ExecContext    &ec,
+                       StringView            message,
+                       confirm_default       default_answer,
+                       Maybe<os::descriptor> answer_fd = None) throws
+    -> bool;
 
 enum class removal_mode : u8
 {

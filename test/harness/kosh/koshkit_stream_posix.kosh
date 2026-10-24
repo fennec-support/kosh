@@ -23,6 +23,11 @@ printf 'a\nb\n' | koshkit xargs -i echo '[{}]'
 printf 'a\nb\n' | koshkit xargs -iX echo '[X]'
 printf 'a\nb\n' | koshkit xargs --replace=Y echo '[Y]'
 printf 'a\nb\n' | koshkit xargs -I Z -i echo '[Z{}]'
+echo "--- xargs logical lines and command input"
+printf 'a b \nc d\n\ne\n' | koshkit xargs -L 1 echo
+printf 'x\\\ny\n' | koshkit xargs printf '[%s]\n'
+printf 'one\ntwo\n' | koshkit xargs -n 1 sh -c 'cat; echo "ran $1"' sh
+koshkit seq 1 20000 | koshkit xargs -n 5000 sh -c 'cat >/dev/null; echo ran' | koshkit wc -l
 echo "--- xargs argument files"
 printf 'f1\nf2\n' > argfile
 printf 'stdin\n' | koshkit xargs -a argfile sh -c 'echo "$@"; cat' sh

@@ -32,6 +32,14 @@ a
 [b]
 [Za]
 [Zb]
+--- xargs logical lines and command input
+a b c d
+e
+[x
+y]
+ran one
+ran two
+4
 --- xargs argument files
 f1 f2
 stdin
