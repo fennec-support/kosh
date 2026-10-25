@@ -531,6 +531,16 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
     return 2;
   }
 
+  if (is_local && !os::IS_LOCAL_ASSIMILATE_SUPPORTED) {
+    report_soft_builtin_error(
+        ec, cxt, ec.source_location(),
+        "Installing into a local PATH directory is not supported on this "
+        "system",
+        "Use the Windows installer, or pass a remote TARGET");
+
+    return 1;
+  }
+
   let const executable = os::current_executable_path();
 
   if (!executable.has_value()) {

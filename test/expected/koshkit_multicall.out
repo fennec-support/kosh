@@ -45,3 +45,5 @@ rc=1
      1 |  koshkit --color bogus seq 1
        |                  ^~~~~
 rc=2
+== a local assimilate is refused where it is not supported:
+refused

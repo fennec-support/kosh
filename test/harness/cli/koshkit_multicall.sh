@@ -60,3 +60,10 @@ echo "rc=$?"
 XDG_CONFIG_HOME="$d/conf" KOSH_FLAGS=-x ./koshkit --list 2>&1 | grep -c '^seq$'
 ./koshkit --color bogus seq 1 2>&1
 echo "rc=$?"
+echo "== a local assimilate is refused where it is not supported:"
+if [ "${OS-}" = Windows_NT ]; then
+  "$BIN" -c 'assimilate -y' >/dev/null 2>&1
+  [ "$?" = 1 ] && echo refused || echo installed
+else
+  echo refused
+fi
