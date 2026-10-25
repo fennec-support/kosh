@@ -3280,6 +3280,9 @@ fn
 set_trap_handler(i32 signal_number) throws -> void
 {
   if (!is_trappable_signal(signal_number)) return;
+  /* SIGKILL and SIGSTOP cannot be caught, so their trap stays recorded
+     without a handler, as in Bash. */
+  if (signal_number == SIGKILL || signal_number == SIGSTOP) return;
 
   LOG(Info, "installing the trap handler for signal %d", signal_number);
 
@@ -3299,6 +3302,7 @@ fn
 set_trap_ignore(i32 signal_number) throws -> void
 {
   if (!is_trappable_signal(signal_number)) return;
+  if (signal_number == SIGKILL || signal_number == SIGSTOP) return;
   LOG(Info, "ignoring signal %d", signal_number);
   if (signal_number == SIGCHLD) {
     install_child_state_handler();
@@ -3316,6 +3320,7 @@ fn
 clear_trap_handler(i32 signal_number) throws -> void
 {
   if (!is_trappable_signal(signal_number)) return;
+  if (signal_number == SIGKILL || signal_number == SIGSTOP) return;
   LOG(Info, "clearing the trap for signal %d", signal_number);
   if (signal_number == SIGPIPE) IS_PIPE_SIGNAL_IGNORED_BY_TRAP = false;
   if (signal_number == SIGINT) IS_INTERRUPT_SIGNAL_IGNORED = false;

@@ -288,4 +288,12 @@ echo unknown-option
 ( trap -x 'echo H' HUP; echo unknown-option-status=$?; trap -p HUP ) 2>/dev/null
 echo after-unknown-option=$?
 
+trap 'echo never' KILL
+echo kill-trap-status=$?
+trap '' STOP
+echo stop-trap-status=$?
+trap -p KILL STOP
+trap - KILL STOP
+echo kill-stop-reset-status=$?
+
 echo trap-listing-done
