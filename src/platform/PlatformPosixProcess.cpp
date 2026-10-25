@@ -664,28 +664,11 @@ execute_program(ExecContext                     &ec,
       });
 
   /* a dup2 action onto the same descriptor keeps close-on-exec on macOS,
-     so a file already at its target number is kept by clearing the flag
-     until the spawn returns. */
-  let kept_fds = ArrayList<descriptor>{heap_allocator()};
-
-  defer {
-    for (let const fd : kept_fds) {
-      let const flags = fcntl(fd, F_GETFD);
-
-      if (flags != -1) fcntl(fd, F_SETFD, flags | FD_CLOEXEC);
-    }
-  };
-
+     so a file already at its target number is kept by clearing the flag. */
   ec.apply_nonstandard_routing(
       [&](os::descriptor file_fd, i32 target_fd) {
         if (file_fd == target_fd) {
-          let const flags = fcntl(target_fd, F_GETFD);
-
-          if (flags != -1 && (flags & FD_CLOEXEC) != 0) {
-            fcntl(target_fd, F_SETFD, flags & ~FD_CLOEXEC);
-            kept_fds.push(target_fd);
-          }
-
+          do_keep_across_exec(target_fd);
           return;
         }
 
