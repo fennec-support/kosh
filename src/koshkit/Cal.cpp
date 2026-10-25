@@ -118,12 +118,13 @@ append_calendar_month(String          &output,
         month == static_cast<usize>(current_date.tm_mon + 1) &&
         day == static_cast<usize>(current_date.tm_mday);
     let const is_weekend = weekday == 0 || weekday == 6;
-    let const style      = is_current_day && is_weekend
-                               ? colors::soft(colors::ansi::BOLD_BRIGHT_RED)
-                           : is_current_day ? colors::soft(colors::ansi::BOLD_GREEN)
-                           : is_weekend ? colors::soft(colors::ansi::RED)
-                                        : StringView{};
-    let const day_text   = String::from(day, allocator);
+    /* the current day takes a background, red on a weekend. */
+    let const style    = is_current_day && is_weekend
+                             ? colors::ansi::BOLD_BLACK_ON_RED
+                         : is_current_day ? colors::ansi::BOLD_BLACK_ON_GREEN
+                         : is_weekend     ? colors::soft(colors::ansi::RED)
+                                          : StringView{};
+    let const day_text = String::from(day, allocator);
 
     append_report_text(output, day_text.view(), style, should_color);
 
@@ -233,7 +234,7 @@ Cal::execute(const ExecContext               &ec,
     output += ", ";
     output +=
         String::from(current_date.tm_year + 1900, cxt.scratch_allocator());
-    output += ". It is day ";
+    output += ".\nIt is day ";
     output += String::from(current_date.tm_yday + 1, cxt.scratch_allocator());
     output += " of the year.\n";
   }
