@@ -55,6 +55,10 @@ printf '# Store history here.\n# editor.history.file_path=\nmood=bash\n' >"$conf
 "$BIN" -c 'koshconf set editor.history.file_path /tmp/h --persist'
 cat "$conf"
 echo "== a missing configuration base reports the exact environment state:"
-env -u HOME -u XDG_CONFIG_HOME "$BIN" --mood bash -c 'koshconf create kosh' 2>&1 | head -n 1
-env -u HOME XDG_CONFIG_HOME=relative "$BIN" --mood bash -c 'koshconf create kosh' 2>&1 | head -n 1
-env -u HOME XDG_CONFIG_HOME= "$BIN" --mood bash -c 'koshconf create kosh' 2>&1 | head -n 1
+# Windows takes the home directory from USERPROFILE when HOME is unset.
+env -u HOME -u USERPROFILE -u XDG_CONFIG_HOME "$BIN" --mood bash \
+  -c 'koshconf create kosh' 2>&1 | head -n 1
+env -u HOME -u USERPROFILE XDG_CONFIG_HOME=relative "$BIN" --mood bash \
+  -c 'koshconf create kosh' 2>&1 | head -n 1
+env -u HOME -u USERPROFILE XDG_CONFIG_HOME= "$BIN" --mood bash \
+  -c 'koshconf create kosh' 2>&1 | head -n 1
