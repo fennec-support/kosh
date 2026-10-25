@@ -97,6 +97,43 @@ path_attributes(StringView path) wontthrow -> DWORD
   return GetFileAttributesW(wide_path->begin());
 }
 
+/* Windows reports ERROR_PATH_NOT_FOUND for a path below a regular file. the
+   nearest existing ancestor decides, and a regular file there sets
+   ERROR_DIRECTORY, as ENOTDIR does on POSIX. */
+static fn
+mark_path_below_file(StringView path) wontthrow -> void
+{
+  let const original_error = GetLastError();
+  let const root_length    = path_root_length(path);
+  usize     end            = path.length;
+
+  loop {
+    while (end > root_length && !is_directory_separator(path[end - 1])) {
+      end--;
+    }
+
+    while (end > root_length && is_directory_separator(path[end - 1])) {
+      end--;
+    }
+
+    if (end <= root_length) break;
+
+    let const attributes = path_attributes(path.substring_of_length(0, end));
+
+    if (attributes == INVALID_FILE_ATTRIBUTES) continue;
+
+    if ((attributes & FILE_ATTRIBUTE_DIRECTORY) == 0) {
+      SetLastError(ERROR_DIRECTORY);
+
+      return;
+    }
+
+    break;
+  }
+
+  SetLastError(original_error);
+}
+
 static fn
 is_trusted_owner_sid(PSID sid) wontthrow -> bool
 {
@@ -295,6 +332,10 @@ canonical_path(const Path &path) wontthrow -> Maybe<Path>
       if (GetFileAttributesW(wide_candidate->begin()) ==
           INVALID_FILE_ATTRIBUTES)
       {
+        if (GetLastError() == ERROR_PATH_NOT_FOUND) {
+          mark_path_below_file(candidate.view());
+        }
+
         return koshka::None;
       }
 

@@ -248,6 +248,7 @@ echo "--- realpath with missing components ---"
 "$BIN" -c 'resolved=$(koshkit realpath -m usr/absent/a/../b) || exit; koshkit basename "$resolved"'
 echo "--- realpath link modes, relative output, quiet, and zero ---"
 mkdir -p rp/d/e && ln -s d/e rp/l && : > rp/f
+# Windows separates the components of a printed path with backslashes.
 "$BIN" -c '
 cd rp || exit
 for mode in -s -L -P; do
@@ -257,10 +258,12 @@ koshkit realpath -sP --relative-to=. l
 koshkit realpath -Ls --relative-to=. l
 koshkit realpath -s --relative-to=. missing/x d/./
 koshkit realpath --relative-to=d f d/e d
-koshkit realpath --relative-base=. f /
+koshkit realpath --relative-base=. f
+p=$(koshkit realpath --relative-base=. /)
+[ "$p" = "$(koshkit realpath /)" ] && echo root-absolute
 koshkit realpath --relative-to=d --relative-base=/ f
 p=$(koshkit realpath --relative-to=/ --relative-base=d f)
-[ "$p" = "$(koshkit realpath .)/f" ] && echo absolute
+[ "$p" = "$(koshkit realpath f)" ] && echo absolute
 koshkit realpath -z --relative-to=. f d | koshkit tr "\0" "|"
 echo
 koshkit realpath -q f/x missing/x/.. 2>&1
@@ -269,7 +272,7 @@ koshkit realpath -s f/.. 2>/dev/null
 echo "status=$?"
 koshkit realpath -e --relative-to=f d 2>/dev/null
 echo "status=$?"
-'
+' | tr '\\' /
 "$BIN" -c 'koshkit rmdir a/b'
 echo "--- ls a after rmdir ---"
 "$BIN" -c 'koshkit ls a'
