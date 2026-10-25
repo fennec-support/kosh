@@ -47,7 +47,6 @@ constexpr static_string_entry<balanced_scan_keyword>
         {SSK("then"),     balanced_scan_keyword::command_word},
         {SSK("time"),     balanced_scan_keyword::command_word},
         {SSK("until"),    balanced_scan_keyword::command_word},
-        {SSK("when"),     balanced_scan_keyword::inert_word  },
         {SSK("while"),    balanced_scan_keyword::command_word},
 };
 

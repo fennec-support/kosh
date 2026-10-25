@@ -165,3 +165,8 @@ eval 'for x "in" a; do :; done'
 echo "quoted-for-in-status=$?"
 eval 'case x "in" x) :;; esac'
 echo "quoted-case-in-status=$?"
+
+when() { echo "when is an ordinary word"; }
+when
+when=1
+echo "when=$when"

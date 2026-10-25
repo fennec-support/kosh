@@ -500,7 +500,6 @@ constexpr static_string_entry<keyword_spec> HIGHLIGHT_KEYWORD_ENTRIES[] = {
     {SSK("esac"),
      {.role = keyword_role::close, .construct = highlight_construct::case_}   },
     {SSK("time"),     {.role = keyword_role::plain}                           },
-    {SSK("when"),     {.role = keyword_role::plain}                           },
     {SSK("coproc"),   {.role = keyword_role::plain, .is_non_posix_only = true}},
     {SSK("in"),       {.role = keyword_role::misplaced_in}                    },
 };

@@ -2122,8 +2122,7 @@ Parser::parse_simple_command(const Token *leading_token) throws
     case Token::Kind::Done:
     case Token::Kind::Case:
     case Token::Kind::Esac:
-    case Token::Kind::Time:
-    case Token::Kind::When:  {
+    case Token::Kind::Time:  {
       if (token->kind() == Token::Kind::Word) {
         const tokens::WordToken *word_token =
             static_cast<tokens::WordToken *>(token);

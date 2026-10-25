@@ -857,7 +857,6 @@ TOKEN_DECLS(Until, "until");
 TOKEN_DECLS(Do, "do");
 TOKEN_DECLS(Done, "done");
 TOKEN_DECLS(Case, "case");
-TOKEN_DECLS(When, "when");
 TOKEN_DECLS(Esac, "esac");
 TOKEN_DECLS(Time, "time");
 TOKEN_DECLS(Function, "function");

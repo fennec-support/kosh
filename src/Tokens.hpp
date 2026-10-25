@@ -766,7 +766,6 @@ public:
     Else,
     Fi,
     Elif,
-    When,
     While,
     Case,
     For,
@@ -825,7 +824,6 @@ inline constexpr static_string_entry<Token::Kind> KEYWORD_ENTRIES[] = {
     {SSK("else"),     Token::Kind::Else    },
     {SSK("elif"),     Token::Kind::Elif    },
     {SSK("fi"),       Token::Kind::Fi      },
-    {SSK("when"),     Token::Kind::When    },
     {SSK("case"),     Token::Kind::Case    },
     {SSK("esac"),     Token::Kind::Esac    },
     {SSK("while"),    Token::Kind::While   },
@@ -870,7 +868,6 @@ keyword_names() throws -> const ArrayList<String> &;
   KW_CASE(Else);                                                               \
   KW_CASE(Elif);                                                               \
   KW_CASE(Fi);                                                                 \
-  KW_CASE(When);                                                               \
   KW_CASE(Case);                                                               \
   KW_CASE(While);                                                              \
   KW_CASE(Esac);                                                               \
@@ -903,7 +900,6 @@ TOKEN_STRUCT(Else);
 TOKEN_STRUCT(Elif);
 TOKEN_STRUCT(Then);
 TOKEN_STRUCT(Case);
-TOKEN_STRUCT(When);
 TOKEN_STRUCT(Esac);
 TOKEN_STRUCT(For);
 TOKEN_STRUCT(While);
