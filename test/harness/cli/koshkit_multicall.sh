@@ -60,10 +60,17 @@ echo "rc=$?"
 XDG_CONFIG_HOME="$d/conf" KOSH_FLAGS=-x ./koshkit --list 2>&1 | grep -c '^seq$'
 ./koshkit --color bogus seq 1 2>&1
 echo "rc=$?"
-echo "== a local assimilate is refused where it is not supported:"
+echo "== a local assimilate on Windows installs kosh.exe and utility links:"
 if [ "${OS-}" = Windows_NT ]; then
-  "$BIN" -c 'assimilate -y' >/dev/null 2>&1
-  [ "$?" = 1 ] && echo refused || echo installed
+  windows_install=$d/windows-install
+  mkdir -p "$windows_install"
+  "$BIN" -c 'assimilate -y --link-mood=sh --install-directory="$1"' _ \
+    "$windows_install" >/dev/null 2>&1
+  [ -f "$windows_install/kosh.exe" ] && echo installed
+  printf 'x\n' | "$windows_install/cat.exe" && [ -f "$windows_install/sh.exe" ] &&
+    echo linked
 else
-  echo refused
+  echo installed
+  echo x
+  echo linked
 fi

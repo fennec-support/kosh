@@ -306,9 +306,9 @@ constexpr bool IS_EMPTY_PATH_ENTRY_CURRENT_DIRECTORY = false;
 constexpr char DIRECTORY_SEPARATOR                   = '\\';
 constexpr bool IS_BACKSLASH_A_SEPARATOR              = true;
 constexpr bool HAS_WINDOWS_FILENAME_RULES            = true;
-/* the local assimilate installs through POSIX shell scripts and symbolic
-   links. */
-constexpr bool  IS_LOCAL_ASSIMILATE_SUPPORTED         = false;
+/* whether the system runs the POSIX install scripts of assimilate and lets a
+   user make symbolic links. */
+constexpr bool  HAS_POSIX_INSTALL_TOOLS               = false;
 constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 65535;
 constexpr bool  IS_ENVIRONMENT_CASE_SENSITIVE         = false;
 constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT      = 32766;
@@ -333,7 +333,7 @@ constexpr bool  IS_EMPTY_PATH_ENTRY_CURRENT_DIRECTORY = true;
 constexpr char  DIRECTORY_SEPARATOR                   = '/';
 constexpr bool  IS_BACKSLASH_A_SEPARATOR              = false;
 constexpr bool  HAS_WINDOWS_FILENAME_RULES            = false;
-constexpr bool  IS_LOCAL_ASSIMILATE_SUPPORTED         = true;
+constexpr bool  HAS_POSIX_INSTALL_TOOLS               = true;
 constexpr usize HISTORY_RECORD_MAX_DECODED_BYTE_COUNT = 65535;
 constexpr bool  IS_ENVIRONMENT_CASE_SENSITIVE         = true;
 constexpr usize ENVIRONMENT_VALUE_MAX_UNIT_COUNT      = SIZE_MAX;

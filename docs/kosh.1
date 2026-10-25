@@ -1166,7 +1166,9 @@ Without TARGET, install it the same way into the first usable local PATH
 directory and create a relative symbolic link to
 .B kosh
 for each bundled utility and utility alias whose name is free there or already
-links to it. Windows supports only a remote TARGET. A name that another entry in that directory holds, or that a
+links to it. On Windows the local form installs kosh.exe and makes a hard link
+with the .exe suffix for each utility and link mood, and a later run with a
+changed binary makes those links again. A name that another entry in that directory holds, or that a
 program elsewhere on PATH provides, stays unlinked, and each such group is
 reported in one warning.
 .IP

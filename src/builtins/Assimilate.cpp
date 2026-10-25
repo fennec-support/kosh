@@ -374,9 +374,12 @@ link_local_utilities(const ExecContext &ec,
 {
   trace_stage(ec, trace, "utility links");
 
-  let kosh_path = Path{install_directory};
+  /* without the POSIX tools, each utility is a hard link with the .exe
+     suffix, which needs no privilege. */
+  let const is_hard_link = !os::HAS_POSIX_INSTALL_TOOLS;
+  let       kosh_path    = Path{install_directory};
 
-  kosh_path.append("kosh");
+  kosh_path.append(is_hard_link ? StringView{"kosh.exe"} : StringView{"kosh"});
 
   let skipped_names = String{cxt.scratch_allocator()};
   let shadow_names  = String{cxt.scratch_allocator()};
@@ -385,9 +388,11 @@ link_local_utilities(const ExecContext &ec,
   let const do_link_name = [&](StringView name) throws {
     let link = Path{install_directory};
 
-    link.append(name);
+    link.append(is_hard_link ? (name + ".exe").view() : name);
 
-    if (link.is_symbolic_link() && link.is_same_file_as(kosh_path)) {
+    if ((is_hard_link || link.is_symbolic_link()) &&
+        link.is_same_file_as(kosh_path))
+    {
       return;
     }
 
@@ -412,7 +417,11 @@ link_local_utilities(const ExecContext &ec,
       return;
     }
 
-    if (!os::create_symlink("kosh", link.view())) {
+    let const is_linked =
+        is_hard_link ? os::create_hard_link(kosh_path.view(), link.view())
+                     : os::create_symlink("kosh", link.view());
+
+    if (!is_linked) {
       report_soft_builtin_error(ec, cxt,
                                 "Cannot link '" + link.text() + "' to kosh: " +
                                     os::last_system_error_message());
@@ -444,6 +453,185 @@ link_local_utilities(const ExecContext &ec,
   }
 
   return status;
+}
+
+/* installs executable as kosh.exe in requested_directory, or in the first
+   usable PATH directory that does not contain sbin, then links each mood of
+   link_moods and the utilities, for a system without the POSIX install
+   tools. */
+fn
+install_natively(const ExecContext &ec,
+                 EvalContext       &cxt,
+                 const Path        &executable,
+                 StringView         requested_directory,
+                 StringView         link_moods,
+                 trace_output       trace) throws -> i32
+{
+  let const do_is_usable = [](const Path &directory) wontthrow -> bool {
+    return directory.is_directory() && directory.is_writable();
+  };
+
+  let install_directory = Maybe<Path>{};
+
+  trace_stage(ec, trace, "preflight");
+  if (!requested_directory.is_empty()) {
+    let const directory = Path{requested_directory}.to_absolute();
+
+    if (!do_is_usable(directory)) {
+      report_soft_builtin_error(ec, cxt,
+                                "Cannot install into '" + directory.text() +
+                                    "': it is not a writable directory");
+
+      return 1;
+    }
+
+    install_directory = directory;
+  } else {
+    let const path_value =
+        cxt.get_variable_value("PATH").value_or(String{heap_allocator()});
+    let const entries = path_value.view();
+    usize     start   = 0;
+
+    while (start <= entries.length && !install_directory.has_value()) {
+      let const delimiter =
+          entries.substring(start).find_character(os::PATH_DELIMITER);
+      let const length =
+          delimiter.has_value() ? *delimiter : entries.length - start;
+      let const entry = entries.substring_of_length(start, length);
+
+      start += length + 1;
+      if (entry.is_empty() || entry.find_substring("sbin").has_value()) {
+        continue;
+      }
+
+      let const directory = Path{entry};
+
+      if (do_is_usable(directory)) install_directory = directory;
+    }
+  }
+
+  if (!install_directory.has_value()) {
+    report_soft_builtin_error(ec, cxt, ec.source_location(),
+                              "No PATH directory can take the kosh binary",
+                              "Pass --install-directory=DIR");
+
+    return 1;
+  }
+
+  let target = *install_directory;
+
+  target.append("kosh.exe");
+  if (!FLAG_YES.is_enabled()) {
+    let const prompt = "Install kosh to " + target.text() +
+                       " with links for the koshkit utilities?";
+
+    if (!koshkit::confirm_koshkit_action(ec, prompt.view(),
+                                         koshkit::confirm_default::Yes))
+    {
+      report_soft_builtin_warning(ec, cxt, "The installation was cancelled");
+
+      return 1;
+    }
+  }
+
+  trace_stage(ec, trace, "install");
+  let const contents = executable.read_entire_file();
+
+  if (!contents.has_value()) {
+    report_soft_builtin_error(ec, cxt,
+                              "Cannot read '" + executable.text() +
+                                  "': " + os::last_system_error_message());
+
+    return 1;
+  }
+
+  /* a kosh.exe that already holds these bytes stays, so its links stay
+     too. A replaced one gets its old links made again, since a hard link
+     keeps the file it was made to. */
+  let const installed =
+      target.exists() ? target.read_entire_file() : Maybe<String>{};
+
+  if (!installed.has_value() || installed->view() != contents->view()) {
+    let stale_links = ArrayList<Path>{cxt.scratch_allocator()};
+
+    if (installed.has_value()) {
+      let const entries = os::list_directory(install_directory->view());
+
+      for (usize index = 0; entries.has_value() && index < entries->count();
+           index++)
+      {
+        let const entry = (*entries)[index].view();
+        let       link  = *install_directory;
+
+        link.append(entry);
+        if (entry != "kosh.exe" && entry.length > 4 &&
+            entry.substring(entry.length - 4) == ".exe" &&
+            link.is_same_file_as(target))
+        {
+          stale_links.push(steal(link));
+        }
+      }
+    }
+
+    try {
+      os::replace_file_beside(target, ".kosh-assimilate-", contents->view(),
+                              0755);
+    } catch (const Error &error) {
+      report_soft_builtin_error(ec, cxt,
+                                "Cannot install '" + target.text() +
+                                    "': " + error.message());
+
+      return 1;
+    }
+
+    for (let const &link : stale_links) {
+      if (!os::remove_file(link.view()) ||
+          !os::create_hard_link(target.view(), link.view()))
+      {
+        report_soft_builtin_error(
+            ec, cxt,
+            "Cannot link '" + link.text() +
+                "' to the new kosh: " + os::last_system_error_message());
+      }
+    }
+  }
+
+  i32   status     = 0;
+  usize mood_start = 0;
+
+  while (mood_start < link_moods.length) {
+    let const comma = link_moods.substring(mood_start).find_character(',');
+    let const length =
+        comma.has_value() ? *comma : link_moods.length - mood_start;
+    let const mood = link_moods.substring_of_length(mood_start, length);
+
+    mood_start += length + 1;
+    if (mood == "kosh") continue;
+
+    let link = *install_directory;
+
+    link.append((mood + ".exe").view());
+    if (link.exists() && link.is_same_file_as(target)) continue;
+    if (link.exists()) {
+      report_soft_builtin_error(ec, cxt,
+                                "'" + link.text() +
+                                    "' already exists and is not a link to "
+                                    "kosh, and assimilate does not replace it");
+      status = 1;
+      continue;
+    }
+    if (!os::create_hard_link(target.view(), link.view())) {
+      report_soft_builtin_error(ec, cxt,
+                                "Cannot link '" + link.text() + "' to kosh: " +
+                                    os::last_system_error_message());
+      status = 1;
+    }
+  }
+
+  let const link_status =
+      link_local_utilities(ec, cxt, install_directory->view(), trace);
+
+  return status != 0 ? status : link_status;
 }
 
 } /* namespace */
@@ -529,16 +717,6 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
                               "remote target, and no target was given");
 
     return 2;
-  }
-
-  if (is_local && !os::IS_LOCAL_ASSIMILATE_SUPPORTED) {
-    report_soft_builtin_error(
-        ec, cxt, ec.source_location(),
-        "Installing into a local PATH directory is not supported on this "
-        "system",
-        "Use the Windows installer, or pass a remote TARGET");
-
-    return 1;
   }
 
   let const executable = os::current_executable_path();
@@ -638,6 +816,11 @@ Assimilate::execute(ExecContext &ec, EvalContext &cxt) const throws
         ec, cxt, "The install directory must be one nonempty line");
 
     return 2;
+  }
+
+  if (is_local && !os::HAS_POSIX_INSTALL_TOOLS) {
+    return install_natively(ec, cxt, Path{executable->view()},
+                            requested_directory, link_moods.view(), trace);
   }
 
   let const executable_system  = os::executable_system_name();
