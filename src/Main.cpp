@@ -345,14 +345,13 @@ FLAG(ESCAPE_MAP,
      "show-lexed-words",
      Debug,
      "Print escape bitmap after each parsed command.");
-FLAG(
-    STATS,
-    Bool,
-    '\0',
-    "show-stats",
-    Debug,
-    "Print run statistics after each command, commands, expansions, nodes, and "
-    "arena bytes.");
+FLAG(STATS,
+     Bool,
+     '\0',
+     "show-stats",
+     Debug,
+     "Print evaluation counts, arena use, input and output, and resource usage "
+     "after each command.");
 FLAG(MEMORY,
      Bool,
      '\0',
