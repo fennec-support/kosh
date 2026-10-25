@@ -1008,7 +1008,11 @@ private:
       return true;
     }
 
-    if (m_bytes.length() >= PAGER_BYTE_LIMIT) {
+    /* the line records count against the limit too, so a file of empty
+       lines cannot grow past it. */
+    if (m_bytes.length() + m_lines.count() * sizeof(pager_line) >=
+        PAGER_BYTE_LIMIT)
+    {
       m_was_truncated = true;
       finish_source();
       m_source_index = m_sources.count();
@@ -1017,7 +1021,8 @@ private:
     }
 
     char      buffer[PAGER_READ_BYTE_COUNT];
-    let const room = PAGER_BYTE_LIMIT - m_bytes.length();
+    let const room = PAGER_BYTE_LIMIT - m_bytes.length() -
+                     m_lines.count() * sizeof(pager_line);
     let const read_byte_count =
         os::read_fd(source.input.descriptor, buffer,
                     room < sizeof(buffer) ? room : sizeof(buffer));
@@ -1316,6 +1321,15 @@ private:
         continue;
       }
 
+      /* a C1 control character could steer the terminal, so it is shown as
+         the replacement character. */
+      if (decoded->value >= 0x80 && decoded->value <= 0x9f) {
+        m_display += PAGER_REPLACEMENT;
+        column++;
+        position += decoded->length;
+        continue;
+      }
+
       let const piece = text.substring_of_length(position, decoded->length);
 
       m_display += piece;
@@ -1512,8 +1526,26 @@ private:
     if (m_text.has_line(m_top.line)) {
       let const label = m_text.get_label(m_top.line);
 
+      /* the label is a file operand, so a control byte is shown in ^
+         notation and a C1 control character as the replacement character
+         instead of reaching the terminal. */
       if (label != "-") {
-        output += label;
+        for (usize index = 0; index < label.length; index++) {
+          let const value = static_cast<u8>(label[index]);
+
+          if (value < 0x20 || value == 0x7f) {
+            output += '^';
+            output += static_cast<char>(value ^ 0x40);
+          } else if (value == 0xc2 && index + 1 < label.length &&
+                     static_cast<u8>(label[index + 1]) >= 0x80 &&
+                     static_cast<u8>(label[index + 1]) <= 0x9f)
+          {
+            output += PAGER_REPLACEMENT;
+            index++;
+          } else {
+            output += label[index];
+          }
+        }
         output += ' ';
       }
     }
