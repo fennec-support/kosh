@@ -46,4 +46,10 @@ cd "$base/current"
 PWD="$base/forged"
 cd child
 echo "forged_pwd_ignored=$([ "$(pwd -P)" = "$base/current/child" ] && echo yes || echo no)"
+
+cd "$base/link"
+set -P
+echo "set_P_pwd_physical=$([ "$(pwd)" = "$base/real/sub" ] && echo yes || echo no)"
+echo "pwd_L_logical=$([ "$(pwd -L)" = "$base/link" ] && echo yes || echo no)"
+set +P
 rm -rf "$base"

@@ -51,7 +51,9 @@ Pwd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let       output                  = String{cxt.scratch_allocator()};
   let const should_use_windows_form = FLAG_PWD_WINDOWS.is_enabled();
   let const should_use_physical =
-      FLAG_PWD_PHYSICAL.is_enabled() || should_use_windows_form;
+      FLAG_PWD_PHYSICAL.is_enabled() || should_use_windows_form ||
+      (!FLAG_PWD_LOGICAL.is_enabled() &&
+       cxt.runtime_state().option_is_enabled(shell_option_id::Physical));
   let const directory = should_use_physical ? Path::current_directory()
                                             : logical_working_directory(cxt);
 
