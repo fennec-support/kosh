@@ -663,11 +663,17 @@ execute_program(ExecContext                     &ec,
                                          STDOUT_FILENO);
       });
 
+  /* a dup2 action onto the same descriptor keeps close-on-exec on macOS,
+     so a file already at its target number is kept by clearing the flag. */
   ec.apply_nonstandard_routing(
       [&](os::descriptor file_fd, i32 target_fd) {
+        if (file_fd == target_fd) {
+          do_keep_across_exec(target_fd);
+          return;
+        }
+
         posix_spawn_file_actions_adddup2(&file_actions, file_fd, target_fd);
-        if (file_fd != target_fd)
-          posix_spawn_file_actions_addclose(&file_actions, file_fd);
+        posix_spawn_file_actions_addclose(&file_actions, file_fd);
       },
       [&](i32 dup_from_fd, i32 target_fd) {
         posix_spawn_file_actions_adddup2(&file_actions, dup_from_fd, target_fd);
