@@ -66,6 +66,9 @@ stop
 == a backslash continues the spec command onto the next line:
 start
 stop
+== a backslash inside a word keeps the word going on the next line:
+st\
+art
 == cd offers only directories on the next line:
 ZQdir_marker/
 adir/

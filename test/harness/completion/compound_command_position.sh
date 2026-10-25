@@ -60,6 +60,8 @@ echo "== spec command after a heredoc body with an apostrophe:"
 "$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf "cat <<EOF\nit's\nEOF\nsvc ")" </dev/null
 echo "== a backslash continues the spec command onto the next line:"
 "$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf 'svc \\\nst')" </dev/null
+echo "== a backslash inside a word keeps the word going on the next line:"
+"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf 'svc st\\\nar')" </dev/null
 echo "== cd offers only directories on the next line:"
 "$BIN" --debug-complete-at "$(printf 'echo hi\ncd ')" </dev/null
 echo "== plain argument lists both markers:"

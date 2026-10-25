@@ -128,12 +128,15 @@ internal::find_token_bounds(StringView line, usize cursor) wontthrow
   while (i < cursor && i < line.length) {
     let const c = line[i];
 
-    /* a backslash before a line feed continues the line between words. */
+    /* a backslash before a line feed continues the line. between words it
+       starts the next token, and inside a word the word goes on. */
     if (c == '\\' && i + 1 < cursor && i + 1 < line.length &&
         line[i + 1] == '\n')
     {
+      let const is_between_words = i == start;
+
       i += 2;
-      start = i;
+      if (is_between_words) start = i;
       continue;
     }
 
