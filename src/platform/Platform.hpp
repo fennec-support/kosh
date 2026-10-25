@@ -2159,6 +2159,10 @@ drop_elevated_identity() wontthrow -> bool;
 
 fn
 reopen_terminal_as_stdin() wontthrow -> bool;
+/* opens the controlling terminal for reading keys, or the console input on
+   Windows. The caller closes the descriptor with close_fd. */
+fn
+open_terminal_input() wontthrow -> Maybe<descriptor>;
 
 fn
 process_id_of(process p) wontthrow -> i64;

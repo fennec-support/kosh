@@ -1049,6 +1049,18 @@ reopen_terminal_as_stdin() wontthrow -> bool
 }
 
 fn
+open_terminal_input() wontthrow -> Maybe<descriptor>
+{
+  let const terminal = CreateFileW(L"CONIN$", GENERIC_READ | GENERIC_WRITE,
+                                   FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                                   OPEN_EXISTING, 0, nullptr);
+
+  if (terminal == INVALID_HANDLE_VALUE) return None;
+
+  return terminal;
+}
+
+fn
 shell_has_controlling_terminal() wontthrow -> bool
 {
   return false;

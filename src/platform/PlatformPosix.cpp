@@ -1143,6 +1143,16 @@ reopen_terminal_as_stdin() wontthrow -> bool
 }
 
 fn
+open_terminal_input() wontthrow -> Maybe<descriptor>
+{
+  let const tty_fd = open("/dev/tty", O_RDWR | O_CLOEXEC);
+
+  if (tty_fd == -1) return None;
+
+  return tty_fd;
+}
+
+fn
 keep_shell_fd_for_children(i32 shell_fd) wontthrow -> bool
 {
   return install_descriptor(shell_fd, shell_fd) != -1;
