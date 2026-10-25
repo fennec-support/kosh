@@ -1750,11 +1750,19 @@ TerminalEchoGuard::did_succeed() const wontthrow -> bool
   return m_did_succeed;
 }
 
-/* the console mode of original without echo and line input. */
+/* the console mode of original without echo and line input, reporting the
+   arrows and navigation keys as escape sequences. */
 static pure fn
 get_raw_input_mode(DWORD original) wontthrow -> DWORD
 {
-  return original & ~static_cast<DWORD>(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+  let mode =
+      original & ~static_cast<DWORD>(ENABLE_ECHO_INPUT | ENABLE_LINE_INPUT);
+
+#if defined ENABLE_VIRTUAL_TERMINAL_INPUT
+  mode |= static_cast<DWORD>(ENABLE_VIRTUAL_TERMINAL_INPUT);
+#endif
+
+  return mode;
 }
 
 TerminalRawInputGuard::TerminalRawInputGuard(descriptor input) wontthrow
