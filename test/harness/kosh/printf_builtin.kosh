@@ -41,12 +41,12 @@ echo "rc=$?"
 # The \e and \E escapes emit ESC in the bash moods and stay literal in the sh
 # mood. The %b conversion follows the same gate.
 set -M bash
-printf '\e' | od -An -c
-printf '\E' | od -An -c
-printf '%b' '\e' | od -An -c
+printf '\e' | koshkit od -An -c
+printf '\E' | koshkit od -An -c
+printf '%b' '\e' | koshkit od -An -c
 set -M bash-posix
-printf '\e' | od -An -c
+printf '\e' | koshkit od -An -c
 set -M sh
-printf '\e' | od -An -c
-printf '%b' '\e' | od -An -c
+printf '\e' | koshkit od -An -c
+printf '%b' '\e' | koshkit od -An -c
 set -M kosh

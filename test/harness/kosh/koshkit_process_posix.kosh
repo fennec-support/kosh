@@ -1,5 +1,7 @@
-base=$(sh -c 'ps -o ni= -p $$')
-raised=$(koshkit nice -n 1 sh -c 'ps -o ni= -p $$')
+# a busybox ps has no -p, so the nice value then comes from /proc.
+base=$(sh -c 'ps -o ni= -p $$ 2>/dev/null || cut -d" " -f19 /proc/$$/stat')
+raised=$(koshkit nice -n 1 sh -c \
+  'ps -o ni= -p $$ 2>/dev/null || cut -d" " -f19 /proc/$$/stat')
 echo "nice-delta=$((raised - base))"
 koshkit nice -n 1 printf 'nice-ok\n'
 echo "nice=$?"
@@ -7,12 +9,15 @@ echo "nice=$?"
 koshkit nohup printf 'nohup-ok\n'
 echo "nohup=$?"
 
+nice_of() {
+  ps -o ni= -p "$1" 2>/dev/null || cut -d' ' -f19 "/proc/$1/stat"
+}
 sleep 30 &
 child=$!
-before=$(ps -o ni= -p "$child")
+before=$(nice_of "$child")
 koshkit renice -n 1 -p "$child" >/dev/null
 echo "renice=$?"
-after=$(ps -o ni= -p "$child")
+after=$(nice_of "$child")
 echo "renice-delta=$((after - before))"
 kill "$child"
 wait "$child"

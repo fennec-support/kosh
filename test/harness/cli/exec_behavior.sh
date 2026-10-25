@@ -35,7 +35,10 @@ printf 'exec . <<EOF\nignored\nEOF\necho input-$((20+22))\nkill -PIPE $$\necho s
 if script -qec true /dev/null >/dev/null 2>&1; then
     output=$(script -qec "$BIN --no-init-files" /dev/null < "$input" 2>/dev/null)
 elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
-    output=$(script -q /dev/null "$BIN" --no-init-files < "$input" 2>/dev/null)
+    # a BSD script ends at the end of its input, so the input stays open
+    # until the shell exits on its own.
+    output=$({ cat "$input"; sleep 3; } |
+        script -q /dev/null "$BIN" --no-init-files 2>/dev/null)
 else
     output=
 fi
