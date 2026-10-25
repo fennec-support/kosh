@@ -55,8 +55,11 @@ echo "--- pkill -s 0 selects the own session and -KILL selects the signal ---"
 probe_dir=$TEST_MKTEMP_DIRECTORY/pkill-probe
 mkdir -p "$probe_dir" || exit 1
 probe_name="kpk$$"
-ln -s "$(command -v sleep)" "$probe_dir/$probe_name"
-"$BIN" -c '"$1" 30 & probe=$!
+# the probe is a copy of the shell under test under another file name: a
+# multicall sleep refuses an unknown name, and macOS names a process run
+# through a symlink after its target.
+cp "$BIN" "$probe_dir/$probe_name"
+"$BIN" -c '"$1" -c "koshkit sleep 30" & probe=$!
 koshkit pkill -s 2147483646 -KILL "$2"
 echo "other-session=$?"
 koshkit pkill -s 0 -KILL "$2"

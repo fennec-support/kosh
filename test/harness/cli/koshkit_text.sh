@@ -554,7 +554,8 @@ printf 'a\nb\n' | "$BIN" -c 'koshkit xargs -n 1 ./xargs-script; printf "status=%
 
 echo "--- unexpand copies blanks past the last tab stop ---"
 printf 'abcde \tx\n' | "$BIN" -c 'koshkit unexpand -t 2,4 | koshkit od -c' | sed -n 1p
-printf 'abcde  \t x\n' | "$BIN" -c 'koshkit unexpand -t 2,4' | od -c | sed -n 1p
+printf 'abcde  \t x\n' | "$BIN" -c 'koshkit unexpand -t 2,4' |
+  "$BIN_DIR/invoke-koshkit" od -c | sed -n 1p
 
 echo "--- xargs -I keeps empty quotes and rejects an open quote ---"
 printf '"" x\n' | "$BIN" -c 'koshkit xargs -I{} echo "[{}]"'
@@ -577,7 +578,8 @@ printf 'abc\nabc tail\nzz\0\nabc after\n' > grep-late-nul.dat
 mkdir grep-binary-dir
 printf 'abc\0\n' > grep-binary-dir/b.dat
 "$BIN" -c 'koshkit grep -r abc grep-tree grep-binary-dir'
-"$BIN" -c 'koshkit grep -a abc grep-binary.dat' | od -c | sed -n 1,2p
+"$BIN" -c 'koshkit grep -a abc grep-binary.dat' |
+  "$BIN_DIR/invoke-koshkit" od -c | sed -n 1,2p
 
 echo "--- seq counts long integers exactly ---"
 "$BIN" -c 'koshkit seq 99999999999999999999 100000000000000000001'
