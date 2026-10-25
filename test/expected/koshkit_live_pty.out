@@ -15,4 +15,7 @@ evilio-redirected PASS
 evilnet-redirected PASS
 evilps-redirected PASS
 evilnet-forced-color-redirected PASS
+less-keys PASS
+more-keys PASS
+less-interrupt PASS
 status=0

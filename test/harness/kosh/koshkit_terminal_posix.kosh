@@ -27,3 +27,28 @@ TERM=xterm koshkit tput longname
 
 koshkit stty -a </dev/null
 echo "stty-notty=$?"
+
+printf 'first\n' >one.txt
+printf 'second\n\n\n\nlast' >two.txt
+koshkit more one.txt two.txt
+echo
+echo "more-files=$?"
+koshkit more -s two.txt
+echo
+koshkit more -n 3 one.txt
+koshkit more -n 0 one.txt
+echo "more-lines=$?"
+koshkit more -p '/(' one.txt
+echo "more-pattern=$?"
+koshkit more -p '/^l' two.txt
+echo
+koshkit more missing.txt one.txt
+echo "more-missing=$?"
+koshkit less one.txt two.txt
+echo
+echo "less-files=$?"
+printf 'piped\tline\n' | koshkit less -N -S
+echo "less-flags=$?"
+koshkit less missing.txt one.txt
+echo "less-missing=$?"
+koshkit less -x one.txt

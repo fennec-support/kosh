@@ -15,3 +15,56 @@ xterm terminal
     28 |  koshkit stty -a </dev/null
        |  ^~~~~~~~~~~~~~~
 stty-notty=1
+::::::::::::::
+one.txt
+::::::::::::::
+first
+::::::::::::::
+two.txt
+::::::::::::::
+second
+
+
+
+last
+more-files=0
+second
+
+last
+first
+39:17: error: Koshkit `more`: invalid line count.
+    39 |  koshkit more -n 0 one.txt
+       |                  ^
+note: use a positive decimal integer.
+more-lines=1
+41:1: error: Koshkit `more`: Invalid pattern '('.
+    41 |  koshkit more -p '/(' one.txt
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+more-pattern=1
+last
+45:1: error: Koshkit `more`: Cannot read 'missing.txt': No such file or directory.
+    45 |  koshkit more missing.txt one.txt
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+::::::::::::::
+one.txt
+::::::::::::::
+first
+more-missing=1
+first
+second
+
+
+
+last
+less-files=0
+piped	line
+less-flags=0
+52:1: error: Koshkit `less`: Cannot read 'missing.txt': No such file or directory.
+    52 |  koshkit less missing.txt one.txt
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+first
+less-missing=1
+54:14: error: Koshkit `less`: Unknown flag '-x'.
+    54 |  koshkit less -x one.txt
+       |               ^~
+note: Use `--` before an operand that begins with a dash.

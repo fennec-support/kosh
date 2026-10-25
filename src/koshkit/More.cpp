@@ -2,12 +2,13 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements the more utility. It pages terminal input, handles
- * search and navigation commands, loads tags, controls screen layout, and
- * streams directly when paging is unnecessary.
+ * This file implements the more utility. It resolves tags and the initial
+ * pager command, then pages the input one screen at a time on a terminal or
+ * copies it when the output is not a terminal.
  */
 
 #include "../CLI.hpp"
+#include "../CLILive.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -40,6 +41,22 @@ More::execute(const ExecContext               &ec,
 
   if (FLAG_MORE_COMMAND.is_set() && FLAG_MORE_TAG.is_set()) {
     return report_usage_error(ec, cxt, args[0].view());
+  }
+
+  pager_options options{};
+
+  if (FLAG_MORE_LINES.is_set()) {
+    let const parsed = parse_strict_count(FLAG_MORE_LINES.value());
+
+    if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
+      report_soft_koshkit_error(ec, cxt, FLAG_MORE_LINES.value_location(),
+                                "invalid line count",
+                                "use a positive decimal integer");
+
+      return 1;
+    }
+
+    options.page_row_count = static_cast<usize>(parsed.value());
   }
 
   let   tagged_source      = String{cxt.scratch_allocator()};
@@ -111,131 +128,32 @@ More::execute(const ExecContext               &ec,
   if (FLAG_MORE_TAG.is_set()) {
     sources.clear();
     sources.push(tagged_source.view());
+  } else if (operands.is_empty() &&
+             os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT)) &&
+             os::is_fd_a_tty(ec.in_fd.value_or(KOSH_STDIN)))
+  {
+    return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let const should_buffer = FLAG_MORE_COMMAND.is_set() ||
-                            FLAG_MORE_TAG.is_set() ||
-                            FLAG_MORE_SQUEEZE.is_enabled();
-  i32 status = 0;
+  if (FLAG_MORE_COMMAND.is_set()) {
+    let command = FLAG_MORE_COMMAND.value();
 
-  for (let const source : sources) {
-    if (should_buffer) {
-      let const input = read_named_or_stdin(ec, source);
-
-      if (!input.has_value()) {
-        KOSHKIT_REPORT_PATH_ERROR("read", source);
-        status = 1;
-        continue;
-      }
-
-      usize output_start = 0;
-      let   line_number  = usize{1};
-      while (line_number < tagged_line_number && output_start < input->length())
-      {
-        let const newline =
-            input->view().substring(output_start).find_character('\n');
-
-        if (!newline.has_value()) {
-          output_start = input->length();
-          break;
-        }
-
-        output_start += *newline + 1;
-        line_number++;
-      }
-
-      if (FLAG_MORE_COMMAND.is_set()) {
-        let command = FLAG_MORE_COMMAND.value();
-
-        if (!command.is_empty() && command[0] == '/') {
-          command = command.substring(1);
-        }
-
-        let pattern = String{cxt.scratch_allocator(), command};
-
-        if (FLAG_MORE_CASE.is_enabled()) pattern.lowercase_ascii();
-
-        usize search_position = output_start;
-        let   searchable      = String{cxt.scratch_allocator()};
-
-        while (search_position < input->length()) {
-          let const remaining = input->view().substring(search_position);
-          let const line_length =
-              remaining.find_character('\n').value_or(remaining.length);
-
-          searchable.clear();
-          searchable += remaining.substring_of_length(0, line_length);
-
-          if (FLAG_MORE_CASE.is_enabled()) searchable.lowercase_ascii();
-          if (searchable.view().find_substring(pattern.view()).has_value()) {
-            output_start = search_position;
-            break;
-          }
-
-          search_position +=
-              line_length + (line_length < remaining.length ? 1 : 0);
-        }
-      }
-
-      let const selected = input->view().substring(output_start);
-
-      if (!FLAG_MORE_SQUEEZE.is_enabled()) {
-        ec.print_to_stdout(selected);
-        continue;
-      }
-
-      let   squeezed  = String{cxt.scratch_allocator()};
-      bool  was_blank = false;
-      usize position  = 0;
-
-      while (position < selected.length) {
-        let const remaining = selected.substring(position);
-        let const line_length =
-            remaining.find_character('\n').value_or(remaining.length);
-        let const is_blank = line_length == 0;
-
-        if (!is_blank || !was_blank) {
-          squeezed += remaining.substring_of_length(0, line_length);
-          if (line_length < remaining.length) squeezed += '\n';
-        }
-
-        was_blank = is_blank;
-        position += line_length + (line_length < remaining.length ? 1 : 0);
-      }
-
-      ec.print_to_stdout(squeezed.view());
-      continue;
+    if (!command.is_empty() && command[0] == '/') {
+      command = command.substring(1);
     }
 
-    let const input = open_named_or_stdin(ec, source);
-
-    if (!input.has_value()) {
-      KOSHKIT_REPORT_PATH_ERROR("read", source);
-      status = 1;
-      continue;
-    }
-
-    defer { close_input_descriptor(*input); };
-
-    char buffer[65536];
-
-    loop {
-      let const read_byte_count =
-          os::read_fd(input->descriptor, buffer, sizeof(buffer));
-
-      if (!read_byte_count.has_value()) {
-        if (!os::INTERRUPT_REQUESTED) KOSHKIT_REPORT_PATH_ERROR("read", source);
-
-        status = 1;
-        break;
-      }
-
-      if (*read_byte_count == 0) break;
-      ec.print_to_stdout(StringView{buffer, *read_byte_count});
-    }
+    options.initial_pattern = command;
   }
 
-  return status;
+  options.first_line_number   = tagged_line_number;
+  options.should_show_headers = sources.count() > 1;
+  options.should_copy_headers = sources.count() > 1;
+  options.should_ignore_case  = FLAG_MORE_CASE.is_enabled();
+  options.should_squeeze      = FLAG_MORE_SQUEEZE.is_enabled();
+  options.should_clear        = FLAG_MORE_CLEAR.is_enabled();
+  options.should_exit_at_end  = FLAG_MORE_EXIT.is_enabled();
+
+  return run_pager(ec, cxt, sources, options);
 }
 
 } /* namespace koshka::koshkit */

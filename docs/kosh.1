@@ -1880,7 +1880,8 @@ The bundled set is basename, bc, cal, calc, cat, chgrp, chmod, chown, cksum,
 cmp, comm, cp, csplit, cut, date, df, diff, dirname, du, env, evil, evildisk,
 evilfiles, evilfs, evilio, eviliso, evillogs, evilnet, evilps, evilss, expand,
 expr, file, find, flock, fold, fuser, getconf, goodcore, goodfsw, goodnode,
-goodstat, grep, head, id, killall, link, ln, locale, logger, logname, ls, make,
+goodstat, grep, head, id, killall, less, link, ln, locale, logger, logname, ls,
+make,
 man, meow, mkdir, mkfifo, mknod, more, mv, nice, nl, nohup, nproc, od, paste,
 pathchk, pkill, pr, printenv, ps, readlink, realpath, renice, retry, rm, rmdir,
 sed, seq, sleep, slurp, sort, split, stat, strings, stty, sync, tabs, tail, tee,
@@ -2451,6 +2452,25 @@ id.
 signals what the pattern and sessions do not select. Process 0, the shell, and
 the utility itself are never signaled by killall.
 .TP
+.B less
+Show files or standard input full screen on the alternate screen, with keys
+from the terminal: space, f, and Page Down forward a page, b and Page Up back,
+d and u half a page, j, Down, and Enter one row down, k and Up one row up, g
+and Home the top, G and End the bottom,
+.BI / pattern
+and
+.BI ? pattern
+extended regular expression searches with n and N, and q to quit or an
+interrupt for status 130. The status row shows the file, the visible lines,
+and the position. Input loads as needed, up to 128 MiB.
+.BR \-N ", " \-\-LINE\-NUMBERS
+numbers the lines,
+.BR \-S ", " \-\-chop\-long\-lines
+cuts long lines instead of wrapping them, and
+.BR \-i ", " \-\-ignore\-case
+ignores case in searches. Several files follow headers of colons. When output
+is not a terminal, the input is copied unchanged.
+.TP
 .B ln
 Create hard links, or symbolic links with
 .BR \-s .
@@ -2559,6 +2579,34 @@ and
 and
 .B \-m
 sets the mode.
+.TP
+.B more
+Show files or standard input a screen at a time with a
+.B \-\-More\-\-
+prompt, with keys from the terminal: space and f the next page, Enter, j, and
+Down the next line, d half a page, b, k, Page Up, and Up further back, g and G
+the top and the bottom, the searches of
+.BR less ,
+and q, or a forward key at the end, to quit.
+.BR \-n ", " \-\-lines
+sets the lines per screen,
+.BR \-c ", " \-\-clear
+clears before each page,
+.BR \-e ", " \-\-exit
+exits after the last line,
+.BR \-p ", " \-\-command
+starts at the first line that matches a pattern,
+.BR \-t ", " \-\-tag
+at a tag of the tags file,
+.BR \-s ", " \-\-squeeze
+collapses repeated blank lines, and
+.BR \-i ", " \-\-ignore\-case
+ignores case in searches. Each of several files follows a header of colons.
+When output is not a terminal, the input is copied, changed only by
+.BR \-p ,
+.BR \-t ,
+and
+.BR \-s .
 .TP
 .B mv
 Rename with

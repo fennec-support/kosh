@@ -123,8 +123,11 @@ that epoch and defer uncached documentation loads without blocking the editor.
 The language server follows relative sources from the document directory.
 Rename edits use semantic spans and preserve variable sigils and braces.
 
-src/CLILive owns live views, the screensaver, retained rows, terminal state, and
-one synchronized frame write. Redirected frames contain no escape sequences.
+src/CLILive owns live views, the screensaver, retained rows, terminal state,
+one synchronized frame write, and the pager behind koshkit more and less.
+Redirected frames contain no escape sequences. The pager takes keys from the
+controlling terminal through os::open_terminal_input and copies its input when
+standard output is not a terminal.
 
 ## Startup
 

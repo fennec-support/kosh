@@ -176,6 +176,45 @@ def run_redirected(binary, command):
     }
 
 
+def run_pager_pty(binary, command, steps):
+    """Sends each key after the previous marker text appears on the PTY."""
+    pid, fd = pty.fork()
+    if pid == 0:
+        os.execv(binary, [binary, "-Q", "-c", command])
+
+    fcntl.ioctl(fd, termios.TIOCSWINSZ, struct.pack("HHHH", 8, 40, 0, 0))
+    output = bytearray()
+    reached = []
+    marker_start = 0
+    step_index = 0
+    deadline = time.monotonic() + 8.0
+    while time.monotonic() < deadline and step_index < len(steps):
+        marker, key = steps[step_index]
+        found = bytes(output).find(marker, marker_start)
+        if found >= 0:
+            reached.append(marker.decode())
+            marker_start = found + len(marker)
+            if key is not None:
+                os.write(fd, key)
+            step_index += 1
+            continue
+        ready, _, _ = select.select([fd], [], [], 0.05)
+        if not ready:
+            continue
+        try:
+            chunk = os.read(fd, 65536)
+        except OSError:
+            break
+        if not chunk:
+            break
+        output.extend(chunk)
+
+    if step_index < len(steps):
+        os.kill(pid, signal.SIGKILL)
+    _, status = os.waitpid(pid, 0)
+    return {"status": os.waitstatus_to_exitcode(status), "reached": reached}
+
+
 def check(name, result, requirements):
     failed = [key for key, expected in requirements.items()
               if result.get(key) != expected]
@@ -291,6 +330,30 @@ def main():
                             "--live=0.05 --cumulative=0.1")
     ok &= check("evilnet-forced-color-redirected", result,
                 {"status": 130, "plain_header": True, "hints": False})
+
+    # The PTY has 7 content rows above the status line.
+    less_steps = ((b"lines 1-7", b" "), (b"lines 8-14", b"b"),
+                  (b"lines 1-7", b"G"), (b"lines 24-30/30", b"/25\r"),
+                  (b"lines 25-30/30", b"g"), (b"lines 1-7/30", b"q"),
+                  (b"after=0", None))
+    result = run_pager_pty(binary, "koshkit seq 1 30 | koshkit less; "
+                           "echo after=$?", less_steps)
+    ok &= check("less-keys", result, {
+        "status": 0, "reached": [marker.decode() for marker, _ in less_steps]})
+
+    more_steps = ((b"--More--", b"\r"), (b"8\r\n", b" "),
+                  (b"15\r\n", b"b"), (b"8\r\n", b"q"), (b"after=0", None))
+    result = run_pager_pty(binary, "koshkit seq 1 30 | koshkit more; "
+                           "echo after=$?", more_steps)
+    ok &= check("more-keys", result, {
+        "status": 0, "reached": [marker.decode() for marker, _ in more_steps]})
+
+    interrupt_steps = ((b"lines 1-7", b"\x03"), (b"after=130", None))
+    result = run_pager_pty(binary, "koshkit seq 1 30 | koshkit less; "
+                           "echo after=$?", interrupt_steps)
+    ok &= check("less-interrupt", result, {
+        "status": 0,
+        "reached": [marker.decode() for marker, _ in interrupt_steps]})
     return 0 if ok else 1
 
 

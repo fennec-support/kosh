@@ -2,12 +2,10 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file declares the shared live view driver for the Evil utilities. Each
- * utility supplies its options, sampler, renderer, and key callbacks, and the
- * driver owns terminal handling, sample and refresh timing, interrupts, and one
- * write per frame. It also declares update_retained_rows, which folds each
- * fresh sample into the retained rows, and live_report_options, which parses
- * --live and --cumulative and stores the window and view options.
+ * This file declares the shared live view driver for the Evil utilities, which
+ * owns terminal handling, sample and refresh timing, interrupts, and one write
+ * per frame. It also declares the pager behind more and less, the retained row
+ * update, and live_report_options, which parses --live and --cumulative.
  */
 
 #pragma once
@@ -32,6 +30,8 @@ enum class live_view_special_key : u8
   Down,
   PageUp,
   PageDown,
+  Home,
+  End,
   WheelUp,
   WheelDown,
 };
@@ -108,6 +108,14 @@ struct live_view_input
   live_view_key          keys[CAPACITY];
   usize                  key_count{0};
 };
+
+/* appends the keys encoded in bytes to input. Escape sequences for arrows,
+   paging keys, Home, End, and the mouse wheel become special keys, and other
+   bytes become characters. */
+fn
+decode_live_view_keys(const char      *bytes,
+                      usize            byte_count,
+                      live_view_input &input) wontthrow -> void;
 
 class LiveView
 {
@@ -364,6 +372,36 @@ run_live_view(const ExecContext       &ec,
     return live_view_key_action::Unhandled;
   });
 }
+
+struct pager_options
+{
+  /* a regular expression that selects the first line shown. */
+  StringView initial_pattern;
+  /* the first line shown, counted from 1. */
+  usize first_line_number{1};
+  /* the rows of one page, or 0 for the terminal height minus the prompt. */
+  usize page_row_count{0};
+  bool  is_full_screen{false};
+  bool  should_show_headers{false};
+  bool  should_copy_headers{false};
+  bool  should_number_lines{false};
+  bool  should_chop_lines{false};
+  bool  should_ignore_case{false};
+  bool  should_squeeze{false};
+  bool  should_clear{false};
+  bool  should_exit_at_end{false};
+};
+
+/* pages the sources one after another on a terminal output, with keys read
+   from the controlling terminal. A full-screen pager uses the alternate
+   screen, and another pager scrolls the normal screen. Without a terminal,
+   it copies the sources and applies only the headers, the first line, the
+   initial pattern, and blank line squeezing. */
+fn
+run_pager(const ExecContext           &ec,
+          EvalContext                 &cxt,
+          const ArrayList<StringView> &sources,
+          const pager_options         &options) throws -> i32;
 
 struct live_process_identity
 {

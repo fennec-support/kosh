@@ -151,6 +151,7 @@ report_unresolved_sort_key(const ExecContext &ec,
   X(Renice, "renice")                                                          \
   X(Man, "man")                                                                \
   X(More, "more")                                                              \
+  X(Less, "less")                                                              \
   X(Stty, "stty")                                                              \
   X(Tabs, "tabs")                                                              \
   X(Tput, "tput")                                                              \
