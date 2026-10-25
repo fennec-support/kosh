@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="{{description}}">
+<title>{{title}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@700&amp;family=Merriweather:ital,wght@0,300;0,700;1,300&amp;family=Roboto+Mono:wght@400;500&amp;display=swap">
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #fcfcfa;
+  --fg: #23252a;
+  --muted: #6b6f78;
+  --rule: #e4e4df;
+  --accent: #2f5fd0;
+  --code-fg: #1d1f24;
+  --code-bg: #f1f1ec;
+  --pre-bg: #f5f5f1;
+  --heading: "Inter", system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --body: "Merriweather", Georgia, Cambria, "Times New Roman", serif;
+  --mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    "Liberation Mono", monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #15171b;
+    --fg: #dcdde1;
+    --muted: #8d919b;
+    --rule: #2a2d33;
+    --accent: #8fb0ff;
+    --code-fg: #eceef2;
+    --code-bg: #22252b;
+    --pre-bg: #1b1e23;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-padding-top: 1.5rem;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 300 1rem/1.75 var(--body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  max-width: 76rem;
+  margin: 0 auto;
+  padding: 3rem 1rem 5rem;
+  gap: 3rem;
+}
+
+@media (min-width: 70rem) {
+  .layout {
+    grid-template-columns: 14rem minmax(0, 46rem);
+    justify-content: center;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 2rem;
+    align-self: start;
+    max-height: calc(100vh - 4rem);
+    overflow-y: auto;
+  }
+
+  nav.toc details > summary {
+    display: none;
+  }
+}
+
+main {
+  max-width: 46rem;
+  min-width: 0;
+}
+
+header.page {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--rule);
+  padding-bottom: 0.75rem;
+  margin-bottom: 2rem;
+  color: var(--muted);
+  font: 700 0.8rem/1.4 var(--heading);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+footer.page {
+  margin-top: 4rem;
+  border-top: 1px solid var(--rule);
+  padding-top: 0.75rem;
+  color: var(--muted);
+  font: 700 0.8rem/1.4 var(--heading);
+  letter-spacing: 0.04em;
+}
+
+h2,
+h3 {
+  font-family: var(--heading);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  margin: 3rem 0 1rem;
+  font-size: 1.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+h3 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.05rem;
+}
+
+h2:first-child {
+  margin-top: 0;
+}
+
+p {
+  margin: 0 0 1rem;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code,
+pre {
+  font-family: var(--mono);
+  font-size: 0.86em;
+}
+
+code {
+  color: var(--code-fg);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+pre {
+  margin: 0 0 1rem;
+  padding: 0.9rem 1rem;
+  overflow-x: auto;
+  background: var(--pre-bg);
+  border: 1px solid var(--rule);
+  border-radius: 6px;
+  line-height: 1.55;
+}
+
+pre code {
+  font-size: 1em;
+}
+
+em {
+  font-style: italic;
+}
+
+dl {
+  margin: 0 0 1rem;
+}
+
+dt {
+  margin-top: 1rem;
+  font-weight: 300;
+}
+
+dt + dt {
+  margin-top: 0.15rem;
+}
+
+dd {
+  margin: 0.25rem 0 0 1.75rem;
+}
+
+dd > p:last-child {
+  margin-bottom: 0;
+}
+
+.rs {
+  margin-left: 1.75rem;
+}
+
+nav.toc {
+  font: 400 0.85rem/1.5 var(--heading);
+}
+
+nav.toc summary {
+  cursor: pointer;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+nav.toc ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+nav.toc li {
+  margin: 0.15rem 0;
+}
+
+nav.toc ul ul {
+  margin: 0.15rem 0 0.4rem 0.9rem;
+  font-size: 0.95em;
+}
+
+nav.toc > details > ul > li > a {
+  font-weight: 700;
+}
+
+nav.toc a {
+  color: var(--muted);
+}
+
+nav.toc a:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+@media (max-width: 40rem) {
+  body {
+    font-size: 0.95rem;
+  }
+
+  dd,
+  .rs {
+    margin-left: 1rem;
+  }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="toc" aria-label="Sections">
+<details id="toc">
+<summary>Contents</summary>
+{{toc}}
+</details>
+</nav>
+<script>
+  if (window.matchMedia("(min-width: 70rem)").matches) {
+    document.getElementById("toc").open = true;
+  }
+</script>
+<main>
+<header class="page">
+<span>{{header}}</span>
+<span>{{manual}}</span>
+<span>{{header}}</span>
+</header>
+{{content}}
+<footer class="page">kosh &middot; {{date}}</footer>
+</main>
+</div>
+</body>
+</html>

@@ -203,7 +203,9 @@ sanitized debug binary. make MODE=cov builds coverage. make MODE=tinyrel builds
 the size-focused binary. make test runs Kosh, CLI, completion, highlighting,
 POSIX, and Bash suites. make toiletline_test runs the editor suite. make
 completions rebuilds the generated koshkit block of completions/kosh.bash from
-koshkit --list-flags after a koshkit flag changes.
+koshkit --list-flags after a koshkit flag changes. make docs-html renders
+docs/kosh.1 and docs/kosh.5 through docs/man2html.py and the single
+docs/template.html into the ignored docs/html directory.
 
 NO_TOILETLINE=1 make, NO_KOSHKIT=1 make, and HARDENED=1 make use separate
 object directories. HARDENED=1 makes a release build trap on a container
