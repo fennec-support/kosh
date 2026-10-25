@@ -25,7 +25,7 @@ has_namespace_section()
 has_session_section()
 {
   printf '%s\n' "$1" | command grep -E \
-    '^[[:space:]]+USER +TERMINAL( +LOGIN TIME)? *$' \
+    '^[[:space:]]+(USER +TERMINAL( +LOGIN TIME)? *|No login sessions were found)$' \
     > /dev/null 2>&1
 }
 
@@ -81,6 +81,12 @@ for selector_section in \
       *) selector_status=missing ;;
     esac
   fi
+  # namespaces and container runtimes are Linux sections.
+  case $1 in
+  namespaces|runtime)
+    test "$(uname -s)" = Linux || selector_status=matched
+    ;;
+  esac
   printf '%s-selector=%s\n' "$1" "$selector_status"
 
   selector_scope=matched

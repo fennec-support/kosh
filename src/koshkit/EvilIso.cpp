@@ -1059,6 +1059,19 @@ append_session_report(String             &output,
 
   let table = ReportTable{allocator};
 
+  /* a system with no login records still shows the section. */
+  if (rows.is_empty()) {
+    let cells = ArrayList<report_table_cell_view>{allocator};
+
+    table.set_header_visible(false);
+    table.add_column("");
+    cells.push({"No login sessions were found", {}});
+    table.add_row(cells);
+    append_titled_report_table(output, "Sessions", table, should_color);
+
+    return;
+  }
+
   table.add_heading("USER");
   table.add_heading("TERMINAL");
   if (detail == eviliso_detail_mode::All) table.add_heading("LOGIN TIME");
