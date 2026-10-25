@@ -219,7 +219,8 @@ inline constexpr static_string_entry<shell_variable_description>
           "option.",
           shell_variable_fact::Plain}                                        },
         {SSK("PAGER"),
-         {"The value specifies the program that pages long output.",
+         {"Other programs page long output with this program. The shell and "
+          "its pagers do not read it.",
           shell_variable_fact::Plain}                                        },
         {SSK("EDITOR"),
          {"The value specifies the editor fc uses when FCEDIT is unset.",
@@ -237,12 +238,16 @@ inline constexpr static_string_entry<shell_variable_description>
           "excludes.",
           shell_variable_fact::NotPosix}                                     },
         {SSK("POSIXLY_CORRECT"),
-         {"A set value selects POSIX behavior.", shell_variable_fact::Plain} },
+         {"A set value makes GNU utilities follow POSIX. The shell does not "
+          "read it, and set -o posix selects the bash-posix mood.",
+          shell_variable_fact::Plain}                                        },
         {SSK("TMPDIR"),
          {"The value specifies the directory a temporary file is created in.",
           shell_variable_fact::Plain}                                        },
         {SSK("TZ"),
-         {"The value selects the time zone.", shell_variable_fact::Plain}    },
+         {"The value selects the time zone. The shell uses the value it "
+          "inherited, and later programs receive an exported change.",
+          shell_variable_fact::Plain}                                        },
         {SSK("USER"),
          {"The value is the login name of the current user.",
           shell_variable_fact::Plain}                                        },
@@ -252,13 +257,16 @@ inline constexpr static_string_entry<shell_variable_description>
         {SSK("DISPLAY"),
          {"The value specifies the X display.", shell_variable_fact::Plain}  },
         {SSK("MAIL"),
-         {"The value specifies the mailbox that is checked for new mail.",
+         {"Bash checks this mailbox for new mail. The shell does not check "
+          "mail.",
           shell_variable_fact::Plain}                                        },
         {SSK("MAILCHECK"),
-         {"The value is the mail check interval in seconds.",
+         {"Bash checks mail at this interval in seconds. The shell does not "
+          "check mail.",
           shell_variable_fact::Plain}                                        },
         {SSK("MAILPATH"),
-         {"The value is a colon-separated list of mailboxes.",
+         {"Bash checks these colon-separated mailboxes. The shell does not "
+          "check mail.",
           shell_variable_fact::Plain}                                        },
         {SSK("LANG"),
          {"The value is the default locale.", shell_variable_fact::Plain}    },
@@ -457,7 +465,7 @@ inline constexpr static_string_entry<shell_variable_description>
           shell_variable_fact::Dynamic | shell_variable_fact::BashOnly}      },
         {SSK("PPID"),
          {"The value is the process id of the parent.",
-          shell_variable_fact::Dynamic | shell_variable_fact::BashOnly}      },
+          shell_variable_fact::Dynamic}                                      },
         {SSK("HISTCMD"),
          {"The value is the history number of the current command, and a "
           "non-interactive shell reports zero.",

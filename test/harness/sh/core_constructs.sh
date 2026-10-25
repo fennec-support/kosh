@@ -246,3 +246,8 @@ case $((sum)) in
 60) echo "sum is sixty" ;;
 *) echo "sum is $sum" ;;
 esac
+
+case $PPID in
+'' | *[!0-9]*) echo "PPID is not a process id" ;;
+*) echo "PPID is a process id" ;;
+esac

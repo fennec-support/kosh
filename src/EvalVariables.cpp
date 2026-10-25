@@ -201,6 +201,7 @@ constexpr static_string_entry<dynamic_variable_info> ALWAYS_DYNAMIC_ENTRIES[] =
     {
         DYNAMIC_VARIABLE("IFS", IFS, false, Settable),
         DYNAMIC_VARIABLE("LINENO", LINENO, false, Discarded),
+        DYNAMIC_VARIABLE("PPID", PPID, false, Settable),
         DYNAMIC_VARIABLE("KOSH_GIT_BRANCH", KOSH_GIT_BRANCH, false, Settable),
         DYNAMIC_VARIABLE("KOSH_GIT_AHEAD", KOSH_GIT_AHEAD, false, Settable),
         DYNAMIC_VARIABLE("KOSH_GIT_BEHIND", KOSH_GIT_BEHIND, false, Settable),
@@ -256,7 +257,6 @@ constexpr static_string_entry<dynamic_variable_info> BASH_DYNAMIC_ENTRIES[] = {
     DYNAMIC_VARIABLE("HOSTTYPE", HOSTTYPE, false, Settable),
     DYNAMIC_VARIABLE("MACHTYPE", MACHTYPE, false, Settable),
     DYNAMIC_VARIABLE("OSTYPE", OSTYPE, false, Settable),
-    DYNAMIC_VARIABLE("PPID", PPID, false, Settable),
     DYNAMIC_VARIABLE("RANDOM", RANDOM, false, Settable),
     DYNAMIC_VARIABLE("SECONDS", SECONDS, false, Settable),
     DYNAMIC_VARIABLE("SHELLOPTS", SHELLOPTS, false, Settable),
@@ -619,7 +619,10 @@ EvalContext::get_variable_value(StringView name) const throws
       }
       case dynamic_var::KOSH_IDENTITY: return materialize_kosh_identity();
       case dynamic_var::KOSHCONF:      return encode_koshconf_blob(*this);
-      case dynamic_var::KOSH_PS1:      {
+      case dynamic_var::PPID:
+        return String::from(os::get_shell_parent_process_id(),
+                            heap_allocator());
+      case dynamic_var::KOSH_PS1: {
         let const escape = info->prompt_escape;
 
         LOG(Debug, "expanding the prompt escape %.*s for %.*s",
@@ -729,9 +732,6 @@ EvalContext::get_variable_value(StringView name) const throws
 
           return koshka::None;
 
-        case dynamic_var::PPID:
-          return String::from(os::get_shell_parent_process_id(),
-                              heap_allocator());
         case dynamic_var::UID:
           return String::from(os::get_real_user_id(), heap_allocator());
         case dynamic_var::HISTCMD: {
