@@ -45,15 +45,3 @@ rc=1
      1 |  koshkit --color bogus seq 1
        |                  ^~~~~
 rc=2
-== the kosh binary was installed:
-kosh-installed
-== a utility that PATH already provides is not linked:
-uname-kept
-== the egrep alias link runs grep -E:
-axb
-== a symlink was installed for head:
-head-linked
-== a symlinked head routes its own -c flag to the utility:
-abc
-== a symlinked ls routes -A to ls (count of the dot file):
-1

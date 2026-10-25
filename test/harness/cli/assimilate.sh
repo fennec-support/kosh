@@ -308,3 +308,29 @@ missing_status=$?
 missing_reason=$(grep -c "Cannot install into $missing: '$missing' does not exist on the remote host" "$missing_output")
 printf 'missing-directory-status=%s reason=%s leftovers=%s\n' \
     "$missing_status" "$missing_reason" "$(leftovers)"
+
+# assimilate without a target installs kosh into a local directory and links
+# each utility whose name is free there and not provided on PATH. A symlinked
+# invocation routes its own flags to the utility rather than the shell CLI.
+dir=$root/local-install
+provider=$root/local-provider
+/bin/mkdir -p "$dir" "$provider" || exit 1
+ln -sf "$real_uname" "$provider/uname"
+PATH="$dir${TEST_PATH_SEPARATOR}$provider" \
+    "$BIN" -c 'assimilate -y --install-directory "$1"' _ "$dir" \
+    </dev/null >/dev/null 2>&1
+echo "== the kosh binary was installed:"
+[ -x "$dir/kosh" ] && [ ! -L "$dir/kosh" ] && echo kosh-installed
+echo "== a utility that PATH already provides is not linked:"
+[ -L "$dir/uname" ] && echo uname-shadowed || echo uname-kept
+echo "== the egrep alias link runs grep -E:"
+printf 'axb\nab\n' | "$dir/egrep" 'a(x|y)b'
+echo "== a symlink was installed for head:"
+[ -L "$dir/head" ] && echo head-linked || echo head-missing
+echo "== a symlinked head routes its own -c flag to the utility:"
+printf 'abcdefgh' > "$dir/sample"
+"$dir/head" -c 3 "$dir/sample"
+echo ""
+echo "== a symlinked ls routes -A to ls (count of the dot file):"
+: > "$dir/.dotfile"
+"$dir/ls" -A -1 "$dir" | grep -c '^\.dotfile$'

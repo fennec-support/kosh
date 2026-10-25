@@ -60,30 +60,3 @@ echo "rc=$?"
 XDG_CONFIG_HOME="$d/conf" KOSH_FLAGS=-x ./koshkit --list 2>&1 | grep -c '^seq$'
 ./koshkit --color bogus seq 1 2>&1
 echo "rc=$?"
-
-unset KOSH_FLAGS
-# assimilate without a target installs kosh into a local directory and links
-# each utility whose name is free there and not provided on PATH. A symlinked
-# invocation routes its own flags to the utility rather than the shell CLI. The
-# directory lives in the runner's work directory, which the runner removes.
-dir=$TEST_MKTEMP_DIRECTORY/multicall-assimilate
-provider=$TEST_MKTEMP_DIRECTORY/multicall-provider
-mkdir -p "$dir" "$provider" || exit 1
-ln -sf "$(command -v uname)" "$provider/uname"
-PATH="$dir:$provider" "$BIN" -c 'assimilate -y --install-directory "$1"' _ \
-  "$dir" </dev/null >/dev/null 2>&1
-echo "== the kosh binary was installed:"
-[ -x "$dir/kosh" ] && [ ! -L "$dir/kosh" ] && echo kosh-installed
-echo "== a utility that PATH already provides is not linked:"
-[ -L "$dir/uname" ] && echo uname-shadowed || echo uname-kept
-echo "== the egrep alias link runs grep -E:"
-printf 'axb\nab\n' | "$dir/egrep" 'a(x|y)b'
-echo "== a symlink was installed for head:"
-[ -L "$dir/head" ] && echo head-linked || echo head-missing
-echo "== a symlinked head routes its own -c flag to the utility:"
-printf 'abcdefgh' > "$dir/sample"
-"$dir/head" -c 3 "$dir/sample"
-echo ""
-echo "== a symlinked ls routes -A to ls (count of the dot file):"
-: > "$dir/.dotfile"
-"$dir/ls" -A -1 "$dir" | grep -c '^\.dotfile$'
