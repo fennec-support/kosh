@@ -35,3 +35,9 @@ y
 last
 next
 appended
+--- a, i, and c take text on the next line, joined by backslashes ---
+tab	before
+one
+first
+second
+changed

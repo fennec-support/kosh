@@ -63,3 +63,8 @@ trap '[ -n "$sed_directory" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$sed_direc
 printf 'last' > "$sed_directory/no-newline.txt"
 printf 'next\n' > "$sed_directory/following.txt"
 "$BIN" -c "koshkit sed '\$a\\appended' '$sed_directory/no-newline.txt' '$sed_directory/following.txt'"
+
+echo "--- a, i, and c take text on the next line, joined by backslashes ---"
+printf '1a\\\nfirst\\\nsecond\n2c\\\nchanged\n1i tab\\tbefore\n' \
+  > "$sed_directory/text.sed"
+printf 'one\ntwo\n' | "$BIN" -c "koshkit sed -f '$sed_directory/text.sed'"

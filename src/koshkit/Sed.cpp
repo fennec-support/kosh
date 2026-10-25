@@ -367,17 +367,29 @@ parse_sed_script(StringView              script,
 
       if (position < script.length && script[position] == '\\') {
         position++;
+        if (position < script.length && script[position] == '\n') position++;
       }
 
-      let const text_start = position;
+      /* the text ends at a newline, a backslash before a newline continues
+         it on the next line, \t and \n are a tab and a newline, and a
+         backslash before another byte is removed. */
+      let text = String{allocator};
 
       while (position < script.length && script[position] != '\n') {
+        let byte = script[position];
+
+        if (byte == '\\' && position + 1 < script.length) {
+          position++;
+          byte = script[position];
+          if (byte == 't') byte = '\t';
+          if (byte == 'n') byte = '\n';
+        }
+
+        text += byte;
         position++;
       }
 
-      command.replacement =
-          String{allocator,
-                 script.substring_of_length(text_start, position - text_start)};
+      command.replacement = steal(text);
       break;
     }
     case 'y': {
