@@ -1153,6 +1153,17 @@ open_terminal_input() wontthrow -> Maybe<descriptor>
 }
 
 fn
+read_terminal_keys(descriptor terminal, char *buffer, usize size) wontthrow
+    -> Maybe<usize>
+{
+  let const read_count = read_fd(terminal, buffer, size);
+
+  if (!read_count.has_value() || *read_count == 0) return None;
+
+  return read_count;
+}
+
+fn
 keep_shell_fd_for_children(i32 shell_fd) wontthrow -> bool
 {
   return install_descriptor(shell_fd, shell_fd) != -1;

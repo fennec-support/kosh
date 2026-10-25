@@ -576,13 +576,16 @@ LiveView::wait_for_input(u64 wait_nanoseconds, live_view_input &input) wontthrow
   if (readiness == 0) return true;
 
   char      buffer[512];
-  let const read_count = os::read_fd(m_input_fd, buffer, sizeof(buffer));
+  let const read_count =
+      os::read_terminal_keys(m_input_fd, buffer, sizeof(buffer));
 
-  if (!read_count.has_value() || *read_count == 0) {
+  if (!read_count.has_value()) {
     m_has_input = false;
 
     return true;
   }
+
+  if (*read_count == 0) return true;
 
   /* at this point: m_has_input is true, and buffer holds *read_count bytes,
      which is at least 1. */
@@ -1763,11 +1766,12 @@ private:
       if (readiness == 0) return pager_wait::Timeout;
 
       char      buffer[256];
-      let const read_count = os::read_fd(m_terminal_fd, buffer, sizeof(buffer));
+      let const read_count =
+          os::read_terminal_keys(m_terminal_fd, buffer, sizeof(buffer));
 
       if (os::INTERRUPT_REQUESTED != 0) return pager_wait::Interrupted;
-      if (!read_count.has_value() || *read_count == 0)
-        return pager_wait::Closed;
+      if (!read_count.has_value()) return pager_wait::Closed;
+      if (*read_count == 0) continue;
 
       m_input.key_count = 0;
       m_input_index     = 0;

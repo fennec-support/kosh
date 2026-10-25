@@ -1061,6 +1061,96 @@ open_terminal_input() wontthrow -> Maybe<descriptor>
 }
 
 fn
+read_terminal_keys(descriptor terminal, char *buffer, usize size) wontthrow
+    -> Maybe<usize>
+{
+  DWORD event_count = 0;
+
+  /* a handle that is not a console, such as a pipe, is read as bytes. */
+  if (GetNumberOfConsoleInputEvents(terminal, &event_count) == FALSE) {
+    let const read_count = read_fd(terminal, buffer, size);
+
+    if (!read_count.has_value() || *read_count == 0) return None;
+
+    return read_count;
+  }
+
+  /* the virtual key codes of winuser.h, which this build does not include. */
+  constexpr WORD KEY_PAGE_UP   = 0x21;
+  constexpr WORD KEY_PAGE_DOWN = 0x22;
+  constexpr WORD KEY_END       = 0x23;
+  constexpr WORD KEY_HOME      = 0x24;
+  constexpr WORD KEY_LEFT      = 0x25;
+  constexpr WORD KEY_UP        = 0x26;
+  constexpr WORD KEY_RIGHT     = 0x27;
+  constexpr WORD KEY_DOWN      = 0x28;
+
+  INPUT_RECORD records[64];
+  DWORD        record_count = 0;
+  usize        length       = 0;
+
+  if (event_count == 0) return usize{0};
+  if (ReadConsoleInputW(terminal, records, event_count < 64 ? event_count : 64,
+                        &record_count) == FALSE)
+  {
+    return None;
+  }
+
+  for (DWORD index = 0; index < record_count; index++) {
+    let const &record = records[index];
+
+    if (record.EventType != KEY_EVENT || !record.Event.KeyEvent.bKeyDown)
+      continue;
+
+    let const   character = record.Event.KeyEvent.uChar.UnicodeChar;
+    const char *sequence  = nullptr;
+    char        encoded[4];
+    usize       encoded_length = 0;
+
+    if (character == 0) {
+      /* a console without virtual terminal input reports the navigation
+         keys only by their key code. */
+      switch (record.Event.KeyEvent.wVirtualKeyCode) {
+      case KEY_UP:        sequence = "\x1b[A"; break;
+      case KEY_DOWN:      sequence = "\x1b[B"; break;
+      case KEY_RIGHT:     sequence = "\x1b[C"; break;
+      case KEY_LEFT:      sequence = "\x1b[D"; break;
+      case KEY_HOME:      sequence = "\x1b[H"; break;
+      case KEY_END:       sequence = "\x1b[F"; break;
+      case KEY_PAGE_UP:   sequence = "\x1b[5~"; break;
+      case KEY_PAGE_DOWN: sequence = "\x1b[6~"; break;
+      default:            continue;
+      }
+    } else if (character < 0x80) {
+      encoded[encoded_length++] = static_cast<char>(character);
+    } else if (character < 0x800) {
+      encoded[encoded_length++] = static_cast<char>(0xc0 | (character >> 6));
+      encoded[encoded_length++] = static_cast<char>(0x80 | (character & 0x3f));
+    } else if (character < 0xd800 || character > 0xdfff) {
+      encoded[encoded_length++] = static_cast<char>(0xe0 | (character >> 12));
+      encoded[encoded_length++] =
+          static_cast<char>(0x80 | ((character >> 6) & 0x3f));
+      encoded[encoded_length++] = static_cast<char>(0x80 | (character & 0x3f));
+    } else {
+      continue;
+    }
+
+    let const piece = sequence != nullptr
+                          ? StringView{sequence, strlen(sequence)}
+                          : StringView{encoded, encoded_length};
+
+    for (WORD repeat = 0; repeat < record.Event.KeyEvent.wRepeatCount; repeat++)
+    {
+      if (length + piece.length > size) return length;
+      memcpy(buffer + length, piece.data, piece.length);
+      length += piece.length;
+    }
+  }
+
+  return length;
+}
+
+fn
 shell_has_controlling_terminal() wontthrow -> bool
 {
   return false;
