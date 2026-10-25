@@ -29,16 +29,23 @@ echo "== direct no-shebang exec honors an empty environment:"
 
 unset KOSH_FLAGS
 input=$(mktemp)
-trap 'rm -f "$input"' EXIT
-printf 'exec . <<EOF\nignored\nEOF\necho input-$((20+22))\nkill -PIPE $$\necho signal-$((1+1))\nexit\n' > "$input"
+exit_marker=$input.exited
+trap 'rm -f "$input" "$exit_marker"' EXIT
+printf 'exec . <<EOF\nignored\nEOF\necho input-$((20+22))\nkill -PIPE $$\necho signal-$((1+1))\n: > %s\nexit\n' "$exit_marker" > "$input"
 
 if script -qec true /dev/null >/dev/null 2>&1; then
     output=$(script -qec "$BIN --no-init-files" /dev/null < "$input" 2>/dev/null)
 elif script -q /dev/null /usr/bin/true </dev/null >/dev/null 2>&1; then
     # a BSD script ends at the end of its input, so the input stays open
-    # until the shell exits on its own.
-    output=$({ cat "$input"; sleep 3; } |
-        script -q /dev/null "$BIN" --no-init-files 2>/dev/null)
+    # until the shell writes its exit marker, for at most ten seconds.
+    output=$({
+        cat "$input"
+        tries=0
+        while [ ! -e "$exit_marker" ] && [ "$tries" -lt 100 ]; do
+            sleep 0.1
+            tries=$((tries + 1))
+        done
+    } | script -q /dev/null "$BIN" --no-init-files 2>/dev/null)
 else
     output=
 fi
