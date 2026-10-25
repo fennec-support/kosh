@@ -521,6 +521,18 @@ edit_file(ExecContext                 &ec,
   toiletline::set_line_max(SLURP_MAX_BYTE_COUNT);
   toiletline::set_wrap_width(cxt.runtime_state().get_wrap_width());
   if (!is_shell_script) toiletline::disable_shell_completion();
+  /* a shell script gets completion and the command hints even when no
+     interactive session set them up, as for an editor started by a script. */
+  let const should_enable_completion =
+      is_shell_script && !was_completion_enabled;
+
+  if (should_enable_completion) {
+    toiletline::enable_completion(cxt);
+    toiletline::set_hint_row(cxt.runtime_state().option_is_enabled(
+                                 shell_option_id::InteractiveHints),
+                             cxt.runtime_state().option_is_enabled(
+                                 shell_option_id::InteractiveDiagnostics));
+  }
   if (mode.has_value()) toiletline::set_edit_mode(*mode);
 
   defer {
@@ -532,6 +544,10 @@ edit_file(ExecContext                 &ec,
       } else {
         toiletline::enable_editor_commands(cxt);
       }
+    }
+    if (should_enable_completion) {
+      toiletline::disable_completion();
+      toiletline::set_hint_row(false, false);
     }
     toiletline::set_save_callback(nullptr);
     ACTIVE_SESSION = nullptr;

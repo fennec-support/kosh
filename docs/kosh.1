@@ -1683,13 +1683,15 @@ move without Shift leaves the selection.
 The top row repeats the prompt and the command. The file fills every row under
 it but the last two rows, and a file taller than that is shown around the
 caret. The first of those rows describes the kind of file, its line endings,
-and its size, then gives the caret line, column, and byte. The second names
+and its size, then gives the caret line, column, and byte. The second shows
 the emulated key set, then shows the result of the last save while one is set,
 or the keys that open the key menu and the commands. Ctrl\-X i in emacs
 mode shows the hint of the word under the caret on those rows until the next
 key, Ctrl\-I in vi insert mode does the same when the terminal reports
 Ctrl\-I apart from TAB, and Ctrl\-I or the Ctrl\-K Ctrl\-I chord in vi normal
-mode does the same on any terminal. The M\-x and colon command lines open on the same rows
+mode does the same on any terminal. A hint, a message, or a command line that
+needs more rows takes up to eight rows while it shows, and the file gives them
+back afterwards. The M\-x and colon command lines open on the same rows
 and leave the view as it was. A mouse click on the file moves the caret there,
 and the wheel scrolls the view by three lines, moving the caret only when it
 would leave the view. The completion menu opens over the lines under the caret,
@@ -3819,13 +3821,17 @@ Undo.
 .BR :red ", " :redo
 Redo.
 .TP
+.BR :h ", " :help
+List the colon commands on the hint rows until the next key.
+.TP
 .I other
 Do nothing and report nothing, ranges and arguments included.
 .SS Emacs M\-x commands
 Alt\-X in emacs mode opens a minibuffer under the buffer that takes the
 command to run. Tab completes the command, Enter runs it, and Escape,
 Ctrl\-C, Ctrl\-D, or Backspace on an empty minibuffer closes it. The hint rows
-list the commands that start with the text typed so far. An unknown command
+list the commands that start with the text typed so far, each with what it
+does when six or fewer match. An unknown command
 does nothing. The buffer keeps its syntax highlighting.
 .TP
 .B replace\-string
@@ -3841,6 +3847,9 @@ stands for the match and
 through
 .B \e9
 for its groups.
+.TP
+.B help
+List the M\-x commands on the hint rows until the next key.
 .TP
 .B repeat
 Run the last M\-x command again with the same answers, as Ctrl\-X z does.
