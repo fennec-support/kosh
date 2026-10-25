@@ -1526,25 +1526,34 @@ private:
     if (m_text.has_line(m_top.line)) {
       let const label = m_text.get_label(m_top.line);
 
-      /* the label is a file operand, so a control byte is shown in ^
-         notation and a C1 control character as the replacement character
-         instead of reaching the terminal. */
+      /* the label is a file operand, so it is shown as line text is: a
+         control byte in ^ notation, and a byte that is not UTF-8 or a C1
+         control character as the replacement character. */
       if (label != "-") {
-        for (usize index = 0; index < label.length; index++) {
+        usize index = 0;
+
+        while (index < label.length) {
           let const value = static_cast<u8>(label[index]);
 
           if (value < 0x20 || value == 0x7f) {
             output += '^';
             output += static_cast<char>(value ^ 0x40);
-          } else if (value == 0xc2 && index + 1 < label.length &&
-                     static_cast<u8>(label[index + 1]) >= 0x80 &&
-                     static_cast<u8>(label[index + 1]) <= 0x9f)
+            index++;
+            continue;
+          }
+
+          let const decoded = utils::decode_strict_utf8(label, index);
+
+          if (!decoded.has_value() ||
+              (decoded->value >= 0x80 && decoded->value <= 0x9f))
           {
             output += PAGER_REPLACEMENT;
-            index++;
-          } else {
-            output += label[index];
+            index += decoded.has_value() ? decoded->length : 1;
+            continue;
           }
+
+          output += label.substring_of_length(index, decoded->length);
+          index += decoded->length;
         }
         output += ' ';
       }
