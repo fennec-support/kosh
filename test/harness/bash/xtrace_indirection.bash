@@ -19,7 +19,9 @@ body() {
   x=$(echo cs)
   y=$(echo $(echo n))
   . ./inc.sh
-  cat <(echo ps)
+  # the substitution traces after the outer command line, so the two trace
+  # lines cannot interleave.
+  cat <({ set +x; sleep 0.5; } 2>/dev/null; set -x; echo ps)
   echo "$(f)"
   eval 'echo $(echo q)'
   ( z=$(echo sub_cs) )
