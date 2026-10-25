@@ -107,6 +107,9 @@ get_environment_epoch() wontthrow -> u64
 #error Unsupported platform
 #endif
 
+/* the MSVC runtime has no libsupc++ or libc++abi handler variables, so it
+   keeps its own terminate handler. */
+#if !defined _MSC_VER
 extern "C" fn
 __cxa_current_exception_type() wontthrow -> opaque *;
 
@@ -189,6 +192,7 @@ void (*__cxa_terminate_handler)()  = koshka_terminate;
 void (*__cxa_unexpected_handler)() = koshka_terminate;
 void (*__cxa_new_handler)()        = nullptr;
 }
+#endif
 
 namespace koshka {
 namespace os {
