@@ -1434,6 +1434,10 @@ public:
 
   pure fn
   full_source_start_position() const wontthrow -> usize;
+  /* the position of the first token of the command, which can be a
+     redirection before the command word. */
+  pure fn
+  first_token_position() const wontthrow -> usize;
   pure fn
   full_source_end_position() const wontthrow -> usize;
   pure fn
@@ -1502,6 +1506,7 @@ protected:
   get_literal_command_lookup(const ArrayList<String> &program_args) const throws -> const LiteralCommandLookup *;
 
   u32 m_full_source_end_position{0};
+  u32 m_first_token_position{0};
 
   SparseList<Redirection>              m_redirections{};
   SparseList<array_builtin_assignment> m_array_args{};

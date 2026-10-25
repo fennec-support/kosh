@@ -1026,9 +1026,11 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
 
       if (simple->args().is_empty()) continue;
 
-      let const name = static_command_name(simple->args()[0]);
+      let const name = alias_command_name(simple->args()[0]);
 
-      if (name.has_value() && !cxt.scope_store().is_alias_expanding(*name) &&
+      if (name.has_value() &&
+          !cxt.scope_store().is_alias_expanding(*name,
+                                                cxt.alias_nesting_depth()) &&
           cxt.scope_store().find_alias(*name).has_value())
       {
         has_compound_stage = true;

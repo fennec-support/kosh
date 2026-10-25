@@ -1085,27 +1085,33 @@ public:
     return m_aliases.read().count() != 0;
   }
 
-  /* the aliases whose bodies are being evaluated. an alias does not expand
-     inside its own body. */
+  /* the aliases whose bodies are being evaluated, each with the nesting
+     depth of its body. an alias does not expand inside its own body, but a
+     command substitution or a function that the command reaches is deeper
+     and expands it again. */
   pure fn
-  is_alias_expanding(StringView name) const wontthrow -> bool
+  is_alias_expanding(StringView name, usize depth) const wontthrow -> bool
   {
-    for (let const &expanding : m_expanding_aliases)
-      if (expanding.view() == name) return true;
+    for (let const &expanding : m_ExpandingAliases)
+      if (expanding.depth == depth && expanding.name.view() == name)
+        return true;
 
     return false;
   }
 
   fn
-  begin_alias_expansion(StringView name) throws -> void
+  begin_alias_expansion(StringView name, usize depth) throws -> void
   {
-    m_expanding_aliases.push(String{heap_allocator(), name});
+    m_ExpandingAliases.push(ExpandingAlias{
+        String{heap_allocator(), name},
+        depth
+    });
   }
 
   fn
   end_alias_expansion() wontthrow -> void
   {
-    m_expanding_aliases.pop_back();
+    m_ExpandingAliases.pop_back();
   }
 
   /* memory: one String copy of the alias value in heap_allocator(). the caller
@@ -1215,7 +1221,13 @@ public:
 private:
   CopyOnWrite<StringMap<String>> m_aliases{heap_allocator(),
                                            StringMap<String>{heap_allocator()}};
-  ArrayList<String>              m_expanding_aliases{heap_allocator()};
+  struct ExpandingAlias
+  {
+    String name;
+    usize  depth;
+  };
+
+  ArrayList<ExpandingAlias> m_ExpandingAliases{heap_allocator()};
 
   ArrayList<ArrayList<local_binding>> m_local_scopes{heap_allocator()};
   ArrayList<Maybe<u64>> m_saved_scope_shell_options{heap_allocator()};
@@ -5387,6 +5399,15 @@ public:
     return !trap_store().is_replaying_inherited_state() &&
            (runtime_state().option_is_enabled(shell_option_id::Errtrace) ||
             nesting_depth() <= trap_store().err_trap_active_depth());
+  }
+
+  /* the depth that separates an alias body from the command substitutions
+     and functions it reaches. */
+  pure fn
+  alias_nesting_depth() const wontthrow -> usize
+  {
+    return function_store().call_depth() +
+           expansion_store().substitution_depth();
   }
 
   pure fn

@@ -73,3 +73,14 @@ heredoc_cat_alias <<-'EOF' <<TAIL
 	EOF
 tail
 TAIL
+alias lead_echo_alias='echo lead'
+>/dev/null lead_echo_alias
+echo after-leading-redirection
+<<EOF heredoc_cat_alias
+leading heredoc
+EOF
+lead_echo_alias "$(lead_echo_alias nested)"
+alias nested_echo_alias='echo nested_echo_alias'
+nested_echo_alias $(nested_echo_alias)
+\lead_echo_alias 2>/dev/null; echo "escaped=$?"
+'lead_echo_alias' 2>/dev/null; echo "quoted=$?"

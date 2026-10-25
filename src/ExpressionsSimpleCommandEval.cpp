@@ -158,9 +158,11 @@ alias_expanded_source(const SimpleCommand &command,
       return None;
     }
 
-    let const name = static_command_name(args[index]);
+    let const name = alias_command_name(args[index]);
 
-    if (!name.has_value() || cxt.scope_store().is_alias_expanding(*name)) {
+    if (!name.has_value() ||
+        cxt.scope_store().is_alias_expanding(*name, cxt.alias_nesting_depth()))
+    {
       return None;
     }
 
@@ -189,7 +191,7 @@ alias_expanded_source(const SimpleCommand &command,
         if (chained.view() == word) is_chained = true;
 
       if (word.is_empty() || is_chained ||
-          cxt.scope_store().is_alias_expanding(word))
+          cxt.scope_store().is_alias_expanding(word, cxt.alias_nesting_depth()))
       {
         return text;
       }
@@ -212,8 +214,13 @@ alias_expanded_source(const SimpleCommand &command,
 
   let const source_index = args[0]->source_location().source_name_index;
   let       text         = String{heap_allocator()};
-  usize     copied_end   = command.full_source_start_position();
-  usize     index        = 0;
+  /* a redirection before the command word stays in the copied text. */
+  usize copied_end = command.full_source_start_position();
+
+  if (command.first_token_position() < copied_end)
+    copied_end = command.first_token_position();
+
+  usize index = 0;
 
   while (body.has_value()) {
     let const word_location = args[index]->source_location();
@@ -327,7 +334,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
     LOG(Debug, "expanding the alias '%.*s'", static_cast<int>(name.length),
         name.data);
-    cxt.scope_store().begin_alias_expansion(name);
+    cxt.scope_store().begin_alias_expansion(name, cxt.alias_nesting_depth());
     defer { cxt.scope_store().end_alias_expansion(); };
 
     cxt.run_source(text->view(), "an alias", source_location(),

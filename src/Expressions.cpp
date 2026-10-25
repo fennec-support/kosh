@@ -1721,6 +1721,25 @@ expressions::internal::static_command_name(const Token *token) throws
 }
 
 fn
+expressions::internal::alias_command_name(const Token *token) throws
+    -> Maybe<StringView>
+{
+  ASSERT(token != nullptr);
+
+  if (token->kind() != Token::Kind::Word) return koshka::None;
+
+  let const &word = static_cast<const tokens::WordToken *>(token)->word();
+
+  if (word.segments.count() != 1 ||
+      word.segments[0].kind != WordSegment::Kind::UnquotedText)
+  {
+    return koshka::None;
+  }
+
+  return static_command_name(token);
+}
+
+fn
 expressions::internal::normalized_relative_executable_path(
     StringView path) throws -> Maybe<String>
 {

@@ -524,6 +524,7 @@ SimpleCommand::SimpleCommand(SourceLocation             location,
                              ArrayList<const Token *> &&args)
     : Command(steal(location)), m_args(steal(args))
 {
+  m_first_token_position = m_location.position;
   if (!m_args.is_empty()) {
     let const first     = m_args[0]->source_location();
     let const last      = m_args.back()->source_location();
@@ -554,6 +555,12 @@ SimpleCommand::full_source_start_position() const wontthrow -> usize
   }
 
   return start_position;
+}
+
+pure fn
+SimpleCommand::first_token_position() const wontthrow -> usize
+{
+  return m_first_token_position;
 }
 
 pure fn

@@ -42,6 +42,10 @@ full_source_text(const EvalContext &cxt, const Expression &node) wontthrow
 
 fn
 static_command_name(const Token *token) throws -> Maybe<StringView>;
+/* the command word of token when an alias can replace it: one unquoted
+   segment, so a quoted or escaped word such as \ls is never an alias. */
+fn
+alias_command_name(const Token *token) throws -> Maybe<StringView>;
 fn
 normalized_relative_executable_path(StringView path) throws
     -> Maybe<String>;
