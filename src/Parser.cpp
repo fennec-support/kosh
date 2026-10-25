@@ -1955,6 +1955,12 @@ Parser::parse_simple_command(const Token *leading_token) throws
   let array_args        = ArrayList<array_builtin_assignment>{arena_allocator};
   let redirections      = ArrayList<expressions::Redirection>{arena_allocator};
   let full_end_position = usize{0};
+  /* the first token can be the descriptor of a redirection before the
+     command word, as in 2>file cmd. */
+  let const first_token_position =
+      usize{leading_token != nullptr
+                ? leading_token->source_location().position
+                : m_lexer.peek_shell_token()->source_location().position};
 
   if (leading_token != nullptr) {
     source_location = leading_token->source_location();
@@ -1978,6 +1984,7 @@ Parser::parse_simple_command(const Token *leading_token) throws
     if (!array_args.is_empty()) c->set_array_args(steal(array_args));
     if (!redirections.is_empty()) c->set_redirections(steal(redirections));
     c->set_full_source_end_position(full_end_position);
+    c->set_first_token_position(first_token_position);
 
     return c;
   };

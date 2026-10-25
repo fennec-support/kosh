@@ -215,10 +215,7 @@ alias_expanded_source(const SimpleCommand &command,
   let const source_index = args[0]->source_location().source_name_index;
   let       text         = String{heap_allocator()};
   /* a redirection before the command word stays in the copied text. */
-  usize copied_end = command.full_source_start_position();
-
-  if (command.first_token_position() < copied_end)
-    copied_end = command.first_token_position();
+  usize copied_end = command.first_token_position();
 
   usize index = 0;
 

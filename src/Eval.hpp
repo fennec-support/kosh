@@ -1087,12 +1087,12 @@ public:
 
   /* the aliases whose bodies are being evaluated, each with the nesting
      depth of its body. an alias does not expand inside its own body, but a
-     command substitution or a function that the command reaches is deeper
-     and expands it again. */
+     command substitution that the command reaches is deeper and expands it
+     again. */
   pure fn
   is_alias_expanding(StringView name, usize depth) const wontthrow -> bool
   {
-    for (let const &expanding : m_ExpandingAliases)
+    for (let const &expanding : m_expanding_aliases)
       if (expanding.depth == depth && expanding.name.view() == name)
         return true;
 
@@ -1102,7 +1102,7 @@ public:
   fn
   begin_alias_expansion(StringView name, usize depth) throws -> void
   {
-    m_ExpandingAliases.push(ExpandingAlias{
+    m_expanding_aliases.push(ExpandingAlias{
         String{heap_allocator(), name},
         depth
     });
@@ -1111,7 +1111,7 @@ public:
   fn
   end_alias_expansion() wontthrow -> void
   {
-    m_ExpandingAliases.pop_back();
+    m_expanding_aliases.pop_back();
   }
 
   /* memory: one String copy of the alias value in heap_allocator(). the caller
@@ -1227,7 +1227,7 @@ private:
     usize  depth;
   };
 
-  ArrayList<ExpandingAlias> m_ExpandingAliases{heap_allocator()};
+  ArrayList<ExpandingAlias> m_expanding_aliases{heap_allocator()};
 
   ArrayList<ArrayList<local_binding>> m_local_scopes{heap_allocator()};
   ArrayList<Maybe<u64>> m_saved_scope_shell_options{heap_allocator()};
@@ -5402,12 +5402,11 @@ public:
   }
 
   /* the depth that separates an alias body from the command substitutions
-     and functions it reaches. */
+     it reaches. */
   pure fn
   alias_nesting_depth() const wontthrow -> usize
   {
-    return function_store().call_depth() +
-           expansion_store().substitution_depth();
+    return expansion_store().substitution_depth();
   }
 
   pure fn

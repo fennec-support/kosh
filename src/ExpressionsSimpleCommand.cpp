@@ -557,6 +557,12 @@ SimpleCommand::full_source_start_position() const wontthrow -> usize
   return start_position;
 }
 
+fn
+SimpleCommand::set_first_token_position(usize position) wontthrow -> void
+{
+  m_first_token_position = static_cast<u32>(position);
+}
+
 pure fn
 SimpleCommand::first_token_position() const wontthrow -> usize
 {

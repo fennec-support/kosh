@@ -84,3 +84,10 @@ alias nested_echo_alias='echo nested_echo_alias'
 nested_echo_alias $(nested_echo_alias)
 \lead_echo_alias 2>/dev/null; echo "escaped=$?"
 'lead_echo_alias' 2>/dev/null; echo "quoted=$?"
+2>/dev/null lead_echo_alias
+{alias_fd}>/dev/null lead_echo_alias
+echo "alias_fd=${alias_fd:+set}"
+wrap_print_function() { wrap_print "[$*]"; }
+wrap_print() { echo "$@"; }
+alias wrap_print='wrap_print_function'
+wrap_print hi

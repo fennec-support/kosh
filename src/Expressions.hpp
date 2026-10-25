@@ -1431,6 +1431,8 @@ public:
 
   fn
   set_full_source_end_position(usize position) wontthrow -> void;
+  fn
+  set_first_token_position(usize position) wontthrow -> void;
 
   pure fn
   full_source_start_position() const wontthrow -> usize;
