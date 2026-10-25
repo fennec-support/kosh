@@ -29,8 +29,8 @@ Complete the steps in order. Repositories are under
       **latest**.
 - [ ] Check the installers against it:
       `KOSH_INSTALL_DRY_RUN=1 sh scripts/install.sh` and `scripts/install.ps1`.
-- [ ] Set the next development version on `staging`: bump `KOSH_VER_PATCH` and
-      set `KOSH_VER_SUFFIX` to `"/dev"`.
+- [ ] Set the next development version on `staging`: bump `KOSH_VER_MINOR` or
+      `KOSH_VER_PATCH` and set `KOSH_VER_SUFFIX` to `"/dev"`.
 
 ## 3. Homebrew (`homebrew-kosh`)
 
