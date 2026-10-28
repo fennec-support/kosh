@@ -13,53 +13,53 @@
 start code "$DEMO_HOME/Projects/kosh/examples"
 
 type_text "nvim m"
-sleep 0.4
+pause 0.4
 key Tab
-sleep 0.8
+pause 0.8
 key Escape
-sleep 0.4
+pause 0.4
 key Enter
 wait_for "esac" 20
-sleep 2.5
+pause 2.5
 
 key o
 type_text "# hitting <Space>ff" 0.09
-sleep 0.6
+pause 0.6
 key Escape
-sleep 0.8
+pause 0.8
 keys_slow 0.15 Space f f
-sleep 3.0
+pause 3.0
 
 key G
-sleep 0.4
+pause 0.4
 key o
 type_text "release" 0.15
-sleep 0.8
+pause 0.8
 type_text "_target=produc" 0.12
-sleep 0.8
+pause 0.8
 type_text "tion" 0.12
-sleep 0.6
+pause 0.6
 key Escape
-sleep 0.4
+pause 0.4
 key o
 type_text "deploy" 0.15
 key C-Space
-sleep 1.6
+pause 1.6
 type_text " \$rel" 0.2
 key C-Space
-sleep 1.6
+pause 1.6
 key Tab
-sleep 0.8
+pause 0.8
 key Escape
-sleep 2.5
+pause 2.5
 
 keys_slow 0.2 g O
-sleep 3.0
+pause 3.0
 
 key Escape
 type_text ":qa!" 0.1
 key Enter
-sleep 1.5
+pause 1.5
 
 key C-d
 finish

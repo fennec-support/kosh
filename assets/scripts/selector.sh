@@ -13,93 +13,93 @@
 start selector "$DEMO_HOME"
 
 type_text "bre" 0.15
-sleep 0.9
+pause 0.9
 type_text "w "
-sleep 0.4
+pause 0.4
 key Tab
 wait_for "showing 1-16 of" 15
-sleep 1.6
+pause 1.6
 type_text "inf" 0.3
-sleep 1.2
+pause 1.2
 keys_slow 0.2 BSpace BSpace BSpace
-sleep 1.2
+pause 1.2
 type_text "ins" 0.3
-sleep 1.2
+pause 1.2
 key Tab
-sleep 1.0
+pause 1.0
 
 type_text " --" 0.2
 wait_for "of 51" 15
-sleep 1.2
+pause 1.2
 keys_slow 0.35 Down Down Down Down Down
-sleep 0.8
+pause 0.8
 key Tab
-sleep 0.8
+pause 0.8
 type_text " "
 wait_for "of 16" 15
-sleep 1.8
+pause 1.8
 type_text "wget" 0.3
-sleep 1.2
+pause 1.2
 key Tab
-sleep 1.0
+pause 1.0
 key Escape
-sleep 0.4
+pause 0.4
 key C-e C-u
-sleep 0.8
+pause 0.8
 
 type_text "/o"
-sleep 0.4
+pause 0.4
 key Tab
-sleep 1.0
+pause 1.0
 type_text "ho" 0.3
-sleep 0.8
+pause 0.8
 key Tab
-sleep 1.0
+pause 1.0
 type_text "bi" 0.3
-sleep 0.8
+pause 0.8
 key Tab
 wait_for "cowthink" 15
-sleep 1.0
+pause 1.0
 type_text "co" 0.3
-sleep 1.2
+pause 1.2
 type_text "ws" 0.3
-sleep 1.0
+pause 1.0
 key Tab
-sleep 0.6
+pause 0.6
 key Escape
 type_text " hello"
-sleep 0.6
+pause 0.6
 key Enter
-sleep 2.2
+pause 2.2
 
 key C-r
-sleep 1.6
+pause 1.6
 type_text "tar" 0.25
-sleep 1.4
+pause 1.4
 keys_slow 0.15 BSpace BSpace BSpace
 type_text "docker" 0.2
-sleep 1.6
+pause 1.6
 key Escape
-sleep 1.0
+pause 1.0
 
 type_text "cowsay meow"
-sleep 0.8
+pause 0.8
 key S-Home
-sleep 1.2
+pause 1.2
 key C-v
-sleep 0.8
+pause 0.8
 key Down
-sleep 0.8
+pause 0.8
 key Down
-sleep 1.0
+pause 1.0
 key End
-sleep 0.6
+pause 0.6
 type_text " :3" 0.15
-sleep 1.4
+pause 1.4
 key Enter
-sleep 0.4
+pause 0.4
 key Enter
-sleep 3.0
+pause 3.0
 
 key C-d
 finish

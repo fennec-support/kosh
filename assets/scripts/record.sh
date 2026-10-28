@@ -24,10 +24,16 @@ if [ $# -eq 0 ]; then
   set -- selector lint code lsp
 fi
 
+# agg draws a no-break space as a euro sign, so the rendered copy of a cast
+# carries plain spaces in its place.
+NO_BREAK_SPACE=$(printf '\302\240')
+
 for name in "$@"; do
   bash "$SCRIPTS/$name.sh"
+  sed "s/$NO_BREAK_SPACE/ /g" "$DEMO_DIRECTORY/casts/$name.cast" \
+    > "$DEMO_DIRECTORY/casts/$name-render.cast"
   "${AGG:-agg}" --theme kanagawa-dragon --font-family "JetBrains Mono" \
-    --font-size 16 "$DEMO_DIRECTORY/casts/$name.cast" \
+    --font-size 16 "$DEMO_DIRECTORY/casts/$name-render.cast" \
     "$ASSETS/$name-demo.gif" > /dev/null 2>&1
   echo "Recorded $ASSETS/$name-demo.gif."
 done

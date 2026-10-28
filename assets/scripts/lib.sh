@@ -30,14 +30,28 @@ start()
   T -f "$DEMO_DIRECTORY/tmux.conf" new-session -d -x 115 -y 30 -c "$directory" \
     "KOSH_HISTORY_FILE='$DEMO_DIRECTORY/history-$name' $DEMO_ASCIINEMA rec -q --overwrite -i 2 -c '$DEMO_DIRECTORY/env.sh kosh' '$DEMO_DIRECTORY/casts/$name.cast'"
   wait_for '•' 10
-  sleep 1.2
+  pause 1.2
 }
 
-# type_text TEXT [DELAY]: types TEXT one character at a time.
+# scale SECONDS DIVISOR: prints SECONDS divided by DIVISOR.
+scale()
+{
+  awk -v seconds="$1" -v divisor="$2" 'BEGIN { print seconds / divisor }'
+}
+
+# pause SECONDS: waits SECONDS divided by DEMO_PAUSE_DIVISOR.
+pause()
+{
+  sleep "$(scale "$1" "${DEMO_PAUSE_DIVISOR:-2.5}")"
+}
+
+# type_text TEXT [DELAY]: types TEXT one character at a time, waiting DELAY
+# divided by DEMO_TYPE_DIVISOR after each one.
 type_text()
 {
-  local text=$1 delay=${2:-0.07} index
+  local text=$1 delay index
 
+  delay=$(scale "${2:-0.07}" "${DEMO_TYPE_DIVISOR:-2}")
   for ((index = 0; index < ${#text}; index++)); do
     T send-keys -l -- "${text:index:1}"
     sleep "$delay"
@@ -57,7 +71,7 @@ keys_slow()
   shift
   for name in "$@"; do
     T send-keys "$name"
-    sleep "$delay"
+    pause "$delay"
   done
 }
 

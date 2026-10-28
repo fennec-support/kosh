@@ -14,77 +14,82 @@
 start lsp "$DEMO_HOME/Projects/kosh/examples"
 
 type_text "nvim Do"
-sleep 0.4
+pause 0.4
 key Tab
-sleep 0.8
+pause 0.8
 key Escape
-sleep 0.4
+pause 0.4
 key Enter
 wait_for "alpine" 20
-sleep 3.0
+pause 3.0
 
 key C-b
-sleep 1.4
+pause 1.4
 keys_slow 0.5 j j
 key Enter
-sleep 1.5
+pause 1.5
 key C-b
-sleep 0.4
+pause 0.4
 key q
-sleep 2.0
+pause 2.0
 
 type_text ":e script.bash" 0.08
+pause 2.0
 key Enter
 wait_for "script.bash" 10
-sleep 2.5
+pause 2.5
 
 key i
 type_text "#!/bin/s" 0.15
 key C-Space
-sleep 1.6
+pause 1.6
 type_text "h"
-sleep 0.4
+pause 0.4
 key Escape
-sleep 0.4
+pause 0.4
 key o
 key Enter
 type_text "[[ only in bash ]]" 0.1
-sleep 0.4
+pause 0.4
 key Escape
-sleep 3.0
+pause 3.0
 
 type_text ":e .github/workflows/ci.yml" 0.06
+pause 2.0
 key Enter
 wait_for "ubuntu-latest" 10
-sleep 2.5
+pause 2.5
 
 keys_slow 0.2 9 G
 key o
 type_text "print" 0.15
 key C-Space
-sleep 1.6
+pause 1.6
 type_text "f" 0.15
-sleep 0.6
+pause 0.6
 type_text " '%s\n' \$archiv" 0.12
 key C-Space
-sleep 1.6
+pause 1.6
 key Tab
-sleep 0.6
+pause 0.6
 key Enter
-type_text "dock" 0.15
-sleep 1.0
-type_text "er build --" 0.12
+type_text "docker bu" 0.15
 key C-Space
-sleep 1.6
+pause 1.6
+key Tab
+pause 0.8
+type_text " --" 0.12
+key C-Space
+pause 1.6
 key Down
-sleep 3.0
+pause 3.0
 
 key Escape
-sleep 0.3
+pause 0.3
 key Escape
 type_text ":qa!" 0.1
 key Enter
-sleep 1.5
+pause 1.5
 
 key C-d
 finish

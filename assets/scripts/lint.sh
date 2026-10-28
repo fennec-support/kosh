@@ -12,39 +12,39 @@
 start lint "$DEMO_HOME/Projects/kosh"
 
 type_text "cd ~/E"
-sleep 0.4
+pause 0.4
 key Tab
-sleep 1.0
+pause 1.0
 type_text "op" 0.3
-sleep 0.8
+pause 0.8
 key Tab
-sleep 0.8
+pause 0.8
 key Escape
-sleep 0.4
+pause 0.4
 key Enter
-sleep 1.2
+pause 1.2
 
 type_text "wc -l conf"
-sleep 0.4
+pause 0.4
 key Tab
-sleep 0.8
+pause 0.8
 type_text "ure" 0.2
-sleep 0.6
+pause 0.6
 key Escape
 key Enter
-sleep 1.6
+pause 1.6
 
 type_text "time -R kosh --lint ./conf"
-sleep 0.4
+pause 0.4
 key Tab
-sleep 0.8
+pause 0.8
 type_text "ure" 0.2
-sleep 0.6
+pause 0.6
 key Escape
-sleep 0.6
+pause 0.6
 key Enter
 wait_for "rss" 120
-sleep 3.0
+pause 3.0
 
 key C-d
 finish
