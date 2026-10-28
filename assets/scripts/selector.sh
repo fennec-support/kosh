@@ -4,13 +4,20 @@
 #    This file is a part of the Koshka shell, (c) toiletbril, 2026
 #    See the top-level LICENSE file for the licensing information.
 #
-# Records the selector demo: brew command, flag, and formula completion, path
-# completion, a command, history search, and multiple cursors. Tab opens a menu
+# Records the selector demo: a synopsis that explains every flag of a tar
+# command, brew command, flag, and formula completion, path completion with
+# arrows and Tab, a command, history search, and multiple cursors. Tab opens a menu
 # or accepts its highlighted row, and an open menu follows the typed text.
 
 . "$(dirname -- "$0")/lib.sh"
 
 start selector "$DEMO_HOME"
+
+type_text "tar -xzvf release.tar.gz -C ~/Downloads --strip-components=1 --exclude='*.log'"
+wait_for "Exclude files" 15
+pause 4.0
+key C-e C-u
+pause 1.0
 
 type_text "bre" 0.15
 pause 0.9
@@ -50,20 +57,22 @@ pause 0.8
 type_text "/o"
 pause 0.4
 key Tab
+wait_for "/opt/homebrew/" 15
 pause 1.0
-type_text "ho" 0.3
-pause 0.8
+keys_slow 0.35 Down Down Down Down Down
+pause 0.6
 key Tab
+wait_for "/opt/homebrew/Cellar/" 15
 pause 1.0
-type_text "bi" 0.3
-pause 0.8
+keys_slow 0.35 Down Down Down Down
+pause 0.6
 key Tab
 wait_for "cowthink" 15
 pause 1.0
 type_text "co" 0.3
 pause 1.2
-type_text "ws" 0.3
-pause 1.0
+keys_slow 0.5 Down Up
+pause 0.6
 key Tab
 pause 0.6
 key Escape
