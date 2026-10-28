@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
-"""Convert the kosh man(7) pages into HTML pages through one template.
+"""Render the kosh manuals with the Python standard library.
 
 Usage: man2html.py TEMPLATE OUTPUT_DIRECTORY PAGE...
-
-Each PAGE, such as docs/kosh.1, becomes OUTPUT_DIRECTORY/kosh.1.html. The
-converter handles the man(7) macros and escapes that the kosh pages use and
-needs nothing beyond the Python standard library.
 """
 
 import html
@@ -13,216 +9,38 @@ import os
 import re
 import sys
 
-SPECIAL_CHARACTERS = {
-    "dq": '"',
-    "aq": "'",
-    "rs": "\\",
-    "em": "&mdash;",
-    "en": "&ndash;",
-    "bu": "&bull;",
-    "lq": "&ldquo;",
-    "rq": "&rdquo;",
-    "oq": "&lsquo;",
-    "cq": "&rsquo;",
-    "co": "&copy;",
-    "mu": "&times;",
-    "ti": "~",
-    "ha": "^",
-    "ga": "`",
-}
-
-FONT_MACROS = {
-    "B": ("B",),
-    "I": ("I",),
-    "SB": ("B",),
-    "SM": ("R",),
-    "BR": ("B", "R"),
-    "RB": ("R", "B"),
-    "BI": ("B", "I"),
-    "IB": ("I", "B"),
-    "IR": ("I", "R"),
-    "RI": ("R", "I"),
-}
-
-FONT_ALIASES = {
-    "R": "R",
-    "P": "P",
-    "B": "B",
-    "I": "I",
-    "C": "C",
-    "CR": "C",
-    "CW": "C",
-    "CB": "B",
-    "CI": "I",
-    "BI": "B",
-    "1": "R",
-    "2": "I",
-    "3": "B",
-}
+FONT_MACROS = ("B", "I", "BR", "RB", "BI", "IB", "IR", "RI")
 
 
 def split_arguments(text):
-    """Split macro arguments on blanks, honoring double quotes."""
-    arguments = []
-    index = 0
-    length = len(text)
-
-    while index < length:
-        while index < length and text[index] in " \t":
-            index += 1
-
-        if index >= length:
-            break
-
-        if text[index] == '"':
-            index += 1
-            argument = []
-
-            while index < length:
-                if text[index] == '"':
-                    if index + 1 < length and text[index + 1] == '"':
-                        argument.append('"')
-                        index += 2
-                        continue
-
-                    index += 1
-                    break
-
-                argument.append(text[index])
-                index += 1
-
-            arguments.append("".join(argument))
-        else:
-            start = index
-
-            while index < length and text[index] not in " \t":
-                if text[index] == "\\" and index + 1 < length:
-                    index += 1
-                index += 1
-
-            arguments.append(text[start:index])
-
-    return arguments
+    return [quoted.replace('""', '"') or word for quoted, word in
+            re.findall(r'"((?:[^"]|"")*)"|((?:\\.|[^\s])+)', text)]
 
 
-def strip_comment(line):
-    """Remove a roff comment that starts with an escaped double quote."""
-    index = 0
-
-    while index < len(line):
-        if line[index] == "\\" and index + 1 < len(line):
-            if line[index + 1] == '"':
-                return line[:index].rstrip()
-            index += 2
-            continue
-        index += 1
-
-    return line
-
-
-class InlineState:
-    """Track the current and previous font across inline text."""
-
-    def __init__(self, font="R"):
-        self.font = font
-        self.previous_font = font
-
-    def set_font(self, font):
-        if font == "P":
-            self.font, self.previous_font = self.previous_font, self.font
-        else:
-            self.previous_font = self.font
-            self.font = font
-
-
-def parse_inline(text, state):
-    """Turn roff text into (font, html) runs, updating the font state."""
+def parse_inline(text, font="R"):
     runs = []
-    buffer = []
 
-    def flush():
-        if buffer:
-            runs.append((state.font, "".join(buffer)))
-            buffer.clear()
+    for match in re.finditer(r"\\f([BIR])|\\\((dq|aq)|\\(.)|([^\\]+)", text):
+        next_font, quote, escape, plain = match.groups()
 
-    index = 0
-    length = len(text)
-
-    while index < length:
-        character = text[index]
-
-        if character != "\\":
-            buffer.append(html.escape(character, quote=False))
-            index += 1
+        if next_font:
+            font = next_font
+            continue
+        if escape == "&":
             continue
 
-        index += 1
+        value = plain or {"dq": '"', "aq": "'"}.get(quote)
+        if value is None:
+            value = "\\" if escape == "e" else escape
+        runs.append((font, html.escape(value, quote=False)))
 
-        if index >= length:
-            break
-
-        escape = text[index]
-        index += 1
-
-        if escape == "f":
-            if index < length and text[index] == "(":
-                font = text[index + 1:index + 3]
-                index += 3
-            elif index < length and text[index] == "[":
-                end = text.find("]", index)
-                font = text[index + 1:end]
-                index = end + 1
-            else:
-                font = text[index:index + 1]
-                index += 1
-
-            flush()
-            state.set_font(FONT_ALIASES.get(font, "R"))
-        elif escape == "(":
-            name = text[index:index + 2]
-            index += 2
-            buffer.append(SPECIAL_CHARACTERS.get(name, ""))
-        elif escape == "[":
-            end = text.find("]", index)
-            name = text[index:end]
-            index = end + 1
-            buffer.append(SPECIAL_CHARACTERS.get(name, ""))
-        elif escape == "*":
-            if index < length and text[index] == "(":
-                index += 3
-            elif index < length and text[index] == "[":
-                index = text.find("]", index) + 1
-            else:
-                index += 1
-        elif escape in "e\\":
-            buffer.append("\\")
-        elif escape in "-":
-            buffer.append("-")
-        elif escape in " ~0":
-            buffer.append("&nbsp;")
-        elif escape in "&|^%:c":
-            pass
-        elif escape == ".":
-            buffer.append(".")
-        elif escape == "'":
-            buffer.append("'")
-        elif escape == "`":
-            buffer.append("`")
-        else:
-            buffer.append(html.escape(escape, quote=False))
-
-    flush()
     return runs
 
 
 def render_runs(runs):
-    """Render (font, html) runs, merging neighbors that share a font."""
     merged = []
 
     for font, text in runs:
-        if font == "C":
-            font = "B"
-
         if merged and merged[-1][0] == font:
             merged[-1] = (font, merged[-1][1] + text)
         else:
@@ -231,12 +49,9 @@ def render_runs(runs):
     parts = []
 
     for font, text in merged:
-        if font == "B" and text.strip():
-            parts.append("<code>" + text + "</code>")
-        elif font == "I" and text.strip():
-            parts.append("<em>" + text + "</em>")
-        else:
-            parts.append(text)
+        tag = {"B": "code", "I": "em"}.get(font)
+        parts.append("<%s>%s</%s>" % (tag, text, tag)
+                     if tag and text.strip() else text)
 
     return "".join(parts)
 
@@ -262,11 +77,7 @@ class Page:
         self.is_tag_pending = False
         self.is_definition_pending = False
         self.preformatted = None
-        self.next_line_font = None
         self.headings = []
-        self.state = InlineState()
-
-    # Containers.
 
     def flush_paragraph(self):
         if self.paragraph:
@@ -299,8 +110,6 @@ class Page:
         self.flush_paragraph()
         self.close_to(lambda kind: False)
 
-    # Text.
-
     def add_runs(self, runs):
         if self.is_tag_pending:
             self.is_tag_pending = False
@@ -311,17 +120,9 @@ class Page:
         self.open_definition_if_pending()
 
         if self.paragraph and runs:
-            self.paragraph.append((self.state.font, " "))
+            self.paragraph.append(("R", " "))
 
         self.paragraph.extend(runs)
-
-    def add_text_line(self, line):
-        if self.next_line_font is not None:
-            local = InlineState(self.next_line_font)
-            self.next_line_font = None
-            self.add_runs(parse_inline(line, local))
-        else:
-            self.add_runs(parse_inline(line, self.state))
 
     def font_macro_runs(self, fonts, arguments):
         """Render a font macro; one font joins its arguments with blanks."""
@@ -331,12 +132,9 @@ class Page:
             arguments = [" ".join(arguments)]
 
         for index, argument in enumerate(arguments):
-            local = InlineState(fonts[index % len(fonts)])
-            runs.extend(parse_inline(argument, local))
+            runs.extend(parse_inline(argument, fonts[index % len(fonts)]))
 
         return runs
-
-    # Macros.
 
     def macro(self, name, rest):
         arguments = split_arguments(rest)
@@ -347,14 +145,13 @@ class Page:
             self.manual = values[4] or values[3]
         elif name == "SH" or name == "SS":
             self.close_all()
-            text = render_runs(parse_inline(" ".join(arguments),
-                                            InlineState()))
+            text = render_runs(parse_inline(" ".join(arguments)))
             anchor = slug(html.unescape(re.sub("<[^>]+>", "", text)))
             level = 2 if name == "SH" else 3
             self.headings.append((level, anchor, text))
             self.out.append('<h%d id="%s">%s</h%d>'
                             % (level, anchor, text, level))
-        elif name in ("PP", "LP", "P"):
+        elif name == "PP":
             self.flush_paragraph()
             self.close_to(lambda kind: kind == "rs")
         elif name == "TP":
@@ -377,16 +174,7 @@ class Page:
             is_in_list = self.is_definition_pending or (
                 self.stack and self.stack[-1] in ("dd", "dl"))
 
-            if arguments:
-                if not is_in_list:
-                    self.out.append("<dl>")
-                    self.stack.append("dl")
-                elif self.stack and self.stack[-1] == "dd":
-                    self.close_top()
-
-                self.is_tag_pending = True
-                self.add_runs(parse_inline(arguments[0], InlineState()))
-            elif is_in_list:
+            if is_in_list:
                 self.open_definition_if_pending()
 
                 if self.stack[-1] == "dl":
@@ -413,51 +201,32 @@ class Page:
         elif name == "br":
             if self.paragraph:
                 self.paragraph.append(("R", "<br>"))
-        elif name == "sp":
-            self.flush_paragraph()
         elif name in FONT_MACROS:
-            if arguments:
-                self.add_runs(self.font_macro_runs(FONT_MACROS[name],
-                                                   arguments))
-            else:
-                self.next_line_font = FONT_MACROS[name][0]
-        elif name == "ft":
-            font = arguments[0] if arguments else "P"
-            self.state.set_font(FONT_ALIASES.get(font, "R"))
+            self.add_runs(self.font_macro_runs(name, arguments))
 
     def preformatted_line(self, line):
-        if line.startswith(".") or line.startswith("'"):
+        if line.startswith("."):
             name, _, rest = line[1:].strip().partition(" ")
 
             if name in ("fi", "EE"):
                 body = "\n".join(self.preformatted)
                 self.out.append("<pre>" + body + "</pre>")
                 self.preformatted = None
-            elif name == "ft":
-                font = rest.strip() or "P"
-                self.state.set_font(FONT_ALIASES.get(font, "R"))
             elif name in FONT_MACROS:
-                runs = self.font_macro_runs(FONT_MACROS[name],
-                                            split_arguments(rest))
+                runs = self.font_macro_runs(name, split_arguments(rest))
                 self.preformatted.append(render_runs(runs))
 
             return
 
-        state = InlineState()
-        self.preformatted.append(render_runs(parse_inline(line, state)))
+        self.preformatted.append(render_runs(parse_inline(line)))
 
     def convert(self):
-        for raw in self.source.splitlines():
-            if raw.startswith(".\\\"") or raw.startswith("'\\\""):
-                continue
-
-            line = strip_comment(raw)
-
+        for line in self.source.splitlines():
             if self.preformatted is not None:
                 self.preformatted_line(line)
                 continue
 
-            if line.startswith(".") or line.startswith("'"):
+            if line.startswith("."):
                 name, _, rest = line[1:].strip().partition(" ")
 
                 if name:
@@ -469,7 +238,7 @@ class Page:
                 self.flush_paragraph()
                 continue
 
-            self.add_text_line(line)
+            self.add_runs(parse_inline(line))
 
         self.close_all()
         self.description = self.find_description()
@@ -557,7 +326,6 @@ def main(argv):
         values = {
             "title": html.escape(name),
             "description": html.escape(page.description),
-            "header": html.escape("%s(%s)" % (page.title, page.section)),
             "manual": html.escape(page.manual),
             "date": html.escape(page.date),
             "toc": table_of_contents(page.headings),
