@@ -1,7 +1,7 @@
 # The barebones make parses a Makefile, expands its variables, and runs each
 # recipe through the shell. The recipe lines echo before they run, and a @ prefix
 # silences that echo.
-unset KOSH_FLAGS MAKEFLAGS MFLAGS MAKELEVEL
+unset KOSH_FLAGS MAKEFLAGS MFLAGS MAKELEVEL MODE
 BIN=$(CDPATH= cd -- "$(dirname -- "$BIN")" && pwd)/$(basename -- "$BIN")
 d=$(mktemp -d) || exit 1
 cd "$d" || exit 1

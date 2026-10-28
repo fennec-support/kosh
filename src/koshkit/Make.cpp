@@ -2303,6 +2303,12 @@ apply_assignment(EvalContext &cxt,
 
   if (is_command_line) mk.command_variable_names.set(name, true);
 
+  if (operator_character == '?' && !mk.variable_index.find(name).has_value() &&
+      os::get_environment_variable(name).has_value())
+  {
+    return;
+  }
+
   if (let const index = mk.variable_index.find(name); index.has_value()) {
     if (operator_character == '?') return;
 
@@ -2730,8 +2736,6 @@ parse_makefile_into(EvalContext                     &cxt,
                                  trimmed.substring(directive.length));
         conditionals.push(
             conditional_state{is_taken, is_taken, is_parent_active});
-        current_rule_indices.clear();
-        current_pattern_indices.clear();
         continue;
       }
 
@@ -2754,15 +2758,11 @@ parse_makefile_into(EvalContext                     &cxt,
           }
         }
 
-        current_rule_indices.clear();
-        current_pattern_indices.clear();
         continue;
       }
 
       if (directive == "endif") {
         if (!conditionals.is_empty()) conditionals.pop_back();
-        current_rule_indices.clear();
-        current_pattern_indices.clear();
         continue;
       }
 
