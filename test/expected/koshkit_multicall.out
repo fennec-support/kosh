@@ -15,6 +15,11 @@ rc=2
        |  ^~
 note: Try `cp --help` for more info.
 rc=2
+--- a failure of a symlinked utility is reported at the command ---
+1:1: error: cp: 'copied_directory' is a directory, pass -r to copy it.
+     1 |  cp copied_directory copy_target
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+rc=1
 --- a symlinked utility reports the kosh version on --version ---
 1
 --- a symlinked utility opens its help with the bundled banner ---

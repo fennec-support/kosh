@@ -1513,7 +1513,14 @@ run_as_multicall(StringView           util_name,
 
     return static_cast<i32>(e.command_status());
   } catch (const Error &e) {
-    show_message(e.to_string());
+    /* an error without its own location is reported at the command, as
+       the builtin reports it. */
+    let const message = chosen.has_value() ? util_name + ": " + e.message()
+                                           : String{e.message()};
+
+    show_message(
+        ErrorWithLocation{ec.source_location(), message.view()}.to_string(
+            command_source.view(), &cxt));
 
     return 1;
   } catch (const std::exception &e) {

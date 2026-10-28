@@ -25,6 +25,11 @@ ln -s "$BIN" cp
 ./cp 2>&1
 echo "rc=$?"
 
+echo "--- a failure of a symlinked utility is reported at the command ---"
+mkdir copied_directory
+./cp copied_directory copy_target 2>&1
+echo "rc=$?"
+
 echo "--- a symlinked utility reports the kosh version on --version ---"
 ./tail --version | grep -c "Koshka Shell"
 
