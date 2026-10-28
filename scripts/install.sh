@@ -39,6 +39,8 @@
   BIN_DIR=${KOSH_INSTALL_PATH:-}
   IS_DRY_RUN=${KOSH_INSTALL_DRY_RUN:+1}
   IS_FORCE=${KOSH_INSTALL_FORCE:+1}
+  IS_YES=
+  IS_UNINSTALL=
   LINK_MOODS=
   IS_COLOR=
   IS_ERROR_COLOR=
@@ -103,6 +105,7 @@
 
   ask ()
   {
+    if [ -n "$IS_YES" ]; then return 0; fi
     # shellcheck disable=SC2217
     if ! true 2>/dev/null </dev/tty
     then
@@ -116,6 +119,28 @@
       ;;
       *)
         return 0
+      ;;
+    esac
+  }
+
+  # Removal is confirmed only by an explicit yes, and without a terminal it
+  # needs --yes.
+  ask_strict ()
+  {
+    if [ -n "$IS_YES" ]; then return 0; fi
+    # shellcheck disable=SC2217
+    if ! true 2>/dev/null </dev/tty
+    then
+      return 1
+    fi
+
+    printf '%s%s [y/N] ' "$(mark "$IS_ERROR_COLOR")" "$1" >&2
+    case $(head -n 1 </dev/tty || :) in
+      [Yy] | [Yy][Ee][Ss])
+        return 0
+      ;;
+      *)
+        return 1
       ;;
     esac
   }
@@ -240,6 +265,12 @@
       --force)
         IS_FORCE=1
       ;;
+      --yes)
+        IS_YES=1
+      ;;
+      --uninstall)
+        IS_UNINSTALL=1
+      ;;
       --link-mood=*)
         add_link_moods "${1#*=}"
       ;;
@@ -273,8 +304,11 @@
       -h | --help)
         line "Usage: install.sh [--dry-run] [--force] [--install-path DIR]"
         line "                  [--link-mood MOODS] [-x]"
+        line "                  [--yes] [--uninstall]"
         line "  --dry-run           list the downloads, install nothing"
         line "  --force             install even when kosh is up to date"
+        line "  --yes               accept installation or removal prompts"
+        line "  --uninstall         remove the binary and its owned links"
         line "  --install-path DIR  install to DIR, extras to DIR/../share;"
         line "                      without it, the kosh on PATH is updated"
         line "  --link-mood MOODS   link bash, dash, or sh to kosh in DIR,"
@@ -296,6 +330,67 @@
   say "Hi! This is Koshka Shell installer."
   say \
     "You can view the repository and this script at <github.com/fennec-support/kosh>"
+  if [ -z "$BIN_DIR" ]
+  then
+    EXISTING=$(command -v kosh 2>/dev/null || :)
+    case $EXISTING in
+      /*) BIN_DIR=${EXISTING%/*} ;;
+      *)
+        BIN_DIR=$HOME/.local/bin
+        if [ "$(id -u)" -eq 0 ]; then BIN_DIR=/usr/local/bin; fi
+      ;;
+    esac
+  fi
+  case $BIN_DIR in
+    /*) ;;
+    *) BIN_DIR=$PWD/$BIN_DIR ;;
+  esac
+  BIN_DIR=${BIN_DIR%/}
+  SHARE_DIR=${BIN_DIR%/*}/share
+  EXT=
+  case $(uname -s) in MINGW* | MSYS* | CYGWIN*) EXT=.exe ;; esac
+
+  if [ -n "$IS_UNINSTALL" ]
+  then
+    if [ -z "$IS_DRY_RUN" ] &&
+      ! ask_strict "Do you want to remove Kosh from $BIN_DIR?"
+    then
+      line "Removal was cancelled. Pass --yes to remove without a terminal."
+      exit 0
+    fi
+    for NAME in koshkit bash dash sh
+    do
+      if [ -L "$BIN_DIR/$NAME" ] && is_free_for_link "$BIN_DIR/$NAME"
+      then
+        if [ -n "$IS_DRY_RUN" ]; then
+          line "Would remove $BIN_DIR/$NAME"
+        else
+          rm -f "$BIN_DIR/$NAME" || fail "cannot remove $BIN_DIR/$NAME"
+        fi
+      fi
+    done
+    if [ -e "$BIN_DIR/kosh$EXT" ] || [ -L "$BIN_DIR/kosh$EXT" ]
+    then
+      if [ -n "$IS_DRY_RUN" ]; then
+        line "Would remove $BIN_DIR/kosh$EXT"
+      else
+        rm -f "$BIN_DIR/kosh$EXT" || fail "cannot remove $BIN_DIR/kosh$EXT"
+        line "Removed $BIN_DIR/kosh$EXT"
+      fi
+    else
+      line "No Kosh binary was found in $BIN_DIR."
+    fi
+    line "Configuration, history, completions, and manuals were kept."
+    exit 0
+  fi
+
+  if command -v sha256sum >/dev/null; then
+    CHECK="sha256sum -c"
+  elif command -v shasum >/dev/null; then
+    CHECK="shasum -a 256 -c"
+  else
+    fail "sha256sum or shasum is required to verify downloads"
+  fi
   command -v curl >/dev/null || fail "curl is required"
   EXT=
 
@@ -349,36 +444,6 @@
   esac
 
   say "Looking up the latest release.." "$VERSION"
-  # Without an install path, the kosh found on PATH is updated where it is.
-  if [ -z "$BIN_DIR" ]
-  then
-    EXISTING=$(command -v kosh 2>/dev/null || :)
-
-    case $EXISTING in
-      /*)
-        BIN_DIR=${EXISTING%/*}
-      ;;
-      *)
-        BIN_DIR=$HOME/.local/bin
-
-        if [ "$(id -u)" -eq 0 ]
-        then
-          BIN_DIR=/usr/local/bin
-        fi
-      ;;
-    esac
-  fi
-
-  case $BIN_DIR in
-    /*)
-    ;;
-    *)
-      BIN_DIR=$PWD/$BIN_DIR
-    ;;
-  esac
-
-  BIN_DIR=${BIN_DIR%/}
-  SHARE_DIR=${BIN_DIR%/*}/share
   BINARY=kosh-$SYSTEM-$ARCH-$VERSION$EXT
   FILES="$BINARY kosh.bash"
   INSTALLED=$(installed_kosh)
@@ -501,13 +566,6 @@
   done
 
   step "Verifying the binaries.."
-  CHECK="sha256sum -c"
-
-  if ! command -v sha256sum >/dev/null
-  then
-    CHECK="shasum -a 256 -c"
-  fi
-
   if ! $CHECK expected >/dev/null 2>&1
   then
     printf 'not ok\n'
@@ -566,4 +624,3 @@
     ;;
   esac
 }
-

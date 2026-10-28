@@ -35,6 +35,8 @@
     param(
         [switch]$DryRun,
         [switch]$Force,
+        [switch]$Yes,
+        [switch]$Uninstall,
         [string]$InstallPath,
         [string[]]$LinkMood,
         [switch]$X,
@@ -168,9 +170,19 @@
     }
 
     function Ask($Question) {
+        if ($Yes) { return $true }
         if ([Console]::IsInputRedirected) { return $true }
         [Console]::Error.Write("$(Mark -IsColor $IS_ERROR_COLOR)$Question [y/n] ")
         return [Console]::In.ReadLine() -notmatch "^[Nn]"
+    }
+
+    # Removal is confirmed only by an explicit yes, and without a console it
+    # needs -Yes.
+    function Ask-Strict($Question) {
+        if ($Yes) { return $true }
+        if ([Console]::IsInputRedirected) { return $false }
+        [Console]::Error.Write("$(Mark -IsColor $IS_ERROR_COLOR)$Question [y/N] ")
+        return [Console]::In.ReadLine() -match "^(?i:y|yes)$"
     }
 
     try {
@@ -181,8 +193,11 @@
         if ($Help) {
             Line "Usage: install.ps1 [-DryRun] [-Force] [-InstallPath DIR]"
             Line "                   [-LinkMood MOODS] [-X]"
+            Line "                   [-Yes] [-Uninstall]"
             Line "  -DryRun           list the downloads, install nothing"
             Line "  -Force            install even when kosh is up to date"
+            Line "  -Yes              accept installation or removal prompts"
+            Line "  -Uninstall        remove the binary and its owned links"
             Line "  -InstallPath DIR  install to DIR, extras to DIR\..\share;"
             Line "                    without it, the kosh on PATH is updated"
             Line "  -LinkMood MOODS   link bash, dash, or sh to kosh in DIR,"
@@ -209,6 +224,42 @@
         Say "Hi! This is Koshka Shell installer."
         Say "You can view the repository and this script at <github.com/fennec-support/kosh>"
 
+        $BIN_DIR = $InstallPath
+        if (-not $BIN_DIR) { $BIN_DIR = $env:KOSH_INSTALL_PATH }
+        if (-not $BIN_DIR) {
+            $EXISTING = Get-Command kosh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($EXISTING) { $BIN_DIR = Split-Path -Parent $EXISTING.Source }
+        }
+        if (-not $BIN_DIR) { $BIN_DIR = Join-Path $env:LOCALAPPDATA "kosh\bin" }
+        $BIN_DIR = [IO.Path]::GetFullPath([IO.Path]::Combine($HERE, $BIN_DIR)).TrimEnd("\", "/")
+        $SHARE_DIR = Join-Path (Split-Path -Parent $BIN_DIR) "share"
+
+        if ($Uninstall) {
+            if (-not $DryRun -and -not (Ask-Strict "Do you want to remove Kosh from $BIN_DIR?")) {
+                Line "Removal was cancelled. Pass -Yes to remove without a console."
+                return
+            }
+            $INSTALLED = Join-Path $BIN_DIR "kosh.exe"
+            $HASH = Get-KoshHash $INSTALLED
+            foreach ($NAME in @("koshkit", "bash", "dash", "sh")) {
+                $LINK = Join-Path $BIN_DIR "$NAME.exe"
+                if ($HASH -and (Test-Path -LiteralPath $LINK) -and (Test-KoshLink $LINK @($HASH))) {
+                    if ($DryRun) { Line "Would remove $LINK" }
+                    else { Remove-Item -Force -LiteralPath $LINK -ErrorAction Stop }
+                }
+            }
+            if (Test-Path -LiteralPath $INSTALLED) {
+                if ($DryRun) { Line "Would remove $INSTALLED" }
+                else {
+                    Remove-Item -Force -LiteralPath $INSTALLED -ErrorAction Stop
+                    Line "Removed $INSTALLED"
+                }
+            }
+            else { Line "No Kosh binary was found in $BIN_DIR." }
+            Line "Configuration, history, completions, and manuals were kept."
+            return
+        }
+
         $ARCH, $ARCH_NAME = switch ([Runtime.InteropServices.RuntimeInformation, mscorlib]::OSArchitecture) {
             "X64" { "amd64", "AMD64" }
             "Arm64" { "aarch64", "ARM64" }
@@ -225,16 +276,6 @@
         }
         Say "Looking up the latest release.." $VERSION
 
-        $BIN_DIR = $InstallPath
-        if (-not $BIN_DIR) { $BIN_DIR = $env:KOSH_INSTALL_PATH }
-        # Without an install path, the kosh found on PATH is updated where it is.
-        if (-not $BIN_DIR) {
-            $EXISTING = Get-Command kosh -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($EXISTING) { $BIN_DIR = Split-Path -Parent $EXISTING.Source }
-        }
-        if (-not $BIN_DIR) { $BIN_DIR = Join-Path $env:LOCALAPPDATA "kosh\bin" }
-        $BIN_DIR = [IO.Path]::GetFullPath([IO.Path]::Combine($HERE, $BIN_DIR)).TrimEnd("\", "/")
-        $SHARE_DIR = Join-Path (Split-Path -Parent $BIN_DIR) "share"
         $BINARY = "kosh-win32-$ARCH-$VERSION.exe"
         $FILES = @($BINARY, "kosh.bash")
 
