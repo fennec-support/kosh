@@ -92,6 +92,14 @@ Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let       out             = String{cxt.scratch_allocator()};
 
     for (let const &name : cxt.readonly_names()) {
+      let const is_array =
+          cxt.variable_store().indexed_arrays().find(name).has_value() ||
+          cxt.is_associative_array(name);
+
+      /* an array has no readonly form, so it is printed as declare -p
+         prints it. */
+      if (is_array && append_variable_declaration(cxt, name, out)) continue;
+
       out += is_declare_form ? "declare -r " : "readonly ";
       out += name;
       if (let const value = cxt.get_variable_value(name)) {

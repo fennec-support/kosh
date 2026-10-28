@@ -32,3 +32,7 @@ echo "missing=$?"
 plain() { echo plain; }
 readonly -pf | /usr/bin/grep -e '^declare -fr'
 echo "list=$?"
+
+readonly -a ro_indexed=(first second)
+readonly -A ro_assoc=([key]=value)
+readonly -p | /usr/bin/grep -e ' ro_indexed=' -e ' ro_assoc='
