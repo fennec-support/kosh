@@ -113,14 +113,6 @@ fuzz:
 			"fuzz/corpus/$$name" || exit 1; \
 	done
 
-# docs-html renders the manpages into docs/html through docs/template.html.
-PYTHON ?= python3
-
-docs-html:
-	echo Generating HTML manpages...
-	$(PYTHON) docs/man2html.py docs/template.html docs/html \
-		docs/kosh.1 docs/kosh.5
-
 clean:
 	echo Cleaning up...
 	$(MAKE) $(AUTO_JOBS) -C src clean
@@ -128,4 +120,4 @@ clean:
 	$(MAKE) -C src/toiletline clean
 
 .PHONY: all kosh install uninstall tidy fmt toiletline_test test bench \
-	refill_tests completions pgo fuzz docs-html clean
+	refill_tests completions pgo fuzz clean

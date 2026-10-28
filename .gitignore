@@ -29,7 +29,6 @@ src/o
 /coverage
 /pgo
 /fuzz
-/docs/html
 zig-out/
 .zig-cache/
 
