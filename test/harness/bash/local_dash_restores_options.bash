@@ -36,3 +36,11 @@ set +f
 set -u
 flag_string=$-
 echo "${flag_string//[cI]/}"
+
+# a word after local - is a name, so -x is not applied as an attribute.
+flag_after_dash() {
+  local - -x flagged=1 2> /dev/null
+  echo "local status=$?"
+  declare -p flagged
+}
+flag_after_dash

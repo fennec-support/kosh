@@ -32,10 +32,10 @@ second
 
 last
 first
-39:17: error: Koshkit `more`: invalid line count.
+39:17: error: Koshkit `more`: Invalid line count.
     39 |  koshkit more -n 0 one.txt
        |                  ^
-note: use a positive decimal integer.
+note: Use a positive decimal integer.
 more-lines=1
 41:1: error: Koshkit `more`: Invalid pattern '('.
     41 |  koshkit more -p '/(' one.txt

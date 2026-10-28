@@ -1498,18 +1498,17 @@ run_as_multicall(StringView           util_name,
   } catch (const BrokenPipeExit &) {
     return 141;
   } catch (const ErrorWithLocation &e) {
-    let const source = utils::merge_args_to_string(ec.args());
-
     if (!chosen.has_value()) {
-      show_message(
-          render_multicall_error(e, e.message().view(), source.view(), cxt));
+      show_message(render_multicall_error(e, e.message().view(),
+                                          command_source.view(), cxt));
 
       return static_cast<i32>(e.command_status());
     }
 
     let const message = util_name + ": " + e.message();
 
-    show_message(render_multicall_error(e, message.view(), source.view(), cxt));
+    show_message(
+        render_multicall_error(e, message.view(), command_source.view(), cxt));
 
     return static_cast<i32>(e.command_status());
   } catch (const Error &e) {

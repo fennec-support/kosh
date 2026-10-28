@@ -889,6 +889,9 @@ parse_flags(const FlagList                  &flags,
       } else {
         args.push_managed(StringView{argv[i]});
         do_record_operand(static_cast<usize>(i));
+        if (!parse_options.should_allow_options_after_operands) {
+          should_ignore_rest = true;
+        }
       }
 
       continue;

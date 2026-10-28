@@ -50,8 +50,8 @@ More::execute(const ExecContext               &ec,
 
     if (parsed.is_error() || parsed.value() == 0 || parsed.value() > SIZE_MAX) {
       report_soft_koshkit_error(ec, cxt, FLAG_MORE_LINES.value_location(),
-                                "invalid line count",
-                                "use a positive decimal integer");
+                                "Invalid line count",
+                                "Use a positive decimal integer");
 
       return 1;
     }

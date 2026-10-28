@@ -564,7 +564,7 @@ Xargs::execute(const ExecContext               &ec,
   }
 
   if (FLAG_XARGS_PROMPT.is_enabled()) {
-    terminal = os::open_file_descriptor("/dev/tty", os::file_open_mode::Read);
+    terminal = os::open_terminal_input();
     if (!terminal.has_value()) {
       throw ErrorWithLocation{
           ec.source_location(),

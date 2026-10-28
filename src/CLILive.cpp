@@ -802,15 +802,17 @@ compile_pager_pattern(StringView pattern,
 }
 
 /* holds the lines read from the sources so far and reads more on demand, up
-   to PAGER_BYTE_LIMIT bytes in total. */
+   to byte_limit bytes in total. */
 class PagerText
 {
 public:
   PagerText(ArrayList<pager_source> &sources,
             bool                     should_show_headers,
-            bool                     should_squeeze) throws
+            bool                     should_squeeze,
+            usize                    byte_limit) throws
       : m_sources(sources), m_bytes(heap_allocator()),
-        m_lines(heap_allocator()), m_should_show_headers(should_show_headers),
+        m_lines(heap_allocator()), m_byte_limit(byte_limit),
+        m_should_show_headers(should_show_headers),
         m_should_squeeze(should_squeeze)
   {
     u64  expected_byte_count = 0;
@@ -1013,8 +1015,7 @@ private:
 
     /* the line records count against the limit too, so a file of empty
        lines cannot grow past it. */
-    if (m_bytes.length() + m_lines.count() * sizeof(pager_line) >=
-        PAGER_BYTE_LIMIT)
+    if (m_bytes.length() + m_lines.count() * sizeof(pager_line) >= m_byte_limit)
     {
       m_was_truncated = true;
       finish_source();
@@ -1024,8 +1025,8 @@ private:
     }
 
     char      buffer[PAGER_READ_BYTE_COUNT];
-    let const room = PAGER_BYTE_LIMIT - m_bytes.length() -
-                     m_lines.count() * sizeof(pager_line);
+    let const room =
+        m_byte_limit - m_bytes.length() - m_lines.count() * sizeof(pager_line);
     let const read_byte_count =
         os::read_fd(source.input.descriptor, buffer,
                     room < sizeof(buffer) ? room : sizeof(buffer));
@@ -1073,6 +1074,7 @@ private:
   usize                    m_source_index{0};
   usize                    m_line_start{0};
   usize                    m_line_number{0};
+  usize                    m_byte_limit{0};
   bool                     m_should_show_headers{false};
   bool                     m_should_squeeze{false};
   bool                     m_is_source_started{false};
@@ -2009,8 +2011,9 @@ copy_pager_sources(const ExecContext       &ec,
     return status;
   }
 
-  let text =
-      PagerText{sources, options.should_copy_headers, options.should_squeeze};
+  /* a copy keeps every line, so it reads without the limit of the pager. */
+  let text = PagerText{sources, options.should_copy_headers,
+                       options.should_squeeze, SIZE_MAX};
 
   text.load_all();
 
@@ -2104,8 +2107,8 @@ run_pager(const ExecContext           &ec,
       return copy_status != 0 ? copy_status : status;
     }
 
-    let text =
-        PagerText{sources, options.should_show_headers, options.should_squeeze};
+    let text  = PagerText{sources, options.should_show_headers,
+                         options.should_squeeze, PAGER_BYTE_LIMIT};
     let pager = Pager{ec, text, options, *terminal_fd};
 
     if (!options.initial_pattern.is_empty() &&
@@ -2121,8 +2124,11 @@ run_pager(const ExecContext           &ec,
 
     let const is_alternate_screen_active =
         options.is_full_screen && enter_alternate_screen(ec);
+    let const is_mouse_reporting_active =
+        is_alternate_screen_active && enable_mouse_reporting(ec);
 
     defer {
+      if (is_mouse_reporting_active) disable_mouse_reporting(ec);
       if (is_alternate_screen_active) leave_alternate_screen(ec);
     };
 
