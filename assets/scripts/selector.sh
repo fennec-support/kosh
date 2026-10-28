@@ -17,7 +17,9 @@ start selector "$DEMO_HOME"
 type_text "tar -xzvf release.tar.gz -C ~/Downloads --strip-components=1 --exclude='*.log'"
 wait_for "Exclude files" 15
 pause 4.0
-key C-e C-u
+key C-a
+pause 0.8
+key C-k
 pause 1.0
 
 type_text "bre" 0.15
