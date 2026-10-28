@@ -6,7 +6,8 @@
 #
 # Records the selector demo: a synopsis that explains every flag of a tar
 # command, brew command, flag, and formula completion, path completion with
-# arrows and Tab, a command, history search, and multiple cursors. Tab opens a menu
+# arrows and Tab, a command, history search, and multiple cursors that
+# replace-regexp edits before the buffer runs. Tab opens a menu
 # or accepts its highlighted row, and an open menu follows the typed text.
 
 . "$(dirname -- "$0")/lib.sh"
@@ -106,7 +107,24 @@ pause 0.6
 type_text " :3" 0.15
 pause 1.4
 key Enter
-pause 0.4
+pause 1.0
+key M-x
+pause 1.0
+type_text "replace-regexp" 0.1
+pause 0.6
+key Enter
+pause 1.0
+type_text "say" 0.2
+pause 0.6
+key Enter
+pause 1.0
+type_text "think" 0.2
+pause 0.6
+key Enter
+wait_for "cowthink meow" 10
+pause 1.6
+key Enter
+pause 0.6
 key Enter
 pause 3.0
 
