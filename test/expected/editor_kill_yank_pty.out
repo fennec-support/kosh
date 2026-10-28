@@ -104,6 +104,8 @@ alt-backslash-deletes-the-spaces-around-the-cursor PASS
 ctrl-x-ctrl-c-ends-the-shell PASS
 shift-left-selects-and-typing-replaces PASS
 ctrl-v-copies-the-selection-to-each-new-cursor PASS
+shift-right-accepts-the-ghost-without-selecting PASS
+shift-up-recall-drops-the-stale-ghost PASS
 slurp-shows-the-script-without-line-numbers PASS
 slurp-enter-starts-a-new-line PASS
 slurp-ctrl-x-s-saves-and-keeps-editing PASS

@@ -25,7 +25,8 @@
 # Vi mode ignores Ctrl-X, :e opens the line in VISUAL there, and Ctrl-X
 # Ctrl-C ends the shell in emacs mode. At the prompt Shift-Left selects text
 # that typing replaces, and Ctrl-V from a selection gives each new cursor a row
-# holding a copy of it.
+# holding a copy of it. Shift-Right at the line end accepts the ghost without
+# selecting it, and Shift-Up that recalls history drops the stale ghost.
 # slurp starts a new line on Enter, saves on Ctrl-X s and keeps editing,
 # saves and leaves on :wq, leaves the file on :q!, rewrites a file in a shared
 # directory in place and removes its backup, refuses to write over a file
@@ -95,6 +96,8 @@ CTRL_V = b"\x16"
 CTRL_Z = b"\x1a"
 SHIFT_HOME = b"\x1b[1;2H"
 SHIFT_LEFT = b"\x1b[1;2D"
+SHIFT_RIGHT = b"\x1b[1;2C"
+SHIFT_UP = b"\x1b[1;2A"
 CTRL_SHIFT_Z_KITTY = b"\x1b[122;6u"
 CTRL_SHIFT_Z_XTERM = b"\x1b[27;6;90~"
 ALT_DOT = b"\x1b."
@@ -806,6 +809,24 @@ def run_selection_checks(binary, directory, command_directory, report):
         session.send(SHIFT_HOME + CTRL_V + DOWN + DOWN + b"\r\r")
         report.record("ctrl-v-copies-the-selection-to-each-new-cursor",
                       session, has_output("copied row", 3))
+
+        session.send(b"echo cop")
+        session.wait_until(is_line("echo cop"))
+        settle(session, 0.3)
+        session.send(SHIFT_RIGHT + b"X")
+        report.record("shift-right-accepts-the-ghost-without-selecting",
+                      session, is_line("echo copied rowX"))
+        clear_line(session)
+
+        session.send(b"echo cop")
+        session.wait_until(is_line("echo cop"))
+        settle(session, 0.3)
+        session.send(SHIFT_UP)
+        session.wait_until(is_line("echo copied row"))
+        session.send(RIGHT)
+        settle(session, 0.3)
+        report.record("shift-up-recall-drops-the-stale-ghost", session,
+                      is_line("echo copied row"))
     finally:
         session.close()
 
