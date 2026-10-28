@@ -1,0 +1,105 @@
+#!/usr/bin/bash
+
+#
+#    This file is a part of the Koshka shell, (c) toiletbril, 2026
+#    See the top-level LICENSE file for the licensing information.
+#
+# Records the selector demo: brew command, flag, and formula completion, path
+# completion, a command, history search, and multiple cursors. Tab opens a menu
+# or accepts its highlighted row, and an open menu follows the typed text.
+
+. "$(dirname -- "$0")/lib.sh"
+
+start selector "$DEMO_HOME"
+
+type_text "bre" 0.15
+sleep 0.9
+type_text "w "
+sleep 0.4
+key Tab
+wait_for "showing 1-16 of" 15
+sleep 1.6
+type_text "inf" 0.3
+sleep 1.2
+keys_slow 0.2 BSpace BSpace BSpace
+sleep 1.2
+type_text "ins" 0.3
+sleep 1.2
+key Tab
+sleep 1.0
+
+type_text " --" 0.2
+wait_for "of 51" 15
+sleep 1.2
+keys_slow 0.35 Down Down Down Down Down
+sleep 0.8
+key Tab
+sleep 0.8
+type_text " "
+wait_for "of 16" 15
+sleep 1.8
+type_text "wget" 0.3
+sleep 1.2
+key Tab
+sleep 1.0
+key Escape
+sleep 0.4
+key C-e C-u
+sleep 0.8
+
+type_text "/o"
+sleep 0.4
+key Tab
+sleep 1.0
+type_text "ho" 0.3
+sleep 0.8
+key Tab
+sleep 1.0
+type_text "bi" 0.3
+sleep 0.8
+key Tab
+wait_for "cowthink" 15
+sleep 1.0
+type_text "co" 0.3
+sleep 1.2
+type_text "ws" 0.3
+sleep 1.0
+key Tab
+sleep 0.6
+key Escape
+type_text " hello"
+sleep 0.6
+key Enter
+sleep 2.2
+
+key C-r
+sleep 1.6
+type_text "tar" 0.25
+sleep 1.4
+keys_slow 0.15 BSpace BSpace BSpace
+type_text "docker" 0.2
+sleep 1.6
+key Escape
+sleep 1.0
+
+type_text "cowsay meow"
+sleep 0.8
+key S-Home
+sleep 1.2
+key C-v
+sleep 0.8
+key Down
+sleep 0.8
+key Down
+sleep 1.0
+key End
+sleep 0.6
+type_text " :3" 0.15
+sleep 1.4
+key Enter
+sleep 0.4
+key Enter
+sleep 3.0
+
+key C-d
+finish
