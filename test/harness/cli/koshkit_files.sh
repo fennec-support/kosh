@@ -273,6 +273,29 @@ echo "status=$?"
 koshkit realpath -e --relative-to=f d 2>/dev/null
 echo "status=$?"
 ' | tr '\\' /
+echo "--- readlink canonical modes, quiet, and zero ---"
+"$BIN" -c '
+cd rp || exit
+for mode in -f -e -m --canonicalize; do
+  resolved=$(koshkit readlink "$mode" l) || exit
+  koshkit basename "$resolved"
+done
+koshkit readlink -f l/absent > /dev/null
+echo "missing-last=$?"
+koshkit readlink -f l/absent/deeper 2> /dev/null
+echo "missing-parent=$?"
+koshkit readlink -e l/absent 2> /dev/null
+echo "existing=$?"
+resolved=$(koshkit readlink -m absent/a/../b) && koshkit basename "$resolved"
+koshkit readlink -fe l/absent 2> /dev/null
+echo "last-mode-e=$?"
+koshkit readlink -ef l/absent > /dev/null
+echo "last-mode-f=$?"
+koshkit readlink -q f 2>&1
+echo "quiet=$?"
+koshkit readlink -z l l | koshkit tr "\0" "|"
+echo
+' | tr '\\' /
 "$BIN" -c 'koshkit rmdir a/b'
 echo "--- ls a after rmdir ---"
 "$BIN" -c 'koshkit ls a'

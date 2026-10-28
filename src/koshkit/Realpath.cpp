@@ -70,13 +70,6 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Realpath);
 
 namespace koshka::koshkit {
 
-enum class realpath_mode : u8
-{
-  AllButLast,
-  Existing,
-  Missing,
-};
-
 /* memory: candidate, spliced, remaining, and resolved are allocated in
            allocator and freed when allocator is released. each component other
            than . and .. allocates one candidate Path.
@@ -84,9 +77,9 @@ enum class realpath_mode : u8
            component. at most MAXIMUM_LINK_COUNT link splices, and each splice
            adds the components of its target to the walk. */
 static fn
-resolve_with_missing_components(StringView    operand,
-                                realpath_mode mode,
-                                Allocator     allocator) throws
+resolve_with_missing_components(StringView          operand,
+                                canonical_path_mode mode,
+                                Allocator           allocator) throws
     -> Maybe<Path>
 {
   let absolute = Path{operand, allocator};
@@ -126,7 +119,7 @@ resolve_with_missing_components(StringView    operand,
 
     let const component = text.substring_of_length(start, position - start);
 
-    if (is_missing && mode != realpath_mode::Missing) {
+    if (is_missing && mode != canonical_path_mode::Missing) {
       return None;
     }
 
@@ -178,8 +171,8 @@ resolve_with_missing_components(StringView    operand,
         continue;
       }
 
-      if (mode == realpath_mode::Existing) return None;
-      if (mode == realpath_mode::AllButLast &&
+      if (mode == canonical_path_mode::Existing) return None;
+      if (mode == canonical_path_mode::AllButLast &&
           !os::last_system_error_is_missing_file())
       {
         return None;
@@ -198,15 +191,15 @@ enum class realpath_links : u8
   Ignored,
 };
 
-static fn
-resolve_physically(StringView    operand,
-                   realpath_mode mode,
-                   Allocator     allocator) throws -> Maybe<Path>
+fn
+resolve_canonical_path(StringView          operand,
+                       canonical_path_mode mode,
+                       Allocator           allocator) throws -> Maybe<Path>
 {
   let resolved = os::canonical_path(Path{operand, allocator});
 
-  if (!resolved.has_value() && (mode == realpath_mode::Missing ||
-                                (mode == realpath_mode::AllButLast &&
+  if (!resolved.has_value() && (mode == canonical_path_mode::Missing ||
+                                (mode == canonical_path_mode::AllButLast &&
                                  os::last_system_error_is_missing_file())))
   {
     resolved = resolve_with_missing_components(operand, mode, allocator);
@@ -250,9 +243,9 @@ suffix_requires_directory(StringView suffix) wontthrow -> bool
            component.
    time:   at most one canonical_path() call per component. */
 static fn
-resolve_without_links(StringView    operand,
-                      realpath_mode mode,
-                      Allocator     allocator) throws -> Maybe<Path>
+resolve_without_links(StringView          operand,
+                      canonical_path_mode mode,
+                      Allocator           allocator) throws -> Maybe<Path>
 {
   let absolute = Path{operand, allocator};
 
@@ -281,7 +274,7 @@ resolve_without_links(StringView    operand,
     let candidate = Path{resolved.text().view(), allocator};
 
     candidate.append(component);
-    if (mode != realpath_mode::Missing) {
+    if (mode != canonical_path_mode::Missing) {
       let const suffix  = text.substring(position);
       let       is_last = true;
 
@@ -299,7 +292,7 @@ resolve_without_links(StringView    operand,
         }
 
         let const is_missing_last_allowed =
-            mode == realpath_mode::AllButLast && is_last;
+            mode == canonical_path_mode::AllButLast && is_last;
 
         if (!os::canonical_path(probe).has_value() &&
             !(is_missing_last_allowed &&
@@ -315,13 +308,13 @@ resolve_without_links(StringView    operand,
 }
 
 static fn
-resolve_operand(StringView     operand,
-                realpath_mode  mode,
-                realpath_links links,
-                Allocator      allocator) throws -> Maybe<Path>
+resolve_operand(StringView          operand,
+                canonical_path_mode mode,
+                realpath_links      links,
+                Allocator           allocator) throws -> Maybe<Path>
 {
   if (links == realpath_links::Physical) {
-    return resolve_physically(operand, mode, allocator);
+    return resolve_canonical_path(operand, mode, allocator);
   }
 
   let resolved = resolve_without_links(operand, mode, allocator);
@@ -330,7 +323,7 @@ resolve_operand(StringView     operand,
     return resolved;
   }
 
-  return resolve_physically(resolved->view(), mode, allocator);
+  return resolve_canonical_path(resolved->view(), mode, allocator);
 }
 
 /* e.g. prefix = "/a/b" holds for path = "/a/b" and "/a/b/c" but not for
@@ -432,10 +425,10 @@ Realpath::execute(const ExecContext               &ec,
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
-  let const mode = FLAG_REALPATH_MISSING.is_enabled() ? realpath_mode::Missing
-                   : FLAG_REALPATH_EXISTING.is_enabled()
-                       ? realpath_mode::Existing
-                       : realpath_mode::AllButLast;
+  let const mode =
+      FLAG_REALPATH_MISSING.is_enabled()    ? canonical_path_mode::Missing
+      : FLAG_REALPATH_EXISTING.is_enabled() ? canonical_path_mode::Existing
+                                            : canonical_path_mode::AllButLast;
 
   /* the last of -L, -P, and -s wins. */
   let       links           = realpath_links::Physical;
@@ -480,7 +473,7 @@ Realpath::execute(const ExecContext               &ec,
       [&](const FlagString &flag) throws -> Maybe<Path> {
     let directory = do_resolve(flag.value(), flag.value_location(), true);
 
-    if (directory.has_value() && mode == realpath_mode::Existing &&
+    if (directory.has_value() && mode == canonical_path_mode::Existing &&
         !directory->is_directory())
     {
       KOSHKIT_REPORT_ERROR_AT(flag.value_location(),

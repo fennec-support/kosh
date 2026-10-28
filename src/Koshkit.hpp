@@ -468,6 +468,20 @@ copy_tree_for_move(const ExecContext &ec,
                    Allocator          allocator) throws -> bool;
 fn
 make_directories(const Path &directory, u32 mode) wontthrow -> bool;
+
+enum class canonical_path_mode : u8
+{
+  AllButLast,
+  Existing,
+  Missing,
+};
+
+/* resolves every symbolic link and . and .. component of operand into an
+   absolute path. mode decides which components may be missing. */
+fn
+resolve_canonical_path(StringView          operand,
+                       canonical_path_mode mode,
+                       Allocator           allocator) throws -> Maybe<Path>;
 fn
 read_named_or_stdin(const ExecContext &ec, StringView path) throws
     -> Maybe<String>;

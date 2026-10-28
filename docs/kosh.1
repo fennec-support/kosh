@@ -2702,9 +2702,27 @@ and
 is accepted.
 .TP
 .B readlink
-Print the target of each symbolic link; a non-link is reported with status 1.
-.B \-n
+Print the target of each symbolic link. A non-link is reported with status 1.
+.BR \-f ", " \-\-canonicalize ,
+.BR \-e ", " \-\-canonicalize\-existing ,
+and
+.BR \-m ", " \-\-canonicalize\-missing
+print the canonical absolute path with every link resolved, as
+.B realpath
+prints it without a flag, with
+.BR \-e ,
+and with
+.BR \-m .
+The last of the three wins.
+.BR \-n ", " \-\-no\-newline
 omits the newline for a single file.
+.BR \-q ", " \-\-quiet ,
+.BR \-s ,
+and
+.B \-\-silent
+suppress the error messages.
+.BR \-z ", " \-\-zero
+ends each entry with a NUL byte.
 .TP
 .B realpath
 Print the canonical absolute path. Every component but the last must exist,

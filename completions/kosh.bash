@@ -615,7 +615,8 @@ _koshkit_util_flags ()
       printf "%s\n" "-a -u -x -w"
     ;;
     readlink)
-      printf "%s\n" "-n"
+      printf "%s\n" \
+        "-f --canonicalize -e --canonicalize-existing -m --canonicalize-missing -n --no-newline -q --quiet -s --silent -z --zero"
     ;;
     realpath)
       printf "%s\n" \

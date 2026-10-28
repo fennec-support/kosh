@@ -93,6 +93,19 @@ f|d|
 status=1
 status=1
 status=1
+--- readlink canonical modes, quiet, and zero ---
+e
+e
+e
+e
+missing-last=0
+missing-parent=1
+existing=1
+b
+last-mode-e=1
+last-mode-f=0
+quiet=1
+d/e|d/e|
 --- ls a after rmdir ---
 rmdir-parents=missing
 --- unlink removes a single file ---
