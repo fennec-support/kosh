@@ -23,7 +23,9 @@
 # hint lists the commands, Tab completes a command, replace-string replaces
 # every occurrence, Ctrl-X z repeats it, and M-x undo undoes the repeat.
 # Vi mode ignores Ctrl-X, :e opens the line in VISUAL there, and Ctrl-X
-# Ctrl-C ends the shell in emacs mode.
+# Ctrl-C ends the shell in emacs mode. At the prompt Shift-Left selects text
+# that typing replaces, and Ctrl-V from a selection gives each new cursor a row
+# holding a copy of it.
 # slurp starts a new line on Enter, saves on Ctrl-X s and keeps editing,
 # saves and leaves on :wq, leaves the file on :q!, rewrites a file in a shared
 # directory in place and removes its backup, refuses to write over a file
@@ -75,7 +77,7 @@ import tempfile
 import termios
 import time
 
-from editor_ghost_menu_pty import (BACKSPACE, LEFT, RIGHT, WAIT_SECONDS,
+from editor_ghost_menu_pty import (BACKSPACE, DOWN, LEFT, RIGHT, WAIT_SECONDS,
                                    Report, Session, clear_line, has_hint,
                                    get_state, is_line, settle, UP, ESCAPE)
 
@@ -89,7 +91,10 @@ CTRL_X = b"\x18"
 CTRL_X_CTRL_E = b"\x18\x05"
 CTRL_Y = b"\x19"
 CTRL_U = b"\x15"
+CTRL_V = b"\x16"
 CTRL_Z = b"\x1a"
+SHIFT_HOME = b"\x1b[1;2H"
+SHIFT_LEFT = b"\x1b[1;2D"
 CTRL_SHIFT_Z_KITTY = b"\x1b[122;6u"
 CTRL_SHIFT_Z_XTERM = b"\x1b[27;6;90~"
 ALT_DOT = b"\x1b."
@@ -783,6 +788,26 @@ def is_restored_after_death(session, mark):
                 and (local_modes & termios.ICANON) != 0
                 and (local_modes & termios.ECHO) != 0)
     return do_check
+
+
+def run_selection_checks(binary, directory, command_directory, report):
+    session = Session(binary, directory, command_directory)
+    try:
+        session.wait_until(is_line(""))
+        session.send(b"echo keep drop")
+        session.wait_until(is_line("echo keep drop"))
+        session.send(SHIFT_LEFT * 4 + b"gone")
+        report.record("shift-left-selects-and-typing-replaces", session,
+                      is_line("echo keep gone"))
+        clear_line(session)
+
+        session.send(b"echo copied row")
+        session.wait_until(is_line("echo copied row"))
+        session.send(SHIFT_HOME + CTRL_V + DOWN + DOWN + b"\r\r")
+        report.record("ctrl-v-copies-the-selection-to-each-new-cursor",
+                      session, has_output("copied row", 3))
+    finally:
+        session.close()
 
 
 def run_ctrl_x_mode_checks(binary, directory, command_directory, report):
@@ -1656,6 +1681,7 @@ def main():
                      "while :; do kill -STOP $$; done\n")
         run_checks(binary, directory, command_directory, report)
         run_ctrl_x_mode_checks(binary, directory, command_directory, report)
+        run_selection_checks(binary, directory, command_directory, report)
         run_slurp_checks(binary, directory, command_directory, report)
         run_tall_slurp_checks(binary, directory, command_directory, report)
         run_long_slurp_checks(binary, directory, command_directory, report)
