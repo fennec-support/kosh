@@ -1,4 +1,4 @@
-[![Koshka is at least 3 times faster than Bash](https://github.com/toiletbril/kosh/actions/workflows/ci.yml/badge.svg)](https://github.com/toiletbril/kosh/actions/workflows/ci.yml)
+[![Koshka is at least 3 times faster than Bash](https://github.com/fennec-support/kosh/actions/workflows/ci.yml/badge.svg)](https://github.com/fennec-support/kosh/actions/workflows/ci.yml)
 
 # koshka-oriented shell
 
@@ -28,6 +28,7 @@ curl -fsSL "https://fennec.support/kosh/install" | sh
 
 # same platforms, via Homebrew:
 brew tap fennec-support/kosh
+brew install fennec-support/kosh/kosh
 
 # on Windows, Powershell:
 irm "https://fennec.support/kosh/install" | iex
@@ -37,8 +38,16 @@ docker run --rm -it "ghcr.io/toiletbril/kosh"
 ```
 
 Binaries and their checksums used are on the
-[Releases](https://github.com/toiletbril/kosh/releases) page. To build from
+[Releases](https://github.com/fennec-support/kosh/releases) page. To build from
 source, see [Development](#development).
+
+The standalone installer normally uses `~/.local/bin`, or `/usr/local/bin`
+when run as root. On Windows it uses `%LOCALAPPDATA%\kosh\bin`. If Koshka is
+already on `PATH`, the installer updates that location. The `--install-path`
+option, or `-InstallPath` in PowerShell, selects another directory.
+
+To keep your Bash startup files while you try Koshka, see
+[Switching from bash](docs/kosh_switching.md).
 
 To set up the universal language server and formatter in an editor, follow its
 guide:
@@ -51,7 +60,7 @@ guide:
 
 | Koshka has the best interactive tab selector |
 | :-: |
-| ![](assets/selector-demo.gif) |
+| ![The interactive completion selector narrows and selects command candidates.](assets/selector-demo.gif) |
 
 **Koshka** is the Russian word for a cat.
 
@@ -61,10 +70,11 @@ compatible with Bash 5.3 and Dash.
 
 Koshka includes about 300 built-in ShellCheck diagnostics. It is usually five
 times faster than Bash and more than 100 times faster than ShellCheck.
+Run `make MODE=rel bench` to reproduce the benchmark workloads on your system.
 
 | Koshka analyzes a 400,000-line shell script in about 1,5 seconds |
 | :-: | 
-| ![](assets/lint-demo.gif) |
+| ![Koshka checks a large shell script and reports diagnostics.](assets/lint-demo.gif) |
 
 Besides shell scripts, Koshka is able to analyze common supported formats for
 mistakes in Bash code, including the following:
@@ -79,14 +89,14 @@ mistakes in Bash code, including the following:
 
 | Koshka provides instant shell diagnostics for Scripts, Dockerfiles, GitHub CI, Ansible via LSP |
 | :-: | 
-| ![](assets/lsp-demo.gif) |
+| ![The language server reports shell diagnostics inside an editor.](assets/lsp-demo.gif) |
 
 LSP has completions and formatter built-in. It also provides hover diagnostics
 and symbolizes all source files.
 
 | Koshka helps writing code |
 | :-: | 
-| ![](assets/code-demo.gif) |
+| ![The editor offers shell completion and diagnostic help while code is written.](assets/code-demo.gif) |
 
 ### How to use it
 
@@ -126,6 +136,11 @@ similar feature through its `emulate` builtin.
 The default `kosh` mood is a strict superset of Bash with analysis and
 optimization enabled. The other moods are `bash`, `bash-posix`, and `sh`. The
 `bash-posix` mood provides Bash behavior with its POSIX mode enabled.
+
+The default mood deliberately refuses risky code, including valid Bash such as
+`echo $HOME` with an unquoted expansion. Use `kosh --mood bash script.bash` to
+run plain Bash scripts with Koshka's Bash compatibility mood. The compatibility
+claim above describes those compatibility moods.
 
 Before running a command, **Koshka** analyzes and optimizes the complete script.
 
@@ -232,6 +247,20 @@ targets. Osxcross with a macOS SDK builds Darwin arm64 targets. `cosmoc++` build
 the Cosmopolitan modes.
 
 ## Build
+
+Clone the repository with its editor submodule.
+
+```sh
+git clone --recursive https://github.com/fennec-support/kosh.git
+cd kosh
+git switch staging
+```
+
+In an existing checkout, initialize the submodule before building.
+
+```sh
+git submodule update --init --recursive
+```
 
 The `MODE` variable controls the build type.
 
