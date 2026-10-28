@@ -668,6 +668,12 @@ ifeq ($(PGO), generate)
 endif
 
 kosh: dirs
+ifneq ($(NO_TOILETLINE), 1)
+	@test -f toiletline/toiletline.h || { \
+		printf '%s\n' 'The Toiletline submodule is missing. Run git submodule update --init --recursive from the repository root.' >&2; \
+		exit 1; \
+	}
+endif
 	$(MAKE) $(LINKED_OUTPUT_PATH)
 ifneq ($(LINKED_OUTPUT_PATH), $(OUTPUT_PATH))
 	cp $(LINKED_OUTPUT_PATH) $(OUTPUT_PATH)
