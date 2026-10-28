@@ -1482,6 +1482,11 @@ run_as_multicall(StringView           util_name,
 
   ec.is_multicall = true;
 
+  /* the command line is the source of every located diagnostic. */
+  let const command_source = utils::merge_args_to_string(ec.args());
+  let const source_scope =
+      cxt.enter_source_scope(&command_source, String{heap_allocator()});
+
   try {
     if (chosen.has_value()) {
       return run_util(*chosen, ec, cxt, ec.args(), ec.arg_locations());
@@ -1506,7 +1511,7 @@ run_as_multicall(StringView           util_name,
 
     show_message(render_multicall_error(e, message.view(), source.view(), cxt));
 
-    return 1;
+    return static_cast<i32>(e.command_status());
   } catch (const Error &e) {
     show_message(e.to_string());
 

@@ -20,6 +20,11 @@ echo "--- unknown flag on a symlinked utility reports an error, not a crash ---"
 ./tail --bogus
 echo "rc=$?"
 
+echo "--- a missing operand of a symlinked utility is reported at the command ---"
+ln -s "$BIN" cp
+./cp 2>&1
+echo "rc=$?"
+
 echo "--- a symlinked utility reports the kosh version on --version ---"
 ./tail --version | grep -c "Koshka Shell"
 
