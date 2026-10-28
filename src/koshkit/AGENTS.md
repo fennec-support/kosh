@@ -33,7 +33,7 @@ discovers it automatically.
 
 An alias such as egrep is one entry in `KOSHKIT_ALIAS_ENTRIES` with its utility
 kind and implied argument. It joins the koshkit completion data and the bundled
-list in `docs/kosh.1` like a utility.
+list in `docs/kosh_1.md` like a utility.
 
 Do not invoke a host utility to implement bundled behavior. goodcore is the
 known exception: it runs the host tar and zstd until bundled codecs exist. Do
@@ -51,6 +51,6 @@ boundary. Add cases to that owner. Other
 utilities may appear as setup commands without becoming behavior owners.
 Literal help output has no golden.
 
-A new utility updates the root `AGENTS.md`, `docs/kosh.1`, and
+A new utility updates the root `AGENTS.md`, `docs/kosh_1.md`, and
 `completions/kosh.bash`. Add the utility to the existing koshkit completion
 data. Registered flags feed runtime completion.

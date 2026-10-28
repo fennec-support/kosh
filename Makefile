@@ -76,8 +76,6 @@ refill_tests: kosh
 	echo Refilling tests...
 	$(MAKE) $(AUTO_JOBS) -C test refill
 
-# completions/kosh.bash takes its koshkit utility and flag lists from a
-# release build.
 completions:
 	echo Generating completions...
 	$(MAKE) $(AUTO_JOBS) -C src MODE=rel kosh
@@ -85,8 +83,6 @@ completions:
 		> completions/kosh.bash.new
 	mv completions/kosh.bash.new completions/kosh.bash
 
-# pgo trains an instrumented release build on the benchmark workloads and
-# builds ./kosh with the merged profile.
 pgo:
 	echo Building a profile-guided release...
 	rm -f pgo/profraw/*.profraw
@@ -97,8 +93,6 @@ pgo:
 	$(MAKE) $(AUTO_JOBS) -C src MODE=rel \
 		PGO_PROFILE=$(abspath pgo/kosh.profdata) kosh
 
-# fuzz builds the libFuzzer harnesses in test/fuzz with ASan and UBSan and
-# runs each for FUZZ_SECONDS, keeping its corpus under fuzz/corpus.
 FUZZ_SECONDS ?= 60
 
 fuzz:
@@ -113,6 +107,24 @@ fuzz:
 			"fuzz/corpus/$$name" || exit 1; \
 	done
 
+# docs renders each docs/NAME_SECTION.md into man/NAME.SECTION with pandoc.
+PANDOC ?= pandoc
+
+docs:
+	echo Generating manual pages...
+	mkdir -p man
+	for page in docs/*_[0-9].md; do \
+		base=$$(basename "$$page" .md); \
+		section=$${base##*_}; \
+		name=$$(printf '%s' "$${base%_*}" | tr _ -); \
+		title=$$(printf '%s' "$$name" | tr a-z A-Z); \
+		$(PANDOC) -f gfm-tex_math_dollars-tex_math_gfm -t man -s \
+			--lua-filter scripts/md2man.lua -M title="$$title" \
+			-M section="$$section" -M name="$$name" \
+			-M header="Koshka Manual" -M footer=kosh \
+			-o "man/$$name.$$section" "$$page" || exit 1; \
+	done
+
 clean:
 	echo Cleaning up...
 	$(MAKE) $(AUTO_JOBS) -C src clean
@@ -120,4 +132,4 @@ clean:
 	$(MAKE) -C src/toiletline clean
 
 .PHONY: all kosh install uninstall tidy fmt toiletline_test test bench \
-	refill_tests completions pgo fuzz clean
+	refill_tests completions pgo fuzz docs clean

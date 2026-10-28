@@ -83,7 +83,7 @@ and Bash-compatible flags.
 **`-M, --mood=NAME`**
 
 Without this option, the
-first line of a script file operand selects the mood. A bash shebang selects
+first line of a script file operand selects the mood. A Bash shebang selects
 `bash`, an sh or dash shebang selects `sh`, and a kosh shebang selects `kosh`,
 directly or through `env`. Any other interpreter, or no shebang, leaves the
 `kosh` mood.

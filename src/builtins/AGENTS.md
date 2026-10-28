@@ -42,6 +42,6 @@ requires a real executable boundary. Add cases to that owner. Compatibility,
 completion, and terminal tests cover only contracts owned by those harnesses.
 Literal help output has no golden.
 
-A new builtin updates the root `AGENTS.md`, `docs/kosh.1`, and
+A new builtin updates the root `AGENTS.md`, `docs/kosh_1.md`, and
 `completions/kosh.bash`. Registered flags feed runtime completion. Custom
 completion policy belongs in the existing completion tables.

@@ -47,7 +47,7 @@ already on `PATH`, the installer updates that location. The `--install-path`
 option, or `-InstallPath` in PowerShell, selects another directory.
 
 To keep your Bash startup files while you try Koshka, see
-[Switching from bash](docs/kosh_switching.md).
+[Switching from Bash](docs/kosh_switching_5.md).
 
 To set up the universal language server and formatter in an editor, follow its
 guide:
@@ -124,10 +124,10 @@ with every setting and a comment describing each one.
 
 ### Interactive shell and command interpreter
 
-For more details, see the [manual page](docs/kosh.1).
+For more details, see the [manual](docs/kosh_1.md).
 
 ```bash
-$ man docs/kosh.1
+$ man man/kosh.1
 ```
 
 **Koshka** runs with four moods across three shell identities. Zsh provides a

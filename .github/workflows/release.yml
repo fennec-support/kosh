@@ -159,8 +159,8 @@ jobs:
 
       - name: Add the manual pages and completion
         run: |
-          zstd -19 -q -o dist/kosh.1.zst docs/kosh.1
-          zstd -19 -q -o dist/kosh.5.zst docs/kosh.5
+          zstd -19 -q -o dist/kosh.1.zst man/kosh.1
+          zstd -19 -q -o dist/kosh.5.zst man/kosh.5
           install -m 644 completions/kosh.bash dist/kosh.bash
 
       - name: Write the checksum list
@@ -234,7 +234,7 @@ jobs:
           mkdir -p image/linux-amd64 image/linux-arm64
           install -m 755 "dist/kosh-linux-amd64-$VERSION" image/linux-amd64/kosh
           install -m 755 "dist/kosh-linux-aarch64-$VERSION" image/linux-arm64/kosh
-          install -m 644 docs/kosh.1 docs/kosh.5 completions/kosh.bash image/
+          install -m 644 man/kosh.1 man/kosh.5 completions/kosh.bash image/
 
       - name: Choose the image tags
         id: tags

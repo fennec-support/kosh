@@ -185,7 +185,7 @@ aborts.
 
 Shell commands are also extracted from CI configurations, Ansible, Dockerfile,
 Compose, Markdown, Makefile, justfile, Kubernetes, and similar hosts, and only
-the extracted sh, bash, or kosh source is checked. A file counts as shell source
+the extracted sh, Bash, or kosh source is checked. A file counts as shell source
 by its extension or shebang, and a file in no recognized format fails with
 status 1 and a list of the formats.
 
@@ -4330,8 +4330,13 @@ List processes with `-a`, `-u`, and `-x`; `-w` is accepted.
 
 **`readlink`**
 
-Print the target of each symbolic link; a non-link is reported with status 1.
-`-n` omits the newline for a single file.
+Print the target of each symbolic link. A non-link is reported with status 1.
+`-f`, `--canonicalize`, `-e`, `--canonicalize-existing`, and `-m`,
+`--canonicalize-missing` print the canonical absolute path with every link
+resolved, as `realpath` prints it without a flag, with `-e`, and with `-m`. The
+last of the three wins. `-n`, `--no-newline` omits the newline for a single
+file. `-q`, `--quiet`, `-s`, and `--silent` suppress the error messages. `-z`,
+`--zero` ends each entry with a NUL byte.
 
 #### `realpath` <a id="utility-realpath"></a>
 

@@ -3,12 +3,16 @@
 Koshka is a fast C and C++ shell. The interactive editor is vendored under
 src/toiletline.
 
-README.md is not modified without explicit approval. Invocation, options, moods,
+README.md is not modified without explicit approval. The Markdown manuals in
+docs/ are the only source of the documentation. Invocation, options, moods,
 syntax, runtime behavior, builtins, diagnostics, environment variables, startup,
-and runtime files belong in docs/kosh.1. Startup file identity and format belong
-in docs/kosh.5. New or renamed flags, moods, and builtins update docs/kosh.1 and
-completions/kosh.bash. Configuration changes update docs/kosh.5. Architecture
-and workflow changes update this file.
+and runtime files belong in docs/kosh_1.md. Startup file identity and format
+belong in docs/kosh_5.md. New or renamed flags, moods, and builtins update
+docs/kosh_1.md and completions/kosh.bash. Configuration changes update
+docs/kosh_5.md. make docs renders each docs/NAME_SECTION.md into
+man/NAME.SECTION through pandoc and scripts/md2man.lua, and the rendered pages
+are committed with the Markdown change. Architecture and workflow changes
+update this file.
 
 ## Writing
 

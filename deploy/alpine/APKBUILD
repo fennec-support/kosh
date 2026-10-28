@@ -50,8 +50,9 @@ check() {
 
 package() {
   install -Dm755 kosh "$pkgdir/usr/bin/kosh"
-  install -Dm644 docs/kosh.1 "$pkgdir/usr/share/man/man1/kosh.1"
-  install -Dm644 docs/kosh.5 "$pkgdir/usr/share/man/man5/kosh.5"
+  install -Dm644 man/kosh.1 "$pkgdir/usr/share/man/man1/kosh.1"
+  install -Dm644 man/kosh.5 "$pkgdir/usr/share/man/man5/kosh.5"
+  install -Dm644 man/kosh-switching.5 "$pkgdir/usr/share/man/man5/kosh-switching.5"
   install -Dm644 completions/kosh.bash "$pkgdir/usr/share/bash-completion/completions/kosh"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 src/toiletline/LICENSE.txt \
