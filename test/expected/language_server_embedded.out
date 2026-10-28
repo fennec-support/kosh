@@ -14,6 +14,7 @@ format-preserves-host=ok
 hover=ok
 definition=ok
 completion=ok
+completion-at-block-end=ok
 rename=ok
 rename-host=none
 code-actions=ok

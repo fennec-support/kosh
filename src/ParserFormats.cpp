@@ -463,6 +463,11 @@ parser_format_add_fragment(parsed_format_document &document,
   fragment.host_start    = host_start;
   fragment.host_end      = host_end;
   fragment.indent_length = indent_length;
+  /* a fragment that runs to the end of its line keeps the caret at that end,
+     where typing extends it. one that ends at a closing quote does not. */
+  fragment.should_select_end = host_end == host_source.length ||
+                               host_source[host_end] == '\n' ||
+                               host_source[host_end] == '\r';
   document.fragments.push(steal(fragment));
 }
 

@@ -22,6 +22,8 @@ frame()
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/README.md","languageId":"markdown","version":1,"text":"```bash\nmissing_lsp_executable\n```\n"}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/.devcontainer/devcontainer.json","languageId":"json","version":1,"text":"{\n\"postCreateCommand\":\"missing_lsp_dev_target\",\n\"waitFor\":\"missing_lsp_dev_wait\",\n\"initializeCommand\":\"missing_lsp_dev_host\"\n}"}}}'
   frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/custom.compose","languageId":"dockercompose","version":1,"text":"services:\n  app:\n    environment: $HOST_COMPOSE\n    command: echo $EMBEDDED_COMPOSE\n"}}}'
+  frame '{"jsonrpc":"2.0","method":"textDocument/didOpen","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/append.yml","languageId":"yaml","version":1,"text":"jobs:\n  check:\n    steps:\n      - run: |\n          value=ready\n          prin\n"}}}'
+  frame '{"jsonrpc":"2.0","id":11,"method":"textDocument/completion","params":{"textDocument":{"uri":"file:///tmp/.github/workflows/append.yml"},"position":{"line":5,"character":14}}}'
   frame '{"jsonrpc":"2.0","id":7,"method":"shutdown","params":null}'
   frame '{"jsonrpc":"2.0","method":"exit"}'
 } > "$directory/input"
@@ -93,6 +95,10 @@ esac
 case $output in
 *'"id":8,"result":['*'"label":"printf"'*) printf 'completion=ok\n' ;;
 *) printf 'completion=missing\n' ;;
+esac
+case $output in
+*'"id":11,"result":['*'"label":"printf"'*) printf 'completion-at-block-end=ok\n' ;;
+*) printf 'completion-at-block-end=missing\n' ;;
 esac
 case $output in
 *'"id":9,"result":'*'"newText":"renamed"'*) printf 'rename=ok\n' ;;
