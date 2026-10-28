@@ -846,6 +846,29 @@ public:
     while (read_more()) {}
   }
 
+  /* drops the first count lines and their bytes, so a copy that has written
+     them holds only the lines after them. */
+  fn
+  release_lines(usize count) throws -> void
+  {
+    let const cut =
+        count < m_lines.count() ? m_lines[count].start : m_line_start;
+    let bytes = String{heap_allocator(), m_bytes.view().substring(cut)};
+    let lines = ArrayList<pager_line>{heap_allocator()};
+
+    lines.reserve(m_lines.count() - count);
+    for (usize line_index = count; line_index < m_lines.count(); line_index++) {
+      let line = m_lines[line_index];
+
+      line.start -= cut;
+      lines.push(line);
+    }
+
+    m_bytes = steal(bytes);
+    m_lines = steal(lines);
+    m_line_start -= cut;
+  }
+
   pure fn
   get_line(usize line_index) const wontthrow -> const pager_line &
   {
@@ -2011,11 +2034,11 @@ copy_pager_sources(const ExecContext       &ec,
     return status;
   }
 
-  /* a copy keeps every line, so it reads without the limit of the pager. */
+  /* a copy writes and releases the lines as it reads them, so it has no limit
+     on the input size. A pattern with no match keeps every line until the
+     end of the input. */
   let text = PagerText{sources, options.should_copy_headers,
                        options.should_squeeze, SIZE_MAX};
-
-  text.load_all();
 
   usize first_line = text.find_line_number(options.first_line_number);
 
@@ -2038,14 +2061,18 @@ copy_pager_sources(const ExecContext       &ec,
 
   let output = String{heap_allocator()};
 
-  for (usize line_index = first_line; line_index < text.get_line_count();
-       line_index++)
-  {
+  usize line_index = first_line;
+
+  while (text.has_line(line_index) && os::INTERRUPT_REQUESTED == 0) {
     output += text.get_line_text(line_index);
     if (text.get_line(line_index).is_terminated) output += '\n';
+
+    line_index++;
     if (output.length() >= PAGER_READ_BYTE_COUNT) {
       ec.print_to_stdout(output.view());
       output.clear();
+      text.release_lines(line_index);
+      line_index = 0;
     }
   }
 

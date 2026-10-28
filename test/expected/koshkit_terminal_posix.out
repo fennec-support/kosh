@@ -64,7 +64,9 @@ less-flags=0
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 first
 less-missing=1
-54:14: error: Koshkit `less`: Unknown flag '-x'.
-    54 |  koshkit less -x one.txt
+y
+y
+56:14: error: Koshkit `less`: Unknown flag '-x'.
+    56 |  koshkit less -x one.txt
        |               ^~
 note: Use `--` before an operand that begins with a dash.
