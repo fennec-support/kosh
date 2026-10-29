@@ -52,5 +52,5 @@ echo "less-flags=$?"
 koshkit less missing.txt one.txt
 echo "less-missing=$?"
 # a squeezed copy writes lines as it reads them, so endless input still flows.
-koshkit timeout 5 koshkit yes | koshkit more -s | koshkit head -n 2
+koshkit timeout 5 "$KOSH" -c 'koshkit yes' | koshkit more -s | koshkit head -n 2
 koshkit less -x one.txt

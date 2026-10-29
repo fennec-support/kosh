@@ -74,7 +74,9 @@ echo "== a local assimilate on Windows installs kosh.exe and utility links:"
 if [ "${OS-}" = Windows_NT ]; then
   windows_install=$d/windows-install
   mkdir -p "$windows_install"
-  "$BIN" -c 'assimilate -y --link-mood=sh --install-directory="$1"' _ \
+  # a host cat on PATH would shadow the link, so PATH holds only the target.
+  PATH=$windows_install "$BIN" \
+    -c 'assimilate -y --link-mood=sh --install-directory="$1"' _ \
     "$windows_install" >/dev/null 2>&1
   [ -f "$windows_install/kosh.exe" ] && echo installed
   printf 'x\n' | "$windows_install/cat.exe" && [ -f "$windows_install/sh.exe" ] &&
