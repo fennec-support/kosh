@@ -1,72 +1,66 @@
-# Switching from Bash
+# Migrate from Bash to Koshka
 
-2026-10-28
+> Migrate an interactive shell environment and login shell from Bash to Koshka[cite: 1].
 
-## Name
+2026-10-28[cite: 1]
 
-kosh-switching - switch from Bash to Koshka
+Prerequisites - An installed `kosh` binary, an active Bash session, and a familiarity with [kosh(1) invocation](kosh_1.md) and [kosh(5) configuration](kosh_5.md)[cite: 1].
 
-## Description
+Koshka is a command shell that controls execution behavior and startup file loading through operational modes called moods[cite: 1]. The default `kosh` mood validates shell syntax prior to execution and rejects scripts containing errors[cite: 1]. The `bash` mood provides Bash compatibility for startup configurations and legacy scripts[cite: 1]. Keep the current Bash session open in a separate terminal window while testing startup files to prevent terminal lockout[cite: 1].
 
-Koshka's default `kosh` mood checks shell code before it runs and refuses code
-with errors. Try Koshka in a new terminal before changing your login shell.
-Keep your current Bash session open while you check your startup files.
+## Core primitives
 
-## Keep your Bash setup
+| Primitive | Role in migration |
+| --- | --- |
+| `kosh` mood | Default strict execution mode and native startup sequence[cite: 1] |
+| `bash` mood | Compatibility mode for Bash scripts and Bash initialization files[cite: 1] |
+| `rc.kosh` | Native Koshka user initialization script[cite: 1] |
+| `koshconf` | Configuration utility used to persist startup settings[cite: 1] |
 
-Start an interactive Koshka session with both startup moods.
+## Load existing Bash startup files in Koshka
+
+Launch an interactive Koshka session with both the `kosh` and `bash` startup moods to retain existing Bash aliases, functions, and environment variables[cite: 1].
 
 ```sh
 kosh -L kosh,bash
 ```
 
-Koshka reads its own startup script and then your Bash startup files. In an
-interactive session that is not a login shell, the Bash mood reads the system
-Bash startup file and `~/.bashrc`. A login shell reads `/etc/profile` and the
-first available Bash login profile. That profile must source `~/.bashrc` if
-you want its aliases and functions in a login session.
+When `-L kosh,bash` is passed, Koshka executes the `kosh` startup sequence first and the `bash` startup sequence second[cite: 1].
 
-The default `kosh` startup mood reads
-`$XDG_CONFIG_HOME/kosh/scripts/rc.kosh`, or
-`~/.config/kosh/scripts/rc.kosh` when `XDG_CONFIG_HOME` is unset or is not an
-absolute path. On Unix, the superuser skips this user configuration directory.
-The default startup mood does not automatically read `~/.bashrc`.
+| Session type | Mood | Initialization files read | Constraints and defaults |
+| --- | --- | --- | --- |
+| Interactive | `kosh` (default) | `$XDG_CONFIG_HOME/kosh/scripts/rc.kosh`[cite: 1] | Falls back to `~/.config/kosh/scripts/rc.kosh` if `XDG_CONFIG_HOME` is unset or relative[cite: 1]. Skipped by the Unix superuser[cite: 1]. Does not read `~/.bashrc`[cite: 1]. |
+| Interactive non-login | `bash` | System Bash startup file, then `~/.bashrc`[cite: 1] | Requires `-L bash` or `init_moods` configuration[cite: 1]. |
+| Interactive login | `bash` | `/etc/profile`, then the first available Bash login profile[cite: 1] | The login profile must explicitly source `~/.bashrc` to load aliases and functions[cite: 1]. |
 
-To keep both startup moods for future sessions, run this command inside Koshka.
+Persist the combined startup sequence across future sessions by setting `init_moods` inside an active Koshka session[cite: 1].
 
 ```sh
 koshconf set init_moods kosh,bash --persist
 ```
 
-If you used `koshconf create kosh`, inspect the generated `rc.kosh` first.
-That preset already sources Bash startup files. Choose one method to avoid
-running your Bash startup files twice.
+Inspect `rc.kosh` before persisting `init_moods` if the configuration was generated with `koshconf create kosh`[cite: 1]. That preset already sources Bash startup files directly inside `rc.kosh`[cite: 1]. Enable only one loading mechanism so the Bash startup files are not executed twice[cite: 1].
 
-## Run Bash scripts
+## Execute Bash scripts that fail strict validation
 
-Use the Bash mood when the default strict mood refuses a script that you want
-to run with Bash behavior.
+Run a Bash script under the `bash` mood when the default `kosh` mood rejects its syntax[cite: 1].
 
 ```sh
 kosh --mood bash script.bash
 ```
 
-This selects Koshka's Bash compatibility mood. You can also keep Bash installed
-and run a script with `bash script.bash`. Existing `#!/bin/bash` shebangs still
-select Bash.
+The `--mood bash` flag switches the parser to Bash compatibility mode for that execution[cite: 1]. If the `bash` binary remains installed on the host, `bash script.bash` and scripts with a `#!/bin/bash` shebang continue to execute through the system Bash interpreter[cite: 1].
 
-## Change your login shell
+## Set Koshka as the default login shell
 
-On a Unix system with `chsh`, first find the installed binary and check that
-you can run it.
+1. Verify that the `kosh` binary is reachable in `PATH` and executes cleanly from the current Bash session[cite: 1].
 
 ```sh
 command -v kosh
 kosh --version
 ```
 
-Add that absolute path to `/etc/shells` if it is not already listed. Run these
-commands from your current Bash session.
+2. Register the absolute path of `kosh` in `/etc/shells` and update the user login shell with `chsh` on Unix systems[cite: 1].
 
 ```sh
 kosh_path="$(command -v kosh)"
@@ -74,41 +68,35 @@ grep -Fx "$kosh_path" /etc/shells || printf '%s\n' "$kosh_path" | sudo tee -a /e
 chsh -s "$(command -v kosh)"
 ```
 
-Sign out and sign in again to use the new login shell. A terminal application
-with its own shell command may also need its settings updated. Windows does
-not use `/etc/shells` or `chsh`. Set Koshka as a terminal profile there.
+3. Sign out of the system session and sign back in to activate the new login shell[cite: 1]. If a terminal emulator overrides the system login shell with a custom command, update the profile settings inside that terminal application[cite: 1]. On Windows, `/etc/shells` and `chsh` are not used[cite: 1]. Configure Koshka directly as a terminal profile on Windows[cite: 1].
 
-## Switch back
+## Revert the login shell to Bash
 
-Keep Bash installed until you have finished switching. From a Bash session,
-check that its absolute path is listed in `/etc/shells`, then select it.
+1. Keep the `bash` binary installed on the system until migration testing is complete[cite: 1].
+2. Confirm from an active Bash session that the absolute path of `bash` is present in `/etc/shells`, then assign `bash` as the login shell[cite: 1].
 
 ```sh
 chsh -s "$(command -v bash)"
 ```
 
-Sign out and sign in again. Restore any terminal profile that starts Koshka
-directly before removing the binary.
+3. Sign out and sign back in to restore Bash as the active login shell[cite: 1].
+4. Remove any direct Koshka startup commands from terminal emulator profiles before deleting the `kosh` binary[cite: 1].
 
-## Remove Koshka
+## Uninstall the Koshka binary
 
-If you installed Koshka with a package manager, remove it with that package
-manager. For example, a Homebrew installation can be removed with
-`brew uninstall kosh`.
+1. Revert the system login shell and terminal emulator profiles to another shell before removing Koshka[cite: 1].
+2. Remove the binary using the installation method that matches the host environment[cite: 1].
 
-The standalone Unix installer normally puts the binary in `~/.local/bin`.
-When run as root, it uses `/usr/local/bin`. A custom installation may use a
-different directory. Check `command -v kosh` before removing the installed
-binary. Remove its entry from `/etc/shells` after selecting another login
-shell.
+| Installation method | Default binary path | Removal procedure |
+| --- | --- | --- |
+| Package manager | Managed by package manager | Run the package manager removal command, such as `brew uninstall kosh` for Homebrew[cite: 1]. |
+| Standalone Unix installer (user) | `~/.local/bin/kosh`[cite: 1] | Verify the exact path with `command -v kosh`, delete the binary, and remove its line from `/etc/shells`[cite: 1]. |
+| Standalone Unix installer (root) | `/usr/local/bin/kosh`[cite: 1] | Verify the exact path with `command -v kosh`, delete the binary, and remove its line from `/etc/shells`[cite: 1]. |
+| Windows installer | `%LOCALAPPDATA%\kosh\bin\kosh.exe`[cite: 1] | Close all Koshka sessions, delete `kosh.exe`, and remove `%LOCALAPPDATA%\kosh\bin` from the user `PATH`[cite: 1]. |
 
-The Windows installer normally puts `kosh.exe` in
-`%LOCALAPPDATA%\kosh\bin`. Close Koshka sessions, remove the installed binary,
-and remove that directory from your user `PATH` if you added it during setup.
-Keep any configuration or history files that you want to reuse.
+3. Retain configuration and command history files if a future reinstallation is planned[cite: 1].
 
-## See also
+## Related reference manuals
 
-The [kosh(1) shell reference](kosh_1.md) covers shell commands and invocation.
-The [kosh(5) configuration manual](kosh_5.md) covers options and startup
-settings.
+* Read the [kosh(1) shell reference](kosh_1.md) for command-line flags and invocation syntax[cite: 1].
+* Read the [kosh(5) configuration manual](kosh_5.md) for mood options and startup file specifications[cite: 1].

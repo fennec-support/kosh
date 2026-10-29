@@ -19,8 +19,7 @@
 
 ## Install
 
-**Koshka** officially supports `amd64` Linux and Windows, and `aarch64` macOS
-and Linux.
+Built for `amd64` (Linux, Windows) and `aarch64` (macOS, Linux).
 
 ```sh
 # on Linux, macOS, or any system with a POSIX shell:
@@ -37,20 +36,14 @@ irm "https://fennec.support/kosh/install" | iex
 docker run --rm -it "ghcr.io/toiletbril/kosh"
 ```
 
-Binaries and their checksums used are on the
-[Releases](https://github.com/fennec-support/kosh/releases) page. To build from
-source, see [Development](#development).
+Prebuilt binaries and checksums can be found in the
+[Releases](https://github.com/fennec-support/kosh/releases) page. For source
+builds, jump to [Development](#development).
 
-The standalone installer normally uses `~/.local/bin`, or `/usr/local/bin`
-when run as root. On Windows it uses `%LOCALAPPDATA%\kosh\bin`. If Koshka is
-already on `PATH`, the installer updates that location. The `--install-path`
-option, or `-InstallPath` in PowerShell, selects another directory.
+Existing Bash startup configs will keep working untouched.
+See [Switching from Bash](docs/kosh_switching_5.md).
 
-To keep your Bash startup files while you try Koshka, see
-[Switching from Bash](docs/kosh_switching_5.md).
-
-To set up the universal language server and formatter in an editor, follow its
-guide:
+Editor plugins for real-time linting and formatting:
 
 - [VS Code](https://github.com/fennec-support/kosh-vscode)
 - [Zed](https://github.com/fennec-support/kosh-zed)
@@ -58,149 +51,140 @@ guide:
 
 ## Quick look
 
-| Koshka has the best interactive tab selector |
+| Your shell is now an IDE |
 | :-: |
-| ![The interactive completion selector narrows and selects command candidates.](assets/selector-demo.gif) |
+| ![A showcase on interactive completion and IDE-like features.](assets/selector-demo.gif) |
 
 **Koshka** is the Russian word for a cat.
 
-**Koshka** is an absurdly fast and tiny cross-platform interpreter, an
-interactive shell, a formatter, and a language server. Koshka is fully
-compatible with Bash 5.3 and Dash.
+Packed into a single tiny cross-platform binary are a script interpreter, an
+interactive shell, a linter, a formatter, and an LSP server. Scripts written
+for Bash 5.3 or Dash will run completely unchanged.
 
-Koshka includes about 300 built-in ShellCheck diagnostics. It is usually five
-times faster than Bash and more than 100 times faster than ShellCheck.
-Run `make MODE=rel bench` to reproduce the benchmark workloads on your system.
+Expect roughly 5x the execution speed of Bash and over 100x the linting speed
+of ShellCheck, with 300+ ShellCheck-style diagnostics baked straight into the
+binary.
 
-| Koshka analyzes a 400,000-line shell script in about 1,5 seconds |
-| :-: | 
+| 400,000 lines of shell checked in about a second and a half |
+| :-: |
 | ![Koshka checks a large shell script and reports diagnostics.](assets/lint-demo.gif) |
 
-Besides shell scripts, Koshka is able to analyze common supported formats for
-mistakes in Bash code, including the following:
+Shell code rarely stays confined to `.sh` files. Koshka extracts and checks
+embedded Bash and POSIX snippets straight out of the following formats.
 
-- GitHub Actions, Gitea Actions, Forgejo Actions, and GitLab CI.
-- CircleCI, Azure Pipelines, Bitbucket Pipelines, Buildkite, Travis CI, Google
-  Cloud Build, Drone, and Woodpecker.
-- Ansible, Dockerfile, Containerfile, Compose, and Kubernetes files.
-- Makefiles, Justfiles, Taskfiles, and RPM spec files.
-- Markdown files, `package.json` scripts, VS Code tasks, and Dev Container
-  files.
+- CI/CD. GitHub Actions, GitLab CI, Gitea/Forgejo Actions, CircleCI, Azure
+  Pipelines, Bitbucket Pipelines, Buildkite, Travis CI, Google Cloud Build,
+  Drone, and Woodpecker.
+- Infra & Containers. Ansible playbooks, Dockerfiles, Containerfiles,
+  Compose files, and Kubernetes manifests.
+- Build systems. Makefiles, Justfiles, Taskfiles, and RPM `.spec` files.
+- Docs & Tooling. Markdown code blocks, `package.json` scripts, VS Code
+  tasks, and Dev Container configs.
 
-| Koshka provides instant shell diagnostics for Scripts, Dockerfiles, GitHub CI, Ansible via LSP |
-| :-: | 
+| Diagnostics appear while typing in scripts, Dockerfiles, CI files, and Ansible playbooks |
+| :-: |
 | ![The language server reports shell diagnostics inside an editor.](assets/lsp-demo.gif) |
 
-LSP has completions and formatter built-in. It also provides hover diagnostics
-and symbolizes all source files.
+Hook up the language server for live completions, auto-formatting, document
+outlines, and full diagnostic explanations on hover.
 
-| Koshka helps writing code |
-| :-: | 
-| ![The editor offers shell completion and diagnostic help while code is written.](assets/code-demo.gif) |
+| Completion and diagnostics appear while writing code |
+| :-: |
+| ![The editor offers shell completion and diagnostic help while as you writte code.](assets/code-demo.gif) |
 
 ### How to use it
 
 `kosh` is the **Koshka** binary.
 
-**Koshka** aims to be a complete, fast, portable replacement for ShellCheck and
-Bash. Linux, macOS, and Windows are first-tier support platforms with
-equivalent behavior on all three systems.
+Designed from the ground up to replace both ShellCheck and Bash, Koshka
+treats Linux, macOS, and Windows as first-tier platforms with identical
+behavior across all three.
 
-The shell is designed to work sensibly without any configuration. The Linux
-binary is static and does not use the C++ standard library. **Koshka** can use
-its own utilities when coreutils are unavailable. 
-
-Settings live in `/etc/kosh.conf` and `~/.config/kosh/kosh.conf`, and the
-`koshconf` builtin loads and changes them. `koshconf create kosh` writes a file
-with every setting and a comment describing each one.
+Configuration is in `/etc/kosh.conf` and `~/.config/kosh/kosh.conf`, managed
+at runtime through the `koshconf` builtin. Running `koshconf create kosh` will
+generate a fresh config file documenting every available setting.
 
 ### Shell linter, formatter, and language server
 
-| Flag | Description |
+Validate and format scripts safely before execution. None of these flags will
+ever execute the target code.
+
+| Flag | What happens |
 | :-- | :-- |
-| `kosh --lint` | `kosh --lint` checks complete Bash and POSIX shell syntax and about 300 built-in ShellCheck and native diagnostics. It takes shell source from standard input, `-c` command strings, or multiple files.<br><br>In host files, the linter analyzes only embedded `sh`, `bash`, or `kosh` regions while rejecting unsupported files.<br><br>ShellCheck disable comments accept diagnostic numbers and Koshka diagnostic slugs. With files, `--apply` writes non-conflicting safe fixes and reports the remaining diagnostics. |
-| `kosh --format` | `kosh --format` formats standard input or one given file without running it. It uses two-space indentation and wraps at safe token boundaries within 80 columns. Use `--apply` to overwrite files with new formatting.<br><br>The formatting style cannot be configured. |
-| `kosh --as-language-server` | `kosh --as-language-server` communicates over standard input and output. It provides diagnostics, quick fixes, completion, navigation, command help, semantic tokens, a document outline, and rename support.<br><br>The language server recognizes the same embedded shell regions as the linter. The editor's host language service handles the surrounding syntax.<br><br>To set up the language server in your editor, see [Install](#install). |
+| `kosh --lint` | Validates full Bash and POSIX syntax against ~300 built-in ShellCheck and native rules. Accepts shell source via `stdin`, `-c` command strings, or multiple file paths.<br><br>When pointed at host files (YAML, Dockerfiles, Markdown), the linter isolates and checks only the embedded `sh`, `bash`, or `kosh` regions while rejecting unsupported formats.<br><br>Honors `# shellcheck disable` comments using either SC numbers or Koshka diagnostic slugs. Passing `--apply` will automatically write safe, non-conflicting fixes to disk and report any remaining issues. |
+| `kosh --format` | Formats `stdin` or a single file using two-space indentation and safe token wrapping at 80 columns. Pass `--apply` to overwrite files in place.<br><br>Formatting style is intentionally locked; no config files or style bikeshedding. |
+| `kosh --as-language-server` | Speaks LSP over `stdio`, delivering diagnostics, quick fixes, autocomplete, jump-to-definition, command help, semantic tokens, document outlines, and symbol renaming.<br><br>Detects the exact same embedded shell regions as the linter, leaving the surrounding syntax to the host editor's language services.<br><br>See [Install](#install) for editor plugins. |
 
 ### Interactive shell and command interpreter
 
-For more details, see the [manual](docs/kosh_1.md).
+Full documentation lives in the [manual](docs/kosh_1.md), or locally via `man`.
 
 ```bash
 $ man man/kosh.1
 ```
 
-**Koshka** runs with four moods across three shell identities. Zsh provides a
-similar feature through its `emulate` builtin.
+Koshka operates across four "moods" and three shell identities (similar to
+Zsh's `emulate` builtin).
 
-The default `kosh` mood is a strict superset of Bash with analysis and
-optimization enabled. The other moods are `bash`, `bash-posix`, and `sh`. The
-`bash-posix` mood provides Bash behavior with its POSIX mode enabled.
+- `kosh` (default). A strict superset of Bash with whole-script static analysis
+  and optimization enabled. Risky constructs that Bash runs without complaint,
+  such as an unquoted `echo $HOME`, will be rejected before anything even runs.
+- `bash`. Drop-in Bash 5.3 compatibility. Run legacy scripts untouched via
+  `kosh --mood bash script.bash`.
+- `bash-posix`. Bash behavior with POSIX mode.
+- `sh`. Strict POSIX / Dash compatibility.
 
-The default mood deliberately refuses risky code, including valid Bash such as
-`echo $HOME` with an unquoted expansion. Use `kosh --mood bash script.bash` to
-run plain Bash scripts with Koshka's Bash compatibility mood. The compatibility
-claim above describes those compatibility moods.
+Before executing any command, Koshka parses, analyzes, and optimizes the
+entire script from top to bottom.
 
-Before running a command, **Koshka** analyzes and optimizes the complete script.
-
-| Flag | Description |
+| Flag / Var | Behavior |
 | :-- | :-- |
-| `--mood`, `-M` | The `--mood` option, or `-M`, selects `kosh`, `bash`, `bash-posix`, or `sh`. The default is `kosh`. A binary symlinked as `sh`, `dash`, or `bash` selects the matching mood and disables diagnostics. `koshconf set mood bash` changes the mood at runtime, and `--persist` also writes it to `kosh.conf`. |
-| `-W`, `-WW`, `-WWW` | In the default mood, `-W` retains the default severities, `-WW` demotes lenient errors to warnings, and `-WWW` also demotes strict errors. In other moods, `-W` enables strict warnings, `-WW` also enables lenient warnings, and `-WWW` also enables annoying warnings. |
-| `-I` | The `-I` option enables mimicry. **Koshka** detects `sh`, `dash`, and `bash` shebangs and runs each script in the matching mood. The current diagnostics setting is preserved. |
-| `--init-moods`, `-L` | The `--init-moods` option, or `-L`, accepts a comma-separated list of moods whose startup files will be used. Its default value is the selected mood. The `init_moods` setting chooses them from `kosh.conf`. |
-| `KOSH_FLAGS` | The `KOSH_FLAGS` environment variable sets default flags. Command-line flags override them.<br><br>When `KOSH_FLAGS` or the command line contains an invalid flag or argument, a login shell skips its startup files and opens a rescue session. |
+| `--mood`, `-M` | Selects `kosh`, `bash`, `bash-posix`, or `sh` (`kosh` by default). Symlinking the binary as `sh`, `dash`, or `bash` will automatically lock in the matching mood and silence diagnostics. Run `koshconf set mood bash` to switch mid-session, adding `--persist` to save the change to `kosh.conf`. |
+| `-W`, `-WW`, `-WWW` | Adjusts diagnostic strictness. In the default `kosh` mood, `-W` keeps default severities, `-WW` demotes lenient errors to warnings, and `-WWW` demotes strict errors as well. In compatibility moods, `-W`, `-WW`, and `-WWW` progressively enable strict, lenient, and annoying warnings. |
+| `-I` | Enables shebang mimicry. Koshka inspects `sh`, `dash`, and `bash` shebangs to run each script in its matching mood while preserving active diagnostic flags. |
+| `--init-moods`, `-L` | Takes a comma-separated list of moods whose startup files should be sourced (defaults to the active mood; configurable via `init_moods` in `kosh.conf`). |
+| `KOSH_FLAGS` | Environment variable for setting default flags (overridden by CLI arguments).<br><br>*Fail-safe.* If `KOSH_FLAGS` or the command line contains a broken flag on a login shell, startup files are bypassed and a rescue session opens immediately to prevent lockouts. |
+
+Most native settings are stored in `/etc/kosh.conf` and
+`~/.config/kosh/kosh.conf`, viewed and changed by the `koshconf` builtin.
 
 ### Builtins and interactive editor
 
-The interactive mode takes inspiration from
-[fish](https://github.com/fish-shell/fish-shell). It provides syntax
-highlighting, word movement, editing controls, UTF-8 support, display-width
-handling for wide characters, multiline editing, history search, and persistent
-history. `kosh` does not use readline, so readline configuration is ignored.
+Ditching `readline` entirely (and ignoring `inputrc` configs), the interactive
+line editor takes inspiration from
+[fish](https://github.com/fish-shell/fish-shell). Typing a command brings up
+live syntax highlighting and inline descriptions, backed by word movement, full
+UTF-8 and wide-character display handling, multiline editing, and persistent
+history search.
 
-**Koshka** has more than 50 builtins, including Bash and POSIX builtins. Every
-builtin supports `--help`. Additional builtins include the following commands.
+Over 50 builtins come compiled in, covering standard Bash and POSIX commands
+(`--help` works on every single one) alongside custom tools rarely seen in
+other shells.
 
-- `z` is a port of [zoxide](https://github.com/ajeetdsouza/zoxide).
-- `bench` provides built-in benchmark infrastructure inspired by Performance
+- `z` is a native port of [zoxide](https://github.com/ajeetdsouza/zoxide)
+  for instant directory jumping.
+- `bench` built-in benchmarking suite inspired by the Performance
   Optimizer Observation Platform ([poop](https://github.com/andrewrk/poop)).
-- `assimilate` provides transactional installation on an SSH target.
-
-**Koshka** also implements arbitrary precision arithmetic, including floats, in
-`calc` builtin and in the default mood.
+- `assimilate` transactionally deploys Koshka onto a remote target over
+  SSH.
+- `calc` is an arbitrary-precision arithmetic (including floats), which also
+  powers math in the default `kosh` mood.
 
 ### Koshkit
 
-The `koshkit` builtin bundles a BusyBox-style set of small core utilities.
+Stuck on a stripped-down container or rescue image missing standard system
+tools? The `koshkit` builtin bundles a BusyBox-style collection of
+POSIX-compliant core utilities into the binary.
 
-- File utilities include `cp`, `mv`, `ln`, and `rm`.
-- Search utilities include `find` and `grep`.
-- Process utilities include `killall`, `pkill`, `ps`, `timeout`, and `nproc`.
-- Minimal implementations of `calc` and `make` are included.
+- Files. `cp`, `mv`, `ln`, `rm`
+- Search. `find`, `grep`
+- Processes. `killall`, `pkill`, `ps`, `timeout`, `nproc`
+- Extras. Minimal implementations of `calc` and `make`
 
-Every implemented utility is at least POSIX compliant.
-
-The `good` and `evil` utilities are listed below. The options of each utility
-are described by its `--help`.
-
-| Utility | Description |
-| :-- | :-- |
-| `evil` | Reports what the machine is and how it is running. |
-| `evildisk` | Reports filesystem capacity and disk health data. |
-| `evilfiles` | Lists the files that running processes hold open. |
-| `evilfs` | Reports the filesystems mounted on the host. |
-| `evilio` | Reports system and process I/O activity. |
-| `eviliso` | Reports namespaces, cgroups, sessions, remote connections, container runtimes, containers, and Kubernetes. |
-| `evillogs` | Reports core dumps and system logs. |
-| `evilnet` | Reports the addresses assigned to each interface. |
-| `evilps` | Shows running processes as a tree. |
-| `evilss` | Reports visible network sockets. |
-| `goodcore` | Captures or packages a core dump with its executable, mapped libraries, and host metadata. |
-| `goodfsw` | Reports changes under the paths it watches. |
-| `goodnode` | Reports inode metadata and a CRC32C checksum. |
-| `goodstat` | Presents file metadata as a readable report. |
+It also comes with special `good`... and `evil`... utilities, to view system
+logs, collect coredump with all of it's dependencies, watch directories for
+changes, inspect inodes and so on. A full list can be listed via `koshkit
+--help`.
 
 # Development
 
