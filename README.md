@@ -36,6 +36,9 @@ irm "https://fennec.support/kosh/install" | iex
 docker run --rm -it "ghcr.io/toiletbril/kosh"
 ```
 
+Online documentation is available at the
+[Official Website](https://fennec.support/kosh/wiki).
+
 Prebuilt binaries and checksums can be found in the
 [Releases](https://github.com/fennec-support/kosh/releases) page. For source
 builds, jump to [Development](#development).
