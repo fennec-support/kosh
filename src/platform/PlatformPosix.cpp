@@ -1126,13 +1126,15 @@ save_descriptor_out_of_reach(i32 shell_fd) wontthrow -> saved_descriptor
 fn
 reopen_terminal_as_stdin() wontthrow -> bool
 {
-  let const tty_fd = open("/dev/tty", O_RDWR | O_CLOEXEC);
+  let const terminal = open_terminal_input();
 
-  if (tty_fd == -1) return false;
+  if (!terminal.has_value()) return false;
+
+  let const tty_fd = *terminal;
 
   LOG(Info, "reopening the controlling terminal onto fd 0");
 
-  let const was_replaced = dup2(tty_fd, STDIN_FILENO) != -1;
+  let const was_replaced = install_descriptor(tty_fd, STDIN_FILENO) != -1;
 
   note_descriptor_rebound();
 

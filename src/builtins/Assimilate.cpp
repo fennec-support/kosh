@@ -550,6 +550,7 @@ install_natively(const ExecContext &ec,
      keeps the file it was made to. */
   let const installed =
       target.exists() ? target.read_entire_file() : Maybe<String>{};
+  i32 status = 0;
 
   if (!installed.has_value() || installed->view() != contents->view()) {
     let stale_links = ArrayList<Path>{cxt.scratch_allocator()};
@@ -592,11 +593,11 @@ install_natively(const ExecContext &ec,
             ec, cxt,
             "Cannot link '" + link.text() +
                 "' to the new kosh: " + os::last_system_error_message());
+        status = 1;
       }
     }
   }
 
-  i32   status     = 0;
   usize mood_start = 0;
 
   while (mood_start < link_moods.length) {
@@ -611,7 +612,9 @@ install_natively(const ExecContext &ec,
     let link = *install_directory;
 
     link.append((mood + ".exe").view());
-    if (link.exists() && link.is_same_file_as(target)) continue;
+    if (link.exists() && link.is_same_file_as(target)) {
+      continue;
+    }
     if (link.exists()) {
       report_soft_builtin_error(ec, cxt,
                                 "'" + link.text() +

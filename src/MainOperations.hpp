@@ -2609,6 +2609,7 @@ source_init_moods(EvalContext                 &context,
                                  shell_option_id::Privileged)))
       {
         source_system_rc(context);
+
         if (let const rcfile = selected_rcfile();
             rcfile.has_value() && !is_login_shell)
         {

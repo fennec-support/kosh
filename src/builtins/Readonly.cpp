@@ -98,7 +98,9 @@ Readonly::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
       /* an array has no readonly form, so it is printed as declare -p
          prints it. */
-      if (is_array && append_variable_declaration(cxt, name, out)) continue;
+      if (is_array && append_variable_declaration(cxt, name, out)) {
+        continue;
+      }
 
       out += is_declare_form ? "declare -r " : "readonly ";
       out += name;

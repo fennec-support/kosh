@@ -1039,13 +1039,12 @@ save_descriptor_out_of_reach(i32 shell_fd) wontthrow -> saved_descriptor
 fn
 reopen_terminal_as_stdin() wontthrow -> bool
 {
-  let const terminal = CreateFileW(L"CONIN$", GENERIC_READ | GENERIC_WRITE,
-                                   FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
-                                   OPEN_EXISTING, 0, nullptr);
-  if (terminal == INVALID_HANDLE_VALUE) return false;
-  defer { CloseHandle(terminal); };
+  let const terminal = open_terminal_input();
 
-  return replace_descriptor(0, terminal) && shell_fd_is_a_tty(0);
+  if (!terminal.has_value()) return false;
+  defer { CloseHandle(*terminal); };
+
+  return replace_descriptor(0, *terminal) && shell_fd_is_a_tty(0);
 }
 
 fn
@@ -1086,8 +1085,9 @@ read_terminal_keys(descriptor terminal, char *buffer, usize size) wontthrow
   constexpr WORD KEY_DOWN      = 0x28;
 
   INPUT_RECORD records[64];
-  DWORD        record_count = 0;
-  usize        length       = 0;
+  DWORD        record_count   = 0;
+  usize        length         = 0;
+  u32          high_surrogate = 0;
 
   if (event_count == 0) return usize{0};
   if (ReadConsoleInputW(terminal, records, event_count < 64 ? event_count : 64,
@@ -1106,6 +1106,9 @@ read_terminal_keys(descriptor terminal, char *buffer, usize size) wontthrow
     const char *sequence  = nullptr;
     char        encoded[4];
     usize       encoded_length = 0;
+    let const   pending_high   = high_surrogate;
+
+    high_surrogate = 0;
 
     if (character == 0) {
       /* a console without virtual terminal input reports the navigation
@@ -1131,6 +1134,20 @@ read_terminal_keys(descriptor terminal, char *buffer, usize size) wontthrow
       encoded[encoded_length++] =
           static_cast<char>(0x80 | ((character >> 6) & 0x3f));
       encoded[encoded_length++] = static_cast<char>(0x80 | (character & 0x3f));
+    } else if (character < 0xdc00) {
+      /* a character above U+FFFF arrives as two key records. */
+      high_surrogate = character;
+      continue;
+    } else if (pending_high != 0) {
+      let const code_point =
+          0x10000 + ((pending_high - 0xd800) << 10) + (character - 0xdc00);
+
+      encoded[encoded_length++] = static_cast<char>(0xf0 | (code_point >> 18));
+      encoded[encoded_length++] =
+          static_cast<char>(0x80 | ((code_point >> 12) & 0x3f));
+      encoded[encoded_length++] =
+          static_cast<char>(0x80 | ((code_point >> 6) & 0x3f));
+      encoded[encoded_length++] = static_cast<char>(0x80 | (code_point & 0x3f));
     } else {
       continue;
     }

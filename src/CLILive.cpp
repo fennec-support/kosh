@@ -933,7 +933,9 @@ public:
     while (has_line(line_index)) {
       let const &line = m_lines[line_index];
 
-      if (line.source_index != 0 || line.line_number >= line_number) break;
+      if (line.source_index != 0 || line.line_number >= line_number) {
+        break;
+      }
 
       line_index++;
     }
@@ -980,7 +982,9 @@ private:
         line_number != 0 &&
         (byte_count == 0 || (byte_count == 1 && m_bytes.view()[start] == '\r'));
 
-    if (m_should_squeeze && is_blank && m_was_previous_blank) return;
+    if (m_should_squeeze && is_blank && m_was_previous_blank) {
+      return;
+    }
 
     m_was_previous_blank = is_blank;
     m_lines.push(pager_line{start, byte_count, line_number, m_source_index,
@@ -1837,7 +1841,9 @@ private:
 
       let const byte = static_cast<u8>(key.character);
 
-      if (byte == '\r' || byte == '\n') break;
+      if (byte == '\r' || byte == '\n') {
+        break;
+      }
       if (byte == 0x15) {
         pattern.clear();
         continue;
@@ -1902,7 +1908,9 @@ private:
       case 'f':
       case 0x06:
       case 0x16:
-        if (is_scrolling && is_at_end()) return pager_action::Quit;
+        if (is_scrolling && is_at_end()) {
+          return pager_action::Quit;
+        }
 
         move_forward(page_row_count);
         break;
@@ -1912,7 +1920,9 @@ private:
       case 'e':
       case 0x05:
       case 0x0e:
-        if (is_scrolling && is_at_end()) return pager_action::Quit;
+        if (is_scrolling && is_at_end()) {
+          return pager_action::Quit;
+        }
 
         move_forward(1);
         break;
@@ -2071,8 +2081,15 @@ copy_pager_sources(const ExecContext       &ec,
     if (output.length() >= PAGER_READ_BYTE_COUNT) {
       ec.print_to_stdout(output.view());
       output.clear();
-      text.release_lines(line_index);
-      line_index = 0;
+
+      /* a release copies the lines that remain, so it waits until the
+         written bytes are at least half of the held bytes. */
+      let const &written = text.get_line(line_index - 1);
+
+      if ((written.start + written.byte_count) * 2 >= text.get_byte_count()) {
+        text.release_lines(line_index);
+        line_index = 0;
+      }
     }
   }
 
