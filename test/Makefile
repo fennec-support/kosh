@@ -196,7 +196,7 @@ export TEST_SHELL := $(SHELL)
 unexport KOSH_IDENTITY KOSH_ANALYSIS KOSH_FLAGS KOSHCONF COLORTERM
 export TERM := xterm
 export XDG_CONFIG_HOME := $(TEST_MKTEMP_DIRECTORY)/no-config-home
-export KOSH_DEBUG_SYSTEM_KOSHCONF := $(TEST_MKTEMP_DIRECTORY)/no-system-kosh.conf
+export KOSH_DEBUG_SYSTEM_KOSHCONF := $(TEST_MKTEMP_DIRECTORY)/no-system-kosh/kosh.conf
 
 export KOSH_HISTORY_FILE := $(CURDIR)/.test_history
 export KOSH_DIRECTORY_HISTORY := $(CURDIR)/.test_directory_history

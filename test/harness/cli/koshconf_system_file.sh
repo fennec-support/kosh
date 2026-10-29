@@ -16,14 +16,15 @@ do_case() {
   file_mode=$1
   directory_mode=$2
   owner=$3
-  echo "== file $file_mode, /etc $directory_mode, owner $owner:"
+  echo "== file $file_mode, /etc/kosh $directory_mode, owner $owner:"
   unshare -rm /bin/sh -c '
     mount -t tmpfs -o mode=755 tmpfs /etc || exit 1
-    cp "$1/kosh.conf" /etc/kosh.conf
-    chmod "$2" /etc/kosh.conf
-    chmod "$3" /etc
+    mkdir /etc/kosh
+    cp "$1/kosh.conf" /etc/kosh/kosh.conf
+    chmod "$2" /etc/kosh/kosh.conf
+    chmod "$3" /etc/kosh
     if [ "$4" = nobody ]; then
-      mount --bind /usr/bin/env /etc/kosh.conf
+      mount --bind /usr/bin/env /etc/kosh/kosh.conf
     fi
     "$5" -c "koshconf get editor.auto_close_brackets_and_quotes"
   ' sh "$work" "$file_mode" "$directory_mode" "$owner" "$BIN" 2>&1

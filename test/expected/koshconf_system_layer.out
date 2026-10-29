@@ -6,3 +6,11 @@ completion.on_tab=on
 editor.hints.show_command_synopsis=off
 on
 on
+== system rc.kosh 644:
+system rc
+user rc
+command
+== system rc.kosh 666:
+warning: Ignoring '/etc/kosh/rc.kosh', which is writable by its group or by others; run `chmod go-w '/etc/kosh/rc.kosh'` to trust it.
+user rc
+command

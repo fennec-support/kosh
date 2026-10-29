@@ -138,8 +138,8 @@
               default = { };
               example = { mood = "bash"; "completion.on_tab" = false; };
               description = ''
-                Settings written to /etc/kosh.conf. A user file and KOSHCONF
-                replace each setting they also set.
+                Settings written to /etc/kosh/kosh.conf. A user file and
+                KOSHCONF replace each setting they also set.
               '';
             };
           };
@@ -149,7 +149,7 @@
               ++ lib.optional (cfg.linkMoods != [ ]) (lib.hiPrio moodLinks);
             environment.shells = [ "${cfg.package}/bin/kosh" ]
               ++ map (mood: "${moodLinks}/bin/${mood}") cfg.linkMoods;
-            environment.etc."kosh.conf" = lib.mkIf (cfg.settings != { }) {
+            environment.etc."kosh/kosh.conf" = lib.mkIf (cfg.settings != { }) {
               text = lib.concatStringsSep "\n"
                 (lib.mapAttrsToList (formatSetting lib) cfg.settings) + "\n";
             };

@@ -66,7 +66,8 @@ If \f[CR]\-\-no\-config\f[R], \f[CR]\-p\f[R]
 settings files and \f[CR]KOSHCONF\f[R] are skipped and removed.
 See Skipping startup files for the full exclusion list.
 .IP "2." 3
-The shell parses the system settings file (\f[CR]/etc/kosh.conf\f[R] or
+The shell parses the system settings file
+(\f[CR]/etc/kosh/kosh.conf\f[R] or
 \f[CR]%ProgramData%\[rs]kosh\[rs]kosh.conf\f[R]) if it passes ownership
 and permission checks.
 .IP "3." 3
@@ -387,7 +388,7 @@ T{
 \f[CR]\-\-init\-file FILE, \-\-rcfile FILE\f[R]
 T}@T{
 Source \f[CR]FILE\f[R] instead of \f[CR]\[ti]/.bashrc\f[R] in an
-interactive non\-login \f[CR]bash\f[R] mood, or instead of
+interactive non\-login \f[CR]bash\f[R] mood, or instead of the user
 \f[CR]rc.kosh\f[R] in an interactive non\-login \f[CR]kosh\f[R] mood.
 T}
 T{
@@ -1931,7 +1932,7 @@ _
 T{
 System
 T}@T{
-\f[CR]/etc/kosh.conf\f[R] (POSIX) or
+\f[CR]/etc/kosh/kosh.conf\f[R] (POSIX) or
 \f[CR]%ProgramData%\[rs]kosh\[rs]kosh.conf\f[R] (Windows)
 T}@T{
 Loaded first, and only when no other user can write it.
@@ -1963,6 +1964,17 @@ Writing preserves symlinks (updating the target), preserves existing
 file permissions (or applies \f[CR]0644\f[R] minus \f[CR]umask\f[R] for
 new files), creates missing parent directories, and backs up the prior
 file to \f[CR]kosh.conf.bak\f[R].
+T}
+T{
+System rc script
+T}@T{
+\f[CR]/etc/kosh/rc.kosh\f[R] (POSIX) or
+\f[CR]%ProgramData%\[rs]kosh\[rs]rc.kosh\f[R] (Windows)
+T}@T{
+Sourced by a login or interactive \f[CR]kosh\f[R] mood before the user
+rc script (see Startup script).
+It passes the same ownership and permission checks as the system
+settings file and is skipped with a warning when they fail.
 T}
 T{
 User rc script
@@ -2069,13 +2081,22 @@ T}
 .TE
 .SH EXECUTE STARTUP LOGIC IN \f[CR]rc.kosh\f[R]
 An interactive or login shell running in the \f[CR]kosh\f[R] mood
-sources \f[CR]$XDG_CONFIG_HOME/kosh/scripts/rc.kosh\f[R] (or
-\f[CR]\[ti]/.config/kosh/scripts/rc.kosh\f[R]) after loading settings
-files.
-The script can test \f[CR]shopt \-q login_shell\f[R] to run login\-only
-commands.
-Koshka does not read a system rc script, \f[CR]/etc/koshrc\f[R], or
-\f[CR]\[ti]/.koshrc\f[R].
+sources the system \f[CR]rc.kosh\f[R] and then the user
+\f[CR]rc.kosh\f[R] after loading settings files.
+The system script is \f[CR]/etc/kosh/rc.kosh\f[R] (or
+\f[CR]%ProgramData%\[rs]kosh\[rs]rc.kosh\f[R]), runs whenever it exists
+and passes the checks of the system settings file, and runs for the
+POSIX superuser too.
+The user script is \f[CR]$XDG_CONFIG_HOME/kosh/scripts/rc.kosh\f[R] (or
+\f[CR]\[ti]/.config/kosh/scripts/rc.kosh\f[R]) and runs second, so its
+commands can override those of the system script.
+Koshka does not read \f[CR]/etc/koshrc\f[R] or \f[CR]\[ti]/.koshrc\f[R].
+.PP
+The \f[CR]kosh\f[R] mood does not distinguish login and non\-login
+shells when it selects startup scripts, because that distinction is
+obsolete.
+A script that still needs it can test \f[CR]shopt \-q login_shell\f[R]
+to run login\-only commands.
 Place procedural shell code in \f[CR]rc.kosh\f[R] and declarative
 options in \f[CR]kosh.conf\f[R].
 See Startup files for invocation flags that replace or skip

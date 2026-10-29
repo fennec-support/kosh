@@ -2494,6 +2494,33 @@ source_bash_login_files(EvalContext &context) throws -> void
   }
 }
 
+/* sources rc.kosh beside the system kosh.conf when it passes the same
+   ownership and permission checks as that file. */
+static fn
+source_system_rc(EvalContext &context) throws -> void
+{
+  let const system_koshconf = find_system_koshconf_path();
+
+  if (!system_koshconf.has_value()) return;
+
+  let path = system_koshconf->parent_or_current();
+
+  path.append("rc.kosh");
+
+  let const system_file = os::read_system_owned_file(path);
+
+  if (!system_file.rejection.is_empty()) {
+    show_message(Warning{system_file.rejection.view()}.to_string());
+  }
+
+  if (!system_file.contents.has_value()) return;
+
+  LOG(Info, "sourcing the system '%s', %zu bytes", path.c_str(),
+      system_file.contents->count());
+  context.run_source(*system_file.contents, path.view(), None, path.view(),
+                     nullptr, nullptr, return_handling::Consume);
+}
+
 static fn
 source_bash_system_rc(EvalContext &context) throws -> void
 {
@@ -2581,6 +2608,7 @@ source_init_moods(EvalContext                 &context,
                              !context.runtime_state().option_is_enabled(
                                  shell_option_id::Privileged)))
       {
+        source_system_rc(context);
         if (let const rcfile = selected_rcfile();
             rcfile.has_value() && !is_login_shell)
         {

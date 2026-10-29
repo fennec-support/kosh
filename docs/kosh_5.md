@@ -21,7 +21,7 @@ Koshka configures execution semantics and interactive line-editing through decla
 ## Configuration resolution lifecycle
 
 1. A new shell process inspects its invocation flags and execution privileges. If `--no-config`, `-p` (`--privileged`), or a setuid/setgid context is active, settings files and `KOSHCONF` are skipped and removed. See [Skipping startup files](kosh_1.md#skipping-startup-files) for the full exclusion list.
-2. The shell parses the system settings file (`/etc/kosh.conf` or `%ProgramData%\kosh\kosh.conf`) if it passes ownership and permission checks.
+2. The shell parses the system settings file (`/etc/kosh/kosh.conf` or `%ProgramData%\kosh\kosh.conf`) if it passes ownership and permission checks.
 3. The shell parses the user settings file (`$XDG_CONFIG_HOME/kosh/kosh.conf` or `~/.config/kosh/kosh.conf`), unless the POSIX effective user is `root`. User settings override system settings. The mood applies first, wherever its line appears, and the other lines are read under the resulting session mood.
 4. The shell decodes and applies an inherited `KOSHCONF` environment variable, then removes `KOSHCONF` from the environment before any command runs.
 5. The shell applies inherited `KOSH_HISTORY_FILE` and `KOSH_HISTORY_SIZE` variables and explicit command-line flags. Command-line flags override both settings files and `KOSHCONF`.
@@ -83,7 +83,7 @@ An option passed on the command line (enabled or disabled) overrides settings fi
 | `-o NAME, +o NAME` | Enable (`-o`) or disable (`+o`) a POSIX or Bash `set -o` option. |
 | `+a, +C, +e, +f, +n, +p, +t, +u, +v, +x` | Disable the corresponding single-letter option, matching `set +e` behavior. |
 | `--` | Terminate option parsing. |
-| `--init-file FILE, --rcfile FILE` | Source `FILE` instead of `~/.bashrc` in an interactive non-login `bash` mood, or instead of `rc.kosh` in an interactive non-login `kosh` mood. |
+| `--init-file FILE, --rcfile FILE` | Source `FILE` instead of `~/.bashrc` in an interactive non-login `bash` mood, or instead of the user `rc.kosh` in an interactive non-login `kosh` mood. |
 | `--norc` | Skip interactive non-login Bash rc files, `rc.kosh`, and any `--rcfile` target. |
 | `-O NAME, +O NAME` | Enable (`-O`) or disable (`+O`) a `shopt` option, matching `shopt -s` and `shopt -u`. |
 | `-r, --restricted` | Enter restricted shell mode after startup files complete. |
@@ -305,8 +305,9 @@ Run `koshconf set <option> <value> --persist` to write these entries programmati
 
 | Tier | File path | Ownership, permissions, and write behavior |
 | --- | --- | --- |
-| System | `/etc/kosh.conf` (POSIX) or `%ProgramData%\kosh\kosh.conf` (Windows) | Loaded first, and only when no other user can write it. On POSIX, the file and its parent directory must be owned by `root` and not writable by group or others. On Windows, the file and its `kosh` directory must be owned by `SYSTEM`, `Administrators`, or `TrustedInstaller`, and no ACL entry may grant another account permission to modify, change permissions, or take ownership (the directory may allow others to add files). If the check fails, the file is skipped with a warning. |
+| System | `/etc/kosh/kosh.conf` (POSIX) or `%ProgramData%\kosh\kosh.conf` (Windows) | Loaded first, and only when no other user can write it. On POSIX, the file and its parent directory must be owned by `root` and not writable by group or others. On Windows, the file and its `kosh` directory must be owned by `SYSTEM`, `Administrators`, or `TrustedInstaller`, and no ACL entry may grant another account permission to modify, change permissions, or take ownership (the directory may allow others to add files). If the check fails, the file is skipped with a warning. |
 | User | `$XDG_CONFIG_HOME/kosh/kosh.conf` or `~/.config/kosh/kosh.conf` | Loaded second. `XDG_CONFIG_HOME` is used only when set to an absolute path; on Windows, `~` falls back to `USERPROFILE` when `HOME` is unset. On POSIX, a shell running with an effective user ID of `root` neither reads nor writes this file. Written by `koshconf create`, `koshconf set --persist`, and `koshconf save --persist`. Writing preserves symlinks (updating the target), preserves existing file permissions (or applies `0644` minus `umask` for new files), creates missing parent directories, and backs up the prior file to `kosh.conf.bak`. |
+| System rc script | `/etc/kosh/rc.kosh` (POSIX) or `%ProgramData%\kosh\rc.kosh` (Windows) | Sourced by a login or interactive `kosh` mood before the user rc script (see [Startup script](#startup-script)). It passes the same ownership and permission checks as the system settings file and is skipped with a warning when they fail. |
 | User rc script | `$XDG_CONFIG_HOME/kosh/scripts/rc.kosh` or `~/.config/kosh/scripts/rc.kosh` | Sourced by a login or interactive `kosh` mood (see [Startup script](#startup-script)); skipped by the POSIX superuser. Startup files of the other moods are listed under [Bash and POSIX startup files](kosh_1.md#bash-and-posix-startup-files). |
 
 ### File grammar and serialization rules <a id="settings-file-syntax"></a>
@@ -330,7 +331,9 @@ A settings file error never aborts shell startup.
 
 ## Execute startup logic in `rc.kosh` <a id="startup-script"></a>
 
-An interactive or login shell running in the `kosh` mood sources `$XDG_CONFIG_HOME/kosh/scripts/rc.kosh` (or `~/.config/kosh/scripts/rc.kosh`) after loading settings files. The script can test `shopt -q login_shell` to run login-only commands. Koshka does not read a system rc script, `/etc/koshrc`, or `~/.koshrc`. Place procedural shell code in `rc.kosh` and declarative options in `kosh.conf`. See [Startup files](kosh_1.md#startup-files) for invocation flags that replace or skip `rc.kosh`, and [Bash and POSIX startup files](kosh_1.md#bash-and-posix-startup-files) for compatibility mood startup paths.
+An interactive or login shell running in the `kosh` mood sources the system `rc.kosh` and then the user `rc.kosh` after loading settings files. The system script is `/etc/kosh/rc.kosh` (or `%ProgramData%\kosh\rc.kosh`), runs whenever it exists and passes the checks of the system settings file, and runs for the POSIX superuser too. The user script is `$XDG_CONFIG_HOME/kosh/scripts/rc.kosh` (or `~/.config/kosh/scripts/rc.kosh`) and runs second, so its commands can override those of the system script. Koshka does not read `/etc/koshrc` or `~/.koshrc`.
+
+The `kosh` mood does not distinguish login and non-login shells when it selects startup scripts, because that distinction is obsolete. A script that still needs it can test `shopt -q login_shell` to run login-only commands. Place procedural shell code in `rc.kosh` and declarative options in `kosh.conf`. See [Startup files](kosh_1.md#startup-files) for invocation flags that replace or skip `rc.kosh`, and [Bash and POSIX startup files](kosh_1.md#bash-and-posix-startup-files) for compatibility mood startup paths.
 
 When `rc.kosh` is missing, `koshconf create` generates the following default script (existing files are never overwritten).
 

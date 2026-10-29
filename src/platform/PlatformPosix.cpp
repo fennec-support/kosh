@@ -1658,7 +1658,7 @@ get_home_directory() throws -> Maybe<Path>
 fn
 get_system_koshconf_path() throws -> Maybe<Path>
 {
-  return Path{"/etc/kosh.conf"};
+  return Path{"/etc/kosh/kosh.conf"};
 }
 
 fn

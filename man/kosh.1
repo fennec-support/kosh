@@ -76,7 +76,7 @@ or non\-interactive stdin).
 rescue mode, \f[CR]\-\-lint\f[R], \f[CR]\-\-format\f[R],
 \f[CR]\-\-as\-language\-server\f[R], a secure (setuid or setgid)
 execution, or a \f[CR]koshkit\f[R] or utility invocation skips them, the
-shell loads \f[CR]/etc/kosh.conf\f[R] (or
+shell loads \f[CR]/etc/kosh/kosh.conf\f[R] (or
 \f[CR]%ProgramData%\[rs]kosh\[rs]kosh.conf\f[R]),
 \f[CR]$XDG_CONFIG_HOME/kosh/kosh.conf\f[R] (or
 \f[CR]\[ti]/.config/kosh/kosh.conf\f[R]), and \f[CR]KOSHCONF\f[R], then
@@ -529,7 +529,7 @@ LSP shutdown or \f[CR]1\f[R] otherwise.
 Every shell instance loads declarative settings before sourcing startup
 scripts:
 .IP "1." 3
-System settings file: \f[CR]/etc/kosh.conf\f[R] (POSIX) or
+System settings file: \f[CR]/etc/kosh/kosh.conf\f[R] (POSIX) or
 \f[CR]%ProgramData%\[rs]kosh\[rs]kosh.conf\f[R] (Windows).
 .IP "2." 3
 User settings file: \f[CR]$XDG_CONFIG_HOME/kosh/kosh.conf\f[R] or
@@ -539,14 +539,26 @@ effective user is \f[CR]root\f[R]).
 Environment payload: \f[CR]KOSHCONF\f[R] (unset from the environment
 immediately after ingestion).
 .PP
-In the \f[CR]kosh\f[R] mood, login and interactive shells source
+In the \f[CR]kosh\f[R] mood, login and interactive shells source the
+system \f[CR]rc.kosh\f[R] first and the user \f[CR]rc.kosh\f[R] second.
+The system \f[CR]rc.kosh\f[R] is \f[CR]/etc/kosh/rc.kosh\f[R] (POSIX) or
+\f[CR]%ProgramData%\[rs]kosh\[rs]rc.kosh\f[R] (Windows).
+It runs whenever it exists and passes the ownership and permission
+checks of the system settings file, and the POSIX \f[CR]root\f[R] user
+runs it too.
+The user \f[CR]rc.kosh\f[R] is
 \f[CR]$XDG_CONFIG_HOME/kosh/scripts/rc.kosh\f[R] (or
-\f[CR]\[ti]/.config/kosh/scripts/rc.kosh\f[R]); no
-\f[CR]/etc/koshrc\f[R] or \f[CR]\[ti]/.koshrc\f[R] exists, and the POSIX
-\f[CR]root\f[R] user skips user \f[CR]rc.kosh\f[R].
-In interactive non\-login \f[CR]kosh\f[R] shells, \f[CR]\-\-norc\f[R],
-\f[CR]\-\-rcfile\f[R], and \f[CR]\-p\f[R] (\f[CR]\-\-privileged\f[R])
-govern \f[CR]rc.kosh\f[R] identically to \f[CR]\[ti]/.bashrc\f[R].
+\f[CR]\[ti]/.config/kosh/scripts/rc.kosh\f[R]), and the POSIX
+\f[CR]root\f[R] user skips it.
+No \f[CR]/etc/koshrc\f[R] or \f[CR]\[ti]/.koshrc\f[R] exists.
+In interactive non\-login \f[CR]kosh\f[R] shells, \f[CR]\-\-norc\f[R]
+and \f[CR]\-p\f[R] (\f[CR]\-\-privileged\f[R]) skip both scripts, and
+\f[CR]\-\-rcfile\f[R] replaces only the user \f[CR]rc.kosh\f[R].
+.PP
+The \f[CR]kosh\f[R] mood does not distinguish login and non\-login
+shells when it selects startup scripts, because that distinction is
+obsolete.
+A script that still needs it can test \f[CR]shopt \-q login_shell\f[R].
 Any Bash startup file sourced from \f[CR]rc.kosh\f[R] automatically
 executes under the \f[CR]bash\f[R] mood and returns to \f[CR]kosh\f[R]
 upon completion (see \f[CR]source\f[R]).
@@ -3102,10 +3114,17 @@ Purpose
 T}
 _
 T{
-\f[CR]/etc/kosh.conf\f[R] (POSIX),
+\f[CR]/etc/kosh/kosh.conf\f[R] (POSIX),
 \f[CR]%ProgramData%\[rs]kosh\[rs]kosh.conf\f[R] (Windows)
 T}@T{
 System\-wide settings file.
+T}
+T{
+\f[CR]/etc/kosh/rc.kosh\f[R] (POSIX),
+\f[CR]%ProgramData%\[rs]kosh\[rs]rc.kosh\f[R] (Windows)
+T}@T{
+System\-wide interactive and login startup script for the
+\f[CR]kosh\f[R] mood, sourced before the user \f[CR]rc.kosh\f[R].
 T}
 T{
 \f[CR]$XDG_CONFIG_HOME/kosh/kosh.conf\f[R],

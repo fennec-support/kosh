@@ -103,9 +103,10 @@ Designed from the ground up to replace both ShellCheck and Bash, Koshka
 treats Linux, macOS, and Windows as first-tier platforms with identical
 behavior across all three.
 
-Configuration is in `/etc/kosh.conf` and `~/.config/kosh/kosh.conf`, managed
-at runtime through the `koshconf` builtin. Running `koshconf create kosh` will
-generate a fresh config file documenting every available setting.
+Configuration is in `/etc/kosh/kosh.conf` and `~/.config/kosh/kosh.conf`,
+managed at runtime through the `koshconf` builtin. Running
+`koshconf create kosh` will generate a fresh config file documenting every
+available setting.
 
 ### Shell linter, formatter, and language server
 
@@ -148,7 +149,7 @@ entire script from top to bottom.
 | `--init-moods`, `-L` | Takes a comma-separated list of moods whose startup files should be sourced (defaults to the active mood; configurable via `init_moods` in `kosh.conf`). |
 | `KOSH_FLAGS` | Environment variable for setting default flags (overridden by CLI arguments).<br><br>*Fail-safe.* If `KOSH_FLAGS` or the command line contains a broken flag on a login shell, startup files are bypassed and a rescue session opens immediately to prevent lockouts. |
 
-Most native settings are stored in `/etc/kosh.conf` and
+Most native settings are stored in `/etc/kosh/kosh.conf` and
 `~/.config/kosh/kosh.conf`, viewed and changed by the `koshconf` builtin.
 
 ### Builtins and interactive editor

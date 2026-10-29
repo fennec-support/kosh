@@ -43,7 +43,8 @@ read_koshconf_text(StringView        text,
 fn
 read_koshconf_file(const Path &path, koshconf_reading &reading) throws
     -> void;
-/* /etc/kosh.conf, the ProgramData file on Windows, or the debug override. */
+/* /etc/kosh/kosh.conf, the ProgramData file on Windows, or the debug
+   override. The system rc.kosh lives in the same directory. */
 fn
 find_system_koshconf_path() throws -> Maybe<Path>;
 fn
