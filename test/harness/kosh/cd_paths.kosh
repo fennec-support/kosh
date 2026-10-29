@@ -21,3 +21,18 @@ echo "PWD=$(koshkit basename "$PWD") OLDPWD=$(koshkit basename "$OLDPWD")"
 cd - >/dev/null || exit
 koshkit basename "$PWD"
 cd "$start" || exit
+# set -P carried into the sh mood leaves cd and pwd logical, so pwd and PWD
+# agree.
+koshkit mkdir -p "$TEST_TEMP_DIRECTORY/cd-physical/real"
+if koshkit ln -s real "$TEST_TEMP_DIRECTORY/cd-physical/link" 2>/dev/null
+then
+  (
+    koshconf set mood bash
+    set -P
+    koshconf set mood sh
+    cd "$TEST_TEMP_DIRECTORY/cd-physical/link" || exit
+    echo "pwd-sh=$(koshkit basename "$(pwd)")"
+  )
+else
+  echo "pwd-sh=link"
+fi

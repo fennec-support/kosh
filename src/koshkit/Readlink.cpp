@@ -93,22 +93,17 @@ Readlink::execute(const ExecContext               &ec,
 
     if (!mode.has_value()) {
       target = os::read_symlink(operand, allocator);
-    } else if (!operand.is_empty()) {
-      if (let resolved = resolve_canonical_path(operand, *mode, allocator);
-          resolved.has_value())
-      {
-        target = String{allocator, resolved->view()};
-      }
+    } else if (let resolved = resolve_canonical_path(operand, *mode, allocator);
+               resolved.has_value())
+    {
+      target = String{allocator, resolved->view()};
     }
 
     if (!target.has_value()) {
       if (!is_quiet) {
-        report_soft_koshkit_error(
-            ec, cxt, operand_locations[i],
-            "'" + operands[i] + "': " +
-                (operand.is_empty()
-                     ? String{allocator, "No such file or directory"}
-                     : os::last_system_error_message()));
+        report_soft_koshkit_error(ec, cxt, operand_locations[i],
+                                  "'" + operands[i] +
+                                      "': " + os::last_system_error_message());
       }
 
       status = 1;

@@ -2607,7 +2607,8 @@ Searches work as in \f[CR]less\f[R].
 Each of several files follows a header of colons, also when output is
 not a terminal.
 When output is not a terminal, the input is copied, changed only by
-\f[CR]\-p\f[R], \f[CR]\-t\f[R], and \f[CR]\-s\f[R].
+\f[CR]\-p\f[R], \f[CR]\-t\f[R], and \f[CR]\-s\f[R], and an interrupt
+stops the copy with status \f[CR]130\f[R].
 A pattern of \f[CR]\-p\f[R] may begin with a slash.
 \f[CR]\-t\f[R] reads \f[CR]./tags\f[R], whose lines hold a tag, a file,
 and a line separated by tabs, and takes no file operand.

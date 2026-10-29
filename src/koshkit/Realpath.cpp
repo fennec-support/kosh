@@ -196,6 +196,13 @@ resolve_canonical_path(StringView          operand,
                        canonical_path_mode mode,
                        Allocator           allocator) throws -> Maybe<Path>
 {
+  /* an empty operand names no file in any mode. */
+  if (operand.is_empty()) {
+    os::set_last_system_error(ENOENT);
+
+    return None;
+  }
+
   let resolved = os::canonical_path(Path{operand, allocator});
 
   if (!resolved.has_value() && (mode == canonical_path_mode::Missing ||
@@ -313,7 +320,7 @@ resolve_operand(StringView          operand,
                 realpath_links      links,
                 Allocator           allocator) throws -> Maybe<Path>
 {
-  if (links == realpath_links::Physical) {
+  if (links == realpath_links::Physical || operand.is_empty()) {
     return resolve_canonical_path(operand, mode, allocator);
   }
 
@@ -454,16 +461,12 @@ Realpath::execute(const ExecContext               &ec,
 
   let const do_resolve = [&](StringView operand, SourceLocation location,
                              bool should_report) throws -> Maybe<Path> {
-    let resolved = operand.is_empty()
-                       ? Maybe<Path>{}
-                       : resolve_operand(operand, mode, links, allocator);
+    let resolved = resolve_operand(operand, mode, links, allocator);
 
     if (!resolved.has_value() && should_report) {
-      KOSHKIT_REPORT_ERROR_AT(
-          location, "'" + String{allocator, operand} + "': " +
-                        (operand.is_empty() ? String{allocator, "No such file "
-                                                                "or directory"}
-                                            : os::last_system_error_message()));
+      KOSHKIT_REPORT_ERROR_AT(location,
+                              "'" + String{allocator, operand} +
+                                  "': " + os::last_system_error_message());
     }
 
     return resolved;

@@ -585,14 +585,21 @@ install_natively(const ExecContext &ec,
       return 1;
     }
 
+    /* each link is made beside the old one and renamed over it, so a failure
+       keeps the old link. */
     for (let const &link : stale_links) {
-      if (!os::remove_file(link.view()) ||
-          !os::create_hard_link(target.view(), link.view()))
+      let const fresh = Path{(link.text() + ".kosh-assimilate").view()};
+
+      unused(os::remove_file(fresh.view()));
+      if (!os::create_hard_link(target.view(), fresh.view()) ||
+          !os::rename_path(fresh.view(), link.view()))
       {
-        report_soft_builtin_error(
-            ec, cxt,
-            "Cannot link '" + link.text() +
-                "' to the new kosh: " + os::last_system_error_message());
+        let const reason = os::last_system_error_message();
+
+        unused(os::remove_file(fresh.view()));
+        report_soft_builtin_error(ec, cxt,
+                                  "Cannot link '" + link.text() +
+                                      "' to the new kosh: " + reason);
         status = 1;
       }
     }

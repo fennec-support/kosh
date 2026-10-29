@@ -741,6 +741,45 @@ inline const StringView PAGER_REVERSE_END   = "\x1b[27m";
 inline const StringView PAGER_CLEAR_SCREEN  = "\x1b[H\x1b[2J";
 inline const StringView PAGER_REPLACEMENT   = "\xef\xbf\xbd";
 
+/* appends the character at position as the pager shows it: a control byte in
+   ^ notation, a byte that is not UTF-8 or a C1 control character, which could
+   steer the terminal, as the replacement character, and other text as is.
+   returns its byte count and sets column_count to its display width. */
+static fn
+append_shown_character(String    &output,
+                       StringView text,
+                       usize      position,
+                       usize     &column_count) throws -> usize
+{
+  let const byte = static_cast<u8>(text[position]);
+
+  if (byte < 0x20 || byte == 0x7f) {
+    output += '^';
+    output += static_cast<char>(byte ^ 0x40);
+    column_count = 2;
+
+    return 1;
+  }
+
+  let const decoded = utils::decode_strict_utf8(text, position);
+
+  if (!decoded.has_value() ||
+      (decoded->value >= 0x80 && decoded->value <= 0x9f))
+  {
+    output += PAGER_REPLACEMENT;
+    column_count = 1;
+
+    return decoded.has_value() ? decoded->length : 1;
+  }
+
+  let const piece = text.substring_of_length(position, decoded->length);
+
+  output += piece;
+  column_count = toiletline::get_display_width(piece);
+
+  return decoded->length;
+}
+
 struct pager_source
 {
   StringView       label;
@@ -1336,37 +1375,11 @@ private:
         continue;
       }
 
-      if (byte < 0x20 || byte == 0x7f) {
-        m_display += '^';
-        m_display += static_cast<char>(byte ^ 0x40);
-        column += 2;
-        position++;
-        continue;
-      }
+      usize column_count = 0;
 
-      let const decoded = utils::decode_strict_utf8(text, position);
-
-      if (!decoded.has_value()) {
-        m_display += PAGER_REPLACEMENT;
-        column++;
-        position++;
-        continue;
-      }
-
-      /* a C1 control character could steer the terminal, so it is shown as
-         the replacement character. */
-      if (decoded->value >= 0x80 && decoded->value <= 0x9f) {
-        m_display += PAGER_REPLACEMENT;
-        column++;
-        position += decoded->length;
-        continue;
-      }
-
-      let const piece = text.substring_of_length(position, decoded->length);
-
-      m_display += piece;
-      column += toiletline::get_display_width(piece);
-      position += decoded->length;
+      position +=
+          append_shown_character(m_display, text, position, column_count);
+      column += column_count;
     }
 
     m_row_starts.push(0);
@@ -1558,34 +1571,14 @@ private:
     if (m_text.has_line(m_top.line)) {
       let const label = m_text.get_label(m_top.line);
 
-      /* the label is a file operand, so it is shown as line text is: a
-         control byte in ^ notation, and a byte that is not UTF-8 or a C1
-         control character as the replacement character. */
+      /* the label is a file operand, so it is shown as line text is. */
       if (label != "-") {
         usize index = 0;
 
         while (index < label.length) {
-          let const value = static_cast<u8>(label[index]);
+          usize column_count = 0;
 
-          if (value < 0x20 || value == 0x7f) {
-            output += '^';
-            output += static_cast<char>(value ^ 0x40);
-            index++;
-            continue;
-          }
-
-          let const decoded = utils::decode_strict_utf8(label, index);
-
-          if (!decoded.has_value() ||
-              (decoded->value >= 0x80 && decoded->value <= 0x9f))
-          {
-            output += PAGER_REPLACEMENT;
-            index += decoded.has_value() ? decoded->length : 1;
-            continue;
-          }
-
-          output += label.substring_of_length(index, decoded->length);
-          index += decoded->length;
+          index += append_shown_character(output, label, index, column_count);
         }
         output += ' ';
       }
@@ -2029,9 +2022,9 @@ copy_pager_sources(const ExecContext       &ec,
             os::read_fd(source.input.descriptor, buffer, sizeof(buffer));
 
         if (!read_byte_count.has_value()) {
-          if (!os::INTERRUPT_REQUESTED)
-            KOSHKIT_REPORT_PATH_ERROR("read", source.label);
+          if (os::INTERRUPT_REQUESTED) return 130;
 
+          KOSHKIT_REPORT_PATH_ERROR("read", source.label);
           status = 1;
           break;
         }
@@ -2094,6 +2087,7 @@ copy_pager_sources(const ExecContext       &ec,
   }
 
   ec.print_to_stdout(output.view());
+  if (os::INTERRUPT_REQUESTED) return 130;
 
   return report_pager_read_failures(ec, cxt, sources) ? 1 : 0;
 }
