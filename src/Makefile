@@ -160,6 +160,7 @@ endif
 
 ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
 CXX := zig c++ -target $(LINUX_TARGET_ARCHITECTURE)-linux-musl
+OBJCOPY ?= llvm-objcopy
 endif
 OBJCOPY ?= objcopy
 
