@@ -425,15 +425,6 @@ ifeq ($(PGO), cs-generate)
 PGO_PROFILE_DIRECTORY := $(abspath ../pgo/csprofraw)
 CXXFLAGS += "-fcs-profile-generate=$(PGO_PROFILE_DIRECTORY)"
 endif
-# The clang driver passes no context-sensitive options to ld64 for LTO.
-ifeq ($(TARGET), Darwin)
-ifeq ($(PGO), cs-generate)
-LINK_LIBRARIES += -Wl,-mllvm,-cs-profile-generate \
-	"-Wl,-mllvm,-cs-profile-path=$(PGO_PROFILE_DIRECTORY)/default_%m.profraw"
-else
-LINK_LIBRARIES += "-Wl,-mllvm,-cs-profile-path=$(abspath $(PGO_PROFILE))"
-endif
-endif
 endif
 # MODE=tinyrel
 else ifeq ($(MODE), tinyrel)
