@@ -8,6 +8,7 @@ RUN apk add \
     musl-dev \
     linux-headers \
     clang \
+    compiler-rt \
     llvm \
     lld \
     make \
@@ -25,6 +26,9 @@ RUN apk add \
     bsd-compat-headers \
     fts-dev \
     zig
+
+RUN apk add "llvm$(zig c++ --version | \
+    sed -n 's/.*clang version \([0-9]*\)\..*/\1/p')"
 
 ARG MAC_SDK_URL="https://github.com/joseluisq/macosx-sdks/releases/download/11.3/MacOSX11.3.sdk.tar.xz"
 

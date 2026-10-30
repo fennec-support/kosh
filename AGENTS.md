@@ -215,10 +215,17 @@ koshkit --list-flags after a koshkit flag changes.
 
 NO_TOILETLINE=1 make, NO_KOSHKIT=1 make, and HARDENED=1 make use separate
 object directories. HARDENED=1 makes a release build trap on a container
-index past the end and is off by default because it slows sorting. make pgo
-trains an instrumented release build with scripts/pgo-train.sh and builds
-./kosh with the merged profile in pgo/kosh.profdata. Code the training does
-not reach, such as the interactive editor, is compiled as cold code there.
+index past the end and is off by default because it slows sorting. make
+pgo-profile trains an instrumented release build with scripts/pgo-train.sh,
+trains a context-sensitive instrumented build that uses the first profile, and
+merges both into pgo/kosh.profdata. make pgo builds ./kosh with that profile.
+The release workflow trains the profile natively in the builder image and
+builds the Linux and macOS binaries with it. zig reads the profile after the
+llvm-profdata that matches its LLVM version rewrites it. The Windows build
+uses GCC and no profile. Code the training does not reach, such as the
+interactive editor, is compiled as cold code there. make
+bench also lints and formats a script from test/bench/generate-script.sh, and
+the length of that script follows SCALE.
 make fuzz builds the libFuzzer harnesses in test/fuzz with MODE=fuzz and runs
 each for FUZZ_SECONDS. A harness passes its input to one parser, and the shell
 objects carry no main in that mode.

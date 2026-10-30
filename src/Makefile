@@ -8,7 +8,9 @@ NO_KOSHKIT ?= 0
 HARDENED ?= 0
 # PGO=generate builds the instrumented release binary ../kosh-pgo-gen, which
 # merges its profile into ../pgo/profraw. PGO_PROFILE=file.profdata builds
-# the release binary with that profile.
+# the release binary with that profile. PGO=cs-generate with PGO_PROFILE
+# builds ../kosh-pgo-csgen, which merges its context-sensitive profile into
+# ../pgo/csprofraw.
 PGO ?=
 PGO_PROFILE ?=
 
@@ -96,11 +98,16 @@ SHOULD_LINK_STATIC_LINUX := 1
 endif
 endif
 
-BUILD_VARIANT_SUFFIX := $(if $(filter 1,$(NO_TOILETLINE)),-no-toiletline,)$(if $(filter 1,$(NO_KOSHKIT)),-no-koshkit,)$(if $(filter 1,$(HARDENED)),-hardened,)$(if $(filter generate,$(PGO)),-pgo-gen,)$(if $(PGO_PROFILE),-pgo,)
+BUILD_VARIANT_SUFFIX := $(if $(filter 1,$(NO_TOILETLINE)),-no-toiletline,)$(if $(filter 1,$(NO_KOSHKIT)),-no-koshkit,)$(if $(filter 1,$(HARDENED)),-hardened,)$(if $(filter generate,$(PGO)),-pgo-gen,)$(if $(filter cs-generate,$(PGO)),-pgo-csgen,)$(if $(PGO_PROFILE),-pgo,)
 
 ifneq ($(PGO)$(PGO_PROFILE),)
 ifneq ($(MODE), rel)
 $(error PGO and PGO_PROFILE only support MODE=rel)
+endif
+endif
+ifeq ($(PGO), cs-generate)
+ifeq ($(PGO_PROFILE),)
+$(error PGO=cs-generate needs PGO_PROFILE)
 endif
 endif
 
@@ -115,7 +122,7 @@ REGEX_OBJECTS := $(REGEX_SOURCES:%=$(OBJECT_DIRECTORY)/vendor/regex/%.o)
 OBJECTS := $(SOURCES:%.cpp=$(OBJECT_DIRECTORY)/%.o) $(REGEX_OBJECTS)
 DEPENDENCY_FILES := $(OBJECTS:.o=.d)
 
-MODE_SUFFIX := $(if $(filter rel,$(MODE)),$(if $(filter generate,$(PGO)),-pgo-gen,),-$(MODE))
+MODE_SUFFIX := $(if $(filter rel,$(MODE)),$(if $(filter generate,$(PGO)),-pgo-gen,)$(if $(filter cs-generate,$(PGO)),-pgo-csgen,),-$(MODE))
 ifeq ($(MODE), cosmo)
 OUTPUT_PATH := ../kosh$(MODE_SUFFIX).com
 else ifeq ($(TARGET), Windows_NT)
@@ -405,12 +412,17 @@ endif
 endif
 ifeq ($(PGO), generate)
 PGO_PROFILE_DIRECTORY := $(abspath ../pgo/profraw)
-CXXFLAGS += "-fprofile-instr-generate=$(PGO_PROFILE_DIRECTORY)/kosh-%4m.profraw"
+CXXFLAGS += "-fprofile-generate=$(PGO_PROFILE_DIRECTORY)"
 else ifneq ($(PGO_PROFILE),)
 CXXFLAGS += \
-	"-fprofile-instr-use=$(abspath $(PGO_PROFILE))" \
+	"-fprofile-use=$(abspath $(PGO_PROFILE))" \
 	-Wno-profile-instr-unprofiled \
-	-Wno-profile-instr-out-of-date
+	-Wno-profile-instr-out-of-date \
+	-Wno-backend-plugin
+ifeq ($(PGO), cs-generate)
+PGO_PROFILE_DIRECTORY := $(abspath ../pgo/csprofraw)
+CXXFLAGS += "-fcs-profile-generate=$(PGO_PROFILE_DIRECTORY)"
+endif
 endif
 # MODE=tinyrel
 else ifeq ($(MODE), tinyrel)
@@ -611,6 +623,10 @@ $(COMMIT_HASH_OBJECTS): $(COMMIT_HASH_STAMP)
 
 $(OBJECTS): | dirs
 
+ifneq ($(PGO_PROFILE),)
+$(OBJECTS) $(LINKED_OUTPUT_PATH): $(abspath $(PGO_PROFILE))
+endif
+
 # Cold sources compile for size in MODE=rel. Throughput utilities such as grep,
 # sort, wc, cat, tr, head, tail, cut, find, ls, and du stay at -O3.
 COLD_SIZE_OBJECTS := \
@@ -663,7 +679,7 @@ endif
 ifeq ($(MODE), cov)
 	mkdir -p "$(COVERAGE_PROFILE_DIRECTORY)"
 endif
-ifeq ($(PGO), generate)
+ifneq ($(PGO_PROFILE_DIRECTORY),)
 	mkdir -p "$(PGO_PROFILE_DIRECTORY)"
 endif
 

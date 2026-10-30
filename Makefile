@@ -83,15 +83,25 @@ completions:
 		> completions/kosh.bash.new
 	mv completions/kosh.bash.new completions/kosh.bash
 
-pgo:
+# pgo-profile trains an instrumented build and then a context-sensitive
+# instrumented build that uses the first profile. pgo builds with the result.
+pgo: pgo-profile
 	echo Building a profile-guided release...
-	rm -f pgo/profraw/*.profraw
-	$(MAKE) $(AUTO_JOBS) -C src MODE=rel PGO=generate kosh
-	./scripts/pgo-train.sh ./kosh-pgo-gen pgo/work
-	./scripts/llvm-tool.sh llvm-profdata merge -o pgo/kosh.profdata \
-		pgo/profraw/*.profraw
 	$(MAKE) $(AUTO_JOBS) -C src MODE=rel \
 		PGO_PROFILE=$(abspath pgo/kosh.profdata) kosh
+
+pgo-profile:
+	echo Training a release profile...
+	rm -rf pgo/profraw pgo/csprofraw
+	$(MAKE) $(AUTO_JOBS) -C src MODE=rel PGO=generate kosh
+	./scripts/pgo-train.sh ./kosh-pgo-gen pgo/work
+	./scripts/llvm-tool.sh llvm-profdata merge -o pgo/kosh-ir.profdata \
+		pgo/profraw/*.profraw
+	$(MAKE) $(AUTO_JOBS) -C src MODE=rel PGO=cs-generate \
+		PGO_PROFILE=$(abspath pgo/kosh-ir.profdata) kosh
+	./scripts/pgo-train.sh ./kosh-pgo-csgen pgo/work
+	./scripts/llvm-tool.sh llvm-profdata merge -o pgo/kosh.profdata \
+		pgo/kosh-ir.profdata pgo/csprofraw/*.profraw
 
 FUZZ_SECONDS ?= 60
 
@@ -132,4 +142,4 @@ clean:
 	$(MAKE) -C src/toiletline clean
 
 .PHONY: all kosh install uninstall tidy fmt toiletline_test test bench \
-	refill_tests completions pgo fuzz docs clean
+	refill_tests completions pgo pgo-profile fuzz docs clean

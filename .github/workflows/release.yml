@@ -88,22 +88,33 @@ jobs:
                 readelf -s "$debug_file" | grep -Eq " __stack_chk_fail$" ||
                   { echo "$binary has no stack protector"; exit 1; }
               }
-              make -C src MODE=rel TARGET=Linux ARCH=x86_64 LINUX_ZIG=1
+              make pgo-profile
+              profile=$PWD/pgo/kosh.profdata
+              zig_llvm=$(zig c++ --version |
+                sed -n "s/.*clang version \([0-9]*\)\..*/\1/p")
+              llvm-profdata merge --text -o pgo/kosh.proftext "$profile"
+              "/usr/lib/llvm$zig_llvm/bin/llvm-profdata" merge \
+                -o pgo/kosh-zig.profdata pgo/kosh.proftext
+              zig_profile=$PWD/pgo/kosh-zig.profdata
+              make -C src MODE=rel TARGET=Linux ARCH=x86_64 LINUX_ZIG=1 \
+                PGO_PROFILE="$zig_profile"
               install -m 755 kosh "dist/kosh-linux-amd64-$VERSION"
               check_hardened_elf "dist/kosh-linux-amd64-$VERSION" \
-                src/o/Linux/x86_64/rel/kosh.debug
-              make -C src MODE=rel TARGET=Linux ARCH=aarch64
+                src/o/Linux/x86_64/rel-pgo/kosh.debug
+              make -C src MODE=rel TARGET=Linux ARCH=aarch64 \
+                PGO_PROFILE="$zig_profile"
               install -m 755 kosh "dist/kosh-linux-aarch64-$VERSION"
               readelf -h "dist/kosh-linux-aarch64-$VERSION" |
                 grep -Eq "Machine:[[:space:]]+AArch64"
               check_hardened_elf "dist/kosh-linux-aarch64-$VERSION" \
-                src/o/Linux/aarch64/rel/kosh.debug
+                src/o/Linux/aarch64/rel-pgo/kosh.debug
               make -C src MODE=rel TARGET=Windows_NT ARCH=x86_64
               install -m 755 kosh.exe "dist/kosh-win32-amd64-$VERSION.exe"
               llvm-nm "dist/kosh-win32-amd64-$VERSION.exe" |
                 grep -q stack_chk_fail ||
                 { echo "The Windows binary has no stack protector"; exit 1; }
-              make -C src MODE=rel TARGET=Darwin ARCH=aarch64
+              make -C src MODE=rel TARGET=Darwin ARCH=aarch64 \
+                PGO_PROFILE="$profile"
               install -m 755 kosh "dist/kosh-darwin-aarch64-$VERSION"
               llvm-strip dist/kosh-*
               llvm-objdump --macho --private-headers \
