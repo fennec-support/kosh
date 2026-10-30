@@ -223,6 +223,19 @@ apk add --no-cache \
   compiler-rt bash dash zsh yash busybox coreutils mandoc python3
 ```
 
+A macOS setup uses the latest Homebrew LLVM toolchain.
+
+```bash
+brew install llvm lld lldb make bash dash python mandoc shellcheck shfmt
+```
+
+The `llvm` formula provides `clang`, `clang-format`, `clang-tidy`,
+`llvm-profdata`, and `llvm-cov`. The `lld` formula provides `ld64.lld`, and
+the `lldb` formula provides the debugger. `make pgo` on macOS requires the
+`clang` and `llvm-profdata` from the `llvm` formula and an `ld64.lld` of the
+same major version. Homebrew has no BOLT formula, and `llvm-bolt` rewrites
+only ELF binaries, so BOLT does not apply to macOS builds.
+
 The benchmark needs Bash, Dash, and Python 3. Zsh, Yash, and BusyBox ash provide
 optional comparison rows. The coverage report needs `llvm-profdata` and
 `llvm-cov` from the matching LLVM installation. Documentation checks use

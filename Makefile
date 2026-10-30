@@ -95,8 +95,14 @@ BREW_PREFIX := $(shell brew --prefix 2>/dev/null)
 LLVM_PREFIX ?= $(BREW_PREFIX)/opt/llvm
 LLVM_MAJOR := $(shell "$(LLVM_PREFIX)/bin/clang" -dumpversion 2>/dev/null | \
 	cut -d. -f1)
-LD64_LLD ?= $(firstword $(wildcard $(LLVM_PREFIX)/bin/ld64.lld \
-	$(BREW_PREFIX)/opt/lld@$(LLVM_MAJOR)/bin/ld64.lld))
+LD64_LLD ?= $(shell for candidate in "$(LLVM_PREFIX)/bin/ld64.lld" \
+	"$(BREW_PREFIX)/opt/lld@$(LLVM_MAJOR)/bin/ld64.lld" \
+	"$(BREW_PREFIX)/opt/lld/bin/ld64.lld"; do \
+	test -x "$$candidate" || continue; \
+	version=$$("$$candidate" --version 2>/dev/null | \
+		sed -n 's/.*LLD \([0-9]*\).*/\1/p' | head -n 1); \
+	if test "$$version" = "$(LLVM_MAJOR)"; then echo "$$candidate"; break; fi; \
+	done)
 PGO_PROFDATA := $(LLVM_PREFIX)/bin/llvm-profdata
 PGO_TOOLCHAIN := CXX=$(LLVM_PREFIX)/bin/clang++ LD64_LLD=$(LD64_LLD)
 endif
