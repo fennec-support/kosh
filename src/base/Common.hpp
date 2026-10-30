@@ -214,7 +214,11 @@ public:
 #if T__HAS_GCC_EXTENSIONS
 #define pure t__pure
 #define cold [[gnu::cold]]
-#define hot  [[gnu::hot]]
+#if defined KOSH_PROFILE_USE
+#define hot
+#else
+#define hot [[gnu::hot]]
+#endif
 #if defined KOSH_TINYREL
 #define flatten
 #elif defined __clang__

@@ -417,9 +417,9 @@ CXXFLAGS += "-fprofile-generate=$(PGO_PROFILE_DIRECTORY)"
 else ifneq ($(PGO_PROFILE),)
 CXXFLAGS += \
 	"-fprofile-use=$(abspath $(PGO_PROFILE))" \
+	-DKOSH_PROFILE_USE \
 	-Wno-profile-instr-unprofiled \
-	-Wno-profile-instr-out-of-date \
-	-Wno-backend-plugin
+	-Wno-profile-instr-out-of-date
 ifeq ($(PGO), cs-generate)
 PGO_PROFILE_DIRECTORY := $(abspath ../pgo/csprofraw)
 CXXFLAGS += "-fcs-profile-generate=$(PGO_PROFILE_DIRECTORY)"
