@@ -219,6 +219,8 @@ index past the end and is off by default because it slows sorting. make
 pgo-profile trains an instrumented release build with scripts/pgo-train.sh,
 trains a context-sensitive instrumented build that uses the first profile, and
 merges both into pgo/kosh.profdata. make pgo builds ./kosh with that profile.
+On macOS both targets require the Homebrew LLVM clang and llvm-profdata and
+the ld64.lld of the same major version.
 The release workflow trains the profile natively in the builder image and
 builds the Linux and macOS binaries with it. zig reads the profile after the
 llvm-profdata that matches its LLVM version rewrites it. The Windows build
