@@ -128,11 +128,13 @@ pgo-profile: pgo-toolchain
 	echo Training a release profile...
 	rm -rf pgo/profraw pgo/csprofraw
 	$(MAKE) $(AUTO_JOBS) -C src MODE=rel $(PGO_TOOLCHAIN) PGO=generate kosh
-	./scripts/pgo-train.sh ./kosh-pgo-gen pgo/work
+	LLVM_PROFILE_FILE="$(abspath pgo/profraw)/default_%m.profraw" \
+		./scripts/pgo-train.sh ./kosh-pgo-gen pgo/work
 	$(PGO_PROFDATA) merge -o pgo/kosh-ir.profdata pgo/profraw/*.profraw
 	$(MAKE) $(AUTO_JOBS) -C src MODE=rel $(PGO_TOOLCHAIN) PGO=cs-generate \
 		PGO_PROFILE=$(abspath pgo/kosh-ir.profdata) kosh
-	./scripts/pgo-train.sh ./kosh-pgo-csgen pgo/work
+	LLVM_PROFILE_FILE="$(abspath pgo/csprofraw)/default_%m.profraw" \
+		./scripts/pgo-train.sh ./kosh-pgo-csgen pgo/work
 	$(PGO_PROFDATA) merge -o pgo/kosh.profdata pgo/kosh-ir.profdata \
 		pgo/csprofraw/*.profraw
 

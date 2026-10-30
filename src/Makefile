@@ -432,6 +432,11 @@ CXXFLAGS += \
 ifeq ($(PGO), cs-generate)
 PGO_PROFILE_DIRECTORY := $(abspath ../pgo/csprofraw)
 CXXFLAGS += "-fcs-profile-generate=$(PGO_PROFILE_DIRECTORY)"
+ifeq ($(TARGET), Darwin)
+# ld64.lld leaves the profile file variable that LTO creates unresolved, so
+# the link takes the runtime definition and LLVM_PROFILE_FILE sets the path.
+LINK_LIBRARIES += -Wl,-u,___llvm_profile_filename
+endif
 endif
 endif
 # MODE=tinyrel
