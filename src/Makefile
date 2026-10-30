@@ -354,9 +354,10 @@ else ifeq ($(TARGET), Darwin)
 # profile options only to ld64.lld, so a profile-guided build uses it when
 # it is installed.
 USE_LD :=
+LD64_LLD ?= $(shell command -v ld64.lld 2>/dev/null)
 ifneq ($(PGO)$(PGO_PROFILE),)
-ifneq ($(shell command -v ld64.lld 2>/dev/null),)
-USE_LD := -fuse-ld=lld
+ifneq ($(LD64_LLD),)
+USE_LD := -fuse-ld=lld -B$(dir $(LD64_LLD))
 endif
 endif
 else ifneq ($(shell command -v mold 2>/dev/null),)

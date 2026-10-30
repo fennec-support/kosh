@@ -87,7 +87,13 @@ completions:
 # instrumented build that uses the first profile. clang passes
 # context-sensitive options only to ld64.lld on Darwin, so Darwin without it
 # keeps the first profile. pgo builds with the result.
-PGO_CONTEXT_SENSITIVE := $(if $(filter Darwin,$(TARGET)),$(if $(shell command -v ld64.lld 2>/dev/null),1,0),1)
+ifeq ($(TARGET), Darwin)
+LD64_LLD ?= $(shell command -v ld64.lld 2>/dev/null || \
+	ls -d "$$(brew --prefix 2>/dev/null)"/opt/lld*/bin/ld64.lld 2>/dev/null | \
+	tail -n 1)
+export LD64_LLD
+endif
+PGO_CONTEXT_SENSITIVE := $(if $(filter Darwin,$(TARGET)),$(if $(LD64_LLD),1,0),1)
 
 pgo: pgo-profile
 	echo Building a profile-guided release...
