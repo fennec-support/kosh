@@ -303,6 +303,8 @@ export YASH ?= $(shell command -v yash)
 export DASH ?= $(shell command -v dash)
 export BASHP ?= $(shell ../scripts/find-modern-bash.sh)
 export PYTHON ?= python3
+export SHELLCHECK ?= shellcheck
+export SHFMT ?= shfmt
 
 export PRIMES_LIMIT ?= 100000
 export SCALE ?= 100

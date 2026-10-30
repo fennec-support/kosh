@@ -2,7 +2,9 @@
 
 # Benchmark configure.sh, configure.bash, and configure.kosh across the reference
 # shells and kosh, reporting wall-clock seconds at the given scale and checking
-# that kosh output matches the reference shell. Run from the test directory.
+# that kosh output matches the reference shell. The lint and format benchmarks
+# use a script from bench/generate-script.sh at the same scale, and shellcheck
+# runs on one twentieth of it. Run from the test directory.
 # The bash time keyword formats the wall clock through TIMEFORMAT.
 set -euo pipefail
 export TIMEFORMAT="%3R"
@@ -33,6 +35,12 @@ ZS=$WORK/zs
 PP=$WORK/pp
 PB=$WORK/pb
 PS=$WORK/ps
+GS=$WORK/generated.bash
+GL=$WORK/gl
+GF=$WORK/gf
+GX=$WORK/gx
+GH=$WORK/gh
+GR=$WORK/gr
 TIME_OUTPUT=$WORK/time
 ERROR_OUTPUT=$WORK/error
 DIFF_OUTPUT=$WORK/diff
@@ -465,3 +473,41 @@ then
     compare_outputs "$PS" "$PP" "python"
   fi
 fi
+
+CANDIDATE_NAME=$("$BIN_DIR/invoke-koshkit" basename "$BIN")
+SCALE="$SCALE" "$DASH" bench/generate-script.sh >"$GS"
+GENERATED_LINE_COUNT=$("$BIN_DIR/invoke-koshkit" wc -l <"$GS")
+GENERATED_LINE_COUNT=${GENERATED_LINE_COUNT//[!0-9]/}
+echo "generated.bash, wall-clock seconds for $GENERATED_LINE_COUNT lines at" \
+  "SCALE=$SCALE, lower is better:"
+run_timed "$CANDIDATE_NAME --lint" "$GL" "$BIN" --lint "$GS"
+run_timed "$CANDIDATE_NAME --format" "$GF" "$BIN" --format "$GS"
+run_timed "$CANDIDATE_NAME fix+format" "$GX" "$BIN" --lint --format "$GS"
+if command -v "$SHFMT" >/dev/null 2>&1
+then
+  run_timed "$("$BIN_DIR/invoke-koshkit" basename "$SHFMT")" "$GH" "$SHFMT" \
+    -i 2 "$GS"
+else
+  printf "  %-16s%s\n" "$("$BIN_DIR/invoke-koshkit" basename "$SHFMT")" \
+    "skipped, executable was not found"
+fi
+
+measure_command "$GR" "$BIN" --format "$GF"
+compare_outputs "$GF" "$GR" "its own formatting"
+
+LINT_REFERENCE_SCALE=$((SCALE / 20 > 0 ? SCALE / 20 : 1))
+SCALE="$LINT_REFERENCE_SCALE" "$DASH" bench/generate-script.sh >"$GS"
+GENERATED_LINE_COUNT=$("$BIN_DIR/invoke-koshkit" wc -l <"$GS")
+GENERATED_LINE_COUNT=${GENERATED_LINE_COUNT//[!0-9]/}
+echo "generated.bash, wall-clock seconds for $GENERATED_LINE_COUNT lines at" \
+  "SCALE=$LINT_REFERENCE_SCALE, lower is better:"
+if command -v "$SHELLCHECK" >/dev/null 2>&1
+then
+  run_timed "$("$BIN_DIR/invoke-koshkit" basename "$SHELLCHECK")" "$GL" \
+    "$SHELLCHECK" -s bash -S error "$GS"
+else
+  printf "  %-16s%s\n" "$("$BIN_DIR/invoke-koshkit" basename "$SHELLCHECK")" \
+    "skipped, executable was not found"
+fi
+
+run_timed "$CANDIDATE_NAME --lint" "$GL" "$BIN" --lint "$GS"
