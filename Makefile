@@ -84,9 +84,11 @@ completions:
 	mv completions/kosh.bash.new completions/kosh.bash
 
 # pgo-profile trains an instrumented build and then a context-sensitive
-# instrumented build that uses the first profile. ld64 receives no
-# context-sensitive options from the clang driver, so Darwin keeps the first
-# profile. pgo builds with the result.
+# instrumented build that uses the first profile. clang passes
+# context-sensitive options only to ld64.lld on Darwin, so Darwin without it
+# keeps the first profile. pgo builds with the result.
+PGO_CONTEXT_SENSITIVE := $(if $(filter Darwin,$(TARGET)),$(if $(shell command -v ld64.lld 2>/dev/null),1,0),1)
+
 pgo: pgo-profile
 	echo Building a profile-guided release...
 	$(MAKE) $(AUTO_JOBS) -C src MODE=rel \
@@ -99,7 +101,7 @@ pgo-profile:
 	./scripts/pgo-train.sh ./kosh-pgo-gen pgo/work
 	./scripts/llvm-tool.sh llvm-profdata merge -o pgo/kosh-ir.profdata \
 		pgo/profraw/*.profraw
-ifeq ($(TARGET), Darwin)
+ifeq ($(PGO_CONTEXT_SENSITIVE), 0)
 	cp pgo/kosh-ir.profdata pgo/kosh.profdata
 else
 	$(MAKE) $(AUTO_JOBS) -C src MODE=rel PGO=cs-generate \

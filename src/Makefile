@@ -350,8 +350,15 @@ USE_LD :=
 endif
 else ifeq ($(TARGET), Darwin)
 # mold is ELF-only and lld-as-Mach-O is rare on macOS, so the system ld64
-# links directly with no -fuse-ld flag.
+# links directly with no -fuse-ld flag. clang passes context-sensitive
+# profile options only to ld64.lld, so a profile-guided build uses it when
+# it is installed.
 USE_LD :=
+ifneq ($(PGO)$(PGO_PROFILE),)
+ifneq ($(shell command -v ld64.lld 2>/dev/null),)
+USE_LD := -fuse-ld=lld
+endif
+endif
 else ifneq ($(shell command -v mold 2>/dev/null),)
 USE_LD := -fuse-ld=mold
 else ifneq ($(AVAILABLE_LLD),)
