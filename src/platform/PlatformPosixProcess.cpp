@@ -86,9 +86,9 @@ static fn
 fill_usage_from_rusage_info(pid_t                   pid,
                             process_resource_usage &resources) wontthrow -> void
 {
-  rusage_info_v6 usage{};
+  rusage_info_v4 usage{};
 
-  if (::proc_pid_rusage(pid, RUSAGE_INFO_V6,
+  if (::proc_pid_rusage(pid, RUSAGE_INFO_V4,
                         reinterpret_cast<rusage_info_t *>(&usage)) != 0)
   {
     LOG(Debug, "the usage of child %d could not be read",
@@ -103,12 +103,8 @@ fill_usage_from_rusage_info(pid_t                   pid,
       static_cast<unsigned long long>(usage.ri_cycles));
   set_nonzero(resources.cpu_cycle_count, usage.ri_cycles);
   set_nonzero(resources.instruction_count, usage.ri_instructions);
-  set_nonzero(resources.performance_core_cycle_count, usage.ri_pcycles);
-  set_nonzero(resources.performance_core_instruction_count,
-              usage.ri_pinstructions);
   resources.wakeup_count = usage.ri_interrupt_wkups + usage.ri_pkg_idle_wkups;
-  resources.energy_nanojoules =
-      usage.ri_energy_nj != 0 ? usage.ri_energy_nj : usage.ri_billed_energy;
+  resources.energy_nanojoules          = usage.ri_billed_energy;
   resources.page_in_count              = usage.ri_pageins;
   resources.storage_read_byte_count    = usage.ri_diskio_bytesread;
   resources.storage_written_byte_count = usage.ri_diskio_byteswritten;

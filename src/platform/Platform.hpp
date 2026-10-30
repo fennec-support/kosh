@@ -2704,8 +2704,6 @@ struct process_resource_usage
   Maybe<u64> block_nanos{};
   Maybe<u64> io_wait_nanos{};
   Maybe<u64> peak_footprint_byte_count{};
-  Maybe<u64> performance_core_cycle_count{};
-  Maybe<u64> performance_core_instruction_count{};
   Maybe<u64> process_count{};
   Maybe<u64> branch_count{};
   Maybe<u64> frontend_stall_cycle_count{};

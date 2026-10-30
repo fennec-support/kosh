@@ -282,8 +282,6 @@ constexpr bench_metric METRICS[] = {
     {"involuntary share", PERCENT, read_involuntary_share, TREE, true},
     {"cycles", COUNT, read_resource<&usage::cpu_cycle_count>, PROCESS, true},
     {"instructions", COUNT, read_resource<&usage::instruction_count>, PROCESS, true},
-    {"p-core cycles", COUNT, read_resource<&usage::performance_core_cycle_count>, PROCESS, true},
-    {"p-core instructions", COUNT, read_resource<&usage::performance_core_instruction_count>, PROCESS, true},
     {"instructions per cycle", RATIO, read_instructions_per_cycle, PERF, true},
     {"cache miss ratio", PERCENT, read_cache_miss_ratio, PERF, true},
     {"branches", COUNT, read_resource<&usage::branch_count>, TREE, true},
