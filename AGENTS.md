@@ -216,11 +216,10 @@ koshkit --list-flags after a koshkit flag changes.
 NO_TOILETLINE=1 make, NO_KOSHKIT=1 make, and HARDENED=1 make use separate
 object directories. HARDENED=1 makes a release build trap on a container
 index past the end and is off by default because it slows sorting. make
-pgo-profile trains an instrumented release build with scripts/pgo-train.sh,
+pgo-profile runs scripts/pgo.sh, which trains an instrumented release build,
 trains a context-sensitive instrumented build that uses the first profile, and
-merges both into pgo/kosh.profdata. make pgo builds ./kosh with that profile.
-On macOS both targets require the Homebrew LLVM clang and llvm-profdata and
-the ld64.lld of the same major version.
+merges both into pgo/kosh.profdata. make pgo also builds ./kosh with that
+profile. On macOS both targets require the Homebrew llvm and lld formulae.
 The release workflow trains the profile natively in the builder image and
 builds the Linux and macOS binaries with it. zig reads the profile after the
 llvm-profdata that matches its LLVM version rewrites it. The Windows build

@@ -83,60 +83,11 @@ completions:
 		> completions/kosh.bash.new
 	mv completions/kosh.bash.new completions/kosh.bash
 
-# pgo-profile trains an instrumented build and then a context-sensitive
-# instrumented build that uses the first profile. pgo builds with the result.
-# clang passes context-sensitive options only to ld64.lld on Darwin, so
-# Darwin uses the Homebrew LLVM clang, llvm-profdata, and the ld64.lld of the
-# same major version.
-PGO_PROFDATA := ./scripts/llvm-tool.sh llvm-profdata
-PGO_TOOLCHAIN :=
-ifeq ($(TARGET), Darwin)
-BREW_PREFIX := $(shell brew --prefix 2>/dev/null)
-LLVM_PREFIX ?= $(BREW_PREFIX)/opt/llvm
-LLVM_MAJOR := $(shell "$(LLVM_PREFIX)/bin/clang" -dumpversion 2>/dev/null | \
-	cut -d. -f1)
-LD64_LLD ?= $(shell for candidate in "$(LLVM_PREFIX)/bin/ld64.lld" \
-	"$(BREW_PREFIX)/opt/lld@$(LLVM_MAJOR)/bin/ld64.lld" \
-	"$(BREW_PREFIX)/opt/lld/bin/ld64.lld"; do \
-	test -x "$$candidate" || continue; \
-	version=$$("$$candidate" --version 2>/dev/null | \
-		sed -n 's/.*LLD \([0-9]*\).*/\1/p' | head -n 1); \
-	if test "$$version" = "$(LLVM_MAJOR)"; then echo "$$candidate"; break; fi; \
-	done)
-PGO_PROFDATA := $(LLVM_PREFIX)/bin/llvm-profdata
-PGO_TOOLCHAIN := CXX=$(LLVM_PREFIX)/bin/clang++ LD64_LLD=$(LD64_LLD)
-endif
+pgo:
+	MAKE="$(MAKE)" JOBS="$(AUTO_JOBS)" ./scripts/pgo.sh build
 
-pgo: pgo-profile
-	echo Building a profile-guided release...
-	$(MAKE) $(AUTO_JOBS) -C src MODE=rel $(PGO_TOOLCHAIN) \
-		PGO_PROFILE=$(abspath pgo/kosh.profdata) kosh
-
-pgo-toolchain:
-ifeq ($(TARGET), Darwin)
-	test -x "$(LLVM_PREFIX)/bin/clang++" || { \
-		echo "make pgo on macOS needs the Homebrew LLVM toolchain. Run brew install llvm, or set LLVM_PREFIX." >&2; \
-		exit 1; \
-	}
-	test -n "$(LD64_LLD)" || { \
-		echo "make pgo on macOS needs ld64.lld $(LLVM_MAJOR). Run brew install lld@$(LLVM_MAJOR), or set LD64_LLD." >&2; \
-		exit 1; \
-	}
-endif
-
-pgo-profile: pgo-toolchain
-	echo Training a release profile...
-	rm -rf pgo/profraw pgo/csprofraw
-	$(MAKE) $(AUTO_JOBS) -C src MODE=rel $(PGO_TOOLCHAIN) PGO=generate kosh
-	LLVM_PROFILE_FILE="$(abspath pgo/profraw)/default_%m.profraw" \
-		./scripts/pgo-train.sh ./kosh-pgo-gen pgo/work
-	$(PGO_PROFDATA) merge -o pgo/kosh-ir.profdata pgo/profraw/*.profraw
-	$(MAKE) $(AUTO_JOBS) -C src MODE=rel $(PGO_TOOLCHAIN) PGO=cs-generate \
-		PGO_PROFILE=$(abspath pgo/kosh-ir.profdata) kosh
-	LLVM_PROFILE_FILE="$(abspath pgo/csprofraw)/default_%m.profraw" \
-		./scripts/pgo-train.sh ./kosh-pgo-csgen pgo/work
-	$(PGO_PROFDATA) merge -o pgo/kosh.profdata pgo/kosh-ir.profdata \
-		pgo/csprofraw/*.profraw
+pgo-profile:
+	MAKE="$(MAKE)" JOBS="$(AUTO_JOBS)" ./scripts/pgo.sh
 
 FUZZ_SECONDS ?= 60
 
@@ -177,4 +128,4 @@ clean:
 	$(MAKE) -C src/toiletline clean
 
 .PHONY: all kosh install uninstall tidy fmt toiletline_test test bench \
-	refill_tests completions pgo pgo-profile pgo-toolchain fuzz docs clean
+	refill_tests completions pgo pgo-profile fuzz docs clean

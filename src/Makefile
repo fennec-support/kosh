@@ -6,11 +6,10 @@ NO_TOILETLINE ?= 0
 NO_KOSHKIT ?= 0
 # HARDENED=1 makes a release build trap on a container index past the end.
 HARDENED ?= 0
-# PGO=generate builds the instrumented release binary ../kosh-pgo-gen, which
-# merges its profile into ../pgo/profraw. PGO_PROFILE=file.profdata builds
-# the release binary with that profile. PGO=cs-generate with PGO_PROFILE
-# builds ../kosh-pgo-csgen, which merges its context-sensitive profile into
-# ../pgo/csprofraw.
+# PGO=generate builds the instrumented release binary ../kosh-pgo-gen.
+# PGO_PROFILE=file.profdata builds the release binary with that profile.
+# PGO=cs-generate with PGO_PROFILE builds the context-sensitive instrumented
+# binary ../kosh-pgo-csgen. LLVM_PROFILE_FILE sets where both write.
 PGO ?=
 PGO_PROFILE ?=
 
@@ -420,8 +419,7 @@ LINK_LIBRARIES += -lsupc++
 endif
 endif
 ifeq ($(PGO), generate)
-PGO_PROFILE_DIRECTORY := $(abspath ../pgo/profraw)
-CXXFLAGS += "-fprofile-generate=$(PGO_PROFILE_DIRECTORY)"
+CXXFLAGS += -fprofile-generate
 else ifneq ($(PGO_PROFILE),)
 CXXFLAGS += \
 	"-fprofile-use=$(abspath $(PGO_PROFILE))" \
@@ -430,11 +428,10 @@ CXXFLAGS += \
 	-Wno-profile-instr-out-of-date \
 	-Wno-backend-plugin
 ifeq ($(PGO), cs-generate)
-PGO_PROFILE_DIRECTORY := $(abspath ../pgo/csprofraw)
-CXXFLAGS += "-fcs-profile-generate=$(PGO_PROFILE_DIRECTORY)"
+CXXFLAGS += -fcs-profile-generate
 ifeq ($(TARGET), Darwin)
 # ld64.lld leaves the profile file variable that LTO creates unresolved, so
-# the link takes the runtime definition and LLVM_PROFILE_FILE sets the path.
+# the link takes the runtime definition.
 LINK_LIBRARIES += -Wl,-u,___llvm_profile_filename
 endif
 endif
@@ -693,9 +690,6 @@ ifneq ($(REGEX_SOURCES),)
 endif
 ifeq ($(MODE), cov)
 	mkdir -p "$(COVERAGE_PROFILE_DIRECTORY)"
-endif
-ifneq ($(PGO_PROFILE_DIRECTORY),)
-	mkdir -p "$(PGO_PROFILE_DIRECTORY)"
 endif
 
 kosh: dirs
