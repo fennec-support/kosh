@@ -273,12 +273,33 @@ pure fn
 is_backtick_escape_stripped(char escaped, bool is_in_double_quotes) wontthrow
     -> bool;
 
+/* the mood rules a scan needs to tell which quotes open inside ${ }. */
+struct shell_quoting_rules
+{
+  bool is_single_quote_literal_in_parameter{false};
+  bool has_ansi_c_quotes{true};
+};
+
 fn
-scan_balanced_shell_region(StringView source,
-                           usize      position,
-                           char       closing_byte,
-                           usize      nesting_depth        = 0,
-                           bool      *was_nesting_too_deep = nullptr) throws
+scan_balanced_shell_region(
+    StringView          source,
+    usize               position,
+    char                closing_byte,
+    usize               nesting_depth        = 0,
+    bool               *was_nesting_too_deep = nullptr,
+    shell_quoting_rules rules                = shell_quoting_rules{}) throws
+    -> Maybe<usize>;
+
+/* the end of a parameter expansion, past its }. position is the byte after
+   the ${. */
+fn
+scan_parameter_expansion(StringView          source,
+                         usize               position,
+                         bool                is_in_double_quotes,
+                         bool                is_function_substitution,
+                         shell_quoting_rules rules,
+                         usize               nesting_depth,
+                         bool               *was_nesting_too_deep) throws
     -> Maybe<usize>;
 
 struct nested_substitution
@@ -369,6 +390,13 @@ public:
   bash_additions_enabled() const wontthrow -> bool
   {
     return mood() != mimic_mood::Posix;
+  }
+
+  pure fn
+  get_quoting_rules() const wontthrow -> lexer::shell_quoting_rules
+  {
+    return lexer::shell_quoting_rules{is_posix_option_on(),
+                                      bash_additions_enabled()};
   }
 
   Lexer(Lexer &&) = default;

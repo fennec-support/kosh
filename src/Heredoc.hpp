@@ -19,7 +19,7 @@ namespace koshka::lexer {
 struct heredoc_join_state
 {
   usize matched_byte_count{0};
-  bool  is_logical_line_open{false};
+  bool  has_logical_line_text{false};
   bool  has_mismatch{false};
 };
 

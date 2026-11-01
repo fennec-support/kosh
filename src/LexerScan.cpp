@@ -111,7 +111,11 @@ unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
       continue;
     }
 
-    if (quote != 0 && byte == quote) {
+    if (byte == '\\' && quote != '\'' && position + 1 < word.length &&
+        word[position + 1] == '\n')
+    {
+      position++;
+    } else if (quote != 0 && byte == quote) {
       quote = 0;
     } else if (byte == '\\' && position + 1 < word.length &&
                (quote == 0 || (quote == '"' && is_backtick_escape_stripped(
@@ -266,7 +270,7 @@ match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
 {
   usize content_start = 0;
 
-  if (heredoc.should_strip_tabs && !heredoc.join_state.is_logical_line_open) {
+  if (heredoc.should_strip_tabs && !heredoc.join_state.has_logical_line_text) {
     while (content_start < line.length && line[content_start] == '\t') {
       content_start++;
     }
@@ -297,7 +301,8 @@ advance_heredoc_join(heredoc_join_state &state,
   if (is_continued) {
     state.has_mismatch = state.has_mismatch || !remainder.starts_with(text);
     state.matched_byte_count += state.has_mismatch ? 0 : text.length;
-    state.is_logical_line_open = true;
+    state.has_logical_line_text =
+        state.has_logical_line_text || !text.is_empty();
 
     return false;
   }
@@ -312,9 +317,21 @@ advance_heredoc_join(heredoc_join_state &state,
 pure fn
 heredoc_word_joins_lines(StringView word) wontthrow -> bool
 {
-  return !word.find_character('\'').has_value() &&
-         !word.find_character('"').has_value() &&
-         !word.find_character('\\').has_value();
+  for (usize position = 0; position < word.length; position++) {
+    let const byte = word[position];
+
+    if (byte == '\'' || byte == '"') return false;
+
+    if (byte == '\\') {
+      if (position + 1 >= word.length || word[position + 1] != '\n') {
+        return false;
+      }
+
+      position++;
+    }
+  }
+
+  return true;
 }
 
 /* memory: none.
@@ -349,12 +366,178 @@ skip_balanced_scan_heredoc_bodies(
   return position;
 }
 
+pure static fn
+skip_backtick_run(StringView source, usize position) wontthrow -> usize
+{
+  while (position < source.length) {
+    let const byte = source[position++];
+
+    if (byte == '`') break;
+    if (byte == '\\' && position < source.length) position++;
+  }
+
+  return position;
+}
+
+/* the end of the $( or ${ group whose opening bracket is at position. */
+static fn
+scan_dollar_group(StringView          source,
+                  usize               position,
+                  bool                is_in_double_quotes,
+                  shell_quoting_rules rules,
+                  usize               nesting_depth,
+                  bool               *was_nesting_too_deep) throws -> Maybe<usize>
+{
+  if (source[position] == '(') {
+    return scan_balanced_shell_region(source, position + 1, ')',
+                                      nesting_depth + 1, was_nesting_too_deep,
+                                      rules);
+  }
+
+  if (position + 1 < source.length &&
+      (is_whitespace(source[position + 1]) || source[position + 1] == '\n' ||
+       source[position + 1] == '|'))
+  {
+    return scan_balanced_shell_region(source, position + 1, '}',
+                                      nesting_depth + 1, was_nesting_too_deep,
+                                      rules);
+  }
+
+  return scan_parameter_expansion(source, position + 1, is_in_double_quotes,
+                                  false, rules, nesting_depth + 1,
+                                  was_nesting_too_deep);
+}
+
+static fn
+scan_quoted_parameter_word(StringView          source,
+                           usize               position,
+                           shell_quoting_rules rules,
+                           usize               nesting_depth,
+                           bool               *was_nesting_too_deep) throws
+    -> Maybe<usize>
+{
+  while (position < source.length) {
+    let const byte = source[position++];
+
+    if (byte == '"') return position;
+
+    if (byte == '\\') {
+      position += position < source.length ? 1 : 0;
+    } else if (byte == '`') {
+      position = skip_backtick_run(source, position);
+    } else if (byte == '$' && position < source.length &&
+               (source[position] == '(' || source[position] == '{'))
+    {
+      let const nested = scan_dollar_group(source, position, true, rules,
+                                           nesting_depth, was_nesting_too_deep);
+
+      if (!nested.has_value()) return None;
+      position = *nested;
+    }
+  }
+
+  return None;
+}
+
 fn
-scan_balanced_shell_region(StringView source,
-                           usize      position,
-                           char       closing_byte,
-                           usize      nesting_depth,
-                           bool      *was_nesting_too_deep) throws
+scan_parameter_expansion(StringView          source,
+                         usize               position,
+                         bool                is_in_double_quotes,
+                         bool                is_function_substitution,
+                         shell_quoting_rules rules,
+                         usize               nesting_depth,
+                         bool               *was_nesting_too_deep) throws
+    -> Maybe<usize>
+{
+  if (nesting_depth > MAX_SUBSTITUTION_NESTING_DEPTH) {
+    if (was_nesting_too_deep != nullptr) *was_nesting_too_deep = true;
+
+    return None;
+  }
+
+  usize brace_depth = 1;
+
+  /* e.g. source = x:-"${y:-"}"}"}, position 0
+       " at 3 opens a quoted word, whose ${ at 4 nests one more scan
+       " at 9 opens a quoted word that holds the } at 10
+       } at 12 ends the nested scan, " at 13 ends the quoted word
+       } at 14 brings brace_depth to 0, return 15 */
+  while (position < source.length) {
+    let const byte = source[position++];
+
+    switch (byte) {
+    case '\\': position += position < source.length ? 1 : 0; break;
+
+    case '\'': {
+      if (is_in_double_quotes && rules.is_single_quote_literal_in_parameter) {
+        break;
+      }
+
+      while (position < source.length && source[position] != '\'') {
+        position++;
+      }
+
+      if (position >= source.length) return None;
+      position++;
+    } break;
+
+    case '"': {
+      let const nested = scan_quoted_parameter_word(
+          source, position, rules, nesting_depth, was_nesting_too_deep);
+
+      if (!nested.has_value()) return None;
+      position = *nested;
+    } break;
+
+    case '`': position = skip_backtick_run(source, position); break;
+
+    case '$': {
+      if (position >= source.length) return None;
+
+      if (source[position] == '\'' && rules.has_ansi_c_quotes &&
+          !is_in_double_quotes)
+      {
+        position++;
+
+        while (position < source.length && source[position] != '\'') {
+          position += source[position] == '\\' ? 2 : 1;
+        }
+
+        if (position >= source.length) return None;
+        position++;
+      } else if (source[position] == '(' || source[position] == '{') {
+        let const nested =
+            scan_dollar_group(source, position, is_in_double_quotes, rules,
+                              nesting_depth, was_nesting_too_deep);
+
+        if (!nested.has_value()) return None;
+        position = *nested;
+      }
+    } break;
+
+    case '{':
+      if (is_function_substitution) brace_depth++;
+      break;
+
+    case '}':
+      brace_depth--;
+      if (brace_depth == 0) return position;
+      break;
+
+    default: break;
+    }
+  }
+
+  return None;
+}
+
+fn
+scan_balanced_shell_region(StringView          source,
+                           usize               position,
+                           char                closing_byte,
+                           usize               nesting_depth,
+                           bool               *was_nesting_too_deep,
+                           shell_quoting_rules rules) throws
     -> Maybe<usize>
 {
   /* a quoted substitution recurses here. The recursion stops at the
@@ -399,15 +582,11 @@ scan_balanced_shell_region(StringView source,
       }
 
       if (byte == '$' && quote == '"' && position < source.length &&
-          (source[position] == '(' ||
-           (source[position] == '{' && position + 1 < source.length &&
-            (is_whitespace(source[position + 1]) ||
-             source[position + 1] == '|'))))
+          (source[position] == '(' || source[position] == '{'))
       {
         let const nested_closing = source[position] == '(' ? ')' : '}';
-        let const nested =
-            scan_balanced_shell_region(source, position + 1, nested_closing,
-                                       nesting_depth + 1, was_nesting_too_deep);
+        let const nested         = scan_dollar_group(
+            source, position, true, rules, nesting_depth, was_nesting_too_deep);
 
         if (!nested.has_value()) return None;
         position      = *nested;
@@ -483,6 +662,21 @@ scan_balanced_shell_region(StringView source,
       if (position < source.length) {
         position++;
         previous_byte = byte;
+        continue;
+      }
+
+      break;
+
+    case '$':
+      if (position < source.length && source[position] == '{') {
+        let const nested =
+            scan_dollar_group(source, position, false, rules, nesting_depth,
+                              was_nesting_too_deep);
+
+        if (!nested.has_value()) return None;
+        position            = *nested;
+        previous_byte       = '}';
+        is_command_position = false;
         continue;
       }
 

@@ -464,7 +464,7 @@ Lexer::walk_heredoc_body(usize              start,
     usize     stripped_length = line_length;
 
     if (tab_policy == heredoc_tab_policy::Strip &&
-        !join_state.is_logical_line_open)
+        !join_state.has_logical_line_text)
     {
       while (stripped_length > 0 && m_source[stripped_offset] == '\t') {
         stripped_offset++;
@@ -1095,6 +1095,7 @@ Lexer::lex_identifier() throws -> Token *
         let   arithmetic_start = byte_count;
         let   closing_length   = is_bracket_arithmetic ? usize{1} : usize{2};
         usize group_depth      = 0;
+        bool  is_command_group = false;
 
         loop {
           let const c = chop_character(byte_count);
@@ -1229,29 +1230,49 @@ Lexer::lex_identifier() throws -> Token *
           } else if (c == ')' && chop_character(byte_count + 1) == ')') {
             byte_count += 2;
             break;
+          } else if (c == ')') {
+            let const group_end = lexer::scan_balanced_shell_region(
+                m_source, m_cursor_position + expansion_start + 2, ')', 0,
+                nullptr, get_quoting_rules());
+
+            if (!group_end.has_value()) rarely {
+              throw ErrorWithLocationAndDetails{
+                  here(m_cursor_position, byte_count + 1),
+                  "Unterminated arithmetic expansion",
+                  here(m_cursor_position + byte_count + 1, 1),
+                  "expected )) here"};
+            }
+
+            is_command_group = true;
+            break;
           } else {
             byte_count++;
           }
         }
 
-        let const body_length = byte_count - arithmetic_start - closing_length;
+        if (!is_command_group) {
+          let const body_length =
+              byte_count - arithmetic_start - closing_length;
 
-        word.segments.push(WordSegment{
-            WordSegment::Kind::ArithmeticExpansion,
-            SegmentText{bump_allocator(arena()),
-                        m_source.substring_of_length(
-                            m_cursor_position + arithmetic_start, body_length)},
-            is_in_double_quotes
-        });
-        word.segments.back().set_source_span(m_cursor_position +
-                                                 arithmetic_start,
-                                             word.segments.back().text.count());
-        if (should_validate_substitutions()) {
-          validate_nested_expansions(m_cursor_position + arithmetic_start,
-                                     body_length, false);
+          word.segments.push(WordSegment{
+              WordSegment::Kind::ArithmeticExpansion,
+              SegmentText{bump_allocator(arena()),
+                          m_source.substring_of_length(m_cursor_position +
+                                                           arithmetic_start, body_length)},
+              is_in_double_quotes
+          });
+          word.segments.back().set_source_span(
+              m_cursor_position + arithmetic_start,
+              word.segments.back().text.count());
+          if (should_validate_substitutions()) {
+            validate_nested_expansions(m_cursor_position + arithmetic_start,
+                                       body_length, false);
+          }
+
+          continue;
         }
 
-        continue;
+        byte_count = expansion_start + 1;
       }
 
       if (next == '(') {
@@ -1260,7 +1281,8 @@ Lexer::lex_identifier() throws -> Token *
         let const inner_start          = m_cursor_position + byte_count;
         bool      was_nesting_too_deep = false;
         let const substitution_end     = lexer::scan_balanced_shell_region(
-            m_source, inner_start, ')', 0, &was_nesting_too_deep);
+            m_source, inner_start, ')', 0, &was_nesting_too_deep,
+            get_quoting_rules());
 
         if (!substitution_end.has_value()) {
           if (was_nesting_too_deep) {
@@ -1321,109 +1343,28 @@ Lexer::lex_identifier() throws -> Token *
           byte_count++;
         }
 
-        usize brace_depth = 1;
-        char  quote       = 0;
+        bool      was_nesting_too_deep = false;
+        let const parameter_end        = lexer::scan_parameter_expansion(
+            m_source, m_cursor_position + byte_count, is_in_double_quotes,
+            is_function_substitution, get_quoting_rules(), 0,
+            &was_nesting_too_deep);
 
-        loop {
-          if (!has_character(byte_count)) {
-            rarely {
-              throw ErrorWithLocationAndDetails{
-                  here(m_cursor_position + expansion_start,
-                              byte_count - expansion_start),
-                  "Unterminated variable expansion",
-                  here(m_cursor_position + byte_count, 1), "expected } here"};
-            }
+        if (!parameter_end.has_value()) {
+          if (was_nesting_too_deep) {
+            lexer::throw_substitution_too_deep(here(m_cursor_position, 2),
+                                               "Variable expansion");
           }
 
-          let const c = chop_character(byte_count);
-
-          byte_count++;
-
-          if (quote == '\'') {
-            if (c == '\'') {
-              quote = 0;
-            }
-            continue;
-          }
-
-          if (c == '\\') {
-            if (has_character(byte_count)) {
-              byte_count++;
-            }
-            continue;
-          }
-
-          if (quote == '"') {
-            if (c == '"') {
-              quote = 0;
-            }
-            continue;
-          }
-
-          if (c == '\'' && is_in_double_quotes && is_posix_option_on()) {
-            continue;
-          }
-
-          if (c == '\'' || c == '"') {
-            quote = c;
-            continue;
-          }
-
-          if (c == '`') {
-            loop {
-              if (!has_character(byte_count)) {
-                break;
-              }
-
-              let const b = chop_character(byte_count);
-
-              byte_count++;
-              if (b == '\\') {
-                if (has_character(byte_count)) {
-                  byte_count++;
-                }
-                continue;
-              }
-
-              if (b == '`') {
-                break;
-              }
-            }
-
-                   continue;
-          }
-
-          if (c == '$' && chop_character(byte_count) == '(') {
-            byte_count++;
-
-            let const nested_end = lexer::scan_balanced_shell_region(
-                m_source, m_cursor_position + byte_count, ')');
-
-            byte_count = nested_end.has_value()
-                                    ? *nested_end - m_cursor_position
-                                    : m_source.count() - m_cursor_position;
-            continue;
-          }
-
-          if (c == '$' && chop_character(byte_count) == '{') {
-            brace_depth++;
-            byte_count++;
-            continue;
-          }
-
-          if (c == '{' && is_function_substitution) {
-            brace_depth++;
-            continue;
-          }
-
-          if (c == '}') {
-            brace_depth--;
-            if (brace_depth == 0) {
-              break;
-            }
-            continue;
+          rarely {
+            throw ErrorWithLocationAndDetails{
+                here(m_cursor_position + expansion_start,
+                     m_source.count() - m_cursor_position - expansion_start),
+                "Unterminated variable expansion", here(m_source.count(), 1),
+                "expected } here"};
           }
         }
+
+        byte_count = *parameter_end - m_cursor_position;
 
         let const is_template_expression =
             !is_function_substitution && chop_character(name_start) == '{' &&
@@ -1798,7 +1739,8 @@ Lexer::lex_process_substitution(Word &word, usize offset) throws
   let const inner_start          = open_position + 2;
   bool      was_nesting_too_deep = false;
   let const substitution_end     = lexer::scan_balanced_shell_region(
-      m_source, inner_start, ')', 0, &was_nesting_too_deep);
+      m_source, inner_start, ')', 0, &was_nesting_too_deep,
+      get_quoting_rules());
 
   if (!substitution_end.has_value() && was_nesting_too_deep) {
     lexer::throw_substitution_too_deep(here(open_position, 2),

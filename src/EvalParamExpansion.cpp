@@ -591,7 +591,9 @@ private:
   scan_braced_body(usize &position, bool is_command_body = false) throws
       -> String;
   fn
-  scan_arithmetic_body(bool is_bracket_form, usize &position) throws
+  scan_arithmetic_body(bool   is_bracket_form,
+                       usize &position,
+                       bool  *was_closed_early = nullptr) throws
       -> String;
   fn
   scan_command_body(usize start, usize &position) throws -> String;
@@ -1416,7 +1418,9 @@ EvalContext::ModifierWordExpander::expand_plain_parameter() throws
 
 fn
 EvalContext::ModifierWordExpander::scan_arithmetic_body(
-    bool is_bracket_form, usize &position) throws -> String
+    bool   is_bracket_form,
+    usize &position,
+    bool  *was_closed_early) throws -> String
 {
   let inner = String{m_context.scratch_allocator()};
 
@@ -1468,6 +1472,9 @@ EvalContext::ModifierWordExpander::scan_arithmetic_body(
                m_word[position + 1] == ')')
     {
       position += 2;
+      break;
+    } else if (ch == ')' && was_closed_early != nullptr) {
+      *was_closed_early = true;
       break;
     }
 
@@ -1613,7 +1620,16 @@ EvalContext::ModifierWordExpander::expand_dollar() throws -> void
   } else if (next == '(' && m_index + 2 < m_word.length &&
              m_word[m_index + 2] == '(')
   {
-    expand_arithmetic(false);
+    usize j                = 0;
+    bool  was_closed_early = false;
+
+    scan_arithmetic_body(false, j, &was_closed_early);
+
+    if (was_closed_early) {
+      expand_command_substitution();
+    } else {
+      expand_arithmetic(false);
+    }
   } else if (next == '[' && state.bash_additions_enabled()) {
     expand_arithmetic(true);
   } else if (next == '(') {
