@@ -4947,8 +4947,19 @@ Make::execute(const ExecContext               &ec,
 
   let saved_directory = os::DirectoryReference{};
 
-  if (FLAG_MAKE_DIR.is_set()) {
+  /* a nested make replaces the flag values before the defer below runs. */
+  let const should_restore_directory = FLAG_MAKE_DIR.is_set();
+
+  if (should_restore_directory) {
     saved_directory = os::reference_current_directory();
+    if (!saved_directory.is_valid()) {
+      report_soft_koshkit_error(ec, cxt, FLAG_MAKE_DIR.value_location(),
+                                "Unable to keep the working directory: " +
+                                    os::last_system_error_message());
+
+      return 2;
+    }
+
     if (Path::set_current_directory(
             Path{FLAG_MAKE_DIR.value(), cxt.scratch_allocator()})
             .is_error())
@@ -4964,7 +4975,7 @@ Make::execute(const ExecContext               &ec,
   }
 
   defer {
-    if (FLAG_MAKE_DIR.is_set() &&
+    if (should_restore_directory &&
         !os::restore_current_directory(saved_directory))
     {
       show_message(Warning{"Unable to return to the original directory after "
