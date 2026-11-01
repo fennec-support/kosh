@@ -3599,12 +3599,16 @@ EvalContext::apply_indirect_or_name_listing(StringView body) throws
   let const target_view = target->view();
 
   if (let const bracket = target_view.find_character('[');
-      bracket.has_value() && target_view[target_view.length - 1] == ']')
+      bracket.has_value() && target_view[target_view.length - 1] == ']' &&
+      lexer::word_is_variable_name(
+          target_view.substring_of_length(0, *bracket)))
   {
-    return apply_array_subscript(
-        target_view.substring_of_length(0, *bracket),
-        target_view.substring_of_length(*bracket + 1,
-                                        target_view.length - *bracket - 2));
+    let const subscript = target_view.substring_of_length(
+        *bracket + 1, target_view.length - *bracket - 2);
+    let const data_scope = guard_expanded_subscript(subscript);
+
+    return apply_array_subscript(target_view.substring_of_length(0, *bracket),
+                                 subscript);
   }
 
   if ((body == "@" || body == "*") &&

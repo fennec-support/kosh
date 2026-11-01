@@ -115,6 +115,11 @@ getopts a opt -a
 echo "$OPTIND $opt"
 OPTIND=1
 
+echo "--- a plain subscript reaches an indirect array ---"
+indirect=(1 2)
+plain='indirect[1]'
+echo "${!plain}"
+
 echo "--- a regex variable keeps its backslashes ---"
 word='\<bar'; [[ 'foo bar' =~ $word ]]; echo "$?"
 class='\w'; [[ a =~ $class ]]; echo "$?"

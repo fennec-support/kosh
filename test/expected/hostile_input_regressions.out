@@ -38,6 +38,9 @@ status 1
 --- fg in a forked stage ends with a diagnostic ---
 after
 after
+--- an indirect subscript from data runs no command ---
+status 1
+status 2
 --- local - restores an explicit set -u ---
 after 0
 --- koshconf refuses a configuration that is not a file ---

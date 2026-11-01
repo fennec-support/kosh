@@ -83,6 +83,13 @@ timeout 10 "$BIN" --mood bash -c 'sleep 0 & fg %1 | true; echo after' \
 timeout 10 "$BIN" --mood bash -c 'sleep 1 & fg %1 | true; echo after' \
   2>/dev/null | tail -n 1
 
+echo "--- an indirect subscript from data runs no command ---"
+"$BIN" --no-diagnostics -c \
+  'a=(1); v="a[\$(touch marker)0]"; echo "${!v}"' 2>/dev/null
+echo "status $?"
+ls marker 2>/dev/null
+echo "status $?"
+
 echo "--- local - restores an explicit set -u ---"
 "$BIN" -c 'f() { local -; set -u; }; f; [ -z "$unset_operand" ]; echo "after $?"'
 
