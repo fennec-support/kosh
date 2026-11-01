@@ -1167,6 +1167,28 @@ Parser::parse_conditional_command() throws -> Command *
     throw error;
   };
 
+  /* a word after a test operator is its operand, as in `[[ a == ! ]]`. */
+  let const do_is_after_operator = [&elements]() throws -> bool {
+    using Kind = conditional_element::Kind;
+
+    if (elements.is_empty()) return false;
+
+    let const &previous = elements.back();
+
+    if (previous.kind == Kind::Less || previous.kind == Kind::Greater) {
+      return true;
+    }
+
+    if (previous.kind != Kind::Operand || !previous.is_bare_unquoted) {
+      return false;
+    }
+
+    let const text = previous.word->raw_string();
+
+    return is_conditional_unary_operator(text.view()) ||
+           is_conditional_binary_operator(text.view());
+  };
+
   loop {
     Token *t = m_lexer.next_shell_token();
     ASSERT(t != nullptr);
@@ -1216,7 +1238,7 @@ Parser::parse_conditional_command() throws -> Command *
           static_cast<tokens::WordToken *>(t)->word().plain_literal_kind() ==
           Word::PlainLiteral::PlainUnquotedOneSegment;
 
-      if (is_unquoted_word(t, "!")) {
+      if (is_unquoted_word(t, "!") && !do_is_after_operator()) {
         elements.push({nullptr, {}, Kind::Not, false});
         break;
       }
@@ -1271,7 +1293,13 @@ Parser::parse_conditional_command() throws -> Command *
 
           do_append_segments(first);
 
+          defer { m_lexer.set_is_hash_literal(false); };
+
           loop {
+            m_lexer.set_is_hash_literal(
+                regex_parenthesis_depth > 0 ||
+                m_lexer.source().substring(end_position).starts_with("#"));
+
             Token *next = m_lexer.peek_shell_token();
 
             if (is_unquoted_word(next, "]]") ||

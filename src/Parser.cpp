@@ -67,6 +67,23 @@ Parser::next_token_of_kind(Token::Kind kind,
   return token;
 }
 
+fn
+Parser::next_redirection_word(StringView missing_message) throws
+    -> Token *
+{
+  Token *token = m_lexer.peek_shell_token();
+
+  ASSERT(token != nullptr);
+  if (!token_kind_is_keyword(token->kind())) {
+    return next_token_of_kind(Token::Kind::Word, missing_message);
+  }
+
+  m_lexer.advance_past_last_peek();
+
+  return word_token_from_raw(m_lexer.arena(), token->raw_string().view(),
+                             token->source_location());
+}
+
 pure fn
 Parser::debug_words() const wontthrow -> const ArrayList<Word> &
 {
@@ -1485,8 +1502,7 @@ Parser::build_file_or_dup_redirection(
             op_location.position + op_location.length)
     {
       m_lexer.advance_past_last_peek();
-      Token *from = next_token_of_kind(Token::Kind::Word,
-                                       "Expected a descriptor after '&'");
+      Token *from = next_redirection_word("Expected a descriptor after '&'");
 
       let const &from_word = static_cast<tokens::WordToken *>(from)->word();
 
@@ -1558,8 +1574,7 @@ Parser::build_file_or_dup_redirection(
     {
       m_lexer.advance_past_last_peek();
       redir.kind   = expressions::Redirection::Kind::TruncateOutputOverride;
-      redir.target = next_token_of_kind(Token::Kind::Word,
-                                        "Expected a filename after '>|'");
+      redir.target = next_redirection_word("Expected a filename after '>|'");
       out.push(redir);
 
       return;
@@ -1570,26 +1585,15 @@ Parser::build_file_or_dup_redirection(
     {
       m_lexer.advance_past_last_peek();
       redir.kind   = expressions::Redirection::Kind::ReadWrite;
-      redir.target = next_token_of_kind(Token::Kind::Word,
-                                        "Expected a filename after '<>'");
+      redir.target = next_redirection_word("Expected a filename after '<>'");
       out.push(redir);
 
       return;
     }
   }
 
-  Token *target = m_lexer.peek_shell_token();
-
-  /* a keyword after the operator is the file, as in `echo a >fi`. */
-  if (token_kind_is_keyword(target->kind())) {
-    m_lexer.advance_past_last_peek();
-    target = word_token_from_raw(m_lexer.arena(), target->raw_string().view(),
-                                 target->source_location());
-  } else {
-    target = next_token_of_kind(Token::Kind::Word,
-                                "Expected a file after the redirection "
-                                "operator");
-  }
+  Token *target =
+      next_redirection_word("Expected a file after the redirection operator");
 
   /* at this point: target is a Word token, and no branch above has pushed
      redir to out. */
@@ -1645,20 +1649,9 @@ Parser::build_here_string_redirection(
 
   redir.fd      = fd;
   redir.kind    = expressions::Redirection::Kind::HereString;
-  Token *target = m_lexer.peek_shell_token();
-
-  /* a keyword after <<< is the word itself, as in `cat <<< fi`. */
-  if (token_kind_is_keyword(target->kind())) {
-    m_lexer.advance_past_last_peek();
-    redir.target =
-        word_token_from_raw(m_lexer.arena(), target->raw_string().view(),
-                            target->source_location());
-  } else {
-    redir.target =
-        next_token_of_kind(Token::Kind::Word, "Expected a word after '<<<'");
-  }
-  redir.dup_fd                = -1;
-  redir.heredoc               = nullptr;
+  redir.target  = next_redirection_word("Expected a word after '<<<'");
+  redir.dup_fd  = -1;
+  redir.heredoc = nullptr;
   redir.should_expand_heredoc = false;
   out.push(redir);
 }
@@ -1713,6 +1706,12 @@ Parser::build_heredoc_redirection(
     is_separated_strip_operator = true;
     delimiter_token             = m_lexer.next_shell_token();
     ASSERT(delimiter_token != nullptr);
+  }
+
+  if (token_kind_is_keyword(delimiter_token->kind())) {
+    delimiter_token = word_token_from_raw(m_lexer.arena(),
+                                          delimiter_token->raw_string().view(),
+                                          delimiter_token->source_location());
   }
 
   if (delimiter_token->kind() != Token::Kind::Word) {

@@ -443,6 +443,14 @@ public:
     m_is_lexing_array_literal = is_lexing;
   }
 
+  /* a hash starts a word and opens no comment while this holds, as inside a
+     regular expression operand. */
+  fn
+  set_is_hash_literal(bool is_literal) wontthrow -> void
+  {
+    m_is_hash_literal = is_literal;
+  }
+
   fn
   set_shellcheck_directive_collection_mode(
       shellcheck_directive_collection_mode mode) wontthrow -> void
@@ -545,6 +553,7 @@ protected:
 
   bool                                 m_was_last_shell_token_newline{false};
   bool                                 m_is_lexing_array_literal{false};
+  bool                                 m_is_hash_literal{false};
   ArrayList<shellcheck_directive_span> m_pending_shellcheck_directives{
       heap_allocator()};
   ArrayList<shellcheck_directive_span> m_shellcheck_directive_spans{

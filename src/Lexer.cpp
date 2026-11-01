@@ -657,6 +657,8 @@ Lexer::skip_whitespace() throws -> void
       break;
 
     case '#': {
+      if (m_is_hash_literal) break;
+
       let const comment_start     = i;
       let const comment_remaining = m_source.substring(m_cursor_position + i);
 

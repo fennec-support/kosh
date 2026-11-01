@@ -260,6 +260,8 @@ private:
   next_token_of_kind(Token::Kind kind,
                      StringView  missing_message) throws -> Token *;
   fn
+  next_redirection_word(StringView missing_message) throws -> Token *;
+  fn
   skip_newlines_after_pipe() throws -> void;
   fn
   skip_semicolons_and_newlines() throws -> void;

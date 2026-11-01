@@ -366,6 +366,8 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
   bool  has_comment_on_line               = false;
   bool  is_expecting_heredoc_delimiter    = false;
   bool  should_pending_heredoc_strip_tabs = false;
+  bool  is_in_regex_operand               = false;
+  usize regex_paren_depth                 = 0;
 
   while (position < source.length) {
     let const byte = source[position];
@@ -499,7 +501,12 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
       continue;
     }
 
-    if (byte == '#') {
+    let const is_regex_hash =
+        is_in_regex_operand && (regex_paren_depth > 0 ||
+                                (!lexer::is_whitespace(source[position - 1]) &&
+                                 source[position - 1] != '\n'));
+
+    if (byte == '#' && !is_regex_hash) {
       let end_position = position;
 
       while (end_position < source.length && source[end_position] != '\n') {
@@ -540,6 +547,12 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
         should_pending_heredoc_strip_tabs = text == "<<-";
       }
 
+      if (text == "(") {
+        regex_paren_depth++;
+      } else if (text == ")" && regex_paren_depth > 0) {
+        regex_paren_depth--;
+      }
+
       pieces.push(format_piece{text, position, format_piece_kind::Operator,
                                !has_code_on_line});
       has_code_on_line = true;
@@ -573,6 +586,13 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
           should_pending_heredoc_strip_tabs,
           lexer::heredoc_word_joins_lines(text)});
       is_expecting_heredoc_delimiter = false;
+    }
+
+    if (text == "=~") {
+      is_in_regex_operand = true;
+      regex_paren_depth   = 0;
+    } else if (text == "]]") {
+      is_in_regex_operand = false;
     }
 
     pieces.push(format_piece{text, position, format_piece_kind::Word,
