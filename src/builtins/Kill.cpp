@@ -177,6 +177,27 @@ Kill::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           signal_error = os::last_system_error_message();
       }
 
+      /* a stopped process acts on these signals only after it runs again. */
+      let const termination_signal = os::signal_number_from_name("TERM");
+      let const hangup_signal      = os::signal_number_from_name("HUP");
+      let const continue_signal    = os::signal_number_from_name("CONT");
+      let const is_termination =
+          (termination_signal.has_value() &&
+           *termination_signal == signal_number) ||
+          (hangup_signal.has_value() && *hangup_signal == signal_number);
+
+      if (did_signal_process && is_termination &&
+          job->state == job::State::Stopped && continue_signal.has_value())
+      {
+        if (job->is_primary_process_active) {
+          unused(os::signal_process(job->pid, *continue_signal));
+        }
+
+        for (let const process : job->earlier_pipeline_processes) {
+          unused(os::signal_process(process, *continue_signal));
+        }
+      }
+
       if (!did_signal_process) {
         let const did_find_active_process =
             job->is_primary_process_active ||

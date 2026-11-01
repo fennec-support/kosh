@@ -288,3 +288,50 @@ alias -- -x=y
 0
 status 1
 status 2
+--- a fatal signal ends a wait and runs the EXIT trap ---
+foreground
+status 143, prompt
+wait
+status 143, prompt
+substitution
+status 143, prompt
+function
+status 143, prompt
+read
+status 143, prompt
+--- clearing the EXIT trap restores the default signal action ---
+status 143, prompt
+--- a descriptor open for both directions ends with the capture ---
+[b]
+--- a capture works under a low descriptor limit ---
+a b
+a b
+--- a long extglob subject keeps the stack ---
+status 0
+status 1
+--- a loop reuses an absolute target across directories ---
+loop_a
+loop_b
+--- only the top shell can suspend ---
+subshell 1
+substitution 1
+background 1
+stage 1
+--- xargs keeps its flags after a nested utility ---
+koshkit basename a/b
+b
+koshkit basename c/d
+d
+--- touch keeps a fractional date ---
+500000000
+--- csplit -k writes the rest only for a pattern past the input ---
+status 1
+in
+status 1
+in
+xx00
+--- cp merges a source that ends in a separator and a dot ---
+file
+--- cp refuses a second source for a created target ---
+status 1
+one

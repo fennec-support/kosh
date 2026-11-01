@@ -434,3 +434,42 @@ a=(x y z)
 echo "${!a[@]}"
 declare -A m=([k]=1)
 echo "${!m[@]}"
+
+echo "--- a call prefix leaves no exported array element ---"
+export exported_list=9
+exported_list=(1 2)
+list_reader() { :; }
+exported_list=x list_reader
+/usr/bin/env | grep -c '^exported_list='
+echo "${exported_list[1]}"
+unset exported_list
+
+echo "--- an unset IFS stays unset after a command substitution ---"
+unset IFS
+captured=$(echo hi)
+echo "[${IFS-unset}]"
+IFS=$' \t\n'
+
+echo "--- an export operand keeps its own value over a prefix ---"
+PREFIXED=1 export PREFIXED=2
+echo "$PREFIXED"
+/usr/bin/env | grep '^PREFIXED='
+unset PREFIXED
+PREFIXED=1 export PREFIXED+=2
+echo "$PREFIXED"
+unset PREFIXED
+PREFIXED=1 export -- PREFIXED=2
+echo "$PREFIXED"
+unset PREFIXED
+PREFIXED=1 export -n PREFIXED
+echo "[$PREFIXED]"
+PREFIXED=1 export -f list_reader
+echo "[$PREFIXED]"
+unset PREFIXED
+PATH=/bin export PATH=/usr/bin:/bin
+echo "$PATH"
+
+echo "--- an EXIT trap set in a pipeline stage runs in that stage ---"
+{ trap 'echo stage' EXIT; } | cat
+{ trap 'exit 4' EXIT; true; } | cat
+echo "${PIPESTATUS[0]}"

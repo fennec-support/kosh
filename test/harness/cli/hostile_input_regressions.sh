@@ -567,3 +567,79 @@ echo "--- bounds in sequence stay valid and nested bounds do not ---"
 echo "status $?"
 "$BIN" -c "koshkit grep -cE '(a{30000}b{30000}c{30000}){2}' /dev/null" 2>/dev/null
 echo "status $?"
+
+term_after_ready() {
+  rm -f ready
+  "$BIN" --no-diagnostics -c "$1" &
+  target=$!
+  attempt=0
+  while [ ! -e ready ] && [ "$attempt" -lt 500 ]; do
+    sleep 0.01
+    attempt=$((attempt + 1))
+  done
+  sleep 0.5
+  started=$(date +%s)
+  kill -TERM "$target"
+  wait "$target"
+  term_status=$?
+  elapsed=$(($(date +%s) - started))
+  [ "$elapsed" -lt 3 ] && term_speed=prompt || term_speed=late
+  echo "status $term_status, $term_speed"
+}
+
+echo "--- a fatal signal ends a wait and runs the EXIT trap ---"
+term_after_ready 'trap "echo foreground" EXIT; : > ready; sleep 4 > /dev/null 2>&1'
+term_after_ready 'trap "echo wait" EXIT; sleep 4 > /dev/null 2>&1 & : > ready; wait'
+term_after_ready 'trap "echo substitution" EXIT; : > ready; x=$(sleep 4 2>&1)'
+term_after_ready 'trap "echo function" EXIT; : > ready; x=${ sleep 4 2>&1; }'
+mkfifo reader_pipe
+sleep 4 > reader_pipe &
+term_after_ready 'trap "echo read" EXIT; : > ready; read -r x < reader_pipe'
+
+echo "--- clearing the EXIT trap restores the default signal action ---"
+term_after_ready 'trap "echo never" EXIT; trap - EXIT; : > ready; sleep 4 > /dev/null 2>&1'
+
+echo "--- a descriptor open for both directions ends with the capture ---"
+"$BIN" --no-diagnostics -c 'y=${ exec 4<>/dev/stdout; echo b; }; echo "[$y]"'
+
+echo "--- a capture works under a low descriptor limit ---"
+"$BIN" --no-diagnostics -c 'ulimit -n 12; x=${ echo a; }; y=$(echo b); echo "$x $y"'
+"$BIN" --no-diagnostics -c 'ulimit -n 8; x=${ echo a; }; y=$(echo b); echo "$x $y"'
+
+echo "--- a long extglob subject keeps the stack ---"
+"$BIN" --mood=bash --no-diagnostics -c 'shopt -s extglob; p=$(printf "a%.0s" {1..20000}); [[ $p == "$p"@(x|) ]]; echo "status $?"'
+"$BIN" --mood=bash --no-diagnostics -c 'shopt -s extglob; p=$(printf "a%.0s" {1..20000}); q=$(printf "?%.0s" {1..20000}); [[ $p == $q@(x|) ]]; echo "status $?"' 2>/dev/null
+
+echo "--- a loop reuses an absolute target across directories ---"
+mkdir loop_a loop_b
+"$BIN" --no-diagnostics -c 'abs=$PWD/loop_file; for d in loop_a loop_b; do cd "$d"; echo "$d" >> "$abs"; [ "$d" = loop_a ] && mv "$abs" "$abs.moved"; cd ..; done; cat "$abs.moved"'
+
+echo "--- only the top shell can suspend ---"
+"$BIN" --no-diagnostics -c '( suspend ); echo "subshell $?"; x=$(suspend); echo "substitution $?"; suspend & wait $!; echo "background $?"; suspend | cat; echo "stage ${PIPESTATUS[0]}"' 2>/dev/null
+
+echo "--- xargs keeps its flags after a nested utility ---"
+printf 'a/b\nc/d\n' | "$BIN" --no-diagnostics -c 'koshkit xargs -t -n 1 koshkit basename' 2>&1
+
+echo "--- touch keeps a fractional date ---"
+"$BIN" --no-diagnostics -c 'touch -d @1.5 fractional; koshkit stat -c %y fractional' | cut -d. -f2 | cut -c1-9
+
+echo "--- csplit -k writes the rest only for a pattern past the input ---"
+mkdir csplit_dir
+printf 'a\nb\n' > csplit_dir/in
+"$BIN" --no-diagnostics -c 'cd csplit_dir; koshkit csplit -k -s in bad' 2>/dev/null
+echo "status $?"
+ls csplit_dir
+"$BIN" --no-diagnostics -c 'cd csplit_dir; koshkit csplit -k -s in 9' 2>/dev/null
+echo "status $?"
+ls csplit_dir
+
+echo "--- cp merges a source that ends in a separator and a dot ---"
+mkdir cp_source cp_target
+echo merged > cp_source/file
+"$BIN" --no-diagnostics -c 'koshkit cp -r cp_source/. cp_target; ls cp_target'
+
+echo "--- cp refuses a second source for a created target ---"
+mkdir cp_one cp_two cp_into
+echo one > cp_one/same
+echo two > cp_two/same
+"$BIN" --no-diagnostics -c 'koshkit cp cp_one/same cp_two/same cp_into; echo "status $?"; cat cp_into/same' 2>/dev/null

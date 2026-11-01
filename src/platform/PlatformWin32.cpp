@@ -847,8 +847,11 @@ close_fd(os::descriptor fd) wontthrow -> bool
 }
 
 fn
-redirect_stdout(os::descriptor target) throws -> os::descriptor
+redirect_stdout(os::descriptor target, int floor_fd) throws
+    -> os::descriptor
 {
+  unused(floor_fd);
+
   os::descriptor saved = GetStdHandle(STD_OUTPUT_HANDLE);
 
   SetStdHandle(STD_OUTPUT_HANDLE, target);
@@ -865,9 +868,17 @@ restore_stdout(os::descriptor saved) wontthrow -> void
 }
 
 fn
-move_descriptor_out_of_reach(os::descriptor descriptor) wontthrow
+get_capture_descriptor_floor() wontthrow -> int
+{
+  return 0;
+}
+
+fn
+move_descriptor_out_of_reach(os::descriptor descriptor, int floor_fd) wontthrow
     -> os::descriptor
 {
+  unused(floor_fd);
+
   return descriptor;
 }
 

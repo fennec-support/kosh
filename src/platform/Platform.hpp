@@ -1723,14 +1723,20 @@ fn
 note_descriptor_rebound() wontthrow -> void;
 
 fn
-redirect_stdout(os::descriptor target) throws -> os::descriptor;
+redirect_stdout(os::descriptor target, int floor_fd) throws
+    -> os::descriptor;
 fn
 restore_stdout(os::descriptor saved) wontthrow -> void;
 
-/* moves descriptor above the numbers a script can address and closes the
-   original. the original comes back when no higher number is free. */
+/* returns the number at or above which a capture keeps its pipe ends and its
+   copy of standard output, out of reach of a script. */
 fn
-move_descriptor_out_of_reach(os::descriptor descriptor) wontthrow
+get_capture_descriptor_floor() wontthrow -> int;
+
+/* moves descriptor to floor_fd or above and closes the original. the original
+   comes back when no number is free. */
+fn
+move_descriptor_out_of_reach(os::descriptor descriptor, int floor_fd) wontthrow
     -> os::descriptor;
 
 /* points every other write end of the pipe of capture_pipe at the null device,
@@ -2557,10 +2563,26 @@ is_stack_nearly_exhausted() wontthrow -> bool;
 fn
 clear_trap_handler(i32 signal_number) throws -> void;
 
-/* defers each untrapped fatal signal in this process to the next command
-   boundary, so the EXIT trap runs before the signal ends the shell. */
+/* holds each untrapped fatal signal in this process, so the EXIT trap runs
+   before the signal ends the shell. a wait for a child stops at once. */
 fn
 hold_fatal_signals_for_exit_trap() throws -> void;
+
+/* a command substitution has no job to stop, and a stopped command in it would
+   keep the shell waiting for its output. returns whether the default action
+   of the stop key was replaced. */
+fn
+ignore_stop_key() wontthrow -> bool;
+
+fn
+restore_stop_key() wontthrow -> void;
+
+/* returns each signal the EXIT trap held to its default action. */
+fn
+release_fatal_signals_from_exit_trap() throws -> void;
+
+fn
+is_termination_signal_held() wontthrow -> bool;
 
 /* ends the process through a signal the EXIT trap deferred. */
 fn

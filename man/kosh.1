@@ -2246,7 +2246,8 @@ the byte count of each piece (\f[CR]\-f\f[R]/\f[CR]\-\-prefix\f[R]
 replace \f[CR]xx\f[R], \f[CR]\-n\f[R]/\f[CR]\-\-digits\f[R] number of
 digits, \f[CR]\-s\f[R]/\f[CR]\-\-silent\f[R] suppress the counts,
 \f[CR]\-k\f[R]/\f[CR]\-\-keep\-files\f[R] keep the pieces after an
-error, including a final piece with the rest of the input).
+error, and a pattern past the input also writes a final piece with the
+rest of the input).
 Returns \f[CR]1\f[R] for a line number past the input or a regex that
 does not match.
 T}
@@ -2473,8 +2474,10 @@ for several files
 (\f[CR]\-q\f[R]/\f[CR]\-\-quiet\f[R]/\f[CR]\-\-silent\f[R] suppress
 them, \f[CR]\-v\f[R]/\f[CR]\-\-verbose\f[R] forces them, the last wins);
 \f[CR]\-z\f[R]/\f[CR]\-\-zero\-terminated\f[R] uses NUL line ends.
-\f[CR]tail \-f\f[R] keeps printing what is appended to each regular
-file; \f[CR]\-F\f[R] follows by name, reopens a replaced, removed, or
+\f[CR]tail \-f\f[R] keeps printing what is appended to each regular file
+and treats a change in the last 32 bytes it printed as a truncation, so
+it prints the whole file again after an in\-place rewrite of those
+bytes; \f[CR]\-F\f[R] follows by name, reopens a replaced, removed, or
 new file, and implies \f[CR]\-\-retry\f[R];
 \f[CR]\-\-follow=descriptor|name\f[R] selects the mode;
 \f[CR]\-s\f[R]/\f[CR]\-\-sleep\-interval\f[R] sets the longest wait
@@ -5155,7 +5158,11 @@ signal number.
 With an \f[CR]EXIT\f[R] trap set, an untrapped \f[CR]SIGHUP\f[R],
 \f[CR]SIGTERM\f[R], \f[CR]SIGQUIT\f[R], \f[CR]SIGALRM\f[R],
 \f[CR]SIGUSR1\f[R], or \f[CR]SIGUSR2\f[R] takes effect at the next
-command boundary, and the trap runs before the signal ends the shell.
+command boundary, or at once while the shell waits for a child or reads
+input.
+The trap runs before the signal ends the shell, and a child that is
+still running keeps running.
+\f[CR]trap \- EXIT\f[R] returns these signals to their default action.
 .IP \[bu] 2
 As process 1, \f[CR]kosh\f[R] reaps orphaned children it did not start
 (before each command and while it waits).
@@ -5549,8 +5556,10 @@ T{
 \f[CR]suspend [\-f]\f[R]
 T}@T{
 Stops the shell until it receives \f[CR]SIGCONT\f[R].
-A login shell refuses without \f[CR]\-f\f[R], and a shell whose parent
-belongs to another session always refuses and returns \f[CR]1\f[R].
+A login shell refuses without \f[CR]\-f\f[R].
+A subshell, a pipeline stage, a background command, or a shell whose
+parent belongs to another session always refuses and returns
+\f[CR]1\f[R].
 T}
 T{
 \f[CR]bind [options] [keyseq:fn ...]\f[R]

@@ -1076,12 +1076,7 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
       /* a process group answers to its parent, so a command inside a forked
          stage stays in the group and never takes the terminal for itself. */
       if (process_group != process_group_mode::Inherit) {
-        IS_TERMINAL_OWNER = false;
-      }
-
-      if (process_group == process_group_mode::New ||
-          process_group == process_group_mode::Join)
-      {
+        IS_TERMINAL_OWNER   = false;
         IS_INSIDE_JOB_GROUP = true;
       }
 
@@ -1578,7 +1573,7 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
   struct rusage usage{};
   const int     wait_flags = was_stopped != nullptr ? WUNTRACED : 0;
   let const     do_wait    = [&] throws -> pid_t {
-    if (getpid() != 1) {
+    if (getpid() != 1 && EXIT_TRAP_PROCESS_ID != getpid()) {
       return retry_interrupted(
           [&] { return wait4(pid, &status, wait_flags, &usage); });
     }
@@ -1587,7 +1582,7 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
       let const waited = retry_interrupted(
           [&] { return wait4(pid, &status, wait_flags | WNOHANG, &usage); });
 
-      if (waited != 0) return waited;
+      if (waited != 0 || is_termination_signal_held()) return waited;
 
       suspend_until_child_state_change(false);
     }
@@ -1595,6 +1590,13 @@ wait_and_monitor_process(process pid, bool *was_stopped) throws -> i32
   let const changed_pid = do_wait();
 
   check_syscall(changed_pid);
+
+  if (changed_pid == 0) {
+    LOG(Info, "signal %d ends the wait and leaves process %lld running",
+        static_cast<int>(TERMINATION_SIGNAL), static_cast<long long>(pid));
+
+    return 128 + TERMINATION_SIGNAL;
+  }
 
   if (WIFEXITED(status) || WIFSIGNALED(status)) {
     note_reaped_child_usage(usage);
@@ -1647,15 +1649,20 @@ suspend_until_child_state_change(bool should_stop_for_trapped_signal) wontthrow
   sigemptyset(&blocked_signals);
   sigaddset(&blocked_signals, SIGCHLD);
 
+  for (let const signal_number : EXIT_TRAP_SIGNALS) {
+    sigaddset(&blocked_signals, signal_number);
+  }
+
   sigset_t previous_mask;
 
   if (sigprocmask(SIG_BLOCK, &blocked_signals, &previous_mask) != 0) return;
 
-  /* SIGCHLD stays blocked while the flag and pending signals are checked.
-     sigsuspend() unblocks it atomically, so a child that exits after the
-     check leaves SIGCHLD pending and the suspend returns at once. */
-  while (CHILD_STATE_CHANGED == 0 && (!should_stop_for_trapped_signal ||
-                                      peek_pending_signal_besides_child() == 0))
+  /* these signals stay blocked while the flags are checked. sigsuspend()
+     unblocks them atomically, so a child that exits or a held signal that
+     arrives after the check is pending and the suspend returns at once. */
+  while (CHILD_STATE_CHANGED == 0 && !is_termination_signal_held() &&
+         (!should_stop_for_trapped_signal ||
+          peek_pending_signal_besides_child() == 0))
   {
     let wait_mask = previous_mask;
 

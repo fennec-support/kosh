@@ -966,14 +966,26 @@ close_fd(os::descriptor fd) wontthrow -> bool
   return true;
 }
 
+/* a low descriptor limit leaves nothing at floor_fd, so the duplicate takes
+   the lowest free number instead. */
 static fn
-highest_free_shell_fd() wontthrow -> int;
+duplicate_at_or_above(os::descriptor descriptor, int floor_fd) wontthrow
+    -> os::descriptor
+{
+  let const duplicate = fcntl(descriptor, F_DUPFD_CLOEXEC, floor_fd);
+
+  if (duplicate != KOSH_INVALID_FD || (errno != EINVAL && errno != EMFILE)) {
+    return duplicate;
+  }
+
+  return fcntl(descriptor, F_DUPFD_CLOEXEC, 0);
+}
 
 fn
-redirect_stdout(os::descriptor target) throws -> os::descriptor
+redirect_stdout(os::descriptor target, int floor_fd) throws
+    -> os::descriptor
 {
-  const os::descriptor saved =
-      fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC, highest_free_shell_fd());
+  const os::descriptor saved = duplicate_at_or_above(STDOUT_FILENO, floor_fd);
 
   if (saved == KOSH_INVALID_FD && errno != EBADF) {
     throw Error{"Unable to save standard output: " +
@@ -1035,10 +1047,20 @@ highest_free_shell_fd() wontthrow -> int
 }
 
 fn
-move_descriptor_out_of_reach(os::descriptor descriptor) wontthrow
+get_capture_descriptor_floor() wontthrow -> int
+{
+  constexpr int CAPTURE_DESCRIPTOR_COUNT = 3;
+
+  let const floor_fd = highest_free_shell_fd() - (CAPTURE_DESCRIPTOR_COUNT - 1);
+
+  return floor_fd > SHELL_BACKUP_FD_FLOOR ? floor_fd : SHELL_BACKUP_FD_FLOOR;
+}
+
+fn
+move_descriptor_out_of_reach(os::descriptor descriptor, int floor_fd) wontthrow
     -> os::descriptor
 {
-  let const moved = fcntl(descriptor, F_DUPFD_CLOEXEC, highest_free_shell_fd());
+  let const moved = duplicate_at_or_above(descriptor, floor_fd);
 
   if (moved == KOSH_INVALID_FD) return descriptor;
 
@@ -1064,7 +1086,7 @@ detach_descriptors_from_pipe(os::descriptor capture_pipe) wontthrow -> void
         !S_ISFIFO(candidate_status.st_mode) ||
         candidate_status.st_ino != capture_status.st_ino ||
         candidate_status.st_dev != capture_status.st_dev ||
-        (fcntl(candidate_fd, F_GETFL) & O_ACCMODE) != O_WRONLY)
+        (fcntl(candidate_fd, F_GETFL) & O_ACCMODE) == O_RDONLY)
     {
       continue;
     }
@@ -3445,6 +3467,49 @@ hold_fatal_signals_for_exit_trap() throws -> void
         signal_number);
     install_signal_disposition(signal_number, handle_termination);
   }
+}
+
+fn
+release_fatal_signals_from_exit_trap() throws -> void
+{
+  if (EXIT_TRAP_PROCESS_ID != getpid()) return;
+
+  EXIT_TRAP_PROCESS_ID = 0;
+
+  for (let const signal_number : EXIT_TRAP_SIGNALS) {
+    if (signal_number == SIGTERM && getpid() == 1) continue;
+
+    struct sigaction current = {};
+
+    if (sigaction(signal_number, nullptr, &current) != 0) continue;
+    if (current.sa_handler != handle_termination) continue;
+
+    LOG(Debug, "signal %d no longer waits for an EXIT trap", signal_number);
+    install_signal_disposition(signal_number, SIG_DFL);
+  }
+}
+
+fn
+ignore_stop_key() wontthrow -> bool
+{
+  struct sigaction current = {};
+
+  if (sigaction(SIGTSTP, nullptr, &current) != 0) return false;
+  if (current.sa_handler != SIG_DFL) return false;
+
+  return signal(SIGTSTP, SIG_IGN) != SIG_ERR;
+}
+
+fn
+restore_stop_key() wontthrow -> void
+{
+  (void) signal(SIGTSTP, SIG_DFL);
+}
+
+fn
+is_termination_signal_held() wontthrow -> bool
+{
+  return TERMINATION_SIGNAL != 0 && getpid() != 1;
 }
 
 fn

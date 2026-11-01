@@ -3470,6 +3470,26 @@ hold_fatal_signals_for_exit_trap() throws -> void
 {}
 
 fn
+release_fatal_signals_from_exit_trap() throws -> void
+{}
+
+fn
+ignore_stop_key() wontthrow -> bool
+{
+  return false;
+}
+
+fn
+restore_stop_key() wontthrow -> void
+{}
+
+fn
+is_termination_signal_held() wontthrow -> bool
+{
+  return false;
+}
+
+fn
 finish_termination_signal() wontthrow -> void
 {}
 

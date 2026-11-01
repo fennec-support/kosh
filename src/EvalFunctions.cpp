@@ -786,7 +786,12 @@ EvalContext::remove_trap(StringView condition) throws -> void
       condition.data);
   discard_inherited_signal_traps();
   trap_store().reset(condition);
-  if (condition == "EXIT") return;
+  if (condition == "EXIT") {
+    os::release_fatal_signals_from_exit_trap();
+
+    return;
+  }
+
   if (let const number = os::signal_number_from_name(condition))
     os::clear_trap_handler(*number);
 }

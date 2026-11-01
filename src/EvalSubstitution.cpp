@@ -293,6 +293,20 @@ struct command_substitution_drain_context
   bool           is_read_fd_closed{false};
 };
 
+/* a command left running keeps the capture pipe open and the reader blocked,
+   so the shell ends from the frame that holds the reader's context. */
+wontreturn static fn
+finish_shell_after_held_signal(EvalContext &cxt) throws -> void
+{
+  if (cxt.in_subshell()) {
+    unused(cxt.run_subshell_exit_trap());
+  } else {
+    cxt.run_exit_trap();
+  }
+
+  utils::quit(0);
+}
+
 /* memory: drain->data grows by doubling from DRAIN_CHUNK_LENGTH, allocated
            with uncached_heap_allocator(). the caller frees it with
            free_array(). a failed growth closes the read end, so a writer stops
@@ -1075,6 +1089,10 @@ EvalContext::run_captured_substitution(
 
       if (child == 0) {
         os::close_fd(pipe->in);
+        if (execution_store().shell_is_interactive()) {
+          unused(os::ignore_stop_key());
+        }
+
         execution_store().set_shell_is_interactive(false);
         enter_subshell();
         execution_store().xtrace_indirection_depth()++;
@@ -1141,7 +1159,9 @@ EvalContext::run_captured_substitution(
         }
       };
 
-      let       captured = os::read_fd_to_string(pipe->in, heap_allocator());
+      let       captured = os::is_termination_signal_held()
+                               ? Maybe<String>{None}
+                               : os::read_fd_to_string(pipe->in, heap_allocator());
       let const was_read_interrupted =
           !captured.has_value() && os::INTERRUPT_REQUESTED;
 
@@ -1149,8 +1169,11 @@ EvalContext::run_captured_substitution(
       is_input_open = false;
 
       if (was_read_interrupted) {
-        unused(os::signal_process(child, 2));
-        os::reap_process_quietly(child);
+        if (!os::is_termination_signal_held()) {
+          unused(os::signal_process(child, 2));
+          os::reap_process_quietly(child);
+        }
+
         has_reaped_child        = true;
         os::INTERRUPT_REQUESTED = 0;
         throw InterruptErrorWithLocation{previous_location};
@@ -1190,8 +1213,10 @@ EvalContext::run_captured_substitution(
 
     if (!pipe) throw Error{"Could not open a pipe for command substitution"};
 
-    pipe->in  = os::move_descriptor_out_of_reach(pipe->in);
-    pipe->out = os::move_descriptor_out_of_reach(pipe->out);
+    let const capture_floor = os::get_capture_descriptor_floor();
+
+    pipe->in  = os::move_descriptor_out_of_reach(pipe->in, capture_floor);
+    pipe->out = os::move_descriptor_out_of_reach(pipe->out, capture_floor);
 
     bool is_pipe_input_open  = true;
     bool is_pipe_output_open = true;
@@ -1224,11 +1249,14 @@ EvalContext::run_captured_substitution(
     bool           did_enter_subshell           = false;
     os::descriptor saved_stdout                 = KOSH_INVALID_FD;
     let const      was_interactive = execution_store().shell_is_interactive();
+    let const did_ignore_stop_key  = was_interactive && os::ignore_stop_key();
 
     let const saved_substitution_depth =
         execution_store().substitution_subshell_depth();
 
     let const do_cleanup = [&]() wontthrow -> void {
+      if (did_ignore_stop_key) os::restore_stop_key();
+
       if (did_enter_subshell) {
         leave_subshell();
         execution_store().xtrace_indirection_depth()--;
@@ -1273,7 +1301,7 @@ EvalContext::run_captured_substitution(
     };
 
     koshka::flush();
-    saved_stdout         = os::redirect_stdout(pipe->out);
+    saved_stdout         = os::redirect_stdout(pipe->out, capture_floor);
     is_stdout_redirected = true;
 
     execution_store().set_shell_is_interactive(false);
@@ -1307,6 +1335,15 @@ EvalContext::run_captured_substitution(
         execution_store().set_last_exit_status(
             static_cast<i32>(control_flow_store().pending().value));
       control_flow_store().clear();
+    }
+
+    if (os::is_termination_signal_held()) {
+      is_reader_running  = false;
+      is_pipe_input_open = false;
+      do_cleanup();
+      did_begin_restoration = true;
+      restore_state(steal(snapshot));
+      finish_shell_after_held_signal(*this);
     }
 
     if (!error) {
@@ -1552,8 +1589,10 @@ EvalContext::run_function_substitution(
 
   /* the body runs in this process, so a redirection in it can address every
      descriptor the capture would hold at a low number. */
-  pipe->in  = os::move_descriptor_out_of_reach(pipe->in);
-  pipe->out = os::move_descriptor_out_of_reach(pipe->out);
+  let const capture_floor = os::get_capture_descriptor_floor();
+
+  pipe->in  = os::move_descriptor_out_of_reach(pipe->in, capture_floor);
+  pipe->out = os::move_descriptor_out_of_reach(pipe->out, capture_floor);
 
   let captured = String{heap_allocator()};
   let drain_context =
@@ -1573,7 +1612,7 @@ EvalContext::run_function_substitution(
   os::descriptor saved = KOSH_INVALID_FD;
 
   try {
-    saved = os::redirect_stdout(pipe->out);
+    saved = os::redirect_stdout(pipe->out, capture_floor);
   } catch (...) {
     os::close_fd(pipe->out);
     os::join_thread(*reader);
@@ -1583,12 +1622,22 @@ EvalContext::run_function_substitution(
     throw;
   }
 
-  let const error = do_evaluate_body();
+  let const did_ignore_stop_key =
+      execution_store().shell_is_interactive() && os::ignore_stop_key();
+  let const body_descriptor_epoch = os::get_descriptor_epoch();
+  let const error                 = do_evaluate_body();
+  let const did_body_rebind_descriptor =
+      os::get_descriptor_epoch() != body_descriptor_epoch;
+
+  if (did_ignore_stop_key) os::restore_stop_key();
 
   koshka::flush();
   os::restore_stdout(saved);
-  os::detach_descriptors_from_pipe(pipe->out);
+  if (did_body_rebind_descriptor) os::detach_descriptors_from_pipe(pipe->out);
   os::close_fd(pipe->out);
+
+  if (os::is_termination_signal_held()) finish_shell_after_held_signal(*this);
+
   os::join_thread(*reader);
   if (!drain_context.is_read_fd_closed) os::close_fd(pipe->in);
 

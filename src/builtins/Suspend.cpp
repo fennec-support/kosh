@@ -46,6 +46,14 @@ Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 2;
   }
 
+  if (os::is_child_process() || cxt.execution_store().subshell_depth() > 0) {
+    report_soft_builtin_error(ec, cxt, ec.source_location(),
+                              "Cannot suspend a subshell",
+                              "Only the top shell can stop itself");
+
+    return 1;
+  }
+
   if (cxt.startup_store().is_login_shell() && !FLAG_FORCE.is_enabled()) {
     report_soft_builtin_error(ec, cxt, ec.source_location(),
                               "Cannot suspend a login shell",

@@ -837,6 +837,7 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           cxt.enter_subshell();
           cxt.hide_coprocess_descriptors();
           cxt.job_table_store().inherit_parent_jobs(false);
+          cxt.clear_inherited_exit_trap();
           cxt.reset_inherited_signal_traps();
           cxt.execution_store().allow_terminal_exec_at_current_depth();
           stage_status =
@@ -847,6 +848,15 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           {
             stage_status =
                 static_cast<i32>(cxt.control_flow_store().pending().value);
+            cxt.control_flow_store().clear();
+          }
+
+          cxt.execution_store().set_last_exit_status(stage_status);
+
+          if (let const requested_status = cxt.run_subshell_exit_trap();
+              requested_status.has_value())
+          {
+            stage_status = *requested_status;
           }
         } catch (const BrokenPipeExit &) {
           stage_status = KOSH_BROKEN_PIPE_EXIT_STATUS;

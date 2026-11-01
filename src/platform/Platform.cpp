@@ -525,6 +525,8 @@ take_pending_signal() wontthrow -> i32
 fn
 peek_pending_signal_besides_child() wontthrow -> i32
 {
+  if (is_termination_signal_held()) return TERMINATION_SIGNAL;
+
   for (i32 number = 1; number < SIGNAL_FLAG_COUNT; number++) {
     if (number == CHILD_SIGNAL_NUMBER) continue;
 
