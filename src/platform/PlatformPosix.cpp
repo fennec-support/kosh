@@ -1232,9 +1232,7 @@ descriptor_from_fd_number(i64 fd_number) wontthrow -> os::descriptor
 fn
 replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
 {
-  let const was_replaced = install_descriptor(target, shell_fd) != -1;
-
-  return was_replaced;
+  return install_descriptor(target, shell_fd) != -1;
 }
 
 fn

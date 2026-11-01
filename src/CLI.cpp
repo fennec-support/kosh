@@ -1024,12 +1024,10 @@ parse_flags(const FlagList                  &flags,
             flag->set_value_location(argument_location(
                 argv, static_cast<usize>(i), base_position, arg_locations));
           } else {
-            if (*value_offset == '=') {
+            if (*value_offset == '=' && (is_long || value_offset[1] != '\0')) {
               value_offset++;
 
-              if (*value_offset == '\0' && !is_long) {
-                value_offset--;
-              } else if (*value_offset == '\0') {
+              if (*value_offset == '\0') {
                 let error = ErrorWithLocation{
                     argument_location(argv, static_cast<usize>(i),
                                       base_position, arg_locations),

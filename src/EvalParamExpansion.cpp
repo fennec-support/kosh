@@ -3544,7 +3544,7 @@ longest_possible_pattern_match(StringView    pattern,
 
     let const is_extglob_open =
         mode == extglob_mode::Enabled && i + 1 < pattern.length &&
-        pattern[i + 1] == '(' &&
+        pattern[i + 1] == '(' && do_is_active(i + 1) &&
         (byte == '?' || byte == '+' || byte == '@' || byte == '!');
 
     if (is_extglob_open && (byte == '+' || byte == '!')) return None;

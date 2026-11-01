@@ -1450,7 +1450,9 @@ bc_execute_statement(StringView         statement,
   runtime.statement_depth++;
   defer { runtime.statement_depth--; };
 
-  if (runtime.statement_depth > MAX_STATEMENT_DEPTH) {
+  if (runtime.statement_depth > MAX_STATEMENT_DEPTH ||
+      os::is_stack_nearly_exhausted())
+  {
     throw Error{"Statements and function calls are nested too deeply"};
   }
 

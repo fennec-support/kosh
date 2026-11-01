@@ -1,6 +1,4 @@
 #!/bin/bash
-# Each case once ran differently from Bash on hostile or unusual input.
-
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
 cd "$dir" || exit 1
@@ -20,10 +18,18 @@ declare -n indexed_ref=indexed_target
 declare -a indexed_ref
 declare -p indexed_target
 
-echo "--- unset removes a whole array through at and star ---"
+echo "--- declare through a name reference keeps an existing array ---"
+existing=(a b)
+declare -n existing_ref=existing
+declare -A existing_ref 2>/dev/null; echo "$?"
+declare -p existing
+declare -a existing_ref=2
+declare -p existing
+
+echo "--- unset empties a whole array through at and star ---"
 whole=(1 2 3)
 unset 'whole[@]'
-echo "${#whole[@]}"
+declare -p whole
 declare -A literal_keys=([a]=1)
 unset 'literal_keys[*]'
 echo "${#literal_keys[@]}"
@@ -41,6 +47,8 @@ replaced=${value//@(a|b)/--}
 echo "${#replaced}"
 replaced=${value//?(a)/x}
 echo "${#replaced}"
+quoted='x(abc)'
+echo "${quoted/?"("abc)/R}"
 
 echo "--- a continued heredoc line hides the delimiter ---"
 cat <<E

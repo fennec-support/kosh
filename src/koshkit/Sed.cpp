@@ -807,8 +807,7 @@ Sed::execute(const ExecContext               &ec,
       operands, cxt.scratch_allocator(), source_start);
   i32 status = 0;
 
-  let output                            = String{heap_allocator()};
-  let did_written_output_end_in_newline = true;
+  let output = String{heap_allocator()};
 
   let const line_delimiter = FLAG_SED_NULL_DATA.is_enabled() ? '\0' : '\n';
   let const is_in_place    = FLAG_SED_IN_PLACE.is_enabled();
@@ -827,10 +826,6 @@ Sed::execute(const ExecContext               &ec,
     }
 
     ec.print_to_stdout(output);
-    let const last_byte = output[output.length() - 1];
-
-    did_written_output_end_in_newline =
-        last_byte == '\n' || last_byte == line_delimiter;
     output.clear();
   };
 
@@ -940,20 +935,8 @@ Sed::execute(const ExecContext               &ec,
       do_print_pattern_space(line.view(), has_terminating_newline);
     }
 
-    /* the text of a, i, and = ends in a newline, and a printed pattern space
-       ends in the delimiter when it is terminated. */
-    let const did_print_line = !should_delete && !FLAG_SED_QUIET.is_enabled();
-    let const does_output_end_in_newline =
-        !output.is_empty()
-            ? output[output.length() - 1] == line_delimiter ||
-                  (!did_print_line && output[output.length() - 1] == '\n')
-            : did_written_output_end_in_newline;
+    if (!appended_text.is_empty()) do_close_output_line();
 
-    if (!appended_text.is_empty() && !does_output_end_in_newline) {
-      output += line_delimiter;
-    }
-
-    if (!appended_text.is_empty()) is_output_line_open = false;
     output += appended_text.view();
     do_flush_output(false);
   };

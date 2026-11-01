@@ -47,7 +47,7 @@ evaluate_array_index(
   depth++;
   defer { depth--; };
 
-  if (depth > MAX_SUBSCRIPT_DEPTH) {
+  if (depth > MAX_SUBSCRIPT_DEPTH || os::is_stack_nearly_exhausted()) {
     throw ErrorWithDetails{"Array subscripts are nested too deeply",
                            "Assign the inner subscript to a variable"};
   }
@@ -877,7 +877,7 @@ EvalContext::unset_array_element(StringView name,
   if ((subscript == "@" || subscript == "*") &&
       variable_store().indexed_arrays().find(name).has_value())
   {
-    unset_shell_variable(name);
+    set_indexed_array(name, ArrayList<String>{heap_allocator()});
 
     return;
   }

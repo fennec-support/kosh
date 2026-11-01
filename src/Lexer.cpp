@@ -474,15 +474,9 @@ Lexer::walk_heredoc_body(usize              start,
         m_source.substring_of_length(stripped_offset, stripped_length);
     let const is_delimiter = !was_line_continued && delimiter == stripped;
 
-    usize trailing_backslash_count = 0;
-
-    while (trailing_backslash_count < stripped_length &&
-           stripped[stripped_length - 1 - trailing_backslash_count] == '\\')
-    {
-      trailing_backslash_count++;
-    }
-
-    was_line_continued = should_expand && (trailing_backslash_count & 1u) != 0;
+    was_line_continued =
+        should_expand &&
+        lexer::count_backslashes_before(stripped, stripped_length) % 2 == 1;
     did_find_delimiter = did_find_delimiter || is_delimiter;
 
     if (m_parse_session.should_collect_analysis_metadata() && !is_delimiter &&

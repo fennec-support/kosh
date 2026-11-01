@@ -301,7 +301,8 @@ T}@T{
 \f[CR]off\f[R]
 T}
 T{
-\f[CR]nounset\f[R]
+\f[CR]nounset\f[R] (the \f[CR][\f[R], \f[CR]test\f[R], and \f[CR][[\f[R]
+operands fail only after an explicit \f[CR]set \-u\f[R])
 T}@T{
 \f[CR]on\f[R] (locked)
 T}@T{
@@ -1862,6 +1863,8 @@ builtin.
 \f[B]Option parsing and exit status invariants\f[R] \- Every utility
 accepts \f[CR]\-\-help\f[R] (and \f[CR]\-\-version\f[R] when invoked
 under its own binary name).
+A short flag followed by a lone equals sign takes it as its value, as in
+\f[CR]cut \-d=\f[R].
 Flags may appear before or after operands (\f[CR]\-\-\f[R] ends option
 parsing), except for \f[CR]calc\f[R], \f[CR]env\f[R], \f[CR]expr\f[R],
 \f[CR]flock\f[R], \f[CR]nice\f[R], \f[CR]nohup\f[R], \f[CR]retry\f[R],
@@ -2135,7 +2138,8 @@ standard input (\f[CR]\-l\f[R] adds the functions \f[CR]s\f[R] sine,
 \f[CR]c\f[R] cosine, \f[CR]a\f[R] arctangent, \f[CR]l\f[R] natural
 logarithm, \f[CR]e\f[R] exponential and sets scale to \f[CR]20\f[R];
 \f[CR]\-q\f[R] suppress the banner).
-Division by zero stops the input with status \f[CR]1\f[R].
+Division by zero stops the input with status \f[CR]1\f[R], and so do
+statements and function calls nested more than \f[CR]2048\f[R] deep.
 T}
 T{
 \f[CR]cal\f[R]
@@ -2218,6 +2222,8 @@ another file system as an empty directory).
 A recursive copy keeps links as links.
 A link leading back into a directory being copied is reported as cyclic
 and skipped with status \f[CR]1\f[R].
+A source that is not a directory and would overwrite a target this
+command created is refused with status \f[CR]1\f[R].
 T}
 T{
 \f[CR]csplit\f[R]
@@ -2581,8 +2587,10 @@ The \f[CR]wildcard\f[R] function and a prerequisite holding
 expansion, and an unmatched prerequisite pattern stays as written.
 Recipes are printed before they run and use the \f[CR]SHELL\f[R] of the
 makefile, and \f[CR]MAKE\f[R] expands to \f[CR]koshkit make\f[R].
-A target without a rule returns \f[CR]2\f[R], and \f[CR]\-q\f[R] returns
-\f[CR]1\f[R] when a target is out of date.
+A target without a rule returns \f[CR]2\f[R], a dependency chain deeper
+than \f[CR]4096\f[R] targets (less when the stack runs short) returns
+\f[CR]2\f[R], and \f[CR]\-q\f[R] returns \f[CR]1\f[R] when a target is
+out of date.
 See the \f[CR]make\f[R] bullet below the table.
 T}
 T{
@@ -2649,6 +2657,8 @@ T{
 T}@T{
 Renames or moves paths with \f[CR]\-f\f[R], \f[CR]\-i\f[R], and
 \f[CR]\-v\f[R].
+A source that would overwrite a target this command created is refused
+with status \f[CR]1\f[R].
 T}
 T{
 \f[CR]nice\f[R], \f[CR]renice\f[R] 
@@ -4774,9 +4784,9 @@ Bash moods.
 .IP \[bu] 2
 \f[CR]FUNCNAME\f[R], \f[CR]BASH_SOURCE\f[R], \f[CR]BASH_LINENO\f[R], and
 \f[CR]BASH_COMMAND\f[R] expose the call stack.
-Calls nest at most \f[CR]900\f[R] deep and sourced files \f[CR]400\f[R]
-deep (less when the stack runs short); a deeper call fails with a
-diagnostic.
+Calls nest at most \f[CR]900\f[R] deep, sourced files \f[CR]400\f[R]
+deep, and array subscripts \f[CR]512\f[R] deep (less when the stack runs
+short); a deeper call fails with a diagnostic.
 .IP \[bu] 2
 A function called from a guarded and\-or operand or a negation keeps
 \f[CR]errexit\f[R] suppressed throughout its body.
@@ -5447,7 +5457,9 @@ remove jobs from the job table (\f[CR]disown\f[R]:
 \f[CR]\-h\f[R]/\f[CR]\-\-nohup\f[R] keeps the job in the table).
 \f[CR]bg\f[R], \f[CR]fg\f[R], and \f[CR]disown\f[R] act on the current
 job by default.
-A missing job returns \f[CR]1\f[R] (\f[CR]2\f[R] in \f[CR]sh\f[R]).
+A missing job returns \f[CR]1\f[R] (\f[CR]2\f[R] in \f[CR]sh\f[R]), and
+so does \f[CR]fg\f[R] in a pipeline stage or subshell for a job of the
+parent shell.
 T}
 T{
 \f[CR]wait [\-fn] [\-p var] [pid|job ...]\f[R]

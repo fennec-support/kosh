@@ -3446,17 +3446,15 @@ build_target(const ExecContext        &ec,
              StringMap<bool>          &completed_target_results,
              const make_build_options &options) throws -> bool
 {
-#if defined KOSH_HAS_ADDRESS_SANITIZER
-  static constexpr usize MAX_ACTIVE_TARGET_COUNT = 512;
-#else
   static constexpr usize MAX_ACTIVE_TARGET_COUNT = 4096;
-#endif
 
   if (let const result = completed_target_results.find(goal);
       result.has_value())
     return *result.value();
 
-  if (active_targets.count() >= MAX_ACTIVE_TARGET_COUNT) {
+  if (active_targets.count() >= MAX_ACTIVE_TARGET_COUNT ||
+      os::is_stack_nearly_exhausted())
+  {
     throw Error{
         "The dependency chain of '" + String{cxt.scratch_allocator(), goal}
           +

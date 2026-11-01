@@ -299,7 +299,7 @@ Keep the strict `kosh` execution mood while sourcing `~/.bashrc` under the `bash
 init_moods=bash
 ```
 
-Run `koshconf set <option> <value> --persist` to write these entries programmatically.
+Run `koshconf set <option> <value> --persist` to write these entries programmatically. A write refuses a target that is a FIFO or a device.
 
 ### File paths, security checks, and write semantics
 

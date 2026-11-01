@@ -1544,6 +1544,8 @@ EvalContext::run_function_substitution(
     os::close_fd(pipe->out);
     os::join_thread(*reader);
     os::close_fd(pipe->in);
+    uncached_heap_allocator().free_array(drain_context.data,
+                                         drain_context.capacity);
     throw;
   }
 

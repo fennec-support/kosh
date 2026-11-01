@@ -457,6 +457,18 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
     }
 
+    if (should_make_associative &&
+        cxt.variable_store().indexed_arrays().find(attribute_name).has_value())
+    {
+      report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                StringView{"Unable to convert '"} +
+                                    attribute_name +
+                                    "' from an indexed array to an "
+                                    "associative array");
+      status = 1;
+      continue;
+    }
+
     if (should_mark_integer_attribute) {
       cxt.variable_store().attributes().mark_integer(attribute_name);
     }
@@ -562,6 +574,8 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (is_valueless) {
           cxt.variable_store().attributes().mark_declared(attribute_name);
         }
+      } else if (equals.has_value()) {
+        cxt.assign_array_element(attribute_name, "0", value, update_mode);
       }
     } else if (equals.has_value()) {
       if (update_mode == assignment_update_mode::Append) {

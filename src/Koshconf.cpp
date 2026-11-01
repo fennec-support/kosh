@@ -437,8 +437,6 @@ replace_koshconf_target(const Path &target, StringView contents) throws
                          ? status.mode & KOSHCONF_PERMISSION_BITS
                          : KOSHCONF_FILE_MODE & ~os::get_file_creation_mask();
 
-  reject_special_koshconf_target(target);
-
   if (os::path_exists(target.view())) {
     let const existing = target.read_entire_file();
 
@@ -1373,6 +1371,7 @@ write_koshconf_file(const Path &path, StringView contents) throws
 
   defer { os::release_process_lock(lock); };
 
+  reject_special_koshconf_target(target);
   replace_koshconf_target(target, contents);
 }
 

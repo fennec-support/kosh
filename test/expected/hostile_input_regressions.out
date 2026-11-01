@@ -7,6 +7,13 @@ status 1
 status 1
 1
 2
+--- a failed source leaves the next one free ---
+status 1
+3
+--- cp -r merges directories with one final component ---
+status 0
+1
+2
 --- cut -d= takes the equals sign ---
 a
 --- sed closes an unterminated line before more output ---
@@ -38,4 +45,5 @@ a   b
 a|b;c&&d
 a   b
 equal
+subshell
 status 0

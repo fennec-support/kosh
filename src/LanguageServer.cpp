@@ -1800,12 +1800,6 @@ Server::rename_kind_of(const document_symbol &symbol) throws
   return rename_kind::command;
 }
 
-pure static fn
-is_variable_name_byte(char byte) wontthrow -> bool
-{
-  return lexer::is_variable_name_start(byte) || (byte >= '0' && byte <= '9');
-}
-
 static fn
 append_braced_variable_spans(StringView              text,
                              StringView              name,
@@ -1823,22 +1817,28 @@ append_braced_variable_spans(StringView              text,
 
   usize head_end = head_start;
 
-  while (head_end < text.length && is_variable_name_byte(text[head_end])) {
+  while (head_end < text.length && lexer::is_variable_name(text[head_end])) {
     head_end++;
   }
 
-  let const is_arithmetic_tail =
-      head_end < text.length &&
-      (text[head_end] == '[' ||
-       (text[head_end] == ':' &&
-        (head_end + 1 == text.length ||
-         !StringView{"-=?+"}.find_character(text[head_end + 1]).has_value())));
+  let const is_offset_tail =
+      head_end + 1 < text.length && text[head_end] == ':' &&
+      !StringView{"-=?+"}.find_character(text[head_end + 1]).has_value();
 
-  usize position = head_start;
+  usize position            = head_start;
+  bool  is_in_single_quotes = false;
 
   while (position < text.length) {
-    if (!lexer::is_variable_name_start(text[position]) ||
-        (position > 0 && is_variable_name_byte(text[position - 1])))
+    let const byte = text[position];
+
+    if (byte == '\'') is_in_single_quotes = !is_in_single_quotes;
+    if (byte == '\\' && !is_in_single_quotes) {
+      position += 2;
+      continue;
+    }
+
+    if (is_in_single_quotes || !lexer::is_variable_name_start(byte) ||
+        lexer::is_variable_name(text[position - 1]))
     {
       position++;
       continue;
@@ -1846,15 +1846,15 @@ append_braced_variable_spans(StringView              text,
 
     usize word_end = position;
 
-    while (word_end < text.length && is_variable_name_byte(text[word_end])) {
+    while (word_end < text.length && lexer::is_variable_name(text[word_end])) {
       word_end++;
     }
 
-    let const is_reference = position == head_start ||
-                             text[position - 1] == '$' ||
-                             (position >= 2 && text[position - 1] == '{' &&
-                              text[position - 2] == '$') ||
-                             (is_arithmetic_tail && position >= head_end);
+    let const is_expansion =
+        (text[position - 1] == '$' && text[position - 2] != '$') ||
+        (text[position - 1] == '{' && text[position - 2] == '$');
+    let const is_reference = position == head_start || is_expansion ||
+                             (is_offset_tail && position >= head_end);
 
     if (is_reference &&
         text.substring_of_length(position, word_end - position) == name)
@@ -1905,9 +1905,9 @@ Server::collect_rename_spans(const Document         &document,
 
         if (variable_name_of(text) != name) return true;
 
-        /* e.g. text = "${count}" and span.start = 10. variable_name_start_of()
-           returns 2, so name_start = 12 and the span is [12, 17), which leaves
-           out the sigil and the braces. */
+        /* e.g. text = "$count" and span.start = 10. variable_name_start_of()
+           returns 1, so name_start = 11 and the span is [11, 16), which leaves
+           out the sigil. */
         let const name_start = span.start + variable_name_start_of(text);
 
         out_spans.push(

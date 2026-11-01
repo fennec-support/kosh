@@ -643,7 +643,10 @@ Cp::execute(const ExecContext               &ec,
                    .text();
     }
 
-    if (!copied_targets.add(target.view())) {
+    let const is_directory_source =
+        Path{source, cxt.scratch_allocator()}.is_directory();
+
+    if (!is_directory_source && copied_targets.contains(target.view())) {
       report_soft_koshkit_error(ec, cxt, operand_locations[i],
                                 "'" + String{cxt.scratch_allocator(), source} +
                                     "' would overwrite '" + target +
@@ -661,9 +664,13 @@ Cp::execute(const ExecContext               &ec,
     }
 
     try {
-      if (!copy_path(ec, cxt, source, target.view(), options,
-                     cxt.scratch_allocator(), nullptr, active_directories))
+      if (copy_path(ec, cxt, source, target.view(), options,
+                    cxt.scratch_allocator(), nullptr, active_directories))
+      {
+        unused(copied_targets.add(target.view()));
+      } else {
         status = 1;
+      }
     } catch (const BrokenPipeExit &) {
       throw;
     } catch (const Error &error) {

@@ -1,6 +1,5 @@
 #!/bin/sh
-# Each case once crashed, hung, or lost data on hostile input. Diagnostics go
-# to /dev/null, so the cases compare only statuses and resulting files.
+# Diagnostics go to /dev/null, so the cases compare statuses and resulting files.
 
 dir=$(mktemp -d)
 trap 'rm -rf "$dir"' EXIT
@@ -24,6 +23,21 @@ echo "status $?"
 "$BIN" -c 'koshkit mv first/x second/x moved' 2>/dev/null
 echo "status $?"
 "$BIN" -c 'koshkit cat moved/x second/x'
+
+echo "--- a failed source leaves the next one free ---"
+mkdir valid into
+echo 3 > valid/y
+"$BIN" -c 'koshkit mv missing/y valid/y into' 2>/dev/null
+echo "status $?"
+"$BIN" -c 'koshkit cat into/y'
+
+echo "--- cp -r merges directories with one final component ---"
+mkdir -p left/same right/same merged
+echo 1 > left/same/one
+echo 2 > right/same/two
+"$BIN" -c 'koshkit cp -r left/same right/same merged'
+echo "status $?"
+"$BIN" -c 'koshkit cat merged/same/one merged/same/two'
 
 echo "--- cut -d= takes the equals sign ---"
 printf 'a=b\n' | "$BIN" -c 'koshkit cut -d= -f1'
@@ -82,6 +96,7 @@ echo "$(echo "a   b")"
 echo "$(echo "a|b;c&&d")"
 echo "${unset_name:-"a   b"}"
 if [ "$(echo "a   b")" = "a   b" ]; then echo equal; else echo differ; fi
+echo "$( (echo subshell) )"
 EOF
 "$BIN" --format quoted.sh > formatted.sh
 "$BIN" --mood bash --no-diagnostics formatted.sh

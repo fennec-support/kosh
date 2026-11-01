@@ -1192,6 +1192,12 @@ format_word_substitutions(StringView word,
       output.append("${ ");
     else
       output.append(word.substring_of_length(position, opener_length));
+    if (!is_function_substitution && word[position] == '$' &&
+        leading_indent_length < formatted.count() &&
+        formatted[leading_indent_length] == '(')
+    {
+      output.push(' ');
+    }
     output.append(formatted.substring(leading_indent_length));
     if (should_close_after_heredoc) output.push('\n');
     if (is_function_substitution)

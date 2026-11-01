@@ -209,7 +209,7 @@ Mv::execute(const ExecContext               &ec,
       target = target_path.text();
     }
 
-    if (!moved_targets.add(target.view())) {
+    if (moved_targets.contains(target.view())) {
       report_soft_koshkit_error(ec, cxt, operand_locations[i],
                                 "'" + String{cxt.scratch_allocator(), source} +
                                     "' would overwrite '" + target +
@@ -257,6 +257,8 @@ Mv::execute(const ExecContext               &ec,
       status = 1;
       continue;
     }
+
+    unused(moved_targets.add(target.view()));
 
     if (FLAG_MV_VERBOSE.is_enabled())
       output += "renamed '" + String{cxt.scratch_allocator(), source} +
