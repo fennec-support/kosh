@@ -26,6 +26,10 @@ declare -p existing
 declare -a existing_ref=2
 declare -p existing
 
+scalar=q
+declare -a scalar+=r
+declare -p scalar
+
 echo "--- unset empties a whole array through at and star ---"
 whole=(1 2 3)
 unset 'whole[@]'
@@ -58,6 +62,10 @@ E
 cat <<"E"
 kept\
 E
+cat <<E
+\
+E
+echo after-joined-delimiter
 
 echo "--- a regex variable keeps its backslashes ---"
 word='\<bar'; [[ 'foo bar' =~ $word ]]; echo "$?"

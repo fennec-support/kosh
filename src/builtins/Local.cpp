@@ -116,8 +116,12 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             .saved_scope_shell_options()[cxt.scope_store().local_scope_depth() -
                                          1];
 
-    if (!saved_options.has_value())
+    if (!saved_options.has_value()) {
       saved_options = cxt.runtime_state().get_shell_options();
+      cxt.scope_store().save_explicit_nounset(
+          cxt.scope_store().local_scope_depth() - 1,
+          cxt.runtime_state().was_error_unset_set_explicitly());
+    }
   };
 
   let operand_indices = ArrayList<usize>{cxt.scratch_allocator()};

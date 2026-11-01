@@ -38,6 +38,8 @@ status 1
 --- fg in a forked stage ends with a diagnostic ---
 after
 after
+--- local - restores an explicit set -u ---
+after 0
 --- koshconf refuses a configuration that is not a file ---
 status 1
 --- --format keeps quoted text inside substitutions ---
@@ -46,4 +48,5 @@ a|b;c&&d
 a   b
 equal
 subshell
+fooE
 status 0

@@ -442,7 +442,7 @@ Lexer::walk_heredoc_body(usize              start,
   usize                   position           = start;
   bool                    did_find_delimiter = false;
   bool                    has_near_miss      = false;
-  bool                    was_line_continued = false;
+  Maybe<StringView>       continued_text{};
   heredoc_terminator_miss near_miss{0, 0,
                                     heredoc_miss_kind::IndentedTerminator};
 
@@ -472,11 +472,19 @@ Lexer::walk_heredoc_body(usize              start,
 
     let const stripped =
         m_source.substring_of_length(stripped_offset, stripped_length);
-    let const is_delimiter = !was_line_continued && delimiter == stripped;
+    let const is_delimiter = continued_text.has_value()
+                                 ? lexer::heredoc_joined_line_is_delimiter(
+                                       *continued_text, stripped, delimiter)
+                                 : delimiter == stripped;
 
-    was_line_continued =
-        should_expand &&
-        lexer::count_backslashes_before(stripped, stripped_length) % 2 == 1;
+    continued_text = None;
+
+    if (should_expand &&
+        lexer::count_backslashes_before(stripped, stripped_length) % 2 == 1)
+    {
+      continued_text = stripped.substring_of_length(0, stripped_length - 1);
+    }
+
     did_find_delimiter = did_find_delimiter || is_delimiter;
 
     if (m_parse_session.should_collect_analysis_metadata() && !is_delimiter &&

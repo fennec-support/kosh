@@ -269,12 +269,11 @@ skip_here_document(StringView source, usize at) throws -> usize
 
   if (tail.word_end == tail.word_start) return at + 2;
 
+  let const delimiter_word = source.substring_of_length(
+      tail.word_start, tail.word_end - tail.word_start);
   let const heredoc = lexer::pending_heredoc{
-      lexer::unquote_heredoc_delimiter(
-          source.substring_of_length(tail.word_start,
-                                     tail.word_end - tail.word_start),
-          heap_allocator()),
-      tail.should_strip_tabs};
+      lexer::unquote_heredoc_delimiter(delimiter_word, heap_allocator()),
+      tail.should_strip_tabs, lexer::heredoc_word_joins_lines(delimiter_word)};
 
   while (cursor < source.length && source[cursor] != '\n') {
     cursor++;

@@ -1801,7 +1801,8 @@ Server::rename_kind_of(const document_symbol &symbol) throws
 }
 
 static fn
-append_braced_variable_spans(StringView              text,
+append_braced_variable_spans(StringView              source,
+                             StringView              text,
                              StringView              name,
                              const highlight_span   &span,
                              ArrayList<rename_span> &out_spans) throws
@@ -1824,6 +1825,20 @@ append_braced_variable_spans(StringView              text,
   let const is_offset_tail =
       head_end + 1 < text.length && text[head_end] == ':' &&
       !StringView{"-=?+"}.find_character(text[head_end + 1]).has_value();
+
+  usize subscript_end = head_end;
+
+  if (head_end < text.length && text[head_end] == '[') {
+    let array_marker = String{heap_allocator(), StringView{"-A "}};
+
+    array_marker.append(
+        text.substring_of_length(head_start, head_end - head_start));
+
+    if (!source.find_substring(array_marker.view(), 0).has_value()) {
+      subscript_end =
+          head_end + text.substring(head_end).find_character(']').value_or(0);
+    }
+  }
 
   usize position            = head_start;
   bool  is_in_single_quotes = false;
@@ -1854,7 +1869,8 @@ append_braced_variable_spans(StringView              text,
         (text[position - 1] == '$' && text[position - 2] != '$') ||
         (text[position - 1] == '{' && text[position - 2] == '$');
     let const is_reference = position == head_start || is_expansion ||
-                             (is_offset_tail && position >= head_end);
+                             (is_offset_tail && position >= head_end) ||
+                             (position > head_end && position < subscript_end);
 
     if (is_reference &&
         text.substring_of_length(position, word_end - position) == name)
@@ -1898,7 +1914,8 @@ Server::collect_rename_spans(const Document         &document,
         }
 
         if (text.starts_with("${")) {
-          append_braced_variable_spans(text, name, span, out_spans);
+          append_braced_variable_spans(document.normalized_source, text, name,
+                                       span, out_spans);
 
           return true;
         }

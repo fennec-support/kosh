@@ -83,6 +83,9 @@ timeout 10 "$BIN" --mood bash -c 'sleep 0 & fg %1 | true; echo after' \
 timeout 10 "$BIN" --mood bash -c 'sleep 1 & fg %1 | true; echo after' \
   2>/dev/null | tail -n 1
 
+echo "--- local - restores an explicit set -u ---"
+"$BIN" -c 'f() { local -; set -u; }; f; [ -z "$unset_operand" ]; echo "after $?"'
+
 echo "--- koshconf refuses a configuration that is not a file ---"
 mkdir -p config/kosh
 mkfifo config/kosh/kosh.conf
@@ -97,6 +100,14 @@ echo "$(echo "a|b;c&&d")"
 echo "${unset_name:-"a   b"}"
 if [ "$(echo "a   b")" = "a   b" ]; then echo equal; else echo differ; fi
 echo "$( (echo subshell) )"
+EOF
+cat >> quoted.sh <<'EOF'
+if true; then
+cat <<E
+foo\
+E
+E
+fi
 EOF
 "$BIN" --format quoted.sh > formatted.sh
 "$BIN" --mood bash --no-diagnostics formatted.sh

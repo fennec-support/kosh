@@ -3598,6 +3598,16 @@ EvalContext::apply_indirect_or_name_listing(StringView body) throws
      target holds the value of body. */
   let const target_view = target->view();
 
+  if ((body == "@" || body == "*") &&
+      target_view.find_character(' ').has_value())
+  {
+    throw Error{
+        "'" + String{scratch_allocator(), target_view}
+          +
+        "' is not a valid variable"
+    };
+  }
+
   if (let const bracket = target_view.find_character('[');
       bracket.has_value() && target_view[target_view.length - 1] == ']')
   {

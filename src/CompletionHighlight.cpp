@@ -1548,8 +1548,9 @@ internal::scan_highlight_range(
         let delimiter = lexer::unquote_heredoc_delimiter(
             delimiter_word, bump_allocator(HIGHLIGHT_ARENA));
 
-        pending_heredocs.push(
-            lexer::pending_heredoc{steal(delimiter), tail.should_strip_tabs});
+        pending_heredocs.push(lexer::pending_heredoc{
+            steal(delimiter), tail.should_strip_tabs,
+            lexer::heredoc_word_joins_lines(delimiter_word)});
       }
 
       continue;

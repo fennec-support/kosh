@@ -2135,14 +2135,15 @@ collect_shell_heredoc(StringView           source,
 
   position = tail.word_end;
 
+  let const delimiter_word = source.substring_of_length(
+      tail.word_start, tail.word_end - tail.word_start);
   let delimiter = lexer::unquote_heredoc_delimiter(
-      source.substring_of_length(tail.word_start,
-                                 tail.word_end - tail.word_start),
-      state.pending_heredocs.allocator());
+      delimiter_word, state.pending_heredocs.allocator());
 
   if (!delimiter.is_empty())
-    state.pending_heredocs.push(
-        lexer::pending_heredoc{steal(delimiter), tail.should_strip_tabs});
+    state.pending_heredocs.push(lexer::pending_heredoc{
+        steal(delimiter), tail.should_strip_tabs,
+        lexer::heredoc_word_joins_lines(delimiter_word)});
 }
 
 fn

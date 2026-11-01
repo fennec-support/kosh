@@ -260,7 +260,7 @@ balanced_scan_delimiter_end(StringView source, usize position)
   return position;
 }
 
-pure fn
+fn
 match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
     -> heredoc_line_match
 {
@@ -273,8 +273,39 @@ match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
   }
 
   let const content = heredoc_line_content(line.substring(content_start));
+  let const is_terminator =
+      heredoc.continued_text.has_value()
+          ? heredoc_joined_line_is_delimiter(*heredoc.continued_text, content,
+                                             heredoc.delimiter.view())
+          : content == heredoc.delimiter.view();
 
-  return {content_start, content.length, content == heredoc.delimiter.view()};
+  heredoc.continued_text = None;
+
+  if (heredoc.should_join_lines &&
+      count_backslashes_before(content, content.length) % 2 == 1)
+  {
+    heredoc.continued_text = content.substring_of_length(0, content.length - 1);
+  }
+
+  return {content_start, content.length, is_terminator};
+}
+
+pure fn
+heredoc_word_joins_lines(StringView word) wontthrow -> bool
+{
+  return !word.find_character('\'').has_value() &&
+         !word.find_character('"').has_value() &&
+         !word.find_character('\\').has_value();
+}
+
+pure fn
+heredoc_joined_line_is_delimiter(StringView continued_text,
+                                 StringView line,
+                                 StringView delimiter) wontthrow -> bool
+{
+  return continued_text.length + line.length == delimiter.length &&
+         delimiter.starts_with(continued_text) &&
+         delimiter.substring(continued_text.length) == line;
 }
 
 /* memory: none.
@@ -497,14 +528,15 @@ scan_balanced_shell_region(StringView source,
 
         position = tail.word_end;
 
-        let delimiter = unquote_heredoc_delimiter(
-            source.substring_of_length(tail.word_start,
-                                       tail.word_end - tail.word_start),
-            heap_allocator());
+        let const delimiter_word = source.substring_of_length(
+            tail.word_start, tail.word_end - tail.word_start);
+        let delimiter =
+            unquote_heredoc_delimiter(delimiter_word, heap_allocator());
 
         if (!delimiter.is_empty()) {
           pending_heredocs.push(
-              pending_heredoc{steal(delimiter), tail.should_strip_tabs});
+              pending_heredoc{steal(delimiter), tail.should_strip_tabs,
+                              heredoc_word_joins_lines(delimiter_word)});
         }
 
         previous_byte = source[position - 1];

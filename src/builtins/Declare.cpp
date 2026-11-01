@@ -559,7 +559,18 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         let values = ArrayList<String>{heap_allocator()};
 
         if (equals.has_value()) {
-          values.push_managed(value);
+          let joined = String{cxt.scratch_allocator()};
+
+          if (let const scalar =
+                  cxt.variable_store().shell_variables().find(attribute_name);
+              scalar.has_value() &&
+              update_mode == assignment_update_mode::Append)
+          {
+            joined.append(scalar->view());
+          }
+
+          joined.append(value);
+          values.push_managed(joined.view());
         } else if (let const scalar =
                        cxt.variable_store().shell_variables().find(
                            attribute_name);

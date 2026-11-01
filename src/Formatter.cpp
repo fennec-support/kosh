@@ -570,7 +570,8 @@ scan_format_pieces(StringView source) throws -> ArrayList<format_piece>
     if (is_expecting_heredoc_delimiter) {
       pending_heredocs.push(lexer::pending_heredoc{
           lexer::unquote_heredoc_delimiter(text, heap_allocator()),
-          should_pending_heredoc_strip_tabs});
+          should_pending_heredoc_strip_tabs,
+          lexer::heredoc_word_joins_lines(text)});
       is_expecting_heredoc_delimiter = false;
     }
 

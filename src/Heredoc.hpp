@@ -10,6 +10,7 @@
 #pragma once
 
 #include "base/Common.hpp"
+#include "base/Maybe.hpp"
 #include "base/String.hpp"
 #include "base/StringView.hpp"
 
@@ -17,8 +18,10 @@ namespace koshka::lexer {
 
 struct pending_heredoc
 {
-  String delimiter;
-  bool   should_strip_tabs{false};
+  String                    delimiter;
+  bool                      should_strip_tabs{false};
+  bool                      should_join_lines{false};
+  mutable Maybe<StringView> continued_text{};
 
   cold fn
   move_to_allocator(Allocator allocator) throws -> void
@@ -35,8 +38,18 @@ struct heredoc_line_match
 };
 
 pure fn
+heredoc_word_joins_lines(StringView word) wontthrow -> bool;
+
+/* reads the body lines of one heredoc in order, since a line that ends in an
+   unescaped backslash joins the next one in an expanding body. */
+fn
 match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
     -> heredoc_line_match;
+
+pure fn
+heredoc_joined_line_is_delimiter(StringView continued_text,
+                                 StringView line,
+                                 StringView delimiter) wontthrow -> bool;
 
 /* the end of the heredoc delimiter word that starts at position. Quotes and
    backslashes keep blanks and operators inside the word. */

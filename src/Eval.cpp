@@ -1707,6 +1707,9 @@ EvalContext::leave_function_scope() throws -> void
 
     runtime_state().set_shell_options((*saved_options & ~restricted_mask) |
                                       (current_options & restricted_mask));
+    runtime_state().set_error_unset_set_explicitly(
+        scope_store().get_saved_explicit_nounset(
+            scope_store().local_scope_depth() - 1));
     saved_options = None;
   }
 

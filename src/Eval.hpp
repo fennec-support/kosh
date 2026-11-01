@@ -971,6 +971,24 @@ public:
   }
 
   fn
+  save_explicit_nounset(usize scope_index, bool was_explicit) throws
+      -> void
+  {
+    while (m_saved_scope_explicit_nounset.count() <= scope_index) {
+      m_saved_scope_explicit_nounset.push(false);
+    }
+
+    m_saved_scope_explicit_nounset[scope_index] = was_explicit;
+  }
+
+  pure fn
+  get_saved_explicit_nounset(usize scope_index) const wontthrow -> bool
+  {
+    return scope_index < m_saved_scope_explicit_nounset.count() &&
+           m_saved_scope_explicit_nounset[scope_index];
+  }
+
+  fn
   local_scope_depth() wontthrow -> usize &
   {
     return m_local_scope_depth;
@@ -1231,6 +1249,7 @@ private:
 
   ArrayList<ArrayList<local_binding>> m_local_scopes{heap_allocator()};
   ArrayList<Maybe<u64>> m_saved_scope_shell_options{heap_allocator()};
+  ArrayList<bool>       m_saved_scope_explicit_nounset{heap_allocator()};
   usize                 m_local_scope_depth{0};
 };
 
