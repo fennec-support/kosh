@@ -970,6 +970,24 @@ Sed::execute(const ExecContext               &ec,
 
     bool did_read_fail = false;
 
+    /* the opened file must be the file the checks above saw. */
+    os::file_status opened_status{};
+
+    if (is_in_place &&
+        (!os::stat_descriptor(input->descriptor, opened_status) ||
+         opened_status.device_id != in_place_status.device_id ||
+         opened_status.file_id != in_place_status.file_id))
+    {
+      close_input_descriptor(*input);
+      report_soft_koshkit_error(
+          ec, cxt,
+          "The file '" +
+              String{cxt.scratch_allocator(), sources[source_index]} +
+              "' changed before it was opened");
+      status = 1;
+      continue;
+    }
+
     {
       defer { close_input_descriptor(*input); };
 
