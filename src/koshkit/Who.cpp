@@ -9,6 +9,7 @@
 
 #include "../CLI.hpp"
 #include "../CLIColors.hpp"
+#include "../CLILive.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -96,10 +97,17 @@ Who::execute(const ExecContext               &ec,
 
     let const sessions = os::logged_in_users();
     let       output   = String{cxt.scratch_allocator()};
+    let const should_escape_text =
+        os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT));
+    let const do_show = [&](StringView text) -> String {
+      return should_escape_text
+                 ? escape_terminal_text(cxt.scratch_allocator(), text)
+                 : String{cxt.scratch_allocator(), text};
+    };
 
     if (FLAG_WHO_QUICK.is_enabled()) {
       for (let const &session : sessions) {
-        output += session.user.view();
+        output += do_show(session.user.view()).view();
         output += ' ';
       }
 
@@ -120,10 +128,10 @@ Who::execute(const ExecContext               &ec,
     }
 
     for (let const &session : sessions) {
-      output += session.user.view();
+      output += do_show(session.user.view()).view();
       output += ' ';
       if (FLAG_WHO_STATE.is_enabled()) output += "? ";
-      output += session.terminal.view();
+      output += do_show(session.terminal.view()).view();
       if (session.login_time != 0) {
         output += ' ';
         output += os::format_local_time("%b %e %H:%M", session.login_time);

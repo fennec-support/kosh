@@ -1140,8 +1140,7 @@ reopen_terminal_as_stdin() wontthrow -> bool
 
   let const was_replaced = install_descriptor(tty_fd, STDIN_FILENO) != -1;
 
-  /* tty_fd is 0 when stdin was closed, so it must stay open. */
-  if (tty_fd != STDIN_FILENO) close(tty_fd);
+  close(tty_fd);
 
   return was_replaced && isatty(STDIN_FILENO) == 1;
 }
@@ -1153,7 +1152,16 @@ open_terminal_input() wontthrow -> Maybe<descriptor>
 
   if (tty_fd == -1) return None;
 
-  return tty_fd;
+  if (tty_fd > STDERR_FILENO) return tty_fd;
+
+  /* a closed standard descriptor would otherwise become the terminal, and
+     the shell would read and write that number as standard input. */
+  let const moved_fd = fcntl(tty_fd, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+
+  close(tty_fd);
+  if (moved_fd == -1) return None;
+
+  return moved_fd;
 }
 
 fn

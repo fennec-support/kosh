@@ -22,6 +22,18 @@
 
 namespace koshka::koshkit {
 
+/* converts an interval to nanoseconds and clamps it between one millisecond
+   and 10^9 seconds, so a huge value cannot overflow and a tiny value cannot
+   become a zero wait. */
+inline pure fn
+get_clamped_interval_nanoseconds(f64 seconds) wontthrow -> u64
+{
+  if (!(seconds >= 0.001)) return 1000000ULL;
+  if (seconds > 1.0e9) return 1000000000000000000ULL;
+
+  return static_cast<u64>(seconds * 1000000000.0);
+}
+
 enum class live_view_special_key : u8
 {
   None,
@@ -217,7 +229,7 @@ struct live_report_options
   pure fn
   get_window_nanoseconds() const wontthrow -> u64
   {
-    return static_cast<u64>(window_seconds * 1000000000.0);
+    return get_clamped_interval_nanoseconds(window_seconds);
   }
 
   pure fn
@@ -402,6 +414,13 @@ run_pager(const ExecContext           &ec,
           EvalContext                 &cxt,
           const ArrayList<StringView> &sources,
           const pager_options         &options) throws -> i32;
+
+/* returns text with every control byte in ^ notation and every byte that is
+   not UTF-8 or is a C1 control character as the replacement character, so
+   that foreign text cannot steer a terminal. */
+fn
+escape_terminal_text(Allocator allocator, StringView text) throws
+    -> String;
 
 struct live_process_identity
 {

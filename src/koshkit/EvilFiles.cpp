@@ -9,6 +9,7 @@
 
 #include "../CLI.hpp"
 #include "../CLIColors.hpp"
+#include "../CLILive.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -444,6 +445,13 @@ EvilFiles::execute(const ExecContext               &ec,
   /* at this point: processes is not empty, wanted_pid holds the parsed -p
      value when has_wanted_pid is true, and wanted_owner holds the resolved
      uid when -u is set. */
+  let const should_escape_text =
+      os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT));
+  let const do_show = [&](StringView text) -> String {
+    return should_escape_text ? escape_terminal_text(allocator, text)
+                              : String{allocator, text};
+  };
+
   ArrayList<open_file_row> rows{allocator};
   column_widths            widths{};
   socket_directory         sockets{allocator};
@@ -548,7 +556,7 @@ EvilFiles::execute(const ExecContext               &ec,
       }
 
       open_file_row row{
-          String{allocator, process.name.view()},
+          do_show(process.name.view()),
           String::from(static_cast<u64>(process.pid), allocator),
           owner.has_value() ? String{allocator, owner->view()}
                             : String::from(process.owner_id, allocator),
@@ -570,9 +578,9 @@ EvilFiles::execute(const ExecContext               &ec,
                        allocator),
           socket_index.has_value()
               ? String{allocator,
-                 sockets.entries[*socket_index].endpoint.view()}
+                                     sockets.entries[*socket_index].endpoint.view()}
               : String{allocator},
-          String{allocator, file.path.view()},
+          do_show(file.path.view()),
       };
 
       widen(widths.command, row.command);

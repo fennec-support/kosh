@@ -1902,6 +1902,11 @@ output is a terminal, \f[CR]NO_COLOR\f[R] is empty or unset, and
 \f[CR]diff\f[R] and \f[CR]grep\f[R] also take \f[CR]\-\-color\f[R].
 \f[CR]tabs\f[R] and \f[CR]tput\f[R] write escape sequences wherever
 their output goes.
+When output is a terminal, \f[CR]ps\f[R], \f[CR]who\f[R],
+\f[CR]watch\f[R], \f[CR]goodstat\f[R], \f[CR]evilps\f[R], and
+\f[CR]evilfiles\f[R] show control bytes in caret notation and bytes that
+are not UTF\-8 as the replacement character, so that process arguments,
+user names, and file names cannot steer the terminal.
 .SS Koshka\-specific and system inspection utilities
 .PP
 .TS
@@ -2234,7 +2239,7 @@ the byte count of each piece (\f[CR]\-f\f[R]/\f[CR]\-\-prefix\f[R]
 replace \f[CR]xx\f[R], \f[CR]\-n\f[R]/\f[CR]\-\-digits\f[R] number of
 digits, \f[CR]\-s\f[R]/\f[CR]\-\-silent\f[R] suppress the counts,
 \f[CR]\-k\f[R]/\f[CR]\-\-keep\-files\f[R] keep the pieces after an
-error).
+error, including a final piece with the rest of the input).
 Returns \f[CR]1\f[R] for a line number past the input or a regex that
 does not match.
 T}
@@ -2780,6 +2785,8 @@ user\-oriented columns, \f[CR]\-f\f[R] uses the full columns, and
 \f[CR]rss\f[R], \f[CR]stat\f[R], \f[CR]comm\f[R], and \f[CR]args\f[R].
 \f[CR]\-p\f[R]/\f[CR]\-\-pid LIST\f[R] and \f[CR]\-C LIST\f[R] select
 processes by id and command, and the status is 1 when they select none.
+A repeated \f[CR]\-o\f[R], \f[CR]\-p\f[R], or \f[CR]\-C\f[R] adds to the
+earlier values.
 \f[CR]\-\-no\-headers\f[R] omits the header.
 \f[CR]\-e\f[R], \f[CR]\-A\f[R], and \f[CR]\-w\f[R] are accepted.
 T}

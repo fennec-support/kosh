@@ -241,10 +241,10 @@ LiveView::LiveView(const ExecContext       &ec,
     : m_ec(ec), m_options(options),
       m_output_fd(ec.out_fd.value_or(KOSH_STDOUT)),
       m_input_fd(ec.in_fd.value_or(KOSH_STDIN)),
-      m_sample_interval_nanoseconds(static_cast<u64>(
-          options.sample_interval_seconds * NANOSECONDS_PER_SECOND)),
-      m_refresh_interval_nanoseconds(static_cast<u64>(
-          options.refresh_interval_seconds * NANOSECONDS_PER_SECOND)),
+      m_sample_interval_nanoseconds(
+          get_clamped_interval_nanoseconds(options.sample_interval_seconds)),
+      m_refresh_interval_nanoseconds(
+          get_clamped_interval_nanoseconds(options.refresh_interval_seconds)),
       m_raw_input(os::is_fd_a_tty(m_output_fd) ? m_input_fd : KOSH_INVALID_FD),
       m_is_terminal(os::is_fd_a_tty(m_output_fd))
 {
@@ -1325,7 +1325,8 @@ private:
 
   /* fills m_display with the visible form of one line, with tabs expanded,
      overstrikes resolved, and control bytes in caret notation, and fills
-     m_row_starts with the byte offset of each terminal row. */
+     m_row_starts with the byte offset of each terminal row. A line shows at
+     most PAGER_BYTE_LIMIT bytes. */
   fn
   prepare_line(usize line_index) throws -> void
   {
@@ -1344,7 +1345,7 @@ private:
     usize column   = 0;
     usize position = 0;
 
-    while (position < text.length) {
+    while (position < text.length && m_display.length() < PAGER_BYTE_LIMIT) {
       let const byte = static_cast<u8>(text[position]);
 
       if (byte == '\t') {
@@ -2093,6 +2094,22 @@ copy_pager_sources(const ExecContext       &ec,
 }
 
 } /* namespace */
+
+fn
+escape_terminal_text(Allocator allocator, StringView text) throws
+    -> String
+{
+  String output{allocator};
+  usize  position = 0;
+
+  while (position < text.length) {
+    usize column_count = 0;
+
+    position += append_shown_character(output, text, position, column_count);
+  }
+
+  return output;
+}
 
 fn
 run_pager(const ExecContext           &ec,

@@ -9,6 +9,7 @@
 
 #include "../CLI.hpp"
 #include "../CLIColors.hpp"
+#include "../CLILive.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../platform/Platform.hpp"
@@ -28,13 +29,14 @@ FLAG(PS_EVERY, Bool, 'e', "", "List every process.");
 FLAG(PS_EVERY_ALIAS, Bool, 'A', "", "List every process.");
 FLAG(PS_FULL_FMT, Bool, 'f', "", "List in full format.");
 FLAG(PS_FORMAT,
-     String,
+     ManyStrings,
      'o',
      "format",
      "List the columns in a comma-separated list of pid, ppid, user, uid, "
      "vsz, rss, stat, comm, and args.");
-FLAG(PS_PID, String, 'p', "pid", "Select the comma-separated process ids.");
-FLAG(PS_NAME, String, 'C', "", "Select the comma-separated commands.");
+FLAG(
+    PS_PID, ManyStrings, 'p', "pid", "Select the comma-separated process ids.");
+FLAG(PS_NAME, ManyStrings, 'C', "", "Select the comma-separated commands.");
 FLAG(PS_NO_HEADERS, Bool, '\0', "no-headers", "Omit the header line.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(Ps);
@@ -131,7 +133,8 @@ find_ps_column(StringView name) wontthrow -> const ps_column_spec *
 static fn
 ps_cell_text(const os::process_entry &process,
              ps_column                column,
-             Allocator                allocator) throws -> String
+             Allocator                allocator,
+             bool                     should_escape_text) throws -> String
 {
   switch (column) {
   case ps_column::Pid:       return String::from(process.pid, allocator);
@@ -147,11 +150,17 @@ ps_cell_text(const os::process_entry &process,
     return String{
         allocator, StringView{&process.state, 1}
     };
-  case ps_column::Name: return String{allocator, process.name.view()};
+  case ps_column::Name:
+    return should_escape_text
+               ? escape_terminal_text(allocator, process.name.view())
+               : String{allocator, process.name.view()};
   case ps_column::Arguments:
-    return String{allocator, process.command_line.is_empty()
-                                 ? process.name.view()
-                                 : process.command_line.view()};
+    let const arguments = process.command_line.is_empty()
+                              ? process.name.view()
+                              : process.command_line.view();
+
+    return should_escape_text ? escape_terminal_text(allocator, arguments)
+                              : String{allocator, arguments};
   }
 
   return String{allocator};
@@ -177,7 +186,8 @@ render_ps_columns(const ArrayList<os::process_entry>      &processes,
                   const ArrayList<const ps_column_spec *> &columns,
                   const ps_selection                      &selection,
                   String                                  &output,
-                  Allocator                                allocator) throws -> usize
+                  Allocator                                allocator,
+                  bool should_escape_text) throws -> usize
 {
   let table = ReportTable{allocator};
 
@@ -198,7 +208,8 @@ render_ps_columns(const ArrayList<os::process_entry>      &processes,
     let cells = ArrayList<report_table_cell_view>{allocator};
 
     for (let const *spec : columns) {
-      texts.push(ps_cell_text(process, spec->column, allocator));
+      texts.push(
+          ps_cell_text(process, spec->column, allocator, should_escape_text));
     }
 
     for (usize index = 0; index < texts.count(); index++) {
@@ -237,21 +248,27 @@ Ps::execute(const ExecContext               &ec,
   let       selection =
       ps_selection{ArrayList<i64>{allocator}, ArrayList<StringView>{allocator}};
 
-  if (FLAG_PS_FORMAT.is_set()) {
-    for (let const field : split_ps_list(FLAG_PS_FORMAT.value(), allocator)) {
-      let const *spec = find_ps_column(field);
+  if (!FLAG_PS_FORMAT.is_empty()) {
+    for (usize value_index = 0; value_index < FLAG_PS_FORMAT.count();
+         value_index++)
+    {
+      for (let const field :
+           split_ps_list(FLAG_PS_FORMAT.get(value_index), allocator))
+      {
+        let const *spec = find_ps_column(field);
 
-      if (spec == nullptr) {
-        KOSHKIT_REPORT_ERROR_AT(FLAG_PS_FORMAT.value_location(),
-                                "Unknown column '" + String{allocator, field} +
-                                    "'",
-                                "Use pid, ppid, user, uid, vsz, rss, stat, "
-                                "comm, or args");
+        if (spec == nullptr) {
+          KOSHKIT_REPORT_ERROR_AT(FLAG_PS_FORMAT.get_location(value_index),
+                                  "Unknown column '" +
+                                      String{allocator, field} + "'",
+                                  "Use pid, ppid, user, uid, vsz, rss, stat, "
+                                  "comm, or args");
 
-        return 1;
+          return 1;
+        }
+
+        columns.push(spec);
       }
-
-      columns.push(spec);
     }
   } else if (FLAG_PS_FULL_FMT.is_enabled()) {
     for (let const name : {"user", "pid", "ppid", "args"}) {
@@ -263,12 +280,15 @@ Ps::execute(const ExecContext               &ec,
     }
   }
 
-  if (FLAG_PS_PID.is_set()) {
-    for (let const field : split_ps_list(FLAG_PS_PID.value(), allocator)) {
+  for (usize value_index = 0; value_index < FLAG_PS_PID.count(); value_index++)
+  {
+    for (let const field :
+         split_ps_list(FLAG_PS_PID.get(value_index), allocator))
+    {
       let const parsed = field.to<i64>();
 
       if (!field.is_all_decimal_digits() || parsed.is_error()) {
-        KOSHKIT_REPORT_ERROR_AT(FLAG_PS_PID.value_location(),
+        KOSHKIT_REPORT_ERROR_AT(FLAG_PS_PID.get_location(value_index),
                                 "Invalid process id '" +
                                     String{allocator, field} + "'",
                                 "Pass process ids separated by commas, e.g. "
@@ -281,20 +301,27 @@ Ps::execute(const ExecContext               &ec,
     }
   }
 
-  if (FLAG_PS_NAME.is_set()) {
-    selection.names = split_ps_list(FLAG_PS_NAME.value(), allocator);
+  for (usize value_index = 0; value_index < FLAG_PS_NAME.count(); value_index++)
+  {
+    for (let const field :
+         split_ps_list(FLAG_PS_NAME.get(value_index), allocator))
+    {
+      selection.names.push(field);
+    }
   }
 
   let const processes = os::enumerate_processes(
       columns.is_empty() ? os::process_detail::Basic
                          : os::process_detail::ResourceStats);
 
-  let   output             = String{allocator};
-  usize selected_row_count = 0;
+  let       output             = String{allocator};
+  usize     selected_row_count = 0;
+  let const should_escape_text =
+      os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT));
 
   if (!columns.is_empty()) {
-    selected_row_count =
-        render_ps_columns(processes, columns, selection, output, allocator);
+    selected_row_count = render_ps_columns(
+        processes, columns, selection, output, allocator, should_escape_text);
     ec.print_to_stdout(output);
 
     return selection.is_active() && selected_row_count == 0 ? 1 : 0;
@@ -319,7 +346,10 @@ Ps::execute(const ExecContext               &ec,
     append_report_text(output, pid.view(),
                        colors::soft(colors::ansi::BOLD_CYAN), should_color);
     output += ' ';
-    output += process.name.view();
+    if (should_escape_text)
+      output += escape_terminal_text(allocator, process.name.view()).view();
+    else
+      output += process.name.view();
     output += '\n';
   }
 

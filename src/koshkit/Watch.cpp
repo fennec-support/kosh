@@ -132,6 +132,30 @@ append_truncated_lines(String    &output,
   }
 }
 
+fn
+escape_body(StringView body, Allocator allocator) throws -> String
+{
+  let   output        = String{allocator};
+  usize segment_start = 0;
+
+  for (usize position = 0; position <= body.length; position++) {
+    if (position != body.length && body[position] != '\n' &&
+        body[position] != '\t')
+    {
+      continue;
+    }
+
+    output += escape_terminal_text(
+                  allocator, body.substring_of_length(segment_start,
+                                                      position - segment_start))
+                  .view();
+    if (position != body.length) output += body[position];
+    segment_start = position + 1;
+  }
+
+  return output;
+}
+
 } /* namespace */
 
 fn
@@ -155,6 +179,7 @@ Watch::execute(const ExecContext               &ec,
         FLAG_WATCH_INTERVAL.value(), FLAG_WATCH_INTERVAL.value_location(),
         allocator);
     if (interval_seconds < 0.1) interval_seconds = 0.1;
+    if (interval_seconds > 1.0e9) interval_seconds = 1.0e9;
   }
 
   let command = String{allocator};
@@ -234,7 +259,13 @@ Watch::execute(const ExecContext               &ec,
       frame += "\n";
     }
 
-    append_truncated_lines(frame, body.view(), column_count);
+    if (dimensions.is_terminal) {
+      let const shown = escape_body(body.view(), allocator);
+
+      append_truncated_lines(frame, shown.view(), column_count);
+    } else {
+      append_truncated_lines(frame, body.view(), column_count);
+    }
 
     return pending_status;
   };

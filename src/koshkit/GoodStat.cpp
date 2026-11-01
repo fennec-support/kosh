@@ -8,6 +8,7 @@
 
 #include "../CLI.hpp"
 #include "../CLIColors.hpp"
+#include "../CLILive.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -109,6 +110,12 @@ append_subject(String                    &output,
 {
   let table = ReportTable{allocator};
 
+  let const should_escape_text =
+      os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT));
+  let const do_show = [&](StringView text) -> String {
+    return should_escape_text ? escape_terminal_text(allocator, text)
+                              : String{allocator, text};
+  };
   let const do_append_field = [&](StringView name, StringView value,
                                   StringView style) throws {
     table.add_field_row(name, value, style);
@@ -117,14 +124,15 @@ append_subject(String                    &output,
   let const described_type = describe_file_type(operand, status, allocator);
 
   do_append_field("Type",
-                  described_type.has_value() ? described_type->view()
-                                             : file_type_name(status),
+                  described_type.has_value()
+                      ? do_show(described_type->view()).view()
+                      : file_type_name(status),
                   colors::soft(colors::ansi::BOLD_CYAN));
 
   if (os::file_type_letter(status.mode) == 'l') {
     let const target = os::read_symlink(operand, allocator);
     if (target.has_value()) {
-      do_append_field("Target", target->view(),
+      do_append_field("Target", do_show(target->view()).view(),
                       colors::soft(colors::ansi::BOLD_CYAN));
     }
   }
@@ -237,7 +245,8 @@ append_subject(String                    &output,
                       colors::soft(colors::ansi::BOLD_CYAN));
   }
 
-  append_titled_report_table(output, operand, table, should_color);
+  append_titled_report_table(output, do_show(operand).view(), table,
+                             should_color);
 }
 
 } /* namespace */

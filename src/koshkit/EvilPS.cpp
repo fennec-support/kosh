@@ -561,7 +561,8 @@ render_process_relatives(String                      &output,
 
 fn
 read_process_nodes(Allocator            allocator,
-                   evilps_resource_mode resource_mode) throws
+                   evilps_resource_mode resource_mode,
+                   bool                 should_escape_text) throws
     -> ArrayList<tree_node>
 {
   /* memory: name and command_line are copied into allocator for each process.
@@ -583,8 +584,14 @@ read_process_nodes(Allocator            allocator,
     node.resident_kib     = process.resident_kib;
     node.start_token      = process.start_token;
     node.owner_id         = process.owner_id;
-    node.name             = String{allocator, process.name.view()};
-    node.command_line     = String{allocator, process.command_line.view()};
+    if (should_escape_text) {
+      node.name = escape_terminal_text(allocator, process.name.view());
+      node.command_line =
+          escape_terminal_text(allocator, process.command_line.view());
+    } else {
+      node.name         = String{allocator, process.name.view()};
+      node.command_line = String{allocator, process.command_line.view()};
+    }
     nodes.push(steal(node));
   }
 
@@ -958,6 +965,8 @@ EvilPS::execute(const ExecContext               &ec,
                                            ? evilps_resource_mode::ResourceStats
                                            : evilps_resource_mode::Basic;
   let const            should_color  = koshkit_should_color();
+  let const            should_escape_text =
+      os::is_fd_a_tty(ec.out_fd.value_or(KOSH_STDOUT));
 
   let const report_options = live_report_options::parse(
       ec, cxt, FLAG_EVILPS_LIVE, FLAG_EVILPS_CUMULATIVE, allocator);
@@ -982,7 +991,8 @@ EvilPS::execute(const ExecContext               &ec,
   if (report_options->is_live) {
     let const live_allocator = heap_allocator();
     let       history        = ArrayList<live_process_cpu_row>{live_allocator};
-    let       nodes = read_process_nodes(live_allocator, resource_mode);
+    let       nodes =
+        read_process_nodes(live_allocator, resource_mode, should_escape_text);
     let const started_at_nanoseconds = os::monotonic_nanos();
 
     if (should_sample_cpu)
@@ -993,7 +1003,8 @@ EvilPS::execute(const ExecContext               &ec,
                                   resource_mode};
 
     let const do_sample = [&](u64 now, Allocator) -> Maybe<i32> {
-      nodes = read_process_nodes(live_allocator, state.resource_mode);
+      nodes = read_process_nodes(live_allocator, state.resource_mode,
+                                 should_escape_text);
       if (state.should_sample_cpu)
         update_cpu_history(nodes, history, now, window_nanoseconds);
 
@@ -1063,7 +1074,7 @@ EvilPS::execute(const ExecContext               &ec,
     return run_live_view(ec, options, do_sample, do_render, do_key);
   }
 
-  let                  nodes    = read_process_nodes(allocator, resource_mode);
+  let nodes = read_process_nodes(allocator, resource_mode, should_escape_text);
   report_sampling_mode sampling = report_sampling_mode::Instant;
 
   if (report_options->is_cumulative) {
@@ -1075,7 +1086,7 @@ EvilPS::execute(const ExecContext               &ec,
                          window_nanoseconds);
     os::sleep_for_seconds(report_options->window_seconds);
     if (take_interrupt_request()) return 130;
-    nodes = read_process_nodes(allocator, resource_mode);
+    nodes = read_process_nodes(allocator, resource_mode, should_escape_text);
 
     let const after_nanoseconds = os::monotonic_nanos();
 
