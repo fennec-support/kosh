@@ -153,3 +153,38 @@ EOF
 "$BIN" --mood bash --no-diagnostics formatted.sh
 "$BIN" --format formatted.sh | cmp - formatted.sh
 echo "status $?"
+
+echo "--- nice and nohup children receive the default SIGPIPE ---"
+timeout 10 "$BIN" -c 'koshkit nice sh -c "while :; do echo x; done" > >(head -1)'
+echo "status $?"
+timeout 10 "$BIN" -c 'koshkit nohup sh -c "while :; do echo x; done" > >(head -1)' 2>/dev/null
+echo "status $?"
+
+echo "--- timeout keeps the status of a child that already exited ---"
+"$BIN" -c 'koshkit timeout 1 sh -c "sleep 3 & exit 3"; echo "status $?"'
+
+echo "--- xargs stops an item past the size limit ---"
+head -c 3000000 /dev/zero | tr '\0' a | timeout 10 "$BIN" -c 'koshkit xargs -s 100 echo' 2>&1 | grep -c 'exceeds the size limit'
+
+echo "--- a long flag accepts an empty value ---"
+printf 'a\nb\n' > comm-left
+printf 'b\nc\n' > comm-right
+"$BIN" -c 'koshkit comm --output-delimiter= comm-left comm-right' | tr '\0' '@'
+
+echo "--- ps adds repeated -p and -o values ---"
+"$BIN" -c 'koshkit ps --no-headers -p $$ -p 1 -o pid -o ppid | wc -l | tr -d " "'
+"$BIN" -c 'koshkit ps --no-headers -p $$ -o pid -o ppid | wc -w | tr -d " "'
+
+echo "--- csplit -k writes the rest after a failing pattern ---"
+printf '1\n2\n3\n4\n' > csplit-input
+"$BIN" -c 'koshkit csplit -k csplit-input 2 "/nomatch/"' >/dev/null 2>&1
+echo "status $?"
+cat xx00 xx01
+
+echo "--- flock -n on a FIFO does not wait for a writer ---"
+mkfifo flock-fifo
+timeout 10 "$BIN" -c 'koshkit flock -n flock-fifo true'
+echo "status $?"
+
+echo "--- compgen -W with a trailing backslash ---"
+"$BIN" -c "compgen -W 'a \\' -- a" 2>&1 | grep -v '^ \|^note\|SC1003'

@@ -812,11 +812,16 @@ acquire_process_lock(StringView       path,
 {
   const String path_string{heap_allocator(), path};
   let const    open_flags =
-      O_RDONLY | (inheritance == lock_inheritance::Private ? O_CLOEXEC : 0);
+      O_RDONLY | O_NONBLOCK |
+      (inheritance == lock_inheritance::Private ? O_CLOEXEC : 0);
   let const lock_flags = LOCK_EX | (wait == lock_wait::Immediate ? LOCK_NB : 0);
   let const lock       = ::open(path_string.c_str(), open_flags);
 
   if (lock < 0) return None;
+
+  /* the open must not wait for a writer on a FIFO, and the descriptor that a
+     command inherits is blocking. */
+  unused(::fcntl(lock, F_SETFL, ::fcntl(lock, F_GETFL) & ~O_NONBLOCK));
   if (::flock(lock, lock_flags) == 0) return lock;
 
   let const saved_errno = errno;

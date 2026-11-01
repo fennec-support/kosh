@@ -68,3 +68,29 @@ equal
 subshell
 fooE
 status 0
+--- nice and nohup children receive the default SIGPIPE ---
+x
+status 141
+x
+status 141
+--- timeout keeps the status of a child that already exited ---
+status 3
+--- xargs stops an item past the size limit ---
+1
+--- a long flag accepts an empty value ---
+a
+@@b
+@c
+--- ps adds repeated -p and -o values ---
+2
+2
+--- csplit -k writes the rest after a failing pattern ---
+status 1
+1
+2
+3
+4
+--- flock -n on a FIFO does not wait for a writer ---
+status 0
+--- compgen -W with a trailing backslash ---
+a

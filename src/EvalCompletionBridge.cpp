@@ -288,7 +288,15 @@ EvalContext::run_completion_function(
 
   let result = ArrayList<String>{heap_allocator()};
 
-  if (let reply = variable_store().indexed_arrays().find("COMPREPLY");
+  let reply_name = String{heap_allocator(), "COMPREPLY"};
+
+  if (let const target = resolve_nameref("COMPREPLY");
+      target.has_value() && !target->is_empty())
+  {
+    reply_name = String{heap_allocator(), target->view()};
+  }
+
+  if (let reply = variable_store().indexed_arrays().find(reply_name.view());
       !was_interrupted && reply.has_value())
   {
     result = steal(*reply.value());

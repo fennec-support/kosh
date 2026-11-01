@@ -3241,6 +3241,8 @@ run_through_error_pipe(const auto  &raw_argv,
   if (child == 0) {
     close(exec_error_pipe[0]);
     clear_child_signal_mask();
+    if (!IS_PIPE_SIGNAL_IGNORED_BY_TRAP && !WAS_PIPE_SIGNAL_IGNORED_AT_ENTRY)
+      signal(SIGPIPE, SIG_DFL);
     do_prepare_child(exec_error_pipe[1]);
     execvp(raw_argv[0], const_cast<char *const *>(raw_argv.begin()));
 

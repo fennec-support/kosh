@@ -440,6 +440,12 @@ Timeout::execute(const ExecContext               &ec,
     return finish_interrupted_supervision(child, process_group,
                                           has_child_exited);
 
+  if (has_child_exited) {
+    unused(os::signal_process(process_group, timeout_signal));
+
+    return status;
+  }
+
   if (!signal_supervised_process(child, process_group, has_child_exited,
                                  timeout_signal))
   {

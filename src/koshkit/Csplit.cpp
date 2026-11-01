@@ -395,65 +395,76 @@ Csplit::execute(const ExecContext               &ec,
     return true;
   };
 
-  for (usize pattern_index = 1; pattern_index < operands.count();
-       pattern_index++)
-  {
-    let const pattern = operands[pattern_index].view();
+  /* with -k, a failing pattern still writes the rest of the input as the
+     final piece. */
+  let const do_write_remainder = [&]() throws -> bool {
+    let const width_location =
+        FLAG_CSPLIT_DIGITS.is_set()
+            ? FLAG_CSPLIT_DIGITS.value_location()
+            : operand_locations[operand_locations.count() - 1];
 
-    if (pattern.length >= 2 && pattern[0] == '{' &&
-        pattern[pattern.length - 1] == '}')
+    return write_csplit_part(
+        ec, cxt, csplit_name_format{prefix, digit_count, width_location},
+        output_index, lines, current_line, lines.count(), output_paths);
+  };
+
+  try {
+    for (usize pattern_index = 1; pattern_index < operands.count();
+         pattern_index++)
     {
-      if (!has_previous_nonrepeat_pattern) {
-        throw ErrorWithLocationAndDetails{
-            operand_locations[pattern_index],
-            "Repeat has no preceding line or regular expression pattern",
-            "Place the repeat immediately after the pattern it repeats"};
-      }
+      let const pattern = operands[pattern_index].view();
 
-      let const repeat = pattern.substring_of_length(1, pattern.length - 2);
-
-      if (repeat == "*") {
-        while (do_apply_pattern(
-            previous_pattern.view(), operand_locations[pattern_index],
-            csplit_repeat_mode::Repeat, csplit_exhaustion_mode::Allow))
-        {}
-      } else {
-        let const repeat_count = utils::parse_decimal_u64(repeat);
-
-        if (repeat_count.is_error()) {
+      if (pattern.length >= 2 && pattern[0] == '{' &&
+          pattern[pattern.length - 1] == '}')
+      {
+        if (!has_previous_nonrepeat_pattern) {
           throw ErrorWithLocationAndDetails{
               operand_locations[pattern_index],
-              "Invalid repeat count '" + repeat + "'",
-              "Use a nonnegative decimal repeat count or *"};
+              "Repeat has no preceding line or regular expression pattern",
+              "Place the repeat immediately after the pattern it repeats"};
         }
 
-        for (u64 repetition = 0; repetition < repeat_count.value();
-             repetition++)
-          unused(do_apply_pattern(
+        let const repeat = pattern.substring_of_length(1, pattern.length - 2);
+
+        if (repeat == "*") {
+          while (do_apply_pattern(
               previous_pattern.view(), operand_locations[pattern_index],
-              csplit_repeat_mode::Repeat, csplit_exhaustion_mode::Error));
+              csplit_repeat_mode::Repeat, csplit_exhaustion_mode::Allow))
+          {}
+        } else {
+          let const repeat_count = utils::parse_decimal_u64(repeat);
+
+          if (repeat_count.is_error()) {
+            throw ErrorWithLocationAndDetails{
+                operand_locations[pattern_index],
+                "Invalid repeat count '" + repeat + "'",
+                "Use a nonnegative decimal repeat count or *"};
+          }
+
+          for (u64 repetition = 0; repetition < repeat_count.value();
+               repetition++)
+            unused(do_apply_pattern(
+                previous_pattern.view(), operand_locations[pattern_index],
+                csplit_repeat_mode::Repeat, csplit_exhaustion_mode::Error));
+        }
+
+        has_previous_nonrepeat_pattern = false;
+        continue;
       }
 
-      has_previous_nonrepeat_pattern = false;
-      continue;
+      previous_pattern               = operands[pattern_index].clone();
+      has_previous_nonrepeat_pattern = true;
+      unused(do_apply_pattern(pattern, operand_locations[pattern_index],
+                              csplit_repeat_mode::Single,
+                              csplit_exhaustion_mode::Error));
     }
+  } catch (...) {
+    if (FLAG_CSPLIT_KEEP.is_enabled()) unused(do_write_remainder());
 
-    previous_pattern               = operands[pattern_index].clone();
-    has_previous_nonrepeat_pattern = true;
-    unused(do_apply_pattern(pattern, operand_locations[pattern_index],
-                            csplit_repeat_mode::Single,
-                            csplit_exhaustion_mode::Error));
+    throw;
   }
 
-  let const width_location =
-      FLAG_CSPLIT_DIGITS.is_set()
-          ? FLAG_CSPLIT_DIGITS.value_location()
-          : operand_locations[operand_locations.count() - 1];
-
-  if (!write_csplit_part(
-          ec, cxt, csplit_name_format{prefix, digit_count, width_location},
-          output_index, lines, current_line, lines.count(), output_paths))
-    return 1;
+  if (!do_write_remainder()) return 1;
   output_paths.clear();
 
   return 0;

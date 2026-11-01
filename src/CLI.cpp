@@ -1026,17 +1026,6 @@ parse_flags(const FlagList                  &flags,
           } else {
             if (*value_offset == '=' && (is_long || value_offset[1] != '\0')) {
               value_offset++;
-
-              if (*value_offset == '\0') {
-                let error = ErrorWithLocation{
-                    argument_location(argv, static_cast<usize>(i),
-                                      base_position, arg_locations),
-                    "No value provided for '" + flag_name(flag, is_long) +
-                        "' flag"};
-
-                error.set_command_status(2);
-                throw error;
-              }
             } else if (is_long) {
               let error = ErrorWithLocation{
                   argument_location(argv, static_cast<usize>(i), base_position,

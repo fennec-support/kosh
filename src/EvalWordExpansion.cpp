@@ -1418,6 +1418,9 @@ EvalContext::expand_wordlist_to_fields(
       }
 
       if (character == '\\') {
+        /* a backslash at the end would escape the closing paren. */
+        if (i + 1 == wordlist.length) return false;
+
         i++;
         is_at_word_start = false;
         continue;

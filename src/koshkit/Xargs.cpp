@@ -153,7 +153,19 @@ public:
     return m_line_number;
   }
 
+  fn
+  set_item_byte_limit(usize item_byte_limit) wontthrow -> void
+  {
+    m_item_byte_limit = item_byte_limit;
+  }
+
 private:
+  fn
+  cap_item_length(String &value) const wontthrow -> void
+  {
+    if (value.length() > m_item_byte_limit) value.truncate(m_item_byte_limit);
+  }
+
   fn
   peek() throws -> Maybe<char>
   {
@@ -238,6 +250,7 @@ private:
         } else {
           if (byte == '\n') throw Error{"Unmatched quote before newline"};
           value += byte;
+          cap_item_length(value);
         }
 
         continue;
@@ -253,6 +266,7 @@ private:
 
         if (!escaped.has_value()) throw Error{"Trailing backslash"};
         value += *escaped;
+        cap_item_length(value);
         last_byte = *escaped;
         continue;
       }
@@ -264,6 +278,7 @@ private:
       }
 
       value += byte;
+      cap_item_length(value);
     }
 
     if (quote != '\0') throw Error{"Unmatched quote"};
@@ -306,7 +321,10 @@ private:
       }
 
       if (*byte == '\0') has_null = true;
-      if (!has_null) value += *byte;
+      if (!has_null) {
+        value += *byte;
+        cap_item_length(value);
+      }
     }
 
     return xargs_item{steal(value), 0};
@@ -337,10 +355,12 @@ private:
 
         if (quote != '\0') {
           if (byte == '\n') throw Error{"Unmatched quote before newline"};
-          if (byte == quote)
+          if (byte == quote) {
             quote = '\0';
-          else
+          } else {
             value += byte;
+            cap_item_length(value);
+          }
 
           continue;
         }
@@ -366,10 +386,12 @@ private:
           if (!escaped.has_value()) throw Error{"Trailing backslash"};
           if (*escaped == '\n') m_line_number++;
           value += *escaped;
+          cap_item_length(value);
           continue;
         }
 
         value += byte;
+        cap_item_length(value);
       }
 
       if (quote != '\0') throw Error{"Unmatched quote"};
@@ -385,6 +407,7 @@ private:
   String            m_buffer;
   usize             m_position{0};
   usize             m_line_number{0};
+  usize             m_item_byte_limit{SIZE_MAX};
   char              m_previous_byte{'\0'};
   bool              m_has_line_item{false};
   bool              m_is_at_end{false};
@@ -628,6 +651,8 @@ Xargs::execute(const ExecContext               &ec,
 
     return 1;
   }
+
+  reader.set_item_byte_limit(maximum_byte_count - base_byte_count);
 
   /* at this point: base holds the utility, or echo, followed by the operands.
      reader takes its input from ec.in_fd or KOSH_STDIN, and the three limits

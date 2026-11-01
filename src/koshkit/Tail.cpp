@@ -222,8 +222,11 @@ struct tail_follow_entry
   os::descriptor  descriptor{KOSH_INVALID_FD};
   os::file_status identity{};
   u64             offset{0};
-  bool            is_active{false};
-  bool            is_standard_input{false};
+  /* the bytes that end at offset, which show a rewrite of the file. */
+  char  sample[32]{};
+  usize sample_byte_count{0};
+  bool  is_active{false};
+  bool  is_standard_input{false};
 };
 
 struct positioned_tail_state
@@ -902,18 +905,75 @@ Tail::execute(const ExecContext               &ec,
     active_count--;
   };
 
+  /* reads the bytes that end at entry.offset and leaves the descriptor at
+     entry.offset. When compare_only is true, it returns whether the bytes
+     equal the stored sample. Otherwise it stores them. */
+  let const do_read_sample = [&](tail_follow_entry &entry,
+                                 bool               compare_only) wontthrow -> bool {
+    char sample[sizeof(entry.sample)];
+
+    let const wanted_byte_count =
+        compare_only
+            ? entry.sample_byte_count
+            : (entry.offset < sizeof(sample) ? static_cast<usize>(entry.offset)
+                                             : sizeof(sample));
+
+    if (wanted_byte_count == 0) return true;
+    if (!os::seek_descriptor_from_start(entry.descriptor,
+                                        entry.offset - wanted_byte_count))
+      return true;
+
+    usize done_byte_count = 0;
+
+    while (done_byte_count < wanted_byte_count) {
+      let const read_count =
+          os::read_fd(entry.descriptor, sample + done_byte_count,
+                      wanted_byte_count - done_byte_count);
+
+      if (!read_count.has_value() || *read_count == 0) break;
+      done_byte_count += *read_count;
+    }
+
+    unused(os::seek_descriptor_from_start(entry.descriptor, entry.offset));
+    if (done_byte_count != wanted_byte_count)
+      return compare_only ? false : true;
+
+    if (!compare_only) {
+      for (usize index = 0; index < wanted_byte_count; index++)
+        entry.sample[index] = sample[index];
+      entry.sample_byte_count = wanted_byte_count;
+
+      return true;
+    }
+
+    for (usize index = 0; index < wanted_byte_count; index++)
+      if (sample[index] != entry.sample[index]) return false;
+
+    return true;
+  };
+
   let const do_read_followed = [&](usize source_index) throws -> void {
     let            &entry = follow_entries[source_index];
     os::file_status current{};
 
     if (os::stat_descriptor(entry.descriptor, current) &&
-        current.size < entry.offset)
+        (current.size < entry.offset ||
+         (entry.offset != 0 && !entry.is_standard_input &&
+          !do_read_sample(entry, true))))
     {
       do_report_follow_message(String{allocator, sources[source_index]} +
                                ": file truncated");
       unused(os::seek_descriptor_from_start(entry.descriptor, 0));
-      entry.offset = 0;
+      entry.offset            = 0;
+      entry.sample_byte_count = 0;
     }
+
+    let const offset_before_read = entry.offset;
+
+    defer {
+      if (entry.offset != offset_before_read && !entry.is_standard_input)
+        unused(do_read_sample(entry, false));
+    };
 
     loop {
       let const read_count =
@@ -965,6 +1025,13 @@ Tail::execute(const ExecContext               &ec,
                              ";  following new file");
   };
 
+  for (let &entry : follow_entries)
+    if (entry.is_active && entry.descriptor != KOSH_INVALID_FD &&
+        !entry.is_standard_input)
+    {
+      unused(do_read_sample(entry, false));
+    }
+
   let watcher = os::FileWatcher{};
 
   for (usize source_index = 0; source_index < sources.count(); source_index++)
@@ -1010,6 +1077,20 @@ Tail::execute(const ExecContext               &ec,
                                      do_quote_source(source_index) + ": " +
                                      message);
             do_deactivate(source_index);
+          }
+
+          continue;
+        }
+
+        if (options.should_retry &&
+            os::file_type_letter(named_status.mode) != '-')
+        {
+          if (!is_waiting) {
+            do_report_follow_message(do_quote_source(source_index) +
+                                     " has become untailable");
+            if (!entry.is_standard_input)
+              unused(os::close_fd(entry.descriptor));
+            entry.descriptor = KOSH_INVALID_FD;
           }
 
           continue;
