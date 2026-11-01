@@ -1749,7 +1749,8 @@ private:
 
   /* the first nonempty span of matcher at or after position with no word byte
      on either side. a span that ends beside a word byte gives way to a shorter
-     span at the same start. */
+     span at the same start, unless the pattern holds a $, which would match at
+     the shortened end. */
   fn
   find_word_span(GrepMatcher &matcher,
                  StringView   value,
@@ -1774,7 +1775,8 @@ private:
 
           usize shorter_start = 0;
 
-          if (!matcher.find_span(value.substring_of_length(0, end - 1), start,
+          if (matcher.get_pattern().find_character('$').has_value() ||
+              !matcher.find_span(value.substring_of_length(0, end - 1), start,
                                  shorter_start, end) ||
               shorter_start != start)
           {
@@ -1904,7 +1906,9 @@ private:
   fn
   flush_context_before(StringView source) throws -> void
   {
-    if (m_has_printed_context_group && m_has_context_gap) m_output += "--\n";
+    if (m_has_printed_context_group && m_has_context_gap) {
+      m_output += "--\n";
+    }
 
     let const capacity = m_options.before_context_count;
     let const oldest_slot =

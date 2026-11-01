@@ -1043,11 +1043,15 @@ parse_calendar_date(StringView text, bool is_utc) throws -> Maybe<i64>
 {
   if (!text.is_empty() && text[0] == '@') {
     let const seconds = text.substring(1);
-    let const parsed  = seconds.to<i64>();
+    let const parsed  = parse_decimal_u64(seconds);
 
-    if (!seconds.is_all_decimal_digits() || parsed.is_error()) return None;
+    if (!seconds.is_all_decimal_digits() || parsed.is_error() ||
+        parsed.value() > static_cast<u64>(INT64_MAX))
+    {
+      return None;
+    }
 
-    return parsed.value();
+    return static_cast<i64>(parsed.value());
   }
 
   constexpr usize date_length           = 10;
@@ -1064,7 +1068,9 @@ parse_calendar_date(StringView text, bool is_utc) throws -> Maybe<i64>
     let const tens = text[position];
     let const ones = text[position + 1];
 
-    if (tens < '0' || tens > '9' || ones < '0' || ones > '9') return false;
+    if (tens < '0' || tens > '9' || ones < '0' || ones > '9') {
+      return false;
+    }
 
     value = (tens - '0') * 10 + (ones - '0');
 
@@ -1145,7 +1151,9 @@ parse_calendar_date(StringView text, bool is_utc) throws -> Maybe<i64>
 
   let const timestamp = mktime(&value);
 
-  if (timestamp == static_cast<time_t>(-1) && value.tm_wday == -1) return None;
+  if (timestamp == static_cast<time_t>(-1) && value.tm_wday == -1) {
+    return None;
+  }
 
   return static_cast<i64>(timestamp);
 }

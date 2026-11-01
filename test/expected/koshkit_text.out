@@ -1405,6 +1405,7 @@ foo
 status 1
 a b bc
 foo
+status 1
 --- grep -B allocates for the lines it holds ---
 a
 b
@@ -1413,9 +1414,11 @@ status 1
 2024-02-29
 -62167219200
 -1
+status 1
 --- sed -z reads an escaped newline ---
 nan,b,
 0000000   x  \0   f   o   o  \n
+0000000   a  \n   b  \n  \0   x  \n
 x
 x
 0000000   a  \0   x  \n   b  \0   x  \n

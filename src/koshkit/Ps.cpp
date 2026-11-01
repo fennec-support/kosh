@@ -33,7 +33,7 @@ FLAG(PS_FORMAT,
      "List the columns in a comma-separated list of pid, ppid, user, uid, "
      "vsz, rss, stat, comm, and args.");
 FLAG(PS_PID, String, 'p', "pid", "Select the comma-separated process ids.");
-FLAG(PS_NAME, String, 'C', "", "Select the comma-separated command names.");
+FLAG(PS_NAME, String, 'C', "", "Select the comma-separated commands.");
 FLAG(PS_NO_HEADERS, Bool, '\0', "no-headers", "Omit the header line.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(Ps);

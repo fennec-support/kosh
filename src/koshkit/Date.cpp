@@ -65,7 +65,7 @@ Date::execute(const ExecContext               &ec,
     displayed_seconds = *parsed;
   }
 
-  /* strftime reads %s through the local zone, so the epoch is written here. */
+  /* strftime renders %s through the local zone, so kosh writes the epoch. */
   let expanded_format = String{cxt.scratch_allocator()};
 
   for (usize position = 0; position < format.length; position++) {

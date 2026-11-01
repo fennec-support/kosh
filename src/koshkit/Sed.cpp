@@ -925,10 +925,14 @@ Sed::execute(const ExecContext               &ec,
       append_sed_pattern_space(output, line.view(), has_terminating_newline);
     }
 
+    /* the text of a, i, and = ends in a newline, and a printed pattern space
+       ends in the delimiter when it is terminated. */
+    let const did_print_line = !should_delete && !FLAG_SED_QUIET.is_enabled();
     let const does_output_end_in_newline =
-        !output.is_empty() ? output[output.length() - 1] == '\n' ||
-                                 output[output.length() - 1] == line_delimiter
-                           : did_written_output_end_in_newline;
+        !output.is_empty()
+            ? output[output.length() - 1] == line_delimiter ||
+                  (!did_print_line && output[output.length() - 1] == '\n')
+            : did_written_output_end_in_newline;
 
     if (!appended_text.is_empty() && !does_output_end_in_newline) {
       output += line_delimiter;

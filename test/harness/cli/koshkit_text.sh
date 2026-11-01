@@ -631,6 +631,8 @@ printf 'foo bar\n' | "$BIN" -c 'koshkit grep -xw foo'
 echo "status $?"
 printf 'a b bc\n' | "$BIN" -c "koshkit grep -w 'a.*b'"
 printf 'foo bar\n' | "$BIN" -c "koshkit grep -wo -e foo -e 'foo b'"
+printf 'a b\n' | "$BIN" -c "koshkit grep -wE 'a |a\$'"
+echo "status $?"
 
 echo "--- grep -B allocates for the lines it holds ---"
 printf 'a\nb\n' | "$BIN" -c 'koshkit grep -B 9000000000000 b'
@@ -641,11 +643,15 @@ echo "status $?"
 TZ=UTC0 "$BIN" -c 'koshkit date -u -d 2024-02-29 +%F'
 TZ=UTC0 "$BIN" -c 'koshkit date -u -d 0000-01-01 +%s'
 TZ=UTC0 "$BIN" -c "koshkit date -d '1969-12-31 23:59:59' +%s"
+TZ=UTC0 "$BIN" -c 'koshkit date -d @99999999999999999999' 2>/dev/null
+echo "status $?"
 
 echo "--- sed -z reads an escaped newline ---"
 printf 'nan\nb\n' | "$BIN" -c "koshkit sed -z 's/\\n/,/g'"
 echo
 printf 'x\0' | "$BIN" -c "koshkit sed -z 'a foo'" | "$BIN_DIR/invoke-koshkit" od -c |
+  sed -n 1p
+printf 'a\nb\n' | "$BIN" -c "koshkit sed -z 'a x'" | "$BIN_DIR/invoke-koshkit" od -c |
   sed -n 1p
 printf 'a\0b\0' | "$BIN" -c "koshkit sed -z -n 'a x'"
 printf 'a\0b' | "$BIN" -c "koshkit sed -z 'a x'" | "$BIN_DIR/invoke-koshkit" od -c |

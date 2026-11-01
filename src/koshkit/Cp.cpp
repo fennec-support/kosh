@@ -461,7 +461,9 @@ copy_path(const ExecContext                &ec,
   }
 
   if (should_keep_destination) {
-    if (source_status.has_value() || source_path.exists()) return true;
+    if (source_status.has_value() || source_path.exists()) {
+      return true;
+    }
 
     throw Error{
         "Unable to read '" + String{allocator, source}
