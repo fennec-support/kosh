@@ -1445,9 +1445,10 @@ mode \f[CR]0600\f[R], directory\-locked during writes).
 \f[B]Filtering and synchronization\f[R] \- A non\-interactive shell
 records no events and writes the history file only through
 \f[CR]history \-w\f[R] or \f[CR]history \-a\f[R].
-Consecutive duplicate events and history expansion errors are not
-recorded, and a record over \f[CR]65535\f[R] bytes is skipped when the
-file is read.
+Consecutive duplicate events, history expansion errors, and a command
+over \f[CR]2048\f[R] bytes are not recorded, and a record over
+\f[CR]65535\f[R] bytes is skipped when the file is read.
+\f[CR]history \-r\f[R] refuses an operand that is not a regular file.
 Interactive shells load the history file at startup and append each
 submitted event immediately, without auto\-importing events appended by
 concurrent shells (\f[CR]Ctrl\-R\f[R] and \f[CR]history \-S\f[R] read
@@ -3236,6 +3237,7 @@ T{
 \f[CR]\[ti]/.config/kosh/scripts/rc.kosh\f[R]
 T}@T{
 Interactive and login startup script for the \f[CR]kosh\f[R] mood.
+A path that is not a regular file is skipped with a warning.
 T}
 T{
 \f[CR]\[ti]/.kosh_history\f[R],
@@ -4318,7 +4320,12 @@ In\-process function substitutions (supported in \f[CR]kosh\f[R],
 \f[CR]bash\f[R], \f[CR]bash\-posix\f[R]): \f[CR]${ cmd; }\f[R] captures
 stdout and \f[CR]${| cmd; }\f[R] expands to \f[CR]$REPLY\f[R] without
 spawning a subshell.
-Variable changes in both forms remain.
+Variable changes in both forms remain, except that \f[CR]local\f[R] and
+\f[CR]declare\f[R] create variables that end with the substitution.
+\f[CR]return\f[R] ends the substitution, and \f[CR]break\f[R] and
+\f[CR]continue\f[R] act on the enclosing loop.
+A descriptor that the body duplicated from the capture discards its
+output after the substitution ends.
 T}
 T{
 \f[CR]$((expr))\f[R], \f[CR]$[expr]\f[R]
@@ -5146,6 +5153,11 @@ shell that does not trap \f[CR]SIGTERM\f[R] or \f[CR]SIGQUIT\f[R], is
 terminated by the signal, so its parent sees \f[CR]128\f[R] plus the
 signal number.
 .IP \[bu] 2
+With an \f[CR]EXIT\f[R] trap set, an untrapped \f[CR]SIGHUP\f[R],
+\f[CR]SIGTERM\f[R], \f[CR]SIGQUIT\f[R], \f[CR]SIGALRM\f[R],
+\f[CR]SIGUSR1\f[R], or \f[CR]SIGUSR2\f[R] takes effect at the next
+command boundary, and the trap runs before the signal ends the shell.
+.IP \[bu] 2
 As process 1, \f[CR]kosh\f[R] reaps orphaned children it did not start
 (before each command and while it waits).
 On \f[CR]SIGTERM\f[R] it sends \f[CR]SIGTERM\f[R] then
@@ -5189,6 +5201,10 @@ A stopped stage is recorded even when it is not the last, and
 .IP \[bu] 2
 Job control is on in an interactive shell, where Ctrl\-Z stops the
 foreground job.
+A foreground pipeline or subshell has its own process group, and every
+process in it stops and resumes together.
+A pipeline whose final stage runs in the shell stays in the process
+group of the shell, so Ctrl\-Z does not stop it.
 .RE
 .IP \[bu] 2
 \f[B]Job specs\f[R] \- \f[CR]%n\f[R] job \f[CR]n\f[R]; \f[CR]%+\f[R],
@@ -5534,7 +5550,8 @@ T{
 \f[CR]suspend [\-f]\f[R]
 T}@T{
 Stops the shell until it receives \f[CR]SIGCONT\f[R].
-A login shell refuses without \f[CR]\-f\f[R].
+A login shell refuses without \f[CR]\-f\f[R], and a shell whose parent
+belongs to another session always refuses and returns \f[CR]1\f[R].
 T}
 T{
 \f[CR]bind [options] [keyseq:fn ...]\f[R]
@@ -5675,6 +5692,10 @@ Prints the working directory (\f[CR]\-L\f[R] logical path, the default
 unless \f[CR]physical\f[R] is on, \f[CR]\-P\f[R] path with symbolic
 links resolved, \f[CR]\-W\f[R] physical path in Windows form with
 forward slashes as MSYS does, and \f[CR]\-P\f[R] elsewhere).
+The logical form uses \f[CR]PWD\f[R] when it is absolute, has no
+\f[CR].\f[R] or \f[CR]..\f[R] component, and identifies the directory.
+A removed directory has no physical path, so \f[CR]pwd\f[R] prints
+\f[CR]PWD\f[R] and \f[CR]pwd \-P\f[R] returns \f[CR]1\f[R].
 T}
 T{
 \f[CR]dirs [\-clpv] [+N|\-N]\f[R]
@@ -5882,6 +5903,8 @@ Replaces the shell with \f[CR]command\f[R] (\f[CR]\-a\f[R] sets argument
 zero, \f[CR]\-l\f[R] prefixes it with a dash, \f[CR]\-c\f[R] clears the
 environment), or applies its redirections to the shell when no command
 is given.
+In a subshell with its own process the command replaces the subshell,
+and an \f[CR]EXIT\f[R] trap of the subshell does not run.
 A command that is not found or cannot run ends a non\-interactive shell
 with \f[CR]127\f[R] or \f[CR]126\f[R] in every mood.
 A restricted shell refuses \f[CR]exec\f[R].

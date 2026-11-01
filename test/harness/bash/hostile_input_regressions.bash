@@ -347,3 +347,29 @@ declare -n ref2=unset_target; echo "${!ref2-d}" "${!ref2@Q}"
 
 echo "--- ansi-c quoting ends at the first nul ---"
 x=$'a\0b'; echo "${#x}"; y="$x"; echo "${#y}"; echo $'b\x00c' "d"
+
+echo "--- a function substitution shares loops and scopes locals ---"
+for i in 1 2; do x=${ break; }; echo "in $i"; done; echo out
+for i in 1 2; do x=${ continue; }; echo "in $i"; done; echo out
+f() { local v=1; x=${ local v=2; echo "$v"; }; echo "$x $v"; }; f
+g() { for i in 1 2; do x=${ return 3; echo no; }; echo "in $i $?"; done; }; g
+v=1; x=${ local v=2; echo "$v"; }; echo "$x $v"
+
+echo "--- exec in a subshell replaces it ---"
+( trap 'echo sub' EXIT; exec true ); echo "$?"
+
+echo "--- a nested mapfile keeps the outer callback ---"
+mapfile -t -C 'mapfile -t -C : -c 1 y <<< 1; echo cb' -c 1 z < <(echo 1; echo 2); echo "${z[*]}"
+
+echo "--- a failing alias reports one ERR ---"
+shopt -s expand_aliases
+alias failing=false
+trap 'echo err' ERR
+eval failing
+trap - ERR
+unalias failing
+
+echo "--- an alias inside its own process substitution ---"
+alias reader=cat
+eval 'reader <(reader /dev/null); echo "$?"'
+unalias reader

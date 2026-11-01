@@ -490,3 +490,70 @@ echo "--- declare -n leaves a populated array alone ---"
 echo "--- many appends after a gap finish ---"
 "$BIN" --mood bash -c 'a=(); a[1]=x; for ((i=0;i<20000;i++)); do a+=(q); done
 echo "${#a[@]}"; unset "a[20001]"; a+=(r); echo "${#a[@]} ${a[20001]}"'
+
+echo "--- a function substitution survives descriptors its body duplicates ---"
+"$BIN" --no-diagnostics -c 'x=${ exec 2>&1; echo hi; echo e >&2; }; echo "[$x]"; echo gone >&2'
+echo "status $?"
+"$BIN" --no-diagnostics -c 'x=${ exec 3>&1; echo hi >&3; }; echo "[$x]"; echo gone >&3'
+echo "status $?"
+
+echo "--- a coprocess under one name releases the earlier descriptors ---"
+"$BIN" --no-diagnostics -c 'i=0; while ((i<300)); do coproc C { echo; }; read -u ${C[0]} l; ((i++)); done; echo done'
+echo "status $?"
+
+echo "--- a fatal signal runs the EXIT trap ---"
+output=$("$BIN" --no-diagnostics -c 'trap "echo E" EXIT; kill -TERM $$; echo unreachable' 2>/dev/null)
+echo "status $? $output"
+output=$("$BIN" --no-diagnostics -c 'trap "echo E" EXIT; kill -USR1 $$; echo unreachable' 2>/dev/null)
+echo "status $? $output"
+"$BIN" --no-diagnostics -c '(trap "echo S" EXIT; kill -TERM $BASHPID; echo unreachable); echo "subshell $?"' 2>/dev/null
+output=$("$BIN" --no-diagnostics -c 'trap "echo E" EXIT; trap "echo T" TERM; kill -TERM $$; trap - TERM; kill -TERM $$; echo unreachable' 2>/dev/null)
+echo "status $? $output"
+
+echo "--- exec replaces a forked subshell ---"
+"$BIN" --no-diagnostics -c '(trap "echo sub" EXIT; exec "$0"  -c "exit 3"); echo "status $?"' "$BIN"
+"$BIN" --no-diagnostics -c '(x=$(exec echo inner); echo "$x"; echo more); echo end'
+
+echo "--- an exported function follows its definition ---"
+"$BIN" --no-diagnostics -c 'f() { echo one; }; export -f f; f() { echo two; }; koshkit env | koshkit grep -c "BASH_FUNC_f%%=() { echo two; }"; unset -f f; koshkit env | koshkit grep -c BASH_FUNC_f; echo end'
+
+echo "--- a closed descriptor stays closed after the command ---"
+"$BIN" --no-diagnostics -c 'f() { exec 3>x3; } 3>&-; f; echo hi >&3; echo "status $?"' 2>/dev/null
+"$BIN" --no-diagnostics -c '{ exec 3>x3; } 3>&-; echo hi >&3; echo "status $?"' 2>/dev/null
+
+echo "--- a utility keeps an inherited KOSHCONF ---"
+ln -s "$BIN" nice
+KOSHCONF=marker ./nice printenv KOSHCONF
+
+echo "--- a user startup script that is not a regular file is skipped ---"
+mkdir -p config/kosh/scripts
+mkfifo config/kosh/scripts/rc.kosh
+HOME="$PWD" XDG_CONFIG_HOME="$PWD/config" "$BIN" --login --no-diagnostics -c 'echo started' 2>/dev/null
+echo "status $?"
+
+echo "--- a removed working directory ---"
+mkdir holder2 holder2/gone
+cat > removed.sh <<'EOF'
+cd holder2/gone || exit 1
+rmdir ../gone
+case $(pwd) in */holder2/gone) echo logical ;; *) echo other ;; esac
+pwd -P 2>/dev/null; echo "physical $?"
+case $(dirs) in */holder2/gone) echo stack ;; *) echo other ;; esac
+koshkit realpath . 2>/dev/null; echo "realpath $?"
+koshkit readlink -f . 2>/dev/null; echo "readlink $?"
+EOF
+"$BIN" --no-diagnostics removed.sh
+
+echo "--- PWD with a dot component is not trusted ---"
+"$BIN" --no-diagnostics -c 'cd /; PWD=/./; pwd'
+
+echo "--- make -C returns from a removed directory ---"
+mkdir makedir holder3
+printf 'all:\n\t@echo built\n' > makedir/Makefile
+"$BIN" --no-diagnostics -c 'cd holder3; rmdir ../holder3; koshkit make -C ../makedir; echo "status $?"'
+
+echo "--- history refuses a file that is not regular ---"
+"$BIN" --no-diagnostics -c 'history -r /dev/zero; echo "status $?"' 2>/dev/null
+
+echo "--- the listing can be sourced again ---"
+"$BIN" --no-diagnostics -c 'alias "x y=z"; alias -- -x=y; alias > listing; unalias -a; . ./listing; alias'

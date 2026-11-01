@@ -230,3 +230,52 @@ declare -a a=([0]="1" [1]="2")
 --- many appends after a gap finish ---
 20001
 20001 r
+--- a function substitution survives descriptors its body duplicates ---
+[hi
+e]
+status 0
+[hi]
+status 0
+--- a coprocess under one name releases the earlier descriptors ---
+done
+status 0
+--- a fatal signal runs the EXIT trap ---
+status 143 E
+status 138 E
+S
+subshell 143
+status 143 T
+E
+--- exec replaces a forked subshell ---
+status 3
+inner
+more
+end
+--- an exported function follows its definition ---
+1
+0
+end
+--- a closed descriptor stays closed after the command ---
+status 2
+status 2
+--- a utility keeps an inherited KOSHCONF ---
+marker
+--- a user startup script that is not a regular file is skipped ---
+started
+status 0
+--- a removed working directory ---
+logical
+physical 1
+stack
+realpath 1
+readlink 1
+--- PWD with a dot component is not trusted ---
+/
+--- make -C returns from a removed directory ---
+built
+status 0
+--- history refuses a file that is not regular ---
+status 1
+--- the listing can be sourced again ---
+alias 'x y'=z
+alias -- -x=y

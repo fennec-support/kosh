@@ -197,6 +197,29 @@ def check_foreground_program(session, report, prefix, sleep):
                  and session.is_shell_in_foreground())
 
 
+def check_stopped_job(session, report, prefix, line):
+    session.send((line + "\r").encode())
+    is_lent = session.wait_until(session.is_program_in_foreground)
+    report.check(prefix + "-owns-the-terminal", session, is_lent)
+    session.send(CTRL_Z)
+    is_stopped = session.wait_for_prompt()
+    report.check(prefix + "-ctrl-z-returns-to-the-shell", session,
+                 is_stopped and session.is_shell_in_foreground())
+
+    mark = len(session.raw)
+    is_answered = session.run("jobs -p | wc -l")
+    report.check(prefix + "-is-one-job", session,
+                 is_answered and session.has_text("1", mark))
+
+    session.send(b"fg > /dev/null\r")
+    is_resumed = session.wait_until(session.is_program_in_foreground)
+    session.send(CTRL_C)
+    is_interrupted = session.wait_for_prompt()
+    report.check(prefix + "-fg-resumes-every-process", session,
+                 is_resumed and is_interrupted
+                 and session.is_shell_in_foreground())
+
+
 def run_mood(binary, directory, mood, sleep, report):
     session = Session(binary, directory, mood)
     try:
@@ -212,6 +235,10 @@ def run_mood(binary, directory, mood, sleep, report):
             check_async_forms(session, report, prefix, mood, sleep)
             if job_control == "-m":
                 check_foreground_program(session, report, prefix, sleep)
+                check_stopped_job(session, report, prefix + "-pipeline",
+                                  "%s 5 | %s 5" % (sleep, sleep))
+                check_stopped_job(session, report, prefix + "-subshell",
+                                  "( %s 5; echo sub )" % sleep)
     finally:
         session.close()
 
