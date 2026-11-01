@@ -101,27 +101,6 @@ extglob_opens_group(StringView    glob,
          extglob_active(mask, mask_offset + index + 1);
 }
 
-fn
-extglob_group_close(StringView    glob,
-                    const Bitset &mask,
-                    usize         mask_offset) wontthrow -> usize
-{
-  usize depth = 0;
-
-  for (usize i = 1; i < glob.count(); i++) {
-    if (!extglob_active(mask, mask_offset + i)) continue;
-
-    if (glob[i] == '(')
-      depth++;
-    else if (glob[i] == ')') {
-      depth--;
-      if (depth == 0) return i;
-    }
-  }
-
-  return glob.count();
-}
-
 pure fn
 get_next_split(StringView str, usize position, glob_charset charset) wontthrow
     -> usize
@@ -151,19 +130,22 @@ get_bracket_span(StringView glob, const Bitset &mask, usize mask_offset)
   }
 
   while (scan < glob.count()) {
-    if (scan + 1 < glob.count() && glob[scan] == '[' && glob[scan + 1] == ':' &&
+    if (scan + 1 < glob.count() && glob[scan] == '[' &&
+        (glob[scan + 1] == ':' || glob[scan + 1] == '=' ||
+         glob[scan + 1] == '.') &&
         extglob_active(mask, mask_offset + scan))
     {
-      usize class_scan = scan + 2;
+      let const delimiter  = glob[scan + 1];
+      usize     class_scan = scan + 2;
 
       while (class_scan + 1 < glob.count() &&
-             !(glob[class_scan] == ':' && glob[class_scan + 1] == ']') &&
+             !(glob[class_scan] == delimiter && glob[class_scan + 1] == ']') &&
              !do_is_close_at(class_scan))
       {
         class_scan++;
       }
 
-      if (class_scan + 1 < glob.count() && glob[class_scan] == ':' &&
+      if (class_scan + 1 < glob.count() && glob[class_scan] == delimiter &&
           glob[class_scan + 1] == ']')
       {
         scan = class_scan + 2;
@@ -179,11 +161,93 @@ get_bracket_span(StringView glob, const Bitset &mask, usize mask_offset)
 }
 
 fn
-extglob_full_match(StringView    glob,
-                   StringView    str,
-                   const Bitset &mask,
-                   usize         mask_offset,
-                   glob_charset  charset) throws -> bool;
+extglob_group_close(StringView    glob,
+                    const Bitset &mask,
+                    usize         mask_offset) wontthrow -> usize
+{
+  usize depth = 0;
+
+  for (usize i = 1; i < glob.count(); i++) {
+    if (!extglob_active(mask, mask_offset + i)) continue;
+
+    if (glob[i] == '[') {
+      let const span =
+          get_bracket_span(glob.substring(i), mask, mask_offset + i);
+
+      if (span != 0) i += span - 1;
+    } else if (glob[i] == '(') {
+      depth++;
+    } else if (glob[i] == ')') {
+      depth--;
+      if (depth == 0) return i;
+    }
+  }
+
+  return glob.count();
+}
+
+/* a nested group retries its contents on every split of its subject, so the
+   answer for one position of the pattern and one slice of the subject is kept
+   once a match takes this many steps. */
+constexpr u64 EXTGLOB_MEMO_STEP_THRESHOLD = 4096;
+
+struct extglob_search
+{
+  StringMap<bool> memo{heap_allocator()};
+  u64             step_count{0};
+};
+
+struct extglob_memo_key
+{
+  usize       pattern_offset;
+  usize       pattern_length;
+  const char *subject_data;
+  usize       subject_length;
+  usize       repetition_tag;
+};
+
+fn
+extglob_full_match(StringView      glob,
+                   StringView      str,
+                   const Bitset   &mask,
+                   usize           mask_offset,
+                   glob_charset    charset,
+                   extglob_search &search) throws -> bool;
+
+/* do_match runs when the memo has no answer for key. */
+template <typename DoMatch>
+fn
+extglob_with_memo(extglob_search         &search,
+                  const extglob_memo_key &key,
+                  DoMatch               &&do_match) throws -> bool
+{
+  search.step_count++;
+  if (search.step_count < EXTGLOB_MEMO_STEP_THRESHOLD) return do_match();
+
+  let const key_text =
+      StringView{reinterpret_cast<const char *>(&key), sizeof(key)};
+
+  if (let const known = search.memo.find(key_text); known.has_value()) {
+    return *known.value();
+  }
+
+  let const is_match = do_match();
+
+  search.memo.set(key_text, is_match);
+
+  return is_match;
+}
+
+fn
+extglob_match_repetition_uncached(const ExtglobAlternatives &alternatives,
+                                  StringView                 suffix,
+                                  usize                      suffix_offset,
+                                  StringView                 str,
+                                  const Bitset              &mask,
+                                  usize                      min_reps,
+                                  glob_charset               charset,
+                                  extglob_search            &search) throws
+    -> bool;
 
 fn
 extglob_match_repetition(const ExtglobAlternatives &alternatives,
@@ -192,10 +256,36 @@ extglob_match_repetition(const ExtglobAlternatives &alternatives,
                          StringView                 str,
                          const Bitset              &mask,
                          usize                      min_reps,
-                         glob_charset               charset) throws -> bool
+                         glob_charset               charset,
+                         extglob_search            &search) throws -> bool
+{
+  extglob_memo_key key{};
+
+  key.pattern_offset = suffix_offset;
+  key.pattern_length = suffix.count();
+  key.subject_data   = str.data;
+  key.subject_length = str.count();
+  key.repetition_tag = min_reps + 1;
+
+  return extglob_with_memo(search, key, [&]() throws -> bool {
+    return extglob_match_repetition_uncached(alternatives, suffix,
+                                             suffix_offset, str, mask, min_reps,
+                                             charset, search);
+  });
+}
+
+fn
+extglob_match_repetition_uncached(const ExtglobAlternatives &alternatives,
+                                  StringView                 suffix,
+                                  usize                      suffix_offset,
+                                  StringView                 str,
+                                  const Bitset              &mask,
+                                  usize                      min_reps,
+                                  glob_charset               charset,
+                                  extglob_search            &search) throws -> bool
 {
   if (min_reps == 0 &&
-      extglob_full_match(suffix, str, mask, suffix_offset, charset))
+      extglob_full_match(suffix, str, mask, suffix_offset, charset, search))
   {
     return true;
   }
@@ -210,14 +300,14 @@ extglob_match_repetition(const ExtglobAlternatives &alternatives,
     {
       if (!extglob_full_match(alternative.pattern,
                               str.substring_of_length(0, length), mask,
-                              alternative.mask_offset, charset))
+                              alternative.mask_offset, charset, search))
         continue;
 
       const usize next_min = min_reps > 0 ? min_reps - 1 : 0;
 
       if (extglob_match_repetition(alternatives, suffix, suffix_offset,
                                    str.substring(length), mask, next_min,
-                                   charset))
+                                   charset, search))
         return true;
     }
   }
@@ -226,11 +316,41 @@ extglob_match_repetition(const ExtglobAlternatives &alternatives,
 }
 
 fn
-extglob_full_match(StringView    glob,
-                   StringView    str,
-                   const Bitset &mask,
-                   usize         mask_offset,
-                   glob_charset  charset) throws -> bool
+extglob_full_match_uncached(StringView      glob,
+                            StringView      str,
+                            const Bitset   &mask,
+                            usize           mask_offset,
+                            glob_charset    charset,
+                            extglob_search &search) throws -> bool;
+
+fn
+extglob_full_match(StringView      glob,
+                   StringView      str,
+                   const Bitset   &mask,
+                   usize           mask_offset,
+                   glob_charset    charset,
+                   extglob_search &search) throws -> bool
+{
+  extglob_memo_key key{};
+
+  key.pattern_offset = mask_offset;
+  key.pattern_length = glob.count();
+  key.subject_data   = str.data;
+  key.subject_length = str.count();
+
+  return extglob_with_memo(search, key, [&]() throws -> bool {
+    return extglob_full_match_uncached(glob, str, mask, mask_offset, charset,
+                                       search);
+  });
+}
+
+fn
+extglob_full_match_uncached(StringView      glob,
+                            StringView      str,
+                            const Bitset   &mask,
+                            usize           mask_offset,
+                            glob_charset    charset,
+                            extglob_search &search) throws -> bool
 {
   if (glob.is_empty()) return str.is_empty();
 
@@ -261,6 +381,11 @@ extglob_full_match(StringView    glob,
           alternatives.push({content.substring_of_length(start, i - start),
                              content_offset + start});
           start = i + 1;
+        } else if (is_active_byte && content[i] == '[') {
+          let const span =
+              get_bracket_span(content.substring(i), mask, content_offset + i);
+
+          if (span != 0) i += span - 1;
         } else if (is_active_byte && content[i] == '(') {
           depth++;
         } else if (is_active_byte && content[i] == ')') {
@@ -271,10 +396,10 @@ extglob_full_match(StringView    glob,
       switch (head) {
       case '*':
         return extglob_match_repetition(alternatives, suffix, suffix_offset,
-                                        str, mask, 0, charset);
+                                        str, mask, 0, charset, search);
       case '+':
         return extglob_match_repetition(alternatives, suffix, suffix_offset,
-                                        str, mask, 1, charset);
+                                        str, mask, 1, charset, search);
       case '?':
       case '@':
         for (usize alternative_index = 0;
@@ -287,9 +412,9 @@ extglob_full_match(StringView    glob,
           {
             if (extglob_full_match(alternative.pattern,
                                    str.substring_of_length(0, length), mask,
-                                   alternative.mask_offset, charset) &&
+                                   alternative.mask_offset, charset, search) &&
                 extglob_full_match(suffix, str.substring(length), mask,
-                                   suffix_offset, charset))
+                                   suffix_offset, charset, search))
             {
               return true;
             }
@@ -297,7 +422,8 @@ extglob_full_match(StringView    glob,
         }
 
         return head == '?' &&
-               extglob_full_match(suffix, str, mask, suffix_offset, charset);
+               extglob_full_match(suffix, str, mask, suffix_offset, charset,
+                                  search);
       case '!':
         for (usize length = 0; length <= str.count();
              length       = get_next_split(str, length, charset))
@@ -311,7 +437,7 @@ extglob_full_match(StringView    glob,
 
             if (extglob_full_match(alternative.pattern,
                                    str.substring_of_length(0, length), mask,
-                                   alternative.mask_offset, charset))
+                                   alternative.mask_offset, charset, search))
             {
               has_matching_alternative = true;
               break;
@@ -320,7 +446,7 @@ extglob_full_match(StringView    glob,
 
           if (!has_matching_alternative &&
               extglob_full_match(suffix, str.substring(length), mask,
-                                 suffix_offset, charset))
+                                 suffix_offset, charset, search))
           {
             return true;
           }
@@ -337,7 +463,7 @@ extglob_full_match(StringView    glob,
          eaten       = get_next_split(str, eaten, charset))
     {
       if (extglob_full_match(glob.substring(1), str.substring(eaten), mask,
-                             mask_offset + 1, charset))
+                             mask_offset + 1, charset, search))
         return true;
     }
 
@@ -351,7 +477,7 @@ extglob_full_match(StringView    glob,
   if (is_active && head == '?') {
     return extglob_full_match(glob.substring(1),
                               str.substring(get_next_split(str, 0, charset)),
-                              mask, mask_offset + 1, charset);
+                              mask, mask_offset + 1, charset, search);
   }
 
   if (is_active && head == '[') {
@@ -368,14 +494,14 @@ extglob_full_match(StringView    glob,
 
       return extglob_full_match(glob.substring(span),
                                 str.substring(character_length), mask,
-                                mask_offset + span, charset);
+                                mask_offset + span, charset, search);
     }
   }
 
   if (str[0] != head) return false;
 
   return extglob_full_match(glob.substring(1), str.substring(1), mask,
-                            mask_offset + 1, charset);
+                            mask_offset + 1, charset, search);
 }
 
 using posix_class_test = bool (*)(u8 byte);
@@ -621,7 +747,10 @@ glob_matches(StringView    glob,
   if (mode == extglob_mode::Enabled) {
     for (usize i = 0; i + 1 < glob.count(); i++) {
       if (extglob_opens_group(glob, glob_active, mask_offset, i)) {
-        return extglob_full_match(glob, str, glob_active, mask_offset, charset);
+        extglob_search search{};
+
+        return extglob_full_match(glob, str, glob_active, mask_offset, charset,
+                                  search);
       }
     }
   }
@@ -704,13 +833,17 @@ glob_matches(StringView    glob,
       let const do_get_class_end_past =
           [&](usize index) wontthrow -> Maybe<usize> {
         if (index + 1 >= glob.count() || glob[index] != '[' ||
-            glob[index + 1] != ':' || !do_is_active(index))
+            (glob[index + 1] != ':' && glob[index + 1] != '=' &&
+             glob[index + 1] != '.') ||
+            !do_is_active(index))
         {
           return None;
         }
 
+        let const delimiter = glob[index + 1];
+
         for (usize scan = index + 2; scan + 1 < glob.count(); scan++) {
-          if (glob[scan] == ':' && glob[scan + 1] == ']') {
+          if (glob[scan] == delimiter && glob[scan + 1] == ']') {
             return scan + 2;
           }
           if (glob[scan] == ']' && do_is_active(scan)) {
@@ -771,9 +904,33 @@ glob_matches(StringView    glob,
 
       bool is_first_member = true;
 
+      /* the character inside [=a=] or [.a.], with the length of the whole
+         element. a longer element reads as no character. */
+      let const do_get_element_at =
+          [&](usize index) wontthrow -> decoded_codepoint {
+        if (let const past_element = do_get_class_end_past(index);
+            past_element.has_value() && glob[index + 1] != ':')
+        {
+          let const element_length = *past_element - index;
+          let const inner_length   = element_length - 4;
+
+          if (inner_length != 0) {
+            let const inner = do_get_character_at(glob, index + 2);
+
+            if (inner.length == inner_length) {
+              return {inner.value, element_length};
+            }
+          }
+
+          return {0x7fffffffu, element_length};
+        }
+
+        return do_get_character_at(glob, index);
+      };
+
       while (g < glob.count() && (is_first_member || !do_is_close_at(g))) {
         if (Maybe<usize> past_class = do_get_class_end_past(g);
-            past_class.has_value())
+            past_class.has_value() && glob[g + 1] == ':')
         {
           let const class_name =
               glob.substring_of_length(g + 2, *past_class - g - 4);
@@ -789,15 +946,18 @@ glob_matches(StringView    glob,
           continue;
         }
 
-        let const lower      = do_get_character_at(glob, g);
+        let const lower      = do_get_element_at(g);
         let const range_dash = g + lower.length;
+        let const is_upper_named_class =
+            range_dash + 2 < glob.count() &&
+            do_get_class_end_past(range_dash + 1).has_value() &&
+            glob[range_dash + 2] == ':';
 
-        if (glob[g] != '-' && range_dash + 1 < glob.count() &&
-            glob[range_dash] == '-' && do_is_active(range_dash) &&
-            !do_is_close_at(range_dash + 1) &&
-            !do_get_class_end_past(range_dash + 1).has_value())
+        if (range_dash + 1 < glob.count() && glob[range_dash] == '-' &&
+            do_is_active(range_dash) && !do_is_close_at(range_dash + 1) &&
+            !is_upper_named_class)
         {
-          let const upper = do_get_character_at(glob, range_dash + 1);
+          let const upper = do_get_element_at(range_dash + 1);
 
           is_matched |=
               lower.value <= subject.value && subject.value <= upper.value;
