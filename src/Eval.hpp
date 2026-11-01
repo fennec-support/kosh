@@ -2641,6 +2641,20 @@ public:
       m_field_separators.clear();
       m_field_separators.append(value);
     }
+
+    m_is_field_separators_unset = false;
+  }
+
+  fn
+  mark_field_separators_unset() wontthrow -> void
+  {
+    m_is_field_separators_unset = true;
+  }
+
+  pure fn
+  is_field_separators_unset() const wontthrow -> bool
+  {
+    return m_is_field_separators_unset;
   }
 
   pure fn
@@ -2908,6 +2922,7 @@ public:
 
 private:
   String        m_field_separators{heap_allocator(), " \t\n"};
+  bool          m_is_field_separators_unset{false};
   u64           m_field_separator_bits[4]{(u64{1} << ' ') | (u64{1} << '\t') |
                                           (u64{1} << '\n')};
   VariableTable m_variables;

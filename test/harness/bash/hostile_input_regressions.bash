@@ -130,6 +130,15 @@ echo "--- an explicit set -u covers test operands ---"
 ( set -u; [ -z "$unset_operand" ]; echo reached ) 2>/dev/null; echo "$?"
 ( set -u; [[ -z $unset_operand ]]; echo reached ) 2>/dev/null; echo "$?"
 
+echo "--- a prefix assignment stays for export and readonly operands ---"
+prefixed=1 export prefixed; echo "[$prefixed]"
+fixed=2 readonly fixed; echo "[$fixed]"
+other=3 export unrelated; echo "[${other-unset}]"
+
+echo "--- an unset IFS reads as unset and still splits ---"
+( unset IFS; echo "[${IFS-u}]"; words='a b'; printf '[%s]' $words; echo
+  IFS=: true; echo "[${IFS-u}]" )
+
 echo "--- printf treats a negative precision as omitted ---"
 printf '%.*d|\n' -1 42
 printf '%.*s|\n' -1 abc

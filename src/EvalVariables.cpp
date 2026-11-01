@@ -567,6 +567,8 @@ EvalContext::get_variable_value(StringView name) const throws
     if (let const info = ALWAYS_DYNAMIC.find(name); info.has_value()) {
       switch (info->kind) {
       case dynamic_var::IFS:
+        if (variable_store().is_field_separators_unset()) return None;
+
         return String{heap_allocator(), variable_store().field_separators()};
       case dynamic_var::LINENO: {
         if (let const trigger_line = trap_trigger_line_number();

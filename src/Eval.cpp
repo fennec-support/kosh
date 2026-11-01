@@ -1219,7 +1219,11 @@ EvalContext::force_unset_shell_variable(StringView name) throws -> void
 
   switch (name.is_empty() ? '\0' : name[0]) {
   case 'I':
-    if (name == "IFS") variable_store().set_field_separators(" \t\n");
+    if (name == "IFS") {
+      variable_store().set_field_separators(" \t\n");
+      variable_store().mark_field_separators_unset();
+    }
+
     break;
 
   case 'G':

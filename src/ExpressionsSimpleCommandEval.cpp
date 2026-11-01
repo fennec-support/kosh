@@ -978,6 +978,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
   saved_env.reserve(m_local_vars.count() + keyword_assignments.count());
 
   bool                   was_ifs_assigned = false;
+  bool                   was_ifs_unset    = false;
   String                 saved_ifs_separators{cxt.scratch_allocator()};
   Maybe<ProgramResolver> saved_program_resolver{};
 
@@ -1008,8 +1009,10 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
     if (saved_program_resolver.has_value())
       cxt.program_resolver() = steal(*saved_program_resolver);
-    if (was_ifs_assigned)
+    if (was_ifs_assigned) {
       cxt.variable_store().set_field_separators(saved_ifs_separators.view());
+      if (was_ifs_unset) cxt.variable_store().mark_field_separators_unset();
+    }
   };
 
   let const has_prefix_assignments =
@@ -1031,6 +1034,24 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
                  cxt.runtime_state().is_posix_option_on()
            : is_source_evaluating_builtin &&
                  cxt.runtime_state().is_posix_option_on());
+
+  /* `X=1 export X` keeps the value that export gives its attribute to. */
+  let const do_is_attribute_operand =
+      [&](StringView name) throws -> bool {
+    if (command_word_function != nullptr || program_args.count() < 2)
+      return false;
+
+    let const kind = cxt.find_enabled_builtin(program_args[0].view());
+
+    if (kind != Builtin::Kind::Export && kind != Builtin::Kind::Readonly)
+      return false;
+
+    for (usize i = 1; i < program_args.count(); i++) {
+      if (program_args[i].view() == name) return true;
+    }
+
+    return false;
+  };
 
   let const do_apply_environment_assignment =
       [&](const tokens::Assignment &assignment) throws {
@@ -1091,7 +1112,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         if (assignment.get_update_mode() == assignment_update_mode::Append)
           do_apply_append(name, expanded_value);
 
-        if (is_prefix_assignment_persistent) {
+        if (is_prefix_assignment_persistent || do_is_attribute_operand(name)) {
           cxt.set_shell_variable(name, expanded_value);
           if (cxt.runtime_state().export_all()) {
             cxt.record_environment_change(name);
@@ -1103,7 +1124,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         }
 
         if (name == "IFS" && !was_ifs_assigned) {
-          was_ifs_assigned     = true;
+          was_ifs_assigned = true;
+          was_ifs_unset    = cxt.variable_store().is_field_separators_unset();
           saved_ifs_separators = cxt.get_variable_value("IFS").value_or(
               String{heap_allocator(), " \t\n"});
         }
