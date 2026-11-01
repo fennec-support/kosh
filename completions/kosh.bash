@@ -612,7 +612,7 @@ _koshkit_util_flags ()
         "-a --across -d --double-space -D --date-format -F --form-feed -f --form-feed-alias -h --header -l --length -m --merge -n --number-lines -o --indent -r --no-file-warnings -t --omit-header -s --separator -w --width"
     ;;
     ps)
-      printf "%s\n" "-a -u -x -w"
+      printf "%s\n" "-a -u -x -w -e -A -f -o --format -p --pid -C --no-headers"
     ;;
     readlink)
       printf "%s\n" \

@@ -21,3 +21,22 @@ if [ "$("$BIN" -c 'koshkit ps aux | koshkit grep -cE "^[^ ]+ +$$ "')" = 1 ]; the
 else
   echo "self missing"
 fi
+
+echo "--- ps -ef uses the full columns ---"
+"$BIN" -c 'koshkit ps -ef' | head -1 | tr -s ' '
+
+echo "--- -o and -p select one headerless row ---"
+"$BIN" -c 'koshkit ps -o pid,ppid --no-headers -p $$ | koshkit wc -l' |
+  tr -d ' '
+
+echo "--- a process id that selects nothing ---"
+"$BIN" -c 'koshkit ps -p 2147483646 --no-headers'
+echo "status $?"
+
+echo "--- a command that selects nothing ---"
+"$BIN" -c 'koshkit ps -C no-such-command --no-headers'
+echo "status $?"
+
+echo "--- an unknown column ---"
+"$BIN" -c 'koshkit ps -o nope' >/dev/null 2>&1
+echo "status $?"

@@ -5,3 +5,13 @@ header ok
 header ok
 --- aux lists the row of the running shell ---
 self ok
+--- ps -ef uses the full columns ---
+USER PID PPID COMMAND
+--- -o and -p select one headerless row ---
+1
+--- a process id that selects nothing ---
+status 1
+--- a command that selects nothing ---
+status 1
+--- an unknown column ---
+status 1

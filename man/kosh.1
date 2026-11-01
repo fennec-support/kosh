@@ -2737,8 +2737,16 @@ T}
 T{
 \f[CR]ps\f[R]
 T}@T{
-Lists processes with \f[CR]\-a\f[R], \f[CR]\-u\f[R], and \f[CR]\-x\f[R];
-\f[CR]\-w\f[R] is accepted.
+Lists processes.
+\f[CR]\-a\f[R], \f[CR]\-u\f[R], and \f[CR]\-x\f[R] use the
+user\-oriented columns, \f[CR]\-f\f[R] uses the full columns, and
+\f[CR]\-o\f[R]/\f[CR]\-\-format LIST\f[R] takes \f[CR]pid\f[R],
+\f[CR]ppid\f[R], \f[CR]user\f[R], \f[CR]uid\f[R], \f[CR]vsz\f[R],
+\f[CR]rss\f[R], \f[CR]stat\f[R], \f[CR]comm\f[R], and \f[CR]args\f[R].
+\f[CR]\-p\f[R]/\f[CR]\-\-pid LIST\f[R] and \f[CR]\-C LIST\f[R] select
+processes by id and command, and the status is 1 when they select none.
+\f[CR]\-\-no\-headers\f[R] omits the header.
+\f[CR]\-e\f[R], \f[CR]\-A\f[R], and \f[CR]\-w\f[R] are accepted.
 T}
 T{
 \f[CR]readlink\f[R], \f[CR]realpath\f[R] 
