@@ -209,6 +209,7 @@ Csplit::execute(const ExecContext               &ec,
   let  previous_pattern               = String{cxt.scratch_allocator()};
   bool has_previous_nonrepeat_pattern = false;
   bool has_applied_pattern            = false;
+  bool did_exhaust_input              = false;
 
   let const do_apply_pattern =
       [&](StringView pattern, SourceLocation pattern_location,
@@ -220,6 +221,7 @@ Csplit::execute(const ExecContext               &ec,
 
     if (!numeric.is_error()) {
       if (numeric.value() == 0) {
+        did_exhaust_input = true;
         throw ErrorWithLocationAndDetails{
             pattern_location, "Line number is outside the input",
             "Use a positive line number within the input"};
@@ -246,6 +248,7 @@ Csplit::execute(const ExecContext               &ec,
           return false;
         }
 
+        did_exhaust_input = true;
         throw ErrorWithLocationAndDetails{
             pattern_location, "Line number is outside the input",
             "Use a positive line number within the input"};
@@ -340,6 +343,7 @@ Csplit::execute(const ExecContext               &ec,
           return false;
         }
 
+        did_exhaust_input = true;
         throw ErrorWithLocationAndDetails{
             pattern_location, "Regular expression did not match",
             "Use a pattern that matches a remaining input line"};
@@ -352,6 +356,7 @@ Csplit::execute(const ExecContext               &ec,
           return false;
         }
 
+        did_exhaust_input = true;
         throw ErrorWithLocationAndDetails{
             pattern_location, "Regular expression offset is outside the input",
             "Use an offset that selects a line within the input"};
@@ -395,8 +400,8 @@ Csplit::execute(const ExecContext               &ec,
     return true;
   };
 
-  /* with -k, a failing pattern still writes the rest of the input as the
-     final piece. */
+  /* with -k, a pattern that runs past the input still writes the rest of the
+     input as the final piece. */
   let const do_write_remainder = [&]() throws -> bool {
     let const width_location =
         FLAG_CSPLIT_DIGITS.is_set()
@@ -459,7 +464,9 @@ Csplit::execute(const ExecContext               &ec,
                               csplit_exhaustion_mode::Error));
     }
   } catch (...) {
-    if (FLAG_CSPLIT_KEEP.is_enabled()) unused(do_write_remainder());
+    if (FLAG_CSPLIT_KEEP.is_enabled() && did_exhaust_input) {
+      unused(do_write_remainder());
+    }
 
     throw;
   }

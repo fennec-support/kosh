@@ -648,9 +648,8 @@ Cp::execute(const ExecContext               &ec,
      directory whenever more than one source is given. */
   /* the list may grow inside a child scratch mark, so it uses the heap. */
   ArrayList<cp_directory_identity> active_directories{heap_allocator()};
-  let                              copied_targets = HashSet{heap_allocator()};
-  let created_file_targets                        = HashSet{heap_allocator()};
-  i32 status                                      = 0;
+  let created_file_targets = HashSet{heap_allocator()};
+  i32 status               = 0;
 
   if (source_count > 1) options.created_file_targets = &created_file_targets;
 
@@ -661,7 +660,8 @@ Cp::execute(const ExecContext               &ec,
     /* the contents of a source that ends in /. merge into the destination. */
     let const is_contents_source =
         source == "." ||
-        (source.length >= 2 && source.substring(source.length - 2) == "/.");
+        (source.length >= 2 && source[source.length - 1] == '.' &&
+         os::is_directory_separator(source[source.length - 2]));
 
     if (is_destination_directory && !is_contents_source) {
       let const source_path =
@@ -680,7 +680,7 @@ Cp::execute(const ExecContext               &ec,
          !source_path.is_symbolic_link());
 
     if (!is_directory_source && !options.should_keep_existing &&
-        copied_targets.contains(target.view()))
+        created_file_targets.contains(target.view()))
     {
       report_soft_koshkit_error(ec, cxt, operand_locations[i],
                                 "'" + String{cxt.scratch_allocator(), source} +
@@ -699,11 +699,9 @@ Cp::execute(const ExecContext               &ec,
     }
 
     try {
-      if (copy_path(ec, cxt, source, target.view(), options,
-                    cxt.scratch_allocator(), nullptr, active_directories))
+      if (!copy_path(ec, cxt, source, target.view(), options,
+                     cxt.scratch_allocator(), nullptr, active_directories))
       {
-        unused(copied_targets.add(target.view()));
-      } else {
         status = 1;
       }
     } catch (const BrokenPipeExit &) {

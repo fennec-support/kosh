@@ -178,6 +178,7 @@ Touch::execute(const ExecContext               &ec,
   }
 
   Maybe<i64> requested_time;
+  u32        requested_nanoseconds = 0;
 
   if (FLAG_TOUCH_TIME.is_set()) {
     requested_time = parse_touch_time(FLAG_TOUCH_TIME.value());
@@ -199,7 +200,8 @@ Touch::execute(const ExecContext               &ec,
       return 1;
     }
 
-    requested_time = utils::parse_calendar_date(FLAG_TOUCH_DATE.value(), false);
+    requested_time = utils::parse_calendar_date(FLAG_TOUCH_DATE.value(), false,
+                                                &requested_nanoseconds);
     if (!requested_time.has_value()) {
       KOSHKIT_REPORT_ERROR_AT(
           FLAG_TOUCH_DATE.value_location(),
@@ -251,7 +253,9 @@ Touch::execute(const ExecContext               &ec,
         : requested_time.has_value()  ? *requested_time
                                       : now;
     let const selected_access_nanoseconds =
-        FLAG_TOUCH_REFERENCE.is_set() ? reference_status.access_nanoseconds : 0;
+        FLAG_TOUCH_REFERENCE.is_set() ? reference_status.access_nanoseconds
+        : requested_time.has_value()  ? requested_nanoseconds
+                                      : 0;
     let const selected_modification_time =
         FLAG_TOUCH_REFERENCE.is_set() ? reference_status.modification_time
         : requested_time.has_value()  ? *requested_time
@@ -259,7 +263,8 @@ Touch::execute(const ExecContext               &ec,
     let const selected_modification_nanoseconds =
         FLAG_TOUCH_REFERENCE.is_set()
             ? reference_status.modification_nanoseconds
-            : 0;
+        : requested_time.has_value() ? requested_nanoseconds
+                                     : 0;
 
     if (!os::set_file_times(
             operand.view(),

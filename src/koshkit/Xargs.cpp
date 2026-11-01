@@ -696,6 +696,13 @@ Xargs::execute(const ExecContext               &ec,
     has_deferred_item    = true;
   };
 
+  /* a nested koshkit utility rewrites the flag registry, so the loop reads
+     these values from locals. */
+  let const should_exit_on_oversize = FLAG_XARGS_EXIT.is_enabled();
+  let const should_skip_empty_input = FLAG_XARGS_NO_RUN_IF_EMPTY.is_enabled();
+  let const should_trace_commands   = FLAG_XARGS_TRACE.is_enabled();
+  let const should_prompt           = FLAG_XARGS_PROMPT.is_enabled();
+
   let &scratch_arena   = cxt.expansion_store().scratch_arena();
   bool has_run_command = false;
   i32  status          = 0;
@@ -831,7 +838,7 @@ Xargs::execute(const ExecContext               &ec,
             break;
           }
 
-          if (FLAG_XARGS_EXIT.is_enabled())
+          if (should_exit_on_oversize)
             throw ErrorWithLocation{ec.source_location(),
                                     "One argument exceeds the size limit"};
 
@@ -846,19 +853,18 @@ Xargs::execute(const ExecContext               &ec,
         added_count++;
       }
 
-      if (added_count == 0 &&
-          (has_run_command || FLAG_XARGS_NO_RUN_IF_EMPTY.is_enabled()))
-      {
+      if (added_count == 0 && (has_run_command || should_skip_empty_input)) {
         break;
       }
     }
 
     has_run_command = true;
 
-    if (FLAG_XARGS_TRACE.is_enabled() && !FLAG_XARGS_PROMPT.is_enabled())
+    if (should_trace_commands && !should_prompt) {
       trace_xargs_command(ec, command, cxt.scratch_allocator());
+    }
 
-    if (FLAG_XARGS_PROMPT.is_enabled()) {
+    if (should_prompt) {
       let message = String{cxt.scratch_allocator(), "run "};
 
       /* each argument is quoted, and a control byte is written as an

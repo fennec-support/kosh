@@ -75,7 +75,7 @@ build_title(StringView command,
 
   append_one_decimal(left, interval_seconds);
   left += "s: ";
-  left += command;
+  left += escape_terminal_text(allocator, command).view();
 
   let       right = String{allocator};
   let const host  = os::get_hostname();
