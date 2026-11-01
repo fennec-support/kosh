@@ -13,7 +13,7 @@
 #include "../Koshkit.hpp"
 #include "../util/Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-En] [-e script]... [-f script-file]... [script] "
+KOSHKIT_UTIL_DECL("[-Einz] [-e script]... [-f script-file]... [script] "
                   "[file ...]",
                   "Edit text streams.");
 
@@ -25,6 +25,7 @@ FLAG(SED_EXTENDED,
 FLAG(SED_EXPRESSION, ManyStrings, 'e', "expression", "Add an editing script.");
 FLAG(SED_FILE, ManyStrings, 'f', "file", "Read an editing script from a file.");
 FLAG(SED_QUIET, Bool, 'n', "quiet", "Suppress automatic printing.");
+FLAG(SED_IN_PLACE, Bool, 'i', "in-place", "Replace each file with its result.");
 FLAG(SED_NULL_DATA,
      Bool,
      'z',
@@ -41,6 +42,7 @@ enum class sed_address_kind : u8
   Line,
   Last,
   Regex,
+  RelativeCount,
 };
 
 enum class sed_command_kind : u8
@@ -85,6 +87,7 @@ struct sed_command
   bool   is_negated{false};
   bool   has_second_address{false};
   bool   is_range_active{false};
+  u64    range_end_line{0};
   char   translation[256]{};
 };
 
@@ -296,8 +299,27 @@ parse_sed_script(StringView              script,
                             "Write an address before the comma"};
 
       position++;
-      has_second_address = parse_sed_address(script, position, allocator,
-                                             second_address, regex_mode);
+
+      if (position < script.length && script[position] == '+') {
+        position++;
+
+        let const count_start = position;
+
+        while (position < script.length && script[position] >= '0' &&
+               script[position] <= '9')
+        {
+          second_address.line_number =
+              second_address.line_number * 10 +
+              static_cast<u64>(script[position++] - '0');
+        }
+
+        second_address.kind = sed_address_kind::RelativeCount;
+        has_second_address  = position != count_start;
+      } else {
+        has_second_address = parse_sed_address(script, position, allocator,
+                                               second_address, regex_mode);
+      }
+
       if (!has_second_address)
         throw SedParseError{position, "Missing second address",
                             "Write an address after the comma"};
@@ -515,6 +537,7 @@ sed_address_matches(sed_address &address,
   case sed_address_kind::Last:  return is_last;
   case sed_address_kind::Regex:
     return os::regex_matches(address.expression, line);
+  case sed_address_kind::RelativeCount: return false;
   }
 
   return false;
@@ -531,11 +554,25 @@ sed_command_matches(sed_command &command,
   if (!command.is_range_active) {
     if (!sed_address_matches(command.address, line, line_number, is_last))
       return false;
+
+    if (command.second_address.kind == sed_address_kind::RelativeCount) {
+      command.range_end_line = line_number + command.second_address.line_number;
+      command.is_range_active = command.second_address.line_number != 0;
+
+      return true;
+    }
+
     let const did_end_immediately =
         command.second_address.kind == sed_address_kind::Line &&
         command.second_address.line_number <= line_number;
 
     command.is_range_active = !did_end_immediately;
+
+    return true;
+  }
+
+  if (command.second_address.kind == sed_address_kind::RelativeCount) {
+    if (line_number >= command.range_end_line) command.is_range_active = false;
 
     return true;
   }
@@ -771,8 +808,18 @@ Sed::execute(const ExecContext               &ec,
   let output                            = String{heap_allocator()};
   let did_written_output_end_in_newline = true;
 
+  let const is_in_place = FLAG_SED_IN_PLACE.is_enabled();
+
+  if (is_in_place && operands.count() <= source_start) {
+    report_soft_koshkit_error(ec, cxt, "The -i option needs a file operand");
+
+    return 1;
+  }
+
   let const do_flush_output = [&](bool should_flush_all) throws {
-    if (output.is_empty() || (!should_flush_all && output.count() < 65536)) {
+    if (is_in_place || output.is_empty() ||
+        (!should_flush_all && output.count() < 65536))
+    {
       return;
     }
 
@@ -899,28 +946,59 @@ Sed::execute(const ExecContext               &ec,
       continue;
     }
 
-    defer { close_input_descriptor(*input); };
+    bool did_read_fail = false;
 
-    let reader = utils::BufferedLineReader{
-        input->descriptor, heap_allocator(),
-        FLAG_SED_NULL_DATA.is_enabled() ? '\0' : '\n'};
+    {
+      defer { close_input_descriptor(*input); };
 
-    while (!should_quit) {
-      let const result = reader.next();
+      let reader = utils::BufferedLineReader{
+          input->descriptor, heap_allocator(),
+          FLAG_SED_NULL_DATA.is_enabled() ? '\0' : '\n'};
 
-      if (result == utils::BufferedLineReader::Result::End) break;
-      if (result == utils::BufferedLineReader::Result::Error) {
-        if (os::INTERRUPT_REQUESTED) return 130;
-        KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
-        status = 2;
-        break;
+      while (!should_quit) {
+        let const result = reader.next();
+
+        if (result == utils::BufferedLineReader::Result::End) break;
+        if (result == utils::BufferedLineReader::Result::Error) {
+          if (os::INTERRUPT_REQUESTED) return 130;
+          KOSHKIT_REPORT_PATH_ERROR("read", sources[source_index]);
+          status        = 2;
+          did_read_fail = true;
+          break;
+        }
+
+        if (has_held_line) do_process_line(held_line.view(), true, false);
+        held_line.clear();
+        held_line.append(reader.get_line());
+        was_held_line_terminated = reader.was_line_terminated();
+        has_held_line            = true;
       }
+    }
 
-      if (has_held_line) do_process_line(held_line.view(), true, false);
-      held_line.clear();
-      held_line.append(reader.get_line());
-      was_held_line_terminated = reader.was_line_terminated();
-      has_held_line            = true;
+    if (!is_in_place) continue;
+
+    /* each file is its own stream, so line numbers, ranges, and $ restart. */
+    if (has_held_line && !should_quit) {
+      do_process_line(held_line.view(), was_held_line_terminated, true);
+    }
+
+    os::file_status file_status{};
+
+    if (!did_read_fail &&
+        os::stat_path_following(sources[source_index], file_status))
+    {
+      os::replace_file_beside(Path{sources[source_index], heap_allocator()},
+                              ".kosh-sed-", output.view(),
+                              file_status.mode & 07777);
+    }
+
+    output.clear();
+    held_line.clear();
+    has_held_line = false;
+    line_number   = 0;
+
+    for (let &command : commands) {
+      command.is_range_active = false;
     }
   }
 

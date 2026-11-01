@@ -2248,7 +2248,8 @@ T{
 T}@T{
 Prints the date and time, or formats them with a \f[CR]+format\f[R]
 operand of strftime conversions (\f[CR]\-u\f[R]/\f[CR]\-\-utc\f[R] use
-UTC).
+UTC, \f[CR]\-d\f[R]/\f[CR]\-\-date\f[R] show \f[CR]YYYY\-MM\-DD\f[R],
+\f[CR]YYYY\-MM\-DD hh:mm[:ss]\f[R], or \f[CR]\[at]SECONDS\f[R]).
 Refuses an operand that would set the clock.
 T}
 T{
@@ -2824,7 +2825,10 @@ Applies an editing script, from the first operand or from each
 \f[CR]\-f\f[R]/\f[CR]\-\-file\f[R], to the lines of each file or
 standard input (\f[CR]\-n\f[R]/\f[CR]\-\-quiet\f[R] suppress automatic
 printing, \f[CR]\-z\f[R]/\f[CR]\-\-null\-data\f[R] use NUL\-terminated
-lines, \f[CR]\-E\f[R]/\f[CR]\-\-extended\-regexp\f[R] extended regular
+lines, \f[CR]\-i\f[R]/\f[CR]\-\-in\-place\f[R] replace each file with
+its result and treat each file as its own input, an address range may
+end in \f[CR]+N\f[R] to cover the next \f[CR]N\f[R] lines,
+\f[CR]\-E\f[R]/\f[CR]\-\-extended\-regexp\f[R] extended regular
 expressions).
 Commands: \f[CR]s\f[R] with the \f[CR]g\f[R] and \f[CR]p\f[R] flags,
 \f[CR]y\f[R], \f[CR]d\f[R], \f[CR]p\f[R], \f[CR]q\f[R], \f[CR]=\f[R],

@@ -664,6 +664,27 @@ TZ=UTC "$BIN" -c 'koshkit touch -d 1970-01-04 dated; koshkit stat -c %Y dated'
 "$BIN" -c 'koshkit touch -d yesterday dated' 2>/dev/null
 echo "status $?"
 
+echo "--- date -d shows a given date ---"
+"$BIN" -c 'koshkit date -u -d @86400 +%F'
+"$BIN" -c 'koshkit date -u -d "2024-02-29 12:30:15" +%s'
+TZ=UTC "$BIN" -c 'koshkit date -d 2000-03-01 +%s'
+"$BIN" -c 'koshkit date -d nonsense' 2>/dev/null
+echo "status $?"
+
+echo "--- sed -i rewrites each file on its own ---"
+printf 'one\ntwo\n' > edit1
+printf 'one\n' > edit2
+chmod 640 edit1
+"$BIN" -c 'koshkit sed -i "1s/one/first/;\$s/\$/ last/" edit1 edit2'
+"$BIN" -c 'koshkit cat edit1 edit2; koshkit stat -c %a edit1'
+"$BIN" -c 'koshkit sed -i s/a/b/' </dev/null 2>/dev/null
+echo "status $?"
+
+echo "--- sed ranges end after +N lines ---"
+printf '1\n2\n3\n4\n5\n' > numbered
+"$BIN" -c 'koshkit sed -n "2,+1p" numbered'
+"$BIN" -c 'koshkit sed -n "/4/,+0p" numbered'
+
 echo "--- tee -i copies its input ---"
 echo copied | "$BIN" -c 'koshkit tee -i teed'
 "$BIN" -c 'koshkit cat teed'

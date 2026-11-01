@@ -1038,6 +1038,110 @@ append_shell_quoted(String    &out,
   append_shell_quoted_arg(out, arg, true);
 }
 
+fn
+parse_calendar_date(StringView text, bool is_utc) throws -> Maybe<i64>
+{
+  if (!text.is_empty() && text[0] == '@') {
+    let const seconds = text.substring(1);
+    let const parsed  = seconds.to<i64>();
+
+    if (!seconds.is_all_decimal_digits() || parsed.is_error()) return None;
+
+    return parsed.value();
+  }
+
+  constexpr usize date_length           = 10;
+  constexpr usize minute_timestamp_size = 16;
+  constexpr usize second_timestamp_size = 19;
+
+  if (text.length != date_length && text.length != minute_timestamp_size &&
+      text.length != second_timestamp_size)
+  {
+    return None;
+  }
+
+  let const do_read_pair = [&](usize position, i32 &value) -> bool {
+    let const tens = text[position];
+    let const ones = text[position + 1];
+
+    if (tens < '0' || tens > '9' || ones < '0' || ones > '9') return false;
+
+    value = (tens - '0') * 10 + (ones - '0');
+
+    return true;
+  };
+
+  i32 century = 0;
+  i32 year    = 0;
+  i32 month   = 0;
+  i32 day     = 0;
+  i32 hour    = 0;
+  i32 minute  = 0;
+  i32 second  = 0;
+
+  if (!do_read_pair(0, century) || !do_read_pair(2, year) || text[4] != '-' ||
+      !do_read_pair(5, month) || text[7] != '-' || !do_read_pair(8, day))
+  {
+    return None;
+  }
+
+  if (text.length > date_length) {
+    if ((text[10] != ' ' && text[10] != 'T') || !do_read_pair(11, hour) ||
+        text[13] != ':' || !do_read_pair(14, minute))
+    {
+      return None;
+    }
+
+    if (text.length == second_timestamp_size &&
+        (text[16] != ':' || !do_read_pair(17, second)))
+    {
+      return None;
+    }
+  }
+
+  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 ||
+      minute > 59 || second > 60)
+  {
+    return None;
+  }
+
+  let const full_year = century * 100 + year;
+
+  tm value{};
+
+  value.tm_year  = full_year - 1900;
+  value.tm_mon   = month - 1;
+  value.tm_mday  = day;
+  value.tm_hour  = hour;
+  value.tm_min   = minute;
+  value.tm_sec   = second;
+  value.tm_isdst = -1;
+
+  if (is_utc) {
+    /* days since 1970-01-01 in the proleptic Gregorian calendar. */
+    let const shifted_year =
+        static_cast<i64>(month <= 2 ? full_year - 1 : full_year);
+    let const shifted_month =
+        static_cast<i64>(month > 2 ? month - 3 : month + 9);
+    let const day_of_year = (153 * shifted_month + 2) / 5 + day - 1;
+    let const leap_days =
+        shifted_year / 4 - shifted_year / 100 + shifted_year / 400;
+    let const day_count = shifted_year * 365 + leap_days + day_of_year - 719468;
+
+    return day_count * 86400 + hour * 3600 + minute * 60 + second;
+  }
+
+  let const timestamp = mktime(&value);
+
+  if (timestamp == static_cast<time_t>(-1) || value.tm_mon != month - 1 ||
+      value.tm_mday != day)
+  {
+    return None;
+  }
+
+  return static_cast<i64>(timestamp);
+}
+
 } /* namespace utils */
 
 } /* namespace koshka */

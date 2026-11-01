@@ -1439,6 +1439,21 @@ status 1
 172801
 259200
 status 1
+--- date -d shows a given date ---
+1970-01-02
+1709209815
+951868800
+status 1
+--- sed -i rewrites each file on its own ---
+first
+two last
+first last
+640
+status 1
+--- sed ranges end after +N lines ---
+2
+3
+4
 --- tee -i copies its input ---
 copied
 copied

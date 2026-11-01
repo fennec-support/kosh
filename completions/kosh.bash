@@ -429,7 +429,7 @@ _koshkit_util_flags ()
         "-b --bytes -c --characters -f --fields -d --delimiter -n --no-split -s --only-delimited --complement --output-delimiter -z --zero-terminated"
     ;;
     date)
-      printf "%s\n" "-u --utc"
+      printf "%s\n" "-u --utc -d --date"
     ;;
     df)
       printf "%s\n" \
@@ -640,7 +640,7 @@ _koshkit_util_flags ()
     ;;
     sed)
       printf "%s\n" \
-        "-E --extended-regexp -e --expression -f --file -n --quiet -z --null-data"
+        "-E --extended-regexp -e --expression -f --file -n --quiet -i --in-place -z --null-data"
     ;;
     seq)
       printf "%s\n" "-f --format -s --separator -w --equal-width"

@@ -16,6 +16,12 @@ KOSHKIT_UTIL_DECL("[-u] [+format]",
                   "The date utility can write the date and time.");
 
 FLAG(DATE_UTC, Bool, 'u', "utc", "Use Coordinated Universal Time.");
+FLAG(DATE_DATE,
+     String,
+     'd',
+     "date",
+     "Show YYYY-MM-DD[ hh:mm[:ss]], with T also allowed before the time, or "
+     "@SECONDS.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Date);
 
@@ -42,8 +48,45 @@ Date::execute(const ExecContext               &ec,
      '+'. */
   let const format = operands.is_empty() ? StringView{"%a %b %e %H:%M:%S %Z %Y"}
                                          : operands[0].view().substring(1);
+  i64       displayed_seconds = os::current_unix_seconds();
+
+  if (FLAG_DATE_DATE.is_set()) {
+    let const parsed = utils::parse_calendar_date(FLAG_DATE_DATE.value(),
+                                                  FLAG_DATE_UTC.is_enabled());
+
+    if (!parsed.has_value()) {
+      report_soft_koshkit_error(ec, cxt, FLAG_DATE_DATE.value_location(),
+                                "Invalid date '" + FLAG_DATE_DATE.value() +
+                                    "'");
+
+      return 1;
+    }
+
+    displayed_seconds = *parsed;
+  }
+
+  /* strftime reads %s through the local zone, so the epoch is written here. */
+  let expanded_format = String{cxt.scratch_allocator()};
+
+  for (usize position = 0; position < format.length; position++) {
+    if (format[position] != '%' || position + 1 == format.length) {
+      expanded_format += format[position];
+      continue;
+    }
+
+    if (format[position + 1] == 's') {
+      expanded_format +=
+          String::from(displayed_seconds, cxt.scratch_allocator()).view();
+    } else {
+      expanded_format += format[position];
+      expanded_format += format[position + 1];
+    }
+
+    position++;
+  }
+
   let const formatted = os::format_time(
-      format, os::current_unix_seconds(),
+      expanded_format.view(), displayed_seconds,
       FLAG_DATE_UTC.is_enabled() ? os::time_zone::Utc : os::time_zone::Local);
 
   if (!formatted.has_value()) {
