@@ -276,7 +276,10 @@ parse_sort_endpoint(StringView text,
 
   while (position < text.length && text[position] != ',') {
     switch (text[position]) {
-    case 'b': is_blank_skipping = true; break;
+    case 'b':
+      is_blank_skipping = true;
+      key.has_ordering  = true;
+      break;
 
     case 'd':
       key.modifiers.is_dictionary = true;
@@ -616,7 +619,7 @@ parse_sort_general_number(StringView text) throws -> sort_general_number
   char *start       = stack_buffer;
 
   if (text.length < sizeof(stack_buffer)) {
-    memcpy(stack_buffer, text.data, text.length);
+    if (text.length != 0) memcpy(stack_buffer, text.data, text.length);
     stack_buffer[text.length] = '\0';
   } else {
     heap_buffer.append(text);

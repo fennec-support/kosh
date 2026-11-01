@@ -282,8 +282,9 @@ private:
 
       let const pattern_position = m_position;
       let const pattern          = parse_primary();
-      String    anchored{m_allocator, "^"};
+      String    anchored{m_allocator};
 
+      if (!pattern.view().starts_with("^")) anchored += '^';
       anchored += pattern.view();
 
       let compiled = os::compile_basic_regex(anchored.view(),
