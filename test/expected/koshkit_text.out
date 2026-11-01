@@ -1403,6 +1403,8 @@ status 0
 oo
 foo
 status 1
+a b bc
+foo
 --- grep -B allocates for the lines it holds ---
 a
 b
@@ -1414,8 +1416,13 @@ status 1
 --- sed -z reads an escaped newline ---
 nan,b,
 0000000   x  \0   f   o   o  \n
+x
+x
+0000000   a  \0   x  \n   b  \0   x  \n
 --- cp -n reports a missing source ---
 status 1
+status 1
+link kept
 --- grep -m rejects a word ---
 status 2
 --- grep -L lists inputs with no selected line ---

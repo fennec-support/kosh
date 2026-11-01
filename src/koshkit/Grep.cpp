@@ -897,7 +897,7 @@ class GrepMatcher
 {
 public:
   GrepMatcher(Allocator allocator, const grep_options &options) throws
-      : m_options(options), m_allocator(allocator), m_folded_pattern(allocator),
+      : m_options(options), m_folded_pattern(allocator),
         m_fast_bytes(allocator), m_fast_segments(allocator)
   {
     let const pattern = m_options.pattern;
@@ -985,7 +985,7 @@ public:
       return os::regex_matches(*selected.get(), value);
 
     let const report = os::execute_regex(
-        *selected.get(), os::regex_execution_options{value, m_allocator});
+        *selected.get(), os::regex_execution_options{value, heap_allocator()});
 
     return report.result == os::regex_match_result::Matched &&
            report.spans[0].start == 0 &&
@@ -1045,7 +1045,7 @@ public:
     let const report   = os::execute_regex(
         *selected.get(),
         os::regex_execution_options{
-            value.substring(from), m_allocator,
+            value.substring(from), heap_allocator(),
             from == 0 ? os::regex_start_position::Beginning
                         : os::regex_start_position::NotBeginning});
 
@@ -1486,7 +1486,6 @@ public:
 
 private:
   grep_options                 m_options;
-  Allocator                    m_allocator;
   String                       m_folded_pattern;
   String                       m_fast_bytes;
   ArrayList<grep_fast_segment> m_fast_segments;
@@ -1748,49 +1747,78 @@ private:
            (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z');
   }
 
-  /* the leftmost longest span of every pattern at or after position. -w skips
-     a span that touches a word byte on either side. */
+  /* the first nonempty span of matcher at or after position with no word byte
+     on either side. a span that ends beside a word byte gives way to a shorter
+     span at the same start. */
+  fn
+  find_word_span(GrepMatcher &matcher,
+                 StringView   value,
+                 usize        position,
+                 usize       &out_start,
+                 usize       &out_end) throws -> bool
+  {
+    while (position <= value.length) {
+      usize start = 0;
+      usize end   = 0;
+
+      if (!matcher.find_span(value, position, start, end)) return false;
+
+      if (start == 0 || !is_word_byte(value[start - 1])) {
+        while (end > start) {
+          if (end == value.length || !is_word_byte(value[end])) {
+            out_start = start;
+            out_end   = end;
+
+            return true;
+          }
+
+          usize shorter_start = 0;
+
+          if (!matcher.find_span(value.substring_of_length(0, end - 1), start,
+                                 shorter_start, end) ||
+              shorter_start != start)
+          {
+            break;
+          }
+        }
+      }
+
+      position = start + 1;
+    }
+
+    return false;
+  }
+
+  /* the leftmost longest span of every pattern at or after position. */
   fn
   find_best_span(StringView value,
                  usize      position,
                  usize     &best_start,
                  usize     &best_end) throws -> bool
   {
-    while (position <= value.length) {
-      let did_find = false;
+    let did_find = false;
 
-      for (let &matcher : m_matchers) {
-        usize start = 0;
-        usize end   = 0;
+    for (let &matcher : m_matchers) {
+      usize start = 0;
+      usize end   = 0;
 
-        if (!matcher.find_span(value, position, start, end)) continue;
+      let const is_found =
+          m_options.should_match_word
+              ? find_word_span(matcher, value, position, start, end)
+              : matcher.find_span(value, position, start, end);
 
-        if (!did_find || start < best_start ||
-            (start == best_start && end > best_end))
-        {
-          best_start = start;
-          best_end   = end;
-          did_find   = true;
-        }
+      if (!is_found) continue;
+
+      if (!did_find || start < best_start ||
+          (start == best_start && end > best_end))
+      {
+        best_start = start;
+        best_end   = end;
+        did_find   = true;
       }
-
-      if (!did_find) return false;
-
-      if (!m_options.should_match_word) return true;
-
-      let const is_start_bounded =
-          best_start == 0 || !is_word_byte(value[best_start - 1]);
-      let const is_end_bounded =
-          best_end == value.length || !is_word_byte(value[best_end]);
-
-      if (is_start_bounded && is_end_bounded && best_end != best_start) {
-        return true;
-      }
-
-      position = best_start + 1;
     }
 
-    return false;
+    return did_find;
   }
 
   pure fn

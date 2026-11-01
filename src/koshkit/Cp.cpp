@@ -460,11 +460,14 @@ copy_path(const ExecContext                &ec,
     return did_succeed;
   }
 
-  /* a missing source falls through to the copy, which reports it. */
-  if (should_keep_destination &&
-      (source_status.has_value() || source_path.exists()))
-  {
-    return true;
+  if (should_keep_destination) {
+    if (source_status.has_value() || source_path.exists()) return true;
+
+    throw Error{
+        "Unable to read '" + String{allocator, source}
+          +
+        "': " + os::last_system_error_message()
+    };
   }
 
   let const source_type_letter = source_status.has_value()

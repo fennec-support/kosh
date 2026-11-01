@@ -2397,8 +2397,9 @@ every operand is a file, and a newline separates patterns.
 Options: \f[CR]\-i\f[R] ignore case, \f[CR]\-v\f[R] invert,
 \f[CR]\-x\f[R] match whole lines,
 \f[CR]\-w\f[R]/\f[CR]\-\-word\-regexp\f[R] match bounded by non\-word
-characters, \f[CR]\-o\f[R]/\f[CR]\-\-only\-matching\f[R] print each
-match on its own line, \f[CR]\-A\f[R]/\f[CR]\-\-after\-context\f[R],
+characters, where every non\-ASCII byte is a word character,
+\f[CR]\-o\f[R]/\f[CR]\-\-only\-matching\f[R] print each match on its own
+line, \f[CR]\-A\f[R]/\f[CR]\-\-after\-context\f[R],
 \f[CR]\-B\f[R]/\f[CR]\-\-before\-context\f[R], and
 \f[CR]\-C\f[R]/\f[CR]\-\-context COUNT\f[R] print surrounding lines with
 \f[CR]\-\-\f[R] between groups, \f[CR]\-n\f[R] number lines,
@@ -2826,7 +2827,8 @@ Applies an editing script, from the first operand or from each
 standard input (\f[CR]\-n\f[R]/\f[CR]\-\-quiet\f[R] suppress automatic
 printing, \f[CR]\-z\f[R]/\f[CR]\-\-null\-data\f[R] use NUL\-terminated
 lines, \f[CR]\-i\f[R]/\f[CR]\-\-in\-place\f[R] replace each regular file
-of the current user and group with its result, keep its permission bits,
+of the current user with its result, refuse a file of another group
+whose group and other permission bits differ, keep its permission bits,
 and treat each file as its own input, an address range may end in
 \f[CR]+N\f[R] to cover the next \f[CR]N\f[R] lines,
 \f[CR]\-E\f[R]/\f[CR]\-\-extended\-regexp\f[R] extended regular

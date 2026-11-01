@@ -629,6 +629,8 @@ printf 'foo\n' | "$BIN" -c "koshkit grep -o 'o.'"
 printf 'foo\n' | "$BIN" -c "koshkit grep -w 'fo*$'"
 printf 'foo bar\n' | "$BIN" -c 'koshkit grep -xw foo'
 echo "status $?"
+printf 'a b bc\n' | "$BIN" -c "koshkit grep -w 'a.*b'"
+printf 'foo bar\n' | "$BIN" -c "koshkit grep -wo -e foo -e 'foo b'"
 
 echo "--- grep -B allocates for the lines it holds ---"
 printf 'a\nb\n' | "$BIN" -c 'koshkit grep -B 9000000000000 b'
@@ -645,11 +647,18 @@ printf 'nan\nb\n' | "$BIN" -c "koshkit sed -z 's/\\n/,/g'"
 echo
 printf 'x\0' | "$BIN" -c "koshkit sed -z 'a foo'" | "$BIN_DIR/invoke-koshkit" od -c |
   sed -n 1p
+printf 'a\0b\0' | "$BIN" -c "koshkit sed -z -n 'a x'"
+printf 'a\0b' | "$BIN" -c "koshkit sed -z 'a x'" | "$BIN_DIR/invoke-koshkit" od -c |
+  sed -n 1p
 
 echo "--- cp -n reports a missing source ---"
 printf 'kept\n' > cp_kept
 "$BIN" -c 'koshkit cp -n cp_missing cp_kept' 2>/dev/null
 echo "status $?"
+ln -s cp_kept cp_kept_link
+"$BIN" -c 'koshkit cp -n cp_missing cp_kept_link' 2>/dev/null
+echo "status $?"
+test -L cp_kept_link && echo "link kept"
 
 echo "--- grep -m rejects a word ---"
 "$BIN" -c 'koshkit grep -m many x repeated' 2>/dev/null

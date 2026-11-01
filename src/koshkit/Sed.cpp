@@ -810,7 +810,8 @@ Sed::execute(const ExecContext               &ec,
   let output                            = String{heap_allocator()};
   let did_written_output_end_in_newline = true;
 
-  let const is_in_place = FLAG_SED_IN_PLACE.is_enabled();
+  let const line_delimiter = FLAG_SED_NULL_DATA.is_enabled() ? '\0' : '\n';
+  let const is_in_place    = FLAG_SED_IN_PLACE.is_enabled();
 
   if (is_in_place && operands.count() <= source_start) {
     report_soft_koshkit_error(ec, cxt, "The -i option needs a file operand");
@@ -826,9 +827,10 @@ Sed::execute(const ExecContext               &ec,
     }
 
     ec.print_to_stdout(output);
+    let const last_byte = output[output.length() - 1];
+
     did_written_output_end_in_newline =
-        output[output.length() - 1] ==
-        (FLAG_SED_NULL_DATA.is_enabled() ? '\0' : '\n');
+        last_byte == '\n' || last_byte == line_delimiter;
     output.clear();
   };
 
@@ -923,13 +925,13 @@ Sed::execute(const ExecContext               &ec,
       append_sed_pattern_space(output, line.view(), has_terminating_newline);
     }
 
-    let const line_delimiter = FLAG_SED_NULL_DATA.is_enabled() ? '\0' : '\n';
     let const does_output_end_in_newline =
-        !output.is_empty() ? output[output.length() - 1] == line_delimiter
+        !output.is_empty() ? output[output.length() - 1] == '\n' ||
+                                 output[output.length() - 1] == line_delimiter
                            : did_written_output_end_in_newline;
 
     if (!appended_text.is_empty() && !does_output_end_in_newline) {
-      output += '\n';
+      output += line_delimiter;
     }
 
     output += appended_text.view();
@@ -945,8 +947,9 @@ Sed::execute(const ExecContext               &ec,
   {
     os::file_status in_place_status{};
 
-    /* the replacement belongs to the current user and group, so a file of
-       another user or group keeps its contents. a link or a device is not
+    /* the replacement belongs to the current user and can leave the group of
+       the file, so a file of another user keeps its contents, and so does one
+       whose access depends on its group. a link or a device is not
        rewritten. */
     if (is_in_place) {
       let const effective_user_id  = os::get_effective_user_id();
@@ -957,12 +960,13 @@ Sed::execute(const ExecContext               &ec,
           (effective_user_id >= 0 &&
            static_cast<i64>(in_place_status.owner_id) != effective_user_id) ||
           (effective_group_id >= 0 &&
-           static_cast<i64>(in_place_status.group_id) != effective_group_id))
+           static_cast<i64>(in_place_status.group_id) != effective_group_id &&
+           ((in_place_status.mode >> 3) & 07) != (in_place_status.mode & 07)))
       {
         report_soft_koshkit_error(
             ec, cxt,
-            "The -i option edits only a regular file of the current user and "
-            "group, which excludes '" +
+            "The -i option edits only a regular file of the current user with "
+            "no access that depends on another group, which excludes '" +
                 String{cxt.scratch_allocator(), sources[source_index]} + "'");
         status = 1;
         continue;
