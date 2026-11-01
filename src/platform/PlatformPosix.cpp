@@ -971,7 +971,6 @@ redirect_stdout(os::descriptor target) throws -> os::descriptor
 {
   const os::descriptor saved = fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC, 0);
 
-  /* EBADF means standard output is closed, which restore_stdout() repeats. */
   if (saved == KOSH_INVALID_FD && errno != EBADF) {
     throw Error{"Unable to save standard output: " +
                 last_system_error_message()};

@@ -1027,7 +1027,6 @@ parse_flags(const FlagList                  &flags,
             if (*value_offset == '=') {
               value_offset++;
 
-              /* e.g. cut -d= takes the equals sign as its value. */
               if (*value_offset == '\0' && !is_long) {
                 value_offset--;
               } else if (*value_offset == '\0') {

@@ -66,7 +66,6 @@ Fg::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return done_status;
   }
 
-  /* a forked stage cannot reap the jobs of its parent. */
   if (job->is_inherited) {
     throw ErrorWithDetails{"The job belongs to the parent shell",
                            "Run `fg` outside the pipeline or subshell"};

@@ -1806,9 +1806,6 @@ is_variable_name_byte(char byte) wontthrow -> bool
   return lexer::is_variable_name_start(byte) || (byte >= '0' && byte <= '9');
 }
 
-/* e.g. text = "${y:$x}" holds y at position 2 and x at position 5. a subscript
-   and a substring offset are arithmetic, so a bare name there is a reference.
-   the word of ${x:-x} is text. */
 static fn
 append_braced_variable_spans(StringView              text,
                              StringView              name,

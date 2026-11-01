@@ -3549,7 +3549,6 @@ longest_possible_pattern_match(StringView    pattern,
 
     if (is_extglob_open && (byte == '+' || byte == '!')) return None;
 
-    /* @(a|bb) and ?(a|bb) match at most their longest alternative. */
     if (is_extglob_open) {
       usize depth             = 1;
       usize alternative_start = i + 2;

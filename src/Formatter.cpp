@@ -193,7 +193,6 @@ scan_balanced_region(StringView source,
   position = end.value_or(source.length);
 }
 
-/* a substitution inside double quotes can hold double quotes of its own. */
 fn
 scan_double_quoted_region(StringView source, usize &position) throws
     -> void

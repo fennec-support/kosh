@@ -245,7 +245,6 @@ struct removal_request
     if (known_kind != Path::EntryKind::Unknown)
       return known_kind == Path::EntryKind::Directory;
 
-    /* a trailing separator makes lstat() resolve a symbolic link. */
     usize unslashed_length = path.length;
 
     while (unslashed_length > 1 &&
