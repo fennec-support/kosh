@@ -178,7 +178,7 @@ constexpr static_string_entry<make_function_spec> MAKE_FUNCTION_ENTRIES[] = {
     {SSK("abspath"),    {make_function_kind::Abspath, 0, 1}     },
     {SSK("addprefix"),  {make_function_kind::Addprefix, 2, 2}   },
     {SSK("addsuffix"),  {make_function_kind::Addsuffix, 2, 2}   },
-    {SSK("and"),        {make_function_kind::And, 1, UINT8_MAX} },
+    {SSK("and"),        {make_function_kind::And, 0, UINT8_MAX} },
     {SSK("basename"),   {make_function_kind::Basename, 0, 1}    },
     {SSK("call"),       {make_function_kind::Call, 1, UINT8_MAX}},
     {SSK("dir"),        {make_function_kind::Dir, 0, 1}         },
@@ -194,7 +194,7 @@ constexpr static_string_entry<make_function_spec> MAKE_FUNCTION_ENTRIES[] = {
     {SSK("join"),       {make_function_kind::Join, 2, 2}        },
     {SSK("lastword"),   {make_function_kind::Lastword, 0, 1}    },
     {SSK("notdir"),     {make_function_kind::Notdir, 0, 1}      },
-    {SSK("or"),         {make_function_kind::Or, 1, UINT8_MAX}  },
+    {SSK("or"),         {make_function_kind::Or, 0, UINT8_MAX}  },
     {SSK("origin"),     {make_function_kind::Origin, 0, 1}      },
     {SSK("patsubst"),   {make_function_kind::Patsubst, 3, 3}    },
     {SSK("realpath"),   {make_function_kind::Realpath, 0, 1}    },
@@ -279,6 +279,7 @@ enum class make_variable_origin : u8
   Default,
   Environment,
   File,
+  Override,
   Undefined,
 };
 
@@ -320,7 +321,8 @@ struct make_rule
   explicit make_rule(Allocator allocator)
       : target(allocator), prerequisites(allocator), recipe_lines(allocator),
         variable_assignments(allocator), prerequisite_line_locations(allocator),
-        recipe_line_locations(allocator)
+        recipe_line_locations(allocator), static_stem(allocator),
+        double_colon_rule_indices(allocator)
   {}
 
   String                    target;
@@ -331,6 +333,11 @@ struct make_rule
   /* the makefile line of each recipe line, or an empty location for a
      built-in rule. */
   ArrayList<SourceLocation> recipe_line_locations;
+  String                    static_stem;
+  /* the later double-colon rules of this target, which rule_index omits. */
+  ArrayList<usize> double_colon_rule_indices;
+  bool             is_double_colon{false};
+  bool             should_replace_recipe{false};
 };
 
 struct make_dependent
@@ -534,6 +541,7 @@ substitute_automatic(StringView text,
                      StringView all_prereqs,
                      StringView repeated_prereqs,
                      StringView newer_prereqs,
+                     StringView order_only_prereqs,
                      StringView stem,
                      Allocator  allocator) throws -> String
 {
@@ -547,6 +555,7 @@ substitute_automatic(StringView text,
     case '^': return all_prereqs;
     case '+': return repeated_prereqs;
     case '?': return newer_prereqs;
+    case '|': return order_only_prereqs;
     case '*': return stem;
     default:  return StringView{};
     }
@@ -577,7 +586,7 @@ substitute_automatic(StringView text,
               text.substring_of_length(i + 2, close_position - (i + 2));
 
           if (!contents.is_empty() &&
-              StringView{"@%<^+?*"}.find_character(contents[0]).has_value())
+              StringView{"@%<^+?|*"}.find_character(contents[0]).has_value())
           {
             usize contents_position = 1;
             let   value = String{allocator, do_value_for(contents[0])};
@@ -617,7 +626,7 @@ substitute_automatic(StringView text,
         }
       }
 
-      if (StringView{"@%<^+?*"}.find_character(next).has_value()) {
+      if (StringView{"@%<^+?|*"}.find_character(next).has_value()) {
         out += do_value_for(next);
         i += 2;
         continue;
@@ -662,6 +671,43 @@ split_words(StringView text, Allocator allocator) throws
 
   text.for_each_ascii_whitespace_word(
       [&](StringView word) throws { words.push_managed(word); });
+
+  return words;
+}
+
+/* A backslash keeps a following blank inside the word of a target or
+   prerequisite. Stored prerequisites keep the backslash until the build. */
+static fn
+split_make_file_words(StringView text,
+                      bool       should_unescape,
+                      Allocator  allocator) throws -> ArrayList<String>
+{
+  ArrayList<String> words{allocator};
+  usize             position = 0;
+
+  let const do_is_separator = [&](char c) { return is_blank(c) || c == '\n'; };
+
+  while (position < text.length) {
+    if (do_is_separator(text[position])) {
+      position++;
+      continue;
+    }
+
+    String word{allocator};
+
+    while (position < text.length && !do_is_separator(text[position])) {
+      if (text[position] == '\\' && position + 1 < text.length &&
+          is_blank(text[position + 1]))
+      {
+        if (!should_unescape) word.push('\\');
+        position++;
+      }
+
+      word.push(text[position++]);
+    }
+
+    words.push(steal(word));
+  }
 
   return words;
 }
@@ -956,7 +1002,7 @@ lookup_make_variable(EvalContext    &cxt,
     }
 
   if (name.length == 2 && (name[1] == 'D' || name[1] == 'F') &&
-      StringView{"@%<^+?*"}.find_character(name[0]).has_value())
+      StringView{"@%<^+?|*"}.find_character(name[0]).has_value())
   {
     let const base_name = name.substring_of_length(0, 1);
 
@@ -971,6 +1017,16 @@ lookup_make_variable(EvalContext    &cxt,
 
       return lookup;
     }
+  }
+
+  if (name == StringView{".DEFAULT_GOAL"} &&
+      mk.find_variable_record(name) == nullptr)
+  {
+    lookup.set_borrowed_value(mk.default_goal.view());
+    lookup.origin = make_variable_origin::Default;
+    lookup.flavor = make_variable_flavor::Simple;
+
+    return lookup;
   }
 
   if (name == StringView{"CURDIR"}) {
@@ -1060,6 +1116,7 @@ make_variable_origin_text(make_variable_origin origin) wontthrow -> const char *
   case make_variable_origin::Default:     return "default";
   case make_variable_origin::Environment: return "environment";
   case make_variable_origin::File:        return "file";
+  case make_variable_origin::Override:    return "override";
   case make_variable_origin::Undefined:   return "undefined";
   }
 
@@ -2036,7 +2093,9 @@ evaluate_make_function(EvalContext                 &cxt,
         let const path = Path{word, allocator}.to_absolute();
 
         append_make_word(result, path.view(), has_word);
-      } else if (let path = Path::canonicalize(word); path.has_value()) {
+      } else if (let path = os::canonical_path(Path{word, allocator});
+                 path.has_value())
+      {
         append_make_word(result, path->text().view(), has_word);
       }
     }
@@ -2198,12 +2257,55 @@ expand(EvalContext &cxt,
   return result;
 }
 
+/* position holds a $. The result is the first byte after the reference. */
+static fn
+position_after_make_reference(StringView text, usize position)
+    wontthrow -> usize
+{
+  if (position + 1 >= text.length) return text.length;
+
+  let const opener = text[position + 1];
+
+  if (opener != '(' && opener != '{') return position + 2;
+
+  let const closer = opener == '(' ? ')' : '}';
+  usize     depth  = 1;
+
+  for (usize i = position + 2; i < text.length; i++) {
+    if (text[i] == opener) depth++;
+    if (text[i] == closer && --depth == 0) return i + 1;
+  }
+
+  return text.length;
+}
+
+static fn
+find_outside_make_references(StringView text, char wanted) wontthrow
+    -> Maybe<usize>
+{
+  usize position = 0;
+
+  while (position < text.length) {
+    if (text[position] == wanted) return position;
+    position = text[position] == '$'
+                   ? position_after_make_reference(text, position)
+                   : position + 1;
+  }
+
+  return None;
+}
+
 static fn
 first_colon_not_followed_by_equals(StringView line) wontthrow -> Maybe<usize>
 {
   usize token_start = 0;
 
   for (usize i = 0; i < line.length; i++) {
+    if (line[i] == '$') {
+      i = position_after_make_reference(line, i) - 1;
+      continue;
+    }
+
     if (is_blank(line[i])) {
       token_start = i + 1;
       continue;
@@ -2217,8 +2319,15 @@ first_colon_not_followed_by_equals(StringView line) wontthrow -> Maybe<usize>
       continue;
     }
 
-    if (line[i] == ':' && !(i + 1 < line.length && line[i + 1] == '=')) {
-      return i;
+    if (line[i] == ':') {
+      usize colon_end = i;
+
+      while (colon_end < line.length && line[colon_end] == ':') {
+        colon_end++;
+      }
+
+      if (colon_end == line.length || line[colon_end] != '=') return i;
+      i = colon_end;
     }
   }
 
@@ -2228,7 +2337,7 @@ first_colon_not_followed_by_equals(StringView line) wontthrow -> Maybe<usize>
 static fn
 assignment_variable_name(StringView assignment) wontthrow -> StringView
 {
-  let const equals = assignment.find_character('=');
+  let const equals = find_outside_make_references(assignment, '=');
   if (!equals.has_value()) return StringView{};
 
   let name = assignment.substring_of_length(0, *equals);
@@ -2236,6 +2345,10 @@ assignment_variable_name(StringView assignment) wontthrow -> StringView
   if (!name.is_empty()) {
     let const last = name[name.length - 1];
     if (last == '+' || last == '?' || last == ':') {
+      name = name.substring_of_length(0, name.length - 1);
+    }
+
+    while (last == ':' && !name.is_empty() && name[name.length - 1] == ':') {
       name = name.substring_of_length(0, name.length - 1);
     }
   }
@@ -2280,7 +2393,8 @@ apply_assignment(EvalContext &cxt,
                  makefile    &mk,
                  StringView   name_part,
                  StringView   operator_and_value,
-                 bool         is_command_line = false) throws -> void
+                 bool         is_command_line = false,
+                 bool         is_override     = false) throws -> void
 {
   let  value              = operator_and_value.substring(1);
   char operator_character = ' ';
@@ -2292,16 +2406,31 @@ apply_assignment(EvalContext &cxt,
       operator_character = last;
       name_part = name_part.substring_of_length(0, name_part.length - 1);
     }
+
+    while (last == ':' && !name_part.is_empty() &&
+           name_part[name_part.length - 1] == ':')
+    {
+      name_part = name_part.substring_of_length(0, name_part.length - 1);
+    }
   }
 
   let const name          = trim(name_part);
   let const trimmed_value = trim(value);
 
-  if (!is_command_line && mk.command_variable_names.find(name).has_value()) {
+  if (!is_command_line && !is_override &&
+      mk.command_variable_names.find(name).has_value())
+  {
     return;
   }
 
-  if (is_command_line) mk.command_variable_names.set(name, true);
+  if (is_command_line || is_override) {
+    mk.command_variable_names.set(name, true);
+  }
+
+  let const assignment_origin = is_override ? make_variable_origin::Override
+                                : is_command_line
+                                    ? make_variable_origin::CommandLine
+                                    : make_variable_origin::File;
 
   if (operator_character == '?' && !mk.variable_index.find(name).has_value() &&
       os::get_environment_variable(name).has_value())
@@ -2327,6 +2456,7 @@ apply_assignment(EvalContext &cxt,
 
         if (!variable.value.is_empty()) variable.value += " ";
         variable.value += appended_value.view();
+        if (is_override) variable.origin = assignment_origin;
 
         return;
       }
@@ -2335,9 +2465,7 @@ apply_assignment(EvalContext &cxt,
       mk.variables.push(make_variable{
           String{cxt.scratch_allocator(), name                 },
           String{cxt.scratch_allocator(), appended_value.view()},
-          is_command_line ? make_variable_origin::CommandLine
-                          : make_variable_origin::File,
-          make_variable_flavor::Recursive
+          assignment_origin, make_variable_flavor::Recursive
       });
 
       return;
@@ -2351,8 +2479,7 @@ apply_assignment(EvalContext &cxt,
       make_variable &variable = mk.variables[*current.value()];
 
       variable.value  = steal(value_to_store);
-      variable.origin = is_command_line ? make_variable_origin::CommandLine
-                                        : make_variable_origin::File;
+      variable.origin = assignment_origin;
       variable.flavor = operator_character == ':'
                             ? make_variable_flavor::Simple
                             : make_variable_flavor::Recursive;
@@ -2364,8 +2491,7 @@ apply_assignment(EvalContext &cxt,
     mk.variables.push(make_variable{
         String{cxt.scratch_allocator(), name},
         steal(value_to_store),
-        is_command_line ? make_variable_origin::CommandLine
-                        : make_variable_origin::File,
+        assignment_origin,
         operator_character == ':' ? make_variable_flavor::Simple
                                   : make_variable_flavor::Recursive
     });
@@ -2381,8 +2507,7 @@ apply_assignment(EvalContext &cxt,
   mk.variables.push(make_variable{
       String{cxt.scratch_allocator(), name},
       steal(value_to_store),
-      is_command_line ? make_variable_origin::CommandLine
-                      : make_variable_origin::File,
+      assignment_origin,
       operator_character == ':' ? make_variable_flavor::Simple
                                 : make_variable_flavor::Recursive
   });
@@ -2556,6 +2681,29 @@ split_conditional_arguments_at_top_level_comma(StringView  rest,
     -> bool
 {
   rest = trim(rest);
+  if (!rest.is_empty() && (rest[0] == '"' || rest[0] == '\'')) {
+    let const first_close = rest.substring(1).find_character(rest[0]);
+
+    if (!first_close.has_value()) return false;
+    first = rest.substring_of_length(1, *first_close);
+
+    let const after_first = trim(rest.substring(*first_close + 2));
+
+    if (after_first.is_empty() ||
+        (after_first[0] != '"' && after_first[0] != '\''))
+    {
+      return false;
+    }
+
+    let const second_close =
+        after_first.substring(1).find_character(after_first[0]);
+
+    if (!second_close.has_value()) return false;
+    second = after_first.substring_of_length(1, *second_close);
+
+    return true;
+  }
+
   if (rest.is_empty() || rest[0] != '(') {
     return false;
   }
@@ -2640,13 +2788,19 @@ struct conditional_state
 struct make_source_frame
 {
   explicit make_source_frame(ArrayList<make_logical_line> &&new_lines,
+                             u32                            new_listed_source,
+                             bool  new_should_list_source,
                              usize new_include_depth = 0)
-      : lines(steal(new_lines)), include_depth(new_include_depth)
+      : lines(steal(new_lines)), include_depth(new_include_depth),
+        listed_source_name_index(new_listed_source),
+        should_list_source(new_should_list_source)
   {}
 
   ArrayList<make_logical_line> lines;
   usize                        line_position{0};
   usize                        include_depth{0};
+  u32                          listed_source_name_index;
+  bool                         should_list_source;
 };
 
 static fn
@@ -2670,6 +2824,21 @@ parse_makefile_into(EvalContext                     &cxt,
     return true;
   };
 
+  let const do_append_recipe_line = [&](usize      index,
+                                        StringView text) throws {
+    if (mk.rules[index].should_replace_recipe) {
+      mk.rules[index].should_replace_recipe = false;
+      mk.rules[index].recipe_lines.clear();
+      mk.rules[index].recipe_line_locations.clear();
+      if (!cxt.execution_store().make_shell_suppressed())
+        show_message("make: warning: the target '" + mk.rules[index].target +
+                     "' replaces its earlier recipe");
+    }
+
+    mk.rules[index].recipe_lines.push_managed(text);
+    mk.rules[index].recipe_line_locations.push(mk.active_source_span);
+  };
+
   ArrayList<make_source_frame> source_frames{cxt.scratch_allocator()};
 
   for (usize source_position = sources.count();
@@ -2677,12 +2846,28 @@ parse_makefile_into(EvalContext                     &cxt,
     source_frames.push(make_source_frame{
         join_continuations(sources[source_position - 1].source.view(),
                            sources[source_position - 1].source_name_index,
-                           cxt.scratch_allocator())});
+                           cxt.scratch_allocator()),
+        sources[source_position - 1].source_name_index,
+        first_source_position == 0});
 
   try {
     while (!source_frames.is_empty()) {
       make_source_frame &source_frame =
           source_frames[source_frames.count() - 1];
+
+      if (source_frame.should_list_source) {
+        let listed_assignment = String{cxt.scratch_allocator(), "="};
+
+        source_frame.should_list_source = false;
+        if (let const name =
+                source_name_at(source_frame.listed_source_name_index);
+            name.has_value())
+        {
+          listed_assignment += *name;
+        }
+
+        apply_assignment(cxt, mk, "MAKEFILE_LIST+", listed_assignment.view());
+      }
 
       if (source_frame.line_position == source_frame.lines.count()) {
         source_frames.pop_back();
@@ -2699,8 +2884,7 @@ parse_makefile_into(EvalContext                     &cxt,
       if (!line.is_empty() && line[0] == '\t') {
         if (do_is_active()) {
           for (usize index : current_rule_indices) {
-            mk.rules[index].recipe_lines.push_managed(line.substring(1));
-            mk.rules[index].recipe_line_locations.push(logical.source_span);
+            do_append_recipe_line(index, line.substring(1));
           }
 
           for (usize index : current_pattern_indices) {
@@ -2857,7 +3041,7 @@ parse_makefile_into(EvalContext                     &cxt,
               join_continuations(sources.back().source.view(),
                                  sources.back().source_name_index,
                                  cxt.scratch_allocator()),
-              include_depth});
+              sources.back().source_name_index, true, include_depth});
         }
 
         continue;
@@ -2934,8 +3118,29 @@ parse_makefile_into(EvalContext                     &cxt,
       if (statement.length >= 2 && statement[0] == '$' &&
           (statement[1] == '(' || statement[1] == '{'))
       {
-        expanded_statement = expand(cxt, mk, statement, 0);
-        statement          = trim(expanded_statement.view());
+        let const raw_colon  = first_colon_not_followed_by_equals(statement);
+        let const raw_equals = find_outside_make_references(statement, '=');
+        let const is_assignment =
+            raw_equals.has_value() &&
+            (!raw_colon.has_value() || *raw_equals < *raw_colon);
+
+        if (!is_assignment) {
+          /* an inline recipe waits for its automatic variables. */
+          let const semicolon = find_outside_make_references(statement, ';');
+
+          expanded_statement =
+              expand(cxt, mk,
+                     semicolon.has_value()
+                         ? statement.substring_of_length(0, *semicolon)
+                         : statement,
+                     0);
+          if (semicolon.has_value()) {
+            expanded_statement += statement.substring(*semicolon);
+          }
+
+          statement = trim(expanded_statement.view());
+        }
+
         if (statement.is_empty()) {
           current_rule_indices.clear();
           current_pattern_indices.clear();
@@ -2944,12 +3149,15 @@ parse_makefile_into(EvalContext                     &cxt,
       }
 
       let const colon  = first_colon_not_followed_by_equals(statement);
-      let const equals = statement.find_character('=');
+      let const equals = find_outside_make_references(statement, '=');
       let const is_rule =
           colon.has_value() && (!equals.has_value() || *colon < *equals);
 
       if (is_rule) {
-        let const after_colon = statement.substring(*colon + 1);
+        let const is_double_colon =
+            *colon + 1 < statement.length && statement[*colon + 1] == ':';
+        let const after_colon =
+            statement.substring(*colon + (is_double_colon ? 2 : 1));
 
         let const targets =
             expand(cxt, mk, trim(statement.substring_of_length(0, *colon)), 0);
@@ -2958,8 +3166,8 @@ parse_makefile_into(EvalContext                     &cxt,
           current_rule_indices.clear();
           current_pattern_indices.clear();
 
-          for (let const &target :
-               split_words(targets.view(), cxt.scratch_allocator()))
+          for (let const &target : split_make_file_words(
+                   targets.view(), true, cxt.scratch_allocator()))
           {
             make_rule *rule = mk.find_mutable_rule(target.view());
 
@@ -2978,11 +3186,26 @@ parse_makefile_into(EvalContext                     &cxt,
         let prerequisite_text = after_colon;
         let inline_recipe     = StringView{};
 
-        if (let const semicolon = after_colon.find_character(';');
+        if (let const semicolon =
+                find_outside_make_references(after_colon, ';');
             semicolon.has_value())
         {
           prerequisite_text = after_colon.substring_of_length(0, *semicolon);
           inline_recipe     = trim(after_colon.substring(*semicolon + 1));
+        }
+
+        let const static_colon =
+            first_colon_not_followed_by_equals(prerequisite_text);
+        let static_pattern = make_pattern{cxt.scratch_allocator()};
+
+        if (static_colon.has_value()) {
+          let const pattern_text = expand(
+              cxt, mk,
+              trim(prerequisite_text.substring_of_length(0, *static_colon)), 0);
+
+          static_pattern =
+              parse_make_pattern(pattern_text.view(), cxt.scratch_allocator());
+          prerequisite_text = prerequisite_text.substring(*static_colon + 1);
         }
 
         let const prerequisites = expand(cxt, mk, prerequisite_text, 0);
@@ -2990,8 +3213,8 @@ parse_makefile_into(EvalContext                     &cxt,
         current_rule_indices.clear();
         current_pattern_indices.clear();
 
-        for (let const &target :
-             split_words(targets.view(), cxt.scratch_allocator()))
+        for (let const &target : split_make_file_words(targets.view(), true,
+                                                       cxt.scratch_allocator()))
         {
           let parsed_target =
               parse_make_pattern(target.view(), cxt.scratch_allocator());
@@ -3002,8 +3225,30 @@ parse_makefile_into(EvalContext                     &cxt,
             normalized_target += parsed_target.suffix.view();
           }
 
-          let new_prerequisites =
-              split_words(prerequisites.view(), cxt.scratch_allocator());
+          let new_prerequisites = split_make_file_words(
+              prerequisites.view(), false, cxt.scratch_allocator());
+          let static_stem = String{cxt.scratch_allocator()};
+
+          if (static_colon.has_value()) {
+            let const stem = match_make_pattern(static_pattern, target.view());
+
+            if (!stem.has_value() || !static_pattern.has_wildcard)
+              throw ErrorWithLocation{
+                  mk.active_source_span,
+                  "The target '" + target +
+                      "' does not match the pattern of its static rule"};
+            static_stem = String{cxt.scratch_allocator(), *stem};
+
+            for (String &prerequisite : new_prerequisites) {
+              let substituted = String{cxt.scratch_allocator()};
+
+              append_make_replacement(substituted, prerequisite.view(), *stem,
+                                      true);
+              prerequisite = steal(substituted);
+            }
+
+            parsed_target.has_wildcard = false;
+          }
 
           if (let const special_target =
                   SPECIAL_TARGETS.find(normalized_target.view());
@@ -3094,11 +3339,48 @@ parse_makefile_into(EvalContext                     &cxt,
                     mk.find_mutable_rule(normalized_target.view());
                 existing != nullptr)
             {
+              let const has_content = !existing->prerequisites.is_empty() ||
+                                      !existing->recipe_lines.is_empty();
+
+              if (has_content && existing->is_double_colon != is_double_colon)
+                throw ErrorWithLocation{
+                    mk.active_source_span,
+                    "The target '" + target +
+                        "' mixes single-colon and double-colon rules"};
+              existing->is_double_colon = is_double_colon;
+
+              if (has_content && is_double_colon) {
+                let const existing_index =
+                    static_cast<usize>(existing - mk.rules.begin());
+                make_rule sibling{cxt.scratch_allocator()};
+
+                sibling.target          = normalized_target.clone();
+                sibling.is_double_colon = true;
+
+                for (String &prerequisite : new_prerequisites) {
+                  sibling.prerequisites.push(steal(prerequisite));
+                  sibling.prerequisite_line_locations.push(
+                      mk.active_source_span);
+                }
+
+                mk.rules.push(steal(sibling));
+                mk.rules[existing_index].double_colon_rule_indices.push(
+                    mk.rules.count() - 1);
+                current_rule_indices.push(mk.rules.count() - 1);
+                continue;
+              }
+
               if (is_inference_rule) {
                 existing->prerequisites.clear();
                 existing->prerequisite_line_locations.clear();
                 existing->recipe_lines.clear();
                 existing->recipe_line_locations.clear();
+              } else if (!existing->recipe_lines.is_empty()) {
+                existing->should_replace_recipe = true;
+              }
+
+              if (static_colon.has_value()) {
+                existing->static_stem = steal(static_stem);
               }
 
               for (String &prerequisite : new_prerequisites) {
@@ -3123,7 +3405,9 @@ parse_makefile_into(EvalContext                     &cxt,
           } else {
             make_rule rule{cxt.scratch_allocator()};
 
-            rule.target = steal(normalized_target);
+            rule.target          = steal(normalized_target);
+            rule.static_stem     = steal(static_stem);
+            rule.is_double_colon = is_double_colon;
 
             for (String &prerequisite : new_prerequisites) {
               rule.prerequisites.push(steal(prerequisite));
@@ -3136,8 +3420,7 @@ parse_makefile_into(EvalContext                     &cxt,
 
         if (!inline_recipe.is_empty()) {
           for (usize index : current_rule_indices) {
-            mk.rules[index].recipe_lines.push_managed(inline_recipe);
-            mk.rules[index].recipe_line_locations.push(mk.active_source_span);
+            do_append_recipe_line(index, inline_recipe);
           }
 
           for (usize index : current_pattern_indices) {
@@ -3156,7 +3439,8 @@ parse_makefile_into(EvalContext                     &cxt,
             expand(cxt, mk, statement.substring_of_length(0, *equals), 0);
 
         apply_assignment(cxt, mk, expanded_name.view(),
-                         statement.substring(*equals));
+                         statement.substring(*equals), false,
+                         directive == "override");
         current_rule_indices.clear();
         current_pattern_indices.clear();
       }
@@ -3177,19 +3461,42 @@ parse_makefile(EvalContext                     &cxt,
                const ArrayList<String>         &command_assignments,
                bool                             is_environment_overriding,
                bool                             should_use_builtin_rules,
-               StringView initial_makeflags = {}) throws -> makefile
+               StringView                       initial_makeflags = {},
+               StringView                       command_goals     = {},
+               StringView                       make_level = {}) throws -> makefile
 {
   makefile mk{cxt.scratch_allocator()};
 
   mk.source_documents          = &sources;
   mk.is_environment_overriding = is_environment_overriding;
-  if (!initial_makeflags.is_empty()) {
-    mk.variable_index.set("MAKEFLAGS", mk.variables.count());
+
+  let const do_define_initial_variable = [&](StringView name, StringView value,
+                                             make_variable_origin origin,
+                                             make_variable_flavor flavor) {
+    mk.variable_index.set(name, mk.variables.count());
     mk.variables.push(make_variable{
-        String{cxt.scratch_allocator(), "MAKEFLAGS"      },
-        String{cxt.scratch_allocator(), initial_makeflags},
-        make_variable_origin::Environment, make_variable_flavor::Recursive
+        String{cxt.scratch_allocator(), name },
+        String{cxt.scratch_allocator(), value},
+        origin, flavor
     });
+  };
+
+  if (!initial_makeflags.is_empty()) {
+    do_define_initial_variable("MAKEFLAGS", initial_makeflags,
+                               make_variable_origin::Environment,
+                               make_variable_flavor::Recursive);
+  }
+
+  if (!command_goals.is_empty()) {
+    do_define_initial_variable("MAKECMDGOALS", command_goals,
+                               make_variable_origin::Default,
+                               make_variable_flavor::Simple);
+  }
+
+  if (!make_level.is_empty()) {
+    do_define_initial_variable("MAKELEVEL", make_level,
+                               make_variable_origin::Environment,
+                               make_variable_flavor::Simple);
   }
 
   if (should_use_builtin_rules)
@@ -3304,15 +3611,41 @@ struct make_build_options
   bool should_touch;
 };
 
-static fn
-is_make_target_supplyable(EvalContext     &cxt,
-                          makefile        &mk,
-                          StringView       goal,
-                          StringMap<bool> &active_targets,
-                          StringMap<bool> &supplyability_cache) throws
-    -> bool
+/* A pattern rule applies once along one chain of targets, which bounds a chain
+   through a rule such as %: %.c. A negative answer reached while a rule was
+   excluded is not cached, because that rule can apply on another chain. */
+struct make_supply_search
 {
-  if (active_targets.find(goal).has_value()) return false;
+  explicit make_supply_search(Allocator allocator)
+      : active_targets(allocator), supplyability_cache(allocator),
+        active_pattern_rule_positions(allocator)
+  {}
+
+  StringMap<bool>  active_targets;
+  StringMap<bool>  supplyability_cache;
+  ArrayList<usize> active_pattern_rule_positions;
+  bool             did_exclude_candidate{false};
+};
+
+static fn
+is_make_target_supplyable(EvalContext        &cxt,
+                          makefile           &mk,
+                          StringView          goal,
+                          make_supply_search &search) throws -> bool
+{
+  let &active_targets      = search.active_targets;
+  let &supplyability_cache = search.supplyability_cache;
+
+  if (search.active_pattern_rule_positions.is_empty()) {
+    search.did_exclude_candidate = false;
+  }
+
+  if (active_targets.find(goal).has_value()) {
+    search.did_exclude_candidate = true;
+
+    return false;
+  }
+
   if (let const cached = supplyability_cache.find(goal); cached.has_value())
     return *cached.value();
   if (Path{goal, cxt.scratch_allocator()}.exists() ||
@@ -3326,13 +3659,24 @@ is_make_target_supplyable(EvalContext     &cxt,
   active_targets.set(goal, true);
   defer { active_targets.erase(goal); };
 
-  for (let const &pattern_rule : mk.pattern_rules) {
-    let const &pattern = pattern_rule.rule;
+  for (usize rule_position = 0; rule_position < mk.pattern_rules.count();
+       rule_position++)
+  {
+    let const &pattern_rule = mk.pattern_rules[rule_position];
+    let const &pattern      = pattern_rule.rule;
 
     if (pattern.recipe_lines.is_empty()) continue;
     let const stem = match_make_pattern(pattern_rule.pattern, goal);
 
     if (!stem.has_value()) continue;
+
+    if (search.active_pattern_rule_positions.find(rule_position).has_value()) {
+      search.did_exclude_candidate = true;
+      continue;
+    }
+
+    search.active_pattern_rule_positions.push(rule_position);
+    defer { search.active_pattern_rule_positions.pop_back(); };
 
     bool has_supplyable_prerequisites = true;
 
@@ -3342,11 +3686,9 @@ is_make_target_supplyable(EvalContext     &cxt,
       append_make_replacement(substituted, prerequisite.view(), *stem, true);
       let const expanded = expand(cxt, mk, substituted.view(), 0);
 
-      for (let const &word :
-           split_words(expanded.view(), cxt.scratch_allocator()))
-        if (!is_make_target_supplyable(cxt, mk, word.view(), active_targets,
-                                       supplyability_cache))
-        {
+      for (let const &word : split_make_file_words(expanded.view(), true,
+                                                   cxt.scratch_allocator()))
+        if (!is_make_target_supplyable(cxt, mk, word.view(), search)) {
           has_supplyable_prerequisites = false;
           break;
         }
@@ -3384,16 +3726,14 @@ is_make_target_supplyable(EvalContext     &cxt,
                goal.substring_of_length(0, goal.length - target_suffix.length)};
 
     source += source_suffix_string.view();
-    if (is_make_target_supplyable(cxt, mk, source.view(), active_targets,
-                                  supplyability_cache))
-    {
+    if (is_make_target_supplyable(cxt, mk, source.view(), search)) {
       supplyability_cache.set(goal, true);
 
       return true;
     }
   }
 
-  supplyability_cache.set(goal, false);
+  if (!search.did_exclude_candidate) supplyability_cache.set(goal, false);
 
   return false;
 }
@@ -3444,13 +3784,16 @@ build_target(const ExecContext        &ec,
              const make_dependent     &dependent,
              StringMap<bool>          &active_targets,
              StringMap<bool>          &completed_target_results,
-             const make_build_options &options) throws -> bool
+             const make_build_options &options,
+             Maybe<usize>              double_colon_rule_index = None) throws -> bool
 {
   static constexpr usize MAX_ACTIVE_TARGET_COUNT = 4096;
 
   if (let const result = completed_target_results.find(goal);
-      result.has_value())
+      result.has_value() && !double_colon_rule_index.has_value())
+  {
     return *result.value();
+  }
 
   if (active_targets.count() >= MAX_ACTIVE_TARGET_COUNT ||
       os::is_stack_nearly_exhausted())
@@ -3486,10 +3829,37 @@ build_target(const ExecContext        &ec,
     }
   };
   String           inferred_first_prerequisite{cxt.scratch_allocator()};
-  const make_rule *explicit_rule     = mk.find_rule(goal);
-  bool             has_explicit_rule = explicit_rule != nullptr;
-  String           automatic_target{cxt.scratch_allocator(), goal};
-  String           archive_member{cxt.scratch_allocator()};
+  const make_rule *explicit_rule = double_colon_rule_index.has_value()
+                                       ? &mk.rules[*double_colon_rule_index]
+                                       : mk.find_rule(goal);
+
+  if (explicit_rule != nullptr && !double_colon_rule_index.has_value() &&
+      !explicit_rule->double_colon_rule_indices.is_empty())
+  {
+    ArrayList<usize> rule_indices{cxt.scratch_allocator()};
+
+    rule_indices.push(static_cast<usize>(explicit_rule - mk.rules.begin()));
+
+    for (let const index : explicit_rule->double_colon_rule_indices)
+      rule_indices.push(index);
+
+    bool was_remade = false;
+
+    for (let const index : rule_indices)
+      was_remade |=
+          build_target(ec, cxt, mk, goal, dependent, active_targets,
+                       completed_target_results, options, Maybe<usize>{index});
+
+    completed_target_results.set(goal, was_remade);
+
+    return was_remade;
+  }
+
+  bool has_explicit_rule = explicit_rule != nullptr;
+  bool is_double_colon_rule =
+      explicit_rule != nullptr && explicit_rule->is_double_colon;
+  String automatic_target{cxt.scratch_allocator(), goal};
+  String archive_member{cxt.scratch_allocator()};
 
   if (let const open = goal.find_character('('); open.has_value() &&
                                                  goal.length > *open + 1 &&
@@ -3511,6 +3881,7 @@ build_target(const ExecContext        &ec,
       explicit_prerequisites.push(prerequisite.clone());
 
     do_take_recipe(*explicit_rule);
+    target_stem = explicit_rule->static_stem.clone();
 
     for (let const &assignment : explicit_rule->variable_assignments)
       target_assignments.push(assignment.clone());
@@ -3518,8 +3889,8 @@ build_target(const ExecContext        &ec,
     for (let const &prerequisite : explicit_prerequisites) {
       let const expanded = expand(cxt, mk, prerequisite.view(), 0);
 
-      for (let const &word :
-           split_words(expanded.view(), cxt.scratch_allocator()))
+      for (let const &word : split_make_file_words(expanded.view(), true,
+                                                   cxt.scratch_allocator()))
       {
         let const matches = has_make_glob_character(word.view())
                                 ? expand_make_glob(cxt, word.view())
@@ -3537,11 +3908,10 @@ build_target(const ExecContext        &ec,
   }
 
   if (recipe_lines.is_empty()) {
-    StringMap<bool>   supply_active_targets{cxt.scratch_allocator()};
-    StringMap<bool>   supplyability_cache{cxt.scratch_allocator()};
-    ArrayList<String> inferred_prerequisites{cxt.scratch_allocator()};
-    usize             best_stem_length   = ~usize{0};
-    let const         pattern_rule_count = mk.pattern_rules.count();
+    make_supply_search supply_search{cxt.scratch_allocator()};
+    ArrayList<String>  inferred_prerequisites{cxt.scratch_allocator()};
+    usize              best_stem_length   = ~usize{0};
+    let const          pattern_rule_count = mk.pattern_rules.count();
 
     for (usize pattern_rule_position = 0;
          pattern_rule_position < pattern_rule_count; pattern_rule_position++)
@@ -3587,13 +3957,10 @@ build_target(const ExecContext        &ec,
         append_make_replacement(substituted, prerequisite.view(), *stem, true);
         let const expanded = expand(cxt, mk, substituted.view(), 0);
 
-        for (let const &word :
-             split_words(expanded.view(), cxt.scratch_allocator()))
+        for (let const &word : split_make_file_words(expanded.view(), true,
+                                                     cxt.scratch_allocator()))
         {
-          if (!is_make_target_supplyable(cxt, mk, word.view(),
-                                         supply_active_targets,
-                                         supplyability_cache))
-          {
+          if (!is_make_target_supplyable(cxt, mk, word.view(), supply_search)) {
             is_every_prerequisite_supplyable = false;
             break;
           }
@@ -3676,9 +4043,7 @@ build_target(const ExecContext        &ec,
         let source = String{cxt.scratch_allocator(), stem.view()};
 
         source += source_suffix;
-        if (!is_make_target_supplyable(cxt, mk, source.view(),
-                                       supply_active_targets,
-                                       supplyability_cache))
+        if (!is_make_target_supplyable(cxt, mk, source.view(), supply_search))
           continue;
 
         inferred_first_prerequisite = source.clone();
@@ -3841,9 +4206,10 @@ build_target(const ExecContext        &ec,
   let const was_target_existing = archive_member.is_empty()
                                       ? target_path.exists()
                                       : archive_member_time.has_value();
-  let       is_out_of_date      = options.should_always_make ||
-                       mk.phony_targets.find(goal).has_value() ||
-                       !was_target_existing || has_outdated_prerequisite;
+  let       is_out_of_date =
+      options.should_always_make || mk.phony_targets.find(goal).has_value() ||
+      !was_target_existing || has_outdated_prerequisite ||
+      (is_double_colon_rule && normal_prerequisites.is_empty());
 
   if (!is_out_of_date)
     for (let const &prerequisite : normal_prerequisites) {
@@ -3905,6 +4271,12 @@ build_target(const ExecContext        &ec,
   String          all_prereqs{cxt.scratch_allocator()};
   String          repeated_prereqs{cxt.scratch_allocator()};
   String          newer_prereqs{cxt.scratch_allocator()};
+  String          order_only_prereqs{cxt.scratch_allocator()};
+
+  for (let const &prerequisite : order_only_prerequisites) {
+    if (!order_only_prereqs.is_empty()) order_only_prereqs += ' ';
+    order_only_prereqs += prerequisite.view();
+  }
 
   for (let const &prerequisite : normal_prerequisites) {
     if (!repeated_prereqs.is_empty()) repeated_prereqs += ' ';
@@ -3943,13 +4315,14 @@ build_target(const ExecContext        &ec,
   };
 
   const automatic_variable_value automatic_values[] = {
-      {"@", automatic_target.view()},
-      {"%", archive_member.view()  },
-      {"<", first_prereq           },
-      {"^", all_prereqs.view()     },
-      {"+", repeated_prereqs.view()},
-      {"?", newer_prereqs.view()   },
-      {"*", target_stem.view()     },
+      {"@", automatic_target.view()  },
+      {"%", archive_member.view()    },
+      {"<", first_prereq             },
+      {"^", all_prereqs.view()       },
+      {"+", repeated_prereqs.view()  },
+      {"?", newer_prereqs.view()     },
+      {"|", order_only_prereqs.view()},
+      {"*", target_stem.view()       },
   };
 
   let automatic_snapshots =
@@ -4004,8 +4377,22 @@ build_target(const ExecContext        &ec,
     let const with_autos = substitute_automatic(
         body, automatic_target.view(), archive_member.view(), first_prereq,
         all_prereqs.view(), repeated_prereqs.view(), newer_prereqs.view(),
-        target_stem.view(), cxt.scratch_allocator());
-    let const command = expand(cxt, mk, with_autos.view(), 0);
+        order_only_prereqs.view(), target_stem.view(), cxt.scratch_allocator());
+    let const expanded_command = expand(cxt, mk, with_autos.view(), 0);
+    let       command_view     = expanded_command.view();
+
+    /* a prefix can come from a variable such as $(Q). */
+    while (!command_view.is_empty() &&
+           (command_view[0] == '@' || command_view[0] == '-' ||
+            command_view[0] == '+' || is_blank(command_view[0])))
+    {
+      if (command_view[0] == '@') is_silent = true;
+      if (command_view[0] == '-') should_ignore_errors = true;
+      if (command_view[0] == '+') should_force_run = true;
+      command_view = command_view.substring(1);
+    }
+
+    let const command = String{cxt.scratch_allocator(), command_view};
 
     if (command.is_empty()) continue;
     if ((!is_silent && !is_target_silent) || options.is_dry_run) {
@@ -4698,13 +5085,43 @@ Make::execute(const ExecContext               &ec,
       os::unset_environment_variable("MAKEFLAGS");
   };
 
+  let const previous_make_level = os::get_environment_variable("MAKELEVEL");
+  u64       make_level          = 0;
+
+  if (previous_make_level.has_value()) {
+    let const parsed_level =
+        utils::parse_decimal_u64(previous_make_level->view());
+
+    if (!parsed_level.is_error()) make_level = parsed_level.value();
+  }
+
+  let const make_level_text = String::from(make_level, cxt.scratch_allocator());
+
+  os::set_environment_variable(
+      "MAKELEVEL",
+      String::from(make_level + 1, cxt.scratch_allocator()).view());
+  defer {
+    if (previous_make_level.has_value())
+      os::set_environment_variable("MAKELEVEL", previous_make_level->view());
+    else
+      os::unset_environment_variable("MAKELEVEL");
+  };
+
+  String command_goals{cxt.scratch_allocator()};
+
+  for (let const &goal : goals) {
+    if (!command_goals.is_empty()) command_goals += ' ';
+    command_goals += goal.view();
+  }
+
   Maybe<makefile> parsed_makefile;
 
   try {
     parsed_makefile = parse_makefile(
         cxt, make_sources, command_assignments,
         runtime_flags.is_environment_overriding,
-        !runtime_flags.should_disable_builtin_rules, makeflags.view());
+        !runtime_flags.should_disable_builtin_rules, makeflags.view(),
+        command_goals.view(), make_level_text.view());
   } catch (const ErrorWithLocation &error) {
     for (let const &document : make_sources) {
       if (document.source_name_index != error.location().source_name_index)
@@ -4764,7 +5181,12 @@ Make::execute(const ExecContext               &ec,
       });
 
   for (let const &variable : mk.variables) {
-    if (variable.name.view() == StringView{"MAKEFLAGS"}) continue;
+    if (variable.name.view() == StringView{"MAKEFLAGS"} ||
+        variable.name.view() == StringView{"MAKELEVEL"})
+    {
+      continue;
+    }
+
     if (variable.name.view() == StringView{"SHELL"} &&
         !mk.exported_variable_names.find(variable.name.view()).has_value())
     {
@@ -4943,7 +5365,7 @@ collect_makefile_targets(EvalContext &cxt, const Path &makefile) throws
   for (let const &rule : mk.rules) {
     let const name = rule.target.view();
 
-    if (name.is_empty() || name[0] == '.') {
+    if (name.is_empty() || name[0] == '.' || mk.find_rule(name) != &rule) {
       continue;
     }
 
