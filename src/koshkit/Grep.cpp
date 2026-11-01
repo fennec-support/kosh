@@ -19,7 +19,8 @@
 #include <ctype.h>
 
 KOSHKIT_UTIL_DECL(
-    "[-aEFivrnhcqslx] [--color[=when]] [--one-file-system] "
+    "[-aEFHLiovwrnhcqslx] [-A count] [-B count] [-C count] [-m count] "
+    "[--color[=when]] [--include=glob] [--exclude=glob] [--one-file-system] "
     "[-e pattern] [-f file] [pattern] [file ...]",
     "The grep utility can print the lines of each file that match a pattern.");
 
@@ -561,7 +562,9 @@ collect_recursive_sources(const ExecContext &ec,
                                 operand_device_id);
     else if (kind == Path::EntryKind::Regular &&
              is_grep_file_selected(child_paths[index].filename(), allocator))
+    {
       storage.push(steal(child_paths[index]));
+    }
   }
 }
 
@@ -917,7 +920,9 @@ public:
   compile_pattern() throws -> bool
   {
     let const is_span_regex_needed =
-        m_options.should_highlight && !m_should_use_literal_search;
+        (m_options.should_highlight || m_options.should_match_word ||
+         m_options.should_print_only_matching) &&
+        !m_should_use_literal_search;
 
     if (!is_span_regex_needed && (m_should_use_literal_search ||
                                   (m_has_fast_matcher && !m_has_utf8_wildcard)))
@@ -1517,7 +1522,6 @@ public:
         m_pattern_text(steal(pattern_text)), m_matchers(m_allocator),
         m_recursive_storage(m_allocator), m_sources(m_allocator),
         m_source_line_numbers(m_allocator), m_source_match_counts(m_allocator),
-        m_source_selected_counts(m_allocator),
         m_source_binary_states(m_allocator),
         m_source_operand_indices(m_allocator), m_output(m_allocator),
         m_line(m_allocator), m_before_lines(m_allocator)
@@ -1624,16 +1628,11 @@ public:
     m_should_print_names = !m_options.should_suppress_names &&
                            (m_options.should_force_names ||
                             m_sources.count() > 1 || has_directory_operand);
-    for (usize index = 0; index < m_options.before_context_count; index++) {
-      m_before_lines.push(grep_context_line{String{m_allocator}, 0});
-    }
 
-    if (m_options.has_max_count) {
-      m_source_selected_counts.reserve(m_sources.count());
+    m_source_match_counts.reserve(m_sources.count());
 
-      for (usize index = 0; index < m_sources.count(); index++)
-        m_source_selected_counts.push(0);
-    }
+    for (usize index = 0; index < m_sources.count(); index++)
+      m_source_match_counts.push(0);
 
     if (m_options.should_print_line_numbers) {
       m_source_line_numbers.reserve(m_sources.count());
@@ -1647,15 +1646,6 @@ public:
 
       for (usize index = 0; index < m_sources.count(); index++)
         m_source_binary_states.push(BinaryState::Text);
-    }
-
-    if (m_options.output_mode == grep_output_mode::Count ||
-        m_options.output_mode == grep_output_mode::List)
-    {
-      m_source_match_counts.reserve(m_sources.count());
-
-      for (usize index = 0; index < m_sources.count(); index++)
-        m_source_match_counts.push(0);
     }
   }
 
@@ -1722,15 +1712,21 @@ private:
       return true;
     }
 
+    if (m_options.output_mode == grep_output_mode::Lines &&
+        m_source_binary_states[source_index] == BinaryState::Reported)
+    {
+      return true;
+    }
+
     return m_options.has_max_count &&
-           m_source_selected_counts[source_index] >= m_options.max_count &&
+           m_source_match_counts[source_index] >= m_options.max_count &&
            m_after_remaining_count == 0;
   }
 
   fn
   match_line(StringView value) throws -> bool
   {
-    if (m_options.should_match_word) {
+    if (m_options.should_match_word && !m_options.is_whole_line) {
       usize start = 0;
       usize end   = 0;
 
@@ -1882,12 +1878,14 @@ private:
   {
     if (m_has_printed_context_group && m_has_context_gap) m_output += "--\n";
 
-    let const capacity = m_before_lines.count();
+    let const capacity = m_options.before_context_count;
+    let const oldest_slot =
+        m_before_next_slot >= m_before_line_count
+            ? m_before_next_slot - m_before_line_count
+            : m_before_next_slot + (capacity - m_before_line_count);
 
     for (usize index = 0; index < m_before_line_count; index++) {
-      let const slot =
-          (m_before_next_slot + capacity - m_before_line_count + index) %
-          capacity;
+      let const  slot = (oldest_slot + index) % capacity;
       let const &line = m_before_lines[slot];
 
       append_line_prefix(source, line.number, '-');
@@ -1905,7 +1903,11 @@ private:
                                   StringView source,
                                   StringView value) throws -> void
   {
-    if (m_source_binary_states[source_index] != BinaryState::Text) return;
+    if (m_source_binary_states[source_index] != BinaryState::Text) {
+      m_after_remaining_count = 0;
+
+      return;
+    }
 
     let const number = m_options.should_print_line_numbers
                            ? m_source_line_numbers[source_index]
@@ -1921,7 +1923,7 @@ private:
       return;
     }
 
-    let const capacity = m_before_lines.count();
+    let const capacity = m_options.before_context_count;
 
     if (capacity == 0) {
       m_has_context_gap = true;
@@ -1934,6 +1936,11 @@ private:
     } else {
       m_before_line_count++;
     }
+
+    /* the ring grows to the lines it holds, so a large -B costs no memory on
+       a short input. */
+    if (m_before_next_slot == m_before_lines.count())
+      m_before_lines.push(grep_context_line{String{m_allocator}, 0});
 
     let &line = m_before_lines[m_before_next_slot];
 
@@ -2094,21 +2101,12 @@ private:
   {
     if (is_context_active()) begin_context_source(source_index);
 
-    if (is_match != m_options.should_invert) {
-      if (m_options.has_max_count) {
-        if (m_source_selected_counts[source_index] >= m_options.max_count) {
-          if (m_after_remaining_count != 0) {
-            process_unselected_context_line(source_index, source, value);
-          }
+    let const is_past_limit =
+        m_options.has_max_count &&
+        m_source_match_counts[source_index] >= m_options.max_count;
 
-          m_line.clear();
-
-          return;
-        }
-
-        m_source_selected_counts[source_index]++;
-      }
-
+    if (is_match != m_options.should_invert && !is_past_limit) {
+      m_source_match_counts[source_index]++;
       m_has_any_match = true;
       switch (m_options.output_mode) {
       case grep_output_mode::Lines:
@@ -2149,12 +2147,10 @@ private:
         flush_output_if_full();
         break;
 
-      case grep_output_mode::Count:
-        m_source_match_counts[source_index]++;
-        break;
+      case grep_output_mode::Count: break;
 
       case grep_output_mode::List:
-        if (m_source_match_counts[source_index]++ == 0 &&
+        if (m_source_match_counts[source_index] == 1 &&
             !m_options.should_list_missing)
         {
           append_source_name(source);
@@ -2167,9 +2163,7 @@ private:
       case grep_output_mode::Quiet: break;
       }
     } else if (is_context_active() &&
-               (!m_options.has_max_count ||
-                m_source_selected_counts[source_index] < m_options.max_count ||
-                m_after_remaining_count != 0))
+               (!is_past_limit || m_after_remaining_count != 0))
     {
       process_unselected_context_line(source_index, source, value);
     }
@@ -2420,7 +2414,8 @@ private:
   }
 
   fn
-  print_source_summary(usize source_index, StringView source) throws -> void
+  print_source_summary(usize source_index, StringView source) throws
+      -> void
   {
     if (m_options.output_mode == grep_output_mode::Count)
       print_source_count(source_index, source);
@@ -2446,7 +2441,6 @@ private:
   ArrayList<StringView>            m_sources;
   ArrayList<usize>                 m_source_line_numbers;
   ArrayList<usize>                 m_source_match_counts;
-  ArrayList<u64>                   m_source_selected_counts;
   /* Text until a chunk of the source holds a NUL byte, then Binary until its
      first match reports the binary match warning. */
   enum class BinaryState : u8
@@ -2516,11 +2510,11 @@ Grep::execute(const ExecContext               &ec,
 
   let const do_parse_count = [](StringView text,
                                 u64       &count) throws -> bool {
-    let const parsed = text.to<i64>();
+    let const parsed = parse_strict_count(text);
 
-    if (!text.is_all_decimal_digits() || parsed.is_error()) return false;
+    if (parsed.is_error()) return false;
 
-    count = static_cast<u64>(parsed.value());
+    count = parsed.value();
 
     return true;
   };

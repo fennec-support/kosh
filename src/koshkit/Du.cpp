@@ -152,7 +152,7 @@ du_path_depth(StringView path, StringView target) wontthrow -> u64
   bool is_in_segment = false;
 
   for (usize index = target.length; index < path.length; index++) {
-    if (path[index] == '/') {
+    if (os::is_directory_separator(path[index])) {
       is_in_segment = false;
     } else if (!is_in_segment) {
       is_in_segment = true;
@@ -1027,9 +1027,9 @@ Du::execute(const ExecContext               &ec,
 
   if (FLAG_DU_MAX_DEPTH.is_set()) {
     let const depth_text = FLAG_DU_MAX_DEPTH.value();
-    let const parsed     = depth_text.to<i64>();
+    let const parsed     = parse_strict_count(depth_text);
 
-    if (!depth_text.is_all_decimal_digits() || parsed.is_error()) {
+    if (parsed.is_error()) {
       KOSHKIT_REPORT_ERROR_AT(FLAG_DU_MAX_DEPTH.value_location(),
                               "Invalid depth '" + depth_text + "'",
                               "Pass a count of directory levels");
@@ -1037,7 +1037,7 @@ Du::execute(const ExecContext               &ec,
       return 1;
     }
 
-    max_depth = static_cast<u64>(parsed.value());
+    max_depth = parsed.value();
   }
 
   for (usize index = 0; index < targets.count(); index++) {

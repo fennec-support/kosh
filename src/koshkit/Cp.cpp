@@ -460,7 +460,12 @@ copy_path(const ExecContext                &ec,
     return did_succeed;
   }
 
-  if (should_keep_destination) return true;
+  /* a missing source falls through to the copy, which reports it. */
+  if (should_keep_destination &&
+      (source_status.has_value() || source_path.exists()))
+  {
+    return true;
+  }
 
   let const source_type_letter = source_status.has_value()
                                      ? os::file_type_letter(source_status->mode)

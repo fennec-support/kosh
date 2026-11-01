@@ -1099,13 +1099,36 @@ parse_calendar_date(StringView text, bool is_utc) throws -> Maybe<i64>
     }
   }
 
-  if (month < 1 || month > 12 || day < 1 || day > 31 || hour > 23 ||
-      minute > 59 || second > 60)
+  if (month < 1 || month > 12 || day < 1 || hour > 23 || minute > 59 ||
+      second > 59)
   {
     return None;
   }
 
+  constexpr i32 month_day_counts[] = {31, 28, 31, 30, 31, 30,
+                                      31, 31, 30, 31, 30, 31};
+
   let const full_year = century * 100 + year;
+  let const is_leap_year =
+      full_year % 4 == 0 && (full_year % 100 != 0 || full_year % 400 == 0);
+  let const has_leap_day = month == 2 && is_leap_year;
+
+  if (day > month_day_counts[month - 1] + (has_leap_day ? 1 : 0)) return None;
+
+  if (is_utc) {
+    /* days since 1970-01-01 in the proleptic Gregorian calendar. the shift of
+       one 400 year cycle keeps the year positive for the divisions. */
+    let const shifted_year =
+        static_cast<i64>(month <= 2 ? full_year - 1 : full_year) + 400;
+    let const shifted_month =
+        static_cast<i64>(month > 2 ? month - 3 : month + 9);
+    let const day_of_year = (153 * shifted_month + 2) / 5 + day - 1;
+    let const leap_days =
+        shifted_year / 4 - shifted_year / 100 + shifted_year / 400;
+    let const day_count = shifted_year * 365 + leap_days + day_of_year - 865565;
+
+    return day_count * 86400 + hour * 3600 + minute * 60 + second;
+  }
 
   tm value{};
 
@@ -1116,28 +1139,13 @@ parse_calendar_date(StringView text, bool is_utc) throws -> Maybe<i64>
   value.tm_min   = minute;
   value.tm_sec   = second;
   value.tm_isdst = -1;
-
-  if (is_utc) {
-    /* days since 1970-01-01 in the proleptic Gregorian calendar. */
-    let const shifted_year =
-        static_cast<i64>(month <= 2 ? full_year - 1 : full_year);
-    let const shifted_month =
-        static_cast<i64>(month > 2 ? month - 3 : month + 9);
-    let const day_of_year = (153 * shifted_month + 2) / 5 + day - 1;
-    let const leap_days =
-        shifted_year / 4 - shifted_year / 100 + shifted_year / 400;
-    let const day_count = shifted_year * 365 + leap_days + day_of_year - 719468;
-
-    return day_count * 86400 + hour * 3600 + minute * 60 + second;
-  }
+  /* mktime returns -1 for one second before the epoch as well, so an untouched
+     tm_wday tells failure apart. */
+  value.tm_wday = -1;
 
   let const timestamp = mktime(&value);
 
-  if (timestamp == static_cast<time_t>(-1) || value.tm_mon != month - 1 ||
-      value.tm_mday != day)
-  {
-    return None;
-  }
+  if (timestamp == static_cast<time_t>(-1) && value.tm_wday == -1) return None;
 
   return static_cast<i64>(timestamp);
 }

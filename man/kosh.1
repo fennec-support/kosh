@@ -2282,11 +2282,11 @@ T}@T{
 Prints every file and directory below each path, or the current
 directory, in descending size order without following links
 (\f[CR]\-s\f[R] totals only, \f[CR]\-a\f[R]/\f[CR]\-\-all\f[R] is
-accepted, \f[CR]\-c\f[R]/\f[CR]\-\-total\f[R] add a grand total row,
-\f[CR]\-d\f[R]/\f[CR]\-\-max\-depth COUNT\f[R] limit the listed depth,
-\f[CR]\-h\f[R] human\-readable sizes,
-\f[CR]\-x\f[R]/\f[CR]\-\-one\-file\-system\f[R] skip other file systems,
-\f[CR]\-\-tree\f[R] print a tree,
+accepted, \f[CR]\-c\f[R]/\f[CR]\-\-total\f[R] add a grand total row and
+\f[CR]\-d\f[R]/\f[CR]\-\-max\-depth COUNT\f[R] limit the listed depth
+without \f[CR]\-\-tree\f[R] or \f[CR]\-T\f[R], \f[CR]\-h\f[R]
+human\-readable sizes, \f[CR]\-x\f[R]/\f[CR]\-\-one\-file\-system\f[R]
+skip other file systems, \f[CR]\-\-tree\f[R] print a tree,
 \f[CR]\-T\f[R]/\f[CR]\-\-top\-largest\f[R] print a tree of the largest
 entries and their ancestors).
 Permission errors are warnings and other read failures are errors;
@@ -2412,10 +2412,11 @@ filter file names), \f[CR]\-c\f[R] count, \f[CR]\-l\f[R] list matching
 files (overrides \f[CR]\-c\f[R]),
 \f[CR]\-L\f[R]/\f[CR]\-\-files\-without\-match\f[R] list files with no
 selected line and return \f[CR]0\f[R] when it lists one, \f[CR]\-q\f[R]
-exit \f[CR]0\f[R] at the first match, \f[CR]\-s\f[R] hide
-unreadable\-file messages, \f[CR]\-a\f[R]/\f[CR]\-\-text\f[R] treat a
-file with a NUL byte as text, \f[CR]\-\-color[=WHEN]\f[R]
-(\f[CR]auto\f[R] default, \f[CR]always\f[R], \f[CR]never\f[R]).
+exit \f[CR]0\f[R] at the first match and override \f[CR]\-c\f[R],
+\f[CR]\-l\f[R], and \f[CR]\-L\f[R], \f[CR]\-s\f[R] hide unreadable\-file
+messages, \f[CR]\-a\f[R]/\f[CR]\-\-text\f[R] treat a file with a NUL
+byte as text, \f[CR]\-\-color[=WHEN]\f[R] (\f[CR]auto\f[R] default,
+\f[CR]always\f[R], \f[CR]never\f[R]).
 Returns \f[CR]0\f[R] when a line is selected, \f[CR]1\f[R] when none is,
 and \f[CR]2\f[R] on error.
 In a file with a NUL byte and without \f[CR]\-a\f[R], matches before the
@@ -2825,9 +2826,9 @@ Applies an editing script, from the first operand or from each
 standard input (\f[CR]\-n\f[R]/\f[CR]\-\-quiet\f[R] suppress automatic
 printing, \f[CR]\-z\f[R]/\f[CR]\-\-null\-data\f[R] use NUL\-terminated
 lines, \f[CR]\-i\f[R]/\f[CR]\-\-in\-place\f[R] replace each regular file
-of the current user with its result, keep its permission bits, and treat
-each file as its own input, an address range may end in \f[CR]+N\f[R] to
-cover the next \f[CR]N\f[R] lines,
+of the current user and group with its result, keep its permission bits,
+and treat each file as its own input, an address range may end in
+\f[CR]+N\f[R] to cover the next \f[CR]N\f[R] lines,
 \f[CR]\-E\f[R]/\f[CR]\-\-extended\-regexp\f[R] extended regular
 expressions).
 Commands: \f[CR]s\f[R] with the \f[CR]g\f[R] and \f[CR]p\f[R] flags,
@@ -2836,8 +2837,7 @@ and \f[CR]a\f[R]/\f[CR]i\f[R]/\f[CR]c\f[R] (text on the same line or on
 the next lines after a backslash), with line, \f[CR]$\f[R], and regex
 addresses and ranges.
 Hold space, branch, and block commands are unsupported and return
-\f[CR]1\f[R]; \f[CR]\-i\f[R] is an unknown flag with status
-\f[CR]2\f[R].
+\f[CR]1\f[R].
 T}
 T{
 \f[CR]seq\f[R]

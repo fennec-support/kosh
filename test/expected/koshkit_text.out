@@ -1397,6 +1397,25 @@ status 0
 x
 x
 status 0
+--- grep -m leaves an endless input after a binary match ---
+status 0
+--- grep -o and -w take a regular expression ---
+oo
+foo
+status 1
+--- grep -B allocates for the lines it holds ---
+a
+b
+--- date rejects a day past the end of its month ---
+status 1
+2024-02-29
+-62167219200
+-1
+--- sed -z reads an escaped newline ---
+nan,b,
+0000000   x  \0   f   o   o  \n
+--- cp -n reports a missing source ---
+status 1
 --- grep -m rejects a word ---
 status 2
 --- grep -L lists inputs with no selected line ---

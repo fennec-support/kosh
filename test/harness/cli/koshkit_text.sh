@@ -618,6 +618,39 @@ yes x | "$BIN_DIR/invoke-koshkit" timeout 5 "$BIN" -c \
   'koshkit grep -m 1 -A 1 x'
 echo "status $?"
 
+echo "--- grep -m leaves an endless input after a binary match ---"
+{ printf 'x\0\n'; yes x; } |
+  "$BIN_DIR/invoke-koshkit" timeout 5 "$BIN" -c 'koshkit grep -m 2 x' \
+    >/dev/null 2>&1
+echo "status $?"
+
+echo "--- grep -o and -w take a regular expression ---"
+printf 'foo\n' | "$BIN" -c "koshkit grep -o 'o.'"
+printf 'foo\n' | "$BIN" -c "koshkit grep -w 'fo*$'"
+printf 'foo bar\n' | "$BIN" -c 'koshkit grep -xw foo'
+echo "status $?"
+
+echo "--- grep -B allocates for the lines it holds ---"
+printf 'a\nb\n' | "$BIN" -c 'koshkit grep -B 9000000000000 b'
+
+echo "--- date rejects a day past the end of its month ---"
+TZ=UTC0 "$BIN" -c 'koshkit date -u -d 2026-02-31' 2>/dev/null
+echo "status $?"
+TZ=UTC0 "$BIN" -c 'koshkit date -u -d 2024-02-29 +%F'
+TZ=UTC0 "$BIN" -c 'koshkit date -u -d 0000-01-01 +%s'
+TZ=UTC0 "$BIN" -c "koshkit date -d '1969-12-31 23:59:59' +%s"
+
+echo "--- sed -z reads an escaped newline ---"
+printf 'nan\nb\n' | "$BIN" -c "koshkit sed -z 's/\\n/,/g'"
+echo
+printf 'x\0' | "$BIN" -c "koshkit sed -z 'a foo'" | "$BIN_DIR/invoke-koshkit" od -c |
+  sed -n 1p
+
+echo "--- cp -n reports a missing source ---"
+printf 'kept\n' > cp_kept
+"$BIN" -c 'koshkit cp -n cp_missing cp_kept' 2>/dev/null
+echo "status $?"
+
 echo "--- grep -m rejects a word ---"
 "$BIN" -c 'koshkit grep -m many x repeated' 2>/dev/null
 echo "status $?"

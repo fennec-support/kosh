@@ -78,8 +78,13 @@ Tee::execute(const ExecContext               &ec,
         os::read_fd(ec.in_fd.value_or(KOSH_STDIN), buffer, sizeof(buffer));
 
     if (!read_byte_count.has_value()) {
-      if (os::INTERRUPT_REQUESTED && !FLAG_TEE_IGNORE_INTERRUPTS.is_enabled())
-        return 130;
+      if (os::INTERRUPT_REQUESTED) {
+        if (!FLAG_TEE_IGNORE_INTERRUPTS.is_enabled()) return 130;
+
+        os::INTERRUPT_REQUESTED = 0;
+        continue;
+      }
+
       report_soft_koshkit_error(
           ec, cxt, "Read failed: " + os::last_system_error_message());
 
@@ -153,8 +158,9 @@ Tee::execute(const ExecContext               &ec,
         status = 1;
       }
 
-      if (os::INTERRUPT_REQUESTED && !FLAG_TEE_IGNORE_INTERRUPTS.is_enabled())
+      if (os::INTERRUPT_REQUESTED && !FLAG_TEE_IGNORE_INTERRUPTS.is_enabled()) {
         return 130;
+      }
     }
   }
 

@@ -212,7 +212,7 @@ Touch::execute(const ExecContext               &ec,
 
   /* at this point: operands is not empty, reference_status holds the stat of
      the -r file when -r is given, and requested_time holds the parsed time
-     when -t is given. */
+     when -t or -d is given. */
   let const should_change_access =
       FLAG_TOUCH_ACCESS.is_enabled() || !FLAG_TOUCH_MODIFICATION.is_enabled();
   let const should_change_modification =

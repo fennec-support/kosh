@@ -157,6 +157,8 @@ parse_sed_delimited(StringView script,
 
       if (escaped == delimiter)
         text += escaped;
+      else if (escaped == 'n')
+        text += '\n';
       else {
         text += '\\';
         text += escaped;
@@ -824,7 +826,9 @@ Sed::execute(const ExecContext               &ec,
     }
 
     ec.print_to_stdout(output);
-    did_written_output_end_in_newline = output[output.length() - 1] == '\n';
+    did_written_output_end_in_newline =
+        output[output.length() - 1] ==
+        (FLAG_SED_NULL_DATA.is_enabled() ? '\0' : '\n');
     output.clear();
   };
 
@@ -919,8 +923,9 @@ Sed::execute(const ExecContext               &ec,
       append_sed_pattern_space(output, line.view(), has_terminating_newline);
     }
 
+    let const line_delimiter = FLAG_SED_NULL_DATA.is_enabled() ? '\0' : '\n';
     let const does_output_end_in_newline =
-        !output.is_empty() ? output[output.length() - 1] == '\n'
+        !output.is_empty() ? output[output.length() - 1] == line_delimiter
                            : did_written_output_end_in_newline;
 
     if (!appended_text.is_empty() && !does_output_end_in_newline) {
@@ -940,20 +945,24 @@ Sed::execute(const ExecContext               &ec,
   {
     os::file_status in_place_status{};
 
-    /* the replacement belongs to the current user, so a file of another
-       user keeps its contents. a link or a device is not rewritten. */
+    /* the replacement belongs to the current user and group, so a file of
+       another user or group keeps its contents. a link or a device is not
+       rewritten. */
     if (is_in_place) {
-      let const effective_user_id = os::get_effective_user_id();
+      let const effective_user_id  = os::get_effective_user_id();
+      let const effective_group_id = os::get_effective_group_id();
 
       if (!os::stat_path(sources[source_index], in_place_status) ||
           os::file_type_letter(in_place_status.mode) != '-' ||
           (effective_user_id >= 0 &&
-           static_cast<i64>(in_place_status.owner_id) != effective_user_id))
+           static_cast<i64>(in_place_status.owner_id) != effective_user_id) ||
+          (effective_group_id >= 0 &&
+           static_cast<i64>(in_place_status.group_id) != effective_group_id))
       {
         report_soft_koshkit_error(
             ec, cxt,
-            "The -i option edits only a regular file of the current user, "
-            "which excludes '" +
+            "The -i option edits only a regular file of the current user and "
+            "group, which excludes '" +
                 String{cxt.scratch_allocator(), sources[source_index]} + "'");
         status = 1;
         continue;
@@ -970,26 +979,25 @@ Sed::execute(const ExecContext               &ec,
 
     bool did_read_fail = false;
 
-    /* the opened file must be the file the checks above saw. */
-    os::file_status opened_status{};
-
-    if (is_in_place &&
-        (!os::stat_descriptor(input->descriptor, opened_status) ||
-         opened_status.device_id != in_place_status.device_id ||
-         opened_status.file_id != in_place_status.file_id))
-    {
-      close_input_descriptor(*input);
-      report_soft_koshkit_error(
-          ec, cxt,
-          "The file '" +
-              String{cxt.scratch_allocator(), sources[source_index]} +
-              "' changed before it was opened");
-      status = 1;
-      continue;
-    }
-
     {
       defer { close_input_descriptor(*input); };
+
+      /* the opened file must be the file the checks above saw. */
+      os::file_status opened_status{};
+
+      if (is_in_place &&
+          (!os::stat_descriptor(input->descriptor, opened_status) ||
+           opened_status.device_id != in_place_status.device_id ||
+           opened_status.file_id != in_place_status.file_id))
+      {
+        report_soft_koshkit_error(
+            ec, cxt,
+            "The file '" +
+                String{cxt.scratch_allocator(), sources[source_index]} +
+                "' changed before it was opened");
+        status = 1;
+        continue;
+      }
 
       let reader = utils::BufferedLineReader{
           input->descriptor, heap_allocator(),

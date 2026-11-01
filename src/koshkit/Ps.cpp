@@ -14,7 +14,8 @@
 #include "../util/Utils.hpp"
 #include "../util/UtilsOwnership.hpp"
 
-KOSHKIT_UTIL_DECL("[aux]", "List the running processes.");
+KOSHKIT_UTIL_DECL("[aux] [-eAf] [-o columns] [-p pid] [-C command]",
+                  "List the running processes.");
 
 FLAG(HELP, Bool, '\0', "help", "Display help.");
 FLAG(PS_ALL, Bool, 'a', "", "List every user's processes.");
