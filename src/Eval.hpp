@@ -6078,7 +6078,7 @@ public:
   mustuse fn
   find_loop_redirect_fd(i32                target_fd,
                         const String      &path,
-                        os::file_open_mode mode) const wontthrow
+                        os::file_open_mode mode) const throws
       -> Maybe<os::descriptor>;
   mustuse fn
   retain_loop_redirect_fd(i32                target_fd,
@@ -6208,6 +6208,8 @@ public:
   fn
   guard_expanded_subscript(StringView subscript) throws
       -> DataExpansionScope;
+  pure static fn
+  is_indirect_target(StringView target) wontthrow -> bool;
   fn
   refuse_command_in_data_expansion(StringView kind) const throws
       -> void;

@@ -41,6 +41,21 @@ after
 --- an indirect subscript from data runs no command ---
 status 1
 status 2
+--- an indirect value is a name and not an expression ---
+status 1
+status 2
+--- export -p leaves out names from the environment that are not names ---
+status 2
+--- deep conditionals end in a diagnostic ---
+status 1
+--- a self reference through an element ends ---
+[]
+status 0
+--- loop appends follow the working directory ---
+into_a
+into_b
+--- a loop needs a condition ---
+status 2
 --- local - restores an explicit set -u ---
 after 0
 --- koshconf refuses a configuration that is not a file ---

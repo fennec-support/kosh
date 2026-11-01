@@ -657,6 +657,9 @@ struct conditional_evaluator
   fn
   eval_term() throws -> bool
   {
+    if (os::is_stack_nearly_exhausted())
+      throw Error{"The conditional expression is nested too deeply"};
+
     if (!at_end() && kind_at(pos) == Kind::Not) {
       pos++;
 

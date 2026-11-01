@@ -293,6 +293,9 @@ public:
   bool
   parse_factor() throws
   {
+    if (os::is_stack_nearly_exhausted())
+      fail("The expression is nested too deeply");
+
     if (at_end()) {
       fail("An argument is expected");
 

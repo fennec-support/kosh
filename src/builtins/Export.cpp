@@ -10,6 +10,7 @@
 #include "../Builtin.hpp"
 #include "../CLI.hpp"
 #include "../Eval.hpp"
+#include "../Lexer.hpp"
 #include "../base/Trace.hpp"
 #include "../platform/Platform.hpp"
 #include "../util/Utils.hpp"
@@ -138,6 +139,8 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let out = String{cxt.scratch_allocator()};
 
     for (let const &name : names) {
+      if (!lexer::word_is_variable_name(name.view())) continue;
+
       if (is_declare_form && do_is_array(name.view())) {
         unused(append_variable_declaration(cxt, name.view(), out));
         continue;

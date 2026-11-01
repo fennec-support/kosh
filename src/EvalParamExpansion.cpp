@@ -2045,6 +2045,17 @@ EvalContext::ParameterExpander::expand_indirect() throws -> String
     let const suffix      = body.substring(name_end);
     let       rewritten   = String{m_context.scratch_allocator()};
 
+    if (target.has_value() &&
+        !m_context.variable_store().attributes().is_nameref(name) &&
+        !EvalContext::is_indirect_target(target_name))
+    {
+      throw Error{
+          "'" + String{m_context.scratch_allocator(), target_name}
+            +
+          "' is not a valid variable"
+      };
+    }
+
     rewritten.reserve(target_name.length + suffix.length);
     rewritten.append(target_name);
     rewritten.append(suffix);
@@ -2052,6 +2063,18 @@ EvalContext::ParameterExpander::expand_indirect() throws -> String
     let        suffix_location = SourceLocation{};
     let const *suffix_location_pointer =
         get_location_for(suffix, suffix_location);
+
+    if (let const bracket = target_name.find_character('[');
+        target.has_value() && bracket.has_value())
+    {
+      let const data_scope =
+          m_context.guard_expanded_subscript(target_name.substring_of_length(
+              *bracket + 1, target_name.length - *bracket - 2));
+
+      return m_context.apply_parameter_expansion(
+          rewritten.view(), suffix_location_pointer, target_name.length,
+          m_should_expand_process_substitution, m_quoting);
+    }
 
     return m_context.apply_parameter_expansion(
         rewritten.view(), suffix_location_pointer, target_name.length,

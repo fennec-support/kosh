@@ -1377,8 +1377,18 @@ EvalContext::read_literal_array_element(StringView name,
   let const element_index = static_cast<usize>(index.value());
   let const array         = variable_store().indexed_arrays().find(name);
 
-  if (!array.has_value())
-    return element_index == 0 ? get_variable_value(name) : None;
+  if (!array.has_value()) {
+    if (element_index != 0) return None;
+
+    if (os::is_stack_nearly_exhausted()) {
+      warn_circular_nameref(name);
+
+      return None;
+    }
+
+    return get_variable_value(name);
+  }
+
   if (element_index < array->count()) return (*array.value())[element_index];
 
   let const key = sparse_array_key(name, element_index, scratch_allocator());

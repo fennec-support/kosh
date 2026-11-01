@@ -288,6 +288,12 @@ resolve_selector_program_or_report_why_it_cannot_run(
     koshka::EvalContext &context) throws
     -> koshka::ErrorOr<koshka::Path>
 {
+  if (context.runtime_state().option_is_enabled(
+          koshka::shell_option_id::Restricted))
+  {
+    return koshka::Error{"A restricted shell cannot run a tab selector"};
+  }
+
   let const configured = context.get_variable_value(SELECTOR_COMMAND_VARIABLE);
   if (configured.has_value() && configured->is_empty()) {
     return koshka::Error{SELECTOR_COMMAND_VARIABLE +
@@ -860,6 +866,15 @@ run_line_editor(koshka::EvalContext &context,
 {
   if (!::itl_g_is_active) return false;
   if (!koshka::os::shell_has_controlling_terminal()) return false;
+
+  if (context.runtime_state().option_is_enabled(
+          koshka::shell_option_id::Restricted))
+  {
+    report_selector_failure_above_repainted_prompt(
+        "A restricted shell cannot run an editor", LINE_EDITOR_NOTE, true);
+
+    return false;
+  }
 
   let       words    = get_line_editor_words(context);
   let const resolved = context.program_resolver().search(

@@ -161,7 +161,7 @@ Parser::parse_while_or_until(loop_kind kind) throws -> Command *
       token_kind_mask(Token::Kind::Do, Token::Kind::Done));
   ASSERT(do_token != nullptr);
 
-  if (do_token->kind() != Token::Kind::Do) {
+  if (do_token->kind() != Token::Kind::Do || condition->is_dummy()) {
     /* a 'done' in place of 'do' closes this loop. */
     if (do_token->kind() == Token::Kind::Done) m_open_closers.pop_back();
 

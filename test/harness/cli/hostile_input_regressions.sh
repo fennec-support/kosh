@@ -90,6 +90,39 @@ echo "status $?"
 ls marker 2>/dev/null
 echo "status $?"
 
+echo "--- an indirect value is a name and not an expression ---"
+"$BIN" --mood bash --no-diagnostics -c \
+  'v="u:-\$(touch injected)"; echo "${!v-d}"' 2>/dev/null
+echo "status $?"
+ls injected 2>/dev/null
+echo "status $?"
+
+echo "--- export -p leaves out names from the environment that are not names ---"
+env 'bad$(touch exported)=1' "$BIN" --mood bash --no-diagnostics \
+  -c 'eval "$(export -p)"' 2>/dev/null
+ls exported 2>/dev/null
+echo "status $?"
+
+echo "--- deep conditionals end in a diagnostic ---"
+awk 'BEGIN { printf "[[ "; for (i = 0; i < 200000; i++) printf "("; printf " a "; for (i = 0; i < 200000; i++) printf ")"; print " ]]" }' > conditional.sh
+"$BIN" --no-diagnostics conditional.sh 2>/dev/null
+echo "status $?"
+
+echo "--- a self reference through an element ends ---"
+"$BIN" --mood bash --no-diagnostics \
+  -c 'declare -n r="r[0]"; echo "[$r]"' 2>/dev/null
+echo "status $?"
+
+echo "--- loop appends follow the working directory ---"
+mkdir into_a into_b
+"$BIN" --no-diagnostics \
+  -c 'for d in into_a into_b; do cd "$d"; echo "$d" >> out; cd ..; done'
+"$BIN" -c 'koshkit cat into_a/out into_b/out'
+
+echo "--- a loop needs a condition ---"
+timeout 10 "$BIN" --no-diagnostics -c 'while do :; done' 2>/dev/null
+echo "status $?"
+
 echo "--- local - restores an explicit set -u ---"
 "$BIN" -c 'f() { local -; set -u; }; f; [ -z "$unset_operand" ]; echo "after $?"'
 

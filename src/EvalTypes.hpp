@@ -1270,6 +1270,7 @@ struct loop_redirect_fd
   os::file_open_mode mode{};
   String             path;
   os::descriptor     fd{};
+  String             directory;
 };
 
 struct loop_redirect_fd_mark

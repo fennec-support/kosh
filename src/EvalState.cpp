@@ -813,12 +813,13 @@ EvalContext::cleanup_loop_redirect_fds(loop_redirect_fd_mark mark) wontthrow
 fn
 EvalContext::find_loop_redirect_fd(i32                target_fd,
                                    const String      &path,
-                                   os::file_open_mode mode) const wontthrow
+                                   os::file_open_mode mode) const throws
     -> Maybe<os::descriptor>
 {
   for (let const &entry : expansion_store().loop_redirect_fds()) {
     if (entry.target_fd == target_fd && entry.mode == mode &&
-        entry.path == path)
+        entry.path == path &&
+        entry.directory.view() == Path::current_directory().text().view())
     {
       return entry.fd;
     }
@@ -837,8 +838,9 @@ EvalContext::retain_loop_redirect_fd(i32                target_fd,
     return false;
 
   expansion_store().loop_redirect_fds().push(loop_redirect_fd{
-      target_fd, mode, String{heap_allocator(), path.view()},
-        fd
+      target_fd, mode, String{heap_allocator(), path.view()                            },
+        fd,
+      String{heap_allocator(), Path::current_directory().text().view()}
   });
 
   return true;
@@ -3545,6 +3547,24 @@ EvalContext::apply_subshell_bootstrap(os::subshell_bootstrap bootstrap)
   bootstrap.release_process_ownership();
 }
 
+pure fn
+EvalContext::is_indirect_target(StringView target) wontthrow -> bool
+{
+  if (target.is_empty()) return false;
+  if (lexer::word_is_variable_name(target)) return true;
+  if (target.is_all_decimal_digits()) return true;
+  if (target.length == 1 &&
+      StringView{"@*#?-$!"}.find_character(target[0]).has_value())
+  {
+    return true;
+  }
+
+  let const bracket = target.find_character('[');
+
+  return bracket.has_value() && target[target.length - 1] == ']' &&
+         lexer::word_is_variable_name(target.substring_of_length(0, *bracket));
+}
+
 fn
 EvalContext::apply_indirect_or_name_listing(StringView body) throws
     -> String
@@ -3613,10 +3633,7 @@ EvalContext::apply_indirect_or_name_listing(StringView body) throws
 
   if ((body == "@" || body == "*") &&
       !variable_store().positional_params().is_empty() &&
-      !lexer::word_is_variable_name(target_view) &&
-      !target_view.is_all_decimal_digits() &&
-      (target_view.length != 1 ||
-       !StringView{"@*#?-$!"}.find_character(target_view[0]).has_value()))
+      !is_indirect_target(target_view))
   {
     throw_script_fatal("'" + String{scratch_allocator(), target_view} +
                        "' is not a valid variable");
