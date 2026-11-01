@@ -1430,3 +1430,22 @@ made/inner
 abcd
 abc
 abcdef
+--- cp -t copies every operand into the directory ---
+long1
+long2
+status 1
+--- touch -d sets dates and rejects a bad date ---
+86400
+172801
+259200
+status 1
+--- tee -i copies its input ---
+copied
+copied
+--- sed -z keeps NUL-terminated lines ---
+ a \0 c \0
+--- du -d limits depth and -c adds a total ---
+sizes
+sizes/one
+sizes
+total

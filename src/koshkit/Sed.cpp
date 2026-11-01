@@ -25,6 +25,11 @@ FLAG(SED_EXTENDED,
 FLAG(SED_EXPRESSION, ManyStrings, 'e', "expression", "Add an editing script.");
 FLAG(SED_FILE, ManyStrings, 'f', "file", "Read an editing script from a file.");
 FLAG(SED_QUIET, Bool, 'n', "quiet", "Suppress automatic printing.");
+FLAG(SED_NULL_DATA,
+     Bool,
+     'z',
+     "null-data",
+     "Read and write lines that end in a NUL byte.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Sed);
 
@@ -583,7 +588,9 @@ append_sed_pattern_space(String    &output,
                          bool       has_terminating_newline) throws -> void
 {
   output += line;
-  if (has_terminating_newline) output += '\n';
+  if (has_terminating_newline) {
+    output += FLAG_SED_NULL_DATA.is_enabled() ? '\0' : '\n';
+  }
 }
 
 /* memory: result is allocated from allocator and moved into line when a
@@ -894,7 +901,9 @@ Sed::execute(const ExecContext               &ec,
 
     defer { close_input_descriptor(*input); };
 
-    let reader = utils::BufferedLineReader{input->descriptor, heap_allocator()};
+    let reader = utils::BufferedLineReader{
+        input->descriptor, heap_allocator(),
+        FLAG_SED_NULL_DATA.is_enabled() ? '\0' : '\n'};
 
     while (!should_quit) {
       let const result = reader.next();

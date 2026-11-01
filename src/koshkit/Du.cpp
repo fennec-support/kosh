@@ -19,7 +19,7 @@
 #include "../base/Trace.hpp"
 #include "../util/Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-shxT] [--tree] [path ...]",
+KOSHKIT_UTIL_DECL("[-acshxT] [-d depth] [--tree] [path ...]",
                   "The du utility can print the disk usage of each path.");
 
 FLAG(DU_SUMMARY, Bool, 's', "", "Print only the total for each path.");
@@ -28,6 +28,13 @@ FLAG(DU_HUMAN,
      'h',
      "",
      "Print the size in a human-readable form such as 4.0K or 1.5M.");
+FLAG(DU_ALL, Bool, 'a', "all", "List files as well as directories.");
+FLAG(DU_GRAND_TOTAL, Bool, 'c', "total", "Add a row with the grand total.");
+FLAG(DU_MAX_DEPTH,
+     String,
+     'd',
+     "max-depth",
+     "List only entries at most this many levels below each path.");
 FLAG(DU_TREE,
      Bool,
      '\0',
@@ -56,6 +63,7 @@ struct du_output_row
   u64                     byte_count;
   String                  path;
   colors::file_entry_type type;
+  bool                    is_beyond_max_depth;
 };
 
 struct du_sort_key
@@ -136,6 +144,25 @@ struct du_tree_request
   bool                              should_color;
 };
 
+/* the count of path components of path below target. */
+static pure fn
+du_path_depth(StringView path, StringView target) wontthrow -> u64
+{
+  u64  depth         = 0;
+  bool is_in_segment = false;
+
+  for (usize index = target.length; index < path.length; index++) {
+    if (path[index] == '/') {
+      is_in_segment = false;
+    } else if (!is_in_segment) {
+      is_in_segment = true;
+      depth++;
+    }
+  }
+
+  return depth;
+}
+
 fn
 append_output_row(ArrayList<du_output_row> &rows,
                   u64                       size,
@@ -145,7 +172,7 @@ append_output_row(ArrayList<du_output_row> &rows,
 {
   rows.push({
       size, String{allocator, path},
-       type
+       type, false
   });
 }
 
@@ -991,10 +1018,27 @@ Du::execute(const ExecContext               &ec,
 
   output_rows.reserve(targets.count());
 
-  let  seen_links      = HashSet{allocator};
-  i32  status          = 0;
-  bool has_failure     = false;
-  bool was_interrupted = false;
+  let  seen_links       = HashSet{allocator};
+  i32  status           = 0;
+  bool has_failure      = false;
+  bool was_interrupted  = false;
+  u64  grand_byte_count = 0;
+  u64  max_depth        = 0;
+
+  if (FLAG_DU_MAX_DEPTH.is_set()) {
+    let const depth_text = FLAG_DU_MAX_DEPTH.value();
+    let const parsed     = depth_text.to<i64>();
+
+    if (!depth_text.is_all_decimal_digits() || parsed.is_error()) {
+      KOSHKIT_REPORT_ERROR_AT(FLAG_DU_MAX_DEPTH.value_location(),
+                              "Invalid depth '" + depth_text + "'",
+                              "Pass a count of directory levels");
+
+      return 1;
+    }
+
+    max_depth = static_cast<u64>(parsed.value());
+  }
 
   for (usize index = 0; index < targets.count(); index++) {
     let const &target = targets[index];
@@ -1025,10 +1069,30 @@ Du::execute(const ExecContext               &ec,
           allocator);
     }
 
+    if (total.has_value() && total->should_emit) {
+      grand_byte_count += total->byte_count;
+    }
+
+    if (FLAG_DU_MAX_DEPTH.is_set()) {
+      for (usize row_index = first_row_index; row_index < output_rows.count();
+           row_index++)
+      {
+        let &row = output_rows[row_index];
+
+        row.is_beyond_max_depth =
+            du_path_depth(row.path.view(), target.view()) > max_depth;
+      }
+    }
+
     if (is_tree && output_rows.count() != first_row_index) {
       operand_spans.push(du_operand_span{
           index, first_row_index, output_rows.count() - first_row_index});
     }
+  }
+
+  if (FLAG_DU_GRAND_TOTAL.is_enabled() && !is_tree) {
+    append_output_row(output_rows, grand_byte_count, "total",
+                      colors::file_entry_type_of_mode(0), allocator);
   }
 
   if (is_tree) {
@@ -1092,6 +1156,8 @@ Du::execute(const ExecContext               &ec,
 
   for (usize row_index = 0; row_index < output_rows.count(); row_index++) {
     let const &row = output_rows[row_index];
+
+    if (row.is_beyond_max_depth) continue;
 
     collected_output_order.push(du_sort_key{
         row.byte_count,

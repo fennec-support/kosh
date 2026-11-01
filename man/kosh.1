@@ -2206,7 +2206,9 @@ T}@T{
 Copies files and trees (\f[CR]\-r\f[R]/\f[CR]\-R\f[R] recurse,
 \f[CR]\-f\f[R], \f[CR]\-i\f[R],
 \f[CR]\-n\f[R]/\f[CR]\-\-no\-clobber\f[R] skip a source whose
-destination exists, \f[CR]\-p\f[R], \f[CR]\-v\f[R], \f[CR]\-L\f[R]
+destination exists,
+\f[CR]\-t\f[R]/\f[CR]\-\-target\-directory DIRECTORY\f[R] copy every
+operand into a directory, \f[CR]\-p\f[R], \f[CR]\-v\f[R], \f[CR]\-L\f[R]
 follow every link, \f[CR]\-H\f[R] follow links on the command line only,
 \f[CR]\-P\f[R] follow none,
 \f[CR]\-x\f[R]/\f[CR]\-\-one\-file\-system\f[R] copy a directory on
@@ -2279,7 +2281,10 @@ T{
 T}@T{
 Prints every file and directory below each path, or the current
 directory, in descending size order without following links
-(\f[CR]\-s\f[R] totals only, \f[CR]\-h\f[R] human\-readable sizes,
+(\f[CR]\-s\f[R] totals only, \f[CR]\-a\f[R]/\f[CR]\-\-all\f[R] is
+accepted, \f[CR]\-c\f[R]/\f[CR]\-\-total\f[R] add a grand total row,
+\f[CR]\-d\f[R]/\f[CR]\-\-max\-depth COUNT\f[R] limit the listed depth,
+\f[CR]\-h\f[R] human\-readable sizes,
 \f[CR]\-x\f[R]/\f[CR]\-\-one\-file\-system\f[R] skip other file systems,
 \f[CR]\-\-tree\f[R] print a tree,
 \f[CR]\-T\f[R]/\f[CR]\-\-top\-largest\f[R] print a tree of the largest
@@ -2818,8 +2823,9 @@ Applies an editing script, from the first operand or from each
 \f[CR]\-e\f[R]/\f[CR]\-\-expression\f[R] and
 \f[CR]\-f\f[R]/\f[CR]\-\-file\f[R], to the lines of each file or
 standard input (\f[CR]\-n\f[R]/\f[CR]\-\-quiet\f[R] suppress automatic
-printing, \f[CR]\-E\f[R]/\f[CR]\-\-extended\-regexp\f[R] extended
-regular expressions).
+printing, \f[CR]\-z\f[R]/\f[CR]\-\-null\-data\f[R] use NUL\-terminated
+lines, \f[CR]\-E\f[R]/\f[CR]\-\-extended\-regexp\f[R] extended regular
+expressions).
 Commands: \f[CR]s\f[R] with the \f[CR]g\f[R] and \f[CR]p\f[R] flags,
 \f[CR]y\f[R], \f[CR]d\f[R], \f[CR]p\f[R], \f[CR]q\f[R], \f[CR]=\f[R],
 and \f[CR]a\f[R]/\f[CR]i\f[R]/\f[CR]c\f[R] (text on the same line or on
@@ -2935,14 +2941,16 @@ T{
 \f[CR]tee\f[R]
 T}@T{
 Copies standard input to standard output and to files, appending with
-\f[CR]\-a\f[R].
+\f[CR]\-a\f[R] and continuing after an interrupt with \f[CR]\-i\f[R].
 T}
 T{
 \f[CR]touch\f[R]
 T}@T{
 Updates file times (\f[CR]\-a\f[R] access time, \f[CR]\-c\f[R] skip
 missing files, \f[CR]\-m\f[R] modification time, \f[CR]\-r\f[R] copy a
-reference file, \f[CR]\-t\f[R] set a timestamp).
+reference file, \f[CR]\-t\f[R] set a timestamp,
+\f[CR]\-d\f[R]/\f[CR]\-\-date\f[R] set \f[CR]YYYY\-MM\-DD\f[R],
+\f[CR]YYYY\-MM\-DD hh:mm[:ss]\f[R], or \f[CR]\[at]SECONDS\f[R]).
 T}
 T{
 \f[CR]tr\f[R]

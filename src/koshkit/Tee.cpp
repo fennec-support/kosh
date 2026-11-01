@@ -13,11 +13,12 @@
 #include "../Koshkit.hpp"
 
 KOSHKIT_UTIL_DECL(
-    "[-a] [file ...]",
+    "[-ai] [file ...]",
     "Copy standard input to standard output and to each file. The files are "
     "truncated unless -a is given.");
 
 FLAG(TEE_APPEND, Bool, 'a', "", "Append to the files.");
+FLAG(TEE_IGNORE_INTERRUPTS, Bool, 'i', "", "Keep copying after an interrupt.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Tee);
 
@@ -77,7 +78,8 @@ Tee::execute(const ExecContext               &ec,
         os::read_fd(ec.in_fd.value_or(KOSH_STDIN), buffer, sizeof(buffer));
 
     if (!read_byte_count.has_value()) {
-      if (os::INTERRUPT_REQUESTED) return 130;
+      if (os::INTERRUPT_REQUESTED && !FLAG_TEE_IGNORE_INTERRUPTS.is_enabled())
+        return 130;
       report_soft_koshkit_error(
           ec, cxt, "Read failed: " + os::last_system_error_message());
 
@@ -151,7 +153,8 @@ Tee::execute(const ExecContext               &ec,
         status = 1;
       }
 
-      if (os::INTERRUPT_REQUESTED) return 130;
+      if (os::INTERRUPT_REQUESTED && !FLAG_TEE_IGNORE_INTERRUPTS.is_enabled())
+        return 130;
     }
   }
 

@@ -13,13 +13,18 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL("[-fHiLnPpRrvx] source ... destination",
+KOSHKIT_UTIL_DECL("[-fHiLnPpRrvx] [-t directory] source ... [destination]",
                   "The cp utility can copy each source to the destination.");
 
 FLAG(CP_RECURSIVE_R, Bool, 'r', "", "Copy directories and their contents.");
 FLAG(CP_RECURSIVE_UPPER, Bool, 'R', "", "Copy directories and their contents.");
 FLAG(CP_FORCE, Bool, 'f', "", "Remove a destination that cannot be opened.");
 FLAG(CP_INTERACTIVE, Bool, 'i', "", "Ask before overwriting a destination.");
+FLAG(CP_TARGET_DIRECTORY,
+     String,
+     't',
+     "target-directory",
+     "Copy every operand into this directory.");
 FLAG(CP_NO_CLOBBER,
      Bool,
      'n',
@@ -517,7 +522,11 @@ Cp::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
+  let const has_target_directory = FLAG_CP_TARGET_DIRECTORY.is_set();
+
+  if (operands.count() < (has_target_directory ? 1u : 2u)) {
+    return report_usage_error(ec, cxt, args[0].view());
+  }
 
   let const recursive_mode =
       FLAG_CP_RECURSIVE_R.is_enabled() || FLAG_CP_RECURSIVE_UPPER.is_enabled()
@@ -560,9 +569,23 @@ Cp::execute(const ExecContext               &ec,
       FLAG_CP_INTERACTIVE.is_enabled() &&
       (!options.should_force ||
        FLAG_CP_INTERACTIVE.position() > FLAG_CP_FORCE.position());
-  let const destination = operands[operands.count() - 1].view();
+  let const destination = has_target_directory
+                              ? FLAG_CP_TARGET_DIRECTORY.value()
+                              : operands[operands.count() - 1].view();
+  let const source_count =
+      has_target_directory ? operands.count() : operands.count() - 1;
   let const is_destination_directory =
       Path{destination, cxt.scratch_allocator()}.is_directory();
+
+  if (has_target_directory && !is_destination_directory) {
+    throw ErrorWithLocationAndDetails{
+        FLAG_CP_TARGET_DIRECTORY.value_location(),
+        "The destination '" + String{cxt.scratch_allocator(), destination}
+          +
+            "' is not a directory",
+        "Pass an existing directory after -t"
+    };
+  }
 
   if (operands.count() > 2 && !is_destination_directory) {
     throw ErrorWithLocationAndDetails{
@@ -580,7 +603,7 @@ Cp::execute(const ExecContext               &ec,
   ArrayList<cp_directory_identity> active_directories{heap_allocator()};
   i32                              status = 0;
 
-  for (usize i = 0; i + 1 < operands.count(); i++) {
+  for (usize i = 0; i < source_count; i++) {
     let const source = operands[i].view();
     let       target = String{cxt.scratch_allocator(), destination};
 

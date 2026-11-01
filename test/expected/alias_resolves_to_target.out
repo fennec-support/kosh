@@ -8,9 +8,11 @@ mkfifo
 mknod
 == an alias of koshkit completes the flags of its utility:
 --top-largest
+--total
 --tree
 == an alias naming a utility completes its flags after a separator:
 --top-largest
+--total
 --tree
 == a koshkit utility offers no flag of another utility:
 0

@@ -650,3 +650,29 @@ echo "--- mkdir -v prints only created directories ---"
 echo "--- cp -n leaves an existing destination ---"
 "$BIN" -c 'koshkit cp -n long2 long1; koshkit cat long1; echo; koshkit cp -n long2 long3'
 "$BIN" -c 'koshkit cat long3; echo'
+
+echo "--- cp -t copies every operand into the directory ---"
+mkdir -p into
+"$BIN" -c 'koshkit cp -t into long1 long2; koshkit ls into'
+"$BIN" -c 'koshkit cp -t long1 long2' 2>/dev/null
+echo "status $?"
+
+echo "--- touch -d sets dates and rejects a bad date ---"
+"$BIN" -c 'koshkit touch -d @86400 dated; koshkit stat -c %Y dated'
+TZ=UTC "$BIN" -c 'koshkit touch -d "1970-01-03 00:00:01" dated; koshkit stat -c %Y dated'
+TZ=UTC "$BIN" -c 'koshkit touch -d 1970-01-04 dated; koshkit stat -c %Y dated'
+"$BIN" -c 'koshkit touch -d yesterday dated' 2>/dev/null
+echo "status $?"
+
+echo "--- tee -i copies its input ---"
+echo copied | "$BIN" -c 'koshkit tee -i teed'
+"$BIN" -c 'koshkit cat teed'
+
+echo "--- sed -z keeps NUL-terminated lines ---"
+printf 'a\0b\0' | "$BIN" -c 'koshkit sed -z s/b/c/' | od -An -c | tr -s ' '
+
+echo "--- du -d limits depth and -c adds a total ---"
+mkdir -p sizes/one/two
+printf x > sizes/one/two/file
+"$BIN" -c 'koshkit du -a -d 1 sizes' | sed -E 's/^ *[0-9]+ +//' | sort
+"$BIN" -c 'koshkit du -s -c sizes' | sed -E 's/^ *[0-9]+ +//' | sort

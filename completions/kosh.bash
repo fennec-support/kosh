@@ -419,7 +419,7 @@ _koshkit_util_flags ()
     ;;
     cp)
       printf "%s\n" \
-        "-r -R -f -i -n --no-clobber -p -v -H -L -P -x --one-file-system"
+        "-r -R -f -i -t --target-directory -n --no-clobber -p -v -H -L -P -x --one-file-system"
     ;;
     csplit)
       printf "%s\n" "-k --keep-files -f --prefix -n --digits -s --silent"
@@ -443,7 +443,8 @@ _koshkit_util_flags ()
       printf "%s\n" "-z --zero"
     ;;
     du)
-      printf "%s\n" "-s -h --tree -x --one-file-system -T --top-largest"
+      printf "%s\n" \
+        "-s -h -a --all -c --total -d --max-depth --tree -x --one-file-system -T --top-largest"
     ;;
     egrep)
       printf "%s\n" \
@@ -638,7 +639,8 @@ _koshkit_util_flags ()
       printf "%s\n" "-p"
     ;;
     sed)
-      printf "%s\n" "-E --extended-regexp -e --expression -f --file -n --quiet"
+      printf "%s\n" \
+        "-E --extended-regexp -e --expression -f --file -n --quiet -z --null-data"
     ;;
     seq)
       printf "%s\n" "-f --format -s --separator -w --equal-width"
@@ -671,13 +673,13 @@ _koshkit_util_flags ()
         "-n -c -f -F --follow --retry -s --sleep-interval --pid -q --quiet --silent -v --verbose -z --zero-terminated"
     ;;
     tee)
-      printf "%s\n" "-a"
+      printf "%s\n" "-a -i"
     ;;
     timeout)
       printf "%s\n" "-s --signal -k --kill-after -p --preserve-status"
     ;;
     touch)
-      printf "%s\n" "-a -c -m -r -t"
+      printf "%s\n" "-a -c -m -r -t -d --date"
     ;;
     tput)
       printf "%s\n" "-T --terminal"

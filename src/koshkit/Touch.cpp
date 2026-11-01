@@ -13,7 +13,7 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL("[-acm] [-r file | -t time] file ...",
+KOSHKIT_UTIL_DECL("[-acm] [-r file | -t time | -d date] file ...",
                   "Set the access and the modification "
                   "times of each specified file.");
 
@@ -22,6 +22,12 @@ FLAG(TOUCH_NO_CREATE, Bool, 'c', "", "Do not create a file that is missing.");
 FLAG(TOUCH_MODIFICATION, Bool, 'm', "", "Change the modification time.");
 FLAG(TOUCH_REFERENCE, String, 'r', "", "Use the timestamps of this file.");
 FLAG(TOUCH_TIME, String, 't', "", "Use [[CC]YY]MMDDhhmm[.SS].");
+FLAG(TOUCH_DATE,
+     String,
+     'd',
+     "date",
+     "Use YYYY-MM-DD[ hh:mm[:ss]], with T also allowed before the time, or "
+     "@SECONDS.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Touch);
 
@@ -133,6 +139,81 @@ parse_touch_time(StringView text) throws -> Maybe<i64>
   return static_cast<i64>(timestamp);
 }
 
+/* memory: none.
+   time:   O(1). the text holds at most one fixed-length timestamp. */
+static fn
+parse_touch_date(StringView text) throws -> Maybe<i64>
+{
+  if (!text.is_empty() && text[0] == '@') {
+    let const seconds = text.substring(1);
+    let const parsed  = seconds.to<i64>();
+
+    if (!seconds.is_all_decimal_digits() || parsed.is_error()) return None;
+
+    return parsed.value();
+  }
+
+  constexpr usize date_length           = 10;
+  constexpr usize minute_timestamp_size = 16;
+  constexpr usize second_timestamp_size = 19;
+
+  if (text.length != date_length && text.length != minute_timestamp_size &&
+      text.length != second_timestamp_size)
+  {
+    return None;
+  }
+
+  i32 century = 0;
+  i32 year    = 0;
+  i32 month   = 0;
+  i32 day     = 0;
+  i32 hour    = 0;
+  i32 minute  = 0;
+  i32 second  = 0;
+
+  if (!parse_touch_pair(text, 0, century) || !parse_touch_pair(text, 2, year) ||
+      text[4] != '-' || !parse_touch_pair(text, 5, month) || text[7] != '-' ||
+      !parse_touch_pair(text, 8, day))
+  {
+    return None;
+  }
+
+  if (text.length > date_length) {
+    if ((text[10] != ' ' && text[10] != 'T') ||
+        !parse_touch_pair(text, 11, hour) || text[13] != ':' ||
+        !parse_touch_pair(text, 14, minute))
+    {
+      return None;
+    }
+
+    if (text.length == second_timestamp_size &&
+        (text[16] != ':' || !parse_touch_pair(text, 17, second)))
+    {
+      return None;
+    }
+  }
+
+  tm value{};
+
+  value.tm_year  = century * 100 + year - 1900;
+  value.tm_mon   = month - 1;
+  value.tm_mday  = day;
+  value.tm_hour  = hour;
+  value.tm_min   = minute;
+  value.tm_sec   = second;
+  value.tm_isdst = -1;
+
+  let const timestamp = mktime(&value);
+
+  if (timestamp == static_cast<time_t>(-1) || value.tm_mon != month - 1 ||
+      value.tm_mday != day)
+  {
+    return None;
+  }
+
+  return static_cast<i64>(timestamp);
+}
+
 /* memory: each Path uses cxt.scratch_allocator(). stat results stay on the
            stack.
    time:   O(operands). each operand makes a fixed number of syscalls: one
@@ -179,6 +260,25 @@ Touch::execute(const ExecContext               &ec,
           FLAG_TOUCH_TIME.value_location(),
           "Invalid time '" + FLAG_TOUCH_TIME.value() + "'",
           "Use a valid local calendar time in [[CC]YY]MMDDhhmm[.SS] format");
+
+      return 1;
+    }
+  }
+
+  if (FLAG_TOUCH_DATE.is_set()) {
+    if (FLAG_TOUCH_REFERENCE.is_set() || FLAG_TOUCH_TIME.is_set()) {
+      KOSHKIT_REPORT_ERROR_AT(FLAG_TOUCH_DATE.value_location(),
+                              "-d cannot be used with -r or -t");
+
+      return 1;
+    }
+
+    requested_time = parse_touch_date(FLAG_TOUCH_DATE.value());
+    if (!requested_time.has_value()) {
+      KOSHKIT_REPORT_ERROR_AT(
+          FLAG_TOUCH_DATE.value_location(),
+          "Invalid date '" + FLAG_TOUCH_DATE.value() + "'",
+          "Use YYYY-MM-DD, YYYY-MM-DD hh:mm[:ss], or @SECONDS");
 
       return 1;
     }
