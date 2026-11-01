@@ -539,11 +539,19 @@ parse_dockerfile_format(const parser_format_input &input,
     }
 
     let const shell_start = line_start + content_position;
+    let       analysis_source =
+        blanked_comment_source(input.source, shell_start, shell_end);
+    let const has_inner_comment = analysis_source.has_value();
 
-    parser_format_add_fragment(
-        document, input.source, shell_start, shell_end, 4,
-        blanked_comment_source(input.source, shell_start, shell_end),
-        parser_format_codec::Continued, *mood);
+    parser_format_add_fragment(document, input.source, shell_start, shell_end,
+                               4, steal(analysis_source),
+                               parser_format_codec::Continued, *mood);
+
+    /* docker drops these comment lines, and the shell text cannot keep them
+       once the lines join. */
+    if (has_inner_comment && !document.fragments.is_empty()) {
+      document.fragments.back().should_skip_format = true;
+    }
   }
 }
 

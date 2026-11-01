@@ -1237,6 +1237,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
   u32       regex_previous_end        = 0;
   bool      should_pad_pending_line   = false;
   bool      did_join_pending_end      = false;
+  bool      did_end_in_background     = false;
   let       loop_do_join_states       = ArrayList<bool>{heap_allocator()};
   let       pending_fi_counts         = ArrayList<usize>{heap_allocator()};
   let const test_shadow_position      = first_test_shadow_position(pieces);
@@ -1413,6 +1414,12 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
     bool should_suppress_terminator = should_pad_pending_line;
     bool should_suppress_break      = false;
 
+    if (did_end_in_background) {
+      did_end_in_background = false;
+
+      return;
+    }
+
     if (next.kind == format_piece_kind::Word &&
         do_is_bash_join_keyword(next.text))
     {
@@ -1445,7 +1452,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       }
 
       if (operator_kind == format_operator::Pipe ||
-          operator_kind == format_operator::Continuation)
+          operator_kind == format_operator::Continuation || next.text == "&")
       {
         should_suppress_terminator = true;
         should_suppress_break      = true;
@@ -1629,6 +1636,10 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         !pieces[index + 1].is_at_line_start;
     let const is_followed_by_redirection =
         piece_begins_redirection(pieces, index + 1);
+    let const is_followed_by_background =
+        index + 1 < pieces.count() &&
+        pieces[index + 1].kind == format_piece_kind::Operator &&
+        pieces[index + 1].text == "&";
 
     if (piece.kind == format_piece_kind::Word) {
       if (option_wrap_index < option_wrap_positions.count() &&
@@ -1689,10 +1700,11 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           formatted_word.has_value() ? formatted_word->view() : text;
 
       if (is_command_start) is_waiting_for_continued_statement = false;
-      if (has_completed_structural_statement && is_command_start &&
+      if (is_command_start &&
           FORMATTER_COMPOUND_OPENERS.contains(rendered_text))
       {
-        has_completed_structural_statement = false;
+        has_completed_structural_statement  = false;
+        has_continued_declaration_statement = false;
       }
 
       if (rendered_text == "[[") {
@@ -1778,7 +1790,8 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           }
         } else if (!is_followed_by_continuation &&
                    !is_followed_by_inline_comment &&
-                   !(is_compound_terminator && is_followed_by_redirection))
+                   !(is_compound_terminator &&
+                     (is_followed_by_redirection || is_followed_by_background)))
         {
           writer.finish_line();
         }
@@ -1908,8 +1921,9 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
           pieces[index - 2].kind == format_piece_kind::Word &&
           pieces[index - 2].text == "coproc";
 
-      is_waiting_for_continued_statement = false;
-      has_completed_structural_statement = false;
+      is_waiting_for_continued_statement  = false;
+      has_completed_structural_statement  = false;
+      has_continued_declaration_statement = false;
       do_begin_statement(false, false);
       if (!is_bash && !is_coproc_body) {
         writer.finish_line();
@@ -1941,8 +1955,9 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       }
 
       if (!is_command_start) break;
-      is_waiting_for_continued_statement = false;
-      has_completed_structural_statement = false;
+      is_waiting_for_continued_statement  = false;
+      has_completed_structural_statement  = false;
+      has_continued_declaration_statement = false;
       do_begin_statement(false, false);
       writer.append_token(text);
       if (!is_bash) {
@@ -1968,10 +1983,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       }
 
       if (!is_followed_by_continuation && !is_followed_by_inline_comment &&
-          !is_followed_by_redirection &&
-          !(index + 1 < pieces.count() &&
-            pieces[index + 1].kind == format_piece_kind::Operator &&
-            pieces[index + 1].text == "&"))
+          !is_followed_by_redirection && !is_followed_by_background)
       {
         writer.finish_line();
       }
@@ -1979,7 +1991,9 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
       continue;
     case format_operator::CaseTerminator:
       do_begin_statement(false, true);
-      has_completed_structural_statement = false;
+      has_completed_structural_statement  = false;
+      has_continued_declaration_statement = false;
+      is_waiting_for_continued_statement  = false;
       do_finish_command();
       writer.finish_line();
       if (indent >= indent_step_spaces) indent -= indent_step_spaces;
@@ -2033,6 +2047,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
 
       if (is_bash) {
         if (writer.has_line_text()) has_pending_statement_end = true;
+        did_end_in_background = text == "&";
         do_finish_command();
         continue;
       }
@@ -2184,6 +2199,10 @@ validate_formatted_source(StringView         source,
   let parser = Parser{
       Lexer{source, arena, None, mood}
   };
+
+  parser.set_substitution_validation_mode(
+      substitution_validation_mode::Enabled);
+
   let const *ast = parser.construct_ast(errors, nullptr);
 
   if (ast_output != nullptr && errors.is_empty()) {
