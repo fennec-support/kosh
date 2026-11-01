@@ -87,6 +87,7 @@ struct sed_command
   bool   is_negated{false};
   bool   has_second_address{false};
   bool   is_range_active{false};
+  bool   was_line_range_opened{false};
   u64    range_end_line{0};
   char   translation[256]{};
 };
@@ -159,6 +160,8 @@ parse_sed_delimited(StringView script,
         text += escaped;
       else if (escaped == 'n')
         text += '\n';
+      else if (escaped == 't')
+        text += '\t';
       else {
         text += '\\';
         text += escaped;
@@ -170,6 +173,43 @@ parse_sed_delimited(StringView script,
 
   throw SedParseError{position, "Unterminated delimited expression",
                       "Close the expression with the delimiter that opened it"};
+}
+
+static fn
+is_sed_replacement_letter(char byte) wontthrow -> bool
+{
+  return StringView{"ULEulafrvx"}.find_character(byte).has_value();
+}
+
+static fn
+validate_sed_replacement(StringView replacement, usize position) throws
+    -> void
+{
+  for (usize offset = 0; offset + 1 < replacement.length; offset++) {
+    if (replacement[offset] != '\\') continue;
+
+    let const escaped   = replacement[++offset];
+    let const is_letter = (escaped >= 'a' && escaped <= 'z') ||
+                          (escaped >= 'A' && escaped <= 'Z');
+
+    if (is_letter && !is_sed_replacement_letter(escaped))
+      throw SedParseError{
+          position,
+          "Unknown escape '\\" +
+              String{heap_allocator(), StringView{&escaped, 1}}
+              +
+              "' in the replacement",
+          "Write \\\\ for a backslash"
+      };
+    if (escaped == 'x' &&
+        (offset + 1 == replacement.length ||
+         !utils::hex_digit_value(replacement[offset + 1]).has_value()))
+    {
+      throw SedParseError{position,
+                          "The escape \\x in the replacement lacks hex digits",
+                          "Write one or two hex digits after \\x"};
+    }
+  }
 }
 
 static fn
@@ -466,8 +506,12 @@ parse_sed_script(StringView              script,
       let const expression =
           parse_sed_delimited(script, position, delimiter, allocator);
 
+      let const replacement_position = position;
+
       command.replacement =
           parse_sed_delimited(script, position, delimiter, allocator);
+      validate_sed_replacement(command.replacement.view(),
+                               replacement_position);
       command.expression = compile_sed_expression(
           expression.view(), expression_position, regex_mode);
       command.has_expression = true;
@@ -554,8 +598,21 @@ sed_command_matches(sed_command &command,
   if (!command.has_second_address)
     return sed_address_matches(command.address, line, line_number, is_last);
   if (!command.is_range_active) {
-    if (!sed_address_matches(command.address, line, line_number, is_last))
+    /* an earlier command can skip the start line, so a later line opens the
+       range, once. */
+    if (command.address.kind == sed_address_kind::Line) {
+      if (command.was_line_range_opened ||
+          line_number < command.address.line_number)
+      {
+        return false;
+      }
+
+      command.was_line_range_opened = true;
+    } else if (!sed_address_matches(command.address, line, line_number,
+                                    is_last))
+    {
       return false;
+    }
 
     if (command.second_address.kind == sed_address_kind::RelativeCount) {
       command.range_end_line = line_number + command.second_address.line_number;
@@ -592,31 +649,83 @@ append_sed_replacement(String                          &output,
                        const ArrayList<os::regex_span> &spans) throws
     -> void
 {
+  /* the persistent case of \U or \L, and the one-byte case of \u or \l, as
+     'U', 'L', or NUL. */
+  char persistent_case = '\0';
+  char next_byte_case  = '\0';
+
+  let const do_emit = [&](StringView text) throws {
+    for (usize index = 0; index < text.length; index++) {
+      let const selected_case =
+          next_byte_case != '\0' ? next_byte_case : persistent_case;
+      let const value = text[index];
+
+      next_byte_case = '\0';
+      if (selected_case == 'U' && value >= 'a' && value <= 'z') {
+        output += static_cast<char>(value - 'a' + 'A');
+      } else if (selected_case == 'L' && value >= 'A' && value <= 'Z') {
+        output += static_cast<char>(value - 'A' + 'a');
+      } else {
+        output += value;
+      }
+    }
+  };
+
+  let const do_emit_group = [&](usize group) throws {
+    if (group < spans.count() && spans[group].start >= 0) {
+      do_emit(subject.substring_of_length(
+          static_cast<usize>(spans[group].start),
+          static_cast<usize>(spans[group].end - spans[group].start)));
+    }
+  };
+
   for (usize position = 0; position < replacement.length; position++) {
     let const byte = replacement[position];
 
-    if (byte == '&' && !spans.is_empty()) {
-      output += subject.substring_of_length(
-          static_cast<usize>(spans[0].start),
-          static_cast<usize>(spans[0].end - spans[0].start));
+    if (byte == '&') {
+      do_emit_group(0);
     } else if (byte == '\\' && position + 1 < replacement.length) {
       let const escaped = replacement[++position];
 
-      if (escaped >= '1' && escaped <= '9') {
-        let const group = static_cast<usize>(escaped - '0');
+      switch (escaped) {
+      case 'U':
+      case 'L': persistent_case = escaped; break;
+      case 'E': persistent_case = '\0'; break;
+      case 'u': next_byte_case = 'U'; break;
+      case 'l': next_byte_case = 'L'; break;
+      case 'a': do_emit("\a"); break;
+      case 'f': do_emit("\f"); break;
+      case 'n': do_emit("\n"); break;
+      case 'r': do_emit("\r"); break;
+      case 'v': do_emit("\v"); break;
+      case 'x': {
+        u32 value = 0;
 
-        if (group < spans.count() && spans[group].start >= 0) {
-          output += subject.substring_of_length(
-              static_cast<usize>(spans[group].start),
-              static_cast<usize>(spans[group].end - spans[group].start));
+        for (usize digit_count = 0;
+             digit_count < 2 && position + 1 < replacement.length;
+             digit_count++)
+        {
+          let const digit = utils::hex_digit_value(replacement[position + 1]);
+
+          if (!digit.has_value()) break;
+          value = value * 16 + *digit;
+          position++;
         }
-      } else if (escaped == 'n') {
-        output += '\n';
-      } else {
-        output += escaped;
+
+        let const decoded = static_cast<char>(value);
+
+        do_emit(StringView{&decoded, 1});
+        break;
+      }
+      default:
+        if (escaped >= '0' && escaped <= '9') {
+          do_emit_group(static_cast<usize>(escaped - '0'));
+        } else {
+          do_emit(StringView{&escaped, 1});
+        }
       }
     } else {
-      output += byte;
+      do_emit(StringView{&byte, 1});
     }
   }
 }
@@ -1064,7 +1173,8 @@ Sed::execute(const ExecContext               &ec,
     line_number         = 0;
 
     for (let &command : commands) {
-      command.is_range_active = false;
+      command.is_range_active       = false;
+      command.was_line_range_opened = false;
     }
   }
 

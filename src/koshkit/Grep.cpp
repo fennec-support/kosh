@@ -1747,8 +1747,8 @@ private:
            (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z');
   }
 
-  /* the first nonempty span of matcher at or after position with no word byte
-     on either side. a span that ends beside a word byte gives way to a shorter
+  /* the first span of matcher at or after position with no word byte on
+     either side. a span that ends beside a word byte gives way to a shorter
      span at the same start, unless the pattern holds a $, which would match at
      the shortened end. */
   fn
@@ -1765,7 +1765,7 @@ private:
       if (!matcher.find_span(value, position, start, end)) return false;
 
       if (start == 0 || !is_word_byte(value[start - 1])) {
-        while (end > start) {
+        while (true) {
           if (end == value.length || !is_word_byte(value[end])) {
             out_start = start;
             out_end   = end;
@@ -1775,7 +1775,8 @@ private:
 
           usize shorter_start = 0;
 
-          if (matcher.get_pattern().find_character('$').has_value() ||
+          if (end == start ||
+              matcher.get_pattern().find_character('$').has_value() ||
               !matcher.find_span(value.substring_of_length(0, end - 1), start,
                                  shorter_start, end) ||
               shorter_start != start)
