@@ -1334,6 +1334,7 @@ Parser::parse_conditional_command() throws -> Command *
     case Token::Kind::SemicolonAmpersand:
     case Token::Kind::DoubleSemicolonAmpersand:
       do_throw_conditional_syntax_error(t->source_location());
+      break;
 
     default: elements.push({t, {}, Kind::Operand, false}); break;
     }
