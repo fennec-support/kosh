@@ -596,15 +596,17 @@ fn
 write_to_named_temp_file(const Path &directory,
                          StringView  prefix,
                          StringView  content) throws -> Maybe<Path>;
-/* writes contents to a new file beside target, gives it mode, flushes it, and
-   renames it over target, then flushes the directory. POSIX keeps the file
-   descriptor and the directory descriptor until the rename. throws on
-   failure and removes the new file. */
+/* writes contents to a new file beside target, gives it group_id when one is
+   given and POSIX supports it, gives it mode, flushes it, and renames it over
+   target, then flushes the directory. POSIX keeps the file descriptor and the
+   directory descriptor until the rename. throws on failure and removes the
+   new file. */
 fn
 replace_file_beside(const Path &target,
                     StringView  name_prefix,
                     StringView  contents,
-                    u32         mode) throws -> void;
+                    u32         mode,
+                    Maybe<u32>  group_id = None) throws -> void;
 fn
 make_temp_directory(const Path &directory, StringView prefix) throws
     -> Maybe<Path>;

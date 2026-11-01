@@ -8,6 +8,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
 #include "../platform/Platform.hpp"
@@ -156,6 +157,19 @@ ps_cell_text(const os::process_entry &process,
   return String{allocator};
 }
 
+static fn
+ps_state_style(char state) wontthrow -> StringView
+{
+  switch (state) {
+  case 'R': return colors::soft(colors::ansi::GREEN);
+  case 'D': return colors::soft(colors::ansi::YELLOW);
+  case 'T':
+  case 't': return colors::soft(colors::ansi::MAGENTA);
+  case 'Z': return colors::soft(colors::ansi::BOLD_RED);
+  default:  return {};
+  }
+}
+
 /* memory: the table and the cell texts are allocated in allocator.
    time:   one user_name_or_id() call per process with a user column. */
 static fn
@@ -171,7 +185,10 @@ render_ps_columns(const ArrayList<os::process_entry>      &processes,
   table.set_header_visible(!FLAG_PS_NO_HEADERS.is_enabled());
 
   for (let const *spec : columns) {
-    table.add_column(spec->heading, spec->alignment);
+    table.add_column(spec->heading, spec->alignment,
+                     spec->column == ps_column::Pid
+                         ? colors::soft(colors::ansi::BOLD_CYAN)
+                         : StringView{});
   }
 
   for (let const &process : processes) {
@@ -184,14 +201,17 @@ render_ps_columns(const ArrayList<os::process_entry>      &processes,
       texts.push(ps_cell_text(process, spec->column, allocator));
     }
 
-    for (let const &text : texts) {
-      cells.push({text.view(), {}});
+    for (usize index = 0; index < texts.count(); index++) {
+      cells.push(
+          {texts[index].view(), columns[index]->column == ps_column::State
+                                    ? ps_state_style(process.state)
+                                    : StringView{}});
     }
 
     table.add_row(cells);
   }
 
-  output += table.to_string(false, {});
+  output += table.to_string(koshkit_should_color(), {});
 
   return table.get_row_count();
 }
@@ -280,7 +300,12 @@ Ps::execute(const ExecContext               &ec,
     return selection.is_active() && selected_row_count == 0 ? 1 : 0;
   }
 
-  if (!FLAG_PS_NO_HEADERS.is_enabled()) output += "  PID CMD\n";
+  let const should_color = koshkit_should_color();
+
+  if (!FLAG_PS_NO_HEADERS.is_enabled()) {
+    append_report_text(output, "  PID CMD", colors::ansi::BOLD, should_color);
+    output += '\n';
+  }
 
   for (let const &process : processes) {
     if (!selection.has_process(process)) continue;
@@ -290,7 +315,8 @@ Ps::execute(const ExecContext               &ec,
     let const pid = String::from(process.pid, cxt.scratch_allocator());
 
     output.append_repeated(' ', pid.count() < 5 ? 5 - pid.count() : 0);
-    output += pid.view();
+    append_report_text(output, pid.view(),
+                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
     output += ' ';
     output += process.name.view();
     output += '\n';

@@ -951,26 +951,20 @@ Sed::execute(const ExecContext               &ec,
   {
     os::file_status in_place_status{};
 
-    /* the replacement belongs to the current user and can leave the group of
-       the file, so a file of another user keeps its contents, and so does one
-       whose access depends on its group. a link or a device is not
-       rewritten. */
+    /* the replacement belongs to the current user, so a file of another user
+       keeps its contents. a link or a device is not rewritten. */
     if (is_in_place) {
-      let const effective_user_id  = os::get_effective_user_id();
-      let const effective_group_id = os::get_effective_group_id();
+      let const effective_user_id = os::get_effective_user_id();
 
       if (!os::stat_path(sources[source_index], in_place_status) ||
           os::file_type_letter(in_place_status.mode) != '-' ||
           (effective_user_id >= 0 &&
-           static_cast<i64>(in_place_status.owner_id) != effective_user_id) ||
-          (effective_group_id >= 0 &&
-           static_cast<i64>(in_place_status.group_id) != effective_group_id &&
-           ((in_place_status.mode >> 3) & 07) != (in_place_status.mode & 07)))
+           static_cast<i64>(in_place_status.owner_id) != effective_user_id))
       {
         report_soft_koshkit_error(
             ec, cxt,
-            "The -i option edits only a regular file of the current user with "
-            "no access that depends on another group, which excludes '" +
+            "The -i option edits only a regular file of the current user, "
+            "which excludes '" +
                 String{cxt.scratch_allocator(), sources[source_index]} + "'");
         status = 1;
         continue;
@@ -1056,7 +1050,8 @@ Sed::execute(const ExecContext               &ec,
     } else if (!did_read_fail) {
       os::replace_file_beside(Path{sources[source_index], heap_allocator()},
                               ".kosh-sed-", output.view(),
-                              in_place_status.mode & 0777);
+                              in_place_status.mode & 0777,
+                              static_cast<u32>(in_place_status.group_id));
     }
 
     output.clear();

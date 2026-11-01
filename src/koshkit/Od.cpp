@@ -9,6 +9,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -520,6 +521,14 @@ Od::execute(const ExecContext               &ec,
   usize     previous_row_length = 0;
   bool      has_previous_row    = false;
   bool      did_suppress        = false;
+  let const address_style =
+      koshkit_should_color() ? colors::soft(colors::ansi::CYAN) : StringView{};
+
+  let const do_append_address = [&](u64 address) throws -> void {
+    output += address_style;
+    append_od_padded(output, address, false, address_width, '0', address_base);
+    if (!address_style.is_empty()) output += colors::ansi::RESET;
+  };
 
   let const do_emit_row = [&](StringView row,
                               u64        row_offset) throws -> void {
@@ -542,8 +551,7 @@ Od::execute(const ExecContext               &ec,
     for (usize format_index = 0; format_index < format_count; format_index++) {
       if (should_print_address) {
         if (format_index == 0)
-          append_od_padded(output, row_offset, false, address_width, '0',
-                           address_base);
+          do_append_address(row_offset);
         else
           output += "       ";
       }
@@ -694,8 +702,7 @@ Od::execute(const ExecContext               &ec,
     do_emit_row(StringView{row_bytes, row_length},
                 skip_count + dumped_count - row_length);
   if (should_print_address) {
-    append_od_padded(output, skip_count + dumped_count, false, address_width,
-                     '0', address_base);
+    do_append_address(skip_count + dumped_count);
     output += '\n';
   }
 

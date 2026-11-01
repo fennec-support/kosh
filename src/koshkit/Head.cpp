@@ -7,6 +7,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -320,6 +321,7 @@ Head::execute(const ExecContext               &ec,
       FLAG_HEAD_QUIET.position() > FLAG_HEAD_SILENT.position()
           ? FLAG_HEAD_QUIET.position()
           : FLAG_HEAD_SILENT.position();
+  let const should_color = koshkit_should_color();
   let const should_print_headers =
       FLAG_HEAD_VERBOSE.position() > quiet_position ||
       (sources.count() > 1 && quiet_position == 0);
@@ -331,10 +333,15 @@ Head::execute(const ExecContext               &ec,
 
     if (has_printed_any_header) output += '\n';
     has_printed_any_header = true;
-    output += "==> ";
-    output += sources[source_index] == "-" ? StringView{"standard input"}
+
+    let header = String{heap_allocator(), StringView{"==> "}};
+
+    header += sources[source_index] == "-" ? StringView{"standard input"}
                                            : sources[source_index];
-    output += " <==\n";
+    header += " <==";
+    append_report_text(output, header.view(),
+                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
+    output += '\n';
   };
 
   i32 status = 0;

@@ -8,6 +8,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -360,21 +361,37 @@ private:
       target += child_name;
     };
 
-    if (m_actions == nullptr) {
-      do_append_path(m_output);
+    let const do_print_path = [&]() throws -> void {
+      if (!m_should_color) {
+        do_append_path(m_output);
+      } else {
+        os::file_status status{};
+
+        let path = String{m_allocator};
+
+        do_append_path(path);
+        append_report_text(
+            m_output, path.view(),
+            os::stat_path(path.view(), status)
+                ? colors::file_entry_color(
+                      colors::file_entry_type_of_mode(status.mode))
+                : StringView{},
+            true);
+      }
+
       m_output += '\n';
       flush_full_output();
+    };
+
+    if (m_actions == nullptr) {
+      do_print_path();
 
       return;
     }
 
     for (let &action : *m_actions) {
       switch (action.kind) {
-      case find_action_kind::Print:
-        do_append_path(m_output);
-        m_output += '\n';
-        flush_full_output();
-        break;
+      case find_action_kind::Print: do_print_path(); break;
 
       case find_action_kind::PrintNull:
         do_append_path(m_output);
@@ -637,6 +654,7 @@ private:
   String                     &m_output;
   i32                        &m_exit_status;
   Allocator                   m_allocator;
+  bool                        m_should_color{koshkit_should_color()};
   u64                         m_root_device_id{0};
   ArrayList<Path>             m_unknown_paths{heap_allocator()};
   ArrayList<os::file_status>  m_unknown_statuses{heap_allocator()};

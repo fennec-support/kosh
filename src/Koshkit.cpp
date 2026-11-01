@@ -263,8 +263,9 @@ print_environment(const ExecContext &ec, EvalContext &cxt) throws
 {
   cxt.prepare_child_environment();
 
-  let output        = String{cxt.scratch_allocator()};
-  let printed_names = HashSet{cxt.scratch_allocator()};
+  let const should_color  = koshkit_should_color();
+  let       output        = String{cxt.scratch_allocator()};
+  let       printed_names = HashSet{cxt.scratch_allocator()};
 
   for (let const &name : os::environment_names()) {
     let display_name = name.view();
@@ -286,7 +287,8 @@ print_environment(const ExecContext &ec, EvalContext &cxt) throws
 
     let const value = os::get_environment_variable(name.view());
 
-    output += display_name;
+    append_report_text(output, display_name,
+                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
     output += '=';
     if (value.has_value()) output += value->view();
     output += '\n';

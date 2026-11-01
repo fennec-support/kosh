@@ -8,6 +8,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -63,7 +64,7 @@ Df::execute(const ExecContext               &ec,
                    report_table_alignment::Right);
   table.add_column(is_human ? "Use%" : "Capacity",
                    report_table_alignment::Right);
-  table.add_column("Mounted on");
+  table.add_heading("Mounted on");
 
   i32 status = 0;
 
@@ -119,12 +120,15 @@ Df::execute(const ExecContext               &ec,
     cells.push({total_text.view(), {}});
     cells.push({used_text.view(), {}});
     cells.push({available_text.view(), {}});
-    cells.push({capacity_text.view(), {}});
+    cells.push({capacity_text.view(),
+                capacity >= 90   ? colors::soft(colors::ansi::BOLD_RED)
+                : capacity >= 75 ? colors::soft(colors::ansi::YELLOW)
+                                 : colors::soft(colors::ansi::GREEN)});
     cells.push({mounted.target.view(), {}});
     table.add_row(cells);
   }
 
-  ec.print_to_stdout(table.to_string(false, {}));
+  ec.print_to_stdout(table.to_string(koshkit_should_color(), {}));
 
   return status;
 }

@@ -1501,6 +1501,9 @@ first
 --- tee -i copies its input ---
 copied
 copied
+--- sed -i keeps the group of the file ---
+kept
+new
 --- sed -z keeps NUL-terminated lines ---
  a \0 c \0
 --- du -d limits depth and -c adds a total ---

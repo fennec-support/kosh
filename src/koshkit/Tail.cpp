@@ -11,6 +11,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -495,6 +496,7 @@ Tail::execute(const ExecContext               &ec,
       FLAG_TAIL_QUIET.position() > FLAG_TAIL_SILENT.position()
           ? FLAG_TAIL_QUIET.position()
           : FLAG_TAIL_SILENT.position();
+  let const should_color = koshkit_should_color();
   let const should_print_headers =
       FLAG_TAIL_VERBOSE.position() > quiet_position ||
       (sources.count() > 1 && quiet_position == 0);
@@ -511,10 +513,15 @@ Tail::execute(const ExecContext               &ec,
 
     if (last_header_source_index.has_value()) output += '\n';
     last_header_source_index = source_index;
-    output += "==> ";
-    output += sources[source_index] == "-" ? StringView{"standard input"}
+
+    let header = String{heap_allocator(), StringView{"==> "}};
+
+    header += sources[source_index] == "-" ? StringView{"standard input"}
                                            : sources[source_index];
-    output += " <==\n";
+    header += " <==";
+    append_report_text(output, header.view(),
+                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
+    output += '\n';
   };
 
   i32 status = 0;

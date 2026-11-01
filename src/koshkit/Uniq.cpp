@@ -9,6 +9,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -365,6 +366,8 @@ Uniq::execute(const ExecContext               &ec,
     if (output_descriptor.has_value()) os::close_fd(*output_descriptor);
   };
 
+  let const should_color =
+      !output_descriptor.has_value() && koshkit_should_color();
   let  output         = String{cxt.scratch_allocator()};
   bool did_write_fail = false;
   bool has_previous   = false;
@@ -428,8 +431,12 @@ Uniq::execute(const ExecContext               &ec,
 
     if (!should_write) return;
 
-    if (should_show_count)
-      output += count_prefix(match_count + 1, heap_allocator());
+    if (should_show_count) {
+      append_report_text(output,
+                         count_prefix(match_count + 1, heap_allocator()).view(),
+                         colors::soft(colors::ansi::GREEN), should_color);
+    }
+
     do_append(previous.view());
   };
 

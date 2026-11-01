@@ -8,6 +8,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -1305,6 +1306,8 @@ File::execute(const ExecContext               &ec,
     }
   }
 
+  let const should_color = koshkit_should_color();
+
   for (usize operand_position = 0; operand_position < operands.count();
        operand_position++)
   {
@@ -1326,12 +1329,15 @@ File::execute(const ExecContext               &ec,
       if (!should_follow || should_batch_custom_samples ||
           !os::stat_path_following(operand.view(), file_status))
       {
-        let const target      = os::read_symlink(operand.view(), allocator);
-        let       description = operand + ": symbolic link";
+        let const target = os::read_symlink(operand.view(), allocator);
+        let       line   = String{allocator};
 
-        if (target.has_value()) description += " to " + *target;
-        description += '\n';
-        ec.print_to_stdout(description);
+        append_report_text(line, operand.view(), colors::ansi::BOLD,
+                           should_color);
+        line += ": symbolic link";
+        if (target.has_value()) line += " to " + *target;
+        line += '\n';
+        ec.print_to_stdout(line);
         continue;
       }
     }
@@ -1392,7 +1398,13 @@ File::execute(const ExecContext               &ec,
       description += custom_sample_descriptions[operand_position].view();
     }
 
-    ec.print_to_stdout(operand + ": " + description + "\n");
+    let line = String{allocator};
+
+    append_report_text(line, operand.view(), colors::ansi::BOLD, should_color);
+    line += ": ";
+    line += description;
+    line += '\n';
+    ec.print_to_stdout(line);
   }
 
   return was_custom_sampling_interrupted ? 130 : status;

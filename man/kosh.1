@@ -1886,9 +1886,12 @@ confirms, and any other answer or end of input declines.
 .IP \[bu] 2
 \f[B]Catalog and color\f[R] \- \f[CR]koshkit\f[R] with no utility groups
 the catalog under POSIX and Koshka headings.
-Styled reports (\f[CR]cal\f[R], \f[CR]cat\f[R], \f[CR]du\f[R],
-\f[CR]ls\f[R], \f[CR]watch\f[R], \f[CR]meow\f[R], and the
-\f[CR]evil\f[R] and \f[CR]good\f[R] utilities) use color only when
+Styled reports (\f[CR]cal\f[R], \f[CR]cat\f[R], \f[CR]df\f[R],
+\f[CR]du\f[R], \f[CR]env\f[R], \f[CR]file\f[R], \f[CR]find\f[R],
+\f[CR]head\f[R], \f[CR]ls\f[R], \f[CR]nl\f[R], \f[CR]od\f[R],
+\f[CR]printenv\f[R], \f[CR]ps\f[R], \f[CR]tail\f[R], \f[CR]uniq\f[R],
+\f[CR]watch\f[R], \f[CR]wc\f[R], \f[CR]who\f[R], \f[CR]meow\f[R], and
+the \f[CR]evil\f[R] and \f[CR]good\f[R] utilities) use color only when
 output is a terminal, \f[CR]NO_COLOR\f[R] is empty or unset, and
 \f[CR]TERM\f[R] is not \f[CR]dumb\f[R].
 \f[CR]koshkit \-\-color when\f[R] selects \f[CR]always\f[R],
@@ -2827,10 +2830,10 @@ Applies an editing script, from the first operand or from each
 standard input (\f[CR]\-n\f[R]/\f[CR]\-\-quiet\f[R] suppress automatic
 printing, \f[CR]\-z\f[R]/\f[CR]\-\-null\-data\f[R] use NUL\-terminated
 lines, \f[CR]\-i\f[R]/\f[CR]\-\-in\-place\f[R] replace each regular file
-of the current user with its result, refuse a file of another group
-whose group and other permission bits differ, keep its permission bits,
-and treat each file as its own input, an address range may end in
-\f[CR]+N\f[R] to cover the next \f[CR]N\f[R] lines,
+of the current user with its result, keep its group and permission bits,
+leave the file unchanged when the group cannot be kept, and treat each
+file as its own input, an address range may end in \f[CR]+N\f[R] to
+cover the next \f[CR]N\f[R] lines,
 \f[CR]\-E\f[R]/\f[CR]\-\-extended\-regexp\f[R] extended regular
 expressions).
 Commands: \f[CR]s\f[R] with the \f[CR]g\f[R] and \f[CR]p\f[R] flags,

@@ -1440,8 +1440,11 @@ fn
 replace_file_beside(const Path &target,
                     StringView  name_prefix,
                     StringView  contents,
-                    u32         mode) throws -> void
+                    u32         mode,
+                    Maybe<u32>  group_id) throws -> void
 {
+  unused(group_id);
+
   let const directory = target.parent_or_current();
   let const temporary =
       write_to_named_temp_file(directory, name_prefix, contents);

@@ -8,6 +8,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -458,8 +459,18 @@ Wc::execute(const ExecContext               &ec,
     append_counts(output, state.counts, name, field_width, selection);
   }
 
-  if (sources.count() > 1)
-    append_counts(output, totals, StringView{"total"}, field_width, selection);
+  if (sources.count() > 1) {
+    let total_line = String{cxt.scratch_allocator()};
+
+    append_counts(total_line, totals, StringView{"total"}, field_width,
+                  selection);
+    let const total_text = total_line.view();
+
+    append_report_text(output,
+                       total_text.substring_of_length(0, total_text.length - 1),
+                       colors::ansi::BOLD, koshkit_should_color());
+    output += '\n';
+  }
 
   ec.print_to_stdout(output);
 

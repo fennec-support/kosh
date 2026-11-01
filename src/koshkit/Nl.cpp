@@ -8,6 +8,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -129,13 +130,16 @@ append_nl_number(String          &output,
                  i64              number,
                  usize            width,
                  StringView       separator,
-                 nl_number_format format) throws -> void
+                 nl_number_format format,
+                 StringView       style) throws -> void
 {
   char digit_buffer[24];
 
   let digits =
       utils::int_to_text_into(number, digit_buffer, sizeof(digit_buffer));
   let const padding = width > digits.length ? width - digits.length : 0;
+
+  output += style;
 
   /* the zeros of rz go between the sign and the digits. */
   if (format == nl_number_format::Zero && number < 0) {
@@ -148,6 +152,7 @@ append_nl_number(String          &output,
                            padding);
   output += digits;
   if (format == nl_number_format::Left) output.append_repeated(' ', padding);
+  if (!style.is_empty()) output += colors::ansi::RESET;
   output += separator;
 }
 
@@ -311,6 +316,8 @@ Nl::execute(const ExecContext               &ec,
 
   if (delimiter_text.length() == 1) delimiter_text += ':';
 
+  let const number_style =
+      koshkit_should_color() ? colors::soft(colors::ansi::GREEN) : StringView{};
   let const delimiter = delimiter_text.view();
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());
@@ -389,7 +396,7 @@ Nl::execute(const ExecContext               &ec,
         }
 
         append_nl_number(output, number, static_cast<usize>(width_value),
-                         separator, *number_format);
+                         separator, *number_format, number_style);
         has_number_overflowed =
             __builtin_add_overflow(number, increment, &number);
       } else {

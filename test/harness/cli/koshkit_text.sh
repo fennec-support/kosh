@@ -768,6 +768,16 @@ echo "--- tee -i copies its input ---"
 echo copied | "$BIN" -c 'koshkit tee -i teed'
 "$BIN" -c 'koshkit cat teed'
 
+echo "--- sed -i keeps the group of the file ---"
+printf 'old\n' > grouped
+other_group=$(id -G | tr ' ' '\n' | grep -vx "$(id -g)" | head -n 1)
+if [ -n "$other_group" ]; then chgrp "$other_group" grouped; fi
+group_before=$("$BIN" -c 'koshkit stat -c %g grouped')
+"$BIN" -c 'koshkit sed -i s/old/new/ grouped'
+group_after=$("$BIN" -c 'koshkit stat -c %g grouped')
+if [ "$group_before" = "$group_after" ]; then echo kept; fi
+"$BIN" -c 'koshkit cat grouped'
+
 echo "--- sed -z keeps NUL-terminated lines ---"
 printf 'a\0b\0' | "$BIN" -c 'koshkit sed -z s/b/c/' | od -An -c | tr -s ' '
 

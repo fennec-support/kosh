@@ -916,7 +916,8 @@ fn
 replace_file_beside(const Path &target,
                     StringView  name_prefix,
                     StringView  contents,
-                    u32         mode) throws -> void
+                    u32         mode,
+                    Maybe<u32>  group_id) throws -> void
 {
   let const directory = target.parent_or_current();
   let const directory_descriptor =
@@ -953,6 +954,12 @@ replace_file_beside(const Path &target,
 
   if (!write_all(fd, contents.data, contents.count())) {
     do_discard("write the replacement of");
+  }
+
+  if (group_id.has_value() &&
+      ::fchown(fd, static_cast<uid_t>(-1), static_cast<gid_t>(*group_id)) != 0)
+  {
+    do_discard("set the group of");
   }
 
   if (::fchmod(fd, static_cast<mode_t>(mode)) != 0) {

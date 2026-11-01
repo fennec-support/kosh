@@ -8,6 +8,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -111,7 +112,11 @@ Who::execute(const ExecContext               &ec,
       return 0;
     }
 
-    if (FLAG_WHO_HEADING.is_enabled()) output += "NAME LINE TIME\n";
+    if (FLAG_WHO_HEADING.is_enabled()) {
+      append_report_text(output, "NAME LINE TIME", colors::ansi::BOLD,
+                         koshkit_should_color());
+      output += '\n';
+    }
 
     for (let const &session : sessions) {
       output += session.user.view();
