@@ -1074,6 +1074,7 @@ public:
 
   analysis_symbol_records symbol_records;
   ArrayList<String>       completion_variable_names{heap_allocator()};
+  ArrayList<String>       followed_variable_names{heap_allocator()};
   ArrayList<String>       completion_function_names{heap_allocator()};
 
   fn

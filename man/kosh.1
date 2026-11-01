@@ -515,8 +515,12 @@ embedded shell regions of all host formats supported by
 the document directory.
 Rename updates variables, functions, and aliases across the open
 document while preserving \f[CR]$name\f[R] vs \f[CR]${name}\f[R]
-bracing; commands can be renamed only when defined as a function or
-alias within the open document.
+bracing, including heredoc bodies that expand, arithmetic text, and the
+operands of \f[CR]read\f[R], \f[CR]mapfile\f[R], \f[CR]printf \-v\f[R],
+\f[CR]trap\f[R], and \f[CR]complete \-F\f[R].
+Commands can be renamed only when defined as a function or alias within
+the open document, a function cannot take a reserved word, and a
+variable that a followed source assigns cannot be renamed.
 .IP \[bu] 2
 \f[B]Document mood resolution\f[R] \- Resolves mood in priority order:
 document shebang, LSP language ID (\f[CR]kosh\f[R], \f[CR]bash\f[R],
@@ -4630,6 +4634,7 @@ T}
 (\f[CR]0x\f[R]), binary (\f[CR]0b\f[R]), or base \f[CR]b\f[R] from
 \f[CR]2\f[R] to \f[CR]64\f[R] as \f[CR]b#digits\f[R] (digits beyond
 \f[CR]9\f[R] come from letters, \f[CR]\[at]\f[R], \f[CR]_\f[R]).
+A binary or based number needs at least one digit after its prefix.
 .IP \[bu] 2
 \f[B]Variables\f[R] \- A variable is replaced by its value, which is
 evaluated as an expression in turn (\f[CR]x=1+2\f[R] makes

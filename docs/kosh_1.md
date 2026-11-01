@@ -143,7 +143,7 @@ All diagnostics write to standard error in an identical format across every mood
 `kosh --as-language-server` serves the LSP specification over standard input and output.
 
 * **Capabilities** - Publishes live diagnostics on document change, tab completion (triggered by space or `-`), quick fixes, a `fix-all` code action for non-conflicting safe fixes, document formatting, go-to-definition, hover documentation, semantic token highlighting, document symbols/outline, and rename within the open document.
-* **Polyglot and cross-file resolution** - Operates inside embedded shell regions of all host formats supported by `--lint` and follows relative `source` paths from the document directory. Rename updates variables, functions, and aliases across the open document while preserving `$name` vs `${name}` bracing; commands can be renamed only when defined as a function or alias within the open document.
+* **Polyglot and cross-file resolution** - Operates inside embedded shell regions of all host formats supported by `--lint` and follows relative `source` paths from the document directory. Rename updates variables, functions, and aliases across the open document while preserving `$name` vs `${name}` bracing, including heredoc bodies that expand, arithmetic text, and the operands of `read`, `mapfile`, `printf -v`, `trap`, and `complete -F`. Commands can be renamed only when defined as a function or alias within the open document, a function cannot take a reserved word, and a variable that a followed source assigns cannot be renamed.
 * **Document mood resolution** - Resolves mood in priority order: document shebang, LSP language ID (`kosh`, `bash`, `sh`, `bash-posix`, where `rbash` and `shellscript` map to `bash`), file extension (`.kosh`, `.bash`, `.sh`, `.dash`), or fallback `kosh`. Skips startup/settings files and exits with status `0` on clean LSP shutdown or `1` otherwise.
 
 ### Startup and configuration file loading <a id="startup-files"></a>
@@ -728,7 +728,7 @@ Redirections open, duplicate, or close descriptors for a command and process lef
 | `= *= /= %= += -= <<= >>= &= ^= \|= **=` | assignment |
 | `,` | sequence |
 
-* **Numbers** - Decimal, octal (leading `0`), hexadecimal (`0x`), binary (`0b`), or base `b` from `2` to `64` as `b#digits` (digits beyond `9` come from letters, `@`, `_`).
+* **Numbers** - Decimal, octal (leading `0`), hexadecimal (`0x`), binary (`0b`), or base `b` from `2` to `64` as `b#digits` (digits beyond `9` come from letters, `@`, `_`). A binary or based number needs at least one digit after its prefix.
 * **Variables** - A variable is replaced by its value, which is evaluated as an expression in turn (`x=1+2` makes `x*2` equal `6`). An empty value counts as `0`, and `$` or a backquote inside a value is an error. A subscript taken from a value is expanded again (with `q='a[$i]'`, `$((q))` is the element at `i`).
 * **Quotes** - Outside `sh`, double quotes inside `$(( ))`, `(( ))`, a C-style `for` header, a subscript, or a substring offset are removed first (`$(( "1 + 2" * 3 ))` is `7`). `sh` rejects every quote there.
 * **Errors** - Division by zero, an invalid digit, a missing operand, an unexpected token, and a negative shift count are errors (termination per mood under [Error termination matrix across moods](#shell-errors)). Shifts, bitwise operators, and the exponent need integers, and division of two integers is integer division.

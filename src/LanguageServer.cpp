@@ -34,6 +34,20 @@ struct positioned_symbol
   document_symbol symbol;
 };
 
+enum class rename_kind : u8
+{
+  variable,
+  command,
+};
+
+struct rename_target
+{
+  Document   *document;
+  rename_kind kind;
+  String      name;
+  usize       name_start;
+};
+
 enum class request_method : u8
 {
   Initialize,
@@ -76,12 +90,6 @@ constexpr static_string_entry<request_method> REQUEST_METHOD_ENTRIES[] = {
 };
 constexpr StaticStringMap REQUEST_METHODS{REQUEST_METHOD_ENTRIES};
 constexpr i64             REQUEST_FAILED_ERROR = -32803;
-
-enum class rename_kind : u8
-{
-  variable,
-  command,
-};
 
 struct client_capabilities
 {
@@ -380,6 +388,9 @@ private:
   fn
   rename_kind_of(const document_symbol &symbol) throws
       -> Maybe<rename_kind>;
+  fn
+  request_rename_target(const JsonValue *params) throws
+      -> Maybe<rename_target>;
   fn
   collect_rename_spans(const Document         &document,
                        rename_kind             kind,
@@ -914,10 +925,13 @@ Server::publish_diagnostics(Document &document) throws -> bool
     for (let const &function : symbol_records.functions)
       document.completion_function_names.push_managed(function.name.view());
 
+    document.followed_variable_names.clear();
+
     source_effects.for_each(
         [&](StringView, const followed_source_effects &effects) throws {
           effects.assigned_names.for_each([&](StringView name) {
             document.completion_variable_names.push_managed(name);
+            document.followed_variable_names.push_managed(name);
           });
 
           effects.defined_functions.for_each([&](StringView name) {
@@ -1800,6 +1814,71 @@ Server::rename_kind_of(const document_symbol &symbol) throws
   return rename_kind::command;
 }
 
+/* whether the word at position stands where a command starts. */
+pure static fn
+is_at_command_start(StringView source, usize position) wontthrow -> bool
+{
+  while (position > 0) {
+    if (lexer::is_whitespace(source[position - 1])) {
+      position--;
+    } else if (position > 1 && source[position - 1] == '\n' &&
+               source[position - 2] == '\\')
+    {
+      position -= 2;
+    } else {
+      break;
+    }
+  }
+
+  if (position == 0) return true;
+  if (StringView{"\n;&|({!"}.find_character(source[position - 1]).has_value()) {
+    return true;
+  }
+
+  usize word_start = position;
+
+  while (word_start > 0 && lexer::is_variable_name(source[word_start - 1])) {
+    word_start--;
+  }
+
+  let const word =
+      source.substring_of_length(word_start, position - word_start);
+
+  return word == "then" || word == "do" || word == "else" || word == "elif" ||
+         word == "if" || word == "while" || word == "until" || word == "time";
+}
+
+/* the end of the declaration operand at position. A compound value such as
+   m=([a;b]=1) stays inside the operand. */
+pure static fn
+declaration_operand_end(StringView source, usize position) wontthrow -> usize
+{
+  usize parenthesis_depth = 0;
+
+  while (position < source.length) {
+    let const byte = source[position];
+
+    if (byte == '\\' || byte == '\'' || byte == '"') {
+      position = lexer::skip_quoted_run(source, position) + 1;
+      continue;
+    }
+
+    if (byte == '(') {
+      parenthesis_depth++;
+    } else if (byte == ')' && parenthesis_depth > 0) {
+      parenthesis_depth--;
+    } else if (parenthesis_depth == 0 &&
+               (lexer::is_shell_sentinel(byte) || lexer::is_whitespace(byte)))
+    {
+      break;
+    }
+
+    position++;
+  }
+
+  return position < source.length ? position : source.length;
+}
+
 static fn
 is_declared_associative(StringView source, StringView array_name) wontthrow
     -> bool
@@ -1807,80 +1886,220 @@ is_declared_associative(StringView source, StringView array_name) wontthrow
   usize position = 0;
 
   while (position < source.length) {
-    usize segment_end = position;
+    let const is_word_start =
+        lexer::is_variable_name_start(source[position]) &&
+        (position == 0 || !lexer::is_variable_name(source[position - 1]));
 
-    while (segment_end < source.length &&
-           !StringView{"\n;&|"}.find_character(source[segment_end]).has_value())
-    {
-      segment_end++;
+    if (!is_word_start) {
+      position++;
+      continue;
     }
 
-    bool  is_first_word        = true;
-    bool  has_associative_flag = false;
-    usize word_start           = position;
+    usize word_end = position;
 
-    while (word_start < segment_end) {
-      while (word_start < segment_end &&
-             lexer::is_whitespace(source[word_start]))
-      {
-        word_start++;
+    while (word_end < source.length &&
+           lexer::is_variable_name(source[word_end]))
+    {
+      word_end++;
+    }
+
+    let const word = source.substring_of_length(position, word_end - position);
+    let const is_declaration = word == "declare" || word == "local" ||
+                               word == "typeset" || word == "readonly";
+
+    if (!is_declaration || !is_at_command_start(source, position)) {
+      position = word_end;
+      continue;
+    }
+
+    bool has_associative_flag = false;
+
+    position = word_end;
+
+    while (position < source.length) {
+      if (lexer::is_whitespace(source[position])) {
+        position++;
+        continue;
       }
 
-      usize word_end = word_start;
-
-      while (word_end < segment_end && !lexer::is_whitespace(source[word_end]))
+      if (source[position] == '\\' && position + 1 < source.length &&
+          source[position + 1] == '\n')
       {
-        word_end++;
+        position += 2;
+        continue;
       }
 
-      if (word_end == word_start) break;
+      if (lexer::is_shell_sentinel(source[position])) break;
 
-      let const word =
-          source.substring_of_length(word_start, word_end - word_start);
+      let const operand_end = declaration_operand_end(source, position);
+      let const operand =
+          source.substring_of_length(position, operand_end - position);
 
-      if (is_first_word) {
-        if (word != "declare" && word != "local" && word != "typeset" &&
-            word != "readonly")
-        {
-          break;
-        }
+      if (operand.is_empty()) break;
 
-        is_first_word = false;
-      } else if (word[0] == '-') {
+      if (operand[0] == '-') {
         has_associative_flag =
-            has_associative_flag || word.find_character('A').has_value();
+            has_associative_flag || operand.find_character('A').has_value();
       } else if (has_associative_flag) {
         usize name_end = 0;
 
-        while (name_end < word.length &&
-               lexer::is_variable_name(word[name_end]))
+        while (name_end < operand.length &&
+               lexer::is_variable_name(operand[name_end]))
         {
           name_end++;
         }
 
-        if (word.substring_of_length(0, name_end) == array_name) return true;
+        if (operand.substring_of_length(0, name_end) == array_name) return true;
       }
 
-      word_start = word_end;
+      position = operand_end;
     }
-
-    position = segment_end + 1;
   }
 
   return false;
 }
 
+/* a variable name inside a parameter expansion, at bytes of the document. */
+struct parameter_reference
+{
+  usize start;
+  usize end;
+};
+
+/* every bare word of an arithmetic text refers to a variable. A digit run with
+   a base prefix such as 16#ff does not. */
 static fn
-append_braced_variable_spans(StringView              source,
-                             StringView              text,
-                             StringView              name,
-                             const highlight_span   &span,
-                             ArrayList<rename_span> &out_spans) throws
+append_arithmetic_references(StringView                      text,
+                             usize                           position,
+                             usize                           end,
+                             usize                           document_offset,
+                             ArrayList<parameter_reference> &out) throws
     -> void
 {
-  usize head_start = 2;
+  while (position < end) {
+    let const byte          = text[position];
+    let const is_word_start = lexer::is_variable_name_start(byte) &&
+                              !lexer::is_variable_name(text[position - 1]) &&
+                              text[position - 1] != '#';
 
-  if (head_start < text.length &&
+    if (!is_word_start) {
+      position++;
+      continue;
+    }
+
+    usize word_end = position;
+
+    while (word_end < end && lexer::is_variable_name(text[word_end])) {
+      word_end++;
+    }
+
+    out.push({document_offset + position, document_offset + word_end});
+    position = word_end;
+  }
+}
+
+static fn
+append_braced_references(StringView                      source,
+                         StringView                      text,
+                         usize                           start,
+                         usize                           end,
+                         usize                           document_offset,
+                         ArrayList<parameter_reference> &out) throws
+    -> void;
+
+/* the expansions of a word. An escaped dollar and single-quoted text hold no
+   reference, and a quote with no closing partner is a literal byte. */
+static fn
+append_word_references(StringView                      source,
+                       StringView                      text,
+                       usize                           position,
+                       usize                           end,
+                       usize                           document_offset,
+                       ArrayList<parameter_reference> &out,
+                       bool is_single_quote_literal = false) throws
+    -> void
+{
+  while (position < end) {
+    let const byte = text[position];
+
+    if (byte == '\\') {
+      position += 2;
+      continue;
+    }
+
+    if (byte == '\'' && !is_single_quote_literal) {
+      usize closing = position + 1;
+
+      while (closing < end && text[closing] != '\'') {
+        closing++;
+      }
+
+      position = closing < end ? closing + 1 : position + 1;
+      continue;
+    }
+
+    if (byte != '$' || position + 1 >= end) {
+      position++;
+      continue;
+    }
+
+    let const next = text[position + 1];
+
+    if (next == '$') {
+      position += 2;
+    } else if (next == '(') {
+      let const group_end =
+          lexer::scan_balanced_shell_region(text, position + 2, ')');
+      let const group_stop    = group_end.value_or(end);
+      let const is_arithmetic = position + 2 < end && text[position + 2] == '(';
+
+      if (is_arithmetic) {
+        append_arithmetic_references(text, position + 3, group_stop,
+                                     document_offset, out);
+      } else {
+        append_word_references(source, text, position + 2, group_stop,
+                               document_offset, out);
+      }
+
+      position = group_stop;
+    } else if (next == '{') {
+      let const expansion_end = lexer::scan_parameter_expansion(
+          text, position + 2, false, false, lexer::shell_quoting_rules{}, 0,
+          nullptr);
+      let const expansion_stop = expansion_end.value_or(end);
+
+      append_braced_references(source, text, position, expansion_stop,
+                               document_offset, out);
+      position = expansion_stop;
+    } else if (lexer::is_variable_name_start(next)) {
+      usize word_end = position + 1;
+
+      while (word_end < end && lexer::is_variable_name(text[word_end])) {
+        word_end++;
+      }
+
+      out.push({document_offset + position + 1, document_offset + word_end});
+      position = word_end;
+    } else {
+      position++;
+    }
+  }
+}
+
+/* text[start] is the dollar of a ${ and end is past its closing brace. */
+static fn
+append_braced_references(StringView                      source,
+                         StringView                      text,
+                         usize                           start,
+                         usize                           end,
+                         usize                           document_offset,
+                         ArrayList<parameter_reference> &out) throws
+    -> void
+{
+  let const closing    = end > start && text[end - 1] == '}' ? end - 1 : end;
+  usize     head_start = start + 2;
+
+  if (head_start < closing &&
       (text[head_start] == '#' || text[head_start] == '!'))
   {
     head_start++;
@@ -1888,80 +2107,321 @@ append_braced_variable_spans(StringView              source,
 
   usize head_end = head_start;
 
-  while (head_end < text.length && lexer::is_variable_name(text[head_end])) {
+  while (head_end < closing && lexer::is_variable_name(text[head_end])) {
     head_end++;
   }
 
-  let const is_offset_tail =
-      head_end + 1 < text.length && text[head_end] == ':' &&
-      !StringView{"-=?+"}.find_character(text[head_end + 1]).has_value();
-
-  usize subscript_end = head_end;
-
-  if (head_end < text.length && text[head_end] == '[' &&
-      !is_declared_associative(
-          source, text.substring_of_length(head_start, head_end - head_start)))
+  if (head_end > head_start && lexer::is_variable_name_start(text[head_start]))
   {
-    usize bracket_depth = 0;
+    out.push({document_offset + head_start, document_offset + head_end});
+  }
 
-    for (usize index = head_end; index < text.length; index++) {
+  usize tail_start = head_end;
+
+  if (head_end < closing && text[head_end] == '[') {
+    usize bracket_depth = 0;
+    usize subscript_end = head_end;
+
+    for (usize index = head_end; index < closing; index++) {
       if (text[index] == '[') bracket_depth++;
       if (text[index] == ']' && --bracket_depth == 0) {
         subscript_end = index;
         break;
       }
     }
-  }
 
-  usize position            = head_start;
-  usize command_depth       = 0;
-  bool  is_in_single_quotes = false;
-
-  while (position < text.length) {
-    let const byte = text[position];
-
-    if (byte == '\'') is_in_single_quotes = !is_in_single_quotes;
-    if (!is_in_single_quotes && byte == '(' && text[position - 1] == '$') {
-      command_depth++;
-    } else if (!is_in_single_quotes && byte == ')' && command_depth > 0) {
-      command_depth--;
+    if (is_declared_associative(source, text.substring_of_length(
+                                            head_start, head_end - head_start)))
+    {
+      append_word_references(source, text, head_end + 1, subscript_end,
+                             document_offset, out);
+    } else {
+      append_arithmetic_references(text, head_end + 1, subscript_end,
+                                   document_offset, out);
     }
 
-    if (byte == '\\' && !is_in_single_quotes) {
-      position += 2;
+    tail_start = subscript_end + 1;
+  }
+
+  let const is_offset_tail =
+      tail_start + 1 < closing && text[tail_start] == ':' &&
+      !StringView{"-=?+"}.find_character(text[tail_start + 1]).has_value();
+
+  if (is_offset_tail) {
+    append_arithmetic_references(text, tail_start + 1, closing, document_offset,
+                                 out);
+  } else {
+    append_word_references(source, text, tail_start, closing, document_offset,
+                           out);
+  }
+}
+
+pure static fn
+is_command_prefix_word(StringView word) wontthrow -> bool
+{
+  return word == "if" || word == "then" || word == "elif" || word == "else" ||
+         word == "while" || word == "until" || word == "do" || word == "time" ||
+         word == "!" || word == "{" || word == "(";
+}
+
+/* whether the option of read, mapfile, or readarray takes the next word as
+   its value. A trailing letter in a cluster such as -rd counts. */
+pure static fn
+input_option_takes_value(StringView command, StringView option)
+    wontthrow -> bool
+{
+  let const letter = option[option.length - 1];
+
+  return command == "read"
+             ? StringView{"dinNptu"}.find_character(letter).has_value()
+             : StringView{"CcdnOsu"}.find_character(letter).has_value();
+}
+
+/* the operands that hold a function name: the action of trap, the argument of
+   complete -F, and a name after a -f flag of a declaration builtin. */
+static fn
+is_function_operand(StringView command,
+                    StringView previous,
+                    StringView word,
+                    usize      operand_index,
+                    bool       has_f_flag) wontthrow -> bool
+{
+  let const is_flag = word[0] == '-' && word.length > 1;
+
+  if (command == "trap") return operand_index == 0 && !is_flag;
+  if (command == "complete") return previous == "-F";
+
+  return has_f_flag && !is_flag &&
+         (command == "export" || command == "declare" || command == "typeset" ||
+          command == "readonly");
+}
+
+/* the operands that a builtin writes or tests as a variable. */
+static fn
+is_variable_operand(StringView command,
+                    StringView previous,
+                    StringView word) wontthrow -> bool
+{
+  let const is_flag = word[0] == '-' && word.length > 1;
+
+  if (command == "printf") return previous == "-v";
+  if (command == "[[" || command == "[" || command == "test") {
+    return previous == "-v";
+  }
+
+  if (command != "read" && command != "mapfile" && command != "readarray") {
+    return false;
+  }
+
+  if (is_flag) return false;
+  if (command == "read" && previous == "-a") return true;
+  if (previous.length > 1 && previous[0] == '-') {
+    return !input_option_takes_value(command, previous);
+  }
+
+  return true;
+}
+
+/* the words of the operands of a known builtin hold a symbol with no highlight
+   span of its own. A subscript of NAME[...]= holds arithmetic references. */
+static fn
+append_operand_spans(StringView              source,
+                     rename_kind             kind,
+                     StringView              name,
+                     const ArrayList<usize> &heredoc_line_starts,
+                     ArrayList<rename_span> &out_spans) throws -> void
+{
+  usize line_start         = 0;
+  usize heredoc_line_index = 0;
+
+  let const do_append_arithmetic_region =
+      [&](usize start, usize end) throws -> void {
+    let references = ArrayList<parameter_reference>{heap_allocator()};
+
+    append_arithmetic_references(source, start, end, 0, references);
+
+    for (let const &reference : references) {
+      if (source.substring_of_length(reference.start,
+                                     reference.end - reference.start) == name)
+      {
+        out_spans.push(rename_span{highlight_role::variable, reference.start,
+                                   reference.end});
+      }
+    }
+  };
+
+  while (line_start < source.length) {
+    usize line_end = line_start;
+
+    while (line_end < source.length && source[line_end] != '\n') {
+      line_end++;
+    }
+
+    while (heredoc_line_index < heredoc_line_starts.count() &&
+           heredoc_line_starts[heredoc_line_index] < line_start)
+    {
+      heredoc_line_index++;
+    }
+
+    if (heredoc_line_index < heredoc_line_starts.count() &&
+        heredoc_line_starts[heredoc_line_index] == line_start)
+    {
+      line_start = line_end + 1;
       continue;
     }
 
-    if (is_in_single_quotes || !lexer::is_variable_name_start(byte) ||
-        lexer::is_variable_name(text[position - 1]))
-    {
-      position++;
-      continue;
+    usize position      = line_start;
+    usize operand_index = 0;
+    bool  has_f_flag    = false;
+    let   command       = StringView{};
+    let   previous      = StringView{};
+
+    while (position < line_end) {
+      if (lexer::is_whitespace(source[position])) {
+        position++;
+        continue;
+      }
+
+      if (StringView{";&|"}.find_character(source[position]).has_value()) {
+        position++;
+        operand_index = 0;
+        has_f_flag    = false;
+        command       = StringView{};
+        previous      = StringView{};
+        continue;
+      }
+
+      if (source[position] == '#') break;
+
+      if (kind == rename_kind::variable && position + 1 < line_end &&
+          source[position] == '(' && source[position + 1] == '(')
+      {
+        let const group_end =
+            lexer::scan_balanced_shell_region(source, position + 1, ')');
+
+        if (group_end.has_value()) {
+          do_append_arithmetic_region(position + 2, *group_end - 2);
+          position = *group_end;
+          continue;
+        }
+      }
+
+      let const word_end = declaration_operand_end(source, position);
+
+      if (word_end == position) {
+        position++;
+        continue;
+      }
+
+      let word = source.substring_of_length(position, word_end - position);
+      let quote_length = usize{0};
+
+      if (word.length >= 2 && (word[0] == '\'' || word[0] == '"') &&
+          word[word.length - 1] == word[0])
+      {
+        quote_length = 1;
+        word         = word.substring_of_length(1, word.length - 2);
+      }
+
+      if (word.is_empty()) {
+        position = word_end;
+        continue;
+      }
+
+      let const is_operand =
+          !command.is_empty() &&
+          (kind == rename_kind::command
+               ? is_function_operand(command, previous, word, operand_index,
+                                     has_f_flag)
+               : is_variable_operand(command, previous, word));
+
+      if (is_operand && word == name) {
+        out_spans.push(rename_span{highlight_role::variable,
+                                   position + quote_length,
+                                   position + quote_length + name.length});
+      }
+
+      if (kind == rename_kind::variable) {
+        usize array_end = 0;
+
+        while (array_end < word.length &&
+               lexer::is_variable_name(word[array_end]))
+        {
+          array_end++;
+        }
+
+        if (array_end > 0 && array_end < word.length &&
+            word[array_end] == '[' && lexer::word_looks_like_assignment(word) &&
+            !is_declared_associative(source,
+                                     word.substring_of_length(0, array_end)))
+        {
+          let const subscript_end =
+              word.find_character(']').value_or(word.length);
+
+          do_append_arithmetic_region(position + array_end + 1,
+                                      position + subscript_end);
+        }
+
+        if (source[position] != '\'') {
+          for (usize at = position; at + 2 < word_end; at++) {
+            if (source[at] != '$' || source[at + 1] != '(' ||
+                source[at + 2] != '(')
+            {
+              continue;
+            }
+
+            let const group_end =
+                lexer::scan_balanced_shell_region(source, at + 2, ')');
+
+            if (group_end.has_value()) {
+              do_append_arithmetic_region(at + 3, *group_end - 2);
+              at = *group_end - 1;
+            }
+          }
+        }
+      }
+
+      if (command.is_empty()) {
+        if (!is_command_prefix_word(word)) command = word;
+      } else if (word[0] == '-' && word.length > 1) {
+        if (word.find_character('f').has_value()) has_f_flag = true;
+      } else {
+        operand_index++;
+      }
+
+      previous = word;
+      position = word_end;
     }
 
-    usize word_end = position;
-
-    while (word_end < text.length && lexer::is_variable_name(text[word_end])) {
-      word_end++;
-    }
-
-    let const is_expansion =
-        (text[position - 1] == '$' && text[position - 2] != '$') ||
-        (text[position - 1] == '{' && text[position - 2] == '$');
-    let const is_reference =
-        position == head_start || is_expansion ||
-        (command_depth == 0 && is_offset_tail && position >= head_end) ||
-        (command_depth == 0 && position > head_end && position < subscript_end);
-
-    if (is_reference &&
-        text.substring_of_length(position, word_end - position) == name)
-    {
-      out_spans.push(
-          rename_span{span.role, span.start + position, span.start + word_end});
-    }
-
-    position = word_end;
+    line_start = line_end + 1;
   }
+}
+
+pure static fn
+is_reserved_word(StringView word) wontthrow -> bool
+{
+  return KEYWORDS.find(word).has_value() || word == "select" ||
+         word == "coproc" || word == "in" || word == "!" || word == "{" ||
+         word == "}" || word == "[[" || word == "]]";
+}
+
+static fn
+sort_and_deduplicate_rename_spans(ArrayList<rename_span> &spans) throws
+    -> void
+{
+  spans.sort([](const rename_span &left, const rename_span &right) {
+    return left.start < right.start;
+  });
+
+  let unique = ArrayList<rename_span>{heap_allocator()};
+
+  for (let const &span : spans) {
+    if (unique.is_empty() || unique.back().start != span.start) {
+      unique.push(span);
+    }
+  }
+
+  spans = steal(unique);
 }
 
 fn
@@ -1971,16 +2431,51 @@ Server::collect_rename_spans(const Document         &document,
                              ArrayList<rename_span> &out_spans) throws
     -> void
 {
+  bool is_heredoc_expanding = true;
+  let  heredoc_line_starts  = ArrayList<usize>{heap_allocator()};
+
   visit_document_spans(
       document,
-      [&](usize, usize, const highlight_span &span) throws -> bool {
+      [&](usize, usize line_start,
+          const highlight_span &span) throws -> bool {
+        let const text = document.normalized_source.substring_of_length(
+            span.start, span.end - span.start);
+
+        if (span.role == highlight_role::heredoc_delimiter) {
+          is_heredoc_expanding = lexer::heredoc_word_joins_lines(text);
+        }
+
+        if (span.role == highlight_role::heredoc &&
+            (heredoc_line_starts.is_empty() ||
+             heredoc_line_starts.back() != line_start))
+        {
+          heredoc_line_starts.push(line_start);
+        }
+
+        if (kind == rename_kind::variable &&
+            span.role == highlight_role::heredoc && is_heredoc_expanding)
+        {
+          let references = ArrayList<parameter_reference>{heap_allocator()};
+
+          append_word_references(document.normalized_source, text, 0,
+                                 text.length, span.start, references, true);
+
+          for (let const &reference : references) {
+            if (document.normalized_source.view().substring_of_length(
+                    reference.start, reference.end - reference.start) == name)
+            {
+              out_spans.push(
+                  rename_span{span.role, reference.start, reference.end});
+            }
+          }
+
+          return true;
+        }
+
         let const is_wanted = kind == rename_kind::variable
                                   ? role_reads_variable(span.role)
                                   : role_names_command(span.role);
         if (!is_wanted) return true;
-
-        let const text = document.normalized_source.substring_of_length(
-            span.start, span.end - span.start);
 
         if (kind == rename_kind::command) {
           /* a quoted or escaped spelling such as "foo" calls the same
@@ -1995,8 +2490,21 @@ Server::collect_rename_spans(const Document         &document,
         }
 
         if (text.starts_with("${")) {
-          append_braced_variable_spans(document.normalized_source, text, name,
-                                       span, out_spans);
+          let references = ArrayList<parameter_reference>{heap_allocator()};
+
+          append_braced_references(document.normalized_source, text, 0,
+                                   text.length, span.start, references);
+
+          for (let const &reference : references) {
+            let const reference_name =
+                document.normalized_source.substring_of_length(
+                    reference.start, reference.end - reference.start);
+
+            if (reference_name == name) {
+              out_spans.push(
+                  rename_span{span.role, reference.start, reference.end});
+            }
+          }
 
           return true;
         }
@@ -2013,43 +2521,144 @@ Server::collect_rename_spans(const Document         &document,
 
         return true;
       });
+
+  append_operand_spans(document.normalized_source, kind, name,
+                       heredoc_line_starts, out_spans);
+
+  if (kind == rename_kind::variable) {
+    for (let const &occurrence : document.symbol_records.variable_occurrences) {
+      if (occurrence.name.view() != name || occurrence.length != name.length) {
+        continue;
+      }
+
+      let const start = static_cast<usize>(occurrence.position);
+
+      if (start + name.length > document.normalized_source.count() ||
+          document.normalized_source.view().substring_of_length(
+              start, name.length) != name)
+      {
+        continue;
+      }
+
+      out_spans.push(
+          rename_span{highlight_role::variable, start, start + name.length});
+    }
+  }
+
+  sort_and_deduplicate_rename_spans(out_spans);
+}
+
+fn
+Server::request_rename_target(const JsonValue *params) throws
+    -> Maybe<rename_target>
+{
+  let const request = request_positioned_document(params);
+
+  if (!request.has_value()) return None;
+
+  let *document = request->document;
+
+  select_document_mood(*document);
+
+  let const byte_position = document->byte_position(
+      request->position.line, request->position.character, m_client.encoding);
+
+  if (!byte_position.has_value()) return None;
+
+  let const source = document->normalized_source.view();
+  let const do_make_variable_target =
+      [&](usize start, usize end) throws -> Maybe<rename_target> {
+    let const name = source.substring_of_length(start, end - start);
+
+    if (name == "_" || !lexer::word_is_variable_name(name)) return None;
+
+    return rename_target{
+        document, rename_kind::variable, String{heap_allocator(), name},
+          start
+    };
+  };
+
+  for (let const &occurrence : document->symbol_records.variable_occurrences) {
+    let const start = static_cast<usize>(occurrence.position);
+    let const end   = start + occurrence.length;
+
+    if (*byte_position < start || *byte_position > end || end > source.length ||
+        source.substring_of_length(start, occurrence.length) !=
+            occurrence.name.view())
+    {
+      continue;
+    }
+
+    return do_make_variable_target(start, end);
+  }
+
+  let const symbol = symbol_at(*document, request->position);
+
+  if (!symbol.has_value()) return None;
+
+  let const text = symbol->text.view();
+
+  if (role_reads_variable(symbol->role) && text.starts_with("${")) {
+    let references = ArrayList<parameter_reference>{heap_allocator()};
+
+    append_braced_references(source, text, 0, text.length, symbol->start,
+                             references);
+
+    if (references.is_empty()) return None;
+
+    for (let const &reference : references) {
+      if (*byte_position >= reference.start && *byte_position <= reference.end)
+      {
+        return do_make_variable_target(reference.start, reference.end);
+      }
+    }
+
+    return do_make_variable_target(references[0].start, references[0].end);
+  }
+
+  let const kind = rename_kind_of(*symbol);
+
+  if (!kind.has_value()) return None;
+
+  if (*kind == rename_kind::variable) {
+    let const name_start = symbol->start + variable_name_start_of(text);
+
+    return do_make_variable_target(name_start,
+                                   name_start + variable_name_of(text).length);
+  }
+
+  return rename_target{
+      document, *kind, String{heap_allocator(), text},
+        symbol->start
+  };
 }
 
 fn
 Server::prepare_rename(const JsonValue *id,
                        const JsonValue *params) throws -> bool
 {
-  let const found = request_positioned_symbol(params);
+  let const target = request_rename_target(params);
 
-  if (!found.has_value()) return send_result(id, "null");
+  if (!target.has_value()) return send_result(id, "null");
 
-  let       *document = found->document;
-  let const *symbol   = &found->symbol;
-  let const  kind     = rename_kind_of(*symbol);
+  let      *document    = target->document;
+  let const name        = target->name.view();
+  let const is_variable = target->kind == rename_kind::variable;
+  let       spans       = ArrayList<rename_span>{heap_allocator()};
 
-  if (!kind.has_value()) return send_result(id, "null");
-
-  let const is_variable = *kind == rename_kind::variable;
-  let const name =
-      is_variable ? variable_name_of(symbol->text.view()) : symbol->text.view();
-  let spans = ArrayList<rename_span>{heap_allocator()};
-
-  collect_rename_spans(*document, *kind, name, spans);
+  collect_rename_spans(*document, target->kind, name, spans);
 
   if (!is_variable && !spans_hold_definition(spans)) {
     return send_result(id, "null");
   }
 
-  /* at this point: kind is set, and for a command, spans holds its
+  /* at this point: target is set, and for a command, spans holds its
      definition. */
 
-  let const name_start =
-      symbol->start +
-      (is_variable ? variable_name_start_of(symbol->text.view()) : 0);
   let response = String{heap_allocator(), "{\"range\":"};
 
-  append_protocol_range(response, *document, name_start,
-                        name_start + name.length, m_client.encoding);
+  append_protocol_range(response, *document, target->name_start,
+                        target->name_start + name.length, m_client.encoding);
   response.append(",\"placeholder\":");
   append_json_string(response, name);
   response.push('}');
@@ -2061,23 +2670,16 @@ fn
 Server::rename(const JsonValue *id, const JsonValue *params) throws
     -> bool
 {
-  let const found = request_positioned_symbol(params);
+  let const target = request_rename_target(params);
 
-  if (!found.has_value()) {
+  if (!target.has_value()) {
     return send_error(id, REQUEST_FAILED_ERROR,
                       "There is no renameable symbol here.");
   }
 
-  let       *document = found->document;
-  let const *symbol   = &found->symbol;
-  let const  kind     = rename_kind_of(*symbol);
-
-  if (!kind.has_value()) {
-    return send_error(id, REQUEST_FAILED_ERROR,
-                      "This symbol cannot be renamed.");
-  }
-
-  let const is_variable = *kind == rename_kind::variable;
+  let      *document    = target->document;
+  let const name        = target->name.view();
+  let const is_variable = target->kind == rename_kind::variable;
   let const new_name    = string_field(params, "newName");
   let const is_new_name_valid =
       new_name.has_value() &&
@@ -2092,11 +2694,14 @@ Server::rename(const JsonValue *id, const JsonValue *params) throws
                           : "A command name holds no shell metacharacter.");
   }
 
-  let const name =
-      is_variable ? variable_name_of(symbol->text.view()) : symbol->text.view();
+  if (!is_variable && is_reserved_word(*new_name)) {
+    return send_error(id, REQUEST_FAILED_ERROR,
+                      "A function cannot take a reserved word.");
+  }
+
   let spans = ArrayList<rename_span>{heap_allocator()};
 
-  collect_rename_spans(*document, *kind, name, spans);
+  collect_rename_spans(*document, target->kind, name, spans);
 
   /* the workspace edit addresses only this document, so a command is renamed
      only when this document defines it. call sites in other documents would
@@ -2104,6 +2709,15 @@ Server::rename(const JsonValue *id, const JsonValue *params) throws
   if (!is_variable && !spans_hold_definition(spans)) {
     return send_error(id, REQUEST_FAILED_ERROR,
                       "This command is not defined in this document.");
+  }
+
+  if (is_variable) {
+    for (let const &followed_name : document->followed_variable_names) {
+      if (followed_name.view() == name) {
+        return send_error(id, REQUEST_FAILED_ERROR,
+                          "This variable is also assigned in a sourced file.");
+      }
+    }
   }
 
   /* at this point: new_name is a valid name for kind, and spans holds the
