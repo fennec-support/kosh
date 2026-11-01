@@ -1,0 +1,9 @@
+#!/usr/bin/env kosh
+# Trains the text utilities over the file in the first argument.
+
+koshkit grep -c line1 "$1"
+koshkit grep -E "field(1|7) [0-9]+5$" "$1" | koshkit wc -l
+koshkit cut -d" " -f2,4 "$1" | koshkit uniq -c | koshkit wc -l
+koshkit tr a-z A-Z < "$1" | koshkit wc -l
+koshkit sed -n "s/line/row/p" "$1" | koshkit tail -n 5
+koshkit cat "$1" | koshkit wc -c

@@ -59,35 +59,15 @@ train() (
         \( -name '*.sh' -o -name '*.bash' -o -name '*.kosh' \) \
         -exec "$kosh" --lint {} + >/dev/null 2>&1 || :
 
-    "$kosh" --mood bash -c 'i=0
-    while [ "$i" -lt 2000 ]; do
-        line=$(printf "%d\n" "$i" | koshkit cat)
-        env true
-        { read -r field; } <<<"$line"
-        : "$(echo "$field")" "$(( field * 3 ))"
-        i=$((i + 1))
-    done
-    printf "%s\n" a b c | while read -r word; do koshkit tr a-z A-Z <<<"$word"; done
-    for file in "$1"/*; do [[ -e $file ]] && : "${file##*/}"; done' \
-        kosh "$root/src" >/dev/null
-
-    "$kosh" -c 'i=0; while [ "$i" -lt 200000 ]; do
-        printf "%d line%d field%d %d\n" "$i" "$((i % 97))" "$((i % 13))" \
-            "$(( (i * 7919) % 100003 ))"
-        i=$((i + 1))
-    done' >"$work/lines"
+    "$kosh" --mood bash "$bench/pgo-builtins.bash" "$root/src" >/dev/null
+    "$kosh" "$bench/pgo-lines.kosh" >"$work/lines"
 
     for flags in '' -n -k4,4n '-k2,2 -k3,3n' -f -r -u -k4; do
         "$kosh" -c "koshkit sort $flags \"\$1\"" kosh "$work/lines" >/dev/null &
     done
     wait
 
-    "$kosh" -c 'koshkit grep -c line1 "$1"
-    koshkit grep -E "field(1|7) [0-9]+5$" "$1" | koshkit wc -l
-    koshkit cut -d" " -f2,4 "$1" | koshkit uniq -c | koshkit wc -l
-    koshkit tr a-z A-Z < "$1" | koshkit wc -l
-    koshkit sed -n "s/line/row/p" "$1" | koshkit tail -n 5
-    koshkit cat "$1" | koshkit wc -c' kosh "$work/lines" >/dev/null
+    "$kosh" "$bench/pgo-text.kosh" "$work/lines" >/dev/null
 )
 
 echo Training a release profile...

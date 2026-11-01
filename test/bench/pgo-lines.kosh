@@ -1,0 +1,8 @@
+#!/usr/bin/env kosh
+# Writes 200000 numbered lines of four fields for the utility training.
+
+i=0; while [ "$i" -lt 200000 ]; do
+    printf "%d line%d field%d %d\n" "$i" "$((i % 97))" "$((i % 13))" \
+        "$(( (i * 7919) % 100003 ))"
+    i=$((i + 1))
+done

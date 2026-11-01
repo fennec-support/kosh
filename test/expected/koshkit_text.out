@@ -1505,7 +1505,7 @@ copied
 kept
 new
 --- sed -z keeps NUL-terminated lines ---
- a \0 c \0
+a@c@
 --- du -d limits depth and -c adds a total ---
 sizes
 sizes/one

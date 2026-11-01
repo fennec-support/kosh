@@ -779,7 +779,8 @@ if [ "$group_before" = "$group_after" ]; then echo kept; fi
 "$BIN" -c 'koshkit cat grouped'
 
 echo "--- sed -z keeps NUL-terminated lines ---"
-printf 'a\0b\0' | "$BIN" -c 'koshkit sed -z s/b/c/' | od -An -c | tr -s ' '
+printf 'a\0b\0' | "$BIN" -c 'koshkit sed -z s/b/c/' | tr '\0' '@'
+echo
 
 echo "--- du -d limits depth and -c adds a total ---"
 mkdir -p sizes/one/two
