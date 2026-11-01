@@ -161,3 +161,75 @@ for subject in - a 5 b d '|' abcd; do
     case $subject in $pattern) echo "$subject $pattern" ;; esac
   done
 done
+
+echo "--- quoted words inside a double-quoted parameter word ---"
+echo "${x:-"$(echo '"')"}"
+echo "${x:-"$(echo "}")"}"
+echo "${x:-"`echo "}"`"}"
+echo "${y:-'"'}"
+echo "${x:-"${y:-"}"}"}"
+echo ${x:-$'\'}'}
+
+echo "--- a parameter expansion inside a substitution ---"
+echo "$(echo ${x:-)})"
+echo "$(echo ${x:-"("})"
+echo "$(echo "${x:-"}"}")"
+echo "${x:-$(echo "${y:-"$(echo z)"}")}"
+
+echo "--- a heredoc delimiter continued over a line ---"
+x=$(cat <<E\
+F
+hi
+EF
+)
+echo "$x"
+cat <<E\
+F
+${x}-body
+EF
+
+echo "--- strip tabs while the logical line is empty ---"
+eval 'cat <<-E
+	\
+	E
+echo reached'
+echo "status $?"
+cat <<-E
+	a\
+	b
+	E
+
+echo "--- arithmetic line continuation and comma branches ---"
+echo $(( 1 + \
+2 ))
+(( 1 + \
+2 )); echo "$?"
+echo $((1\
+2))
+echo $(( 1 ? 2,3 : 4 ))
+echo $(( 0 ? 2,3 : 4 ))
+
+echo "--- digits are required after a base prefix ---"
+( echo $((0b)) ) 2>/dev/null; echo "$?"
+( echo $((16#)) ) 2>/dev/null; echo "$?"
+
+echo "--- a command group after a double parenthesis ---"
+unset x
+echo $((echo a) | cat)
+x=$((echo a) ); echo "$x"
+echo "$((echo a) | cat)"
+echo ${x:+$((echo b) | cat)}
+echo `echo $((echo c) | cat)`
+
+echo "--- conditional syntax is checked at parse time ---"
+for source in '[[ ; ]]' '[[ & ]]' '[[ ;& ]]' '[[ ]]' '[[ && ]]' '[[ a | b ]]' \
+  '[[ a && ]]' '[[ ! ]]' '[[ ( ]]' 'true | ! true' 'while ! do break; done' \
+  'while time do break; done'
+do
+  eval "$source; echo unreachable" 2>/dev/null
+  echo "status $?"
+done
+
+echo "--- a function prints a background compound command ---"
+back() { while false; do :; done & wait; { :; } & wait; : & wait; }
+declare -f back

@@ -395,3 +395,75 @@ eval "copy=$quoted"
 [ "$copy" = "$value" ] && echo same
 EOF
 "$BIN" --mood sh quoted_sh.sh
+
+echo "--- a huge exact result fails with a status ---"
+"$BIN" -c 'echo $((1<<(2**33))); echo unreachable' 2>/dev/null
+echo "status $?"
+"$BIN" -c 'echo $((2**(2**33))); echo unreachable' 2>/dev/null
+echo "status $?"
+
+echo "--- a script operand keeps later flags for the script ---"
+printf 'echo "[$1]"\n' > operand.sh
+"$BIN" operand.sh --version
+"$BIN" -c 'echo "[$1]"' name --version
+
+echo "--- the last stage assigns in the kosh mood ---"
+printf 'echo 5 | read -r x\necho "$x"\n' > lastpipe.sh
+"$BIN" lastpipe.sh
+printf 'let "a=1+2"\necho "$a"\n' > let.sh
+"$BIN" --no-annoying-diagnostics let.sh
+printf 'case 1 in\n  1) x=1 ;;\nesac\necho "$x"\n' > case.sh
+"$BIN" --lint case.sh 2>&1 | grep -c SC2154
+
+echo "--- a lint run of a bash script keeps the pipeline warning ---"
+printf '#!/bin/bash\necho 5 | read -r x\necho "$x"\n' > pipe.bash
+"$BIN" --lint pipe.bash 2>&1 | grep -c SC2031
+printf '#!/bin/bash\nshopt -s lastpipe\necho 5 | read -r x\necho "$x"\n' > pipe2.bash
+"$BIN" --lint pipe2.bash 2>&1 | grep -c SC2031
+
+echo "--- select stays a bash mood loop ---"
+"$BIN" -c 'select a in b; do break; done' 2>/dev/null
+echo "status $?"
+
+echo "--- --format keeps background compound commands ---"
+cat > background.sh <<'EOF'
+while true; do :; done &
+until true; do :; done &
+for i in a; do :; done &
+if a; then b; fi &
+case x in a) b;; esac &
+EOF
+"$BIN" --format background.sh > background_out.sh
+echo "status $?"
+grep -c ' &$' background_out.sh
+"$BIN" --format background_out.sh | cmp - background_out.sh
+
+echo "--- --format keeps a case pattern after a continued statement ---"
+cat > caseand.sh <<'EOF'
+case $i in
+  (a)
+    x=$(a
+ b) && y;;
+  (*)
+    z;;
+esac
+y=$(case $i in
+  (a) x=1 && y;;
+  (*) z;;
+esac)
+EOF
+"$BIN" --format caseand.sh > caseand_out.sh
+echo "status $?"
+"$BIN" --format caseand_out.sh | cmp - caseand_out.sh
+echo "status $?"
+
+echo "--- --format is stable after a brace group continuation ---"
+printf 'cc && x=1 &&\n    { echo "$x"; exit; }\necho y\n' > group.sh
+"$BIN" --format group.sh > group_out.sh
+"$BIN" --format group_out.sh | cmp - group_out.sh
+echo "status $?"
+
+echo "--- a Dockerfile comment inside a RUN continuation ---"
+printf 'FROM alpine\nRUN apk add a \\\n    # note\n    b\n' > Dockerfile
+"$BIN" --format Dockerfile | cmp - Dockerfile
+echo "status $?"

@@ -189,3 +189,28 @@ a2b
 2147485547
 --- printf %q in the sh mood reads back in the sh mood ---
 same
+--- a huge exact result fails with a status ---
+status 1
+status 1
+--- a script operand keeps later flags for the script ---
+[--version]
+[--version]
+--- the last stage assigns in the kosh mood ---
+5
+3
+0
+--- a lint run of a bash script keeps the pipeline warning ---
+1
+0
+--- select stays a bash mood loop ---
+status 2
+--- --format keeps background compound commands ---
+status 0
+5
+--- --format keeps a case pattern after a continued statement ---
+status 0
+status 0
+--- --format is stable after a brace group continuation ---
+status 0
+--- a Dockerfile comment inside a RUN continuation ---
+status 0
