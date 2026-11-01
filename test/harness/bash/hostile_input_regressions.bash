@@ -29,6 +29,20 @@ declare -p existing
 scalar=q
 declare -a scalar+=r
 declare -p scalar
+declare -i number=1
+declare -a number+=2
+declare -p number
+
+echo "--- indirect positional parameters ---"
+sparse=(x y z)
+declare -A spaced=(["a b"]=1)
+set -- "sparse[1 + 1]"
+echo "<${!@}>"
+set -- "spaced[a b]"
+echo "<${!*}>"
+set --
+echo "<${!@}>"
+( set -- a-b; echo "${!@}"; echo unreachable ) 2>/dev/null; echo "$?"
 
 echo "--- unset empties a whole array through at and star ---"
 whole=(1 2 3)
@@ -66,6 +80,40 @@ cat <<E
 \
 E
 echo after-joined-delimiter
+cat <<E
+E\
+
+echo after-empty-join
+cat <<EOF
+abc
+E\
+O\
+F
+echo after-long-join
+cat <<OF
+E\
+O\
+F
+kept
+OF
+cat <<E
+a\
+E\
+
+body
+E
+cat <<-E
+	E\
+
+	echo kept
+	echo E
+echo after-tab-join
+
+echo "--- getopts restarts on an index too large to hold ---"
+OPTIND=99999999999999999999
+getopts a opt -a
+echo "$OPTIND $opt"
+OPTIND=1
 
 echo "--- a regex variable keeps its backslashes ---"
 word='\<bar'; [[ 'foo bar' =~ $word ]]; echo "$?"

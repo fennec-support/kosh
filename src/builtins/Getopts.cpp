@@ -71,6 +71,9 @@ Getopts::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   /* an OPTIND below 1 starts again at the first operand. */
   if (optind < 1) optind = 1;
+  if (static_cast<u64>(optind) > operand_count + 1) {
+    optind = static_cast<i64>(operand_count) + 1;
+  }
 
   LOG(Debug, "getopts parsing into '%s' at OPTIND %lld of %zu operands",
       name.c_str(), static_cast<long long>(optind), operand_count);

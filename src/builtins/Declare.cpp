@@ -569,7 +569,12 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             joined.append(scalar->view());
           }
 
-          joined.append(value);
+          if (cxt.is_integer_variable(attribute_name) && !joined.is_empty()) {
+            cxt.append_integer_expression(joined, value);
+          } else {
+            joined.append(value);
+          }
+
           values.push_managed(joined.view());
         } else if (let const scalar =
                        cxt.variable_store().shell_variables().find(

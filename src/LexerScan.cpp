@@ -266,7 +266,7 @@ match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
 {
   usize content_start = 0;
 
-  if (heredoc.should_strip_tabs) {
+  if (heredoc.should_strip_tabs && !heredoc.join_state.is_logical_line_open) {
     while (content_start < line.length && line[content_start] == '\t') {
       content_start++;
     }
@@ -274,20 +274,39 @@ match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
 
   let const content = heredoc_line_content(line.substring(content_start));
   let const is_terminator =
-      heredoc.continued_text.has_value()
-          ? heredoc_joined_line_is_delimiter(*heredoc.continued_text, content,
-                                             heredoc.delimiter.view())
-          : content == heredoc.delimiter.view();
-
-  heredoc.continued_text = None;
-
-  if (heredoc.should_join_lines &&
-      count_backslashes_before(content, content.length) % 2 == 1)
-  {
-    heredoc.continued_text = content.substring_of_length(0, content.length - 1);
-  }
+      advance_heredoc_join(heredoc.join_state, content,
+                           heredoc.delimiter.view(), heredoc.should_join_lines);
 
   return {content_start, content.length, is_terminator};
+}
+
+fn
+advance_heredoc_join(heredoc_join_state &state,
+                     StringView          content,
+                     StringView          delimiter,
+                     bool                should_join_lines) wontthrow -> bool
+{
+  let const is_continued =
+      should_join_lines &&
+      count_backslashes_before(content, content.length) % 2 == 1;
+  let const text      = is_continued
+                            ? content.substring_of_length(0, content.length - 1)
+                            : content;
+  let const remainder = delimiter.substring(state.matched_byte_count);
+
+  if (is_continued) {
+    state.has_mismatch = state.has_mismatch || !remainder.starts_with(text);
+    state.matched_byte_count += state.has_mismatch ? 0 : text.length;
+    state.is_logical_line_open = true;
+
+    return false;
+  }
+
+  let const is_terminator = !state.has_mismatch && remainder == text;
+
+  state = heredoc_join_state{};
+
+  return is_terminator;
 }
 
 pure fn
@@ -296,16 +315,6 @@ heredoc_word_joins_lines(StringView word) wontthrow -> bool
   return !word.find_character('\'').has_value() &&
          !word.find_character('"').has_value() &&
          !word.find_character('\\').has_value();
-}
-
-pure fn
-heredoc_joined_line_is_delimiter(StringView continued_text,
-                                 StringView line,
-                                 StringView delimiter) wontthrow -> bool
-{
-  return continued_text.length + line.length == delimiter.length &&
-         delimiter.starts_with(continued_text) &&
-         delimiter.substring(continued_text.length) == line;
 }
 
 /* memory: none.

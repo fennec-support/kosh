@@ -3598,16 +3598,6 @@ EvalContext::apply_indirect_or_name_listing(StringView body) throws
      target holds the value of body. */
   let const target_view = target->view();
 
-  if ((body == "@" || body == "*") &&
-      target_view.find_character(' ').has_value())
-  {
-    throw Error{
-        "'" + String{scratch_allocator(), target_view}
-          +
-        "' is not a valid variable"
-    };
-  }
-
   if (let const bracket = target_view.find_character('[');
       bracket.has_value() && target_view[target_view.length - 1] == ']')
   {
@@ -3615,6 +3605,17 @@ EvalContext::apply_indirect_or_name_listing(StringView body) throws
         target_view.substring_of_length(0, *bracket),
         target_view.substring_of_length(*bracket + 1,
                                         target_view.length - *bracket - 2));
+  }
+
+  if ((body == "@" || body == "*") &&
+      !variable_store().positional_params().is_empty() &&
+      !lexer::word_is_variable_name(target_view) &&
+      !target_view.is_all_decimal_digits() &&
+      (target_view.length != 1 ||
+       !StringView{"@*#?-$!"}.find_character(target_view[0]).has_value()))
+  {
+    throw_script_fatal("'" + String{scratch_allocator(), target_view} +
+                       "' is not a valid variable");
   }
 
   if (!get_variable_value(target_view).has_value())

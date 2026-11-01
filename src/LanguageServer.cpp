@@ -1801,6 +1801,76 @@ Server::rename_kind_of(const document_symbol &symbol) throws
 }
 
 static fn
+is_declared_associative(StringView source, StringView array_name) wontthrow
+    -> bool
+{
+  usize position = 0;
+
+  while (position < source.length) {
+    usize segment_end = position;
+
+    while (segment_end < source.length &&
+           !StringView{"\n;&|"}.find_character(source[segment_end]).has_value())
+    {
+      segment_end++;
+    }
+
+    bool  is_first_word        = true;
+    bool  has_associative_flag = false;
+    usize word_start           = position;
+
+    while (word_start < segment_end) {
+      while (word_start < segment_end &&
+             lexer::is_whitespace(source[word_start]))
+      {
+        word_start++;
+      }
+
+      usize word_end = word_start;
+
+      while (word_end < segment_end && !lexer::is_whitespace(source[word_end]))
+      {
+        word_end++;
+      }
+
+      if (word_end == word_start) break;
+
+      let const word =
+          source.substring_of_length(word_start, word_end - word_start);
+
+      if (is_first_word) {
+        if (word != "declare" && word != "local" && word != "typeset" &&
+            word != "readonly")
+        {
+          break;
+        }
+
+        is_first_word = false;
+      } else if (word[0] == '-') {
+        has_associative_flag =
+            has_associative_flag || word.find_character('A').has_value();
+      } else if (has_associative_flag) {
+        usize name_end = 0;
+
+        while (name_end < word.length &&
+               lexer::is_variable_name(word[name_end]))
+        {
+          name_end++;
+        }
+
+        if (word.substring_of_length(0, name_end) == array_name) return true;
+      }
+
+      word_start = word_end;
+    }
+
+    position = segment_end + 1;
+  }
+
+  return false;
+}
+
+static fn
 append_braced_variable_spans(StringView              source,
                              StringView              text,
                              StringView              name,
@@ -1828,25 +1898,35 @@ append_braced_variable_spans(StringView              source,
 
   usize subscript_end = head_end;
 
-  if (head_end < text.length && text[head_end] == '[') {
-    let array_marker = String{heap_allocator(), StringView{"-A "}};
+  if (head_end < text.length && text[head_end] == '[' &&
+      !is_declared_associative(
+          source, text.substring_of_length(head_start, head_end - head_start)))
+  {
+    usize bracket_depth = 0;
 
-    array_marker.append(
-        text.substring_of_length(head_start, head_end - head_start));
-
-    if (!source.find_substring(array_marker.view(), 0).has_value()) {
-      subscript_end =
-          head_end + text.substring(head_end).find_character(']').value_or(0);
+    for (usize index = head_end; index < text.length; index++) {
+      if (text[index] == '[') bracket_depth++;
+      if (text[index] == ']' && --bracket_depth == 0) {
+        subscript_end = index;
+        break;
+      }
     }
   }
 
   usize position            = head_start;
+  usize command_depth       = 0;
   bool  is_in_single_quotes = false;
 
   while (position < text.length) {
     let const byte = text[position];
 
     if (byte == '\'') is_in_single_quotes = !is_in_single_quotes;
+    if (!is_in_single_quotes && byte == '(' && text[position - 1] == '$') {
+      command_depth++;
+    } else if (!is_in_single_quotes && byte == ')' && command_depth > 0) {
+      command_depth--;
+    }
+
     if (byte == '\\' && !is_in_single_quotes) {
       position += 2;
       continue;
@@ -1868,9 +1948,10 @@ append_braced_variable_spans(StringView              source,
     let const is_expansion =
         (text[position - 1] == '$' && text[position - 2] != '$') ||
         (text[position - 1] == '{' && text[position - 2] == '$');
-    let const is_reference = position == head_start || is_expansion ||
-                             (is_offset_tail && position >= head_end) ||
-                             (position > head_end && position < subscript_end);
+    let const is_reference =
+        position == head_start || is_expansion ||
+        (command_depth == 0 && is_offset_tail && position >= head_end) ||
+        (command_depth == 0 && position > head_end && position < subscript_end);
 
     if (is_reference &&
         text.substring_of_length(position, word_end - position) == name)

@@ -439,11 +439,11 @@ Lexer::walk_heredoc_body(usize              start,
                          bool               should_expand,
                          Emit               emit_line) throws -> usize
 {
-  usize                   position           = start;
-  bool                    did_find_delimiter = false;
-  bool                    has_near_miss      = false;
-  Maybe<StringView>       continued_text{};
-  heredoc_terminator_miss near_miss{0, 0,
+  usize                     position           = start;
+  bool                      did_find_delimiter = false;
+  bool                      has_near_miss      = false;
+  lexer::heredoc_join_state join_state{};
+  heredoc_terminator_miss   near_miss{0, 0,
                                     heredoc_miss_kind::IndentedTerminator};
 
   loop {
@@ -463,7 +463,9 @@ Lexer::walk_heredoc_body(usize              start,
     usize     stripped_offset = line_offset;
     usize     stripped_length = line_length;
 
-    if (tab_policy == heredoc_tab_policy::Strip) {
+    if (tab_policy == heredoc_tab_policy::Strip &&
+        !join_state.is_logical_line_open)
+    {
       while (stripped_length > 0 && m_source[stripped_offset] == '\t') {
         stripped_offset++;
         stripped_length--;
@@ -472,18 +474,8 @@ Lexer::walk_heredoc_body(usize              start,
 
     let const stripped =
         m_source.substring_of_length(stripped_offset, stripped_length);
-    let const is_delimiter = continued_text.has_value()
-                                 ? lexer::heredoc_joined_line_is_delimiter(
-                                       *continued_text, stripped, delimiter)
-                                 : delimiter == stripped;
-
-    continued_text = None;
-
-    if (should_expand &&
-        lexer::count_backslashes_before(stripped, stripped_length) % 2 == 1)
-    {
-      continued_text = stripped.substring_of_length(0, stripped_length - 1);
-    }
+    let const is_delimiter = lexer::advance_heredoc_join(
+        join_state, stripped, delimiter, should_expand);
 
     did_find_delimiter = did_find_delimiter || is_delimiter;
 
@@ -521,8 +513,8 @@ Lexer::walk_heredoc_body(usize              start,
         near_miss     = heredoc_terminator_miss{
             content_start, delimiter.length,
             leading_length == 0 ? heredoc_miss_kind::TrailingBlankTerminator
-                : is_tab_indentation ? heredoc_miss_kind::TabIndentedTerminator
-                                     : heredoc_miss_kind::IndentedTerminator};
+                  : is_tab_indentation ? heredoc_miss_kind::TabIndentedTerminator
+                                       : heredoc_miss_kind::IndentedTerminator};
       }
     }
 
@@ -555,12 +547,26 @@ Lexer::collect_pending_heredocs() throws -> void
     ASSERT(pending.contents != nullptr);
     pending.contents->source_position = m_cursor_position;
 
+    usize logical_line_start = 0;
+
     let const do_append_body_line = [&](StringView line, bool,
                                         bool       is_delimiter) -> bool {
-      if (is_delimiter) return false;
+      if (is_delimiter) {
+        while (collected.count() > logical_line_start) {
+          collected.pop_back();
+        }
+
+        return false;
+      }
 
       collected.append(line);
       collected += '\n';
+
+      if (!pending.should_expand ||
+          lexer::count_backslashes_before(line, line.length) % 2 == 0)
+      {
+        logical_line_start = collected.count();
+      }
 
       return true;
     };

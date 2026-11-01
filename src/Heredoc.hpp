@@ -16,12 +16,19 @@
 
 namespace koshka::lexer {
 
+struct heredoc_join_state
+{
+  usize matched_byte_count{0};
+  bool  is_logical_line_open{false};
+  bool  has_mismatch{false};
+};
+
 struct pending_heredoc
 {
-  String                    delimiter;
-  bool                      should_strip_tabs{false};
-  bool                      should_join_lines{false};
-  mutable Maybe<StringView> continued_text{};
+  String                     delimiter;
+  bool                       should_strip_tabs{false};
+  bool                       should_join_lines{false};
+  mutable heredoc_join_state join_state{};
 
   cold fn
   move_to_allocator(Allocator allocator) throws -> void
@@ -46,10 +53,13 @@ fn
 match_heredoc_line(StringView line, const pending_heredoc &heredoc) wontthrow
     -> heredoc_line_match;
 
-pure fn
-heredoc_joined_line_is_delimiter(StringView continued_text,
-                                 StringView line,
-                                 StringView delimiter) wontthrow -> bool;
+/* takes one physical line of a logical line with its tabs stripped, and
+   returns whether the logical line it ends is the delimiter. */
+fn
+advance_heredoc_join(heredoc_join_state &state,
+                     StringView          content,
+                     StringView          delimiter,
+                     bool                should_join_lines) wontthrow -> bool;
 
 /* the end of the heredoc delimiter word that starts at position. Quotes and
    backslashes keep blanks and operators inside the word. */
