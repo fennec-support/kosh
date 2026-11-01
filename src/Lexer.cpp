@@ -1062,7 +1062,7 @@ Lexer::lex_identifier() throws -> Token *
 
         let decoded = String{heap_allocator()};
 
-        utils::decode_ansi_c_escapes(
+        utils::decode_ansi_c_quote(
             decoded,
             m_source.substring_of_length(m_cursor_position + ansi_body_start,
                                          byte_count - ansi_body_start - 1));

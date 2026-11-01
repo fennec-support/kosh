@@ -540,7 +540,7 @@ decode_shell_word(StringView                word,
           word.substring_of_length(body_start, body_end - body_start);
       let ansi_text = String{allocator};
 
-      decode_ansi_c_escapes(ansi_text, body);
+      decode_ansi_c_quote(ansi_text, body);
 
       let const construct_end = is_terminated ? body_end + 1 : body_end;
 

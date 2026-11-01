@@ -627,6 +627,27 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
     if (is_globstar_component) {
       LOG(All, "expanding a globstar component across directory levels");
 
+      /* consecutive ** components match what one of them matches. */
+      while (slash_after.has_value()) {
+        let const next = *slash_after + 1;
+
+        if (next + 2 > text.length || text.data[next] != '*' ||
+            text.data[next + 1] != '*' || !field.glob_active[next] ||
+            !field.glob_active[next + 1])
+        {
+          break;
+        }
+
+        if (next + 2 == text.length) {
+          slash_after = None;
+          break;
+        }
+
+        if (text.data[next + 2] != '/') break;
+
+        slash_after = next + 2;
+      }
+
       let const prefix = text.substring_of_length(0, component_start);
       let       base   = Path{StringView{"."}};
 
@@ -751,7 +772,8 @@ EvalContext::expand_path_recurse(ArrayList<glob_field> fields) throws
 fn
 EvalContext::expand_tilde(WordSegment &leading_segment,
                           bool         is_word_continued,
-                          bool         should_stop_at_colon) const throws
+                          bool         should_stop_at_colon,
+                          usize       *directory_byte_count_out) const throws
     -> void
 {
   if (!leading_segment.is_tilde_candidate()) return;
@@ -795,6 +817,8 @@ EvalContext::expand_tilde(WordSegment &leading_segment,
   expanded.append(directory->view());
   expanded.append(text.view().substring(name_end));
   text.assign_copy(heap_allocator(), expanded.view());
+  if (directory_byte_count_out != nullptr)
+    *directory_byte_count_out = directory->count();
 }
 
 fn

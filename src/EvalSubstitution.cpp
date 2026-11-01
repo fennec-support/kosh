@@ -390,14 +390,20 @@ EvalContext::read_redirect_substitution(StringView source) throws
   let content = Path{filename.view()}.read_entire_file();
 
   if (!content.has_value()) {
+    let const reason = os::last_system_error_message();
+
     LOG(Debug, "the file read substitution of '%s' failed, expanding to empty",
         filename.c_str());
+    show_runtime_error_at(source_store().current_location(),
+                          "Unable to read '" + filename + "': " + reason);
+    execution_store().set_last_exit_status(1);
 
     return String{heap_allocator()};
   }
 
   let result = steal(*content);
 
+  execution_store().set_last_exit_status(0);
   finish_captured_output(result, *this, source_store().current_location());
 
   return result;

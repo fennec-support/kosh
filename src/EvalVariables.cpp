@@ -1008,7 +1008,7 @@ EvalContext::resolve_nameref_parameter(StringView spec) throws
     name_end++;
   }
 
-  if (spec[0] == '!' && name_end == spec.length) {
+  if (spec[0] == '!' && (name_end == spec.length || spec[name_end] != '[')) {
     return None;
   }
 

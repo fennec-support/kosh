@@ -1518,7 +1518,7 @@ append_reprinted_source(String    &out,
 
         if (end.has_value()) {
           let decoded = String{heap_allocator()};
-          utils::decode_ansi_c_escapes(
+          utils::decode_ansi_c_quote(
               decoded,
               source.substring_of_length(position + 2, *end - position - 3));
           append_shell_quoted_arg(out, decoded.view(), true);

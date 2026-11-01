@@ -193,6 +193,9 @@ append_shell_quoted(String    &out,
 
 fn
 decode_ansi_c_escapes(String &out, StringView body) throws -> void;
+/* the $'...' form, whose text ends at the first NUL byte. */
+fn
+decode_ansi_c_quote(String &out, StringView body) throws -> void;
 
 fn
 set_foreground_program_title(const ArrayList<String> &arguments,

@@ -99,7 +99,7 @@ unquote_heredoc_delimiter(StringView word, Allocator allocator) throws
         body_end += word[body_end] == '\\' ? 2 : 1;
       }
       body_end = body_end < word.length ? body_end : word.length;
-      utils::decode_ansi_c_escapes(
+      utils::decode_ansi_c_quote(
           delimiter,
           word.substring_of_length(body_start, body_end - body_start));
       position = body_end;

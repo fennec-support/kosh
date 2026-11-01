@@ -916,6 +916,19 @@ decode_ansi_c_escapes(String &out, StringView body) throws -> void
   }
 }
 
+fn
+decode_ansi_c_quote(String &out, StringView body) throws -> void
+{
+  let const first_byte = out.count();
+
+  decode_ansi_c_escapes(out, body);
+  if (let const nul = out.view().substring(first_byte).find_character('\0');
+      nul.has_value())
+  {
+    out.truncate(first_byte + *nul);
+  }
+}
+
 static fn
 get_printable_character_length(StringView text,
                                usize      position,

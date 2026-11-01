@@ -36,13 +36,47 @@ clone_word_segments(const Word &word, Allocator allocator) throws
   return segments;
 }
 
+/* the directory a tilde prefix produced is literal text, while the rest of the
+   leading segment keeps its glob characters. */
+static fn
+separate_tilde_directory(ArrayList<WordSegment> &segments,
+                         usize                   directory_byte_count,
+                         Allocator               allocator) throws -> void
+{
+  if (directory_byte_count == 0) return;
+
+  let const text    = segments.front().text.view();
+  let       rebuilt = ArrayList<WordSegment>{allocator};
+
+  rebuilt.reserve(segments.count() + 1);
+  rebuilt.push(WordSegment{
+      WordSegment::Kind::LiteralText,
+      SegmentText{allocator, text.substring_of_length(0, directory_byte_count)},
+      false
+  });
+  if (text.length > directory_byte_count) {
+    rebuilt.push(WordSegment{
+        WordSegment::Kind::UnquotedText,
+        SegmentText{allocator, text.substring(directory_byte_count)},
+        false
+    });
+  }
+
+  for (usize i = 1; i < segments.count(); i++)
+    rebuilt.push(segments[i].clone(allocator));
+
+  segments = steal(rebuilt);
+}
+
 static fn
 is_field_sensitive_word(StringView word) wontthrow -> bool
 {
   for (usize i = 0; i < word.length; i++) {
     let const byte = word[i];
 
-    if (byte == '"' || byte == '\'' || byte == '\\' || byte == '@') {
+    if (byte == '"' || byte == '\'' || byte == '\\' || byte == '@' ||
+        byte == '~')
+    {
       return true;
     }
 
@@ -99,10 +133,14 @@ EvalContext::expand_word(const Word &word) throws
       !word.segments.front().text.is_empty() &&
       word.segments.front().text.first_character() == '~')
   {
+    usize directory_byte_count = 0;
+
     tilde_expanded_segments = clone_word_segments(word, scratch);
     expand_tilde(tilde_expanded_segments.front(),
                  tilde_expanded_segments.count() > 1,
-                 !runtime_state().is_posix_mode());
+                 !runtime_state().is_posix_mode(), &directory_byte_count);
+    separate_tilde_directory(tilde_expanded_segments, directory_byte_count,
+                             scratch);
     segments = &tilde_expanded_segments;
   } else if (runtime_state().is_bash_compatible() &&
              !runtime_state().is_posix_mode() && !word.segments.is_empty() &&
@@ -546,10 +584,20 @@ EvalContext::expand_word(const Word &word) throws
         let const word =
             segment_text.substring(positional_test_op_position + 1);
         let const param_count = variable_store().positional_params().count();
+        let       is_every_param_empty = true;
+
+        for (let const &param : variable_store().positional_params()) {
+          if (!param.is_empty()) {
+            is_every_param_empty = false;
+            break;
+          }
+        }
+
         let const is_positional_null =
-            param_count == 0 ||
-            (param_count == 1 &&
-             variable_store().positional_params()[0].view().is_empty());
+            is_every_param_empty &&
+            (param_count <= 1 ||
+             (is_star && segment.is_in_double_quotes &&
+              variable_store().field_separators().is_empty()));
         let const is_posix = runtime_state().is_posix_mode();
         let const should_treat_as_unset =
             is_posix ? is_posix_positional_test_null(
@@ -589,7 +637,8 @@ EvalContext::expand_word(const Word &word) throws
         case '+':
           if (!should_treat_as_unset) {
             do_emit_word();
-          } else if (is_quoted_list) {
+          } else if (is_quoted_list || (is_star && segment.is_in_double_quotes))
+          {
             do_append_run(StringView{}, false);
           }
 
@@ -1274,10 +1323,14 @@ EvalContext::expand_case_pattern_masked(const Word &word,
       !word.segments.front().text.is_empty() &&
       word.segments.front().text.first_character() == '~')
   {
+    usize directory_byte_count = 0;
+
     tilde_expanded_segments = clone_word_segments(word, scratch_allocator());
     expand_tilde(tilde_expanded_segments.front(),
                  tilde_expanded_segments.count() > 1,
-                 !runtime_state().is_posix_mode());
+                 !runtime_state().is_posix_mode(), &directory_byte_count);
+    separate_tilde_directory(tilde_expanded_segments, directory_byte_count,
+                             scratch_allocator());
     segments = &tilde_expanded_segments;
   }
 

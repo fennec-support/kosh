@@ -443,6 +443,44 @@ EvalContext::expand_modifier_word_masked(
                                      true, false, source_location);
 }
 
+static pure fn
+find_balanced_subscript_close(StringView subscript_text)
+    wontthrow -> Maybe<usize>
+{
+  /* e.g. subscript_text = "[x[1]]": '[' at 0 sets depth 1, '[' at 2 sets
+          depth 2, ']' at 4 drops depth to 1, and ']' at 5 returns 5. */
+  usize depth = 0;
+
+  for (usize position = 0; position < subscript_text.length; position++) {
+    let const byte = subscript_text[position];
+
+    if (byte == '[') depth++;
+    if (byte != ']') {
+      position = lexer::skip_quoted_run(subscript_text, position);
+      continue;
+    }
+
+    if (depth <= 1) return position;
+
+    depth--;
+  }
+
+  return None;
+}
+
+static fn
+find_variable_name_end(StringView spec) wontthrow -> usize
+{
+  usize name_end = 0;
+
+#pragma clang loop unroll_count(4)
+  while (name_end < spec.length && lexer::is_variable_name(spec[name_end])) {
+    name_end++;
+  }
+
+  return name_end;
+}
+
 class EvalContext::ModifierWordExpander
 {
 public:
@@ -548,6 +586,12 @@ private:
   fn
   expand_field_reference(StringView inner) throws -> bool;
   fn
+  expand_selected_operand(StringView inner) throws -> bool;
+  fn
+  expand_nested_word(StringView word, usize word_offset) throws -> void;
+  fn
+  expand_current_word() throws -> void;
+  fn
   expand_leading_tilde() throws -> bool;
   static fn
   is_element_operator(StringView modifier) wontthrow -> bool;
@@ -614,7 +658,8 @@ EvalContext::ModifierWordExpander::emit_byte(char byte,
 {
   mark_quoted_emit();
   m_out += byte;
-  if (m_active_out != nullptr) m_active_out->push(is_active);
+  if (m_active_out != nullptr)
+    m_active_out->push(is_active && !m_is_outer_quoted);
 }
 
 fn
@@ -1039,7 +1084,7 @@ EvalContext::ModifierWordExpander::emit_run(StringView bytes,
   m_out.append(bytes);
   if (m_active_out != nullptr) {
     for (usize k = 0; k < bytes.length; k++)
-      m_active_out->push(is_active);
+      m_active_out->push(is_active && !m_is_outer_quoted);
   }
 }
 
@@ -1168,7 +1213,7 @@ EvalContext::ModifierWordExpander::expand_ansi_c_quote() throws -> void
 
   let decoded = String{m_context.scratch_allocator()};
 
-  utils::decode_ansi_c_escapes(decoded, body.view());
+  utils::decode_ansi_c_quote(decoded, body.view());
   emit_run(decoded.view(), false);
   m_index = j;
 }
@@ -1364,7 +1409,9 @@ EvalContext::ModifierWordExpander::expand_braced_parameter() throws
   usize     j     = 0;
   let const inner = scan_braced_body(j);
 
-  if (expand_field_reference(inner.view())) {
+  if (expand_field_reference(inner.view()) ||
+      expand_selected_operand(inner.view()))
+  {
     m_index = j;
 
     return;
@@ -1681,8 +1728,134 @@ EvalContext::ModifierWordExpander::expand_leading_tilde() throws -> bool
   return true;
 }
 
+/* an operand of a nested ${name-word} or ${name+word} keeps its quoting and
+   its field breaks, so it expands in place instead of through a flat string.
+   the expansion of name runs twice, so a subscript with side effects stays on
+   the flat path. */
+fn
+EvalContext::ModifierWordExpander::expand_selected_operand(
+    StringView inner) throws -> bool
+{
+  if (m_break_out == nullptr || inner.is_empty()) return false;
+
+  let const first    = inner[0];
+  usize     name_end = 1;
+
+  if (lexer::is_variable_name_start(first)) {
+    name_end = find_variable_name_end(inner);
+    if (name_end < inner.length && inner[name_end] == '[') {
+      let const close =
+          find_balanced_subscript_close(inner.substring(name_end));
+
+      if (!close.has_value()) return false;
+
+      let const subscript = inner.substring_of_length(name_end, *close + 1);
+
+      for (usize i = 0; i < subscript.length; i++) {
+        let const byte = subscript[i];
+
+        if (byte == '$' || byte == '`' || byte == '=') return false;
+        if ((byte == '+' || byte == '-') && subscript[i + 1] == byte) {
+          return false;
+        }
+      }
+
+      name_end += *close + 1;
+    }
+  } else if (lexer::is_number(first)) {
+    while (name_end < inner.length && lexer::is_number(inner[name_end]))
+      name_end++;
+  } else if (!lexer::is_special_parameter_char(first) || first == '#' ||
+             first == '!')
+  {
+    return false;
+  }
+
+  if (name_end >= inner.length) return false;
+
+  let const is_colon = inner[name_end] == ':';
+  let const op_index = name_end + (is_colon ? 1 : 0);
+
+  if (op_index >= inner.length ||
+      (inner[op_index] != '-' && inner[op_index] != '+'))
+  {
+    return false;
+  }
+
+  let const name  = inner.substring_of_length(0, name_end);
+  let       probe = String{m_context.scratch_allocator(), name};
+
+  probe.append(is_colon ? StringView{":+x"} : StringView{"+x"});
+
+  let const is_set =
+      !m_context
+           .apply_parameter_expansion(probe.view(), nullptr, 0, false,
+                                      get_nested_quoting())
+           .is_empty();
+
+  if (inner[op_index] == '+' && !is_set) return false;
+  if (inner[op_index] == '-' && is_set) return expand_field_reference(name);
+
+  expand_nested_word(inner.substring(op_index + 1), op_index + 1);
+
+  return true;
+}
+
+fn
+EvalContext::ModifierWordExpander::expand_nested_word(
+    StringView word, usize word_offset) throws -> void
+{
+  let const saved_word     = m_word;
+  let const saved_index    = m_index;
+  let const saved_location = m_source_location;
+  let const was_outer      = m_is_outer_quoted;
+  let const was_double     = m_is_in_double_quote;
+  let const was_single     = m_is_in_single_quote;
+  let const did_emit       = m_did_quoted_emit;
+  let const did_at         = m_did_quoted_at;
+
+  let word_location = SourceLocation{};
+
+  if (saved_location != nullptr) {
+    let const word_start = saved_index + 2 + word_offset;
+
+    if (word_start <= saved_location->length &&
+        word.length <= saved_location->length - word_start)
+    {
+      word_location     = saved_location->subspan(word_start, word.length);
+      m_source_location = &word_location;
+    } else {
+      m_source_location = nullptr;
+    }
+  }
+
+  m_word               = word;
+  m_is_outer_quoted    = is_quoted();
+  m_is_in_double_quote = false;
+  m_is_in_single_quote = false;
+
+  expand_current_word();
+
+  m_word               = saved_word;
+  m_index              = saved_index;
+  m_source_location    = saved_location;
+  m_is_outer_quoted    = was_outer;
+  m_is_in_double_quote = was_double;
+  m_is_in_single_quote = was_single;
+  m_did_quoted_emit    = m_did_quoted_emit || did_emit;
+  m_did_quoted_at      = m_did_quoted_at || did_at;
+}
+
 fn
 EvalContext::ModifierWordExpander::expand() throws -> String
+{
+  expand_current_word();
+
+  return steal(m_out);
+}
+
+fn
+EvalContext::ModifierWordExpander::expand_current_word() throws -> void
 {
   for (m_index = 0; m_index < m_word.length; m_index++) {
     if (toggle_quote_state()) continue;
@@ -1724,8 +1897,6 @@ EvalContext::ModifierWordExpander::expand() throws -> String
 
     expand_dollar();
   }
-
-  return steal(m_out);
 }
 
 fn
@@ -1807,9 +1978,10 @@ public:
   fn
   expand() throws -> String;
   fn
-  set_reference_target() wontthrow -> void
+  set_reference_target(bool has_written_subscript) wontthrow -> void
   {
-    m_is_reference_target = true;
+    m_is_reference_target   = true;
+    m_has_written_subscript = has_written_subscript;
   }
 
 private:
@@ -1819,7 +1991,8 @@ private:
   usize                  m_source_location_offset;
   bool                   m_should_expand_process_substitution;
   parameter_word_quoting m_quoting;
-  bool                   m_is_reference_target = false;
+  bool                   m_is_reference_target   = false;
+  bool                   m_has_written_subscript = false;
   StringView             m_name;
   StringView             m_rest;
 
@@ -1829,6 +2002,9 @@ private:
   fn
   expand_word(StringView word, parameter_word_quoting quoting) throws
       -> String;
+  fn
+  apply_operator_to_target_name(StringView target,
+                                StringView suffix) throws -> String;
   fn
   expand_indirect() throws -> String;
   fn
@@ -1942,44 +2118,6 @@ is_transform_operator(char op) wontthrow -> bool
   }
 }
 
-static pure fn
-find_balanced_subscript_close(StringView subscript_text)
-    wontthrow -> Maybe<usize>
-{
-  /* e.g. subscript_text = "[x[1]]": '[' at 0 sets depth 1, '[' at 2 sets
-          depth 2, ']' at 4 drops depth to 1, and ']' at 5 returns 5. */
-  usize depth = 0;
-
-  for (usize position = 0; position < subscript_text.length; position++) {
-    let const byte = subscript_text[position];
-
-    if (byte == '[') depth++;
-    if (byte != ']') {
-      position = lexer::skip_quoted_run(subscript_text, position);
-      continue;
-    }
-
-    if (depth <= 1) return position;
-
-    depth--;
-  }
-
-  return None;
-}
-
-static fn
-find_variable_name_end(StringView spec) wontthrow -> usize
-{
-  usize name_end = 0;
-
-#pragma clang loop unroll_count(4)
-  while (name_end < spec.length && lexer::is_variable_name(spec[name_end])) {
-    name_end++;
-  }
-
-  return name_end;
-}
-
 static fn
 find_indirect_name_end(StringView body) wontthrow -> usize
 {
@@ -2012,6 +2150,30 @@ EvalContext::ParameterExpander::expand_word(
   return m_context.expand_modifier_word(
       word, true, true, get_location_for(word, word_location),
       m_should_expand_process_substitution, quoting);
+}
+
+/* the operator of ${!ref-word} applies to the target name of a name reference,
+   which counts as set. */
+fn
+EvalContext::ParameterExpander::apply_operator_to_target_name(
+    StringView target, StringView suffix) throws -> String
+{
+  let const is_colon = suffix[0] == ':' && suffix.length > 1;
+  let const op       = suffix[is_colon ? 1 : 0];
+
+  if (op == '-' || op == '=' || op == '?') {
+    return String{m_context.scratch_allocator(), target};
+  }
+
+  if (op == '+')
+    return expand_word(suffix.substring(is_colon ? 2 : 1), m_quoting);
+
+  if (op == '@' && suffix.length == 2) {
+    return m_context.apply_parameter_transform_to_value(target, suffix[1],
+                                                        StringView{});
+  }
+
+  return m_context.apply_value_modifier(target, suffix, nullptr);
 }
 
 fn
@@ -2050,6 +2212,32 @@ EvalContext::ParameterExpander::expand_indirect() throws -> String
   /* at this point: body does not refer to itself, and when
      m_is_reference_target is set, body does not end with [@] or [*]. */
   let const name_end = find_indirect_name_end(body);
+
+  if (name_end > 0 && name_end < body.length &&
+      m_context.variable_store().attributes().is_nameref(
+          body.substring_of_length(0, name_end)) &&
+      !m_context.has_generated_value(body.substring_of_length(0, name_end)))
+  {
+    let const target =
+        m_context.resolve_nameref(body.substring_of_length(0, name_end));
+
+    if (target.has_value() && !target->is_empty()) {
+      return apply_operator_to_target_name(target->view(),
+                                           body.substring(name_end));
+    }
+  }
+
+  if (name_end == 0 && body.length > 1 && (body[0] == '@' || body[0] == '*') &&
+      m_context.variable_store().positional_params().count() == 1)
+  {
+    let rewritten = String{m_context.scratch_allocator(), StringView{"!1"}};
+
+    rewritten.append(body.substring(1));
+
+    return m_context.apply_parameter_expansion(
+        rewritten.view(), nullptr, 0, m_should_expand_process_substitution,
+        m_quoting);
+  }
 
   if (name_end > 0 && name_end < body.length &&
       !(name_end == body.length - 1 &&
@@ -2287,7 +2475,7 @@ EvalContext::ParameterExpander::expand_element_transform(
     const SourceLocation *subscript_location,
     char                  op) throws -> String
 {
-  if (op == 'a' && m_is_reference_target) {
+  if (op == 'a' && m_is_reference_target && !m_has_written_subscript) {
     return String{m_context.scratch_allocator()};
   }
 
@@ -3220,6 +3408,9 @@ EvalContext::apply_parameter_expansion(
   enter_parameter_expansion();
   defer { leave_parameter_expansion(); };
 
+  let const spec_name_end = find_variable_name_end(spec);
+  let const has_written_subscript =
+      spec_name_end < spec.length && spec[spec_name_end] == '[';
   let resolved_spec = Maybe<String>{};
 
   if (variable_store().attributes().has_namerefs()) rarely {
@@ -3237,7 +3428,8 @@ EvalContext::apply_parameter_expansion(
                                    should_expand_process_substitution,
                                    quoting};
 
-  if (resolved_spec.has_value()) expander.set_reference_target();
+  if (resolved_spec.has_value())
+    expander.set_reference_target(has_written_subscript);
 
   return expander.expand();
 }
@@ -3645,7 +3837,9 @@ longest_possible_pattern_match(StringView    pattern,
         close++;
       }
 
-      while (close < pattern.length && pattern[close] != ']') {
+      while (close < pattern.length &&
+             (pattern[close] != ']' || !do_is_active(close)))
+      {
         if (pattern[close] == '[' && close + 1 < pattern.length &&
             (pattern[close + 1] == ':' || pattern[close + 1] == '.' ||
              pattern[close + 1] == '='))
@@ -4245,7 +4439,7 @@ EvalContext::apply_parameter_transform_to_value(StringView text,
 
     return out;
   }
-  case 'E': utils::decode_ansi_c_escapes(out, text); return out;
+  case 'E': utils::decode_ansi_c_quote(out, text); return out;
   case 'a': {
     let const is_reference = variable_store().attributes().is_nameref(name) &&
                              !is_circular_nameref(name);

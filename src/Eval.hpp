@@ -6371,7 +6371,9 @@ protected:
   fn
   expand_tilde(WordSegment &leading_segment,
                bool         is_word_continued,
-               bool         should_stop_at_colon) const throws -> void;
+               bool         should_stop_at_colon,
+               usize       *directory_byte_count_out = nullptr) const throws
+      -> void;
   fn
   resolve_tilde_prefix(StringView name) const throws -> Maybe<String>;
   fn
