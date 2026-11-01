@@ -8,7 +8,6 @@
  */
 
 #include "../CLI.hpp"
-#include "../CLIColors.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -120,10 +119,7 @@ Df::execute(const ExecContext               &ec,
     cells.push({total_text.view(), {}});
     cells.push({used_text.view(), {}});
     cells.push({available_text.view(), {}});
-    cells.push({capacity_text.view(),
-                capacity >= 90   ? colors::soft(colors::ansi::BOLD_RED)
-                : capacity >= 75 ? colors::soft(colors::ansi::YELLOW)
-                                 : colors::soft(colors::ansi::GREEN)});
+    cells.push({capacity_text.view(), usage_style(capacity)});
     cells.push({mounted.target.view(), {}});
     table.add_row(cells);
   }

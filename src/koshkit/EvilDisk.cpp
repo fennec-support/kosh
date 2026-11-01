@@ -48,15 +48,6 @@ struct smart_statistic_field
 };
 
 fn
-usage_style(u64 percent) wontthrow -> StringView
-{
-  if (percent >= 90) return colors::soft(colors::ansi::BOLD_RED);
-  if (percent >= 75) return colors::soft(colors::ansi::BOLD_YELLOW);
-
-  return colors::soft(colors::ansi::BOLD_GREEN);
-}
-
-fn
 report_value(StringView        report,
              const StringView *names,
              usize             name_count,

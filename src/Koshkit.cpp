@@ -1757,6 +1757,15 @@ scaled_filesystem_blocks(u64 block_count,
 }
 
 fn
+usage_style(u64 percent) wontthrow -> StringView
+{
+  if (percent >= 90) return colors::soft(colors::ansi::BOLD_RED);
+  if (percent >= 75) return colors::soft(colors::ansi::BOLD_YELLOW);
+
+  return colors::soft(colors::ansi::BOLD_GREEN);
+}
+
+fn
 filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64
 {
   /* a sum above UINT64_MAX halves both terms, so the divisor fits in u64. */

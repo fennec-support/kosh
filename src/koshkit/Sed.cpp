@@ -1048,10 +1048,14 @@ Sed::execute(const ExecContext               &ec,
               "' changed during the edit, so it was not replaced");
       status = 1;
     } else if (!did_read_fail) {
-      os::replace_file_beside(Path{sources[source_index], heap_allocator()},
-                              ".kosh-sed-", output.view(),
-                              in_place_status.mode & 0777,
-                              static_cast<u32>(in_place_status.group_id));
+      try {
+        os::replace_file_beside(
+            Path{sources[source_index], heap_allocator()}, ".kosh-sed-",
+            output.view(), final_status.mode & 0777, final_status.group_id);
+      } catch (Error &error) {
+        report_soft_koshkit_error(ec, cxt, error.message().view());
+        status = 1;
+      }
     }
 
     output.clear();

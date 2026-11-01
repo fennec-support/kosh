@@ -303,7 +303,8 @@ Ps::execute(const ExecContext               &ec,
   let const should_color = koshkit_should_color();
 
   if (!FLAG_PS_NO_HEADERS.is_enabled()) {
-    append_report_text(output, "  PID CMD", colors::ansi::BOLD, should_color);
+    append_report_text(output, "  PID CMD",
+                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
     output += '\n';
   }
 

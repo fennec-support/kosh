@@ -846,6 +846,9 @@ scaled_filesystem_blocks(u64 block_count,
 fn
 filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64;
 
+fn
+usage_style(u64 percent) wontthrow -> StringView;
+
 pure fn
 file_type_name(const os::file_status &status) wontthrow -> StringView;
 /* rewrites a first operand -NUM into -n NUM, as head and tail accept the

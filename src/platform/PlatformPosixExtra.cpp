@@ -49,6 +49,8 @@ namespace {
 fn
 install_descriptor(int fd, int target) wontthrow -> int
 {
+  note_descriptor_rebound();
+
   if (fd != target) return ::dup2(fd, target);
 
   let const flags = ::fcntl(fd, F_GETFD);

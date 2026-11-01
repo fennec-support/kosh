@@ -957,7 +957,9 @@ replace_file_beside(const Path &target,
   }
 
   if (group_id.has_value() &&
-      ::fchown(fd, static_cast<uid_t>(-1), static_cast<gid_t>(*group_id)) != 0)
+      ::fchown(fd, static_cast<uid_t>(-1), static_cast<gid_t>(*group_id)) !=
+          0 &&
+      ((mode >> 3) & 07) != (mode & 07))
   {
     do_discard("set the group of");
   }

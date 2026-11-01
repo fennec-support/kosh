@@ -600,7 +600,8 @@ write_to_named_temp_file(const Path &directory,
    given and POSIX supports it, gives it mode, flushes it, and renames it over
    target, then flushes the directory. POSIX keeps the file descriptor and the
    directory descriptor until the rename. throws on failure and removes the
-   new file. */
+   new file. a group that cannot be set is a failure only when the group and
+   other bits of mode differ. */
 fn
 replace_file_beside(const Path &target,
                     StringView  name_prefix,
