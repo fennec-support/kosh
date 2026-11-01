@@ -1492,9 +1492,18 @@ check_operand_lints_after_scan(AnalysisContext          &actx,
                                args[i]->source_location());
 
       let const operand_location = args[i]->source_location();
-      let const base_position    = operand_location.length == expression.count()
-                                       ? Maybe<usize>{operand_location.position}
-                                       : None;
+      let const operand_source   = analysis_source_text(actx, operand_location);
+      let const is_quoted_operand =
+          operand_location.length == expression.count() + 2 &&
+          operand_source.length == operand_location.length &&
+          (operand_source[0] == '"' || operand_source[0] == '\'') &&
+          operand_source.substring_of_length(1, expression.count()) ==
+              expression.view();
+      let const base_position =
+          operand_location.length == expression.count()
+              ? Maybe<usize>{operand_location.position}
+          : is_quoted_operand ? Maybe<usize>{operand_location.position + 1}
+                              : None;
 
       check_arithmetic_expression_lints(actx, expression.view(),
                                         operand_location, base_position,

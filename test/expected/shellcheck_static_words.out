@@ -248,14 +248,6 @@ note: Remove the parentheses.
     95 |    if ([ -n "$value" ]); then :; fi
        |       ^
 note: Remove the parentheses.
-97:22: warning: The `read` runs in a pipeline subshell, so the variables it sets are lost when the stage exits. (SC2030)
-    97 |    echo one | read -r pipeline_value
-       |                       ^~~~~~~~~~~~~~
-note: Feed the loop with a redirection or process substitution.
-98:8: warning: The variable was modified in a pipeline subshell, so this use sees the value from before the pipeline. (SC2031)
-    98 |    echo "$pipeline_value"
-       |         ^~~~~~~~~~~~~~~~~
-note: Move the assignment outside the pipeline.
 99:6: warning: Both operands of the `>` comparison are literal. (SC2050)
     99 |    [[ 10 > 7 ]]
        |       ^~~~~~
@@ -518,7 +510,7 @@ note: Use quoted `"$@"` to preserve each argument.
    184 |    printf '[%s]' $@
        |                  ^~
 note: Quote it as `"$@"`.
-Encountered 126 warnings.
+Encountered 124 warnings.
 done
 done
 done

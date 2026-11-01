@@ -2315,6 +2315,8 @@ analyze_ast(const Expression                *root,
 
   if (parent_analysis_context != nullptr) {
     actx.is_posix_sh_shebang = parent_analysis_context->is_posix_sh_shebang;
+    actx.has_foreign_shell_shebang =
+        parent_analysis_context->has_foreign_shell_shebang;
   } else {
     expressions::internal::check_shebang(actx, source, options.shebang_policy);
   }

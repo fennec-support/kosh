@@ -531,6 +531,7 @@ enum class command_name_id : u8
   Sed,
   Seq,
   Set,
+  Shopt,
   SingleBracket,
   Sleep,
   Source,

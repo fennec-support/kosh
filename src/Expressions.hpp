@@ -709,6 +709,8 @@ public:
   EvalContext *eval_context{nullptr};
 
   bool is_posix_sh_shebang{false};
+  bool has_foreign_shell_shebang{false};
+  bool has_seen_lastpipe_option{false};
 
   ArrayList<function_global_assignment> function_global_assignments{
       heap_allocator()};

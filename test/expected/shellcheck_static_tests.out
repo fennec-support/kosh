@@ -9,14 +9,14 @@ note: Avoid recursion by rewriting the call as a loop, or suppress this check wi
      7 |    let "counter -lt limit"
        |    ^~~
 note: Write `(( ... ))` for the arithmetic.
-7:7: warning: Unexpected 'limit' after the expression.
-     7 |    let "counter -lt limit"
-       |        ^~~~~~~~~~~~~~~~~~~
-note: An operator is missing between two values.
 7:7: warning: Arithmetic treats the `-lt` operator as a subtraction. (SC1106)
      7 |    let "counter -lt limit"
        |        ^~~~~~~~~~~~~~~~~~~
 note: Use the symbolic form such as `<` or `>` inside arithmetic.
+7:20: warning: Unexpected 'limit' after the expression.
+     7 |    let "counter -lt limit"
+       |                     ^
+note: An operator is missing between two values.
 8:14: warning: The `>=` operator does not exist in `test`. (SC2122)
      8 |    [[ "$left" >= "$right" ]]
        |               ^~

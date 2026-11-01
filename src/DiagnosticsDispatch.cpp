@@ -103,6 +103,7 @@ constexpr static_string_entry<analysis_command_info>
         C("sed", Sed, COMMAND_GROUP_NAME_AS_VALUE),
         C("seq", Seq, COMMAND_GROUP_ENVIRONMENT_NEUTRAL),
         C("set", Set, NO_COMMAND_GROUP),
+        C("shopt", Shopt, NO_COMMAND_GROUP),
         C("sleep", Sleep, COMMAND_GROUP_NON_STDIN_READER),
         C("source", Source, COMMAND_GROUP_RUNTIME_DEFINER),
         C("ssh", Ssh, COMMAND_GROUP_NAME_AS_VALUE),

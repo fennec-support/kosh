@@ -308,6 +308,22 @@ check_command_name_lints(AnalysisContext          &actx,
 
     break;
 
+  case command_name_id::Shopt: {
+    Maybe<bool> lastpipe_state = None;
+
+    for (usize i = 1; i < args.count(); i++) {
+      let const literal = args[i]->raw_string();
+
+      if (literal.view() == "-s" || literal.view() == "-u") {
+        lastpipe_state = literal.view() == "-s";
+      } else if (literal.view() == "lastpipe" && lastpipe_state.has_value()) {
+        actx.has_seen_lastpipe_option = *lastpipe_state;
+      }
+    }
+
+    break;
+  }
+
   case command_name_id::Dot:
     if (is_posix && args.count() > 2) {
       let const operand = args[2]->raw_string();

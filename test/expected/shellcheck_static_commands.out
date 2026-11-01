@@ -235,10 +235,6 @@ note: Loop over a glob, a variable, or a command substitution.
     88 |    for entry in ${directory}/*.txt; do echo "$entry"; done
        |                 ^~~~~~~~~~~~~~~~~~
 note: Quote the expansion and leave the glob characters outside the quotes.
-90:29: warning: The `break` command leaves the pipeline subshell, and the loop keeps running. (SC2106)
-    90 |      echo hi | grep -q bye | break
-       |                              ^~~~~
-note: Write `||` in place of the pipe.
 95:8: warning: The `case` word 'constant' is constant, so the same branch will always run. (SC2194)
     95 |    case constant in
        |         ^~~~~~~~
@@ -291,4 +287,4 @@ note: Remove it, or move it into the loop it belongs to.
    122 |  false && continue
        |           ^~~~~~~~
 note: Remove it, or move it into the loop it belongs to.
-Encountered 69 warnings.
+Encountered 68 warnings.

@@ -69,16 +69,25 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
   let const has_multiple_stages    = m_commands.count() > 1;
   let const is_unconditional_stage = is_unconditional && !has_multiple_stages;
 
+  let const can_run_last_stage_in_shell =
+      !is_async() &&
+      (actx.has_seen_lastpipe_option ||
+       (actx.options.is_default_mood && !actx.has_foreign_shell_shebang));
+
   for (let const command : m_commands) {
     ASSERT(command != nullptr);
 
     let const was_direct_pipeline_stage = actx.walk.is_direct_pipeline_stage;
+    let const is_shell_stage            = can_run_last_stage_in_shell &&
+                               command->as_simple_command() != nullptr &&
+                               command == m_commands.back();
 
     actx.walk.is_direct_pipeline_stage =
-        has_multiple_stages && (command->as_simple_command() != nullptr ||
-                                command->as_assign_command() != nullptr);
+        has_multiple_stages && !is_shell_stage &&
+        (command->as_simple_command() != nullptr ||
+         command->as_assign_command() != nullptr);
 
-    if (has_multiple_stages) {
+    if (has_multiple_stages && !is_shell_stage) {
       let scope = AnalysisScopeGuard{actx, analysis_scope_mode::Pipeline};
 
       command->analyze(actx, is_unconditional_stage);

@@ -854,6 +854,8 @@ check_shebang(AnalysisContext       &actx,
   if (shell_name == StringView{"dash"} || shell_name == StringView{"sh"}) {
     actx.is_posix_sh_shebang = true;
   }
+
+  actx.has_foreign_shell_shebang = shell_name != StringView{"kosh"};
 }
 
 namespace {
