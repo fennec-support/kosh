@@ -609,6 +609,15 @@ printf 'x\nx\nx\n' > repeated
 "$BIN" -c 'koshkit grep -m 0 x repeated'
 echo "status $?"
 
+echo "--- grep -m leaves an endless input ---"
+yes x | "$BIN_DIR/invoke-koshkit" timeout 5 "$BIN" -c 'koshkit grep -m 1 x'
+echo "status $?"
+yes x | "$BIN_DIR/invoke-koshkit" timeout 5 "$BIN" -c 'koshkit grep -c -m 2 x'
+echo "status $?"
+yes x | "$BIN_DIR/invoke-koshkit" timeout 5 "$BIN" -c \
+  'koshkit grep -m 1 -A 1 x'
+echo "status $?"
+
 echo "--- grep -m rejects a word ---"
 "$BIN" -c 'koshkit grep -m many x repeated' 2>/dev/null
 echo "status $?"

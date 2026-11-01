@@ -1389,6 +1389,14 @@ x
 repeated:2
 merge1:0
 status 1
+--- grep -m leaves an endless input ---
+x
+status 0
+2
+status 0
+x
+x
+status 0
 --- grep -m rejects a word ---
 status 2
 --- grep -L lists inputs with no selected line ---

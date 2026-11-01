@@ -1689,12 +1689,13 @@ public:
         if (is_quiet && m_has_any_match) {
           return 0;
         }
-        if (m_options.output_mode == grep_output_mode::List &&
-            chunk.completion != source_completion_state::Complete &&
-            m_source_match_counts[chunk.source_index] != 0)
+        if (chunk.completion != source_completion_state::Complete &&
+            is_source_decided(chunk.source_index))
         {
           m_line.clear();
           reader.finish_source(chunk.source_index);
+          print_source_summary(chunk.source_index,
+                               m_sources[chunk.source_index]);
         }
       }
     }
@@ -1710,6 +1711,22 @@ public:
   }
 
 private:
+  /* true when the rest of a source cannot change the output. a pending -A
+     group keeps a source that reached -m open. */
+  pure fn
+  is_source_decided(usize source_index) const wontthrow -> bool
+  {
+    if (m_options.output_mode == grep_output_mode::List &&
+        m_source_match_counts[source_index] != 0)
+    {
+      return true;
+    }
+
+    return m_options.has_max_count &&
+           m_source_selected_counts[source_index] >= m_options.max_count &&
+           m_after_remaining_count == 0;
+  }
+
   fn
   match_line(StringView value) throws -> bool
   {
@@ -2399,10 +2416,16 @@ private:
        without error. m_line holds the unterminated tail of the source, or is
        empty. */
     if (!m_line.is_empty()) finish_pending_line(chunk.source_index, source);
+    print_source_summary(chunk.source_index, source);
+  }
+
+  fn
+  print_source_summary(usize source_index, StringView source) throws -> void
+  {
     if (m_options.output_mode == grep_output_mode::Count)
-      print_source_count(chunk.source_index, source);
+      print_source_count(source_index, source);
     if (m_options.should_list_missing &&
-        m_source_match_counts[chunk.source_index] == 0)
+        m_source_match_counts[source_index] == 0)
     {
       m_has_listed_missing = true;
       append_source_name(source);
