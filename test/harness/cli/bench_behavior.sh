@@ -135,7 +135,9 @@ ln -s "$BIN" "$vanishing_command"
 has_typescript=0
 if script -qec true /dev/null >/dev/null 2>&1; then
     has_typescript=1
-    NO_COLOR= TERM=xterm BIN=$BIN BASH_ENV="$d/vanishing-environment" \
+    # script -c runs through SHELL, which must not read BASH_ENV itself.
+    SHELL=/bin/sh NO_COLOR= TERM=xterm BIN=$BIN \
+        BASH_ENV="$d/vanishing-environment" \
         BENCH_VANISHING_COMMAND="$vanishing_command" script -qec \
         "$BIN -c 'bench --runs 3 --no-shell \"$vanishing_command --mood bash -c true\"'" \
         "$d/typescript" >/dev/null 2>&1
