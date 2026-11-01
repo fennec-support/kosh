@@ -31,11 +31,16 @@ namespace koshka {
 namespace os {
 
 static fn
-fork_job_process() throws -> process;
+fork_job_process(bool should_create_process_group) throws -> process;
 
 static process_launch_counts PROCESS_LAUNCH_COUNTS{};
 
 static bool IS_TERMINAL_OWNER = true;
+
+/* a job signal can stop a posix_spawn child before its exec, and the parent
+   then waits for it inside the kernel where it cannot stop or report. a process
+   inside a job group forks its programs, so the whole group stops. */
+static bool IS_INSIDE_JOB_GROUP = false;
 
 static u64 COMMAND_PEAK_RSS_BYTE_COUNT = 0;
 
@@ -498,8 +503,11 @@ execute_program(ExecContext                     &ec,
       options.fallback == script_fallback_policy::Allow;
   let const should_create_process_group =
       options.process_group != process_group_mode::Inherit;
+  let const should_stay_in_job_group =
+      IS_INSIDE_JOB_GROUP && !should_create_process_group;
   let const should_hand_off_controlling_terminal_before_start =
-      options.handoff == terminal_handoff::BeforeStart;
+      options.handoff == terminal_handoff::BeforeStart ||
+      should_stay_in_job_group;
 
   ASSERT(ec.args().count() > 0, "a program needs at least argv[0]");
 
@@ -533,7 +541,7 @@ execute_program(ExecContext                     &ec,
 
     try {
       koshka::flush();
-      child = fork_job_process();
+      child = fork_job_process(!should_stay_in_job_group);
     } catch (...) {
       os::close_fd(start_pipe->in);
       os::close_fd(start_pipe->out);
@@ -1065,10 +1073,16 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
         check_syscall(setpgid(0, target_group));
       }
 
-      if (process_group == process_group_mode::NewBackground ||
+      /* a process group answers to its parent, so a command inside a forked
+         stage stays in the group and never takes the terminal for itself. */
+      if (process_group != process_group_mode::Inherit) {
+        IS_TERMINAL_OWNER = false;
+      }
+
+      if (process_group == process_group_mode::New ||
           process_group == process_group_mode::Join)
       {
-        IS_TERMINAL_OWNER = false;
+        IS_INSIDE_JOB_GROUP = true;
       }
 
       if (should_ignore_interrupts(process_group)) {
@@ -1133,9 +1147,10 @@ fork_compound_stage(Maybe<descriptor>  in_fd,
 }
 
 static fn
-fork_job_process() throws -> process
+fork_job_process(bool should_create_process_group) throws -> process
 {
-  LOG(Debug, "forking a mimicked job into its own process group");
+  LOG(Debug, "forking a job process, own process group %d",
+      should_create_process_group ? 1 : 0);
 
   note_fork_launch();
 
@@ -1144,7 +1159,7 @@ fork_job_process() throws -> process
   if (child_pid == 0) {
     try {
       reset_signal_handlers();
-      (void) setpgid(0, 0);
+      if (should_create_process_group) (void) setpgid(0, 0);
 
 #if defined KOSH_HAS_ADDRESS_SANITIZER
       __lsan_disable();
@@ -1156,7 +1171,7 @@ fork_job_process() throws -> process
     return 0;
   }
 
-  (void) setpgid(child_pid, child_pid);
+  if (should_create_process_group) (void) setpgid(child_pid, child_pid);
 
   return child_pid;
 }
@@ -1173,7 +1188,7 @@ try_fork_compound_stage(const fork_compound_stage_options &options)
 fn
 try_fork_job_process() throws -> Maybe<process>
 {
-  return fork_job_process();
+  return fork_job_process(true);
 }
 
 fn
@@ -1794,6 +1809,14 @@ fn
 signal_process(process p, i32 signal_number) wontthrow -> bool
 {
   return kill(p, signal_number) == 0;
+}
+
+fn
+is_parent_outside_session() wontthrow -> bool
+{
+  let const parent = getppid();
+
+  return parent == 1 || getsid(parent) != getsid(0);
 }
 
 #if defined __linux__

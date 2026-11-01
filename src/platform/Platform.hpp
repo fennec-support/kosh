@@ -667,6 +667,10 @@ poll_process(process              p,
 
 fn
 signal_process(process p, i32 signal_number) wontthrow -> bool;
+/* reports whether no process in this session is the parent of this process,
+   which leaves a stopped shell with nothing to continue it. */
+fn
+is_parent_outside_session() wontthrow -> bool;
 fn
 process_is_running(process p) wontthrow -> bool;
 fn
@@ -1723,6 +1727,17 @@ redirect_stdout(os::descriptor target) throws -> os::descriptor;
 fn
 restore_stdout(os::descriptor saved) wontthrow -> void;
 
+/* moves descriptor above the numbers a script can address and closes the
+   original. the original comes back when no higher number is free. */
+fn
+move_descriptor_out_of_reach(os::descriptor descriptor) wontthrow
+    -> os::descriptor;
+
+/* points every other write end of the pipe of capture_pipe at the null device,
+   so no shell descriptor outlives the reader of that pipe. */
+fn
+detach_descriptors_from_pipe(os::descriptor capture_pipe) wontthrow -> void;
+
 struct saved_descriptor
 {
   i32        shell_fd{-1};
@@ -2541,6 +2556,15 @@ is_stack_nearly_exhausted() wontthrow -> bool;
 
 fn
 clear_trap_handler(i32 signal_number) throws -> void;
+
+/* defers each untrapped fatal signal in this process to the next command
+   boundary, so the EXIT trap runs before the signal ends the shell. */
+fn
+hold_fatal_signals_for_exit_trap() throws -> void;
+
+/* ends the process through a signal the EXIT trap deferred. */
+fn
+finish_termination_signal() wontthrow -> void;
 
 fn
 take_pending_signal() wontthrow -> i32;

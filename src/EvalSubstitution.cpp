@@ -290,11 +290,13 @@ struct command_substitution_drain_context
   usize          length;
   usize          capacity;
   os::descriptor read_fd;
+  bool           is_read_fd_closed{false};
 };
 
 /* memory: drain->data grows by doubling from DRAIN_CHUNK_LENGTH, allocated
            with uncached_heap_allocator(). the caller frees it with
-           free_array().
+           free_array(). a failed growth closes the read end, so a writer stops
+           with a pipe error instead of filling the pipe forever.
    time:   O(n) in the bytes read. each read() returns at least one byte or
            ends the loop, and the capacity doubles on each growth, so the
            reallocations copy O(n) bytes in total. */
@@ -317,6 +319,10 @@ drain_command_substitution_pipe(opaque *raw_context) wontthrow -> void
         drain->data = static_cast<char *>(allocator.raw_realloc(
             drain->data, drain->capacity, grown_capacity, alignof(char)));
       } catch (...) {
+        LOG(Info, "the substitution output outgrew memory at %zu bytes",
+            drain->length);
+        os::close_fd(drain->read_fd);
+        drain->is_read_fd_closed = true;
         break;
       }
 
@@ -589,6 +595,7 @@ EvalContext::setup_process_substitution(
     execution_store().xtrace_indirection_depth()++;
     execution_store().substitution_subshell_depth() =
         execution_store().subshell_depth();
+    expansion_store().substitution_depth()++;
     hide_coprocess_descriptors();
     job_table_store().inherit_parent_jobs(false);
 
@@ -1179,9 +1186,12 @@ EvalContext::run_captured_substitution(
   bool did_begin_restoration = false;
 
   let const do_evaluate_in_process = [&]() throws -> String {
-    let const pipe = os::make_pipe();
+    let pipe = os::make_pipe();
 
     if (!pipe) throw Error{"Could not open a pipe for command substitution"};
+
+    pipe->in  = os::move_descriptor_out_of_reach(pipe->in);
+    pipe->out = os::move_descriptor_out_of_reach(pipe->out);
 
     bool is_pipe_input_open  = true;
     bool is_pipe_output_open = true;
@@ -1193,7 +1203,7 @@ EvalContext::run_captured_substitution(
 
     let captured = String{heap_allocator()};
     let drain_context =
-        command_substitution_drain_context{nullptr, 0, 0, pipe->in};
+        command_substitution_drain_context{nullptr, 0, 0, pipe->in, false};
     /* the reader thread drains the pipe because this process writes to it.
        a write blocks once the pipe buffer is full, so the output must be read
        while ast is evaluated. */
@@ -1247,6 +1257,8 @@ EvalContext::run_captured_substitution(
         os::join_thread(*reader);
         is_reader_running = false;
       }
+
+      if (drain_context.is_read_fd_closed) is_pipe_input_open = false;
 
       if (is_pipe_input_open) {
         os::close_fd(pipe->in);
@@ -1307,6 +1319,9 @@ EvalContext::run_captured_substitution(
 
     if (error) render_contained_substitution_error(error, source.view());
     do_cleanup();
+
+    if (drain_context.is_read_fd_closed)
+      throw Error{"Could not read command substitution output"};
 
     if (drain_context.data != nullptr) {
       captured.append(StringView{drain_context.data, drain_context.length});
@@ -1459,6 +1474,8 @@ EvalContext::run_function_substitution(
   let const source_scope = enter_source_scope(
       &source, String{heap_allocator(), "function substitution"});
 
+  let reply = String{heap_allocator()};
+
   let const do_evaluate_body = [&]() throws -> std::exception_ptr {
     let const was_interactive = execution_store().shell_is_interactive();
 
@@ -1471,6 +1488,9 @@ EvalContext::run_function_substitution(
           source_store().function_substitution_depth() - 1);
     };
 
+    enter_function_scope();
+    defer { leave_function_scope(); };
+
     std::exception_ptr body_error;
 
     try {
@@ -1480,12 +1500,17 @@ EvalContext::run_function_substitution(
     }
 
     if (control_flow_store().has_pending() &&
-        control_flow_store().pending().kind != control_flow::Kind::Exit)
+        control_flow_store().pending().kind == control_flow::Kind::Return)
     {
       control_flow_store().clear();
     }
 
     execution_store().set_shell_is_interactive(was_interactive);
+
+    if (is_value_substitution) {
+      reply = get_variable_value(StringView{"REPLY"})
+                  .value_or(String{heap_allocator()});
+    }
 
     return body_error;
   };
@@ -1507,8 +1532,6 @@ EvalContext::run_function_substitution(
     unset_shell_variable(StringView{"REPLY"});
 
     let const body_error = do_evaluate_body();
-    let       reply      = get_variable_value(StringView{"REPLY"})
-                    .value_or(String{heap_allocator()});
 
     unset_shell_variable(StringView{"REPLY"});
 
@@ -1523,13 +1546,18 @@ EvalContext::run_function_substitution(
 
   koshka::flush();
 
-  let const pipe = os::make_pipe();
+  let pipe = os::make_pipe();
 
   if (!pipe) throw Error{"Could not open a pipe for function substitution"};
 
+  /* the body runs in this process, so a redirection in it can address every
+     descriptor the capture would hold at a low number. */
+  pipe->in  = os::move_descriptor_out_of_reach(pipe->in);
+  pipe->out = os::move_descriptor_out_of_reach(pipe->out);
+
   let captured = String{heap_allocator()};
   let drain_context =
-      command_substitution_drain_context{nullptr, 0, 0, pipe->in};
+      command_substitution_drain_context{nullptr, 0, 0, pipe->in, false};
   let const reader =
       os::start_thread(drain_command_substitution_pipe, &drain_context);
 
@@ -1549,7 +1577,7 @@ EvalContext::run_function_substitution(
   } catch (...) {
     os::close_fd(pipe->out);
     os::join_thread(*reader);
-    os::close_fd(pipe->in);
+    if (!drain_context.is_read_fd_closed) os::close_fd(pipe->in);
     uncached_heap_allocator().free_array(drain_context.data,
                                          drain_context.capacity);
     throw;
@@ -1559,17 +1587,22 @@ EvalContext::run_function_substitution(
 
   koshka::flush();
   os::restore_stdout(saved);
+  os::detach_descriptors_from_pipe(pipe->out);
   os::close_fd(pipe->out);
   os::join_thread(*reader);
-  os::close_fd(pipe->in);
+  if (!drain_context.is_read_fd_closed) os::close_fd(pipe->in);
 
-  if (drain_context.data != nullptr) {
+  if (drain_context.data != nullptr && !drain_context.is_read_fd_closed) {
     captured.append(StringView{drain_context.data, drain_context.length});
-    uncached_heap_allocator().free_array(drain_context.data,
-                                         drain_context.capacity);
   }
 
+  uncached_heap_allocator().free_array(drain_context.data,
+                                       drain_context.capacity);
+
   do_contain_error(error);
+
+  if (drain_context.is_read_fd_closed)
+    throw Error{"Could not read function substitution output"};
 
   finish_captured_output(captured, *this, source_store().current_location());
 

@@ -579,6 +579,15 @@ continue_job(job &job) throws -> void
   if (!cont.has_value())
     throw Error{"This platform does not support continuing stopped jobs"};
 
+  /* a process of the job can have children that stopped with it. */
+  if (job.process_group_id > 0 &&
+      os::signal_process(os::process_from_pid(-job.process_group_id), *cont))
+  {
+    job.state = job::State::Running;
+
+    return;
+  }
+
   bool did_resume = true;
 
   if (job.is_primary_process_active)
@@ -1070,8 +1079,14 @@ fn
 abbreviate_home_directory(StringView path, Allocator allocator) throws
     -> String
 {
-  let const home = os::get_home_directory();
+  return abbreviate_home_directory(path, os::get_home_directory(), allocator);
+}
 
+fn
+abbreviate_home_directory(StringView         path,
+                          const Maybe<Path> &home,
+                          Allocator          allocator) throws -> String
+{
   if (home.has_value()) {
     let const home_view = home->text().view();
 
@@ -1149,11 +1164,39 @@ parse_directory_stack_rotation(StringView     arg,
   return true;
 }
 
+static pure fn
+path_has_dot_component(StringView path) wontthrow -> bool
+{
+  usize position = 0;
+
+  while (position < path.length) {
+    while (position < path.length && os::is_directory_separator(path[position]))
+      position++;
+
+    usize end_position = position;
+
+    while (end_position < path.length &&
+           !os::is_directory_separator(path[end_position]))
+    {
+      end_position++;
+    }
+
+    let const component =
+        path.substring_of_length(position, end_position - position);
+
+    if (component == "." || component == "..") return true;
+
+    position = end_position;
+  }
+
+  return false;
+}
+
 /* memory: each Path holds a heap copy of its text. the returned Path belongs
            to the caller, and the other candidate is freed on return.
-   time:   constant. one read_current_directory() call, and when PWD is
-           non-empty and absolute, one is_same_file_as() call, which stats both
-           paths. */
+   time:   O(PWD length) for the component scan, one read_current_directory()
+           call, and when PWD is usable, one is_same_file_as() call, which
+           stats both paths. */
 fn
 logical_working_directory(const EvalContext &cxt) throws -> Path
 {
@@ -1161,18 +1204,24 @@ logical_working_directory(const EvalContext &cxt) throws -> Path
   let const logical_pwd        = cxt.get_variable_value("PWD");
 
   /* PWD is an ordinary variable that a user can assign, so it is used only
-     when it refers to the physical current directory. */
+     when it refers to the physical current directory. a removed or overlong
+     directory has no physical path to compare, and PWD is its only name. */
   if (logical_pwd.has_value() && !logical_pwd->is_empty() &&
-      os::path_is_absolute(logical_pwd->view()))
+      os::path_is_absolute(logical_pwd->view()) &&
+      !path_has_dot_component(logical_pwd->view()))
   {
     let logical_directory = Path{logical_pwd->view()};
 
-    if (logical_directory.is_same_file_as(physical_directory))
+    if (physical_directory.is_empty() ||
+        logical_directory.is_same_file_as(physical_directory))
+    {
       return logical_directory;
+    }
   }
 
-  /* at this point: PWD is unset, empty, relative, or does not refer to
-     physical_directory, so physical_directory is the working directory. */
+  /* at this point: PWD is unset, empty, relative, holds a dot component, or
+     does not refer to physical_directory, so physical_directory is the working
+     directory. it is empty when the system cannot report the directory. */
   return physical_directory;
 }
 
@@ -1196,6 +1245,8 @@ print_directory_stack(EvalContext       &cxt,
   let const  first_index = selected_index.value_or(0);
   let const  end_index =
       selected_index.has_value() ? first_index + 1 : entry_count;
+  let const home =
+      should_print_full_paths ? Maybe<Path>{None} : os::get_home_directory();
 
   let out = String{cxt.scratch_allocator()};
 
@@ -1210,8 +1261,8 @@ print_directory_stack(EvalContext       &cxt,
     if (should_print_full_paths)
       out.append(entry);
     else
-      out.append(
-          abbreviate_home_directory(entry, cxt.scratch_allocator()).view());
+      out.append(abbreviate_home_directory(entry, home, cxt.scratch_allocator())
+                     .view());
     if (should_print_one_per_line || should_print_numbers ||
         selected_index.has_value() || i + 1 == entry_count)
     {

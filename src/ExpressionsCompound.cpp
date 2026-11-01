@@ -706,6 +706,21 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   bool           was_pipeline_abandoned = false;
   let            bootstrap              = os::subshell_bootstrap{};
   let const      child_evaluator = cxt.make_child_evaluator_state(bootstrap);
+  /* bash runs the last stage in the shell only without job control
+     (Bash manual, shopt lastpipe). the Monitor test matches
+     should_fork_last_builtin in UtilsExecution.cpp. */
+  let const should_run_last_stage_in_parent =
+      !is_async() && cxt.runtime_state().is_bash_compatible() &&
+      cxt.runtime_state().is_shopt_enabled(shopt_option_id::Lastpipe) &&
+      !cxt.runtime_state().option_is_enabled(shell_option_id::Monitor);
+  let const is_foreground_job = !is_async() &&
+                                !should_run_last_stage_in_parent &&
+                                utils::should_run_as_foreground_job(cxt);
+
+  defer {
+    if (is_foreground_job && process_group_id != 0)
+      os::reclaim_controlling_terminal();
+  };
 
   try {
     for (usize stage_index = 0; stage_index < m_commands.count(); stage_index++)
@@ -719,13 +734,8 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
 
       let const is_first = (stage_index == 0);
       let const is_last  = (stage_index + 1 == m_commands.count());
-      /* bash runs the last stage in the shell only without job control
-         (Bash manual, shopt lastpipe). the Monitor test matches
-         should_fork_last_builtin in UtilsExecution.cpp. */
       let const should_run_in_parent =
-          is_last && !is_async() && cxt.runtime_state().is_bash_compatible() &&
-          cxt.runtime_state().is_shopt_enabled(shopt_option_id::Lastpipe) &&
-          !cxt.runtime_state().option_is_enabled(shell_option_id::Monitor);
+          is_last && should_run_last_stage_in_parent;
 
       let const *simple = stage->as_simple_command();
 
@@ -798,8 +808,10 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
                                      : full_source_text(cxt, *stage);
 
       let const process_group =
-          !is_async() ? os::process_group_mode::Inherit
-                      : os::background_process_group_mode(process_group_id);
+          is_async() ? os::background_process_group_mode(process_group_id)
+          : !is_foreground_job    ? os::process_group_mode::Inherit
+          : process_group_id == 0 ? os::process_group_mode::New
+                                  : os::process_group_mode::Join;
 
       bootstrap.evaluation_mode = stage_mode;
       cxt.set_child_source_origin(bootstrap, stage_text, stage_location);
@@ -862,7 +874,7 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
       pending_pipe = None;
 
       children.push(child);
-      if (is_async() && process_group_id == 0) {
+      if ((is_async() || is_foreground_job) && process_group_id == 0) {
         process_group_id = os::process_id_of(child);
       }
 
@@ -919,10 +931,33 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
 
   usize waited_child_count = 0;
 
+  if (is_foreground_job)
+    os::give_controlling_terminal_to_process_group(process_group_id);
+
   try {
     for (; waited_child_count < children.count(); waited_child_count++) {
+      bool      was_stopped = false;
       let const status =
-          os::wait_and_monitor_process(children[waited_child_count]);
+          is_foreground_job
+              ? utils::wait_for_foreground_stage(children[waited_child_count],
+                                                 was_stopped)
+              : os::wait_and_monitor_process(children[waited_child_count]);
+
+      if (was_stopped) {
+        for (usize index = waited_child_count; index < children.count();
+             index++)
+        {
+          stage_status.push(status);
+          pipe_status.push(String::from(status, heap_allocator()));
+        }
+
+        utils::record_stopped_foreground_job(
+            cxt, children, waited_child_count,
+            cxt.source_text_in_span(m_commands[0]->source_location(),
+                                    m_commands.back()->source_end_position()),
+            status, process_group_id);
+        break;
+      }
 
       stage_status.push(status);
       pipe_status.push(String::from(status, heap_allocator()));

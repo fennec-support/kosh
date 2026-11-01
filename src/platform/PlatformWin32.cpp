@@ -864,6 +864,19 @@ restore_stdout(os::descriptor saved) wontthrow -> void
   note_descriptor_rebound();
 }
 
+fn
+move_descriptor_out_of_reach(os::descriptor descriptor) wontthrow
+    -> os::descriptor
+{
+  return descriptor;
+}
+
+fn
+detach_descriptors_from_pipe(os::descriptor capture_pipe) wontthrow -> void
+{
+  unused(capture_pipe);
+}
+
 static fn
 duplicate_handle(HANDLE source, HANDLE &copy, BOOL is_inheritable) wontthrow
     -> bool

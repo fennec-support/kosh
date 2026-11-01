@@ -320,6 +320,69 @@ execute_context(ExecContext  &&ec,
   return foreground_status;
 }
 
+pure fn
+should_run_as_foreground_job(const EvalContext &cxt) wontthrow -> bool
+{
+  return cxt.execution_store().shell_is_interactive() &&
+         cxt.runtime_state().option_is_enabled(shell_option_id::Monitor) &&
+         os::shell_has_controlling_terminal();
+}
+
+fn
+wait_for_foreground_stage(os::process child, bool &was_stopped) throws
+    -> i32
+{
+  let const continue_signal = os::signal_number_from_name("CONT");
+
+  loop {
+    was_stopped = false;
+
+    let const status = os::wait_and_monitor_process(child, &was_stopped);
+
+    /* the interrupt reached the job's process group and not this shell. */
+    if (!was_stopped && status == 130) os::INTERRUPT_REQUESTED = 1;
+
+    if (!was_stopped || !continue_signal.has_value()) return status;
+
+    /* a stage that touched the terminal between its start and the handoff
+       stopped on the terminal signal and holds the terminal now. */
+    let const input_stop  = os::signal_number_from_name("TTIN");
+    let const output_stop = os::signal_number_from_name("TTOU");
+    let const is_terminal_stop =
+        (input_stop.has_value() && status == 128 + *input_stop) ||
+        (output_stop.has_value() && status == 128 + *output_stop);
+
+    if (!is_terminal_stop) return status;
+
+    LOG(Debug, "resuming a stage that stopped before the terminal handoff");
+    unused(os::signal_process(child, *continue_signal));
+  }
+}
+
+fn
+record_stopped_foreground_job(EvalContext                  &cxt,
+                              const ArrayList<os::process> &children,
+                              usize                         first_stopped_index,
+                              StringView                    command,
+                              i32                           status,
+                              i64 process_group_id) throws -> void
+{
+  os::reclaim_controlling_terminal();
+
+  let remaining = ArrayList<os::process>{heap_allocator()};
+
+  for (usize index = first_stopped_index; index < children.count(); index++)
+    remaining.push(children[index]);
+
+  let &table = cxt.job_table_store();
+  let  id    = table.register_pipeline_job(remaining, remaining.back(), command,
+                                           process_group_id);
+
+  table.jobs().back().state          = job::State::Stopped;
+  table.jobs().back().stopped_status = status;
+  table.notify_stopped_job(id);
+}
+
 fn
 announce_background_job(EvalContext &cxt, i32 id, i64 process_id) throws
     -> void
@@ -420,9 +483,17 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
   LOG(Debug, "running a pipeline of %zu stages%s", ecs.count(),
       is_async ? " in the background" : "");
 
+  let const should_fork_final_builtin =
+      cxt.runtime_state().is_bash_compatible() &&
+      (!cxt.is_shopt_enabled(shopt_option_id::Lastpipe) ||
+       cxt.runtime_state().option_is_enabled(shell_option_id::Monitor));
+  let const is_foreground_job =
+      !is_async && should_run_as_foreground_job(cxt) &&
+      (!ecs.back().is_builtin() || should_fork_final_builtin);
+
   let job_command = String{heap_allocator()};
 
-  if (is_async) {
+  if (is_async || is_foreground_job) {
     for (usize stage = 0; stage < ecs.count(); stage++) {
       if (stage > 0) job_command += " | ";
 
@@ -452,6 +523,26 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
     }
   };
 
+  defer {
+    if (is_foreground_job && process_group_id != 0)
+      os::reclaim_controlling_terminal();
+  };
+
+  let const do_get_stage_group_mode = [&]()
+                                          wontthrow -> os::process_group_mode {
+    if (is_async) return os::background_process_group_mode(process_group_id);
+    if (!is_foreground_job) return os::process_group_mode::Inherit;
+
+    return process_group_id == 0 ? os::process_group_mode::New
+                                 : os::process_group_mode::Join;
+  };
+
+  let const do_note_started_stage = [&](os::process child) wontthrow -> void {
+    if ((!is_async && !is_foreground_job) || process_group_id != 0) return;
+
+    process_group_id = os::process_id_of(child);
+  };
+
   let const stage_count  = ecs.count();
   let       stage_status = ArrayList<i32>{heap_allocator()};
 
@@ -473,10 +564,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
     let const is_last = (&ec == &ecs.back());
     let const should_fork_last_builtin =
         is_last && !is_async &&
-        (!unresolved_stages.is_empty() ||
-         (cxt.runtime_state().is_bash_compatible() &&
-          (!cxt.is_shopt_enabled(shopt_option_id::Lastpipe) ||
-           cxt.runtime_state().option_is_enabled(shell_option_id::Monitor))));
+        (!unresolved_stages.is_empty() || should_fork_final_builtin);
 
     if (!is_last) {
       pipe = os::make_pipe();
@@ -526,36 +614,28 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
           cxt.runtime_state().stats_enabled());
       cxt.prepare_child_environment();
 
-      let const process_group =
-          !is_async ? os::process_group_mode::Inherit
-                    : os::background_process_group_mode(process_group_id);
       let const child = os::execute_program(
           ec, os::program_execution_options{
                   .source           = cxt.source_store().current_source_view(),
                   .process_group_id = process_group_id,
                   .fallback         = os::script_fallback_policy::Reject,
-                  .process_group    = process_group});
+                  .process_group    = do_get_stage_group_mode()});
 
-      if (is_async && process_group_id == 0) {
-        process_group_id = os::process_id_of(child);
-      }
-
+      do_note_started_stage(child);
       children.push(child);
       child_stage.push(stage_index);
       last_child = child;
     } else if (!is_last || is_async || should_fork_last_builtin) {
-      let const source_view = cxt.source_store().current_source_view();
-      let const process_group =
-          !is_async ? os::process_group_mode::Inherit
-                    : os::background_process_group_mode(process_group_id);
-      let forked_child = os::try_fork_compound_stage(
-          os::fork_compound_stage_options{.in_fd    = ec.in_fd,
-                                          .out_fd   = ec.out_fd,
-                                          .err_fd   = ec.err_fd,
-                                          .location = ec.source_location(),
-                                          .diagnostic_source = source_view,
-                                          .process_group_id  = process_group_id,
-                                          .process_group     = process_group});
+      let const source_view   = cxt.source_store().current_source_view();
+      let const process_group = do_get_stage_group_mode();
+      let       forked_child  = os::try_fork_compound_stage(
+          os::fork_compound_stage_options{.in_fd  = ec.in_fd,
+                                                 .out_fd = ec.out_fd,
+                                                 .err_fd = ec.err_fd,
+                                                 .location = ec.source_location(),
+                                                 .diagnostic_source = source_view,
+                                                 .process_group_id = process_group_id,
+                                                 .process_group = process_group});
       let preflight_status   = Maybe<i32>{};
       let preflight_location = SourceLocation{};
       let preflight_message  = String{cxt.scratch_allocator()};
@@ -748,10 +828,7 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
           os::exit_process_immediately(child_status);
         }
 
-        if (is_async && process_group_id == 0) {
-          process_group_id = os::process_id_of(child);
-        }
-
+        do_note_started_stage(child);
         ec.close_fds();
         children.push(child);
         child_stage.push(stage_index);
@@ -795,10 +872,38 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
      forked child this call started. the wait loop below waits for each. */
   usize waited_child_count = 0;
 
+  /* the shell spawns stages itself, so a stop signal must not reach the group
+     before the last spawn returns. */
+  if (is_foreground_job)
+    os::give_controlling_terminal_to_process_group(process_group_id);
+
   try {
-    for (; waited_child_count < children.count(); waited_child_count++)
-      stage_status[child_stage[waited_child_count]] =
-          os::wait_and_monitor_process(children[waited_child_count]);
+    for (; waited_child_count < children.count(); waited_child_count++) {
+      if (!is_foreground_job) {
+        stage_status[child_stage[waited_child_count]] =
+            os::wait_and_monitor_process(children[waited_child_count]);
+
+        continue;
+      }
+
+      bool      was_stopped = false;
+      let const status =
+          wait_for_foreground_stage(children[waited_child_count], was_stopped);
+
+      if (!was_stopped) {
+        stage_status[child_stage[waited_child_count]] = status;
+
+        continue;
+      }
+
+      for (usize index = waited_child_count; index < children.count(); index++)
+        stage_status[child_stage[index]] = status;
+
+      record_stopped_foreground_job(cxt, children, waited_child_count,
+                                    job_command.view(), status,
+                                    process_group_id);
+      break;
+    }
   } catch (...) {
     terminate_and_reap_processes(children, waited_child_count);
     should_reap_children_on_unwind = false;
@@ -927,6 +1032,9 @@ quit(i32 code, farewell_policy farewell) throws -> void
       }
     }
   }
+
+  koshka::flush();
+  os::finish_termination_signal();
 
   exit(actual_code);
 }

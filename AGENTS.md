@@ -185,6 +185,8 @@ prompt itself have run.
 A forked child marks inherited jobs so wait cannot reach them. An asynchronous
 pipeline owns and reaps every stage. POSIX stages share a process group. A
 background child, coprocess, or asynchronous stage does not own the terminal.
+A foreground pipeline or subshell under job control has its own process group,
+and a stop registers its remaining processes as one job.
 As process 1, the shell records each child it forks or spawns in the platform
 layer, reaps only unrecorded zombies after SIGCHLD at statement and input
 boundaries and while it waits for a child, sends SIGTERM and then SIGCONT to

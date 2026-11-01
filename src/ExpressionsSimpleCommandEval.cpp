@@ -338,7 +338,13 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
                    StringView{"alias"}, nullptr, nullptr,
                    return_handling::Propagate);
 
-    return cxt.execution_store().last_exit_status();
+    /* the list of the alias source already acted on a failure in its body. */
+    let result = status_result{cxt.execution_store().last_exit_status()};
+
+    result.set(status_flag::ErrResolved);
+    result.set(status_flag::ExitCodeReported);
+
+    return result;
   }
 
   /* at this point: the command word is not a glob pattern, or a non-default
@@ -647,9 +653,13 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
           let const saved = os::save_and_replace_descriptor(
               redir.fd, os::descriptor_for_shell_fd(redir.fd));
 
-          dup_saved_descriptors.push(saved);
+          if (!saved.was_open) {
+            dup_saved_descriptors.push(
+                os::saved_descriptor{.shell_fd = redir.fd, .was_open = false});
+            break;
+          }
 
-          if (!saved.was_open) break;
+          dup_saved_descriptors.push(saved);
 
           if (!saved.is_dup2_ok) {
             did_redirection_open_fail = true;

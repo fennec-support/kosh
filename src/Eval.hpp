@@ -1168,7 +1168,10 @@ public:
   {
     let out = ArrayList<String>{heap_allocator()};
     m_aliases.read().for_each([&out](StringView key, const String &value) {
-      let definition = String{heap_allocator(), key};
+      let definition = String{heap_allocator()};
+
+      if (key.starts_with(StringView{"-"})) definition.append("-- ");
+      append_shell_quoted_arg(definition, key);
       definition.push('=');
       append_shell_quoted_arg(definition, value.view());
       out.push(steal(definition));
@@ -2729,11 +2732,17 @@ public:
   }
 
   fn
-  history_limit(StringView name, usize fallback) const wontthrow -> usize
+  history_limit(StringView name, usize fallback) const throws -> usize
   {
-    let const value = shell_variables().find(name);
-    if (!value.has_value()) return fallback;
-    let const parsed = value->view().to<i64>();
+    let const value     = shell_variables().find(name);
+    let const inherited = value.has_value()
+                              ? Maybe<String>{None}
+                              : os::get_environment_variable(name);
+
+    if (!value.has_value() && !inherited.has_value()) return fallback;
+
+    let const text   = value.has_value() ? value->view() : inherited->view();
+    let const parsed = text.to<i64>();
     if (parsed.is_error() || parsed.value() < 0) {
       return fallback;
     }
@@ -5325,6 +5334,12 @@ public:
                     StringView                definition_text,
                     usize                     body_start_position,
                     SourceLocation            definition_location) throws -> void;
+  /* writes the BASH_FUNC_name%% environment entry of a defined function. */
+  fn
+  export_function(StringView name) throws -> void;
+  /* makes an exported entry follow the current definition, or drops it. */
+  fn
+  refresh_exported_function(StringView name) throws -> void;
   fn
   function_definition_info_of(StringView name) const wontthrow
       -> const function_definition_info *;

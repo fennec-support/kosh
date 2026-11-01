@@ -966,10 +966,14 @@ close_fd(os::descriptor fd) wontthrow -> bool
   return true;
 }
 
+static fn
+highest_free_shell_fd() wontthrow -> int;
+
 fn
 redirect_stdout(os::descriptor target) throws -> os::descriptor
 {
-  const os::descriptor saved = fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC, 0);
+  const os::descriptor saved =
+      fcntl(STDOUT_FILENO, F_DUPFD_CLOEXEC, highest_free_shell_fd());
 
   if (saved == KOSH_INVALID_FD && errno != EBADF) {
     throw Error{"Unable to save standard output: " +
@@ -1028,6 +1032,55 @@ highest_free_shell_fd() wontthrow -> int
   errno = prior_errno;
 
   return placement_fd;
+}
+
+fn
+move_descriptor_out_of_reach(os::descriptor descriptor) wontthrow
+    -> os::descriptor
+{
+  const os::descriptor moved =
+      fcntl(descriptor, F_DUPFD_CLOEXEC, highest_free_shell_fd());
+
+  if (moved == KOSH_INVALID_FD) return descriptor;
+
+  close(descriptor);
+
+  return moved;
+}
+
+fn
+detach_descriptors_from_pipe(os::descriptor capture_pipe) wontthrow -> void
+{
+  struct stat capture_status;
+
+  if (fstat(capture_pipe, &capture_status) != 0) return;
+
+  for (int candidate_fd = 0; candidate_fd < SHELL_HIDDEN_FD_CEILING;
+       candidate_fd++)
+  {
+    struct stat candidate_status;
+
+    if (candidate_fd == capture_pipe ||
+        fstat(candidate_fd, &candidate_status) != 0 ||
+        !S_ISFIFO(candidate_status.st_mode) ||
+        candidate_status.st_ino != capture_status.st_ino ||
+        candidate_status.st_dev != capture_status.st_dev ||
+        (fcntl(candidate_fd, F_GETFL) & O_ACCMODE) != O_WRONLY)
+    {
+      continue;
+    }
+
+    LOG(Debug, "descriptor %d outlived its capture and now reads nothing",
+        candidate_fd);
+
+    const int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
+
+    if (null_fd == -1) return;
+
+    (void) install_descriptor(null_fd, candidate_fd);
+    close(null_fd);
+    note_descriptor_rebound();
+  }
 }
 
 static fn
@@ -3007,10 +3060,33 @@ handle_interrupt(int s) wontthrow -> void
   INTERRUPT_REQUESTED = 1;
 }
 
+static volatile sig_atomic_t EXIT_TRAP_PROCESS_ID = 0;
+
+static constexpr i32 EXIT_TRAP_SIGNALS[] = {SIGHUP,  SIGTERM, SIGQUIT,
+                                            SIGALRM, SIGUSR1, SIGUSR2};
+
+static pure fn
+is_exit_trap_signal(i32 signal_number) wontthrow -> bool
+{
+  for (let const candidate : EXIT_TRAP_SIGNALS) {
+    if (candidate == signal_number) return true;
+  }
+
+  return false;
+}
+
 static fn
 handle_termination(int s) wontthrow -> void
 {
   let const saved_errno = errno;
+
+  if (EXIT_TRAP_PROCESS_ID == getpid() && (s != SIGTERM || getpid() != 1)) {
+    TERMINATION_SIGNAL  = s;
+    INTERRUPT_REQUESTED = 1;
+    errno               = saved_errno;
+
+    return;
+  }
 
   if (getpid() != 1) {
     (void) signal(s, SIG_DFL);
@@ -3343,14 +3419,49 @@ clear_trap_handler(i32 signal_number) throws -> void
 
   sigdelset(&SIGNALS_WITH_TRAP_ACTION, signal_number);
 
-  if (signal_number == SIGTERM && getpid() == 1) {
-    install_signal_disposition(SIGTERM, handle_termination);
+  if ((signal_number == SIGTERM && getpid() == 1) ||
+      (EXIT_TRAP_PROCESS_ID == getpid() && is_exit_trap_signal(signal_number)))
+  {
+    install_signal_disposition(signal_number, handle_termination);
 
     return;
   }
 
   install_signal_disposition(
       signal_number, signal_number == SIGINT ? handle_interrupt : SIG_DFL);
+}
+
+fn
+hold_fatal_signals_for_exit_trap() throws -> void
+{
+  EXIT_TRAP_PROCESS_ID = getpid();
+
+  for (let const signal_number : EXIT_TRAP_SIGNALS) {
+    struct sigaction current = {};
+
+    if (sigaction(signal_number, nullptr, &current) != 0) continue;
+    if (current.sa_handler != SIG_DFL) continue;
+
+    LOG(Debug, "signal %d now runs the EXIT trap before it ends the shell",
+        signal_number);
+    install_signal_disposition(signal_number, handle_termination);
+  }
+}
+
+fn
+finish_termination_signal() wontthrow -> void
+{
+  if (TERMINATION_SIGNAL == 0 || getpid() == 1) return;
+
+  const int signal_number = TERMINATION_SIGNAL;
+
+  LOG(Debug, "the shell ends through the held signal %d", signal_number);
+
+  sigset_t wanted = make_sigset(signal_number);
+
+  (void) signal(signal_number, SIG_DFL);
+  (void) sigprocmask(SIG_UNBLOCK, &wanted, nullptr);
+  (void) raise(signal_number);
 }
 
 static constexpr int SYSTEM_CONFIGURATION_KEYS[] = {

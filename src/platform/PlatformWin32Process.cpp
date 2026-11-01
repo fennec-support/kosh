@@ -3460,6 +3460,20 @@ clear_trap_handler(i32 signal_number) -> void
 }
 
 fn
+is_parent_outside_session() wontthrow -> bool
+{
+  return false;
+}
+
+fn
+hold_fatal_signals_for_exit_trap() throws -> void
+{}
+
+fn
+finish_termination_signal() wontthrow -> void
+{}
+
+fn
 monotonic_nanos() wontthrow -> u64
 {
   static const LARGE_INTEGER frequency = [] {

@@ -1356,7 +1356,9 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
       return evaluate_subshell_in_process(body, cxt,
                                           should_allow_terminal_exec);
     } catch (ErrorWithLocation &error) {
-      if (error.is_script_fatal() || error.was_rendered()) {
+      if (error.is_script_fatal() || error.was_rendered() ||
+          os::TERMINATION_SIGNAL != 0)
+      {
         throw;
       }
 
@@ -1385,10 +1387,15 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
   if (!should_elide_fork) cxt.prepare_child_environment();
 
   koshka::flush();
+  let const is_foreground_job =
+      !should_elide_fork && utils::should_run_as_foreground_job(cxt);
   let const forked_child =
       should_elide_fork
           ? Maybe<os::process>{None}
-          : os::try_fork_compound_stage(os::fork_compound_stage_options{});
+          : os::try_fork_compound_stage(os::fork_compound_stage_options{
+                .process_group = is_foreground_job
+                                     ? os::process_group_mode::New
+                                     : os::process_group_mode::Inherit});
   if (!forked_child.has_value()) {
     i32 status = 1;
 
@@ -1419,7 +1426,7 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
     try {
       status = static_cast<i32>(do_run_body(true));
     } catch (const ErrorBase &error) {
-      if (!error.was_rendered()) {
+      if (!error.was_rendered() && os::TERMINATION_SIGNAL == 0) {
         show_message(
             error.to_string(cxt.source_store().current_source_view(), &cxt));
       }
@@ -1431,13 +1438,32 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
     }
 
     koshka::flush();
+    os::finish_termination_signal();
     os::exit_process_immediately(status);
   }
 
-  let       was_stopped = false;
-  let const status      = os::wait_and_monitor_process(child, &was_stopped);
+  let was_stopped = false;
+  i32 status      = 0;
 
-  unused(was_stopped);
+  if (is_foreground_job) {
+    os::give_controlling_terminal_to(child);
+    defer { os::reclaim_controlling_terminal(); };
+
+    status = utils::wait_for_foreground_stage(child, was_stopped);
+  } else {
+    status = os::wait_and_monitor_process(child);
+  }
+
+  if (was_stopped) {
+    let stopped_children = ArrayList<os::process>{cxt.scratch_allocator()};
+
+    stopped_children.push(child);
+    utils::record_stopped_foreground_job(
+        cxt, stopped_children, 0,
+        internal::subshell_command_text(cxt, source_location(), end_position)
+            .view(),
+        status, os::process_id_of(child));
+  }
 
   do_publish_subshell();
   cxt.publish_single_pipe_status(status);
@@ -1894,8 +1920,13 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
         const os::saved_descriptor saved = os::save_and_replace_descriptor(
             r.target_fd, os::descriptor_for_shell_fd(r.target_fd));
 
+        if (!saved.was_open) {
+          saved_descriptors.push(
+              os::saved_descriptor{.shell_fd = r.target_fd, .was_open = false});
+          break;
+        }
+
         saved_descriptors.push(saved);
-        if (!saved.was_open) break;
 
         if (!saved.is_dup2_ok) {
           throw ErrorWithLocation{source_location(), "Bad file descriptor"};

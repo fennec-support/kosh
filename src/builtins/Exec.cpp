@@ -268,7 +268,16 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   command.should_use_empty_environment = should_use_empty_environment;
   command.should_use_fallback_argv0    = has_custom_argv0;
 
-  if (cxt.in_subshell() || cxt.job_table_store().is_in_pipeline_stage()) {
+  /* a forked subshell is its own process at the depth that allows a terminal
+     exec. a shallower or deeper depth shares this process with its parent. */
+  let const is_forked_subshell_process =
+      cxt.in_subshell() && os::can_fork_evaluator() &&
+      cxt.execution_store().subshell_depth() ==
+          cxt.execution_store().get_terminal_exec_subshell_depth();
+
+  if ((cxt.in_subshell() && !is_forked_subshell_process) ||
+      cxt.job_table_store().is_in_pipeline_stage())
+  {
     LOG(Info, "exec runs '%s' as a child rather than replacing the shell",
         command_name.c_str());
 

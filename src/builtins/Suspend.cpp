@@ -54,6 +54,15 @@ Suspend::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 1;
   }
 
+  if (os::is_parent_outside_session()) {
+    report_soft_builtin_error(ec, cxt, ec.source_location(),
+                              "No parent process can resume this shell",
+                              "A parent in another session has no job control "
+                              "over the shell");
+
+    return 1;
+  }
+
   let const signal_number = os::signal_number_from_name(StringView{"STOP"});
 
   if (!signal_number.has_value()) {

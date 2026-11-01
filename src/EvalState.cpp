@@ -122,6 +122,16 @@ EvalContext::set_coprocess_descriptors(i32        read_fd,
 {
   LOG(Debug, "the live coprocess is read on %d and written on %d", read_fd,
       write_fd);
+
+  /* the new array replaces the only record of descriptors under one name. */
+  let const &previous = subshell_store().coprocess();
+
+  if (previous.has_any() && previous.name.view() == name) {
+    for (let const shell_fd : {previous.read_fd, previous.write_fd}) {
+      if (shell_fd >= 0) unused(os::close_shell_fd(shell_fd));
+    }
+  }
+
   subshell_store().coprocess() = coprocess_descriptors{
       read_fd, write_fd, process_id, String{heap_allocator(), name}
   };

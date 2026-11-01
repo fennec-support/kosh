@@ -27,6 +27,18 @@ namespace {
 
 constexpr StringView TRAP_SOURCE_NAME{"trap"};
 
+fn
+exported_function_key(StringView name, Allocator allocator) throws
+    -> String
+{
+  let key = String{allocator, "BASH_FUNC_"};
+
+  key += name;
+  key += "%%";
+
+  return key;
+}
+
 constexpr PackedStringKey RESTRICTED_READONLY_KEYS[] = {
     SSK("SHELL"),
     SSK("PATH"),
@@ -156,6 +168,7 @@ EvalContext::register_function(
   LOG(Info, "registering function '%.*s' with a %zu byte definition",
       static_cast<int>(name.length), name.data, definition_text.length);
   function_store().definitions().set(name, body_storage);
+  refresh_exported_function(name);
 }
 
 fn
@@ -317,6 +330,65 @@ EvalContext::unset_function(StringView name) throws -> void
   LOG(Info, "unsetting function '%.*s'", static_cast<int>(name.length),
       name.data);
   function_store().definitions().erase(name);
+  refresh_exported_function(name);
+}
+
+fn
+EvalContext::export_function(StringView name) throws -> void
+{
+  let const *source = function_store().find_source(name);
+
+  ASSERT(source != nullptr);
+
+  let const src        = source->view();
+  usize     body_start = 0;
+
+  if (let const close_paren = src.find_character(')'); close_paren.has_value())
+    body_start = close_paren.value() + 1;
+
+  while (body_start < src.length &&
+         (src[body_start] == ' ' || src[body_start] == '\t' ||
+          src[body_start] == '\n' || src[body_start] == '\r'))
+  {
+    body_start++;
+  }
+
+  let const body = src.substring(body_start);
+
+  let value = String{scratch_allocator(), "() "};
+
+  if (!body.is_empty() && body[0] == '{') {
+    value += body;
+  } else {
+    value += "{ ";
+    value += body;
+    value += " }";
+  }
+
+  let const key = exported_function_key(name, scratch_allocator());
+
+  record_environment_change(key.view());
+  os::set_environment_variable(key, value);
+}
+
+fn
+EvalContext::refresh_exported_function(StringView name) throws -> void
+{
+  let const key = exported_function_key(name, scratch_allocator());
+
+  if (!os::has_environment_variable(key.view())) return;
+
+  LOG(Debug, "the exported copy of function '%.*s' follows its definition",
+      static_cast<int>(name.length), name.data);
+
+  if (function_store().find_source(name) != nullptr) {
+    export_function(name);
+
+    return;
+  }
+
+  record_environment_change(key.view());
+  os::unset_environment_variable(key);
 }
 
 fn
@@ -688,7 +760,7 @@ EvalContext::set_trap(StringView            condition,
       trap_store().err_trap_active_depth() = nesting_depth();
       break;
 
-    case pseudo_condition::Exit: return;
+    case pseudo_condition::Exit: os::hold_fatal_signals_for_exit_trap(); return;
     }
   }
 
@@ -1008,6 +1080,11 @@ EvalContext::clear_inherited_exit_trap() throws -> void
 cold fn
 EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
 {
+  if (os::TERMINATION_SIGNAL != 0) {
+    os::INTERRUPT_REQUESTED          = 0;
+    trap_store().did_exit_trap_run() = true;
+  }
+
   let const saved_exit_status = execution_store().last_exit_status();
   let const action_scope =
       TrapActionScope::enter(trap_store(), saved_exit_status);

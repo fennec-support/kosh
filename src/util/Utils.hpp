@@ -211,6 +211,25 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
                             EvalContext             &cxt,
                             execution_mode           mode) throws -> i32;
 
+/* reports whether a foreground pipeline or subshell forms a job of its own. */
+pure fn
+should_run_as_foreground_job(const EvalContext &cxt) wontthrow -> bool;
+
+/* waits for child until it ends or a job control signal stops it. */
+fn
+wait_for_foreground_stage(os::process child, bool &was_stopped) throws
+    -> i32;
+
+/* registers children from first_stopped_index on as one stopped job, takes the
+   terminal back, and reports the job. */
+fn
+record_stopped_foreground_job(EvalContext                  &cxt,
+                              const ArrayList<os::process> &children,
+                              usize                         first_stopped_index,
+                              StringView                    command,
+                              i32                           status,
+                              i64 process_group_id) throws -> void;
+
 /* prints "[id] pid" to standard error when the shell is interactive. */
 fn
 announce_background_job(EvalContext &cxt, i32 id, i64 process_id) throws
