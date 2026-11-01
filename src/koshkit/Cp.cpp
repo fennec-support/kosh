@@ -13,13 +13,18 @@
 #include "../Koshkit.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL("[-fHiLPpRrvx] source ... destination",
+KOSHKIT_UTIL_DECL("[-fHiLnPpRrvx] source ... destination",
                   "The cp utility can copy each source to the destination.");
 
 FLAG(CP_RECURSIVE_R, Bool, 'r', "", "Copy directories and their contents.");
 FLAG(CP_RECURSIVE_UPPER, Bool, 'R', "", "Copy directories and their contents.");
 FLAG(CP_FORCE, Bool, 'f', "", "Remove a destination that cannot be opened.");
 FLAG(CP_INTERACTIVE, Bool, 'i', "", "Ask before overwriting a destination.");
+FLAG(CP_NO_CLOBBER,
+     Bool,
+     'n',
+     "no-clobber",
+     "Skip a source whose destination already exists.");
 FLAG(CP_PRESERVE, Bool, 'p', "", "Preserve file mode and timestamps.");
 FLAG(CP_VERBOSE, Bool, 'v', "", "Print the name of each copy as it happens.");
 FLAG(CP_FOLLOW_ROOT,
@@ -587,6 +592,12 @@ Cp::execute(const ExecContext               &ec,
       target = join_with_operand_separator(destination, leaf,
                                            cxt.scratch_allocator())
                    .text();
+    }
+
+    if (FLAG_CP_NO_CLOBBER.is_enabled() &&
+        Path{target.view(), cxt.scratch_allocator()}.exists())
+    {
+      continue;
     }
 
     if (should_prompt &&

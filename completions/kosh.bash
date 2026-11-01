@@ -418,7 +418,8 @@ _koshkit_util_flags ()
         "-1 --hide-first -2 --hide-second -3 --hide-common --check-order --nocheck-order --output-delimiter --total -z --zero-terminated"
     ;;
     cp)
-      printf "%s\n" "-r -R -f -i -p -v -H -L -P -x --one-file-system"
+      printf "%s\n" \
+        "-r -R -f -i -n --no-clobber -p -v -H -L -P -x --one-file-system"
     ;;
     csplit)
       printf "%s\n" "-k --keep-files -f --prefix -n --digits -s --silent"
@@ -568,7 +569,7 @@ _koshkit_util_flags ()
       printf "%s\n" "-f --fps -s --speed -n --cats"
     ;;
     mkdir)
-      printf "%s\n" "-p -m"
+      printf "%s\n" "-p -m -v --verbose"
     ;;
     mkfifo)
       printf "%s\n" "-m --mode"
@@ -706,7 +707,7 @@ _koshkit_util_flags ()
         "-n --interval -t --no-title -g --chgexit -e --errexit -x --exec"
     ;;
     wc)
-      printf "%s\n" "-l -w -c -m"
+      printf "%s\n" "-l -w -c -m -L --max-line-length"
     ;;
     which)
       printf "%s\n" "-a --all -q --quiet"

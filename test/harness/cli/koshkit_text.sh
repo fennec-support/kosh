@@ -618,3 +618,17 @@ echo "--- grep -L lists inputs with no selected line ---"
 echo "status $?"
 "$BIN" -c 'koshkit grep -L x repeated'
 echo "status $?"
+
+echo "--- wc -L keeps the longest line and takes the longest total ---"
+printf 'é\nabcd\nabc' > long1
+printf 'abcdef' > long2
+"$BIN" -c 'koshkit wc -L long1'
+"$BIN" -c 'koshkit wc -L long1 long2'
+
+echo "--- mkdir -v prints only created directories ---"
+"$BIN" -c 'koshkit mkdir -pv made/inner'
+"$BIN" -c 'koshkit mkdir -pv made/inner'
+
+echo "--- cp -n leaves an existing destination ---"
+"$BIN" -c 'koshkit cp -n long2 long1; koshkit cat long1; echo; koshkit cp -n long2 long3'
+"$BIN" -c 'koshkit cat long3; echo'

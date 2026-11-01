@@ -2204,9 +2204,11 @@ T{
 \f[CR]cp\f[R]
 T}@T{
 Copies files and trees (\f[CR]\-r\f[R]/\f[CR]\-R\f[R] recurse,
-\f[CR]\-f\f[R], \f[CR]\-i\f[R], \f[CR]\-p\f[R], \f[CR]\-v\f[R],
-\f[CR]\-L\f[R] follow every link, \f[CR]\-H\f[R] follow links on the
-command line only, \f[CR]\-P\f[R] follow none,
+\f[CR]\-f\f[R], \f[CR]\-i\f[R],
+\f[CR]\-n\f[R]/\f[CR]\-\-no\-clobber\f[R] skip a source whose
+destination exists, \f[CR]\-p\f[R], \f[CR]\-v\f[R], \f[CR]\-L\f[R]
+follow every link, \f[CR]\-H\f[R] follow links on the command line only,
+\f[CR]\-P\f[R] follow none,
 \f[CR]\-x\f[R]/\f[CR]\-\-one\-file\-system\f[R] copy a directory on
 another file system as an empty directory).
 A recursive copy keeps links as links.
@@ -2579,7 +2581,8 @@ T{
 \f[CR]mkdir\f[R], \f[CR]rmdir\f[R] 
 T}@T{
 Creates directories (\f[CR]mkdir\f[R]; \f[CR]\-p\f[R] create parents,
-\f[CR]\-m\f[R] octal mode or symbolic mode applied to \f[CR]777\f[R]);
+\f[CR]\-m\f[R] octal mode or symbolic mode applied to \f[CR]777\f[R],
+\f[CR]\-v\f[R]/\f[CR]\-\-verbose\f[R] print each created directory);
 removes empty directories (\f[CR]rmdir\f[R]; \f[CR]\-p\f[R] also removes
 their empty parents).
 T}
@@ -2983,6 +2986,9 @@ T{
 T}@T{
 Counts lines (\f[CR]\-l\f[R]), words (\f[CR]\-w\f[R]), characters
 (\f[CR]\-m\f[R]), and bytes (\f[CR]\-c\f[R]).
+\f[CR]\-L\f[R]/\f[CR]\-\-max\-line\-length\f[R] prints the character
+count of the longest line, and the total row holds the longest of all
+inputs.
 T}
 T{
 \f[CR]which\f[R]

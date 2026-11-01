@@ -1395,3 +1395,16 @@ status 2
 merge1
 status 0
 status 1
+--- wc -L keeps the longest line and takes the longest total ---
+4 long1
+ 4 long1
+ 6 long2
+ 6 total
+--- mkdir -v prints only created directories ---
+made
+made/inner
+--- cp -n leaves an existing destination ---
+é
+abcd
+abc
+abcdef

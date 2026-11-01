@@ -14,7 +14,7 @@
 #include "../base/Trace.hpp"
 #include "../util/Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-p] [-m mode] directory ...",
+KOSHKIT_UTIL_DECL("[-pv] [-m mode] directory ...",
                   "Create each specified directory.");
 
 FLAG(MKDIR_PARENTS,
@@ -29,6 +29,11 @@ FLAG(MKDIR_MODE,
      "",
      "Set the file mode of the specified directory, an octal or symbolic "
      "operand.");
+FLAG(MKDIR_VERBOSE,
+     Bool,
+     'v',
+     "verbose",
+     "Print the name of each directory as it is created.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Mkdir);
 
@@ -47,7 +52,9 @@ enum class existing_directory_policy : u8
 };
 
 static fn
-make_one(StringView                path,
+make_one(const ExecContext        &ec,
+         EvalContext              &cxt,
+         StringView                path,
          u32                       mode,
          mode_application          application,
          existing_directory_policy existing_policy) throws -> bool
@@ -59,6 +66,10 @@ make_one(StringView                path,
   if (os::make_directory(path, mode)) {
     if (should_set_exact_mode && !os::set_file_mode(path, mode)) {
       return false;
+    }
+
+    if (FLAG_MKDIR_VERBOSE.is_enabled()) {
+      ec.print_to_stdout(String{cxt.scratch_allocator(), path} + "\n");
     }
 
     return true;
@@ -118,7 +129,8 @@ Mkdir::execute(const ExecContext               &ec,
       let const text = operand.view();
 
       if (text.is_empty()) {
-        if (!make_one(text, intermediate_mode, mode_application::RespectUmask,
+        if (!make_one(ec, cxt, text, intermediate_mode,
+                      mode_application::RespectUmask,
                       existing_directory_policy::Accept))
         {
           KOSHKIT_REPORT_PATH_ERROR("create directory", operand);
@@ -141,7 +153,7 @@ Mkdir::execute(const ExecContext               &ec,
         let const should_set_exact_mode =
             !is_named_directory || FLAG_MKDIR_MODE.is_set();
 
-        if (!make_one(prefix, mode,
+        if (!make_one(ec, cxt, prefix, mode,
                       should_set_exact_mode ? mode_application::Exact
                                             : mode_application::RespectUmask,
                       existing_directory_policy::Accept))
@@ -151,7 +163,7 @@ Mkdir::execute(const ExecContext               &ec,
           break;
         }
       }
-    } else if (!make_one(operand.view(), named_mode,
+    } else if (!make_one(ec, cxt, operand.view(), named_mode,
                          FLAG_MKDIR_MODE.is_set()
                              ? mode_application::Exact
                              : mode_application::RespectUmask,

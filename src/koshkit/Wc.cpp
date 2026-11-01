@@ -13,7 +13,7 @@
 #include "../Koshkit.hpp"
 #include "../util/Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-lwcm] [file ...]",
+KOSHKIT_UTIL_DECL("[-lwcmL] [file ...]",
                   "Count the lines, words, characters, and bytes of each "
                   "file.");
 
@@ -21,6 +21,11 @@ FLAG(WC_LINES, Bool, 'l', "", "Print the newline count.");
 FLAG(WC_WORDS, Bool, 'w', "", "Print the word count.");
 FLAG(WC_BYTES, Bool, 'c', "", "Print the byte count.");
 FLAG(WC_CHARACTERS, Bool, 'm', "", "Print the UTF-8 character count.");
+FLAG(WC_LONGEST_LINE,
+     Bool,
+     'L',
+     "max-line-length",
+     "Print the character count of the longest line.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Wc);
 
@@ -28,11 +33,12 @@ namespace koshka::koshkit {
 
 enum class wc_count_selection : u8
 {
-  None       = 0,
-  Lines      = 1,
-  Words      = 2,
-  Bytes      = 4,
-  Characters = 8,
+  None        = 0,
+  Lines       = 1,
+  Words       = 2,
+  Bytes       = 4,
+  Characters  = 8,
+  LongestLine = 16,
 };
 
 constexpr fn
@@ -82,10 +88,14 @@ struct wc_counts
   u64 word_count{0};
   u64 character_count{0};
   u64 byte_count{0};
+  u64 longest_line_character_count{0};
 
   fn
   add(const wc_counts &other) wontthrow -> void
   {
+    if (other.longest_line_character_count > longest_line_character_count)
+      longest_line_character_count = other.longest_line_character_count;
+
     line_count += other.line_count;
     word_count += other.word_count;
     character_count += other.character_count;
@@ -97,6 +107,7 @@ struct wc_source_state
 {
   wc_counts counts;
   i32       error_number{0};
+  u64       line_character_count{0};
   bool      is_in_word{false};
 };
 
@@ -196,6 +207,27 @@ update_wc_source(wc_source_state       &state,
     state.counts.line_count += count_newlines(content);
   if (has_wc_count(selection, wc_count_selection::Words))
     count_words(state, content, word_table);
+
+  if (has_wc_count(selection, wc_count_selection::LongestLine)) {
+    for (usize byte_position = 0; byte_position < content.length;
+         byte_position++)
+    {
+      let const byte = static_cast<u8>(content[byte_position]);
+
+      if (byte == '\n') {
+        state.line_character_count = 0;
+        continue;
+      }
+
+      state.line_character_count += (byte & 0xC0) != 0x80;
+
+      if (state.line_character_count >
+          state.counts.longest_line_character_count)
+      {
+        state.counts.longest_line_character_count = state.line_character_count;
+      }
+    }
+  }
 }
 
 static fn
@@ -279,6 +311,8 @@ append_counts(String            &line,
     do_emit_field(counts.character_count);
   if (has_wc_count(selection, wc_count_selection::Bytes))
     do_emit_field(counts.byte_count);
+  if (has_wc_count(selection, wc_count_selection::LongestLine))
+    do_emit_field(counts.longest_line_character_count);
 
   if (!name.is_empty()) {
     line += ' ';
@@ -314,7 +348,9 @@ Wc::execute(const ExecContext               &ec,
       (FLAG_WC_CHARACTERS.is_enabled() ? wc_count_selection::Characters
                                        : wc_count_selection::None) |
       (FLAG_WC_BYTES.is_enabled() ? wc_count_selection::Bytes
-                                  : wc_count_selection::None);
+                                  : wc_count_selection::None) |
+      (FLAG_WC_LONGEST_LINE.is_enabled() ? wc_count_selection::LongestLine
+                                         : wc_count_selection::None);
   let const selection = requested_selection == wc_count_selection::None
                             ? wc_count_selection::Lines |
                                   wc_count_selection::Words |
