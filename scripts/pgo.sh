@@ -42,23 +42,52 @@ train() (
     unset KOSHCONF
     mkdir -p "$work"
 
-    SCALE=20 "$kosh" --mood sh --no-diagnostics "$bench/configure.sh" >/dev/null
-    SCALE=20 "$kosh" --mood bash --no-diagnostics "$bench/configure.bash" \
+    SCALE=40 "$kosh" --mood sh --no-diagnostics "$bench/configure.sh" >/dev/null
+    SCALE=10 "$kosh" --mood sh -W "$bench/configure.sh" >/dev/null 2>&1
+    SCALE=40 "$kosh" --mood bash --no-diagnostics "$bench/configure.bash" \
         >/dev/null
-    SCALE=5 "$kosh" --mood bash -W "$bench/configure.bash" >/dev/null 2>&1
-    SCALE=10 "$kosh" "$bench/configure.kosh" >/dev/null
-    "$kosh" --mood bash --no-diagnostics "$bench/primes.bash" 50000 >/dev/null
+    SCALE=10 "$kosh" --mood bash -W "$bench/configure.bash" >/dev/null 2>&1
+    SCALE=20 "$kosh" "$bench/configure.kosh" >/dev/null
+    "$kosh" --mood bash --no-diagnostics "$bench/primes.bash" 100000 >/dev/null
+    "$kosh" --mood bash -W "$bench/primes.bash" 20000 >/dev/null 2>&1
 
     SCALE=20 "$kosh" --mood sh "$bench/generate-script.sh" >"$work/script.bash"
     "$kosh" --lint "$work/script.bash" 2>/dev/null
     "$kosh" --format "$work/script.bash" >/dev/null 2>&1
     "$kosh" --lint --format "$work/script.bash" >/dev/null 2>&1
+    find "$root/test" "$root/scripts" "$root/completions" -type f \
+        \( -name '*.sh' -o -name '*.bash' -o -name '*.kosh' \) \
+        -exec "$kosh" --lint {} + >/dev/null 2>&1 || :
 
-    "$kosh" -c 'koshkit seq 200000 >"$1"
-    koshkit sort -r "$1" | koshkit sort -n | koshkit uniq | koshkit wc -l
-    koshkit grep -E "1(2|3)+$" "$1" | koshkit cut -c1-3 | koshkit tr 1 2
-    koshkit sed -n "s/7/8/p" "$1" | koshkit tail -n 1
-    koshkit cat "$1" "$1" | koshkit wc -c' kosh "$work/lines" >/dev/null
+    "$kosh" --mood bash -c 'i=0
+    while [ "$i" -lt 2000 ]; do
+        line=$(printf "%d\n" "$i" | koshkit cat)
+        env true
+        { read -r field; } <<<"$line"
+        : "$(echo "$field")" "$(( field * 3 ))"
+        i=$((i + 1))
+    done
+    printf "%s\n" a b c | while read -r word; do koshkit tr a-z A-Z <<<"$word"; done
+    for file in "$1"/*; do [[ -e $file ]] && : "${file##*/}"; done' \
+        kosh "$root/src" >/dev/null
+
+    "$kosh" -c 'i=0; while [ "$i" -lt 200000 ]; do
+        printf "%d line%d field%d %d\n" "$i" "$((i % 97))" "$((i % 13))" \
+            "$(( (i * 7919) % 100003 ))"
+        i=$((i + 1))
+    done' >"$work/lines"
+
+    for flags in '' -n -k4,4n '-k2,2 -k3,3n' -f -r -u -k4; do
+        "$kosh" -c "koshkit sort $flags \"\$1\"" kosh "$work/lines" >/dev/null &
+    done
+    wait
+
+    "$kosh" -c 'koshkit grep -c line1 "$1"
+    koshkit grep -E "field(1|7) [0-9]+5$" "$1" | koshkit wc -l
+    koshkit cut -d" " -f2,4 "$1" | koshkit uniq -c | koshkit wc -l
+    koshkit tr a-z A-Z < "$1" | koshkit wc -l
+    koshkit sed -n "s/line/row/p" "$1" | koshkit tail -n 5
+    koshkit cat "$1" | koshkit wc -c' kosh "$work/lines" >/dev/null
 )
 
 echo Training a release profile...
