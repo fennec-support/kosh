@@ -658,6 +658,14 @@ printf new > merge_from/added
 printf old > merge_to/merge_from/kept
 "$BIN" -c 'koshkit cp -rn merge_from merge_to'
 "$BIN" -c 'koshkit cat merge_to/merge_from/kept merge_to/merge_from/added; echo'
+chmod 600 merge_to/merge_from/kept
+chmod 644 merge_from/kept
+ln -s dangling merge_to/link_kept
+printf new > link_kept
+"$BIN" -c 'koshkit cp -np merge_from/kept merge_to/merge_from/kept'
+"$BIN" -c 'koshkit stat -c %a merge_to/merge_from/kept'
+"$BIN" -c 'koshkit cp -n link_kept merge_to/link_kept'
+"$BIN" -c 'koshkit readlink merge_to/link_kept'
 
 echo "--- cp -t copies every operand into the directory ---"
 mkdir -p into

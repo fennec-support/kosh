@@ -1432,6 +1432,8 @@ abc
 abcdef
 --- cp -rn merges and keeps existing files ---
 oldnew
+600
+dangling
 --- cp -t copies every operand into the directory ---
 long1
 long2

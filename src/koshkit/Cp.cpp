@@ -125,10 +125,6 @@ copy_file(const ExecContext &ec,
           const cp_options  &options,
           Allocator          allocator) throws -> void
 {
-  if (options.should_keep_existing && Path{destination, allocator}.exists()) {
-    return;
-  }
-
   copy_file_or_throw(source, destination,
                      options.should_force ? copy_force_mode::Force
                                           : copy_force_mode::Normal,
@@ -251,9 +247,15 @@ copy_path(const ExecContext                &ec,
       options.symlink_mode == cp_symlink_mode::Preserve &&
       (known_lstat != nullptr ? os::file_type_letter(known_lstat->mode) == 'l'
                               : source_path.is_symbolic_link());
+  /* a dangling link at destination also counts as existing. */
+  let const should_keep_destination =
+      options.should_keep_existing &&
+      (was_destination_present || destination_path.is_symbolic_link());
 
   if (is_source_symlink) {
     if (let const target = os::read_symlink(source, allocator)) {
+      if (should_keep_destination) return true;
+
       let const is_destination_blocking_symlink =
           destination_path.exists() || destination_path.is_symbolic_link();
 
@@ -450,11 +452,15 @@ copy_path(const ExecContext                &ec,
       }
     }
 
-    apply_copied_attributes(source_status, destination, options,
-                            did_destination_exist, allocator);
+    if (!should_keep_destination) {
+      apply_copied_attributes(source_status, destination, options,
+                              did_destination_exist, allocator);
+    }
 
     return did_succeed;
   }
+
+  if (should_keep_destination) return true;
 
   let const source_type_letter = source_status.has_value()
                                      ? os::file_type_letter(source_status->mode)
