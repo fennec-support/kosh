@@ -176,12 +176,6 @@ parse_sed_delimited(StringView script,
 }
 
 static fn
-is_sed_replacement_letter(char byte) wontthrow -> bool
-{
-  return StringView{"ULEulafrvx"}.find_character(byte).has_value();
-}
-
-static fn
 validate_sed_replacement(StringView replacement, usize position) throws
     -> void
 {
@@ -192,7 +186,9 @@ validate_sed_replacement(StringView replacement, usize position) throws
     let const is_letter = (escaped >= 'a' && escaped <= 'z') ||
                           (escaped >= 'A' && escaped <= 'Z');
 
-    if (is_letter && !is_sed_replacement_letter(escaped))
+    if (is_letter &&
+        !StringView{"ULEulafrvx"}.find_character(escaped).has_value())
+    {
       throw SedParseError{
           position,
           "Unknown escape '\\" +
@@ -201,6 +197,8 @@ validate_sed_replacement(StringView replacement, usize position) throws
               "' in the replacement",
           "Write \\\\ for a backslash"
       };
+    }
+
     if (escaped == 'x' &&
         (offset + 1 == replacement.length ||
          !utils::hex_digit_value(replacement[offset + 1]).has_value()))

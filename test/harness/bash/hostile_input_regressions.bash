@@ -135,7 +135,7 @@ prefixed=1 export prefixed; echo "[$prefixed]"
 fixed=2 readonly fixed; echo "[$fixed]"
 other=3 export unrelated; echo "[${other-unset}]"
 
-echo "--- an unset IFS reads as unset and still splits ---"
+echo "--- an unset IFS expands as unset and still splits ---"
 ( unset IFS; echo "[${IFS-u}]"; words='a b'; printf '[%s]' $words; echo
   IFS=: true; echo "[${IFS-u}]" )
 
@@ -328,7 +328,7 @@ printf 'x\\\ny\0' | { read -d '' x; printf '[%s]\n' "$x"; }
 printf 'x\\\ny:' | { read -d : x; printf '[%s]\n' "$x"; }
 ( IFS=; set -- '' ''; printf '[%s]' "${*:+d}" "${*:-d}"; echo )
 
-echo "--- local attributes and special names ---"
+echo "--- local attributes and special variables ---"
 secs() { local SECONDS=10; unset SECONDS; }
 secs; echo "[${SECONDS:+set}]"
 minus_i() { local +i n=1+1; echo "$n"; }
@@ -373,3 +373,64 @@ echo "--- an alias inside its own process substitution ---"
 alias reader=cat
 eval 'reader <(reader /dev/null); echo "$?"'
 unalias reader
+
+echo "--- a bang after a test operator is an operand ---"
+x='!'
+[[ $x == ! ]]; echo "$?"
+[[ a != ! ]]; echo "$?"
+[[ -n ! ]]; echo "$?"
+[[ ( a == ! ) ]]; echo "$?"
+[[ a == ! && 1 ]]; echo "$?"
+[[ a < ! ]]; echo "$?"
+
+echo "--- a bang before a term negates it ---"
+a=1 b=c
+! true | true; echo "$?"
+[[ ! -z x ]]; echo "$?"
+[[ ! a == ! ]]; echo "$?"
+[[ -n $a && ( $b == c ) ]]; echo "$?"
+
+echo "--- a hash in a regular expression operand ---"
+[[ x =~ (x)#y ]]; echo "$?"
+[[ 'x#y' =~ (x)#y ]]; echo "$?"
+[[ 'a #b' =~ (a #b) ]]; echo "$?"
+[[ abc =~ ^(a|b)+(c)$ ]]; echo "$? ${BASH_REMATCH[2]}"
+
+echo "--- a keyword after a redirection operator is a word ---"
+(
+  mkdir keywords
+  cd keywords || exit 1
+  for i in 1 2; do echo "$i" >done; done
+  cat done
+  if true; then echo a >|then; fi
+  cat then
+  echo b >&fi
+  cat fi
+  echo c <>esac
+  while true; do echo d 2>do; break; done
+  ls
+  cat <<done
+in a loop keyword
+done
+  if true; then
+    cat <<fi
+in a branch keyword
+fi
+  fi
+  cat <<-esac
+	stripped
+	esac
+)
+
+echo "--- a heredoc inside a parameter expansion ---"
+unset x
+echo "${x:-$(cat <<EOF
+}
+EOF
+)}"
+
+echo "--- the keys of an array ---"
+a=(x y z)
+echo "${!a[@]}"
+declare -A m=([k]=1)
+echo "${!m[@]}"

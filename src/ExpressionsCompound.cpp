@@ -708,7 +708,7 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
   let const      child_evaluator = cxt.make_child_evaluator_state(bootstrap);
   /* bash runs the last stage in the shell only without job control
      (Bash manual, shopt lastpipe). the Monitor test matches
-     should_fork_last_builtin in UtilsExecution.cpp. */
+     should_fork_final_builtin in UtilsExecution.cpp. */
   let const should_run_last_stage_in_parent =
       !is_async() && cxt.runtime_state().is_bash_compatible() &&
       cxt.runtime_state().is_shopt_enabled(shopt_option_id::Lastpipe) &&
@@ -718,8 +718,9 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
                                 utils::should_run_as_foreground_job(cxt);
 
   defer {
-    if (is_foreground_job && process_group_id != 0)
+    if (is_foreground_job && process_group_id != 0) {
       os::reclaim_controlling_terminal();
+    }
   };
 
   try {

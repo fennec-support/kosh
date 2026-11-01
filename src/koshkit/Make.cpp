@@ -2273,7 +2273,9 @@ position_after_make_reference(StringView text, usize position)
 
   for (usize i = position + 2; i < text.length; i++) {
     if (text[i] == opener) depth++;
-    if (text[i] == closer && --depth == 0) return i + 1;
+    if (text[i] == closer && --depth == 0) {
+      return i + 1;
+    }
   }
 
   return text.length;
@@ -2326,7 +2328,9 @@ first_colon_not_followed_by_equals(StringView line) wontthrow -> Maybe<usize>
         colon_end++;
       }
 
-      if (colon_end == line.length || line[colon_end] != '=') return i;
+      if (colon_end == line.length || line[colon_end] != '=') {
+        return i;
+      }
       i = colon_end;
     }
   }
@@ -3232,11 +3236,13 @@ parse_makefile_into(EvalContext                     &cxt,
           if (static_colon.has_value()) {
             let const stem = match_make_pattern(static_pattern, target.view());
 
-            if (!stem.has_value() || !static_pattern.has_wildcard)
+            if (!stem.has_value() || !static_pattern.has_wildcard) {
               throw ErrorWithLocation{
                   mk.active_source_span,
                   "The target '" + target +
                       "' does not match the pattern of its static rule"};
+            }
+
             static_stem = String{cxt.scratch_allocator(), *stem};
 
             for (String &prerequisite : new_prerequisites) {
@@ -3342,11 +3348,13 @@ parse_makefile_into(EvalContext                     &cxt,
               let const has_content = !existing->prerequisites.is_empty() ||
                                       !existing->recipe_lines.is_empty();
 
-              if (has_content && existing->is_double_colon != is_double_colon)
+              if (has_content && existing->is_double_colon != is_double_colon) {
                 throw ErrorWithLocation{
                     mk.active_source_span,
                     "The target '" + target +
                         "' mixes single-colon and double-colon rules"};
+              }
+
               existing->is_double_colon = is_double_colon;
 
               if (has_content && is_double_colon) {

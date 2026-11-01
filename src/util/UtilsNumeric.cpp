@@ -1084,8 +1084,10 @@ parse_calendar_date(StringView text,
     if (!seconds.is_empty()) {
       let const whole = parse_decimal_u64(seconds);
 
-      if (whole.is_error() || whole.value() > static_cast<u64>(INT64_MAX))
+      if (whole.is_error() || whole.value() > static_cast<u64>(INT64_MAX)) {
         return None;
+      }
+
       parsed = whole.value();
     }
 

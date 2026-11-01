@@ -1184,7 +1184,9 @@ path_has_dot_component(StringView path) wontthrow -> bool
     let const component =
         path.substring_of_length(position, end_position - position);
 
-    if (component == "." || component == "..") return true;
+    if (component == "." || component == "..") {
+      return true;
+    }
 
     position = end_position;
   }

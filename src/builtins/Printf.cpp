@@ -386,7 +386,9 @@ append_q_argument(String       &out,
     for (usize i = 0; i < arg.count(); i++) {
       let const byte = static_cast<unsigned char>(arg[i]);
 
-      if (byte < 0x20 || byte == 0x7f) has_control_byte = true;
+      if (byte < 0x20 || byte == 0x7f) {
+        has_control_byte = true;
+      }
     }
 
     if (has_control_byte) {

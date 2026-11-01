@@ -1729,14 +1729,16 @@ EvalContext::ModifierWordExpander::expand_leading_tilde() throws -> bool
 }
 
 /* an operand of a nested ${name-word} or ${name+word} keeps its quoting and
-   its field breaks, so it expands in place instead of through a flat string.
+   its field breaks, so it expands in place rather than through a flat string.
    the expansion of name runs twice, so a subscript with side effects stays on
    the flat path. */
 fn
 EvalContext::ModifierWordExpander::expand_selected_operand(
     StringView inner) throws -> bool
 {
-  if (m_break_out == nullptr || inner.is_empty()) return false;
+  if (m_break_out == nullptr || inner.is_empty()) {
+    return false;
+  }
 
   let const first    = inner[0];
   usize     name_end = 1;
@@ -1754,7 +1756,9 @@ EvalContext::ModifierWordExpander::expand_selected_operand(
       for (usize i = 0; i < subscript.length; i++) {
         let const byte = subscript[i];
 
-        if (byte == '$' || byte == '`' || byte == '=') return false;
+        if (byte == '$' || byte == '`' || byte == '=') {
+          return false;
+        }
         if ((byte == '+' || byte == '-') && subscript[i + 1] == byte) {
           return false;
         }
@@ -1793,8 +1797,13 @@ EvalContext::ModifierWordExpander::expand_selected_operand(
                                       get_nested_quoting())
            .is_empty();
 
-  if (inner[op_index] == '+' && !is_set) return false;
-  if (inner[op_index] == '-' && is_set) return expand_field_reference(name);
+  if (inner[op_index] == '+' && !is_set) {
+    return false;
+  }
+
+  if (inner[op_index] == '-' && is_set) {
+    return expand_field_reference(name);
+  }
 
   expand_nested_word(inner.substring(op_index + 1), op_index + 1);
 
@@ -1813,6 +1822,17 @@ EvalContext::ModifierWordExpander::expand_nested_word(
   let const was_single     = m_is_in_single_quote;
   let const did_emit       = m_did_quoted_emit;
   let const did_at         = m_did_quoted_at;
+
+  defer {
+    m_word               = saved_word;
+    m_index              = saved_index;
+    m_source_location    = saved_location;
+    m_is_outer_quoted    = was_outer;
+    m_is_in_double_quote = was_double;
+    m_is_in_single_quote = was_single;
+    m_did_quoted_emit    = m_did_quoted_emit || did_emit;
+    m_did_quoted_at      = m_did_quoted_at || did_at;
+  };
 
   let word_location = SourceLocation{};
 
@@ -1835,15 +1855,6 @@ EvalContext::ModifierWordExpander::expand_nested_word(
   m_is_in_single_quote = false;
 
   expand_current_word();
-
-  m_word               = saved_word;
-  m_index              = saved_index;
-  m_source_location    = saved_location;
-  m_is_outer_quoted    = was_outer;
-  m_is_in_double_quote = was_double;
-  m_is_in_single_quote = was_single;
-  m_did_quoted_emit    = m_did_quoted_emit || did_emit;
-  m_did_quoted_at      = m_did_quoted_at || did_at;
 }
 
 fn
@@ -3408,12 +3419,14 @@ EvalContext::apply_parameter_expansion(
   enter_parameter_expansion();
   defer { leave_parameter_expansion(); };
 
-  let const spec_name_end = find_variable_name_end(spec);
-  let const has_written_subscript =
-      spec_name_end < spec.length && spec[spec_name_end] == '[';
-  let resolved_spec = Maybe<String>{};
+  let has_written_subscript = false;
+  let resolved_spec         = Maybe<String>{};
 
   if (variable_store().attributes().has_namerefs()) rarely {
+    let const spec_name_end = find_variable_name_end(spec);
+
+    has_written_subscript =
+        spec_name_end < spec.length && spec[spec_name_end] == '[';
     resolved_spec = resolve_nameref_parameter(spec);
     if (resolved_spec.has_value()) {
       spec            = resolved_spec->view();

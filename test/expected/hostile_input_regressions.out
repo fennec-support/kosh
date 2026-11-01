@@ -44,7 +44,7 @@ status 2
 --- an indirect value is a name and not an expression ---
 status 1
 status 2
---- export -p leaves out names from the environment that are not names ---
+--- export -p leaves out environment entries with invalid keys ---
 status 2
 --- deep conditionals end in a diagnostic ---
 status 1
@@ -279,3 +279,12 @@ status 1
 --- the listing can be sourced again ---
 alias 'x y'=z
 alias -- -x=y
+--- formatting keeps a hash in a regular expression operand ---
+#!/bin/bash
+
+[[ x =~ (x)#y ]]
+[[ x =~ (a #b) ]] # note
+--- bounds in sequence stay valid and nested bounds do not ---
+0
+status 1
+status 2

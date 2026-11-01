@@ -1491,9 +1491,10 @@ ArithmeticValue::shift_left(const ArithmeticValue &value,
   let const bit_count = get_shift_bit_count(value, count);
 
   if (value.is_zero()) return ArithmeticValue{};
-  if (!bit_count.has_value() || *bit_count > MAXIMUM_RESULT_BIT_COUNT)
+  if (!bit_count.has_value() || *bit_count > MAXIMUM_RESULT_BIT_COUNT) {
     throw ErrorWithDetails{"Shift count is too large",
                            "The result cannot fit in addressable memory"};
+  }
 
   /* at this point: value is nonzero, and bit_count holds the shift count. */
   let const magnitude = value.copy_magnitude(allocator);

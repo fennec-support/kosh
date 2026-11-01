@@ -621,12 +621,6 @@ copy_word_range(const Word  &word,
   return out;
 }
 
-static fn
-get_last_segment(const Word &word) wontthrow -> usize
-{
-  return word.segments.is_empty() ? usize{0} : word.segments.count() - 1;
-}
-
 enum declaration_command_flag : u8
 {
   declaration_flag_local       = 1 << 0,
@@ -864,7 +858,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
                               scratch_allocator()));
         let const value   = expand_word_for_assignment(copy_word_range(
             *word, span.value_segment, span.value_offset,
-            get_last_segment(*word), None, scratch_allocator()));
+            word->segments.count() - 1, None, scratch_allocator()));
         let       element = String{expanded_args.allocator()};
 
         element.push('[');

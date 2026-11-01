@@ -97,7 +97,7 @@ echo "status $?"
 ls injected 2>/dev/null
 echo "status $?"
 
-echo "--- export -p leaves out names from the environment that are not names ---"
+echo "--- export -p leaves out environment entries with invalid keys ---"
 env 'bad$(touch exported)=1' "$BIN" --mood bash --no-diagnostics \
   -c 'eval "$(export -p)"' 2>/dev/null
 ls exported 2>/dev/null
@@ -557,3 +557,13 @@ echo "--- history refuses a file that is not regular ---"
 
 echo "--- the listing can be sourced again ---"
 "$BIN" --no-diagnostics -c 'alias "x y=z"; alias -- -x=y; alias > listing; unalias -a; . ./listing; alias'
+
+echo "--- formatting keeps a hash in a regular expression operand ---"
+printf '#!/bin/bash\n[[ x =~ (x)#y ]]\n[[ x =~ (a #b) ]] # note\n' > regex-hash
+"$BIN" --format regex-hash
+
+echo "--- bounds in sequence stay valid and nested bounds do not ---"
+"$BIN" -c "koshkit grep -cE 'a{30000}b{30000}c{30000}' /dev/null"
+echo "status $?"
+"$BIN" -c "koshkit grep -cE '(a{30000}b{30000}c{30000}){2}' /dev/null" 2>/dev/null
+echo "status $?"

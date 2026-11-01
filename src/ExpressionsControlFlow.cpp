@@ -1420,17 +1420,19 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws -
       let const &pattern_word =
           static_cast<const tokens::WordToken *>(pattern)->word();
 
+      let const literal = pattern_word.to_literal_string();
+
       if (pattern_word.plain_literal_kind() == Word::PlainLiteral::NotPlain ||
-          pattern_word.to_literal_string().view().find_character('*') ||
-          pattern_word.to_literal_string().view().find_character('?') ||
-          pattern_word.to_literal_string().view().find_character('['))
+          literal.view().find_character('*') ||
+          literal.view().find_character('?') ||
+          literal.view().find_character('['))
       {
         constant_word.reset();
 
         return false;
       }
 
-      if (pattern_word.to_literal_string() == word) return true;
+      if (literal == word) return true;
     }
 
     return false;

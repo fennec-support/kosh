@@ -1048,13 +1048,15 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
   /* `X=1 export X` keeps the value that export gives its attribute to. */
   let const do_is_attribute_operand =
       [&](StringView name) throws -> bool {
-    if (command_word_function != nullptr || program_args.count() < 2)
+    if (command_word_function != nullptr || program_args.count() < 2) {
       return false;
+    }
 
     let const kind = cxt.find_enabled_builtin(program_args[0].view());
 
-    if (kind != Builtin::Kind::Export && kind != Builtin::Kind::Readonly)
+    if (kind != Builtin::Kind::Export && kind != Builtin::Kind::Readonly) {
       return false;
+    }
 
     for (usize i = 1; i < program_args.count(); i++) {
       if (program_args[i].view() == name) return true;

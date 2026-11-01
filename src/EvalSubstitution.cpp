@@ -296,7 +296,7 @@ struct command_substitution_drain_context
 /* memory: drain->data grows by doubling from DRAIN_CHUNK_LENGTH, allocated
            with uncached_heap_allocator(). the caller frees it with
            free_array(). a failed growth closes the read end, so a writer stops
-           with a pipe error instead of filling the pipe forever.
+           with a pipe error and does not fill the pipe forever.
    time:   O(n) in the bytes read. each read() returns at least one byte or
            ends the loop, and the capacity doubles on each growth, so the
            reallocations copy O(n) bytes in total. */

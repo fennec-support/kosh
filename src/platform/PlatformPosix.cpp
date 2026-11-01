@@ -1038,8 +1038,7 @@ fn
 move_descriptor_out_of_reach(os::descriptor descriptor) wontthrow
     -> os::descriptor
 {
-  const os::descriptor moved =
-      fcntl(descriptor, F_DUPFD_CLOEXEC, highest_free_shell_fd());
+  let const moved = fcntl(descriptor, F_DUPFD_CLOEXEC, highest_free_shell_fd());
 
   if (moved == KOSH_INVALID_FD) return descriptor;
 
@@ -1073,7 +1072,7 @@ detach_descriptors_from_pipe(os::descriptor capture_pipe) wontthrow -> void
     LOG(Debug, "descriptor %d outlived its capture and now reads nothing",
         candidate_fd);
 
-    const int null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
+    let const null_fd = open("/dev/null", O_RDWR | O_CLOEXEC);
 
     if (null_fd == -1) return;
 
@@ -3451,9 +3450,11 @@ hold_fatal_signals_for_exit_trap() throws -> void
 fn
 finish_termination_signal() wontthrow -> void
 {
-  if (TERMINATION_SIGNAL == 0 || getpid() == 1) return;
+  if (TERMINATION_SIGNAL == 0 || getpid() == 1) {
+    return;
+  }
 
-  const int signal_number = TERMINATION_SIGNAL;
+  let const signal_number = TERMINATION_SIGNAL;
 
   LOG(Debug, "the shell ends through the held signal %d", signal_number);
 

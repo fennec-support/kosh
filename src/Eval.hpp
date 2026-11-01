@@ -2739,7 +2739,9 @@ public:
                               ? Maybe<String>{None}
                               : os::get_environment_variable(name);
 
-    if (!value.has_value() && !inherited.has_value()) return fallback;
+    if (!value.has_value() && !inherited.has_value()) {
+      return fallback;
+    }
 
     let const text   = value.has_value() ? value->view() : inherited->view();
     let const parsed = text.to<i64>();
@@ -5224,8 +5226,6 @@ public:
   fn
   is_array_variable(StringView name) const throws -> bool;
   fn
-  capture_variable_binding(StringView name) throws -> local_binding;
-  fn
   overlay_array_with_scalar(StringView name) throws -> local_binding;
   fn
   restore_local_binding(local_binding &binding) throws -> void;
@@ -6256,6 +6256,10 @@ public:
 
   fn
   make_stats_string() const throws -> String;
+
+private:
+  fn
+  capture_variable_binding(StringView name) throws -> local_binding;
 
 protected:
   fn

@@ -906,14 +906,14 @@ Tail::execute(const ExecContext               &ec,
   };
 
   /* reads the bytes that end at entry.offset and leaves the descriptor at
-     entry.offset. When compare_only is true, it returns whether the bytes
+     entry.offset. When should_compare is true, it returns whether the bytes
      equal the stored sample. Otherwise it stores them. */
   let const do_read_sample = [&](tail_follow_entry &entry,
-                                 bool               compare_only) wontthrow -> bool {
+                                 bool               should_compare) wontthrow -> bool {
     char sample[sizeof(entry.sample)];
 
     let const wanted_byte_count =
-        compare_only
+        should_compare
             ? entry.sample_byte_count
             : (entry.offset < sizeof(sample) ? static_cast<usize>(entry.offset)
                                              : sizeof(sample));
@@ -930,15 +930,17 @@ Tail::execute(const ExecContext               &ec,
           os::read_fd(entry.descriptor, sample + done_byte_count,
                       wanted_byte_count - done_byte_count);
 
-      if (!read_count.has_value() || *read_count == 0) break;
+      if (!read_count.has_value() || *read_count == 0) {
+        break;
+      }
+
       done_byte_count += *read_count;
     }
 
     unused(os::seek_descriptor_from_start(entry.descriptor, entry.offset));
-    if (done_byte_count != wanted_byte_count)
-      return compare_only ? false : true;
+    if (done_byte_count != wanted_byte_count) return !should_compare;
 
-    if (!compare_only) {
+    if (!should_compare) {
       for (usize index = 0; index < wanted_byte_count; index++)
         entry.sample[index] = sample[index];
       entry.sample_byte_count = wanted_byte_count;
@@ -971,8 +973,9 @@ Tail::execute(const ExecContext               &ec,
     let const offset_before_read = entry.offset;
 
     defer {
-      if (entry.offset != offset_before_read && !entry.is_standard_input)
+      if (entry.offset != offset_before_read && !entry.is_standard_input) {
         unused(do_read_sample(entry, false));
+      }
     };
 
     loop {

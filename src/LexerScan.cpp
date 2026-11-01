@@ -320,7 +320,9 @@ heredoc_word_joins_lines(StringView word) wontthrow -> bool
   for (usize position = 0; position < word.length; position++) {
     let const byte = word[position];
 
-    if (byte == '\'' || byte == '"') return false;
+    if (byte == '\'' || byte == '"') {
+      return false;
+    }
 
     if (byte == '\\') {
       if (position + 1 >= word.length || word[position + 1] != '\n') {
@@ -373,7 +375,9 @@ skip_backtick_run(StringView source, usize position) wontthrow -> usize
     let const byte = source[position++];
 
     if (byte == '`') break;
-    if (byte == '\\' && position < source.length) position++;
+    if (byte == '\\' && position < source.length) {
+      position++;
+    }
   }
 
   return position;

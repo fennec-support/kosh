@@ -1556,9 +1556,17 @@ bc_execute_print(StringView         items,
       let const byte = items[position];
 
       if (byte == '"') is_in_string = !is_in_string;
-      if (!is_in_string && (byte == '(' || byte == '[')) depth++;
-      if (!is_in_string && (byte == ')' || byte == ']') && depth != 0) depth--;
-      if (is_in_string || depth != 0 || byte != ',') continue;
+      if (!is_in_string && (byte == '(' || byte == '[')) {
+        depth++;
+      }
+
+      if (!is_in_string && (byte == ')' || byte == ']') && depth != 0) {
+        depth--;
+      }
+
+      if (is_in_string || depth != 0 || byte != ',') {
+        continue;
+      }
     }
 
     let const item =

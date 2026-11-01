@@ -905,7 +905,7 @@ glob_matches(StringView    glob,
       bool is_first_member = true;
 
       /* the character inside [=a=] or [.a.], with the length of the whole
-         element. a longer element reads as no character. */
+         element. a longer element counts as no character. */
       let const do_get_element_at =
           [&](usize index) wontthrow -> decoded_codepoint {
         if (let const past_element = do_get_class_end_past(index);

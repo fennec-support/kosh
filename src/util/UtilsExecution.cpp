@@ -340,9 +340,13 @@ wait_for_foreground_stage(os::process child, bool &was_stopped) throws
     let const status = os::wait_and_monitor_process(child, &was_stopped);
 
     /* the interrupt reached the job's process group and not this shell. */
-    if (!was_stopped && status == 130) os::INTERRUPT_REQUESTED = 1;
+    if (!was_stopped && status == 130) {
+      os::INTERRUPT_REQUESTED = 1;
+    }
 
-    if (!was_stopped || !continue_signal.has_value()) return status;
+    if (!was_stopped || !continue_signal.has_value()) {
+      return status;
+    }
 
     /* a stage that touched the terminal between its start and the handoff
        stopped on the terminal signal and holds the terminal now. */
@@ -524,8 +528,9 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
   };
 
   defer {
-    if (is_foreground_job && process_group_id != 0)
+    if (is_foreground_job && process_group_id != 0) {
       os::reclaim_controlling_terminal();
+    }
   };
 
   let const do_get_stage_group_mode = [&]()
@@ -538,7 +543,9 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
   };
 
   let const do_note_started_stage = [&](os::process child) wontthrow -> void {
-    if ((!is_async && !is_foreground_job) || process_group_id != 0) return;
+    if ((!is_async && !is_foreground_job) || process_group_id != 0) {
+      return;
+    }
 
     process_group_id = os::process_id_of(child);
   };
