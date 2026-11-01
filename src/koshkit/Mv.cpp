@@ -147,6 +147,20 @@ move_across_devices(const ExecContext &ec,
           "': " + os::last_system_error_message()
       };
     }
+
+    if (os::stat_path(source, source_status) &&
+        !os::set_file_times(temporary_path->text().view(),
+                            {source_status.access_time,
+                             source_status.access_nanoseconds,
+                             source_status.modification_time,
+                             source_status.modification_nanoseconds}))
+    {
+      throw Error{
+          "Unable to preserve the times of '" + String{allocator, source}
+            +
+          "': " + os::last_system_error_message()
+      };
+    }
   }
 
   if (!os::rename_path(temporary_path->text().view(), target))
@@ -205,7 +219,8 @@ Mv::execute(const ExecContext               &ec,
     if (is_destination_directory) {
       let target_path = Path{destination, cxt.scratch_allocator()};
 
-      target_path.append(Path{source, cxt.scratch_allocator()}.filename());
+      target_path.append(
+          Path{source, cxt.scratch_allocator()}.normalized().filename());
       target = target_path.text();
     }
 

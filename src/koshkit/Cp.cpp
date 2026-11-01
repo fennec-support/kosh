@@ -88,6 +88,8 @@ struct cp_options
   /* cp -p fails when the mode cannot be preserved, and mv keeps going. */
   bool should_report_mode_failure{true};
   bool should_keep_existing{false};
+  /* the files this command wrote, tracked while several sources can meet. */
+  HashSet *created_file_targets{nullptr};
 
   fn
   for_child() const -> cp_options
@@ -253,6 +255,18 @@ copy_path(const ExecContext                &ec,
       options.should_keep_existing &&
       (was_destination_present || destination_path.is_symbolic_link());
 
+  if (options.created_file_targets != nullptr &&
+      !options.should_keep_existing &&
+      options.created_file_targets->contains(destination))
+  {
+    throw Error{
+        "'" + String{allocator, source     }
+          + "' would overwrite '" +
+        String{allocator, destination}
+          + "', which this command just created"
+    };
+  }
+
   if (is_source_symlink) {
     if (let const target = os::read_symlink(source, allocator)) {
       if (should_keep_destination) return true;
@@ -279,6 +293,10 @@ copy_path(const ExecContext                &ec,
       if (options.is_verbose)
         ec.print_to_stdout("'" + String{allocator, source} + "' -> '" +
                            String{allocator, destination} + "'\n");
+
+      if (options.created_file_targets != nullptr) {
+        unused(options.created_file_targets->add(destination));
+      }
 
       return true;
     }
@@ -532,6 +550,10 @@ copy_path(const ExecContext                &ec,
   apply_copied_attributes(source_status, destination, options,
                           did_destination_exist, allocator);
 
+  if (options.created_file_targets != nullptr) {
+    unused(options.created_file_targets->add(destination));
+  }
+
   return true;
 }
 
@@ -627,7 +649,10 @@ Cp::execute(const ExecContext               &ec,
   /* the list may grow inside a child scratch mark, so it uses the heap. */
   ArrayList<cp_directory_identity> active_directories{heap_allocator()};
   let                              copied_targets = HashSet{heap_allocator()};
-  i32                              status         = 0;
+  let created_file_targets                        = HashSet{heap_allocator()};
+  i32 status                                      = 0;
+
+  if (source_count > 1) options.created_file_targets = &created_file_targets;
 
   for (usize i = 0; i < source_count; i++) {
     let const source = operands[i].view();
