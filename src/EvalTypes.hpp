@@ -56,6 +56,7 @@ public:
   forget(StringView name) throws -> void
   {
     m_names.remove(name);
+    m_index_limits.erase(name);
     if (name == StringView{"PIPESTATUS"}) m_has_pipestatus = false;
   }
 
@@ -121,6 +122,7 @@ public:
     if (!m_values.find(composite).has_value())
       m_entry_counts.set(name, get_entry_count(name) + 1);
     m_values.set(composite, value);
+    m_index_limits.erase(name);
   }
 
   fn
@@ -128,6 +130,7 @@ public:
   {
     if (!m_values.find(composite).has_value()) return;
     m_values.erase(composite);
+    m_index_limits.erase(name);
 
     let const entry_count = get_entry_count(name);
 
@@ -145,12 +148,28 @@ public:
     return found.has_value() ? *found.value() : usize{0};
   }
 
+  /* one past the largest stored index of name, when it is known. */
+  pure fn
+  find_index_limit(StringView name) const wontthrow -> Maybe<usize>
+  {
+    let const found = m_index_limits.find(name);
+
+    return found.has_value() ? Maybe<usize>{*found.value()} : Maybe<usize>{};
+  }
+
+  fn
+  set_index_limit(StringView name, usize limit) throws -> void
+  {
+    m_index_limits.set(name, limit);
+  }
+
 private:
   HashSet           m_names{heap_allocator()};
   bool              m_has_pipestatus{false};
   StringMap<String> m_values{heap_allocator()};
   StringMap<u64>    m_sequences{heap_allocator()};
   StringMap<usize>  m_entry_counts{heap_allocator()};
+  StringMap<usize>  m_index_limits{heap_allocator()};
   u64               m_next_sequence{1};
 };
 

@@ -3469,6 +3469,9 @@ Prefix assignments apply to the environment of that command only
 (special builtins keep them in the shell in \f[CR]kosh\f[R],
 \f[CR]bash\-posix\f[R], and \f[CR]sh\f[R] but not in \f[CR]bash\f[R];
 functions never keep them).
+During a function, \f[CR]eval\f[R], or \f[CR]source\f[R], a prefix
+assignment to an array replaces it with a scalar, and the array returns
+afterwards.
 Assignments without a command word apply in the shell.
 Exit status is \f[CR]128 + signo\f[R] if killed by a signal.
 T}
@@ -3676,6 +3679,11 @@ startup, and unchanged by an assignment with no command and by
 scalar \f[CR]$a\f[R] is \f[CR]${a[0]}\f[R]).
 Associative arrays (\f[CR]declare \-A m\f[R], \f[CR]m[key]=v\f[R])
 preserve insertion order when listing keys via \f[CR]${!m[\[at]]}\f[R].
+In a compound assignment, only an unquoted \f[CR][key]=\f[R] or
+\f[CR][key]+=\f[R] written in the source gives an element a key, and
+\f[CR]+=\f[R] appends to that element.
+An associative literal without keys alternates keys and values.
+An append past the largest index is an error.
 Under \f[CR]set \-u\f[R], \f[CR]${a[\[at]]}\f[R] and \f[CR]${a[*]}\f[R]
 on an unset array expand cleanly to nothing, whereas \f[CR]$a\f[R] and
 \f[CR]${a[0]}\f[R] trigger an unbound variable error.
@@ -4158,6 +4166,7 @@ directory stack forms \f[CR]\[ti]N\f[R], \f[CR]\[ti]+N\f[R],
 \f[CR]\[ti]\-N\f[R] stay literal.
 An empty \f[CR]HOME\f[R] expands to an empty word, and an unset
 \f[CR]HOME\f[R] is an error.
+The result is literal text that is not split or matched as a pattern.
 .IP \[bu] 2
 Also expands after \f[CR]=\f[R] and \f[CR]:\f[R] in assignments and in
 the words of \f[CR]export\f[R], \f[CR]declare\f[R], \f[CR]local\f[R],
@@ -4292,9 +4301,10 @@ T}@T{
 Subshell command substitution (strips trailing newlines; inside
 backquotes a backslash keeps its meaning only before \f[CR]$\f[R],
 \f[CR]\[ga]\f[R], or \f[CR]\[rs]\f[R]; \f[CR]$(< file)\f[R] expands to
-the contents of \f[CR]file\f[R] without running a command;
-\f[CR]kosh\f[R] preserves \f[CR]NUL\f[R] bytes while compatibility moods
-drop them).
+the contents of \f[CR]file\f[R] without running a command, and a file
+that cannot be read gives an error, an empty expansion, and status
+\f[CR]1\f[R]; \f[CR]kosh\f[R] preserves \f[CR]NUL\f[R] bytes while
+compatibility moods drop them).
 Runs in a subshell, leaving shell state, options, directory stack,
 working directory, and creation mask unchanged.
 A syntax error inside a substitution is reported at its place in the
@@ -5772,17 +5782,20 @@ an attribute option without operands lists every variable with those
 attributes).
 Without options or operands prints nothing.
 \f[CR]\-a\f[R] with \f[CR]\-A\f[R] returns \f[CR]2\f[R], and a missing
-variable or function or an invalid identifier returns \f[CR]1\f[R].
+variable or function, an invalid identifier, or \f[CR]\-n\f[R] on an
+array returns \f[CR]1\f[R].
 See the name reference bullet below the table.
 T}
 T{
-\f[CR]local [\-aAilnprux] [name[=val] ...]\f[R]
+\f[CR]local [\-aAilnprtux] [+ailnux] [name[=val] ...]\f[R]
 T}@T{
 Makes variables local to the running function with the attributes of the
 same \f[CR]declare\f[R] options (\f[CR]local \-n\f[R] passes a variable
 of the caller by reference, a \f[CR]\-\f[R] operand saves the
 \f[CR]set\f[R] options until the function returns, \f[CR]\-p\f[R] lists
 local variables).
+A \f[CR]+\f[R] form removes the attribute, \f[CR]\-t\f[R] has no effect,
+and a \f[CR]name[subscript]=val\f[R] operand makes the local an array.
 Outside a function returns \f[CR]1\f[R], and ends a non\-interactive
 shell with \f[CR]2\f[R] in \f[CR]sh\f[R].
 T}
@@ -5976,8 +5989,8 @@ T{
 \f[CR]read [\-ers] [\-a array] [\-d delim] [\-n|\-N count] [\-p prompt] [\-t timeout] [\-u fd] [\-q] [name ...]\f[R]
 T}@T{
 Reads a line and splits it at \f[CR]IFS\f[R], giving one field to each
-\f[CR]name\f[R] and the rest of the line to the last (\f[CR]REPLY\f[R]
-without a name).
+\f[CR]name\f[R], which can be an array element, and the rest of the line
+to the last (\f[CR]REPLY\f[R] without a name).
 \f[CR]\-r\f[R] keeps backslashes, \f[CR]\-a\f[R] fills an indexed array,
 \f[CR]\-d\f[R] sets the delimiter (NUL when empty), \f[CR]\-n\f[R] sets
 a maximum byte count, \f[CR]\-N\f[R] reads exactly that many bytes

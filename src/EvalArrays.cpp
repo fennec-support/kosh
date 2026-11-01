@@ -156,30 +156,26 @@ EvalContext::clear_sparse_array(StringView name) throws -> void
   variable_store().sparse_arrays().forget(name);
 }
 
+/* subscript_end is the offset of the ']' that closes the subscript. */
 static fn
-parse_explicit_array_index(StringView  element,
-                           StringView &subscript_out,
-                           StringView &value_out) wontthrow -> bool
+split_subscripted_element(StringView  element,
+                          usize       subscript_end,
+                          StringView &subscript_out,
+                          StringView &value_out) wontthrow -> bool
 {
-  if (element.length < 3 || element[0] != '[') {
-    return false;
-  }
+  let const is_append = element[subscript_end + 1] == '+';
 
-  for (usize i = 1; i + 1 < element.length; i++) {
-    if (element[i] == ']' && element[i + 1] == '=') {
-      subscript_out = element.substring_of_length(1, i - 1);
-      value_out     = element.substring(i + 2);
+  subscript_out = element.substring_of_length(1, subscript_end - 1);
+  value_out     = element.substring(subscript_end + (is_append ? 3 : 2));
 
-      return true;
-    }
-  }
-
-  return false;
+  return is_append;
 }
 
 fn
 EvalContext::assign_associative_elements(
-    StringView name, const ArrayList<String> &elements) throws -> void
+    StringView               name,
+    const ArrayList<String> &elements,
+    const ArrayList<usize>  &subscript_ends) throws -> void
 {
   if (elements.is_empty()) return;
 
@@ -199,9 +195,11 @@ EvalContext::assign_associative_elements(
   StringView subscript;
   StringView value;
 
-  if (parse_explicit_array_index(elements[0].view(), subscript, value)) {
-    for (let const &element : elements) {
-      if (!parse_explicit_array_index(element.view(), subscript, value)) {
+  if (subscript_ends[0] != 0) {
+    for (usize i = 0; i < elements.count(); i++) {
+      let const &element = elements[i];
+
+      if (subscript_ends[i] == 0) {
         let error = ErrorWithDetails{
             "Unable to assign '" + element + "' to the associative array '" +
                 name + "' because it has no [key]= subscript",
@@ -212,7 +210,22 @@ EvalContext::assign_associative_elements(
         throw steal(error);
       }
 
-      do_set(subscript, value);
+      if (!split_subscripted_element(element.view(), subscript_ends[i],
+                                     subscript, value))
+      {
+        do_set(subscript, value);
+        continue;
+      }
+
+      let combined = String{scratch_allocator()};
+
+      if (let const existing = lookup_associative_element(name, subscript))
+        combined.append(existing->view());
+      if (is_integer)
+        append_integer_expression(combined, value);
+      else
+        combined.append(value);
+      do_set(subscript, combined.view());
     }
 
     return;
@@ -239,7 +252,7 @@ EvalContext::assign_indexed_array_elements(
     StringView               name,
     const ArrayList<String> &elements,
     assignment_update_mode   update_mode,
-    const Bitset            *subscript_flags) throws -> void
+    const ArrayList<usize>  &subscript_ends) throws -> void
 {
   let resolved_name = Maybe<String>{};
 
@@ -284,7 +297,7 @@ EvalContext::assign_indexed_array_elements(
       declare_associative_array(name);
     }
 
-    assign_associative_elements(name, elements);
+    assign_associative_elements(name, elements, subscript_ends);
 
     return;
   }
@@ -302,16 +315,25 @@ EvalContext::assign_indexed_array_elements(
       running_index = array->count();
     else if (variable_store().shell_variables().find(name).has_value())
       running_index = 1;
-    if (variable_store().sparse_arrays().has(name))
-      for_each_sparse_index(
-          variable_store().sparse_arrays().values(), name, scratch_allocator(),
-          [&](usize index, const String &value) throws {
-            unused(value);
-            if (index == SIZE_MAX)
-              throw Error{"Unable to append to '" + name +
-                          "' because its index is too large"};
-            if (index >= running_index) running_index = index + 1;
-          });
+    if (variable_store().sparse_arrays().has(name)) {
+      let &sparse = variable_store().sparse_arrays();
+      let  limit  = sparse.find_index_limit(name);
+
+      if (!limit.has_value()) {
+        usize scanned_limit = 0;
+
+        for_each_sparse_index(
+            sparse.values(), name, scratch_allocator(),
+            [&](usize index, const String &value) throws {
+              unused(value);
+              if (index >= scanned_limit) scanned_limit = index + 1;
+            });
+        sparse.set_index_limit(name, scanned_limit);
+        limit = scanned_limit;
+      }
+
+      if (*limit > running_index) running_index = *limit;
+    }
   } else {
     set_indexed_array(name, ArrayList<String>{heap_allocator()});
   }
@@ -319,16 +341,15 @@ EvalContext::assign_indexed_array_elements(
   for (usize element_position = 0; element_position < elements.count();
        element_position++)
   {
-    let const &element = elements[element_position];
-    StringView subscript;
-    StringView value;
-    let        index = running_index;
-    let const  is_subscripted =
-        subscript_flags == nullptr || (*subscript_flags)[element_position];
+    let const &element       = elements[element_position];
+    let const  subscript_end = subscript_ends[element_position];
+    let        index         = running_index;
 
-    if (is_subscripted &&
-        parse_explicit_array_index(element.view(), subscript, value))
-    {
+    if (subscript_end != 0) {
+      StringView subscript;
+      StringView value;
+      let const  is_append = split_subscripted_element(
+          element.view(), subscript_end, subscript, value);
       i64 raw_index = evaluate_array_index(*this, subscript);
 
       if (raw_index < 0) raw_index += array_negative_index_base(name);
@@ -336,8 +357,20 @@ EvalContext::assign_indexed_array_elements(
         throw Error{"Unable to index '" + name +
                     "' because the array subscript is invalid"};
       index = static_cast<usize>(raw_index);
-      set_array_element(name, index, do_element_value(value));
+      if (is_append) {
+        char index_text[24];
+
+        assign_array_element(
+            name,
+            utils::int_to_text_into(raw_index, index_text, sizeof(index_text)),
+            value, assignment_update_mode::Append);
+      } else {
+        set_array_element(name, index, do_element_value(value));
+      }
     } else {
+      if (index > static_cast<usize>(INT64_MAX))
+        throw Error{"Unable to append to '" + name +
+                    "' because its index is too large"};
       set_array_element(name, index, do_element_value(element.view()));
     }
 
@@ -418,9 +451,18 @@ EvalContext::set_array_element(StringView name,
 
   LOG(All, "holding element %zu of '%.*s' sparsely past the dense run of %zu",
       index, static_cast<int>(name.length), name.data, dense_count);
-  variable_store().sparse_arrays().declare(name);
-  variable_store().sparse_arrays().put_counted(
+
+  let      &sparse      = variable_store().sparse_arrays();
+  let const known_limit = sparse.get_entry_count(name) == 0
+                              ? Maybe<usize>{usize{0}}
+                              : sparse.find_index_limit(name);
+
+  sparse.declare(name);
+  sparse.put_counted(
       name, sparse_array_key(name, index, scratch_allocator()).view(), value);
+  if (known_limit.has_value())
+    sparse.set_index_limit(name,
+                           *known_limit > index ? *known_limit : index + 1);
 }
 
 fn
@@ -976,6 +1018,57 @@ EvalContext::declare_local(StringView name,
     inherited_directory_stack = collect_array_elements(name);
   }
 
+  let binding = capture_variable_binding(name);
+
+  if (!should_inherit_value) variable_store().attributes().erase(name);
+  variable_store().attributes().unmark_readonly(name);
+
+  let const was_previously_exported = binding.was_previously_exported;
+
+  scope_store().current_local_scope().push(steal(binding));
+
+  if (should_inherit_value && was_bash_directory_stack_special) {
+    set_indexed_array(name, steal(inherited_directory_stack));
+  }
+
+  if (!should_inherit_value) {
+    force_unset_shell_variable(name);
+    if (was_previously_exported) mark_exported(name);
+    variable_store().indexed_arrays().erase(name);
+    clear_sparse_array(name);
+    clear_associative_array(name);
+  }
+}
+
+fn
+EvalContext::is_array_variable(StringView name) const throws -> bool
+{
+  return variable_store().indexed_arrays().find(name).has_value() ||
+         variable_store().sparse_arrays().has(name) ||
+         is_associative_array(name);
+}
+
+fn
+EvalContext::overlay_array_with_scalar(StringView name) throws
+    -> local_binding
+{
+  let binding = capture_variable_binding(name);
+
+  variable_store().attributes().erase(name);
+  force_unset_shell_variable(name);
+  variable_store().indexed_arrays().erase(name);
+  clear_sparse_array(name);
+  clear_associative_array(name);
+
+  return binding;
+}
+
+fn
+EvalContext::capture_variable_binding(StringView name) throws
+    -> local_binding
+{
+  let const was_bash_directory_stack_special =
+      is_bash_directory_stack_special(name);
   let previous_array = Maybe<ArrayList<String>>{};
 
   if (variable_store().indexed_arrays().count() != 0)
@@ -992,9 +1085,11 @@ EvalContext::declare_local(StringView name,
       previous_array = steal(copy);
     }
 
-  let const was_previously_associative = is_associative_array(name);
-  let       previous_keys              = ArrayList<String>{heap_allocator()};
-  let       previous_values            = ArrayList<String>{heap_allocator()};
+  let const was_aliases_special = is_bash_aliases_special(name);
+  let const was_previously_associative =
+      is_associative_array(name) && !was_aliases_special;
+  let previous_keys   = ArrayList<String>{heap_allocator()};
+  let previous_values = ArrayList<String>{heap_allocator()};
 
   if (was_previously_associative) {
     previous_keys   = associative_keys(name);
@@ -1017,10 +1112,6 @@ EvalContext::declare_local(StringView name,
   let const previous_attributes = variable_store().attributes().get_bits(name);
   let const previous_special_definition_location =
       special_variable_definition_location(name);
-
-  if (!should_inherit_value) variable_store().attributes().erase(name);
-  variable_store().attributes().unmark_readonly(name);
-
   let const was_previously_exported = is_exported(name);
 
   let previous_value = Maybe<String>{};
@@ -1031,7 +1122,7 @@ EvalContext::declare_local(StringView name,
     previous_value = *scalar.value();
   } else if (previous_array.has_value() && !previous_array->is_empty()) {
     previous_value = previous_array->front();
-  } else if (!is_dynamic_write_owner(name) &&
+  } else if (!is_dynamic_write_owner(name) && !was_aliases_special &&
              (was_previously_exported ||
               (variable_requires_dynamic_lookup(name) &&
                !was_bash_directory_stack_special)))
@@ -1039,27 +1130,20 @@ EvalContext::declare_local(StringView name,
     previous_value = get_variable_value(name);
   }
 
-  scope_store().current_local_scope().push(local_binding{
+  return local_binding{
       String{heap_allocator(), name},
       steal(previous_value),
-      previous_special_definition_location, steal(previous_array),
-      steal(previous_keys), steal(previous_values),
-      steal(previous_sparse_indices), steal(previous_sparse_values),
-      previous_attributes, was_previously_associative, was_previously_exported,
+      previous_special_definition_location,
+      steal(previous_array),
+      steal(previous_keys),
+      steal(previous_values),
+      steal(previous_sparse_indices),
+      steal(previous_sparse_values),
+      previous_attributes,
+      was_previously_associative,
+      was_previously_exported,
       false
-  });
-
-  if (should_inherit_value && was_bash_directory_stack_special) {
-    set_indexed_array(name, steal(inherited_directory_stack));
-  }
-
-  if (!should_inherit_value) {
-    force_unset_shell_variable(name);
-    if (was_previously_exported) mark_exported(name);
-    variable_store().indexed_arrays().erase(name);
-    clear_sparse_array(name);
-    clear_associative_array(name);
-  }
+  };
 }
 
 fn
@@ -1125,6 +1209,17 @@ EvalContext::array_negative_index_base(StringView name) const throws
     base = static_cast<i64>(array->count());
 
   if (variable_store().sparse_arrays().has(name)) {
+    if (let const limit =
+            variable_store().sparse_arrays().find_index_limit(name);
+        limit.has_value())
+    {
+      let const past_index = *limit > static_cast<usize>(INT64_MAX)
+                                 ? INT64_MAX
+                                 : static_cast<i64>(*limit);
+
+      return past_index > base ? past_index : base;
+    }
+
     for_each_sparse_index(
         variable_store().sparse_arrays().values(), name, scratch_allocator(),
         [&](usize index, const String &value) throws {
@@ -1171,15 +1266,8 @@ EvalContext::array_element_count(StringView name) const throws -> usize
       array.has_value())
     element_count = array->count();
 
-  if (variable_store().sparse_arrays().has(name)) {
-    for_each_sparse_index(variable_store().sparse_arrays().values(), name,
-                          scratch_allocator(),
-                          [&](usize index, const String &value) throws {
-                            unused(index);
-                            unused(value);
-                            element_count++;
-                          });
-  }
+  if (variable_store().sparse_arrays().has(name))
+    element_count += variable_store().sparse_arrays().get_entry_count(name);
 
   if (element_count == 0 && get_variable_value(name).has_value()) {
     element_count = 1;

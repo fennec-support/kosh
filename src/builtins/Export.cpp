@@ -306,6 +306,13 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     LOG(All, "export moving '%s' into the environment", name.c_str());
 
+    if (name == "IFS" || name == "GLOBIGNORE") {
+      cxt.record_environment_change(name);
+      cxt.mark_exported(name);
+      cxt.set_shell_variable(name, value.view());
+      continue;
+    }
+
     let const environment_name = os::get_environment_spelling(name.view());
 
     cxt.unset_shell_variable(name);

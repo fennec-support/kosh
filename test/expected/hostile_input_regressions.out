@@ -219,3 +219,14 @@ status 0
 status 0
 --- a Dockerfile comment inside a RUN continuation ---
 status 0
+--- a missing file substitution reports the file ---
+2
+--- an append past the largest index fails ---
+status 1
+1
+--- declare -n leaves a populated array alone ---
+status 1
+declare -a a=([0]="1" [1]="2")
+--- many appends after a gap finish ---
+20001
+20001 r

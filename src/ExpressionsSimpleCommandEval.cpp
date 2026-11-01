@@ -900,13 +900,13 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       if (!cxt.is_circular_nameref(assignment.name))
         do_reject_readonly_target(assignment.name);
 
-      let               subscript_flags = Bitset{heap_allocator()};
-      ArrayList<String> values          = cxt.process_args(
+      let               subscript_ends = ArrayList<usize>{heap_allocator()};
+      ArrayList<String> values         = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           cxt.is_associative_array(assignment.name)
-                       ? argument_context::AssociativeLiteral
-                       : argument_context::ArrayLiteral,
-          &subscript_flags);
+                      ? argument_context::AssociativeLiteral
+                      : argument_context::ArrayLiteral,
+          &subscript_ends);
 
       /* a compound assignment traces its words as written. */
       if (cxt.runtime_state().should_echo_expanded()) {
@@ -923,8 +923,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         cxt.write_xtrace(trace.view());
       }
 
-      cxt.assign_indexed_array_elements(
-          assignment.name, values, assignment.update_mode, &subscript_flags);
+      cxt.assign_indexed_array_elements(assignment.name, values,
+                                        assignment.update_mode, subscript_ends);
     }
 
     let const do_token_ran_substitution = [&](const Token *token) {
@@ -968,6 +968,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
     Maybe<String>         previous_value;
     Maybe<String>         previous_shell_value;
     Maybe<SourceLocation> previous_special_definition_location;
+    Maybe<local_binding>  overlaid_array;
     bool                  did_overlay_shell_value;
     bool                  did_clear_circular_reference;
   };
@@ -982,7 +983,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
   defer {
     for (usize i = saved_env.count(); i > 0; i--) {
-      const saved_env_var &restore = saved_env[i - 1];
+      saved_env_var &restore = saved_env[i - 1];
 
       if (restore.did_overlay_shell_value)
         cxt.restore_temporary_shell_variable(
@@ -1000,6 +1001,9 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         cxt.variable_store().attributes().set(
             restore.name.view(), variable_attribute::Nameref, true);
       }
+
+      if (restore.overlaid_array.has_value())
+        cxt.restore_local_binding(*restore.overlaid_array);
     }
 
     if (saved_program_resolver.has_value())
@@ -1119,6 +1123,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
           Maybe<String>         previous_shell_value;
           Maybe<SourceLocation> previous_special_definition_location;
+          Maybe<local_binding>  overlaid_array;
           let const is_locale_name = name.starts_with("LC_") || name == "LANG";
           let const did_overlay_shell_value =
               command_word_function != nullptr ||
@@ -1136,6 +1141,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
             previous_special_definition_location =
                 cxt.special_variable_definition_location(name);
 
+            if (cxt.is_array_variable(name))
+              overlaid_array = cxt.overlay_array_with_scalar(name);
             cxt.set_shell_variable(name, expanded_value.view());
           }
 
@@ -1143,7 +1150,8 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
               String{cxt.scratch_allocator(), name},
               steal(previous),
               steal(previous_shell_value), previous_special_definition_location,
-              did_overlay_shell_value, did_clear_circular_reference
+              steal(overlaid_array), did_overlay_shell_value,
+              did_clear_circular_reference
           });
           os::set_environment_variable(name, expanded_value.view());
           cxt.mark_exported(name);
@@ -1603,20 +1611,29 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
       if (should_mark_uppercase)
         cxt.variable_store().attributes().mark_uppercase(assignment.name);
 
-      let               subscript_flags = Bitset{heap_allocator()};
-      ArrayList<String> values          = cxt.process_args(
+      let               subscript_ends = ArrayList<usize>{heap_allocator()};
+      ArrayList<String> values         = cxt.process_args(
           assignment.elements, nullptr, argument_lifetime::Persistent,
           is_associative_request || cxt.is_associative_array(assignment.name)
-                       ? argument_context::AssociativeLiteral
-                       : argument_context::ArrayLiteral,
-          &subscript_flags);
+                      ? argument_context::AssociativeLiteral
+                      : argument_context::ArrayLiteral,
+          &subscript_ends);
 
       do_trace_array_assignment(assignment, values);
 
-      if (is_associative_request)
-        cxt.declare_associative_array(assignment.name);
-      cxt.assign_indexed_array_elements(
-          assignment.name, values, assignment.update_mode, &subscript_flags);
+      if (is_associative_request) {
+        let const is_reference =
+            cxt.variable_store().attributes().is_nameref(assignment.name) &&
+            !cxt.is_circular_nameref(assignment.name);
+
+        cxt.declare_associative_array(
+            is_reference
+                ? cxt.resolve_nameref_base_for_write(assignment.name).view()
+                : assignment.name.view());
+      }
+
+      cxt.assign_indexed_array_elements(assignment.name, values,
+                                        assignment.update_mode, subscript_ends);
       if (should_unexport_request) cxt.unexport_shell_variable(assignment.name);
       if (is_export_request) cxt.mark_exported(assignment.name);
       if (is_readonly_request)

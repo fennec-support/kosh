@@ -5042,9 +5042,9 @@ public:
   fn
   process_args(const ArrayList<const Token *> &args,
                ArrayList<SourceLocation>      *expanded_locations = nullptr,
-               argument_lifetime lifetime = argument_lifetime::Persistent,
-               argument_context  context  = argument_context::Command,
-               Bitset           *subscript_flags = nullptr) throws
+               argument_lifetime lifetime       = argument_lifetime::Persistent,
+               argument_context  context        = argument_context::Command,
+               ArrayList<usize> *subscript_ends = nullptr) throws
       -> ArrayList<String>;
 
   /* known_entry, when given, is the result of find_variable_for_write(name)
@@ -5139,7 +5139,8 @@ public:
   is_bash_aliases_special(StringView name) const wontthrow -> bool
   {
     return name == BASH_ALIASES_VARIABLE &&
-           is_bash_special_array_active(bash_special_array_id::Aliases);
+           is_bash_special_array_active(bash_special_array_id::Aliases) &&
+           !scope_store().has_active_local(name);
   }
 
   pure fn
@@ -5195,11 +5196,20 @@ public:
       StringView               name,
       const ArrayList<String> &elements,
       assignment_update_mode   update_mode,
-      const Bitset            *subscript_flags = nullptr) throws -> void;
+      const ArrayList<usize>  &subscript_ends) throws -> void;
   fn
-  assign_associative_elements(StringView               name,
-                              const ArrayList<String> &elements) throws
-      -> void;
+  is_array_variable(StringView name) const throws -> bool;
+  fn
+  capture_variable_binding(StringView name) throws -> local_binding;
+  fn
+  overlay_array_with_scalar(StringView name) throws -> local_binding;
+  fn
+  restore_local_binding(local_binding &binding) throws -> void;
+  fn
+  assign_associative_elements(
+      StringView               name,
+      const ArrayList<String> &elements,
+      const ArrayList<usize>  &subscript_ends) throws -> void;
 
   fn
   record_environment_change(StringView name) throws -> void;
@@ -6242,8 +6252,6 @@ protected:
   force_unset_shell_variable(StringView name) throws -> void;
   fn
   peel_caller_local_binding(StringView name) throws -> bool;
-  fn
-  restore_local_binding(local_binding &binding) throws -> void;
 
   fn
   apply_parameter_expansion(StringView            spec,

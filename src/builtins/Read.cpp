@@ -242,6 +242,25 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return names[first_operand + index];
   };
 
+  let const do_assign_operand = [&](usize      index,
+                                    StringView value) throws {
+    let const name    = do_operand_name(index).view();
+    let const bracket = name.find_character('[');
+
+    if (!bracket.has_value()) {
+      cxt.set_shell_variable(name, value);
+
+      return;
+    }
+
+    let const subscript =
+        name.substring_of_length(*bracket + 1, name.length - *bracket - 2);
+    let const data_scope = cxt.guard_expanded_subscript(subscript);
+
+    cxt.assign_array_element(name.substring_of_length(0, *bracket), subscript,
+                             value, assignment_update_mode::Replace);
+  };
+
   let const delimiter =
       FLAG_READ_DELIM.is_set()
           ? (FLAG_READ_DELIM.value().is_empty() ? '\0'
@@ -386,6 +405,11 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       for (usize i = 0; i < accumulated.length(); i++) {
         if (should_process_escapes && accumulated[i] == '\\') {
           if (i + 1 >= accumulated.length()) break;
+          if (accumulated[i + 1] == '\n') {
+            i++;
+            continue;
+          }
+
           line.push(accumulated[i + 1]);
           is_literal_byte.push(true);
           i++;
@@ -404,7 +428,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (!was_read_successful) {
     for (usize i = 0; i < operand_count; i++)
-      cxt.set_shell_variable(do_operand_name(i), "");
+      do_assign_operand(i, "");
 
     return was_timed_out ? 142 : 1;
   }
@@ -465,8 +489,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (is_exact_count && !FLAG_READ_ARRAY.is_set()) {
     for (usize i = 0; i < operand_count; i++)
-      cxt.set_shell_variable(do_operand_name(i),
-                             i == 0 ? line.view() : StringView{});
+      do_assign_operand(i, i == 0 ? line.view() : StringView{});
 
     return read_status;
   }
@@ -530,9 +553,7 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let has_trailing_content = false;
 
       if (cursor < line.length()) {
-        if (!do_is_ifs_whitespace(cursor))
-          cursor += do_separator_length(cursor);
-        do_skip_ifs_whitespace();
+        do_skip_delimiter();
         has_trailing_content = cursor < line.length();
       }
 
@@ -548,16 +569,14 @@ Read::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
       }
 
-      cxt.set_shell_variable(
-          do_operand_name(i),
-          line.substring_of_length(field_start, end_position - field_start));
+      do_assign_operand(
+          i, line.substring_of_length(field_start, end_position - field_start));
       break;
     }
 
     let const start = do_skip_field();
 
-    cxt.set_shell_variable(do_operand_name(i),
-                           line.substring_of_length(start, cursor - start));
+    do_assign_operand(i, line.substring_of_length(start, cursor - start));
     do_skip_delimiter();
   }
 

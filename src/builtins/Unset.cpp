@@ -137,8 +137,10 @@ Unset::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else {
       LOG(All, "unset removing variable '%s'", name.c_str());
       do_try_unset(i, [&] {
+        let const was_local = cxt.scope_store().has_active_local(name.view());
+
         cxt.unset_shell_variable(name);
-        cxt.unset_dynamic_reader(name.view());
+        if (!was_local) cxt.unset_dynamic_reader(name.view());
       });
     }
   }

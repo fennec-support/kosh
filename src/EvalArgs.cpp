@@ -504,58 +504,127 @@ expand_braces(const Word &word, Allocator alloc) throws
 
 } /* namespace */
 
-static pure fn
-segment_is_literal(const WordSegment &segment) wontthrow -> bool
+struct array_subscript_span
 {
-  return segment.kind == WordSegment::Kind::LiteralText ||
-         segment.kind == WordSegment::Kind::UnquotedText;
+  usize close_segment;
+  usize close_offset;
+  usize value_segment;
+  usize value_offset;
+  bool  is_append;
+};
+
+static pure fn
+find_assignment_operator(StringView text) wontthrow -> usize
+{
+  if (text.starts_with("=")) return 1;
+  if (text.starts_with("+=")) return 2;
+
+  return 0;
 }
 
 static fn
-word_starts_array_subscript(const Word &word) wontthrow -> bool
+find_array_subscript_span(const Word &word) wontthrow
+    -> Maybe<array_subscript_span>
 {
-  if (word.segments.is_empty()) return false;
+  if (word.segments.is_empty()) return None;
 
   const WordSegment &first = word.segments[0];
 
-  if (!segment_is_literal(first) || first.text.is_empty() ||
+  if (first.kind != WordSegment::Kind::UnquotedText || first.text.is_empty() ||
       first.text.view()[0] != '[')
   {
-    return false;
+    return None;
   }
 
-  /* at this point: the first segment is literal text that starts with '['. */
+  usize depth = 0;
+
   for (usize segment_position = 0; segment_position < word.segments.count();
        segment_position++)
   {
     const WordSegment &segment = word.segments[segment_position];
 
-    if (!segment_is_literal(segment)) continue;
+    if (segment.kind != WordSegment::Kind::UnquotedText) continue;
 
     let const text = segment.text.view();
 
     for (usize i = 0; i < text.length; i++) {
+      if (text[i] == '[') depth++;
       if (text[i] != ']') continue;
 
-      if (i + 1 < text.length) return text[i + 1] == '=';
+      depth--;
+      if (depth > 0) continue;
 
-      for (usize next = segment_position + 1; next < word.segments.count();
-           next++)
-      {
-        if (!segment_is_literal(word.segments[next])) return false;
+      let const operator_length =
+          find_assignment_operator(text.substring(i + 1));
 
-        let const next_text = word.segments[next].text.view();
-
-        if (next_text.is_empty()) continue;
-
-        return next_text[0] == '=';
+      if (operator_length > 0) {
+        return array_subscript_span{segment_position, i, segment_position,
+                                    i + 1 + operator_length,
+                                    operator_length == 2};
       }
 
-      return false;
+      if (i + 1 < text.length || segment_position + 1 >= word.segments.count())
+      {
+        return None;
+      }
+
+      const WordSegment &next = word.segments[segment_position + 1];
+
+      if (next.kind != WordSegment::Kind::UnquotedText) return None;
+
+      let const next_length = find_assignment_operator(next.text.view());
+
+      if (next_length == 0) return None;
+
+      return array_subscript_span{segment_position, i, segment_position + 1,
+                                  next_length, next_length == 2};
     }
   }
 
-  return false;
+  return None;
+}
+
+static fn
+copy_word_range(const Word  &word,
+                usize        first_segment,
+                usize        first_offset,
+                usize        last_segment,
+                Maybe<usize> last_end,
+                Allocator    allocator) throws -> Word
+{
+  let out = Word{};
+
+  out.segments = ArrayList<WordSegment>{allocator};
+
+  for (usize i = first_segment; i < word.segments.count() && i <= last_segment;
+       i++)
+  {
+    let segment = word.segments[i].clone(allocator);
+
+    if (i == first_segment || (i == last_segment && last_end.has_value())) {
+      let const text  = word.segments[i].text.view();
+      let const start = i == first_segment ? first_offset : 0;
+      let const end =
+          i == last_segment && last_end.has_value() ? *last_end : text.length;
+
+      segment.text.assign_copy(allocator,
+                               text.substring_of_length(start, end - start));
+    }
+
+    if (segment.kind != WordSegment::Kind::UnquotedText ||
+        !segment.text.is_empty())
+    {
+      out.segments.push(steal(segment));
+    }
+  }
+
+  return out;
+}
+
+static fn
+get_last_segment(const Word &word) wontthrow -> usize
+{
+  return word.segments.is_empty() ? usize{0} : word.segments.count() - 1;
 }
 
 enum declaration_command_flag : u8
@@ -582,7 +651,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
                           ArrayList<SourceLocation>      *expanded_locations,
                           argument_lifetime               lifetime,
                           argument_context                context,
-                          Bitset                         *subscript_flags) throws
+                          ArrayList<usize>               *subscript_ends) throws
     -> ArrayList<String>
 {
   let const is_transient = lifetime == argument_lifetime::Transient;
@@ -665,17 +734,17 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         suppressible_warning::UnsetTestOperand, was_test_warning_suppressed);
   };
 
-  let const do_fill_subscript_flags = [&]() throws -> void {
-    if (subscript_flags == nullptr) return;
+  let const do_fill_subscript_ends = [&]() throws -> void {
+    if (subscript_ends == nullptr) return;
 
-    while (subscript_flags->count() < expanded_args.count())
-      subscript_flags->push(false);
+    while (subscript_ends->count() < expanded_args.count())
+      subscript_ends->push(0);
   };
 
   for (let const *token : args) {
     let const location = token->source_location();
 
-    do_fill_subscript_flags();
+    do_fill_subscript_ends();
     try {
       let         fallback_word = Maybe<Word>{};
       const Word *word          = nullptr;
@@ -757,7 +826,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
           fallback_word->segments.push(value_segment);
 
         if (runtime_state().is_bash_compatible() &&
-            !runtime_state().is_posix_mode())
+            !runtime_state().is_posix_mode() && !is_array_literal)
         {
           let &segments = fallback_word->segments;
 
@@ -784,18 +853,41 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         word = &*fallback_word;
       }
 
-      if (is_associative_literal ||
-          (is_array_literal && word_starts_array_subscript(*word)))
-      {
+      let const subscript_span = is_array_literal
+                                     ? find_array_subscript_span(*word)
+                                     : Maybe<array_subscript_span>{};
+
+      if (subscript_span.has_value()) {
+        let const &span = *subscript_span;
+        let const  key  = expand_word_for_assignment(
+            copy_word_range(*word, 0, 1, span.close_segment, span.close_offset,
+                              scratch_allocator()));
+        let const value   = expand_word_for_assignment(copy_word_range(
+            *word, span.value_segment, span.value_offset,
+            get_last_segment(*word), None, scratch_allocator()));
+        let       element = String{expanded_args.allocator()};
+
+        element.push('[');
+        element.append(key.view());
+        element.push(']');
+        if (span.is_append) element.push('+');
+        element.push('=');
+        element.append(value.view());
+        expanded_args.push(steal(element));
+        do_record_location(location);
+        if (subscript_ends != nullptr) subscript_ends->push(key.count() + 1);
+        continue;
+      }
+
+      if (is_associative_literal) {
         expanded_args.push_managed(expand_word_for_assignment(*word).view());
         do_record_location(location);
-        if (subscript_flags != nullptr) subscript_flags->push(true);
         continue;
       }
 
       /* at this point: word is non-null and points at the token's Word or at
-         fallback_word, which lives to the end of this try block. associative
-         and subscript literal elements are already skipped. */
+         fallback_word, which lives to the end of this try block. subscript
+         and associative literal elements are already skipped. */
       let const do_expand_one_word =
           [&](const Word &expandable) throws -> void {
         let const plain_kind         = expandable.plain_literal_kind();
@@ -955,7 +1047,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
     }
   }
 
-  do_fill_subscript_flags();
+  do_fill_subscript_ends();
 
   return expanded_args;
 }

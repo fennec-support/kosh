@@ -476,3 +476,17 @@ echo "--- a Dockerfile comment inside a RUN continuation ---"
 printf 'FROM alpine\nRUN apk add a \\\n    # note\n    b\n' > Dockerfile
 "$BIN" --format Dockerfile | cmp - Dockerfile
 echo "status $?"
+
+echo "--- a missing file substitution reports the file ---"
+"$BIN" -c 'x=$(<missing_file); echo "[$x] $?"' 2>&1 | grep -c missing_file
+
+echo "--- an append past the largest index fails ---"
+"$BIN" --mood bash -c 'a[9223372036854775807]=y; a+=(z)
+echo "status $?"; echo "${#a[@]}"' 2>/dev/null
+
+echo "--- declare -n leaves a populated array alone ---"
+"$BIN" --mood bash -c 'a=(1 2); declare -n a=b; echo "status $?"; declare -p a' 2>/dev/null
+
+echo "--- many appends after a gap finish ---"
+"$BIN" --mood bash -c 'a=(); a[1]=x; for ((i=0;i<20000;i++)); do a+=(q); done
+echo "${#a[@]}"; unset "a[20001]"; a+=(r); echo "${#a[@]} ${a[20001]}"'

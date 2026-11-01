@@ -434,9 +434,7 @@ EvalContext::set_shell_variable(
 
   if (is_write_discarded_dynamic_variable(name)) return;
 
-  if (name == BASH_ALIASES_VARIABLE &&
-      is_bash_special_array_active(bash_special_array_id::Aliases))
-  {
+  if (is_bash_aliases_special(name)) {
     scope_store().set_alias("0", value);
 
     return;

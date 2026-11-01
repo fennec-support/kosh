@@ -38,6 +38,7 @@ FLAG(LOCAL_NAMEREF,
      'n',
      "",
      "Make the local a reference to the variable its value selects.");
+FLAG(LOCAL_TRACE, Bool, 't', "", "Accepted without effect.");
 FLAG(LOCAL_PRINT,
      Bool,
      'p',
@@ -129,9 +130,18 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   unused(parse_flags_vec(
       FLAG_LIST, args, ec.source_location().position, nullptr,
       &ec.arg_locations(), nullptr, builtin_error_context(ec.program()),
-      flag_parse_options{.should_stop_at_first_operand = true},
+      flag_parse_options{.should_stop_at_first_operand = true,
+                         .plus_letters                 = "aAilnrtux"},
       cxt.scratch_allocator(), &operand_indices));
   defer { reset_flags(FLAG_LIST); };
+
+  let const should_unmark_integer = FLAG_LOCAL_INTEGER.was_given_after_plus();
+  let const should_unmark_lowercase =
+      FLAG_LOCAL_LOWERCASE.was_given_after_plus();
+  let const should_unmark_uppercase =
+      FLAG_LOCAL_UPPERCASE.was_given_after_plus();
+  let const should_unmark_nameref = FLAG_LOCAL_NAMEREF.was_given_after_plus();
+  let const should_unexport       = FLAG_LOCAL_EXPORT.was_given_after_plus();
 
   should_make_indexed      = FLAG_LOCAL_INDEXED.is_enabled();
   should_make_associative  = FLAG_LOCAL_ASSOCIATIVE.is_enabled();
@@ -196,12 +206,17 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (update_mode == assignment_update_mode::Append)
       name = name.substring_of_length(0, name.count() - 1);
 
-    let identifier = name;
+    let identifier    = name;
+    let subscript     = StringView{};
+    let has_subscript = false;
 
     if (let const bracket = identifier.find_character('[');
         bracket.has_value() && identifier[identifier.count() - 1] == ']')
     {
-      identifier = identifier.substring_of_length(0, *bracket);
+      subscript     = identifier.substring_of_length(*bracket + 1,
+                                                     name.count() - *bracket - 2);
+      has_subscript = true;
+      identifier    = identifier.substring_of_length(0, *bracket);
     }
 
     if (!name_is_valid_identifier(identifier)) {
@@ -246,6 +261,8 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
+    name = identifier;
+
     let const was_already_local =
         update_mode == assignment_update_mode::Append &&
         cxt.scope_store().has_current_local(name);
@@ -261,6 +278,16 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.variable_store().attributes().mark_lowercase(name);
     if (should_mark_uppercase)
       cxt.variable_store().attributes().mark_uppercase(name);
+    if (should_unmark_integer)
+      cxt.variable_store().attributes().unmark_integer(name);
+    if (should_unmark_lowercase)
+      cxt.variable_store().attributes().unmark_lowercase(name);
+    if (should_unmark_uppercase)
+      cxt.variable_store().attributes().unmark_uppercase(name);
+    if (should_unmark_nameref)
+      cxt.variable_store().attributes().set(name, variable_attribute::Nameref,
+                                            false);
+    if (should_unexport) cxt.unexport_shell_variable(name);
 
     if (should_mark_nameref) {
       if (!declare_nameref(
@@ -282,7 +309,20 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.variable_store().attributes().mark_declared(name);
     }
 
-    if (should_make_associative) {
+    if (has_subscript) {
+      if (should_make_associative) cxt.declare_associative_array(name);
+      if (equals_position.has_value()) {
+        let const data_scope = cxt.guard_expanded_subscript(subscript);
+
+        cxt.assign_array_element(
+            name, subscript, arg.substring(*equals_position + 1), update_mode);
+      } else if (!should_make_associative &&
+                 !cxt.variable_store().indexed_arrays().find(name).has_value())
+      {
+        cxt.set_indexed_array(name, ArrayList<String>{heap_allocator()});
+        cxt.variable_store().attributes().mark_declared(name);
+      }
+    } else if (should_make_associative) {
       cxt.declare_associative_array(name);
     } else if (should_make_indexed) {
       if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
@@ -313,7 +353,8 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       }
     }
 
-    if (should_mark_export && !should_make_indexed && !should_make_associative)
+    if (should_mark_export && !should_make_indexed &&
+        !should_make_associative && !has_subscript)
     {
       cxt.mark_exported(name);
       cxt.set_shell_variable(name, cxt.get_variable_value(name)

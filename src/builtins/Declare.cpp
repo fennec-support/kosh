@@ -488,6 +488,17 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                             false);
 
     if (should_mark_nameref && !has_subscript) {
+      if (!cxt.scope_store().has_current_local(name) &&
+          (cxt.variable_store().indexed_arrays().find(name).has_value() ||
+           cxt.is_associative_array(name)))
+      {
+        report_soft_builtin_error(ec, cxt, ec.arg_location_at(i),
+                                  StringView{"'"} + name +
+                                      "' is an array and stays one");
+        status = 1;
+        continue;
+      }
+
       let target = Maybe<String>{};
 
       if (equals.has_value())
@@ -533,6 +544,9 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
        the operand assigns a value without a subscript. */
     if (has_subscript && equals.has_value()) {
       let const data_scope = cxt.guard_expanded_subscript(subscript);
+
+      if (should_make_associative)
+        cxt.declare_associative_array(attribute_name);
       cxt.assign_array_element(name, subscript, value, update_mode);
     } else if (should_make_associative) {
       LOG(All, "declare making '%.*s' an associative array",

@@ -233,3 +233,108 @@ done
 echo "--- a function prints a background compound command ---"
 back() { while false; do :; done & wait; { :; } & wait; : & wait; }
 declare -f back
+
+echo "--- export keeps the special variables working ---"
+( IFS=:; export IFS; echo "[$IFS]"; v=a:b; printf '<%s>' $v; echo )
+( export IFS=:; v=a:b; printf '<%s>' $v; echo "[$IFS]" )
+( touch pa qb; export GLOBIGNORE='p*'; echo *; rm pa qb )
+
+echo "--- a nested operand keeps its quoting ---"
+v=1
+printf '[%s]' ${v+${v+"a b"}} ${v+${u-'a b'}} ${u-${u-a\ b}}; echo
+printf '[%s]' ${u-${u-$'a b'}} ${v+${v+:'a b'}a}; echo
+printf '[%s]' ${v+${v+${v+"a b"}}}; echo
+touch ab
+printf '[%s]' ${v+${v+"a*"}} ${v+${v+a*}}; echo
+rm ab
+
+echo "--- a nested operand keeps one field per parameter ---"
+set -- 'a b' c
+printf '[%s]' ${U-"${1+"$@"}"}; echo
+printf '[%s]' "${U:-${1+"$@"}}"; echo
+printf '[%s]' ${U:-"${@-d}"}; echo
+printf '[%s]' ${U:-""${1+"$@"}""}; echo
+printf '[%s]' ${u-${v+"$@"}}; echo
+printf '[%s]' ${u-${1+"$*"}}; echo
+list=('a b' c)
+printf '[%s]' ${u-${list+"${list[@]}"}}; echo
+set --
+
+echo "--- a tilde result is literal ---"
+( touch ab; HOME='a*'; echo ~; case ab in ~) echo match;; *) echo none;; esac
+  set -- ${u:-~}; echo "$1"; rm ab )
+( HOME='a  b'; set -- ${u:-~}; echo $#; set -- ${u:-~/x}; echo $# )
+( HOME=/h; declare -A M=([k]=~); echo "${M[k]}"; a=(x=~ [3]=~ ~); declare -p a )
+
+echo "--- repeated globstar components collapse ---"
+( shopt -s globstar; mkdir -p g/b; touch g/b/f g/f; cd g
+  echo **/**/f; echo **/**; echo **/**/; echo **/**/**/**/**/**/**/**/**/**/**/**/f
+  cd ..; rm -r g )
+
+echo "--- a prefix assignment leaves an array intact ---"
+A=(1 2 3)
+show_a() { echo "$A"; }
+A=9 show_a; declare -p A
+A=9 eval 'echo $A'; declare -p A
+store_a() { A=7; }
+A=9 store_a; declare -p A
+drop_a() { unset A; }
+A=9 drop_a; declare -p A
+declare -A H=([k]=v)
+A=(1); H=9 eval 'declare -p H'; declare -p H
+
+echo "--- declare builds an associative array through a subscript or reference ---"
+declare -A 'r1[key]=x'; declare -p r1
+declare -n rn1=zq; declare -A rn1=([k]=v); declare -p zq rn1
+
+echo "--- read and local accept array elements ---"
+read 'ra[1]' 'ra[2]' <<<'x y'; declare -p ra
+declare -A rh; read 'rh[k]' <<<x; declare -p rh
+local_elements() { local q[3]=x; local 'z[4]=l'; local w[2]; declare -p q z w; }
+local_elements
+
+echo "--- only an unquoted subscript in source is a key ---"
+a=(x '[3]=y'); declare -p a
+a=(\[1]=x); declare -p a
+a=([1]\=x); declare -p a
+v='[k]=v'; declare -A k1=($v); declare -p k1
+declare -A k2=("[a]=1" '[b]=2'); declare -p k2
+d=(); d+=([b]=2 [a]+=x); declare -p d
+a=([a[0]=9]=x); declare -p a
+a=([0]=x [a[0]+1]=y); declare -p a
+declare -A k3=([a]=1); k3+=([a]+=x); declare -p k3
+a=(1 2); declare -n a=b 2>/dev/null; echo "$?"; declare -p a
+
+echo "--- a bracket with an escaped closer stays literal ---"
+v='[a]'; echo "${v/[a\]/<>}" "${v//[a\]/<>}"
+v='x[a]y'; echo "${v/[a\]/<>}"
+
+echo "--- a file substitution sets the status ---"
+false; x=$(</dev/null); echo "$?"
+x=$(<missing_file) 2>/dev/null; echo "[$x] $?"
+
+echo "--- read trims a trailing delimiter and joins escaped newlines ---"
+( IFS=' :'; read a <<< 'x :'; printf '[%s]' "$a"; read a b <<< 'x : y :'; printf '[%s]' "$a" "$b"; echo )
+printf 'x\\\ny\0' | { read -d '' x; printf '[%s]\n' "$x"; }
+printf 'x\\\ny:' | { read -d : x; printf '[%s]\n' "$x"; }
+( IFS=; set -- '' ''; printf '[%s]' "${*:+d}" "${*:-d}"; echo )
+
+echo "--- local attributes and special names ---"
+secs() { local SECONDS=10; unset SECONDS; }
+secs; echo "[${SECONDS:+set}]"
+minus_i() { local +i n=1+1; echo "$n"; }
+declare -i n=1; minus_i; echo "$n"
+minus_x() { local +x PATH; declare -p PATH | head -c 10; echo; }
+minus_x
+aliases_local() { local BASH_ALIASES; BASH_ALIASES[x]=y; }
+aliases_local; alias
+
+echo "--- transforms through a reference and the positional list ---"
+declare -a ra2=(1 2); declare -n rr=ra2; echo "${rr[1]@a}"
+declare -n rt=a[1]; a=(x y); echo "[${rt@a}]"
+x=1; set -- x; echo "${!@@Q}" "${!*@Q}"; set --
+tz=q; declare -n ref1=tz; echo "${!ref1-d}" "${!ref1@Q}"
+declare -n ref2=unset_target; echo "${!ref2-d}" "${!ref2@Q}"
+
+echo "--- ansi-c quoting ends at the first nul ---"
+x=$'a\0b'; echo "${#x}"; y="$x"; echo "${#y}"; echo $'b\x00c' "d"
