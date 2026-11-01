@@ -1039,19 +1039,66 @@ append_shell_quoted(String    &out,
 }
 
 fn
-parse_calendar_date(StringView text, bool is_utc) throws -> Maybe<i64>
+parse_calendar_date(StringView text,
+                    bool       is_utc,
+                    u32       *out_nanoseconds) throws -> Maybe<i64>
 {
   if (!text.is_empty() && text[0] == '@') {
-    let const seconds = text.substring(1);
-    let const parsed  = parse_decimal_u64(seconds);
+    let  seconds     = text.substring(1);
+    bool is_negative = false;
 
-    if (!seconds.is_all_decimal_digits() || parsed.is_error() ||
-        parsed.value() > static_cast<u64>(INT64_MAX))
+    if (!seconds.is_empty() && (seconds[0] == '-' || seconds[0] == '+')) {
+      is_negative = seconds[0] == '-';
+      seconds     = seconds.substring(1);
+    }
+
+    let fraction = StringView{};
+
+    if (let const point = seconds.find_character('.'); point.has_value()) {
+      fraction = seconds.substring(*point + 1);
+      seconds  = seconds.substring_of_length(0, *point);
+    }
+
+    if ((seconds.is_empty() && fraction.is_empty()) ||
+        (!seconds.is_empty() && !seconds.is_all_decimal_digits()) ||
+        (!fraction.is_empty() && !fraction.is_all_decimal_digits()))
     {
       return None;
     }
 
-    return static_cast<i64>(parsed.value());
+    let parsed = u64{0};
+
+    if (!seconds.is_empty()) {
+      let const whole = parse_decimal_u64(seconds);
+
+      if (whole.is_error() || whole.value() > static_cast<u64>(INT64_MAX))
+        return None;
+      parsed = whole.value();
+    }
+
+    u32 nanoseconds = 0;
+
+    for (usize digit_position = 0; digit_position < 9; digit_position++) {
+      nanoseconds *= 10;
+      if (digit_position < fraction.length) {
+        nanoseconds += static_cast<u32>(fraction[digit_position] - '0');
+      }
+    }
+
+    let result = static_cast<i64>(parsed);
+
+    if (is_negative) {
+      result = -result;
+      /* the seconds round down, so the nanoseconds stay nonnegative. */
+      if (nanoseconds != 0) {
+        result--;
+        nanoseconds = 1000000000 - nanoseconds;
+      }
+    }
+
+    if (out_nanoseconds != nullptr) *out_nanoseconds = nanoseconds;
+
+    return result;
   }
 
   constexpr usize date_length           = 10;

@@ -568,9 +568,13 @@ fn
 parse_integer_in_base_u64(StringView text, int_base base) throws
     -> ErrorOr<u64>;
 /* the epoch seconds of @SECONDS or YYYY-MM-DD with an optional hh:mm[:ss] after
-   a space or T, read as UTC or as local time. */
+   a space or T, read as UTC or as local time. SECONDS takes a sign and a
+   fraction, which out_nanoseconds receives when it is given. */
 fn
-parse_calendar_date(StringView text, bool is_utc) throws -> Maybe<i64>;
+parse_calendar_date(StringView text,
+                    bool       is_utc,
+                    u32       *out_nanoseconds = nullptr) throws
+    -> Maybe<i64>;
 
 pure fn
 bounded_osa_distance(StringView a, StringView b, usize max_distance) wontthrow
