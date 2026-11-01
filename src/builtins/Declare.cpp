@@ -526,27 +526,31 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       LOG(All, "declare making '%.*s' an associative array",
           static_cast<int>(name.length), name.data);
 
-      let const was_associative = cxt.is_associative_array(name);
+      let const was_associative = cxt.is_associative_array(attribute_name);
 
       if (equals.has_value()) {
-        cxt.set_shell_variable(name, value);
+        cxt.set_shell_variable(attribute_name, value);
       }
 
-      cxt.declare_associative_array(name);
+      cxt.declare_associative_array(attribute_name);
       if (!equals.has_value() && !has_subscript && !was_associative) {
-        cxt.variable_store().attributes().mark_declared(name);
+        cxt.variable_store().attributes().mark_declared(attribute_name);
       }
     } else if (should_make_indexed) {
-      if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
-          !cxt.is_bash_directory_stack_special(name) &&
-          !cxt.is_bash_argument_array(name))
+      if (!cxt.variable_store()
+               .indexed_arrays()
+               .find(attribute_name)
+               .has_value() &&
+          !cxt.is_bash_directory_stack_special(attribute_name) &&
+          !cxt.is_bash_argument_array(attribute_name))
       {
         let values = ArrayList<String>{heap_allocator()};
 
         if (equals.has_value()) {
           values.push_managed(value);
         } else if (let const scalar =
-                       cxt.variable_store().shell_variables().find(name);
+                       cxt.variable_store().shell_variables().find(
+                           attribute_name);
                    scalar.has_value())
         {
           values.push_managed(scalar->view());
@@ -554,9 +558,9 @@ Declare::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
         let const is_valueless = values.is_empty() && !has_subscript;
 
-        cxt.set_indexed_array(name, steal(values));
+        cxt.set_indexed_array(attribute_name, steal(values));
         if (is_valueless) {
-          cxt.variable_store().attributes().mark_declared(name);
+          cxt.variable_store().attributes().mark_declared(attribute_name);
         }
       }
     } else if (equals.has_value()) {

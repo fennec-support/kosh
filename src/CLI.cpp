@@ -1027,7 +1027,10 @@ parse_flags(const FlagList                  &flags,
             if (*value_offset == '=') {
               value_offset++;
 
-              if (*value_offset == '\0') {
+              /* e.g. cut -d= takes the equals sign as its value. */
+              if (*value_offset == '\0' && !is_long) {
+                value_offset--;
+              } else if (*value_offset == '\0') {
                 let error = ErrorWithLocation{
                     argument_location(argv, static_cast<usize>(i),
                                       base_position, arg_locations),

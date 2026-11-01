@@ -406,6 +406,21 @@ lock_koshconf_directory(const Path &target) throws -> os::descriptor
   return *lock;
 }
 
+fn
+reject_special_koshconf_target(const Path &target) throws -> void
+{
+  let status = os::file_status{};
+
+  if (!os::stat_path_following(target.view(), status)) return;
+
+  let const type_letter = os::file_type_letter(status.mode);
+
+  if (type_letter != '-' && type_letter != 'd') {
+    throw Error{"Unable to read '" + target.text() +
+                "': it is not a regular file"};
+  }
+}
+
 /* memory: the existing contents of the target, M bytes in a heap string freed
            on return, and two temporary path strings.
    time:   O(N + M) bytes for N new bytes and M existing bytes. syscalls: one
@@ -421,6 +436,8 @@ replace_koshconf_target(const Path &target, StringView contents) throws
   let const mode   = os::stat_path_following(target.view(), status)
                          ? status.mode & KOSHCONF_PERMISSION_BITS
                          : KOSHCONF_FILE_MODE & ~os::get_file_creation_mask();
+
+  reject_special_koshconf_target(target);
 
   if (os::path_exists(target.view())) {
     let const existing = target.read_entire_file();
@@ -1373,6 +1390,8 @@ persist_koshconf_snapshot(const Path        &path,
 
   defer { os::release_process_lock(lock); };
 
+  reject_special_koshconf_target(target);
+
   let contents = make_koshconf_snapshot(cxt);
   let existing = target.read_entire_file();
 
@@ -1427,6 +1446,8 @@ persist_koshconf_setting(const Path              &path,
   let const lock = lock_koshconf_directory(target);
 
   defer { os::release_process_lock(lock); };
+
+  reject_special_koshconf_target(target);
 
   let existing = target.read_entire_file();
 

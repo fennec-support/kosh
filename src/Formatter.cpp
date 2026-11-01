@@ -193,6 +193,39 @@ scan_balanced_region(StringView source,
   position = end.value_or(source.length);
 }
 
+/* a substitution inside double quotes can hold double quotes of its own. */
+fn
+scan_double_quoted_region(StringView source, usize &position) throws
+    -> void
+{
+  position++;
+
+  while (position < source.length) {
+    let const byte = source[position];
+
+    if (byte == '\\') {
+      position += 2;
+    } else if (byte == '"') {
+      position++;
+
+      return;
+    } else if (byte == '`') {
+      scan_quoted_region(source, position, byte);
+    } else if (byte == '$' && position + 1 < source.length &&
+               (source[position + 1] == '(' || source[position + 1] == '{'))
+    {
+      let const closing = source[position + 1] == '(' ? ')' : '}';
+
+      position += 2;
+      scan_balanced_region(source, position, closing);
+    } else {
+      position++;
+    }
+  }
+
+  if (position > source.length) position = source.length;
+}
+
 fn
 scan_format_word_end(StringView source, usize position) throws -> usize
 {
@@ -204,7 +237,12 @@ scan_format_word_end(StringView source, usize position) throws -> usize
       continue;
     }
 
-    if (byte == '\'' || byte == '"' || byte == '`') {
+    if (byte == '"') {
+      scan_double_quoted_region(source, position);
+      continue;
+    }
+
+    if (byte == '\'' || byte == '`') {
       scan_quoted_region(source, position, byte);
       continue;
     }

@@ -223,7 +223,16 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       element.push(delimiter);
     }
 
-    let const array_index = origin + static_cast<i64>(read_count);
+    i64 array_index = 0;
+
+    if (__builtin_add_overflow(origin, static_cast<i64>(read_count),
+                               &array_index))
+    {
+      throw Error{
+          "The -O origin leaves no index for line " +
+          String::from(static_cast<i64>(read_count + 1), heap_allocator())};
+    }
+
     char      index_text[24];
     let const subscript =
         utils::int_to_text_into(array_index, index_text, sizeof(index_text));

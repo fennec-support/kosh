@@ -436,11 +436,13 @@ cold fn
 Lexer::walk_heredoc_body(usize              start,
                          StringView         delimiter,
                          heredoc_tab_policy tab_policy,
+                         bool               should_expand,
                          Emit               emit_line) throws -> usize
 {
   usize                   position           = start;
   bool                    did_find_delimiter = false;
   bool                    has_near_miss      = false;
+  bool                    was_line_continued = false;
   heredoc_terminator_miss near_miss{0, 0,
                                     heredoc_miss_kind::IndentedTerminator};
 
@@ -470,8 +472,17 @@ Lexer::walk_heredoc_body(usize              start,
 
     let const stripped =
         m_source.substring_of_length(stripped_offset, stripped_length);
-    let const is_delimiter = (delimiter == stripped);
+    let const is_delimiter = !was_line_continued && delimiter == stripped;
 
+    usize trailing_backslash_count = 0;
+
+    while (trailing_backslash_count < stripped_length &&
+           stripped[stripped_length - 1 - trailing_backslash_count] == '\\')
+    {
+      trailing_backslash_count++;
+    }
+
+    was_line_continued = should_expand && (trailing_backslash_count & 1u) != 0;
     did_find_delimiter = did_find_delimiter || is_delimiter;
 
     if (m_parse_session.should_collect_analysis_metadata() && !is_delimiter &&
@@ -552,9 +563,9 @@ Lexer::collect_pending_heredocs() throws -> void
       return true;
     };
 
-    m_cursor_position =
-        walk_heredoc_body(m_cursor_position, pending.delimiter.view(),
-                          pending.tab_policy, do_append_body_line);
+    m_cursor_position = walk_heredoc_body(
+        m_cursor_position, pending.delimiter.view(), pending.tab_policy,
+        pending.should_expand, do_append_body_line);
     pending.contents->source_end_position = m_cursor_position;
     LOG(Debug, "capturing a heredoc body of %zu bytes for delimiter '%s'",
         collected.count(), pending.delimiter.c_str());

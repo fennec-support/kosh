@@ -245,7 +245,17 @@ struct removal_request
     if (known_kind != Path::EntryKind::Unknown)
       return known_kind == Path::EntryKind::Directory;
 
-    let const target = Path{path, allocator};
+    /* a trailing separator makes lstat() resolve a symbolic link. */
+    usize unslashed_length = path.length;
+
+    while (unslashed_length > 1 &&
+           os::is_directory_separator(path[unslashed_length - 1]))
+    {
+      unslashed_length--;
+    }
+
+    let const target =
+        Path{path.substring_of_length(0, unslashed_length), allocator};
 
     return target.is_directory() && !target.is_symbolic_link();
   }

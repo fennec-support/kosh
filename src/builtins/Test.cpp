@@ -426,6 +426,19 @@ public:
         return should_negate ? !result : result;
       }
 
+      /* three arguments make -a and -o binary, so [ -n -a -n ] tests two
+         strings. */
+      if (count == 3 && (args[pos + 1] == "-a" || args[pos + 1] == "-o")) {
+        let const is_left_set  = !args[pos].is_empty();
+        let const is_right_set = !args[pos + 2].is_empty();
+        let const result = args[pos + 1] == "-a" ? is_left_set && is_right_set
+                                                 : is_left_set || is_right_set;
+
+        pos = end;
+
+        return should_negate ? !result : result;
+      }
+
       if (count == 3 || count == 4) {
         if (args[pos] == "(" && args[end - 1] == ")") {
           pos++;

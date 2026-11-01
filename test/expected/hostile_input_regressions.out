@@ -1,0 +1,41 @@
+--- rm -r with a trailing slash leaves the link target ---
+status 1
+kept
+--- mv and cp refuse a second source with the same name ---
+status 1
+1
+status 1
+1
+2
+--- cut -d= takes the equals sign ---
+a
+--- sed closes an unterminated line before more output ---
+a
+a
+a
+a
+b
+b
+x
+3 unterminated
+--- nesting ends in a diagnostic ---
+status 2
+status 2
+status 1
+--- bc and make stop deep recursion ---
+status 1
+0
+status 2
+--- mapfile refuses an origin with no room ---
+status 1
+--- fg in a forked stage ends with a diagnostic ---
+after
+after
+--- koshconf refuses a configuration that is not a file ---
+status 1
+--- --format keeps quoted text inside substitutions ---
+a   b
+a|b;c&&d
+a   b
+equal
+status 0

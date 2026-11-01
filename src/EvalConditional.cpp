@@ -124,12 +124,14 @@ struct conditional_evaluator
 
   fn
   operand_pattern_masked(const conditional_element &e,
-                         Bitset                    &active) throws -> String
+                         Bitset                    &active,
+                         bool                       is_regex = false) throws -> String
   {
     if (e.word != nullptr && e.word->kind() == Token::Kind::Word) {
       try {
         return cxt.expand_case_pattern_masked(
-            static_cast<const tokens::WordToken *>(e.word)->word(), active);
+            static_cast<const tokens::WordToken *>(e.word)->word(), active,
+            is_regex);
       } catch (const Error &err) {
         relocate_if_unlocated(err, e.word->source_location());
       }
@@ -488,7 +490,8 @@ struct conditional_evaluator
               suppressible_warning::UnsetTestOperand);
 
       cxt.runtime_control_store().set_warning_suppressed(
-          suppressible_warning::UnsetTestOperand, true);
+          suppressible_warning::UnsetTestOperand,
+          !cxt.runtime_state().was_error_unset_set_explicitly());
       if (is_existence_test)
         cxt.runtime_control_store().set_warning_suppressed(
             suppressible_warning::UnsetReference, true);
@@ -566,9 +569,12 @@ struct conditional_evaluator
               cxt.runtime_control_store().is_warning_suppressed(
                   suppressible_warning::UnsetTestOperand);
 
-          if (is_test_operand_op)
+          if (is_test_operand_op &&
+              !cxt.runtime_state().was_error_unset_set_explicitly())
+          {
             cxt.runtime_control_store().set_warning_suppressed(
                 suppressible_warning::UnsetTestOperand, true);
+          }
           defer {
             cxt.runtime_control_store().set_warning_suppressed(
                 suppressible_warning::UnsetTestOperand,
@@ -619,7 +625,7 @@ struct conditional_evaluator
           if (*selected_binary_operator == BinaryOperatorKind::Regex) {
             let          active = Bitset{cxt.scratch_allocator()};
             const String pattern =
-                operand_pattern_masked(elements[pos - 1], active);
+                operand_pattern_masked(elements[pos - 1], active, true);
 
             try {
               return regex_match(left.view(), pattern.view(), active);

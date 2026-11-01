@@ -533,6 +533,7 @@ protected:
   walk_heredoc_body(usize              start,
                     StringView         delimiter,
                     heredoc_tab_policy tab_policy,
+                    bool               should_expand,
                     Emit               emit_line) throws -> usize;
 
   fn

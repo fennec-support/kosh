@@ -11,6 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
+#include "../base/HashSet.hpp"
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL("[-fHiLnPpRrvx] [-t directory] source ... [destination]",
@@ -625,7 +626,8 @@ Cp::execute(const ExecContext               &ec,
      directory whenever more than one source is given. */
   /* the list may grow inside a child scratch mark, so it uses the heap. */
   ArrayList<cp_directory_identity> active_directories{heap_allocator()};
-  i32                              status = 0;
+  let                              copied_targets = HashSet{heap_allocator()};
+  i32                              status         = 0;
 
   for (usize i = 0; i < source_count; i++) {
     let const source = operands[i].view();
@@ -639,6 +641,15 @@ Cp::execute(const ExecContext               &ec,
       target = join_with_operand_separator(destination, leaf,
                                            cxt.scratch_allocator())
                    .text();
+    }
+
+    if (!copied_targets.add(target.view())) {
+      report_soft_koshkit_error(ec, cxt, operand_locations[i],
+                                "'" + String{cxt.scratch_allocator(), source} +
+                                    "' would overwrite '" + target +
+                                    "', which this command just created");
+      status = 1;
+      continue;
     }
 
     if (should_prompt &&

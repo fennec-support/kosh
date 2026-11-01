@@ -847,7 +847,7 @@ close_fd(os::descriptor fd) wontthrow -> bool
 }
 
 fn
-redirect_stdout(os::descriptor target) wontthrow -> os::descriptor
+redirect_stdout(os::descriptor target) throws -> os::descriptor
 {
   os::descriptor saved = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -3144,5 +3144,11 @@ wmain(int argc, wchar_t **wide_argv) -> int
 
   narrow_argv.push(nullptr);
 
-  return kosh_main(argc, narrow_argv.begin());
+  try {
+    return kosh_main(argc, narrow_argv.begin());
+  } catch (const std::bad_alloc &) {
+    fputs("error: The shell ran out of memory.\n", stderr);
+
+    return 1;
+  }
 }

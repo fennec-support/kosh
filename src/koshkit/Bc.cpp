@@ -667,6 +667,7 @@ struct bc_runtime
   u32                    output_base{10};
   i32                    status{0};
   bool                   has_math_library{false};
+  usize                  statement_depth{0};
   ArrayList<bc_function> functions;
   String                 return_value;
 };
@@ -1444,6 +1445,15 @@ bc_execute_statement(StringView         statement,
                      EvalContext       &cxt,
                      bc_runtime        &runtime) throws -> bc_flow
 {
+  static constexpr usize MAX_STATEMENT_DEPTH = 2048;
+
+  runtime.statement_depth++;
+  defer { runtime.statement_depth--; };
+
+  if (runtime.statement_depth > MAX_STATEMENT_DEPTH) {
+    throw Error{"Statements and function calls are nested too deeply"};
+  }
+
   statement = statement.trim_blanks();
   if (statement.is_empty()) return bc_flow::Normal;
   if (let const flow = BC_CONTROL_FLOW.find(statement); flow.has_value())

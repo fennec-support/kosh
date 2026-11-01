@@ -3518,16 +3518,24 @@ pure static fn
 longest_possible_pattern_match(StringView    pattern,
                                const Bitset &pattern_active,
                                extglob_mode  mode,
-                               glob_charset  charset) wontthrow -> Maybe<usize>
+                               glob_charset  charset,
+                               usize         active_offset = 0)
+    wontthrow -> Maybe<usize>
 {
   let const character_width = charset == glob_charset::Utf8 ? usize{4} : 1;
+  let const do_is_active    = [&](usize index) wontthrow -> bool {
+    let const active_index = index + active_offset;
+
+    return active_index < pattern_active.count() &&
+           pattern_active[active_index];
+  };
 
   usize length = 0;
 
   for (usize i = 0; i < pattern.length; i++) {
     let const byte = pattern[i];
 
-    if (i >= pattern_active.count() || !pattern_active[i]) {
+    if (!do_is_active(i)) {
       length++;
       continue;
     }
@@ -3539,7 +3547,47 @@ longest_possible_pattern_match(StringView    pattern,
         pattern[i + 1] == '(' &&
         (byte == '?' || byte == '+' || byte == '@' || byte == '!');
 
-    if (is_extglob_open) return None;
+    if (is_extglob_open && (byte == '+' || byte == '!')) return None;
+
+    /* @(a|bb) and ?(a|bb) match at most their longest alternative. */
+    if (is_extglob_open) {
+      usize depth             = 1;
+      usize alternative_start = i + 2;
+      usize longest           = 0;
+      usize position          = alternative_start;
+
+      for (; position < pattern.length && depth != 0; position++) {
+        if (!do_is_active(position)) continue;
+
+        let const group_byte = pattern[position];
+
+        if (group_byte == '\\') {
+          position++;
+        } else if (group_byte == '(') {
+          depth++;
+        } else if (group_byte == ')') {
+          depth--;
+        }
+
+        if ((depth == 1 && group_byte == '|') || depth == 0) {
+          let const alternative_length = longest_possible_pattern_match(
+              pattern.substring_of_length(alternative_start,
+                                          position - alternative_start),
+              pattern_active, mode, charset, active_offset + alternative_start);
+
+          if (!alternative_length.has_value()) return None;
+          if (*alternative_length > longest) longest = *alternative_length;
+
+          alternative_start = position + 1;
+        }
+      }
+
+      if (depth != 0) return None;
+
+      length += longest;
+      i = position - 1;
+      continue;
+    }
 
     if (byte == '?') {
       length += character_width;
@@ -3726,10 +3774,11 @@ EvalContext::apply_pattern_replacement(
     StringView            spec,
     const SourceLocation *source_location) throws -> String
 {
-  let const current      = get_variable_value_checked(name);
-  let const current_view = current.has_value() ? current->view() : StringView{};
+  let const current = get_variable_value_checked(name);
 
-  return pattern_replace_value(current_view, spec, source_location);
+  if (!current.has_value()) return String{heap_allocator()};
+
+  return pattern_replace_value(current->view(), spec, source_location);
 }
 
 static fn

@@ -834,8 +834,21 @@ Sed::execute(const ExecContext               &ec,
     output.clear();
   };
 
-  bool should_quit = false;
-  u64  line_number = 0;
+  bool should_quit         = false;
+  u64  line_number         = 0;
+  bool is_output_line_open = false;
+
+  let const do_close_output_line = [&]() throws -> void {
+    if (is_output_line_open) output += line_delimiter;
+    is_output_line_open = false;
+  };
+
+  let const do_print_pattern_space =
+      [&](StringView text, bool has_terminating_newline) throws {
+        do_close_output_line();
+        append_sed_pattern_space(output, text, has_terminating_newline);
+        is_output_line_open = !has_terminating_newline;
+      };
 
   let const do_process_line = [&](StringView source_line,
                                   bool       has_terminating_newline,
@@ -860,11 +873,10 @@ Sed::execute(const ExecContext               &ec,
 
       switch (command.kind) {
       case sed_command_kind::Substitute:
-        if (apply_sed_substitution(command, line, cxt.scratch_allocator()) &&
+        if (apply_sed_substitution(command, line, heap_allocator()) &&
             command.should_print)
         {
-          append_sed_pattern_space(output, line.view(),
-                                   has_terminating_newline);
+          do_print_pattern_space(line.view(), has_terminating_newline);
         }
 
         break;
@@ -872,12 +884,13 @@ Sed::execute(const ExecContext               &ec,
       case sed_command_kind::Delete: should_delete = true; break;
 
       case sed_command_kind::Print:
-        append_sed_pattern_space(output, line.view(), has_terminating_newline);
+        do_print_pattern_space(line.view(), has_terminating_newline);
         break;
 
       case sed_command_kind::Quit: should_quit = true; break;
 
       case sed_command_kind::LineNumber:
+        do_close_output_line();
         output += String::from(line_number, heap_allocator());
         output += '\n';
         break;
@@ -888,6 +901,7 @@ Sed::execute(const ExecContext               &ec,
         break;
 
       case sed_command_kind::Insert:
+        do_close_output_line();
         output += command.replacement.view();
         output += '\n';
         break;
@@ -896,6 +910,7 @@ Sed::execute(const ExecContext               &ec,
         if (!command.has_second_address || !command.is_range_active ||
             is_last_line)
         {
+          do_close_output_line();
           output += command.replacement.view();
           output += '\n';
         }
@@ -922,7 +937,7 @@ Sed::execute(const ExecContext               &ec,
     }
 
     if (!should_delete && !FLAG_SED_QUIET.is_enabled()) {
-      append_sed_pattern_space(output, line.view(), has_terminating_newline);
+      do_print_pattern_space(line.view(), has_terminating_newline);
     }
 
     /* the text of a, i, and = ends in a newline, and a printed pattern space
@@ -938,6 +953,7 @@ Sed::execute(const ExecContext               &ec,
       output += line_delimiter;
     }
 
+    if (!appended_text.is_empty()) is_output_line_open = false;
     output += appended_text.view();
     do_flush_output(false);
   };
@@ -1060,8 +1076,9 @@ Sed::execute(const ExecContext               &ec,
 
     output.clear();
     held_line.clear();
-    has_held_line = false;
-    line_number   = 0;
+    has_held_line       = false;
+    is_output_line_open = false;
+    line_number         = 0;
 
     for (let &command : commands) {
       command.is_range_active = false;

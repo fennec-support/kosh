@@ -3571,7 +3571,7 @@ EvalContext::apply_indirect_or_name_listing(StringView body) throws
 
   let const last = body[body.length - 1];
 
-  if (last == '*' || last == '@') {
+  if (body.length > 1 && (last == '*' || last == '@')) {
     let const prefix = body.substring_of_length(0, body.length - 1);
     let const names  = matching_prefix_names(prefix);
     let       out    = String{scratch_allocator()};

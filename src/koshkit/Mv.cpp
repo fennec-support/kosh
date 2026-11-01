@@ -11,6 +11,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
+#include "../base/HashSet.hpp"
 #include "../base/Path.hpp"
 
 KOSHKIT_UTIL_DECL("[-fiv] source ... destination",
@@ -193,8 +194,9 @@ Mv::execute(const ExecContext               &ec,
 
   /* at this point: operands holds at least two entries, and
      is_destination_directory is true when several sources are given. */
-  let output = String{cxt.scratch_allocator()};
-  i32 status = 0;
+  let output        = String{cxt.scratch_allocator()};
+  let moved_targets = HashSet{heap_allocator()};
+  i32 status        = 0;
 
   for (usize i = 0; i + 1 < operands.count(); i++) {
     let const source = operands[i].view();
@@ -205,6 +207,15 @@ Mv::execute(const ExecContext               &ec,
 
       target_path.append(Path{source, cxt.scratch_allocator()}.filename());
       target = target_path.text();
+    }
+
+    if (!moved_targets.add(target.view())) {
+      report_soft_koshkit_error(ec, cxt, operand_locations[i],
+                                "'" + String{cxt.scratch_allocator(), source} +
+                                    "' would overwrite '" + target +
+                                    "', which this command just created");
+      status = 1;
+      continue;
     }
 
     if (Path{source, cxt.scratch_allocator()}.is_same_file_as(

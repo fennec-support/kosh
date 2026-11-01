@@ -1800,6 +1800,76 @@ Server::rename_kind_of(const document_symbol &symbol) throws
   return rename_kind::command;
 }
 
+pure static fn
+is_variable_name_byte(char byte) wontthrow -> bool
+{
+  return lexer::is_variable_name_start(byte) || (byte >= '0' && byte <= '9');
+}
+
+/* e.g. text = "${y:$x}" holds y at position 2 and x at position 5. a subscript
+   and a substring offset are arithmetic, so a bare name there is a reference.
+   the word of ${x:-x} is text. */
+static fn
+append_braced_variable_spans(StringView              text,
+                             StringView              name,
+                             const highlight_span   &span,
+                             ArrayList<rename_span> &out_spans) throws
+    -> void
+{
+  usize head_start = 2;
+
+  if (head_start < text.length &&
+      (text[head_start] == '#' || text[head_start] == '!'))
+  {
+    head_start++;
+  }
+
+  usize head_end = head_start;
+
+  while (head_end < text.length && is_variable_name_byte(text[head_end])) {
+    head_end++;
+  }
+
+  let const is_arithmetic_tail =
+      head_end < text.length &&
+      (text[head_end] == '[' ||
+       (text[head_end] == ':' &&
+        (head_end + 1 == text.length ||
+         !StringView{"-=?+"}.find_character(text[head_end + 1]).has_value())));
+
+  usize position = head_start;
+
+  while (position < text.length) {
+    if (!lexer::is_variable_name_start(text[position]) ||
+        (position > 0 && is_variable_name_byte(text[position - 1])))
+    {
+      position++;
+      continue;
+    }
+
+    usize word_end = position;
+
+    while (word_end < text.length && is_variable_name_byte(text[word_end])) {
+      word_end++;
+    }
+
+    let const is_reference = position == head_start ||
+                             text[position - 1] == '$' ||
+                             (position >= 2 && text[position - 1] == '{' &&
+                              text[position - 2] == '$') ||
+                             (is_arithmetic_tail && position >= head_end);
+
+    if (is_reference &&
+        text.substring_of_length(position, word_end - position) == name)
+    {
+      out_spans.push(
+          rename_span{span.role, span.start + position, span.start + word_end});
+    }
+
+    position = word_end;
+  }
+}
+
 fn
 Server::collect_rename_spans(const Document         &document,
                              rename_kind             kind,
@@ -1826,6 +1896,12 @@ Server::collect_rename_spans(const Document         &document,
           if (decoded.opaque_ranges.is_empty() && decoded.text.view() == name) {
             out_spans.push(rename_span{span.role, span.start, span.end});
           }
+
+          return true;
+        }
+
+        if (text.starts_with("${")) {
+          append_braced_variable_spans(text, name, span, out_spans);
 
           return true;
         }

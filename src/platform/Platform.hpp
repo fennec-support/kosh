@@ -1719,7 +1719,7 @@ fn
 note_descriptor_rebound() wontthrow -> void;
 
 fn
-redirect_stdout(os::descriptor target) wontthrow -> os::descriptor;
+redirect_stdout(os::descriptor target) throws -> os::descriptor;
 fn
 restore_stdout(os::descriptor saved) wontthrow -> void;
 

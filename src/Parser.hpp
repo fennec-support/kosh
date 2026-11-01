@@ -344,6 +344,8 @@ private:
   parse_for() throws -> Command *;
   mustuse fn
   parse_select() throws -> Command *;
+  fn
+  check_command_depth() throws -> void;
   mustuse fn
   parse_coproc() throws -> Command *;
   mustuse fn

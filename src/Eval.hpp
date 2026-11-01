@@ -3656,6 +3656,12 @@ public:
     return m_substitution_depth;
   }
 
+  fn
+  array_subscript_depth() wontthrow -> usize &
+  {
+    return m_array_subscript_depth;
+  }
+
   pure fn
   substitution_depth() const wontthrow -> usize
   {
@@ -3807,6 +3813,7 @@ public:
 private:
   mutable BumpArena               m_scratch_arena{};
   usize                           m_substitution_depth{0};
+  usize                           m_array_subscript_depth{0};
   usize                           m_parameter_expansion_depth{0};
   usize                           m_data_expansion_depth{0};
   getopts_cursor                  m_getopts_cursor{};
@@ -5992,7 +5999,8 @@ public:
 
   fn
   expand_case_pattern_masked(const Word &word,
-                             Bitset     &active_out) throws -> String;
+                             Bitset     &active_out,
+                             bool        is_regex = false) throws -> String;
 
   fn
   capture_command_substitution(

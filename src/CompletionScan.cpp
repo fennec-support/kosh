@@ -637,8 +637,16 @@ internal::complete_from_tools_with_targets(StringView      line,
     /* make expands $(shell ...) while it loads the Makefile. The targets
        come from the bundled parser, and it runs no commands. */
     cached_targets = cached_targets_for(makefile_path, [&]() throws {
-      let const intrinsic_targets =
-          koshkit::collect_makefile_targets(context, makefile_path);
+      let intrinsic_targets = ArrayList<String>{heap_allocator()};
+
+      try {
+        intrinsic_targets =
+            koshkit::collect_makefile_targets(context, makefile_path);
+      } catch (const Error &error) {
+        LOG(Debug, "skipping the targets of an unreadable makefile: %s",
+            error.message().c_str());
+      }
+
       let filtered = ArrayList<String>{heap_allocator()};
       let seen     = HashSet{heap_allocator()};
 

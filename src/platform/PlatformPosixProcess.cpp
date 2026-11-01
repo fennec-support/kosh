@@ -3377,6 +3377,12 @@ kosh_main(int argc, char **argv) -> int;
 fn
 main(int argc, char **argv) -> int
 {
-  return kosh_main(argc, argv);
+  try {
+    return kosh_main(argc, argv);
+  } catch (const std::bad_alloc &) {
+    fputs("error: The shell ran out of memory.\n", stderr);
+
+    return 1;
+  }
 }
 #endif

@@ -40,6 +40,18 @@ evaluate_array_index(
     StringView            subscript,
     const SourceLocation *source_location = nullptr) throws -> i64
 {
+  static constexpr usize MAX_SUBSCRIPT_DEPTH = 512;
+
+  let &depth = context.expansion_store().array_subscript_depth();
+
+  depth++;
+  defer { depth--; };
+
+  if (depth > MAX_SUBSCRIPT_DEPTH) {
+    throw ErrorWithDetails{"Array subscripts are nested too deeply",
+                           "Assign the inner subscript to a variable"};
+  }
+
   return context.evaluate_arithmetic(subscript, source_location, true);
 }
 
@@ -858,6 +870,14 @@ EvalContext::unset_array_element(StringView name,
 
   if (is_bash_directory_stack_special(name)) {
     unused(evaluate_array_index(*this, subscript));
+
+    return;
+  }
+
+  if ((subscript == "@" || subscript == "*") &&
+      variable_store().indexed_arrays().find(name).has_value())
+  {
+    unset_shell_variable(name);
 
     return;
   }

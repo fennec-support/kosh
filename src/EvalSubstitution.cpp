@@ -1536,7 +1536,17 @@ EvalContext::run_function_substitution(
   /* at this point: pipe is open at both ends, and the reader thread drains
      pipe->in into drain_context. */
 
-  let const saved = os::redirect_stdout(pipe->out);
+  os::descriptor saved = KOSH_INVALID_FD;
+
+  try {
+    saved = os::redirect_stdout(pipe->out);
+  } catch (...) {
+    os::close_fd(pipe->out);
+    os::join_thread(*reader);
+    os::close_fd(pipe->in);
+    throw;
+  }
+
   let const error = do_evaluate_body();
 
   koshka::flush();

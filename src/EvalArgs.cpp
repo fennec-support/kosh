@@ -374,7 +374,14 @@ expand_braces(const Word &word, Allocator alloc) throws
     }
   }
 
-  let const expanded = brace_expand_text(word_template.view(), alloc);
+  let expanded = ArrayList<String>{alloc};
+
+  try {
+    expanded = brace_expand_text(word_template.view(), alloc);
+  } catch (const std::bad_alloc &) {
+    throw ErrorWithDetails{"The brace expansion needs too much memory",
+                           "Use a smaller range or fewer alternatives"};
+  }
 
   let words = ArrayList<Word>{alloc};
 
@@ -650,7 +657,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
       runtime_control_store().is_warning_suppressed(
           suppressible_warning::UnsetTestOperand);
 
-  if (is_test_command)
+  if (is_test_command && !runtime_state().was_error_unset_set_explicitly())
     runtime_control_store().set_warning_suppressed(
         suppressible_warning::UnsetTestOperand, true);
   defer {

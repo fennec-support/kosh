@@ -465,12 +465,11 @@ EvalContext::expand_word(const Word &word) throws
 
       /* ${!prefix*} lists variables only when prefix is a valid identifier, so
          ${!ref%c*} stays an indirect expansion with an operator. */
-      if (segment_text.length >= 2 && segment_text[0] == '!' &&
+      if (segment_text.length > 2 && segment_text[0] == '!' &&
           (segment_text[segment_text.length - 1] == '@' ||
            segment_text[segment_text.length - 1] == '*') &&
-          (segment_text.length == 2 ||
-           lexer::word_is_variable_name(
-               segment_text.substring_of_length(1, segment_text.length - 2))))
+          lexer::word_is_variable_name(
+              segment_text.substring_of_length(1, segment_text.length - 2)))
       {
         const StringView prefix =
             segment_text.substring_of_length(1, segment_text.length - 2);
@@ -1265,8 +1264,8 @@ EvalContext::expand_word_for_assignment(const Word &word,
 
 fn
 EvalContext::expand_case_pattern_masked(const Word &word,
-                                        Bitset     &active_out) throws
-    -> String
+                                        Bitset     &active_out,
+                                        bool        is_regex) throws -> String
 {
   let const *segments         = &word.segments;
   let tilde_expanded_segments = ArrayList<WordSegment>{scratch_allocator()};
@@ -1296,8 +1295,8 @@ EvalContext::expand_case_pattern_masked(const Word &word,
        the backslash escapes *, so result "a*" and active_out gets false
        b -> result "a*b", active_out gets true */
   let const do_emit_expansion_run = [&](StringView bytes, bool is_active) {
-    if (!is_active) {
-      do_emit_run(bytes, false);
+    if (!is_active || is_regex) {
+      do_emit_run(bytes, is_active);
 
       return;
     }

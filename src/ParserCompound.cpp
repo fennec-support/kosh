@@ -494,6 +494,10 @@ Parser::parse_coproc() throws -> Command *
 
   LOG(Debug, "parsing a coprocess at byte %u", location.position);
 
+  m_command_depth++;
+  defer { m_command_depth--; };
+  check_command_depth();
+
   let    name          = StringView{"COPROC"};
   Token *leading_token = nullptr;
 

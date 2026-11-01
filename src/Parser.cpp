@@ -1021,23 +1021,28 @@ throw_missing_operand(const SourceLocation       &location,
           " b`, or remove the operator"};
 }
 
+fn
+Parser::check_command_depth() throws -> void
+{
+  if (m_command_depth <= MAX_COMMAND_DEPTH) return;
+
+  Token *token = m_lexer.peek_shell_token();
+
+  ASSERT(token != nullptr);
+  throw koshka::ErrorWithLocationAndDetails{
+      token->source_location(),
+      "Compound commands are nested more than " +
+          String::from(static_cast<i64>(MAX_COMMAND_DEPTH), heap_allocator()) +
+          " levels deep",
+      "Move the inner commands into a function"};
+}
+
 hot fn
 Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 {
   m_command_depth++;
   defer { m_command_depth--; };
-  if (m_command_depth > MAX_COMMAND_DEPTH) {
-    Token *token = m_lexer.peek_shell_token();
-
-    ASSERT(token != nullptr);
-    throw koshka::ErrorWithLocationAndDetails{
-        token->source_location(),
-        "Compound commands are nested more than " +
-            String::from(static_cast<i64>(MAX_COMMAND_DEPTH),
-                         heap_allocator()) +
-            " levels deep",
-        "Move the inner commands into a function"};
-  }
+  check_command_depth();
 
   /* a closer of an enclosing list also ends this list, so a construct
      missing its own closer reports that instead of an orphan. */
@@ -2255,6 +2260,10 @@ fn
 Parser::finish_function_body(const SourceLocation &location,
                              StringView            name) throws -> Command *
 {
+  m_command_depth++;
+  defer { m_command_depth--; };
+  check_command_depth();
+
   skip_newlines_after_pipe();
 
   record_analysis_scope_definition(name,
