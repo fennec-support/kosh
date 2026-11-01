@@ -129,3 +129,35 @@ dot='a\.c'; [[ abc =~ $dot ]]; echo "$?"
 echo "--- an explicit set -u covers test operands ---"
 ( set -u; [ -z "$unset_operand" ]; echo reached ) 2>/dev/null; echo "$?"
 ( set -u; [[ -z $unset_operand ]]; echo reached ) 2>/dev/null; echo "$?"
+
+echo "--- printf treats a negative precision as omitted ---"
+printf '%.*d|\n' -1 42
+printf '%.*s|\n' -1 abc
+
+echo "--- printf -v takes an attached word ---"
+printf -vattached %s v; echo "$attached"
+
+echo "--- printf format escapes drop the backslash ---"
+printf '\"|\?|\x27|\n'
+printf "\\'|\n"
+
+echo "--- printf writes hexadecimal floats ---"
+printf '%a %A\n' 3.25 0.5
+
+echo "--- printf %T falls back for a time without a date ---"
+TZ=UTC0 printf '%(%s)T\n' 9223372036854775807
+
+echo "--- printf -v rejects a whole array subscript ---"
+printf -v 'whole[*]' x 2>/dev/null; echo "$?"
+printf -v 'whole[@]' x 2>/dev/null; echo "$?"
+
+echo "--- printf writes a long escape as extended UTF-8 ---"
+printf '\U7fffffff' | od -An -tx1
+
+echo "--- bracket members read ranges, equivalence, and collation ---"
+shopt -s extglob
+for subject in - a 5 b d '|' abcd; do
+  for pattern in '[--a]' '[[=a=]]' '[[.a.]]' '[[.a.]-c]' '@([a|b]|abcd)'; do
+    case $subject in $pattern) echo "$subject $pattern" ;; esac
+  done
+done

@@ -97,3 +97,95 @@ status 1
 status 0
 --- compgen -W with a trailing backslash ---
 a
+--- make stops a pattern rule that feeds itself ---
+status 2
+--- make reads quoted conditional operands ---
+[1][1]
+--- make takes references with colons in a rule ---
+[a.t b.t a.u b.u]
+--- make applies a recipe prefix from a variable ---
+quiet
+false
+status 0
+--- make runs static pattern rules ---
+a.o a.c a
+b.o b.c b
+--- make runs every double-colon rule ---
+one
+two
+status 2
+--- make keeps automatic variables of an expanded target ---
+[foo]
+--- make override beats the command line ---
+[file][cmd more][override]
+--- make predefines its session variables ---
+[make_cases] [b c] [Makefile]
+[0] 1 [all] [all]
+[][]
+--- make reads a blank inside a target ---
+[c d]
+[a b c d]
+--- a later make recipe replaces an earlier one ---
+two
+--- nested regex repeats are refused ---
+status 2
+status 2
+status 1
+0
+1
+--- cp refuses a file conflict below an operand ---
+status 1
+first
+other
+--- mv puts a directory with a slash inside the destination ---
+status 0
+moved
+--- grep -w takes an empty match ---
+1
+0
+1
+--- sed opens a line range after its start was skipped ---
+4
+5
+4
+--- sed replacements change case and read hex ---
+HELLO WORLD
+hELLO WORLD x
+Ab
+aXbXc
+status 1
+--- sort reads an empty general numeric key ---
+a b 1
+c d
+--- a key modifier replaces the global options ---
+x  2
+y 10
+z 3
+--- expr anchors a pattern once ---
+1
+*
+3
+--- bc keeps the scale in nested functions ---
+1.189
+.999999999999999999999999999999
+--- bc reads last, else, and print ---
+5
+5
+10
+4
+5
+6
+a2b
+.8
+--- calc keeps digits for large arguments ---
+26881171418161354484126255515800135873611118.77374192241519160861
+-0.64525128526578084420
+--- date reads signs and fractions and writes more conversions ---
+1969-12-31 23:59:59
+1 500000000
+-2 500000000
+0099-03-04 0099
++00:00 +00:00:00 +00 1 UTC
+2147485547
+--- printf %q in the sh mood reads back in the sh mood ---
+same

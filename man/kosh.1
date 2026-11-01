@@ -2143,6 +2143,9 @@ standard input (\f[CR]\-l\f[R] adds the functions \f[CR]s\f[R] sine,
 \f[CR]c\f[R] cosine, \f[CR]a\f[R] arctangent, \f[CR]l\f[R] natural
 logarithm, \f[CR]e\f[R] exponential and sets scale to \f[CR]20\f[R];
 \f[CR]\-q\f[R] suppress the banner).
+\f[CR]if\f[R] takes an \f[CR]else\f[R] branch, \f[CR]print\f[R] writes
+expressions and strings without a newline, and \f[CR]last\f[R] or a lone
+\f[CR].\f[R] holds the last printed value.
 Division by zero stops the input with status \f[CR]1\f[R], and so do
 statements and function calls nested more than \f[CR]2048\f[R] deep.
 T}
@@ -2262,7 +2265,12 @@ T}@T{
 Prints the date and time, or formats them with a \f[CR]+format\f[R]
 operand of strftime conversions (\f[CR]\-u\f[R]/\f[CR]\-\-utc\f[R] use
 UTC, \f[CR]\-d\f[R]/\f[CR]\-\-date\f[R] show \f[CR]YYYY\-MM\-DD\f[R],
-\f[CR]YYYY\-MM\-DD hh:mm[:ss]\f[R], or \f[CR]\[at]SECONDS\f[R]).
+\f[CR]YYYY\-MM\-DD hh:mm[:ss]\f[R], or \f[CR]\[at]SECONDS\f[R] with an
+optional sign and fraction).
+Besides the strftime conversions, the format reads \f[CR]%s\f[R],
+\f[CR]%N\f[R] nanoseconds, \f[CR]%q\f[R] quarter, and \f[CR]%:z\f[R],
+\f[CR]%::z\f[R], and \f[CR]%:::z\f[R] zone offsets, and \f[CR]%Y\f[R]
+and \f[CR]%F\f[R] pad the year to four digits.
 Refuses an operand that would set the clock.
 T}
 T{
@@ -2405,6 +2413,9 @@ Prints lines matching basic regular expressions, extended ones with
 \f[CR]\-E\f[R] (\f[CR]egrep\f[R]), or fixed strings with \f[CR]\-F\f[R]
 (\f[CR]fgrep\f[R]); \f[CR]\-E\f[R] and \f[CR]\-F\f[R] together return
 \f[CR]2\f[R].
+In \f[CR]grep\f[R], \f[CR]sed\f[R], \f[CR]expr\f[R], and
+\f[CR][[ =\[ti] ]]\f[R], a regular expression whose bounded repeats
+expand past \f[CR]65536\f[R] copies is invalid.
 Patterns come from the first operand, \f[CR]\-e\f[R] (add a pattern), or
 \f[CR]\-f\f[R] (lines of a file); with \f[CR]\-e\f[R] or \f[CR]\-f\f[R]
 every operand is a file, and a newline separates patterns.
@@ -2859,6 +2870,14 @@ Commands: \f[CR]s\f[R] with the \f[CR]g\f[R] and \f[CR]p\f[R] flags,
 and \f[CR]a\f[R]/\f[CR]i\f[R]/\f[CR]c\f[R] (text on the same line or on
 the next lines after a backslash), with line, \f[CR]$\f[R], and regex
 addresses and ranges.
+An \f[CR]s\f[R] replacement reads \f[CR]&\f[R], \f[CR]\[rs]0\f[R]
+through \f[CR]\[rs]9\f[R], \f[CR]\[rs]U\f[R], \f[CR]\[rs]L\f[R],
+\f[CR]\[rs]E\f[R], \f[CR]\[rs]u\f[R], \f[CR]\[rs]l\f[R],
+\f[CR]\[rs]xHH\f[R], \f[CR]\[rs]a\f[R], \f[CR]\[rs]f\f[R],
+\f[CR]\[rs]n\f[R], \f[CR]\[rs]r\f[R], \f[CR]\[rs]t\f[R], and
+\f[CR]\[rs]v\f[R], and any other backslash and letter is an error.
+A range with a line number as its start opens on the first line it sees
+at or after that number, once.
 Hold space, branch, and block commands are unsupported and return
 \f[CR]1\f[R].
 T}
@@ -3131,6 +3150,20 @@ Directives: \f[CR]include\f[R], \f[CR]ifeq\f[R], \f[CR]ifneq\f[R],
 Special targets: \f[CR].DEFAULT\f[R], \f[CR].IGNORE\f[R],
 \f[CR].PHONY\f[R], \f[CR].POSIX\f[R], \f[CR].PRECIOUS\f[R],
 \f[CR].SCCS_GET\f[R], \f[CR].SILENT\f[R], and \f[CR].SUFFIXES\f[R].
+Rules include static pattern rules of the form
+\f[CR]targets: %.o: %.c\f[R] and double\-colon rules, which run
+independently and always run without prerequisites.
+A target cannot mix single\-colon and double\-colon rules.
+A backslash keeps a blank inside a target or prerequisite.
+A later recipe for a target replaces the earlier one with a warning.
+A pattern rule applies once along one chain of inferred targets.
+\f[CR]ifeq\f[R] and \f[CR]ifneq\f[R] also take two quoted operands.
+\f[CR]\[at]\f[R], \f[CR]\-\f[R], and \f[CR]+\f[R] prefixes also apply
+when they come from an expanded variable.
+\f[CR]override\f[R] assignments win over the command line.
+\f[CR]$|\f[R] holds the order\-only prerequisites, and
+\f[CR]MAKELEVEL\f[R], \f[CR]MAKEFILE_LIST\f[R], \f[CR]MAKECMDGOALS\f[R],
+and \f[CR].DEFAULT_GOAL\f[R] are defined.
 .IP \[bu] 2
 \f[B]\f[CB]tput\f[B] capabilities\f[R] \- \f[CR]bel\f[R],
 \f[CR]blink\f[R], \f[CR]bold\f[R], \f[CR]civis\f[R], \f[CR]clear\f[R],
@@ -5795,13 +5828,19 @@ T{
 T}@T{
 Reuses \f[CR]format\f[R] while arguments remain.
 Accepts the C conversions \f[CR]d\f[R], \f[CR]i\f[R], \f[CR]o\f[R],
-\f[CR]u\f[R], \f[CR]x\f[R], \f[CR]X\f[R], \f[CR]e\f[R], \f[CR]E\f[R],
-\f[CR]f\f[R], \f[CR]F\f[R], \f[CR]g\f[R], \f[CR]G\f[R], \f[CR]c\f[R],
-\f[CR]s\f[R] with flags, width, and precision (\f[CR]*\f[R] takes them
-from an argument), plus \f[CR]%b\f[R] (backslash escapes), \f[CR]%q\f[R]
-(shell\-quoted), and \f[CR]%(fmt)T\f[R] (strftime, \f[CR]\-1\f[R] for
-the current time).
-\f[CR]\-v\f[R] assigns the result to a variable or array element.
+\f[CR]u\f[R], \f[CR]x\f[R], \f[CR]X\f[R], \f[CR]a\f[R], \f[CR]A\f[R],
+\f[CR]e\f[R], \f[CR]E\f[R], \f[CR]f\f[R], \f[CR]F\f[R], \f[CR]g\f[R],
+\f[CR]G\f[R], \f[CR]c\f[R], \f[CR]s\f[R] with flags, width, and
+precision (\f[CR]*\f[R] takes them from an argument, and a negative
+precision counts as omitted), plus \f[CR]%b\f[R] (backslash escapes),
+\f[CR]%q\f[R] (shell\-quoted, with single quotes instead of
+\f[CR]$\[aq]...\[aq]\f[R] in the \f[CR]sh\f[R] mood), and
+\f[CR]%(fmt)T\f[R] (strftime, \f[CR]\-1\f[R] for the current time, and
+the epoch origin for a time outside the calendar).
+\f[CR]\-v\f[R] assigns the result to a variable or array element, and
+its word may follow it directly.
+An indexed array subscript of \f[CR]*\f[R] or \f[CR]\[at]\f[R] is an
+error.
 The \f[CR]sh\f[R] mood rejects \f[CR]\-v\f[R] and prints
 \f[CR]%(fmt)T\f[R] as written.
 An invalid numeric argument prints \f[CR]0\f[R] and sets status
