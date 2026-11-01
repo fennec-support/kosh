@@ -1251,8 +1251,21 @@ append_utf8(String &output, u32 codepoint) throws -> void
     output.push(static_cast<char>(0xe0 | (codepoint >> 12)));
     output.push(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3f)));
     output.push(static_cast<char>(0x80 | (codepoint & 0x3f)));
-  } else {
+  } else if (codepoint <= 0x1fffff) {
     output.push(static_cast<char>(0xf0 | (codepoint >> 18)));
+    output.push(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3f)));
+    output.push(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3f)));
+    output.push(static_cast<char>(0x80 | (codepoint & 0x3f)));
+  } else if (codepoint <= 0x3ffffff) {
+    output.push(static_cast<char>(0xf8 | (codepoint >> 24)));
+    output.push(static_cast<char>(0x80 | ((codepoint >> 18) & 0x3f)));
+    output.push(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3f)));
+    output.push(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3f)));
+    output.push(static_cast<char>(0x80 | (codepoint & 0x3f)));
+  } else if (codepoint <= 0x7fffffff) {
+    output.push(static_cast<char>(0xfc | (codepoint >> 30)));
+    output.push(static_cast<char>(0x80 | ((codepoint >> 24) & 0x3f)));
+    output.push(static_cast<char>(0x80 | ((codepoint >> 18) & 0x3f)));
     output.push(static_cast<char>(0x80 | ((codepoint >> 12) & 0x3f)));
     output.push(static_cast<char>(0x80 | ((codepoint >> 6) & 0x3f)));
     output.push(static_cast<char>(0x80 | (codepoint & 0x3f)));

@@ -301,6 +301,12 @@ append_escape(String       &out,
 
   if (utils::append_unicode_escape(out, fmt.view(), i)) return;
 
+  if (should_use_bash_escapes && (e == '"' || e == '\'' || e == '?')) {
+    out += e;
+
+    return;
+  }
+
   utils::append_simple_escape(out, e, should_use_bash_escapes);
 }
 
@@ -369,10 +375,30 @@ is_q_safe_byte(char c) throws -> bool
 fn
 append_q_argument(String       &out,
                   const String &arg,
-                  bool          is_utf8_locale) throws -> void
+                  bool          is_utf8_locale,
+                  bool          is_posix_mode) throws -> void
 {
-  if (utils::append_ansi_c_quote_if_needed(out, arg.view(), is_utf8_locale))
+  /* the sh mood has no $'...' form, so a byte that a backslash cannot carry
+     goes inside single quotes. */
+  if (is_posix_mode && !arg.is_empty()) {
+    bool has_control_byte = false;
+
+    for (usize i = 0; i < arg.count(); i++) {
+      let const byte = static_cast<unsigned char>(arg[i]);
+
+      if (byte < 0x20 || byte == 0x7f) has_control_byte = true;
+    }
+
+    if (has_control_byte) {
+      append_shell_quoted_arg(out, arg.view(), true);
+
+      return;
+    }
+  } else if (utils::append_ansi_c_quote_if_needed(out, arg.view(),
+                                                  is_utf8_locale))
+  {
     return;
+  }
 
   for (usize i = 0; i < arg.count(); i++) {
     let const c = arg[i];
@@ -473,7 +499,8 @@ append_conversion(String                &out,
     let quoted = String{allocator};
 
     append_q_argument(quoted, arg,
-                      cxt.get_glob_charset_for(arg) == glob_charset::Utf8);
+                      cxt.get_glob_charset_for(arg) == glob_charset::Utf8,
+                      cxt.runtime_state().is_posix_mode());
     append_conversion(out, spec, 's', false, quoted, false, numeric_locale, ec,
                       cxt, exit_status, allocator);
   } break;
@@ -546,6 +573,28 @@ append_conversion(String                &out,
                         static_cast<unsigned long long>(number.value));
   } break;
 
+  case 'a':
+  case 'A': {
+    if (!arg.is_empty() && (arg[0] == '\'' || arg[0] == '"')) {
+      spec.push('L');
+      spec.push(conv);
+      do_append_formatted(spec.c_str(), static_cast<long double>(
+                                            parse_printf_float(arg).value));
+      break;
+    }
+
+    char     *end   = nullptr;
+    let const value = strtold(arg.c_str(), &end);
+
+    if (end != arg.c_str() + arg.count() && !is_missing_argument) {
+      report_invalid_number(ec, cxt, arg, false, exit_status, allocator);
+    }
+
+    spec.push('L');
+    spec.push(conv);
+    do_append_formatted(spec.c_str(), value);
+  } break;
+
   case 'f':
   case 'F':
   case 'e':
@@ -603,23 +652,31 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   Maybe<String> store_variable;
   let const    &first_arg = ec.args()[1];
 
-  if (cxt.runtime_state().bash_additions_enabled() && first_arg == "-v") {
-    if (ec.args().count() < 3) {
+  if (cxt.runtime_state().bash_additions_enabled() &&
+      first_arg.view().starts_with("-v"))
+  {
+    let const is_attached = first_arg.count() > 2;
+
+    if (!is_attached && ec.args().count() < 3) {
       report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
                                 "The option -v requires a variable name");
 
       return USAGE_STATUS;
     }
 
-    if (!name_is_valid_assignment_target(ec.args()[2].view())) {
-      report_invalid_identifier(ec, cxt, ec.arg_location_at(2),
-                                ec.args()[2].view());
+    let const target_position = is_attached ? usize{1} : usize{2};
+    let const target =
+        is_attached ? first_arg.view().substring(2) : ec.args()[2].view();
+
+    if (!name_is_valid_assignment_target(target)) {
+      report_invalid_identifier(ec, cxt, ec.arg_location_at(target_position),
+                                target);
 
       return USAGE_STATUS;
     }
 
-    store_variable = ec.args()[2];
-    format_index   = 3;
+    store_variable = String{cxt.scratch_allocator(), target};
+    format_index   = target_position + 1;
   } else if (!cxt.runtime_state().bash_additions_enabled() &&
              first_arg.count() > 1 && first_arg[0] == '-' && first_arg != "--")
   {
@@ -654,12 +711,19 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   bool  has_consumed_a_conversion = false;
   bool  should_stop               = false;
 
-  let const do_consume_star = [&](String &spec) throws {
-    char number_text[24];
+  let const do_consume_star = [&](String &spec,
+                                  bool    is_precision) throws {
+    char      number_text[24];
+    let const value = parse_printf_integer(do_operand_at(operand_index));
 
-    spec.append(utils::int_to_text_into(
-        parse_printf_integer(do_operand_at(operand_index)), number_text,
-        sizeof(number_text)));
+    /* a negative precision counts as omitted. */
+    if (is_precision && value < 0) {
+      spec.pop_back();
+    } else {
+      spec.append(
+          utils::int_to_text_into(value, number_text, sizeof(number_text)));
+    }
+
     operand_index++;
     has_consumed_a_conversion = true;
   };
@@ -700,9 +764,9 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         spec.push(fmt[i++]);
       }
 
-      let const do_push_field_size = [&]() throws {
+      let const do_push_field_size = [&](bool is_precision) throws {
         if (i < fmt.length() && fmt[i] == '*') {
-          do_consume_star(spec);
+          do_consume_star(spec, is_precision);
           i++;
 
           return;
@@ -713,10 +777,10 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         }
       };
 
-      do_push_field_size();
+      do_push_field_size(false);
       if (i < fmt.length() && fmt[i] == '.') {
         spec.push(fmt[i++]);
-        do_push_field_size();
+        do_push_field_size(true);
       }
 
       /* length modifiers are accepted and ignored, since every
@@ -748,7 +812,12 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
             epoch = cxt.dynamic_runtime_store().shell_start_time();
           }
 
-          let const formatted = os::format_local_time(date_format, epoch);
+          /* an epoch without a broken-down time prints as the epoch origin. */
+          let const formatted =
+              os::format_time(date_format, epoch, os::time_zone::Local)
+                      .has_value()
+                  ? os::format_local_time(date_format, epoch)
+                  : os::format_local_time(date_format, 0);
 
           if (spec == "%")
             out += formatted;
@@ -818,6 +887,16 @@ Printf::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const array_name = target.substring_of_length(0, *open_bracket);
       let const subscript  = target.substring_of_length(
           *open_bracket + 1, target.length - *open_bracket - 2);
+
+      if ((subscript == "*" || subscript == "@") &&
+          !cxt.variable_store().associative_arrays().has(array_name))
+      {
+        report_soft_builtin_error(ec, cxt,
+                                  "'" + *store_variable +
+                                      "' does not select one array element");
+
+        return 1;
+      }
 
       let const data_scope = cxt.guard_expanded_subscript(subscript);
       cxt.assign_array_element(array_name, subscript, out.view(),
