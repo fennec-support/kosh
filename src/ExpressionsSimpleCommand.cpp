@@ -183,6 +183,9 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
   if (let const bracket = name.view().find_character('['); bracket.has_value())
   {
     let const base = name.view().substring_of_length(0, *bracket);
+
+    expressions::internal::note_subscript_arithmetic(actx, name.view(),
+                                                     source_location());
     if (actx.walk.is_direct_pipeline_stage) actx.pipeline_lost_names.add(base);
     if (name.length() > *bracket + 1 && name[name.length() - 1] == ']') {
       let const subscript = name.view().substring_of_length(

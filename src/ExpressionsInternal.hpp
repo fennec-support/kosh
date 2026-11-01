@@ -87,6 +87,13 @@ pure fn
 analysis_source_text(const AnalysisContext &actx,
                      const SourceLocation  &location) wontthrow -> StringView;
 
+/* text holds name[subscript] as written at location. */
+fn
+note_subscript_arithmetic(AnalysisContext      &actx,
+                          StringView            text,
+                          const SourceLocation &location) throws
+    -> void;
+
 pure fn
 expansion_location_with_sigil(const AnalysisContext &actx,
                               SourceLocation         location) wontthrow

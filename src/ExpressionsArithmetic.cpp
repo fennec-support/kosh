@@ -348,6 +348,16 @@ ConditionalCommand::analyze(AnalysisContext &actx, bool is_unconditional) const 
 
     let const operand = element.word->raw_string();
 
+    if (actx.symbol_records != nullptr && element.is_bare_unquoted &&
+        operand.view() == "-v" && i + 1 < m_elements.count() &&
+        m_elements[i + 1].word != nullptr)
+    {
+      let const location = m_elements[i + 1].word->source_location();
+
+      actx.symbol_records->variable_operands.push(
+          source_span_record{location.position, location.length});
+    }
+
     if (element.is_bare_unquoted &&
         is_test_unary_operator_word(operand.view()) &&
         i + 1 < m_elements.count())
@@ -775,6 +785,8 @@ ArithmeticCommand::analyze(AnalysisContext &actx, bool is_unconditional) const t
       actx, source_location(), source_location().position,
       source_end_position() - source_location().position, false,
       is_unconditional);
+  actx.note_arithmetic_span(source_location().position + 2,
+                            m_expression.length);
 
   if (arithmetic_reads_external_input(actx, m_expression))
     actx.report_diagnostic(diagnostic_id::external_arithmetic_input,
@@ -1054,6 +1066,7 @@ CStyleForLoop::analyze(AnalysisContext &actx, bool is_unconditional) const throw
       [&](StringView clause, usize clause_position) throws -> void {
     if (clause.is_empty()) return;
 
+    actx.note_arithmetic_span(clause_position, clause.length);
     check_arithmetic_expression_lints(actx, clause, location, clause_position,
                                       is_conditional);
     if (actx.is_posix_sh_shebang)

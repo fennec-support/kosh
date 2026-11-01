@@ -417,11 +417,21 @@ struct function_body_record
   usize  body_end_position{0};
 };
 
+struct source_span_record
+{
+  u32 position{0};
+  u32 length{0};
+};
+
 struct analysis_symbol_records
 {
   ArrayList<variable_assignment_record> assignments{heap_allocator()};
   ArrayList<variable_occurrence_record> variable_occurrences{heap_allocator()};
   ArrayList<function_body_record>       functions{heap_allocator()};
+  ArrayList<source_span_record>         arithmetic_spans{heap_allocator()};
+  ArrayList<source_span_record>         variable_operands{heap_allocator()};
+  ArrayList<source_span_record>         function_operands{heap_allocator()};
+  ArrayList<String>                     associative_names{heap_allocator()};
 
   fn
   clear() wontthrow -> void
@@ -429,6 +439,20 @@ struct analysis_symbol_records
     assignments.clear();
     variable_occurrences.clear();
     functions.clear();
+    arithmetic_spans.clear();
+    variable_operands.clear();
+    function_operands.clear();
+    associative_names.clear();
+  }
+
+  pure fn
+  is_associative_name(StringView name) const wontthrow -> bool
+  {
+    for (let const &associative_name : associative_names) {
+      if (associative_name.view() == name) return true;
+    }
+
+    return false;
   }
 };
 
@@ -888,6 +912,15 @@ public:
   should_report(diagnostic_id id) const wontthrow -> bool
   {
     return reporter.should_report(id);
+  }
+
+  fn
+  note_arithmetic_span(usize position, usize byte_count) throws -> void
+  {
+    if (symbol_records == nullptr) return;
+
+    symbol_records->arithmetic_spans.push(source_span_record{
+        static_cast<u32>(position), static_cast<u32>(byte_count)});
   }
 
   fn

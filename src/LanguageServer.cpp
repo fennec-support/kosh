@@ -848,10 +848,14 @@ Server::publish_diagnostics(Document &document) throws -> bool
   let const ast =
       parser.construct_ast(rendered_errors, &m_context, &diagnostics);
 
-  if (rendered_errors.is_empty()) {
-    let const directives = parser.take_analysis_directives();
-    let const functions  = m_context.function_store().names();
-    let const aliases    = m_context.scope_store().alias_names();
+  /* a document with a syntax error reports only that error, and the statements
+     that parsed still supply symbols for rename. */
+  {
+    let const has_parse_error = !rendered_errors.is_empty();
+    let discarded_diagnostics = ArrayList<source_diagnostic>{heap_allocator()};
+    let const directives      = parser.take_analysis_directives();
+    let const functions       = m_context.function_store().names();
+    let const aliases         = m_context.scope_store().alias_names();
 
     if (document.canonical_path.has_value())
       followed_paths.add(document.canonical_path->text().view());
@@ -882,10 +886,16 @@ Server::publish_diagnostics(Document &document) throws -> bool
 
     options.source_base_directory = document_directory.view();
     options.assumed_variables     = &assumed_variables;
-    analyze_ast(ast, document.shell_source(), functions, aliases, &m_context,
-                options, directives, {&followed_paths, &source_effects}, {},
-                {nullptr, &diagnostics, &symbol_records}, this, nullptr,
-                format_document);
+    analyze_ast(
+        ast, document.shell_source(), functions, aliases, &m_context, options,
+        directives,
+        has_parse_error
+            ? analysis_followed_sources{}
+            : analysis_followed_sources{&followed_paths, &source_effects},
+        {},
+        {nullptr, has_parse_error ? &discarded_diagnostics : &diagnostics,
+         &symbol_records},
+        this, nullptr, format_document);
     symbol_records.variable_occurrences.sort(
         [](const variable_occurrence_record &left,
            const variable_occurrence_record &right) {
@@ -1814,151 +1824,6 @@ Server::rename_kind_of(const document_symbol &symbol) throws
   return rename_kind::command;
 }
 
-/* whether the word at position stands where a command starts. */
-pure static fn
-is_at_command_start(StringView source, usize position) wontthrow -> bool
-{
-  while (position > 0) {
-    if (lexer::is_whitespace(source[position - 1])) {
-      position--;
-    } else if (position > 1 && source[position - 1] == '\n' &&
-               source[position - 2] == '\\')
-    {
-      position -= 2;
-    } else {
-      break;
-    }
-  }
-
-  if (position == 0) return true;
-  if (StringView{"\n;&|({!"}.find_character(source[position - 1]).has_value()) {
-    return true;
-  }
-
-  usize word_start = position;
-
-  while (word_start > 0 && lexer::is_variable_name(source[word_start - 1])) {
-    word_start--;
-  }
-
-  let const word =
-      source.substring_of_length(word_start, position - word_start);
-
-  return word == "then" || word == "do" || word == "else" || word == "elif" ||
-         word == "if" || word == "while" || word == "until" || word == "time";
-}
-
-/* the end of the declaration operand at position. A compound value such as
-   m=([a;b]=1) stays inside the operand. */
-pure static fn
-declaration_operand_end(StringView source, usize position) wontthrow -> usize
-{
-  usize parenthesis_depth = 0;
-
-  while (position < source.length) {
-    let const byte = source[position];
-
-    if (byte == '\\' || byte == '\'' || byte == '"') {
-      position = lexer::skip_quoted_run(source, position) + 1;
-      continue;
-    }
-
-    if (byte == '(') {
-      parenthesis_depth++;
-    } else if (byte == ')' && parenthesis_depth > 0) {
-      parenthesis_depth--;
-    } else if (parenthesis_depth == 0 &&
-               (lexer::is_shell_sentinel(byte) || lexer::is_whitespace(byte)))
-    {
-      break;
-    }
-
-    position++;
-  }
-
-  return position < source.length ? position : source.length;
-}
-
-static fn
-is_declared_associative(StringView source, StringView array_name) wontthrow
-    -> bool
-{
-  usize position = 0;
-
-  while (position < source.length) {
-    let const is_word_start =
-        lexer::is_variable_name_start(source[position]) &&
-        (position == 0 || !lexer::is_variable_name(source[position - 1]));
-
-    if (!is_word_start) {
-      position++;
-      continue;
-    }
-
-    usize word_end = position;
-
-    while (word_end < source.length &&
-           lexer::is_variable_name(source[word_end]))
-    {
-      word_end++;
-    }
-
-    let const word = source.substring_of_length(position, word_end - position);
-    let const is_declaration = word == "declare" || word == "local" ||
-                               word == "typeset" || word == "readonly";
-
-    if (!is_declaration || !is_at_command_start(source, position)) {
-      position = word_end;
-      continue;
-    }
-
-    bool has_associative_flag = false;
-
-    position = word_end;
-
-    while (position < source.length) {
-      if (lexer::is_whitespace(source[position])) {
-        position++;
-        continue;
-      }
-
-      if (source[position] == '\\' && position + 1 < source.length &&
-          source[position + 1] == '\n')
-      {
-        position += 2;
-        continue;
-      }
-
-      if (lexer::is_shell_sentinel(source[position])) break;
-
-      let const operand_end = declaration_operand_end(source, position);
-      let const operand =
-          source.substring_of_length(position, operand_end - position);
-
-      if (operand.is_empty()) break;
-
-      if (operand[0] == '-') {
-        has_associative_flag =
-            has_associative_flag || operand.find_character('A').has_value();
-      } else if (has_associative_flag) {
-        usize name_end = 0;
-
-        while (name_end < operand.length &&
-               lexer::is_variable_name(operand[name_end]))
-        {
-          name_end++;
-        }
-
-        if (operand.substring_of_length(0, name_end) == array_name) return true;
-      }
-
-      position = operand_end;
-    }
-  }
-
-  return false;
-}
-
 /* a variable name inside a parameter expansion, at bytes of the document. */
 struct parameter_reference
 {
@@ -1999,7 +1864,7 @@ append_arithmetic_references(StringView                      text,
 }
 
 static fn
-append_braced_references(StringView                      source,
+append_braced_references(const analysis_symbol_records  &records,
                          StringView                      text,
                          usize                           start,
                          usize                           end,
@@ -2010,7 +1875,7 @@ append_braced_references(StringView                      source,
 /* the expansions of a word. An escaped dollar and single-quoted text hold no
    reference, and a quote with no closing partner is a literal byte. */
 static fn
-append_word_references(StringView                      source,
+append_word_references(const analysis_symbol_records  &records,
                        StringView                      text,
                        usize                           position,
                        usize                           end,
@@ -2057,7 +1922,7 @@ append_word_references(StringView                      source,
         append_arithmetic_references(text, position + 3, group_stop,
                                      document_offset, out);
       } else {
-        append_word_references(source, text, position + 2, group_stop,
+        append_word_references(records, text, position + 2, group_stop,
                                document_offset, out);
       }
 
@@ -2068,7 +1933,7 @@ append_word_references(StringView                      source,
           nullptr);
       let const expansion_stop = expansion_end.value_or(end);
 
-      append_braced_references(source, text, position, expansion_stop,
+      append_braced_references(records, text, position, expansion_stop,
                                document_offset, out);
       position = expansion_stop;
     } else if (lexer::is_variable_name_start(next)) {
@@ -2088,7 +1953,7 @@ append_word_references(StringView                      source,
 
 /* text[start] is the dollar of a ${ and end is past its closing brace. */
 static fn
-append_braced_references(StringView                      source,
+append_braced_references(const analysis_symbol_records  &records,
                          StringView                      text,
                          usize                           start,
                          usize                           end,
@@ -2130,10 +1995,10 @@ append_braced_references(StringView                      source,
       }
     }
 
-    if (is_declared_associative(source, text.substring_of_length(
-                                            head_start, head_end - head_start)))
+    if (records.is_associative_name(
+            text.substring_of_length(head_start, head_end - head_start)))
     {
-      append_word_references(source, text, head_end + 1, subscript_end,
+      append_word_references(records, text, head_end + 1, subscript_end,
                              document_offset, out);
     } else {
       append_arithmetic_references(text, head_end + 1, subscript_end,
@@ -2151,258 +2016,60 @@ append_braced_references(StringView                      source,
     append_arithmetic_references(text, tail_start + 1, closing, document_offset,
                                  out);
   } else {
-    append_word_references(source, text, tail_start, closing, document_offset,
+    append_word_references(records, text, tail_start, closing, document_offset,
                            out);
   }
 }
 
+/* the subscript that starts at position belongs to the array before its
+   opening bracket. */
 pure static fn
-is_command_prefix_word(StringView word) wontthrow -> bool
-{
-  return word == "if" || word == "then" || word == "elif" || word == "else" ||
-         word == "while" || word == "until" || word == "do" || word == "time" ||
-         word == "!" || word == "{" || word == "(";
-}
-
-/* whether the option of read, mapfile, or readarray takes the next word as
-   its value. A trailing letter in a cluster such as -rd counts. */
-pure static fn
-input_option_takes_value(StringView command, StringView option)
+is_associative_subscript(StringView                     source,
+                         usize                          position,
+                         const analysis_symbol_records &records)
     wontthrow -> bool
 {
-  let const letter = option[option.length - 1];
+  if (position == 0 || source[position - 1] != '[') return false;
 
-  return command == "read"
-             ? StringView{"dinNptu"}.find_character(letter).has_value()
-             : StringView{"CcdnOsu"}.find_character(letter).has_value();
+  let const name_end   = position - 1;
+  usize     name_start = name_end;
+
+  while (name_start > 0 && lexer::is_variable_name(source[name_start - 1])) {
+    name_start--;
+  }
+
+  return records.is_associative_name(
+      source.substring_of_length(name_start, name_end - name_start));
 }
 
-/* the operands that hold a function name: the action of trap, the argument of
-   complete -F, and a name after a -f flag of a declaration builtin. */
+/* the span of name in the operand at span, past one pair of quotes around it.
+ */
 static fn
-is_function_operand(StringView command,
-                    StringView previous,
-                    StringView word,
-                    usize      operand_index,
-                    bool       has_f_flag) wontthrow -> bool
+append_operand_span(StringView              source,
+                    source_span_record      span,
+                    StringView              name,
+                    ArrayList<rename_span> &out_spans) throws -> void
 {
-  let const is_flag = word[0] == '-' && word.length > 1;
-
-  if (command == "trap") return operand_index == 0 && !is_flag;
-  if (command == "complete") return previous == "-F";
-
-  return has_f_flag && !is_flag &&
-         (command == "export" || command == "declare" || command == "typeset" ||
-          command == "readonly");
-}
-
-/* the operands that a builtin writes or tests as a variable. */
-static fn
-is_variable_operand(StringView command,
-                    StringView previous,
-                    StringView word) wontthrow -> bool
-{
-  let const is_flag = word[0] == '-' && word.length > 1;
-
-  if (command == "printf") return previous == "-v";
-  if (command == "[[" || command == "[" || command == "test") {
-    return previous == "-v";
+  if (span.position > source.length ||
+      span.length > source.length - span.position)
+  {
+    return;
   }
 
-  if (command != "read" && command != "mapfile" && command != "readarray") {
-    return false;
+  let operand = source.substring_of_length(span.position, span.length);
+  let start   = static_cast<usize>(span.position);
+
+  if (operand.length >= 2 && (operand[0] == '\'' || operand[0] == '"') &&
+      operand[operand.length - 1] == operand[0])
+  {
+    operand = operand.substring_of_length(1, operand.length - 2);
+    start++;
   }
 
-  if (is_flag) return false;
-  if (command == "read" && previous == "-a") return true;
-  if (previous.length > 1 && previous[0] == '-') {
-    return !input_option_takes_value(command, previous);
+  if (operand == name) {
+    out_spans.push(
+        rename_span{highlight_role::variable, start, start + name.length});
   }
-
-  return true;
-}
-
-/* the words of the operands of a known builtin hold a symbol with no highlight
-   span of its own. A subscript of NAME[...]= holds arithmetic references. */
-static fn
-append_operand_spans(StringView              source,
-                     rename_kind             kind,
-                     StringView              name,
-                     const ArrayList<usize> &heredoc_line_starts,
-                     ArrayList<rename_span> &out_spans) throws -> void
-{
-  usize line_start         = 0;
-  usize heredoc_line_index = 0;
-
-  let const do_append_arithmetic_region =
-      [&](usize start, usize end) throws -> void {
-    let references = ArrayList<parameter_reference>{heap_allocator()};
-
-    append_arithmetic_references(source, start, end, 0, references);
-
-    for (let const &reference : references) {
-      if (source.substring_of_length(reference.start,
-                                     reference.end - reference.start) == name)
-      {
-        out_spans.push(rename_span{highlight_role::variable, reference.start,
-                                   reference.end});
-      }
-    }
-  };
-
-  while (line_start < source.length) {
-    usize line_end = line_start;
-
-    while (line_end < source.length && source[line_end] != '\n') {
-      line_end++;
-    }
-
-    while (heredoc_line_index < heredoc_line_starts.count() &&
-           heredoc_line_starts[heredoc_line_index] < line_start)
-    {
-      heredoc_line_index++;
-    }
-
-    if (heredoc_line_index < heredoc_line_starts.count() &&
-        heredoc_line_starts[heredoc_line_index] == line_start)
-    {
-      line_start = line_end + 1;
-      continue;
-    }
-
-    usize position      = line_start;
-    usize operand_index = 0;
-    bool  has_f_flag    = false;
-    let   command       = StringView{};
-    let   previous      = StringView{};
-
-    while (position < line_end) {
-      if (lexer::is_whitespace(source[position])) {
-        position++;
-        continue;
-      }
-
-      if (StringView{";&|"}.find_character(source[position]).has_value()) {
-        position++;
-        operand_index = 0;
-        has_f_flag    = false;
-        command       = StringView{};
-        previous      = StringView{};
-        continue;
-      }
-
-      if (source[position] == '#') break;
-
-      if (kind == rename_kind::variable && position + 1 < line_end &&
-          source[position] == '(' && source[position + 1] == '(')
-      {
-        let const group_end =
-            lexer::scan_balanced_shell_region(source, position + 1, ')');
-
-        if (group_end.has_value()) {
-          do_append_arithmetic_region(position + 2, *group_end - 2);
-          position = *group_end;
-          continue;
-        }
-      }
-
-      let const word_end = declaration_operand_end(source, position);
-
-      if (word_end == position) {
-        position++;
-        continue;
-      }
-
-      let word = source.substring_of_length(position, word_end - position);
-      let quote_length = usize{0};
-
-      if (word.length >= 2 && (word[0] == '\'' || word[0] == '"') &&
-          word[word.length - 1] == word[0])
-      {
-        quote_length = 1;
-        word         = word.substring_of_length(1, word.length - 2);
-      }
-
-      if (word.is_empty()) {
-        position = word_end;
-        continue;
-      }
-
-      let const is_operand =
-          !command.is_empty() &&
-          (kind == rename_kind::command
-               ? is_function_operand(command, previous, word, operand_index,
-                                     has_f_flag)
-               : is_variable_operand(command, previous, word));
-
-      if (is_operand && word == name) {
-        out_spans.push(rename_span{highlight_role::variable,
-                                   position + quote_length,
-                                   position + quote_length + name.length});
-      }
-
-      if (kind == rename_kind::variable) {
-        usize array_end = 0;
-
-        while (array_end < word.length &&
-               lexer::is_variable_name(word[array_end]))
-        {
-          array_end++;
-        }
-
-        if (array_end > 0 && array_end < word.length &&
-            word[array_end] == '[' && lexer::word_looks_like_assignment(word) &&
-            !is_declared_associative(source,
-                                     word.substring_of_length(0, array_end)))
-        {
-          let const subscript_end =
-              word.find_character(']').value_or(word.length);
-
-          do_append_arithmetic_region(position + array_end + 1,
-                                      position + subscript_end);
-        }
-
-        if (source[position] != '\'') {
-          for (usize at = position; at + 2 < word_end; at++) {
-            if (source[at] != '$' || source[at + 1] != '(' ||
-                source[at + 2] != '(')
-            {
-              continue;
-            }
-
-            let const group_end =
-                lexer::scan_balanced_shell_region(source, at + 2, ')');
-
-            if (group_end.has_value()) {
-              do_append_arithmetic_region(at + 3, *group_end - 2);
-              at = *group_end - 1;
-            }
-          }
-        }
-      }
-
-      if (command.is_empty()) {
-        if (!is_command_prefix_word(word)) command = word;
-      } else if (word[0] == '-' && word.length > 1) {
-        if (word.find_character('f').has_value()) has_f_flag = true;
-      } else {
-        operand_index++;
-      }
-
-      previous = word;
-      position = word_end;
-    }
-
-    line_start = line_end + 1;
-  }
-}
-
-pure static fn
-is_reserved_word(StringView word) wontthrow -> bool
-{
-  return KEYWORDS.find(word).has_value() || word == "select" ||
-         word == "coproc" || word == "in" || word == "!" || word == "{" ||
-         word == "}" || word == "[[" || word == "]]";
 }
 
 static fn
@@ -2431,13 +2098,25 @@ Server::collect_rename_spans(const Document         &document,
                              ArrayList<rename_span> &out_spans) throws
     -> void
 {
-  bool is_heredoc_expanding = true;
-  let  heredoc_line_starts  = ArrayList<usize>{heap_allocator()};
+  bool       is_heredoc_expanding = true;
+  let const  source               = document.normalized_source.view();
+  let const &records              = document.symbol_records;
+
+  let const do_append_references =
+      [&](const ArrayList<parameter_reference> &references,
+          highlight_role                        role) throws -> void {
+    for (let const &reference : references) {
+      if (source.substring_of_length(reference.start,
+                                     reference.end - reference.start) == name)
+      {
+        out_spans.push(rename_span{role, reference.start, reference.end});
+      }
+    }
+  };
 
   visit_document_spans(
       document,
-      [&](usize, usize line_start,
-          const highlight_span &span) throws -> bool {
+      [&](usize, usize, const highlight_span &span) throws -> bool {
         let const text = document.normalized_source.substring_of_length(
             span.start, span.end - span.start);
 
@@ -2445,29 +2124,14 @@ Server::collect_rename_spans(const Document         &document,
           is_heredoc_expanding = lexer::heredoc_word_joins_lines(text);
         }
 
-        if (span.role == highlight_role::heredoc &&
-            (heredoc_line_starts.is_empty() ||
-             heredoc_line_starts.back() != line_start))
-        {
-          heredoc_line_starts.push(line_start);
-        }
-
         if (kind == rename_kind::variable &&
             span.role == highlight_role::heredoc && is_heredoc_expanding)
         {
           let references = ArrayList<parameter_reference>{heap_allocator()};
 
-          append_word_references(document.normalized_source, text, 0,
-                                 text.length, span.start, references, true);
-
-          for (let const &reference : references) {
-            if (document.normalized_source.view().substring_of_length(
-                    reference.start, reference.end - reference.start) == name)
-            {
-              out_spans.push(
-                  rename_span{span.role, reference.start, reference.end});
-            }
-          }
+          append_word_references(records, text, 0, text.length, span.start,
+                                 references, true);
+          do_append_references(references, span.role);
 
           return true;
         }
@@ -2492,19 +2156,9 @@ Server::collect_rename_spans(const Document         &document,
         if (text.starts_with("${")) {
           let references = ArrayList<parameter_reference>{heap_allocator()};
 
-          append_braced_references(document.normalized_source, text, 0,
-                                   text.length, span.start, references);
-
-          for (let const &reference : references) {
-            let const reference_name =
-                document.normalized_source.substring_of_length(
-                    reference.start, reference.end - reference.start);
-
-            if (reference_name == name) {
-              out_spans.push(
-                  rename_span{span.role, reference.start, reference.end});
-            }
-          }
+          append_braced_references(records, text, 0, text.length, span.start,
+                                   references);
+          do_append_references(references, span.role);
 
           return true;
         }
@@ -2522,26 +2176,30 @@ Server::collect_rename_spans(const Document         &document,
         return true;
       });
 
-  append_operand_spans(document.normalized_source, kind, name,
-                       heredoc_line_starts, out_spans);
+  if (kind == rename_kind::command) {
+    for (let const span : records.function_operands) {
+      append_operand_span(source, span, name, out_spans);
+    }
+  } else {
+    for (let const &occurrence : records.variable_occurrences) {
+      if (occurrence.name.view() != name) continue;
 
-  if (kind == rename_kind::variable) {
-    for (let const &occurrence : document.symbol_records.variable_occurrences) {
-      if (occurrence.name.view() != name || occurrence.length != name.length) {
-        continue;
-      }
+      append_operand_span(source, {occurrence.position, occurrence.length},
+                          name, out_spans);
+    }
 
-      let const start = static_cast<usize>(occurrence.position);
+    for (let const span : records.variable_operands) {
+      append_operand_span(source, span, name, out_spans);
+    }
 
-      if (start + name.length > document.normalized_source.count() ||
-          document.normalized_source.view().substring_of_length(
-              start, name.length) != name)
-      {
-        continue;
-      }
+    for (let const span : records.arithmetic_spans) {
+      if (is_associative_subscript(source, span.position, records)) continue;
 
-      out_spans.push(
-          rename_span{highlight_role::variable, start, start + name.length});
+      let references = ArrayList<parameter_reference>{heap_allocator()};
+
+      append_arithmetic_references(source, span.position,
+                                   span.position + span.length, 0, references);
+      do_append_references(references, highlight_role::variable);
     }
   }
 
@@ -2570,7 +2228,9 @@ Server::request_rename_target(const JsonValue *params) throws
       [&](usize start, usize end) throws -> Maybe<rename_target> {
     let const name = source.substring_of_length(start, end - start);
 
-    if (name == "_" || !lexer::word_is_variable_name(name)) return None;
+    if (name == "_" || !lexer::word_is_variable_name(name)) {
+      return None;
+    }
 
     return rename_target{
         document, rename_kind::variable, String{heap_allocator(), name},
@@ -2601,8 +2261,8 @@ Server::request_rename_target(const JsonValue *params) throws
   if (role_reads_variable(symbol->role) && text.starts_with("${")) {
     let references = ArrayList<parameter_reference>{heap_allocator()};
 
-    append_braced_references(source, text, 0, text.length, symbol->start,
-                             references);
+    append_braced_references(document->symbol_records, text, 0, text.length,
+                             symbol->start, references);
 
     if (references.is_empty()) return None;
 
@@ -2694,7 +2354,7 @@ Server::rename(const JsonValue *id, const JsonValue *params) throws
                           : "A command name holds no shell metacharacter.");
   }
 
-  if (!is_variable && is_reserved_word(*new_name)) {
+  if (!is_variable && name_is_keyword_in_mood(*new_name, mimic_mood::Bash)) {
     return send_error(id, REQUEST_FAILED_ERROR,
                       "A function cannot take a reserved word.");
   }

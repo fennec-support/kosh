@@ -2823,6 +2823,30 @@ internal::analyze_region_substitutions(AnalysisContext      &actx,
 }
 
 fn
+internal::note_subscript_arithmetic(
+    AnalysisContext      &actx,
+    StringView            text,
+    const SourceLocation &location) throws -> void
+{
+  let const bracket = text.find_character('[');
+
+  if (!bracket.has_value() || text[text.length - 1] != ']') {
+    return;
+  }
+
+  let const subscript_start = *bracket + 1;
+  let const subscript =
+      text.substring_of_length(subscript_start, text.length - *bracket - 2);
+  let const position = location.position + subscript_start;
+
+  if (analysis_source_text(actx, {position, subscript.length}) != subscript) {
+    return;
+  }
+
+  actx.note_arithmetic_span(position, subscript.length);
+}
+
+fn
 internal::analyze_word_substitutions(AnalysisContext      &actx,
                                      const Word           &word,
                                      const SourceLocation &location,
@@ -2830,6 +2854,10 @@ internal::analyze_word_substitutions(AnalysisContext      &actx,
     -> void
 {
   for (let const &segment : word.segments) {
+    if (segment.kind == WordSegment::Kind::ArithmeticExpansion) {
+      actx.note_arithmetic_span(segment.source_position, segment.text.length());
+    }
+
     switch (segment.kind) {
     case WordSegment::Kind::CommandSubstitution:
     case WordSegment::Kind::ProcessSubstitution:

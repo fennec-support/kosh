@@ -596,6 +596,75 @@ note_variable_target_operands(AnalysisContext                &actx,
   }
 }
 
+/* the symbols that an operand holds with no expansion of its own: the action
+   of trap, the argument of complete -F, a name after a -f flag of a
+   declaration builtin, the name after a -v test, and a name declared with -A.
+   args[command_index] is the command, past any command or builtin wrapper. */
+static fn
+note_symbol_operands(AnalysisContext                &actx,
+                     const ArrayList<const Token *> &args,
+                     usize                           command_index,
+                     const SparseList<array_builtin_assignment>
+                         &array_assignments) throws -> void
+{
+  if (actx.symbol_records == nullptr) return;
+
+  let      &records         = *actx.symbol_records;
+  let       command_storage = String{heap_allocator()};
+  let const command = borrowed_token_text(args[command_index], command_storage);
+  let const command_info = get_analysis_command_info(command);
+  let const is_declaration =
+      command_info.is_in_group(COMMAND_GROUP_ASSIGNMENT_BUILTIN);
+  let const is_test = command_info.is_in_group(COMMAND_GROUP_TEST);
+
+  bool  has_function_flag    = false;
+  bool  has_associative_flag = false;
+  let   previous             = String{heap_allocator()};
+  usize operand_count        = 0;
+
+  for (usize index = command_index + 1; index < args.count(); index++) {
+    let       storage  = String{heap_allocator()};
+    let const text     = borrowed_token_text(args[index], storage);
+    let const location = args[index]->source_location();
+    let const span     = source_span_record{location.position, location.length};
+    let const is_flag  = text.length > 1 && text[0] == '-';
+
+    if (is_flag) {
+      has_function_flag |= text.find_character('f').has_value();
+      has_associative_flag |= text.find_character('A').has_value();
+    }
+
+    if (is_test && previous.view() == "-v") {
+      records.variable_operands.push(span);
+    }
+
+    let const is_function_operand =
+        command_info.id == command_name_id::Trap
+            ? operand_count == 0 && !is_flag
+            : (command == "complete" && previous.view() == "-F") ||
+                  (is_declaration && has_function_flag && !is_flag);
+
+    if (is_function_operand) records.function_operands.push(span);
+
+    if (is_declaration && has_associative_flag && !is_flag) {
+      let const name = operand_target_name(text);
+
+      if (!name.is_empty()) {
+        records.associative_names.push(String{heap_allocator(), name});
+      }
+    }
+
+    if (!is_flag) operand_count++;
+    previous = String{heap_allocator(), text};
+  }
+
+  if (!is_declaration || !has_associative_flag) return;
+
+  for (let const &assignment : array_assignments) {
+    records.associative_names.push(assignment.name.clone());
+  }
+}
+
 fn
 SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> void
 {
@@ -907,6 +976,8 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
       if (let const bracket = recorded_name.find_character('[');
           bracket.has_value())
       {
+        note_subscript_arithmetic(actx, recorded_name,
+                                  m_args[i]->source_location());
         recorded_name  = recorded_name.substring_of_length(0, *bracket);
         recorded_value = nullptr;
       }
@@ -937,6 +1008,10 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
 
   let const wrapped_index        = wrapped_command_index(command_id, m_args);
   usize     source_command_index = m_args.count();
+
+  if (!is_command_shadowed) {
+    note_symbol_operands(actx, m_args, wrapped_index.value_or(0), m_array_args);
+  }
 
   if (!is_command_shadowed && (command_id == command_name_id::Dot ||
                                command_id == command_name_id::Source))

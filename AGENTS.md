@@ -126,6 +126,9 @@ Prompt validation starts a directory epoch. Completion and highlighting reuse
 that epoch and defer uncached documentation loads without blocking the editor.
 The language server follows relative sources from the document directory.
 Rename edits use semantic spans and preserve variable sigils and braces.
+Rename reads builtin operands, arithmetic text, and associative arrays from the
+analysis symbol records. A document with a syntax error still runs analysis for
+those records and reports only the syntax error.
 
 src/CLILive owns live views, the screensaver, retained rows, terminal state,
 one synchronized frame write, and the pager behind koshkit more and less.
