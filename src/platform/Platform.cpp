@@ -645,8 +645,13 @@ position_after_regex_bracket(StringView pattern, usize position) wontthrow
     -> usize
 {
   position++;
-  if (position < pattern.length && pattern[position] == '^') position++;
-  if (position < pattern.length && pattern[position] == ']') position++;
+  if (position < pattern.length && pattern[position] == '^') {
+    position++;
+  }
+
+  if (position < pattern.length && pattern[position] == ']') {
+    position++;
+  }
 
   while (position < pattern.length && pattern[position] != ']') {
     let const kind =
@@ -706,7 +711,10 @@ parse_regex_repeat_bound(StringView pattern,
   if (!has_digit) return None;
 
   if (is_extended) {
-    if (cursor == pattern.length || pattern[cursor] != '}') return None;
+    if (cursor == pattern.length || pattern[cursor] != '}') {
+      return None;
+    }
+
     cursor++;
   } else {
     if (cursor + 1 >= pattern.length || pattern[cursor] != '\\' ||
@@ -721,15 +729,17 @@ parse_regex_repeat_bound(StringView pattern,
   position = cursor;
 
   /* an open bound repeats its minimum and then one more copy. */
-  if (has_comma && maximum == 0) return minimum + 1;
+  if (has_comma && maximum == 0) {
+    return minimum + 1;
+  }
 
   return maximum > minimum ? maximum : minimum;
 }
 
 /* libc expands {m,n} into m or n copies of its operand while it compiles, so a
    short pattern with nested bounds can exhaust memory before regcomp()
-   returns, and it does not stop for a signal. the sum of the sizes that the
-   bounds produce is limited instead, which leaves one repeat of RE_DUP_MAX and
+   returns, and it does not stop for a signal. the product of nested bounds is
+   limited, which leaves bounds in sequence, one repeat of RE_DUP_MAX, and
    (a{255}){255} valid.
    memory: one group size per open group, freed on return.
    time:   one pass over pattern. */
@@ -742,7 +752,6 @@ is_regex_expansion_too_large(StringView pattern,
   ArrayList<u64> open_group_sizes{heap_allocator()};
   u64            group_size     = 0;
   u64            last_atom_size = 0;
-  u64            expanded_size  = 0;
   usize          position       = 0;
 
   let const do_add_atom = [&](u64 size) wontthrow {
@@ -780,12 +789,9 @@ is_regex_expansion_too_large(StringView pattern,
     let const repeated_size = last_atom_size * *bound;
 
     if (repeated_size > MAX_EXPANDED_SIZE) return true;
-    expanded_size += repeated_size;
-    last_atom_size = repeated_size;
-    group_size += repeated_size;
-    if (group_size > MAX_EXPANDED_SIZE) group_size = MAX_EXPANDED_SIZE + 1;
+    do_add_atom(repeated_size);
 
-    return expanded_size > MAX_EXPANDED_SIZE;
+    return false;
   };
 
   while (position < pattern.length) {

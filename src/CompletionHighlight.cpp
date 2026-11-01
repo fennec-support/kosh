@@ -1296,7 +1296,7 @@ static_koshkit_operand(StringView word, bool &is_valid) throws
           word.substring_of_length(body_start, position - body_start);
 
       if (quote == '\'')
-        utils::decode_ansi_c_escapes(special_decoded, body);
+        utils::decode_ansi_c_quote(special_decoded, body);
       else {
         let const locale_decoded = utils::decode_shell_word(
             word.substring_of_length(body_start - 1, position - body_start + 2),
