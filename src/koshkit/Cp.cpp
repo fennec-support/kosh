@@ -643,10 +643,15 @@ Cp::execute(const ExecContext               &ec,
                    .text();
     }
 
+    let const source_path = Path{source, cxt.scratch_allocator()};
     let const is_directory_source =
-        Path{source, cxt.scratch_allocator()}.is_directory();
+        source_path.is_directory() &&
+        (options.symlink_mode != cp_symlink_mode::Preserve ||
+         !source_path.is_symbolic_link());
 
-    if (!is_directory_source && copied_targets.contains(target.view())) {
+    if (!is_directory_source && !options.should_keep_existing &&
+        copied_targets.contains(target.view()))
+    {
       report_soft_koshkit_error(ec, cxt, operand_locations[i],
                                 "'" + String{cxt.scratch_allocator(), source} +
                                     "' would overwrite '" + target +
