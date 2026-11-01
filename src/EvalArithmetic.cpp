@@ -1241,11 +1241,29 @@ public:
   }
 
   fn
-  calculator_work_scale(u32 requested_scale) throws -> u32
+  calculator_work_scale(u32 requested_scale,
+                        u32 magnitude_digit_count = 0) throws -> u32
   {
-    if (requested_scale > ~u32{0} - 12) throw std::bad_alloc{};
+    if (magnitude_digit_count > ~u32{0} - 12 ||
+        requested_scale > ~u32{0} - 12 - magnitude_digit_count)
+    {
+      throw std::bad_alloc{};
+    }
 
-    return requested_scale + 12;
+    return requested_scale + magnitude_digit_count + 12;
+  }
+
+  /* e.g. value = -123.45 has 3 digits before the point. */
+  fn
+  calculator_integer_digit_count(const ArithmeticValue &value) throws
+      -> u32
+  {
+    let const text = value.to_string(bump_allocator(arena));
+    let const digits =
+        text.view().starts_with("-") ? text.view().substring(1) : text.view();
+    let const point = digits.find_character('.');
+
+    return static_cast<u32>(point.has_value() ? *point : digits.length);
   }
 
   /* memory: cached_pi is allocated in arena and lives until the owner of arena
@@ -1406,7 +1424,9 @@ public:
                      u32             requested_scale,
                      bool            is_cosine) throws -> ArithmeticValue
   {
-    let const work_scale = calculator_work_scale(requested_scale);
+    /* the reduction by two pi cancels one digit of pi per integer digit. */
+    let const work_scale = calculator_work_scale(
+        requested_scale, calculator_integer_digit_count(value));
 
     value = ArithmeticValue::rescale(value, work_scale, arena);
 
@@ -1494,7 +1514,24 @@ public:
   calculator_exp(ArithmeticValue value, u32 requested_scale) throws
       -> ArithmeticValue
   {
-    let const work_scale  = calculator_work_scale(requested_scale);
+    static constexpr u32 MAX_OPERAND_DIGIT_COUNT = 9;
+
+    if (calculator_integer_digit_count(value) > MAX_OPERAND_DIGIT_COUNT) {
+      fail("The operand to 'exp' is too large",
+           "Use an absolute value below 10 ** 9");
+    }
+
+    /* the result has log10(e) digits per unit of the operand before its point,
+       and each of at most 32 squarings doubles the error of the series, so 16
+       digits cover the squarings. */
+    let const operand_whole =
+        ArithmeticValue::integer_part(ArithmeticValue::absolute(value, arena),
+                                      arena)
+            .checked_i64();
+    let const magnitude_digit_count =
+        static_cast<u32>(operand_whole * 4343 / 10000) + 16;
+    let const work_scale =
+        calculator_work_scale(requested_scale, magnitude_digit_count);
     let const is_negative = value.is_negative();
 
     value = ArithmeticValue::rescale(ArithmeticValue::absolute(value, arena),

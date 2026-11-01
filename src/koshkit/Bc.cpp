@@ -260,6 +260,24 @@ bc_translate_expression(StringView   expression,
       continue;
     }
 
+    let const do_append_variable = [&](StringView name) throws {
+      let variable_name = String{allocator, "__bc_"};
+
+      variable_name += name;
+      translated += variable_name.view();
+      if (!cxt.variable_store()
+               .shell_variables()
+               .find(variable_name.view())
+               .has_value() &&
+          !cxt.variable_store()
+               .indexed_arrays()
+               .find(variable_name.view())
+               .has_value())
+      {
+        cxt.set_shell_variable(variable_name.view(), "0");
+      }
+    };
+
     if ((byte >= '0' && byte <= '9') || (byte >= 'A' && byte <= 'F') ||
         (byte == '.' && position + 1 < expression.length &&
          expression[position + 1] >= '0' && expression[position + 1] <= '9'))
@@ -332,23 +350,16 @@ bc_translate_expression(StringView   expression,
       {
         translated += *math_function;
       } else {
-        let variable_name = String{allocator, "__bc_"};
-
-        variable_name += name;
-        translated += variable_name.view();
-        if (!cxt.variable_store()
-                 .shell_variables()
-                 .find(variable_name.view())
-                 .has_value() &&
-            !cxt.variable_store()
-                 .indexed_arrays()
-                 .find(variable_name.view())
-                 .has_value())
-        {
-          cxt.set_shell_variable(variable_name.view(), "0");
-        }
+        do_append_variable(name);
       }
 
+      continue;
+    }
+
+    /* a lone dot is another spelling of last. */
+    if (byte == '.') {
+      do_append_variable("last");
+      position++;
       continue;
     }
 
@@ -358,39 +369,55 @@ bc_translate_expression(StringView   expression,
 
   let scaled = String{allocator};
 
-  position = 0;
+  /* a function inside the argument of another takes the scale as well. */
+  let const do_append_scaled = [&](auto     &&do_self,
+                                   StringView text) throws -> void {
+    if (os::is_stack_nearly_exhausted())
+      throw Error{"Function calls are nested too deeply"};
 
-  while (position < translated.count()) {
-    usize name_end = position;
+    usize text_position = 0;
 
-    while (name_end < translated.count() &&
-           lexer::is_variable_name(translated[name_end]))
-    {
-      name_end++;
-    }
+    while (text_position < text.length) {
+      usize name_end = text_position;
 
-    let const function_name =
-        translated.view().substring_of_length(position, name_end - position);
+      while (name_end < text.length && lexer::is_variable_name(text[name_end]))
+      {
+        name_end++;
+      }
 
-    if (name_end < translated.count() && translated[name_end] == '(' &&
-        SCALED_FUNCTIONS.contains(function_name))
-    {
-      let const inner_end =
-          bc_find_matching_closer(translated.view(), name_end + 1, '(', ')');
-
-      if (inner_end.has_value()) {
-        scaled += translated.view().substring_of_length(
-            position, *inner_end - position - 1);
-        scaled += ',';
-        scaled += String::from(scale, allocator);
-        scaled += ')';
-        position = *inner_end;
+      if (name_end == text_position) {
+        scaled.push(text[text_position++]);
         continue;
       }
-    }
 
-    scaled.push(translated[position++]);
-  }
+      let const function_name =
+          text.substring_of_length(text_position, name_end - text_position);
+
+      if (name_end < text.length && text[name_end] == '(' &&
+          SCALED_FUNCTIONS.contains(function_name))
+      {
+        let const inner_end =
+            bc_find_matching_closer(text, name_end + 1, '(', ')');
+
+        if (inner_end.has_value()) {
+          scaled += function_name;
+          scaled += '(';
+          do_self(do_self, text.substring_of_length(name_end + 1,
+                                                    *inner_end - name_end - 2));
+          scaled += ',';
+          scaled += String::from(scale, allocator);
+          scaled += ')';
+          text_position = *inner_end;
+          continue;
+        }
+      }
+
+      scaled += function_name;
+      text_position = name_end;
+    }
+  };
+
+  do_append_scaled(do_append_scaled, translated.view());
 
   return scaled;
 }
@@ -803,10 +830,13 @@ static fn
 bc_print_result(String             result,
                 const ExecContext &ec,
                 EvalContext       &cxt,
-                bc_runtime        &runtime) throws -> void
+                bc_runtime        &runtime,
+                bool               is_print_statement = false) throws -> void
 {
   let const allocator = cxt.scratch_allocator();
   bool      is_zero   = true;
+
+  if (!is_print_statement) cxt.set_shell_variable("__bc_last", result.view());
 
   for (usize position = 0; position < result.count(); position++) {
     if (result[position] != '0' && result[position] != '.' &&
@@ -820,12 +850,10 @@ bc_print_result(String             result,
   if (is_zero) result = String{allocator, "0"};
   result =
       bc_format_in_base(result.view(), runtime.output_base, cxt, allocator);
-  if (runtime.output_base == 10 && result.length() > 1 && result[0] == '0' &&
-      result[1] == '.')
-  {
+  if (result.length() > 1 && result[0] == '0' && result[1] == '.') {
     result = String{allocator, result.view().substring(1)};
-  } else if (runtime.output_base == 10 && result.length() > 2 &&
-             result[0] == '-' && result[1] == '0' && result[2] == '.')
+  } else if (result.length() > 2 && result[0] == '-' && result[1] == '0' &&
+             result[2] == '.')
   {
     let formatted = String{allocator, "-"};
 
@@ -848,7 +876,7 @@ bc_print_result(String             result,
   }
 
   output += result.view().substring(position);
-  output += '\n';
+  if (!is_print_statement) output += '\n';
   ec.print_to_stdout(output);
 }
 
@@ -1439,6 +1467,124 @@ bc_control_parts(StringView  statement,
   return !body.is_empty();
 }
 
+static pure fn
+bc_is_keyword_at(StringView text, usize position, StringView keyword) wontthrow
+    -> bool
+{
+  if (!text.substring(position).starts_with(keyword)) return false;
+  if (position != 0 && lexer::is_variable_name(text[position - 1])) {
+    return false;
+  }
+
+  let const end = position + keyword.length;
+
+  return end == text.length || !lexer::is_variable_name(text[end]);
+}
+
+/* finds the else of the if whose body starts text. a nested if in the body
+   claims the first else that follows it. */
+static pure fn
+bc_find_else(StringView text) wontthrow -> Maybe<usize>
+{
+  usize depth        = 0;
+  usize nested_count = 0;
+  bool  is_in_string = false;
+
+  for (usize position = 0; position < text.length; position++) {
+    let const byte = text[position];
+
+    if (byte == '"') is_in_string = !is_in_string;
+    if (is_in_string) continue;
+
+    if (byte == '(' || byte == '{') {
+      depth++;
+    } else if ((byte == ')' || byte == '}') && depth != 0) {
+      depth--;
+    } else if (depth == 0 && bc_is_keyword_at(text, position, "if")) {
+      nested_count++;
+    } else if (depth == 0 && bc_is_keyword_at(text, position, "else")) {
+      if (nested_count == 0) return position;
+      nested_count--;
+    }
+  }
+
+  return None;
+}
+
+static fn
+bc_print_string(StringView         text,
+                const ExecContext &ec,
+                Allocator          allocator) throws -> void
+{
+  let output = String{allocator};
+
+  for (usize position = 0; position < text.length; position++) {
+    if (text[position] != '\\' || position + 1 == text.length) {
+      output += text[position];
+      continue;
+    }
+
+    switch (text[++position]) {
+    case 'a':  output += '\a'; break;
+    case 'b':  output += '\b'; break;
+    case 'f':  output += '\f'; break;
+    case 'n':  output += '\n'; break;
+    case 'q':  output += '"'; break;
+    case 'r':  output += '\r'; break;
+    case 't':  output += '\t'; break;
+    case '\\': output += '\\'; break;
+    default:   output += '\\'; output += text[position];
+    }
+  }
+
+  ec.print_to_stdout(output);
+}
+
+/* the items of print are separated by commas at the top level. */
+static fn
+bc_execute_print(StringView         items,
+                 const ExecContext &ec,
+                 EvalContext       &cxt,
+                 bc_runtime        &runtime) throws -> void
+{
+  usize depth        = 0;
+  usize item_start   = 0;
+  bool  is_in_string = false;
+
+  for (usize position = 0; position <= items.length; position++) {
+    if (position != items.length) {
+      let const byte = items[position];
+
+      if (byte == '"') is_in_string = !is_in_string;
+      if (!is_in_string && (byte == '(' || byte == '[')) depth++;
+      if (!is_in_string && (byte == ')' || byte == ']') && depth != 0) depth--;
+      if (is_in_string || depth != 0 || byte != ',') continue;
+    }
+
+    let const item =
+        items.substring_of_length(item_start, position - item_start)
+            .trim_blanks();
+
+    item_start = position + 1;
+
+    if (item.length >= 2 && item[0] == '"' && item[item.length - 1] == '"') {
+      bc_print_string(item.substring_of_length(1, item.length - 2), ec,
+                      cxt.scratch_allocator());
+      continue;
+    }
+
+    try {
+      bc_print_result(bc_evaluate_text(item, cxt, runtime, ec), ec, cxt,
+                      runtime, true);
+    } catch (const Error &error) {
+      report_bc_error(ec, cxt, error);
+      runtime.status = 1;
+
+      return;
+    }
+  }
+}
+
 static fn
 bc_execute_statement(StringView         statement,
                      const ExecContext &ec,
@@ -1507,10 +1653,26 @@ bc_execute_statement(StringView         statement,
   StringView header;
   StringView body;
 
-  if (bc_control_parts(statement, "if", header, body)) {
-    if (!bc_condition_is_true(header, ec, cxt, runtime)) return bc_flow::Normal;
+  if (statement.length > 5 && bc_is_keyword_at(statement, 0, "print")) {
+    bc_execute_print(statement.substring(5), ec, cxt, runtime);
 
-    return bc_execute_statement(body, ec, cxt, runtime);
+    return bc_flow::Normal;
+  }
+
+  if (bc_control_parts(statement, "if", header, body)) {
+    let const else_position = bc_find_else(body);
+    let const true_branch   = else_position.has_value()
+                                  ? body.substring_of_length(0, *else_position)
+                                  : body;
+
+    if (bc_condition_is_true(header, ec, cxt, runtime)) {
+      return bc_execute_statement(true_branch, ec, cxt, runtime);
+    }
+
+    if (!else_position.has_value()) return bc_flow::Normal;
+
+    return bc_execute_statement(body.substring(*else_position + 4), ec, cxt,
+                                runtime);
   }
 
   if (bc_control_parts(statement, "while", header, body)) {
@@ -1624,6 +1786,21 @@ bc_run_program(StringView         program,
           (byte != ';' && byte != '\n'))
       {
         continue;
+      }
+
+      /* an else on a later line continues the statement. */
+      if (byte == '\n') {
+        usize next_position = position;
+
+        while (next_position < program.length &&
+               (program[next_position] == ' ' ||
+                program[next_position] == '\t' ||
+                program[next_position] == '\n'))
+        {
+          next_position++;
+        }
+
+        if (bc_is_keyword_at(program, next_position, "else")) continue;
       }
     }
 
