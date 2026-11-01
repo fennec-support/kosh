@@ -29,7 +29,7 @@ FLAG(CP_NO_CLOBBER,
      Bool,
      'n',
      "no-clobber",
-     "Skip a source whose destination already exists.");
+     "Keep every destination file that already exists.");
 FLAG(CP_PRESERVE, Bool, 'p', "", "Preserve file mode and timestamps.");
 FLAG(CP_VERBOSE, Bool, 'v', "", "Print the name of each copy as it happens.");
 FLAG(CP_FOLLOW_ROOT,
@@ -86,6 +86,7 @@ struct cp_options
   bool              is_operand_root{true};
   /* cp -p fails when the mode cannot be preserved, and mv keeps going. */
   bool should_report_mode_failure{true};
+  bool should_keep_existing{false};
 
   fn
   for_child() const -> cp_options
@@ -124,6 +125,10 @@ copy_file(const ExecContext &ec,
           const cp_options  &options,
           Allocator          allocator) throws -> void
 {
+  if (options.should_keep_existing && Path{destination, allocator}.exists()) {
+    return;
+  }
+
   copy_file_or_throw(source, destination,
                      options.should_force ? copy_force_mode::Force
                                           : copy_force_mode::Normal,
@@ -558,13 +563,16 @@ Cp::execute(const ExecContext               &ec,
     symlink_mode = cp_symlink_mode::FollowRoot;
   }
 
-  let const options = cp_options{FLAG_CP_FORCE.is_enabled(),
-                                 FLAG_CP_PRESERVE.is_enabled(),
-                                 FLAG_CP_VERBOSE.is_enabled(),
-                                 recursive_mode,
-                                 symlink_mode,
-                                 FLAG_CP_ONE_FILE_SYSTEM.is_enabled(),
-                                 Maybe<u64>{}};
+  let options = cp_options{FLAG_CP_FORCE.is_enabled(),
+                           FLAG_CP_PRESERVE.is_enabled(),
+                           FLAG_CP_VERBOSE.is_enabled(),
+                           recursive_mode,
+                           symlink_mode,
+                           FLAG_CP_ONE_FILE_SYSTEM.is_enabled(),
+                           Maybe<u64>{}};
+
+  options.should_keep_existing = FLAG_CP_NO_CLOBBER.is_enabled();
+
   let const should_prompt =
       FLAG_CP_INTERACTIVE.is_enabled() &&
       (!options.should_force ||
@@ -615,12 +623,6 @@ Cp::execute(const ExecContext               &ec,
       target = join_with_operand_separator(destination, leaf,
                                            cxt.scratch_allocator())
                    .text();
-    }
-
-    if (FLAG_CP_NO_CLOBBER.is_enabled() &&
-        Path{target.view(), cxt.scratch_allocator()}.exists())
-    {
-      continue;
     }
 
     if (should_prompt &&

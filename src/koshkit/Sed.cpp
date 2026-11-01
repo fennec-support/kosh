@@ -938,6 +938,28 @@ Sed::execute(const ExecContext               &ec,
   for (usize source_index = 0; source_index < sources.count() && !should_quit;
        source_index++)
   {
+    os::file_status in_place_status{};
+
+    /* the replacement belongs to the current user, so a file of another
+       user keeps its contents. a link or a device is not rewritten. */
+    if (is_in_place) {
+      let const effective_user_id = os::get_effective_user_id();
+
+      if (!os::stat_path(sources[source_index], in_place_status) ||
+          os::file_type_letter(in_place_status.mode) != '-' ||
+          (effective_user_id >= 0 &&
+           static_cast<i64>(in_place_status.owner_id) != effective_user_id))
+      {
+        report_soft_koshkit_error(
+            ec, cxt,
+            "The -i option edits only a regular file of the current user, "
+            "which excludes '" +
+                String{cxt.scratch_allocator(), sources[source_index]} + "'");
+        status = 1;
+        continue;
+      }
+    }
+
     let const input = open_named_or_stdin(ec, sources[source_index]);
 
     if (!input.has_value()) {
@@ -982,14 +1004,10 @@ Sed::execute(const ExecContext               &ec,
       do_process_line(held_line.view(), was_held_line_terminated, true);
     }
 
-    os::file_status file_status{};
-
-    if (!did_read_fail &&
-        os::stat_path_following(sources[source_index], file_status))
-    {
+    if (!did_read_fail) {
       os::replace_file_beside(Path{sources[source_index], heap_allocator()},
                               ".kosh-sed-", output.view(),
-                              file_status.mode & 07777);
+                              in_place_status.mode & 0777);
     }
 
     output.clear();

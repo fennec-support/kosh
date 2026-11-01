@@ -1430,6 +1430,8 @@ made/inner
 abcd
 abc
 abcdef
+--- cp -rn merges and keeps existing files ---
+oldnew
 --- cp -t copies every operand into the directory ---
 long1
 long2
@@ -1450,6 +1452,9 @@ two last
 first last
 640
 status 1
+status 1
+first
+755
 --- sed ranges end after +N lines ---
 2
 3

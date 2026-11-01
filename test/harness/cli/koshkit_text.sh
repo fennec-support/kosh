@@ -651,6 +651,14 @@ echo "--- cp -n leaves an existing destination ---"
 "$BIN" -c 'koshkit cp -n long2 long1; koshkit cat long1; echo; koshkit cp -n long2 long3'
 "$BIN" -c 'koshkit cat long3; echo'
 
+echo "--- cp -rn merges and keeps existing files ---"
+mkdir -p merge_from merge_to/merge_from
+printf new > merge_from/kept
+printf new > merge_from/added
+printf old > merge_to/merge_from/kept
+"$BIN" -c 'koshkit cp -rn merge_from merge_to'
+"$BIN" -c 'koshkit cat merge_to/merge_from/kept merge_to/merge_from/added; echo'
+
 echo "--- cp -t copies every operand into the directory ---"
 mkdir -p into
 "$BIN" -c 'koshkit cp -t into long1 long2; koshkit ls into'
@@ -679,6 +687,12 @@ chmod 640 edit1
 "$BIN" -c 'koshkit cat edit1 edit2; koshkit stat -c %a edit1'
 "$BIN" -c 'koshkit sed -i s/a/b/' </dev/null 2>/dev/null
 echo "status $?"
+ln -s edit1 edit_link
+"$BIN" -c 'koshkit sed -i s/first/x/ edit_link' 2>/dev/null
+echo "status $?"
+"$BIN" -c 'koshkit head -n 1 edit1'
+chmod 4755 edit2
+"$BIN" -c 'koshkit sed -i s/first/x/ edit2; koshkit stat -c %a edit2'
 
 echo "--- sed ranges end after +N lines ---"
 printf '1\n2\n3\n4\n5\n' > numbered

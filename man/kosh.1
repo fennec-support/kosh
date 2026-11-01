@@ -2205,12 +2205,11 @@ T{
 T}@T{
 Copies files and trees (\f[CR]\-r\f[R]/\f[CR]\-R\f[R] recurse,
 \f[CR]\-f\f[R], \f[CR]\-i\f[R],
-\f[CR]\-n\f[R]/\f[CR]\-\-no\-clobber\f[R] skip a source whose
-destination exists,
-\f[CR]\-t\f[R]/\f[CR]\-\-target\-directory DIRECTORY\f[R] copy every
-operand into a directory, \f[CR]\-p\f[R], \f[CR]\-v\f[R], \f[CR]\-L\f[R]
-follow every link, \f[CR]\-H\f[R] follow links on the command line only,
-\f[CR]\-P\f[R] follow none,
+\f[CR]\-n\f[R]/\f[CR]\-\-no\-clobber\f[R] keep every destination file
+that exists, \f[CR]\-t\f[R]/\f[CR]\-\-target\-directory DIRECTORY\f[R]
+copy every operand into a directory, \f[CR]\-p\f[R], \f[CR]\-v\f[R],
+\f[CR]\-L\f[R] follow every link, \f[CR]\-H\f[R] follow links on the
+command line only, \f[CR]\-P\f[R] follow none,
 \f[CR]\-x\f[R]/\f[CR]\-\-one\-file\-system\f[R] copy a directory on
 another file system as an empty directory).
 A recursive copy keeps links as links.
@@ -2825,9 +2824,10 @@ Applies an editing script, from the first operand or from each
 \f[CR]\-f\f[R]/\f[CR]\-\-file\f[R], to the lines of each file or
 standard input (\f[CR]\-n\f[R]/\f[CR]\-\-quiet\f[R] suppress automatic
 printing, \f[CR]\-z\f[R]/\f[CR]\-\-null\-data\f[R] use NUL\-terminated
-lines, \f[CR]\-i\f[R]/\f[CR]\-\-in\-place\f[R] replace each file with
-its result and treat each file as its own input, an address range may
-end in \f[CR]+N\f[R] to cover the next \f[CR]N\f[R] lines,
+lines, \f[CR]\-i\f[R]/\f[CR]\-\-in\-place\f[R] replace each regular file
+of the current user with its result, keep its permission bits, and treat
+each file as its own input, an address range may end in \f[CR]+N\f[R] to
+cover the next \f[CR]N\f[R] lines,
 \f[CR]\-E\f[R]/\f[CR]\-\-extended\-regexp\f[R] extended regular
 expressions).
 Commands: \f[CR]s\f[R] with the \f[CR]g\f[R] and \f[CR]p\f[R] flags,
