@@ -1070,7 +1070,6 @@ save_and_replace_descriptor_at(i32            shell_fd,
   /* at this point: target is open, and result records the state of shell_fd
      before the replacement, with is_dup2_ok set. */
   result.is_dup2_ok = install_descriptor(target, shell_fd) != -1;
-  note_descriptor_rebound();
 
   return result;
 }
@@ -1135,8 +1134,6 @@ reopen_terminal_as_stdin() wontthrow -> bool
   LOG(Info, "reopening the controlling terminal onto fd 0");
 
   let const was_replaced = install_descriptor(tty_fd, STDIN_FILENO) != -1;
-
-  note_descriptor_rebound();
 
   /* tty_fd is 0 when stdin was closed, so it must stay open. */
   if (tty_fd != STDIN_FILENO) close(tty_fd);
@@ -1231,8 +1228,6 @@ fn
 replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
 {
   let const was_replaced = install_descriptor(target, shell_fd) != -1;
-
-  note_descriptor_rebound();
 
   return was_replaced;
 }

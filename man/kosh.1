@@ -2832,7 +2832,8 @@ printing, \f[CR]\-z\f[R]/\f[CR]\-\-null\-data\f[R] use NUL\-terminated
 lines, \f[CR]\-i\f[R]/\f[CR]\-\-in\-place\f[R] replace each regular file
 of the current user with its result, keep its group and permission bits,
 leave the file unchanged when access depends on a group that cannot be
-kept, and treat each file as its own input, an address range may end in
+kept, take the group of a new file when access does not depend on that
+group, and treat each file as its own input, an address range may end in
 \f[CR]+N\f[R] to cover the next \f[CR]N\f[R] lines,
 \f[CR]\-E\f[R]/\f[CR]\-\-extended\-regexp\f[R] extended regular
 expressions).
