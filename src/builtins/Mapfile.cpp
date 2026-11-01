@@ -123,7 +123,12 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const should_strip_newline = FLAG_MAPFILE_TRIM.is_enabled();
   let const has_origin           = FLAG_MAPFILE_ORIGIN.is_set();
   let const has_callback         = FLAG_MAPFILE_CALLBACK.is_set();
-  char      delimiter            = '\n';
+  /* a callback can run mapfile again, which parses into the same flags. */
+  let const callback_command =
+      has_callback ? String{heap_allocator(), FLAG_MAPFILE_CALLBACK.value()}
+                   : String{heap_allocator()};
+  let const callback_location = FLAG_MAPFILE_CALLBACK.value_location();
+  char      delimiter         = '\n';
 
   if (FLAG_MAPFILE_DELIMITER.is_set()) {
     let const value = FLAG_MAPFILE_DELIMITER.value();
@@ -240,15 +245,15 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (has_callback &&
         (read_count + 1) % static_cast<usize>(callback_quantum) == 0)
     {
-      let callback = String{heap_allocator(), FLAG_MAPFILE_CALLBACK.value()};
+      let callback = String{heap_allocator(), callback_command.view()};
 
       callback.push(' ');
       append_shell_quoted_arg(callback, subscript, true);
       callback.push(' ');
       append_shell_quoted_arg(callback, element.view(), true);
       unused(cxt.run_source(callback.view(), "mapfile callback",
-                            FLAG_MAPFILE_CALLBACK.value_location(), None,
-                            nullptr, nullptr, return_handling::Propagate));
+                            callback_location, None, nullptr, nullptr,
+                            return_handling::Propagate));
     }
 
     if (has_callback) {

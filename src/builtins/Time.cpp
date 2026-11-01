@@ -55,6 +55,10 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   LOG(Debug, "time running command '%s' under the clock", command.c_str());
 
+  /* a nested builtin of this kind parses into the same flag storage. */
+  let const should_use_posix_layout = FLAG_TIME_POSIX.is_enabled();
+  let const should_include_rss      = FLAG_TIME_RSS.is_enabled();
+
   let const child_times_before = os::read_child_cpu_times();
   let const saved_terminal_exec =
       cxt.execution_store().is_terminal_exec_allowed();
@@ -84,8 +88,7 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const system_cpu_seconds =
       child_times_after.system_seconds - child_times_before.system_seconds;
 
-  let const layout = FLAG_TIME_POSIX.is_enabled()
-                         ? utils::time_report_layout::Posix
+  let const layout = should_use_posix_layout ? utils::time_report_layout::Posix
                      : cxt.runtime_state().is_bash_compatible()
                          ? utils::time_report_layout::Bash
                          : utils::time_report_layout::Rich;
@@ -94,8 +97,8 @@ Time::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const report      = utils::format_time_report(
       time_format, real_seconds, user_cpu_seconds, system_cpu_seconds,
       rss_after_byte_count, layout,
-      FLAG_TIME_RSS.is_enabled() ? utils::time_report_rss::Include
-                                      : utils::time_report_rss::Omit);
+      should_include_rss ? utils::time_report_rss::Include
+                              : utils::time_report_rss::Omit);
 
   if (!report.is_empty()) {
     koshka::print_error(report);

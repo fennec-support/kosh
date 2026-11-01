@@ -86,6 +86,7 @@ resolve_with_missing_components(StringView          operand,
 
   if (!absolute.is_absolute()) {
     absolute = Path{os::read_current_directory().text().view(), allocator};
+    if (absolute.is_empty()) return None;
     absolute.append(operand);
   }
 
@@ -258,6 +259,7 @@ resolve_without_links(StringView          operand,
 
   if (!absolute.is_absolute()) {
     absolute = Path{os::read_current_directory().text().view(), allocator};
+    if (absolute.is_empty()) return None;
     absolute.append(operand);
   }
 

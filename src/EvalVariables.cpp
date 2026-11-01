@@ -965,12 +965,17 @@ EvalContext::bind_nameref(StringView name, StringView target) throws
                 "' is not a valid variable name for a name reference"};
   }
 
-  if (target == name) {
+  let const target_subscript = target.find_character('[');
+  let const target_base      = target_subscript.has_value()
+                                   ? target.substring_of_length(0, *target_subscript)
+                                   : target;
+
+  if (target_base == name) {
     throw Error{"The name reference '" + name + "' would refer to itself"};
   }
 
   /* at this point: guard_nameref_name() accepted name, target is a valid
-     variable name, and target differs from name. */
+     variable name, and the variable of target differs from name. */
   variable_store().attributes().set(name, variable_attribute::Nameref, true);
   assign_variable(name, target);
 }

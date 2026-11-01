@@ -52,6 +52,12 @@ Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let      &stack = cxt.variable_store().directory_stack();
   let const pwd   = logical_working_directory(cxt).text().clone();
 
+  if (pwd.is_empty() && !FLAG_NO_CHANGE.is_enabled()) {
+    throw ErrorWithLocationAndDetails{
+        ec.source_location(), "Unable to read the working directory",
+        "Run `cd` to an existing directory first"};
+  }
+
   if (args.count() <= 1) {
     if (stack.is_empty()) {
       throw ErrorWithLocationAndDetails{

@@ -403,7 +403,11 @@ edit_fc_commands(const ExecContext                          &ec,
     return 1;
   }
 
-  defer { unused(os::remove_file(temp_path->text().view())); };
+  /* an editor can replace the file with a directory of the same path. */
+  defer {
+    if (!os::remove_file(temp_path->text().view()))
+      unused(os::remove_directory(temp_path->text().view()));
+  };
 
   let editor_command = editor_name(cxt, options);
 
@@ -459,12 +463,18 @@ edit_fc_commands(const ExecContext                          &ec,
       cxt.arena_store().parse_arena()->release(ast_mark);
     };
 
-    let parser = Parser{
-        Lexer{edited->view(), *cxt.arena_store().parse_arena(), None,
-              cxt.runtime_state().get_mood()}
-    };
+    try {
+      let parser = Parser{
+          Lexer{edited->view(), *cxt.arena_store().parse_arena(), None,
+                cxt.runtime_state().get_mood()}
+      };
 
-    unused(parser.construct_ast());
+      unused(parser.construct_ast());
+    } catch (const ErrorWithLocation &error) {
+      show_message(error.to_string(edited->view(), &cxt));
+
+      return 1;
+    }
   }
 
   ec.print_to_stderr(edited->view());

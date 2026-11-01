@@ -64,7 +64,8 @@ Alias::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     } else if (const Maybe<String> value = cxt.scope_store().get_alias(arg)) {
       String message{cxt.scratch_allocator(), "alias "};
 
-      message += arg;
+      if (arg.view().starts_with(StringView{"-"})) message += "-- ";
+      append_shell_quoted_arg(message, arg.view());
       message += '=';
       append_shell_quoted_arg(message, value->view(), true);
       message += '\n';

@@ -361,6 +361,34 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
+  /* a logical path past the system limit cannot be opened, and a relative
+     operand still can. */
+  if (!is_physical && !is_to_previous && operand_count > 0) {
+    let relative_target = Path{arg_path};
+
+    if (relative_target.is_relative() && relative_target.is_directory() &&
+        !Path::set_current_directory(relative_target).is_error())
+    {
+      LOG(Debug, "cd entered '%s' through its relative operand",
+          arg_path.c_str());
+      cxt.program_resolver().working_directory_changed();
+
+      let physical_directory = Path::current_directory();
+
+      if (physical_directory.is_empty()) {
+        physical_directory = Path{old_directory.view()};
+        physical_directory.append(arg_path.view());
+        physical_directory = physical_directory.normalized();
+      }
+
+      if (!old_directory.is_empty())
+        cxt.set_shell_variable("OLDPWD", old_directory.text());
+      cxt.set_shell_variable("PWD", physical_directory.text());
+
+      return 0;
+    }
+  }
+
   let operand_location = ec.arg_location_at(operand_index);
   let raw_operand      = arg_path.view();
 

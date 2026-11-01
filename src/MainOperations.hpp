@@ -2521,6 +2521,27 @@ source_system_rc(EvalContext &context) throws -> void
                      nullptr, nullptr, return_handling::Consume);
 }
 
+/* sources the user rc.kosh. a FIFO or a character device at that fixed path
+   would block or never end, so it is refused as read_koshconf_file refuses it.
+ */
+static fn
+source_user_rc(const Path &path, EvalContext &context) throws -> void
+{
+  let status = os::file_status{};
+
+  if (os::stat_path_following(path.view(), status) &&
+      os::file_type_letter(status.mode) != '-')
+  {
+    show_message(Warning{"Unable to read '" + path.text() +
+                         "': it is not a regular file"}
+                     .to_string());
+
+    return;
+  }
+
+  source_file(path, context);
+}
+
 static fn
 source_bash_system_rc(EvalContext &context) throws -> void
 {
@@ -2617,7 +2638,7 @@ source_init_moods(EvalContext                 &context,
         } else if (let const script = get_user_script_path("rc.kosh");
                    script.has_value())
         {
-          source_file(*script, context);
+          source_user_rc(*script, context);
         }
       }
 

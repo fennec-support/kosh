@@ -66,44 +66,17 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         continue;
       }
 
-      let const src        = source->view();
-      usize     body_start = 0;
-
-      if (let const close_paren = src.find_character(')');
-          close_paren.has_value())
-        body_start = close_paren.value() + 1;
-
-      while (body_start < src.length &&
-             (src[body_start] == ' ' || src[body_start] == '\t' ||
-              src[body_start] == '\n' || src[body_start] == '\r'))
-      {
-        body_start++;
-      }
-
-      let const body = src.substring(body_start);
-
-      let env_key = String{cxt.scratch_allocator(), "BASH_FUNC_"};
-
-      env_key += name.view();
-      env_key += "%%";
       if (FLAG_EXPORT_UNMARK.is_enabled()) {
+        let env_key = String{cxt.scratch_allocator(), "BASH_FUNC_"};
+
+        env_key += name.view();
+        env_key += "%%";
         cxt.record_environment_change(env_key.view());
         os::unset_environment_variable(env_key);
         continue;
       }
 
-      let value = String{cxt.scratch_allocator(), "() "};
-
-      if (!body.is_empty() && body[0] == '{') {
-        value += body;
-      } else {
-        value += "{ ";
-        value += body;
-        value += " }";
-      }
-
-      cxt.record_environment_change(env_key.view());
-      os::set_environment_variable(env_key, value);
+      cxt.export_function(name.view());
     }
 
     return has_error ? 1 : 0;

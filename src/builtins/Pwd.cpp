@@ -57,6 +57,15 @@ Pwd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let const directory = should_use_physical ? Path::current_directory()
                                             : logical_working_directory(cxt);
 
+  if (directory.is_empty()) {
+    report_soft_builtin_error(ec, cxt, ec.source_location(),
+                              StringView{"Unable to read the working "
+                                         "directory: "} +
+                                  os::last_system_error_message());
+
+    return 1;
+  }
+
   if (should_use_windows_form && os::IS_BACKSLASH_A_SEPARATOR) {
     let const text = directory.text().view();
 

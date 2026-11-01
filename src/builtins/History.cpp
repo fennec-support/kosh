@@ -478,7 +478,21 @@ History::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       cxt.guard_restricted_path(args[1].view(), ec.arg_location_at(1),
                                 restricted_path_use::History);
 
-      let const source      = Path{args[1].view()};
+      let const source = Path{args[1].view()};
+      let       status = os::file_status{};
+
+      if (os::stat_path_following(source.view(), status) &&
+          os::file_type_letter(status.mode) != '-')
+      {
+        report_soft_builtin_error(ec, cxt, ec.arg_location_at(1),
+                                  StringView{"Cannot read history from '"} +
+                                      args[1].view() +
+                                      "': it is not a regular file",
+                                  "Pass a text history file");
+
+        return 1;
+      }
+
       let const source_text = source.read_entire_file();
 
       if (!source_text.has_value()) {

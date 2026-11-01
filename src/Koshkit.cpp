@@ -1448,6 +1448,10 @@ run_as_multicall(StringView           util_name,
                  ArrayList<String>    operands,
                  EvalContext         &cxt) throws -> i32
 {
+  /* a utility starts before the startup configuration, so its context holds
+     defaults that must not replace an inherited KOSHCONF. */
+  cxt.execution_store().set_child_environment_fixed(true);
+
   for (let const &operand : operands) {
     if (operand == "--") break;
     if (operand == "--version") {

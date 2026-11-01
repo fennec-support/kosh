@@ -4945,10 +4945,10 @@ Make::execute(const ExecContext               &ec,
                                    FLAG_MAKE_TOUCH.is_enabled()};
   let const          is_stop_enabled = FLAG_MAKE_STOP.is_enabled();
 
-  Maybe<Path> saved_directory;
+  let saved_directory = os::DirectoryReference{};
 
   if (FLAG_MAKE_DIR.is_set()) {
-    saved_directory = Path::current_directory();
+    saved_directory = os::reference_current_directory();
     if (Path::set_current_directory(
             Path{FLAG_MAKE_DIR.value(), cxt.scratch_allocator()})
             .is_error())
@@ -4964,8 +4964,13 @@ Make::execute(const ExecContext               &ec,
   }
 
   defer {
-    if (saved_directory.has_value())
-      static_cast<void>(Path::set_current_directory(*saved_directory));
+    if (FLAG_MAKE_DIR.is_set() &&
+        !os::restore_current_directory(saved_directory))
+    {
+      show_message(Warning{"Unable to return to the original directory after "
+                           "`make -C`"}
+                       .to_string());
+    }
   };
 
   if (requested_makefiles.is_empty()) {
