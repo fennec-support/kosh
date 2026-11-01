@@ -1156,6 +1156,17 @@ Parser::parse_conditional_command() throws -> Command *
   let   elements = ArrayList<conditional_element>{heap_allocator()};
   usize close_end_position;
 
+  let const do_throw_conditional_syntax_error =
+      [](SourceLocation location) throws -> void {
+    ErrorWithLocationAndDetails error{
+        location, "This [[ ]] is not a valid conditional expression",
+        "Write `[[ a = b ]]`, join tests with `&&` or `||`, and quote a "
+        "literal operator"};
+
+    error.set_command_status(2);
+    throw error;
+  };
+
   loop {
     Token *t = m_lexer.next_shell_token();
     ASSERT(t != nullptr);
@@ -1314,8 +1325,50 @@ Parser::parse_conditional_command() throws -> Command *
 
       break;
     }
+
+    case Token::Kind::Semicolon:
+    case Token::Kind::Ampersand:
+    case Token::Kind::Pipe:
+    case Token::Kind::PipeAmpersand:
+    case Token::Kind::DoubleSemicolon:
+    case Token::Kind::SemicolonAmpersand:
+    case Token::Kind::DoubleSemicolonAmpersand:
+      do_throw_conditional_syntax_error(t->source_location());
+
     default: elements.push({t, {}, Kind::Operand, false}); break;
     }
+  }
+
+  using Kind = conditional_element::Kind;
+
+  bool is_operand_expected = true;
+
+  for (let const &element : elements) {
+    switch (element.kind) {
+    case Kind::And:
+    case Kind::Or:
+      if (is_operand_expected) {
+        do_throw_conditional_syntax_error(open->source_location());
+      }
+
+      is_operand_expected = true;
+      break;
+
+    case Kind::CloseParen:
+      if (is_operand_expected) {
+        do_throw_conditional_syntax_error(open->source_location());
+      }
+
+      break;
+
+    case Kind::Not:
+    case Kind::OpenParen: is_operand_expected = true; break;
+    default:              is_operand_expected = false; break;
+    }
+  }
+
+  if (is_operand_expected) {
+    do_throw_conditional_syntax_error(open->source_location());
   }
 
   let const node = m_lexer.arena().create<expressions::ConditionalCommand>(
