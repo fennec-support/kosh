@@ -598,3 +598,23 @@ printf 'b\nd\na\n' > merge2
 
 echo "--- tr maps past a long set1 repeat ---"
 echo ab | "$BIN" -c "koshkit tr '[a*70000]b' '[x*69999]yz'"
+
+echo "--- grep -H prefixes a single file ---"
+"$BIN" -c 'koshkit grep -H b merge1'
+
+echo "--- grep -m stops each input at the count ---"
+printf 'x\nx\nx\n' > repeated
+"$BIN" -c 'koshkit grep -m 2 x repeated'
+"$BIN" -c 'koshkit grep -c -m 2 x repeated merge1'
+"$BIN" -c 'koshkit grep -m 0 x repeated'
+echo "status $?"
+
+echo "--- grep -m rejects a word ---"
+"$BIN" -c 'koshkit grep -m many x repeated' 2>/dev/null
+echo "status $?"
+
+echo "--- grep -L lists inputs with no selected line ---"
+"$BIN" -c 'koshkit grep -L x repeated merge1'
+echo "status $?"
+"$BIN" -c 'koshkit grep -L x repeated'
+echo "status $?"

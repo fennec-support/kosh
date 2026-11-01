@@ -76,6 +76,21 @@ FLAG(GREP_LINE_NUMBER,
      "Prefix matching lines with numbers.");
 FLAG(
     GREP_NO_FILENAME, Bool, 'h', "no-filename", "Suppress file-name prefixes.");
+FLAG(GREP_WITH_FILENAME,
+     Bool,
+     'H',
+     "with-filename",
+     "Prefix every matching line with its filename.");
+FLAG(GREP_LIST_MISSING,
+     Bool,
+     'L',
+     "files-without-match",
+     "Print the filename of each input with no selected line.");
+FLAG(GREP_MAX_COUNT,
+     String,
+     'm',
+     "max-count",
+     "Stop selecting lines of an input after this count.");
 FLAG_OPTIONAL(GREP_COLOR,
               '\0',
               "color",
@@ -653,6 +668,10 @@ struct grep_options
   bool                should_invert{false};
   bool                should_print_line_numbers{false};
   bool                should_suppress_names{false};
+  bool                should_force_names{false};
+  bool                should_list_missing{false};
+  bool                has_max_count{false};
+  u64                 max_count{0};
   bool                should_suppress_messages{false};
   bool                is_utf8{false};
   bool                is_extended{false};
@@ -1420,6 +1439,7 @@ public:
         m_pattern_text(steal(pattern_text)), m_matchers(m_allocator),
         m_recursive_storage(m_allocator), m_sources(m_allocator),
         m_source_line_numbers(m_allocator), m_source_match_counts(m_allocator),
+        m_source_selected_counts(m_allocator),
         m_source_binary_states(m_allocator),
         m_source_operand_indices(m_allocator), m_output(m_allocator),
         m_line(m_allocator)
@@ -1523,7 +1543,15 @@ public:
     }
 
     m_should_print_names = !m_options.should_suppress_names &&
-                           (m_sources.count() > 1 || has_directory_operand);
+                           (m_options.should_force_names ||
+                            m_sources.count() > 1 || has_directory_operand);
+    if (m_options.has_max_count) {
+      m_source_selected_counts.reserve(m_sources.count());
+
+      for (usize index = 0; index < m_sources.count(); index++)
+        m_source_selected_counts.push(0);
+    }
+
     if (m_options.should_print_line_numbers) {
       m_source_line_numbers.reserve(m_sources.count());
 
@@ -1592,6 +1620,8 @@ public:
        left to read. */
     m_ec.print_to_stdout(m_output);
     if (m_status == 2) return 2;
+
+    if (m_options.should_list_missing) return m_has_listed_missing ? 0 : 1;
 
     return m_has_any_match ? 0 : 1;
   }
@@ -1772,6 +1802,16 @@ private:
                bool       is_match) throws -> void
   {
     if (is_match != m_options.should_invert) {
+      if (m_options.has_max_count) {
+        if (m_source_selected_counts[source_index] >= m_options.max_count) {
+          m_line.clear();
+
+          return;
+        }
+
+        m_source_selected_counts[source_index]++;
+      }
+
       m_has_any_match = true;
       switch (m_options.output_mode) {
       case grep_output_mode::Lines:
@@ -1811,7 +1851,9 @@ private:
         break;
 
       case grep_output_mode::List:
-        if (m_source_match_counts[source_index]++ == 0) {
+        if (m_source_match_counts[source_index]++ == 0 &&
+            !m_options.should_list_missing)
+        {
           append_source_name(source);
           m_output += '\n';
           flush_output_if_full();
@@ -2064,6 +2106,14 @@ private:
     if (!m_line.is_empty()) finish_pending_line(chunk.source_index, source);
     if (m_options.output_mode == grep_output_mode::Count)
       print_source_count(chunk.source_index, source);
+    if (m_options.should_list_missing &&
+        m_source_match_counts[chunk.source_index] == 0)
+    {
+      m_has_listed_missing = true;
+      append_source_name(source);
+      m_output += '\n';
+      flush_output_if_full();
+    }
   }
 
   const ExecContext               &m_ec;
@@ -2078,6 +2128,7 @@ private:
   ArrayList<StringView>            m_sources;
   ArrayList<usize>                 m_source_line_numbers;
   ArrayList<usize>                 m_source_match_counts;
+  ArrayList<u64>                   m_source_selected_counts;
   /* Text until a chunk of the source holds a NUL byte, then Binary until its
      first match reports the binary match warning. */
   enum class BinaryState : u8
@@ -2098,6 +2149,7 @@ private:
   bool             m_has_utf8_regex{false};
   bool             m_should_print_names{false};
   bool             m_has_any_match{false};
+  bool             m_has_listed_missing{false};
 };
 
 fn
@@ -2127,11 +2179,31 @@ Grep::execute(const ExecContext               &ec,
   options.recursion_mode = FLAG_GREP_RECURSIVE.is_enabled()
                                ? grep_recursion_mode::Recursive
                                : grep_recursion_mode::Files;
-  options.output_mode = FLAG_GREP_QUIET.is_enabled()  ? grep_output_mode::Quiet
-                        : FLAG_GREP_LIST.is_enabled() ? grep_output_mode::List
-                        : FLAG_GREP_COUNT.is_enabled()
-                            ? grep_output_mode::Count
-                            : grep_output_mode::Lines;
+  options.should_list_missing =
+      FLAG_GREP_LIST_MISSING.is_enabled() && !FLAG_GREP_QUIET.is_enabled();
+  options.output_mode =
+      FLAG_GREP_QUIET.is_enabled() ? grep_output_mode::Quiet
+      : FLAG_GREP_LIST.is_enabled() || options.should_list_missing
+          ? grep_output_mode::List
+      : FLAG_GREP_COUNT.is_enabled() ? grep_output_mode::Count
+                                     : grep_output_mode::Lines;
+  options.should_force_names = FLAG_GREP_WITH_FILENAME.is_enabled();
+
+  if (FLAG_GREP_MAX_COUNT.is_set()) {
+    let const max_count_text = FLAG_GREP_MAX_COUNT.value();
+    let const parsed         = max_count_text.to<i64>();
+
+    if (!max_count_text.is_all_decimal_digits() || parsed.is_error()) {
+      report_soft_koshkit_error(ec, cxt,
+                                "The -m option takes a count of lines");
+
+      return 2;
+    }
+
+    options.has_max_count = true;
+    options.max_count     = static_cast<u64>(parsed.value());
+  }
+
   options.should_ignore_case = FLAG_GREP_IGNORE_CASE.is_enabled();
   options.should_invert      = FLAG_GREP_INVERT.is_enabled();
   options.should_print_line_numbers =
