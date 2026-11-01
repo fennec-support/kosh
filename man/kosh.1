@@ -2390,18 +2390,26 @@ Patterns come from the first operand, \f[CR]\-e\f[R] (add a pattern), or
 \f[CR]\-f\f[R] (lines of a file); with \f[CR]\-e\f[R] or \f[CR]\-f\f[R]
 every operand is a file, and a newline separates patterns.
 Options: \f[CR]\-i\f[R] ignore case, \f[CR]\-v\f[R] invert,
-\f[CR]\-x\f[R] match whole lines, \f[CR]\-n\f[R] number lines,
+\f[CR]\-x\f[R] match whole lines,
+\f[CR]\-w\f[R]/\f[CR]\-\-word\-regexp\f[R] match bounded by non\-word
+characters, \f[CR]\-o\f[R]/\f[CR]\-\-only\-matching\f[R] print each
+match on its own line, \f[CR]\-A\f[R]/\f[CR]\-\-after\-context\f[R],
+\f[CR]\-B\f[R]/\f[CR]\-\-before\-context\f[R], and
+\f[CR]\-C\f[R]/\f[CR]\-\-context COUNT\f[R] print surrounding lines with
+\f[CR]\-\-\f[R] between groups, \f[CR]\-n\f[R] number lines,
 \f[CR]\-h\f[R] omit file prefixes,
 \f[CR]\-H\f[R]/\f[CR]\-\-with\-filename\f[R] print file prefixes,
 \f[CR]\-m\f[R]/\f[CR]\-\-max\-count COUNT\f[R] select at most that many
 lines of each input, \f[CR]\-r\f[R] recurse
-(\f[CR]\-\-one\-file\-system\f[R] stays on one file system),
-\f[CR]\-c\f[R] count, \f[CR]\-l\f[R] list matching files (overrides
-\f[CR]\-c\f[R]), \f[CR]\-L\f[R]/\f[CR]\-\-files\-without\-match\f[R]
-list files with no selected line and return \f[CR]0\f[R] when it lists
-one, \f[CR]\-q\f[R] exit \f[CR]0\f[R] at the first match, \f[CR]\-s\f[R]
-hide unreadable\-file messages, \f[CR]\-a\f[R]/\f[CR]\-\-text\f[R] treat
-a file with a NUL byte as text, \f[CR]\-\-color[=WHEN]\f[R]
+(\f[CR]\-\-one\-file\-system\f[R] stays on one file system, and the
+repeatable \f[CR]\-\-include=GLOB\f[R] and \f[CR]\-\-exclude=GLOB\f[R]
+filter file names), \f[CR]\-c\f[R] count, \f[CR]\-l\f[R] list matching
+files (overrides \f[CR]\-c\f[R]),
+\f[CR]\-L\f[R]/\f[CR]\-\-files\-without\-match\f[R] list files with no
+selected line and return \f[CR]0\f[R] when it lists one, \f[CR]\-q\f[R]
+exit \f[CR]0\f[R] at the first match, \f[CR]\-s\f[R] hide
+unreadable\-file messages, \f[CR]\-a\f[R]/\f[CR]\-\-text\f[R] treat a
+file with a NUL byte as text, \f[CR]\-\-color[=WHEN]\f[R]
 (\f[CR]auto\f[R] default, \f[CR]always\f[R], \f[CR]never\f[R]).
 Returns \f[CR]0\f[R] when a line is selected, \f[CR]1\f[R] when none is,
 and \f[CR]2\f[R] on error.

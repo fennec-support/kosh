@@ -76,6 +76,41 @@ FLAG(GREP_LINE_NUMBER,
      "Prefix matching lines with numbers.");
 FLAG(
     GREP_NO_FILENAME, Bool, 'h', "no-filename", "Suppress file-name prefixes.");
+FLAG(GREP_INCLUDE,
+     ManyStrings,
+     '\0',
+     "include",
+     "Search only files whose name matches this glob under -r.");
+FLAG(GREP_EXCLUDE,
+     ManyStrings,
+     '\0',
+     "exclude",
+     "Skip files whose name matches this glob under -r.");
+FLAG(GREP_ONLY_MATCHING,
+     Bool,
+     'o',
+     "only-matching",
+     "Print each matched part of a line on its own line.");
+FLAG(GREP_WORD,
+     Bool,
+     'w',
+     "word-regexp",
+     "Select only matches bounded by non-word characters.");
+FLAG(GREP_AFTER_CONTEXT,
+     String,
+     'A',
+     "after-context",
+     "Print this count of lines after each selected line.");
+FLAG(GREP_BEFORE_CONTEXT,
+     String,
+     'B',
+     "before-context",
+     "Print this count of lines before each selected line.");
+FLAG(GREP_CONTEXT,
+     String,
+     'C',
+     "context",
+     "Print this count of lines around each selected line.");
 FLAG(GREP_WITH_FILENAME,
      Bool,
      'H',
@@ -160,6 +195,33 @@ is_literal_search_pattern(StringView pattern) wontthrow -> bool
   }
 
   return true;
+}
+
+/* memory: one decoded pattern per glob, allocated in allocator.
+   time:   one glob match per --include and --exclude pattern. */
+static fn
+is_grep_file_selected(StringView name, Allocator allocator) throws
+    -> bool
+{
+  for (usize index = 0; index < FLAG_GREP_EXCLUDE.count(); index++) {
+    let decoded =
+        utils::decode_shell_word(FLAG_GREP_EXCLUDE.get(index), allocator);
+
+    if (utils::glob_matches(decoded.text.view(), name, decoded.glob_active, 0))
+      return false;
+  }
+
+  if (FLAG_GREP_INCLUDE.count() == 0) return true;
+
+  for (usize index = 0; index < FLAG_GREP_INCLUDE.count(); index++) {
+    let decoded =
+        utils::decode_shell_word(FLAG_GREP_INCLUDE.get(index), allocator);
+
+    if (utils::glob_matches(decoded.text.view(), name, decoded.glob_active, 0))
+      return true;
+  }
+
+  return false;
 }
 
 static pure fn
@@ -361,7 +423,11 @@ collect_recursive_sources(const ExecContext &ec,
   }
 
   if (path_kind != Path::EntryKind::Directory) {
-    if (path_kind == Path::EntryKind::Regular) storage.push(path.clone());
+    if (path_kind == Path::EntryKind::Regular &&
+        is_grep_file_selected(path.filename(), allocator))
+    {
+      storage.push(path.clone());
+    }
 
     return;
   }
@@ -493,7 +559,8 @@ collect_recursive_sources(const ExecContext &ec,
       collect_recursive_sources(ec, cxt, child_paths[index], kind, allocator,
                                 storage, status, should_report_errors,
                                 operand_device_id);
-    else if (kind == Path::EntryKind::Regular)
+    else if (kind == Path::EntryKind::Regular &&
+             is_grep_file_selected(child_paths[index].filename(), allocator))
       storage.push(steal(child_paths[index]));
   }
 }
@@ -659,6 +726,12 @@ append_extended_pattern(String &output, StringView pattern) throws
   }
 }
 
+struct grep_context_line
+{
+  String text;
+  usize  number{0};
+};
+
 struct grep_options
 {
   StringView          pattern;
@@ -672,6 +745,11 @@ struct grep_options
   bool                should_list_missing{false};
   bool                has_max_count{false};
   u64                 max_count{0};
+  bool                should_match_word{false};
+  bool                should_print_only_matching{false};
+  bool                has_context{false};
+  usize               after_context_count{0};
+  usize               before_context_count{0};
   bool                should_suppress_messages{false};
   bool                is_utf8{false};
   bool                is_extended{false};
@@ -1442,7 +1520,7 @@ public:
         m_source_selected_counts(m_allocator),
         m_source_binary_states(m_allocator),
         m_source_operand_indices(m_allocator), m_output(m_allocator),
-        m_line(m_allocator)
+        m_line(m_allocator), m_before_lines(m_allocator)
   {
     m_matchers.reserve(pattern_spans.count());
 
@@ -1458,7 +1536,8 @@ public:
 
     if (m_matchers.count() == 1) {
       m_candidate_literal         = m_matchers[0].get_candidate_literal();
-      m_is_literal_hit_sufficient = m_matchers[0].is_literal_hit_sufficient();
+      m_is_literal_hit_sufficient = m_matchers[0].is_literal_hit_sufficient() &&
+                                    !m_options.should_match_word;
     }
   }
 
@@ -1545,6 +1624,10 @@ public:
     m_should_print_names = !m_options.should_suppress_names &&
                            (m_options.should_force_names ||
                             m_sources.count() > 1 || has_directory_operand);
+    for (usize index = 0; index < m_options.before_context_count; index++) {
+      m_before_lines.push(grep_context_line{String{m_allocator}, 0});
+    }
+
     if (m_options.has_max_count) {
       m_source_selected_counts.reserve(m_sources.count());
 
@@ -1630,10 +1713,217 @@ private:
   fn
   match_line(StringView value) throws -> bool
   {
+    if (m_options.should_match_word) {
+      usize start = 0;
+      usize end   = 0;
+
+      return find_best_span(value, 0, start, end);
+    }
+
     for (let &matcher : m_matchers)
       if (matcher.match_line(value)) return true;
 
     return false;
+  }
+
+  static fn
+  is_word_byte(char byte) wontthrow -> bool
+  {
+    let const value = static_cast<u8>(byte);
+
+    return value >= 0x80 || value == '_' || (value >= '0' && value <= '9') ||
+           (value >= 'a' && value <= 'z') || (value >= 'A' && value <= 'Z');
+  }
+
+  /* the leftmost longest span of every pattern at or after position. -w skips
+     a span that touches a word byte on either side. */
+  fn
+  find_best_span(StringView value,
+                 usize      position,
+                 usize     &best_start,
+                 usize     &best_end) throws -> bool
+  {
+    while (position <= value.length) {
+      let did_find = false;
+
+      for (let &matcher : m_matchers) {
+        usize start = 0;
+        usize end   = 0;
+
+        if (!matcher.find_span(value, position, start, end)) continue;
+
+        if (!did_find || start < best_start ||
+            (start == best_start && end > best_end))
+        {
+          best_start = start;
+          best_end   = end;
+          did_find   = true;
+        }
+      }
+
+      if (!did_find) return false;
+
+      if (!m_options.should_match_word) return true;
+
+      let const is_start_bounded =
+          best_start == 0 || !is_word_byte(value[best_start - 1]);
+      let const is_end_bounded =
+          best_end == value.length || !is_word_byte(value[best_end]);
+
+      if (is_start_bounded && is_end_bounded && best_end != best_start) {
+        return true;
+      }
+
+      position = best_start + 1;
+    }
+
+    return false;
+  }
+
+  pure fn
+  is_context_active() const wontthrow -> bool
+  {
+    return m_options.output_mode == grep_output_mode::Lines &&
+           !m_options.should_print_only_matching && m_options.has_context;
+  }
+
+  fn
+  append_line_prefix(StringView source,
+                     usize      number,
+                     char       separator) throws -> void
+  {
+    if (m_should_print_names) {
+      append_source_name(source);
+      append_separator(separator);
+    }
+
+    if (m_options.should_print_line_numbers) {
+      append_line_number(number);
+      append_separator(separator);
+    }
+  }
+
+  fn
+  append_only_matching(usize      source_index,
+                       StringView source,
+                       StringView value) throws -> void
+  {
+    let const number = m_options.should_print_line_numbers
+                           ? m_source_line_numbers[source_index]
+                           : 0;
+
+    if (m_options.should_invert) return;
+
+    usize position = 0;
+
+    while (position <= value.length) {
+      usize start = 0;
+      usize end   = value.length;
+
+      if (!m_options.is_whole_line &&
+          !find_best_span(value, position, start, end))
+      {
+        break;
+      }
+
+      if (end == start) {
+        position = start + 1;
+        continue;
+      }
+
+      let const span = value.substring_of_length(start, end - start);
+
+      append_line_prefix(source, number, ':');
+
+      if (m_options.should_color)
+        append_sgr_text(m_palette.selected_match, span);
+      else
+        m_output += span;
+
+      m_output += '\n';
+      position = end;
+
+      if (m_options.is_whole_line) break;
+    }
+
+    flush_output_if_full();
+  }
+
+  fn
+  begin_context_source(usize source_index) wontthrow -> void
+  {
+    if (m_context_source_index == source_index) return;
+
+    m_context_source_index  = source_index;
+    m_before_line_count     = 0;
+    m_after_remaining_count = 0;
+    m_has_context_gap       = true;
+  }
+
+  fn
+  flush_context_before(StringView source) throws -> void
+  {
+    if (m_has_printed_context_group && m_has_context_gap) m_output += "--\n";
+
+    let const capacity = m_before_lines.count();
+
+    for (usize index = 0; index < m_before_line_count; index++) {
+      let const slot =
+          (m_before_next_slot + capacity - m_before_line_count + index) %
+          capacity;
+      let const &line = m_before_lines[slot];
+
+      append_line_prefix(source, line.number, '-');
+      m_output += line.text.view();
+      m_output += '\n';
+    }
+
+    m_before_line_count         = 0;
+    m_has_context_gap           = false;
+    m_has_printed_context_group = true;
+  }
+
+  fn
+  process_unselected_context_line(usize      source_index,
+                                  StringView source,
+                                  StringView value) throws -> void
+  {
+    if (m_source_binary_states[source_index] != BinaryState::Text) return;
+
+    let const number = m_options.should_print_line_numbers
+                           ? m_source_line_numbers[source_index]
+                           : 0;
+
+    if (m_after_remaining_count != 0) {
+      m_after_remaining_count--;
+      append_line_prefix(source, number, '-');
+      m_output += value;
+      m_output += '\n';
+      flush_output_if_full();
+
+      return;
+    }
+
+    let const capacity = m_before_lines.count();
+
+    if (capacity == 0) {
+      m_has_context_gap = true;
+
+      return;
+    }
+
+    if (m_before_line_count == capacity) {
+      m_has_context_gap = true;
+    } else {
+      m_before_line_count++;
+    }
+
+    let &line = m_before_lines[m_before_next_slot];
+
+    line.text.clear();
+    line.text += value;
+    line.number        = number;
+    m_before_next_slot = (m_before_next_slot + 1) % capacity;
   }
 
   fn
@@ -1707,15 +1997,15 @@ private:
   }
 
   fn
-  append_separator() throws -> void
+  append_separator(char separator = ':') throws -> void
   {
     if (m_options.should_color) {
-      append_sgr_text(m_palette.separator, ":");
+      append_sgr_text(m_palette.separator, StringView{&separator, 1});
 
       return;
     }
 
-    m_output += ':';
+    m_output += separator;
   }
 
   fn
@@ -1749,24 +2039,8 @@ private:
     while (position <= value.length) {
       usize best_start = 0;
       usize best_end   = 0;
-      let   did_find   = false;
 
-      for (let &matcher : m_matchers) {
-        usize start = 0;
-        usize end   = 0;
-
-        if (!matcher.find_span(value, position, start, end)) continue;
-
-        if (!did_find || start < best_start ||
-            (start == best_start && end > best_end))
-        {
-          best_start = start;
-          best_end   = end;
-          did_find   = true;
-        }
-      }
-
-      if (!did_find) break;
+      if (!find_best_span(value, position, best_start, best_end)) break;
 
       if (best_end == best_start) {
         position = best_start + 1;
@@ -1801,9 +2075,15 @@ private:
                StringView value,
                bool       is_match) throws -> void
   {
+    if (is_context_active()) begin_context_source(source_index);
+
     if (is_match != m_options.should_invert) {
       if (m_options.has_max_count) {
         if (m_source_selected_counts[source_index] >= m_options.max_count) {
+          if (m_after_remaining_count != 0) {
+            process_unselected_context_line(source_index, source, value);
+          }
+
           m_line.clear();
 
           return;
@@ -1826,15 +2106,21 @@ private:
           break;
         }
 
-        if (m_should_print_names) {
-          append_source_name(source);
-          append_separator();
+        if (m_options.should_print_only_matching) {
+          append_only_matching(source_index, source, value);
+          break;
         }
 
-        if (m_options.should_print_line_numbers) {
-          append_line_number(m_source_line_numbers[source_index]);
-          append_separator();
+        if (is_context_active()) {
+          flush_context_before(source);
+          m_after_remaining_count = m_options.after_context_count;
         }
+
+        append_line_prefix(source,
+                           m_options.should_print_line_numbers
+                               ? m_source_line_numbers[source_index]
+                               : 0,
+                           ':');
 
         if (!m_options.should_color)
           m_output += value;
@@ -1863,6 +2149,12 @@ private:
 
       case grep_output_mode::Quiet: break;
       }
+    } else if (is_context_active() &&
+               (!m_options.has_max_count ||
+                m_source_selected_counts[source_index] < m_options.max_count ||
+                m_after_remaining_count != 0))
+    {
+      process_unselected_context_line(source_index, source, value);
     }
 
     m_line.clear();
@@ -1900,11 +2192,14 @@ private:
                             StringView source,
                             StringView lines) throws -> void
   {
-    if (!m_options.should_invert && !m_options.should_print_line_numbers) {
+    let const should_visit_lines =
+        m_options.should_invert || is_context_active();
+
+    if (!should_visit_lines && !m_options.should_print_line_numbers) {
       return;
     }
 
-    if (!m_options.should_invert) {
+    if (!should_visit_lines) {
       usize newline_count = 0;
 
       for (usize index = 0; index < lines.length; index++)
@@ -2139,17 +2434,24 @@ private:
   };
   ArrayList<BinaryState> m_source_binary_states;
   /* the operand index of each source of a recursive search. */
-  ArrayList<usize> m_source_operand_indices;
-  String           m_output;
-  String           m_line;
-  StringView       m_candidate_literal;
-  i32              m_status{0};
-  grep_palette     m_palette{};
-  bool             m_is_literal_hit_sufficient{false};
-  bool             m_has_utf8_regex{false};
-  bool             m_should_print_names{false};
-  bool             m_has_any_match{false};
-  bool             m_has_listed_missing{false};
+  ArrayList<usize>             m_source_operand_indices;
+  String                       m_output;
+  String                       m_line;
+  ArrayList<grep_context_line> m_before_lines;
+  usize                        m_before_line_count{0};
+  usize                        m_before_next_slot{0};
+  usize                        m_after_remaining_count{0};
+  usize                        m_context_source_index{static_cast<usize>(-1)};
+  bool                         m_has_context_gap{false};
+  bool                         m_has_printed_context_group{false};
+  StringView                   m_candidate_literal;
+  i32                          m_status{0};
+  grep_palette                 m_palette{};
+  bool                         m_is_literal_hit_sufficient{false};
+  bool                         m_has_utf8_regex{false};
+  bool                         m_should_print_names{false};
+  bool                         m_has_any_match{false};
+  bool                         m_has_listed_missing{false};
 };
 
 fn
@@ -2189,11 +2491,19 @@ Grep::execute(const ExecContext               &ec,
                                      : grep_output_mode::Lines;
   options.should_force_names = FLAG_GREP_WITH_FILENAME.is_enabled();
 
-  if (FLAG_GREP_MAX_COUNT.is_set()) {
-    let const max_count_text = FLAG_GREP_MAX_COUNT.value();
-    let const parsed         = max_count_text.to<i64>();
+  let const do_parse_count = [](StringView text,
+                                u64       &count) throws -> bool {
+    let const parsed = text.to<i64>();
 
-    if (!max_count_text.is_all_decimal_digits() || parsed.is_error()) {
+    if (!text.is_all_decimal_digits() || parsed.is_error()) return false;
+
+    count = static_cast<u64>(parsed.value());
+
+    return true;
+  };
+
+  if (FLAG_GREP_MAX_COUNT.is_set()) {
+    if (!do_parse_count(FLAG_GREP_MAX_COUNT.value(), options.max_count)) {
       report_soft_koshkit_error(ec, cxt,
                                 "The -m option takes a count of lines");
 
@@ -2201,8 +2511,34 @@ Grep::execute(const ExecContext               &ec,
     }
 
     options.has_max_count = true;
-    options.max_count     = static_cast<u64>(parsed.value());
   }
+
+  u64 context_count = 0;
+  u64 after_count   = 0;
+  u64 before_count  = 0;
+
+  if ((FLAG_GREP_CONTEXT.is_set() &&
+       !do_parse_count(FLAG_GREP_CONTEXT.value(), context_count)) ||
+      (FLAG_GREP_AFTER_CONTEXT.is_set() &&
+       !do_parse_count(FLAG_GREP_AFTER_CONTEXT.value(), after_count)) ||
+      (FLAG_GREP_BEFORE_CONTEXT.is_set() &&
+       !do_parse_count(FLAG_GREP_BEFORE_CONTEXT.value(), before_count)))
+  {
+    report_soft_koshkit_error(
+        ec, cxt, "The -A, -B, and -C options take a count of lines");
+
+    return 2;
+  }
+
+  options.after_context_count = static_cast<usize>(
+      FLAG_GREP_AFTER_CONTEXT.is_set() ? after_count : context_count);
+  options.before_context_count = static_cast<usize>(
+      FLAG_GREP_BEFORE_CONTEXT.is_set() ? before_count : context_count);
+  options.has_context = FLAG_GREP_CONTEXT.is_set() ||
+                        FLAG_GREP_AFTER_CONTEXT.is_set() ||
+                        FLAG_GREP_BEFORE_CONTEXT.is_set();
+  options.should_match_word          = FLAG_GREP_WORD.is_enabled();
+  options.should_print_only_matching = FLAG_GREP_ONLY_MATCHING.is_enabled();
 
   options.should_ignore_case = FLAG_GREP_IGNORE_CASE.is_enabled();
   options.should_invert      = FLAG_GREP_INVERT.is_enabled();

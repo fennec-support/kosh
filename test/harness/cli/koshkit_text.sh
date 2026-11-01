@@ -619,6 +619,24 @@ echo "status $?"
 "$BIN" -c 'koshkit grep -L x repeated'
 echo "status $?"
 
+echo "--- grep -o prints each match and -w needs word bounds ---"
+printf 'foo bar\nfoobar\nmid\nnext\nfoo x foo\n' > words
+"$BIN" -c 'koshkit grep -on foo words'
+"$BIN" -c 'koshkit grep -ow foo words'
+"$BIN" -c 'koshkit grep -wc foo words'
+
+echo "--- grep context separates groups ---"
+"$BIN" -c 'koshkit grep -n -B1 -A1 bar words'
+"$BIN" -c 'koshkit grep -C0 foo words'
+"$BIN" -c 'koshkit grep -m1 -A1 foo words'
+
+echo "--- grep --include and --exclude filter a recursive search ---"
+mkdir -p tree
+printf 'foo\n' > tree/a.c
+printf 'foo\n' > tree/a.h
+"$BIN" -c 'koshkit grep -rl --include="*.c" foo tree'
+"$BIN" -c 'koshkit grep -rl --exclude="*.c" foo tree'
+
 echo "--- wc -L keeps the longest line and takes the longest total ---"
 printf 'é\nabcd\nabc' > long1
 printf 'abcdef' > long2

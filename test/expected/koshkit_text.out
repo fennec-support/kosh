@@ -1395,6 +1395,28 @@ status 2
 merge1
 status 0
 status 1
+--- grep -o prints each match and -w needs word bounds ---
+1:foo
+2:foo
+5:foo
+5:foo
+foo
+foo
+foo
+2
+--- grep context separates groups ---
+1:foo bar
+2:foobar
+3-mid
+foo bar
+foobar
+--
+foo x foo
+foo bar
+foobar
+--- grep --include and --exclude filter a recursive search ---
+tree/a.c
+tree/a.h
 --- wc -L keeps the longest line and takes the longest total ---
 4 long1
  4 long1

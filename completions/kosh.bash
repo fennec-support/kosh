@@ -447,7 +447,7 @@ _koshkit_util_flags ()
     ;;
     egrep)
       printf "%s\n" \
-        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename -H --with-filename -L --files-without-match -m --max-count --color"
+        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --include --exclude -o --only-matching -w --word-regexp -A --after-context -B --before-context -C --context -H --with-filename -L --files-without-match -m --max-count --color"
     ;;
     emacs)
       printf "%s\n" "-e --emacs -v --vi -V --vi-normal"
@@ -496,7 +496,7 @@ _koshkit_util_flags ()
     ;;
     fgrep)
       printf "%s\n" \
-        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename -H --with-filename -L --files-without-match -m --max-count --color"
+        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --include --exclude -o --only-matching -w --word-regexp -A --after-context -B --before-context -C --context -H --with-filename -L --files-without-match -m --max-count --color"
     ;;
     file)
       printf "%s\n" \
@@ -529,7 +529,7 @@ _koshkit_util_flags ()
     ;;
     grep)
       printf "%s\n" \
-        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename -H --with-filename -L --files-without-match -m --max-count --color"
+        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --include --exclude -o --only-matching -w --word-regexp -A --after-context -B --before-context -C --context -H --with-filename -L --files-without-match -m --max-count --color"
     ;;
     head)
       printf "%s\n" \
