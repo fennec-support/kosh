@@ -33,6 +33,9 @@ throw_if_arithmetic_interrupted() throws -> void
 
 namespace {
 
+/* a power or a shift past this many bits is refused before it allocates. */
+static constexpr u64 MAXIMUM_RESULT_BIT_COUNT = u64{1} << 32;
+
 /* 10^19 is the largest power of ten below 2^64, so one chunk fits in a u64. */
 constexpr u64 DECIMAL_CHUNK_BASE = 10000000000000000000ULL;
 
@@ -1334,11 +1337,9 @@ ArithmeticValue::power(const ArithmeticValue &base,
   let const base_bit_length =
       static_cast<u64>(base.limb_count() - 1) * 64u +
       (64u - static_cast<u32>(__builtin_clzll(highest_limb)));
-  let const maximum_result_bit_length =
-      static_cast<u64>(ArrayList<u64>::MAXIMUM_ELEMENT_COUNT) * 64u;
 
   if (base_bit_length != 0 &&
-      exponent_value > maximum_result_bit_length / base_bit_length)
+      exponent_value > MAXIMUM_RESULT_BIT_COUNT / base_bit_length)
   {
     do_throw_result_too_large();
   }
@@ -1490,7 +1491,7 @@ ArithmeticValue::shift_left(const ArithmeticValue &value,
   let const bit_count = get_shift_bit_count(value, count);
 
   if (value.is_zero()) return ArithmeticValue{};
-  if (!bit_count.has_value())
+  if (!bit_count.has_value() || *bit_count > MAXIMUM_RESULT_BIT_COUNT)
     throw ErrorWithDetails{"Shift count is too large",
                            "The result cannot fit in addressable memory"};
 

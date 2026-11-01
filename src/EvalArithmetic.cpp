@@ -838,7 +838,7 @@ public:
 
     if (consume("?")) {
       if (!condition.is_zero()) {
-        let const if_true = parse_assignment();
+        let const if_true = parse_comma();
 
         if (!consume(":"))
           fail("Expected ':' in a conditional", "A '?' needs a matching ':'");
@@ -850,7 +850,7 @@ public:
         return if_true;
       }
 
-      let const if_true = parse_skipped(&ArithmeticParser::parse_assignment);
+      let const if_true = parse_skipped(&ArithmeticParser::parse_comma);
 
       unused(if_true);
       if (!consume(":"))
@@ -2121,6 +2121,24 @@ lex_explicit_radix(StringView from) throws -> Maybe<explicit_radix>
   return explicit_radix{static_cast<u32>(base), base_digit_count + 1};
 }
 
+/* a binary or based number needs a digit after its prefix. 0x alone stays 0. */
+alwaysinline static fn
+reject_missing_radix_digits(StringView from,
+                            usize      digit_start,
+                            u32        radix) throws -> void
+{
+  if (radix != 16 || from[digit_start - 1] == '#') {
+    if (arithmetic_internal::count_leading_digits(from.substring(digit_start),
+                                                  radix) == 0)
+    {
+      throw ErrorWithDetails{"The number '" +
+                                 from.substring_of_length(0, digit_start) +
+                                 "' has no digits",
+                             "Write at least one digit after the prefix"};
+    }
+  }
+}
+
 static fn
 lex_arith_number(StringView from, i64 *out_value) throws -> usize
 {
@@ -2130,6 +2148,8 @@ lex_arith_number(StringView from, i64 *out_value) throws -> usize
     let const radix = explicit_base->radix;
     u64       value = 0;
     usize     i     = explicit_base->digit_start;
+
+    reject_missing_radix_digits(from, i, radix);
 
     while (i < from.length) {
       let const digit = arithmetic_internal::radix_digit_value(from[i], radix);
@@ -2144,7 +2164,12 @@ lex_arith_number(StringView from, i64 *out_value) throws -> usize
   }
 
   let const detected = arithmetic_internal::detect_radix_prefix(from);
-  usize     consumed = detected.prefix_length +
+
+  if (detected.prefix_length > 0) {
+    reject_missing_radix_digits(from, detected.prefix_length, detected.radix);
+  }
+
+  usize consumed = detected.prefix_length +
                    arithmetic_internal::count_leading_digits(
                        from.substring(detected.prefix_length), detected.radix);
 
@@ -2161,6 +2186,9 @@ lex_exact_arith_number(StringView       from,
   if (let const explicit_base = lex_explicit_radix(from);
       explicit_base.has_value())
   {
+    reject_missing_radix_digits(from, explicit_base->digit_start,
+                                explicit_base->radix);
+
     let const digits = from.substring(explicit_base->digit_start);
     let const digit_count =
         arithmetic_internal::count_leading_digits(digits, explicit_base->radix);
@@ -2192,8 +2220,13 @@ lex_exact_arith_number(StringView       from,
     return consumed;
   }
 
-  let const detected    = arithmetic_internal::detect_radix_prefix(from);
-  let       digit_count = arithmetic_internal::count_leading_digits(
+  let const detected = arithmetic_internal::detect_radix_prefix(from);
+
+  if (detected.prefix_length > 0) {
+    reject_missing_radix_digits(from, detected.prefix_length, detected.radix);
+  }
+
+  let digit_count = arithmetic_internal::count_leading_digits(
       from.substring(detected.prefix_length), detected.radix);
 
   if (digit_count == 0 && detected.prefix_length == 0) {
@@ -2586,28 +2619,33 @@ arith_apply_binop(char                   kind,
      '*', '/', '%', or 'P', and rhs is nonzero when kind is '/' or '%'. */
   let const allocator = bump_allocator(arena);
 
-  switch (kind) {
-  case 'P': return ArithmeticValue::power(lhs, rhs, arena);
-  case '*': return ArithmeticValue::multiply(lhs, rhs, arena);
-  case '/': return ArithmeticValue::divide(lhs, rhs, arena);
-  case '%': return ArithmeticValue::modulo(lhs, rhs, arena);
-  case '+': return ArithmeticValue::add(lhs, rhs, arena);
-  case '-': return ArithmeticValue::subtract(lhs, rhs, arena);
-  case 'L': return ArithmeticValue::shift_left(lhs, rhs, arena);
-  case 'R': return ArithmeticValue::shift_right(lhs, rhs, arena);
-  case '<': return ArithmeticValue{lhs.compare(rhs, allocator) < 0 ? 1 : 0};
-  case 'l': return ArithmeticValue{lhs.compare(rhs, allocator) <= 0 ? 1 : 0};
-  case '>': return ArithmeticValue{lhs.compare(rhs, allocator) > 0 ? 1 : 0};
-  case 'g': return ArithmeticValue{lhs.compare(rhs, allocator) >= 0 ? 1 : 0};
-  case 'e': return ArithmeticValue{lhs.compare(rhs, allocator) == 0 ? 1 : 0};
-  case 'n': return ArithmeticValue{lhs.compare(rhs, allocator) != 0 ? 1 : 0};
-  case '&':
-  case '^':
-  case '|': return ArithmeticValue::bitwise(kind, lhs, rhs, arena);
-  default:
-    unreachable("the cached arithmetic evaluator received invalid binary "
-                "operator '%c'",
-                kind);
+  try {
+    switch (kind) {
+    case 'P': return ArithmeticValue::power(lhs, rhs, arena);
+    case '*': return ArithmeticValue::multiply(lhs, rhs, arena);
+    case '/': return ArithmeticValue::divide(lhs, rhs, arena);
+    case '%': return ArithmeticValue::modulo(lhs, rhs, arena);
+    case '+': return ArithmeticValue::add(lhs, rhs, arena);
+    case '-': return ArithmeticValue::subtract(lhs, rhs, arena);
+    case 'L': return ArithmeticValue::shift_left(lhs, rhs, arena);
+    case 'R': return ArithmeticValue::shift_right(lhs, rhs, arena);
+    case '<': return ArithmeticValue{lhs.compare(rhs, allocator) < 0 ? 1 : 0};
+    case 'l': return ArithmeticValue{lhs.compare(rhs, allocator) <= 0 ? 1 : 0};
+    case '>': return ArithmeticValue{lhs.compare(rhs, allocator) > 0 ? 1 : 0};
+    case 'g': return ArithmeticValue{lhs.compare(rhs, allocator) >= 0 ? 1 : 0};
+    case 'e': return ArithmeticValue{lhs.compare(rhs, allocator) == 0 ? 1 : 0};
+    case 'n': return ArithmeticValue{lhs.compare(rhs, allocator) != 0 ? 1 : 0};
+    case '&':
+    case '^':
+    case '|': return ArithmeticValue::bitwise(kind, lhs, rhs, arena);
+    default:
+      unreachable("the cached arithmetic evaluator received invalid binary "
+                  "operator '%c'",
+                  kind);
+    }
+  } catch (const std::bad_alloc &) {
+    throw ErrorWithDetails{"The arithmetic result is too large",
+                           "The result cannot fit in addressable memory"};
   }
 }
 
@@ -2920,6 +2958,28 @@ evaluate_arithmetic_value(
   LOG(All, "evaluating the arithmetic expression of %zu bytes",
       expression.length);
 
+  if (text_kind == arithmetic_text_kind::ShellSource &&
+      expression.find_character('\\').has_value())
+  {
+    let joined = String{bump_allocator(arena)};
+
+    for (usize position = 0; position < expression.length; position++) {
+      if (expression[position] == '\\' && position + 1 < expression.length &&
+          expression[position + 1] == '\n')
+      {
+        position++;
+      } else {
+        joined.push(expression[position]);
+      }
+    }
+
+    if (joined.count() != expression.length) {
+      return evaluate_arithmetic_value(context, joined.view(), nullptr,
+                                       is_exact, arena, text_kind,
+                                       should_error_unset, bc_scale);
+    }
+  }
+
   let const has_removable_quote =
       text_kind == arithmetic_text_kind::ShellSource &&
       context->runtime_state().bash_additions_enabled() &&
@@ -3097,6 +3157,7 @@ evaluate_arithmetic_cached_value(EvalContext            *context,
   if (!is_tokenized) {
     if (expression.find_character('$').has_value() ||
         expression.find_character('`').has_value() ||
+        expression.find_character('\\').has_value() ||
         (expression.find_character('"').has_value() &&
          context->runtime_state().bash_additions_enabled()))
     {
