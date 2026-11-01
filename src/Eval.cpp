@@ -752,7 +752,10 @@ EvalContext::restore_local_binding(local_binding &binding) throws
           binding.name.view());
   }
 
-  if (binding.previous_indexed_array.has_value())
+  let const is_indexed_array_restored =
+      binding.previous_indexed_array.has_value();
+
+  if (is_indexed_array_restored)
     variable_store().indexed_arrays().set(
         binding.name.view(), steal(*binding.previous_indexed_array));
   else
@@ -787,8 +790,11 @@ EvalContext::restore_local_binding(local_binding &binding) throws
 
   if (binding.was_previously_exported) {
     mark_exported(binding.name.view());
-    if (binding.previous_value.has_value())
+    if (is_indexed_array_restored) {
+      os::unset_environment_variable(binding.name);
+    } else if (binding.previous_value.has_value()) {
       os::set_environment_variable(binding.name, *binding.previous_value);
+    }
   } else if (is_exported(binding.name.view())) {
     unmark_exported(binding.name.view());
     os::unset_environment_variable(binding.name);

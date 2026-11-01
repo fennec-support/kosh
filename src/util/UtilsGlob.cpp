@@ -191,6 +191,8 @@ extglob_group_close(StringView    glob,
    once a match takes this many steps. */
 constexpr u64 EXTGLOB_MEMO_STEP_THRESHOLD = 4096;
 
+constexpr usize EXTGLOB_MEMO_ENTRY_LIMIT = 256 * 1024;
+
 struct extglob_search
 {
   StringMap<bool> memo{heap_allocator()};
@@ -232,6 +234,11 @@ extglob_with_memo(extglob_search         &search,
   }
 
   let const is_match = do_match();
+
+  if (search.memo.count() >= EXTGLOB_MEMO_ENTRY_LIMIT) {
+    LOG(Debug, "the extglob memo is full, so it starts again");
+    search.memo.clear();
+  }
 
   search.memo.set(key_text, is_match);
 
@@ -331,6 +338,10 @@ extglob_full_match(StringView      glob,
                    glob_charset    charset,
                    extglob_search &search) throws -> bool
 {
+  if (os::is_stack_nearly_exhausted()) {
+    throw Error{"The pattern needs too many recursive steps to match"};
+  }
+
   extglob_memo_key key{};
 
   key.pattern_offset = mask_offset;
@@ -500,8 +511,19 @@ extglob_full_match_uncached(StringView      glob,
 
   if (str[0] != head) return false;
 
-  return extglob_full_match(glob.substring(1), str.substring(1), mask,
-                            mask_offset + 1, charset, search);
+  usize literal_byte_count = 1;
+
+  while (literal_byte_count < glob.count() &&
+         literal_byte_count < str.count() &&
+         !extglob_active(mask, mask_offset + literal_byte_count) &&
+         glob[literal_byte_count] == str[literal_byte_count])
+  {
+    literal_byte_count++;
+  }
+
+  return extglob_full_match(glob.substring(literal_byte_count),
+                            str.substring(literal_byte_count), mask,
+                            mask_offset + literal_byte_count, charset, search);
 }
 
 using posix_class_test = bool (*)(u8 byte);

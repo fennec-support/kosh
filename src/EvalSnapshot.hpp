@@ -265,6 +265,7 @@ struct variable_snapshot
   u8                                          bash_argument_frame_context_flags;
   u8                                          disabled_bash_special_arrays;
   u8                                          unset_dynamic_readers;
+  bool                                        is_field_separators_unset;
 };
 
 struct completion_snapshot

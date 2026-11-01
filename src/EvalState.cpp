@@ -829,7 +829,8 @@ EvalContext::find_loop_redirect_fd(i32                target_fd,
   for (let const &entry : expansion_store().loop_redirect_fds()) {
     if (entry.target_fd == target_fd && entry.mode == mode &&
         entry.path == path &&
-        entry.directory.view() == Path::current_directory().text().view())
+        (Path{path.view(), scratch_allocator()}.is_absolute() ||
+         entry.directory.view() == Path::current_directory().text().view()))
     {
       return entry.fd;
     }
@@ -975,7 +976,8 @@ VariableStore::snapshot() const throws -> variable_snapshot
           ? m_bash_arguments.get_context()->flags
           : u8{0},
       m_disabled_bash_special_arrays,
-      m_unset_dynamic_readers};
+      m_unset_dynamic_readers,
+      m_is_field_separators_unset};
 }
 
 fn
@@ -1009,6 +1011,8 @@ VariableStore::restore(variable_snapshot snapshot) throws -> void
     set_field_separators(ifs->view());
   else
     set_field_separators(" \t\n");
+
+  m_is_field_separators_unset = snapshot.is_field_separators_unset;
 }
 
 fn

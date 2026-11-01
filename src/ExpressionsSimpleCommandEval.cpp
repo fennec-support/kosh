@@ -1059,7 +1059,32 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
     }
 
     for (usize i = 1; i < program_args.count(); i++) {
-      if (program_args[i].view() == name) return true;
+      let const operand = program_args[i].view();
+
+      if (operand.starts_with("-") && operand != "--") {
+        if (operand.find_character('f').has_value() ||
+            operand.find_character('n').has_value())
+        {
+          return false;
+        }
+
+        continue;
+      }
+
+      let const equals_position = operand.find_character('=');
+
+      if (!equals_position.has_value()) {
+        if (operand == name) return true;
+
+        continue;
+      }
+
+      let const is_append =
+          *equals_position > 0 && operand[*equals_position - 1] == '+';
+      let const name_byte_count =
+          is_append ? *equals_position - 1 : *equals_position;
+
+      if (operand.substring_of_length(0, name_byte_count) == name) return true;
     }
 
     return false;
@@ -1159,9 +1184,14 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
           Maybe<SourceLocation> previous_special_definition_location;
           Maybe<local_binding>  overlaid_array;
           let const is_locale_name = name.starts_with("LC_") || name == "LANG";
+          let const is_export_command =
+              command_word_function == nullptr && !program_args.is_empty() &&
+              cxt.find_enabled_builtin(program_args[0].view()) ==
+                  Builtin::Kind::Export;
           let const did_overlay_shell_value =
               command_word_function != nullptr ||
-              is_source_evaluating_builtin || is_locale_name;
+              is_source_evaluating_builtin || is_locale_name ||
+              is_export_command;
 
           if (did_overlay_shell_value) {
             if (let const stored =
