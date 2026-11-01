@@ -638,6 +638,242 @@ descriptor_is_shell_fd(os::descriptor fd, i32 shell_fd) wontthrow -> bool
   return fd == descriptor_for_shell_fd(shell_fd);
 }
 
+/* position holds the [ of a bracket expression. the result is the first byte
+   after it, or the end of the pattern when the bracket stays open. */
+static fn
+position_after_regex_bracket(StringView pattern, usize position) wontthrow
+    -> usize
+{
+  position++;
+  if (position < pattern.length && pattern[position] == '^') position++;
+  if (position < pattern.length && pattern[position] == ']') position++;
+
+  while (position < pattern.length && pattern[position] != ']') {
+    let const kind =
+        position + 1 < pattern.length ? pattern[position + 1] : '\0';
+
+    if (pattern[position] != '[' || (kind != ':' && kind != '.' && kind != '='))
+    {
+      position++;
+      continue;
+    }
+
+    position += 2;
+
+    while (position + 1 < pattern.length &&
+           (pattern[position] != kind || pattern[position + 1] != ']'))
+    {
+      position++;
+    }
+
+    position += 2;
+  }
+
+  return position < pattern.length ? position + 1 : pattern.length;
+}
+
+/* position holds the first byte after the opening brace. the result is the
+   largest count of the bound, and position moves past the closing brace. */
+static fn
+parse_regex_repeat_bound(StringView pattern,
+                         usize     &position,
+                         bool       is_extended) wontthrow -> Maybe<u64>
+{
+  static constexpr u64 MAX_REPEAT_BOUND = u64{1} << 20;
+
+  u64   minimum   = 0;
+  u64   maximum   = 0;
+  bool  has_comma = false;
+  bool  has_digit = false;
+  usize cursor    = position;
+
+  for (; cursor < pattern.length; cursor++) {
+    let const byte = pattern[cursor];
+
+    if (byte >= '0' && byte <= '9') {
+      u64 &bound = has_comma ? maximum : minimum;
+
+      bound = bound * 10 + static_cast<u64>(byte - '0');
+      if (bound > MAX_REPEAT_BOUND) bound = MAX_REPEAT_BOUND;
+      has_digit = true;
+    } else if (byte == ',' && !has_comma) {
+      has_comma = true;
+    } else {
+      break;
+    }
+  }
+
+  if (!has_digit) return None;
+
+  if (is_extended) {
+    if (cursor == pattern.length || pattern[cursor] != '}') return None;
+    cursor++;
+  } else {
+    if (cursor + 1 >= pattern.length || pattern[cursor] != '\\' ||
+        pattern[cursor + 1] != '}')
+    {
+      return None;
+    }
+
+    cursor += 2;
+  }
+
+  position = cursor;
+
+  /* an open bound repeats its minimum and then one more copy. */
+  if (has_comma && maximum == 0) return minimum + 1;
+
+  return maximum > minimum ? maximum : minimum;
+}
+
+/* libc expands {m,n} into m or n copies of its operand while it compiles, so a
+   short pattern with nested bounds can exhaust memory before regcomp()
+   returns, and it does not stop for a signal. the sum of the sizes that the
+   bounds produce is limited instead, which leaves one repeat of RE_DUP_MAX and
+   (a{255}){255} valid.
+   memory: one group size per open group, freed on return.
+   time:   one pass over pattern. */
+static fn
+is_regex_expansion_too_large(StringView pattern,
+                             bool       is_extended) throws -> bool
+{
+  static constexpr u64 MAX_EXPANDED_SIZE = u64{1} << 16;
+
+  ArrayList<u64> open_group_sizes{heap_allocator()};
+  u64            group_size     = 0;
+  u64            last_atom_size = 0;
+  u64            expanded_size  = 0;
+  usize          position       = 0;
+
+  let const do_add_atom = [&](u64 size) wontthrow {
+    last_atom_size = size;
+    group_size += size;
+    if (group_size > MAX_EXPANDED_SIZE) group_size = MAX_EXPANDED_SIZE + 1;
+  };
+
+  let const do_open_group = [&]() throws {
+    open_group_sizes.push(group_size);
+    group_size     = 0;
+    last_atom_size = 0;
+  };
+
+  let const do_close_group = [&]() wontthrow {
+    let const closed_size = group_size;
+
+    group_size = 0;
+    if (!open_group_sizes.is_empty()) {
+      group_size = open_group_sizes.back();
+      open_group_sizes.pop_back();
+    }
+
+    do_add_atom(closed_size != 0 ? closed_size : 1);
+  };
+
+  let const do_is_bound_too_large = [&]() wontthrow -> bool {
+    let const bound = parse_regex_repeat_bound(pattern, position, is_extended);
+
+    if (!bound.has_value()) return false;
+
+    /* a bound of zero or one adds no copies. */
+    if (*bound < 2) return false;
+
+    let const repeated_size = last_atom_size * *bound;
+
+    if (repeated_size > MAX_EXPANDED_SIZE) return true;
+    expanded_size += repeated_size;
+    last_atom_size = repeated_size;
+    group_size += repeated_size;
+    if (group_size > MAX_EXPANDED_SIZE) group_size = MAX_EXPANDED_SIZE + 1;
+
+    return expanded_size > MAX_EXPANDED_SIZE;
+  };
+
+  while (position < pattern.length) {
+    let const byte = pattern[position];
+
+    if (byte == '[') {
+      position = position_after_regex_bracket(pattern, position);
+      do_add_atom(1);
+    } else if (byte == '\\') {
+      let const escaped =
+          position + 1 < pattern.length ? pattern[position + 1] : '\0';
+
+      position += 2;
+      if (!is_extended && escaped == '(') {
+        do_open_group();
+      } else if (!is_extended && escaped == ')') {
+        do_close_group();
+      } else if (!is_extended && escaped == '{') {
+        if (do_is_bound_too_large()) return true;
+      } else {
+        do_add_atom(1);
+      }
+    } else if (is_extended && byte == '(') {
+      position++;
+      do_open_group();
+    } else if (is_extended && byte == ')') {
+      position++;
+      do_close_group();
+    } else if (is_extended && byte == '{') {
+      position++;
+      if (do_is_bound_too_large()) return true;
+    } else {
+      position++;
+      if (byte != '*' && byte != '+' && byte != '?' && byte != '|') {
+        do_add_atom(1);
+      }
+    }
+  }
+
+  return false;
+}
+
+/* libc rejects a repeated * in a basic regular expression, and a** means a*. a
+ * that opens the pattern or a group is a literal and stays. */
+static fn
+without_repeated_basic_stars(StringView pattern) throws -> String
+{
+  let   result   = String{heap_allocator()};
+  bool  has_atom = false;
+  bool  was_star = false;
+  usize position = 0;
+
+  while (position < pattern.length) {
+    let const byte = pattern[position];
+
+    if (byte == '*') {
+      position++;
+      if (was_star) continue;
+      result += byte;
+      was_star = has_atom;
+      has_atom = true;
+      continue;
+    }
+
+    was_star = false;
+
+    if (byte == '[') {
+      let const end = position_after_regex_bracket(pattern, position);
+
+      result += pattern.substring_of_length(position, end - position);
+      position = end;
+      has_atom = true;
+    } else if (byte == '\\' && position + 1 < pattern.length) {
+      let const escaped = pattern[position + 1];
+
+      result += pattern.substring_of_length(position, 2);
+      position += 2;
+      has_atom = escaped != '(' && escaped != '|';
+    } else {
+      result += byte;
+      position++;
+      has_atom = !(byte == '^' && position == 1);
+    }
+  }
+
+  return result;
+}
+
 /* memory: a heap copy of pattern, freed on return. on success, compiled.re
            holds the regcomp() allocation until free_regex() releases it.
    time:   one regcomp() call over pattern. */
@@ -649,6 +885,7 @@ compile_regex(StringView pattern, case_sensitivity sensitivity) throws
   let const pattern_text        = String{heap_allocator(), pattern};
   int       compile_flags       = REG_EXTENDED;
 
+  if (is_regex_expansion_too_large(pattern, true)) return None;
   if (is_case_insensitive) compile_flags |= REG_ICASE;
 
   compiled_regex compiled{};
@@ -665,9 +902,10 @@ compile_basic_regex(StringView       pattern,
     -> Maybe<compiled_regex>
 {
   let const is_case_insensitive = sensitivity == case_sensitivity::Insensitive;
-  let const pattern_text        = String{heap_allocator(), pattern};
+  let const pattern_text        = without_repeated_basic_stars(pattern);
   int       compile_flags       = 0;
 
+  if (is_regex_expansion_too_large(pattern, false)) return None;
 #if defined REG_ENHANCED
   compile_flags |= REG_ENHANCED;
 #endif
