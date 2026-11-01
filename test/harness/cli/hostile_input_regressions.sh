@@ -172,6 +172,15 @@ awk 'BEGIN { for (i = 0; i < 99; i++) printf "a"; print "" }' |
 awk 'BEGIN { for (i = 0; i < 200; i++) printf "a"; print "" }' |
   "$BIN" -c 'koshkit xargs -s 100 -I {} echo {} | koshkit wc -c' 2>/dev/null
 
+echo "--- a keyword is a redirection target ---"
+"$BIN" --mood bash --no-diagnostics -c 'echo a >fi; echo b >done; koshkit cat fi done'
+
+echo "--- cp -r of a directory with a trailing dot copies its contents ---"
+mkdir -p dotted/inner dotted_into
+echo 1 > dotted/inner/file
+"$BIN" -c 'koshkit cp -r dotted/. dotted_into/'
+"$BIN" -c 'koshkit cat dotted_into/inner/file'
+
 echo "--- a long flag accepts an empty value ---"
 printf 'a\nb\n' > comm-left
 printf 'b\nc\n' > comm-right

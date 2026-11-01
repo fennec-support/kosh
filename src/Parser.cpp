@@ -1578,9 +1578,18 @@ Parser::build_file_or_dup_redirection(
     }
   }
 
-  Token *target = next_token_of_kind(Token::Kind::Word,
-                                     "Expected a file after the redirection "
-                                     "operator");
+  Token *target = m_lexer.peek_shell_token();
+
+  /* a keyword after the operator is the file, as in `echo a >fi`. */
+  if (token_kind_is_keyword(target->kind())) {
+    m_lexer.advance_past_last_peek();
+    target = word_token_from_raw(m_lexer.arena(), target->raw_string().view(),
+                                 target->source_location());
+  } else {
+    target = next_token_of_kind(Token::Kind::Word,
+                                "Expected a file after the redirection "
+                                "operator");
+  }
 
   /* at this point: target is a Word token, and no branch above has pushed
      redir to out. */

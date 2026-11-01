@@ -658,7 +658,12 @@ Cp::execute(const ExecContext               &ec,
     let const source = operands[i].view();
     let       target = String{cxt.scratch_allocator(), destination};
 
-    if (is_destination_directory) {
+    /* the contents of a source that ends in /. merge into the destination. */
+    let const is_contents_source =
+        source == "." ||
+        (source.length >= 2 && source.substring(source.length - 2) == "/.");
+
+    if (is_destination_directory && !is_contents_source) {
       let const source_path =
           Path{source, cxt.scratch_allocator()}.normalized();
       let const leaf = source_path.filename();

@@ -80,6 +80,11 @@ status 3
 --- xargs -I never runs a truncated item ---
 100
 0
+--- a keyword is a redirection target ---
+a
+b
+--- cp -r of a directory with a trailing dot copies its contents ---
+1
 --- a long flag accepts an empty value ---
 a
 @@b
