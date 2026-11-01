@@ -1004,7 +1004,22 @@ Sed::execute(const ExecContext               &ec,
       do_process_line(held_line.view(), was_held_line_terminated, true);
     }
 
-    if (!did_read_fail) {
+    /* a file swapped during the edit keeps the contents it now holds. */
+    os::file_status final_status{};
+    let const       is_same_file =
+        os::stat_path(sources[source_index], final_status) &&
+        os::file_type_letter(final_status.mode) == '-' &&
+        final_status.device_id == in_place_status.device_id &&
+        final_status.file_id == in_place_status.file_id;
+
+    if (!did_read_fail && !is_same_file) {
+      report_soft_koshkit_error(
+          ec, cxt,
+          "The file '" +
+              String{cxt.scratch_allocator(), sources[source_index]} +
+              "' changed during the edit, so it was not replaced");
+      status = 1;
+    } else if (!did_read_fail) {
       os::replace_file_beside(Path{sources[source_index], heap_allocator()},
                               ".kosh-sed-", output.view(),
                               in_place_status.mode & 0777);
