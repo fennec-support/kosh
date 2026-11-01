@@ -5211,6 +5211,8 @@ A foreground pipeline or subshell has its own process group, and every
 process in it stops and resumes together.
 A pipeline whose final stage runs in the shell stays in the process
 group of the shell, so Ctrl\-Z does not stop it.
+An interactive shell ignores Ctrl\-Z while it captures a command or
+function substitution.
 .RE
 .IP \[bu] 2
 \f[B]Job specs\f[R] \- \f[CR]%n\f[R] job \f[CR]n\f[R]; \f[CR]%+\f[R],
