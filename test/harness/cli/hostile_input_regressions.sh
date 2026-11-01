@@ -84,7 +84,7 @@ timeout 10 "$BIN" --mood bash -c 'sleep 1 & fg %1 | true; echo after' \
   2>/dev/null | tail -n 1
 
 echo "--- an indirect subscript from data runs no command ---"
-"$BIN" --no-diagnostics -c \
+"$BIN" --mood kosh --no-diagnostics -c \
   'a=(1); v="a[\$(touch marker)0]"; echo "${!v}"' 2>/dev/null
 echo "status $?"
 ls marker 2>/dev/null
@@ -165,6 +165,12 @@ echo "--- timeout keeps the status of a child that already exited ---"
 
 echo "--- xargs stops an item past the size limit ---"
 head -c 3000000 /dev/zero | tr '\0' a | timeout 10 "$BIN" -c 'koshkit xargs -s 100 echo' 2>&1 | grep -c 'exceeds the size limit'
+
+echo "--- xargs -I never runs a truncated item ---"
+awk 'BEGIN { for (i = 0; i < 99; i++) printf "a"; print "" }' |
+  "$BIN" -c 'koshkit xargs -s 200 -I {} echo {} | koshkit wc -c' 2>/dev/null
+awk 'BEGIN { for (i = 0; i < 200; i++) printf "a"; print "" }' |
+  "$BIN" -c 'koshkit xargs -s 100 -I {} echo {} | koshkit wc -c' 2>/dev/null
 
 echo "--- a long flag accepts an empty value ---"
 printf 'a\nb\n' > comm-left

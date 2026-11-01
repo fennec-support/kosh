@@ -652,7 +652,8 @@ Xargs::execute(const ExecContext               &ec,
     return 1;
   }
 
-  reader.set_item_byte_limit(maximum_byte_count - base_byte_count);
+  /* a capped item is longer than any command, so no truncated value runs. */
+  reader.set_item_byte_limit(maximum_byte_count + 1);
 
   /* at this point: base holds the utility, or echo, followed by the operands.
      reader takes its input from ec.in_fd or KOSH_STDIN, and the three limits

@@ -577,8 +577,7 @@ EvilFiles::execute(const ExecContext               &ec,
                                                       : status.file_id,
                        allocator),
           socket_index.has_value()
-              ? String{allocator,
-                                     sockets.entries[*socket_index].endpoint.view()}
+              ? do_show(sockets.entries[*socket_index].endpoint.view())
               : String{allocator},
           do_show(file.path.view()),
       };
