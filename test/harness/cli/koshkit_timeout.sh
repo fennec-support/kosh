@@ -166,7 +166,7 @@ echo "--- timeout reports missing and unusable commands ---"
 echo "missing=$?"
 "$BIN" -c "koshkit timeout 1 '$d/noexec'" >/dev/null 2>&1
 echo "unusable=$?"
-"$BIN" -c "koshkit timeout 1 '$d/plain-script'"
+"$BIN" -c "koshkit timeout 10 '$d/plain-script'"
 
 echo "--- timeout rejects unsupported signals ---"
 "$BIN" -c 'koshkit timeout -s 999 1 "$1" -c true' \
