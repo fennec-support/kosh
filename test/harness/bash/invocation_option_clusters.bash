@@ -3,7 +3,7 @@
 # Each o or O in a cluster of invocation options takes the next unused
 # argument as its option name, in the order of the letters, and the letters
 # after it remain options. A c in the same cluster takes the first operand
-# after those names as the command string.
+# after those option arguments as the command string.
 show='for name in errexit noglob noclobber; do
   shopt -qo "$name" && printf "%s " "$name"
 done

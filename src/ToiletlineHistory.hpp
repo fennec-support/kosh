@@ -37,7 +37,8 @@ write_history_file_atomically(
     koshka::StringView       contents,
     koshka::os::file_status *written = nullptr) throws -> bool;
 
-/* the largest history file a snapshot or a load without the editor reads. */
+/* the largest history file that a snapshot or a load without the editor will
+   read. */
 inline constexpr usize HISTORY_FILE_MAX_BYTE_COUNT = usize{256} << 20;
 
 /* contents is None when the file is missing, is neither a regular file nor a

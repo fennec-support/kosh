@@ -436,8 +436,8 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
         usize brace_depth       = 1;
         let   has_operator_text = false;
 
-        /* ShellCheck keeps a braced expansion whose text holds an operator,
-           an expansion, or a leading digit. */
+        /* ShellCheck does not warn about a braced expansion whose text holds an
+           operator, an expansion, or a leading digit. */
         for (; close_position < expression.length; close_position++) {
           let const c = expression[close_position];
 

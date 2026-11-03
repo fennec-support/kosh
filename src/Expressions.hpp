@@ -725,8 +725,8 @@ public:
   HashSet             external_input_names{heap_allocator()};
 
   HashSet array_valued_names{heap_allocator(), SMALL_MAP_FIRST_CAPACITY};
-  /* names that a declaration builtin declares with -A anywhere earlier in
-     the source. */
+  /* the variables that a declaration builtin declares with -A anywhere earlier
+     in the source. */
   HashSet                            associative_array_names{heap_allocator()};
   ArrayList<analysis_name_insertion> scoped_name_insertions{heap_allocator()};
 

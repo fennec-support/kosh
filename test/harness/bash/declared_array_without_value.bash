@@ -24,8 +24,8 @@ echo "[${u[@]@K}] [${u[*]@a}] [${u[*]@A}]"
 
 # Under set -u, an arithmetic element read of a variable without a value is
 # an error before the subscript is evaluated, and a missing element of an
-# array with a value reads as 0. A plain assignment needs no value. The bare
-# name of an array with a value and no element 0 reads as 0, and the bare
+# array with a value counts as 0. A plain assignment needs no value. The bare
+# name of an array with a value and no element 0 counts as 0, and the bare
 # name of an array without a value is an error.
 f() { local -A lu; local -a la; declare -p lu la; }
 f

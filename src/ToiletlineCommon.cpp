@@ -292,7 +292,8 @@ read_history_file(const koshka::Path &path) throws -> history_file_read
 
   if (!koshka::os::stat_descriptor(*file, result.status)) return result;
 
-  /* a directory passes, so the read fails with the error of a directory. */
+  /* a directory passes the type check, so the read fails with the error of a
+     directory. */
   let const type_letter = koshka::os::file_type_letter(result.status.mode);
 
   if (type_letter != '-' && type_letter != 'd') {

@@ -633,8 +633,8 @@ splice_environment_flags(command_line &line) throws -> void
         return;
       }
 
-      /* the c and s letters drop themselves, and c= also drops the rest of
-         the word. The other letters stay. */
+      /* the loop drops the c and s letters, and after c= it also drops the
+         rest of the word. The other letters stay. */
       let kept          = String{heap_allocator()};
       should_keep_value = true;
 

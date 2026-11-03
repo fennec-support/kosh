@@ -4890,9 +4890,9 @@ is_element_modifier_operator(char op) wontthrow -> bool
   }
 }
 
-/* the form of text that starts with '!': a prefix-names list for !name@ or
-   !name*, a keys list for !name[@] or !name[*], and an indirection
-   otherwise. */
+/* the form of text that starts with '!': a list of the variables with a given
+   prefix for !name@ or !name*, a keys list for !name[@] or !name[*], and an
+   indirection otherwise. */
 static pure fn
 bang_reference_form(StringView text) wontthrow -> parameter_reference::Form
 {

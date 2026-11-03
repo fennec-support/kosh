@@ -36,8 +36,8 @@ rm -f "$rc_file"
 echo "== the other letters of a cluster with c survive:"
 KOSH_FLAGS='-ec injected_command' "$BIN" -c \
   'case $- in *e*) echo errexit-kept ;; *) echo errexit-lost ;; esac' 2>&1
-# Each o in a cluster keeps its own separate name, and the operand after the
-# names is dropped.
+# Each o in a cluster keeps its own option name, and the operand after those
+# option arguments is dropped.
 echo "== each o in a cluster keeps its name:"
 KOSH_FLAGS='-ooc errexit noglob injected_command' "$BIN" -c \
   'shopt -qo errexit && shopt -qo noglob && echo both-kept' 2>&1

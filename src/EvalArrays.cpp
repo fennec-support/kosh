@@ -747,8 +747,8 @@ EvalContext::set_associative_element(StringView name,
   }
 
   if (is_bash_commands_special(name)) {
-    /* the same gate as hash -p, since a bare value binds a command to a
-       file in the current directory. */
+    /* a restricted shell rejects the write, as it rejects hash -p, since a
+       bare value binds a command to a file in the current directory. */
     if (runtime_state().option_is_enabled(shell_option_id::Restricted)) {
       throw Error{"Unable to assign '" + name +
                   "' because the shell is restricted"};

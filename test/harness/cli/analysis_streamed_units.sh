@@ -1,6 +1,6 @@
 # --lint analyzes a short script as one tree and a script past 256 KiB as
-# streamed top-level units after a metadata scan. The same findings come
-# from both paths: the long script is the short one with `:` lines after its
+# streamed top-level units after a metadata scan. Both modes report the same
+# findings: the long script is the short one with `:` lines after its
 # last finding, so every reported line stays the same. A call before the
 # definition, a directive, and a heredoc need the metadata scan.
 unset KOSH_FLAGS

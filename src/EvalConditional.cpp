@@ -601,7 +601,7 @@ struct conditional_evaluator
   /* an operand whose subscript expands a parameter or a command is read from
      its source, so a ']' from the expansion stays inside the subscript, and
      source_base receives its location. Another operand is expanded, and a
-     blank value reads as 0. */
+     blank value counts as 0. */
   fn
   arithmetic_operand(const conditional_element &e,
                      Maybe<SourceLocation>     &source_base) throws

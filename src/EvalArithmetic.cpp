@@ -3565,9 +3565,10 @@ get_constant_arithmetic_arena() wontthrow -> BumpArena &
   return arena;
 }
 
-/* a simple tree holds only numbers, plain names, unary and non-logical binary
-   operators, or one step of a plain name, so the evaluator can read and step
-   names without resolving subscripts or limiting depth. */
+/* a simple tree holds only numbers, plain variable references, unary and
+   non-logical binary operators, or one step of a plain variable, so the
+   evaluator can read and step each variable without resolving subscripts or
+   limiting depth. */
 static pure fn
 arith_tree_is_simple(const arith_tree &tree) wontthrow -> bool
 {

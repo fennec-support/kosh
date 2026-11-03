@@ -675,11 +675,11 @@ scan_command_text(StringView   text,
   return scan;
 }
 
-/* text ends with a newline. The result is the number of top-level commands in
-   text, or None when text needs more lines: it ends inside a quote, a compound
-   command, a substitution, or a heredoc body, after a pipe or a list operator,
-   or after a line continuation. A syntax error before the end counts as one
-   command, so running text reports the error. */
+/* text must end with a newline. The result is the number of top-level
+   commands in text, or None when text needs more lines: it ends inside a
+   quote, a compound command, a substitution, or a heredoc body, after a pipe
+   or a list operator, or after a line continuation. A syntax error before the
+   end counts as one command, so running text reports the error. */
 static fn
 count_complete_commands(StringView   text,
                         EvalContext &context,

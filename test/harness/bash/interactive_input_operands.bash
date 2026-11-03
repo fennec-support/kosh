@@ -4,7 +4,7 @@
 # PS1, expands aliases, leaves history references alone, and exits with the
 # status of the input. A fatal expansion error in the command string ends it
 # with status 1 instead of 127. Every probe starts the shell through a link
-# named bash, so Koshka selects the bash mood, and runs it under a scratch HOME
+# called bash, so Koshka selects the bash mood, and runs it under a scratch HOME
 # whose ~/.bashrc prints a marker. Standard input is not a terminal, so job
 # control stays off and no line editor starts. The interactive shells complain
 # about job control on stderr, and the probes discard it.

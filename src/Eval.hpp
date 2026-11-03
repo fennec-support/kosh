@@ -1337,8 +1337,8 @@ public:
     m_is_reading_standard_input = is_reading;
   }
 
-  /* holds after substitutions and subshells clear shell_is_interactive(), so
-     $- keeps i there. */
+  /* the value stays true after substitutions and subshells clear
+     shell_is_interactive(), so $- keeps i there. */
   pure fn
   was_started_interactive() const wontthrow -> bool
   {
