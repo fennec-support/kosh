@@ -30,3 +30,23 @@ kosh.conf.bak
 600
 == concurrent persists of different options both survive:
 lost=0
+== eight concurrent persists leave a well-formed file with every setting:
+completion.add_space_after_completed_word=on
+editor.auto_close_brackets_and_quotes=on
+editor.hints.show_command_synopsis=off
+editor.hints.show_live_diagnostics=off
+editor.history.arrow_keys_search_by_typed_prefix=off
+editor.history.max_entries=77
+editor.request_extended_key_reports=off
+editor.wrap_width=70
+mood=kosh
+70
+kosh.conf
+kosh.conf.bak
+scripts
+== a leftover lock file does not block a save:
+rc=0
+editor.wrap_width=71
+== a lock holder that is killed does not block a save:
+rc=0
+editor.wrap_width=72
