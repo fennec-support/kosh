@@ -1586,7 +1586,9 @@ Lexer::lex_identifier() throws -> Token *
       m_parse_session.should_collect_debug_words() &&
       m_cursor_position != m_last_collected_word_position;
 
-  if (!assignment_split.has_value() || should_collect_debug_word) word.finish();
+  if (!assignment_split.has_value() || should_collect_debug_word) {
+    word.finish(should_classify_command_words() || should_collect_debug_word);
+  }
 
   if (should_collect_debug_word) {
     m_debug_words.push(
@@ -1851,7 +1853,7 @@ Lexer::validate_substitution_body(
   if (is_exact) nested_lexer.set_start_position(body_position);
   nested_lexer.set_substitution_validation_mode(
       substitution_validation_mode::Enabled, m_substitution_nesting_depth + 1);
-  nested_lexer.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
+  nested_lexer.set_evaluation_fact_mode(evaluation_fact_mode::DiscardedTree);
 
   let nested_parser = Parser{steal(nested_lexer)};
   let nested_errors = ArrayList<ErrorWithLocationAndDetails>{heap_allocator()};

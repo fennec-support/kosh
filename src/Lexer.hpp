@@ -54,10 +54,13 @@ enum class substitution_validation_mode : u8
   Enabled,
 };
 
+/* DiscardedTree is Disabled for a parse that keeps no tree, so its words
+   also skip the command word facts. */
 enum class evaluation_fact_mode : u8
 {
   Disabled,
   Enabled,
+  DiscardedTree,
 };
 
 enum class shellcheck_directive_collection_mode : u8
@@ -165,6 +168,12 @@ public:
   should_build_evaluation_facts() const wontthrow -> bool
   {
     return m_evaluation_fact_mode == evaluation_fact_mode::Enabled;
+  }
+
+  pure fn
+  should_classify_command_words() const wontthrow -> bool
+  {
+    return m_evaluation_fact_mode != evaluation_fact_mode::DiscardedTree;
   }
 
   fn
@@ -514,6 +523,12 @@ public:
   should_build_evaluation_facts() const wontthrow -> bool
   {
     return m_parse_session.should_build_evaluation_facts();
+  }
+
+  pure fn
+  should_classify_command_words() const wontthrow -> bool
+  {
+    return m_parse_session.should_classify_command_words();
   }
 
   fn

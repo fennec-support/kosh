@@ -325,9 +325,12 @@ Word::to_literal_string() const throws -> String
 }
 
 fn
-Word::finish() throws -> void
+Word::finish(bool should_classify_command) throws -> void
 {
   compute_facts();
+
+  if (!should_classify_command) return;
+
   try {
     classify_command();
   } catch (...) {

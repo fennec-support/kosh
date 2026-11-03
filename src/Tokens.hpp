@@ -839,7 +839,7 @@ public:
   };
 
   fn
-  finish() throws -> void;
+  finish(bool should_classify_command = true) throws -> void;
 
   pure fn
   is_finished() const wontthrow -> bool

@@ -779,7 +779,7 @@ scan_analysis_metadata(const script_run_input &input,
       analysis_metadata_collection_mode::Enabled);
   scan_parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
-  scan_parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
+  scan_parser.set_evaluation_fact_mode(evaluation_fact_mode::DiscardedTree);
 
   let const scan_mark = input.arena.mark();
 
@@ -814,7 +814,8 @@ preflight_syntax(const script_run_input &input,
 
   preflight_parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
-  preflight_parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
+  preflight_parser.set_evaluation_fact_mode(
+      evaluation_fact_mode::DiscardedTree);
 
   loop {
     let const  unit_mark = input.arena.mark();
