@@ -74,4 +74,21 @@ printf '%s\n' 'echo "script $-"' 'echo !!' ': "${unset_var?boom}"' \
 HOME=$d/lines "$d/bash" --norc -i "$d/script-errors.sh" 2>/dev/null
 echo "status=$?"
 
+# exit from -c or from stdin prints exit on stderr. exit in a subshell, a
+# sourced file, a trap, or a script operand prints nothing.
+printf 'exit 6\n' > "$d/exit.sh"
+for form in 'exit 3' 'f() { exit 2; }; f' '(exit 4); eval exit 5' \
+  '. ./exit.sh' 'trap "exit 7" USR1; kill -USR1 $$'
+do
+  HOME=$d "$d/bash" --norc -ic "$form" 2>&1 </dev/null |
+    grep -v -e 'job control' -e 'process group'
+  echo "status=${PIPESTATUS[0]}"
+done
+HOME=$d/lines PS1='P1> ' "$d/bash" --norc +o emacs -i < "$d/exit.sh" 2>&1 |
+  grep -v -e 'job control' -e 'process group'
+echo "status=${PIPESTATUS[0]}"
+HOME=$d "$d/bash" --norc -i "$d/exit.sh" 2>&1 </dev/null |
+  grep -v -e 'job control' -e 'process group'
+echo "status=${PIPESTATUS[0]}"
+
 cd / && rm -rf "$d"

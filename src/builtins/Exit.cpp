@@ -7,6 +7,7 @@
 
 #include "../Builtin.hpp"
 #include "../Eval.hpp"
+#include "../Toiletline.hpp"
 
 FLAG_LIST_DECL();
 
@@ -31,6 +32,27 @@ Exit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       trap_status.has_value())
   {
     status = static_cast<i64>(*trap_status);
+  }
+
+  let has_sourced_file_frame = false;
+
+  for (let const &frame : cxt.source_store().source_frames())
+    if (frame.has_bash_source_row()) has_sourced_file_frame = true;
+
+  /* an interactive shell that takes commands from -c or standard input
+     announces the exit outside sourced files and traps. The line editor
+     shows KOSH_FAREWELL instead. */
+  let const should_announce =
+      cxt.execution_store().shell_is_interactive() && !cxt.in_subshell() &&
+      (cxt.execution_store().has_execution_string() ||
+       cxt.execution_store().is_reading_standard_input()) &&
+      !has_sourced_file_frame &&
+      cxt.source_store().rejected_return_source_frames() == 0 &&
+      !toiletline::is_active();
+
+  if (should_announce) {
+    ec.print_to_stderr(cxt.startup_store().is_login_shell() ? "logout\n"
+                                                            : "exit\n");
   }
 
   return finish_exit_builtin(ec, cxt, status, {},

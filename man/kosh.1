@@ -6085,6 +6085,11 @@ Runs the \f[CR]EXIT\f[R] trap and exits with \f[CR]n\f[R] modulo
 operand returns \f[CR]2\f[R] without exiting, except in \f[CR]sh\f[R]
 where the shell exits with \f[CR]2\f[R], and more than one operand exits
 with \f[CR]1\f[R]).
+An interactive shell that takes commands from \f[CR]\-c\f[R] or from
+stdin without the line editor prints \f[CR]exit\f[R], or
+\f[CR]logout\f[R] in a login shell, on stderr when \f[CR]exit\f[R] runs
+outside a subshell, a sourced file, and a trap.
+The line editor prints \f[CR]KOSH_FAREWELL\f[R] instead.
 \f[CR]logout\f[R] behaves as \f[CR]exit\f[R] in a login shell and
 reports an error and returns \f[CR]1\f[R] elsewhere.
 \f[CR]return\f[R] leaves the running function or sourced file with
