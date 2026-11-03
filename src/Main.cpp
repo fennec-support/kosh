@@ -662,12 +662,31 @@ splice_environment_flags(command_line &line) throws -> void
   }
 }
 
+/* a shell started as sh, dash, bash, or rbash parses its command line as
+   POSIX and Bash do. */
+static fn
+is_posix_shell_invocation(StringView program_path) throws -> bool
+{
+  let const is_login_name = !program_path.is_empty() && program_path[0] == '-';
+  let       basename      = String{heap_allocator(),
+                        Path::invocation_filename(program_path, is_login_name)};
+  let const stem_length   = os::normalize_program_name(basename).stem_length;
+  let const stem          = basename.view().substring_of_length(0, stem_length);
+
+  return stem == "sh" || stem == "dash" || stem == "bash" || stem == "rbash";
+}
+
 static fn
 parse_invocation_flags(int argc, const char *const *argv) throws
     -> ArrayList<String>
 {
+  let options = INVOCATION_PARSE_OPTIONS;
+
+  options.should_continue_operand_values =
+      argc < 1 || !is_posix_shell_invocation(StringView{argv[0]});
+
   return parse_flags(FLAG_LIST, argc, argv, 0, nullptr, nullptr, StringView{},
-                     INVOCATION_PARSE_OPTIONS);
+                     options);
 }
 
 static fn

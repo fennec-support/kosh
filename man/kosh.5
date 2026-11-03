@@ -604,9 +604,11 @@ T}@T{
 \f[CR]\-c, \-\-command\f[R]
 T}@T{
 The command string is the first operand, as specified in Invocation.
-A \f[CR]\-c\f[R] word right after a command string adds another string,
-and the strings run in order.
-A \f[CR]\-\-command\f[R] word in that position becomes \f[CR]$0\f[R].
+Started as \f[CR]kosh\f[R], a \f[CR]\-c\f[R], \f[CR]\-\-command\f[R], or
+\f[CR]\-\-command=COMMAND\f[R] word right after a command string adds
+another string, and the strings run in order.
+Started as \f[CR]sh\f[R], \f[CR]dash\f[R], \f[CR]bash\f[R], or
+\f[CR]rbash\f[R], every word after the command string is an operand.
 Any other word after a command string ends option parsing.
 A syntax error exits with status \f[CR]2\f[R], an analysis error exits
 with status \f[CR]1\f[R], and the strings after a rejected one do not

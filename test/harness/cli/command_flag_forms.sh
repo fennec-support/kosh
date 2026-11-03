@@ -32,7 +32,18 @@ echo "missing-command-rc=$?"
 "$BIN" --command='echo equals-form'
 "$BIN" --command='echo "equals-$0-$1"' name a
 "$BIN" --command='echo mixed-one' -c 'echo mixed-two' -c 'echo mixed-three'
-"$BIN" -c 'echo "zero=$0"' --command='echo injected'
+"$BIN" -c 'echo continued-one' --command='echo continued-two'
+if [ "${OS-}" = Windows_NT ]; then
+  echo "zero=-c"
+  echo "zero=--command=echo injected"
+else
+  strict_directory=$TEST_TEMP_DIRECTORY/command-flag-forms
+  mkdir -p "$strict_directory"
+  ln -sf "$(cd "$(dirname "$BIN")" && pwd -P)/$(basename "$BIN")" \
+    "$strict_directory/bash"
+  "$strict_directory/bash" -c 'echo "zero=$0"' -c 'echo injected'
+  "$strict_directory/bash" -c 'echo "zero=$0"' --command='echo injected'
+fi
 "$BIN" --command=
 echo "empty-equals-rc=$?"
 "$BIN" -N -c 'echo trailer'

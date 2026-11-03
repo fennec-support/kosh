@@ -26,6 +26,9 @@ equals-name-a
 mixed-one
 mixed-two
 mixed-three
+continued-one
+continued-two
+zero=-c
 zero=--command=echo injected
 empty-equals-rc=0
 trailer

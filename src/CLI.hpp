@@ -502,6 +502,10 @@ struct flag_parse_options
      inside a cluster, where the letters after them are still options, as in
      sh -oc errexit command. */
   StringView next_value_letters{};
+  /* a -c, --command, or --command=value word right after the value of an
+     operand flag adds another value, as kosh -c a -c b does. without it the
+     words after the value are operands, as POSIX specifies. */
+  bool should_continue_operand_values{false};
 };
 
 fn
