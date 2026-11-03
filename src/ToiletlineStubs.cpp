@@ -256,7 +256,7 @@ scan_no_editor_history(const Path &path,
   let &state = get_no_editor_history_state();
 
   if (state.loaded_path.view() != path.view())
-    state.loaded_path = path.clone_to(heap_allocator());
+    state.loaded_path = String{heap_allocator(), path.view()};
   state.branch_contents = String{heap_allocator(), contents};
   state.record_byte_offsets.clear();
   state.durable_record_byte_offsets.clear();
