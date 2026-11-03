@@ -1491,6 +1491,10 @@ fn
 z_completion_candidates(StringView query, Allocator allocator) throws
     -> ArrayList<String>;
 
+fn
+find_frecent_directory(StringView query, Allocator allocator) throws
+    -> Maybe<Path>;
+
 enum class suppressible_warning : u8
 {
   UnsetReference,

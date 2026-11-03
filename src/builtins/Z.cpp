@@ -319,12 +319,35 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
-  LOG(Debug, "z ranking the frecency store against query '%s'", query.c_str());
+  let const target =
+      find_frecent_directory(query.view(), cxt.scratch_allocator());
 
-  let       entries = read_frecency_store(cxt.scratch_allocator());
+  if (!target.has_value())
+    throw make_error_for_arg(
+        ec, 1, StringView{"No matching directory for '"} + query + "'");
+
+  LOG(Info, "z changing directory to '%s'", target->c_str());
+
+  let const status = do_change_directory(target->text());
+
+  if (status != 0) return status;
+
+  ec.print_to_stdout(target->text() + "\n");
+
+  return 0;
+}
+
+fn
+find_frecent_directory(StringView query, Allocator allocator) throws
+    -> Maybe<Path>
+{
+  LOG(Debug, "z ranking the frecency store against query '%.*s'",
+      static_cast<int>(query.length), query.data);
+
+  let       entries = read_frecency_store(allocator);
   let const now     = now_epoch_seconds();
 
-  let const folded_query = query.view().to_lower_ascii(cxt.scratch_allocator());
+  let const folded_query = query.to_lower_ascii(allocator);
 
   let const do_match_tier = [&](StringView path) wontthrow -> i32 {
     if (utils::equals_ascii_ignoring_case(path, folded_query.view())) return 2;
@@ -360,23 +383,11 @@ Z::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
-  if (best == nullptr)
-    throw make_error_for_arg(
-        ec, 1, StringView{"No matching directory for '"} + query + "'");
+  if (best == nullptr) return None;
 
   /* at this point: best points to an entry whose path contains the query and
      is an existing directory. */
-  let const target = Path{best->path.view()}.to_absolute().normalized();
-
-  LOG(Info, "z changing directory to '%s'", target.c_str());
-
-  let const status = do_change_directory(target.text());
-
-  if (status != 0) return status;
-
-  ec.print_to_stdout(target.text() + "\n");
-
-  return 0;
+  return Path{best->path.view()}.to_absolute().normalized();
 }
 
 } /* namespace koshka */

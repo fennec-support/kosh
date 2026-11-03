@@ -389,6 +389,22 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
+  if (!is_to_previous && operand_count > 0 &&
+      cxt.runtime_state().option_is_enabled(shell_option_id::CdIsZ))
+  {
+    if (let const frecent =
+            find_frecent_directory(arg_path.view(), cxt.scratch_allocator()))
+    {
+      LOG(Info, "cd going to the z match '%s'", frecent->c_str());
+
+      let const status = run_cd_to_directory(cxt, ec, frecent->text());
+
+      if (status == 0) ec.print_to_stdout(frecent->text() + "\n");
+
+      return status;
+    }
+  }
+
   let operand_location = ec.arg_location_at(operand_index);
   let raw_operand      = arg_path.view();
 

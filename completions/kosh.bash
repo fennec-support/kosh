@@ -284,6 +284,7 @@ editor.request_extended_key_reports \
 editor.wrap_width \
 init_moods \
 interpreter.arithmetic_uses_big_numbers \
+interpreter.cd_is_z \
 interpreter.mimic_shebang \
 interpreter.resolve_koshkit_applets_as_commands \
 mood \

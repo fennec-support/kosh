@@ -183,6 +183,7 @@ Shell settings are inspected and mutated via `set`, `shopt`, and `koshconf`, and
 | 174 | s | `compatibility.dev_null` |  | Boolean (`on` or `off`). |
 | 175 | s | `compatibility.slash_tmp` |  | Boolean (`on` or `off`). |
 | 179 | i | `editor.wrap_width` |  | Integer `0` to `65535`, default `80`. |
+| 189 | s | `interpreter.cd_is_z` |  | Boolean (`on` or `off`), default `off`. With `on`, `cd` changes to the best `z` match when its operand is not a reachable directory. |
 
 ### Shared Bash and POSIX settings <a id="bash-and-posix-settings"></a>
 

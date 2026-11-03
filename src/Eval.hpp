@@ -137,6 +137,7 @@ enum class shell_option_id : u8
   SyntaxHighlighting,
   DevNullCompatibility,
   SlashTmpCompatibility,
+  CdIsZ,
   Count,
 };
 

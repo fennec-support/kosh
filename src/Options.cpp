@@ -1129,6 +1129,17 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
                        SEMANTIC,
                        "bash_source_fullpath",
                        false),
+    flag(189,
+         "interpreter.cd_is_z",
+         SEMANTIC,
+         shell_option_id::CdIsZ,
+         entry_shape{
+             {},
+             {},
+             {},
+             "Let cd change to the best z match when its operand is "
+             "not a reachable directory."},
+         false),
 
     set_only(posix_flag(68,
                         "posix.interpreter.remember_command_paths",
