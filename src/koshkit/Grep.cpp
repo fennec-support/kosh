@@ -2282,12 +2282,12 @@ private:
     }
 
     if (!should_visit_lines) {
-      usize newline_count = 0;
+      usize terminator_count = 0;
 
       for (usize index = 0; index < lines.length; index++)
-        newline_count += lines[index] == m_options.line_terminator ? 1 : 0;
+        terminator_count += lines[index] == m_options.line_terminator ? 1 : 0;
 
-      m_source_line_numbers[source_index] += newline_count;
+      m_source_line_numbers[source_index] += terminator_count;
 
       return;
     }
@@ -2313,25 +2313,25 @@ private:
   scan_chunk_candidates(const SourceBatchReader::Chunk &chunk,
                         StringView                      source) throws -> usize
   {
-    let const terminator   = m_options.line_terminator;
-    let const content      = chunk.content;
-    let const last_newline = content.find_last_character(terminator);
+    let const terminator      = m_options.line_terminator;
+    let const content         = chunk.content;
+    let const last_terminator = content.find_last_character(terminator);
 
-    if (!last_newline.has_value()) return 0;
+    if (!last_terminator.has_value()) return 0;
 
     /* at this point: content contains a terminator, so the terminator
        searches below succeed. */
     usize position = 0;
 
     if (!m_line.is_empty()) {
-      let const first_newline = *content.find_character(terminator);
+      let const first_terminator = *content.find_character(terminator);
 
-      m_line.append(content.substring_of_length(0, first_newline));
+      m_line.append(content.substring_of_length(0, first_terminator));
       finish_pending_line(chunk.source_index, source);
-      position = first_newline + 1;
+      position = first_terminator + 1;
     }
 
-    let const lines_end = *last_newline + 1;
+    let const lines_end = *last_terminator + 1;
 
     while (position < lines_end) {
       let const hit = content.find_substring(m_candidate_literal, position);
@@ -2377,10 +2377,10 @@ private:
   {
     while (position < chunk.content.length) {
       let const remaining = chunk.content.substring(position);
-      let const newline_offset =
+      let const terminator_offset =
           remaining.find_character(m_options.line_terminator);
-      let const delimiter_position = newline_offset.has_value()
-                                         ? position + *newline_offset
+      let const delimiter_position = terminator_offset.has_value()
+                                         ? position + *terminator_offset
                                          : chunk.content.length;
 
       let const segment = chunk.content.substring_of_length(
