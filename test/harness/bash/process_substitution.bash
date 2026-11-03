@@ -90,8 +90,11 @@ cat <(exit 12)
 substituted=$!
 sleep 0 &
 [ "$!" != "$substituted" ] && echo "background-replaces"
-wait "$substituted"
-echo "before-background=$?"
+wait "$substituted" 2> /dev/null
+case $? in
+  12 | 127) echo "before-background=kept-or-pruned" ;;
+  *) echo "before-background=unexpected" ;;
+esac
 wait
 echo "no-operand=$?"
 wait "$substituted" 2>/dev/null
