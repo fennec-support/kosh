@@ -27,6 +27,9 @@ fi
 GIT_CEILING_DIRECTORIES=$ceiling "$BIN" -c "cd '$root' && echo \"outside=[\$KOSH_GIT_BRANCH]\""
 "$BIN" -c "cd '$root/repo/sub/dir' && GIT_CEILING_DIRECTORIES='$ceiling' && echo \"below-ceiling=\$KOSH_GIT_BRANCH\""
 "$BIN" -c "cd '$root/repo' && KOSH_GIT_BRANCH=stored && echo \"stored=\$KOSH_GIT_BRANCH\""
+mkdir -p "$root/gone"
+GIT_CEILING_DIRECTORIES=$ceiling timeout 10 "$BIN" -c "cd '$root/gone' && rmdir \"\$PWD\" 2>/dev/null; echo \"gone=[\$KOSH_GIT_BRANCH]\""
+echo "gone-status=$?"
 # KOSH_GIT_AHEAD starts git only from a trusted absolute directory, so a git
 # planted in the repository and reached through an empty PATH entry never runs.
 upstream=$root/upstream

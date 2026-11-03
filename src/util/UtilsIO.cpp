@@ -407,7 +407,9 @@ resolve_git_directory(StringView ceiling_directories) throws -> Path
 
     let normalized = parent.to_absolute();
 
-    if (normalized.text() == dir.text()) break;
+    if (!normalized.is_absolute() || normalized.text() == dir.text()) {
+      break;
+    }
 
     let is_below_ceiling = false;
 
