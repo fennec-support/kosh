@@ -2259,6 +2259,11 @@ A recursive copy keeps links as links.
 With \f[CR]\-l\f[R] or \f[CR]\-s\f[R], each source that is not a
 directory becomes a link at its destination, and \f[CR]\-R\f[R] still
 creates the directories and links the files inside them.
+Without \f[CR]\-H\f[R], \f[CR]\-L\f[R], \f[CR]\-P\f[R], or
+\f[CR]\-a\f[R], \f[CR]\-l\f[R] follows every symbolic link and links the
+file it resolves to, and a dangling link fails.
+With \f[CR]\-P\f[R] or \f[CR]\-a\f[R], \f[CR]\-l\f[R] hard links each
+symbolic link itself.
 A hard link to a source link that is followed points to the file the
 link resolves to.
 A relative source with \f[CR]\-s\f[R] is accepted only when the

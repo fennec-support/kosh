@@ -192,9 +192,20 @@ link_file(const ExecContext &ec,
   let         link_target = source;
   Maybe<Path> resolved_source;
 
-  if (!is_symbolic && source_path.is_symbolic_link()) {
+  if (!is_symbolic && options.symlink_mode != cp_symlink_mode::Preserve &&
+      source_path.is_symbolic_link())
+  {
     resolved_source = os::canonical_path(source_path);
-    if (resolved_source.has_value()) link_target = resolved_source->view();
+
+    if (!resolved_source.has_value()) {
+      throw Error{
+          "Unable to read '" + String{allocator, source}
+            +
+          "': " + os::last_system_error_message()
+      };
+    }
+
+    link_target = resolved_source->view();
   }
 
   let const did_create = is_symbolic
@@ -347,7 +358,7 @@ copy_path(const ExecContext                &ec,
     };
   }
 
-  if (is_source_symlink && options.link_mode != cp_link_mode::Symbolic) {
+  if (is_source_symlink && options.link_mode == cp_link_mode::Copy) {
     if (let const target = os::read_symlink(source, allocator)) {
       if (should_keep_destination) return true;
 
@@ -714,6 +725,13 @@ Cp::execute(const ExecContext               &ec,
       !FLAG_CP_FOLLOW_NONE.is_enabled())
   {
     symlink_mode = cp_symlink_mode::FollowRoot;
+  }
+
+  if (FLAG_CP_LINK.is_enabled() && !FLAG_CP_FOLLOW_ROOT.is_enabled() &&
+      !FLAG_CP_FOLLOW_ALL.is_enabled() && !FLAG_CP_FOLLOW_NONE.is_enabled() &&
+      !is_archive)
+  {
+    symlink_mode = cp_symlink_mode::FollowAll;
   }
 
   let options = cp_options{FLAG_CP_FORCE.is_enabled(),

@@ -23,3 +23,10 @@ cp-link-hard=hard
 cp-link-tree-copy/file=hard
 cp-link-sub/forced=hard
 kept=old soft=cp-link-old sub-soft=missing both=missing
+follow=1
+cp-link-follow/inner=target
+cp-link-operand=target
+follow-dangling=missing
+cp-link-physical/inner=same-link
+cp-link-physical/dangling=same-link
+cp-link-archive/inner=same-link

@@ -29,3 +29,24 @@ for cp_link_path in cp-link-hard cp-link-tree-copy/file cp-link-sub/forced; do
   fi
 done
 printf 'kept=%s soft=%s sub-soft=%s both=%s\n' "$(cat cp-link-old)" "$(readlink cp-link-soft)" "$([ -e cp-link-sub/soft ] && echo present || echo missing)" "$([ -e cp-link-both ] && echo present || echo missing)"
+mkdir cp-link-deref
+printf two > cp-link-deref/file
+ln -s file cp-link-deref/inner
+ln -s missing cp-link-deref/dangling
+"$BIN" -c 'koshkit cp -Rl cp-link-deref cp-link-follow 2>/dev/null; printf "follow=%s\n" "$?"; koshkit cp -RlP cp-link-deref cp-link-physical; koshkit cp -al cp-link-deref cp-link-archive; koshkit cp -l cp-link-deref/inner cp-link-operand'
+for cp_link_path in cp-link-follow/inner cp-link-operand; do
+  if [ "$cp_link_path" -ef cp-link-deref/file ] && [ ! -L "$cp_link_path" ]; then
+    echo "$cp_link_path=target"
+  else
+    echo "$cp_link_path=not-target"
+  fi
+done
+printf 'follow-dangling=%s\n' "$([ -L cp-link-follow/dangling ] && echo present || echo missing)"
+for cp_link_path in cp-link-physical/inner cp-link-physical/dangling cp-link-archive/inner; do
+  cp_link_source=cp-link-deref/${cp_link_path#*/}
+  if [ -L "$cp_link_path" ] && [ "$(ls -id "$cp_link_path" | cut -d' ' -f1)" = "$(ls -id "$cp_link_source" | cut -d' ' -f1)" ]; then
+    echo "$cp_link_path=same-link"
+  else
+    echo "$cp_link_path=other"
+  fi
+done
