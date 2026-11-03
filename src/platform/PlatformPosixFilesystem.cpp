@@ -865,6 +865,45 @@ acquire_process_lock(StringView       path,
   unused(::fcntl(lock, F_SETFL, ::fcntl(lock, F_GETFL) & ~O_NONBLOCK));
   if (::flock(lock, lock_flags) == 0) return lock;
 
+#if defined __APPLE__
+  /* macOS has no advisory lock on a FIFO, so a FIFO is locked through a
+     private file of the user that the device and inode of the FIFO identify.
+     Other kosh processes of the same user lock the same file. */
+  if (errno == ENOTSUP || errno == EOPNOTSUPP) {
+    struct stat fifo_status{};
+
+    if (::fstat(lock, &fifo_status) == 0 && S_ISFIFO(fifo_status.st_mode)) {
+      char proxy_path[128];
+
+      snprintf(proxy_path, sizeof(proxy_path), "/tmp/.kosh-flock-%u-%llu-%llu",
+               static_cast<unsigned>(::geteuid()),
+               static_cast<unsigned long long>(fifo_status.st_dev),
+               static_cast<unsigned long long>(fifo_status.st_ino));
+
+      let const proxy =
+          ::open(proxy_path,
+                 O_RDONLY | O_CREAT | O_NOFOLLOW |
+                     (inheritance == lock_inheritance::Private ? O_CLOEXEC : 0),
+                 0600);
+      struct stat proxy_status{};
+
+      if (proxy >= 0 && ::fstat(proxy, &proxy_status) == 0 &&
+          S_ISREG(proxy_status.st_mode) && proxy_status.st_uid == ::geteuid() &&
+          ::flock(proxy, lock_flags) == 0)
+      {
+        ::close(lock);
+
+        return proxy;
+      }
+
+      let const proxy_errno = errno;
+
+      if (proxy >= 0) ::close(proxy);
+      errno = proxy_errno;
+    }
+  }
+#endif
+
   let const saved_errno = errno;
 
   ::close(lock);
