@@ -176,18 +176,6 @@ link_file(const ExecContext &ec,
     };
   }
 
-  let const should_remove_destination =
-      options.should_force &&
-      (destination_path.exists() || destination_path.is_symbolic_link());
-
-  if (should_remove_destination && !os::remove_file(destination)) {
-    throw Error{
-        "Unable to remove '" + String{allocator, destination}
-          +
-        "': " + os::last_system_error_message()
-    };
-  }
-
   let         link_target = source;
   Maybe<Path> resolved_source;
 
@@ -207,9 +195,45 @@ link_file(const ExecContext &ec,
     link_target = resolved_source->view();
   }
 
-  let const did_create = is_symbolic
-                             ? os::create_symlink(source, destination)
-                             : os::create_hard_link(link_target, destination);
+  let const do_create_link = [&](StringView path) wontthrow -> bool {
+    return is_symbolic ? os::create_symlink(source, path)
+                       : os::create_hard_link(link_target, path);
+  };
+
+  bool did_create = do_create_link(destination);
+
+  /* the link is made beside the destination and renamed over it, so a
+     failure keeps the destination. */
+  if (!did_create && options.should_force &&
+      (destination_path.exists() || destination_path.is_symbolic_link()))
+  {
+    let       fresh       = String{allocator, destination} + ".kosh-cp";
+    let const do_is_taken = [&]() throws -> bool {
+      let const fresh_path = Path{fresh.view(), allocator};
+
+      return fresh_path.exists() || fresh_path.is_symbolic_link();
+    };
+
+    for (usize attempt_count = 1; do_is_taken(); attempt_count++) {
+      fresh = String{allocator, destination} + ".kosh-cp" +
+              String::from(attempt_count, allocator);
+    }
+
+    did_create = do_create_link(fresh.view()) &&
+                 os::rename_path(fresh.view(), destination);
+
+    if (!did_create) {
+      let const reason = os::last_system_error_message();
+
+      unused(os::remove_file(fresh.view()));
+
+      throw Error{
+          "Unable to replace '" + String{allocator, destination}
+            +
+          "': " + reason
+      };
+    }
+  }
 
   if (!did_create) {
     let const link_kind = StringView{is_symbolic ? "symbolic" : "hard"};
@@ -329,10 +353,17 @@ copy_path(const ExecContext                &ec,
   let const is_same_file =
       was_destination_present && source_path.is_same_file_as(destination_path);
 
-  if (is_same_file && options.link_mode == cp_link_mode::Hard) return true;
+  let const is_destination_link =
+      is_same_file && destination_path.is_symbolic_link();
 
-  if (is_same_file && (options.link_mode != cp_link_mode::Symbolic ||
-                       !destination_path.is_symbolic_link()))
+  if (is_same_file && options.link_mode == cp_link_mode::Hard &&
+      !is_destination_link)
+  {
+    return true;
+  }
+
+  if (is_same_file &&
+      (options.link_mode == cp_link_mode::Copy || !is_destination_link))
   {
     throw Error{
         "'" + String{allocator, source     }

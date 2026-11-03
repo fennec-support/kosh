@@ -34,7 +34,9 @@ pwdx_process_id(StringView operand) wontthrow -> Maybe<i64>
 
   let const parsed = digits.to<i64>();
 
-  if (parsed.is_error() || parsed.value() <= 0) return None;
+  if (parsed.is_error() || parsed.value() <= 0 || parsed.value() > 0x7fffffff) {
+    return None;
+  }
 
   return parsed.value();
 }

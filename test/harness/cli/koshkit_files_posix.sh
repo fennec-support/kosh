@@ -36,6 +36,12 @@ else
   echo "confirmed=not-hard"
 fi
 "$BIN" -c 'koshkit cp -l cp-link-tree/file cp-link-hard; printf "relink=%s\n" "$?"; koshkit cp -sf cp-link-old cp-link-soft; printf "refresh-soft=%s\n" "$?"; koshkit cp -s cp-link-old cp-link-soft 2>/dev/null; printf "soft-exists=%s\n" "$?"; koshkit cp -sf "$PWD/cp-link-old" cp-link-old 2>/dev/null; printf "soft-self=%s\n" "$?"'
+printf kept > cp-link-guarded
+ln -s nowhere cp-link-nowhere
+ln -s cp-link-old cp-link-to-old
+ln -s cp-link-old cp-link-to-old-forced
+"$BIN" -c 'koshkit cp -lf cp-link-nowhere cp-link-guarded 2>/dev/null; printf "dangling-forced=%s\n" "$?"; koshkit cp -l cp-link-old cp-link-to-old 2>/dev/null; printf "onto-link=%s\n" "$?"; koshkit cp -lf cp-link-old cp-link-to-old-forced; printf "onto-link-forced=%s\n" "$?"'
+printf 'guarded=%s onto-link=%s onto-link-forced=%s\n' "$(cat cp-link-guarded)" "$([ -L cp-link-to-old ] && echo link || echo file)" "$([ -L cp-link-to-old-forced ] && echo link || echo file)"
 printf 'kept=%s soft=%s sub-soft=%s both=%s\n' "$(cat cp-link-old)" "$(readlink cp-link-soft)" "$([ -e cp-link-sub/soft ] && echo present || echo missing)" "$([ -e cp-link-both ] && echo present || echo missing)"
 mkdir cp-link-deref
 printf two > cp-link-deref/file

@@ -33,4 +33,5 @@ pwdx-self=0
 pwdx-proc=0
 pwdx-reaped=1
 pwdx-invalid=1
+pwdx-out-of-range=invalid
 pwdx-missing=2

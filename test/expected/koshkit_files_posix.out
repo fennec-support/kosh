@@ -27,6 +27,10 @@ relink=0
 refresh-soft=0
 soft-exists=1
 soft-self=1
+dangling-forced=1
+onto-link=1
+onto-link-forced=0
+guarded=kept onto-link=link onto-link-forced=file
 kept=old soft=cp-link-old sub-soft=missing both=missing
 follow=1
 cp-link-follow/inner=target

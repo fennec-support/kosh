@@ -52,5 +52,10 @@ koshkit pwdx "$pwdx_reaped" 2>/dev/null
 echo "pwdx-reaped=$?"
 koshkit pwdx abc 2>/dev/null
 echo "pwdx-invalid=$?"
+pwdx_error=$(koshkit pwdx 4294967797 2>&1)
+case $pwdx_error in
+  *"Invalid process id"*) echo "pwdx-out-of-range=invalid" ;;
+  *) echo "pwdx-out-of-range=$pwdx_error" ;;
+esac
 koshkit pwdx 2>/dev/null
 echo "pwdx-missing=$?"
