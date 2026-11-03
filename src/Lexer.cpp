@@ -1582,6 +1582,8 @@ Lexer::lex_identifier() throws -> Token *
     }
   }
 
+  word.finish();
+
   if (m_parse_session.should_collect_debug_words() &&
       m_cursor_position != m_last_collected_word_position)
   {

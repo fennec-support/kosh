@@ -647,7 +647,7 @@ public:
      time:   O(segment count + total text length), one clone() per segment. */
   cold
   Word(const Word &other) throws
-      : segments(heap_allocator()),
+      : segments(heap_allocator()), m_facts(other.m_facts),
         has_locale_translation_quote(other.has_locale_translation_quote)
   {
     segments.reserve(other.segments.count());
@@ -660,7 +660,7 @@ public:
       : segments(steal(other.segments)),
         m_constant_value_data(other.m_constant_value_data),
         m_constant_value_length(other.m_constant_value_length),
-        m_facts(other.m_facts), m_extra_facts(other.m_extra_facts),
+        m_facts(other.m_facts),
         has_locale_translation_quote(other.has_locale_translation_quote)
   {
     other.m_constant_value_data   = nullptr;
@@ -674,8 +674,7 @@ public:
 
     segments = other.segments;
     release_constant_value();
-    m_facts                      = 0;
-    m_extra_facts                = 0;
+    m_facts                      = other.m_facts;
     has_locale_translation_quote = other.has_locale_translation_quote;
 
     return *this;
@@ -691,7 +690,6 @@ public:
     m_constant_value_data         = other.m_constant_value_data;
     m_constant_value_length       = other.m_constant_value_length;
     m_facts                       = other.m_facts;
-    m_extra_facts                 = other.m_extra_facts;
     has_locale_translation_quote  = other.has_locale_translation_quote;
     other.m_constant_value_data   = nullptr;
     other.m_constant_value_length = 0;
@@ -750,29 +748,37 @@ public:
   };
 
   fn
-  has_command_fact(Fact fact) const throws -> bool
-  {
-    if ((m_facts & static_cast<u16>(Fact::IsCommandClassified)) == 0)
-      classify_command();
+  finish() throws -> void;
 
-    return (m_facts & static_cast<u16>(fact)) != 0;
+  pure fn
+  is_finished() const wontthrow -> bool
+  {
+    return (m_facts & static_cast<u16>(Fact::IsComputed)) != 0;
   }
 
-  fn
-  plain_literal_kind() const wontthrow -> PlainLiteral;
-
-  fn
-  has_fact(Fact fact) const wontthrow -> bool
+  pure fn
+  has_command_fact(Fact fact) const wontthrow -> bool
   {
-    if ((m_facts & static_cast<u16>(Fact::IsComputed)) == 0) compute_facts();
+    ASSERT(is_finished());
 
     return (m_facts & static_cast<u16>(fact)) != 0;
   }
 
   pure fn
-  are_facts_computed() const wontthrow -> bool
+  plain_literal_kind() const wontthrow -> PlainLiteral
   {
-    return (m_facts & static_cast<u16>(Fact::IsComputed)) != 0;
+    ASSERT(is_finished());
+
+    return static_cast<PlainLiteral>((m_facts & PLAIN_KIND_MASK) >>
+                                     PLAIN_KIND_SHIFT);
+  }
+
+  pure fn
+  has_fact(Fact fact) const wontthrow -> bool
+  {
+    ASSERT(is_finished());
+
+    return (m_facts & static_cast<u16>(fact)) != 0;
   }
 
   fn
@@ -795,19 +801,16 @@ private:
   }
 
   fn
-  compute_facts() const wontthrow -> void;
+  compute_facts() wontthrow -> void;
   fn
-  classify_command() const throws -> void;
+  classify_command() throws -> void;
 
   static constexpr u16 PLAIN_KIND_SHIFT = 1;
   static constexpr u16 PLAIN_KIND_MASK  = 3U << PLAIN_KIND_SHIFT;
 
-  static constexpr u8 EXTRA_IS_PLAIN_KIND_COMPUTED = 1U << 0;
-
   mutable char *m_constant_value_data{nullptr};
   mutable u32   m_constant_value_length{0};
-  mutable u16   m_facts{0};
-  mutable u8    m_extra_facts{0};
+  u16           m_facts{0};
 
 public:
   bool has_locale_translation_quote : 1 {false};

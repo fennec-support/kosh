@@ -1052,8 +1052,7 @@ AstWriter::take() throws -> String
 }
 
 cold fn
-Expression::to_ast_string(StringView source, mimic_mood mood) const throws
-    -> String
+Expression::to_ast_string(StringView source, mimic_mood mood) const throws -> String
 {
   let out = AstWriter{source, mood};
 

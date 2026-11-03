@@ -5379,6 +5379,7 @@ build_parameter_reference(StringView text,
   try {
     build_operand_word(reference->get_operand(text), allocator,
                        is_function_arena, *reference);
+    if (reference->operand != nullptr) reference->operand->finish();
   } catch (...) {
     if (allocator.get_kind() == Allocator::Kind::Heap)
       destroy_parameter_reference(reference);

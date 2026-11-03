@@ -484,6 +484,7 @@ expand_braces(const Word &word, Allocator alloc) throws
       }
     }
 
+    out.finish();
     words.push(steal(out));
   }
 
@@ -609,6 +610,8 @@ copy_word_range(const Word  &word,
       out.segments.push(steal(segment));
     }
   }
+
+  out.finish();
 
   return out;
 }
@@ -899,6 +902,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
             expand_colon_tildes(segments[i], i + 1 < segments.count());
         }
 
+        fallback_word->finish();
         word = &*fallback_word;
       } else {
         fallback_word           = Word{};
@@ -908,6 +912,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
             SegmentText{scratch_allocator(), token->raw_string().view()},
             false
         });
+        fallback_word->finish();
         word = &*fallback_word;
       }
 

@@ -264,7 +264,17 @@ Word::to_literal_string() const throws -> String
 }
 
 fn
-Word::compute_facts() const wontthrow -> void
+Word::finish() throws -> void
+{
+  let const kind = optimizer::classify_plain_literal(*this);
+
+  m_facts = static_cast<u16>(static_cast<u16>(kind) << PLAIN_KIND_SHIFT);
+  compute_facts();
+  classify_command();
+}
+
+fn
+Word::compute_facts() wontthrow -> void
 {
   let facts     = static_cast<u16>(Fact::IsComputed);
   let is_static = true;
@@ -354,7 +364,7 @@ constexpr static_string_entry<u16> COMMAND_FACT_ENTRIES[] = {
 constexpr StaticStringMap COMMAND_FACTS{COMMAND_FACT_ENTRIES};
 
 fn
-Word::classify_command() const throws -> void
+Word::classify_command() throws -> void
 {
   let command_facts = static_cast<u16>(Fact::IsCommandClassified);
 
@@ -368,21 +378,6 @@ Word::classify_command() const throws -> void
   }
 
   m_facts |= command_facts;
-}
-
-fn
-Word::plain_literal_kind() const wontthrow -> PlainLiteral
-{
-  if ((m_extra_facts & EXTRA_IS_PLAIN_KIND_COMPUTED) == 0) {
-    let const kind = optimizer::classify_plain_literal(*this);
-
-    m_facts = static_cast<u16>((m_facts & ~PLAIN_KIND_MASK) |
-                               (static_cast<u16>(kind) << PLAIN_KIND_SHIFT));
-    m_extra_facts |= EXTRA_IS_PLAIN_KIND_COMPUTED;
-  }
-
-  return static_cast<PlainLiteral>((m_facts & PLAIN_KIND_MASK) >>
-                                   PLAIN_KIND_SHIFT);
 }
 
 /* whether text[1, name_length) continues an assignment name: variable name
@@ -674,6 +669,8 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
     for (usize j = i + 1; j < segments.count(); j++)
       value.segments.push(segments[j]);
 
+    value.finish();
+
     return word_assignment_split{steal(key), steal(value), update_mode};
   }
 
@@ -779,6 +776,8 @@ Word::get_assignment_split(Allocator allocator) const throws
   for (usize i = 1; i < segments.count(); i++)
     value.segments.push(segments[i].clone(allocator));
 
+  value.finish();
+
   return word_assignment_split{steal(name), steal(value), update_mode};
 }
 
@@ -851,6 +850,8 @@ Word::get_quoted_assignment_split() const throws
 
   for (usize i = equals_segment + 1; i < segments.count(); i++)
     value.segments.push(segments[i]);
+
+  value.finish();
 
   return word_assignment_split{
       String{heap_allocator(), prefix_view.substring_of_length(0, name_length)},
@@ -1104,6 +1105,7 @@ create_word_token(BumpArena     &arena,
                   Word           word) throws -> WordToken *
 {
   word.move_resources_to_arena(arena);
+  if (!word.is_finished()) word.finish();
 
   if (borrowed_word_literal(word).has_value())
     return arena.create<WordToken>(steal(location), steal(word));
