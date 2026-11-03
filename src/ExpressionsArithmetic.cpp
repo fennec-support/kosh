@@ -841,17 +841,8 @@ ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const t
     const SourceLocation body_base{source_location().position + 2, 0,
                                    source_location().source_name_index};
 
-    try {
-      is_nonzero = cxt.evaluate_arithmetic_tree_nonzero(m_expression, m_tree,
-                                                        &body_base);
-    } catch (const ErrorBase &) {
-      if (m_tree == nullptr || !m_tree->is_simple) {
-        throw;
-      }
-
-      is_nonzero = cxt.evaluate_arithmetic_nonzero(
-          m_expression, &body_base, arithmetic_text_kind::ShellSource);
-    }
+    is_nonzero =
+        cxt.evaluate_arithmetic_tree_nonzero(m_expression, m_tree, &body_base);
   } catch (const Error &e) {
     relocate_if_unlocated(e, source_location());
   }

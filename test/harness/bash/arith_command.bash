@@ -243,3 +243,8 @@ x=1; echo "$(( x += x++ ))" "$x"
 # A doubled sign before a number or a parenthesis is two unary operators.
 echo "$(( ++1 ))" "$(( --1 ))" "$(( -- -2 ))" "$(( 1 + ++2 ))" "$(( ++(2) ))"
 (( ++3 )) && echo unary-plus-true
+
+# A failed command runs the side effect of a variable value once.
+n=0; step='n++'
+(( step + 1/0 )) 2>/dev/null
+echo "failed-step=$n"

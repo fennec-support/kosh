@@ -1669,6 +1669,9 @@ public:
 
     let const value = context->get_variable_value(name);
 
+    if (!value.has_value() && is_bash_array_without_base(name))
+      return ArithmeticValue{};
+
     if (!value.has_value()) {
       if (should_error_unset)
         fail_at(name_position, name.length,
@@ -2026,12 +2029,21 @@ public:
     let const value = context->get_variable_value(name);
 
     if (!value.has_value()) {
-      context->report_unset_reference(name);
+      if (!is_bash_array_without_base(name))
+        context->report_unset_reference(name);
 
       return ArithmeticValue{};
     }
 
     return evaluate_named_value(value->view());
+  }
+
+  fn
+  is_bash_array_without_base(StringView name) const throws -> bool
+  {
+    return context->runtime_state().is_bash_compatible() &&
+           context->is_array_variable(name) &&
+           !context->is_valueless_array(name);
   }
 
   fn
