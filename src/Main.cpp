@@ -693,7 +693,7 @@ parse_invocation_flags(int argc, const char *const *argv) throws
 {
   let options = INVOCATION_PARSE_OPTIONS;
 
-  options.should_continue_operand_values =
+  options.should_extend_operand_values =
       argc < 1 || !is_posix_shell_invocation(StringView{argv[0]});
 
   return parse_flags(FLAG_LIST, argc, argv, 0, nullptr, nullptr, StringView{},

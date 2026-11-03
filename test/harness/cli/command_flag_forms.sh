@@ -33,9 +33,16 @@ echo "missing-command-rc=$?"
 "$BIN" --command='echo "equals-$0-$1"' name a
 "$BIN" --command='echo mixed-one' -c 'echo mixed-two' -c 'echo mixed-three'
 "$BIN" -c 'echo continued-one' --command='echo continued-two'
+"$BIN" -c='echo "short-equals-$0-$1"' name a
+"$BIN" -ec='false; echo not-reached'
+echo "clustered-short-equals-rc=$?"
+"$BIN" -c='echo short-one' -c='echo short-two'
+"$BIN" -c=
+echo "empty-short-equals-rc=$?"
 if [ "${OS-}" = Windows_NT ]; then
   echo "zero=-c"
   echo "zero=--command=echo injected"
+  echo "strict-short-equals-rc=2"
 else
   strict_directory=$TEST_TEMP_DIRECTORY/command-flag-forms
   mkdir -p "$strict_directory"
@@ -43,6 +50,8 @@ else
     "$strict_directory/bash"
   "$strict_directory/bash" -c 'echo "zero=$0"' -c 'echo injected'
   "$strict_directory/bash" -c 'echo "zero=$0"' --command='echo injected'
+  "$strict_directory/bash" -c='echo injected' 2>/dev/null
+  echo "strict-short-equals-rc=$?"
 fi
 "$BIN" --command=
 echo "empty-equals-rc=$?"

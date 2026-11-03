@@ -761,13 +761,14 @@ argument_end_position(
          shell_quoted_arg_length(StringView{argv[argument_index]});
 }
 
-/* e.g. for the flag -c, --command: "-c", "--command", and "--command=x" are
-   its words, and "-ec" and "--comm" are not. */
+/* e.g. for the flag -c, --command: "-c", "-c=x", "--command", and
+   "--command=x" are its words, and "-ec" and "--comm" are not. */
 static pure fn
 is_exact_flag_word(const Flag &flag, StringView argument) wontthrow -> bool
 {
-  if (flag.short_name() != '\0' && argument.length == 2 && argument[0] == '-' &&
-      argument[1] == flag.short_name())
+  if (flag.short_name() != '\0' && argument.length >= 2 &&
+      argument[0] == '-' && argument[1] == flag.short_name() &&
+      (argument.length == 2 || argument[2] == '='))
   {
     return true;
   }
@@ -928,7 +929,7 @@ parse_flags(const FlagList                  &flags,
 
     if (continuing_operand_flag != nullptr) {
       let const was_flag_repeated =
-          parse_options.should_continue_operand_values &&
+          parse_options.should_extend_operand_values &&
           is_exact_flag_word(*continuing_operand_flag, StringView{argv[i]});
 
       continuing_operand_flag = nullptr;
@@ -1140,7 +1141,9 @@ parse_flags(const FlagList                  &flags,
           operand_flag->set_position(++position);
 
           /* find_flag() matches a long name only before '\0' or '='. */
-          if (is_long && *value_offset == '=') {
+          if (*value_offset == '=' &&
+              (is_long || parse_options.should_extend_operand_values))
+          {
             let const value_end = argument_end_position(
                 argv, arg_index, base_position, arg_locations);
 

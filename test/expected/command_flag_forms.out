@@ -28,8 +28,14 @@ mixed-two
 mixed-three
 continued-one
 continued-two
+short-equals-name-a
+clustered-short-equals-rc=1
+short-one
+short-two
+empty-short-equals-rc=0
 zero=-c
 zero=--command=echo injected
+strict-short-equals-rc=2
 empty-equals-rc=0
 trailer
 -c:1:1: warning: Exit code (0)

@@ -3306,12 +3306,16 @@ The shell parses the letters after \f[CR]\-o\f[R] in
 The first operand after the option names is the command string.
 \f[CR]\-\-command\f[R] takes its string the same way, and
 \f[CR]\-\-command=command\f[R] attaches it.
+When the shell starts as \f[CR]kosh\f[R], \f[CR]\-c=command\f[R]
+attaches the string after the \f[CR]=\f[R], and so does a cluster that
+ends in it, such as \f[CR]\-ec=command\f[R].
 A lone \f[CR]\-\f[R] or \f[CR]\-\-\f[R] before the command string ends
 option parsing without becoming an operand.
 When the shell starts as \f[CR]kosh\f[R] and the word right after a
-command string is exactly \f[CR]\-c\f[R], \f[CR]\-\-command\f[R], or
-\f[CR]\-\-command=command\f[R], it adds another command string, and the
-shell runs the strings in order in one shell environment.
+command string is exactly \f[CR]\-c\f[R], \f[CR]\-c=command\f[R],
+\f[CR]\-\-command\f[R], or \f[CR]\-\-command=command\f[R], it adds
+another command string, and the shell runs the strings in order in one
+shell environment.
 A shell started as \f[CR]sh\f[R], \f[CR]dash\f[R], \f[CR]bash\f[R], or
 \f[CR]rbash\f[R] takes every word after the command string as an
 operand, as POSIX specifies.
