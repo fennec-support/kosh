@@ -1873,13 +1873,18 @@ builtin.
 \f[B]Option parsing and exit status invariants\f[R] \- Every utility
 accepts \f[CR]\-\-help\f[R] (and \f[CR]\-\-version\f[R] when invoked
 under its own binary name).
+Both words are options only where the utility parses options, so an
+option value such as \f[CR]grep \-e \-\-version\f[R], a
+\f[CR]find \-exec\f[R] argument, or a word after a first operand that
+ends option parsing stays an argument.
 A short flag followed by a lone equals sign takes it as its value, as in
 \f[CR]cut \-d=\f[R].
 Flags may appear before or after operands (\f[CR]\-\-\f[R] ends option
 parsing), except for \f[CR]calc\f[R], \f[CR]env\f[R], \f[CR]expr\f[R],
 \f[CR]flock\f[R], \f[CR]nice\f[R], \f[CR]nohup\f[R], \f[CR]retry\f[R],
-\f[CR]timeout\f[R], \f[CR]watch\f[R], and \f[CR]xargs\f[R], which stop
-parsing options at the first positional operand.
+\f[CR]slurp\f[R], \f[CR]timeout\f[R], \f[CR]watch\f[R], and
+\f[CR]xargs\f[R], which stop parsing options at the first positional
+operand.
 Utilities return \f[CR]0\f[R] on success, \f[CR]1\f[R] on
 operand/processing failure (continuing to remaining file operands), and
 \f[CR]2\f[R] on usage errors (which terminates scripts in the

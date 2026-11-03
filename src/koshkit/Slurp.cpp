@@ -25,7 +25,7 @@ FLAG(SLURP_VI_NORMAL,
      "vi-normal",
      "Edit with the vi key set, starting in normal mode.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Slurp);
+REGISTER_KOSHKIT_UTIL_FLAGS(Slurp, {.should_stop_at_first_operand = true});
 
 namespace koshka::koshkit {
 
@@ -35,6 +35,22 @@ Slurp::execute(const ExecContext               &ec,
                const ArrayList<String>         &args,
                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
+  if (ec.is_multicall) {
+    defer { reset_flags(FLAG_LIST); };
+
+    /* the slurp builtin reports a usage error itself. */
+    try {
+      if (parse_util_operands(FLAG_LIST, args, cxt.scratch_allocator(),
+                              &arg_locations, KOSHKIT_PARSE_OPTIONS, true)
+              .was_version_requested)
+      {
+        show_version();
+
+        return 0;
+      }
+    } catch (const ErrorBase &) {}
+  }
+
   let const builtin = search_builtin("slurp");
 
   ASSERT(builtin.has_value());

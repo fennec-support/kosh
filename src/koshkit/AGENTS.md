@@ -11,10 +11,11 @@ and its flags with `FLAG` and the shared flag types.
 `REGISTER_KOSHKIT_UTIL_FLAGS` adds the `--help` flag last and publishes the
 list for execution, help, and completion. Its optional braced
 `flag_parse_options`, such as `{.should_stop_at_first_operand = true}`, are
-the only parse options of the utility, and the registry publishes them.
+the only parse options of the utility.
 `KOSHKIT_PARSE_OPERANDS_OR_HELP` calls `parse_util_operands` with those
 options, handles flags, `--`, and operand locations, resets the flags at scope
-exit, and returns after help.
+exit, and returns after help, or after `--version` when the utility runs under
+its own name.
 
 Do not write a local option scanner for ordinary short flags, long flags,
 bundled flags, flag arguments, `--`, or operand locations. Extend

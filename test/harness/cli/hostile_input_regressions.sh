@@ -726,4 +726,21 @@ long_name=$(printf 'a%.0s' $(seq 200))
 echo "--- a multicall timeout passes --version to its command ---"
 ln -s "$BIN" timeout
 ./timeout 1 sh -c 'echo "[$1]"' _ --version
+./timeout -s KILL 1 sh -c 'echo "[$1]"' _ --version
 ./timeout --version | grep -c Koshka
+
+echo "--- multicall option values and operands keep --version ---"
+ln -s "$BIN" xargs
+ln -s "$BIN" env
+ln -s "$BIN" find
+ln -s "$BIN" grep
+ln -s "$BIN" ls
+echo x | ./xargs -n 1 sh -c 'echo "[$0|$1]"' --version
+./env -u NO_SUCH_VARIABLE sh -c 'echo "[$1]"' _ --version
+mkdir find_version && : > find_version/file
+./find find_version -name file -exec printf '[%s]\n' --version ';'
+./find --version | grep -c Koshka
+printf '%s\n' --version other > grep_version_input
+./grep -e --version grep_version_input
+./grep --version | grep -c Koshka
+./ls grep_version_input --version | grep -c Koshka

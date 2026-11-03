@@ -108,13 +108,22 @@ Koshkit::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   defer { koshkit::set_koshkit_color_mode(cli_color_mode::Auto); };
 
+  bool      was_version_requested = false;
   let const utility_index =
       ec.program() == "koshkit"
           ? parse_until_subcommand(FLAG_LIST, ec.args(), &ec.arg_locations(),
-                                   nullptr, ec.program())
+                                   nullptr, ec.program(),
+                                   ec.is_multicall ? &was_version_requested
+                                                   : nullptr)
           : usize{0};
 
   defer { reset_flags(FLAG_LIST); };
+
+  if (was_version_requested) {
+    show_version();
+
+    return 0;
+  }
 
   if (FLAG_KOSHKIT_COLOR.is_set()) {
     let const selected = parse_cli_color_mode(FLAG_KOSHKIT_COLOR.value());

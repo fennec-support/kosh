@@ -906,13 +906,14 @@ EvilPS::execute(const ExecContext               &ec,
                 const ArrayList<String>         &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let[operands, operand_locations] =
-      parse_util_operands(FLAG_LIST, args, cxt.scratch_allocator(),
-                          &arg_locations, KOSHKIT_PARSE_OPTIONS);
+  let[operands, operand_locations, was_version_requested] = parse_util_operands(
+      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
+      KOSHKIT_PARSE_OPTIONS, ec.is_multicall);
 
   defer { reset_flags(FLAG_LIST); };
 
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);
+  KOSHKIT_SHOW_VERSION_AND_RETURN(was_version_requested);
 
   let const allocator    = cxt.scratch_allocator();
   usize     output_limit = SIZE_MAX;

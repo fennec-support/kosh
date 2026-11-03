@@ -523,22 +523,29 @@ struct util_operands_result
 {
   ArrayList<String>         operands;
   ArrayList<SourceLocation> operand_locations;
+  bool                      was_version_requested{false};
 };
 
+/* with should_accept_version, a --version word in an option position sets
+   was_version_requested, unless a flag of the list already has that name. */
 fn
 parse_util_operands(const FlagList                  &flags,
                     const ArrayList<String>         &args,
                     Allocator                        allocator,
                     const ArrayList<SourceLocation> *arg_locations = nullptr,
-                    flag_parse_options               parse_options = {}) throws
+                    flag_parse_options               parse_options = {},
+                    bool should_accept_version                     = false) throws
     -> util_operands_result;
 
+/* a non-null was_version_requested accepts --version as parse_util_operands
+   does with should_accept_version. */
 fn
 parse_until_subcommand(const FlagList                  &flags,
                        const ArrayList<String>         &args,
                        const ArrayList<SourceLocation> *arg_locations = nullptr,
                        ArrayList<SourceLocation> *operand_locations   = nullptr,
-                       StringView                 program_name = StringView{}) throws
+                       StringView                 program_name = StringView{},
+                       bool *was_version_requested             = nullptr) throws
     -> usize;
 
 fn

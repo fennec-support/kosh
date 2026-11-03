@@ -1248,14 +1248,48 @@ parse_flags(const FlagList                  &flags,
   return args;
 }
 
+/* a copy of a flag list that adds a --version flag after the listed flags
+   when it is asked to and no listed flag has that name. */
+class VersionFlagList
+{
+public:
+  VersionFlagList(const FlagList &flags, bool should_accept_version)
+      : m_flags(flags)
+  {
+    if (should_accept_version && find_long_flag(flags, "version") == nullptr)
+      m_flags.push(&m_version);
+  }
+
+  VersionFlagList(const VersionFlagList &) = delete;
+
+  pure fn
+  get_flags() const wontthrow -> const FlagList &
+  {
+    return m_flags;
+  }
+
+  pure fn
+  was_version_requested() const wontthrow -> bool
+  {
+    return m_version.is_enabled();
+  }
+
+private:
+  FlagBool m_version{'\0', "version", flag_section::NoSection,
+                     "Display the program version."};
+  FlagList m_flags;
+};
+
 fn
 parse_util_operands(const FlagList                  &flags,
                     const ArrayList<String>         &args,
                     Allocator                        allocator,
                     const ArrayList<SourceLocation> *arg_locations,
-                    flag_parse_options               parse_options) throws
+                    flag_parse_options               parse_options,
+                    bool                             should_accept_version) throws
     -> util_operands_result
 {
+  let version_flags     = VersionFlagList{flags, should_accept_version};
   let operand_locations = ArrayList<SourceLocation>{allocator};
 
   parse_options.should_omit_program_name = true;
@@ -1267,14 +1301,15 @@ parse_util_operands(const FlagList                  &flags,
           : "ending options at the first operand");
 
   let operands =
-      parse_flags_vec(flags, args, 0, arg_locations, &operand_locations, {},
-                      parse_options, allocator);
+      parse_flags_vec(version_flags.get_flags(), args, 0, arg_locations,
+                      &operand_locations, {}, parse_options, allocator);
 
   ASSERT(operands.allocator() == allocator);
   ASSERT(operand_locations.allocator() == allocator);
   ASSERT(operands.count() == operand_locations.count());
 
-  return util_operands_result{steal(operands), steal(operand_locations)};
+  return util_operands_result{steal(operands), steal(operand_locations),
+                              version_flags.was_version_requested()};
 }
 
 fn
@@ -1282,12 +1317,17 @@ parse_until_subcommand(const FlagList                  &flags,
                        const ArrayList<String>         &args,
                        const ArrayList<SourceLocation> *arg_locations,
                        ArrayList<SourceLocation>       *operand_locations,
-                       StringView                       program_name) throws -> usize
+                       StringView                       program_name,
+                       bool *was_version_requested) throws -> usize
 {
-  let       operand_indices = ArrayList<usize>{heap_allocator()};
-  let const operands =
-      parse_flags_vec(flags, args, 0, arg_locations, operand_locations,
-                      program_name, {}, heap_allocator(), &operand_indices);
+  let version_flags = VersionFlagList{flags, was_version_requested != nullptr};
+  let operand_indices = ArrayList<usize>{heap_allocator()};
+  let const operands  = parse_flags_vec(
+      version_flags.get_flags(), args, 0, arg_locations, operand_locations,
+      program_name, {}, heap_allocator(), &operand_indices);
+
+  if (was_version_requested != nullptr)
+    *was_version_requested = version_flags.was_version_requested();
 
   if (operands.count() <= 1) return args.count();
 

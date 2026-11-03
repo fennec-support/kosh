@@ -249,9 +249,11 @@ preflight_timeout_stage(const ExecContext &ec,
   defer { reset_flags(FLAG_LIST); };
 
   try {
-    let[operands, operand_locations] =
+    let[operands, operand_locations, was_version_requested] =
         parse_util_operands(FLAG_LIST, args, cxt.scratch_allocator(),
                             &arg_locations, KOSHKIT_PARSE_OPTIONS);
+
+    unused(was_version_requested);
 
     if (FLAG_HELP.is_enabled() || operands.count() < 2) {
       return None;

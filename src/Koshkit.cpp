@@ -135,31 +135,21 @@ static const SynopsisList *KOSHKIT_UTIL_SYNOPSES[KOSHKIT_UTIL_COUNT] = {};
 
 static StringView KOSHKIT_UTIL_DESCRIPTIONS[KOSHKIT_UTIL_COUNT] = {};
 
-static flag_parse_options KOSHKIT_UTIL_PARSE_OPTIONS[KOSHKIT_UTIL_COUNT] = {};
-
 fn
 register_koshkit_util_flags(Utility::Kind       chosen,
                             const FlagList     *flags,
                             const SynopsisList *synopsis,
-                            StringView          description,
-                            flag_parse_options  parse_options) wontthrow -> void
+                            StringView          description) wontthrow -> void
 {
-  KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)]    = flags;
-  KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)]      = synopsis;
-  KOSHKIT_UTIL_DESCRIPTIONS[static_cast<usize>(chosen)]  = description;
-  KOSHKIT_UTIL_PARSE_OPTIONS[static_cast<usize>(chosen)] = parse_options;
+  KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)]   = flags;
+  KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)]     = synopsis;
+  KOSHKIT_UTIL_DESCRIPTIONS[static_cast<usize>(chosen)] = description;
 }
 
 fn
 koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *
 {
   return KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)];
-}
-
-fn
-koshkit_util_parse_options(Utility::Kind chosen) wontthrow -> flag_parse_options
-{
-  return KOSHKIT_UTIL_PARSE_OPTIONS[static_cast<usize>(chosen)];
 }
 
 fn
@@ -1301,12 +1291,6 @@ koshkit_util_flag_list(Utility::Kind) wontthrow -> const FlagList *
 }
 
 fn
-koshkit_util_parse_options(Utility::Kind) wontthrow -> flag_parse_options
-{
-  return {};
-}
-
-fn
 koshkit_util_synopsis(Utility::Kind) wontthrow -> const SynopsisList *
 {
   return nullptr;
@@ -1467,20 +1451,6 @@ run_as_multicall(StringView           util_name,
   /* a utility starts before the startup configuration, so its context holds
      defaults that must not replace an inherited KOSHCONF. */
   cxt.execution_store().set_child_environment_fixed(true);
-
-  let const should_stop_at_operand =
-      chosen.has_value() &&
-      koshkit_util_parse_options(*chosen).should_stop_at_first_operand;
-
-  for (let const &operand : operands) {
-    if (operand == "--") break;
-    if (should_stop_at_operand && !operand.starts_with("-")) break;
-    if (operand == "--version") {
-      show_version();
-
-      return 0;
-    }
-  }
 
   ArrayList<String> args{heap_allocator()};
 

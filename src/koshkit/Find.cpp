@@ -62,6 +62,7 @@ struct find_action
 enum class find_predicate_kind : uchar
 {
   Help,
+  Version,
   Print,
   PrintNull,
   Execute,
@@ -76,6 +77,7 @@ enum class find_predicate_kind : uchar
 static constexpr static_string_entry<find_predicate_kind>
     FIND_PREDICATE_ENTRIES[] = {
         {SSK("--help"),    find_predicate_kind::Help        },
+        {SSK("--version"), find_predicate_kind::Version     },
         {SSK("-print"),    find_predicate_kind::Print       },
         {SSK("-print0"),   find_predicate_kind::PrintNull   },
         {SSK("-exec"),     find_predicate_kind::Execute     },
@@ -694,8 +696,11 @@ Find::execute(const ExecContext               &ec,
   for (; index < args.count(); index++) {
     let const predicate      = args[index].view();
     let const predicate_kind = FIND_PREDICATES.find(predicate);
+    let const is_unaccepted_version =
+        predicate_kind.has_value() &&
+        *predicate_kind == find_predicate_kind::Version && !ec.is_multicall;
 
-    if (!predicate_kind.has_value()) {
+    if (!predicate_kind.has_value() || is_unaccepted_version) {
       KOSHKIT_REPORT_ERROR_AT(arg_locations[index],
                               "Unknown predicate '" +
                                   String{cxt.scratch_allocator(), predicate} +
@@ -712,6 +717,7 @@ Find::execute(const ExecContext               &ec,
                       FLAG_LIST);
 
       return 0;
+    case find_predicate_kind::Version:   show_version(); return 0;
     case find_predicate_kind::Print:
     case find_predicate_kind::PrintNull: {
       actions.push(find_action{});

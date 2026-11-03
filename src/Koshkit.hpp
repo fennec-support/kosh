@@ -222,14 +222,9 @@ fn
 register_koshkit_util_flags(Utility::Kind       chosen,
                             const FlagList     *flags,
                             const SynopsisList *synopsis,
-                            StringView          description,
-                            flag_parse_options  parse_options) wontthrow -> void;
+                            StringView          description) wontthrow -> void;
 fn
 koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *;
-/* the options that the utility passes to parse_util_operands. */
-fn
-koshkit_util_parse_options(Utility::Kind chosen)
-    wontthrow -> flag_parse_options;
 fn
 koshkit_util_synopsis(Utility::Kind chosen) wontthrow -> const SynopsisList *;
 fn
@@ -243,15 +238,14 @@ koshkit_util_description(Utility::Kind chosen) wontthrow -> StringView;
 #define KOSHKIT_PARSE_OPTIONS T__KOSHKIT_PARSE_OPTIONS
 
 /* the optional braced flag_parse_options after util are the only parse
-   options of the utility. KOSHKIT_PARSE_OPERANDS_OR_HELP and the registry
-   read them. */
+   options of the utility, and KOSHKIT_PARSE_OPERANDS_OR_HELP reads them. */
 #define REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(util, ...)                   \
-  static constexpr koshka::flag_parse_options KOSHKIT_PARSE_OPTIONS{           \
-      koshka::flag_parse_options(__VA_ARGS__)};                                \
+  static constexpr koshka::flag_parse_options KOSHKIT_PARSE_OPTIONS            \
+      maybeunused{koshka::flag_parse_options(__VA_ARGS__)};                    \
   static uchar t__koshkit_flag_registrar =                                     \
       (koshka::koshkit::register_koshkit_util_flags(                           \
            koshka::koshkit::Utility::Kind::util, &FLAG_LIST, &HELP_SYNOPSIS,   \
-           HELP_DESCRIPTION, KOSHKIT_PARSE_OPTIONS),                           \
+           HELP_DESCRIPTION),                                                  \
        0)
 
 #define REGISTER_KOSHKIT_UTIL_FLAGS(util, ...)                                 \
@@ -371,12 +365,23 @@ print_util_help(const ExecContext &ec,
     }                                                                          \
   } while (false)
 
+/* a utility invoked under its own name accepts --version. */
+#define KOSHKIT_SHOW_VERSION_AND_RETURN(was_version_requested)                 \
+  do {                                                                         \
+    if (was_version_requested) {                                               \
+      koshka::show_version();                                                  \
+      return 0;                                                                \
+    }                                                                          \
+  } while (false)
+
 #define KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations)                    \
-  let const[operands, operand_locations] =                                     \
+  let const[operands, operand_locations, t__was_version_requested] =           \
       parse_util_operands(FLAG_LIST, (args), cxt.scratch_allocator(),          \
-                          &(arg_locations), KOSHKIT_PARSE_OPTIONS);            \
+                          &(arg_locations), KOSHKIT_PARSE_OPTIONS,             \
+                          ec.is_multicall);                                    \
   defer { reset_flags(FLAG_LIST); };                                           \
-  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args)
+  KOSHKIT_SHOW_HELP_AND_RETURN(ec, args);                                      \
+  KOSHKIT_SHOW_VERSION_AND_RETURN(t__was_version_requested)
 
 #define KOSHKIT_REPORT_ERROR_AT(location, ...)                                 \
   report_soft_koshkit_error((ec), (cxt), (location), __VA_ARGS__)
