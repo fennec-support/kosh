@@ -32,3 +32,15 @@ echo "group-producer=${PIPESTATUS[0]}"
 echo "== descriptor swap in a stage =="
 echo swapped-out 3>&1 >&3 | cat
 { echo swapped-err >&2; } 3>&1 1>&2 2>&3 | cat
+
+echo "== duplication before a standard redirection =="
+eval 'echo builtin-out >&6' 6>&1 >/dev/null | cat
+eval 'echo builtin-chain >&7' 6>&1 7>&6 >/dev/null | cat
+eval 'echo builtin-err >&6' 6>&2 2>/dev/null 2>&1 | cat
+command eval 'echo command-out >&6' 6>&1 >/dev/null | cat
+/bin/sh -c 'echo external-out >&6' 6>&1 >/dev/null | cat
+/bin/sh -c 'echo external-err >&6' 6>&2 2>/dev/null 2>&1 | cat
+eval 'echo after-out >&6' >/dev/null 6>&1 | cat
+echo stage-input | eval 'read -r line <&6; echo "read=$line"' 6<&0 </dev/null
+echo stage-input | /bin/sh -c 'read -r line <&6; echo "sh=$line"' 6<&0 \
+  </dev/null

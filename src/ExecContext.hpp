@@ -26,12 +26,16 @@ namespace koshka {
 
 class EvalContextState;
 
+/* should_take_stage_stream marks a duplication of a standard descriptor that
+   precedes every redirection of that descriptor, so it takes the stream the
+   pipeline gives the stage. */
 struct nonstandard_descriptor
 {
   os::descriptor file_fd{KOSH_INVALID_FD};
   i32            target_fd{-1};
   i32            dup_from_fd{-1};
   bool           is_file_borrowed{false};
+  bool           should_take_stage_stream{false};
 };
 
 class ExecContext

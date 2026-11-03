@@ -448,6 +448,64 @@ report_unresolved_stage(EvalContext       &cxt,
   cxt.print_source_backtrace(stage.source_location(), !saved.is_dup2_ok);
 }
 
+/* the first duplication that takes the stage stream of shell_fd owns
+   stage_fd, or a copy of the shell descriptor when stage_fd is
+   KOSH_INVALID_FD, and the later ones duplicate it. returns whether a
+   duplication took stage_fd. */
+static fn
+bind_stage_stream(ExecContext   &ec,
+                  i32            shell_fd,
+                  os::descriptor stage_fd) throws -> bool
+{
+  let const do_takes_stream =
+      [&](const nonstandard_descriptor &binding) wontthrow -> bool {
+    return binding.should_take_stage_stream && binding.dup_from_fd == shell_fd;
+  };
+
+  bool has_taker = false;
+
+  for (let const &binding : ec.nonstandard_fds) {
+    if (do_takes_stream(binding)) {
+      has_taker = true;
+      break;
+    }
+  }
+
+  if (!has_taker) return false;
+
+  let  bindings    = ArrayList<nonstandard_descriptor>{heap_allocator()};
+  i32  holder_fd   = -1;
+  bool did_take_fd = false;
+
+  for (let binding : ec.nonstandard_fds) {
+    if (do_takes_stream(binding)) {
+      binding.should_take_stage_stream = false;
+
+      if (holder_fd >= 0) {
+        binding.dup_from_fd = holder_fd;
+      } else {
+        let const fd = stage_fd != KOSH_INVALID_FD
+                           ? stage_fd
+                           : os::duplicate_shell_fd(shell_fd);
+
+        if (fd != KOSH_INVALID_FD) {
+          binding.file_fd          = fd;
+          binding.dup_from_fd      = -1;
+          binding.is_file_borrowed = false;
+          holder_fd                = binding.target_fd;
+          did_take_fd              = stage_fd != KOSH_INVALID_FD;
+        }
+      }
+    }
+
+    bindings.push(binding);
+  }
+
+  ec.nonstandard_fds.fill(steal(bindings));
+
+  return did_take_fd;
+}
+
 /* memory: children, child_stage, stage_status, and unresolved_stages use
            heap_allocator() and are freed on return. pipe_status moves into
            publish_pipe_statuses(). command uses scratch_allocator() when the
@@ -597,17 +655,25 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
         did_stage_take_pipe = true;
       }
 
-      if (!did_stage_take_pipe) os::close_fd(pipe->out);
+      if (!did_stage_take_pipe && !bind_stage_stream(ec, 1, pipe->out)) {
+        os::close_fd(pipe->out);
+      }
+    } else {
+      bind_stage_stream(ec, 1, KOSH_INVALID_FD);
     }
 
     if (stage_index > 0) {
       if (!ec.in_fd)
         ec.in_fd = last_stdin;
       else {
-        os::close_fd(last_stdin);
+        if (!bind_stage_stream(ec, 0, last_stdin)) os::close_fd(last_stdin);
         last_stdin = KOSH_INVALID_FD;
       }
+    } else {
+      bind_stage_stream(ec, 0, KOSH_INVALID_FD);
     }
+
+    bind_stage_stream(ec, 2, KOSH_INVALID_FD);
 
     if (!is_last) {
       last_stdin = pipe->in;

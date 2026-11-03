@@ -2080,6 +2080,7 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const
   };
 
   ArrayList<stage_fd_allocation_restore> allocation_restores{heap_allocator()};
+  bool was_stream_redirected[3] = {false, false, false};
 
   defer {
     /* restores run in reverse, so a name that repeats in the list ends with
@@ -2212,10 +2213,14 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const
       } else if (target_fd > 2 || source_fd == Redirection::DUP_FD_CLOSE) {
         let const dup_from_fd =
             source_fd == Redirection::DUP_FD_CLOSE ? -1 : source_fd;
+        let const should_take_stage_stream =
+            dup_from_fd >= 0 && dup_from_fd <= 2 &&
+            !was_stream_redirected[dup_from_fd];
 
-        bind_nonstandard_fd(
-            nonstandard,
-            nonstandard_descriptor{KOSH_INVALID_FD, target_fd, dup_from_fd});
+        bind_nonstandard_fd(nonstandard,
+                            nonstandard_descriptor{KOSH_INVALID_FD, target_fd,
+                                                   dup_from_fd, false,
+                                                   should_take_stage_stream});
       } else {
         let const copied = os::duplicate_shell_fd(source_fd);
 
@@ -2236,6 +2241,14 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const
 
       break;
     }
+    }
+
+    if (target_fd >= 0 && target_fd <= 2) {
+      was_stream_redirected[target_fd] = true;
+    }
+    if (r.kind == redirection_outcome::BothStreams) {
+      was_stream_redirected[1] = true;
+      was_stream_redirected[2] = true;
     }
   }
 

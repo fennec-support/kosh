@@ -82,6 +82,8 @@ echo "lastpipe=[$x]"
 # stage input returns to the shell.
 x=$(shopt -s lastpipe; set +m; echo i | exec 3>&1; echo kept >&3)
 echo "lastpipe-dup=[$x]"
+x=$(shopt -s lastpipe; set +m; echo i | exec 6>&1 >/dev/null; echo kept >&6)
+echo "lastpipe-dup-first=[$x]"
 x=$(shopt -s lastpipe; set +m
   echo j | exec 4>"$dir/lastpipe"; echo file >&4; exec 4>&-
   cat "$dir/lastpipe")
