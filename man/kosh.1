@@ -2451,6 +2451,16 @@ Prints the PIDs that use each file, with \f[CR]\-c\f[R], \f[CR]\-f\f[R],
 and \f[CR]\-u\f[R].
 T}
 T{
+\f[CR]pwdx\f[R]
+T}@T{
+Prints \f[CR]PID: DIRECTORY\f[R] with the working directory of each
+process given by a process id or a \f[CR]/proc/PID\f[R] path, and
+appends \f[CR] (deleted)\f[R] when the directory was removed.
+The status is 1 when a process does not exist or its directory cannot be
+read.
+Windows has no \f[CR]pwdx\f[R].
+T}
+T{
 \f[CR]getconf\f[R]
 T}@T{
 Prints a system or string variable, or a path variable for a path

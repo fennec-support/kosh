@@ -39,3 +39,10 @@ koshkit who -m >/dev/null
 echo "who-current=$?"
 koshkit who -Tu >/dev/null
 echo "who-state=$?"
+pwdx_output=$(koshkit pwdx "$$")
+[ "$pwdx_output" = "$$: $(pwd -P)" ]
+echo "pwdx-self=$?"
+koshkit pwdx abc 2>/dev/null
+echo "pwdx-invalid=$?"
+koshkit pwdx 2>/dev/null
+echo "pwdx-missing=$?"

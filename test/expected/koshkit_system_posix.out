@@ -29,3 +29,6 @@ who=0
 who-quick=0
 who-current=1
 who-state=0
+pwdx-self=0
+pwdx-invalid=1
+pwdx-missing=2

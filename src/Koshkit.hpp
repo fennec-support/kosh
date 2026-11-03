@@ -106,6 +106,7 @@ report_unresolved_sort_key(const ExecContext &ec,
   X(Nproc, "nproc")                                                            \
   X(Flock, "flock")                                                            \
   X(Fuser, "fuser")                                                            \
+  X(Pwdx, "pwdx")                                                              \
   X(Calc, "calc")                                                              \
   X(Chgrp, "chgrp")                                                            \
   X(Chmod, "chmod")                                                            \

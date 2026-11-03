@@ -469,10 +469,10 @@ csplit cut date df diff dirname du egrep emacs env evil evildisk evilfiles \
 evilfs evilio eviliso evillogs evilnet evilps evilss expand expr fgrep file \
 find flock fold fuser getconf goodcore goodfsw goodnode goodstat grep head id \
 killall less link ln locale logger logname ls make man meow mkdir mkfifo mknod \
-more mv nice nl nohup nproc od paste pathchk pkill pr printenv ps readlink \
-realpath renice retry rm rmdir sed seq sleep slurp sort split stat strings \
-stty sync tabs tail tee timeout touch tput tr tsort tty uname unexpand uniq \
-unlink vi watch wc which who whoami xargs yes"
+more mv nice nl nohup nproc od paste pathchk pkill pr printenv ps pwdx \
+readlink realpath renice retry rm rmdir sed seq sleep slurp sort split stat \
+strings stty sync tabs tail tee timeout touch tput tr tsort tty uname unexpand \
+uniq unlink vi watch wc which who whoami xargs yes"
 
 _koshkit_util_flags ()
 {
