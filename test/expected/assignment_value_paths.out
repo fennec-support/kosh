@@ -1,14 +1,14 @@
 == bare assignment:
-koshdir/
-koshfile.txt
+(candidate "koshdir/")
+(candidate "koshfile.txt")
 == assignment as operand:
-koshdir/
-koshfile.txt
+(candidate "koshdir/")
+(candidate "koshfile.txt")
 == append assignment:
-koshdir/
-koshfile.txt
+(candidate "koshdir/")
+(candidate "koshfile.txt")
 == subscripted assignment:
-koshdir/
-koshfile.txt
+(candidate "koshdir/")
+(candidate "koshfile.txt")
 == command position without an equals sign:
-koshkit
+(candidate "koshkit")

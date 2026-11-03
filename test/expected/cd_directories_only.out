@@ -1,24 +1,24 @@
 == cd offers only directories:
-alpha_dir/
+(candidate "alpha_dir/")
 == cd with no prefix lists the directories:
-alpha_dir/
-beta_dir/
+(candidate "alpha_dir/")
+(candidate "beta_dir/")
 == ls still offers files and directories:
-alpha_dir/
-alpha_file
+(candidate "alpha_dir/")
+(candidate "alpha_file")
 == dot and dot-dot complete with a slash:
-../
-alpha_dir/../
+(candidate "../")
+(candidate "alpha_dir/../")
 == a CDPATH directory completes with a slash:
-gamma_dir/
+(candidate "gamma_dir/")
 == pushd completes like cd:
-alpha_dir/
-gamma_dir/
+(candidate "alpha_dir/")
+(candidate "gamma_dir/")
 == a dot-led operand skips CDPATH:
 == the working directory and CDPATH rank by one match tier:
-delta_two/
+(candidate "delta_two/")
 == a name in both the working directory and CDPATH is listed once:
-alpha_dir/
+(candidate "alpha_dir/")
 == the ghost lists no CDPATH directory the index lacks:
   (count 0)
   (prefix "")

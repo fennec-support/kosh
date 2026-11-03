@@ -1,6 +1,6 @@
-command executable=./executable
-permission-mutation=./executable
-directory=./directory/
-symlinks=./symlink-directory/
-./symlink-executable
-duplicate-path=duplicate
+command executable=(candidate "./executable")
+permission-mutation=(candidate "./executable")
+directory=(candidate "./directory/")
+symlinks=(candidate "./symlink-directory/")
+(candidate "./symlink-executable")
+duplicate-path=(candidate "duplicate")

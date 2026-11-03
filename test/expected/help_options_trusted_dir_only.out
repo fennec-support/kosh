@@ -1,12 +1,12 @@
 == allowlisted command in a trusted directory offers its --help options:
---marker-option
+(candidate "--marker-option")
 == and was forked:
 forked
---marker-option
+(candidate "--marker-option")
 clickhouse help allowlisted
---marker-option
+(candidate "--marker-option")
 postgres help allowlisted
---marker-option
+(candidate "--marker-option")
 vertica help allowlisted
 == a command not on the allowlist is never forked, even when trusted:
 == and was never forked:
@@ -18,7 +18,7 @@ not forked
 == and was never forked:
 not forked
 == a git subcommand is probed with -h, which opens no help viewer:
---marker-option
+(candidate "--marker-option")
 == git received:
 --help
 commit -h

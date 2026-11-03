@@ -1,65 +1,65 @@
-if	keyword
-then	keyword
-elif	keyword
-then	keyword
-else	keyword
-fi	keyword
-while	keyword
-do	keyword
-done	keyword
-for	keyword
-in	keyword
-do	keyword
-done	keyword
-case	keyword
-in	keyword
-esac	keyword
-[[	keyword
--n	flag
-]]	keyword
-function	keyword
-f	function-name
-time	keyword
--p	flag
--R	flag
-then	invalid-syntax
-done	invalid-syntax
-fi	invalid-syntax
-esac	invalid-syntax
-do	invalid-syntax
-in	invalid-syntax
-"green"	string
--x	flag
---	flag
---long=value	flag
---color="$PATH"	flag
-*.kosh	glob
-kosh-highlight-missing-path-xyz	invalid-path
-kosh-highlight-missing-command-xyz	unknown-command
-if	keyword
-then	keyword
-$MISSING	unset-variable
-fi	keyword
-for	keyword
-q	variable
-do	keyword
-done	keyword
-for	keyword
-r	variable
-in	keyword
-do	keyword
-done	keyword
-ls	resolved-command
-koshkit-missing-utility	unknown-command
---help	flag
-"cat"	resolved-command
-'expr'	resolved-command
-koshkit\-missing-escaped	unknown-command
-c\at	resolved-command
-basename	resolved-command
-$'c\x61t'	resolved-command
-$"cat"	resolved-command
-"overlong-utility"	unknown-command
-"cat	string
+(span "if" :role keyword)
+(span "then" :role keyword)
+(span "elif" :role keyword)
+(span "then" :role keyword)
+(span "else" :role keyword)
+(span "fi" :role keyword)
+(span "while" :role keyword)
+(span "do" :role keyword)
+(span "done" :role keyword)
+(span "for" :role keyword)
+(span "in" :role keyword)
+(span "do" :role keyword)
+(span "done" :role keyword)
+(span "case" :role keyword)
+(span "in" :role keyword)
+(span "esac" :role keyword)
+(span "[[" :role keyword)
+(span "-n" :role flag)
+(span "]]" :role keyword)
+(span "function" :role keyword)
+(span "f" :role function-name)
+(span "time" :role keyword)
+(span "-p" :role flag)
+(span "-R" :role flag)
+(span "then" :role invalid-syntax)
+(span "done" :role invalid-syntax)
+(span "fi" :role invalid-syntax)
+(span "esac" :role invalid-syntax)
+(span "do" :role invalid-syntax)
+(span "in" :role invalid-syntax)
+(span "\"green\"" :role string)
+(span "-x" :role flag)
+(span "--" :role flag)
+(span "--long=value" :role flag)
+(span "--color=\"$PATH\"" :role flag)
+(span "*.kosh" :role glob)
+(span "kosh-highlight-missing-path-xyz" :role invalid-path)
+(span "kosh-highlight-missing-command-xyz" :role unknown-command)
+(span "if" :role keyword)
+(span "then" :role keyword)
+(span "$MISSING" :role unset-variable)
+(span "fi" :role keyword)
+(span "for" :role keyword)
+(span "q" :role variable)
+(span "do" :role keyword)
+(span "done" :role keyword)
+(span "for" :role keyword)
+(span "r" :role variable)
+(span "in" :role keyword)
+(span "do" :role keyword)
+(span "done" :role keyword)
+(span "ls" :role resolved-command)
+(span "koshkit-missing-utility" :role unknown-command)
+(span "--help" :role flag)
+(span "\"cat\"" :role resolved-command)
+(span "'expr'" :role resolved-command)
+(span "koshkit\\-missing-escaped" :role unknown-command)
+(span "c\\at" :role resolved-command)
+(span "basename" :role resolved-command)
+(span "$'c\\x61t'" :role resolved-command)
+(span "$\"cat\"" :role resolved-command)
+(span "\"overlong-utility\"" :role unknown-command)
+(span "\"cat" :role string)
 koshkit static operands are classified
-ls	resolved-command
+(span "ls" :role resolved-command)

@@ -1,19 +1,19 @@
 == empty token, mixed list:
-alpha
-beta
+(candidate "alpha")
+(candidate "beta")
 == dash token, mixed list:
---why
--x
+(candidate "--why")
+(candidate "-x")
 == empty token, flags-only list falls to files:
-datafile
+(candidate "datafile")
 == progcomp off ignores the registered specification:
 == progcomp_alias off ignores the aliased specification:
 == empty COMPREPLY falls to files:
-datafile
+(candidate "datafile")
 == retry status 124 falls to files:
-datafile
+(candidate "datafile")
 == dash-only reply on an operand falls to files:
-datafile
+(candidate "datafile")
 == the dash token keeps the spec options:
---archive
---backup
+(candidate "--archive")
+(candidate "--backup")

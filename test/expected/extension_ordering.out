@@ -1,27 +1,27 @@
 == unzip with an empty argument shows only .zip files and directories:
-sub/
-OLD.ZIP
-archive.zip
+(candidate "sub/")
+(candidate "OLD.ZIP")
+(candidate "archive.zip")
 == tar with an empty argument shows only its archive types:
-sub/
-backup.tar.gz
+(candidate "sub/")
+(candidate "backup.tar.gz")
 == a program with no table entry lists directories, then files in alphabetical order:
-sub/
-OLD.ZIP
-archive.zip
-backup.tar.gz
-book.pdf
-data.csv
-notes.txt
-photo.png
+(candidate "sub/")
+(candidate "OLD.ZIP")
+(candidate "archive.zip")
+(candidate "backup.tar.gz")
+(candidate "book.pdf")
+(candidate "data.csv")
+(candidate "notes.txt")
+(candidate "photo.png")
 == mupdf with an empty argument shows only the pdf and directories:
-sub/
-book.pdf
+(candidate "sub/")
+(candidate "book.pdf")
 == evince with an empty argument shows only the pdf and directories:
-sub/
-book.pdf
+(candidate "sub/")
+(candidate "book.pdf")
 == feh with an empty argument shows only the image and directories:
-sub/
-photo.png
+(candidate "sub/")
+(candidate "photo.png")
 == a typed prefix keeps a non-matching file too:
-notes.txt
+(candidate "notes.txt")

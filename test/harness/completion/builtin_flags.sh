@@ -15,14 +15,16 @@ echo "== declare letters:"
 "$BIN" --debug-complete-at 'declare -' </dev/null
 echo "== kill signals:"
 signal_names=$("$BIN" --debug-complete-at 'kill -' </dev/null)
-printf '%s\n' "$signal_names" | grep -E '^-(KILL|TERM)$'
+printf '%s\n' "$signal_names" | grep -E '^\(candidate "-(KILL|TERM)"\)$'
 if [ "${OS-}" != Windows_NT ]; then
   for signal_name in HUP INT QUIT; do
-    printf '%s\n' "$signal_names" | grep -q "^-$signal_name$" ||
+    printf '%s\n' "$signal_names" |
+      grep -qxF "(candidate \"-$signal_name\")" ||
       printf 'missing-signal=%s\n' "$signal_name"
   done
   for signal_name in ABRT ALRM CONT PIPE STOP TSTP USR1 USR2; do
-    printf '%s\n' "$signal_names" | grep -q "^-$signal_name$" ||
+    printf '%s\n' "$signal_names" |
+      grep -qxF "(candidate \"-$signal_name\")" ||
       printf 'missing-signal=%s\n' "$signal_name"
   done
 fi

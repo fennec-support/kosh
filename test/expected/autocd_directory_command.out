@@ -1,4 +1,4 @@
-subdir	resolved-command
-..	resolved-command
-...	resolved-command
-missing-directory	unknown-command
+(span "subdir" :role resolved-command)
+(span ".." :role resolved-command)
+(span "..." :role resolved-command)
+(span "missing-directory" :role unknown-command)

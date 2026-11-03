@@ -1,20 +1,20 @@
 == ${HOME}/ braced:
-${HOME}/Documents/
+(candidate "${HOME}/Documents/")
 == a bare variable reference still completes variables:
-$VARIABLE_COMPLETION_UNIQUE
+(candidate "$VARIABLE_COMPLETION_UNIQUE")
 == kosh git dynamic variables complete:
-$KOSH_GIT_AHEAD
-$KOSH_GIT_BEHIND
-$KOSH_GIT_BRANCH
+(candidate "$KOSH_GIT_AHEAD")
+(candidate "$KOSH_GIT_BEHIND")
+(candidate "$KOSH_GIT_BRANCH")
 == bash dynamic variables complete in bash mood:
-$BASHPID
+(candidate "$BASHPID")
 == bash argument arrays complete in bash mood:
-$BASH_ARGC
-$BASH_ARGV
-$BASH_ARGV0
+(candidate "$BASH_ARGC")
+(candidate "$BASH_ARGV")
+(candidate "$BASH_ARGV0")
 == POSIX mood completes its dynamic variables:
-$LINENO
+(candidate "$LINENO")
 == a name assigned earlier on the line completes:
-$line_assigned_value"
+(candidate "$line_assigned_value\"")
 == a for loop name completes inside its body:
-$loop_name_zq
+(candidate "$loop_name_zq")

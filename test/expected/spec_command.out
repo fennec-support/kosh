@@ -1,18 +1,18 @@
 == the output lines are the candidates:
-xa
-xb c
-zz
+(candidate "xa")
+(candidate "xb c")
+(candidate "zz")
 == the command sees its arguments and environment:
 foo ab x|8|9|9|unset
 [foo]
 [x]
 [ab]
 == -X, -P, and -S apply to the output:
-<xa>
-<xb c>
+(candidate "<xa>")
+(candidate "<xb c>")
 == the command text takes its own arguments first:
-a
-foo
+(candidate "a")
+(candidate "foo")
 == the ghost leaves the command alone:
   (count 0)
 the ghost ran nothing

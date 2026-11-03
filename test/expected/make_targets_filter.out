@@ -1,5 +1,5 @@
 == phony goals only, artifacts and assignments dropped:
-all
-clean
-install
-myapp
+(candidate "all")
+(candidate "clean")
+(candidate "install")
+(candidate "myapp")

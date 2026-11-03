@@ -1,27 +1,27 @@
-adir	existing-path
-afile	invalid-path
-afile	existing-path
-./afile/	invalid-path
-./alink/	invalid-path
-./adir/	existing-path
-native/subdir	existing-path
-'[quoted] path'	string
-/	existing-path
-chi	partial-path
-'[quoted] path'	string
-/child	existing-path
-'[quoted] path'	string
-/*	glob
-~/	existing-path
-'Library'	string
-/	existing-path
-Appl	partial-path
-space\ dir/	existing-path
-chi	partial-path
-./space\ dir/tool	existing-path
-'~'	string
-/	existing-path
-loc	partial-path
-existing-path	existing-path
-missing-path	invalid-path
-null-device	existing-path
+(span "adir" :role existing-path)
+(span "afile" :role invalid-path)
+(span "afile" :role existing-path)
+(span "./afile/" :role invalid-path)
+(span "./alink/" :role invalid-path)
+(span "./adir/" :role existing-path)
+(span "native/subdir" :role existing-path)
+(span "'[quoted] path'" :role string)
+(span "/" :role existing-path)
+(span "chi" :role partial-path)
+(span "'[quoted] path'" :role string)
+(span "/child" :role existing-path)
+(span "'[quoted] path'" :role string)
+(span "/*" :role glob)
+(span "~/" :role existing-path)
+(span "'Library'" :role string)
+(span "/" :role existing-path)
+(span "Appl" :role partial-path)
+(span "space\\ dir/" :role existing-path)
+(span "chi" :role partial-path)
+(span "./space\\ dir/tool" :role existing-path)
+(span "'~'" :role string)
+(span "/" :role existing-path)
+(span "loc" :role partial-path)
+(span "existing-path" :role existing-path)
+(span "missing-path" :role invalid-path)
+(span "null-device" :role existing-path)

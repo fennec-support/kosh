@@ -1,13 +1,13 @@
 == ssh completes a config host by prefix:
-alpha-box
+(candidate "alpha-box")
 == scp completes the same hosts:
-beta-box
+(candidate "beta-box")
 == assimilate completes SSH hosts:
-alpha-box
+(candidate "alpha-box")
 == sftp and rsync complete hosts too:
-alpha-box
-beta-box
+(candidate "alpha-box")
+(candidate "beta-box")
 == a wildcard Host pattern is not offered:
 == tsh does not complete an ssh host:
 == ssh keeps a login before the host:
-admin@alpha-box
+(candidate "admin@alpha-box")

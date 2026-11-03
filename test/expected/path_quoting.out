@@ -1,73 +1,73 @@
 == a space in the match escapes it:
-'spacey file.txt'
+(candidate "'spacey file.txt'")
 == a plain match stays unquoted:
-plainfile.txt
+(candidate "plainfile.txt")
 == a dollar in the match escapes it:
-'dollar$x.txt'
+(candidate "'dollar$x.txt'")
 == inside a single quote the only match completes bare and closes it:
-'spacey file.txt'
+(candidate "'spacey file.txt'")
 == inside a double quote the only match completes bare and closes it:
-"spacey file.txt"
+(candidate "\"spacey file.txt\"")
 == glob-like bytes stay literal inside open quotes:
-'[C] alpha/
-'star* alpha/
-'question? alpha/
-"[C] alpha/
-"star* alpha/
-"question? alpha/
+(candidate "'[C] alpha/")
+(candidate "'star* alpha/")
+(candidate "'question? alpha/")
+(candidate "\"[C] alpha/")
+(candidate "\"star* alpha/")
+(candidate "\"question? alpha/")
 == an open quote after a directory keeps the full path prefix:
-outer/"[C] alpha/
+(candidate "outer/\"[C] alpha/")
 == an open quote inside a command keeps the prefix:
-e"cho"
+(candidate "e\"cho\"")
 == a closed quote inside a command keeps the prefix:
-e"cho"
+(candidate "e\"cho\"")
 == a fuzzy prefix before an open quote maps into the candidate:
-foo_b"ar_baz"
+(candidate "foo_b\"ar_baz\"")
 == open quotes escape bytes that remain active in their quote mode:
-'single'"'"'quote.txt'
-"double"'$'""'"'"tick"'`'""'\'"name.txt"
+(candidate "'single'\"'\"'quote.txt'")
+(candidate "\"double\"'$'\"\"'\"'\"tick\"'`'\"\"'\\'\"name.txt\"")
 == an adjacent open double quote keeps variable expansion active:
-$QUOTED_COMPLETION_UNIQUE"
+(candidate "$QUOTED_COMPLETION_UNIQUE\"")
 == a closed quoted directory continues through an unquoted slash:
-'PATH'/'space file.txt'
-'PATH'/plain.txt
-'PATH'/star-one.txt
-'PATH'/tool
+(candidate "'PATH'/'space file.txt'")
+(candidate "'PATH'/plain.txt")
+(candidate "'PATH'/star-one.txt")
+(candidate "'PATH'/tool")
 == a partial basename follows a closed quoted directory:
-'PATH'/plain.txt
+(candidate "'PATH'/plain.txt")
 == a quoted directory that contains a space keeps its spelling:
-'space dir'/mixed.txt
+(candidate "'space dir'/mixed.txt")
 == adjacent quoted and unquoted directory bytes are decoded together:
-P'A'TH/plain.txt
+(candidate "P'A'TH/plain.txt")
 == an escaped directory keeps its spelling:
-space\ dir/mixed.txt
+(candidate "space\\ dir/mixed.txt")
 == a double-quoted variable directory remains active:
-"$HOME"/'space file.txt'
-"$HOME"/home.txt
+(candidate "\"$HOME\"/'space file.txt'")
+(candidate "\"$HOME\"/home.txt")
 == a single-quoted variable directory remains literal:
-'$HOME'/literal-variable.txt
+(candidate "'$HOME'/literal-variable.txt")
 == an open single-quoted variable directory remains literal:
-'$HOME/literal-variable.txt'
+(candidate "'$HOME/literal-variable.txt'")
 == an open double-quoted variable directory remains active:
-"$HOME/home.txt
-"$HOME/space file.txt
+(candidate "\"$HOME/home.txt")
+(candidate "\"$HOME/space file.txt")
 == an active tilde directory expands:
-~/'space file.txt'
-~/home.txt
+(candidate "~/'space file.txt'")
+(candidate "~/home.txt")
 == an active tilde stays outside an escaped match:
-~/'space file.txt'
+(candidate "~/'space file.txt'")
 == an active variable uses escapes for a matched space:
-$HOME/'space file.txt'
+(candidate "$HOME/'space file.txt'")
 == a quoted tilde directory remains literal:
-'~'/literal-tilde.txt
+(candidate "'~'/literal-tilde.txt")
 == quoted and escaped tilde usernames remain literal:
-~"root"/literal-tilde.txt
-~r\oot/literal-tilde.txt
+(candidate "~\"root\"/literal-tilde.txt")
+(candidate "~r\\oot/literal-tilde.txt")
 == quoted and escaped bytes stop an unbraced variable name:
-$HO"ME"/literal-variable.txt
-$HO\ME/literal-variable.txt
+(candidate "$HO\"ME\"/literal-variable.txt")
+(candidate "$HO\\ME/literal-variable.txt")
 == a quoted glob remains literal:
 == an unquoted glob after a quoted directory expands:
-'PATH'/plain.txt 'PATH'/'space file.txt' 'PATH'/star-one.txt
+(candidate "'PATH'/plain.txt 'PATH'/'space file.txt' 'PATH'/star-one.txt")
 == command position keeps only runnable files:
-'PATH'/tool
+(candidate "'PATH'/tool")

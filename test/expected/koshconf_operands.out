@@ -1,74 +1,74 @@
 == koshconf form:
-create
-get
-list
-load
-save
-set
+(candidate "create")
+(candidate "get")
+(candidate "list")
+(candidate "load")
+(candidate "save")
+(candidate "set")
 == koshconf create preset:
-bash
-kosh
-sh
+(candidate "bash")
+(candidate "kosh")
+(candidate "sh")
 == koshconf get option prefix:
-editor.auto_close_brackets_and_quotes
-editor.base_mode
-editor.highlight_syntax_and_show_ghost_text
-editor.hints.show_command_synopsis
-editor.hints.show_live_diagnostics
-editor.history.arrow_keys_search_by_typed_prefix
-editor.history.file_path
-editor.history.max_entries
-editor.request_extended_key_reports
-editor.wrap_width
+(candidate "editor.auto_close_brackets_and_quotes")
+(candidate "editor.base_mode")
+(candidate "editor.highlight_syntax_and_show_ghost_text")
+(candidate "editor.hints.show_command_synopsis")
+(candidate "editor.hints.show_live_diagnostics")
+(candidate "editor.history.arrow_keys_search_by_typed_prefix")
+(candidate "editor.history.file_path")
+(candidate "editor.history.max_entries")
+(candidate "editor.request_extended_key_reports")
+(candidate "editor.wrap_width")
 == koshconf set offers the diagnostics options:
-optimizer.analyze_before_running
-optimizer.show_annoying_tier
-optimizer.show_source_traces
-optimizer.warning_level
+(candidate "optimizer.analyze_before_running")
+(candidate "optimizer.show_annoying_tier")
+(candidate "optimizer.show_source_traces")
+(candidate "optimizer.warning_level")
 == koshconf set option prefix after a flag:
-bash.interpreter.glob_no_match_expands_to_nothing
-bash.interpreter.glob_no_match_is_error
+(candidate "bash.interpreter.glob_no_match_expands_to_nothing")
+(candidate "bash.interpreter.glob_no_match_is_error")
 == koshconf set editor mode value:
-emacs
-vi
+(candidate "emacs")
+(candidate "vi")
 == koshconf set enumeration value:
-bash
-bash-posix
-kosh
-sh
+(candidate "bash")
+(candidate "bash-posix")
+(candidate "kosh")
+(candidate "sh")
 == koshconf set completion.menu_style value:
-external
-interactive
-plain
+(candidate "external")
+(candidate "interactive")
+(candidate "plain")
 == koshconf set completion.menu_style prefix:
-external
+(candidate "external")
 == koshconf set boolean value:
-off
-on
+(candidate "off")
+(candidate "on")
 == koshconf flags:
---persist
+(candidate "--persist")
 == koshconf set init moods value:
-bash
-bash-posix
-kosh
-sh
+(candidate "bash")
+(candidate "bash-posix")
+(candidate "kosh")
+(candidate "sh")
 == koshconf set init moods after a comma:
-kosh,bash
-kosh,bash-posix
+(candidate "kosh,bash")
+(candidate "kosh,bash-posix")
 == koshconf set count value offers no file:
 == koshconf set path value offers files:
-history-probe
+(candidate "history-probe")
 == koshconf set flags after the value:
---help
---persist
+(candidate "--help")
+(candidate "--persist")
 == koshconf create flags:
---force
---help
+(candidate "--force")
+(candidate "--help")
 == koshconf option name by subsequence:
-editor.history.max_entries
+(candidate "editor.history.max_entries")
 == koshconf option name prefix wins over subsequence:
-mood
+(candidate "mood")
 == koshconf get offers the legacy Bash alias:
-bash.legacy.extglob
+(candidate "bash.legacy.extglob")
 == koshconf set offers the legacy POSIX alias:
-posix.legacy.errexit
+(candidate "posix.legacy.errexit")

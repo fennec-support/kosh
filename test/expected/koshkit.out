@@ -1,112 +1,112 @@
 == koshkit utilities by prefix:
-make
-man
-meow
-mkdir
-mkfifo
-mknod
-more
-mv
+(candidate "make")
+(candidate "man")
+(candidate "meow")
+(candidate "mkdir")
+(candidate "mkfifo")
+(candidate "mknod")
+(candidate "more")
+(candidate "mv")
 == ls flags through koshkit:
---classify
---help
---level
---one-file-system
---recursive
---tree
---zero
--1
--A
--F
--L
--R
--S
--a
--d
--g
--h
--k
--l
--n
--o
--p
--r
--t
+(candidate "--classify")
+(candidate "--help")
+(candidate "--level")
+(candidate "--one-file-system")
+(candidate "--recursive")
+(candidate "--tree")
+(candidate "--zero")
+(candidate "-1")
+(candidate "-A")
+(candidate "-F")
+(candidate "-L")
+(candidate "-R")
+(candidate "-S")
+(candidate "-a")
+(candidate "-d")
+(candidate "-g")
+(candidate "-h")
+(candidate "-k")
+(candidate "-l")
+(candidate "-n")
+(candidate "-o")
+(candidate "-p")
+(candidate "-r")
+(candidate "-t")
 == every help flag of a listed utility is completed:
 ok: koshkit flags complete
 == date format directives through koshkit:
-+%%
-+%A
-+%B
-+%C
-+%D
-+%F
-+%G
-+%H
-+%I
-+%M
-+%R
-+%S
-+%T
-+%U
-+%V
-+%W
-+%X
-+%Y
-+%Z
-+%a
-+%b
-+%c
-+%d
-+%e
-+%g
-+%h
-+%j
-+%m
-+%n
-+%p
-+%r
-+%t
-+%u
-+%w
-+%x
-+%y
-+%z
+(candidate "+%%")
+(candidate "+%A")
+(candidate "+%B")
+(candidate "+%C")
+(candidate "+%D")
+(candidate "+%F")
+(candidate "+%G")
+(candidate "+%H")
+(candidate "+%I")
+(candidate "+%M")
+(candidate "+%R")
+(candidate "+%S")
+(candidate "+%T")
+(candidate "+%U")
+(candidate "+%V")
+(candidate "+%W")
+(candidate "+%X")
+(candidate "+%Y")
+(candidate "+%Z")
+(candidate "+%a")
+(candidate "+%b")
+(candidate "+%c")
+(candidate "+%d")
+(candidate "+%e")
+(candidate "+%g")
+(candidate "+%h")
+(candidate "+%j")
+(candidate "+%m")
+(candidate "+%n")
+(candidate "+%p")
+(candidate "+%r")
+(candidate "+%t")
+(candidate "+%u")
+(candidate "+%w")
+(candidate "+%x")
+(candidate "+%y")
+(candidate "+%z")
 == koshkit own flags:
---color
---help
---list
---list-flags
+(candidate "--color")
+(candidate "--help")
+(candidate "--list")
+(candidate "--list-flags")
 == bare utility flags under koshconf set interpreter.resolve_koshkit_applets_as_commands on:
---classify
---help
---level
---one-file-system
---recursive
---tree
---zero
--1
--A
--F
--L
--R
--S
--a
--d
--g
--h
--k
--l
--n
--o
--p
--r
--t
+(candidate "--classify")
+(candidate "--help")
+(candidate "--level")
+(candidate "--one-file-system")
+(candidate "--recursive")
+(candidate "--tree")
+(candidate "--zero")
+(candidate "-1")
+(candidate "-A")
+(candidate "-F")
+(candidate "-L")
+(candidate "-R")
+(candidate "-S")
+(candidate "-a")
+(candidate "-d")
+(candidate "-g")
+(candidate "-h")
+(candidate "-k")
+(candidate "-l")
+(candidate "-n")
+(candidate "-o")
+(candidate "-p")
+(candidate "-r")
+(candidate "-t")
 == bare utility words in the default mood:
-whoami
+(candidate "whoami")
 == bare utility flags in the default mood:
--A
+(candidate "-A")
 == bare utility words stay hidden in bash mood:
 == bare utility words appear after koshconf set interpreter.resolve_koshkit_applets_as_commands on:
-whoami
+(candidate "whoami")
 == a PATH program keeps its own flags:

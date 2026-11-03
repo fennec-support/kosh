@@ -81,13 +81,17 @@ run_debug_completion_driver(StringView   driver_line,
   let const driver_result = completion::complete(
       driver_line, driver_line.length, context, Path::current_directory(),
       nullptr, false, completion::completion_mode::Listing);
-  let listing = String{heap_allocator()};
+  let out = AstWriter{driver_line, context.runtime_state().get_mood()};
 
   for (let const &candidate : driver_result.candidates) {
-    listing += candidate.view();
-    listing += '\n';
+    out.open("candidate");
+    out.text(candidate.view());
+    out.close();
   }
 
+  let listing = out.take();
+
+  if (!listing.is_empty()) listing += '\n';
   print(listing);
   flush();
 
@@ -108,16 +112,20 @@ run_debug_highlight_driver(StringView   driver_line,
       ProgramResolver::CompletionRefresh::Fresh);
   defer { context.program_resolver().end_explicit_completion(); };
 
-  let const spans   = completion::highlight_line(driver_line, context);
-  let       listing = String{heap_allocator()};
+  let const spans = completion::highlight_line(driver_line, context);
+  let       out   = AstWriter{driver_line, context.runtime_state().get_mood()};
 
   for (let const &span : spans) {
-    listing +=
-        driver_line.substring_of_length(span.start, span.end - span.start);
-    listing += '\t';
-    listing += highlight_role_name(span.role);
-    listing += '\n';
+    out.open("span");
+    out.text(
+        driver_line.substring_of_length(span.start, span.end - span.start));
+    out.symbol("role", highlight_role_name(span.role));
+    out.close();
   }
+
+  let listing = out.take();
+
+  if (!listing.is_empty()) listing += '\n';
 
   LOG(All, "highlighting visited %zu variables",
       context.dynamic_runtime_store().debug_variable_name_enumeration_count() -

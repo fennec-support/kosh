@@ -1,8 +1,8 @@
-count	unset-variable
-size	unset-variable
-[	operator
-*	operator
-*.c	glob
-echo	resolved-command
-echo	resolved-command
-${list[1]}	variable
+(span "count" :role unset-variable)
+(span "size" :role unset-variable)
+(span "[" :role operator)
+(span "*" :role operator)
+(span "*.c" :role glob)
+(span "echo" :role resolved-command)
+(span "echo" :role resolved-command)
+(span "${list[1]}" :role variable)

@@ -1,25 +1,25 @@
 == command position through sudo:
-export
+(candidate "export")
 == inner builtin args through env and an assignment:
-noclobber
-noexec
-noglob
-nolog
-notify
-nounset
+(candidate "noclobber")
+(candidate "noexec")
+(candidate "noglob")
+(candidate "nolog")
+(candidate "notify")
+(candidate "nounset")
 == command position through time options:
-export
+(candidate "export")
 == command position through timeout:
-export
+(candidate "export")
 == quoted and escaped timeout options stay transparent:
-export
-export
+(candidate "export")
+(candidate "export")
 == command position through koshkit timeout:
-export
+(candidate "export")
 == builtin offers only builtins for its first operand:
-export
-export
-export
-export_fn
+(candidate "export")
+(candidate "export")
+(candidate "export")
+(candidate "export_fn")
 == builtin stays transparent for the inner builtin arguments:
-noclobber
+(candidate "noclobber")

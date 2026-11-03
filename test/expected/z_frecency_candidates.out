@@ -1,5 +1,5 @@
 == recent directories for an empty z query:
-TMPDIR/+alpha
-TMPDIR/+beta
+(candidate "TMPDIR/+alpha")
+(candidate "TMPDIR/+beta")
 == prefix filters recent directories:
-TMPDIR/+alpha
+(candidate "TMPDIR/+alpha")

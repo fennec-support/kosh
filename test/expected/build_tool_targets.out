@@ -1,30 +1,30 @@
 == make targets:
-all
-build
-clean
-test
+(candidate "all")
+(candidate "build")
+(candidate "clean")
+(candidate "test")
 == make by prefix:
-clean
+(candidate "clean")
 == npm run scripts:
-build
-dev
-lint:fix
+(candidate "build")
+(candidate "dev")
+(candidate "lint:fix")
 == bun run by prefix:
-lint:fix
+(candidate "lint:fix")
 == bash mood lists targets:
-all
-build
-clean
-test
+(candidate "all")
+(candidate "build")
+(candidate "clean")
+(candidate "test")
 == sh mood stays plain:
-Makefile
-package.json
+(candidate "Makefile")
+(candidate "package.json")
 == make -C from outside:
-build
+(candidate "build")
 == cmake --build targets:
-all
-app
-clean
-install/local
-support
+(candidate "all")
+(candidate "app")
+(candidate "clean")
+(candidate "install/local")
+(candidate "support")
 cmake-not-run

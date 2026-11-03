@@ -1,7 +1,7 @@
 == make targets with a make program on PATH:
-all
-build
-clean
-test
+(candidate "all")
+(candidate "build")
+(candidate "clean")
+(candidate "test")
 completion-status=0
 probe-not-started

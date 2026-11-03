@@ -1,16 +1,16 @@
 echo "== kill -s signals:"
 signal_names=$("$BIN" --debug-complete-at 'kill -s ' </dev/null)
-printf '%s\n' "$signal_names" | grep -E '^(KILL|TERM)$'
+printf '%s\n' "$signal_names" | grep -E '^\(candidate "(KILL|TERM)"\)$'
 echo "== kill -s prefix:"
 "$BIN" --debug-complete-at 'kill -s KI' </dev/null
 echo "== kill -n prefix:"
 "$BIN" --debug-complete-at 'kill -n TE' </dev/null
 echo "== trap special conditions:"
-"$BIN" --debug-complete-at 'trap handler E' </dev/null | grep -E '^(ERR|EXIT)$'
+"$BIN" --debug-complete-at 'trap handler E' </dev/null | grep -E '^\(candidate "(ERR|EXIT)"\)$'
 echo "== trap condition after the print flag:"
 "$BIN" --debug-complete-at 'trap -p RET' </dev/null
 echo "== trap action position is a filename:"
-"$BIN" --debug-complete-at 'trap ' </dev/null | grep -c '^EXIT$'
+"$BIN" --debug-complete-at 'trap ' </dev/null | grep -c -Fx '(candidate "EXIT")'
 echo "== shopt -o loads the set options:"
 "$BIN" --debug-complete-at 'shopt -o pipe' </dev/null
 echo "== shopt operand stays a shopt name:"
@@ -47,14 +47,15 @@ echo "== debug logging levels:"
 echo "== debug logging joined form:"
 "$BIN" --debug-complete-at 'kosh --debug-logging=de' </dev/null
 echo "== every signal flag uses the platform table:"
-signal_name=$("$BIN" --debug-complete-at 'kill -s ' </dev/null | tail -n 1)
+signal_name=$("$BIN" --debug-complete-at 'kill -s ' </dev/null | tail -n 1 |
+  sed -e 's/^(candidate "//' -e 's/")$//')
 signal_prefix=$(printf '%s' "$signal_name" | cut -c1-2)
 agreement=yes
 [ -n "$signal_name" ] || agreement=no
 for probe in "kill -s $signal_prefix" "trap handler $signal_prefix" \
   "koshkit timeout --signal=$signal_prefix"; do
   "$BIN" --debug-complete-at "$probe" </dev/null |
-    grep -qxF "$signal_name" || agreement=no
+    grep -qxF "(candidate \"$signal_name\")" || agreement=no
 done
 echo "$agreement"
 echo "== set has no long mood flags:"
@@ -84,7 +85,7 @@ echo "== assimilate --link-mood= prefix:"
 "$BIN" --debug-complete-at 'assimilate --link-mood=d' </dev/null
 echo "== assignment prefix is untouched:"
 result=$("$BIN" --debug-complete-at 'MOOD=' </dev/null) || exit 1
-printf '%s\n' "$result" | grep -qxF bash
+printf '%s\n' "$result" | grep -qxF '(candidate "bash")'
 [ "$?" -eq 1 ] || exit 1
 printf '0\n'
 echo "== kosh --tab-selector value:"
@@ -97,6 +98,6 @@ echo "== set has no tab selector flag:"
 "$BIN" --debug-complete-at 'set --tab-s' </dev/null
 echo "== an unrelated command keeps its own candidates:"
 result=$("$BIN" --debug-complete-at 'echo --tab-selector ' </dev/null) || exit 1
-printf '%s\n' "$result" | grep -qxF interactive
+printf '%s\n' "$result" | grep -qxF '(candidate "interactive")'
 [ "$?" -eq 1 ] || exit 1
 printf '0\n'

@@ -15,17 +15,15 @@ show 'x=$(\
 show 'myfn() { :; }; echo "$(myfn)" `myfn`'
 show 'myfn() { :; }; unset -f myfn other; unset -v myfn'
 
-tab=$(printf '\t')
-
 "$BIN" --debug-highlight-at 'echo $(true # comment
 inner-command) outer' </dev/null |
-    grep -E "^(# comment${tab}comment|inner-command${tab}unknown-command)$"
+    grep -E '^\(span "(# comment" :role comment|inner-command" :role unknown-command)\)$'
 
 "$BIN" \
     --debug-highlight-at 'echo $(( 1 + $(printf ")") + 2 )); echo after' \
     </dev/null |
-    grep -E "${tab}(resolved-command|string)$"
+    grep -E ' :role (resolved-command|string)\)$'
 
 "$BIN" --debug-highlight-at 'echo $(case x in x) probecmd a;; esac)' \
     -c 'probecmd() { :; }' </dev/null |
-    grep -E "^(esac${tab}keyword|probecmd${tab}resolved-command)$"
+    grep -E '^\(span "(esac" :role keyword|probecmd" :role resolved-command)\)$'

@@ -1,4 +1,4 @@
-# a note	comment
+(span "# a note" :role comment)
 2
-echo	resolved-command
-outer	resolved-command
+(span "echo" :role resolved-command)
+(span "outer" :role resolved-command)

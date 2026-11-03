@@ -1,13 +1,13 @@
 == inside $( ):
-alpha
+(candidate "alpha")
 == inside backticks:
-beta
+(candidate "beta")
 == inside a for-head substitution:
-gamma
+(candidate "gamma")
 == inside a process substitution:
-alpha
+(candidate "alpha")
 == inside a process substitution in an assignment value:
-beta
+(candidate "beta")
 == filesystem still completes inside a substitution:
 onlyfile
 == arithmetic is not a command body:

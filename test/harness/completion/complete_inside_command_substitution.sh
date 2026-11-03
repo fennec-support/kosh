@@ -21,7 +21,7 @@ echo "== filesystem still completes inside a substitution:"
 : > "$dir/onlyfile"
 filesystem_result=$("$BIN" \
     --debug-complete-at "echo \$(cat $dir/only" </dev/null)
-test "$filesystem_result" = "$dir/onlyfile"
+test "$filesystem_result" = "(candidate \"$dir/onlyfile\")"
 echo onlyfile
 echo "== arithmetic is not a command body:"
 (

@@ -1,43 +1,43 @@
 == compopt -o plusdirs adds the directories after the reply:
-probe_dir/
-probe_word
+(candidate "probe_dir/")
+(candidate "probe_word")
 == compopt -o dirnames adds the directories to an empty reply:
-probe_dir/
+(candidate "probe_dir/")
 == compopt +o plusdirs drops the directories of the spec:
-probe_word
+(candidate "probe_word")
 == compopt prints the current options under the command name:
-probe_dir/
-probe_file
+(candidate "probe_dir/")
+(candidate "probe_file")
 compopt +o bashdefault +o default +o dirnames +o filenames +o fullquote +o noquote +o nosort -o nospace +o plusdirs cp
 == the registered spec keeps its options:
-probe_dir/
-probe_file
+(candidate "probe_dir/")
+(candidate "probe_file")
 compopt +o bashdefault +o default +o dirnames -o filenames +o fullquote +o noquote +o nosort +o nospace +o plusdirs cp
 == a compopt with a command operand inside the function changes the spec:
-probe_dir/
-probe_file
+(candidate "probe_dir/")
+(candidate "probe_file")
 compopt +o bashdefault +o default +o dirnames +o filenames +o fullquote +o noquote +o nosort -o nospace +o plusdirs cp
 == nosort keeps the reply order and drops only a repeated neighbor:
-zeta
-alpha
-mid
-zeta
+(candidate "zeta")
+(candidate "alpha")
+(candidate "mid")
+(candidate "zeta")
 == the reply is sorted and deduplicated without nosort:
-alpha
-mid
-zeta
+(candidate "alpha")
+(candidate "mid")
+(candidate "zeta")
 == a reply is quoted only with filenames or with fullquote:
-a b
-'a b'
-a b
-'a b'
-'a b'
+(candidate "a b")
+(candidate "'a b'")
+(candidate "a b")
+(candidate "'a b'")
+(candidate "'a b'")
 == noquote leaves the fallback filenames unquoted:
-'spaced name'
-spaced name
+(candidate "'spaced name'")
+(candidate "spaced name")
 == bashdefault alone leaves a plain word empty:
 == bashdefault still completes a variable and a glob:
-$probe_variable
-'spaced name'
+(candidate "$probe_variable")
+(candidate "'spaced name'")
 == bashdefault with default falls back to filenames:
-'spaced name'
+(candidate "'spaced name'")

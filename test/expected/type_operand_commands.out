@@ -1,15 +1,15 @@
 == alias and function operands:
-zzalias
-zzfunc
+(candidate "zzalias")
+(candidate "zzfunc")
 == builtin operand:
-unalias
+(candidate "unalias")
 == keyword operand:
-while
+(candidate "while")
 == absent operand:
 == flags still answer:
---help
--P
--V
--a
--p
--t
+(candidate "--help")
+(candidate "-P")
+(candidate "-V")
+(candidate "-a")
+(candidate "-p")
+(candidate "-t")

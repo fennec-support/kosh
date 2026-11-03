@@ -1,5 +1,5 @@
 == export completes variable words without an equals suffix:
-KOSH_EXPORT_COMPLETION_UNIQUE
+(candidate "KOSH_EXPORT_COMPLETION_UNIQUE")
 export-candidate=plain
 == an assignment value is not completed with variable words:
 export-value=none
@@ -24,10 +24,10 @@ typeset -F=none
 export -f=none
 readonly -f=none
 == unset completes a variable name:
-completion_probe_var
+(candidate "completion_probe_var")
 == unset completes a dynamic ANSI variable name:
-KOSH_ANSI_RED
-KOSH_ANSI_RESET
+(candidate "KOSH_ANSI_RED")
+(candidate "KOSH_ANSI_RESET")
 == unset -f completes a function name:
-completion_probe_fn
+(candidate "completion_probe_fn")
 == plain unset does not offer a function name:

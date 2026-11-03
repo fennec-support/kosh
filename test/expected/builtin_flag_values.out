@@ -1,130 +1,130 @@
 == kill -s signals:
-KILL
-TERM
+(candidate "KILL")
+(candidate "TERM")
 == kill -s prefix:
-KILL
+(candidate "KILL")
 == kill -n prefix:
-TERM
+(candidate "TERM")
 == trap special conditions:
-ERR
-EXIT
+(candidate "ERR")
+(candidate "EXIT")
 == trap condition after the print flag:
-RETURN
+(candidate "RETURN")
 == trap action position is a filename:
 0
 == shopt -o loads the set options:
-pipefail
+(candidate "pipefail")
 == shopt operand stays a shopt name:
-xpg_echo
+(candidate "xpg_echo")
 == enable builtins:
-echo
+(candidate "echo")
 == complete -o options:
-bashdefault
-default
-dirnames
-filenames
-fullquote
-noquote
-nosort
-nospace
-plusdirs
+(candidate "bashdefault")
+(candidate "default")
+(candidate "dirnames")
+(candidate "filenames")
+(candidate "fullquote")
+(candidate "noquote")
+(candidate "nosort")
+(candidate "nospace")
+(candidate "plusdirs")
 == compopt -o and +o options:
-plusdirs
-noquote
-nosort
-nospace
+(candidate "plusdirs")
+(candidate "noquote")
+(candidate "nosort")
+(candidate "nospace")
 == compgen -o joined form:
-default
-dirnames
+(candidate "default")
+(candidate "dirnames")
 == compgen -V completes a variable:
-completion_probe_var
+(candidate "completion_probe_var")
 == compgen -V joined form:
-KOSH_ANSI_RED
-KOSH_ANSI_RESET
+(candidate "KOSH_ANSI_RED")
+(candidate "KOSH_ANSI_RESET")
 == koshkit find entry types:
-d
-f
-l
+(candidate "d")
+(candidate "f")
+(candidate "l")
 == koshkit timeout signal prefix:
-KILL
+(candidate "KILL")
 == koshkit pkill joined signal form:
-TERM
+(candidate "TERM")
 == koshkit killall signal prefix:
-KILL
+(candidate "KILL")
 == koshkit evilio sort values:
-read-latency
-read-ops
+(candidate "read-latency")
+(candidate "read-ops")
 == bare evilio sort values:
-write-latency
-write-ops
+(candidate "write-latency")
+(candidate "write-ops")
 == koshkit evilps sort prefix:
-memory
+(candidate "memory")
 == debug logging levels:
-all
-debug
-info
+(candidate "all")
+(candidate "debug")
+(candidate "info")
 == debug logging joined form:
-debug
+(candidate "debug")
 == every signal flag uses the platform table:
 yes
 == set has no long mood flags:
 == set -M value:
-bash
-bash-posix
-kosh
-sh
+(candidate "bash")
+(candidate "bash-posix")
+(candidate "kosh")
+(candidate "sh")
 == set -L value:
-bash
-bash-posix
-kosh
-sh
+(candidate "bash")
+(candidate "bash-posix")
+(candidate "kosh")
+(candidate "sh")
 == set -M= value:
-bash
-bash-posix
-kosh
-sh
+(candidate "bash")
+(candidate "bash-posix")
+(candidate "kosh")
+(candidate "sh")
 == set -M= prefix:
-bash
-bash-posix
+(candidate "bash")
+(candidate "bash-posix")
 == kosh --mood value:
-bash
-bash-posix
-kosh
-sh
+(candidate "bash")
+(candidate "bash-posix")
+(candidate "kosh")
+(candidate "sh")
 == kosh --mood= value:
-bash
-bash-posix
-kosh
-sh
+(candidate "bash")
+(candidate "bash-posix")
+(candidate "kosh")
+(candidate "sh")
 == kosh -M value:
-bash
-bash-posix
-kosh
-sh
+(candidate "bash")
+(candidate "bash-posix")
+(candidate "kosh")
+(candidate "sh")
 == kosh --init-moods value:
-bash
-bash-posix
-kosh
-sh
+(candidate "bash")
+(candidate "bash-posix")
+(candidate "kosh")
+(candidate "sh")
 == kosh -L= prefix:
-kosh
+(candidate "kosh")
 == assimilate --link-mood value:
-bash
-dash
-kosh
-sh
+(candidate "bash")
+(candidate "dash")
+(candidate "kosh")
+(candidate "sh")
 == assimilate --link-mood= prefix:
-dash
+(candidate "dash")
 == assignment prefix is untouched:
 0
 == kosh --tab-selector value:
-external
-interactive
-plain
+(candidate "external")
+(candidate "interactive")
+(candidate "plain")
 == kosh --tab-selector= prefix:
-plain
+(candidate "plain")
 == the flag name itself:
---tab-selector
+(candidate "--tab-selector")
 == set has no tab selector flag:
 == an unrelated command keeps its own candidates:
 0

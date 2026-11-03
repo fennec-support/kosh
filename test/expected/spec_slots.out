@@ -1,30 +1,30 @@
 == -E completes an empty line:
-empty_one
-empty_two
+(candidate "empty_one")
+(candidate "empty_two")
 == -I completes the command word:
-initial_one
-initial_two
+(candidate "initial_one")
+(candidate "initial_two")
 == -I completes the command word after a separator and an assignment:
-initial_two
+(candidate "initial_two")
 == -I leaves an argument alone:
-slot_file
+(candidate "slot_file")
 == -I with no match offers nothing:
 == -I -o bashdefault with no match falls back to command words:
-compopt
+(candidate "compopt")
 == the -E and -I functions receive the bash slot words:
 [_EmptycmD_][][]
-from_function
+(candidate "from_function")
 [_InitialWorD_][ab][ab]
-from_function
+(candidate "from_function")
 == -D lists its actions:
-slot_dir/
+(candidate "slot_dir/")
 == -D lists its word list with the prefix:
-pre_alpha
+(candidate "pre_alpha")
 == a -D loader returning 124 restarts with the loaded spec:
-loaded_one
-loaded_two
+(candidate "loaded_one")
+(candidate "loaded_two")
 == complete -r removes the spec of a command:
-slot_file
+(candidate "slot_file")
 == complete -r removes one slot:
 complete -W 'w' cmd
 complete -W 'i' -I

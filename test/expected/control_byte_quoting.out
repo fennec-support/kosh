@@ -1,17 +1,17 @@
 == an escape and a bell complete as escapes:
-$'osc\E]0;title\ax'
+(candidate "$'osc\\E]0;title\\ax'")
 == a C1 control completes as octal escapes:
-$'csi\302\233y'
+(candidate "$'csi\\302\\233y'")
 == a quote, a backslash, and DEL are escaped together:
-$'mix\'q\\b\177z'
+(candidate "$'mix\\'q\\\\b\\177z'")
 == an open single quote splices each control run:
-'osc'$'\E'']0;title'$'\a''x'
+(candidate "'osc'$'\\E'']0;title'$'\\a''x'")
 == an open double quote splices each control run:
-"csi"$'\302\233'"y"
+(candidate "\"csi\"$'\\302\\233'\"y\"")
 == noquote keeps blanks raw and still splices each control run:
-nq a$'\E'b
+(candidate "nq a$'\\E'b")
 == a spec word splices each control run:
-w$'\E'x
+(candidate "w$'\\E'x")
 == compgen lists the entries raw:
 osc^[]0;title^Gx
 == the completed word is the file:

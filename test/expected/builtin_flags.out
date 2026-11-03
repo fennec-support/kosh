@@ -1,84 +1,84 @@
 == set switches:
---help
--A
--B
--C
--E
--G
--H
--I
--L
--M
--N
--P
--R
--S
--T
--W
--a
--b
--e
--f
--h
--k
--m
--n
--o
--p
--r
--t
--u
--v
--x
+(candidate "--help")
+(candidate "-A")
+(candidate "-B")
+(candidate "-C")
+(candidate "-E")
+(candidate "-G")
+(candidate "-H")
+(candidate "-I")
+(candidate "-L")
+(candidate "-M")
+(candidate "-N")
+(candidate "-P")
+(candidate "-R")
+(candidate "-S")
+(candidate "-T")
+(candidate "-W")
+(candidate "-a")
+(candidate "-b")
+(candidate "-e")
+(candidate "-f")
+(candidate "-h")
+(candidate "-k")
+(candidate "-m")
+(candidate "-n")
+(candidate "-o")
+(candidate "-p")
+(candidate "-r")
+(candidate "-t")
+(candidate "-u")
+(candidate "-v")
+(candidate "-x")
 == set -o options by prefix:
-noclobber
-noexec
-noglob
-nolog
-notify
-nounset
+(candidate "noclobber")
+(candidate "noexec")
+(candidate "noglob")
+(candidate "nolog")
+(candidate "notify")
+(candidate "nounset")
 == set -o offers no Koshka name:
 == kosh no-traces flag:
---no-traces
+(candidate "--no-traces")
 == kosh no-annoying flag:
---no-annoying-diagnostics
+(candidate "--no-annoying-diagnostics")
 == declare letters:
---help
--A
--F
--a
--f
--g
--i
--l
--n
--p
--r
--t
--u
--x
+(candidate "--help")
+(candidate "-A")
+(candidate "-F")
+(candidate "-a")
+(candidate "-f")
+(candidate "-g")
+(candidate "-i")
+(candidate "-l")
+(candidate "-n")
+(candidate "-p")
+(candidate "-r")
+(candidate "-t")
+(candidate "-u")
+(candidate "-x")
 == kill signals:
--KILL
--TERM
+(candidate "-KILL")
+(candidate "-TERM")
 == shopt options by prefix:
-globasciiranges
-globskipdots
-globstar
+(candidate "globasciiranges")
+(candidate "globskipdots")
+(candidate "globstar")
 == read flags:
---help
--N
--a
--d
--e
--n
--p
--q
--r
--s
--t
--u
+(candidate "--help")
+(candidate "-N")
+(candidate "-a")
+(candidate "-d")
+(candidate "-e")
+(candidate "-n")
+(candidate "-p")
+(candidate "-q")
+(candidate "-r")
+(candidate "-s")
+(candidate "-t")
+(candidate "-u")
 == time flags:
---help
---posix
--R
--p
+(candidate "--help")
+(candidate "--posix")
+(candidate "-R")
+(candidate "-p")

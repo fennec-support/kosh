@@ -1,8 +1,8 @@
-keywords1	assignment-name
-greet	function-name
-greet	resolved-command
-echo	resolved-command
-$HOME	variable
-if	keyword
-fi	keyword
-echo	resolved-command
+(span "keywords1" :role assignment-name)
+(span "greet" :role function-name)
+(span "greet" :role resolved-command)
+(span "echo" :role resolved-command)
+(span "$HOME" :role variable)
+(span "if" :role keyword)
+(span "fi" :role keyword)
+(span "echo" :role resolved-command)

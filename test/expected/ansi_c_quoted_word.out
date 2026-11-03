@@ -1,26 +1,26 @@
 == a plain single quote lists the markers:
-'ZQdir_marker/
-'ZQcommand_marker
-'ZQmarker_file
+(candidate "'ZQdir_marker/")
+(candidate "'ZQcommand_marker")
+(candidate "'ZQmarker_file")
 == an ANSI C quote lists the same markers:
-$'ZQdir_marker/
-$'ZQcommand_marker
-$'ZQmarker_file
+(candidate "$'ZQdir_marker/")
+(candidate "$'ZQcommand_marker")
+(candidate "$'ZQmarker_file")
 == an ANSI C escape resolves to the decoded name:
-$'ZQdir_marker/\x5aQinner'
+(candidate "$'ZQdir_marker/\\x5aQinner'")
 == an ANSI C quote completes a command name:
-$'ZQcommand_marker'
+(candidate "$'ZQcommand_marker'")
 == an ANSI C quote after a directory keeps the prefix:
-ZQdir_marker/$'ZQinner'
+(candidate "ZQdir_marker/$'ZQinner'")
 == a doubled dollar sign offers nothing, the process id prefix matches no file:
 == a tripled dollar sign offers nothing, the process id prefix matches no file:
 == a locale quote lists the same markers:
-$"ZQdir_marker/
-$"ZQcommand_marker
-$"ZQmarker_file
+(candidate "$\"ZQdir_marker/")
+(candidate "$\"ZQcommand_marker")
+(candidate "$\"ZQmarker_file")
 == an escaped quote keeps the locale quoted word open and matches no file:
 == a locale quote completes a command name:
-$"ZQcommand_marker"
+(candidate "$\"ZQcommand_marker\"")
 == a locale quote after a directory keeps the prefix:
-ZQdir_marker/$"ZQinner"
+(candidate "ZQdir_marker/$\"ZQinner\"")
 == a doubled dollar sign before a locale quote offers nothing:

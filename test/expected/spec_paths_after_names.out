@@ -1,18 +1,18 @@
 == words before paths:
-ls
-lsblk
-zcat
-./assets/
-./docs/
-../up
-/abs
-~/home
+(candidate "ls")
+(candidate "lsblk")
+(candidate "zcat")
+(candidate "./assets/")
+(candidate "./docs/")
+(candidate "../up")
+(candidate "/abs")
+(candidate "~/home")
 == a word with a slash stays among the words:
-feature/x
-main
-origin/main
-tag1
+(candidate "feature/x")
+(candidate "main")
+(candidate "origin/main")
+(candidate "tag1")
 == nosort keeps the reply order:
-./docs/
-zcat
-ls
+(candidate "./docs/")
+(candidate "zcat")
+(candidate "ls")

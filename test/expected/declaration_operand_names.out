@@ -1,23 +1,23 @@
-V	assignment-name
-V	variable
-NOPE	unset-variable
-SHIPPED	assignment-name
--a	flag
-rows	assignment-name
-frozen	assignment-name
-scoped	assignment-name
--i	flag
-counted	assignment-name
--v	flag
-V	variable
-$SHIPPED	variable
-$rows	variable
-$U1	unset-variable
-U1	assignment-name
-$U1	variable
-U2	assignment-name
-$U2	unset-variable
-$uarr	unset-variable
-uarr	assignment-name
-$uarr	variable
-$PATH	variable
+(span "V" :role assignment-name)
+(span "V" :role variable)
+(span "NOPE" :role unset-variable)
+(span "SHIPPED" :role assignment-name)
+(span "-a" :role flag)
+(span "rows" :role assignment-name)
+(span "frozen" :role assignment-name)
+(span "scoped" :role assignment-name)
+(span "-i" :role flag)
+(span "counted" :role assignment-name)
+(span "-v" :role flag)
+(span "V" :role variable)
+(span "$SHIPPED" :role variable)
+(span "$rows" :role variable)
+(span "$U1" :role unset-variable)
+(span "U1" :role assignment-name)
+(span "$U1" :role variable)
+(span "U2" :role assignment-name)
+(span "$U2" :role unset-variable)
+(span "$uarr" :role unset-variable)
+(span "uarr" :role assignment-name)
+(span "$uarr" :role variable)
+(span "$PATH" :role variable)

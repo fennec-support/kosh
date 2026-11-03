@@ -14,7 +14,7 @@ missing_count=0
 for utility in cat date du ls nproc timeout evil evildisk evilfiles evilfs evilio evillogs eviliso evilnet evilps \
   evilss goodcore goodfsw goodnode goodstat retry stat sync watch; do
   offered=" $("$BIN" --debug-complete-at "koshkit $utility -" </dev/null |
-    sed 's/=$//' | tr '\n' ' ') "
+    sed -e 's/^(candidate "//' -e 's/")$//' -e 's/=$//' | tr '\n' ' ') "
   flags=$("$BIN" -c "koshkit $utility --help" 2>&1 |
     sed -n '/^\(LIVE \)\{0,1\}OPTIONS$/,/^$/p' |
     sed -n -E '/^(  -|      --)/p' |

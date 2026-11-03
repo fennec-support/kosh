@@ -1,19 +1,19 @@
-EXPLICIT-PROBE.EXE	resolved-command
-collision.exe	unknown-command
-directory.exe	unknown-command
-EXPLICIT-P	partial-command
-explicit-p	partial-command
-foo	partial-command
-blocked.exe	resolved-command
-npr	partial-command
-ec\ho	resolved-command
-ech	unknown-command
->	operator
-./existing/	existing-path
-out	invalid-path
-./	existing-path
-kos	partial-path
-~	partial-path
-appear-probe	resolved-command
-gone-probe	unknown-command
-blocked-probe	unknown-command
+(span "EXPLICIT-PROBE.EXE" :role resolved-command)
+(span "collision.exe" :role unknown-command)
+(span "directory.exe" :role unknown-command)
+(span "EXPLICIT-P" :role partial-command)
+(span "explicit-p" :role partial-command)
+(span "foo" :role partial-command)
+(span "blocked.exe" :role resolved-command)
+(span "npr" :role partial-command)
+(span "ec\\ho" :role resolved-command)
+(span "ech" :role unknown-command)
+(span ">" :role operator)
+(span "./existing/" :role existing-path)
+(span "out" :role invalid-path)
+(span "./" :role existing-path)
+(span "kos" :role partial-path)
+(span "~" :role partial-path)
+(span "appear-probe" :role resolved-command)
+(span "gone-probe" :role unknown-command)
+(span "blocked-probe" :role unknown-command)

@@ -1,13 +1,13 @@
-ble/highlight/layer:{selection}/getg	function-name
-ble/highlight/layer:{selection}/getg	resolved-command
-ble/prompt/unit:{section}/get	function-name
-ble/prompt/unit:{section}/get	resolved-command
-bad{1..3}	invalid-syntax
-bad{unclosed	invalid-syntax
-g	unknown-command
-g	function-name
-g	resolved-command
-ble/util/put	function-name
-ble/util/put	resolved-command
-ble/variable#load:x	function-name
-ble/variable#load:x	resolved-command
+(span "ble/highlight/layer:{selection}/getg" :role function-name)
+(span "ble/highlight/layer:{selection}/getg" :role resolved-command)
+(span "ble/prompt/unit:{section}/get" :role function-name)
+(span "ble/prompt/unit:{section}/get" :role resolved-command)
+(span "bad{1..3}" :role invalid-syntax)
+(span "bad{unclosed" :role invalid-syntax)
+(span "g" :role unknown-command)
+(span "g" :role function-name)
+(span "g" :role resolved-command)
+(span "ble/util/put" :role function-name)
+(span "ble/util/put" :role resolved-command)
+(span "ble/variable#load:x" :role function-name)
+(span "ble/variable#load:x" :role resolved-command)

@@ -1,5 +1,5 @@
 == subcommands with no prefix:
-bar
-foo
+(candidate "bar")
+(candidate "foo")
 == subcommands with a prefix:
-bar
+(candidate "bar")

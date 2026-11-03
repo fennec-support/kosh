@@ -17,19 +17,18 @@ cd "$dir"
 
 result=$("$BIN" --debug-highlight-at \
     'cd adir; cd afile; ls afile; ./afile/; ./alink/; ./adir/')
-tab=$(printf '\t')
-printf '%s\n' "$result" | grep -E "${tab}(existing-path|invalid-path)$"
+printf '%s\n' "$result" | grep -E ' :role (existing-path|invalid-path)\)$'
 
 mkdir -p "$dir/native/subdir"
 if [ "${OS-}" = Windows_NT ]; then
     native_source='native\\subdir'
     "$BIN" --debug-highlight-at "echo $native_source" |
-        grep -F "${native_source}${tab}existing-path" >/dev/null
-    printf 'native/subdir\texisting-path\n'
+        grep -F '(span "native\\\\subdir" :role existing-path)' >/dev/null
+    printf '(span "native/subdir" :role existing-path)\n'
 else
     native_source='native/subdir'
     "$BIN" --debug-highlight-at "echo $native_source" |
-        grep -F "${native_source}${tab}existing-path"
+        grep -F "(span \"${native_source}\" :role existing-path)"
 fi
 
 mkdir -p "$dir/[quoted] path/child" "$dir/Library/Application"
@@ -48,7 +47,7 @@ mixed=$(
     "$BIN" --debug-highlight-at 'echo \* \? \['
 )
 printf '%s\n' "$mixed" |
-    grep -E "${tab}(string|existing-path|partial-path|glob)$"
+    grep -E ' :role (string|existing-path|partial-path|glob)\)$'
 
 # A native shell resolves only native paths, so MSYS paths are converted.
 native_bin=$BIN
@@ -59,11 +58,14 @@ if command -v cygpath >/dev/null 2>&1; then
 fi
 result=$("$BIN" --debug-highlight-at \
     "$native_bin; $native_dir/highlight-missing")
-printf '%s\n' "$result" | grep -Fx "${native_bin}${tab}existing-path" >/dev/null
-printf '%s\n' "$result" | grep -Fx "highlight-missing${tab}invalid-path" >/dev/null
-printf 'existing-path\texisting-path\n'
-printf 'missing-path\tinvalid-path\n'
+printf '%s\n' "$result" |
+    grep -Fx "(span \"${native_bin}\" :role existing-path)" >/dev/null
+printf '%s\n' "$result" |
+    grep -Fx '(span "highlight-missing" :role invalid-path)' >/dev/null
+printf '(span "existing-path" :role existing-path)\n'
+printf '(span "missing-path" :role invalid-path)\n'
 
 result=$("$BIN" --debug-highlight-at "echo x >$TEST_NULL_DEVICE")
-printf '%s\n' "$result" | grep -Fx "${TEST_NULL_DEVICE}${tab}existing-path" >/dev/null
-printf 'null-device\texisting-path\n'
+printf '%s\n' "$result" |
+    grep -Fx "(span \"${TEST_NULL_DEVICE}\" :role existing-path)" >/dev/null
+printf '(span "null-device" :role existing-path)\n'

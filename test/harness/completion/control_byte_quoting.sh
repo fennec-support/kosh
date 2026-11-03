@@ -28,5 +28,6 @@ echo "== a spec word splices each control run:"
 echo "== compgen lists the entries raw:"
 "$BIN" -c 'compgen -f os' | cat -v
 echo "== the completed word is the file:"
-word=$("$BIN" --debug-complete-at 'cat os' </dev/null)
+word=$("$BIN" --debug-complete-at 'cat os' </dev/null |
+  sed -e 's/^(candidate "//' -e 's/")$//' -e 's/\\\(["\\]\)/\1/g')
 "$BIN" -c "test -e $word && echo found" 2>&1

@@ -1,42 +1,42 @@
-<<<	operator
-echo	resolved-command
-echo	resolved-command
-EOF	heredoc-delimiter
-EOF	heredoc-delimiter
-	heredoc
-echo	resolved-command
+(span "<<<" :role operator)
+(span "echo" :role resolved-command)
+(span "echo" :role resolved-command)
+(span "EOF" :role heredoc-delimiter)
+(span "EOF" :role heredoc-delimiter)
+(span "body\n" :role heredoc)
+(span "echo" :role resolved-command)
 2
-echo	resolved-command
-EOF	heredoc-delimiter
-	heredoc
-EOF	heredoc-delimiter
-"DONE"	heredoc-delimiter
-		heredoc
-DONE	heredoc-delimiter
-cat	resolved-command
-\_ACEOF	heredoc-delimiter
-	heredoc
-_ACEOF	heredoc-delimiter
-echo	resolved-command
-cat	resolved-command
-"END MARK"	heredoc-delimiter
-	heredoc
-END MARK	heredoc-delimiter
-echo	resolved-command
-cat	resolved-command
-EOF	heredoc-delimiter
-	heredoc
-EOF	heredoc-delimiter
-ls	resolved-command
-echo	resolved-command
-cat	resolved-command
-$'a b'	heredoc-delimiter
-	heredoc
-a b	heredoc-delimiter
-echo	resolved-command
-cat	resolved-command
-$'a\'b'	heredoc-delimiter
-echo	resolved-command
-	heredoc
-a'b	heredoc-delimiter
-echo	resolved-command
+(span "echo" :role resolved-command)
+(span "EOF" :role heredoc-delimiter)
+(span "body\n" :role heredoc)
+(span "EOF" :role heredoc-delimiter)
+(span "\"DONE\"" :role heredoc-delimiter)
+(span "\tbody\n\t" :role heredoc)
+(span "DONE" :role heredoc-delimiter)
+(span "cat" :role resolved-command)
+(span "\\_ACEOF" :role heredoc-delimiter)
+(span "body\n" :role heredoc)
+(span "_ACEOF" :role heredoc-delimiter)
+(span "echo" :role resolved-command)
+(span "cat" :role resolved-command)
+(span "\"END MARK\"" :role heredoc-delimiter)
+(span "END\n" :role heredoc)
+(span "END MARK" :role heredoc-delimiter)
+(span "echo" :role resolved-command)
+(span "cat" :role resolved-command)
+(span "EOF" :role heredoc-delimiter)
+(span "x\x0d\n" :role heredoc)
+(span "EOF" :role heredoc-delimiter)
+(span "ls" :role resolved-command)
+(span "echo" :role resolved-command)
+(span "cat" :role resolved-command)
+(span "$'a b'" :role heredoc-delimiter)
+(span "x\n" :role heredoc)
+(span "a b" :role heredoc-delimiter)
+(span "echo" :role resolved-command)
+(span "cat" :role resolved-command)
+(span "$'a\\'b'" :role heredoc-delimiter)
+(span "echo" :role resolved-command)
+(span "body\n" :role heredoc)
+(span "a'b" :role heredoc-delimiter)
+(span "echo" :role resolved-command)

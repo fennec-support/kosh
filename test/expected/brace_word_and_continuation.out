@@ -1,68 +1,68 @@
 == echo {a..e} "x y"
-echo	resolved-command
-"x y"	string
+(span "echo" :role resolved-command)
+(span "\"x y\"" :role string)
 == echo "$(echo {a..e})" "x y"
-echo	resolved-command
-"	string
-echo	resolved-command
-"	string
-"x y"	string
+(span "echo" :role resolved-command)
+(span "\"" :role string)
+(span "echo" :role resolved-command)
+(span "\"" :role string)
+(span "\"x y\"" :role string)
 == { echo a; } | cat
-{	operator
-echo	resolved-command
-;	operator
-}	operator
-|	operator
-cat	resolved-command
+(span "{" :role operator)
+(span "echo" :role resolved-command)
+(span ";" :role operator)
+(span "}" :role operator)
+(span "|" :role operator)
+(span "cat" :role resolved-command)
 == function g { echo; }
-function	keyword
-g	function-name
-{	operator
-echo	resolved-command
-;	operator
-}	operator
+(span "function" :role keyword)
+(span "g" :role function-name)
+(span "{" :role operator)
+(span "echo" :role resolved-command)
+(span ";" :role operator)
+(span "}" :role operator)
 == x=$(\
   A=1 \
     cat)
-x	assignment-name
-A	assignment-name
-cat	resolved-command
+(span "x" :role assignment-name)
+(span "A" :role assignment-name)
+(span "cat" :role resolved-command)
 == myfn() { :; }; echo "$(myfn)" `myfn`
-myfn	function-name
-(	operator
-)	operator
-{	operator
-:	resolved-command
-;	operator
-}	operator
-;	operator
-echo	resolved-command
-"	string
-myfn	resolved-command
-"	string
-myfn	resolved-command
+(span "myfn" :role function-name)
+(span "(" :role operator)
+(span ")" :role operator)
+(span "{" :role operator)
+(span ":" :role resolved-command)
+(span ";" :role operator)
+(span "}" :role operator)
+(span ";" :role operator)
+(span "echo" :role resolved-command)
+(span "\"" :role string)
+(span "myfn" :role resolved-command)
+(span "\"" :role string)
+(span "myfn" :role resolved-command)
 == myfn() { :; }; unset -f myfn other; unset -v myfn
-myfn	function-name
-(	operator
-)	operator
-{	operator
-:	resolved-command
-;	operator
-}	operator
-;	operator
-unset	resolved-command
--f	flag
-myfn	function-name
-other	unknown-command
-;	operator
-unset	resolved-command
--v	flag
-myfn	unset-variable
-# comment	comment
-inner-command	unknown-command
-echo	resolved-command
-printf	resolved-command
-")"	string
-echo	resolved-command
-probecmd	resolved-command
-esac	keyword
+(span "myfn" :role function-name)
+(span "(" :role operator)
+(span ")" :role operator)
+(span "{" :role operator)
+(span ":" :role resolved-command)
+(span ";" :role operator)
+(span "}" :role operator)
+(span ";" :role operator)
+(span "unset" :role resolved-command)
+(span "-f" :role flag)
+(span "myfn" :role function-name)
+(span "other" :role unknown-command)
+(span ";" :role operator)
+(span "unset" :role resolved-command)
+(span "-v" :role flag)
+(span "myfn" :role unset-variable)
+(span "# comment" :role comment)
+(span "inner-command" :role unknown-command)
+(span "echo" :role resolved-command)
+(span "printf" :role resolved-command)
+(span "\")\"" :role string)
+(span "echo" :role resolved-command)
+(span "probecmd" :role resolved-command)
+(span "esac" :role keyword)

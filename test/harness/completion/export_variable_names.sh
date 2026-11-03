@@ -7,7 +7,7 @@ completion=$(\
 )
 printf '%s\n' "$completion"
 if printf '%s\n' "$completion" | grep -Fx \
-  'KOSH_EXPORT_COMPLETION_UNIQUE' >/dev/null &&
+  '(candidate "KOSH_EXPORT_COMPLETION_UNIQUE")' >/dev/null &&
   ! printf '%s\n' "$completion" | grep -F '=' >/dev/null
 then
   echo "export-candidate=plain"
@@ -17,7 +17,8 @@ fi
 
 has_name()
 {
-  printf '%s\n' "$1" | grep -Fx 'KOSH_EXPORT_COMPLETION_UNIQUE' >/dev/null
+  printf '%s\n' "$1" |
+    grep -Fx '(candidate "KOSH_EXPORT_COMPLETION_UNIQUE")' >/dev/null
 }
 
 echo "== an assignment value is not completed with variable words:"

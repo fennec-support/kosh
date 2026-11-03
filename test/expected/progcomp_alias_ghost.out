@@ -2,9 +2,9 @@
   (count 1)
   (prefix "target_word")
 == a TAB follows an alias to the target spec:
-target_word
+(candidate "target_word")
 == the ghost does not follow a PATH symlink:
   (count 0)
   (prefix "")
 == a TAB follows a PATH symlink to the target spec:
-target_word
+(candidate "target_word")

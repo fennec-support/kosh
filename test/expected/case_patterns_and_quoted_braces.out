@@ -1,6 +1,6 @@
-${x:-"}"}	variable
-$HOME	variable
-echo	resolved-command
-echo	resolved-command
-esac	keyword
-function	keyword
+(span "${x:-\"}\"}" :role variable)
+(span "$HOME" :role variable)
+(span "echo" :role resolved-command)
+(span "echo" :role resolved-command)
+(span "esac" :role keyword)
+(span "function" :role keyword)

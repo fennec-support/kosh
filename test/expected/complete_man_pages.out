@@ -1,10 +1,10 @@
 == a man binary called man:
-zqpage-alpha
-zqpage-beta
+(candidate "zqpage-alpha")
+(candidate "zqpage-beta")
 == a man that links to mandoc:
-zqpage-alpha
-zqpage-beta
+(candidate "zqpage-alpha")
+(candidate "zqpage-beta")
 == koshkit man:
-zqpage-beta
+(candidate "zqpage-beta")
 == a word that matches no page completes a file:
-zqfile.txt
+(candidate "zqfile.txt")

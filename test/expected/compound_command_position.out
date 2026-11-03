@@ -1,89 +1,88 @@
 == if body:
-export
+(candidate "export")
 == then body:
-export
+(candidate "export")
 == while body:
-export
+(candidate "export")
 == do body:
-export
+(candidate "export")
 == brace group:
-export
+(candidate "export")
 == arguments through the keyword:
-noclobber
-noexec
-noglob
-nolog
-notify
-nounset
+(candidate "noclobber")
+(candidate "noexec")
+(candidate "noglob")
+(candidate "nolog")
+(candidate "notify")
+(candidate "nounset")
 == case arm body:
-export
+(candidate "export")
 == case arm with alternates:
-export
+(candidate "export")
 == arguments through the case arm:
-noclobber
-noexec
-noglob
-nolog
-notify
-nounset
+(candidate "noclobber")
+(candidate "noexec")
+(candidate "noglob")
+(candidate "nolog")
+(candidate "notify")
+(candidate "nounset")
 == matched paren stays an argument:
 == quoted separator stays an argument:
 == quoted assignment prefix:
-export
+(candidate "export")
 == arguments through a quoted assignment prefix:
-noclobber
-noexec
-noglob
-nolog
-notify
-nounset
+(candidate "noclobber")
+(candidate "noexec")
+(candidate "noglob")
+(candidate "nolog")
+(candidate "notify")
+(candidate "nounset")
 == subshell body:
-export
+(candidate "export")
 == spec command on the first line:
-restart
-start
-stop
+(candidate "restart")
+(candidate "start")
+(candidate "stop")
 == spec command after a newline:
-restart
-start
-stop
+(candidate "restart")
+(candidate "start")
+(candidate "stop")
 == spec command after '&&' then a newline:
-restart
-start
-stop
+(candidate "restart")
+(candidate "start")
+(candidate "stop")
 == spec command in a loop body on the next line:
-restart
-start
-stop
+(candidate "restart")
+(candidate "start")
+(candidate "stop")
 == spec command after a comment with an apostrophe:
-restart
-start
-stop
+(candidate "restart")
+(candidate "start")
+(candidate "stop")
 == spec command after a heredoc body with an apostrophe:
-restart
-start
-stop
+(candidate "restart")
+(candidate "start")
+(candidate "stop")
 == a backslash continues the spec command onto the next line:
-start
-stop
+(candidate "start")
+(candidate "stop")
 == a backslash inside a word keeps the word going on the next line:
-st\
-art
+(candidate "st\\\nart")
 == cd offers only directories on the next line:
-ZQdir_marker/
-adir/
+(candidate "ZQdir_marker/")
+(candidate "adir/")
 == plain argument lists both markers:
-ZQdir_marker/
-ZQmarker_file
+(candidate "ZQdir_marker/")
+(candidate "ZQmarker_file")
 == a quoted semicolon does not split the segment:
-ZQdir_marker/
-ZQmarker_file
+(candidate "ZQdir_marker/")
+(candidate "ZQmarker_file")
 == a quoted pipe does not split the segment:
-ZQdir_marker/
-ZQmarker_file
+(candidate "ZQdir_marker/")
+(candidate "ZQmarker_file")
 == a quoted ampersand does not split the segment:
-ZQdir_marker/
-ZQmarker_file
+(candidate "ZQdir_marker/")
+(candidate "ZQmarker_file")
 == a real separator still starts a new command segment:
-ZQdir_marker/
-ZQmarker_file
+(candidate "ZQdir_marker/")
+(candidate "ZQmarker_file")

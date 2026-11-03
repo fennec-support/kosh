@@ -1,11 +1,11 @@
 == callback keeps definition diagnostics:
 warning-clean
-ok
+(candidate "ok")
 == callback keeps definition annoying state:
-off
+(candidate "off")
 == callback keeps definition mood:
-kosh
+(candidate "kosh")
 == word list keeps registration mood:
-bash-posix
+(candidate "bash-posix")
 == callback can replace its spec:
-stable
+(candidate "stable")

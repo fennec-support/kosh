@@ -1,53 +1,53 @@
 == first-level subcommands:
-compose
-run
+(candidate "compose")
+(candidate "run")
 == help lists a subcommand that the man page lacks:
-run
+(candidate "run")
 == second-level sub-subcommands from 'docker compose --help':
-config
-up
+(candidate "config")
+(candidate "up")
 == third-level options from 'docker compose config --help':
---services
---volumes
+(candidate "--services")
+(candidate "--volumes")
 == an unknown deeper word does not fork:
 == subcommands under a colon-less header:
-debug
-down
-exit-node
-set
-up
+(candidate "debug")
+(candidate "down")
+(candidate "exit-node")
+(candidate "set")
+(candidate "up")
 == a flags header at the margin ends the section:
---help
+(candidate "--help")
 == second-level options from 'tailscale set --help':
---hostname
---shields-up
+(candidate "--hostname")
+(candidate "--shields-up")
 == second-level sub-subcommands from 'tailscale debug --help':
-derp-map
-prefs
+(candidate "derp-map")
+(candidate "prefs")
 == an unknown second word does not fork:
---help
+(candidate "--help")
 == grouped subcommands with no prefix:
-add
-clone
-diff
-init
-log
-mv
-restore
-status
+(candidate "add")
+(candidate "clone")
+(candidate "diff")
+(candidate "init")
+(candidate "log")
+(candidate "mv")
+(candidate "restore")
+(candidate "status")
 == grouped subcommands with a prefix:
-diff
+(candidate "diff")
 == go subcommands in subcommand position:
-bug
-build
+(candidate "bug")
+(candidate "build")
 == go subcommands with no prefix:
-bug
-build
-clean
-doc
-env
+(candidate "bug")
+(candidate "build")
+(candidate "clean")
+(candidate "doc")
+(candidate "env")
 == cargo subcommands in subcommand position:
-check
-clean
+(candidate "check")
+(candidate "clean")
 == cargo option after a dash:
---verbose
+(candidate "--verbose")

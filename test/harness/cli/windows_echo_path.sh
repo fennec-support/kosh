@@ -86,7 +86,7 @@ printf "[%s][%s]\n" "${MyImported@a}" "${MYIMPORTED@a}"')
   [ "$("$BIN" -c 'printf "%s" C:\\new')" = 'C:\new' ] || fail "$LINENO"
   if "$BIN" --debug-highlight-at '' </dev/null >/dev/null 2>&1; then
     case "$("$BIN" --debug-highlight-at 'echo C:\Windows')" in
-      *'C:\Windows'*) fail "$LINENO" ;;
+      *'C:\\Windows'*) fail "$LINENO" ;;
     esac
   fi
 fi

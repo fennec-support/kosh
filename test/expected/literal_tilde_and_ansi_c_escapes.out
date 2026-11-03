@@ -1,14 +1,14 @@
 == an escaped tilde completes the escaped words:
-\~
-\~zq_root
+(candidate "\\~")
+(candidate "\\~zq_root")
 == an ANSI C quote escapes a backslash:
-$'zq\\back'
-$'zq\\back'
+(candidate "$'zq\\\\back'")
+(candidate "$'zq\\\\back'")
 == an ANSI C quote escapes a single quote:
-$'zq'\''quote'
-$'zq\'quote'
+(candidate "$'zq'\\''quote'")
+(candidate "$'zq\\'quote'")
 == a quote after an escaped dollar sign stays a plain single quote:
-\$'zq'"'"'; echo injected; '"'"''
+(candidate "\\$'zq'\"'\"'; echo injected; '\"'\"''")
 == the completed words name the files:
 ~
 zq\back

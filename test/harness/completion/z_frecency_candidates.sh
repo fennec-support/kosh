@@ -9,10 +9,10 @@ printf '%s\t10\t9999999999\n%s\t2\t9999999999\n%s\t99\t9999999999\n' \
 normalized_d=$(printf '%s\n' "$d" | tr '\\' '/')
 echo "== recent directories for an empty z query:"
 KOSH_DIRECTORY_HISTORY="$store" "$BIN" --debug-complete-at 'z ' </dev/null |
-  tr '\\' '/' | sed "s#$normalized_d#TMPDIR#g"
+  sed 's/\\\\/\\/g' | tr '\\' '/' | sed "s#$normalized_d#TMPDIR#g"
 echo "== prefix filters recent directories:"
 KOSH_DIRECTORY_HISTORY="$store" "$BIN" --debug-complete-at 'z +al' </dev/null |
-  tr '\\' '/' | sed "s#$normalized_d#TMPDIR#g"
+  sed 's/\\\\/\\/g' | tr '\\' '/' | sed "s#$normalized_d#TMPDIR#g"
 if [ -n "$d" ] && [ -n "$store" ]; then
   "$BIN_DIR/invoke-koshkit" rm -r "$d" "$store"
 fi

@@ -1,9 +1,9 @@
-$'a\'b'	string
-echo	resolved-command
-echo	resolved-command
-$'plain'	string
-echo	resolved-command
-$"plain 	string
-$HOME	variable
-echo	resolved-command
-"	string
+(span "$'a\\'b'" :role string)
+(span "echo" :role resolved-command)
+(span "echo" :role resolved-command)
+(span "$'plain'" :role string)
+(span "echo" :role resolved-command)
+(span "$\"plain " :role string)
+(span "$HOME" :role variable)
+(span "echo" :role resolved-command)
+(span "\"" :role string)

@@ -14,4 +14,4 @@ echo "== a koshkit utility offers no flag of another utility:"
 "$BIN" --debug-complete-at 'koshkit du --wi' </dev/null | wc -l | tr -d ' '
 echo "== an alias of a builtin completes the builtin flags:"
 "$BIN" --debug-complete-at 'dc -' -c 'alias dc=declare' </dev/null |
-  grep -c -e '^-[a-zA-Z]$'
+  grep -c -e '^(candidate "-[a-zA-Z]")$'
