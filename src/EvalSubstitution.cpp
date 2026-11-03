@@ -433,7 +433,8 @@ fn
 EvalContext::capture_command_substitution(
     const String         &source,
     Maybe<StringView>     filename,
-    const SourceLocation *call_site) throws -> String
+    const SourceLocation *call_site,
+    const WordSegment    *cache_segment) throws -> String
 {
   LOG(Debug, "capturing a command substitution of %zu bytes", source.count());
   if (Maybe<String> file = read_redirect_substitution(source.view());
@@ -444,11 +445,27 @@ EvalContext::capture_command_substitution(
     throw Error{"Unable to run the command substitution because no script is "
                 "being parsed"};
 
+  let cache_arena = static_cast<BumpArena *>(nullptr);
+  let cache       = static_cast<segment_eval_cache *>(nullptr);
+
+  if (cache_segment != nullptr && !source.view().find_character('\r')) {
+    cache_arena = cache_segment->is_substitution_cache_in_function_arena
+                      ? arena_store().function_arena()
+                      : arena_store().parse_arena();
+    if (cache_arena != nullptr)
+      cache = &cache_segment->get_eval_cache(cache_arena);
+  }
+
   /* at this point: source is not a bare file read, and parse_arena() is
      non-null. */
-  let const ast_mark = arena_store().parse_arena()->mark();
+  let const ast_mark =
+      cache == nullptr
+          ? Maybe<BumpArena::Mark>{arena_store().parse_arena()->mark()}
+          : None;
 
-  defer { arena_store().parse_arena()->release(ast_mark); };
+  defer {
+    if (ast_mark.has_value()) arena_store().parse_arena()->release(*ast_mark);
+  };
 
   enter_substitution();
   defer { leave_substitution(); };
@@ -464,20 +481,39 @@ EvalContext::capture_command_substitution(
     frame.register_embedded(normalized_source.view(), *call_site);
   }
 
-  let parser = Parser{
-      Lexer{normalized_source.view(), *arena_store().parse_arena(),
-            steal(filename), runtime_state().get_mood()}
-  };
-  const Expression *ast;
+  const Expression *ast =
+      cache != nullptr && cache->substitution_ast != nullptr &&
+              cache_arena->is_lifetime_valid(cache->substitution_lifetime)
+          ? cache->substitution_ast
+          : nullptr;
 
-  try {
-    ast = parser.construct_ast();
-  } catch (...) {
-    frame.pop_source_frame();
-    mark_substitution_frames_printed(source_store());
-    render_contained_substitution_error(std::current_exception(),
-                                        normalized_source.view());
-    throw;
+  if (ast == nullptr) {
+    let const allocation_kind =
+        cache != nullptr &&
+                cache_segment->is_substitution_cache_in_function_arena
+            ? ParseSession::AllocationKind::FunctionBody
+            : ParseSession::AllocationKind::Syntax;
+    let parser = Parser{
+        Lexer{cache != nullptr ? cache_segment->text.view()
+                               : normalized_source.view(),
+              cache != nullptr ? *cache_arena : *arena_store().parse_arena(),
+              steal(filename), runtime_state().get_mood(), allocation_kind}
+    };
+
+    try {
+      ast = parser.construct_ast();
+    } catch (...) {
+      frame.pop_source_frame();
+      mark_substitution_frames_printed(source_store());
+      render_contained_substitution_error(std::current_exception(),
+                                          normalized_source.view());
+      throw;
+    }
+
+    if (cache != nullptr) {
+      cache->substitution_ast      = ast;
+      cache->substitution_lifetime = cache_arena->register_lifetime();
+    }
   }
 
   ASSERT(ast != nullptr);

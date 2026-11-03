@@ -2108,6 +2108,9 @@ enum class arithmetic_text_kind : u8
 fn
 has_expanded_arithmetic_subscript(StringView source) throws -> bool;
 
+pure fn
+is_field_sensitive_word(StringView word) wontthrow -> bool;
+
 fn
 compute_substring_bounds(i64               value_count,
                          i64               offset,
@@ -6130,8 +6133,9 @@ public:
   fn
   capture_command_substitution(
       const String         &source,
-      Maybe<StringView>     filename  = None,
-      const SourceLocation *call_site = nullptr) throws -> String;
+      Maybe<StringView>     filename      = None,
+      const SourceLocation *call_site     = nullptr,
+      const WordSegment    *cache_segment = nullptr) throws -> String;
 
   fn
   capture_command_substitution(const WordSegment &segment) throws
@@ -6248,21 +6252,22 @@ public:
       const SourceLocation *source_location = nullptr) throws -> String;
 
   fn
-  expand_modifier_word(StringView word,
-                       bool       should_remove_quotes          = true,
-                       bool       should_strip_escaped_literals = true,
-                       const SourceLocation *source_location    = nullptr,
-                       bool should_expand_process_substitution  = false,
-                       parameter_word_quoting quoting =
-                           parameter_word_quoting::Unquoted) throws
-      -> String;
+  expand_modifier_word(
+      StringView                 word,
+      bool                       should_remove_quotes               = true,
+      bool                       should_strip_escaped_literals      = true,
+      const SourceLocation      *source_location                    = nullptr,
+      bool                       should_expand_process_substitution = false,
+      parameter_word_quoting     quoting   = parameter_word_quoting::Unquoted,
+      const parameter_reference *reference = nullptr) throws -> String;
 
   fn
   expand_modifier_word_masked(
-      StringView            word,
-      Bitset               &active_out,
-      bool                  should_remove_quotes = true,
-      const SourceLocation *source_location      = nullptr) throws -> String;
+      StringView                 word,
+      Bitset                    &active_out,
+      bool                       should_remove_quotes = true,
+      const SourceLocation      *source_location      = nullptr,
+      const parameter_reference *reference            = nullptr) throws -> String;
 
   fn
   expand_modifier_word_fields(
@@ -6271,19 +6276,21 @@ public:
       Bitset                       &active_out,
       ArrayList<usize>             &break_out,
       ArrayList<quoted_empty_mark> &mark_out,
-      const SourceLocation         *source_location) throws -> String;
+      const SourceLocation         *source_location,
+      const parameter_reference    *reference = nullptr) throws -> String;
 
   class ModifierWordExpander;
   class ParameterExpander;
 
   fn
   expand_modifier_word_worker(
-      StringView            word,
-      Bitset               *active_out,
-      bool                  should_remove_quotes,
-      bool                  is_pattern_word,
-      bool                  should_strip_escaped_literals,
-      const SourceLocation *source_location) throws -> String;
+      StringView                 word,
+      Bitset                    *active_out,
+      bool                       should_remove_quotes,
+      bool                       is_pattern_word,
+      bool                       should_strip_escaped_literals,
+      const SourceLocation      *source_location,
+      const parameter_reference *reference = nullptr) throws -> String;
 
   fn
   write_xtrace(StringView command) throws -> void;
@@ -6355,13 +6362,13 @@ protected:
   peel_caller_local_binding(StringView name) throws -> bool;
 
   fn
-  apply_parameter_expansion(StringView            spec,
-                            const SourceLocation *source_location = nullptr,
-                            usize                 source_location_offset = 0,
-                            bool should_expand_process_substitution = false,
-                            parameter_word_quoting quoting =
-                                parameter_word_quoting::Unquoted) throws
-      -> String;
+  apply_parameter_expansion(
+      StringView                 spec,
+      const SourceLocation      *source_location                    = nullptr,
+      usize                      source_location_offset             = 0,
+      bool                       should_expand_process_substitution = false,
+      parameter_word_quoting     quoting   = parameter_word_quoting::Unquoted,
+      const parameter_reference *reference = nullptr) throws -> String;
 
   fn
   apply_substring_expansion(

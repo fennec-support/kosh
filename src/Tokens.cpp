@@ -91,6 +91,8 @@ fn
 WordSegment::get_eval_cache(BumpArena *cache_arena) const throws
     -> segment_eval_cache &
 {
+  ASSERT(kind != Kind::VariableReference);
+
   if (m_eval_cache == nullptr) {
     let *const record_arena = cache_arena == nullptr || cache_arena->owns(this)
                                   ? cache_arena
@@ -137,9 +139,25 @@ fn
 WordSegment::release_eval_cache() wontthrow -> void
 {
   if (m_eval_cache == nullptr) return;
-  if (!is_eval_cache_in_arena) heap_allocator().free_array(m_eval_cache, 1);
+  if (kind == Kind::VariableReference) {
+    if (!is_eval_cache_in_arena) destroy_parameter_reference(m_parameter);
+  } else if (!is_eval_cache_in_arena) {
+    heap_allocator().free_array(m_eval_cache, 1);
+  }
+
   m_eval_cache           = nullptr;
   is_eval_cache_in_arena = false;
+}
+
+fn
+WordSegment::set_parameter_reference(parameter_reference *reference,
+                                     bool                 is_in_arena) throws -> void
+{
+  ASSERT(kind == Kind::VariableReference);
+
+  release_eval_cache();
+  m_parameter            = reference;
+  is_eval_cache_in_arena = is_in_arena;
 }
 
 fn
@@ -152,12 +170,18 @@ WordSegment::move_resources_to_arena(BumpArena &arena) throws -> void
     return;
   }
 
+  if (kind == Kind::VariableReference) {
+    set_parameter_reference(
+        build_parameter_reference(text.view(), allocator,
+                                  is_substitution_cache_in_function_arena != 0),
+        true);
+
+    return;
+  }
+
   let const cache = arena.create<segment_eval_cache>(*m_eval_cache);
 
-  cache->substitution_ast      = nullptr;
-  cache->arith                 = nullptr;
-  cache->substitution_lifetime = {};
-  cache->arithmetic_lifetime   = {};
+  cache->forget_arena_pointers();
   if (!is_eval_cache_in_arena) heap_allocator().free_array(m_eval_cache, 1);
   m_eval_cache           = cache;
   is_eval_cache_in_arena = true;
@@ -242,10 +266,8 @@ Word::to_literal_string() const throws -> String
 fn
 Word::compute_facts() const wontthrow -> void
 {
-  let facts                 = static_cast<u16>(Fact::IsComputed);
-  let is_static             = true;
-  let has_reference         = false;
-  let has_complex_reference = false;
+  let facts     = static_cast<u16>(Fact::IsComputed);
+  let is_static = true;
 
   if (!segments.is_empty() &&
       segments[0].kind == WordSegment::Kind::UnquotedText &&
@@ -301,20 +323,12 @@ Word::compute_facts() const wontthrow -> void
       break;
 
     case WordSegment::Kind::VariableReference:
-      has_reference = true;
-      if (!lexer::word_is_variable_name(segment.text.view()))
-        has_complex_reference = true;
-      is_static = false;
-      break;
-
     case WordSegment::Kind::ProcessSubstitution:
     case WordSegment::Kind::ArithmeticExpansion: is_static = false; break;
     }
   }
 
   if (is_static) facts |= static_cast<u16>(Fact::IsStaticName);
-  if (has_reference && !has_complex_reference)
-    m_extra_facts |= EXTRA_HAS_PLAIN_NAME_REFERENCES;
   m_facts |= facts;
 }
 

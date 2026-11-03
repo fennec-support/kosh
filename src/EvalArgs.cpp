@@ -474,6 +474,7 @@ expand_braces(const Word &word, Allocator alloc) throws
 
       joined.append(following.text.view().substring_of_length(0, taken));
       reference.text.assign_copy(alloc, joined.view());
+      reference.set_parameter_reference(nullptr, false);
 
       if (taken == following.text.count()) {
         out.segments.remove(s + 1);
@@ -598,6 +599,8 @@ copy_word_range(const Word  &word,
 
       segment.text.assign_copy(allocator,
                                text.substring_of_length(start, end - start));
+      if (segment.kind == WordSegment::Kind::VariableReference)
+        segment.set_parameter_reference(nullptr, false);
     }
 
     if (segment.kind != WordSegment::Kind::UnquotedText ||
@@ -987,8 +990,6 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         }
 
         if (!did_take_fast_path) {
-          let const has_plain_references =
-              expandable.has_only_plain_name_references();
           let is_single_field = !expandable.segments.is_empty();
 
           for (let const &segment : expandable.segments) {
@@ -1010,11 +1011,18 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
               break;
 
             case WordSegment::Kind::VariableReference: {
-              let const spec                   = segment.text.view();
-              let       has_multi_field_marker = !segment.is_in_double_quotes;
+              let const  spec                   = segment.text.view();
+              let        has_multi_field_marker = !segment.is_in_double_quotes;
+              let const *reference = segment.get_parameter_reference();
 
-              if (has_plain_references) {
-                if (has_multi_field_marker) is_single_field = false;
+              if (reference != nullptr) {
+                if (has_multi_field_marker ||
+                    reference->has_route(
+                        parameter_reference::ROUTE_FIELD_MARKER))
+                {
+                  is_single_field = false;
+                }
+
                 break;
               }
 
@@ -1041,9 +1049,13 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
             for (let const &segment : expandable.segments) {
               switch (segment.kind) {
               case WordSegment::Kind::VariableReference: {
-                let const spec = segment.text.view();
-                let const is_plain_name =
-                    has_plain_references || lexer::word_is_variable_name(spec);
+                let const  spec      = segment.text.view();
+                let const *reference = segment.get_parameter_reference();
+                let const  is_plain_name =
+                    reference != nullptr
+                         ? reference->has_route(
+                              parameter_reference::ROUTE_PLAIN_NAME)
+                         : lexer::word_is_variable_name(spec);
 
                 if (is_plain_name)
                   if (let const stored =
@@ -1060,7 +1072,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
                 value += apply_parameter_expansion(
                     spec,
                     source_location.has_value() ? &*source_location : nullptr,
-                    0, false, parameter_word_quoting::DoubleQuoted);
+                    0, false, parameter_word_quoting::DoubleQuoted, reference);
               } break;
 
               case WordSegment::Kind::ArithmeticExpansion: {

@@ -103,6 +103,14 @@ Substitution bodies use validation parsing where diagnostics need outer source
 coordinates. Analysis reparses each body in its owning node and walks it in the
 correct subshell scope.
 
+The lexer stores a parameter_reference on each VariableReference segment in the
+slot that other segment kinds use for their eval cache. The record holds the
+form, name, subscript, and operator offsets, the routes that expand_word takes,
+and the operand parsed into a Word whose substitutions use the segment caches.
+Copies rebuild the record or share it in the same arena. Text that changes at
+runtime, such as a nameref target or a brace expansion copy, is analyzed again
+on each expansion.
+
 Runtime diagnostics retain source frames, function calls, embedded sources, and
 trap definitions. Source locations use 32-bit positions and interned source
 indices. Syntax nodes store end positions separately. Diagnostics and LINENO

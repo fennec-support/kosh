@@ -818,7 +818,24 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
     fact_list.append(entry.name);
   }
 
-  if (word.has_only_plain_name_references()) {
+  let has_reference         = false;
+  let has_complex_reference = false;
+
+  for (let const &segment : word.segments) {
+    if (segment.kind != WordSegment::Kind::VariableReference) continue;
+
+    let const *const reference = segment.get_parameter_reference();
+
+    has_reference = true;
+    if (reference != nullptr
+            ? !reference->has_route(parameter_reference::ROUTE_PLAIN_NAME)
+            : !lexer::word_is_variable_name(segment.text.view()))
+    {
+      has_complex_reference = true;
+    }
+  }
+
+  if (has_reference && !has_complex_reference) {
     if (fact_list.count() > 1) fact_list.push(' ');
     fact_list.append(StringView{"plain-references"});
   }
@@ -846,9 +863,73 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
         substitution_body(segment);
       }
 
+      if (let const *const reference = segment.get_parameter_reference();
+          reference != nullptr)
+      {
+        parameter(*reference, segment.text.view());
+      }
+
       close();
     }
   }
+
+  close();
+}
+
+static pure fn
+ast_parameter_form_symbol(parameter_reference::form form)
+    wontthrow -> StringView
+{
+  using reference_form = parameter_reference::form;
+
+  switch (form) {
+  case reference_form::Empty:       return "empty";
+  case reference_form::Name:        return "name";
+  case reference_form::Special:     return "special";
+  case reference_form::Length:      return "length";
+  case reference_form::Indirect:    return "indirect";
+  case reference_form::PrefixNames: return "prefix-names";
+  case reference_form::Keys:        return "keys";
+  case reference_form::Subscripted: return "subscripted";
+  case reference_form::Slice:       return "slice";
+  case reference_form::Operator:    return "operator";
+  case reference_form::InvalidName: return "invalid-name";
+  }
+
+  return "unknown";
+}
+
+cold fn
+AstWriter::parameter(const parameter_reference &reference,
+                     StringView                 text) throws -> void
+{
+  open("param");
+  symbol("form", ast_parameter_form_symbol(reference.kind));
+  if (reference.name_length > 0) {
+    quoted("name", text.substring_of_length(reference.name_offset,
+                                            reference.name_length));
+  }
+
+  if (reference.kind == parameter_reference::form::Subscripted) {
+    quoted("subscript",
+           text.substring_of_length(reference.rest_offset + 1,
+                                    reference.subscript_close -
+                                        reference.rest_offset - 1));
+  }
+
+  let operator_text = String{heap_allocator()};
+
+  if (reference.is_colon) operator_text.push(':');
+  if (reference.op != '\0' &&
+      (!reference.is_colon || is_colon_modifier_operator(reference.op)))
+  {
+    operator_text.push(reference.op);
+    if (reference.is_doubled) operator_text.push(reference.op);
+  }
+
+  if (!operator_text.is_empty()) quoted("op", operator_text.view());
+  if (reference.is_operand_literal) flag("literal-operand");
+  if (reference.operand != nullptr) word(*reference.operand, None);
 
   close();
 }

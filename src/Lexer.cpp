@@ -1569,9 +1569,17 @@ Lexer::lex_identifier() throws -> Token *
 
   let &arena = m_parse_session.get_arena();
 
-  if (m_parse_session.is_allocating_function_body()) {
-    for (let &segment : word.segments)
+  let const is_function_body = m_parse_session.is_allocating_function_body();
+
+  for (let &segment : word.segments) {
+    if (is_function_body)
       segment.is_substitution_cache_in_function_arena = true;
+    if (segment.kind == WordSegment::Kind::VariableReference) {
+      segment.set_parameter_reference(
+          build_parameter_reference(segment.text.view(), bump_allocator(arena),
+                                    is_function_body),
+          true);
+    }
   }
 
   if (m_parse_session.should_collect_debug_words() &&

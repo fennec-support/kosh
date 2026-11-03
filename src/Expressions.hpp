@@ -1074,6 +1074,9 @@ public:
   fn
   word(const Word &word, Maybe<SourceLocation> location) throws -> void;
   fn
+  parameter(const parameter_reference &reference,
+            StringView                 text) throws -> void;
+  fn
   take() throws -> String;
 
 private:

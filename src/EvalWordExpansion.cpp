@@ -69,28 +69,6 @@ separate_tilde_directory(ArrayList<WordSegment> &segments,
 }
 
 static fn
-is_field_sensitive_word(StringView word) wontthrow -> bool
-{
-  for (usize i = 0; i < word.length; i++) {
-    let const byte = word[i];
-
-    if (byte == '"' || byte == '\'' || byte == '\\' || byte == '@' ||
-        byte == '~')
-    {
-      return true;
-    }
-
-    if (byte == '*' && i > 0 &&
-        (word[i - 1] == '{' || word[i - 1] == '[' || word[i - 1] == '$'))
-    {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-static fn
 get_segment_quoting(const WordSegment &segment) wontthrow
     -> parameter_word_quoting
 {
@@ -381,81 +359,90 @@ EvalContext::expand_word(const Word &word) throws
     }
   };
 
-  let const do_emit_operand_word = [&](StringView            word,
-                                       const SourceLocation *word_location,
-                                       bool                  is_quoted) throws {
-    if (!is_field_sensitive_word(word)) {
-      let const expanded =
-          expand_modifier_word(word, true, true, word_location, !is_quoted,
-                               is_quoted ? parameter_word_quoting::DoubleQuoted
-                                         : parameter_word_quoting::Unquoted);
+  let const do_emit_operand_word =
+      [&](StringView word, const SourceLocation *word_location, bool is_quoted,
+          const parameter_reference *reference) throws {
+        let const is_field_sensitive =
+            reference != nullptr ? reference->is_operand_field_sensitive
+                                 : is_field_sensitive_word(word);
 
-      if (is_quoted)
-        do_append_run(expanded.view(), false);
-      else
-        do_append_split_run(expanded.view(), true);
+        if (!is_field_sensitive) {
+          let const expanded = expand_modifier_word(
+              word, true, true, word_location, !is_quoted,
+              is_quoted ? parameter_word_quoting::DoubleQuoted
+                        : parameter_word_quoting::Unquoted,
+              reference);
 
-      return;
-    }
+          if (is_quoted)
+            do_append_run(expanded.view(), false);
+          else
+            do_append_split_run(expanded.view(), true);
 
-    let       active        = Bitset{scratch};
-    let       break_offsets = ArrayList<usize>{scratch};
-    let       marks         = ArrayList<quoted_empty_mark>{scratch};
-    let const text          = expand_modifier_word_fields(
-        word, is_quoted, active, break_offsets, marks, word_location);
-    usize piece_start = 0;
-    usize mark_index  = 0;
-
-    for (usize piece = 0; piece <= break_offsets.count(); piece++) {
-      let const piece_end =
-          piece < break_offsets.count() ? break_offsets[piece] : text.count();
-
-      if (piece > 0) do_flush();
-      if (is_quoted) do_append_run(StringView{}, false);
-
-      usize position = piece_start;
-
-      for (;;) {
-        while (mark_index < marks.count() && marks[mark_index].piece == piece &&
-               marks[mark_index].offset == position)
-        {
-          do_append_run(StringView{}, false);
-          mark_index++;
+          return;
         }
 
-        if (position >= piece_end) break;
+        let       active        = Bitset{scratch};
+        let       break_offsets = ArrayList<usize>{scratch};
+        let       marks         = ArrayList<quoted_empty_mark>{scratch};
+        let const text =
+            expand_modifier_word_fields(word, is_quoted, active, break_offsets,
+                                        marks, word_location, reference);
+        usize piece_start = 0;
+        usize mark_index  = 0;
 
-        let const has_mark =
-            mark_index < marks.count() && marks[mark_index].piece == piece;
-        let const run_limit = has_mark ? marks[mark_index].offset : piece_end;
-        usize     run_start = position;
+        for (usize piece = 0; piece <= break_offsets.count(); piece++) {
+          let const piece_end = piece < break_offsets.count()
+                                    ? break_offsets[piece]
+                                    : text.count();
 
-        while (run_start < run_limit) {
-          let const is_active = active[run_start] && !is_quoted;
-          usize     run_end   = run_start + 1;
+          if (piece > 0) do_flush();
+          if (is_quoted) do_append_run(StringView{}, false);
 
-          while (run_end < run_limit &&
-                 (active[run_end] && !is_quoted) == is_active)
-          {
-            run_end++;
+          usize position = piece_start;
+
+          for (;;) {
+            while (mark_index < marks.count() &&
+                   marks[mark_index].piece == piece &&
+                   marks[mark_index].offset == position)
+            {
+              do_append_run(StringView{}, false);
+              mark_index++;
+            }
+
+            if (position >= piece_end) break;
+
+            let const has_mark =
+                mark_index < marks.count() && marks[mark_index].piece == piece;
+            let const run_limit =
+                has_mark ? marks[mark_index].offset : piece_end;
+            usize run_start = position;
+
+            while (run_start < run_limit) {
+              let const is_active = active[run_start] && !is_quoted;
+              usize     run_end   = run_start + 1;
+
+              while (run_end < run_limit &&
+                     (active[run_end] && !is_quoted) == is_active)
+              {
+                run_end++;
+              }
+
+              let const run =
+                  StringView{text.data() + run_start, run_end - run_start};
+
+              if (is_active)
+                do_append_split_run(run, true);
+              else
+                do_append_run(run, false);
+              run_start = run_end;
+            }
+
+            position = run_limit;
           }
 
-          let const run =
-              StringView{text.data() + run_start, run_end - run_start};
-
-          if (is_active)
-            do_append_split_run(run, true);
-          else
-            do_append_run(run, false);
-          run_start = run_end;
+          piece_start = piece_end;
         }
-
-        position = run_limit;
-      }
-
-      piece_start = piece_end;
-    }
-  };
+      };
 
   for (let const &segment : *segments) {
     let segment_text  = StringView{segment.text.data(), segment.text.count()};
@@ -501,7 +488,17 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
-      if (!resolved_text.has_value() && word.has_only_plain_name_references()) {
+      let        analyzed  = parameter_reference{};
+      let const *reference = resolved_text.has_value()
+                                 ? nullptr
+                                 : segment.get_parameter_reference();
+
+      if (reference == nullptr) {
+        analyze_parameter_reference(segment_text, analyzed);
+        reference = &analyzed;
+      }
+
+      if (reference->has_route(parameter_reference::ROUTE_PLAIN_NAME)) {
         if (let const stored = variable_store().find_plain_scalar(segment_text);
             stored.has_value())
         {
@@ -516,12 +513,7 @@ EvalContext::expand_word(const Word &word) throws
 
       /* ${!prefix*} lists variables only when prefix is a valid identifier, so
          ${!ref%c*} stays an indirect expansion with an operator. */
-      if (segment_text.length > 2 && segment_text[0] == '!' &&
-          (segment_text[segment_text.length - 1] == '@' ||
-           segment_text[segment_text.length - 1] == '*') &&
-          lexer::word_is_variable_name(
-              segment_text.substring_of_length(1, segment_text.length - 2)))
-      {
+      if (reference->has_route(parameter_reference::ROUTE_PREFIX_NAMES)) {
         const StringView prefix =
             segment_text.substring_of_length(1, segment_text.length - 2);
         let const is_star = segment_text[segment_text.length - 1] == '*';
@@ -531,13 +523,7 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
-      if (segment_text.length >= 5 && segment_text[0] == '!' &&
-          segment_text[segment_text.length - 1] == ']' &&
-          segment_text[segment_text.length - 3] == '[' &&
-          (segment_text[segment_text.length - 2] == '@' ||
-           segment_text[segment_text.length - 2] == '*') &&
-          lexer::is_variable_name_start(segment_text[1]))
-      {
+      if (reference->has_route(parameter_reference::ROUTE_KEYS)) {
         const StringView array_name =
             segment_text.substring_of_length(1, segment_text.length - 4);
         let const is_star    = segment_text[segment_text.length - 2] == '*';
@@ -547,22 +533,14 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
-      if (segment_text.length >= 4 &&
-          segment_text[segment_text.length - 1] == ']' &&
-          segment_text[segment_text.length - 3] == '[' &&
-          (segment_text[segment_text.length - 2] == '@' ||
-           segment_text[segment_text.length - 2] == '*') &&
-          lexer::is_variable_name_start(segment_text[0]))
-      {
+      if (reference->has_route(parameter_reference::ROUTE_ARRAY_ELEMENTS)) {
         let const array_name =
             segment_text.substring_of_length(0, segment_text.length - 3);
-        if (lexer::word_is_variable_name(array_name)) {
-          let const is_star  = segment_text[segment_text.length - 2] == '*';
-          let const elements = collect_array_elements(array_name);
+        let const is_star  = segment_text[segment_text.length - 2] == '*';
+        let const elements = collect_array_elements(array_name);
 
-          do_emit_elements(elements, segment.is_in_double_quotes, is_star);
-          break;
-        }
+        do_emit_elements(elements, segment.is_in_double_quotes, is_star);
+        break;
       }
 
       let const segment_source_location = segment.get_source_location(
@@ -579,19 +557,12 @@ EvalContext::expand_word(const Word &word) throws
                                                          storage);
       };
 
-      let const is_positional_word =
-          !segment_text.is_empty() &&
-          (segment_text[0] == '@' || segment_text[0] == '*');
-      let const has_positional_test_colon = is_positional_word &&
-                                            segment_text.length > 1 &&
-                                            segment_text[1] == ':';
+      let const has_positional_test_colon =
+          reference->has_route(parameter_reference::ROUTE_POSITIONAL_SLICE);
       const usize positional_test_op_position =
           has_positional_test_colon ? 2 : 1;
 
-      if (is_positional_word &&
-          segment_text.length > positional_test_op_position &&
-          is_colon_modifier_operator(segment_text[positional_test_op_position]))
-      {
+      if (reference->has_route(parameter_reference::ROUTE_POSITIONAL_TEST)) {
         let const is_star = segment_text[0] == '*';
         let const op      = segment_text[positional_test_op_position];
         let const word =
@@ -632,9 +603,10 @@ EvalContext::expand_word(const Word &word) throws
         let const do_emit_word = [&]() throws {
           let word_location = SourceLocation{};
 
-          do_emit_operand_word(word,
-                               do_source_location_for(word, word_location),
-                               segment.is_in_double_quotes);
+          do_emit_operand_word(
+              word, do_source_location_for(word, word_location),
+              segment.is_in_double_quotes,
+              reference->is_operand(segment_text, word) ? reference : nullptr);
         };
 
         switch (op) {
@@ -676,8 +648,10 @@ EvalContext::expand_word(const Word &word) throws
             let word_location = SourceLocation{};
 
             throw_script_fatal(String{expand_modifier_word(
-                word, true, true,
-                do_source_location_for(word, word_location))});
+                word, true, true, do_source_location_for(word, word_location),
+                false, parameter_word_quoting::Unquoted,
+                reference->is_operand(segment_text, word) ? reference
+                                                          : nullptr)});
           }
 
           do_emit_positional();
@@ -732,7 +706,9 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
-      if (segment.is_in_double_quotes && segment_text == "@@A") {
+      if (segment.is_in_double_quotes &&
+          reference->has_route(parameter_reference::ROUTE_POSITIONAL_DECLARE))
+      {
         let const fields = get_declaration_fields("@");
 
         if (fields.count() > 1) {
@@ -748,24 +724,10 @@ EvalContext::expand_word(const Word &word) throws
         }
       }
 
-      const char positional_at_op =
-          segment_text.length > 2 && segment_text[1] == '@' &&
-                  (segment_text[2] == 'Q' || segment_text[2] == 'E' ||
-                   segment_text[2] == 'U' || segment_text[2] == 'L' ||
-                   segment_text[2] == 'u' || segment_text[2] == 'P' ||
-                   segment_text[2] == 'K' || segment_text[2] == 'k' ||
-                   segment_text[2] == 'a')
-              ? segment_text[2]
-              : '\0';
-
-      if (!segment_text.is_empty() &&
-          (segment_text[0] == '@' || segment_text[0] == '*') &&
-          segment_text.length > 1 &&
-          (segment_text[1] == '/' || segment_text[1] == '#' ||
-           segment_text[1] == '%' || segment_text[1] == '^' ||
-           segment_text[1] == ',' || segment_text[1] == '~' ||
-           positional_at_op != '\0'))
+      if (reference->has_route(parameter_reference::ROUTE_POSITIONAL_MODIFIER))
       {
+        const char positional_at_op =
+            segment_text[1] == '@' ? segment_text[2] : '\0';
         let const  is_star           = segment_text[0] == '*';
         let const  modifier          = segment_text.substring(1);
         let        modifier_location = SourceLocation{};
@@ -851,25 +813,9 @@ EvalContext::expand_word(const Word &word) throws
       if (!segment_text.is_empty() &&
           lexer::is_variable_name_start(segment_text[0]))
       {
-        usize name_end = 1;
+        let const name_end = static_cast<usize>(reference->word_name_end);
 
-        while (name_end < segment_text.length &&
-               lexer::is_variable_name(segment_text[name_end]))
-        {
-          name_end++;
-        }
-
-        let const after_array_colon = name_end + 4 < segment_text.length
-                                          ? segment_text[name_end + 4]
-                                          : '\0';
-        if (name_end + 4 <= segment_text.length &&
-            segment_text[name_end] == '[' &&
-            (segment_text[name_end + 1] == '@' ||
-             segment_text[name_end + 1] == '*') &&
-            segment_text[name_end + 2] == ']' &&
-            segment_text[name_end + 3] == ':' &&
-            !is_colon_modifier_operator(after_array_colon))
-        {
+        if (reference->has_route(parameter_reference::ROUTE_ARRAY_SLICE)) {
           let const array_name = segment_text.substring_of_length(0, name_end);
           let const is_star    = segment_text[name_end + 1] == '*';
           let const slice      = segment_text.substring(name_end + 4);
@@ -904,12 +850,7 @@ EvalContext::expand_word(const Word &word) throws
         }
 
         if (segment.is_in_double_quotes &&
-            name_end + 5 == segment_text.length &&
-            segment_text[name_end] == '[' &&
-            segment_text[name_end + 1] == '@' &&
-            segment_text[name_end + 2] == ']' &&
-            segment_text[name_end + 3] == '@' &&
-            segment_text[name_end + 4] == 'A')
+            reference->has_route(parameter_reference::ROUTE_ARRAY_DECLARE))
         {
           let const fields = get_declaration_fields(
               segment_text.substring_of_length(0, name_end));
@@ -940,16 +881,7 @@ EvalContext::expand_word(const Word &word) throws
             at_transform_op == 'u' || at_transform_op == 'P' ||
             at_transform_op == 'a' || at_transform_op == 'k';
 
-        if (name_end + 3 < segment_text.length &&
-            segment_text[name_end] == '[' &&
-            (segment_text[name_end + 1] == '@' ||
-             segment_text[name_end + 1] == '*') &&
-            segment_text[name_end + 2] == ']' &&
-            (field_modifier_op == '/' || field_modifier_op == '#' ||
-             field_modifier_op == '%' || field_modifier_op == '^' ||
-             field_modifier_op == ',' || field_modifier_op == '~' ||
-             is_mapped_at_op))
-        {
+        if (reference->has_route(parameter_reference::ROUTE_ARRAY_MODIFIER)) {
           let const  array_name = segment_text.substring_of_length(0, name_end);
           let const  modifier   = segment_text.substring(name_end + 3);
           let        modifier_location = SourceLocation{};
@@ -1039,144 +971,100 @@ EvalContext::expand_word(const Word &word) throws
           break;
         }
 
-        if (name_end + 3 < segment_text.length &&
-            segment_text[name_end] == '[' &&
-            (segment_text[name_end + 1] == '@' ||
-             segment_text[name_end + 1] == '*') &&
-            segment_text[name_end + 2] == ']')
-        {
+        if (reference->has_route(parameter_reference::ROUTE_ARRAY_TEST)) {
           let const rest          = segment_text.substring(name_end + 3);
-          let const is_colon_form = !rest.is_empty() && rest[0] == ':';
+          let const is_colon_form = rest[0] == ':';
           let const op_index      = is_colon_form ? usize{1} : usize{0};
-          let const array_test_op =
-              op_index < rest.length ? rest[op_index] : '\0';
+          let const array_test_op = rest[op_index];
+          let const array_name  = segment_text.substring_of_length(0, name_end);
+          let const modifier_op = array_test_op;
+          let const modifier_word          = rest.substring(op_index + 1);
+          let const is_star                = segment_text[name_end + 1] == '*';
+          let const elements               = collect_array_elements(array_name);
+          let       is_every_element_empty = true;
 
-          if (is_colon_modifier_operator(array_test_op)) {
-            let const array_name =
-                segment_text.substring_of_length(0, name_end);
-            let const modifier_op   = array_test_op;
-            let const modifier_word = rest.substring(op_index + 1);
-            let const is_star       = segment_text[name_end + 1] == '*';
-            let const elements      = collect_array_elements(array_name);
-            let       is_every_element_empty = true;
-
-            for (let const &element : elements) {
-              if (!element.is_empty()) {
-                is_every_element_empty = false;
-                break;
-              }
-            }
-
-            let const is_joined_value_empty =
-                is_every_element_empty &&
-                (elements.count() <= 1 ||
-                 (is_star && segment.is_in_double_quotes &&
-                  variable_store().field_separators().is_empty()));
-            let const should_treat_as_unset =
-                is_colon_form ? is_joined_value_empty : elements.is_empty();
-
-            if (!should_treat_as_unset && modifier_op != '+') {
-              do_emit_elements(elements, segment.is_in_double_quotes, is_star);
-              break;
-            }
-
-            if (modifier_op == '+' || modifier_op == '-') {
-              let const should_expand_word = modifier_op == '+'
-                                                 ? !should_treat_as_unset
-                                                 : should_treat_as_unset;
-
-              if (!should_expand_word) {
-                if (segment.is_in_double_quotes && modifier_op == '+' &&
-                    !elements.is_empty())
-                {
-                  do_append_run(StringView{}, false);
-                }
-
-                break;
-              }
-
-              let modifier_word_location = SourceLocation{};
-
-              do_emit_operand_word(
-                  modifier_word,
-                  do_source_location_for(modifier_word, modifier_word_location),
-                  segment.is_in_double_quotes);
+          for (let const &element : elements) {
+            if (!element.is_empty()) {
+              is_every_element_empty = false;
               break;
             }
           }
-        }
-      }
 
-      usize alternate_name_end = 0;
+          let const is_joined_value_empty =
+              is_every_element_empty &&
+              (elements.count() <= 1 ||
+               (is_star && segment.is_in_double_quotes &&
+                variable_store().field_separators().is_empty()));
+          let const should_treat_as_unset =
+              is_colon_form ? is_joined_value_empty : elements.is_empty();
 
-      if (!segment_text.is_empty() &&
-          (segment_text[0] == '#' || segment_text[0] == '?' ||
-           segment_text[0] == '-' || segment_text[0] == '$'))
-      {
-        alternate_name_end = 1;
-      } else {
-        while (alternate_name_end < segment_text.length &&
-               lexer::is_variable_name(segment_text[alternate_name_end]))
-        {
-          alternate_name_end++;
-        }
-      }
+          if (!should_treat_as_unset && modifier_op != '+') {
+            do_emit_elements(elements, segment.is_in_double_quotes, is_star);
+            break;
+          }
 
-      if (alternate_name_end > 0 && alternate_name_end < segment_text.length) {
-        let const rest          = segment_text.substring(alternate_name_end);
-        let const is_colon_form = rest[0] == ':';
-        let const op_index      = is_colon_form ? usize{1} : usize{0};
+          if (modifier_op == '+' || modifier_op == '-') {
+            let const should_expand_word = modifier_op == '+'
+                                               ? !should_treat_as_unset
+                                               : should_treat_as_unset;
 
-        if (op_index < rest.length &&
-            (rest[op_index] == '+' || rest[op_index] == '-') &&
-            is_field_sensitive_word(rest.substring(op_index + 1)))
-        {
-          let const subject = get_variable_value(
-              segment_text.substring_of_length(0, alternate_name_end));
-          let const is_unset =
-              !subject.has_value() || (is_colon_form && subject->is_empty());
-          let const should_expand_word =
-              rest[op_index] == '+' ? !is_unset : is_unset;
+            if (!should_expand_word) {
+              if (segment.is_in_double_quotes && modifier_op == '+' &&
+                  !elements.is_empty())
+              {
+                do_append_run(StringView{}, false);
+              }
 
-          if (should_expand_word) {
-            let const modifier_word          = rest.substring(op_index + 1);
-            let       modifier_word_location = SourceLocation{};
+              break;
+            }
+
+            let modifier_word_location = SourceLocation{};
 
             do_emit_operand_word(
                 modifier_word,
                 do_source_location_for(modifier_word, modifier_word_location),
-                segment.is_in_double_quotes);
-          } else if (rest[op_index] == '-') {
-            if (segment.is_in_double_quotes) {
-              do_append_run(subject->view(), false);
-            } else {
-              do_append_split_run(subject->view(), true);
-            }
-          } else if (segment.is_in_double_quotes) {
-            do_append_run(StringView{}, false);
-          }
-
-          break;
-        }
-      }
-
-      if (!segment_text.is_empty() &&
-          lexer::is_variable_name_start(segment_text[0]))
-      {
-        if (lexer::word_is_variable_name(segment_text)) {
-          if (let const stored =
-                  variable_store().find_plain_scalar(segment_text);
-              stored.has_value())
-          {
-            if (segment.is_in_double_quotes) {
-              do_append_run(stored->view(), false);
-            } else {
-              do_append_split_run(stored->view(), true);
-            }
-
+                segment.is_in_double_quotes,
+                reference->is_operand(segment_text, modifier_word) ? reference
+                                                                   : nullptr);
             break;
           }
         }
+      }
+
+      if (reference->has_route(parameter_reference::ROUTE_ALTERNATE_OPERAND)) {
+        let const alternate_name_end =
+            static_cast<usize>(reference->alternate_name_end);
+        let const rest          = segment_text.substring(alternate_name_end);
+        let const is_colon_form = rest[0] == ':';
+        let const op_index      = is_colon_form ? usize{1} : usize{0};
+        let const subject       = get_variable_value(
+            segment_text.substring_of_length(0, alternate_name_end));
+        let const is_unset =
+            !subject.has_value() || (is_colon_form && subject->is_empty());
+        let const should_expand_word =
+            rest[op_index] == '+' ? !is_unset : is_unset;
+
+        if (should_expand_word) {
+          let const modifier_word          = rest.substring(op_index + 1);
+          let       modifier_word_location = SourceLocation{};
+
+          do_emit_operand_word(
+              modifier_word,
+              do_source_location_for(modifier_word, modifier_word_location),
+              segment.is_in_double_quotes,
+              reference->is_operand(segment_text, modifier_word) ? reference
+                                                                 : nullptr);
+        } else if (rest[op_index] == '-') {
+          if (segment.is_in_double_quotes) {
+            do_append_run(subject->view(), false);
+          } else {
+            do_append_split_run(subject->view(), true);
+          }
+        } else if (segment.is_in_double_quotes) {
+          do_append_run(StringView{}, false);
+        }
+
+        break;
       }
 
       let const source_location = segment.get_source_location(
@@ -1184,7 +1072,9 @@ EvalContext::expand_word(const Word &word) throws
       let const value = apply_parameter_expansion(
           segment.text.view(),
           source_location.has_value() ? &*source_location : nullptr, 0,
-          !segment.is_in_double_quotes, get_segment_quoting(segment));
+          !segment.is_in_double_quotes, get_segment_quoting(segment),
+          resolved_text.has_value() ? segment.get_parameter_reference()
+                                    : reference);
 
       if (segment.is_in_double_quotes) {
         do_append_run(value, false);
@@ -1298,7 +1188,8 @@ EvalContext::expand_word_for_assignment(const Word &word,
       result += apply_parameter_expansion(
           segment_text,
           source_location.has_value() ? &*source_location : nullptr, 0,
-          !segment.is_in_double_quotes, get_segment_quoting(segment));
+          !segment.is_in_double_quotes, get_segment_quoting(segment),
+          segment.get_parameter_reference());
     } break;
 
     case WordSegment::Kind::CommandSubstitution: {
@@ -1395,7 +1286,8 @@ EvalContext::expand_case_pattern_masked(const Word &word,
       let const value = apply_parameter_expansion(
           segment_text,
           source_location.has_value() ? &*source_location : nullptr, 0,
-          !segment.is_in_double_quotes, get_segment_quoting(segment));
+          !segment.is_in_double_quotes, get_segment_quoting(segment),
+          segment.get_parameter_reference());
       do_emit_expansion_run(value.view(), !segment.is_in_double_quotes);
     } break;
 

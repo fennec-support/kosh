@@ -409,20 +409,21 @@ trim_matching(const EvalContext   &cxt,
 }
 
 static fn
-trim_value_with_modifier(EvalContext          &cxt,
-                         StringView            value,
-                         StringView            word,
-                         char                  op,
-                         bool                  is_doubled,
-                         const SourceLocation *source_location) throws
-    -> String
+trim_value_with_modifier(
+    EvalContext               &cxt,
+    StringView                 value,
+    StringView                 word,
+    char                       op,
+    bool                       is_doubled,
+    const SourceLocation      *source_location,
+    const parameter_reference *reference = nullptr) throws -> String
 {
   LOG(All, "trimming a value of %zu bytes with the pattern word '%.*s'",
       value.length, static_cast<int>(word.length), word.data);
 
-  let       active = Bitset{cxt.scratch_allocator()};
-  let const pattern =
-      cxt.expand_modifier_word_masked(word, active, true, source_location);
+  let       active  = Bitset{cxt.scratch_allocator()};
+  let const pattern = cxt.expand_modifier_word_masked(
+      word, active, true, source_location, reference);
 
   return trim_matching(cxt, cxt.scratch_allocator(), value, pattern.view(),
                        active, op == '#' ? trim_end::Prefix : trim_end::Suffix,
@@ -434,13 +435,14 @@ trim_value_with_modifier(EvalContext          &cxt,
 
 fn
 EvalContext::expand_modifier_word_masked(
-    StringView            word,
-    Bitset               &active_out,
-    bool                  should_remove_quotes,
-    const SourceLocation *source_location) throws -> String
+    StringView                 word,
+    Bitset                    &active_out,
+    bool                       should_remove_quotes,
+    const SourceLocation      *source_location,
+    const parameter_reference *reference) throws -> String
 {
   return expand_modifier_word_worker(word, &active_out, should_remove_quotes,
-                                     true, false, source_location);
+                                     true, false, source_location, reference);
 }
 
 static pure fn
@@ -479,6 +481,179 @@ find_variable_name_end(StringView spec) wontthrow -> usize
   }
 
   return name_end;
+}
+
+static fn
+scan_command_body(StringView word,
+                  Allocator  allocator,
+                  usize      start,
+                  usize     &position) throws -> String
+{
+  let       inner = String{allocator};
+  let const end   = lexer::scan_balanced_shell_region(word, start, ')');
+
+  position = end.has_value() ? *end - 1 : word.length;
+  inner.append(word.substring_of_length(start, position - start));
+
+  return inner;
+}
+
+static fn
+scan_backquote_body(StringView word, usize start, String &inner) throws
+    -> usize
+{
+  usize j = start + 1;
+
+  for (; j < word.length; j++) {
+    if (word[j] == '\\' && j + 1 < word.length &&
+        (word[j + 1] == '`' || word[j + 1] == '$' || word[j + 1] == '\\'))
+    {
+      inner += word[j + 1];
+      j++;
+      continue;
+    }
+
+    if (word[j] == '`') break;
+    inner += word[j];
+  }
+
+  return j;
+}
+
+static fn
+copy_braced_quoted_byte(StringView word,
+                        String    &inner,
+                        usize     &position,
+                        char      &quote) throws -> bool
+{
+  let const ch = word[position];
+
+  if (quote == 0) return false;
+
+  inner += ch;
+  if (quote == '"' && ch == '\\' && position + 1 < word.length) {
+    inner += word[++position];
+    position++;
+
+    return true;
+  }
+
+  if (ch == quote) quote = 0;
+  position++;
+
+  return true;
+}
+
+static fn
+copy_braced_backquote(StringView word,
+                      String    &inner,
+                      usize     &position) throws -> void
+{
+  inner += word[position];
+  position++;
+
+  while (position < word.length) {
+    let const b = word[position];
+
+    inner += b;
+    position++;
+    if (b == '\\' && position < word.length) {
+      inner += word[position++];
+      continue;
+    }
+
+    if (b == '`') break;
+  }
+}
+
+static fn
+copy_braced_command(StringView word,
+                    String    &inner,
+                    usize     &position) throws -> void
+{
+  inner += word[position];
+  inner += word[position + 1];
+  inner += scan_command_body(word, inner.allocator(), position + 2, position);
+  if (position < word.length) {
+    inner += ')';
+    position++;
+  }
+}
+
+/* memory: inner in allocator, returned to the caller by value.
+   time:   one pass over word from start + 2 to the closing brace, since every
+           loop iteration advances position. copy_braced_command() adds the
+           cost of scan_command_body() for each $( it copies. */
+static fn
+scan_braced_body(StringView word,
+                 Allocator  allocator,
+                 usize      start,
+                 usize     &position,
+                 bool       is_command_body = false) throws -> String
+{
+  let inner = String{allocator};
+
+  position = start + 2;
+
+  i32  depth = 1;
+  char quote = 0;
+
+  while (position < word.length) {
+    let const ch = word[position];
+
+    if (copy_braced_quoted_byte(word, inner, position, quote)) continue;
+    if (ch == '\\' && position + 1 < word.length) {
+      inner += ch;
+      inner += word[++position];
+      position++;
+      continue;
+    }
+
+    if (ch == '\'' || ch == '"') {
+      quote = ch;
+      inner += ch;
+      position++;
+      continue;
+    }
+
+    if (ch == '`') {
+      copy_braced_backquote(word, inner, position);
+      continue;
+    }
+
+    if (ch == '$' && position + 1 < word.length && word[position + 1] == '(') {
+      copy_braced_command(word, inner, position);
+      continue;
+    }
+
+    if (ch == '$' && position + 1 < word.length && word[position + 1] == '{') {
+      depth++;
+      inner += ch;
+      inner += word[++position];
+      position++;
+      continue;
+    }
+
+    if (ch == '{' && is_command_body) {
+      depth++;
+      inner += ch;
+      position++;
+      continue;
+    }
+
+    if (ch == '}') {
+      depth--;
+      if (depth == 0) break;
+      inner += ch;
+      position++;
+      continue;
+    }
+
+    inner += ch;
+    position++;
+  }
+
+  return inner;
 }
 
 class EvalContext::ModifierWordExpander
@@ -524,9 +699,18 @@ public:
     m_is_here_document_word = quoting == parameter_word_quoting::HereDocument;
   }
 
+  fn
+  set_reference(const parameter_reference *reference) wontthrow -> void
+  {
+    m_reference      = reference;
+    m_reference_word = m_word;
+  }
+
 private:
   EvalContext                  &m_context;
   StringView                    m_word;
+  const parameter_reference    *m_reference = nullptr;
+  StringView                    m_reference_word;
   Bitset                       *m_active_out;
   String                        m_out;
   const SourceLocation         *m_source_location;
@@ -625,30 +809,22 @@ private:
   fn
   expand_special_parameter(char name) throws -> void;
   fn
-  emit_command_substitution(StringView body, usize end_index) throws
-      -> void;
+  emit_command_substitution(
+      StringView         body,
+      usize              end_index,
+      const WordSegment *cache_segment = nullptr) throws -> void;
   fn
   is_function_substitution_start() const wontthrow -> bool;
   fn
   expand_function_substitution() throws -> void;
-  fn
-  scan_braced_body(usize &position, bool is_command_body = false) throws
-      -> String;
   fn
   scan_arithmetic_body(bool   is_bracket_form,
                        usize &position,
                        bool  *was_closed_early = nullptr) throws
       -> String;
   fn
-  scan_command_body(usize start, usize &position) throws -> String;
-  fn
-  copy_braced_backquote(String &inner, usize &position) throws -> void;
-  fn
-  copy_braced_command(String &inner, usize &position) throws -> void;
-  fn
-  copy_braced_quoted_byte(String &inner,
-                          usize  &position,
-                          char   &quote) throws -> bool;
+  find_operand_part(WordSegment::Kind kind) const wontthrow
+      -> const parameter_operand_part *;
 };
 
 fn
@@ -1153,7 +1329,9 @@ EvalContext::ModifierWordExpander::expand_backslash() throws -> void
 
 fn
 EvalContext::ModifierWordExpander::emit_command_substitution(
-    StringView body, usize end_index) throws -> void
+    StringView         body,
+    usize              end_index,
+    const WordSegment *cache_segment) throws -> void
 {
   let                   call_site         = SourceLocation{};
   const SourceLocation *call_site_pointer = nullptr;
@@ -1168,7 +1346,8 @@ EvalContext::ModifierWordExpander::emit_command_substitution(
   }
 
   emit_run(m_context.capture_command_substitution(
-               String{heap_allocator(), body}, None, call_site_pointer),
+               String{heap_allocator(), body}, None, call_site_pointer,
+               cache_segment),
            !m_is_in_double_quote);
   m_index = end_index;
 }
@@ -1176,21 +1355,19 @@ EvalContext::ModifierWordExpander::emit_command_substitution(
 fn
 EvalContext::ModifierWordExpander::expand_backquote() throws -> void
 {
-  let   inner = String{m_context.scratch_allocator()};
-  usize j     = m_index + 1;
+  if (let const *const part =
+          find_operand_part(WordSegment::Kind::CommandSubstitution);
+      part != nullptr)
+  {
+    let const &segment = m_reference->operand->segments[part->segment_index];
 
-  for (; j < m_word.length; j++) {
-    if (m_word[j] == '\\' && j + 1 < m_word.length &&
-        (m_word[j + 1] == '`' || m_word[j + 1] == '$' || m_word[j + 1] == '\\'))
-    {
-      inner += m_word[j + 1];
-      j++;
-      continue;
-    }
+    emit_command_substitution(segment.text.view(), part->end, &segment);
 
-    if (m_word[j] == '`') break;
-    inner += m_word[j];
+    return;
   }
+
+  let       inner = String{m_context.scratch_allocator()};
+  let const j     = scan_backquote_body(m_word, m_index, inner);
 
   emit_command_substitution(inner.view(), j);
 }
@@ -1219,62 +1396,6 @@ EvalContext::ModifierWordExpander::expand_ansi_c_quote() throws -> void
 }
 
 fn
-EvalContext::ModifierWordExpander::copy_braced_quoted_byte(
-    String &inner, usize &position, char &quote) throws -> bool
-{
-  let const ch = m_word[position];
-
-  if (quote == 0) return false;
-
-  inner += ch;
-  if (quote == '"' && ch == '\\' && position + 1 < m_word.length) {
-    inner += m_word[++position];
-    position++;
-
-    return true;
-  }
-
-  if (ch == quote) quote = 0;
-  position++;
-
-  return true;
-}
-
-fn
-EvalContext::ModifierWordExpander::copy_braced_backquote(
-    String &inner, usize &position) throws -> void
-{
-  inner += m_word[position];
-  position++;
-
-  while (position < m_word.length) {
-    let const b = m_word[position];
-
-    inner += b;
-    position++;
-    if (b == '\\' && position < m_word.length) {
-      inner += m_word[position++];
-      continue;
-    }
-
-    if (b == '`') break;
-  }
-}
-
-fn
-EvalContext::ModifierWordExpander::copy_braced_command(
-    String &inner, usize &position) throws -> void
-{
-  inner += m_word[position];
-  inner += m_word[position + 1];
-  inner += scan_command_body(position + 2, position);
-  if (position < m_word.length) {
-    inner += ')';
-    position++;
-  }
-}
-
-fn
 EvalContext::ModifierWordExpander::is_function_substitution_start()
     const wontthrow -> bool
 {
@@ -1290,9 +1411,10 @@ fn
 EvalContext::ModifierWordExpander::expand_function_substitution() throws
     -> void
 {
-  usize     j          = 0;
-  let const inner      = scan_braced_body(j, true);
-  usize     body_start = 0;
+  usize     j = 0;
+  let const inner =
+      scan_braced_body(m_word, m_context.scratch_allocator(), m_index, j, true);
+  usize body_start = 0;
 
   while (body_start < inner.count() &&
          (inner[body_start] == ' ' || inner[body_start] == '\t' ||
@@ -1325,93 +1447,50 @@ EvalContext::ModifierWordExpander::expand_function_substitution() throws
   m_index = j;
 }
 
-/* memory: inner in scratch_allocator(), returned to the caller by value.
-   time:   one pass over m_word from m_index + 2 to the closing brace, since
-           every loop iteration advances position. copy_braced_command() adds
-           the cost of scan_command_body() for each $( it copies. */
 fn
-EvalContext::ModifierWordExpander::scan_braced_body(
-    usize &position, bool is_command_body) throws -> String
+EvalContext::ModifierWordExpander::find_operand_part(
+    WordSegment::Kind kind) const wontthrow -> const parameter_operand_part *
 {
-  let inner = String{m_context.scratch_allocator()};
-
-  position = m_index + 2;
-
-  i32  depth = 1;
-  char quote = 0;
-
-  while (position < m_word.length) {
-    let const ch = m_word[position];
-
-    if (copy_braced_quoted_byte(inner, position, quote)) continue;
-    if (ch == '\\' && position + 1 < m_word.length) {
-      inner += ch;
-      inner += m_word[++position];
-      position++;
-      continue;
-    }
-
-    if (ch == '\'' || ch == '"') {
-      quote = ch;
-      inner += ch;
-      position++;
-      continue;
-    }
-
-    if (ch == '`') {
-      copy_braced_backquote(inner, position);
-      continue;
-    }
-
-    if (ch == '$' && position + 1 < m_word.length &&
-        m_word[position + 1] == '(')
-    {
-      copy_braced_command(inner, position);
-      continue;
-    }
-
-    if (ch == '$' && position + 1 < m_word.length &&
-        m_word[position + 1] == '{')
-    {
-      depth++;
-      inner += ch;
-      inner += m_word[++position];
-      position++;
-      continue;
-    }
-
-    if (ch == '{' && is_command_body) {
-      depth++;
-      inner += ch;
-      position++;
-      continue;
-    }
-
-    if (ch == '}') {
-      depth--;
-      if (depth == 0) break;
-      inner += ch;
-      position++;
-      continue;
-    }
-
-    inner += ch;
-    position++;
+  if (m_reference == nullptr || m_reference->part_count == 0 ||
+      m_word.data != m_reference_word.data ||
+      m_word.length != m_reference_word.length)
+  {
+    return nullptr;
   }
 
-  return inner;
+  let const *const part = m_reference->find_part(m_index);
+
+  if (part == nullptr ||
+      m_reference->operand->segments[part->segment_index].kind != kind)
+  {
+    return nullptr;
+  }
+
+  return part;
 }
 
 fn
 EvalContext::ModifierWordExpander::expand_braced_parameter() throws
     -> void
 {
-  usize     j     = 0;
-  let const inner = scan_braced_body(j);
+  let const *const part =
+      find_operand_part(WordSegment::Kind::VariableReference);
+  let const *const nested =
+      part != nullptr ? &m_reference->operand->segments[part->segment_index]
+                      : nullptr;
+  usize j       = 0;
+  let   scanned = String{m_context.scratch_allocator()};
 
-  if (expand_field_reference(inner.view()) ||
-      expand_selected_operand(inner.view()))
-  {
+  if (nested != nullptr) {
+    j = part->end;
+  } else {
+    scanned =
+        scan_braced_body(m_word, m_context.scratch_allocator(), m_index, j);
+  }
+
+  let const inner = nested != nullptr ? nested->text.view() : scanned.view();
+
+  if (expand_field_reference(inner) || expand_selected_operand(inner)) {
     m_index = j;
 
     return;
@@ -1422,16 +1501,17 @@ EvalContext::ModifierWordExpander::expand_braced_parameter() throws
 
   if (m_source_location != nullptr &&
       m_index + 2 <= m_source_location->length &&
-      inner.count() <= m_source_location->length - (m_index + 2))
+      inner.length <= m_source_location->length - (m_index + 2))
   {
-    inner_location = m_source_location->subspan(m_index + 2, inner.count());
+    inner_location = m_source_location->subspan(m_index + 2, inner.length);
     inner_location_pointer = &inner_location;
   }
 
   emit_run(m_context.apply_parameter_expansion(
-               inner.view(), inner_location_pointer, 0,
+               inner, inner_location_pointer, 0,
                m_should_expand_process_substitution && !m_is_in_double_quote,
-               get_nested_quoting()),
+               get_nested_quoting(),
+               nested != nullptr ? nested->get_parameter_reference() : nullptr),
            !m_is_in_double_quote);
   m_index = j;
 }
@@ -1561,24 +1641,23 @@ EvalContext::ModifierWordExpander::expand_arithmetic(
 }
 
 fn
-EvalContext::ModifierWordExpander::scan_command_body(
-    usize start, usize &position) throws -> String
-{
-  let       inner = String{m_context.scratch_allocator()};
-  let const end   = lexer::scan_balanced_shell_region(m_word, start, ')');
-
-  position = end.has_value() ? *end - 1 : m_word.length;
-  inner.append(m_word.substring_of_length(start, position - start));
-
-  return inner;
-}
-
-fn
 EvalContext::ModifierWordExpander::expand_command_substitution() throws
     -> void
 {
-  usize     j     = 0;
-  let const inner = scan_command_body(m_index + 2, j);
+  if (let const *const part =
+          find_operand_part(WordSegment::Kind::CommandSubstitution);
+      part != nullptr)
+  {
+    let const &segment = m_reference->operand->segments[part->segment_index];
+
+    emit_command_substitution(segment.text.view(), part->end, &segment);
+
+    return;
+  }
+
+  usize     j = 0;
+  let const inner =
+      scan_command_body(m_word, m_context.scratch_allocator(), m_index + 2, j);
 
   emit_command_substitution(inner.view(), j);
 }
@@ -1598,9 +1677,10 @@ fn
 EvalContext::ModifierWordExpander::expand_process_substitution() throws
     -> void
 {
-  usize     j    = 0;
-  let const body = scan_command_body(m_index + 2, j);
-  let       text = String{m_context.scratch_allocator()};
+  usize     j = 0;
+  let const body =
+      scan_command_body(m_word, m_context.scratch_allocator(), m_index + 2, j);
+  let text = String{m_context.scratch_allocator()};
 
   text.push(m_word[m_index]);
   text.append(body.view());
@@ -1868,6 +1948,26 @@ EvalContext::ModifierWordExpander::expand() throws -> String
 fn
 EvalContext::ModifierWordExpander::expand_current_word() throws -> void
 {
+  if (m_reference != nullptr && m_reference->is_operand_literal &&
+      m_word.data == m_reference_word.data &&
+      m_word.length == m_reference_word.length)
+  {
+    if (m_word.is_empty()) return;
+
+    let const is_active = !m_is_in_double_quote && !m_is_outer_quoted;
+
+    mark_quoted_emit();
+    m_out.append(m_word);
+    if (m_active_out != nullptr) {
+      for (usize k = 0; k < m_word.length; k++)
+        m_active_out->push(is_active);
+    }
+
+    m_index = m_word.length;
+
+    return;
+  }
+
   for (m_index = 0; m_index < m_word.length; m_index++) {
     if (toggle_quote_state()) continue;
     if (m_is_in_single_quote) {
@@ -1912,12 +2012,13 @@ EvalContext::ModifierWordExpander::expand_current_word() throws -> void
 
 fn
 EvalContext::expand_modifier_word_worker(
-    StringView            word,
-    Bitset               *active_out,
-    bool                  should_remove_quotes,
-    bool                  is_pattern_word,
-    bool                  should_strip_escaped_literals,
-    const SourceLocation *source_location) throws -> String
+    StringView                 word,
+    Bitset                    *active_out,
+    bool                       should_remove_quotes,
+    bool                       is_pattern_word,
+    bool                       should_strip_escaped_literals,
+    const SourceLocation      *source_location,
+    const parameter_reference *reference) throws -> String
 {
   LOG(All, "expanding a modifier word of %zu bytes", word.length);
 
@@ -1927,17 +2028,20 @@ EvalContext::expand_modifier_word_worker(
                            is_pattern_word, should_strip_escaped_literals,
                            source_location};
 
+  expander.set_reference(reference);
+
   return expander.expand();
 }
 
 fn
-EvalContext::expand_modifier_word(StringView word,
-                                  bool       should_remove_quotes,
-                                  bool       should_strip_escaped_literals,
-                                  const SourceLocation *source_location,
-                                  bool should_expand_process_substitution,
-                                  parameter_word_quoting quoting) throws
-    -> String
+EvalContext::expand_modifier_word(
+    StringView                 word,
+    bool                       should_remove_quotes,
+    bool                       should_strip_escaped_literals,
+    const SourceLocation      *source_location,
+    bool                       should_expand_process_substitution,
+    parameter_word_quoting     quoting,
+    const parameter_reference *reference) throws -> String
 {
   let expander =
       ModifierWordExpander{*this,          word,
@@ -1948,6 +2052,7 @@ EvalContext::expand_modifier_word(StringView word,
   if (should_expand_process_substitution)
     expander.enable_process_substitution();
   expander.set_outer_quoting(quoting);
+  expander.set_reference(reference);
 
   return expander.expand();
 }
@@ -1959,11 +2064,13 @@ EvalContext::expand_modifier_word_fields(
     Bitset                       &active_out,
     ArrayList<usize>             &break_out,
     ArrayList<quoted_empty_mark> &mark_out,
-    const SourceLocation         *source_location) throws -> String
+    const SourceLocation         *source_location,
+    const parameter_reference    *reference) throws -> String
 {
   let expander = ModifierWordExpander{*this, word, &active_out,    true,
                                       false, true, source_location};
 
+  expander.set_reference(reference);
   expander.enable_fields(break_out, mark_out, is_outer_quoted);
   if (!is_outer_quoted) expander.enable_process_substitution();
 
@@ -1973,13 +2080,15 @@ EvalContext::expand_modifier_word_fields(
 class EvalContext::ParameterExpander
 {
 public:
-  ParameterExpander(EvalContext           &context,
-                    StringView             spec,
-                    const SourceLocation  *source_location,
-                    usize                  source_location_offset,
+  ParameterExpander(EvalContext               &context,
+                    StringView                 spec,
+                    const parameter_reference &reference,
+                    const SourceLocation      *source_location,
+                    usize                      source_location_offset,
                     bool                   should_expand_process_substitution,
                     parameter_word_quoting quoting) wontthrow
-      : m_context(context), m_spec(spec), m_source_location(source_location),
+      : m_context(context), m_spec(spec), m_reference(reference),
+        m_source_location(source_location),
         m_source_location_offset(source_location_offset),
         m_should_expand_process_substitution(
             should_expand_process_substitution),
@@ -1996,16 +2105,17 @@ public:
   }
 
 private:
-  EvalContext           &m_context;
-  StringView             m_spec;
-  const SourceLocation  *m_source_location;
-  usize                  m_source_location_offset;
-  bool                   m_should_expand_process_substitution;
-  parameter_word_quoting m_quoting;
-  bool                   m_is_reference_target   = false;
-  bool                   m_has_written_subscript = false;
-  StringView             m_name;
-  StringView             m_rest;
+  EvalContext               &m_context;
+  StringView                 m_spec;
+  const parameter_reference &m_reference;
+  const SourceLocation      *m_source_location;
+  usize                      m_source_location_offset;
+  bool                       m_should_expand_process_substitution;
+  parameter_word_quoting     m_quoting;
+  bool                       m_is_reference_target   = false;
+  bool                       m_has_written_subscript = false;
+  StringView                 m_name;
+  StringView                 m_rest;
 
   fn
   get_location_for(StringView part, SourceLocation &storage) const wontthrow
@@ -2024,9 +2134,13 @@ private:
   expand_element_length(StringView name, usize bracket) throws
       -> String;
   fn
-  split_name() wontthrow -> void;
+  expand_subscripted() throws -> String;
   fn
-  expand_subscripted() throws -> Maybe<String>;
+  get_operand_reference(StringView word) const wontthrow
+      -> const parameter_reference *
+  {
+    return m_reference.is_operand(m_spec, word) ? &m_reference : nullptr;
+  }
   fn
   expand_element_operator(StringView            subscript,
                           StringView            subscript_text,
@@ -2158,9 +2272,10 @@ EvalContext::ParameterExpander::expand_word(
 {
   let word_location = SourceLocation{};
 
-  return m_context.expand_modifier_word(
-      word, true, true, get_location_for(word, word_location),
-      m_should_expand_process_substitution, quoting);
+  return m_context.expand_modifier_word(word, true, true,
+                                        get_location_for(word, word_location),
+                                        m_should_expand_process_substitution,
+                                        quoting, get_operand_reference(word));
 }
 
 /* the operator of ${!ref-word} applies to the target name of a name reference,
@@ -2382,21 +2497,6 @@ find_number_end(StringView spec) wontthrow -> usize
 }
 
 fn
-EvalContext::ParameterExpander::split_name() wontthrow -> void
-{
-  usize name_end = 1;
-
-  if (lexer::is_variable_name_start(m_spec[0])) {
-    name_end = find_variable_name_end(m_spec);
-  } else if (lexer::is_number(m_spec[0])) {
-    name_end = find_number_end(m_spec);
-  }
-
-  m_name = m_spec.substring_of_length(0, name_end);
-  m_rest = m_spec.substring(name_end);
-}
-
-fn
 EvalContext::ParameterExpander::expand_element_test(
     StringView            subscript,
     StringView            subscript_text,
@@ -2538,14 +2638,11 @@ EvalContext::ParameterExpander::expand_element_transform(
 }
 
 fn
-EvalContext::ParameterExpander::expand_subscripted() throws
-    -> Maybe<String>
+EvalContext::ParameterExpander::expand_subscripted() throws -> String
 {
-  let const close = find_balanced_subscript_close(m_rest);
-
-  if (!close.has_value()) return None;
-
-  let const  subscript          = m_rest.substring_of_length(1, *close - 1);
+  let const close =
+      static_cast<usize>(m_reference.subscript_close - m_reference.rest_offset);
+  let const  subscript          = m_rest.substring_of_length(1, close - 1);
   let        subscript_location = SourceLocation{};
   let const *subscript_location_pointer =
       get_location_for(subscript, subscript_location);
@@ -2565,7 +2662,7 @@ EvalContext::ParameterExpander::expand_subscripted() throws
     return element;
   };
 
-  let const  modifier          = m_rest.substring(*close + 1);
+  let const  modifier          = m_rest.substring(close + 1);
   let        modifier_location = SourceLocation{};
   let const *modifier_location_pointer =
       get_location_for(modifier, modifier_location);
@@ -2587,7 +2684,7 @@ EvalContext::ParameterExpander::expand_subscripted() throws
         evaluated_index_text, sizeof(evaluated_index_text));
   }
 
-  if (*close + 1 == m_rest.length) return do_read_element();
+  if (close + 1 == m_rest.length) return do_read_element();
 
   if (modifier_op == '@' &&
       m_context.runtime_state().get_mood() != mimic_mood::Posix &&
@@ -2613,7 +2710,7 @@ EvalContext::ParameterExpander::expand_subscripted() throws
                                               modifier, modifier_op);
         element.has_value())
     {
-      return element;
+      return steal(*element);
     }
 
     raise_unknown_operator(modifier);
@@ -3266,26 +3363,23 @@ EvalContext::ParameterExpander::expand_trim_operator(
   let const current_view = current.has_value() ? current->view() : StringView{};
 
   return trim_value_with_modifier(m_context, current_view, word, op, is_doubled,
-                                  get_location_for(word, word_location));
+                                  get_location_for(word, word_location),
+                                  get_operand_reference(word));
 }
 
 fn
 EvalContext::ParameterExpander::expand_operator() throws -> String
 {
-  let const   is_colon_form = m_rest[0] == ':';
+  let const   is_colon_form = m_reference.is_colon;
   const usize op_index      = is_colon_form ? 1 : 0;
 
   if (op_index >= m_rest.length) raise_bare_colon(m_rest);
 
   let const is_all_parameters = m_name == "@" || m_name == "*";
 
-  if (is_colon_form) {
-    let const after_colon = m_rest[op_index];
-
-    if (!is_colon_modifier_operator(after_colon)) {
-      return is_all_parameters ? expand_positional_slice()
-                               : expand_substring_form();
-    }
+  if (m_reference.kind == parameter_reference::form::Slice) {
+    return is_all_parameters ? expand_positional_slice()
+                             : expand_substring_form();
   }
 
   /* at this point: op_index is less than m_rest.length, and when is_colon_form
@@ -3316,11 +3410,9 @@ EvalContext::ParameterExpander::expand_operator() throws -> String
     }
   }
 
-  let const op = m_rest[op_index];
-  let const is_doubled =
-      (op_index + 1 < m_rest.length && m_rest[op_index + 1] == op &&
-       (op == '#' || op == '%'));
-  let const word = m_rest.substring(op_index + (is_doubled ? 2 : 1));
+  let const op         = m_reference.op;
+  let const is_doubled = m_reference.is_doubled;
+  let const word       = m_rest.substring(op_index + (is_doubled ? 2 : 1));
 
   let       current               = m_context.get_variable_value(m_name);
   let const is_set                = current.has_value();
@@ -3373,56 +3465,42 @@ is_operator_after_hash(StringView spec) wontthrow -> bool
 fn
 EvalContext::ParameterExpander::expand() throws -> String
 {
-  if (m_spec.is_empty()) {
+  using form = parameter_reference::form;
+
+  switch (m_reference.kind) {
+  case form::Empty:
     raise_bad_substitution(
         m_spec, "the braces hold no parameter",
         "Write a parameter between the braces, as in ${var}.");
+  case form::Indirect:
+  case form::PrefixNames:
+  case form::Keys:        return expand_indirect();
+  case form::Length:      return expand_length();
+  default:                break;
   }
 
-  if (m_spec.length > 1 && m_spec[0] == '!' &&
-      !is_operator_after_bang(m_spec[1]))
-  {
-    return expand_indirect();
-  }
+  m_name = m_spec.substring_of_length(0, m_reference.name_length);
+  m_rest = m_spec.substring(m_reference.rest_offset);
 
-  if (m_spec.length > 1 && m_spec[0] == '#' && !is_operator_after_hash(m_spec))
-  {
-    return expand_length();
-  }
-
-  split_name();
-
-  if (!lexer::is_variable_name_start(m_name[0]) &&
-      !lexer::is_number(m_name[0]) &&
-      !lexer::is_special_parameter_char(m_name[0]))
-  {
-    raise_invalid_name_start();
-  }
-
-  /* at this point: m_name is not empty and starts with a name start, a
-     digit, or a special parameter character, and m_rest holds the text after
+  /* at this point: m_name is not empty, and m_rest holds the text after
      m_name. */
-
-  if (!m_rest.is_empty() && m_rest[0] == '[' &&
-      lexer::is_variable_name_start(m_name[0]))
-  {
-    if (let element = expand_subscripted(); element.has_value()) {
-      return steal(*element);
-    }
+  switch (m_reference.kind) {
+  case form::InvalidName: raise_invalid_name_start();
+  case form::Subscripted: return expand_subscripted();
+  case form::Name:
+  case form::Special:     return expand_bare_reference();
+  default:                return expand_operator();
   }
-
-  if (m_rest.is_empty()) return expand_bare_reference();
-
-  return expand_operator();
 }
 
 hot fn
 EvalContext::apply_parameter_expansion(
-    StringView             spec,
-    const SourceLocation  *source_location,
-    usize                  source_location_offset,
-    bool                   should_expand_process_substitution,
-    parameter_word_quoting quoting) throws -> String
+    StringView                 spec,
+    const SourceLocation      *source_location,
+    usize                      source_location_offset,
+    bool                       should_expand_process_substitution,
+    parameter_word_quoting     quoting,
+    const parameter_reference *reference) throws -> String
 {
   LOG(All, "applying the parameter expansion '${%.*s}'",
       static_cast<int>(spec.length), spec.data);
@@ -3442,11 +3520,20 @@ EvalContext::apply_parameter_expansion(
     if (resolved_spec.has_value()) {
       spec            = resolved_spec->view();
       source_location = nullptr;
+      reference       = nullptr;
     }
+  }
+
+  let analyzed = parameter_reference{};
+
+  if (reference == nullptr) {
+    analyze_parameter_reference(spec, analyzed);
+    reference = &analyzed;
   }
 
   let expander = ParameterExpander{*this,
                                    spec,
+                                   *reference,
                                    source_location,
                                    source_location_offset,
                                    should_expand_process_substitution,
@@ -4757,6 +4844,563 @@ EvalContext::trim_positional_fields(
   }
 
   return fields;
+}
+
+pure fn
+is_field_sensitive_word(StringView word) wontthrow -> bool
+{
+  for (usize i = 0; i < word.length; i++) {
+    let const byte = word[i];
+
+    if (byte == '"' || byte == '\'' || byte == '\\' || byte == '@' ||
+        byte == '~')
+    {
+      return true;
+    }
+
+    if (byte == '*' && i > 0 &&
+        (word[i - 1] == '{' || word[i - 1] == '[' || word[i - 1] == '$'))
+    {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static pure fn
+is_list_subscript_at(StringView text, usize position) wontthrow -> bool
+{
+  return position + 2 < text.length && text[position] == '[' &&
+         (text[position + 1] == '@' || text[position + 1] == '*') &&
+         text[position + 2] == ']';
+}
+
+static pure fn
+is_element_modifier_operator(char op) wontthrow -> bool
+{
+  switch (op) {
+  case '/':
+  case '#':
+  case '%':
+  case '^':
+  case ',':
+  case '~': return true;
+  default:  return false;
+  }
+}
+
+static fn
+analyze_word_routes(StringView           text,
+                    usize                variable_name_end,
+                    parameter_reference &reference) wontthrow -> void
+{
+  using reference_type = parameter_reference;
+
+  let const length        = text.length;
+  let const first         = text[0];
+  let const last          = text[length - 1];
+  let const is_name_start = lexer::is_variable_name_start(first);
+  u16       routes        = 0;
+
+  if (first == '!' && length > 2) {
+    if ((last == '@' || last == '*') &&
+        lexer::word_is_variable_name(text.substring_of_length(1, length - 2)))
+    {
+      routes |= reference_type::ROUTE_PREFIX_NAMES;
+    }
+
+    if (length >= 5 && last == ']' && text[length - 3] == '[' &&
+        (text[length - 2] == '@' || text[length - 2] == '*') &&
+        lexer::is_variable_name_start(text[1]))
+    {
+      routes |= reference_type::ROUTE_KEYS;
+    }
+  }
+
+  if (is_name_start && length >= 4 && last == ']' && text[length - 3] == '[' &&
+      (text[length - 2] == '@' || text[length - 2] == '*') &&
+      variable_name_end == length - 3)
+  {
+    routes |= reference_type::ROUTE_ARRAY_ELEMENTS;
+  }
+
+  if (first == '@' || first == '*') {
+    let const has_positional_colon   = length > 1 && text[1] == ':';
+    let const positional_op_position = has_positional_colon ? usize{2} : 1;
+
+    if (length > positional_op_position &&
+        is_colon_modifier_operator(text[positional_op_position]))
+    {
+      routes |= reference_type::ROUTE_POSITIONAL_TEST;
+    }
+
+    if (has_positional_colon) routes |= reference_type::ROUTE_POSITIONAL_SLICE;
+    if (length == 3 && first == '@' && text[1] == '@' && text[2] == 'A')
+      routes |= reference_type::ROUTE_POSITIONAL_DECLARE;
+
+    let const is_positional_at_op =
+        length > 2 && text[1] == '@' &&
+        (text[2] == 'Q' || text[2] == 'E' || text[2] == 'U' || text[2] == 'L' ||
+         text[2] == 'u' || text[2] == 'P' || text[2] == 'K' || text[2] == 'k' ||
+         text[2] == 'a');
+
+    if (length > 1 &&
+        (is_element_modifier_operator(text[1]) || is_positional_at_op))
+    {
+      routes |= reference_type::ROUTE_POSITIONAL_MODIFIER;
+    }
+  }
+
+  if (is_name_start) {
+    let const name_end = variable_name_end;
+
+    reference.word_name_end = static_cast<u32>(name_end);
+
+    let const after_array_colon =
+        name_end + 4 < length ? text[name_end + 4] : '\0';
+
+    if (name_end + 4 <= length && is_list_subscript_at(text, name_end) &&
+        text[name_end + 3] == ':' &&
+        !is_colon_modifier_operator(after_array_colon))
+    {
+      routes |= reference_type::ROUTE_ARRAY_SLICE;
+    }
+
+    if (name_end + 5 == length && text[name_end] == '[' &&
+        text[name_end + 1] == '@' && text[name_end + 2] == ']' &&
+        text[name_end + 3] == '@' && text[name_end + 4] == 'A')
+    {
+      routes |= reference_type::ROUTE_ARRAY_DECLARE;
+    }
+
+    if (name_end + 3 < length && is_list_subscript_at(text, name_end)) {
+      let const field_modifier_op = text[name_end + 3];
+      let const at_transform_op =
+          field_modifier_op == '@' && name_end + 4 < length ? text[name_end + 4]
+                                                            : '\0';
+      let const is_mapped_at_op =
+          at_transform_op == 'Q' || at_transform_op == 'E' ||
+          at_transform_op == 'U' || at_transform_op == 'L' ||
+          at_transform_op == 'u' || at_transform_op == 'P' ||
+          at_transform_op == 'a' || at_transform_op == 'k';
+
+      if (is_element_modifier_operator(field_modifier_op) || is_mapped_at_op)
+        routes |= reference_type::ROUTE_ARRAY_MODIFIER;
+
+      let const rest          = text.substring(name_end + 3);
+      let const is_colon_form = rest[0] == ':';
+      let const op_index      = is_colon_form ? usize{1} : usize{0};
+      let const array_test_op = op_index < rest.length ? rest[op_index] : '\0';
+
+      if (is_colon_modifier_operator(array_test_op))
+        routes |= reference_type::ROUTE_ARRAY_TEST;
+    }
+  }
+
+  let const alternate_name_end =
+      first == '#' || first == '?' || first == '-' || first == '$'
+          ? usize{1}
+          : variable_name_end;
+
+  reference.alternate_name_end = static_cast<u32>(alternate_name_end);
+
+  if (alternate_name_end > 0 && alternate_name_end < length) {
+    let const rest          = text.substring(alternate_name_end);
+    let const is_colon_form = rest[0] == ':';
+    let const op_index      = is_colon_form ? usize{1} : usize{0};
+
+    if (op_index < rest.length &&
+        (rest[op_index] == '+' || rest[op_index] == '-') &&
+        is_field_sensitive_word(rest.substring(op_index + 1)))
+    {
+      routes |= reference_type::ROUTE_ALTERNATE_OPERAND;
+    }
+  }
+
+  if (is_name_start && variable_name_end == length)
+    routes |= reference_type::ROUTE_PLAIN_NAME;
+
+  for (usize i = variable_name_end; i < length; i++) {
+    if (text[i] == '@' || text[i] == '*' || text[i] == '[') {
+      routes |= reference_type::ROUTE_FIELD_MARKER;
+      break;
+    }
+  }
+
+  reference.word_routes = routes;
+}
+
+static fn
+analyze_operator(StringView           modifier,
+                 usize                offset,
+                 parameter_reference &reference) wontthrow -> void
+{
+  if (modifier.is_empty()) return;
+
+  let const is_colon = modifier[0] == ':';
+  let const op_index = is_colon ? usize{1} : usize{0};
+
+  reference.is_colon = is_colon;
+  if (op_index >= modifier.length) return;
+
+  let const op = modifier[op_index];
+
+  reference.op = op;
+  if (is_colon && !is_colon_modifier_operator(op)) return;
+  if (!is_colon_modifier_operator(op) && op != '#' && op != '%') return;
+
+  let const is_doubled = op_index + 1 < modifier.length &&
+                         modifier[op_index + 1] == op &&
+                         (op == '#' || op == '%');
+  let const start = op_index + (is_doubled ? 2 : 1);
+
+  reference.is_doubled     = is_doubled;
+  reference.has_operand    = true;
+  reference.operand_offset = static_cast<u32>(offset + start);
+  reference.operand_length = static_cast<u32>(modifier.length - start);
+}
+
+static pure fn
+is_literal_operand(StringView word) wontthrow -> bool
+{
+  for (usize i = 0; i < word.length; i++) {
+    switch (word[i]) {
+    case '\\':
+    case '\'':
+    case '"':
+    case '$':
+    case '`':
+    case '~':
+    case '<':
+    case '>':  return false;
+    default:   break;
+    }
+  }
+
+  return true;
+}
+
+fn
+analyze_parameter_reference(StringView           text,
+                            parameter_reference &reference) wontthrow -> void
+{
+  using form = parameter_reference::form;
+
+  reference.text_length = static_cast<u32>(text.length);
+
+  if (text.is_empty()) {
+    reference.kind = form::Empty;
+
+    return;
+  }
+
+  let const is_name_start     = lexer::is_variable_name_start(text[0]);
+  let const variable_name_end = find_variable_name_end(text);
+
+  if (is_name_start && variable_name_end == text.length) {
+    let const length = static_cast<u32>(text.length);
+
+    reference.kind               = form::Name;
+    reference.name_length        = length;
+    reference.rest_offset        = length;
+    reference.word_name_end      = length;
+    reference.alternate_name_end = length;
+    reference.word_routes        = parameter_reference::ROUTE_PLAIN_NAME;
+
+    return;
+  }
+
+  analyze_word_routes(text, variable_name_end, reference);
+
+  if (text.length > 1 && text[0] == '!' && !is_operator_after_bang(text[1])) {
+    reference.kind =
+        reference.has_route(parameter_reference::ROUTE_PREFIX_NAMES)
+            ? form::PrefixNames
+        : reference.has_route(parameter_reference::ROUTE_KEYS) ? form::Keys
+                                                               : form::Indirect;
+    reference.name_offset = 1;
+    reference.name_length = static_cast<u32>(text.length - 1);
+    reference.rest_offset = static_cast<u32>(text.length);
+
+    return;
+  }
+
+  if (text.length > 1 && text[0] == '#' && !is_operator_after_hash(text)) {
+    reference.kind        = form::Length;
+    reference.name_offset = 1;
+    reference.name_length = static_cast<u32>(text.length - 1);
+    reference.rest_offset = static_cast<u32>(text.length);
+
+    return;
+  }
+
+  usize name_end = 1;
+
+  if (is_name_start) {
+    name_end = variable_name_end;
+  } else if (lexer::is_number(text[0])) {
+    name_end = find_number_end(text);
+  }
+
+  reference.name_length = static_cast<u32>(name_end);
+  reference.rest_offset = static_cast<u32>(name_end);
+
+  if (!is_name_start && !lexer::is_number(text[0]) &&
+      !lexer::is_special_parameter_char(text[0]))
+  {
+    reference.kind = form::InvalidName;
+
+    return;
+  }
+
+  let const rest = text.substring(name_end);
+
+  if (rest.is_empty()) {
+    reference.kind = is_name_start ? form::Name : form::Special;
+
+    return;
+  }
+
+  let is_subscripted = false;
+
+  if (rest[0] == '[' && is_name_start) {
+    if (let const close = find_balanced_subscript_close(rest);
+        close.has_value())
+    {
+      is_subscripted            = true;
+      reference.kind            = form::Subscripted;
+      reference.subscript_close = static_cast<u32>(name_end + *close);
+      analyze_operator(rest.substring(*close + 1), name_end + *close + 1,
+                       reference);
+    }
+  }
+
+  if (!is_subscripted) {
+    analyze_operator(rest, name_end, reference);
+    reference.kind = reference.is_colon && reference.op != '\0' &&
+                             !is_colon_modifier_operator(reference.op)
+                         ? form::Slice
+                         : form::Operator;
+  }
+
+  if (!reference.has_operand) return;
+
+  let const operand = reference.get_operand(text);
+
+  reference.is_operand_literal         = is_literal_operand(operand);
+  reference.is_operand_field_sensitive = is_field_sensitive_word(operand);
+}
+
+static fn
+build_operand_word(StringView           word,
+                   Allocator            allocator,
+                   bool                 is_function_arena,
+                   parameter_reference &reference) throws -> void
+{
+  let *const operand = new (allocator.alloc_array<Word>(1)) Word{};
+
+  reference.operand = operand;
+  operand->segments = ArrayList<WordSegment>{allocator};
+
+  if (!word.find_character('$').has_value() &&
+      !word.find_character('`').has_value())
+  {
+    if (word.is_empty()) return;
+
+    operand->segments.reserve(1);
+    operand->segments.push(WordSegment{
+        WordSegment::Kind::UnquotedText, SegmentText{allocator, word}
+    });
+
+    return;
+  }
+
+  let   parts     = ArrayList<parameter_operand_part>{heap_allocator()};
+  usize run_start = 0;
+
+  let const do_flush_run = [&](usize end) throws {
+    if (end <= run_start) return;
+
+    operand->segments.push(WordSegment{
+        WordSegment::Kind::UnquotedText,
+        SegmentText{allocator,
+                    word.substring_of_length(run_start, end - run_start)}
+    });
+  };
+
+  let const do_add_part = [&](usize start, usize end, WordSegment::Kind kind,
+                              StringView body) throws {
+    do_flush_run(start);
+
+    let segment = WordSegment{
+        kind, SegmentText{allocator, body}
+    };
+
+    segment.is_substitution_cache_in_function_arena = is_function_arena;
+    if (kind == WordSegment::Kind::VariableReference) {
+      segment.set_parameter_reference(
+          build_parameter_reference(body, allocator, is_function_arena),
+          allocator.get_kind() == Allocator::Kind::Bump);
+    }
+
+    parts.push(
+        parameter_operand_part{static_cast<u32>(start), static_cast<u32>(end),
+                               static_cast<u32>(operand->segments.count())});
+    operand->segments.push(steal(segment));
+    run_start = end + 1;
+  };
+
+  usize position = 0;
+
+  while (position < word.length) {
+    let const byte = word[position];
+
+    if (byte == '\\') {
+      position += 2;
+      continue;
+    }
+
+    if (byte == '`') {
+      let       inner = String{heap_allocator()};
+      let const end   = scan_backquote_body(word, position, inner);
+
+      do_add_part(position, end, WordSegment::Kind::CommandSubstitution,
+                  inner.view());
+      position = end + 1;
+      continue;
+    }
+
+    let const next = position + 1 < word.length ? word[position + 1] : '\0';
+    let const after_next =
+        position + 2 < word.length ? word[position + 2] : '\0';
+
+    if (byte == '$' && next == '(' && after_next != '(') {
+      usize     end = 0;
+      let const body =
+          scan_command_body(word, heap_allocator(), position + 2, end);
+
+      do_add_part(position, end, WordSegment::Kind::CommandSubstitution,
+                  body.view());
+      position = end + 1;
+      continue;
+    }
+
+    if (byte == '$' && next == '{' && after_next != ' ' && after_next != '\t' &&
+        after_next != '\n' && after_next != '|')
+    {
+      usize     end  = 0;
+      let const body = scan_braced_body(word, heap_allocator(), position, end);
+
+      do_add_part(position, end, WordSegment::Kind::VariableReference,
+                  body.view());
+      position = end + 1;
+      continue;
+    }
+
+    position++;
+  }
+
+  do_flush_run(word.length);
+
+  if (parts.is_empty()) return;
+
+  reference.parts =
+      allocator.alloc_array<parameter_operand_part>(parts.count());
+  reference.part_count = static_cast<u32>(parts.count());
+
+  for (usize i = 0; i < parts.count(); i++)
+    reference.parts[i] = parts[i];
+}
+
+static constexpr usize NAME_REFERENCE_COUNT = 64;
+
+struct name_reference_table
+{
+  parameter_reference entries[NAME_REFERENCE_COUNT];
+};
+
+static constexpr fn
+make_name_reference_table() wontthrow -> name_reference_table
+{
+  name_reference_table table{};
+
+  for (u32 length = 1; length < NAME_REFERENCE_COUNT; length++) {
+    parameter_reference &entry = table.entries[length];
+
+    entry.text_length        = length;
+    entry.kind               = parameter_reference::form::Name;
+    entry.name_length        = length;
+    entry.rest_offset        = length;
+    entry.word_name_end      = length;
+    entry.alternate_name_end = length;
+    entry.word_routes        = parameter_reference::ROUTE_PLAIN_NAME;
+  }
+
+  return table;
+}
+
+static constinit name_reference_table NAME_REFERENCES =
+    make_name_reference_table();
+
+static pure fn
+is_shared_name_reference(const parameter_reference *reference) wontthrow -> bool
+{
+  return reference >= NAME_REFERENCES.entries &&
+         reference < NAME_REFERENCES.entries + NAME_REFERENCE_COUNT;
+}
+
+/* memory: a plain name shorter than NAME_REFERENCE_COUNT shares a record in
+           NAME_REFERENCES. otherwise the record, its operand word, and its
+           part array come from allocator. with the heap allocator,
+           destroy_parameter_reference() frees them. an arena owns them
+           otherwise.
+   time:   O(text length) for the analysis and one scan of the operand, plus
+           a nested build for each ${ in the operand. */
+fn
+build_parameter_reference(StringView text,
+                          Allocator  allocator,
+                          bool       is_function_arena) throws
+    -> parameter_reference *
+{
+  if (text.length < NAME_REFERENCE_COUNT && !text.is_empty() &&
+      lexer::is_variable_name_start(text[0]) &&
+      find_variable_name_end(text) == text.length)
+  {
+    return &NAME_REFERENCES.entries[text.length];
+  }
+
+  let *const reference =
+      new (allocator.alloc_array<parameter_reference>(1)) parameter_reference{};
+
+  analyze_parameter_reference(text, *reference);
+  if (!reference->has_operand) return reference;
+
+  try {
+    build_operand_word(reference->get_operand(text), allocator,
+                       is_function_arena, *reference);
+  } catch (...) {
+    if (allocator.get_kind() == Allocator::Kind::Heap)
+      destroy_parameter_reference(reference);
+    throw;
+  }
+
+  return reference;
+}
+
+fn
+destroy_parameter_reference(parameter_reference *reference) wontthrow -> void
+{
+  if (reference == nullptr || is_shared_name_reference(reference)) return;
+
+  if (reference->operand != nullptr) {
+    reference->operand->~Word();
+    heap_allocator().free_array(reference->operand, 1);
+  }
+
+  if (reference->parts != nullptr)
+    heap_allocator().free_array(reference->parts, reference->part_count);
+  heap_allocator().free_array(reference, 1);
 }
 
 } /* namespace koshka */

@@ -59,6 +59,16 @@ struct arith_token_cache
   }
 };
 
+struct parameter_reference;
+
+fn
+build_parameter_reference(StringView text,
+                          Allocator  allocator,
+                          bool       is_function_arena) throws
+    -> parameter_reference *;
+fn
+destroy_parameter_reference(parameter_reference *reference) wontthrow -> void;
+
 struct segment_eval_cache
 {
   const Expression           *substitution_ast{nullptr};
@@ -66,6 +76,15 @@ struct segment_eval_cache
   BumpArena::LifetimeIdentity substitution_lifetime{};
   BumpArena::LifetimeIdentity arithmetic_lifetime{};
   bool                        has_optimizer_arithmetic_result{false};
+
+  fn
+  forget_arena_pointers() wontthrow -> void
+  {
+    substitution_ast      = nullptr;
+    arith                 = nullptr;
+    substitution_lifetime = {};
+    arithmetic_lifetime   = {};
+  }
 };
 
 class SegmentText
@@ -402,15 +421,20 @@ public:
             other.is_substitution_cache_in_function_arena},
         text{other.text}
   {
-    if (other.m_eval_cache != nullptr) {
-      let const block = heap_allocator().alloc_array<segment_eval_cache>(1);
+    if (other.m_eval_cache == nullptr) return;
 
-      m_eval_cache = new (block) segment_eval_cache{*other.m_eval_cache};
-      m_eval_cache->substitution_ast      = nullptr;
-      m_eval_cache->arith                 = nullptr;
-      m_eval_cache->substitution_lifetime = {};
-      m_eval_cache->arithmetic_lifetime   = {};
+    if (kind == Kind::VariableReference) {
+      m_parameter = build_parameter_reference(
+          text.view(), heap_allocator(),
+          is_substitution_cache_in_function_arena != 0);
+
+      return;
     }
+
+    let const block = heap_allocator().alloc_array<segment_eval_cache>(1);
+
+    m_eval_cache = new (block) segment_eval_cache{*other.m_eval_cache};
+    m_eval_cache->forget_arena_pointers();
   }
 
   WordSegment(WordSegment &&other) wontthrow
@@ -481,6 +505,13 @@ public:
   get_eval_cache(BumpArena *cache_arena) const throws
       -> segment_eval_cache &;
 
+  hot pure fn
+  get_parameter_reference() const wontthrow -> const parameter_reference *;
+
+  fn
+  set_parameter_reference(parameter_reference *reference,
+                          bool                 is_in_arena) throws -> void;
+
   pure fn
   is_split_eligible() const wontthrow -> bool;
   pure fn
@@ -501,14 +532,31 @@ public:
     copy.is_substitution_cache_in_function_arena =
         is_substitution_cache_in_function_arena;
     if (source_length > 0) copy.set_source_span(source_position, source_length);
+    if (kind == Kind::VariableReference) {
+      if (m_parameter == nullptr) return copy;
+
+      if (allocator.get_kind() == Allocator::Kind::Bump &&
+          allocator.owns(m_parameter))
+      {
+        copy.m_parameter            = m_parameter;
+        copy.is_eval_cache_in_arena = true;
+
+        return copy;
+      }
+
+      copy.m_parameter = build_parameter_reference(
+          text.view(), allocator, is_substitution_cache_in_function_arena != 0);
+      copy.is_eval_cache_in_arena =
+          allocator.get_kind() == Allocator::Kind::Bump;
+
+      return copy;
+    }
+
     if (m_eval_cache != nullptr) {
       let const block = allocator.alloc_array<segment_eval_cache>(1);
 
       copy.m_eval_cache = new (block) segment_eval_cache{*m_eval_cache};
-      copy.m_eval_cache->substitution_ast      = nullptr;
-      copy.m_eval_cache->arith                 = nullptr;
-      copy.m_eval_cache->substitution_lifetime = {};
-      copy.m_eval_cache->arithmetic_lifetime   = {};
+      copy.m_eval_cache->forget_arena_pointers();
       copy.is_eval_cache_in_arena =
           allocator.get_kind() == Allocator::Kind::Bump;
     }
@@ -519,7 +567,7 @@ public:
   hot pure fn
   has_optimizer_arithmetic_result() const wontthrow -> bool
   {
-    return m_eval_cache != nullptr &&
+    return kind != Kind::VariableReference && m_eval_cache != nullptr &&
            m_eval_cache->has_optimizer_arithmetic_result;
   }
 
@@ -576,7 +624,11 @@ private:
   fn
   release_eval_cache() wontthrow -> void;
 
-  mutable segment_eval_cache *m_eval_cache{nullptr};
+  union
+  {
+    mutable segment_eval_cache *m_eval_cache{nullptr};
+    parameter_reference        *m_parameter;
+  };
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(WordSegment) == 32);
@@ -724,14 +776,6 @@ public:
   }
 
   fn
-  has_only_plain_name_references() const wontthrow -> bool
-  {
-    if (!are_facts_computed()) compute_facts();
-
-    return (m_extra_facts & EXTRA_HAS_PLAIN_NAME_REFERENCES) != 0;
-  }
-
-  fn
   constant_value() const throws -> StringView;
 
   fn
@@ -758,8 +802,7 @@ private:
   static constexpr u16 PLAIN_KIND_SHIFT = 1;
   static constexpr u16 PLAIN_KIND_MASK  = 3U << PLAIN_KIND_SHIFT;
 
-  static constexpr u8 EXTRA_IS_PLAIN_KIND_COMPUTED    = 1U << 0;
-  static constexpr u8 EXTRA_HAS_PLAIN_NAME_REFERENCES = 1U << 1;
+  static constexpr u8 EXTRA_IS_PLAIN_KIND_COMPUTED = 1U << 0;
 
   mutable char *m_constant_value_data{nullptr};
   mutable u32   m_constant_value_length{0};
@@ -785,6 +828,113 @@ struct fd_allocation_target
   StringView subscript;
   bool       has_subscript;
 };
+
+struct parameter_operand_part
+{
+  u32 start;
+  u32 end;
+  u32 segment_index;
+};
+
+struct parameter_reference
+{
+  enum class form : u8
+  {
+    Empty,
+    Name,
+    Special,
+    Length,
+    Indirect,
+    PrefixNames,
+    Keys,
+    Subscripted,
+    Slice,
+    Operator,
+    InvalidName,
+  };
+
+  static constexpr u16 ROUTE_PREFIX_NAMES        = 1U << 0;
+  static constexpr u16 ROUTE_KEYS                = 1U << 1;
+  static constexpr u16 ROUTE_ARRAY_ELEMENTS      = 1U << 2;
+  static constexpr u16 ROUTE_POSITIONAL_TEST     = 1U << 3;
+  static constexpr u16 ROUTE_POSITIONAL_SLICE    = 1U << 4;
+  static constexpr u16 ROUTE_POSITIONAL_DECLARE  = 1U << 5;
+  static constexpr u16 ROUTE_POSITIONAL_MODIFIER = 1U << 6;
+  static constexpr u16 ROUTE_ARRAY_SLICE         = 1U << 7;
+  static constexpr u16 ROUTE_ARRAY_DECLARE       = 1U << 8;
+  static constexpr u16 ROUTE_ARRAY_MODIFIER      = 1U << 9;
+  static constexpr u16 ROUTE_ARRAY_TEST          = 1U << 10;
+  static constexpr u16 ROUTE_ALTERNATE_OPERAND   = 1U << 11;
+  static constexpr u16 ROUTE_PLAIN_NAME          = 1U << 12;
+  static constexpr u16 ROUTE_FIELD_MARKER        = 1U << 13;
+
+  u32                     text_length{0};
+  u32                     name_offset{0};
+  u32                     name_length{0};
+  u32                     rest_offset{0};
+  u32                     subscript_close{0};
+  u32                     operand_offset{0};
+  u32                     operand_length{0};
+  u32                     word_name_end{0};
+  u32                     alternate_name_end{0};
+  u32                     part_count{0};
+  u16                     word_routes{0};
+  form                    kind{form::Empty};
+  char                    op{'\0'};
+  bool                    is_colon{false};
+  bool                    is_doubled{false};
+  bool                    has_operand{false};
+  bool                    is_operand_literal{false};
+  bool                    is_operand_field_sensitive{false};
+  Word                   *operand{nullptr};
+  parameter_operand_part *parts{nullptr};
+
+  pure fn
+  has_route(u16 route) const wontthrow -> bool
+  {
+    return (word_routes & route) != 0;
+  }
+
+  pure fn
+  get_operand(StringView text) const wontthrow -> StringView
+  {
+    return text.substring_of_length(operand_offset, operand_length);
+  }
+
+  pure fn
+  is_operand(StringView text, StringView word) const wontthrow -> bool
+  {
+    return has_operand && word.data == text.data + operand_offset &&
+           word.length == operand_length;
+  }
+
+  pure fn
+  find_part(usize start) const wontthrow -> const parameter_operand_part *
+  {
+    for (u32 i = 0; i < part_count; i++) {
+      if (parts[i].start == start) return &parts[i];
+    }
+
+    return nullptr;
+  }
+};
+
+fn
+analyze_parameter_reference(StringView           text,
+                            parameter_reference &reference) wontthrow -> void;
+
+hot pure inline fn
+WordSegment::get_parameter_reference() const wontthrow
+    -> const parameter_reference *
+{
+  if (kind != Kind::VariableReference || m_parameter == nullptr ||
+      m_parameter->text_length != text.count())
+  {
+    return nullptr;
+  }
+
+  return m_parameter;
+}
 
 class Token
 {

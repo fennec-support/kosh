@@ -33,3 +33,9 @@ printf '%s\n' 'x=$(echo a | tr a b)' 'koshkit cat <(echo b)' \
 "$BIN" -A --lint --no-traces "$root/substitutions.sh"
 printf '%s\n' "echo a\\*'b'* ~/x \"\$HOME\"" > "$root/words.sh"
 "$BIN" -R --lint --no-traces "$root/words.sh"
+{
+  printf '%s\n' 'echo "${x:-d}" "${a[1]#q}" "${u:-$(echo hi)}" "${#x}" "${!p*}"'
+  printf '%s\n' 'echo "${a[@]:1:2}" "${x//a/b}" "${x@Q}" "${!a[@]}" "${@:-w}"'
+  printf '%s\n' 'echo "${y:=${z:-`echo q`}}" "${x%%*.}" "${!r}" "${10}" "${x:1}"'
+} > "$root/params.sh"
+"$BIN" -R --lint --no-traces "$root/params.sh"
