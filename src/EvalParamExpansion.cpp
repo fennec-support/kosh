@@ -1948,7 +1948,7 @@ EvalContext::ModifierWordExpander::expand() throws -> String
 fn
 EvalContext::ModifierWordExpander::expand_current_word() throws -> void
 {
-  if (m_reference != nullptr && m_reference->is_operand_literal &&
+  if (m_reference != nullptr && m_reference->is_operand_literal() &&
       m_word.data == m_reference_word.data &&
       m_word.length == m_reference_word.length)
   {
@@ -3370,7 +3370,7 @@ EvalContext::ParameterExpander::expand_trim_operator(
 fn
 EvalContext::ParameterExpander::expand_operator() throws -> String
 {
-  let const   is_colon_form = m_reference.is_colon;
+  let const   is_colon_form = m_reference.is_colon();
   const usize op_index      = is_colon_form ? 1 : 0;
 
   if (op_index >= m_rest.length) raise_bare_colon(m_rest);
@@ -3411,7 +3411,7 @@ EvalContext::ParameterExpander::expand_operator() throws -> String
   }
 
   let const op         = m_reference.op;
-  let const is_doubled = m_reference.is_doubled;
+  let const is_doubled = m_reference.is_doubled();
   let const word       = m_rest.substring(op_index + (is_doubled ? 2 : 1));
 
   let       current               = m_context.get_variable_value(m_name);
@@ -5033,7 +5033,7 @@ analyze_word_routes(StringView           text,
     }
   }
 
-  reference.word_routes = routes;
+  reference.bits |= routes;
 }
 
 static fn
@@ -5046,7 +5046,7 @@ analyze_operator(StringView           modifier,
   let const is_colon = modifier[0] == ':';
   let const op_index = is_colon ? usize{1} : usize{0};
 
-  reference.is_colon = is_colon;
+  reference.set_bit(parameter_reference::BIT_COLON, is_colon);
   if (op_index >= modifier.length) return;
 
   let const op = modifier[op_index];
@@ -5065,8 +5065,8 @@ analyze_operator(StringView           modifier,
                          (op == '#' || op == '%');
   let const start = op_index + (is_doubled ? 2 : 1);
 
-  reference.is_doubled     = is_doubled;
-  reference.has_operand    = true;
+  reference.set_bit(parameter_reference::BIT_DOUBLED, is_doubled);
+  reference.set_bit(parameter_reference::BIT_OPERAND, true);
   reference.operand_offset = static_cast<u32>(offset + start);
   reference.operand_length = static_cast<u32>(modifier.length - start);
 }
@@ -5182,18 +5182,20 @@ analyze_parameter_reference(StringView           text,
 
   if (!is_subscripted) {
     analyze_operator(rest, name_end, reference);
-    reference.kind = reference.is_colon && reference.op != '\0' &&
+    reference.kind = reference.is_colon() && reference.op != '\0' &&
                              !is_colon_modifier_operator(reference.op)
                          ? form::Slice
                          : form::Operator;
   }
 
-  if (!reference.has_operand) return;
+  if (!reference.has_operand()) return;
 
   let const operand = reference.get_operand(text);
 
-  reference.is_operand_literal         = is_literal_operand(operand);
-  reference.is_operand_field_sensitive = is_field_sensitive_word(operand);
+  reference.set_bit(parameter_reference::BIT_LITERAL_OPERAND,
+                    is_literal_operand(operand));
+  reference.set_bit(parameter_reference::BIT_FIELD_SENSITIVE_OPERAND,
+                    is_field_sensitive_word(operand));
 }
 
 static fn
@@ -5402,7 +5404,7 @@ build_parameter_reference(StringView   text,
       new (allocator.alloc_array<parameter_reference>(1)) parameter_reference{};
 
   analyze_parameter_reference(text, *reference);
-  if (!reference->has_operand) return reference;
+  if (!reference->has_operand()) return reference;
 
   try {
     let const operand_text = reference->get_operand(text);

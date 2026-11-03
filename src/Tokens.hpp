@@ -940,17 +940,22 @@ struct parameter_reference
     InvalidName,
   };
 
-  static constexpr u16 ROUTE_ARRAY_ELEMENTS      = 1U << 2;
-  static constexpr u16 ROUTE_POSITIONAL_TEST     = 1U << 3;
-  static constexpr u16 ROUTE_POSITIONAL_SLICE    = 1U << 4;
-  static constexpr u16 ROUTE_POSITIONAL_DECLARE  = 1U << 5;
-  static constexpr u16 ROUTE_POSITIONAL_MODIFIER = 1U << 6;
-  static constexpr u16 ROUTE_ARRAY_SLICE         = 1U << 7;
-  static constexpr u16 ROUTE_ARRAY_DECLARE       = 1U << 8;
-  static constexpr u16 ROUTE_ARRAY_MODIFIER      = 1U << 9;
-  static constexpr u16 ROUTE_ARRAY_TEST          = 1U << 10;
-  static constexpr u16 ROUTE_ALTERNATE_OPERAND   = 1U << 11;
-  static constexpr u16 ROUTE_FIELD_MARKER        = 1U << 13;
+  static constexpr u16 BIT_COLON                   = 1U << 0;
+  static constexpr u16 BIT_DOUBLED                 = 1U << 1;
+  static constexpr u16 ROUTE_ARRAY_ELEMENTS        = 1U << 2;
+  static constexpr u16 ROUTE_POSITIONAL_TEST       = 1U << 3;
+  static constexpr u16 ROUTE_POSITIONAL_SLICE      = 1U << 4;
+  static constexpr u16 ROUTE_POSITIONAL_DECLARE    = 1U << 5;
+  static constexpr u16 ROUTE_POSITIONAL_MODIFIER   = 1U << 6;
+  static constexpr u16 ROUTE_ARRAY_SLICE           = 1U << 7;
+  static constexpr u16 ROUTE_ARRAY_DECLARE         = 1U << 8;
+  static constexpr u16 ROUTE_ARRAY_MODIFIER        = 1U << 9;
+  static constexpr u16 ROUTE_ARRAY_TEST            = 1U << 10;
+  static constexpr u16 ROUTE_ALTERNATE_OPERAND     = 1U << 11;
+  static constexpr u16 BIT_OPERAND                 = 1U << 12;
+  static constexpr u16 ROUTE_FIELD_MARKER          = 1U << 13;
+  static constexpr u16 BIT_LITERAL_OPERAND         = 1U << 14;
+  static constexpr u16 BIT_FIELD_SENSITIVE_OPERAND = 1U << 15;
 
   u32                     text_length{0};
   u32                     name_offset{0};
@@ -961,21 +966,53 @@ struct parameter_reference
   u32                     operand_length{0};
   u32                     alternate_name_end{0};
   u32                     part_count{0};
-  u16                     word_routes{0};
+  u16                     bits{0};
   Form                    kind{Form::Empty};
   char                    op{'\0'};
-  bool                    is_colon : 1 {false};
-  bool                    is_doubled : 1 {false};
-  bool                    has_operand : 1 {false};
-  bool                    is_operand_literal : 1 {false};
-  bool                    is_operand_field_sensitive : 1 {false};
   Word                   *operand{nullptr};
   parameter_operand_part *parts{nullptr};
 
   pure fn
   has_route(u16 route) const wontthrow -> bool
   {
-    return (word_routes & route) != 0;
+    return (bits & route) != 0;
+  }
+
+  fn
+  set_bit(u16 bit, bool is_set) wontthrow -> void
+  {
+    bits =
+        is_set ? static_cast<u16>(bits | bit) : static_cast<u16>(bits & ~bit);
+  }
+
+  pure fn
+  is_colon() const wontthrow -> bool
+  {
+    return has_route(BIT_COLON);
+  }
+
+  pure fn
+  is_doubled() const wontthrow -> bool
+  {
+    return has_route(BIT_DOUBLED);
+  }
+
+  pure fn
+  has_operand() const wontthrow -> bool
+  {
+    return has_route(BIT_OPERAND);
+  }
+
+  pure fn
+  is_operand_literal() const wontthrow -> bool
+  {
+    return has_route(BIT_LITERAL_OPERAND);
+  }
+
+  pure fn
+  is_operand_field_sensitive() const wontthrow -> bool
+  {
+    return has_route(BIT_FIELD_SENSITIVE_OPERAND);
   }
 
   pure fn
@@ -987,7 +1024,7 @@ struct parameter_reference
   pure fn
   is_operand(StringView text, StringView word) const wontthrow -> bool
   {
-    return has_operand && word.data == text.data + operand_offset &&
+    return has_operand() && word.data == text.data + operand_offset &&
            word.length == operand_length;
   }
 
@@ -1002,7 +1039,7 @@ struct parameter_reference
   }
 };
 
-static_assert(sizeof(usize) != 8 || sizeof(parameter_reference) == 64);
+static_assert(sizeof(usize) != 8 || sizeof(parameter_reference) == 56);
 
 fn
 analyze_parameter_reference(StringView           text,

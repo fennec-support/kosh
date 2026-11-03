@@ -360,7 +360,7 @@ EvalContext::expand_word(const Word &word) throws
       [&](StringView word, const SourceLocation *word_location, bool is_quoted,
           const parameter_reference *reference) throws {
         let const is_field_sensitive =
-            reference != nullptr ? reference->is_operand_field_sensitive
+            reference != nullptr ? reference->is_operand_field_sensitive()
                                  : is_field_sensitive_word(word);
 
         if (!is_field_sensitive) {

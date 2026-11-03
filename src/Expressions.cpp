@@ -921,16 +921,16 @@ AstWriter::parameter(const parameter_reference &reference,
 
   let operator_text = String{heap_allocator()};
 
-  if (reference.is_colon) operator_text.push(':');
+  if (reference.is_colon()) operator_text.push(':');
   if (reference.op != '\0' &&
-      (!reference.is_colon || is_colon_modifier_operator(reference.op)))
+      (!reference.is_colon() || is_colon_modifier_operator(reference.op)))
   {
     operator_text.push(reference.op);
-    if (reference.is_doubled) operator_text.push(reference.op);
+    if (reference.is_doubled()) operator_text.push(reference.op);
   }
 
   if (!operator_text.is_empty()) quoted("op", operator_text.view());
-  if (reference.is_operand_literal) flag("literal-operand");
+  if (reference.is_operand_literal()) flag("literal-operand");
   if (reference.operand != nullptr) word(*reference.operand, None);
 
   close();
