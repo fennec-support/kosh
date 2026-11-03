@@ -1172,9 +1172,9 @@ CaseClause::write_ast(AstWriter &out) const throws -> void
     out.open("item");
 
     switch (item.terminator) {
-    case case_terminator::Break:         out.symbol("terminator", ";;"); break;
-    case case_terminator::FallThrough:   out.symbol("terminator", ";&"); break;
-    case case_terminator::ContinueMatch: out.symbol("terminator", ";;&"); break;
+    case case_terminator::Break:         out.quoted("terminator", ";;"); break;
+    case case_terminator::FallThrough:   out.quoted("terminator", ";&"); break;
+    case case_terminator::ContinueMatch: out.quoted("terminator", ";;&"); break;
     }
 
     for (let const *pattern : item.patterns) {

@@ -654,12 +654,73 @@ AstWriter::number(StringView key, i64 value) throws -> void
   m_output.append(String::from(value, heap_allocator()).view());
 }
 
+pure fn
+AstWriter::get_column() const wontthrow -> usize
+{
+  let const line_end = m_output.view().find_last_character('\n');
+
+  return line_end.has_value() ? m_output.count() - *line_end - 1
+                              : m_output.count();
+}
+
+static pure fn
+ast_quoted_byte_width(u8 byte) wontthrow -> usize
+{
+  if (byte == '"' || byte == '\\' || byte == '\n' || byte == '\t') return 2;
+  if (byte < 0x20 || byte == 0x7f) return 4;
+  if ((byte & 0xc0) == 0x80) return 0;
+
+  return 1;
+}
+
+/* Writes marks on a new line, one under the quoted rendering of each
+   character of text, which starts at column. */
+cold fn
+AstWriter::append_marks_under(usize      column,
+                              StringView text,
+                              StringView marks) throws -> void
+{
+  ASSERT(text.length == marks.length);
+
+  m_output.push('\n');
+  m_output.append_repeated(' ', column);
+
+  for (usize i = 0; i < text.length; i++) {
+    let const width = ast_quoted_byte_width(static_cast<u8>(text[i]));
+
+    if (width == 0) continue;
+    m_output.push(marks[i]);
+    m_output.append_repeated(' ', width - 1);
+  }
+
+  while (!m_output.is_empty() && m_output.back() == ' ')
+    m_output.pop_back();
+}
+
 cold fn
 AstWriter::position(StringView key, usize source_position) throws
     -> void
 {
   flag(key);
   m_output.push(' ');
+  append_position(source_position);
+}
+
+cold fn
+AstWriter::span(StringView key,
+                usize      start_position,
+                usize      end_position) throws -> void
+{
+  flag(key);
+  m_output.push(' ');
+  append_position(start_position);
+  m_output.append(StringView{".."});
+  append_position(end_position);
+}
+
+cold fn
+AstWriter::append_position(usize source_position) throws -> void
+{
   source_position += m_position_offset;
 
   if (m_is_detached_from_source || m_source.is_empty() ||
@@ -762,19 +823,27 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
 
   open("word");
 
+  usize marks_column = 0;
+
   if (has_source_span) {
     let const source_text =
         m_source.substring_of_length(source_start, location->length);
 
+    marks_column = get_column() + 2;
     text(source_text);
     position("at", location->position);
-    if (source_text != cooked_text.view()) quoted("text", cooked_text.view());
+    if (source_text != cooked_text.view()) {
+      marks_column = get_column() + StringView{" :text \""}.length;
+      quoted("text", cooked_text.view());
+    }
   } else {
+    marks_column = get_column() + 2;
     text(cooked_text.view());
     if (span_start.has_value()) position("at", *span_start);
   }
 
-  symbol("plain", ast_plain_literal_symbol(word.plain_literal_kind()));
+  if (word.plain_literal_kind() != Word::PlainLiteral::NotPlain)
+    symbol("plain", ast_plain_literal_symbol(word.plain_literal_kind()));
 
   struct fact_name
   {
@@ -824,13 +893,14 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
   fact_list.push(')');
   if (fact_list.count() > 2) symbol("facts", fact_list.view());
   if (word.has_locale_translation_quote) flag("locale-quote");
-  quoted("escape", escape_marks.view());
+  if (!escape_marks.is_empty())
+    append_marks_under(marks_column, cooked_text.view(), escape_marks.view());
 
   if (!ast_word_is_single_plain_segment(word)) {
     for (let const &segment : word.segments) {
       open("segment");
-      symbol("kind", ast_segment_kind_symbol(segment.kind));
       text(segment.text.view());
+      symbol("kind", ast_segment_kind_symbol(segment.kind));
       if (segment.source_length > 0) position("at", segment.source_position);
       if (segment.is_in_double_quotes) flag("in-double-quotes");
       if (segment.is_greedy_name) flag("greedy-name");
@@ -1066,14 +1136,16 @@ AstWriter::arithmetic_lvalue(StringView        expression,
   let const  name = expression.substring_of_length(node.start, node.length);
 
   if ((node.flags & arith_node::SUBSCRIPT_FLAG) == 0) {
+    open("arith-name");
     text(name);
+    close();
 
     return;
   }
 
   open("arith-element");
   text(name);
-  text(expression.substring_of_length(node.middle, node.end));
+  quoted("subscript", expression.substring_of_length(node.middle, node.end));
   close();
 }
 
@@ -1091,7 +1163,7 @@ AstWriter::arithmetic_chain(StringView        expression,
 
   for (usize position = steps.count(); position > 0; position--) {
     open("arith-binary");
-    text(ast_arithmetic_operator(tree.nodes[steps[position - 1]].op));
+    quoted("op", ast_arithmetic_operator(tree.nodes[steps[position - 1]].op));
   }
 
   arithmetic_node(expression, tree, chain.first);
@@ -1135,7 +1207,7 @@ AstWriter::arithmetic_node(StringView        expression,
   case arith_node_kind::PostfixStep:
     open(node.kind == arith_node_kind::PrefixStep ? "arith-prefix"
                                                   : "arith-postfix");
-    text(node.value > 0 ? StringView{"++"} : StringView{"--"});
+    quoted("op", node.value > 0 ? StringView{"++"} : StringView{"--"});
     arithmetic_lvalue(expression, tree, node.first);
     close();
 
@@ -1153,9 +1225,9 @@ AstWriter::arithmetic_node(StringView        expression,
   case arith_node_kind::Not:
   case arith_node_kind::BitNot:
     open("arith-unary");
-    text(node.kind == arith_node_kind::Negate ? StringView{"-"}
-         : node.kind == arith_node_kind::Not  ? StringView{"!"}
-                                              : StringView{"~"});
+    quoted("op", node.kind == arith_node_kind::Negate ? StringView{"-"}
+                 : node.kind == arith_node_kind::Not  ? StringView{"!"}
+                                                      : StringView{"~"});
     arithmetic_node(expression, tree, node.first);
     close();
 
@@ -1177,11 +1249,13 @@ AstWriter::arithmetic_node(StringView        expression,
   case arith_node_kind::Assign:
   case arith_node_kind::CompoundAssign:
     open("arith-assign");
-    if (node.kind == arith_node_kind::CompoundAssign) {
-      let op = String{heap_allocator(), ast_arithmetic_operator(node.op)};
+    {
+      let op = String{heap_allocator()};
 
+      if (node.kind == arith_node_kind::CompoundAssign)
+        op.append(ast_arithmetic_operator(node.op));
       op.push('=');
-      symbol("op", op.view());
+      quoted("op", op.view());
     }
 
     arithmetic_lvalue(expression, tree, node.first);
@@ -1248,7 +1322,7 @@ AstWriter::token(const Token *token) throws -> void
 
     open("assignment");
     text(assignment->key());
-    symbol("op", operator_text);
+    quoted("op", operator_text);
     position("at", location.position);
     word(assignment->value_word(), value_location);
     close();
@@ -3737,8 +3811,7 @@ Command::is_async() const wontthrow -> bool
 cold fn
 Command::write_ast_command_fields(AstWriter &out) const throws -> void
 {
-  out.position("at", source_location().position);
-  out.position("end", source_end_position());
+  out.span("at", source_location().position, source_end_position());
   if (is_async()) out.flag("async");
   if (is_negated()) out.flag("negated");
 
@@ -3822,8 +3895,17 @@ internal::write_ast_redirection(AstWriter         &out,
 
   if (redirection.kind == Redirection::Kind::Heredoc) {
     if (redirection.heredoc_delimiter != nullptr) {
-      out.quoted("delimiter",
-                 redirection.heredoc_delimiter->raw_string().view());
+      let const raw_delimiter = redirection.heredoc_delimiter->raw_string();
+      let       delimiter     = raw_delimiter.view();
+
+      /* <<-EOF lexes the strip dash into the delimiter word. */
+      if (redirection.should_strip_heredoc_tabs &&
+          !redirection.has_separated_strip_operator && !delimiter.is_empty())
+      {
+        delimiter = delimiter.substring(1);
+      }
+
+      out.quoted("delimiter", delimiter);
     }
 
     if (redirection.should_expand_heredoc) out.flag("expand");

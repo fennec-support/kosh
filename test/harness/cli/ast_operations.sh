@@ -26,6 +26,7 @@ printf '# heading\n\ntext\n\n```sh\necho   embedded\n```\n' > "$root/plain.md"
   printf '%s\n' '[[ -f x && ! $y == z* ]]'
   printf '%s\n' 'case $x in a|b*) echo ab ;; *) : ;& esac'
   printf '%s\n' 'f() { exec 3>&- 4<>file; }'
+  printf '%s\n' 'cat <<-EOF' '	y' '	EOF'
 } > "$root/shapes.sh"
 "$BIN" -A --lint --no-traces "$root/shapes.sh"
 printf '%s\n' 'x=$(echo a | tr a b)' 'koshkit cat <(echo b)' \

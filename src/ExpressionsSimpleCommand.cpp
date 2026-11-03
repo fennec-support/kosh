@@ -2381,8 +2381,11 @@ SimpleCommand::write_ast(AstWriter &out) const throws -> void
   }
 
   write_ast_command_fields(out);
-  out.position("first-token-at", m_first_token_position);
-  out.position("full-end", m_full_source_end_position);
+  if (m_first_token_position != source_location().position ||
+      m_full_source_end_position != source_end_position())
+  {
+    out.span("full", m_first_token_position, m_full_source_end_position);
+  }
   write_ast_prefix_assignments(out);
 
   for (let const *argument : m_args)
@@ -2391,12 +2394,12 @@ SimpleCommand::write_ast(AstWriter &out) const throws -> void
   for (let const &array_argument : m_array_args) {
     out.open("array-assignment");
     out.text(array_argument.name.view());
-    out.symbol("op",
+    out.quoted("op",
                array_argument.update_mode == assignment_update_mode::Append
                    ? StringView{"+="}
                    : StringView{"="});
-    out.position("at", array_argument.location.position);
-    out.position("end", array_argument.end_position);
+    out.span("at", array_argument.location.position,
+             array_argument.end_position);
 
     for (let const *element : array_argument.elements)
       out.token(element);

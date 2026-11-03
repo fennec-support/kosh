@@ -1,59 +1,81 @@
 (compound-list :count 1
   (condition :terminator-at 1:14
-    (simple-command :name "echo" :builtin :at 1:1 :end 1:14 :first-token-at 1:1 :full-end 1:14
-      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-      (word "format" :at 1:8 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^"))))
+    (simple-command :name "echo" :builtin :at 1:1..1:14
+      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^^)
+      (word "format" :at 1:8 :plain unquoted-one-segment :facts (static-name)
+             ^^^^^^))))
 echo format
 (compound-list :count 1
   (condition :terminator-at 1:10
-    (simple-command :name "echo" :builtin :at 1:1 :end 1:10 :first-token-at 1:1 :full-end 1:10
-      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-      (word "lint" :at 1:6 :plain unquoted-one-segment :facts (static-name) :escape "^^^^"))))
+    (simple-command :name "echo" :builtin :at 1:1..1:10
+      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^^)
+      (word "lint" :at 1:6 :plain unquoted-one-segment :facts (static-name)
+             ^^^^))))
 (compound-list :count 1
   (condition :terminator-at 1:16
-    (simple-command :name "echo" :builtin :at 1:1 :end 1:16 :first-token-at 1:1 :full-end 1:16
-      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-      (word "combined" :at 1:8 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^^"))))
+    (simple-command :name "echo" :builtin :at 1:1..1:16
+      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^^)
+      (word "combined" :at 1:8 :plain unquoted-one-segment :facts (static-name)
+             ^^^^^^^^))))
 echo combined
 (compound-list :count 2
   (condition :terminator-at 1:8
-    (assign-command :at 1:1 :end 1:8
-      (assignment "name" :op = :at 1:1
-        (word "ok" :at 1:6 :plain unquoted-one-segment :facts (static-name) :escape "^^"))))
+    (assign-command :at 1:1..1:8
+      (assignment "name" :op "=" :at 1:1
+        (word "ok" :at 1:6 :plain unquoted-one-segment :facts (static-name)
+               ^^))))
   (condition :terminator-at 1:36
-    (pipeline :at 1:23 :end 1:24 :stages 2
-      (simple-command :name "echo" :builtin :at 1:10 :end 1:22 :first-token-at 1:10 :full-end 1:22
-        (word "echo" :at 1:10 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-        (word "\"$name\"" :at 1:15 :text "name" :plain none :facts (plain-references) :escape "\"\"\"\""
-          (segment :kind variable "name" :at 1:17 :in-double-quotes :greedy-name
+    (pipeline :at 1:23..1:24 :stages 2
+      (simple-command :name "echo" :builtin :at 1:10..1:22
+        (word "echo" :at 1:10 :plain unquoted-one-segment :facts (static-name)
+               ^^^^)
+        (word "\"$name\"" :at 1:15 :text "name" :facts (plain-references)
+                                          """"
+          (segment "name" :kind variable :at 1:17 :in-double-quotes :greedy-name
             (param :form name :name "name"))))
-      (simple-command :name "koshkit" :builtin :at 1:25 :end 1:36 :first-token-at 1:25 :full-end 1:36
-        (word "koshkit" :at 1:25 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^")
-        (word "cat" :at 1:33 :plain unquoted-one-segment :facts (static-name) :escape "^^^")))))
-(word "name=ok" :at 1:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^")
-(word "echo" :at 1:10 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-(word "\"$name\"" :at 1:15 :text "name" :plain none :facts (plain-references) :escape "\"\"\"\""
-  (segment :kind variable "name" :at 1:17 :in-double-quotes :greedy-name
+      (simple-command :name "koshkit" :builtin :at 1:25..1:36
+        (word "koshkit" :at 1:25 :plain unquoted-one-segment :facts (static-name)
+               ^^^^^^^)
+        (word "cat" :at 1:33 :plain unquoted-one-segment :facts (static-name)
+               ^^^)))))
+(word "name=ok" :at 1:1 :plain unquoted-one-segment :facts (static-name)
+       ^^^^^^^)
+(word "echo" :at 1:10 :plain unquoted-one-segment :facts (static-name)
+       ^^^^)
+(word "\"$name\"" :at 1:15 :text "name" :facts (plain-references)
+                                  """"
+  (segment "name" :kind variable :at 1:17 :in-double-quotes :greedy-name
     (param :form name :name "name")))
-(word "koshkit" :at 1:25 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^")
-(word "cat" :at 1:33 :plain unquoted-one-segment :facts (static-name) :escape "^^^")
+(word "koshkit" :at 1:25 :plain unquoted-one-segment :facts (static-name)
+       ^^^^^^^)
+(word "cat" :at 1:33 :plain unquoted-one-segment :facts (static-name)
+       ^^^)
 ok
 (compound-list :count 1
   (condition :terminator-at 1:11
-    (simple-command :name "echo" :builtin :at 1:1 :end 1:11 :first-token-at 1:1 :full-end 1:11
-      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-      (word "apply" :at 1:6 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^"))))
+    (simple-command :name "echo" :builtin :at 1:1..1:11
+      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^^)
+      (word "apply" :at 1:6 :plain unquoted-one-segment :facts (static-name)
+             ^^^^^))))
 (compound-list :count 1
   (condition :terminator-at 1:10
-    (simple-command :name "echo" :builtin :at 1:1 :end 1:10 :first-token-at 1:1 :full-end 1:10
-      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-      (word "both" :at 1:6 :plain unquoted-one-segment :facts (static-name) :escape "^^^^"))))
+    (simple-command :name "echo" :builtin :at 1:1..1:10
+      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^^)
+      (word "both" :at 1:6 :plain unquoted-one-segment :facts (static-name)
+             ^^^^))))
 echo both
 (compound-list :count 1
   (condition :terminator-at 1:16
-    (simple-command :name "echo" :builtin :at 1:1 :end 1:16 :first-token-at 1:1 :full-end 1:16
-      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-      (word "embedded" :at 1:8 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^^"))))
+    (simple-command :name "echo" :builtin :at 1:1..1:16
+      (word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^^)
+      (word "embedded" :at 1:8 :plain unquoted-one-segment :facts (static-name)
+             ^^^^^^^^))))
 # heading
 
 text
@@ -63,284 +85,378 @@ echo embedded
 ```
 (compound-list :count 1
   (condition :terminator-at 6:16
-    (simple-command :name "echo" :builtin :at 6:1 :end 6:16 :first-token-at 6:1 :full-end 6:16
-      (word "echo" :at 6:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-      (word "embedded" :at 6:8 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^^"))))
-(compound-list :count 7
+    (simple-command :name "echo" :builtin :at 6:1..6:16
+      (word "echo" :at 6:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^^)
+      (word "embedded" :at 6:8 :plain unquoted-one-segment :facts (static-name)
+             ^^^^^^^^))))
+(compound-list :count 8
   (condition :terminator-at 1:8
-    (simple-command :at 1:1 :end 1:4 :first-token-at 1:1 :full-end 1:8
+    (simple-command :at 1:1..1:4 :full 1:1..1:8
       (prefix
-        (assignment "x" :op = :at 1:1
-          (word "a" :at 1:3 :plain unquoted-one-segment :facts (static-name) :escape "^")))
+        (assignment "x" :op "=" :at 1:1
+          (word "a" :at 1:3 :plain unquoted-one-segment :facts (static-name)
+                 ^)))
       (prefix
-        (assignment "y" :op = :at 1:5
-          (word "b" :at 1:7 :plain unquoted-one-segment :facts (static-name) :escape "^")))))
+        (assignment "y" :op "=" :at 1:5
+          (word "b" :at 1:7 :plain unquoted-one-segment :facts (static-name)
+                 ^)))))
   (condition :terminator-at 2:19
-    (redirected-command :at 2:1 :end 2:19 :redirections 2
-      (brace-group :at 2:1 :end 2:12
+    (redirected-command :at 2:1..2:19 :redirections 2
+      (brace-group :at 2:1..2:12
         (compound-list :count 1
           (condition :terminator-at 2:9
-            (simple-command :name "echo" :builtin :at 2:3 :end 2:9 :first-token-at 2:3 :full-end 2:9
-              (word "echo" :at 2:3 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-              (word "a" :at 2:8 :plain unquoted-one-segment :facts (static-name) :escape "^")))))
+            (simple-command :name "echo" :builtin :at 2:3..2:9
+              (word "echo" :at 2:3 :plain unquoted-one-segment :facts (static-name)
+                     ^^^^)
+              (word "a" :at 2:8 :plain unquoted-one-segment :facts (static-name)
+                     ^)))))
       (redirection :op "&>" :kind truncate-output :at 2:13 :writes-file :fd 1 :both-streams :claims-descriptor
-        (word "out" :at 2:16 :plain unquoted-one-segment :facts (static-name) :escape "^^^"))
+        (word "out" :at 2:16 :plain unquoted-one-segment :facts (static-name)
+               ^^^))
       (redirection :op ">&" :kind duplicate-output :at 2:13 :origin both-streams :fd 2 :dup 1)))
   (condition :terminator-at 3:28
-    (pipeline :at 3:19 :end 3:21 :stages 2
-      (simple-command :name "cat" :at 3:1 :end 3:4 :first-token-at 3:1 :full-end 3:18
-        (word "cat" :at 3:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^")
+    (pipeline :at 3:19..3:21 :stages 2
+      (simple-command :name "cat" :at 3:1..3:4 :full 3:1..3:18
+        (word "cat" :at 3:1 :plain unquoted-one-segment :facts (static-name)
+               ^^^)
         (redirection :op "<<" :kind heredoc :at 3:5 :fd 0 :claims-descriptor :delimiter "EOF" :body "x\n")
         (redirection :op ">&" :kind duplicate-output :at 3:14 :fd 2 :dup 3)
         (redirection :op ">&" :kind duplicate-output :at 3:14 :origin move-close :fd 3 :dup close)
         (redirection :op ">&" :kind duplicate-output :at 3:19 :origin pipe-both :fd 2 :dup 1))
-      (simple-command :name "tr" :at 3:22 :end 3:28 :first-token-at 3:22 :full-end 3:28
-        (word "tr" :at 3:22 :plain unquoted-one-segment :facts (static-name) :escape "^^")
-        (word "a" :at 3:25 :plain unquoted-one-segment :facts (static-name) :escape "^")
-        (word "b" :at 3:27 :plain unquoted-one-segment :facts (static-name) :escape "^"))))
+      (simple-command :name "tr" :at 3:22..3:28
+        (word "tr" :at 3:22 :plain unquoted-one-segment :facts (static-name)
+               ^^)
+        (word "a" :at 3:25 :plain unquoted-one-segment :facts (static-name)
+               ^)
+        (word "b" :at 3:27 :plain unquoted-one-segment :facts (static-name)
+               ^))))
   (condition :terminator-at 6:28
-    (simple-command :name "declare" :declaration :declare :builtin :at 6:7 :end 6:28 :first-token-at 6:1 :full-end 6:28
+    (simple-command :name "declare" :declaration :declare :builtin :at 6:7..6:28 :full 6:1..6:28
       (prefix
-        (assignment "FOO" :op = :at 6:1
-          (word "1" :at 6:5 :plain unquoted-one-segment :facts (static-name) :escape "^")))
-      (word "declare" :at 6:7 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^")
-      (word "-r" :at 6:15 :plain unquoted-one-segment :facts (static-name) :escape "^^")
-      (assignment "name" :op = :at 6:18
-        (word "value" :at 6:23 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^"))))
+        (assignment "FOO" :op "=" :at 6:1
+          (word "1" :at 6:5 :plain unquoted-one-segment :facts (static-name)
+                 ^)))
+      (word "declare" :at 6:7 :plain unquoted-one-segment :facts (static-name)
+             ^^^^^^^)
+      (word "-r" :at 6:15 :plain unquoted-one-segment :facts (static-name)
+             ^^)
+      (assignment "name" :op "=" :at 6:18
+        (word "value" :at 6:23 :plain unquoted-one-segment :facts (static-name)
+               ^^^^^))))
   (condition :terminator-at 7:25
-    (conditional :at 7:1 :end 7:25
+    (conditional :at 7:1..7:25
       (and
         (unary :op "-f"
-          (word "x" :at 7:7 :plain unquoted-one-segment :facts (static-name) :escape "^"))
+          (word "x" :at 7:7 :plain unquoted-one-segment :facts (static-name)
+                 ^))
         (not
           (binary :op "=="
-            (word "$y" :at 7:14 :text "y" :plain none :facts (plain-references) :escape "$"
-              (segment :kind variable "y" :at 7:15 :greedy-name
+            (word "$y" :at 7:14 :text "y" :facts (plain-references)
+                                       $
+              (segment "y" :kind variable :at 7:15 :greedy-name
                 (param :form name :name "y")))
-            (word "z*" :at 7:20 :plain none :facts (unquoted-glob) :escape "^^"))))))
+            (word "z*" :at 7:20 :facts (unquoted-glob)
+                   ^^))))))
   (condition :terminator-at 8:41
-    (case :at 8:1 :end 8:41
-      (word "$x" :at 8:6 :text "x" :plain none :facts (plain-references) :escape "$"
-        (segment :kind variable "x" :at 8:7 :greedy-name
+    (case :at 8:1..8:41
+      (word "$x" :at 8:6 :text "x" :facts (plain-references)
+                                $
+        (segment "x" :kind variable :at 8:7 :greedy-name
           (param :form name :name "x")))
-      (item :terminator ;;
+      (item :terminator ";;"
         (pattern
-          (word "a" :at 8:12 :plain unquoted-one-segment :facts (static-name) :escape "^"))
+          (word "a" :at 8:12 :plain unquoted-one-segment :facts (static-name)
+                 ^))
         (pattern
-          (word "b*" :at 8:14 :plain none :facts (unquoted-glob) :escape "^^"))
+          (word "b*" :at 8:14 :facts (unquoted-glob)
+                 ^^))
         (compound-list :count 1
           (condition :terminator-at 8:26
-            (simple-command :name "echo" :builtin :at 8:18 :end 8:25 :first-token-at 8:18 :full-end 8:25
-              (word "echo" :at 8:18 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-              (word "ab" :at 8:23 :plain unquoted-one-segment :facts (static-name) :escape "^^")))))
-      (item :terminator ;&
+            (simple-command :name "echo" :builtin :at 8:18..8:25
+              (word "echo" :at 8:18 :plain unquoted-one-segment :facts (static-name)
+                     ^^^^)
+              (word "ab" :at 8:23 :plain unquoted-one-segment :facts (static-name)
+                     ^^)))))
+      (item :terminator ";&"
         (pattern :catch-all
-          (word "*" :at 8:29 :plain none :facts (unquoted-glob) :escape "^"))
+          (word "*" :at 8:29 :facts (unquoted-glob)
+                 ^))
         (compound-list :count 1
           (condition :terminator-at 8:34
-            (simple-command :name ":" :builtin :special-builtin :at 8:32 :end 8:33 :first-token-at 8:32 :full-end 8:33
-              (word ":" :at 8:32 :plain unquoted-one-segment :facts (static-name) :escape "^")))))))
+            (simple-command :name ":" :builtin :special-builtin :at 8:32..8:33
+              (word ":" :at 8:32 :plain unquoted-one-segment :facts (static-name)
+                     ^)))))))
   (condition :terminator-at 9:27
-    (function "f" :at 9:1 :end 9:27
-      (brace-group :at 9:5 :end 9:27
+    (function "f" :at 9:1..9:27
+      (brace-group :at 9:5..9:27
         (compound-list :count 1
           (condition :terminator-at 9:24
-            (simple-command :name "exec" :builtin :special-builtin :at 9:7 :end 9:11 :first-token-at 9:7 :full-end 9:24
-              (word "exec" :at 9:7 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
+            (simple-command :name "exec" :builtin :special-builtin :at 9:7..9:11 :full 9:7..9:24
+              (word "exec" :at 9:7 :plain unquoted-one-segment :facts (static-name)
+                     ^^^^)
               (redirection :op ">&" :kind duplicate-output :at 9:13 :fd 3 :dup close)
               (redirection :op "<>" :kind read-write :at 9:18 :writes-file :fd 4 :claims-descriptor
-                (word "file" :at 9:20 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")))))))))
+                (word "file" :at 9:20 :plain unquoted-one-segment :facts (static-name)
+                       ^^^^))))))))
+  (condition :terminator-at 10:11
+    (simple-command :name "cat" :at 10:1..10:4 :full 10:1..10:11
+      (word "cat" :at 10:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^)
+      (redirection :op "<<-" :kind heredoc :at 10:5 :fd 0 :claims-descriptor :delimiter "EOF" :expand :strip-tabs :body "y\n"))))
 (compound-list :count 4
   (condition :terminator-at 1:21
-    (assign-command :at 1:1 :end 1:21
-      (assignment "x" :op = :at 1:1
-        (word "$(echo a | tr a b)" :at 1:3 :text "echo a | tr a b" :plain none :facts (substitution) :escape "$$$$$$$$$$$$$$$"
-          (segment :kind command-substitution "echo a | tr a b" :at 1:3
+    (assign-command :at 1:1..1:21
+      (assignment "x" :op "=" :at 1:1
+        (word "$(echo a | tr a b)" :at 1:3 :text "echo a | tr a b" :facts (substitution)
+                                                  $$$$$$$$$$$$$$$
+          (segment "echo a | tr a b" :kind command-substitution :at 1:3
             (compound-list :count 1
               (condition :terminator-at 1:20
-                (pipeline :at 1:12 :end 1:13 :stages 2
-                  (simple-command :name "echo" :builtin :at 1:5 :end 1:11 :first-token-at 1:5 :full-end 1:11
-                    (word "echo" :at 1:5 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-                    (word "a" :at 1:10 :plain unquoted-one-segment :facts (static-name) :escape "^"))
-                  (simple-command :name "tr" :at 1:14 :end 1:20 :first-token-at 1:14 :full-end 1:20
-                    (word "tr" :at 1:14 :plain unquoted-one-segment :facts (static-name) :escape "^^")
-                    (word "a" :at 1:17 :plain unquoted-one-segment :facts (static-name) :escape "^")
-                    (word "b" :at 1:19 :plain unquoted-one-segment :facts (static-name) :escape "^"))))))))))
+                (pipeline :at 1:12..1:13 :stages 2
+                  (simple-command :name "echo" :builtin :at 1:5..1:11
+                    (word "echo" :at 1:5 :plain unquoted-one-segment :facts (static-name)
+                           ^^^^)
+                    (word "a" :at 1:10 :plain unquoted-one-segment :facts (static-name)
+                           ^))
+                  (simple-command :name "tr" :at 1:14..1:20
+                    (word "tr" :at 1:14 :plain unquoted-one-segment :facts (static-name)
+                           ^^)
+                    (word "a" :at 1:17 :plain unquoted-one-segment :facts (static-name)
+                           ^)
+                    (word "b" :at 1:19 :plain unquoted-one-segment :facts (static-name)
+                           ^))))))))))
   (condition :terminator-at 2:22
-    (simple-command :name "koshkit" :builtin :at 2:1 :end 2:22 :first-token-at 2:1 :full-end 2:22
-      (word "koshkit" :at 2:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^")
-      (word "cat" :at 2:9 :plain unquoted-one-segment :facts (static-name) :escape "^^^")
-      (word "<(echo b)" :at 2:13 :text "<echo b" :plain none :escape "$$$$$$$"
-        (segment :kind process-substitution "<echo b" :at 2:13
+    (simple-command :name "koshkit" :builtin :at 2:1..2:22
+      (word "koshkit" :at 2:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^^^^^)
+      (word "cat" :at 2:9 :plain unquoted-one-segment :facts (static-name)
+             ^^^)
+      (word "<(echo b)" :at 2:13 :text "<echo b"
+                                        $$$$$$$
+        (segment "<echo b" :kind process-substitution :at 2:13
           (compound-list :count 1
             (condition :terminator-at 2:21
-              (simple-command :name "echo" :builtin :at 2:15 :end 2:21 :first-token-at 2:15 :full-end 2:21
-                (word "echo" :at 2:15 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-                (word "b" :at 2:20 :plain unquoted-one-segment :facts (static-name) :escape "^"))))))))
+              (simple-command :name "echo" :builtin :at 2:15..2:21
+                (word "echo" :at 2:15 :plain unquoted-one-segment :facts (static-name)
+                       ^^^^)
+                (word "b" :at 2:20 :plain unquoted-one-segment :facts (static-name)
+                       ^))))))))
   (condition :terminator-at 3:18
-    (assign-command :at 3:1 :end 3:18
-      (assignment "y" :op = :at 3:1
-        (word "`printf \"%s\" q`" :at 3:3 :text "printf \"%s\" q" :plain none :facts (substitution) :escape "$$$$$$$$$$$$$"
-          (segment :kind command-substitution "printf \"%s\" q" :at 3:3
+    (assign-command :at 3:1..3:18
+      (assignment "y" :op "=" :at 3:1
+        (word "`printf \"%s\" q`" :at 3:3 :text "printf \"%s\" q" :facts (substitution)
+                                                 $$$$$$$$ $$$ $$
+          (segment "printf \"%s\" q" :kind command-substitution :at 3:3
             (compound-list :count 1
               (condition :terminator-at 3:17
-                (simple-command :name "printf" :builtin :at 3:4 :end 3:17 :first-token-at 3:4 :full-end 3:17
-                  (word "printf" :at 3:4 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^")
-                  (word "\"%s\"" :at 3:11 :text "%s" :plain no-split :facts (static-name) :escape ".."
-                    (segment :kind double-quoted "%s"))
-                  (word "q" :at 3:16 :plain unquoted-one-segment :facts (static-name) :escape "^")))))))))
+                (simple-command :name "printf" :builtin :at 3:4..3:17
+                  (word "printf" :at 3:4 :plain unquoted-one-segment :facts (static-name)
+                         ^^^^^^)
+                  (word "\"%s\"" :at 3:11 :text "%s" :plain no-split :facts (static-name)
+                                                 ..
+                    (segment "%s" :kind double-quoted))
+                  (word "q" :at 3:16 :plain unquoted-one-segment :facts (static-name)
+                         ^)))))))))
   (condition :terminator-at 4:12
-    (simple-command :name "echo" :builtin :at 4:1 :end 4:12 :first-token-at 4:1 :full-end 4:12
-      (word "echo" :at 4:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-      (word "\"$x$y\"" :at 4:6 :text "xy" :plain none :facts (plain-references) :escape "\"\""
-        (segment :kind variable "x" :at 4:8 :in-double-quotes :greedy-name
+    (simple-command :name "echo" :builtin :at 4:1..4:12
+      (word "echo" :at 4:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^^)
+      (word "\"$x$y\"" :at 4:6 :text "xy" :facts (plain-references)
+                                      ""
+        (segment "x" :kind variable :at 4:8 :in-double-quotes :greedy-name
           (param :form name :name "x"))
-        (segment :kind variable "y" :at 4:10 :in-double-quotes :greedy-name
+        (segment "y" :kind variable :at 4:10 :in-double-quotes :greedy-name
           (param :form name :name "y"))))))
-(word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-(word "a\\*'b'*" :at 1:6 :text "a*b*" :plain none :facts (unquoted-glob) :escape "^..^"
-  (segment :kind unquoted "a")
-  (segment :kind literal "*b")
-  (segment :kind unquoted "*"))
-(word "~/x" :at 1:14 :plain none :facts (static-name leading-tilde) :escape "^^^")
-(word "\"$HOME\"" :at 1:18 :text "HOME" :plain none :facts (plain-references) :escape "\"\"\"\""
-  (segment :kind variable "HOME" :at 1:20 :in-double-quotes :greedy-name
+(word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name)
+       ^^^^)
+(word "a\\*'b'*" :at 1:6 :text "a*b*" :facts (unquoted-glob)
+                                ^..^
+  (segment "a" :kind unquoted)
+  (segment "*b" :kind literal)
+  (segment "*" :kind unquoted))
+(word "~/x" :at 1:14 :facts (static-name leading-tilde)
+       ^^^)
+(word "\"$HOME\"" :at 1:18 :text "HOME" :facts (plain-references)
+                                  """"
+  (segment "HOME" :kind variable :at 1:20 :in-double-quotes :greedy-name
     (param :form name :name "HOME")))
-(word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-(word "\"${x:-d}\"" :at 1:6 :text "x:-d" :plain none :escape "\"\"\"\""
-  (segment :kind variable "x:-d" :at 1:9 :in-double-quotes
+(word "echo" :at 1:1 :plain unquoted-one-segment :facts (static-name)
+       ^^^^)
+(word "\"${x:-d}\"" :at 1:6 :text "x:-d"
+                                   """"
+  (segment "x:-d" :kind variable :at 1:9 :in-double-quotes
     (param :form operator :name "x" :op ":-" :literal-operand
-      (word "d" :at 1:12 :plain unquoted-one-segment :facts (static-name) :escape "^"))))
-(word "\"${a[1]#q}\"" :at 1:16 :text "a[1]#q" :plain none :escape "\"\"\"\"\"\""
-  (segment :kind variable "a[1]#q" :at 1:19 :in-double-quotes
+      (word "d" :at 1:12 :plain unquoted-one-segment :facts (static-name)
+             ^))))
+(word "\"${a[1]#q}\"" :at 1:16 :text "a[1]#q"
+                                      """"""
+  (segment "a[1]#q" :kind variable :at 1:19 :in-double-quotes
     (param :form subscripted :name "a" :subscript "1" :op "#" :literal-operand
-      (word "q" :at 1:24 :plain unquoted-one-segment :facts (static-name) :escape "^"))))
-(word "\"${u:-$(echo hi)}\"" :at 1:28 :text "u:-$(echo hi)" :plain none :escape "\"\"\"\"\"\"\"\"\"\"\"\"\""
-  (segment :kind variable "u:-$(echo hi)" :at 1:31 :in-double-quotes
+      (word "q" :at 1:24 :plain unquoted-one-segment :facts (static-name)
+             ^))))
+(word "\"${u:-$(echo hi)}\"" :at 1:28 :text "u:-$(echo hi)"
+                                             """""""""""""
+  (segment "u:-$(echo hi)" :kind variable :at 1:31 :in-double-quotes
     (param :form operator :name "u" :op ":-"
-      (word "echo hi" :at 1:34 :plain none :facts (substitution) :escape "$$$$$$$"
-        (segment :kind command-substitution "echo hi" :at 1:34
+      (word "echo hi" :at 1:34 :facts (substitution)
+             $$$$$$$
+        (segment "echo hi" :kind command-substitution :at 1:34
           (compound-list :count 1
             (condition :terminator-at 1:43
-              (simple-command :name "echo" :builtin :at 1:36 :end 1:43 :first-token-at 1:36 :full-end 1:43
-                (word "echo" :at 1:36 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-                (word "hi" :at 1:41 :plain unquoted-one-segment :facts (static-name) :escape "^^")))))))))
-(word "\"${#x}\"" :at 1:47 :text "#x" :plain none :escape "\"\""
-  (segment :kind variable "#x" :at 1:50 :in-double-quotes
+              (simple-command :name "echo" :builtin :at 1:36..1:43
+                (word "echo" :at 1:36 :plain unquoted-one-segment :facts (static-name)
+                       ^^^^)
+                (word "hi" :at 1:41 :plain unquoted-one-segment :facts (static-name)
+                       ^^)))))))))
+(word "\"${#x}\"" :at 1:47 :text "#x"
+                                  ""
+  (segment "#x" :kind variable :at 1:50 :in-double-quotes
     (param :form length :name "x")))
-(word "\"${!p*}\"" :at 1:55 :text "!p*" :plain none :escape "\"\"\""
-  (segment :kind variable "!p*" :at 1:58 :in-double-quotes
+(word "\"${!p*}\"" :at 1:55 :text "!p*"
+                                   """
+  (segment "!p*" :kind variable :at 1:58 :in-double-quotes
     (param :form prefix-names :name "p" :suffix "*")))
-(word "echo" :at 2:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-(word "\"${a[@]:1:2}\"" :at 2:6 :text "a[@]:1:2" :plain none :escape "\"\"\"\"\"\"\"\""
-  (segment :kind variable "a[@]:1:2" :at 2:9 :in-double-quotes
+(word "echo" :at 2:1 :plain unquoted-one-segment :facts (static-name)
+       ^^^^)
+(word "\"${a[@]:1:2}\"" :at 2:6 :text "a[@]:1:2"
+                                       """"""""
+  (segment "a[@]:1:2" :kind variable :at 2:9 :in-double-quotes
     (param :form subscripted :name "a" :subscript "@" :op ":")))
-(word "\"${x//a/b}\"" :at 2:20 :text "x//a/b" :plain none :escape "\"\"\"\"\"\""
-  (segment :kind variable "x//a/b" :at 2:23 :in-double-quotes
+(word "\"${x//a/b}\"" :at 2:20 :text "x//a/b"
+                                      """"""
+  (segment "x//a/b" :kind variable :at 2:23 :in-double-quotes
     (param :form operator :name "x" :op "/")))
-(word "\"${x@Q}\"" :at 2:32 :text "x@Q" :plain none :escape "\"\"\""
-  (segment :kind variable "x@Q" :at 2:35 :in-double-quotes
+(word "\"${x@Q}\"" :at 2:32 :text "x@Q"
+                                   """
+  (segment "x@Q" :kind variable :at 2:35 :in-double-quotes
     (param :form operator :name "x" :op "@")))
-(word "\"${!a[@]}\"" :at 2:41 :text "!a[@]" :plain none :escape "\"\"\"\"\""
-  (segment :kind variable "!a[@]" :at 2:44 :in-double-quotes
+(word "\"${!a[@]}\"" :at 2:41 :text "!a[@]"
+                                     """""
+  (segment "!a[@]" :kind variable :at 2:44 :in-double-quotes
     (param :form keys :name "a" :subscript "@")))
-(word "\"${@:-w}\"" :at 2:52 :text "@:-w" :plain none :escape "\"\"\"\""
-  (segment :kind variable "@:-w" :at 2:55 :in-double-quotes
+(word "\"${@:-w}\"" :at 2:52 :text "@:-w"
+                                    """"
+  (segment "@:-w" :kind variable :at 2:55 :in-double-quotes
     (param :form operator :name "@" :op ":-" :literal-operand
-      (word "w" :at 2:58 :plain unquoted-one-segment :facts (static-name) :escape "^"))))
-(word "echo" :at 3:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-(word "\"${y:=${z:-`echo q`}}\"" :at 3:6 :text "y:=${z:-`echo q`}" :plain none :escape "\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\"\""
-  (segment :kind variable "y:=${z:-`echo q`}" :at 3:9 :in-double-quotes
+      (word "w" :at 2:58 :plain unquoted-one-segment :facts (static-name)
+             ^))))
+(word "echo" :at 3:1 :plain unquoted-one-segment :facts (static-name)
+       ^^^^)
+(word "\"${y:=${z:-`echo q`}}\"" :at 3:6 :text "y:=${z:-`echo q`}"
+                                                """""""""""""""""
+  (segment "y:=${z:-`echo q`}" :kind variable :at 3:9 :in-double-quotes
     (param :form operator :name "y" :op ":="
-      (word "z:-`echo q`" :at 3:14 :plain none :escape "$$$$$$$$$$$"
-        (segment :kind variable "z:-`echo q`" :at 3:14
+      (word "z:-`echo q`" :at 3:14
+             $$$$$$$$$$$
+        (segment "z:-`echo q`" :kind variable :at 3:14
           (param :form operator :name "z" :op ":-"
-            (word "echo q" :at 3:17 :plain none :facts (substitution) :escape "$$$$$$"
-              (segment :kind command-substitution "echo q" :at 3:17
+            (word "echo q" :at 3:17 :facts (substitution)
+                   $$$$$$
+              (segment "echo q" :kind command-substitution :at 3:17
                 (compound-list :count 1
                   (condition :terminator-at 3:24
-                    (simple-command :name "echo" :builtin :at 3:18 :end 3:24 :first-token-at 3:18 :full-end 3:24
-                      (word "echo" :at 3:18 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-                      (word "q" :at 3:23 :plain unquoted-one-segment :facts (static-name) :escape "^"))))))))))))
-(word "\"${x%%*.}\"" :at 3:29 :text "x%%*." :plain none :escape "\"\"\"\"\""
-  (segment :kind variable "x%%*." :at 3:32 :in-double-quotes
+                    (simple-command :name "echo" :builtin :at 3:18..3:24
+                      (word "echo" :at 3:18 :plain unquoted-one-segment :facts (static-name)
+                             ^^^^)
+                      (word "q" :at 3:23 :plain unquoted-one-segment :facts (static-name)
+                             ^))))))))))))
+(word "\"${x%%*.}\"" :at 3:29 :text "x%%*."
+                                     """""
+  (segment "x%%*." :kind variable :at 3:32 :in-double-quotes
     (param :form operator :name "x" :op "%%" :literal-operand
-      (word "*." :at 3:35 :plain none :facts (unquoted-glob) :escape "^^"))))
-(word "\"${!r}\"" :at 3:40 :text "!r" :plain none :escape "\"\""
-  (segment :kind variable "!r" :at 3:43 :in-double-quotes
+      (word "*." :at 3:35 :facts (unquoted-glob)
+             ^^))))
+(word "\"${!r}\"" :at 3:40 :text "!r"
+                                  ""
+  (segment "!r" :kind variable :at 3:43 :in-double-quotes
     (param :form indirect :name "r")))
-(word "\"${10}\"" :at 3:48 :text "10" :plain none :escape "\"\""
-  (segment :kind variable "10" :at 3:51 :in-double-quotes
+(word "\"${10}\"" :at 3:48 :text "10"
+                                  ""
+  (segment "10" :kind variable :at 3:51 :in-double-quotes
     (param :form special :name "10")))
-(word "\"${x:1}\"" :at 3:56 :text "x:1" :plain none :escape "\"\"\""
-  (segment :kind variable "x:1" :at 3:59 :in-double-quotes
+(word "\"${x:1}\"" :at 3:56 :text "x:1"
+                                   """
+  (segment "x:1" :kind variable :at 3:59 :in-double-quotes
     (param :form slice :name "x" :op ":")))
 (compound-list :count 3
   (condition :terminator-at 1:31
-    (arithmetic-command "n = m + 1, n > 0 ? n-- : 0" :at 1:1 :end 1:31
+    (arithmetic-command "n = m + 1, n > 0 ? n-- : 0" :at 1:1..1:31
       (arith-comma
-        (arith-assign "n"
-          (arith-binary "+"
+        (arith-assign :op "="
+          (arith-name "n")
+          (arith-binary :op "+"
             (arith-name "m")
             (arith-number 1)))
         (arith-ternary
-          (arith-binary ">"
+          (arith-binary :op ">"
             (arith-name "n")
             (arith-number 0))
-          (arith-postfix "--" "n")
+          (arith-postfix :op "--"
+            (arith-name "n"))
           (arith-number 0)))))
   (condition :terminator-at 2:49
-    (simple-command :name "echo" :builtin :at 2:1 :end 2:49 :first-token-at 2:1 :full-end 2:49
-      (word "echo" :at 2:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-      (word "$((a[1] * -2))" :at 2:6 :text "a[1] * -2" :plain none :escape "$$$$$$$$$"
-        (segment :kind arithmetic "a[1] * -2" :at 2:9
-          (arith-binary "*"
-            (arith-element "a" "1")
-            (arith-unary "-"
+    (simple-command :name "echo" :builtin :at 2:1..2:49
+      (word "echo" :at 2:1 :plain unquoted-one-segment :facts (static-name)
+             ^^^^)
+      (word "$((a[1] * -2))" :at 2:6 :text "a[1] * -2"
+                                            $$$$$$$$$
+        (segment "a[1] * -2" :kind arithmetic :at 2:9
+          (arith-binary :op "*"
+            (arith-element "a" :subscript "1")
+            (arith-unary :op "-"
               (arith-number 2)))))
-      (word "$((x ** 2 << 1))" :at 2:21 :text "x ** 2 << 1" :plain none :escape "$$$$$$$$$$$"
-        (segment :kind arithmetic "x ** 2 << 1" :at 2:24 :arith-simple
-          (arith-binary "<<"
-            (arith-binary "**"
+      (word "$((x ** 2 << 1))" :at 2:21 :text "x ** 2 << 1"
+                                               $$$$$$$$$$$
+        (segment "x ** 2 << 1" :kind arithmetic :at 2:24 :arith-simple
+          (arith-binary :op "<<"
+            (arith-binary :op "**"
               (arith-name "x")
               (arith-number 2))
             (arith-number 1))))
-      (word "$(($n + 1))" :at 2:38 :text "$n + 1" :plain none :escape "$$$$$$"
-        (segment :kind arithmetic "$n + 1" :at 2:41 :arith-after-expansion))))
+      (word "$(($n + 1))" :at 2:38 :text "$n + 1"
+                                          $$$$$$
+        (segment "$n + 1" :kind arithmetic :at 2:41 :arith-after-expansion))))
   (condition :terminator-at 3:38
-    (arithmetic-for :at 3:1 :end 3:38 :header-at 3:7
-      (arith-clause :role init :text "i = 0"
-        (arith-assign "i"
+    (arithmetic-for :at 3:1..3:38 :header-at 3:7
+      (arith-clause "i = 0" :role init
+        (arith-assign :op "="
+          (arith-name "i")
           (arith-number 0)))
-      (arith-clause :role condition :text " i < 2" :arith-simple
-        (arith-binary "<"
+      (arith-clause " i < 2" :role condition :arith-simple
+        (arith-binary :op "<"
           (arith-name "i")
           (arith-number 2)))
-      (arith-clause :role step :text " i++" :arith-simple
-        (arith-postfix "++" "i"))
+      (arith-clause " i++" :role step :arith-simple
+        (arith-postfix :op "++"
+          (arith-name "i")))
       (compound-list :count 1
         (condition :terminator-at 3:32
-          (simple-command :name ":" :builtin :special-builtin :at 3:31 :end 3:32 :first-token-at 3:31 :full-end 3:32
-            (word ":" :at 3:31 :plain unquoted-one-segment :facts (static-name) :escape "^")))))))
+          (simple-command :name ":" :builtin :special-builtin :at 3:31..3:32
+            (word ":" :at 3:31 :plain unquoted-one-segment :facts (static-name)
+                   ^)))))))
 .test-work/ast-operations/arith.sh:2:41: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
      2 |  echo $((a[1] * -2)) $((x ** 2 << 1)) $(($n + 1))
        |                                          ^~~~~~
 note: Use the variable directly inside arithmetic, such as `$((x + 1))`.
 (compound-list :count 1
   (condition :terminator-at 1:29
-    (for "v" :variable-at 1:5 :at 1:1 :end 1:29 :in
-      (word "x=$y" :at 1:10 :text "x=y" :plain none :facts (plain-references) :escape "^^$"
-        (segment :kind unquoted "x=")
-        (segment :kind variable "y" :at 1:13 :greedy-name
+    (for "v" :variable-at 1:5 :at 1:1..1:29 :in
+      (word "x=$y" :at 1:10 :text "x=y" :facts (plain-references)
+                                   ^^$
+        (segment "x=" :kind unquoted)
+        (segment "y" :kind variable :at 1:13 :greedy-name
           (param :form name :name "y")))
-      (word "a=" :at 1:15 :plain unquoted-one-segment :facts (static-name) :escape "^^")
+      (word "a=" :at 1:15 :plain unquoted-one-segment :facts (static-name)
+             ^^)
       (compound-list :count 1
         (condition :terminator-at 1:23
-          (simple-command :name ":" :builtin :special-builtin :at 1:22 :end 1:23 :first-token-at 1:22 :full-end 1:23
-            (word ":" :at 1:22 :plain unquoted-one-segment :facts (static-name) :escape "^")))))))
+          (simple-command :name ":" :builtin :special-builtin :at 1:22..1:23
+            (word ":" :at 1:22 :plain unquoted-one-segment :facts (static-name)
+                   ^)))))))
   (condition :terminator-at 2:9
-      (word "c" :at 2:6 :plain unquoted-one-segment :facts (static-name) :escape "^")
-      (word "d" :at 2:8 :plain unquoted-one-segment :facts (static-name) :escape "^"))))
+      (word "c" :at 2:6 :plain unquoted-one-segment :facts (static-name)
+      (word "d" :at 2:8 :plain unquoted-one-segment :facts (static-name)
   (condition :terminator-at 2:7
-      (word "c" :at 2:4 :plain unquoted-one-segment :facts (static-name) :escape "^")
-      (word "d" :at 2:6 :plain unquoted-one-segment :facts (static-name) :escape "^"))))
+      (word "c" :at 2:4 :plain unquoted-one-segment :facts (static-name)
+      (word "d" :at 2:6 :plain unquoted-one-segment :facts (static-name)

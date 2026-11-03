@@ -1068,6 +1068,9 @@ public:
   fn
   position(StringView key, usize source_position) throws -> void;
   fn
+  span(StringView key, usize start_position, usize end_position) throws
+      -> void;
+  fn
   token(const Token *token) throws -> void;
   fn
   word(const Word &word, Maybe<SourceLocation> location) throws -> void;
@@ -1085,6 +1088,14 @@ public:
 private:
   fn
   append_quoted(StringView value) throws -> void;
+  fn
+  append_position(usize source_position) throws -> void;
+  pure fn
+  get_column() const wontthrow -> usize;
+  fn
+  append_marks_under(usize      column,
+                     StringView text,
+                     StringView marks) throws -> void;
   fn
   substitution_body(const WordSegment &segment) throws -> void;
   fn
