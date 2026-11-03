@@ -111,6 +111,10 @@ leaf.txt
 sub:
 deep
 inner.txt
+--- NUL-terminated entries ---
+deep|inner.txt|
+sub:#deep|inner.txt|#sub/deep:#leaf.txt|
+sub|├── deep|│   └── leaf.txt|└── inner.txt|
 --- recursive reaches an empty directory ---
 empty:
 --- one file system changes nothing on one file system ---

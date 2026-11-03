@@ -14,6 +14,7 @@ mv
 --one-file-system
 --recursive
 --tree
+--zero
 -1
 -A
 -F
@@ -83,6 +84,7 @@ ok: koshkit flags complete
 --one-file-system
 --recursive
 --tree
+--zero
 -1
 -A
 -F

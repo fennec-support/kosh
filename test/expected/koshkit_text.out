@@ -969,6 +969,12 @@ A=1
 status=1
 FOO=bar
 empty-environment-status=0
+   A   =   1  \0   B   =   2  \0
+-c:1:16: error: Koshkit `env`: The -0 flag applies only when env prints the environment.
+     1 |  koshkit env -0 true; printf "null-command-status=%s\n" "$?"
+       |                 ^~~~
+note: Remove -0 to run a command, e.g. `env FOO=1 command`.
+null-command-status=2
 --- head batches regular prefix reads ---
 3902117615 701
 --- head bounds multi-chunk prefix reads ---
@@ -1509,5 +1515,7 @@ a@c@
 --- du -d limits depth and -c adds a total ---
 sizes
 sizes/one
+sizes
+total
 sizes
 total

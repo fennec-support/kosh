@@ -51,6 +51,8 @@ else
 fi
 echo "--- tree summary ---"
 "$BIN" -c 'koshkit du --tree -s t t/c' | mask_sizes
+echo "--- tree with NUL-terminated lines ---"
+"$BIN" -c 'koshkit du -0 --tree t/c' | tr '\n\0' '#\n' | mask_sizes
 echo "--- tree operands ---"
 "$BIN" -c 'koshkit du --tree t/a' | mask_sizes
 (cd t && "$BIN" -c 'koshkit du --tree .') | mask_sizes

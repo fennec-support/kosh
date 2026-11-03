@@ -11,7 +11,13 @@
 #include "../Koshkit.hpp"
 #include "../platform/Platform.hpp"
 
-KOSHKIT_UTIL_DECL("[name ...]", "Write environment variables.");
+KOSHKIT_UTIL_DECL("[-0] [name ...]", "Write environment variables.");
+
+FLAG(PRINTENV_NULL,
+     Bool,
+     '0',
+     "null",
+     "End each output line with a NUL byte instead of a newline.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Printenv);
 
@@ -25,8 +31,10 @@ Printenv::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
+  let const terminator = FLAG_PRINTENV_NULL.is_enabled() ? '\0' : '\n';
+
   if (operands.is_empty()) {
-    print_environment(ec, cxt);
+    print_environment(ec, cxt, terminator);
 
     return 0;
   }
@@ -45,7 +53,7 @@ Printenv::execute(const ExecContext               &ec,
     }
 
     output += value->view();
-    output += '\n';
+    output += terminator;
   }
 
   ec.print_to_stdout(output);

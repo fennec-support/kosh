@@ -13,7 +13,7 @@
 #include "../Koshkit.hpp"
 #include "../util/UtilsOwnership.hpp"
 
-KOSHKIT_UTIL_DECL("[-Ggu] [-nr] [user]",
+KOSHKIT_UTIL_DECL("[-Ggu] [-nrz] [user]",
                   "The id utility can write user and group identities.");
 
 FLAG(ID_GROUPS, Bool, 'G', "groups", "Write all group identities.");
@@ -25,6 +25,11 @@ FLAG(ID_NAME,
      "Write each user or group as a name, not a number.");
 FLAG(ID_REAL, Bool, 'r', "real", "Use real identities.");
 FLAG(ID_USER, Bool, 'u', "user", "Write the user identity.");
+FLAG(ID_ZERO,
+     Bool,
+     'z',
+     "zero",
+     "End each entry with a NUL byte instead of a space or newline.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Id);
 
@@ -87,6 +92,17 @@ Id::execute(const ExecContext               &ec,
     return report_usage_error(ec, cxt, args[0].view());
   }
 
+  if (FLAG_ID_ZERO.is_enabled() && selector_count == 0) {
+    KOSHKIT_REPORT_ERROR(
+        "The -z flag requires -G, -g, or -u",
+        "The default format holds spaces, e.g. `id -Gz` lists groups");
+
+    return 2;
+  }
+
+  let const separator  = FLAG_ID_ZERO.is_enabled() ? '\0' : ' ';
+  let const terminator = FLAG_ID_ZERO.is_enabled() ? '\0' : '\n';
+
   u32 user_id =
       static_cast<u32>(FLAG_ID_REAL.is_enabled() ? os::get_real_user_id()
                                                  : os::get_effective_user_id());
@@ -123,15 +139,19 @@ Id::execute(const ExecContext               &ec,
       FLAG_ID_NAME.is_enabled() ? id_name_mode::Name : id_name_mode::Numeric;
 
   if (FLAG_ID_USER.is_enabled()) {
-    ec.print_to_stdout(
-        id_user_text(user_id, cxt.scratch_allocator(), name_mode) + "\n");
+    let output = id_user_text(user_id, cxt.scratch_allocator(), name_mode);
+
+    output += terminator;
+    ec.print_to_stdout(output);
 
     return 0;
   }
 
   if (FLAG_ID_GROUP.is_enabled()) {
-    ec.print_to_stdout(
-        id_group_text(group_id, cxt.scratch_allocator(), name_mode) + "\n");
+    let output = id_group_text(group_id, cxt.scratch_allocator(), name_mode);
+
+    output += terminator;
+    ec.print_to_stdout(output);
 
     return 0;
   }
@@ -150,24 +170,24 @@ Id::execute(const ExecContext               &ec,
 
       for (let const other_group : groups) {
         if (other_group == group_id) continue;
-        output += ' ';
+        output += separator;
         output +=
             id_group_text(other_group, cxt.scratch_allocator(), name_mode);
       }
 
-      output += '\n';
+      output += terminator;
       ec.print_to_stdout(output);
 
       return 0;
     }
 
     for (usize index = 0; index < groups.count(); index++) {
-      if (index != 0) output += ' ';
+      if (index != 0) output += separator;
       output +=
           id_group_text(groups[index], cxt.scratch_allocator(), name_mode);
     }
 
-    output += '\n';
+    output += terminator;
     ec.print_to_stdout(output);
 
     return 0;

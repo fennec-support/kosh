@@ -19,7 +19,7 @@
 #include "../base/Trace.hpp"
 #include "../util/Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-acshxT] [-d depth] [--tree] [path ...]",
+KOSHKIT_UTIL_DECL("[-0acshxT] [-d depth] [--tree] [path ...]",
                   "The du utility can print the disk usage of each path.");
 
 FLAG(DU_SUMMARY, Bool, 's', "", "Print only the total for each path.");
@@ -51,6 +51,11 @@ FLAG(DU_TOP,
      "top-largest",
      "Print a human-readable tree of only the largest entries and their "
      "ancestors in at most 36 lines.");
+FLAG(DU_NULL,
+     Bool,
+     '0',
+     "null",
+     "End each output line with a NUL byte instead of a newline.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Du);
 
@@ -142,6 +147,7 @@ struct du_tree_request
   bool                              is_human;
   usize                             row_limit;
   bool                              should_color;
+  char                              line_terminator;
 };
 
 /* the count of path components of path below target. */
@@ -867,7 +873,7 @@ render_tree(const ArrayList<du_tree_node> &nodes,
     append_report_text(output, nodes[node_index].name,
                        colors::file_entry_color(nodes[node_index].type),
                        should_color);
-    output += '\n';
+    output += request.line_terminator;
     if (output.length() >= 65536) {
       ec.print_to_stdout(output.view());
       output.clear();
@@ -1011,10 +1017,11 @@ Du::execute(const ExecContext               &ec,
 
   let const target_results = batch.execute();
 
-  let const is_top        = FLAG_DU_TOP.is_enabled();
-  let const is_tree       = is_top || FLAG_DU_TREE.is_enabled();
-  let       operand_spans = ArrayList<du_operand_span>{allocator};
-  let       output_rows   = ArrayList<du_output_row>{allocator};
+  let const is_top          = FLAG_DU_TOP.is_enabled();
+  let const is_tree         = is_top || FLAG_DU_TREE.is_enabled();
+  let const line_terminator = FLAG_DU_NULL.is_enabled() ? '\0' : '\n';
+  let       operand_spans   = ArrayList<du_operand_span>{allocator};
+  let       output_rows     = ArrayList<du_output_row>{allocator};
 
   output_rows.reserve(targets.count());
 
@@ -1111,9 +1118,10 @@ Du::execute(const ExecContext               &ec,
     }
 
     let const request =
-        du_tree_request{output_rows, operand_spans,
-                        targets,     is_top || FLAG_DU_HUMAN.is_enabled(),
-                        row_limit,   koshkit_should_color()};
+        du_tree_request{output_rows,    operand_spans,
+                        targets,        is_top || FLAG_DU_HUMAN.is_enabled(),
+                        row_limit,      koshkit_should_color(),
+                        line_terminator};
 
     if (was_interrupted || !print_tree_report(request, ec, allocator)) {
       return 130;
@@ -1203,7 +1211,7 @@ Du::execute(const ExecContext               &ec,
     output += "  ";
     append_report_text(output, row.path.view(),
                        colors::soft(colors::ansi::BOLD_CYAN), should_color);
-    output += '\n';
+    output += line_terminator;
     if (output.length() >= 65536) {
       ec.print_to_stdout(output.view());
       output.clear();

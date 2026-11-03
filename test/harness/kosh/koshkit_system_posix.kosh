@@ -14,6 +14,13 @@ koshkit date -u +%Y >/dev/null
 echo "date=$?"
 koshkit id -u >/dev/null
 echo "id=$?"
+koshkit id -zu | koshkit tr -d 0-9 | koshkit od -An -c
+id_groups=$(koshkit id -G)
+id_zero_groups=$(koshkit id -zG | koshkit tr '\0' ' ')
+[ "$id_zero_groups" = "$id_groups " ]
+echo "id-zero-groups=$?"
+koshkit id -z
+echo "id-zero-default=$?"
 LC_ALL=C koshkit locale charmap >/dev/null
 echo "locale=$?"
 LC_ALL=C koshkit locale -ck decimal_point

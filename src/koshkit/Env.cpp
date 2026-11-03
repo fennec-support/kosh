@@ -15,7 +15,7 @@
 #include "../util/Utils.hpp"
 
 KOSHKIT_UTIL_DECL(
-    "[-i] [-u name]... [NAME=value ...] [command [argument ...]]",
+    "[-0i] [-u name]... [NAME=value ...] [command [argument ...]]",
     "The env utility can run a command in a modified environment.");
 
 FLAG(ENV_IGNORE,
@@ -28,6 +28,11 @@ FLAG(ENV_UNSET,
      'u',
      "unset",
      "Remove this variable from the environment.");
+FLAG(ENV_NULL,
+     Bool,
+     '0',
+     "null",
+     "End each output line with a NUL byte instead of a newline.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(Env, {.should_stop_at_first_operand = true});
 
@@ -108,9 +113,18 @@ Env::execute(const ExecContext               &ec,
   }
 
   if (first_command >= operands.count()) {
-    print_environment(ec, cxt);
+    print_environment(ec, cxt, FLAG_ENV_NULL.is_enabled() ? '\0' : '\n');
 
     return 0;
+  }
+
+  if (FLAG_ENV_NULL.is_enabled()) {
+    KOSHKIT_REPORT_ERROR_AT(
+        operand_locations[first_command],
+        "The -0 flag applies only when env prints the environment",
+        "Remove -0 to run a command, e.g. `env FOO=1 command`");
+
+    return 2;
   }
 
   let env_args          = ArrayList<String>{cxt.scratch_allocator()};

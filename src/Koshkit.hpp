@@ -770,8 +770,9 @@ visit_ordered_sources(const ExecContext           &ec,
 }
 
 fn
-print_environment(const ExecContext &ec, EvalContext &cxt) throws
-    -> void;
+print_environment(const ExecContext &ec,
+                  EvalContext       &cxt,
+                  char               line_terminator) throws -> void;
 
 enum class input_descriptor_mode : u8
 {

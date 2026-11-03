@@ -27,6 +27,9 @@ tree-human=yes
 --- tree summary ---
 └── t
 └── t/c
+--- tree with NUL-terminated lines ---
+└─┬ t/c
+  └── small
 --- tree operands ---
 └─┬ t/a
   ├─┬ b

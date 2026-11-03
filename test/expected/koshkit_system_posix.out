@@ -10,6 +10,13 @@ cal-today-description=0
 cal-large-year=0
 date=0
 id=0
+  \0
+id-zero-groups=0
+22:1: error: Koshkit `id`: The -z flag requires -G, -g, or -u.
+    22 |  koshkit id -z
+       |  ^~~~~~~~~~~~~
+note: The default format holds spaces, e.g. `id -Gz` lists groups.
+id-zero-default=2
 locale=0
 LC_NUMERIC
 decimal_point="."

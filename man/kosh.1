@@ -2354,7 +2354,8 @@ without \f[CR]\-\-tree\f[R] or \f[CR]\-T\f[R], \f[CR]\-h\f[R]
 human\-readable sizes, \f[CR]\-x\f[R]/\f[CR]\-\-one\-file\-system\f[R]
 skip other file systems, \f[CR]\-\-tree\f[R] print a tree,
 \f[CR]\-T\f[R]/\f[CR]\-\-top\-largest\f[R] print a tree of the largest
-entries and their ancestors).
+entries and their ancestors, \f[CR]\-0\f[R]/\f[CR]\-\-null\f[R] NUL line
+ends).
 Permission errors are warnings and other read failures are errors;
 either makes the status \f[CR]1\f[R].
 T}
@@ -2363,7 +2364,9 @@ T{
 T}@T{
 Runs a command with temporary assignments, or prints the environment
 (\f[CR]\-i\f[R] start empty, \f[CR]\-u VAR\f[R] remove a variable,
-repeatable).
+repeatable, \f[CR]\-0\f[R]/\f[CR]\-\-null\f[R] NUL line ends in the
+printed environment).
+With \f[CR]\-0\f[R], a command operand returns \f[CR]2\f[R].
 Finds the command through its \f[CR]PATH\f[R], or
 \f[CR]/usr/bin:/bin\f[R] without one.
 T}
@@ -2485,13 +2488,17 @@ selected line and return \f[CR]0\f[R] when it lists one, \f[CR]\-q\f[R]
 exit \f[CR]0\f[R] at the first match and override \f[CR]\-c\f[R],
 \f[CR]\-l\f[R], and \f[CR]\-L\f[R], \f[CR]\-s\f[R] hide unreadable\-file
 messages, \f[CR]\-a\f[R]/\f[CR]\-\-text\f[R] treat a file with a NUL
-byte as text, \f[CR]\-\-color[=WHEN]\f[R] (\f[CR]auto\f[R] default,
-\f[CR]always\f[R], \f[CR]never\f[R]).
+byte as text, \f[CR]\-z\f[R]/\f[CR]\-\-null\-data\f[R] read and print
+NUL\-terminated lines, \f[CR]\-Z\f[R]/\f[CR]\-\-null\f[R] print a NUL
+byte after each filename in place of the \f[CR]:\f[R] or \f[CR]\-\f[R]
+separator or the newline of \f[CR]\-l\f[R] and \f[CR]\-L\f[R],
+\f[CR]\-\-color[=WHEN]\f[R] (\f[CR]auto\f[R] default, \f[CR]always\f[R],
+\f[CR]never\f[R]).
 Returns \f[CR]0\f[R] when a line is selected, \f[CR]1\f[R] when none is,
 and \f[CR]2\f[R] on error.
-In a file with a NUL byte and without \f[CR]\-a\f[R], matches before the
-line of the first NUL print, the next match shows a single warning, and
-later matches print nothing.
+In a file with a NUL byte and without \f[CR]\-a\f[R] or \f[CR]\-z\f[R],
+matches before the line of the first NUL print, the next match shows a
+single warning, and later matches print nothing.
 In a UTF\-8 locale a dot and a bracket expression match one character,
 and one byte otherwise.
 See the \f[CR]GREP_COLORS\f[R] bullet below the table.
@@ -2532,8 +2539,11 @@ Prints the user and group identities of the current process or of a user
 \f[CR]\-g\f[R]/\f[CR]\-\-group\f[R] only the group,
 \f[CR]\-G\f[R]/\f[CR]\-\-groups\f[R] every group,
 \f[CR]\-n\f[R]/\f[CR]\-\-name\f[R] print names,
-\f[CR]\-r\f[R]/\f[CR]\-\-real\f[R] use the real identities).
-Returns \f[CR]1\f[R] for an unknown user.
+\f[CR]\-r\f[R]/\f[CR]\-\-real\f[R] use the real identities,
+\f[CR]\-z\f[R]/\f[CR]\-\-zero\f[R] end each entry with NUL).
+Returns \f[CR]1\f[R] for an unknown user, and \f[CR]2\f[R] for
+\f[CR]\-z\f[R] without \f[CR]\-u\f[R], \f[CR]\-g\f[R], or
+\f[CR]\-G\f[R].
 T}
 T{
 \f[CR]killall\f[R], \f[CR]pkill\f[R]
@@ -2627,7 +2637,8 @@ directories themselves, \f[CR]\-n\f[R] show numeric IDs,
 by time, \f[CR]\-S\f[R] by size, \f[CR]\-r\f[R] reverse, \f[CR]\-R\f[R]
 recurse, \f[CR]\-\-tree\f[R] print a tree, \f[CR]\-L\f[R] limit depth,
 \f[CR]\-\-one\-file\-system\f[R] keep recursion and tree on one file
-system, \f[CR]\-k\f[R] accepted).
+system, \f[CR]\-\-zero\f[R] print one entry per line with NUL line ends,
+\f[CR]\-k\f[R] accepted).
 Without a terminal, prints one entry per line, and \f[CR]\-l\f[R] prints
 a symbolic link without its target.
 T}
@@ -2830,7 +2841,7 @@ T{
 \f[CR]printenv\f[R]
 T}@T{
 Prints the environment, or the given variables, with status \f[CR]1\f[R]
-if one is absent.
+if one is absent (\f[CR]\-0\f[R]/\f[CR]\-\-null\f[R] NUL line ends).
 T}
 T{
 \f[CR]ps\f[R]

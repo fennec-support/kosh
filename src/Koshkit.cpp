@@ -258,8 +258,9 @@ get_exported_spelling(const Value &value, StringView environment_name) wontthrow
 }
 
 fn
-print_environment(const ExecContext &ec, EvalContext &cxt) throws
-    -> void
+print_environment(const ExecContext &ec,
+                  EvalContext       &cxt,
+                  char               line_terminator) throws -> void
 {
   cxt.prepare_child_environment();
 
@@ -291,7 +292,7 @@ print_environment(const ExecContext &ec, EvalContext &cxt) throws
                        colors::soft(colors::ansi::BOLD_CYAN), should_color);
     output += '=';
     if (value.has_value()) output += value->view();
-    output += '\n';
+    output += line_terminator;
   }
 
   ec.print_to_stdout(output);

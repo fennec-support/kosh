@@ -354,6 +354,8 @@ echo "--- env clears and removes variables ---"
 "$BIN" -c 'export FOO=bar; koshkit env -u FOO koshkit env | koshkit grep FOO; printf "status=%s\n" "$?"'
 "$BIN" -c 'export FOO=bar; koshkit env -u FOO true; printf "FOO=%s\n" "$FOO"'
 "$BIN" -c 'koshkit env -i env; printf "empty-environment-status=%s\n" "$?"'
+"$BIN" -c 'koshkit env -i A=1 B=2 koshkit env -0 | koshkit od -An -c'
+"$BIN" -c 'koshkit env -0 true; printf "null-command-status=%s\n" "$?"'
 echo "--- head batches regular prefix reads ---"
 "$BIN" -c 'koshkit head -n 1 batch-source-*.txt | koshkit cksum'
 echo "--- head bounds multi-chunk prefix reads ---"
@@ -787,3 +789,5 @@ mkdir -p sizes/one/two
 printf x > sizes/one/two/file
 "$BIN" -c 'koshkit du -a -d 1 sizes' | sed -E 's/^ *[0-9]+ +//' | sort
 "$BIN" -c 'koshkit du -s -c sizes' | sed -E 's/^ *[0-9]+ +//' | sort
+"$BIN" -c 'koshkit du -0 -s -c sizes' | tr '\n\0' '#\n' |
+  sed -E 's/^ *[0-9]+ +//' | sort

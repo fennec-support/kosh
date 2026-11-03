@@ -75,6 +75,13 @@ echo "--- recursive ---"
 "$BIN" -c 'koshkit ls -R sub'
 echo "--- recursive bounded to one level ---"
 "$BIN" -c 'koshkit ls -R -L 1 sub'
+echo "--- NUL-terminated entries ---"
+"$BIN" -c 'koshkit ls --zero sub' | tr '\n\0' '#|'
+echo
+"$BIN" -c 'koshkit ls --zero -R sub' | tr '\n\0' '#|'
+echo
+"$BIN" -c 'koshkit ls --zero --tree sub' | tr '\n\0' '#|'
+echo
 echo "--- recursive reaches an empty directory ---"
 "$BIN" -c 'koshkit ls -R empty'
 echo "--- one file system changes nothing on one file system ---"

@@ -19,7 +19,7 @@
 #include <ctype.h>
 
 KOSHKIT_UTIL_DECL(
-    "[-aEFHLiovwrnhcqslx] [-A count] [-B count] [-C count] [-m count] "
+    "[-aEFHLiovwrnhcqslxzZ] [-A count] [-B count] [-C count] [-m count] "
     "[--color[=when]] [--include=glob] [--exclude=glob] [--one-file-system] "
     "[-e pattern] [-f file] [pattern] [file ...]",
     "The grep utility can print the lines of each file that match a pattern.");
@@ -122,6 +122,16 @@ FLAG(GREP_LIST_MISSING,
      'L',
      "files-without-match",
      "Print the filename of each input with no selected line.");
+FLAG(GREP_NULL_DATA,
+     Bool,
+     'z',
+     "null-data",
+     "End input and output lines with a NUL byte instead of a newline.");
+FLAG(GREP_NULL,
+     Bool,
+     'Z',
+     "null",
+     "Print a NUL byte after each filename instead of a separator.");
 FLAG(GREP_MAX_COUNT,
      String,
      'm',
@@ -762,6 +772,8 @@ struct grep_options
   bool                should_read_binary_as_text{false};
   bool                should_color{false};
   bool                should_highlight{false};
+  bool                should_end_names_with_nul{false};
+  char                line_terminator{'\n'};
 };
 
 static fn
@@ -1543,6 +1555,13 @@ public:
       m_is_literal_hit_sufficient = m_matchers[0].is_literal_hit_sufficient() &&
                                     !m_options.should_match_word;
     }
+
+    if (m_candidate_literal.find_character(m_options.line_terminator)
+            .has_value())
+    {
+      m_candidate_literal         = {};
+      m_is_literal_hit_sufficient = false;
+    }
   }
 
   GrepSearch(const GrepSearch &) = delete;
@@ -1839,7 +1858,7 @@ private:
   {
     if (m_should_print_names) {
       append_source_name(source);
-      append_separator(separator);
+      append_name_separator(separator);
     }
 
     if (m_options.should_print_line_numbers) {
@@ -1885,7 +1904,7 @@ private:
       else
         m_output += span;
 
-      m_output += '\n';
+      m_output += m_options.line_terminator;
       position = end;
 
       if (m_options.is_whole_line) break;
@@ -1924,7 +1943,7 @@ private:
 
       append_line_prefix(source, line.number, '-');
       m_output += line.text.view();
-      m_output += '\n';
+      m_output += m_options.line_terminator;
     }
 
     m_before_line_count         = 0;
@@ -1951,7 +1970,7 @@ private:
       m_after_remaining_count--;
       append_line_prefix(source, number, '-');
       m_output += value;
-      m_output += '\n';
+      m_output += m_options.line_terminator;
       flush_output_if_full();
 
       return;
@@ -2067,6 +2086,24 @@ private:
   }
 
   fn
+  append_name_separator(char separator = ':') throws -> void
+  {
+    if (m_options.should_end_names_with_nul) {
+      m_output += '\0';
+
+      return;
+    }
+
+    append_separator(separator);
+  }
+
+  pure fn
+  get_name_terminator() const wontthrow -> char
+  {
+    return m_options.should_end_names_with_nul ? '\0' : '\n';
+  }
+
+  fn
   append_line_number(usize number) throws -> void
   {
     char      line_number[20];
@@ -2177,7 +2214,7 @@ private:
           append_highlighted_text(value);
         else
           append_sgr_text(get_selected_line_sgr(), value);
-        m_output += '\n';
+        m_output += m_options.line_terminator;
         flush_output_if_full();
         break;
 
@@ -2188,7 +2225,7 @@ private:
             !m_options.should_list_missing)
         {
           append_source_name(source);
-          m_output += '\n';
+          m_output += get_name_terminator();
           flush_output_if_full();
         }
 
@@ -2213,7 +2250,7 @@ private:
 
     if (m_should_print_names) {
       append_source_name(source);
-      append_separator();
+      append_name_separator();
     }
 
     m_output += utils::uint_to_text_into(m_source_match_counts[source_index],
@@ -2248,7 +2285,7 @@ private:
       usize newline_count = 0;
 
       for (usize index = 0; index < lines.length; index++)
-        newline_count += lines[index] == '\n' ? 1 : 0;
+        newline_count += lines[index] == m_options.line_terminator ? 1 : 0;
 
       m_source_line_numbers[source_index] += newline_count;
 
@@ -2258,8 +2295,8 @@ private:
     usize position = 0;
 
     while (position < lines.length) {
-      let const line_end =
-          position + *lines.substring(position).find_character('\n');
+      let const line_end = position + *lines.substring(position).find_character(
+                                          m_options.line_terminator);
 
       process_line(source_index, source,
                    lines.substring_of_length(position, line_end - position),
@@ -2276,17 +2313,18 @@ private:
   scan_chunk_candidates(const SourceBatchReader::Chunk &chunk,
                         StringView                      source) throws -> usize
   {
+    let const terminator   = m_options.line_terminator;
     let const content      = chunk.content;
-    let const last_newline = content.find_last_character('\n');
+    let const last_newline = content.find_last_character(terminator);
 
     if (!last_newline.has_value()) return 0;
 
-    /* at this point: content contains a newline, so the newline searches
-       below succeed. */
+    /* at this point: content contains a terminator, so the terminator
+       searches below succeed. */
     usize position = 0;
 
     if (!m_line.is_empty()) {
-      let const first_newline = *content.find_character('\n');
+      let const first_newline = *content.find_character(terminator);
 
       m_line.append(content.substring_of_length(0, first_newline));
       finish_pending_line(chunk.source_index, source);
@@ -2307,7 +2345,7 @@ private:
 
       let const hit_line_offset =
           content.substring_of_length(position, *hit - position)
-              .find_last_character('\n');
+              .find_last_character(terminator);
       let const candidate_start = hit_line_offset.has_value()
                                       ? position + *hit_line_offset + 1
                                       : position;
@@ -2317,7 +2355,7 @@ private:
           content.substring_of_length(position, candidate_start - position));
 
       let const candidate_end =
-          *hit + *content.substring(*hit).find_character('\n');
+          *hit + *content.substring(*hit).find_character(terminator);
       let const candidate = content.substring_of_length(
           candidate_start, candidate_end - candidate_start);
 
@@ -2338,8 +2376,9 @@ private:
               usize                           position) throws -> void
   {
     while (position < chunk.content.length) {
-      let const remaining          = chunk.content.substring(position);
-      let const newline_offset     = remaining.find_character('\n');
+      let const remaining = chunk.content.substring(position);
+      let const newline_offset =
+          remaining.find_character(m_options.line_terminator);
       let const delimiter_position = newline_offset.has_value()
                                          ? position + *newline_offset
                                          : chunk.content.length;
@@ -2384,6 +2423,7 @@ private:
        as text, and the rest of the source counts as binary. */
     if (m_options.output_mode == grep_output_mode::Lines &&
         !m_options.should_read_binary_as_text &&
+        m_options.line_terminator != '\0' &&
         m_source_binary_states[chunk.source_index] == BinaryState::Text &&
         chunk.content.length > 0)
     {
@@ -2458,7 +2498,7 @@ private:
     {
       m_has_listed_missing = true;
       append_source_name(source);
-      m_output += '\n';
+      m_output += get_name_terminator();
       flush_output_if_full();
     }
   }
@@ -2602,7 +2642,9 @@ Grep::execute(const ExecContext               &ec,
   options.is_fixed      = FLAG_GREP_FIXED.is_enabled();
   options.is_whole_line = FLAG_GREP_LINE_REGEXP.is_enabled();
   options.should_read_binary_as_text = FLAG_GREP_TEXT.is_enabled();
-  options.should_color               = resolve_koshkit_color_flag(
+  options.should_end_names_with_nul  = FLAG_GREP_NULL.is_enabled();
+  options.line_terminator = FLAG_GREP_NULL_DATA.is_enabled() ? '\0' : '\n';
+  options.should_color    = resolve_koshkit_color_flag(
       FLAG_GREP_COLOR.is_enabled(), FLAG_GREP_COLOR.has_value(),
       FLAG_GREP_COLOR.value());
   options.should_highlight = options.should_color && !options.should_invert &&

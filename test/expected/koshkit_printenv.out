@@ -5,5 +5,9 @@ status=1
 --- complete environment ---
 KOSH_PRINTENV_A=one
 status=0
+--- NUL-terminated values ---
+   o   n   e  \0   o   n   e  \0
+   K   O   S   H   _   P   R   I   N   T   E   N   V   _   A   =
+   o   n   e  \0
 --- missing value ---
 status=1

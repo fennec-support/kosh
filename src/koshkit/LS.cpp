@@ -22,7 +22,7 @@
 #include "../util/UtilsOwnership.hpp"
 
 KOSHKIT_UTIL_DECL("[-aA1dgFhklnoprRSt] [-L level] [--tree] "
-                  "[--one-file-system] [path ...]",
+                  "[--one-file-system] [--zero] [path ...]",
                   "The ls utility can list the entries in each directory.");
 
 FLAG(LS_ALL, Bool, 'a', "", "List entries whose name starts with a dot.");
@@ -93,6 +93,11 @@ FLAG(LS_ONE_FILE_SYSTEM,
      "one-file-system",
      "Do not descend into directories on other file systems with -R and "
      "--tree.");
+FLAG(LS_ZERO,
+     Bool,
+     '\0',
+     "zero",
+     "End each output line with a NUL byte and list one entry per line.");
 
 REGISTER_KOSHKIT_UTIL_FLAGS(LS);
 
@@ -128,6 +133,7 @@ struct listing_options
   bool                           is_listing_dot_and_dotdot{false};
   bool                           should_load_full_status{false};
   bool                           should_load_type{false};
+  char                           line_terminator{'\n'};
 };
 
 struct listing_entry
@@ -539,7 +545,7 @@ render_long_entries(const ArrayList<long_entry> &entries,
     output += entry.time.view();
     output += ' ';
     output += entry.name.view();
-    output += '\n';
+    output += options.line_terminator;
   }
 }
 
@@ -580,7 +586,7 @@ render_columns(const ArrayList<listing_entry> &entries,
   if (!options.terminal_dimensions.has_value()) {
     for (let const &entry : entries) {
       append_decorated_name(output, entry, options);
-      output += '\n';
+      output += options.line_terminator;
     }
 
     return;
@@ -706,7 +712,7 @@ render_entries(const ArrayList<listing_entry> &entries,
 
   if (should_print_total) {
     output += long_total_in_1k_blocks(rows, allocator);
-    output += '\n';
+    output += options.line_terminator;
   }
 
   render_long_entries(rows, options, output);
@@ -763,7 +769,7 @@ render_tree_level(StringView             directory,
     output += prefix.view();
     output += connector.branch;
     append_decorated_name(output, entry, options);
-    output += '\n';
+    output += options.line_terminator;
 
     let const is_descending =
         entry.type == colors::file_entry_type::Directory &&
@@ -917,7 +923,9 @@ LS::execute(const ExecContext               &ec,
   options.is_long = FLAG_LS_LONG.is_enabled() || FLAG_LS_NUMERIC.is_enabled() ||
                     FLAG_LS_NO_GROUP.is_enabled() ||
                     FLAG_LS_NO_OWNER.is_enabled();
-  options.is_one_per_line = FLAG_LS_ONE.is_enabled();
+  options.is_one_per_line =
+      FLAG_LS_ONE.is_enabled() || FLAG_LS_ZERO.is_enabled();
+  options.line_terminator = FLAG_LS_ZERO.is_enabled() ? '\0' : '\n';
   options.is_recursive    = FLAG_LS_RECURSIVE.is_enabled();
   options.is_tree         = FLAG_LS_TREE.is_enabled();
   options.is_reversed     = FLAG_LS_REVERSE.is_enabled();
@@ -1092,7 +1100,7 @@ LS::execute(const ExecContext               &ec,
     if (run.has_printed_block) run.output += '\n';
     run.has_printed_block = true;
     run.output += target;
-    run.output += '\n';
+    run.output += options.line_terminator;
 
     let prefix = String{allocator};
 
