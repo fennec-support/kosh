@@ -176,12 +176,11 @@ link_file(const ExecContext &ec,
     };
   }
 
-  let const is_destination_present =
-      destination_path.exists() || destination_path.is_symbolic_link();
+  let const should_remove_destination =
+      options.should_force &&
+      (destination_path.exists() || destination_path.is_symbolic_link());
 
-  if (options.should_force && is_destination_present &&
-      !os::remove_file(destination))
-  {
+  if (should_remove_destination && !os::remove_file(destination)) {
     throw Error{
         "Unable to remove '" + String{allocator, destination}
           +
@@ -327,7 +326,13 @@ copy_path(const ExecContext                &ec,
 
   let const was_destination_present = destination_path.exists();
 
-  if (was_destination_present && source_path.is_same_file_as(destination_path))
+  let const is_same_file =
+      was_destination_present && source_path.is_same_file_as(destination_path);
+
+  if (is_same_file && options.link_mode == cp_link_mode::Hard) return true;
+
+  if (is_same_file && (options.link_mode != cp_link_mode::Symbolic ||
+                       !destination_path.is_symbolic_link()))
   {
     throw Error{
         "'" + String{allocator, source     }
@@ -697,7 +702,9 @@ Cp::execute(const ExecContext               &ec,
                                  : cp_recursive_mode::SinglePath;
 
   usize           symlink_position = 0;
-  cp_symlink_mode symlink_mode     = cp_symlink_mode::Preserve;
+  cp_symlink_mode symlink_mode     = FLAG_CP_LINK.is_enabled()
+                                         ? cp_symlink_mode::FollowAll
+                                         : cp_symlink_mode::Preserve;
 
   if (FLAG_CP_FOLLOW_ROOT.is_enabled()) {
     symlink_position = FLAG_CP_FOLLOW_ROOT.position();
@@ -725,13 +732,6 @@ Cp::execute(const ExecContext               &ec,
       !FLAG_CP_FOLLOW_NONE.is_enabled())
   {
     symlink_mode = cp_symlink_mode::FollowRoot;
-  }
-
-  if (FLAG_CP_LINK.is_enabled() && !FLAG_CP_FOLLOW_ROOT.is_enabled() &&
-      !FLAG_CP_FOLLOW_ALL.is_enabled() && !FLAG_CP_FOLLOW_NONE.is_enabled() &&
-      !is_archive)
-  {
-    symlink_mode = cp_symlink_mode::FollowAll;
   }
 
   let options = cp_options{FLAG_CP_FORCE.is_enabled(),

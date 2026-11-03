@@ -42,6 +42,14 @@ echo "who-state=$?"
 pwdx_output=$(koshkit pwdx "$$")
 [ "$pwdx_output" = "$$: $(pwd -P)" ]
 echo "pwdx-self=$?"
+pwdx_output=$(koshkit pwdx "/proc/$$")
+[ "$pwdx_output" = "/proc/$$: $(pwd -P)" ]
+echo "pwdx-proc=$?"
+true &
+pwdx_reaped=$!
+wait "$pwdx_reaped"
+koshkit pwdx "$pwdx_reaped" 2>/dev/null
+echo "pwdx-reaped=$?"
 koshkit pwdx abc 2>/dev/null
 echo "pwdx-invalid=$?"
 koshkit pwdx 2>/dev/null

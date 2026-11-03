@@ -22,6 +22,11 @@ both=2
 cp-link-hard=hard
 cp-link-tree-copy/file=hard
 cp-link-sub/forced=hard
+confirmed=hard
+relink=0
+refresh-soft=0
+soft-exists=1
+soft-self=1
 kept=old soft=cp-link-old sub-soft=missing both=missing
 follow=1
 cp-link-follow/inner=target

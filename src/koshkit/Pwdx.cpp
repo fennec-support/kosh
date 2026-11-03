@@ -30,10 +30,7 @@ pwdx_process_id(StringView operand) wontthrow -> Maybe<i64>
   if (digits.starts_with(PROC_PREFIX))
     digits = digits.substring(PROC_PREFIX.length);
 
-  if (digits.is_empty()) return None;
-
-  for (usize i = 0; i < digits.length; i++)
-    if (digits[i] < '0' || digits[i] > '9') return None;
+  if (!digits.is_all_decimal_digits()) return None;
 
   let const parsed = digits.to<i64>();
 
@@ -50,12 +47,7 @@ Pwdx::execute(const ExecContext               &ec,
 {
   KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
-  if (operands.is_empty()) {
-    report_soft_koshkit_error(ec, cxt, "Missing process id",
-                              "Pass a process id, as in `pwdx $$`");
-
-    return 2;
-  }
+  if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 
   if (!os::has_process_open_file_listing()) {
     report_soft_koshkit_error(
@@ -102,11 +94,13 @@ Pwdx::execute(const ExecContext               &ec,
       continue;
     }
 
-    ec.print_to_stdout(operand.view());
-    ec.print_to_stdout(": ");
-    ec.print_to_stdout(working_directory->path.view());
-    if (working_directory->is_deleted) ec.print_to_stdout(" (deleted)");
-    ec.print_to_stdout("\n");
+    let line = String{cxt.scratch_allocator(), operand.view()};
+
+    line += ": ";
+    line += working_directory->path.view();
+    if (working_directory->is_deleted) line += " (deleted)";
+    line.push('\n');
+    ec.print_to_stdout(line.view());
   }
 
   return status;

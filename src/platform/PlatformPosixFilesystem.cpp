@@ -1050,7 +1050,8 @@ create_hard_link(StringView target, StringView link_path) wontthrow -> bool
     const String target_string{heap_allocator(), target};
     const String link_string{heap_allocator(), link_path};
 
-    did_succeed = ::link(target_string.c_str(), link_string.c_str()) == 0;
+    did_succeed = ::linkat(AT_FDCWD, target_string.c_str(), AT_FDCWD,
+                           link_string.c_str(), 0) == 0;
     saved_errno = errno;
   }
 

@@ -28,6 +28,14 @@ for cp_link_path in cp-link-hard cp-link-tree-copy/file cp-link-sub/forced; do
     echo "$cp_link_path=not-hard"
   fi
 done
+printf old > cp-link-confirmed
+printf 'y\n' | "$BIN" -c 'koshkit cp -li cp-link-tree/file cp-link-confirmed' 2>/dev/null
+if [ cp-link-confirmed -ef cp-link-tree/file ]; then
+  echo "confirmed=hard"
+else
+  echo "confirmed=not-hard"
+fi
+"$BIN" -c 'koshkit cp -l cp-link-tree/file cp-link-hard; printf "relink=%s\n" "$?"; koshkit cp -sf cp-link-old cp-link-soft; printf "refresh-soft=%s\n" "$?"; koshkit cp -s cp-link-old cp-link-soft 2>/dev/null; printf "soft-exists=%s\n" "$?"; koshkit cp -sf "$PWD/cp-link-old" cp-link-old 2>/dev/null; printf "soft-self=%s\n" "$?"'
 printf 'kept=%s soft=%s sub-soft=%s both=%s\n' "$(cat cp-link-old)" "$(readlink cp-link-soft)" "$([ -e cp-link-sub/soft ] && echo present || echo missing)" "$([ -e cp-link-both ] && echo present || echo missing)"
 mkdir cp-link-deref
 printf two > cp-link-deref/file

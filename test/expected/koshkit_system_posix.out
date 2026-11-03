@@ -30,5 +30,7 @@ who-quick=0
 who-current=1
 who-state=0
 pwdx-self=0
+pwdx-proc=0
+pwdx-reaped=1
 pwdx-invalid=1
 pwdx-missing=2

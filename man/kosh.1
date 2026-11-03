@@ -1862,7 +1862,7 @@ failed one, and without a backup nothing is written.
 only when every line ends in CRLF; a file that mixes endings keeps each
 carriage return as text.
 .SS Bundled Koshkit utilities
-Koshka bundles 108 utilities plus 4 aliases (\f[CR]egrep\f[R] and
+Koshka bundles 109 utilities plus 4 aliases (\f[CR]egrep\f[R] and
 \f[CR]fgrep\f[R] for \f[CR]grep\f[R]; \f[CR]vi\f[R] and \f[CR]emacs\f[R]
 for \f[CR]slurp \-V\f[R] and \f[CR]slurp \-e\f[R]).
 .IP \[bu] 2
@@ -2264,8 +2264,6 @@ Without \f[CR]\-H\f[R], \f[CR]\-L\f[R], \f[CR]\-P\f[R], or
 file it resolves to, and a dangling link fails.
 With \f[CR]\-P\f[R] or \f[CR]\-a\f[R], \f[CR]\-l\f[R] hard links each
 symbolic link itself.
-A hard link to a source link that is followed points to the file the
-link resolves to.
 A relative source with \f[CR]\-s\f[R] is accepted only when the
 destination is in the current directory.
 An existing destination makes the link fail with status \f[CR]1\f[R]
@@ -2453,12 +2451,14 @@ T}
 T{
 \f[CR]pwdx\f[R]
 T}@T{
-Prints \f[CR]PID: DIRECTORY\f[R] with the working directory of each
-process given by a process id or a \f[CR]/proc/PID\f[R] path, and
-appends \f[CR] (deleted)\f[R] when the directory was removed.
+Prints each operand, a colon, and the working directory of the process
+that the operand identifies by a process id or a \f[CR]/proc/PID\f[R]
+path, and appends \f[CR] (deleted)\f[R] when the directory was removed.
 The status is 1 when a process does not exist or its directory cannot be
-read.
-Windows has no \f[CR]pwdx\f[R].
+read, and 2 when no operand is given.
+On Windows and on systems other than Linux and macOS, \f[CR]pwdx\f[R]
+reports that working directories are unavailable and exits with status
+1.
 T}
 T{
 \f[CR]getconf\f[R]
