@@ -31,7 +31,8 @@ echo "clustered-errexit-rc=$?"
 echo "missing-command-rc=$?"
 "$BIN" --command='echo equals-form'
 "$BIN" --command='echo "equals-$0-$1"' name a
-"$BIN" -c 'echo mixed-one' --command='echo mixed-two' --command 'echo mixed-three'
+"$BIN" --command='echo mixed-one' -c 'echo mixed-two' -c 'echo mixed-three'
+"$BIN" -c 'echo "zero=$0"' --command='echo injected'
 "$BIN" --command=
 echo "empty-equals-rc=$?"
 "$BIN" -N -c 'echo trailer'

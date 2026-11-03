@@ -3300,10 +3300,11 @@ The first operand after the option names is the command string.
 \f[CR]\-\-command=command\f[R] attaches it.
 A lone \f[CR]\-\f[R] or \f[CR]\-\-\f[R] before the command string ends
 option parsing without becoming an operand.
-When the word right after a command string is exactly \f[CR]\-c\f[R],
-\f[CR]\-\-command\f[R], or \f[CR]\-\-command=command\f[R], it adds
-another command string, and the shell runs the strings in order in one
-shell environment.
+When the word right after a command string is exactly \f[CR]\-c\f[R], it
+adds another command string, and the shell runs the strings in order in
+one shell environment.
+A \f[CR]\-\-command\f[R] word in that position becomes \f[CR]$0\f[R], so
+an untrusted operand such as a file name cannot add a string.
 The exit status is the status of the last string that runs, and an
 \f[CR]exit\f[R], a rejected string, or \f[CR]errexit\f[R] skips the
 strings after it.

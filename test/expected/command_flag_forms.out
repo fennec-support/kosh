@@ -26,6 +26,7 @@ equals-name-a
 mixed-one
 mixed-two
 mixed-three
+zero=--command=echo injected
 empty-equals-rc=0
 trailer
 -c:1:1: warning: Exit code (0)

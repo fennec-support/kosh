@@ -96,7 +96,7 @@ printf 'bash-order=%s errors=%s summaries=%s files=%s,%s rc=%s\n' \
   "$second_filename_count" "$rc"
 
 output=$("$BIN" --mood bash --lint --show-memory --no-traces \
-  -c 'echo "$LINT_COMMAND_ONE"' --command='echo "$LINT_COMMAND_TWO"' 2>&1)
+  -c 'echo "$LINT_COMMAND_ONE"' -c 'echo "$LINT_COMMAND_TWO"' 2>&1)
 last_line=$(printf '%s\n' "$output" | tail -n 1)
 printf 'memory-summary-last=%s\n' \
   "$(test "$last_line" = 'Encountered 2 warnings.' && printf yes)"

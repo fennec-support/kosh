@@ -740,25 +740,15 @@ argument_end_position(
          shell_quoted_arg_length(StringView{argv[argument_index]});
 }
 
-/* e.g. for the flag -c, --command: "-c", "--command", and "--command=x" are
-   its words, and "-ec" and "--comm" are not. */
+/* e.g. for the flag -c: "-c" is its word, and "-ec", "--command", and
+   "--command=x" are not. a long form after a value is left to the operands,
+   so one untrusted operand such as a file name cannot start a command. */
 static pure fn
-is_exact_flag_word(const Flag &flag, StringView argument) wontthrow -> bool
+is_exact_short_flag_word(const Flag &flag, StringView argument)
+    wontthrow -> bool
 {
-  if (flag.short_name() != '\0' && argument.length == 2 && argument[0] == '-' &&
-      argument[1] == flag.short_name())
-  {
-    return true;
-  }
-
-  if (flag.long_name().is_empty() || !argument.starts_with("--")) return false;
-
-  let const name = argument.substring(2);
-
-  if (!name.starts_with(flag.long_name())) return false;
-
-  return name.length == flag.long_name().length ||
-         name[flag.long_name().length] == '=';
+  return flag.short_name() != '\0' && argument.length == 2 &&
+         argument[0] == '-' && argument[1] == flag.short_name();
 }
 
 static fn
@@ -906,8 +896,8 @@ parse_flags(const FlagList                  &flags,
     }
 
     if (continuing_operand_flag != nullptr) {
-      let const was_flag_repeated =
-          is_exact_flag_word(*continuing_operand_flag, StringView{argv[i]});
+      let const was_flag_repeated = is_exact_short_flag_word(
+          *continuing_operand_flag, StringView{argv[i]});
 
       continuing_operand_flag = nullptr;
       if (!was_flag_repeated) {
