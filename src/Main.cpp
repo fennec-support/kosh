@@ -1049,10 +1049,11 @@ select_input_source(const command_line      &line,
                            "analyzes no file");
     }
 
-    if (FLAG_INTERACTIVE.is_enabled() && os::is_stdin_a_tty())
+    if (FLAG_INTERACTIVE.is_enabled() && os::is_stdin_a_tty()) {
       plan.should_use_line_editor = true;
-    else
+    } else {
       plan.should_read_stdin = true;
+    }
   } else if (FLAG_LINT.is_enabled() &&
              (FLAG_COMMAND.is_enabled() || !operands.is_empty()))
   {
@@ -1825,7 +1826,8 @@ run_startup(EvalContext               &context,
             const command_line        &line,
             const inherited_shell     &inherited,
             bool                       has_elevated_identity,
-            bool                       is_interactive) throws -> void
+            bool                       is_interactive,
+            bool                       should_use_line_editor) throws -> void
 {
   let const is_fresh_evaluator = !inherited.bootstrap.payload.is_empty();
 
@@ -1851,7 +1853,7 @@ run_startup(EvalContext               &context,
   {
     if (init_moods.is_empty()) init_moods.push(identity.session_mood);
     source_init_moods(context, init_moods, identity.is_login_shell,
-                      is_interactive);
+                      is_interactive, should_use_line_editor);
   }
 }
 
@@ -2873,7 +2875,8 @@ kosh_main(int argc, char **argv) -> int
   }
 
   koshka::run_startup(context, init_moods, identity, line, inherited,
-                      has_elevated_identity, input.is_interactive);
+                      has_elevated_identity, input.is_interactive,
+                      input.should_use_line_editor);
   if (koshka::Maybe<int> startup_status = koshka::finish_startup(
           context, identity, inherited, input.is_interactive);
       startup_status.has_value())

@@ -427,7 +427,6 @@ fn
 FlagOperandValue::set(StringView value) throws -> void
 {
   m_value      = String{m_value.allocator(), value};
-  m_has_value  = true;
   m_is_enabled = true;
 }
 
@@ -435,12 +434,6 @@ pure fn
 FlagOperandValue::is_enabled() const wontthrow -> bool
 {
   return m_is_enabled;
-}
-
-pure fn
-FlagOperandValue::has_value() const wontthrow -> bool
-{
-  return m_has_value;
 }
 
 pure fn
@@ -456,7 +449,6 @@ FlagOperandValue::reset() throws -> void
   m_value_location = {};
   m_value.clear();
   m_is_enabled = false;
-  m_has_value  = false;
 }
 
 pure fn
@@ -1256,8 +1248,9 @@ public:
   VersionFlagList(const FlagList &flags, bool should_accept_version)
       : m_flags(flags)
   {
-    if (should_accept_version && find_long_flag(flags, "version") == nullptr)
+    if (should_accept_version && find_long_flag(flags, "version") == nullptr) {
       m_flags.push(&m_version);
+    }
   }
 
   VersionFlagList(const VersionFlagList &) = delete;

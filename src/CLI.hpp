@@ -471,8 +471,6 @@ public:
   pure fn
   is_enabled() const wontthrow -> bool;
   pure fn
-  has_value() const wontthrow -> bool;
-  pure fn
   value() const wontthrow -> StringView;
 
   fn
@@ -480,7 +478,6 @@ public:
 
 private:
   bool   m_is_enabled{false};
-  bool   m_has_value{false};
   String m_value{heap_allocator()};
 };
 

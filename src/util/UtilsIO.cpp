@@ -502,7 +502,7 @@ read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
   /* packed-refs is streamed, so a large file costs no memory beyond one
      line. a line past the line limit cannot name a ref and is skipped. */
   static constexpr usize LINE_MAX_BYTE_COUNT = 8192;
-  static constexpr usize SCAN_MAX_BYTE_COUNT = usize{256} << 20;
+  static constexpr usize SCAN_MAX_BYTE_COUNT = usize{64} << 20;
 
   let const do_match_line =
       [&](StringView line) throws -> Maybe<String> {
@@ -510,7 +510,9 @@ read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
       line = line.substring_of_length(0, line.length - 1);
     }
 
-    if (line.is_empty() || line[0] == '#' || line[0] == '^') return None;
+    if (line.is_empty() || line[0] == '#' || line[0] == '^') {
+      return None;
+    }
 
     let const separator = line.find_character(' ');
 
@@ -526,35 +528,46 @@ read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
   bool  is_line_too_long   = false;
   usize scanned_byte_count = 0;
 
+  let const do_finish_line = [&]() throws -> Maybe<String> {
+    let matched =
+        is_line_too_long ? Maybe<String>{None} : do_match_line(line.view());
+
+    line.clear();
+    is_line_too_long = false;
+
+    return matched;
+  };
+
   while (scanned_byte_count < SCAN_MAX_BYTE_COUNT) {
     let const read_byte_count = os::read_fd(*packed, buffer, sizeof(buffer));
 
     if (!read_byte_count.has_value()) break;
     if (*read_byte_count == 0) {
-      if (!is_line_too_long) {
-        if (let matched = do_match_line(line.view())) return matched.take();
-      }
+      if (let matched = do_finish_line()) return matched.take();
 
       break;
     }
 
     scanned_byte_count += *read_byte_count;
 
-    for (usize i = 0; i < *read_byte_count; i++) {
-      if (buffer[i] != '\n') {
-        if (line.count() < LINE_MAX_BYTE_COUNT)
-          line.push(buffer[i]);
-        else
-          is_line_too_long = true;
-        continue;
+    let const chunk = StringView{buffer, *read_byte_count};
+    usize     start = 0;
+
+    while (start < chunk.length) {
+      let const newline = chunk.substring(start).find_character('\n');
+      let const end     = newline.has_value() ? start + *newline : chunk.length;
+      let const piece   = chunk.substring_of_length(start, end - start);
+
+      if (line.count() + piece.length <= LINE_MAX_BYTE_COUNT) {
+        line.append(piece);
+      } else {
+        is_line_too_long = true;
       }
 
-      if (!is_line_too_long) {
-        if (let matched = do_match_line(line.view())) return matched.take();
-      }
+      if (!newline.has_value()) break;
+      if (let matched = do_finish_line()) return matched.take();
 
-      line.clear();
-      is_line_too_long = false;
+      start = end + 1;
     }
   }
 

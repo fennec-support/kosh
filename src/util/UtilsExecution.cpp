@@ -1025,7 +1025,9 @@ quit(i32 code, farewell_policy farewell) throws -> void
   const u8 actual_code = static_cast<u8>(code);
 
   if (!os::is_child_process()) {
-    if (toiletline::is_active()) {
+    let const was_line_editor_active = toiletline::is_active();
+
+    if (was_line_editor_active) {
       try {
         let const history_size_limit =
             QUIT_CONTEXT != nullptr
@@ -1039,9 +1041,7 @@ quit(i32 code, farewell_policy farewell) throws -> void
       }
     }
 
-    if (should_goodbye && QUIT_CONTEXT != nullptr &&
-        QUIT_CONTEXT->execution_store().shell_is_interactive())
-    {
+    if (should_goodbye && was_line_editor_active && QUIT_CONTEXT != nullptr) {
       let const farewell = QUIT_CONTEXT->get_variable_value("KOSH_FAREWELL");
 
       if (farewell.has_value() &&

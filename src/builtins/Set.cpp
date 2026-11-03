@@ -13,6 +13,7 @@
 #include "../Eval.hpp"
 #include "../Koshconf.hpp"
 #include "../Options.hpp"
+#include "../Toiletline.hpp"
 #include "../base/StaticStringMap.hpp"
 #include "../base/Trace.hpp"
 #include "../platform/Platform.hpp"
@@ -565,7 +566,8 @@ Set::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       let const previous_mood = cxt.runtime_state().get_mood();
 
       source_init_moods(cxt, moods, cxt.startup_store().is_login_shell(),
-                        cxt.execution_store().shell_is_interactive());
+                        cxt.execution_store().shell_is_interactive(),
+                        toiletline::is_active());
       /* source_init_moods() changes the mood while it sources startup files,
          so the mood saved before the call is restored here. */
       cxt.select_mood(previous_mood);

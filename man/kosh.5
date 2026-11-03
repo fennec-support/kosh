@@ -1180,9 +1180,11 @@ T}@T{
 T}@T{
 T}@T{
 Boolean (\f[CR]on\f[R] or \f[CR]off\f[R]), default \f[CR]off\f[R].
-With \f[CR]on\f[R], \f[CR]cd\f[R] in an interactive shell changes to the
-best \f[CR]z\f[R] match when its operand is not a reachable directory.
-A script keeps the failure.
+With \f[CR]on\f[R], \f[CR]cd\f[R] in an interactive shell that reads
+commands with the line editor changes to the best \f[CR]z\f[R] match
+when its operand is not a reachable directory.
+A script, \f[CR]\-c\f[R] string, or \f[CR]\-i\f[R] run keeps the
+failure.
 T}
 .TE
 .SS Shared Bash and POSIX settings

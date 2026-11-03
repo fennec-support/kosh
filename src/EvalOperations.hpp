@@ -55,6 +55,7 @@ fn
 source_init_moods(EvalContext                 &context,
                   const ArrayList<mimic_mood> &moods,
                   bool                         is_login_shell,
-                  bool                         should_be_interactive) throws -> void;
+                  bool                         should_be_interactive,
+                  bool                         should_use_line_editor) throws -> void;
 
 } /* namespace koshka */

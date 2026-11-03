@@ -2626,7 +2626,8 @@ fn
 source_init_moods(EvalContext                 &context,
                   const ArrayList<mimic_mood> &moods,
                   bool                         is_login_shell,
-                  bool                         should_be_interactive) throws -> void
+                  bool                         should_be_interactive,
+                  bool                         should_use_line_editor) throws -> void
 {
   bool did_source_bash_rc  = false;
   bool did_source_bash_env = false;
@@ -2726,7 +2727,7 @@ source_init_moods(EvalContext                 &context,
     }
   }
 
-  if (did_source_bash_rc && os::is_stdin_a_tty() &&
+  if (did_source_bash_rc && should_use_line_editor &&
       context.runtime_state().option_is_enabled(shell_option_id::TabCompletion))
   {
     LOG(Info, "bootstrapping the bash programmable completion");

@@ -1137,7 +1137,7 @@ constexpr option_descriptor OPTION_REGISTRY[] = {
              {},
              {},
              {},
-             "Let cd in an interactive shell change to the best z match "
+             "Let cd at the line editor prompt change to the best z match "
              "when its operand is not a reachable directory."},
          false),
 

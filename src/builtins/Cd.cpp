@@ -9,6 +9,7 @@
 #include "../CLI.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
+#include "../Toiletline.hpp"
 #include "../base/Path.hpp"
 #include "../base/Trace.hpp"
 #include "../platform/Platform.hpp"
@@ -389,8 +390,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     }
   }
 
-  if (!is_to_previous && operand_count > 0 &&
-      cxt.execution_store().shell_is_interactive() &&
+  if (!is_to_previous && operand_count > 0 && toiletline::is_active() &&
       cxt.runtime_state().option_is_enabled(shell_option_id::CdIsZ))
   {
     if (let const frecent =
