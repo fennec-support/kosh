@@ -607,15 +607,23 @@ note_symbol_operands(AnalysisContext                &actx,
                      const SparseList<array_builtin_assignment>
                          &array_assignments) throws -> void
 {
-  if (actx.symbol_records == nullptr) return;
-
-  let      &records         = *actx.symbol_records;
   let       command_storage = String{heap_allocator()};
   let const command = borrowed_token_text(args[command_index], command_storage);
   let const command_info = get_analysis_command_info(command);
   let const is_declaration =
       command_info.is_in_group(COMMAND_GROUP_ASSIGNMENT_BUILTIN);
   let const is_test = command_info.is_in_group(COMMAND_GROUP_TEST);
+
+  let *const records = actx.symbol_records;
+
+  if (records == nullptr && !is_declaration) return;
+
+  let const do_note_associative = [&](StringView name) throws -> void {
+    actx.associative_array_names.add(name);
+    if (records != nullptr) {
+      records->associative_names.push(String{heap_allocator(), name});
+    }
+  };
 
   bool  has_function_flag    = false;
   bool  has_associative_flag = false;
@@ -634,8 +642,8 @@ note_symbol_operands(AnalysisContext                &actx,
       has_associative_flag |= text.find_character('A').has_value();
     }
 
-    if (is_test && previous.view() == "-v") {
-      records.variable_operands.push(span);
+    if (records != nullptr && is_test && previous.view() == "-v") {
+      records->variable_operands.push(span);
     }
 
     let const is_function_operand =
@@ -644,14 +652,14 @@ note_symbol_operands(AnalysisContext                &actx,
             : (command == "complete" && previous.view() == "-F") ||
                   (is_declaration && has_function_flag && !is_flag);
 
-    if (is_function_operand) records.function_operands.push(span);
+    if (records != nullptr && is_function_operand) {
+      records->function_operands.push(span);
+    }
 
     if (is_declaration && has_associative_flag && !is_flag) {
       let const name = operand_target_name(text);
 
-      if (!name.is_empty()) {
-        records.associative_names.push(String{heap_allocator(), name});
-      }
+      if (!name.is_empty()) do_note_associative(name);
     }
 
     if (!is_flag) operand_count++;
@@ -660,9 +668,8 @@ note_symbol_operands(AnalysisContext                &actx,
 
   if (!is_declaration || !has_associative_flag) return;
 
-  for (let const &assignment : array_assignments) {
-    records.associative_names.push(assignment.name.clone());
-  }
+  for (let const &assignment : array_assignments)
+    do_note_associative(assignment.name.view());
 }
 
 fn

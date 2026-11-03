@@ -2294,6 +2294,8 @@ analyze_ast(const Expression                *root,
         });
     parent_analysis_context->array_valued_names.for_each(
         [&actx](StringView name) { actx.array_valued_names.add(name); });
+    parent_analysis_context->associative_array_names.for_each(
+        [&actx](StringView name) { actx.associative_array_names.add(name); });
   }
 
   if (source.length >= 3 && static_cast<u8>(source[0]) == 0xef &&

@@ -183,3 +183,14 @@ lint_only() {
   printf '[%s]' $*
   printf '[%s]' $@
 }
+
+# A key of an associative subscript needs its dollar sign, and a single-quoted
+# key is literal, while an indexed subscript still warns.
+lint_only() {
+  declare -A keyed=([a]=1)
+  declare -a listed=(1 2)
+  key=a index=1
+  ((keyed[$key] + keyed["$key"] + keyed['$key'] + ${keyed[$key]}))
+  ((unknown['$key']))
+  ((listed[$index]))
+}

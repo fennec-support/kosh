@@ -510,7 +510,11 @@ note: Use quoted `"$@"` to preserve each argument.
    184 |    printf '[%s]' $@
        |                  ^~
 note: Quote it as `"$@"`.
-Encountered 124 warnings.
+195:3: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
+   195 |    ((listed[$index]))
+       |    ^~~~~~~~~~~~~~~~~~
+note: Use the variable directly inside arithmetic, such as `$((x + 1))`.
+Encountered 125 warnings.
 done
 done
 done

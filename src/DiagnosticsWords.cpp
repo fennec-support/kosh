@@ -190,6 +190,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
   usize parenthesis_depth = 0;
   usize bracket_depth     = 0;
   usize ternary_depth     = 0;
+  let   associative_subscript_depth = Maybe<usize>{};
 
   let const do_apply_write = [&]() throws -> void {
     let const write = pending_writes.back();
@@ -295,12 +296,46 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
       has_pending_division = false;
       break;
 
-    case '[': bracket_depth++; break;
+    case '[': {
+      bracket_depth++;
+      if (associative_subscript_depth.has_value()) break;
+
+      usize name_start = position;
+
+      while (name_start > 0 &&
+             lexer::is_variable_name(expression[name_start - 1]))
+      {
+        name_start--;
+      }
+
+      let const name =
+          expression.substring_of_length(name_start, position - name_start);
+
+      if (!name.is_empty() && actx.associative_array_names.contains(name)) {
+        associative_subscript_depth = bracket_depth;
+      }
+
+      break;
+    }
 
     case ']':
       do_apply_boundary_writes();
       if (bracket_depth > 0) bracket_depth--;
+      if (associative_subscript_depth.has_value() &&
+          bracket_depth < *associative_subscript_depth)
+      {
+        associative_subscript_depth = None;
+      }
+
       break;
+
+    /* single-quoted text in a subscript is a literal key. */
+    case '\'': {
+      let const close = expression.substring(position + 1).find_character('\'');
+
+      if (close.has_value()) position += *close + 1;
+      break;
+    }
 
     case '?':
       ternary_depth++;
@@ -401,7 +436,9 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
           (expansion_end < expression.length &&
            lexer::is_variable_name(expression[expansion_end]));
 
+      /* the key of an associative subscript needs the expansion. */
       if (has_plain_name && !is_name_part &&
+          !associative_subscript_depth.has_value() &&
           !arithmetic_expansion_assigns(expression, expansion_end))
       {
         has_redundant_dollar = true;
