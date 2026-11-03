@@ -39,3 +39,10 @@ printf '%s\n' "echo a\\*'b'* ~/x \"\$HOME\"" > "$root/words.sh"
   printf '%s\n' 'echo "${y:=${z:-`echo q`}}" "${x%%*.}" "${!r}" "${10}" "${x:1}"'
 } > "$root/params.sh"
 "$BIN" -R --lint --no-traces "$root/params.sh"
+
+{
+  printf '%s\n' '((n = m + 1, n > 0 ? n-- : 0))'
+  printf '%s\n' 'echo $((a[1] * -2)) $((x ** 2 << 1)) $(($n + 1))'
+  printf '%s\n' 'for ((i = 0; i < 2; i++)); do :; done'
+} > "$root/arith.sh"
+"$BIN" -A --lint --no-traces "$root/arith.sh"

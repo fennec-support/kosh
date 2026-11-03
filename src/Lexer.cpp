@@ -1271,6 +1271,10 @@ Lexer::lex_identifier() throws -> Token *
           word.segments.back().set_source_span(
               m_cursor_position + arithmetic_start,
               word.segments.back().text.count());
+          word.segments.back().set_arithmetic_tree(
+              build_arithmetic_tree(word.segments.back().text.view(),
+                                    bump_allocator(arena())),
+              &arena());
           if (should_validate_substitutions()) {
             validate_nested_expansions(m_cursor_position + arithmetic_start,
                                        body_length, false);

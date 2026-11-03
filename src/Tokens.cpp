@@ -120,19 +120,65 @@ WordSegment::set_exact_constant_arithmetic_text(StringView text,
 
   if (arena == nullptr) return;
 
-  let const allocator = bump_allocator(*arena);
-
-  if (cache.arith == nullptr ||
+  if (!cache.has_exact_constant_text ||
       !arena->is_lifetime_valid(cache.arithmetic_lifetime))
   {
-    cache.arith               = arena->create<arith_token_cache>(allocator);
     cache.arithmetic_lifetime = arena->register_lifetime();
   }
 
-  /* at this point: cache.arith is non-null, and arithmetic_lifetime is valid
-     in arena. */
-  cache.arith->exact_constant_text     = String{allocator, text};
-  cache.arith->has_exact_constant_text = true;
+  cache.exact_constant_text     = text.copy_to(bump_allocator(*arena));
+  cache.has_exact_constant_text = true;
+}
+
+fn
+WordSegment::get_exact_constant_arithmetic_text(
+    BumpArena &cache_arena) const wontthrow -> Maybe<StringView>
+{
+  if (m_eval_cache == nullptr || !m_eval_cache->has_exact_constant_text ||
+      !cache_arena.is_lifetime_valid(m_eval_cache->arithmetic_lifetime))
+  {
+    return None;
+  }
+
+  return m_eval_cache->exact_constant_text;
+}
+
+fn
+WordSegment::set_arithmetic_tree(const arith_tree *tree,
+                                 BumpArena        *cache_arena) const throws
+    -> void
+{
+  if (m_eval_cache == nullptr && cache_arena != nullptr) {
+    m_eval_cache           = cache_arena->create<segment_eval_cache>();
+    is_eval_cache_in_arena = true;
+  }
+
+  let &cache = get_eval_cache(cache_arena);
+
+  arith_tree::release(cache.arithmetic_tree);
+  cache.arithmetic_tree = tree;
+}
+
+fn
+WordSegment::reset_copied_eval_cache(segment_eval_cache &cache,
+                                     Allocator           allocator) throws -> void
+{
+  cache.substitution_ast        = nullptr;
+  cache.substitution_lifetime   = {};
+  cache.arithmetic_lifetime     = {};
+  cache.exact_constant_text     = {};
+  cache.has_exact_constant_text = false;
+
+  let const tree      = cache.arithmetic_tree;
+  let const is_shared = tree != nullptr && !tree->is_heap &&
+                        allocator.get_kind() == Allocator::Kind::Bump &&
+                        allocator.owns(tree);
+  cache.arithmetic_tree = nullptr;
+  if (is_shared) {
+    cache.arithmetic_tree = tree;
+  } else if (tree != nullptr) {
+    cache.arithmetic_tree = tree->copy_to(allocator);
+  }
 }
 
 fn
@@ -141,8 +187,9 @@ WordSegment::release_eval_cache() wontthrow -> void
   if (m_eval_cache == nullptr) return;
   if (kind == Kind::VariableReference) {
     if (!is_eval_cache_in_arena) destroy_parameter_reference(m_parameter);
-  } else if (!is_eval_cache_in_arena) {
-    heap_allocator().free_array(m_eval_cache, 1);
+  } else {
+    arith_tree::release(m_eval_cache->arithmetic_tree);
+    if (!is_eval_cache_in_arena) heap_allocator().free_array(m_eval_cache, 1);
   }
 
   m_eval_cache           = nullptr;
@@ -166,9 +213,7 @@ WordSegment::move_resources_to_arena(BumpArena &arena) throws -> void
   let const allocator = bump_allocator(arena);
 
   text.move_to_allocator(allocator);
-  if (m_eval_cache == nullptr || allocator.owns(m_eval_cache)) {
-    return;
-  }
+  if (m_eval_cache == nullptr) return;
 
   if (kind == Kind::VariableReference) {
     set_parameter_reference(
@@ -179,9 +224,22 @@ WordSegment::move_resources_to_arena(BumpArena &arena) throws -> void
     return;
   }
 
+  let const tree = m_eval_cache->arithmetic_tree;
+
+  if (tree != nullptr && !allocator.owns(tree)) {
+    m_eval_cache->arithmetic_tree = tree->copy_to(allocator);
+    arith_tree::release(tree);
+  }
+
+  if (allocator.owns(m_eval_cache)) return;
+
   let const cache = arena.create<segment_eval_cache>(*m_eval_cache);
 
-  cache->forget_arena_pointers();
+  cache->substitution_ast        = nullptr;
+  cache->substitution_lifetime   = {};
+  cache->arithmetic_lifetime     = {};
+  cache->exact_constant_text     = {};
+  cache->has_exact_constant_text = false;
   if (!is_eval_cache_in_arena) heap_allocator().free_array(m_eval_cache, 1);
   m_eval_cache           = cache;
   is_eval_cache_in_arena = true;

@@ -6112,13 +6112,13 @@ public:
                      const SourceLocation *right_source_base) throws
       -> i32;
   fn
-  evaluate_arithmetic_cached_text(const WordSegment &segment) throws
+  evaluate_arithmetic_segment_text(const WordSegment &segment) throws
       -> String;
 
   fn
-  evaluate_arithmetic_cached_clause_nonzero(
+  evaluate_arithmetic_tree_nonzero(
       StringView            expression,
-      arith_token_cache    &cache,
+      const arith_tree     *tree,
       const SourceLocation *source_location = nullptr) throws -> bool;
 
   fn

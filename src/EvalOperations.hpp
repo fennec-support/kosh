@@ -18,7 +18,11 @@
 namespace koshka {
 
 class EvalContext;
+struct arith_tree;
 
+fn
+build_arithmetic_tree(StringView expression, Allocator allocator) throws
+    -> const arith_tree *;
 fn
 evaluate_constant_arithmetic(StringView expression) throws -> i64;
 fn

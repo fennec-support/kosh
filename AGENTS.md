@@ -61,6 +61,10 @@ src/Main.cpp owns flags, startup, scripts, and the interactive loop.
 src/BakedScripts.hpp holds the fixed shell scripts built into Koshka.
 src/Lexer.cpp creates tokens. src/Parser.cpp creates the syntax tree.
 src/Optimizer.cpp folds constants and dead branches.
+src/EvalArithmetic.cpp builds and evaluates arithmetic trees. The lexer and
+parser store a tree on each arithmetic expansion, arithmetic command, and
+C-style for clause. Text that needs expansion is parsed after its expansion at
+runtime.
 
 A parser that collects errors recovers inside every command list. It records
 the error, skips the failed statement by tokens with a stack of expected

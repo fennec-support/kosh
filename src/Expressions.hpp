@@ -1077,6 +1077,11 @@ public:
   parameter(const parameter_reference &reference,
             StringView                 text) throws -> void;
   fn
+  atom(StringView value) throws -> void;
+  fn
+  arithmetic(StringView expression, const arith_tree *tree) throws
+      -> void;
+  fn
   take() throws -> String;
 
 private:
@@ -1084,6 +1089,18 @@ private:
   append_quoted(StringView value) throws -> void;
   fn
   substitution_body(const WordSegment &segment) throws -> void;
+  fn
+  arithmetic_lvalue(StringView        expression,
+                    const arith_tree &tree,
+                    u32               index) throws -> void;
+  fn
+  arithmetic_node(StringView        expression,
+                  const arith_tree &tree,
+                  u32               index) throws -> void;
+  fn
+  arithmetic_chain(StringView        expression,
+                   const arith_tree &tree,
+                   u32               index) throws -> void;
 
   String         m_output{heap_allocator()};
   StringView     m_source;
@@ -2079,8 +2096,9 @@ protected:
 class ArithmeticCommand : public CompoundCommand
 {
 public:
-  ArithmeticCommand(SourceLocation location, StringView expression);
-  ~ArithmeticCommand() override;
+  ArithmeticCommand(SourceLocation    location,
+                    StringView        expression,
+                    const arith_tree *tree);
 
   fn
   write_ast(AstWriter &out) const throws -> void override;
@@ -2097,9 +2115,9 @@ protected:
   fn
   evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
-  StringView m_expression;
+  StringView        m_expression;
+  const arith_tree *m_tree;
 
-  mutable arith_token_cache     *m_cache{nullptr};
   mutable published_command_text m_published_command_text{};
 };
 
@@ -2111,8 +2129,10 @@ public:
                 StringView        init,
                 StringView        condition,
                 StringView        step,
-                const Expression *body);
-  ~CStyleForLoop() override;
+                const Expression *body,
+                const arith_tree *init_tree,
+                const arith_tree *condition_tree,
+                const arith_tree *step_tree);
 
   fn
   write_ast(AstWriter &out) const throws -> void override;
@@ -2148,16 +2168,13 @@ protected:
   mutable Maybe<i64> m_folded_condition{};
   mutable bool       m_is_exact_folded_condition_nonzero{false};
 
-  mutable arith_token_cache     *m_init_cache{nullptr};
-  mutable arith_token_cache     *m_condition_cache{nullptr};
-  mutable arith_token_cache     *m_step_cache{nullptr};
+  const arith_tree *m_init_tree;
+  const arith_tree *m_condition_tree;
+  const arith_tree *m_step_tree;
+
   mutable published_command_text m_published_init_text{};
   mutable published_command_text m_published_condition_text{};
   mutable published_command_text m_published_step_text{};
-
-  static fn
-  get_clause_cache(arith_token_cache *&slot) throws
-      -> arith_token_cache &;
 };
 
 class SelectLoop : public CompoundCommand

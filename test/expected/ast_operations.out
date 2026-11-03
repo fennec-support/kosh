@@ -282,3 +282,54 @@ echo embedded
 (word "\"${x:1}\"" :at 3:56 :text "x:1" :plain none :facts () :escape "\"\"\""
   (segment :kind variable "x:1" :at 3:59 :in-double-quotes
     (param :form slice :name "x" :op ":")))
+(compound-list :count 3
+  (condition :after none :terminator-at 1:31
+    (arithmetic-command "n = m + 1, n > 0 ? n-- : 0" :at 1:1 :end 1:31
+      (arith-comma
+        (arith-assign "n"
+          (arith-binary "+"
+            (arith-name "m")
+            (arith-number 1)))
+        (arith-ternary
+          (arith-binary ">"
+            (arith-name "n")
+            (arith-number 0))
+          (arith-postfix "--" "n")
+          (arith-number 0)))))
+  (condition :after none :terminator-at 2:49
+    (simple-command :name "echo" :builtin :at 2:1 :end 2:49 :first-token-at 2:1 :full-end 2:49
+      (word "echo" :at 2:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
+      (word "$((a[1] * -2))" :at 2:6 :text "a[1] * -2" :plain none :facts () :escape "$$$$$$$$$"
+        (segment :kind arithmetic "a[1] * -2" :at 2:9
+          (arith-binary "*"
+            (arith-element "a" "1")
+            (arith-unary "-"
+              (arith-number 2)))))
+      (word "$((x ** 2 << 1))" :at 2:21 :text "x ** 2 << 1" :plain none :facts () :escape "$$$$$$$$$$$"
+        (segment :kind arithmetic "x ** 2 << 1" :at 2:24 :arith-simple
+          (arith-binary "<<"
+            (arith-binary "**"
+              (arith-name "x")
+              (arith-number 2))
+            (arith-number 1))))
+      (word "$(($n + 1))" :at 2:38 :text "$n + 1" :plain none :facts () :escape "$$$$$$"
+        (segment :kind arithmetic "$n + 1" :at 2:41 :arith-after-expansion))))
+  (condition :after none :terminator-at 3:38
+    (arithmetic-for :at 3:1 :end 3:38 :header-at 3:7 :init "i = 0" :condition " i < 2" :step " i++"
+      (arith-clause :role init
+        (arith-assign "i"
+          (arith-number 0)))
+      (arith-clause :role condition :arith-simple
+        (arith-binary "<"
+          (arith-name "i")
+          (arith-number 2)))
+      (arith-clause :role step :arith-simple
+        (arith-postfix "++" "i"))
+      (compound-list :count 1
+        (condition :after none :terminator-at 3:32
+          (simple-command :name ":" :builtin :special-builtin :at 3:31 :end 3:32 :first-token-at 3:31 :full-end 3:32
+            (word ":" :at 3:31 :plain unquoted-one-segment :facts (static-name) :escape "^")))))))
+.test-work/ast-operations/arith.sh:2:41: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
+     2 |  echo $((a[1] * -2)) $((x ** 2 << 1)) $(($n + 1))
+       |                                          ^~~~~~
+note: Use the variable directly inside arithmetic, such as `$((x + 1))`.

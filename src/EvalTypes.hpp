@@ -776,8 +776,7 @@ class Token;
 class Word;
 class WordSegment;
 class Expression;
-struct arith_token;
-struct arith_token_cache;
+struct arith_tree;
 struct parameter_reference;
 
 struct conditional_element

@@ -24,39 +24,82 @@ struct word_assignment_split;
 
 struct fd_allocation_target;
 
-struct arith_token
+inline constexpr u32 ARITH_NO_NODE = ~u32{0};
+
+enum class arith_node_kind : u8
 {
-  enum class kind : u8
-  {
-    number,
-    name,
-    op,
-    subscript,
-  };
-  kind       k;
-  i64        value{0};
-  StringView text{};
+  Number,
+  Read,
+  PrefixStep,
+  PostfixStep,
+  Lvalue,
+  Group,
+  Negate,
+  Not,
+  BitNot,
+  Chain,
+  ChainStep,
+  Ternary,
+  Assign,
+  CompoundAssign,
+  Comma,
+  Call,
+  Argument,
+  Error,
+  DepthLimit,
 };
 
-struct arith_token_cache
+struct arith_node
 {
-  explicit arith_token_cache(Allocator allocator = heap_allocator())
-      : tokens{allocator}, exact_constant_text{allocator}
-  {}
+  static constexpr u8 PLAIN_NUMBER_FLAG       = 1;
+  static constexpr u8 SUBSCRIPT_FLAG          = 2;
+  static constexpr u8 EXPANDED_SUBSCRIPT_FLAG = 4;
+  static constexpr u8 PRIMARY_ERROR_FLAG      = 8;
+  static constexpr u8 TAIL_FLAG               = 16;
 
-  ArrayList<arith_token> tokens;
-  String                 exact_constant_text;
-  bool                   is_tokenized{false};
-  bool                   is_simple{false};
-  bool                   has_exact_constant_text{false};
-  bool                   needs_expansion{false};
+  i64             value{0};
+  u32             start{0};
+  u32             middle{0};
+  u32             end{0};
+  u32             length{0};
+  u32             first{ARITH_NO_NODE};
+  u32             second{ARITH_NO_NODE};
+  u32             third{ARITH_NO_NODE};
+  u32             next{ARITH_NO_NODE};
+  arith_node_kind kind{arith_node_kind::Number};
+  char            op{0};
+  u8              flags{0};
+};
 
-  cold fn
-  move_to_allocator(Allocator allocator) throws -> void
+struct arith_tree
+{
+  const arith_node *nodes{nullptr};
+  const char       *text{nullptr};
+  u32               node_count{0};
+  u32               text_length{0};
+  u32               root{ARITH_NO_NODE};
+  u32               exact_root{ARITH_NO_NODE};
+  bool              needs_expansion{false};
+  bool              is_simple{false};
+  bool              is_heap{false};
+
+  pure fn
+  get_root(bool is_exact) const wontthrow -> u32
   {
-    tokens.move_to_allocator(allocator);
-    exact_constant_text.move_to_allocator(allocator);
+    return is_exact ? exact_root : root;
   }
+
+  pure fn
+  get_text(u32 offset, u32 length) const wontthrow -> StringView
+  {
+    return StringView{text + offset, length};
+  }
+
+  fn
+  copy_to(Allocator allocator) const throws -> const arith_tree *;
+
+  static fn
+  release(const arith_tree *tree) wontthrow -> void;
 };
 
 struct parameter_reference;
@@ -72,19 +115,12 @@ destroy_parameter_reference(parameter_reference *reference) wontthrow -> void;
 struct segment_eval_cache
 {
   const Expression           *substitution_ast{nullptr};
-  arith_token_cache          *arith{nullptr};
+  const arith_tree           *arithmetic_tree{nullptr};
+  StringView                  exact_constant_text{};
   BumpArena::LifetimeIdentity substitution_lifetime{};
   BumpArena::LifetimeIdentity arithmetic_lifetime{};
   bool                        has_optimizer_arithmetic_result{false};
-
-  fn
-  forget_arena_pointers() wontthrow -> void
-  {
-    substitution_ast      = nullptr;
-    arith                 = nullptr;
-    substitution_lifetime = {};
-    arithmetic_lifetime   = {};
-  }
+  bool                        has_exact_constant_text{false};
 };
 
 class SegmentText
@@ -434,7 +470,7 @@ public:
     let const block = heap_allocator().alloc_array<segment_eval_cache>(1);
 
     m_eval_cache = new (block) segment_eval_cache{*other.m_eval_cache};
-    m_eval_cache->forget_arena_pointers();
+    reset_copied_eval_cache(*m_eval_cache, heap_allocator());
   }
 
   WordSegment(WordSegment &&other) wontthrow
@@ -556,13 +592,35 @@ public:
       let const block = allocator.alloc_array<segment_eval_cache>(1);
 
       copy.m_eval_cache = new (block) segment_eval_cache{*m_eval_cache};
-      copy.m_eval_cache->forget_arena_pointers();
+      reset_copied_eval_cache(*copy.m_eval_cache, allocator);
       copy.is_eval_cache_in_arena =
           allocator.get_kind() == Allocator::Kind::Bump;
     }
 
     return copy;
   }
+
+  pure fn
+  get_arithmetic_tree() const wontthrow -> const arith_tree *
+  {
+    return m_eval_cache != nullptr ? m_eval_cache->arithmetic_tree : nullptr;
+  }
+
+  fn
+  set_arithmetic_tree(const arith_tree *tree, BumpArena *cache_arena) const throws -> void;
+
+  fn
+  clear_arithmetic_tree() wontthrow -> void
+  {
+    if (m_eval_cache == nullptr) return;
+
+    arith_tree::release(m_eval_cache->arithmetic_tree);
+    m_eval_cache->arithmetic_tree = nullptr;
+  }
+
+  fn
+  get_exact_constant_arithmetic_text(BumpArena &cache_arena) const wontthrow
+      -> Maybe<StringView>;
 
   hot pure fn
   has_optimizer_arithmetic_result() const wontthrow -> bool
@@ -623,6 +681,9 @@ private:
                                      BumpArena *cache_arena) const throws -> void;
   fn
   release_eval_cache() wontthrow -> void;
+  static fn
+  reset_copied_eval_cache(segment_eval_cache &cache,
+                          Allocator           allocator) throws -> void;
 
   union
   {

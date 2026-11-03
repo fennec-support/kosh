@@ -736,18 +736,11 @@ ConditionalCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const 
   SET_AND_RETURN_EXIT_STATUS(cxt, status);
 }
 
-ArithmeticCommand::ArithmeticCommand(SourceLocation location,
-                                     StringView     expression)
-    : CompoundCommand(steal(location)), m_expression(expression)
+ArithmeticCommand::ArithmeticCommand(SourceLocation    location,
+                                     StringView        expression,
+                                     const arith_tree *tree)
+    : CompoundCommand(steal(location)), m_expression(expression), m_tree(tree)
 {}
-
-ArithmeticCommand::~ArithmeticCommand()
-{
-  if (m_cache == nullptr) return;
-
-  m_cache->~arith_token_cache();
-  heap_allocator().free_array(m_cache, 1);
-}
 
 fn
 ArithmeticCommand::can_evaluate_in_process_substitution(
@@ -767,13 +760,7 @@ ArithmeticCommand::write_ast(AstWriter &out) const throws -> void
   out.text(m_expression);
   write_ast_command_fields(out);
 
-  if (m_cache != nullptr && m_cache->is_tokenized) {
-    out.number("tokens", static_cast<i64>(m_cache->tokens.count()));
-    if (m_cache->is_simple) out.flag("simple");
-    if (m_cache->has_exact_constant_text)
-      out.quoted("constant", m_cache->exact_constant_text.view());
-  }
-
+  out.arithmetic(m_expression, m_tree);
   out.close();
 }
 
@@ -801,9 +788,7 @@ arithmetic_clause_command_text(StringView clause) throws -> String
   return command_text;
 }
 
-/* memory: m_cache is allocated on the first evaluation and freed by
-           ~ArithmeticCommand(). the clause tokens live in m_cache->tokens.
-   time:   one clause evaluation per call. this function has no loops. */
+/* time: one clause evaluation per call. this function has no loops. */
 fn
 ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
@@ -833,18 +818,11 @@ ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const t
     const SourceLocation body_base{source_location().position + 2, 0,
                                    source_location().source_name_index};
 
-    if (m_cache == nullptr) {
-      let const block = heap_allocator().alloc_array<arith_token_cache>(1);
-
-      m_cache = new (block) arith_token_cache{};
-    }
-
-    /* at this point: m_cache points to an initialized arith_token_cache. */
     try {
-      is_nonzero = cxt.evaluate_arithmetic_cached_clause_nonzero(
-          m_expression, *m_cache, &body_base);
+      is_nonzero = cxt.evaluate_arithmetic_tree_nonzero(m_expression, m_tree,
+                                                        &body_base);
     } catch (const ErrorBase &) {
-      if (!m_cache->is_simple) throw;
+      if (m_tree == nullptr || !m_tree->is_simple) throw;
 
       is_nonzero = cxt.evaluate_arithmetic_nonzero(
           m_expression, &body_base, arithmetic_text_kind::ShellSource);
@@ -935,34 +913,15 @@ CStyleForLoop::CStyleForLoop(SourceLocation    location,
                              StringView        init,
                              StringView        condition,
                              StringView        step,
-                             const Expression *body)
+                             const Expression *body,
+                             const arith_tree *init_tree,
+                             const arith_tree *condition_tree,
+                             const arith_tree *step_tree)
     : CompoundCommand(steal(location)), m_header_position(header_position),
-      m_init(init), m_condition(condition), m_step(step), m_body(body)
+      m_init(init), m_condition(condition), m_step(step), m_body(body),
+      m_init_tree(init_tree), m_condition_tree(condition_tree),
+      m_step_tree(step_tree)
 {}
-
-CStyleForLoop::~CStyleForLoop()
-{
-  for (arith_token_cache *cache :
-       {m_init_cache, m_condition_cache, m_step_cache})
-  {
-    if (cache == nullptr) continue;
-    cache->~arith_token_cache();
-    heap_allocator().free_array(cache, 1);
-  }
-}
-
-fn
-CStyleForLoop::get_clause_cache(arith_token_cache *&slot) throws
-    -> arith_token_cache &
-{
-  if (slot == nullptr) {
-    let const block = heap_allocator().alloc_array<arith_token_cache>(1);
-
-    slot = new (block) arith_token_cache{};
-  }
-
-  return *slot;
-}
 
 cold fn
 CStyleForLoop::write_ast(AstWriter &out) const throws -> void
@@ -981,13 +940,34 @@ CStyleForLoop::write_ast(AstWriter &out) const throws -> void
     if (m_is_exact_folded_condition_nonzero) out.flag("exact-nonzero");
   }
 
+  struct clause_entry
+  {
+    StringView        role;
+    StringView        text;
+    const arith_tree *tree;
+  };
+
+  const clause_entry clauses[] = {
+      {"init",      m_init,      m_init_tree     },
+      {"condition", m_condition, m_condition_tree},
+      {"step",      m_step,      m_step_tree     },
+  };
+
+  for (let const &clause : clauses) {
+    if (clause.tree == nullptr || clause.tree->root == ARITH_NO_NODE) continue;
+
+    out.open("arith-clause");
+    out.symbol("role", clause.role);
+    out.arithmetic(clause.text, clause.tree);
+    out.close();
+  }
+
   m_body->write_ast(out);
   out.close();
 }
 
-/* memory: get_clause_cache() allocates the condition and step caches once per
-           loop node, and ~CStyleForLoop() frees them. each clause evaluation
-           releases its scratch arena mark before it returns.
+/* memory: each clause evaluation releases its scratch arena mark before it
+           returns.
    time:   O(n * (condition + step + body)) for n iterations, where the
            condition decides n. the loop is a while over do_test_condition(). */
 fn
@@ -1046,8 +1026,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
     if (!should_run_init) return {cxt.execution_store().last_exit_status()};
 
-    cxt.evaluate_arithmetic_cached_clause_nonzero(
-        m_init, get_clause_cache(m_init_cache), &init_base);
+    cxt.evaluate_arithmetic_tree_nonzero(m_init, m_init_tree, &init_base);
   }
 
   let const is_condition_blank = is_blank_clause(m_condition);
@@ -1068,10 +1047,8 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
     if (!should_run_condition) return false;
 
-    let &cache = get_clause_cache(m_condition_cache);
-
-    return cxt.evaluate_arithmetic_cached_clause_nonzero(m_condition, cache,
-                                                         &condition_base);
+    return cxt.evaluate_arithmetic_tree_nonzero(m_condition, m_condition_tree,
+                                                &condition_base);
   };
 
   let const do_test_condition = [&]() throws -> bool {
@@ -1107,9 +1084,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
       if (!should_run_step) break;
 
-      let &cache = get_clause_cache(m_step_cache);
-
-      cxt.evaluate_arithmetic_cached_clause_nonzero(m_step, cache, &step_base);
+      cxt.evaluate_arithmetic_tree_nonzero(m_step, m_step_tree, &step_base);
     }
   }
 

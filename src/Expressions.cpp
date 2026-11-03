@@ -869,6 +869,10 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
         parameter(*reference, segment.text.view());
       }
 
+      if (segment.kind == WordSegment::Kind::ArithmeticExpansion) {
+        arithmetic(segment.text.view(), segment.get_arithmetic_tree());
+      }
+
       close();
     }
   }
@@ -997,6 +1001,223 @@ AstWriter::substitution_body(const WordSegment &segment) throws -> void
   };
 
   ast->write_ast(*this);
+}
+
+cold fn
+AstWriter::atom(StringView value) throws -> void
+{
+  m_output.push(' ');
+  m_output.append(value);
+}
+
+static pure fn
+ast_arithmetic_operator(char op) wontthrow -> StringView
+{
+  switch (op) {
+  case 'P': return "**";
+  case 'L': return "<<";
+  case 'R': return ">>";
+  case 'l': return "<=";
+  case 'g': return ">=";
+  case 'e': return "==";
+  case 'n': return "!=";
+  case 'A': return "&&";
+  case 'O': return "||";
+  case '*': return "*";
+  case '/': return "/";
+  case '%': return "%";
+  case '+': return "+";
+  case '-': return "-";
+  case '<': return "<";
+  case '>': return ">";
+  case '&': return "&";
+  case '^': return "^";
+  case '|': return "|";
+  default:  return "?";
+  }
+}
+
+cold fn
+AstWriter::arithmetic(StringView        expression,
+                      const arith_tree *tree) throws -> void
+{
+  if (tree == nullptr) return;
+  if (tree->needs_expansion) {
+    flag("arith-after-expansion");
+
+    return;
+  }
+
+  if (tree->is_simple) flag("arith-simple");
+  if (tree->root != ARITH_NO_NODE)
+    arithmetic_node(expression, *tree, tree->root);
+
+  if (tree->exact_root != tree->root && tree->exact_root != ARITH_NO_NODE) {
+    open("arith-exact");
+    arithmetic_node(expression, *tree, tree->exact_root);
+    close();
+  }
+}
+
+cold fn
+AstWriter::arithmetic_lvalue(StringView        expression,
+                             const arith_tree &tree,
+                             u32               index) throws -> void
+{
+  let const &node = tree.nodes[index];
+  let const  name = expression.substring_of_length(node.start, node.length);
+
+  if ((node.flags & arith_node::SUBSCRIPT_FLAG) == 0) {
+    text(name);
+
+    return;
+  }
+
+  open("arith-element");
+  text(name);
+  text(expression.substring_of_length(node.middle, node.end));
+  close();
+}
+
+cold fn
+AstWriter::arithmetic_chain(StringView        expression,
+                            const arith_tree &tree,
+                            u32               index) throws -> void
+{
+  let const &chain = tree.nodes[index];
+  let        steps = ArrayList<u32>{heap_allocator()};
+
+  for (let step = chain.second; step != ARITH_NO_NODE;
+       step     = tree.nodes[step].next)
+    steps.push(step);
+
+  for (usize position = steps.count(); position > 0; position--) {
+    open("arith-binary");
+    text(ast_arithmetic_operator(tree.nodes[steps[position - 1]].op));
+  }
+
+  arithmetic_node(expression, tree, chain.first);
+
+  for (let const step : steps) {
+    arithmetic_node(expression, tree, tree.nodes[step].first);
+    close();
+  }
+}
+
+cold fn
+AstWriter::arithmetic_node(StringView        expression,
+                           const arith_tree &tree,
+                           u32               index) throws -> void
+{
+  let const &node = tree.nodes[index];
+
+  switch (node.kind) {
+  case arith_node_kind::Number:
+    open("arith-number");
+    atom(expression.substring_of_length(node.start, node.length));
+    close();
+
+    return;
+  case arith_node_kind::Read: {
+    let const &target = tree.nodes[node.first];
+
+    if ((target.flags & arith_node::SUBSCRIPT_FLAG) != 0) {
+      arithmetic_lvalue(expression, tree, node.first);
+
+      return;
+    }
+
+    open("arith-name");
+    text(expression.substring_of_length(target.start, target.length));
+    close();
+
+    return;
+  }
+  case arith_node_kind::PrefixStep:
+  case arith_node_kind::PostfixStep:
+    open(node.kind == arith_node_kind::PrefixStep ? "arith-prefix"
+                                                  : "arith-postfix");
+    text(node.value > 0 ? StringView{"++"} : StringView{"--"});
+    arithmetic_lvalue(expression, tree, node.first);
+    close();
+
+    return;
+  case arith_node_kind::Lvalue:
+    arithmetic_lvalue(expression, tree, index);
+
+    return;
+  case arith_node_kind::Group:
+  case arith_node_kind::Argument:
+    arithmetic_node(expression, tree, node.first);
+
+    return;
+  case arith_node_kind::Negate:
+  case arith_node_kind::Not:
+  case arith_node_kind::BitNot:
+    open("arith-unary");
+    text(node.kind == arith_node_kind::Negate ? StringView{"-"}
+         : node.kind == arith_node_kind::Not  ? StringView{"!"}
+                                              : StringView{"~"});
+    arithmetic_node(expression, tree, node.first);
+    close();
+
+    return;
+  case arith_node_kind::Chain:
+    arithmetic_chain(expression, tree, index);
+
+    return;
+  case arith_node_kind::ChainStep: return;
+  case arith_node_kind::Ternary:
+    open("arith-ternary");
+    for (let const child : {node.first, node.second, node.third}) {
+      if (child != ARITH_NO_NODE) arithmetic_node(expression, tree, child);
+    }
+
+    close();
+
+    return;
+  case arith_node_kind::Assign:
+  case arith_node_kind::CompoundAssign:
+    open("arith-assign");
+    if (node.kind == arith_node_kind::CompoundAssign) {
+      let op = String{heap_allocator(), ast_arithmetic_operator(node.op)};
+
+      op.push('=');
+      symbol("op", op.view());
+    }
+
+    arithmetic_lvalue(expression, tree, node.first);
+    arithmetic_node(expression, tree, node.second);
+    close();
+
+    return;
+  case arith_node_kind::Comma:
+  case arith_node_kind::Call:
+    open(node.kind == arith_node_kind::Comma ? "arith-comma" : "arith-call");
+    if (node.kind == arith_node_kind::Call) {
+      text(expression.substring_of_length(node.start, node.length));
+    }
+
+    for (let child = node.first; child != ARITH_NO_NODE;
+         child     = tree.nodes[child].next)
+      arithmetic_node(expression, tree, child);
+
+    close();
+
+    return;
+  case arith_node_kind::Error:
+    open("arith-error");
+    text(tree.get_text(node.first, node.second));
+    close();
+
+    return;
+  case arith_node_kind::DepthLimit:
+    open("arith-error");
+    text("Expression nested too deeply");
+    close();
+
+    return;
+  }
 }
 
 cold fn

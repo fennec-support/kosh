@@ -1103,7 +1103,7 @@ EvalContext::expand_word(const Word &word) throws
     } break;
 
     case WordSegment::Kind::ArithmeticExpansion: {
-      let const value = evaluate_arithmetic_cached_text(segment);
+      let const value = evaluate_arithmetic_segment_text(segment);
 
       if (segment.is_in_double_quotes) {
         do_append_run(value.view(), false);
@@ -1201,7 +1201,7 @@ EvalContext::expand_word_for_assignment(const Word &word,
     } break;
 
     case WordSegment::Kind::ArithmeticExpansion: {
-      result += evaluate_arithmetic_cached_text(segment).view();
+      result += evaluate_arithmetic_segment_text(segment).view();
     } break;
 
     case WordSegment::Kind::ProcessSubstitution: {
@@ -1307,7 +1307,7 @@ EvalContext::expand_case_pattern_masked(const Word &word,
     } break;
 
     case WordSegment::Kind::ArithmeticExpansion: {
-      let const number = evaluate_arithmetic_cached_text(segment);
+      let const number = evaluate_arithmetic_segment_text(segment);
 
       do_emit_run(number.view(), false);
     } break;

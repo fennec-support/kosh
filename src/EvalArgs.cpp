@@ -602,6 +602,8 @@ copy_word_range(const Word  &word,
                                text.substring_of_length(start, end - start));
       if (segment.kind == WordSegment::Kind::VariableReference)
         segment.set_parameter_reference(nullptr, false);
+      else
+        segment.clear_arithmetic_tree();
     }
 
     if (segment.kind != WordSegment::Kind::UnquotedText ||
@@ -1081,7 +1083,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
               } break;
 
               case WordSegment::Kind::ArithmeticExpansion: {
-                value += evaluate_arithmetic_cached_text(segment).view();
+                value += evaluate_arithmetic_segment_text(segment).view();
               } break;
 
               default: value += segment.text.view(); break;

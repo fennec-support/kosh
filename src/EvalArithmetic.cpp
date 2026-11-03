@@ -2,9 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file tokenizes and evaluates shell arithmetic expressions, variable
- * operands, assignments, calculator expressions, and bc expressions. It also
- * owns cached runtime arithmetic and constant arithmetic evaluation. The split
+ * This file parses shell arithmetic expressions, variable operands,
+ * assignments, calculator expressions, and bc expressions into trees and
+ * evaluates those trees. It also owns constant arithmetic evaluation. The split
  * keeps arithmetic grammar separate from word expansion and promoted numeric
  * storage.
  */
@@ -507,58 +507,1077 @@ has_expanded_arithmetic_subscript(StringView source) throws -> bool
 
 namespace {
 
-class ArithmeticParser
+static constexpr usize MAX_PRIMARY_DEPTH = 128;
+static constexpr usize MAX_CHAIN_DEPTH   = 4096;
+
+enum class CalculatorFunction : u8
 {
-public:
-  ArithmeticParser(EvalContext *context_value,
-                   StringView   source_value,
-                   bool         is_exact_value,
-                   BumpArena   &arena_value,
-                   usize        depth_value    = 0,
-                   bool         is_skipping    = false,
-                   Maybe<u32>   bc_scale_value = {})
-      : context{context_value}, source{source_value}, pos{0},
-        is_exact{is_exact_value}, depth{depth_value},
-        m_is_skipping{is_skipping}, bc_scale{bc_scale_value}, arena{arena_value}
+  Abs,
+  Atan,
+  Ceil,
+  Cmp,
+  Cos,
+  Exp,
+  Fact,
+  Fib,
+  Floor,
+  Frac,
+  Gcd,
+  Int,
+  IsEven,
+  IsInt,
+  IsOdd,
+  Length,
+  Lcm,
+  Ln,
+  Max,
+  Min,
+  Scale,
+  Sgn,
+  Sin,
+  Sqrt,
+};
+
+static constexpr static_string_entry<CalculatorFunction>
+    CALCULATOR_FUNCTION_ENTRIES[] = {
+        {SSK("abs"),    CalculatorFunction::Abs   },
+        {SSK("atan"),   CalculatorFunction::Atan  },
+        {SSK("ceil"),   CalculatorFunction::Ceil  },
+        {SSK("cmp"),    CalculatorFunction::Cmp   },
+        {SSK("cos"),    CalculatorFunction::Cos   },
+        {SSK("exp"),    CalculatorFunction::Exp   },
+        {SSK("fact"),   CalculatorFunction::Fact  },
+        {SSK("fib"),    CalculatorFunction::Fib   },
+        {SSK("floor"),  CalculatorFunction::Floor },
+        {SSK("frac"),   CalculatorFunction::Frac  },
+        {SSK("gcd"),    CalculatorFunction::Gcd   },
+        {SSK("int"),    CalculatorFunction::Int   },
+        {SSK("iseven"), CalculatorFunction::IsEven},
+        {SSK("isint"),  CalculatorFunction::IsInt },
+        {SSK("isodd"),  CalculatorFunction::IsOdd },
+        {SSK("length"), CalculatorFunction::Length},
+        {SSK("lcm"),    CalculatorFunction::Lcm   },
+        {SSK("ln"),     CalculatorFunction::Ln    },
+        {SSK("max"),    CalculatorFunction::Max   },
+        {SSK("min"),    CalculatorFunction::Min   },
+        {SSK("scale"),  CalculatorFunction::Scale },
+        {SSK("sgn"),    CalculatorFunction::Sgn   },
+        {SSK("sin"),    CalculatorFunction::Sin   },
+        {SSK("sqrt"),   CalculatorFunction::Sqrt  },
+};
+static constexpr StaticStringMap CALCULATOR_FUNCTIONS{
+    CALCULATOR_FUNCTION_ENTRIES};
+
+struct arith_lvalue_syntax
+{
+  StringView        name;
+  Maybe<StringView> subscript;
+  usize             name_position{0};
+  u32               error{ARITH_NO_NODE};
+  bool              is_expanded_subscript{false};
+};
+
+struct arith_tree_storage
+{
+  explicit arith_tree_storage(Allocator allocator)
+      : nodes{allocator}, text{allocator}
   {}
 
-  EvalContext *context;
-  StringView   source;
-  usize        pos;
-  bool         is_exact{false};
-
-  usize                  depth{0};
-  static constexpr usize MAX_DEPTH = 128;
-  usize                  binary_depth{0};
-  usize                  chain_depth{0};
-  bool                   is_variable_value{false};
-  static constexpr usize MAX_CHAIN_DEPTH = 4096;
+  ArrayList<arith_node> nodes;
+  String                text;
 
   fn
-  enter_chain() throws -> void
+  add_node(const arith_node &node) throws -> u32
+  {
+    nodes.push(node);
+
+    return static_cast<u32>(nodes.count() - 1);
+  }
+
+  fn
+  add_text(StringView value) throws -> u32
+  {
+    let const offset = text.count();
+
+    text.append(value);
+
+    return static_cast<u32>(offset);
+  }
+
+  pure fn
+  get_view(u32 root) const wontthrow -> arith_tree
+  {
+    arith_tree tree{};
+
+    tree.nodes       = nodes.begin();
+    tree.node_count  = static_cast<u32>(nodes.count());
+    tree.text        = text.view().data;
+    tree.text_length = static_cast<u32>(text.count());
+    tree.root        = root;
+    tree.exact_root  = root;
+
+    return tree;
+  }
+};
+
+class ArithmeticTreeBuilder
+{
+public:
+  ArithmeticTreeBuilder(StringView          source_value,
+                        bool                is_exact_value,
+                        bool                is_calculator_value,
+                        arith_tree_storage &storage_value,
+                        BumpArena          &arena_value)
+      : source{source_value}, is_exact{is_exact_value},
+        is_calculator{is_calculator_value}, storage{storage_value},
+        nodes{storage_value.nodes}, arena{arena_value}
+  {}
+
+  const ArrayList<expanded_subscript_span> *expanded_subscripts{nullptr};
+
+  fn
+  build() throws -> u32
+  {
+    return parse();
+  }
+
+  pure fn
+  get_has_failed() const wontthrow -> bool
+  {
+    return has_failed;
+  }
+
+  pure fn
+  get_failed_node() const wontthrow -> u32
+  {
+    return failed_node;
+  }
+
+private:
+  StringView             source;
+  usize                  pos{0};
+  bool                   is_exact;
+  bool                   is_calculator;
+  arith_tree_storage    &storage;
+  ArrayList<arith_node> &nodes;
+  BumpArena             &arena;
+  usize                  depth{0};
+  usize                  binary_depth{0};
+  usize                  chain_depth{0};
+  u32                    failed_node{ARITH_NO_NODE};
+  bool                   has_failed{false};
+
+  fn
+  add_node(const arith_node &node) throws -> u32
+  {
+    return storage.add_node(node);
+  }
+
+  fn
+  add_text(StringView text) throws -> u32
+  {
+    return storage.add_text(text);
+  }
+
+  fn
+  fail_at(usize      start_position,
+          usize      length,
+          StringView message,
+          StringView note = {}) throws -> u32
+  {
+    arith_node node{};
+
+    node.kind   = arith_node_kind::Error;
+    node.start  = static_cast<u32>(start_position);
+    node.length = static_cast<u32>(length);
+    node.first  = add_text(message);
+    node.second = static_cast<u32>(message.length);
+    node.third  = add_text(note);
+    node.end    = static_cast<u32>(note.length);
+    has_failed  = true;
+    failed_node = add_node(node);
+
+    return failed_node;
+  }
+
+  fn
+  fail(StringView message, StringView note = {}) throws -> u32
+  {
+    let const error_position = is_calculator         ? pos
+                               : pos < source.length ? pos
+                               : source.is_empty()   ? 0
+                                                     : source.length - 1;
+
+    return fail_at(error_position, 1, message, note);
+  }
+
+  fn
+  fail_span(usize      start_position,
+            usize      end_position,
+            StringView message,
+            StringView note = {}) throws -> u32
+  {
+    while (end_position > start_position && (source[end_position - 1] == ' ' ||
+                                             source[end_position - 1] == '\t' ||
+                                             source[end_position - 1] == '\n' ||
+                                             source[end_position - 1] == '\r'))
+    {
+      end_position--;
+    }
+
+    return fail_at(start_position, end_position - start_position, message,
+                   note);
+  }
+
+  fn
+  mark_primary_error(u32 error, usize primary_position) wontthrow -> u32
+  {
+    nodes[error].flags |= arith_node::PRIMARY_ERROR_FLAG;
+    nodes[error].middle = static_cast<u32>(primary_position);
+
+    return error;
+  }
+
+  fn
+  sequence(u32 first_index, u32 second_index) throws -> u32
+  {
+    arith_node node{};
+
+    nodes[first_index].next = second_index;
+    node.kind               = arith_node_kind::Comma;
+    node.first              = first_index;
+
+    return add_node(node);
+  }
+
+  fn
+  add_unary(arith_node_kind kind, u32 operand) throws -> u32
+  {
+    arith_node node{};
+
+    node.kind  = kind;
+    node.first = operand;
+
+    return add_node(node);
+  }
+
+  fn
+  add_lvalue(const arith_lvalue_syntax &target) throws -> u32
+  {
+    arith_node node{};
+
+    node.kind   = arith_node_kind::Lvalue;
+    node.start  = static_cast<u32>(target.name_position);
+    node.length = static_cast<u32>(target.name.length);
+
+    if (target.subscript.has_value()) {
+      node.flags |= arith_node::SUBSCRIPT_FLAG;
+      node.middle = static_cast<u32>(target.subscript->data - source.data);
+      node.end    = static_cast<u32>(target.subscript->length);
+    }
+
+    if (target.is_expanded_subscript)
+      node.flags |= arith_node::EXPANDED_SUBSCRIPT_FLAG;
+
+    return add_node(node);
+  }
+
+  fn
+  add_step(arith_node_kind            kind,
+           const arith_lvalue_syntax &target,
+           i64                        delta,
+           usize                      primary_position) throws -> u32
+  {
+    arith_node node{};
+
+    node.first  = add_lvalue(target);
+    node.kind   = kind;
+    node.value  = delta;
+    node.start  = static_cast<u32>(pos);
+    node.middle = static_cast<u32>(primary_position);
+
+    return add_node(node);
+  }
+
+  fn
+  enter_chain() throws -> u32
   {
     chain_depth++;
     if (chain_depth > MAX_CHAIN_DEPTH) {
       chain_depth = 0;
-      fail("Expression nested too deeply",
-           "Split a long chain of unary operators or assignments");
+
+      return fail("Expression nested too deeply",
+                  "Split a long chain of unary operators or assignments");
+    }
+
+    return ARITH_NO_NODE;
+  }
+
+  fn
+  enter_binary_chain() throws -> u32
+  {
+    binary_depth++;
+    if (binary_depth > MAX_OPERATOR_CHAIN_DEPTH) {
+      return fail("Expression nested too deeply", OPERATOR_CHAIN_HINT);
+    }
+
+    return ARITH_NO_NODE;
+  }
+
+  fn
+  skip_spaces() wontthrow -> void
+  {
+    arithmetic_internal::skip_spaces(source, pos);
+  }
+
+  fn
+  starts_with(StringView op) wontthrow -> bool
+  {
+    return arithmetic_internal::starts_with(source, pos, op);
+  }
+
+  fn
+  consume(StringView op) wontthrow -> bool
+  {
+    return arithmetic_internal::consume(source, pos, op);
+  }
+
+  fn
+  read_lvalue_name() wontthrow -> StringView
+  {
+    skip_spaces();
+    if (pos >= source.length || !lexer::is_variable_name_start(source[pos])) {
+      return StringView{};
+    }
+
+    let const name_start = pos;
+
+    while (pos < source.length && lexer::is_variable_name(source[pos])) {
+      pos++;
+    }
+
+    return source.substring_of_length(name_start, pos - name_start);
+  }
+
+  fn
+  read_optional_subscript(arith_lvalue_syntax &target) throws
+      -> Maybe<StringView>
+  {
+    if (pos >= source.length || source[pos] != '[') {
+      return None;
+    }
+
+    if (expanded_subscripts != nullptr) {
+      for (let const &span : *expanded_subscripts) {
+        if (span.open_position != pos) continue;
+
+        let const subscript =
+            source.substring_of_length(pos + 1, span.close_position - pos - 1);
+
+        pos                          = span.close_position + 1;
+        target.is_expanded_subscript = true;
+
+        return subscript;
+      }
+    }
+
+    pos++;
+
+    let const inner_start   = pos;
+    usize     bracket_depth = 1;
+
+    while (pos < source.length && bracket_depth > 0) {
+      if (source[pos] == '[') {
+        bracket_depth++;
+      } else if (source[pos] == ']' && --bracket_depth == 0) {
+        break;
+      } else if (source[pos] == '\'' || source[pos] == '"' ||
+                 source[pos] == '\\')
+      {
+        pos = lexer::skip_quoted_run(source, pos);
+      }
+
+      pos++;
+    }
+
+    if (bracket_depth != 0) {
+      target.error = fail("Expected ']' after an array subscript",
+                          "The subscript '[' was never closed");
+
+      return None;
+    }
+
+    let const subscript =
+        source.substring_of_length(inner_start, pos - inner_start);
+
+    pos++;
+
+    return subscript;
+  }
+
+  fn
+  read_lvalue() throws -> arith_lvalue_syntax
+  {
+    skip_spaces();
+
+    arith_lvalue_syntax target{};
+
+    target.name_position = pos;
+    target.name          = read_lvalue_name();
+    if (target.name.is_empty()) return target;
+
+    target.subscript = read_optional_subscript(target);
+
+    return target;
+  }
+
+  fn
+  parse() throws -> u32
+  {
+    skip_spaces();
+    if (pos == source.length) return ARITH_NO_NODE;
+
+    let const result = parse_comma();
+
+    if (has_failed) return result;
+
+    skip_spaces();
+    if (pos != source.length) {
+      let const error = fail_at(pos, is_calculator ? source.length - pos : 1,
+                                "Unexpected '" + source.substring(pos) +
+                                    "' after the expression",
+                                "An operator is missing between two values");
+
+      return sequence(result, error);
+    }
+
+    return result;
+  }
+
+  fn
+  parse_comma() throws -> u32
+  {
+    let const first = parse_assignment();
+
+    if (has_failed || !consume(",")) return first;
+
+    arith_node node{};
+
+    node.kind  = arith_node_kind::Comma;
+    node.first = first;
+
+    let const comma = add_node(node);
+    let       last  = first;
+
+    loop {
+      let const next = parse_assignment();
+
+      nodes[last].next = next;
+      last             = next;
+      if (has_failed || !consume(",")) return comma;
     }
   }
 
   fn
-  enter_binary_chain() throws -> void
+  parse_assignment() throws -> u32
   {
-    binary_depth++;
-    if (binary_depth > MAX_OPERATOR_CHAIN_DEPTH) {
-      fail("Expression nested too deeply", OPERATOR_CHAIN_HINT);
+    if (let const error = enter_chain(); error != ARITH_NO_NODE) return error;
+    defer { chain_depth = chain_depth > 0 ? chain_depth - 1 : 0; };
+
+    let const save   = pos;
+    let const target = read_lvalue();
+
+    if (has_failed) return target.error;
+
+    if (!target.name.is_empty()) {
+      struct compound_operator
+      {
+        StringView token;
+        char       kind;
+      };
+      static const compound_operator compound_operators[] = {
+          {"<<=", 'L'},
+          {">>=", 'R'},
+          {"**=", 'P'},
+          {"+=",  '+'},
+          {"-=",  '-'},
+          {"*=",  '*'},
+          {"/=",  '/'},
+          {"%=",  '%'},
+          {"&=",  '&'},
+          {"|=",  '|'},
+          {"^=",  '^'},
+      };
+
+      skip_spaces();
+
+      let const next_byte = pos < source.length ? source[pos] : '\0';
+
+      if (next_byte == '<' || next_byte == '>' || next_byte == '+' ||
+          next_byte == '-' || next_byte == '*' || next_byte == '/' ||
+          next_byte == '%' || next_byte == '&' || next_byte == '|' ||
+          next_byte == '^')
+      {
+        for (let const &[ op, kind ] : compound_operators) {
+          if (consume(op)) {
+            skip_spaces();
+
+            arith_node node{};
+
+            node.kind   = arith_node_kind::CompoundAssign;
+            node.op     = kind;
+            node.first  = add_lvalue(target);
+            node.middle = static_cast<u32>(pos);
+            node.second = parse_assignment();
+            node.end    = static_cast<u32>(pos);
+
+            return add_node(node);
+          }
+        }
+      }
+
+      if (starts_with("=") && !starts_with("==")) {
+        consume("=");
+
+        arith_node node{};
+
+        node.kind   = arith_node_kind::Assign;
+        node.first  = add_lvalue(target);
+        node.second = parse_assignment();
+
+        return add_node(node);
+      }
+
+      pos = save;
+    }
+
+    return parse_ternary();
+  }
+
+  fn
+  add_ternary(u32 condition, u32 if_true, u32 if_false) throws -> u32
+  {
+    arith_node node{};
+
+    node.kind   = arith_node_kind::Ternary;
+    node.first  = condition;
+    node.second = if_true;
+    node.third  = if_false;
+
+    return add_node(node);
+  }
+
+  fn
+  parse_ternary() throws -> u32
+  {
+    defer { binary_depth--; };
+    if (let const error = enter_binary_chain(); error != ARITH_NO_NODE) {
+      return error;
+    }
+
+    let const condition = parse_binary(1);
+
+    if (has_failed || !consume("?")) return condition;
+
+    let const if_true = parse_comma();
+
+    if (has_failed) return add_ternary(condition, if_true, ARITH_NO_NODE);
+
+    if (!consume(":")) {
+      let const error =
+          fail("Expected ':' in a conditional", "A '?' needs a matching ':'");
+
+      return add_ternary(condition, if_true, error);
+    }
+
+    let const if_false = parse_ternary();
+
+    return add_ternary(condition, if_true, if_false);
+  }
+
+  struct BinaryOperator
+  {
+    char kind;
+    u8   precedence;
+    u8   length;
+  };
+
+  fn
+  peek_binary_operator() wontthrow -> BinaryOperator
+  {
+    skip_spaces();
+    if (pos >= source.length) return {0, 0, 0};
+
+    let const first_byte  = source[pos];
+    let const second_byte = pos + 1 < source.length ? source[pos + 1] : '\0';
+    let const third_byte  = pos + 2 < source.length ? source[pos + 2] : '\0';
+
+    switch (first_byte) {
+    case '*':
+      if (second_byte == '*') return {'P', 11, 2};
+
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'*', 10, 1};
+    case '/':
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'/', 10, 1};
+    case '%':
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'%', 10, 1};
+    case '+':
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'+', 9, 1};
+    case '-':
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'-', 9, 1};
+    case '<':
+      if (second_byte == '<')
+        return third_byte == '=' ? BinaryOperator{0, 0, 0}
+                                 : BinaryOperator{'L', 8, 2};
+      if (second_byte == '=') return {'l', 7, 2};
+
+      return {'<', 7, 1};
+    case '>':
+      if (second_byte == '>')
+        return third_byte == '=' ? BinaryOperator{0, 0, 0}
+                                 : BinaryOperator{'R', 8, 2};
+      if (second_byte == '=') return {'g', 7, 2};
+
+      return {'>', 7, 1};
+    case '=':
+      return second_byte == '=' ? BinaryOperator{'e', 6, 2}
+                                : BinaryOperator{0, 0, 0};
+    case '!':
+      return second_byte == '=' ? BinaryOperator{'n', 6, 2}
+                                : BinaryOperator{0, 0, 0};
+    case '&':
+      if (second_byte == '&') return {'A', 2, 2};
+
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'&', 5, 1};
+    case '^':
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'^', 4, 1};
+    case '|':
+      if (second_byte == '|') return {'O', 1, 2};
+
+      return second_byte == '=' ? BinaryOperator{0, 0, 0}
+                                : BinaryOperator{'|', 3, 1};
+    default: return {0, 0, 0};
     }
   }
+
+  fn
+  parse_binary(u8 min_precedence) throws -> u32
+  {
+    defer { binary_depth--; };
+    if (let const error = enter_binary_chain(); error != ARITH_NO_NODE) {
+      return error;
+    }
+
+    skip_spaces();
+
+    let const lhs_start = pos;
+    let const lhs       = parse_unary();
+
+    if (has_failed) return lhs;
+
+    let chain     = ARITH_NO_NODE;
+    let last_step = ARITH_NO_NODE;
+
+    loop {
+      let const op = peek_binary_operator();
+
+      if (op.precedence < min_precedence) {
+        return chain == ARITH_NO_NODE ? lhs : chain;
+      }
+
+      pos += op.length;
+      skip_spaces();
+
+      let const is_logical = op.kind == 'A' || op.kind == 'O';
+
+      arith_node step{};
+
+      step.kind   = arith_node_kind::ChainStep;
+      step.op     = op.kind;
+      step.middle = static_cast<u32>(pos);
+      step.first  = parse_binary(is_logical || op.kind != 'P'
+                                     ? static_cast<u8>(op.precedence + 1)
+                                     : op.precedence);
+      step.end    = static_cast<u32>(pos);
+
+      let const step_index = add_node(step);
+
+      if (chain == ARITH_NO_NODE) {
+        arith_node node{};
+
+        node.kind   = arith_node_kind::Chain;
+        node.first  = lhs;
+        node.second = step_index;
+        node.start  = static_cast<u32>(lhs_start);
+        chain       = add_node(node);
+      } else {
+        nodes[last_step].next = step_index;
+      }
+
+      last_step = step_index;
+      if (has_failed) return chain;
+    }
+  }
+
+  fn
+  prefix_step(i64 delta, usize operator_position) throws -> u32
+  {
+    let const target = read_lvalue();
+
+    if (has_failed) return target.error;
+    if (target.name.is_empty() && pos < source.length) {
+      return parse_unary();
+    }
+
+    if (target.name.is_empty()) {
+      return fail_span(operator_position, operator_position + 2,
+                       "Expected a variable after '++' or '--'",
+                       "'++' and '--' apply only to a variable");
+    }
+
+    return add_step(arith_node_kind::PrefixStep, target, delta, pos);
+  }
+
+  fn
+  parse_unary() throws -> u32
+  {
+    if (let const error = enter_chain(); error != ARITH_NO_NODE) return error;
+    defer { chain_depth = chain_depth > 0 ? chain_depth - 1 : 0; };
+
+    skip_spaces();
+
+    let const first = pos < source.length ? source[pos] : '\0';
+
+    if (first == '+') {
+      let const operator_position = pos;
+
+      if (consume("++")) return prefix_step(1, operator_position);
+      pos++;
+
+      return parse_unary();
+    }
+
+    if (first == '-') {
+      let const operator_position = pos;
+
+      if (consume("--")) return prefix_step(-1, operator_position);
+      pos++;
+
+      return add_unary(arith_node_kind::Negate, parse_unary());
+    }
+
+    if (first == '!') {
+      pos++;
+
+      return add_unary(arith_node_kind::Not, parse_unary());
+    }
+
+    if (first == '~') {
+      pos++;
+
+      return add_unary(arith_node_kind::BitNot, parse_unary());
+    }
+
+    return parse_primary();
+  }
+
+  fn
+  calculator_call(const arith_lvalue_syntax &target,
+                  usize                      primary_position) throws -> u32
+  {
+    let const name     = target.name;
+    let const function = CALCULATOR_FUNCTIONS.find(name);
+
+    if (!function.has_value()) {
+      return mark_primary_error(
+          fail_span(target.name_position, target.name_position + name.length,
+                    "Unknown calculator function '" + name + "'",
+                    "Check the spelling, or use a function that the "
+                    "calculator supports"),
+          primary_position);
+    }
+
+    arith_node node{};
+
+    node.kind   = arith_node_kind::Call;
+    node.start  = static_cast<u32>(target.name_position);
+    node.length = static_cast<u32>(name.length);
+    node.middle = static_cast<u32>(primary_position);
+    node.value  = static_cast<i64>(*function);
+
+    let const call = add_node(node);
+
+    if (consume(")")) {
+      nodes[call].end = static_cast<u32>(pos);
+
+      return call;
+    }
+
+    let last = ARITH_NO_NODE;
+
+    let const do_link = [&](u32 index) wontthrow {
+      if (last == ARITH_NO_NODE) {
+        nodes[call].first = index;
+      } else {
+        nodes[last].next = index;
+      }
+
+      last = index;
+    };
+
+    loop {
+      skip_spaces();
+
+      arith_node argument{};
+
+      argument.kind  = arith_node_kind::Argument;
+      argument.start = static_cast<u32>(pos);
+      argument.first = parse_assignment();
+      argument.end   = static_cast<u32>(pos);
+      do_link(add_node(argument));
+      if (has_failed) return call;
+
+      if (consume(")")) {
+        nodes[call].end = static_cast<u32>(pos);
+
+        return call;
+      }
+
+      if (!consume(",")) {
+        do_link(fail("Expected ',' or ')' after an argument",
+                     "The call to '" + name + "' is unfinished"));
+
+        return call;
+      }
+    }
+  }
+
+  pure fn
+  get_radix_prefix_length(usize number_start) const wontthrow -> usize
+  {
+    return arithmetic_internal::count_leading_digits(
+               source.substring(number_start), 10) +
+           1;
+  }
+
+  fn
+  reject_invalid_digit(usize number_start) throws -> u32
+  {
+    if (pos >= source.length || !is_number_continuation(source[pos])) {
+      return ARITH_NO_NODE;
+    }
+
+    usize end = pos;
+
+    while (end < source.length && is_number_continuation(source[end])) {
+      end++;
+    }
+
+    let const token =
+        source.substring_of_length(number_start, end - number_start);
+
+    usize base = arithmetic_internal::detect_radix_prefix(token).radix;
+
+    if (let const hash = token.find_character('#'); hash.has_value()) {
+      base = static_cast<usize>(
+          parse_arithmetic_operand(token.substring_of_length(0, *hash)));
+    }
+
+    return fail_span(
+        number_start, end,
+        "Invalid digit '" + source.substring_of_length(pos, 1) +
+            "' in the number '" +
+            source.substring_of_length(number_start, end - number_start) + "'",
+        "The digit is not valid in base " +
+            String::from(base, bump_allocator(arena)));
+  }
+
+  fn
+  parse_number(usize primary_position) throws -> u32
+  {
+    let const number_start = pos;
+
+    arith_node node{};
+
+    node.kind   = arith_node_kind::Number;
+    node.start  = static_cast<u32>(number_start);
+    node.middle = static_cast<u32>(primary_position);
+
+    try {
+      if (is_exact) {
+        let value = ArithmeticValue{};
+
+        pos += lex_exact_arith_number(source.substring(pos), &value, arena);
+
+        if (is_plain_decimal_operand(
+                source.substring_of_length(number_start, pos - number_start)))
+        {
+          node.flags |= arith_node::PLAIN_NUMBER_FLAG;
+          node.value = value.wrapped_i64();
+        }
+      } else {
+        pos += lex_arith_number(source.substring(pos), &node.value);
+
+        if (is_plain_decimal_operand(
+                source.substring_of_length(number_start, pos - number_start)))
+        {
+          node.flags |= arith_node::PLAIN_NUMBER_FLAG;
+        }
+      }
+    } catch (const ErrorWithLocation &) {
+      throw;
+    } catch (const ErrorBase &error) {
+      return mark_primary_error(
+          fail_at(number_start, get_radix_prefix_length(number_start),
+                  error.message().view(), error.detail_message()),
+          primary_position);
+    }
+
+    if (let const error = reject_invalid_digit(number_start);
+        error != ARITH_NO_NODE)
+    {
+      return mark_primary_error(error, primary_position);
+    }
+
+    node.length = static_cast<u32>(pos - number_start);
+
+    return add_node(node);
+  }
+
+  fn
+  parse_primary() throws -> u32
+  {
+    depth++;
+    defer { depth--; };
+
+    let const primary_position = pos;
+
+    if (depth > MAX_PRIMARY_DEPTH) {
+      arith_node node{};
+
+      node.kind   = arith_node_kind::DepthLimit;
+      node.middle = static_cast<u32>(primary_position);
+      has_failed  = true;
+      failed_node = add_node(node);
+
+      return failed_node;
+    }
+
+    skip_spaces();
+    if (consume("(")) {
+      arith_node node{};
+
+      node.kind   = arith_node_kind::Group;
+      node.middle = static_cast<u32>(primary_position);
+      node.first  = parse_comma();
+
+      if (!has_failed && !consume(")")) {
+        let const error = fail("Expected ')'", "An opening '(' is unmatched");
+
+        node.first = sequence(node.first, error);
+      }
+
+      return add_node(node);
+    }
+
+    let const has_leading_decimal_point =
+        is_exact && is_leading_decimal_number(source, pos);
+
+    if (pos < source.length &&
+        (lexer::is_number(source[pos]) || has_leading_decimal_point))
+    {
+      return parse_number(primary_position);
+    }
+
+    if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
+      let const target = read_lvalue();
+
+      if (has_failed) return mark_primary_error(target.error, primary_position);
+
+      if (is_calculator && !target.subscript.has_value() && consume("(")) {
+        return calculator_call(target, primary_position);
+      }
+
+      if (consume("++")) {
+        return add_step(arith_node_kind::PostfixStep, target, 1,
+                        primary_position);
+      }
+
+      if (consume("--")) {
+        return add_step(arith_node_kind::PostfixStep, target, -1,
+                        primary_position);
+      }
+
+      return add_step(arith_node_kind::Read, target, 0, primary_position);
+    }
+
+    if (pos >= source.length) {
+      return mark_primary_error(
+          fail("Unfinished expression", "An operand is missing"),
+          primary_position);
+    }
+
+    return mark_primary_error(
+        fail("Unexpected character in the arithmetic expression",
+             "This is not a valid operator or operand"),
+        primary_position);
+  }
+};
+
+struct arith_text_options
+{
+  usize                                     depth{0};
+  Maybe<u32>                                bc_scale{};
+  const SourceLocation                     *precise_base{nullptr};
+  const ArrayList<expanded_subscript_span> *expanded_subscripts{nullptr};
+  bool                                      is_skipping{false};
+  bool                                      should_error_unset{false};
+  bool                                      is_variable_value{false};
+};
+
+static fn
+evaluate_text_tree(EvalContext              *context,
+                   StringView                source,
+                   bool                      is_exact,
+                   BumpArena                &arena,
+                   const arith_text_options &options) throws
+    -> ArithmeticValue;
+
+class ArithmeticTreeEvaluator
+{
+public:
+  ArithmeticTreeEvaluator(EvalContext      *context_value,
+                          StringView        source_value,
+                          const arith_tree &tree_value,
+                          bool              is_exact_value,
+                          BumpArena        &arena_value,
+                          usize             depth_value    = 0,
+                          bool              is_skipping    = false,
+                          Maybe<u32>        bc_scale_value = {})
+      : context{context_value}, source{source_value}, tree{tree_value},
+        is_exact{is_exact_value}, depth{depth_value},
+        m_is_skipping{is_skipping}, bc_scale{bc_scale_value}, arena{arena_value}
+  {}
+
+  EvalContext      *context;
+  StringView        source;
+  const arith_tree &tree;
+  usize             pos{0};
+  bool              is_exact{false};
+
+  usize depth{0};
+  bool  is_variable_value{false};
 
   bool       m_is_skipping{false};
   bool       should_error_unset{false};
   Maybe<u32> bc_scale{};
-
-  const ArrayList<expanded_subscript_span> *expanded_subscripts{nullptr};
 
   Maybe<SourceLocation> precise_base{};
   BumpArena            &arena;
@@ -612,24 +1631,6 @@ public:
   }
 
   fn
-  skip_spaces() wontthrow -> void
-  {
-    arithmetic_internal::skip_spaces(source, pos);
-  }
-
-  fn
-  starts_with(StringView op) wontthrow -> bool
-  {
-    return arithmetic_internal::starts_with(source, pos, op);
-  }
-
-  fn
-  consume(StringView op) wontthrow -> bool
-  {
-    return arithmetic_internal::consume(source, pos, op);
-  }
-
-  fn
   read_variable_value(StringView name, usize name_position) throws
       -> ArithmeticValue
   {
@@ -670,35 +1671,21 @@ public:
       return ArithmeticValue::parse(value, 10, arena);
     }
 
-    if (depth >= MAX_DEPTH)
+    if (depth >= MAX_PRIMARY_DEPTH)
       fail("The variable value recurses too deeply",
            "A variable value refers back to itself");
 
-    let const        stable_value = String{bump_allocator(arena), value};
-    ArithmeticParser nested{context,   stable_value.view(), is_exact, arena,
-                            depth + 1, m_is_skipping,       bc_scale};
+    let const stable_value = String{bump_allocator(arena), value};
+    let       options      = arith_text_options{};
 
-    nested.is_variable_value  = true;
-    nested.should_error_unset = should_error_unset;
+    options.depth              = depth + 1;
+    options.is_skipping        = m_is_skipping;
+    options.bc_scale           = bc_scale;
+    options.should_error_unset = should_error_unset;
+    options.is_variable_value  = true;
 
-    return nested.parse();
-  }
-
-  fn
-  read_lvalue_name() wontthrow -> StringView
-  {
-    skip_spaces();
-    if (pos >= source.length || !lexer::is_variable_name_start(source[pos])) {
-      return StringView{};
-    }
-
-    let const name_start = pos;
-
-    while (pos < source.length && lexer::is_variable_name(source[pos])) {
-      pos++;
-    }
-
-    return source.substring_of_length(name_start, pos - name_start);
+    return evaluate_text_tree(context, stable_value.view(), is_exact, arena,
+                              options);
   }
 
   fn
@@ -810,75 +1797,18 @@ public:
   }
 
   fn
-  read_optional_subscript(bool &was_expanded) throws
-      -> Maybe<StringView>
+  get_lvalue(u32 index) const wontthrow -> Lvalue
   {
-    if (pos >= source.length || source[pos] != '[') {
-      return None;
+    let const &node = tree.nodes[index];
+    let target = Lvalue{source.substring_of_length(node.start, node.length),
+                        None, node.start};
+
+    if ((node.flags & arith_node::SUBSCRIPT_FLAG) != 0) {
+      target.subscript = source.substring_of_length(node.middle, node.end);
     }
 
-    if (expanded_subscripts != nullptr) {
-      for (let const &span : *expanded_subscripts) {
-        if (span.open_position != pos) continue;
-
-        let const subscript =
-            source.substring_of_length(pos + 1, span.close_position - pos - 1);
-
-        pos          = span.close_position + 1;
-        was_expanded = true;
-
-        return subscript;
-      }
-    }
-
-    pos++;
-
-    let const inner_start = pos;
-    usize     depth       = 1;
-
-    while (pos < source.length && depth > 0) {
-      if (source[pos] == '[') {
-        depth++;
-      } else if (source[pos] == ']' && --depth == 0) {
-        break;
-      } else if (source[pos] == '\'' || source[pos] == '"' ||
-                 source[pos] == '\\')
-      {
-        pos = lexer::skip_quoted_run(source, pos);
-      }
-
-      pos++;
-    }
-
-    if (depth != 0)
-      fail("Expected ']' after an array subscript",
-           "The subscript '[' was never closed");
-
-    /* at this point: pos is the index of the ']' that closes the subscript,
-       and inner_start up to pos is the subscript text. */
-    let const subscript =
-        source.substring_of_length(inner_start, pos - inner_start);
-
-    pos++;
-
-    return subscript;
-  }
-
-  fn
-  read_lvalue() throws -> Lvalue
-  {
-    skip_spaces();
-
-    let const name_position = pos;
-    let const name          = read_lvalue_name();
-
-    if (name.is_empty()) return Lvalue{name, None, name_position};
-
-    let is_expanded_subscript = false;
-    let target = Lvalue{name, read_optional_subscript(is_expanded_subscript),
-                        name_position};
-
-    target.is_expanded_subscript = is_expanded_subscript;
+    target.is_expanded_subscript =
+        (node.flags & arith_node::EXPANDED_SUBSCRIPT_FLAG) != 0;
 
     return target;
   }
@@ -963,45 +1893,23 @@ public:
   }
 
   fn
-  prefix_step(i64 delta, usize operator_position) throws
+  evaluate_step(const arith_node &node, bool is_prefix) throws
       -> ArithmeticValue
   {
-    Lvalue target = read_lvalue();
+    if (tree.is_simple) return evaluate_simple_step(node, is_prefix);
 
-    /* Bash treats '++' and '--' before a non-variable operand as two unary
-       signs, which leave the operand unchanged. */
-    if (target.name.is_empty() && pos < source.length) {
-      return parse_unary();
-    }
-
-    if (target.name.is_empty())
-      fail_span(operator_position, operator_position + 2,
-                "Expected a variable after '++' or '--'",
-                "'++' and '--' apply only to a variable");
+    let target = get_lvalue(node.first);
 
     resolve_lvalue_subscript(target);
+    pos = node.start;
 
-    let const updated =
-        arith_apply_binop('+', read_lvalue_value(target),
-                          ArithmeticValue{delta}, is_exact, arena, bc_scale);
+    let const original = read_lvalue_value(target);
+    let const updated  = arith_apply_binop(
+        '+', original, ArithmeticValue{node.value}, is_exact, arena, bc_scale);
 
     write_lvalue(target, updated);
 
-    return updated;
-  }
-
-  fn
-  postfix_step(Lvalue &target, i64 delta) throws -> ArithmeticValue
-  {
-    resolve_lvalue_subscript(target);
-
-    let const original = read_lvalue_value(target);
-
-    write_lvalue(target,
-                 arith_apply_binop('+', original, ArithmeticValue{delta},
-                                   is_exact, arena, bc_scale));
-
-    return original;
+    return is_prefix ? updated : original;
   }
 
   fn
@@ -1028,373 +1936,423 @@ public:
   }
 
   fn
-  parse() throws -> ArithmeticValue
+  run(u32 root) throws -> ArithmeticValue
   {
-    skip_spaces();
-    if (pos == source.length) return ArithmeticValue{};
+    if (root == ARITH_NO_NODE) return ArithmeticValue{};
 
-    let const result = parse_comma();
-
-    skip_spaces();
-    if (pos != source.length)
-      fail_at(pos, should_error_unset ? source.length - pos : 1,
-              "Unexpected '" + source.substring(pos) + "' after the expression",
-              "An operator is missing between two values");
-
-    return result;
+    return evaluate(root);
   }
 
   fn
-  parse_comma() throws -> ArithmeticValue
-  {
-    let result = parse_assignment();
-
-    while (consume(","))
-      result = parse_assignment();
-
-    return result;
-  }
-
-  fn
-  parse_assignment() throws -> ArithmeticValue
-  {
-    enter_chain();
-    defer { chain_depth = chain_depth > 0 ? chain_depth - 1 : 0; };
-
-    let const save   = pos;
-    Lvalue    target = read_lvalue();
-
-    if (!target.name.is_empty()) {
-
-      struct compound_operator
-      {
-        StringView token;
-        char       kind;
-      };
-      static const compound_operator compound_operators[] = {
-          {"<<=", 'L'},
-          {">>=", 'R'},
-          {"**=", 'P'},
-          {"+=",  '+'},
-          {"-=",  '-'},
-          {"*=",  '*'},
-          {"/=",  '/'},
-          {"%=",  '%'},
-          {"&=",  '&'},
-          {"|=",  '|'},
-          {"^=",  '^'},
-      };
-
-      skip_spaces();
-
-      let const next_byte = pos < source.length ? source[pos] : '\0';
-
-      if (next_byte == '<' || next_byte == '>' || next_byte == '+' ||
-          next_byte == '-' || next_byte == '*' || next_byte == '/' ||
-          next_byte == '%' || next_byte == '&' || next_byte == '|' ||
-          next_byte == '^')
-      {
-        for (let const &[ op, kind ] : compound_operators) {
-          if (consume(op)) {
-            skip_spaces();
-
-            resolve_lvalue_subscript(target);
-
-            let const lhs       = read_lvalue_value(target);
-            let const rhs_start = pos;
-            let const rhs       = parse_assignment();
-            let       result    = ArithmeticValue{};
-
-            if (m_is_skipping) return ArithmeticValue{};
-
-            try {
-              result =
-                  arith_apply_binop(kind, lhs, rhs, is_exact, arena, bc_scale);
-            } catch (const ErrorWithLocation &) {
-              throw;
-            } catch (const ErrorBase &error) {
-              fail_span(rhs_start, pos, error.message().view(),
-                        error.detail_message());
-            }
-
-            write_lvalue(target, result);
-
-            return result;
-          }
-        }
-      }
-
-      if (starts_with("=") && !starts_with("==")) {
-        consume("=");
-
-        let const rhs = parse_assignment();
-
-        write_lvalue(target, rhs);
-
-        return rhs;
-      }
-
-      pos = save;
-    }
-
-    return parse_ternary();
-  }
-
-  fn
-  parse_skipped(ArithmeticValue (ArithmeticParser::*parse_branch)())
-      throws -> ArithmeticValue
+  evaluate_skipped(u32 index, bool should_skip) throws
+      -> ArithmeticValue
   {
     let const was_skipping = m_is_skipping;
 
-    m_is_skipping = true;
+    m_is_skipping = was_skipping || should_skip;
     defer { m_is_skipping = was_skipping; };
 
-    return (this->*parse_branch)();
+    return evaluate(index);
+  }
+
+  wontreturn cold fn
+  throw_error_node(const arith_node &node) throws -> void
+  {
+    fail_at(node.start, node.length, tree.get_text(node.first, node.second),
+            tree.get_text(node.third, node.end));
+  }
+
+  wontreturn cold fn
+  throw_failure(u32 index) throws -> void
+  {
+    let const &node = tree.nodes[index];
+
+    if (node.kind == arith_node_kind::DepthLimit) {
+      fail_nested_too_deeply(node.middle);
+    }
+
+    throw_error_node(node);
+  }
+
+  wontreturn cold fn
+  fail_nested_too_deeply(u32 primary_position) throws -> void
+  {
+    pos = primary_position;
+    fail("Expression nested too deeply",
+         is_variable_value
+             ? StringView{"A variable may reference itself, like `x=x`"}
+             : StringView{});
   }
 
   fn
-  parse_ternary() throws -> ArithmeticValue
+  read_simple_variable(StringView name) throws -> ArithmeticValue
   {
-    defer { binary_depth--; };
-    enter_binary_chain();
+    ASSERT(context != nullptr);
+    if (let const stored = context->variable_store().find_plain_scalar(name);
+        stored.has_value())
+    {
+      return evaluate_named_value(stored->view());
+    }
 
-    let const condition = parse_binary(1);
+    let const value = context->get_variable_value(name);
 
-    if (consume("?")) {
-      if (!condition.is_zero()) {
-        let const if_true = parse_comma();
+    if (!value.has_value()) {
+      context->report_unset_reference(name);
 
-        if (!consume(":"))
-          fail("Expected ':' in a conditional", "A '?' needs a matching ':'");
+      return ArithmeticValue{};
+    }
 
-        let const if_false = parse_skipped(&ArithmeticParser::parse_ternary);
+    return evaluate_named_value(value->view());
+  }
 
-        unused(if_false);
+  fn
+  evaluate_named_value(StringView value) throws -> ArithmeticValue
+  {
+    if (value.is_empty()) return ArithmeticValue{};
+    if (!is_exact) {
+      if (let const literal = try_parse_single_integer_literal(value);
+          literal.has_value())
+        return ArithmeticValue{literal.value()};
+    } else if (is_plain_decimal_operand(value)) {
+      return ArithmeticValue::parse(value, 10, arena);
+    }
 
-        return if_true;
+    let const stable_value = String{bump_allocator(arena), value};
+    let       options      = arith_text_options{};
+
+    options.is_variable_value = true;
+
+    return evaluate_text_tree(context, stable_value.view(), is_exact, arena,
+                              options);
+  }
+
+  fn
+  evaluate_simple_step(const arith_node &node, bool is_prefix) throws
+      -> ArithmeticValue
+  {
+    let const &target = tree.nodes[node.first];
+    let const  name   = source.substring_of_length(target.start, target.length);
+    let const  original = read_simple_variable(name);
+    let const  updated  = arith_apply_binop(
+        '+', original, ArithmeticValue{node.value}, is_exact, arena);
+
+    if (context->variable_store().attributes().is_nameref(name) &&
+        context->is_circular_nameref(name))
+    {
+      context->warn_circular_nameref(name);
+
+      return is_prefix ? updated : original;
+    }
+
+    let const text = updated.to_string(context->scratch_allocator());
+
+    context->set_shell_variable(name, text.view());
+
+    return is_prefix ? updated : original;
+  }
+
+  fn
+  evaluate_number(const arith_node &node) throws -> ArithmeticValue
+  {
+    if (!is_exact || (node.flags & arith_node::PLAIN_NUMBER_FLAG) != 0) {
+      return ArithmeticValue{node.value};
+    }
+
+    let value = ArithmeticValue{};
+
+    try {
+      lex_exact_arith_number(source.substring(node.start), &value, arena);
+    } catch (const ErrorWithLocation &) {
+      throw;
+    } catch (const ErrorBase &error) {
+      fail_at(node.start,
+              arithmetic_internal::count_leading_digits(
+                  source.substring(node.start), 10) +
+                  1,
+              error.message().view(), error.detail_message());
+    }
+
+    return value;
+  }
+
+  fn
+  evaluate_call(const arith_node &node) throws -> ArithmeticValue
+  {
+    let arguments = ArrayList<CalculatorArgument>{bump_allocator(arena)};
+
+    for (let index = node.first; index != ARITH_NO_NODE;
+         index     = tree.nodes[index].next)
+    {
+      let const &argument = tree.nodes[index];
+
+      if (argument.kind == arith_node_kind::Error) throw_error_node(argument);
+      arguments.push(CalculatorArgument{evaluate(argument.first),
+                                        argument.start, argument.end});
+    }
+
+    pos = node.end;
+
+    return apply_calculator_function(
+        source.substring_of_length(node.start, node.length), node.start,
+        static_cast<CalculatorFunction>(node.value), arguments);
+  }
+
+  noinline fn
+  evaluate_primary(const arith_node &node) throws -> ArithmeticValue
+  {
+    depth++;
+    defer { depth--; };
+
+    if (depth > MAX_PRIMARY_DEPTH && !tree.is_simple) {
+      fail_nested_too_deeply(node.middle);
+    }
+
+    switch (node.kind) {
+    case arith_node_kind::Number: return evaluate_number(node);
+    case arith_node_kind::Read:   {
+      if (tree.is_simple) {
+        let const &target = tree.nodes[node.first];
+
+        return read_simple_variable(
+            source.substring_of_length(target.start, target.length));
       }
 
-      let const if_true = parse_skipped(&ArithmeticParser::parse_comma);
+      let const target = get_lvalue(node.first);
 
-      unused(if_true);
-      if (!consume(":"))
-        fail("Expected ':' in a conditional", "A '?' needs a matching ':'");
+      pos = node.start;
 
-      return parse_ternary();
+      return read_lvalue_value(target);
+    }
+    case arith_node_kind::PostfixStep: return evaluate_step(node, false);
+    case arith_node_kind::Group:       return evaluate(node.first);
+    case arith_node_kind::Call:        return evaluate_call(node);
+    case arith_node_kind::Error:       throw_error_node(node);
+    default:                           break;
     }
 
-    return condition;
-  }
-
-  struct BinaryOperator
-  {
-    char kind;
-    u8   precedence;
-    u8   length;
-  };
-
-  fn
-  peek_binary_operator() wontthrow -> BinaryOperator
-  {
-    skip_spaces();
-    if (pos >= source.length) return {0, 0, 0};
-
-    let const first_byte  = source[pos];
-    let const second_byte = pos + 1 < source.length ? source[pos + 1] : '\0';
-    let const third_byte  = pos + 2 < source.length ? source[pos + 2] : '\0';
-
-    switch (first_byte) {
-    case '*':
-      if (second_byte == '*') return {'P', 11, 2};
-
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'*', 10, 1};
-    case '/':
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'/', 10, 1};
-    case '%':
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'%', 10, 1};
-    case '+':
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'+', 9, 1};
-    case '-':
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'-', 9, 1};
-    case '<':
-      if (second_byte == '<')
-        return third_byte == '=' ? BinaryOperator{0, 0, 0}
-                                 : BinaryOperator{'L', 8, 2};
-      if (second_byte == '=') return {'l', 7, 2};
-
-      return {'<', 7, 1};
-    case '>':
-      if (second_byte == '>')
-        return third_byte == '=' ? BinaryOperator{0, 0, 0}
-                                 : BinaryOperator{'R', 8, 2};
-      if (second_byte == '=') return {'g', 7, 2};
-
-      return {'>', 7, 1};
-    case '=':
-      return second_byte == '=' ? BinaryOperator{'e', 6, 2}
-                                : BinaryOperator{0, 0, 0};
-    case '!':
-      return second_byte == '=' ? BinaryOperator{'n', 6, 2}
-                                : BinaryOperator{0, 0, 0};
-    case '&':
-      if (second_byte == '&') return {'A', 2, 2};
-
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'&', 5, 1};
-    case '^':
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'^', 4, 1};
-    case '|':
-      if (second_byte == '|') return {'O', 1, 2};
-
-      return second_byte == '=' ? BinaryOperator{0, 0, 0}
-                                : BinaryOperator{'|', 3, 1};
-    default: return {0, 0, 0};
-    }
+    fail_nested_too_deeply(node.middle);
   }
 
   fn
-  parse_binary(u8 min_precedence) throws -> ArithmeticValue
+  apply_chain_step(const arith_node &chain,
+                   const arith_node &step,
+                   ArithmeticValue   lhs,
+                   ArithmeticValue   rhs) throws -> ArithmeticValue
   {
-    defer { binary_depth--; };
-    enter_binary_chain();
+    if (tree.is_simple) {
+      try {
+        return arith_apply_binop(step.op, lhs, rhs, is_exact, arena);
+      } catch (const ErrorWithLocation &) {
+        throw;
+      } catch (const ErrorBase &error) {
+        if ((step.flags & arith_node::TAIL_FLAG) != 0) {
+          fail_at(step.middle, step.end,
+                  "Unexpected '" +
+                      source.substring_of_length(step.middle, step.end) +
+                      "' after the expression",
+                  "An operator is missing between two values");
+        }
 
-    skip_spaces();
+        if (!precise_base.has_value()) throw;
+        fail_at(step.start, step.length, error.message().view(),
+                error.detail_message());
+      }
+    }
 
-    let const lhs_start = pos;
-    let       lhs       = parse_unary();
+    try {
+      if (step.op == 'P' && rhs.is_negative() && !bc_scale.has_value()) {
+        fail_span(step.middle, step.end, "Exponent less than 0",
+                  "'**' requires a non-negative exponent");
+      }
 
-    loop {
-      let const op = peek_binary_operator();
+      return arith_apply_binop(step.op, lhs, rhs, is_exact, arena, bc_scale);
+    } catch (const ErrorWithLocation &) {
+      throw;
+    } catch (const ErrorBase &error) {
+      pos = step.end;
+      fail_on_unexpected_tail();
+      fail_span(step.op == 'P' || step.op == '/' || step.op == '%'
+                    ? step.middle
+                    : chain.start,
+                step.end, error.message().view(), error.detail_message());
+    }
+  }
 
-      if (op.precedence < min_precedence) return lhs;
-      pos += op.length;
-      skip_spaces();
+  noinline hot fn
+  evaluate_chain(const arith_node &chain) throws -> ArithmeticValue
+  {
+    let lhs = evaluate(chain.first);
 
-      let const rhs_start = pos;
+    for (let index = chain.second; index != ARITH_NO_NODE;
+         index     = tree.nodes[index].next)
+    {
+      let const &step = tree.nodes[index];
 
-      if (op.kind == 'A' || op.kind == 'O') {
-        let const is_decided_by_lhs = (op.kind == 'A') == lhs.is_zero();
+      if (step.op == 'A' || step.op == 'O') {
+        let const is_decided_by_lhs = (step.op == 'A') == lhs.is_zero();
+        let const rhs = evaluate_skipped(step.first, is_decided_by_lhs);
 
-        let const was_skipping = m_is_skipping;
+        if (step.op == 'A') {
+          lhs = ArithmeticValue{!lhs.is_zero() && !rhs.is_zero() ? 1 : 0};
+        } else {
+          lhs = ArithmeticValue{!lhs.is_zero() || !rhs.is_zero() ? 1 : 0};
+        }
 
-        m_is_skipping = was_skipping || is_decided_by_lhs;
-        defer { m_is_skipping = was_skipping; };
-
-        let const rhs = parse_binary(op.precedence + 1);
-
-        lhs = ArithmeticValue{
-            op.kind == 'A' ? ((!lhs.is_zero() && !rhs.is_zero()) ? 1 : 0)
-                                       : ((!lhs.is_zero() || !rhs.is_zero()) ? 1 : 0)};
         continue;
       }
 
-      let const rhs =
-          parse_binary(op.kind == 'P' ? op.precedence : op.precedence + 1);
+      let const rhs = evaluate(step.first);
 
       if (m_is_skipping) {
         lhs = ArithmeticValue{};
         continue;
       }
 
-      try {
-        if (op.kind == 'P' && rhs.is_negative() && !bc_scale.has_value()) {
-          fail_span(rhs_start, pos, "Exponent less than 0",
-                                "'**' requires a non-negative exponent");
-        }
-
-        lhs = arith_apply_binop(op.kind, lhs, rhs, is_exact, arena, bc_scale);
-      } catch (const ErrorWithLocation &) {
-        throw;
-      } catch (const ErrorBase &error) {
-        fail_on_unexpected_tail();
-        fail_span(op.kind == 'P' || op.kind == '/' || op.kind == '%'
-                                  ? rhs_start
-                                  : lhs_start,
-                  pos, error.message().view(), error.detail_message());
-      }
+      lhs = apply_chain_step(chain, step, lhs, rhs);
     }
+
+    return lhs;
   }
 
   fn
-  parse_unary() throws -> ArithmeticValue
+  evaluate_compound_assignment(const arith_node &node) throws
+      -> ArithmeticValue
   {
-    enter_chain();
-    defer { chain_depth = chain_depth > 0 ? chain_depth - 1 : 0; };
+    let target = get_lvalue(node.first);
 
-    skip_spaces();
+    resolve_lvalue_subscript(target);
+    pos = node.middle;
 
-    let const first = pos < source.length ? source[pos] : '\0';
+    let const lhs = read_lvalue_value(target);
+    let const rhs = evaluate(node.second);
 
-    if (first == '+') {
-      let const operator_position = pos;
+    if (m_is_skipping) return ArithmeticValue{};
 
-      if (consume("++")) return prefix_step(1, operator_position);
-      pos++;
+    let result = ArithmeticValue{};
 
-      return parse_unary();
+    try {
+      result = arith_apply_binop(node.op, lhs, rhs, is_exact, arena, bc_scale);
+    } catch (const ErrorWithLocation &) {
+      throw;
+    } catch (const ErrorBase &error) {
+      fail_span(node.middle, node.end, error.message().view(),
+                error.detail_message());
     }
 
-    if (first == '-') {
-      let const operator_position = pos;
+    write_lvalue(target, result);
 
-      if (consume("--")) return prefix_step(-1, operator_position);
-      pos++;
+    return result;
+  }
 
-      return arith_apply_binop('-', ArithmeticValue{}, parse_unary(), is_exact,
-                               arena, bc_scale);
+  hot fn
+  evaluate(u32 index) throws -> ArithmeticValue
+  {
+    let const &node = tree.nodes[index];
+
+    switch (node.kind) {
+    case arith_node_kind::Number:
+      if (depth < MAX_PRIMARY_DEPTH &&
+          (!is_exact || (node.flags & arith_node::PLAIN_NUMBER_FLAG) != 0))
+      {
+        return ArithmeticValue{node.value};
+      }
+
+      return evaluate_primary(node);
+    case arith_node_kind::Read:
+      if (tree.is_simple) {
+        let const &target = tree.nodes[node.first];
+
+        return read_simple_variable(
+            source.substring_of_length(target.start, target.length));
+      }
+
+      return evaluate_primary(node);
+    case arith_node_kind::Chain: return evaluate_chain(node);
+    case arith_node_kind::PostfixStep:
+      if (tree.is_simple) return evaluate_simple_step(node, false);
+
+      return evaluate_primary(node);
+    case arith_node_kind::Group:
+    case arith_node_kind::Call:
+    case arith_node_kind::DepthLimit: return evaluate_primary(node);
+    case arith_node_kind::PrefixStep: return evaluate_step(node, true);
+    default:                          return evaluate_other(node);
     }
+  }
 
-    if (first == '!') {
-      pos++;
-
-      return ArithmeticValue{parse_unary().is_zero() ? 1 : 0};
-    }
-
-    if (first == '~') {
-      pos++;
-
-      let const value = parse_unary();
+  noinline fn
+  evaluate_other(const arith_node &node) throws -> ArithmeticValue
+  {
+    switch (node.kind) {
+    case arith_node_kind::Negate:
+      return arith_apply_binop('-', ArithmeticValue{}, evaluate(node.first),
+                               is_exact, arena, bc_scale);
+    case arith_node_kind::Not:
+      return ArithmeticValue{evaluate(node.first).is_zero() ? 1 : 0};
+    case arith_node_kind::BitNot: {
+      let const value = evaluate(node.first);
 
       return is_exact ? ArithmeticValue::bit_not(value, arena)
                       : ArithmeticValue{~value.wrapped_i64()};
     }
+    case arith_node_kind::Ternary: {
+      let const condition = evaluate(node.first);
 
-    return parse_primary();
+      if (!condition.is_zero()) {
+        let const if_true = evaluate(node.second);
+
+        if (node.third != ARITH_NO_NODE)
+          unused(evaluate_skipped(node.third, true));
+
+        return if_true;
+      }
+
+      unused(evaluate_skipped(node.second, true));
+      if (node.third == ARITH_NO_NODE) return ArithmeticValue{};
+
+      return evaluate(node.third);
+    }
+    case arith_node_kind::Assign: {
+      let const target = get_lvalue(node.first);
+      let const rhs    = evaluate(node.second);
+
+      write_lvalue(target, rhs);
+
+      return rhs;
+    }
+    case arith_node_kind::CompoundAssign:
+      return evaluate_compound_assignment(node);
+    case arith_node_kind::Comma: {
+      let result = ArithmeticValue{};
+
+      for (let child = node.first; child != ARITH_NO_NODE;
+           child     = tree.nodes[child].next)
+        result = evaluate(child);
+
+      return result;
+    }
+    case arith_node_kind::Error:
+      if ((node.flags & arith_node::PRIMARY_ERROR_FLAG) != 0) {
+        return evaluate_primary(node);
+      }
+
+      throw_error_node(node);
+    case arith_node_kind::Number:
+    case arith_node_kind::Read:
+    case arith_node_kind::Chain:
+    case arith_node_kind::PostfixStep:
+    case arith_node_kind::Group:
+    case arith_node_kind::Call:
+    case arith_node_kind::DepthLimit:
+    case arith_node_kind::PrefixStep:
+    case arith_node_kind::Lvalue:
+    case arith_node_kind::ChainStep:
+    case arith_node_kind::Argument:    break;
+    }
+
+    unreachable("an arithmetic tree node of kind %d was evaluated",
+                static_cast<int>(node.kind));
   }
-
-  enum class CalculatorFunction : u8
-  {
-    Abs,
-    Atan,
-    Ceil,
-    Cmp,
-    Cos,
-    Exp,
-    Fact,
-    Fib,
-    Floor,
-    Frac,
-    Gcd,
-    Int,
-    IsEven,
-    IsInt,
-    IsOdd,
-    Length,
-    Lcm,
-    Ln,
-    Max,
-    Min,
-    Scale,
-    Sgn,
-    Sin,
-    Sqrt,
-  };
 
   struct CalculatorArgument : ArithmeticValue
   {
@@ -1408,28 +2366,6 @@ public:
     usize start;
     usize end;
   };
-
-  fn
-  calculator_function_arguments(StringView name) throws
-      -> ArrayList<CalculatorArgument>
-  {
-    let arguments = ArrayList<CalculatorArgument>{bump_allocator(arena)};
-
-    if (consume(")")) return arguments;
-
-    loop {
-      skip_spaces();
-
-      let const argument_start = pos;
-      let       argument       = parse_assignment();
-
-      arguments.push(CalculatorArgument{steal(argument), argument_start, pos});
-      if (consume(")")) return arguments;
-      if (!consume(","))
-        fail("Expected ',' or ')' after an argument",
-             "The call to '" + name + "' is unfinished");
-    }
-  }
 
   fn
   require_argument_count(StringView                           name,
@@ -2020,36 +2956,13 @@ public:
   }
 
   fn
-  apply_calculator_function(StringView name, usize name_position) throws
+  apply_calculator_function(
+      StringView                           name,
+      usize                                name_position,
+      CalculatorFunction                   function_value,
+      const ArrayList<CalculatorArgument> &arguments) throws
       -> ArithmeticValue
   {
-    static constexpr static_string_entry<CalculatorFunction> ENTRIES[] = {
-        {SSK("abs"),    CalculatorFunction::Abs   },
-        {SSK("atan"),   CalculatorFunction::Atan  },
-        {SSK("ceil"),   CalculatorFunction::Ceil  },
-        {SSK("cmp"),    CalculatorFunction::Cmp   },
-        {SSK("cos"),    CalculatorFunction::Cos   },
-        {SSK("exp"),    CalculatorFunction::Exp   },
-        {SSK("fact"),   CalculatorFunction::Fact  },
-        {SSK("fib"),    CalculatorFunction::Fib   },
-        {SSK("floor"),  CalculatorFunction::Floor },
-        {SSK("frac"),   CalculatorFunction::Frac  },
-        {SSK("gcd"),    CalculatorFunction::Gcd   },
-        {SSK("int"),    CalculatorFunction::Int   },
-        {SSK("iseven"), CalculatorFunction::IsEven},
-        {SSK("isint"),  CalculatorFunction::IsInt },
-        {SSK("isodd"),  CalculatorFunction::IsOdd },
-        {SSK("length"), CalculatorFunction::Length},
-        {SSK("lcm"),    CalculatorFunction::Lcm   },
-        {SSK("ln"),     CalculatorFunction::Ln    },
-        {SSK("max"),    CalculatorFunction::Max   },
-        {SSK("min"),    CalculatorFunction::Min   },
-        {SSK("scale"),  CalculatorFunction::Scale },
-        {SSK("sgn"),    CalculatorFunction::Sgn   },
-        {SSK("sin"),    CalculatorFunction::Sin   },
-        {SSK("sqrt"),   CalculatorFunction::Sqrt  },
-    };
-    static constexpr StaticStringMap FUNCTIONS{ENTRIES};
     let const previous_function_position = calculator_function_position;
 
     calculator_function_position = name_position;
@@ -2057,15 +2970,7 @@ public:
       calculator_function_position = previous_function_position;
     };
 
-    let const function = FUNCTIONS.find(name);
-
-    if (!function.has_value())
-      fail_span(
-          name_position, name_position + name.length,
-          "Unknown calculator function '" + name + "'",
-          "Check the spelling, or use a function that the calculator supports");
-
-    let const arguments = calculator_function_arguments(name);
+    let const *const function = &function_value;
 
     switch (*function) {
     case CalculatorFunction::Abs:
@@ -2291,127 +3196,6 @@ public:
 
     unreachable();
   }
-
-  pure fn
-  get_radix_prefix_length(usize number_start) const wontthrow -> usize
-  {
-    return arithmetic_internal::count_leading_digits(
-               source.substring(number_start), 10) +
-           1;
-  }
-
-  fn
-  reject_invalid_digit(usize number_start) throws -> void
-  {
-    if (pos >= source.length || !is_number_continuation(source[pos])) {
-      return;
-    }
-
-    usize end = pos;
-
-    while (end < source.length && is_number_continuation(source[end])) {
-      end++;
-    }
-
-    let const token =
-        source.substring_of_length(number_start, end - number_start);
-
-    usize base = arithmetic_internal::detect_radix_prefix(token).radix;
-
-    if (let const hash = token.find_character('#'); hash.has_value()) {
-      base = static_cast<usize>(
-          parse_arithmetic_operand(token.substring_of_length(0, *hash)));
-    }
-
-    fail_span(number_start, end,
-              "Invalid digit '" + source.substring_of_length(pos, 1) +
-                  "' in the number '" +
-                  source.substring_of_length(number_start, end - number_start) +
-                  "'",
-              "The digit is not valid in base " +
-                  String::from(base, bump_allocator(arena)));
-  }
-
-  fn
-  parse_primary() throws -> ArithmeticValue
-  {
-    depth++;
-    defer { depth--; };
-
-    if (depth > MAX_DEPTH) {
-      fail("Expression nested too deeply",
-           is_variable_value
-               ? StringView{"A variable may reference itself, like `x=x`"}
-               : StringView{});
-    }
-
-    skip_spaces();
-    if (consume("(")) {
-      let const value = parse_comma();
-      if (!consume(")")) fail("Expected ')'", "An opening '(' is unmatched");
-
-      return value;
-    }
-
-    let const has_leading_decimal_point =
-        is_exact && is_leading_decimal_number(source, pos);
-
-    if (pos < source.length &&
-        (lexer::is_number(source[pos]) || has_leading_decimal_point))
-    {
-      let const number_start = pos;
-
-      if (is_exact) {
-        let value = ArithmeticValue{};
-
-        try {
-          pos += lex_exact_arith_number(source.substring(pos), &value, arena);
-        } catch (const ErrorWithLocation &) {
-          throw;
-        } catch (const ErrorBase &error) {
-          fail_at(number_start, get_radix_prefix_length(number_start),
-                  error.message().view(), error.detail_message());
-        }
-        reject_invalid_digit(number_start);
-
-        return value;
-      }
-
-      i64 value = 0;
-
-      try {
-        pos += lex_arith_number(source.substring(pos), &value);
-      } catch (const ErrorWithLocation &) {
-        throw;
-      } catch (const ErrorBase &error) {
-        fail_at(number_start, get_radix_prefix_length(number_start),
-                error.message().view(), error.detail_message());
-      }
-      reject_invalid_digit(number_start);
-
-      return ArithmeticValue{value};
-    }
-
-    if (pos < source.length && lexer::is_variable_name_start(source[pos])) {
-      Lvalue target = read_lvalue();
-
-      if (should_error_unset && !target.subscript.has_value() && consume("(")) {
-        return apply_calculator_function(target.name, target.name_position);
-      }
-
-      if (consume("++")) return postfix_step(target, 1);
-      if (consume("--")) return postfix_step(target, -1);
-
-      return read_lvalue_value(target);
-    }
-
-    /* at this point: depth is at most MAX_DEPTH, and source[pos] starts
-       neither a number nor a variable name, or pos is at the end. */
-    if (pos >= source.length)
-      fail("Unfinished expression", "An operand is missing");
-    fail("Unexpected character in the arithmetic expression",
-         "This is not a valid operator or operand");
-  }
 };
 
 struct explicit_radix
@@ -2566,12 +3350,46 @@ lex_exact_arith_number(StringView       from,
   return consumed;
 }
 
-static const StringView ARITH_OPERATORS[] = {
-    "<<=", ">>=", "**", "<<", ">>", "<=", ">=", "==", "!=", "&&",
-    "||",  "++",  "--", "+=", "-=", "*=", "/=", "%=", "&=", "|=",
-    "^=",  "(",   ")",  ",",  "?",  ":",  "+",  "-",  "*",  "/",
-    "%",   "<",   ">",  "=",  "&",  "|",  "^",  "!",  "~",
+struct arith_token
+{
+  enum class kind : u8
+  {
+    number,
+    name,
+    op,
+    subscript,
+  };
+  kind       k;
+  i64        value{0};
+  StringView text{};
 };
+
+static pure fn
+arith_operator_length(StringView src, usize i) wontthrow -> usize
+{
+  let const first  = src[i];
+  let const second = i + 1 < src.length ? src[i + 1] : '\0';
+  let const third  = i + 2 < src.length ? src[i + 2] : '\0';
+
+  switch (first) {
+  case '<':
+  case '>':
+    if (second == first) return third == '=' ? 3 : 2;
+
+    return second == '=' ? 2 : 1;
+  case '*':
+  case '&':
+  case '|':
+  case '+':
+  case '-': return second == first || second == '=' ? 2 : 1;
+  case '=':
+  case '!':
+  case '/':
+  case '%':
+  case '^': return second == '=' ? 2 : 1;
+  default:  return 1;
+  }
+}
 
 struct arith_binop
 {
@@ -2626,9 +3444,7 @@ arith_unpacked_binop(i64 value) wontthrow -> arith_binop
 
 /* memory: out grows by one arith_token per token; the caller owns out and
            clears it before a retokenize. token texts are views into src.
-   time:   O(n) in the bytes of src. an operator token probes at most 39
-           entries of ARITH_OPERATORS before it matches or falls back to
-           a single-byte operator. */
+   time:   O(n) in the bytes of src. */
 static fn
 tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
     -> void
@@ -2721,26 +3537,10 @@ tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
       continue;
     }
 
-    bool is_matched = false;
+    let const op = src.substring_of_length(i, arith_operator_length(src, i));
 
-    for (let const &op : ARITH_OPERATORS) {
-      if (i + op.length <= src.length &&
-          src.substring_of_length(i, op.length) == op)
-      {
-        out.push(arith_token{arith_token::kind::op, arith_packed_binop(op),
-                             src.substring_of_length(i, op.length)});
-        i += op.length;
-        is_matched = true;
-        break;
-      }
-    }
-
-    if (!is_matched) {
-      out.push(arith_token{arith_token::kind::op,
-                           arith_packed_binop(src.substring_of_length(i, 1)),
-                           src.substring_of_length(i, 1)});
-      i++;
-    }
+    out.push(arith_token{arith_token::kind::op, arith_packed_binop(op), op});
+    i += op.length;
   }
 }
 
@@ -2973,120 +3773,135 @@ arith_apply_binop(char                   kind,
   }
 }
 
-static fn
-evaluate_named_value_operand(EvalContext *context,
-                             StringView   value,
-                             bool         is_exact,
-                             BumpArena   &arena) throws -> ArithmeticValue
-{
-  if (value.is_empty()) return ArithmeticValue{};
-  if (!is_exact) {
-    if (let const literal = try_parse_single_integer_literal(value);
-        literal.has_value())
-      return ArithmeticValue{literal.value()};
-  } else if (is_plain_decimal_operand(value)) {
-    return ArithmeticValue::parse(value, 10, arena);
-  }
-
-  /* at this point: value is not empty, and it is not a single integer
-     literal (when is_exact is false) or a plain decimal operand (when
-     is_exact is true). */
-  let const        stable_value = String{bump_allocator(arena), value};
-  ArithmeticParser nested{context, stable_value.view(), is_exact, arena};
-
-  nested.is_variable_value = true;
-
-  return nested.parse();
-}
-
-static fn
-arith_read_variable(EvalContext *context,
-                    StringView   name,
-                    bool         is_exact,
-                    BumpArena   &arena) throws -> ArithmeticValue
-{
-  ASSERT(context != nullptr);
-  if (let const stored = context->variable_store().find_plain_scalar(name);
-      stored.has_value())
-  {
-    return evaluate_named_value_operand(context, stored->view(), is_exact,
-                                        arena);
-  }
-
-  let const value = context->get_variable_value(name);
-
-  if (!value.has_value()) {
-    context->report_unset_reference(name);
-
-    return ArithmeticValue{};
-  }
-
-  return evaluate_named_value_operand(context, value->view(), is_exact, arena);
-}
-
-class ArithmeticTokenEvaluator
+class ArithmeticTokenTreeBuilder
 {
 public:
-  ArithmeticTokenEvaluator(EvalContext                  *context_value,
-                           const ArrayList<arith_token> &tokens_value,
-                           bool                          is_exact_value,
-                           BumpArena                    &arena_value)
-      : context{context_value}, toks{tokens_value}, is_exact{is_exact_value},
-        arena{arena_value}
+  ArithmeticTokenTreeBuilder(StringView                    source_value,
+                             const ArrayList<arith_token> &tokens_value,
+                             arith_tree_storage           &storage_value)
+      : source{source_value}, toks{tokens_value}, storage{storage_value}
   {}
 
-  EvalContext                  *context;
+  fn
+  build() throws -> u32
+  {
+    if (toks.is_empty()) return ARITH_NO_NODE;
+    if (arith_tokens_are_single_step(toks)) return build_single_step();
+
+    let const result = parse_binary(1);
+
+    if (has_failed || ti == toks.count()) return result;
+
+    let const error = fail_at_token(
+        ti, "Unexpected '" + toks[ti].text + "' after the expression",
+        "An operator is missing between two values");
+
+    return sequence(result, error);
+  }
+
+private:
+  StringView                    source;
   const ArrayList<arith_token> &toks;
+  arith_tree_storage           &storage;
   usize                         ti{0};
   usize                         depth{0};
-  bool                          is_exact{false};
-  BumpArena                    &arena;
-  static constexpr usize        MAX_DEPTH = 128;
   usize                         binary_depth{0};
-  StringView                    source{};
-  Maybe<SourceLocation>         precise_base{};
+  bool                          has_failed{false};
 
-  wontreturn cold fn
+  pure fn
+  get_offset(const arith_token &token) const wontthrow -> u32
+  {
+    return static_cast<u32>(token.text.data - source.data);
+  }
+
+  fn
   fail_at_token(usize      token_index,
                 StringView message,
-                StringView note = {}) const throws -> void
+                StringView note = {}) throws -> u32
   {
-    if (precise_base.has_value() && !toks.is_empty()) {
-      let const &token =
-          toks[token_index < toks.count() ? token_index : toks.count() - 1];
+    let const &token =
+        toks[token_index < toks.count() ? token_index : toks.count() - 1];
 
-      if (token.text.data >= source.data &&
-          token.text.data + token.text.length <= source.data + source.length)
-      {
-        let const offset = static_cast<usize>(token.text.data - source.data);
-        SourceLocation location{precise_base->position + offset,
-                                token.text.length,
-                                precise_base->source_name_index};
+    arith_node node{};
 
-        if (note.is_empty()) throw ErrorWithLocation{location, message};
-        throw ErrorWithLocationAndDetails{location, message, note};
-      }
-    }
+    node.kind   = arith_node_kind::Error;
+    node.start  = get_offset(token);
+    node.length = static_cast<u32>(token.text.length);
+    node.first  = storage.add_text(message);
+    node.second = static_cast<u32>(message.length);
+    node.third  = storage.add_text(note);
+    node.end    = static_cast<u32>(note.length);
+    has_failed  = true;
 
-    if (note.is_empty()) throw Error{message};
-    throw ErrorWithDetails{message, note};
+    return storage.add_node(node);
+  }
+
+  fn
+  sequence(u32 first_index, u32 second_index) throws -> u32
+  {
+    arith_node node{};
+
+    storage.nodes[first_index].next = second_index;
+    node.kind                       = arith_node_kind::Comma;
+    node.first                      = first_index;
+
+    return storage.add_node(node);
+  }
+
+  fn
+  add_unary(arith_node_kind kind, u32 operand) throws -> u32
+  {
+    arith_node node{};
+
+    node.kind  = kind;
+    node.first = operand;
+
+    return storage.add_node(node);
+  }
+
+  fn
+  add_name(const arith_token &token) throws -> u32
+  {
+    arith_node node{};
+
+    node.kind   = arith_node_kind::Lvalue;
+    node.start  = get_offset(token);
+    node.length = static_cast<u32>(token.text.length);
+
+    return storage.add_node(node);
   }
 
   pure fn
-  at_op(StringView s) wontthrow -> bool
+  at_op(StringView s) const wontthrow -> bool
   {
     return ti < toks.count() && toks[ti].k == arith_token::kind::op &&
            toks[ti].text == s;
   }
 
-  hot flatten fn
-  parse_operand() throws -> ArithmeticValue
+  fn
+  build_single_step() throws -> u32
+  {
+    let const  is_prefix = toks[0].k == arith_token::kind::op;
+    let const &step      = is_prefix ? toks[0] : toks[1];
+
+    arith_node node{};
+
+    node.first = add_name(is_prefix ? toks[1] : toks[0]);
+    node.kind =
+        is_prefix ? arith_node_kind::PrefixStep : arith_node_kind::PostfixStep;
+    node.value = step.text[0] == '+' ? i64{1} : i64{-1};
+
+    return storage.add_node(node);
+  }
+
+  fn
+  parse_operand() throws -> u32
   {
     depth++;
     defer { depth--; };
 
-    if (depth > MAX_DEPTH) {
-      fail_at_token(ti, "Expression nested too deeply");
+    if (depth > MAX_PRIMARY_DEPTH) {
+      return fail_at_token(ti, "Expression nested too deeply");
     }
 
     if (at_op("+")) {
@@ -3098,23 +3913,19 @@ public:
     if (at_op("-")) {
       ti++;
 
-      return arith_apply_binop('-', ArithmeticValue{}, parse_operand(),
-                               is_exact, arena);
+      return add_unary(arith_node_kind::Negate, parse_operand());
     }
 
     if (at_op("!")) {
       ti++;
 
-      return ArithmeticValue{parse_operand().is_zero() ? 1 : 0};
+      return add_unary(arith_node_kind::Not, parse_operand());
     }
 
     if (at_op("~")) {
       ti++;
 
-      let const value = parse_operand();
-
-      return is_exact ? ArithmeticValue::bit_not(value, arena)
-                      : ArithmeticValue{~value.wrapped_i64()};
+      return add_unary(arith_node_kind::BitNot, parse_operand());
     }
 
     if (at_op("(")) {
@@ -3122,8 +3933,10 @@ public:
 
       let const value = parse_binary(1);
 
+      if (has_failed) return value;
       if (!at_op(")")) {
-        fail_at_token(ti, "Expected ')'", "An opening '(' is unmatched");
+        return sequence(value, fail_at_token(ti, "Expected ')'",
+                                             "An opening '(' is unmatched"));
       }
 
       ti++;
@@ -3131,133 +3944,261 @@ public:
       return value;
     }
 
-    /* at this point: depth is at most MAX_DEPTH, and no unary operator or
-       '(' is at ti. */
     if (ti < toks.count() && toks[ti].k == arith_token::kind::number) {
-      let value = ArithmeticValue{toks[ti].value};
+      arith_node node{};
 
-      if (is_exact && !is_plain_decimal_operand(toks[ti].text)) {
-        lex_exact_arith_number(toks[ti].text, &value, arena);
-      }
+      node.kind   = arith_node_kind::Number;
+      node.start  = get_offset(toks[ti]);
+      node.length = static_cast<u32>(toks[ti].text.length);
+      node.value  = toks[ti].value;
+      if (is_plain_decimal_operand(toks[ti].text))
+        node.flags |= arith_node::PLAIN_NUMBER_FLAG;
       ti++;
 
-      return value;
+      return storage.add_node(node);
     }
 
     if (ti < toks.count() && toks[ti].k == arith_token::kind::name) {
-      let const name = toks[ti].text;
+      arith_node node{};
 
+      node.first = add_name(toks[ti]);
+      node.kind  = arith_node_kind::Read;
       ti++;
 
-      return arith_read_variable(context, name, is_exact, arena);
+      return storage.add_node(node);
     }
 
     if (ti >= toks.count()) {
-      fail_at_token(ti, "Unfinished expression", "An operand is missing");
+      return fail_at_token(ti, "Unfinished expression",
+                           "An operand is missing");
     }
-    fail_at_token(ti, "Unexpected character in the arithmetic expression",
-                  "This is not a valid operator or operand");
+
+    return fail_at_token(ti,
+                         "Unexpected character in the arithmetic expression",
+                         "This is not a valid operator or operand");
   }
 
   fn
-  parse_binary(u8 min_precedence) throws -> ArithmeticValue
+  parse_binary(u8 min_precedence) throws -> u32
   {
     binary_depth++;
     defer { binary_depth--; };
 
     if (binary_depth > MAX_OPERATOR_CHAIN_DEPTH) {
-      fail_at_token(ti, "Expression nested too deeply", OPERATOR_CHAIN_HINT);
+      return fail_at_token(ti, "Expression nested too deeply",
+                           OPERATOR_CHAIN_HINT);
     }
 
-    let lhs = parse_operand();
+    let const lhs = parse_operand();
+
+    if (has_failed) return lhs;
+
+    let chain     = ARITH_NO_NODE;
+    let last_step = ARITH_NO_NODE;
 
     loop {
       if (ti >= toks.count() || toks[ti].k != arith_token::kind::op) {
-        return lhs;
+        return chain == ARITH_NO_NODE ? lhs : chain;
       }
 
       let const op = arith_unpacked_binop(toks[ti].value);
 
-      if (op.precedence < min_precedence) return lhs;
-
-      let const op_index = ti;
-
-      ti++;
-
-      let const rhs =
-          parse_binary(op.kind == 'P' ? op.precedence : op.precedence + 1);
-
-      try {
-        lhs = arith_apply_binop(op.kind, lhs, rhs, is_exact, arena);
-      } catch (const ErrorWithLocation &) {
-        throw;
-      } catch (const ErrorBase &error) {
-        let const is_invalid_tail =
-            ti < toks.count() &&
-            (toks[ti].k != arith_token::kind::op ||
-             (toks[ti].text != ")" &&
-              arith_unpacked_binop(toks[ti].value).precedence == 0));
-
-        if (is_invalid_tail) {
-          fail_at_token(
-              ti, "Unexpected '" + toks[ti].text + "' after the expression",
-              "An operator is missing between two values");
-        }
-
-        if (!precise_base.has_value()) throw;
-        fail_at_token(op_index, error.message().view(), error.detail_message());
+      if (op.precedence < min_precedence) {
+        return chain == ARITH_NO_NODE ? lhs : chain;
       }
+
+      arith_node step{};
+
+      step.kind   = arith_node_kind::ChainStep;
+      step.op     = op.kind;
+      step.start  = get_offset(toks[ti]);
+      step.length = static_cast<u32>(toks[ti].text.length);
+      ti++;
+      step.first = parse_binary(
+          op.kind == 'P' ? op.precedence : static_cast<u8>(op.precedence + 1));
+
+      if (ti < toks.count() &&
+          (toks[ti].k != arith_token::kind::op ||
+           (toks[ti].text != ")" &&
+            arith_unpacked_binop(toks[ti].value).precedence == 0)))
+      {
+        step.flags |= arith_node::TAIL_FLAG;
+        step.middle = get_offset(toks[ti]);
+        step.end    = static_cast<u32>(toks[ti].text.length);
+      }
+
+      let const step_index = storage.add_node(step);
+
+      if (chain == ARITH_NO_NODE) {
+        arith_node node{};
+
+        node.kind   = arith_node_kind::Chain;
+        node.first  = lhs;
+        node.second = step_index;
+        chain       = storage.add_node(node);
+      } else {
+        storage.nodes[last_step].next = step_index;
+      }
+
+      last_step = step_index;
+      if (has_failed) return chain;
     }
-  }
-
-  fn
-  run_single_step() throws -> ArithmeticValue
-  {
-    let const  is_prefix = toks[0].k == arith_token::kind::op;
-    let const &step      = is_prefix ? toks[0] : toks[1];
-    let const  name      = is_prefix ? toks[1].text : toks[0].text;
-    let const  delta     = step.text[0] == '+' ? i64{1} : i64{-1};
-
-    let const original = arith_read_variable(context, name, is_exact, arena);
-    let const updated = arith_apply_binop('+', original, ArithmeticValue{delta},
-                                          is_exact, arena);
-
-    if (context->variable_store().attributes().is_nameref(name) &&
-        context->is_circular_nameref(name))
-    {
-      context->warn_circular_nameref(name);
-
-      return is_prefix ? updated : original;
-    }
-
-    let const text = updated.to_string(context->scratch_allocator());
-
-    context->set_shell_variable(name, text.view());
-
-    return is_prefix ? updated : original;
-  }
-
-  fn
-  run() throws -> ArithmeticValue
-  {
-    if (toks.is_empty()) return ArithmeticValue{};
-    if (arith_tokens_are_single_step(toks)) return run_single_step();
-
-    /* at this point: toks is not empty and does not form a single step, so
-       the whole list goes to parse_binary(1). */
-    let const result = parse_binary(1);
-
-    if (ti != toks.count()) {
-      fail_at_token(ti,
-                    "Unexpected '" + toks[ti].text + "' after the expression",
-                    "An operator is missing between two values");
-    }
-
-    return result;
   }
 };
 
+pure fn
+get_arith_tree_slot_count(u32 node_count, u32 text_length) wontthrow -> usize
+{
+  return 1 + usize{node_count} +
+         (usize{text_length} + sizeof(arith_node) - 1) / sizeof(arith_node);
+}
+
+fn
+get_constant_arithmetic_arena() wontthrow -> BumpArena &
+{
+  static thread_local BumpArena arena;
+
+  return arena;
+}
+
+fn
+build_tree_into(StringView          expression,
+                arith_tree_storage &storage,
+                BumpArena          &arena) throws -> arith_tree
+{
+  let tree = arith_tree{};
+
+  tree.needs_expansion = expression.find_character('$').has_value() ||
+                         expression.find_character('`').has_value() ||
+                         expression.find_character('\\').has_value() ||
+                         expression.find_character('"').has_value();
+  if (tree.needs_expansion) return tree;
+
+  let tokens = ArrayList<arith_token>{bump_allocator(arena)};
+  let root   = ARITH_NO_NODE;
+
+  try {
+    tokenize_arithmetic(expression, tokens);
+    tree.is_simple = arith_tokens_are_simple(tokens);
+  } catch (...) {
+    tree.is_simple = false;
+  }
+
+  if (tree.is_simple) {
+    root = ArithmeticTokenTreeBuilder{expression, tokens, storage}.build();
+  } else {
+    root =
+        ArithmeticTreeBuilder{expression, false, false, storage, arena}.build();
+  }
+
+  let exact_root = root;
+
+  if (!tree.is_simple && expression.find_character('.').has_value()) {
+    exact_root =
+        ArithmeticTreeBuilder{expression, true, false, storage, arena}.build();
+  }
+
+  let const is_simple = tree.is_simple;
+  tree                = storage.get_view(root);
+  tree.exact_root     = exact_root;
+  tree.is_simple      = is_simple;
+
+  return tree;
+}
+
+static fn
+evaluate_text_tree(EvalContext              *context,
+                   StringView                source,
+                   bool                      is_exact,
+                   BumpArena                &arena,
+                   const arith_text_options &options) throws
+    -> ArithmeticValue
+{
+  let storage = arith_tree_storage{bump_allocator(arena)};
+
+  let builder = ArithmeticTreeBuilder{
+      source, is_exact, options.should_error_unset, storage, arena};
+
+  builder.expanded_subscripts = options.expanded_subscripts;
+
+  let const root = builder.build();
+  let const tree = storage.get_view(root);
+
+  ArithmeticTreeEvaluator evaluator{context,
+                                    source,
+                                    tree,
+                                    is_exact,
+                                    arena,
+                                    options.depth,
+                                    options.is_skipping,
+                                    options.bc_scale};
+
+  evaluator.should_error_unset = options.should_error_unset;
+  evaluator.is_variable_value  = options.is_variable_value;
+  if (options.precise_base != nullptr) {
+    evaluator.precise_base = *options.precise_base;
+  }
+
+  return evaluator.run(root);
+}
+
 } /* namespace */
+
+fn
+arith_tree::copy_to(Allocator allocator) const throws
+    -> const arith_tree *
+{
+  static_assert(sizeof(arith_tree) <= sizeof(arith_node));
+  static_assert(alignof(arith_tree) <= alignof(arith_node));
+
+  let const slot_count = get_arith_tree_slot_count(node_count, text_length);
+  let const block      = allocator.alloc_array<arith_node>(slot_count);
+  let const copy       = new (static_cast<void *>(block)) arith_tree{*this};
+  let const node_block = block + 1;
+  let const text_block = reinterpret_cast<char *>(node_block + node_count);
+
+  copy->is_heap = allocator.get_kind() == Allocator::Kind::Heap;
+  copy->nodes   = node_count > 0 ? node_block : nullptr;
+  copy->text    = text_length > 0 ? text_block : nullptr;
+
+  if (node_count > 0) {
+    memcpy(static_cast<void *>(node_block), nodes,
+           node_count * sizeof(arith_node));
+  }
+
+  if (text_length > 0) memcpy(text_block, text, text_length);
+
+  return copy;
+}
+
+fn
+arith_tree::release(const arith_tree *tree) wontthrow -> void
+{
+  if (tree == nullptr || !tree->is_heap) return;
+
+  heap_allocator().free_array(
+      reinterpret_cast<arith_node *>(const_cast<arith_tree *>(tree)),
+      get_arith_tree_slot_count(tree->node_count, tree->text_length));
+}
+
+fn
+build_arithmetic_tree(StringView expression, Allocator allocator) throws
+    -> const arith_tree *
+{
+  static thread_local arith_tree_storage storage{heap_allocator()};
+
+  let      &arena   = get_constant_arithmetic_arena();
+  let const scratch = arena.mark();
+
+  defer { arena.release(scratch); };
+
+  storage.nodes.clear();
+  storage.text.clear();
+
+  let const tree = build_tree_into(expression, storage, arena);
+
+  return tree.copy_to(allocator);
+}
 
 fn
 EvalContext::read_array_element_arithmetic_text(
@@ -3317,14 +4258,15 @@ evaluate_arithmetic_value(
                             !expression.find_character('`').has_value() &&
                             !has_removable_quote;
 
+  let options = arith_text_options{};
+
+  options.bc_scale           = bc_scale;
+  options.should_error_unset = should_error_unset;
+
   if (text_kind == arithmetic_text_kind::Value || is_plain_text) {
-    let parser = ArithmeticParser{context, expression, is_exact, arena,
-                                  0,       false,      bc_scale};
+    options.precise_base = expression_base;
 
-    parser.should_error_unset = should_error_unset;
-    if (expression_base != nullptr) parser.precise_base = *expression_base;
-
-    return parser.parse();
+    return evaluate_text_tree(context, expression, is_exact, arena, options);
   }
 
   /* at this point: text_kind is ShellSource and expression has a '$', a
@@ -3335,13 +4277,60 @@ evaluate_arithmetic_value(
   let subscript_spans = ArrayList<expanded_subscript_span>{heap_allocator()};
   let const expanded_word = expand_arithmetic_source(
       context, expression, expression_base, subscript_spans);
-  let parser = ArithmeticParser{
-      context, expanded_word.view(), is_exact, arena, 0, false, bc_scale};
 
-  parser.should_error_unset  = should_error_unset;
-  parser.expanded_subscripts = &subscript_spans;
+  options.expanded_subscripts = &subscript_spans;
 
-  return parser.parse();
+  return evaluate_text_tree(context, expanded_word.view(), is_exact, arena,
+                            options);
+}
+
+fn
+evaluate_stored_tree(EvalContext          *context,
+                     StringView            expression,
+                     const arith_tree     *stored_tree,
+                     const SourceLocation *source_location,
+                     bool                  is_exact,
+                     BumpArena            &arena) throws -> ArithmeticValue;
+
+cold fn
+evaluate_unstored_tree(EvalContext          *context,
+                       StringView            expression,
+                       const SourceLocation *source_location,
+                       bool                  is_exact,
+                       BumpArena            &arena) throws -> ArithmeticValue
+{
+  let       storage = arith_tree_storage{bump_allocator(arena)};
+  let const tree    = build_tree_into(expression, storage, arena);
+
+  return evaluate_stored_tree(context, expression, &tree, source_location,
+                              is_exact, arena);
+}
+
+hot fn
+evaluate_stored_tree(EvalContext          *context,
+                     StringView            expression,
+                     const arith_tree     *stored_tree,
+                     const SourceLocation *source_location,
+                     bool                  is_exact,
+                     BumpArena            &arena) throws -> ArithmeticValue
+{
+  if (stored_tree == nullptr) rarely {
+    return evaluate_unstored_tree(context, expression, source_location,
+                                  is_exact, arena);
+  }
+
+  if (stored_tree->needs_expansion) {
+    return evaluate_arithmetic_value(context, expression, source_location,
+                                     is_exact, arena,
+                                     arithmetic_text_kind::ShellSource);
+  }
+
+  ArithmeticTreeEvaluator evaluator{context, expression, *stored_tree, is_exact,
+                                    arena};
+
+  if (source_location != nullptr) evaluator.precise_base = *source_location;
+
+  return evaluator.run(stored_tree->get_root(is_exact));
 }
 
 } /* namespace */
@@ -3477,59 +4466,8 @@ EvalContext::compare_arithmetic(
   return left_value.compare(right_value, scratch_allocator());
 }
 
-namespace {
-
 fn
-evaluate_arithmetic_cached_value(EvalContext          *context,
-                                 StringView            expression,
-                                 arith_token_cache    &cache,
-                                 const SourceLocation *source_location,
-                                 bool                  is_exact,
-                                 BumpArena            &arena) throws
-    -> ArithmeticValue
-{
-  let &tokens = cache.tokens;
-
-  if (!cache.is_tokenized) {
-    tokens.clear();
-    cache.is_tokenized    = true;
-    cache.is_simple       = false;
-    cache.needs_expansion = expression.find_character('$').has_value() ||
-                            expression.find_character('`').has_value() ||
-                            expression.find_character('\\').has_value() ||
-                            expression.find_character('"').has_value();
-
-    if (!cache.needs_expansion) {
-      try {
-        tokenize_arithmetic(expression, tokens);
-        cache.is_simple = arith_tokens_are_simple(tokens);
-      } catch (...) {
-        tokens.clear();
-      }
-    }
-  }
-
-  if (!cache.is_simple) {
-    return evaluate_arithmetic_value(
-        context, expression, source_location, is_exact, arena,
-        cache.needs_expansion ? arithmetic_text_kind::ShellSource
-                              : arithmetic_text_kind::Value);
-  }
-
-  /* at this point: is_tokenized and is_simple are both true, so tokens
-     holds a complete tokenization that arith_tokens_are_simple() accepted. */
-  ArithmeticTokenEvaluator evaluator{context, tokens, is_exact, arena};
-
-  evaluator.source = expression;
-  if (source_location != nullptr) evaluator.precise_base = *source_location;
-
-  return evaluator.run();
-}
-
-} /* namespace */
-
-fn
-EvalContext::evaluate_arithmetic_cached_text(
+EvalContext::evaluate_arithmetic_segment_text(
     const WordSegment &segment) throws -> String
 {
   let const source_location = segment.get_source_location(
@@ -3550,68 +4488,37 @@ EvalContext::evaluate_arithmetic_cached_text(
     }
   }
 
-  let &cache = segment.get_eval_cache(cache_arena);
-
-  if (cache.arith == nullptr ||
-      !cache_arena->is_lifetime_valid(cache.arithmetic_lifetime))
-  {
-    cache.arith =
-        cache_arena->create<arith_token_cache>(bump_allocator(*cache_arena));
-    cache.arithmetic_lifetime = cache_arena->register_lifetime();
-  }
-
   let const is_exact = runtime_state().is_extended_arithmetic_enabled();
 
-  /* at this point: cache.arith is non-null and its lifetime is valid in
-     cache_arena, so the token cache can be used by this call. */
-  if (is_exact && cache.arith->has_exact_constant_text) {
-    return String{scratch_allocator(), cache.arith->exact_constant_text.view()};
+  if (is_exact) {
+    if (let const constant_text =
+            segment.get_exact_constant_arithmetic_text(*cache_arena);
+        constant_text.has_value())
+    {
+      return String{scratch_allocator(), *constant_text};
+    }
   }
 
   let const scratch = expansion_store().scratch_arena().mark();
 
   defer { expansion_store().scratch_arena().release(scratch); };
 
-  let const value = [&]() throws -> ArithmeticValue {
-    try {
-      return evaluate_arithmetic_cached_value(
-          this, segment.text.view(), *cache.arith,
-          source_location.has_value() ? &*source_location : nullptr, is_exact,
-          expansion_store().scratch_arena());
-    } catch (ErrorBase &error) {
-      mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
-      throw;
-    }
-  }();
-
-  let result = value.to_string(heap_allocator());
-
-  if (is_exact && cache.arith->is_tokenized && cache.arith->is_simple) {
-    let is_constant = true;
-
-    for (let const &token : cache.arith->tokens) {
-      if (token.k == arith_token::kind::name ||
-          token.k == arith_token::kind::subscript)
-      {
-        is_constant = false;
-        break;
-      }
-    }
-
-    if (is_constant) {
-      cache.arith->exact_constant_text =
-          String{bump_allocator(*cache_arena), result.view()};
-      cache.arith->has_exact_constant_text = true;
-    }
+  try {
+    return evaluate_stored_tree(
+               this, segment.text.view(), segment.get_arithmetic_tree(),
+               source_location.has_value() ? &*source_location : nullptr,
+               is_exact, expansion_store().scratch_arena())
+        .to_string(heap_allocator());
+  } catch (ErrorBase &error) {
+    mark_expansion_error(error, expansion_error_reach::LineOrPosixScript);
+    throw;
   }
-
-  return result;
 }
 
 fn
-EvalContext::evaluate_arithmetic_cached_clause_nonzero(
+EvalContext::evaluate_arithmetic_tree_nonzero(
     StringView            expression,
-    arith_token_cache    &cache,
+    const arith_tree     *tree,
     const SourceLocation *source_location) throws -> bool
 {
   let const scratch = expansion_store().scratch_arena().mark();
@@ -3620,23 +4527,10 @@ EvalContext::evaluate_arithmetic_cached_clause_nonzero(
 
   let const is_exact = runtime_state().is_extended_arithmetic_enabled();
 
-  return !evaluate_arithmetic_cached_value(this, expression, cache,
-                                           source_location, is_exact,
-                                           expansion_store().scratch_arena())
+  return !evaluate_stored_tree(this, expression, tree, source_location,
+                               is_exact, expansion_store().scratch_arena())
               .is_zero();
 }
-
-namespace {
-
-fn
-get_constant_arithmetic_arena() wontthrow -> BumpArena &
-{
-  static thread_local BumpArena arena;
-
-  return arena;
-}
-
-} /* namespace */
 
 fn
 evaluate_constant_arithmetic(StringView expression) throws -> i64
@@ -3646,9 +4540,9 @@ evaluate_constant_arithmetic(StringView expression) throws -> i64
 
   defer { arena.release(scratch); };
 
-  let parser = ArithmeticParser{nullptr, expression, false, arena};
-
-  return parser.parse().wrapped_i64();
+  return evaluate_text_tree(nullptr, expression, false, arena,
+                            arith_text_options{})
+      .wrapped_i64();
 }
 
 fn
@@ -3661,16 +4555,24 @@ find_arithmetic_syntax_problem(StringView expression,
 
   defer { arena.release(scratch); };
 
-  let parser = ArithmeticParser{nullptr, expression, is_exact, arena, 0, true};
+  const SourceLocation base{0, 0};
+  let                  problem = arithmetic_syntax_problem{};
 
-  parser.precise_base = SourceLocation{0, 0};
+  let storage = arith_tree_storage{bump_allocator(arena)};
+  let builder =
+      ArithmeticTreeBuilder{expression, is_exact, false, storage, arena};
 
-  let problem = arithmetic_syntax_problem{};
+  unused(builder.build());
+  if (!builder.get_has_failed()) return None;
 
   try {
-    unused(parser.parse());
+    let const tree = storage.get_view(ARITH_NO_NODE);
 
-    return None;
+    ArithmeticTreeEvaluator evaluator{nullptr, expression, tree, is_exact,
+                                      arena,   0,          true};
+
+    evaluator.precise_base = base;
+    evaluator.throw_failure(builder.get_failed_node());
   } catch (const ErrorWithLocation &error) {
     problem.position = error.location().position;
     problem.length   = error.location().length;
@@ -3694,9 +4596,9 @@ evaluate_constant_arithmetic_nonzero(StringView expression,
 
   defer { arena.release(scratch); };
 
-  let parser = ArithmeticParser{nullptr, expression, is_exact, arena};
-
-  return !parser.parse().is_zero();
+  return !evaluate_text_tree(nullptr, expression, is_exact, arena,
+                             arith_text_options{})
+              .is_zero();
 }
 
 fn
@@ -3708,9 +4610,9 @@ evaluate_constant_arithmetic_text(StringView expression,
 
   defer { arena.release(scratch); };
 
-  let parser = ArithmeticParser{nullptr, expression, true, arena};
-
-  return parser.parse().to_string(allocator);
+  return evaluate_text_tree(nullptr, expression, true, arena,
+                            arith_text_options{})
+      .to_string(allocator);
 }
 
 pure fn
