@@ -1510,8 +1510,20 @@ ProgramResolver::find_trusted(StringView  program_name,
     return None;
   }
 
-  /* at this point: paths is not empty, and the directory of paths[0] is
-     trusted for execution. */
+  if (let const target = os::canonical_path(paths[0]);
+      !target.has_value() ||
+      !os::directory_is_trusted_for_exec(target->parent()))
+  {
+    LOG(Debug,
+        "skipping '%s' because the directory of its target is not "
+        "trusted",
+        paths[0].c_str());
+
+    return None;
+  }
+
+  /* at this point: paths is not empty, and the directories of paths[0] and
+     of its resolved target are trusted for execution. */
   return steal(paths[0]);
 }
 

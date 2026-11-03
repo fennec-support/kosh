@@ -294,8 +294,16 @@ run_debug_ghost_driver(StringView   driver_line,
 pure static fn
 resolve_session_mood(mimic_mood invocation_mood) wontthrow -> mimic_mood
 {
-  if (FLAG_MOOD.is_set())
-    return parse_mood_name(FLAG_MOOD.value()).value_or(mimic_mood::Default);
+  if (FLAG_MOOD.is_set()) {
+    let const mood =
+        parse_mood_name(FLAG_MOOD.value()).value_or(mimic_mood::Default);
+
+    if (mood == mimic_mood::Bash && FLAG_POSIX_COMPAT.is_enabled()) {
+      return mimic_mood::BashPosix;
+    }
+
+    return mood;
+  }
 
   if (FLAG_DUMB.is_enabled()) return mimic_mood::Posix;
   if (FLAG_POSIX_COMPAT.is_enabled()) return mimic_mood::BashPosix;

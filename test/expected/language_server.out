@@ -188,3 +188,4 @@ unterminated-formatting=ok
 shift-not-heredoc=ok
 oversized-message-skipped=ok
 exit-without-shutdown-status=1
+lowercase-header=ok

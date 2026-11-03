@@ -78,13 +78,17 @@ find_manual_page(StringView paths,
 
       os::file_status status{};
 
-      if (os::stat_path_following(path.view(), status)) return path;
+      if (os::stat_path_following(path.view(), status) &&
+          os::file_type_letter(status.mode) == '-')
+      {
+        return path;
+      }
       if (!section.is_empty()) break;
     }
 
     /* at this point: no candidate section in directory holds a page for
-       name, because each stat_path_following() call failed or the fixed
-       section was the only candidate. */
+       name, because each stat_path_following() call failed or found no
+       regular file, or the fixed section was the only candidate. */
   }
 
   return None;
@@ -151,7 +155,7 @@ Man::execute(const ExecContext               &ec,
           path += entry.view();
 
           let const content =
-              Path{path.view(), cxt.scratch_allocator()}.read_entire_file();
+              Path{path.view(), cxt.scratch_allocator()}.read_data_file();
 
           if (!content.has_value()) continue;
 
@@ -215,7 +219,7 @@ Man::execute(const ExecContext               &ec,
     }
 
     let const content =
-        Path{page->view(), cxt.scratch_allocator()}.read_entire_file();
+        Path{page->view(), cxt.scratch_allocator()}.read_data_file();
 
     if (!content.has_value()) {
       KOSHKIT_REPORT_PATH_ERROR("read", page->view());

@@ -669,3 +669,50 @@ mkdir cp_one cp_two cp_into
 echo one > cp_one/same
 echo two > cp_two/same
 "$BIN" --no-diagnostics -c 'koshkit cp cp_one/same cp_two/same cp_into; echo "status $?"; cat cp_into/same' 2>/dev/null
+
+echo "--- the git branch lookup skips special files ---"
+mkdir git_fifo git_zero git_head git_head/.git
+mkfifo git_fifo/.git git_head/.git/HEAD
+ln -s /dev/zero git_zero/.git
+for repo in git_fifo git_zero git_head; do
+  (cd "$repo" && GIT_CEILING_DIRECTORIES=$dir timeout 10 "$BIN" -c 'echo "[$KOSH_GIT_BRANCH]"')
+  echo "status $?"
+done
+
+echo "--- man skips a FIFO page ---"
+mkdir -p man_fifo/man1
+mkfifo man_fifo/man1/fifo.1
+printf 'plain \\- a page\n' > man_fifo/man1/plain.1
+MANPATH=$dir/man_fifo timeout 10 "$BIN" -c 'koshkit man -k page'
+echo "status $?"
+MANPATH=$dir/man_fifo timeout 10 "$BIN" -c 'koshkit man fifo' 2>/dev/null
+echo "status $?"
+
+echo "--- z drops stored ranks and times out of range ---"
+mkdir z_low z_high
+printf '%s\t5\t-9223372036854775808\n%s\t9223372036854775807\t1\n' "$dir/z_low" "$dir/z_high" > z_store
+KOSH_DIRECTORY_HISTORY=$dir/z_store timeout 10 "$BIN" -c 'z z_high' >/dev/null 2>&1
+echo "status $?"
+cut -f1,2 z_store | sed "s|^$dir/||"
+
+echo "--- history refuses a FIFO history file ---"
+mkfifo history_fifo
+for operation in -r -w -a; do
+  KOSH_HISTORY_FILE=$dir/history_fifo timeout 10 "$BIN" -c "history $operation" < /dev/null 2>/dev/null
+  echo "status $?"
+done
+
+echo "--- a here-string ignores a TMPDIR that is not a directory ---"
+TMPDIR=$dir/missing "$BIN" -c 'cat <<<here; echo "status $?"'
+
+echo "--- help reports a failed write of a builtin help ---"
+"$BIN" --mood bash -c 'help cd >&-; echo "status $?"' 2>/dev/null
+
+echo "--- -o posix applies under the bash mood ---"
+"$BIN" --mood=bash -o posix -c 'shopt -qo posix && echo on'
+"$BIN" --mood=bash --posix -c 'shopt -qo posix && echo on'
+
+echo "--- a multicall timeout passes --version to its command ---"
+ln -s "$BIN" timeout
+./timeout 1 sh -c 'echo "[$1]"' _ --version
+./timeout --version | grep -c Koshka

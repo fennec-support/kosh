@@ -56,6 +56,18 @@ EvalContext::run_completion_command(StringView command,
     enter_subshell();
     defer { leave_subshell(); };
 
+    let const null_input =
+        os::open_file_descriptor("/dev/null", os::file_open_mode::Read);
+    let saved_input = os::saved_descriptor{};
+
+    if (null_input.has_value()) {
+      saved_input = os::save_and_replace_descriptor(0, *null_input);
+      os::close_fd(*null_input);
+    }
+    defer {
+      if (null_input.has_value()) os::restore_descriptor(saved_input);
+    };
+
     try {
       do_export("COMP_LINE", line);
       do_export("COMP_POINT",
@@ -265,6 +277,18 @@ EvalContext::run_completion_function(
   execution_store().is_terminal_exec_allowed() = false;
   defer {
     execution_store().is_terminal_exec_allowed() = was_terminal_exec_allowed;
+  };
+
+  let const null_input =
+      os::open_file_descriptor("/dev/null", os::file_open_mode::Read);
+  let saved_input = os::saved_descriptor{};
+
+  if (null_input.has_value()) {
+    saved_input = os::save_and_replace_descriptor(0, *null_input);
+    os::close_fd(*null_input);
+  }
+  defer {
+    if (null_input.has_value()) os::restore_descriptor(saved_input);
   };
 
   let was_interrupted = false;

@@ -822,3 +822,13 @@ esac
 frame '{"jsonrpc":"2.0","method":"exit"}' |
   "$BIN" --as-language-server > /dev/null
 printf 'exit-without-shutdown-status=%s\n' "$?"
+
+lowercase_body='{"jsonrpc":"2.0","id":82,"method":"shutdown","params":null}'
+lowercase_output=$(
+  printf 'content-length: %s\r\n\r\n%s' "${#lowercase_body}" "$lowercase_body" |
+    "$BIN" --as-language-server
+)
+case $lowercase_output in
+*'"id":82'*) printf 'lowercase-header=ok\n' ;;
+*) printf 'lowercase-header=missing\n' ;;
+esac

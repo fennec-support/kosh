@@ -695,7 +695,8 @@ or \f[CR]\-\-help\f[R] output for allowlisted binaries.
 External \f[CR]man\f[R] and allowlisted binaries execute only from
 absolute directories owned by the user or \f[CR]root\f[R] and not
 writable by group or others (never from empty or relative
-\f[CR]PATH\f[R] entries).
+\f[CR]PATH\f[R] entries), and a symbolic link must resolve into such a
+directory.
 Pending multi\-key prefixes (\f[CR]Ctrl\-X\f[R] or Vi operators) display
 valid completion keys.
 Disabling the option also stops its documentation loads.
@@ -1448,7 +1449,9 @@ records no events and writes the history file only through
 Consecutive duplicate events, history expansion errors, and a command
 over \f[CR]2048\f[R] bytes are not recorded, and a record over
 \f[CR]65535\f[R] bytes is skipped when the file is read.
-\f[CR]history \-r\f[R] refuses an operand that is not a regular file.
+\f[CR]history \-r\f[R] refuses an operand that is not a regular file,
+and every history operation refuses a history file that is a FIFO, a
+device, or a socket.
 Interactive shells load the history file at startup and append each
 submitted event immediately, without auto\-importing events appended by
 concurrent shells (\f[CR]Ctrl\-R\f[R] and \f[CR]history \-S\f[R] read
@@ -4097,11 +4100,12 @@ T}
 T{
 \f[CR]TMPDIR\f[R]
 T}@T{
-Selects the directory for the temporary files of \f[CR]fc\f[R], Ctrl\-X
-Ctrl\-E, and \f[CR]slurp\f[R].
+Selects the directory for the temporary files of here\-documents,
+\f[CR]fc\f[R], Ctrl\-X Ctrl\-E, and \f[CR]slurp\f[R].
 The shell reads it from the environment, so an assignment needs
-\f[CR]export\f[R]; an empty value is ignored, the default is
-\f[CR]/tmp\f[R], and on Windows the directory is \f[CR]TEMP\f[R].
+\f[CR]export\f[R]; an empty value or a value that is not a directory is
+ignored, the default is \f[CR]/tmp\f[R], and on Windows the directory is
+\f[CR]TEMP\f[R].
 T}
 T{
 \f[CR]TZ\f[R]
@@ -6207,6 +6211,7 @@ command, the word, and the previous word as arguments and
 \f[CR]COMP_TYPE\f[R] exported.
 A completion function receives the same arguments and the
 \f[CR]COMP_\f[R] variables described under Shell variables.
+The function and the command read standard input from the null device.
 .RS 2
 .IP \[bu] 2
 Trailing spaces are removed from each \f[CR]COMPREPLY\f[R] entry, the

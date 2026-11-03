@@ -393,3 +393,32 @@ file
 --- cp refuses a second source for a created target ---
 status 1
 one
+--- the git branch lookup skips special files ---
+[]
+status 0
+[]
+status 0
+[]
+status 0
+--- man skips a FIFO page ---
+plain (1) - plain \- a page
+status 0
+status 1
+--- z drops stored ranks and times out of range ---
+status 0
+z_high	1
+--- history refuses a FIFO history file ---
+status 1
+status 1
+status 1
+--- a here-string ignores a TMPDIR that is not a directory ---
+here
+status 0
+--- help reports a failed write of a builtin help ---
+status 1
+--- -o posix applies under the bash mood ---
+on
+on
+--- a multicall timeout passes --version to its command ---
+[--version]
+1

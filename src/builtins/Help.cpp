@@ -149,7 +149,7 @@ Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         ec.source_location(), ResolvedCommand::from_builtin(*resolved),
         steal(forwarded), steal(forwarded_locations));
 
-    execute_builtin(steal(sub), cxt);
+    if (execute_builtin(steal(sub), cxt) != 0) status = 1;
   }
 
   return status;

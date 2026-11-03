@@ -98,7 +98,7 @@ read_frecency_store(Allocator allocator) throws
 
   if (!path) return entries;
 
-  let content = path->read_entire_file();
+  let content = path->read_data_file();
 
   if (!content) return entries;
 
@@ -135,7 +135,9 @@ read_frecency_store(Allocator allocator) throws
     let const rank = rank_field.to<i64>();
     let const last = time_field.to<i64>();
 
-    if (rank.is_error() || last.is_error()) {
+    if (rank.is_error() || last.is_error() || rank.value() < 0 ||
+        rank.value() == INT64_MAX || last.value() < 0)
+    {
       continue;
     }
 

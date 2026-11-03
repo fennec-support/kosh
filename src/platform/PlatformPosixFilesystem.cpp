@@ -58,7 +58,8 @@ fn
 temp_directory_path() throws -> String
 {
   if (const char *from_env = getenv("TMPDIR");
-      from_env != nullptr && from_env[0] != '\0' && !is_running_secure())
+      from_env != nullptr && from_env[0] != '\0' && !is_running_secure() &&
+      path_is_directory(StringView{from_env, strlen(from_env)}))
   {
     return String{heap_allocator(), from_env};
   }

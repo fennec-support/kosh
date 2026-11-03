@@ -2598,6 +2598,14 @@ load_history(const Path &path, bool should_allow_missing)
     let const has_status_before =
         os::stat_path_following(path.view(), status_before);
 
+    if (has_status_before) {
+      let const type_letter = os::file_type_letter(status_before.mode);
+
+      if (type_letter != '-' && type_letter != 'd') {
+        return koshka::Error{"it is not a regular file"};
+      }
+    }
+
     if (::tl_history_load(path.c_str()) != TL_SUCCESS) {
       let const history_errno = errno;
       let const was_missing   = !::itl_g_history_file_is_bad;

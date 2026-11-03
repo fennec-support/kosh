@@ -1442,6 +1442,26 @@ render_multicall_error(const ErrorWithLocation &error,
                                                                 &context);
 }
 
+static pure fn
+stops_at_first_operand(Maybe<Utility::Kind> kind) wontthrow -> bool
+{
+  if (!kind.has_value()) return false;
+
+  switch (*kind) {
+  case Utility::Kind::Calc:
+  case Utility::Kind::Env:
+  case Utility::Kind::Expr:
+  case Utility::Kind::Flock:
+  case Utility::Kind::Nice:
+  case Utility::Kind::Nohup:
+  case Utility::Kind::Retry:
+  case Utility::Kind::Timeout:
+  case Utility::Kind::Watch:
+  case Utility::Kind::Xargs:   return true;
+  default:                     return false;
+  }
+}
+
 fn
 run_as_multicall(StringView           util_name,
                  Maybe<Utility::Kind> chosen,
@@ -1452,8 +1472,11 @@ run_as_multicall(StringView           util_name,
      defaults that must not replace an inherited KOSHCONF. */
   cxt.execution_store().set_child_environment_fixed(true);
 
+  let const should_stop_at_operand = stops_at_first_operand(chosen);
+
   for (let const &operand : operands) {
     if (operand == "--") break;
+    if (should_stop_at_operand && !operand.starts_with("-")) break;
     if (operand == "--version") {
       show_version();
 

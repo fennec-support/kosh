@@ -375,7 +375,7 @@ resolve_git_directory(StringView ceiling_directories) throws -> Path
 
     git_dir.append(".git");
 
-    if (let const dot_git = git_dir.read_entire_file()) {
+    if (let const dot_git = git_dir.read_data_file()) {
       let const pointer       = dot_git->view();
       let const gitdir_prefix = StringView{"gitdir: "};
 
@@ -445,7 +445,7 @@ current_git_branch(StringView ceiling_directories) throws -> String
   let git_head = git_dir.clone();
 
   git_head.append("HEAD");
-  if (let const content = git_head.read_entire_file()) {
+  if (let const content = git_head.read_data_file()) {
     let text = content->view();
 
     while (!text.is_empty() &&
@@ -473,7 +473,7 @@ read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
   let ref_path = git_dir.clone();
 
   ref_path.append(ref_name);
-  if (let const content = ref_path.read_entire_file()) {
+  if (let const content = ref_path.read_data_file()) {
     let text = content->view();
 
     while (!text.is_empty() &&
@@ -488,7 +488,7 @@ read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
   let packed_path = git_dir.clone();
 
   packed_path.append("packed-refs");
-  if (let const packed = packed_path.read_entire_file()) {
+  if (let const packed = packed_path.read_data_file()) {
     let remainder = packed->view();
 
     while (!remainder.is_empty()) {
@@ -526,7 +526,7 @@ git_upstream_ref(const Path &git_dir, StringView branch_name) throws
   config_path.append("config");
   if (!config_path.exists()) return String{heap_allocator()};
 
-  let const content = config_path.read_entire_file();
+  let const content = config_path.read_data_file();
 
   if (!content.has_value()) return String{heap_allocator()};
 
@@ -643,7 +643,7 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
 
   git_head.append("HEAD");
 
-  let const head_content = git_head.read_entire_file();
+  let const head_content = git_head.read_data_file();
 
   if (!head_content.has_value()) return result;
 
@@ -676,7 +676,7 @@ git_status(StringView ceiling_directories, Allocator allocator) throws
   let commondir_file = git_dir.clone();
 
   commondir_file.append("commondir");
-  if (let const commondir = commondir_file.read_entire_file()) {
+  if (let const commondir = commondir_file.read_data_file()) {
     let text = commondir->view();
 
     while (!text.is_empty() &&
