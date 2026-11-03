@@ -513,7 +513,7 @@ _koshkit_util_flags ()
     ;;
     cp)
       printf "%s\n" \
-        "-a --archive -r -R -f -i -t --target-directory -n --no-clobber -p -v -H -L -P -x --one-file-system"
+        "-a --archive -r -R -f -i -t --target-directory -n --no-clobber -l --link -s --symbolic-link -p -v -H -L -P -x --one-file-system"
     ;;
     csplit)
       printf "%s\n" "-k --keep-files -f --prefix -n --digits -s --silent"
@@ -538,17 +538,17 @@ _koshkit_util_flags ()
     ;;
     du)
       printf "%s\n" \
-        "-s -h -a --all -c --total -d --max-depth --tree -x --one-file-system -T --top-largest"
+        "-s -h -a --all -c --total -d --max-depth --tree -x --one-file-system -T --top-largest -0 --null"
     ;;
     egrep)
       printf "%s\n" \
-        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --include --exclude -o --only-matching -w --word-regexp -A --after-context -B --before-context -C --context -H --with-filename -L --files-without-match -m --max-count --color"
+        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --include --exclude -o --only-matching -w --word-regexp -A --after-context -B --before-context -C --context -H --with-filename -L --files-without-match -z --null-data -Z --null -m --max-count --color"
     ;;
     emacs)
       printf "%s\n" "-e --emacs -v --vi -V --vi-normal"
     ;;
     env)
-      printf "%s\n" "-i --ignore-environment -u --unset"
+      printf "%s\n" "-i --ignore-environment -u --unset -0 --null"
     ;;
     evil)
       printf "%s\n" "-a --all -s --short -u --users"
@@ -591,7 +591,7 @@ _koshkit_util_flags ()
     ;;
     fgrep)
       printf "%s\n" \
-        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --include --exclude -o --only-matching -w --word-regexp -A --after-context -B --before-context -C --context -H --with-filename -L --files-without-match -m --max-count --color"
+        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --include --exclude -o --only-matching -w --word-regexp -A --after-context -B --before-context -C --context -H --with-filename -L --files-without-match -z --null-data -Z --null -m --max-count --color"
     ;;
     file)
       printf "%s\n" \
@@ -624,14 +624,15 @@ _koshkit_util_flags ()
     ;;
     grep)
       printf "%s\n" \
-        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --include --exclude -o --only-matching -w --word-regexp -A --after-context -B --before-context -C --context -H --with-filename -L --files-without-match -m --max-count --color"
+        "-E --extended-regexp -F --fixed-strings -a --text -e --regexp -f --file -c --count -l --files-with-matches -q --quiet -s --no-messages -x --line-regexp -i -v -r --recursive --one-file-system -n --line-number -h --no-filename --include --exclude -o --only-matching -w --word-regexp -A --after-context -B --before-context -C --context -H --with-filename -L --files-without-match -z --null-data -Z --null -m --max-count --color"
     ;;
     head)
       printf "%s\n" \
         "-n -c -q --quiet --silent -v --verbose -z --zero-terminated"
     ;;
     id)
-      printf "%s\n" "-G --groups -g --group -n --name -r --real -u --user"
+      printf "%s\n" \
+        "-G --groups -g --group -n --name -r --real -u --user -z --zero"
     ;;
     killall)
       printf "%s\n" "-s --signal -l --list"
@@ -651,7 +652,7 @@ _koshkit_util_flags ()
     ;;
     ls)
       printf "%s\n" \
-        "-a -A -1 -l -h -F --classify -d -p -n -g -o -k -t -S -r -R --recursive --tree -L --level --one-file-system"
+        "-a -A -1 -l -h -F --classify -d -p -n -g -o -k -t -S -r -R --recursive --tree -L --level --one-file-system --zero"
     ;;
     make)
       printf "%s\n" \
@@ -706,6 +707,9 @@ _koshkit_util_flags ()
     pr)
       printf "%s\n" \
         "-a --across -d --double-space -D --date-format -F --form-feed -f --form-feed-alias -h --header -l --length -m --merge -n --number-lines -o --indent -r --no-file-warnings -t --omit-header -s --separator -w --width"
+    ;;
+    printenv)
+      printf "%s\n" "-0 --null"
     ;;
     ps)
       printf "%s\n" "-a -u -x -w -e -A -f -o --format -p --pid -C --no-headers"
