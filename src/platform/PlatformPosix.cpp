@@ -2943,11 +2943,16 @@ portable_error_text(int error_number) wontthrow -> const char *
 cold fn
 last_system_error_message() throws -> String
 {
-  let const        saved_errno = errno;
-  let const *const text        = portable_error_text(saved_errno);
+  return c_library_error_message(errno);
+}
+
+cold fn
+c_library_error_message(i32 error_number) throws -> String
+{
+  let const *const text = portable_error_text(error_number);
 
   return String{heap_allocator(),
-                text != nullptr ? text : strerror(saved_errno)};
+                text != nullptr ? text : strerror(error_number)};
 }
 
 fn

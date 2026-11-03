@@ -2633,9 +2633,13 @@ load_history(const Path &path, bool should_allow_missing)
       let const was_missing   = !::itl_g_history_file_is_bad;
 
       if (!should_allow_missing || !was_missing) {
-        return koshka::Error{history_errno == EINVAL
-                                 ? StringView{"the file contains invalid data"}
-                                 : StringView{strerror(history_errno)}};
+        if (history_errno == EINVAL) {
+          return koshka::Error{StringView{"the file contains invalid data"}};
+        }
+
+        let const reason = koshka::os::c_library_error_message(history_errno);
+
+        return koshka::Error{reason.view()};
       }
 
       let status_after = os::file_status{};
@@ -3157,7 +3161,8 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
         !HISTORY_FILE.was_write_failure_reported)
     {
       HISTORY_FILE.was_write_failure_reported = true;
-      let const reason = StringView{strerror(::itl_g_history_file_errno)};
+      let const reason =
+          koshka::os::c_library_error_message(::itl_g_history_file_errno);
 
       koshka::show_message(
           koshka::Error{"Toiletline: could not save history: " + reason}
@@ -3811,8 +3816,7 @@ exit(usize history_size_limit) -> void
     } else {
       let const message =
           ::itl_g_history_file_errno != 0
-              ? koshka::String{koshka::heap_allocator(),
-                               StringView{strerror(::itl_g_history_file_errno)}}
+              ? koshka::os::c_library_error_message(::itl_g_history_file_errno)
               : koshka::os::last_system_error_message();
       koshka::Error error{"Toiletline: could not save history: " + message};
       koshka::show_message(error.to_string());

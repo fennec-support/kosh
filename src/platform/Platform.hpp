@@ -622,6 +622,9 @@ make_os_args(const ArrayList<String> &args) throws -> os_args;
 
 fn
 last_system_error_message() throws -> String;
+/* the text of the C library error number error_number. */
+fn
+c_library_error_message(i32 error_number) throws -> String;
 fn
 get_last_system_error_number() wontthrow -> i32;
 fn

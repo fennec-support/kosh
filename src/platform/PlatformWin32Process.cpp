@@ -3280,6 +3280,12 @@ make_os_args(const ArrayList<String> &args) -> os_args
 }
 
 cold fn
+c_library_error_message(i32 error_number) throws -> String
+{
+  return String{heap_allocator(), strerror(error_number)};
+}
+
+cold fn
 last_system_error_message() throws -> String
 {
   LPWSTR    errno_text{};
