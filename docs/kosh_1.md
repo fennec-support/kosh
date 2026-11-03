@@ -235,6 +235,7 @@ Vi insert mode supports all Emacs bindings below except `Ctrl-V`, `Alt-X`, and `
 | `Ctrl-T`, `Alt-T` | Transpose characters (`Ctrl-T`) or words (`Alt-T`) around cursor. |
 | `Alt-U`, `Alt-L`, `Alt-C` | Uppercase, lowercase, or capitalize from cursor to end of word. |
 | `Alt-\` | Delete all spaces and tabs around cursor. |
+| `Alt-Q` | Wrap the lines of the selection, or the paragraph under the cursor, to `editor.wrap_width` (`80`), preserving first-line paragraph indentation. |
 | `Alt-.`, `Alt-_` | Insert last argument of older history entries on each press. |
 | `Ctrl-_`, `Ctrl-Z`, `Ctrl-X Ctrl-U` | Undo last edit. |
 | `Ctrl-^`, `Ctrl-Shift-Z` | Redo last undone edit. |

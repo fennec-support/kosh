@@ -8,6 +8,8 @@
  */
 
 #include "../Builtin.hpp"
+#include "../CLIColors.hpp"
+#include "../Completion.hpp"
 #include "../Eval.hpp"
 #include "../MimicMood.hpp"
 #include "../Toiletline.hpp"
@@ -481,15 +483,23 @@ edit_file(ExecContext                 &ec,
                                    ? last_prompt.substring(*prompt_line_end + 1)
                                    : last_prompt};
 
-  title.append("slurp ");
-  if (FLAG_SLURP_EMACS.is_enabled()) title.append("-e ");
-  if (FLAG_SLURP_VI.is_enabled()) title.append("-v ");
-  if (FLAG_SLURP_VI_NORMAL.is_enabled()) title.append("-V ");
+  let command = String{heap_allocator(), "slurp "};
+
+  if (FLAG_SLURP_EMACS.is_enabled()) command.append("-e ");
+  if (FLAG_SLURP_VI.is_enabled()) command.append("-v ");
+  if (FLAG_SLURP_VI_NORMAL.is_enabled()) command.append("-V ");
   if (!utils::append_ansi_c_quote_if_needed(
-          title, operand.view(),
+          command, operand.view(),
           cxt.get_glob_charset_for(operand.view()) == glob_charset::Utf8))
   {
-    title.append(operand.view());
+    command.append(operand.view());
+  }
+
+  if (colors::stdout_wants_color()) {
+    completion::append_highlighted_source(
+        title, command.view(), cxt, colors::noninteractive_highlight_theme());
+  } else {
+    title.append(command.view());
   }
 
   let session = slurp_session{
