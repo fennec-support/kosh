@@ -953,6 +953,8 @@ CStyleForLoop::write_ast(AstWriter &out) const throws -> void
   };
 
   for (let const &clause : clauses) {
+    if (clause.text.is_empty()) continue;
+
     out.open("arith-clause");
     out.symbol("role", clause.role);
     out.quoted("text", clause.text);
