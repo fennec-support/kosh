@@ -2,6 +2,9 @@
 clean
 == -xc injected_command: + echo clean
 clean
+== -c=injected_command: clean
+== -xc=injected_command: + echo clean
+clean
 == --command injected_command: clean
 == --command=injected_command: clean
 == -- injected_script: clean

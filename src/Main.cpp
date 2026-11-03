@@ -633,13 +633,20 @@ splice_environment_flags(command_line &line) throws -> void
         return;
       }
 
-      /* the c and s letters drop themselves. The other letters stay. */
+      /* the c and s letters drop themselves, and c= also drops the rest of
+         the word. The other letters stay. */
       let kept          = String{heap_allocator()};
       should_keep_value = true;
 
       kept.push(token[0]);
       for (usize i = 1; i < token.length; i++) {
         let const flag = find_short_flag(FLAG_LIST, token[i]);
+
+        if (flag == &FLAG_COMMAND && i + 1 < token.length &&
+            token[i + 1] == '=')
+        {
+          break;
+        }
 
         if (flag == &FLAG_COMMAND || flag == &FLAG_STDIN) continue;
         kept.push(token[i]);
