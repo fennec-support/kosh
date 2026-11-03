@@ -3286,7 +3286,16 @@ T}
 \f[B]Command string (\f[CB]\-c\f[B])\f[R] \- \f[CR]\-c\f[R] takes no
 value of its own and may stand anywhere in a cluster of short options,
 as in \f[CR]\-ec\f[R] or \f[CR]\-xec\f[R].
-The first operand is the command string, and option parsing ends at it.
+Each \f[CR]o\f[R] or \f[CR]O\f[R] in a cluster takes the next unused
+argument as its option name, in the order of the letters, and the
+letters after it remain options, so \f[CR]\-oc errexit command\f[R],
+\f[CR]\-co errexit command\f[R], and
+\f[CR]\-ooc errexit pipefail command\f[R] set the options and run
+\f[CR]command\f[R].
+The letters after \f[CR]\-o\f[R] in \f[CR]\-oerrexit\f[R] are read as
+more options.
+The first operand after the option names is the command string, and
+option parsing ends at it.
 A lone \f[CR]\-\f[R] or \f[CR]\-\-\f[R] before the command string ends
 option parsing without becoming an operand.
 Repeating \f[CR]\-c\f[R] has no further effect, and \f[CR]\-c\f[R]

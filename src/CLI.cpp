@@ -525,6 +525,15 @@ struct flag_match
   const char *value_start{};
 };
 
+/* a flag whose value is a later argument, taken in the order of the flags. */
+struct pending_flag_value
+{
+  Flag          *flag{};
+  SourceLocation flag_location{};
+  bool           is_long{false};
+  bool           was_given_after_plus{false};
+};
+
 static fn
 find_flag(const FlagList &flags,
           const char     *flag_start,
@@ -771,11 +780,24 @@ parse_flags(const FlagList                  &flags,
   };
 
   FlagOperandValue *pending_operand_flag{};
-  Flag             *previous_flag{};
-  bool              should_take_next_argument_as_value = false;
-  bool              was_previous_flag_long             = false;
-  bool              was_previous_flag_after_plus       = false;
-  bool              should_ignore_rest                 = false;
+  let   pending_values     = ArrayList<pending_flag_value>{heap_allocator()};
+  usize next_pending_value = 0;
+  bool  should_ignore_rest = false;
+
+  let const do_take_next_argument =
+      [&](Flag *flag, SourceLocation flag_location, bool is_long,
+          bool was_given_after_plus) throws -> void {
+    LOG(All, "the flag '%s' expects a later argument as its value",
+        flag_name(flag, is_long).c_str());
+    flag->set_value_location(flag_location);
+    pending_values.push(
+        pending_flag_value{flag, flag_location, is_long, was_given_after_plus});
+  };
+  let const do_check_next_value_letter = [&](const Flag *flag) -> bool {
+    return flag->short_name() != '\0' &&
+           parse_options.next_value_letters.find_character(flag->short_name())
+               .has_value();
+  };
 
   /* returns whether the operand became the value of a pending operand flag
      instead of an operand. */
@@ -796,25 +818,23 @@ parse_flags(const FlagList                  &flags,
   for (int i = 0; i < argc; i++) {
     ASSERT(argv[i] != nullptr);
 
-    if (should_take_next_argument_as_value) {
-      should_take_next_argument_as_value = false;
+    if (next_pending_value < pending_values.count()) {
+      let const pending = pending_values[next_pending_value++];
 
-      ASSERT(previous_flag != nullptr);
       LOG(All, "attaching the next argument '%s' as the value of the flag '%s'",
-          argv[i], flag_name(previous_flag, was_previous_flag_long).c_str());
+          argv[i], flag_name(pending.flag, pending.is_long).c_str());
       let const value_position = ++position;
       let const value_location = argument_location(
           argv, static_cast<usize>(i), base_position, arg_locations);
 
-      if (previous_flag->kind() == Flag::Kind::String)
-        static_cast<FlagString *>(previous_flag)->set(argv[i]);
+      if (pending.flag->kind() == Flag::Kind::String)
+        static_cast<FlagString *>(pending.flag)->set(argv[i]);
       else
-        static_cast<FlagManyStrings *>(previous_flag)
+        static_cast<FlagManyStrings *>(pending.flag)
             ->append(argv[i], value_position, value_location,
-                     was_previous_flag_after_plus);
-      previous_flag->set_position(value_position);
-      previous_flag->set_value_location(value_location);
-      was_previous_flag_after_plus = false;
+                     pending.was_given_after_plus);
+      pending.flag->set_position(value_position);
+      pending.flag->set_value_location(value_location);
 
       continue;
     }
@@ -860,6 +880,11 @@ parse_flags(const FlagList                  &flags,
         }
 
         ASSERT(plus_match.flag->kind() == Flag::Kind::ManyStrings);
+        if (do_check_next_value_letter(plus_match.flag)) {
+          do_take_next_argument(plus_match.flag, flag_location, false, true);
+          continue;
+        }
+
         if (*plus_match.value_start != '\0') {
           let const value_position = ++position;
           let const value_location = attached_flag_value_location(
@@ -872,11 +897,7 @@ parse_flags(const FlagList                  &flags,
           plus_match.flag->set_position(value_position);
           plus_match.flag->set_value_location(value_location);
         } else {
-          should_take_next_argument_as_value = true;
-          previous_flag                      = plus_match.flag;
-          was_previous_flag_long             = false;
-          was_previous_flag_after_plus       = true;
-          plus_match.flag->set_value_location(flag_location);
+          do_take_next_argument(plus_match.flag, flag_location, false, true);
         }
 
         break;
@@ -1082,6 +1103,7 @@ parse_flags(const FlagList                  &flags,
             ++flag_offset;
             should_repeat = true;
           } else if (i + 1 < argc &&
+                     next_pending_value == pending_values.count() &&
                      optional_flag->get_placement() ==
                          FlagOptionalValue::ValuePlacement::AttachedOrNext &&
                      optional_flag->should_accept_value(
@@ -1098,14 +1120,23 @@ parse_flags(const FlagList                  &flags,
 
         case Flag::Kind::String:
         case Flag::Kind::ManyStrings: {
-          if (*value_offset == '\0') {
-            LOG(All, "the flag '%s' expects the next argument as its value",
-                flag_name(flag, is_long).c_str());
-            should_take_next_argument_as_value = true;
-            previous_flag                      = flag;
-            was_previous_flag_long             = is_long;
-            flag->set_value_location(argument_location(
-                argv, static_cast<usize>(i), base_position, arg_locations));
+          if (!is_long && do_check_next_value_letter(flag)) {
+            do_take_next_argument(
+                flag,
+                boolean_flag_location(argv, static_cast<usize>(i), flag_offset,
+                                      false, base_position, arg_locations),
+                false, false);
+
+            if (*value_offset != '\0') {
+              ++flag_offset;
+              should_repeat = true;
+            }
+          } else if (*value_offset == '\0') {
+            do_take_next_argument(flag,
+                                  argument_location(argv, static_cast<usize>(i),
+                                                    base_position,
+                                                    arg_locations),
+                                  is_long, false);
           } else {
             if (*value_offset == '=' && (is_long || value_offset[1] != '\0')) {
               value_offset++;
@@ -1205,17 +1236,16 @@ parse_flags(const FlagList                  &flags,
     }
   }
 
-  if (should_take_next_argument_as_value) {
-    ASSERT(previous_flag != nullptr);
-
+  if (next_pending_value < pending_values.count()) {
+    let const pending   = pending_values[next_pending_value];
     let       name      = String{heap_allocator()};
-    let const flag_text = flag_name(previous_flag, was_previous_flag_long);
+    let const flag_text = flag_name(pending.flag, pending.is_long);
 
-    name.push(was_previous_flag_after_plus ? '+' : '-');
+    name.push(pending.was_given_after_plus ? '+' : '-');
     name += flag_text.view().substring(1);
 
     let error = ErrorWithLocation{
-        previous_flag->value_location(),
+        pending.flag_location,
         prefixed_message(program_name,
                          "No value provided for '" + name + "' flag")};
 

@@ -490,6 +490,10 @@ struct flag_parse_options
   bool       should_accept_unknown_flag_operand{false};
   bool       should_omit_program_name{false};
   StringView plus_letters{};
+  /* short letters that take the next unused argument as their value, also
+     inside a cluster, where the letters after them are still options, as in
+     sh -oc errexit command. */
+  StringView next_value_letters{};
 };
 
 fn

@@ -533,6 +533,9 @@ struct command_line
   }
 };
 
+static constexpr flag_parse_options INVOCATION_PARSE_OPTIONS{
+    .plus_letters = "aCefhmnptuvxoO", .next_value_letters = "oO"};
+
 /* memory: each kept option word is copied into line.flag_tokens, which owns
            the copies. spliced_argv points into flag_tokens and argv.
    time:   one pass over the bytes of KOSH_FLAGS, with one flag lookup per
@@ -566,7 +569,7 @@ splice_environment_flags(command_line &line) throws -> void
         SSK("--debug-highlight-restarts-at")};
     static constexpr StaticStringSet IGNORED_KOSH_FLAGS{IGNORED_KOSH_FLAG_KEYS};
     let const                        view              = kosh_flags->view();
-    bool                             is_value_next     = false;
+    usize                            value_count       = 0;
     bool                             should_keep_value = false;
 
     /* KOSH_FLAGS can set options but cannot choose what runs. Option words
@@ -578,8 +581,8 @@ splice_environment_flags(command_line &line) throws -> void
        "-o": kept, and its value "nounset" is kept after it.
        flag_tokens: ["-e", "-o", "nounset"] */
     view.for_each_ascii_whitespace_word([&](StringView token) throws {
-      if (is_value_next) {
-        is_value_next = false;
+      if (value_count > 0) {
+        value_count--;
         if (should_keep_value) line.flag_tokens.push_managed(token);
 
         return;
@@ -597,8 +600,12 @@ splice_environment_flags(command_line &line) throws -> void
         let const is_ignored = IGNORED_KOSH_FLAGS.contains(
             token.substring_of_length(0, equals.value_or(token.length)));
 
-        is_value_next = !equals.has_value() && found_flag != nullptr &&
-                        takes_separate_value(*found_flag);
+        if (!equals.has_value() && found_flag != nullptr &&
+            takes_separate_value(*found_flag))
+        {
+          value_count = 1;
+        }
+
         should_keep_value = !is_ignored;
         if (!is_ignored) line.flag_tokens.push_managed(token);
 
@@ -620,12 +627,19 @@ splice_environment_flags(command_line &line) throws -> void
         if (flag == &FLAG_COMMAND || flag == &FLAG_STDIN) continue;
         kept.push(token[i]);
 
-        if (flag != nullptr && takes_separate_value(*flag)) {
-          is_value_next = i + 1 == token.length;
-          kept.append(token.substring(i + 1));
+        if (flag == nullptr || !takes_separate_value(*flag)) continue;
 
-          break;
+        if (INVOCATION_PARSE_OPTIONS.next_value_letters.find_character(token[i])
+                .has_value())
+        {
+          value_count++;
+          continue;
         }
+
+        if (i + 1 == token.length) value_count++;
+        kept.append(token.substring(i + 1));
+
+        break;
       }
 
       if (kept.count() > 1) line.flag_tokens.push_managed(kept.view());
@@ -646,9 +660,6 @@ splice_environment_flags(command_line &line) throws -> void
       line.spliced_argv.push(line.argv[i]);
   }
 }
-
-static constexpr flag_parse_options INVOCATION_PARSE_OPTIONS{
-    .plus_letters = "aCefhmnptuvxoO"};
 
 static fn
 parse_invocation_flags(int argc, const char *const *argv) throws

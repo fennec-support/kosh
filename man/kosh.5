@@ -619,6 +619,10 @@ POSIX
 T}@T{
 \f[CR]\-o NAME, +o NAME\f[R]
 T}@T{
+\f[CR]NAME\f[R] is always the next unused argument.
+In a cluster such as \f[CR]\-eo pipefail\f[R] or
+\f[CR]\-oO errexit extglob\f[R], each \f[CR]o\f[R] or \f[CR]O\f[R] takes
+one argument in the order of the letters.
 \f[CR]\-o posix\f[R] acts as \f[CR]\-\-posix\f[R].
 An unknown option name exits with status \f[CR]2\f[R].
 In the \f[CR]kosh\f[R] mood, \f[CR]+o nounset\f[R] is ignored and
@@ -654,6 +658,8 @@ Bash
 T}@T{
 \f[CR]\-O NAME, +O NAME\f[R]
 T}@T{
+\f[CR]NAME\f[R] is always the next unused argument, also inside a
+cluster, as for \f[CR]\-o\f[R].
 An unknown \f[CR]shopt\f[R] option exits with status \f[CR]2\f[R].
 Read\-only options such as \f[CR]login_shell\f[R] are ignored.
 In the \f[CR]kosh\f[R] mood, \f[CR]+O failglob\f[R] and

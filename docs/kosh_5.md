@@ -112,11 +112,11 @@ An option passed on the command line (enabled or disabled) overrides settings fi
 | POSIX | `-s, --stdin` | Input processing order is specified in [Invocation](kosh_1.md#invocation). |
 | POSIX | `-c, --command` | The command string is the first operand, as specified in [Invocation](kosh_1.md#invocation). A syntax error exits with status `2`, and an analysis error exits with status `1`. |
 | POSIX | `-n, --no-exec` | Compatibility moods report only the diagnostic tiers enabled by `-W`. |
-| POSIX | `-o NAME, +o NAME` | `-o posix` acts as `--posix`. An unknown option name exits with status `2`. In the `kosh` mood, `+o nounset` is ignored and `+o pipefail` exits with status `2`. |
+| POSIX | `-o NAME, +o NAME` | `NAME` is always the next unused argument. In a cluster such as `-eo pipefail` or `-oO errexit extglob`, each `o` or `O` takes one argument in the order of the letters. `-o posix` acts as `--posix`. An unknown option name exits with status `2`. In the `kosh` mood, `+o nounset` is ignored and `+o pipefail` exits with status `2`. |
 | POSIX | `+a, +C, +e, +f, +n, +p, +t, +u, +v, +x` | `+h` and `+m` are accepted and ignored. Passing `set`-only flags (`-B`, `-E`, `-H`, `-P`, `-b`, `-k`) on the command line exits with status `2`. |
 | POSIX | `--` | The operand immediately following `--` is treated as the script path. |
 | Bash <a id="bash-option-details"></a> | `--norc` | Does not affect login shells, login profiles, or `BASH_ENV`. |
-| Bash | `-O NAME, +O NAME` | An unknown `shopt` option exits with status `2`. Read-only options such as `login_shell` are ignored. In the `kosh` mood, `+O failglob` and `-O nullglob` exit with status `2`. |
+| Bash | `-O NAME, +O NAME` | `NAME` is always the next unused argument, also inside a cluster, as for `-o`. An unknown `shopt` option exits with status `2`. Read-only options such as `login_shell` are ignored. In the `kosh` mood, `+O failglob` and `-O nullglob` exit with status `2`. |
 | Bash | `-p, --privileged` | Skips `ENV`, `BASH_ENV`, interactive non-login `rc.kosh`, and all settings files, and unsets `KOSHCONF`. A secure execution, such as setuid or setgid, automatically drops elevated privileges and skips all startup and settings files. On Linux, a setuid/setgid process whose real user ID is not `root` also clears all capability sets (including ambient capabilities) and aborts if privilege restoration to `root` remains possible. |
 
 ## Configure shell settings via builtins and variables <a id="shell-settings"></a>
