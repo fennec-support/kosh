@@ -576,8 +576,7 @@ check_command_value_lints(AnalysisContext          &actx,
       }
 
       if (word.segments.count() == 1 &&
-          word.segments[0].kind == WordSegment::Kind::UnquotedText &&
-          word.segments[0].has_glob_metacharacter())
+          word.has_fact(Word::Fact::HasUnquotedGlob))
       {
         actx.report_diagnostic(diagnostic_id::sc2062,
                                args[i]->source_location());

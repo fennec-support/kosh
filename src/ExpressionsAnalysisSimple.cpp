@@ -329,8 +329,7 @@ cold fn
 internal::word_is_bare_glob(const Word &word) wontthrow -> bool
 {
   return word.segments.count() == 1 &&
-         word.segments[0].kind == WordSegment::Kind::UnquotedText &&
-         word.segments[0].has_glob_metacharacter();
+         word.has_fact(Word::Fact::HasUnquotedGlob);
 }
 
 cold static fn

@@ -888,11 +888,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         {
           let &segments = fallback_word->segments;
 
-          if (segments.count() > value_start &&
-              segments[value_start].is_tilde_candidate() &&
-              !segments[value_start].text.is_empty() &&
-              segments[value_start].text.first_character() == '~')
-          {
+          if (value.has_fact(Word::Fact::HasLeadingTilde)) {
             expand_tilde(segments[value_start],
                          segments.count() > value_start + 1, true);
           }
