@@ -44,4 +44,34 @@ for flags in -i '-i -s' -s ''; do
   echo "status=$?"
 done
 
+# -i over standard input that is not a terminal takes one complete command at
+# a time. It prints PS1 and PS2 on stderr, expands and records history, and
+# prints exit at the end of input. Koshka keeps its history in
+# KOSH_HISTORY_FILE, and Bash keeps it in ~/.bash_history.
+mkdir "$d/lines"
+export KOSH_HISTORY_FILE=$d/lines/.kosh_history
+printf '%s\n' 'echo one' 'echo !!' 'if true; then' '  echo two' 'fi' 'false' \
+  'history 2' > "$d/lines.sh"
+HOME=$d/lines PS1='P1> ' PS2='P2> ' "$d/bash" --norc +o emacs -i \
+  < "$d/lines.sh" 2>&1 | grep -v -e 'job control' -e 'process group'
+echo "status=${PIPESTATUS[0]}"
+grep -c . "$d/lines/".*_history
+
+# The shell keeps running after expansion, arithmetic, and syntax errors,
+# leaves the rest of standard input to the commands it runs, and exits with
+# the status of the last command.
+printf '%s\n' ': "${unset_var?boom}"' 'echo after-expansion-error' \
+  'echo $((1 / 0))' 'echo after-arithmetic-error' 'fi' \
+  'echo after-syntax-error' 'echo "two' 'lines"' 'read -r line' 'read-me' \
+  'echo "line=$line"' '(exit 5)' > "$d/errors.sh"
+HOME=$d/lines "$d/bash" --norc -i < "$d/errors.sh" 2>/dev/null
+echo "status=$?"
+
+# A script operand of -i runs the same way without prompts, and a syntax
+# error ends it with status 2.
+printf '%s\n' 'echo "script $-"' 'echo !!' ': "${unset_var?boom}"' \
+  'echo after-error' 'fi' 'echo never' > "$d/script-errors.sh"
+HOME=$d/lines "$d/bash" --norc -i "$d/script-errors.sh" 2>/dev/null
+echo "status=$?"
+
 cd / && rm -rf "$d"

@@ -1393,6 +1393,13 @@ render_ps0(koshka::EvalContext &context) -> String
 }
 
 fn
+render_input_prompt(koshka::EvalContext &context, StringView name) -> String
+{
+  return context.get_variable_value(name).value_or(
+      String{koshka::heap_allocator()});
+}
+
+fn
 emit_command_end_mark(koshka::EvalContext &context, i32 exit_status) -> void
 {
   unused(context);

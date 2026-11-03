@@ -589,6 +589,86 @@ make_script_lexer(const script_run_input &input) throws -> Lexer
   return lexer;
 }
 
+struct command_text_scan
+{
+  usize command_count{0};
+  bool  has_error{false};
+  bool  is_error_at_end{false};
+};
+
+static fn
+scan_command_text(StringView   text,
+                  EvalContext &context,
+                  BumpArena   &arena) throws -> command_text_scan
+{
+  let const mark = arena.mark();
+
+  defer { arena.release(mark); };
+
+  let parser = Parser{
+      Lexer{text, arena, None, context.runtime_state().get_mood()}
+  };
+  let       scan         = command_text_scan{};
+  let const do_is_at_end = [&](const SourceLocation &location) -> bool {
+    return location.position + 1 >= text.length;
+  };
+
+  try {
+    while (parser.construct_next_top_level_ast() != nullptr) {
+      parser.drop_lexer_peek_cache();
+      scan.command_count++;
+    }
+  } catch (const ErrorWithLocationAndDetails &error) {
+    scan.has_error       = true;
+    scan.is_error_at_end = parser.did_reach_end_of_input() ||
+                           do_is_at_end(error.location()) ||
+                           do_is_at_end(error.details_location());
+  } catch (const ErrorWithLocation &error) {
+    scan.has_error = true;
+    scan.is_error_at_end =
+        parser.did_reach_end_of_input() || do_is_at_end(error.location());
+  } catch (const Error &) {
+    scan.has_error = true;
+  }
+
+  return scan;
+}
+
+/* text ends with a newline. The result is the number of top-level commands in
+   text, or None when text needs more lines: it ends inside a quote, a compound
+   command, a substitution, or a heredoc body, after a pipe or a list operator,
+   or after a line continuation. A syntax error before the end counts as one
+   command, so running text reports the error. */
+static fn
+count_complete_commands(StringView   text,
+                        EvalContext &context,
+                        BumpArena   &arena) throws -> Maybe<usize>
+{
+  let const scan = scan_command_text(text, context, arena);
+
+  if (scan.has_error) {
+    if (scan.is_error_at_end) return None;
+
+    return usize{1};
+  }
+
+  /* a word on one more line starts one more command unless a line
+     continuation or a heredoc body takes it. */
+  let probe = String{heap_allocator(), text};
+
+  probe.append("x\n");
+
+  let const probe_scan = scan_command_text(probe.view(), context, arena);
+
+  if (probe_scan.has_error ||
+      probe_scan.command_count != scan.command_count + 1)
+  {
+    return None;
+  }
+
+  return scan.command_count;
+}
+
 static fn
 make_script_run_plan(EvalContext              &context,
                      bool                      has_precompiled_ast,

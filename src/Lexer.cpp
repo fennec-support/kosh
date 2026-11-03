@@ -604,6 +604,7 @@ Lexer::lex_shell_token() throws -> Token *
     token = m_parse_session.get_arena().create<tokens::EndOfFile>(
         here(m_cursor_position, 1));
     m_was_last_shell_token_newline = false;
+    m_did_lex_end_of_file          = true;
 
     return token;
   }

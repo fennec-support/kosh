@@ -56,6 +56,8 @@ then
 else
   echo "changed after standard input"
 fi
+# An interactive shell records each command it takes from a script or from
+# standard input, while an interactive -c string records none.
 for interactive_form in -c script -s; do
   case $interactive_form in
     -c) KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -i -c \

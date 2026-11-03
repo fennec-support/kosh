@@ -53,6 +53,12 @@ public:
   pure fn
   is_at_end() const wontthrow -> bool;
 
+  pure fn
+  did_reach_end_of_input() const wontthrow -> bool
+  {
+    return m_lexer.did_lex_end_of_file();
+  }
+
   fn
   construct_ast(ArrayList<String>            &errors,
                 EvalContext                  *context,

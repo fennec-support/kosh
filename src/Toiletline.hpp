@@ -62,6 +62,11 @@ expand_prompt_template(StringView prompt, koshka::EvalContext &context)
 fn
 render_ps0(koshka::EvalContext &context) -> String;
 
+/* the expanded PS1 or PS2 that an interactive shell prints on standard error
+   before it takes a line from input that is not the line editor. */
+fn
+render_input_prompt(koshka::EvalContext &context, StringView name) -> String;
+
 fn
 emit_command_end_mark(koshka::EvalContext &context, i32 exit_status) -> void;
 

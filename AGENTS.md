@@ -153,8 +153,11 @@ or a file with another shebang in that mood and restores the kosh mood
 afterwards.
 
 A koshkit utility runs through run_as_multicall before shell startup. The chunk
-loop uses script_cursor, interactive_session, and lint_run. run_script_contents
-parses, analyzes, and evaluates one script run plan.
+loop uses script_cursor, interactive_session, and lint_run. For an interactive
+shell over a script operand or a stdin that is not a terminal, script_cursor
+takes one complete command at a time, and count_complete_commands decides when
+a command is complete. run_script_contents parses, analyzes, and evaluates one
+script run plan.
 
 ## Completion and editor
 

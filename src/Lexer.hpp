@@ -419,6 +419,13 @@ public:
   cursor_position() const wontthrow -> usize;
   pure fn
   is_at_source_end() const wontthrow -> bool;
+
+  pure fn
+  did_lex_end_of_file() const wontthrow -> bool
+  {
+    return m_did_lex_end_of_file;
+  }
+
   pure fn
   debug_words() const wontthrow -> const ArrayList<Word> &;
   pure fn
@@ -552,6 +559,7 @@ protected:
   usize           m_last_collected_word_position{static_cast<usize>(-1)};
 
   bool                                 m_was_last_shell_token_newline{false};
+  bool                                 m_did_lex_end_of_file{false};
   bool                                 m_is_lexing_array_literal{false};
   bool                                 m_is_hash_literal{false};
   ArrayList<shellcheck_directive_span> m_pending_shellcheck_directives{

@@ -783,6 +783,9 @@ struct input_plan
   bool should_read_files       = false;
   bool should_use_line_editor  = false;
   bool is_interactive          = false;
+  /* an interactive shell over stdin or a script operand takes one complete
+     command at a time. */
+  bool should_read_commands_singly = false;
 };
 
 static fn
@@ -1146,6 +1149,9 @@ resolve_input_plan(const command_line      &line,
     plan.should_read_files      = false;
     if (!plan.should_execute_commands) plan.should_read_stdin = true;
   }
+
+  plan.should_read_commands_singly =
+      plan.is_interactive && (plan.should_read_stdin || plan.should_read_files);
 
   LOG(Info, "the %s input source is %s",
       plan.is_interactive ? "interactive" : "non-interactive",
@@ -1808,7 +1814,8 @@ seed_session_variables(EvalContext                 &context,
 
   if (!context.get_variable_value("KOSH_HISTORY_SIZE").has_value())
     context.set_shell_variable("KOSH_HISTORY_SIZE", "4096");
-  toiletline::set_history_persistent(input.should_use_line_editor);
+  toiletline::set_history_persistent(input.should_use_line_editor ||
+                                     input.should_read_commands_singly);
 
   let identity_mode = shell_identity_mode::Native;
 
@@ -2041,6 +2048,7 @@ struct script_chunk
   Maybe<StringView>     command_string_name              = None;
   Maybe<SourceLocation> root_frame_call_site             = None;
   Maybe<usize>          history_event_number             = None;
+  usize                 start_position                   = 0;
   bool                  should_analyze                   = true;
   bool                  is_fresh_evaluator_command       = false;
   bool                  should_use_command_string_status = true;
@@ -2058,6 +2066,11 @@ struct script_cursor
   bool                       should_quit;
   usize                      next_file_index    = 0;
   usize                      next_command_index = 0;
+  String                     single_command_script{heap_allocator()};
+  usize                      single_command_script_position = 0;
+  usize                      single_command_line_count      = 0;
+  bool                       was_single_command_script_read = false;
+  bool                       did_reach_input_end            = false;
 
   /* memory: chunk.contents owns all of standard input until the loop iteration
              in kosh_main() ends.
@@ -2111,6 +2124,148 @@ struct script_cursor
   has_next_command() const wontthrow -> bool
   {
     return next_command_index < FLAG_COMMAND.count();
+  }
+
+  pure fn
+  is_reading_script_singly() const wontthrow -> bool
+  {
+    return input.should_read_commands_singly && input.should_read_files &&
+           operands[0] != "-";
+  }
+
+  /* takes one line with its newline, or the last line without one, from the
+     script operand or from standard input. */
+  fn
+  take_input_line(String &line) throws -> bool
+  {
+    if (!is_reading_script_singly()) {
+      let result =
+          utils::read_line_from_fd(KOSH_STDIN, '\n', 0, heap_allocator());
+
+      if (!result.line.has_value()) return false;
+
+      line = steal(*result.line);
+      if (result.was_delimiter_terminated) line.push('\n');
+
+      return true;
+    }
+
+    let const rest =
+        single_command_script.view().substring(single_command_script_position);
+
+    if (rest.is_empty()) return false;
+
+    let const newline     = rest.find_character('\n');
+    let const line_length = newline.has_value() ? *newline + 1 : rest.length;
+
+    line = String{heap_allocator(), rest.substring_of_length(0, line_length)};
+    single_command_script_position += line_length;
+
+    return true;
+  }
+
+  fn
+  print_input_prompt(EvalContext &context,
+                     BumpArena   &ast_arena,
+                     bool         is_continuation) const throws -> void
+  {
+    if (!is_continuation) {
+      context.notify_done_jobs();
+      run_prompt_command(context, ast_arena);
+    }
+
+    let const prompt = toiletline::render_input_prompt(
+        context, is_continuation ? StringView{"PS2"} : StringView{"PS1"});
+
+    flush();
+    print_error(prompt);
+  }
+
+  /* chunk.contents is empty only at the end of input. A command that the end
+     of input cuts short is returned as it stands, so running it reports the
+     error. */
+  fn
+  read_single_command(EvalContext  &context,
+                      BumpArena    &ast_arena,
+                      script_chunk &chunk) throws -> void
+  {
+    if (is_reading_script_singly()) {
+      if (!was_single_command_script_read) {
+        read_next_file(context, chunk);
+        single_command_script = steal(chunk.contents);
+        single_command_script.normalize_crlf_line_endings();
+        chunk.contents                 = String{heap_allocator()};
+        was_single_command_script_read = true;
+      }
+
+      chunk.filename       = operands[0].view();
+      chunk.start_position = single_command_line_count;
+    }
+
+    should_quit = false;
+
+    let line = String{heap_allocator()};
+
+    loop {
+      if (!is_reading_script_singly()) {
+        print_input_prompt(context, ast_arena, !chunk.contents.is_empty());
+      }
+
+      if (!take_input_line(line)) {
+        did_reach_input_end = true;
+        should_quit         = true;
+
+        return;
+      }
+
+      chunk.contents.append(line.view());
+      chunk.contents.normalize_crlf_line_endings();
+
+      if (line.is_empty() || line.back() != '\n') return;
+
+      single_command_line_count++;
+
+      let const command_count =
+          count_complete_commands(chunk.contents.view(), context, ast_arena);
+
+      if (!command_count.has_value()) continue;
+
+      if (*command_count == 0) {
+        chunk.contents.clear();
+        if (is_reading_script_singly())
+          chunk.start_position = single_command_line_count;
+        continue;
+      }
+
+      chunk.contents.pop_back();
+
+      return;
+    }
+  }
+
+  /* error locations and LINENO in a chunk of the script operand count the
+     lines before it. */
+  fn
+  place_in_script(script_chunk &chunk) const throws -> void
+  {
+    if (chunk.start_position == 0) return;
+
+    let placed = String{heap_allocator()};
+
+    placed.reserve(chunk.start_position + chunk.contents.count());
+    placed.append_repeated('\n', chunk.start_position);
+    placed.append(chunk.contents.view());
+    chunk.contents = steal(placed);
+  }
+
+  fn
+  announce_end_of_input() const throws -> void
+  {
+    if (did_reach_input_end && input.should_read_commands_singly &&
+        !is_reading_script_singly())
+    {
+      print_error("exit\n");
+    }
   }
 
   fn
@@ -2606,7 +2761,8 @@ run_chunk(script_chunk        &chunk,
   run_options.is_whole_line =
       chunk.command_string_name.has_value() || chunk.is_fresh_evaluator_command;
   run_options.out_was_rejected = &chunk.was_rejected;
-  if (chunk.command_string_name.has_value())
+  run_options.start_position   = chunk.start_position;
+  if (chunk.command_string_name.has_value() || chunk.start_position != 0)
     run_options.should_require_shebang = false;
 
   return run_script_contents(chunk.contents, context, ast_arena,
@@ -2638,6 +2794,8 @@ should_exit_after_chunk(EvalContext         &context,
 {
   return cursor.should_quit ||
          (chunk.was_rejected && chunk.command_string_name.has_value()) ||
+         (chunk.was_rejected && exit_code == SYNTAX_ERROR_STATUS &&
+          cursor.is_reading_script_singly()) ||
          context.runtime_state().option_is_enabled(shell_option_id::Onecmd) ||
          os::is_child_process() ||
          (!FLAG_LINT.is_enabled() && FLAG_ERROR_EXIT.is_enabled() &&
@@ -3023,7 +3181,9 @@ kosh_main(int argc, char **argv) -> int
     };
 
     try {
-      if (input.should_read_stdin) {
+      if (input.should_read_commands_singly) {
+        cursor.read_single_command(context, ast_arena, chunk);
+      } else if (input.should_read_stdin) {
         cursor.read_standard_input(chunk);
       } else if (input.should_execute_commands && cursor.has_next_command()) {
         cursor.read_next_command(context, chunk, inherited.state.has_value());
@@ -3071,6 +3231,19 @@ kosh_main(int argc, char **argv) -> int
               koshka::os::last_system_error_message() + "'"}
                                .to_string());
       koshka::utils::quit(EXIT_FAILURE);
+    }
+
+    if (input.should_read_commands_singly) {
+      if (chunk.contents.is_empty()) {
+        cursor.announce_end_of_input();
+        koshka::exit_after_final_chunk(context, exit_code, lint);
+      }
+
+      toiletline::set_history_limit(
+          context.variable_store().history_limit("KOSH_HISTORY_SIZE", 4096));
+      if (!session.prepare_history(context, chunk)) continue;
+      cursor.place_in_script(chunk);
+      koshka::print_error(toiletline::render_ps0(context));
     }
 
     if (input.should_use_line_editor &&
@@ -3131,6 +3304,7 @@ kosh_main(int argc, char **argv) -> int
       exit_code = lint.record(exit_code, cursor.should_quit);
 
     if (koshka::should_exit_after_chunk(context, cursor, chunk, exit_code)) {
+      cursor.announce_end_of_input();
       koshka::exit_after_final_chunk(context, exit_code, lint);
     }
   }

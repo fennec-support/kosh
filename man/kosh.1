@@ -1450,11 +1450,12 @@ newlines, \f[CR]\[rs]\[rs]\f[R] for backslashes) in
 \f[CR]$KOSH_HISTORY_FILE\f[R] (\f[CR]\[ti]/.kosh_history\f[R] default,
 mode \f[CR]0600\f[R], directory\-locked during writes).
 .IP \[bu] 2
-\f[B]Filtering and synchronization\f[R] \- A shell without the line
-editor, including an interactive shell that runs \f[CR]\-c\f[R], a
-script operand, or stdin that is not a terminal, records no events and
-writes the history file only through \f[CR]history \-w\f[R] or
-\f[CR]history \-a\f[R].
+\f[B]Filtering and synchronization\f[R] \- An interactive shell that
+runs a script operand or stdin that is not a terminal records each
+command it takes like the line editor does.
+Any other shell without the line editor, including an interactive shell
+that runs \f[CR]\-c\f[R], records no events and writes the history file
+only through \f[CR]history \-w\f[R] or \f[CR]history \-a\f[R].
 Consecutive duplicate events, history expansion errors, and a command
 over \f[CR]2048\f[R] bytes are not recorded, and a record over
 \f[CR]65535\f[R] bytes is skipped when the file is read.
@@ -3358,11 +3359,26 @@ of its session.
 Job control then hands that terminal to foreground jobs.
 The line editor runs only when stdin is a terminal and neither
 \f[CR]\-c\f[R] nor a script operand is given.
-With \f[CR]\-c\f[R], a script operand, or stdin that is not a terminal,
-the interactive shell runs that input once without a prompt and exits
-with its status: it records no history events, expands no history
-references, and a fatal expansion error in the Bash moods ends a
-\f[CR]\-c\f[R] string with status \f[CR]1\f[R].
+With \f[CR]\-c\f[R], the interactive shell runs the string once without
+a prompt and exits with its status.
+It records no history events and expands no history references, and a
+fatal expansion error in the Bash moods ends the string with status
+\f[CR]1\f[R].
+With a script operand or stdin that is not a terminal, the interactive
+shell takes one complete command at a time and takes stdin one line at a
+time, so the commands it runs can consume the rest.
+Before each line from stdin it prints \f[CR]PS1\f[R], or \f[CR]PS2\f[R]
+while a command continues, on stderr, and \f[CR]PROMPT_COMMAND\f[R] runs
+before \f[CR]PS1\f[R].
+Each command goes through history expansion and into the history like a
+line from the line editor, and \f[CR]PS0\f[R] is printed on stderr
+before it runs.
+An error ends only that command.
+A syntax error in a script operand ends the shell with status
+\f[CR]2\f[R].
+At the end of stdin the shell prints \f[CR]exit\f[R] on stderr.
+The shell exits with the status of the last command, or with status
+\f[CR]2\f[R] when the input ends inside a command.
 \f[CR]\-\-lint\f[R] ignores \f[CR]\-i\f[R].
 .IP \[bu] 2
 \f[B]Positional parameter assignment (\f[CB]$0\f[B] and
@@ -5373,10 +5389,11 @@ are stopped.
 .IP \[bu] 2
 \f[B]Scope\f[R] \- Interactive shells with \f[CR]histexpand\f[R] on
 (default; \f[CR]set +H\f[R] turns it off) replace each reference in a
-line from the line editor before parsing and print the replaced line
-before running it.
-Non\-interactive shells, \f[CR]\-c\f[R] strings, and script operands do
-not expand history.
+line from the line editor, or in a command that an interactive shell
+takes from a script operand or from stdin, before parsing and print the
+replaced line on stderr before running it.
+Non\-interactive shells and \f[CR]\-c\f[R] strings do not expand
+history.
 A reference is an event, an optional word designator, and optional
 modifiers.
 .IP \[bu] 2

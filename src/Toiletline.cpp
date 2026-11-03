@@ -5055,6 +5055,18 @@ render_ps0(EvalContext &context) -> String
   return finish_prompt_dropping_width_markers(expanded->view());
 }
 
+fn
+render_input_prompt(EvalContext &context, StringView name) -> String
+{
+  let const value = context.get_variable_value(name);
+
+  if (!value.has_value() || value->is_empty()) {
+    return String{koshka::heap_allocator()};
+  }
+
+  return render_prompt_variable(context, name, value->view());
+}
+
 static constexpr StringView SHELL_INTEGRATION_VARIABLE{
     "KOSH_SHELL_INTEGRATION"};
 static constexpr StringView OSC_END{"\a"};
