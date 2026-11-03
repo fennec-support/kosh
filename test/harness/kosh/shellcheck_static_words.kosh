@@ -194,3 +194,12 @@ lint_only() {
   ((unknown['$key']))
   ((listed[$index]))
 }
+
+# A dollar sign inside a braced expansion needs no warning, and a braced
+# element without an operator or an expansion still warns.
+lint_only() {
+  declare -a listed=(1 2)
+  local index=1
+  ((${listed[$index]} + ${#listed[$index]} + ${listed[$index]:-0}))
+  ((${listed[index]}))
+}

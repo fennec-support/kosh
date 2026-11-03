@@ -514,7 +514,11 @@ note: Quote it as `"$@"`.
    195 |    ((listed[$index]))
        |    ^~~~~~~~~~~~~~~~~~
 note: Use the variable directly inside arithmetic, such as `$((x + 1))`.
-Encountered 125 warnings.
+204:3: warning: A dollar sign expands the value before the arithmetic runs. (SC2004)
+   204 |    ((${listed[index]}))
+       |    ^~~~~~~~~~~~~~~~~~~~
+note: Use the variable directly inside arithmetic, such as `$((x + 1))`.
+Encountered 126 warnings.
 done
 done
 done

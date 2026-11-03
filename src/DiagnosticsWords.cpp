@@ -191,6 +191,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
   usize bracket_depth     = 0;
   usize ternary_depth     = 0;
   let   associative_subscript_depth = Maybe<usize>{};
+  usize braced_expansion_end        = 0;
 
   let const do_apply_write = [&]() throws -> void {
     let const write = pending_writes.back();
@@ -423,9 +424,42 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
 
       position = name_end - 1;
 
+      let const is_inside_braced_expansion =
+          dollar_position < braced_expansion_end;
+
       if (is_braced &&
           (name_end >= expression.length || expression[name_end] != '}'))
       {
+        if (is_inside_braced_expansion) break;
+
+        usize close_position    = dollar_position + 2;
+        usize brace_depth       = 1;
+        let   has_operator_text = false;
+
+        /* ShellCheck keeps a braced expansion whose text holds an operator,
+           an expansion, or a leading digit. */
+        for (; close_position < expression.length; close_position++) {
+          let const c = expression[close_position];
+
+          if (c == '{') brace_depth++;
+          if (c == '}') {
+            brace_depth--;
+            if (brace_depth == 0) break;
+          }
+
+          if (StringView{"/.:#%?*@$-!+=^,"}.find_character(c).has_value())
+            has_operator_text = true;
+        }
+
+        braced_expansion_end = close_position;
+
+        if (has_plain_name && close_position < expression.length &&
+            !has_operator_text && !associative_subscript_depth.has_value() &&
+            !arithmetic_expansion_assigns(expression, close_position + 1))
+        {
+          has_redundant_dollar = true;
+        }
+
         break;
       }
 
@@ -437,7 +471,7 @@ check_arithmetic_expression_lints(AnalysisContext      &actx,
            lexer::is_variable_name(expression[expansion_end]));
 
       /* the key of an associative subscript needs the expansion. */
-      if (has_plain_name && !is_name_part &&
+      if (has_plain_name && !is_name_part && !is_inside_braced_expansion &&
           !associative_subscript_depth.has_value() &&
           !arithmetic_expansion_assigns(expression, expansion_end))
       {
