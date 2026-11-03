@@ -382,6 +382,10 @@ endif
 endif
 endif
 endif
+ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
+# zig links with its own linker and rejects mold flags.
+USE_LD :=
+endif
 LINKER_SELECTION_FLAG := $(USE_LD)
 
 # MODE=rel
