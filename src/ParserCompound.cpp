@@ -1041,7 +1041,18 @@ Parser::parse_arithmetic_command(Token *open) throws -> Command *
   let const expression = body.copy_to(allocator);
 
   return m_lexer.arena().create<expressions::ArithmeticCommand>(
-      full_location, expression, build_arithmetic_tree(expression, allocator));
+      full_location, expression,
+      build_evaluated_arithmetic_tree(expression, allocator));
+}
+
+fn
+Parser::build_evaluated_arithmetic_tree(StringView expression,
+                                        Allocator  allocator) throws
+    -> const arith_tree *
+{
+  if (!m_lexer.should_build_evaluation_facts()) return nullptr;
+
+  return build_arithmetic_tree(expression, allocator);
 }
 
 hot fn
@@ -1114,9 +1125,9 @@ Parser::parse_c_style_for(const SourceLocation &location,
 
   let const loop_node = m_lexer.arena().create<expressions::CStyleForLoop>(
       location, open->source_location().position + 2, init, condition, step,
-      parsed_body.body, build_arithmetic_tree(init, allocator),
-      build_arithmetic_tree(condition, allocator),
-      build_arithmetic_tree(step, allocator));
+      parsed_body.body, build_evaluated_arithmetic_tree(init, allocator),
+      build_evaluated_arithmetic_tree(condition, allocator),
+      build_evaluated_arithmetic_tree(step, allocator));
 
   loop_node->set_source_end_position(parsed_body.done_location.position +
                                      parsed_body.done_location.length);

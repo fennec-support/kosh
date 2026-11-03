@@ -2875,6 +2875,7 @@ describe_syntax_problem(StringView line,
 
   parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
+  parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
 
   let errors   = ArrayList<ErrorWithLocationAndDetails>{heap_allocator()};
   let messages = ArrayList<String>{heap_allocator()};
@@ -2922,6 +2923,7 @@ describe_analysis_finding(StringView   line,
       analysis_metadata_collection_mode::Enabled);
   parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
+  parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
 
   let        rendered_errors = ArrayList<String>{heap_allocator()};
   let        diagnostics     = ArrayList<source_diagnostic>{heap_allocator()};

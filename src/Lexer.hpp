@@ -54,6 +54,12 @@ enum class substitution_validation_mode : u8
   Enabled,
 };
 
+enum class evaluation_fact_mode : u8
+{
+  Disabled,
+  Enabled,
+};
+
 enum class shellcheck_directive_collection_mode : u8
 {
   Disabled,
@@ -156,6 +162,18 @@ public:
   }
 
   pure fn
+  should_build_evaluation_facts() const wontthrow -> bool
+  {
+    return m_evaluation_fact_mode == evaluation_fact_mode::Enabled;
+  }
+
+  fn
+  set_evaluation_fact_mode(evaluation_fact_mode mode) wontthrow -> void
+  {
+    m_evaluation_fact_mode = mode;
+  }
+
+  pure fn
   should_collect_shellcheck_directives() const wontthrow -> bool
   {
     return m_shellcheck_directive_collection_mode ==
@@ -189,6 +207,7 @@ private:
       analysis_metadata_collection_mode::Disabled};
   shellcheck_directive_collection_mode m_shellcheck_directive_collection_mode{
       shellcheck_directive_collection_mode::Disabled};
+  evaluation_fact_mode m_evaluation_fact_mode{evaluation_fact_mode::Enabled};
 };
 
 struct heredoc_contents
@@ -491,6 +510,18 @@ public:
   {
     m_parse_session.set_substitution_validation_mode(mode);
     m_substitution_nesting_depth = nesting_depth;
+  }
+
+  pure fn
+  should_build_evaluation_facts() const wontthrow -> bool
+  {
+    return m_parse_session.should_build_evaluation_facts();
+  }
+
+  fn
+  set_evaluation_fact_mode(evaluation_fact_mode mode) wontthrow -> void
+  {
+    m_parse_session.set_evaluation_fact_mode(mode);
   }
 
   fn

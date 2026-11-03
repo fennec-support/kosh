@@ -1271,10 +1271,12 @@ Lexer::lex_identifier() throws -> Token *
           word.segments.back().set_source_span(
               m_cursor_position + arithmetic_start,
               word.segments.back().text.count());
-          word.segments.back().set_arithmetic_tree(
-              build_arithmetic_tree(word.segments.back().text.view(),
-                                    bump_allocator(arena())),
-              &arena());
+          if (should_build_evaluation_facts()) {
+            word.segments.back().set_arithmetic_tree(
+                build_arithmetic_tree(word.segments.back().text.view(),
+                                      bump_allocator(arena())),
+                &arena());
+          }
           if (should_validate_substitutions()) {
             validate_nested_expansions(m_cursor_position + arithmetic_start,
                                        body_length, false);
@@ -1574,11 +1576,14 @@ Lexer::lex_identifier() throws -> Token *
   let &arena = m_parse_session.get_arena();
 
   let const is_function_body = m_parse_session.is_allocating_function_body();
+  let const should_build_records = should_build_evaluation_facts();
 
   for (let &segment : word.segments) {
     if (is_function_body)
       segment.is_substitution_cache_in_function_arena = true;
-    if (segment.kind == WordSegment::Kind::VariableReference) {
+    if (should_build_records &&
+        segment.kind == WordSegment::Kind::VariableReference)
+    {
       segment.set_parameter_reference(
           build_parameter_reference(segment.text.view(), bump_allocator(arena),
                                     is_function_body,
@@ -1856,6 +1861,7 @@ Lexer::validate_substitution_body(
   if (is_exact) nested_lexer.set_start_position(body_position);
   nested_lexer.set_substitution_validation_mode(
       substitution_validation_mode::Enabled, m_substitution_nesting_depth + 1);
+  nested_lexer.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
 
   let nested_parser = Parser{steal(nested_lexer)};
   let nested_errors = ArrayList<ErrorWithLocationAndDetails>{heap_allocator()};

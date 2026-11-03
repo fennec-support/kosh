@@ -98,6 +98,12 @@ public:
   }
 
   fn
+  set_evaluation_fact_mode(evaluation_fact_mode mode) wontthrow -> void
+  {
+    m_lexer.set_evaluation_fact_mode(mode);
+  }
+
+  fn
   set_display_source(StringView display_source) wontthrow -> void
   {
     m_display_source = display_source;
@@ -370,6 +376,10 @@ private:
   parse_subshell(Token *open) throws -> Command *;
   mustuse fn
   capture_double_paren_body(Token *open) throws -> StringView;
+  mustuse fn
+  build_evaluated_arithmetic_tree(StringView expression,
+                                  Allocator  allocator) throws
+      -> const arith_tree *;
   mustuse fn
   parse_arithmetic_command(Token *open) throws -> Command *;
   mustuse fn

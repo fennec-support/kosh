@@ -601,6 +601,7 @@ struct script_run_plan
   bool should_stream_execution;
   bool should_preflight_syntax;
   bool is_whole_line;
+  bool should_build_evaluation_facts;
 };
 
 struct script_run_input
@@ -728,11 +729,13 @@ make_script_run_plan(EvalContext              &context,
   let const should_stream_execution =
       !has_precompiled_ast && !state.no_exec() && !should_keep_whole_tree;
 
-  return script_run_plan{
-      should_analyze,
-      should_analyze && state.no_exec() && !should_keep_whole_tree,
-      should_stream_execution, should_stream_execution && !should_analyze,
-      run_options.is_whole_line};
+  return script_run_plan{should_analyze,
+                         should_analyze && state.no_exec() &&
+                             !should_keep_whole_tree,
+                         should_stream_execution,
+                         should_stream_execution && !should_analyze,
+                         run_options.is_whole_line,
+                         !state.no_exec() || should_keep_whole_tree};
 }
 
 static fn
@@ -767,6 +770,7 @@ scan_analysis_metadata(const script_run_input &input,
       analysis_metadata_collection_mode::Enabled);
   scan_parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
+  scan_parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
 
   let const scan_mark = input.arena.mark();
 
@@ -801,6 +805,7 @@ preflight_syntax(const script_run_input &input,
 
   preflight_parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
+  preflight_parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
 
   loop {
     let const  unit_mark = input.arena.mark();
@@ -850,6 +855,9 @@ parse_whole_script(const script_run_input &input,
       plan.should_analyze ? analysis_metadata_collection_mode::Enabled
                           : analysis_metadata_collection_mode::Disabled);
   p.set_substitution_validation_mode(substitution_validation_mode::Enabled);
+  p.set_evaluation_fact_mode(plan.should_build_evaluation_facts
+                                 ? evaluation_fact_mode::Enabled
+                                 : evaluation_fact_mode::Disabled);
 
   ast = p.construct_ast(parse_errors, &context, input.diagnostic_sink);
 
@@ -939,6 +947,7 @@ analyze_script(const script_run_input    &input,
 
   unit_parser.set_analysis_scope_collection_mode(
       analysis_metadata_collection_mode::Enabled);
+  unit_parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
 
   let units = StreamedAnalysisUnits{unit_parser, input.arena, parse_errors,
                                     context, input.diagnostic_sink};

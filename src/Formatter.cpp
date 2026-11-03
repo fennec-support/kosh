@@ -2221,6 +2221,8 @@ validate_formatted_source(StringView         source,
 
   parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
+  if (ast_output == nullptr)
+    parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
 
   let const *ast = parser.construct_ast(errors, nullptr);
 

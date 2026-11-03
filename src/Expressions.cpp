@@ -2724,6 +2724,7 @@ expressions::internal::analyze_followed_source(
       analysis_metadata_collection_mode::Enabled);
   parser.set_substitution_validation_mode(
       substitution_validation_mode::Enabled);
+  parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
 
   let       parse_errors = ArrayList<String>{heap_allocator()};
   let const child_diagnostic_start =
