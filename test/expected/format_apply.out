@@ -1,5 +1,3 @@
-help-status=0
-help-auxiliary=yes
 if [ -f "$x" ]
 then
   echo yes

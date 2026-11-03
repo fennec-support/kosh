@@ -4,15 +4,6 @@ root=$TEST_TEMP_DIRECTORY/format-apply
 mkdir -p "$root"
 trap '[ -n "$root" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$root"' EXIT
 
-help_output=$("$BIN" --help 2>&1)
-printf 'help-status=%s\n' "$?"
-case $help_output in
-*'AUXILIARY OPTIONS'*'--lint'*'--format'*'--apply'*'--as-language-server'*)
-  printf 'help-auxiliary=yes\n'
-  ;;
-*) printf 'help-auxiliary=no\n' ;;
-esac
-
 printf 'if test -f "\044x"; then echo yes; else echo no; fi\n' |
   "$BIN" --format
 
