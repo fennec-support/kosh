@@ -74,7 +74,7 @@ mkdir -p "$home/.config/kosh/scripts"
 printf 'echo koshrc-ran\n' >"$home/.config/kosh/scripts/rc.kosh"
 printf 'echo old-koshrc-ran\n' >"$home/.koshrc"
 printf 'mood=kosh\n' >"$conf"
-printf 'set -L kosh\n' | "$BIN" -i 2>/dev/null | grep -c '^koshrc-ran$'
+"$BIN" -i </dev/null 2>/dev/null | grep -c '^koshrc-ran$'
 echo "== a login shell sources the rc script:"
 "$BIN" -l -c : 2>/dev/null | grep -c '^koshrc-ran$'
 echo "== --norc, -p, -Q, and a non-interactive shell skip the rc script:"
@@ -82,6 +82,12 @@ echo "== --norc, -p, -Q, and a non-interactive shell skip the rc script:"
 "$BIN" -p -i </dev/null 2>/dev/null | grep -c koshrc-ran
 "$BIN" -Q -i </dev/null 2>/dev/null | grep -c koshrc-ran
 "$BIN" -c : 2>/dev/null | grep -c koshrc-ran
+echo "== -i with -c, a script operand, or -s sources the rc script first:"
+"$BIN" -i -c 'case $- in *i*) echo interactive ;; esac' </dev/null 2>/dev/null
+printf 'echo "script $1"\n' >"$home/operand.kosh"
+"$BIN" -i "$home/operand.kosh" one </dev/null 2>/dev/null
+printf 'echo "stdin $1"\n' | "$BIN" -s -i one 2>/dev/null
+"$BIN" --norc -ic 'echo norc' </dev/null 2>/dev/null
 echo "== the rc script runs ~/.bashrc in the bash mood and returns to kosh:"
 printf '. ~/.bashrc\necho "after=$(set -M) $(shopt -po nounset)"\n' \
   >"$home/.config/kosh/scripts/rc.kosh"

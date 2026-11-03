@@ -56,6 +56,23 @@ then
 else
   echo "changed after standard input"
 fi
+for interactive_form in -c script -s; do
+  case $interactive_form in
+    -c) KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -i -c \
+          'echo stored; history -s stored' </dev/null >/dev/null 2>&1 ;;
+    script) KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -i \
+              "$dir/untouched-script" </dev/null >/dev/null 2>&1 ;;
+    -s) KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -s -i \
+          < "$dir/untouched-script" >/dev/null 2>&1 ;;
+  esac
+  if "$BIN_DIR/invoke-koshkit" cmp -s "$dir/untouched" \
+    "$dir/untouched.expected"; then
+    printf 'unchanged after -i with %s\n' "$interactive_form"
+  else
+    printf 'changed after -i with %s\n' "$interactive_form"
+    printf 'kept one\nkept two\nkept three\n' > "$dir/untouched"
+  fi
+done
 echo "== the private branch still lists what the file never received =="
 KOSH_HISTORY_FILE="$dir/untouched" "$BIN" --no-init-files -c \
   'history -c; history -s one; history -s two; history; history -d 1; history'

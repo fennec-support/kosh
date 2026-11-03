@@ -3453,6 +3453,8 @@ rewrite_history_events(usize                                        number,
 fn
 set_title(StringView title) -> void
 {
+  if (!::itl_g_is_active) return;
+
   let const output = koshka::colors::stdout_is_a_terminal()   ? KOSH_STDOUT
                      : koshka::colors::stderr_is_a_terminal() ? KOSH_STDERR
                                                               : KOSH_INVALID_FD;

@@ -547,7 +547,9 @@ exit_status_for(const Error &error,
       context.runtime_state().is_bash_compatible() &&
       !context.runtime_state().error_exit())
   {
-    return BASH_COMMAND_STRING_FATAL_STATUS;
+    return context.execution_store().shell_is_interactive()
+               ? EXIT_FAILURE
+               : BASH_COMMAND_STRING_FATAL_STATUS;
   }
 
   /* at this point: error.command_status() is 1, and the Bash command string
@@ -2724,7 +2726,7 @@ source_init_moods(EvalContext                 &context,
     }
   }
 
-  if (did_source_bash_rc &&
+  if (did_source_bash_rc && os::is_stdin_a_tty() &&
       context.runtime_state().option_is_enabled(shell_option_id::TabCompletion))
   {
     LOG(Info, "bootstrapping the bash programmable completion");

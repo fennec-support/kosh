@@ -66,7 +66,7 @@ An option passed on the command line (enabled or disabled) overrides settings fi
 | `--version` | Print full version and copyright notices, then exit. |
 | `-V, --short-version` | Print the short version string, then exit. |
 | `--help` | Print command-line usage help, then exit. |
-| `-i, --interactive` | Run in interactive mode. |
+| `-i, --interactive` | Run an interactive shell, also with `-c`, `-s`, or a script operand. |
 | `-s, --stdin` | Read commands from standard input. |
 | `-c, --command` | Execute the first operand as a command string. |
 | `-e, --error-exit` | Exit immediately when an unguarded command returns a nonzero status. |
@@ -108,7 +108,8 @@ An option passed on the command line (enabled or disabled) overrides settings fi
 | Koshka | `--enable-extended-arithmetic` | Always enabled in the `kosh` mood. |
 | Debug <a id="debug-option-details"></a> | `--show-optimizer-diagnostics` | Compatibility moods emit these warnings only when `-WW` or `-WWW` is active. |
 | Debug | `-N, --show-all-exit-codes` | Can be toggled at runtime with `set -N` and `set +N`. |
-| POSIX <a id="posix-option-details"></a> | `-s, --stdin` | Input processing order is specified in [Invocation](kosh_1.md#invocation). |
+| POSIX <a id="posix-option-details"></a> | `-i, --interactive` | Sources the interactive startup files, sets `i` in `$-`, and turns on job control when stdin is a terminal. The line editor starts only when stdin is a terminal and neither `-c` nor a script operand is given. Otherwise the shell runs the command string, script, or stdin without a prompt or history and exits, as specified in [Invocation](kosh_1.md#invocation). |
+| POSIX | `-s, --stdin` | Input processing order is specified in [Invocation](kosh_1.md#invocation). |
 | POSIX | `-c, --command` | The command string is the first operand, as specified in [Invocation](kosh_1.md#invocation). A syntax error exits with status `2`, and an analysis error exits with status `1`. |
 | POSIX | `-n, --no-exec` | Compatibility moods report only the diagnostic tiers enabled by `-W`. |
 | POSIX | `-o NAME, +o NAME` | `-o posix` acts as `--posix`. An unknown option name exits with status `2`. In the `kosh` mood, `+o nounset` is ignored and `+o pipefail` exits with status `2`. |

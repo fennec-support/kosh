@@ -18,6 +18,9 @@ unchanged after KOSH_HISTORY_SIZE=1; history -s one; history -s two
 unchanged after set -o history; history -s stored
 unchanged after a script file
 unchanged after standard input
+unchanged after -i with -c
+unchanged after -i with script
+unchanged after -i with -s
 == the private branch still lists what the file never received ==
     1  one
     2  two

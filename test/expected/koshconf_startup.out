@@ -63,6 +63,14 @@ off
 0
 0
 0
+== -i with -c, a script operand, or -s sources the rc script first:
+koshrc-ran
+interactive
+koshrc-ran
+script one
+koshrc-ran
+stdin one
+norc
 == the rc script runs ~/.bashrc in the bash mood and returns to kosh:
 bashrc=bash xy
 after=kosh set +o nounset

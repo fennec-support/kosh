@@ -69,8 +69,9 @@ resolves \f[CR]KOSH_FLAGS\f[R] and command\-line flags, sets the initial
 \f[CR]mood\f[R] from \f[CR]\-\-mood\f[R] or the invocation basename
 (\f[CR]sh\f[R], \f[CR]dash\f[R], \f[CR]bash\f[R], \f[CR]rbash\f[R]), and
 selects the input source in strict priority order (\f[CR]\-s\f[R],
-\f[CR]\-c\f[R], script file operand, \f[CR]\-i\f[R] or terminal stdin,
-or non\-interactive stdin).
+\f[CR]\-c\f[R], script file operand, terminal stdin, or stdin that is
+not a terminal).
+\f[CR]\-i\f[R] makes the shell interactive with any of these sources.
 .IP "2." 3
 \f[B]Configuration and startup loading\f[R] \- Unless \f[CR]\-Q\f[R],
 rescue mode, \f[CR]\-\-lint\f[R], \f[CR]\-\-format\f[R],
@@ -559,6 +560,9 @@ No \f[CR]/etc/koshrc\f[R] or \f[CR]\[ti]/.koshrc\f[R] exists.
 In interactive non\-login \f[CR]kosh\f[R] shells, \f[CR]\-\-norc\f[R]
 and \f[CR]\-p\f[R] (\f[CR]\-\-privileged\f[R]) skip both scripts, and
 \f[CR]\-\-rcfile\f[R] replaces only the user \f[CR]rc.kosh\f[R].
+\f[CR]kosh \-i \-c command\f[R] and \f[CR]kosh \-i script\f[R] are
+interactive shells, so they source both scripts under the same rules
+before they run the command string or the script.
 .PP
 The \f[CR]kosh\f[R] mood does not distinguish login and non\-login
 shells when it selects startup scripts, because that distinction is
@@ -1445,9 +1449,11 @@ newlines, \f[CR]\[rs]\[rs]\f[R] for backslashes) in
 \f[CR]$KOSH_HISTORY_FILE\f[R] (\f[CR]\[ti]/.kosh_history\f[R] default,
 mode \f[CR]0600\f[R], directory\-locked during writes).
 .IP \[bu] 2
-\f[B]Filtering and synchronization\f[R] \- A non\-interactive shell
-records no events and writes the history file only through
-\f[CR]history \-w\f[R] or \f[CR]history \-a\f[R].
+\f[B]Filtering and synchronization\f[R] \- A shell without the line
+editor, including an interactive shell that runs \f[CR]\-c\f[R], a
+script operand, or stdin that is not a terminal, records no events and
+writes the history file only through \f[CR]history \-w\f[R] or
+\f[CR]history \-a\f[R].
 Consecutive duplicate events, history expansion errors, and a command
 over \f[CR]2048\f[R] bytes are not recorded, and a record over
 \f[CR]65535\f[R] bytes is skipped when the file is read.
@@ -3290,20 +3296,34 @@ without an operand fails with status \f[CR]2\f[R].
 \f[CR]\-s\f[R] (stdin), \f[CR]\-c\f[R] (inline command string),
 \f[CR]script\f[R] operand (where \f[CR]\-\f[R] selects stdin; a
 directory fails with \f[CR]126\f[R], an unopenable file fails with
-\f[CR]127\f[R]), \f[CR]\-i\f[R] or terminal stdin (interactive editor),
-or non\-interactive stdin.
-Selecting multiple sources emits a warning and uses the
-highest\-priority source, except \f[CR]\-s \-i\f[R] on a terminal starts
-the interactive editor.
-Passing \f[CR]\-i\f[R] without a terminal fails after startup files
-complete.
+\f[CR]127\f[R]), terminal stdin (line editor), or stdin that is not a
+terminal.
+\f[CR]\-s\f[R] with \f[CR]\-c\f[R] emits a warning and reads stdin.
+\f[CR]\-s \-i\f[R] on a terminal starts the line editor.
+.IP \[bu] 2
+\f[B]Interactive shells (\f[CB]\-i\f[B])\f[R] \- A shell is interactive
+when \f[CR]\-i\f[R] is given, or when it reads a terminal stdin without
+\f[CR]\-s\f[R], \f[CR]\-c\f[R], or a script operand.
+An interactive shell sets \f[CR]i\f[R] in \f[CR]$\-\f[R], sources the
+interactive startup files of its mood, sets \f[CR]PS1\f[R] when it is
+unset, expands aliases in every mood, turns on \f[CR]emacs\f[R],
+\f[CR]history\f[R], and \f[CR]histexpand\f[R], and turns on job control
+when stdin is a terminal.
+The line editor reads input only when stdin is a terminal and neither
+\f[CR]\-c\f[R] nor a script operand is given.
+With \f[CR]\-c\f[R], a script operand, or stdin that is not a terminal,
+the interactive shell runs that input once without a prompt and exits
+with its status: it records no history events, expands no history
+references, and a fatal expansion error in the Bash moods ends a
+\f[CR]\-c\f[R] string with status \f[CR]1\f[R].
+\f[CR]\-\-lint\f[R] ignores \f[CR]\-i\f[R].
 .IP \[bu] 2
 \f[B]Positional parameter assignment (\f[CB]$0\f[B] and
 \f[CB]$1..$N\f[B])\f[R] \- For scripts, \f[CR]$0\f[R] is the script path
 and remaining operands become \f[CR]$1..$N\f[R].
 For \f[CR]\-c\f[R], the first operand after the command string becomes
 \f[CR]$0\f[R] and subsequent operands become \f[CR]$1..$N\f[R].
-For \f[CR]\-s\f[R] and interactive sessions, \f[CR]$0\f[R] remains the
+For \f[CR]\-s\f[R] and line editor sessions, \f[CR]$0\f[R] remains the
 shell invocation name and all operands become \f[CR]$1..$N\f[R].
 .IP \[bu] 2
 \f[B]Initial mood and login operation\f[R] \- The invocation basename
@@ -3367,8 +3387,8 @@ T}@T{
 First readable file among \f[CR]/etc/bash/bashrc\f[R] and
 \f[CR]/etc/bash.bashrc\f[R], then \f[CR]\-\-rcfile\f[R] or
 \f[CR]\[ti]/.bashrc\f[R].
-If one was sourced, tab completion is on, no default
-\f[CR]complete \-D\f[R] spec exists, and
+If one was sourced, stdin is a terminal, tab completion is on, no
+default \f[CR]complete \-D\f[R] spec exists, and
 \f[CR]BASH_COMPLETION_VERSINFO\f[R] is unset, sources
 \f[CR]/usr/share/bash\-completion/bash_completion\f[R].
 T}
@@ -5153,8 +5173,9 @@ When an expansion error ends a non\-interactive shell the status is
 \f[CR]1\f[R] in \f[CR]kosh\f[R] and \f[CR]2\f[R] in \f[CR]sh\f[R].
 In the Bash moods an unset parameter under \f[CR]nounset\f[R],
 \f[CR]${name:?}\f[R], and a bad substitution that ends the shell return
-\f[CR]127\f[R] from a \f[CR]\-c\f[R] string, as in Bash, and
-\f[CR]1\f[R] from a script.
+\f[CR]127\f[R] from a \f[CR]\-c\f[R] string of a non\-interactive shell,
+as in Bash, and \f[CR]1\f[R] from a script or from the \f[CR]\-c\f[R]
+string of an interactive shell.
 .IP \[bu] 2
 \f[B]Tool exit statuses\f[R] \- \f[CR]\-\-lint\f[R],
 \f[CR]\-\-format\f[R], and \f[CR]\-\-apply\f[R] return \f[CR]0\f[R] when
@@ -5229,8 +5250,8 @@ determine the status).
 A stopped stage is recorded even when it is not the last, and
 \f[CR]fg\f[R] and \f[CR]bg\f[R] resume every stage.
 .IP \[bu] 2
-Job control is on in an interactive shell, where Ctrl\-Z stops the
-foreground job.
+Job control is on in an interactive shell whose stdin is a terminal,
+where Ctrl\-Z stops the foreground job.
 A foreground pipeline or subshell has its own process group, and every
 process in it stops and resumes together.
 A pipeline whose final stage runs in the shell stays in the process
@@ -5274,9 +5295,11 @@ are stopped.
 .SS History expansion
 .IP \[bu] 2
 \f[B]Scope\f[R] \- Interactive shells with \f[CR]histexpand\f[R] on
-(default; \f[CR]set +H\f[R] turns it off) replace each reference before
-parsing and print the replaced line before running it.
-Non\-interactive shells do not expand history.
+(default; \f[CR]set +H\f[R] turns it off) replace each reference in a
+line the line editor reads before parsing and print the replaced line
+before running it.
+Non\-interactive shells, \f[CR]\-c\f[R] strings, and script operands do
+not expand history.
 A reference is an event, an optional word designator, and optional
 modifiers.
 .IP \[bu] 2

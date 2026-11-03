@@ -739,7 +739,8 @@ struct input_plan
   bool should_read_stdin       = false;
   bool should_execute_commands = false;
   bool should_read_files       = false;
-  bool should_be_interactive   = false;
+  bool should_use_line_editor  = false;
+  bool is_interactive          = false;
 };
 
 static fn
@@ -1048,7 +1049,10 @@ select_input_source(const command_line      &line,
                            "analyzes no file");
     }
 
-    plan.should_read_stdin = true;
+    if (FLAG_INTERACTIVE.is_enabled() && os::is_stdin_a_tty())
+      plan.should_use_line_editor = true;
+    else
+      plan.should_read_stdin = true;
   } else if (FLAG_LINT.is_enabled() &&
              (FLAG_COMMAND.is_enabled() || !operands.is_empty()))
   {
@@ -1057,27 +1061,18 @@ select_input_source(const command_line      &line,
   } else if (FLAG_LINT.is_enabled()) {
     plan.should_read_stdin = true;
   } else if (FLAG_COMMAND.is_enabled()) {
-    if (FLAG_INTERACTIVE.is_enabled()) {
-      show_flag_diagnostic(line, "--interactive", 'i', true,
-                           "Incompatible options or arguments were specified "
-                           "along with the '-c' option, so the shell falls "
-                           "back to '-c'");
-    }
-
     plan.should_execute_commands = true;
   } else if (!operands.is_empty()) {
-    if (FLAG_INTERACTIVE.is_enabled()) {
-      show_flag_diagnostic(line, "--interactive", 'i', true,
-                           "Both a file operand and the '-i' option were "
-                           "given, so the shell falls back to reading files");
-    }
-
     plan.should_read_files = true;
-  } else if (FLAG_INTERACTIVE.is_enabled() || os::is_stdin_a_tty()) {
-    plan.should_be_interactive = true;
+  } else if (os::is_stdin_a_tty()) {
+    plan.should_use_line_editor = true;
   } else {
     plan.should_read_stdin = true;
   }
+
+  plan.is_interactive =
+      !FLAG_LINT.is_enabled() &&
+      (FLAG_INTERACTIVE.is_enabled() || plan.should_use_line_editor);
 
   return plan;
 }
@@ -1087,41 +1082,30 @@ resolve_input_plan(const command_line      &line,
                    const ArrayList<String> &operands) throws
     -> input_plan
 {
-  if (FLAG_STDIN.is_enabled() && FLAG_INTERACTIVE.is_enabled()) {
-    let const should_use_interactive =
-        !FLAG_LINT.is_enabled() && os::is_stdin_a_tty();
-
-    let s = String{heap_allocator()};
-
-    s += "Both '-s' and '-i' options were specified, so the shell falls back "
-         "to ";
-    if (should_use_interactive)
-      s += "'-i'";
-    else if (FLAG_LINT.is_enabled())
-      s += "'-s'";
-    else
-      s += "'-s' because stdin is not a tty";
-    show_flag_diagnostic(line, "--interactive", 'i', true, s.view());
-
-    if (should_use_interactive)
-      FLAG_STDIN.toggle();
-    else
-      FLAG_INTERACTIVE.toggle();
+  if (FLAG_LINT.is_enabled() && FLAG_STDIN.is_enabled() &&
+      FLAG_INTERACTIVE.is_enabled())
+  {
+    show_flag_diagnostic(line, "--interactive", 'i', true,
+                         "Both '-s' and '-i' options were specified, so the "
+                         "shell falls back to '-s'");
+    FLAG_INTERACTIVE.toggle();
   }
 
   let plan = select_input_source(line, operands);
 
   if (is_debug_driver_run()) {
-    plan.should_be_interactive = false;
-    plan.should_read_files     = false;
+    plan.should_use_line_editor = false;
+    plan.is_interactive         = false;
+    plan.should_read_files      = false;
     if (!plan.should_execute_commands) plan.should_read_stdin = true;
   }
 
-  LOG(Info, "the input source is %s",
+  LOG(Info, "the %s input source is %s",
+      plan.is_interactive ? "interactive" : "non-interactive",
       plan.should_read_stdin         ? "standard input"
       : plan.should_execute_commands ? "the -c command strings"
       : plan.should_read_files       ? "the given script file"
-                                     : "the interactive prompt");
+                                     : "the line editor");
 
   return plan;
 }
@@ -1166,7 +1150,7 @@ make_startup_options(const input_plan &input) wontthrow -> startup_options
   options.should_disable_path_expansion = FLAG_DISABLE_EXPANSION.is_enabled();
   options.should_echo                   = FLAG_VERBOSE.is_enabled();
   options.should_echo_expanded          = FLAG_EXPAND_VERBOSE.is_enabled();
-  options.is_interactive                = input.should_be_interactive;
+  options.is_interactive                = input.is_interactive;
   options.should_error_exit             = FLAG_ERROR_EXIT.is_enabled();
 
   return options;
@@ -1541,7 +1525,7 @@ struct session_config
   mimic_mood                 mood;
   tab_selector_mode          tab_selector;
   inheritable_analysis_state analysis;
-  bool                       is_interactive;
+  bool                       is_job_control_enabled;
   bool                       is_login_shell;
   bool                       is_restricted_shell;
   bool                       has_execution_string;
@@ -1600,7 +1584,7 @@ read_session_config(const invocation_identity &identity,
   return session_config{identity.session_mood,
                         resolve_session_tab_selector(),
                         read_analysis_state(identity),
-                        input.should_be_interactive,
+                        input.is_interactive && os::is_stdin_a_tty(),
                         identity.is_login_shell,
                         identity.is_restricted_shell,
                         input.should_execute_commands,
@@ -1669,7 +1653,7 @@ apply_session_config(EvalContext          &context,
   state.set_no_exec(config.is_no_exec);
   state.set_koshkit(config.is_koshkit_enabled);
   state.set_failglob(false);
-  state.set_option(shell_option_id::Monitor, config.is_interactive);
+  state.set_option(shell_option_id::Monitor, config.is_job_control_enabled);
 }
 
 static fn
@@ -1699,8 +1683,10 @@ seed_session_variables(EvalContext                 &context,
                        invocation_identity         &identity,
                        const ArrayList<mimic_mood> &init_moods,
                        const inherited_shell       &inherited,
-                       bool                         is_interactive) throws -> void
+                       const input_plan            &input) throws -> void
 {
+  let const is_interactive = input.is_interactive;
+
   context.execution_store().set_shell_executable_path(
       steal(identity.executable_path));
 
@@ -1740,7 +1726,7 @@ seed_session_variables(EvalContext                 &context,
 
   if (!context.get_variable_value("KOSH_HISTORY_SIZE").has_value())
     context.set_shell_variable("KOSH_HISTORY_SIZE", "4096");
-  toiletline::set_history_persistent(is_interactive);
+  toiletline::set_history_persistent(input.should_use_line_editor);
 
   let identity_mode = shell_identity_mode::Native;
 
@@ -2426,11 +2412,9 @@ struct interactive_session
   prepare_history(EvalContext &context, script_chunk &chunk) throws
       -> bool
   {
-    let const is_interactive = context.execution_store().shell_is_interactive();
-    bool      should_execute = true;
+    bool should_execute = true;
 
-    if (is_interactive &&
-        context.runtime_state().option_is_enabled(
+    if (context.runtime_state().option_is_enabled(
             shell_option_id::Histexpand) &&
         !chunk.contents.is_empty())
     {
@@ -2451,8 +2435,7 @@ struct interactive_session
       }
     }
 
-    if (is_interactive &&
-        context.runtime_state().option_is_enabled(shell_option_id::History) &&
+    if (context.runtime_state().option_is_enabled(shell_option_id::History) &&
         !chunk.contents.is_empty())
     {
       chunk.history_event_number =
@@ -2815,7 +2798,7 @@ kosh_main(int argc, char **argv) -> int
   let const input = koshka::resolve_input_plan(line, file_names);
 
   koshka::apply_configured_init_moods(init_moods, configuration,
-                                      input.should_be_interactive ||
+                                      input.is_interactive ||
                                           identity.is_login_shell);
 
   let prefetched_script_contents =
@@ -2845,7 +2828,7 @@ kosh_main(int argc, char **argv) -> int
   }
 
   koshka::seed_session_variables(context, identity, init_moods, inherited,
-                                 input.should_be_interactive);
+                                 input);
   if (koshka::Maybe<int> option_status = koshka::apply_startup_configuration(
           context, configuration, invocation_options);
       option_status.has_value())
@@ -2854,8 +2837,8 @@ kosh_main(int argc, char **argv) -> int
   }
 
   koshka::os::set_default_signal_handlers(
-      input.should_be_interactive ? koshka::os::signal_profile::Interactive
-                                  : koshka::os::signal_profile::NonInteractive);
+      input.is_interactive ? koshka::os::signal_profile::Interactive
+                           : koshka::os::signal_profile::NonInteractive);
   LOG(Info, "installed the default signal handlers");
 
   let ast_arena = koshka::BumpArena{};
@@ -2890,17 +2873,16 @@ kosh_main(int argc, char **argv) -> int
   }
 
   koshka::run_startup(context, init_moods, identity, line, inherited,
-                      has_elevated_identity, input.should_be_interactive);
+                      has_elevated_identity, input.is_interactive);
   if (koshka::Maybe<int> startup_status = koshka::finish_startup(
-          context, identity, inherited, input.should_be_interactive);
+          context, identity, inherited, input.is_interactive);
       startup_status.has_value())
   {
     return *startup_status;
   }
 
   /* at this point: startup finished without a status, context holds the parse
-     and function arenas, and the signal handlers match
-     input.should_be_interactive. */
+     and function arenas, and the signal handlers match input.is_interactive. */
   let cursor    = koshka::script_cursor{line,
                                      file_names,
                                      input,
@@ -2949,13 +2931,13 @@ kosh_main(int argc, char **argv) -> int
         inherited.source_origin.clear();
       } else if (input.should_read_files) {
         cursor.read_next_file(context, chunk);
-      } else if (input.should_be_interactive) {
+      } else if (input.should_use_line_editor) {
         session.read_line(context, ast_arena, line, exit_code, chunk);
       } else {
         unreachable("the input loop has no configured input source");
       }
     } catch (const koshka::InterruptErrorWithLocation &e) {
-      if (input.should_be_interactive) {
+      if (input.should_use_line_editor) {
         LOG(Info, "an interrupt arrived while reading input, so the prompt "
                   "starts again");
         koshka::os::INTERRUPT_REQUESTED = 0;
@@ -2985,15 +2967,17 @@ kosh_main(int argc, char **argv) -> int
       koshka::utils::quit(EXIT_FAILURE);
     }
 
-    if (!session.prepare_history(context, chunk)) continue;
+    if (input.should_use_line_editor &&
+        !session.prepare_history(context, chunk))
+    {
+      continue;
+    }
 
     koshka::os::INTERRUPT_REQUESTED = 0;
 
     koshka::allow_terminal_exec_on_final_chunk(context, cursor.should_quit);
 
-    if (context.execution_store().shell_is_interactive() &&
-        !chunk.contents.is_empty())
-    {
+    if (input.should_use_line_editor && !chunk.contents.is_empty()) {
       koshka::String ps0 = toiletline::render_ps0(context);
 
       if (!ps0.is_empty()) {
@@ -3030,7 +3014,7 @@ kosh_main(int argc, char **argv) -> int
                                     inherited.take_evaluation_mode());
     }
 
-    if (input.should_be_interactive && koshka::os::INTERRUPT_REQUESTED) {
+    if (input.should_use_line_editor && koshka::os::INTERRUPT_REQUESTED) {
       LOG(Debug, "clearing the interrupt that ended the command with status %d",
           exit_code);
       koshka::os::INTERRUPT_REQUESTED = 0;
