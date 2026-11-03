@@ -269,7 +269,7 @@ BumpArena::allocate(usize size, usize alignment) throws -> opaque *
     if (size > SIZE_MAX - alignment) throw std::bad_alloc{};
 
     let const grown_byte_count =
-        m_blocks.is_empty() ? DEFAULT_BLOCK_SIZE : m_blocks.back().size * 4;
+        m_blocks.is_empty() ? DEFAULT_BLOCK_SIZE : m_blocks.back().size * 2;
 
     add_block(size + alignment, grown_byte_count < DEFAULT_BLOCK_SIZE
                                     ? grown_byte_count

@@ -108,7 +108,7 @@ Pipeline::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
     if (assign != nullptr) {
       actx.report_diagnostic(diagnostic_id::sc2036,
                              m_commands[0]->source_location(),
-                             {assign->assignment()->key().view()});
+                             {assign->assignment()->key()});
     } else if (first_stage != nullptr && first_stage->args().is_empty() &&
                !first_stage->local_vars().is_empty())
     {

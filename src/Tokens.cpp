@@ -747,11 +747,13 @@ array_element_assignment_split(const ArrayList<WordSegment> &segments,
     let value = Word{};
 
     value.has_locale_translation_quote = has_locale_translation_quote;
-    value.segments.push(WordSegment{
-        segment.kind,
-        SegmentText{heap_allocator(), after.substring(value_start)},
-        segment.is_in_double_quotes != 0
-    });
+    if (value_start < after.length || i + 1 == segments.count()) {
+      value.segments.push(WordSegment{
+          segment.kind,
+          SegmentText{heap_allocator(), after.substring(value_start)},
+          segment.is_in_double_quotes != 0
+      });
+    }
 
     for (usize j = i + 1; j < segments.count(); j++)
       value.segments.push(segments[j]);
@@ -854,11 +856,13 @@ Word::get_assignment_split(Allocator allocator) const throws
 
   value.segments                     = ArrayList<WordSegment>{allocator};
   value.has_locale_translation_quote = has_locale_translation_quote;
-  value.segments.push(WordSegment{
-      WordSegment::Kind::UnquotedText,
-      SegmentText{allocator, first.text.substring(*equals_position + 1)},
-      false
-  });
+  if (*equals_position + 1 < first.text.count() || segments.count() == 1) {
+    value.segments.push(WordSegment{
+        WordSegment::Kind::UnquotedText,
+        SegmentText{allocator, first.text.substring(*equals_position + 1)},
+        false
+    });
+  }
 
   for (usize i = 1; i < segments.count(); i++)
     value.segments.push(segments[i].clone(allocator));
@@ -928,12 +932,16 @@ Word::get_quoted_assignment_split() const throws
   let value = Word{};
 
   value.has_locale_translation_quote = has_locale_translation_quote;
-  value.segments.push(WordSegment{
-      carrier.kind,
-      SegmentText{heap_allocator(),
-                  carrier.text.substring(equals_position + 1)},
-      carrier.is_in_double_quotes != 0
-  });
+  if (equals_position + 1 < carrier.text.count() ||
+      equals_segment + 1 == segments.count())
+  {
+    value.segments.push(WordSegment{
+        carrier.kind,
+        SegmentText{heap_allocator(),
+                    carrier.text.substring(equals_position + 1)},
+        carrier.is_in_double_quotes != 0
+    });
+  }
 
   for (usize i = equals_segment + 1; i < segments.count(); i++)
     value.segments.push(segments[i]);
@@ -1041,17 +1049,17 @@ TOKEN_DECLS(LeftParen, "(");
 TOKEN_DECLS(RightParen, ")");
 
 Assignment::Assignment(SourceLocation         location,
-                       String                 key,
+                       StringView             key,
                        Word                   value,
                        assignment_update_mode update_mode)
-    : Token(steal(location), Token::Kind::Assignment), m_key(steal(key)),
+    : Token(steal(location), Token::Kind::Assignment), m_key(key),
       m_value(steal(value)), m_update_mode(update_mode)
 {}
 
 fn
 Assignment::raw_string() const throws -> String
 {
-  let result = m_key.clone();
+  let result = String{heap_allocator(), m_key};
 
   result += m_update_mode == assignment_update_mode::Append ? "+=" : "=";
   result += m_value.to_literal_string();
@@ -1060,7 +1068,7 @@ Assignment::raw_string() const throws -> String
 }
 
 pure fn
-Assignment::key() const wontthrow -> const String &
+Assignment::key() const wontthrow -> StringView
 {
   return m_key;
 }

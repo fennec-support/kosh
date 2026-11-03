@@ -1266,7 +1266,7 @@ AstWriter::token(const Token *token) throws -> void
     }
 
     open("assignment");
-    text(assignment->key().view());
+    text(assignment->key());
     symbol("op", operator_text);
     position("at", location.position);
     word(assignment->value_word(), value_location);
@@ -1677,24 +1677,6 @@ analysis_reporter::report(
   }
 
   return true;
-}
-
-cold fn
-AnalysisContext::trace_optimizer_line(StringView message) const throws
-    -> void
-{
-  if (!options.should_report_optimizer_diagnostics) return;
-
-  let out = AstWriter{StringView{}, mimic_mood::Default};
-
-  out.open("optimizer");
-  out.text(message);
-  out.close();
-
-  let text = out.take();
-
-  text.push('\n');
-  print_error(text.view());
 }
 
 fn

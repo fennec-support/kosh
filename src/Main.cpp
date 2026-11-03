@@ -275,6 +275,13 @@ FLAG(SUPPRESS_INIT_DIAGNOSTICS,
      Kosh,
      "Suppress diagnostics only while the startup files source, then restore "
      "them for the prompt.");
+FLAG(OPTIMIZER_DIAGNOSTICS,
+     Bool,
+     '\0',
+     "show-optimizer-diagnostics",
+     Kosh,
+     "Trace the optimizer prepass and report every folded and eliminated node "
+     "as an analysis diagnostic.");
 FLAG(NO_TRACES,
      Bool,
      '\0',
@@ -324,13 +331,6 @@ FLAG(AST,
      "show-ast",
      Debug,
      "Print syntax trees before execution and during formatting or linting.");
-FLAG(OPTIMIZER_DIAGNOSTICS,
-     Bool,
-     '\0',
-     "show-optimizer-diagnostics",
-     Debug,
-     "Trace the optimizer prepass and report every folded and eliminated node "
-     "as an analysis diagnostic.");
 FLAG(EXIT_CODE,
      Bool,
      '\0',

@@ -74,7 +74,7 @@ SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
     const throws -> const LiteralCommandLookup *
 {
   if (program_args.is_empty() || !m_literal_command_lookup.has_value() ||
-      program_args[0].view() != m_literal_command_name)
+      program_args[0].view() != *get_literal_command_name())
   {
     return nullptr;
   }
@@ -803,7 +803,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
   let const do_apply_persistent_assignment =
       [&](const tokens::Assignment &assignment) throws {
-        let const name = assignment.key().view();
+        let const name = assignment.key();
         let       value =
             cxt.expand_word_for_assignment(assignment.value_word(), true);
 
@@ -1068,7 +1068,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
   let const do_apply_environment_assignment =
       [&](const tokens::Assignment &assignment) throws {
-        let name                         = assignment.key().view();
+        let name                         = assignment.key();
         let resolved_name                = Maybe<String>{};
         let did_clear_circular_reference = false;
 

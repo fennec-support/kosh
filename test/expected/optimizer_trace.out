@@ -11,15 +11,12 @@ Eliminated 1 statement.
 Eliminated 1 statement.
 115792089237316195423570985008687907853269984665640564039457584007913129639936
 === constant propagation into arithmetic ===
-(optimizer "recorded constant: x = 2")
-(optimizer "recorded constant: y = 3")
 -c:1:19: warning: The arithmetic expression `x + y` is constant and was folded to '5'.
      1 |  x=2; y=3; echo $((x + y))
        |                    ^~~~~
 Eliminated 3 statements.
 5
 === DEBUG observes folded arithmetic source ===
-(optimizer "recorded constant: x = 2")
 Eliminated 1 statement.
 10
 === dead branch, condition is true ===
@@ -84,7 +81,6 @@ done
 Eliminated 1 statement.
 i=5
 === a recorded constant survives read-only commands ===
-(optimizer "recorded constant: n = 10")
 -c:1:33: warning: The arithmetic expression `n + 5` is constant and was folded to '15'.
      1 |  n=10; echo first; true; echo $((n + 5))
        |                                  ^~~~~
@@ -92,7 +88,6 @@ Eliminated 2 statements.
 first
 15
 === a recorded constant does not survive a read into its name ===
-(optimizer "recorded constant: n = 10")
 -c:1:34: warning: A value from external input is evaluated as arithmetic code.
      1 |  n=10; read -r n </dev/null; echo $((n + 5))
        |                                   ^~~~~~~~~~

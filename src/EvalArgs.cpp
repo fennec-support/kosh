@@ -793,7 +793,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         if (is_declaration_command) {
           let assignment = String{expanded_args.allocator()};
 
-          assignment.append(assignment_token->key().view());
+          assignment.append(assignment_token->key());
           if (assignment_token->get_update_mode() ==
                   assignment_update_mode::Append &&
               (is_local_command || is_declare_command))
@@ -817,7 +817,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
                 assignment_token->value_word(), true);
             let const is_append = assignment_token->get_update_mode() ==
                                   assignment_update_mode::Append;
-            let integer_name  = assignment_token->key().view();
+            let integer_name  = assignment_token->key();
             let resolved_name = Maybe<String>{};
 
             if (is_append &&
@@ -839,7 +839,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
           continue;
         }
 
-        let const key         = assignment_token->key().view();
+        let const key         = assignment_token->key();
         let const open        = key.find_character('[');
         let       key_literal = String{heap_allocator()};
 

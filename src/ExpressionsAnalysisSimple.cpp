@@ -941,7 +941,7 @@ SimpleCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
         let const *assignment =
             static_cast<const tokens::Assignment *>(m_args[i]);
 
-        recorded_name  = assignment->key().view();
+        recorded_name  = assignment->key();
         recorded_value = &assignment->value_word();
         update_mode    = assignment->get_update_mode();
       } else if (m_args[i]->kind() == Token::Kind::Word) {

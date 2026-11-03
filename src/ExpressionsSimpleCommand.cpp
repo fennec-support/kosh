@@ -119,7 +119,7 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
       m_assignment->get_update_mode() == assignment_update_mode::Append)
   {
     actx.report_diagnostic(diagnostic_id::sc3024, source_location(),
-                           {m_assignment->key().view()});
+                           {m_assignment->key()});
   }
 
   let const shape = scan_assignment_value(actx, m_assignment->value_word(),
@@ -128,13 +128,12 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
   let const raw_assignment = m_assignment->raw_string();
 
   check_assignment_value_shape(
-      actx,
-      assignment_lint_input{m_assignment->key().view(), raw_assignment.view(),
-                            source_location(), m_assignment->get_update_mode(),
-                            false, shape});
+      actx, assignment_lint_input{
+                m_assignment->key(), raw_assignment.view(), source_location(),
+                m_assignment->get_update_mode(), false, shape});
 
   let const first_colon = raw_assignment.view().find_character(':');
-  if (m_assignment->key().view() == "PATH" &&
+  if (m_assignment->key() == "PATH" &&
       (raw_assignment.view().starts_with(StringView{"PATH=~/"}) ||
        raw_assignment.view().starts_with(StringView{"PATH+=~/"}) ||
        (first_colon.has_value() && raw_assignment.view()
@@ -161,14 +160,14 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
   constexpr StaticStringSet GUARDED_PROMPTS{GUARDED_PROMPT_KEYS};
 
   if (has_prompt_control_escape && !has_prompt_display_guards &&
-      GUARDED_PROMPTS.contains(m_assignment->key().view()))
+      GUARDED_PROMPTS.contains(m_assignment->key()))
   {
     actx.report_diagnostic(diagnostic_id::sc2025, source_location());
   }
 
   optimizer::optimize_node(this, actx);
 
-  let const &name = m_assignment->key();
+  let const name = String{heap_allocator(), m_assignment->key()};
 
   if (actx.walk.is_direct_pipeline_stage) {
     actx.report_diagnostic(diagnostic_id::sc2030_assignment, source_location());
@@ -280,10 +279,6 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
         literal->c_str());
     actx.constant_variables.set(name.view(), literal->view());
     actx.optimizer_eliminated_count++;
-    if (actx.options.should_report_optimizer_diagnostics)
-      actx.trace_optimizer_line(
-          String{heap_allocator(), "recorded constant: "} + name + " = " +
-          *literal);
   } else {
     LOG(All,
         "forgetting the constant for '%s', its value is only known at run "
@@ -298,7 +293,8 @@ AssignCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 {
   ASSERT(m_assignment != nullptr);
 
-  LOG(All, "assigning the variable '%s'", m_assignment->key().c_str());
+  LOG(All, "assigning the variable '%.*s'",
+      static_cast<int>(m_assignment->key().length), m_assignment->key().data);
 
   cxt.source_store().set_current_location(source_location());
 
@@ -349,7 +345,7 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
         cxt.expand_word_for_assignment(m_assignment->value_word(), true);
 
     if (cxt.runtime_state().should_echo_expanded()) {
-      let trace = String{cxt.scratch_allocator(), m_assignment->key().view()};
+      let trace = String{cxt.scratch_allocator(), m_assignment->key()};
       trace += m_assignment->get_update_mode() == assignment_update_mode::Append
                    ? "+="
                    : "=";
@@ -357,7 +353,7 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
       cxt.write_xtrace(trace.view());
     }
 
-    let const key_view = m_assignment->key().view();
+    let const key_view = m_assignment->key();
     let const bracket  = key_view.find_character('[');
     let const is_element_assignment =
         bracket.has_value() && key_view[key_view.length - 1] == ']';
@@ -565,21 +561,34 @@ SimpleCommand::SimpleCommand(SourceLocation             location,
 
   m_is_command_word_glob = command_word_is_glob(command_word);
 
-  if (command_word.plain_literal_kind() != Word::PlainLiteral::NotPlain) {
-    m_literal_command_name = command_word.constant_value();
-  } else if (command_word.segments.count() == 1 &&
-             command_word.segments[0].kind == WordSegment::Kind::UnquotedText)
-  {
-    m_literal_command_name = command_word.segments[0].text.view();
-  } else {
-    return;
-  }
+  let const name = get_literal_command_name();
 
-  let const builtin = search_builtin(m_literal_command_name);
+  if (!name.has_value()) return;
+
+  let const builtin = search_builtin(*name);
 
   m_literal_command_lookup = LiteralCommandLookup{
-      builtin,
-      builtin.has_value() && is_special_builtin_name(m_literal_command_name)};
+      builtin, builtin.has_value() && is_special_builtin_name(*name)};
+}
+
+fn
+SimpleCommand::get_literal_command_name() const throws
+    -> Maybe<StringView>
+{
+  if (m_args.is_empty() || m_args[0]->kind() != Token::Kind::Word) return None;
+
+  let const &command_word =
+      static_cast<const tokens::WordToken *>(m_args[0])->word();
+
+  if (command_word.plain_literal_kind() != Word::PlainLiteral::NotPlain)
+    return command_word.constant_value();
+  if (command_word.segments.count() == 1 &&
+      command_word.segments[0].kind == WordSegment::Kind::UnquotedText)
+  {
+    return command_word.segments[0].text.view();
+  }
+
+  return None;
 }
 
 SimpleCommand::~SimpleCommand() = default;

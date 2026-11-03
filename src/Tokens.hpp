@@ -959,11 +959,11 @@ struct parameter_reference
   u16                     word_routes{0};
   form                    kind{form::Empty};
   char                    op{'\0'};
-  bool                    is_colon{false};
-  bool                    is_doubled{false};
-  bool                    has_operand{false};
-  bool                    is_operand_literal{false};
-  bool                    is_operand_field_sensitive{false};
+  bool                    is_colon : 1 {false};
+  bool                    is_doubled : 1 {false};
+  bool                    has_operand : 1 {false};
+  bool                    is_operand_literal : 1 {false};
+  bool                    is_operand_field_sensitive : 1 {false};
   Word                   *operand{nullptr};
   parameter_operand_part *parts{nullptr};
 
@@ -996,6 +996,8 @@ struct parameter_reference
     return nullptr;
   }
 };
+
+static_assert(sizeof(usize) != 8 || sizeof(parameter_reference) == 64);
 
 fn
 analyze_parameter_reference(StringView           text,
@@ -1217,7 +1219,7 @@ public:
   static constexpr bool is_arena_destructor_noop = true;
 
   Assignment(SourceLocation         location,
-             String                 key,
+             StringView             key,
              Word                   value,
              assignment_update_mode update_mode);
 
@@ -1225,7 +1227,7 @@ public:
   raw_string() const throws -> String override;
 
   pure fn
-  key() const wontthrow -> const String &;
+  key() const wontthrow -> StringView;
   pure fn
   value_word() const wontthrow -> const Word &;
 
@@ -1233,10 +1235,12 @@ public:
   get_update_mode() const wontthrow -> assignment_update_mode;
 
 protected:
-  String                 m_key;
+  StringView             m_key;
   Word                   m_value;
   assignment_update_mode m_update_mode;
 };
+
+static_assert(sizeof(usize) != 8 || sizeof(Assignment) == 88);
 
 class WordToken : public Token
 {

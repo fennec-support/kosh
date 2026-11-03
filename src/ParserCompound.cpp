@@ -551,7 +551,7 @@ word_token_from_assignment(BumpArena &arena, const Assignment *a) throws
   word.has_locale_translation_quote =
       a->value_word().has_locale_translation_quote;
 
-  let prefix = a->key().clone();
+  let prefix = String{heap_allocator(), a->key()};
 
   prefix += a->get_update_mode() == assignment_update_mode::Append ? "+=" : "=";
   word.segments.push(WordSegment{

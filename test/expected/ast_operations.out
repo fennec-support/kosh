@@ -160,7 +160,6 @@ echo embedded
     (assign-command :at 1:1 :end 1:21
       (assignment "x" :op = :at 1:1
         (word "$(echo a | tr a b)" :at 1:3 :text "echo a | tr a b" :plain none :facts (substitution) :escape "$$$$$$$$$$$$$$$"
-          (segment :kind unquoted "")
           (segment :kind command-substitution "echo a | tr a b" :at 1:3
             (compound-list :count 1
               (condition :after none :terminator-at 1:20
@@ -187,7 +186,6 @@ echo embedded
     (assign-command :at 3:1 :end 3:18
       (assignment "y" :op = :at 3:1
         (word "`printf \"%s\" q`" :at 3:3 :text "printf \"%s\" q" :plain none :facts (substitution) :escape "$$$$$$$$$$$$$"
-          (segment :kind unquoted "")
           (segment :kind command-substitution "printf \"%s\" q" :at 3:3
             (compound-list :count 1
               (condition :after none :terminator-at 3:17

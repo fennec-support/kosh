@@ -1002,8 +1002,6 @@ public:
   get_current_variable_scope() const wontthrow -> usize;
   pure fn
   is_posix_mood() const wontthrow -> bool;
-  fn
-  trace_optimizer_line(StringView message) const throws -> void;
   pure fn
   should_silence_unresolved_command_at(usize position) const wontthrow -> bool;
 
@@ -1247,7 +1245,7 @@ public:
   pure fn
   get_name() const wontthrow -> StringView
   {
-    return token->key().view();
+    return token->key();
   }
 
   pure fn
@@ -1641,18 +1639,16 @@ protected:
 
   ArrayList<const Token *> m_args{heap_allocator()};
 
-  bool m_is_command_word_glob{false};
-
   struct LiteralCommandLookup
   {
     Maybe<Builtin::Kind> builtin{};
     bool                 is_special{false};
   };
 
-  StringView                     m_literal_command_name{};
-  Maybe<LiteralCommandLookup>    m_literal_command_lookup{};
   mutable published_command_text m_published_command_text{};
 
+  fn
+  get_literal_command_name() const throws -> Maybe<StringView>;
   fn
   get_literal_command_lookup(const ArrayList<String> &program_args) const throws -> const LiteralCommandLookup *;
 
@@ -1661,7 +1657,12 @@ protected:
 
   SparseList<Redirection>              m_redirections{};
   SparseList<array_builtin_assignment> m_array_args{};
+
+  Maybe<LiteralCommandLookup> m_literal_command_lookup{};
+  bool                        m_is_command_word_glob{false};
 };
+
+static_assert(sizeof(usize) != 8 || sizeof(SimpleCommand) == 120);
 
 class CompoundListCondition : public Expression
 {

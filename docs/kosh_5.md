@@ -48,6 +48,7 @@ An option passed on the command line (enabled or disabled) overrides settings fi
 | `--no-diagnostics` | Disable static analysis, warnings, and pre-run diagnostics. |
 | `--no-annoying-diagnostics` | Suppress the `annoying` diagnostic tier. |
 | `--no-init-diagnostics` | Suppress diagnostics and warnings while startup files execute, then restore the prior state unless modified by a startup file. |
+| `--show-optimizer-diagnostics` | Emit a warning for each constant-folded expression and eliminated dead branch. |
 | `--no-traces` | Suppress source backtraces (`optimizer.show_source_traces=off`). |
 | `-T, --no-completion` | Disable tab completion, ghost text, and syntax coloring (`completion.on_tab=off`). |
 | `--no-syntax-highlighting` | Disable syntax coloring and ghost text while retaining tab completion (`editor.highlight_syntax_and_show_ghost_text=off`). |
@@ -55,7 +56,6 @@ An option passed on the command line (enabled or disabled) overrides settings fi
 | `--enable-koshkit` | Resolve bundled Koshkit utilities directly as commands after `PATH` (`interpreter.resolve_koshkit_applets_as_commands=on`). |
 | `--enable-extended-arithmetic` | Enable arbitrary-precision integers and finite decimals (`interpreter.arithmetic_uses_big_numbers=on`). |
 | `-A, --show-ast` | Print abstract syntax trees before execution and during formatting or linting. |
-| `--show-optimizer-diagnostics` | Emit a warning for each constant-folded expression and eliminated dead branch. |
 | `--show-exit-code` | Print a source-located diagnostic when a command returns a nonzero exit status (`debug.report_nonzero_exit_codes=on`). |
 | `-N, --show-all-exit-codes` | Print the exit status of every command, including status `0`. |
 | `-R, --show-lexed-words` | Print the lexical escape map of each parsed command. |
@@ -106,8 +106,8 @@ An option passed on the command line (enabled or disabled) overrides settings fi
 | Koshka | `--tab-selector MODE` | Accepts `interactive` (default), `external`, or `plain`. See [Line editing](kosh_1.md#line-editing). |
 | Koshka | `--enable-koshkit` | Defaults to `off`. Affects only compatibility moods because the `kosh` mood always resolves bundled Koshkit utilities after `PATH`. |
 | Koshka | `--enable-extended-arithmetic` | Always enabled in the `kosh` mood. |
-| Debug <a id="debug-option-details"></a> | `--show-optimizer-diagnostics` | Compatibility moods emit these warnings only when `-WW` or `-WWW` is active. |
-| Debug | `-N, --show-all-exit-codes` | Can be toggled at runtime with `set -N` and `set +N`. |
+| Koshka | `--show-optimizer-diagnostics` | Compatibility moods emit these warnings only when `-WW` or `-WWW` is active. |
+| Debug <a id="debug-option-details"></a> | `-N, --show-all-exit-codes` | Can be toggled at runtime with `set -N` and `set +N`. |
 | POSIX <a id="posix-option-details"></a> | `-i, --interactive` | Sources the interactive startup files, sets `i` in `$-`, and turns on job control when stdin, stderr, or `/dev/tty` is the controlling terminal of its session. The line editor starts only when stdin is a terminal and neither `-c` nor a script operand is given. Otherwise the shell runs the command string once, or takes the script or stdin one command at a time with prompts and history, as specified in [Invocation](kosh_1.md#invocation). |
 | POSIX | `-s, --stdin` | Input processing order is specified in [Invocation](kosh_1.md#invocation). |
 | POSIX | `-c, --command` | The command string is the first operand, as specified in [Invocation](kosh_1.md#invocation). Started as `kosh`, a `-c`, `--command`, or `--command=COMMAND` word right after a command string adds another string, and the strings run in order. Started as `sh`, `dash`, `bash`, or `rbash`, every word after the command string is an operand. Any other word after a command string ends option parsing. A syntax error exits with status `2`, an analysis error exits with status `1`, and the strings after a rejected one do not run. |

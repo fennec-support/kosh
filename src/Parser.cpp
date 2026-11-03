@@ -2246,8 +2246,11 @@ Parser::parse_simple_command(const Token *leading_token) throws
             static_cast<u32>(m_lexer.cursor_position());
 
         array_args.push(array_builtin_assignment{
-            a->key().clone(), steal(elements), a->source_location(),
-            assignment_end_position, a->get_update_mode()});
+            String{heap_allocator(), a->key()},
+            steal(elements),
+            a->source_location(), assignment_end_position,
+            a->get_update_mode()
+        });
         break;
       }
 

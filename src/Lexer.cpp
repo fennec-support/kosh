@@ -1604,10 +1604,10 @@ Lexer::lex_identifier() throws -> Token *
   {
     let const arena_allocator = bump_allocator(arena);
 
-    assignment_split->name.move_to_allocator(arena_allocator);
     assignment_split->value.move_resources_to_arena(arena);
     token = arena.create<tokens::Assignment>(
-        here(actual_cursor_position, byte_count), steal(assignment_split->name),
+        here(actual_cursor_position, byte_count),
+        assignment_split->name.view().copy_to(arena_allocator),
         steal(assignment_split->value), assignment_split->update_mode);
   } else if (word.segments.count() == 1 &&
              word.segments[0].kind == WordSegment::Kind::UnquotedText)

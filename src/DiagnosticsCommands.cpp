@@ -480,7 +480,7 @@ check_command_value_lints(AnalysisContext          &actx,
             static_cast<const tokens::Assignment *>(args[i]);
 
         if (has_array_declaration)
-          actx.add_array_valued_name(assignment->key().view());
+          actx.add_array_valued_name(assignment->key());
 
         if (has_reported_substitution_value) continue;
 

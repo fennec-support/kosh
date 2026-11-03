@@ -154,10 +154,10 @@ _kosh_complete ()
 --no-clobber --no-exec --no-unset --login --rcfile --init-file --norc \
 --restricted --privileged --no-init-files --no-config --posix --mood \
 --init-moods --enable-mimicry --dumb --tab-selector --lint --format --apply --as-language-server --list-diagnostics \
---no-diagnostics --no-annoying-diagnostics --no-init-diagnostics --no-traces --no-completion --no-syntax-highlighting \
---enable-koshkit --enable-extended-arithmetic \
+--no-diagnostics --no-annoying-diagnostics --no-init-diagnostics --show-optimizer-diagnostics --no-traces --no-completion \
+--no-syntax-highlighting --enable-koshkit --enable-extended-arithmetic \
 --show-ast \
---show-optimizer-diagnostics --show-exit-code --show-all-exit-codes --show-lexed-words --show-stats --show-memory \
+--show-exit-code --show-all-exit-codes --show-lexed-words --show-stats --show-memory \
 "
   local \
     short_flags="-V -i -s -c -e -f -t -v -x -a -C -n -u -l -r -p -o -O -M -L -I -W -WW -WWW \
