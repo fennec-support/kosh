@@ -17,6 +17,7 @@
 KOSHKIT_UTIL_DECL("[-fHiLnPpRrvx] [-t directory] source ... [destination]",
                   "The cp utility can copy each source to the destination.");
 
+FLAG(CP_ARCHIVE, Bool, 'a', "archive", "Copy as -R, -P, and -p together.");
 FLAG(CP_RECURSIVE_R, Bool, 'r', "", "Copy directories and their contents.");
 FLAG(CP_RECURSIVE_UPPER, Bool, 'R', "", "Copy directories and their contents.");
 FLAG(CP_FORCE, Bool, 'f', "", "Remove a destination that cannot be opened.");
@@ -572,10 +573,13 @@ Cp::execute(const ExecContext               &ec,
     return report_usage_error(ec, cxt, args[0].view());
   }
 
-  let const recursive_mode =
-      FLAG_CP_RECURSIVE_R.is_enabled() || FLAG_CP_RECURSIVE_UPPER.is_enabled()
-          ? cp_recursive_mode::Recursive
-          : cp_recursive_mode::SinglePath;
+  let const is_archive     = FLAG_CP_ARCHIVE.is_enabled();
+  let const recursive_mode = FLAG_CP_RECURSIVE_R.is_enabled() ||
+                                     FLAG_CP_RECURSIVE_UPPER.is_enabled() ||
+                                     is_archive
+                                 ? cp_recursive_mode::Recursive
+                                 : cp_recursive_mode::SinglePath;
+
   usize           symlink_position = 0;
   cp_symlink_mode symlink_mode     = cp_symlink_mode::Preserve;
 
@@ -591,9 +595,14 @@ Cp::execute(const ExecContext               &ec,
     }
   }
 
-  if (FLAG_CP_FOLLOW_NONE.is_enabled()) {
-    if (FLAG_CP_FOLLOW_NONE.position() > symlink_position)
-      symlink_mode = cp_symlink_mode::Preserve;
+  if (FLAG_CP_FOLLOW_NONE.is_enabled() &&
+      FLAG_CP_FOLLOW_NONE.position() > symlink_position)
+  {
+    symlink_mode = cp_symlink_mode::Preserve;
+  }
+
+  if (is_archive && FLAG_CP_ARCHIVE.position() > symlink_position) {
+    symlink_mode = cp_symlink_mode::Preserve;
   }
 
   if (recursive_mode == cp_recursive_mode::SinglePath &&
@@ -603,7 +612,7 @@ Cp::execute(const ExecContext               &ec,
   }
 
   let options = cp_options{FLAG_CP_FORCE.is_enabled(),
-                           FLAG_CP_PRESERVE.is_enabled(),
+                           FLAG_CP_PRESERVE.is_enabled() || is_archive,
                            FLAG_CP_VERBOSE.is_enabled(),
                            recursive_mode,
                            symlink_mode,

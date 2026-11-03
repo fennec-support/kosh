@@ -28,6 +28,12 @@ echo leaf > tree/leaf
 kk ln -s tree tree_link
 kk cp -r tree tree_link 2> /dev/null
 printf 'cp-through-link=%s directories=%s\n' "$?" "$(kk find tree -type d | kk wc -l | kk tr -d ' ')"
+kk ln -s leaf tree/link
+kk chmod 640 tree/leaf
+kk cp -a tree archived
+printf 'cp-archive=%s links=%s same-mode=%s\n' "$?" \
+  "$(kk find archived -type l | kk wc -l | kk tr -d ' ')" \
+  "$(test "$(kk ls -l tree/leaf | kk cut -c1-10)" = "$(kk ls -l archived/leaf | kk cut -c1-10)" && echo yes)"
 
 printf 'Hello, World\n' | kk tr a-z '[A*]'
 printf 'abcdef\n' | kk tr a-f 'x[y*2]z[w*]'

@@ -513,7 +513,7 @@ _koshkit_util_flags ()
     ;;
     cp)
       printf "%s\n" \
-        "-r -R -f -i -t --target-directory -n --no-clobber -p -v -H -L -P -x --one-file-system"
+        "-a --archive -r -R -f -i -t --target-directory -n --no-clobber -p -v -H -L -P -x --one-file-system"
     ;;
     csplit)
       printf "%s\n" "-k --keep-files -f --prefix -n --digits -s --silent"

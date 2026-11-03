@@ -2,6 +2,7 @@ ln-same=1 content=data
 ln-alias=1 content=data
 ln-replace=0 content=data
 cp-through-link=1 directories=1
+cp-archive=0 links=1 same-mode=yes
 HAAAA, WAAAA
 xyyzww
 xxx
