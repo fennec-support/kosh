@@ -31,7 +31,7 @@ clone_word_segments(const Word &word, Allocator allocator) throws
   segments.reserve(word.segments.count());
 
   for (let const &segment : word.segments)
-    segments.push(segment.clone(allocator));
+    segments.push(segment.clone_to(allocator));
 
   return segments;
 }
@@ -63,7 +63,7 @@ separate_tilde_directory(ArrayList<WordSegment> &segments,
   }
 
   for (usize i = 1; i < segments.count(); i++)
-    rebuilt.push(segments[i].clone(allocator));
+    rebuilt.push(segments[i].clone_to(allocator));
 
   segments = steal(rebuilt);
 }

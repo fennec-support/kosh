@@ -1699,8 +1699,7 @@ FunctionDefinition::analyze(AnalysisContext &actx, bool is_unconditional) const 
     actx.apply_scope_definitions(m_analysis_scope_definitions);
     actx.active_function_definition_index = function_definition_index;
     actx.functions.records.push(function_definition_record{
-        String{heap_allocator(), m_name.view()},
-        0, 0,
+        m_name.clone_to(heap_allocator()), 0, 0,
         HashSet{heap_allocator(), SMALL_MAP_FIRST_CAPACITY},
         HashSet{heap_allocator(), SMALL_MAP_FIRST_CAPACITY},
         VariableOccurrenceStateMap{},

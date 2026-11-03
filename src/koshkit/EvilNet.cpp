@@ -673,7 +673,7 @@ sample_network_statistics(
 
     let result = entry;
 
-    result.interface_name = String{allocator, entry.interface_name.view()};
+    result.interface_name = entry.interface_name.clone_to(allocator);
     if (previous_index.has_value()) {
       let const &previous = before[*previous_index];
 
@@ -715,7 +715,7 @@ get_network_window_status(const live_network_row &row,
   let const &after_boundary = row.history.samples[boundary.after_index];
   let        sampled        = row.history.get_newest();
 
-  sampled.interface_name = String{allocator, row.interface_name.view()};
+  sampled.interface_name = row.interface_name.clone_to(allocator);
 
   let const &newest = row.history.get_newest();
 
@@ -782,7 +782,7 @@ run_live_network_traffic(const ExecContext         &ec,
       [&](const os::network_interface_statistics_entry &entry) {
         live_network_row row{};
 
-        row.interface_name = String{allocator, entry.interface_name.view()};
+        row.interface_name = entry.interface_name.clone_to(allocator);
 
         return row;
       };

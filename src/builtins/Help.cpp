@@ -102,7 +102,7 @@ Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const synopsis    = builtin_help_synopsis(*resolved);
 
     if (FLAG_SHORT.is_enabled()) {
-      let out = String{cxt.scratch_allocator(), name.view()};
+      let out = name.clone_to(cxt.scratch_allocator());
 
       out += " - ";
       out.append(description);

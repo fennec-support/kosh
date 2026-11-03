@@ -1361,7 +1361,7 @@ save_make_variable(const makefile &mk,
   if (const make_variable *variable = mk.find_variable_record(name);
       variable != nullptr)
   {
-    snapshot.value       = String{allocator, variable->value.view()};
+    snapshot.value       = variable->value.clone_to(allocator);
     snapshot.origin      = variable->origin;
     snapshot.flavor      = variable->flavor;
     snapshot.was_present = true;
@@ -1413,7 +1413,7 @@ restore_make_variable(makefile                     &mk,
      snapshot.name in mk.variables. */
   make_variable &variable = mk.variables[*index.value()];
 
-  variable.value  = String{allocator, snapshot.value.view()};
+  variable.value  = snapshot.value.clone_to(allocator);
   variable.origin = snapshot.origin;
   variable.flavor = snapshot.flavor;
 }
@@ -2468,9 +2468,9 @@ apply_assignment(EvalContext &cxt,
 
       mk.variable_index.set(name, mk.variables.count());
       mk.variables.push(make_variable{
-          String{cxt.scratch_allocator(), name                 },
-          String{cxt.scratch_allocator(), appended_value.view()},
-          assignment_origin, make_variable_flavor::Recursive
+          String{cxt.scratch_allocator(), name},
+          appended_value.clone_to(cxt.scratch_allocator()), assignment_origin,
+          make_variable_flavor::Recursive
       });
 
       return;
@@ -4049,7 +4049,7 @@ build_target(const ExecContext        &ec,
                   0, archive_member.view().length - member_extension.length)};
         }
 
-        let source = String{cxt.scratch_allocator(), stem.view()};
+        let source = stem.clone_to(cxt.scratch_allocator());
 
         source += source_suffix;
         if (!is_make_target_supplyable(cxt, mk, source.view(), supply_search))

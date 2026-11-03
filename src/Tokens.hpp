@@ -100,7 +100,7 @@ struct arith_tree
   }
 
   fn
-  copy_to(Allocator allocator) const throws -> const arith_tree *;
+  clone_to(Allocator allocator) const throws -> const arith_tree *;
 
   static fn
   release(const arith_tree *tree) wontthrow -> void;
@@ -378,6 +378,12 @@ public:
     append(StringView{&byte, 1});
   }
 
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> SegmentText
+  {
+    return SegmentText{allocator, view()};
+  }
+
   /* memory: m_length bytes from allocator when allocator does not own m_data.
              the old heap buffer is freed when m_capacity is nonzero.
      time:   O(m_length) for memcpy(). returns early for a heap allocator, an
@@ -564,7 +570,7 @@ public:
              allocator, ~WordSegment() frees them. an arena owns them.
      time:   O(text length) for memcpy(), plus one fixed-size cache copy. */
   cold fn
-  clone(Allocator allocator) const throws -> WordSegment
+  clone_to(Allocator allocator) const throws -> WordSegment
   {
     let copy = WordSegment(kind, SegmentText{allocator, text.view()},
                            is_in_double_quotes != 0, is_greedy_name != 0);
@@ -728,7 +734,7 @@ public:
     segments.reserve(other.segments.count());
 
     for (let const &segment : other.segments)
-      segments.push(segment.clone(heap_allocator()));
+      segments.push(segment.clone_to(heap_allocator()));
   }
 
   Word(Word &&other) wontthrow

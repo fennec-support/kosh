@@ -105,9 +105,7 @@ EvalContext::run_program_fallback(ExecContext     &ec,
     for (let const &name : environment_names) {
       if (let value = os::get_environment_variable(name.view())) {
         saved_environment.push(saved_environment_variable{
-            String{heap_allocator(), name.view()},
-            value.take()
-        });
+            name.clone_to(heap_allocator()), value.take()});
       }
 
       os::unset_environment_variable(name.view());
@@ -126,7 +124,7 @@ EvalContext::run_program_fallback(ExecContext     &ec,
       arena_store().function_arena());
   fallback_context.set_current_source(
       source_store().current_source(),
-      String{heap_allocator(), source_store().current_origin().view()});
+      source_store().current_origin().clone_to(heap_allocator()));
   fallback_context.source_store().set_mimicry_depth(
       source_store().mimicry_depth());
   fallback_context.source_retention().set_generation(
@@ -143,11 +141,10 @@ EvalContext::run_program_fallback(ExecContext     &ec,
 
   for (let const &frame : source_store().source_frames()) {
     fallback_context.source_store().source_frames().push(source_frame{
-        String{heap_allocator(), frame.origin.view()     },
+        String{heap_allocator(), frame.origin.view()},
         frame.call_site,
         frame.parent_source, frame.parent_source_generation,
-        String{heap_allocator(), frame.source_path.view()},
-        frame.kind
+        frame.source_path.clone_to(heap_allocator()), frame.kind
     });
     let &copied = fallback_context.source_store().source_frames().back();
 
@@ -303,11 +300,10 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
   let const script_filename = ec.program_path().view();
 
   source_store().source_frames().push(source_frame{
-      String{heap_allocator(), ec.program().view()},
-      ec.source_location(),
+      ec.program().clone_to(heap_allocator()), ec.source_location(),
       source_store().current_source(),
       source_generation_for(source_store().current_source()),
-      String{heap_allocator(), script_filename    },
+      String{heap_allocator(), script_filename},
       source_frame_kind::SourcedFile
   });
   source_store().source_frames().back().should_defer_trace = true;
@@ -437,7 +433,7 @@ EvalContext::run_mimicked_script(ExecContext     &ec,
       String{heap_allocator(), ec.should_use_fallback_argv0
                                    ? ec.args()[0].view()
                                    : ec.program_path().view()});
-  set_fresh_source(&*contents, String{heap_allocator(), ec.program().view()});
+  set_fresh_source(&*contents, ec.program().clone_to(heap_allocator()));
   source_store().mimicry_depth()++;
 
   bool should_leave_mimicry = true;

@@ -590,7 +590,7 @@ copy_word_range(const Word  &word,
   for (usize i = first_segment; i < word.segments.count() && i <= last_segment;
        i++)
   {
-    let segment = word.segments[i].clone(allocator);
+    let segment = word.segments[i].clone_to(allocator);
 
     if (i == first_segment || (i == last_segment && last_end.has_value())) {
       let const text  = word.segments[i].text.view();

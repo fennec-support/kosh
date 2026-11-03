@@ -2850,10 +2850,8 @@ launch_compound_stage(const compound_stage_options &options) throws
                                  options.err_fd, true, options.evaluator,
                                  options.process_group);
   } catch (const Error &error) {
-    throw ErrorWithLocation{
-        steal(options.location),
-        String{heap_allocator(), error.message().view()}
-    };
+    throw ErrorWithLocation{steal(options.location),
+                            error.message().clone_to(heap_allocator())};
   }
   if (!child.has_value())
     throw ErrorWithLocation{steal(options.location),

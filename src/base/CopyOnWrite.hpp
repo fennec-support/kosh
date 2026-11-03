@@ -69,9 +69,19 @@ public:
   mustuse fn
   clone() const throws -> CopyOnWrite
   {
-    if (m_shared == nullptr) return CopyOnWrite{m_allocator};
+    return clone_to(m_allocator);
+  }
 
-    return CopyOnWrite{m_allocator, clone_value(read())};
+  mustuse fn
+  clone_to(Allocator allocator) const throws -> CopyOnWrite
+  {
+    if (m_shared == nullptr) return CopyOnWrite{allocator};
+
+    if constexpr (is_allocator_clonable<T>) {
+      return CopyOnWrite{allocator, read().clone_to(allocator)};
+    } else {
+      return CopyOnWrite{allocator, clone_value(read())};
+    }
   }
 
   pure fn

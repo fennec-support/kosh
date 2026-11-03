@@ -152,7 +152,7 @@ cached_name_or_id(u32 id, bool is_group, Allocator allocator) throws
   let &entries = is_group ? cache.groups : cache.users;
 
   for (let const &entry : entries) {
-    if (entry.id == id) return String{allocator, entry.name.view()};
+    if (entry.id == id) return entry.name.clone_to(allocator);
   }
 
   let const looked_up =
@@ -165,7 +165,7 @@ cached_name_or_id(u32 id, bool is_group, Allocator allocator) throws
                                 : String::from(id, heap_allocator())
   });
 
-  return String{allocator, entries.back().name.view()};
+  return entries.back().name.clone_to(allocator);
 }
 
 fn

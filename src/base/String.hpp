@@ -91,7 +91,17 @@ public:
   mustuse fn
   clone() const throws -> String
   {
-    return String{*this};
+    return clone_to(m_allocator);
+  }
+
+  mustuse fn
+  clone_to(Allocator allocator) const throws -> String
+  {
+    let result = String{allocator, view()};
+
+    result.m_ascii_state = m_ascii_state;
+
+    return result;
   }
 
   fn

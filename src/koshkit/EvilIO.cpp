@@ -376,11 +376,8 @@ read_process_io_rows(Allocator        allocator,
       continue;
     }
 
-    rows.push(io_row{
-        String{allocator, process.name.view()},
-        process.pid,
-        process.start_token, status
-    });
+    rows.push(io_row{process.name.clone_to(allocator), process.pid,
+                     process.start_token, status});
   }
 
   return steal(rows).make_sorted(process_pid_comparator{});
@@ -459,11 +456,8 @@ sample_process_io_rows(const ArrayList<io_row> &before_rows,
     /* at this point: before and after describe the same process by pid
        and start_token, read_delta and write_delta have values, and
        status is not idle or idle_mode is Include. */
-    sampled_rows.push(io_row{
-        String{allocator, after.name.view()},
-        after.pid, after.start_token,
-        status
-    });
+    sampled_rows.push(io_row{after.name.clone_to(allocator), after.pid,
+                             after.start_token, status});
   }
 
   return sort_process_rows(steal(sampled_rows), sort_key);
@@ -656,7 +650,7 @@ make_disk_io_row(const os::disk_io_status *before,
 {
   disk_io_row row{};
 
-  row.name = String{allocator, after.name.view()};
+  row.name = after.name.clone_to(allocator);
   if (sampling == report_sampling_mode::Rolling) {
     if (before != nullptr) {
       if (before->has_field(os::disk_io_field::ReadBytes) &&
@@ -1059,7 +1053,7 @@ run_live_process_io(const ExecContext         &ec,
     live_process_row entry{};
     entry.pid         = row.pid;
     entry.start_token = row.start_token;
-    entry.name        = String{allocator, row.name.view()};
+    entry.name        = row.name.clone_to(allocator);
 
     return entry;
   };
@@ -1108,11 +1102,9 @@ run_live_process_io(const ExecContext         &ec,
         rolling_window_start(last_sample_nanoseconds, window_nanoseconds);
 
     for (let const &row : retained) {
-      rows.push(io_row{
-          String{frame_allocator, row.name.view()},
-          row.pid, row.start_token,
-          get_process_window_status(row, window_start)
-      });
+      rows.push(io_row{row.name.clone_to(frame_allocator), row.pid,
+                       row.start_token,
+                       get_process_window_status(row, window_start)});
     }
 
     let const sorted_rows = sort_process_rows(steal(rows), sort_key);
@@ -1217,7 +1209,7 @@ run_live_disk_io(const ExecContext         &ec,
 
   let const do_make_row = [&](const os::disk_io_status &disk) {
     live_disk_row entry{};
-    entry.name = String{allocator, disk.name.view()};
+    entry.name = disk.name.clone_to(allocator);
 
     return entry;
   };

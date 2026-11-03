@@ -226,7 +226,7 @@ find_mount_point(StringView path, Allocator allocator) throws -> String
 
   absolute += path;
 
-  let best = String{allocator, absolute.view()};
+  let best = absolute.clone_to(allocator);
 
   loop {
     usize slash_position = best.length();

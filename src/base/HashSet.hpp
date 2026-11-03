@@ -63,7 +63,17 @@ public:
   mustuse cold fn
   clone() const throws -> HashSet
   {
-    return HashSet{*this};
+    return clone_to(allocator());
+  }
+
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> HashSet
+  {
+    let result = HashSet{allocator};
+
+    result.m_map = m_map.clone_to(allocator);
+
+    return result;
   }
 
   template <class Fn>

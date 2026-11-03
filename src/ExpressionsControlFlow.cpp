@@ -751,7 +751,7 @@ SelectLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
                           m_has_in_clause, m_words);
 
   let const should_run_select = publish_command_and_run_debug_trap(
-      cxt, [&] { return String{heap_allocator(), select_trace.view()}; });
+      cxt, [&] { return select_trace.clone_to(heap_allocator()); });
 
   if (!should_run_select) return {cxt.execution_store().last_exit_status()};
 

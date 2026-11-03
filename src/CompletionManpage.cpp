@@ -52,7 +52,7 @@ matches_from_help_entries(const ArrayList<help_entry> &entries,
       matches.push_managed(entry.name.view());
       if (!entry.description.is_empty())
         descriptions.set(entry.name.view(),
-                         String{heap_allocator(), entry.description.view()});
+                         entry.description.clone_to(heap_allocator()));
     }
 
   return matches;
@@ -1314,7 +1314,7 @@ internal::complete_from_manpage(StringView         line,
 
   if (options.is_empty()) return None;
   MANPAGE_CACHE.hint_pages.set(hint_key.view(),
-                               String{heap_allocator(), page_name.view()});
+                               page_name.clone_to(heap_allocator()));
 
   let matches = matches_from_help_entries(options, token, descriptions);
 
@@ -2466,12 +2466,12 @@ compose_command_hint(StringView   line,
       source.flags = builtin_flag_list(*builtin_kind);
     }
   } else {
-    let page_key           = String{heap_allocator(), name.view()};
+    let page_key           = name.clone_to(heap_allocator());
     let has_manpage        = false;
     let is_subcommand_page = false;
 
     if (has_subcommand_word) {
-      let subcommand_key = String{heap_allocator(), name.view()};
+      let subcommand_key = name.clone_to(heap_allocator());
 
       subcommand_key.push(' ');
       subcommand_key.append(first_word);
@@ -2530,7 +2530,7 @@ compose_command_hint(StringView   line,
         break;
       }
 
-      let extended = String{heap_allocator(), chain.view()};
+      let extended = chain.clone_to(heap_allocator());
 
       if (!extended.is_empty()) extended += ' ';
       extended.append(word);
@@ -2647,7 +2647,7 @@ finish_idle_load(idle_load                &load,
 
   if (!options.is_empty() || (synopsis.has_value() && !synopsis->is_empty())) {
     MANPAGE_CACHE.hint_pages.set(load.hint_key.view(),
-                                 String{heap_allocator(), load.key.view()});
+                                 load.key.clone_to(heap_allocator()));
   }
 }
 
@@ -2817,7 +2817,7 @@ start_next_idle_load(StringView   line,
                                      ArrayList<help_entry>{heap_allocator()});
   }
 
-  let subcommand_key = String{heap_allocator(), name.view()};
+  let subcommand_key = name.clone_to(heap_allocator());
 
   subcommand_key.push(' ');
   subcommand_key.append(first_word);
@@ -2842,7 +2842,7 @@ start_next_idle_load(StringView   line,
       return true;
     }
 
-    let combined = String{heap_allocator(), command.view()};
+    let combined = command.clone_to(heap_allocator());
 
     combined.push('-');
     combined.append(first_word);

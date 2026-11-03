@@ -454,4 +454,19 @@ concept is_allocator_movable = requires(T &value, Allocator allocator) {
   value.move_to_allocator(allocator);
 };
 
+/* a type whose deep copy can sit in another allocator. */
+template <class T>
+concept is_allocator_clonable =
+    requires(const T &value, Allocator allocator) {
+      value.clone_to(allocator);
+    } &&
+    std::is_same_v<decltype(std::declval<const T &>().clone_to(
+                       std::declval<Allocator>())),
+                   T>;
+
+/* a type that owns allocator storage and can deep copy it into another. */
+template <class T>
+concept is_allocator_owner =
+    is_allocator_movable<T> && is_allocator_clonable<T>;
+
 } /* namespace koshka */

@@ -839,7 +839,7 @@ EvalContext::resolve_tilde_prefix(StringView name) const throws
 
   if (!home) return koshka::None;
 
-  return String{heap_allocator(), home->text().view()};
+  return home->text().clone_to(heap_allocator());
 }
 
 fn

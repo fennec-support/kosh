@@ -270,7 +270,7 @@ collect_dumps(StringView directory, Allocator allocator) throws
 
     let dump = dump_entry{};
 
-    dump.name              = String{allocator, child.name.view()};
+    dump.name              = child.name.clone_to(allocator);
     dump.program           = program_of_dump(child.name.view(), allocator);
     dump.size              = status.size;
     dump.modification_time = status.modification_time;
@@ -600,7 +600,7 @@ collect_log_entries(StringView directory, Allocator allocator) throws
 
     let entry = log_entry{};
 
-    entry.name              = String{allocator, child.name.view()};
+    entry.name              = child.name.clone_to(allocator);
     entry.size              = child_entry.status.size;
     entry.modification_time = child_entry.status.modification_time;
 

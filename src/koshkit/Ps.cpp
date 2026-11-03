@@ -153,7 +153,7 @@ ps_cell_text(const os::process_entry &process,
   case ps_column::Name:
     return should_escape_text
                ? escape_terminal_text(allocator, process.name.view())
-               : String{allocator, process.name.view()};
+               : process.name.clone_to(allocator);
   case ps_column::Arguments:
     let const arguments = process.command_line.is_empty()
                               ? process.name.view()

@@ -667,7 +667,7 @@ EvilFiles::execute(const ExecContext               &ec,
   let const used_width = other_columns_width + 2 + widths.command;
 
   for (let const &row : rows) {
-    let command = String{allocator, row.command.view()};
+    let command = row.command.clone_to(allocator);
 
     if (toiletline::get_display_width(command.view()) > widths.command &&
         widths.command > 3)
@@ -681,7 +681,7 @@ EvilFiles::execute(const ExecContext               &ec,
       command += "...";
     }
 
-    let name = String{allocator, row.name.view()};
+    let name = row.name.clone_to(allocator);
 
     if (used_width + toiletline::get_display_width(name.view()) >
         line_width_limit)

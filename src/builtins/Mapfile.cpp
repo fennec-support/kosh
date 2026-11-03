@@ -245,7 +245,7 @@ Mapfile::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (has_callback &&
         (read_count + 1) % static_cast<usize>(callback_quantum) == 0)
     {
-      let callback = String{heap_allocator(), callback_command.view()};
+      let callback = callback_command.clone_to(heap_allocator());
 
       callback.push(' ');
       append_shell_quoted_arg(callback, subscript, true);

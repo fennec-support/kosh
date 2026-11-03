@@ -199,7 +199,7 @@ append_namespace_report(String                      &output,
       relation.identifier_value =
           identifier_value.is_error() ? 0 : identifier_value.value();
       relation.process_id = process.process_id;
-      relation.name       = String{allocator, process.name.view()};
+      relation.name       = process.name.clone_to(allocator);
       relation.reason     = steal(failure_reason);
       relation.role =
           process.is_self ? StringView{"self"} : StringView{"other"};
@@ -726,10 +726,10 @@ collect_process_cgroup_snapshot(
     record.owner_id    = process.owner_id;
     record.name        = process.name.is_empty()
                              ? String{allocator, "-"}
-                             : String{allocator, process.name.view()};
+                             : process.name.clone_to(allocator);
     record.command     = process.command_line.is_empty()
                              ? String{allocator, "-"}
-                             : String{allocator, process.command_line.view()};
+                             : process.command_line.clone_to(allocator);
     if (collection == eviliso_collection_mode::Collect) {
       let       suffix = process.pid == self_process_id
                              ? String{allocator, "self/cgroup"}
@@ -1051,8 +1051,8 @@ append_session_report(String             &output,
 
     let row = session_report_row{allocator};
 
-    row.user       = String{allocator, session.user.view()};
-    row.terminal   = String{allocator, session.terminal.view()};
+    row.user       = session.user.clone_to(allocator);
+    row.terminal   = session.terminal.clone_to(allocator);
     row.login_time = steal(login_time);
     rows.push(steal(row));
   }
@@ -1340,7 +1340,7 @@ append_remote_report(String                                   &output,
                               u32 owner_id) throws -> String {
     for (let const &context : user_contexts) {
       if (context.owner_id == owner_id) {
-        return String{allocator, context.name.view()};
+        return context.name.clone_to(allocator);
       }
     }
 
@@ -1697,7 +1697,7 @@ append_runtime_evidence_report(
     row.process_id = String{row.process_id.allocator(), "-"};
     row.name       = String{row.name.allocator(), "-"};
     row.role       = String{row.role.allocator(), "host"};
-    row.evidence   = String{row.evidence.allocator(), path.view()};
+    row.evidence   = path.clone_to(row.evidence.allocator());
     rows.push(steal(row));
   }
 

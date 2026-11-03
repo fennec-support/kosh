@@ -241,11 +241,9 @@ AssignCommand::analyze(AnalysisContext &actx, bool is_unconditional) const throw
   {
     if (actx.is_posix_mood()) {
       if (!actx.top_level_assigned_names.contains(name.view())) {
-        actx.function_global_assignments.push({
-            String{heap_allocator(), name.view()},
-            source_location(),
-            actx.get_current_variable_scope()
-        });
+        actx.function_global_assignments.push(
+            {name.clone_to(heap_allocator()), source_location(),
+             actx.get_current_variable_scope()});
       }
     } else {
       actx.report_diagnostic(diagnostic_id::no_local, source_location(),

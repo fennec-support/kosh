@@ -226,21 +226,21 @@ struct completion_spec
   fn
   clone() const throws -> completion_spec
   {
-    return clone(heap_allocator());
+    return clone_to(heap_allocator());
   }
 
   fn
-  clone(Allocator allocator) const throws -> completion_spec
+  clone_to(Allocator allocator) const throws -> completion_spec
   {
     let copy = completion_spec{};
 
-    copy.function_name  = String{allocator, function_name.view()};
-    copy.word_list      = String{allocator, word_list.view()};
-    copy.glob_pattern   = String{allocator, glob_pattern.view()};
-    copy.filter_pattern = String{allocator, filter_pattern.view()};
-    copy.prefix         = String{allocator, prefix.view()};
-    copy.suffix         = String{allocator, suffix.view()};
-    copy.command        = String{allocator, command.view()};
+    copy.function_name  = function_name.clone_to(allocator);
+    copy.word_list      = word_list.clone_to(allocator);
+    copy.glob_pattern   = glob_pattern.clone_to(allocator);
+    copy.filter_pattern = filter_pattern.clone_to(allocator);
+    copy.prefix         = prefix.clone_to(allocator);
+    copy.suffix         = suffix.clone_to(allocator);
+    copy.command        = command.clone_to(allocator);
     copy.action_mask    = action_mask;
     copy.option_mask    = option_mask;
     copy.argument_mask  = argument_mask;
@@ -278,8 +278,15 @@ struct completion_snapshot
   fn
   clone() const throws -> completion_snapshot
   {
-    return completion_snapshot{specs.clone(), default_spec.clone(),
-                               empty_spec.clone(), initial_spec.clone()};
+    return clone_to(specs.allocator());
+  }
+
+  fn
+  clone_to(Allocator allocator) const throws -> completion_snapshot
+  {
+    return completion_snapshot{
+        specs.clone_to(allocator), default_spec.clone_to(allocator),
+        empty_spec.clone_to(allocator), initial_spec.clone_to(allocator)};
   }
 };
 

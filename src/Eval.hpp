@@ -3345,7 +3345,7 @@ public:
     let const found = m_traps.read().find(StringView{"EXIT", 4});
     if (!found.has_value()) return;
 
-    let held = String{heap_allocator(), found.value()->action_text.view()};
+    let held = found.value()->action_text.clone_to(heap_allocator());
     m_traps.write().erase(StringView{"EXIT", 4});
     refresh_flags();
     m_held_exit_action = steal(held);

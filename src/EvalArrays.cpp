@@ -125,12 +125,11 @@ collect_sparse_array_entries(const StringMap<String> &sparse,
 {
   let out = ArrayList<sparse_array_entry>{allocator};
 
-  for_each_sparse_index(sparse, name, allocator,
-                        [&](usize index, const String &value) throws {
-                          out.push(sparse_array_entry{
-                              index, String{allocator, value.view()}
-                          });
-                        });
+  for_each_sparse_index(
+      sparse, name, allocator,
+      [&](usize index, const String &value) throws {
+        out.push(sparse_array_entry{index, value.clone_to(allocator)});
+      });
 
   return steal(out).make_sorted(sparse_array_entry_comparator{});
 }
@@ -473,7 +472,7 @@ EvalContext::get_bash_directory_stack_element(usize index,
   if (index == 0) {
     let const current = logical_working_directory(*this);
 
-    return String{allocator, current.text()};
+    return current.text().clone_to(allocator);
   }
 
   let const &stack = variable_store().directory_stack();
@@ -633,7 +632,7 @@ EvalContext::assign_array_element(
     if (let const array = variable_store().indexed_arrays().find(name);
         array.has_value() && resolved_index < array->count())
     {
-      return String{heap_allocator(), array->operator[](resolved_index).view()};
+      return array->operator[](resolved_index).clone_to(heap_allocator());
     }
 
     if (variable_store().sparse_arrays().has(name)) {

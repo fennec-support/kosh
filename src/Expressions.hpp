@@ -1407,7 +1407,7 @@ struct published_command_text
     if (text.is_empty() ||
         was_rendered_with_bash_additions != has_bash_additions)
     {
-      text.assign(String{heap_allocator(), do_render().view()});
+      text.assign(do_render().clone_to(heap_allocator()));
       was_rendered_with_bash_additions = has_bash_additions;
     }
 

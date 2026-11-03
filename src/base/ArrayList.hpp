@@ -85,25 +85,39 @@ public:
       push(element);
   }
 
-  /* memory: reserve() allocates other.m_length elements in the allocator of
-             other. the destructor of this list frees them.
-     time:   O(other.m_length) element copies. */
   cold
   ArrayList(const ArrayList &other)
-      : ArrayList(other.m_allocator)
-  {
-    reserve(other.m_length);
-
-    for (usize i = 0; i < other.m_length; i++) {
-      new (&m_data[m_length]) T(other.m_data[i]);
-      m_length++;
-    }
-  }
+      : ArrayList(other.clone_to(other.m_allocator))
+  {}
 
   mustuse cold fn
   clone() const throws -> ArrayList
   {
-    return ArrayList{*this};
+    return clone_to(m_allocator);
+  }
+
+  /* memory: reserve() allocates m_length elements in allocator. an element
+             type with clone_to() also places its own storage there. the
+             destructor of the returned list frees them.
+     time:   O(m_length) element copies. */
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> ArrayList
+  {
+    let result = ArrayList{allocator};
+
+    result.reserve(m_length);
+
+    for (usize i = 0; i < m_length; i++) {
+      if constexpr (is_allocator_owner<T>) {
+        new (&result.m_data[result.m_length]) T(m_data[i].clone_to(allocator));
+      } else {
+        new (&result.m_data[result.m_length]) T(m_data[i]);
+      }
+
+      result.m_length++;
+    }
+
+    return result;
   }
 
   ArrayList(ArrayList &&other) noexcept
@@ -1025,7 +1039,17 @@ public:
   mustuse cold fn
   clone() const throws -> SortedArrayList
   {
-    return SortedArrayList{*this};
+    return clone_to(this->allocator());
+  }
+
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> SortedArrayList
+  {
+    let result = SortedArrayList{allocator, m_compare};
+
+    static_cast<Base &>(result) = Base::clone_to(allocator);
+
+    return result;
   }
 
   mustuse cold fn
@@ -1183,9 +1207,16 @@ public:
   mustuse cold fn
   clone() const throws -> SparseList
   {
+    return clone_to(m_list != nullptr ? m_list->allocator() : fake_allocator());
+  }
+
+  /* a copy whose list comes from allocator. */
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> SparseList
+  {
     let copy = SparseList{};
 
-    if (m_list != nullptr) copy.fill(m_list->clone());
+    if (m_list != nullptr) copy.fill(m_list->clone_to(allocator));
 
     return copy;
   }

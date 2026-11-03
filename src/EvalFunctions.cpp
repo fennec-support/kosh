@@ -991,8 +991,7 @@ EvalContext::run_pending_traps() throws -> void
     if (let const installed = trap_store().find_active(child_condition);
         installed.has_value())
     {
-      let const action =
-          String{heap_allocator(), installed->action_text.view()};
+      let const action     = installed->action_text.clone_to(heap_allocator());
       let const fire_count = trap_store().pending_child_trap_count();
 
       trap_store().mark_condition_running(child_bit);

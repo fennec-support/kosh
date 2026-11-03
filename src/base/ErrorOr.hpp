@@ -56,6 +56,20 @@ public:
     return ErrorOr{*this};
   }
 
+  mustuse fn
+  clone_to(Allocator allocator) const throws -> ErrorOr
+  {
+    if (m_is_error) return ErrorOr{*this};
+
+    if constexpr (is_allocator_clonable<T>) {
+      return ErrorOr{value_reference().clone_to(allocator)};
+    } else {
+      unused(allocator);
+
+      return ErrorOr{*this};
+    }
+  }
+
   /* moves the storage of the value to allocator when the value owns any. */
   cold fn
   move_to_allocator(Allocator allocator) throws -> void

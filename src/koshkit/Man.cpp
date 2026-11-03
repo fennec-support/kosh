@@ -149,7 +149,7 @@ Man::execute(const ExecContext               &ec,
             continue;
           }
 
-          let path = String{cxt.scratch_allocator(), manual_directory.view()};
+          let path = manual_directory.clone_to(cxt.scratch_allocator());
 
           path += '/';
           path += entry.view();

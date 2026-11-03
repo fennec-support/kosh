@@ -300,7 +300,14 @@ public:
   mustuse cold fn
   clone() const throws -> Hive
   {
-    let copy = Hive{m_allocator};
+    return clone_to(m_allocator);
+  }
+
+  /* a copy whose blocks come from allocator. */
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> Hive
+  {
+    let copy = Hive{allocator};
 
     copy.copy_layout_from(
         *this,

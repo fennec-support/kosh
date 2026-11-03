@@ -4156,7 +4156,7 @@ evaluate_text_tree(EvalContext              *context,
 } /* namespace */
 
 fn
-arith_tree::copy_to(Allocator allocator) const throws
+arith_tree::clone_to(Allocator allocator) const throws
     -> const arith_tree *
 {
   static_assert(sizeof(arith_tree) <= sizeof(arith_node));
@@ -4208,7 +4208,7 @@ build_arithmetic_tree(StringView expression, Allocator allocator) throws
 
   let const tree = build_tree_into(expression, storage, arena);
 
-  return tree.copy_to(allocator);
+  return tree.clone_to(allocator);
 }
 
 fn
@@ -4587,11 +4587,11 @@ find_arithmetic_syntax_problem(StringView expression,
   } catch (const ErrorWithLocation &error) {
     problem.position = error.location().position;
     problem.length   = error.location().length;
-    problem.message  = String{heap_allocator(), error.message().view()};
+    problem.message  = error.message().clone_to(heap_allocator());
     problem.note     = String{heap_allocator(), error.detail_message()};
   } catch (const ErrorBase &error) {
     problem.length  = expression.length;
-    problem.message = String{heap_allocator(), error.message().view()};
+    problem.message = error.message().clone_to(heap_allocator());
     problem.note    = String{heap_allocator(), error.detail_message()};
   }
 

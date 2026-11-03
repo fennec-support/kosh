@@ -561,7 +561,7 @@ word_token_from_assignment(BumpArena &arena, const Assignment *a) throws
   });
 
   for (let const &segment : a->value_word().segments)
-    word.segments.push(segment.clone(bump_allocator(arena)));
+    word.segments.push(segment.clone_to(bump_allocator(arena)));
 
   return tokens::create_word_token(arena, a->source_location(), steal(word));
 }
@@ -1038,7 +1038,7 @@ Parser::parse_arithmetic_command(Token *open) throws -> Command *
                                      open_location.source_name_index};
 
   let const allocator  = bump_allocator(m_lexer.arena());
-  let const expression = body.copy_to(allocator);
+  let const expression = body.clone_to(allocator);
 
   return m_lexer.arena().create<expressions::ArithmeticCommand>(
       full_location, expression,
@@ -1099,13 +1099,13 @@ Parser::parse_c_style_for(const SourceLocation &location,
      separators[1] are offsets of ';' in header, in increasing order. */
   let const allocator = bump_allocator(m_lexer.arena());
   let const init =
-      header.substring_of_length(0, separators[0]).copy_to(allocator);
+      header.substring_of_length(0, separators[0]).clone_to(allocator);
   let const condition =
       header
           .substring_of_length(separators[0] + 1,
                                separators[1] - separators[0] - 1)
-          .copy_to(allocator);
-  let const step = header.substring(separators[1] + 1).copy_to(allocator);
+          .clone_to(allocator);
+  let const step = header.substring(separators[1] + 1).clone_to(allocator);
 
   skip_semicolons_and_newlines();
 
@@ -1305,7 +1305,7 @@ Parser::parse_conditional_command() throws -> Command *
 
               for (let const &segment : word.segments)
                 regex_word.segments.push(
-                    segment.clone(bump_allocator(m_lexer.arena())));
+                    segment.clone_to(bump_allocator(m_lexer.arena())));
             } else {
               regex_word.segments.push(WordSegment{
                   WordSegment::Kind::UnquotedText,

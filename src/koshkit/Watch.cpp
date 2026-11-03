@@ -232,7 +232,7 @@ Watch::execute(const ExecContext               &ec,
       pending_status = 0;
     }
 
-    body              = String{heap_allocator(), output.view()};
+    body              = output.clone_to(heap_allocator());
     has_previous_body = true;
 
     return None;

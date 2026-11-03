@@ -331,7 +331,7 @@ save_buffer(const char *text, const char **out_message) -> int
       session.message.append("'");
     }
   } catch (const Error &error) {
-    session.message = String{heap_allocator(), error.message().view()};
+    session.message = error.message().clone_to(heap_allocator());
   }
   *out_message = session.message.c_str();
 
@@ -499,7 +499,7 @@ edit_file(ExecContext                 &ec,
       .has_final_newline = has_final_newline,
       .is_single_newline = is_single_newline,
       .is_shell_script   = is_shell_script,
-      .saved_text        = String{heap_allocator(), contents.view()},
+      .saved_text        = contents.clone_to(heap_allocator()),
       .status            = String{heap_allocator()},
       .message           = String{heap_allocator()},
   };

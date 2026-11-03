@@ -47,7 +47,13 @@ public:
   mustuse fn
   clone() const throws -> Path
   {
-    return Path{*this};
+    return clone_to(m_text.allocator());
+  }
+
+  mustuse fn
+  clone_to(Allocator allocator) const throws -> Path
+  {
+    return Path{m_text.view(), allocator};
   }
 
   hot mustuse pure fn

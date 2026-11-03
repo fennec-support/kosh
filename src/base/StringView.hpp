@@ -218,7 +218,7 @@ public:
   to_lower_ascii(Allocator allocator) const throws -> String;
 
   mustuse fn
-  copy_to(Allocator allocator) const throws -> StringView;
+  clone_to(Allocator allocator) const throws -> StringView;
 
   hot flatten mustuse pure fn
   operator==(StringView other) const wontthrow -> bool

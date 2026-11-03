@@ -421,7 +421,7 @@ report_invalid_number(ExecContext  &ec,
                       i32          &exit_status,
                       Allocator     allocator) throws -> void
 {
-  let message = String{allocator, arg.view()};
+  let message = arg.clone_to(allocator);
 
   message += is_hex ? ": invalid hex number" : ": invalid number";
   report_soft_builtin_error(ec, cxt, message.view());
@@ -435,7 +435,7 @@ report_out_of_range(ExecContext  &ec,
                     i32          &exit_status,
                     Allocator     allocator) throws -> void
 {
-  let message = String{allocator, arg.view()};
+  let message = arg.clone_to(allocator);
 
   message += ": Numerical result out of range";
   report_soft_builtin_error(ec, cxt, message.view());

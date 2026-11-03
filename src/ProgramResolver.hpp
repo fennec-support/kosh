@@ -114,7 +114,13 @@ public:
     fn
     clone() const throws -> CachedPath
     {
-      return CachedPath{path.clone(), extension};
+      return clone_to(path.allocator());
+    }
+
+    fn
+    clone_to(Allocator allocator) const throws -> CachedPath
+    {
+      return CachedPath{path.clone_to(allocator), extension};
     }
 
     cold fn
@@ -132,7 +138,13 @@ public:
     fn
     clone() const throws -> CacheEntry
     {
-      return CacheEntry{paths.clone(), bare_path_position};
+      return clone_to(paths.allocator());
+    }
+
+    fn
+    clone_to(Allocator allocator) const throws -> CacheEntry
+    {
+      return CacheEntry{paths.clone_to(allocator), bare_path_position};
     }
   };
 
@@ -232,9 +244,15 @@ private:
     fn
     clone() const throws -> DirectoryProbe
     {
-      return DirectoryProbe{directory.clone(), generation,
-                            regular_entries.clone(),
-                            executable_entries.clone()};
+      return clone_to(directory.allocator());
+    }
+
+    fn
+    clone_to(Allocator allocator) const throws -> DirectoryProbe
+    {
+      return DirectoryProbe{directory.clone_to(allocator), generation,
+                            regular_entries.clone_to(allocator),
+                            executable_entries.clone_to(allocator)};
     }
   };
 
@@ -254,14 +272,20 @@ private:
     fn
     clone() const throws -> DerivedIndexes
     {
-      return DerivedIndexes{command_statuses.clone(),
-                            directory_probes.clone(),
-                            command_names.clone(),
-                            regular_names.clone(),
-                            path_dirs.clone(),
-                            index_path_dirs.clone(),
-                            path_directory_generations.clone(),
-                            validated_prefix.clone()};
+      return clone_to(command_statuses.allocator());
+    }
+
+    fn
+    clone_to(Allocator allocator) const throws -> DerivedIndexes
+    {
+      return DerivedIndexes{command_statuses.clone_to(allocator),
+                            directory_probes.clone_to(allocator),
+                            command_names.clone_to(allocator),
+                            regular_names.clone_to(allocator),
+                            path_dirs.clone_to(allocator),
+                            index_path_dirs.clone_to(allocator),
+                            path_directory_generations.clone_to(allocator),
+                            validated_prefix.clone_to(allocator)};
     }
   };
 

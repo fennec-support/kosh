@@ -33,53 +33,70 @@ public:
 
   cold
   StringMap(const StringMap &other)
-      : StringMap(other.m_allocator, other.m_first_capacity)
-  {
-    if (other.m_count == 0) return;
-
-    let const fitted_slot_count = m_first_capacity == DEFAULT_MAP_FIRST_CAPACITY
-                                      ? static_cast<usize>(other.m_capacity)
-                                      : fitted_capacity(other.m_count);
-
-    if (other.m_tombstones == 0 && fitted_slot_count == other.m_capacity) {
-      let const fresh_slots = m_allocator.alloc_array<Slot>(other.m_capacity);
-      usize     constructed_count = 0;
-
-      try {
-        for (; constructed_count < other.m_capacity; constructed_count++)
-          new (&fresh_slots[constructed_count])
-              Slot{other.m_slots[constructed_count]};
-      } catch (...) {
-        for (usize i = 0; i < constructed_count; i++)
-          fresh_slots[i].~Slot();
-
-        m_allocator.free_array(fresh_slots, other.m_capacity);
-        throw;
-      }
-
-      m_slots    = fresh_slots;
-      m_capacity = other.m_capacity;
-      m_count    = other.m_count;
-
-      return;
-    }
-
-    /* at this point: other holds at least one entry, and the slot array of
-       other is not copied, so rehash() builds the slots for this map. */
-    rehash(fitted_slot_count);
-
-    for (usize i = 0; i < other.m_capacity; i++) {
-      if (other.m_slots[i].get_state() == Slot::Occupied)
-        set_value_with_hash(other.m_slots[i].key.view(),
-                            Value{other.m_slots[i].value},
-                            other.m_slots[i].get_hash());
-    }
-  }
+      : StringMap(other.clone_to(other.m_allocator))
+  {}
 
   mustuse cold fn
   clone() const throws -> StringMap
   {
-    return StringMap{*this};
+    return clone_to(m_allocator);
+  }
+
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> StringMap
+  {
+    let result = StringMap{allocator, m_first_capacity};
+
+    if (m_count == 0) return result;
+
+    let const fitted_slot_count = m_first_capacity == DEFAULT_MAP_FIRST_CAPACITY
+                                      ? static_cast<usize>(m_capacity)
+                                      : fitted_capacity(m_count);
+
+    if (allocator == m_allocator && m_tombstones == 0 &&
+        fitted_slot_count == m_capacity)
+    {
+      let const fresh_slots       = allocator.alloc_array<Slot>(m_capacity);
+      usize     constructed_count = 0;
+
+      try {
+        for (; constructed_count < m_capacity; constructed_count++)
+          new (&fresh_slots[constructed_count])
+              Slot{m_slots[constructed_count]};
+      } catch (...) {
+        for (usize i = 0; i < constructed_count; i++)
+          fresh_slots[i].~Slot();
+
+        allocator.free_array(fresh_slots, m_capacity);
+        throw;
+      }
+
+      result.m_slots    = fresh_slots;
+      result.m_capacity = m_capacity;
+      result.m_count    = m_count;
+
+      return result;
+    }
+
+    /* at this point: this map holds at least one entry, and the slot array
+       is not copied, so rehash() builds the slots for the result. */
+    result.rehash(fitted_slot_count);
+
+    for (usize i = 0; i < m_capacity; i++) {
+      if (m_slots[i].get_state() != Slot::Occupied) continue;
+
+      if constexpr (is_allocator_owner<Value>) {
+        result.set_value_with_hash(m_slots[i].key.view(),
+                                   m_slots[i].value.clone_to(allocator),
+                                   m_slots[i].get_hash());
+      } else {
+        result.set_value_with_hash(m_slots[i].key.view(),
+                                   Value{m_slots[i].value},
+                                   m_slots[i].get_hash());
+      }
+    }
+
+    return result;
   }
 
   StringMap(StringMap &&other) noexcept

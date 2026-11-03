@@ -70,6 +70,29 @@ struct decoded_shell_word
     raw_positions.move_to_allocator(allocator);
     opaque_ranges.move_to_allocator(allocator);
   }
+
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> decoded_shell_word
+  {
+    let result = decoded_shell_word{allocator};
+
+    result.text                     = text.clone_to(allocator);
+    result.glob_active              = glob_active.clone_to(allocator);
+    result.leading                  = leading;
+    result.raw_positions            = raw_positions.clone_to(allocator);
+    result.opaque_ranges            = opaque_ranges.clone_to(allocator);
+    result.raw_directory_end        = raw_directory_end;
+    result.open_quote_content_start = open_quote_content_start;
+    result.open_quote_decoded_start = open_quote_decoded_start;
+    result.last_quote_content_start = last_quote_content_start;
+    result.last_quote_decoded_start = last_quote_decoded_start;
+    result.quote_character          = quote_character;
+    result.last_quote_character     = last_quote_character;
+    result.is_last_quote_ansi_c     = is_last_quote_ansi_c;
+    result.has_shell_syntax         = has_shell_syntax;
+
+    return result;
+  }
 };
 
 enum class shell_word_source_mapping : u8
@@ -712,6 +735,18 @@ struct git_status_result
   move_to_allocator(Allocator allocator) throws -> void
   {
     branch.move_to_allocator(allocator);
+  }
+
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> git_status_result
+  {
+    let result = git_status_result{allocator};
+
+    result.branch       = branch.clone_to(allocator);
+    result.ahead_count  = ahead_count;
+    result.behind_count = behind_count;
+
+    return result;
   }
 
   String branch;

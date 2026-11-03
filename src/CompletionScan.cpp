@@ -2006,7 +2006,7 @@ internal::complete_from_spec(StringView         line,
      non-null. */
 
   i32 function_status = 0;
-  let active_spec     = spec->clone(completion_allocator());
+  let active_spec     = spec->clone_to(completion_allocator());
   let candidates =
       generate_spec_candidates(active_spec, None, line, token, cursor, context,
                                descriptions, is_for_listing, &function_status);
@@ -2015,7 +2015,7 @@ internal::complete_from_spec(StringView         line,
     spec = context.completion_store().lookup_spec(command);
     if (spec == nullptr) return None;
 
-    active_spec = spec->clone(completion_allocator());
+    active_spec = spec->clone_to(completion_allocator());
     candidates  = generate_spec_candidates(active_spec, None, line, token,
                                            cursor, context, descriptions,
                                            is_for_listing, nullptr);
@@ -2078,7 +2078,7 @@ internal::complete_from_initial_word_spec(StringView         line,
   LOG(Debug, "completing the command word from the %.*s spec",
       static_cast<int>(command_name.length), command_name.data);
 
-  let active_spec = spec->clone(completion_allocator());
+  let active_spec = spec->clone_to(completion_allocator());
   let candidates =
       generate_spec_candidates(active_spec, command_name, line, token, cursor,
                                context, descriptions, is_for_listing, nullptr);

@@ -553,7 +553,7 @@ render_process_relatives(String                      &output,
     append_label(output, nodes[position], allocator, options);
     rendered_count++;
 
-    let relative_prefix = String{allocator, prefix.view()};
+    let relative_prefix = prefix.clone_to(allocator);
 
     relative_prefix += connector.continuation;
     render_process_relatives(output, nodes, position, relative_prefix,
@@ -591,8 +591,8 @@ read_process_nodes(Allocator            allocator,
       node.command_line =
           escape_terminal_text(allocator, process.command_line.view());
     } else {
-      node.name         = String{allocator, process.name.view()};
-      node.command_line = String{allocator, process.command_line.view()};
+      node.name         = process.name.clone_to(allocator);
+      node.command_line = process.command_line.clone_to(allocator);
     }
     nodes.push(steal(node));
   }

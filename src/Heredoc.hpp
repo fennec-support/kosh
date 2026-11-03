@@ -35,6 +35,13 @@ struct pending_heredoc
   {
     delimiter.move_to_allocator(allocator);
   }
+
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> pending_heredoc
+  {
+    return pending_heredoc{delimiter.clone_to(allocator), should_strip_tabs,
+                           should_join_lines, join_state};
+  }
 };
 
 struct heredoc_line_match

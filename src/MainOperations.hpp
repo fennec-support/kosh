@@ -2219,7 +2219,7 @@ expand_interactive_history_spans(StringView               source,
 
     let next_substitution = history_substitution{
         String{heap_allocator(), effective_old_text},
-        String{heap_allocator(), replacement.view()}
+        replacement.clone_to(heap_allocator())
     };
 
     state.last_substitution = steal(next_substitution);

@@ -667,10 +667,8 @@ Xargs::execute(const ExecContext               &ec,
     if (has_deferred_item) {
       has_deferred_item = false;
 
-      return xargs_item{
-          String{allocator, deferred_value.view()},
-          deferred_line_number
-      };
+      return xargs_item{deferred_value.clone_to(allocator),
+                        deferred_line_number};
     }
 
     if (has_reached_eof_item) return None;

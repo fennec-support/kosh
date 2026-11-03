@@ -65,11 +65,11 @@ Pushd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           "Push a directory first with `pushd DIR`"};
     }
 
-    let const target = String{cxt.scratch_allocator(), stack.back().view()};
+    let const target = stack.back().clone_to(cxt.scratch_allocator());
     let const status = run_cd_to_directory(cxt, ec, target.view());
 
     if (status != 0) return status;
-    stack.back() = String{heap_allocator(), pwd.view()};
+    stack.back() = pwd.clone_to(heap_allocator());
     print_directory_stack(cxt, ec, false, false, false);
 
     return 0;

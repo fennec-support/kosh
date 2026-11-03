@@ -26,7 +26,7 @@ StringView::to_lower_ascii(Allocator allocator) const throws -> String
 }
 
 fn
-StringView::copy_to(Allocator allocator) const throws -> StringView
+StringView::clone_to(Allocator allocator) const throws -> StringView
 {
   if (length == 0) return StringView{};
 

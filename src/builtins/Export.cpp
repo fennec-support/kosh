@@ -55,7 +55,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let has_error = false;
 
     for (usize i = 1; i < args.count(); i++) {
-      let const  name   = String{cxt.scratch_allocator(), args[i].view()};
+      let const  name   = args[i].clone_to(cxt.scratch_allocator());
       let const *source = cxt.function_store().find_source(name.view());
 
       if (source == nullptr) {
@@ -243,8 +243,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       os::set_environment_variable(name, value);
       cxt.mark_exported(name);
       if (utils::environment_name_is_path(name.view()))
-        cxt.program_resolver().assign_path(
-            String{heap_allocator(), value.view()});
+        cxt.program_resolver().assign_path(value.clone_to(heap_allocator()));
       continue;
     }
 
@@ -303,8 +302,7 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     os::set_environment_variable(environment_name.view(), value);
     cxt.mark_exported(environment_name.view());
     if (utils::environment_name_is_path(name.view()))
-      cxt.program_resolver().assign_path(
-          String{heap_allocator(), value.view()});
+      cxt.program_resolver().assign_path(value.clone_to(heap_allocator()));
   }
 
   if (has_assignment_error) return declaration_assignment_failure_status(cxt);

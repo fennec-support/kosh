@@ -297,7 +297,7 @@ append_network_socket_report(String                              &output,
               process.start_token == socket.owner_start_token)
           {
             if (!process.name.is_empty())
-              row.process_name = String{allocator, process.name.view()};
+              row.process_name = process.name.clone_to(allocator);
             if (!socket.has_owner_id)
               row.owner = do_get_owner_text(process.owner_id);
           }

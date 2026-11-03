@@ -2111,7 +2111,7 @@ struct script_cursor
     chunk.command_string_name = COMMAND_STRING_SOURCE_NAME;
     if (!is_fresh_evaluator) {
       context.execution_store().set_execution_string(
-          String{heap_allocator(), chunk.contents.view()});
+          chunk.contents.clone_to(heap_allocator()));
     }
 
     LOG(Info, "taking the -c command string %zu of %zu, %zu bytes",

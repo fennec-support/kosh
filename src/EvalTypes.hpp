@@ -300,7 +300,14 @@ struct variable_entry
   mustuse fn
   clone() const throws -> variable_entry
   {
-    return variable_entry{value.clone(), elements.clone(), attribute_bits,
+    return clone_to(value.allocator());
+  }
+
+  mustuse fn
+  clone_to(Allocator allocator) const throws -> variable_entry
+  {
+    return variable_entry{value.clone_to(allocator),
+                          elements.clone_to(allocator), attribute_bits,
                           has_value, is_indexed_array};
   }
 
@@ -348,14 +355,20 @@ struct variable_table_body
   mustuse fn
   clone() const throws -> variable_table_body
   {
-    let copy = variable_table_body{index.allocator()};
+    return clone_to(index.allocator());
+  }
 
-    copy.index                = index.clone();
+  mustuse fn
+  clone_to(Allocator allocator) const throws -> variable_table_body
+  {
+    let copy = variable_table_body{allocator};
+
+    copy.index                = index.clone_to(allocator);
     copy.value_count          = value_count;
     copy.indexed_array_count  = indexed_array_count;
     copy.noted_attribute_bits = noted_attribute_bits;
     copy.index.for_each([&](StringView, variable_entry *&entry) throws {
-      entry = copy.entries.emplace(entry->clone());
+      entry = copy.entries.emplace(entry->clone_to(allocator));
     });
 
     return copy;
@@ -384,9 +397,15 @@ public:
   mustuse fn
   clone() const throws -> VariableTable
   {
-    let copy = VariableTable{m_body.allocator()};
+    return clone_to(m_body.allocator());
+  }
 
-    copy.m_body = m_body.clone();
+  mustuse fn
+  clone_to(Allocator allocator) const throws -> VariableTable
+  {
+    let copy = VariableTable{allocator};
+
+    copy.m_body = m_body.clone_to(allocator);
 
     return copy;
   }
@@ -750,6 +769,18 @@ struct glob_field
     text.move_to_allocator(allocator);
     glob_active.move_to_allocator(allocator);
   }
+
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> glob_field
+  {
+    let result = glob_field{allocator};
+
+    result.text             = text.clone_to(allocator);
+    result.glob_active      = glob_active.clone_to(allocator);
+    result.has_literal_glob = has_literal_glob;
+
+    return result;
+  }
 };
 
 enum class glob_expansion_mode : u8
@@ -869,7 +900,14 @@ struct trap_definition
   fn
   clone() const throws -> trap_definition
   {
-    return trap_definition{action_text.clone(), line_source.clone(), location,
+    return clone_to(action_text.allocator());
+  }
+
+  fn
+  clone_to(Allocator allocator) const throws -> trap_definition
+  {
+    return trap_definition{action_text.clone_to(allocator),
+                           line_source.clone_to(allocator), location,
                            line_offset, has_location};
   }
 
@@ -1042,6 +1080,30 @@ struct job
   {
     earlier_pipeline_processes.move_to_allocator(allocator);
     command.move_to_allocator(allocator);
+  }
+
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> job
+  {
+    let result = job{allocator};
+
+    result.earlier_pipeline_processes =
+        earlier_pipeline_processes.clone_to(allocator);
+    result.command                     = command.clone_to(allocator);
+    result.process_id                  = process_id;
+    result.process_group_id            = process_group_id;
+    result.id                          = id;
+    result.pid                         = pid;
+    result.last_status                 = last_status;
+    result.stopped_status              = stopped_status;
+    result.termination                 = termination;
+    result.state                       = state;
+    result.is_primary_process_active   = is_primary_process_active;
+    result.has_unreported_state_change = has_unreported_state_change;
+    result.is_inherited                = is_inherited;
+    result.was_waited                  = was_waited;
+
+    return result;
   }
 };
 

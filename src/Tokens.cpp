@@ -126,7 +126,7 @@ WordSegment::set_exact_constant_arithmetic_text(StringView text,
     cache.arithmetic_lifetime = arena->register_lifetime();
   }
 
-  cache.exact_constant_text     = text.copy_to(bump_allocator(*arena));
+  cache.exact_constant_text     = text.clone_to(bump_allocator(*arena));
   cache.has_exact_constant_text = true;
 }
 
@@ -177,7 +177,7 @@ WordSegment::reset_copied_eval_cache(segment_eval_cache &cache,
   if (is_shared) {
     cache.arithmetic_tree = tree;
   } else if (tree != nullptr) {
-    cache.arithmetic_tree = tree->copy_to(allocator);
+    cache.arithmetic_tree = tree->clone_to(allocator);
   }
 }
 
@@ -228,7 +228,7 @@ WordSegment::move_resources_to_arena(BumpArena &arena) throws -> void
   let const tree = m_eval_cache->arithmetic_tree;
 
   if (tree != nullptr && !allocator.owns(tree)) {
-    m_eval_cache->arithmetic_tree = tree->copy_to(allocator);
+    m_eval_cache->arithmetic_tree = tree->clone_to(allocator);
     arith_tree::release(tree);
   }
 
@@ -865,7 +865,7 @@ Word::get_assignment_split(Allocator allocator) const throws
   }
 
   for (usize i = 1; i < segments.count(); i++)
-    value.segments.push(segments[i].clone(allocator));
+    value.segments.push(segments[i].clone_to(allocator));
 
   value.finish();
 

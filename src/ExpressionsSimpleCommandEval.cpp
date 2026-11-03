@@ -756,7 +756,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
           const ArrayList<String>        &values) throws -> void {
     if (!cxt.runtime_state().should_echo_expanded()) return;
 
-    let trace = String{cxt.scratch_allocator(), assignment.name.view()};
+    let trace = assignment.name.clone_to(cxt.scratch_allocator());
 
     trace +=
         assignment.update_mode == assignment_update_mode::Append ? "+=(" : "=(";
@@ -860,7 +860,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
       /* a compound assignment traces its words as written. */
       if (cxt.runtime_state().should_echo_expanded()) {
-        let trace = String{cxt.scratch_allocator(), assignment.name.view()};
+        let trace = assignment.name.clone_to(cxt.scratch_allocator());
 
         trace += assignment.update_mode == assignment_update_mode::Append
                      ? "+=("
@@ -1201,7 +1201,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
         if (is_path_name)
           cxt.program_resolver().assign_path(
-              String{heap_allocator(), expanded_value.view()});
+              expanded_value.clone_to(heap_allocator()));
         if (name == "IFS")
           cxt.variable_store().set_field_separators(expanded_value.view());
       };

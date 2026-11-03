@@ -96,7 +96,7 @@ Pwdx::execute(const ExecContext               &ec,
       continue;
     }
 
-    let line = String{cxt.scratch_allocator(), operand.view()};
+    let line = operand.clone_to(cxt.scratch_allocator());
 
     line += ": ";
     line += working_directory->path.view();

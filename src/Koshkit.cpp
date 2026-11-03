@@ -1912,7 +1912,7 @@ get_init_system_name(Allocator allocator) throws -> String
 
     if (named.has_value()) return String{allocator, *named};
 
-    return String{allocator, process.name.view()};
+    return process.name.clone_to(allocator);
   }
 
   return String{allocator, "unknown"};

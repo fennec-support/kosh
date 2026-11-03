@@ -146,7 +146,18 @@ public:
   mustuse cold fn
   clone() const throws -> Bitset
   {
-    return Bitset{*this};
+    return clone_to(allocator());
+  }
+
+  mustuse cold fn
+  clone_to(Allocator allocator) const throws -> Bitset
+  {
+    let result = Bitset{allocator};
+
+    result.m_words  = m_words.clone_to(allocator);
+    result.m_length = m_length;
+
+    return result;
   }
 
   hot mustuse pure fn

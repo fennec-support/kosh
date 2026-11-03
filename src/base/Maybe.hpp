@@ -73,6 +73,20 @@ public:
     return Maybe{clone_value(reference())};
   }
 
+  mustuse fn
+  clone_to(Allocator allocator) const throws -> Maybe
+  {
+    if (!m_has_value) return None;
+
+    if constexpr (is_allocator_clonable<T>) {
+      return Maybe{reference().clone_to(allocator)};
+    } else {
+      unused(allocator);
+
+      return Maybe{clone_value(reference())};
+    }
+  }
+
   /* moves the storage of the value to allocator when the value owns any. */
   cold fn
   move_to_allocator(Allocator allocator) throws -> void

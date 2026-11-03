@@ -256,7 +256,7 @@ scan_no_editor_history(const Path &path,
   let &state = get_no_editor_history_state();
 
   if (state.loaded_path.view() != path.view())
-    state.loaded_path = String{heap_allocator(), path.view()};
+    state.loaded_path = path.clone_to(heap_allocator());
   state.branch_contents = String{heap_allocator(), contents};
   state.record_byte_offsets.clear();
   state.durable_record_byte_offsets.clear();
@@ -385,9 +385,7 @@ find_no_editor_history_event(Allocator    allocator,
     if (!decode_history_record(decoded, state.branch_contents.view(), span))
       return None;
     if (do_match(number, decoded.view())) {
-      return toiletline::history_event{
-          number, String{allocator, decoded.view()}
-      };
+      return toiletline::history_event{number, decoded.clone_to(allocator)};
     }
   }
 
