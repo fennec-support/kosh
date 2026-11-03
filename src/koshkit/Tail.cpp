@@ -529,15 +529,22 @@ Tail::execute(const ExecContext               &ec,
 
   i32 status = 0;
 
-  let const do_report_error = [&](usize      source_index,
-                                  StringView prefix) throws -> void {
+  let const do_report_reason = [&](usize source_index, StringView prefix,
+                                   StringView reason) throws -> void {
     let const message = String{allocator, prefix} +
                         String{cxt.scratch_allocator(), sources[source_index]} +
-                        "': " + os::last_system_error_message();
+                        "': " + reason;
 
     do_flush_output();
     report_soft_koshkit_error(ec, cxt, message);
     status = 1;
+  };
+
+  let const do_report_error = [&](usize      source_index,
+                                  StringView prefix) throws -> void {
+    let const reason = os::last_system_error_message();
+
+    do_report_reason(source_index, prefix, reason.view());
   };
 
   let states = ArrayList<positioned_tail_state>{allocator};
@@ -670,14 +677,17 @@ Tail::execute(const ExecContext               &ec,
 
     if (os::INTERRUPT_REQUESTED) return;
     if (!content.has_value()) {
+      /* the header can clear the error of the failed read. */
+      let const reason = os::last_system_error_message();
       let const is_directory =
           metadata_errors[source_index] == 0 &&
           os::file_type_letter(statuses[source_index].mode) == 'd';
 
       if (is_directory) do_write_header(source_index);
 
-      do_report_error(source_index,
-                      is_directory ? "Cannot read '" : "Cannot open '");
+      do_report_reason(source_index,
+                       is_directory ? "Cannot read '" : "Cannot open '",
+                       reason.view());
 
       return;
     }
