@@ -19,6 +19,23 @@
 
 namespace koshka {
 
+/* points standard input at the null device, so a completion callback cannot
+   read the terminal the line editor holds. */
+static fn
+redirect_stdin_to_null_device() throws -> Maybe<os::saved_descriptor>
+{
+  let const null_input =
+      os::open_file_descriptor("/dev/null", os::file_open_mode::Read);
+
+  if (!null_input.has_value()) return None;
+
+  let const saved_input = os::save_and_replace_descriptor(0, *null_input);
+
+  os::close_fd(*null_input);
+
+  return saved_input;
+}
+
 fn
 EvalContext::run_completion_command(StringView command,
                                     StringView command_name,
@@ -56,16 +73,10 @@ EvalContext::run_completion_command(StringView command,
     enter_subshell();
     defer { leave_subshell(); };
 
-    let const null_input =
-        os::open_file_descriptor("/dev/null", os::file_open_mode::Read);
-    let saved_input = os::saved_descriptor{};
+    let const saved_input = redirect_stdin_to_null_device();
 
-    if (null_input.has_value()) {
-      saved_input = os::save_and_replace_descriptor(0, *null_input);
-      os::close_fd(*null_input);
-    }
     defer {
-      if (null_input.has_value()) os::restore_descriptor(saved_input);
+      if (saved_input.has_value()) os::restore_descriptor(*saved_input);
     };
 
     try {
@@ -279,16 +290,10 @@ EvalContext::run_completion_function(
     execution_store().is_terminal_exec_allowed() = was_terminal_exec_allowed;
   };
 
-  let const null_input =
-      os::open_file_descriptor("/dev/null", os::file_open_mode::Read);
-  let saved_input = os::saved_descriptor{};
+  let const saved_input = redirect_stdin_to_null_device();
 
-  if (null_input.has_value()) {
-    saved_input = os::save_and_replace_descriptor(0, *null_input);
-    os::close_fd(*null_input);
-  }
   defer {
-    if (null_input.has_value()) os::restore_descriptor(saved_input);
+    if (saved_input.has_value()) os::restore_descriptor(*saved_input);
   };
 
   let was_interrupted = false;
