@@ -60,7 +60,7 @@
 #define KOSH_VER_MAJOR  0
 #define KOSH_VER_MINOR  4
 #define KOSH_VER_PATCH  0
-#define KOSH_VER_SUFFIX "/dev"
+#define KOSH_VER_SUFFIX ""
 
 #define KOSH_STRINGIFY_INNER(x) #x
 #define KOSH_STRINGIFY(x)       KOSH_STRINGIFY_INNER(x)
