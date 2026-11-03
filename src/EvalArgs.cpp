@@ -627,6 +627,7 @@ enum declaration_command_flag : u8
   declaration_flag_declare     = 1 << 1,
   declaration_flag_declaration = 1 << 2,
   declaration_flag_test        = 1 << 3,
+  declaration_flag_let         = 1 << 4,
 };
 
 constexpr static_string_entry<u8> DECLARATION_COMMAND_ENTRIES[] = {
@@ -637,6 +638,7 @@ constexpr static_string_entry<u8> DECLARATION_COMMAND_ENTRIES[] = {
     {SSK("readonly"), declaration_flag_declaration                           },
     {SSK("unset"),    declaration_flag_declaration                           },
     {SSK("test"),     declaration_flag_test                                  },
+    {SSK("let"),      declaration_flag_let                                   },
 };
 constexpr StaticStringMap DECLARATION_COMMANDS{DECLARATION_COMMAND_ENTRIES};
 
@@ -686,6 +688,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
   let is_local_command       = false;
   let is_declare_command     = false;
   let is_test_command        = false;
+  let is_let_command         = false;
 
   if (!args.is_empty() && args[0]->kind() == Token::Kind::Word) {
     const Word &command_word =
@@ -699,6 +702,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
       is_declare_command     = (flags & declaration_flag_declare) != 0;
       is_declaration_command = (flags & declaration_flag_declaration) != 0;
       is_test_command        = (flags & declaration_flag_test) != 0;
+      is_let_command         = (flags & declaration_flag_let) != 0;
     } else if (command_word.segments.count() == 1 &&
                command_word.segments[0].kind ==
                    WordSegment::Kind::UnquotedText &&
@@ -735,13 +739,79 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
       subscript_ends->push(0);
   };
 
+  /* appends head and the segments of subscript to out, lexing the subscript in
+     the parse arena from mark onward. a subscript that does not lex as one
+     word leaves out unchanged. */
+  let const do_append_subscript_segments =
+      [&](StringView head, StringView subscript, Word &out,
+          Maybe<BumpArena::Mark> &mark) throws -> bool {
+    let const do_push_unquoted = [&](StringView text) throws -> void {
+      out.segments.push(WordSegment{
+          WordSegment::Kind::UnquotedText,
+          SegmentText{scratch_allocator(), text},
+          false
+      });
+    };
+
+    let has_expansion = false;
+
+    for (usize i = 0; i < subscript.length && !has_expansion; i++) {
+      let const c = subscript[i];
+
+      has_expansion =
+          c == '$' || c == '`' || c == '\'' || c == '"' || c == '\\';
+    }
+
+    if (!has_expansion) {
+      do_push_unquoted(head);
+      do_push_unquoted(subscript);
+
+      return true;
+    }
+
+    let *const arena = arena_store().parse_arena();
+
+    if (arena == nullptr) return false;
+    if (!mark.has_value()) mark = arena->mark();
+
+    let lexer = Lexer{subscript, *arena, None, runtime_state().get_mood()};
+    let const *const subscript_token = lexer.next_shell_token();
+
+    if (subscript_token == nullptr ||
+        subscript_token->kind() != Token::Kind::Word)
+    {
+      return false;
+    }
+
+    let const *const after = lexer.next_shell_token();
+
+    if (after != nullptr && after->kind() != Token::Kind::EndOfFile) {
+      return false;
+    }
+
+    do_push_unquoted(head);
+    for (let const &segment :
+         static_cast<const tokens::WordToken *>(subscript_token)
+             ->word()
+             .segments)
+      out.segments.push(segment);
+
+    return true;
+  };
+
   for (let const *token : args) {
     let const location = token->source_location();
 
     do_fill_subscript_ends();
     try {
-      let         fallback_word = Maybe<Word>{};
-      const Word *word          = nullptr;
+      let         fallback_word    = Maybe<Word>{};
+      const Word *word             = nullptr;
+      let         parse_arena_mark = Maybe<BumpArena::Mark>{};
+
+      defer {
+        if (parse_arena_mark.has_value())
+          arena_store().parse_arena()->release(*parse_arena_mark);
+      };
 
       if (token->kind() == Token::Kind::Word) {
         word = &static_cast<const tokens::WordToken *>(token)->word();
@@ -800,11 +870,25 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         }
 
         let const key         = assignment_token->key().view();
+        let const open        = key.find_character('[');
         let       key_literal = String{heap_allocator()};
 
-        /* the lexer keeps the source of a subscript, which an ordinary
-           argument expands like the rest of the word. */
-        if (let const open = key.find_character('['); open.has_value()) {
+        fallback_word           = Word{};
+        fallback_word->segments = ArrayList<WordSegment>{scratch_allocator()};
+
+        /* the lexer keeps the source of a subscript. an ordinary argument
+           expands it as part of a normal word, and let receives the expanded
+           key as one word. */
+        let const is_key_split =
+            !is_let_command && open.has_value() &&
+            do_append_subscript_segments(
+                key.substring_of_length(0, *open + 1),
+                key.substring_of_length(*open + 1, key.length - *open - 2),
+                *fallback_word, parse_arena_mark);
+
+        if (is_key_split) {
+          key_literal.push(']');
+        } else if (open.has_value()) {
           key_literal.append(key.substring_of_length(0, *open + 1));
           key_literal.append(
               expand_modifier_word(
@@ -819,15 +903,15 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
             assignment_update_mode::Append)
           key_literal += "+";
         key_literal += "=";
-        fallback_word           = Word{};
-        fallback_word->segments = ArrayList<WordSegment>{scratch_allocator()};
         fallback_word->segments.push(WordSegment{
-            WordSegment::Kind::LiteralText,
+            is_key_split ? WordSegment::Kind::UnquotedText
+                         : WordSegment::Kind::LiteralText,
             SegmentText{scratch_allocator(), key_literal.view()},
             false
         });
 
-        let const &value = assignment_token->value_word();
+        let const  value_start = fallback_word->segments.count();
+        let const &value       = assignment_token->value_word();
 
         for (let const &value_segment : value.segments)
           fallback_word->segments.push(value_segment);
@@ -837,14 +921,16 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         {
           let &segments = fallback_word->segments;
 
-          if (segments.count() > 1 && segments[1].is_tilde_candidate() &&
-              !segments[1].text.is_empty() &&
-              segments[1].text.first_character() == '~')
+          if (segments.count() > value_start &&
+              segments[value_start].is_tilde_candidate() &&
+              !segments[value_start].text.is_empty() &&
+              segments[value_start].text.first_character() == '~')
           {
-            expand_tilde(segments[1], segments.count() > 2, true);
+            expand_tilde(segments[value_start],
+                         segments.count() > value_start + 1, true);
           }
 
-          for (usize i = 1; i < segments.count(); i++)
+          for (usize i = value_start; i < segments.count(); i++)
             expand_colon_tildes(segments[i], i + 1 < segments.count());
         }
 

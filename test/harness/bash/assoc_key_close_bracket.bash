@@ -104,3 +104,20 @@ k=ab
 let l[\$k]=1 "l[\$k]+=1" l['$k']+=1 l["$k"]+=1
 declare -p l
 echo h[\$k]=1 h["$k"]=2 h['x y']=3 h[$k]+=4
+
+# An ordinary command splits and globs a subscripted argument as a normal word,
+# while the declaration builtins keep it whole.
+dir=$(mktemp -d)
+touch "$dir/aq=1" "$dir/a[q]=2"
+k='x y' x=q
+printf '<%s>\n' h[$k]=1 h["$k"]=2 h[$k]+=3 h[$x]=~
+(cd "$dir" && printf '<%s>\n' a[$x]=* a[q]=* a[\$x]=* a[$x]=)
+command declare -A cd 2>/dev/null
+command declare cd[$k]=4 2>/dev/null
+echo "command declare=$?"
+declare -A d
+declare d[$k]=5
+local_d() { local -A m; local m[$k]=6; declare -p m; }
+local_d
+declare -p d
+rm -r "$dir"

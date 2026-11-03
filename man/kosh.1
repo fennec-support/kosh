@@ -4290,6 +4290,15 @@ ends, each other \f[CR]IFS\f[R] byte delimits a possibly empty field,
 and an empty \f[CR]IFS\f[R] disables splitting.
 An unquoted expansion that yields nothing produces no field, and
 \f[CR]\[dq]\[dq]\f[R] produces an empty field.
+.RS 2
+.IP \[bu] 2
+An argument of \f[CR]declare\f[R], \f[CR]typeset\f[R], \f[CR]local\f[R],
+\f[CR]export\f[R], or \f[CR]readonly\f[R] that looks like an assignment
+is not split or matched as a pattern.
+\f[CR]let\f[R] keeps the expanded subscript of such an argument in one
+word (\f[CR]let h[$k]=1\f[R]), and every other command splits and
+matches an argument such as \f[CR]h[$k]=1\f[R] as any other word.
+.RE
 .IP \[bu] 2
 \f[B]Quote removal\f[R] \- Removes unquoted backslashes, single quotes,
 and double quotes that did not result from an expansion.

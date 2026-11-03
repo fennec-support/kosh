@@ -644,6 +644,7 @@ These Bash variables have no effect: `HISTCONTROL`, `HISTFILE`, `HISTFILESIZE`, 
   * Sets `$!` to the process, and `wait` on it returns its status.
   * POSIX path is `/dev/fd/63` or the next free descriptor above it. On Windows it is a FIFO-like pipe: each reader continues where the previous stopped and each writer appends to the same stream.
 * **Field splitting** - Results of unquoted parameter expansion, command substitution, and arithmetic expansion split at the bytes of `IFS`. A run of `IFS` whitespace collapses and is ignored at both ends, each other `IFS` byte delimits a possibly empty field, and an empty `IFS` disables splitting. An unquoted expansion that yields nothing produces no field, and `""` produces an empty field.
+  * An argument of `declare`, `typeset`, `local`, `export`, or `readonly` that looks like an assignment is not split or matched as a pattern. `let` keeps the expanded subscript of such an argument in one word (`let h[$k]=1`), and every other command splits and matches an argument such as `h[$k]=1` as any other word.
 * **Quote removal** - Removes unquoted backslashes, single quotes, and double quotes that did not result from an expansion.
 
 #### Parameter and substitution forms
