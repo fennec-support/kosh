@@ -467,6 +467,31 @@ constexpr static_string_entry<u16> COMMAND_FACT_ENTRIES[] = {
 };
 constexpr StaticStringMap COMMAND_FACTS{COMMAND_FACT_ENTRIES};
 
+static constexpr let COMMAND_FACT_LENGTHS = [] {
+  struct
+  {
+    u16 length_bits[256]{};
+  } table;
+
+  for (let const &entry : COMMAND_FACT_ENTRIES) {
+    table.length_bits[entry.key.leading_byte()] |=
+        static_cast<u16>(1U << entry.key.packed_length());
+  }
+
+  return table;
+}();
+
+static_assert(COMMAND_FACTS.prefilter.longest_key_length < 16);
+
+static pure fn
+may_be_command_fact_name(StringView text) wontthrow -> bool
+{
+  return !text.is_empty() && text.length < 16 &&
+         ((COMMAND_FACT_LENGTHS.length_bits[static_cast<u8>(text[0])] >>
+           text.length) &
+          1U) != 0;
+}
+
 fn
 Word::classify_command() throws -> void
 {
@@ -475,7 +500,9 @@ Word::classify_command() throws -> void
   let command_facts = u16{0};
 
   if (plain_literal_kind() != PlainLiteral::NotPlain && segments.count() == 1) {
-    command_facts |= COMMAND_FACTS.find(segments[0].text.view()).value_or(0);
+    if (may_be_command_fact_name(segments[0].text.view())) {
+      command_facts |= COMMAND_FACTS.find(segments[0].text.view()).value_or(0);
+    }
   } else if (plain_literal_kind() != PlainLiteral::NotPlain) {
     let text_byte_count = usize{0};
 
