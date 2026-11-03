@@ -23,6 +23,97 @@ _kosh_complete ()
   local mood_values="kosh bash sh bash-posix"
   local tab_selector_values="interactive external plain"
 
+  # Options may stand between -c and its command string. The word after the
+  # string is $0 unless it is another -c, and later words are arguments.
+  local index word letters value_count=0 is_command_pending=0
+  local command_string_index=0 operand_index=0
+
+  for ((index = 1; index < COMP_CWORD; index++))
+  do
+    word=${COMP_WORDS[index]}
+
+    if ((value_count > 0))
+    then
+      value_count=$((value_count - 1))
+      continue
+    fi
+
+    if ((command_string_index > 0)) && ((index == command_string_index + 1))
+    then
+      case $word in
+        -c | --command)
+          is_command_pending=1
+          command_string_index=0
+          continue
+        ;;
+        --command=*)
+          command_string_index=$index
+          continue
+        ;;
+      esac
+
+      operand_index=$index
+      break
+    fi
+
+    case $word in
+      - | --)
+        operand_index=$index
+        break
+      ;;
+      --command)
+        is_command_pending=1
+      ;;
+      --command=*)
+        command_string_index=$index
+      ;;
+      --mood | --init-moods | --rcfile | --init-file | --tab-selector | -M | -L)
+        value_count=1
+      ;;
+      --*)
+      ;;
+      [-+]?*)
+        letters=${word:1}
+        letters=${letters//[!oO]/}
+        value_count=${#letters}
+        [[ $word == -*c* ]] && is_command_pending=1
+      ;;
+      *)
+        if ((is_command_pending))
+        then
+          is_command_pending=0
+          command_string_index=$index
+        else
+          operand_index=$index
+          break
+        fi
+      ;;
+    esac
+  done
+
+  if ((operand_index > 0))
+  then
+    if ((is_command_pending))
+    then
+      COMPREPLY=()
+    else
+      _kosh_compgen -f -- "$current_word"
+    fi
+
+    return
+  fi
+
+  if ((command_string_index > 0))
+  then
+    COMPREPLY=()
+    if ((COMP_CWORD == command_string_index + 1)) && [[ $current_word == -* ]]
+    then
+      _kosh_compgen -W "-c --command" -- "$current_word"
+    fi
+
+    return
+  fi
+
   case $previous_word in
     --tab-selector)
       _kosh_compgen -W "$tab_selector_values" -- "$current_word"
@@ -48,12 +139,14 @@ _kosh_complete ()
       _kosh_compgen -A shopt -- "$current_word"
       return
     ;;
-    -c | --command)
-      COMPREPLY=()
-
-      return
-    ;;
   esac
+
+  if ((is_command_pending)) && [[ $current_word != [-+]* ]]
+  then
+    COMPREPLY=()
+
+    return
+  fi
 
   local \
     long_flags="--version --short-version --help --interactive --stdin \
