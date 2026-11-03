@@ -707,10 +707,12 @@ TMPDIR=$dir/missing "$BIN" -c 'cat <<<here; echo "status $?"'
 
 echo "--- help reports a failed write of a builtin help ---"
 "$BIN" --mood bash -c 'help cd >&-; echo "status $?"' 2>/dev/null
+"$BIN" --mood bash -c 'help false [ >/dev/null; echo "status $?"'
 
 echo "--- -o posix applies under the bash mood ---"
 "$BIN" --mood=bash -o posix -c 'shopt -qo posix && echo on'
 "$BIN" --mood=bash --posix -c 'shopt -qo posix && echo on'
+"$BIN" --mood=bash -o posix +o posix -c 'shopt -qo posix || echo off'
 
 echo "--- a multicall timeout passes --version to its command ---"
 ln -s "$BIN" timeout

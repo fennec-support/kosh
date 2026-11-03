@@ -841,7 +841,14 @@ resolve_invocation_options(ArrayList<invocation_option> &options) throws
     }
 
     if (option->storage == option_storage::Posix) {
-      if (is_on) FLAG_POSIX_COMPAT.enable();
+      if (position > FLAG_POSIX_COMPAT.position()) {
+        if (is_on)
+          FLAG_POSIX_COMPAT.enable();
+        else
+          FLAG_POSIX_COMPAT.disable();
+        FLAG_POSIX_COMPAT.set_position(static_cast<u32>(position));
+      }
+
       continue;
     }
 

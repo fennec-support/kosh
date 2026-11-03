@@ -416,9 +416,11 @@ here
 status 0
 --- help reports a failed write of a builtin help ---
 status 1
+status 0
 --- -o posix applies under the bash mood ---
 on
 on
+off
 --- a multicall timeout passes --version to its command ---
 [--version]
 1

@@ -139,6 +139,16 @@ Help::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
       continue;
     }
 
+    let const *flags = builtin_flag_list(*resolved);
+
+    if ((*resolved == Builtin::Kind::False ||
+         *resolved == Builtin::Kind::Test) &&
+        synopsis != nullptr && flags != nullptr)
+    {
+      show_builtin_help_impl(ec, description, *synopsis, *flags);
+      continue;
+    }
+
     let forwarded = ArrayList<String>{heap_allocator()};
 
     forwarded.push_managed(name.view());

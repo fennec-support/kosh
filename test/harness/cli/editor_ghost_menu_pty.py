@@ -396,6 +396,15 @@ class Session:
                 return is_ready(self.screen)
         return is_ready(self.screen)
 
+    def wait_for_raw_mode(self):
+        deadline = time.monotonic() + WAIT_SECONDS
+        while time.monotonic() < deadline:
+            if not termios.tcgetattr(self.fd)[3] & termios.ICANON:
+                return True
+            if not self.pump(0.02):
+                return False
+        return False
+
     def send(self, data):
         os.write(self.fd, data)
 
@@ -1189,6 +1198,7 @@ def run_checks(binary, directory, command_directory, report):
         long_command = b"echo hist-long-" + b"y" * 130
         session.send(long_command + b"\r")
         session.wait_until(is_line(""))
+        session.wait_for_raw_mode()
         session.send(b"hist-long" + CTRL_R)
         report.record("ctrl-r-cuts-a-long-row-with-an-ellipsis", session,
                       lambda screen: has_search_row(
