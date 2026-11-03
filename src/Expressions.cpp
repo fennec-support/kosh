@@ -909,9 +909,26 @@ AstWriter::parameter(const parameter_reference &reference,
 {
   open("param");
   symbol("form", ast_parameter_form_symbol(reference.kind));
-  if (reference.name_length > 0) {
-    quoted("name", text.substring_of_length(reference.name_offset,
-                                            reference.name_length));
+
+  let const spec    = reference.name_length > 0
+                          ? text.substring_of_length(reference.name_offset,
+                                                     reference.name_length)
+                          : StringView{};
+  let const bracket = spec.find_character('[');
+
+  if (reference.kind == parameter_reference::form::PrefixNames &&
+      !spec.is_empty())
+  {
+    quoted("name", spec.substring_of_length(0, spec.length - 1));
+    quoted("suffix", spec.substring(spec.length - 1));
+  } else if (reference.kind == parameter_reference::form::Keys &&
+             bracket.has_value())
+  {
+    quoted("name", spec.substring_of_length(0, *bracket));
+    quoted("subscript",
+           spec.substring_of_length(*bracket + 1, spec.length - *bracket - 2));
+  } else if (!spec.is_empty()) {
+    quoted("name", spec);
   }
 
   if (reference.kind == parameter_reference::form::Subscripted) {

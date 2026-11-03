@@ -218,7 +218,8 @@ WordSegment::move_resources_to_arena(BumpArena &arena) throws -> void
   if (kind == Kind::VariableReference) {
     set_parameter_reference(
         build_parameter_reference(text.view(), allocator,
-                                  is_substitution_cache_in_function_arena != 0),
+                                  is_substitution_cache_in_function_arena != 0,
+                                  get_source_start()),
         true);
 
     return;

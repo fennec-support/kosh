@@ -5196,6 +5196,7 @@ static fn
 build_operand_word(StringView           word,
                    Allocator            allocator,
                    bool                 is_function_arena,
+                   Maybe<usize>         source_position,
                    parameter_reference &reference) throws -> void
 {
   let *const operand = new (allocator.alloc_array<Word>(1)) Word{};
@@ -5203,15 +5204,23 @@ build_operand_word(StringView           word,
   reference.operand = operand;
   operand->segments = ArrayList<WordSegment>{allocator};
 
+  let const do_place = [&](WordSegment &segment, usize start, usize length) {
+    if (source_position.has_value())
+      segment.set_source_span(*source_position + start, length);
+  };
+
   if (!word.find_character('$').has_value() &&
       !word.find_character('`').has_value())
   {
     if (word.is_empty()) return;
 
-    operand->segments.reserve(1);
-    operand->segments.push(WordSegment{
+    let segment = WordSegment{
         WordSegment::Kind::UnquotedText, SegmentText{allocator, word}
-    });
+    };
+
+    do_place(segment, 0, word.length);
+    operand->segments.reserve(1);
+    operand->segments.push(steal(segment));
 
     return;
   }
@@ -5222,26 +5231,42 @@ build_operand_word(StringView           word,
   let const do_flush_run = [&](usize end) throws {
     if (end <= run_start) return;
 
-    operand->segments.push(WordSegment{
+    let segment = WordSegment{
         WordSegment::Kind::UnquotedText,
         SegmentText{allocator,
                     word.substring_of_length(run_start, end - run_start)}
-    });
+    };
+
+    do_place(segment, run_start, end - run_start);
+    operand->segments.push(steal(segment));
   };
 
   let const do_add_part = [&](usize start, usize end, WordSegment::Kind kind,
-                              StringView body) throws {
+                              StringView body,
+                              usize      body_offset) throws {
     do_flush_run(start);
 
     let segment = WordSegment{
         kind, SegmentText{allocator, body}
     };
 
+    do_place(segment, start, end - start + 1);
     segment.is_substitution_cache_in_function_arena = is_function_arena;
     if (kind == WordSegment::Kind::VariableReference) {
+      let const is_body_verbatim =
+          body_offset + body.length <= word.length &&
+          word.substring_of_length(body_offset, body.length) == body;
+      let const body_position =
+          source_position.has_value() && is_body_verbatim
+              ? Maybe<usize>{*source_position + body_offset}
+              : Maybe<usize>{};
+
       segment.set_parameter_reference(
-          build_parameter_reference(body, allocator, is_function_arena),
+          build_parameter_reference(body, allocator, is_function_arena,
+                                    body_position),
           allocator.get_kind() == Allocator::Kind::Bump);
+      if (body_position.has_value())
+        segment.set_source_span(*body_position, body.length);
     }
 
     parts.push(
@@ -5266,7 +5291,7 @@ build_operand_word(StringView           word,
       let const end   = scan_backquote_body(word, position, inner);
 
       do_add_part(position, end, WordSegment::Kind::CommandSubstitution,
-                  inner.view());
+                  inner.view(), position + 1);
       position = end + 1;
       continue;
     }
@@ -5281,7 +5306,7 @@ build_operand_word(StringView           word,
           scan_command_body(word, heap_allocator(), position + 2, end);
 
       do_add_part(position, end, WordSegment::Kind::CommandSubstitution,
-                  body.view());
+                  body.view(), position + 2);
       position = end + 1;
       continue;
     }
@@ -5293,7 +5318,7 @@ build_operand_word(StringView           word,
       let const body = scan_braced_body(word, heap_allocator(), position, end);
 
       do_add_part(position, end, WordSegment::Kind::VariableReference,
-                  body.view());
+                  body.view(), position + 2);
       position = end + 1;
       continue;
     }
@@ -5358,9 +5383,10 @@ is_shared_name_reference(const parameter_reference *reference) wontthrow -> bool
    time:   O(text length) for the analysis and one scan of the operand, plus
            a nested build for each ${ in the operand. */
 fn
-build_parameter_reference(StringView text,
-                          Allocator  allocator,
-                          bool       is_function_arena) throws
+build_parameter_reference(StringView   text,
+                          Allocator    allocator,
+                          bool         is_function_arena,
+                          Maybe<usize> source_position) throws
     -> parameter_reference *
 {
   if (text.length < NAME_REFERENCE_COUNT && !text.is_empty() &&
@@ -5377,8 +5403,15 @@ build_parameter_reference(StringView text,
   if (!reference->has_operand) return reference;
 
   try {
-    build_operand_word(reference->get_operand(text), allocator,
-                       is_function_arena, *reference);
+    let const operand_text = reference->get_operand(text);
+    let const operand_position =
+        source_position.has_value()
+            ? Maybe<usize>{*source_position +
+                           static_cast<usize>(operand_text.data - text.data)}
+            : Maybe<usize>{};
+
+    build_operand_word(operand_text, allocator, is_function_arena,
+                       operand_position, *reference);
     if (reference->operand != nullptr) reference->operand->finish();
   } catch (...) {
     if (allocator.get_kind() == Allocator::Kind::Heap)

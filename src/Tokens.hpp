@@ -105,9 +105,10 @@ struct arith_tree
 struct parameter_reference;
 
 fn
-build_parameter_reference(StringView text,
-                          Allocator  allocator,
-                          bool       is_function_arena) throws
+build_parameter_reference(StringView   text,
+                          Allocator    allocator,
+                          bool         is_function_arena,
+                          Maybe<usize> source_position = None) throws
     -> parameter_reference *;
 fn
 destroy_parameter_reference(parameter_reference *reference) wontthrow -> void;
@@ -462,7 +463,7 @@ public:
     if (kind == Kind::VariableReference) {
       m_parameter = build_parameter_reference(
           text.view(), heap_allocator(),
-          is_substitution_cache_in_function_arena != 0);
+          is_substitution_cache_in_function_arena != 0, get_source_start());
 
       return;
     }
@@ -581,7 +582,8 @@ public:
       }
 
       copy.m_parameter = build_parameter_reference(
-          text.view(), allocator, is_substitution_cache_in_function_arena != 0);
+          text.view(), allocator, is_substitution_cache_in_function_arena != 0,
+          get_source_start());
       copy.is_eval_cache_in_arena =
           allocator.get_kind() == Allocator::Kind::Bump;
 
@@ -661,6 +663,14 @@ public:
        24-bit source_length. */
     source_position = static_cast<u32>(position);
     source_length   = static_cast<u32>(length);
+  }
+
+  pure fn
+  get_source_start() const wontthrow -> Maybe<usize>
+  {
+    if (source_length == 0) return None;
+
+    return usize{source_position};
   }
 
   pure fn

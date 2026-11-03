@@ -1581,7 +1581,8 @@ Lexer::lex_identifier() throws -> Token *
     if (segment.kind == WordSegment::Kind::VariableReference) {
       segment.set_parameter_reference(
           build_parameter_reference(segment.text.view(), bump_allocator(arena),
-                                    is_function_body),
+                                    is_function_body,
+                                    segment.get_source_start()),
           true);
     }
   }
