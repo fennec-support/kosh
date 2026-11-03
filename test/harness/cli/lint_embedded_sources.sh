@@ -865,7 +865,7 @@ printf 'dockerfile-other unrecognized=%s rc=%s\n' "$unrecognized" "$rc"
 # Each recipe line of a long recipe is its own fragment. The lint time grows
 # linearly with the line count, so 4000 lines finish well inside the timeout,
 # and the last finding keeps its host line and column. The Makefile target
-# has its own SHELL.
+# has its own SHELL, and package.json holds every script on one line.
 mkdir -p "$root/long-recipe"
 {
   printf 'x := "1"\na:\n'
@@ -885,8 +885,17 @@ mkdir -p "$root/long-recipe"
   done
   printf '\techo "$$LONG_MAKE_UNSET"\n'
 } > "$root/long-recipe/Makefile"
+{
+  printf '{"scripts":{'
+  line_count=0
+  while [ "$line_count" -lt 4000 ]; do
+    printf '"s%d":"echo \303\251%d",' "$line_count" "$line_count"
+    line_count=$((line_count + 1))
+  done
+  printf '"last":"echo $LONG_JSON_UNSET"}}\n'
+} > "$root/long-recipe/package.json"
 
-for long_file in justfile Makefile; do
+for long_file in justfile Makefile package.json; do
   output=$(cd "$root/long-recipe" &&
     timeout 20 "$BIN" --lint --no-traces "$long_file" 2>&1)
   rc=$?

@@ -361,6 +361,8 @@ check_source_bytes(AnalysisContext &actx,
 {
   if (!source_holds_scanned_byte(source.substring(start_position))) return;
 
+  /* the bytes before start_position are blank, so the scan treats
+     start_position as the start of a line. */
   let   state                        = source_scan_state::Normal;
   let   was_carriage_return_reported = false;
   let   is_command_position          = true;
@@ -369,9 +371,6 @@ check_source_bytes(AnalysisContext &actx,
   usize arithmetic_paren_depth       = 0;
   let   quoted_substitution_ends     = ArrayList<usize>{heap_allocator()};
   usize at                           = start_position;
-
-  while (line_start > 0 && source[line_start - 1] != '\n')
-    line_start--;
 
   while (at < source.length) {
     if (!quoted_substitution_ends.is_empty() &&

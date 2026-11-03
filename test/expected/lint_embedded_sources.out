@@ -104,3 +104,6 @@ justfile:4003:9: warning: The variable 'LONG_JUST_UNSET' is used before any assi
 long-recipe justfile rc=0
 Makefile:4003:9: warning: The variable 'LONG_MAKE_UNSET' is used before any assignment gives it a value. (SC2154)
 long-recipe Makefile rc=0
+package.json:1:81806: warning: An unquoted variable can split into words and expand globs. (SC2086)
+package.json:1:81806: warning: The variable 'LONG_JSON_UNSET' is used before any assignment gives it a value. (SC2154)
+long-recipe package.json rc=0
