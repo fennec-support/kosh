@@ -68,6 +68,13 @@ Expect roughly 5x the execution speed of Bash and over 100x the linting speed
 of ShellCheck, with 300+ ShellCheck-style diagnostics baked straight into the
 binary.
 
+The whole script is parsed into a syntax tree before a single line of it runs.
+An optimizer folds constants and dead branches in that tree, and every node
+keeps its source positions, parsed arithmetic, and parameter references. The
+static analysis walks the same tree that the interpreter executes. It is
+ludicrously fast, and whole-script diagnostics appear as you type. With all of
+that work Koshka still runs faster than Bash and lints faster than ShellCheck.
+
 | 400,000 lines of shell checked in about a second and a half |
 | :-: |
 | ![Koshka checks a large shell script and reports diagnostics.](assets/lint-demo.gif) |
