@@ -714,6 +714,15 @@ echo "--- -o posix applies under the bash mood ---"
 "$BIN" --mood=bash --posix -c 'shopt -qo posix && echo on'
 "$BIN" --mood=bash -o posix +o posix -c 'shopt -qo posix || echo off'
 
+echo "--- cd -P .. works past the path length limit ---"
+long_name=$(printf 'a%.0s' $(seq 200))
+(
+  for depth in $(seq 30); do
+    mkdir "$long_name" && cd "$long_name" || exit 1
+  done
+  "$BIN" -c 'cd -P .. && echo entered'
+)
+
 echo "--- a multicall timeout passes --version to its command ---"
 ln -s "$BIN" timeout
 ./timeout 1 sh -c 'echo "[$1]"' _ --version

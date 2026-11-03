@@ -361,9 +361,9 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     return 0;
   }
 
-  /* a logical path past the system limit cannot be opened, and a relative
-     operand still can. */
-  if (!is_physical && !is_to_previous && operand_count > 0) {
+  /* a path past the system limit cannot be opened or resolved, and a
+     relative operand still can. */
+  if (!is_to_previous && operand_count > 0) {
     let relative_target = Path{arg_path};
 
     if (relative_target.is_relative() && relative_target.is_directory() &&

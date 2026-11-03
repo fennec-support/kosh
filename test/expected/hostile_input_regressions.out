@@ -421,6 +421,8 @@ status 0
 on
 on
 off
+--- cd -P .. works past the path length limit ---
+entered
 --- a multicall timeout passes --version to its command ---
 [--version]
 1

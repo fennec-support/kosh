@@ -972,6 +972,15 @@ run_line_editor(koshka::EvalContext &context,
     return false;
   }
 
+  if (edited->view().find_character('\0').has_value()) {
+    report_selector_failure_above_repainted_prompt(
+        koshka::StringView{"The edited line in '"} + temp_path->text().view() +
+            "' contains a NUL byte, so the line is kept",
+        LINE_EDITOR_NOTE, false);
+
+    return false;
+  }
+
   edited->normalize_crlf_line_endings();
 
   while (!edited->is_empty() && edited->back() == '\n') {

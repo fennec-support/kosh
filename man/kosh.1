@@ -653,8 +653,8 @@ replacements in one step.
 \f[CR]Ctrl\-X Ctrl\-E\f[R] (or \f[CR]:e\f[R] in Vi mode) opens the
 current buffer in \f[CR]$VISUAL\f[R], \f[CR]$EDITOR\f[R], or
 \f[CR]vi\f[R]; exiting the external editor with status \f[CR]0\f[R]
-replaces the buffer without executing it, while nonzero exits preserve
-the original buffer and print a message.
+replaces the buffer without executing it, while nonzero exits and edited
+text with a NUL byte preserve the original buffer and print a message.
 .IP \[bu] 2
 \f[B]Extended key reporting and undo/redo bindings\f[R] \- While
 collecting input, \f[CR]Ctrl\-Z\f[R] undoes edits (during command
@@ -2626,7 +2626,8 @@ Prints the source of the manual page of each operand, from the section
 operand or the first section that has one, searching the directories of
 \f[CR]MANPATH\f[R] (default \f[CR]/usr/share/man\f[R] and
 \f[CR]/usr/local/share/man\f[R]) (\f[CR]\-k\f[R]/\f[CR]\-\-keyword\f[R]
-list the pages whose first lines contain the keyword).
+list each page whose name or source contains the keyword, ignoring ASCII
+case, with its first line).
 Returns \f[CR]1\f[R] for a missing page.
 T}
 T{
