@@ -766,8 +766,8 @@ argument_end_position(
 static pure fn
 is_exact_flag_word(const Flag &flag, StringView argument) wontthrow -> bool
 {
-  if (flag.short_name() != '\0' && argument.length >= 2 &&
-      argument[0] == '-' && argument[1] == flag.short_name() &&
+  if (flag.short_name() != '\0' && argument.length >= 2 && argument[0] == '-' &&
+      argument[1] == flag.short_name() &&
       (argument.length == 2 || argument[2] == '='))
   {
     return true;
