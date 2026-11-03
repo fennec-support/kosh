@@ -902,3 +902,27 @@ for long_file in justfile Makefile package.json; do
   printf '%s\n' "$output" | grep -E "^$long_file:[0-9]+:[0-9]+: "
   printf 'long-recipe %s rc=%s\n' "$long_file" "$rc"
 done
+
+# The first line of each Markdown fence is the first line of its script. A
+# shebang there is accepted, and a shebang below it is reported on the first
+# line of that fence.
+mkdir -p "$root/shebang-fences"
+cat > "$root/shebang-fences/guide.md" <<'MARKDOWN'
+# Guide
+
+```sh
+echo first
+```
+
+```sh
+#!/bin/sh
+echo second
+```
+
+```sh
+echo third
+#!/bin/sh
+```
+MARKDOWN
+(cd "$root/shebang-fences" && "$BIN" --lint --no-traces guide.md 2>&1) |
+  grep -E '^guide\.md:[0-9]+:[0-9]+: '

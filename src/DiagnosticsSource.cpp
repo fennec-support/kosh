@@ -663,20 +663,10 @@ struct shebang_word_reader
   }
 };
 
-/* the lines before the one that holds start_position hold only spaces, so
-   the scan starts at that line. */
 pure fn
-header_holds_shebang(StringView source,
-                     usize      first_line_end,
-                     usize      start_position) wontthrow -> bool
+header_holds_shebang(StringView source, usize first_line_end) wontthrow -> bool
 {
-  usize at          = first_line_end;
-  usize blank_start = start_position;
-
-  while (blank_start > at && source[blank_start - 1] != '\n')
-    blank_start--;
-
-  if (blank_start > at) at = blank_start - 1;
+  usize at = first_line_end;
 
   while (at < source.length) {
     at++;
@@ -717,17 +707,24 @@ check_shebang(AnalysisContext       &actx,
               missing_shebang_policy shebang_policy,
               usize                  start_position) throws -> void
 {
-  let const line_end = source.find_character('\n').value_or(source.length);
+  /* the bytes before start_position belong to the host document, so the
+     first line of the script starts at start_position. first_line keeps
+     source positions. */
+  usize line_end = start_position;
+
+  while (line_end < source.length && source[line_end] != '\n') {
+    line_end++;
+  }
 
   let const first_line = source.substring_of_length(0, line_end);
 
-  usize at = 0;
+  usize at = start_position;
 
   while (at < first_line.length && lexer::is_whitespace(first_line[at])) {
     at++;
   }
 
-  let const indent_length = at;
+  let const indent_length = at - start_position;
 
   if (at < first_line.length && first_line[at] == '!') {
     let const is_swapped = at + 2 < first_line.length &&
@@ -763,12 +760,11 @@ check_shebang(AnalysisContext       &actx,
      starting with "#!". header_holds_shebang() would report that line as a
      shebang, so the lookup is skipped for such a first line. */
   let const is_here_document_opener =
-      !has_hash && first_line.find_substring("<<").has_value();
+      !has_hash &&
+      first_line.substring(start_position).find_substring("<<").has_value();
 
   if (!has_bang) {
-    if (!is_here_document_opener &&
-        header_holds_shebang(source, line_end, start_position))
-    {
+    if (!is_here_document_opener && header_holds_shebang(source, line_end)) {
       actx.report_diagnostic(diagnostic_id::sc1128, SourceLocation{at, 1});
 
       return;
@@ -791,7 +787,7 @@ check_shebang(AnalysisContext       &actx,
 
   if (indent_length != 0)
     actx.report_diagnostic(diagnostic_id::sc1114,
-                           SourceLocation{0, indent_length});
+                           SourceLocation{start_position, indent_length});
 
   if (bang_at != at + 1) {
     actx.report_diagnostic(diagnostic_id::sc1115,
