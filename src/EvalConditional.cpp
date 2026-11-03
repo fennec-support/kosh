@@ -13,6 +13,7 @@
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "Expressions.hpp"
+#include "Lexer.hpp"
 #include "base/Common.hpp"
 #include "base/Debug.hpp"
 #include "base/Path.hpp"
@@ -438,13 +439,23 @@ struct conditional_evaluator
   {
     if (e.word != nullptr && e.word->kind() == Token::Kind::Word) {
       let const location = e.word->source_location();
-      let const source   = cxt.source_text_in_span(location, 0);
+      let       source   = cxt.source_text_in_span(location, 0);
+      let       offset   = u32{0};
 
-      if (source.length == location.length &&
+      /* a double-quoted operand holds its subscript in the quotes. */
+      if (source.length == location.length && source.length >= 2 &&
+          source[0] == '"' &&
+          lexer::skip_quoted_run(source, 0) == source.length - 1)
+      {
+        source = source.substring_of_length(1, source.length - 2);
+        offset = 1;
+      }
+
+      if (source.length + offset * 2 == location.length &&
           has_expanded_arithmetic_subscript(source))
       {
-        source_base =
-            SourceLocation{location.position, 0, location.source_name_index};
+        source_base = SourceLocation{location.position + offset, 0,
+                                     location.source_name_index};
 
         return String{heap_allocator(), source};
       }

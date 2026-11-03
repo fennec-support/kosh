@@ -374,8 +374,9 @@ expand_arithmetic_source(
 {
   let const should_remove_quotes =
       context->runtime_state().bash_additions_enabled();
-  let const do_expand_piece = [&](usize start,
-                                  usize end) throws -> String {
+  /* single quotes protect the text of a subscript, as Bash does. */
+  let const do_expand_piece = [&](usize start, usize end,
+                                  bool is_subscript) throws -> String {
     let piece_base = Maybe<SourceLocation>{};
 
     if (expression_base != nullptr) {
@@ -390,11 +391,13 @@ expand_arithmetic_source(
         expression.substring_of_length(start, end - start),
         should_remove_quotes, true,
         piece_base.has_value() ? &*piece_base : nullptr, false,
-        parameter_word_quoting::HereDocument);
+        is_subscript && should_remove_quotes
+            ? parameter_word_quoting::Unquoted
+            : parameter_word_quoting::HereDocument);
   };
 
   if (!expression.find_character('[').has_value()) {
-    return do_expand_piece(0, expression.length);
+    return do_expand_piece(0, expression.length, false);
   }
 
   let   expanded    = String{heap_allocator()};
@@ -439,18 +442,20 @@ expand_arithmetic_source(
 
     /* at this point: expression[name_end] is the '[' after a name, and
        close_position holds the ']' that closes it in the source. */
-    expanded.append(do_expand_piece(piece_start, name_end + 1).view());
+    expanded.append(do_expand_piece(piece_start, name_end + 1, false).view());
 
     let const open_position = expanded.count() - 1;
 
-    expanded.append(do_expand_piece(name_end + 1, *close_position).view());
+    expanded.append(
+        do_expand_piece(name_end + 1, *close_position, true).view());
     spans.push(expanded_subscript_span{open_position, expanded.count()});
     expanded.push(']');
     piece_start = *close_position + 1;
     position    = piece_start;
   }
 
-  expanded.append(do_expand_piece(piece_start, expression.length).view());
+  expanded.append(
+      do_expand_piece(piece_start, expression.length, false).view());
 
   return expanded;
 }
@@ -487,7 +492,9 @@ has_expanded_arithmetic_subscript(StringView source) throws -> bool
 
     if (subscript.find_character('$').has_value() ||
         subscript.find_character('`').has_value() ||
-        subscript.find_character('"').has_value())
+        subscript.find_character('"').has_value() ||
+        subscript.find_character('\'').has_value() ||
+        subscript.find_character('\\').has_value())
     {
       return true;
     }
@@ -721,7 +728,20 @@ public:
     usize             name_position;
     char              resolved_subscript[24]{};
     bool              is_expanded_subscript{false};
+    bool              was_base_checked{false};
   };
+
+  /* an element read of a variable without any value reports the variable,
+     before its subscript is evaluated. */
+  fn
+  check_array_base_set(const Lvalue &target) const throws -> void
+  {
+    let const array_name =
+        resolve_subscripted_array_name(*context, target.name);
+
+    if (!context->has_array_base_value(array_name.view()))
+      context->report_unset_reference(target.name);
+  }
 
   /* the associative array that a subscript expanded with the expression
      addresses by its literal key, reached directly or through a nameref. */
@@ -766,6 +786,9 @@ public:
     }
 
     ASSERT(context != nullptr);
+
+    check_array_base_set(target);
+    target.was_base_checked = true;
 
     if (*target.subscript == "@" || *target.subscript == "*") {
       return;
@@ -818,6 +841,10 @@ public:
         depth++;
       } else if (source[pos] == ']' && --depth == 0) {
         break;
+      } else if (source[pos] == '\'' || source[pos] == '"' ||
+                 source[pos] == '\\')
+      {
+        pos = lexer::skip_quoted_run(source, pos);
       }
 
       pos++;
@@ -863,6 +890,8 @@ public:
 
     if (target.subscript.has_value()) {
       ASSERT(context != nullptr);
+
+      if (!target.was_base_checked) check_array_base_set(target);
 
       if (let const literal_array = find_literal_key_array(target);
           literal_array.has_value())
@@ -3234,7 +3263,9 @@ fn
 EvalContext::read_array_element_arithmetic_text(
     StringView name, StringView subscript) throws -> String
 {
-  return apply_array_subscript(name, subscript);
+  let const array_name = resolve_subscripted_array_name(*this, name);
+
+  return apply_array_subscript(array_name.view(), subscript);
 }
 
 namespace {

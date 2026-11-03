@@ -79,3 +79,28 @@ echo "$( [[ c[$k] -eq 2 ]] && echo "substitution compared" )"
 i=0
 [[ c[$((i++))] -eq 0 ]]
 echo "expanded once i=$i"
+
+# A single-quoted or backslash-escaped key in an arithmetic subscript is
+# literal, and a double-quoted [[ ]] operand keeps its subscript whole.
+c['$z']=4
+(( c['a]b'] == 2 )) && echo "single quoted key in (( ))"
+[[ c['a]b'] -eq 2 && c[a\]b] -eq 2 ]] && echo "single quoted key in [[ ]]"
+echo "single quoted sum=$(( c['a]b'] + c['$z'] ))"
+[[ "c[$k]" -eq 2 && "c[\$z]" -eq 4 ]] && echo "quoted operand compared"
+
+# A name reference to an array takes the subscript of the target.
+declare -A target=([k]=7 [ab]=8)
+declare -a list=(5 6)
+declare -n named=target listed=list
+i=1
+echo "nameref keys=$(( named[k] )) $(( named[$k] + 0 )) index=$(( listed[i] ))"
+(( named[k] += 1, listed[i]++ ))
+echo "nameref writes=${target[k]} ${list[1]}"
+
+# let and other commands expand a subscript in an assignment-like argument,
+# and let expands an associative subscript once more.
+declare -A l
+k=ab
+let l[\$k]=1 "l[\$k]+=1" l['$k']+=1 l["$k"]+=1
+declare -p l
+echo h[\$k]=1 h["$k"]=2 h['x y']=3 h[$k]+=4

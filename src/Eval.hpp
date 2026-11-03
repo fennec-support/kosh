@@ -5160,6 +5160,8 @@ public:
   declare_associative_array(StringView name) throws -> void;
   fn
   is_valueless_array(StringView name) const throws -> bool;
+  fn
+  has_array_base_value(StringView name) const throws -> bool;
   pure fn
   is_associative_array(StringView name) const wontthrow -> bool
   {

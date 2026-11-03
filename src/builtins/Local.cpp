@@ -323,7 +323,11 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         cxt.variable_store().attributes().mark_declared(name);
       }
     } else if (should_make_associative) {
+      let const was_associative = cxt.is_associative_array(name);
+
       cxt.declare_associative_array(name);
+      if (!equals_position.has_value() && !was_associative)
+        cxt.variable_store().attributes().mark_declared(name);
     } else if (should_make_indexed) {
       if (!cxt.variable_store().indexed_arrays().find(name).has_value() &&
           !cxt.is_bash_directory_stack_special(name))
@@ -333,6 +337,8 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         if (equals_position.has_value())
           values.push_managed(arg.substring(*equals_position + 1));
         cxt.set_indexed_array(name, steal(values));
+        if (!equals_position.has_value())
+          cxt.variable_store().attributes().mark_declared(name);
       }
     } else if (equals_position.has_value()) {
       let const value = arg.substring(*equals_position + 1);

@@ -714,6 +714,25 @@ EvalContext::is_valueless_array(StringView name) const throws -> bool
          !variable_store().sparse_arrays().has(name);
 }
 
+/* whether a subscripted reference to name finds a set variable, which an
+   array has from an assignment even when it holds no element. */
+fn
+EvalContext::has_array_base_value(StringView name) const throws -> bool
+{
+  if (runtime_state().bash_dynamic_variables_enabled() &&
+      DYNAMIC_ARRAYS.find(name).has_value())
+  {
+    return true;
+  }
+
+  if (is_bash_aliases_special(name) || is_bash_directory_stack_special(name))
+    return true;
+
+  if (is_array_variable(name)) return !is_valueless_array(name);
+
+  return get_variable_value(name).has_value();
+}
+
 fn
 EvalContext::set_associative_element(StringView name,
                                      StringView key,

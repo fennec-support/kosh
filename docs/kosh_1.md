@@ -733,10 +733,10 @@ Redirections open, duplicate, or close descriptors for a command and process lef
 
 * **Numbers** - Decimal, octal (leading `0`), hexadecimal (`0x`), binary (`0b`), or base `b` from `2` to `64` as `b#digits` (digits beyond `9` come from letters, `@`, `_`). A binary or based number needs at least one digit after its prefix.
 * **Variables** - A variable is replaced by its value, which is evaluated as an expression in turn (`x=1+2` makes `x*2` equal `6`). An empty value counts as `0`, and `$` or a backquote inside a value is an error. A subscript taken from a value is expanded again (with `q='a[$i]'`, `$((q))` is the element at `i`).
-* **Quotes** - Outside `sh`, double quotes inside `$(( ))`, `(( ))`, a C-style `for` header, a subscript, or a substring offset are removed first (`$(( "1 + 2" * 3 ))` is `7`). `sh` rejects every quote there.
+* **Quotes** - Outside `sh`, double quotes inside `$(( ))`, `(( ))`, a C-style `for` header, a subscript, or a substring offset are removed first (`$(( "1 + 2" * 3 ))` is `7`). Outside `sh`, single quotes or a backslash in a subscript keep the key literal (`h['a]b']` and `h[a\]b]` both address the key `a]b`). `sh` rejects every quote there.
 * **Errors** - Division by zero, an invalid digit, a missing operand, an unexpected token, and a negative shift count are errors (termination per mood under [Error termination matrix across moods](#shell-errors)). Shifts, bitwise operators, and the exponent need integers, and division of two integers is integer division.
 * **Precision** - `interpreter.arithmetic_uses_big_numbers` (`--enable-extended-arithmetic`, on in the `kosh` mood) selects arbitrary-precision integers and finite decimals (`$((2**100))` is exact; `$((7.0/2))` is `3.5`). Without it arithmetic uses wrapping 64-bit signed integers.
-* **Unset variables** - An unset variable in an expression is an error in the `kosh` mood and evaluates as `0` in the compatibility moods.
+* **Unset variables** - An unset variable in an expression is an error in the `kosh` mood and evaluates as `0` in the compatibility moods. Under `set -u`, a read of an element of a variable without any value is an error that reports the variable before the subscript is evaluated, while a missing element of an array with a value evaluates as `0`. A variable that `declare -a`, `declare -A`, `local -a`, or `local -A` creates without a value has no value until an assignment.
 
 #### Conditional expressions (`[[ ]]`, `test`, `[ ]`)
 

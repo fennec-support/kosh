@@ -4748,6 +4748,9 @@ A subscript taken from a value is expanded again (with
 \f[CR]$(( ))\f[R], \f[CR](( ))\f[R], a C\-style \f[CR]for\f[R] header, a
 subscript, or a substring offset are removed first
 (\f[CR]$(( \[dq]1 + 2\[dq] * 3 ))\f[R] is \f[CR]7\f[R]).
+Outside \f[CR]sh\f[R], single quotes or a backslash in a subscript keep
+the key literal (\f[CR]h[\[aq]a]b\[aq]]\f[R] and \f[CR]h[a\[rs]]b]\f[R]
+both address the key \f[CR]a]b\f[R]).
 \f[CR]sh\f[R] rejects every quote there.
 .IP \[bu] 2
 \f[B]Errors\f[R] \- Division by zero, an invalid digit, a missing
@@ -4767,6 +4770,13 @@ Without it arithmetic uses wrapping 64\-bit signed integers.
 \f[B]Unset variables\f[R] \- An unset variable in an expression is an
 error in the \f[CR]kosh\f[R] mood and evaluates as \f[CR]0\f[R] in the
 compatibility moods.
+Under \f[CR]set \-u\f[R], a read of an element of a variable without any
+value is an error that reports the variable before the subscript is
+evaluated, while a missing element of an array with a value evaluates as
+\f[CR]0\f[R].
+A variable that \f[CR]declare \-a\f[R], \f[CR]declare \-A\f[R],
+\f[CR]local \-a\f[R], or \f[CR]local \-A\f[R] creates without a value
+has no value until an assignment.
 .SS Conditional expressions (\f[CR][[ ]]\f[R], \f[CR]test\f[R], \f[CR][ ]\f[R])
 .PP
 .TS

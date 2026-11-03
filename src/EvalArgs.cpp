@@ -799,8 +799,21 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
           continue;
         }
 
-        let key_literal =
-            String{heap_allocator(), assignment_token->key().view()};
+        let const key         = assignment_token->key().view();
+        let       key_literal = String{heap_allocator()};
+
+        /* the lexer keeps the source of a subscript, which an ordinary
+           argument expands like the rest of the word. */
+        if (let const open = key.find_character('['); open.has_value()) {
+          key_literal.append(key.substring_of_length(0, *open + 1));
+          key_literal.append(
+              expand_modifier_word(
+                  key.substring_of_length(*open + 1, key.length - *open - 2))
+                  .view());
+          key_literal.push(']');
+        } else {
+          key_literal.append(key);
+        }
 
         if (assignment_token->get_update_mode() ==
             assignment_update_mode::Append)
