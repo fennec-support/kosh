@@ -357,6 +357,7 @@ struct execution_wire
   String        last_argument{heap_allocator()};
   u32           xtrace_indirection_depth{0};
   bool          is_reading_standard_input{false};
+  bool          was_started_interactive{false};
 };
 
 struct startup_wire

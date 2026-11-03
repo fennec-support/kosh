@@ -30,6 +30,11 @@ probe --norc -ic 'echo one; echo !!'
 probe --norc -ic 'set -u; echo "$nope"; echo after'
 probe --norc -ic 'false'
 
+# Command substitutions, subshells, pipeline stages, and process
+# substitutions keep i in $-.
+probe --norc -ic 'echo "$(echo "$-")" "`echo "$-"`"; (echo "$-")
+echo "$-" | cat; cat <(echo "$-")'
+
 # A shell that takes commands from standard input sets s in $-, with or
 # without -i and -s, and keeps it in subshells.
 printf '%s\n' 'echo "stdin $- $(case $- in *s*) echo subshell-s;; esac)"' \

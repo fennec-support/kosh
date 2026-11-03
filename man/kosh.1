@@ -3346,11 +3346,12 @@ With \f[CR]\-\-lint\f[R], \f[CR]\-s\f[R] takes precedence over
 \f[B]Interactive shells (\f[CB]\-i\f[B])\f[R] \- A shell is interactive
 when \f[CR]\-i\f[R] is given, or when it takes commands from a terminal
 stdin without \f[CR]\-s\f[R], \f[CR]\-c\f[R], or a script operand.
-An interactive shell sets \f[CR]i\f[R] in \f[CR]$\-\f[R], sources the
-interactive startup files of its mood, sets \f[CR]PS1\f[R] when it is
-unset, expands aliases in every mood, turns on \f[CR]emacs\f[R],
-\f[CR]history\f[R], and \f[CR]histexpand\f[R], and turns on job control
-when stdin is a terminal.
+An interactive shell sets \f[CR]i\f[R] in \f[CR]$\-\f[R], which command
+substitutions and subshells keep, sources the interactive startup files
+of its mood, sets \f[CR]PS1\f[R] when it is unset, expands aliases in
+every mood, turns on \f[CR]emacs\f[R], \f[CR]history\f[R], and
+\f[CR]histexpand\f[R], and turns on job control when stdin is a
+terminal.
 The line editor runs only when stdin is a terminal and neither
 \f[CR]\-c\f[R] nor a script operand is given.
 With \f[CR]\-c\f[R], a script operand, or stdin that is not a terminal,

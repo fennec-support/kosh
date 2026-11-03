@@ -1277,6 +1277,7 @@ ExecutionStore::append_wire(String &output) const throws -> void
     append_subshell_bootstrap_u32(payload,
                                   static_cast<u32>(m_xtrace_indirection_depth));
     payload.push(static_cast<char>(m_is_reading_standard_input));
+    payload.push(static_cast<char>(m_was_started_interactive));
   });
 }
 
@@ -1946,8 +1947,11 @@ ExecutionStore::from_wire(subshell_bootstrap_reader &reader,
     wire.execution_string = String{heap_allocator(), payload.read_text()};
   wire.last_argument            = String{heap_allocator(), payload.read_text()};
   wire.xtrace_indirection_depth = payload.read_u32();
-  if (!read_subshell_bootstrap_bool(payload, wire.is_reading_standard_input))
+  if (!read_subshell_bootstrap_bool(payload, wire.is_reading_standard_input) ||
+      !read_subshell_bootstrap_bool(payload, wire.was_started_interactive))
+  {
     return false;
+  }
 
   return payload.is_fully_read();
 }

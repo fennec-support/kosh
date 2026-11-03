@@ -1265,7 +1265,8 @@ public:
   explicit ExecutionStore(bool is_shell_interactive, String shell_name)
       wontthrow
       : m_shell_name(steal(shell_name)),
-        m_is_shell_interactive(is_shell_interactive)
+        m_is_shell_interactive(is_shell_interactive),
+        m_was_started_interactive(is_shell_interactive)
   {}
 
   pure fn
@@ -1334,6 +1335,14 @@ public:
   set_reading_standard_input(bool is_reading) wontthrow -> void
   {
     m_is_reading_standard_input = is_reading;
+  }
+
+  /* holds after substitutions and subshells clear shell_is_interactive(), so
+     $- keeps i there. */
+  pure fn
+  was_started_interactive() const wontthrow -> bool
+  {
+    return m_was_started_interactive;
   }
 
   pure fn
@@ -1425,6 +1434,7 @@ public:
     m_last_argument             = steal(wire.last_argument);
     m_xtrace_indirection_depth  = wire.xtrace_indirection_depth;
     m_is_reading_standard_input = wire.is_reading_standard_input;
+    m_was_started_interactive   = wire.was_started_interactive;
   }
 
   fn
@@ -1723,6 +1733,7 @@ private:
   bool                m_is_child_environment_fixed{false};
   bool                m_is_shell_interactive{false};
   bool                m_is_reading_standard_input{false};
+  bool                m_was_started_interactive{false};
 };
 
 class EvaluationMetricsStore

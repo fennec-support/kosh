@@ -415,7 +415,7 @@ enabled_shell_option_letters(const EvalContext &cxt) throws -> String
     if (letter == 'h') {
       if (option_is_on(cxt, *option)) letters.push('h');
       if (is_restricted(cxt)) letters.push('r');
-      if (cxt.execution_store().shell_is_interactive()) letters.push('i');
+      if (cxt.execution_store().was_started_interactive()) letters.push('i');
       continue;
     }
 
