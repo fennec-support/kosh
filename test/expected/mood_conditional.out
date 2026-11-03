@@ -1,3 +1,12 @@
+28:13: warning: The operator '-f' has no operand after it, and bash rejects the `[[ ]]` as a syntax error.
+    28 |  false && [[ -f ]]
+       |              ^~
+note: Write the operand after '-f', or quote the operator to test it as text.
+30:30: warning: The operator '-f' has no operand after it, and bash rejects the `[[ ]]` as a syntax error.
+    30 |  ( [[ $(echo expanded >&2) && -f ]] )
+       |                               ^~
+note: Write the operand after '-f', or quote the operator to test it as text.
+Encountered 2 warnings.
 glob-yes
 quoted-literal
 grouped
@@ -11,3 +20,21 @@ alt
 opt
 not-bar
 known
+skipped=1
+expanded
+30:3: error: Unable to evaluate the [[ ]].
+    30 |  ( [[ $(echo expanded >&2) && -f ]] )
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+note: The unary operator '-f' is missing its operand.
+30:1: trace:
+    30 |  ( [[ $(echo expanded >&2) && -f ]] )
+       |  ^
+failed=1
+32:3: error: Unable to evaluate the [[ ]].
+    32 |  ( [[ x || ( y ]] )
+       |    ^~~~~~~~~~~~~~
+note: Expected ')'.
+32:1: trace:
+    32 |  ( [[ x || ( y ]] )
+       |  ^
+unclosed=1

@@ -34,6 +34,9 @@ evaluate_constant_arithmetic_text(StringView expression,
 pure fn
 obvious_xor_power_operator_position(StringView expression) wontthrow
     -> Maybe<usize>;
+pure fn
+arithmetic_has_side_effect(StringView        expression,
+                           const arith_tree *tree) wontthrow -> bool;
 
 struct arithmetic_syntax_problem
 {

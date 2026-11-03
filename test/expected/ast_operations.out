@@ -109,20 +109,15 @@ echo embedded
         (word "value" :at 6:23 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^"))))
   (condition :terminator-at 7:25
     (conditional :at 7:1 :end 7:25
-      (element :kind operand :bare :unary-operator
-        (word "-f" :at 7:4 :plain unquoted-one-segment :facts (static-name) :escape "^^"))
-      (element :kind operand :bare
-        (word "x" :at 7:7 :plain unquoted-one-segment :facts (static-name) :escape "^"))
-      (element :kind and)
-      (element :kind not)
-      (element :kind operand
-        (word "$y" :at 7:14 :text "y" :plain none :facts (plain-references) :escape "$"
-          (segment :kind variable "y" :at 7:15 :greedy-name
-            (param :form name :name "y"))))
-      (element :kind operand :bare :binary-operator
-        (word "==" :at 7:17 :plain unquoted-one-segment :facts (static-name) :escape "^^"))
-      (element :kind operand
-        (word "z*" :at 7:20 :plain none :facts (unquoted-glob) :escape "^^"))))
+      (and
+        (unary :op "-f"
+          (word "x" :at 7:7 :plain unquoted-one-segment :facts (static-name) :escape "^"))
+        (not
+          (binary :op "=="
+            (word "$y" :at 7:14 :text "y" :plain none :facts (plain-references) :escape "$"
+              (segment :kind variable "y" :at 7:15 :greedy-name
+                (param :form name :name "y")))
+            (word "z*" :at 7:20 :plain none :facts (unquoted-glob) :escape "^^"))))))
   (condition :terminator-at 8:41
     (case :at 8:1 :end 8:41
       (word "$x" :at 8:6 :text "x" :plain none :facts (plain-references) :escape "$"

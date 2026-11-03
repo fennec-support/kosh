@@ -25,3 +25,9 @@ case readme in
 @(readme|license)) echo known ;;
 *) ;;
 esac
+false && [[ -f ]]
+echo skipped=$?
+( [[ $(echo expanded >&2) && -f ]] )
+echo failed=$?
+( [[ x || ( y ]] )
+echo unclosed=$?

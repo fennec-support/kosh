@@ -55,7 +55,6 @@ struct arith_node
   static constexpr u8 SUBSCRIPT_FLAG          = 2;
   static constexpr u8 EXPANDED_SUBSCRIPT_FLAG = 4;
   static constexpr u8 PRIMARY_ERROR_FLAG      = 8;
-  static constexpr u8 TAIL_FLAG               = 16;
 
   union
   {

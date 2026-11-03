@@ -244,9 +244,8 @@ check_redirection_lints(AnalysisContext          &actx,
         }
 
         if (segment.kind == WordSegment::Kind::ArithmeticExpansion &&
-            (view_contains(segment.text.view(), StringView{"++"}) ||
-             view_contains(segment.text.view(), StringView{"--"}) ||
-             segment.text.view().find_character('=').has_value()))
+            arithmetic_has_side_effect(segment.text.view(),
+                                       segment.get_arithmetic_tree()))
         {
           actx.report_diagnostic(diagnostic_id::sc2257,
                                  redirection.target->source_location());

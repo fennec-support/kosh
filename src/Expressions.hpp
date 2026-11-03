@@ -2090,6 +2090,7 @@ protected:
   evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
   ArrayList<conditional_element> m_elements;
+  conditional_tree               m_tree;
   mutable published_command_text m_published_command_text{};
 };
 

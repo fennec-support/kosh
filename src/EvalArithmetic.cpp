@@ -703,12 +703,22 @@ private:
   fn
   fail(StringView message, StringView note = {}) throws -> u32
   {
-    let const error_position = is_calculator         ? pos
-                               : pos < source.length ? pos
-                               : source.is_empty()   ? 0
-                                                     : source.length - 1;
+    if (is_calculator || pos < source.length) {
+      return fail_at(pos, 1, message, note);
+    }
 
-    return fail_at(error_position, 1, message, note);
+    let error_position = source.length;
+
+    while (error_position > 1 && (source[error_position - 1] == ' ' ||
+                                  source[error_position - 1] == '\t' ||
+                                  source[error_position - 1] == '\n' ||
+                                  source[error_position - 1] == '\r'))
+    {
+      error_position--;
+    }
+
+    return fail_at(error_position > 0 ? error_position - 1 : 0, 1, message,
+                   note);
   }
 
   fn
@@ -944,10 +954,11 @@ private:
 
     skip_spaces();
     if (pos != source.length) {
-      let const error = fail_at(pos, is_calculator ? source.length - pos : 1,
-                                "Unexpected '" + source.substring(pos) +
-                                    "' after the expression",
-                                "An operator is missing between two values");
+      let const error =
+          fail_at(pos, is_calculator ? source.length - pos : 1,
+                  "Unexpected '" + source.substring(pos).trim_blanks() +
+                      "' after the expression",
+                  "An operator is missing between two values");
 
       return sequence(result, error);
     }
@@ -1199,6 +1210,8 @@ private:
         return chain == ARITH_NO_NODE ? lhs : chain;
       }
 
+      let const operator_position = pos;
+
       pos += op.length;
       skip_spaces();
 
@@ -1208,6 +1221,8 @@ private:
 
       step.kind   = arith_node_kind::ChainStep;
       step.op     = op.kind;
+      step.start  = static_cast<u32>(operator_position);
+      step.length = op.length;
       step.middle = static_cast<u32>(pos);
       step.first  = parse_binary(is_logical || op.kind != 'P'
                                      ? static_cast<u8>(op.precedence + 1)
@@ -2152,14 +2167,6 @@ public:
       } catch (const ErrorWithLocation &) {
         throw;
       } catch (const ErrorBase &error) {
-        if ((step.flags & arith_node::TAIL_FLAG) != 0) {
-          fail_at(step.middle, step.end,
-                  "Unexpected '" +
-                      source.substring_of_length(step.middle, step.end) +
-                      "' after the expression",
-                  "An operator is missing between two values");
-        }
-
         if (!precise_base.has_value()) throw;
         fail_at(step.start, step.length, error.message().view(),
                 error.detail_message());
@@ -3358,256 +3365,6 @@ lex_exact_arith_number(StringView       from,
   return consumed;
 }
 
-struct arith_token
-{
-  enum class Kind : u8
-  {
-    number,
-    name,
-    op,
-    subscript,
-  };
-  Kind       k;
-  i64        value{0};
-  StringView text{};
-};
-
-static pure fn
-arith_operator_length(StringView src, usize i) wontthrow -> usize
-{
-  let const first  = src[i];
-  let const second = i + 1 < src.length ? src[i + 1] : '\0';
-  let const third  = i + 2 < src.length ? src[i + 2] : '\0';
-
-  switch (first) {
-  case '<':
-  case '>':
-    if (second == first) return third == '=' ? 3 : 2;
-
-    return second == '=' ? 2 : 1;
-  case '*':
-  case '&':
-  case '|':
-  case '+':
-  case '-': return second == first || second == '=' ? 2 : 1;
-  case '=':
-  case '!':
-  case '/':
-  case '%':
-  case '^': return second == '=' ? 2 : 1;
-  default:  return 1;
-  }
-}
-
-struct arith_binop
-{
-  char kind;
-  u8   precedence;
-};
-
-static pure fn
-arith_classify_binop(StringView t) wontthrow -> arith_binop
-{
-  static constexpr static_string_entry<arith_binop> ENTRIES[] = {
-      {SSK("**"), {'P', 11}},
-      {SSK("*"),  {'*', 10}},
-      {SSK("/"),  {'/', 10}},
-      {SSK("%"),  {'%', 10}},
-      {SSK("+"),  {'+', 9} },
-      {SSK("-"),  {'-', 9} },
-      {SSK("<<"), {'L', 8} },
-      {SSK(">>"), {'R', 8} },
-      {SSK("<"),  {'<', 7} },
-      {SSK("<="), {'l', 7} },
-      {SSK(">"),  {'>', 7} },
-      {SSK(">="), {'g', 7} },
-      {SSK("=="), {'e', 6} },
-      {SSK("!="), {'n', 6} },
-      {SSK("&"),  {'&', 5} },
-      {SSK("^"),  {'^', 4} },
-      {SSK("|"),  {'|', 3} },
-  };
-  static constexpr StaticStringMap BINOPS{ENTRIES};
-
-  if (let const found = BINOPS.find(t); found.has_value()) return *found;
-
-  return {0, 0};
-}
-
-/* the binary operator class of an operator token, packed into its value as
-   precedence << 8 | kind. */
-static pure fn
-arith_packed_binop(StringView t) wontthrow -> i64
-{
-  let const op = arith_classify_binop(t);
-
-  return (static_cast<i64>(op.precedence) << 8) | static_cast<u8>(op.kind);
-}
-
-static pure fn
-arith_unpacked_binop(i64 value) wontthrow -> arith_binop
-{
-  return {static_cast<char>(value & 0xff), static_cast<u8>(value >> 8)};
-}
-
-/* memory: out grows by one arith_token per token; the caller owns out and
-           clears it before a retokenize. token texts are views into src.
-   time:   O(n) in the bytes of src. */
-static fn
-tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
-    -> void
-{
-  usize i = 0;
-
-  while (i < src.length) {
-    let const current_byte = src[i];
-
-    if (current_byte == ' ' || current_byte == '\t' || current_byte == '\n' ||
-        current_byte == '\r')
-    {
-      i++;
-      continue;
-    }
-
-    let const has_leading_decimal_point = is_leading_decimal_number(src, i);
-
-    if (lexer::is_number(current_byte) || has_leading_decimal_point) {
-      i64   value = 0;
-      usize consumed;
-
-      if (has_leading_decimal_point) {
-        consumed = 1 + arithmetic_internal::count_leading_digits(
-                           src.substring(i + 1), 10);
-      } else {
-        consumed = lex_arith_number(src.substring(i), &value);
-        if (i + consumed < src.length &&
-            is_number_continuation(src[i + consumed]))
-        {
-          throw Error{"Invalid digit in the number"};
-        }
-
-        if (i + consumed < src.length && src[i + consumed] == '.') {
-          consumed++;
-          consumed += arithmetic_internal::count_leading_digits(
-              src.substring(i + consumed), 10);
-        }
-      }
-
-      out.push(arith_token{arith_token::Kind::number, value,
-                           src.substring_of_length(i, consumed)});
-      i += consumed;
-      continue;
-    }
-
-    if (lexer::is_variable_name_start(current_byte)) {
-      let const name_start = i;
-
-      i++;
-
-      while (i < src.length && lexer::is_variable_name(src[i])) {
-        i++;
-      }
-
-      out.push(
-          arith_token{arith_token::Kind::name, 0,
-                      src.substring_of_length(name_start, i - name_start)});
-      if (i < src.length && src[i] == '[') {
-        i++;
-
-        let const inner_start = i;
-        usize     depth       = 1;
-
-        /* e.g. src = "a[b[1]]+2" and i = 2 after the '[' at index 1
-           -> the loop visits index 2 (depth 1), index 3 (depth 2), index 5
-              (depth 1), index 6 (depth 0, break with i = 6)
-           -> subscript "b[1]" from inner_start 2, length 4; i = 7 at '+' */
-        while (i < src.length && depth > 0) {
-          if (src[i] == '[') {
-            depth++;
-          } else if (src[i] == ']' && --depth == 0) {
-            break;
-          }
-
-          i++;
-        }
-
-        if (depth != 0) {
-          throw ErrorWithDetails{"Expected ']' after an array subscript",
-                                 "The subscript '[' was never closed"};
-        }
-
-        out.push(
-            arith_token{arith_token::Kind::subscript, 0,
-                        src.substring_of_length(inner_start, i - inner_start)});
-        i++;
-      }
-
-      continue;
-    }
-
-    let const op = src.substring_of_length(i, arith_operator_length(src, i));
-
-    out.push(arith_token{arith_token::Kind::op, arith_packed_binop(op), op});
-    i += op.length;
-  }
-}
-
-static pure fn
-arith_op_is_complex(StringView t) wontthrow -> bool
-{
-  static constexpr PackedStringKey KEYS[] = {
-      SSK("="),  SSK("+="), SSK("-="), SSK("*="),  SSK("/="),  SSK("%="),
-      SSK("&="), SSK("|="), SSK("^="), SSK("<<="), SSK(">>="), SSK("?"),
-      SSK(":"),  SSK(","),  SSK("++"), SSK("--"),  SSK("&&"),  SSK("||"),
-  };
-  static constexpr StaticStringSet COMPLEX_OPS{KEYS};
-
-  return COMPLEX_OPS.contains(t);
-}
-
-static pure fn
-arith_tokens_are_single_step(const ArrayList<arith_token> &toks)
-    wontthrow -> bool
-{
-  if (toks.count() != 2) return false;
-
-  let const &first  = toks[0];
-  let const &second = toks[1];
-
-  let const do_is_step = [](const arith_token &token) {
-    return token.k == arith_token::Kind::op &&
-           (token.text == "++" || token.text == "--");
-  };
-
-  if (do_is_step(first)) return second.k == arith_token::Kind::name;
-
-  /* at this point: toks holds two tokens, and first is not a '++' or '--'
-     operator. */
-  return first.k == arith_token::Kind::name && do_is_step(second) &&
-         first.text.data + first.text.length == second.text.data;
-}
-
-static pure fn
-arith_tokens_are_simple(const ArrayList<arith_token> &toks) wontthrow -> bool
-{
-  if (arith_tokens_are_single_step(toks)) return true;
-
-  for (let const &t : toks) {
-    if (t.k == arith_token::Kind::subscript) return false;
-    if (t.k == arith_token::Kind::number &&
-        t.text.find_character('.').has_value())
-    {
-      return false;
-    }
-
-    if (t.k == arith_token::Kind::op && arith_op_is_complex(t.text)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 static fn
 bc_apply_binop(char                   kind,
                const ArithmeticValue &lhs,
@@ -3781,282 +3538,6 @@ arith_apply_binop(char                   kind,
   }
 }
 
-class ArithmeticTokenTreeBuilder
-{
-public:
-  ArithmeticTokenTreeBuilder(StringView                    source_value,
-                             const ArrayList<arith_token> &tokens_value,
-                             arith_tree_storage           &storage_value)
-      : source{source_value}, toks{tokens_value}, storage{storage_value}
-  {}
-
-  fn
-  build() throws -> u32
-  {
-    if (toks.is_empty()) return ARITH_NO_NODE;
-    if (arith_tokens_are_single_step(toks)) return build_single_step();
-
-    let const result = parse_binary(1);
-
-    if (has_failed || ti == toks.count()) {
-      return result;
-    }
-
-    let const error = fail_at_token(
-        ti, "Unexpected '" + toks[ti].text + "' after the expression",
-        "An operator is missing between two values");
-
-    return sequence(result, error);
-  }
-
-private:
-  StringView                    source;
-  const ArrayList<arith_token> &toks;
-  arith_tree_storage           &storage;
-  usize                         ti{0};
-  usize                         depth{0};
-  usize                         binary_depth{0};
-  bool                          has_failed{false};
-
-  pure fn
-  get_offset(const arith_token &token) const wontthrow -> u32
-  {
-    return static_cast<u32>(token.text.data - source.data);
-  }
-
-  fn
-  fail_at_token(usize      token_index,
-                StringView message,
-                StringView note = {}) throws -> u32
-  {
-    let const &token =
-        toks[token_index < toks.count() ? token_index : toks.count() - 1];
-
-    arith_node node{};
-
-    node.kind   = arith_node_kind::Error;
-    node.start  = get_offset(token);
-    node.length = static_cast<u32>(token.text.length);
-    node.first  = storage.add_text(message);
-    node.second = static_cast<u32>(message.length);
-    node.third  = storage.add_text(note);
-    node.end    = static_cast<u32>(note.length);
-    has_failed  = true;
-
-    return storage.add_node(node);
-  }
-
-  fn
-  sequence(u32 first_index, u32 second_index) throws -> u32
-  {
-    arith_node node{};
-
-    storage.nodes[first_index].next = second_index;
-    node.kind                       = arith_node_kind::Comma;
-    node.first                      = first_index;
-
-    return storage.add_node(node);
-  }
-
-  fn
-  add_unary(arith_node_kind kind, u32 operand) throws -> u32
-  {
-    arith_node node{};
-
-    node.kind  = kind;
-    node.first = operand;
-
-    return storage.add_node(node);
-  }
-
-  fn
-  add_name(const arith_token &token) throws -> u32
-  {
-    arith_node node{};
-
-    node.kind      = arith_node_kind::Lvalue;
-    node.start     = get_offset(token);
-    node.length    = static_cast<u32>(token.text.length);
-    node.name_hash = hash_bytes(token.text);
-
-    return storage.add_node(node);
-  }
-
-  pure fn
-  at_op(StringView s) const wontthrow -> bool
-  {
-    return ti < toks.count() && toks[ti].k == arith_token::Kind::op &&
-           toks[ti].text == s;
-  }
-
-  fn
-  build_single_step() throws -> u32
-  {
-    let const  is_prefix = toks[0].k == arith_token::Kind::op;
-    let const &step      = is_prefix ? toks[0] : toks[1];
-
-    arith_node node{};
-
-    node.first = add_name(is_prefix ? toks[1] : toks[0]);
-    node.kind =
-        is_prefix ? arith_node_kind::PrefixStep : arith_node_kind::PostfixStep;
-    node.value = step.text[0] == '+' ? i64{1} : i64{-1};
-
-    return storage.add_node(node);
-  }
-
-  fn
-  parse_operand() throws -> u32
-  {
-    depth++;
-    defer { depth--; };
-
-    if (depth > MAX_PRIMARY_DEPTH) {
-      return fail_at_token(ti, "Expression nested too deeply");
-    }
-
-    if (at_op("+")) {
-      ti++;
-
-      return parse_operand();
-    }
-
-    if (at_op("-")) {
-      ti++;
-
-      return add_unary(arith_node_kind::Negate, parse_operand());
-    }
-
-    if (at_op("!")) {
-      ti++;
-
-      return add_unary(arith_node_kind::Not, parse_operand());
-    }
-
-    if (at_op("~")) {
-      ti++;
-
-      return add_unary(arith_node_kind::BitNot, parse_operand());
-    }
-
-    if (at_op("(")) {
-      ti++;
-
-      let const value = parse_binary(1);
-
-      if (has_failed) return value;
-      if (!at_op(")")) {
-        return sequence(value, fail_at_token(ti, "Expected ')'",
-                                             "An opening '(' is unmatched"));
-      }
-
-      ti++;
-
-      return value;
-    }
-
-    if (ti < toks.count() && toks[ti].k == arith_token::Kind::number) {
-      arith_node node{};
-
-      node.kind   = arith_node_kind::Number;
-      node.start  = get_offset(toks[ti]);
-      node.length = static_cast<u32>(toks[ti].text.length);
-      node.value  = toks[ti].value;
-      if (is_plain_decimal_operand(toks[ti].text))
-        node.flags |= arith_node::PLAIN_NUMBER_FLAG;
-      ti++;
-
-      return storage.add_node(node);
-    }
-
-    if (ti < toks.count() && toks[ti].k == arith_token::Kind::name) {
-      arith_node node{};
-
-      node.first = add_name(toks[ti]);
-      node.kind  = arith_node_kind::Read;
-      ti++;
-
-      return storage.add_node(node);
-    }
-
-    if (ti >= toks.count()) {
-      return fail_at_token(ti, "Unfinished expression",
-                           "An operand is missing");
-    }
-
-    return fail_at_token(ti,
-                         "Unexpected character in the arithmetic expression",
-                         "This is not a valid operator or operand");
-  }
-
-  fn
-  parse_binary(u8 min_precedence) throws -> u32
-  {
-    binary_depth++;
-    defer { binary_depth--; };
-
-    if (binary_depth > MAX_OPERATOR_CHAIN_DEPTH) {
-      return fail_at_token(ti, "Expression nested too deeply",
-                           OPERATOR_CHAIN_HINT);
-    }
-
-    let const lhs = parse_operand();
-
-    if (has_failed) return lhs;
-
-    let chain     = ARITH_NO_NODE;
-    let last_step = ARITH_NO_NODE;
-
-    loop {
-      if (ti >= toks.count() || toks[ti].k != arith_token::Kind::op) {
-        return chain == ARITH_NO_NODE ? lhs : chain;
-      }
-
-      let const op = arith_unpacked_binop(toks[ti].value);
-
-      if (op.precedence < min_precedence) {
-        return chain == ARITH_NO_NODE ? lhs : chain;
-      }
-
-      arith_node step{};
-
-      step.kind   = arith_node_kind::ChainStep;
-      step.op     = op.kind;
-      step.start  = get_offset(toks[ti]);
-      step.length = static_cast<u32>(toks[ti].text.length);
-      ti++;
-      step.first = parse_binary(
-          op.kind == 'P' ? op.precedence : static_cast<u8>(op.precedence + 1));
-
-      if (ti < toks.count() &&
-          (toks[ti].k != arith_token::Kind::op ||
-           (toks[ti].text != ")" &&
-            arith_unpacked_binop(toks[ti].value).precedence == 0)))
-      {
-        step.flags |= arith_node::TAIL_FLAG;
-        step.middle = get_offset(toks[ti]);
-        step.end    = static_cast<u32>(toks[ti].text.length);
-      }
-
-      let const step_index = storage.add_node(step);
-
-      if (chain == ARITH_NO_NODE) {
-        arith_node node{};
-
-        node.kind   = arith_node_kind::Chain;
-        node.first  = lhs;
-        node.second = step_index;
-        chain       = storage.add_node(node);
-      } else {
-        storage.nodes[last_step].next = step_index;
-      }
-
-      last_step = step_index;
-      if (has_failed) return chain;
-    }
-  }
-};
-
 pure fn
 get_arith_tree_slot_count(u32 node_count, u32 text_length) wontthrow -> usize
 {
@@ -4072,6 +3553,40 @@ get_constant_arithmetic_arena() wontthrow -> BumpArena &
   return arena;
 }
 
+/* a simple tree holds only numbers, plain names, unary and non-logical binary
+   operators, or one step of a plain name, so the evaluator can read and step
+   names without resolving subscripts or limiting depth. */
+static pure fn
+arith_tree_is_simple(const arith_tree &tree) wontthrow -> bool
+{
+  for (u32 index = 0; index < tree.node_count; index++) {
+    let const &node = tree.nodes[index];
+
+    switch (node.kind) {
+    case arith_node_kind::Number:
+    case arith_node_kind::Read:
+    case arith_node_kind::Group:
+    case arith_node_kind::Negate:
+    case arith_node_kind::Not:
+    case arith_node_kind::BitNot:
+    case arith_node_kind::Chain:  break;
+    case arith_node_kind::Lvalue:
+      if ((node.flags & arith_node::SUBSCRIPT_FLAG) != 0) return false;
+      break;
+    case arith_node_kind::ChainStep:
+      if (node.op == 'A' || node.op == 'O') return false;
+      break;
+    case arith_node_kind::PrefixStep:
+    case arith_node_kind::PostfixStep:
+      if (index != tree.root) return false;
+      break;
+    default: return false;
+    }
+  }
+
+  return true;
+}
+
 fn
 build_tree_into(StringView          expression,
                 arith_tree_storage &storage,
@@ -4085,34 +3600,19 @@ build_tree_into(StringView          expression,
                        expression.find_character('"').has_value();
   if (tree.should_expand) return tree;
 
-  let tokens = ArrayList<arith_token>{bump_allocator(arena)};
-  let root   = ARITH_NO_NODE;
+  let const root =
+      ArithmeticTreeBuilder{expression, false, false, storage, arena}.build();
+  let const has_decimal_point = expression.find_character('.').has_value();
+  let       exact_root        = root;
 
-  try {
-    tokenize_arithmetic(expression, tokens);
-    tree.is_simple = arith_tokens_are_simple(tokens);
-  } catch (const ErrorBase &) {
-    tree.is_simple = false;
-  }
-
-  if (tree.is_simple) {
-    root = ArithmeticTokenTreeBuilder{expression, tokens, storage}.build();
-  } else {
-    root =
-        ArithmeticTreeBuilder{expression, false, false, storage, arena}.build();
-  }
-
-  let exact_root = root;
-
-  if (!tree.is_simple && expression.find_character('.').has_value()) {
+  if (has_decimal_point) {
     exact_root =
         ArithmeticTreeBuilder{expression, true, false, storage, arena}.build();
   }
 
-  let const is_simple = tree.is_simple;
-  tree                = storage.get_view(root);
-  tree.exact_root     = exact_root;
-  tree.is_simple      = is_simple;
+  tree            = storage.get_view(root);
+  tree.exact_root = exact_root;
+  tree.is_simple  = !has_decimal_point && arith_tree_is_simple(tree);
 
   return tree;
 }
@@ -4626,6 +4126,53 @@ evaluate_constant_arithmetic_text(StringView expression,
   return evaluate_text_tree(nullptr, expression, true, arena,
                             arith_text_options{})
       .to_string(allocator);
+}
+
+pure fn
+arithmetic_has_side_effect(StringView        expression,
+                           const arith_tree *tree) wontthrow -> bool
+{
+  if (tree != nullptr && !tree->should_expand) {
+    for (u32 index = 0; index < tree->node_count; index++) {
+      switch (tree->nodes[index].kind) {
+      case arith_node_kind::Assign:
+      case arith_node_kind::CompoundAssign:
+      case arith_node_kind::PrefixStep:
+      case arith_node_kind::PostfixStep:    return true;
+      default:                              break;
+      }
+    }
+
+    return false;
+  }
+
+  for (usize i = 0; i < expression.length; i++) {
+    if (i + 1 < expression.length &&
+        ((expression[i] == '+' && expression[i + 1] == '+') ||
+         (expression[i] == '-' && expression[i + 1] == '-')))
+    {
+      return true;
+    }
+
+    if (expression[i] != '=') continue;
+
+    let const previous = i > 0 ? expression[i - 1] : '\0';
+    let const next     = i + 1 < expression.length ? expression[i + 1] : '\0';
+
+    if (i >= 2 && ((previous == '<' && expression[i - 2] == '<') ||
+                   (previous == '>' && expression[i - 2] == '>')))
+    {
+      return true;
+    }
+
+    if (previous != '=' && previous != '!' && previous != '<' &&
+        previous != '>' && next != '=')
+    {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 pure fn

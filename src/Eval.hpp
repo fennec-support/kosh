@@ -6129,8 +6129,9 @@ public:
       const SourceLocation *source_location = nullptr) throws -> bool;
 
   fn
-  evaluate_conditional(const ArrayList<conditional_element> &elements)
-      throws -> bool;
+  evaluate_conditional(
+      const conditional_tree               &tree,
+      const ArrayList<conditional_element> &elements) throws -> bool;
 
   fn
   expand_case_pattern_masked(const Word &word,

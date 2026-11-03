@@ -36,10 +36,103 @@ using namespace internal;
 
 ConditionalCommand::ConditionalCommand(SourceLocation                 location,
                                        ArrayList<conditional_element> elements)
-    : CompoundCommand(steal(location)), m_elements(steal(elements))
+    : CompoundCommand(steal(location)), m_elements(steal(elements)),
+      m_tree(build_conditional_tree(m_elements))
 {}
 
 ConditionalCommand::~ConditionalCommand() = default;
+
+cold static fn
+conditional_failure_name(conditional_node::Failure failure) wontthrow
+    -> StringView
+{
+  using Failure = conditional_node::Failure;
+
+  switch (failure) {
+  case Failure::None:                     return "none";
+  case Failure::Empty:                    return "empty";
+  case Failure::EndsUnexpectedly:         return "ends-unexpectedly";
+  case Failure::OperatorForOperand:       return "operator-for-operand";
+  case Failure::UnaryMissingOperand:      return "unary-missing-operand";
+  case Failure::ComparisonMissingOperand: return "comparison-missing-operand";
+  case Failure::BinaryMissingOperand:     return "binary-missing-operand";
+  case Failure::MissingCloseParen:        return "missing-close-paren";
+  case Failure::TrailingToken:            return "trailing-token";
+  case Failure::NestedTooDeeply:          return "nested-too-deeply";
+  }
+
+  return "none";
+}
+
+cold static fn
+write_conditional_node(
+    AstWriter                            &out,
+    u32                                   index,
+    const conditional_tree               &tree,
+    const ArrayList<conditional_element> &elements) throws -> void
+{
+  using Kind = conditional_node::Kind;
+
+  let const &node             = tree.nodes[index];
+  let const  do_write_operand = [&](usize element_index) throws {
+    if (element_index < elements.count() &&
+        elements[element_index].word != nullptr)
+    {
+      out.token(elements[element_index].word);
+    }
+  };
+  let const do_write_operator = [&](usize element_index) throws {
+    let const *word = elements[element_index].word;
+
+    if (word == nullptr) return;
+
+    let const view = word->raw_view();
+
+    if (view.has_value()) out.quoted("op", *view);
+  };
+
+  switch (node.kind) {
+  case Kind::Or:
+  case Kind::And:
+    out.open(node.kind == Kind::Or ? "or" : "and");
+    write_conditional_node(out, node.first, tree, elements);
+    write_conditional_node(out, node.second, tree, elements);
+    break;
+  case Kind::Not:
+    out.open("not");
+    write_conditional_node(out, node.first, tree, elements);
+    break;
+  case Kind::Unary:
+    out.open("unary");
+    do_write_operator(node.first - 1);
+    do_write_operand(node.first);
+    break;
+  case Kind::Less:
+  case Kind::Greater:
+    out.open("collate");
+    out.quoted("op", node.kind == Kind::Less ? "<" : ">");
+    do_write_operand(node.first);
+    do_write_operand(node.first + 2);
+    break;
+  case Kind::Binary:
+    out.open("binary");
+    do_write_operator(node.first + 1);
+    do_write_operand(node.first);
+    do_write_operand(node.first + 2);
+    break;
+  case Kind::Nonempty:
+    out.open("nonempty");
+    do_write_operand(node.first);
+    break;
+  case Kind::Error:
+    out.open("error");
+    out.symbol("failure", conditional_failure_name(node.failure));
+    if (node.first != conditional_node::NO_NODE) do_write_operand(node.first);
+    break;
+  }
+
+  out.close();
+}
 
 cold fn
 ConditionalCommand::write_ast(AstWriter &out) const throws -> void
@@ -47,41 +140,13 @@ ConditionalCommand::write_ast(AstWriter &out) const throws -> void
   out.open("conditional");
   write_ast_command_fields(out);
 
-  for (let const &element : m_elements) {
-    out.open("element");
-
-    switch (element.kind) {
-    case conditional_element::Kind::Operand:
-      out.symbol("kind", "operand");
-      break;
-    case conditional_element::Kind::And: out.symbol("kind", "and"); break;
-    case conditional_element::Kind::Or:  out.symbol("kind", "or"); break;
-    case conditional_element::Kind::Not: out.symbol("kind", "not"); break;
-    case conditional_element::Kind::OpenParen:
-      out.symbol("kind", "open");
-      break;
-    case conditional_element::Kind::CloseParen:
-      out.symbol("kind", "close");
-      break;
-    case conditional_element::Kind::Less: out.symbol("kind", "less"); break;
-    case conditional_element::Kind::Greater:
-      out.symbol("kind", "greater");
-      break;
-    }
-
-    if (element.location.length > 0)
-      out.position("at", element.location.position);
-    if (element.is_bare_unquoted) out.flag("bare");
-
-    if (element.unary_operator_code != conditional_element::OPERATOR_NONE)
-      out.flag("unary-operator");
-    if (element.binary_operator_code != conditional_element::OPERATOR_NONE)
-      out.flag("binary-operator");
-
-    if (element.word != nullptr) out.token(element.word);
-    out.close();
+  if (m_tree.failure != conditional_node::NO_NODE) {
+    out.symbol("failure",
+               conditional_failure_name(m_tree.nodes[m_tree.failure].failure));
   }
 
+  if (m_tree.root != conditional_node::NO_NODE)
+    write_conditional_node(out, m_tree.root, m_tree, m_elements);
   out.close();
 }
 
@@ -130,81 +195,45 @@ conditional_word_is_numeric_literal(const Token *token) throws -> bool
   return !view.is_empty() && view.is_all_decimal_digits();
 }
 
-/* reports an operator in a [[ ]] that has no operand where it needs one.
-   each primary starts with an optional unary operator, or with a left operand
-   and an optional binary operator. */
+/* reports the operator of a [[ ]] whose parse failed on its missing
+   operand. */
 cold static fn
-report_conditional_missing_operands(
+report_conditional_missing_operand(
     AnalysisContext                      &actx,
-    const ArrayList<conditional_element> &elements) throws -> void
+    const ArrayList<conditional_element> &elements,
+    const conditional_tree               &tree) throws -> void
 {
-  using Kind = conditional_element::Kind;
+  using Failure = conditional_node::Failure;
 
+  if (tree.failure == conditional_node::NO_NODE) return;
   if (!actx.should_report(diagnostic_id::conditional_missing_operand)) return;
 
-  let const do_get_operator = [&](usize index) -> StringView {
-    let const &element = elements[index];
+  let const &failure = tree.nodes[tree.failure];
 
-    if (element.kind != Kind::Operand || !element.is_bare_unquoted ||
-        element.word == nullptr)
-    {
-      return {};
-    }
-
-    let const view = element.word->raw_view();
-
-    return view.has_value() ? *view : StringView{};
-  };
-  let const do_has_operand = [&](usize index) -> bool {
-    return index < elements.count() && elements[index].kind == Kind::Operand;
-  };
-  let const do_report = [&](SourceLocation location,
-                            StringView     op) throws {
-    actx.report_diagnostic(diagnostic_id::conditional_missing_operand, location,
-                           {op});
-  };
-
-  usize index = 0;
-
-  while (index < elements.count()) {
-    if (elements[index].kind != Kind::Operand) {
-      index++;
-      continue;
-    }
-
-    let const leading = do_get_operator(index);
-
-    if (!leading.is_empty() && is_conditional_unary_operator(leading)) {
-      if (!do_has_operand(index + 1))
-        do_report(elements[index].word->source_location(), leading);
-      index += 2;
-      continue;
-    }
-
-    let const has_next  = index + 1 < elements.count();
-    let const next_kind = has_next ? elements[index + 1].kind : Kind::Operand;
-
-    if (has_next && (next_kind == Kind::Less || next_kind == Kind::Greater)) {
-      if (!do_has_operand(index + 2)) {
-        do_report(elements[index + 1].location,
-                  next_kind == Kind::Less ? "<" : ">");
-      }
-
-      index += 3;
-      continue;
-    }
-
-    let const binary = has_next ? do_get_operator(index + 1) : StringView{};
-
-    if (!binary.is_empty() && is_conditional_binary_operator(binary)) {
-      if (!do_has_operand(index + 2))
-        do_report(elements[index + 1].word->source_location(), binary);
-      index += 3;
-      continue;
-    }
-
-    index++;
+  if (failure.failure != Failure::UnaryMissingOperand &&
+      failure.failure != Failure::ComparisonMissingOperand &&
+      failure.failure != Failure::BinaryMissingOperand)
+  {
+    return;
   }
+
+  let const &element = elements[failure.first];
+
+  if (element.kind == conditional_element::Kind::Less ||
+      element.kind == conditional_element::Kind::Greater)
+  {
+    actx.report_diagnostic(
+        diagnostic_id::conditional_missing_operand, element.location,
+        {element.kind == conditional_element::Kind::Less ? "<" : ">"});
+
+    return;
+  }
+
+  let const view = element.word->raw_view();
+
+  actx.report_diagnostic(diagnostic_id::conditional_missing_operand,
+                         element.word->source_location(),
+                         {view.has_value() ? *view : StringView{}});
 }
 
 cold static fn
@@ -355,7 +384,7 @@ ConditionalCommand::analyze(AnalysisContext &actx, bool is_unconditional) const 
   for (let const &element : m_elements)
     analyze_token_substitutions(actx, element.word, is_unconditional);
 
-  report_conditional_missing_operands(actx, m_elements);
+  report_conditional_missing_operand(actx, m_elements, m_tree);
 
   using Kind = conditional_element::Kind;
 
@@ -715,7 +744,7 @@ ConditionalCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const 
       cxt.expansion_store().scratch_arena().release(scratch_mark);
     };
 
-    status = cxt.evaluate_conditional(m_elements) ? 0 : 1;
+    status = cxt.evaluate_conditional(m_tree, m_elements) ? 0 : 1;
   } catch (const Error &e) {
     SourceLocation span = source_location();
 
@@ -856,7 +885,8 @@ ArithmeticCommand::analyze(AnalysisContext &actx, bool is_unconditional) const t
     check_posix_arithmetic_operators(actx, m_expression, source_location());
   }
 
-  actx.constant_variables.clear();
+  if (arithmetic_has_side_effect(m_expression, m_tree))
+    actx.constant_variables.clear();
 }
 
 fn

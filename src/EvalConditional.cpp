@@ -46,20 +46,15 @@ fail_conditional_syntax(StringView reason) throws -> void
 
 namespace {
 
-struct conditional_evaluator
+struct conditional_tree_builder
 {
-  EvalContext                          &cxt;
+  using Kind    = conditional_element::Kind;
+  using Node    = conditional_node;
+  using Failure = conditional_node::Failure;
+
   const ArrayList<conditional_element> &elements;
-  usize                                 pos         = 0;
-  bool                                  is_skipping = false;
-
-  using Kind = conditional_element::Kind;
-
-  fn
-  make_path(StringView text) const throws -> Path
-  {
-    return Path{text, cxt.scratch_allocator()};
-  }
+  conditional_tree                     &tree;
+  usize                                 pos = 0;
 
   pure fn
   at_end() const wontthrow -> bool
@@ -68,17 +63,167 @@ struct conditional_evaluator
   }
 
   pure fn
-  kind_at(usize i) const wontthrow -> Kind
+  has_operand_at(usize index) const wontthrow -> bool
   {
-    return elements[i].kind;
+    return index < elements.count() && elements[index].kind == Kind::Operand;
+  }
+
+  pure fn
+  is_failed() const wontthrow -> bool
+  {
+    return tree.failure != Node::NO_NODE;
   }
 
   fn
-  unexpected_token() throws -> String
+  add(Node::Kind kind, u8 operator_code, usize first, u32 second) throws
+      -> u32
   {
-    if (!at_end()) return operand_literal(elements[pos]);
+    let node = Node{kind};
 
-    return String{heap_allocator()};
+    node.operator_code = operator_code;
+    node.first         = static_cast<u32>(first);
+    node.second        = second;
+    tree.nodes.push(node);
+
+    return static_cast<u32>(tree.nodes.count() - 1);
+  }
+
+  fn
+  fail(Failure failure, usize element = Node::NO_NODE) throws -> u32
+  {
+    let node = Node{Node::Kind::Error};
+
+    node.failure = failure;
+    node.first   = static_cast<u32>(element);
+    tree.nodes.push(node);
+    tree.failure = static_cast<u32>(tree.nodes.count() - 1);
+
+    return tree.failure;
+  }
+
+  fn
+  build_primary() throws -> u32
+  {
+    if (at_end()) return fail(Failure::EndsUnexpectedly);
+
+    let const &first = elements[pos];
+
+    if (first.kind != Kind::Operand) return fail(Failure::OperatorForOperand);
+
+    if (first.unary_operator_code != conditional_element::OPERATOR_NONE) {
+      if (!has_operand_at(pos + 1))
+        return fail(Failure::UnaryMissingOperand, pos);
+      pos += 2;
+
+      return add(Node::Kind::Unary, first.unary_operator_code, pos - 1,
+                 Node::NO_NODE);
+    }
+
+    if (pos + 1 < elements.count()) {
+      let const &next = elements[pos + 1];
+
+      if (next.kind == Kind::Less || next.kind == Kind::Greater) {
+        if (!has_operand_at(pos + 2))
+          return fail(Failure::ComparisonMissingOperand, pos + 1);
+        pos += 3;
+
+        return add(next.kind == Kind::Less ? Node::Kind::Less
+                                           : Node::Kind::Greater,
+                   conditional_element::OPERATOR_NONE, pos - 3, Node::NO_NODE);
+      }
+
+      if (next.kind == Kind::Operand && next.is_bare_unquoted &&
+          next.binary_operator_code != conditional_element::OPERATOR_NONE)
+      {
+        if (!has_operand_at(pos + 2))
+          return fail(Failure::BinaryMissingOperand, pos + 1);
+        pos += 3;
+
+        return add(Node::Kind::Binary, next.binary_operator_code, pos - 3,
+                   Node::NO_NODE);
+      }
+    }
+
+    pos++;
+
+    return add(Node::Kind::Nonempty, conditional_element::OPERATOR_NONE,
+               pos - 1, Node::NO_NODE);
+  }
+
+  fn
+  build_term() throws -> u32
+  {
+    if (os::is_stack_nearly_exhausted()) return fail(Failure::NestedTooDeeply);
+
+    if (!at_end() && elements[pos].kind == Kind::Not) {
+      pos++;
+
+      let const operand = build_term();
+
+      return add(Node::Kind::Not, conditional_element::OPERATOR_NONE, operand,
+                 Node::NO_NODE);
+    }
+
+    if (!at_end() && elements[pos].kind == Kind::OpenParen) {
+      pos++;
+
+      let const inner = build_or();
+
+      if (is_failed()) return inner;
+
+      if (at_end() || elements[pos].kind != Kind::CloseParen) {
+        fail(Failure::MissingCloseParen);
+
+        return inner;
+      }
+
+      pos++;
+
+      return inner;
+    }
+
+    return build_primary();
+  }
+
+  fn
+  build_chain(Kind separator, Node::Kind kind) throws -> u32
+  {
+    let left = separator == Kind::Or ? build_chain(Kind::And, Node::Kind::And)
+                                     : build_term();
+
+    while (!is_failed() && !at_end() && elements[pos].kind == separator) {
+      pos++;
+
+      let const right = separator == Kind::Or
+                            ? build_chain(Kind::And, Node::Kind::And)
+                            : build_term();
+
+      left = add(kind, conditional_element::OPERATOR_NONE, left, right);
+    }
+
+    return left;
+  }
+
+  fn
+  build_or() throws -> u32
+  {
+    return build_chain(Kind::Or, Node::Kind::Or);
+  }
+};
+
+struct conditional_evaluator
+{
+  EvalContext                          &cxt;
+  const ArrayList<conditional_element> &elements;
+  const conditional_tree               &tree;
+
+  using Kind = conditional_element::Kind;
+  using Node = conditional_node;
+
+  fn
+  make_path(StringView text) const throws -> Path
+  {
+    return Path{text, cxt.scratch_allocator()};
   }
 
   fn
@@ -249,24 +394,16 @@ struct conditional_evaluator
   }
 
   static pure fn
-  get_unary_operator(const conditional_element &e) wontthrow
-      -> Maybe<UnaryOperatorKind>
+  get_unary_operator(const Node &node) wontthrow -> UnaryOperatorKind
   {
-    if (e.unary_operator_code == conditional_element::OPERATOR_NONE)
-      return None;
-
-    return static_cast<UnaryOperatorKind>(e.unary_operator_code -
+    return static_cast<UnaryOperatorKind>(node.operator_code -
                                           conditional_element::OPERATOR_BASE);
   }
 
   static pure fn
-  get_binary_operator(const conditional_element &e) wontthrow
-      -> Maybe<BinaryOperatorKind>
+  get_binary_operator(const Node &node) wontthrow -> BinaryOperatorKind
   {
-    if (e.binary_operator_code == conditional_element::OPERATOR_NONE)
-      return None;
-
-    return static_cast<BinaryOperatorKind>(e.binary_operator_code -
+    return static_cast<BinaryOperatorKind>(node.operator_code -
                                            conditional_element::OPERATOR_BASE);
   }
 
@@ -519,286 +656,219 @@ struct conditional_evaluator
     }
   }
 
-  fn
-  eval_primary() throws -> bool
+  cold wontreturn fn
+  fail_node(const Node &node) throws -> void
   {
-    if (at_end())
+    switch (node.failure) {
+    case Node::Failure::None:
+    case Node::Failure::Empty:
+      fail_conditional("The conditional expression is empty");
+    case Node::Failure::EndsUnexpectedly:
       fail_conditional(
           "The expression ends unexpectedly",
           "A conditional needs an operator or an operand after this point");
-
-    const conditional_element &first = elements[pos];
-    if (first.kind != Kind::Operand)
+    case Node::Failure::OperatorForOperand:
       fail_conditional("An operator appears where an operand is expected");
-
-    /* at this point: elements[pos] is an operand. */
-    let const selected_unary_operator = get_unary_operator(first);
-    if (selected_unary_operator.has_value()) {
-      if (pos + 1 >= elements.count() || kind_at(pos + 1) != Kind::Operand) {
-        fail_conditional("The unary operator '" + operand_literal(first) +
-                         "' is missing its operand");
-      }
-
-      pos += 2;
-      if (is_skipping) return false;
-      /* at this point: is_skipping is false, pos is past the unary operator
-         and its operand, and elements[pos - 1] is that operand. */
-
-      let const is_existence_test =
-          *selected_unary_operator == UnaryOperatorKind::VariableSet;
-      let const was_reference_suppressed =
-          cxt.runtime_control_store().is_warning_suppressed(
-              suppressible_warning::UnsetReference);
-      let const was_test_operand_suppressed =
-          cxt.runtime_control_store().is_warning_suppressed(
-              suppressible_warning::UnsetTestOperand);
-
-      cxt.runtime_control_store().set_warning_suppressed(
-          suppressible_warning::UnsetTestOperand,
-          !cxt.runtime_state().was_error_unset_set_explicitly());
-      if (is_existence_test)
-        cxt.runtime_control_store().set_warning_suppressed(
-            suppressible_warning::UnsetReference, true);
-      defer {
-        cxt.runtime_control_store().set_warning_suppressed(
-            suppressible_warning::UnsetReference, was_reference_suppressed);
-        cxt.runtime_control_store().set_warning_suppressed(
-            suppressible_warning::UnsetTestOperand,
-            was_test_operand_suppressed);
-      };
-
-      let const operand = operand_value(elements[pos - 1]);
-
-      return eval_unary(*selected_unary_operator, operand.view());
+    case Node::Failure::UnaryMissingOperand:
+      fail_conditional("The unary operator '" +
+                       operand_literal(elements[node.first]) +
+                       "' is missing its operand");
+    case Node::Failure::ComparisonMissingOperand:
+      fail_conditional_syntax("An operand is missing after a comparison");
+    case Node::Failure::BinaryMissingOperand:
+      fail_conditional_syntax(
+          String{heap_allocator(), "Expected an operand after '"} +
+          *bare_operand_view(elements[node.first]) + "'");
+    case Node::Failure::MissingCloseParen:
+      fail_conditional_syntax("Expected ')'");
+    case Node::Failure::TrailingToken:
+      fail_conditional_syntax(
+          "The token '" + operand_literal(elements[node.first]) +
+          "' came after a complete conditional, so it may be an "
+          "operator the shell does not support or a missing && or || "
+          "between two tests");
+    case Node::Failure::NestedTooDeeply:
+      throw Error{"The conditional expression is nested too deeply"};
     }
 
-    if (pos + 1 < elements.count()) {
-      let const next = kind_at(pos + 1);
-
-      if (next == Kind::Less || next == Kind::Greater) {
-        if (pos + 2 >= elements.count() || kind_at(pos + 2) != Kind::Operand) {
-          fail_conditional_syntax("An operand is missing after a comparison");
-        }
-        pos += 3;
-        if (is_skipping) return false;
-
-        /* at this point: is_skipping is false, elements[pos - 3] and
-           elements[pos - 1] are operands, and elements[pos - 2] is the
-           < or > operator. */
-        let const left  = operand_value(elements[pos - 3]);
-        let const right = operand_value(elements[pos - 1]);
-        let const order = os::collate_compare(left, right);
-
-        return next == Kind::Less ? order < 0 : order > 0;
-      }
-
-      if (next == Kind::Operand && elements[pos + 1].is_bare_unquoted) {
-        let const op_view = bare_operand_view(elements[pos + 1]);
-        let const selected_binary_operator =
-            get_binary_operator(elements[pos + 1]);
-
-        if (selected_binary_operator.has_value()) {
-          if (pos + 2 >= elements.count() || kind_at(pos + 2) != Kind::Operand)
-          {
-            fail_conditional_syntax(
-                String{heap_allocator(), "Expected an operand after '"} +
-                *op_view + "'");
-          }
-          pos += 3;
-          if (is_skipping) return false;
-
-          /* at this point: is_skipping is false, pos is past the operator
-             and its right operand, and elements[pos - 1] is that operand. */
-          let const is_test_operand_op = [&]() -> bool {
-            switch (*selected_binary_operator) {
-            case BinaryOperatorKind::ArithmeticEqual:
-            case BinaryOperatorKind::ArithmeticNotEqual:
-            case BinaryOperatorKind::ArithmeticLess:
-            case BinaryOperatorKind::ArithmeticLessEqual:
-            case BinaryOperatorKind::ArithmeticGreater:
-            case BinaryOperatorKind::ArithmeticGreaterEqual:
-            case BinaryOperatorKind::SameFile:
-            case BinaryOperatorKind::NewerFile:
-            case BinaryOperatorKind::OlderFile:              return true;
-            case BinaryOperatorKind::PatternEqual:
-            case BinaryOperatorKind::PatternNotEqual:
-            case BinaryOperatorKind::Regex:                  return false;
-            }
-
-            return false;
-          }();
-
-          let const was_test_operand_suppressed =
-              cxt.runtime_control_store().is_warning_suppressed(
-                  suppressible_warning::UnsetTestOperand);
-
-          if (is_test_operand_op &&
-              !cxt.runtime_state().was_error_unset_set_explicitly())
-          {
-            cxt.runtime_control_store().set_warning_suppressed(
-                suppressible_warning::UnsetTestOperand, true);
-          }
-          defer {
-            cxt.runtime_control_store().set_warning_suppressed(
-                suppressible_warning::UnsetTestOperand,
-                was_test_operand_suppressed);
-          };
-
-          switch (*selected_binary_operator) {
-          case BinaryOperatorKind::ArithmeticEqual:
-          case BinaryOperatorKind::ArithmeticNotEqual:
-          case BinaryOperatorKind::ArithmeticLess:
-          case BinaryOperatorKind::ArithmeticLessEqual:
-          case BinaryOperatorKind::ArithmeticGreater:
-          case BinaryOperatorKind::ArithmeticGreaterEqual:
-            return eval_arithmetic_comparison(elements[pos - 3],
-                                              *selected_binary_operator,
-                                              elements[pos - 1]);
-          default: break;
-          }
-
-          let const left = operand_value(elements[pos - 3]);
-
-          if (*selected_binary_operator == BinaryOperatorKind::PatternEqual ||
-              *selected_binary_operator == BinaryOperatorKind::PatternNotEqual)
-          {
-            let       active = Bitset{cxt.scratch_allocator()};
-            let const pattern =
-                operand_pattern_masked(elements[pos - 1], active);
-            let const is_case_insensitive =
-                cxt.is_shopt_enabled(shopt_option_id::Nocasematch);
-            let const pattern_extglob = cxt.runtime_state().is_posix_mode()
-                                            ? extglob_mode::Disabled
-                                            : extglob_mode::Enabled;
-
-            if (!is_case_insensitive) {
-              let const is_matched = utils::glob_matches(
-                  pattern.view(), left.view(), active, 0, pattern_extglob,
-                  cxt.get_glob_charset_for(left.view()));
-
-              return *selected_binary_operator ==
-                             BinaryOperatorKind::PatternNotEqual
-                         ? !is_matched
-                         : is_matched;
-            }
-
-            let const match_pattern = utils::lowercase_for_glob(
-                pattern.view(), cxt.get_glob_charset_for(pattern.view()),
-                cxt.scratch_allocator());
-            let const match_value = utils::lowercase_for_glob(
-                left.view(), cxt.get_glob_charset_for(left.view()),
-                cxt.scratch_allocator());
-            let const is_matched = utils::glob_matches(
-                match_pattern.view(), match_value.view(), active, 0,
-                pattern_extglob, cxt.get_glob_charset_for(match_value.view()));
-
-            return *selected_binary_operator ==
-                           BinaryOperatorKind::PatternNotEqual
-                       ? !is_matched
-                       : is_matched;
-          }
-
-          if (*selected_binary_operator == BinaryOperatorKind::Regex) {
-            let          active = Bitset{cxt.scratch_allocator()};
-            const String pattern =
-                operand_pattern_masked(elements[pos - 1], active, true);
-
-            try {
-              return regex_match(left.view(), pattern.view(), active);
-            } catch (const Error &err) {
-              const conditional_element &operand = elements[pos - 1];
-
-              if (operand.word != nullptr)
-                relocate_if_unlocated(err, operand.word->source_location());
-              throw;
-            }
-          }
-
-          let const right = operand_value(elements[pos - 1]);
-
-          return eval_file_comparison(left.view(), *selected_binary_operator,
-                                      right.view());
-        }
-      }
-    }
-
-    pos++;
-    if (is_skipping) return false;
-
-    let const value = operand_value(elements[pos - 1]);
-
-    return !value.is_empty();
+    fail_conditional("The conditional expression is empty");
   }
 
   fn
-  eval_term() throws -> bool
+  eval_unary_node(const Node &node) throws -> bool
+  {
+    let const selected_unary_operator = get_unary_operator(node);
+    let const is_existence_test =
+        selected_unary_operator == UnaryOperatorKind::VariableSet;
+    let const was_reference_suppressed =
+        cxt.runtime_control_store().is_warning_suppressed(
+            suppressible_warning::UnsetReference);
+    let const was_test_operand_suppressed =
+        cxt.runtime_control_store().is_warning_suppressed(
+            suppressible_warning::UnsetTestOperand);
+
+    cxt.runtime_control_store().set_warning_suppressed(
+        suppressible_warning::UnsetTestOperand,
+        !cxt.runtime_state().was_error_unset_set_explicitly());
+    if (is_existence_test)
+      cxt.runtime_control_store().set_warning_suppressed(
+          suppressible_warning::UnsetReference, true);
+    defer {
+      cxt.runtime_control_store().set_warning_suppressed(
+          suppressible_warning::UnsetReference, was_reference_suppressed);
+      cxt.runtime_control_store().set_warning_suppressed(
+          suppressible_warning::UnsetTestOperand, was_test_operand_suppressed);
+    };
+
+    let const operand = operand_value(elements[node.first]);
+
+    return eval_unary(selected_unary_operator, operand.view());
+  }
+
+  fn
+  eval_collation_node(const Node &node) throws -> bool
+  {
+    let const left  = operand_value(elements[node.first]);
+    let const right = operand_value(elements[node.first + 2]);
+    let const order = os::collate_compare(left, right);
+
+    return node.kind == Node::Kind::Less ? order < 0 : order > 0;
+  }
+
+  fn
+  eval_binary_node(const Node &node) throws -> bool
+  {
+    let const pos                      = static_cast<usize>(node.first) + 3;
+    let const selected_binary_operator = get_binary_operator(node);
+    let const is_test_operand_op       = [&]() -> bool {
+      switch (selected_binary_operator) {
+      case BinaryOperatorKind::ArithmeticEqual:
+      case BinaryOperatorKind::ArithmeticNotEqual:
+      case BinaryOperatorKind::ArithmeticLess:
+      case BinaryOperatorKind::ArithmeticLessEqual:
+      case BinaryOperatorKind::ArithmeticGreater:
+      case BinaryOperatorKind::ArithmeticGreaterEqual:
+      case BinaryOperatorKind::SameFile:
+      case BinaryOperatorKind::NewerFile:
+      case BinaryOperatorKind::OlderFile:              return true;
+      case BinaryOperatorKind::PatternEqual:
+      case BinaryOperatorKind::PatternNotEqual:
+      case BinaryOperatorKind::Regex:                  return false;
+      }
+
+      return false;
+    }();
+
+    let const was_test_operand_suppressed =
+        cxt.runtime_control_store().is_warning_suppressed(
+            suppressible_warning::UnsetTestOperand);
+
+    if (is_test_operand_op &&
+        !cxt.runtime_state().was_error_unset_set_explicitly())
+    {
+      cxt.runtime_control_store().set_warning_suppressed(
+          suppressible_warning::UnsetTestOperand, true);
+    }
+    defer {
+      cxt.runtime_control_store().set_warning_suppressed(
+          suppressible_warning::UnsetTestOperand, was_test_operand_suppressed);
+    };
+
+    switch (selected_binary_operator) {
+    case BinaryOperatorKind::ArithmeticEqual:
+    case BinaryOperatorKind::ArithmeticNotEqual:
+    case BinaryOperatorKind::ArithmeticLess:
+    case BinaryOperatorKind::ArithmeticLessEqual:
+    case BinaryOperatorKind::ArithmeticGreater:
+    case BinaryOperatorKind::ArithmeticGreaterEqual:
+      return eval_arithmetic_comparison(
+          elements[pos - 3], selected_binary_operator, elements[pos - 1]);
+    default: break;
+    }
+
+    let const left = operand_value(elements[pos - 3]);
+
+    if (selected_binary_operator == BinaryOperatorKind::PatternEqual ||
+        selected_binary_operator == BinaryOperatorKind::PatternNotEqual)
+    {
+      let       active  = Bitset{cxt.scratch_allocator()};
+      let const pattern = operand_pattern_masked(elements[pos - 1], active);
+      let const is_case_insensitive =
+          cxt.is_shopt_enabled(shopt_option_id::Nocasematch);
+      let const pattern_extglob = cxt.runtime_state().is_posix_mode()
+                                      ? extglob_mode::Disabled
+                                      : extglob_mode::Enabled;
+
+      if (!is_case_insensitive) {
+        let const is_matched = utils::glob_matches(
+            pattern.view(), left.view(), active, 0, pattern_extglob,
+            cxt.get_glob_charset_for(left.view()));
+
+        return selected_binary_operator == BinaryOperatorKind::PatternNotEqual
+                   ? !is_matched
+                   : is_matched;
+      }
+
+      let const match_pattern = utils::lowercase_for_glob(
+          pattern.view(), cxt.get_glob_charset_for(pattern.view()),
+          cxt.scratch_allocator());
+      let const match_value = utils::lowercase_for_glob(
+          left.view(), cxt.get_glob_charset_for(left.view()),
+          cxt.scratch_allocator());
+      let const is_matched = utils::glob_matches(
+          match_pattern.view(), match_value.view(), active, 0, pattern_extglob,
+          cxt.get_glob_charset_for(match_value.view()));
+
+      return selected_binary_operator == BinaryOperatorKind::PatternNotEqual
+                 ? !is_matched
+                 : is_matched;
+    }
+
+    if (selected_binary_operator == BinaryOperatorKind::Regex) {
+      let          active = Bitset{cxt.scratch_allocator()};
+      const String pattern =
+          operand_pattern_masked(elements[pos - 1], active, true);
+
+      try {
+        return regex_match(left.view(), pattern.view(), active);
+      } catch (const Error &err) {
+        const conditional_element &operand = elements[pos - 1];
+
+        if (operand.word != nullptr)
+          relocate_if_unlocated(err, operand.word->source_location());
+        throw;
+      }
+    }
+
+    let const right = operand_value(elements[pos - 1]);
+
+    return eval_file_comparison(left.view(), selected_binary_operator,
+                                right.view());
+  }
+
+  fn
+  eval_node(u32 index) throws -> bool
   {
     if (os::is_stack_nearly_exhausted())
       throw Error{"The conditional expression is nested too deeply"};
 
-    if (!at_end() && kind_at(pos) == Kind::Not) {
-      pos++;
+    let const &node = tree.nodes[index];
 
-      return !eval_term();
+    switch (node.kind) {
+    case Node::Kind::Or: return eval_node(node.first) || eval_node(node.second);
+    case Node::Kind::And:
+      return eval_node(node.first) && eval_node(node.second);
+    case Node::Kind::Not:     return !eval_node(node.first);
+    case Node::Kind::Unary:   return eval_unary_node(node);
+    case Node::Kind::Less:
+    case Node::Kind::Greater: return eval_collation_node(node);
+    case Node::Kind::Binary:  return eval_binary_node(node);
+    case Node::Kind::Nonempty:
+      return !operand_value(elements[node.first]).is_empty();
+    case Node::Kind::Error: fail_node(node);
     }
 
-    if (!at_end() && kind_at(pos) == Kind::OpenParen) {
-      pos++;
-
-      let const is_inner_true = eval_or();
-
-      if (at_end() || kind_at(pos) != Kind::CloseParen) {
-        fail_conditional_syntax("Expected ')'");
-      }
-
-      pos++;
-
-      return is_inner_true;
-    }
-
-    return eval_primary();
-  }
-
-  fn
-  eval_and() throws -> bool
-  {
-    let is_and_true = eval_term();
-
-    while (!at_end() && kind_at(pos) == Kind::And) {
-      pos++;
-
-      let const was_skipping = is_skipping;
-
-      is_skipping = is_skipping || !is_and_true;
-
-      let const is_right_hand_side_true = eval_term();
-
-      is_skipping = was_skipping;
-      is_and_true = is_and_true && is_right_hand_side_true;
-    }
-
-    return is_and_true;
-  }
-
-  fn
-  eval_or() throws -> bool
-  {
-    let is_or_true = eval_and();
-
-    while (!at_end() && kind_at(pos) == Kind::Or) {
-      pos++;
-
-      let const was_skipping = is_skipping;
-
-      is_skipping = is_skipping || is_or_true;
-
-      let const is_right_hand_side_true = eval_and();
-
-      is_skipping = was_skipping;
-      is_or_true  = is_or_true || is_right_hand_side_true;
-    }
-
-    return is_or_true;
+    return false;
   }
 };
 
@@ -893,27 +963,41 @@ EvalContext::cached_compiled_regex(StringView pattern,
 }
 
 fn
+build_conditional_tree(const ArrayList<conditional_element> &elements)
+    throws -> conditional_tree
+{
+  let tree    = conditional_tree{};
+  let builder = conditional_tree_builder{elements, tree};
+
+  if (elements.is_empty()) {
+    tree.root = builder.fail(conditional_node::Failure::Empty);
+
+    return tree;
+  }
+
+  tree.root = builder.build_or();
+
+  if (!builder.is_failed() && !builder.at_end()) {
+    builder.fail(conditional_node::Failure::TrailingToken, builder.pos);
+  }
+
+  return tree;
+}
+
+fn
 EvalContext::evaluate_conditional(
+    const conditional_tree               &tree,
     const ArrayList<conditional_element> &elements) throws -> bool
 {
-  if (elements.is_empty())
-    fail_conditional("The conditional expression is empty");
   LOG(Debug, "evaluating a [[ ]] conditional of %zu elements",
       elements.count());
 
-  let       evaluator           = conditional_evaluator{*this, elements};
-  let const is_conditional_true = evaluator.eval_or();
+  let       evaluator           = conditional_evaluator{*this, elements, tree};
+  let const is_conditional_true = evaluator.eval_node(tree.root);
 
-  if (!evaluator.at_end()) {
-    fail_conditional_syntax(
-        "The token '" + evaluator.unexpected_token() +
-        "' came after a complete conditional, so it may be an "
-        "operator the shell does not support or a missing && or || "
-        "between two tests");
-  }
+  if (tree.failure != conditional_node::NO_NODE)
+    evaluator.fail_node(tree.nodes[tree.failure]);
 
-  /* at this point: the evaluator consumed every element, so the result
-     covers the whole list. */
   return is_conditional_true;
 }
 

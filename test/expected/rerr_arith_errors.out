@@ -30,7 +30,7 @@ note: An operator is missing between two values.
     21 |  (echo $((++)))
        |           ^~
 note: '++' and '--' apply only to a variable.
-25:8: warning: Unexpected '@ 2 ' after the expression.
+25:8: warning: Unexpected '@ 2' after the expression.
     25 |  ( (( 1 @ 2 )) )
        |         ^
 note: An operator is missing between two values.
@@ -131,7 +131,7 @@ note: The right operand evaluated to 0.
     23 |  ( (( 1 / 0 )) )
        |  ^
 command_division=1
-25:8: error: Unexpected '@ 2 ' after the expression.
+25:8: error: Unexpected '@ 2' after the expression.
     25 |  ( (( 1 @ 2 )) )
        |         ^
 note: An operator is missing between two values.

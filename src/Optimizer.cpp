@@ -556,37 +556,6 @@ word_segment_has_glob_metacharacter(const WordSegment &segment)
 
 namespace {
 
-pure fn
-arithmetic_has_side_effect(StringView text) wontthrow -> bool
-{
-  for (usize i = 0; i < text.length; i++) {
-    if (i + 1 < text.length && ((text[i] == '+' && text[i + 1] == '+') ||
-                                (text[i] == '-' && text[i + 1] == '-')))
-    {
-      return true;
-    }
-
-    if (text[i] == '=') {
-      let const previous = i > 0 ? text[i - 1] : '\0';
-      let const next     = i + 1 < text.length ? text[i + 1] : '\0';
-
-      if (i >= 2 && ((previous == '<' && text[i - 2] == '<') ||
-                     (previous == '>' && text[i - 2] == '>')))
-      {
-        return true;
-      }
-
-      if (previous != '=' && previous != '!' && previous != '<' &&
-          previous != '>' && next != '=')
-      {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
 fn
 fold_constant_arithmetic_in_word(
     const Word           &word,
@@ -601,7 +570,9 @@ fold_constant_arithmetic_in_word(
 
     /* the target of an arithmetic side effect is not parsed, so it can assign
        any recorded constant. every recorded constant is dropped. */
-    if (arithmetic_has_side_effect(segment.text.view())) {
+    if (arithmetic_has_side_effect(segment.text.view(),
+                                   segment.get_arithmetic_tree()))
+    {
       actx.constant_variables.clear();
       continue;
     }

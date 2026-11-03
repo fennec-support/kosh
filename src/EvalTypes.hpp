@@ -846,6 +846,61 @@ struct conditional_element
 
 static_assert(sizeof(usize) != 8 || sizeof(conditional_element) == 24);
 
+/* one node of a parsed [[ ]] expression. Unary, Less, Greater, Binary, and
+   Nonempty point at their first element. Not, And, and Or point at nodes. An
+   Error node records the first syntax error, which the evaluator raises when
+   it reaches the node or after the result is known. */
+struct conditional_node
+{
+  enum class Kind : u8
+  {
+    Or,
+    And,
+    Not,
+    Unary,
+    Less,
+    Greater,
+    Binary,
+    Nonempty,
+    Error,
+  };
+
+  enum class Failure : u8
+  {
+    None,
+    Empty,
+    EndsUnexpectedly,
+    OperatorForOperand,
+    UnaryMissingOperand,
+    ComparisonMissingOperand,
+    BinaryMissingOperand,
+    MissingCloseParen,
+    TrailingToken,
+    NestedTooDeeply,
+  };
+
+  static constexpr u32 NO_NODE = 0xffffffffU;
+
+  Kind    kind;
+  u8      operator_code{conditional_element::OPERATOR_NONE};
+  Failure failure{Failure::None};
+  u32     first{NO_NODE};
+  u32     second{NO_NODE};
+};
+
+static_assert(sizeof(conditional_node) == 12);
+
+struct conditional_tree
+{
+  ArrayList<conditional_node> nodes{heap_allocator()};
+  u32                         root{conditional_node::NO_NODE};
+  u32                         failure{conditional_node::NO_NODE};
+};
+
+fn
+build_conditional_tree(const ArrayList<conditional_element> &elements)
+    throws -> conditional_tree;
+
 pure fn
 is_conditional_unary_operator(StringView text) wontthrow -> bool;
 pure fn
