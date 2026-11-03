@@ -11,6 +11,7 @@
 
 #include "Builtin.hpp"
 #include "CLI.hpp"
+#include "DiagnosticsChecksInternal.hpp"
 #include "Errors.hpp"
 #include "Eval.hpp"
 #include "Expressions.hpp"
@@ -280,6 +281,39 @@ is_conditional_pattern_operator(StringView op) wontthrow -> bool
   return op == StringView{"=~"} || CONDITIONAL_EQUALITY_OPERATORS.contains(op);
 }
 
+/* an integer comparison in [[ ]] evaluates an operand that starts with
+   name[ as an arithmetic array element. */
+cold static fn
+is_conditional_array_element_operand(const AnalysisContext &actx,
+                                     const Token           *word) wontthrow -> bool
+{
+  if (word == nullptr || word->kind() != Token::Kind::Word) return false;
+
+  let text = analysis_source_text(actx, word->source_location());
+
+  if (!text.is_empty() && (text[0] == '"' || text[0] == '\'')) {
+    text = text.substring(1);
+  }
+
+  if (text.is_empty() || !lexer::is_variable_name_start(text[0])) return false;
+
+  usize name_end = 1;
+
+  while (name_end < text.length && lexer::is_variable_name(text[name_end]))
+    name_end++;
+
+  return name_end < text.length && text[name_end] == '[';
+}
+
+cold static fn
+is_conditional_integer_operator(const conditional_element &element) wontthrow
+    -> bool
+{
+  let const view = conditional_operator_view(element);
+
+  return view.has_value() && is_test_numeric_operator_word(*view);
+}
+
 cold static fn
 conditional_element_ends_operand(const conditional_element &element) wontthrow
     -> bool
@@ -462,8 +496,15 @@ ConditionalCommand::analyze(AnalysisContext &actx, bool is_unconditional) const 
                   ? m_elements[i - 1].word->raw_string()
                   : String{heap_allocator()};
 
+          let const is_integer_operand =
+              (i > 0 && is_conditional_integer_operator(m_elements[i - 1])) ||
+              (i + 1 < m_elements.count() &&
+               is_conditional_integer_operator(m_elements[i + 1]));
+
           if (!is_conditional_pattern_operator(previous.view()) &&
-              !CONDITIONAL_PATH_TESTS.contains(previous.view()))
+              !CONDITIONAL_PATH_TESTS.contains(previous.view()) &&
+              !(is_integer_operand &&
+                is_conditional_array_element_operand(actx, element.word)))
           {
             actx.report_diagnostic(diagnostic_id::sc2203,
                                    element.word->source_location(), {written});
@@ -522,19 +563,31 @@ ConditionalCommand::analyze(AnalysisContext &actx, bool is_unconditional) const 
     let const right = m_elements[i + 1].word;
     let const should_prefer_string_comparison =
         operand.view() == "-eq" || operand.view() == "-ne";
+    let const is_integer_operator =
+        is_test_numeric_operator_word(operand.view());
+    let const is_left_element =
+        is_integer_operator && is_conditional_array_element_operand(actx, left);
+    let const is_right_element =
+        is_integer_operator &&
+        is_conditional_array_element_operand(actx, right);
 
-    check_numeric_comparison_operand(actx, operand.view(), left,
-                                     should_prefer_string_comparison);
-    check_numeric_comparison_operand(actx, operand.view(), right,
-                                     should_prefer_string_comparison);
+    if (!is_left_element) {
+      check_numeric_comparison_operand(actx, operand.view(), left,
+                                       should_prefer_string_comparison);
+    }
+
+    if (!is_right_element) {
+      check_numeric_comparison_operand(actx, operand.view(), right,
+                                       should_prefer_string_comparison);
+    }
 
     const bool is_pattern_operator =
         operand.view() == "=~" ||
         ((operand.view() == "=" || operand.view() == "==") &&
          conditional_word_has_glob(right));
 
-    if (!is_pattern_operator && conditional_word_is_literal(left) &&
-        conditional_word_is_literal(right))
+    if (!is_pattern_operator && !is_left_element && !is_right_element &&
+        conditional_word_is_literal(left) && conditional_word_is_literal(right))
     {
       actx.report_diagnostic(
           diagnostic_id::sc2050,

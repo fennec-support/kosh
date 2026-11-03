@@ -9,3 +9,5 @@ loop c=y
 rehash=kept
 data key=5 keys=a]$(echo ran >&2)
 data key compared
+quoted key and expression compared
+unset array status=2

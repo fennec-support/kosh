@@ -139,3 +139,11 @@ test_special_parameter_operands() {
   [ $? -eq 0 ]
   [ $$ -gt 1 ]
 }
+
+test_array_element_operands() {
+  local -a a=(1 2 3)
+  local -A h=(['a b']=4)
+  local i=1
+  [[ a[$i] -eq 2 && a[i+1] -gt 2 && h['a b'] -eq 4 && 3 -eq "a[$i]+1" ]]
+  [ "a[1]" -eq 2 ]
+}

@@ -33,6 +33,15 @@ data_keys[$data_key]=4
 (( data_keys[$data_key] += 1 ))
 # shellcheck disable=SC2004
 echo "data key=$(( data_keys[$data_key] )) keys=${!data_keys[*]}"
-# A [[ ]] integer comparison reads the same literal key.
-# shellcheck disable=SC2203,SC2130
+# A [[ ]] integer comparison reads the same literal key, and analysis takes
+# an array element there as arithmetic.
 [[ data_keys[$data_key] -eq 5 ]] && echo "data key compared"
+data_keys['b]c']=6
+data_list=(1 2 3)
+i=1
+[[ data_keys['b]c'] -eq 6 && data_list[i+1] -eq 3 && 3 -eq "data_list[$i]+1" ]] &&
+  echo "quoted key and expression compared"
+# A subscripted read of a variable without a value reports the variable.
+declare -A unset_keys
+( set -u; echo "$(( unset_keys[x] ))" ) 2>/dev/null ||
+  echo "unset array status=$?"

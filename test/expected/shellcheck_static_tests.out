@@ -502,4 +502,12 @@ note: Quote it to avoid an empty or split argument.
    139 |    [ $? -eq 0 ]
        |      ^~
 note: Test the command directly with `if` or `&&`.
-Encountered 123 warnings.
+148:5: warning: Both operands of the `-eq` comparison are literal. (SC2050)
+   148 |    [ "a[1]" -eq 2 ]
+       |      ^~~~~~~~~~~~
+note: Remove the constant condition or compare runtime data.
+148:5: warning: The numeric comparison `-eq` compares 'a[1]', which is not a number. (SC2170)
+   148 |    [ "a[1]" -eq 2 ]
+       |      ^~~~~~
+note: Use a numeric operand, or compare the text with `=` or `!=`.
+Encountered 125 warnings.
