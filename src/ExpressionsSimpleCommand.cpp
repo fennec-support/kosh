@@ -710,6 +710,8 @@ SimpleCommand::can_evaluate_in_process_substitution(
         cxt, active_functions);
   }
 
+  /* an in-process substitution keeps no working directory reference, so no
+     builtin in this set may change the working directory. */
   constexpr PackedStringKey SAFE_BUILTIN_KEYS[] = {
       SSK(":"),     SSK("echo"),   SSK("false"),  SSK("let"),
       SSK("local"), SSK("printf"), SSK("return"), SSK("true"),
