@@ -866,17 +866,23 @@ acquire_process_lock(StringView       path,
   if (::flock(lock, lock_flags) == 0) return lock;
 
 #if defined __APPLE__
-  /* macOS has no advisory lock on a FIFO, so a FIFO is locked through a
-     private file of the user that the device and inode of the FIFO identify.
-     Other kosh processes of the same user lock the same file. */
+  /* macOS has no advisory lock on a FIFO, so a FIFO is locked through a file
+     in the private temporary directory of the user that the device and inode
+     of the FIFO identify. Only kosh processes of the same user exclude each
+     other through it. */
   if (errno == ENOTSUP || errno == EOPNOTSUPP) {
     struct stat fifo_status{};
+    char        user_directory[PATH_MAX];
+    let const   directory_length = ::confstr(
+        _CS_DARWIN_USER_TEMP_DIR, user_directory, sizeof(user_directory));
 
-    if (::fstat(lock, &fifo_status) == 0 && S_ISFIFO(fifo_status.st_mode)) {
-      char proxy_path[128];
+    if (directory_length > 0 && directory_length <= sizeof(user_directory) &&
+        ::fstat(lock, &fifo_status) == 0 && S_ISFIFO(fifo_status.st_mode))
+    {
+      char proxy_path[PATH_MAX + 64];
 
-      snprintf(proxy_path, sizeof(proxy_path), "/tmp/.kosh-flock-%u-%llu-%llu",
-               static_cast<unsigned>(::geteuid()),
+      snprintf(proxy_path, sizeof(proxy_path), "%s/.kosh-flock-%llu-%llu",
+               user_directory,
                static_cast<unsigned long long>(fifo_status.st_dev),
                static_cast<unsigned long long>(fifo_status.st_ino));
 
