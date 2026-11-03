@@ -2441,6 +2441,8 @@ command inherits as a descriptor (\f[CR]\-n\f[R]/\f[CR]\-\-nonblock\f[R]
 fail with status \f[CR]1\f[R] instead of waiting,
 \f[CR]\-\-transaction\-held\-lock\f[R] keep the lock after the launching
 process exits).
+On macOS, which has no lock on a FIFO, a FIFO is locked through the file
+\f[CR]/tmp/.kosh\-flock\-UID\-DEVICE\-INODE\f[R] of the user.
 T}
 T{
 \f[CR]fold\f[R]
