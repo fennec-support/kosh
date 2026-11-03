@@ -93,10 +93,7 @@
 #include <string.h>
 #include <time.h>
 
-#include <type_traits>
 #include <initializer_list>
-#include <limits>
-#include <utility>
 #include <new>
 #include <exception>
 
@@ -185,7 +182,7 @@ public:
 #define unused(x) ((void) (x))
 
 #define countof(arr) (sizeof(arr) / sizeof(*(arr)))
-#define steal        std::move
+#define steal        ::koshka::move_value
 #define mustuse      [[nodiscard]]
 
 #if defined __has_cpp_attribute && __has_cpp_attribute(no_unique_address)
@@ -239,6 +236,239 @@ public:
 
 namespace koshka {
 
+template <class T, T Value>
+struct integral_constant
+{
+  static constexpr T value = Value;
+};
+
+using true_type  = integral_constant<bool, true>;
+using false_type = integral_constant<bool, false>;
+
+template <class T>
+struct remove_reference
+{
+  using type = T;
+};
+template <class T>
+struct remove_reference<T &>
+{
+  using type = T;
+};
+template <class T>
+struct remove_reference<T &&>
+{
+  using type = T;
+};
+template <class T>
+using remove_reference_t = typename remove_reference<T>::type;
+
+template <class T>
+struct remove_cv
+{
+  using type = T;
+};
+template <class T>
+struct remove_cv<const T>
+{
+  using type = T;
+};
+template <class T>
+struct remove_cv<volatile T>
+{
+  using type = T;
+};
+template <class T>
+struct remove_cv<const volatile T>
+{
+  using type = T;
+};
+template <class T>
+using remove_cv_t = typename remove_cv<T>::type;
+template <class T>
+using remove_cvref_t = remove_cv_t<remove_reference_t<T>>;
+
+template <bool Condition, class Then, class Else>
+struct conditional
+{
+  using type = Then;
+};
+template <class Then, class Else>
+struct conditional<false, Then, Else>
+{
+  using type = Else;
+};
+template <bool Condition, class Then, class Else>
+using conditional_t = typename conditional<Condition, Then, Else>::type;
+
+template <class T>
+fn
+declval() wontthrow -> T &&;
+
+template <class T>
+constexpr alwaysinline fn
+move_value(T &&value) wontthrow -> remove_reference_t<T> &&
+{
+  return static_cast<remove_reference_t<T> &&>(value);
+}
+
+template <class T>
+constexpr alwaysinline fn
+forward(remove_reference_t<T> &value) wontthrow -> T &&
+{
+  return static_cast<T &&>(value);
+}
+
+template <class T>
+constexpr alwaysinline fn
+forward(remove_reference_t<T> &&value) wontthrow -> T &&
+{
+  return static_cast<T &&>(value);
+}
+
+template <class T, class U>
+inline constexpr bool is_same_v = __is_same(T, U);
+template <class T>
+inline constexpr bool is_void_v = is_same_v<remove_cv_t<T>, void>;
+template <class T>
+inline constexpr bool is_enum_v = __is_enum(T);
+template <class T>
+using underlying_type_t = __underlying_type(T);
+template <class T>
+inline constexpr bool is_abstract_v = __is_abstract(T);
+template <class Base, class Derived>
+inline constexpr bool is_base_of_v = __is_base_of(Base, Derived);
+template <class From, class To>
+inline constexpr bool is_convertible_v = __is_convertible(From, To);
+template <class T, class... Args>
+inline constexpr bool is_constructible_v = __is_constructible(T, Args...);
+template <class T>
+inline constexpr bool is_copy_constructible_v =
+    __is_constructible(T, const T &);
+template <class T>
+inline constexpr bool is_nothrow_move_constructible_v =
+    __is_nothrow_constructible(T, T &&);
+template <class T>
+inline constexpr bool is_nothrow_move_assignable_v =
+    __is_nothrow_assignable(T &, T &&);
+template <class T>
+inline constexpr bool is_nothrow_destructible_v = noexcept(declval<T &>().~T());
+template <class T>
+inline constexpr bool is_trivially_copyable_v = __is_trivially_copyable(T);
+#if __has_builtin(__is_trivially_destructible)
+template <class T>
+inline constexpr bool is_trivially_destructible_v =
+    __is_trivially_destructible(T);
+#else
+template <class T>
+inline constexpr bool is_trivially_destructible_v = __has_trivial_destructor(T);
+#endif
+template <class T>
+inline constexpr bool is_member_pointer_v = __is_member_pointer(T);
+template <class T>
+inline constexpr bool has_unique_object_representations_v =
+    __has_unique_object_representations(T);
+
+template <class T>
+struct is_pointer_type : false_type
+{};
+template <class T>
+struct is_pointer_type<T *> : true_type
+{};
+template <class T>
+inline constexpr bool is_pointer_v = is_pointer_type<remove_cv_t<T>>::value;
+
+template <class T>
+struct is_integral_type : false_type
+{};
+template <>
+struct is_integral_type<bool> : true_type
+{};
+template <>
+struct is_integral_type<char> : true_type
+{};
+template <>
+struct is_integral_type<signed char> : true_type
+{};
+template <>
+struct is_integral_type<unsigned char> : true_type
+{};
+template <>
+struct is_integral_type<wchar_t> : true_type
+{};
+template <>
+struct is_integral_type<char8_t> : true_type
+{};
+template <>
+struct is_integral_type<char16_t> : true_type
+{};
+template <>
+struct is_integral_type<char32_t> : true_type
+{};
+template <>
+struct is_integral_type<short> : true_type
+{};
+template <>
+struct is_integral_type<unsigned short> : true_type
+{};
+template <>
+struct is_integral_type<int> : true_type
+{};
+template <>
+struct is_integral_type<unsigned int> : true_type
+{};
+template <>
+struct is_integral_type<long> : true_type
+{};
+template <>
+struct is_integral_type<unsigned long> : true_type
+{};
+template <>
+struct is_integral_type<long long> : true_type
+{};
+template <>
+struct is_integral_type<unsigned long long> : true_type
+{};
+template <>
+struct is_integral_type<__int128> : true_type
+{};
+template <>
+struct is_integral_type<unsigned __int128> : true_type
+{};
+template <class T>
+inline constexpr bool is_integral_v = is_integral_type<remove_cv_t<T>>::value;
+
+template <class T>
+inline constexpr bool is_floating_point_v =
+    is_same_v<remove_cv_t<T>, float> || is_same_v<remove_cv_t<T>, double> ||
+    is_same_v<remove_cv_t<T>, long double>;
+template <class T>
+inline constexpr bool is_arithmetic_v =
+    is_integral_v<T> || is_floating_point_v<T>;
+
+template <class T, bool IsArithmetic = is_arithmetic_v<T>>
+struct is_signed_type : false_type
+{};
+template <class T>
+struct is_signed_type<T, true> : integral_constant<bool, T(-1) < T(0)>
+{};
+template <class T>
+inline constexpr bool is_signed_v = is_signed_type<T>::value;
+
+template <class T>
+struct integer_limits
+{
+  static_assert(is_integral_v<T>);
+
+  static constexpr T max_value =
+      is_signed_v<T>
+          ? static_cast<T>(
+                (static_cast<unsigned __int128>(1) << (sizeof(T) * 8 - 1)) - 1)
+          : static_cast<T>(~static_cast<T>(0));
+  static constexpr T min_value =
+      is_signed_v<T> ? static_cast<T>(-max_value - 1) : static_cast<T>(0);
+};
+
 enum class root_evaluation_mode : u8
 {
   Normal,
@@ -273,23 +503,21 @@ struct tagged_int
 };
 
 template <class T>
-struct is_tagged_int : std::false_type
+struct is_tagged_int : false_type
 {};
 template <int_base TagBase, class T>
-struct is_tagged_int<tagged_int<TagBase, T>> : std::true_type
+struct is_tagged_int<tagged_int<TagBase, T>> : true_type
 {};
 template <class T>
 inline constexpr bool is_tagged_int_v = is_tagged_int<T>::value;
 
 template <class T>
-concept is_cloneable = requires(const T &value) {
-  value.clone();
-} && std::is_same_v<decltype(std::declval<const T &>().clone()), T>;
+concept is_cloneable = requires(const T &value) { value.clone(); } &&
+                       is_same_v<decltype(declval<const T &>().clone()), T>;
 
 template <class T>
 concept is_plainly_copyable =
-    std::is_trivially_copyable_v<T> && !std::is_pointer_v<T> &&
-    !std::is_member_pointer_v<T>;
+    is_trivially_copyable_v<T> && !is_pointer_v<T> && !is_member_pointer_v<T>;
 
 template <class T>
 mustuse fn

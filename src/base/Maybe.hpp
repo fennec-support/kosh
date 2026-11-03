@@ -23,14 +23,14 @@ inline constexpr Nothing None{};
    copyable and destructible and can be constant data. */
 template <class T>
 concept is_trivial_maybe_value =
-    std::is_trivially_copyable_v<T> && std::is_trivially_destructible_v<T> &&
+    is_trivially_copyable_v<T> && is_trivially_destructible_v<T> &&
     !is_cloneable<T>;
 
 template <class T>
 class mustuse Maybe
 {
 public:
-  static_assert(std::is_nothrow_destructible_v<T>);
+  static_assert(is_nothrow_destructible_v<T>);
 
   constexpr Maybe() noexcept : m_has_value(false), m_empty(0) {}
   constexpr Maybe(Nothing) noexcept : m_has_value(false), m_empty(0) {}
@@ -59,7 +59,7 @@ public:
     if (m_has_value) new (&m_value) T(copy_of(other.reference()));
   }
 
-  Maybe(Maybe &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
+  Maybe(Maybe &&other) noexcept(is_nothrow_move_constructible_v<T>)
       : m_has_value(other.m_has_value)
   {
     if (m_has_value) new (&m_value) T(steal(other.reference()));
@@ -113,7 +113,7 @@ public:
   }
 
   fn
-  operator=(Maybe &&other) noexcept(std::is_nothrow_move_constructible_v<T>)
+  operator=(Maybe &&other) noexcept(is_nothrow_move_constructible_v<T>)
       -> Maybe &
   {
     if (this != &other) {

@@ -160,7 +160,7 @@ private:
 };
 
 static_assert(sizeof(ArithmeticValue) == 16);
-static_assert(std::is_trivially_copyable_v<ArithmeticValue>);
+static_assert(is_trivially_copyable_v<ArithmeticValue>);
 
 struct radix_prefix
 {

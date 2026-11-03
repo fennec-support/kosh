@@ -76,7 +76,7 @@ value_to_log_string(char value) -> String
 }
 
 template <class T>
-  requires std::is_integral_v<T>
+  requires is_integral_v<T>
 fn
 value_to_log_string(T value) -> String
 {
@@ -84,7 +84,7 @@ value_to_log_string(T value) -> String
 }
 
 template <class T>
-  requires std::is_floating_point_v<T>
+  requires is_floating_point_v<T>
 fn
 value_to_log_string(T value) -> String
 {
@@ -96,7 +96,7 @@ value_to_log_string(T value) -> String
 }
 
 template <class T>
-  requires std::is_pointer_v<T>
+  requires is_pointer_v<T>
 fn
 value_to_log_string(T value) -> String
 {
@@ -139,7 +139,7 @@ format_named_values(StringView names, Args &&...args) -> String
     if (++index < value_count) out.append(StringView{", "});
   };
 
-  (do_append_one(std::forward<Args>(args)), ...);
+  (do_append_one(forward<Args>(args)), ...);
 
   return out;
 }

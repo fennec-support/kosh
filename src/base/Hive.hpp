@@ -21,7 +21,7 @@ class Hive
   struct Block;
 
 public:
-  static_assert(std::is_nothrow_destructible_v<T>);
+  static_assert(is_nothrow_destructible_v<T>);
 
   static constexpr usize BLOCK_SLOT_COUNT = 64;
 

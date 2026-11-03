@@ -12,8 +12,6 @@
 #include "ArrayList.hpp"
 #include "Common.hpp"
 
-#include <type_traits>
-
 namespace koshka {
 
 class BumpArena
@@ -108,7 +106,7 @@ public:
   flatten alwaysinline fn
   create(Args &&...args) throws -> T *
   {
-    static_assert(std::is_nothrow_destructible_v<T>);
+    static_assert(is_nothrow_destructible_v<T>);
 
     let const saved   = mark();
     opaque   *storage = nullptr;
@@ -123,7 +121,7 @@ public:
     T *object = nullptr;
 
     try {
-      object = new (storage) T(std::forward<Args>(args)...);
+      object = new (storage) T(forward<Args>(args)...);
     } catch (...) {
       release(saved);
       throw;
@@ -131,7 +129,7 @@ public:
 
     /* at this point: object is constructed in storage, which this arena
        owns, and saved marks the arena position before storage. */
-    if constexpr (!std::is_trivially_destructible_v<T>) {
+    if constexpr (!is_trivially_destructible_v<T>) {
       if constexpr (requires { T::is_arena_destructor_noop; }) {
         if constexpr (T::is_arena_destructor_noop) return object;
       }

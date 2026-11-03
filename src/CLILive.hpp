@@ -18,8 +18,6 @@
 #include "base/Maybe.hpp"
 #include "platform/Platform.hpp"
 
-#include <type_traits>
-
 namespace koshka::koshkit {
 
 /* converts an interval to nanoseconds and clamps it between one millisecond
@@ -461,7 +459,7 @@ update_retained_rows(ArrayList<Row> &retained,
                      DoMakeRow       do_make_row,
                      DoUpdated       do_updated = {}) throws -> void
 {
-  using key_type = std::decay_t<decltype(do_get_key(retained[0]))>;
+  using key_type = remove_cvref_t<decltype(do_get_key(retained[0]))>;
   struct index_entry
   {
     key_type key;

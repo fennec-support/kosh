@@ -508,7 +508,7 @@ private:
   mustuse fn
   make_empty_value() const throws -> Value
   {
-    if constexpr (std::is_constructible_v<Value, Allocator>) {
+    if constexpr (is_constructible_v<Value, Allocator>) {
       return Value{m_allocator};
     } else if constexpr (requires { Value::empty(m_allocator); }) {
       return Value::empty(m_allocator);
@@ -545,7 +545,7 @@ private:
     let const mask        = new_capacity - 1;
 
     try {
-      if constexpr (std::is_nothrow_move_assignable_v<Value>) {
+      if constexpr (is_nothrow_move_assignable_v<Value>) {
         for (usize i = 0; i < old_capacity; i++) {
           if (old_slots[i].get_state() != Slot::Occupied) continue;
 

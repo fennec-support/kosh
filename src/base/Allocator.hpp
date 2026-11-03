@@ -460,9 +460,7 @@ concept is_allocator_clonable =
     requires(const T &value, Allocator allocator) {
       value.clone_to(allocator);
     } &&
-    std::is_same_v<decltype(std::declval<const T &>().clone_to(
-                       std::declval<Allocator>())),
-                   T>;
+    is_same_v<decltype(declval<const T &>().clone_to(declval<Allocator>())), T>;
 
 /* a type that owns allocator storage and can deep copy it into another. */
 template <class T>

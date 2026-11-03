@@ -139,7 +139,7 @@ public:
     if constexpr (is_tagged_int_v<T>) {
       return from_signed_or_unsigned(value.value, T::base, allocator);
     } else {
-      static_assert(std::is_integral_v<T>, "String::from takes an integer");
+      static_assert(is_integral_v<T>, "String::from takes an integer");
 
       return from_signed_or_unsigned(value, int_base::decimal, allocator);
     }
@@ -151,7 +151,7 @@ public:
                           int_base  base,
                           Allocator allocator) throws -> String
   {
-    if constexpr (std::is_signed_v<U>) {
+    if constexpr (is_signed_v<U>) {
       let const is_negative = value < 0;
       let const magnitude =
           is_negative ? ~static_cast<u64>(value) + 1u : static_cast<u64>(value);

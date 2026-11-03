@@ -57,12 +57,12 @@ template <class T>
 static fn
 narrow_integer(i64 value) throws -> ErrorOr<T>
 {
-  static_assert(std::is_integral_v<T>, "narrow_integer targets an integer");
-  if constexpr (std::is_same_v<T, i64>) {
+  static_assert(is_integral_v<T>, "narrow_integer targets an integer");
+  if constexpr (is_same_v<T, i64>) {
     return value;
-  } else if constexpr (std::is_signed_v<T>) {
-    if (value < static_cast<i64>(std::numeric_limits<T>::min()) ||
-        value > static_cast<i64>(std::numeric_limits<T>::max()))
+  } else if constexpr (is_signed_v<T>) {
+    if (value < static_cast<i64>(integer_limits<T>::min_value) ||
+        value > static_cast<i64>(integer_limits<T>::max_value))
     {
       return Error{"integer value out of range"};
     }
@@ -70,7 +70,7 @@ narrow_integer(i64 value) throws -> ErrorOr<T>
     return static_cast<T>(value);
   } else {
     if (value < 0 || static_cast<u64>(value) >
-                         static_cast<u64>(std::numeric_limits<T>::max()))
+                         static_cast<u64>(integer_limits<T>::max_value))
     {
       return Error{"integer value out of range"};
     }
@@ -86,14 +86,14 @@ StringView::to() const throws -> ErrorOr<T>
   if constexpr (is_tagged_int_v<T>) {
     using U = typename T::underlying;
 
-    if constexpr (std::is_same_v<U, u64>)
+    if constexpr (is_same_v<U, u64>)
       return T{TRY(utils::parse_integer_in_base_u64(*this, T::base))};
     else
       return T{TRY(narrow_integer<U>(
           TRY(utils::parse_integer_in_base(*this, nullptr, T::base))))};
   } else {
-    static_assert(std::is_integral_v<T>, "StringView::to parses an integer");
-    if constexpr (std::is_same_v<T, u64>)
+    static_assert(is_integral_v<T>, "StringView::to parses an integer");
+    if constexpr (is_same_v<T, u64>)
       return utils::parse_decimal_u64(*this);
     else
       return narrow_integer<T>(TRY(utils::parse_decimal_i64(*this)));

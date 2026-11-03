@@ -753,8 +753,8 @@ visit_ordered_sources(const ExecContext           &ec,
 
       if (!result.content.has_value())
         os::set_last_system_error(result.error_number);
-      if constexpr (std::is_void_v<decltype(do_visit(next_source_index,
-                                                     result.content))>)
+      if constexpr (is_void_v<decltype(do_visit(next_source_index,
+                                                result.content))>)
       {
         do_visit(next_source_index, result.content);
       } else if (!do_visit(next_source_index, result.content)) {

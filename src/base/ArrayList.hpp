@@ -37,9 +37,9 @@ struct order_comparator
   }
 
   template <class Left, class Right>
-    requires(!std::is_same_v<Left, Right> &&
-             std::is_convertible_v<const Left &, StringView> &&
-             std::is_convertible_v<const Right &, StringView>)
+    requires(!is_same_v<Left, Right> &&
+             is_convertible_v<const Left &, StringView> &&
+             is_convertible_v<const Right &, StringView>)
   mustuse pure fn
   operator()(const Left &left, const Right &right) const wontthrow -> bool
   {
@@ -51,7 +51,7 @@ struct order_comparator
   }
 };
 
-template <class T, bool IsEnum = std::is_enum_v<T>>
+template <class T, bool IsEnum = is_enum_v<T>>
 struct array_list_find_scalar
 {
   using type = T;
@@ -60,7 +60,7 @@ struct array_list_find_scalar
 template <class T>
 struct array_list_find_scalar<T, true>
 {
-  using type = std::underlying_type_t<T>;
+  using type = underlying_type_t<T>;
 };
 
 template <class T, class Compare>
@@ -70,7 +70,7 @@ template <class T>
 class ArrayList
 {
 public:
-  static_assert(std::is_nothrow_destructible_v<T>);
+  static_assert(is_nothrow_destructible_v<T>);
 
   static constexpr usize MAXIMUM_ELEMENT_COUNT =
       static_cast<usize>(~static_cast<u32>(0));
@@ -198,9 +198,8 @@ public:
   operator==(const ArrayList &other) const throws -> bool
   {
     if (m_length != other.m_length) return false;
-    if constexpr (std::is_trivially_copyable_v<T> &&
-                  std::has_unique_object_representations_v<T> &&
-                  !std::is_pointer_v<T>)
+    if constexpr (is_trivially_copyable_v<T> &&
+                  has_unique_object_representations_v<T> && !is_pointer_v<T>)
     {
       return m_length == 0 ||
              __builtin_memcmp(m_data, other.m_data, m_length * sizeof(T)) == 0;
@@ -246,12 +245,11 @@ public:
   hot mustuse pure fn
   find(const Wanted &wanted) const throws -> Maybe<usize>
   {
-    using value_type  = std::remove_cv_t<T>;
-    using wanted_type = std::remove_cv_t<Wanted>;
+    using value_type  = remove_cv_t<T>;
+    using wanted_type = remove_cv_t<Wanted>;
 
-    if constexpr (std::is_same_v<value_type, wanted_type> &&
-                  (std::is_arithmetic_v<value_type> ||
-                   std::is_enum_v<value_type>) &&
+    if constexpr (is_same_v<value_type, wanted_type> &&
+                  (is_arithmetic_v<value_type> || is_enum_v<value_type>) &&
                   sizeof(value_type) < sizeof(u64))
     {
       constexpr usize LANES         = sizeof(u64) / sizeof(value_type);
@@ -277,8 +275,8 @@ public:
     }
 
 #if T__HAS_GCC_EXTENSIONS
-    if constexpr (std::is_same_v<value_type, wanted_type> &&
-                  std::is_arithmetic_v<
+    if constexpr (is_same_v<value_type, wanted_type> &&
+                  is_arithmetic_v<
                       typename array_list_find_scalar<value_type>::type> &&
                   sizeof(value_type) == sizeof(u64))
     {
@@ -348,14 +346,14 @@ public:
   {
     ASSERT(m_length > 0, "pop_back on an empty list");
     m_length--;
-    if constexpr (!std::is_trivially_destructible_v<T>) m_data[m_length].~T();
+    if constexpr (!is_trivially_destructible_v<T>) m_data[m_length].~T();
   }
 
   fn
   truncate(usize kept_count) wontthrow -> void
   {
     ASSERT(kept_count <= m_length, "truncate past the end of the list");
-    if constexpr (std::is_trivially_destructible_v<T>) {
+    if constexpr (is_trivially_destructible_v<T>) {
       m_length = kept_count;
 
       return;
@@ -371,7 +369,7 @@ public:
   remove(usize index) throws -> void
   {
     ASSERT(index < m_length, "remove past the end of the list");
-    if constexpr (std::is_trivially_copyable_v<T>) {
+    if constexpr (is_trivially_copyable_v<T>) {
       let const moved_count = m_length - index - 1;
 
       if (moved_count > 0)
@@ -383,13 +381,13 @@ public:
     }
 
     m_length--;
-    if constexpr (!std::is_trivially_destructible_v<T>) m_data[m_length].~T();
+    if constexpr (!is_trivially_destructible_v<T>) m_data[m_length].~T();
   }
 
   fn
   clear() wontthrow -> void
   {
-    if constexpr (!std::is_trivially_destructible_v<T>)
+    if constexpr (!is_trivially_destructible_v<T>)
       for (usize i = 0; i < m_length; i++)
         m_data[i].~T();
 
@@ -575,7 +573,7 @@ public:
   mustuse fn
   make_sorted(Compare compare) &&
       throws
-      -> SortedArrayList<T, std::decay_t<Compare>>;
+      -> SortedArrayList<T, remove_cvref_t<Compare>>;
 
   mustuse fn
   make_sorted(sort_order order) &&
@@ -612,7 +610,7 @@ private:
     /* at this point: index is less than m_length, so at least one element
        moves one slot right. */
     reserve(static_cast<usize>(m_length) + 1);
-    if constexpr (std::is_trivially_copyable_v<T>) {
+    if constexpr (is_trivially_copyable_v<T>) {
       __builtin_memmove(m_data + index + 1, m_data + index,
                         (m_length - index) * sizeof(T));
       m_data[index] = steal(value);
@@ -632,7 +630,7 @@ private:
   fn
   relocate_to(T *fresh) throws -> void
   {
-    if constexpr (std::is_trivially_copyable_v<T>) {
+    if constexpr (is_trivially_copyable_v<T>) {
       if (m_length > 0) __builtin_memcpy(fresh, m_data, m_length * sizeof(T));
 
       return;
@@ -642,8 +640,8 @@ private:
 
     try {
       for (; constructed_count < m_length; constructed_count++) {
-        if constexpr (std::is_nothrow_move_constructible_v<T> ||
-                      !std::is_copy_constructible_v<T>)
+        if constexpr (is_nothrow_move_constructible_v<T> ||
+                      !is_copy_constructible_v<T>)
         {
           new (&fresh[constructed_count]) T(steal(m_data[constructed_count]));
         } else {
@@ -983,7 +981,7 @@ class SortedArrayList : public ArrayList<T>
   using Base = ArrayList<T>;
 
 public:
-  static_assert(std::is_nothrow_destructible_v<Compare>);
+  static_assert(is_nothrow_destructible_v<Compare>);
 
   explicit SortedArrayList(Allocator allocator, Compare compare)
       : Base(allocator), m_compare(steal(compare))
@@ -1008,7 +1006,7 @@ public:
   {}
 
   SortedArrayList(SortedArrayList &&other) noexcept(
-      std::is_nothrow_move_constructible_v<Compare>)
+      is_nothrow_move_constructible_v<Compare>)
       : Base(steal(static_cast<Base &>(other))),
         m_compare(steal(other.m_compare))
   {}
@@ -1026,7 +1024,7 @@ public:
 
   fn
   operator=(SortedArrayList &&other) noexcept(
-      std::is_nothrow_move_assignable_v<Compare>) -> SortedArrayList &
+      is_nothrow_move_assignable_v<Compare>) -> SortedArrayList &
   {
     if (this != &other) {
       Base::operator=(steal(static_cast<Base &>(other)));
@@ -1135,9 +1133,9 @@ template <class Compare>
 mustuse auto
 ArrayList<T>::make_sorted(Compare compare) &&
     throws
-    -> SortedArrayList<T, std::decay_t<Compare>>
+    -> SortedArrayList<T, remove_cvref_t<Compare>>
 {
-  using sorted_type = SortedArrayList<T, std::decay_t<Compare>>;
+  using sorted_type = SortedArrayList<T, remove_cvref_t<Compare>>;
 
   return sorted_type{steal(*this), steal(compare)};
 }

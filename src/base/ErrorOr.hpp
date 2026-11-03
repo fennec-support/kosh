@@ -40,8 +40,8 @@ public:
       new (&m_storage) T(other.value_reference());
   }
 
-  ErrorOr(ErrorOr &&other) noexcept(std::is_nothrow_move_constructible_v<T> &&
-                                    std::is_nothrow_move_constructible_v<Error>)
+  ErrorOr(ErrorOr &&other) noexcept(is_nothrow_move_constructible_v<T> &&
+                                    is_nothrow_move_constructible_v<Error>)
       : m_is_error(other.m_is_error)
   {
     if (m_is_error)
