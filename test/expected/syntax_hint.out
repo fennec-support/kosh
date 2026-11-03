@@ -1,91 +1,159 @@
 == open constructs
-echo "abc => [syntax error] Unterminated string literal, expected " here
-echo 'abc => [syntax error] Unterminated string literal, expected ' here
-echo $'abc => [syntax error] Unterminated $'...' string, expected ' here
-echo $(ls => [syntax error] Unterminated command substitution, expected ) here
-echo `ls => [syntax error] Unterminated command substitution, expected ` here
-echo ${x => [syntax error] Unterminated variable expansion, expected } here
-echo $((1 + => [syntax error] Unterminated arithmetic expansion, expected )) here
-cat <(ls => [syntax error] Unterminated process substitution, expected ) here
-a=(1 2 => [syntax error] This array assignment has no closing ')', close the list with ')', as in `arr=(a b c)`
-(echo hi => [syntax error] This subshell has no closing ')', expected ')' here
-{ echo hi => [syntax error] This brace group has no closing '}', expected '}' here to close it
-f() { => [syntax error] This brace group has no closing '}', expected '}' here to close it
-[[ a == b => [syntax error] This '[[' has no closing ']]', expected ']]' here
-if => [syntax error] This 'if' has no condition, expected a command for the condition here
-if true => [syntax error] This 'if' has no 'then', expected 'then' here, after the condition
-if (true) => [syntax error] This 'if' has no 'then', expected 'then' here, after the condition
-if true; then => [syntax error] This 'if' has no closing 'fi', expected 'fi' here to close it
-while true => [syntax error] This loop has no 'do', expected 'do' here, after the loop condition
-while true; do : => [syntax error] This loop has no closing 'done', expected 'done' here to close it
-for x in a b => [syntax error] This for loop has no 'do', expected 'do' here, after the word list
-for x in a; do  => [syntax error] This for loop has no closing 'done', expected 'done' here to close it
-case x in => [syntax error] This 'case' has no closing 'esac', expected a pattern to start an arm, or 'esac' to end the case
-echo $(if true; then => [syntax error] Unterminated command substitution, expected ) here
+echo "abc => (hint :title "syntax error"
+  (row "Unterminated string literal, expected \" here"))
+echo 'abc => (hint :title "syntax error"
+  (row "Unterminated string literal, expected ' here"))
+echo $'abc => (hint :title "syntax error"
+  (row "Unterminated $'...' string, expected ' here"))
+echo $(ls => (hint :title "syntax error"
+  (row "Unterminated command substitution, expected ) here"))
+echo `ls => (hint :title "syntax error"
+  (row "Unterminated command substitution, expected ` here"))
+echo ${x => (hint :title "syntax error"
+  (row "Unterminated variable expansion, expected } here"))
+echo $((1 + => (hint :title "syntax error"
+  (row "Unterminated arithmetic expansion, expected )) here"))
+cat <(ls => (hint :title "syntax error"
+  (row "Unterminated process substitution, expected ) here"))
+a=(1 2 => (hint :title "syntax error"
+  (row "This array assignment has no closing ')', close the list with ')', as in `arr=(a b c)`"))
+(echo hi => (hint :title "syntax error"
+  (row "This subshell has no closing ')', expected ')' here"))
+{ echo hi => (hint :title "syntax error"
+  (row "This brace group has no closing '}', expected '}' here to close it"))
+f() { => (hint :title "syntax error"
+  (row "This brace group has no closing '}', expected '}' here to close it"))
+[[ a == b => (hint :title "syntax error"
+  (row "This '[[' has no closing ']]', expected ']]' here"))
+if => (hint :title "syntax error"
+  (row "This 'if' has no condition, expected a command for the condition here"))
+if true => (hint :title "syntax error"
+  (row "This 'if' has no 'then', expected 'then' here, after the condition"))
+if (true) => (hint :title "syntax error"
+  (row "This 'if' has no 'then', expected 'then' here, after the condition"))
+if true; then => (hint :title "syntax error"
+  (row "This 'if' has no closing 'fi', expected 'fi' here to close it"))
+while true => (hint :title "syntax error"
+  (row "This loop has no 'do', expected 'do' here, after the loop condition"))
+while true; do : => (hint :title "syntax error"
+  (row "This loop has no closing 'done', expected 'done' here to close it"))
+for x in a b => (hint :title "syntax error"
+  (row "This for loop has no 'do', expected 'do' here, after the word list"))
+for x in a; do  => (hint :title "syntax error"
+  (row "This for loop has no closing 'done', expected 'done' here to close it"))
+case x in => (hint :title "syntax error"
+  (row "This 'case' has no closing 'esac', expected a pattern to start an arm, or 'esac' to end the case"))
+echo $(if true; then => (hint :title "syntax error"
+  (row "Unterminated command substitution, expected ) here"))
 == operators and redirections
-ls | => [syntax error] Expected a command after the pipe to receive the output, put a command after the '|', as in `cmd | sort`, or remove the pipe
-ls |& => [syntax error] Expected a command after the pipe to receive the output, put a command after the '|', as in `cmd | sort`, or remove the pipe
-ls && => [syntax error] Expected a command after '&&', add the missing command, as in `a && b`, or remove the operator
-ls || => [syntax error] Expected a command after '||', add the missing command, as in `a || b`, or remove the operator
-| ls => [syntax error] Expected a command before the pipe, put the command that produces the output before the '|', as in `cmd | sort`
-&& ls => [syntax error] Expected a command before the operator, found '&&', put a command on each side of the operator, as in `a && b`, or remove the operator
-echo a; ; echo b => [syntax error] Expected a command before ';', remove the extra ';', or put a command before it
-{ :; ; } => [syntax error] Expected a command before ';', remove the extra ';', or put a command before it
-echo > => [syntax error] Expected a file after the redirection operator
-cat < => [syntax error] Expected a file after the redirection operator
-cat << => [syntax error] Expected a delimiter word after the heredoc operator, write `cat <<EOF`, then the text, then a line that holds only `EOF`
+ls | => (hint :title "syntax error"
+  (row "Expected a command after the pipe to receive the output, put a command after the '|', as in `cmd | sort`, or remove the pipe"))
+ls |& => (hint :title "syntax error"
+  (row "Expected a command after the pipe to receive the output, put a command after the '|', as in `cmd | sort`, or remove the pipe"))
+ls && => (hint :title "syntax error"
+  (row "Expected a command after '&&', add the missing command, as in `a && b`, or remove the operator"))
+ls || => (hint :title "syntax error"
+  (row "Expected a command after '||', add the missing command, as in `a || b`, or remove the operator"))
+| ls => (hint :title "syntax error"
+  (row "Expected a command before the pipe, put the command that produces the output before the '|', as in `cmd | sort`"))
+&& ls => (hint :title "syntax error"
+  (row "Expected a command before the operator, found '&&', put a command on each side of the operator, as in `a && b`, or remove the operator"))
+echo a; ; echo b => (hint :title "syntax error"
+  (row "Expected a command before ';', remove the extra ';', or put a command before it"))
+{ :; ; } => (hint :title "syntax error"
+  (row "Expected a command before ';', remove the extra ';', or put a command before it"))
+echo > => (hint :title "syntax error"
+  (row "Expected a file after the redirection operator"))
+cat < => (hint :title "syntax error"
+  (row "Expected a file after the redirection operator"))
+cat << => (hint :title "syntax error"
+  (row "Expected a delimiter word after the heredoc operator, write `cat <<EOF`, then the text, then a line that holds only `EOF`"))
 == stray and misplaced words
-echo ) => [syntax error] ')' has no matching '(', a '(' above may be missing, or another ')' may have closed the subshell early
-echo ;; => [syntax error] ';;' is only valid between the arms of a 'case'
-fi  => [syntax error] 'fi' has no matching 'if', an 'if' above may be missing, or another 'fi' may have closed it early
-echo; done  => [syntax error] 'done' has no matching 'while', 'until', or 'for', a loop above may be missing, or another 'done' may have closed it early
-echo; esac => [syntax error] 'esac' has no matching 'case', a 'case' above may be missing, or another 'esac' may have closed it early
-case x  => [syntax error] Expected an unquoted 'in' after the case word, write `case $var in pattern) command ;; esac`
-function  => [syntax error] Expected an identifier after the 'function' keyword, as in `function greet { echo hi; }`
-for 1x in a; do => [syntax error] The for loop variable '1x' is not a valid identifier, write a bare identifier, as in `for i in a b c`, without '$' or quotes
-if true; then echo fi => [syntax error] This 'if' has no closing 'fi', this 'fi' was taken as an argument of the previous command, so put a ';' or a newline before it
+echo ) => (hint :title "syntax error"
+  (row "')' has no matching '(', a '(' above may be missing, or another ')' may have closed the subshell early"))
+echo ;; => (hint :title "syntax error"
+  (row "';;' is only valid between the arms of a 'case'"))
+fi  => (hint :title "syntax error"
+  (row "'fi' has no matching 'if', an 'if' above may be missing, or another 'fi' may have closed it early"))
+echo; done  => (hint :title "syntax error"
+  (row "'done' has no matching 'while', 'until', or 'for', a loop above may be missing, or another 'done' may have closed it early"))
+echo; esac => (hint :title "syntax error"
+  (row "'esac' has no matching 'case', a 'case' above may be missing, or another 'esac' may have closed it early"))
+case x  => (hint :title "syntax error"
+  (row "Expected an unquoted 'in' after the case word, write `case $var in pattern) command ;; esac`"))
+function  => (hint :title "syntax error"
+  (row "Expected an identifier after the 'function' keyword, as in `function greet { echo hi; }`"))
+for 1x in a; do => (hint :title "syntax error"
+  (row "The for loop variable '1x' is not a valid identifier, write a bare identifier, as in `for i in a b c`, without '$' or quotes"))
+if true; then echo fi => (hint :title "syntax error"
+  (row "This 'if' has no closing 'fi', this 'fi' was taken as an argument of the previous command, so put a ';' or a newline before it"))
 == empty bodies
-( ) => [syntax error] The subshell between '(' and ')' is empty, put a command in the subshell, as in `( : )`
-{ } => [syntax error] The brace group between '{' and '}' is empty, put a command in the group, as in `{ :; }`
-if ( ) => [syntax error] The subshell between '(' and ')' is empty, put a command in the subshell, as in `( : )`
-f() ( ) => [syntax error] The subshell between '(' and ')' is empty, put a command in the subshell, as in `( : )`
-f() { } => [syntax error] The brace group between '{' and '}' is empty, put a command in the group, as in `{ :; }`
-while true; do done  => [syntax error] The loop body between 'do' and 'done' is empty, put a command in the body, such as `:` to do nothing
-if true; then fi => [syntax error] The body after 'then' is empty, put a command after 'then', such as `:` to do nothing
-if :; then :; else fi => [syntax error] The body after 'else' is empty, put a command after 'else', such as `:` to do nothing
+( ) => (hint :title "syntax error"
+  (row "The subshell between '(' and ')' is empty, put a command in the subshell, as in `( : )`"))
+{ } => (hint :title "syntax error"
+  (row "The brace group between '{' and '}' is empty, put a command in the group, as in `{ :; }`"))
+if ( ) => (hint :title "syntax error"
+  (row "The subshell between '(' and ')' is empty, put a command in the subshell, as in `( : )`"))
+f() ( ) => (hint :title "syntax error"
+  (row "The subshell between '(' and ')' is empty, put a command in the subshell, as in `( : )`"))
+f() { } => (hint :title "syntax error"
+  (row "The brace group between '{' and '}' is empty, put a command in the group, as in `{ :; }`"))
+while true; do done  => (hint :title "syntax error"
+  (row "The loop body between 'do' and 'done' is empty, put a command in the body, such as `:` to do nothing"))
+if true; then fi => (hint :title "syntax error"
+  (row "The body after 'then' is empty, put a command after 'then', such as `:` to do nothing"))
+if :; then :; else fi => (hint :title "syntax error"
+  (row "The body after 'else' is empty, put a command after 'else', such as `:` to do nothing"))
 == continued on enter
-echo \ => [synopsis] echo
-echo "abc\ => [synopsis] echo
+echo \ => (hint :title "synopsis"
+  (row "  echo"))
+echo "abc\ => (hint :title "synopsis"
+  (row "  echo"))
 == clean lines
-echo "abc" "$(ls)" "${HOME}" => [synopsis] echo
-echo hi # "abc => [synopsis] echo
-echo \"abc => [synopsis] echo
-read -r x <<EOF => [synopsis] read
-  -r
-if true; then echo; fi => 
-f() { :; } => 
+echo "abc" "$(ls)" "${HOME}" => (hint :title "synopsis"
+  (row "  echo"))
+echo hi # "abc => (hint :title "synopsis"
+  (row "  echo"))
+echo \"abc => (hint :title "synopsis"
+  (row "  echo"))
+read -r x <<EOF => (hint :title "synopsis"
+  (row "  read")
+  (row "  -r"))
+if true; then echo; fi => (hint)
+f() { :; } => (hint)
 == analysis findings of a paused line
-echo $x => [error] An unquoted variable can split into words and expand globs. (SC2086)
-cat file | grep x => [warning] The `cat` writes its file unchanged into the pipe. (SC2002)
-x = 1 => [error] An assignment with spaces around equals runs as a command with arguments. (SC2283)
-zzunknown-command arg => 
-source ./zz-missing-file.sh => [synopsis] source
+echo $x => (hint :title "error"
+  (row "An unquoted variable can split into words and expand globs. (SC2086)"))
+cat file | grep x => (hint :title "warning"
+  (row "The `cat` writes its file unchanged into the pipe. (SC2002)"))
+x = 1 => (hint :title "error"
+  (row "An assignment with spaces around equals runs as a command with arguments. (SC2283)"))
+zzunknown-command arg => (hint)
+source ./zz-missing-file.sh => (hint :title "synopsis"
+  (row "  source"))
 == alias, function, and segment under the caret
-[synopsis]   zzl  alias for 'ls -a'
-[synopsis]   zzf  zzf () { echo hi; }
-echo hi | cat -n => [synopsis] cat
-> -n
-echo hi && cat -n => [synopsis] cat
-> -n
+(hint :title "synopsis"
+  (row "  zzl  alias for 'ls -a'"))
+(hint :title "synopsis"
+  (row "  zzf  zzf () { echo hi; }"))
+echo hi | cat -n => (hint :title "synopsis"
+  (row "  cat")
+  (row "> -n"))
+echo hi && cat -n => (hint :title "synopsis"
+  (row "  cat")
+  (row "> -n"))
 == synopsis rows per flag
-read -r -s -r => [synopsis] read
-> -r
-  -s
-read -rs -r => [synopsis] read
-> -r
-  -s
-read -e -r -s -a => [synopsis] read
-  -e
-  -r
-  -s
-> -a
+read -r -s -r => (hint :title "synopsis"
+  (row "  read")
+  (row "> -r")
+  (row "  -s"))
+read -rs -r => (hint :title "synopsis"
+  (row "  read")
+  (row "> -r")
+  (row "  -s"))
+read -e -r -s -a => (hint :title "synopsis"
+  (row "  read")
+  (row "  -e")
+  (row "  -r")
+  (row "  -s")
+  (row "> -a"))

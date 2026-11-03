@@ -177,8 +177,17 @@ run_debug_highlight_restart_driver(StringView   driver_text,
     }
   }
 
-  print("restart-points=" + String::from(restarts.count(), heap_allocator()) +
-        " mismatches=" + String::from(mismatch_count, heap_allocator()) + "\n");
+  let out = AstWriter{driver_text, context.runtime_state().get_mood()};
+
+  out.open("highlight-restarts");
+  out.number("restart-points", static_cast<i64>(restarts.count()));
+  out.number("mismatches", static_cast<i64>(mismatch_count));
+  out.close();
+
+  let text = out.take();
+
+  text += '\n';
+  print(text);
   flush();
 
   return mismatch_count == 0 ? 0 : 1;
@@ -188,15 +197,8 @@ static fn
 run_debug_bracket_driver(StringView   driver_line,
                          EvalContext &context) throws -> i32
 {
-  let const spans   = completion::highlight_line(driver_line, context);
-  let       listing = String{heap_allocator()};
-
-  let const do_append_range = [&](usize start,
-                                  usize end) throws -> void {
-    listing += driver_line.substring_of_length(start, end - start);
-    listing += '@';
-    listing += String::from(start, heap_allocator());
-  };
+  let const spans = completion::highlight_line(driver_line, context);
+  let       out   = AstWriter{driver_line, context.runtime_state().get_mood()};
 
   for (usize cursor = 0; cursor <= driver_line.length; cursor++) {
     let const pair =
@@ -204,14 +206,22 @@ run_debug_bracket_driver(StringView   driver_line,
 
     if (!pair.has_value()) continue;
 
-    listing += String::from(cursor, heap_allocator());
-    listing += '\t';
-    do_append_range(pair->open_start, pair->open_end);
-    listing += '\t';
-    do_append_range(pair->close_start, pair->close_end);
-    listing += '\n';
+    out.open("match");
+    out.number("cursor", static_cast<i64>(cursor));
+    out.quoted("open",
+               driver_line.substring_of_length(
+                   pair->open_start, pair->open_end - pair->open_start));
+    out.number("open-at", static_cast<i64>(pair->open_start));
+    out.quoted("close",
+               driver_line.substring_of_length(
+                   pair->close_start, pair->close_end - pair->close_start));
+    out.number("close-at", static_cast<i64>(pair->close_start));
+    out.close();
   }
 
+  let listing = out.take();
+
+  if (!listing.is_empty()) listing += '\n';
   print(listing);
   flush();
 
@@ -236,22 +246,30 @@ run_debug_hint_driver(StringView   driver_line,
     }
   }
 
-  let printed = String{heap_allocator()};
+  let out  = AstWriter{driver_line, context.runtime_state().get_mood()};
+  let body = row.view();
 
-  if (let const line_break = row.view().find_character('\n');
-      line_break.has_value())
+  out.open("hint");
+  if (let const line_break = body.find_character('\n'); line_break.has_value())
   {
-    printed += '[';
-    printed.append(row.view().substring_of_length(0, *line_break));
-    printed.append(StringView{"] "});
-    printed.append(row.view().substring(*line_break + 1));
-  } else {
-    printed.append(row.view());
+    out.quoted("title", body.substring_of_length(0, *line_break));
+    body = body.substring(*line_break + 1);
   }
 
-  if (printed.is_empty() || printed.view()[printed.length() - 1] != '\n') {
-    printed += '\n';
+  while (!body.is_empty()) {
+    let const line_end = body.find_character('\n').value_or(body.length);
+
+    out.open("row");
+    out.text(body.substring_of_length(0, line_end));
+    out.close();
+    body = line_end < body.length ? body.substring(line_end + 1) : StringView{};
   }
+
+  out.close();
+
+  let printed = out.take();
+
+  printed += '\n';
   print(printed);
   flush();
 
@@ -271,20 +289,31 @@ run_debug_ghost_driver(StringView   driver_line,
       driver_line, driver_line.length, context, Path::current_directory(),
       nullptr, false, completion::completion_mode::Ghost);
 
-  print("count=" + String::from(result.candidate_count, heap_allocator()) +
-        "\nprefix=" + result.longest_common_prefix.view() + "\nsource-scans=" +
-        String::from(result.source_candidate_scan_count, heap_allocator()) +
-        "\nmaterialized=" +
-        String::from(result.materialized_candidate_count, heap_allocator()) +
-        "\ndirectory-stats=" +
-        String::from(utils::debug_directory_stat_count() -
-                         directory_stat_count_before,
-                     heap_allocator()) +
-        "\ndirectory-reads=" +
-        String::from(utils::debug_directory_read_count() -
-                         directory_read_count_before,
-                     heap_allocator()) +
-        "\n");
+  let out = AstWriter{driver_line, context.runtime_state().get_mood()};
+
+  let const do_append_count = [&](StringView name, usize count) throws {
+    out.open(name);
+    out.atom(String::from(count, heap_allocator()).view());
+    out.close();
+  };
+
+  out.open("ghost");
+  do_append_count("count", result.candidate_count);
+  out.open("prefix");
+  out.text(result.longest_common_prefix.view());
+  out.close();
+  do_append_count("source-scans", result.source_candidate_scan_count);
+  do_append_count("materialized", result.materialized_candidate_count);
+  do_append_count("directory-stats", utils::debug_directory_stat_count() -
+                                         directory_stat_count_before);
+  do_append_count("directory-reads", utils::debug_directory_read_count() -
+                                         directory_read_count_before);
+  out.close();
+
+  let text = out.take();
+
+  text += '\n';
+  print(text);
   flush();
 
   return 0;

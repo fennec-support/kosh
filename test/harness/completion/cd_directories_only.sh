@@ -36,4 +36,4 @@ mkdir "$dir/elsewhere/alpha_dir"
 CDPATH="$dir/elsewhere" "$BIN" --debug-complete-at 'cd alpha' </dev/null
 echo "== the ghost lists no CDPATH directory the index lacks:"
 CDPATH="$dir/elsewhere" "$BIN" --debug-ghost-at 'cd gam' </dev/null |
-  grep -E '^(count|prefix)='
+  grep -E '^  \((count|prefix) '

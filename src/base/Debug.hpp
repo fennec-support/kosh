@@ -15,19 +15,43 @@ class String;
 }
 
 #if !defined NDEBUG
+namespace koshka {
+
+__attribute__((format(printf, 4, 5))) inline fn
+debug_print_trace(const char *file,
+                  int         line,
+                  bool        should_end_line,
+                  const char *format,
+                  ...) wontthrow -> void
+{
+  char    message[1024];
+  va_list arguments;
+
+  va_start(arguments, format);
+  unused(vsnprintf(message, sizeof(message), format, arguments));
+  va_end(arguments);
+
+  unused(fprintf(stderr, "(trace :at \"%s:%d\" \"", file, line));
+  for (const char *cursor = message; *cursor != '\0'; cursor++) {
+    if (*cursor == '"' || *cursor == '\\') unused(fputc('\\', stderr));
+    if (*cursor == '\n') {
+      unused(fputs("\\n", stderr));
+      continue;
+    }
+
+    unused(fputc(*cursor, stderr));
+  }
+
+  unused(fputs(should_end_line ? "\")\n" : "\")", stderr));
+  unused(fflush(stderr));
+}
+
+} /* namespace koshka */
+
 #define TRACE(...)                                                             \
-  do {                                                                         \
-    unused(fprintf(stderr, "[TRACE] " __FILE__ ":%d: ", __LINE__));            \
-    unused(fprintf(stderr, __VA_ARGS__));                                      \
-    unused(fflush(stderr));                                                    \
-  } while (0)
+  ::koshka::debug_print_trace(__FILE__, __LINE__, false, __VA_ARGS__)
 #define TRACELN(...)                                                           \
-  do {                                                                         \
-    unused(fprintf(stderr, "[TRACE] " __FILE__ ":%d: ", __LINE__));            \
-    unused(fprintf(stderr, __VA_ARGS__));                                      \
-    unused(fputc('\n', stderr));                                               \
-    unused(fflush(stderr));                                                    \
-  } while (0)
+  ::koshka::debug_print_trace(__FILE__, __LINE__, true, __VA_ARGS__)
 #if defined __clang__
 namespace koshka {
 

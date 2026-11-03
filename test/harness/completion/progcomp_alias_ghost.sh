@@ -12,7 +12,7 @@ setup="shopt -s progcomp_alias; complete -W 'target_word' target"
 ghost()
 {
   env -u PATH "$TEST_PATH_ENVIRONMENT_NAME=$dir/commands" \
-    "$BIN" --debug-ghost-at "$2" -c "$1" </dev/null | grep -E '^(count|prefix)='
+    "$BIN" --debug-ghost-at "$2" -c "$1" </dev/null | grep -E '^  \((count|prefix) '
 }
 
 listing()

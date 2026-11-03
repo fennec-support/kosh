@@ -867,7 +867,7 @@ charset_character_length(StringView   text,
 fn
 set_quit_context(EvalContext *context) wontthrow -> void;
 fn
-print_memory_report() wontthrow -> void;
+print_memory_report() throws -> void;
 
 enum class farewell_policy : u8
 {

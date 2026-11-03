@@ -5,12 +5,7 @@ trap 'test -n "$d" && "$BIN_DIR/invoke-koshkit" rm -rf "$d"' EXIT
 
 result_field()
 {
-    printf '%s\n' "$1" | while IFS='=' read -r field value; do
-        if [ "$field" = "$2" ]; then
-            printf '%s\n' "$value"
-            break
-        fi
-    done
+    printf '%s\n' "$1" | sed -n -E "s/^  \\($2 \"?([^\"]*)\"?\\)+\$/\\1/p"
 }
 
 assert_field()

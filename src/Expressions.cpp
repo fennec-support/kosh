@@ -1684,9 +1684,17 @@ AnalysisContext::trace_optimizer_line(StringView message) const throws
     -> void
 {
   if (!options.should_report_optimizer_diagnostics) return;
-  print_error("[optimizer] ");
-  print_error(message);
-  print_error("\n");
+
+  let out = AstWriter{StringView{}, mimic_mood::Default};
+
+  out.open("optimizer");
+  out.text(message);
+  out.close();
+
+  let text = out.take();
+
+  text.push('\n');
+  print_error(text.view());
 }
 
 fn

@@ -14,7 +14,7 @@ foo ab x|8|9|9|unset
 a
 foo
 == the ghost leaves the command alone:
-count=0
+  (count 0)
 the ghost ran nothing
 == complete -p prints -C between -X and -F:
 complete -W 'w' -X 'x' -C 'printf %s\\n "$1"' -F fn foo

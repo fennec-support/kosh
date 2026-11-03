@@ -1,24 +1,24 @@
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
-restart-points=3 mismatches=0
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)
+(highlight-restarts :restart-points 3 :mismatches 0)

@@ -13,6 +13,7 @@
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../EvalVariablesInternal.hpp"
+#include "../Expressions.hpp"
 #include "../Koshkit.hpp"
 #include "../Lexer.hpp"
 #include "../Toiletline.hpp"
@@ -1033,37 +1034,62 @@ set_quit_context(EvalContext *context) wontthrow -> void
 }
 
 cold fn
-print_memory_report() wontthrow -> void
+print_memory_report() throws -> void
 {
+  let out =
+      AstWriter{StringView{}, QUIT_CONTEXT != nullptr
+                                  ? QUIT_CONTEXT->runtime_state().get_mood()
+                                  : mimic_mood::Default};
+
+  let const do_append_arena = [&](StringView kind, usize used_byte_count,
+                                  usize reserved_byte_count, usize block_count,
+                                  usize destructor_count,
+                                  usize destructor_capacity) throws {
+    out.open(kind);
+    out.number("used", static_cast<i64>(used_byte_count));
+    out.number("reserved", static_cast<i64>(reserved_byte_count));
+    out.number("blocks", static_cast<i64>(block_count));
+    out.number("destructors", static_cast<i64>(destructor_count));
+    out.number("destructor-capacity", static_cast<i64>(destructor_capacity));
+    out.close();
+  };
+
+  out.open("memory");
+
   if (QUIT_CONTEXT != nullptr &&
       QUIT_CONTEXT->arena_store().parse_arena() != nullptr)
   {
-    fprintf(stderr,
-            "AST arena: used %zu, reserved %zu, blocks %zu, destructors "
-            "%zu of %zu\n",
-            QUIT_CONTEXT->arena_store().parse_arena()->bytes_used(),
-            QUIT_CONTEXT->arena_store().parse_arena()->bytes_capacity(),
-            QUIT_CONTEXT->arena_store().parse_arena()->block_count(),
-            QUIT_CONTEXT->arena_store().parse_arena()->destructor_count(),
-            QUIT_CONTEXT->arena_store().parse_arena()->destructor_capacity());
+    let const &arena = *QUIT_CONTEXT->arena_store().parse_arena();
+
+    do_append_arena("ast-arena", arena.bytes_used(), arena.bytes_capacity(),
+                    arena.block_count(), arena.destructor_count(),
+                    arena.destructor_capacity());
   }
 
   if (QUIT_CONTEXT != nullptr) {
     let const stats = QUIT_CONTEXT->function_storage_stats();
 
-    fprintf(stderr,
-            "Function arenas: used %zu, reserved %zu, blocks %zu, "
-            "destructors %zu of %zu\n",
-            stats.used_byte_count, stats.capacity_byte_count, stats.block_count,
-            stats.destructor_count, stats.destructor_capacity);
+    do_append_arena("function-arenas", stats.used_byte_count,
+                    stats.capacity_byte_count, stats.block_count,
+                    stats.destructor_count, stats.destructor_capacity);
   }
 
   os::malloc_heap_stats heap_stats{};
 
-  if (os::read_malloc_heap_stats(heap_stats))
-    fprintf(stderr, "Malloc heap: in use %zu, total arena %zu, mmapped %zu\n",
-            heap_stats.in_use_byte_count, heap_stats.arena_byte_count,
-            heap_stats.mapped_byte_count);
+  if (os::read_malloc_heap_stats(heap_stats)) {
+    out.open("malloc-heap");
+    out.number("in-use", static_cast<i64>(heap_stats.in_use_byte_count));
+    out.number("arena", static_cast<i64>(heap_stats.arena_byte_count));
+    out.number("mapped", static_cast<i64>(heap_stats.mapped_byte_count));
+    out.close();
+  }
+
+  out.close();
+
+  let text = out.take();
+
+  text.push('\n');
+  print_error(text.view());
 }
 
 wontreturn fn

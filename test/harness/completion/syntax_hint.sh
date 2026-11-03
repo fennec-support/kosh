@@ -8,7 +8,7 @@ hint() {
 help_hint() {
   printf '%s => ' "$1"
   "$BIN" --debug-hint-at "$1" |
-    sed -E -e 's/^(\[synopsis\]) +([^ ]+) .*/\1 \2/' -e 's/^(> |  )?([^ []+) .*/\1\2/'
+    sed -E '/^\(hint :title "synopsis"/,$ s/^(  \(row "(> |  )?)([^ "]+).*"(\)+)$/\1\3"\4/'
 }
 
 printf '== open constructs\n'

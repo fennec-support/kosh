@@ -21,7 +21,7 @@ rm -f "$dir/ran.txt"
 echo "== the command text takes its own arguments first:"
 "$BIN" --debug-complete-at 'foo a' -c "cd '$dir' || exit; complete -C 'printf \"%s\n\"' foo" </dev/null
 echo "== the ghost leaves the command alone:"
-"$BIN" --debug-ghost-at 'foo x' -c "cd '$dir' || exit; complete -C ./gen foo" </dev/null | grep '^count='
+"$BIN" --debug-ghost-at 'foo x' -c "cd '$dir' || exit; complete -C ./gen foo" </dev/null | grep '^  (count '
 if [ -e "$dir/ran.txt" ]; then echo "the ghost ran the command"; else echo "the ghost ran nothing"; fi
 echo "== complete -p prints -C between -X and -F:"
 "$BIN" -c "complete -W 'w' -X 'x' -C 'printf %s\\\\n \"\$1\"' -F fn foo; complete -p foo"

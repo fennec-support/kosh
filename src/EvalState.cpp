@@ -3669,21 +3669,30 @@ EvalContext::apply_indirect_or_name_listing(StringView body) throws
 cold fn
 EvalContext::make_stats_string() const throws -> String
 {
-  let const allocator  = heap_allocator();
-  let       stats_text = String{allocator};
+  let const allocator = heap_allocator();
+  let       out       = AstWriter{StringView{}, runtime_state().get_mood()};
+
+  let const do_open_stat = [&](StringView name) throws {
+    let key = String{allocator};
+
+    for (usize i = 0; i < name.length; i++)
+      key.push(name[i] == ' ' ? '-' : name[i]);
+    key.lowercase_ascii();
+    out.open(key.view());
+  };
 
   let const do_append_stat_line = [&](StringView name,
                                       StringView value) throws {
-    stats_text += EXPRESSION_DOUBLE_AST_INDENT;
-    stats_text += name;
-    stats_text += ": ";
-    stats_text += value;
-    stats_text += '\n';
+    do_open_stat(name);
+    out.text(value);
+    out.close();
   };
 
   let const do_append_count_line = [&](StringView name,
                                        usize      value) throws {
-    do_append_stat_line(name, String::from(value, allocator).view());
+    do_open_stat(name);
+    out.atom(String::from(value, allocator).view());
+    out.close();
   };
 
   let const do_append_size_line = [&](StringView name,
@@ -3703,7 +3712,7 @@ EvalContext::make_stats_string() const throws -> String
   if (live_ast_arena_byte_count > peak_ast_arena_byte_count)
     peak_ast_arena_byte_count = live_ast_arena_byte_count;
 
-  stats_text += "[Stats\n";
+  out.open("stats");
 
   do_append_count_line("Commands evaluated",
                        evaluation_metrics_store().commands_evaluated() + 1);
@@ -3795,9 +3804,9 @@ EvalContext::make_stats_string() const throws -> String
     do_append_size_line("Malloc heap mapped", heap_stats.mapped_byte_count);
   }
 
-  stats_text += "]";
+  out.close();
 
-  return stats_text;
+  return out.take();
 }
 
 } /* namespace koshka */
