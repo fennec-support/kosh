@@ -7,3 +7,4 @@ empty default, set: [x y]
 loop c=x
 loop c=y
 rehash=kept
+data key=5 keys=a]$(echo ran >&2)

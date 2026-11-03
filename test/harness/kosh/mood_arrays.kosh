@@ -23,3 +23,13 @@ for c in "${a[@]:-}"; do echo "loop c=$c"; done
 array_rehash=(kept)
 array_index='probe_a[0]=0,probe_b[0]=0,probe_c[0]=0,probe_d[0]=0,probe_e[0]=0,probe_f[0]=0,probe_g[0]=0,probe_h[0]=0,probe_i[0]=0,probe_j[0]=0,probe_k[0]=0,probe_l[0]=0,probe_m[0]=0,probe_n[0]=0,probe_o[0]=0,probe_p[0]=0,probe_q[0]=0,probe_r[0]=0,probe_s[0]=0,probe_t[0]=0'
 echo "rehash=${array_rehash[array_index]}"
+
+# An arithmetic subscript expanded from data is one literal key, and a
+# command substitution in it never runs.
+declare -A data_keys
+data_key='a]$(echo ran >&2)'
+data_keys[$data_key]=4
+# shellcheck disable=SC2004
+(( data_keys[$data_key] += 1 ))
+# shellcheck disable=SC2004
+echo "data key=$(( data_keys[$data_key] )) keys=${!data_keys[*]}"

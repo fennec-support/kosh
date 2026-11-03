@@ -31,6 +31,17 @@ static constexpr usize  MAX_OPERATOR_CHAIN_DEPTH = 1024;
 static const StringView OPERATOR_CHAIN_HINT =
     "An operator chain this long needs parentheses or a loop";
 
+static fn
+resolve_subscripted_array_name(const EvalContext &context,
+                               StringView         name) throws -> String
+{
+  let resolved = context.resolve_nameref(name);
+
+  return resolved.has_value() && !resolved->is_empty()
+             ? steal(*resolved)
+             : String{heap_allocator(), name};
+}
+
 /* a command substitution left in a subscript after the whole expression has
    been expanded came from data. It is a literal key of an associative array,
    reached directly or through a nameref, and an indexed array rejects it. */
@@ -40,10 +51,7 @@ associative_array_for_expanded_subscript(const EvalContext &context,
                                          StringView         subscript) throws
     -> String
 {
-  let resolved   = context.resolve_nameref(name);
-  let array_name = resolved.has_value() && !resolved->is_empty()
-                       ? steal(*resolved)
-                       : String{heap_allocator(), name};
+  let array_name = resolve_subscripted_array_name(context, name);
 
   if (!context.is_associative_array(array_name.view())) {
     throw ErrorWithDetails{"The subscript '" + subscript +
@@ -267,6 +275,186 @@ is_plain_decimal_operand(StringView value) wontthrow -> bool
   return true;
 }
 
+/* the brackets of a subscript in expanded arithmetic text, located from the
+   source before its expansion. */
+struct expanded_subscript_span
+{
+  usize open_position{0};
+  usize close_position{0};
+};
+
+/* the position after the quoted run, backquoted command, or $( or ${ group
+   that starts at position in arithmetic source, position itself when none
+   starts there, or None when that group is not closed. */
+static fn
+skip_arithmetic_source_group(StringView source, usize position) throws
+    -> Maybe<usize>
+{
+  let const byte = source[position];
+
+  if (byte == '\\') {
+    if (position + 2 > source.length) return None;
+
+    return position + 2;
+  }
+
+  if (byte == '\'' || byte == '"') {
+    let const closing = lexer::skip_quoted_run(source, position);
+
+    if (closing == position) return None;
+
+    return closing + 1;
+  }
+
+  if (byte == '`') {
+    for (usize i = position + 1; i < source.length; i++) {
+      if (source[i] == '\\') {
+        i++;
+      } else if (source[i] == '`') {
+        return i + 1;
+      }
+    }
+
+    return None;
+  }
+
+  if (byte != '$' || position + 1 >= source.length) return position;
+  if (source[position + 1] == '(') {
+    return lexer::scan_balanced_shell_region(source, position + 2, ')');
+  }
+
+  if (source[position + 1] == '{') {
+    return lexer::scan_parameter_expansion(source, position + 2, false, false,
+                                           lexer::shell_quoting_rules{}, 0,
+                                           nullptr);
+  }
+
+  return position;
+}
+
+/* the position of the ']' that closes the subscript whose '[' is at
+   open_position in arithmetic source. */
+static fn
+find_source_subscript_close(StringView source,
+                            usize      open_position) throws -> Maybe<usize>
+{
+  usize depth    = 1;
+  usize position = open_position + 1;
+
+  while (position < source.length) {
+    let const after_group = skip_arithmetic_source_group(source, position);
+
+    if (!after_group.has_value()) return None;
+    if (*after_group != position) {
+      position = *after_group;
+      continue;
+    }
+
+    if (source[position] == '[') {
+      depth++;
+    } else if (source[position] == ']' && --depth == 0) {
+      return position;
+    }
+
+    position++;
+  }
+
+  return None;
+}
+
+/* expands arithmetic source with each subscript expanded on its own, so a
+   ']' produced by an expansion stays inside its subscript. spans receives the
+   brackets of each subscript in the returned text. */
+static fn
+expand_arithmetic_source(
+    EvalContext                        *context,
+    StringView                          expression,
+    const SourceLocation               *expression_base,
+    ArrayList<expanded_subscript_span> &spans) throws -> String
+{
+  let const should_remove_quotes =
+      context->runtime_state().bash_additions_enabled();
+  let const do_expand_piece = [&](usize start,
+                                  usize end) throws -> String {
+    let piece_base = Maybe<SourceLocation>{};
+
+    if (expression_base != nullptr) {
+      piece_base = *expression_base;
+      piece_base->position += static_cast<u32>(start);
+      if (start != 0 || end != expression.length) {
+        piece_base->length = static_cast<u32>(end - start);
+      }
+    }
+
+    return context->expand_modifier_word(
+        expression.substring_of_length(start, end - start),
+        should_remove_quotes, true,
+        piece_base.has_value() ? &*piece_base : nullptr, false,
+        parameter_word_quoting::HereDocument);
+  };
+
+  if (!expression.find_character('[').has_value()) {
+    return do_expand_piece(0, expression.length);
+  }
+
+  let   expanded    = String{heap_allocator()};
+  usize piece_start = 0;
+  usize position    = 0;
+
+  while (position < expression.length) {
+    let const after_group = skip_arithmetic_source_group(expression, position);
+
+    if (!after_group.has_value()) break;
+    if (*after_group != position) {
+      position = *after_group;
+      continue;
+    }
+
+    let const byte = expression[position];
+    let const is_name_start =
+        lexer::is_variable_name_start(byte) &&
+        (position == 0 || (!lexer::is_variable_name(expression[position - 1]) &&
+                           expression[position - 1] != '$'));
+
+    if (!is_name_start) {
+      position++;
+      continue;
+    }
+
+    usize name_end = position;
+
+    while (name_end < expression.length &&
+           lexer::is_variable_name(expression[name_end]))
+    {
+      name_end++;
+    }
+
+    position = name_end;
+    if (name_end >= expression.length || expression[name_end] != '[') continue;
+
+    let const close_position =
+        find_source_subscript_close(expression, name_end);
+
+    if (!close_position.has_value()) continue;
+
+    /* at this point: expression[name_end] is the '[' after a name, and
+       close_position holds the ']' that closes it in the source. */
+    expanded.append(do_expand_piece(piece_start, name_end + 1).view());
+
+    let const open_position = expanded.count() - 1;
+
+    expanded.append(do_expand_piece(name_end + 1, *close_position).view());
+    spans.push(expanded_subscript_span{open_position, expanded.count()});
+    expanded.push(']');
+    piece_start = *close_position + 1;
+    position    = piece_start;
+  }
+
+  expanded.append(do_expand_piece(piece_start, expression.length).view());
+
+  return expanded;
+}
+
 class ArithmeticParser
 {
 public:
@@ -317,6 +505,8 @@ public:
   bool       m_is_skipping{false};
   bool       should_error_unset{false};
   Maybe<u32> bc_scale{};
+
+  const ArrayList<expanded_subscript_span> *expanded_subscripts{nullptr};
 
   Maybe<SourceLocation> precise_base{};
   BumpArena            &arena;
@@ -485,7 +675,27 @@ public:
     Maybe<StringView> subscript;
     usize             name_position;
     char              resolved_subscript[24]{};
+    bool              is_expanded_subscript{false};
   };
+
+  /* the associative array that a subscript expanded with the expression
+     addresses by its literal key, reached directly or through a nameref. */
+  fn
+  find_literal_key_array(const Lvalue &target) const throws
+      -> Maybe<String>
+  {
+    if (!target.is_expanded_subscript || *target.subscript == "@" ||
+        *target.subscript == "*")
+    {
+      return None;
+    }
+
+    let array_name = resolve_subscripted_array_name(*context, target.name);
+
+    if (!context->is_associative_array(array_name.view())) return None;
+
+    return array_name;
+  }
 
   fn
   get_associative_array_of(const Lvalue &target) const throws -> String
@@ -532,10 +742,25 @@ public:
   }
 
   fn
-  read_optional_subscript() throws -> Maybe<StringView>
+  read_optional_subscript(bool &was_expanded) throws
+      -> Maybe<StringView>
   {
     if (pos >= source.length || source[pos] != '[') {
       return None;
+    }
+
+    if (expanded_subscripts != nullptr) {
+      for (let const &span : *expanded_subscripts) {
+        if (span.open_position != pos) continue;
+
+        let const subscript =
+            source.substring_of_length(pos + 1, span.close_position - pos - 1);
+
+        pos          = span.close_position + 1;
+        was_expanded = true;
+
+        return subscript;
+      }
     }
 
     pos++;
@@ -577,7 +802,13 @@ public:
 
     if (name.is_empty()) return Lvalue{name, None, name_position};
 
-    return Lvalue{name, read_optional_subscript(), name_position};
+    let is_expanded_subscript = false;
+    let target = Lvalue{name, read_optional_subscript(is_expanded_subscript),
+                        name_position};
+
+    target.is_expanded_subscript = is_expanded_subscript;
+
+    return target;
   }
 
   fn
@@ -587,6 +818,16 @@ public:
 
     if (target.subscript.has_value()) {
       ASSERT(context != nullptr);
+
+      if (let const literal_array = find_literal_key_array(target);
+          literal_array.has_value())
+      {
+        let const value = context->lookup_associative_element(
+            literal_array->view(), *target.subscript);
+
+        return evaluate_operand_value(value.has_value() ? value->view()
+                                                        : StringView{});
+      }
 
       if (utils::has_command_substitution(*target.subscript)) {
         let const array_name = get_associative_array_of(target);
@@ -617,6 +858,15 @@ public:
       ASSERT(context != nullptr);
 
       let const text = value.to_string(context->scratch_allocator());
+
+      if (let const literal_array = find_literal_key_array(target);
+          literal_array.has_value())
+      {
+        context->set_associative_element(literal_array->view(),
+                                         *target.subscript, text.view());
+
+        return;
+      }
 
       if (utils::has_command_substitution(*target.subscript)) {
         let const array_name = get_associative_array_of(target);
@@ -3006,13 +3256,14 @@ evaluate_arithmetic_value(
      parse. */
   LOG(All, "expanding parameters inside the arithmetic before the parse");
 
-  let const expanded_word = context->expand_modifier_word(
-      expression, context->runtime_state().bash_additions_enabled(), true,
-      expression_base, false, parameter_word_quoting::HereDocument);
+  let subscript_spans = ArrayList<expanded_subscript_span>{heap_allocator()};
+  let const expanded_word = expand_arithmetic_source(
+      context, expression, expression_base, subscript_spans);
   let parser = ArithmeticParser{
       context, expanded_word.view(), is_exact, arena, 0, false, bc_scale};
 
-  parser.should_error_unset = should_error_unset;
+  parser.should_error_unset  = should_error_unset;
+  parser.expanded_subscripts = &subscript_spans;
 
   return parser.parse();
 }
