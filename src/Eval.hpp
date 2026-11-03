@@ -1323,6 +1323,18 @@ public:
   }
 
   pure fn
+  is_reading_standard_input() const wontthrow -> bool
+  {
+    return m_is_reading_standard_input;
+  }
+
+  fn
+  set_reading_standard_input(bool is_reading) wontthrow -> void
+  {
+    m_is_reading_standard_input = is_reading;
+  }
+
+  pure fn
   get_command_number() const wontthrow -> usize
   {
     return m_command_number;
@@ -1407,9 +1419,10 @@ public:
   fn
   apply_wire(execution_wire wire) wontthrow -> void
   {
-    m_execution_string         = steal(wire.execution_string);
-    m_last_argument            = steal(wire.last_argument);
-    m_xtrace_indirection_depth = wire.xtrace_indirection_depth;
+    m_execution_string          = steal(wire.execution_string);
+    m_last_argument             = steal(wire.last_argument);
+    m_xtrace_indirection_depth  = wire.xtrace_indirection_depth;
+    m_is_reading_standard_input = wire.is_reading_standard_input;
   }
 
   fn
@@ -1707,6 +1720,7 @@ private:
   bool                m_is_prompt_command_running{false};
   bool                m_is_child_environment_fixed{false};
   bool                m_is_shell_interactive{false};
+  bool                m_is_reading_standard_input{false};
 };
 
 class EvaluationMetricsStore

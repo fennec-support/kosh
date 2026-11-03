@@ -297,6 +297,25 @@ FlagManyStrings::at_end() const wontthrow -> bool
 }
 
 fn
+FlagManyStrings::request_listing(bool was_given_after_plus) wontthrow -> void
+{
+  m_was_listing_requested            = true;
+  m_was_listing_requested_after_plus = was_given_after_plus;
+}
+
+pure fn
+FlagManyStrings::was_listing_requested() const wontthrow -> bool
+{
+  return m_was_listing_requested;
+}
+
+pure fn
+FlagManyStrings::was_listing_requested_after_plus() const wontthrow -> bool
+{
+  return m_was_listing_requested_after_plus;
+}
+
+fn
 FlagManyStrings::reset() throws -> void
 {
   m_position       = 0;
@@ -305,7 +324,9 @@ FlagManyStrings::reset() throws -> void
   m_positions.clear();
   m_locations.clear();
   m_plus_markers.clear();
-  m_value_position = 0;
+  m_value_position                   = 0;
+  m_was_listing_requested            = false;
+  m_was_listing_requested_after_plus = false;
 }
 
 FlagOptionalValue::FlagOptionalValue(char           short_name,
@@ -1331,6 +1352,22 @@ parse_flags(const FlagList                  &flags,
         }
       }
     }
+  }
+
+  while (next_pending_value < pending_values.count()) {
+    let const pending = pending_values[next_pending_value];
+
+    if (pending.is_long || pending.flag->kind() != Flag::Kind::ManyStrings ||
+        !parse_options.listing_letters
+             .find_character(pending.flag->short_name())
+             .has_value())
+    {
+      break;
+    }
+
+    static_cast<FlagManyStrings *>(pending.flag)
+        ->request_listing(pending.was_given_after_plus);
+    next_pending_value++;
   }
 
   if (next_pending_value < pending_values.count()) {

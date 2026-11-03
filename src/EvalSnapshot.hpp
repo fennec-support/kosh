@@ -356,6 +356,7 @@ struct execution_wire
   Maybe<String> execution_string{None};
   String        last_argument{heap_allocator()};
   u32           xtrace_indirection_depth{0};
+  bool          is_reading_standard_input{false};
 };
 
 struct startup_wire

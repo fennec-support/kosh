@@ -375,6 +375,13 @@ public:
   }
 
   fn
+  request_listing(bool was_given_after_plus) wontthrow -> void;
+  pure fn
+  was_listing_requested() const wontthrow -> bool;
+  pure fn
+  was_listing_requested_after_plus() const wontthrow -> bool;
+
+  fn
   reset() throws -> void;
 
 private:
@@ -383,6 +390,8 @@ private:
   ArrayList<SourceLocation> m_locations{heap_allocator()};
   ArrayList<bool>           m_plus_markers{heap_allocator()};
   usize                     m_value_position{0};
+  bool                      m_was_listing_requested{false};
+  bool                      m_was_listing_requested_after_plus{false};
 };
 
 class FlagOptionalValue : public Flag
@@ -502,6 +511,9 @@ struct flag_parse_options
      inside a cluster, where the letters after them are still options, as in
      sh -oc errexit command. */
   StringView next_value_letters{};
+  /* next value letters that request a listing when no argument remains for
+     their value, as bash -o does. */
+  StringView listing_letters{};
   /* a -c, --command, or --command=value word right after the value of an
      operand flag adds another value, as kosh -c a -c b does. without it the
      words after the value are operands, as POSIX specifies. */

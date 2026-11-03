@@ -30,4 +30,13 @@ probe --norc -ic 'echo one; echo !!'
 probe --norc -ic 'set -u; echo "$nope"; echo after'
 probe --norc -ic 'false'
 
+# A shell that takes commands from standard input sets s in $-, with or
+# without -i and -s, and keeps it in subshells.
+printf '%s\n' 'echo "stdin $- $(case $- in *s*) echo subshell-s;; esac)"' \
+  > "$d/stdin.sh"
+for flags in -i '-i -s' -s ''; do
+  HOME=$d "$d/bash" --norc $flags < "$d/stdin.sh" 2>/dev/null
+  echo "status=$?"
+done
+
 cd / && rm -rf "$d"

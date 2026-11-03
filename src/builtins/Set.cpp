@@ -228,8 +228,7 @@ apply_long_option_by_name(const ExecContext       &ec,
                           bool                     is_enabled) throws -> void
 {
   if (i + 1 >= args.count()) {
-    ec.print_to_stdout(is_enabled ? list_options_columnar(cxt)
-                                  : list_options(cxt));
+    ec.print_to_stdout(list_shell_options(cxt, !is_enabled));
 
     return;
   }
@@ -344,6 +343,13 @@ query_shell_option(const EvalContext &cxt, StringView name) throws
 }
 
 fn
+list_shell_options(const EvalContext &cxt, bool is_reusable) throws
+    -> String
+{
+  return is_reusable ? list_options(cxt) : list_options_columnar(cxt);
+}
+
+fn
 shell_option_names() throws -> const ArrayList<StringView> &
 {
   static ArrayList<StringView> names = [] throws {
@@ -426,6 +432,7 @@ enabled_shell_option_letters(const EvalContext &cxt) throws -> String
   }
 
   if (cxt.execution_store().has_execution_string()) letters.push('c');
+  if (cxt.execution_store().is_reading_standard_input()) letters.push('s');
 
   return letters;
 }

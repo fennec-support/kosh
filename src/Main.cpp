@@ -124,7 +124,8 @@ FLAG(SET_OPTION,
      "\0",
      Posix,
      "Turn on the set option NAME, or turn it off as +o NAME. A letter after "
-     "a plus, such as +e, turns its option off.");
+     "a plus, such as +e, turns its option off. A last -o or +o without NAME "
+     "lists the options.");
 
 FLAG(RCFILE,
      String,
@@ -162,7 +163,8 @@ FLAG(SHOPT_OPTION,
      'O',
      "\0",
      Bash,
-     "Turn on the shopt option NAME, or turn it off as +O NAME.");
+     "Turn on the shopt option NAME, or turn it off as +O NAME. A last -O or "
+     "+O without NAME lists the options.");
 FLAG(CLEAN,
      Bool,
      'Q',
@@ -547,7 +549,9 @@ struct command_line
 };
 
 static constexpr flag_parse_options INVOCATION_PARSE_OPTIONS{
-    .plus_letters = "aCefhmnptuvxoO", .next_value_letters = "oO"};
+    .plus_letters       = "aCefhmnptuvxoO",
+    .next_value_letters = "oO",
+    .listing_letters    = "oO"};
 
 /* memory: each kept option word is copied into line.flag_tokens, which owns
            the copies. spliced_argv points into flag_tokens and argv.
@@ -1559,6 +1563,24 @@ apply_startup_configuration(
   return None;
 }
 
+/* -o, +o, -O, or +O without an option name lists the options the way set and
+   shopt do, and the shell then runs its input. */
+static fn
+print_requested_option_listings(const EvalContext &context) throws
+    -> void
+{
+  if (FLAG_SET_OPTION.was_listing_requested()) {
+    print(list_shell_options(
+        context, FLAG_SET_OPTION.was_listing_requested_after_plus()));
+  }
+
+  if (FLAG_SHOPT_OPTION.was_listing_requested()) {
+    print(list_shopt_options(
+        context, FLAG_SHOPT_OPTION.was_listing_requested_after_plus(), false,
+        false));
+  }
+}
+
 struct session_config
 {
   mimic_mood                 mood;
@@ -1568,6 +1590,7 @@ struct session_config
   bool                       is_login_shell;
   bool                       is_restricted_shell;
   bool                       has_execution_string;
+  bool                       is_reading_standard_input;
   bool                       is_stats_enabled;
   bool                       should_show_ast;
   bool                       should_show_lexed_words;
@@ -1627,6 +1650,7 @@ read_session_config(const invocation_identity &identity,
                         identity.is_login_shell,
                         identity.is_restricted_shell,
                         input.should_execute_commands,
+                        input.should_read_stdin || input.should_use_line_editor,
                         FLAG_STATS.is_enabled(),
                         FLAG_AST.is_enabled(),
                         FLAG_ESCAPE_MAP.is_enabled(),
@@ -1672,6 +1696,8 @@ apply_session_config(EvalContext          &context,
     context.execution_store().set_execution_string(
         String{heap_allocator(), FLAG_COMMAND.get(0)});
   }
+  context.execution_store().set_reading_standard_input(
+      config.is_reading_standard_input);
 
   context.startup_store().set_login_shell(config.is_login_shell);
   context.startup_store().set_restricted_shell(config.is_restricted_shell);
@@ -2926,6 +2952,8 @@ kosh_main(int argc, char **argv) -> int
       return 1;
     }
   }
+
+  if (!FLAG_LINT.is_enabled()) koshka::print_requested_option_listings(context);
 
   koshka::run_startup(context, init_moods, identity, line, inherited,
                       has_elevated_identity, input.is_interactive,

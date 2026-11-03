@@ -285,6 +285,9 @@ apply_shell_option(EvalContext &cxt,
                    bool         is_enabled) throws -> bool;
 
 fn
+list_shell_options(const EvalContext &cxt, bool is_reusable) throws
+    -> String;
+fn
 shell_option_names() throws -> const ArrayList<StringView> &;
 fn
 shell_option_letters() throws -> const String &;
@@ -293,6 +296,11 @@ enabled_shell_option_names(const EvalContext &cxt) throws -> String;
 fn
 enabled_shell_option_letters(const EvalContext &cxt) throws -> String;
 
+fn
+list_shopt_options(const EvalContext &cxt,
+                   bool               is_reusable,
+                   bool               should_skip_off,
+                   bool               should_skip_on) throws -> String;
 fn
 shopt_option_name_list() throws -> const ArrayList<StringView> &;
 fn

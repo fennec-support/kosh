@@ -30,3 +30,12 @@ printf "0=%s\n" "$0"'
 echo "unknown=$?"
 "$BASH" -o -c "$show" zero 2>/dev/null
 echo "dash=$?"
+
+# A last -o, +o, -O, or +O without a name lists the options the way set and
+# shopt do, and the shell then takes commands from standard input. After a
+# command string, -o is $0.
+echo 'echo ran' | "$BASH" -o errexit -o | grep -E '^(errexit|noglob) |^ran'
+echo 'echo ran' | "$BASH" -f +o | grep -E '^set [-+]o (errexit|noglob)$|^ran'
+echo 'echo ran' | "$BASH" -O | grep -E '^(dotglob|nocasematch) |^ran'
+echo 'echo ran' | "$BASH" +O | grep -E '^shopt -[su] (dotglob|nocasematch)$|^ran'
+"$BASH" -c 'echo "zero=$0"' -o

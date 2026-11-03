@@ -103,6 +103,33 @@ shopt_is_on(const EvalContext       &cxt,
 } /* namespace */
 
 fn
+list_shopt_options(const EvalContext &cxt,
+                   bool               is_reusable,
+                   bool               should_skip_off,
+                   bool               should_skip_on) throws -> String
+{
+  let listing = String{heap_allocator()};
+
+  for (let const &option : get_option_registry()) {
+    if (option.shopt_name.is_empty()) continue;
+
+    let const is_on = shopt_is_on(cxt, option);
+
+    if ((should_skip_off && !is_on) || (should_skip_on && is_on)) continue;
+
+    listing.append(
+        is_reusable
+            ? shopt_reusable_line(option.shopt_name, is_on, heap_allocator(),
+                                  shopt_reusable_form::Shopt)
+                  .view()
+            : shopt_status_line(option.shopt_name, is_on, heap_allocator())
+                  .view());
+  }
+
+  return listing;
+}
+
+fn
 shopt_option_name_list() throws -> const ArrayList<StringView> &
 {
   static ArrayList<StringView> names = [] throws {
@@ -239,21 +266,9 @@ Shopt::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
   if (names.is_empty()) {
     if (!is_quiet) {
-      let listing = String{cxt.scratch_allocator()};
-
-      for (let const &option : get_option_registry()) {
-        if (option.shopt_name.is_empty()) continue;
-
-        let const is_on = shopt_is_on(cxt, option);
-
-        if ((should_enable && !is_on) || (should_disable && is_on)) {
-          continue;
-        }
-
-        listing.append(do_format_status_line(option.shopt_name, is_on).view());
-      }
-
-      ec.print_to_stdout(listing.view());
+      ec.print_to_stdout(list_shopt_options(cxt, should_print_reusable,
+                                            should_enable, should_disable)
+                             .view());
     }
 
     return 0;
