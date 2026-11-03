@@ -530,6 +530,8 @@ struct script_run_options
   bool                    *out_was_rejected{nullptr};
   StringView               display_source{};
   const ArrayList<String> *assumed_variables{nullptr};
+  /* the contents before start_position hold only spaces and newlines. */
+  usize start_position{0};
 };
 
 static fn
@@ -570,7 +572,20 @@ struct script_run_input
   EvalContext                  &context;
   BumpArena                    &arena;
   ArrayList<source_diagnostic> *diagnostic_sink;
+  usize                         start_position;
 };
+
+/* the lexer starts at input.start_position, past the blank prefix. */
+static fn
+make_script_lexer(const script_run_input &input) throws -> Lexer
+{
+  let lexer = Lexer{input.contents.view(), input.arena, input.filename,
+                    input.context.runtime_state().get_mood()};
+
+  lexer.set_start_position(input.start_position);
+
+  return lexer;
+}
 
 static fn
 make_script_run_plan(EvalContext              &context,
@@ -625,10 +640,7 @@ scan_analysis_metadata(const script_run_input &input,
   LOG(Debug, "scanning a chunk of %zu bytes for analysis scopes",
       input.contents.count());
 
-  let scan_parser = Parser{
-      Lexer{input.contents.view(), input.arena, input.filename,
-            input.context.runtime_state().get_mood()}
-  };
+  let scan_parser = Parser{make_script_lexer(input)};
 
   scan_parser.set_display_source(input.display_source);
 
@@ -664,10 +676,7 @@ preflight_syntax(const script_run_input &input,
   LOG(Debug, "checking a chunk of %zu bytes before streamed execution",
       input.contents.count());
 
-  let preflight_parser = Parser{
-      Lexer{input.contents.view(), input.arena, input.filename,
-            input.context.runtime_state().get_mood()}
-  };
+  let preflight_parser = Parser{make_script_lexer(input)};
 
   preflight_parser.set_display_source(input.display_source);
 
@@ -703,14 +712,18 @@ parse_whole_script(const script_run_input &input,
 
   LOG(Debug, "parsing a chunk of %zu bytes", input.contents.count());
 
-  let p = Parser{
-      Lexer{input.contents.view(), input.arena, input.filename,
-            context.runtime_state().get_mood(),
-            ParseSession::AllocationKind::Syntax,
-            context.runtime_state().show_lexed_words()
-                ? debug_word_collection_mode::Enabled
-                : debug_word_collection_mode::Disabled}
-  };
+  let lexer = Lexer{input.contents.view(),
+                    input.arena,
+                    input.filename,
+                    context.runtime_state().get_mood(),
+                    ParseSession::AllocationKind::Syntax,
+                    context.runtime_state().show_lexed_words()
+                        ? debug_word_collection_mode::Enabled
+                        : debug_word_collection_mode::Disabled};
+
+  lexer.set_start_position(input.start_position);
+
+  let p = Parser{steal(lexer)};
 
   p.set_display_source(input.display_source);
 
@@ -778,8 +791,9 @@ analyze_script(const script_run_input    &input,
        context.execution_store().shell_is_interactive());
   options.should_report_optimizer_diagnostics =
       FLAG_OPTIMIZER_DIAGNOSTICS.is_enabled();
-  options.display_source    = input.display_source;
-  options.assumed_variables = run_options.assumed_variables;
+  options.display_source        = input.display_source;
+  options.assumed_variables     = run_options.assumed_variables;
+  options.source_start_position = input.start_position;
   options.shebang_policy =
       run_options.should_require_shebang && input.filename.has_value()
           ? missing_shebang_policy::Report
@@ -795,10 +809,7 @@ analyze_script(const script_run_input    &input,
 
   if (!plan.should_stream_units) return do_analyze(nullptr);
 
-  let unit_parser = Parser{
-      Lexer{input.contents.view(), input.arena, input.filename,
-            context.runtime_state().get_mood()}
-  };
+  let unit_parser = Parser{make_script_lexer(input)};
 
   unit_parser.set_display_source(input.display_source);
 
@@ -911,10 +922,7 @@ evaluate_script(const script_run_input &input,
   if (plan.should_stream_execution) {
     input.arena.release(preflight_mark);
 
-    let execution_parser = Parser{
-        Lexer{input.contents.view(), input.arena, input.filename,
-              context.runtime_state().get_mood()}
-    };
+    let execution_parser = Parser{make_script_lexer(input)};
 
     execution_parser.set_display_source(input.display_source);
     let const was_terminal_exec_allowed =
@@ -1022,14 +1030,17 @@ run_script_contents(
     ast_arena.reset();
     context.expansion_store().scratch_arena().reset();
 
-    let const plan = make_script_run_plan(context, precompiled_ast != nullptr,
-                                          out_ast != nullptr, run_options);
-    let const input =
-        script_run_input{script_contents, run_options.display_source,
-                         filename,        context,
-                         ast_arena,       diagnostic_sink};
-    let parse_errors = ArrayList<String>{heap_allocator()};
-    let directives   = analysis_directives{};
+    let const plan  = make_script_run_plan(context, precompiled_ast != nullptr,
+                                           out_ast != nullptr, run_options);
+    let const input = script_run_input{script_contents,
+                                       run_options.display_source,
+                                       filename,
+                                       context,
+                                       ast_arena,
+                                       diagnostic_sink,
+                                       run_options.start_position};
+    let       parse_errors = ArrayList<String>{heap_allocator()};
+    let       directives   = analysis_directives{};
 
     let const   preflight_mark = ast_arena.mark();
     Expression *ast            = precompiled_ast;
@@ -1186,6 +1197,16 @@ run_lint_document_contents(const String                 &source,
   };
 
   int status = EXIT_SUCCESS;
+  /* contents keeps host positions: each host byte before a fragment is a
+     space or a newline, and the fragment's analysis bytes follow. */
+  let contents = String{heap_allocator()};
+
+  contents.reserve(source.length());
+
+  let const do_append_blanks = [&](usize end) throws -> void {
+    for (usize position = contents.length(); position < end; position++)
+      contents.push(source[position] == '\n' ? '\n' : ' ');
+  };
 
   for (let const &fragment : document.fragments) {
     context.runtime_state().set_mood(fragment.mood);
@@ -1197,13 +1218,20 @@ run_lint_document_contents(const String                 &source,
 
     fragment_options.display_source    = source.view();
     fragment_options.assumed_variables = &fragment.assumed_variables;
+    fragment_options.start_position    = fragment.host_start;
+
+    if (contents.length() > fragment.host_start)
+      contents.truncate(fragment.host_start);
+    do_append_blanks(fragment.host_start);
+    contents.append(fragment.analysis_source.view());
 
     let const fragment_status = run_script_contents(
-        fragment.analysis_source, context, ast_arena, filename, nullptr,
-        nullptr, None, {diagnostic_totals, diagnostic_sink, nullptr},
-        fragment_options);
+        contents, context, ast_arena, filename, nullptr, nullptr, None,
+        {diagnostic_totals, diagnostic_sink, nullptr}, fragment_options);
 
     if (fragment_status != EXIT_SUCCESS) status = fragment_status;
+    contents.truncate(fragment.host_start);
+    do_append_blanks(fragment.host_end);
   }
 
   return status;

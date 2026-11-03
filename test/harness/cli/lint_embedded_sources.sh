@@ -861,3 +861,34 @@ output=$(cd "$root/docker-heredoc" &&
 rc=$?
 unrecognized=$(printf '%s\n' "$output" | grep -c 'not recognized')
 printf 'dockerfile-other unrecognized=%s rc=%s\n' "$unrecognized" "$rc"
+
+# Each recipe line of a long recipe is its own fragment. The lint time grows
+# linearly with the line count, so 4000 lines finish well inside the timeout,
+# and the last finding keeps its host line and column.
+mkdir -p "$root/long-recipe"
+{
+  printf 'x := "1"\na:\n'
+  line_count=0
+  while [ "$line_count" -lt 4000 ]; do
+    printf '  echo {{x}}\n'
+    line_count=$((line_count + 1))
+  done
+  printf '  echo "$LONG_JUST_UNSET"\n'
+} > "$root/long-recipe/justfile"
+{
+  printf 'a:\n'
+  line_count=0
+  while [ "$line_count" -lt 4000 ]; do
+    printf '\techo $(X)\n'
+    line_count=$((line_count + 1))
+  done
+  printf '\techo "$$LONG_MAKE_UNSET"\n'
+} > "$root/long-recipe/Makefile"
+
+for long_file in justfile Makefile; do
+  output=$(cd "$root/long-recipe" &&
+    timeout 20 "$BIN" --lint --no-traces "$long_file" 2>&1)
+  rc=$?
+  printf '%s\n' "$output" | grep -E "^$long_file:[0-9]+:[0-9]+: "
+  printf 'long-recipe %s rc=%s\n' "$long_file" "$rc"
+done

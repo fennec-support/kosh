@@ -260,14 +260,18 @@ check_case_option_coverage(AnalysisContext       &actx,
                            const case_lint_input &input,
                            const case_arm_tally  &tally) throws -> void;
 
+/* source holds only spaces and newlines before start_position. */
 fn
-check_source_bytes(AnalysisContext &actx, StringView source) throws
-    -> void;
+check_source_bytes(AnalysisContext &actx,
+                   StringView       source,
+                   usize            start_position) throws -> void;
 
+/* source holds only spaces and newlines before start_position. */
 fn
 check_shebang(AnalysisContext       &actx,
               StringView             source,
-              missing_shebang_policy shebang_policy) throws -> void;
+              missing_shebang_policy shebang_policy,
+              usize                  start_position) throws -> void;
 
 fn
 check_shellcheck_directives(

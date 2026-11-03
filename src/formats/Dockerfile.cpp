@@ -255,10 +255,7 @@ blanked_comment_source(StringView source, usize start, usize end) throws
 
   let analysis = String{heap_allocator()};
 
-  analysis.reserve(end);
-
-  for (usize at = 0; at < start; at++)
-    analysis.push(source[at] == '\n' ? '\n' : ' ');
+  analysis.reserve(end - start);
 
   position = start;
 

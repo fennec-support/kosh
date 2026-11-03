@@ -564,6 +564,9 @@ struct analysis_options
   StringView               source_base_directory{};
   StringView               display_source{};
   const ArrayList<String> *assumed_variables{nullptr};
+  /* the source before source_start_position holds only spaces and
+     newlines. */
+  usize source_start_position{0};
 
   static fn
   from_runtime(const RuntimeState &runtime) wontthrow -> analysis_options

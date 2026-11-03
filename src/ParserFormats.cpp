@@ -405,34 +405,10 @@ detect_format_kind(const parser_format_input &input) throws
   return parser_format_kind::UnknownHost;
 }
 
-static fn
-make_analysis_source(StringView host_source,
-                     usize      host_start,
-                     usize      host_end) throws -> String
-{
-  let analysis_source = String{heap_allocator()};
-
-  analysis_source.reserve(host_end);
-
-  let const literal_start = host_start < host_end ? host_start : host_end;
-
-  for (usize position = 0; position < literal_start; position++) {
-    let const byte = host_source[position];
-    analysis_source.push(byte == '\n' ? '\n' : ' ');
-  }
-
-  analysis_source.append(
-      host_source.substring_of_length(literal_start, host_end - literal_start));
-
-  return analysis_source;
-}
-
 /* memory: shell_source copies host_end - host_start bytes. analysis_source is
-           prepared_analysis_source when it has a value, and otherwise a
-           host_end byte copy from make_analysis_source(). both are freed with
-           document.fragments.
-   time:   O(host_end) to build analysis_source, O(host_end - host_start) for
-           shell_source. no loops over the document. */
+           prepared_analysis_source when it has a value, and otherwise another
+           copy of those bytes. both are freed with document.fragments.
+   time:   O(host_end - host_start). no loops over the document. */
 fn
 parser_format_add_fragment(parsed_format_document &document,
                            StringView              host_source,
@@ -447,17 +423,17 @@ parser_format_add_fragment(parsed_format_document &document,
     return;
   }
 
+  let const host_text =
+      host_source.substring_of_length(host_start, host_end - host_start);
   let fragment = parser_format_fragment{};
 
-  fragment.analysis_source =
-      prepared_analysis_source.has_value()
-          ? prepared_analysis_source.take()
-          : make_analysis_source(host_source, host_start, host_end);
-  fragment.shell_source = String{
-      heap_allocator(),
-      host_source.substring_of_length(host_start, host_end - host_start)};
-  fragment.mood  = mood;
-  fragment.codec = codec;
+  fragment.analysis_source = prepared_analysis_source.has_value()
+                                 ? prepared_analysis_source.take()
+                                 : String{heap_allocator(), host_text};
+  ASSERT(fragment.analysis_source.length() == host_text.length);
+  fragment.shell_source = String{heap_allocator(), host_text};
+  fragment.mood         = mood;
+  fragment.codec        = codec;
   fragment.should_silence_unresolved_commands =
       parser_format_should_silence_unresolved_commands(document.kind);
   fragment.host_start    = host_start;
@@ -670,6 +646,10 @@ template_construct_end(StringView source,
   return None;
 }
 
+/* memory: returns host_end - host_start bytes, one for each host byte in
+           [host_start, host_end), which the caller owns.
+   time:   O(host_end - host_start) plus one template_construct_end() call
+           for each position visited. */
 fn
 parser_format_masked_template_source(
     StringView                    host_source,
@@ -681,11 +661,8 @@ parser_format_masked_template_source(
 {
   let analysis_source = String{heap_allocator()};
 
-  analysis_source.reserve(host_end);
+  analysis_source.reserve(host_end - host_start);
   did_mask = false;
-
-  for (usize position = 0; position < host_start; position++)
-    analysis_source.push(host_source[position] == '\n' ? '\n' : ' ');
 
   let const has_curly_escape   = template_syntax == TEMPLATE_CURLY;
   bool      is_in_single_quote = false;
@@ -871,8 +848,7 @@ parser_format_add_indented_fragment(
   let &fragment = document.fragments.back();
 
   fragment.should_skip_format =
-      fragment.analysis_source.view().substring_of_length(
-          host_start, host_end - host_start) !=
+      fragment.analysis_source.view() !=
       host_source.substring_of_length(host_start, host_end - host_start);
 
   let   deindented = String{heap_allocator()};
@@ -1775,31 +1751,31 @@ add_yaml_scalar_fragment(parsed_format_document &document,
     let blanked = String{heap_allocator()};
 
     blanked.reserve(analysis.length());
-    blanked.append(analysis.view().substring_of_length(0, item.start));
     blanked.append_repeated(' ', first_line.length);
-    blanked.append(analysis.view().substring(item.start + first_line.length));
+    blanked.append(analysis.view().substring(first_line.length));
     analysis = steal(blanked);
   }
 
-  let const masked = analysis.clone();
+  let const masked      = analysis.clone();
+  let const item_length = item.end - item.start;
 
   if (item.block_indent != 0) {
     if (item.is_folded) {
-      analysis = replace_analysis_newlines(analysis.view(), item.start,
-                                           item.end, item.block_indent, true);
+      analysis = replace_analysis_newlines(analysis.view(), 0, item_length,
+                                           item.block_indent, true);
     }
 
-    analysis = align_indented_heredoc_terminators(analysis.view(), item.start,
-                                                  item.end);
+    analysis =
+        align_indented_heredoc_terminators(analysis.view(), 0, item_length);
     parser_format_add_indented_fragment(document, source, item.start, item.end,
                                         item.block_indent, mood,
                                         steal(analysis));
   } else {
     if (item.quote != '\0') {
-      analysis = decode_yaml_quoted_analysis(analysis.view(), item.start,
-                                             item.end + 1, item.quote);
-      analysis = replace_analysis_newlines(analysis.view(), item.start,
-                                           item.end + 1, 0, false);
+      analysis = decode_yaml_quoted_analysis(analysis.view(), 0,
+                                             item_length + 1, item.quote);
+      analysis = replace_analysis_newlines(analysis.view(), 0, item_length + 1,
+                                           0, false);
     }
 
     parser_format_add_fragment(document, source, item.start, item.end, 0,
@@ -1817,19 +1793,21 @@ add_yaml_scalar_fragment(parsed_format_document &document,
                                  ? item.start + first_line.length
                                  : item.start;
 
+  /* other holds one byte for each host byte from item.start. */
   let const do_differs_from = [&](StringView other) {
+    let const offset = compared_start - item.start;
+
     return compared_start < item.end &&
            fragment.analysis_source.view().substring_of_length(
-               compared_start, item.end - compared_start) !=
-               other.substring_of_length(compared_start,
-                                         item.end - compared_start);
+               offset, item.end - compared_start) !=
+               other.substring_of_length(offset, item.end - compared_start);
   };
   let const has_other_change = do_differs_from(masked.view());
 
   if (did_mask) fragment.should_silence_unresolved_commands = true;
-  fragment.should_skip_format = has_other_change ||
-                                (did_mask && !masks.is_restorable) ||
-                                (!did_mask && do_differs_from(source));
+  fragment.should_skip_format =
+      has_other_change || (did_mask && !masks.is_restorable) ||
+      (!did_mask && do_differs_from(source.substring(item.start)));
   if (did_mask && !fragment.should_skip_format) {
     fragment.template_spans = steal(masks.spans);
   }
@@ -2309,13 +2287,7 @@ parser_format_add_json_fragment(parsed_format_document &document,
 
   let masked = String{heap_allocator()};
 
-  masked.reserve(end);
-
-  for (usize host_position = 0; host_position < start; host_position++) {
-    let const byte = source[host_position];
-
-    masked.push(byte == '\n' ? '\n' : ' ');
-  }
+  masked.reserve(end - start);
 
   /* e.g. the string body is a\nb with start = 0 and end = 4, bytes 'a', '\\',
           'n', 'b'.
@@ -2491,7 +2463,8 @@ add_json_command_fragment(parsed_format_document       &document,
 
   bool did_mask = false;
   let  masked   = parser_format_masked_template_source(
-      fragment.analysis_source.view(), start, end, template_syntax, did_mask);
+      fragment.analysis_source.view(), 0, end - start, template_syntax,
+      did_mask);
 
   if (!did_mask) return;
   fragment.analysis_source                    = steal(masked);
@@ -2916,7 +2889,9 @@ parser_format_analysis_source(const parsed_format_document &document,
     if (fragment_index < document.fragments.count() &&
         document.fragments[fragment_index].contains(position))
     {
-      result.push(document.fragments[fragment_index].analysis_source[position]);
+      let const &fragment = document.fragments[fragment_index];
+
+      result.push(fragment.analysis_source[position - fragment.host_start]);
     } else {
       result.push(host_source[position] == '\n' ? '\n' : ' ');
     }

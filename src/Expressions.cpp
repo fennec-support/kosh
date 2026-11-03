@@ -2082,6 +2082,7 @@ expressions::internal::analyze_followed_source(
 
   child_options.should_silence_unresolved_commands =
       actx.effects.should_silence_unresolved_commands;
+  child_options.source_start_position = 0;
 
   analyze_ast(ast, contents->view(), actx.functions.defined,
               actx.functions.aliases, actx.eval_context, child_options,
@@ -2311,14 +2312,16 @@ analyze_ast(const Expression                *root,
     actx.report_diagnostic(diagnostic_id::sc1082, SourceLocation{0, 3});
   }
 
-  expressions::internal::check_source_bytes(actx, source);
+  expressions::internal::check_source_bytes(actx, source,
+                                            options.source_start_position);
 
   if (parent_analysis_context != nullptr) {
     actx.is_posix_sh_shebang = parent_analysis_context->is_posix_sh_shebang;
     actx.has_foreign_shell_shebang =
         parent_analysis_context->has_foreign_shell_shebang;
   } else {
-    expressions::internal::check_shebang(actx, source, options.shebang_policy);
+    expressions::internal::check_shebang(actx, source, options.shebang_policy,
+                                         options.source_start_position);
   }
 
   expressions::internal::check_shellcheck_directives(

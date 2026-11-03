@@ -107,6 +107,8 @@ struct parser_format_template_masks
   bool                                   is_restorable{true};
 };
 
+/* analysis_source holds one byte for each host byte in [host_start,
+   host_end), as analysis reads it. */
 struct parser_format_fragment
 {
   String              analysis_source{heap_allocator()};

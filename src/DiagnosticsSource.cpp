@@ -349,24 +349,29 @@ line_above_continues(StringView source, usize line_start) wontthrow -> bool
 /* memory: quoted_substitution_ends holds one end position per open
            double-quoted substitution and is freed on return. each
            scan_balanced_shell_region() call frees its own lists on return.
-   time:   O(source.length * D), where D is the number of enclosing
-           double-quoted substitutions. the main loop visits each byte once.
+   time:   O((source.length - start_position) * D), where D is the number of
+           enclosing double-quoted substitutions. the main loop visits each
+           byte from start_position once.
            each double-quoted "$(" starts a balanced scan of its body. each
            enclosing scan also covers the bytes of the inner bodies. */
 fn
-check_source_bytes(AnalysisContext &actx, StringView source) throws
-    -> void
+check_source_bytes(AnalysisContext &actx,
+                   StringView       source,
+                   usize            start_position) throws -> void
 {
-  if (!source_holds_scanned_byte(source)) return;
+  if (!source_holds_scanned_byte(source.substring(start_position))) return;
 
   let   state                        = source_scan_state::Normal;
   let   was_carriage_return_reported = false;
   let   is_command_position          = true;
   usize comment_line_start           = 0;
-  usize line_start                   = 0;
+  usize line_start                   = start_position;
   usize arithmetic_paren_depth       = 0;
   let   quoted_substitution_ends     = ArrayList<usize>{heap_allocator()};
-  usize at                           = 0;
+  usize at                           = start_position;
+
+  while (line_start > 0 && source[line_start - 1] != '\n')
+    line_start--;
 
   while (at < source.length) {
     if (!quoted_substitution_ends.is_empty() &&
@@ -659,10 +664,20 @@ struct shebang_word_reader
   }
 };
 
+/* the lines before the one that holds start_position hold only spaces, so
+   the scan starts at that line. */
 pure fn
-header_holds_shebang(StringView source, usize first_line_end) wontthrow -> bool
+header_holds_shebang(StringView source,
+                     usize      first_line_end,
+                     usize      start_position) wontthrow -> bool
 {
-  usize at = first_line_end;
+  usize at          = first_line_end;
+  usize blank_start = start_position;
+
+  while (blank_start > at && source[blank_start - 1] != '\n')
+    blank_start--;
+
+  if (blank_start > at) at = blank_start - 1;
 
   while (at < source.length) {
     at++;
@@ -700,7 +715,8 @@ header_holds_shebang(StringView source, usize first_line_end) wontthrow -> bool
 fn
 check_shebang(AnalysisContext       &actx,
               StringView             source,
-              missing_shebang_policy shebang_policy) throws -> void
+              missing_shebang_policy shebang_policy,
+              usize                  start_position) throws -> void
 {
   let const line_end = source.find_character('\n').value_or(source.length);
 
@@ -751,7 +767,9 @@ check_shebang(AnalysisContext       &actx,
       !has_hash && first_line.find_substring("<<").has_value();
 
   if (!has_bang) {
-    if (!is_here_document_opener && header_holds_shebang(source, line_end)) {
+    if (!is_here_document_opener &&
+        header_holds_shebang(source, line_end, start_position))
+    {
       actx.report_diagnostic(diagnostic_id::sc1128, SourceLocation{at, 1});
 
       return;

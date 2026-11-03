@@ -198,12 +198,11 @@ session_heredoc(StringView line) throws -> Maybe<lexer::pending_heredoc>
   return None;
 }
 
-/* memory: String of end bytes from heap_allocator(), reserved up front and
-           owned by the document after parser_format_add_indented_fragment()
-           takes it.
-   time:   O(end), since the start blank bytes and the pass over [start, end)
-           each touch one byte. called once per shell fence, so a source of
-           N bytes with F shell fences costs at most O(F * N). */
+/* memory: String of end - start bytes from heap_allocator(), reserved up
+           front and owned by the document after
+           parser_format_add_indented_fragment() takes it.
+   time:   O(end - start), since the pass over [start, end) touches each byte
+           once. */
 static fn
 markdown_analysis_source(StringView        source,
                          usize             start,
@@ -216,10 +215,7 @@ markdown_analysis_source(StringView        source,
 
   let analysis = String{heap_allocator()};
 
-  analysis.reserve(end);
-
-  for (usize position = 0; position < start; position++)
-    analysis.push(source[position] == '\n' ? '\n' : ' ');
+  analysis.reserve(end - start);
 
   usize position        = start;
   bool  is_continuation = false;

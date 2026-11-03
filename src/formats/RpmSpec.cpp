@@ -147,9 +147,10 @@ macro_end(StringView source, usize position, usize end)
   return None;
 }
 
-/* memory: String of end bytes from heap_allocator(), reserved up front and
-           owned by the document after parser_format_add_fragment() takes it.
-   time:   O(end): the start blank bytes, then one pass over [start, end).
+/* memory: String of end - start bytes from heap_allocator(), reserved up
+           front and owned by the document after parser_format_add_fragment()
+           takes it.
+   time:   O(end - start): one pass over [start, end).
            a "%{" with no closing "}" scans to the end of its line, so a line
            with k such openers costs O(k * line length). */
 static fn
@@ -158,10 +159,7 @@ masked_section_source(StringView source, usize start, usize end) throws
 {
   let analysis = String{heap_allocator()};
 
-  analysis.reserve(end);
-
-  for (usize position = 0; position < start; position++)
-    analysis.push(source[position] == '\n' ? '\n' : ' ');
+  analysis.reserve(end - start);
 
   /* e.g. start = 0, source = "cp %{buildroot}\n%autosetup\nrm %name"
           the braced macro at 3 covers 12 bytes through its '}' at 14, so
@@ -212,7 +210,7 @@ masked_section_source(StringView source, usize start, usize end) throws
            owned by the document after parser_format_add_fragment() takes it.
    time:   O(N) to scan the lines once, plus one masked_section_source() call
            per script section with a known interpreter. each call costs
-           O(shell_end), so the file costs at most O(S * N) for S sections. */
+           O(shell_end - shell_start), so the file costs O(N). */
 fn
 parse_rpm_spec_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void

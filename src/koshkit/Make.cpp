@@ -4734,12 +4734,13 @@ parse_makefile_shell_sources(StringView source,
   return steal(ranges).make_sorted(sort_order::ascending);
 }
 
-/* memory: reserve() takes range.end_position bytes from heap_allocator().
-           the caller owns the returned String.
-   time:   one pass over source up to range.end_position. a '$(' that closes
-           inside the range is skipped after one make_expansion_end() scan. a
-           '$(' that never closes scans to the end of source, so k such openers
-           cost O(k * n) for n bytes of source. */
+/* memory: returns one byte for each source byte in the range, reserved from
+           heap_allocator(). the caller owns the returned String.
+   time:   one pass over the range, after a scan back to the start of its
+           first line. a '$(' that closes inside the range is skipped after
+           one make_expansion_end() scan. a '$(' that never closes scans to
+           the end of source, so k such openers cost O(k * n) for n bytes of
+           source. */
 fn
 makefile_shell_analysis_source(
     StringView source, const make_shell_source_range &range) throws
@@ -4747,22 +4748,18 @@ makefile_shell_analysis_source(
 {
   let analysis_source = String{heap_allocator()};
 
-  analysis_source.reserve(range.end_position);
+  analysis_source.reserve(range.end_position - range.start_position);
   let   close_stack         = ArrayList<char>{heap_allocator()};
-  usize position            = 0;
-  usize line_start_position = 0;
+  usize position            = range.start_position;
+  usize line_start_position = range.start_position;
   char  quote_byte          = '\0';
   bool  is_escaped          = false;
 
+  while (line_start_position > 0 && source[line_start_position - 1] != '\n')
+    line_start_position--;
+
   while (position < range.end_position) {
     let const byte = source[position];
-
-    if (position < range.start_position) {
-      analysis_source.push(byte == '\n' ? '\n' : ' ');
-      if (byte == '\n') line_start_position = position + 1;
-      position++;
-      continue;
-    }
 
     if (byte != '$' || position + 1 >= range.end_position) {
       if (is_escaped) {

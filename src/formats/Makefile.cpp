@@ -304,8 +304,8 @@ parse_makefile_format(const parser_format_input &input,
         continue;
       }
 
-      is_after_recipe_tab = position > range.start_position && byte == '\t' &&
-                            raw[position - 1] == '\n';
+      is_after_recipe_tab =
+          position > 0 && byte == '\t' && raw[position - 1] == '\n';
       analysis_source.push(byte);
     }
 
