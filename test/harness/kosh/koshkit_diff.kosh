@@ -74,3 +74,15 @@ echo "equal-no-newline=$?"
 
 koshkit diff absent right > /dev/null 2>&1
 echo "missing=$?"
+
+printf 'a\n' > left
+printf 'b\n' > right
+koshkit diff -q left right
+echo "brief=$?"
+
+printf 'a b\n' > left
+printf 'a  b\n' > right
+koshkit diff -q -w left right
+echo "brief-whitespace=$?"
+koshkit diff --brief -L one -L two left right
+echo "brief-labels=$?"

@@ -438,7 +438,7 @@ _koshkit_util_flags ()
     ;;
     diff)
       printf "%s\n" \
-        "-u --unified -w --ignore-all-space -a --text -L --label --color"
+        "-q --brief -u --unified -w --ignore-all-space -a --text -L --label --color"
     ;;
     dirname)
       printf "%s\n" "-z --zero"

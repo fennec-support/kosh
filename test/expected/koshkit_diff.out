@@ -91,3 +91,8 @@ merged-hunks=1
 separate-hunks=1
 equal-no-newline=0
 missing=2
+Files left and right differ
+brief=1
+brief-whitespace=0
+Files one and two differ
+brief-labels=1

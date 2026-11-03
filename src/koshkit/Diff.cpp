@@ -14,9 +14,10 @@
 #include "../Koshkit.hpp"
 #include "../util/Utils.hpp"
 
-KOSHKIT_UTIL_DECL("[-uwa] [--color[=when]] [-L label] file1 file2",
+KOSHKIT_UTIL_DECL("[-quwa] [--color[=when]] [-L label] file1 file2",
                   "The diff utility can compare two files line by line.");
 
+FLAG(DIFF_BRIEF, Bool, 'q', "brief", "Report only whether the files differ.");
 FLAG(DIFF_UNIFIED, Bool, 'u', "unified", "Write unified differences.");
 FLAG(DIFF_IGNORE_SPACE,
      Bool,
@@ -696,14 +697,26 @@ Diff::execute(const ExecContext               &ec,
 
   if (left_contents.view() == right_contents.view()) return 0;
 
+  let const left_name  = FLAG_DIFF_LABEL.count() >= 1 ? FLAG_DIFF_LABEL.get(0)
+                                                      : operands[0].view();
+  let const right_name = FLAG_DIFF_LABEL.count() == 2 ? FLAG_DIFF_LABEL.get(1)
+                                                      : operands[1].view();
+  let const do_report_brief = [&]() throws -> i32 {
+    ec.print_to_stdout("Files " + String{cxt.scratch_allocator(), left_name} +
+                       " and " + right_name + " differ\n");
+
+    return 1;
+  };
+
+  if (FLAG_DIFF_BRIEF.is_enabled() && !FLAG_DIFF_IGNORE_SPACE.is_enabled()) {
+    return do_report_brief();
+  }
+
   if (!FLAG_DIFF_TEXT.is_enabled() &&
       (left_contents.view().find_character('\0').has_value() ||
        right_contents.view().find_character('\0').has_value()))
   {
-    let const left_name  = FLAG_DIFF_LABEL.count() >= 1 ? FLAG_DIFF_LABEL.get(0)
-                                                        : operands[0].view();
-    let const right_name = FLAG_DIFF_LABEL.count() == 2 ? FLAG_DIFF_LABEL.get(1)
-                                                        : operands[1].view();
+    if (FLAG_DIFF_BRIEF.is_enabled()) return do_report_brief();
 
     ec.print_to_stdout("Binary files " +
                        String{cxt.scratch_allocator(), left_name} + " and " +
@@ -740,6 +753,7 @@ Diff::execute(const ExecContext               &ec,
   }
 
   if (!has_difference) return 0;
+  if (FLAG_DIFF_BRIEF.is_enabled()) return do_report_brief();
 
   /* at this point: left_lines and right_lines view left_contents and
      right_contents, which live until the function returns, and result.edits
