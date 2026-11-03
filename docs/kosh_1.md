@@ -620,7 +620,7 @@ The `sh` mood enforces `dash` compatibility: it rejects `[[ ]]`, C-style `for ((
 | `SHELL` | Holds the user shell path. An inherited value is kept, and an unset `SHELL` becomes the path of the executable. |
 | `TERM`, `COLORTERM`, `TERM_PROGRAM` | Describe terminal capabilities (see [Interactive line editing](#line-editing)); `TERM=dumb` disables color and the terminal integration marks. |
 | `TIMEFORMAT` | Selects the `time` report format: `%R`, `%U`, `%S` are elapsed, user, and system seconds, `%P` the processor percentage, `%3R` three decimals, `%lR` minutes and seconds, `%%` a percent sign. An empty value prints nothing, and an unset value selects the default report. |
-| `TMPDIR` | Selects the directory for the temporary files of here-documents, `fc`, Ctrl-X Ctrl-E, and `slurp`. The shell reads it from the environment, so an assignment needs `export`; an empty value or a value that is not a directory is ignored, the default is `/tmp`, and on Windows the directory is `TEMP`. |
+| `TMPDIR` | Selects the directory for the temporary files of here-documents, `fc`, Ctrl-X Ctrl-E, and `slurp`. The shell reads it from the environment, so an assignment needs `export`; an empty value or a value that is not a directory is ignored, the default is `/tmp`, and on Windows `TEMP` takes its place under the same rules with the default `C:\Windows\Temp`. |
 | `TZ` | Holds the time zone. The shell uses the inherited value, so an assignment in the shell changes the zone of later programs only. |
 | `XDG_CONFIG_HOME` | Sets the base of the user settings directory (see [Startup and configuration file loading](#startup-files)); a relative or empty value is ignored. |
 

@@ -659,7 +659,8 @@ fn
 temp_directory_path() throws -> String
 {
   if (let from_environment = get_environment_variable("TEMP");
-      from_environment.has_value() && !from_environment->is_empty())
+      from_environment.has_value() && !from_environment->is_empty() &&
+      path_is_directory(from_environment->view()))
   {
     return from_environment.take();
   }
