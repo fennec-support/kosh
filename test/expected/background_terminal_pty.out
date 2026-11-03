@@ -138,4 +138,9 @@ sh+m-subshell-keeps-the-shell-alive PASS
 sh+m-subshell-keeps-the-terminal PASS
 sh+m-pipeline-keeps-the-shell-alive PASS
 sh+m-pipeline-keeps-the-terminal PASS
+redirected-stdin-terminal-stderr-turns-on-job-control PASS
+redirected-stdin-terminal-stderr-program-owns-the-terminal PASS
+redirected-stdin-hidden-stderr-turns-on-job-control PASS
+redirected-stdin-hidden-stderr-program-owns-the-terminal PASS
+no-terminal-leaves-job-control-off PASS
 status=0

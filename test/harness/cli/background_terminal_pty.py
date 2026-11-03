@@ -9,8 +9,9 @@
 # terminal's foreground group and answer the next command. A foreground program
 # started after a background job must own the terminal and stop on Ctrl-Z or
 # end on Ctrl-C. A prompt hook prints a numbered marker, and each line is typed
-# only after the marker of the previous prompt. Each check prints one stable
-# PASS line.
+# only after the marker of the previous prompt. An interactive shell over a
+# file on stdin must turn job control on through the terminal it can still
+# reach. Each check prints one stable PASS line.
 
 import fcntl
 import os
@@ -19,6 +20,7 @@ import select
 import shutil
 import signal
 import struct
+import subprocess
 import sys
 import tempfile
 import termios
@@ -31,23 +33,26 @@ CTRL_C = b"\x03"
 CTRL_Z = b"\x1a"
 
 
+def make_environment(directory):
+    return {
+        "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
+        "HOME": directory,
+        "XDG_CONFIG_HOME": os.path.join(directory, "config"),
+        "KOSH_HISTORY_FILE": os.path.join(directory, "history"),
+        "TERM": "xterm-256color",
+        "LANG": "C.UTF-8",
+    }
+
+
 class Session:
     def __init__(self, binary, directory, mood):
-        environment = {
-            "PATH": os.environ.get("PATH", "/usr/bin:/bin"),
-            "HOME": directory,
-            "XDG_CONFIG_HOME": os.path.join(directory, "config"),
-            "KOSH_HISTORY_FILE": os.path.join(directory, "history"),
-            "TERM": "xterm-256color",
-            "LANG": "C.UTF-8",
-        }
         self.raw = bytearray()
         self.prompt_count = 0
         self.pid, self.fd = pty.fork()
         if self.pid == 0:
             os.chdir(directory)
             os.execve(binary, [binary, "-M", mood, "--norc", "-i"],
-                      environment)
+                      make_environment(directory))
         fcntl.ioctl(self.fd, termios.TIOCSWINSZ,
                     struct.pack("HHHH", 24, 100, 0, 0))
         self.is_closed = False
@@ -243,6 +248,74 @@ def run_mood(binary, directory, mood, sleep, report):
         session.close()
 
 
+def run_redirected_input(binary, directory, input_path, is_stderr_hidden):
+    pid, fd = pty.fork()
+    if pid == 0:
+        os.chdir(directory)
+        os.dup2(os.open(input_path, os.O_RDONLY), 0)
+        if is_stderr_hidden:
+            os.dup2(os.open(os.devnull, os.O_WRONLY), 2)
+        os.execve(binary, [binary, "-M", "bash", "--norc", "-i"],
+                  make_environment(directory))
+    output = bytearray()
+    deadline = time.monotonic() + WAIT_SECONDS
+    while time.monotonic() < deadline:
+        ready, _, _ = select.select([fd], [], [], 0.1)
+        if not ready:
+            continue
+        try:
+            chunk = os.read(fd, 65536)
+        except OSError:
+            break
+        if not chunk:
+            break
+        output.extend(chunk)
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except OSError:
+        pass
+    os.waitpid(pid, 0)
+    os.close(fd)
+    return output.decode("utf-8", "replace")
+
+
+def check_redirected_input(binary, directory, report):
+    # An interactive shell whose stdin is a file turns job control on when it
+    # can reach its controlling terminal through stderr or /dev/tty, and then
+    # hands that terminal to a foreground program. Without a controlling
+    # terminal, job control stays off.
+    input_path = os.path.join(directory, "redirected-input")
+    probe = ("import os; fd = os.open('/dev/tty', os.O_RDWR); "
+             "print('owner=%s' % (os.tcgetpgrp(fd) == os.getpgrp()))")
+    with open(input_path, "w") as script:
+        script.write("case $- in *m*) echo monitor=on;; "
+                     "*) echo monitor=off;; esac\n")
+        script.write("%s -c \"%s\"\n" % (sys.executable, probe))
+    for name, is_stderr_hidden in (("terminal-stderr", False),
+                                   ("hidden-stderr", True)):
+        output = run_redirected_input(binary, directory, input_path,
+                                      is_stderr_hidden)
+        for label, text in (("turns-on-job-control", "monitor=on"),
+                            ("program-owns-the-terminal", "owner=True")):
+            is_passed = text in output
+            print("redirected-stdin-%s-%s %s" % (
+                name, label, "PASS" if is_passed else "FAIL"))
+            if not is_passed:
+                sys.stderr.write("%s\n" % output[-1500:])
+                report.is_ok = False
+    with open(input_path) as script:
+        result = subprocess.run(
+            [binary, "-M", "bash", "--norc", "-i"], stdin=script,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            env=make_environment(directory), cwd=directory,
+            start_new_session=True, timeout=WAIT_SECONDS)
+    is_passed = b"monitor=off" in result.stdout
+    print("no-terminal-leaves-job-control-off %s" % (
+        "PASS" if is_passed else "FAIL"))
+    if not is_passed:
+        report.is_ok = False
+
+
 def main():
     if sys.platform != "linux":
         print("background terminal PTY probes: skipped (requires Linux)")
@@ -261,6 +334,7 @@ def main():
     try:
         for mood in MOODS:
             run_mood(binary, directory, mood, sleep, report)
+        check_redirected_input(binary, directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1

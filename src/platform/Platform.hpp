@@ -2878,6 +2878,12 @@ execute_program(ExecContext                     &ec,
 fn
 shell_has_controlling_terminal() wontthrow -> bool;
 
+/* picks standard input, standard error, or the controlling terminal device,
+   in that order, for job control and returns whether one belongs to the
+   session of the shell. */
+fn
+open_job_control_terminal() wontthrow -> bool;
+
 fn
 canonical_path(const Path &path) wontthrow -> Maybe<Path>;
 fn

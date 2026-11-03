@@ -585,7 +585,8 @@ T}@T{
 \f[CR]\-i, \-\-interactive\f[R]
 T}@T{
 Sources the interactive startup files, sets \f[CR]i\f[R] in
-\f[CR]$\-\f[R], and turns on job control when stdin is a terminal.
+\f[CR]$\-\f[R], and turns on job control when stdin, stderr, or
+\f[CR]/dev/tty\f[R] is the controlling terminal of its session.
 The line editor starts only when stdin is a terminal and neither
 \f[CR]\-c\f[R] nor a script operand is given.
 Otherwise the shell runs the command string, script, or stdin without a

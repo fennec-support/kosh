@@ -37,6 +37,8 @@ static process_launch_counts PROCESS_LAUNCH_COUNTS{};
 
 static bool IS_TERMINAL_OWNER = true;
 
+static descriptor JOB_CONTROL_TERMINAL = STDIN_FILENO;
+
 /* a job signal can stop a posix_spawn child before its exec, and the parent
    then waits for it inside the kernel where it cannot stop or report. a process
    inside a job group forks its programs, so the whole group stops. */
@@ -795,13 +797,41 @@ execute_program(ExecContext                     &ec,
 fn
 shell_has_controlling_terminal() wontthrow -> bool
 {
-  return IS_TERMINAL_OWNER && isatty(STDIN_FILENO) == 1;
+  return IS_TERMINAL_OWNER && isatty(JOB_CONTROL_TERMINAL) == 1;
+}
+
+fn
+open_job_control_terminal() wontthrow -> bool
+{
+  if (tcgetpgrp(STDIN_FILENO) != -1) return true;
+
+  descriptor terminal = KOSH_INVALID_FD;
+
+  if (isatty(STDERR_FILENO) == 1) {
+    terminal = save_descriptor_out_of_reach(STDERR_FILENO).saved;
+  } else if (let const opened = open_terminal_input(); opened.has_value()) {
+    terminal = save_descriptor_out_of_reach(*opened).saved;
+    close(*opened);
+  }
+
+  if (terminal == KOSH_INVALID_FD) return false;
+
+  if (tcgetpgrp(terminal) == -1) {
+    close(terminal);
+
+    return false;
+  }
+
+  LOG(Info, "job control uses descriptor %d for the terminal", terminal);
+  JOB_CONTROL_TERMINAL = terminal;
+
+  return true;
 }
 
 static fn
 is_terminal_foreground_group() wontthrow -> bool
 {
-  return tcgetpgrp(STDIN_FILENO) == getpgrp();
+  return tcgetpgrp(JOB_CONTROL_TERMINAL) == getpgrp();
 }
 
 fn
@@ -1020,7 +1050,7 @@ give_controlling_terminal_to(process p) wontthrow -> void
 
   void (*const previous)(int) = signal(SIGTTOU, SIG_IGN);
 
-  tcsetpgrp(STDIN_FILENO, p);
+  tcsetpgrp(JOB_CONTROL_TERMINAL, p);
   signal(SIGTTOU, previous);
 }
 
@@ -1036,7 +1066,7 @@ give_controlling_terminal_to_process_group(i64 process_group_id)
 
   void (*const previous)(int) = signal(SIGTTOU, SIG_IGN);
 
-  tcsetpgrp(STDIN_FILENO, static_cast<pid_t>(process_group_id));
+  tcsetpgrp(JOB_CONTROL_TERMINAL, static_cast<pid_t>(process_group_id));
   signal(SIGTTOU, previous);
 }
 
@@ -1047,7 +1077,7 @@ reclaim_controlling_terminal() wontthrow -> void
 
   void (*const previous)(int) = signal(SIGTTOU, SIG_IGN);
 
-  tcsetpgrp(STDIN_FILENO, getpgrp());
+  tcsetpgrp(JOB_CONTROL_TERMINAL, getpgrp());
   signal(SIGTTOU, previous);
 }
 

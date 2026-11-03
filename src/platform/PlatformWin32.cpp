@@ -1198,6 +1198,12 @@ shell_has_controlling_terminal() wontthrow -> bool
 }
 
 fn
+open_job_control_terminal() wontthrow -> bool
+{
+  return is_stdin_a_tty();
+}
+
+fn
 give_controlling_terminal_to(process p) wontthrow -> void
 {
   unused(p);

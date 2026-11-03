@@ -3352,8 +3352,10 @@ An interactive shell sets \f[CR]i\f[R] in \f[CR]$\-\f[R], which command
 substitutions and subshells keep, sources the interactive startup files
 of its mood, sets \f[CR]PS1\f[R] when it is unset, expands aliases in
 every mood, turns on \f[CR]emacs\f[R], \f[CR]history\f[R], and
-\f[CR]histexpand\f[R], and turns on job control when stdin is a
-terminal.
+\f[CR]histexpand\f[R], and turns on job control when stdin, stderr, or
+\f[CR]/dev/tty\f[R], checked in that order, is the controlling terminal
+of its session.
+Job control then hands that terminal to foreground jobs.
 The line editor runs only when stdin is a terminal and neither
 \f[CR]\-c\f[R] nor a script operand is given.
 With \f[CR]\-c\f[R], a script operand, or stdin that is not a terminal,
@@ -5325,8 +5327,8 @@ determine the status).
 A stopped stage is recorded even when it is not the last, and
 \f[CR]fg\f[R] and \f[CR]bg\f[R] resume every stage.
 .IP \[bu] 2
-Job control is on in an interactive shell whose stdin is a terminal,
-where Ctrl\-Z stops the foreground job.
+Job control is on in an interactive shell that reaches the controlling
+terminal of its session, where Ctrl\-Z stops the foreground job.
 A foreground pipeline or subshell has its own process group, and every
 process in it stops and resumes together.
 A pipeline whose final stage runs in the shell stays in the process
