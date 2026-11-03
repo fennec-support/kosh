@@ -1,21 +1,8 @@
-[![Koshka is at least 3 times faster than Bash](https://github.com/fennec-support/kosh/actions/workflows/ci.yml/badge.svg)](https://github.com/fennec-support/kosh/actions/workflows/ci.yml)
+[![Koshka is 6x faster than Bash](https://github.com/fennec-support/kosh/actions/workflows/ci.yml/badge.svg)](https://github.com/fennec-support/kosh/actions/workflows/ci.yml)
 
 # koshka-oriented shell
 
 <img align="center" width=100% src="assets/card-no-bg.png"/>
-
-## Contents
-
-- [Install](#install)
-- [Quick look](#quick-look)
-  - [How to use it](#how-to-use-it)
-  - [Shell linter, formatter, and language server](#shell-linter-formatter-and-language-server)
-  - [Interactive shell and command interpreter](#interactive-shell-and-command-interpreter)
-  - [Builtins and interactive editor](#builtins-and-interactive-editor)
-  - [Koshkit](#koshkit)
-- [Development](#development)
-  - [Prerequisites](#prerequisites)
-  - [Build](#build)
 
 ## Install
 
@@ -43,7 +30,10 @@ Prebuilt binaries and checksums can be found in the
 [Releases](https://github.com/fennec-support/kosh/releases) page. For source
 builds, jump to [Development](#development).
 
-Existing Bash startup configs will keep working untouched.
+Existing Bash startup configs keep working in the `bash` mood. A `bash`
+symlink to `kosh`, `--mood bash`, or
+`koshconf set init_moods kosh,bash --persist` loads them, while the default
+`kosh` mood reads only `rc.kosh`.
 See [Switching from Bash](docs/kosh_switching_5.md).
 
 Editor plugins for real-time linting and formatting:
@@ -51,6 +41,18 @@ Editor plugins for real-time linting and formatting:
 - [VS Code](https://github.com/fennec-support/kosh-vscode)
 - [Zed](https://github.com/fennec-support/kosh-zed)
 - [Neovim](https://github.com/fennec-support/kosh.nvim)
+
+## Contents
+
+- [Quick look](#quick-look)
+  - [How to use it](#how-to-use-it)
+  - [Shell linter, formatter, and language server](#shell-linter-formatter-and-language-server)
+  - [Interactive shell and command interpreter](#interactive-shell-and-command-interpreter)
+  - [Builtins and interactive editor](#builtins-and-interactive-editor)
+  - [Koshkit](#koshkit)
+- [Development](#development)
+  - [Prerequisites](#prerequisites)
+  - [Build](#build)
 
 ## Quick look
 
@@ -62,9 +64,10 @@ Editor plugins for real-time linting and formatting:
 
 Packed into a single tiny cross-platform binary are a script interpreter, an
 interactive shell, a linter, a formatter, and an LSP server. Scripts written
-for Bash 5.3 or Dash will run completely unchanged.
+for Bash 5.3 or Dash will run completely unchanged with `--mood bash` or
+`--mood sh`, or through a `bash` or `sh` symlink.
 
-Expect roughly 5x the execution speed of Bash and over 100x the linting speed
+Expect 6x the execution speed of Bash and over 100x the linting speed
 of ShellCheck, with 300+ ShellCheck-style diagnostics baked straight into the
 binary.
 
@@ -100,7 +103,7 @@ outlines, and full diagnostic explanations on hover.
 
 | Completion and diagnostics appear while writing code |
 | :-: |
-| ![The editor offers shell completion and diagnostic help while as you writte code.](assets/code-demo.gif) |
+| ![The editor offers shell completion and diagnostic help as you write code.](assets/code-demo.gif) |
 
 ### How to use it
 
@@ -137,9 +140,10 @@ $ man man/kosh.1
 Koshka operates across four "moods" and three shell identities (similar to
 Zsh's `emulate` builtin).
 
-- `kosh` (default). A strict superset of Bash with whole-script static analysis
-  and optimization enabled. Risky constructs that Bash runs without complaint,
-  such as an unquoted `echo $HOME`, will be rejected before anything even runs.
+- `kosh` (default). Bash with whole-script static analysis and optimization
+  enabled, which rejects risky Bash on purpose. Risky constructs that Bash runs
+  without complaint, such as an unquoted `echo $HOME`, will be rejected before
+  anything even runs.
 - `bash`. Drop-in Bash 5.3 compatibility. Run legacy scripts untouched via
   `kosh --mood bash script.bash`.
 - `bash-posix`. Bash behavior with POSIX mode.
@@ -197,7 +201,7 @@ logs, collect coredump with all of it's dependencies, watch directories for
 changes, inspect inodes and so on. A full list can be listed via `koshkit
 --help`.
 
-# Development
+## Development
 
 This software began as a late April Fools' joke. It is written from scratch in a
 macro-heavy C++23 dialect and is compiled with `-nostdlib++`. The executable
@@ -206,7 +210,7 @@ links only to the C library.
 Development happens on `staging`. The branch may be broken. The `master` branch
 should pass all tests.
 
-## Prerequisites
+### Prerequisites
 
 A native build needs the following tools.
 
@@ -254,7 +258,7 @@ targets and cross-compiles Linux release binaries. MinGW-w64 builds Windows
 targets. Osxcross with a macOS SDK builds Darwin arm64 targets. `cosmoc++` builds
 the Cosmopolitan modes.
 
-## Build
+### Build
 
 Clone the repository with its editor submodule.
 
