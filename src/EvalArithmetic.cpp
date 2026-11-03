@@ -455,6 +455,51 @@ expand_arithmetic_source(
   return expanded;
 }
 
+} /* namespace */
+
+fn
+has_expanded_arithmetic_subscript(StringView source) throws -> bool
+{
+  usize position = 0;
+
+  while (position < source.length) {
+    let const after_group = skip_arithmetic_source_group(source, position);
+
+    if (!after_group.has_value()) return false;
+    if (*after_group != position) {
+      position = *after_group;
+      continue;
+    }
+
+    if (source[position] != '[' || position == 0 ||
+        !lexer::is_variable_name(source[position - 1]))
+    {
+      position++;
+      continue;
+    }
+
+    let const close_position = find_source_subscript_close(source, position);
+
+    if (!close_position.has_value()) return false;
+
+    let const subscript = source.substring_of_length(
+        position + 1, *close_position - position - 1);
+
+    if (subscript.find_character('$').has_value() ||
+        subscript.find_character('`').has_value() ||
+        subscript.find_character('"').has_value())
+    {
+      return true;
+    }
+
+    position++;
+  }
+
+  return false;
+}
+
+namespace {
+
 class ArithmeticParser
 {
 public:
@@ -3376,18 +3421,27 @@ EvalContext::evaluate_arithmetic_nonzero(
 }
 
 fn
-EvalContext::compare_arithmetic(StringView left,
-                                StringView right) throws -> i32
+EvalContext::compare_arithmetic(
+    StringView            left,
+    const SourceLocation *left_source_base,
+    StringView            right,
+    const SourceLocation *right_source_base) throws -> i32
 {
   let const scratch = expansion_store().scratch_arena().mark();
 
   defer { expansion_store().scratch_arena().release(scratch); };
 
-  let const is_exact   = runtime_state().is_extended_arithmetic_enabled();
+  let const is_exact = runtime_state().is_extended_arithmetic_enabled();
+  let const do_kind  = [](const SourceLocation *source_base) {
+    return source_base != nullptr ? arithmetic_text_kind::ShellSource
+                                   : arithmetic_text_kind::Value;
+  };
   let const left_value = evaluate_arithmetic_value(
-      this, left, nullptr, is_exact, expansion_store().scratch_arena());
+      this, left, left_source_base, is_exact, expansion_store().scratch_arena(),
+      do_kind(left_source_base));
   let const right_value = evaluate_arithmetic_value(
-      this, right, nullptr, is_exact, expansion_store().scratch_arena());
+      this, right, right_source_base, is_exact,
+      expansion_store().scratch_arena(), do_kind(right_source_base));
 
   return left_value.compare(right_value, scratch_allocator());
 }

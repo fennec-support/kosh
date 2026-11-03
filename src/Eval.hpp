@@ -2075,6 +2075,12 @@ enum class arithmetic_text_kind : u8
   ShellSource,
 };
 
+/* whether arithmetic source holds a subscript that expands a parameter or a
+   command or holds a double-quoted run, either of which can carry brackets
+   that do not close the subscript. */
+fn
+has_expanded_arithmetic_subscript(StringView source) throws -> bool;
+
 fn
 compute_substring_bounds(i64               value_count,
                          i64               offset,
@@ -6039,8 +6045,14 @@ public:
                               arithmetic_text_kind  text_kind =
                                   arithmetic_text_kind::Value) throws
       -> bool;
+  /* an operand with a source base is shell source, and the other is an
+     expanded value. */
   fn
-  compare_arithmetic(StringView left, StringView right) throws -> i32;
+  compare_arithmetic(StringView            left,
+                     const SourceLocation *left_source_base,
+                     StringView            right,
+                     const SourceLocation *right_source_base) throws
+      -> i32;
   fn
   evaluate_arithmetic_cached_text(const WordSegment &segment) throws
       -> String;

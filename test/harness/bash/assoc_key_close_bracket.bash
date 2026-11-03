@@ -53,3 +53,29 @@ k='q]r'
 echo "assigned=${n[$k]} quoted=$(( n["q]r"] + ${#k} ))"
 declare -n ref=n
 echo "through nameref=$(( ref[$k] ))"
+
+# An arithmetic operand of [[ ]] expands its subscripts the same way, on
+# either side of every integer comparison and inside a function, an eval,
+# and a command substitution. A subscript expands once, so a key that holds
+# a dollar sign is not expanded again.
+declare -A c e
+z=7
+for k in 'a]b' '$z' 'a[b' "a'b" 'a"b' '$(echo hi)'; do
+  c[$k]=2
+  [[ e[$k] -eq 0 && c[$k] -eq 2 && 2 -eq c[$k] && c[$k]+1 -gt 2 ]] &&
+    echo "$k compared"
+  [[ c[$k] -ne 2 || c[$k] -lt 2 || c[$k] -le 1 || c[$k] -ge 3 ]] ||
+    echo "$k ordered"
+done
+c[7]=9
+k='$z'
+[[ c[$k] -eq 9 ]] || echo "dollar key read once"
+k='a]b'
+[[ c["a]b"] -eq 2 && c["$k"] -eq 2 ]] && echo "quoted keys compared"
+f() { [[ c[$k] -eq 2 ]] && echo "function compared"; }
+f
+eval '[[ c[$k] -eq 2 ]] && echo "eval compared"'
+echo "$( [[ c[$k] -eq 2 ]] && echo "substitution compared" )"
+i=0
+[[ c[$((i++))] -eq 0 ]]
+echo "expanded once i=$i"

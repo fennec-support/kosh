@@ -33,3 +33,6 @@ data_keys[$data_key]=4
 (( data_keys[$data_key] += 1 ))
 # shellcheck disable=SC2004
 echo "data key=$(( data_keys[$data_key] )) keys=${!data_keys[*]}"
+# A [[ ]] integer comparison reads the same literal key.
+# shellcheck disable=SC2203,SC2130
+[[ data_keys[$data_key] -eq 5 ]] && echo "data key compared"

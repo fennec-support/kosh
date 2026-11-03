@@ -412,9 +412,9 @@ struct conditional_evaluator
   }
 
   fn
-  eval_binary(StringView         left,
-              BinaryOperatorKind op,
-              StringView         right) throws -> bool
+  eval_file_comparison(StringView         left,
+                       BinaryOperatorKind op,
+                       StringView         right) throws -> bool
   {
     switch (op) {
     case BinaryOperatorKind::SameFile:
@@ -423,22 +423,57 @@ struct conditional_evaluator
       return make_path(left).is_newer_than(make_path(right));
     case BinaryOperatorKind::OlderFile:
       return make_path(left).is_older_than(make_path(right));
-    default: break;
+    default: return false;
+    }
+  }
+
+  /* an operand whose subscript expands a parameter or a command is read from
+     its source, so a ']' from the expansion stays inside the subscript, and
+     source_base receives its location. Another operand is expanded, and a
+     blank value reads as 0. */
+  fn
+  arithmetic_operand(const conditional_element &e,
+                     Maybe<SourceLocation>     &source_base) throws
+      -> String
+  {
+    if (e.word != nullptr && e.word->kind() == Token::Kind::Word) {
+      let const location = e.word->source_location();
+      let const source   = cxt.source_text_in_span(location, 0);
+
+      if (source.length == location.length &&
+          has_expanded_arithmetic_subscript(source))
+      {
+        source_base =
+            SourceLocation{location.position, 0, location.source_name_index};
+
+        return String{heap_allocator(), source};
+      }
     }
 
-    let const do_normalize =
-        [&](StringView operand) throws -> StringView {
-      for (usize i = 0; i < operand.length; i++) {
-        if (operand[i] != ' ' && operand[i] != '\t') {
-          return operand;
-        }
+    let value = operand_value(e);
+
+    for (usize i = 0; i < value.count(); i++) {
+      if (value[i] != ' ' && value[i] != '\t') {
+        return value;
       }
+    }
 
-      return "0";
-    };
+    return String{heap_allocator(), "0"};
+  }
 
-    let const ordering =
-        cxt.compare_arithmetic(do_normalize(left), do_normalize(right));
+  fn
+  eval_arithmetic_comparison(
+      const conditional_element &left_element,
+      BinaryOperatorKind         op,
+      const conditional_element &right_element) throws -> bool
+  {
+    let       left_base  = Maybe<SourceLocation>{};
+    let       right_base = Maybe<SourceLocation>{};
+    let const left       = arithmetic_operand(left_element, left_base);
+    let const right      = arithmetic_operand(right_element, right_base);
+    let const ordering   = cxt.compare_arithmetic(
+        left.view(), left_base.has_value() ? &*left_base : nullptr,
+        right.view(), right_base.has_value() ? &*right_base : nullptr);
 
     switch (op) {
     case BinaryOperatorKind::ArithmeticEqual:        return ordering == 0;
@@ -581,6 +616,19 @@ struct conditional_evaluator
                 was_test_operand_suppressed);
           };
 
+          switch (*selected_binary_operator) {
+          case BinaryOperatorKind::ArithmeticEqual:
+          case BinaryOperatorKind::ArithmeticNotEqual:
+          case BinaryOperatorKind::ArithmeticLess:
+          case BinaryOperatorKind::ArithmeticLessEqual:
+          case BinaryOperatorKind::ArithmeticGreater:
+          case BinaryOperatorKind::ArithmeticGreaterEqual:
+            return eval_arithmetic_comparison(elements[pos - 3],
+                                              *selected_binary_operator,
+                                              elements[pos - 1]);
+          default: break;
+          }
+
           let const left = operand_value(elements[pos - 3]);
 
           if (*selected_binary_operator == BinaryOperatorKind::PatternEqual ||
@@ -640,8 +688,8 @@ struct conditional_evaluator
 
           let const right = operand_value(elements[pos - 1]);
 
-          return eval_binary(left.view(), *selected_binary_operator,
-                             right.view());
+          return eval_file_comparison(left.view(), *selected_binary_operator,
+                                      right.view());
         }
       }
     }
