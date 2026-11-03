@@ -1422,7 +1422,9 @@ internal::scan_highlight_range(
       utils::decoded_shell_word{bump_allocator(HIGHLIGHT_ARENA)};
   let   is_in_array_value             = false;
   let   is_unsetting_functions        = false;
+  let   is_in_conditional_regex       = false;
   usize parenthesis_depth             = 0;
+  usize regex_parenthesis_depth       = 0;
   usize array_value_parenthesis_depth = 0;
 
   let const do_color_backtick =
@@ -1509,7 +1511,13 @@ internal::scan_highlight_range(
       continue;
     }
 
-    if (c == '#') {
+    let const is_regex_hash =
+        is_in_conditional_regex && !stack.is_empty() &&
+        stack.back() == highlight_construct::conditional &&
+        (parenthesis_depth > regex_parenthesis_depth ||
+         (i > 0 && !lexer::is_whitespace(line[i - 1])));
+
+    if (c == '#' && !is_regex_hash) {
       let comment_end = i;
 
       while (comment_end < end && line[comment_end] != '\n') {
@@ -1750,6 +1758,13 @@ internal::scan_highlight_range(
     let const is_assignment = lexer::word_looks_like_assignment(word);
     let const is_word_terminated =
         word_end < end && position_is_highlight_word_break(line, word_end, end);
+
+    if (word == "=~") {
+      is_in_conditional_regex = true;
+      regex_parenthesis_depth = parenthesis_depth;
+    } else if (word == "]]") {
+      is_in_conditional_regex = false;
+    }
 
     let const do_color_mixed_path =
         [&](bool should_only_include_directories) throws -> bool {

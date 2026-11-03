@@ -1884,6 +1884,8 @@ append_word_references(const analysis_symbol_records  &records,
                        bool is_single_quote_literal = false) throws
     -> void
 {
+  bool is_in_double_quotes = false;
+
   while (position < end) {
     let const byte = text[position];
 
@@ -1892,7 +1894,9 @@ append_word_references(const analysis_symbol_records  &records,
       continue;
     }
 
-    if (byte == '\'' && !is_single_quote_literal) {
+    if (byte == '"') is_in_double_quotes = !is_in_double_quotes;
+
+    if (byte == '\'' && !is_single_quote_literal && !is_in_double_quotes) {
       usize closing = position + 1;
 
       while (closing < end && text[closing] != '\'') {
@@ -2136,6 +2140,17 @@ Server::collect_rename_spans(const Document         &document,
           return true;
         }
 
+        if (kind == rename_kind::variable &&
+            span.role == highlight_role::flag) {
+          let references = ArrayList<parameter_reference>{heap_allocator()};
+
+          append_word_references(records, text, 0, text.length, span.start,
+                                 references);
+          do_append_references(references, span.role);
+
+          return true;
+        }
+
         let const is_wanted = kind == rename_kind::variable
                                   ? role_reads_variable(span.role)
                                   : role_names_command(span.role);
@@ -2257,6 +2272,22 @@ Server::request_rename_target(const JsonValue *params) throws
   if (!symbol.has_value()) return None;
 
   let const text = symbol->text.view();
+
+  if (symbol->role == highlight_role::flag) {
+    let references = ArrayList<parameter_reference>{heap_allocator()};
+
+    append_word_references(document->symbol_records, text, 0, text.length,
+                           symbol->start, references);
+
+    for (let const &reference : references) {
+      if (*byte_position >= reference.start && *byte_position <= reference.end)
+      {
+        return do_make_variable_target(reference.start, reference.end);
+      }
+    }
+
+    return None;
+  }
 
   if (role_reads_variable(symbol->role) && text.starts_with("${")) {
     let references = ArrayList<parameter_reference>{heap_allocator()};
