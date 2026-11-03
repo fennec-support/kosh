@@ -418,6 +418,8 @@ T{
 T}@T{
 Select the \f[CR]bash\-posix\f[R] mood, unless overridden by
 \f[CR]\-\-mood\f[R] or \f[CR]\-\-dumb\f[R].
+With \f[CR]\-\-mood=bash\f[R], \f[CR]\-\-posix\f[R] and
+\f[CR]\-o posix\f[R] select \f[CR]bash\-posix\f[R].
 T}
 .TE
 .SS Command\-line option constraints and precedence
@@ -443,6 +445,8 @@ Precedence order from highest to lowest is \f[CR]\-\-mood\f[R],
 invocation basename (\f[CR]sh\f[R], \f[CR]dash\f[R], \f[CR]bash\f[R], or
 \f[CR]rbash\f[R]), script shebang, and the configured mood (default
 \f[CR]kosh\f[R]).
+\f[CR]\-\-mood=bash\f[R] with \f[CR]\-\-posix\f[R] or
+\f[CR]\-o posix\f[R] selects \f[CR]bash\-posix\f[R].
 Without \f[CR]\-\-mood\f[R], the first line of a script file operand
 selects \f[CR]bash\f[R] for a Bash shebang, \f[CR]sh\f[R] for an
 \f[CR]sh\f[R] or \f[CR]dash\f[R] shebang, and \f[CR]kosh\f[R] for a

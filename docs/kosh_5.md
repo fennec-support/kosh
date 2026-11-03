@@ -88,13 +88,13 @@ An option passed on the command line (enabled or disabled) overrides settings fi
 | `-O NAME, +O NAME` | Enable (`-O`) or disable (`+O`) a `shopt` option, matching `shopt -s` and `shopt -u`. |
 | `-r, --restricted` | Enter restricted shell mode after startup files complete. |
 | `-p, --privileged` | Enable privileged execution mode. |
-| `--posix` | Select the `bash-posix` mood, unless overridden by `--mood` or `--dumb`. |
+| `--posix` | Select the `bash-posix` mood, unless overridden by `--mood` or `--dumb`. With `--mood=bash`, `--posix` and `-o posix` select `bash-posix`. |
 
 ### Command-line option constraints and precedence <a id="compatibility-option-details"></a>
 
 | Option group | Option | Precedence, defaults, and failure behavior |
 | --- | --- | --- |
-| Compatibility | `-M, --mood=NAME` | Precedence order from highest to lowest is `--mood`, `--dumb`, `--posix` / `-o posix`, invocation basename (`sh`, `dash`, `bash`, or `rbash`), script shebang, and the configured mood (default `kosh`). Without `--mood`, the first line of a script file operand selects `bash` for a Bash shebang, `sh` for an `sh` or `dash` shebang, and `kosh` for a `kosh` shebang (directly or via `env`). Any other interpreter, or no shebang, leaves the configured mood. Shebang inspection is skipped for `-c`, standard input, and `--lint` without `-I`. |
+| Compatibility | `-M, --mood=NAME` | Precedence order from highest to lowest is `--mood`, `--dumb`, `--posix` / `-o posix`, invocation basename (`sh`, `dash`, `bash`, or `rbash`), script shebang, and the configured mood (default `kosh`). `--mood=bash` with `--posix` or `-o posix` selects `bash-posix`. Without `--mood`, the first line of a script file operand selects `bash` for a Bash shebang, `sh` for an `sh` or `dash` shebang, and `kosh` for a `kosh` shebang (directly or via `env`). Any other interpreter, or no shebang, leaves the configured mood. Shebang inspection is skipped for `-c`, standard input, and `--lint` without `-I`. |
 | Compatibility | `-L, --init-moods=LIST` | Accepts comma-separated mood names or repeated `-L` flags. Defaults to `init_moods` from settings for interactive or login shells, and to the active execution mood for non-interactive shells. |
 | Compatibility | `-I, --enable-mimicry` | A script started as a command runs inside Koshka under the mood its shell shebang selects, instead of under that interpreter. |
 | Compatibility | `--dumb` | An explicit `--tab-selector` flag overrides the `plain` selector set by `--dumb`. |

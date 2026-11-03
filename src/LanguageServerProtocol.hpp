@@ -653,7 +653,7 @@ private:
   fn
   parse_content_length(StringView headers) const throws -> Maybe<usize>
   {
-    static const StringView PREFIX{"content-length:"};
+    static const StringView PREFIX{"Content-Length:"};
     usize                   line_start = 0;
 
     while (line_start <= headers.length) {
@@ -666,13 +666,7 @@ private:
       let const line =
           headers.substring_of_length(line_start, line_end - line_start);
 
-      let is_length_header = line.length >= PREFIX.length;
-
-      for (usize i = 0; is_length_header && i < PREFIX.length; i++) {
-        is_length_header = utils::ascii_to_lower(line[i]) == PREFIX[i];
-      }
-
-      if (is_length_header) {
+      if (utils::starts_with_ascii_ignoring_case(line, PREFIX)) {
         usize position = PREFIX.length;
 
         while (position < line.length &&

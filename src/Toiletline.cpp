@@ -2113,6 +2113,8 @@ provide_history_search_snapshot(const char **out_contents, size_t *out_size)
         return 1;
       }
 
+      if (os::file_type_letter(status_before.mode) != '-') return 0;
+
       let contents = path->read_entire_file();
 
       if (!contents.has_value()) continue;

@@ -1006,7 +1006,7 @@ Server::publish_auxiliary_diagnostics() throws -> bool
 
     let source = read_source(source_path);
 
-    if (!source.has_value()) source = source_path.read_entire_file();
+    if (!source.has_value()) source = source_path.read_data_file();
     if (!source.has_value()) continue;
 
     let auxiliary =

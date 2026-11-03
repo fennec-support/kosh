@@ -309,6 +309,16 @@ load_no_editor_history(const Path &path, bool should_allow_missing)
 
   state.is_loaded = false;
 
+  if (let status = os::file_status{};
+      os::stat_path_following(path.view(), status))
+  {
+    let const type_letter = os::file_type_letter(status.mode);
+
+    if (type_letter != '-' && type_letter != 'd') {
+      return Error{"it is not a regular file"};
+    }
+  }
+
   for (int attempt_index = 0;
        attempt_index < toiletline::HISTORY_RACE_ATTEMPT_COUNT; attempt_index++)
   {
