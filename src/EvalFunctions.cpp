@@ -417,6 +417,8 @@ EvalContext::variable_names(Allocator result_allocator) const throws
   }
   if (is_bash_special_array_active(bash_special_array_id::Aliases))
     names.add(BASH_ALIASES_VARIABLE);
+  if (is_bash_special_array_active(bash_special_array_id::Commands))
+    names.add(BASH_COMMANDS_VARIABLE);
   if (is_bash_directory_stack_special(DIRSTACK_VARIABLE))
     names.add(DIRSTACK_VARIABLE);
 #if !defined NDEBUG

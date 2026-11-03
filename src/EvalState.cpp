@@ -2728,7 +2728,7 @@ EvalContext::make_subshell_bootstrap() const throws
   for (let const &stored_name : names) {
     let const name = stored_name.view();
 
-    if (is_bash_aliases_special(name) || is_bash_argument_array(name) ||
+    if (is_bash_table_special(name) || is_bash_argument_array(name) ||
         is_bash_directory_stack_special(name))
     {
       continue;

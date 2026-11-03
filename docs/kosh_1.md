@@ -568,6 +568,7 @@ The `sh` mood enforces `dash` compatibility: it rejects `[[ ]]`, C-style `for ((
 | `BASH_ALIASES` | Holds the aliases (assigning an element defines an alias, unsetting an element does nothing, unsetting the array disconnects it). |
 | `BASH_ARGC`, `BASH_ARGV` | Hold the argument count of each recorded frame and the arguments in reverse order, innermost first. The `extdebug` option records function and source calls in them. Without it, `BASH_ARGV` is empty and `BASH_ARGC` holds one `0` outside functions and is empty inside them. Assignments do nothing, and `unset` and `local` fail. |
 | `BASH_ARGV0` | Holds argument zero of the shell (assignment does not change `$0`). |
+| `BASH_CMDS` | Holds the remembered command paths that `hash` reports (assigning an element remembers a path, unsetting an element does nothing, unsetting the array disconnects it). A restricted shell rejects every element or scalar write, as it rejects `hash -p`. |
 | `BASH_COMMAND` | Holds the command that is running or about to run. |
 | `BASH_EXECUTION_STRING` | Holds the `-c` command string that runs. |
 | `BASH_LINENO`, `BASH_SOURCE`, `FUNCNAME` | Hold the call stack: `FUNCNAME[0]` is the running function, `BASH_SOURCE[i]` the file that defines `FUNCNAME[i]`, and `BASH_LINENO[i]` the line where `FUNCNAME[i]` was called. Empty in the `sh` mood. |

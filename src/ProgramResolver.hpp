@@ -157,7 +157,18 @@ public:
   fn
   remember_path(StringView name, const Path &path) throws -> void;
   fn
-  find_remembered_path(StringView name) wontthrow -> const Path *;
+  find_remembered_path(StringView name) const wontthrow -> const Path *;
+
+  fn
+  for_each_remembered_path(auto callback) const throws -> void
+  {
+    execution_cache().for_each([&](StringView name, const CacheEntry &entry) {
+      let const *const path =
+          find_cached_program_path(entry, os::program_extension::None);
+
+      if (path != nullptr) callback(name, *path);
+    });
+  }
   fn
   working_directory_changed() throws -> void;
   fn

@@ -28,7 +28,8 @@ echo "[${u[@]@K}] [${u[*]@a}] [${u[*]@A}]"
 f() { local -A lu; local -a la; declare -p lu la; }
 f
 for probe in 'u[k]' 'x[1]' 'nothing[k]' 'nothing[unset_index]' 'u[k]++' \
-  'u[k] += 1' 'z[4]' 'w[k]' 'y[k]' 'z[unset_index]' 'u[k] = 2'
+  'u[k] += 1' 'z[4]' 'w[k]' 'y[k]' 'z[unset_index]' 'u[k] = 2' \
+  'BASH_CMDS[k]' 'BASH_ALIASES[k]' 'BASH_VERSINFO[0]'
 do
   ( set -u; echo "$probe=$(( $probe ))" ) 2>/dev/null
   echo "status=$?"

@@ -3860,6 +3860,15 @@ Holds argument zero of the shell (assignment does not change
 \f[CR]$0\f[R]).
 T}
 T{
+\f[CR]BASH_CMDS\f[R]
+T}@T{
+Holds the remembered command paths that \f[CR]hash\f[R] reports
+(assigning an element remembers a path, unsetting an element does
+nothing, unsetting the array disconnects it).
+A restricted shell rejects every element or scalar write, as it rejects
+\f[CR]hash \-p\f[R].
+T}
+T{
 \f[CR]BASH_COMMAND\f[R]
 T}@T{
 Holds the command that is running or about to run.

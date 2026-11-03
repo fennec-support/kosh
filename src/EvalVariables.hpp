@@ -588,6 +588,11 @@ inline constexpr static_string_entry<shell_variable_description>
           "order in bash.",
           shell_variable_fact::Dynamic | shell_variable_fact::Array |
               shell_variable_fact::BashOnly}                                 },
+        {SSK("BASH_CMDS"),
+         {"The name is an associative array of the remembered command paths "
+          "in bash.",
+          shell_variable_fact::Dynamic | shell_variable_fact::Array |
+              shell_variable_fact::BashOnly}                                 },
         {SSK("DIRSTACK"),
          {"The elements are the directory stack entries in bash. The dirs "
           "builtin reports the stack this shell keeps.",

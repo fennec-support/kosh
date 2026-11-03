@@ -684,7 +684,7 @@ EvalContext::declare_associative_array(StringView name) throws -> void
 {
   if (is_readonly(name))
     throw Error{"Unable to assign '" + name + "' because it is read only"};
-  if (is_bash_aliases_special(name)) return;
+  if (is_bash_table_special(name)) return;
 
   LOG(Debug, "declaring '%.*s' as an associative array",
       static_cast<int>(name.length), name.data);
@@ -725,7 +725,7 @@ EvalContext::has_array_base_value(StringView name) const throws -> bool
     return true;
   }
 
-  if (is_bash_aliases_special(name) || is_bash_directory_stack_special(name))
+  if (is_bash_table_special(name) || is_bash_directory_stack_special(name))
     return true;
 
   if (is_array_variable(name)) return !is_valueless_array(name);
@@ -743,6 +743,19 @@ EvalContext::set_associative_element(StringView name,
   variable_store().attributes().unmark_declared(name);
   if (is_bash_aliases_special(name)) {
     scope_store().set_alias(key, value);
+
+    return;
+  }
+
+  if (is_bash_commands_special(name)) {
+    /* the same gate as hash -p, since a bare value binds a command to a
+       file in the current directory. */
+    if (runtime_state().option_is_enabled(shell_option_id::Restricted)) {
+      throw Error{"Unable to assign '" + name +
+                  "' because the shell is restricted"};
+    }
+
+    program_resolver().remember_path(key, Path{value});
 
     return;
   }
@@ -775,6 +788,14 @@ EvalContext::lookup_associative_element(StringView name, StringView key) const t
 {
   if (is_bash_aliases_special(name)) return scope_store().get_alias(key);
 
+  if (is_bash_commands_special(name)) {
+    let const *const path = program_resolver().find_remembered_path(key);
+
+    if (path == nullptr) return None;
+
+    return String{heap_allocator(), path->text()};
+  }
+
   if (let const value = variable_store().associative_arrays().values().find(
           associative_composite_key(name, key, scratch_allocator()).view());
       value.has_value())
@@ -795,6 +816,13 @@ EvalContext::associative_keys(StringView name) const throws
       unused(value);
       keys.push_managed(key);
     });
+
+    return keys;
+  }
+
+  if (is_bash_commands_special(name)) {
+    program_resolver().for_each_remembered_path(
+        [&](StringView key, const Path &) { keys.push_managed(key); });
 
     return keys;
   }
@@ -826,6 +854,15 @@ EvalContext::associative_values(StringView name) const throws
     return values;
   }
 
+  if (is_bash_commands_special(name)) {
+    program_resolver().for_each_remembered_path(
+        [&](StringView, const Path &path) {
+          values.push_managed(path.text());
+        });
+
+    return values;
+  }
+
   const String prefix =
       associative_composite_key(name, "", scratch_allocator());
 
@@ -840,7 +877,7 @@ EvalContext::associative_values(StringView name) const throws
 fn
 EvalContext::clear_associative_array(StringView name) throws -> void
 {
-  if (is_bash_aliases_special(name)) return;
+  if (is_bash_table_special(name)) return;
   if (!is_associative_array(name)) return;
   const String prefix =
       associative_composite_key(name, "", scratch_allocator());
@@ -946,7 +983,7 @@ EvalContext::unset_array_element(StringView name,
   if (is_associative_array(name)) {
     let const key = expand_modifier_word(subscript);
 
-    if (is_bash_aliases_special(name)) return;
+    if (is_bash_table_special(name)) return;
     variable_store().associative_arrays().erase_ordered(
         associative_composite_key(name, key.view(), scratch_allocator())
             .view());
@@ -1104,9 +1141,9 @@ EvalContext::capture_variable_binding(StringView name) throws
       previous_array = steal(copy);
     }
 
-  let const was_aliases_special = is_bash_aliases_special(name);
+  let const was_table_special = is_bash_table_special(name);
   let const was_previously_associative =
-      is_associative_array(name) && !was_aliases_special;
+      is_associative_array(name) && !was_table_special;
   let previous_keys   = ArrayList<String>{heap_allocator()};
   let previous_values = ArrayList<String>{heap_allocator()};
 
@@ -1141,7 +1178,7 @@ EvalContext::capture_variable_binding(StringView name) throws
     previous_value = *scalar.value();
   } else if (previous_array.has_value() && !previous_array->is_empty()) {
     previous_value = previous_array->front();
-  } else if (!is_dynamic_write_owner(name) && !was_aliases_special &&
+  } else if (!is_dynamic_write_owner(name) && !was_table_special &&
              (was_previously_exported ||
               (variable_requires_dynamic_lookup(name) &&
                !was_bash_directory_stack_special)))
@@ -1263,6 +1300,14 @@ EvalContext::array_element_count(StringView name) const throws -> usize
   }
 
   if (is_bash_aliases_special(name)) return scope_store().aliases().count();
+  if (is_bash_commands_special(name)) {
+    usize path_count = 0;
+
+    program_resolver().for_each_remembered_path(
+        [&](StringView, const Path &) { path_count++; });
+
+    return path_count;
+  }
   if (is_bash_directory_stack_special(name))
     return variable_store().directory_stack().count() + 1;
 

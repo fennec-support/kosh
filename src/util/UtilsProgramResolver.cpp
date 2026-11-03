@@ -611,7 +611,8 @@ ProgramResolver::remember_path(StringView name, const Path &path) throws
 }
 
 fn
-ProgramResolver::find_remembered_path(StringView name) wontthrow -> const Path *
+ProgramResolver::find_remembered_path(StringView name) const wontthrow
+    -> const Path *
 {
   let const cached = execution_cache().find(name);
 

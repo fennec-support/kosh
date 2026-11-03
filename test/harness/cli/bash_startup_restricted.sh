@@ -403,6 +403,17 @@ printf 'hash=%s ' "$?"
 (cd "$directory" &&
   "$BIN" --mood bash --restricted -c 'hash -p script probe') >/dev/null 2>&1
 printf 'hash-bare=%s ' "$?"
+for command in \
+  "BASH_CMDS[probe]='$directory/script'" \
+  'BASH_CMDS[probe]=script' \
+  'BASH_CMDS=script' \
+  'BASH_CMDS+=([probe]=script)'
+do
+  output=$(cd "$directory" && "$BIN" --mood bash --restricted -c \
+    "$command"'; printf "%s" "${BASH_CMDS[probe]-unset}${BASH_CMDS[0]-}"' \
+    2>/dev/null)
+  printf 'bash-cmds=%s ' "$output"
+done
 "$BIN" --mood bash --restricted -c \
   "history -r '$directory/script'" >/dev/null 2>&1
 printf 'history=%s ' "$?"

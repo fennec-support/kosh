@@ -91,3 +91,23 @@ wrap_print_function() { wrap_print "[$*]"; }
 wrap_print() { echo "$@"; }
 alias wrap_print='wrap_print_function'
 wrap_print hi
+
+# BASH_CMDS holds the remembered command paths. hash -p and an element write
+# remember a path, an element unset leaves the path remembered, hash -r empties
+# the array, and a whole-array unset disconnects it.
+hash -r
+printf 'commands=%s\n' "${#BASH_CMDS[@]}"
+hash -p /bin/ls listed_command
+BASH_CMDS[written_command]=/bin/cat
+hash -t written_command
+printf 'listed=%s count=%s keys=%s\n' "${BASH_CMDS[listed_command]}" \
+  "${#BASH_CMDS[@]}" "$(printf '%s\n' "${!BASH_CMDS[@]}" | sort | tr '\n' ' ')"
+unset 'BASH_CMDS[written_command]'
+hash -t written_command
+hash -r
+printf 'cleared=%s\n' "${#BASH_CMDS[@]}"
+BASH_CMDS=/bin/true
+printf 'scalar=%s\n' "${BASH_CMDS[0]}"
+unset BASH_CMDS
+hash -p /bin/ls after_unset
+printf 'disconnected=%s\n' "${BASH_CMDS[after_unset]-missing}"

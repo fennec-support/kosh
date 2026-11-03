@@ -691,6 +691,7 @@ constexpr PackedStringKey SHELL_MAINTAINED_VARIABLE_KEYS[] = {
     SSK("BASH_ALIASES"),
     SSK("BASH_ARGC"),
     SSK("BASH_ARGV"),
+    SSK("BASH_CMDS"),
     SSK("BASH_ENV"),
     SSK("BASH_REMATCH"),
     SSK("BASH_VERSINFO"),

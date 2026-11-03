@@ -271,7 +271,7 @@ pure fn
 is_bash_only_dynamic_variable_name(StringView name) wontthrow -> bool
 {
   return BASH_DYNAMIC.find(name).has_value() || name == BASH_ALIASES_VARIABLE ||
-         name == DIRSTACK_VARIABLE;
+         name == BASH_COMMANDS_VARIABLE || name == DIRSTACK_VARIABLE;
 }
 
 pure fn
@@ -325,7 +325,7 @@ EvalContext::variable_requires_dynamic_lookup(StringView name) const wontthrow
     return true;
   }
 
-  if (is_bash_aliases_special(name)) return true;
+  if (is_bash_table_special(name)) return true;
   if (is_bash_directory_stack_special(name)) return true;
 
   return runtime_state().bash_dynamic_variables_enabled() &&
@@ -1080,6 +1080,8 @@ EvalContext::append_dynamic_variable_names(ArrayList<StringView> &out) const
 
   if (is_bash_special_array_active(bash_special_array_id::Aliases))
     out.push(BASH_ALIASES_VARIABLE);
+  if (is_bash_special_array_active(bash_special_array_id::Commands))
+    out.push(BASH_COMMANDS_VARIABLE);
   if (is_bash_directory_stack_special(DIRSTACK_VARIABLE))
     out.push(DIRSTACK_VARIABLE);
 }

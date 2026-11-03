@@ -147,6 +147,7 @@ enum class bash_special_array_id : u8
 {
   Aliases,
   DirectoryStack,
+  Commands,
   Count,
 };
 
@@ -160,6 +161,7 @@ enum class dynamic_reader_id : u8
 inline constexpr StringView BASH_ALIASES_VARIABLE{"BASH_ALIASES"};
 inline constexpr StringView BASH_ARGUMENT_COUNT_VARIABLE{"BASH_ARGC"};
 inline constexpr StringView BASH_ARGUMENT_VALUE_VARIABLE{"BASH_ARGV"};
+inline constexpr StringView BASH_COMMANDS_VARIABLE{"BASH_CMDS"};
 inline constexpr StringView DIRSTACK_VARIABLE{"DIRSTACK"};
 
 constexpr pure fn
@@ -5166,7 +5168,7 @@ public:
   is_associative_array(StringView name) const wontthrow -> bool
   {
     return m_variable_store.associative_arrays().has(name) ||
-           is_bash_aliases_special(name);
+           is_bash_table_special(name);
   }
 
   pure fn
@@ -5190,6 +5192,22 @@ public:
     return name == BASH_ALIASES_VARIABLE &&
            is_bash_special_array_active(bash_special_array_id::Aliases) &&
            !scope_store().has_active_local(name);
+  }
+
+  pure fn
+  is_bash_commands_special(StringView name) const wontthrow -> bool
+  {
+    return name == BASH_COMMANDS_VARIABLE &&
+           is_bash_special_array_active(bash_special_array_id::Commands) &&
+           !scope_store().has_active_local(name);
+  }
+
+  /* BASH_ALIASES and BASH_CMDS are associative arrays backed by the alias
+     table and the remembered command paths. */
+  pure fn
+  is_bash_table_special(StringView name) const wontthrow -> bool
+  {
+    return is_bash_aliases_special(name) || is_bash_commands_special(name);
   }
 
   pure fn

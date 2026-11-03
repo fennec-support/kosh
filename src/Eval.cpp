@@ -434,8 +434,8 @@ EvalContext::set_shell_variable(
 
   if (is_write_discarded_dynamic_variable(name)) return;
 
-  if (is_bash_aliases_special(name)) {
-    scope_store().set_alias("0", value);
+  if (is_bash_table_special(name)) {
+    set_associative_element(name, "0", value);
 
     return;
   }
@@ -605,6 +605,7 @@ EvalContext::unset_shell_variable(StringView name) throws -> void
   let const should_disable_bash_aliases =
       name == BASH_ALIASES_VARIABLE &&
       is_bash_special_array_active(bash_special_array_id::Aliases);
+  let const should_disable_bash_commands = is_bash_commands_special(name);
   let const should_disable_bash_directory_stack =
       is_bash_directory_stack_special(name);
 
@@ -614,6 +615,8 @@ EvalContext::unset_shell_variable(StringView name) throws -> void
   clear_associative_array(name);
   if (should_disable_bash_aliases)
     disable_bash_special_array(bash_special_array_id::Aliases);
+  if (should_disable_bash_commands)
+    disable_bash_special_array(bash_special_array_id::Commands);
   if (should_disable_bash_directory_stack)
     disable_bash_special_array(bash_special_array_id::DirectoryStack);
   variable_store().attributes().erase(name);
