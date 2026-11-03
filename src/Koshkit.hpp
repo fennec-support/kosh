@@ -222,9 +222,14 @@ fn
 register_koshkit_util_flags(Utility::Kind       chosen,
                             const FlagList     *flags,
                             const SynopsisList *synopsis,
-                            StringView          description) wontthrow -> void;
+                            StringView          description,
+                            flag_parse_options  parse_options) wontthrow -> void;
 fn
 koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *;
+/* the options that the utility passes to parse_util_operands. */
+fn
+koshkit_util_parse_options(Utility::Kind chosen)
+    wontthrow -> flag_parse_options;
 fn
 koshkit_util_synopsis(Utility::Kind chosen) wontthrow -> const SynopsisList *;
 fn
@@ -235,16 +240,23 @@ koshkit_util_description(Utility::Kind chosen) wontthrow -> StringView;
   HELP_SYNOPSIS_DECL(synopsis);                                                \
   HELP_DESCRIPTION_DECL(description)
 
-#define REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(util)                        \
+#define KOSHKIT_PARSE_OPTIONS T__KOSHKIT_PARSE_OPTIONS
+
+/* the optional braced flag_parse_options after util are the only parse
+   options of the utility. KOSHKIT_PARSE_OPERANDS_OR_HELP and the registry
+   read them. */
+#define REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(util, ...)                   \
+  static constexpr koshka::flag_parse_options KOSHKIT_PARSE_OPTIONS{           \
+      koshka::flag_parse_options(__VA_ARGS__)};                                \
   static uchar t__koshkit_flag_registrar =                                     \
       (koshka::koshkit::register_koshkit_util_flags(                           \
            koshka::koshkit::Utility::Kind::util, &FLAG_LIST, &HELP_SYNOPSIS,   \
-           HELP_DESCRIPTION),                                                  \
+           HELP_DESCRIPTION, KOSHKIT_PARSE_OPTIONS),                           \
        0)
 
-#define REGISTER_KOSHKIT_UTIL_FLAGS(util)                                      \
+#define REGISTER_KOSHKIT_UTIL_FLAGS(util, ...)                                 \
   FLAG(HELP, Bool, '\0', "help", "Display help.");                             \
-  REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(util)
+  REGISTER_KOSHKIT_UTIL_FLAGS_WITH_OWN_HELP(util __VA_OPT__(, ) __VA_ARGS__)
 
 fn
 find_util(StringView name) throws -> Maybe<Utility::Kind>;
@@ -359,10 +371,10 @@ print_util_help(const ExecContext &ec,
     }                                                                          \
   } while (false)
 
-#define KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations, ...)               \
+#define KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations)                    \
   let const[operands, operand_locations] =                                     \
       parse_util_operands(FLAG_LIST, (args), cxt.scratch_allocator(),          \
-                          &(arg_locations) __VA_OPT__(, ) __VA_ARGS__);        \
+                          &(arg_locations), KOSHKIT_PARSE_OPTIONS);            \
   defer { reset_flags(FLAG_LIST); };                                           \
   KOSHKIT_SHOW_HELP_AND_RETURN(ec, args)
 

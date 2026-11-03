@@ -15,7 +15,7 @@
 
 KOSHKIT_UTIL_DECL("[tabstop-list]", "Set terminal tab stops.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Tabs);
+REGISTER_KOSHKIT_UTIL_FLAGS(Tabs, {.should_accept_unknown_flag_operand = true});
 
 namespace koshka::koshkit {
 
@@ -25,8 +25,7 @@ Tabs::execute(const ExecContext               &ec,
               const ArrayList<String>         &args,
               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
-                                 {.should_accept_unknown_flag_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() > 1) {
     KOSHKIT_REPORT_ERROR_AT(

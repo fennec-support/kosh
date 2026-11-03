@@ -30,7 +30,7 @@ FLAG(TRANSACTION_HELD_LOCK,
      "transaction-held-lock",
      "Keep the lock after the process that launched the transaction exits.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Flock);
+REGISTER_KOSHKIT_UTIL_FLAGS(Flock, {.should_stop_at_first_operand = true});
 
 namespace koshka::koshkit {
 
@@ -47,8 +47,7 @@ Flock::execute(const ExecContext               &ec,
                const ArrayList<String>         &args,
                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
-                                 {.should_stop_at_first_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 

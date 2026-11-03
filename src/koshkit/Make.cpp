@@ -98,7 +98,8 @@ FLAG_OPTIONAL(
     "Accept an optional job count and propagate it through MAKEFLAGS.",
     is_make_job_count);
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Make);
+REGISTER_KOSHKIT_UTIL_FLAGS(Make,
+                            {.should_allow_options_after_operands = true});
 
 namespace koshka::koshkit {
 
@@ -4924,8 +4925,7 @@ Make::execute(const ExecContext               &ec,
   }
 
   reset_flags(FLAG_LIST);
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(parse_arguments, parse_locations,
-                                 {.should_allow_options_after_operands = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(parse_arguments, parse_locations);
 
   for (usize makefile_position = 0; makefile_position < FLAG_MAKE_FILE.count();
        makefile_position++)

@@ -38,7 +38,9 @@ FLAG(CALC_PIPE,
      "Read and evaluate expressions from standard input, one per line, with no "
      "prompt.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Calc);
+REGISTER_KOSHKIT_UTIL_FLAGS(Calc,
+                            {.should_accept_negative_number_operand = true,
+                             .should_stop_at_first_operand          = true});
 
 namespace koshka::koshkit {
 
@@ -316,9 +318,7 @@ Calc::execute(const ExecContext               &ec,
               const ArrayList<String>         &args,
               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
-                                 {.should_accept_negative_number_operand = true,
-                                  .should_stop_at_first_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const runtime_scope = RuntimeStateScope{cxt};
 

@@ -55,7 +55,9 @@ FLAG(EVILIO_SORT,
      "sort",
      "Sort by a full metric name or its shortest unambiguous prefix.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(EvilIO);
+REGISTER_KOSHKIT_UTIL_FLAGS(EvilIO,
+                            {.should_accept_negative_number_operand = true,
+                             .should_allow_options_after_operands   = true});
 
 namespace koshka::koshkit {
 
@@ -1409,10 +1411,7 @@ EvilIO::execute(const ExecContext               &ec,
                 const ArrayList<String>         &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(
-      args, arg_locations,
-      flag_parse_options{.should_accept_negative_number_operand = true,
-                         .should_allow_options_after_operands   = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const allocator                = cxt.scratch_allocator();
   let       process_limit_operand    = Maybe<StringView>{};

@@ -79,7 +79,9 @@ FLAG_OPTIONAL(EVILPS_CUMULATIVE,
               koshka::koshkit::is_koshkit_sample_duration,
               "seconds");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(EvilPS);
+REGISTER_KOSHKIT_UTIL_FLAGS(EvilPS,
+                            {.should_accept_negative_number_operand = true,
+                             .should_allow_options_after_operands   = true});
 
 namespace koshka::koshkit {
 
@@ -904,10 +906,9 @@ EvilPS::execute(const ExecContext               &ec,
                 const ArrayList<String>         &args,
                 const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  let[operands, operand_locations] = parse_util_operands(
-      FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
-      {.should_accept_negative_number_operand = true,
-       .should_allow_options_after_operands = true});
+  let[operands, operand_locations] =
+      parse_util_operands(FLAG_LIST, args, cxt.scratch_allocator(),
+                          &arg_locations, KOSHKIT_PARSE_OPTIONS);
 
   defer { reset_flags(FLAG_LIST); };
 

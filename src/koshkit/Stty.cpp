@@ -19,7 +19,7 @@ KOSHKIT_UTIL_DECL("[-a | -g] [operand ...]",
 FLAG(STTY_ALL, Bool, 'a', "all", "Write all current settings.");
 FLAG(STTY_ENCODE, Bool, 'g', "save", "Write settings in a reusable form.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Stty);
+REGISTER_KOSHKIT_UTIL_FLAGS(Stty, {.should_accept_unknown_flag_operand = true});
 
 namespace koshka::koshkit {
 
@@ -33,8 +33,7 @@ Stty::execute(const ExecContext               &ec,
              scratch arena.
      time:   at most one os::terminal_settings() call and one
              os::apply_terminal_settings() call. the function has no loop. */
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
-                                 {.should_accept_unknown_flag_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const should_report_all = FLAG_STTY_ALL.is_enabled();
   let const should_encode     = FLAG_STTY_ENCODE.is_enabled();

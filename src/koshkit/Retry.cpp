@@ -41,7 +41,7 @@ FLAG(RETRY_MAX_DELAY,
      "Never wait longer than this between attempts.");
 FLAG(RETRY_QUIET, Bool, 'q', "quiet", "Report no attempt lines.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Retry);
+REGISTER_KOSHKIT_UTIL_FLAGS(Retry, {.should_stop_at_first_operand = true});
 
 namespace koshka::koshkit {
 
@@ -118,8 +118,7 @@ Retry::execute(const ExecContext               &ec,
                const ArrayList<String>         &args,
                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
-                                 {.should_stop_at_first_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const allocator = cxt.scratch_allocator();
 

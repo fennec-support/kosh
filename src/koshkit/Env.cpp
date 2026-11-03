@@ -29,7 +29,7 @@ FLAG(ENV_UNSET,
      "unset",
      "Remove this variable from the environment.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Env);
+REGISTER_KOSHKIT_UTIL_FLAGS(Env, {.should_stop_at_first_operand = true});
 
 namespace koshka::koshkit {
 
@@ -48,8 +48,7 @@ Env::execute(const ExecContext               &ec,
              const ArrayList<String>         &args,
              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
-                                 {.should_stop_at_first_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   cxt.prepare_child_environment();
 

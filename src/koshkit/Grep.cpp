@@ -135,7 +135,8 @@ FLAG_OPTIONAL(GREP_COLOR,
               koshka::koshkit::is_koshkit_color_when,
               "auto|always|never");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Grep);
+REGISTER_KOSHKIT_UTIL_FLAGS(Grep,
+                            {.should_allow_options_after_operands = true});
 
 namespace koshka::koshkit {
 
@@ -2510,8 +2511,7 @@ Grep::execute(const ExecContext               &ec,
               const ArrayList<String>         &args,
               const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
-                                 {.should_allow_options_after_operands = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   let const has_pattern_flag =
       !FLAG_GREP_EXPRESSION.is_empty() || !FLAG_GREP_PATTERN_FILE.is_empty();

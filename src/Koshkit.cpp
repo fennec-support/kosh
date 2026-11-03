@@ -135,21 +135,31 @@ static const SynopsisList *KOSHKIT_UTIL_SYNOPSES[KOSHKIT_UTIL_COUNT] = {};
 
 static StringView KOSHKIT_UTIL_DESCRIPTIONS[KOSHKIT_UTIL_COUNT] = {};
 
+static flag_parse_options KOSHKIT_UTIL_PARSE_OPTIONS[KOSHKIT_UTIL_COUNT] = {};
+
 fn
 register_koshkit_util_flags(Utility::Kind       chosen,
                             const FlagList     *flags,
                             const SynopsisList *synopsis,
-                            StringView          description) wontthrow -> void
+                            StringView          description,
+                            flag_parse_options  parse_options) wontthrow -> void
 {
-  KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)]   = flags;
-  KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)]     = synopsis;
-  KOSHKIT_UTIL_DESCRIPTIONS[static_cast<usize>(chosen)] = description;
+  KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)]    = flags;
+  KOSHKIT_UTIL_SYNOPSES[static_cast<usize>(chosen)]      = synopsis;
+  KOSHKIT_UTIL_DESCRIPTIONS[static_cast<usize>(chosen)]  = description;
+  KOSHKIT_UTIL_PARSE_OPTIONS[static_cast<usize>(chosen)] = parse_options;
 }
 
 fn
 koshkit_util_flag_list(Utility::Kind chosen) wontthrow -> const FlagList *
 {
   return KOSHKIT_UTIL_FLAG_LISTS[static_cast<usize>(chosen)];
+}
+
+fn
+koshkit_util_parse_options(Utility::Kind chosen) wontthrow -> flag_parse_options
+{
+  return KOSHKIT_UTIL_PARSE_OPTIONS[static_cast<usize>(chosen)];
 }
 
 fn
@@ -1291,6 +1301,12 @@ koshkit_util_flag_list(Utility::Kind) wontthrow -> const FlagList *
 }
 
 fn
+koshkit_util_parse_options(Utility::Kind) wontthrow -> flag_parse_options
+{
+  return {};
+}
+
+fn
 koshkit_util_synopsis(Utility::Kind) wontthrow -> const SynopsisList *
 {
   return nullptr;
@@ -1442,26 +1458,6 @@ render_multicall_error(const ErrorWithLocation &error,
                                                                 &context);
 }
 
-static pure fn
-stops_at_first_operand(Maybe<Utility::Kind> kind) wontthrow -> bool
-{
-  if (!kind.has_value()) return false;
-
-  switch (*kind) {
-  case Utility::Kind::Calc:
-  case Utility::Kind::Env:
-  case Utility::Kind::Expr:
-  case Utility::Kind::Flock:
-  case Utility::Kind::Nice:
-  case Utility::Kind::Nohup:
-  case Utility::Kind::Retry:
-  case Utility::Kind::Timeout:
-  case Utility::Kind::Watch:
-  case Utility::Kind::Xargs:   return true;
-  default:                     return false;
-  }
-}
-
 fn
 run_as_multicall(StringView           util_name,
                  Maybe<Utility::Kind> chosen,
@@ -1472,7 +1468,9 @@ run_as_multicall(StringView           util_name,
      defaults that must not replace an inherited KOSHCONF. */
   cxt.execution_store().set_child_environment_fixed(true);
 
-  let const should_stop_at_operand = stops_at_first_operand(chosen);
+  let const should_stop_at_operand =
+      chosen.has_value() &&
+      koshkit_util_parse_options(*chosen).should_stop_at_first_operand;
 
   for (let const &operand : operands) {
     if (operand == "--") break;

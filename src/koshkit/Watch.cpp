@@ -46,7 +46,7 @@ FLAG(WATCH_EXEC,
      "exec",
      "Accepted for compatibility. All operands always run as one command.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Watch);
+REGISTER_KOSHKIT_UTIL_FLAGS(Watch, {.should_stop_at_first_operand = true});
 
 namespace koshka::koshkit {
 
@@ -164,8 +164,7 @@ Watch::execute(const ExecContext               &ec,
                const ArrayList<String>         &args,
                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
-                                 {.should_stop_at_first_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) {
     return report_usage_error(ec, cxt, args[0].view());

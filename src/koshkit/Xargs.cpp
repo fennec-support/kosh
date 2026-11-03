@@ -83,7 +83,7 @@ FLAG(XARGS_NO_RUN_IF_EMPTY,
      "no-run-if-empty",
      "Do not run the utility when the input has no items.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Xargs);
+REGISTER_KOSHKIT_UTIL_FLAGS(Xargs, {.should_stop_at_first_operand = true});
 
 namespace koshka::koshkit {
 
@@ -480,8 +480,7 @@ Xargs::execute(const ExecContext               &ec,
                const ArrayList<String>         &args,
                const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
-                                 {.should_stop_at_first_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   /* the later of -I and -i, and of -E and -e, takes effect. */
   Maybe<StringView> replace_text;

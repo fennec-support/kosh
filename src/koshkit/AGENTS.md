@@ -9,9 +9,12 @@ should own shared behavior.
 Every utility declares its synopsis and description with `KOSHKIT_UTIL_DECL`
 and its flags with `FLAG` and the shared flag types.
 `REGISTER_KOSHKIT_UTIL_FLAGS` adds the `--help` flag last and publishes the
-list for execution, help, and completion. `KOSHKIT_PARSE_OPERANDS_OR_HELP`
-calls `parse_util_operands`, which handles flags, `--`, and operand locations,
-resets the flags at scope exit, and returns after help.
+list for execution, help, and completion. Its optional braced
+`flag_parse_options`, such as `{.should_stop_at_first_operand = true}`, are
+the only parse options of the utility, and the registry publishes them.
+`KOSHKIT_PARSE_OPERANDS_OR_HELP` calls `parse_util_operands` with those
+options, handles flags, `--`, and operand locations, resets the flags at scope
+exit, and returns after help.
 
 Do not write a local option scanner for ordinary short flags, long flags,
 bundled flags, flag arguments, `--`, or operand locations. Extend

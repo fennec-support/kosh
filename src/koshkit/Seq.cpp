@@ -37,7 +37,8 @@ FLAG(SEQ_EQUAL_WIDTH,
      "equal-width",
      "Pad values with leading zeros to an equal width.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Seq);
+REGISTER_KOSHKIT_UTIL_FLAGS(Seq,
+                            {.should_accept_negative_decimal_operand = true});
 
 namespace koshka::koshkit {
 
@@ -246,8 +247,7 @@ Seq::execute(const ExecContext               &ec,
              const ArrayList<String>         &args,
              const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(
-      args, arg_locations, {.should_accept_negative_decimal_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.is_empty()) return report_usage_error(ec, cxt, args[0].view());
 

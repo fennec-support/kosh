@@ -33,7 +33,9 @@ FLAG(TIMEOUT_PRESERVE_STATUS,
      "preserve-status",
      "Return the command status after the time limit expires.");
 
-REGISTER_KOSHKIT_UTIL_FLAGS(Timeout);
+REGISTER_KOSHKIT_UTIL_FLAGS(Timeout,
+                            {.should_accept_negative_number_operand = true,
+                             .should_stop_at_first_operand          = true});
 
 namespace koshka::koshkit {
 
@@ -247,10 +249,9 @@ preflight_timeout_stage(const ExecContext &ec,
   defer { reset_flags(FLAG_LIST); };
 
   try {
-    let[operands, operand_locations] = parse_util_operands(
-        FLAG_LIST, args, cxt.scratch_allocator(), &arg_locations,
-        {.should_accept_negative_number_operand = true,
-         .should_stop_at_first_operand          = true});
+    let[operands, operand_locations] =
+        parse_util_operands(FLAG_LIST, args, cxt.scratch_allocator(),
+                            &arg_locations, KOSHKIT_PARSE_OPTIONS);
 
     if (FLAG_HELP.is_enabled() || operands.count() < 2) {
       return None;
@@ -300,9 +301,7 @@ Timeout::execute(const ExecContext               &ec,
                  const ArrayList<String>         &args,
                  const ArrayList<SourceLocation> &arg_locations) const throws -> i32
 {
-  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations,
-                                 {.should_accept_negative_number_operand = true,
-                                  .should_stop_at_first_operand = true});
+  KOSHKIT_PARSE_OPERANDS_OR_HELP(args, arg_locations);
 
   if (operands.count() < 2) return report_usage_error(ec, cxt, args[0].view());
 
