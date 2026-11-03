@@ -69,7 +69,9 @@ for Bash 5.3 or Dash will run completely unchanged with `--mood bash` or
 
 Expect 6x the execution speed of Bash and over 100x the linting speed
 of ShellCheck, with 300+ ShellCheck-style diagnostics baked straight into the
-binary.
+binary. `make MODE=rel bench` runs the [benchmark](test/bin/run-bench) on the
+configure, primes, and generated scripts in [test/bench](test/bench) against
+Bash and Dash.
 
 The whole script is parsed into a syntax tree before a single line of it runs.
 An optimizer folds constants and dead branches in that tree, and every node
