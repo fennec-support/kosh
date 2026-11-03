@@ -424,9 +424,11 @@ FlagOperandValue::enable() wontthrow -> void
 }
 
 fn
-FlagOperandValue::set(StringView value) throws -> void
+FlagOperandValue::append(StringView     value,
+                         SourceLocation location) throws -> void
 {
-  m_value      = String{m_value.allocator(), value};
+  m_values.push_managed(value);
+  m_locations.push(location);
   m_is_enabled = true;
 }
 
@@ -437,9 +439,25 @@ FlagOperandValue::is_enabled() const wontthrow -> bool
 }
 
 pure fn
-FlagOperandValue::value() const wontthrow -> StringView
+FlagOperandValue::count() const wontthrow -> usize
 {
-  return m_value.view();
+  return m_values.count();
+}
+
+pure fn
+FlagOperandValue::get(usize i) const wontthrow -> StringView
+{
+  ASSERT(i < m_values.count());
+
+  return m_values[i].view();
+}
+
+pure fn
+FlagOperandValue::get_location(usize i) const wontthrow -> SourceLocation
+{
+  ASSERT(i < m_locations.count());
+
+  return m_locations[i];
 }
 
 fn
@@ -447,7 +465,8 @@ FlagOperandValue::reset() throws -> void
 {
   m_position       = 0;
   m_value_location = {};
-  m_value.clear();
+  m_values.clear();
+  m_locations.clear();
   m_is_enabled = false;
 }
 
@@ -704,6 +723,45 @@ argument_location(const char *const               *argv,
 }
 
 static fn
+argument_end_position(
+    const char *const               *argv,
+    usize                            argument_index,
+    usize                            base_position,
+    const ArrayList<SourceLocation> *arg_locations) throws -> usize
+{
+  let const location =
+      argument_location(argv, argument_index, base_position, arg_locations);
+
+  if (arg_locations != nullptr && argument_index < arg_locations->count()) {
+    return location.position + location.length;
+  }
+
+  return location.position +
+         shell_quoted_arg_length(StringView{argv[argument_index]});
+}
+
+/* e.g. for the flag -c, --command: "-c", "--command", and "--command=x" are
+   its words, and "-ec" and "--comm" are not. */
+static pure fn
+is_exact_flag_word(const Flag &flag, StringView argument) wontthrow -> bool
+{
+  if (flag.short_name() != '\0' && argument.length == 2 && argument[0] == '-' &&
+      argument[1] == flag.short_name())
+  {
+    return true;
+  }
+
+  if (flag.long_name().is_empty() || !argument.starts_with("--")) return false;
+
+  let const name = argument.substring(2);
+
+  if (!name.starts_with(flag.long_name())) return false;
+
+  return name.length == flag.long_name().length ||
+         name[flag.long_name().length] == '=';
+}
+
+static fn
 attached_flag_value_location(
     const char *const               *argv,
     usize                            argument_index,
@@ -780,6 +838,8 @@ parse_flags(const FlagList                  &flags,
   };
 
   FlagOperandValue *pending_operand_flag{};
+  FlagOperandValue *continuing_operand_flag{};
+  usize             pending_operand_start = 0;
   let   pending_values     = ArrayList<pending_flag_value>{heap_allocator()};
   usize next_pending_value = 0;
   bool  should_ignore_rest = false;
@@ -806,11 +866,17 @@ parse_flags(const FlagList                  &flags,
     if (pending_operand_flag == nullptr) return false;
 
     LOG(All, "taking the operand '%s' as the value of a flag", argv[arg_index]);
-    pending_operand_flag->set(StringView{argv[arg_index]});
+    let const value_end =
+        argument_end_position(argv, arg_index, base_position, arg_locations);
+
+    pending_operand_flag->append(
+        StringView{argv[arg_index]},
+        SourceLocation{pending_operand_start,
+                       value_end - pending_operand_start});
     pending_operand_flag->set_value_location(
         argument_location(argv, arg_index, base_position, arg_locations));
+    if (!should_ignore_rest) continuing_operand_flag = pending_operand_flag;
     pending_operand_flag = nullptr;
-    should_ignore_rest   = true;
 
     return true;
   };
@@ -837,6 +903,17 @@ parse_flags(const FlagList                  &flags,
       pending.flag->set_value_location(value_location);
 
       continue;
+    }
+
+    if (continuing_operand_flag != nullptr) {
+      let const was_flag_repeated =
+          is_exact_flag_word(*continuing_operand_flag, StringView{argv[i]});
+
+      continuing_operand_flag = nullptr;
+      if (!was_flag_repeated) {
+        LOG(Debug, "stopping option parsing after the value of a flag");
+        should_ignore_rest = true;
+      }
     }
 
     let const is_plus_cluster = !parse_options.plus_letters.is_empty() &&
@@ -1032,26 +1109,45 @@ parse_flags(const FlagList                  &flags,
 
         case Flag::Kind::OperandValue: {
           let const operand_flag = static_cast<FlagOperandValue *>(flag);
-
-          if (is_long && *value_offset != '\0') {
-            let error = ErrorWithLocation{
-                argument_location(argv, static_cast<usize>(i), base_position,
-                                  arg_locations),
-                prefixed_message(program_name, "The flag '" +
-                                                   flag_name(flag, is_long) +
-                                                   "' does not take a value")};
-
-            error.set_command_status(2);
-            throw error;
-          }
+          let const arg_index    = static_cast<usize>(i);
+          let const flag_start =
+              argument_location(argv, arg_index, base_position, arg_locations)
+                  .position;
 
           operand_flag->enable();
           operand_flag->set_position(++position);
+
+          /* find_flag() matches a long name only before '\0' or '='. */
+          if (is_long && *value_offset == '=') {
+            let const value_end = argument_end_position(
+                argv, arg_index, base_position, arg_locations);
+
+            operand_flag->append(
+                StringView{value_offset + 1},
+                SourceLocation{flag_start, value_end - flag_start});
+            operand_flag->set_value_location(
+                attached_flag_value_location(argv, arg_index, value_offset + 1,
+                                             base_position, arg_locations));
+            if (pending_operand_flag == operand_flag) {
+              pending_operand_flag = nullptr;
+            }
+
+            if (pending_operand_flag == nullptr) {
+              continuing_operand_flag = operand_flag;
+            }
+
+            LOG(All, "set the flag '%s' to '%s'",
+                flag_name(operand_flag, is_long).c_str(), value_offset + 1);
+
+            break;
+          }
+
           if (pending_operand_flag == nullptr) {
             operand_flag->set_value_location(
-                boolean_flag_location(argv, static_cast<usize>(i), flag_offset,
-                                      is_long, base_position, arg_locations));
-            pending_operand_flag = operand_flag;
+                boolean_flag_location(argv, arg_index, flag_offset, is_long,
+                                      base_position, arg_locations));
+            pending_operand_flag  = operand_flag;
+            pending_operand_start = flag_start;
           }
 
           LOG(All, "enabled the flag '%s', which takes the first operand",

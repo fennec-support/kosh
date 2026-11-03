@@ -63,8 +63,9 @@ FLAG(COMMAND,
      'c',
      "command",
      Posix,
-     "Execute the first operand as a command string and exit. The next "
-     "operand sets $0, and the rest set the positional parameters.");
+     "Execute the first operand as a command string and exit. Another -c "
+     "right after the string adds the next string. The next operand sets "
+     "$0, and the rest set the positional parameters.");
 FLAG(ERROR_EXIT, Bool, 'e', "error-exit", Posix, "Exit on the first error.");
 FLAG(DISABLE_EXPANSION, Bool, 'f', "no-glob", Posix, "Disable path expansion.");
 FLAG(ONE_COMMAND,
@@ -1643,7 +1644,7 @@ apply_session_config(EvalContext          &context,
   state.set_option(shell_option_id::Onecmd, config.is_one_command);
   if (config.has_execution_string) {
     context.execution_store().set_execution_string(
-        String{heap_allocator(), FLAG_COMMAND.value()});
+        String{heap_allocator(), FLAG_COMMAND.get(0)});
   }
 
   context.startup_store().set_login_shell(config.is_login_shell);
@@ -1986,8 +1987,8 @@ struct script_cursor
   const String              &cli_invocation;
   Maybe<String>             &prefetched_script_contents;
   bool                       should_quit;
-  usize                      next_file_index  = 0;
-  bool                       did_read_command = false;
+  usize                      next_file_index    = 0;
+  usize                      next_command_index = 0;
 
   /* memory: chunk.contents owns all of standard input until the loop iteration
              in kosh_main() ends.
@@ -2013,19 +2014,34 @@ struct script_cursor
                     script_chunk &chunk,
                     bool          is_fresh_evaluator) throws -> void
   {
-    chunk.contents            = String{heap_allocator(), FLAG_COMMAND.value()};
+    ASSERT(has_next_command());
+
+    let const command_index = next_command_index++;
+
+    chunk.contents = String{heap_allocator(), FLAG_COMMAND.get(command_index)};
     chunk.command_string_name = COMMAND_STRING_SOURCE_NAME;
-    did_read_command          = true;
     if (!is_fresh_evaluator) {
       context.execution_store().set_execution_string(
           String{heap_allocator(), chunk.contents.view()});
     }
 
-    LOG(Info, "taking the -c command string, %zu bytes",
-        chunk.contents.count());
-    if (!FLAG_LINT.is_enabled() || !input.should_read_files) {
+    LOG(Info, "taking the -c command string %zu of %zu, %zu bytes",
+        command_index + 1, FLAG_COMMAND.count(), chunk.contents.count());
+    if (FLAG_COMMAND.count() > 1) {
+      chunk.root_frame_call_site = FLAG_COMMAND.get_location(command_index);
+    }
+
+    if (!has_next_command() &&
+        (!FLAG_LINT.is_enabled() || !input.should_read_files))
+    {
       should_quit = true;
     }
+  }
+
+  pure fn
+  has_next_command() const wontthrow -> bool
+  {
+    return next_command_index < FLAG_COMMAND.count();
   }
 
   fn
@@ -2933,7 +2949,7 @@ kosh_main(int argc, char **argv) -> int
     try {
       if (input.should_read_stdin) {
         cursor.read_standard_input(chunk);
-      } else if (input.should_execute_commands && !cursor.did_read_command) {
+      } else if (input.should_execute_commands && cursor.has_next_command()) {
         cursor.read_next_command(context, chunk, inherited.state.has_value());
         chunk.is_fresh_evaluator_command = inherited.state.has_value();
         chunk.should_use_command_string_status =
@@ -3002,9 +3018,10 @@ kosh_main(int argc, char **argv) -> int
       toiletline::emit_command_start_marks(context, chunk.contents.view());
     }
 
-    let const has_multiple_root_sources = !input.should_execute_commands &&
-                                          FLAG_LINT.is_enabled() &&
-                                          file_names.count() > 1;
+    let const has_multiple_root_sources =
+        input.should_execute_commands
+            ? FLAG_COMMAND.count() > 1
+            : FLAG_LINT.is_enabled() && file_names.count() > 1;
     let const should_push_root_frame =
         chunk.root_frame_call_site.has_value() && has_multiple_root_sources &&
         !inherited.should_suppress_root_source_trace;

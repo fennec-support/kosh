@@ -310,7 +310,8 @@ T}
 T{
 \f[CR]\-c, \-\-command\f[R]
 T}@T{
-Execute the first operand as a command string.
+Execute the first operand, or the value of
+\f[CR]\-\-command=COMMAND\f[R], as a command string.
 T}
 T{
 \f[CR]\-e, \-\-error\-exit\f[R]
@@ -603,8 +604,13 @@ T}@T{
 \f[CR]\-c, \-\-command\f[R]
 T}@T{
 The command string is the first operand, as specified in Invocation.
-A syntax error exits with status \f[CR]2\f[R], and an analysis error
-exits with status \f[CR]1\f[R].
+A \f[CR]\-c\f[R], \f[CR]\-\-command\f[R], or
+\f[CR]\-\-command=COMMAND\f[R] word right after a command string adds
+another string, and the strings run in order.
+Any other word after a command string ends option parsing.
+A syntax error exits with status \f[CR]2\f[R], an analysis error exits
+with status \f[CR]1\f[R], and the strings after a rejected one do not
+run.
 T}
 T{
 POSIX

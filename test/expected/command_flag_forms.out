@@ -1,6 +1,16 @@
 one
+two
 rejected-analysis-rc=1
 rejected-syntax-rc=2
+after-false
+repeated-errexit-rc=1
+repeated-exit-rc=3
+last-string-rc=1
+shared-kept
+name|a|second
+-ec
+-c
+trailing-command-rc=2
 clustered-errexit-rc=1
 + :
 cluster-before-interactive
@@ -11,7 +21,12 @@ after-dash name
 repeated-cluster
 long-form
 missing-command-rc=2
-equals-form-rc=2
+equals-form
+equals-name-a
+mixed-one
+mixed-two
+mixed-three
+empty-equals-rc=0
 trailer
 -c:1:1: warning: Exit code (0)
      1 |  echo trailer

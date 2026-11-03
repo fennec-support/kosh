@@ -4,6 +4,19 @@ unset KOSH_FLAGS
 echo "rejected-analysis-rc=$?"
 "$BIN" -c 'if' -c 'echo not-reached' 2>/dev/null
 echo "rejected-syntax-rc=$?"
+"$BIN" -c 'false' -c 'echo after-false'
+"$BIN" -e -c 'false' -c 'echo not-reached'
+echo "repeated-errexit-rc=$?"
+"$BIN" -c 'exit 3' -c 'echo not-reached'
+echo "repeated-exit-rc=$?"
+"$BIN" -c 'true' -c 'false'
+echo "last-string-rc=$?"
+"$BIN" -c 'shared=kept' -c 'echo "shared-$shared"'
+"$BIN" -c 'printf "%s|" "$0" "$@"' -c 'echo second' name a
+"$BIN" -c 'echo "$0"' -ec
+"$BIN" -c -- 'echo "$0"' -c
+"$BIN" -c 'echo not-reached' -c 2>/dev/null
+echo "trailing-command-rc=$?"
 "$BIN" -ec 'false; echo not-reached'
 echo "clustered-errexit-rc=$?"
 "$BIN" -xec ':' 2>&1 >/dev/null
@@ -16,8 +29,11 @@ echo "clustered-errexit-rc=$?"
 "$BIN" --command 'echo long-form'
 "$BIN" -c 2>/dev/null
 echo "missing-command-rc=$?"
-"$BIN" --command='echo equals-form' 2>/dev/null
-echo "equals-form-rc=$?"
+"$BIN" --command='echo equals-form'
+"$BIN" --command='echo "equals-$0-$1"' name a
+"$BIN" -c 'echo mixed-one' --command='echo mixed-two' --command 'echo mixed-three'
+"$BIN" --command=
+echo "empty-equals-rc=$?"
 "$BIN" -N -c 'echo trailer'
 echo "rc=$?"
 "$BIN" --no-init-files -c ''

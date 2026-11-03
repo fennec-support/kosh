@@ -450,7 +450,9 @@ private:
 
 /* a flag that a short cluster treats as a boolean and whose value is the
    first operand that follows it, as in sh -c command or sh -ec command. The
-   operand that holds the value ends option parsing. */
+   long form also takes an attached value, as in --command=command. A word
+   right after a value that is exactly the flag adds another value, and any
+   other word ends option parsing. */
 class FlagOperandValue : public Flag
 {
 public:
@@ -466,19 +468,25 @@ public:
 
   fn
   enable() wontthrow -> void;
+  /* location spans the flag word through the end of the value. */
   fn
-  set(StringView value) throws -> void;
+  append(StringView value, SourceLocation location) throws -> void;
   pure fn
   is_enabled() const wontthrow -> bool;
   pure fn
-  value() const wontthrow -> StringView;
+  count() const wontthrow -> usize;
+  pure fn
+  get(usize i) const wontthrow -> StringView;
+  pure fn
+  get_location(usize i) const wontthrow -> SourceLocation;
 
   fn
   reset() throws -> void;
 
 private:
-  bool   m_is_enabled{false};
-  String m_value{heap_allocator()};
+  bool                      m_is_enabled{false};
+  ArrayList<String>         m_values{heap_allocator()};
+  ArrayList<SourceLocation> m_locations{heap_allocator()};
 };
 
 struct flag_parse_options

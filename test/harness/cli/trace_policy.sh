@@ -158,17 +158,17 @@ printf 'disabled-process-substitution traces=%s errors=%s\n' \
 
 out=$("$BIN" -c 'x=no_such_first_root_xyz; $x' \
     -c 'x=no_such_second_root_xyz; $x' 2>&1)
-printf 'repeated-c-root traces=%s errors=%s\n' \
+printf 'multi-root traces=%s errors=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')"
-printf 'repeated-c-root first=%s second=%s\n' \
+printf 'multi-root first=%s second=%s\n' \
     "$(printf '%s\n' "$out" | grep -c 'no_such_first_root_xyz')" \
     "$(printf '%s\n' "$out" | grep -c 'no_such_second_root_xyz')"
 
 out=$("$BIN" -n -WW \
     -c 'echo "$TRACE_FIRST"; TRACE_FIRST=x; echo "$TRACE_SECOND"; TRACE_SECOND=x' \
     -c : 2>&1)
-printf 'noexec-command traces=%s warnings=%s\n' \
+printf 'noexec-batch traces=%s warnings=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'warning:')"
 
@@ -200,7 +200,7 @@ printf 'disabled-runtime traces=%s errors=%s\n' \
 
 out=$("$BIN" --no-traces -c 'x=no_such_first_root_xyz; $x' \
     -c 'x=no_such_second_root_xyz; $x' 2>&1)
-printf 'disabled-repeated-c traces=%s errors=%s\n' \
+printf 'disabled-multi-root traces=%s errors=%s\n' \
     "$(printf '%s\n' "$out" | grep -Ec 'trace:')" \
     "$(printf '%s\n' "$out" | grep -c 'error:')"
 
@@ -238,16 +238,31 @@ unset KOSH_FLAGS
 out=$("$BIN" -c 'echo hi' -c no_such_command_xyz \
     '$()' ';' '*' '#' '~' '\' '"' 2>&1)
 rc=$?
-printf 'repeated_c output=%s traces=%s rc=%s\n' "$out" \
-    "$(printf '%s\n' "$out" | grep -Ec 'trace:')" "$rc"
+trace_line=$(printf '%s\n' "$out" | grep 'trace:' -A1 | tail -1)
+trace_line="     1 |  KOSH -c ${trace_line#* -c }"
+printf '%s\n' "$trace_line"
+printf '%s\n' "$out" | grep -q -- "-c 'echo hi' -c no_such_command_xyz" && echo "quoted_and_second_c=ok"
+printf '%s\n' "$out" |
+  grep -Fq "'\$()' ';' '*' '#' '~' '\\' '\"'" &&
+  echo "special_arguments_quoted=ok"
+echo "rc=$rc"
 
-out=$("$BIN" -c 'x=no_such_a; $x; $x' 2>&1)
+out=$("$BIN" -c 'x=no_such_a; $x; $x' -c 'x=no_such_c; $x' 2>&1)
 printf 'root_trace_order=%s\n' \
     "$(printf '%s\n' "$out" | grep -oE '(error|trace):' | tr -d ':' |
         paste -sd ' ' -)"
 
+for early_exit in 'exit 3' 'set -e; false' 'exec true' '/bin/sh -c true' \
+    'f() { exit 4; }; f'
+do
+  out=$("$BIN" -c 'echo one' -c "x=no_such_d; \$x; $early_exit" 2>&1)
+  rc=$?
+  printf 'early_exit=%s traces=%s rc=%s\n' "$early_exit" \
+      "$(printf '%s\n' "$out" | grep -Ec 'trace:')" "$rc"
+done
+
 for child in '( $x )' '{ $x; } & wait' '$x | cat'; do
-  out=$("$BIN" -c "x=no_such_e; $child" 2>&1)
+  out=$("$BIN" -c 'echo one' -c "x=no_such_e; $child" 2>&1)
   printf 'child=%s traces=%s\n' "$child" \
       "$(printf '%s\n' "$out" | grep -Ec 'trace:')"
 done
