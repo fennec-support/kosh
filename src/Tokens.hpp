@@ -57,7 +57,11 @@ struct arith_node
   static constexpr u8 PRIMARY_ERROR_FLAG      = 8;
   static constexpr u8 TAIL_FLAG               = 16;
 
-  i64             value{0};
+  union
+  {
+    i64 value{0};
+    u64 name_hash;
+  };
   u32             start{0};
   u32             middle{0};
   u32             end{0};

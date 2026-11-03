@@ -766,9 +766,10 @@ private:
   {
     arith_node node{};
 
-    node.kind   = arith_node_kind::Lvalue;
-    node.start  = static_cast<u32>(target.name_position);
-    node.length = static_cast<u32>(target.name.length);
+    node.kind      = arith_node_kind::Lvalue;
+    node.start     = static_cast<u32>(target.name_position);
+    node.length    = static_cast<u32>(target.name.length);
+    node.name_hash = hash_bytes(target.name);
 
     if (target.subscript.has_value()) {
       node.flags |= arith_node::SUBSCRIPT_FLAG;
@@ -1631,13 +1632,15 @@ public:
   }
 
   fn
-  read_variable_value(StringView name, usize name_position) throws
-      -> ArithmeticValue
+  read_variable_value(StringView name,
+                      u64        name_hash,
+                      usize      name_position) throws -> ArithmeticValue
   {
     if (m_is_skipping) return ArithmeticValue{};
 
     ASSERT(context != nullptr);
-    if (let const stored = context->variable_store().find_plain_scalar(name);
+    if (let const stored =
+            context->variable_store().find_plain_scalar(name, name_hash);
         stored.has_value())
     {
       return evaluate_operand_value(stored->view());
@@ -1716,6 +1719,7 @@ public:
     char              resolved_subscript[24]{};
     bool              is_expanded_subscript{false};
     bool              was_base_checked{false};
+    u64               name_hash{0};
   };
 
   /* an element read of a variable without any value reports the variable,
@@ -1809,6 +1813,7 @@ public:
 
     target.is_expanded_subscript =
         (node.flags & arith_node::EXPANDED_SUBSCRIPT_FLAG) != 0;
+    target.name_hash = node.name_hash;
 
     return target;
   }
@@ -1851,7 +1856,8 @@ public:
       return evaluate_operand_value(value.view());
     }
 
-    return read_variable_value(target.name, target.name_position);
+    return read_variable_value(target.name, target.name_hash,
+                               target.name_position);
   }
 
   fn
@@ -1985,10 +1991,12 @@ public:
   }
 
   fn
-  read_simple_variable(StringView name) throws -> ArithmeticValue
+  read_simple_variable(StringView name, u64 name_hash) throws
+      -> ArithmeticValue
   {
     ASSERT(context != nullptr);
-    if (let const stored = context->variable_store().find_plain_scalar(name);
+    if (let const stored =
+            context->variable_store().find_plain_scalar(name, name_hash);
         stored.has_value())
     {
       return evaluate_named_value(stored->view());
@@ -2032,7 +2040,7 @@ public:
   {
     let const &target = tree.nodes[node.first];
     let const  name   = source.substring_of_length(target.start, target.length);
-    let const  original = read_simple_variable(name);
+    let const  original = read_simple_variable(name, target.name_hash);
     let const  updated  = arith_apply_binop(
         '+', original, ArithmeticValue{node.value}, is_exact, arena);
 
@@ -2114,7 +2122,8 @@ public:
         let const &target = tree.nodes[node.first];
 
         return read_simple_variable(
-            source.substring_of_length(target.start, target.length));
+            source.substring_of_length(target.start, target.length),
+            target.name_hash);
       }
 
       let const target = get_lvalue(node.first);
@@ -2263,7 +2272,8 @@ public:
         let const &target = tree.nodes[node.first];
 
         return read_simple_variable(
-            source.substring_of_length(target.start, target.length));
+            source.substring_of_length(target.start, target.length),
+            target.name_hash);
       }
 
       return evaluate_primary(node);
@@ -3864,9 +3874,10 @@ private:
   {
     arith_node node{};
 
-    node.kind   = arith_node_kind::Lvalue;
-    node.start  = get_offset(token);
-    node.length = static_cast<u32>(token.text.length);
+    node.kind      = arith_node_kind::Lvalue;
+    node.start     = get_offset(token);
+    node.length    = static_cast<u32>(token.text.length);
+    node.name_hash = hash_bytes(token.text);
 
     return storage.add_node(node);
   }

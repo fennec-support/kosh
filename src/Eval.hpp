@@ -2728,7 +2728,14 @@ public:
   hot pure fn
   find_plain_scalar(StringView name) const wontthrow -> Maybe<const String *>
   {
-    let const entry = m_variables.find(name);
+    return find_plain_scalar(name, hash_bytes(name));
+  }
+
+  hot pure fn
+  find_plain_scalar(StringView name, u64 name_hash) const wontthrow
+      -> Maybe<const String *>
+  {
+    let const entry = m_variables.find_hashed(name, name_hash);
     if (!entry.has_value() || !(*entry)->has_value) {
       return None;
     }

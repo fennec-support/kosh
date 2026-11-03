@@ -420,7 +420,16 @@ public:
   {
     if (m_body.is_empty()) return None;
 
-    let const found = m_body.read().index.find(name);
+    return find_hashed(name, hash_bytes(name));
+  }
+
+  hot pure fn
+  find_hashed(StringView name, u64 hash) const wontthrow
+      -> Maybe<const variable_entry *>
+  {
+    if (m_body.is_empty()) return None;
+
+    let const found = m_body.read().index.find_hashed(name, hash);
 
     if (!found.has_value()) return None;
 
