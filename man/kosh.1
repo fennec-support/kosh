@@ -45,7 +45,7 @@ T}
 T{
 \f[CR]koshconf\f[R]
 T}@T{
-Builtin configuration manager that reads, mutates, and persists shell
+Builtin configuration manager that inspects, changes, and persists shell
 settings and \f[CR]KOSHCONF\f[R] payloads.
 T}
 T{
@@ -486,7 +486,7 @@ columns at safe token boundaries, and normalizes line endings to
 \f[CR]LF\f[R].
 .IP \[bu] 2
 \f[B]Input and host behavior\f[R] \- With no file operand or
-\f[CR]\-\f[R], reads stdin and writes to stdout (with syntax coloring
+\f[CR]\-\f[R], takes stdin and writes to stdout (with syntax coloring
 when stdout is a terminal).
 In polyglot host files, formats only mutable shell regions (such as
 Markdown fenced code blocks).
@@ -1709,7 +1709,7 @@ Options: \f[CR]\-\-ssh\-command=CMD\f[R] and
 \f[CR]scp\f[R]; require \f[CR]TARGET\f[R], else status \f[CR]2\f[R]),
 \f[CR]\-x\f[R] (\f[CR]\-\-trace\f[R] prints progress), and
 \f[CR]\-y\f[R] (\f[CR]\-\-yes\f[R] skips the confirmation, described
-under Bundled Koshkit utilities, that names the target and the full path
+under Bundled Koshkit utilities, that shows the target and the full path
 of the new binary; a declined question warns and returns \f[CR]1\f[R]).
 Validates the copied binary before atomic replacement and restores the
 previous file or link on failure.
@@ -1880,7 +1880,7 @@ when \f[CR]\-\-enable\-koshkit\f[R] /
 \f[CR]interpreter.resolve_koshkit_applets_as_commands=on\f[R] is set),
 bundled utilities resolve directly as commands \f[I]after\f[R]
 \f[CR]PATH\f[R] lookup.
-Invoking the binary via a symlink/hardlink named after a utility
+Invoking the binary via a symlink or hardlink with the name of a utility
 (case\-sensitive, stripping \f[CR].exe\f[R]) or as
 \f[CR]koshkit <utility>\f[R] executes the utility directly, bypassing
 shell startup files, settings files, and \f[CR]KOSH_FLAGS\f[R].
@@ -2675,8 +2675,8 @@ Runs make rules (\f[CR]\-f\f[R]/\f[CR]\-\-file\f[R],
 \f[CR]\-S\f[R], \f[CR]\-n\f[R], \f[CR]\-p\f[R], \f[CR]\-q\f[R],
 \f[CR]\-r\f[R], \f[CR]\-s\f[R], \f[CR]\-t\f[R], and \f[CR]\-j\f[R] with
 an optional job count passed through \f[CR]MAKEFLAGS\f[R]).
-Without \f[CR]\-f\f[R], reads \f[CR]Makefile\f[R] or
-\f[CR]makefile\f[R]; \f[CR]\-f \-\f[R] reads standard input.
+Without \f[CR]\-f\f[R], the rules come from \f[CR]Makefile\f[R] or
+\f[CR]makefile\f[R]; \f[CR]\-f \-\f[R] takes them from standard input.
 Operands of the form \f[CR]NAME=VALUE\f[R] set variables, and the
 environment variables are also available.
 The \f[CR]wildcard\f[R] function and a prerequisite holding
@@ -2741,8 +2741,8 @@ When output is not a terminal, the input is copied, changed only by
 \f[CR]\-p\f[R], \f[CR]\-t\f[R], and \f[CR]\-s\f[R], and an interrupt
 stops the copy with status \f[CR]130\f[R].
 A pattern of \f[CR]\-p\f[R] may begin with a slash.
-\f[CR]\-t\f[R] reads \f[CR]./tags\f[R], whose lines hold a tag, a file,
-and a line separated by tabs, and takes no file operand.
+\f[CR]\-t\f[R] looks up \f[CR]./tags\f[R], whose lines hold a tag, a
+file, and a line separated by tabs, and takes no file operand.
 \f[CR]\-p\f[R] and \f[CR]\-t\f[R] cannot be combined, and
 \f[CR]more\f[R] needs a file when standard input is a terminal.
 Input is kept in memory up to \f[CR]128 MiB\f[R], counting the line
@@ -2990,7 +2990,7 @@ when the command is not found); runs a command at an interval
 title, \f[CR]\-g\f[R] exit when output changes, \f[CR]\-e\f[R] exit
 after a command error, \f[CR]\-x\f[R] accepted).
 On a terminal, \f[CR]q\f[R] or an interrupt exits \f[CR]watch\f[R] with
-status \f[CR]0\f[R], and the command reads cooked terminal input.
+status \f[CR]0\f[R], and the command receives cooked terminal input.
 T}
 T{
 \f[CR]sort\f[R]
@@ -3144,14 +3144,14 @@ T}
 T{
 \f[CR]xargs\f[R]
 T}@T{
-Appends arguments from standard input to a command, which reads the null
-device (\f[CR]\-a\f[R]/\f[CR]\-\-arg\-file\f[R] read arguments from a
-file and leave the command standard input, \f[CR]\-0\f[R] split on NUL,
-\f[CR]\-d\f[R]/\f[CR]\-\-delimiter\f[R] split on one character or escape
-such as \f[CR]\[rs]n\f[R], \f[CR]\[rs]t\f[R], \f[CR]\[rs]x41\f[R], or
-\f[CR]\[rs]0\f[R], both keeping quotes and backslashes literal and
-disabling the end marker, \f[CR]\-r\f[R] skip an empty input,
-\f[CR]\-E\f[R] set the end marker,
+Appends arguments from standard input to a command whose standard input
+is the null device (\f[CR]\-a\f[R]/\f[CR]\-\-arg\-file\f[R] read
+arguments from a file and leave the command standard input,
+\f[CR]\-0\f[R] split on NUL, \f[CR]\-d\f[R]/\f[CR]\-\-delimiter\f[R]
+split on one character or escape such as \f[CR]\[rs]n\f[R],
+\f[CR]\[rs]t\f[R], \f[CR]\[rs]x41\f[R], or \f[CR]\[rs]0\f[R], both
+keeping quotes and backslashes literal and disabling the end marker,
+\f[CR]\-r\f[R] skip an empty input, \f[CR]\-E\f[R] set the end marker,
 \f[CR]\-e[EOF]\f[R]/\f[CR]\-\-eof[=EOF]\f[R] set or remove it,
 \f[CR]\-I\f[R] replace a string with each input line,
 \f[CR]\-i[R]\f[R]/\f[CR]\-\-replace[=R]\f[R] replace \f[CR]R\f[R] or
@@ -3468,7 +3468,7 @@ startup files).
 A failing \f[CR]KOSH_FLAGS\f[R] is dropped and the command\-line options
 and input source are kept.
 A failing command line in a login shell retains only \f[CR]\-r\f[R] and
-reads commands from stdin (interactively on a terminal).
+takes commands from stdin (interactively on a terminal).
 All other invalid invocations, including an unknown value of
 \f[CR]\-\-mood\f[R], \f[CR]\-\-tab\-selector\f[R],
 \f[CR]\-\-init\-moods\f[R], \f[CR]\-o\f[R], or \f[CR]\-O\f[R], exit with
@@ -3724,10 +3724,10 @@ while \f[CR]expr2\f[R] is nonzero, and treats empty expressions as
 \f[CR]1\f[R] (a dialect error in \f[CR]sh\f[R]).
 \f[CR]select name [in word ...]; do list; done\f[R]
 (\f[CR]bash\f[R]/\f[CR]bash\-posix\f[R] only) prints the expanded words
-as a numbered menu on stderr, prints \f[CR]PS3\f[R], and reads a line: a
-word number sets \f[CR]name\f[R] to that word, any other line sets
-\f[CR]name\f[R] to empty, \f[CR]REPLY\f[R] holds the raw line, and an
-empty line prints the menu again.
+as a numbered menu on stderr, prints \f[CR]PS3\f[R], and takes a line
+from standard input: a word number sets \f[CR]name\f[R] to that word,
+any other line sets \f[CR]name\f[R] to empty, \f[CR]REPLY\f[R] holds the
+raw line, and an empty line prints the menu again.
 The body runs after each nonempty line until a \f[CR]break\f[R] or the
 end of input.
 \f[CR]while\f[R] loops while the condition returns \f[CR]0\f[R] and
@@ -4275,7 +4275,7 @@ T{
 T}@T{
 Selects the directory for the temporary files of here\-documents,
 \f[CR]fc\f[R], Ctrl\-X Ctrl\-E, and \f[CR]slurp\f[R].
-The shell reads it from the environment, so an assignment needs
+The shell takes it from the environment, so an assignment needs
 \f[CR]export\f[R]; an empty value or a value that is not a directory is
 ignored, the default is \f[CR]/tmp\f[R], and on Windows \f[CR]TEMP\f[R]
 takes its place under the same rules with the default
@@ -4357,8 +4357,8 @@ looks like an assignment such as \f[CR]a=\[ti]\f[R].
 .RE
 .IP \[bu] 2
 \f[B]Process substitution\f[R] \- \f[CR]<(command)\f[R] and
-\f[CR]>(command)\f[R] expand to a path that reads the output of
-\f[CR]command\f[R] or writes its input, with \f[CR]command\f[R] in a
+\f[CR]>(command)\f[R] expand to a path that gives the output of
+\f[CR]command\f[R] or takes its input, with \f[CR]command\f[R] in a
 separate process.
 Expands anywhere in an unquoted word (\f[CR]p=<(command)\f[R] assigns
 the path) in every mood.
@@ -5248,7 +5248,7 @@ T}
 run.
 In \f[CR]kosh\f[R], analysis can also reject a script before it runs
 with status \f[CR]1\f[R] (see Static analysis and runtime diagnostics).
-An interactive shell rejects the line and reads the next one.
+An interactive shell rejects the line and takes the next one.
 .IP \[bu] 2
 \f[B]Kosh mood\f[R] \- Every arithmetic and expansion error ends the
 script with \f[CR]1\f[R].
@@ -6228,7 +6228,7 @@ by default).
 \f[CR]\-t\f[R] strips delimiters, \f[CR]\-n\f[R] limits the count
 (\f[CR]0\f[R] for every line), \f[CR]\-s\f[R] skips leading lines,
 \f[CR]\-O\f[R] sets the first index, \f[CR]\-d\f[R] sets the delimiter
-byte (NUL when empty), \f[CR]\-u\f[R] reads a descriptor, and
+byte (NUL when empty), \f[CR]\-u\f[R] takes input from a descriptor, and
 \f[CR]\-C\f[R] runs a callback with the index and line every
 \f[CR]\-c\f[R] lines (\f[CR]5000\f[R] by default).
 T}
@@ -6243,15 +6243,15 @@ T}
 T{
 \f[CR]read [\-ers] [\-a array] [\-d delim] [\-n|\-N count] [\-p prompt] [\-t timeout] [\-u fd] [\-q] [name ...]\f[R]
 T}@T{
-Reads a line and splits it at \f[CR]IFS\f[R], giving one field to each
-\f[CR]name\f[R], which can be an array element, and the rest of the line
-to the last (\f[CR]REPLY\f[R] without a name).
+Takes a line of input and splits it at \f[CR]IFS\f[R], giving one field
+to each \f[CR]name\f[R], which can be an array element, and the rest of
+the line to the last (\f[CR]REPLY\f[R] without a name).
 \f[CR]\-r\f[R] keeps backslashes, \f[CR]\-a\f[R] fills an indexed array,
 \f[CR]\-d\f[R] sets the delimiter (NUL when empty), \f[CR]\-n\f[R] sets
-a maximum byte count, \f[CR]\-N\f[R] reads exactly that many bytes
+a maximum byte count, \f[CR]\-N\f[R] takes exactly that many bytes
 unsplit, \f[CR]\-t\f[R] sets a fractional timeout, \f[CR]\-p\f[R]
 prompts at a terminal, \f[CR]\-s\f[R] disables echo, \f[CR]\-u\f[R]
-reads a descriptor, \f[CR]\-q\f[R] reads one byte and returns
+takes input from a descriptor, \f[CR]\-q\f[R] takes one byte and returns
 \f[CR]0\f[R] for \f[CR]y\f[R] or \f[CR]Y\f[R], and \f[CR]\-e\f[R] is
 accepted without effect.
 Returns \f[CR]1\f[R] at end of input (even after storing a partial line)

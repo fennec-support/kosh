@@ -33,7 +33,7 @@ builds, jump to [Development](#development).
 Existing Bash startup configs keep working in the `bash` mood. A `bash`
 symlink to `kosh`, `--mood bash`, or
 `koshconf set init_moods kosh,bash --persist` loads them, while the default
-`kosh` mood reads only `rc.kosh`.
+`kosh` mood sources only `rc.kosh`.
 See [Switching from Bash](docs/kosh_switching_5.md).
 
 Editor plugins for real-time linting and formatting:

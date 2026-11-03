@@ -13,7 +13,7 @@ Koshka configures execution semantics and interactive line-editing through decla
 | Primitive | Role in configuration |
 | --- | --- |
 | `kosh.conf` | Declarative key-value file that stores persistent shell option values. |
-| `koshconf` | Builtin utility that reads, mutates, and persists option values. |
+| `koshconf` | Builtin utility that inspects, changes, and persists option values. |
 | `rc.kosh` | Procedural startup script sourced by interactive and login shells in the `kosh` mood. |
 | `KOSHCONF` | Base64-encoded binary environment payload that propagates mood and interactive settings to child or remote shells. |
 | `mood` | Top-level execution profile (`kosh`, `bash`, `sh`, or `bash-posix`) that sets parser grammar and baseline invariants. |
@@ -308,7 +308,7 @@ Run `koshconf set <option> <value> --persist` to write these entries programmati
 | Tier | File path | Ownership, permissions, and write behavior |
 | --- | --- | --- |
 | System | `/etc/kosh/kosh.conf` (POSIX) or `%ProgramData%\kosh\kosh.conf` (Windows) | Loaded first, and only when no other user can write it. On POSIX, the file and its parent directory must be owned by `root` and not writable by group or others. On Windows, the file and its `kosh` directory must be owned by `SYSTEM`, `Administrators`, or `TrustedInstaller`, and no ACL entry may grant another account permission to modify, change permissions, or take ownership (the directory may allow others to add files). If the check fails, the file is skipped with a warning. |
-| User | `$XDG_CONFIG_HOME/kosh/kosh.conf` or `~/.config/kosh/kosh.conf` | Loaded second. `XDG_CONFIG_HOME` is used only when set to an absolute path; on Windows, `~` falls back to `USERPROFILE` when `HOME` is unset. On POSIX, a shell running with an effective user ID of `root` neither reads nor writes this file. Written by `koshconf create`, `koshconf set --persist`, and `koshconf save --persist`. Writing preserves symlinks (updating the target), preserves existing file permissions (or applies `0644` minus `umask` for new files), creates missing parent directories, and backs up the prior file to `kosh.conf.bak`. |
+| User | `$XDG_CONFIG_HOME/kosh/kosh.conf` or `~/.config/kosh/kosh.conf` | Loaded second. `XDG_CONFIG_HOME` is used only when set to an absolute path; on Windows, `~` falls back to `USERPROFILE` when `HOME` is unset. On POSIX, a shell running with an effective user ID of `root` neither opens nor writes this file. Written by `koshconf create`, `koshconf set --persist`, and `koshconf save --persist`. Writing preserves symlinks (updating the target), preserves existing file permissions (or applies `0644` minus `umask` for new files), creates missing parent directories, and backs up the prior file to `kosh.conf.bak`. |
 | System rc script | `/etc/kosh/rc.kosh` (POSIX) or `%ProgramData%\kosh\rc.kosh` (Windows) | Sourced by a login or interactive `kosh` mood before the user rc script (see [Startup script](#startup-script)). It passes the same ownership and permission checks as the system settings file and is skipped with a warning when they fail. |
 | User rc script | `$XDG_CONFIG_HOME/kosh/scripts/rc.kosh` or `~/.config/kosh/scripts/rc.kosh` | Sourced by a login or interactive `kosh` mood (see [Startup script](#startup-script)); skipped by the POSIX superuser. A path that is not a regular file is skipped with a warning. Startup files of the other moods are listed under [Bash and POSIX startup files](kosh_1.md#bash-and-posix-startup-files). |
 
