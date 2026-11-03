@@ -524,9 +524,9 @@ echo "--- an exported function follows its definition ---"
 "$BIN" --no-diagnostics -c 'f() { echo one; }; export -f f; f() { echo two; }; koshkit env | koshkit grep -c "BASH_FUNC_f%%=() { echo two; }"; unset -f f; koshkit env | koshkit grep -c BASH_FUNC_f; echo end'
 
 echo "--- a closed descriptor stays closed after the command ---"
-"$BIN" --no-diagnostics -c 'f() { exec 3>x3; } 3>&-; f; echo hi >&3; echo "status $?"' 2>/dev/null
+"$BIN" --no-diagnostics -c 'f() { exec 3>x3; } 3>&-; f; echo hi >&3; echo "status $?"' 2>/dev/null 3>&-
 echo "shell $?"
-"$BIN" --no-diagnostics -c '{ exec 3>x3; } 3>&-; echo hi >&3; echo "status $?"' 2>/dev/null
+"$BIN" --no-diagnostics -c '{ exec 3>x3; } 3>&-; echo hi >&3; echo "status $?"' 2>/dev/null 3>&-
 echo "shell $?"
 
 echo "--- a utility keeps an inherited KOSHCONF ---"
@@ -733,7 +733,7 @@ echo "--- cd -P .. works past the path length limit ---"
 long_name=$(printf 'a%.0s' $(seq 200))
 (
   for depth in $(seq 30); do
-    mkdir "$long_name" && cd "$long_name" || exit 1
+    mkdir "$long_name" && cd "$long_name" 2>/dev/null || exit 1
   done
   "$BIN" -c 'cd -P .. && echo entered'
 )
@@ -759,3 +759,21 @@ printf '%s\n' --version other > grep_version_input
 ./grep -e --version grep_version_input
 ./grep --version | grep -c Koshka
 ./ls grep_version_input --version | grep -c Koshka
+
+echo "--- a regex variable keeps its backslashes ---"
+cat > regex_variable.bash <<'EOF'
+word='\<bar'; [[ 'foo bar' =~ $word ]]; echo "$?"
+class='\w'; [[ a =~ $class ]]; echo "$?"
+back='(a)\1'; [[ aa =~ $back ]]; echo "$?"
+dot='a\.c'; [[ abc =~ $dot ]]; echo "$?"
+EOF
+"$BIN" --mood bash --no-diagnostics regex_variable.bash
+
+echo "--- a tilde result is literal ---"
+cat > tilde_result.bash <<'EOF'
+( touch ab; HOME='a*'; echo ~; case ab in ~) echo match;; *) echo none;; esac
+  set -- ${u:-~}; echo "$1"; rm ab )
+( HOME='a  b'; set -- ${u:-~}; echo $#; set -- ${u:-~/x}; echo $# )
+( HOME=/h; declare -A M=([k]=~); echo "${M[k]}"; a=(x=~ [3]=~ ~); declare -p a )
+EOF
+"$BIN" --mood bash --no-diagnostics tilde_result.bash

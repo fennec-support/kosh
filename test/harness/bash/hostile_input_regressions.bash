@@ -120,12 +120,6 @@ indirect=(1 2)
 plain='indirect[1]'
 echo "${!plain}"
 
-echo "--- a regex variable keeps its backslashes ---"
-word='\<bar'; [[ 'foo bar' =~ $word ]]; echo "$?"
-class='\w'; [[ a =~ $class ]]; echo "$?"
-back='(a)\1'; [[ aa =~ $back ]]; echo "$?"
-dot='a\.c'; [[ abc =~ $dot ]]; echo "$?"
-
 echo "--- an explicit set -u covers test operands ---"
 ( set -u; [ -z "$unset_operand" ]; echo reached ) 2>/dev/null; echo "$?"
 ( set -u; [[ -z $unset_operand ]]; echo reached ) 2>/dev/null; echo "$?"
@@ -268,12 +262,6 @@ printf '[%s]' ${u-${1+"$*"}}; echo
 list=('a b' c)
 printf '[%s]' ${u-${list+"${list[@]}"}}; echo
 set --
-
-echo "--- a tilde result is literal ---"
-( touch ab; export HOME='a*'; echo ~; case ab in ~) echo match;; *) echo none;; esac
-  set -- ${u:-~}; echo "$1"; rm ab )
-( export HOME='a  b'; set -- ${u:-~}; echo $#; set -- ${u:-~/x}; echo $# )
-( export HOME=/h; declare -A M=([k]=~); echo "${M[k]}"; a=(x=~ [3]=~ ~); declare -p a )
 
 echo "--- repeated globstar components collapse ---"
 ( shopt -s globstar; mkdir -p g/b; touch g/b/f g/f; cd g

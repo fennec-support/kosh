@@ -441,3 +441,16 @@ entered
 --version
 1
 1
+--- a regex variable keeps its backslashes ---
+0
+0
+0
+1
+--- a tilde result is literal ---
+a*
+none
+a*
+1
+1
+/h
+declare -a a=([0]="x=~" [3]="/h" [4]="/h")

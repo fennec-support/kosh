@@ -29,4 +29,4 @@ ulimit -n 5
 value=$(printf hi)
 wait "$parent"
 printf "snapshot-wait=%s value=<%s>\n" "$?" "$value"
-' 2>&1
+' 2>&1 3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&-
