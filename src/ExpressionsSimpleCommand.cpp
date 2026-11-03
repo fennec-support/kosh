@@ -556,8 +556,12 @@ SimpleCommand::SimpleCommand(SourceLocation             location,
   m_location.length =
       static_cast<u32>(last.position + last.length - first.position);
   set_source_end_position(m_location.position + m_location.length);
+}
 
-  if (m_args[0]->kind() != Token::Kind::Word) return;
+fn
+SimpleCommand::record_command_lookup() throws -> void
+{
+  if (m_args.is_empty() || m_args[0]->kind() != Token::Kind::Word) return;
 
   let const &command_word =
       static_cast<const tokens::WordToken *>(m_args[0])->word();

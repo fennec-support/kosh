@@ -1563,6 +1563,9 @@ public:
   ~SimpleCommand() override;
 
   fn
+  record_command_lookup() throws -> void;
+
+  fn
   set_redirections(ArrayList<Redirection> &&redirections) throws
       -> void;
 

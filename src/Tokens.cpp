@@ -336,6 +336,19 @@ Word::finish() throws -> void
   }
 }
 
+static constexpr let WORD_FACT_BYTES = [] {
+  constexpr char MEMBERS[] = "*?[+@!{:~";
+  struct
+  {
+    bool is_member[256]{};
+  } table;
+
+  for (usize i = 0; i + 1 < sizeof(MEMBERS); i++)
+    table.is_member[static_cast<u8>(MEMBERS[i])] = true;
+
+  return table;
+}();
+
 fn
 Word::compute_facts() wontthrow -> void
 {
@@ -363,6 +376,8 @@ Word::compute_facts() wontthrow -> void
       is_quoted_only = false;
 
       for (usize i = 0; i < text.length; i++) {
+        if (!WORD_FACT_BYTES.is_member[static_cast<u8>(text[i])]) continue;
+
         switch (text[i]) {
         case '*':
         case '?':
@@ -457,13 +472,16 @@ Word::classify_command() throws -> void
 {
   constexpr usize LONGEST_COMMAND_FACT_NAME_BYTE_COUNT = 8;
 
-  let command_facts   = u16{0};
-  let text_byte_count = usize{0};
+  let command_facts = u16{0};
 
-  for (let const &segment : segments)
-    text_byte_count += segment.text.count();
+  if (plain_literal_kind() != PlainLiteral::NotPlain && segments.count() == 1) {
+    command_facts |= COMMAND_FACTS.find(segments[0].text.view()).value_or(0);
+  } else if (plain_literal_kind() != PlainLiteral::NotPlain) {
+    let text_byte_count = usize{0};
 
-  if (plain_literal_kind() != PlainLiteral::NotPlain) {
+    for (let const &segment : segments)
+      text_byte_count += segment.text.count();
+
     if (text_byte_count <= LONGEST_COMMAND_FACT_NAME_BYTE_COUNT)
       command_facts |= COMMAND_FACTS.find(constant_value()).value_or(0);
   } else if (segments.count() == 1 &&

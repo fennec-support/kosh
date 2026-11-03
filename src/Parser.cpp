@@ -2023,6 +2023,8 @@ Parser::parse_simple_command(const Token *leading_token) throws
     SimpleCommand *c = m_lexer.arena().create<SimpleCommand>(
         *source_location, steal(args_accumulator));
 
+    if (m_lexer.should_build_evaluation_facts()) c->record_command_lookup();
+
     if (!local_vars.is_empty()) c->set_local_vars(steal(local_vars));
     if (!array_args.is_empty()) c->set_array_args(steal(array_args));
     if (!redirections.is_empty()) c->set_redirections(steal(redirections));
