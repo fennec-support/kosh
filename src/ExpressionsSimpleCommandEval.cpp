@@ -32,35 +32,6 @@ namespace expressions {
 
 using namespace internal;
 
-namespace {
-
-static fn
-command_word_is_glob(const Word &word) wontthrow -> bool
-{
-  bool has_open_bracket = false;
-
-  for (let const &segment : word.segments) {
-    if (segment.kind != WordSegment::Kind::UnquotedText) continue;
-
-    for (usize i = 0; i < segment.text.count(); i++) {
-      let const c = segment.text[i];
-
-      if (c == '*' || c == '?') {
-        return true;
-      }
-
-      if (c == '[') has_open_bracket = true;
-      if (c == ']' && has_open_bracket) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-} /* namespace */
-
 static fn
 command_runs_program(const ArrayList<String>    &args,
                      const Maybe<Builtin::Kind> *literal_builtin,
@@ -102,33 +73,10 @@ hot fn
 SimpleCommand::get_literal_command_lookup(const ArrayList<String> &program_args)
     const throws -> const LiteralCommandLookup *
 {
-  if (program_args.is_empty() || m_args.is_empty() ||
-      m_args[0]->kind() != Token::Kind::Word)
+  if (program_args.is_empty() || !m_literal_command_lookup.has_value() ||
+      program_args[0].view() != m_literal_command_name)
   {
     return nullptr;
-  }
-
-  const Word &command_word =
-      static_cast<const tokens::WordToken *>(m_args[0])->word();
-  StringView literal_name;
-
-  if (command_word.plain_literal_kind() != Word::PlainLiteral::NotPlain) {
-    literal_name = command_word.constant_value();
-  } else if (command_word.segments.count() == 1 &&
-             command_word.segments[0].kind == WordSegment::Kind::UnquotedText)
-  {
-    literal_name = command_word.segments[0].text.view();
-  } else {
-    return nullptr;
-  }
-
-  if (program_args[0].view() != literal_name) return nullptr;
-  /* at this point: m_args[0] is a Word token, literal_name holds the
-     literal text of that word, and program_args[0] equals literal_name. */
-
-  if (!m_literal_command_lookup.has_value()) {
-    m_literal_command_lookup = LiteralCommandLookup{
-        search_builtin(literal_name), is_special_builtin_name(literal_name)};
   }
 
   return &*m_literal_command_lookup;
@@ -300,26 +248,18 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         cxt.source_text_in_span(full_location, full_source_end_position()));
   }
 
-  if (!m_args.is_empty() && m_args[0]->kind() == Token::Kind::Word) {
-    const Word &command_word =
-        static_cast<const tokens::WordToken *>(m_args[0])->word();
+  if (m_is_command_word_glob) {
+    let const location = m_args[0]->source_location();
+    let const message =
+        StringView{"A glob pattern in command position is rarely intended as "
+                   "a command"};
+    let const note = StringView{
+        "Quote it to run a literal command, or list the matches with "
+        "`compgen -G`"};
 
-    if (!m_command_word_is_glob.has_value())
-      m_command_word_is_glob = command_word_is_glob(command_word);
-
-    if (*m_command_word_is_glob) {
-      let const location = m_args[0]->source_location();
-      let const message =
-          StringView{"A glob pattern in command position is rarely intended as "
-                     "a command"};
-      let const note = StringView{
-          "Quote it to run a literal command, or list the matches with "
-          "`compgen -G`"};
-
-      if (cxt.runtime_state().get_mood() == mimic_mood::Default)
-        throw ErrorWithLocationAndDetails{location, message, note};
-      cxt.show_runtime_warning_at(location, message, note);
-    }
+    if (cxt.runtime_state().get_mood() == mimic_mood::Default)
+      throw ErrorWithLocationAndDetails{location, message, note};
+    cxt.show_runtime_warning_at(location, message, note);
   }
 
   /* an alias of the command word runs as the source of this command with the

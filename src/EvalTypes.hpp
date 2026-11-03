@@ -333,8 +333,7 @@ struct variable_table_body
         pipestatus_entry{other.pipestatus_entry},
         value_count{other.value_count},
         indexed_array_count{other.indexed_array_count},
-        has_namerefs{other.has_namerefs},
-        has_declared_marks{other.has_declared_marks}
+        noted_attribute_bits{other.noted_attribute_bits}
   {
     other.pipestatus_entry    = nullptr;
     other.value_count         = 0;
@@ -351,11 +350,10 @@ struct variable_table_body
   {
     let copy = variable_table_body{index.allocator()};
 
-    copy.index               = index.clone();
-    copy.value_count         = value_count;
-    copy.indexed_array_count = indexed_array_count;
-    copy.has_namerefs        = has_namerefs;
-    copy.has_declared_marks  = has_declared_marks;
+    copy.index                = index.clone();
+    copy.value_count          = value_count;
+    copy.indexed_array_count  = indexed_array_count;
+    copy.noted_attribute_bits = noted_attribute_bits;
     copy.index.for_each([&](StringView, variable_entry *&entry) throws {
       entry = copy.entries.emplace(entry->clone());
     });
@@ -368,8 +366,7 @@ struct variable_table_body
   mutable variable_entry     *pipestatus_entry{nullptr};
   usize                       value_count{0};
   usize                       indexed_array_count{0};
-  bool                        has_namerefs{false};
-  bool                        has_declared_marks{false};
+  u8                          noted_attribute_bits{0};
 };
 
 class VariableTable
@@ -640,31 +637,38 @@ public:
   }
 
   pure fn
+  has_noted_attribute_bits(u8 mask) const wontthrow -> bool
+  {
+    return !m_body.is_empty() &&
+           (m_body.read().noted_attribute_bits & mask) != 0;
+  }
+
+  pure fn
   has_namerefs() const wontthrow -> bool
   {
-    return !m_body.is_empty() && m_body.read().has_namerefs;
+    return has_noted_attribute_bits(
+        static_cast<u8>(variable_attribute::Nameref));
   }
 
   pure fn
   has_declared_marks() const wontthrow -> bool
   {
-    return !m_body.is_empty() && m_body.read().has_declared_marks;
+    return has_noted_attribute_bits(
+        static_cast<u8>(variable_attribute::Declared));
   }
 
   fn
   note_attribute_bits(u8 bits) throws -> void
   {
-    let const is_nameref =
-        (bits & static_cast<u8>(variable_attribute::Nameref)) != 0;
-    let const is_declared =
-        (bits & static_cast<u8>(variable_attribute::Declared)) != 0;
+    if (bits == 0) return;
 
-    if (is_nameref && !has_namerefs()) {
-      body().has_namerefs = true;
+    if (!m_body.is_empty() &&
+        (m_body.read().noted_attribute_bits & bits) == bits)
+    {
+      return;
     }
-    if (is_declared && !has_declared_marks()) {
-      body().has_declared_marks = true;
-    }
+
+    body().noted_attribute_bits |= bits;
   }
 
 private:
@@ -789,16 +793,15 @@ struct conditional_element
     Greater,
   };
 
-  static constexpr u8 OPERATOR_UNKNOWN = 0;
-  static constexpr u8 OPERATOR_NONE    = 1;
-  static constexpr u8 OPERATOR_BASE    = 2;
+  static constexpr u8 OPERATOR_NONE = 0;
+  static constexpr u8 OPERATOR_BASE = 1;
 
   const Token   *word{nullptr};
   SourceLocation location{};
   Kind           kind;
   bool           is_bare_unquoted{false};
-  mutable u8     unary_operator_code{OPERATOR_UNKNOWN};
-  mutable u8     binary_operator_code{OPERATOR_UNKNOWN};
+  u8             unary_operator_code{OPERATOR_NONE};
+  u8             binary_operator_code{OPERATOR_NONE};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(conditional_element) == 24);
@@ -807,6 +810,10 @@ pure fn
 is_conditional_unary_operator(StringView text) wontthrow -> bool;
 pure fn
 is_conditional_binary_operator(StringView text) wontthrow -> bool;
+pure fn
+get_conditional_unary_operator_code(StringView text) wontthrow -> u8;
+pure fn
+get_conditional_binary_operator_code(StringView text) wontthrow -> u8;
 
 pure fn
 is_runtime_dynamic_variable_name(StringView name) wontthrow -> bool;

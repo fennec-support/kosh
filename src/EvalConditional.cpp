@@ -248,21 +248,10 @@ struct conditional_evaluator
     return OPERATORS.find(text);
   }
 
-  fn
-  cached_unary_operator(const conditional_element &e) const wontthrow
+  static pure fn
+  get_unary_operator(const conditional_element &e) wontthrow
       -> Maybe<UnaryOperatorKind>
   {
-    if (e.unary_operator_code == conditional_element::OPERATOR_UNKNOWN) {
-      let const view = bare_operand_view(e);
-      let const kind =
-          view.has_value() ? unary_operator(*view) : Maybe<UnaryOperatorKind>{};
-
-      e.unary_operator_code =
-          kind.has_value() ? static_cast<u8>(static_cast<u8>(*kind) +
-                                             conditional_element::OPERATOR_BASE)
-                           : conditional_element::OPERATOR_NONE;
-    }
-
     if (e.unary_operator_code == conditional_element::OPERATOR_NONE)
       return None;
 
@@ -270,21 +259,10 @@ struct conditional_evaluator
                                           conditional_element::OPERATOR_BASE);
   }
 
-  fn
-  cached_binary_operator(const conditional_element &e) const wontthrow
+  static pure fn
+  get_binary_operator(const conditional_element &e) wontthrow
       -> Maybe<BinaryOperatorKind>
   {
-    if (e.binary_operator_code == conditional_element::OPERATOR_UNKNOWN) {
-      let const view = bare_operand_view(e);
-      let const kind = view.has_value() ? binary_operator(*view)
-                                        : Maybe<BinaryOperatorKind>{};
-
-      e.binary_operator_code =
-          kind.has_value() ? static_cast<u8>(static_cast<u8>(*kind) +
-                                             conditional_element::OPERATOR_BASE)
-                           : conditional_element::OPERATOR_NONE;
-    }
-
     if (e.binary_operator_code == conditional_element::OPERATOR_NONE)
       return None;
 
@@ -554,7 +532,7 @@ struct conditional_evaluator
       fail_conditional("An operator appears where an operand is expected");
 
     /* at this point: elements[pos] is an operand. */
-    let const selected_unary_operator = cached_unary_operator(first);
+    let const selected_unary_operator = get_unary_operator(first);
     if (selected_unary_operator.has_value()) {
       if (pos + 1 >= elements.count() || kind_at(pos + 1) != Kind::Operand) {
         fail_conditional("The unary operator '" + operand_literal(first) +
@@ -617,7 +595,7 @@ struct conditional_evaluator
       if (next == Kind::Operand && elements[pos + 1].is_bare_unquoted) {
         let const op_view = bare_operand_view(elements[pos + 1]);
         let const selected_binary_operator =
-            cached_binary_operator(elements[pos + 1]);
+            get_binary_operator(elements[pos + 1]);
 
         if (selected_binary_operator.has_value()) {
           if (pos + 2 >= elements.count() || kind_at(pos + 2) != Kind::Operand)
@@ -836,6 +814,28 @@ pure fn
 is_conditional_binary_operator(StringView text) wontthrow -> bool
 {
   return conditional_evaluator::binary_operator(text).has_value();
+}
+
+pure fn
+get_conditional_unary_operator_code(StringView text) wontthrow -> u8
+{
+  let const kind = conditional_evaluator::unary_operator(text);
+
+  if (!kind.has_value()) return conditional_element::OPERATOR_NONE;
+
+  return static_cast<u8>(static_cast<u8>(*kind) +
+                         conditional_element::OPERATOR_BASE);
+}
+
+pure fn
+get_conditional_binary_operator_code(StringView text) wontthrow -> u8
+{
+  let const kind = conditional_evaluator::binary_operator(text);
+
+  if (!kind.has_value()) return conditional_element::OPERATOR_NONE;
+
+  return static_cast<u8>(static_cast<u8>(*kind) +
+                         conditional_element::OPERATOR_BASE);
 }
 
 static constexpr usize REGEX_CACHE_CAP = 128;

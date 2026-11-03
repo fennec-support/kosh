@@ -28,5 +28,8 @@ printf '# heading\n\ntext\n\n```sh\necho   embedded\n```\n' > "$root/plain.md"
   printf '%s\n' 'f() { exec 3>&- 4<>file; }'
 } > "$root/shapes.sh"
 "$BIN" -A --lint --no-traces "$root/shapes.sh"
+printf '%s\n' 'x=$(echo a | tr a b)' 'koshkit cat <(echo b)' \
+  'y=`printf "%s" q`' 'echo "$x$y"' > "$root/substitutions.sh"
+"$BIN" -A --lint --no-traces "$root/substitutions.sh"
 printf '%s\n' "echo a\\*'b'* ~/x \"\$HOME\"" > "$root/words.sh"
 "$BIN" -R --lint --no-traces "$root/words.sh"

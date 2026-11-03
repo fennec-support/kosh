@@ -2450,6 +2450,8 @@ public:
   pure fn
   get_bits(StringView name) const wontthrow -> u8
   {
+    if (!m_table->has_noted_attribute_bits(0xff)) return 0;
+
     let const entry = m_table->find(name);
 
     return entry.has_value() ? (*entry)->attribute_bits : u8{0};
@@ -2470,7 +2472,11 @@ public:
   pure fn
   has(StringView name, variable_attribute attribute) const wontthrow -> bool
   {
-    return (get_bits(name) & static_cast<u8>(attribute)) != 0;
+    let const mask = static_cast<u8>(attribute);
+
+    if (!m_table->has_noted_attribute_bits(mask)) return false;
+
+    return (get_bits(name) & mask) != 0;
   }
 
   fn
@@ -2529,9 +2535,13 @@ public:
   pure fn
   has_case(StringView name) const wontthrow -> bool
   {
-    return (get_bits(name) &
-            (static_cast<u8>(variable_attribute::Lowercase) |
-             static_cast<u8>(variable_attribute::Uppercase))) != 0;
+    let const mask =
+        static_cast<u8>(static_cast<u8>(variable_attribute::Lowercase) |
+                        static_cast<u8>(variable_attribute::Uppercase));
+
+    if (!m_table->has_noted_attribute_bits(mask)) return false;
+
+    return (get_bits(name) & mask) != 0;
   }
 
   hot pure fn

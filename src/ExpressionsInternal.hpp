@@ -37,6 +37,14 @@ fn
 window_function_body_error(EvalContext &cxt, ErrorWithLocation &error) wontthrow
     -> Maybe<StringView>;
 
+struct full_source_span
+{
+  usize start_position;
+  usize end_position;
+};
+
+pure fn
+get_full_source_span(const Expression &node) wontthrow -> full_source_span;
 pure fn
 full_source_text(const EvalContext &cxt, const Expression &node) wontthrow
     -> StringView;
@@ -352,9 +360,9 @@ resolve_redirection(const Redirection    &redir,
                     bool                  should_allow_fd_memoization = false) throws
     -> resolved_redirection;
 
-fn
-redirection_can_change_state(const Redirection &redir) wontthrow -> bool;
-fn
+pure fn
+redirection_target_can_change_state(const Token *target) wontthrow -> bool;
+pure fn
 redirections_can_change_state(
     const SparseList<Redirection> &redirections) wontthrow -> bool;
 

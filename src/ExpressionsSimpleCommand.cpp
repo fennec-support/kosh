@@ -524,19 +524,60 @@ AssignCommand::can_evaluate_in_process_substitution(
              cxt.runtime_state().bash_dynamic_variables_enabled());
 }
 
+static pure fn
+command_word_is_glob(const Word &word) wontthrow -> bool
+{
+  bool has_open_bracket = false;
+
+  for (let const &segment : word.segments) {
+    if (segment.kind != WordSegment::Kind::UnquotedText) continue;
+
+    for (usize i = 0; i < segment.text.count(); i++) {
+      let const c = segment.text[i];
+
+      if (c == '*' || c == '?') return true;
+      if (c == '[') has_open_bracket = true;
+      if (c == ']' && has_open_bracket) return true;
+    }
+  }
+
+  return false;
+}
+
 SimpleCommand::SimpleCommand(SourceLocation             location,
                              ArrayList<const Token *> &&args)
     : Command(steal(location)), m_args(steal(args))
 {
   m_first_token_position = m_location.position;
-  if (!m_args.is_empty()) {
-    let const first     = m_args[0]->source_location();
-    let const last      = m_args.back()->source_location();
-    m_location.position = first.position;
-    m_location.length =
-        static_cast<u32>(last.position + last.length - first.position);
-    set_source_end_position(m_location.position + m_location.length);
+  if (m_args.is_empty()) return;
+
+  let const first     = m_args[0]->source_location();
+  let const last      = m_args.back()->source_location();
+  m_location.position = first.position;
+  m_location.length =
+      static_cast<u32>(last.position + last.length - first.position);
+  set_source_end_position(m_location.position + m_location.length);
+
+  if (m_args[0]->kind() != Token::Kind::Word) return;
+
+  let const &command_word =
+      static_cast<const tokens::WordToken *>(m_args[0])->word();
+
+  m_is_command_word_glob = command_word_is_glob(command_word);
+
+  if (command_word.plain_literal_kind() != Word::PlainLiteral::NotPlain) {
+    m_literal_command_name = command_word.constant_value();
+  } else if (command_word.segments.count() == 1 &&
+             command_word.segments[0].kind == WordSegment::Kind::UnquotedText)
+  {
+    m_literal_command_name = command_word.segments[0].text.view();
+  } else {
+    return;
   }
+
+  m_literal_command_lookup =
+      LiteralCommandLookup{search_builtin(m_literal_command_name),
+                           is_special_builtin_name(m_literal_command_name)};
 }
 
 SimpleCommand::~SimpleCommand() = default;
@@ -662,6 +703,11 @@ fn
 SimpleCommand::set_redirections(ArrayList<Redirection> &&redirections)
     throws -> void
 {
+  for (let &redirection : redirections) {
+    redirection.can_target_change_state =
+        internal::redirection_target_can_change_state(redirection.target);
+  }
+
   m_redirections.fill(steal(redirections));
 }
 
@@ -851,26 +897,14 @@ text_can_assign(StringView text) wontthrow -> bool
          view_contains(text, StringView{"--"});
 }
 
-static fn
-scan_redirection_state_change(const Redirection &redir) wontthrow -> bool
+pure fn
+internal::redirection_target_can_change_state(const Token *target) wontthrow
+    -> bool
 {
-  if (redir.kind == Redirection::Kind::Heredoc) {
-    if (!redir.should_expand_heredoc || redir.heredoc == nullptr) {
-      return false;
-    }
-
-    let const body = redir.heredoc->text.view();
-
-    return view_contains(body, StringView{"${"}) ||
-           view_contains(body, StringView{"$(("});
-  }
-
-  if (redir.target == nullptr || redir.target->kind() != Token::Kind::Word) {
-    return false;
-  }
+  if (target == nullptr || target->kind() != Token::Kind::Word) return false;
 
   for (let const &segment :
-       static_cast<const tokens::WordToken *>(redir.target)->word().segments)
+       static_cast<const tokens::WordToken *>(target)->word().segments)
   {
     switch (segment.kind) {
     case WordSegment::Kind::FunctionSubstitution: return true;
@@ -887,25 +921,23 @@ scan_redirection_state_change(const Redirection &redir) wontthrow -> bool
   return false;
 }
 
-fn
-internal::redirection_can_change_state(const Redirection &redir)
-    wontthrow -> bool
+pure fn
+Redirection::can_change_state() const wontthrow -> bool
 {
-  if (redir.state_change == Redirection::StateChange::Unknown) {
-    redir.state_change = scan_redirection_state_change(redir)
-                             ? Redirection::StateChange::Changes
-                             : Redirection::StateChange::Keeps;
+  if (kind == Kind::Heredoc) {
+    return should_expand_heredoc && heredoc != nullptr &&
+           heredoc->can_change_state;
   }
 
-  return redir.state_change == Redirection::StateChange::Changes;
+  return can_target_change_state;
 }
 
-fn
+pure fn
 internal::redirections_can_change_state(
     const SparseList<Redirection> &redirections) wontthrow -> bool
 {
   for (let const &redir : redirections) {
-    if (redirection_can_change_state(redir)) return true;
+    if (redir.can_change_state()) return true;
   }
 
   return false;
@@ -2320,8 +2352,7 @@ SimpleCommand::write_ast(AstWriter &out) const throws -> void
       out.flag("let");
   }
 
-  if (m_command_word_is_glob.has_value() && *m_command_word_is_glob)
-    out.flag("glob-command-word");
+  if (m_is_command_word_glob) out.flag("glob-command-word");
 
   if (m_literal_command_lookup.has_value()) {
     if (m_literal_command_lookup->builtin.has_value()) out.flag("builtin");

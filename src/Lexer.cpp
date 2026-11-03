@@ -578,6 +578,10 @@ Lexer::collect_pending_heredocs() throws -> void
     LOG(Debug, "capturing a heredoc body of %zu bytes for delimiter '%s'",
         collected.count(), pending.delimiter.c_str());
     pending.contents->text = steal(collected);
+    pending.contents->can_change_state =
+        pending.should_expand &&
+        (pending.contents->text.find_substring("${").has_value() ||
+         pending.contents->text.find_substring("$((").has_value());
   }
 
   defer { m_pending_heredocs.clear(); };

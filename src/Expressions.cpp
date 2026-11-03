@@ -559,7 +559,9 @@ Expression::set_source_end_position(usize position) wontthrow -> void
   m_source_end_position = static_cast<u32>(position);
 }
 
-AstWriter::AstWriter(StringView source) : m_source{source} {}
+AstWriter::AstWriter(StringView source, mimic_mood mood)
+    : m_source{source}, m_mood{mood}
+{}
 
 cold fn
 AstWriter::open(StringView kind) throws -> void
@@ -656,8 +658,11 @@ AstWriter::position(StringView key, usize source_position) throws
 {
   flag(key);
   m_output.push(' ');
+  source_position += m_position_offset;
 
-  if (m_source.is_empty() || source_position > m_source.length) {
+  if (m_is_detached_from_source || m_source.is_empty() ||
+      source_position > m_source.length)
+  {
     m_output.push('@');
     m_output.append(String::from(source_position, heap_allocator()).view());
 
@@ -767,16 +772,18 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
     }
   }
 
+  let const source_start =
+      location.has_value() ? m_position_offset + location->position : usize{0};
   let const has_source_span =
-      location.has_value() && !m_source.is_empty() &&
-      static_cast<usize>(location->position) + location->length <=
-          m_source.length;
+      location.has_value() && !m_is_detached_from_source &&
+      !m_source.is_empty() &&
+      source_start + location->length <= m_source.length;
 
   open("word");
 
   if (has_source_span) {
     let const source_text =
-        m_source.substring_of_length(location->position, location->length);
+        m_source.substring_of_length(source_start, location->length);
 
     text(source_text);
     position("at", location->position);
@@ -831,11 +838,84 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
       if (segment.is_greedy_name) flag("greedy-name");
       if (segment.was_ansi_c_quoted) flag("ansi-c-quoted");
       if (segment.has_optimizer_arithmetic_result()) flag("folded");
+
+      if (segment.kind == WordSegment::Kind::CommandSubstitution ||
+          segment.kind == WordSegment::Kind::ProcessSubstitution ||
+          segment.kind == WordSegment::Kind::FunctionSubstitution)
+      {
+        substitution_body(segment);
+      }
+
       close();
     }
   }
 
   close();
+}
+
+cold fn
+AstWriter::substitution_body(const WordSegment &segment) throws -> void
+{
+  let const text = segment.text.view();
+  let       body = text;
+
+  if (segment.kind == WordSegment::Kind::ProcessSubstitution &&
+      !text.is_empty())
+  {
+    body = text.substring(1);
+  } else if (segment.kind == WordSegment::Kind::FunctionSubstitution &&
+             !text.is_empty() && text[0] == '|')
+  {
+    body = text.substring(1);
+  }
+
+  let       body_position = Maybe<usize>{};
+  let const span_start =
+      m_position_offset + static_cast<usize>(segment.source_position);
+
+  if (segment.source_length > 0 && !m_is_detached_from_source &&
+      span_start + segment.source_length <= m_source.length)
+  {
+    let const span =
+        m_source.substring_of_length(span_start, segment.source_length);
+    let const found = span.find_substring(body);
+
+    if (found.has_value()) body_position = span_start + *found;
+  }
+
+  let arena  = BumpArena{};
+  let parser = Parser{
+      Lexer{body, arena, None, m_mood}
+  };
+  const Expression *ast = nullptr;
+
+  try {
+    ast = parser.construct_ast();
+  } catch (...) {
+    flag("unparsed-body");
+
+    return;
+  }
+
+  if (ast == nullptr) return;
+
+  let const saved_offset = m_position_offset;
+  let const was_detached = m_is_detached_from_source;
+
+  if (body_position.has_value()) {
+    m_position_offset = *body_position;
+  } else {
+    flag("relative-positions");
+    m_position_offset         = 0;
+    m_is_detached_from_source = true;
+  }
+
+  defer {
+    m_position_offset         = saved_offset;
+    m_is_detached_from_source = was_detached;
+  };
+
+  ast->write_ast(*this);
 }
 
 cold fn
@@ -891,9 +971,10 @@ AstWriter::take() throws -> String
 }
 
 cold fn
-Expression::to_ast_string(StringView source) const throws -> String
+Expression::to_ast_string(StringView source, mimic_mood mood) const throws
+    -> String
 {
-  let out = AstWriter{source};
+  let out = AstWriter{source, mood};
 
   write_ast(out);
 
@@ -3417,8 +3498,7 @@ internal::write_ast_redirection(AstWriter         &out,
   }
 
   if (redirection.writes_file()) out.flag("writes-file");
-  if (internal::redirection_can_change_state(redirection))
-    out.flag("changes-state");
+  if (redirection.can_change_state()) out.flag("changes-state");
 
   if (redirection.fd_allocation_name_token != nullptr) {
     out.quoted("fd-variable",

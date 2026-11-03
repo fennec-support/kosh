@@ -34,23 +34,35 @@ namespace expressions {
 using namespace internal;
 
 pure fn
+internal::get_full_source_span(const Expression &node) wontthrow
+    -> full_source_span
+{
+  let const location = node.source_location();
+  let       span     = full_source_span{location.position,
+                              usize{location.position} + location.length};
+
+  if (node.source_end_position() > span.end_position)
+    span.end_position = node.source_end_position();
+
+  if (let const *simple = node.as_simple_command(); simple != nullptr) {
+    span.start_position = simple->full_source_start_position();
+    if (simple->full_source_end_position() > span.end_position)
+      span.end_position = simple->full_source_end_position();
+  }
+
+  return span;
+}
+
+pure fn
 internal::full_source_text(const EvalContext &cxt,
                            const Expression  &node) wontthrow -> StringView
 {
-  let const location = node.source_location();
-  let span = SourceLocation{location.position, 0, location.source_name_index};
-  let end_position = usize{location.position} + usize{location.length};
+  let const span = get_full_source_span(node);
 
-  if (node.source_end_position() > end_position)
-    end_position = node.source_end_position();
-
-  if (let const *simple = node.as_simple_command(); simple != nullptr) {
-    span.position = static_cast<u32>(simple->full_source_start_position());
-    if (simple->full_source_end_position() > end_position)
-      end_position = simple->full_source_end_position();
-  }
-
-  return cxt.source_text_in_span(span, end_position);
+  return cxt.source_text_in_span(
+      SourceLocation{static_cast<u32>(span.start_position), 0,
+                     node.source_location().source_name_index},
+      span.end_position);
 }
 
 static fn
@@ -630,6 +642,45 @@ Pipeline::append_command(const Command *node) throws -> void
 }
 
 fn
+Pipeline::set_stage_facts(StringView source) wontthrow -> void
+{
+  for (let const stage : m_commands) {
+    if (!stage->is_simple_command()) {
+      m_has_compound_stage = true;
+
+      return;
+    }
+
+    let const *simple = static_cast<const SimpleCommand *>(stage);
+    let const  span   = get_full_source_span(*stage);
+
+    if (span.start_position <= span.end_position &&
+        span.end_position <= source.length &&
+        source
+            .substring_of_length(span.start_position,
+                                 span.end_position - span.start_position)
+            .find_substring(StringView{"BASHPID"})
+            .has_value())
+    {
+      m_has_compound_stage = true;
+
+      return;
+    }
+
+    if (simple->local_vars().is_empty()) continue;
+
+    if (simple->args().is_empty()) {
+      m_has_assignment_only_stage = true;
+      continue;
+    }
+
+    m_has_compound_stage = true;
+
+    return;
+  }
+}
+
+fn
 Pipeline::error_report_location() const wontthrow -> SourceLocation
 {
   for (usize index = m_commands.count(); index > 0; index--) {
@@ -998,44 +1049,8 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
     cxt.job_table_store().update_jobs();
   cxt.release_finished_coprocess();
 
-  if (!m_has_compound_stage.has_value()) {
-    bool has_compound_stage        = false;
-    bool has_assignment_only_stage = false;
-
-    for (let const stage : m_commands) {
-      if (!stage->is_simple_command()) {
-        has_compound_stage = true;
-        break;
-      }
-
-      const SimpleCommand *simple = static_cast<const SimpleCommand *>(stage);
-
-      /* a stage that uses BASHPID expands its words in its own process. */
-      if (full_source_text(cxt, *stage)
-              .find_substring(StringView{"BASHPID"})
-              .has_value())
-      {
-        has_compound_stage = true;
-        break;
-      }
-
-      if (simple->local_vars().is_empty()) continue;
-
-      if (simple->args().is_empty()) {
-        has_assignment_only_stage = true;
-        continue;
-      }
-
-      has_compound_stage = true;
-      break;
-    }
-
-    m_has_compound_stage        = has_compound_stage;
-    m_has_assignment_only_stage = has_assignment_only_stage;
-  }
-
   bool has_compound_stage =
-      *m_has_compound_stage ||
+      m_has_compound_stage ||
       (m_has_assignment_only_stage &&
        cxt.runtime_state().get_mood() != mimic_mood::Default);
 

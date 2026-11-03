@@ -73,14 +73,10 @@ ConditionalCommand::write_ast(AstWriter &out) const throws -> void
       out.position("at", element.location.position);
     if (element.is_bare_unquoted) out.flag("bare");
 
-    if (element.is_bare_unquoted && element.word != nullptr) {
-      let const view = element.word->raw_view();
-
-      if (view.has_value() && is_conditional_unary_operator(*view))
-        out.flag("unary-operator");
-      if (view.has_value() && is_conditional_binary_operator(*view))
-        out.flag("binary-operator");
-    }
+    if (element.unary_operator_code != conditional_element::OPERATOR_NONE)
+      out.flag("unary-operator");
+    if (element.binary_operator_code != conditional_element::OPERATOR_NONE)
+      out.flag("binary-operator");
 
     if (element.word != nullptr) out.token(element.word);
     out.close();
@@ -1791,6 +1787,11 @@ RedirectedCommand::RedirectedCommand(SourceLocation           location,
                                      ArrayList<Redirection> &&redirections)
     : Command(steal(location)), m_child(child)
 {
+  for (let &redirection : redirections) {
+    redirection.can_target_change_state =
+        internal::redirection_target_can_change_state(redirection.target);
+  }
+
   m_redirections.fill(steal(redirections));
 }
 

@@ -1051,7 +1051,7 @@ print_analysis_diagnostic_summary(
 class AstWriter
 {
 public:
-  explicit AstWriter(StringView source);
+  AstWriter(StringView source, mimic_mood mood);
 
   fn
   open(StringView kind) throws -> void;
@@ -1079,11 +1079,16 @@ public:
 private:
   fn
   append_quoted(StringView value) throws -> void;
+  fn
+  substitution_body(const WordSegment &segment) throws -> void;
 
   String         m_output{heap_allocator()};
   StringView     m_source;
   ArrayList<u32> m_line_start_positions{heap_allocator()};
   usize          m_depth{0};
+  usize          m_position_offset{0};
+  mimic_mood     m_mood;
+  bool           m_is_detached_from_source{false};
 };
 
 class Expression
@@ -1132,7 +1137,8 @@ public:
   virtual fn
   write_ast(AstWriter &out) const throws -> void abstract;
   fn
-  to_ast_string(StringView source) const throws -> String;
+  to_ast_string(StringView source, mimic_mood mood) const throws
+      -> String;
 
   virtual fn
   is_simple_command() const wontthrow -> bool;
@@ -1451,13 +1457,6 @@ public:
     MoveClose,
   };
 
-  enum class StateChange : u8
-  {
-    Unknown,
-    Keeps,
-    Changes,
-  };
-
   static constexpr i32 DUP_FD_CLOSE = -2;
 
   const Token            *target;
@@ -1469,7 +1468,7 @@ public:
   u32                     operator_position;
   Kind                    kind;
   Origin                  origin;
-  mutable StateChange     state_change;
+  bool                    can_target_change_state;
   bool                    should_expand_heredoc;
   bool                    should_strip_heredoc_tabs;
   /* the - of <<- is its own token, as in <<- EOF, so the delimiter word
@@ -1514,6 +1513,9 @@ public:
   {
     return opens_output_file() || kind == Kind::ReadWrite;
   }
+
+  pure fn
+  can_change_state() const wontthrow -> bool;
 
   pure fn
   get_operator_spelling() const wontthrow -> StringView
@@ -1619,7 +1621,7 @@ protected:
 
   ArrayList<const Token *> m_args{heap_allocator()};
 
-  mutable Maybe<bool> m_command_word_is_glob{};
+  bool m_is_command_word_glob{false};
 
   struct LiteralCommandLookup
   {
@@ -1627,8 +1629,9 @@ protected:
     bool                 is_special{false};
   };
 
-  mutable Maybe<LiteralCommandLookup> m_literal_command_lookup{};
-  mutable published_command_text      m_published_command_text{};
+  StringView                     m_literal_command_name{};
+  Maybe<LiteralCommandLookup>    m_literal_command_lookup{};
+  mutable published_command_text m_published_command_text{};
 
   fn
   get_literal_command_lookup(const ArrayList<String> &program_args) const throws -> const LiteralCommandLookup *;
@@ -1754,6 +1757,8 @@ public:
   is_empty() const wontthrow -> bool;
   fn
   append_command(const Command *node) throws -> void;
+  fn
+  set_stage_facts(StringView source) wontthrow -> void;
 
   fn
   write_ast(AstWriter &out) const throws -> void override;
@@ -1781,8 +1786,8 @@ protected:
 
   ArrayList<const Command *> m_commands{heap_allocator()};
 
-  mutable Maybe<bool> m_has_compound_stage{};
-  mutable bool        m_has_assignment_only_stage{false};
+  bool m_has_compound_stage{false};
+  bool m_has_assignment_only_stage{false};
 };
 
 class CompoundCommand : public Command

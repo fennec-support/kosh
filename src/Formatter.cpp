@@ -2225,7 +2225,7 @@ validate_formatted_source(StringView         source,
   let const *ast = parser.construct_ast(errors, nullptr);
 
   if (ast_output != nullptr && errors.is_empty()) {
-    *ast_output = ast->to_ast_string(source);
+    *ast_output = ast->to_ast_string(source, mood);
   }
 
   return errors.is_empty();

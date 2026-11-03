@@ -201,6 +201,7 @@ struct heredoc_contents
   usize                  source_position{0};
   usize                  source_end_position{0};
   heredoc_source_mapping source_mapping;
+  bool                   can_change_state{false};
 };
 
 struct lexed_debug_word

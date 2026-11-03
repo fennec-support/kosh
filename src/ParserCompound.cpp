@@ -1247,7 +1247,20 @@ Parser::parse_conditional_command() throws -> Command *
         break;
       }
 
-      elements.push({t, {}, Kind::Operand, is_bare_unquoted});
+      let operand = conditional_element{t, {}, Kind::Operand, is_bare_unquoted};
+
+      if (is_bare_unquoted) {
+        let const raw = t->raw_view();
+
+        if (raw.has_value()) {
+          operand.unary_operator_code =
+              get_conditional_unary_operator_code(*raw);
+          operand.binary_operator_code =
+              get_conditional_binary_operator_code(*raw);
+        }
+      }
+
+      elements.push(operand);
 
       if (is_unquoted_word(t, "=~")) {
         Token *peek = m_lexer.peek_shell_token();
