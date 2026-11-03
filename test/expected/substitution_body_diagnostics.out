@@ -202,14 +202,6 @@ escapes.sh:2:1: warning: An `echo` of a command substitution prints what the com
      2 |  echo "$(printf "%s\n" a)"
        |  ^~~~
 note: Run the command on its own.
-escapes.sh:4:20: warning: The shell treats the escape `\t` as a plain 't' and drops the backslash. (SC1012)
-     4 |  echo "$(printf %s a\tb)"
-       |                     ^~
-note: Build the byte with `printf`, or write it inside `$'...'`.
-escapes.sh:5:16: warning: The shell treats the escape `\q` as a plain 'q' and drops the backslash. (SC1001)
-     5 |  echo "$(true;)"\q
-       |                 ^~
-note: Quote the backslash, or build the byte with `printf`.
 escapes.sh:3:26: warning: The command substitution runs only `echo`, so it returns its operand unchanged. (SC2116)
      3 |  echo "$(printf %s "x" )" "$(echo y)"
        |                           ^~~~~~~~~~~
@@ -218,5 +210,13 @@ escapes.sh:4:1: warning: An `echo` of a command substitution prints what the com
      4 |  echo "$(printf %s a\tb)"
        |  ^~~~
 note: Run the command on its own.
+escapes.sh:4:20: warning: The shell treats the escape `\t` as a plain 't' and drops the backslash. (SC1012)
+     4 |  echo "$(printf %s a\tb)"
+       |                     ^~
+note: Build the byte with `printf`, or write it inside `$'...'`.
+escapes.sh:5:16: warning: The shell treats the escape `\q` as a plain 'q' and drops the backslash. (SC1001)
+     5 |  echo "$(true;)"\q
+       |                 ^~
+note: Quote the backslash, or build the byte with `printf`.
 Encountered 5 warnings.
 status=0

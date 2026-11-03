@@ -710,8 +710,13 @@ count_complete_commands(StringView   text,
   return scan.command_count;
 }
 
+/* -n and lint analyze a script of at most this many bytes as one tree. A
+   longer script streams its top-level units after a metadata scan. */
+constexpr usize MAXIMUM_WHOLE_TREE_ANALYSIS_BYTE_COUNT = 256 * 1024;
+
 static fn
 make_script_run_plan(EvalContext              &context,
+                     usize                     source_byte_count,
                      bool                      has_precompiled_ast,
                      bool                      has_out_ast,
                      const script_run_options &run_options) wontthrow
@@ -732,13 +737,14 @@ make_script_run_plan(EvalContext              &context,
   let const should_stream_execution =
       !has_precompiled_ast && !state.no_exec() && !should_keep_whole_tree;
 
-  return script_run_plan{should_analyze,
-                         should_analyze && state.no_exec() &&
-                             !should_keep_whole_tree,
-                         should_stream_execution,
-                         should_stream_execution && !should_analyze,
-                         run_options.is_whole_line,
-                         !state.no_exec() || should_keep_whole_tree};
+  return script_run_plan{
+      should_analyze,
+      should_analyze && state.no_exec() && !should_keep_whole_tree &&
+          source_byte_count > MAXIMUM_WHOLE_TREE_ANALYSIS_BYTE_COUNT,
+      should_stream_execution,
+      should_stream_execution && !should_analyze,
+      run_options.is_whole_line,
+      !state.no_exec() || should_keep_whole_tree};
 }
 
 static fn
@@ -1166,7 +1172,8 @@ run_script_contents(
     ast_arena.reset();
     context.expansion_store().scratch_arena().reset();
 
-    let const plan  = make_script_run_plan(context, precompiled_ast != nullptr,
+    let const plan  = make_script_run_plan(context, script_contents.count(),
+                                           precompiled_ast != nullptr,
                                            out_ast != nullptr, run_options);
     let const input = script_run_input{script_contents,
                                        run_options.display_source,

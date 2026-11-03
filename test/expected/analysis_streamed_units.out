@@ -1,0 +1,24 @@
+long-script-past-limit=yes
+short-status=1
+long-status=1
+script.bash:4:8: error: An unquoted variable can split into words and expand globs. (SC2086)
+     4 |    echo $1
+       |         ^~
+note: Quote the expansion to keep one argument.
+script.bash:11:6: error: An unquoted variable can split into words and expand globs. (SC2086)
+    11 |  echo $unknown_name
+       |       ^~~~~~~~~~~~~
+note: Quote the expansion to keep one argument.
+script.bash:11:6: error: The variable 'unknown_name' is used before any assignment gives it a value. (SC2154)
+    11 |  echo $unknown_name
+       |       ^~~~~~~~~~~~~
+note: Assign 'unknown_name' before this use, or set it in the environment.
+script.bash:2:1: error: The definition of 'greet' runs later in the file. (SC2218)
+     2 |  greet "$1"
+       |  ^~~~~
+script.bash:3:1: details:
+     3 |  greet() {
+       |  ^~~~~ the definition runs after the call.
+note: Move the definition of 'greet' above this call.
+Encountered 4 errors.
+same-findings=yes
