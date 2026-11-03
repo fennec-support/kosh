@@ -420,9 +420,6 @@ CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const t
         !n->is_negated() && is_end_of_and_or_chain && ret.status != 0 &&
         ret.status != NOTHING_WAS_EXECUTED &&
         !ret.has(status_flag::ErrResolved);
-    const bool is_fatal_exit =
-        cxt.runtime_state().error_exit() && was_command_failure_uncaught;
-
     const bool is_reportable_status =
         did_execute && ret.status != NOTHING_WAS_EXECUTED &&
         !ret.has(status_flag::ExitCodeReported) &&
@@ -431,17 +428,11 @@ CompoundList::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const t
     if (cxt.runtime_state().show_exit_code() && is_reportable_status) {
       let message =
           String{cxt.scratch_allocator(),
-                 ret.status != 0 ? "Non-zero exit code (" : "Exit code ("};
+                 ret.status != 0 ? "Non-zero exit code " : "Exit code "};
 
       message += String::from(ret.status, cxt.scratch_allocator());
-      message += ')';
-      if (is_fatal_exit) {
-        cxt.show_runtime_error_at(n->command()->source_location(),
-                                  message.view());
-      } else {
-        cxt.show_runtime_warning_at(n->command()->source_location(),
-                                    message.view(), {}, true);
-      }
+      cxt.show_runtime_warning_at(n->command()->source_location(),
+                                  message.view(), {}, true);
 
       ret.set(status_flag::ExitCodeReported);
     }
