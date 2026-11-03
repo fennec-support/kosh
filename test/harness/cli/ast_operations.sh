@@ -46,3 +46,6 @@ printf '%s\n' "echo a\\*'b'* ~/x \"\$HOME\"" > "$root/words.sh"
   printf '%s\n' 'for ((i = 0; i < 2; i++)); do :; done'
 } > "$root/arith.sh"
 "$BIN" -A --lint --no-traces "$root/arith.sh"
+
+printf '%s\n' 'for v in x=$y a=; do :; done' > "$root/rejoined.sh"
+"$BIN" -A --lint --no-traces "$root/rejoined.sh"
