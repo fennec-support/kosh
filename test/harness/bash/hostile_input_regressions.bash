@@ -270,10 +270,10 @@ printf '[%s]' ${u-${list+"${list[@]}"}}; echo
 set --
 
 echo "--- a tilde result is literal ---"
-( touch ab; HOME='a*'; echo ~; case ab in ~) echo match;; *) echo none;; esac
+( touch ab; export HOME='a*'; echo ~; case ab in ~) echo match;; *) echo none;; esac
   set -- ${u:-~}; echo "$1"; rm ab )
-( HOME='a  b'; set -- ${u:-~}; echo $#; set -- ${u:-~/x}; echo $# )
-( HOME=/h; declare -A M=([k]=~); echo "${M[k]}"; a=(x=~ [3]=~ ~); declare -p a )
+( export HOME='a  b'; set -- ${u:-~}; echo $#; set -- ${u:-~/x}; echo $# )
+( export HOME=/h; declare -A M=([k]=~); echo "${M[k]}"; a=(x=~ [3]=~ ~); declare -p a )
 
 echo "--- repeated globstar components collapse ---"
 ( shopt -s globstar; mkdir -p g/b; touch g/b/f g/f; cd g

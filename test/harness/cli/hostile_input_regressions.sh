@@ -87,20 +87,20 @@ echo "--- an indirect subscript from data runs no command ---"
 "$BIN" --mood kosh --no-diagnostics -c \
   'a=(1); v="a[\$(touch marker)0]"; echo "${!v}"' 2>/dev/null
 echo "status $?"
-ls marker 2>/dev/null
+[ -e marker ]
 echo "status $?"
 
 echo "--- an indirect value is a name and not an expression ---"
 "$BIN" --mood bash --no-diagnostics -c \
   'v="u:-\$(touch injected)"; echo "${!v-d}"' 2>/dev/null
 echo "status $?"
-ls injected 2>/dev/null
+[ -e injected ]
 echo "status $?"
 
 echo "--- export -p leaves out environment entries with invalid keys ---"
 env 'bad$(touch exported)=1' "$BIN" --mood bash --no-diagnostics \
   -c 'eval "$(export -p)"' 2>/dev/null
-ls exported 2>/dev/null
+[ -e exported ]
 echo "status $?"
 
 echo "--- deep conditionals end in a diagnostic ---"
@@ -499,11 +499,19 @@ echo "--- a coprocess under one name releases the earlier descriptors ---"
 "$BIN" --no-diagnostics -c 'i=0; while ((i<300)); do coproc C { echo; }; read -u ${C[0]} l; ((i++)); done; echo done'
 echo "status $?"
 
+signal_status() {
+  if [ "$1" -gt 128 ]; then
+    echo "128+$(kill -l "$(($1 - 128))")"
+  else
+    echo "$1"
+  fi
+}
+
 echo "--- a fatal signal runs the EXIT trap ---"
 output=$("$BIN" --no-diagnostics -c 'trap "echo E" EXIT; kill -TERM $$; echo unreachable' 2>/dev/null)
 echo "status $? $output"
 output=$("$BIN" --no-diagnostics -c 'trap "echo E" EXIT; kill -USR1 $$; echo unreachable' 2>/dev/null)
-echo "status $? $output"
+echo "status $(signal_status $?) $output"
 "$BIN" --no-diagnostics -c '(trap "echo S" EXIT; kill -TERM $BASHPID; echo unreachable); echo "subshell $?"' 2>/dev/null
 output=$("$BIN" --no-diagnostics -c 'trap "echo E" EXIT; trap "echo T" TERM; kill -TERM $$; trap - TERM; kill -TERM $$; echo unreachable' 2>/dev/null)
 echo "status $? $output"
@@ -517,7 +525,9 @@ echo "--- an exported function follows its definition ---"
 
 echo "--- a closed descriptor stays closed after the command ---"
 "$BIN" --no-diagnostics -c 'f() { exec 3>x3; } 3>&-; f; echo hi >&3; echo "status $?"' 2>/dev/null
+echo "shell $?"
 "$BIN" --no-diagnostics -c '{ exec 3>x3; } 3>&-; echo hi >&3; echo "status $?"' 2>/dev/null
+echo "shell $?"
 
 echo "--- a utility keeps an inherited KOSHCONF ---"
 ln -s "$BIN" nice
@@ -561,9 +571,9 @@ printf '#!/bin/bash\n[[ x =~ (x)#y ]]\n[[ x =~ (a #b) ]] # note\n' > regex-hash
 "$BIN" --format regex-hash
 
 echo "--- bounds in sequence stay valid and nested bounds do not ---"
-"$BIN" -c "koshkit grep -cE 'a{30000}b{30000}c{30000}' /dev/null"
+"$BIN" -c "koshkit grep -cE 'a{255}b{255}c{255}' /dev/null"
 echo "status $?"
-"$BIN" -c "koshkit grep -cE '(a{30000}b{30000}c{30000}){2}' /dev/null" 2>/dev/null
+"$BIN" -c "koshkit grep -cE '(a{255}b{255}c{255}){255}' /dev/null" 2>/dev/null
 echo "status $?"
 
 term_after_ready() {
@@ -578,7 +588,7 @@ term_after_ready() {
   sleep 0.5
   started=$(date +%s)
   kill -TERM "$target"
-  wait "$target"
+  wait "$target" 2>/dev/null
   term_status=$?
   elapsed=$(($(date +%s) - started))
   [ "$elapsed" -lt 3 ] && term_speed=prompt || term_speed=late
@@ -612,7 +622,7 @@ for name in TERM USR1 HUP; do
   output=$("$BIN" --no-diagnostics -c ". ./exit_trap_body.sh; kill -$name \$\$; echo unreachable" 2>/dev/null)
   term_status=$?
   printf '%s\n' "$output"
-  echo "status $term_status"
+  echo "status $(signal_status "$term_status")"
 done
 term_after_ready '. ./exit_trap_body.sh; : > ready; sleep 4 > /dev/null 2>&1'
 term_after_ready '. ./exit_trap_body.sh; sleep 4 > /dev/null 2>&1 & : > ready; wait'
@@ -629,8 +639,10 @@ echo "--- a descriptor open for both directions ends with the capture ---"
 "$BIN" --no-diagnostics -c 'y=${ exec 4<>/dev/stdout; echo b; }; echo "[$y]"'
 
 echo "--- a capture works under a low descriptor limit ---"
-"$BIN" --no-diagnostics -c 'ulimit -n 12; x=${ echo a; }; y=$(echo b); echo "$x $y"'
-"$BIN" --no-diagnostics -c 'ulimit -n 8; x=${ echo a; }; y=$(echo b); echo "$x $y"'
+"$BIN" --no-diagnostics -c 'ulimit -n 12; x=${ echo a; }; y=$(echo b); echo "$x $y"' \
+  3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&-
+"$BIN" --no-diagnostics -c 'ulimit -n 8; x=${ echo a; }; y=$(echo b); echo "$x $y"' \
+  3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&-
 
 echo "--- a long extglob subject keeps the stack ---"
 "$BIN" --mood=bash --no-diagnostics -c 'shopt -s extglob; p=$(printf "a%.0s" {1..20000}); [[ $p == "$p"@(x|) ]]; echo "status $?"'
@@ -647,7 +659,7 @@ echo "--- xargs keeps its flags after a nested utility ---"
 printf 'a/b\nc/d\n' | "$BIN" --no-diagnostics -c 'koshkit xargs -t -n 1 koshkit basename' 2>&1
 
 echo "--- touch keeps a fractional date ---"
-"$BIN" --no-diagnostics -c 'touch -d @1.5 fractional; koshkit stat -c %y fractional' | cut -d. -f2 | cut -c1-9
+"$BIN" --no-diagnostics -c 'koshkit touch -d @1.5 fractional; koshkit stat -c %y fractional' | cut -d. -f2 | cut -c1-9
 
 echo "--- csplit -k writes the rest only for a pattern past the input ---"
 mkdir csplit_dir

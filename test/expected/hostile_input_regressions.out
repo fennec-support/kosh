@@ -40,12 +40,12 @@ after
 after
 --- an indirect subscript from data runs no command ---
 status 1
-status 2
+status 1
 --- an indirect value is a name and not an expression ---
 status 1
-status 2
+status 1
 --- export -p leaves out environment entries with invalid keys ---
-status 2
+status 1
 --- deep conditionals end in a diagnostic ---
 status 1
 --- a self reference through an element ends ---
@@ -240,7 +240,7 @@ done
 status 0
 --- a fatal signal runs the EXIT trap ---
 status 143 E
-status 138 E
+status 128+USR1 E
 S
 subshell 143
 status 143 T
@@ -256,7 +256,9 @@ end
 end
 --- a closed descriptor stays closed after the command ---
 status 2
+shell 0
 status 2
+shell 0
 --- a utility keeps an inherited KOSHCONF ---
 marker
 --- a user startup script that is not a regular file is skipped ---
@@ -309,7 +311,7 @@ y=inner
 subshell
 status=3
 STAGE
-status 143
+status 128+TERM
 got=captured
 child
 waited=0
@@ -318,7 +320,7 @@ y=inner
 subshell
 status=3
 STAGE
-status 138
+status 128+USR1
 got=captured
 child
 waited=0
@@ -327,7 +329,7 @@ y=inner
 subshell
 status=3
 STAGE
-status 129
+status 128+HUP
 got=captured
 child
 waited=0
