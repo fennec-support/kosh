@@ -2252,8 +2252,21 @@ operand into a directory, \f[CR]\-p\f[R], \f[CR]\-v\f[R], \f[CR]\-L\f[R]
 follow every link, \f[CR]\-H\f[R] follow links on the command line only,
 \f[CR]\-P\f[R] follow none,
 \f[CR]\-x\f[R]/\f[CR]\-\-one\-file\-system\f[R] copy a directory on
-another file system as an empty directory).
+another file system as an empty directory,
+\f[CR]\-l\f[R]/\f[CR]\-\-link\f[R] make hard links,
+\f[CR]\-s\f[R]/\f[CR]\-\-symbolic\-link\f[R] make symbolic links).
 A recursive copy keeps links as links.
+With \f[CR]\-l\f[R] or \f[CR]\-s\f[R], each source that is not a
+directory becomes a link at its destination, and \f[CR]\-R\f[R] still
+creates the directories and links the files inside them.
+A hard link to a source link that is followed points to the file the
+link resolves to.
+A relative source with \f[CR]\-s\f[R] is accepted only when the
+destination is in the current directory.
+An existing destination makes the link fail with status \f[CR]1\f[R]
+unless \f[CR]\-f\f[R] is given or \f[CR]\-i\f[R] is answered with yes.
+Passing both \f[CR]\-l\f[R] and \f[CR]\-s\f[R] exits with status
+\f[CR]2\f[R].
 A source whose last component is \f[CR].\f[R] or \f[CR]..\f[R], such as
 \f[CR]src/.\f[R] or \f[CR]src/./\f[R], copies its contents into the
 destination.

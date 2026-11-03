@@ -14,7 +14,7 @@
 #include "../base/HashSet.hpp"
 #include "../base/Path.hpp"
 
-KOSHKIT_UTIL_DECL("[-fHiLnPpRrvx] [-t directory] source ... [destination]",
+KOSHKIT_UTIL_DECL("[-fHiLlnPpRrsvx] [-t directory] source ... [destination]",
                   "The cp utility can copy each source to the destination.");
 
 FLAG(CP_ARCHIVE, Bool, 'a', "archive", "Copy as -R, -P, and -p together.");
@@ -32,6 +32,12 @@ FLAG(CP_NO_CLOBBER,
      'n',
      "no-clobber",
      "Keep every destination file that already exists.");
+FLAG(CP_LINK, Bool, 'l', "link", "Hard link files instead of copying them.");
+FLAG(CP_SYMBOLIC_LINK,
+     Bool,
+     's',
+     "symbolic-link",
+     "Make symbolic links instead of copying files.");
 FLAG(CP_PRESERVE, Bool, 'p', "", "Preserve file mode and timestamps.");
 FLAG(CP_VERBOSE, Bool, 'v', "", "Print the name of each copy as it happens.");
 FLAG(CP_FOLLOW_ROOT,
@@ -65,6 +71,13 @@ struct cp_directory_identity
   u64 file_id;
 };
 
+enum class cp_link_mode : u8
+{
+  Copy,
+  Hard,
+  Symbolic,
+};
+
 } /* namespace */
 
 enum class cp_symlink_mode : u8
@@ -87,8 +100,9 @@ struct cp_options
   Maybe<u64>        root_device_id;
   bool              is_operand_root{true};
   /* cp -p fails when the mode cannot be preserved, and mv keeps going. */
-  bool should_report_mode_failure{true};
-  bool should_keep_existing{false};
+  bool         should_report_mode_failure{true};
+  bool         should_keep_existing{false};
+  cp_link_mode link_mode{cp_link_mode::Copy};
   /* the files this command wrote, tracked while several sources can meet. */
   HashSet *created_file_targets{nullptr};
 
@@ -133,6 +147,71 @@ copy_file(const ExecContext &ec,
                      options.should_force ? copy_force_mode::Force
                                           : copy_force_mode::Normal,
                      allocator);
+
+  if (options.is_verbose)
+    ec.print_to_stdout("'" + String{allocator, source} + "' -> '" +
+                       String{allocator, destination} + "'\n");
+}
+
+static fn
+link_file(const ExecContext &ec,
+          StringView         source,
+          StringView         destination,
+          const cp_options  &options,
+          Allocator          allocator) throws -> void
+{
+  let const source_path      = Path{source, allocator};
+  let const destination_path = Path{destination, allocator};
+  let const is_symbolic      = options.link_mode == cp_link_mode::Symbolic;
+
+  if (is_symbolic && !source_path.is_absolute() &&
+      !destination_path.parent_or_current().is_same_file_as(
+          Path{".", allocator}))
+  {
+    throw ErrorWithDetails{
+        "Cannot create the relative symbolic link '" +
+            String{allocator, destination}
+            + "' outside the current directory",
+        "Pass an absolute source, or run cp in the destination directory"
+    };
+  }
+
+  let const is_destination_present =
+      destination_path.exists() || destination_path.is_symbolic_link();
+
+  if (options.should_force && is_destination_present &&
+      !os::remove_file(destination))
+  {
+    throw Error{
+        "Unable to remove '" + String{allocator, destination}
+          +
+        "': " + os::last_system_error_message()
+    };
+  }
+
+  let         link_target = source;
+  Maybe<Path> resolved_source;
+
+  if (!is_symbolic && source_path.is_symbolic_link()) {
+    resolved_source = os::canonical_path(source_path);
+    if (resolved_source.has_value()) link_target = resolved_source->view();
+  }
+
+  let const did_create = is_symbolic
+                             ? os::create_symlink(source, destination)
+                             : os::create_hard_link(link_target, destination);
+
+  if (!did_create) {
+    let const link_kind = StringView{is_symbolic ? "symbolic" : "hard"};
+
+    throw Error{
+        "Unable to create the " + String{allocator, link_kind  }
+          + " link '" +
+        String{allocator, destination}
+          +
+        "': " + os::last_system_error_message()
+    };
+  }
 
   if (options.is_verbose)
     ec.print_to_stdout("'" + String{allocator, source} + "' -> '" +
@@ -268,7 +347,7 @@ copy_path(const ExecContext                &ec,
     };
   }
 
-  if (is_source_symlink) {
+  if (is_source_symlink && options.link_mode != cp_link_mode::Symbolic) {
     if (let const target = os::read_symlink(source, allocator)) {
       if (should_keep_destination) return true;
 
@@ -492,6 +571,24 @@ copy_path(const ExecContext                &ec,
     };
   }
 
+  if (options.link_mode != cp_link_mode::Copy) {
+    if (!source_status.has_value() && !source_path.is_symbolic_link()) {
+      throw Error{
+          "Unable to read '" + String{allocator, source}
+            +
+          "': " + os::last_system_error_message()
+      };
+    }
+
+    link_file(ec, source, destination, options, allocator);
+
+    if (options.created_file_targets != nullptr) {
+      unused(options.created_file_targets->add(destination));
+    }
+
+    return true;
+  }
+
   let const source_type_letter = source_status.has_value()
                                      ? os::file_type_letter(source_status->mode)
                                      : '-';
@@ -573,6 +670,14 @@ Cp::execute(const ExecContext               &ec,
     return report_usage_error(ec, cxt, args[0].view());
   }
 
+  if (FLAG_CP_LINK.is_enabled() && FLAG_CP_SYMBOLIC_LINK.is_enabled()) {
+    KOSHKIT_REPORT_ERROR_AT(FLAG_CP_SYMBOLIC_LINK.value_location(),
+                            "Conflicting flags",
+                            "-l cannot be combined with -s");
+
+    return 2;
+  }
+
   let const is_archive     = FLAG_CP_ARCHIVE.is_enabled();
   let const recursive_mode = FLAG_CP_RECURSIVE_R.is_enabled() ||
                                      FLAG_CP_RECURSIVE_UPPER.is_enabled() ||
@@ -620,6 +725,10 @@ Cp::execute(const ExecContext               &ec,
                            Maybe<u64>{}};
 
   options.should_keep_existing = FLAG_CP_NO_CLOBBER.is_enabled();
+
+  if (FLAG_CP_LINK.is_enabled()) options.link_mode = cp_link_mode::Hard;
+  if (FLAG_CP_SYMBOLIC_LINK.is_enabled())
+    options.link_mode = cp_link_mode::Symbolic;
 
   let const should_prompt =
       FLAG_CP_INTERACTIVE.is_enabled() &&
@@ -704,16 +813,26 @@ Cp::execute(const ExecContext               &ec,
       continue;
     }
 
-    if (should_prompt &&
-        Path{target.view(), cxt.scratch_allocator()}.exists() &&
+    let const should_confirm =
+        should_prompt && Path{target.view(), cxt.scratch_allocator()}.exists();
+
+    if (should_confirm &&
         !confirm_koshkit_action(ec, "overwrite '" + target + "'?",
                                 confirm_default::No))
     {
       continue;
     }
 
+    let source_options = options;
+
+    if (should_confirm && !is_directory_source &&
+        options.link_mode != cp_link_mode::Copy)
+    {
+      source_options.should_force = true;
+    }
+
     try {
-      if (!copy_path(ec, cxt, source, target.view(), options,
+      if (!copy_path(ec, cxt, source, target.view(), source_options,
                      cxt.scratch_allocator(), nullptr, active_directories))
       {
         status = 1;

@@ -13,3 +13,13 @@ status=1
 root
 --- chown owner colon sets the login group ---
 status=0
+--- cp -l and -s link instead of copying ---
+'cp-link-tree/file' -> 'cp-link-hard'
+existing=1
+'cp-link-old' -> 'cp-link-soft'
+relative-outside=1
+both=2
+cp-link-hard=hard
+cp-link-tree-copy/file=hard
+cp-link-sub/forced=hard
+kept=old soft=cp-link-old sub-soft=missing both=missing
