@@ -773,6 +773,7 @@ class Word;
 class WordSegment;
 class Expression;
 struct arith_token;
+struct arith_token_cache;
 
 struct conditional_element
 {

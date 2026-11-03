@@ -2140,6 +2140,7 @@ protected:
   mutable Maybe<i64> m_folded_condition{};
   mutable bool       m_is_exact_folded_condition_nonzero{false};
 
+  mutable arith_token_cache     *m_init_cache{nullptr};
   mutable arith_token_cache     *m_condition_cache{nullptr};
   mutable arith_token_cache     *m_step_cache{nullptr};
   mutable published_command_text m_published_init_text{};

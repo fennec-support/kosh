@@ -3480,43 +3480,41 @@ EvalContext::compare_arithmetic(
 namespace {
 
 fn
-evaluate_arithmetic_cached_value(EvalContext            *context,
-                                 StringView              expression,
-                                 ArrayList<arith_token> &tokens,
-                                 bool                   &is_tokenized,
-                                 bool                   &is_simple,
-                                 const SourceLocation   *source_location,
-                                 bool                    is_exact,
-                                 BumpArena              &arena) throws
+evaluate_arithmetic_cached_value(EvalContext          *context,
+                                 StringView            expression,
+                                 arith_token_cache    &cache,
+                                 const SourceLocation *source_location,
+                                 bool                  is_exact,
+                                 BumpArena            &arena) throws
     -> ArithmeticValue
 {
-  if (!is_tokenized) {
-    if (expression.find_character('$').has_value() ||
-        expression.find_character('`').has_value() ||
-        expression.find_character('\\').has_value() ||
-        (expression.find_character('"').has_value() &&
-         context->runtime_state().bash_additions_enabled()))
-    {
-      return evaluate_arithmetic_value(context, expression, source_location,
-                                       is_exact, arena,
-                                       arithmetic_text_kind::ShellSource);
-    }
+  let &tokens = cache.tokens;
 
+  if (!cache.is_tokenized) {
     tokens.clear();
-    is_tokenized = true;
-    is_simple    = false;
-    try {
-      tokenize_arithmetic(expression, tokens);
-      is_simple = arith_tokens_are_simple(tokens);
-    } catch (...) {
-      tokens.clear();
+    cache.is_tokenized    = true;
+    cache.is_simple       = false;
+    cache.needs_expansion = expression.find_character('$').has_value() ||
+                            expression.find_character('`').has_value() ||
+                            expression.find_character('\\').has_value() ||
+                            expression.find_character('"').has_value();
+
+    if (!cache.needs_expansion) {
+      try {
+        tokenize_arithmetic(expression, tokens);
+        cache.is_simple = arith_tokens_are_simple(tokens);
+      } catch (...) {
+        tokens.clear();
+      }
     }
   }
 
-  if (!is_simple)
-    return evaluate_arithmetic_value(context, expression, source_location,
-                                     is_exact, arena,
-                                     arithmetic_text_kind::ShellSource);
+  if (!cache.is_simple) {
+    return evaluate_arithmetic_value(
+        context, expression, source_location, is_exact, arena,
+        cache.needs_expansion ? arithmetic_text_kind::ShellSource
+                              : arithmetic_text_kind::Value);
+  }
 
   /* at this point: is_tokenized and is_simple are both true, so tokens
      holds a complete tokenization that arith_tokens_are_simple() accepted. */
@@ -3577,8 +3575,7 @@ EvalContext::evaluate_arithmetic_cached_text(
   let const value = [&]() throws -> ArithmeticValue {
     try {
       return evaluate_arithmetic_cached_value(
-          this, segment.text.view(), cache.arith->tokens,
-          cache.arith->is_tokenized, cache.arith->is_simple,
+          this, segment.text.view(), *cache.arith,
           source_location.has_value() ? &*source_location : nullptr, is_exact,
           expansion_store().scratch_arena());
     } catch (ErrorBase &error) {
@@ -3613,11 +3610,9 @@ EvalContext::evaluate_arithmetic_cached_text(
 
 fn
 EvalContext::evaluate_arithmetic_cached_clause_nonzero(
-    StringView              expression,
-    ArrayList<arith_token> &tokens,
-    bool                   &is_tokenized,
-    bool                   &is_simple,
-    const SourceLocation   *source_location) throws -> bool
+    StringView            expression,
+    arith_token_cache    &cache,
+    const SourceLocation *source_location) throws -> bool
 {
   let const scratch = expansion_store().scratch_arena().mark();
 
@@ -3625,9 +3620,9 @@ EvalContext::evaluate_arithmetic_cached_clause_nonzero(
 
   let const is_exact = runtime_state().is_extended_arithmetic_enabled();
 
-  return !evaluate_arithmetic_cached_value(
-              this, expression, tokens, is_tokenized, is_simple,
-              source_location, is_exact, expansion_store().scratch_arena())
+  return !evaluate_arithmetic_cached_value(this, expression, cache,
+                                           source_location, is_exact,
+                                           expansion_store().scratch_arena())
               .is_zero();
 }
 

@@ -495,7 +495,8 @@ EvalContext::setup_process_substitution(const WordSegment &segment)
   return setup_process_substitution(
       segment.text.view(),
       segment.get_source_location(
-          source_store().current_location().source_name_index));
+          source_store().current_location().source_name_index),
+      &segment);
 }
 
 /* memory: substitution_source is a String local to this call. the pending
@@ -506,8 +507,9 @@ EvalContext::setup_process_substitution(const WordSegment &segment)
            loop over pending process substitutions costs O(pending). */
 fn
 EvalContext::setup_process_substitution(
-    StringView text, Maybe<SourceLocation> segment_location) throws
-    -> String
+    StringView            text,
+    Maybe<SourceLocation> segment_location,
+    const WordSegment    *cache_segment) throws -> String
 {
   refuse_command_in_data_expansion("process substitution");
   if (arena_store().parse_arena() == nullptr)
@@ -523,9 +525,28 @@ EvalContext::setup_process_substitution(
       is_command_pipe_writer ? "writes to the pipe"
                              : "takes input from the pipe");
 
-  let const ast_mark = arena_store().parse_arena()->mark();
+  let cache_arena = static_cast<BumpArena *>(nullptr);
+  let cache       = static_cast<segment_eval_cache *>(nullptr);
 
-  defer { arena_store().parse_arena()->release(ast_mark); };
+  if (cache_segment != nullptr) {
+    cache_arena = cache_segment->is_substitution_cache_in_function_arena
+                      ? arena_store().function_arena()
+                      : arena_store().parse_arena();
+    ASSERT(cache_arena != nullptr);
+    cache = &cache_segment->get_eval_cache(cache_arena);
+  }
+
+  let const has_cached_ast =
+      cache != nullptr && cache->substitution_ast != nullptr &&
+      cache_arena->is_lifetime_valid(cache->substitution_lifetime);
+  let const ast_mark =
+      cache == nullptr
+          ? Maybe<BumpArena::Mark>{arena_store().parse_arena()->mark()}
+          : None;
+
+  defer {
+    if (ast_mark.has_value()) arena_store().parse_arena()->release(*ast_mark);
+  };
 
   let const substitution_source = String{heap_allocator(), text.substring(1)};
   let       frame               = SubstitutionFrame{*this};
@@ -537,18 +558,37 @@ EvalContext::setup_process_substitution(
                             &substitution_source);
   }
 
-  let parser = Parser{
-      Lexer{substitution_source.view(), *arena_store().parse_arena(), None,
-            runtime_state().get_mood()}
-  };
-  const Expression *ast;
+  const Expression *ast = has_cached_ast ? cache->substitution_ast : nullptr;
 
-  try {
-    ast = parser.construct_ast();
-  } catch (...) {
-    render_contained_substitution_error(std::current_exception(),
-                                        substitution_source.view());
-    throw;
+  if (ast == nullptr) {
+    LOG(Debug, "process substitution ast cache miss, parsing");
+
+    let const allocation_kind =
+        cache_segment != nullptr &&
+                cache_segment->is_substitution_cache_in_function_arena
+            ? ParseSession::AllocationKind::FunctionBody
+            : ParseSession::AllocationKind::Syntax;
+    let &parse_arena =
+        cache != nullptr ? *cache_arena : *arena_store().parse_arena();
+    let const parse_text =
+        cache != nullptr ? text.substring(1) : substitution_source.view();
+    let parser = Parser{
+        Lexer{parse_text, parse_arena, None, runtime_state().get_mood(),
+              allocation_kind}
+    };
+
+    try {
+      ast = parser.construct_ast();
+    } catch (...) {
+      render_contained_substitution_error(std::current_exception(),
+                                          substitution_source.view());
+      throw;
+    }
+
+    if (cache != nullptr) {
+      cache->substitution_ast      = ast;
+      cache->substitution_lifetime = cache_arena->register_lifetime();
+    }
   }
 
   ASSERT(ast != nullptr);

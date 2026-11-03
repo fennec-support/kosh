@@ -811,6 +811,11 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
     fact_list.append(entry.name);
   }
 
+  if (word.has_only_plain_name_references()) {
+    if (fact_list.count() > 1) fact_list.push(' ');
+    fact_list.append(StringView{"plain-references"});
+  }
+
   fact_list.push(')');
   symbol("facts", fact_list.view());
   if (word.has_locale_translation_quote) flag("locale-quote");

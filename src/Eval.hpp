@@ -6104,11 +6104,9 @@ public:
 
   fn
   evaluate_arithmetic_cached_clause_nonzero(
-      StringView              expression,
-      ArrayList<arith_token> &tokens,
-      bool                   &is_tokenized,
-      bool                   &is_simple,
-      const SourceLocation   *source_location = nullptr) throws -> bool;
+      StringView            expression,
+      arith_token_cache    &cache,
+      const SourceLocation *source_location = nullptr) throws -> bool;
 
   fn
   evaluate_conditional(const ArrayList<conditional_element> &elements)
@@ -6151,8 +6149,9 @@ public:
       -> String;
   fn
   setup_process_substitution(
-      StringView text, Maybe<SourceLocation> segment_location) throws
-      -> String;
+      StringView            text,
+      Maybe<SourceLocation> segment_location,
+      const WordSegment    *cache_segment = nullptr) throws -> String;
   mustuse fn
   mark_process_substitutions() const wontthrow -> process_substitution_mark;
   fn

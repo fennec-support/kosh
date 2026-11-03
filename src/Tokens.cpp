@@ -242,11 +242,10 @@ Word::to_literal_string() const throws -> String
 fn
 Word::compute_facts() const wontthrow -> void
 {
-  let       facts     = static_cast<u16>(Fact::IsComputed);
-  let       is_static = true;
-  let const plain     = optimizer::classify_plain_literal(*this);
-
-  facts |= static_cast<u16>(static_cast<u16>(plain) << PLAIN_KIND_SHIFT);
+  let facts                 = static_cast<u16>(Fact::IsComputed);
+  let is_static             = true;
+  let has_reference         = false;
+  let has_complex_reference = false;
 
   if (!segments.is_empty() &&
       segments[0].kind == WordSegment::Kind::UnquotedText &&
@@ -263,15 +262,33 @@ Word::compute_facts() const wontthrow -> void
     case WordSegment::Kind::UnquotedText: {
       let const text = segment.text.view();
 
-      if (optimizer::word_segment_has_glob_metacharacter(segment))
-        facts |= static_cast<u16>(Fact::HasUnquotedGlob);
-      if (text.find_character('{').has_value())
-        facts |= static_cast<u16>(Fact::HasBraceCandidate);
-      if (text.find_substring(":~").has_value())
-        facts |= static_cast<u16>(Fact::HasColonTilde);
+      for (usize i = 0; i < text.length; i++) {
+        let const byte          = text[i];
+        let const is_next_paren = i + 1 < text.length && text[i + 1] == '(';
 
-      for (usize i = 0; i < text.length && is_static; i++) {
-        if (lexer::is_expandable_char(text[i])) is_static = false;
+        switch (byte) {
+        case '*':
+        case '?':
+        case '[':
+          facts |= static_cast<u16>(Fact::HasUnquotedGlob);
+          is_static = false;
+          break;
+
+        case '+':
+        case '@':
+        case '!':
+          if (is_next_paren) facts |= static_cast<u16>(Fact::HasUnquotedGlob);
+          break;
+
+        case '{': facts |= static_cast<u16>(Fact::HasBraceCandidate); break;
+
+        case ':':
+          if (i + 1 < text.length && text[i + 1] == '~')
+            facts |= static_cast<u16>(Fact::HasColonTilde);
+          break;
+
+        default: break;
+        }
       }
 
       break;
@@ -284,12 +301,20 @@ Word::compute_facts() const wontthrow -> void
       break;
 
     case WordSegment::Kind::VariableReference:
+      has_reference = true;
+      if (!lexer::word_is_variable_name(segment.text.view()))
+        has_complex_reference = true;
+      is_static = false;
+      break;
+
     case WordSegment::Kind::ProcessSubstitution:
     case WordSegment::Kind::ArithmeticExpansion: is_static = false; break;
     }
   }
 
   if (is_static) facts |= static_cast<u16>(Fact::IsStaticName);
+  if (has_reference && !has_complex_reference)
+    m_extra_facts |= EXTRA_HAS_PLAIN_NAME_REFERENCES;
   m_facts |= facts;
 }
 
@@ -334,7 +359,13 @@ Word::classify_command() const throws -> void
 fn
 Word::plain_literal_kind() const wontthrow -> PlainLiteral
 {
-  if (!are_facts_computed()) compute_facts();
+  if ((m_extra_facts & EXTRA_IS_PLAIN_KIND_COMPUTED) == 0) {
+    let const kind = optimizer::classify_plain_literal(*this);
+
+    m_facts = static_cast<u16>((m_facts & ~PLAIN_KIND_MASK) |
+                               (static_cast<u16>(kind) << PLAIN_KIND_SHIFT));
+    m_extra_facts |= EXTRA_IS_PLAIN_KIND_COMPUTED;
+  }
 
   return static_cast<PlainLiteral>((m_facts & PLAIN_KIND_MASK) >>
                                    PLAIN_KIND_SHIFT);

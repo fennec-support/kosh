@@ -501,6 +501,19 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
+      if (!resolved_text.has_value() && word.has_only_plain_name_references()) {
+        if (let const stored = variable_store().find_plain_scalar(segment_text);
+            stored.has_value())
+        {
+          if (segment.is_in_double_quotes)
+            do_append_run(stored->view(), false);
+          else
+            do_append_split_run(stored->view(), true);
+
+          break;
+        }
+      }
+
       /* ${!prefix*} lists variables only when prefix is a valid identifier, so
          ${!ref%c*} stays an indirect expansion with an operator. */
       if (segment_text.length > 2 && segment_text[0] == '!' &&

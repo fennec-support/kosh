@@ -24,14 +24,14 @@ echo combined
     (pipeline :at 1:23 :end 1:24 :stages 2
       (simple-command :name "echo" :at 1:10 :end 1:22 :first-token-at 1:10 :full-end 1:22
         (word "echo" :at 1:10 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-        (word "\"$name\"" :at 1:15 :text "name" :plain none :facts () :escape "\"\"\"\""
+        (word "\"$name\"" :at 1:15 :text "name" :plain none :facts (plain-references) :escape "\"\"\"\""
           (segment :kind variable "name" :at 1:17 :in-double-quotes :greedy-name)))
       (simple-command :name "koshkit" :at 1:25 :end 1:36 :first-token-at 1:25 :full-end 1:36
         (word "koshkit" :at 1:25 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^")
         (word "cat" :at 1:33 :plain unquoted-one-segment :facts (static-name) :escape "^^^")))))
 (word "name=ok" :at 1:1 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^")
 (word "echo" :at 1:10 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
-(word "\"$name\"" :at 1:15 :text "name" :plain none :facts () :escape "\"\"\"\""
+(word "\"$name\"" :at 1:15 :text "name" :plain none :facts (plain-references) :escape "\"\"\"\""
   (segment :kind variable "name" :at 1:17 :in-double-quotes :greedy-name))
 (word "koshkit" :at 1:25 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^^^")
 (word "cat" :at 1:33 :plain unquoted-one-segment :facts (static-name) :escape "^^^")
@@ -114,7 +114,7 @@ echo embedded
       (element :kind and)
       (element :kind not)
       (element :kind operand
-        (word "$y" :at 7:14 :text "y" :plain none :facts () :escape "$"
+        (word "$y" :at 7:14 :text "y" :plain none :facts (plain-references) :escape "$"
           (segment :kind variable "y" :at 7:15 :greedy-name)))
       (element :kind operand :bare :binary-operator
         (word "==" :at 7:17 :plain unquoted-one-segment :facts (static-name) :escape "^^"))
@@ -122,7 +122,7 @@ echo embedded
         (word "z*" :at 7:20 :plain none :facts (unquoted-glob) :escape "^^"))))
   (condition :after none :terminator-at 8:41
     (case :at 8:1 :end 8:41
-      (word "$x" :at 8:6 :text "x" :plain none :facts () :escape "$"
+      (word "$x" :at 8:6 :text "x" :plain none :facts (plain-references) :escape "$"
         (segment :kind variable "x" :at 8:7 :greedy-name))
       (item :terminator ;;
         (pattern
@@ -157,5 +157,5 @@ echo embedded
   (segment :kind literal "*b")
   (segment :kind unquoted "*"))
 (word "~/x" :at 1:14 :plain none :facts (static-name leading-tilde) :escape "^^^")
-(word "\"$HOME\"" :at 1:18 :text "HOME" :plain none :facts () :escape "\"\"\"\""
+(word "\"$HOME\"" :at 1:18 :text "HOME" :plain none :facts (plain-references) :escape "\"\"\"\""
   (segment :kind variable "HOME" :at 1:20 :in-double-quotes :greedy-name))

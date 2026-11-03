@@ -846,8 +846,7 @@ ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const t
     /* at this point: m_cache points to an initialized arith_token_cache. */
     try {
       is_nonzero = cxt.evaluate_arithmetic_cached_clause_nonzero(
-          m_expression, m_cache->tokens, m_cache->is_tokenized,
-          m_cache->is_simple, &body_base);
+          m_expression, *m_cache, &body_base);
     } catch (const ErrorBase &) {
       if (!m_cache->is_simple) throw;
 
@@ -947,7 +946,9 @@ CStyleForLoop::CStyleForLoop(SourceLocation    location,
 
 CStyleForLoop::~CStyleForLoop()
 {
-  for (arith_token_cache *cache : {m_condition_cache, m_step_cache}) {
+  for (arith_token_cache *cache :
+       {m_init_cache, m_condition_cache, m_step_cache})
+  {
     if (cache == nullptr) continue;
     cache->~arith_token_cache();
     heap_allocator().free_array(cache, 1);
@@ -1049,8 +1050,8 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
     if (!should_run_init) return {cxt.execution_store().last_exit_status()};
 
-    cxt.evaluate_arithmetic_nonzero(m_init, &init_base,
-                                    arithmetic_text_kind::ShellSource);
+    cxt.evaluate_arithmetic_cached_clause_nonzero(
+        m_init, get_clause_cache(m_init_cache), &init_base);
   }
 
   let const is_condition_blank = is_blank_clause(m_condition);
@@ -1073,9 +1074,8 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
     let &cache = get_clause_cache(m_condition_cache);
 
-    return cxt.evaluate_arithmetic_cached_clause_nonzero(
-        m_condition, cache.tokens, cache.is_tokenized, cache.is_simple,
-        &condition_base);
+    return cxt.evaluate_arithmetic_cached_clause_nonzero(m_condition, cache,
+                                                         &condition_base);
   };
 
   let const do_test_condition = [&]() throws -> bool {
@@ -1113,9 +1113,7 @@ CStyleForLoop::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throw
 
       let &cache = get_clause_cache(m_step_cache);
 
-      cxt.evaluate_arithmetic_cached_clause_nonzero(
-          m_step, cache.tokens, cache.is_tokenized, cache.is_simple,
-          &step_base);
+      cxt.evaluate_arithmetic_cached_clause_nonzero(m_step, cache, &step_base);
     }
   }
 

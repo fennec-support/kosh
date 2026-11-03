@@ -987,6 +987,8 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
         }
 
         if (!did_take_fast_path) {
+          let const has_plain_references =
+              expandable.has_only_plain_name_references();
           let is_single_field = !expandable.segments.is_empty();
 
           for (let const &segment : expandable.segments) {
@@ -1010,6 +1012,12 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
             case WordSegment::Kind::VariableReference: {
               let const spec                   = segment.text.view();
               let       has_multi_field_marker = !segment.is_in_double_quotes;
+
+              if (has_plain_references) {
+                if (has_multi_field_marker) is_single_field = false;
+                break;
+              }
+
 #pragma clang loop unroll_count(4)
 
               for (usize i = 0; !has_multi_field_marker && i < spec.length; i++)
@@ -1033,8 +1041,9 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
             for (let const &segment : expandable.segments) {
               switch (segment.kind) {
               case WordSegment::Kind::VariableReference: {
-                let const spec          = segment.text.view();
-                let const is_plain_name = lexer::word_is_variable_name(spec);
+                let const spec = segment.text.view();
+                let const is_plain_name =
+                    has_plain_references || lexer::word_is_variable_name(spec);
 
                 if (is_plain_name)
                   if (let const stored =
