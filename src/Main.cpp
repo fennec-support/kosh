@@ -59,11 +59,12 @@ FLAG(INTERACTIVE,
      "Specify that the shell is interactive.");
 FLAG(STDIN, Bool, 's', "stdin", Posix, "Execute command from stdin and exit.");
 FLAG(COMMAND,
-     ManyStrings,
+     OperandValue,
      'c',
      "command",
      Posix,
-     "Execute the specified command and exit. The option can be repeated.");
+     "Execute the first operand as a command string and exit. The next "
+     "operand sets $0, and the rest set the positional parameters.");
 FLAG(ERROR_EXIT, Bool, 'e', "error-exit", Posix, "Exit on the first error.");
 FLAG(DISABLE_EXPANSION, Bool, 'f', "no-glob", Posix, "Disable path expansion.");
 FLAG(ONE_COMMAND,
@@ -571,7 +572,8 @@ splice_environment_flags(command_line &line) throws -> void
     /* KOSH_FLAGS can set options but cannot choose what runs. Option words
        and their values are kept, and -c, -s, --, and operands are dropped. */
     /* e.g. KOSH_FLAGS = "-ec echo --rcfile x -o nounset"
-       "-ec": kept as "-e"; c drops itself and the next word "echo".
+       "-ec": kept as "-e"; c drops itself.
+       "echo": an operand, so it is dropped.
        "--rcfile": ignored, so it and its value "x" are dropped.
        "-o": kept, and its value "nounset" is kept after it.
        flag_tokens: ["-e", "-o", "nounset"] */
@@ -607,8 +609,7 @@ splice_environment_flags(command_line &line) throws -> void
         return;
       }
 
-      /* the c letter drops itself and its value, attached or the next word,
-         and the s letter drops itself. The other letters stay. */
+      /* the c and s letters drop themselves. The other letters stay. */
       let kept          = String{heap_allocator()};
       should_keep_value = true;
 
@@ -616,14 +617,7 @@ splice_environment_flags(command_line &line) throws -> void
       for (usize i = 1; i < token.length; i++) {
         let const flag = find_short_flag(FLAG_LIST, token[i]);
 
-        if (flag == &FLAG_COMMAND) {
-          is_value_next     = i + 1 == token.length;
-          should_keep_value = false;
-
-          break;
-        }
-
-        if (flag == &FLAG_STDIN) continue;
+        if (flag == &FLAG_COMMAND || flag == &FLAG_STDIN) continue;
         kept.push(token[i]);
 
         if (flag != nullptr && takes_separate_value(*flag)) {
@@ -660,8 +654,8 @@ static fn
 parse_invocation_flags(int argc, const char *const *argv) throws
     -> ArrayList<String>
 {
-  return parse_flags(FLAG_LIST, argc, argv, 0, &FLAG_COMMAND, nullptr, nullptr,
-                     StringView{}, INVOCATION_PARSE_OPTIONS);
+  return parse_flags(FLAG_LIST, argc, argv, 0, nullptr, nullptr, StringView{},
+                     INVOCATION_PARSE_OPTIONS);
 }
 
 static fn
@@ -963,7 +957,7 @@ validate_invocation(const command_line      &line,
   if (FLAG_LANGUAGE_SERVER.is_enabled() &&
       (FLAG_STDIN.is_enabled() || FLAG_INTERACTIVE.is_enabled() ||
        FLAG_LINT.is_enabled() || FLAG_FORMAT.is_enabled() ||
-       FLAG_APPLY.is_enabled() || !FLAG_COMMAND.is_empty() ||
+       FLAG_APPLY.is_enabled() || FLAG_COMMAND.is_enabled() ||
        !operands.is_empty()))
   {
     show_flag_diagnostic(line, "--as-language-server", '\0', false,
@@ -986,7 +980,7 @@ validate_invocation(const command_line      &line,
 
   if (FLAG_APPLY.is_enabled() &&
       (FLAG_STDIN.is_enabled() || FLAG_INTERACTIVE.is_enabled() ||
-       !FLAG_COMMAND.is_empty()))
+       FLAG_COMMAND.is_enabled()))
   {
     show_flag_diagnostic(line, "--apply", '\0', false,
                          "The '--apply' option does not accept '-s', '-i', "
@@ -1040,7 +1034,7 @@ select_input_source(const command_line      &line,
   }
 
   if (FLAG_STDIN.is_enabled()) {
-    if (!FLAG_COMMAND.is_empty()) {
+    if (FLAG_COMMAND.is_enabled()) {
       show_flag_diagnostic(line, "--stdin", 's', true,
                            "Incompatible options or arguments were specified "
                            "along with the '-s' option, so the shell falls "
@@ -1056,13 +1050,13 @@ select_input_source(const command_line      &line,
 
     plan.should_read_stdin = true;
   } else if (FLAG_LINT.is_enabled() &&
-             (!FLAG_COMMAND.is_empty() || !operands.is_empty()))
+             (FLAG_COMMAND.is_enabled() || !operands.is_empty()))
   {
-    plan.should_execute_commands = !FLAG_COMMAND.is_empty();
+    plan.should_execute_commands = FLAG_COMMAND.is_enabled();
     plan.should_read_files       = !operands.is_empty();
   } else if (FLAG_LINT.is_enabled()) {
     plan.should_read_stdin = true;
-  } else if (!FLAG_COMMAND.is_empty()) {
+  } else if (FLAG_COMMAND.is_enabled()) {
     if (FLAG_INTERACTIVE.is_enabled()) {
       show_flag_diagnostic(line, "--interactive", 'i', true,
                            "Incompatible options or arguments were specified "
@@ -1653,7 +1647,7 @@ apply_session_config(EvalContext          &context,
   state.set_option(shell_option_id::Onecmd, config.is_one_command);
   if (config.has_execution_string) {
     context.execution_store().set_execution_string(
-        String{heap_allocator(), FLAG_COMMAND.get(0)});
+        String{heap_allocator(), FLAG_COMMAND.value()});
   }
 
   context.startup_store().set_login_shell(config.is_login_shell);
@@ -1984,40 +1978,6 @@ struct script_chunk
   bool                  was_rejected                     = false;
 };
 
-static fn
-find_command_call_site(const command_line &line,
-                       usize               consumed_command_index) wontthrow
-    -> Maybe<SourceLocation>
-{
-  /* e.g. parse_argv = ["kosh", "-c", "echo hi", "-c", "true"] and
-          consumed_command_index = 2. "kosh" adds 5 to flag_offset, "-c" adds 3,
-          and "echo hi" adds 10 (9 quoted bytes plus a separator), so the second
-          "-c" starts at offset 18. the return is {18, 7} for "-c true". */
-  let const parse_argc         = line.get_parse_argc();
-  let const parse_argv         = line.get_parse_argv();
-  usize     seen_command_count = 0;
-  usize     flag_offset        = 0;
-
-  for (int a = 0; a < parse_argc; a++) {
-    const StringView token{parse_argv[a], strlen(parse_argv[a])};
-    let const        quoted_length = shell_quoted_arg_length(token);
-
-    if (token == "-c" || token == "--command") {
-      seen_command_count++;
-      if (seen_command_count == consumed_command_index && a + 1 < parse_argc) {
-        const usize argument_length = shell_quoted_arg_length(
-            StringView{parse_argv[a + 1], strlen(parse_argv[a + 1])});
-
-        return SourceLocation{flag_offset, quoted_length + 1 + argument_length};
-      }
-    }
-
-    flag_offset += quoted_length + 1;
-  }
-
-  return None;
-}
-
 struct script_cursor
 {
   const command_line        &line;
@@ -2027,7 +1987,8 @@ struct script_cursor
   const String              &cli_invocation;
   Maybe<String>             &prefetched_script_contents;
   bool                       should_quit;
-  usize                      next_file_index = 0;
+  usize                      next_file_index  = 0;
+  bool                       did_read_command = false;
 
   /* memory: chunk.contents owns all of standard input until the loop iteration
              in kosh_main() ends.
@@ -2053,23 +2014,17 @@ struct script_cursor
                     script_chunk &chunk,
                     bool          is_fresh_evaluator) throws -> void
   {
-    chunk.contents            = FLAG_COMMAND.take_next();
+    chunk.contents            = String{heap_allocator(), FLAG_COMMAND.value()};
     chunk.command_string_name = COMMAND_STRING_SOURCE_NAME;
+    did_read_command          = true;
     if (!is_fresh_evaluator) {
       context.execution_store().set_execution_string(
           String{heap_allocator(), chunk.contents.view()});
     }
 
-    LOG(Info, "taking the next -c command string, %zu bytes",
+    LOG(Info, "taking the -c command string, %zu bytes",
         chunk.contents.count());
-    if (FLAG_COMMAND.count() > 1) {
-      chunk.root_frame_call_site =
-          find_command_call_site(line, FLAG_COMMAND.value_position());
-    }
-
-    if (FLAG_COMMAND.at_end() &&
-        (!FLAG_LINT.is_enabled() || !input.should_read_files))
-    {
+    if (!FLAG_LINT.is_enabled() || !input.should_read_files) {
       should_quit = true;
     }
   }
@@ -2982,7 +2937,7 @@ kosh_main(int argc, char **argv) -> int
     try {
       if (input.should_read_stdin) {
         cursor.read_standard_input(chunk);
-      } else if (input.should_execute_commands && !FLAG_COMMAND.at_end()) {
+      } else if (input.should_execute_commands && !cursor.did_read_command) {
         cursor.read_next_command(context, chunk, inherited.state.has_value());
         chunk.is_fresh_evaluator_command = inherited.state.has_value();
         chunk.should_use_command_string_status =
@@ -3049,10 +3004,9 @@ kosh_main(int argc, char **argv) -> int
       toiletline::emit_command_start_marks(context, chunk.contents.view());
     }
 
-    let const has_multiple_root_sources =
-        input.should_execute_commands
-            ? FLAG_COMMAND.count() > 1
-            : FLAG_LINT.is_enabled() && file_names.count() > 1;
+    let const has_multiple_root_sources = !input.should_execute_commands &&
+                                          FLAG_LINT.is_enabled() &&
+                                          file_names.count() > 1;
     let const should_push_root_frame =
         chunk.root_frame_call_site.has_value() && has_multiple_root_sources &&
         !inherited.should_suppress_root_source_trace;

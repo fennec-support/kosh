@@ -307,9 +307,9 @@ T}@T{
 Read commands from standard input.
 T}
 T{
-\f[CR]\-c COMMAND, \-\-command=COMMAND\f[R]
+\f[CR]\-c, \-\-command\f[R]
 T}@T{
-Execute \f[CR]COMMAND\f[R] string.
+Execute the first operand as a command string.
 T}
 T{
 \f[CR]\-e, \-\-error\-exit\f[R]
@@ -587,11 +587,11 @@ T}
 T{
 POSIX
 T}@T{
-\f[CR]\-c COMMAND, \-\-command=COMMAND\f[R]
+\f[CR]\-c, \-\-command\f[R]
 T}@T{
-May be repeated to execute multiple strings in sequence.
-A syntax error exits with status \f[CR]2\f[R], an analysis error exits
-with status \f[CR]1\f[R], and subsequent command strings are aborted.
+The command string is the first operand, as specified in Invocation.
+A syntax error exits with status \f[CR]2\f[R], and an analysis error
+exits with status \f[CR]1\f[R].
 T}
 T{
 POSIX

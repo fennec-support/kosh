@@ -70,13 +70,13 @@ done
 # A bare unset operand completes variables with no leading dollar, and unset -f
 # completes the defined functions.
 echo "== unset completes a variable name:"
-"$BIN" -c 'completion_probe_var=1' --debug-complete-at 'unset completion_probe' </dev/null
+"$BIN" --debug-complete-at 'unset completion_probe' -c 'completion_probe_var=1' </dev/null
 
 echo "== unset completes a dynamic ANSI variable name:"
 "$BIN" --debug-complete-at 'unset KOSH_ANSI_RE' </dev/null
 
 echo "== unset -f completes a function name:"
-"$BIN" -c 'completion_probe_fn() { :; }' --debug-complete-at 'unset -f completion_probe' </dev/null
+"$BIN" --debug-complete-at 'unset -f completion_probe' -c 'completion_probe_fn() { :; }' </dev/null
 
 echo "== plain unset does not offer a function name:"
-"$BIN" -c 'completion_probe_fn() { :; }' --debug-complete-at 'unset completion_probe' </dev/null
+"$BIN" --debug-complete-at 'unset completion_probe' -c 'completion_probe_fn() { :; }' </dev/null

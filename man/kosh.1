@@ -184,7 +184,7 @@ kosh \-\-lint \-\-format \-\-apply script.kosh
 kosh [options] [script [argument ...]]
 kosh \-c command [argument ...]
 kosh \-s [argument ...]
-kosh \-\-lint [\-c command ...] [file ...]
+kosh \-\-lint [\-c command] [file ...]
 kosh \-\-format [file]
 kosh \-\-lint \-\-format [file]
 kosh [\-\-lint] [\-\-format] \-\-apply file ...
@@ -365,9 +365,8 @@ substitution between the top level and the failing command appends a
 \f[CR]trace:\f[R] frame.
 Consecutive identical frames collapse into a single frame with a repeat
 count.
-When multiple \f[CR]\-c\f[R] strings or files are processed, the
-top\-level command\-line frame prints once after all diagnostics for
-that input.
+When \f[CR]\-\-lint\f[R] analyzes several files, the top\-level
+command\-line frame prints once after all diagnostics for each file.
 .IP \[bu] 2
 \f[B]Multi\-error syntax reporting\f[R] \- Linting, the language server,
 and script execution report all syntax errors in a single pass.
@@ -432,8 +431,9 @@ active mood regardless of \f[CR]\-W\f[R],
 \f[CR]\-\-no\-diagnostics\f[R], or
 \f[CR]\-\-no\-annoying\-diagnostics\f[R].
 .IP \[bu] 2
-\f[B]Input order\f[R] \- Analyzes \f[CR]\-c\f[R] command strings in
-order, then file operands, or standard input if neither is provided.
+\f[B]Input order\f[R] \- Analyzes the \f[CR]\-c\f[R] command string,
+then the remaining operands as files, or standard input if neither is
+provided.
 Startup and settings files are skipped.
 Diagnostics write to stderr and stdout remains empty.
 .IP \[bu] 2
@@ -3272,8 +3272,17 @@ T}
 .SH BASH AND POSIX LANGUAGE SPECIFICATION
 .SS Invocation, operands, and compatibility startup
 .IP \[bu] 2
+\f[B]Command string (\f[CB]\-c\f[B])\f[R] \- \f[CR]\-c\f[R] takes no
+value of its own and may stand anywhere in a cluster of short options,
+as in \f[CR]\-ec\f[R] or \f[CR]\-xec\f[R].
+The first operand is the command string, and option parsing ends at it.
+A lone \f[CR]\-\f[R] or \f[CR]\-\-\f[R] before the command string ends
+option parsing without becoming an operand.
+Repeating \f[CR]\-c\f[R] has no further effect, and \f[CR]\-c\f[R]
+without an operand fails with status \f[CR]2\f[R].
+.IP \[bu] 2
 \f[B]Input source precedence\f[R] \- Evaluated in strict order:
-\f[CR]\-s\f[R] (stdin), \f[CR]\-c\f[R] (inline command strings),
+\f[CR]\-s\f[R] (stdin), \f[CR]\-c\f[R] (inline command string),
 \f[CR]script\f[R] operand (where \f[CR]\-\f[R] selects stdin; a
 directory fails with \f[CR]126\f[R], an unopenable file fails with
 \f[CR]127\f[R]), \f[CR]\-i\f[R] or terminal stdin (interactive editor),
@@ -3287,8 +3296,8 @@ complete.
 \f[B]Positional parameter assignment (\f[CB]$0\f[B] and
 \f[CB]$1..$N\f[B])\f[R] \- For scripts, \f[CR]$0\f[R] is the script path
 and remaining operands become \f[CR]$1..$N\f[R].
-For \f[CR]\-c\f[R], the first operand after the command string(s)
-becomes \f[CR]$0\f[R] and subsequent operands become \f[CR]$1..$N\f[R].
+For \f[CR]\-c\f[R], the first operand after the command string becomes
+\f[CR]$0\f[R] and subsequent operands become \f[CR]$1..$N\f[R].
 For \f[CR]\-s\f[R] and interactive sessions, \f[CR]$0\f[R] remains the
 shell invocation name and all operands become \f[CR]$1..$N\f[R].
 .IP \[bu] 2

@@ -10,13 +10,14 @@ echo "== a prefix selects system variables through koshkit:"
 echo "== a prefix selects path variables through koshkit:"
 "$BIN" --debug-complete-at 'koshkit getconf PATH_' </dev/null
 echo "== a bare utility completes variables when no program shadows it:"
-"$BIN" -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on' \
-    --debug-complete-at 'getconf NAME_M' </dev/null
+"$BIN" --debug-complete-at 'getconf NAME_M' \
+    -c 'PATH=; koshconf set interpreter.resolve_koshkit_applets_as_commands on' \
+    </dev/null
 echo "== a getconf program on PATH completes the same variables:"
 mkdir "$DIRECTORY/bin"
 printf '#!/bin/sh\n' > "$DIRECTORY/bin/getconf"
 chmod 755 "$DIRECTORY/bin/getconf"
-"$BIN" -c "PATH='$DIRECTORY/bin'" --debug-complete-at 'getconf NAME_M' \
+"$BIN" --debug-complete-at 'getconf NAME_M' -c "PATH='$DIRECTORY/bin'" \
     </dev/null 2>/dev/null
 echo "== the full list is plausible:"
 "$BIN" --debug-complete-at 'koshkit getconf ' </dev/null |

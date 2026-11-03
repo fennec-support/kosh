@@ -11,17 +11,17 @@ printf '%s\n' '#!/bin/sh' \
   'printf "%s\n" xa "xb c" "" zz' >"$dir/gen"
 chmod +x "$dir/gen"
 echo "== the output lines are the candidates:"
-"$BIN" -c "cd '$dir' || exit; complete -C ./gen foo" --debug-complete-at 'foo ab x' </dev/null
+"$BIN" --debug-complete-at 'foo ab x' -c "cd '$dir' || exit; complete -C ./gen foo" </dev/null
 echo "== the command sees its arguments and environment:"
 cat "$dir/ran.txt"
 rm -f "$dir/ran.txt"
 echo "== -X, -P, and -S apply to the output:"
-"$BIN" -c "cd '$dir' || exit; complete -C ./gen -X 'z*' -P '<' -S '>' foo" --debug-complete-at 'foo x' </dev/null
+"$BIN" --debug-complete-at 'foo x' -c "cd '$dir' || exit; complete -C ./gen -X 'z*' -P '<' -S '>' foo" </dev/null
 rm -f "$dir/ran.txt"
 echo "== the command text takes its own arguments first:"
-"$BIN" -c "cd '$dir' || exit; complete -C 'printf \"%s\n\"' foo" --debug-complete-at 'foo a' </dev/null
+"$BIN" --debug-complete-at 'foo a' -c "cd '$dir' || exit; complete -C 'printf \"%s\n\"' foo" </dev/null
 echo "== the ghost leaves the command alone:"
-"$BIN" -c "cd '$dir' || exit; complete -C ./gen foo" --debug-ghost-at 'foo x' </dev/null | grep '^count='
+"$BIN" --debug-ghost-at 'foo x' -c "cd '$dir' || exit; complete -C ./gen foo" </dev/null | grep '^count='
 if [ -e "$dir/ran.txt" ]; then echo "the ghost ran the command"; else echo "the ghost ran nothing"; fi
 echo "== complete -p prints -C between -X and -F:"
 "$BIN" -c "complete -W 'w' -X 'x' -C 'printf %s\\\\n \"\$1\"' -F fn foo; complete -p foo"

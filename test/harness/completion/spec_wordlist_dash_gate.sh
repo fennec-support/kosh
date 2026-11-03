@@ -9,20 +9,20 @@ trap 'rm -rf "$dir"' EXIT
 touch "$dir/datafile"
 cd "$dir"
 echo "== empty token, mixed list:"
-"$BIN" -c 'complete -W "alpha beta -x --why" mycmd' --debug-complete-at 'mycmd ' </dev/null
+"$BIN" --debug-complete-at 'mycmd ' -c 'complete -W "alpha beta -x --why" mycmd' </dev/null
 echo "== dash token, mixed list:"
-"$BIN" -c 'complete -W "alpha beta -x --why" mycmd' --debug-complete-at 'mycmd -' </dev/null
+"$BIN" --debug-complete-at 'mycmd -' -c 'complete -W "alpha beta -x --why" mycmd' </dev/null
 echo "== empty token, flags-only list falls to files:"
-"$BIN" -c 'complete -W "-x --why" flagcmd' --debug-complete-at 'flagcmd ' </dev/null
+"$BIN" --debug-complete-at 'flagcmd ' -c 'complete -W "-x --why" flagcmd' </dev/null
 echo "== progcomp off ignores the registered specification:"
-"$BIN" -c 'complete -W alpha mycmd; shopt -u progcomp' --debug-complete-at 'mycmd a' </dev/null
+"$BIN" --debug-complete-at 'mycmd a' -c 'complete -W alpha mycmd; shopt -u progcomp' </dev/null
 echo "== progcomp_alias off ignores the aliased specification:"
-"$BIN" -c 'alias surface=target; complete -W alpha target' --debug-complete-at 'surface a' </dev/null
+"$BIN" --debug-complete-at 'surface a' -c 'alias surface=target; complete -W alpha target' </dev/null
 echo "== empty COMPREPLY falls to files:"
-"$BIN" -c "_f(){ COMPREPLY=(); }; complete -F _f cp" --debug-complete-at 'cp data' </dev/null
+"$BIN" --debug-complete-at 'cp data' -c "_f(){ COMPREPLY=(); }; complete -F _f cp" </dev/null
 echo "== retry status 124 falls to files:"
-"$BIN" -c "_f(){ return 124; }; complete -F _f cp" --debug-complete-at 'cp data' </dev/null
+"$BIN" --debug-complete-at 'cp data' -c "_f(){ return 124; }; complete -F _f cp" </dev/null
 echo "== dash-only reply on an operand falls to files:"
-"$BIN" -c "_f(){ COMPREPLY=(--archive); }; complete -F _f cp" --debug-complete-at 'cp data' </dev/null
+"$BIN" --debug-complete-at 'cp data' -c "_f(){ COMPREPLY=(--archive); }; complete -F _f cp" </dev/null
 echo "== the dash token keeps the spec options:"
-"$BIN" -c "_f(){ COMPREPLY=(--archive --backup); }; complete -F _f cp" --debug-complete-at 'cp --ar' </dev/null
+"$BIN" --debug-complete-at 'cp --ar' -c "_f(){ COMPREPLY=(--archive --backup); }; complete -F _f cp" </dev/null

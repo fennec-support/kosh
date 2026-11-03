@@ -2743,6 +2743,7 @@ spawn_subshell_stage(StringView                   source,
   arguments.push_managed(StringView{"--no-diagnostics"});
   if (!should_trace_sources) arguments.push_managed(StringView{"--no-traces"});
   arguments.push_managed(StringView{"-c"});
+  arguments.push_managed(StringView{"--"});
   arguments.push_managed(source);
   if (!shell_name.is_empty()) arguments.push_managed(shell_name);
   let const command_line = make_os_args(arguments);

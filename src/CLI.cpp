@@ -399,6 +399,66 @@ FlagOptionalValue::reset() throws -> void
   m_has_value  = false;
 }
 
+FlagOperandValue::FlagOperandValue(char         short_name,
+                                   StringView   long_name,
+                                   flag_section section,
+                                   StringView   description)
+    : Flag(
+          Flag::Kind::OperandValue, short_name, long_name, section, description)
+{}
+
+FlagOperandValue::FlagOperandValue(FlagList    &flags,
+                                   char         short_name,
+                                   StringView   long_name,
+                                   flag_section section,
+                                   StringView   description)
+    : FlagOperandValue(short_name, long_name, section, description)
+{
+  flags.push(this);
+}
+
+fn
+FlagOperandValue::enable() wontthrow -> void
+{
+  m_is_enabled = true;
+}
+
+fn
+FlagOperandValue::set(StringView value) throws -> void
+{
+  m_value      = String{m_value.allocator(), value};
+  m_has_value  = true;
+  m_is_enabled = true;
+}
+
+pure fn
+FlagOperandValue::is_enabled() const wontthrow -> bool
+{
+  return m_is_enabled;
+}
+
+pure fn
+FlagOperandValue::has_value() const wontthrow -> bool
+{
+  return m_has_value;
+}
+
+pure fn
+FlagOperandValue::value() const wontthrow -> StringView
+{
+  return m_value.view();
+}
+
+fn
+FlagOperandValue::reset() throws -> void
+{
+  m_position       = 0;
+  m_value_location = {};
+  m_value.clear();
+  m_is_enabled = false;
+  m_has_value  = false;
+}
+
 pure fn
 find_short_flag(const FlagList &flags, char letter) wontthrow -> Flag *
 {
@@ -523,7 +583,6 @@ fn
 parse_flags_vec(const FlagList                  &flags,
                 const ArrayList<String>         &args,
                 usize                            base_position,
-                const Flag                      *operand_value_flag,
                 const ArrayList<SourceLocation> *arg_locations,
                 ArrayList<SourceLocation>       *operand_locations,
                 StringView                       program_name,
@@ -556,9 +615,8 @@ parse_flags_vec(const FlagList                  &flags,
      entries. both live until the function returns. */
   try {
     return parse_flags(flags, static_cast<int>(args.count()), argument_data,
-                       base_position, operand_value_flag, arg_locations,
-                       operand_locations, program_name, parse_options,
-                       allocator, operand_indices);
+                       base_position, arg_locations, operand_locations,
+                       program_name, parse_options, allocator, operand_indices);
   } catch (...) {
     reset_flags(flags);
     throw;
@@ -691,7 +749,6 @@ parse_flags(const FlagList                  &flags,
             int                              argc,
             const char *const               *argv,
             usize                            base_position,
-            const Flag                      *operand_value_flag,
             const ArrayList<SourceLocation> *arg_locations,
             ArrayList<SourceLocation>       *operand_locations,
             StringView                       program_name,
@@ -721,60 +778,53 @@ parse_flags(const FlagList                  &flags,
         argument_location(argv, arg_index, base_position, arg_locations));
   };
 
-  Flag *previous_flag{};
-  bool  should_take_next_argument_as_value = false;
-  bool  was_previous_flag_long             = false;
-  bool  was_previous_flag_after_plus       = false;
-  bool  should_ignore_rest                 = false;
+  FlagOperandValue *pending_operand_flag{};
+  Flag             *previous_flag{};
+  bool              should_take_next_argument_as_value = false;
+  bool              was_previous_flag_long             = false;
+  bool              was_previous_flag_after_plus       = false;
+  bool              should_ignore_rest                 = false;
+
+  /* returns whether the operand became the value of a pending operand flag
+     instead of an operand. */
+  let const do_take_operand_value =
+      [&](usize arg_index) throws -> bool {
+    if (pending_operand_flag == nullptr) return false;
+
+    LOG(All, "taking the operand '%s' as the value of a flag", argv[arg_index]);
+    pending_operand_flag->set(StringView{argv[arg_index]});
+    pending_operand_flag->set_value_location(
+        argument_location(argv, arg_index, base_position, arg_locations));
+    pending_operand_flag = nullptr;
+    should_ignore_rest   = true;
+
+    return true;
+  };
 
   for (int i = 0; i < argc; i++) {
     ASSERT(argv[i] != nullptr);
 
     if (should_take_next_argument_as_value) {
-      bool is_next_known_boolean_flag = false;
+      should_take_next_argument_as_value = false;
 
-      if (previous_flag == operand_value_flag &&
-          operand_value_flag != nullptr && argv[i][0] == '-' &&
-          argv[i][1] != '\0')
-      {
-        let const is_long_token = argv[i][1] == '-';
-        let const token_offset  = is_long_token ? &argv[i][2] : &argv[i][1];
+      ASSERT(previous_flag != nullptr);
+      LOG(All, "attaching the next argument '%s' as the value of the flag '%s'",
+          argv[i], flag_name(previous_flag, was_previous_flag_long).c_str());
+      let const value_position = ++position;
+      let const value_location = argument_location(
+          argv, static_cast<usize>(i), base_position, arg_locations);
 
-        if (*token_offset != '\0') {
-          let const probe = find_flag(flags, token_offset, is_long_token);
+      if (previous_flag->kind() == Flag::Kind::String)
+        static_cast<FlagString *>(previous_flag)->set(argv[i]);
+      else
+        static_cast<FlagManyStrings *>(previous_flag)
+            ->append(argv[i], value_position, value_location,
+                     was_previous_flag_after_plus);
+      previous_flag->set_position(value_position);
+      previous_flag->set_value_location(value_location);
+      was_previous_flag_after_plus = false;
 
-          if (probe.flag != nullptr &&
-              (probe.flag->kind() == Flag::Kind::Bool ||
-               probe.flag->kind() == Flag::Kind::RepeatedBool))
-          {
-            is_next_known_boolean_flag = true;
-          }
-        }
-      }
-
-      if (!is_next_known_boolean_flag) {
-        should_take_next_argument_as_value = false;
-
-        ASSERT(previous_flag != nullptr);
-        LOG(All,
-            "attaching the next argument '%s' as the value of the flag '%s'",
-            argv[i], flag_name(previous_flag, was_previous_flag_long).c_str());
-        let const value_position = ++position;
-        let const value_location = argument_location(
-            argv, static_cast<usize>(i), base_position, arg_locations);
-
-        if (previous_flag->kind() == Flag::Kind::String)
-          static_cast<FlagString *>(previous_flag)->set(argv[i]);
-        else
-          static_cast<FlagManyStrings *>(previous_flag)
-              ->append(argv[i], value_position, value_location,
-                       was_previous_flag_after_plus);
-        previous_flag->set_position(value_position);
-        previous_flag->set_value_location(value_location);
-        was_previous_flag_after_plus = false;
-
-        continue;
-      }
+      continue;
     }
 
     let const is_plus_cluster = !parse_options.plus_letters.is_empty() &&
@@ -860,6 +910,10 @@ parse_flags(const FlagList                  &flags,
         continue;
       }
 
+      if (!is_program_name && do_take_operand_value(static_cast<usize>(i))) {
+        continue;
+      }
+
       LOG(Debug, "taking '%s' as an operand", argv[i]);
       args.push_managed(StringView{argv[i]});
       do_record_operand(static_cast<usize>(i));
@@ -885,6 +939,9 @@ parse_flags(const FlagList                  &flags,
     if (*flag_offset == '\0') {
       if (is_long) {
         LOG(Debug, "stopping option parsing at '--'");
+        should_ignore_rest = true;
+      } else if (pending_operand_flag != nullptr) {
+        LOG(Debug, "stopping option parsing at '-' before an operand value");
         should_ignore_rest = true;
       } else {
         args.push_managed(StringView{argv[i]});
@@ -952,6 +1009,40 @@ parse_flags(const FlagList                  &flags,
                                     is_long, base_position, arg_locations));
           LOG(All, "incremented the flag '%s'",
               flag_name(repeated_flag, is_long).c_str());
+
+          if (!is_long && *value_offset != '\0') {
+            ++flag_offset;
+            should_repeat = true;
+            continue;
+          }
+        } break;
+
+        case Flag::Kind::OperandValue: {
+          let const operand_flag = static_cast<FlagOperandValue *>(flag);
+
+          if (is_long && *value_offset != '\0') {
+            let error = ErrorWithLocation{
+                argument_location(argv, static_cast<usize>(i), base_position,
+                                  arg_locations),
+                prefixed_message(program_name, "The flag '" +
+                                                   flag_name(flag, is_long) +
+                                                   "' does not take a value")};
+
+            error.set_command_status(2);
+            throw error;
+          }
+
+          operand_flag->enable();
+          operand_flag->set_position(++position);
+          if (pending_operand_flag == nullptr) {
+            operand_flag->set_value_location(
+                boolean_flag_location(argv, static_cast<usize>(i), flag_offset,
+                                      is_long, base_position, arg_locations));
+            pending_operand_flag = operand_flag;
+          }
+
+          LOG(All, "enabled the flag '%s', which takes the first operand",
+              flag_name(operand_flag, is_long).c_str());
 
           if (!is_long && *value_offset != '\0') {
             ++flag_offset;
@@ -1059,8 +1150,10 @@ parse_flags(const FlagList                  &flags,
       } else {
         if (parse_options.should_accept_unknown_flag_operand) {
           LOG(Debug, "taking the unknown flag '%s' as an operand", argv[i]);
-          args.push_managed(StringView{argv[i]});
-          do_record_operand(static_cast<usize>(i));
+          if (!do_take_operand_value(static_cast<usize>(i))) {
+            args.push_managed(StringView{argv[i]});
+            do_record_operand(static_cast<usize>(i));
+          }
           should_ignore_rest = true;
           break;
         }
@@ -1138,6 +1231,20 @@ parse_flags(const FlagList                  &flags,
     throw error;
   }
 
+  if (pending_operand_flag != nullptr) {
+    let error = ErrorWithLocation{
+        pending_operand_flag->value_location(),
+        prefixed_message(
+            program_name,
+            "No value provided for '" +
+                flag_name(pending_operand_flag,
+                          pending_operand_flag->short_name() == '\0') +
+                "' flag")};
+
+    error.set_command_status(2);
+    throw error;
+  }
+
   return args;
 }
 
@@ -1160,8 +1267,8 @@ parse_util_operands(const FlagList                  &flags,
           : "ending options at the first operand");
 
   let operands =
-      parse_flags_vec(flags, args, 0, nullptr, arg_locations,
-                      &operand_locations, {}, parse_options, allocator);
+      parse_flags_vec(flags, args, 0, arg_locations, &operand_locations, {},
+                      parse_options, allocator);
 
   ASSERT(operands.allocator() == allocator);
   ASSERT(operand_locations.allocator() == allocator);
@@ -1179,7 +1286,7 @@ parse_until_subcommand(const FlagList                  &flags,
 {
   let       operand_indices = ArrayList<usize>{heap_allocator()};
   let const operands =
-      parse_flags_vec(flags, args, 0, nullptr, arg_locations, operand_locations,
+      parse_flags_vec(flags, args, 0, arg_locations, operand_locations,
                       program_name, {}, heap_allocator(), &operand_indices);
 
   if (operands.count() <= 1) return args.count();
@@ -1279,6 +1386,10 @@ reset_flags(const FlagList &flags) throws -> void
 
     case Flag::Kind::OptionalValue:
       static_cast<FlagOptionalValue *>(flag)->reset();
+      break;
+
+    case Flag::Kind::OperandValue:
+      static_cast<FlagOperandValue *>(flag)->reset();
       break;
     }
 }
@@ -2009,7 +2120,8 @@ make_flag_help(const FlagList &flags, bool should_color) throws
         break;
       }
       case koshka::Flag::Kind::Bool:
-      case koshka::Flag::Kind::RepeatedBool: break;
+      case koshka::Flag::Kind::RepeatedBool:
+      case koshka::Flag::Kind::OperandValue: break;
       }
     }
 

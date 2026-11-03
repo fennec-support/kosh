@@ -128,8 +128,8 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   let operand_indices = ArrayList<usize>{cxt.scratch_allocator()};
 
   unused(parse_flags_vec(
-      FLAG_LIST, args, ec.source_location().position, nullptr,
-      &ec.arg_locations(), nullptr, builtin_error_context(ec.program()),
+      FLAG_LIST, args, ec.source_location().position, &ec.arg_locations(),
+      nullptr, builtin_error_context(ec.program()),
       flag_parse_options{.should_stop_at_first_operand = true,
                          .plus_letters                 = "aAilnrtux"},
       cxt.scratch_allocator(), &operand_indices));

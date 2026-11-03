@@ -67,13 +67,14 @@ if [ "${OS-}" != Windows_NT ]; then
     printf '#!/bin/sh\n' > "$dir/between/blocked-probe"
     chmod +x "$dir/between/gone-probe" "$dir/between/blocked-probe"
     BETWEEN_DIRECTORY="$dir/between" \
-        PATH="$dir/between" "$BIN" -c '
+        PATH="$dir/between" "$BIN" \
+        --debug-highlight-at 'appear-probe; gone-probe; blocked-probe' -c '
         compgen -c >/dev/null
         : > "$BETWEEN_DIRECTORY/appear-probe"
         /bin/chmod +x "$BETWEEN_DIRECTORY/appear-probe"
         /bin/rm "$BETWEEN_DIRECTORY/gone-probe"
         /bin/chmod -x "$BETWEEN_DIRECTORY/blocked-probe"
-        :' --debug-highlight-at 'appear-probe; gone-probe; blocked-probe' |
+        :' |
         grep -E "${tab}(resolved-command|unknown-command)$"
 else
     printf 'appear-probe\tresolved-command\n'

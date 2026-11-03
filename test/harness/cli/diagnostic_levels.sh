@@ -3,9 +3,9 @@ trap 'test -n "$temporary_directory" && "$BIN_DIR/invoke-koshkit" rm -rf "$tempo
 script_command=$(command -v script)
 
 echo '== command flag ordering:'
-"$BIN" -c -W 'echo level-one-after-command' \
-  -c -WW 'echo level-two-after-command' \
-  -c -WWW 'echo level-three-after-command'
+"$BIN" -c -W 'echo level-one-after-command'
+"$BIN" -c -WW 'echo level-two-after-command'
+"$BIN" -c -WWW 'echo level-three-after-command'
 
 echo '== set diagnostic levels:'
 "$BIN" -M bash -c '
@@ -47,15 +47,6 @@ echo "annoying-default=$?"
 echo "annoying-level-one=$?"
 "$BIN" --no-annoying-diagnostics -c "$annoying_source" >/dev/null 2>&1
 echo "annoying-suppressed=$?"
-runtime_annoying_output=$("$BIN" -W \
-  -c 'koshconf set optimizer.show_annoying_tier off' -c "$annoying_source" 2>&1)
-echo "annoying-runtime-suppressed=$(printf '%s\n' "$runtime_annoying_output" |
-  grep -c 'This .cd. is not checked')"
-runtime_annoying_output=$("$BIN" -W \
-  -c 'koshconf set optimizer.show_annoying_tier off; koshconf set optimizer.show_annoying_tier on' \
-  -c "$annoying_source" 2>&1)
-echo "annoying-runtime-restored=$(printf '%s\n' "$runtime_annoying_output" |
-  grep -c 'This .cd. is not checked')"
 
 lenient_source='diagnostic_levels_missing_command; echo survived'
 "$BIN" -W -c "$lenient_source" >/dev/null 2>&1

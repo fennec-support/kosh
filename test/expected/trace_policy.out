@@ -30,32 +30,24 @@ process eval traces=2 errors=1 inner-sites=1
 prefixed process eval traces=2 errors=1 prefixes=1
 disabled-substitution traces=0 errors=1
 disabled-process-substitution traces=0 errors=1
-multi-root traces=2 errors=2
-multi-root first=4 second=4
-noexec-batch traces=1 warnings=2
+repeated-c-root traces=0 errors=1
+repeated-c-root first=2 second=0
+noexec-command traces=0 warnings=2
 recursive traces=2 errors=1
 runtime-repeat traces=2 warnings=1
 identity traces=3 errors=1
 disabled-runtime traces=0 errors=1
-disabled-multi-root traces=0 errors=2
+disabled-repeated-c traces=0 errors=1
 disabled-warning traces=0 warnings=1
 disabled-parse traces=0 errors=1
 enabled-fallback traces=2 errors=1
 enabled-fallback-parse traces=1 errors=1
 disabled-fallback traces=0 errors=1
-     1 |  KOSH -c 'echo hi' -c no_such_command_xyz '$()' ';' '*' '#' '~' '\' '"'
-quoted_and_second_c=ok
-special_arguments_quoted=ok
-rc=1
-root_trace_order=error error trace error trace
-early_exit=exit 3 traces=1 rc=3
-early_exit=set -e; false traces=1 rc=1
-early_exit=exec true traces=1 rc=0
-early_exit=/bin/sh -c true traces=1 rc=0
-early_exit=f() { exit 4; }; f traces=1 rc=4
-child=( $x ) traces=2
-child={ $x; } & wait traces=1
-child=$x | cat traces=1
+repeated_c output=hi traces=0 rc=0
+root_trace_order=error error
+child=( $x ) traces=1
+child={ $x; } & wait traces=0
+child=$x | cat traces=0
 traces=0
 error=ok
 rc=1

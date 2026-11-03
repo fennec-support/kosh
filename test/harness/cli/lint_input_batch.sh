@@ -58,17 +58,16 @@ cd "$root" || exit 1
 output=$(
   "$BIN" --lint -WWW --no-traces \
     -c 'echo "$LINT_COMMAND_ONE"' \
-    -c 'echo "$LINT_COMMAND_TWO"' \
     first.bash second.bash 2>&1
 )
 rc=$?
 names=$(printf '%s\n' "$output" |
   sed -n \
     -e "s/.*The variable '\([^']*\)'.*/\1/p" \
-    -e 's/^Encountered 4 errors\.$/SUMMARY/p' |
+    -e 's/^Encountered 3 errors\.$/SUMMARY/p' |
   diagnostic_names)
 summary_count=$(printf '%s\n' "$output" |
-  grep -c '^Encountered 4 errors\.$')
+  grep -c '^Encountered 3 errors\.$')
 executed=0
 [ -e lint-input-executed ] && executed=1
 printf 'batch-order=%s summaries=%s rc=%s executed=%s\n' \
@@ -77,18 +76,17 @@ printf 'batch-order=%s summaries=%s rc=%s executed=%s\n' \
 output=$(
   "$BIN" --mood bash --lint --no-traces \
     -c 'echo "$LINT_COMMAND_ONE"' \
-    -c 'echo "$LINT_COMMAND_TWO"' \
     first.bash second.bash 2>&1
 )
 rc=$?
 names=$(printf '%s\n' "$output" |
   sed -n \
     -e "s/.*The variable '\([^']*\)'.*/\1/p" \
-    -e 's/^Encountered 4 warnings\.$/SUMMARY/p' |
+    -e 's/^Encountered 3 warnings\.$/SUMMARY/p' |
   diagnostic_names)
 error_count=$(printf '%s\n' "$output" | grep -c ': error:')
 summary_count=$(printf '%s\n' "$output" |
-  grep -c '^Encountered 4 warnings\.$')
+  grep -c '^Encountered 3 warnings\.$')
 first_filename_count=$(printf '%s\n' "$output" | grep -c 'first.bash:2:')
 second_filename_count=$(printf '%s\n' "$output" | grep -c 'second.bash:2:')
 printf 'bash-order=%s errors=%s summaries=%s files=%s,%s rc=%s\n' \
@@ -96,7 +94,7 @@ printf 'bash-order=%s errors=%s summaries=%s files=%s,%s rc=%s\n' \
   "$second_filename_count" "$rc"
 
 output=$("$BIN" --mood bash --lint --show-memory --no-traces \
-  -c 'echo "$LINT_COMMAND_ONE"' -c 'echo "$LINT_COMMAND_TWO"' 2>&1)
+  -c 'echo "$LINT_COMMAND_ONE"' first.bash 2>&1)
 last_line=$(printf '%s\n' "$output" | tail -n 1)
 printf 'memory-summary-last=%s\n' \
   "$(test "$last_line" = 'Encountered 2 warnings.' && printf yes)"
@@ -104,7 +102,6 @@ printf 'memory-summary-last=%s\n' \
 output=$(
   "$BIN" --lint -t --no-traces \
     -c 'echo "$LINT_COMMAND_ONE"' \
-    -c 'echo "$LINT_COMMAND_TWO"' \
     first.bash second.bash 2>&1
 )
 rc=$?
@@ -114,19 +111,14 @@ names=$(printf '%s\n' "$output" |
 printf 'one-command-order=%s rc=%s\n' "$names" "$rc"
 
 output=$(
-  "$BIN" --lint --no-traces \
-    -c 'if' \
-    -c 'echo "$LINT_AFTER_COMMAND_PARSE"' \
-    parse.bash after-parse.bash 2>&1
+  "$BIN" --lint --no-traces -c 'if' parse.bash after-parse.bash 2>&1
 )
 rc=$?
-command_continued=$(printf '%s\n' "$output" |
-  grep -c "The variable 'LINT_AFTER_COMMAND_PARSE'")
 file_continued=$(printf '%s\n' "$output" |
   grep -c "The variable 'LINT_AFTER_FILE_PARSE'")
 parse_error_count=$(printf '%s\n' "$output" | grep -c "This 'if' has no")
-printf 'parse-command=%s parse-file=%s errors=%s rc=%s\n' \
-  "$command_continued" "$file_continued" "$parse_error_count" "$rc"
+printf 'parse-file=%s errors=%s rc=%s\n' \
+  "$file_continued" "$parse_error_count" "$rc"
 
 output=$(
   "$BIN" --lint --no-traces first.bash missing.bash directory second.bash 2>&1
@@ -161,7 +153,6 @@ printf 'noexec-first=%s noexec-second=%s rc=%s\n' \
 output=$(
   "$BIN" -n -WWW --no-traces \
     -c 'echo "$NOEXEC_COMMAND_ONE"' \
-    -c 'echo "$NOEXEC_COMMAND_TWO"' \
     parse.bash second.bash 2>&1
 )
 rc=$?

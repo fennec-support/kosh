@@ -16,7 +16,7 @@ mkdir "$dir/probe_dir"
 
 complete_in()
 {
-  "$BIN" -c "cd '$dir' || exit; $1" --debug-complete-at "$2" </dev/null
+  "$BIN" --debug-complete-at "$2" -c "cd '$dir' || exit; $1" </dev/null
 }
 
 echo "== compopt -o plusdirs adds the directories after the reply:"

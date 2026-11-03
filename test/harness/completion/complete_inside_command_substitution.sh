@@ -7,16 +7,16 @@ dir=$(mktemp -d)
 trap '[ -n "$dir" ] && "$BIN_DIR/invoke-koshkit" rm -rf "$dir"' EXIT
 
 echo "== inside \$( ):"
-"$BIN" -c 'complete -W "alpha beta gamma" probecmd' --debug-complete-at 'echo $(probecmd a' </dev/null
+"$BIN" --debug-complete-at 'echo $(probecmd a' -c 'complete -W "alpha beta gamma" probecmd' </dev/null
 
 echo "== inside backticks:"
-"$BIN" -c 'complete -W "alpha beta gamma" probecmd' --debug-complete-at 'echo `probecmd b' </dev/null
+"$BIN" --debug-complete-at 'echo `probecmd b' -c 'complete -W "alpha beta gamma" probecmd' </dev/null
 echo "== inside a for-head substitution:"
-"$BIN" -c 'complete -W "alpha beta gamma" probecmd' --debug-complete-at 'for x in $(probecmd g' </dev/null
+"$BIN" --debug-complete-at 'for x in $(probecmd g' -c 'complete -W "alpha beta gamma" probecmd' </dev/null
 echo "== inside a process substitution:"
-"$BIN" -c 'complete -W "alpha beta gamma" probecmd' --debug-complete-at 'cat <(probecmd a' </dev/null
+"$BIN" --debug-complete-at 'cat <(probecmd a' -c 'complete -W "alpha beta gamma" probecmd' </dev/null
 echo "== inside a process substitution in an assignment value:"
-"$BIN" -c 'complete -W "alpha beta gamma" probecmd' --debug-complete-at 'p=x<(probecmd b' </dev/null
+"$BIN" --debug-complete-at 'p=x<(probecmd b' -c 'complete -W "alpha beta gamma" probecmd' </dev/null
 echo "== filesystem still completes inside a substitution:"
 : > "$dir/onlyfile"
 filesystem_result=$("$BIN" \
@@ -26,6 +26,6 @@ echo onlyfile
 echo "== arithmetic is not a command body:"
 (
     cd "$dir" &&
-        "$BIN" -c 'complete -W "alpha beta gamma" probecmd' \
-            --debug-complete-at 'echo $((probecmd a' </dev/null
+        "$BIN" --debug-complete-at 'echo $((probecmd a' \
+            -c 'complete -W "alpha beta gamma" probecmd' </dev/null
 )

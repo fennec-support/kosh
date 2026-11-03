@@ -10,25 +10,25 @@ dir=$(mktemp -d)
 mkdir "$dir/probe_dir"
 : > "$dir/probe_file"
 echo "== a plain function reply keeps its text:"
-"$BIN" -c "cd '$dir' || exit; _f(){ COMPREPLY=(probe_dir probe_file); }; complete -F _f cp" --debug-complete-at 'cp pro' </dev/null
+"$BIN" --debug-complete-at 'cp pro' -c "cd '$dir' || exit; _f(){ COMPREPLY=(probe_dir probe_file); }; complete -F _f cp" </dev/null
 echo "== -o filenames marks the directory reply:"
-"$BIN" -c "cd '$dir' || exit; _f(){ COMPREPLY=(probe_dir probe_file); }; complete -o filenames -F _f cp" --debug-complete-at 'cp pro' </dev/null
+"$BIN" --debug-complete-at 'cp pro' -c "cd '$dir' || exit; _f(){ COMPREPLY=(probe_dir probe_file); }; complete -o filenames -F _f cp" </dev/null
 echo "== compopt -o filenames marks the directory reply:"
-"$BIN" -c "cd '$dir' || exit; _f(){ compopt -o filenames; COMPREPLY=(probe_dir probe_file); }; complete -F _f cp" --debug-complete-at 'cp pro' </dev/null
+"$BIN" --debug-complete-at 'cp pro' -c "cd '$dir' || exit; _f(){ compopt -o filenames; COMPREPLY=(probe_dir probe_file); }; complete -F _f cp" </dev/null
 echo "== the -D loader marks directories after compopt -o filenames:"
-"$BIN" -c "cd '$dir' || exit; _d(){ compopt -o filenames; COMPREPLY=(probe_dir probe_file); }; complete -D -F _d" --debug-complete-at 'unknown_cmd pro' </dev/null
+"$BIN" --debug-complete-at 'unknown_cmd pro' -c "cd '$dir' || exit; _d(){ compopt -o filenames; COMPREPLY=(probe_dir probe_file); }; complete -D -F _d" </dev/null
 echo "== compopt +o filenames turns the mark off:"
-"$BIN" -c "cd '$dir' || exit; _f(){ COMPREPLY=(probe_dir); compopt +o filenames; }; complete -o filenames -F _f cp" --debug-complete-at 'cp pro' </dev/null
+"$BIN" --debug-complete-at 'cp pro' -c "cd '$dir' || exit; _f(){ COMPREPLY=(probe_dir); compopt +o filenames; }; complete -o filenames -F _f cp" </dev/null
 echo "== compopt +o filenames turns the -d mark off:"
-"$BIN" -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -d -F _f cp" --debug-complete-at 'cp pro' </dev/null
+"$BIN" --debug-complete-at 'cp pro' -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -d -F _f cp" </dev/null
 echo "== compopt +o filenames turns the -f mark off:"
-"$BIN" -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -f -F _f cp" --debug-complete-at 'cp pro' </dev/null
+"$BIN" --debug-complete-at 'cp pro' -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -f -F _f cp" </dev/null
 echo "== compopt +o filenames turns the -G mark off:"
-"$BIN" -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -G 'probe_*' -F _f cp" --debug-complete-at 'cp pro' </dev/null
+"$BIN" --debug-complete-at 'cp pro' -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -G 'probe_*' -F _f cp" </dev/null
 echo "== -o dirnames marks the directories it adds after the function:"
-"$BIN" -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -o dirnames -F _f cp" --debug-complete-at 'cp pro' </dev/null
+"$BIN" --debug-complete-at 'cp pro' -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -o dirnames -F _f cp" </dev/null
 echo "== -o plusdirs marks the directories it adds after the function:"
-"$BIN" -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -o plusdirs -F _f cp" --debug-complete-at 'cp pro' </dev/null
+"$BIN" --debug-complete-at 'cp pro' -c "cd '$dir' || exit; _f(){ compopt +o filenames; }; complete -o plusdirs -F _f cp" </dev/null
 echo "== -o filenames marks a word list directory:"
-"$BIN" -c "cd '$dir' || exit; complete -o filenames -W 'probe_dir probe_file' cp" --debug-complete-at 'cp pro' </dev/null
+"$BIN" --debug-complete-at 'cp pro' -c "cd '$dir' || exit; complete -o filenames -W 'probe_dir probe_file' cp" </dev/null
 rm -rf "$dir"

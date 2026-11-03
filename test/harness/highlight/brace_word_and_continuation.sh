@@ -26,6 +26,6 @@ inner-command) outer' </dev/null |
     </dev/null |
     grep -E "${tab}(resolved-command|string)$"
 
-"$BIN" -c 'probecmd() { :; }' \
-    --debug-highlight-at 'echo $(case x in x) probecmd a;; esac)' </dev/null |
+"$BIN" --debug-highlight-at 'echo $(case x in x) probecmd a;; esac)' \
+    -c 'probecmd() { :; }' </dev/null |
     grep -E "^(esac${tab}keyword|probecmd${tab}resolved-command)$"

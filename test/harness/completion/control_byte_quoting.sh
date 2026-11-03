@@ -22,9 +22,9 @@ echo "== an open double quote splices each control run:"
 "$BIN" --debug-complete-at 'cat "cs' </dev/null
 echo "== noquote keeps blanks raw and still splices each control run:"
 : > "$dir/$(printf 'nq a\033b')"
-"$BIN" -c "_f(){ :; }; complete -o default -o noquote -F _f cp" --debug-complete-at 'cp nq' </dev/null
+"$BIN" --debug-complete-at 'cp nq' -c "_f(){ :; }; complete -o default -o noquote -F _f cp" </dev/null
 echo "== a spec word splices each control run:"
-"$BIN" -c "complete -W \"\$(printf 'w\\033x')\" cp" --debug-complete-at 'cp w' </dev/null
+"$BIN" --debug-complete-at 'cp w' -c "complete -W \"\$(printf 'w\\033x')\" cp" </dev/null
 echo "== compgen lists the entries raw:"
 "$BIN" -c 'compgen -f os' | cat -v
 echo "== the completed word is the file:"

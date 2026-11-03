@@ -4,8 +4,20 @@ unset KOSH_FLAGS
 echo "rejected-analysis-rc=$?"
 "$BIN" -c 'if' -c 'echo not-reached' 2>/dev/null
 echo "rejected-syntax-rc=$?"
-"$BIN" -c 'false' -c 'echo after-false'
-"$BIN" --command='echo equals-form'
+"$BIN" -ec 'false; echo not-reached'
+echo "clustered-errexit-rc=$?"
+"$BIN" -xec ':' 2>&1 >/dev/null
+"$BIN" -ci 'echo cluster-before-interactive' 2>/dev/null
+"$BIN" -c 'printf "%s|" "$0" "$@"; echo' name a b
+"$BIN" -c -- 'echo "after-dashes $0"' name
+"$BIN" -c - 'echo "after-dash $0"' name
+"$BIN" -c 'echo "$0"' --version
+"$BIN" -cc 'echo repeated-cluster'
+"$BIN" --command 'echo long-form'
+"$BIN" -c 2>/dev/null
+echo "missing-command-rc=$?"
+"$BIN" --command='echo equals-form' 2>/dev/null
+echo "equals-form-rc=$?"
 "$BIN" -N -c 'echo trailer'
 echo "rc=$?"
 "$BIN" --no-init-files -c ''

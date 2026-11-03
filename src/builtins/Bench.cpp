@@ -777,6 +777,7 @@ sample_command(StringView shell_binary,
   if (should_use_shell) {
     child_argv.push_managed(shell_binary);
     child_argv.push_managed("-c");
+    child_argv.push_managed("--");
     child_argv.push_managed(command);
   } else {
     usize start = 0;

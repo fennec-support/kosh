@@ -47,21 +47,21 @@ echo "== arguments through a quoted assignment prefix:"
 echo "== subshell body:"
 "$BIN" --debug-complete-at '( expor' </dev/null
 echo "== spec command on the first line:"
-"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at 'svc ' </dev/null
+"$BIN" --debug-complete-at 'svc ' -c 'complete -W "start stop restart" svc' </dev/null
 echo "== spec command after a newline:"
-"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf 'echo hi\nsvc ')" </dev/null
+"$BIN" --debug-complete-at "$(printf 'echo hi\nsvc ')" -c 'complete -W "start stop restart" svc' </dev/null
 echo "== spec command after '&&' then a newline:"
-"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf 'true &&\nsvc ')" </dev/null
+"$BIN" --debug-complete-at "$(printf 'true &&\nsvc ')" -c 'complete -W "start stop restart" svc' </dev/null
 echo "== spec command in a loop body on the next line:"
-"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf 'for x in a b; do\nsvc ')" </dev/null
+"$BIN" --debug-complete-at "$(printf 'for x in a b; do\nsvc ')" -c 'complete -W "start stop restart" svc' </dev/null
 echo "== spec command after a comment with an apostrophe:"
-"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf "# don't\nsvc ")" </dev/null
+"$BIN" --debug-complete-at "$(printf "# don't\nsvc ")" -c 'complete -W "start stop restart" svc' </dev/null
 echo "== spec command after a heredoc body with an apostrophe:"
-"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf "cat <<EOF\nit's\nEOF\nsvc ")" </dev/null
+"$BIN" --debug-complete-at "$(printf "cat <<EOF\nit's\nEOF\nsvc ")" -c 'complete -W "start stop restart" svc' </dev/null
 echo "== a backslash continues the spec command onto the next line:"
-"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf 'svc \\\nst')" </dev/null
+"$BIN" --debug-complete-at "$(printf 'svc \\\nst')" -c 'complete -W "start stop restart" svc' </dev/null
 echo "== a backslash inside a word keeps the word going on the next line:"
-"$BIN" -c 'complete -W "start stop restart" svc' --debug-complete-at "$(printf 'svc st\\\nar')" </dev/null
+"$BIN" --debug-complete-at "$(printf 'svc st\\\nar')" -c 'complete -W "start stop restart" svc' </dev/null
 echo "== cd offers only directories on the next line:"
 "$BIN" --debug-complete-at "$(printf 'echo hi\ncd ')" </dev/null
 echo "== plain argument lists both markers:"

@@ -1,9 +1,17 @@
 one
-two
 rejected-analysis-rc=1
 rejected-syntax-rc=2
-after-false
-equals-form
+clustered-errexit-rc=1
++ :
+cluster-before-interactive
+name|a|b|
+after-dashes name
+after-dash name
+--version
+repeated-cluster
+long-form
+missing-command-rc=2
+equals-form-rc=2
 trailer
 -c:1:1: warning: Exit code (0)
      1 |  echo trailer

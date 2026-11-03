@@ -475,16 +475,8 @@ first
 first.sh:2:1: error: The command 'missing_first' was not found.
      2 |  missing_first
        |  ^~~~~~~~~~~~~
-== two command strings carry the command line frame
+== a repeated -c runs one command string without a command line frame
 -c:1:10: error: Division by zero.
      1 |  echo $((1/0))
        |           ^
 note: The right operand evaluated to 0.
-1:0: trace:
-     1 |  KOSH --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))'
--c:1:10: error: Division by zero.
-     1 |  echo $((2/0))
-       |           ^
-note: The right operand evaluated to 0.
-1:0: trace:
-     1 |  KOSH --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))'

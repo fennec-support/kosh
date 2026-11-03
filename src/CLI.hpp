@@ -192,6 +192,7 @@ public:
     String,
     ManyStrings,
     OptionalValue,
+    OperandValue,
   };
 
   pure fn
@@ -447,6 +448,42 @@ private:
   ValuePlacement m_placement{ValuePlacement::AttachedOrNext};
 };
 
+/* a flag that a short cluster treats as a boolean and whose value is the
+   first operand that follows it, as in sh -c command or sh -ec command. The
+   operand that holds the value ends option parsing. */
+class FlagOperandValue : public Flag
+{
+public:
+  FlagOperandValue(FlagList    &flags,
+                   char         short_name,
+                   StringView   long_name,
+                   flag_section section,
+                   StringView   description);
+  FlagOperandValue(char         short_name,
+                   StringView   long_name,
+                   flag_section section,
+                   StringView   description);
+
+  fn
+  enable() wontthrow -> void;
+  fn
+  set(StringView value) throws -> void;
+  pure fn
+  is_enabled() const wontthrow -> bool;
+  pure fn
+  has_value() const wontthrow -> bool;
+  pure fn
+  value() const wontthrow -> StringView;
+
+  fn
+  reset() throws -> void;
+
+private:
+  bool   m_is_enabled{false};
+  bool   m_has_value{false};
+  String m_value{heap_allocator()};
+};
+
 struct flag_parse_options
 {
   bool       should_accept_negative_number_operand{false};
@@ -461,10 +498,9 @@ struct flag_parse_options
 fn
 parse_flags_vec(const FlagList                  &flags,
                 const ArrayList<String>         &args,
-                usize                            base_position      = 0,
-                const Flag                      *operand_value_flag = nullptr,
-                const ArrayList<SourceLocation> *arg_locations      = nullptr,
-                ArrayList<SourceLocation>       *operand_locations  = nullptr,
+                usize                            base_position     = 0,
+                const ArrayList<SourceLocation> *arg_locations     = nullptr,
+                ArrayList<SourceLocation>       *operand_locations = nullptr,
                 StringView                       program_name  = StringView{},
                 flag_parse_options               parse_options = {},
                 Allocator                        allocator = heap_allocator(),
@@ -474,12 +510,11 @@ fn
 parse_flags(const FlagList                  &flags,
             int                              argc,
             const char *const               *argv,
-            usize                            base_position      = 0,
-            const Flag                      *operand_value_flag = nullptr,
-            const ArrayList<SourceLocation> *arg_locations      = nullptr,
-            ArrayList<SourceLocation>       *operand_locations  = nullptr,
-            StringView                       program_name       = StringView{},
-            flag_parse_options               parse_options      = {},
+            usize                            base_position     = 0,
+            const ArrayList<SourceLocation> *arg_locations     = nullptr,
+            ArrayList<SourceLocation>       *operand_locations = nullptr,
+            StringView                       program_name      = StringView{},
+            flag_parse_options               parse_options     = {},
             Allocator                        allocator       = heap_allocator(),
             ArrayList<usize>                *operand_indices = nullptr) throws
     -> ArrayList<String>;

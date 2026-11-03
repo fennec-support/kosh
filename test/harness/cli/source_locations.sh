@@ -366,6 +366,6 @@ printf '== a script with arguments carries no command line frame\n'
 out=$("$BIN" --mood bash first.sh second.sh extra 2>&1)
 printf '%s\n' "$out" | sed "s|$d|DIR|g" | "$BIN_DIR/invoke-normalize-trace" "$BIN"
 
-printf '== two command strings carry the command line frame\n'
+printf '== a repeated -c runs one command string without a command line frame\n'
 out=$("$BIN" --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))' 2>&1)
 printf '%s\n' "$out" | sed "s|$d|DIR|g" | "$BIN_DIR/invoke-normalize-trace" "$BIN"

@@ -385,8 +385,8 @@ parse_builtin_flags_softly(const ExecContext &ec,
 {
   try {
     unused(parse_flags_vec(flags, ec.args(), ec.source_location().position,
-                           nullptr, &ec.arg_locations(), nullptr, StringView{},
-                           options, cxt.scratch_allocator(), &operand_indices));
+                           &ec.arg_locations(), nullptr, StringView{}, options,
+                           cxt.scratch_allocator(), &operand_indices));
   } catch (const ErrorWithLocation &error) {
     if (error.detail_message().is_empty()) {
       report_soft_builtin_error(ec, cxt, error.location(),

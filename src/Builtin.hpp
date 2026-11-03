@@ -256,19 +256,19 @@ builtin_error_message(StringView program, StringView message) throws
 
 #define PARSE_BUILTIN_ARGS(ec)                                                 \
   parse_flags_vec(FLAG_LIST, ec.args(), ec.source_location().position,         \
-                  nullptr, &ec.arg_locations(), nullptr,                       \
+                  &ec.arg_locations(), nullptr,                                \
                   builtin_error_context(ec.program()));                        \
   defer { reset_flags(FLAG_LIST); }
 
 #define PARSE_BUILTIN_ARGS_WITH_LOCATIONS(ec, operand_locations)               \
   parse_flags_vec(FLAG_LIST, ec.args(), ec.source_location().position,         \
-                  nullptr, &ec.arg_locations(), &(operand_locations),          \
+                  &ec.arg_locations(), &(operand_locations),                   \
                   builtin_error_context(ec.program()));                        \
   defer { reset_flags(FLAG_LIST); }
 
 #define PARSE_BUILTIN_ARGS_WITH_OPTIONS(ec, operand_locations, ...)            \
   parse_flags_vec(FLAG_LIST, ec.args(), ec.source_location().position,         \
-                  nullptr, &ec.arg_locations(), &(operand_locations),          \
+                  &ec.arg_locations(), &(operand_locations),                   \
                   builtin_error_context(ec.program()),                         \
                   flag_parse_options{__VA_ARGS__});                            \
   defer { reset_flags(FLAG_LIST); }

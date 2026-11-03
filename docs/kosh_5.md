@@ -68,7 +68,7 @@ An option passed on the command line (enabled or disabled) overrides settings fi
 | `--help` | Print command-line usage help, then exit. |
 | `-i, --interactive` | Run in interactive mode. |
 | `-s, --stdin` | Read commands from standard input. |
-| `-c COMMAND, --command=COMMAND` | Execute `COMMAND` string. |
+| `-c, --command` | Execute the first operand as a command string. |
 | `-e, --error-exit` | Exit immediately when an unguarded command returns a nonzero status. |
 | `-f, --no-glob` | Disable pathname globbing. |
 | `-t, --one-command` | Read and execute a single command, then exit. |
@@ -109,7 +109,7 @@ An option passed on the command line (enabled or disabled) overrides settings fi
 | Debug <a id="debug-option-details"></a> | `--show-optimizer-diagnostics` | Compatibility moods emit these warnings only when `-WW` or `-WWW` is active. |
 | Debug | `-N, --show-all-exit-codes` | Can be toggled at runtime with `set -N` and `set +N`. |
 | POSIX <a id="posix-option-details"></a> | `-s, --stdin` | Input processing order is specified in [Invocation](kosh_1.md#invocation). |
-| POSIX | `-c COMMAND, --command=COMMAND` | May be repeated to execute multiple strings in sequence. A syntax error exits with status `2`, an analysis error exits with status `1`, and subsequent command strings are aborted. |
+| POSIX | `-c, --command` | The command string is the first operand, as specified in [Invocation](kosh_1.md#invocation). A syntax error exits with status `2`, and an analysis error exits with status `1`. |
 | POSIX | `-n, --no-exec` | Compatibility moods report only the diagnostic tiers enabled by `-W`. |
 | POSIX | `-o NAME, +o NAME` | `-o posix` acts as `--posix`. An unknown option name exits with status `2`. In the `kosh` mood, `+o nounset` is ignored and `+o pipefail` exits with status `2`. |
 | POSIX | `+a, +C, +e, +f, +n, +p, +t, +u, +v, +x` | `+h` and `+m` are accepted and ignored. Passing `set`-only flags (`-B`, `-E`, `-H`, `-P`, `-b`, `-k`) on the command line exits with status `2`. |

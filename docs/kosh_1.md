@@ -64,7 +64,7 @@ kosh --lint --format --apply script.kosh
 kosh [options] [script [argument ...]]
 kosh -c command [argument ...]
 kosh -s [argument ...]
-kosh --lint [-c command ...] [file ...]
+kosh --lint [-c command] [file ...]
 kosh --format [file]
 kosh --lint --format [file]
 kosh [--lint] [--format] --apply file ...
@@ -107,7 +107,7 @@ Command-line flags override both settings files and `KOSHCONF`. Runtime settings
 All diagnostics write to standard error in an identical format across every mood (with colored labels and codes on color-capable terminals).
 
 * **Diagnostic layout** - Each entry prints `file:line:column: severity: message`, with the check code in parentheses on an analysis finding (`(SC2086)`), followed by the source line, a caret (`^`) under the offending column, and optional `note:` remediation lines. Dynamic runtime sources prefix locations as `eval:line:col:`, `trap:line:col:`, or `-c:line:col:`, while stdin and interactive lines omit the source label.
-* **Stack backtraces** - Each active function call, sourced file, `eval`, trap action, subshell, and command/function/process substitution between the top level and the failing command appends a `trace:` frame. Consecutive identical frames collapse into a single frame with a repeat count. When multiple `-c` strings or files are processed, the top-level command-line frame prints once after all diagnostics for that input.
+* **Stack backtraces** - Each active function call, sourced file, `eval`, trap action, subshell, and command/function/process substitution between the top level and the failing command appends a `trace:` frame. Consecutive identical frames collapse into a single frame with a repeat count. When `--lint` analyzes several files, the top-level command-line frame prints once after all diagnostics for each file.
 * **Multi-error syntax reporting** - Linting, the language server, and script execution report all syntax errors in a single pass. Dialect violations (such as `[[` in the `sh` mood) are reported while still parsing the inner contents for additional syntax errors.
 * **Pre-run static analysis tiers** - Analysis categorizes checks into `strict`, `lenient`, and `annoying` tiers (configured via `-W` and listed via `--list-diagnostics`).
   * In the `kosh` mood, analysis runs automatically before execution; `strict` and `lenient` findings abort the script with exit status `1` before any command executes.
@@ -122,7 +122,7 @@ All diagnostics write to standard error in an identical format across every mood
 
 `kosh --lint` performs static analysis without executing code, enabling all three diagnostic tiers (`strict`, `lenient`, `annoying`) at the severity rules of the active mood regardless of `-W`, `--no-diagnostics`, or `--no-annoying-diagnostics`.
 
-* **Input order** - Analyzes `-c` command strings in order, then file operands, or standard input if neither is provided. Startup and settings files are skipped. Diagnostics write to stderr and stdout remains empty.
+* **Input order** - Analyzes the `-c` command string, then the remaining operands as files, or standard input if neither is provided. Startup and settings files are skipped. Diagnostics write to stderr and stdout remains empty.
 * **Polyglot host file extraction** - Extracts and analyzes embedded `sh`, `bash`, and `kosh` scripts from CI workflows, Ansible playbooks, Dockerfiles, Docker Compose files, Markdown documents, Makefiles, justfiles, and Kubernetes manifests. Files are identified by extension or shebang; unrecognized file formats fail with status `1` and print the supported format list.
   * Host interpreter declarations (`shell:` step keys, `SHELL` instructions, shebangs, or executable flags) select the analysis mood; fragments targeting non-shell interpreters are skipped.
   * `exec` arrays extract only the script operand of a shell `-c` invocation.
@@ -500,8 +500,9 @@ On Windows, Koshka executes the exact same shell grammar with the following OS a
 
 ### Invocation, operands, and compatibility startup <a id="invocation"></a> <a id="operands"></a> <a id="bash-and-posix-startup-files"></a>
 
-* **Input source precedence** - Evaluated in strict order: `-s` (stdin), `-c` (inline command strings), `script` operand (where `-` selects stdin; a directory fails with `126`, an unopenable file fails with `127`), `-i` or terminal stdin (interactive editor), or non-interactive stdin. Selecting multiple sources emits a warning and uses the highest-priority source, except `-s -i` on a terminal starts the interactive editor. Passing `-i` without a terminal fails after startup files complete.
-* **Positional parameter assignment (`$0` and `$1..$N`)** - For scripts, `$0` is the script path and remaining operands become `$1..$N`. For `-c`, the first operand after the command string(s) becomes `$0` and subsequent operands become `$1..$N`. For `-s` and interactive sessions, `$0` remains the shell invocation name and all operands become `$1..$N`.
+* **Command string (`-c`)** - `-c` takes no value of its own and may stand anywhere in a cluster of short options, as in `-ec` or `-xec`. The first operand is the command string, and option parsing ends at it. A lone `-` or `--` before the command string ends option parsing without becoming an operand. Repeating `-c` has no further effect, and `-c` without an operand fails with status `2`.
+* **Input source precedence** - Evaluated in strict order: `-s` (stdin), `-c` (inline command string), `script` operand (where `-` selects stdin; a directory fails with `126`, an unopenable file fails with `127`), `-i` or terminal stdin (interactive editor), or non-interactive stdin. Selecting multiple sources emits a warning and uses the highest-priority source, except `-s -i` on a terminal starts the interactive editor. Passing `-i` without a terminal fails after startup files complete.
+* **Positional parameter assignment (`$0` and `$1..$N`)** - For scripts, `$0` is the script path and remaining operands become `$1..$N`. For `-c`, the first operand after the command string becomes `$0` and subsequent operands become `$1..$N`. For `-s` and interactive sessions, `$0` remains the shell invocation name and all operands become `$1..$N`.
 * **Initial mood and login operation** - The invocation basename selects the initial mood (`sh`/`dash` select `sh`, `bash`/`rbash` select `bash`; `rbash` also requests restricted mode). A leading dash in argument zero or `-l` selects login operation.
 * **`KOSH_FLAGS`** - Supplies options before the command line, which override the same option from it. Input-selecting and mode flags (`-c`, `-s`, `--rcfile`, `--init-file`, `--format`, `--apply`, `--as-language-server`), `--`, and operands are dropped (see [Koshka variables](#configuration-variables)). A secure execution removes it.
 * **Invocation failure and rescue mode** - When `$0` begins with `-` (login shell) and option parsing fails, the shell warns and enters **rescue mode** (skipping all settings and startup files). A failing `KOSH_FLAGS` is dropped and the command-line options and input source are kept. A failing command line in a login shell retains only `-r` and reads commands from stdin (interactively on a terminal). All other invalid invocations, including an unknown value of `--mood`, `--tab-selector`, `--init-moods`, `-o`, or `-O`, exit with status `2`.

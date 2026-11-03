@@ -25,7 +25,7 @@ echo "== compopt -o and +o options:"
 echo "== compgen -o joined form:"
 "$BIN" --debug-complete-at 'compgen -o=d' </dev/null
 echo "== compgen -V completes a variable:"
-"$BIN" -c 'completion_probe_var=1' --debug-complete-at 'compgen -V completion_probe' </dev/null
+"$BIN" --debug-complete-at 'compgen -V completion_probe' -c 'completion_probe_var=1' </dev/null
 echo "== compgen -V joined form:"
 "$BIN" --debug-complete-at 'compgen -V=KOSH_ANSI_RE' </dev/null
 echo "== koshkit find entry types:"

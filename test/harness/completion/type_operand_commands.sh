@@ -1,11 +1,11 @@
 echo "== alias and function operands:"
-"$BIN" -c 'PATH=; alias zzalias=echo; zzfunc() { :; }' \
-    --debug-complete-at 'type zz' </dev/null
+"$BIN" --debug-complete-at 'type zz' \
+    -c 'PATH=; alias zzalias=echo; zzfunc() { :; }' </dev/null
 echo "== builtin operand:"
-"$BIN" -c ':' --debug-complete-at 'type unali' </dev/null
+"$BIN" --debug-complete-at 'type unali' -c ':' </dev/null
 echo "== keyword operand:"
-"$BIN" -c ':' --debug-complete-at 'type whil' </dev/null
+"$BIN" --debug-complete-at 'type whil' -c ':' </dev/null
 echo "== absent operand:"
-"$BIN" -c ':' --debug-complete-at 'type zzz-absent' </dev/null
+"$BIN" --debug-complete-at 'type zzz-absent' -c ':' </dev/null
 echo "== flags still answer:"
-"$BIN" -c ':' --debug-complete-at 'type -' </dev/null
+"$BIN" --debug-complete-at 'type -' -c ':' </dev/null
