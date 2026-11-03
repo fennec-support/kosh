@@ -529,9 +529,14 @@ command_word_is_glob(const Word &word) wontthrow -> bool
     for (usize i = 0; i < segment.text.count(); i++) {
       let const c = segment.text[i];
 
-      if (c == '*' || c == '?') return true;
+      if (c == '*' || c == '?') {
+        return true;
+      }
+
       if (c == '[') has_open_bracket = true;
-      if (c == ']' && has_open_bracket) return true;
+      if (c == ']' && has_open_bracket) {
+        return true;
+      }
     }
   }
 
@@ -573,7 +578,9 @@ fn
 SimpleCommand::get_literal_command_name() const throws
     -> Maybe<StringView>
 {
-  if (m_args.is_empty() || m_args[0]->kind() != Token::Kind::Word) return None;
+  if (m_args.is_empty() || m_args[0]->kind() != Token::Kind::Word) {
+    return None;
+  }
 
   let const &command_word =
       static_cast<const tokens::WordToken *>(m_args[0])->word();
@@ -713,7 +720,7 @@ SimpleCommand::set_redirections(ArrayList<Redirection> &&redirections)
     throws -> void
 {
   for (let &redirection : redirections) {
-    redirection.can_target_change_state =
+    redirection.has_state_changing_target =
         internal::redirection_target_can_change_state(redirection.target);
   }
 
@@ -732,6 +739,8 @@ SimpleCommand::append_redirection(const Redirection &redirection,
   }
 
   redirections.push(redirection);
+  redirections.back().has_state_changing_target =
+      internal::redirection_target_can_change_state(redirection.target);
   m_redirections.fill(steal(redirections));
 }
 
@@ -910,7 +919,9 @@ pure fn
 internal::redirection_target_can_change_state(const Token *target) wontthrow
     -> bool
 {
-  if (target == nullptr || target->kind() != Token::Kind::Word) return false;
+  if (target == nullptr || target->kind() != Token::Kind::Word) {
+    return false;
+  }
 
   for (let const &segment :
        static_cast<const tokens::WordToken *>(target)->word().segments)
@@ -935,10 +946,10 @@ Redirection::can_change_state() const wontthrow -> bool
 {
   if (kind == Kind::Heredoc) {
     return should_expand_heredoc && heredoc != nullptr &&
-           heredoc->can_change_state;
+           heredoc->has_state_effect;
   }
 
-  return can_target_change_state;
+  return has_state_changing_target;
 }
 
 pure fn
@@ -2347,18 +2358,15 @@ SimpleCommand::write_ast(AstWriter &out) const throws -> void
     let const &command_word =
         static_cast<const tokens::WordToken *>(m_args[0])->word();
 
-    if (command_word.has_command_fact(Word::Fact::IsDeclarationCommand))
+    if (command_word.has_fact(Word::Fact::IsDeclarationCommand))
       out.flag("declaration");
-    if (command_word.has_command_fact(Word::Fact::IsLocalCommand))
-      out.flag("local");
-    if (command_word.has_command_fact(Word::Fact::IsDeclareCommand))
+    if (command_word.has_fact(Word::Fact::IsLocalCommand)) out.flag("local");
+    if (command_word.has_fact(Word::Fact::IsDeclareCommand))
       out.flag("declare");
-    if (command_word.has_command_fact(Word::Fact::IsTestCommand))
-      out.flag("test");
-    if (command_word.has_command_fact(Word::Fact::IsBracketCommand))
+    if (command_word.has_fact(Word::Fact::IsTestCommand)) out.flag("test");
+    if (command_word.has_fact(Word::Fact::IsBracketCommand))
       out.flag("bracket");
-    if (command_word.has_command_fact(Word::Fact::IsLetCommand))
-      out.flag("let");
+    if (command_word.has_fact(Word::Fact::IsLetCommand)) out.flag("let");
   }
 
   if (m_is_command_word_glob) out.flag("glob-command-word");

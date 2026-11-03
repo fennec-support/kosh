@@ -560,8 +560,15 @@ word_token_from_assignment(BumpArena &arena, const Assignment *a) throws
       false
   });
 
-  for (let const &segment : a->value_word().segments)
+  for (let const &segment : a->value_word().segments) {
+    if (segment.kind == WordSegment::Kind::UnquotedText &&
+        segment.text.is_empty())
+    {
+      continue;
+    }
+
     word.segments.push(segment.clone_to(bump_allocator(arena)));
+  }
 
   return tokens::create_word_token(arena, a->source_location(), steal(word));
 }

@@ -828,7 +828,7 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
 
     has_reference = true;
     if (reference != nullptr
-            ? !reference->has_route(parameter_reference::ROUTE_PLAIN_NAME)
+            ? reference->kind != parameter_reference::Form::Name
             : !lexer::word_is_variable_name(segment.text.view()))
     {
       has_complex_reference = true;
@@ -841,7 +841,7 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
   }
 
   fact_list.push(')');
-  symbol("facts", fact_list.view());
+  if (fact_list.count() > 2) symbol("facts", fact_list.view());
   if (word.has_locale_translation_quote) flag("locale-quote");
   quoted("escape", escape_marks.view());
 
@@ -881,10 +881,10 @@ AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
 }
 
 static pure fn
-ast_parameter_form_symbol(parameter_reference::form form)
+ast_parameter_form_symbol(parameter_reference::Form form)
     wontthrow -> StringView
 {
-  using reference_form = parameter_reference::form;
+  using reference_form = parameter_reference::Form;
 
   switch (form) {
   case reference_form::Empty:       return "empty";
@@ -916,12 +916,12 @@ AstWriter::parameter(const parameter_reference &reference,
                           : StringView{};
   let const bracket = spec.find_character('[');
 
-  if (reference.kind == parameter_reference::form::PrefixNames &&
+  if (reference.kind == parameter_reference::Form::PrefixNames &&
       !spec.is_empty())
   {
     quoted("name", spec.substring_of_length(0, spec.length - 1));
     quoted("suffix", spec.substring(spec.length - 1));
-  } else if (reference.kind == parameter_reference::form::Keys &&
+  } else if (reference.kind == parameter_reference::Form::Keys &&
              bracket.has_value())
   {
     quoted("name", spec.substring_of_length(0, *bracket));
@@ -931,7 +931,7 @@ AstWriter::parameter(const parameter_reference &reference,
     quoted("name", spec);
   }
 
-  if (reference.kind == parameter_reference::form::Subscripted) {
+  if (reference.kind == parameter_reference::Form::Subscripted) {
     quoted("subscript",
            text.substring_of_length(reference.rest_offset + 1,
                                     reference.subscript_close -
@@ -993,7 +993,7 @@ AstWriter::substitution_body(const WordSegment &segment) throws -> void
 
   try {
     ast = parser.construct_ast();
-  } catch (...) {
+  } catch (const ErrorBase &) {
     flag("unparsed-body");
 
     return;
@@ -1059,7 +1059,7 @@ AstWriter::arithmetic(StringView        expression,
                       const arith_tree *tree) throws -> void
 {
   if (tree == nullptr) return;
-  if (tree->needs_expansion) {
+  if (tree->should_expand) {
     flag("arith-after-expansion");
 
     return;
@@ -2420,6 +2420,17 @@ expressions::internal::static_command_name(const Token *token) throws
   return word.constant_value();
 }
 
+pure fn
+expressions::internal::is_bracket_command_word(const Token *token) wontthrow
+    -> bool
+{
+  ASSERT(token != nullptr);
+
+  return token->kind() == Token::Kind::Word &&
+         static_cast<const tokens::WordToken *>(token)->word().has_fact(
+             Word::Fact::IsBracketCommand);
+}
+
 fn
 expressions::internal::alias_command_name(const Token *token) throws
     -> Maybe<StringView>
@@ -2631,11 +2642,7 @@ expressions::internal::analyze_followed_source(
     let const &word =
         static_cast<const tokens::WordToken *>(args[path_index])->word();
 
-    if (!word.segments.is_empty() &&
-        word.segments.front().is_tilde_candidate() &&
-        !word.segments.front().text.is_empty() &&
-        word.segments.front().text.first_character() == '~')
-    {
+    if (word.has_fact(Word::Fact::HasLeadingTilde)) {
       tilde_expansion = source_tilde_expansion::Enabled;
     }
   }

@@ -788,7 +788,7 @@ arithmetic_clause_command_text(StringView clause) throws -> String
   return command_text;
 }
 
-/* time: one clause evaluation per call. this function has no loops. */
+/* time: one clause evaluation per call. */
 fn
 ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> status_result
 {
@@ -822,7 +822,9 @@ ArithmeticCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const t
       is_nonzero = cxt.evaluate_arithmetic_tree_nonzero(m_expression, m_tree,
                                                         &body_base);
     } catch (const ErrorBase &) {
-      if (m_tree == nullptr || !m_tree->is_simple) throw;
+      if (m_tree == nullptr || !m_tree->is_simple) {
+        throw;
+      }
 
       is_nonzero = cxt.evaluate_arithmetic_nonzero(
           m_expression, &body_base, arithmetic_text_kind::ShellSource);
@@ -931,9 +933,6 @@ CStyleForLoop::write_ast(AstWriter &out) const throws -> void
   out.open("arithmetic-for");
   write_ast_command_fields(out);
   out.position("header-at", m_header_position);
-  out.quoted("init", m_init);
-  out.quoted("condition", m_condition);
-  out.quoted("step", m_step);
 
   if (m_folded_condition.has_value()) {
     out.number("folded-condition", *m_folded_condition);
@@ -954,10 +953,9 @@ CStyleForLoop::write_ast(AstWriter &out) const throws -> void
   };
 
   for (let const &clause : clauses) {
-    if (clause.tree == nullptr || clause.tree->root == ARITH_NO_NODE) continue;
-
     out.open("arith-clause");
     out.symbol("role", clause.role);
+    out.quoted("text", clause.text);
     out.arithmetic(clause.text, clause.tree);
     out.close();
   }
@@ -1762,7 +1760,7 @@ RedirectedCommand::RedirectedCommand(SourceLocation           location,
     : Command(steal(location)), m_child(child)
 {
   for (let &redirection : redirections) {
-    redirection.can_target_change_state =
+    redirection.has_state_changing_target =
         internal::redirection_target_can_change_state(redirection.target);
   }
 

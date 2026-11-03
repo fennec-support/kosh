@@ -454,6 +454,7 @@ EvalContext::capture_command_substitution(
                       : arena_store().parse_arena();
     if (cache_arena != nullptr)
       cache = &cache_segment->get_eval_cache(cache_arena);
+    if (cache != nullptr && !cache_arena->owns(cache)) cache = nullptr;
   }
 
   /* at this point: source is not a bare file read, and parse_arena() is
@@ -570,6 +571,7 @@ EvalContext::setup_process_substitution(
                       : arena_store().parse_arena();
     ASSERT(cache_arena != nullptr);
     cache = &cache_segment->get_eval_cache(cache_arena);
+    if (!cache_arena->owns(cache)) cache = nullptr;
   }
 
   let const has_cached_ast =

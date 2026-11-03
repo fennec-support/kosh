@@ -3377,7 +3377,7 @@ EvalContext::ParameterExpander::expand_operator() throws -> String
 
   let const is_all_parameters = m_name == "@" || m_name == "*";
 
-  if (m_reference.kind == parameter_reference::form::Slice) {
+  if (m_reference.kind == parameter_reference::Form::Slice) {
     return is_all_parameters ? expand_positional_slice()
                              : expand_substring_form();
   }
@@ -3465,7 +3465,7 @@ is_operator_after_hash(StringView spec) wontthrow -> bool
 fn
 EvalContext::ParameterExpander::expand() throws -> String
 {
-  using form = parameter_reference::form;
+  using form = parameter_reference::Form;
 
   switch (m_reference.kind) {
   case form::Empty:
@@ -4955,8 +4955,6 @@ analyze_word_routes(StringView           text,
   if (is_name_start) {
     let const name_end = variable_name_end;
 
-    reference.word_name_end = static_cast<u32>(name_end);
-
     let const after_array_colon =
         name_end + 4 < length ? text[name_end + 4] : '\0';
 
@@ -5018,9 +5016,6 @@ analyze_word_routes(StringView           text,
     }
   }
 
-  if (is_name_start && variable_name_end == length)
-    routes |= reference_type::ROUTE_PLAIN_NAME;
-
   for (usize i = variable_name_end; i < length; i++) {
     if (text[i] == '@' || text[i] == '*' || text[i] == '[') {
       routes |= reference_type::ROUTE_FIELD_MARKER;
@@ -5047,8 +5042,13 @@ analyze_operator(StringView           modifier,
   let const op = modifier[op_index];
 
   reference.op = op;
-  if (is_colon && !is_colon_modifier_operator(op)) return;
-  if (!is_colon_modifier_operator(op) && op != '#' && op != '%') return;
+  if (is_colon && !is_colon_modifier_operator(op)) {
+    return;
+  }
+
+  if (!is_colon_modifier_operator(op) && op != '#' && op != '%') {
+    return;
+  }
 
   let const is_doubled = op_index + 1 < modifier.length &&
                          modifier[op_index + 1] == op &&
@@ -5085,7 +5085,7 @@ fn
 analyze_parameter_reference(StringView           text,
                             parameter_reference &reference) wontthrow -> void
 {
-  using form = parameter_reference::form;
+  using form = parameter_reference::Form;
 
   reference.text_length = static_cast<u32>(text.length);
 
@@ -5104,9 +5104,7 @@ analyze_parameter_reference(StringView           text,
     reference.kind               = form::Name;
     reference.name_length        = length;
     reference.rest_offset        = length;
-    reference.word_name_end      = length;
     reference.alternate_name_end = length;
-    reference.word_routes        = parameter_reference::ROUTE_PLAIN_NAME;
 
     return;
   }
@@ -5354,12 +5352,10 @@ make_name_reference_table() wontthrow -> name_reference_table
     parameter_reference &entry = table.entries[length];
 
     entry.text_length        = length;
-    entry.kind               = parameter_reference::form::Name;
+    entry.kind               = parameter_reference::Form::Name;
     entry.name_length        = length;
     entry.rest_offset        = length;
-    entry.word_name_end      = length;
     entry.alternate_name_end = length;
-    entry.word_routes        = parameter_reference::ROUTE_PLAIN_NAME;
   }
 
   return table;
@@ -5425,7 +5421,9 @@ build_parameter_reference(StringView   text,
 fn
 destroy_parameter_reference(parameter_reference *reference) wontthrow -> void
 {
-  if (reference == nullptr || is_shared_name_reference(reference)) return;
+  if (reference == nullptr || is_shared_name_reference(reference)) {
+    return;
+  }
 
   if (reference->operand != nullptr) {
     reference->operand->~Word();

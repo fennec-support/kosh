@@ -220,7 +220,7 @@ struct heredoc_contents
   usize                  source_position{0};
   usize                  source_end_position{0};
   heredoc_source_mapping source_mapping;
-  bool                   can_change_state{false};
+  bool                   has_state_effect{false};
 };
 
 struct lexed_debug_word
@@ -251,8 +251,6 @@ pure fn
 is_part_of_identifier(char ch) wontthrow -> bool;
 pure fn
 is_string_quote(char ch) wontthrow -> bool;
-pure fn
-is_expandable_char(char ch) wontthrow -> bool;
 pure fn
 is_variable_name_start(char ch) wontthrow -> bool;
 pure fn

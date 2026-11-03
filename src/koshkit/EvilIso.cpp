@@ -724,12 +724,11 @@ collect_process_cgroup_snapshot(
     record.process_id  = process.pid;
     record.start_token = process.start_token;
     record.owner_id    = process.owner_id;
-    record.name        = process.name.is_empty()
-                             ? String{allocator, "-"}
-                             : process.name.clone_to(allocator);
-    record.command     = process.command_line.is_empty()
-                             ? String{allocator, "-"}
-                             : process.command_line.clone_to(allocator);
+    record.name        = process.name.clone_to(allocator);
+    if (record.name.is_empty()) record.name = String{allocator, "-"};
+    record.command = process.command_line.is_empty()
+                         ? String{allocator, "-"}
+                         : process.command_line.clone_to(allocator);
     if (collection == eviliso_collection_mode::Collect) {
       let       suffix = process.pid == self_process_id
                              ? String{allocator, "self/cgroup"}

@@ -328,7 +328,7 @@ CompoundList::has_single_test_command() const throws -> bool
 
   if (name.has_value()) return *name == StringView{"test"};
 
-  return name_token->raw_view() == StringView{"["};
+  return is_bracket_command_word(name_token);
 }
 
 fn
@@ -362,11 +362,7 @@ node_unclosed_test_bracket(const CompoundListCondition *node) wontthrow
 
   if (args.is_empty()) return nullptr;
 
-  let const name = args[0]->raw_view();
-
-  if (!name.has_value() || *name != StringView{"["}) {
-    return nullptr;
-  }
+  if (!is_bracket_command_word(args[0])) return nullptr;
 
   let const closer = args.back()->raw_view();
 
@@ -420,11 +416,7 @@ node_inequality_left_operand(const CompoundListCondition *node) wontthrow
 
   if (args.count() != 5) return nullptr;
 
-  let const name = args[0]->raw_view();
-
-  if (!name.has_value() || *name != StringView{"["}) {
-    return nullptr;
-  }
+  if (!is_bracket_command_word(args[0])) return nullptr;
 
   let const closer = args[4]->raw_view();
 
@@ -566,7 +558,7 @@ CompoundList::analyze(AnalysisContext &actx, bool is_unconditional) const throws
           is_test_command = get_analysis_command_info(*middle_name)
                                 .is_in_group(COMMAND_GROUP_TEST);
         } else {
-          is_test_command = middle_token->raw_view() == StringView{"["};
+          is_test_command = is_bracket_command_word(middle_token);
         }
       }
 

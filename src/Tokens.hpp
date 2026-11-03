@@ -83,7 +83,7 @@ struct arith_tree
   u32               text_length{0};
   u32               root{ARITH_NO_NODE};
   u32               exact_root{ARITH_NO_NODE};
-  bool              needs_expansion{false};
+  bool              should_expand{false};
   bool              is_simple{false};
   bool              is_heap{false};
 
@@ -481,7 +481,13 @@ public:
     let const block = heap_allocator().alloc_array<segment_eval_cache>(1);
 
     m_eval_cache = new (block) segment_eval_cache{*other.m_eval_cache};
-    reset_copied_eval_cache(*m_eval_cache, heap_allocator());
+    try {
+      reset_copied_eval_cache(*m_eval_cache, heap_allocator());
+    } catch (...) {
+      heap_allocator().free_array(m_eval_cache, 1);
+      m_eval_cache = nullptr;
+      throw;
+    }
   }
 
   WordSegment(WordSegment &&other) wontthrow
@@ -604,9 +610,9 @@ public:
       let const block = allocator.alloc_array<segment_eval_cache>(1);
 
       copy.m_eval_cache = new (block) segment_eval_cache{*m_eval_cache};
-      reset_copied_eval_cache(*copy.m_eval_cache, allocator);
       copy.is_eval_cache_in_arena =
           allocator.get_kind() == Allocator::Kind::Bump;
+      reset_copied_eval_cache(*copy.m_eval_cache, allocator);
     }
 
     return copy;
@@ -615,7 +621,9 @@ public:
   pure fn
   get_arithmetic_tree() const wontthrow -> const arith_tree *
   {
-    return m_eval_cache != nullptr ? m_eval_cache->arithmetic_tree : nullptr;
+    return kind != Kind::VariableReference && m_eval_cache != nullptr
+               ? m_eval_cache->arithmetic_tree
+               : nullptr;
   }
 
   fn
@@ -624,7 +632,9 @@ public:
   fn
   clear_arithmetic_tree() wontthrow -> void
   {
-    if (m_eval_cache == nullptr) return;
+    if (kind == Kind::VariableReference || m_eval_cache == nullptr) {
+      return;
+    }
 
     arith_tree::release(m_eval_cache->arithmetic_tree);
     m_eval_cache->arithmetic_tree = nullptr;
@@ -746,6 +756,7 @@ public:
   {
     other.m_constant_value_data   = nullptr;
     other.m_constant_value_length = 0;
+    other.m_facts                 = 0;
   }
 
   cold fn
@@ -774,6 +785,7 @@ public:
     has_locale_translation_quote  = other.has_locale_translation_quote;
     other.m_constant_value_data   = nullptr;
     other.m_constant_value_length = 0;
+    other.m_facts                 = 0;
 
     return *this;
   }
@@ -819,7 +831,6 @@ public:
     HasColonTilde     = 1U << 7,
     HasBraceCandidate = 1U << 8,
 
-    IsCommandClassified  = 1U << 9,
     IsLocalCommand       = 1U << 10,
     IsDeclareCommand     = 1U << 11,
     IsDeclarationCommand = 1U << 12,
@@ -835,14 +846,6 @@ public:
   is_finished() const wontthrow -> bool
   {
     return (m_facts & static_cast<u16>(Fact::IsComputed)) != 0;
-  }
-
-  pure fn
-  has_command_fact(Fact fact) const wontthrow -> bool
-  {
-    ASSERT(is_finished());
-
-    return (m_facts & static_cast<u16>(fact)) != 0;
   }
 
   pure fn
@@ -922,7 +925,7 @@ struct parameter_operand_part
 
 struct parameter_reference
 {
-  enum class form : u8
+  enum class Form : u8
   {
     Empty,
     Name,
@@ -949,7 +952,6 @@ struct parameter_reference
   static constexpr u16 ROUTE_ARRAY_MODIFIER      = 1U << 9;
   static constexpr u16 ROUTE_ARRAY_TEST          = 1U << 10;
   static constexpr u16 ROUTE_ALTERNATE_OPERAND   = 1U << 11;
-  static constexpr u16 ROUTE_PLAIN_NAME          = 1U << 12;
   static constexpr u16 ROUTE_FIELD_MARKER        = 1U << 13;
 
   u32                     text_length{0};
@@ -959,11 +961,10 @@ struct parameter_reference
   u32                     subscript_close{0};
   u32                     operand_offset{0};
   u32                     operand_length{0};
-  u32                     word_name_end{0};
   u32                     alternate_name_end{0};
   u32                     part_count{0};
   u16                     word_routes{0};
-  form                    kind{form::Empty};
+  Form                    kind{Form::Empty};
   char                    op{'\0'};
   bool                    is_colon : 1 {false};
   bool                    is_doubled : 1 {false};

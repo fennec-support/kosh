@@ -960,7 +960,9 @@ private:
   {
     let const first = parse_assignment();
 
-    if (has_failed || !consume(",")) return first;
+    if (has_failed || !consume(",")) {
+      return first;
+    }
 
     arith_node node{};
 
@@ -975,7 +977,9 @@ private:
 
       nodes[last].next = next;
       last             = next;
-      if (has_failed || !consume(",")) return comma;
+      if (has_failed || !consume(",")) {
+        return comma;
+      }
     }
   }
 
@@ -1078,7 +1082,9 @@ private:
 
     let const condition = parse_binary(1);
 
-    if (has_failed || !consume("?")) return condition;
+    if (has_failed || !consume("?")) {
+      return condition;
+    }
 
     let const if_true = parse_comma();
 
@@ -2118,14 +2124,6 @@ public:
     switch (node.kind) {
     case arith_node_kind::Number: return evaluate_number(node);
     case arith_node_kind::Read:   {
-      if (tree.is_simple) {
-        let const &target = tree.nodes[node.first];
-
-        return read_simple_variable(
-            source.substring_of_length(target.start, target.length),
-            target.name_hash);
-      }
-
       let const target = get_lvalue(node.first);
 
       pos = node.start;
@@ -3362,14 +3360,14 @@ lex_exact_arith_number(StringView       from,
 
 struct arith_token
 {
-  enum class kind : u8
+  enum class Kind : u8
   {
     number,
     name,
     op,
     subscript,
   };
-  kind       k;
+  Kind       k;
   i64        value{0};
   StringView text{};
 };
@@ -3495,7 +3493,7 @@ tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
         }
       }
 
-      out.push(arith_token{arith_token::kind::number, value,
+      out.push(arith_token{arith_token::Kind::number, value,
                            src.substring_of_length(i, consumed)});
       i += consumed;
       continue;
@@ -3511,7 +3509,7 @@ tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
       }
 
       out.push(
-          arith_token{arith_token::kind::name, 0,
+          arith_token{arith_token::Kind::name, 0,
                       src.substring_of_length(name_start, i - name_start)});
       if (i < src.length && src[i] == '[') {
         i++;
@@ -3539,7 +3537,7 @@ tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
         }
 
         out.push(
-            arith_token{arith_token::kind::subscript, 0,
+            arith_token{arith_token::Kind::subscript, 0,
                         src.substring_of_length(inner_start, i - inner_start)});
         i++;
       }
@@ -3549,7 +3547,7 @@ tokenize_arithmetic(StringView src, ArrayList<arith_token> &out) throws
 
     let const op = src.substring_of_length(i, arith_operator_length(src, i));
 
-    out.push(arith_token{arith_token::kind::op, arith_packed_binop(op), op});
+    out.push(arith_token{arith_token::Kind::op, arith_packed_binop(op), op});
     i += op.length;
   }
 }
@@ -3577,15 +3575,15 @@ arith_tokens_are_single_step(const ArrayList<arith_token> &toks)
   let const &second = toks[1];
 
   let const do_is_step = [](const arith_token &token) {
-    return token.k == arith_token::kind::op &&
+    return token.k == arith_token::Kind::op &&
            (token.text == "++" || token.text == "--");
   };
 
-  if (do_is_step(first)) return second.k == arith_token::kind::name;
+  if (do_is_step(first)) return second.k == arith_token::Kind::name;
 
   /* at this point: toks holds two tokens, and first is not a '++' or '--'
      operator. */
-  return first.k == arith_token::kind::name && do_is_step(second) &&
+  return first.k == arith_token::Kind::name && do_is_step(second) &&
          first.text.data + first.text.length == second.text.data;
 }
 
@@ -3595,14 +3593,14 @@ arith_tokens_are_simple(const ArrayList<arith_token> &toks) wontthrow -> bool
   if (arith_tokens_are_single_step(toks)) return true;
 
   for (let const &t : toks) {
-    if (t.k == arith_token::kind::subscript) return false;
-    if (t.k == arith_token::kind::number &&
+    if (t.k == arith_token::Kind::subscript) return false;
+    if (t.k == arith_token::Kind::number &&
         t.text.find_character('.').has_value())
     {
       return false;
     }
 
-    if (t.k == arith_token::kind::op && arith_op_is_complex(t.text)) {
+    if (t.k == arith_token::Kind::op && arith_op_is_complex(t.text)) {
       return false;
     }
   }
@@ -3800,7 +3798,9 @@ public:
 
     let const result = parse_binary(1);
 
-    if (has_failed || ti == toks.count()) return result;
+    if (has_failed || ti == toks.count()) {
+      return result;
+    }
 
     let const error = fail_at_token(
         ti, "Unexpected '" + toks[ti].text + "' after the expression",
@@ -3885,14 +3885,14 @@ private:
   pure fn
   at_op(StringView s) const wontthrow -> bool
   {
-    return ti < toks.count() && toks[ti].k == arith_token::kind::op &&
+    return ti < toks.count() && toks[ti].k == arith_token::Kind::op &&
            toks[ti].text == s;
   }
 
   fn
   build_single_step() throws -> u32
   {
-    let const  is_prefix = toks[0].k == arith_token::kind::op;
+    let const  is_prefix = toks[0].k == arith_token::Kind::op;
     let const &step      = is_prefix ? toks[0] : toks[1];
 
     arith_node node{};
@@ -3955,7 +3955,7 @@ private:
       return value;
     }
 
-    if (ti < toks.count() && toks[ti].k == arith_token::kind::number) {
+    if (ti < toks.count() && toks[ti].k == arith_token::Kind::number) {
       arith_node node{};
 
       node.kind   = arith_node_kind::Number;
@@ -3969,7 +3969,7 @@ private:
       return storage.add_node(node);
     }
 
-    if (ti < toks.count() && toks[ti].k == arith_token::kind::name) {
+    if (ti < toks.count() && toks[ti].k == arith_token::Kind::name) {
       arith_node node{};
 
       node.first = add_name(toks[ti]);
@@ -4008,7 +4008,7 @@ private:
     let last_step = ARITH_NO_NODE;
 
     loop {
-      if (ti >= toks.count() || toks[ti].k != arith_token::kind::op) {
+      if (ti >= toks.count() || toks[ti].k != arith_token::Kind::op) {
         return chain == ARITH_NO_NODE ? lhs : chain;
       }
 
@@ -4029,7 +4029,7 @@ private:
           op.kind == 'P' ? op.precedence : static_cast<u8>(op.precedence + 1));
 
       if (ti < toks.count() &&
-          (toks[ti].k != arith_token::kind::op ||
+          (toks[ti].k != arith_token::Kind::op ||
            (toks[ti].text != ")" &&
             arith_unpacked_binop(toks[ti].value).precedence == 0)))
       {
@@ -4079,11 +4079,11 @@ build_tree_into(StringView          expression,
 {
   let tree = arith_tree{};
 
-  tree.needs_expansion = expression.find_character('$').has_value() ||
-                         expression.find_character('`').has_value() ||
-                         expression.find_character('\\').has_value() ||
-                         expression.find_character('"').has_value();
-  if (tree.needs_expansion) return tree;
+  tree.should_expand = expression.find_character('$').has_value() ||
+                       expression.find_character('`').has_value() ||
+                       expression.find_character('\\').has_value() ||
+                       expression.find_character('"').has_value();
+  if (tree.should_expand) return tree;
 
   let tokens = ArrayList<arith_token>{bump_allocator(arena)};
   let root   = ARITH_NO_NODE;
@@ -4091,7 +4091,7 @@ build_tree_into(StringView          expression,
   try {
     tokenize_arithmetic(expression, tokens);
     tree.is_simple = arith_tokens_are_simple(tokens);
-  } catch (...) {
+  } catch (const ErrorBase &) {
     tree.is_simple = false;
   }
 
@@ -4185,7 +4185,9 @@ arith_tree::clone_to(Allocator allocator) const throws
 fn
 arith_tree::release(const arith_tree *tree) wontthrow -> void
 {
-  if (tree == nullptr || !tree->is_heap) return;
+  if (tree == nullptr || !tree->is_heap) {
+    return;
+  }
 
   heap_allocator().free_array(
       reinterpret_cast<arith_node *>(const_cast<arith_tree *>(tree)),
@@ -4330,7 +4332,7 @@ evaluate_stored_tree(EvalContext          *context,
                                   is_exact, arena);
   }
 
-  if (stored_tree->needs_expansion) {
+  if (stored_tree->should_expand) {
     return evaluate_arithmetic_value(context, expression, source_location,
                                      is_exact, arena,
                                      arithmetic_text_kind::ShellSource);

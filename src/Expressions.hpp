@@ -1486,7 +1486,7 @@ public:
   u32                     operator_position;
   Kind                    kind;
   Origin                  origin;
-  bool                    can_target_change_state;
+  bool                    has_state_changing_target;
   bool                    should_expand_heredoc;
   bool                    should_strip_heredoc_tabs;
   /* the - of <<- is its own token, as in <<- EOF, so the delimiter word

@@ -134,7 +134,8 @@ fn
 WordSegment::get_exact_constant_arithmetic_text(
     BumpArena &cache_arena) const wontthrow -> Maybe<StringView>
 {
-  if (m_eval_cache == nullptr || !m_eval_cache->has_exact_constant_text ||
+  if (kind == Kind::VariableReference || m_eval_cache == nullptr ||
+      !m_eval_cache->has_exact_constant_text ||
       !cache_arena.is_lifetime_valid(m_eval_cache->arithmetic_lifetime))
   {
     return None;
@@ -216,6 +217,7 @@ WordSegment::move_resources_to_arena(BumpArena &arena) throws -> void
   if (m_eval_cache == nullptr) return;
 
   if (kind == Kind::VariableReference) {
+    if (allocator.owns(m_parameter)) return;
     set_parameter_reference(
         build_parameter_reference(text.view(), allocator,
                                   is_substitution_cache_in_function_arena != 0,
@@ -326,7 +328,12 @@ fn
 Word::finish() throws -> void
 {
   compute_facts();
-  classify_command();
+  try {
+    classify_command();
+  } catch (...) {
+    m_facts = 0;
+    throw;
+  }
 }
 
 fn
@@ -428,10 +435,12 @@ constexpr u16 LOCAL_FACTS =
     static_cast<u16>(Word::Fact::IsLocalCommand) | DECLARATION_FACT;
 constexpr u16 DECLARE_FACTS =
     static_cast<u16>(Word::Fact::IsDeclareCommand) | DECLARATION_FACT;
-constexpr u16 TEST_FACT = static_cast<u16>(Word::Fact::IsTestCommand);
-constexpr u16 LET_FACT  = static_cast<u16>(Word::Fact::IsLetCommand);
+constexpr u16 TEST_FACT    = static_cast<u16>(Word::Fact::IsTestCommand);
+constexpr u16 LET_FACT     = static_cast<u16>(Word::Fact::IsLetCommand);
+constexpr u16 BRACKET_FACT = static_cast<u16>(Word::Fact::IsBracketCommand);
 
 constexpr static_string_entry<u16> COMMAND_FACT_ENTRIES[] = {
+    {SSK("["),        BRACKET_FACT    },
     {SSK("local"),    LOCAL_FACTS     },
     {SSK("declare"),  DECLARE_FACTS   },
     {SSK("typeset"),  DECLARE_FACTS   },
@@ -448,7 +457,7 @@ Word::classify_command() throws -> void
 {
   constexpr usize LONGEST_COMMAND_FACT_NAME_BYTE_COUNT = 8;
 
-  let command_facts   = static_cast<u16>(Fact::IsCommandClassified);
+  let command_facts   = u16{0};
   let text_byte_count = usize{0};
 
   for (let const &segment : segments)
@@ -1054,7 +1063,9 @@ Assignment::Assignment(SourceLocation         location,
                        assignment_update_mode update_mode)
     : Token(steal(location), Token::Kind::Assignment), m_key(key),
       m_value(steal(value)), m_update_mode(update_mode)
-{}
+{
+  ASSERT(m_value.is_finished());
+}
 
 fn
 Assignment::raw_string() const throws -> String
@@ -1106,7 +1117,9 @@ borrowed_word_literal(const Word &word) wontthrow -> Maybe<StringView>
 
 WordToken::WordToken(SourceLocation location, Word word)
     : Token(steal(location), Token::Kind::Word), m_word(steal(word))
-{}
+{
+  ASSERT(m_word.is_finished());
+}
 
 fn
 WordToken::raw_view() const wontthrow -> Maybe<StringView>

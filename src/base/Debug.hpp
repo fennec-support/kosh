@@ -33,7 +33,10 @@ debug_print_trace(const char *file,
 
   unused(fprintf(stderr, "(trace :at \"%s:%d\" \"", file, line));
   for (const char *cursor = message; *cursor != '\0'; cursor++) {
-    if (*cursor == '"' || *cursor == '\\') unused(fputc('\\', stderr));
+    if (*cursor == '"' || *cursor == '\\') {
+      unused(fputc('\\', stderr));
+    }
+
     if (*cursor == '\n') {
       unused(fputs("\\n", stderr));
       continue;

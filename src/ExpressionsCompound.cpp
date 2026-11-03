@@ -530,7 +530,7 @@ CompoundListCondition::write_ast(AstWriter &out) const throws -> void
   out.open("condition");
 
   switch (kind()) {
-  case Kind::None: out.symbol("after", "none"); break;
+  case Kind::None: break;
   case Kind::And:  out.symbol("after", "and"); break;
   case Kind::Or:   out.symbol("after", "or"); break;
   default:         unreachable("invalid compound-list condition kind %d", ENUM(kind()));

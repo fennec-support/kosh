@@ -107,10 +107,7 @@ EvalContext::expand_word(const Word &word) throws
   let const *segments                = &word.segments;
   let        tilde_expanded_segments = ArrayList<WordSegment>{scratch};
 
-  if (!word.segments.is_empty() && word.segments.front().is_tilde_candidate() &&
-      !word.segments.front().text.is_empty() &&
-      word.segments.front().text.first_character() == '~')
-  {
+  if (word.has_fact(Word::Fact::HasLeadingTilde)) {
     usize directory_byte_count = 0;
 
     tilde_expanded_segments = clone_word_segments(word, scratch);
@@ -498,7 +495,7 @@ EvalContext::expand_word(const Word &word) throws
         reference = &analyzed;
       }
 
-      if (reference->has_route(parameter_reference::ROUTE_PLAIN_NAME)) {
+      if (reference->kind == parameter_reference::Form::Name) {
         if (let const stored = variable_store().find_plain_scalar(segment_text);
             stored.has_value())
         {
@@ -813,7 +810,7 @@ EvalContext::expand_word(const Word &word) throws
       if (!segment_text.is_empty() &&
           lexer::is_variable_name_start(segment_text[0]))
       {
-        let const name_end = static_cast<usize>(reference->word_name_end);
+        let const name_end = static_cast<usize>(reference->name_length);
 
         if (reference->has_route(parameter_reference::ROUTE_ARRAY_SLICE)) {
           let const array_name = segment_text.substring_of_length(0, name_end);
@@ -1148,11 +1145,8 @@ EvalContext::expand_word_for_assignment(const Word &word,
 
   let const *segments         = &word.segments;
   let tilde_expanded_segments = ArrayList<WordSegment>{scratch_allocator()};
-  let const has_leading_tilde =
-      !word.segments.is_empty() && word.segments.front().is_tilde_candidate() &&
-      !word.segments.front().text.is_empty() &&
-      word.segments.front().text.first_character() == '~';
-  let has_colon_tilde = false;
+  let const has_leading_tilde = word.has_fact(Word::Fact::HasLeadingTilde);
+  let       has_colon_tilde   = false;
 
   for (let const &segment : word.segments) {
     if (!segment.is_tilde_candidate()) continue;
@@ -1223,10 +1217,7 @@ EvalContext::expand_case_pattern_masked(const Word &word,
   let const *segments         = &word.segments;
   let tilde_expanded_segments = ArrayList<WordSegment>{scratch_allocator()};
 
-  if (!word.segments.is_empty() && word.segments.front().is_tilde_candidate() &&
-      !word.segments.front().text.is_empty() &&
-      word.segments.front().text.first_character() == '~')
-  {
+  if (word.has_fact(Word::Fact::HasLeadingTilde)) {
     usize directory_byte_count = 0;
 
     tilde_expanded_segments = clone_word_segments(word, scratch_allocator());

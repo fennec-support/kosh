@@ -670,16 +670,13 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
     const Word &command_word =
         static_cast<const tokens::WordToken *>(args[0])->word();
 
-    is_local_command =
-        command_word.has_command_fact(Word::Fact::IsLocalCommand);
-    is_declare_command =
-        command_word.has_command_fact(Word::Fact::IsDeclareCommand);
+    is_local_command   = command_word.has_fact(Word::Fact::IsLocalCommand);
+    is_declare_command = command_word.has_fact(Word::Fact::IsDeclareCommand);
     is_declaration_command =
-        command_word.has_command_fact(Word::Fact::IsDeclarationCommand);
-    is_test_command =
-        command_word.has_command_fact(Word::Fact::IsTestCommand) ||
-        command_word.has_command_fact(Word::Fact::IsBracketCommand);
-    is_let_command = command_word.has_command_fact(Word::Fact::IsLetCommand);
+        command_word.has_fact(Word::Fact::IsDeclarationCommand);
+    is_test_command = command_word.has_fact(Word::Fact::IsTestCommand) ||
+                      command_word.has_fact(Word::Fact::IsBracketCommand);
+    is_let_command = command_word.has_fact(Word::Fact::IsLetCommand);
   }
 
   let const was_glob_exempt = expansion_store().glob_exempt_for_test();
@@ -1060,8 +1057,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
                 let const *reference = segment.get_parameter_reference();
                 let const  is_plain_name =
                     reference != nullptr
-                         ? reference->has_route(
-                              parameter_reference::ROUTE_PLAIN_NAME)
+                         ? reference->kind == parameter_reference::Form::Name
                          : lexer::word_is_variable_name(spec);
 
                 if (is_plain_name)

@@ -126,17 +126,6 @@ is_string_quote(char ch) wontthrow -> bool
 }
 
 hot pure fn
-is_expandable_char(char ch) wontthrow -> bool
-{
-  switch (ch) {
-  case '[':
-  case '?':
-  case '*': return true;
-  default:  return false;
-  }
-}
-
-hot pure fn
 is_variable_name_start(char ch) wontthrow -> bool
 {
   return (ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || ch == '_';
@@ -578,7 +567,7 @@ Lexer::collect_pending_heredocs() throws -> void
     LOG(Debug, "capturing a heredoc body of %zu bytes for delimiter '%s'",
         collected.count(), pending.delimiter.c_str());
     pending.contents->text = steal(collected);
-    pending.contents->can_change_state =
+    pending.contents->has_state_effect =
         pending.should_expand &&
         (pending.contents->text.find_substring("${").has_value() ||
          pending.contents->text.find_substring("$((").has_value());
