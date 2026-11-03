@@ -1197,6 +1197,8 @@ def run_checks(binary, directory, command_directory, report):
         clear_line(session)
         long_command = b"echo hist-long-" + b"y" * 130
         session.send(long_command + b"\r")
+        session.wait_until(lambda screen: any(
+            line.startswith("hist-long-y") for line in screen.get_lines()))
         session.wait_until(is_line(""))
         session.wait_for_raw_mode()
         session.send(b"hist-long" + CTRL_R)
