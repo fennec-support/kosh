@@ -403,11 +403,7 @@ edit_fc_commands(const ExecContext                          &ec,
     return 1;
   }
 
-  /* an editor can replace the file with a directory of the same path. */
-  defer {
-    if (!os::remove_file(temp_path->text().view()))
-      unused(os::remove_directory(temp_path->text().view()));
-  };
+  defer { unused(os::remove_file(temp_path->text().view())); };
 
   let editor_command = editor_name(cxt, options);
 

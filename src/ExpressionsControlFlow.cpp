@@ -1403,49 +1403,11 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws -
   let continued_occurrences         = common_occurrences;
   let has_merged_occurrence_exit    = !has_unquoted_default_pattern;
   let has_continued_occurrence_path = false;
-  let constant_match_occurrences    = common_occurrences;
-  let has_constant_match            = false;
-  let constant_word                 = Maybe<String>{};
-
-  let const do_item_matches_constant_word =
-      [&constant_word](const case_item &item,
-                       const String    &word) throws -> bool {
-    for (let const pattern : item.patterns) {
-      if (pattern->kind() != Token::Kind::Word) {
-        constant_word.reset();
-
-        return false;
-      }
-
-      let const &pattern_word =
-          static_cast<const tokens::WordToken *>(pattern)->word();
-
-      let const literal = pattern_word.to_literal_string();
-
-      if (pattern_word.plain_literal_kind() == Word::PlainLiteral::NotPlain ||
-          literal.view().find_character('*') ||
-          literal.view().find_character('?') ||
-          literal.view().find_character('['))
-      {
-        constant_word.reset();
-
-        return false;
-      }
-
-      if (literal == word) return true;
-    }
-
-    return false;
-  };
 
   ASSERT(m_word != nullptr);
   if (m_word->kind() == Token::Kind::Word) {
     let const &case_word =
         static_cast<const tokens::WordToken *>(m_word)->word();
-
-    if (case_word.plain_literal_kind() != Word::PlainLiteral::NotPlain) {
-      constant_word = case_word.to_literal_string();
-    }
 
     check_posix_word_portability(actx, case_word, m_word->source_location());
 
@@ -1501,18 +1463,9 @@ CaseClause::analyze(AnalysisContext &actx, bool is_unconditional) const throws -
                                     item.terminator != case_terminator::Break;
     if (has_continued_occurrence_path)
       continued_occurrences = actx.occurrences.snapshot();
-
-    if (constant_word.has_value() && !has_constant_match &&
-        do_item_matches_constant_word(item, *constant_word) &&
-        !is_exiting_item && item.terminator == case_terminator::Break)
-    {
-      has_constant_match         = true;
-      constant_match_occurrences = actx.occurrences.snapshot();
-    }
   }
 
-  actx.occurrences = has_constant_match ? steal(constant_match_occurrences)
-                                        : steal(merged_occurrences);
+  actx.occurrences = steal(merged_occurrences);
 
   let case_input = case_lint_input{};
 

@@ -1959,40 +1959,6 @@ Parser::attach_trailing_redirections(Command *compound) throws
   return redirected;
 }
 
-/* whether the word `select` starts `select name in`, the head of a loop, and
-   not an ordinary command with its operands. */
-pure static fn
-is_select_loop_header(StringView source, const Token &select_word) wontthrow
-    -> bool
-{
-  let const do_skip_blanks = [source](usize position) -> usize {
-    while (position < source.length && lexer::is_whitespace(source[position])) {
-      position++;
-    }
-
-    return position;
-  };
-
-  let const location = select_word.source_location();
-  let const name_start =
-      do_skip_blanks(static_cast<usize>(location.position) + location.length);
-  usize name_end = name_start;
-
-  while (name_end < source.length && lexer::is_variable_name(source[name_end]))
-  {
-    name_end++;
-  }
-
-  let const keyword_start = do_skip_blanks(name_end);
-
-  return name_end > name_start && keyword_start > name_end &&
-         source.substring(keyword_start).starts_with(StringView{"in"}) &&
-         keyword_start + 2 < source.length &&
-         (lexer::is_whitespace(source[keyword_start + 2]) ||
-          source[keyword_start + 2] == ';' ||
-          source[keyword_start + 2] == '\n');
-}
-
 enum class command_position_word : u8
 {
   None,
@@ -2119,17 +2085,6 @@ Parser::parse_simple_command(const Token *leading_token) throws
               parse_nesting_construct(Token::Kind::Done, [&]() throws {
                 return parse_select();
               }));
-        }
-
-        if (is_select_loop_header(m_lexer.source(), *token)) {
-          ErrorWithLocationAndDetails error{
-              token->source_location(),
-              "The select loop is only available in the bash moods",
-              "Run the script with `--mood bash`, or print a menu and use "
-              "`read` in a loop"};
-
-          error.set_command_status(2);
-          throw error;
         }
 
         break;

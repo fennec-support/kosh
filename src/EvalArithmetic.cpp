@@ -2122,7 +2122,7 @@ lex_explicit_radix(StringView from) throws -> Maybe<explicit_radix>
 }
 
 /* a binary or based number needs a digit after its prefix. 0x alone stays 0. */
-alwaysinline static fn
+static fn
 reject_missing_radix_digits(StringView from,
                             usize      digit_start,
                             u32        radix) throws -> void

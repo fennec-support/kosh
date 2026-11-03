@@ -836,8 +836,8 @@ is_regex_expansion_too_large(StringView pattern,
   return false;
 }
 
-/* libc rejects a repeated * in a basic regular expression, and a** means a*. a
- * that opens the pattern or a group is a literal and stays. */
+/* libc rejects a repeated * in a basic regular expression, and a** means a*.
+   A star that opens the pattern or a group is a literal and stays. */
 static fn
 without_repeated_basic_stars(StringView pattern) throws -> String
 {

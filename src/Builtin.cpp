@@ -1079,14 +1079,8 @@ fn
 abbreviate_home_directory(StringView path, Allocator allocator) throws
     -> String
 {
-  return abbreviate_home_directory(path, os::get_home_directory(), allocator);
-}
+  let const home = os::get_home_directory();
 
-fn
-abbreviate_home_directory(StringView         path,
-                          const Maybe<Path> &home,
-                          Allocator          allocator) throws -> String
-{
   if (home.has_value()) {
     let const home_view = home->text().view();
 
@@ -1247,8 +1241,6 @@ print_directory_stack(EvalContext       &cxt,
   let const  first_index = selected_index.value_or(0);
   let const  end_index =
       selected_index.has_value() ? first_index + 1 : entry_count;
-  let const home =
-      should_print_full_paths ? Maybe<Path>{None} : os::get_home_directory();
 
   let out = String{cxt.scratch_allocator()};
 
@@ -1263,8 +1255,8 @@ print_directory_stack(EvalContext       &cxt,
     if (should_print_full_paths)
       out.append(entry);
     else
-      out.append(abbreviate_home_directory(entry, home, cxt.scratch_allocator())
-                     .view());
+      out.append(
+          abbreviate_home_directory(entry, cxt.scratch_allocator()).view());
     if (should_print_one_per_line || should_print_numbers ||
         selected_index.has_value() || i + 1 == entry_count)
     {
