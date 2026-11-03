@@ -923,11 +923,14 @@ EvalContext::sorted_variable_assignments() const throws
 }
 
 fn
-EvalContext::snapshot_state() throws -> eval_state_snapshot
+EvalContext::snapshot_state(bool should_reference_directory) throws
+    -> eval_state_snapshot
 {
-  let working_directory = os::reference_current_directory();
+  let working_directory = should_reference_directory
+                              ? os::reference_current_directory()
+                              : os::DirectoryReference{};
 
-  if (!working_directory.is_valid())
+  if (should_reference_directory && !working_directory.is_valid())
     throw Error{"Could not preserve the current working directory"};
 
   /* the job table moves out last, so a throw while copying another store
@@ -1063,8 +1066,11 @@ EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
     trap_store().restore(steal(snapshot.traps));
   }
 
-  if (!os::restore_current_directory(snapshot.working_directory))
+  if (snapshot.working_directory.is_valid() &&
+      !os::restore_current_directory(snapshot.working_directory))
+  {
     LOG(Debug, "the subshell could not restore the working directory");
+  }
   os::set_file_creation_mask(snapshot.file_creation_mask);
 
   LOG(Debug, "rewinding %zu environment writes made inside the subshell",

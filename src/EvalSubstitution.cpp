@@ -1115,7 +1115,9 @@ EvalContext::run_captured_substitution(
 
   if (should_evaluate_in_process) {
     try {
-      in_process_snapshot = snapshot_state();
+      /* the commands that pass the in-process check cannot change the
+         working directory. */
+      in_process_snapshot = snapshot_state(false);
     } catch (const Error &) {
       should_evaluate_in_process = false;
     }

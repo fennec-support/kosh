@@ -1,7 +1,7 @@
 144 external
 random_digits
 indirect_differs
--c:5:1: error: Could not open a pipe for command substitution.
+-c:5:1: error: Unable to save standard output: Too many open files.
      5 |  value=$(printf hi)
        |  ^~~~~~~~~~~~~~~~~~
 snapshot-wait=0 value=<>

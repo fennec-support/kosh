@@ -5734,7 +5734,8 @@ public:
   fn
   declare_self_reference(StringView name) throws -> void;
   fn
-  snapshot_state() throws -> eval_state_snapshot;
+  snapshot_state(bool should_reference_directory = true) throws
+      -> eval_state_snapshot;
   fn
   restore_state(eval_state_snapshot snapshot) throws -> void;
   fn
