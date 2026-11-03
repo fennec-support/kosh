@@ -684,6 +684,32 @@ directory_is_trusted_for_exec(const Path &directory) wontthrow -> bool
   return true;
 }
 
+#if defined __APPLE__
+/* The descriptor that /dev/stdin, /dev/stdout, /dev/stderr, or /dev/fd/N
+   refers to. */
+static pure fn
+standard_stream_descriptor_number(StringView path) wontthrow -> Maybe<int>
+{
+  if (path == "/dev/stdin") return 0;
+  if (path == "/dev/stdout") return 1;
+  if (path == "/dev/stderr") return 2;
+
+  let const prefix = StringView{"/dev/fd/"};
+
+  if (!path.starts_with(prefix) || path.length == prefix.length)
+    return koshka::None;
+
+  int number = 0;
+
+  for (usize i = prefix.length; i < path.length; i++) {
+    if (path[i] < '0' || path[i] > '9' || number > 1000000) return koshka::None;
+    number = number * 10 + (path[i] - '0');
+  }
+
+  return number;
+}
+#endif
+
 static fn
 open_with_flags(StringView     path,
                 file_open_mode mode,
@@ -747,6 +773,20 @@ open_with_flags(StringView     path,
 
       errno = EEXIST;
     }
+
+#if defined __APPLE__
+    /* macOS refuses a read-write open of /dev/fd/N when N was opened for one
+       direction, as a pipe end is, while Linux reopens the pipe. */
+    if (fd < 0 && errno == EACCES && mode == file_open_mode::ReadWrite) {
+      if (let const number = standard_stream_descriptor_number(path)) {
+        let const duplicate =
+            ::fcntl(*number, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+
+        if (duplicate >= 0) return duplicate;
+        errno = EACCES;
+      }
+    }
+#endif
 
     if (fd < 0) return koshka::None;
 

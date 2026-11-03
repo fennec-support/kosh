@@ -894,6 +894,9 @@ compile_regex(StringView pattern, case_sensitivity sensitivity) throws
   int       compile_flags       = REG_EXTENDED;
 
   if (is_regex_expansion_too_large(pattern, true)) return None;
+#if defined REG_ENHANCED
+  compile_flags |= REG_ENHANCED;
+#endif
   if (is_case_insensitive) compile_flags |= REG_ICASE;
 
   compiled_regex compiled{};
