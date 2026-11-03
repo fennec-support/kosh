@@ -40,6 +40,12 @@ echo 'echo ran' | "$BASH" -O | grep -E '^(dotglob|nocasematch) |^ran'
 echo 'echo ran' | "$BASH" +O | grep -E '^shopt -[su] (dotglob|nocasematch)$|^ran'
 "$BASH" -c 'echo "zero=$0"' -o
 
+# The shopt listing shows the options before -O and +O apply, and the set
+# listing shows the -o options before it.
+echo 'shopt dotglob' | "$BASH" -O dotglob -O | grep -E '^dotglob '
+echo 'shopt -p dotglob' | "$BASH" -O dotglob +O | grep -E 'dotglob$'
+echo 'echo ran' | "$BASH" -O dotglob -o noglob -o | grep -E '^noglob |^ran'
+
 # -s with -c runs the command string, leaves standard input unread, takes the
 # first operand as $0, and sets both c and s in $-.
 echo 'echo stdin-ran' | "$BASH" -s -c 'echo "$0 $# $1"; case $- in

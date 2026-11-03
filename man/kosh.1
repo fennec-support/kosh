@@ -3328,7 +3328,9 @@ the startup files run and then takes its input as usual.
 prints the commands of \f[CR]set +o\f[R], \f[CR]\-O\f[R] prints the
 table of \f[CR]shopt\f[R], and \f[CR]+O\f[R] prints the commands of
 \f[CR]shopt \-p\f[R].
-The listing shows the options after the whole command line applies.
+The \f[CR]set\f[R] listing shows the options after the whole command
+line applies, and the \f[CR]shopt\f[R] listing shows them before
+\f[CR]\-O\f[R] and \f[CR]+O\f[R] apply.
 .IP \[bu] 2
 \f[B]Input source precedence\f[R] \- Evaluated in strict order:
 \f[CR]\-c\f[R] (inline command strings), \f[CR]\-s\f[R] (stdin),

@@ -1514,8 +1514,8 @@ static fn
 apply_startup_configuration(
     EvalContext                        &context,
     koshconf_reading                   &reading,
-    const ArrayList<invocation_option> &invocation_options) throws
-    -> Maybe<int>
+    const ArrayList<invocation_option> &invocation_options,
+    String                             &shopt_listing) throws -> Maybe<int>
 {
   let const is_kosh_mood =
       context.runtime_state().get_mood() == mimic_mood::Default;
@@ -1553,7 +1553,19 @@ apply_startup_configuration(
 
   reading.warnings.clear();
 
+  /* Bash applies -O and +O after the command line, so the shopt listing
+     leaves them out. */
+  let const do_list_shopt_options = [&]() throws -> void {
+    if (FLAG_SHOPT_OPTION.was_listing_requested() && shopt_listing.is_empty()) {
+      shopt_listing = list_shopt_options(
+          context, FLAG_SHOPT_OPTION.was_listing_requested_after_plus(), false,
+          false);
+    }
+  };
+
   for (let const &named : invocation_options) {
+    if (named.origin == option_origin::Shopt) do_list_shopt_options();
+
     try {
       write_option_number(context, *named.option, named.is_on ? 1 : 0,
                           named.origin);
@@ -1564,13 +1576,16 @@ apply_startup_configuration(
     }
   }
 
+  do_list_shopt_options();
+
   return None;
 }
 
 /* -o, +o, -O, or +O without an option name lists the options the way set and
    shopt do, and the shell then runs its input. */
 static fn
-print_requested_option_listings(const EvalContext &context) throws
+print_requested_option_listings(const EvalContext &context,
+                                const String      &shopt_listing) throws
     -> void
 {
   if (FLAG_SET_OPTION.was_listing_requested()) {
@@ -1578,11 +1593,7 @@ print_requested_option_listings(const EvalContext &context) throws
         context, FLAG_SET_OPTION.was_listing_requested_after_plus()));
   }
 
-  if (FLAG_SHOPT_OPTION.was_listing_requested()) {
-    print(list_shopt_options(
-        context, FLAG_SHOPT_OPTION.was_listing_requested_after_plus(), false,
-        false));
-  }
+  print(shopt_listing);
 }
 
 struct session_config
@@ -2916,8 +2927,11 @@ kosh_main(int argc, char **argv) -> int
 
   koshka::seed_session_variables(context, identity, init_moods, inherited,
                                  input);
+
+  let shopt_listing = koshka::String{koshka::heap_allocator()};
+
   if (koshka::Maybe<int> option_status = koshka::apply_startup_configuration(
-          context, configuration, invocation_options);
+          context, configuration, invocation_options, shopt_listing);
       option_status.has_value())
   {
     return *option_status;
@@ -2959,7 +2973,9 @@ kosh_main(int argc, char **argv) -> int
     }
   }
 
-  if (!FLAG_LINT.is_enabled()) koshka::print_requested_option_listings(context);
+  if (!FLAG_LINT.is_enabled()) {
+    koshka::print_requested_option_listings(context, shopt_listing);
+  }
 
   koshka::run_startup(context, init_moods, identity, line, inherited,
                       has_elevated_identity, input.is_interactive,
