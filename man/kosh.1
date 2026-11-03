@@ -1461,6 +1461,8 @@ over \f[CR]2048\f[R] bytes are not recorded, and a record over
 \f[CR]history \-r\f[R] refuses an operand that is not a regular file,
 and every history operation refuses a history file that is a FIFO, a
 device, or a socket.
+The shared file snapshot and a shell without the line editor refuse a
+history file over \f[CR]256 MiB\f[R].
 Interactive shells load the history file at startup and append each
 submitted event immediately, without auto\-importing events appended by
 concurrent shells (\f[CR]Ctrl\-R\f[R] and \f[CR]history \-S\f[R] read

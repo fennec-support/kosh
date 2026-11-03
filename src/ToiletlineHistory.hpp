@@ -37,6 +37,26 @@ write_history_file_atomically(
     koshka::StringView       contents,
     koshka::os::file_status *written = nullptr) throws -> bool;
 
+/* the largest history file a snapshot or a load without the editor reads. */
+inline constexpr usize HISTORY_FILE_MAX_BYTE_COUNT = usize{256} << 20;
+
+/* contents is None when the file is missing, is neither a regular file nor a
+   directory, holds more than HISTORY_FILE_MAX_BYTE_COUNT bytes, or cannot be
+   read. A failed read keeps the system error. status describes the open
+   file when the open succeeded. */
+struct history_file_read
+{
+  koshka::Maybe<koshka::String> contents;
+  koshka::os::file_status       status{};
+  bool                          is_missing{false};
+  bool                          is_special_file{false};
+  bool                          is_too_large{false};
+};
+
+/* opens path once without blocking and checks its type on the descriptor. */
+fn
+read_history_file(const koshka::Path &path) throws -> history_file_read;
+
 struct history_record_span
 {
   usize start_byte_offset;

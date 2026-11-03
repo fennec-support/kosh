@@ -271,6 +271,55 @@ write_history_file_atomically(const koshka::Path      &path,
          koshka::os::stat_path_following(target.view(), *written);
 }
 
+/* memory: contents holds the file in heap_allocator() when it has a value,
+           and the caller owns it.
+   time:   one nonblocking open, one descriptor stat, reads until a read
+           returns 0, and one close. */
+fn
+read_history_file(const koshka::Path &path) throws -> history_file_read
+{
+  let       result = history_file_read{};
+  let const file   = koshka::os::open_file_descriptor(
+      path.view(), koshka::os::file_open_mode::ReadNonblocking);
+
+  if (!file) {
+    result.is_missing = koshka::os::last_system_error_is_missing_file();
+
+    return result;
+  }
+
+  defer { koshka::os::close_fd(*file); };
+
+  if (!koshka::os::stat_descriptor(*file, result.status)) return result;
+
+  /* a directory passes, so the read fails with the error of a directory. */
+  let const type_letter = koshka::os::file_type_letter(result.status.mode);
+
+  if (type_letter != '-' && type_letter != 'd') {
+    result.is_special_file = true;
+
+    return result;
+  }
+
+  if (result.status.size > HISTORY_FILE_MAX_BYTE_COUNT) {
+    result.is_too_large = true;
+
+    return result;
+  }
+
+  result.contents =
+      koshka::os::read_fd_to_string(*file, koshka::heap_allocator());
+
+  if (result.contents.has_value() &&
+      result.contents->count() > HISTORY_FILE_MAX_BYTE_COUNT)
+  {
+    result.contents     = koshka::None;
+    result.is_too_large = true;
+  }
+
+  return result;
+}
+
 fn
 get_utf8_length(const koshka::String &string, usize byte_count) -> usize
 {

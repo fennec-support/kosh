@@ -2096,7 +2096,7 @@ get_active_history_file_path() -> koshka::Maybe<koshka::Path>;
            call replaces it. the returned out_contents pointer is valid until
            then.
    time:   at most HISTORY_RACE_ATTEMPT_COUNT attempts, each with one
-           read_entire_file() call and two stat calls. one lock per call. */
+           read_history_file() call. one lock per call. */
 static fn
 provide_history_search_snapshot(const char **out_contents, size_t *out_size)
     -> int
@@ -2121,11 +2121,9 @@ provide_history_search_snapshot(const char **out_contents, size_t *out_size)
     for (int attempt_index = 0; attempt_index < HISTORY_RACE_ATTEMPT_COUNT;
          attempt_index++)
     {
-      let status_before = os::file_status{};
+      let read = read_history_file(*path);
 
-      if (!os::stat_path_following(path->text().view(), status_before)) {
-        if (!os::last_system_error_is_missing_file()) return 0;
-
+      if (read.is_missing) {
         HISTORY_SEARCH_SNAPSHOT.clear();
         *out_contents = HISTORY_SEARCH_SNAPSHOT.data();
         *out_size     = 0;
@@ -2133,18 +2131,20 @@ provide_history_search_snapshot(const char **out_contents, size_t *out_size)
         return 1;
       }
 
-      if (os::file_type_letter(status_before.mode) != '-') return 0;
+      if (read.is_special_file || read.is_too_large ||
+          os::file_type_letter(read.status.mode) == 'd')
+      {
+        return 0;
+      }
 
-      let contents = path->read_entire_file();
+      /* an append that runs during the read changes the size. */
+      if (!read.contents.has_value() ||
+          read.contents->count() != read.status.size)
+      {
+        continue;
+      }
 
-      if (!contents.has_value()) continue;
-
-      let status_after = os::file_status{};
-
-      if (!os::stat_path_following(path->text().view(), status_after)) continue;
-      if (!os::file_status_matches(status_before, status_after)) continue;
-
-      HISTORY_SEARCH_SNAPSHOT = contents.take();
+      HISTORY_SEARCH_SNAPSHOT = read.contents.take();
       *out_contents           = HISTORY_SEARCH_SNAPSHOT.data();
       *out_size               = HISTORY_SEARCH_SNAPSHOT.count();
 

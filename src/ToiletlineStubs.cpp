@@ -309,25 +309,16 @@ load_no_editor_history(const Path &path, bool should_allow_missing)
 
   state.is_loaded = false;
 
-  if (let status = os::file_status{};
-      os::stat_path_following(path.view(), status))
-  {
-    let const type_letter = os::file_type_letter(status.mode);
-
-    if (type_letter != '-' && type_letter != 'd') {
-      return Error{"it is not a regular file"};
-    }
-  }
-
   for (int attempt_index = 0;
        attempt_index < toiletline::HISTORY_RACE_ATTEMPT_COUNT; attempt_index++)
   {
-    let const contents = path.read_entire_file();
+    let const read = toiletline::read_history_file(path);
 
-    if (!contents.has_value()) {
-      let const was_missing = os::last_system_error_is_missing_file();
+    if (read.is_special_file) return Error{"it is not a regular file"};
+    if (read.is_too_large) return Error{"the file is too large"};
 
-      if (!should_allow_missing || !was_missing) {
+    if (!read.contents.has_value()) {
+      if (!should_allow_missing || !read.is_missing) {
         return Error{os::last_system_error_message()};
       }
 
@@ -340,7 +331,7 @@ load_no_editor_history(const Path &path, bool should_allow_missing)
       continue;
     }
 
-    let const outcome = scan_no_editor_history(path, contents->view());
+    let const outcome = scan_no_editor_history(path, read.contents->view());
 
     if (outcome == history_scan_outcome::Loaded) return Success;
     if (outcome == history_scan_outcome::Invalid)
