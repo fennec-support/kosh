@@ -32,7 +32,7 @@ word_segment_has_glob_metacharacter(const WordSegment &segment)
     wontthrow -> bool;
 
 pure fn
-classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral;
+may_expand_assignment_tilde(StringView text) wontthrow -> bool;
 
 fn
 literal_word_value(const Word &word) throws -> Maybe<String>;

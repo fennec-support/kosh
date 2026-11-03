@@ -575,9 +575,11 @@ SimpleCommand::SimpleCommand(SourceLocation             location,
     return;
   }
 
-  m_literal_command_lookup =
-      LiteralCommandLookup{search_builtin(m_literal_command_name),
-                           is_special_builtin_name(m_literal_command_name)};
+  let const builtin = search_builtin(m_literal_command_name);
+
+  m_literal_command_lookup = LiteralCommandLookup{
+      builtin,
+      builtin.has_value() && is_special_builtin_name(m_literal_command_name)};
 }
 
 SimpleCommand::~SimpleCommand() = default;

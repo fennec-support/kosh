@@ -324,9 +324,6 @@ Word::to_literal_string() const throws -> String
 fn
 Word::finish() throws -> void
 {
-  let const kind = optimizer::classify_plain_literal(*this);
-
-  m_facts = static_cast<u16>(static_cast<u16>(kind) << PLAIN_KIND_SHIFT);
   compute_facts();
   classify_command();
 }
@@ -334,8 +331,11 @@ Word::finish() throws -> void
 fn
 Word::compute_facts() wontthrow -> void
 {
-  let facts     = static_cast<u16>(Fact::IsComputed);
-  let is_static = true;
+  let facts          = static_cast<u16>(Fact::IsComputed);
+  let is_static      = true;
+  let is_quoted_only = !segments.is_empty();
+  let has_tilde_byte = false;
+  let plain          = PlainLiteral::NotPlain;
 
   if (!segments.is_empty() &&
       segments[0].kind == WordSegment::Kind::UnquotedText &&
@@ -352,11 +352,10 @@ Word::compute_facts() wontthrow -> void
     case WordSegment::Kind::UnquotedText: {
       let const text = segment.text.view();
 
-      for (usize i = 0; i < text.length; i++) {
-        let const byte          = text[i];
-        let const is_next_paren = i + 1 < text.length && text[i + 1] == '(';
+      is_quoted_only = false;
 
-        switch (byte) {
+      for (usize i = 0; i < text.length; i++) {
+        switch (text[i]) {
         case '*':
         case '?':
         case '[':
@@ -367,7 +366,8 @@ Word::compute_facts() wontthrow -> void
         case '+':
         case '@':
         case '!':
-          if (is_next_paren) facts |= static_cast<u16>(Fact::HasUnquotedGlob);
+          if (i + 1 < text.length && text[i + 1] == '(')
+            facts |= static_cast<u16>(Fact::HasUnquotedGlob);
           break;
 
         case '{': facts |= static_cast<u16>(Fact::HasBraceCandidate); break;
@@ -376,6 +376,8 @@ Word::compute_facts() wontthrow -> void
           if (i + 1 < text.length && text[i + 1] == '~')
             facts |= static_cast<u16>(Fact::HasColonTilde);
           break;
+
+        case '~': has_tilde_byte = true; break;
 
         default: break;
         }
@@ -387,17 +389,36 @@ Word::compute_facts() wontthrow -> void
     case WordSegment::Kind::CommandSubstitution:
     case WordSegment::Kind::FunctionSubstitution:
       facts |= static_cast<u16>(Fact::HasSubstitution);
-      is_static = false;
+      is_static      = false;
+      is_quoted_only = false;
       break;
 
     case WordSegment::Kind::VariableReference:
     case WordSegment::Kind::ProcessSubstitution:
-    case WordSegment::Kind::ArithmeticExpansion: is_static = false; break;
+    case WordSegment::Kind::ArithmeticExpansion:
+      is_static      = false;
+      is_quoted_only = false;
+      break;
     }
   }
 
+  if (segments.count() == 1 &&
+      segments[0].kind == WordSegment::Kind::UnquotedText)
+  {
+    let const text = segments[0].text.view();
+    let const is_expanding =
+        (facts & static_cast<u16>(Fact::HasUnquotedGlob)) != 0 ||
+        (facts & static_cast<u16>(Fact::HasLeadingTilde)) != 0 ||
+        (has_tilde_byte && optimizer::may_expand_assignment_tilde(text));
+
+    if (!is_expanding) plain = PlainLiteral::PlainUnquotedOneSegment;
+  } else if (is_quoted_only) {
+    plain = PlainLiteral::PlainNoSplit;
+  }
+
   if (is_static) facts |= static_cast<u16>(Fact::IsStaticName);
-  m_facts |= facts;
+  facts |= static_cast<u16>(static_cast<u16>(plain) << PLAIN_KIND_SHIFT);
+  m_facts = facts;
 }
 
 constexpr u16 DECLARATION_FACT =
@@ -424,10 +445,17 @@ constexpr StaticStringMap COMMAND_FACTS{COMMAND_FACT_ENTRIES};
 fn
 Word::classify_command() throws -> void
 {
-  let command_facts = static_cast<u16>(Fact::IsCommandClassified);
+  constexpr usize LONGEST_COMMAND_FACT_NAME_BYTE_COUNT = 8;
+
+  let command_facts   = static_cast<u16>(Fact::IsCommandClassified);
+  let text_byte_count = usize{0};
+
+  for (let const &segment : segments)
+    text_byte_count += segment.text.count();
 
   if (plain_literal_kind() != PlainLiteral::NotPlain) {
-    command_facts |= COMMAND_FACTS.find(constant_value()).value_or(0);
+    if (text_byte_count <= LONGEST_COMMAND_FACT_NAME_BYTE_COUNT)
+      command_facts |= COMMAND_FACTS.find(constant_value()).value_or(0);
   } else if (segments.count() == 1 &&
              segments[0].kind == WordSegment::Kind::UnquotedText &&
              segments[0].text.view() == "[")

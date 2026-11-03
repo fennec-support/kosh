@@ -181,6 +181,8 @@ constant_test_verdict(const ArrayList<const Token *> &args,
   return None;
 }
 
+} /* namespace */
+
 pure fn
 may_expand_assignment_tilde(StringView text) wontthrow -> bool
 {
@@ -196,8 +198,6 @@ may_expand_assignment_tilde(StringView text) wontthrow -> bool
 
   return text.find_substring(":~").has_value();
 }
-
-} /* namespace */
 
 /* memory: value is a heap_allocator() String returned to the caller, who frees
            it by destruction. a None return destroys it inside the function.
@@ -552,39 +552,6 @@ word_segment_has_glob_metacharacter(const WordSegment &segment)
   }
 
   return false;
-}
-
-pure fn
-classify_plain_literal(const Word &word) wontthrow -> Word::PlainLiteral
-{
-  if (word.segments.is_empty()) return Word::PlainLiteral::NotPlain;
-
-  if (word.segments.count() == 1 &&
-      word.segments[0].kind == WordSegment::Kind::UnquotedText)
-  {
-    const WordSegment &only = word.segments[0];
-
-    if (word_segment_has_glob_metacharacter(only))
-      return Word::PlainLiteral::NotPlain;
-    if (!only.text.is_empty() && only.text[0] == '~') {
-      return Word::PlainLiteral::NotPlain;
-    }
-
-    if (may_expand_assignment_tilde(only.text.view()))
-      return Word::PlainLiteral::NotPlain;
-
-    return Word::PlainLiteral::PlainUnquotedOneSegment;
-  }
-
-  for (let const &segment : word.segments) {
-    if (segment.kind != WordSegment::Kind::LiteralText &&
-        segment.kind != WordSegment::Kind::DoubleQuotedText)
-    {
-      return Word::PlainLiteral::NotPlain;
-    }
-  }
-
-  return Word::PlainLiteral::PlainNoSplit;
 }
 
 namespace {
