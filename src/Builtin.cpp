@@ -216,6 +216,61 @@ is_builtin_owned_location(const ExecContext    &ec,
              command.position + command.length;
 }
 
+/* exec without a command in a stage that runs in the process of the shell
+   under the Bash moods acts on the shell, as lastpipe does in Bash, so its
+   redirections outlast the stage. */
+static fn
+is_bare_exec_on_shell(const ExecContext &ec, const EvalContext &cxt) wontthrow
+    -> bool
+{
+  if (ec.builtin_kind() != Builtin::Kind::Exec) return false;
+
+  let const &args = ec.args();
+
+  if (args.count() > 2 || (args.count() == 2 && args[1] != "--")) {
+    return false;
+  }
+
+  return cxt.runtime_state().is_bash_compatible() &&
+         cxt.job_table_store().is_stage_in_shell_process(
+             cxt.execution_store().subshell_depth());
+}
+
+/* a kept descriptor can take the number of a descriptor that ec holds. the
+   saved copy is then the only reference to the replaced file, so ec drops
+   that number instead of closing it later. */
+static fn
+forget_kept_descriptors(
+    ExecContext &ec, const ArrayList<os::saved_descriptor> &kept) throws
+    -> void
+{
+  let const do_is_kept = [&](os::descriptor fd) wontthrow -> bool {
+    for (let const &saved : kept) {
+      if (saved.shell_fd != 0 && os::descriptor_is_shell_fd(fd, saved.shell_fd))
+        return true;
+    }
+
+    return false;
+  };
+
+  for (let *fd : {&ec.in_fd, &ec.out_fd, &ec.err_fd}) {
+    if (fd->has_value() && do_is_kept(**fd)) fd->reset();
+  }
+
+  if (ec.nonstandard_fds.is_empty()) return;
+
+  let bindings = ArrayList<nonstandard_descriptor>{heap_allocator()};
+
+  for (let binding : ec.nonstandard_fds) {
+    if (binding.file_fd != KOSH_INVALID_FD && do_is_kept(binding.file_fd)) {
+      binding.file_fd = KOSH_INVALID_FD;
+    }
+    bindings.push(binding);
+  }
+
+  ec.nonstandard_fds.fill(steal(bindings));
+}
+
 fn
 execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
 {
@@ -227,6 +282,28 @@ execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
   defer { ec.close_fds(); };
 
   let saved_descriptors = ArrayList<os::saved_descriptor>{heap_allocator()};
+  let const should_keep_descriptors = is_bare_exec_on_shell(ec, cxt);
+
+  defer {
+    for (usize i = saved_descriptors.count(); i > 0; i--) {
+      let const &saved = saved_descriptors[i - 1];
+
+      /* the stage input returns to the shell, as Bash restores it after
+         a lastpipe stage. */
+      if (!should_keep_descriptors || saved.shell_fd == 0) {
+        os::restore_descriptor(saved);
+      } else if (saved.was_open) {
+        os::close_fd(saved.saved);
+      }
+    }
+  };
+
+  let const do_save_and_replace =
+      [&](i32 shell_fd, os::descriptor target) throws -> void {
+    if (should_keep_descriptors && shell_fd != 0)
+      cxt.snapshot_subshell_descriptor(shell_fd);
+    saved_descriptors.push(os::save_and_replace_descriptor(shell_fd, target));
+  };
 
   if (ec.in_fd.has_value() || ec.out_fd.has_value() || ec.err_fd.has_value() ||
       !ec.nonstandard_fds.is_empty() || ec.should_duplicate_error_to_output ||
@@ -236,44 +313,30 @@ execute_builtin(ExecContext &&ec, EvalContext &cxt) throws -> i32
       saved_descriptors.push(os::save_and_replace_descriptor(0, *ec.in_fd));
     ec.apply_output_routing(
         [&]() {
-          if (ec.out_fd) {
-            saved_descriptors.push(
-                os::save_and_replace_descriptor(1, *ec.out_fd));
-          }
+          if (ec.out_fd) do_save_and_replace(1, *ec.out_fd);
         },
         [&]() {
-          if (ec.err_fd) {
-            saved_descriptors.push(
-                os::save_and_replace_descriptor(2, *ec.err_fd));
-          }
+          if (ec.err_fd) do_save_and_replace(2, *ec.err_fd);
         },
-        [&]() {
-          saved_descriptors.push(os::save_and_replace_descriptor(
-              2, os::descriptor_for_shell_fd(1)));
-        },
-        [&]() {
-          saved_descriptors.push(os::save_and_replace_descriptor(
-              1, os::descriptor_for_shell_fd(2)));
-        });
+        [&]() { do_save_and_replace(2, os::descriptor_for_shell_fd(1)); },
+        [&]() { do_save_and_replace(1, os::descriptor_for_shell_fd(2)); });
     ec.apply_nonstandard_routing(
         [&](os::descriptor file_fd, i32 target_fd) {
-          saved_descriptors.push(
-              os::save_and_replace_descriptor(target_fd, file_fd));
+          do_save_and_replace(target_fd, file_fd);
         },
         [&](i32 dup_from_fd, i32 target_fd) {
-          saved_descriptors.push(os::save_and_replace_descriptor(
-              target_fd, os::descriptor_for_shell_fd(dup_from_fd)));
+          do_save_and_replace(target_fd,
+                              os::descriptor_for_shell_fd(dup_from_fd));
         },
         [&](i32 target_fd) {
+          if (should_keep_descriptors)
+            cxt.snapshot_subshell_descriptor(target_fd);
           saved_descriptors.push(os::save_descriptor(target_fd));
           os::close_fd(os::descriptor_for_shell_fd(target_fd));
         });
   }
 
-  defer {
-    for (usize i = saved_descriptors.count(); i > 0; i--)
-      os::restore_descriptor(saved_descriptors[i - 1]);
-  };
+  if (should_keep_descriptors) forget_kept_descriptors(ec, saved_descriptors);
 
   LOG(Debug, "dispatching builtin '%s' with %zu arguments",
       ec.program().c_str(), ec.args().count());

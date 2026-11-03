@@ -78,6 +78,21 @@ echo "lastpipe=[$x]"
 ( shopt -s lastpipe; set +m; echo h | exec nosuchcmd_xyz 2>/dev/null
   echo unreached ); echo "lastpipe-missing=$?"
 
+# A bare exec in that final stage keeps its redirections in the shell, and the
+# stage input returns to the shell.
+x=$(shopt -s lastpipe; set +m; echo i | exec 3>&1; echo kept >&3)
+echo "lastpipe-dup=[$x]"
+x=$(shopt -s lastpipe; set +m
+  echo j | exec 4>"$dir/lastpipe"; echo file >&4; exec 4>&-
+  cat "$dir/lastpipe")
+echo "lastpipe-file=[$x]"
+x=$(shopt -s lastpipe; set +m; echo k | exec 2>/dev/null; echo hidden >&2
+  echo shown)
+echo "lastpipe-stderr=[$x]"
+x=$( (shopt -s lastpipe; set +m; echo l | exec 5>&1
+  read -r line || line=end; echo "stdin=$line" >&5) </dev/null)
+echo "lastpipe-stdin=[$x]"
+
 # The backup is placed under the open file limit. A tight limit lowers the
 # ceiling toward the range a script writes by hand, and the descriptor still has
 # to come back. This section runs last because the limit outlives it.

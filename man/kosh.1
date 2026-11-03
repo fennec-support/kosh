@@ -6024,7 +6024,9 @@ and an \f[CR]EXIT\f[R] trap of the subshell does not run.
 In a pipeline stage the command replaces only that stage, and the
 commands after the pipeline still run.
 A final stage that runs in the shell under \f[CR]lastpipe\f[R] in the
-Bash moods replaces the shell or its subshell instead.
+Bash moods replaces the shell or its subshell instead, and an
+\f[CR]exec\f[R] without a command there keeps its redirections in the
+shell while the stage input returns to the shell.
 A command that is not found or cannot run ends a non\-interactive shell
 with \f[CR]127\f[R] or \f[CR]126\f[R] in every mood.
 A restricted shell refuses \f[CR]exec\f[R].
