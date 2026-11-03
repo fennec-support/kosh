@@ -102,5 +102,5 @@ dockerfile-builder findings=6 unrecognized=0 rc=0
 dockerfile-other unrecognized=1 rc=1
 justfile:4003:9: warning: The variable 'LONG_JUST_UNSET' is used before any assignment gives it a value. (SC2154)
 long-recipe justfile rc=0
-Makefile:4002:9: warning: The variable 'LONG_MAKE_UNSET' is used before any assignment gives it a value. (SC2154)
+Makefile:4003:9: warning: The variable 'LONG_MAKE_UNSET' is used before any assignment gives it a value. (SC2154)
 long-recipe Makefile rc=0

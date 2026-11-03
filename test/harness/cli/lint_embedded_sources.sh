@@ -864,7 +864,8 @@ printf 'dockerfile-other unrecognized=%s rc=%s\n' "$unrecognized" "$rc"
 
 # Each recipe line of a long recipe is its own fragment. The lint time grows
 # linearly with the line count, so 4000 lines finish well inside the timeout,
-# and the last finding keeps its host line and column.
+# and the last finding keeps its host line and column. The Makefile target
+# has its own SHELL.
 mkdir -p "$root/long-recipe"
 {
   printf 'x := "1"\na:\n'
@@ -876,7 +877,7 @@ mkdir -p "$root/long-recipe"
   printf '  echo "$LONG_JUST_UNSET"\n'
 } > "$root/long-recipe/justfile"
 {
-  printf 'a:\n'
+  printf 'a: SHELL := /bin/bash\na:\n'
   line_count=0
   while [ "$line_count" -lt 4000 ]; do
     printf '\techo $(X)\n'

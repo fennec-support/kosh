@@ -104,26 +104,13 @@ collect_shell_moods(StringView               source,
 }
 
 static pure fn
-recipe_mood(StringView                     source,
-            usize                          start,
+header_mood(StringView                     source,
+            usize                          header_start,
             Maybe<mimic_mood>              mood,
             const ArrayList<target_shell> &targets)
     wontthrow -> Maybe<mimic_mood>
 {
-  if (targets.is_empty()) return mood;
-
-  usize line_start = start;
-
-  while (line_start > 0 && source[line_start - 1] != '\n')
-    line_start--;
-
-  while (line_start > 0 && source[line_start] == '\t') {
-    line_start--;
-    while (line_start > 0 && source[line_start - 1] != '\n')
-      line_start--;
-  }
-
-  usize     header_end = line_start;
+  usize     header_end = header_start;
   let const header     = source.next_line(header_end);
   let const colon      = header.find_character(':');
 
@@ -152,6 +139,50 @@ recipe_mood(StringView                     source,
       }
     }
   }
+
+  return found;
+}
+
+/* the mood of the last range, kept at the start of its line. a later range
+   whose header scan reaches that line has the same header. */
+struct recipe_mood_cache
+{
+  usize             line_start{0};
+  Maybe<mimic_mood> mood{};
+  bool              has_value{false};
+};
+
+static fn
+recipe_mood(StringView                     source,
+            usize                          start,
+            Maybe<mimic_mood>              mood,
+            const ArrayList<target_shell> &targets,
+            recipe_mood_cache             &cache) wontthrow -> Maybe<mimic_mood>
+{
+  if (targets.is_empty()) return mood;
+
+  usize line_start = start;
+
+  while (line_start > 0 && source[line_start - 1] != '\n')
+    line_start--;
+
+  let const range_line_start = line_start;
+
+  while (line_start > 0 && source[line_start] == '\t') {
+    if (cache.has_value && line_start == cache.line_start) {
+      cache.line_start = range_line_start;
+
+      return cache.mood;
+    }
+
+    line_start--;
+    while (line_start > 0 && source[line_start - 1] != '\n')
+      line_start--;
+  }
+
+  let const found = header_mood(source, line_start, mood, targets);
+
+  cache = recipe_mood_cache{range_line_start, found, true};
 
   return found;
 }
@@ -245,9 +276,10 @@ recipe_prefix_source(StringView source) throws -> prefixed_source
            a fragment stores an analysis source and a shell_source copy in
            document, which owns them.
    time:   O(n) for recipe_prefix_source(), collect_shell_moods(), and
-           has_oneshell(). recipe_mood() compares the header words of a range
-           with each of T targets, so the ranges cost O(R * T * h) for R ranges
-           and a header of h bytes. */
+           has_oneshell(). recipe_mood() scans back to the previous range's
+           line or to the recipe header, so the scans cost O(n) in total.
+           header_mood() compares the words of each scanned header with each
+           of T targets, which costs O(H * T * h) for H headers of h bytes. */
 fn
 parse_makefile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void
@@ -282,9 +314,11 @@ parse_makefile_format(const parser_format_input &input,
     merged.push(range);
   }
 
+  let mood_cache = recipe_mood_cache{};
+
   for (let const &range : merged) {
     let const range_mood =
-        recipe_mood(source, range.start_position, mood, targets);
+        recipe_mood(source, range.start_position, mood, targets, mood_cache);
 
     if (!range_mood.has_value()) continue;
 
