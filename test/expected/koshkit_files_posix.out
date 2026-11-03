@@ -30,6 +30,8 @@ soft-self=1
 dangling-forced=1
 onto-link=1
 onto-link-forced=0
+long-forced=0
+replace-entries=4 long-content=a
 guarded=kept onto-link=link onto-link-forced=file
 kept=old soft=cp-link-old sub-soft=missing both=missing
 follow=1

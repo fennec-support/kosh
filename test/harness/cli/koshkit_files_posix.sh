@@ -41,6 +41,14 @@ ln -s nowhere cp-link-nowhere
 ln -s cp-link-old cp-link-to-old
 ln -s cp-link-old cp-link-to-old-forced
 "$BIN" -c 'koshkit cp -lf cp-link-nowhere cp-link-guarded 2>/dev/null; printf "dangling-forced=%s\n" "$?"; koshkit cp -l cp-link-old cp-link-to-old 2>/dev/null; printf "onto-link=%s\n" "$?"; koshkit cp -lf cp-link-old cp-link-to-old-forced; printf "onto-link-forced=%s\n" "$?"'
+mkdir cp-link-replace
+printf a > cp-link-replace/a
+ln -s a cp-link-replace/s
+ln cp-link-replace/s cp-link-replace/b
+cp_link_long=cp-link-replace/$(printf '%0250d' 0)
+printf old > "$cp_link_long"
+"$BIN" -c 'koshkit cp -alf cp-link-replace/s cp-link-replace/b; koshkit cp -alf cp-link-replace/s cp-link-replace/b; koshkit cp -lf cp-link-replace/a "$1"; printf "long-forced=%s\n" "$?"' kosh "$cp_link_long"
+printf 'replace-entries=%s long-content=%s\n' "$(ls -A cp-link-replace | wc -l | tr -d ' ')" "$(cat "$cp_link_long")"
 printf 'guarded=%s onto-link=%s onto-link-forced=%s\n' "$(cat cp-link-guarded)" "$([ -L cp-link-to-old ] && echo link || echo file)" "$([ -L cp-link-to-old-forced ] && echo link || echo file)"
 printf 'kept=%s soft=%s sub-soft=%s both=%s\n' "$(cat cp-link-old)" "$(readlink cp-link-soft)" "$([ -e cp-link-sub/soft ] && echo present || echo missing)" "$([ -e cp-link-both ] && echo present || echo missing)"
 mkdir cp-link-deref

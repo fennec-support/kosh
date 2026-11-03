@@ -207,20 +207,23 @@ link_file(const ExecContext &ec,
   if (!did_create && options.should_force &&
       (destination_path.exists() || destination_path.is_symbolic_link()))
   {
-    let       fresh       = String{allocator, destination} + ".kosh-cp";
-    let const do_is_taken = [&]() throws -> bool {
+    let const prefix =
+        destination_path.parent_or_current().text() + "/.kosh-cp-";
+    let fresh = String{allocator};
+
+    for (usize attempt_count = 0;; attempt_count++) {
+      fresh = prefix + String::from(attempt_count, allocator);
+
       let const fresh_path = Path{fresh.view(), allocator};
 
-      return fresh_path.exists() || fresh_path.is_symbolic_link();
-    };
-
-    for (usize attempt_count = 1; do_is_taken(); attempt_count++) {
-      fresh = String{allocator, destination} + ".kosh-cp" +
-              String::from(attempt_count, allocator);
+      if (!fresh_path.exists() && !fresh_path.is_symbolic_link()) break;
     }
 
     did_create = do_create_link(fresh.view()) &&
                  os::rename_path(fresh.view(), destination);
+
+    /* a rename between two links to one file keeps both. */
+    if (did_create) unused(os::remove_file(fresh.view()));
 
     if (!did_create) {
       let const reason = os::last_system_error_message();
