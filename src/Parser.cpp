@@ -1429,8 +1429,7 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           break;
         }
 
-        if (m_lexer.should_build_evaluation_facts())
-          pipeline->set_stage_facts(m_lexer.source());
+        pipeline->set_stage_facts(m_lexer.source());
         lhs = pipeline;
 
         should_parse_command = false;

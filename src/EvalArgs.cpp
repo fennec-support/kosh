@@ -742,9 +742,6 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
     if (!mark.has_value()) mark = arena->mark();
 
     let lexer = Lexer{subscript, *arena, None, runtime_state().get_mood()};
-
-    lexer.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
-
     let const *const subscript_token = lexer.next_shell_token();
 
     if (subscript_token == nullptr ||
