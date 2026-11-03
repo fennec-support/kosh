@@ -488,7 +488,7 @@ read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
   let packed_path = git_dir.clone();
 
   packed_path.append("packed-refs");
-  if (let const packed = packed_path.read_data_file(usize{1} << 30)) {
+  if (let const packed = packed_path.read_data_file()) {
     let remainder = packed->view();
 
     while (!remainder.is_empty()) {
