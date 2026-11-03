@@ -19,8 +19,7 @@ TMPDIR/kosh-vscode
 TMPDIR/kosh
 == a substring query still takes the highest rank:
 TMPDIR/kosh-vscode
-== cd with interpreter.cd_is_z goes to the z match:
-TMPDIR/kosh-vscode
-TMPDIR/kosh-vscode
+== a script keeps its cd failure with interpreter.cd_is_z on:
+status 1
 == cd without the setting keeps its error:
 status 1

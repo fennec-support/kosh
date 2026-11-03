@@ -5698,8 +5698,9 @@ A relative \f[CR]dir\f[R] that does not begin with \f[CR].\f[R] or
 \f[CR]..\f[R] is searched in each \f[CR]CDPATH\f[R] directory, and a
 directory found there is printed.
 With \f[CR]interpreter.cd_is_z=on\f[R], a \f[CR]dir\f[R] that is not a
-reachable directory changes to the best \f[CR]z\f[R] match, which is
-printed.
+reachable directory changes to the best \f[CR]z\f[R] match in an
+interactive shell, which prints it.
+A script keeps the failure.
 A relative directory resolves against the logical \f[CR]PWD\f[R], with
 \f[CR]..\f[R] removing its last component, unless \f[CR]\-P\f[R] or the
 \f[CR]physical\f[R] option resolves symbolic links first (\f[CR]\-L\f[R]

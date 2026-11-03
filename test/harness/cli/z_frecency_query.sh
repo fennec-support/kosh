@@ -39,9 +39,8 @@ echo "== an exact last component beats a higher-ranked substring match:"
 echo "== a substring query still takes the highest rank:"
 (cd "$d/start" && KOSH_DIRECTORY_HISTORY="$store" "$BIN" -c 'z code') |
     tr '\\' '/' | sed "s#$normalized_d#TMPDIR#"
-echo "== cd with interpreter.cd_is_z goes to the z match:"
-(cd "$d/start" && KOSH_DIRECTORY_HISTORY="$store" "$BIN" -c 'koshconf set interpreter.cd_is_z on; cd code && pwd') |
-    tr '\\' '/' | sed "s#$normalized_d#TMPDIR#"
+echo "== a script keeps its cd failure with interpreter.cd_is_z on:"
+(cd "$d/start" && KOSH_DIRECTORY_HISTORY="$store" "$BIN" -c 'koshconf set interpreter.cd_is_z on; cd code' 2>/dev/null; echo "status $?")
 echo "== cd without the setting keeps its error:"
 (cd "$d/start" && KOSH_DIRECTORY_HISTORY="$store" "$BIN" -c 'cd code' 2>/dev/null; echo "status $?")
 if [ -n "$d" ] && [ -n "$store" ]; then

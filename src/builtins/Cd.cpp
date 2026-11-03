@@ -390,6 +390,7 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   }
 
   if (!is_to_previous && operand_count > 0 &&
+      cxt.execution_store().shell_is_interactive() &&
       cxt.runtime_state().option_is_enabled(shell_option_id::CdIsZ))
   {
     if (let const frecent =
