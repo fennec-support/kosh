@@ -42,19 +42,41 @@ ConditionalCommand::ConditionalCommand(SourceLocation                 location,
 ConditionalCommand::~ConditionalCommand() = default;
 
 cold fn
-ConditionalCommand::to_string() const throws -> String
+ConditionalCommand::write_ast(AstWriter &out) const throws -> void
 {
-  let result = String{heap_allocator(), "ConditionalCommand"};
+  out.open("conditional");
+  write_ast_command_fields(out);
 
-  append_ast_execution_flags(result);
+  for (let const &element : m_elements) {
+    out.open("element");
 
-  return result;
-}
+    switch (element.kind) {
+    case conditional_element::Kind::Operand:
+      out.symbol("kind", "operand");
+      break;
+    case conditional_element::Kind::And: out.symbol("kind", "and"); break;
+    case conditional_element::Kind::Or:  out.symbol("kind", "or"); break;
+    case conditional_element::Kind::Not: out.symbol("kind", "not"); break;
+    case conditional_element::Kind::OpenParen:
+      out.symbol("kind", "open");
+      break;
+    case conditional_element::Kind::CloseParen:
+      out.symbol("kind", "close");
+      break;
+    case conditional_element::Kind::Less: out.symbol("kind", "less"); break;
+    case conditional_element::Kind::Greater:
+      out.symbol("kind", "greater");
+      break;
+    }
 
-cold fn
-ConditionalCommand::to_ast_string(usize layer) const throws -> String
-{
-  return indent_for_layer(layer) + "[" + to_string() + "]";
+    if (element.location.length > 0)
+      out.position("at", element.location.position);
+    if (element.is_bare_unquoted) out.flag("bare");
+    if (element.word != nullptr) out.token(element.word);
+    out.close();
+  }
+
+  out.close();
 }
 
 cold static fn
@@ -733,19 +755,20 @@ ArithmeticCommand::can_evaluate_in_process_substitution(
 }
 
 cold fn
-ArithmeticCommand::to_string() const throws -> String
+ArithmeticCommand::write_ast(AstWriter &out) const throws -> void
 {
-  return String{heap_allocator(), "ArithmeticCommand"};
-}
+  out.open("arithmetic-command");
+  out.text(m_expression);
+  write_ast_command_fields(out);
 
-cold fn
-ArithmeticCommand::to_ast_string(usize layer) const throws -> String
-{
-  let label = to_string() + " \"" + m_expression + "\"";
+  if (m_cache != nullptr && m_cache->is_tokenized) {
+    out.number("tokens", static_cast<i64>(m_cache->tokens.count()));
+    if (m_cache->is_simple) out.flag("simple");
+    if (m_cache->has_exact_constant_text)
+      out.quoted("constant", m_cache->exact_constant_text.view());
+  }
 
-  append_ast_execution_flags(label);
-
-  return indent_for_layer(layer) + "[" + label + "]";
+  out.close();
 }
 
 static pure fn
@@ -935,23 +958,24 @@ CStyleForLoop::get_clause_cache(arith_token_cache *&slot) throws
 }
 
 cold fn
-CStyleForLoop::to_string() const throws -> String
-{
-  return String{heap_allocator(), "CStyleForLoop"};
-}
-
-cold fn
-CStyleForLoop::to_ast_string(usize layer) const throws -> String
+CStyleForLoop::write_ast(AstWriter &out) const throws -> void
 {
   ASSERT(m_body != nullptr);
-  let const pad = indent_for_layer(layer);
-  let       label =
-      to_string() + " \"" + m_init + ";" + m_condition + ";" + m_step + "\"";
 
-  append_ast_execution_flags(label);
+  out.open("arithmetic-for");
+  write_ast_command_fields(out);
+  out.position("header-at", m_header_position);
+  out.quoted("init", m_init);
+  out.quoted("condition", m_condition);
+  out.quoted("step", m_step);
 
-  return pad + "[" + label + "]\n" + pad + EXPRESSION_AST_INDENT +
-         m_body->to_ast_string(layer + 1);
+  if (m_folded_condition.has_value()) {
+    out.number("folded-condition", *m_folded_condition);
+    if (m_is_exact_folded_condition_nonzero) out.flag("exact-nonzero");
+  }
+
+  m_body->write_ast(out);
+  out.close();
 }
 
 /* memory: get_clause_cache() allocates the condition and step caches once per
@@ -1238,24 +1262,14 @@ Subshell::collapsed_body() const wontthrow -> const Expression *
 }
 
 cold fn
-Subshell::to_string() const throws -> String
-{
-  let result = String{heap_allocator(), "Subshell"};
-
-  append_ast_execution_flags(result);
-
-  return result;
-}
-
-cold fn
-Subshell::to_ast_string(usize layer) const throws -> String
+Subshell::write_ast(AstWriter &out) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
-  let const pad = indent_for_layer(layer);
-
-  return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
-         m_body->to_ast_string(layer + 1);
+  out.open("subshell");
+  write_ast_command_fields(out);
+  m_body->write_ast(out);
+  out.close();
 }
 
 static fn
@@ -1640,26 +1654,15 @@ FunctionDefinition::body() const wontthrow -> const Expression *
 }
 
 cold fn
-FunctionDefinition::to_string() const throws -> String
-{
-  let result = String{heap_allocator(), "FunctionDefinition \""};
-
-  result += StringView{m_name};
-  result += "\"";
-  append_ast_execution_flags(result);
-
-  return result;
-}
-
-cold fn
-FunctionDefinition::to_ast_string(usize layer) const throws -> String
+FunctionDefinition::write_ast(AstWriter &out) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
-  let const pad = indent_for_layer(layer);
-
-  return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
-         m_body->to_ast_string(layer + 1);
+  out.open("function");
+  out.text(m_name.view());
+  write_ast_command_fields(out);
+  m_body->write_ast(out);
+  out.close();
 }
 
 fn
@@ -1786,24 +1789,19 @@ RedirectedCommand::RedirectedCommand(SourceLocation           location,
 RedirectedCommand::~RedirectedCommand() = default;
 
 cold fn
-RedirectedCommand::to_string() const throws -> String
-{
-  let result = String{heap_allocator(), "RedirectedCommand"};
-
-  append_ast_execution_flags(result);
-
-  return result;
-}
-
-cold fn
-RedirectedCommand::to_ast_string(usize layer) const throws -> String
+RedirectedCommand::write_ast(AstWriter &out) const throws -> void
 {
   ASSERT(m_child != nullptr);
 
-  let const pad = indent_for_layer(layer);
+  out.open("redirected-command");
+  write_ast_command_fields(out);
+  out.number("redirections", static_cast<i64>(m_redirections.count()));
+  m_child->write_ast(out);
 
-  return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
-         m_child->to_ast_string(layer + 1);
+  for (let const &redirection : m_redirections)
+    internal::write_ast_redirection(out, redirection);
+
+  out.close();
 }
 
 fn

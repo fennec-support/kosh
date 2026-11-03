@@ -203,6 +203,12 @@ struct heredoc_contents
   heredoc_source_mapping source_mapping;
 };
 
+struct lexed_debug_word
+{
+  Word           word;
+  SourceLocation location;
+};
+
 struct heredoc_pending
 {
   String             delimiter;
@@ -427,7 +433,7 @@ public:
   }
 
   pure fn
-  debug_words() const wontthrow -> const ArrayList<Word> &;
+  debug_words() const wontthrow -> const ArrayList<lexed_debug_word> &;
   pure fn
   arena() const wontthrow -> BumpArena &;
   pure fn
@@ -555,8 +561,8 @@ protected:
   usize m_peek_cache_generation{0};
 #endif
 
-  ArrayList<Word> m_debug_words{heap_allocator()};
-  usize           m_last_collected_word_position{static_cast<usize>(-1)};
+  ArrayList<lexed_debug_word> m_debug_words{heap_allocator()};
+  usize m_last_collected_word_position{static_cast<usize>(-1)};
 
   bool                                 m_was_last_shell_token_newline{false};
   bool                                 m_did_lex_end_of_file{false};

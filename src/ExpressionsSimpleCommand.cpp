@@ -502,12 +502,13 @@ AssignCommand::evaluate_assignment(EvalContext &cxt) const throws -> i64
 }
 
 cold fn
-AssignCommand::to_string() const throws -> String
+AssignCommand::write_ast(AstWriter &out) const throws -> void
 {
-  let result = "Assign " + m_assignment->to_ast_string();
-  append_ast_execution_flags(result);
-
-  return result;
+  out.open("assign-command");
+  write_ast_command_fields(out);
+  write_ast_prefix_assignments(out);
+  out.token(m_assignment);
+  out.close();
 }
 
 fn
@@ -927,11 +928,8 @@ internal::resolve_redirection(const Redirection    &redir,
                               bool                  should_memoize_fds) throws
     -> resolved_redirection
 {
-  if (cxt.runtime_state().option_is_enabled(shell_option_id::Restricted) &&
-      (redir.kind == Redirection::Kind::TruncateOutput ||
-       redir.kind == Redirection::Kind::TruncateOutputOverride ||
-       redir.kind == Redirection::Kind::AppendOutput ||
-       redir.kind == Redirection::Kind::ReadWrite))
+  if (redir.writes_file() &&
+      cxt.runtime_state().option_is_enabled(shell_option_id::Restricted))
   {
     reject_restricted_output_redirection(redir, fallback_location,
                                          did_open_or_stage_fail);
@@ -1967,14 +1965,6 @@ append_one_redirection(EvalContext       &cxt,
   }
 }
 
-static pure fn
-is_synthesized_error_duplication(const Redirection &redir) wontthrow -> bool
-{
-  return redir.kind == Redirection::Kind::DuplicateOutput && redir.fd == 2 &&
-         redir.dup_fd == 1 && redir.target == nullptr &&
-         redir.fd_allocation_name_token == nullptr;
-}
-
 fn
 internal::append_redirections_text(
     EvalContext                   &cxt,
@@ -1985,22 +1975,13 @@ internal::append_redirections_text(
              out.
      time:   two passes over R redirections, plus the bytes that
              append_one_redirection() and each heredoc body add to out. */
-  bool should_drop_error_duplication = false;
-  bool has_heredoc                   = false;
+  bool has_heredoc = false;
 
   for (let const &redir : redirections) {
-    /* the Parser::build_both_streams_redirection() emits &> as a file
-       redirection followed by a synthesized 2>&1. skipping that 2>&1 keeps
-       the &> spelling in the output. */
-    if (should_drop_error_duplication) {
-      should_drop_error_duplication = false;
-      if (is_synthesized_error_duplication(redir)) continue;
-    }
-
+    if (redir.origin == Redirection::Origin::BothStreams) continue;
     if (!out.is_empty()) out.push(' ');
 
     append_one_redirection(cxt, out, redir);
-    should_drop_error_duplication = redir.is_both_streams_spelling;
     has_heredoc |= redir.kind == Redirection::Kind::Heredoc;
   }
 
@@ -2298,23 +2279,70 @@ SimpleCommand::always_exits(const AnalysisContext &actx) const wontthrow -> bool
 }
 
 cold fn
-SimpleCommand::to_string() const throws -> String
+SimpleCommand::write_ast(AstWriter &out) const throws -> void
 {
-  String s{heap_allocator(), "SimpleCommand"};
+  out.open("simple-command");
 
   if (!m_args.is_empty()) {
-    s += " \"" + m_args[0]->raw_string() + "\"";
+    let const name = internal::static_command_name(m_args[0]);
 
-    for (usize i = 1; i < m_args.count(); i++) {
-      s += " \"";
-      s += m_args[i]->raw_string();
-      s += "\"";
-    }
+    if (name.has_value()) out.quoted("name", *name);
   }
 
-  append_ast_execution_flags(s);
+  if (!m_args.is_empty() && m_args[0]->kind() == Token::Kind::Word) {
+    let const &command_word =
+        static_cast<const tokens::WordToken *>(m_args[0])->word();
 
-  return s;
+    if (command_word.has_command_fact(Word::Fact::IsDeclarationCommand))
+      out.flag("declaration");
+    if (command_word.has_command_fact(Word::Fact::IsLocalCommand))
+      out.flag("local");
+    if (command_word.has_command_fact(Word::Fact::IsDeclareCommand))
+      out.flag("declare");
+    if (command_word.has_command_fact(Word::Fact::IsTestCommand))
+      out.flag("test");
+    if (command_word.has_command_fact(Word::Fact::IsBracketCommand))
+      out.flag("bracket");
+    if (command_word.has_command_fact(Word::Fact::IsLetCommand))
+      out.flag("let");
+  }
+
+  if (m_command_word_is_glob.has_value() && *m_command_word_is_glob)
+    out.flag("glob-command-word");
+
+  if (m_literal_command_lookup.has_value()) {
+    if (m_literal_command_lookup->builtin.has_value()) out.flag("builtin");
+    if (m_literal_command_lookup->is_special) out.flag("special-builtin");
+  }
+
+  write_ast_command_fields(out);
+  out.position("first-token-at", m_first_token_position);
+  out.position("full-end", m_full_source_end_position);
+  write_ast_prefix_assignments(out);
+
+  for (let const *argument : m_args)
+    out.token(argument);
+
+  for (let const &array_argument : m_array_args) {
+    out.open("array-assignment");
+    out.text(array_argument.name.view());
+    out.symbol("op",
+               array_argument.update_mode == assignment_update_mode::Append
+                   ? StringView{"+="}
+                   : StringView{"="});
+    out.position("at", array_argument.location.position);
+    out.position("end", array_argument.end_position);
+
+    for (let const *element : array_argument.elements)
+      out.token(element);
+
+    out.close();
+  }
+
+  for (let const &redirection : m_redirections)
+    internal::write_ast_redirection(out, redirection);
+
+  out.close();
 }
 
 } /* namespace expressions */

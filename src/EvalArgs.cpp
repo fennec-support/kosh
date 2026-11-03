@@ -30,17 +30,6 @@ namespace {
 
 constexpr char BRACE_OPAQUE_MARKER = '\x01';
 
-pure fn
-word_has_brace_candidate(const Word &word) wontthrow -> bool
-{
-  for (let const &segment : word.segments) {
-    if (segment.kind != WordSegment::Kind::UnquotedText) continue;
-    if (segment.text.find_character('{').has_value()) return true;
-  }
-
-  return false;
-}
-
 struct sequence_integer
 {
   i64   value;
@@ -621,27 +610,6 @@ copy_word_range(const Word  &word,
   return out;
 }
 
-enum declaration_command_flag : u8
-{
-  declaration_flag_local       = 1 << 0,
-  declaration_flag_declare     = 1 << 1,
-  declaration_flag_declaration = 1 << 2,
-  declaration_flag_test        = 1 << 3,
-  declaration_flag_let         = 1 << 4,
-};
-
-constexpr static_string_entry<u8> DECLARATION_COMMAND_ENTRIES[] = {
-    {SSK("local"),    declaration_flag_local | declaration_flag_declaration  },
-    {SSK("declare"),  declaration_flag_declare | declaration_flag_declaration},
-    {SSK("typeset"),  declaration_flag_declare | declaration_flag_declaration},
-    {SSK("export"),   declaration_flag_declaration                           },
-    {SSK("readonly"), declaration_flag_declaration                           },
-    {SSK("unset"),    declaration_flag_declaration                           },
-    {SSK("test"),     declaration_flag_test                                  },
-    {SSK("let"),      declaration_flag_let                                   },
-};
-constexpr StaticStringMap DECLARATION_COMMANDS{DECLARATION_COMMAND_ENTRIES};
-
 hot fn
 EvalContext::process_args(const ArrayList<const Token *> &args,
                           ArrayList<SourceLocation>      *expanded_locations,
@@ -694,22 +662,16 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
     const Word &command_word =
         static_cast<const tokens::WordToken *>(args[0])->word();
 
-    if (command_word.plain_literal_kind() != Word::PlainLiteral::NotPlain) {
-      let const flags =
-          DECLARATION_COMMANDS.find(command_word.constant_value()).value_or(0);
-
-      is_local_command       = (flags & declaration_flag_local) != 0;
-      is_declare_command     = (flags & declaration_flag_declare) != 0;
-      is_declaration_command = (flags & declaration_flag_declaration) != 0;
-      is_test_command        = (flags & declaration_flag_test) != 0;
-      is_let_command         = (flags & declaration_flag_let) != 0;
-    } else if (command_word.segments.count() == 1 &&
-               command_word.segments[0].kind ==
-                   WordSegment::Kind::UnquotedText &&
-               command_word.segments[0].text.view() == "[")
-    {
-      is_test_command = true;
-    }
+    is_local_command =
+        command_word.has_command_fact(Word::Fact::IsLocalCommand);
+    is_declare_command =
+        command_word.has_command_fact(Word::Fact::IsDeclareCommand);
+    is_declaration_command =
+        command_word.has_command_fact(Word::Fact::IsDeclarationCommand);
+    is_test_command =
+        command_word.has_command_fact(Word::Fact::IsTestCommand) ||
+        command_word.has_command_fact(Word::Fact::IsBracketCommand);
+    is_let_command = command_word.has_command_fact(Word::Fact::IsLetCommand);
   }
 
   let const was_glob_exempt = expansion_store().glob_exempt_for_test();
@@ -1128,7 +1090,7 @@ EvalContext::process_args(const ArrayList<const Token *> &args,
 
       if (runtime_state().bash_additions_enabled() &&
           runtime_state().option_is_enabled(shell_option_id::Braceexpand) &&
-          word_has_brace_candidate(*word))
+          word->has_fact(Word::Fact::HasBraceCandidate))
       {
         for (let const &brace_word : expand_braces(*word, scratch_allocator()))
           do_expand_one_word(brace_word);

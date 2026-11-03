@@ -79,7 +79,7 @@ public:
   }
 
   pure fn
-  debug_words() const wontthrow -> const ArrayList<Word> &;
+  debug_words() const wontthrow -> const ArrayList<lexed_debug_word> &;
 
   fn
   set_analysis_metadata_collection_mode(
@@ -291,7 +291,8 @@ private:
       assignment_update_mode               update_mode) throws -> void;
 
   mustuse fn
-  wrap_with_stderr_to_stdout(Command *command) throws -> Command *;
+  wrap_with_stderr_to_stdout(Command *command, u32 pipe_position) throws
+      -> Command *;
 
   fn
   build_here_string_redirection(

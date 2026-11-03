@@ -25,7 +25,8 @@
 namespace koshka::expressions::internal {
 
 fn
-indent_for_layer(usize layer) throws -> String;
+write_ast_redirection(AstWriter         &out,
+                      const Redirection &redirection) throws -> void;
 
 fn
 report_command_resolution_error(

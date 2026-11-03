@@ -346,7 +346,7 @@ Lexer::is_at_source_end() const wontthrow -> bool
 }
 
 pure fn
-Lexer::debug_words() const wontthrow -> const ArrayList<Word> &
+Lexer::debug_words() const wontthrow -> const ArrayList<lexed_debug_word> &
 {
   return m_debug_words;
 }
@@ -1573,7 +1573,8 @@ Lexer::lex_identifier() throws -> Token *
   if (m_parse_session.should_collect_debug_words() &&
       m_cursor_position != m_last_collected_word_position)
   {
-    m_debug_words.push(word);
+    m_debug_words.push(
+        lexed_debug_word{word, here(actual_cursor_position, byte_count)});
     m_last_collected_word_position = m_cursor_position;
   }
 

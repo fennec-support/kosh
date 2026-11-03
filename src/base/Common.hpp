@@ -238,7 +238,6 @@ public:
 #endif
 
 namespace koshka {
-constexpr const char *EXPRESSION_AST_INDENT        = " ";
 constexpr const char *EXPRESSION_DOUBLE_AST_INDENT = "  ";
 
 enum class root_evaluation_mode : u8

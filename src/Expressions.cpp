@@ -536,17 +536,6 @@ VariableOccurrenceStateMap::merge(
   *this = steal(result);
 }
 
-fn
-expressions::internal::indent_for_layer(usize layer) throws -> String
-{
-  let pad = String{heap_allocator()};
-
-  for (usize i = 0; i < layer; i++)
-    pad += EXPRESSION_AST_INDENT;
-
-  return pad;
-}
-
 Expression::Expression(SourceLocation location)
     : m_location(steal(location)),
       m_source_end_position(m_location.position + m_location.length)
@@ -570,10 +559,340 @@ Expression::set_source_end_position(usize position) wontthrow -> void
   m_source_end_position = static_cast<u32>(position);
 }
 
+AstWriter::AstWriter(StringView source) : m_source{source} {}
+
 cold fn
-Expression::to_ast_string(usize layer) const throws -> String
+AstWriter::open(StringView kind) throws -> void
 {
-  return indent_for_layer(layer) + "[" + to_string() + "]";
+  if (!m_output.is_empty()) {
+    m_output.push('\n');
+    m_output.append_repeated(' ', m_depth * 2);
+  }
+
+  m_output.push('(');
+  m_output.append(kind);
+  m_depth++;
+}
+
+cold fn
+AstWriter::close() throws -> void
+{
+  ASSERT(m_depth > 0);
+
+  m_depth--;
+  m_output.push(')');
+}
+
+cold fn
+AstWriter::append_quoted(StringView value) throws -> void
+{
+  constexpr const char *HEX_DIGITS = "0123456789abcdef";
+
+  m_output.push('"');
+
+  for (usize i = 0; i < value.length; i++) {
+    let const byte = static_cast<u8>(value[i]);
+
+    if (byte == '"' || byte == '\\') {
+      m_output.push('\\');
+      m_output.push(static_cast<char>(byte));
+    } else if (byte == '\n') {
+      m_output.append(StringView{"\\n"});
+    } else if (byte == '\t') {
+      m_output.append(StringView{"\\t"});
+    } else if (byte < 0x20 || byte == 0x7f) {
+      m_output.append(StringView{"\\x"});
+      m_output.push(HEX_DIGITS[byte >> 4]);
+      m_output.push(HEX_DIGITS[byte & 0xf]);
+    } else {
+      m_output.push(static_cast<char>(byte));
+    }
+  }
+
+  m_output.push('"');
+}
+
+cold fn
+AstWriter::text(StringView value) throws -> void
+{
+  m_output.push(' ');
+  append_quoted(value);
+}
+
+cold fn
+AstWriter::flag(StringView key) throws -> void
+{
+  m_output.append(StringView{" :"});
+  m_output.append(key);
+}
+
+cold fn
+AstWriter::symbol(StringView key, StringView value) throws -> void
+{
+  flag(key);
+  m_output.push(' ');
+  m_output.append(value);
+}
+
+cold fn
+AstWriter::quoted(StringView key, StringView value) throws -> void
+{
+  flag(key);
+  m_output.push(' ');
+  append_quoted(value);
+}
+
+cold fn
+AstWriter::number(StringView key, i64 value) throws -> void
+{
+  flag(key);
+  m_output.push(' ');
+  m_output.append(String::from(value, heap_allocator()).view());
+}
+
+cold fn
+AstWriter::position(StringView key, usize source_position) throws
+    -> void
+{
+  flag(key);
+  m_output.push(' ');
+
+  if (m_source.is_empty() || source_position > m_source.length) {
+    m_output.push('@');
+    m_output.append(String::from(source_position, heap_allocator()).view());
+
+    return;
+  }
+
+  if (m_line_start_positions.is_empty()) {
+    m_line_start_positions.push(0);
+
+    for (usize i = 0; i < m_source.length; i++) {
+      if (m_source[i] == '\n')
+        m_line_start_positions.push(static_cast<u32>(i + 1));
+    }
+  }
+
+  usize low_index  = 0;
+  usize high_index = m_line_start_positions.count();
+
+  while (high_index - low_index > 1) {
+    let const middle_index = low_index + (high_index - low_index) / 2;
+
+    if (m_line_start_positions[middle_index] <= source_position)
+      low_index = middle_index;
+    else
+      high_index = middle_index;
+  }
+
+  let const column_number =
+      source_position - m_line_start_positions[low_index] + 1;
+
+  m_output.append(String::from(low_index + 1, heap_allocator()).view());
+  m_output.push(':');
+  m_output.append(String::from(column_number, heap_allocator()).view());
+}
+
+static pure fn
+ast_segment_kind_symbol(WordSegment::Kind kind) wontthrow -> StringView
+{
+  switch (kind) {
+  case WordSegment::Kind::LiteralText:          return "literal";
+  case WordSegment::Kind::UnquotedText:         return "unquoted";
+  case WordSegment::Kind::DoubleQuotedText:     return "double-quoted";
+  case WordSegment::Kind::VariableReference:    return "variable";
+  case WordSegment::Kind::CommandSubstitution:  return "command-substitution";
+  case WordSegment::Kind::ArithmeticExpansion:  return "arithmetic";
+  case WordSegment::Kind::ProcessSubstitution:  return "process-substitution";
+  case WordSegment::Kind::FunctionSubstitution: return "function-substitution";
+  }
+
+  return "unknown";
+}
+
+static pure fn
+ast_plain_literal_symbol(Word::PlainLiteral kind) wontthrow -> StringView
+{
+  switch (kind) {
+  case Word::PlainLiteral::NotPlain:     return "none";
+  case Word::PlainLiteral::PlainNoSplit: return "no-split";
+  case Word::PlainLiteral::PlainUnquotedOneSegment:
+    return "unquoted-one-segment";
+  }
+
+  return "unknown";
+}
+
+static pure fn
+ast_segment_escape_mark(const WordSegment &segment) wontthrow -> char
+{
+  switch (segment.kind) {
+  case WordSegment::Kind::LiteralText:
+  case WordSegment::Kind::DoubleQuotedText: return '.';
+
+  case WordSegment::Kind::UnquotedText: return '^';
+
+  default: return segment.is_in_double_quotes ? '"' : '$';
+  }
+}
+
+static pure fn
+ast_word_is_single_plain_segment(const Word &word) wontthrow -> bool
+{
+  if (word.segments.count() != 1) return false;
+
+  let const kind = word.segments[0].kind;
+
+  return kind == WordSegment::Kind::LiteralText ||
+         kind == WordSegment::Kind::UnquotedText;
+}
+
+cold fn
+AstWriter::word(const Word &word, Maybe<SourceLocation> location) throws
+    -> void
+{
+  let cooked_text  = String{heap_allocator()};
+  let escape_marks = String{heap_allocator()};
+  let span_start   = Maybe<usize>{};
+
+  for (let const &segment : word.segments) {
+    cooked_text.append(segment.text.view());
+    escape_marks.append_repeated(ast_segment_escape_mark(segment),
+                                 segment.text.count());
+
+    if (segment.source_length > 0 &&
+        (!span_start.has_value() || segment.source_position < *span_start))
+    {
+      span_start = static_cast<usize>(segment.source_position);
+    }
+  }
+
+  let const has_source_span =
+      location.has_value() && !m_source.is_empty() &&
+      static_cast<usize>(location->position) + location->length <=
+          m_source.length;
+
+  open("word");
+
+  if (has_source_span) {
+    let const source_text =
+        m_source.substring_of_length(location->position, location->length);
+
+    text(source_text);
+    position("at", location->position);
+    if (source_text != cooked_text.view()) quoted("text", cooked_text.view());
+  } else {
+    text(cooked_text.view());
+    if (span_start.has_value()) position("at", *span_start);
+  }
+
+  symbol("plain", ast_plain_literal_symbol(word.plain_literal_kind()));
+
+  struct fact_name
+  {
+    Word::Fact fact;
+    StringView name;
+  };
+
+  constexpr fact_name FACT_NAMES[] = {
+      {Word::Fact::IsStaticName,      "static-name"    },
+      {Word::Fact::HasSubstitution,   "substitution"   },
+      {Word::Fact::HasUnquotedGlob,   "unquoted-glob"  },
+      {Word::Fact::HasLeadingTilde,   "leading-tilde"  },
+      {Word::Fact::HasColonTilde,     "colon-tilde"    },
+      {Word::Fact::HasBraceCandidate, "brace-candidate"},
+  };
+
+  let fact_list = String{heap_allocator(), "("};
+
+  for (let const &entry : FACT_NAMES) {
+    if (!word.has_fact(entry.fact)) continue;
+    if (fact_list.count() > 1) fact_list.push(' ');
+    fact_list.append(entry.name);
+  }
+
+  fact_list.push(')');
+  symbol("facts", fact_list.view());
+  if (word.has_locale_translation_quote) flag("locale-quote");
+  quoted("escape", escape_marks.view());
+
+  if (!ast_word_is_single_plain_segment(word)) {
+    for (let const &segment : word.segments) {
+      open("segment");
+      symbol("kind", ast_segment_kind_symbol(segment.kind));
+      text(segment.text.view());
+      if (segment.source_length > 0) position("at", segment.source_position);
+      if (segment.is_in_double_quotes) flag("in-double-quotes");
+      if (segment.is_greedy_name) flag("greedy-name");
+      if (segment.was_ansi_c_quoted) flag("ansi-c-quoted");
+      if (segment.has_optimizer_arithmetic_result()) flag("folded");
+      close();
+    }
+  }
+
+  close();
+}
+
+cold fn
+AstWriter::token(const Token *token) throws -> void
+{
+  ASSERT(token != nullptr);
+
+  let const location = token->source_location();
+
+  if (token->kind() == Token::Kind::Word) {
+    word(static_cast<const tokens::WordToken *>(token)->word(), location);
+
+    return;
+  }
+
+  if (token->kind() == Token::Kind::Assignment) {
+    let const *const assignment = static_cast<const Assignment *>(token);
+    let const        is_append =
+        assignment->get_update_mode() == assignment_update_mode::Append;
+    let const operator_text  = is_append ? StringView{"+="} : StringView{"="};
+    let const value_offset   = assignment->key().count() + operator_text.length;
+    let       value_location = Maybe<SourceLocation>{};
+
+    if (value_offset <= location.length) {
+      value_location =
+          SourceLocation{static_cast<u32>(location.position + value_offset),
+                         static_cast<u32>(location.length - value_offset),
+                         location.source_name_index};
+    }
+
+    open("assignment");
+    text(assignment->key().view());
+    symbol("op", operator_text);
+    position("at", location.position);
+    word(assignment->value_word(), value_location);
+    close();
+
+    return;
+  }
+
+  open("token");
+  text(token->raw_string().view());
+  position("at", location.position);
+  close();
+}
+
+cold fn
+AstWriter::take() throws -> String
+{
+  ASSERT(m_depth == 0);
+
+  return steal(m_output);
+}
+
+cold fn
+Expression::to_ast_string(StringView source) const throws -> String
+{
+  let out = AstWriter{source};
+
+  write_ast(out);
+
+  return out.take();
 }
 
 hot flatten fn
@@ -1702,20 +2021,7 @@ expressions::internal::static_command_name(const Token *token) throws
 
   let const &word = static_cast<const tokens::WordToken *>(token)->word();
 
-  for (let const &segment : word.segments) {
-    if (segment.kind != WordSegment::Kind::LiteralText &&
-        segment.kind != WordSegment::Kind::DoubleQuotedText &&
-        segment.kind != WordSegment::Kind::UnquotedText)
-    {
-      return koshka::None;
-    }
-
-    if (segment.kind == WordSegment::Kind::UnquotedText) {
-      for (usize i = 0; i < segment.text.count(); i++) {
-        if (lexer::is_expandable_char(segment.text[i])) return koshka::None;
-      }
-    }
-  }
+  if (!word.has_fact(Word::Fact::IsStaticName)) return koshka::None;
 
   return word.constant_value();
 }
@@ -3044,10 +3350,117 @@ Command::is_async() const wontthrow -> bool
   return has_execution_flag(ExecutionFlag::Async);
 }
 
-fn
-Command::append_ast_execution_flags(String &label) const throws -> void
+cold fn
+Command::write_ast_command_fields(AstWriter &out) const throws -> void
 {
-  if (is_async()) label += ", Async";
+  out.position("at", source_location().position);
+  out.position("end", source_end_position());
+  if (is_async()) out.flag("async");
+  if (is_negated()) out.flag("negated");
+
+  if (is_timed()) {
+    out.position("time-at", m_time_position);
+    if (get_time_format_mode() == time_format_mode::Posix)
+      out.flag("time-posix");
+    if (get_time_rss_mode() == time_rss_mode::Include) out.flag("time-rss");
+  }
+
+  if (has_execution_flag(ExecutionFlag::FullyEliminated))
+    out.flag("eliminated");
+  if (has_execution_flag(ExecutionFlag::FoldedLoopToSkip))
+    out.flag("folded-to-skip");
+}
+
+static pure fn
+ast_redirection_kind_symbol(Redirection::Kind kind) wontthrow -> StringView
+{
+  switch (kind) {
+  case Redirection::Kind::TruncateOutput: return "truncate-output";
+  case Redirection::Kind::TruncateOutputOverride:
+    return "truncate-output-override";
+  case Redirection::Kind::AppendOutput:    return "append-output";
+  case Redirection::Kind::ReadInput:       return "read-input";
+  case Redirection::Kind::ReadWrite:       return "read-write";
+  case Redirection::Kind::DuplicateOutput: return "duplicate-output";
+  case Redirection::Kind::DuplicateInput:  return "duplicate-input";
+  case Redirection::Kind::Heredoc:         return "heredoc";
+  case Redirection::Kind::HereString:      return "here-string";
+  }
+
+  return "unknown";
+}
+
+cold fn
+internal::write_ast_redirection(AstWriter         &out,
+                                const Redirection &redirection) throws
+    -> void
+{
+  out.open("redirection");
+  out.quoted("op", redirection.get_operator_spelling());
+  out.symbol("kind", ast_redirection_kind_symbol(redirection.kind));
+  out.position("at", redirection.operator_position);
+
+  switch (redirection.origin) {
+  case Redirection::Origin::Written: break;
+  case Redirection::Origin::BothStreams:
+    out.symbol("origin", "both-streams");
+    break;
+  case Redirection::Origin::PipeBoth: out.symbol("origin", "pipe-both"); break;
+  case Redirection::Origin::MoveClose:
+    out.symbol("origin", "move-close");
+    break;
+  }
+
+  if (redirection.writes_file()) out.flag("writes-file");
+
+  if (redirection.fd_allocation_name_token != nullptr) {
+    out.quoted("fd-variable",
+               redirection.fd_allocation_name_token->raw_string().view());
+  } else {
+    out.number("fd", redirection.fd);
+  }
+
+  let const is_duplication =
+      redirection.kind == Redirection::Kind::DuplicateOutput ||
+      redirection.kind == Redirection::Kind::DuplicateInput;
+
+  if (is_duplication && redirection.target == nullptr) {
+    if (redirection.dup_fd == Redirection::DUP_FD_CLOSE)
+      out.symbol("dup", "close");
+    else
+      out.number("dup", redirection.dup_fd);
+  }
+
+  if (redirection.is_both_streams_spelling) out.flag("both-streams");
+  if (redirection.is_dup_filename_allowed) out.flag("dup-filename-allowed");
+  if (redirection.claims_descriptor()) out.flag("claims-descriptor");
+
+  if (redirection.kind == Redirection::Kind::Heredoc) {
+    if (redirection.heredoc_delimiter != nullptr) {
+      out.quoted("delimiter",
+                 redirection.heredoc_delimiter->raw_string().view());
+    }
+
+    if (redirection.should_expand_heredoc) out.flag("expand");
+    if (redirection.should_strip_heredoc_tabs) out.flag("strip-tabs");
+    if (redirection.has_separated_strip_operator) out.flag("separated-strip");
+    if (redirection.heredoc != nullptr)
+      out.quoted("body", redirection.heredoc->text.view());
+  }
+
+  if (redirection.target != nullptr) out.token(redirection.target);
+  out.close();
+}
+
+cold fn
+Command::write_ast_prefix_assignments(AstWriter &out) const throws
+    -> void
+{
+  for (let const &variable : m_local_vars) {
+    out.open("prefix");
+    out.token(variable.token);
+    out.close();
+  }
 }
 
 fn
@@ -3142,9 +3555,11 @@ DummyExpression::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const thr
 }
 
 cold fn
-DummyExpression::to_string() const throws -> String
+DummyExpression::write_ast(AstWriter &out) const throws -> void
 {
-  return String{heap_allocator(), "Dummy"};
+  out.open("dummy");
+  out.position("at", source_location().position);
+  out.close();
 }
 
 } /* namespace expressions */

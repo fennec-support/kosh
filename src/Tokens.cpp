@@ -240,14 +240,104 @@ Word::to_literal_string() const throws -> String
 }
 
 fn
-Word::plain_literal_kind() const wontthrow -> PlainLiteral
+Word::compute_facts() const wontthrow -> void
 {
-  if (!m_has_cached_plain_kind) {
-    m_cached_plain_kind     = optimizer::classify_plain_literal(*this);
-    m_has_cached_plain_kind = true;
+  let       facts     = static_cast<u16>(Fact::IsComputed);
+  let       is_static = true;
+  let const plain     = optimizer::classify_plain_literal(*this);
+
+  facts |= static_cast<u16>(static_cast<u16>(plain) << PLAIN_KIND_SHIFT);
+
+  if (!segments.is_empty() &&
+      segments[0].kind == WordSegment::Kind::UnquotedText &&
+      !segments[0].text.is_empty() && segments[0].text[0] == '~')
+  {
+    facts |= static_cast<u16>(Fact::HasLeadingTilde);
   }
 
-  return m_cached_plain_kind;
+  for (let const &segment : segments) {
+    switch (segment.kind) {
+    case WordSegment::Kind::LiteralText:
+    case WordSegment::Kind::DoubleQuotedText: break;
+
+    case WordSegment::Kind::UnquotedText: {
+      let const text = segment.text.view();
+
+      if (optimizer::word_segment_has_glob_metacharacter(segment))
+        facts |= static_cast<u16>(Fact::HasUnquotedGlob);
+      if (text.find_character('{').has_value())
+        facts |= static_cast<u16>(Fact::HasBraceCandidate);
+      if (text.find_substring(":~").has_value())
+        facts |= static_cast<u16>(Fact::HasColonTilde);
+
+      for (usize i = 0; i < text.length && is_static; i++) {
+        if (lexer::is_expandable_char(text[i])) is_static = false;
+      }
+
+      break;
+    }
+
+    case WordSegment::Kind::CommandSubstitution:
+    case WordSegment::Kind::FunctionSubstitution:
+      facts |= static_cast<u16>(Fact::HasSubstitution);
+      is_static = false;
+      break;
+
+    case WordSegment::Kind::VariableReference:
+    case WordSegment::Kind::ProcessSubstitution:
+    case WordSegment::Kind::ArithmeticExpansion: is_static = false; break;
+    }
+  }
+
+  if (is_static) facts |= static_cast<u16>(Fact::IsStaticName);
+  m_facts |= facts;
+}
+
+constexpr u16 DECLARATION_FACT =
+    static_cast<u16>(Word::Fact::IsDeclarationCommand);
+constexpr u16 LOCAL_FACTS =
+    static_cast<u16>(Word::Fact::IsLocalCommand) | DECLARATION_FACT;
+constexpr u16 DECLARE_FACTS =
+    static_cast<u16>(Word::Fact::IsDeclareCommand) | DECLARATION_FACT;
+constexpr u16 TEST_FACT = static_cast<u16>(Word::Fact::IsTestCommand);
+constexpr u16 LET_FACT  = static_cast<u16>(Word::Fact::IsLetCommand);
+
+constexpr static_string_entry<u16> COMMAND_FACT_ENTRIES[] = {
+    {SSK("local"),    LOCAL_FACTS     },
+    {SSK("declare"),  DECLARE_FACTS   },
+    {SSK("typeset"),  DECLARE_FACTS   },
+    {SSK("export"),   DECLARATION_FACT},
+    {SSK("readonly"), DECLARATION_FACT},
+    {SSK("unset"),    DECLARATION_FACT},
+    {SSK("test"),     TEST_FACT       },
+    {SSK("let"),      LET_FACT        },
+};
+constexpr StaticStringMap COMMAND_FACTS{COMMAND_FACT_ENTRIES};
+
+fn
+Word::classify_command() const throws -> void
+{
+  let command_facts = static_cast<u16>(Fact::IsCommandClassified);
+
+  if (plain_literal_kind() != PlainLiteral::NotPlain) {
+    command_facts |= COMMAND_FACTS.find(constant_value()).value_or(0);
+  } else if (segments.count() == 1 &&
+             segments[0].kind == WordSegment::Kind::UnquotedText &&
+             segments[0].text.view() == "[")
+  {
+    command_facts |= static_cast<u16>(Fact::IsBracketCommand);
+  }
+
+  m_facts |= command_facts;
+}
+
+fn
+Word::plain_literal_kind() const wontthrow -> PlainLiteral
+{
+  if (!are_facts_computed()) compute_facts();
+
+  return static_cast<PlainLiteral>((m_facts & PLAIN_KIND_MASK) >>
+                                   PLAIN_KIND_SHIFT);
 }
 
 /* whether text[1, name_length) continues an assignment name: variable name
@@ -413,66 +503,10 @@ Word::fd_allocation_name() const wontthrow -> Maybe<StringView>
                     target->subscript.length + target->name.length + 2};
 }
 
-pure fn
+fn
 Word::runs_substitution() const wontthrow -> bool
 {
-  for (let const &segment : segments) {
-    switch (segment.kind) {
-    case WordSegment::Kind::CommandSubstitution:
-    case WordSegment::Kind::FunctionSubstitution: return true;
-    case WordSegment::Kind::LiteralText:
-    case WordSegment::Kind::UnquotedText:
-    case WordSegment::Kind::DoubleQuotedText:
-    case WordSegment::Kind::VariableReference:
-    case WordSegment::Kind::ProcessSubstitution:
-    case WordSegment::Kind::ArithmeticExpansion:  break;
-    }
-  }
-
-  return false;
-}
-
-cold fn
-Word::to_pretty_string() const throws -> String
-{
-  let result = String{heap_allocator(), "[Word"};
-
-  for (let const &segment : segments) {
-    result += "\n  ";
-    switch (segment.kind) {
-    case WordSegment::Kind::LiteralText: result += "Literal"; break;
-
-    case WordSegment::Kind::UnquotedText: result += "Unquoted"; break;
-
-    case WordSegment::Kind::DoubleQuotedText: result += "DoubleQuoted"; break;
-
-    case WordSegment::Kind::VariableReference: result += "Variable"; break;
-
-    case WordSegment::Kind::CommandSubstitution:
-      result += "CommandSubstitution";
-      break;
-
-    case WordSegment::Kind::ProcessSubstitution:
-      result += "ProcessSubstitution";
-      break;
-
-    case WordSegment::Kind::ArithmeticExpansion:
-      result += "ArithmeticExpansion";
-      break;
-
-    case WordSegment::Kind::FunctionSubstitution:
-      result += "FunctionSubstitution";
-      break;
-    }
-
-    result += " \"";
-    result += segment.text;
-    result += '"';
-  }
-
-  result += "\n]";
-
-  return result;
+  return has_fact(Fact::HasSubstitution);
 }
 
 static pure fn

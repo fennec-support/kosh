@@ -819,13 +819,16 @@ parse_whole_script(const script_run_input &input,
   if (report_parse_errors(input, parse_errors)) return true;
 
   if (should_print_ast && context.runtime_state().show_ast()) {
-    print(ast->to_ast_string());
+    print(ast->to_ast_string(input.contents.view()));
     print("\n");
   }
 
   if (context.runtime_state().show_lexed_words()) {
-    for (let const &word : p.debug_words()) {
-      print(word.to_pretty_string());
+    for (let const &debug_word : p.debug_words()) {
+      let out = AstWriter{input.contents.view()};
+
+      out.word(debug_word.word, debug_word.location);
+      print(out.take());
       print("\n");
     }
   }

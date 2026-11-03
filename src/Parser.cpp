@@ -85,7 +85,7 @@ Parser::next_redirection_word(StringView missing_message) throws
 }
 
 pure fn
-Parser::debug_words() const wontthrow -> const ArrayList<Word> &
+Parser::debug_words() const wontthrow -> const ArrayList<lexed_debug_word> &
 {
   return m_lexer.debug_words();
 }
@@ -1364,7 +1364,9 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
             m_lexer.arena().create<Pipeline>(token->source_location());
 
         pipeline->append_command(
-            has_left_stderr_pipe ? wrap_with_stderr_to_stdout(lhs) : lhs);
+            has_left_stderr_pipe ? wrap_with_stderr_to_stdout(
+                                       lhs, token->source_location().position)
+                                 : lhs);
 
         Token *last_pipe_token = token;
 
@@ -1413,9 +1415,11 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
           const bool should_pipe_standard_error =
               last_pipe_token->kind() == Token::Kind::PipeAmpersand;
 
-          pipeline->append_command(should_pipe_standard_error
-                                       ? wrap_with_stderr_to_stdout(rhs)
-                                       : rhs);
+          pipeline->append_command(
+              should_pipe_standard_error
+                  ? wrap_with_stderr_to_stdout(
+                        rhs, last_pipe_token->source_location().position)
+                  : rhs);
           if (has_another_pipe) {
             m_lexer.advance_past_last_peek();
             skip_newlines_after_pipe();
@@ -1460,14 +1464,18 @@ Parser::parse_command_list(u64 terminator_mask) throws -> Expression *
 }
 
 static fn
-stderr_to_stdout_dup() wontthrow -> expressions::Redirection
+stderr_to_stdout_dup(expressions::Redirection::Origin origin,
+                     u32 operator_position)
+    wontthrow -> expressions::Redirection
 {
   expressions::Redirection dup{};
 
-  dup.fd     = 2;
-  dup.target = nullptr;
-  dup.kind   = expressions::Redirection::Kind::DuplicateOutput;
-  dup.dup_fd = 1;
+  dup.fd                = 2;
+  dup.target            = nullptr;
+  dup.kind              = expressions::Redirection::Kind::DuplicateOutput;
+  dup.dup_fd            = 1;
+  dup.origin            = origin;
+  dup.operator_position = operator_position;
 
   return dup;
 }
@@ -1489,6 +1497,7 @@ Parser::build_file_or_dup_redirection(
   redir.fd                       = fd;
   redir.target                   = nullptr;
   redir.dup_fd                   = -1;
+  redir.operator_position        = op_location.position;
   redir.fd_allocation_name_token = fd_allocation_name_token;
 
   {
@@ -1542,6 +1551,7 @@ Parser::build_file_or_dup_redirection(
           if (is_move) {
             redir.fd     = redir.dup_fd;
             redir.dup_fd = expressions::Redirection::DUP_FD_CLOSE;
+            redir.origin = expressions::Redirection::Origin::MoveClose;
             redir.fd_allocation_name_token = nullptr;
             out.push(redir);
           }
@@ -1633,7 +1643,8 @@ Parser::build_both_streams_redirection(
                                 op_location, first_location, out, nullptr,
                                 redirection_descriptor_spelling::Explicit);
   out.back().is_both_streams_spelling = true;
-  out.push(stderr_to_stdout_dup());
+  out.push(stderr_to_stdout_dup(expressions::Redirection::Origin::BothStreams,
+                                op_location.position));
 }
 
 fn
@@ -1647,8 +1658,9 @@ Parser::build_here_string_redirection(
 
   expressions::Redirection redir{};
 
-  redir.fd      = fd;
-  redir.kind    = expressions::Redirection::Kind::HereString;
+  redir.fd                = fd;
+  redir.operator_position = op_location.position;
+  redir.kind              = expressions::Redirection::Kind::HereString;
   redir.target  = next_redirection_word("Expected a word after '<<<'");
   redir.dup_fd  = -1;
   redir.heredoc = nullptr;
@@ -1657,15 +1669,19 @@ Parser::build_here_string_redirection(
 }
 
 mustuse fn
-Parser::wrap_with_stderr_to_stdout(Command *command) throws -> Command *
+Parser::wrap_with_stderr_to_stdout(Command *command,
+                                   u32      pipe_position) throws
+    -> Command *
 {
   ASSERT(command != nullptr);
 
   let const arena_allocator = bump_allocator(m_lexer.arena());
+  let const dup             = stderr_to_stdout_dup(
+      expressions::Redirection::Origin::PipeBoth, pipe_position);
 
   if (command->is_simple_command()) {
-    static_cast<SimpleCommand *>(command)->append_redirection(
-        stderr_to_stdout_dup(), arena_allocator);
+    static_cast<SimpleCommand *>(command)->append_redirection(dup,
+                                                              arena_allocator);
 
     return command;
   }
@@ -1674,7 +1690,7 @@ Parser::wrap_with_stderr_to_stdout(Command *command) throws -> Command *
      goes into a RedirectedCommand that wraps it. */
   let redirections = ArrayList<expressions::Redirection>{arena_allocator};
 
-  redirections.push(stderr_to_stdout_dup());
+  redirections.push(dup);
 
   let const redirected = m_lexer.arena().create<RedirectedCommand>(
       command->source_location(), command, steal(redirections));
@@ -1771,6 +1787,7 @@ Parser::build_heredoc_redirection(
   expressions::Redirection redir{};
 
   redir.fd                = fd;
+  redir.operator_position = op_location.position;
   redir.kind              = expressions::Redirection::Kind::Heredoc;
   redir.target            = nullptr;
   redir.heredoc_delimiter = delimiter_token;

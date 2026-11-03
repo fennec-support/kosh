@@ -1048,6 +1048,44 @@ fn
 print_analysis_diagnostic_summary(
     const analysis_diagnostic_totals &totals) throws -> void;
 
+class AstWriter
+{
+public:
+  explicit AstWriter(StringView source);
+
+  fn
+  open(StringView kind) throws -> void;
+  fn
+  close() throws -> void;
+  fn
+  text(StringView value) throws -> void;
+  fn
+  flag(StringView key) throws -> void;
+  fn
+  symbol(StringView key, StringView value) throws -> void;
+  fn
+  quoted(StringView key, StringView value) throws -> void;
+  fn
+  number(StringView key, i64 value) throws -> void;
+  fn
+  position(StringView key, usize source_position) throws -> void;
+  fn
+  token(const Token *token) throws -> void;
+  fn
+  word(const Word &word, Maybe<SourceLocation> location) throws -> void;
+  fn
+  take() throws -> String;
+
+private:
+  fn
+  append_quoted(StringView value) throws -> void;
+
+  String         m_output{heap_allocator()};
+  StringView     m_source;
+  ArrayList<u32> m_line_start_positions{heap_allocator()};
+  usize          m_depth{0};
+};
+
 class Expression
 {
 public:
@@ -1092,9 +1130,9 @@ public:
   operator=(Expression &&) noexcept = delete;
 
   virtual fn
-  to_string() const throws -> String abstract;
-  virtual fn
-  to_ast_string(usize layer = 0) const throws -> String;
+  write_ast(AstWriter &out) const throws -> void abstract;
+  fn
+  to_ast_string(StringView source) const throws -> String;
 
   virtual fn
   is_simple_command() const wontthrow -> bool;
@@ -1168,7 +1206,7 @@ public:
   is_dummy() const wontthrow -> bool override;
 
   fn
-  to_string() const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
 
 protected:
   fn
@@ -1289,7 +1327,9 @@ protected:
                       StringView expanded_child_source = StringView{}) const throws -> i64;
 
   fn
-  append_ast_execution_flags(String &label) const throws -> void;
+  write_ast_command_fields(AstWriter &out) const throws -> void;
+  fn
+  write_ast_prefix_assignments(AstWriter &out) const throws -> void;
 
   enum class ExecutionFlag : u8
   {
@@ -1364,7 +1404,7 @@ public:
   is_assignment() const wontthrow -> bool override;
 
   fn
-  to_string() const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
 
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
@@ -1403,6 +1443,14 @@ public:
     HereString
   };
 
+  enum class Origin : u8
+  {
+    Written,
+    BothStreams,
+    PipeBoth,
+    MoveClose,
+  };
+
   static constexpr i32 DUP_FD_CLOSE = -2;
 
   const Token            *target;
@@ -1411,7 +1459,9 @@ public:
   const Token            *heredoc_delimiter;
   i32                     fd;
   i32                     dup_fd;
+  u32                     operator_position;
   Kind                    kind;
+  Origin                  origin;
   bool                    should_expand_heredoc;
   bool                    should_strip_heredoc_tabs;
   /* the - of <<- is its own token, as in <<- EOF, so the delimiter word
@@ -1449,6 +1499,33 @@ public:
   claims_descriptor() const wontthrow -> bool
   {
     return opens_output_file() || opens_input_source();
+  }
+
+  pure fn
+  writes_file() const wontthrow -> bool
+  {
+    return opens_output_file() || kind == Kind::ReadWrite;
+  }
+
+  pure fn
+  get_operator_spelling() const wontthrow -> StringView
+  {
+    switch (kind) {
+    case Kind::TruncateOutput:
+      return is_both_streams_spelling ? StringView{"&>"} : StringView{">"};
+    case Kind::TruncateOutputOverride: return ">|";
+    case Kind::AppendOutput:
+      return is_both_streams_spelling ? StringView{"&>>"} : StringView{">>"};
+    case Kind::ReadInput:       return "<";
+    case Kind::ReadWrite:       return "<>";
+    case Kind::DuplicateOutput: return ">&";
+    case Kind::DuplicateInput:  return "<&";
+    case Kind::Heredoc:
+      return should_strip_heredoc_tabs ? StringView{"<<-"} : StringView{"<<"};
+    case Kind::HereString: return "<<<";
+    }
+
+    return "";
   }
 };
 
@@ -1503,7 +1580,7 @@ public:
       -> const CopyOnWrite<String> &;
 
   fn
-  to_string() const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
 
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
@@ -1581,9 +1658,7 @@ public:
   is_negated() const wontthrow -> bool;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
 
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
@@ -1632,9 +1707,7 @@ public:
   single_unconditional_command() const wontthrow -> const Command *;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
 
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
@@ -1675,9 +1748,7 @@ public:
   append_command(const Command *node) throws -> void;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
 
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
@@ -1735,9 +1806,7 @@ public:
   ~IfClause() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;
@@ -1788,9 +1857,7 @@ public:
   ~WhileLoop() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;
@@ -1827,9 +1894,7 @@ public:
   ~ForLoop() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;
@@ -1876,9 +1941,7 @@ public:
   ~CaseClause() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;
@@ -1900,9 +1963,7 @@ public:
   ~BraceGroup() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;
@@ -1930,9 +1991,7 @@ public:
   ~CoprocCommand() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;
@@ -1952,9 +2011,7 @@ public:
   ~Subshell() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;
@@ -1989,9 +2046,7 @@ public:
   ~ConditionalCommand() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
 
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
@@ -2012,9 +2067,7 @@ public:
   ~ArithmeticCommand() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
 
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
@@ -2046,9 +2099,7 @@ public:
   ~CStyleForLoop() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
 
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
@@ -2104,9 +2155,7 @@ public:
   ~SelectLoop() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
 
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
@@ -2132,9 +2181,7 @@ public:
   ~RedirectedCommand() override;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;
@@ -2175,9 +2222,7 @@ public:
   body() const wontthrow -> const Expression *;
 
   fn
-  to_string() const throws -> String override;
-  fn
-  to_ast_string(usize layer = 0) const throws -> String override;
+  write_ast(AstWriter &out) const throws -> void override;
   fn
   analyze(AnalysisContext &actx, bool is_unconditional) const throws
       -> void override;

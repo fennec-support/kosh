@@ -163,25 +163,15 @@ CompoundList::single_unconditional_command() const wontthrow -> const Command *
 }
 
 cold fn
-CompoundList::to_string() const throws -> String
+CompoundList::write_ast(AstWriter &out) const throws -> void
 {
-  return String{heap_allocator(), "CompoundList"};
-}
+  out.open("compound-list");
+  out.number("count", static_cast<i64>(m_nodes.count()));
 
-cold fn
-CompoundList::to_ast_string(usize layer) const throws -> String
-{
-  let       s   = String{heap_allocator()};
-  let const pad = indent_for_layer(layer);
+  for (let const node : m_nodes)
+    node->write_ast(out);
 
-  s += pad + "[" + to_string() + "]";
-
-  for (let const n : m_nodes) {
-    s += '\n';
-    s += pad + EXPRESSION_AST_INDENT + n->to_ast_string(layer + 1);
-  }
-
-  return s;
+  out.close();
 }
 
 hot fn
@@ -521,32 +511,22 @@ CompoundListCondition::is_negated() const wontthrow -> bool
 }
 
 cold fn
-CompoundListCondition::to_string() const throws -> String
-{
-  String k{heap_allocator()};
-
-  switch (kind()) {
-  case Kind::None: k = String{k.allocator(), "None"}; break;
-  case Kind::And:  k = String{k.allocator(), "&&"}; break;
-  case Kind::Or:   k = String{k.allocator(), "||"}; break;
-  default:         unreachable("invalid compound-list condition kind %d", ENUM(kind()));
-  }
-
-  return "CompoundListCondition, " + k;
-}
-
-cold fn
-CompoundListCondition::to_ast_string(usize layer) const throws -> String
+CompoundListCondition::write_ast(AstWriter &out) const throws -> void
 {
   ASSERT(m_cmd != nullptr);
 
-  let       s   = String{heap_allocator()};
-  let const pad = indent_for_layer(layer);
+  out.open("condition");
 
-  s += pad + "[" + to_string() + "]\n";
-  s += pad + EXPRESSION_AST_INDENT + m_cmd->to_ast_string(layer + 1);
+  switch (kind()) {
+  case Kind::None: out.symbol("after", "none"); break;
+  case Kind::And:  out.symbol("after", "and"); break;
+  case Kind::Or:   out.symbol("after", "or"); break;
+  default:         unreachable("invalid compound-list condition kind %d", ENUM(kind()));
+  }
 
-  return s;
+  out.position("terminator-at", source_location().position);
+  m_cmd->write_ast(out);
+  out.close();
 }
 
 hot fn
@@ -662,29 +642,16 @@ Pipeline::error_report_location() const wontthrow -> SourceLocation
 }
 
 cold fn
-Pipeline::to_string() const throws -> String
+Pipeline::write_ast(AstWriter &out) const throws -> void
 {
-  let s = String{heap_allocator(), "Pipeline"};
+  out.open("pipeline");
+  write_ast_command_fields(out);
+  out.number("stages", static_cast<i64>(m_commands.count()));
 
-  append_ast_execution_flags(s);
+  for (let const stage : m_commands)
+    stage->write_ast(out);
 
-  return s;
-}
-
-cold fn
-Pipeline::to_ast_string(usize layer) const throws -> String
-{
-  let       s   = String{heap_allocator()};
-  let const pad = indent_for_layer(layer);
-
-  s += pad + "[" + to_string() + "]";
-
-  for (let const e : m_commands) {
-    s += '\n';
-    s += pad + EXPRESSION_AST_INDENT + e->to_ast_string(layer + 1);
-  }
-
-  return s;
+  out.close();
 }
 
 /* memory: children and stage_status use scratch_allocator(). pipe_status

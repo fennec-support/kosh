@@ -264,34 +264,30 @@ IfClause::can_evaluate_in_process_substitution(const EvalContext &cxt,
 }
 
 cold fn
-IfClause::to_string() const throws -> String
+IfClause::write_ast(AstWriter &out) const throws -> void
 {
-  let result = String{heap_allocator(), "IfClause"};
-
-  append_ast_execution_flags(result);
-
-  return result;
-}
-
-cold fn
-IfClause::to_ast_string(usize layer) const throws -> String
-{
-  let const pad       = indent_for_layer(layer);
-  let const child_pad = pad + EXPRESSION_AST_INDENT;
-  let       s         = pad + "[" + to_string() + "]";
+  out.open("if");
+  write_ast_command_fields(out);
+  if (m_folded_branch.has_value())
+    out.number("folded-branch", static_cast<i64>(*m_folded_branch));
 
   for (let const &[ condition, body ] : m_branches) {
     ASSERT(condition != nullptr);
     ASSERT(body != nullptr);
 
-    s += "\n" + child_pad + condition->to_ast_string(layer + 1);
-    s += "\n" + child_pad + body->to_ast_string(layer + 1);
+    out.open("branch");
+    condition->write_ast(out);
+    body->write_ast(out);
+    out.close();
   }
 
-  if (m_otherwise != nullptr)
-    s += "\n" + child_pad + m_otherwise->to_ast_string(layer + 1);
+  if (m_otherwise != nullptr) {
+    out.open("else");
+    m_otherwise->write_ast(out);
+    out.close();
+  }
 
-  return s;
+  out.close();
 }
 
 hot fn
@@ -495,29 +491,16 @@ WhileLoop::WhileLoop(SourceLocation    location,
 WhileLoop::~WhileLoop() = default;
 
 cold fn
-WhileLoop::to_string() const throws -> String
-{
-  let result = String{heap_allocator(), is_until() ? "UntilLoop" : "WhileLoop"};
-
-  append_ast_execution_flags(result);
-
-  return result;
-}
-
-cold fn
-WhileLoop::to_ast_string(usize layer) const throws -> String
+WhileLoop::write_ast(AstWriter &out) const throws -> void
 {
   ASSERT(m_condition != nullptr);
   ASSERT(m_body != nullptr);
 
-  let const pad       = indent_for_layer(layer);
-  let const child_pad = pad + EXPRESSION_AST_INDENT;
-  let       s         = pad + "[" + to_string() + "]";
-
-  s += "\n" + child_pad + m_condition->to_ast_string(layer + 1);
-  s += "\n" + child_pad + m_body->to_ast_string(layer + 1);
-
-  return s;
+  out.open(is_until() ? "until" : "while");
+  write_ast_command_fields(out);
+  m_condition->write_ast(out);
+  m_body->write_ast(out);
+  out.close();
 }
 
 hot fn
@@ -730,23 +713,21 @@ SelectLoop::SelectLoop(SourceLocation             location,
 SelectLoop::~SelectLoop() = default;
 
 cold fn
-SelectLoop::to_string() const throws -> String
-{
-  let result = "SelectLoop \"" + m_variable_name + "\"";
-
-  append_ast_execution_flags(result);
-
-  return result;
-}
-
-cold fn
-SelectLoop::to_ast_string(usize layer) const throws -> String
+SelectLoop::write_ast(AstWriter &out) const throws -> void
 {
   ASSERT(m_body != nullptr);
-  let const pad = indent_for_layer(layer);
 
-  return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
-         m_body->to_ast_string(layer + 1);
+  out.open("select");
+  out.text(m_variable_name);
+  out.position("variable-at", m_variable_location.position);
+  write_ast_command_fields(out);
+  if (m_has_in_clause) out.flag("in");
+
+  for (let const *word : m_words)
+    out.token(word);
+
+  m_body->write_ast(out);
+  out.close();
 }
 
 fn
@@ -872,28 +853,21 @@ ForLoop::ForLoop(SourceLocation             location,
 ForLoop::~ForLoop() = default;
 
 cold fn
-ForLoop::to_string() const throws -> String
-{
-  let result = String{heap_allocator(), "ForLoop \""};
-
-  result += m_variable_name;
-  result += "\"";
-  append_ast_execution_flags(result);
-
-  return result;
-}
-
-cold fn
-ForLoop::to_ast_string(usize layer) const throws -> String
+ForLoop::write_ast(AstWriter &out) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
-  let const pad = indent_for_layer(layer);
-  let       s   = pad + "[" + to_string() + "]";
+  out.open("for");
+  out.text(m_variable_name);
+  out.position("variable-at", m_variable_location.position);
+  write_ast_command_fields(out);
+  if (m_has_in_clause) out.flag("in");
 
-  s += "\n" + pad + EXPRESSION_AST_INDENT + m_body->to_ast_string(layer + 1);
+  for (let const *word : m_words)
+    out.token(word);
 
-  return s;
+  m_body->write_ast(out);
+  out.close();
 }
 
 hot fn
@@ -1174,28 +1148,34 @@ CaseClause::CaseClause(SourceLocation         location,
 CaseClause::~CaseClause() = default;
 
 cold fn
-CaseClause::to_string() const throws -> String
+CaseClause::write_ast(AstWriter &out) const throws -> void
 {
-  let result = String{heap_allocator(), "CaseClause"};
-
-  append_ast_execution_flags(result);
-
-  return result;
-}
-
-cold fn
-CaseClause::to_ast_string(usize layer) const throws -> String
-{
-  let const pad       = indent_for_layer(layer);
-  let const child_pad = pad + EXPRESSION_AST_INDENT;
-  let       s         = pad + "[" + to_string() + "]";
+  out.open("case");
+  write_ast_command_fields(out);
+  if (m_word != nullptr) out.token(m_word);
 
   for (let const &item : m_items) {
     ASSERT(item.body != nullptr);
-    s += "\n" + child_pad + item.body->to_ast_string(layer + 1);
+
+    out.open("item");
+
+    switch (item.terminator) {
+    case case_terminator::Break:         out.symbol("terminator", ";;"); break;
+    case case_terminator::FallThrough:   out.symbol("terminator", ";&"); break;
+    case case_terminator::ContinueMatch: out.symbol("terminator", ";;&"); break;
+    }
+
+    for (let const *pattern : item.patterns) {
+      out.open("pattern");
+      out.token(pattern);
+      out.close();
+    }
+
+    item.body->write_ast(out);
+    out.close();
   }
 
-  return s;
+  out.close();
 }
 
 fn
@@ -1578,23 +1558,14 @@ BraceGroup::can_evaluate_in_process_substitution(
 }
 
 cold fn
-BraceGroup::to_string() const throws -> String
-{
-  let result = String{heap_allocator(), "BraceGroup"};
-  append_ast_execution_flags(result);
-
-  return result;
-}
-
-cold fn
-BraceGroup::to_ast_string(usize layer) const throws -> String
+BraceGroup::write_ast(AstWriter &out) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
-  let const pad = indent_for_layer(layer);
-
-  return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
-         m_body->to_ast_string(layer + 1);
+  out.open("brace-group");
+  write_ast_command_fields(out);
+  m_body->write_ast(out);
+  out.close();
 }
 
 fn
@@ -1630,24 +1601,15 @@ CoprocCommand::CoprocCommand(SourceLocation    location,
 CoprocCommand::~CoprocCommand() = default;
 
 cold fn
-CoprocCommand::to_string() const throws -> String
-{
-  let result = String{heap_allocator(), "Coproc "};
-  result += m_name;
-  append_ast_execution_flags(result);
-
-  return result;
-}
-
-cold fn
-CoprocCommand::to_ast_string(usize layer) const throws -> String
+CoprocCommand::write_ast(AstWriter &out) const throws -> void
 {
   ASSERT(m_body != nullptr);
 
-  let const pad = indent_for_layer(layer);
-
-  return pad + "[" + to_string() + "]\n" + pad + EXPRESSION_AST_INDENT +
-         m_body->to_ast_string(layer + 1);
+  out.open("coproc");
+  out.text(m_name);
+  write_ast_command_fields(out);
+  m_body->write_ast(out);
+  out.close();
 }
 
 fn

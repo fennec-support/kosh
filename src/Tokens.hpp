@@ -607,8 +607,7 @@ public:
       : segments(steal(other.segments)),
         m_constant_value_data(other.m_constant_value_data),
         m_constant_value_length(other.m_constant_value_length),
-        m_cached_plain_kind(other.m_cached_plain_kind),
-        m_has_cached_plain_kind(other.m_has_cached_plain_kind),
+        m_facts(other.m_facts),
         has_locale_translation_quote(other.has_locale_translation_quote)
   {
     other.m_constant_value_data   = nullptr;
@@ -622,8 +621,7 @@ public:
 
     segments = other.segments;
     release_constant_value();
-    m_cached_plain_kind          = PlainLiteral::NotPlain;
-    m_has_cached_plain_kind      = false;
+    m_facts                      = 0;
     has_locale_translation_quote = other.has_locale_translation_quote;
 
     return *this;
@@ -638,8 +636,7 @@ public:
     segments                      = steal(other.segments);
     m_constant_value_data         = other.m_constant_value_data;
     m_constant_value_length       = other.m_constant_value_length;
-    m_cached_plain_kind           = other.m_cached_plain_kind;
-    m_has_cached_plain_kind       = other.m_has_cached_plain_kind;
+    m_facts                       = other.m_facts;
     has_locale_translation_quote  = other.has_locale_translation_quote;
     other.m_constant_value_data   = nullptr;
     other.m_constant_value_length = 0;
@@ -651,8 +648,6 @@ public:
   is_empty() const wontthrow -> bool;
   fn
   to_literal_string() const throws -> String;
-  fn
-  to_pretty_string() const throws -> String;
 
   pure fn
   is_all_ascii_digits() const wontthrow -> bool;
@@ -663,7 +658,7 @@ public:
   pure fn
   get_fd_allocation_target() const wontthrow -> Maybe<fd_allocation_target>;
 
-  pure fn
+  fn
   runs_substitution() const wontthrow -> bool;
 
   fn
@@ -680,8 +675,50 @@ public:
     PlainUnquotedOneSegment,
   };
 
+  enum class Fact : u16
+  {
+    IsComputed        = 1U << 0,
+    IsStaticName      = 1U << 3,
+    HasSubstitution   = 1U << 4,
+    HasUnquotedGlob   = 1U << 5,
+    HasLeadingTilde   = 1U << 6,
+    HasColonTilde     = 1U << 7,
+    HasBraceCandidate = 1U << 8,
+
+    IsCommandClassified  = 1U << 9,
+    IsLocalCommand       = 1U << 10,
+    IsDeclareCommand     = 1U << 11,
+    IsDeclarationCommand = 1U << 12,
+    IsTestCommand        = 1U << 13,
+    IsLetCommand         = 1U << 14,
+    IsBracketCommand     = 1U << 15,
+  };
+
+  fn
+  has_command_fact(Fact fact) const throws -> bool
+  {
+    if ((m_facts & static_cast<u16>(Fact::IsCommandClassified)) == 0)
+      classify_command();
+
+    return (m_facts & static_cast<u16>(fact)) != 0;
+  }
+
   fn
   plain_literal_kind() const wontthrow -> PlainLiteral;
+
+  fn
+  has_fact(Fact fact) const wontthrow -> bool
+  {
+    if ((m_facts & static_cast<u16>(Fact::IsComputed)) == 0) compute_facts();
+
+    return (m_facts & static_cast<u16>(fact)) != 0;
+  }
+
+  pure fn
+  are_facts_computed() const wontthrow -> bool
+  {
+    return (m_facts & static_cast<u16>(Fact::IsComputed)) != 0;
+  }
 
   fn
   constant_value() const throws -> StringView;
@@ -702,10 +739,17 @@ private:
     m_constant_value_length = 0;
   }
 
-  mutable char        *m_constant_value_data{nullptr};
-  mutable u32          m_constant_value_length{0};
-  mutable PlainLiteral m_cached_plain_kind{PlainLiteral::NotPlain};
-  mutable bool         m_has_cached_plain_kind : 1 {false};
+  fn
+  compute_facts() const wontthrow -> void;
+  fn
+  classify_command() const throws -> void;
+
+  static constexpr u16 PLAIN_KIND_SHIFT = 1;
+  static constexpr u16 PLAIN_KIND_MASK  = 3U << PLAIN_KIND_SHIFT;
+
+  mutable char *m_constant_value_data{nullptr};
+  mutable u32   m_constant_value_length{0};
+  mutable u16   m_facts{0};
 
 public:
   bool has_locale_translation_quote : 1 {false};

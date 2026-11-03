@@ -16,3 +16,17 @@ printf 'echo   both\n' > "$root/both.sh"
 printf '# heading\n\ntext\n\n```sh\necho   embedded\n```\n' > "$root/plain.md"
 "$BIN" -A --format "$root/plain.md"
 "$BIN" -A --lint --no-traces "$root/plain.md"
+
+{
+  printf '%s\n' 'x=a y=b'
+  printf '%s\n' '{ echo a; } &> out'
+  printf '%s\n' "cat <<'EOF' 2>&3- |& tr a b"
+  printf '%s\n' 'x' 'EOF'
+  printf '%s\n' 'FOO=1 declare -r name=value'
+  printf '%s\n' '[[ -f x && ! $y == z* ]]'
+  printf '%s\n' 'case $x in a|b*) echo ab ;; *) : ;& esac'
+  printf '%s\n' 'f() { exec 3>&- 4<>file; }'
+} > "$root/shapes.sh"
+"$BIN" -A --lint --no-traces "$root/shapes.sh"
+printf '%s\n' "echo a\\*'b'* ~/x \"\$HOME\"" > "$root/words.sh"
+"$BIN" -R --lint --no-traces "$root/words.sh"
