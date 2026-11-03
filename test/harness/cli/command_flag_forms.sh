@@ -73,8 +73,8 @@ echo "show-exit-code reports a located continued failure"
 errexit_output=$("$BIN" --no-diagnostics --show-exit-code -e -c 'false; echo never' 2>&1)
 errexit_status=$?
 [ "$errexit_status" -eq 1 ] || exit 1
-[ "$(printf '%s\n' "$errexit_output" | grep -c 'warning: Non-zero exit code 1\.$')" -eq 1 ] || exit 1
-printf '%s\n' "$errexit_output" | grep -Eq '^-c:[0-9]+:[0-9]+: warning: Non-zero exit code 1\.$' || exit 1
+[ "$(printf '%s\n' "$errexit_output" | grep -c 'error: Non-zero exit code 1\.$')" -eq 1 ] || exit 1
+printf '%s\n' "$errexit_output" | grep -Eq '^-c:[0-9]+:[0-9]+: error: Non-zero exit code 1\.$' || exit 1
 echo "show-exit-code reports before errexit"
 
 guarded_output=$("$BIN" --no-diagnostics --show-exit-code -e -c 'false || true; ! false; if false; then :; fi; echo after' 2>&1)
@@ -92,8 +92,8 @@ echo "show-exit-code follows the effective pipeline status"
 
 pipefail_errexit_output=$("$BIN" --no-diagnostics --show-exit-code -e -c 'set -o pipefail; false | true; echo never' 2>&1)
 [ "$?" -eq 1 ] || exit 1
-[ "$(printf '%s\n' "$pipefail_errexit_output" | grep -c 'warning: Non-zero exit code 1\.$')" -eq 1 ] || exit 1
-echo "show-exit-code reports fatal pipefail as a warning"
+[ "$(printf '%s\n' "$pipefail_errexit_output" | grep -c 'error: Non-zero exit code 1\.$')" -eq 1 ] || exit 1
+echo "show-exit-code reports fatal pipefail as an error"
 
 runtime_option_output=$("$BIN" --no-diagnostics -c 'koshconf set debug.report_nonzero_exit_codes on; "$1" --no-diagnostics -c "exit 7"' kosh-test "$BIN" 2>&1)
 [ "$?" -eq 7 ] || exit 1
@@ -105,8 +105,8 @@ runtime_errexit_output=$(
 )
 runtime_errexit_status=$?
 [ "$runtime_errexit_status" -eq 1 ] || exit 1
-[ "$(printf '%s\n' "$runtime_errexit_output" | grep -c 'warning: Non-zero exit code 1\.$')" -eq 1 ] || exit 1
-echo "runtime show-exit-code reports errexit as a warning"
+[ "$(printf '%s\n' "$runtime_errexit_output" | grep -c 'error: Non-zero exit code 1\.$')" -eq 1 ] || exit 1
+echo "runtime show-exit-code reports errexit as an error"
 
 all_codes_output=$("$BIN" --no-diagnostics -N -c 'true; false; echo after' 2>&1)
 [ "$?" -eq 0 ] || exit 1
