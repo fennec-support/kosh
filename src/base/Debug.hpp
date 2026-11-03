@@ -33,16 +33,20 @@ debug_print_trace(const char *file,
 
   unused(fprintf(stderr, "(trace :at \"%s:%d\" \"", file, line));
   for (const char *cursor = message; *cursor != '\0'; cursor++) {
-    if (*cursor == '"' || *cursor == '\\') {
+    let const byte = static_cast<unsigned char>(*cursor);
+
+    if (byte == '"' || byte == '\\') {
       unused(fputc('\\', stderr));
-    }
-
-    if (*cursor == '\n') {
+      unused(fputc(byte, stderr));
+    } else if (byte == '\n') {
       unused(fputs("\\n", stderr));
-      continue;
+    } else if (byte == '\t') {
+      unused(fputs("\\t", stderr));
+    } else if (byte < 0x20 || byte == 0x7f) {
+      unused(fprintf(stderr, "\\x%02x", byte));
+    } else {
+      unused(fputc(byte, stderr));
     }
-
-    unused(fputc(*cursor, stderr));
   }
 
   unused(fputs(should_end_line ? "\")\n" : "\")", stderr));

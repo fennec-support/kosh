@@ -4890,6 +4890,31 @@ is_element_modifier_operator(char op) wontthrow -> bool
   }
 }
 
+/* the form of text that starts with '!': a prefix-names list for !name@ or
+   !name*, a keys list for !name[@] or !name[*], and an indirection
+   otherwise. */
+static pure fn
+bang_reference_form(StringView text) wontthrow -> parameter_reference::Form
+{
+  let const length = text.length;
+  let const last   = text[length - 1];
+
+  if (length > 2 && (last == '@' || last == '*') &&
+      lexer::word_is_variable_name(text.substring_of_length(1, length - 2)))
+  {
+    return parameter_reference::Form::PrefixNames;
+  }
+
+  if (length >= 5 && last == ']' && text[length - 3] == '[' &&
+      (text[length - 2] == '@' || text[length - 2] == '*') &&
+      lexer::is_variable_name_start(text[1]))
+  {
+    return parameter_reference::Form::Keys;
+  }
+
+  return parameter_reference::Form::Indirect;
+}
+
 static fn
 analyze_word_routes(StringView           text,
                     usize                variable_name_end,
@@ -4902,21 +4927,6 @@ analyze_word_routes(StringView           text,
   let const last          = text[length - 1];
   let const is_name_start = lexer::is_variable_name_start(first);
   u16       routes        = 0;
-
-  if (first == '!' && length > 2) {
-    if ((last == '@' || last == '*') &&
-        lexer::word_is_variable_name(text.substring_of_length(1, length - 2)))
-    {
-      routes |= reference_type::ROUTE_PREFIX_NAMES;
-    }
-
-    if (length >= 5 && last == ']' && text[length - 3] == '[' &&
-        (text[length - 2] == '@' || text[length - 2] == '*') &&
-        lexer::is_variable_name_start(text[1]))
-    {
-      routes |= reference_type::ROUTE_KEYS;
-    }
-  }
 
   if (is_name_start && length >= 4 && last == ']' && text[length - 3] == '[' &&
       (text[length - 2] == '@' || text[length - 2] == '*') &&
@@ -5112,11 +5122,7 @@ analyze_parameter_reference(StringView           text,
   analyze_word_routes(text, variable_name_end, reference);
 
   if (text.length > 1 && text[0] == '!' && !is_operator_after_bang(text[1])) {
-    reference.kind =
-        reference.has_route(parameter_reference::ROUTE_PREFIX_NAMES)
-            ? form::PrefixNames
-        : reference.has_route(parameter_reference::ROUTE_KEYS) ? form::Keys
-                                                               : form::Indirect;
+    reference.kind        = bang_reference_form(text);
     reference.name_offset = 1;
     reference.name_length = static_cast<u32>(text.length - 1);
     reference.rest_offset = static_cast<u32>(text.length);

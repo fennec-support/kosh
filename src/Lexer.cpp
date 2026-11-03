@@ -1581,11 +1581,14 @@ Lexer::lex_identifier() throws -> Token *
     }
   }
 
-  word.finish();
+  let       assignment_split = word.get_assignment_split(bump_allocator(arena));
+  let const should_collect_debug_word =
+      m_parse_session.should_collect_debug_words() &&
+      m_cursor_position != m_last_collected_word_position;
 
-  if (m_parse_session.should_collect_debug_words() &&
-      m_cursor_position != m_last_collected_word_position)
-  {
+  if (!assignment_split.has_value() || should_collect_debug_word) word.finish();
+
+  if (should_collect_debug_word) {
     m_debug_words.push(
         lexed_debug_word{word, here(actual_cursor_position, byte_count)});
     m_last_collected_word_position = m_cursor_position;
@@ -1593,9 +1596,7 @@ Lexer::lex_identifier() throws -> Token *
 
   Token *token{};
 
-  if (let assignment_split = word.get_assignment_split(bump_allocator(arena));
-      assignment_split.has_value())
-  {
+  if (assignment_split.has_value()) {
     let const arena_allocator = bump_allocator(arena);
 
     assignment_split->value.move_resources_to_arena(arena);

@@ -940,8 +940,6 @@ struct parameter_reference
     InvalidName,
   };
 
-  static constexpr u16 ROUTE_PREFIX_NAMES        = 1U << 0;
-  static constexpr u16 ROUTE_KEYS                = 1U << 1;
   static constexpr u16 ROUTE_ARRAY_ELEMENTS      = 1U << 2;
   static constexpr u16 ROUTE_POSITIONAL_TEST     = 1U << 3;
   static constexpr u16 ROUTE_POSITIONAL_SLICE    = 1U << 4;

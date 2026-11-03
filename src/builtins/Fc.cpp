@@ -465,6 +465,7 @@ edit_fc_commands(const ExecContext                          &ec,
                 cxt.runtime_state().get_mood()}
       };
 
+      parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
       unused(parser.construct_ast());
     } catch (const ErrorWithLocation &error) {
       show_message(error.to_string(edited->view(), &cxt));

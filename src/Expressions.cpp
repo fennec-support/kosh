@@ -669,31 +669,10 @@ AstWriter::position(StringView key, usize source_position) throws
     return;
   }
 
-  if (m_line_start_positions.is_empty()) {
-    m_line_start_positions.push(0);
+  let const line = utils::source_line_position_at(m_source, source_position);
+  let const column_number = source_position - line.line_start + 1;
 
-    for (usize i = 0; i < m_source.length; i++) {
-      if (m_source[i] == '\n')
-        m_line_start_positions.push(static_cast<u32>(i + 1));
-    }
-  }
-
-  usize low_index  = 0;
-  usize high_index = m_line_start_positions.count();
-
-  while (high_index - low_index > 1) {
-    let const middle_index = low_index + (high_index - low_index) / 2;
-
-    if (m_line_start_positions[middle_index] <= source_position)
-      low_index = middle_index;
-    else
-      high_index = middle_index;
-  }
-
-  let const column_number =
-      source_position - m_line_start_positions[low_index] + 1;
-
-  m_output.append(String::from(low_index + 1, heap_allocator()).view());
+  m_output.append(String::from(line.line_number + 1, heap_allocator()).view());
   m_output.push(':');
   m_output.append(String::from(column_number, heap_allocator()).view());
 }
@@ -3459,6 +3438,7 @@ analyze_substitution_body(AnalysisContext                  &actx,
       arena, source_name_at(location.source_name_index), mood};
 
   nested_lexer.set_start_position(body.body_position);
+  nested_lexer.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
 
   let        nested_parser = Parser{steal(nested_lexer)};
   let        parse_errors  = ArrayList<String>{heap_allocator()};

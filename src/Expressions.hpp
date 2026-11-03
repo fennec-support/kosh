@@ -1100,13 +1100,12 @@ private:
                    const arith_tree &tree,
                    u32               index) throws -> void;
 
-  String         m_output{heap_allocator()};
-  StringView     m_source;
-  ArrayList<u32> m_line_start_positions{heap_allocator()};
-  usize          m_depth{0};
-  usize          m_position_offset{0};
-  mimic_mood     m_mood;
-  bool           m_is_detached_from_source{false};
+  String     m_output{heap_allocator()};
+  StringView m_source;
+  usize      m_depth{0};
+  usize      m_position_offset{0};
+  mimic_mood m_mood;
+  bool       m_is_detached_from_source{false};
 };
 
 class Expression

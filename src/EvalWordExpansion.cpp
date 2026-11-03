@@ -510,7 +510,7 @@ EvalContext::expand_word(const Word &word) throws
 
       /* ${!prefix*} lists variables only when prefix is a valid identifier, so
          ${!ref%c*} stays an indirect expansion with an operator. */
-      if (reference->has_route(parameter_reference::ROUTE_PREFIX_NAMES)) {
+      if (reference->kind == parameter_reference::Form::PrefixNames) {
         const StringView prefix =
             segment_text.substring_of_length(1, segment_text.length - 2);
         let const is_star = segment_text[segment_text.length - 1] == '*';
@@ -520,7 +520,7 @@ EvalContext::expand_word(const Word &word) throws
         break;
       }
 
-      if (reference->has_route(parameter_reference::ROUTE_KEYS)) {
+      if (reference->kind == parameter_reference::Form::Keys) {
         const StringView array_name =
             segment_text.substring_of_length(1, segment_text.length - 4);
         let const is_star    = segment_text[segment_text.length - 2] == '*';
@@ -1146,15 +1146,7 @@ EvalContext::expand_word_for_assignment(const Word &word,
   let const *segments         = &word.segments;
   let tilde_expanded_segments = ArrayList<WordSegment>{scratch_allocator()};
   let const has_leading_tilde = word.has_fact(Word::Fact::HasLeadingTilde);
-  let       has_colon_tilde   = false;
-
-  for (let const &segment : word.segments) {
-    if (!segment.is_tilde_candidate()) continue;
-    if (segment.text.find_substring(":~").has_value()) {
-      has_colon_tilde = true;
-      break;
-    }
-  }
+  let const has_colon_tilde   = word.has_fact(Word::Fact::HasColonTilde);
 
   if (has_leading_tilde || has_colon_tilde) {
     tilde_expanded_segments = clone_word_segments(word, scratch_allocator());

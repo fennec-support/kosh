@@ -646,6 +646,9 @@ scan_command_text(StringView   text,
   let parser = Parser{
       Lexer{text, arena, None, context.runtime_state().get_mood()}
   };
+
+  parser.set_evaluation_fact_mode(evaluation_fact_mode::Disabled);
+
   let       scan         = command_text_scan{};
   let const do_is_at_end = [&](const SourceLocation &location) -> bool {
     return location.position + 1 >= text.length;

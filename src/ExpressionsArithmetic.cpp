@@ -112,14 +112,8 @@ conditional_word_has_glob(const Token *token) wontthrow -> bool
     return false;
   }
 
-  let const &word = static_cast<const tokens::WordToken *>(token)->word();
-
-  for (let const &segment : word.segments)
-    if (segment.has_live_glob_chars() && segment.has_glob_metacharacter()) {
-      return true;
-    }
-
-  return false;
+  return static_cast<const tokens::WordToken *>(token)->word().has_fact(
+      Word::Fact::HasUnquotedGlob);
 }
 
 cold static fn
