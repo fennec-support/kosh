@@ -561,7 +561,9 @@ Expression::set_source_end_position(usize position) wontthrow -> void
 
 AstWriter::AstWriter(StringView source, mimic_mood mood)
     : m_source{source}, m_mood{mood}
-{}
+{
+  utils::invalidate_line_number_cache_for(m_source);
+}
 
 cold fn
 AstWriter::open(StringView kind) throws -> void

@@ -343,3 +343,9 @@ note: Use the variable directly inside arithmetic, such as `$((x + 1))`.
         (condition :terminator-at 1:23
           (simple-command :name ":" :builtin :special-builtin :at 1:22 :end 1:23 :first-token-at 1:22 :full-end 1:23
             (word ":" :at 1:22 :plain unquoted-one-segment :facts (static-name) :escape "^")))))))
+  (condition :terminator-at 2:9
+      (word "c" :at 2:6 :plain unquoted-one-segment :facts (static-name) :escape "^")
+      (word "d" :at 2:8 :plain unquoted-one-segment :facts (static-name) :escape "^"))))
+  (condition :terminator-at 2:7
+      (word "c" :at 2:4 :plain unquoted-one-segment :facts (static-name) :escape "^")
+      (word "d" :at 2:6 :plain unquoted-one-segment :facts (static-name) :escape "^"))))

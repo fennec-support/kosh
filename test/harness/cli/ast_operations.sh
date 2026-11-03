@@ -49,3 +49,9 @@ printf '%s\n' "echo a\\*'b'* ~/x \"\$HOME\"" > "$root/words.sh"
 
 printf '%s\n' 'for v in x=$y a=; do :; done' > "$root/rejoined.sh"
 "$BIN" -A --lint --no-traces "$root/rejoined.sh"
+
+mkdir "$root/make"
+printf 'a:\n\techo a \\\n\t  b c d\n\nb:\n\techo a b \\\n\t  c d\n' \
+  > "$root/make/Makefile"
+"$BIN" --format -A "$root/make/Makefile" < /dev/null |
+  grep -E 'terminator-at|word "[cd]"'
