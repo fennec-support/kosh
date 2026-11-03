@@ -107,7 +107,7 @@ echo embedded
         (word "value" :at 6:23 :plain unquoted-one-segment :facts (static-name) :escape "^^^^^"))))
   (condition :after none :terminator-at 7:25
     (conditional :at 7:1 :end 7:25
-      (element :kind operand :bare
+      (element :kind operand :bare :unary-operator
         (word "-f" :at 7:4 :plain unquoted-one-segment :facts (static-name) :escape "^^"))
       (element :kind operand :bare
         (word "x" :at 7:7 :plain unquoted-one-segment :facts (static-name) :escape "^"))
@@ -116,7 +116,7 @@ echo embedded
       (element :kind operand
         (word "$y" :at 7:14 :text "y" :plain none :facts () :escape "$"
           (segment :kind variable "y" :at 7:15 :greedy-name)))
-      (element :kind operand :bare
+      (element :kind operand :bare :binary-operator
         (word "==" :at 7:17 :plain unquoted-one-segment :facts (static-name) :escape "^^"))
       (element :kind operand
         (word "z*" :at 7:20 :plain none :facts (unquoted-glob) :escape "^^"))))
@@ -135,7 +135,7 @@ echo embedded
               (word "echo" :at 8:18 :plain unquoted-one-segment :facts (static-name) :escape "^^^^")
               (word "ab" :at 8:23 :plain unquoted-one-segment :facts (static-name) :escape "^^")))))
       (item :terminator ;&
-        (pattern
+        (pattern :catch-all
           (word "*" :at 8:29 :plain none :facts (unquoted-glob) :escape "^"))
         (compound-list :count 1
           (condition :after none :terminator-at 8:34

@@ -352,7 +352,9 @@ resolve_redirection(const Redirection    &redir,
                     bool                  should_allow_fd_memoization = false) throws
     -> resolved_redirection;
 
-pure fn
+fn
+redirection_can_change_state(const Redirection &redir) wontthrow -> bool;
+fn
 redirections_can_change_state(
     const SparseList<Redirection> &redirections) wontthrow -> bool;
 

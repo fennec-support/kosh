@@ -1342,8 +1342,7 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         has_command = true;
         is_declaration_builtin =
             get_analysis_command_info(piece.text)
-                .is_in_group(COMMAND_GROUP_DECLARATION_BUILTIN) ||
-            piece.text == "export" || piece.text == "readonly";
+                .is_in_group(COMMAND_GROUP_ASSIGNMENT_BUILTIN);
         if (!is_declaration_builtin) return false;
         continue;
       }

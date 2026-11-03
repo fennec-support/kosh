@@ -852,7 +852,7 @@ text_can_assign(StringView text) wontthrow -> bool
 }
 
 static fn
-redirection_can_change_state(const Redirection &redir) wontthrow -> bool
+scan_redirection_state_change(const Redirection &redir) wontthrow -> bool
 {
   if (redir.kind == Redirection::Kind::Heredoc) {
     if (!redir.should_expand_heredoc || redir.heredoc == nullptr) {
@@ -887,7 +887,20 @@ redirection_can_change_state(const Redirection &redir) wontthrow -> bool
   return false;
 }
 
-pure fn
+fn
+internal::redirection_can_change_state(const Redirection &redir)
+    wontthrow -> bool
+{
+  if (redir.state_change == Redirection::StateChange::Unknown) {
+    redir.state_change = scan_redirection_state_change(redir)
+                             ? Redirection::StateChange::Changes
+                             : Redirection::StateChange::Keeps;
+  }
+
+  return redir.state_change == Redirection::StateChange::Changes;
+}
+
+fn
 internal::redirections_can_change_state(
     const SparseList<Redirection> &redirections) wontthrow -> bool
 {

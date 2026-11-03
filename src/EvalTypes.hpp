@@ -788,10 +788,16 @@ struct conditional_element
     Greater,
   };
 
+  static constexpr u8 OPERATOR_UNKNOWN = 0;
+  static constexpr u8 OPERATOR_NONE    = 1;
+  static constexpr u8 OPERATOR_BASE    = 2;
+
   const Token   *word{nullptr};
   SourceLocation location{};
   Kind           kind;
   bool           is_bare_unquoted{false};
+  mutable u8     unary_operator_code{OPERATOR_UNKNOWN};
+  mutable u8     binary_operator_code{OPERATOR_UNKNOWN};
 };
 
 static_assert(sizeof(usize) != 8 || sizeof(conditional_element) == 24);

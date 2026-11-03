@@ -1147,6 +1147,18 @@ CaseClause::CaseClause(SourceLocation         location,
 
 CaseClause::~CaseClause() = default;
 
+static pure fn
+is_catch_all_case_pattern(const Token *pattern) wontthrow -> bool
+{
+  if (pattern->kind() != Token::Kind::Word) return false;
+
+  let const &word = static_cast<const tokens::WordToken *>(pattern)->word();
+
+  return word.segments.count() == 1 &&
+         word.segments[0].kind == WordSegment::Kind::UnquotedText &&
+         word.segments[0].text.view() == "*";
+}
+
 cold fn
 CaseClause::write_ast(AstWriter &out) const throws -> void
 {
@@ -1167,6 +1179,7 @@ CaseClause::write_ast(AstWriter &out) const throws -> void
 
     for (let const *pattern : item.patterns) {
       out.open("pattern");
+      if (is_catch_all_case_pattern(pattern)) out.flag("catch-all");
       out.token(pattern);
       out.close();
     }
@@ -1245,16 +1258,11 @@ CaseClause::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -
     defer { scratch_arena.release(arm_mark); };
 
     for (let const pattern_token : item.patterns) {
+      if (is_catch_all_case_pattern(pattern_token)) return true;
+
       if (pattern_token->kind() == Token::Kind::Word) {
         const Word &pattern_word =
             static_cast<const tokens::WordToken *>(pattern_token)->word();
-
-        if (pattern_word.segments.count() == 1 &&
-            pattern_word.segments[0].kind == WordSegment::Kind::UnquotedText &&
-            pattern_word.segments[0].text.view() == "*")
-        {
-          return true;
-        }
 
         if (!is_case_insensitive &&
             pattern_word.plain_literal_kind() != Word::PlainLiteral::NotPlain)

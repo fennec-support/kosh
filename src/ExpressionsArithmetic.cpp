@@ -72,6 +72,16 @@ ConditionalCommand::write_ast(AstWriter &out) const throws -> void
     if (element.location.length > 0)
       out.position("at", element.location.position);
     if (element.is_bare_unquoted) out.flag("bare");
+
+    if (element.is_bare_unquoted && element.word != nullptr) {
+      let const view = element.word->raw_view();
+
+      if (view.has_value() && is_conditional_unary_operator(*view))
+        out.flag("unary-operator");
+      if (view.has_value() && is_conditional_binary_operator(*view))
+        out.flag("binary-operator");
+    }
+
     if (element.word != nullptr) out.token(element.word);
     out.close();
   }

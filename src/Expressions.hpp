@@ -1451,6 +1451,13 @@ public:
     MoveClose,
   };
 
+  enum class StateChange : u8
+  {
+    Unknown,
+    Keeps,
+    Changes,
+  };
+
   static constexpr i32 DUP_FD_CLOSE = -2;
 
   const Token            *target;
@@ -1462,6 +1469,7 @@ public:
   u32                     operator_position;
   Kind                    kind;
   Origin                  origin;
+  mutable StateChange     state_change;
   bool                    should_expand_heredoc;
   bool                    should_strip_heredoc_tabs;
   /* the - of <<- is its own token, as in <<- EOF, so the delimiter word

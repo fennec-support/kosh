@@ -3412,6 +3412,8 @@ internal::write_ast_redirection(AstWriter         &out,
   }
 
   if (redirection.writes_file()) out.flag("writes-file");
+  if (internal::redirection_can_change_state(redirection))
+    out.flag("changes-state");
 
   if (redirection.fd_allocation_name_token != nullptr) {
     out.quoted("fd-variable",
