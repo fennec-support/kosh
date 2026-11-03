@@ -108,7 +108,7 @@ public:
     result.reserve(m_length);
 
     for (usize i = 0; i < m_length; i++) {
-      if constexpr (is_allocator_owner<T>) {
+      if constexpr (is_allocator_clonable<T>) {
         new (&result.m_data[result.m_length]) T(m_data[i].clone_to(allocator));
       } else {
         new (&result.m_data[result.m_length]) T(m_data[i]);

@@ -309,9 +309,15 @@ public:
   {
     let copy = Hive{allocator};
 
-    copy.copy_layout_from(
-        *this,
-        [](const T &element) throws -> const T & { return element; });
+    if constexpr (is_allocator_clonable<T>) {
+      copy.copy_layout_from(*this, [&](const T &element) throws -> T {
+        return element.clone_to(allocator);
+      });
+    } else {
+      copy.copy_layout_from(
+          *this,
+          [](const T &element) throws -> const T & { return element; });
+    }
 
     return copy;
   }
@@ -325,8 +331,12 @@ public:
 
     let moved = Hive{allocator};
 
-    moved.copy_layout_from(*this, [](const T &element) throws -> T && {
-      return steal(const_cast<T &>(element));
+    moved.copy_layout_from(*this, [&](const T &element) throws -> T {
+      let taken = steal(const_cast<T &>(element));
+
+      if constexpr (is_allocator_movable<T>) taken.move_to_allocator(allocator);
+
+      return taken;
     });
     *this = steal(moved);
   }

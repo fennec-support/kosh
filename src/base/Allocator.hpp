@@ -462,9 +462,4 @@ concept is_allocator_clonable =
     } &&
     is_same_v<decltype(declval<const T &>().clone_to(declval<Allocator>())), T>;
 
-/* a type that owns allocator storage and can deep copy it into another. */
-template <class T>
-concept is_allocator_owner =
-    is_allocator_movable<T> && is_allocator_clonable<T>;
-
 } /* namespace koshka */

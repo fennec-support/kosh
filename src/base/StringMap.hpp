@@ -85,7 +85,7 @@ public:
     for (usize i = 0; i < m_capacity; i++) {
       if (m_slots[i].get_state() != Slot::Occupied) continue;
 
-      if constexpr (is_allocator_owner<Value>) {
+      if constexpr (is_allocator_clonable<Value>) {
         result.set_value_with_hash(m_slots[i].key.view(),
                                    m_slots[i].value.clone_to(allocator),
                                    m_slots[i].get_hash());
