@@ -1369,8 +1369,9 @@ decode_yaml_quoted_analysis(StringView source,
   result.reserve(source.length);
 
   for (usize position = 0; position < source.length; position++) {
-    let const byte      = source[position];
-    let const is_inside = position >= start && position + 1 < end;
+    let const byte = source[position];
+    let const is_inside =
+        position >= start && position + 1 < end && position + 1 < source.length;
 
     if (is_inside && quote == '"' && byte == '\\') {
       result.push(' ');

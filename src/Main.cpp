@@ -63,9 +63,9 @@ FLAG(COMMAND,
      'c',
      "command",
      Posix,
-     "Execute the first operand as a command string and exit. Another -c "
-     "right after the string adds the next string. The next operand sets "
-     "$0, and the rest set the positional parameters.");
+     "Execute the first operand as a command string and exit. Started as "
+     "kosh, another -c right after the string adds the next string. The "
+     "next operand sets $0, and the rest set the positional parameters.");
 FLAG(ERROR_EXIT, Bool, 'e', "error-exit", Posix, "Exit on the first error.");
 FLAG(DISABLE_EXPANSION, Bool, 'f', "no-glob", Posix, "Disable path expansion.");
 FLAG(ONE_COMMAND,
@@ -423,6 +423,28 @@ FLAG(DEBUG_HIGHLIGHT_RESTARTS_AT,
 
 namespace koshka {
 
+/* e.g. "-bash" -> "bash", "/bin/sh" -> "sh", "kosh.exe" -> "kosh". */
+static fn
+invocation_stem(StringView program_path) throws -> String
+{
+  let const is_login_name = !program_path.is_empty() && program_path[0] == '-';
+  let       basename      = String{heap_allocator(),
+                        Path::invocation_filename(program_path, is_login_name)};
+  let const stem_length   = os::normalize_program_name(basename).stem_length;
+
+  return String{heap_allocator(),
+                basename.view().substring_of_length(0, stem_length)};
+}
+
+static pure fn
+mood_of_invocation_stem(StringView stem) wontthrow -> mimic_mood
+{
+  if (stem == "sh" || stem == "dash") return mimic_mood::Posix;
+  if (stem == "bash" || stem == "rbash") return mimic_mood::Bash;
+
+  return mimic_mood::Default;
+}
+
 struct invocation_identity
 {
   String     program_path;
@@ -439,13 +461,8 @@ make_invocation_identity(String program_path) throws
 {
   let const is_login_name =
       !program_path.view().is_empty() && program_path.view()[0] == '-';
-  let normalized_program_basename =
-      String{heap_allocator(),
-             Path::invocation_filename(program_path.view(), is_login_name)};
-  let const program_name_info =
-      os::normalize_program_name(normalized_program_basename);
-  StringView program_basename = normalized_program_basename.substring_of_length(
-      0, program_name_info.stem_length);
+  let const  program_stem     = invocation_stem(program_path.view());
+  StringView program_basename = program_stem.view();
 
   let executable_path = program_path.clone();
 
@@ -480,13 +497,8 @@ make_invocation_identity(String program_path) throws
         Path{executable_path.view()}.to_absolute_without_normalizing().view()};
   }
 
-  const mimic_mood invocation_mood =
-      (program_basename == "sh" || program_basename == "dash")
-          ? mimic_mood::Posix
-      : program_basename == "bash" || program_basename == "rbash"
-          ? mimic_mood::Bash
-          : mimic_mood::Default;
-  let const is_restricted_shell =
+  const mimic_mood invocation_mood = mood_of_invocation_stem(program_basename);
+  let const        is_restricted_shell =
       FLAG_RESTRICTED.is_enabled() || program_basename == "rbash";
 
   LOG(Info, "invocation basename is '%.*s'",
@@ -667,13 +679,8 @@ splice_environment_flags(command_line &line) throws -> void
 static fn
 is_posix_shell_invocation(StringView program_path) throws -> bool
 {
-  let const is_login_name = !program_path.is_empty() && program_path[0] == '-';
-  let       basename      = String{heap_allocator(),
-                        Path::invocation_filename(program_path, is_login_name)};
-  let const stem_length   = os::normalize_program_name(basename).stem_length;
-  let const stem          = basename.view().substring_of_length(0, stem_length);
-
-  return stem == "sh" || stem == "dash" || stem == "bash" || stem == "rbash";
+  return mood_of_invocation_stem(invocation_stem(program_path).view()) !=
+         mimic_mood::Default;
 }
 
 static fn

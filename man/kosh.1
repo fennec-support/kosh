@@ -3293,8 +3293,8 @@ letters after it remain options, so \f[CR]\-oc errexit command\f[R],
 \f[CR]\-co errexit command\f[R], and
 \f[CR]\-ooc errexit pipefail command\f[R] set the options and run
 \f[CR]command\f[R].
-The letters after \f[CR]\-o\f[R] in \f[CR]\-oerrexit\f[R] are read as
-more options.
+The shell parses the letters after \f[CR]\-o\f[R] in
+\f[CR]\-oerrexit\f[R] as more options.
 The first operand after the option names is the command string.
 \f[CR]\-\-command\f[R] takes its string the same way, and
 \f[CR]\-\-command=command\f[R] attaches it.
@@ -3324,18 +3324,19 @@ effect, and a \f[CR]\-c\f[R] without a command string fails with status
 directory fails with \f[CR]126\f[R], an unopenable file fails with
 \f[CR]127\f[R]), terminal stdin (line editor), or stdin that is not a
 terminal.
-\f[CR]\-s\f[R] with \f[CR]\-c\f[R] emits a warning and reads stdin.
+\f[CR]\-s\f[R] with \f[CR]\-c\f[R] emits a warning and takes commands
+from stdin.
 \f[CR]\-s \-i\f[R] on a terminal starts the line editor.
 .IP \[bu] 2
 \f[B]Interactive shells (\f[CB]\-i\f[B])\f[R] \- A shell is interactive
-when \f[CR]\-i\f[R] is given, or when it reads a terminal stdin without
-\f[CR]\-s\f[R], \f[CR]\-c\f[R], or a script operand.
+when \f[CR]\-i\f[R] is given, or when it takes commands from a terminal
+stdin without \f[CR]\-s\f[R], \f[CR]\-c\f[R], or a script operand.
 An interactive shell sets \f[CR]i\f[R] in \f[CR]$\-\f[R], sources the
 interactive startup files of its mood, sets \f[CR]PS1\f[R] when it is
 unset, expands aliases in every mood, turns on \f[CR]emacs\f[R],
 \f[CR]history\f[R], and \f[CR]histexpand\f[R], and turns on job control
 when stdin is a terminal.
-The line editor reads input only when stdin is a terminal and neither
+The line editor runs only when stdin is a terminal and neither
 \f[CR]\-c\f[R] nor a script operand is given.
 With \f[CR]\-c\f[R], a script operand, or stdin that is not a terminal,
 the interactive shell runs that input once without a prompt and exits
@@ -5227,7 +5228,7 @@ signal number.
 With an \f[CR]EXIT\f[R] trap set, an untrapped \f[CR]SIGHUP\f[R],
 \f[CR]SIGTERM\f[R], \f[CR]SIGQUIT\f[R], \f[CR]SIGALRM\f[R],
 \f[CR]SIGUSR1\f[R], or \f[CR]SIGUSR2\f[R] takes effect at the next
-command boundary, or at once while the shell waits for a child or reads
+command boundary, or at once while the shell waits for a child or for
 input.
 The trap runs before the signal ends the shell, and a child that is
 still running keeps running.
@@ -5322,7 +5323,7 @@ are stopped.
 .IP \[bu] 2
 \f[B]Scope\f[R] \- Interactive shells with \f[CR]histexpand\f[R] on
 (default; \f[CR]set +H\f[R] turns it off) replace each reference in a
-line the line editor reads before parsing and print the replaced line
+line from the line editor before parsing and print the replaced line
 before running it.
 Non\-interactive shells, \f[CR]\-c\f[R] strings, and script operands do
 not expand history.
@@ -5762,8 +5763,7 @@ A relative \f[CR]dir\f[R] that does not begin with \f[CR].\f[R] or
 directory found there is printed.
 With \f[CR]interpreter.cd_is_z=on\f[R], a \f[CR]dir\f[R] that is not a
 reachable directory changes to the best \f[CR]z\f[R] match in an
-interactive shell that reads commands with the line editor, which prints
-it.
+interactive shell that uses the line editor, which prints it.
 A script, \f[CR]\-c\f[R] string, or \f[CR]\-i\f[R] run keeps the
 failure.
 A relative directory resolves against the logical \f[CR]PWD\f[R], with

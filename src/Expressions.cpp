@@ -1985,21 +1985,11 @@ expressions::internal::analyze_followed_source(
     return should_merge_parent_state;
   }
 
-  let                  contents = actx.source_provider != nullptr
-                                      ? actx.source_provider->read_source(*canonical_path)
-                                      : Maybe<String>{None};
-  static constexpr u64 MAX_FOLLOWED_SOURCE_BYTE_COUNT = 16 * 1024 * 1024;
+  let contents = actx.source_provider != nullptr
+                     ? actx.source_provider->read_source(*canonical_path)
+                     : Maybe<String>{None};
 
-  if (!contents.has_value()) {
-    let const file_byte_count = canonical_path->file_size();
-    if (!canonical_path->is_regular_file() || !file_byte_count.has_value() ||
-        *file_byte_count > MAX_FOLLOWED_SOURCE_BYTE_COUNT)
-    {
-      return do_give_up_on_source();
-    }
-
-    contents = canonical_path->read_entire_file();
-  }
+  if (!contents.has_value()) contents = canonical_path->read_data_file();
 
   if (!contents.has_value()) return do_give_up_on_source();
   /* positions in the lexer, analysis, and diagnostics assume LF endings. */
