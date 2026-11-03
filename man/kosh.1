@@ -782,6 +782,8 @@ An empty or missing selector command, or an exit status other than
 listing after a message.
 Status \f[CR]1\f[R] or \f[CR]130\f[R] dismisses the selector and leaves
 the line unchanged.
+A reply longer than the 65535 bytes a line holds leaves the line
+unchanged after a message.
 T}
 T{
 \f[CR]plain\f[R]
@@ -5527,6 +5529,9 @@ without operands (\f[CR]alias\f[R]), and removes aliases
 (\f[CR]unalias\f[R], \f[CR]\-a\f[R] every alias).
 A name may hold any character except \f[CR]=\f[R].
 An unknown alias or an empty name returns \f[CR]1\f[R].
+An alias expands when its command runs, after the following lines are
+parsed, so an alias whose value ends in a here\-document operator does
+not take the next lines as its body.
 T}
 T{
 \f[CR]bg [job]\f[R], \f[CR]fg [job]\f[R],

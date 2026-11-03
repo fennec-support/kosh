@@ -774,6 +774,17 @@ completion_session::run_selector(koshka::completion::completion_result &result,
     replacement.append(selected[i].view());
   }
 
+  if (replacement.length() > TL_STRING_MAX_LEN) {
+    report_selector_failure_above_repainted_prompt(
+        koshka::StringView{"The tab selector returned "} +
+            koshka::String::from(static_cast<i64>(replacement.length()),
+                                 koshka::heap_allocator()) +
+            " bytes, more than a line holds, so the line is kept",
+        koshka::StringView{}, false);
+
+    return selector_outcome::Dismissed;
+  }
+
   result.candidates.clear();
   result.descriptions.clear();
   result.longest_common_prefix =

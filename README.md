@@ -33,7 +33,7 @@ brew install fennec-support/kosh/kosh
 irm "https://fennec.support/kosh/install" | iex
 
 # with Docker, as an Alpine image:
-docker run --rm -it "ghcr.io/toiletbril/kosh"
+docker run --rm -it "ghcr.io/fennec-support/kosh"
 ```
 
 Documentation is available
