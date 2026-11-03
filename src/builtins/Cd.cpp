@@ -289,17 +289,28 @@ Cd::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
   if (is_physical) {
     if (target.is_relative()) {
       target = target.to_absolute_without_normalizing();
-      if (!target.is_absolute())
-        throw ErrorWithLocation{
-            ec.source_location(),
-            StringView{"Unable to resolve '"} + arg_path +
-                "' because the current directory is unavailable"};
+      if (!target.is_absolute()) {
+        /* a relative operand can still be entered when the current
+           directory is past the system limit. */
+        if (operand_count > 0 && !is_to_previous &&
+            Path{arg_path}.is_directory())
+        {
+          is_physical_target_available = false;
+        } else {
+          throw ErrorWithLocation{
+              ec.source_location(),
+              StringView{"Unable to resolve '"} + arg_path +
+                  "' because the current directory is unavailable"};
+        }
+      }
     }
 
-    if (let resolved = os::canonical_path(target)) {
-      target = resolved.take();
-    } else {
-      is_physical_target_available = false;
+    if (is_physical_target_available) {
+      if (let resolved = os::canonical_path(target)) {
+        target = resolved.take();
+      } else {
+        is_physical_target_available = false;
+      }
     }
   } else {
     let       raw_logical_target = Path{};
