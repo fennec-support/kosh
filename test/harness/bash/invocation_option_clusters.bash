@@ -39,3 +39,10 @@ echo 'echo ran' | "$BASH" -f +o | grep -E '^set [-+]o (errexit|noglob)$|^ran'
 echo 'echo ran' | "$BASH" -O | grep -E '^(dotglob|nocasematch) |^ran'
 echo 'echo ran' | "$BASH" +O | grep -E '^shopt -[su] (dotglob|nocasematch)$|^ran'
 "$BASH" -c 'echo "zero=$0"' -o
+
+# -s with -c runs the command string, leaves standard input unread, takes the
+# first operand as $0, and sets both c and s in $-.
+echo 'echo stdin-ran' | "$BASH" -s -c 'echo "$0 $# $1"; case $- in
+*c*s*) echo cs;; *) echo "$-";; esac' zero one
+echo 'echo stdin-ran' | "$BASH" -sc 'echo "$0 $#"' zero
+echo "status=$?"

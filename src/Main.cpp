@@ -1076,7 +1076,11 @@ select_input_source(const command_line      &line,
     return plan;
   }
 
-  if (FLAG_STDIN.is_enabled()) {
+  let const is_stdin_command_string = FLAG_STDIN.is_enabled() &&
+                                      FLAG_COMMAND.is_enabled() &&
+                                      !FLAG_LINT.is_enabled();
+
+  if (FLAG_STDIN.is_enabled() && !is_stdin_command_string) {
     if (FLAG_COMMAND.is_enabled()) {
       show_flag_diagnostic(line, "--stdin", 's', true,
                            "Incompatible options or arguments were specified "
@@ -1650,7 +1654,9 @@ read_session_config(const invocation_identity &identity,
                         identity.is_login_shell,
                         identity.is_restricted_shell,
                         input.should_execute_commands,
-                        input.should_read_stdin || input.should_use_line_editor,
+                        input.should_read_stdin ||
+                            input.should_use_line_editor ||
+                            FLAG_STDIN.is_enabled(),
                         FLAG_STATS.is_enabled(),
                         FLAG_AST.is_enabled(),
                         FLAG_ESCAPE_MAP.is_enabled(),
