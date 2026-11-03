@@ -3484,6 +3484,14 @@ restore_stop_key() wontthrow -> void
 {}
 
 fn
+set_exit_trap_running(bool is_running) wontthrow -> bool
+{
+  unused(is_running);
+
+  return false;
+}
+
+fn
 is_termination_signal_held() wontthrow -> bool
 {
   return false;

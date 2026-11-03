@@ -288,11 +288,15 @@ Export::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
 
     let const environment_name = os::get_environment_spelling(name.view());
 
-    cxt.unset_shell_variable(name);
-    if (is_integer_name)
-      cxt.variable_store().attributes().mark_integer(name.view());
-    if (!os::is_environment_value_storable(value.view())) {
-      cxt.set_shell_variable(environment_name.view(), value.view());
+    if (cxt.scope_store().has_active_local(name.view())) {
+      cxt.set_shell_variable(name, value.view());
+    } else {
+      cxt.unset_shell_variable(name);
+      if (is_integer_name)
+        cxt.variable_store().attributes().mark_integer(name.view());
+      if (!os::is_environment_value_storable(value.view())) {
+        cxt.set_shell_variable(environment_name.view(), value.view());
+      }
     }
 
     cxt.record_environment_change(environment_name.view());

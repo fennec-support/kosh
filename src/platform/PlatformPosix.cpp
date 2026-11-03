@@ -3082,6 +3082,7 @@ handle_interrupt(int s) wontthrow -> void
 }
 
 static volatile sig_atomic_t EXIT_TRAP_PROCESS_ID = 0;
+static volatile sig_atomic_t IS_EXIT_TRAP_RUNNING = 0;
 
 static constexpr i32 EXIT_TRAP_SIGNALS[] = {SIGHUP,  SIGTERM, SIGQUIT,
                                             SIGALRM, SIGUSR1, SIGUSR2};
@@ -3101,7 +3102,9 @@ handle_termination(int s) wontthrow -> void
 {
   let const saved_errno = errno;
 
-  if (EXIT_TRAP_PROCESS_ID == getpid() && (s != SIGTERM || getpid() != 1)) {
+  if (EXIT_TRAP_PROCESS_ID == getpid() && (s != SIGTERM || getpid() != 1) &&
+      (IS_EXIT_TRAP_RUNNING == 0 || getpid() == 1))
+  {
     TERMINATION_SIGNAL  = s;
     INTERRUPT_REQUESTED = 1;
     errno               = saved_errno;
@@ -3503,13 +3506,28 @@ ignore_stop_key() wontthrow -> bool
 fn
 restore_stop_key() wontthrow -> void
 {
+  struct sigaction current = {};
+
+  if (sigaction(SIGTSTP, nullptr, &current) != 0) return;
+  if (current.sa_handler != SIG_IGN) return;
+
   (void) signal(SIGTSTP, SIG_DFL);
+}
+
+fn
+set_exit_trap_running(bool is_running) wontthrow -> bool
+{
+  let const was_running = IS_EXIT_TRAP_RUNNING != 0;
+
+  IS_EXIT_TRAP_RUNNING = is_running ? 1 : 0;
+
+  return was_running;
 }
 
 fn
 is_termination_signal_held() wontthrow -> bool
 {
-  return TERMINATION_SIGNAL != 0 && getpid() != 1;
+  return TERMINATION_SIGNAL != 0 && IS_EXIT_TRAP_RUNNING == 0 && getpid() != 1;
 }
 
 fn

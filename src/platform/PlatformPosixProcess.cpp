@@ -404,6 +404,13 @@ fork_tracked() wontthrow -> pid_t
 
   if (child_pid > 0) note_spawned_child(child_pid);
 
+  /* a child of the EXIT trap action did not receive the signal the parent
+     holds, so it runs and ends with its own status. */
+  if (child_pid == 0 && IS_EXIT_TRAP_RUNNING != 0) {
+    TERMINATION_SIGNAL   = 0;
+    IS_EXIT_TRAP_RUNNING = 0;
+  }
+
   return child_pid;
 }
 

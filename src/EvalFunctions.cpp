@@ -1045,7 +1045,11 @@ EvalContext::run_exit_trap(Maybe<i32> final_status) throws -> void
 
   let saved_pipe_statuses = snapshot_trap_pipe_statuses();
 
+  let const was_exit_trap_running = os::set_exit_trap_running(true);
+
   defer {
+    unused(os::set_exit_trap_running(was_exit_trap_running));
+
     execution_store().last_exit_status() = saved_exit_status;
 
     restore_trap_pipe_statuses(steal(saved_pipe_statuses));
@@ -1098,7 +1102,11 @@ EvalContext::run_subshell_exit_trap() throws -> Maybe<i32>
 
   let requested_status = Maybe<i32>{None};
 
+  let const was_exit_trap_running = os::set_exit_trap_running(true);
+
   defer {
+    unused(os::set_exit_trap_running(was_exit_trap_running));
+
     execution_store().last_exit_status() =
         requested_status.has_value() ? *requested_status : saved_exit_status;
 

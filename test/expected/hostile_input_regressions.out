@@ -203,7 +203,6 @@ status 1
 --- the last stage assigns in the kosh mood ---
 5
 3
-0
 --- a lint run of a bash script keeps the pipeline warning ---
 1
 0
@@ -301,6 +300,65 @@ read
 status 143, prompt
 --- clearing the EXIT trap restores the default signal action ---
 status 143, prompt
+--- the EXIT trap action runs in order after a signal ---
+got=captured
+child
+waited=0
+removed
+y=inner
+subshell
+status=3
+STAGE
+status 143
+got=captured
+child
+waited=0
+removed
+y=inner
+subshell
+status=3
+STAGE
+status 138
+got=captured
+child
+waited=0
+removed
+y=inner
+subshell
+status=3
+STAGE
+status 129
+got=captured
+child
+waited=0
+removed
+y=inner
+subshell
+status=3
+STAGE
+status 143, prompt
+got=captured
+child
+waited=0
+removed
+y=inner
+subshell
+status=3
+STAGE
+status 143, prompt
+got=captured
+child
+waited=0
+removed
+y=inner
+subshell
+status=3
+STAGE
+status 143, prompt
+--- a fatal signal during the EXIT trap action ends the shell ---
+status 143, prompt
+--- date keeps the local year across a year boundary ---
+1799-12-31 23:56:01 -0500|12|1799
 --- a descriptor open for both directions ends with the capture ---
 [b]
 --- a capture works under a low descriptor limit ---

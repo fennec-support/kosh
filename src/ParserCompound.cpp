@@ -1185,7 +1185,11 @@ Parser::parse_conditional_command() throws -> Command *
 
     let const text = previous.word->raw_string();
 
-    return is_conditional_unary_operator(text.view()) ||
+    if (is_conditional_unary_operator(text.view())) return true;
+
+    /* a binary operator with no left operand is an operand itself. */
+    return elements.count() >= 2 &&
+           elements[elements.count() - 2].kind == Kind::Operand &&
            is_conditional_binary_operator(text.view());
   };
 

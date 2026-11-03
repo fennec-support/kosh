@@ -469,6 +469,93 @@ unset PREFIXED
 PATH=/bin export PATH=/usr/bin:/bin
 echo "$PATH"
 
+echo "--- a local keeps its value while it is exported ---"
+local_export() {
+  local value=7
+  export value
+  echo "[$value]"
+  env | grep '^value='
+  value=8
+  env | grep '^value='
+}
+local_export
+echo "[${value-unset}]"
+env | grep -c '^value='
+local_export_later() {
+  local late
+  late=9
+  export late
+  echo "[$late]"
+  local again=3
+  export again=4
+  echo "[$again]"
+  env | grep '^again='
+}
+local_export_later
+outer=kept
+local_export_shadow() {
+  local outer=inner
+  export outer
+  env | grep '^outer='
+}
+local_export_shadow
+echo "[$outer]"
+env | grep -c '^outer='
+export carried=outside
+local_export_carried() {
+  local carried=inner
+  export carried
+  env | grep '^carried='
+}
+local_export_carried
+echo "[$carried]"
+env | grep '^carried='
+unset carried
+local_export_in_callee() {
+  export callee_value
+}
+local_export_caller() {
+  local callee_value=5
+  local_export_in_callee
+  echo "[$callee_value]"
+  env | grep '^callee_value='
+}
+local_export_caller
+
+echo "--- a wrapped declaration keeps its value and its export ---"
+unset A
+A=1 command export A=2
+echo "$A"
+env | grep '^A='
+unset A
+A=1 builtin export A=2
+echo "$A"
+env | grep '^A='
+unset A
+A=1 command -p export B=3 A
+echo "$A"
+env | grep '^A='
+unset A B
+A=1 declare -x A=2
+declare -p A
+env | grep '^A='
+unset A
+
+echo "--- a prefix on a command keeps an exported array exported ---"
+declare -a exported_array=(1 2)
+export exported_array
+exported_array=x true
+declare -p exported_array
+export exported_unset
+exported_unset=1 true
+declare -p exported_unset
+
+echo "--- a lone operator is an operand and a second bang is a syntax error ---"
+[[ a == ! ]]; echo "$?"
+[[ ! -n ! ]]; echo "$?"
+"$BASH" -c '[[ ! == ! ]]; echo after' 2>/dev/null; echo "$?"
+"$BASH" -c '[[ ! = ! ]]; echo after' 2>/dev/null; echo "$?"
+
 echo "--- an EXIT trap set in a pipeline stage runs in that stage ---"
 { trap 'echo stage' EXIT; } | cat
 { trap 'exit 4' EXIT; true; } | cat

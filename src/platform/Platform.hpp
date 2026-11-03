@@ -2581,6 +2581,12 @@ restore_stop_key() wontthrow -> void;
 fn
 release_fatal_signals_from_exit_trap() throws -> void;
 
+/* a held signal leaves waits and captures of the EXIT trap action running,
+   and a fatal signal during the action ends the shell at once. returns the
+   previous state. */
+fn
+set_exit_trap_running(bool is_running) wontthrow -> bool;
+
 fn
 is_termination_signal_held() wontthrow -> bool;
 

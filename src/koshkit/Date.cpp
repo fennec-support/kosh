@@ -27,61 +27,24 @@ REGISTER_KOSHKIT_UTIL_FLAGS(Date);
 
 namespace koshka::koshkit {
 
-/* the seconds east of UTC, parsed from the +hhmm text of %z. */
+/* strftime leaves %Y unpadded, and glibc renders a year above 9999 with +. */
 static fn
-parse_date_zone_seconds(StringView zone_text) wontthrow -> i64
+append_date_year(String &output, StringView year) throws -> void
 {
-  if (zone_text.length < 5) return 0;
+  let const is_negative = !year.is_empty() && year[0] == '-';
 
-  let const do_digit = [&](usize position) wontthrow -> i64 {
-    return zone_text[position] - '0';
-  };
-  let const seconds = (do_digit(1) * 10 + do_digit(2)) * 3600 +
-                      (do_digit(3) * 10 + do_digit(4)) * 60;
+  if (!year.is_empty() && year[0] == '+') year = year.substring(1);
 
-  return zone_text[0] == '-' ? -seconds : seconds;
-}
+  if (is_negative) {
+    output += '-';
+    year = year.substring(1);
+  }
 
-/* the proleptic Gregorian year of a local epoch. strftime stores the year in
-   an int and leaves %Y unpadded, so the year is computed here.
-   e.g. days 0 is 1970-03-01 shifted to 719468 days after 0000-03-01, in the
-   era 4 of 400 years, and January and February count toward the next year. */
-static fn
-date_year_of(i64 local_seconds) wontthrow -> i64
-{
-  let days = local_seconds / 86400;
-
-  if (local_seconds % 86400 < 0) days--;
-
-  let const shifted_days = days + 719468;
-  let const era_number =
-      (shifted_days >= 0 ? shifted_days : shifted_days - 146096) / 146097;
-  let const day_of_era  = shifted_days - era_number * 146097;
-  let const year_of_era = (day_of_era - day_of_era / 1460 + day_of_era / 36524 -
-                           day_of_era / 146096) /
-                          365;
-  let const day_of_year =
-      day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
-  let const shifted_month = (5 * day_of_year + 2) / 153;
-  let const is_next_year  = shifted_month >= 10;
-
-  return year_of_era + era_number * 400 + (is_next_year ? 1 : 0);
-}
-
-static fn
-append_date_year(String &output, i64 year, Allocator allocator) throws
-    -> void
-{
-  let const magnitude = year < 0 ? -year : year;
-  let const digits    = String::from(magnitude, allocator);
-
-  if (year < 0) output += '-';
-
-  for (usize width = digits.count() + (year < 0 ? 1 : 0); width < 4; width++) {
+  for (usize width = year.length + (is_negative ? 1 : 0); width < 4; width++) {
     output += '0';
   }
 
-  output += digits.view();
+  output += year;
 }
 
 fn
@@ -130,12 +93,23 @@ Date::execute(const ExecContext               &ec,
 
   let const time_zone =
       FLAG_DATE_UTC.is_enabled() ? os::time_zone::Utc : os::time_zone::Local;
-  let const zone_text = os::format_time("%z", displayed_seconds, time_zone);
-  let const local_year =
-      zone_text.has_value()
-          ? date_year_of(displayed_seconds +
-                         parse_date_zone_seconds(zone_text->view()))
-          : i64{0};
+  let const zone_text  = os::format_time("%z", displayed_seconds, time_zone);
+  let       local_year = os::format_time("%Y", displayed_seconds, time_zone);
+
+  /* glibc computes %Y in an int, so a later year wraps below zero. */
+  if (local_year.has_value() && displayed_seconds > 0 &&
+      local_year->view().starts_with("-"))
+  {
+    let const wrapped_year = local_year->view().to<i64>();
+
+    if (!wrapped_year.is_error()) {
+      local_year = String::from(wrapped_year.value() + (i64{1} << 32),
+                                cxt.scratch_allocator());
+    }
+  }
+
+  let const local_year_text =
+      local_year.has_value() ? local_year->view() : StringView{"0"};
 
   /* strftime renders %s through the local zone, so kosh writes the epoch. the
      other conversions here are missing from strftime or wrong in it. */
@@ -199,11 +173,9 @@ Date::execute(const ExecContext               &ec,
       }
 
       break;
-    case 'Y':
-      append_date_year(expanded_format, local_year, cxt.scratch_allocator());
-      break;
+    case 'Y': append_date_year(expanded_format, local_year_text); break;
     case 'F':
-      append_date_year(expanded_format, local_year, cxt.scratch_allocator());
+      append_date_year(expanded_format, local_year_text);
       expanded_format += "-%m-%d";
       break;
     case 'Z':

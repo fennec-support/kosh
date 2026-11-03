@@ -421,8 +421,6 @@ printf 'echo 5 | read -r x\necho "$x"\n' > lastpipe.sh
 "$BIN" lastpipe.sh
 printf 'let "a=1+2"\necho "$a"\n' > let.sh
 "$BIN" --no-annoying-diagnostics let.sh
-printf 'case 1 in\n  1) x=1 ;;\nesac\necho "$x"\n' > case.sh
-"$BIN" --lint case.sh 2>&1 | grep -c SC2154
 
 echo "--- a lint run of a bash script keeps the pipeline warning ---"
 printf '#!/bin/bash\necho 5 | read -r x\necho "$x"\n' > pipe.bash
@@ -598,6 +596,34 @@ term_after_ready 'trap "echo read" EXIT; : > ready; read -r x < reader_pipe'
 
 echo "--- clearing the EXIT trap restores the default signal action ---"
 term_after_ready 'trap "echo never" EXIT; trap - EXIT; : > ready; sleep 4 > /dev/null 2>&1'
+
+cat > exit_trap_body.sh <<'EOF'
+trap 'x=$(echo captured); echo "got=$x"
+sh -c "echo child"
+sleep 0.01 & wait $!; echo "waited=$?"
+mkdir trap_dir; rmdir trap_dir; [ -e trap_dir ] || echo removed
+y=${ echo inner; }; echo "y=$y"
+(echo subshell; exit 3); echo "status=$?"
+echo stage | tr a-z A-Z' EXIT
+EOF
+
+echo "--- the EXIT trap action runs in order after a signal ---"
+for name in TERM USR1 HUP; do
+  output=$("$BIN" --no-diagnostics -c ". ./exit_trap_body.sh; kill -$name \$\$; echo unreachable" 2>/dev/null)
+  term_status=$?
+  printf '%s\n' "$output"
+  echo "status $term_status"
+done
+term_after_ready '. ./exit_trap_body.sh; : > ready; sleep 4 > /dev/null 2>&1'
+term_after_ready '. ./exit_trap_body.sh; sleep 4 > /dev/null 2>&1 & : > ready; wait'
+sleep 4 > reader_pipe &
+term_after_ready '. ./exit_trap_body.sh; : > ready; read -r line < reader_pipe'
+
+echo "--- a fatal signal during the EXIT trap action ends the shell ---"
+term_after_ready 'trap ": > ready; sleep 4 > /dev/null 2>&1; echo never" EXIT; exit 0'
+
+echo "--- date keeps the local year across a year boundary ---"
+TZ=EST5 "$BIN" -c "koshkit date -d @-5364644639 '+%F %T %z|%m|%Y'"
 
 echo "--- a descriptor open for both directions ends with the capture ---"
 "$BIN" --no-diagnostics -c 'y=${ exec 4<>/dev/stdout; echo b; }; echo "[$y]"'

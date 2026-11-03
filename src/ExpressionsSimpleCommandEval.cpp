@@ -981,6 +981,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
     Maybe<local_binding>  overlaid_array;
     bool                  did_overlay_shell_value;
     bool                  did_clear_circular_reference;
+    bool                  was_exported;
   };
 
   ArrayList<saved_env_var> saved_env{cxt.scratch_allocator()};
@@ -1006,7 +1007,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         cxt.mark_exported(restore.name.view());
       } else {
         os::unset_environment_variable(restore.name.view());
-        cxt.unmark_exported(restore.name.view());
+        if (!restore.was_exported) cxt.unmark_exported(restore.name.view());
       }
       if (restore.did_clear_circular_reference) {
         cxt.variable_store().attributes().set(
@@ -1048,17 +1049,44 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
   /* `X=1 export X` keeps the value that export gives its attribute to. */
   let const do_is_attribute_operand =
       [&](StringView name) throws -> bool {
-    if (command_word_function != nullptr || program_args.count() < 2) {
+    if (command_word_function != nullptr) return false;
+
+    usize word_index = 0;
+
+    while (word_index < program_args.count()) {
+      let const wrapper =
+          cxt.find_enabled_builtin(program_args[word_index].view());
+
+      if (wrapper != Builtin::Kind::CommandBuiltin &&
+          wrapper != Builtin::Kind::BuiltinBuiltin)
+      {
+        break;
+      }
+
+      word_index++;
+
+      while (word_index < program_args.count() &&
+             program_args[word_index] == "-p")
+      {
+        word_index++;
+      }
+    }
+
+    if (word_index + 1 >= program_args.count()) return false;
+
+    let const kind = cxt.find_enabled_builtin(program_args[word_index].view());
+    let const is_declaration = kind == Builtin::Kind::Declare &&
+                               cxt.scope_store().local_scope_depth() == 0;
+
+    if (kind != Builtin::Kind::Export && kind != Builtin::Kind::Readonly &&
+        !is_declaration)
+    {
       return false;
     }
 
-    let const kind = cxt.find_enabled_builtin(program_args[0].view());
+    let has_attribute_flag = !is_declaration;
 
-    if (kind != Builtin::Kind::Export && kind != Builtin::Kind::Readonly) {
-      return false;
-    }
-
-    for (usize i = 1; i < program_args.count(); i++) {
+    for (usize i = word_index + 1; i < program_args.count(); i++) {
       let const operand = program_args[i].view();
 
       if (operand.starts_with("-") && operand != "--") {
@@ -1068,8 +1096,16 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
           return false;
         }
 
+        if (operand.find_character('x').has_value() ||
+            operand.find_character('r').has_value())
+        {
+          has_attribute_flag = true;
+        }
+
         continue;
       }
+
+      if (!has_attribute_flag) return false;
 
       let const equals_position = operand.find_character('=');
 
@@ -1149,9 +1185,11 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
         if (assignment.get_update_mode() == assignment_update_mode::Append)
           do_apply_append(name, expanded_value);
 
-        if (is_prefix_assignment_persistent || do_is_attribute_operand(name)) {
+        let const is_attribute_operand = do_is_attribute_operand(name);
+
+        if (is_prefix_assignment_persistent || is_attribute_operand) {
           cxt.set_shell_variable(name, expanded_value);
-          if (cxt.runtime_state().export_all()) {
+          if (cxt.runtime_state().export_all() || is_attribute_operand) {
             cxt.record_environment_change(name);
             os::set_environment_variable(name, expanded_value.view());
             cxt.mark_exported(name);
@@ -1215,7 +1253,7 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
               steal(previous),
               steal(previous_shell_value), previous_special_definition_location,
               steal(overlaid_array), did_overlay_shell_value,
-              did_clear_circular_reference
+              did_clear_circular_reference, cxt.is_exported(name)
           });
           os::set_environment_variable(name, expanded_value.view());
           cxt.mark_exported(name);

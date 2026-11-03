@@ -59,6 +59,14 @@ printf 'renamed\n' >> "$d/a.old"
 wait_for_text renamed "$d/out"
 stop_follower
 
+echo "--- descriptor follow: rewrite to the same size ---"
+printf 'aaaa\n' > "$d/s.txt"
+start_follower -f -s 0.05 "$d/s.txt"
+wait_for_text aaaa "$d/out"
+printf 'bbbb\n' > "$d/s.txt"
+wait_for_text bbbb "$d/out"
+stop_follower
+
 echo "--- name follow: rotation and replacement ---"
 printf 'first\n' > "$d/r.txt"
 start_follower -F -s 0.05 "$d/r.txt"

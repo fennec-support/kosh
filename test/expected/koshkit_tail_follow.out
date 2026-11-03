@@ -6,6 +6,11 @@ fresh
 renamed
 stderr:
 TMPDIR/a.txt: file truncated.
+--- descriptor follow: rewrite to the same size ---
+aaaa
+bbbb
+stderr:
+TMPDIR/s.txt: file truncated.
 --- name follow: rotation and replacement ---
 first
 second

@@ -5162,6 +5162,8 @@ command boundary, or at once while the shell waits for a child or reads
 input.
 The trap runs before the signal ends the shell, and a child that is
 still running keeps running.
+Commands, waits, and captures in the trap action run normally, and one
+of these signals that arrives during the action ends the shell at once.
 \f[CR]trap \- EXIT\f[R] returns these signals to their default action.
 .IP \[bu] 2
 As process 1, \f[CR]kosh\f[R] reaps orphaned children it did not start
