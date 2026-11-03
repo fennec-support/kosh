@@ -30,18 +30,19 @@ fail_conditional(StringView message, StringView reason) throws -> void
 }
 
 cold wontreturn static fn
-fail_conditional(StringView reason) throws -> void
+fail_conditional_syntax(StringView message, StringView reason) throws
+    -> void
 {
-  fail_conditional("Unable to evaluate the [[ ]]", reason);
+  ErrorWithDetails error{message, reason};
+
+  error.set_command_status(2);
+  throw error;
 }
 
 cold wontreturn static fn
 fail_conditional_syntax(StringView reason) throws -> void
 {
-  ErrorWithDetails error{"Unable to evaluate the [[ ]]", reason};
-
-  error.set_command_status(2);
-  throw error;
+  fail_conditional_syntax("Unable to evaluate the [[ ]]", reason);
 }
 
 namespace {
@@ -188,8 +189,9 @@ struct conditional_tree_builder
   fn
   build_chain(Kind separator, Node::Kind kind) throws -> u32
   {
-    let left = separator == Kind::Or ? build_chain(Kind::And, Node::Kind::And)
+    let root = separator == Kind::Or ? build_chain(Kind::And, Node::Kind::And)
                                      : build_term();
+    let tail = Node::NO_NODE;
 
     while (!is_failed() && !at_end() && elements[pos].kind == separator) {
       pos++;
@@ -197,11 +199,20 @@ struct conditional_tree_builder
       let const right = separator == Kind::Or
                             ? build_chain(Kind::And, Node::Kind::And)
                             : build_term();
+      let const left  = tail == Node::NO_NODE ? root : tree.nodes[tail].second;
+      let const node =
+          add(kind, conditional_element::OPERATOR_NONE, left, right);
 
-      left = add(kind, conditional_element::OPERATOR_NONE, left, right);
+      if (tail == Node::NO_NODE) {
+        root = node;
+      } else {
+        tree.nodes[tail].second = node;
+      }
+
+      tail = node;
     }
 
-    return left;
+    return root;
   }
 
   fn
@@ -662,17 +673,18 @@ struct conditional_evaluator
     switch (node.failure) {
     case Node::Failure::None:
     case Node::Failure::Empty:
-      fail_conditional("The conditional expression is empty");
+      fail_conditional_syntax("The conditional expression is empty");
     case Node::Failure::EndsUnexpectedly:
-      fail_conditional(
+      fail_conditional_syntax(
           "The expression ends unexpectedly",
           "A conditional needs an operator or an operand after this point");
     case Node::Failure::OperatorForOperand:
-      fail_conditional("An operator appears where an operand is expected");
+      fail_conditional_syntax(
+          "An operator appears where an operand is expected");
     case Node::Failure::UnaryMissingOperand:
-      fail_conditional("The unary operator '" +
-                       operand_literal(elements[node.first]) +
-                       "' is missing its operand");
+      fail_conditional_syntax("The unary operator '" +
+                              operand_literal(elements[node.first]) +
+                              "' is missing its operand");
     case Node::Failure::ComparisonMissingOperand:
       fail_conditional_syntax("An operand is missing after a comparison");
     case Node::Failure::BinaryMissingOperand:
@@ -691,7 +703,7 @@ struct conditional_evaluator
       throw Error{"The conditional expression is nested too deeply"};
     }
 
-    fail_conditional("The conditional expression is empty");
+    fail_conditional_syntax("The conditional expression is empty");
   }
 
   fn
@@ -852,12 +864,22 @@ struct conditional_evaluator
     if (os::is_stack_nearly_exhausted())
       throw Error{"The conditional expression is nested too deeply"};
 
+    while (tree.nodes[index].kind == Node::Kind::Or ||
+           tree.nodes[index].kind == Node::Kind::And)
+    {
+      let const &chain   = tree.nodes[index];
+      let const  is_true = eval_node(chain.first);
+
+      if (is_true == (chain.kind == Node::Kind::Or)) return is_true;
+
+      index = chain.second;
+    }
+
     let const &node = tree.nodes[index];
 
     switch (node.kind) {
-    case Node::Kind::Or: return eval_node(node.first) || eval_node(node.second);
-    case Node::Kind::And:
-      return eval_node(node.first) && eval_node(node.second);
+    case Node::Kind::Or:
+    case Node::Kind::And:     return false;
     case Node::Kind::Not:     return !eval_node(node.first);
     case Node::Kind::Unary:   return eval_unary_node(node);
     case Node::Kind::Less:
