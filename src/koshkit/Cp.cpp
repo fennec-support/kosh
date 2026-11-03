@@ -657,11 +657,16 @@ Cp::execute(const ExecContext               &ec,
     let const source = operands[i].view();
     let       target = String{cxt.scratch_allocator(), destination};
 
-    /* the contents of a source that ends in /. merge into the destination. */
-    let const is_contents_source =
-        source == "." ||
-        (source.length >= 2 && source[source.length - 1] == '.' &&
-         os::is_directory_separator(source[source.length - 2]));
+    usize source_end = source.length;
+
+    while (source_end > 1 && os::is_directory_separator(source[source_end - 1]))
+      source_end--;
+
+    /* the contents of a source whose last component is . or .. merge into
+       the destination. */
+    let const source_leaf =
+        Path::filename(source.substring_of_length(0, source_end));
+    let const is_contents_source = source_leaf == "." || source_leaf == "..";
 
     if (is_destination_directory && !is_contents_source) {
       let const source_path =

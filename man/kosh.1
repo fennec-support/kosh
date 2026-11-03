@@ -2252,6 +2252,9 @@ command line only, \f[CR]\-P\f[R] follow none,
 \f[CR]\-x\f[R]/\f[CR]\-\-one\-file\-system\f[R] copy a directory on
 another file system as an empty directory).
 A recursive copy keeps links as links.
+A source whose last component is \f[CR].\f[R] or \f[CR]..\f[R], such as
+\f[CR]src/.\f[R] or \f[CR]src/./\f[R], copies its contents into the
+destination.
 A link leading back into a directory being copied is reported as cyclic
 and skipped with status \f[CR]1\f[R].
 A source that is not a directory and would overwrite a target this

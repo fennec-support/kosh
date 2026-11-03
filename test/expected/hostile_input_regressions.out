@@ -388,8 +388,12 @@ in
 status 1
 in
 xx00
---- cp merges a source that ends in a separator and a dot ---
+--- cp merges a source whose last component is a dot or two dots ---
 file
+file
+inner
+file
+inner
 --- cp refuses a second source for a created target ---
 status 1
 one

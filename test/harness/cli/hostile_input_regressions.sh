@@ -659,10 +659,13 @@ ls csplit_dir
 echo "status $?"
 ls csplit_dir
 
-echo "--- cp merges a source that ends in a separator and a dot ---"
+echo "--- cp merges a source whose last component is a dot or two dots ---"
 mkdir cp_source cp_target
 echo merged > cp_source/file
 "$BIN" --no-diagnostics -c 'koshkit cp -r cp_source/. cp_target; ls cp_target'
+mkdir cp_source/inner cp_slash cp_parent
+"$BIN" --no-diagnostics -c 'koshkit cp -r cp_source/./ cp_slash; ls cp_slash'
+"$BIN" --no-diagnostics -c 'koshkit cp -R cp_source/inner/.. cp_parent; ls cp_parent'
 
 echo "--- cp refuses a second source for a created target ---"
 mkdir cp_one cp_two cp_into
