@@ -798,6 +798,16 @@ Pipeline::evaluate_with_compound_stages(EvalContext &cxt) const throws
           cxt.job_table_store().set_in_pipeline_stage(false);
         };
 
+        let const saved_stage_depth =
+            cxt.job_table_store().get_shell_process_stage_depth();
+
+        cxt.job_table_store().set_shell_process_stage_depth(
+            cxt.execution_store().subshell_depth());
+        defer {
+          cxt.job_table_store().set_shell_process_stage_depth(
+              saved_stage_depth);
+        };
+
         parent_stage_status =
             static_cast<i32>(stage->evaluate_root(cxt, stage_mode));
         continue;

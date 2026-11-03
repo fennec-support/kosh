@@ -12,6 +12,13 @@ rc=127
 replaced
 == exec in a command substitution runs as a child:
 [sub]
+== exec in the final pipeline stage replaces only that stage:
+[a
+inner]
+b
+sub
+c
+top
 == direct no-shebang exec starts a replacement shell:
 hidden=unset shown=exported function=unset zero=custom arg=value
 == direct no-shebang exec honors an empty environment:

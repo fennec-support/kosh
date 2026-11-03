@@ -1230,6 +1230,27 @@ public:
   }
 
   fn
+  set_shell_process_stage_depth(Maybe<usize> subshell_depth) wontthrow -> void
+  {
+    m_shell_process_stage_depth = subshell_depth;
+  }
+
+  pure fn
+  get_shell_process_stage_depth() const wontthrow -> Maybe<usize>
+  {
+    return m_shell_process_stage_depth;
+  }
+
+  /* true while a pipeline stage runs in the process of the shell at
+     subshell_depth. */
+  pure fn
+  is_stage_in_shell_process(usize subshell_depth) const wontthrow -> bool
+  {
+    return m_is_in_pipeline_stage && m_shell_process_stage_depth.has_value() &&
+           *m_shell_process_stage_depth == subshell_depth;
+  }
+
+  fn
   set_stage_boundary_published(bool was_published) wontthrow -> void
   {
     m_was_stage_boundary_published = was_published;
@@ -1255,10 +1276,11 @@ private:
   ArrayList<job>                     m_jobs;
   ArrayList<os::process>             m_detached_job_processes;
   i32                                m_next_job_id{1};
-  String m_foreground_program_title_buffer{heap_allocator()};
-  bool   m_is_in_pipeline_stage{false};
-  bool   m_was_stage_boundary_published{false};
-  bool   m_has_waited_jobs{false};
+  String       m_foreground_program_title_buffer{heap_allocator()};
+  bool         m_is_in_pipeline_stage{false};
+  Maybe<usize> m_shell_process_stage_depth{};
+  bool         m_was_stage_boundary_published{false};
+  bool         m_has_waited_jobs{false};
 };
 
 struct environment_undo_entry

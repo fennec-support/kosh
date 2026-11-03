@@ -62,6 +62,22 @@ exec 4>&- 5>&-
 echo "four=$(cat "$dir/four")"
 echo "five=[$(cat "$dir/five")]"
 
+# exec in a pipeline stage replaces only that stage, and the list after the
+# pipeline runs. Under lastpipe without job control the final stage runs in the
+# shell, so exec there replaces the subshell around it.
+echo "== exec in a pipeline stage =="
+echo a | exec cat; echo "after=$?"
+exec cat </dev/null | true; echo "first-stage=$?"
+{ echo b | exec cat; echo inner; }; echo outer
+x=$(echo c | exec cat; echo inner); echo "subst=[$x]"
+( echo d | exec cat; echo sub ); echo "subshell=$?"
+echo e | { exec cat; echo unreached; }; echo group
+x=$(echo f | exec nosuchcmd_xyz 2>/dev/null; echo inner); echo "missing=[$x]"
+x=$(shopt -s lastpipe; set +m; echo g | exec cat; echo unreached)
+echo "lastpipe=[$x]"
+( shopt -s lastpipe; set +m; echo h | exec nosuchcmd_xyz 2>/dev/null
+  echo unreached ); echo "lastpipe-missing=$?"
+
 # The backup is placed under the open file limit. A tight limit lowers the
 # ceiling toward the range a script writes by hand, and the descriptor still has
 # to come back. This section runs last because the limit outlives it.

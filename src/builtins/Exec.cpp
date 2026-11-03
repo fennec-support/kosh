@@ -40,6 +40,35 @@ REGISTER_BUILTIN_FLAGS(Exec);
 namespace koshka {
 
 static fn
+is_stage_in_shell_process(const EvalContext &cxt) wontthrow -> bool
+{
+  return cxt.job_table_store().is_stage_in_shell_process(
+      cxt.execution_store().subshell_depth());
+}
+
+/* exec in a pipeline stage affects only that stage. In the Bash moods only
+   lastpipe runs a stage in the process of the shell, and exec there acts on
+   the shell. */
+static fn
+is_exec_confined_to_stage(const EvalContext &cxt) wontthrow -> bool
+{
+  if (!cxt.job_table_store().is_in_pipeline_stage()) return false;
+
+  return !cxt.runtime_state().is_bash_compatible() ||
+         !is_stage_in_shell_process(cxt);
+}
+
+/* a confined stage that runs in the process of the shell leaves the
+   enclosing subshell running. */
+static fn
+should_exec_end_subshell(const EvalContext &cxt) wontthrow -> bool
+{
+  if (!cxt.in_subshell()) return false;
+
+  return !is_exec_confined_to_stage(cxt) || !is_stage_in_shell_process(cxt);
+}
+
+static fn
 report_exec_error(ExecContext             &ec,
                   EvalContext             &cxt,
                   const ErrorWithLocation &error,
@@ -47,8 +76,8 @@ report_exec_error(ExecContext             &ec,
 {
   show_message(error.to_string(cxt.source_store().current_source_view(), &cxt));
 
-  if (cxt.in_subshell() || cxt.job_table_store().is_in_pipeline_stage()) {
-    if (cxt.in_subshell())
+  if (cxt.in_subshell() || is_exec_confined_to_stage(cxt)) {
+    if (should_exec_end_subshell(cxt))
       cxt.request_exit(command_status, ec.source_location());
 
     return command_status;
@@ -56,8 +85,9 @@ report_exec_error(ExecContext             &ec,
 
   if (cxt.execution_store().shell_is_interactive()) return command_status;
 
-  /* at this point: cxt is not in a subshell or pipeline stage, and the shell
-     is not interactive, so utils::quit() ends the shell with command_status. */
+  /* at this point: cxt is not in a subshell or a confined pipeline stage, and
+     the shell is not interactive, so utils::quit() ends the shell with
+     command_status. */
   utils::quit(command_status, utils::farewell_policy::Goodbye);
 }
 
@@ -276,7 +306,7 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
           cxt.execution_store().get_terminal_exec_subshell_depth();
 
   if ((cxt.in_subshell() && !is_forked_subshell_process) ||
-      cxt.job_table_store().is_in_pipeline_stage())
+      is_exec_confined_to_stage(cxt))
   {
     LOG(Info, "exec runs '%s' as a child rather than replacing the shell",
         command_name.c_str());
@@ -284,7 +314,8 @@ Exec::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     let const status =
         utils::execute_context(steal(command), cxt, execution_mode::Foreground);
 
-    if (cxt.in_subshell()) cxt.request_exit(status, ec.source_location());
+    if (should_exec_end_subshell(cxt))
+      cxt.request_exit(status, ec.source_location());
 
     return status;
   }

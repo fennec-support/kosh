@@ -790,6 +790,16 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
           cxt.job_table_store().set_in_pipeline_stage(false);
         };
 
+        let const saved_stage_depth =
+            cxt.job_table_store().get_shell_process_stage_depth();
+
+        cxt.job_table_store().set_shell_process_stage_depth(
+            cxt.execution_store().subshell_depth());
+        defer {
+          cxt.job_table_store().set_shell_process_stage_depth(
+              saved_stage_depth);
+        };
+
         ret                       = execute_builtin(steal(ec), cxt);
         stage_status[stage_index] = ret;
       } else {
@@ -846,6 +856,16 @@ execute_contexts_with_pipes(ArrayList<ExecContext> &&ecs,
       defer {
         cxt.job_table_store().set_in_pipeline_stage(false);
       };
+
+      let const saved_stage_depth =
+          cxt.job_table_store().get_shell_process_stage_depth();
+
+      cxt.job_table_store().set_shell_process_stage_depth(
+          cxt.execution_store().subshell_depth());
+      defer {
+        cxt.job_table_store().set_shell_process_stage_depth(saved_stage_depth);
+      };
+
       ret                       = execute_builtin(steal(ec), cxt);
       stage_status[stage_index] = ret;
     }

@@ -12,6 +12,8 @@ echo "== exec replaces the shell and runs the command:"
 "$BIN" -c 'exec echo replaced'
 echo "== exec in a command substitution runs as a child:"
 "$BIN" -c 'echo "[$(exec echo sub)]"'
+echo "== exec in the final pipeline stage replaces only that stage:"
+"$BIN" -c 'x=$(echo a | exec cat; echo inner); echo "[$x]"; (echo b | exec cat; echo sub); echo c | exec cat; echo top'
 
 echo "== direct no-shebang exec starts a replacement shell:"
 d=$(mktemp -d)

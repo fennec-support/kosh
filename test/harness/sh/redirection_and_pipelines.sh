@@ -139,3 +139,11 @@ cd() { echo cd_function; }
 cd | cat
 greet() { echo "hi $1"; }
 echo ignored_input | greet world
+
+# exec in a pipeline stage replaces only that stage, so the list after the
+# pipeline runs in the shell, a subshell, and a command substitution.
+echo a | exec cat; echo "after=$?"
+exec cat </dev/null | true; echo "first-stage=$?"
+x=$(echo c | exec cat; echo inner); echo "subst=[$x]"
+( echo d | exec cat; echo sub ); echo "subshell=$?"
+x=$(echo f | exec nosuchcmd_xyz 2>/dev/null; echo inner); echo "missing=[$x]"
