@@ -488,29 +488,73 @@ read_git_ref_sha(const Path &git_dir, StringView ref_name) throws
   let packed_path = git_dir.clone();
 
   packed_path.append("packed-refs");
-  if (let const packed = packed_path.read_data_file()) {
-    let remainder = packed->view();
 
-    while (!remainder.is_empty()) {
-      let const newline_pos = remainder.find_character('\n');
-      let       line        = remainder.substring_of_length(
-          0, newline_pos.value_or(remainder.length));
+  let const packed = os::open_file_descriptor(
+      packed_path.view(), os::file_open_mode::ReadNonblocking);
 
-      if (!line.is_empty() && line[line.length - 1] == '\r') {
-        line = line.substring_of_length(0, line.length - 1);
+  if (!packed.has_value()) return String{heap_allocator()};
+  defer { os::close_fd(*packed); };
+
+  if (!os::regular_file_byte_count(*packed).has_value()) {
+    return String{heap_allocator()};
+  }
+
+  /* packed-refs is streamed, so a large file costs no memory beyond one
+     line. a line past the line limit cannot name a ref and is skipped. */
+  static constexpr usize LINE_MAX_BYTE_COUNT = 8192;
+  static constexpr usize SCAN_MAX_BYTE_COUNT = usize{256} << 20;
+
+  let const do_match_line =
+      [&](StringView line) throws -> Maybe<String> {
+    if (!line.is_empty() && line[line.length - 1] == '\r') {
+      line = line.substring_of_length(0, line.length - 1);
+    }
+
+    if (line.is_empty() || line[0] == '#' || line[0] == '^') return None;
+
+    let const separator = line.find_character(' ');
+
+    if (!separator.has_value() || line.substring(*separator + 1) != ref_name) {
+      return None;
+    }
+
+    return String{heap_allocator(), line.substring_of_length(0, *separator)};
+  };
+
+  char  buffer[65536];
+  let   line               = String{heap_allocator()};
+  bool  is_line_too_long   = false;
+  usize scanned_byte_count = 0;
+
+  while (scanned_byte_count < SCAN_MAX_BYTE_COUNT) {
+    let const read_byte_count = os::read_fd(*packed, buffer, sizeof(buffer));
+
+    if (!read_byte_count.has_value()) break;
+    if (*read_byte_count == 0) {
+      if (!is_line_too_long) {
+        if (let matched = do_match_line(line.view())) return matched.take();
       }
 
-      if (!line.is_empty() && line[0] != '#' && line[0] != '^') {
-        if (let const separator = line.find_character(' ');
-            separator.has_value() && line.substring(*separator + 1) == ref_name)
-        {
-          return String{heap_allocator(),
-                        line.substring_of_length(0, *separator)};
-        }
+      break;
+    }
+
+    scanned_byte_count += *read_byte_count;
+
+    for (usize i = 0; i < *read_byte_count; i++) {
+      if (buffer[i] != '\n') {
+        if (line.count() < LINE_MAX_BYTE_COUNT)
+          line.push(buffer[i]);
+        else
+          is_line_too_long = true;
+        continue;
       }
 
-      if (!newline_pos.has_value()) break;
-      remainder = remainder.substring(*newline_pos + 1);
+      if (!is_line_too_long) {
+        if (let matched = do_match_line(line.view())) return matched.take();
+      }
+
+      line.clear();
+      is_line_too_long = false;
     }
   }
 
