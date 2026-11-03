@@ -7,6 +7,22 @@ readonly xx=1
 echo "readonly_assign=$?"
 (set -u; echo "$not_set_at_all"; echo not_reached) 2>/dev/null
 echo "nounset_abort=$?"
+# A set -u length of an unset array, a declared array without a value, or a
+# scalar with a subscript aborts. An empty array and a missing element of a
+# set array have length 0, and "${u[@]}" of an unset array expands to nothing.
+(set -u; unset u; echo "${#u[@]}"; echo not_reached) 2>/dev/null
+echo "nounset_unset_length=$?"
+(set -u; declare -a u; echo "${#u[*]}"; echo not_reached) 2>/dev/null
+echo "nounset_valueless_length=$?"
+(set -u; f() { local -A u; echo "${#u[@]}"; }; f; echo not_reached) 2>/dev/null
+echo "nounset_local_length=$?"
+(set -u; u=x; echo "${#u[@]}"; echo not_reached) 2>/dev/null
+echo "nounset_scalar_length=$?"
+(set -u; unset u; echo "${#u[0]}"; echo not_reached) 2>/dev/null
+echo "nounset_unset_element_length=$?"
+(set -u; unset u; echo "[${u[@]}]" "[${!u[@]}]"; u=(); v=(x)
+echo "${#u[@]} ${#u[1]} ${#v[1]}") 2>/dev/null
+echo "nounset_empty_length=$?"
 (echo "${also_missing:?gone}"; echo not_reached) 2>/dev/null
 echo "report_abort=$?"
 echo survived

@@ -2306,8 +2306,19 @@ EvalContext::ParameterExpander::expand_element_length(
   let const array_name = name.substring_of_length(0, bracket);
   let const subscript =
       name.substring_of_length(bracket + 1, name.length - bracket - 2);
+  let const is_whole_array = subscript == "@" || subscript == "*";
 
-  if (subscript == "@" || subscript == "*") {
+  /* in the Bash moods, nounset rejects a length of an unset or valueless
+     array and of a scalar with a subscript. */
+  if (m_context.runtime_state().is_bash_compatible() &&
+      (!m_context.has_array_base_value(array_name) ||
+       (!m_context.is_array_variable(array_name) &&
+        m_context.variable_store().find_plain_scalar(array_name).has_value())))
+  {
+    m_context.report_unset_reference(is_whole_array ? array_name : name);
+  }
+
+  if (is_whole_array) {
     return String::from(m_context.array_element_count(array_name),
                         m_context.scratch_allocator());
   }

@@ -3815,6 +3815,11 @@ the key \f[CR]1+1\f[R]).
 \f[CR]${a[\[at]]}\f[R] and \f[CR]${a[*]}\f[R] list elements,
 \f[CR]${#a[\[at]]}\f[R] counts them, and \f[CR]${!a[\[at]]}\f[R] lists
 the set indices or keys.
+Under \f[CR]nounset\f[R] in the Bash moods, \f[CR]${#a[\[at]]}\f[R],
+\f[CR]${#a[*]}\f[R], and \f[CR]${#a[i]}\f[R] fail when \f[CR]a\f[R] is
+unset, declared without a value, or a scalar, while an empty array
+counts \f[CR]0\f[R] and \f[CR]\[dq]${a[\[at]]}\[dq]\f[R] of an unset
+array expands to nothing.
 \f[CR]\[dq]${a[\[at]]}\[dq]\f[R] keeps one field per element,
 \f[CR]\[dq]${a[\[at]]\[at]A}\[dq]\f[R] yields the words of the
 declaration, \f[CR]\[dq]${a[\[at]]\[at]K}\[dq]\f[R] yields keys and
