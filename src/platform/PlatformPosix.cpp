@@ -2924,10 +2924,30 @@ check_syscall_impl(i32 status, StringView invocation) throws -> i32
 
 #define check_syscall(call) check_syscall_impl(call, #call)
 
+/* the text of an error whose strerror() wording differs between the C
+   libraries, in the wording of glibc and macOS. */
+static pure fn
+portable_error_text(int error_number) wontthrow -> const char *
+{
+  switch (error_number) {
+  case EMFILE:       return "Too many open files";
+  case ENFILE:       return "Too many open files in system";
+  case ENAMETOOLONG: return "File name too long";
+  case ELOOP:        return "Too many levels of symbolic links";
+  case EXDEV:        return "Invalid cross-device link";
+  case ENOTSUP:      return "Operation not supported";
+  default:           return nullptr;
+  }
+}
+
 cold fn
 last_system_error_message() throws -> String
 {
-  return String{heap_allocator(), strerror(errno)};
+  let const        saved_errno = errno;
+  let const *const text        = portable_error_text(saved_errno);
+
+  return String{heap_allocator(),
+                text != nullptr ? text : strerror(saved_errno)};
 }
 
 fn
