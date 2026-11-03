@@ -767,29 +767,25 @@ EvalContext::expand_word(const Word &word) throws
                                       modifier_location_pointer);
         };
 
+        let const params =
+            variable_store().positional_params().clone_to(scratch_allocator());
+
         if (segment.is_in_double_quotes && is_star) {
           let const ifs    = variable_store().field_separators();
           let       joined = String{scratch_allocator()};
 
-          for (usize i = 0; i < variable_store().positional_params().count();
-               i++)
-          {
+          for (usize i = 0; i < params.count(); i++) {
             if (i > 0 && !ifs.is_empty()) {
               joined.append(first_field_separator());
             }
 
-            joined.append(
-                do_transform(variable_store().positional_params()[i].view())
-                    .view());
+            joined.append(do_transform(params[i].view()).view());
           }
 
           do_append_run(joined, false);
         } else {
-          for (usize i = 0; i < variable_store().positional_params().count();
-               i++)
-          {
-            let const modified =
-                do_transform(variable_store().positional_params()[i].view());
+          for (usize i = 0; i < params.count(); i++) {
+            let const modified = do_transform(params[i].view());
 
             if (segment.is_in_double_quotes) {
               if (i > 0) {
@@ -1028,14 +1024,99 @@ EvalContext::expand_word(const Word &word) throws
         }
       }
 
-      if (reference->has_route(parameter_reference::ROUTE_ALTERNATE_OPERAND)) {
+      let subject = Maybe<String>{};
+
+      let const do_read_alternate_element =
+          [&](StringView array_name, StringView subscript,
+              bool is_in_source) throws {
+            let        subscript_location = SourceLocation{};
+            let const *subscript_location_pointer =
+                is_in_source
+                    ? do_source_location_for(subscript, subscript_location)
+                    : nullptr;
+            let  element_subscript = subscript;
+            char evaluated_index_text[24];
+
+            if (!subscript.is_all_decimal_digits() &&
+                !is_associative_array(array_name))
+            {
+              element_subscript = utils::int_to_text_into(
+                  evaluate_arithmetic(subscript, subscript_location_pointer,
+                                      true),
+                  evaluated_index_text, sizeof(evaluated_index_text));
+            }
+
+            if (array_element_is_set(array_name, element_subscript)) {
+              subject = apply_array_subscript(array_name, element_subscript,
+                                              subscript_location_pointer);
+            }
+          };
+
+      let const do_read_alternate_subject =
+          [&](StringView name) throws -> bool {
+        let const is_indirect = name[0] == '!';
+        let       target      = Maybe<String>{};
+
+        if (is_indirect) {
+          let const pointer = name.substring(1);
+
+          if (variable_store().attributes().is_nameref(pointer)) {
+            if (has_generated_value(pointer)) return false;
+
+            target = resolve_nameref(pointer);
+
+            if (!target.has_value() || target->is_empty()) return false;
+
+            subject = steal(target);
+
+            return true;
+          }
+
+          target = get_variable_value(pointer);
+
+          if (!target.has_value() || !is_indirect_target(target->view()) ||
+              target->view() == "@" || target->view() == "*")
+          {
+            return false;
+          }
+
+          name = target->view();
+        }
+
+        let const bracket = name.find_character('[');
+
+        if (!bracket.has_value()) {
+          subject = get_variable_value(name);
+
+          return true;
+        }
+
+        let const array_name = name.substring_of_length(0, *bracket);
+        let const subscript =
+            name.substring_of_length(*bracket + 1, name.length - *bracket - 2);
+
+        if (subscript == "@" || subscript == "*") return false;
+
+        if (is_indirect) {
+          let const data_scope = guard_expanded_subscript(subscript);
+
+          do_read_alternate_element(array_name, subscript, false);
+        } else {
+          do_read_alternate_element(array_name, subscript, true);
+        }
+
+        return true;
+      };
+
+      if (reference->has_route(parameter_reference::ROUTE_ALTERNATE_OPERAND) &&
+          do_read_alternate_subject(segment_text.substring_of_length(
+              0, static_cast<usize>(reference->alternate_name_end))))
+      {
         let const alternate_name_end =
             static_cast<usize>(reference->alternate_name_end);
         let const rest          = segment_text.substring(alternate_name_end);
         let const is_colon_form = rest[0] == ':';
         let const op_index      = is_colon_form ? usize{1} : usize{0};
-        let const subject       = get_variable_value(
-            segment_text.substring_of_length(0, alternate_name_end));
         let const is_unset =
             !subject.has_value() || (is_colon_form && subject->is_empty());
         let const should_expand_word =

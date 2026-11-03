@@ -4,7 +4,8 @@
 # joins with a space and the * form with the first IFS character, a test
 # operator uses the joined value, and the other operators apply to each
 # element before the join. The field forms keep their own words, and an
-# element subscript takes the same transformations and case toggles.
+# element subscript takes the same transformations and case toggles. An
+# operand with a command substitution applies to each positional parameter.
 
 show_contexts() {
   local form=$1 joined
@@ -111,3 +112,5 @@ echo "${b[2]^}"
 c=(aXa bXb cXc)
 printf '[%s]' "${c[@]//X/-}"; echo
 echo "${c[*]//X/+}"
+set -- qa qb
+echo ${@#$(echo q)} "${*#$(echo q)}" ${@/$(echo q)/Z} "${@^$(echo q)}"

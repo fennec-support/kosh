@@ -5006,10 +5006,24 @@ analyze_word_routes(StringView           text,
     }
   }
 
-  let const alternate_name_end =
+  let alternate_name_end =
       first == '#' || first == '?' || first == '-' || first == '$'
           ? usize{1}
           : variable_name_end;
+
+  if (is_name_start && variable_name_end < length &&
+      text[variable_name_end] == '[' &&
+      !is_list_subscript_at(text, variable_name_end))
+  {
+    let const close =
+        find_balanced_subscript_close(text.substring(variable_name_end));
+
+    alternate_name_end = close.has_value() ? variable_name_end + *close + 1 : 0;
+  } else if (first == '!' && length > 1 &&
+             lexer::is_variable_name_start(text[1]))
+  {
+    alternate_name_end = 1 + find_variable_name_end(text.substring(1));
+  }
 
   reference.alternate_name_end = static_cast<u32>(alternate_name_end);
 
