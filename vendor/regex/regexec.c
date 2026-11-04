@@ -174,6 +174,7 @@ static reg_errcode_t tre_tnfa_run_parallel(const tre_tnfa_t *tnfa,
   reg_errcode_t ret;
 
   char *buf;
+  long stack_block[512];
   tre_tnfa_transition_t *trans_i;
   tre_tnfa_reach_t *reach, *reach_next, *reach_i, *reach_next_i;
   tre_reach_pos_t *reach_pos;
@@ -226,9 +227,14 @@ static reg_errcode_t tre_tnfa_run_parallel(const tre_tnfa_t *tnfa,
     total_bytes = (sizeof(long) - 1) * 4 /* for alignment paddings */
                   + (rbytes + xbytes * state_count) * 2 + tbytes + pbytes;
 
-    /* Allocate the memory. */
-    buf = xcalloc(total_bytes, 1);
-    if (buf == NULL) return REG_ESPACE;
+    /* Allocate the memory. A small block lives on the stack. */
+    if (total_bytes <= sizeof(stack_block)) {
+      buf = (char *) stack_block;
+      memset(buf, 0, total_bytes);
+    } else {
+      buf = xcalloc(total_bytes, 1);
+      if (buf == NULL) return REG_ESPACE;
+    }
 
     /* Get the various pointers within tmp_buf (properly aligned). */
     tmp_tags = (void *) buf;
@@ -261,6 +267,15 @@ static reg_errcode_t tre_tnfa_run_parallel(const tre_tnfa_t *tnfa,
   while (1) {
     /* If no match found yet, add the initial states to `reach_next'. */
     if (match_eo < 0) {
+      /* With no active state, a position whose byte cannot start a match
+         adds nothing. */
+      if (reach_next_i == reach_next && tnfa->firstpos_chars) {
+        while (next_c &&
+               !tnfa->firstpos_chars[((const unsigned char *) string)[pos]])
+        {
+          GET_NEXT_WCHAR();
+        }
+      }
       trans_i = tnfa->initial;
       while (trans_i->state != NULL) {
         if (reach_pos[trans_i->state_id].pos < pos) {
@@ -419,7 +434,7 @@ static reg_errcode_t tre_tnfa_run_parallel(const tre_tnfa_t *tnfa,
   *match_end_ofs = match_eo;
   ret = match_eo >= 0 ? REG_OK : REG_NOMATCH;
 error_exit:
-  xfree(buf);
+  if (buf != (char *) stack_block) xfree(buf);
   return ret;
 }
 
@@ -662,6 +677,14 @@ retry: {
   pos = pos_start;
   pos_add_next = str_byte - (const char *) string - pos;
   GET_NEXT_WCHAR();
+  /* A match cannot start at a byte outside firstpos_chars. */
+  if (tnfa->firstpos_chars) {
+    while (next_c &&
+           !tnfa->firstpos_chars[((const unsigned char *) string)[pos]])
+    {
+      GET_NEXT_WCHAR();
+    }
+  }
   pos_start = pos;
   next_c_start = next_c;
   str_byte_start = str_byte;

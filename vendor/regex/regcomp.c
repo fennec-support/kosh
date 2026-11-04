@@ -2579,6 +2579,43 @@ int regcomp(regex_t *restrict preg, const char *restrict regex, int cflags)
 
   tnfa->num_transitions = add;
   tnfa->final = transitions + offs[tree->lastpos[0].position];
+
+  /* Entry N of firstpos_chars is nonzero when a match can start at byte N.
+     Every byte from 0x80 up stands for any character outside ASCII. A
+     pattern that can match empty text has no table. */
+  tnfa->firstpos_chars = xcalloc(256, 1);
+  if (tnfa->firstpos_chars == NULL) ERROR_EXIT(REG_ESPACE);
+  for (tre_tnfa_transition_t *trans = initial; trans->state; trans++) {
+    tre_tnfa_transition_t *out;
+    if (trans->state == tnfa->final) {
+      xfree(tnfa->firstpos_chars);
+      tnfa->firstpos_chars = NULL;
+      break;
+    }
+    for (out = trans->state; out->state; out++) {
+      tre_cint_t code;
+      for (code = out->code_min; code <= out->code_max && code < 0x80; code++)
+      {
+        if (out->assertions & ASSERT_CHAR_CLASS &&
+            !tre_isctype(code, out->u.class) &&
+            !(cflags & REG_ICASE &&
+              (tre_isctype(tre_tolower(code), out->u.class) ||
+               tre_isctype(tre_toupper(code), out->u.class))))
+        {
+          continue;
+        }
+        tnfa->firstpos_chars[code] = 1;
+        if (cflags & REG_ICASE) {
+          tre_cint_t lower = tre_tolower(code), upper = tre_toupper(code);
+          if (lower < 0x80) tnfa->firstpos_chars[lower] = 1;
+          if (upper < 0x80) tnfa->firstpos_chars[upper] = 1;
+          if (lower >= 0x80 || upper >= 0x80)
+            memset(tnfa->firstpos_chars + 0x80, 1, 0x80);
+        }
+      }
+      if (out->code_max >= 0x80) memset(tnfa->firstpos_chars + 0x80, 1, 0x80);
+    }
+  }
   tnfa->num_states = parse_ctx.position;
   tnfa->cflags = cflags;
 

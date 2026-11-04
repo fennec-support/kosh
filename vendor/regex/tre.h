@@ -108,11 +108,15 @@ static inline int tre_utf8_decode(tre_char_t *result, const char *text,
 #define tre_mbrtowc(pwc, s, n, ps) tre_utf8_decode((pwc), (s), (n))
 #else
 /* The C library decodes by the locale, so the C locale yields one character
-   per byte. */
+   per byte. Every locale decodes a byte below 0x80 as itself. */
 static inline int tre_locale_decode(tre_char_t *result, const char *text,
                                     size_t length)
 {
   wchar_t wide;
+  if (length > 0 && (unsigned char) *text < 0x80) {
+    *result = (unsigned char) *text;
+    return *text != 0;
+  }
   int byte_count = mbtowc(&wide, text, length);
   if (byte_count >= 0) *result = (tre_char_t) wide;
   return byte_count;
