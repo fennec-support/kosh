@@ -155,9 +155,10 @@ OBJCOPY ?= llvm-objcopy
 endif
 OBJCOPY ?= objcopy
 
-# Windows has no regex in its C library, and the regex of musl rejects back
-# references in an extended expression, so those builds link the vendored
-# regex, which accepts them.
+# Windows has no regex in its C library, the regex of musl rejects back
+# references in an extended expression, and the regex of macOS fails back
+# references after a multibyte character, so those builds link the vendored
+# regex.
 IS_MUSL_LIBC := 0
 ifeq ($(TARGET), Linux)
 ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
@@ -166,7 +167,7 @@ else ifneq ($(findstring musl,$(shell $(CXX) -dumpmachine 2>/dev/null)),)
 IS_MUSL_LIBC := 1
 endif
 endif
-ifneq ($(filter Windows_NT,$(TARGET))$(filter 1,$(IS_MUSL_LIBC)),)
+ifneq ($(filter Windows_NT Darwin,$(TARGET))$(filter 1,$(IS_MUSL_LIBC)),)
 REGEX_SOURCES := regcomp regerror regexec tre-mem
 endif
 

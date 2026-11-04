@@ -76,8 +76,8 @@ pub fn build(b: *std.Build) void {
         }
     }
 
-    // As in src/Makefile, Windows and musl link the vendored regex.
-    const is_vendored_regex = target.result.os.tag == .windows or target.result.isMuslLibC();
+    // As in src/Makefile, Windows, macOS, and musl link the vendored regex.
+    const is_vendored_regex = target.result.os.tag == .windows or target.result.os.tag == .macos or target.result.isMuslLibC();
     if (is_vendored_regex) {
         flags.append(b.allocator, "-DKOSH_VENDORED_REGEX") catch @panic("out of memory");
         module.addCSourceFiles(.{
