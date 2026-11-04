@@ -91,7 +91,7 @@ get_environment_epoch() wontthrow -> u64
 #endif
 #endif
 
-#if KOSH_PLATFORM_IS KOSH_PLATFORM_WIN32 || defined KOSH_VENDORED_REGEX
+#if defined KOSH_VENDORED_REGEX
 struct alignas(max_align_t) regex_allocation_header
 {
   size_t allocation_length;

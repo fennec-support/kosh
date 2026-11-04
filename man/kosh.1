@@ -2493,6 +2493,8 @@ In \f[CR]grep\f[R], \f[CR]sed\f[R], \f[CR]expr\f[R], and
 repeats expand past \f[CR]65536\f[R] copies is invalid, and
 \f[CR]\[rs]1\f[R] through \f[CR]\[rs]9\f[R] match the text of a group in
 basic and extended expressions.
+In Android and Cosmopolitan builds, the C library regex decides whether
+an extended expression accepts them.
 Patterns come from the first operand, \f[CR]\-e\f[R] (add a pattern), or
 \f[CR]\-f\f[R] (lines of a file); with \f[CR]\-e\f[R] or \f[CR]\-f\f[R]
 every operand is a file, and a newline separates patterns.

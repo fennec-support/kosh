@@ -76,6 +76,18 @@ pub fn build(b: *std.Build) void {
         }
     }
 
+    // As in src/Makefile, Windows and musl link the vendored regex.
+    const is_vendored_regex = target.result.os.tag == .windows or target.result.isMuslLibC();
+    if (is_vendored_regex) {
+        flags.append(b.allocator, "-DKOSH_VENDORED_REGEX") catch @panic("out of memory");
+        module.addCSourceFiles(.{
+            .root = b.path("vendor/regex"),
+            .files = &.{ "regcomp.c", "regerror.c", "regexec.c", "tre-mem.c" },
+            .flags = &.{"-std=c11"},
+        });
+        module.addIncludePath(b.path("vendor/regex"));
+    }
+
     const sources = collectSources(b);
     module.addCSourceFiles(.{
         .root = b.path("src"),
@@ -83,16 +95,10 @@ pub fn build(b: *std.Build) void {
         .flags = flags.items,
     });
 
-    // As in src/Makefile, Windows links the vendored regex and the system
-    // libraries that the GNU ABI leaves out, and Darwin links two frameworks.
+    // As in src/Makefile, Windows links the system libraries that the GNU ABI
+    // leaves out, and Darwin links two frameworks.
     switch (target.result.os.tag) {
         .windows => {
-            module.addCSourceFiles(.{
-                .root = b.path("vendor/regex"),
-                .files = &.{ "regcomp.c", "regerror.c", "regexec.c", "tre-mem.c" },
-                .flags = &.{"-std=c11"},
-            });
-            module.addIncludePath(b.path("vendor/regex"));
             for ([_][]const u8{ "userenv", "advapi32", "shell32", "ole32", "uuid", "iphlpapi", "rstrtmgr", "ws2_32" }) |library| {
                 module.linkSystemLibrary(library, .{});
             }

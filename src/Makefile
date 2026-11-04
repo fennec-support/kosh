@@ -54,10 +54,6 @@ endif
 endif
 endif
 
-ifeq ($(TARGET), Windows_NT)
-REGEX_SOURCES := regcomp regerror regexec tre-mem
-endif
-
 # A Linux target is cross-compiled with Zig and musl from another host, from a
 # Linux host when ARCH selects a different processor, or whenever LINUX_ZIG=1.
 LINUX_ZIG ?= 0
@@ -159,8 +155,9 @@ OBJCOPY ?= llvm-objcopy
 endif
 OBJCOPY ?= objcopy
 
-# The regex of musl rejects back references in an extended expression, so a
-# musl build links the vendored regex, which accepts them.
+# Windows has no regex in its C library, and the regex of musl rejects back
+# references in an extended expression, so those builds link the vendored
+# regex, which accepts them.
 IS_MUSL_LIBC := 0
 ifeq ($(TARGET), Linux)
 ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
@@ -169,7 +166,7 @@ else ifneq ($(findstring musl,$(shell $(CXX) -dumpmachine 2>/dev/null)),)
 IS_MUSL_LIBC := 1
 endif
 endif
-ifeq ($(IS_MUSL_LIBC), 1)
+ifneq ($(filter Windows_NT,$(TARGET))$(filter 1,$(IS_MUSL_LIBC)),)
 REGEX_SOURCES := regcomp regerror regexec tre-mem
 endif
 
@@ -317,7 +314,7 @@ BUILD_DEFINITIONS := \
 	$(if $(filter 1,$(NO_TOILETLINE)),-DKOSH_NO_TOILETLINE,) \
 	$(if $(filter 1,$(NO_KOSHKIT)),-DKOSH_NO_KOSHKIT,) \
 	$(if $(filter 1,$(HARDENED)),-DKOSH_HARDENED,) \
-	$(if $(filter 1,$(IS_MUSL_LIBC)),-DKOSH_VENDORED_REGEX,)
+	$(if $(REGEX_SOURCES),-DKOSH_VENDORED_REGEX,)
 
 CXXFLAGS := \
 	-Wall \

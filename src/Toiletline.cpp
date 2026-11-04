@@ -122,7 +122,7 @@ tl_arena_realloc(opaque *pointer, usize length) -> opaque *
 /* only the interactive loop reads lines, so the large editor buffers stay
    out of the thread-local block that every process and worker clears. */
 #define TL_SHARED_EDITOR_BUFFERS
-#if defined _WIN32 || defined KOSH_VENDORED_REGEX
+#if defined KOSH_VENDORED_REGEX
 #define TL_REGEX_HEADER "../../vendor/regex/regex.h"
 #endif
 #define TL_ASSERT           ASSERT
