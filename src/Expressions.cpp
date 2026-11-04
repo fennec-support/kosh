@@ -3919,6 +3919,39 @@ internal::write_ast_redirection(AstWriter         &out,
   out.close();
 }
 
+static fn
+descriptor_description(i32 fd) throws -> String
+{
+  switch (fd) {
+  case 0:  return String{heap_allocator(), "standard input"};
+  case 1:  return String{heap_allocator(), "standard output"};
+  case 2:  return String{heap_allocator(), "standard error"};
+  default: return "descriptor " + String::from(fd, heap_allocator());
+  }
+}
+
+fn
+internal::duplication_error(const Redirection &redirection,
+                            i32                from_fd,
+                            i32                target_fd,
+                            SourceLocation     command_location) throws
+    -> ErrorWithLocation
+{
+  let const reason   = os::last_system_error_message();
+  let       location = command_location;
+
+  if (redirection.span_length != 0) {
+    location =
+        SourceLocation{redirection.span_position, redirection.span_length,
+                       command_location.source_name_index};
+  }
+
+  return ErrorWithLocation{
+      location, "Unable to duplicate descriptor " +
+                    String::from(from_fd, heap_allocator()) + " onto " +
+                    descriptor_description(target_fd) + ": " + reason};
+}
+
 cold fn
 Command::write_ast_prefix_assignments(AstWriter &out) const throws
     -> void

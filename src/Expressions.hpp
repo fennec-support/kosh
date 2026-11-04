@@ -1494,6 +1494,8 @@ public:
   i32                     fd;
   i32                     dup_fd;
   u32                     operator_position;
+  u32                     span_position;
+  u32                     span_length;
   Kind                    kind;
   Origin                  origin;
   bool                    has_state_changing_target;

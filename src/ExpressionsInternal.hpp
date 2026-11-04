@@ -29,6 +29,13 @@ write_ast_redirection(AstWriter         &out,
                       const Redirection &redirection) throws -> void;
 
 fn
+duplication_error(const Redirection &redirection,
+                  i32                from_fd,
+                  i32                target_fd,
+                  SourceLocation     command_location) throws
+    -> ErrorWithLocation;
+
+fn
 report_command_resolution_error(
     EvalContext &cxt, CommandResolutionErrorWithLocation &e) throws
     -> void;

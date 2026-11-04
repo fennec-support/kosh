@@ -369,3 +369,10 @@ printf '%s\n' "$out" | sed "s|$d|DIR|g" | "$BIN_DIR/invoke-normalize-trace" "$BI
 printf '== two command strings carry the command line frame\n'
 out=$("$BIN" --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))' 2>&1)
 printf '%s\n' "$out" | sed "s|$d|DIR|g" | "$BIN_DIR/invoke-normalize-trace" "$BIN"
+
+cat > closed_descriptor.sh <<'EOF'
+echo hi 2>&7
+exec 4>&9
+EOF
+run "a closed duplication source points at the redirection" \
+    "$BIN" --mood bash closed_descriptor.sh 7>&- 9>&-

@@ -2277,12 +2277,8 @@ SimpleCommand::redirect_exec_context(ExecContext &ec, EvalContext &cxt) const
         let const copied = os::duplicate_shell_fd(source_fd);
 
         if (copied == KOSH_INVALID_FD) {
-          let const location = redir.target != nullptr
-                                   ? redir.target->source_location()
-                                   : source_location();
-          throw ErrorWithLocation{location,
-                                  String::from(source_fd, heap_allocator()) +
-                                      ": Bad file descriptor"};
+          throw internal::duplication_error(redir, source_fd, target_fd,
+                                            source_location());
         }
 
         /* at this point: target_fd is at most 2, source_fd differs from

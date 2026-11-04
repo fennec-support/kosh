@@ -283,6 +283,7 @@ private:
       i32                                  fd,
       Token::Kind                          op_kind,
       const SourceLocation                &op_location,
+      u32                                  span_start_position,
       Maybe<SourceLocation>               &first_location,
       ArrayList<expressions::Redirection> &out,
       const Token                         *fd_allocation_name_token,

@@ -488,3 +488,11 @@ note: The right operand evaluated to 0.
 note: The right operand evaluated to 0.
 1:0: trace:
      1 |  KOSH --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))'
+== a closed duplication source points at the redirection
+closed_descriptor.sh:1:9: error: Unable to duplicate descriptor 7 onto standard error: Bad file descriptor.
+     1 |  echo hi 2>&7
+       |          ^~~~
+closed_descriptor.sh:2:6: error: Unable to duplicate descriptor 9 onto descriptor 4: Bad file descriptor.
+     2 |  exec 4>&9
+       |       ^~~~
+rc=1

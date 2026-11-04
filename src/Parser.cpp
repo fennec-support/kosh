@@ -1486,6 +1486,7 @@ Parser::build_file_or_dup_redirection(
     i32                                  fd,
     Token::Kind                          op_kind,
     const SourceLocation                &op_location,
+    u32                                  span_start_position,
     Maybe<SourceLocation>               &first_location,
     ArrayList<expressions::Redirection> &out,
     const Token                         *fd_allocation_name_token,
@@ -1514,7 +1515,12 @@ Parser::build_file_or_dup_redirection(
       m_lexer.advance_past_last_peek();
       Token *from = next_redirection_word("Expected a descriptor after '&'");
 
-      let const &from_word = static_cast<tokens::WordToken *>(from)->word();
+      let const  from_location = from->source_location();
+      let const &from_word     = static_cast<tokens::WordToken *>(from)->word();
+
+      redir.span_position = span_start_position;
+      redir.span_length =
+          from_location.position + from_location.length - span_start_position;
 
       redir.kind = (op_kind == Token::Kind::Less)
                        ? expressions::Redirection::Kind::DuplicateInput
@@ -1637,12 +1643,12 @@ Parser::build_both_streams_redirection(
     ArrayList<expressions::Redirection> &out,
     assignment_update_mode               update_mode) throws -> void
 {
-  build_file_or_dup_redirection(1,
-                                update_mode == assignment_update_mode::Append
-                                    ? Token::Kind::DoubleGreater
-                                    : Token::Kind::Greater,
-                                op_location, first_location, out, nullptr,
-                                redirection_descriptor_spelling::Explicit);
+  build_file_or_dup_redirection(
+      1,
+      update_mode == assignment_update_mode::Append ? Token::Kind::DoubleGreater
+                                                    : Token::Kind::Greater,
+      op_location, op_location.position, first_location, out, nullptr,
+      redirection_descriptor_spelling::Explicit);
   out.back().is_both_streams_spelling = true;
   out.push(stderr_to_stdout_dup(expressions::Redirection::Origin::BothStreams,
                                 op_location.position));
@@ -1855,8 +1861,8 @@ Parser::try_parse_descriptor_prefixed_redirection(
       build_here_string_redirection(fd, op_location, first_location, out);
       out.back().fd_allocation_name_token = allocation_token;
     } else {
-      build_file_or_dup_redirection(fd, nk, op_location, first_location, out,
-                                    allocation_token,
+      build_file_or_dup_redirection(fd, nk, op_location, word_location.position,
+                                    first_location, out, allocation_token,
                                     redirection_descriptor_spelling::Explicit);
     }
 
@@ -1881,7 +1887,8 @@ Parser::try_build_operator_redirection(
   case Token::Kind::Less:
     m_lexer.advance_past_last_peek();
     build_file_or_dup_redirection(op_kind == Token::Kind::Less ? 0 : 1, op_kind,
-                                  op_location, first_location, out, nullptr,
+                                  op_location, op_location.position,
+                                  first_location, out, nullptr,
                                   redirection_descriptor_spelling::Implicit);
 
     return true;

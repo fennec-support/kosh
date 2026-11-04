@@ -2004,13 +2004,8 @@ RedirectedCommand::evaluate_redirected(EvalContext &cxt) const throws
 
       saved_descriptors.push(saved);
       if (!saved.is_dup2_ok) {
-        let const location = redir.target != nullptr
-                                 ? redir.target->source_location()
-                                 : source_location();
-
-        throw ErrorWithLocation{location,
-                                String::from(r.dup_from_fd, heap_allocator()) +
-                                    ": Bad file descriptor"};
+        throw internal::duplication_error(redir, r.dup_from_fd, r.target_fd,
+                                          source_location());
       }
 
       break;

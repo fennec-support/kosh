@@ -568,14 +568,9 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
           if (!os::replace_descriptor(redir.fd,
                                       os::descriptor_for_shell_fd(from_fd)))
           {
-            let const location = redir.target != nullptr
-                                     ? redir.target->source_location()
-                                     : source_location();
-
             did_redirection_open_fail = true;
-            throw ErrorWithLocation{location,
-                                    String::from(from_fd, heap_allocator()) +
-                                        ": Bad file descriptor"};
+            throw internal::duplication_error(redir, from_fd, redir.fd,
+                                              source_location());
           }
 
           break;
@@ -615,14 +610,9 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
 
         dup_saved_descriptors.push(saved);
         if (!saved.is_dup2_ok) {
-          let const location = redir.target != nullptr
-                                   ? redir.target->source_location()
-                                   : source_location();
-
           did_redirection_open_fail = true;
-          throw ErrorWithLocation{location,
-                                  String::from(from_fd, heap_allocator()) +
-                                      ": Bad file descriptor"};
+          throw internal::duplication_error(redir, from_fd, redir.fd,
+                                            source_location());
         }
 
         break;
