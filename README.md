@@ -144,9 +144,8 @@ Koshka operates across four "moods" and three shell identities (similar to
 Zsh's `emulate` builtin).
 
 - `kosh` (default). Bash with whole-script static analysis and optimization
-  enabled, which rejects risky Bash on purpose. Risky constructs that Bash runs
-  without complaint, such as an unquoted `echo $HOME`, will be rejected before
-  anything even runs.
+  enabled. The analysis rejects risky constructs that Bash runs without
+  complaint, such as an unquoted `echo $HOME`, before the script runs.
 - `bash`. Drop-in Bash 5.3 compatibility. Run legacy scripts untouched via
   `kosh --mood bash script.bash`.
 - `bash-posix`. Bash behavior with POSIX mode.
