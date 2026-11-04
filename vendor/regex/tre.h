@@ -30,6 +30,7 @@
 */
 
 #include <regex.h>
+#include <stdlib.h>
 #include <wchar.h>
 #include <wctype.h>
 
@@ -103,7 +104,22 @@ static inline int tre_utf8_decode(tre_char_t *result, const char *text,
   return (int) byte_count;
 }
 
+#if defined _WIN32
 #define tre_mbrtowc(pwc, s, n, ps) tre_utf8_decode((pwc), (s), (n))
+#else
+/* The C library decodes by the locale, so the C locale yields one character
+   per byte. */
+static inline int tre_locale_decode(tre_char_t *result, const char *text,
+                                    size_t length)
+{
+  wchar_t wide;
+  int byte_count = mbtowc(&wide, text, length);
+  if (byte_count >= 0) *result = (tre_char_t) wide;
+  return byte_count;
+}
+
+#define tre_mbrtowc(pwc, s, n, ps) tre_locale_decode((pwc), (s), (n))
+#endif
 
 /* Wide characters. */
 typedef uint32_t tre_cint_t;

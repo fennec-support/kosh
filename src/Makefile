@@ -117,10 +117,6 @@ OBJ_DIR ?= o/$(TARGET)/$(MODE)$(BUILD_VARIANT_SUFFIX)
 endif
 OBJECT_DIRECTORY := $(OBJ_DIR)
 
-REGEX_OBJECTS := $(REGEX_SOURCES:%=$(OBJECT_DIRECTORY)/vendor/regex/%.o)
-OBJECTS := $(SOURCES:%.cpp=$(OBJECT_DIRECTORY)/%.o) $(REGEX_OBJECTS)
-DEPENDENCY_FILES := $(OBJECTS:.o=.d)
-
 MODE_SUFFIX := $(if $(filter rel,$(MODE)),$(if $(filter generate,$(PGO)),-pgo-gen,)$(if $(filter cs-generate,$(PGO)),-pgo-csgen,),-$(MODE))
 ifeq ($(MODE), cosmo)
 OUTPUT_PATH := ../kosh$(MODE_SUFFIX).com
@@ -162,6 +158,24 @@ CXX := zig c++ -target $(LINUX_TARGET_ARCHITECTURE)-linux-musl
 OBJCOPY ?= llvm-objcopy
 endif
 OBJCOPY ?= objcopy
+
+# The regex of musl rejects back references in an extended expression, so a
+# musl build links the vendored regex, which accepts them.
+IS_MUSL_LIBC := 0
+ifeq ($(TARGET), Linux)
+ifeq ($(IS_LINUX_CROSS_COMPILATION), 1)
+IS_MUSL_LIBC := 1
+else ifneq ($(findstring musl,$(shell $(CXX) -dumpmachine 2>/dev/null)),)
+IS_MUSL_LIBC := 1
+endif
+endif
+ifeq ($(IS_MUSL_LIBC), 1)
+REGEX_SOURCES := regcomp regerror regexec tre-mem
+endif
+
+REGEX_OBJECTS := $(REGEX_SOURCES:%=$(OBJECT_DIRECTORY)/vendor/regex/%.o)
+OBJECTS := $(SOURCES:%.cpp=$(OBJECT_DIRECTORY)/%.o) $(REGEX_OBJECTS)
+DEPENDENCY_FILES := $(OBJECTS:.o=.d)
 
 # A Darwin cross build uses osxcross for arm64. An environment CXX serves host
 # builds, so only a command-line CXX replaces oa64-clang++, and the compiler
@@ -302,7 +316,8 @@ BUILD_DEFINITIONS := \
 	$(if $(filter tinyrel,$(MODE)),-DKOSH_TINYREL,) \
 	$(if $(filter 1,$(NO_TOILETLINE)),-DKOSH_NO_TOILETLINE,) \
 	$(if $(filter 1,$(NO_KOSHKIT)),-DKOSH_NO_KOSHKIT,) \
-	$(if $(filter 1,$(HARDENED)),-DKOSH_HARDENED,)
+	$(if $(filter 1,$(HARDENED)),-DKOSH_HARDENED,) \
+	$(if $(filter 1,$(IS_MUSL_LIBC)),-DKOSH_VENDORED_REGEX,)
 
 CXXFLAGS := \
 	-Wall \
@@ -611,7 +626,8 @@ endif
 endif
 
 REGEX_COMPILER_FLAGS := \
-	$(filter-out -std=c++23 -fno-rtti,$(CXXFLAGS)) -std=c11 -I../vendor/regex
+	$(filter-out -std=c++23 -fno-rtti,$(CXXFLAGS)) -std=c11 -I../vendor/regex \
+	-Wno-sign-compare
 
 .DEFAULT_GOAL := kosh
 

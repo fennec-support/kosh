@@ -26,7 +26,11 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <pthread.h>
+#if defined KOSH_VENDORED_REGEX
+#include "../../vendor/regex/regex.h"
+#else
 #include <regex.h>
+#endif
 #include <spawn.h>
 #include <sys/ioctl.h>
 #include <sys/file.h>
