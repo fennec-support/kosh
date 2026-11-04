@@ -262,4 +262,131 @@ koshkit unexpand -t /4,8 tabrun 2>/dev/null; echo "status=$?"
 koshkit unexpand -t 2,/4,+3 tabrun 2>/dev/null; echo "status=$?"
 koshkit expand -t 8/4 tabbed 2>/dev/null; echo "status=$?"
 
+# Each row holds an extended expression and a subject. A match prints the
+# whole match and every group in brackets; no match prints a dash.
+match_rows()
+{
+  while IFS=$'\t' read -r pattern subject; do
+    if [[ $subject =~ $pattern ]]; then
+      printf '%s' "$pattern"
+      printf ' [%s]' "${BASH_REMATCH[@]}"
+      printf '\n'
+    else
+      printf '%s -\n' "$pattern"
+    fi
+  done
+}
+
+match_rows <<'EOF'
+abc	xabcy
+^abc	abcx
+^abc	xabc
+abc$	xabc
+abc$	abcx
+^$
+a.c	abc
+a.c	ac
+[abc]+	xxbcay
+[^abc]+	abcdef
+[a-c]+	zzbab
+[]a]+	x]a]
+[^]a]+	]abc
+[a-]+	x-a-
+[[:digit:]]+	ab123c
+[[:alpha:]]+	12ab3
+[[:space:]]+	a 	 b
+[[:upper:]][[:lower:]]+	xHello
+[[:punct:]]+	ab,.;c
+[[:alnum:]_]+	-ab_1-
+[[:xdigit:]]+	zzBEEFq
+[[:digit:][:upper:]]+	abC4De
+ab*c	ac
+ab*c	abbbc
+ab+c	ac
+ab?c	abc
+ab?c	abbc
+a{3}	aaaa
+a{2,}	aaaaa
+a{1,2}	aaa
+(ab){2}	ababab
+a{0}b	ab
+x{2,3}y	xxxxy
+cat|category	xcategory
+(a|ab)(c|bcd)	abcd
+(foo|foobar)baz	foobarbaz
+([a-z]+)([0-9]+)	--ab12--
+(a(b(c)))	abc
+(a)|(b)	b
+(x)(y)?z	xz
+^(.+)@(.+)$	user@host
+a\.c	abc
+a\.c	a.c
+a\+	a+
+\(a\)	(a)
+a\|b	a|b
+\$	a$b
+(a)\1	aa
+(ab)\1	xabab
+([a-z])\1	abccd
+(a)(b)\2\1	xabbay
+((a)b)\2	abab
+(x)\1*	xxxy
+^(.+)\1$	abcabc
+^(.+)\1$	abcab
+(.)(.)(.)\3\2\1	xabccbay
+(((.?x){1,2})?ca)?b	abab
+((ca{1,2}){2}|x)+	aaca
+((a)\2)x	aax
+(.+)\1	xabab
+(a*)\1b	aaab
+x*(a?)\1	xab
+^a{1,2}(.*)\1	aa
+EOF
+
+(
+  shopt -s nocasematch
+  match_rows <<'EOF'
+hello	HeLLo
+[a-c]+	xABCd
+(ab)\1	abAB
+EOF
+)
+
+(
+  export LC_ALL=C.UTF-8
+  match_rows <<'EOF'
+é+	aééb
+[é]	xé
+^.$	é
+^.{2}$	éa
+(é)\1	éé
+(a)\1	éaa
+(a)\1b	éaab
+(éa)\1	éaéa
+x(é)\1$	xéé
+[^a]+	aéüa
+EOF
+)
+
+(
+  export LC_ALL=C
+  match_rows <<'EOF'
+^.{2}$	é
+^.$	é
+EOF
+)
+
+printf 'a12b345c6\n' | koshkit grep -oE '[0-9]+'
+printf 'xabab\nabba\n' | koshkit grep -E '(ab)\1'
+printf 'cat\ncats\nthe cat sat\n' | koshkit grep -wE 'cat'
+printf 'abab\nababx\n' | koshkit grep -xE '(ab)+'
+printf 'Hello hello\n' | koshkit grep -ioE 'h(el)lo'
+printf 'ab12 cd34\n' | koshkit sed -E 's/([a-z]+)([0-9]+)/\2\1/g'
+printf 'aabbc\n' | koshkit sed -E 's/(.)\1/<&>/g'
+printf 'abcabc\n' | koshkit sed 's/\(abc\)\1/[\1]/'
+printf 'one two\n' | koshkit sed -E 's/(one) (two)/\2 \1/'
+printf 'xééy\n' | LC_ALL=C.UTF-8 koshkit sed -E 's/(é)\1/<\1>/'
+koshkit expr abcabc : '\(abc\)\1'
+koshkit expr aab : 'a*b'
+
 cd .. || exit 1

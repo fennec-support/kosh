@@ -458,6 +458,7 @@ typedef struct
   int state_id;
   int next_c;
   regoff_t *tags;
+  int *states_seen;
 #ifdef TRE_MBSTATE
   mbstate_t mbstate;
 #endif /* TRE_MBSTATE */
@@ -492,17 +493,17 @@ typedef struct tre_backtrack_struct
       if (!s) {                                                                \
         tre_bt_mem_destroy(mem);                                               \
         if (tags) xfree(tags);                                                 \
-        if (pmatch) xfree(pmatch);                                             \
         if (states_seen) xfree(states_seen);                                   \
         return REG_ESPACE;                                                     \
       }                                                                        \
       s->prev = stack;                                                         \
       s->next = NULL;                                                          \
       s->item.tags = tre_bt_mem_alloc(mem, sizeof(*tags) * tnfa->num_tags);    \
-      if (!s->item.tags) {                                                     \
+      s->item.states_seen =                                                    \
+          tre_bt_mem_alloc(mem, sizeof(*states_seen) * tnfa->num_states);      \
+      if (!s->item.tags || !s->item.states_seen) {                             \
         tre_bt_mem_destroy(mem);                                               \
         if (tags) xfree(tags);                                                 \
-        if (pmatch) xfree(pmatch);                                             \
         if (states_seen) xfree(states_seen);                                   \
         return REG_ESPACE;                                                     \
       }                                                                        \
@@ -517,6 +518,8 @@ typedef struct tre_backtrack_struct
     stack->item.next_c = (_next_c);                                            \
     for (i = 0; i < tnfa->num_tags; i++)                                       \
       stack->item.tags[i] = (_tags)[i];                                        \
+    for (i = 0; i < tnfa->num_states; i++)                                     \
+      stack->item.states_seen[i] = states_seen[i];                             \
     BT_STACK_MBSTATE_IN;                                                       \
   } while (0)
 
@@ -528,14 +531,49 @@ typedef struct tre_backtrack_struct
     str_byte = stack->item.str_byte;                                           \
     state = stack->item.state;                                                 \
     next_c = stack->item.next_c;                                               \
+    pos_add_next = str_byte - (const char *) string - pos;                     \
     for (i = 0; i < tnfa->num_tags; i++)                                       \
       tags[i] = stack->item.tags[i];                                           \
+    for (i = 0; i < tnfa->num_states; i++)                                     \
+      states_seen[i] = stack->item.states_seen[i];                             \
     BT_STACK_MBSTATE_OUT;                                                      \
     stack = stack->prev;                                                       \
   } while (0)
 
 #undef MIN
 #define MIN(a, b) ((a) <= (b) ? (a) : (b))
+
+/* Returns the byte count of the text at subject that repeats the
+   group_byte_count bytes at group, or -1. Under REG_ICASE a character also
+   matches its lower and upper case forms, as a literal does. */
+static regoff_t tre_match_backref(const tre_tnfa_t *tnfa, const char *group,
+                                  regoff_t group_byte_count,
+                                  const char *subject)
+{
+  const char *group_end = group + group_byte_count;
+  const char *cursor = subject;
+
+  if (!(tnfa->cflags & REG_ICASE))
+    return strncmp(group, subject, (size_t) group_byte_count) == 0
+               ? group_byte_count
+               : -1;
+
+  while (group < group_end) {
+    tre_char_t group_c, subject_c;
+    int group_char_byte_count =
+        tre_mbrtowc(&group_c, group, (size_t) (group_end - group), NULL);
+    int subject_char_byte_count =
+        tre_mbrtowc(&subject_c, cursor, MB_LEN_MAX, NULL);
+    if (group_char_byte_count <= 0 || subject_char_byte_count <= 0) return -1;
+    if (group_c != subject_c && tre_tolower(group_c) != subject_c &&
+        tre_toupper(group_c) != subject_c)
+      return -1;
+    group += group_char_byte_count;
+    cursor += subject_char_byte_count;
+  }
+
+  return cursor - subject;
+}
 
 static reg_errcode_t tre_tnfa_run_backtrack(const tre_tnfa_t *tnfa,
                                             const void *string,
@@ -580,7 +618,6 @@ static reg_errcode_t tre_tnfa_run_backtrack(const tre_tnfa_t *tnfa,
   tre_backtrack_t stack;
 
   tre_tnfa_transition_t *trans_i;
-  regmatch_t *pmatch = NULL;
   int ret;
 
 #ifdef TRE_MBSTATE
@@ -599,13 +636,6 @@ static reg_errcode_t tre_tnfa_run_backtrack(const tre_tnfa_t *tnfa,
   if (tnfa->num_tags) {
     tags = xmalloc(sizeof(*tags) * tnfa->num_tags);
     if (!tags) {
-      ret = REG_ESPACE;
-      goto error_exit;
-    }
-  }
-  if (tnfa->num_submatches) {
-    pmatch = xmalloc(sizeof(*pmatch) * tnfa->num_submatches);
-    if (!pmatch) {
       ret = REG_ESPACE;
       goto error_exit;
     }
@@ -630,6 +660,7 @@ retry: {
 
   state = NULL;
   pos = pos_start;
+  pos_add_next = str_byte - (const char *) string - pos;
   GET_NEXT_WCHAR();
   pos_start = pos;
   next_c_start = next_c;
@@ -698,32 +729,38 @@ retry: {
       regoff_t so, eo;
       int bt = trans_i->u.backref;
       regoff_t bt_len;
-      int result;
 
-      /* Get the substring we need to match against.  Remember to
-         turn off REG_NOSUB temporarily. */
-      tre_fill_pmatch(bt + 1, pmatch, tnfa->cflags & ~REG_NOSUB, tnfa, tags,
-                      pos);
-      so = pmatch[bt].rm_so;
-      eo = pmatch[bt].rm_eo;
-      bt_len = eo - so;
+      /* Get the substring we need to match against. */
+      {
+        /* The tags of the group itself, since an enclosing group can still
+           be open. */
+        const tre_submatch_data_t *group = &tnfa->submatch_data[bt];
+        so = group->so_tag == tnfa->end_tag ? pos : tags[group->so_tag];
+        eo = group->eo_tag == tnfa->end_tag ? pos : tags[group->eo_tag];
+        if (eo < 0 || eo < so) so = -1;
+      }
+      /* A group that took no part in the match matches nothing. */
+      if (so < 0) goto backtrack;
+      bt_len = tre_match_backref(tnfa, (const char *) string + so, eo - so,
+                                 (const char *) string + pos);
 
-      result =
-          strncmp((const char *) string + so, str_byte - 1, (size_t) bt_len);
-
-      if (result == 0) {
-        /* Back reference matched.  Check for infinite loop. */
+      if (bt_len >= 0) {
+        /* Back reference matched.  The backtracking stack restores
+           states_seen, so it holds one more than the position of the last
+           empty match of each state on the current path, and an empty match
+           that repeats there loops. */
         if (bt_len == 0) empty_br_match = 1;
-        if (empty_br_match && states_seen[trans_i->state_id]) {
+        if (empty_br_match && states_seen[trans_i->state_id] == pos + 1) {
           goto backtrack;
         }
 
-        states_seen[trans_i->state_id] = empty_br_match;
+        states_seen[trans_i->state_id] = empty_br_match ? (int) pos + 1 : 0;
 
         /* Advance in input string and resync `prev_c', `next_c'
            and pos. */
-        str_byte += bt_len - 1;
-        pos += bt_len - 1;
+        pos += bt_len;
+        str_byte = (const char *) string + pos;
+        pos_add_next = 0;
         GET_NEXT_WCHAR();
       } else {
         goto backtrack;
@@ -783,15 +820,11 @@ retry: {
 backtrack:
       /* A matching transition was not found.  Try to backtrack. */
       if (stack->prev) {
-        if (stack->item.state->assertions & ASSERT_BACKREF) {
-          states_seen[stack->item.state_id] = 0;
-        }
-
         BT_STACK_POP();
       } else if (match_eo < 0) {
         /* Try starting from a later position in the input string. */
-        /* Check for end of string. */
-        if (next_c == L'\0') {
+        /* Check for end of string at the start of this attempt. */
+        if (next_c_start == L'\0') {
           break;
         }
         next_c = next_c_start;
@@ -813,7 +846,6 @@ error_exit:
   tre_bt_mem_destroy(mem);
 #ifndef TRE_USE_ALLOCA
   if (tags) xfree(tags);
-  if (pmatch) xfree(pmatch);
   if (states_seen) xfree(states_seen);
 #endif /* !TRE_USE_ALLOCA */
 

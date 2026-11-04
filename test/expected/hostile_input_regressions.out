@@ -446,6 +446,10 @@ entered
 0
 0
 1
+--- a back reference spans characters and follows nocasematch ---
+0 éé
+0 aab
+0 abAB
 --- a tilde result is literal ---
 a*
 none

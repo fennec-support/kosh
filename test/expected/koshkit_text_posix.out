@@ -599,3 +599,97 @@ a b c d e
 status=1
 status=1
 status=1
+abc [abc]
+^abc [abc]
+^abc -
+abc$ [abc]
+abc$ -
+^$ []
+a.c [abc]
+a.c -
+[abc]+ [bca]
+[^abc]+ [def]
+[a-c]+ [bab]
+[]a]+ []a]]
+[^]a]+ [bc]
+[a-]+ [-a-]
+[[:digit:]]+ [123]
+[[:alpha:]]+ [ab]
+[[:space:]]+ [ 	 ]
+[[:upper:]][[:lower:]]+ [Hello]
+[[:punct:]]+ [,.;]
+[[:alnum:]_]+ [ab_1]
+[[:xdigit:]]+ [BEEF]
+[[:digit:][:upper:]]+ [C4D]
+ab*c [ac]
+ab*c [abbbc]
+ab+c -
+ab?c [abc]
+ab?c -
+a{3} [aaa]
+a{2,} [aaaaa]
+a{1,2} [aa]
+(ab){2} [abab] [ab]
+a{0}b [b]
+x{2,3}y [xxxy]
+cat|category [category]
+(a|ab)(c|bcd) [abcd] [a] [bcd]
+(foo|foobar)baz [foobarbaz] [foobar]
+([a-z]+)([0-9]+) [ab12] [ab] [12]
+(a(b(c))) [abc] [abc] [bc] [c]
+(a)|(b) [b] [] [b]
+(x)(y)?z [xz] [x] []
+^(.+)@(.+)$ [user@host] [user] [host]
+a\.c -
+a\.c [a.c]
+a\+ [a+]
+\(a\) [(a)]
+a\|b [a|b]
+\$ [$]
+(a)\1 [aa] [a]
+(ab)\1 [abab] [ab]
+([a-z])\1 [cc] [c]
+(a)(b)\2\1 [abba] [a] [b]
+((a)b)\2 [aba] [ab] [a]
+(x)\1* [xxx] [x]
+^(.+)\1$ [abcabc] [abc]
+^(.+)\1$ -
+(.)(.)(.)\3\2\1 [abccba] [a] [b] [c]
+(((.?x){1,2})?ca)?b [b] [] [] []
+((ca{1,2}){2}|x)+ -
+((a)\2)x [aax] [aa] [a]
+(.+)\1 [abab] [ab]
+(a*)\1b [aab] [a]
+x*(a?)\1 [x] []
+^a{1,2}(.*)\1 [aa] []
+hello [HeLLo]
+[a-c]+ [ABC]
+(ab)\1 [abAB] [ab]
+é+ [éé]
+[é] [é]
+^.$ [é]
+^.{2}$ [éa]
+(é)\1 [éé] [é]
+(a)\1 [aa] [a]
+(a)\1b [aab] [a]
+(éa)\1 [éaéa] [éa]
+x(é)\1$ [xéé] [é]
+[^a]+ [éü]
+^.{2}$ [é]
+^.$ -
+12
+345
+6
+xabab
+cat
+the cat sat
+abab
+Hello
+hello
+12ab 34cd
+<aa><bb>c
+[abc]
+two one
+x<é>y
+abc
+3

@@ -385,6 +385,8 @@ define_pushf(int, int) define_pushf(voidptr, void *)
   int position;
   /* The highest back reference or -1 if none seen so far. */
   int max_backref;
+  /* Bit N is set once group N, for N up to 9, has closed. */
+  int closed_groups;
   /* Compilation flags. */
   int cflags;
 } tre_parse_ctx_t;
@@ -828,6 +830,7 @@ static reg_errcode_t parse_atom(tre_parse_ctx_t *ctx, const char *s)
       if ((unsigned) *s - '1' < 9) {
         /* back reference */
         int val = *s - '0';
+        if (!(ctx->closed_groups & (1 << val))) return REG_ESUBREG;
         node = tre_ast_new_literal(ctx->mem, BACKREF, val, ctx->position++);
         ctx->max_backref = MAX(val, ctx->max_backref);
       } else {
@@ -1011,8 +1014,10 @@ parse_iter:
         } else if (c == ')')
           s++;
         depth--;
-        err = marksub(ctx, nunion, tre_stack_pop_int(stack));
+        int closed_subid = tre_stack_pop_int(stack);
+        err = marksub(ctx, nunion, closed_subid);
         if (err != REG_OK) return err;
+        if (closed_subid <= 9) ctx->closed_groups |= 1 << closed_subid;
         if (!c && depth < 0) {
           ctx->submatch_id = subid;
           return REG_OK;
@@ -1699,7 +1704,6 @@ static reg_errcode_t tre_expand_ast(tre_mem_t mem, tre_stack_t *stack,
   int pos_add = 0;
   int pos_add_total = 0;
   int max_pos = 0;
-  int iter_depth = 0;
 
   STACK_PUSHR(stack, voidptr, ast);
   STACK_PUSHR(stack, int, EXPAND_RECURSE);
@@ -1740,6 +1744,7 @@ static reg_errcode_t tre_expand_ast(tre_mem_t mem, tre_stack_t *stack,
       }
       case ITERATION: {
         tre_iteration_t *iter = node->obj;
+        STACK_PUSHX(stack, int, pos_add_total);
         STACK_PUSHX(stack, int, pos_add);
         STACK_PUSHX(stack, voidptr, node);
         STACK_PUSHX(stack, int, EXPAND_AFTER_ITER);
@@ -1749,7 +1754,6 @@ static reg_errcode_t tre_expand_ast(tre_mem_t mem, tre_stack_t *stack,
            then don't increase the `pos' fields of the nodes now, it
            will get done when expanding. */
         if (iter->min > 1 || iter->max > 1) pos_add = 0;
-        iter_depth++;
         break;
       }
       default: assert(0); break;
@@ -1758,7 +1762,9 @@ static reg_errcode_t tre_expand_ast(tre_mem_t mem, tre_stack_t *stack,
     case EXPAND_AFTER_ITER: {
       tre_iteration_t *iter = node->obj;
       int pos_add_last;
-      pos_add = tre_stack_pop_int(stack);
+      int pos_add_at_entry = tre_stack_pop_int(stack);
+      int pos_add_total_at_entry = tre_stack_pop_int(stack);
+      pos_add = pos_add_at_entry;
       pos_add_last = pos_add;
       if (iter->min > 1 || iter->max > 1) {
         tre_ast_node_t *seq1 = NULL, *seq2 = NULL;
@@ -1819,9 +1825,10 @@ static reg_errcode_t tre_expand_ast(tre_mem_t mem, tre_stack_t *stack,
         node->type = seq1->type;
       }
 
-      iter_depth--;
       pos_add_total += pos_add - pos_add_last;
-      if (iter_depth == 0) pos_add = pos_add_total;
+      /* The nodes after this one shift by the shift at its entry and by
+         every position that the expansions inside it added. */
+      pos_add = pos_add_at_entry + pos_add_total - pos_add_total_at_entry;
 
       break;
     }

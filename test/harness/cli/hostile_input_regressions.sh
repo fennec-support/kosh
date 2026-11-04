@@ -769,6 +769,16 @@ dot='a\.c'; [[ abc =~ $dot ]]; echo "$?"
 EOF
 "$BIN" --mood bash --no-diagnostics regex_variable.bash
 
+echo "--- a back reference spans characters and follows nocasematch ---"
+cat > regex_back_reference.bash <<'EOF'
+export LC_ALL=C.UTF-8
+back='(é)\1'; [[ éé =~ $back ]]; echo "$? ${BASH_REMATCH[0]}"
+back='(a)\1b'; [[ éaab =~ $back ]]; echo "$? ${BASH_REMATCH[0]}"
+shopt -s nocasematch
+back='(ab)\1'; [[ abAB =~ $back ]]; echo "$? ${BASH_REMATCH[0]}"
+EOF
+"$BIN" --mood bash --no-diagnostics regex_back_reference.bash
+
 echo "--- a tilde result is literal ---"
 cat > tilde_result.bash <<'EOF'
 ( touch ab; export HOME='a*'; echo ~; case ab in ~) echo match;; *) echo none;; esac
