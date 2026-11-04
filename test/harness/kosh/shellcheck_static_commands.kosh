@@ -126,3 +126,7 @@ seeded=0
 seeded_quiet() {
   seeded=1
 }
+
+ansi_c_separator_quiet() {
+  IFS=$'\t' read -r seeded <<< x
+}

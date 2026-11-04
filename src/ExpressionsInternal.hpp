@@ -215,6 +215,7 @@ struct assignment_value_shape
   bool has_only_literal_segments{true};
   bool has_quoted_literal_value{false};
   bool has_bare_literal_value{true};
+  bool has_written_escape{false};
 };
 
 fn

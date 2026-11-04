@@ -864,6 +864,8 @@ scan_assignment_value(AnalysisContext      &actx,
     case WordSegment::Kind::DoubleQuotedText:
       if (segment.text.view().find_character('"').has_value())
         shape.has_quoted_literal_value = true;
+      if (value_has_written_escape(segment.text.view()))
+        shape.has_written_escape = true;
       break;
 
     case WordSegment::Kind::UnquotedText: break;
@@ -932,7 +934,7 @@ check_assignment_value_shape(AnalysisContext             &actx,
   }
 
   if (input.name == "IFS" && input.shape.has_only_literal_segments &&
-      value_has_written_escape(value))
+      input.shape.has_written_escape)
   {
     actx.report_diagnostic(diagnostic_id::sc2141, input.location, {input.name});
   }
