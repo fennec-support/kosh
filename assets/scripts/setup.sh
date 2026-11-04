@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 #
 #    This file is a part of the Koshka shell, (c) toiletbril, 2026
@@ -57,7 +57,7 @@ set -g default-terminal xterm-256color
 EOF
 
 cat > "$DEMO_DIRECTORY/env.sh" << EOF
-#!/usr/bin/bash
+#!/usr/bin/env bash
 # Runs a command in the demo environment.
 exec env -i HOME='$DEMO_HOME' USER="\${USER:-$USER}" LOGNAME="\${USER:-$USER}" \\
   TERM=xterm-256color LANG=en_US.UTF-8 HOMEBREW_NO_ANALYTICS=1 \\

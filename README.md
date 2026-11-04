@@ -77,7 +77,7 @@ faster than ShellCheck across 300+ built-in diagnostics.
 Run `make MODE=rel bench` to launch the [benchmark](test/bin/run-bench) against
 Bash and Dash against scripts in [test/bench](test/bench).
 
-| 400,000 lines of shell checked in about a second and a half |
+| 400,000 lines of shell checked in under a second |
 | :-: |
 | ![Koshka checks a large shell script and reports diagnostics.](assets/lint-demo.gif) |
 

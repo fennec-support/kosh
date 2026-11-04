@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/usr/bin/env bash
 
 #
 #    This file is a part of the Koshka shell, (c) toiletbril, 2026
