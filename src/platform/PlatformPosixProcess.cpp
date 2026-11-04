@@ -2398,7 +2398,24 @@ format_time(StringView format, i64 epoch, time_zone zone) throws
 
   if (converted == nullptr) return None;
 
-  let const format_string = String{heap_allocator(), format};
+  let format_string = String{heap_allocator()};
+
+  for (usize position = 0; position < format.length; position++) {
+    if (format[position] != '%' || position + 1 == format.length) {
+      format_string += format[position];
+      continue;
+    }
+
+    position++;
+    if (zone == time_zone::Utc && format[position] == 'z') {
+      format_string += "+0000";
+      continue;
+    }
+
+    format_string += '%';
+    format_string += format[position];
+  }
+
   char      buffer[8192];
   let const written =
       strftime(buffer, sizeof(buffer), format_string.c_str(), &broken_down);
