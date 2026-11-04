@@ -176,6 +176,12 @@ jobs:
       - name: Run golden tests
         run: make test
 
+      - name: List the descriptors of a fresh shell
+        if: failure()
+        run: |
+          ./kosh-dbg -c 'lsof -a -p $$ -d 0-30; :' 3>&- 4>&- 5>&- 6>&- 7>&- 8>&- 9>&-
+          ./kosh-dbg -c '{ :; } 3>&-; lsof -a -p $$ -d 0-30; :' 3>&-
+
   debug-windows:
     name: Run debug build tests on Windows
     runs-on: windows-2025
