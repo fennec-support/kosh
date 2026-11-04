@@ -761,7 +761,7 @@ Redirections open, duplicate, or close descriptors for a command and process lef
 | `-v name` | True when a variable, array element, or positional parameter is set (`[[ ]]` only). |
 | `-R name` | True for a name reference with a target (not in `sh`). |
 | `-o option` | Tests a `set -o` option (`[[ ]]` in every mood; `test` and `[` only in the Bash moods). |
-| `s =~ regex` | Matches an ERE (`[[ ]]` only; a quoted part is literal; `.` matches newlines; `BASH_REMATCH` receives the match and groups, an unmatched group is empty; an invalid regex is an error with status `1`, where Bash returns `2`). |
+| `s =~ regex` | Matches an ERE (`[[ ]]` only; a quoted part is literal; `.` matches newlines; `BASH_REMATCH` receives the match and groups, an unmatched group is empty; an invalid regex is an error with status `2`). |
 | `-eq`, `-ne`, `-lt`, `-le`, `-gt`, `-ge` | Compares integers (in `[[ ]]` each operand is an arithmetic expression; in `test` a decimal integer, blanks allowed around it). |
 | `!`, `( )`, `&&`, `\|\|` | Negation, grouping, and combination inside `[[ ]]`. |
 
@@ -807,7 +807,7 @@ Redirections open, duplicate, or close descriptors for a command and process lef
 
 * **Syntax errors** - The parser reports every syntax error in one run. In `kosh`, analysis can also reject a script before it runs with status `1` (see [Static analysis and runtime diagnostics](#diagnostics)). An interactive shell rejects the line and takes the next one.
 * **Kosh mood** - Every arithmetic and expansion error ends the script with `1`.
-  * Also ends it: a failed redirection of a special builtin or compound command (`1`), a write error on standard output (`1`), an invalid regular expression (`1`), and a malformed `[[ ]]` (`2`).
+  * Also ends it: a failed redirection of a special builtin or compound command (`1`), a write error on standard output (`1`), and an invalid regular expression or a malformed `[[ ]]` (`2`).
   * A failure of another builtin, such as a missing alias, only sets the status.
 * **Bash moods** - An arithmetic error in `$(( ))`, a subscript, a substring offset, or an integer-variable assignment abandons the rest of the input line, as in Bash.
   * Remaining commands on the line do not run, `$?` is `1` on the next line, and neither `set -e` nor an `ERR` trap acts on it. An `eval`, sourced file, subshell, and command substitution each count as a separate line.

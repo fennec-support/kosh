@@ -4993,7 +4993,7 @@ T}@T{
 Matches an ERE (\f[CR][[ ]]\f[R] only; a quoted part is literal;
 \f[CR].\f[R] matches newlines; \f[CR]BASH_REMATCH\f[R] receives the
 match and groups, an unmatched group is empty; an invalid regex is an
-error with status \f[CR]1\f[R], where Bash returns \f[CR]2\f[R]).
+error with status \f[CR]2\f[R]).
 T}
 T{
 \f[CR]\-eq\f[R], \f[CR]\-ne\f[R], \f[CR]\-lt\f[R], \f[CR]\-le\f[R],
@@ -5264,8 +5264,8 @@ script with \f[CR]1\f[R].
 .IP \[bu] 2
 Also ends it: a failed redirection of a special builtin or compound
 command (\f[CR]1\f[R]), a write error on standard output (\f[CR]1\f[R]),
-an invalid regular expression (\f[CR]1\f[R]), and a malformed
-\f[CR][[ ]]\f[R] (\f[CR]2\f[R]).
+and an invalid regular expression or a malformed \f[CR][[ ]]\f[R]
+(\f[CR]2\f[R]).
 .IP \[bu] 2
 A failure of another builtin, such as a missing alias, only sets the
 status.

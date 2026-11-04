@@ -2,3 +2,4 @@
      1 |  [[ abc =~ ( ]]
        |            ^
 note: The pattern must be a valid extended regular expression.
+status 2

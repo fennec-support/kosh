@@ -107,6 +107,7 @@ re='(a+)(b+)'
 [[ b =~ (a)?b ]]; printf 'optional=<%s>\n' "${BASH_REMATCH[1]}"
 shopt -s nocasematch; [[ AbC =~ ^abc$ ]]; echo "nocase=$?"
 shopt -u nocasematch
+re='('; { [[ abc =~ $re ]]; } 2>/dev/null; echo "invalid=$?"
 (
   LC_ALL=C.UTF-8
   [[ привет =~ ^пр(ив)ет$ ]]; printf 'unicode=%s\n' "${BASH_REMATCH[1]}"

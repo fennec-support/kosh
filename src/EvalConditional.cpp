@@ -974,8 +974,9 @@ EvalContext::cached_compiled_regex(StringView pattern,
     reason += "The regular expression '";
     reason += pattern;
     reason += "' is invalid";
-    fail_conditional(reason.view(),
-                     "The pattern must be a valid extended regular expression");
+    fail_conditional_syntax(
+        reason.view(),
+        "The pattern must be a valid extended regular expression");
   }
 
   /* at this point: compiled holds a valid regex, and the cache lacks key. */
