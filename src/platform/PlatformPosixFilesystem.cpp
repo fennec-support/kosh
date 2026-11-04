@@ -867,16 +867,17 @@ acquire_process_lock(StringView       path,
 
 #if defined __APPLE__
   /* macOS has no advisory lock on a FIFO, so a FIFO is locked through a file
-     in the private temporary directory of the user that the device and inode
-     of the FIFO identify. Only kosh processes of the same user exclude each
-     other through it. */
-  if (errno == ENOTSUP || errno == EOPNOTSUPP) {
+     in the private temporary directory of the user, and the device and inode
+     of the FIFO identify that file. Only kosh processes of the same user
+     exclude each other through it. */
+  if (errno == ENOTSUP) {
     struct stat fifo_status{};
     char        user_directory[PATH_MAX];
-    let const   directory_length = ::confstr(
+    let const   directory_byte_count = ::confstr(
         _CS_DARWIN_USER_TEMP_DIR, user_directory, sizeof(user_directory));
 
-    if (directory_length > 0 && directory_length <= sizeof(user_directory) &&
+    if (directory_byte_count > 0 &&
+        directory_byte_count <= sizeof(user_directory) &&
         ::fstat(lock, &fifo_status) == 0 && S_ISFIFO(fifo_status.st_mode))
     {
       char proxy_path[PATH_MAX + 64];
@@ -891,12 +892,8 @@ acquire_process_lock(StringView       path,
                  O_RDONLY | O_CREAT | O_NOFOLLOW |
                      (inheritance == lock_inheritance::Private ? O_CLOEXEC : 0),
                  0600);
-      struct stat proxy_status{};
 
-      if (proxy >= 0 && ::fstat(proxy, &proxy_status) == 0 &&
-          S_ISREG(proxy_status.st_mode) && proxy_status.st_uid == ::geteuid() &&
-          ::flock(proxy, lock_flags) == 0)
-      {
+      if (proxy >= 0 && ::flock(proxy, lock_flags) == 0) {
         ::close(lock);
 
         return proxy;

@@ -622,7 +622,8 @@ make_os_args(const ArrayList<String> &args) throws -> os_args;
 
 fn
 last_system_error_message() throws -> String;
-/* the text of the C library error number error_number. */
+/* the text of the C library error number error_number. On POSIX, errors
+   that the C libraries word differently take the wording of glibc and macOS. */
 fn
 c_library_error_message(i32 error_number) throws -> String;
 fn

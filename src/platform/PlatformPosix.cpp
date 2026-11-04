@@ -2931,10 +2931,8 @@ portable_error_text(int error_number) wontthrow -> const char *
 {
   switch (error_number) {
   case EMFILE:       return "Too many open files";
-  case ENFILE:       return "Too many open files in system";
   case ENAMETOOLONG: return "File name too long";
   case ELOOP:        return "Too many levels of symbolic links";
-  case EXDEV:        return "Invalid cross-device link";
   case ENOTSUP:      return "Operation not supported";
   default:           return nullptr;
   }
