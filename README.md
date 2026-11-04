@@ -62,24 +62,20 @@ Editor plugins for real-time linting and formatting:
 
 **Koshka** is the Russian word for a cat.
 
-Packed into a single tiny cross-platform binary are a script interpreter, an
-interactive shell, a linter, a formatter, and an LSP server. Scripts written
-for Bash 5.3 or Dash will run completely unchanged with `--mood bash` or
-`--mood sh`, or through a `bash` or `sh` symlink.
+One small static cross-platform binary includes a script interpreter, an
+interactive shell, a linter, a formatter, and an LSP server. You can run
+unmodified Bash 5.3 and Dash scripts via `--mood bash`, `--mood sh`, or `bash`
+and `sh` symlinks.
 
-Expect 6x the execution speed of Bash and over 100x the linting speed
-of ShellCheck, with 300+ ShellCheck-style diagnostics baked straight into the
-binary. `make MODE=rel bench` runs the [benchmark](test/bin/run-bench) on the
-configure, primes, and generated scripts in [test/bench](test/bench) against
-Bash and Dash.
+After encountering a scripts, the parser will build a detailed syntax tree. The
+optimizer will fold constants and strip dead branches, and the analyzer will
+walk that tree to report warnings and errors. Finally, the interpreter will
+execute that exact tree, outrunning both Bash and ShellCheck.
 
-The whole script is parsed into a syntax tree before a single line of it runs.
-An optimizer folds constants and dead branches in that tree, and every node
-keeps its source positions, parsed arithmetic, and parameter references. The
-static analysis walks the same tree that the interpreter executes. The analysis
-is ludicrously fast, and whole-script diagnostics appear as you type. With all
-of that work Koshka still runs faster than Bash and lints faster than
-ShellCheck.
+2x speed of Dash, 6x the speed of Bash, and up to 50x+ in some workloads. 100x
+faster than ShellCheck across 300+ built-in diagnostics.
+Run `make MODE=rel bench` to launch the [benchmark](test/bin/run-bench) against
+Bash and Dash against scripts in [test/bench](test/bench).
 
 | 400,000 lines of shell checked in about a second and a half |
 | :-: |
