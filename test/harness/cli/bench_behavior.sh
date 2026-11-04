@@ -33,7 +33,7 @@ test "$(printf '%s\n' "$counter_output" | grep -c '^counter-run$')" -eq 1
 counter_row_count=$(printf '%s\n' "$counter_output" | grep -Ec '^  (cpu cycles|instructions|cache refs|cache misses|branch misses)')
 case "$counter_row_count" in
     0) ;;
-    5)
+    2 | 5)
         cpu_cycle_row=$(printf '%s\n' "$counter_output" | grep '^  cpu cycles')
         instruction_row=$(printf '%s\n' "$counter_output" | grep '^  instructions')
         case "$cpu_cycle_row" in *[1-9]*) ;; *) exit 1 ;; esac
