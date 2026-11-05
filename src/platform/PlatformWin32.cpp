@@ -860,6 +860,7 @@ save_and_replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow
   result.shell_fd = shell_fd;
 
   if (target == nullptr || target == INVALID_HANDLE_VALUE) {
+    SetLastError(ERROR_INVALID_HANDLE);
     result.is_dup2_ok = false;
 
     return result;
@@ -1154,6 +1155,8 @@ duplicate_shell_fd(i32 shell_fd) wontthrow -> os::descriptor
   let const original = descriptor_for_shell_fd(shell_fd);
 
   if (original == nullptr || original == INVALID_HANDLE_VALUE) {
+    SetLastError(ERROR_INVALID_HANDLE);
+
     return KOSH_INVALID_FD;
   }
 
@@ -1227,6 +1230,8 @@ replace_descriptor(i32 shell_fd, os::descriptor target) wontthrow -> bool
   const Maybe<DWORD> slot = std_handle_slot_for_shell_fd(shell_fd);
 
   if (target == nullptr || target == INVALID_HANDLE_VALUE) {
+    SetLastError(ERROR_INVALID_HANDLE);
+
     return false;
   }
 
