@@ -206,6 +206,8 @@
             Line "  -Help             print this help"
             Line "Environment: KOSH_INSTALL_PATH, KOSH_INSTALL_VERSION,"
             Line "  KOSH_INSTALL_DRY_RUN, KOSH_INSTALL_FORCE, NO_COLOR"
+            Line "irm | iex passes no flags. To pass the flags above, run:"
+            Line "  & ([scriptblock]::Create((irm `"https://fennec.support/kosh/install`"))) <flags>"
             return
         }
         if ($PSBoundParameters.ContainsKey("InstallPath")) {
@@ -224,6 +226,7 @@
         Say "Hi! This is Koshka Shell installer."
         Say "You can view the repository and this script at <github.com/fennec-support/kosh>"
         Line "Run '& ([scriptblock]::Create((irm `"https://fennec.support/kosh/install`"))) -Help' to view help and all of the useful options."
+        Line "Flags go after the closing parenthesis of that command, in place of -Help."
 
         $BIN_DIR = $InstallPath
         if (-not $BIN_DIR) { $BIN_DIR = $env:KOSH_INSTALL_PATH }
