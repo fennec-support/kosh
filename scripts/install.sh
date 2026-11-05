@@ -491,7 +491,7 @@
 
   if [ "$FILES" != "$BINARY" ] && command -v zstd >/dev/null
   then
-    FILES="$FILES kosh.1.zst kosh.5.zst"
+    FILES="$FILES kosh.1.zst kosh.5.zst kosh-switching.5.zst"
   fi
 
   WORK=$(mktemp -d)
@@ -608,9 +608,11 @@
     if [ -f kosh.1.zst ]
     then
       mkdir -p "$SHARE_DIR/man/man1" "$SHARE_DIR/man/man5"
-      zstd -dq kosh.1.zst kosh.5.zst
+      zstd -dq kosh.1.zst kosh.5.zst kosh-switching.5.zst
       install -m 644 kosh.1 "$SHARE_DIR/man/man1/kosh.1"
       install -m 644 kosh.5 "$SHARE_DIR/man/man5/kosh.5"
+      install -m 644 kosh-switching.5 \
+        "$SHARE_DIR/man/man5/kosh-switching.5"
     fi
   fi
 

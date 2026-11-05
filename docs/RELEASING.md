@@ -26,7 +26,7 @@ Complete the steps in order. Repositories are under
       with `<TBD>` notes.
 - [ ] Check the assets: `kosh-darwin-aarch64-X.Y.Z`, `kosh-linux-aarch64-X.Y.Z`,
       `kosh-linux-amd64-X.Y.Z`, `kosh-win32-amd64-X.Y.Z.exe`, `kosh.1.zst`,
-      `kosh.5.zst`, `kosh.bash`, and `SHA256SUMS`.
+      `kosh.5.zst`, `kosh-switching.5.zst`, `kosh.bash`, and `SHA256SUMS`.
 - [ ] Write the release notes, then turn off **prerelease** and mark it
       **latest**.
 - [ ] Check the installers against it:

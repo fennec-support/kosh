@@ -37,7 +37,7 @@ Download the release binary matching the target operating system and CPU archite
 | macOS on Apple silicon | `kosh-darwin-aarch64-X.Y.Z` |
 | Windows on x86-64 | `kosh-win32-amd64-X.Y.Z.exe` |
 
-* **Release bundle contents** - Releases include `SHA256SUMS`, compressed manual pages (`kosh.1.zst` and `kosh.5.zst`), and the Bash completion script (`kosh.bash`). Verify the binary checksum against `SHA256SUMS` and run `kosh --version` to confirm the installed build.
+* **Release bundle contents** - Releases include `SHA256SUMS`, compressed manual pages (`kosh.1.zst`, `kosh.5.zst`, and `kosh-switching.5.zst`), and the Bash completion script (`kosh.bash`). Verify the binary checksum against `SHA256SUMS` and run `kosh --version` to confirm the installed build.
 * **Package manager and editor integrations** - On macOS, upgrade existing Homebrew installations via `brew update && brew upgrade kosh`. The VS Code and Zed extensions automatically download `kosh` when absent from `PATH`. The Neovim plugin is distributed as `kosh.nvim`.
 
 ## Execute common workflows <a id="getting-started"></a>

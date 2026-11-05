@@ -310,7 +310,7 @@
         }
         $IS_EXTRAS_WANTED = $FILES.Count -gt 1
         if ($IS_EXTRAS_WANTED -and (Get-Command zstd -ErrorAction SilentlyContinue)) {
-            $FILES += "kosh.1.zst", "kosh.5.zst"
+            $FILES += "kosh.1.zst", "kosh.5.zst", "kosh-switching.5.zst"
         }
 
         New-Item -ItemType Directory $WORK | Out-Null
@@ -408,7 +408,7 @@
             }
             Move-Item -Force kosh.bash (Join-Path $COMPLETIONS "kosh")
             if ($FILES -contains "kosh.1.zst") {
-                foreach ($PAGE in "kosh.1", "kosh.5") {
+                foreach ($PAGE in "kosh.1", "kosh.5", "kosh-switching.5") {
                     $MAN = Join-Path $SHARE_DIR "man\man$($PAGE[-1])"
                     New-Item -ItemType Directory -Force $MAN | Out-Null
                     zstd -dqf "$PAGE.zst" -o (Join-Path $MAN $PAGE)

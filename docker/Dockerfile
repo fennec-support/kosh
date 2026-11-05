@@ -13,6 +13,7 @@ ARG TARGETARCH
 COPY linux-${TARGETARCH}/kosh /usr/bin/kosh
 COPY kosh.1 /usr/share/man/man1/kosh.1
 COPY kosh.5 /usr/share/man/man5/kosh.5
+COPY kosh-switching.5 /usr/share/man/man5/kosh-switching.5
 COPY kosh.bash /usr/share/bash-completion/completions/kosh
 
 RUN <<EOF
