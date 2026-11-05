@@ -48,11 +48,6 @@ Complete the steps in order. Repositories are under
       stores the tag in `_tag`, strips a leading `v` from `pkgver`, and writes a
       pre-release such as `0.2.0-rc1` as `0.2.0_rc1`. Any other hyphenated tag
       is refused. Commit the result.
-- [ ] Once the release carries the `FORTIFY_FLAGS` change in `src/Makefile`,
-      delete the `_FORTIFY_SOURCE` workaround in the PKGBUILD's `build()`.
-- [ ] Once the release runs as `koshkit` from a link of that name, add
-      `ln -s kosh "$pkgdir/usr/bin/koshkit"` to both recipes' `package()`, as
-      `make install` does.
 - [ ] **AUR** (`kosh-shell`): the package is unreviewed. Copy `PKGBUILD` and
       `kosh-shell.install` into the AUR clone, run
       `makepkg --printsrcinfo > .SRCINFO`, build once with `makepkg`, and push.
