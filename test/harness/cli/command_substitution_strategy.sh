@@ -22,8 +22,8 @@ case $random in ""|*[!0-9]*) echo random_bad;; *) echo random_digits;; esac
 case $indirect in ""|*[!0-9]*) echo indirect_bad;; *) [ "$indirect" != "$BASHPID" ] && echo indirect_differs;; esac
 '
 
-# FIXME a fresh kosh-dbg on the macOS CI runner holds descriptor 3 as a unix
-# socket to a system daemon, and its owner is unknown. The script closes it.
+# A fresh kosh-dbg on the macOS CI runner holds descriptor 3 as a unix socket.
+# The script closes it.
 "$BIN" --mood bash -c 'exec 3>&-
 "$BIN" -c : &
 parent=$!

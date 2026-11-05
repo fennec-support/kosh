@@ -105,7 +105,7 @@ echo "status $?"
 
 echo "--- deep conditionals end in a diagnostic ---"
 awk 'BEGIN { printf "[[ "; for (i = 0; i < 200000; i++) printf "("; printf " a "; for (i = 0; i < 200000; i++) printf ")"; print " ]]" }' > conditional.sh
-"$BIN" --no-diagnostics conditional.sh 2>/dev/null
+(ulimit -s 8192; "$BIN" --no-diagnostics conditional.sh 2>/dev/null)
 echo "status $?"
 
 echo "--- a self reference through an element ends ---"
@@ -524,8 +524,8 @@ echo "--- an exported function follows its definition ---"
 "$BIN" --no-diagnostics -c 'f() { echo one; }; export -f f; f() { echo two; }; koshkit env | koshkit grep -c "BASH_FUNC_f%%=() { echo two; }"; unset -f f; koshkit env | koshkit grep -c BASH_FUNC_f; echo end'
 
 echo "--- a closed descriptor stays closed after the command ---"
-# FIXME a fresh kosh-dbg on the macOS CI runner holds descriptor 3 as a unix
-# socket to a system daemon, and its owner is unknown. Each script closes it.
+# A fresh kosh-dbg on the macOS CI runner holds descriptor 3 as a unix socket.
+# Each script closes it.
 "$BIN" --no-diagnostics -c 'exec 3>&-; f() { exec 3>x3; } 3>&-; f; echo hi >&3; echo "status $?"' 2>/dev/null 3>&-
 echo "shell $?"
 "$BIN" --no-diagnostics -c 'exec 3>&-; { exec 3>x3; } 3>&-; echo hi >&3; echo "status $?"' 2>/dev/null 3>&-
@@ -648,7 +648,7 @@ echo "--- a capture works under a low descriptor limit ---"
 
 echo "--- a long extglob subject keeps the stack ---"
 "$BIN" --mood=bash --no-diagnostics -c 'shopt -s extglob; p=$(printf "a%.0s" {1..20000}); [[ $p == "$p"@(x|) ]]; echo "status $?"'
-"$BIN" --mood=bash --no-diagnostics -c 'shopt -s extglob; p=$(printf "a%.0s" {1..20000}); q=$(printf "?%.0s" {1..20000}); [[ $p == $q@(x|) ]]; echo "status $?"' 2>/dev/null
+(ulimit -s 8192; "$BIN" --mood=bash --no-diagnostics -c 'shopt -s extglob; p=$(printf "a%.0s" {1..20000}); q=$(printf "?%.0s" {1..20000}); [[ $p == $q@(x|) ]]; echo "status $?"' 2>/dev/null)
 
 echo "--- a loop reuses an absolute target across directories ---"
 mkdir loop_a loop_b
