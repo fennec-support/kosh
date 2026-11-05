@@ -213,7 +213,7 @@
             if ($InstallPath.StartsWith("-")) { throw "-InstallPath needs a path, not '$InstallPath'" }
         }
         $LINK_MOODS = @()
-        foreach ($MOOD in @($LinkMood | ForEach-Object { "$_" -split "," })) {
+        foreach ($MOOD in @($LinkMood | ForEach-Object { "$_" -split "," } | Where-Object { $_ })) {
             if ($MOOD -in "bash", "dash", "sh") { $LINK_MOODS += $MOOD }
             elseif ($MOOD -ne "kosh") { throw "-LinkMood needs bash, dash, sh, or kosh, not '$MOOD'" }
         }
@@ -223,6 +223,7 @@
 
         Say "Hi! This is Koshka Shell installer."
         Say "You can view the repository and this script at <github.com/fennec-support/kosh>"
+        Line "Run '& ([scriptblock]::Create((irm `"https://fennec.support/kosh/install`"))) -Help' to view help and all of the useful options."
 
         $BIN_DIR = $InstallPath
         if (-not $BIN_DIR) { $BIN_DIR = $env:KOSH_INSTALL_PATH }

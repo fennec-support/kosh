@@ -330,6 +330,7 @@
   say "Hi! This is Koshka Shell installer."
   say \
     "You can view the repository and this script at <github.com/fennec-support/kosh>"
+  line "Pipe this script into 'sh -s -- --help' to view help and all of the useful options."
   if [ -z "$BIN_DIR" ]
   then
     EXISTING=$(command -v kosh 2>/dev/null || :)
