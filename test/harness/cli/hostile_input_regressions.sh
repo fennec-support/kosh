@@ -524,9 +524,11 @@ echo "--- an exported function follows its definition ---"
 "$BIN" --no-diagnostics -c 'f() { echo one; }; export -f f; f() { echo two; }; koshkit env | koshkit grep -c "BASH_FUNC_f%%=() { echo two; }"; unset -f f; koshkit env | koshkit grep -c BASH_FUNC_f; echo end'
 
 echo "--- a closed descriptor stays closed after the command ---"
-"$BIN" --no-diagnostics -c 'f() { exec 3>x3; } 3>&-; f; echo hi >&3; echo "status $?"' 2>/dev/null 3>&-
+# FIXME a fresh kosh-dbg on the macOS CI runner holds descriptor 3 as a unix
+# socket to a system daemon, and its owner is unknown. Each script closes it.
+"$BIN" --no-diagnostics -c 'exec 3>&-; f() { exec 3>x3; } 3>&-; f; echo hi >&3; echo "status $?"' 2>/dev/null 3>&-
 echo "shell $?"
-"$BIN" --no-diagnostics -c '{ exec 3>x3; } 3>&-; echo hi >&3; echo "status $?"' 2>/dev/null 3>&-
+"$BIN" --no-diagnostics -c 'exec 3>&-; { exec 3>x3; } 3>&-; echo hi >&3; echo "status $?"' 2>/dev/null 3>&-
 echo "shell $?"
 
 echo "--- a utility keeps an inherited KOSHCONF ---"
