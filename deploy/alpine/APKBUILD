@@ -19,8 +19,8 @@ subpackages="$pkgname-doc $pkgname-bash-completion"
 # for a tag does not include submodule contents, so it's fetched separately
 # and dropped into place in prepare().
 _tag=0.4.0
-_release_commit="6c8b1df3194e587e387a440ed62cd8cce741903d"
-_release_epoch=1793905356
+_release_commit="4d23c3626e288ebf4d52ffa81143c710ed2945ea"
+_release_epoch=1793907060
 _source_directory="$pkgname-${_tag#v}"
 _toiletline_commit="d9c4ad722e8191d7abf17d6fd910ce8c27a38323"
 export SOURCE_DATE_EPOCH="$_release_epoch"
@@ -61,6 +61,6 @@ package() {
 }
 
 sha512sums="
-d81eb1ee20779c1cc67914d8723b6344126844753ddc225d89ce5538958fad2820037e88aee76f41d94d61b56340fa4327d13b24284c1206f1a5bc182b663d50  kosh-0.4.0.tar.gz
+37e4f7aa0b08ae8f27c86e1fa3969af15359567ef3d6fa269cd504716d6be6ac7c6457115253068804c74fa366cf6dbe8421476cdc8c536e8ca198f22ea8f4f2  kosh-0.4.0.tar.gz
 ac7422832c2623e705b9093d820024e5faa8999900c85f255ce79fc49654d587f70fbbc846603e05450f5d338800977855fdd6a933efb6501c9a2122ba369121  toiletline-d9c4ad722e8191d7abf17d6fd910ce8c27a38323.tar.gz
 "
