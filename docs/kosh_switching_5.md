@@ -2,7 +2,7 @@
 
 > Migrate an interactive shell environment and login shell from Bash to Koshka.
 
-2026-10-28
+2026-11-05
 
 Prerequisites - An installed `kosh` binary, an active Bash session, and a familiarity with [kosh(1) invocation](kosh_1.md) and [kosh(5) configuration](kosh_5.md).
 
@@ -50,6 +50,16 @@ kosh --mood bash script.bash
 ```
 
 The `--mood bash` flag selects the Bash compatibility mood for that execution. If the `bash` binary remains installed on the host, `bash script.bash` and a script started as a command with a `#!/bin/bash` shebang run under the installed Bash, unless mimicry (`-I`) runs the script inside Koshka.
+
+## Run Koshka under the name bash
+
+A link named `bash` to the `kosh` binary starts Koshka in the `bash` mood with the Bash startup files. Place it in a directory that precedes the installed Bash in `PATH`. `assimilate --link-mood=bash` creates the same link.
+
+```sh
+ln -s "$(command -v kosh)" ~/.local/bin/bash
+```
+
+A configured `mood` does not override the link name, but `init_moods=kosh,bash` also sources `rc.kosh`. `bash --version` prints the Koshka banner. A shebang with an absolute path, such as `#!/bin/bash`, still runs the installed Bash.
 
 ## Set Koshka as the default login shell
 
