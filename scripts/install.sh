@@ -337,21 +337,26 @@
         set -x
       ;;
       -h | --help)
-        line "Usage: install.sh [--dry-run] [--force] [--install-path DIR]"
-        line "                  [--link-mood MOODS] [-x]"
-        line "                  [--yes] [--uninstall]"
-        line "  --dry-run           list the downloads, install nothing"
-        line "  --force             install even when kosh is up to date"
-        line "  --yes               accept installation or removal prompts"
-        line "  --uninstall         remove the binary and its owned links"
-        line "  --install-path DIR  install to DIR, extras to DIR/../share;"
-        line "                      without it, the kosh on PATH is updated"
-        line "  --link-mood MOODS   link bash, dash, or sh to kosh in DIR,"
-        line "                      commas are accepted, existing files stay"
-        line "  -x                  trace every command"
-        line "  --help              print this help"
-        line "Environment: KOSH_INSTALL_PATH, KOSH_INSTALL_VERSION,"
-        line "  KOSH_INSTALL_DRY_RUN, KOSH_INSTALL_FORCE, NO_COLOR"
+        line "This is the Koshka shell installer. See its source at"
+        line "<github.com/fennec-support/kosh>."
+        line ""
+        line "Usage: install.sh [-options]"
+        line ""
+        line "Options:"
+        line "  --dry-run             See what the script does, install nothing."
+        line "  --force               Reinstall even when kosh is up to date."
+        line "  --yes                 Accept all prompts."
+        line "  --uninstall           Uninstall the detected version."
+        line "  --install-path <DIR>  Change directory for the binary. Install to"
+        line "                        <DIR>, extras to <DIR>/../share."
+        line "  --link-mood <MOODS>   Link bash, dash, or sh to kosh in <DIR>."
+        line "                        Commas are accepted, existing files stay."
+        line "  -x                    Trace every installer command."
+        line "  --help                Print this help."
+        line ""
+        line "Environment:"
+        line "  KOSH_INSTALL_PATH, KOSH_INSTALL_VERSION, KOSH_INSTALL_DRY_RUN,"
+        line "  KOSH_INSTALL_FORCE, NO_COLOR"
         exit 0
       ;;
       *)
@@ -365,7 +370,7 @@
   say "Hi! This is Koshka Shell installer."
   say \
     "You can view the repository and this script at <github.com/fennec-support/kosh>"
-  line "Pipe this script into 'sh -s -- --help' to view help and all of the useful options."
+  line "Pipe this script into $(paint "$IS_COLOR" 32 '`sh -s -- --help`') to view help and all of the useful options."
   if [ -z "$BIN_DIR" ]
   then
     EXISTING=$(command -v kosh 2>/dev/null || :)

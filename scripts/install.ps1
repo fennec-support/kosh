@@ -32,6 +32,7 @@
 #     irm "https://fennec.support/kosh/install" | iex
 
 & {
+    [CmdletBinding(PositionalBinding = $false)]
     param(
         [switch]$DryRun,
         [switch]$Force,
@@ -240,23 +241,29 @@
             else { throw "unknown option $ARGUMENT" }
         }
         if ($Help) {
-            Line "Usage: install.ps1 [-DryRun] [-Force] [-InstallPath DIR]"
-            Line "                   [-LinkMood MOODS] [-X]"
-            Line "                   [-Yes] [-Uninstall]"
-            Line "  -DryRun           list the downloads, install nothing"
-            Line "  -Force            install even when kosh is up to date"
-            Line "  -Yes              accept installation or removal prompts"
-            Line "  -Uninstall        remove the binary and its owned links"
-            Line "  -InstallPath DIR  install to DIR, extras to DIR\..\share;"
-            Line "                    without it, the kosh on PATH is updated"
-            Line "  -LinkMood MOODS   link bash, dash, or sh to kosh in DIR,"
-            Line "                    commas are accepted, existing files stay"
-            Line "  -X                trace every command"
-            Line "  -Help             print this help"
-            Line "Environment: KOSH_INSTALL_PATH, KOSH_INSTALL_VERSION,"
-            Line "  KOSH_INSTALL_DRY_RUN, KOSH_INSTALL_FORCE, NO_COLOR"
-            Line "irm | iex passes no flags. To pass the flags above, run:"
-            Line "  & ([scriptblock]::Create((irm `"https://fennec.support/kosh/install`"))) <flags>"
+            Line "This is the Koshka shell installer. See its source at"
+            Line "<github.com/fennec-support/kosh>."
+            Line ""
+            Line "Usage: install.ps1 [-options]"
+            Line ""
+            Line "Options:"
+            Line "  -DryRun             See what the script does, install nothing."
+            Line "  -Force              Reinstall even when kosh is up to date."
+            Line "  -Yes                Accept all prompts."
+            Line "  -Uninstall          Uninstall the detected version."
+            Line "  -InstallPath <DIR>  Change directory for the binary. Install to"
+            Line "                      <DIR>, extras to <DIR>\..\share."
+            Line "  -LinkMood <MOODS>   Link bash, dash, or sh to kosh in <DIR>."
+            Line "                      Commas are accepted, existing files stay."
+            Line "  -X                  Trace every installer command."
+            Line "  -Help               Print this help."
+            Line ""
+            Line "Environment:"
+            Line "  KOSH_INSTALL_PATH, KOSH_INSTALL_VERSION, KOSH_INSTALL_DRY_RUN,"
+            Line "  KOSH_INSTALL_FORCE, NO_COLOR"
+            Line ""
+            Line "irm | iex passes no flags. To pass the options above, run:"
+            Line "  & ([scriptblock]::Create((irm `"https://fennec.support/kosh/install`"))) <options>"
             return
         }
         if ($PSBoundParameters.ContainsKey("InstallPath")) {
@@ -274,7 +281,7 @@
 
         Say "Hi! This is Koshka Shell installer."
         Say "You can view the repository and this script at <github.com/fennec-support/kosh>"
-        Line "Run '& ([scriptblock]::Create((irm `"https://fennec.support/kosh/install`"))) -Help' to view help and all of the useful options."
+        Line "Run $(Paint 32 '`& ([scriptblock]::Create((irm "https://fennec.support/kosh/install"))) -Help`') to view help and all of the useful options."
         Line "Flags go after the closing parenthesis of that command, in place of -Help."
 
         $BIN_DIR = $InstallPath
