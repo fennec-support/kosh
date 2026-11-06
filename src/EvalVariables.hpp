@@ -185,7 +185,7 @@ inline constexpr static_string_entry<shell_variable_description>
          {"The value selects the terminal capabilities used on a POSIX system.",
           shell_variable_fact::Plain}                                        },
         {SSK("NO_COLOR"),
-         {"A nonempty value disables prompt, diagnostic, and koshkit cat "
+         {"A nonempty value disables prompt, diagnostic, editor, and koshkit "
           "color.",
           shell_variable_fact::Plain}                                        },
 

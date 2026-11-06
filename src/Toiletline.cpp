@@ -3855,11 +3855,14 @@ get_input(const String        &prompt,
   let completion_storage =
       koshka::Maybe<koshka::completion::completion_result>{};
 
+  let const should_use_color = colors::stdout_wants_color();
+
+  ::tl_set_colors_enabled(should_use_color ? 1 : 0);
+
   if (is_completion_enabled()) {
-    COMPLETION_SESSION.is_highlight_color_enabled =
-        colors::stdout_wants_color();
-    completion_base_directory = Path::current_directory();
-    completion_storage        = koshka::completion::completion_result{
+    COMPLETION_SESSION.is_highlight_color_enabled = should_use_color;
+    completion_base_directory                     = Path::current_directory();
+    completion_storage = koshka::completion::completion_result{
         koshka::ArrayList<koshka::String>{koshka::heap_allocator()},
         koshka::StringMap<koshka::String>{koshka::heap_allocator()},
         koshka::String{koshka::heap_allocator()},
