@@ -181,6 +181,41 @@
     fi
   }
 
+  elevator_for ()
+  {
+    DIR=$1
+
+    while [ ! -d "$DIR" ]
+    do
+      DIR=${DIR%/*}
+      DIR=${DIR:-/}
+    done
+
+    if [ -w "$DIR" ]
+    then
+      return 0
+    fi
+
+    for ELEVATOR in sudo doas
+    do
+      if command -v "$ELEVATOR" >/dev/null
+      then
+        printf '%s' "$ELEVATOR"
+        return 0
+      fi
+    done
+
+    fail "cannot write to $1, and neither sudo nor doas is installed. Rerun as its owner or pass --install-path"
+  }
+
+  greet_elevator ()
+  {
+    if [ -n "$1" ]
+    then
+      line "Writing to $2 needs $1, which may ask for your password."
+    fi
+  }
+
   add_link_moods ()
   {
     [ -n "$1" ] || fail "--link-mood needs bash, dash, sh, or kosh"
@@ -359,28 +394,41 @@
       line "Removal was cancelled. Pass --yes to remove without a terminal."
       exit 0
     fi
+
+    set --
     for NAME in koshkit bash dash sh
     do
       if [ -L "$BIN_DIR/$NAME" ] && is_free_for_link "$BIN_DIR/$NAME"
       then
-        if [ -n "$IS_DRY_RUN" ]; then
-          line "Would remove $BIN_DIR/$NAME"
-        else
-          rm -f "$BIN_DIR/$NAME" || fail "cannot remove $BIN_DIR/$NAME"
-        fi
+        set -- "$@" "$NAME"
       fi
     done
+
     if [ -e "$BIN_DIR/kosh$EXT" ] || [ -L "$BIN_DIR/kosh$EXT" ]
     then
-      if [ -n "$IS_DRY_RUN" ]; then
-        line "Would remove $BIN_DIR/kosh$EXT"
-      else
-        rm -f "$BIN_DIR/kosh$EXT" || fail "cannot remove $BIN_DIR/kosh$EXT"
-        line "Removed $BIN_DIR/kosh$EXT"
-      fi
-    else
-      line "No Kosh binary was found in $BIN_DIR."
+      set -- "$@" "kosh$EXT"
     fi
+
+    if [ "$#" -eq 0 ]
+    then
+      line "No Kosh binary was found in $BIN_DIR."
+      exit 0
+    fi
+
+    if [ -n "$IS_DRY_RUN" ]
+    then
+      for NAME in "$@"
+      do
+        line "Would remove $BIN_DIR/$NAME"
+      done
+    else
+      BIN_SUDO=$(elevator_for "$BIN_DIR") || exit 1
+      greet_elevator "$BIN_SUDO" "$BIN_DIR"
+      (cd "$BIN_DIR" && ${BIN_SUDO:+"$BIN_SUDO"} rm -f -- "$@") ||
+      fail "cannot remove Kosh from $BIN_DIR"
+      line "Removed Kosh from $BIN_DIR"
+    fi
+
     line "Configuration, history, completions, and manuals were kept."
     exit 0
   fi
@@ -393,7 +441,6 @@
     fail "sha256sum or shasum is required to verify downloads"
   fi
   command -v curl >/dev/null || fail "curl is required"
-  EXT=
 
   case $(uname -s) in
     Linux)
@@ -403,7 +450,7 @@
       SYSTEM=darwin SYSTEM_NAME=macOS
     ;;
     MINGW* | MSYS* | CYGWIN*)
-      SYSTEM=win32 SYSTEM_NAME=Windows EXT=.exe
+      SYSTEM=win32 SYSTEM_NAME=Windows
     ;;
     *)
       fail "unsupported system $(uname -s)"
@@ -470,7 +517,7 @@
     if [ -n "${IS_CURRENT:-}" ]
     then
       say "Kosh $INSTALLED_VERSION is already installed:" "$INSTALLED"
-      line "You are up to date with $VERSION. Nothing to do."
+      line "*pats you gently* You are up to date with $VERSION. Nothing to do."
       line "Pass --force to install it again."
       exit 0
     fi
@@ -478,9 +525,18 @@
 
   if [ -z "$IS_DRY_RUN" ]
   then
-    if ! ask "Do you want to install Kosh $VERSION to $BIN_DIR?"
+    QUESTION="Do you want to install Kosh $VERSION to $BIN_DIR?"
+    if [ -n "$INSTALLED" ] && [ -n "$IS_FORCE" ]
     then
-      say "That's a shame. Specify another path via --install-path :c"
+      QUESTION="Koshka is detected at '$INSTALLED'. Reinstall it there?"
+    elif [ -n "$INSTALLED" ]
+    then
+      QUESTION="Koshka is detected at '$INSTALLED'. Replace it with $VERSION?"
+    fi
+
+    if ! ask "$QUESTION"
+    then
+      say "Okay, nothing was installed. Pass --install-path to choose another directory :c"
       exit 0
     fi
 
@@ -497,7 +553,7 @@
 
   WORK=$(mktemp -d)
 
-  trap 'kill ${PID:-} 2>/dev/null; rm -rf "$WORK"' EXIT
+  trap 'kill ${PID:-} 2>/dev/null || :; rm -rf "$WORK"' EXIT
   trap 'exit 130' INT TERM
   cd "$WORK" || fail "cannot enter $WORK"
   URL=$RELEASES/download/$VERSION
@@ -513,6 +569,13 @@
     fail "release $VERSION has no checksum for $FILE"
   done
 
+  BIN_SUDO=$(elevator_for "$BIN_DIR") || exit 1
+  SHARE_SUDO=
+  if [ "$FILES" != "$BINARY" ]
+  then
+    SHARE_SUDO=$(elevator_for "$SHARE_DIR") || exit 1
+  fi
+
   if [ -n "$IS_DRY_RUN" ]
   then
     for FILE in $FILES
@@ -520,6 +583,10 @@
       line "Would download $URL/$FILE and verify it against SHA256SUMS"
     done
 
+    if [ -n "$BIN_SUDO$SHARE_SUDO" ]
+    then
+      line "Would use ${BIN_SUDO:-$SHARE_SUDO} to write the files"
+    fi
     line "Would install $BIN_DIR/kosh$EXT"
     if [ -z "$EXT" ]
     then
@@ -574,25 +641,14 @@
   fi
 
   printf 'ok\n'
-  mkdir -p "$BIN_DIR" || fail "cannot write to $BIN_DIR"
-  [ -w "$BIN_DIR" ] ||
-  fail "cannot write to $BIN_DIR; rerun as its owner or pass --install-path"
-  # The new binary is renamed over the old one, so a running kosh keeps its
-  # image and the path never holds a partial file.
-  STAGED=$BIN_DIR/.kosh$EXT.$$
-  install -m 755 "$BINARY" "$STAGED" || fail "cannot write to $BIN_DIR"
-  if ! mv -f "$STAGED" "$BIN_DIR/kosh$EXT"
-  then
-    rm -f "$STAGED"
-    fail "cannot replace $BIN_DIR/kosh$EXT"
-  fi
+  set --
   if [ -z "$EXT" ]
   then
     for NAME in koshkit $LINK_MOODS
     do
       if is_free_for_link "$BIN_DIR/$NAME"
       then
-        ln -sf kosh "$BIN_DIR/$NAME" || fail "cannot link $BIN_DIR/$NAME"
+        set -- "$@" "$NAME"
       else
         line "Kept $BIN_DIR/$NAME, which is not a link to kosh"
       fi
@@ -601,20 +657,50 @@
   then
     line "Skipped the mood links, which install.ps1 creates on Windows"
   fi
+
+  greet_elevator "$BIN_SUDO" "$BIN_DIR"
+  if [ "$SHARE_SUDO" != "$BIN_SUDO" ]
+  then
+    greet_elevator "$SHARE_SUDO" "$SHARE_DIR"
+  fi
+
+  # The new binary is renamed over the old one, so a running kosh keeps its
+  # image and the path never holds a partial file.
+  # shellcheck disable=SC2016
+  ${BIN_SUDO:+"$BIN_SUDO"} sh -c '
+    set -e
+    BIN_DIR=$1 BINARY=$2 KOSH=$3 STAGED=$1/.$3.$$
+    shift 3
+    mkdir -p "$BIN_DIR"
+    install -m 755 "$BINARY" "$STAGED"
+    mv -f "$STAGED" "$BIN_DIR/$KOSH" || { rm -f "$STAGED"; exit 1; }
+    for NAME
+    do
+      ln -sf kosh "$BIN_DIR/$NAME"
+    done
+  ' sh "$BIN_DIR" "$BINARY" "kosh$EXT" "$@" ||
+  fail "cannot install Kosh into $BIN_DIR"
+
   if [ "$FILES" != "$BINARY" ]
   then
-    mkdir -p "$SHARE_DIR/bash-completion/completions" ||
-    fail "cannot write to $SHARE_DIR"
-    install -m 644 kosh.bash "$SHARE_DIR/bash-completion/completions/kosh"
     if [ -f kosh.1.zst ]
     then
-      mkdir -p "$SHARE_DIR/man/man1" "$SHARE_DIR/man/man5"
       zstd -dq kosh.1.zst kosh.5.zst kosh-switching.5.zst
-      install -m 644 kosh.1 "$SHARE_DIR/man/man1/kosh.1"
-      install -m 644 kosh.5 "$SHARE_DIR/man/man5/kosh.5"
-      install -m 644 kosh-switching.5 \
-        "$SHARE_DIR/man/man5/kosh-switching.5"
     fi
+
+    # shellcheck disable=SC2016
+    ${SHARE_SUDO:+"$SHARE_SUDO"} sh -c '
+      set -e
+      mkdir -p "$1/bash-completion/completions"
+      install -m 644 kosh.bash "$1/bash-completion/completions/kosh"
+      if [ -f kosh.1 ]
+      then
+        mkdir -p "$1/man/man1" "$1/man/man5"
+        install -m 644 kosh.1 "$1/man/man1"
+        install -m 644 kosh.5 kosh-switching.5 "$1/man/man5"
+      fi
+    ' sh "$SHARE_DIR" ||
+    fail "cannot install completions and manpages into $SHARE_DIR"
   fi
 
   say "Success! Meow meow meow. Your binary is here:" "$BIN_DIR/kosh$EXT"
@@ -623,7 +709,7 @@
       line "Use $(paint "$IS_COLOR" '1;34' kosh) to launch the shell."
     ;;
     *)
-      line "Install prefix is not in the PATH. Use $(paint "$IS_COLOR" '1;34' "$BIN_DIR/kosh$EXT") to launch the shell."
+      line "The install directory is not in the PATH. Use $(paint "$IS_COLOR" '1;34' "$BIN_DIR/kosh$EXT") to launch the shell."
     ;;
   esac
 }

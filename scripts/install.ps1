@@ -169,6 +169,55 @@
         }
     }
 
+    function Test-Writable($Path) {
+        $DIR = $Path
+        while ($DIR -and -not (Test-Path -LiteralPath $DIR -PathType Container)) {
+            $DIR = Split-Path -Parent $DIR
+        }
+        if (-not $DIR) { throw "cannot write to $Path" }
+        $PROBE = Join-Path $DIR ".kosh.$PID.probe"
+        try {
+            [IO.File]::Create($PROBE).Dispose()
+            Remove-Item -Force -LiteralPath $PROBE
+            return $true
+        }
+        catch {
+            return $false
+        }
+    }
+
+    function Invoke-AsOwner($Dirs, $Block, $Arguments) {
+        $LOCKED = @($Dirs | Where-Object { -not (Test-Writable $_) })
+        if ($LOCKED.Count -eq 0) {
+            & $Block @Arguments
+            return
+        }
+        Line "Writing to $($LOCKED[0]) needs administrator permission, which Windows may ask you for."
+        $QUOTE = { "'$([Management.Automation.Language.CodeGeneration]::EscapeSingleQuotedStringContent("$_"))'" }
+        $VALUES = foreach ($VALUE in $Arguments) { "@($((@($VALUE) | ForEach-Object $QUOTE) -join ','))" }
+        $REPORT = Join-Path ([IO.Path]::GetTempPath()) "kosh-install-$PID.error"
+        $SCRIPT = "`$ErrorActionPreference = 'Stop'`nfunction Move-Aside {${function:Move-Aside}}`n" +
+            "try { & {$Block} $($VALUES -join ' ') }`n" +
+            "catch { Set-Content -LiteralPath $($REPORT | ForEach-Object $QUOTE) `$_.Exception.Message; exit 1 }"
+        $ENCODED = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($SCRIPT))
+        try {
+            $POWERSHELL = Join-Path $PSHOME $(if ($PSVersionTable.PSEdition -eq "Core") { "pwsh.exe" } else { "powershell.exe" })
+            $PROCESS = Start-Process $POWERSHELL -Verb RunAs -Wait -PassThru -WindowStyle Hidden `
+                -ArgumentList "-NoProfile", "-EncodedCommand", $ENCODED
+        }
+        catch {
+            throw "cannot write to $($LOCKED[0]) without administrator permission"
+        }
+        if ($PROCESS.ExitCode -ne 0) {
+            if (Test-Path -LiteralPath $REPORT) {
+                $MESSAGE = Get-Content -Raw -LiteralPath $REPORT
+                Remove-Item -Force -LiteralPath $REPORT
+                throw $MESSAGE.Trim()
+            }
+            throw "cannot write to $($LOCKED[0])"
+        }
+    }
+
     function Ask($Question) {
         if ($Yes) { return $true }
         if ([Console]::IsInputRedirected) { return $true }
@@ -244,22 +293,20 @@
                 return
             }
             $INSTALLED = Join-Path $BIN_DIR "kosh.exe"
+            if (-not (Test-Path -LiteralPath $INSTALLED)) {
+                Line "No Kosh binary was found in $BIN_DIR."
+                return
+            }
             $HASH = Get-KoshHash $INSTALLED
-            foreach ($NAME in @("koshkit", "bash", "dash", "sh")) {
-                $LINK = Join-Path $BIN_DIR "$NAME.exe"
-                if ($HASH -and (Test-Path -LiteralPath $LINK) -and (Test-KoshLink $LINK @($HASH))) {
-                    if ($DryRun) { Line "Would remove $LINK" }
-                    else { Remove-Item -Force -LiteralPath $LINK -ErrorAction Stop }
-                }
+            $TARGETS = @(@("koshkit", "bash", "dash", "sh") | ForEach-Object { Join-Path $BIN_DIR "$_.exe" } |
+                Where-Object { (Test-Path -LiteralPath $_) -and (Test-KoshLink $_ @($HASH)) }) + $INSTALLED
+            if ($DryRun) {
+                foreach ($TARGET in $TARGETS) { Line "Would remove $TARGET" }
             }
-            if (Test-Path -LiteralPath $INSTALLED) {
-                if ($DryRun) { Line "Would remove $INSTALLED" }
-                else {
-                    Remove-Item -Force -LiteralPath $INSTALLED -ErrorAction Stop
-                    Line "Removed $INSTALLED"
-                }
+            else {
+                Invoke-AsOwner @($BIN_DIR) { param([string[]]$Paths) Remove-Item -Force -LiteralPath $Paths } @(, $TARGETS)
+                Line "Removed $INSTALLED"
             }
-            else { Line "No Kosh binary was found in $BIN_DIR." }
             Line "Configuration, history, completions, and manuals were kept."
             return
         }
@@ -304,8 +351,16 @@
         }
 
         if (-not $DryRun) {
-            if (-not (Ask "Do you want to install Kosh $VERSION to $BIN_DIR?")) {
-                Say "That's a shame. Specify another path via -InstallPath :c"
+            $QUESTION = "Do you want to install Kosh $VERSION to $BIN_DIR?"
+            $EXISTING_EXE = Join-Path $BIN_DIR "kosh.exe"
+            if ((Test-Path -LiteralPath $EXISTING_EXE) -and $Force) {
+                $QUESTION = "Koshka is detected at '$EXISTING_EXE'. Reinstall it there?"
+            }
+            elseif (Test-Path -LiteralPath $EXISTING_EXE) {
+                $QUESTION = "Koshka is detected at '$EXISTING_EXE'. Replace it with $VERSION?"
+            }
+            if (-not (Ask $QUESTION)) {
+                Say "Okay, nothing was installed. Pass -InstallPath to choose another directory :c"
                 return
             }
             if (-not (Ask "Do you want to install completions and manpages to $SHARE_DIR?")) {
@@ -343,6 +398,9 @@
             foreach ($FILE in $FILES) {
                 Line "Would download $URL/$FILE and verify it against SHA256SUMS"
             }
+            if (@(@($BIN_DIR, $SHARE_DIR) | Where-Object { -not (Test-Writable $_) }).Count -gt 0) {
+                Line "Would ask Windows for administrator permission to write the files"
+            }
             Line "Would install $(Join-Path $BIN_DIR 'kosh.exe')"
             foreach ($MOOD in $LINK_MOODS) {
                 $LINK = Join-Path $BIN_DIR "$MOOD.exe"
@@ -378,47 +436,44 @@
         }
         [Console]::Out.WriteLine("ok")
 
-        try {
-            New-Item -ItemType Directory -Force $BIN_DIR | Out-Null
-        }
-        catch {
-            throw "cannot write to $BIN_DIR"
-        }
         $EXE = Join-Path $BIN_DIR "kosh.exe"
         $KOSH_HASHES = @((Get-KoshHash $EXE), (Get-FileHash -Algorithm SHA256 $BINARY).Hash)
-        Move-Aside $EXE
-        Move-Item -Force $BINARY $EXE
+        $LINKS = @()
         foreach ($MOOD in $LINK_MOODS) {
             $LINK = Join-Path $BIN_DIR "$MOOD.exe"
-            if (-not (Test-KoshLink $LINK $KOSH_HASHES)) {
-                Line "Kept $LINK, which is not a link to kosh.exe"
-                continue
-            }
-            Move-Aside $LINK
-            try {
-                New-Item -ItemType HardLink -Path $LINK -Target $EXE | Out-Null
-            }
-            catch {
-                Copy-Item -LiteralPath $EXE $LINK
-            }
+            if (Test-KoshLink $LINK $KOSH_HASHES) { $LINKS += $LINK }
+            else { Line "Kept $LINK, which is not a link to kosh.exe" }
         }
+        $STAGED_SHARE = Join-Path $WORK "share"
+        $DIRS = @($BIN_DIR)
         if ($IS_EXTRAS_WANTED) {
-            $COMPLETIONS = Join-Path $SHARE_DIR "bash-completion\completions"
-            try {
-                New-Item -ItemType Directory -Force $COMPLETIONS | Out-Null
-            }
-            catch {
-                throw "cannot write to $SHARE_DIR"
-            }
-            Move-Item -Force kosh.bash (Join-Path $COMPLETIONS "kosh")
+            $COMPLETIONS = New-Item -ItemType Directory (Join-Path $STAGED_SHARE "bash-completion\completions")
+            Move-Item kosh.bash (Join-Path $COMPLETIONS "kosh")
             if ($FILES -contains "kosh.1.zst") {
                 foreach ($PAGE in "kosh.1", "kosh.5", "kosh-switching.5") {
-                    $MAN = Join-Path $SHARE_DIR "man\man$($PAGE[-1])"
-                    New-Item -ItemType Directory -Force $MAN | Out-Null
+                    $MAN = New-Item -ItemType Directory -Force (Join-Path $STAGED_SHARE "man\man$($PAGE[-1])")
                     zstd -dqf "$PAGE.zst" -o (Join-Path $MAN $PAGE)
                 }
             }
+            $DIRS += $SHARE_DIR
         }
+
+        Invoke-AsOwner $DIRS {
+            param([string]$BinDir, [string]$Binary, [string[]]$Links, [string]$StagedShare, [string]$ShareDir)
+            New-Item -ItemType Directory -Force $BinDir | Out-Null
+            $EXE = Join-Path $BinDir "kosh.exe"
+            Move-Aside $EXE
+            Copy-Item -LiteralPath $Binary $EXE
+            foreach ($LINK in $Links) {
+                Move-Aside $LINK
+                try { New-Item -ItemType HardLink -Path $LINK -Target $EXE | Out-Null }
+                catch { Copy-Item -LiteralPath $EXE $LINK }
+            }
+            if (Test-Path -LiteralPath $StagedShare) {
+                New-Item -ItemType Directory -Force $ShareDir | Out-Null
+                Copy-Item -Recurse -Force (Join-Path $StagedShare "*") $ShareDir
+            }
+        } @($BIN_DIR, (Join-Path $WORK $BINARY), $LINKS, $STAGED_SHARE, $SHARE_DIR)
 
         Say "Success! Meow meow meow. Your binary is here:" $EXE
         $USER_PATH = (Get-Item "HKCU:\Environment").GetValue("Path", "", "DoNotExpandEnvironmentNames")
@@ -434,7 +489,7 @@
             Line "Use $(Paint '1;34' 'kosh') to launch the shell."
         }
         else {
-            Line "The install path is not in the PATH. Use $(Paint '1;34' $EXE) to launch the shell."
+            Line "The install directory is not in the PATH. Use $(Paint '1;34' $EXE) to launch the shell."
         }
     }
     catch {
