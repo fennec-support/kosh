@@ -39,7 +39,8 @@ echo "== koshkit killall signal prefix:"
 echo "== koshkit evilio sort values:"
 "$BIN" --debug-complete-at 'koshkit evilio --sort read-' </dev/null
 echo "== bare evilio sort values:"
-"$BIN" --debug-complete-at 'evilio --sort write-' </dev/null
+# PATH holds no directory, so a host evilio link cannot shadow the utility.
+PATH=/nonexistent "$BIN" --debug-complete-at 'evilio --sort write-' </dev/null
 echo "== koshkit evilps sort prefix:"
 "$BIN" --debug-complete-at 'koshkit evilps --sort m' </dev/null
 echo "== debug logging levels:"
