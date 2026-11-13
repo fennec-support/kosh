@@ -14,9 +14,6 @@ HOME/.config/kosh/kosh.conf:11:26: warning: The quoted value has no closing quot
 HOME/.config/kosh/kosh.conf:12:13: warning: Unexpected text after the closing quote, skipping the line.
     12 |  mood='bash' trailing
        |              ^~~~~~~~
-HOME/.config/kosh/kosh.conf:10:43: warning: The kosh mood keeps 'posix.interpreter.unset_variable_is_error' on, so the configured value is skipped; set mood=bash or run `koshconf set mood bash` to change it.
-    10 |  posix.interpreter.unset_variable_is_error=off
-       |                                            ^~~
 editor.auto_close_brackets_and_quotes=on
 interpreter.resolve_koshkit_applets_as_commands=on
 editor.history.max_entries=128
@@ -24,6 +21,20 @@ optimizer.warning_level=1
 posix.interpreter.unset_variable_is_error=on
 mood=kosh
 rc=0
+== valid startup conflicts are silent and retain all five kosh values:
+kosh-locks=0
+== bash applies the same configured values:
+bash-values=0
+== encoded inherited configuration retains precedence without warnings:
+inherited-values=0
+== a kosh shebang lint wrapper starts without configuration warnings:
+lint-wrapper=0
+== explicit runtime changes still diagnose every kosh lock:
+1
+1
+1
+1
+1
 == a byte order mark is skipped, and raw bytes are escaped in warnings:
 0
 HOME/.config/kosh/kosh.conf:2:28: warning: Invalid value '-5' for 'editor.history.max_entries', expected a decimal integer from 0 to 2147483647, skipping it.

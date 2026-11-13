@@ -1545,13 +1545,7 @@ apply_startup_configuration(
         is_kosh_mood && option.is_fixed_in_kosh_mood && value.has_value() &&
         *value != option.strict_value;
 
-    if (is_held_by_kosh_mood) {
-      reading.warnings.push(
-          !setting.kosh_mood_warning.is_empty()
-              ? steal(setting.kosh_mood_warning)
-              : Warning{describe_kosh_mood_hold(option).view()}.to_string());
-      continue;
-    }
+    if (is_held_by_kosh_mood) continue;
 
     unpinned.push(steal(setting));
   }

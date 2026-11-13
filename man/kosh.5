@@ -2067,9 +2067,13 @@ A name may be the canonical name or its legacy alias.
 \f[B]Evaluation order and mood locks\f[R] \- The \f[CR]mood\f[R]
 directive is evaluated first regardless of line position, and the other
 lines are read under the resulting session mood.
-When \f[CR]mood=kosh\f[R] is active, any line that attempts to change an
-option locked by the \f[CR]kosh\f[R] mood (see Moods) is skipped with a
-warning.
+When \f[CR]mood=kosh\f[R] is active, valid settings that conflict with
+an option locked by the \f[CR]kosh\f[R] mood (see Moods) are silently
+skipped.
+Malformed settings still produce warnings, and explicit runtime changes
+through \f[CR]set\f[R], \f[CR]shopt\f[R], \f[CR]koshconf set\f[R], or
+\f[CR]koshconf load\f[R] retain their diagnostics, including commands in
+startup scripts.
 Later lines overwrite earlier lines, across the system file, the user
 file, and \f[CR]KOSHCONF\f[R] in that order.
 A settings file may set every option except the read\-only,

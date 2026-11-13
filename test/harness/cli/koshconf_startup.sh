@@ -1,11 +1,9 @@
 unset KOSH_FLAGS KOSHCONF
 export MSYS2_ENV_CONV_EXCL=KOSH_HISTORY_FILE
-# The user configuration file applies before the session runs, in interactive
-# and non-interactive shells. Blanks around a value are ignored. A malformed
-# line, an unknown name with its suggestion, and a value the kosh mood holds
-# are located warnings that never stop the shell. KOSHCONF from the environment
-# applies after the file and is removed. A command-line flag and -Q win over the
-# file, and the kosh mood sources no rc file.
+# The user configuration file applies before interactive and non-interactive
+# sessions. Malformed settings produce located warnings, and valid settings
+# that conflict with the kosh mood are silently skipped. Runtime mutations
+# retain their diagnostics. KOSHCONF applies after the file and is removed.
 home=$(mktemp -d)
 trap 'cd / && [ -n "$home" ] && "$BIN_DIR/invoke-koshkit" rm -rf -- "$home"' EXIT
 export HOME="$home"
@@ -42,6 +40,54 @@ done' >"$home/out" 2>&1
 status=$?
 mask_home "$home/out"
 echo "rc=$status"
+
+echo "== valid startup conflicts are silent and retain all five kosh values:"
+printf '%s\n' \
+  posix.interpreter.unset_variable_is_error=off \
+  posix.interpreter.pipeline_fails_on_any_stage=off \
+  bash.interpreter.glob_no_match_is_error=off \
+  bash.interpreter.glob_no_match_expands_to_nothing=on \
+  interpreter.arithmetic_uses_big_numbers=off >"$conf"
+locked_options='posix.interpreter.unset_variable_is_error
+posix.interpreter.pipeline_fails_on_any_stage
+bash.interpreter.glob_no_match_is_error
+bash.interpreter.glob_no_match_expands_to_nothing
+interpreter.arithmetic_uses_big_numbers'
+show_locked_options='for name in $1; do koshconf get "$name"; done'
+"$BIN" --mood kosh -c "$show_locked_options" sh "$locked_options" \
+  >"$home/values" 2>"$home/errors"
+printf 'on\non\non\noff\non\n' >"$home/expected-values"
+cmp "$home/values" "$home/expected-values" && [ ! -s "$home/errors" ]
+echo "kosh-locks=$?"
+echo "== bash applies the same configured values:"
+"$BIN" --mood bash -c "$show_locked_options" sh "$locked_options" \
+  >"$home/values" 2>"$home/errors"
+printf 'off\noff\noff\non\noff\n' >"$home/expected-values"
+cmp "$home/values" "$home/expected-values" && [ ! -s "$home/errors" ]
+echo "bash-values=$?"
+echo "== encoded inherited configuration retains precedence without warnings:"
+encoded=$("$BIN" --mood bash -c \
+  'koshconf set editor.auto_close_brackets_and_quotes on; koshconf save')
+KOSHCONF=$encoded "$BIN" -c 'koshconf get mood
+koshconf get editor.auto_close_brackets_and_quotes' \
+  >"$home/values" 2>"$home/errors"
+printf 'bash\non\n' >"$home/expected-values"
+cmp "$home/values" "$home/expected-values" && [ ! -s "$home/errors" ]
+echo "inherited-values=$?"
+echo "== a kosh shebang lint wrapper starts without configuration warnings:"
+printf '#!/usr/bin/env kosh\nexec "$KOSH" --lint "$@"\n' >"$home/lint-wrapper"
+printf ':\n' >"$home/valid.kosh"
+"$BIN" "$home/lint-wrapper" "$home/valid.kosh" \
+  >"$home/values" 2>"$home/errors"
+[ "$?" -eq 0 ] && [ ! -s "$home/values" ] && [ ! -s "$home/errors" ]
+echo "lint-wrapper=$?"
+echo "== explicit runtime changes still diagnose every kosh lock:"
+for command in \
+  'set +u' 'set +o pipefail' 'shopt -u failglob' 'shopt -s nullglob' \
+  'koshconf set interpreter.arithmetic_uses_big_numbers off'; do
+  "$BIN" --mood kosh -c "$command" >"$home/values" 2>"$home/errors"
+  grep -c 'error: Builtin .*The kosh mood keeps' "$home/errors"
+done
 
 echo "== a byte order mark is skipped, and raw bytes are escaped in warnings:"
 printf '\357\273\277editor.auto_close_brackets_and_quotes=on\r\neditor.history.max_entries=-5\r\n' >"$conf"

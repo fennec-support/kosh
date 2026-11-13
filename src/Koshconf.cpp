@@ -598,16 +598,6 @@ suggest_koshconf_option_name(StringView name) throws -> Maybe<String>
 }
 
 fn
-describe_kosh_mood_hold(const option_descriptor &option) throws
-    -> String
-{
-  return StringView{"The kosh mood keeps '"} + option.koshconf_name + "' " +
-         format_option_number(option, option.strict_value) +
-         ", so the configured value is skipped; set mood=bash or run "
-         "`koshconf set mood bash` to change it";
-}
-
-fn
 find_koshconf_value_problem(const option_descriptor &option,
                             StringView               value) throws -> Maybe<String>
 {
@@ -831,20 +821,9 @@ read_koshconf_text(StringView        text,
     }
 
     /* at this point: option is configurable, and value is valid for option. */
-    let setting = koshconf_setting{
+    reading.settings.push({
         option, String{heap_allocator(), value}
-    };
-
-    if (option->is_fixed_in_kosh_mood && option->type != option_type::String) {
-      if (let const number = parse_option_number(*option, value);
-          number.has_value() && *number != option->strict_value)
-      {
-        setting.kosh_mood_warning =
-            do_render_warning(raw_value, describe_kosh_mood_hold(*option));
-      }
-    }
-
-    reading.settings.push(steal(setting));
+    });
   }
 
   if (hidden_warning_count != 0) {
