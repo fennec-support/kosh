@@ -70,9 +70,19 @@ for variable in \
 do
   koshkit getconf "$variable" >/dev/null || string_status=1
 done
-if [ "$(koshkit getconf PATH)" = undefined ]; then
-  string_status=1
-fi
+case "$("$KOSH" --version)" in
+*'Android bionic'*)
+  path_value=$(koshkit getconf PATH)
+  path_query_status=$?
+  [ "$path_query_status" -eq 0 ] && [ "$path_value" = undefined ] || \
+    string_status=1
+  ;;
+*)
+  if [ "$(koshkit getconf PATH)" = undefined ]; then
+    string_status=1
+  fi
+  ;;
+esac
 echo "getconf-string=$string_status"
 
 path_status=0

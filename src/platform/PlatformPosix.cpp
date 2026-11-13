@@ -3752,6 +3752,7 @@ query_system_configuration(system_configuration_key key) wontthrow
   return {configuration_query_status::Value, static_cast<i64>(value)};
 }
 
+#if defined _CS_PATH
 static constexpr int STRING_CONFIGURATION_KEYS[] = {
     _CS_PATH,
 #ifdef _CS_POSIX_V7_ILP32_OFF32_CFLAGS
@@ -3805,6 +3806,7 @@ static constexpr int STRING_CONFIGURATION_KEYS[] = {
 };
 static_assert(countof(STRING_CONFIGURATION_KEYS) ==
               static_cast<usize>(string_configuration_key::Count));
+#endif
 
 fn
 query_string_configuration(string_configuration_key key,
@@ -3813,6 +3815,7 @@ query_string_configuration(string_configuration_key key,
 {
   let result = StringConfigurationResult{allocator};
 
+#if defined _CS_PATH
   if (key == string_configuration_key::Count) return result;
 
   let const native_key = STRING_CONFIGURATION_KEYS[static_cast<usize>(key)];
@@ -3861,6 +3864,9 @@ query_string_configuration(string_configuration_key key,
 
   errno         = EAGAIN;
   result.status = configuration_query_status::Error;
+#else
+  (void) key;
+#endif
 
   return result;
 }
