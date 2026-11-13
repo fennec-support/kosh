@@ -7,9 +7,13 @@ uncompressed=$work/archive.tar
 compressed_work=$work/compressed
 mkdir -p "$compressed_work"
 cp "$BIN" "$core"
+executable_directory=$(cd "$work" && pwd -P)/"binary space 'quote"
+mkdir -p "$executable_directory"
+executable=$executable_directory/"program 'name"
+cp "$BIN" "$executable"
 
 report=$($BIN -c 'koshkit --color never goodcore --binary "$1" --output "$2" --no-compress "$3"' \
-  goodcore "$BIN" "$uncompressed" "$core" 2> /dev/null)
+  goodcore "$executable" "$uncompressed" "$core" 2> /dev/null)
 status=$?
 printf 'uncompressed-status=%s\n' "$status"
 case $report in
@@ -32,6 +36,33 @@ printf 'uncompressed-contents=%s\n' "$archive_shape"
 
 script_modes=$(tar -tvf "$uncompressed" | grep -c '^-rwxr-xr-x .*debug-\(gdb\|lldb\)\.sh$')
 printf 'debugger-scripts-executable=%s\n' "$script_modes"
+
+extracted=$work/"extracted space 'quote"
+debuggers=$work/debuggers
+mkdir -p "$extracted" "$debuggers"
+tar -xf "$uncompressed" -C "$extracted"
+extracted=$(cd "$extracted" && pwd -P)
+for debugger in gdb lldb; do
+  printf '#!/bin/sh\nprintf "%%s\\n" "$@"\n' >"$debuggers/$debugger"
+  chmod +x "$debuggers/$debugger"
+done
+PATH="$(cd "$debuggers" && pwd -P):$PATH" \
+  "$extracted/debug-gdb.sh" 'argument with spaces' "single'quote" '' \
+  >"$work/gdb-arguments"
+printf '%s\n' -ex "set sysroot $extracted/root" \
+  -ex "set solib-search-path $extracted/root" \
+  "$extracted/root/${executable#/}" "$extracted/dump/core" \
+  'argument with spaces' "single'quote" '' >"$work/expected-gdb"
+cmp "$work/gdb-arguments" "$work/expected-gdb"
+printf 'gdb-launcher-arguments=%s\n' "$?"
+PATH="$(cd "$debuggers" && pwd -P):$PATH" \
+  "$extracted/debug-lldb.sh" 'argument with spaces' "single'quote" '' \
+  >"$work/lldb-arguments"
+printf '%s\n' -O "platform select host --sysroot '$extracted/root'" \
+  --core "$extracted/dump/core" "$extracted/root/${executable#/}" \
+  'argument with spaces' "single'quote" '' >"$work/expected-lldb"
+cmp "$work/lldb-arguments" "$work/expected-lldb"
+printf 'lldb-launcher-arguments=%s\n' "$?"
 
 quiet_status=0
 quiet_output=$($BIN -c \

@@ -594,22 +594,19 @@ GoodCore::execute(const ExecContext               &ec,
     return 1;
   }
 
-  let quoted_executable = String{allocator};
+  let const executable = stripped_root(binary->view());
+  let       gdb_script = String{allocator, "#!/bin/sh\nset -- "};
 
-  utils::append_shell_quoted(quoted_executable, stripped_root(binary->view()),
-                             true);
+  utils::append_shell_quoted(gdb_script, executable, true);
+  gdb_script += " \"$@\"\n";
+  gdb_script += GOODCORE_GDB.substring(*GOODCORE_GDB.find_character('\n') + 1);
 
-  let gdb_script = String{allocator, GOODCORE_DEBUG_SCRIPT_PRELUDE};
+  let lldb_script = String{allocator, "#!/bin/sh\nset -- "};
 
-  gdb_script += GOODCORE_GDB_SCRIPT_HEAD;
-  gdb_script += quoted_executable.view();
-  gdb_script += GOODCORE_GDB_SCRIPT_TAIL;
-
-  let lldb_script = String{allocator, GOODCORE_DEBUG_SCRIPT_PRELUDE};
-
-  lldb_script += GOODCORE_LLDB_SCRIPT_HEAD;
-  lldb_script += quoted_executable.view();
-  lldb_script += GOODCORE_LLDB_SCRIPT_TAIL;
+  utils::append_shell_quoted(lldb_script, executable, true);
+  lldb_script += " \"$@\"\n";
+  lldb_script +=
+      GOODCORE_LLDB.substring(*GOODCORE_LLDB.find_character('\n') + 1);
 
   let const do_write_script =
       [&](StringView script_name,

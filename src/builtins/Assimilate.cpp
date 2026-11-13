@@ -185,7 +185,7 @@ transaction_command(StringView   upload_name,
   do_append_argument("--mood");
   do_append_argument("sh");
   do_append_argument("-c");
-  do_append_argument(ASSIMILATE_TRANSACTION_LOCK_SCRIPT);
+  do_append_argument(ASSIMILATE_TRANSACTION_LOCK);
   do_append_argument("kosh");
   do_append_argument(".");
   do_append_argument(upload_path.view());
@@ -193,15 +193,9 @@ transaction_command(StringView   upload_name,
   do_append_argument("--mood");
   do_append_argument("sh");
   do_append_argument("-c");
-
-  let transaction_script = String{allocator, "assimilate_side="};
-
-  transaction_script += get_side_word(side);
-  transaction_script += '\n';
-  transaction_script += ASSIMILATE_DIRECTORY_FUNCTIONS;
-  transaction_script += ASSIMILATE_TRANSACTION;
-  do_append_argument(transaction_script.view());
+  do_append_argument(ASSIMILATE_TRANSACTION);
   do_append_argument("kosh");
+  do_append_argument(get_side_word(side));
   do_append_argument(upload_name);
   do_append_argument(transaction_id);
   do_append_argument(expected_identity);
@@ -224,6 +218,8 @@ preflight_command(StringView   executable_system,
 {
   let command = String{allocator, "set -- "};
 
+  append_shell_quoted_arg(command, get_side_word(side));
+  command += ' ';
   append_shell_quoted_arg(command, trace == trace_output::Enabled
                                        ? StringView{"1"}
                                        : StringView{"0"});
@@ -235,10 +231,7 @@ preflight_command(StringView   executable_system,
   append_shell_quoted_arg(command, requested_directory);
   command += ' ';
   append_shell_quoted_arg(command, link_moods);
-  command += "; assimilate_side=";
-  command += get_side_word(side);
-  command += "\n";
-  command += ASSIMILATE_DIRECTORY_FUNCTIONS;
+  command += ";\n";
   command += ASSIMILATE_PREFLIGHT;
 
   return command;

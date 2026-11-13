@@ -85,15 +85,15 @@ shift
 [ "$#" -eq 1 ] || exit 42
 command=$1
 case $command in
-    "set -- "*"expected_system="*)
+    "set -- "*"EXPECTED_SYSTEM="*)
         HOME=$ASSIMILATE_REMOTE_HOME \
             PATH="$ASSIMILATE_REMOTE_PATH:$ASSIMILATE_TRANSPORT" \
             /bin/sh -c "$command"
         exit
         ;;
-    *'/bin/'*) exit 43 ;;
     "exec ./.kosh-assimilate-"*.upload*) ;;
     "exec './.kosh-assimilate-"*.upload*) ;;
+    *'/bin/'*) exit 43 ;;
     *) exit 44 ;;
 esac
 cd "$ASSIMILATE_REMOTE" || exit 1

@@ -76,6 +76,9 @@ refill_tests: kosh
 	echo Refilling tests...
 	$(MAKE) $(AUTO_JOBS) -C test refill
 
+baked-scripts:
+	$(MAKE) -C src baked-scripts
+
 completions:
 	echo Generating completions...
 	$(MAKE) $(AUTO_JOBS) -C src MODE=rel kosh
@@ -128,4 +131,4 @@ clean:
 	$(MAKE) -C src/toiletline clean
 
 .PHONY: all kosh install uninstall tidy fmt toiletline_test test bench \
-	refill_tests completions pgo pgo-profile fuzz docs clean
+	refill_tests completions baked-scripts pgo pgo-profile fuzz docs clean

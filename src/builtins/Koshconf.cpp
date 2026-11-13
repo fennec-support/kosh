@@ -263,7 +263,7 @@ run_create(const ExecContext       &ec,
   /* at this point: the configuration file was written, and the user rc
      script is absent, so its default is written. */
   try {
-    write_koshconf_file(*script, DEFAULT_RC_SCRIPT);
+    write_koshconf_file(*script, RC);
   } catch (const Error &error) {
     report_caught_error(ec, cxt, ec.source_location(), error);
 

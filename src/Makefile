@@ -25,6 +25,7 @@ SOURCE_DIRECTORIES := $(wildcard */.)
 
 SOURCES += $(wildcard */**.cpp)
 HEADERS += $(wildcard */**.hpp)
+HEADERS := $(filter-out BakedScripts.hpp,$(HEADERS))
 SOURCES := $(filter-out $(ROUTED_SOURCES),$(SOURCES))
 
 ifeq ($(NO_KOSHKIT), 1)
@@ -174,6 +175,39 @@ endif
 REGEX_OBJECTS := $(REGEX_SOURCES:%=$(OBJECT_DIRECTORY)/vendor/regex/%.o)
 OBJECTS := $(SOURCES:%.cpp=$(OBJECT_DIRECTORY)/%.o) $(REGEX_OBJECTS)
 DEPENDENCY_FILES := $(OBJECTS:.o=.d)
+
+BAKED_SCRIPT_SOURCES := $(wildcard ../scripts/baked/*)
+BAKED_SCRIPT_OBJECTS := $(filter $(OBJECTS),\
+	$(OBJECT_DIRECTORY)/builtins/Assimilate.o \
+	$(OBJECT_DIRECTORY)/builtins/Koshconf.o \
+	$(OBJECT_DIRECTORY)/koshkit/Flock.o \
+	$(OBJECT_DIRECTORY)/koshkit/GoodCore.o)
+
+baked-scripts: BakedScripts.hpp
+
+BakedScripts.hpp: $(BAKED_SCRIPT_SOURCES) ../scripts/baked ../scripts/generate-baked-scripts.sh Makefile
+	set -eu; \
+	TEMPORARY=$$(mktemp "$@.tmp.XXXXXXXXXX"); \
+	trap 'rm -f "$$TEMPORARY"' EXIT; \
+	{ \
+		printf '%s\n' '/*' \
+			' *    This file is a part of the Koshka shell, (c) toiletbril, 2026' \
+			' *    See the top-level LICENSE file for the licensing information.' \
+			' *' \
+			' * This file is generated from scripts/baked/.' ' */' '' \
+			'#pragma once' '' '#include "base/StringView.hpp"' '' \
+			'namespace koshka {' ''; \
+		for SOURCE in $(BAKED_SCRIPT_SOURCES); do \
+			sh ../scripts/generate-baked-scripts.sh "$$SOURCE" || exit $$?; \
+		done; \
+		printf '} /* namespace koshka */\n'; \
+	} >"$$TEMPORARY"; \
+	if ! cmp -s "$$TEMPORARY" "$@"; then \
+		chmod 644 "$$TEMPORARY"; \
+		mv -f "$$TEMPORARY" "$@"; \
+	fi
+
+$(BAKED_SCRIPT_OBJECTS): BakedScripts.hpp
 
 # A Darwin cross build uses osxcross for arm64. An environment CXX serves host
 # builds, so only a command-line CXX replaces oa64-clang++, and the compiler
@@ -814,6 +848,6 @@ clean:
 	rm -rf ../*.profraw ../*.profdata ../coverage # Coverage
 
 .PHONY: dirs force_commit_hash force_commit_hash_objects kosh fuzz install \
-	uninstall tidy fmt clean
+	uninstall tidy fmt baked-scripts clean
 
 -include $(DEPENDENCY_FILES)

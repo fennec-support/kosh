@@ -58,7 +58,12 @@ EvalContext and constructors.
 ## Ownership
 
 src/Main.cpp owns flags, startup, scripts, and the interactive loop.
-src/BakedScripts.hpp holds the fixed shell scripts built into Koshka.
+scripts/baked/ owns the complete shell scripts built into Koshka.
+scripts/generate-baked-scripts.sh takes one filename and emits its complete text
+as a C++ string whose name is derived from that filename. The Make wildcard
+collects that directory into the committed src/BakedScripts.hpp. Zig uses the
+same Make target before compiling its consumers. make baked-scripts
+regenerates it explicitly, and formatters exclude the generated header.
 src/Lexer.cpp creates tokens. src/Parser.cpp creates the syntax tree.
 src/Optimizer.cpp folds constants and dead branches.
 src/EvalArithmetic.cpp builds and evaluates arithmetic trees. The lexer and

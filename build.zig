@@ -19,6 +19,12 @@ pub fn build(b: *std.Build) void {
         .root_module = module,
     });
 
+    const baked_scripts = b.addSystemCommand(&.{ "make", "-C" });
+    baked_scripts.addArg(b.pathFromRoot("src"));
+    baked_scripts.addArg("baked-scripts");
+    baked_scripts.has_side_effects = true;
+    exe.step.dependOn(&baked_scripts.step);
+
     var flags: std.ArrayList([]const u8) = .empty;
     defer flags.deinit(b.allocator);
 
