@@ -10,7 +10,7 @@ note: Pass the arguments at the call.
      2 |    echo "hello $1"
        |                ^~ the body uses $1 here.
 note: Pass the values 'greet' expects, or forward `"$@"`.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 == one call with arguments clears every call of that function:
 rc=0
 == a body that uses no argument stays quiet:
@@ -31,7 +31,7 @@ note: Pass the arguments at the call.
      2 |    [ -n "$1" ]
        |          ^~ the body uses $1 here.
 note: Pass the values 'check' expects, or forward `"$@"`.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 == a positional read in an arithmetic expression counts:
 -c:2:15: warning: The function 'double' uses arguments, and no call passes any. (SC2120)
      2 |    echo $((2 * $1))
@@ -44,7 +44,7 @@ note: Pass the arguments at the call.
      2 |    echo $((2 * $1))
        |                ^~ the body uses $1 here.
 note: Pass the values 'double' expects, or forward `"$@"`.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 == a positional read in a for loop word counts:
 -c:2:15: warning: The function 'walk' uses arguments, and no call passes any. (SC2120)
      2 |    for one in "$@"; do echo "$one"; done
@@ -57,7 +57,7 @@ note: Pass the arguments at the call.
      2 |    for one in "$@"; do echo "$one"; done
        |                ^~ the body uses $@ here.
 note: Pass the values 'walk' expects, or forward `"$@"`.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 == a positional star read gives its exact expansion:
 -c:2:18: warning: The function 'join' uses arguments, and no call passes any. (SC2120)
      2 |    printf "%s\n" "$*"
@@ -70,7 +70,7 @@ note: Pass the arguments at the call.
      2 |    printf "%s\n" "$*"
        |                   ^~ the body uses $* here.
 note: Pass the values 'join' expects, or forward `"$@"`.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 == the first reading definition remains authoritative:
 -c:2:9: warning: The function 'choice' uses arguments, and no call passes any. (SC2120)
      2 |    echo "$1"
@@ -83,7 +83,7 @@ note: Pass the arguments at the call.
      2 |    echo "$1"
        |          ^~ the body uses $1 here.
 note: Pass the values 'choice' expects, or forward `"$@"`.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 == a later reading definition does not replace the first summary:
 rc=0
 == a call runs before the definition:
@@ -94,6 +94,7 @@ rc=0
      2 |  later_helper() {
        |  ^~~~~~~~~~~~ the definition runs after the call.
 note: Move the definition of 'later_helper' above this call.
+kosh: 1 warning generated.
 == a call to a builtin name defined later stays quiet:
 rc=0
 == a definition above the call stays quiet:
@@ -112,7 +113,7 @@ note: Pass the arguments at the call.
      2 |    echo "hello $1"
        |                ^~ the body uses $1 here.
 note: Pass the values 'greet' expects, or forward `"$@"`.
-Encountered 2 errors.
+kosh: 2 errors generated.
 rc=1
 == a disable directive silences the sweep:
 rc=0

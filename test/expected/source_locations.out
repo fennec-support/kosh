@@ -607,6 +607,7 @@ rc=1
 deploy.kosh:3:1: warning: The command 'release' could not be verified after runtime code.
      3 |  release 0
        |  ^~~~~~~
+kosh: 1 warning generated.
 eval:3:11: error: Division by zero.
      3 |    echo $((12 / workers))
        |            ^~~~~~~~~~~~

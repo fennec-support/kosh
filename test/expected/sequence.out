@@ -10,7 +10,7 @@ note: Use an `if` statement when C is the else branch.
      4 |  false && echo 1 || false && echo 2 || true && echo 3;
        |                                     ^~
 note: Use an `if` statement when C is the else branch.
-Encountered 3 warnings.
+kosh: 3 warnings generated.
 1
 2
 3

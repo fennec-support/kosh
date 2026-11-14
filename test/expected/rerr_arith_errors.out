@@ -42,7 +42,7 @@ note: An operator is missing between two values.
     30 |  (export z=$((5 6)))
        |                 ^
 note: An operator is missing between two values.
-Encountered 11 warnings.
+kosh: 11 warnings generated.
 3:16: error: Invalid digit '9' in the number '09'.
      3 |  (echo $((010 + 09)))
        |                 ^~

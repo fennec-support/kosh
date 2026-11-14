@@ -29,7 +29,7 @@ note: Write `cd dir || exit`, or `cd dir || return` in a function.
 33:10: warning: The command 'nosuchcmd_xyz' was not found.
     33 |  false && nosuchcmd_xyz
        |           ^~~~~~~~~~~~~
-Encountered 10 warnings.
+kosh: 10 warnings generated.
 2:1: error: The command 'zzqqxxnonexist_command_4242' was not found.
      2 |  zzqqxxnonexist_command_4242
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~

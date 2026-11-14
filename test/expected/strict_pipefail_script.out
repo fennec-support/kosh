@@ -10,7 +10,7 @@ note: Remove the pipe and run the upstream command on its own.
     11 |  false | true
        |          ^~~~
 note: Remove the pipe and run the upstream command on its own.
-Encountered 3 warnings.
+kosh: 3 warnings generated.
 strict=1
 4:2: error: Builtin `set`: The kosh mood keeps 'pipefail' on.
      4 |  (set +o pipefail)

@@ -2,4 +2,5 @@
      4 |      EOF
        |      ^~~
 note: Write `<<-` in place of `<<` to strip the leading tabs.
+kosh: 1 warning generated.
 before

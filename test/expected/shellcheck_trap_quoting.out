@@ -2,4 +2,5 @@
      2 |  trap ": ${unset_at_set_time-}" EXIT
        |       ^~~~~~~~~~~~~~~~~~~~~~~~~
 note: Single-quote it so it expands when the trap runs.
+kosh: 1 warning generated.
 done

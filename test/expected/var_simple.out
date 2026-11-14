@@ -22,7 +22,7 @@ note: Quote the expansion to keep one argument.
     64 |  echo a${NOPE}b
        |        ^~~~~~~
 note: Quote the expansion to keep one argument.
-Encountered 6 warnings.
+kosh: 6 warnings generated.
 bar
 bar
 bar and more

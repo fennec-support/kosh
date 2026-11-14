@@ -6,7 +6,7 @@ note: Write it with `-n`.
      8 |  [ "$x" ]
        |    ^~~~
 note: Write it with `-n`.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 nullary-empty=1
 explicit-empty=1
 nullary-set=0

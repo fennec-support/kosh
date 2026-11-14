@@ -101,6 +101,7 @@ status 1
 --- flock -n on a FIFO does not wait for a writer ---
 status 0
 --- compgen -W with a trailing backslash ---
+kosh: 1 warning generated.
 a
 --- make stops a pattern rule that feeds itself ---
 status 2

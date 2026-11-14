@@ -11,13 +11,14 @@ command.sh:3:8: warning: A bare glob can expand to a filename that begins with `
      3 |  x=$(ls *.txt)
        |         ^~~~~
 note: Prefix the glob with a directory or place `--` before it.
-Encountered 3 warnings.
+kosh: 3 warnings generated.
 status=0
 == backtick.sh
 backtick.sh:2:4: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  y=`cat f | grep a`
        |     ^~~
 note: Give the file to the next command directly.
+kosh: 1 warning generated.
 status=0
 == process.sh
 process.sh:2:8: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
@@ -28,43 +29,49 @@ process.sh:2:24: warning: The `cat` writes its file unchanged into the pipe. (SC
      2 |  diff <(cat a | sort) >(cat b | sort)
        |                         ^~~
 note: Give the file to the next command directly.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 status=0
 == funsub.sh
 funsub.sh:2:6: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  x=${ cat f | grep a; }
        |       ^~~
 note: Give the file to the next command directly.
+kosh: 1 warning generated.
 status=0
 == heredoc.sh
 heredoc.sh:3:10: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      3 |  value: $(cat f | grep a)
        |           ^~~
 note: Give the file to the next command directly.
+kosh: 1 warning generated.
 status=0
 == modifier.sh
 modifier.sh:2:14: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  echo "${x:-$(cat f | grep a)}"
        |               ^~~
 note: Give the file to the next command directly.
+kosh: 1 warning generated.
 status=0
 == arithmetic.sh
 arithmetic.sh:2:12: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  echo $(( $(cat f | wc -l) + 1 ))
        |             ^~~
 note: Give the file to the next command directly.
+kosh: 1 warning generated.
 status=0
 == arithmetic_command.sh
 arithmetic_command.sh:2:14: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  (( total = $(cat f | wc -l) ))
        |               ^~~
 note: Give the file to the next command directly.
+kosh: 1 warning generated.
 status=0
 == cstyle_for.sh
 cstyle_for.sh:2:20: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  for ((i = 0; i < $(cat f | wc -l); i++)); do :; done
        |                     ^~~
 note: Give the file to the next command directly.
+kosh: 1 warning generated.
 status=0
 == case.sh
 case.sh:2:6: warning: This `case` has no default `*)` branch. (SC2249)
@@ -75,13 +82,14 @@ case.sh:2:9: warning: The `cat` writes its file unchanged into the pipe. (SC2002
      2 |  case "$(cat f | head -1)" in a) : ;; esac
        |          ^~~
 note: Give the file to the next command directly.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 status=0
 == conditional.sh
 conditional.sh:2:7: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  [[ "$(cat f | head -1)" == a ]]
        |        ^~~
 note: Give the file to the next command directly.
+kosh: 1 warning generated.
 status=0
 == for_words.sh
 for_words.sh:2:12: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
@@ -92,7 +100,7 @@ for_words.sh:2:10: error: A `for` loop over the `cat` output iterates IFS-split 
      2 |  for i in $(cat f | head -1); do : "$i"; done
        |           ^~~~~~~~~~~~~~~~~~
 note: Loop over the lines with `while IFS= read -r line`.
-Encountered 1 warning and 1 error.
+kosh: 1 warning and 1 error generated.
 status=1
 == nested.sh
 nested.sh:2:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
@@ -107,25 +115,28 @@ nested.sh:2:17: warning: The `cat` writes its file unchanged into the pipe. (SC2
      2 |  echo "$(echo "$(cat f | grep a)")"
        |                  ^~~
 note: Give the file to the next command directly.
-Encountered 3 warnings.
+kosh: 3 warnings generated.
 status=0
 == redirect.sh
 redirect.sh:2:14: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      2 |  echo hi > "$(cat f | head -1)"
        |               ^~~
 note: Give the file to the next command directly.
+kosh: 1 warning generated.
 status=0
 == disabled_file.sh
 disabled_file.sh:3:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
      3 |  echo "$(cat f | grep a)"
        |  ^~~~
 note: Run the command on its own.
+kosh: 1 warning generated.
 status=0
 == disabled_next.sh
 disabled_next.sh:5:5: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
      5 |  y=$(cat f | grep a)
        |      ^~~
 note: Give the file to the next command directly.
+kosh: 1 warning generated.
 status=0
 == declaration.sh
 declaration.sh:3:13: warning: The `cat` writes its file unchanged into the pipe. (SC2002)
@@ -164,7 +175,7 @@ declaration.sh:7:8: error: An array built from unquoted command output will be s
      7 |    arr=($(cat f | grep e))
        |         ^~~~~~~~~~~~~~~~~
 note: Use `mapfile` or `readarray` to preserve output records.
-Encountered 5 warnings and 4 errors.
+kosh: 5 warnings and 4 errors generated.
 status=1
 == scope.sh
 scope.sh:3:1: warning: An `echo` of a command substitution prints what the command already prints. (SC2005)
@@ -191,7 +202,7 @@ scope.sh:6:7: error: The variable 'inner' is used before any assignment gives it
      6 |  echo "$inner"
        |        ^~~~~~
 note: Assign 'inner' before this use, or set it in the environment.
-Encountered 4 warnings and 2 errors.
+kosh: 4 warnings and 2 errors generated.
 status=1
 == function_call.sh
 status=0
@@ -218,5 +229,5 @@ escapes.sh:5:16: warning: The shell treats the escape `\q` as a plain 'q' and dr
      5 |  echo "$(true;)"\q
        |                 ^~
 note: Quote the backslash, or build the byte with `printf`.
-Encountered 5 warnings.
+kosh: 5 warnings generated.
 status=0

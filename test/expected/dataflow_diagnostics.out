@@ -3,6 +3,7 @@
      1 |  echo "$undefined_name"
        |        ^~~~~~~~~~~~~~~
 note: Assign 'undefined_name' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == a name that resembles an assigned name:
 -c:2:7: warning: The variable 'myvalue' is never assigned, and 'my_value' is assigned. (SC2153)
      2 |  echo "$myvalue"
@@ -11,6 +12,7 @@ note: Assign 'undefined_name' before this use, or set it in the environment.
      1 |  my_value=1
        |  ^~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'myvalue'.
+kosh: 1 warning generated.
 == case and underscore folding both count as a resemblance:
 -c:2:7: warning: The variable 'OUTPUTFILE' is never assigned, and 'output_file' is assigned. (SC2153)
      2 |  echo "$OUTPUTFILE"
@@ -19,6 +21,7 @@ note: Correct the spelling or assign 'myvalue'.
      1 |  output_file=out
        |  ^~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'OUTPUTFILE'.
+kosh: 1 warning generated.
 == a transposed pair still identifies the assigned variable:
 -c:2:7: warning: The variable 'outupt_length' is never assigned, and 'output_length' is assigned. (SC2153)
      2 |  echo "$outupt_length"
@@ -27,6 +30,7 @@ note: Correct the spelling or assign 'OUTPUTFILE'.
      1 |  output_length=1
        |  ^~~~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'outupt_length'.
+kosh: 1 warning generated.
 == a dropped byte still identifies the assigned variable:
 -c:2:7: warning: The variable 'destinaton_path' is never assigned, and 'destination_path' is assigned. (SC2153)
      2 |  echo "$destinaton_path"
@@ -35,6 +39,7 @@ note: Correct the spelling or assign 'outupt_length'.
      1 |  destination_path=1
        |  ^~~~~~~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'destinaton_path'.
+kosh: 1 warning generated.
 == two edits on a long name still resolve:
 -c:2:7: warning: The variable 'configuratoin_rot' is never assigned, and 'configuration_root' is assigned. (SC2153)
      2 |  echo "$configuratoin_rot"
@@ -43,11 +48,13 @@ note: Correct the spelling or assign 'destinaton_path'.
      1 |  configuration_root=1
        |  ^~~~~~~~~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'configuratoin_rot'.
+kosh: 1 warning generated.
 == a name too far from every assigned name stays unresolved:
 -c:2:7: warning: The variable 'temporary_buffer' is used before any assignment gives it a value. (SC2154)
      2 |  echo "$temporary_buffer"
        |        ^~~~~~~~~~~~~~~~~
 note: Assign 'temporary_buffer' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == an assignment before the read stays quiet:
 rc=0
 == an if-only assignment remains conditional:
@@ -55,6 +62,7 @@ rc=0
      2 |  echo "$if_value"
        |        ^~~~~~~~~
 note: Assign 'if_value' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == an assignment on every if exit stays quiet:
 rc=0
 == a case arm that exits leaves the assigning arm alone:
@@ -68,11 +76,13 @@ rc=0
      3 |  echo "$maybe_value"
        |        ^~~~~~~~~~~~
 note: Assign 'maybe_value' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == an exit joined by a connector does not end its branch:
 -c:2:7: warning: The variable 'connector_value' is used before any assignment gives it a value. (SC2154)
      2 |  echo "$connector_value"
        |        ^~~~~~~~~~~~~~~~
 note: Assign 'connector_value' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == compacted divergent branches preserve uncertainty:
 -c:39:33: warning: The variable 'branch_special' is used before any assignment gives it a value. (SC2154)
     39 |  echo "$removed_marker $seed_128 $branch_special $nested_value"
@@ -82,7 +92,7 @@ note: Assign 'branch_special' before this use, or set it in the environment.
     39 |  echo "$removed_marker $seed_128 $branch_special $nested_value"
        |                                                  ^~~~~~~~~~~~~
 note: Assign 'nested_value' before this use, or set it in the environment.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 == loop-only assignments remain conditional:
 -c:3:7: warning: The variable 'for_value' is used before any assignment gives it a value. (SC2154)
      3 |  echo "$for_value $while_value"
@@ -92,7 +102,7 @@ note: Assign 'for_value' before this use, or set it in the environment.
      3 |  echo "$for_value $while_value"
        |                   ^~~~~~~~~~~~
 note: Assign 'while_value' before this use, or set it in the environment.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 == short-circuit assignments remain conditional:
 -c:3:7: warning: The variable 'and_value' is used before any assignment gives it a value. (SC2154)
      3 |  echo "$and_value $or_value"
@@ -102,7 +112,7 @@ note: Assign 'and_value' before this use, or set it in the environment.
      3 |  echo "$and_value $or_value"
        |                   ^~~~~~~~~
 note: Assign 'or_value' before this use, or set it in the environment.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 == a prefix assignment counts as an assignment:
 rc=0
 == the shell maintains these variables itself:
@@ -114,6 +124,7 @@ rc=0
      1 |  echo "$DATAFLOW_EXPORTED_VLAUE"
        |        ^~~~~~~~~~~~~~~~~~~~~~~~
 note: Assign 'DATAFLOW_EXPORTED_VLAUE' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == a KOSH_ name is maintained by the shell:
 rc=0
 == misspelled KOSH and ANSI variables are unresolved:
@@ -133,21 +144,24 @@ note: Correct the spelling or assign 'KOSH_VERSOIN'.
      1 |  echo "$KOSH_GIT_BRNACH $KOSH_ANSI_REDD $KOSH_VERSOIN $OPTNID"
        |                                                       ^~~~~~~
 note: Correct the spelling or assign 'OPTNID'.
-Encountered 4 warnings.
+kosh: 4 warnings generated.
 == sh mood does not suggest a Bash-only variable:
 -c:1:7: warning: The variable 'BASH_VERSOIN' is used before any assignment gives it a value. (SC2154)
      1 |  echo "$BASH_VERSOIN"
        |        ^~~~~~~~~~~~~
 note: Assign 'BASH_VERSOIN' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == unavailable catalog entries are not suggested:
 -c:1:7: warning: The variable 'BASHOPTZ' is never assigned, and the shell provides 'BASHOPTS'. (SC2153)
      1 |  echo "$BASHOPTZ"
        |        ^~~~~~~~~
 note: Correct the spelling or assign 'BASHOPTZ'.
+kosh: 1 warning generated.
 -c:1:7: warning: The variable 'GLOBIGNROE' is used before any assignment gives it a value. (SC2154)
      1 |  echo "$GLOBIGNROE"
        |        ^~~~~~~~~~~
 note: Assign 'GLOBIGNROE' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == every assignment binder describes its target:
 -c:11:7: warning: The variable 'loop_entyr' is never assigned, and 'loop_entry' is assigned. (SC2153)
     11 |  echo "$loop_entyr"
@@ -219,7 +233,7 @@ note: Correct the spelling or assign 'exported_nmae'.
     10 |  readonly readonly_name
        |           ^~~~~~~~~~~~~ This declaration does not assign a value.
 note: Correct the spelling or assign 'readonly_nmae'.
-Encountered 10 warnings.
+kosh: 10 warnings generated.
 == an arithmetic assignment assigns its target:
 rc=0
 == a compound arithmetic assignment assigns its target:
@@ -229,6 +243,7 @@ rc=0
      1 |  echo $((q <= 1)); echo "$q"
        |                          ^~
 note: Assign 'q' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == a C-style for init clause assigns its target:
 rc=0
 == the default mood rejects an unassigned read:
@@ -236,6 +251,7 @@ rc=0
      1 |  echo "$rejected_name"
        |        ^~~~~~~~~~~~~~
 note: Assign 'rejected_name' before this use, or set it in the environment.
+kosh: 1 error generated.
 rc=1
 == a read before a later assignment identifies that assignment:
 -c:1:7: warning: The variable 'greeting_text' is used before it is assigned.
@@ -244,6 +260,7 @@ rc=1
 -c:2:1: details:
      2 |  greeting_text=hello
        |  ^~~~~~~~~~~~~~~~~~~ the assignment that gives 'greeting_text' a value runs here.
+kosh: 1 warning generated.
 == a disable directive silences the sweep:
 rc=0
 == an assign form parameter expansion assigns its target:
@@ -253,11 +270,13 @@ rc=0
      2 |  echo "$default_target"
        |        ^~~~~~~~~~~~~~~
 note: Assign 'default_target' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == a read before a runtime definer is still reported:
 -c:1:7: warning: The variable 'before_eval' is used before any assignment gives it a value. (SC2154)
      1 |  echo "$before_eval"
        |        ^~~~~~~~~~~~
 note: Assign 'before_eval' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == a read after a runtime definer stays quiet:
 rc=0
 == a prefix on an ordinary command does not outlive it:
@@ -265,6 +284,7 @@ rc=0
      2 |  echo "$temporary_name"
        |        ^~~~~~~~~~~~~~~
 note: Assign 'temporary_name' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == a prefix on a special builtin outlives it:
 rc=0
 == a prefix repeating its own value is not a self assignment:
@@ -276,11 +296,13 @@ rc=0
      3 |  echo "$pm"
        |        ^~~
 note: Assign 'pm' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == a loop assignment beside a similar name is not unassigned:
 -c:3:7: warning: The variable 'pm' is used before any assignment gives it a value. (SC2154)
      3 |  echo "$pm"
        |        ^~~
 note: Assign 'pm' before this use, or set it in the environment.
+kosh: 1 warning generated.
 == a chained loop assignment beside a similar name is not unassigned:
 -c:2:46: warning: An unquoted variable can split into words and expand globs. (SC2086)
      2 |  for i in "${pms[@]}"; do [[ -x "$(command -v ${i})" ]] && pm="${i}" || true; done
@@ -294,4 +316,4 @@ note: Use an `if` statement when C is the else branch.
      4 |  echo "pm=$pm"
        |           ^~~
 note: Assign 'pm' before this use, or set it in the environment.
-Encountered 3 warnings.
+kosh: 3 warnings generated.

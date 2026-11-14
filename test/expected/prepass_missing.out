@@ -47,7 +47,7 @@ note: Place the option after its command.
 8:1: warning: The command '-n' was not found.
      8 |  -n
        |  ^~
-Encountered 13 warnings.
+kosh: 13 warnings generated.
 2:1: error: The command 'nosuchcmd_xyz' was not found.
      2 |  nosuchcmd_xyz
        |  ^~~~~~~~~~~~~

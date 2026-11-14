@@ -2,6 +2,7 @@
      7 |  echo [abc
        |       ^~~~
 note: Close the bracket with `]`, or escape it as `\[`.
+kosh: 1 warning generated.
 2:6: warning: The glob pattern 'data/*/doesnotexist' matched no file, it expands to its literal text, which is rarely intended.
      2 |  echo data/*/doesnotexist
        |       ^~~~~~~~~~~~~~~~~~~

@@ -7,7 +7,7 @@ note: This is not a valid operator or operand.
      1 |  a=0; let a = 2; echo unreached
        |       ^~~
 note: Write `(( ... ))` for the arithmetic.
-Encountered 1 warning and 1 error.
+kosh: 1 warning and 1 error generated.
 rc=1
 == bash soft argument location ==
 -c:1:12: error: Builtin `let`: Unexpected character in the arithmetic expression.

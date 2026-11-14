@@ -14,7 +14,7 @@ note: Quote it to avoid an empty or split argument.
     27 |  if [ $s ]; then echo single_unquoted_yes; else echo single_unquoted_no; fi
        |       ^~
 note: Quote it to avoid an empty or split argument.
-Encountered 4 warnings.
+kosh: 4 warnings generated.
 ws_unquoted_no
 ws_quoted_yes
 empty_unquoted_no

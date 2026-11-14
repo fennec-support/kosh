@@ -10,7 +10,7 @@ note: Use `=` for string equality.
      2 |  [ a == b ]
        |      ^~
 note: Compare a variable, or correct the operand spelling.
-Encountered 3 warnings.
+kosh: 3 warnings generated.
 2:3: error: Builtin `[`: '==' is a bashism, use = for string equality in POSIX mode.
      2 |  [ a == b ]
        |    ^

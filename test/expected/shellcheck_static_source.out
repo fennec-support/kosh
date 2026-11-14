@@ -204,4 +204,4 @@ note: Delete it and retype an ASCII quote.
    112 |    echo “after heredoc”
        |                       ^
 note: Delete it and retype an ASCII quote.
-Encountered 50 warnings.
+kosh: 50 warnings generated.

@@ -128,9 +128,9 @@ run_and_capture "$BIN" --mood bash --lint nested/root.bash
 lint_order=$(printf '%s\n' "$output" | sed -n \
   -e "/The variable 'GRANDCHILD_SOURCE_UNSET'/s/.*/grandchild/p" \
   -e "/The variable 'CHILD_SOURCE_UNSET'/s/.*/child/p" \
-  -e '/^Encountered 2 warnings\.$/s/.*/summary/p' | diagnostic_names)
+  -e '/^kosh: 2 warnings generated\.$/s/.*/summary/p' | diagnostic_names)
 summary_count=$(printf '%s\n' "$output" |
-  grep -c '^Encountered 2 warnings\.$')
+  grep -c '^kosh: 2 warnings generated\.$')
 grandchild_filename_count=$(printf '%s\n' "$output" |
   grep -c 'grandchild.bash:1:')
 child_filename_count=$(printf '%s\n' "$output" |

@@ -65,10 +65,10 @@ rc=$?
 names=$(printf '%s\n' "$output" |
   sed -n \
     -e "s/.*The variable '\([^']*\)'.*/\1/p" \
-    -e 's/^Encountered 4 errors\.$/SUMMARY/p' |
+    -e 's/^kosh: 4 errors generated\.$/SUMMARY/p' |
   diagnostic_names)
 summary_count=$(printf '%s\n' "$output" |
-  grep -c '^Encountered 4 errors\.$')
+  grep -c '^kosh: 4 errors generated\.$')
 executed=0
 [ -e lint-input-executed ] && executed=1
 printf 'batch-order=%s summaries=%s rc=%s executed=%s\n' \
@@ -84,11 +84,11 @@ rc=$?
 names=$(printf '%s\n' "$output" |
   sed -n \
     -e "s/.*The variable '\([^']*\)'.*/\1/p" \
-    -e 's/^Encountered 4 warnings\.$/SUMMARY/p' |
+    -e 's/^kosh: 4 warnings generated\.$/SUMMARY/p' |
   diagnostic_names)
 error_count=$(printf '%s\n' "$output" | grep -c ': error:')
 summary_count=$(printf '%s\n' "$output" |
-  grep -c '^Encountered 4 warnings\.$')
+  grep -c '^kosh: 4 warnings generated\.$')
 first_filename_count=$(printf '%s\n' "$output" | grep -c 'first.bash:2:')
 second_filename_count=$(printf '%s\n' "$output" | grep -c 'second.bash:2:')
 printf 'bash-order=%s errors=%s summaries=%s files=%s,%s rc=%s\n' \
@@ -99,7 +99,7 @@ output=$("$BIN" --mood bash --lint --show-memory --no-traces \
   -c 'echo "$LINT_COMMAND_ONE"' -c 'echo "$LINT_COMMAND_TWO"' 2>&1)
 last_line=$(printf '%s\n' "$output" | tail -n 1)
 printf 'memory-summary-last=%s\n' \
-  "$(test "$last_line" = 'Encountered 2 warnings.' && printf yes)"
+  "$(test "$last_line" = 'kosh: 2 warnings generated.' && printf yes)"
 
 output=$(
   "$BIN" --lint -t --no-traces \
@@ -194,3 +194,61 @@ command_count=$(printf '%s\n' "$output" |
 file_count=$(printf '%s\n' "$output" | grep -c "This 'if' has no")
 printf 'stdin-precedence=%s command=%s file=%s rc=%s\n' \
   "$stdin_count" "$command_count" "$file_count" "$rc"
+
+printf '#!/usr/bin/env kosh\nkosh_missing_summary_command\n' > summary.kosh
+for input_kind in stdin command file; do
+  case "$input_kind" in
+    stdin)
+      printf 'kosh_missing_summary_command\n' |
+        "$BIN" --no-init-files --no-traces > summary.stdout 2> summary.stderr
+      ;;
+    command)
+      "$BIN" --no-init-files --no-traces -c kosh_missing_summary_command \
+        > summary.stdout 2> summary.stderr
+      ;;
+    file)
+      "$BIN" --no-init-files --no-traces summary.kosh \
+        > summary.stdout 2> summary.stderr
+      ;;
+  esac
+  status=$?
+  error_count=$(grep -c ': error:' summary.stderr)
+  summary_count=$(grep -Fcx 'kosh: 1 error generated.' summary.stderr)
+  last_line=$(tail -n 1 summary.stderr)
+  if [ "$status" -eq 1 ] && [ ! -s summary.stdout ] &&
+    [ "$error_count" -eq 1 ] && [ "$summary_count" -eq 1 ] &&
+    [ "$last_line" = 'kosh: 1 error generated.' ]; then
+    printf 'interpreter-%s-summary=yes\n' "$input_kind"
+  else
+    printf 'interpreter-%s-summary=no status=%s errors=%s summaries=%s\n' \
+      "$input_kind" "$status" "$error_count" "$summary_count"
+    cat summary.stdout summary.stderr
+  fi
+done
+
+output=$("$BIN" --no-init-files --mood bash -WWW --no-traces \
+  -c 'echo "$SUMMARY_UNSET_ONE"; echo "$SUMMARY_UNSET_TWO"' 2>&1)
+status=$?
+summary_count=$(printf '%s\n' "$output" |
+  grep -Fcx 'kosh: 2 warnings generated.')
+printf 'interpreter-warnings=%s status=%s\n' "$summary_count" "$status"
+
+for input_kind in command stdin; do
+  case "$input_kind" in
+    command)
+      output=$("$BIN" --no-init-files -i --no-traces \
+        -c 'echo "$SUMMARY_INTERACTIVE_ONE" "$SUMMARY_INTERACTIVE_TWO"' 2>&1)
+      ;;
+    stdin)
+      output=$(printf 'echo "$SUMMARY_INTERACTIVE_ONE" "$SUMMARY_INTERACTIVE_TWO"\n' |
+        "$BIN" --no-init-files -i --no-traces 2>&1)
+      ;;
+  esac
+  error_count=$(printf '%s\n' "$output" | grep -c ': error:')
+  summary_count=$(printf '%s\n' "$output" | grep -c '^kosh: .* generated\.$')
+  printf 'interactive-%s-errors=%s summaries=%s\n' \
+    "$input_kind" "$error_count" "$summary_count"
+done
+
+output=$("$BIN" --no-init-files --no-traces -c : 2>&1)
+printf 'clean-interpreter-output=%s\n' "${output:-empty}"

@@ -2,4 +2,5 @@
      4 |    EOF
        |    ^~~
 note: Move the terminator to the first column.
+kosh: 1 warning generated.
 before

@@ -379,6 +379,6 @@ note: Assign it before the function to show the variable is shared.
 130:1: trace: 'set_read_before' sets 'read_before'.
    130 |  set_read_before() {
        |  ^~~~~~~~~~~~~~~
-Encountered 92 warnings.
+kosh: 92 warnings generated.
 done
 unset

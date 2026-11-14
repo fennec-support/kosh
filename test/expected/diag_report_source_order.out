@@ -18,7 +18,7 @@ note: Assign 'x' before this use, or set it in the environment.
      5 |  ech2 ho
        |  ^~~~
 note: Did you mean 'echo'?
-Encountered 5 warnings.
+kosh: 5 warnings generated.
 2:1: error: The command 'ech' was not found.
      2 |  ech hi
        |  ^~~

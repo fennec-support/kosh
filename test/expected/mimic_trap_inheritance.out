@@ -29,6 +29,7 @@ TMPDIR/sh-script:2:20: error: The `ERR` condition is a bash extension. (SC3047)
      2 |  trap "echo action" ERR
        |                     ^~~
 note: Check the status after each command under a `sh` shebang.
+kosh: 1 error generated.
 rc=1
 == an explicit bash mood wins over an sh shebang:
 err-rc=0

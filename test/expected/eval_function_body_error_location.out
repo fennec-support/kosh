@@ -2,6 +2,7 @@
 -c:1:32: warning: The command 'f' could not be verified after runtime code.
      1 |  eval "f(){ echo \$((1/0)); }"; f
        |                                 ^
+kosh: 1 warning generated.
 eval:1:14: error: Division by zero.
      1 |  f(){ echo $((1/0)); }
        |               ^~~
@@ -29,6 +30,7 @@ rc=1
 -c:1:61: warning: The command 'h' could not be verified after runtime code.
      1 |  code=$(printf "%s" "h(){ echo \$((1/0)); }"); eval "$code"; h
        |                                                              ^
+kosh: 1 warning generated.
 eval:1:14: error: Division by zero.
      1 |  h(){ echo $((1/0)); }
        |               ^~~

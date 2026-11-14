@@ -1581,7 +1581,9 @@ cold fn
 print_analysis_diagnostic_summary(
     const analysis_diagnostic_totals &totals) throws -> void
 {
-  if (totals.warning_count + totals.error_count < 2) return;
+  if (totals.warning_count == 0 && totals.error_count == 0) {
+    return;
+  }
 
   let const should_color = colors::stderr_wants_color();
   let const warning_color =
@@ -1595,7 +1597,7 @@ print_analysis_diagnostic_summary(
   let const reset = colors::color_style{should_color ? colors::color::Reset
                                                      : colors::color::None};
 
-  let summary = String{heap_allocator(), "Encountered "};
+  let summary = String{heap_allocator(), "kosh: "};
 
   if (totals.warning_count > 0) {
     summary.append(colors::color_to_sv(warning_color));
@@ -1615,7 +1617,7 @@ print_analysis_diagnostic_summary(
     summary.append(colors::color_to_sv(reset));
   }
 
-  summary.append(".");
+  summary.append(" generated.");
 
   show_message(summary.view());
 }
@@ -3174,7 +3176,10 @@ analyze_ast(const Expression                *root,
     outputs.deferred_totals->warning_count +=
         actx.reporter.totals.warning_count;
     outputs.deferred_totals->error_count += actx.reporter.totals.error_count;
-  } else if (outputs.diagnostic_sink == nullptr) {
+  } else if (outputs.diagnostic_sink == nullptr &&
+             (eval_context == nullptr ||
+              !eval_context->execution_store().shell_is_interactive()))
+  {
     actx.print_diagnostic_summary();
   }
 

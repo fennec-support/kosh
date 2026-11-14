@@ -205,6 +205,7 @@ note: Quote the expansion to keep one argument.
 Fixed 3 errors.
   posix-test-equals (SC3014)  2 errors
   byte-order-mark (SC1082)    1 error
+kosh: 1 error generated.
 safe-fixes-status=0
 Fixed 4 warnings.
   x-prefix-test (SC2268)  2 warnings
@@ -234,7 +235,7 @@ Fixed 3 warnings.
   obsolete-arithmetic-expansion (SC2007)  1 warning
   deprecated-egrep (SC2196)               1 warning
   deprecated-fgrep (SC2197)               1 warning
-Encountered 2 warnings and 1 error.
+kosh: 2 warnings and 1 error generated.
 items=(one two three)
 flag=on left=right other=
 count=${#items[@]}

@@ -34,6 +34,7 @@ TMPDIR/unset-script:2:8: error: The variable 'undefined_name' is used before any
      2 |  echo "[${undefined_name}]"
        |         ^~~~~~~~~~~~~~~~~
 note: Assign 'undefined_name' before this use, or set it in the environment.
+kosh: 1 error generated.
 rc=1
 == a bash shebang runs bash syntax without -I:
 ok

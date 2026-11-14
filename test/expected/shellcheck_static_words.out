@@ -518,7 +518,7 @@ note: Use the variable directly inside arithmetic, such as `$((x + 1))`.
    204 |    ((${listed[index]}))
        |    ^~~~~~~~~~~~~~~~~~~~
 note: Use the variable directly inside arithmetic, such as `$((x + 1))`.
-Encountered 126 warnings.
+kosh: 126 warnings generated.
 done
 done
 done

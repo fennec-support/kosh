@@ -1,10 +1,13 @@
 == kosh -r: env sh -c "echo x > escaped.txt"
 -c:1:1: error: The command 'env' was not found.
+kosh: 1 error generated.
 == kosh -r: cp escaped.txt copy.txt
 -c:1:1: error: The command 'cp' was not found.
 note: Did you mean 'cd'?
+kosh: 1 error generated.
 == kosh -r: tee tee.txt </dev/null
 -c:1:1: error: The command 'tee' was not found.
+kosh: 1 error generated.
 == kosh -r: koshkit env sh -c "echo x > escaped.txt"
 -c:1:1: error: Builtin `koshkit`: The bundled utilities are forbidden in a restricted shell.
 next status=1

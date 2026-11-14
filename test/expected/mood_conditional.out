@@ -6,7 +6,7 @@ note: Write the operand after '-f', or quote the operator to test it as text.
     30 |  ( [[ $(echo expanded >&2) && -f ]] )
        |                               ^~
 note: Write the operand after '-f', or quote the operator to test it as text.
-Encountered 2 warnings.
+kosh: 2 warnings generated.
 glob-yes
 quoted-literal
 grouped

@@ -16,7 +16,7 @@
 42:1: warning: The command 'nested_unset_read' could not be verified after runtime code.
     42 |  nested_unset_read
        |  ^~~~~~~~~~~~~~~~~
-Encountered 6 warnings.
+kosh: 6 warnings generated.
 background=3
 piped=7
 substitution=10

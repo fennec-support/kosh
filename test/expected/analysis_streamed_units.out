@@ -20,5 +20,5 @@ script.bash:3:1: details:
      3 |  greet() {
        |  ^~~~~ the definition runs after the call.
 note: Move the definition of 'greet' above this call.
-Encountered 4 errors.
+kosh: 4 errors generated.
 same-findings=yes

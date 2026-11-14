@@ -2,6 +2,7 @@
     13 |  echo "$never_assigned"
        |        ^~~~~~~~~~~~~~~
 note: Assign 'never_assigned' before this use, or set it in the environment.
+kosh: 1 warning generated.
 file=1
 string=1
 document=1

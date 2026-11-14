@@ -4,3 +4,4 @@ ran
 error: The command 'definitely_absent_cmd' was not found.
      1 |  FOO=1; definitely_absent_cmd
        |         ^~~~~~~~~~~~~~~~~~~~~
+kosh: 1 error generated.

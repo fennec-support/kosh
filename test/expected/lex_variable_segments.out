@@ -2,6 +2,7 @@
      9 |  : pre$(:)post
        |    ^~~~~~~~~~~
 note: Quote it to keep one argument.
+kosh: 1 warning generated.
 4:3: warning: The variable 'foo' is not set and expands to an empty string.
      4 |  : $foo ${bar}
        |    ^~~~

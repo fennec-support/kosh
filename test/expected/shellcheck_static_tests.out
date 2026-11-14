@@ -510,4 +510,4 @@ note: Remove the constant condition or compare runtime data.
    148 |    [ "a[1]" -eq 2 ]
        |      ^~~~~~
 note: Use a numeric operand, or compare the text with `=` or `!=`.
-Encountered 125 warnings.
+kosh: 125 warnings generated.

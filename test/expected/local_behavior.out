@@ -5,3 +5,4 @@ status=1
      1 |  fn(){ brandnewname=1; }; fn
        |        ^~~~~~~~~~~~~~
 note: Declare it with `local` to keep it inside the function.
+kosh: 1 warning generated.

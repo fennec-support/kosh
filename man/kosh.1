@@ -411,8 +411,12 @@ assigned inside a function and referenced outside it are flagged).
 command/backtick/process substitutions as subshells, and evaluates
 \f[CR]${ ...; }\f[R] function substitutions in the current shell
 environment.
-When multiple findings occur, a summary line
-(\f[CR]Encountered M warning and N errors.\f[R]) appends to the output.
+After one or more findings, noninteractive analysis prints a summary
+(\f[CR]kosh: 1 error generated.\f[R] or
+\f[CR]kosh: 2 warnings and 1 error generated.\f[R]).
+Interactive shells omit the summary.
+The counts cover pre\-run analysis findings and exclude syntax and
+runtime diagnostics.
 .IP \[bu] 2
 \f[B]Inline suppression directives\f[R] \- Comments matching
 \f[CR]# shellcheck disable=SC2086,unquoted\-command\-substitution\f[R]

@@ -3,11 +3,13 @@
      2 |  echo one \ 
        |           ^~
 note: Delete the blanks between the backslash and the line ending.
+kosh: 1 warning generated.
 == a blank continuation runs as two commands:
 <tmp>/blank-continuation.sh:2:10: warning: A blank follows the backslash, and the line does not continue. (SC1101)
      2 |  echo one \ 
        |           ^~
 note: Delete the blanks between the backslash and the line ending.
+kosh: 1 warning generated.
 one  
 two
 == tab after a continuation:
@@ -15,5 +17,6 @@ two
      2 |  echo one \    
        |           ^~~~~
 note: Delete the blanks between the backslash and the line ending.
+kosh: 1 warning generated.
 == a clean continuation stays quiet:
 rc=0

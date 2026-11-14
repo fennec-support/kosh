@@ -2,6 +2,7 @@
      6 |  set -- ${unset-}; echo count=$#
        |         ^~~~~~~~~
 note: Quote the expansion to keep one argument.
+kosh: 1 warning generated.
 iter[]
 []
 [a]

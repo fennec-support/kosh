@@ -10,7 +10,7 @@ note: Assign 'unset_in_inner' before this use, or set it in the environment.
     42 |  koshkit cat <(echo "$unset_in_input")
        |                      ^~~~~~~~~~~~~~~
 note: Assign 'unset_in_input' before this use, or set it in the environment.
-Encountered 3 warnings.
+kosh: 3 warnings generated.
 start
 background
 6:40: warning: The variable 'unset_in_background' is not set and expands to an empty string.

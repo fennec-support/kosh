@@ -12,3 +12,10 @@ noexec-commands=2 noexec-files=0 rc=0
 dash-file=1 second-file=1 rc=1
 stdin=1 rc=1
 stdin-precedence=1 command=0 file=0 rc=1
+interpreter-stdin-summary=yes
+interpreter-command-summary=yes
+interpreter-file-summary=yes
+interpreter-warnings=1 status=0
+interactive-command-errors=2 summaries=0
+interactive-stdin-errors=2 summaries=0
+clean-interpreter-output=empty

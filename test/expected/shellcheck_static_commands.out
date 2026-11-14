@@ -287,4 +287,4 @@ note: Remove it, or move it into the loop it belongs to.
    122 |  false && continue
        |           ^~~~~~~~
 note: Remove it, or move it into the loop it belongs to.
-Encountered 68 warnings.
+kosh: 68 warnings generated.

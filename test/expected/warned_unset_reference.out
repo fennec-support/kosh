@@ -2,6 +2,7 @@
      7 |  echo $nope
        |       ^~~~~
 note: Quote the expansion to keep one argument.
+kosh: 1 warning generated.
 before
 7:6: warning: The variable 'nope' is not set and expands to an empty string.
      7 |  echo $nope

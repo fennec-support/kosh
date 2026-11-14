@@ -36,4 +36,5 @@ rc=2
      2 |  select menu in item=$"select locale"; do break; done
        |                 ^~~~~~~~~~~~~~~~~~~~~
 note: Use ordinary double quotes under a `sh` shebang.
+kosh: 1 warning generated.
 rc=0

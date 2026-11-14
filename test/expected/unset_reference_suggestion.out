@@ -6,6 +6,7 @@
      1 |  output_file=out; echo "$output_fil"
        |  ^~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'output_fil'.
+kosh: 1 warning generated.
 -c:1:24: warning: The variable 'output_fil' is not set and expands to an empty string.
      1 |  output_file=out; echo "$output_fil"
        |                         ^~~~~~~~~~~
@@ -19,6 +20,7 @@ note: The variable 'output_file' is set. Correct the spelling, or write ${output
      1 |  destination_path=/tmp; echo "$destinaton_path"
        |  ^~~~~~~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'destinaton_path'.
+kosh: 1 warning generated.
 -c:1:30: warning: The variable 'destinaton_path' is not set and expands to an empty string.
      1 |  destination_path=/tmp; echo "$destinaton_path"
        |                               ^~~~~~~~~~~~~~~~
@@ -29,6 +31,7 @@ note: The variable 'destination_path' is set. Correct the spelling, or write ${d
      1 |  destination_path=/tmp; echo "$zzzzzzzzzzzzzz"
        |                               ^~~~~~~~~~~~~~~
 note: Assign 'zzzzzzzzzzzzzz' before this use, or set it in the environment.
+kosh: 1 warning generated.
 -c:1:30: warning: The variable 'zzzzzzzzzzzzzz' is not set and expands to an empty string.
      1 |  destination_path=/tmp; echo "$zzzzzzzzzzzzzz"
        |                               ^~~~~~~~~~~~~~~
@@ -42,12 +45,14 @@ note: Replace it with ${zzzzzzzzzzzzzz-} if empty expansion is desired.
      1 |  set -u; configuration_root=/etc; echo "$configuration_rot"
        |          ^~~~~~~~~~~~~~~~~~ The value is assigned here.
 note: Correct the spelling or assign 'configuration_rot'.
+kosh: 1 error generated.
 rc=1
 == an exported name is a candidate:
 -c:1:7: warning: The variable 'DEMO_TEST_EXPORTE' is used before any assignment gives it a value. (SC2154)
      1 |  echo "$DEMO_TEST_EXPORTE"
        |        ^~~~~~~~~~~~~~~~~~
 note: Assign 'DEMO_TEST_EXPORTE' before this use, or set it in the environment.
+kosh: 1 warning generated.
 -c:1:7: warning: The variable 'DEMO_TEST_EXPORTE' is not set and expands to an empty string.
      1 |  echo "$DEMO_TEST_EXPORTE"
        |        ^~~~~~~~~~~~~~~~~~

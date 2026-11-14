@@ -1,6 +1,7 @@
 2:1: warning: The command 'xyzzy_undefined' was not found.
      2 |  xy\
        |  ^~~
+kosh: 1 warning generated.
 2:1: error: The command 'xyzzy_undefined' was not found.
      2 |  xy\
        |  ^~~
