@@ -2372,6 +2372,18 @@ set_save_callback(int (*callback)(const char *text, const char **out_message))
 }
 
 fn
+set_open_file_callback(tl_open_file_fn callback) -> void
+{
+  ::tl_set_open_file_callback(callback);
+}
+
+fn
+set_path_complete_callback(tl_path_complete_fn callback) -> void
+{
+  ::tl_set_path_complete_callback(callback);
+}
+
+fn
 set_saved_text(const char *text) -> void
 {
   ::tl_set_saved_text(text);
@@ -3547,18 +3559,6 @@ set_title(StringView title) -> void
 
   sequence.push('\a');
 
-  static String LAST_TITLE_SEQUENCE{koshka::heap_allocator()};
-  static u64    LAST_TITLE_EPOCH = static_cast<u64>(-1);
-  let const     current_epoch    = os::get_descriptor_epoch();
-
-  if (current_epoch == LAST_TITLE_EPOCH &&
-      sequence.view() == LAST_TITLE_SEQUENCE.view())
-  {
-    return;
-  }
-
-  LAST_TITLE_EPOCH    = current_epoch;
-  LAST_TITLE_SEQUENCE = sequence;
   unused(os::write_all(output, sequence.data(), sequence.count()));
 }
 

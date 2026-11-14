@@ -455,6 +455,15 @@ def run_job_notice_checks(binary, directory, report):
         report.record("idle-title-precedes-prompt-command", session,
                       lambda screen: 0 <= raw_since.find(idle_sequence)
                       < raw_since.find(b"<pc>"))
+        mark = len(session.raw)
+        session.send(b"(KOSH_TITLE_NO_SUCH_COMMAND_7F319)\r")
+        session.wait_until(lambda screen: b"<pc>" in session.raw[mark:]
+                           and is_prompt_line(BULLET)(screen))
+        raw_since = bytes(session.raw[mark:])
+        report.record("idle-title-restored-after-subshell-resolution-error", session,
+                      lambda screen: get_titles(session, mark)[-1:] == [idle_title]
+                      and 0 <= raw_since.find(idle_sequence)
+                      < raw_since.find(b"<pc>"))
         session.send(b"unset PROMPT_COMMAND\r")
         session.wait_until(is_prompt_line(BULLET))
 
