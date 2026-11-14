@@ -232,8 +232,7 @@ arithmetic_shift_right(i64 lhs, i64 rhs) wontthrow -> i64
 wontreturn cold fn
 throw_division_by_zero() throws -> void
 {
-  throw ErrorWithDetails{"Division by zero",
-                         "The right operand evaluated to 0"};
+  throw ErrorWithDetails{"Division by zero", "The right operand is 0"};
 }
 
 static fn
@@ -2167,6 +2166,47 @@ public:
     fail_nested_too_deeply(node.middle);
   }
 
+  wontreturn cold fn
+  fail_zero_rhs(usize start_position,
+                usize end_position,
+                usize rhs_start,
+                u32   rhs_index) throws -> void
+  {
+    while (rhs_start < end_position &&
+           (source[rhs_start] == ' ' || source[rhs_start] == '\t' ||
+            source[rhs_start] == '\n' || source[rhs_start] == '\r'))
+    {
+      ++rhs_start;
+    }
+    while (end_position > rhs_start && (source[end_position - 1] == ' ' ||
+                                        source[end_position - 1] == '\t' ||
+                                        source[end_position - 1] == '\n' ||
+                                        source[end_position - 1] == '\r'))
+    {
+      --end_position;
+    }
+    let const &rhs_node = tree.nodes[rhs_index];
+    let const *number   = &rhs_node;
+    if (number->kind == arith_node_kind::Negate)
+      number = &tree.nodes[number->first];
+    bool is_literal =
+        number->kind == arith_node_kind::Number &&
+        number->start + number->length == end_position &&
+        (number->start == rhs_start ||
+         (number->start == rhs_start + 1 &&
+          (source[rhs_start] == '+' || source[rhs_start] == '-')));
+    let note = String{heap_allocator(), "The right operand is 0"};
+    if (!is_literal) {
+      note.clear();
+      note.push('\x60');
+      note.append(
+          source.substring_of_length(rhs_start, end_position - rhs_start));
+      note.append("\x60 evaluated to 0");
+    }
+
+    fail_span(start_position, end_position, "Division by zero", note.view());
+  }
+
   fn
   apply_chain_step(const arith_node &chain,
                    const arith_node &step,
@@ -2179,6 +2219,11 @@ public:
       } catch (const ErrorWithLocation &) {
         throw;
       } catch (const ErrorBase &error) {
+        if ((step.op == '/' || step.op == '%') &&
+            (is_exact ? rhs.is_zero() : rhs.wrapped_i64() == 0))
+        {
+          fail_zero_rhs(chain.start, step.end, step.middle, step.first);
+        }
         if (!precise_base.has_value()) throw;
         fail_at(step.start, step.length, error.message().view(),
                 error.detail_message());
@@ -2197,6 +2242,11 @@ public:
     } catch (const ErrorBase &error) {
       pos = step.end;
       fail_on_unexpected_tail();
+      if ((step.op == '/' || step.op == '%') &&
+          (is_exact ? rhs.is_zero() : rhs.wrapped_i64() == 0))
+      {
+        fail_zero_rhs(chain.start, step.end, step.middle, step.first);
+      }
       fail_span(step.op == 'P' || step.op == '/' || step.op == '%'
                     ? step.middle
                     : chain.start,
@@ -2261,6 +2311,12 @@ public:
     } catch (const ErrorWithLocation &) {
       throw;
     } catch (const ErrorBase &error) {
+      if ((node.op == '/' || node.op == '%') &&
+          (is_exact ? rhs.is_zero() : rhs.wrapped_i64() == 0))
+      {
+        fail_zero_rhs(tree.nodes[node.first].start, node.end, node.middle,
+                      node.second);
+      }
       fail_span(node.middle, node.end, error.message().view(),
                 error.detail_message());
     }
@@ -2593,8 +2649,7 @@ public:
                           BumpArena             &result_arena) throws
       -> ArithmeticValue
   {
-    if (right.is_zero())
-      fail("Division by zero", "The right operand evaluated to 0");
+    if (right.is_zero()) fail("Division by zero", "The right operand is 0");
 
     u32 prepared_scale = left.get_decimal_scale();
 

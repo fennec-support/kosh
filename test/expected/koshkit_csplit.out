@@ -14,7 +14,7 @@
 note: Use a positive line number within the input.
 13:1: trace:
     13 |  (koshkit csplit -s -f rejected repeated 3 99) 2>&1
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 csplit-cleanup=0
 0 slash00
 9 slash01
@@ -30,7 +30,7 @@ csplit-cleanup=0
 note: Use a pattern that matches a remaining input line.
 30:1: trace:
     30 |  (koshkit csplit -s -f first-line first-line-input 1 '/hit/') 2>&1
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 csplit-first-line-clean=0
  2 offset-minus00
 11 offset-minus01
@@ -47,7 +47,7 @@ csplit-first-line-clean=0
 note: Increase the suffix width with -n.
 43:1: trace:
     43 |  (koshkit csplit -k -s -n 1 -f width width-input 2 '{9}') 2>&1
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 csplit-width-first=0
 csplit-width-last=0
 csplit-width-exhausted=0
@@ -72,21 +72,21 @@ csplit-star-repeat-pieces=0
 note: Place the repeat immediately after the pattern it repeats.
 66:1: trace:
     66 |  (koshkit csplit -s lines '{1}') 2>&1
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 67:49: error: Koshkit `csplit`: Repeat has no preceding line or regular expression pattern.
     67 |  (koshkit csplit -s -f consecutive lines 3 '{0}' '{0}') 2>&1
        |                                                  ^~~~~
 note: Place the repeat immediately after the pattern it repeats.
 67:1: trace:
     67 |  (koshkit csplit -s -f consecutive lines 3 '{0}' '{0}') 2>&1
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 68:26: error: Koshkit `csplit`: Invalid regular expression offset.
     68 |  (koshkit csplit -s lines '/one/+999999999999999999999') 2>&1
        |                           ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 note: Use an optional signed decimal offset after the closing delimiter.
 68:1: trace:
     68 |  (koshkit csplit -s lines '/one/+999999999999999999999') 2>&1
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 77:28: error: Koshkit `csplit`: The output filename component is too long.
     77 |  (koshkit csplit -s -n 1 -f "$long_prefix" lines 3) 2>&1
        |                             ^~~~~~~~~~~~~~

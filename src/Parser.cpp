@@ -2309,7 +2309,9 @@ Parser::parse_simple_command(const Token *leading_token) throws
            location. the body parse is counted in parse_simple_command(). */
 fn
 Parser::finish_function_body(const SourceLocation &location,
-                             StringView            name) throws -> Command *
+                             StringView            name,
+                             SourceLocation        signature_location) throws
+    -> Command *
 {
   m_command_depth++;
   defer { m_command_depth--; };
@@ -2361,7 +2363,7 @@ Parser::finish_function_body(const SourceLocation &location,
   body_storage.set_body(body);
 
   let const definition = m_lexer.arena().create<FunctionDefinition>(
-      location, name, steal(body_storage));
+      location, signature_location, name, steal(body_storage));
 
   definition->set_analysis_scope_definitions(close_analysis_scope(scope_mark));
   definition->set_source_end_position(body->source_end_position());
@@ -2381,10 +2383,14 @@ Parser::parse_function_definition(const Token *name_token) throws
   LOG(Debug, "parsing a function definition for '%s'", name.c_str());
 
   m_lexer.advance_past_last_peek();
-  unused(next_token_of_kind(Token::Kind::RightParen,
-                            "Expected ')' in a function definition"));
+  let const close              = next_token_of_kind(Token::Kind::RightParen,
+                                                    "Expected ')' in a function definition");
+  let       signature_location = location;
+  signature_location.length    = close->source_location().position +
+                              close->source_location().length -
+                              location.position;
 
-  return finish_function_body(location, name.view());
+  return finish_function_body(location, name.view(), signature_location);
 }
 
 fn
@@ -2398,16 +2404,20 @@ Parser::parse_keyword_function_definition() throws -> Command *
 
   LOG(Debug, "parsing a keyword function definition for '%s'", name.c_str());
 
-  Token *after_name = m_lexer.peek_shell_token();
+  Token *after_name         = m_lexer.peek_shell_token();
+  let    signature_location = location;
 
   ASSERT(after_name != nullptr);
   if (after_name->kind() == Token::Kind::LeftParen) {
     m_lexer.advance_past_last_peek();
-    unused(next_token_of_kind(Token::Kind::RightParen,
-                              "Expected ')' in a function definition"));
+    let const close = next_token_of_kind(
+        Token::Kind::RightParen, "Expected ')' in a function definition");
+    signature_location.length = close->source_location().position +
+                                close->source_location().length -
+                                location.position;
   }
 
-  return finish_function_body(location, name.view());
+  return finish_function_body(location, name.view(), signature_location);
 }
 
 /* memory: heap_allocator() list of the element tokens, returned by value. the

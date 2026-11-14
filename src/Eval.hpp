@@ -3140,6 +3140,7 @@ struct function_call_frame
   const String      *source;
   SourceLocation     location;
   bool               was_printed{false};
+  bool               was_definition_printed{false};
 };
 
 class FunctionStore
@@ -5405,7 +5406,8 @@ public:
                     const FunctionBodyHandle &body_storage,
                     StringView                definition_text,
                     usize                     body_start_position,
-                    SourceLocation            definition_location) throws -> void;
+                    SourceLocation            definition_location,
+                    SourceLocation            signature_location) throws -> void;
   /* writes the BASH_FUNC_name%% environment entry of a defined function. */
   fn
   export_function(StringView name) throws -> void;

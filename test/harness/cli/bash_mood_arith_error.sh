@@ -20,3 +20,11 @@ echo "-- the run keeps going past the soft error"
 "$BIN" --mood bash -c 'builtin nosuchbuiltin; echo after'
 echo "-- a thrown builtin error is located and soft too"
 "$BIN" --mood bash -c 'read -Z; echo after'
+echo "== a wrapped zero operand keeps its source expression:"
+"$BIN" --mood bash -c 'echo $((12 / 18446744073709551616))
+echo after'
+echo "rc=$?"
+echo "== expanded arithmetic keeps the outer source location:"
+"$BIN" --mood bash -c 'expression="12 / 0"; echo $(( $expression ))
+echo after'
+echo "rc=$?"

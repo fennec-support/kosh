@@ -125,7 +125,7 @@ off
 off
 == a file without traces drops the trace rows:
 0
-2
+3
 == the command-line flags win over the file:
 off
 off

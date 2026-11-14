@@ -32,9 +32,9 @@ note: Replace it with ${nope-} if empty expansion is desired.
     14 |  (echo "${!ref}")
        |   ^~~~~~~~~~~~~~
 note: Replace it with ${missing_target-} if empty expansion is desired.
+
 14:1: trace:
     14 |  (echo "${!ref}")
-       |  ^
-
+       |  ^~~~~~~~~~~~~~~~
 target-form=0
 continued

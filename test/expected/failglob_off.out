@@ -4,7 +4,7 @@
 note: Switch to the bash mood with `koshconf set mood bash` to change it.
 4:1: trace:
      4 |  (shopt -u failglob)
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~
 kosh-rc=1
 nomatch_*
 a*.zzznomatch literal

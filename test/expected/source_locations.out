@@ -23,6 +23,9 @@ building
 ./helper_lib.sh:5:3: error: The command 'missing_tool' was not found.
      5 |    missing_tool --flag
        |    ^~~~~~~~~~~~
+./helper_lib.sh:2:1: trace:
+     2 |  build()
+       |  ^~~~~~~
 call_helper.sh:7:1: trace:
      7 |  build
        |  ^~~~~
@@ -64,6 +67,9 @@ rc=0
 ./swap_lib.sh:3:3: error: The command 'first_version_missing' was not found.
      3 |    first_version_missing
        |    ^~~~~~~~~~~~~~~~~~~~~
+./swap_lib.sh:1:1: trace:
+     1 |  swapped()
+       |  ^~~~~~~~~
 redefine.sh:8:1: trace:
      8 |  swapped
        |  ^~~~~~~
@@ -71,6 +77,9 @@ changed
 ./swap_lib.sh:7:3: error: The command 'second_version_missing' was not found.
      7 |    second_version_missing
        |    ^~~~~~~~~~~~~~~~~~~~~~
+./swap_lib.sh:4:1: trace:
+     4 |  swapped()
+       |  ^~~~~~~~~
 redefine.sh:20:1: trace:
     20 |  swapped
        |  ^~~~~~~
@@ -121,17 +130,17 @@ paths.sh:5:3: trace:
 rc=127
 == arithmetic error in a here-document
 before
-heredoc.sh:4:12: error: Division by zero.
+heredoc.sh:4:10: error: Division by zero.
      4 |  value $((1/0))
-       |             ^
-note: The right operand evaluated to 0.
+       |           ^~~
+note: The right operand is 0.
 after
 rc=0
 == failure on a continuation line
 multiline.sh:3:5: error: The command 'missing_multiline' was not found.
      3 |    $(missing_multiline) \
        |      ^~~~~~~~~~~~~~~~~
-3:3: trace:
+multiline.sh:3:3: trace:
      3 |    $(missing_multiline) \
        |    ^~~~~~~~~~~~~~~~~~~~
 one two three
@@ -153,6 +162,9 @@ crlf_use.sh:1:3: trace:
 ./crlf_lib.sh:5:3: error: The command 'missing_in_crlf' was not found.
      5 |    missing_in_crlf
        |    ^~~~~~~~~~~~~~~
+./crlf_lib.sh:3:1: trace:
+     3 |  f()
+       |  ^~~
 crlf_use.sh:2:1: trace:
      2 |  f
        |  ^
@@ -163,6 +175,9 @@ cleaning
 ./trap_lib.sh:5:3: error: The command 'missing_cleanup' was not found.
      5 |    missing_cleanup
        |    ^~~~~~~~~~~~~~~
+./trap_lib.sh:2:1: trace:
+     2 |  cleanup()
+       |  ^~~~~~~~~
 trap:1:1: trace:
      1 |  cleanup
        |  ^~~~~~~
@@ -186,7 +201,7 @@ trap:1:1: error: The command 'missing_signal_action' was not found.
 trap_signal.sh:1:1: trace:
      1 |  trap 'missing_signal_action' USR1
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-2:1: trace:
+trap_signal.sh:2:1: trace:
      2 |  kill -USR1 $$
        |  ^~~~~~~~~~~~~
 after-signal
@@ -198,7 +213,7 @@ trap:1:1: error: The command 'missing_err_action' was not found.
 trap_err.sh:1:1: trace:
      1 |  trap 'missing_err_action' ERR
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-2:1: trace:
+trap_err.sh:2:1: trace:
      2 |  false
        |  ^~~~~
 after-err
@@ -210,7 +225,7 @@ trap:1:1: error: The command 'missing_debug_action' was not found.
 trap_debug.sh:1:1: trace:
      1 |  trap 'missing_debug_action' DEBUG
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-2:1: trace:
+trap_debug.sh:2:1: trace:
      2 |  echo debugged
        |  ^~~~~~~~~~~~~
 debugged
@@ -220,7 +235,7 @@ trap:1:1: error: The command 'missing_debug_action' was not found.
 trap_debug.sh:1:1: trace:
      1 |  trap 'missing_debug_action' DEBUG
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-3:1: trace:
+trap_debug.sh:3:1: trace:
      3 |  trap - DEBUG
        |  ^~~~~~~~~~~~
 rc=0
@@ -232,10 +247,13 @@ trap:1:1: error: The command 'missing_return_action' was not found.
 trap_return.sh:3:3: trace:
      3 |    trap 'missing_return_action' RETURN
        |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-4:3: trace:
+trap_return.sh:4:3: trace:
      4 |    echo in-f
        |    ^~~~~~~~~
-6:1: trace:
+trap_return.sh:1:1: trace:
+     1 |  f()
+       |  ^~~
+trap_return.sh:6:1: trace:
      6 |  f
        |  ^
 rc=0
@@ -244,6 +262,9 @@ working
 trap_function.sh:3:3: error: The command 'missing_in_function' was not found.
      3 |    missing_in_function
        |    ^~~~~~~~~~~~~~~~~~~
+trap_function.sh:1:1: trace:
+     1 |  inner_failure()
+       |  ^~~~~~~~~~~~~~~
 trap:1:1: trace:
      1 |  inner_failure
        |  ^~~~~~~~~~~~~
@@ -264,10 +285,13 @@ rc=0
 recursion.sh:6:5: error: The command 'missing_bottom' was not found.
      6 |      missing_bottom
        |      ^~~~~~~~~~~~~~
-4:5: trace: repeated 4 times.
+recursion.sh:1:1: trace: repeated 5 times.
+     1 |  down()
+       |  ^~~~~~
+recursion.sh:4:5: trace: repeated 4 times.
      4 |      down $(($1 - 1))
        |      ^~~~~~~~~~~~~~~~
-9:1: trace:
+recursion.sh:9:1: trace:
      9 |  down 4
        |  ^~~~~~
 rc=127
@@ -275,12 +299,21 @@ rc=127
 alternate.sh:7:3: error: The command 'missing_alternate' was not found.
      7 |    missing_alternate
        |    ^~~~~~~~~~~~~~~~~
-3:3: trace:
+alternate.sh:5:1: trace:
+     5 |  ping_end()
+       |  ^~~~~~~~~~
+alternate.sh:3:3: trace:
      3 |    ping_end "$@"
        |    ^~~~~~~~~~~~~
+alternate.sh:1:1: trace:
+     1 |  pong()
+       |  ^~~~~~
 ./ping.sh:3:3: trace:
      3 |    pong "$@"
        |    ^~~~~~~~~
+./ping.sh:1:1: trace:
+     1 |  ping()
+       |  ^~~~~~
 alternate.sh:10:1: trace:
     10 |  ping 1
        |  ^~~~~~
@@ -289,13 +322,13 @@ rc=127
 constructs.sh:1:9: error: The command 'missing_substitution' was not found.
      1 |  value=$(missing_substitution)
        |          ^~~~~~~~~~~~~~~~~~~~
-1:7: trace:
+constructs.sh:1:7: trace:
      1 |  value=$(missing_substitution)
        |        ^~~~~~~~~~~~~~~~~~~~~~~
 constructs.sh:2:7: error: The command 'missing_process' was not found.
      2 |  cat <(missing_process)
        |        ^~~~~~~~~~~~~~~
-2:5: trace:
+constructs.sh:2:5: trace:
      2 |  cat <(missing_process)
        |      ^~~~~~~~~~~~~~~~~~
 eval:1:1: error: The command 'missing_eval' was not found.
@@ -320,6 +353,9 @@ building
 ./helper_lib.sh:5:3: error: The command 'missing_tool' was not found.
      5 |    missing_tool --flag
        |    ^~~~~~~~~~~~
+./helper_lib.sh:2:1: trace:
+     2 |  build()
+       |  ^~~~~~~
 trap:1:1: trace:
      1 |  build
        |  ^~~~~
@@ -329,10 +365,10 @@ combined.sh:2:1: trace:
 built
 rc=0
 == nested eval, bash mood
-eval:1:10: error: Division by zero.
+eval:1:9: error: Division by zero.
      1 |  echo $((1/0))
-       |           ^
-note: The right operand evaluated to 0.
+       |          ^~~
+note: The right operand is 0.
 eval:1:1: trace:
      1 |  eval "echo \$((1/0))"
        |  ^~~~~~~~~~~~~~~~~~~~~
@@ -341,10 +377,10 @@ nested_eval.sh:2:1: trace:
        |  ^~~~~~~~~~~~~
 rc=1
 == nested eval, sh mood
-eval:1:10: error: Division by zero.
+eval:1:9: error: Division by zero.
      1 |  echo $((1/0))
-       |           ^
-note: The right operand evaluated to 0.
+       |          ^~~
+note: The right operand is 0.
 eval:1:1: trace:
      1 |  eval "echo \$((1/0))"
        |  ^~~~~~~~~~~~~~~~~~~~~
@@ -353,10 +389,10 @@ nested_eval.sh:2:1: trace:
        |  ^~~~~~~~~~~~~
 rc=2
 == nested eval, kosh mood
-eval:1:10: error: Division by zero.
+eval:1:9: error: Division by zero.
      1 |  echo $((1/0))
-       |           ^
-note: The right operand evaluated to 0.
+       |          ^~~
+note: The right operand is 0.
 eval:1:1: trace:
      1 |  eval "echo \$((1/0))"
        |  ^~~~~~~~~~~~~~~~~~~~~
@@ -365,28 +401,28 @@ nested_eval.sh:2:1: trace:
        |  ^~~~~~~~~~~~~
 rc=1
 == arithmetic errors in every substitution form
-substitutions.sh:1:16: error: Division by zero.
+substitutions.sh:1:15: error: Division by zero.
      1 |  one=$(echo $((1/0)))
-       |                 ^
-note: The right operand evaluated to 0.
-1:5: trace:
+       |                ^~~
+note: The right operand is 0.
+substitutions.sh:1:5: trace:
      1 |  one=$(echo $((1/0)))
        |      ^~~~~~~~~~~~~~~~
-substitutions.sh:2:15: error: Division by zero.
+substitutions.sh:2:14: error: Division by zero.
      2 |  two=`echo $((2/0))`
-       |                ^
-note: The right operand evaluated to 0.
-2:5: trace:
+       |               ^~~
+note: The right operand is 0.
+substitutions.sh:2:5: trace:
      2 |  two=`echo $((2/0))`
        |      ^~~~~~~~~~~~~~~
-substitutions.sh:3:25: error: Division by zero.
+substitutions.sh:3:24: error: Division by zero.
      3 |  three=$(echo $(echo $((3/0))))
-       |                          ^
-note: The right operand evaluated to 0.
-3:14: trace:
+       |                         ^~~
+note: The right operand is 0.
+substitutions.sh:3:14: trace:
      3 |  three=$(echo $(echo $((3/0))))
        |               ^~~~~~~~~~~~~~~~
-3:7: trace:
+substitutions.sh:3:7: trace:
      3 |  three=$(echo $(echo $((3/0))))
        |        ^~~~~~~~~~~~~~~~~~~~~~~~
 rc=0
@@ -395,14 +431,14 @@ warnings.sh:2:14: warning: The glob pattern '*.txt' matched no file, it expands 
      2 |  files=$(echo *.txt)
        |               ^~~~~
 note: Probe for matches with compgen -G '*.txt' or relax it with shopt -u failglob outside the kosh mood.
-2:7: trace:
+warnings.sh:2:7: trace:
      2 |  files=$(echo *.txt)
        |        ^~~~~~~~~~~~~
 warnings.sh:3:12: warning: The glob pattern '*.nope' matched no file, it expands to its literal text, which is rarely intended.
      3 |  cat <(echo *.nope)
        |             ^~~~~~
 note: Probe for matches with compgen -G '*.nope' or relax it with shopt -u failglob outside the kosh mood.
-3:5: trace:
+warnings.sh:3:5: trace:
      3 |  cat <(echo *.nope)
        |      ^~~~~~~~~~~~~~
 *.nope
@@ -410,29 +446,32 @@ warnings.sh:4:9: warning: The glob pattern '*.back' matched no file, it expands 
      4 |  x=`echo *.back`
        |          ^~~~~~
 note: Probe for matches with compgen -G '*.back' or relax it with shopt -u failglob outside the kosh mood.
-4:3: trace:
+warnings.sh:4:3: trace:
      4 |  x=`echo *.back`
        |    ^~~~~~~~~~~~~
 warnings.sh:6:8: warning: The glob pattern '*.zip' matched no file, it expands to its literal text, which is rarely intended.
      6 |  $(echo *.zip)
        |         ^~~~~
 note: Probe for matches with compgen -G '*.zip' or relax it with shopt -u failglob outside the kosh mood.
-6:1: trace:
+warnings.sh:6:1: trace:
      6 |  $(echo *.zip)
        |  ^~~~~~~~~~~~~
 *.zip
 rc=0
 == function called from a subshell reports once
-subshell_function.sh:3:12: error: Division by zero.
+subshell_function.sh:3:11: error: Division by zero.
      3 |    echo $((1/0))
-       |             ^
-note: The right operand evaluated to 0.
-5:3: trace:
+       |            ^~~
+note: The right operand is 0.
+subshell_function.sh:1:1: trace:
+     1 |  c()
+       |  ^~~
+subshell_function.sh:5:3: trace:
      5 |  ( c )
        |    ^
-5:1: trace:
+subshell_function.sh:5:1: trace:
      5 |  ( c )
-       |  ^
+       |  ^~~~~
 rc=1
 == sourced function called by a trap inside a subshell
 working
@@ -440,32 +479,38 @@ building
 ./helper_lib.sh:5:3: error: The command 'missing_tool' was not found.
      5 |    missing_tool --flag
        |    ^~~~~~~~~~~~
+./helper_lib.sh:2:1: trace:
+     2 |  build()
+       |  ^~~~~~~
 trap:1:3: trace:
      1 |  ( build )
        |    ^~~~~
-1:1: trace:
+built
+trap:1:1: trace:
      1 |  ( build )
-       |  ^
+       |  ^~~~~~~~~
 subshell_nested.sh:2:1: trace:
      2 |  trap '( build )' EXIT
        |  ^~~~~~~~~~~~~~~~~~~~~
-built
 rc=0
 == function in a pipeline stage
-pipeline.sh:3:12: error: Division by zero.
+pipeline.sh:3:11: error: Division by zero.
      3 |    echo $((1/0))
-       |             ^
-note: The right operand evaluated to 0.
-5:12: trace:
+       |            ^~~
+note: The right operand is 0.
+pipeline.sh:1:1: trace:
+     1 |  c()
+       |  ^~~
+pipeline.sh:5:12: trace:
      5 |  echo one | c | cat
        |             ^
 rc=0
 == multi-line eval text
 first
-eval:2:10: error: Division by zero.
+eval:2:9: error: Division by zero.
      2 |  echo $((1/0))
-       |           ^
-note: The right operand evaluated to 0.
+       |          ^~~
+note: The right operand is 0.
 bash_c_string.sh:1:1: trace:
      1 |  eval "$(printf 'echo first\necho $((1/0))\n')"
        |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -476,16 +521,16 @@ first.sh:2:1: error: The command 'missing_first' was not found.
      2 |  missing_first
        |  ^~~~~~~~~~~~~
 == two command strings carry the command line frame
--c:1:10: error: Division by zero.
+-c:1:9: error: Division by zero.
      1 |  echo $((1/0))
-       |           ^
-note: The right operand evaluated to 0.
+       |          ^~~
+note: The right operand is 0.
 1:0: trace:
      1 |  KOSH --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))'
--c:1:10: error: Division by zero.
+-c:1:9: error: Division by zero.
      1 |  echo $((2/0))
-       |           ^
-note: The right operand evaluated to 0.
+       |          ^~~
+note: The right operand is 0.
 1:0: trace:
      1 |  KOSH --mood bash -c 'echo $((1/0))' -c 'echo $((2/0))'
 == a closed duplication source points at the redirection
@@ -495,4 +540,81 @@ closed_descriptor.sh:1:9: error: Unable to duplicate descriptor 7 onto standard 
 closed_descriptor.sh:2:6: error: Unable to duplicate descriptor 9 onto descriptor 4: Bad file descriptor.
      2 |  exec 4>&9
        |       ^~~~
+rc=1
+== retained signature and nested eval substitution
+eval:1:11: error: Division by zero.
+     1 |  ( echo $((12 / workers)) jobs each )
+       |            ^~~~~~~~~~~~
+note: `workers` evaluated to 0.
+eval:1:1: trace:
+     1 |  ( echo $((12 / workers)) jobs each )
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./lib.kosh:4:20: trace:
+     4 |    printf '%s\n' "$(eval '( echo $((12 / workers)) jobs each )')"
+       |                     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./lib.kosh:4:18: trace:
+     4 |    printf '%s\n' "$(eval '( echo $((12 / workers)) jobs each )')"
+       |                   ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./lib.kosh:2:1: trace:
+     2 |  release() {
+       |  ^~~~~~~~~
+deploy.kosh:3:1: trace:
+     3 |  release 0
+       |  ^~~~~~~~~
+rc=0
+== retained signature with traces disabled
+eval:1:11: error: Division by zero.
+     1 |  ( echo $((12 / workers)) jobs each )
+       |            ^~~~~~~~~~~~
+note: `workers` evaluated to 0.
+rc=0
+== retained spaced signature and expression zero
+./lib.kosh:4:11: error: Division by zero.
+     4 |    echo $((12 / (workers - workers)))
+       |            ^~~~~~~~~~~~~~~~~~~~~~~~
+note: `(workers - workers)` evaluated to 0.
+./lib.kosh:2:1: trace:
+     2 |  release  () {
+       |  ^~~~~~~~~~~
+deploy.kosh:3:1: trace:
+     3 |  release 0
+       |  ^~~~~~~~~
+rc=1
+== all scope errors precede the subshell trace
+scope.sh:2:1: error: The command 'no_such_first_scope_command' was not found.
+     2 |  no_such_first_scope_command
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+scope.sh:3:1: error: The command 'no_such_second_scope_command' was not found.
+     3 |  no_such_second_scope_command
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+scope.sh:1:1: trace:
+     1 |  (
+       |  ^
+rc=127
+== retained multiline signature
+./lib.kosh:6:11: error: Division by zero.
+     6 |    echo $((12 / workers))
+       |            ^~~~~~~~~~~~
+note: `workers` evaluated to 0.
+./lib.kosh:2:1: trace:
+     2 |  release \
+       |  ^~~~~~~~~
+deploy.kosh:3:1: trace:
+     3 |  release 0
+       |  ^~~~~~~~~
+rc=1
+== retained eval definition signature
+deploy.kosh:3:1: warning: The command 'release' could not be verified after runtime code.
+     3 |  release 0
+       |  ^~~~~~~
+eval:3:11: error: Division by zero.
+     3 |    echo $((12 / workers))
+       |            ^~~~~~~~~~~~
+note: `workers` evaluated to 0.
+eval:1:1: trace:
+     1 |  release  () {
+       |  ^~~~~~~~~~~
+deploy.kosh:3:1: trace:
+     3 |  release 0
+       |  ^~~~~~~~~
 rc=1

@@ -1,16 +1,16 @@
 == bash mood reports an arithmetic error and goes on to the next line, matching bash:
 before
--c:2:10: error: Division by zero.
+-c:2:9: error: Division by zero.
      2 |  echo $((1/0))
-       |           ^
-note: The right operand evaluated to 0.
+       |          ^~~
+note: The right operand is 0.
 after
 rc=0
 == the strict default mood aborts the run on an arithmetic error:
--c:1:10: error: Division by zero.
+-c:1:9: error: Division by zero.
      1 |  echo $((1/0)); echo after
-       |           ^
-note: The right operand evaluated to 0.
+       |          ^~~
+note: The right operand is 0.
 rc=1
 == the strict default mood aborts on an unset arithmetic operand:
 before
@@ -38,3 +38,17 @@ after
        |       ^~
 note: Use `--` before an operand that begins with a dash.
 after
+== a wrapped zero operand keeps its source expression:
+-c:1:9: error: Division by zero.
+     1 |  echo $((12 / 18446744073709551616))
+       |          ^~~~~~~~~~~~~~~~~~~~~~~~~
+note: The right operand is 0.
+after
+rc=0
+== expanded arithmetic keeps the outer source location:
+-c:1:27: error: Division by zero.
+     1 |  expression="12 / 0"; echo $(( $expression ))
+       |                            ^~~~~~~~~~~~~~~~~~
+note: The right operand is 0.
+after
+rc=0

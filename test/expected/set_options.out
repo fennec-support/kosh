@@ -5,7 +5,7 @@ on=0
 note: Switch to the bash mood with `koshconf set mood bash` to change it.
 3:1: trace:
      3 |  (set +o pipefail); echo "off=$?"
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~
 off=1
 kosh
 mood=kosh args=mood-marker
@@ -17,5 +17,5 @@ bundled=0
        |       ^~
 7:1: trace:
      7 |  (set -Z); echo "bad=$?"
-       |  ^
+       |  ^~~~~~~~
 bad=1

@@ -4,7 +4,7 @@ trap:1:37: error: Builtin `return`: Can only `return' from a function or sourced
 -c:2:1: trace:
      2 |  trap 'case "$BASH_COMMAND" in echo\ top*) return 5;; esac' DEBUG
        |  ^~~~
-3:0: trace:
+-c:3:1: trace:
      3 |  echo top-1
        |  ^~~~
 top-1
@@ -14,7 +14,7 @@ trap:1:37: error: Builtin `return`: Can only `return' from a function or sourced
 -c:2:1: trace:
      2 |  trap 'case "$BASH_COMMAND" in echo\ top*) return 5;; esac' DEBUG
        |  ^~~~
-4:0: trace:
+-c:4:1: trace:
      4 |  echo top-2
        |  ^~~~
 top-2

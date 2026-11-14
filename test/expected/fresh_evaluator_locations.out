@@ -17,10 +17,10 @@ background
      6 |  echo start; ( echo "background"; echo "$unset_in_background" ) &
        |                                         ^~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_background-} if empty expansion is desired.
+
 6:13: trace:
      6 |  echo start; ( echo "background"; echo "$unset_in_background" ) &
-       |              ^
-
+       |              ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 first=9
 second=10
 piped 13
@@ -34,10 +34,10 @@ nested=15
     15 |  echo nested | { ( echo "nested=$LINENO"; echo "$unset_in_nested" ) & wait; }
        |                                                 ^~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_nested-} if empty expansion is desired.
+
 15:17: trace:
     15 |  echo nested | { ( echo "nested=$LINENO"; echo "$unset_in_nested" ) & wait; }
-       |                  ^
-
+       |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 function=18
 input=23
 multi=25
@@ -47,27 +47,33 @@ output=28
     34 |    ( echo "$unset_in_report" ) &
        |            ^~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_report-} if empty expansion is desired.
+
 34:3: trace:
     34 |    ( echo "$unset_in_report" ) &
-       |    ^
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+33:1: trace:
+    33 |  report_unset() {
+       |  ^~~~~~~~~~~~~~
 37:18: trace:
     37 |  outer_report() { report_unset; }
        |                   ^~~~~~~~~~~~
+37:1: trace:
+    37 |  outer_report() { report_unset; }
+       |  ^~~~~~~~~~~~~~
 38:1: trace:
     38 |  outer_report
        |  ^~~~~~~~~~~~
-
 40:11: warning: The variable 'unset_in_inner' is not set and expands to an empty string.
     40 |  ( ( echo "$unset_in_inner" ) & wait )
        |            ^~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_inner-} if empty expansion is desired.
+
 40:3: trace:
     40 |  ( ( echo "$unset_in_inner" ) & wait )
-       |    ^
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~
 40:1: trace:
     40 |  ( ( echo "$unset_in_inner" ) & wait )
-       |  ^
-
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 42:21: warning: The variable 'unset_in_input' is not set and expands to an empty string.
     42 |  koshkit cat <(echo "$unset_in_input")
        |                      ^~~~~~~~~~~~~~~
@@ -81,6 +87,9 @@ eval=44
     48 |    echo "show=$LINENO ${BASH_LINENO[*]} ${FUNCNAME[*]} $unset_in_show"
        |                                                        ^~~~~~~~~~~~~~
 note: Replace it with ${unset_in_show-} if empty expansion is desired.
+47:1: trace:
+    47 |  show_frames() {
+       |  ^~~~~~~~~~~~~
 50:15: trace:
     50 |  koshkit cat <(show_frames)
        |                ^~~~~~~~~~~
@@ -92,12 +101,18 @@ show=48 50 show_frames
     48 |    echo "show=$LINENO ${BASH_LINENO[*]} ${FUNCNAME[*]} $unset_in_show"
        |                                                        ^~~~~~~~~~~~~~
 note: Replace it with ${unset_in_show-} if empty expansion is desired.
+47:1: trace:
+    47 |  show_frames() {
+       |  ^~~~~~~~~~~~~
 51:29: trace:
     51 |  call_show() { koshkit cat <(show_frames); }
        |                              ^~~~~~~~~~~
 51:27: trace:
     51 |  call_show() { koshkit cat <(show_frames); }
        |                            ^~~~~~~~~~~~~~
+51:1: trace:
+    51 |  call_show() { koshkit cat <(show_frames); }
+       |  ^~~~~~~~~~~
 52:1: trace:
     52 |  call_show
        |  ^~~~~~~~~
@@ -107,6 +122,9 @@ inside=58 61
     59 |      echo "$unset_in_defined_inside" >&2
        |            ^~~~~~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_defined_inside-} if empty expansion is desired.
+57:3: trace:
+    57 |    defined_inside() {
+       |    ^~~~~~~~~~~~~~~~
 61:3: trace:
     61 |    defined_inside
        |    ^~~~~~~~~~~~~~
@@ -120,10 +138,13 @@ captured=66
     75 |    ( echo "$unset_collide" ) &
        |            ^~~~~~~~~~~~~~
 note: Replace it with ${unset_collide-} if empty expansion is desired.
+
 75:3: trace:
     75 |    ( echo "$unset_collide" ) &
-       |    ^
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~
+74:1: trace:
+    74 |  collide_frame1() {
+       |  ^~~~~~~~~~~~~~~~
 78:9: trace:
     78 |  true && collide_frame1
        |          ^~~~~~~~~~~~~~
-

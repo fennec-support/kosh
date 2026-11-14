@@ -1743,7 +1743,7 @@ EvalContext::push_function_call_name(
   function_store().call_frames().push(function_call_frame{
       String{heap_allocator(), name},
       body_storage,
-      source_store().current_source(), source_store().current_location(),
+      source_store().current_source(), source_store().current_location(), false,
       false
   });
 }

@@ -2,6 +2,9 @@ LIB:3:15: warning: The variable 'UNSET_FN_PROBE' is not set and expands to an em
      3 |    echo "first=${UNSET_FN_PROBE}"
        |                ^~~~~~~~~~~~~~~~~
 note: Replace it with ${UNSET_FN_PROBE-} if empty expansion is desired.
+LIB:2:1: trace:
+     2 |  probe_fn() {
+       |  ^~~~
 -c:1:37: trace:
      1 |  . LIB; probe_fn
        |                                      ^~~~
@@ -17,6 +20,9 @@ FIRST:2:15: warning: The variable 'UNSET_FIRST_PROBE' is not set and expands to 
      2 |    echo "first=${UNSET_FIRST_PROBE}"
        |                ^~~~~~~~~~~~~~~~~~~~
 note: Replace it with ${UNSET_FIRST_PROBE-} if empty expansion is desired.
+FIRST:1:1: trace:
+     1 |  first_fn() {
+       |  ^~~~
 -c:1:43: trace:
      1 |  . FIRST; first_fn
        |                                            ^~~~

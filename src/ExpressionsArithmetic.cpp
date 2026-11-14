@@ -1424,7 +1424,12 @@ Subshell::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
 
     let frame = SubstitutionFrame{cxt};
 
-    frame.push_source_frame(source_location(), "a subshell");
+    let trace_location    = source_location();
+    trace_location.length = source_end_position() - trace_location.position;
+    let const frame_count = cxt.source_store().source_frames().count();
+    frame.push_source_frame(trace_location, "a subshell");
+    if (cxt.source_store().source_frames().count() > frame_count)
+      cxt.source_store().source_frames().back().should_defer_trace = true;
 
     try {
       return evaluate_subshell_in_process(body, cxt,
@@ -1627,9 +1632,11 @@ Subshell::analyze(AnalysisContext &actx, bool is_unconditional) const throws -> 
 }
 
 FunctionDefinition::FunctionDefinition(SourceLocation     location,
+                                       SourceLocation     signature_location,
                                        StringView         name,
                                        FunctionBodyHandle body)
-    : CompoundCommand(steal(location)), m_name(heap_allocator(), name),
+    : CompoundCommand(steal(location)),
+      m_signature_location(signature_location), m_name(heap_allocator(), name),
       m_body_storage(steal(body)), m_body(m_body_storage.get_body())
 {}
 
@@ -1693,7 +1700,8 @@ FunctionDefinition::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const 
   LOG(Info, "registering the function '%s'%s", m_name.c_str(),
       definition_text.is_empty() ? " without recorded definition text" : "");
   cxt.register_function(m_name, m_body_storage, definition_text.view(),
-                        m_body->source_location().position, source_location());
+                        m_body->source_location().position, source_location(),
+                        m_signature_location);
   cxt.publish_single_pipe_status(0);
   SET_AND_RETURN_EXIT_STATUS(cxt, 0);
 }

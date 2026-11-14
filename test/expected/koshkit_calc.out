@@ -116,18 +116,18 @@ note: Check the spelling, or use a function that the calculator supports.
        |                   ^
 note: An operand is missing.
 === located division by zero ===
--c:1:19: error: Division by zero.
+-c:1:15: error: Division by zero.
      1 |  koshkit calc "5 / 0"
-       |                    ^
-note: The right operand evaluated to 0.
--c:1:18: error: Division by zero.
+       |                ^~~~~
+note: The right operand is 0.
+-c:1:14: error: Division by zero.
      1 |  koshkit calc 5 / 0
-       |                   ^
-note: The right operand evaluated to 0.
--c:1:20: error: Division by zero.
+       |               ^~~~~
+note: The right operand is 0.
+-c:1:15: error: Division by zero.
      1 |  koshkit calc "10 % (3 - 3)"
-       |                     ^~~~~~~
-note: The right operand evaluated to 0.
+       |                ^~~~~~~~~~~~
+note: `(3 - 3)` evaluated to 0.
 === oversized decimal power ===
 -c:1:22: error: Exponent is too large.
      1 |  koshkit calc "0.1 ** 4294967296"
@@ -170,10 +170,10 @@ rc=1
      1 |  z =
        |  ^
 == a division by zero is a located capitalized error:
-1:5: error: Division by zero.
+1:1: error: Division by zero.
      1 |  1 / 0
-       |      ^
-note: The right operand evaluated to 0.
+       |  ^~~~~
+note: The right operand is 0.
 == an unset name inside a stored formula errors when the formula runs:
 error: The variable 'base' is not set.
 == a decimal divisor preserves decimal arithmetic:

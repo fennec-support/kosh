@@ -115,7 +115,7 @@ xx
 note: The count must be an integer with an optional size suffix.
 84:1: trace:
     84 |  (koshkit head -c 1x counted)
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
 suffix-status=1
 suffix-status=1
 suffix-status=1

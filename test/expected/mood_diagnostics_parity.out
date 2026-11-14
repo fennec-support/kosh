@@ -72,6 +72,6 @@ glob.sh:2:14: warning: The glob pattern '*.nomatch' matched no file, it expands 
      2 |  files=$(echo *.nomatch)
        |               ^~~~~~~~~
 note: Probe for matches with compgen -G '*.nomatch' or relax it with shopt -u failglob outside the kosh mood.
-2:7: trace:
+glob.sh:2:7: trace:
      2 |  files=$(echo *.nomatch)
        |        ^~~~~~~~~~~~~~~~~

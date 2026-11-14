@@ -2263,6 +2263,7 @@ class FunctionDefinition : public CompoundCommand
 {
 public:
   FunctionDefinition(SourceLocation     location,
+                     SourceLocation     signature_location,
                      StringView         name,
                      FunctionBodyHandle body);
   ~FunctionDefinition() override;
@@ -2289,6 +2290,7 @@ protected:
   fn
   evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const throws -> status_result override;
 
+  SourceLocation                        m_signature_location;
   String                                m_name;
   FunctionBodyHandle                    m_body_storage;
   const Expression                     *m_body;

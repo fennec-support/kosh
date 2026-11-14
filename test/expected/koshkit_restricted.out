@@ -34,7 +34,8 @@ koshkit status=1
 == set -r refuses a utility resolved before it:
 before
 -c:1:12: error: The command 'basename' was not found.
-1:50: trace:
+-c:1:1: trace:
+-c:1:50: trace:
 status=127
 == type, command -v, and hash do not offer a bundled utility:
 -c:1:1: error: Builtin `type`: The command 'env' was not found.

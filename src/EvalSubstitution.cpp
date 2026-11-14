@@ -209,7 +209,7 @@ SubstitutionFrame::pop_source_frame() wontthrow -> void
 {
   if (!m_did_push_source_frame) return;
 
-  m_context.source_store().source_frames().pop_back();
+  m_context.pop_root_source_frame();
   m_did_push_source_frame = false;
 }
 

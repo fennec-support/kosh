@@ -423,12 +423,15 @@ EvalContext::print_source_backtrace(
 
   source_frame *deferring_frame = nullptr;
 
-  if (should_defer_for_source_file && execution_store().subshell_depth() == 0) {
+  if (!is_replay && should_defer_for_source_file) {
     for (usize i = source_store().source_frames().count(); i > 0; i--) {
       let &frame = source_store().source_frames()[i - 1];
 
       if (!frame.should_defer_trace) continue;
-      if (error_location.has_value()) {
+      if (frame.is_source_changing && execution_store().subshell_depth() != 0) {
+        continue;
+      }
+      if (frame.is_source_changing && error_location.has_value()) {
         let const error_source_name = error_location->get_filename();
 
         if (!error_source_name.has_value() ||
@@ -526,6 +529,19 @@ EvalContext::print_source_backtrace(
       let      &call_frame = function_store().call_frames()[call_index];
       let const call_site  = call_frame.location;
 
+      let const *definition = call_frame.storage.get_definition_info();
+
+      if (definition != nullptr && definition->has_signature_location) {
+        let entry = backtrace_entry{};
+
+        entry.location      = definition->signature_location;
+        entry.line_offset   = definition->signature_line_offset;
+        entry.text          = &definition->signature_source;
+        entry.was_printed   = &call_frame.was_definition_printed;
+        entry.call_index    = call_index;
+        entry.is_definition = true;
+        entries.push(entry);
+      }
       if (call_frame.source == nullptr) continue;
 
       let const resolved =
@@ -619,24 +635,6 @@ EvalContext::print_source_backtrace(
     }
   }
 
-  Maybe<u32> last_name_index = None;
-
-  if (!is_replay && error_location.has_value()) {
-    last_name_index = error_location->source_name_index;
-    if (let const resolved = resolve_render_source(*error_location);
-        resolved.is_windowed &&
-        resolved.source_name_index != error_location->source_name_index)
-    {
-      last_name_index = resolved.source_name_index;
-    } else if (error_location->source_name_index == 0) {
-      if (let const embedded_name = embedded_source_name_index();
-          embedded_name.has_value())
-      {
-        last_name_index = *embedded_name;
-      }
-    }
-  }
-
   for (usize entry_index = 0; entry_index < entries.count(); entry_index++) {
     let const &entry = entries[entry_index];
 
@@ -645,21 +643,8 @@ EvalContext::print_source_backtrace(
       continue;
     }
 
-    let const location        = entry.location;
-    let       mapped_location = location;
-    let       mapped_text     = entry.text->view();
-
-    unused(map_embedded_site(mapped_text, mapped_location));
-
-    let const mapped_name  = source_name_at(mapped_location.source_name_index);
-    let const is_eval_text = mapped_name.has_value() && *mapped_name == "eval";
-    let const should_hide_filename =
-        !is_eval_text && last_name_index.has_value() &&
-        *last_name_index == mapped_location.source_name_index;
-
-    last_name_index = mapped_location.source_name_index;
-
-    let repeat_message = String{heap_allocator()};
+    let const location       = entry.location;
+    let       repeat_message = String{heap_allocator()};
 
     if (entry.repeat_count != 0) {
       repeat_message += "repeated ";
@@ -670,7 +655,6 @@ EvalContext::print_source_backtrace(
     let trace = TraceWithLocation{location, repeat_message.view()};
 
     trace.set_line_offset(entry.line_offset);
-    if (should_hide_filename) trace.hide_filename();
     show_message(trace.to_string(entry.text->view(), this));
     if (entry.is_definition) {
       utils::invalidate_line_number_cache_for(entry.text->view());
@@ -1080,7 +1064,7 @@ EvalContext::restore_state(eval_state_snapshot snapshot) throws -> void
 }
 
 static constexpr u32 SUBSHELL_BOOTSTRAP_MAGIC   = 0x4b534842U;
-static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 22U;
+static constexpr u32 SUBSHELL_BOOTSTRAP_VERSION = 23U;
 static constexpr u32 NO_BOOTSTRAP_PROCESS       = UINT32_MAX;
 static constexpr u32 NO_BARE_PROGRAM_PATH       = UINT32_MAX;
 
@@ -1152,13 +1136,14 @@ static constexpr u8 ALL_LOCAL_BINDING_WIRE_FLAGS = (1U << 5) - 1U;
 
 enum class inherited_frame_wire_flag : u8
 {
-  HasSite          = 1U << 0,
-  WasPrinted       = 1U << 1,
-  IsSourceChanging = 1U << 2,
-  ShouldDeferTrace = 1U << 3,
+  HasSite              = 1U << 0,
+  WasPrinted           = 1U << 1,
+  IsSourceChanging     = 1U << 2,
+  ShouldDeferTrace     = 1U << 3,
+  WasDefinitionPrinted = 1U << 4,
 };
 
-static constexpr u8 ALL_INHERITED_FRAME_WIRE_FLAGS = (1U << 4) - 1U;
+static constexpr u8 ALL_INHERITED_FRAME_WIRE_FLAGS = (1U << 5) - 1U;
 
 template <class WriteFn>
 static fn
@@ -1381,7 +1366,9 @@ FunctionStore::append_wire(String &output) const throws -> void
           if (info == nullptr || source == nullptr || source->is_empty() ||
               info->line_offset < 0 || info->line_offset > INT32_MAX ||
               info->enclosing_line_count > INT32_MAX ||
-              info->definition_line > UINT32_MAX)
+              info->definition_line > UINT32_MAX ||
+              info->signature_line_offset < INT32_MIN ||
+              info->signature_line_offset > INT32_MAX)
           {
             return;
           }
@@ -1401,6 +1388,18 @@ FunctionStore::append_wire(String &output) const throws -> void
           append_subshell_bootstrap_text(records, info->line_prefix.view());
           append_subshell_bootstrap_text(records, info->line_suffix.view());
           records.push(static_cast<char>(info->is_numbered_apart));
+          append_subshell_bootstrap_text(records,
+                                         info->signature_source.view());
+          append_subshell_bootstrap_u32(
+              records, find_wire_source_name(
+                           names, info->signature_location.source_name_index));
+          append_subshell_bootstrap_u32(records,
+                                        info->signature_location.position);
+          append_subshell_bootstrap_u32(records,
+                                        info->signature_location.length);
+          append_subshell_bootstrap_i32(
+              records, static_cast<i32>(info->signature_line_offset));
+          records.push(static_cast<char>(info->has_signature_location));
           record_count++;
         });
 
@@ -2138,7 +2137,7 @@ FunctionStore::from_wire(subshell_bootstrap_reader &reader,
   }
 
   let const       record_count = static_cast<usize>(payload.read_u32());
-  constexpr usize MINIMUM_FUNCTION_RECORD_BYTE_COUNT = 7 * sizeof(u32);
+  constexpr usize MINIMUM_FUNCTION_RECORD_BYTE_COUNT = 12 * sizeof(u32) + 2;
 
   if (!payload.is_valid ||
       record_count >
@@ -2166,6 +2165,22 @@ FunctionStore::from_wire(subshell_bootstrap_reader &reader,
 
     if (!read_subshell_bootstrap_bool(payload, info.is_numbered_apart))
       return false;
+
+    let const signature_source = payload.read_text();
+    if (!read_wire_source_name(payload, names,
+                               info.signature_location.source_name_index))
+      return false;
+    info.signature_location.position = payload.read_u32();
+    info.signature_location.length   = payload.read_u32();
+    info.signature_line_offset       = static_cast<isize>(payload.read_i32());
+    if (!read_subshell_bootstrap_bool(payload, info.has_signature_location) ||
+        info.signature_location.position > signature_source.length ||
+        info.signature_location.length >
+            signature_source.length - info.signature_location.position)
+    {
+      return false;
+    }
+    info.signature_source = String{heap_allocator(), signature_source};
 
     if (!payload.is_valid || name.is_empty() || line_offset > INT32_MAX ||
         enclosing_line_count > INT32_MAX)
@@ -3176,6 +3191,8 @@ EvalContext::set_child_source_origin(
 
     if (call_frame.was_printed)
       flags |= static_cast<u8>(inherited_frame_wire_flag::WasPrinted);
+    if (call_frame.was_definition_printed)
+      flags |= static_cast<u8>(inherited_frame_wire_flag::WasDefinitionPrinted);
     if (has_site) flags |= static_cast<u8>(inherited_frame_wire_flag::HasSite);
     frames.push(static_cast<char>(flags));
     frames.append(site.view());
@@ -3201,6 +3218,8 @@ EvalContext::set_child_source_origin(
 
     if (frame.was_printed)
       flags |= static_cast<u8>(inherited_frame_wire_flag::WasPrinted);
+    if (frame.was_definition_printed)
+      flags |= static_cast<u8>(inherited_frame_wire_flag::WasDefinitionPrinted);
     if (has_site) flags |= static_cast<u8>(inherited_frame_wire_flag::HasSite);
     if (frame.is_source_changing)
       flags |= static_cast<u8>(inherited_frame_wire_flag::IsSourceChanging);
@@ -3351,6 +3370,9 @@ EvalContext::register_inherited_source_origin(
 
     call_frame.was_printed =
         (flags & static_cast<u8>(inherited_frame_wire_flag::WasPrinted)) != 0;
+    call_frame.was_definition_printed =
+        (flags &
+         static_cast<u8>(inherited_frame_wire_flag::WasDefinitionPrinted)) != 0;
     if ((flags & static_cast<u8>(inherited_frame_wire_flag::HasSite)) != 0)
       call_frame.source = do_read_site(call_index, call_frame.location);
   }
@@ -3394,6 +3416,9 @@ EvalContext::register_inherited_source_origin(
     frame.function_call_depth = function_call_depth;
     frame.was_printed =
         (flags & static_cast<u8>(inherited_frame_wire_flag::WasPrinted)) != 0;
+    frame.was_definition_printed =
+        (flags &
+         static_cast<u8>(inherited_frame_wire_flag::WasDefinitionPrinted)) != 0;
     frame.is_source_changing =
         (flags &
          static_cast<u8>(inherited_frame_wire_flag::IsSourceChanging)) != 0;

@@ -18,7 +18,7 @@ strict=1
 note: Switch to the bash mood with `koshconf set mood bash` to change it.
 4:1: trace:
      4 |  (set +o pipefail)
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~
 kosh-rc=1
 relaxed=0
 reenabled=1

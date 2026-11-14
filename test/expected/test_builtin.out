@@ -4,7 +4,7 @@
        |         ^~~
 4:1: trace:
      4 |  ( test abc -eq 5 ); echo "invalid_number=$?"
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~
 invalid_number=1
 0
 1
@@ -14,7 +14,7 @@ invalid_number=1
 note: A test takes an operator or an operand at this position.
 7:1: trace:
      7 |  ( test a -a b c ); echo "invalid_arity=$?"
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~
 invalid_arity=1
 1
 0
@@ -40,5 +40,5 @@ exit=1
        |      ^~~~~~~~~~~~
 33:1: trace:
     33 |  ( [ "$UNSET_VAR" -ne 0 ] ) 2>&1; echo "exit=$?"
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~
 exit=1

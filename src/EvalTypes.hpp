@@ -1479,6 +1479,10 @@ struct function_definition_info
   mutable String   render_source{heap_allocator()};
   mutable bool     has_render_source{false};
   bool             is_numbered_apart{false};
+  String           signature_source{heap_allocator()};
+  SourceLocation   signature_location{};
+  isize            signature_line_offset{0};
+  bool             has_signature_location{false};
   definition_state defining_state;
 };
 

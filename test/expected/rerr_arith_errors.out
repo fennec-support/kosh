@@ -49,7 +49,7 @@ Encountered 11 warnings.
 note: The digit is not valid in base 8.
 3:1: trace:
      3 |  (echo $((010 + 09)))
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~~
 octal=1
 5:10: error: Invalid digit '2' in the number '2#102'.
      5 |  (echo $((2#102)))
@@ -57,7 +57,7 @@ octal=1
 note: The digit is not valid in base 2.
 5:1: trace:
      5 |  (echo $((2#102)))
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~
 base2=1
 7:10: error: Invalid digit 'g' in the number '16#fg'.
      7 |  (echo $((16#fg)))
@@ -65,7 +65,7 @@ base2=1
 note: The digit is not valid in base 16.
 7:1: trace:
      7 |  (echo $((16#fg)))
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~
 base16=1
 9:10: error: Invalid digit '2' in the number '0b12'.
      9 |  (echo $((0b12)))
@@ -73,7 +73,7 @@ base16=1
 note: The digit is not valid in base 2.
 9:1: trace:
      9 |  (echo $((0b12)))
-       |  ^
+       |  ^~~~~~~~~~~~~~~~
 binary=1
 11:10: error: Invalid digit 'Z' in the number '0xZ'.
     11 |  (echo $((0xZ)))
@@ -81,7 +81,7 @@ binary=1
 note: The digit is not valid in base 16.
 11:1: trace:
     11 |  (echo $((0xZ)))
-       |  ^
+       |  ^~~~~~~~~~~~~~~
 hex=1
 13:10: error: Invalid digit 'a' in the number '1a'.
     13 |  (echo $((1a)))
@@ -89,15 +89,15 @@ hex=1
 note: The digit is not valid in base 10.
 13:1: trace:
     13 |  (echo $((1a)))
-       |  ^
+       |  ^~~~~~~~~~~~~~
 decimal=1
-15:11: error: Division by zero.
+15:10: error: Division by zero.
     15 |  (echo $((1%0)))
-       |            ^
-note: The right operand evaluated to 0.
+       |           ^~~
+note: The right operand is 0.
 15:1: trace:
     15 |  (echo $((1%0)))
-       |  ^
+       |  ^~~~~~~~~~~~~~~
 modzero=1
 17:12: error: Shift count is negative.
     17 |  (echo $((1 << -1)))
@@ -105,7 +105,7 @@ modzero=1
 note: An exact shift requires a non-negative count.
 17:1: trace:
     17 |  (echo $((1 << -1)))
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~
 negative_shift=1
 19:12: error: Unexpected '2' after the expression.
     19 |  (echo $((1 2)))
@@ -113,7 +113,7 @@ negative_shift=1
 note: An operator is missing between two values.
 19:1: trace:
     19 |  (echo $((1 2)))
-       |  ^
+       |  ^~~~~~~~~~~~~~~
 trailing=1
 21:10: error: Expected a variable after '++' or '--'.
     21 |  (echo $((++)))
@@ -121,15 +121,15 @@ trailing=1
 note: '++' and '--' apply only to a variable.
 21:1: trace:
     21 |  (echo $((++)))
-       |  ^
+       |  ^~~~~~~~~~~~~~
 bad_increment=1
-23:8: error: Division by zero.
+23:6: error: Division by zero.
     23 |  ( (( 1 / 0 )) )
-       |         ^
-note: The right operand evaluated to 0.
+       |       ^~~~~
+note: The right operand is 0.
 23:1: trace:
     23 |  ( (( 1 / 0 )) )
-       |  ^
+       |  ^~~~~~~~~~~~~~~
 command_division=1
 25:8: error: Unexpected '@ 2' after the expression.
     25 |  ( (( 1 @ 2 )) )
@@ -137,7 +137,7 @@ command_division=1
 note: An operator is missing between two values.
 25:1: trace:
     25 |  ( (( 1 @ 2 )) )
-       |  ^
+       |  ^~~~~~~~~~~~~~~
 command_token=1
 268
 28:9: error: Unexpected '4' after the expression.
@@ -146,7 +146,7 @@ command_token=1
 note: An operator is missing between two values.
 28:1: trace:
     28 |  (y=$((3 4)); echo "$y")
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~~~~~
 assignment=1
 30:16: error: Unexpected '6' after the expression.
     30 |  (export z=$((5 6)))
@@ -154,5 +154,95 @@ assignment=1
 note: An operator is missing between two values.
 30:1: trace:
     30 |  (export z=$((5 6)))
-       |  ^
+       |  ^~~~~~~~~~~~~~~~~~~
 declaration=1
+33:10: error: Division by zero.
+    33 |  (echo $((12 / workers)))
+       |           ^~~~~~~~~~~~
+note: `workers` evaluated to 0.
+33:1: trace:
+    33 |  (echo $((12 / workers)))
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~
+variable_division=1
+35:10: error: Division by zero.
+    35 |  (echo $((12 % workers)))
+       |           ^~~~~~~~~~~~
+note: `workers` evaluated to 0.
+35:1: trace:
+    35 |  (echo $((12 % workers)))
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~
+variable_modulo=1
+37:10: error: Division by zero.
+    37 |  (echo $((12 / (workers - workers))))
+       |           ^~~~~~~~~~~~~~~~~~~~~~~~
+note: `(workers - workers)` evaluated to 0.
+37:1: trace:
+    37 |  (echo $((12 / (workers - workers))))
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+expression_zero=1
+39:10: error: Division by zero.
+    39 |  (echo $((100 / 2 / workers)))
+       |           ^~~~~~~~~~~~~~~~~
+note: `workers` evaluated to 0.
+39:1: trace:
+    39 |  (echo $((100 / 2 / workers)))
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+later_chain=1
+41:14: error: Division by zero.
+    41 |  (echo $((1 + 12 / workers)))
+       |               ^~~~~~~~~~~~
+note: `workers` evaluated to 0.
+41:1: trace:
+    41 |  (echo $((1 + 12 / workers)))
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+precedence=1
+43:15: error: Division by zero.
+    43 |  (value=12; (( value /= workers )))
+       |                ^~~~~~~~~~~~~~~~
+note: `workers` evaluated to 0.
+43:1: trace:
+    43 |  (value=12; (( value /= workers )))
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compound_division=1
+45:15: error: Division by zero.
+    45 |  (value=12; (( value %= workers )))
+       |                ^~~~~~~~~~~~~~~~
+note: `workers` evaluated to 0.
+45:1: trace:
+    45 |  (value=12; (( value %= workers )))
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+compound_modulo=1
+47:10: error: Division by zero.
+    47 |  (echo $((12 / +0)))
+       |           ^~~~~~~
+note: The right operand is 0.
+47:1: trace:
+    47 |  (echo $((12 / +0)))
+       |  ^~~~~~~~~~~~~~~~~~~
+signed_literal=1
+49:16: error: Division by zero.
+    49 |  (echo $((12 / (4 / workers))))
+       |                 ^~~~~~~~~~~
+note: `workers` evaluated to 0.
+49:1: trace:
+    49 |  (echo $((12 / (4 / workers))))
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+nested_zero=1
+short_circuit=0
+evaluations=1
+52:70: error: Division by zero.
+    52 |  (evaluations=0; trap 'echo "evaluations=$evaluations"' EXIT; echo $((12 / (evaluations++))))
+       |                                                                       ^~~~~~~~~~~~~~~~~~~~
+note: `(evaluations++)` evaluated to 0.
+52:1: trace:
+    52 |  (evaluations=0; trap 'echo "evaluations=$evaluations"' EXIT; echo $((12 / (evaluations++))))
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+single_evaluation=1
+54:31: error: Division by zero.
+    54 |  (formula='12 / workers'; echo $((formula)))
+       |                                ^~~~~~~~~~~~
+note: `workers` evaluated to 0.
+54:1: trace:
+    54 |  (formula='12 / workers'; echo $((formula)))
+       |  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+stored_formula=1

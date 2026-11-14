@@ -25,27 +25,36 @@ background=3
     18 |    ( echo "$unset_in_library" ) &
        |            ^~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_library-} if empty expansion is desired.
-18:3: trace:
+
+./library.sh:18:3: trace:
     18 |    ( echo "$unset_in_library" ) &
-       |    ^
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./library.sh:17:1: trace:
+    17 |  unset_read() {
+       |  ^~~~~~~~~~~~
 41:1: trace:
     41 |  unset_read
        |  ^~~~~~~~~~
-
 ./library.sh:18:11: warning: The variable 'unset_in_library' is not set and expands to an empty string.
     18 |    ( echo "$unset_in_library" ) &
        |            ^~~~~~~~~~~~~~~~~
 note: Replace it with ${unset_in_library-} if empty expansion is desired.
-18:3: trace:
+
+./library.sh:18:3: trace:
     18 |    ( echo "$unset_in_library" ) &
-       |    ^
-22:5: trace:
+       |    ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+./library.sh:17:1: trace:
+    17 |  unset_read() {
+       |  ^~~~~~~~~~~~
+./library.sh:22:5: trace:
     22 |    ( unset_read ) &
        |      ^~~~~~~~~~
-22:3: trace:
+./library.sh:22:3: trace:
     22 |    ( unset_read ) &
-       |    ^
+       |    ^~~~~~~~~~~~~~
+./library.sh:21:1: trace:
+    21 |  nested_unset_read() {
+       |  ^~~~~~~~~~~~~~~~~~~
 42:1: trace:
     42 |  nested_unset_read
        |  ^~~~~~~~~~~~~~~~~
-

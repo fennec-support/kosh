@@ -82,12 +82,13 @@ running_trap_bit(StringView condition) wontthrow -> u8
 } /* namespace */
 
 fn
-EvalContext::register_function(
-    StringView                name,
-    const FunctionBodyHandle &body_storage,
-    StringView                definition_text,
-    usize                     body_start_position,
-    SourceLocation            definition_location) throws -> void
+EvalContext::register_function(StringView                name,
+                               const FunctionBodyHandle &body_storage,
+                               StringView                definition_text,
+                               usize                     body_start_position,
+                               SourceLocation            definition_location,
+                               SourceLocation            signature_location) throws
+    -> void
 {
   ASSERT(body_storage.has_value());
   ASSERT(body_storage.get_body() != nullptr);
@@ -159,6 +160,50 @@ EvalContext::register_function(
       definition_location.position < source_store().current_source()->count())
   {
     info.definition_line = line_number_at_location(definition_location);
+  }
+
+  let const signature_source = resolve_render_source(signature_location);
+
+  if (signature_source.text != nullptr) {
+    let const signature_site =
+        resolve_rendered_site(signature_source.text->view(),
+                              signature_source.rebase(signature_location),
+                              signature_source.line_offset, true, this);
+    let const position = signature_site.location.position;
+    let const length   = signature_site.location.length;
+
+    if (position < signature_site.source.length && length > 0 &&
+        length <= signature_site.source.length - position)
+    {
+      let const first_line =
+          utils::source_line_position_at(signature_site.source, position);
+      let const last_line = utils::source_line_position_at(
+          signature_site.source, position + length - 1);
+
+      info.signature_source = String{
+          heap_allocator(), signature_site.source.substring_of_length(
+                                first_line.line_start,
+                                last_line.line_end - first_line.line_start)};
+      info.signature_location =
+          SourceLocation{position - first_line.line_start, length,
+                         signature_site.location.source_name_index};
+      info.signature_line_offset = static_cast<isize>(first_line.line_number) +
+                                   signature_site.line_offset;
+      info.has_signature_location = true;
+    }
+  }
+  if (!info.has_signature_location &&
+      info.header_length <= definition_text.length && info.header_length > 0)
+  {
+    info.signature_source =
+        String{heap_allocator(),
+               definition_text.substring_of_length(0, info.header_length - 1)};
+    info.signature_location =
+        SourceLocation{0, name.length + 3, info.source_name_index};
+    info.signature_line_offset =
+        info.definition_line > 0 ? static_cast<isize>(info.definition_line - 1)
+                                 : 0;
+    info.has_signature_location = true;
   }
 
   info.body_name_index = definition_location.source_name_index;

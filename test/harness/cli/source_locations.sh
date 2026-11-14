@@ -376,3 +376,21 @@ exec 4>&9
 EOF
 run "a closed duplication source points at the redirection" \
     "$BIN" --mood bash closed_descriptor.sh 7>&- 9>&-
+
+printf '%s\n' '#!/usr/bin/env kosh' 'release() {' '  local workers=$1' \
+  '  printf '\''%s\n'\'' "$(eval '\''( echo $((12 / workers)) jobs each )'\'')"' \
+  '}' >lib.kosh
+printf '%s\n' '#!/usr/bin/env kosh' '. ./lib.kosh' 'release 0' >deploy.kosh
+run "retained signature and nested eval substitution" "$BIN" --mood kosh deploy.kosh
+run "retained signature with traces disabled" "$BIN" --no-traces --mood kosh deploy.kosh
+printf '%s\n' '#!/usr/bin/env kosh' 'release  () {' '  local workers=$1' \
+  '  echo $((12 / (workers - workers)))' '}' >lib.kosh
+run "retained spaced signature and expression zero" "$BIN" --mood kosh deploy.kosh
+printf '%s\n' '(' 'no_such_first_scope_command' 'no_such_second_scope_command' ')' >scope.sh
+run "all scope errors precede the subshell trace" "$BIN" --mood bash scope.sh
+printf '%s\n' '#!/usr/bin/env kosh' 'release \' '  ()' '{' \
+  '  local workers=$1' '  echo $((12 / workers))' '}' >lib.kosh
+run "retained multiline signature" "$BIN" --mood kosh deploy.kosh
+printf '%s\n' '#!/usr/bin/env kosh' 'eval '\''release  () {' \
+  '  local workers=$1' '  echo $((12 / workers))' '}'\' >lib.kosh
+run "retained eval definition signature" "$BIN" --mood kosh deploy.kosh

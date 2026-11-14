@@ -397,7 +397,9 @@ private:
 
   mustuse fn
   finish_function_body(const SourceLocation &location,
-                       StringView            name) throws -> Command *;
+                       StringView            name,
+                       SourceLocation        signature_location) throws
+      -> Command *;
 
   fn
   consume_bash_array_assignment() throws -> ArrayList<const Token *>;

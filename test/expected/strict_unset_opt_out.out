@@ -4,7 +4,7 @@
 note: Switch to the bash mood with `koshconf set mood bash` to change it.
 5:1: trace:
      5 |  (set +u)
-       |  ^
+       |  ^~~~~~~~
 kosh-rc=1
 []
 11:8: error: Unable to expand 'nope' because the parameter is not set.

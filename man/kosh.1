@@ -364,8 +364,12 @@ interactive lines omit the source label.
 \f[CR]eval\f[R], trap action, subshell, and command/function/process
 substitution between the top level and the failing command appends a
 \f[CR]trace:\f[R] frame.
-Consecutive identical frames collapse into a single frame with a repeat
-count.
+A function call also includes a separate frame at its original
+definition signature.
+Every named source retains its filename in each frame.
+Identical frames collapse into a single frame with a repeat count.
+A subshell trace follows its diagnostics and spans the complete
+subshell.
 When the shell processes several \f[CR]\-c\f[R] strings or
 \f[CR]\-\-lint\f[R] analyzes several files, the top\-level command\-line
 frame prints once after all diagnostics for each string or file.
@@ -4905,6 +4909,12 @@ operand, an unexpected token, and a negative shift count are errors
 (termination per mood under Error termination matrix across moods).
 Shifts, bitwise operators, and the exponent need integers, and division
 of two integers is integer division.
+.IP \[bu] 2
+\f[B]Zero\-operand diagnostics\f[R] \- A division or remainder by zero
+underlines the failing expression when its source coordinates are
+available.
+Its note identifies the right operand as zero or names the expression
+that evaluated to zero.
 .IP \[bu] 2
 \f[B]Precision\f[R] \-
 \f[CR]interpreter.arithmetic_uses_big_numbers\f[R]
