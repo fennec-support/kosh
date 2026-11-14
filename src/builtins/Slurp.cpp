@@ -238,7 +238,6 @@ struct slurp_session
   Path                    path;
   Maybe<os::file_status>  opened;
   bool                    is_stdin{false};
-  bool                    has_staged_output{false};
   String                  staged_output{heap_allocator()};
   ArrayList<String>       path_candidates{heap_allocator()};
   ArrayList<const char *> path_pointers{heap_allocator()};
@@ -324,10 +323,7 @@ save_buffer(const char *text, const char **out_message) -> int
 
       let status = make_status(session, saved.length());
 
-      if (session.is_stdin) {
-        session.staged_output     = steal(saved);
-        session.has_staged_output = true;
-      }
+      if (session.is_stdin) session.staged_output = steal(saved);
       session.opened     = written;
       session.saved_text = steal(saved_text);
       session.status     = steal(status);
@@ -497,13 +493,13 @@ complete_path(const char *text, tl_completion *out) -> int
     let  candidates = completion::complete_filesystem_paths_by_prefix(
         StringView{text, strlen(text)}, *ACTIVE_CONTEXT,
         os::read_current_directory());
-    let prefix = completion::compute_longest_common_prefix(candidates, false);
     session.path_candidates.clear();
     session.path_pointers.clear();
 
     for (let const &candidate : candidates)
       session.path_candidates.push(candidate.clone_to(heap_allocator()));
-    session.path_prefix = prefix.clone_to(heap_allocator());
+    session.path_prefix = completion::compute_longest_common_prefix(
+        session.path_candidates, false);
 
     for (let const &candidate : session.path_candidates)
       session.path_pointers.push(candidate.c_str());
@@ -651,12 +647,7 @@ edit_file(EvalContext                 &cxt,
 
   /* the session runs on the alternate screen, which it leaves before any
      report so that the report stays on the main screen. */
-  bool is_on_alternate_screen = true;
-
-  let const do_leave_alternate_screen = [&]() wontthrow -> void {
-    if (!is_on_alternate_screen) return;
-
-    is_on_alternate_screen = false;
+  defer {
     try {
       print("\x1b[?1049l");
       flush();
@@ -667,7 +658,6 @@ edit_file(EvalContext                 &cxt,
     }
   };
 
-  defer { do_leave_alternate_screen(); };
   print("\x1b[?1049h");
   flush();
 
@@ -679,8 +669,6 @@ edit_file(EvalContext                 &cxt,
   toiletline::set_saved_text(session.saved_text.c_str());
 
   let result = toiletline::get_input(String{heap_allocator()});
-
-  do_leave_alternate_screen();
 
   if (result.code == TL_PRESSED_INTERRUPT) return 130;
   if (result.code == TL_PRESSED_OPEN_FILE) return TL_PRESSED_OPEN_FILE;
@@ -882,7 +870,7 @@ Slurp::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         status = 1;
         break;
       }
-      if (current.is_stdin && current.has_staged_output &&
+      if (current.is_stdin &&
           (document_status == TL_PRESSED_WRITE_QUIT ||
            (document_status == TL_PRESSED_OPEN_FILE && should_accept_current)))
       {
