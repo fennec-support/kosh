@@ -1239,6 +1239,22 @@ open_terminal_input() wontthrow -> Maybe<descriptor>
 }
 
 fn
+open_terminal_output() wontthrow -> Maybe<descriptor>
+{
+  let const tty_fd = open("/dev/tty", O_WRONLY | O_CLOEXEC);
+
+  if (tty_fd == -1) return None;
+  if (tty_fd > STDERR_FILENO) return tty_fd;
+
+  let const moved_fd = fcntl(tty_fd, F_DUPFD_CLOEXEC, STDERR_FILENO + 1);
+
+  close(tty_fd);
+  if (moved_fd == -1) return None;
+
+  return moved_fd;
+}
+
+fn
 read_terminal_keys(descriptor terminal, char *buffer, usize size) wontthrow
     -> Maybe<usize>
 {

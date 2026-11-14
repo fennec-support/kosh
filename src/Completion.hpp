@@ -132,6 +132,17 @@ complete_filesystem_names_by_prefix(
         completion_filesystem_mode::Files) throws -> ArrayList<String>;
 
 fn
+complete_filesystem_paths_by_prefix(StringView   token,
+                                    EvalContext &context,
+                                    const Path  &base_directory) throws
+    -> ArrayList<String>;
+
+fn
+compute_longest_common_prefix(const ArrayList<String> &candidates,
+                              bool                     should_ignore_ascii_case) throws
+    -> String;
+
+fn
 collect_compgen_candidates(EvalContext      &context,
                            u32               action_mask,
                            Maybe<StringView> glob_pattern,

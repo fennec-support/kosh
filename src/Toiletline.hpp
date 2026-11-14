@@ -114,6 +114,11 @@ fn
 set_save_callback(int (*callback)(const char *text, const char **out_message))
     -> void;
 
+fn
+set_open_file_callback(tl_open_file_fn callback) -> void;
+fn
+set_path_complete_callback(tl_path_complete_fn callback) -> void;
+
 /* keeps text as the saved file contents that quit keys compare the buffer
    against, or forgets them when text is null. text must outlive its use. */
 fn

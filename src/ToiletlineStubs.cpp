@@ -663,6 +663,18 @@ set_save_callback(int (*callback)(const char *text, const char **out_message))
 }
 
 fn
+set_open_file_callback(tl_open_file_fn callback) -> void
+{
+  unused(callback);
+}
+
+fn
+set_path_complete_callback(tl_path_complete_fn callback) -> void
+{
+  unused(callback);
+}
+
+fn
 set_saved_text(const char *text) -> void
 {
   unused(text);

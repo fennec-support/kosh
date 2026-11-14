@@ -993,6 +993,18 @@ open_terminal_input() wontthrow -> Maybe<descriptor>
 }
 
 fn
+open_terminal_output() wontthrow -> Maybe<descriptor>
+{
+  let const terminal = CreateFileW(L"CONOUT$", GENERIC_READ | GENERIC_WRITE,
+                                   FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr,
+                                   OPEN_EXISTING, 0, nullptr);
+
+  if (terminal == INVALID_HANDLE_VALUE) return None;
+
+  return terminal;
+}
+
+fn
 read_terminal_keys(descriptor terminal, char *buffer, usize size) wontthrow
     -> Maybe<usize>
 {

@@ -2199,6 +2199,8 @@ reopen_terminal_as_stdin() wontthrow -> bool;
    Windows. The caller closes the descriptor with close_fd. */
 fn
 open_terminal_input() wontthrow -> Maybe<descriptor>;
+fn
+open_terminal_output() wontthrow -> Maybe<descriptor>;
 /* reads the keys waiting on terminal into buffer as the bytes a POSIX
    terminal sends, with the navigation keys of a Windows console as escape
    sequences. returns None at the end of input or on an error, and 0 when the

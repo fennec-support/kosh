@@ -595,7 +595,7 @@ collect_command_names(StringView                   token,
   }
 }
 
-static fn
+fn
 compute_longest_common_prefix(const ArrayList<String> &candidates,
                               bool                     should_ignore_ascii_case) throws
     -> String
@@ -1124,6 +1124,20 @@ complete_filesystem_names_by_prefix(
   let       collector = complete_filesystem_with<PrefixListCollector>(
       token, base_directory, context, PrefixListCollector{}, nullptr,
       path_text_mode::Raw, filter, directory_suffix_mode::Bare);
+
+  return collector.take();
+}
+
+fn
+complete_filesystem_paths_by_prefix(StringView   token,
+                                    EvalContext &context,
+                                    const Path  &base_directory) throws
+    -> ArrayList<String>
+{
+  let collector = complete_filesystem_with<PrefixListCollector>(
+      token, base_directory, context, PrefixListCollector{}, nullptr,
+      path_text_mode::Raw, filesystem_entry_filter::All,
+      directory_suffix_mode::Marked);
 
   return collector.take();
 }

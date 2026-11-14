@@ -44,7 +44,7 @@ rc=2
 -c:1:1: error: Builtin `slurp`: The line editor needs a terminal.
      1 |  slurp a b
        |  ^~~~~~~~~
-note: Run slurp with a terminal on both streams.
+note: Run slurp with a controlling terminal for editor input and display.
 rc=1
 == koshkit slurp:
 -c:1:1: error: Builtin `slurp`: Not enough arguments.

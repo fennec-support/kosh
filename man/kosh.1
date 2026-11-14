@@ -1184,7 +1184,7 @@ Vi \f[CR]:\f[R] commands
 T}@T{
 \f[CR]Enter\f[R] runs the command, and \f[CR]Escape\f[R],
 \f[CR]Ctrl\-C\f[R], \f[CR]Ctrl\-D\f[R], or \f[CR]Backspace\f[R] on an
-empty line closes the prompt; unknown commands do nothing.
+empty line closes the prompt; unknown commands flash briefly.
 \f[CR]:q\f[R], \f[CR]:q!\f[R], \f[CR]:quit\f[R], \f[CR]:wq\f[R],
 \f[CR]:wq!\f[R], \f[CR]:wqa\f[R], \f[CR]:wqa!\f[R], \f[CR]:x\f[R] (exit
 with the status of the last command; in \f[CR]slurp\f[R], the
@@ -1216,26 +1216,28 @@ T}@T{
 \f[CR]Backspace\f[R] on an empty minibuffer closes it.
 Hint rows list the matching commands, with a description for each when
 six or fewer match.
-Commands: \f[CR]help\f[R] (list the commands),
-\f[CR]replace\-string\f[R], \f[CR]replace\-regexp\f[R] (replace every
-match in the buffer; supports \f[CR]\[rs]&\f[R] and
-\f[CR]\[rs]1\f[R]\-\f[CR]\[rs]9\f[R]), \f[CR]repeat\f[R] (as
-\f[CR]Ctrl\-X z\f[R]), \f[CR]set\-option\f[R], \f[CR]get\-option\f[R],
-\f[CR]save\-option\f[R] (as \f[CR]:set\f[R] and \f[CR]:save\f[R]),
-\f[CR]format\f[R], \f[CR]format\-buffer\f[R] (as \f[CR]:format\f[R] and
-\f[CR]:%format\f[R]), \f[CR]fill\-paragraph\f[R] (as \f[CR]gq\f[R] on
-the paragraph), \f[CR]fill\-region\f[R] (as \f[CR]Alt\-Q\f[R]: the lines
-of the selection that \f[CR]Alt\-X\f[R] was pressed in, or the
-paragraph), \f[CR]isearch\-forward\f[R], \f[CR]isearch\-backward\f[R],
-\f[CR]kill\-kosh\f[R] (as \f[CR]Ctrl\-X Ctrl\-C\f[R]), \f[CR]undo\f[R],
-\f[CR]undo\-redo\f[R], \f[CR]beginning\-of\-line\f[R],
-\f[CR]end\-of\-line\f[R], \f[CR]forward\-word\f[R],
-\f[CR]backward\-word\f[R], \f[CR]scroll\-down\-command\f[R],
-\f[CR]scroll\-up\-command\f[R], \f[CR]beginning\-of\-history\f[R],
-\f[CR]end\-of\-history\f[R], \f[CR]delete\-char\f[R],
-\f[CR]backward\-delete\-char\f[R], \f[CR]kill\-word\f[R],
-\f[CR]backward\-kill\-word\f[R], \f[CR]kill\-line\f[R],
-\f[CR]unix\-line\-discard\f[R], \f[CR]yank\f[R],
+Commands: \f[CR]goto\-line\f[R] (move to a positive line number, clamped
+at the end), \f[CR]find\-file\f[R] (open a file),
+\f[CR]save\-and\-quit\f[R] (save the buffer and leave), \f[CR]help\f[R]
+(list the commands), \f[CR]replace\-string\f[R],
+\f[CR]replace\-regexp\f[R] (replace every match in the buffer; supports
+\f[CR]\[rs]&\f[R] and \f[CR]\[rs]1\f[R]\-\f[CR]\[rs]9\f[R]),
+\f[CR]repeat\f[R] (as \f[CR]Ctrl\-X z\f[R]), \f[CR]set\-option\f[R],
+\f[CR]get\-option\f[R], \f[CR]save\-option\f[R] (as \f[CR]:set\f[R] and
+\f[CR]:save\f[R]), \f[CR]format\f[R], \f[CR]format\-buffer\f[R] (as
+\f[CR]:format\f[R] and \f[CR]:%format\f[R]), \f[CR]fill\-paragraph\f[R]
+(as \f[CR]gq\f[R] on the paragraph), \f[CR]fill\-region\f[R] (as
+\f[CR]Alt\-Q\f[R]: the lines of the selection that \f[CR]Alt\-X\f[R] was
+pressed in, or the paragraph), \f[CR]isearch\-forward\f[R],
+\f[CR]isearch\-backward\f[R], \f[CR]kill\-kosh\f[R] (as
+\f[CR]Ctrl\-X Ctrl\-C\f[R]), \f[CR]undo\f[R], \f[CR]undo\-redo\f[R],
+\f[CR]beginning\-of\-line\f[R], \f[CR]end\-of\-line\f[R],
+\f[CR]forward\-word\f[R], \f[CR]backward\-word\f[R],
+\f[CR]scroll\-down\-command\f[R], \f[CR]scroll\-up\-command\f[R],
+\f[CR]beginning\-of\-history\f[R], \f[CR]end\-of\-history\f[R],
+\f[CR]delete\-char\f[R], \f[CR]backward\-delete\-char\f[R],
+\f[CR]kill\-word\f[R], \f[CR]backward\-kill\-word\f[R],
+\f[CR]kill\-line\f[R], \f[CR]unix\-line\-discard\f[R], \f[CR]yank\f[R],
 \f[CR]yank\-last\-arg\f[R], \f[CR]transpose\-chars\f[R],
 \f[CR]transpose\-words\f[R], \f[CR]upcase\-word\f[R],
 \f[CR]downcase\-word\f[R], \f[CR]capitalize\-word\f[R],
@@ -1266,6 +1268,10 @@ T}
 T{
 History search
 T}@T{
+Searches all complete stored records using the entire logical line
+containing the cursor.
+Acceptance replaces the whole draft with the complete selected command,
+and cancellation restores its draft and caret.
 In \f[CR]interactive\f[R] mode: \f[CR]Enter\f[R]/\f[CR]Tab\f[R] accept
 without running; \f[CR]Escape\f[R], \f[CR]Ctrl\-G\f[R], and unrecognized
 keys cancel and restore the line; other keys behave as in the completion
@@ -1798,7 +1804,8 @@ A missing \f[CR]FILE\f[R] opens empty and is created on save.
 An empty operand, directory, special or unreadable file, file containing
 \f[CR]NUL\f[R] or invalid UTF\-8, or file over \f[CR]16 MiB\f[R] is
 rejected, and the next \f[CR]FILE\f[R] still opens.
-A restricted shell or non\-terminal standard streams fail the run.
+A restricted shell or an unavailable controlling terminal fails the run.
+Standard output must be a terminal for named\-file\-only editing.
 The status is \f[CR]1\f[R] on a rejection or failed run, \f[CR]2\f[R] on
 usage errors (a missing \f[CR]FILE\f[R], a \f[CR]+LINE\f[R] without a
 \f[CR]FILE\f[R], or more than one mode option), and \f[CR]130\f[R] on
@@ -1843,10 +1850,11 @@ line, \f[CR]Ctrl\-S\f[R] and \f[CR]Ctrl\-R\f[R] (or \f[CR]/\f[R] and
 \f[B]\f[CB]slurp\f[B] saving and leaving\f[R] \- \f[CR]Ctrl\-X s\f[R],
 \f[CR]Ctrl\-X Ctrl\-S\f[R], \f[CR]:w\f[R], and \f[CR]:write\f[R] save
 and keep editing; \f[CR]:wq\f[R], \f[CR]:wq!\f[R], \f[CR]:wqa\f[R],
-\f[CR]:wqa!\f[R], and \f[CR]:x\f[R] save and close the file when the
-save succeeds; \f[CR]:q\f[R], \f[CR]Ctrl\-X Ctrl\-C\f[R],
-\f[CR]M\-x kill\-kosh\f[R], and \f[CR]Ctrl\-D\f[R] on an empty buffer
-close it without saving, and the next \f[CR]FILE\f[R] opens.
+\f[CR]:wqa!\f[R], \f[CR]:x\f[R], and \f[CR]M\-x save\-and\-quit\f[R]
+save and close the file when the save succeeds; \f[CR]:q\f[R],
+\f[CR]Ctrl\-X Ctrl\-C\f[R], \f[CR]M\-x kill\-kosh\f[R], and
+\f[CR]Ctrl\-D\f[R] on an empty buffer close it without saving, and the
+next \f[CR]FILE\f[R] opens.
 .RS 2
 .IP \[bu] 2
 While the buffer has unsaved changes, \f[CR]:q\f[R] refuses and
@@ -1866,6 +1874,30 @@ keeping owner, group, and links, after a private backup in
 \f[CR]$HOME\f[R] or \f[CR]$TMPDIR\f[R].
 The backup is removed after a successful write and reported after a
 failed one, and without a backup nothing is written.
+.IP \[bu] 2
+\f[B]\f[CB]slurp\f[B] file switching\f[R] \- \f[CR]M\-x find\-file\f[R]
+opens a named file after its path is accepted.
+\f[CR]Tab\f[R] completes raw filenames, including spaces and
+metacharacters, and \f[CR]Tab\f[R] and \f[CR]Shift\-Tab\f[R] cycle
+ambiguous candidates.
+A dirty buffer offers Save, Discard, or Cancel.
+A failed save or open keeps the current buffer.
+The new file has its own undo history, and the original operand list
+resumes when it closes.
+A path of \f[CR]\-\f[R] in this prompt names a file.
+.IP \[bu] 2
+\f[B]\f[CB]slurp\f[B] filter input\f[R] \- A command\-line operand of
+\f[CR]\-\f[R] reads standard input, while the controlling terminal
+receives editor input and display.
+Each save stages the current text without writing standard output.
+\f[CR]M\-x save\-and\-quit\f[R] and the Vi write\-quit commands emit it
+once to the original standard output.
+A successful file switch emits it only after Save is explicitly
+selected.
+Discard, cancellation, interruption, and quit without writing emit
+nothing, even after a staging save.
+Repeated \f[CR]\-\f[R] operands continue reading the same stream, and
+\f[CR]./\-\f[R] names a file.
 .IP \[bu] 2
 \f[B]\f[CB]slurp\f[B] line endings\f[R] \- A file keeps CRLF endings
 only when every line ends in CRLF; a file that mixes endings keeps each

@@ -961,6 +961,116 @@ def run_slurp_checks(binary, directory, command_directory, report):
     session = Session(binary, directory, command_directory)
     try:
         session.wait_until(is_line(""))
+        switched = os.path.join(directory, "slurp-switch.txt")
+        completed = os.path.join(directory, "slurp-open space.txt")
+        filtered = os.path.join(directory, "slurp-filter.out")
+        with open(switched, "w") as handle:
+            handle.write("one\n  two\nthree\n")
+        with open(completed, "w") as handle:
+            handle.write("target\n")
+        session.send(b"slurp slurp-switch.txt\r")
+        session.wait_until(has_row("three"))
+        session.send(ALT_X + b"goto-line\r")
+        session.wait_until(has_text("Goto line:"))
+        session.send(b"2\rX" + CTRL_X + b"s")
+        report.record("slurp-goto-line-preserves-indentation", session,
+                      lambda screen: read_bytes(switched) == b"one\nX  two\nthree\n")
+        session.send(ALT_X + b"find-file\r")
+        session.wait_until(has_text("Find file:"))
+        session.send(b"slurp-open\t\r")
+        report.record("slurp-find-file-completes-raw-spaced-path", session,
+                      has_row("target"))
+        session.send(b"!" + ALT_X + b"find-file\r")
+        session.wait_until(has_text("Find file:"))
+        session.send(b"slurp-switch.txt\r")
+        session.wait_until(has_text("Unsaved changes:"))
+        session.send(b"cancel\r")
+        report.record("slurp-find-file-cancel-preserves-draft", session,
+                      lambda screen: has_row("target!")(screen)
+                      and read_bytes(completed) == b"target\n")
+        session.send(ALT_X + b"find-file\r")
+        session.wait_until(has_text("Find file:"))
+        session.send(b"slurp-switch.txt\r")
+        session.wait_until(has_text("Unsaved changes:"))
+        session.send(b"save\r")
+        report.record("slurp-find-file-save-precedes-switch", session,
+                      lambda screen: has_row("X  two")(screen)
+                      and read_bytes(completed) == b"target!\n")
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
+
+        session.send(b"printf 'one\\n' | slurp - >slurp-filter.out\r")
+        session.wait_until(has_row("one"))
+        session.send(CTRL_A + CTRL_K + b"two" + CTRL_X + b"s")
+        report.record("slurp-filter-save-stages-without-output", session,
+                      lambda screen: has_text("staged 4 bytes")(screen)
+                      and read_bytes(filtered) == b"")
+        session.send(CTRL_X + b"s" + ALT_X + b"save-and-quit\r")
+        report.record("slurp-filter-accept-emits-once-without-terminal-bytes", session,
+                      lambda screen: is_line("")(screen)
+                      and read_bytes(filtered) == b"two\n")
+        session.send(b"printf 'kept\\n' | koshkit slurp - >slurp-filter.out\r")
+        session.wait_until(has_row("kept"))
+        session.send(b"!" + CTRL_X + b"s" + CTRL_X + CTRL_C)
+        report.record("slurp-filter-staged-quit-emits-nothing", session,
+                      lambda screen: is_line("")(screen)
+                      and read_bytes(filtered) == b"")
+        for name, payload, expected in (
+                ("empty", b"", b""), ("crlf", b"one\r\n", b"one\r\n"),
+                ("no-final-newline", b"one", b"one"),
+                ("single-newline", b"\n", b"\n")):
+            source = os.path.join(directory, "slurp-filter-input")
+            with open(source, "wb") as handle:
+                handle.write(payload)
+            session.send(("slurp - <slurp-filter-input >slurp-filter.out\r").encode())
+            session.wait_until(has_text("emulating emacs"))
+            session.send(ALT_X + b"save-and-quit\r")
+            report.record("slurp-filter-keeps-" + name, session,
+                          lambda screen: is_line("")(screen)
+                          and read_bytes(filtered) == expected)
+        source = os.path.join(directory, "slurp-filter-input")
+        with open(source, "wb") as handle:
+            handle.write(b"vi\n")
+        session.send(b"koshkit vi - <slurp-filter-input >slurp-filter.out\r")
+        session.wait_until(has_text("emulating vi normal"))
+        session.send(b":wq\r")
+        report.record("slurp-filter-vi-alias-accepts", session,
+                      lambda screen: is_line("")(screen)
+                      and read_bytes(filtered) == b"vi\n")
+        session.send(b"printf 'switch\\n' | slurp - >slurp-filter.out\r")
+        session.wait_until(has_row("switch"))
+        session.send(b"!" + ALT_X + b"find-file\r")
+        session.wait_until(has_text("Find file:"))
+        session.send(b"slurp-open space.txt\r")
+        session.wait_until(has_text("Unsaved changes:"))
+        session.send(b"save\r")
+        report.record("slurp-filter-save-on-switch-emits-once", session,
+                      lambda screen: has_row("target!")(screen)
+                      and read_bytes(filtered) == b"switch!\n")
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
+        session.send(("'%s' -c \"printf 'standalone\\\\n' | slurp - >slurp-filter.out\"; "
+                      "printf '<standalone-done>\\n'\r" % binary).encode())
+        session.wait_until(has_row("standalone"))
+        session.send(ALT_X + b"save-and-quit\r")
+        report.record("slurp-filter-standalone-restores-terminal", session,
+                      lambda screen: read_bytes(filtered) == b"standalone\n"
+                      and b"<standalone-done>" in session.raw
+                      and is_line("")(screen))
+        session.send(("'%s' -c 'slurp slurp-switch.txt; slurp slurp-switch.txt'; "
+                      "printf '<repeat-session-done>\\n'\r" % binary).encode())
+        session.wait_until(has_row("X  two"))
+        session.send(ALT_X + b"find-file\r")
+        session.wait_until(has_text("Find file:"))
+        session.send(b"slurp-open space.txt\r")
+        session.wait_until(has_row("target!"))
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(has_row("X  two"))
+        session.send(CTRL_X + b"z")
+        report.record("slurp-new-editor-does-not-repeat-freed-path", session,
+                      has_row("X  two"))
+        session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
         session.send(b"slurp slurp-script.sh\r")
         report.record("slurp-shows-the-script-without-line-numbers", session,
                       has_row("echo one"))
