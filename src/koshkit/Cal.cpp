@@ -89,13 +89,17 @@ append_calendar_month(String          &output,
 
   output.append_repeated(' ', left_padding);
 
-  append_report_text(output, title.view(),
-                     colors::soft(colors::ansi::BOLD_BLUE), should_color);
+  append_report_text(
+      output, title.view(),
+      colors::color_style{colors::color::BoldBlue, colors::color_variant::Soft},
+      should_color);
   output += '\n';
-  append_report_text(output,
-                     first_day == week_start::Monday ? "Mo Tu We Th Fr Sa Su"
-                                                     : "Su Mo Tu We Th Fr Sa",
-                     colors::soft(colors::ansi::BOLD_CYAN), should_color);
+  append_report_text(
+      output,
+      first_day == week_start::Monday ? "Mo Tu We Th Fr Sa Su"
+                                      : "Su Mo Tu We Th Fr Sa",
+      colors::color_style{colors::color::BoldCyan, colors::color_variant::Soft},
+      should_color);
   output += '\n';
 
   let const first_weekday = cal_weekday(year, month, 1);
@@ -119,11 +123,13 @@ append_calendar_month(String          &output,
         day == static_cast<usize>(current_date.tm_mday);
     let const is_weekend = weekday == 0 || weekday == 6;
     /* the current day takes a background, red on a weekend. */
-    let const style    = is_current_day && is_weekend
-                             ? colors::ansi::BOLD_BLACK_ON_RED
-                         : is_current_day ? colors::ansi::BOLD_BLACK_ON_GREEN
-                         : is_weekend     ? colors::soft(colors::ansi::RED)
-                                          : StringView{};
+    let const style =
+        is_current_day && is_weekend
+            ? colors::color_style{colors::color::BoldBlackOnRed}
+        : is_current_day ? colors::color_style{colors::color::BoldBlackOnGreen}
+        : is_weekend     ? colors::color_style{colors::color::Red,
+                                           colors::color_variant::Soft}
+                         : colors::color_style{};
     let const day_text = String::from(day, allocator);
 
     append_report_text(output, day_text.view(), style, should_color);
@@ -223,7 +229,9 @@ Cal::execute(const ExecContext               &ec,
 
   if (FLAG_CAL_TODAY.is_enabled()) {
     output += '\n';
-    append_report_text(output, "Today", colors::soft(colors::ansi::BOLD_GREEN),
+    append_report_text(output, "Today",
+                       colors::color_style{colors::color::BoldGreen,
+                                           colors::color_variant::Soft},
                        should_color);
     output += " is ";
     output += CAL_WEEKDAY_NAMES[static_cast<usize>(current_date.tm_wday)];

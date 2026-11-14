@@ -1308,13 +1308,16 @@ get_default_prompt_template() -> String
 
   if (should_use_color) {
     template_string += "[\\u@\\h${KOSH_GIT_BRANCH:+ (";
-    template_string += koshka::colors::ansi::CYAN;
+    template_string += koshka::colors::color_to_sv(koshka::colors::color::Cyan);
     template_string += "$KOSH_GIT_BRANCH";
-    template_string += koshka::colors::ansi::RESET;
+    template_string +=
+        koshka::colors::color_to_sv(koshka::colors::color::Reset);
     template_string += ")} ";
-    template_string += koshka::colors::ansi::GREEN;
+    template_string +=
+        koshka::colors::color_to_sv(koshka::colors::color::Green);
     template_string += "\\P";
-    template_string += koshka::colors::ansi::RESET;
+    template_string +=
+        koshka::colors::color_to_sv(koshka::colors::color::Reset);
   } else {
     template_string += "[\\u@\\h${KOSH_GIT_BRANCH:+ ($KOSH_GIT_BRANCH)} \\P";
   }

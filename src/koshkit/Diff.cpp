@@ -361,29 +361,29 @@ flush_diff_output(const ExecContext &ec, String &output) throws -> void
 
 struct diff_palette
 {
-  StringView removed;
-  StringView added;
-  StringView hunk;
-  StringView header;
+  colors::color_style removed;
+  colors::color_style added;
+  colors::color_style hunk;
+  colors::color_style header;
 };
 
 static fn
-append_diff_line(const ExecContext &ec,
-                 String            &output,
-                 StringView         style,
-                 StringView         prefix,
-                 StringView         line) throws -> void
+append_diff_line(const ExecContext  &ec,
+                 String             &output,
+                 colors::color_style style,
+                 StringView          prefix,
+                 StringView          line) throws -> void
 {
   let const has_newline = !line.is_empty() && line[line.length - 1] == '\n';
 
-  if (style.is_empty()) {
+  if (style.value == colors::color::None) {
     output += prefix;
     output += line;
   } else {
-    output += style;
+    output += colors::color_to_sv(style);
     output += prefix;
     output += has_newline ? line.substring_of_length(0, line.length - 1) : line;
-    output += colors::ansi::RESET;
+    output += colors::color_to_sv(colors::color::Reset);
     if (has_newline) output += '\n';
   }
 
@@ -449,7 +449,7 @@ append_normal_diff(const ExecContext          &ec,
     let const left_count  = left_position - left_start;
     let const right_count = right_position - right_start;
 
-    output += palette.hunk;
+    output += colors::color_to_sv(palette.hunk);
     if (left_count == 0)
       append_diff_number(output, left_start);
     else
@@ -459,7 +459,8 @@ append_normal_diff(const ExecContext          &ec,
       append_diff_number(output, right_start);
     else
       append_normal_range(output, right_start, right_count);
-    if (!palette.hunk.is_empty()) output += colors::ansi::RESET;
+    if (palette.hunk.value != colors::color::None)
+      output += colors::color_to_sv(colors::color::Reset);
     output += '\n';
     flush_diff_output(ec, output);
 
@@ -538,15 +539,17 @@ append_unified_diff(const ExecContext          &ec,
                     const ArrayList<diff_edit> &edits,
                     const diff_palette         &palette) throws -> bool
 {
-  output += palette.header;
+  output += colors::color_to_sv(palette.header);
   output += "--- ";
   output += left_label;
-  if (!palette.header.is_empty()) output += colors::ansi::RESET;
+  if (palette.header.value != colors::color::None)
+    output += colors::color_to_sv(colors::color::Reset);
   output += '\n';
-  output += palette.header;
+  output += colors::color_to_sv(palette.header);
   output += "+++ ";
   output += right_label;
-  if (!palette.header.is_empty()) output += colors::ansi::RESET;
+  if (palette.header.value != colors::color::None)
+    output += colors::color_to_sv(colors::color::Reset);
   output += '\n';
   flush_diff_output(ec, output);
 
@@ -596,13 +599,14 @@ append_unified_diff(const ExecContext          &ec,
       if (edits[index] != diff_edit::Delete) right_count++;
     }
 
-    output += palette.hunk;
+    output += colors::color_to_sv(palette.hunk);
     output += "@@ -";
     append_unified_range(output, left_start, left_count);
     output += " +";
     append_unified_range(output, right_start, right_count);
     output += " @@";
-    if (!palette.hunk.is_empty()) output += colors::ansi::RESET;
+    if (palette.hunk.value != colors::color::None)
+      output += colors::color_to_sv(colors::color::Reset);
     output += '\n';
     flush_diff_output(ec, output);
 
@@ -610,8 +614,7 @@ append_unified_diff(const ExecContext          &ec,
       if (os::INTERRUPT_REQUESTED) return false;
       switch (edits[current_edit]) {
       case diff_edit::Equal:
-        append_diff_line(ec, output, StringView{}, " ",
-                         left_lines.get(left_position));
+        append_diff_line(ec, output, {}, " ", left_lines.get(left_position));
         break;
 
       case diff_edit::Delete:
@@ -766,8 +769,11 @@ Diff::execute(const ExecContext               &ec,
                                  FLAG_DIFF_COLOR.value()))
   {
     palette = diff_palette{
-        colors::soft(colors::ansi::RED), colors::soft(colors::ansi::GREEN),
-        colors::soft(colors::ansi::CYAN), colors::ansi::BOLD};
+        colors::color_style{colors::color::Red,   colors::color_variant::Soft},
+        colors::color_style{colors::color::Green, colors::color_variant::Soft},
+        colors::color_style{colors::color::Cyan,  colors::color_variant::Soft},
+        colors::color::Bold
+    };
   }
 
   if (FLAG_DIFF_UNIFIED.is_enabled()) {

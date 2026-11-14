@@ -212,7 +212,12 @@ def run_pager_pty(binary, command, steps):
     if step_index < len(steps):
         os.kill(pid, signal.SIGKILL)
     _, status = os.waitpid(pid, 0)
-    return {"status": os.waitstatus_to_exitcode(status), "reached": reached}
+    return {"status": os.waitstatus_to_exitcode(status), "reached": reached,
+            "inverse_off": b"\x1b[7m" in output and b"\x1b[27m" in output,
+            "header_styles": all(style in output for style in (
+                b"\x1b[0;48;5;236;38;5;252m", b"\x1b[1;38;5;81m",
+                b"\x1b[1;38;5;114m", b"\x1b[22;38;5;252m",
+                b"\x1b[22;38;5;245m", b"\x1b[1;38;5;255m"))}
 
 
 def check(name, result, requirements):
@@ -331,6 +336,12 @@ def main():
     ok &= check("evilnet-forced-color-redirected", result,
                 {"status": 130, "plain_header": True, "hints": False})
 
+    result = run_pager_pty(binary, "koshkit --color always evilss --live=0.05; "
+                           "echo after=$?", ((b"\x1b[1;38;5;114mLIVE", b"q"),
+                                            (b"after=0", None)))
+    ok &= check("live-header-style-bytes", result,
+                {"status": 0, "header_styles": True})
+
     # The PTY has 7 content rows above the status line.
     less_steps = ((b"lines 1-7", b" "), (b"lines 8-14", b"b"),
                   (b"lines 1-7", b"G"), (b"lines 24-30/30", b"/25\r"),
@@ -340,6 +351,7 @@ def main():
                            "echo after=$?", less_steps)
     ok &= check("less-keys", result, {
         "status": 0, "reached": [marker.decode() for marker, _ in less_steps]})
+    ok &= check("pager-inverse-off-bytes", result, {"inverse_off": True})
 
     more_steps = ((b"--More--", b"\r"), (b"8\r\n", b" "),
                   (b"15\r\n", b"b"), (b"8\r\n", b"q"), (b"after=0", None))

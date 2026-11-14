@@ -1562,7 +1562,7 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
     usize range_ends[2]   = {0, 0};
     usize range_count     = 0;
 
-    if (bracket.has_value() && !emphasis.is_empty()) {
+    if (bracket.has_value() && emphasis != koshka::colors::color::None) {
       range_starts[0] = bracket->open_start;
       range_ends[0]   = bracket->open_end;
       range_starts[1] = bracket->close_start;
@@ -1611,18 +1611,22 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       if (codepoint_position > out->visible_start) filled++;
     };
 
-    let const do_emphasize = [&](koshka::StringView style) -> const char * {
-      let const fallback = style.is_empty() ? nullptr : style.data;
+    let const do_emphasize = [&](koshka::colors::color value) -> const char * {
+      let const style = koshka::colors::color_to_sv(value, theme.variant);
+      let const emphasis_sgr =
+          koshka::colors::color_to_sv(emphasis, theme.variant);
+      let const fallback =
+          value == koshka::colors::color::None ? nullptr : style.data;
 
       if (bracket_style_count == countof(bracket_styles)) return fallback;
 
       let &slot = bracket_styles[bracket_style_count];
 
-      if (style.length + emphasis.length >= sizeof(slot)) return fallback;
+      if (style.length + emphasis_sgr.length >= sizeof(slot)) return fallback;
 
       if (!style.is_empty()) memcpy(slot, style.data, style.length);
-      memcpy(slot + style.length, emphasis.data, emphasis.length);
-      slot[style.length + emphasis.length] = '\0';
+      memcpy(slot + style.length, emphasis_sgr.data, emphasis_sgr.length);
+      slot[style.length + emphasis_sgr.length] = '\0';
       bracket_style_count++;
 
       return slot;
@@ -1631,8 +1635,11 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
     usize range_index = 0;
 
     let const do_push_styled = [&](usize start, usize end,
-                                   koshka::StringView style) -> void {
-      let const sgr = style.is_empty() ? nullptr : style.data;
+                                   koshka::colors::color style) -> void {
+      let const sgr =
+          style == koshka::colors::color::None
+              ? nullptr
+              : koshka::colors::color_to_sv(style, theme.variant).data;
 
       while (start < end) {
         while (range_index < range_count && range_ends[range_index] <= start) {
@@ -1684,13 +1691,13 @@ completion_session::highlight(const char *buffer, tl_highlight *out) -> int
       /* the spans below the drawn rows color nothing on screen. */
       if (codepoint_position >= out->visible_end) break;
 
-      do_push_styled(covered_end, span.start, koshka::StringView{});
+      do_push_styled(covered_end, span.start, koshka::colors::color::None);
       do_push_styled(span.start, span.end, theme.style_for(span.role));
       covered_end = span.end;
     }
 
     if (codepoint_position < out->visible_end) {
-      do_push_styled(covered_end, byte_count, koshka::StringView{});
+      do_push_styled(covered_end, byte_count, koshka::colors::color::None);
     }
 
     out->count = filled;
@@ -4066,6 +4073,35 @@ append_prompt_data(String    &out,
                    StringView data,
                    bool       should_quote) throws -> void;
 
+enum class prompt_status_style : u8
+{
+  None,
+  Success,
+  Failure,
+  Error,
+  UsageError,
+  Signal,
+  HighStatus,
+};
+
+static fn
+prompt_status_style_to_sv(prompt_status_style style) wontthrow -> StringView
+{
+  switch (style) {
+  case prompt_status_style::None:    return {};
+  case prompt_status_style::Success: return "\x1b[38;5;231m";
+  case prompt_status_style::Failure:
+    return colors::color_to_sv(colors::color::BoldBrightRed,
+                               colors::color_variant::PromptSoft);
+  case prompt_status_style::Error:      return "\x1b[1;38;2;220;20;60m";
+  case prompt_status_style::UsageError: return "\x1b[1;38;2;230;10;110m";
+  case prompt_status_style::Signal:     return "\x1b[1;38;2;240;0;150m";
+  case prompt_status_style::HighStatus: return "\x1b[1;38;2;255;0;200m";
+  }
+
+  return {};
+}
+
 /* the checksum of the full hostname picks the starting hue and the direction
    of the gradient, so a host keeps its colors in every session. A truecolor
    terminal draws the exact colors, a 256-color terminal the nearest color of
@@ -4076,11 +4112,11 @@ append_colored_hostname(String    &out,
                         StringView host,
                         bool       should_quote) throws -> void
 {
-  static const StringView HUE_ORDERED_COLORS[] = {
-      colors::ansi::YELLOW,         colors::ansi::CYAN,
-      colors::ansi::BRIGHT_CYAN,    colors::ansi::BRIGHT_BLUE,
-      colors::ansi::BLUE,           colors::ansi::MAGENTA,
-      colors::ansi::BRIGHT_MAGENTA,
+  static constexpr colors::color HUE_ORDERED_COLORS[] = {
+      colors::color::Yellow,        colors::color::Cyan,
+      colors::color::BrightCyan,    colors::color::BrightBlue,
+      colors::color::Blue,          colors::color::Magenta,
+      colors::color::BrightMagenta,
   };
   static constexpr u32 HUE_STEP_DEGREES     = 6;
   static constexpr u32 MAX_HUE_SPAN_DEGREES = 40;
@@ -4114,8 +4150,8 @@ append_colored_hostname(String    &out,
 
     sequence.clear();
     if (!colors::terminal_supports_256_color()) {
-      sequence.append(
-          HUE_ORDERED_COLORS[progress < 500 ? start_color : next_color]);
+      sequence.append(colors::color_to_sv(
+          HUE_ORDERED_COLORS[progress < 500 ? start_color : next_color]));
     } else {
       let const offset = hue_span * progress / 1000;
       let const hue =
@@ -4170,7 +4206,7 @@ append_colored_hostname(String    &out,
     append_prompt_data(out, host.substring_of_length(i, 1), should_quote);
   }
 
-  out += colors::ansi::RESET;
+  out += colors::color_to_sv(colors::color::Reset);
 }
 
 static fn
@@ -4444,37 +4480,39 @@ expand_prompt_escapes(StringView         prompt,
       const i32 status           = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
       if (should_use_color)
-        out += colors::prompt_soft(status == 0 ? colors::ansi::GREEN
-                                               : colors::ansi::RED);
+        out += colors::color_to_sv(status == 0 ? colors::color::Green
+                                               : colors::color::Red,
+                                   colors::color_variant::PromptSoft);
       out += String::from(status, koshka::heap_allocator());
-      if (should_use_color) out += colors::ansi::RESET;
+      if (should_use_color) out += colors::color_to_sv(colors::color::Reset);
     } break;
 
     case '.': {
       const i32 status           = context.execution_store().last_exit_status();
       let const should_use_color = colors::stdout_wants_color();
-      let       dot_sgr          = StringView{};
+      let       style            = prompt_status_style::None;
 
       if (should_use_color) {
         if (status == 0) {
           if (colors::terminal_supports_256_color())
-            dot_sgr = StringView{"\x1b[38;5;231m"};
+            style = prompt_status_style::Success;
         } else if (status == 1 || !colors::terminal_supports_true_color()) {
-          dot_sgr = colors::prompt_soft(colors::ansi::BOLD_BRIGHT_RED);
+          style = prompt_status_style::Failure;
         } else if (status < 64) {
-          dot_sgr = StringView{"\x1b[1;38;2;220;20;60m"};
+          style = prompt_status_style::Error;
         } else if (status < 128) {
-          dot_sgr = StringView{"\x1b[1;38;2;230;10;110m"};
+          style = prompt_status_style::UsageError;
         } else if (status < 192) {
-          dot_sgr = StringView{"\x1b[1;38;2;240;0;150m"};
+          style = prompt_status_style::Signal;
         } else {
-          dot_sgr = StringView{"\x1b[1;38;2;255;0;200m"};
+          style = prompt_status_style::HighStatus;
         }
       }
 
-      out += dot_sgr;
-      out += "•";
-      if (!dot_sgr.is_empty()) out += colors::ansi::RESET;
+      out += prompt_status_style_to_sv(style);
+      out += "\xe2\x80\xa2";
+      if (style != prompt_status_style::None)
+        out += colors::color_to_sv(colors::color::Reset);
     } break;
 
     case 'j':
@@ -4702,26 +4740,30 @@ get_default_prompt_template() -> String
 
   if (should_use_color) {
     template_string += R"(${KOSH_GIT_BRANCH:+)";
-    template_string += colors::prompt_soft(colors::ansi::BLUE);
+    template_string += colors::color_to_sv(colors::color_style{
+        colors::color::Blue, colors::color_variant::PromptSoft});
     template_string += R"($KOSH_GIT_BRANCH)";
-    template_string += colors::ansi::RESET;
+    template_string += colors::color_to_sv(colors::color::Reset);
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_AHEAD:+ )";
-    template_string += colors::prompt_soft(colors::ansi::BOLD_YELLOW);
+    template_string += colors::color_to_sv(colors::color_style{
+        colors::color::BoldYellow, colors::color_variant::PromptSoft});
     template_string += "\xe2\x86\x91";
     template_string += R"($KOSH_GIT_AHEAD)";
-    template_string += colors::ansi::RESET;
+    template_string += colors::color_to_sv(colors::color::Reset);
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_BEHIND:+ )";
-    template_string += colors::prompt_soft(colors::ansi::BOLD_YELLOW);
+    template_string += colors::color_to_sv(colors::color_style{
+        colors::color::BoldYellow, colors::color_variant::PromptSoft});
     template_string += "\xe2\x86\x93";
     template_string += R"($KOSH_GIT_BEHIND)";
-    template_string += colors::ansi::RESET;
+    template_string += colors::color_to_sv(colors::color::Reset);
     template_string += R"(})";
     template_string += R"(${KOSH_GIT_BRANCH:+ at }\u@\k )";
-    template_string += colors::prompt_soft(colors::ansi::GREEN);
+    template_string += colors::color_to_sv(colors::color_style{
+        colors::color::Green, colors::color_variant::PromptSoft});
     template_string += R"(\P)";
-    template_string += colors::ansi::RESET;
+    template_string += colors::color_to_sv(colors::color::Reset);
   } else {
     template_string += R"(${KOSH_GIT_BRANCH:+$KOSH_GIT_BRANCH})";
     template_string += R"(${KOSH_GIT_AHEAD:+ )";
@@ -4752,9 +4794,9 @@ get_default_right_prompt_template() -> String
   template_string += R"(\[)";
   template_string += colors::terminal_supports_256_color()
                          ? StringView{"\x1b[2;38;5;244m"}
-                         : colors::ansi::DIM;
+                         : colors::color_to_sv(colors::color::Dim);
   template_string += R"(\]\L \M\[)";
-  template_string += colors::ansi::RESET;
+  template_string += colors::color_to_sv(colors::color::Reset);
   template_string += R"(\])";
 
   return template_string;

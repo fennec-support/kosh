@@ -468,7 +468,7 @@ Wc::execute(const ExecContext               &ec,
 
     append_report_text(output,
                        total_text.substring_of_length(0, total_text.length - 1),
-                       colors::ansi::BOLD, koshkit_should_color());
+                       colors::color::Bold, koshkit_should_color());
     output += '\n';
   }
 

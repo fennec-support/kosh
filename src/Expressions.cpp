@@ -1585,18 +1585,23 @@ print_analysis_diagnostic_summary(
 
   let const should_color = colors::stderr_wants_color();
   let const warning_color =
-      should_color ? colors::soft(colors::ansi::YELLOW) : StringView{};
+      should_color ? colors::color_style{colors::color::Yellow,
+                                         colors::color_variant::Soft}
+                   : colors::color_style{};
   let const error_color =
-      should_color ? colors::soft(colors::ansi::BOLD_BRIGHT_RED) : StringView{};
-  let const reset = should_color ? colors::ansi::RESET : StringView{};
+      should_color ? colors::color_style{colors::color::BoldBrightRed,
+                                         colors::color_variant::Soft}
+                   : colors::color_style{};
+  let const reset = colors::color_style{should_color ? colors::color::Reset
+                                                     : colors::color::None};
 
   let summary = String{heap_allocator(), "Encountered "};
 
   if (totals.warning_count > 0) {
-    summary.append(warning_color);
+    summary.append(colors::color_to_sv(warning_color));
     summary.append(String::from(totals.warning_count, heap_allocator()));
     summary.append(totals.warning_count == 1 ? " warning" : " warnings");
-    summary.append(reset);
+    summary.append(colors::color_to_sv(reset));
   }
 
   if (totals.warning_count > 0 && totals.error_count > 0) {
@@ -1604,10 +1609,10 @@ print_analysis_diagnostic_summary(
   }
 
   if (totals.error_count > 0) {
-    summary.append(error_color);
+    summary.append(colors::color_to_sv(error_color));
     summary.append(String::from(totals.error_count, heap_allocator()));
     summary.append(totals.error_count == 1 ? " error" : " errors");
-    summary.append(reset);
+    summary.append(colors::color_to_sv(reset));
   }
 
   summary.append(".");
@@ -1630,11 +1635,13 @@ AnalysisContext::print_optimizer_summary() const throws -> void
 
   let summary = String{heap_allocator(), "Eliminated "};
 
-  if (should_color) summary.append(colors::soft(colors::ansi::BLUE));
+  if (should_color)
+    summary.append(colors::color_to_sv(
+        colors::color_style{colors::color::Blue, colors::color_variant::Soft}));
   summary.append(String::from(optimizer_eliminated_count, heap_allocator()));
   summary.append(optimizer_eliminated_count == 1 ? " statement"
                                                  : " statements");
-  if (should_color) summary.append(colors::ansi::RESET);
+  if (should_color) summary.append(colors::color_to_sv(colors::color::Reset));
   summary.append(".");
 
   show_message(summary.view());

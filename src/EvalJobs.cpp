@@ -293,9 +293,10 @@ JobTable::append_status_line(String                &out,
 
   let const state = describe_job_state(entry, format);
 
-  out.append(format.state_color);
+  out.append(colors::color_to_sv(format.state_color));
   out.append(state.view());
-  if (!format.state_color.is_empty()) out.append(format.color_reset);
+  if (format.state_color.value != colors::color::None)
+    out.append(colors::color_to_sv(colors::color::Reset));
   out.append_repeated(' ', state.count() < STATE_COLUMN_WIDTH
                                ? STATE_COLUMN_WIDTH - state.count()
                                : 1);

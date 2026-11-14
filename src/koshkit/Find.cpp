@@ -377,7 +377,7 @@ private:
             os::stat_path(path.view(), status)
                 ? colors::file_entry_color(
                       colors::file_entry_type_of_mode(status.mode))
-                : StringView{},
+                : colors::color_style{},
             true);
       }
 

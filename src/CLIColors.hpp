@@ -10,47 +10,80 @@
 
 #pragma once
 
-#include "Highlight.hpp"
 #include "base/Common.hpp"
 #include "base/StringView.hpp"
 
 namespace koshka {
 
+struct highlight_theme;
+
 namespace colors {
 
-namespace ansi {
-inline const StringView RESET                      = "\x1b[0m";
-inline const StringView BOLD                       = "\x1b[1m";
-inline const StringView DIM                        = "\x1b[2m";
-inline const StringView ITALIC                     = "\x1b[3m";
-inline const StringView BOLD_BLACK_ON_BRIGHT_BLACK = "\x1b[1;30;100m";
-inline const StringView BOLD_BLACK_ON_GREEN        = "\x1b[1;30;42m";
-inline const StringView BOLD_BLACK_ON_RED          = "\x1b[1;30;41m";
-inline const StringView INVERSE                    = "\x1b[7m";
-inline const StringView RED                        = "\x1b[31m";
-inline const StringView GREEN                      = "\x1b[32m";
-inline const StringView YELLOW                     = "\x1b[33m";
-inline const StringView MAGENTA                    = "\x1b[35m";
-inline const StringView BLUE                       = "\x1b[34m";
-inline const StringView BRIGHT_RED                 = "\x1b[91m";
-inline const StringView BRIGHT_GREEN               = "\x1b[92m";
-inline const StringView BRIGHT_BLUE                = "\x1b[94m";
-inline const StringView BRIGHT_MAGENTA             = "\x1b[95m";
-inline const StringView BRIGHT_CYAN                = "\x1b[96m";
-inline const StringView BOLD_RED                   = "\x1b[1;31m";
-inline const StringView BOLD_BRIGHT_RED            = "\x1b[1;91m";
-inline const StringView BOLD_GREEN                 = "\x1b[1;32m";
-inline const StringView BOLD_BRIGHT_GREEN          = "\x1b[1;92m";
-inline const StringView BOLD_YELLOW                = "\x1b[1;33m";
-inline const StringView BOLD_BLUE                  = "\x1b[1;34m";
-inline const StringView CYAN                       = "\x1b[36m";
-inline const StringView BOLD_MAGENTA               = "\x1b[1;35m";
-inline const StringView BOLD_CYAN                  = "\x1b[1;36m";
-inline const StringView BOLD_WHITE                 = "\x1b[1;37m";
-inline const StringView RED_CURLY_YELLOW_UNDERLINE = "\x1b[91;4:3;58:5:3m";
-inline const StringView BOLD_RED_CURLY_YELLOW_UNDERLINE =
-    "\x1b[1;91;4:3;58:5:3m";
-} /* namespace ansi */
+enum class color : u8
+{
+  None,
+  Reset,
+  Bold,
+  Dim,
+  Italic,
+  Inverse,
+  InverseOff,
+  Black,
+  Red,
+  Green,
+  Yellow,
+  Blue,
+  Magenta,
+  Cyan,
+  White,
+  BrightBlack,
+  BrightRed,
+  BrightGreen,
+  BrightYellow,
+  BrightBlue,
+  BrightMagenta,
+  BrightCyan,
+  BrightWhite,
+  BoldBlackOnBrightBlack,
+  BoldBlackOnGreen,
+  BoldBlackOnRed,
+  BoldRed,
+  BoldBrightRed,
+  BoldGreen,
+  BoldBrightGreen,
+  BoldYellow,
+  BoldBlue,
+  BoldMagenta,
+  BoldCyan,
+  BoldWhite,
+  RedCurlyYellowUnderline,
+  BoldRedCurlyYellowUnderline,
+};
+
+enum class color_variant : u8
+{
+  Basic,
+  Soft,
+  PromptSoft,
+};
+
+struct color_style
+{
+  color         value{color::None};
+  color_variant variant{color_variant::Basic};
+
+  constexpr color_style() = default;
+  constexpr color_style(color         style_value,
+                        color_variant style_variant = color_variant::Basic)
+      : value(style_value), variant(style_variant)
+  {}
+};
+
+fn
+color_to_sv(color value, color_variant variant = color_variant::Basic) wontthrow
+    -> StringView;
+fn
+color_to_sv(color_style style) wontthrow -> StringView;
 
 fn
 stdout_wants_color() throws -> bool;
@@ -70,15 +103,6 @@ fn
 terminal_supports_true_color() wontthrow -> bool;
 fn
 terminal_supports_256_color() wontthrow -> bool;
-/* an ordinary color becomes its 24-bit pastel form on a truecolor terminal
-   and its pastel 256-color form on a terminal that draws the 256-color
-   palette. Any other style is returned unchanged. */
-fn
-soft(StringView style) wontthrow -> StringView;
-/* the prompt keeps the 256-color pastel form on every terminal that draws
-   the 256-color palette, including truecolor terminals. */
-fn
-prompt_soft(StringView style) wontthrow -> StringView;
 
 enum class file_entry_type : u8
 {
@@ -95,7 +119,7 @@ enum class file_entry_type : u8
 pure fn
 file_entry_type_of_mode(u32 mode) wontthrow -> file_entry_type;
 fn
-file_entry_color(file_entry_type type) wontthrow -> StringView;
+file_entry_color(file_entry_type type) wontthrow -> color_style;
 
 fn
 noninteractive_highlight_theme() wontthrow -> const highlight_theme &;

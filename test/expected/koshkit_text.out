@@ -1093,6 +1093,10 @@ status=1
 -c:1:14: error: Koshkit `grep`: Invalid value 'sometimes' for '--color'.
      1 |  koshkit grep --color=sometimes foo color-input.txt
        |               ^~~~~~~~~~~~~~~~~
+--- grep retains custom and empty SGR values ---
+custom-sgr=0
+empty-sgr=0
+legacy-sgr=0
 --- df human readable header and aligned rows ---
 Filesystem Size Used Avail Use% Mounted on
 Filesystem Size Used Avail Use% Mounted on

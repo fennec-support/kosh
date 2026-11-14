@@ -254,7 +254,9 @@ Watch::execute(const ExecContext               &ec,
                                     column_count, allocator);
 
       append_report_text(frame, title.view(),
-                         colors::soft(colors::ansi::BOLD_CYAN), should_color);
+                         colors::color_style{colors::color::BoldCyan,
+                                             colors::color_variant::Soft},
+                         should_color);
       frame += "\n";
     }
 

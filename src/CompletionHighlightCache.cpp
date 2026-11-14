@@ -352,9 +352,11 @@ append_highlighted_range(String                          &output,
 
     let const style = theme.style_for(span.role);
 
-    if (!style.is_empty()) output += style;
+    if (style != colors::color::None)
+      output += colors::color_to_sv(style, theme.variant);
     output += text.substring_of_length(span_start, span_end - span_start);
-    if (!style.is_empty()) output += theme.reset;
+    if (style != colors::color::None)
+      output += colors::color_to_sv(theme.reset, theme.variant);
     rendered_position = span_end;
   }
 

@@ -2437,9 +2437,9 @@ emit_prompt_line_break() throws -> void
 
   eol_marker.reserve(dimensions->columns + 12);
   if (colors::stdout_wants_color()) {
-    eol_marker += colors::ansi::INVERSE;
+    eol_marker += colors::color_to_sv(colors::color::Inverse);
     eol_marker += "\\n";
-    eol_marker += colors::ansi::RESET;
+    eol_marker += colors::color_to_sv(colors::color::Reset);
   } else {
     eol_marker += "\\n";
   }

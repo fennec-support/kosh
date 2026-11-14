@@ -340,7 +340,9 @@ Head::execute(const ExecContext               &ec,
                                            : sources[source_index];
     header += " <==";
     append_report_text(output, header.view(),
-                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
+                       colors::color_style{colors::color::BoldCyan,
+                                           colors::color_variant::Soft},
+                       should_color);
     output += '\n';
   };
 

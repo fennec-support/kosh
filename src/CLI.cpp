@@ -1832,24 +1832,24 @@ get_tree_connector(bool is_last) wontthrow -> tree_connector
 }
 
 fn
-append_report_text(String    &output,
-                   StringView text,
-                   StringView style,
-                   bool       should_color) throws -> void
+append_report_text(String             &output,
+                   StringView          text,
+                   colors::color_style style,
+                   bool                should_color) throws -> void
 {
   if (text.is_empty()) return;
 
-  let const is_styled = should_color && !style.is_empty();
+  let const is_styled = should_color && style.value != colors::color::None;
 
-  if (is_styled) output += style;
+  if (is_styled) output += colors::color_to_sv(style);
   output += text;
-  if (is_styled) output += colors::ansi::RESET;
+  if (is_styled) output += colors::color_to_sv(colors::color::Reset);
 }
 
 fn
 ReportTable::add_column(StringView             heading,
                         report_table_alignment alignment,
-                        StringView             style) throws -> void
+                        colors::color_style    style) throws -> void
 {
   m_columns.push({
       String{m_columns.allocator(), heading},
@@ -1862,7 +1862,9 @@ ReportTable::add_heading(StringView             heading,
                          report_table_alignment alignment) throws
     -> void
 {
-  add_column(heading, alignment, colors::soft(colors::ansi::BOLD_CYAN));
+  add_column(heading, alignment,
+             colors::color_style{colors::color::BoldCyan,
+                                 colors::color_variant::Soft});
 }
 
 fn
@@ -1883,9 +1885,10 @@ ReportTable::add_row(const ArrayList<report_table_cell_view> &cells)
 }
 
 fn
-ReportTable::add_field_row(StringView name,
-                           StringView value,
-                           StringView name_style) throws -> void
+ReportTable::add_field_row(StringView          name,
+                           StringView          value,
+                           colors::color_style name_style) throws
+    -> void
 {
   let row = ArrayList<report_table_cell>{m_grid_rows.allocator()};
 
@@ -1956,10 +1959,12 @@ append_report_grid(String                                        &output,
         for (usize index = 0; index < column_count; index++) {
           let const text =
               index < row.count() ? row[index].text.view() : StringView{};
-          let style =
-              index < columns.count() ? columns[index].style : StringView{};
+          let style = index < columns.count() ? columns[index].style
+                                              : colors::color_style{};
 
-          if (index < row.count() && !row[index].style.is_empty()) {
+          if (index < row.count() &&
+              row[index].style.value != colors::color::None)
+          {
             style = row[index].style;
           }
 
@@ -2035,8 +2040,10 @@ append_titled_report_table(String            &output,
     output += "\n\n";
   }
 
-  append_report_text(output, title, colors::soft(colors::ansi::BOLD_BLUE),
-                     should_color);
+  append_report_text(
+      output, title,
+      colors::color_style{colors::color::BoldBlue, colors::color_variant::Soft},
+      should_color);
   output += '\n';
   output += body.view();
 }
@@ -2068,8 +2075,10 @@ append_report_name_section(String                      &output,
                            StringView                   indentation) throws -> void
 {
   output += indentation;
-  append_report_text(output, title, colors::soft(colors::ansi::BOLD_BLUE),
-                     should_color);
+  append_report_text(
+      output, title,
+      colors::color_style{colors::color::BoldBlue, colors::color_variant::Soft},
+      should_color);
   output += '\n';
 
   let const indentation_width = report_indentation_width(indentation) + 2;
@@ -2118,11 +2127,16 @@ format_cli_help(StringView text, bool should_color) throws -> String
     is_heading = is_heading && has_heading_letter;
 
     if (is_heading) {
-      append_report_text(output, line, colors::soft(colors::ansi::BOLD_BLUE),
+      append_report_text(output, line,
+                         colors::color_style{colors::color::BoldBlue,
+                                             colors::color_variant::Soft},
                          true);
       is_synopsis = line == "SYNOPSIS";
     } else if (is_synopsis) {
-      append_report_text(output, line, colors::soft(colors::ansi::GREEN), true);
+      append_report_text(output, line,
+                         colors::color_style{colors::color::Green,
+                                             colors::color_variant::Soft},
+                         true);
     } else {
       output += line;
     }
@@ -2326,7 +2340,7 @@ make_flag_help(const FlagList &flags, bool should_color) throws
     }
 
     append_report_text(s, flag_name.view(), {}, should_color);
-    append_report_text(s, flag_value.view(), colors::ansi::DIM, should_color);
+    append_report_text(s, flag_value.view(), colors::color::Dim, should_color);
 
     let const flag_width = flag_name.length() + flag_value.length();
 

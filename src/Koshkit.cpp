@@ -289,7 +289,9 @@ print_environment(const ExecContext &ec,
     let const value = os::get_environment_variable(name.view());
 
     append_report_text(output, display_name,
-                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
+                       colors::color_style{colors::color::BoldCyan,
+                                           colors::color_variant::Soft},
+                       should_color);
     output += '=';
     if (value.has_value()) output += value->view();
     output += line_terminator;
@@ -1391,12 +1393,12 @@ confirm_koshkit_action(const ExecContext    &ec,
   let const should_color = colors::stderr_wants_color();
   let       prompt       = String{heap_allocator(), "kosh: "};
 
-  if (should_color) prompt += colors::ansi::GREEN;
+  if (should_color) prompt += colors::color_to_sv(colors::color::Green);
   if (!message.is_empty()) {
     prompt += static_cast<char>(toupper(static_cast<u8>(message[0])));
     prompt += message.substring(1);
   }
-  if (should_color) prompt += colors::ansi::RESET;
+  if (should_color) prompt += colors::color_to_sv(colors::color::Reset);
   prompt += default_answer == confirm_default::Yes ? StringView{" [Y/n] "}
                                                    : StringView{" [y/N] "};
   ec.print_to_stderr(prompt);
@@ -1753,12 +1755,17 @@ scaled_filesystem_blocks(u64 block_count,
 }
 
 fn
-usage_style(u64 percent) wontthrow -> StringView
+usage_style(u64 percent) wontthrow -> colors::color_style
 {
-  if (percent >= 90) return colors::soft(colors::ansi::BOLD_RED);
-  if (percent >= 75) return colors::soft(colors::ansi::BOLD_YELLOW);
+  if (percent >= 90)
+    return colors::color_style{colors::color::BoldRed,
+                               colors::color_variant::Soft};
+  if (percent >= 75)
+    return colors::color_style{colors::color::BoldYellow,
+                               colors::color_variant::Soft};
 
-  return colors::soft(colors::ansi::BOLD_GREEN);
+  return colors::color_style{colors::color::BoldGreen,
+                             colors::color_variant::Soft};
 }
 
 fn

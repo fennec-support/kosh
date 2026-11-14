@@ -141,14 +141,21 @@ is_same_attributes(const watched_entry &previous,
 }
 
 pure fn
-event_style(watch_event event) wontthrow -> StringView
+event_style(watch_event event) wontthrow -> colors::color_style
 {
   switch (event) {
-  case watch_event::Created: return colors::soft(colors::ansi::BOLD_GREEN);
-  case watch_event::Removed: return colors::soft(colors::ansi::BOLD_RED);
-  case watch_event::Updated: return colors::soft(colors::ansi::BOLD_CYAN);
+  case watch_event::Created:
+    return colors::color_style{colors::color::BoldGreen,
+                               colors::color_variant::Soft};
+  case watch_event::Removed:
+    return colors::color_style{colors::color::BoldRed,
+                               colors::color_variant::Soft};
+  case watch_event::Updated:
+    return colors::color_style{colors::color::BoldCyan,
+                               colors::color_variant::Soft};
   case watch_event::AttributeModified:
-    return colors::soft(colors::ansi::BOLD_YELLOW);
+    return colors::color_style{colors::color::BoldYellow,
+                               colors::color_variant::Soft};
   }
 
   unreachable("unknown filesystem watch event");
@@ -253,7 +260,7 @@ report_event(String                       &output,
     output += format_watch_timestamp(scan_time, scan_nanoseconds,
                                      timestamp_format, output.allocator());
     output += " ";
-    append_report_text(output, path, colors::ansi::BOLD, should_color);
+    append_report_text(output, path, colors::color::Bold, should_color);
     output += " ";
     append_event_names(output, mode, event, should_color);
   } else {
@@ -262,7 +269,7 @@ report_event(String                       &output,
     output += " ";
     output += String::from(event_mask(event), output.allocator()).view();
     output += " ";
-    append_report_text(output, path, colors::ansi::BOLD, should_color);
+    append_report_text(output, path, colors::color::Bold, should_color);
     if (FLAG_GOODFSW_EVENT_FLAGS.is_enabled()) {
       output += " ";
       append_event_names(output, mode, event, should_color);

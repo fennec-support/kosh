@@ -15,7 +15,9 @@ evilio-redirected PASS
 evilnet-redirected PASS
 evilps-redirected PASS
 evilnet-forced-color-redirected PASS
+live-header-style-bytes PASS
 less-keys PASS
+pager-inverse-off-bytes PASS
 more-keys PASS
 less-interrupt PASS
 status=0

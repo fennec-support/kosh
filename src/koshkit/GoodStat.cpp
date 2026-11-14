@@ -117,7 +117,7 @@ append_subject(String                    &output,
                               : String{allocator, text};
   };
   let const do_append_field = [&](StringView name, StringView value,
-                                  StringView style) throws {
+                                  colors::color_style style) throws {
     table.add_field_row(name, value, style);
   };
 
@@ -127,39 +127,48 @@ append_subject(String                    &output,
                   described_type.has_value()
                       ? do_show(described_type->view()).view()
                       : file_type_name(status),
-                  colors::soft(colors::ansi::BOLD_CYAN));
+                  colors::color_style{colors::color::BoldCyan,
+                                      colors::color_variant::Soft});
 
   if (os::file_type_letter(status.mode) == 'l') {
     let const target = os::read_symlink(operand, allocator);
     if (target.has_value()) {
       do_append_field("Target", do_show(target->view()).view(),
-                      colors::soft(colors::ansi::BOLD_CYAN));
+                      colors::color_style{colors::color::BoldCyan,
+                                          colors::color_variant::Soft});
     }
   }
 
   do_append_field("Size", size_text(status.size, allocator).view(),
-                  colors::soft(colors::ansi::BOLD_CYAN));
+                  colors::color_style{colors::color::BoldCyan,
+                                      colors::color_variant::Soft});
   do_append_field("Permissions", permission_text(status.mode, allocator).view(),
-                  colors::soft(colors::ansi::BOLD_CYAN));
+                  colors::color_style{colors::color::BoldCyan,
+                                      colors::color_variant::Soft});
   do_append_field(
       "Owner",
       id_name(status.owner_id, allocator, goodstat_identity_kind::User).view(),
-      colors::soft(colors::ansi::BOLD_CYAN));
+      colors::color_style{colors::color::BoldCyan,
+                          colors::color_variant::Soft});
   do_append_field(
       "Group",
       id_name(status.group_id, allocator, goodstat_identity_kind::Group).view(),
-      colors::soft(colors::ansi::BOLD_CYAN));
+      colors::color_style{colors::color::BoldCyan,
+                          colors::color_variant::Soft});
   do_append_field("Inode", String::from(status.file_id, allocator).view(),
-                  colors::soft(colors::ansi::BOLD_CYAN));
+                  colors::color_style{colors::color::BoldCyan,
+                                      colors::color_variant::Soft});
   do_append_field("Links", String::from(status.link_count, allocator).view(),
-                  colors::soft(colors::ansi::BOLD_CYAN));
+                  colors::color_style{colors::color::BoldCyan,
+                                      colors::color_variant::Soft});
 
   let device = String::from(os::device_major(status.device_id), allocator);
 
   device += ",";
   device += String::from(os::device_minor(status.device_id), allocator).view();
   do_append_field("Device", device.view(),
-                  colors::soft(colors::ansi::BOLD_CYAN));
+                  colors::color_style{colors::color::BoldCyan,
+                                      colors::color_variant::Soft});
 
   let const type_letter = os::file_type_letter(status.mode);
 
@@ -172,30 +181,35 @@ append_subject(String                    &output,
         String::from(os::device_minor(status.special_device_id), allocator)
             .view();
     do_append_field("Device type", special.view(),
-                    colors::soft(colors::ansi::BOLD_CYAN));
+                    colors::color_style{colors::color::BoldCyan,
+                                        colors::color_variant::Soft});
   }
 
   let blocks = String::from(status.blocks, allocator);
 
   blocks += " of 512 bytes";
   do_append_field("Blocks", blocks.view(),
-                  colors::soft(colors::ansi::BOLD_CYAN));
+                  colors::color_style{colors::color::BoldCyan,
+                                      colors::color_variant::Soft});
   do_append_field("Accessed",
                   format_file_timestamp(status.access_time,
                                         status.access_nanoseconds, allocator)
                       .view(),
-                  colors::soft(colors::ansi::BOLD_CYAN));
+                  colors::color_style{colors::color::BoldCyan,
+                                      colors::color_variant::Soft});
   do_append_field("Modified",
                   format_file_timestamp(status.modification_time,
                                         status.modification_nanoseconds,
                                         allocator)
                       .view(),
-                  colors::soft(colors::ansi::BOLD_CYAN));
+                  colors::color_style{colors::color::BoldCyan,
+                                      colors::color_variant::Soft});
   do_append_field("Changed",
                   format_file_timestamp(status.change_time,
                                         status.change_nanoseconds, allocator)
                       .view(),
-                  colors::soft(colors::ansi::BOLD_CYAN));
+                  colors::color_style{colors::color::BoldCyan,
+                                      colors::color_variant::Soft});
 
   if (filesystem_report == goodstat_filesystem_report::Include) {
     let filesystem = os::filesystem_status{};
@@ -210,30 +224,38 @@ append_subject(String                    &output,
 
       do_append_field("Filesystem",
                       type_name.is_empty() ? StringView{"unknown"} : type_name,
-                      colors::soft(colors::ansi::BOLD_CYAN));
+                      colors::color_style{colors::color::BoldCyan,
+                                          colors::color_variant::Soft});
       do_append_field(
           "Filesystem block size",
           String::from(filesystem.block_byte_count, allocator).view(),
-          colors::soft(colors::ansi::BOLD_CYAN));
+          colors::color_style{colors::color::BoldCyan,
+                              colors::color_variant::Soft});
       do_append_field("Filesystem capacity",
                       String::from(capacity, allocator).view() + "%",
-                      colors::soft(colors::ansi::BOLD_CYAN));
+                      colors::color_style{colors::color::BoldCyan,
+                                          colors::color_variant::Soft});
       do_append_field("Filesystem blocks",
                       String::from(filesystem.total_blocks, allocator).view(),
-                      colors::soft(colors::ansi::BOLD_CYAN));
+                      colors::color_style{colors::color::BoldCyan,
+                                          colors::color_variant::Soft});
       do_append_field("Filesystem free blocks",
                       String::from(filesystem.free_blocks, allocator).view(),
-                      colors::soft(colors::ansi::BOLD_CYAN));
+                      colors::color_style{colors::color::BoldCyan,
+                                          colors::color_variant::Soft});
       do_append_field(
           "Filesystem available blocks",
           String::from(filesystem.available_blocks, allocator).view(),
-          colors::soft(colors::ansi::BOLD_CYAN));
+          colors::color_style{colors::color::BoldCyan,
+                              colors::color_variant::Soft});
       do_append_field("Filesystem id",
                       String::from(filesystem.filesystem_id, allocator).view(),
-                      colors::soft(colors::ansi::BOLD_CYAN));
+                      colors::color_style{colors::color::BoldCyan,
+                                          colors::color_variant::Soft});
     } else {
       do_append_field("Filesystem", "unavailable",
-                      colors::soft(colors::ansi::BOLD_CYAN));
+                      colors::color_style{colors::color::BoldCyan,
+                                          colors::color_variant::Soft});
     }
   }
 
@@ -242,7 +264,8 @@ append_subject(String                    &output,
   {
     if (let const checksum = file_crc32c(ec, operand, allocator))
       do_append_field("CRC32C", checksum->view(),
-                      colors::soft(colors::ansi::BOLD_CYAN));
+                      colors::color_style{colors::color::BoldCyan,
+                                          colors::color_variant::Soft});
   }
 
   append_titled_report_table(output, do_show(operand).view(), table,

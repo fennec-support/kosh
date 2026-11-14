@@ -9,6 +9,7 @@
 
 #include "CLIColors.hpp"
 
+#include "Highlight.hpp"
 #include "base/Trace.hpp"
 #include "platform/Platform.hpp"
 
@@ -21,33 +22,32 @@ make_shell_highlight_theme() wontthrow -> highlight_theme
 {
   let theme = highlight_theme{};
 
-  theme.reset = ansi::RESET;
-  theme.set_style(highlight_role::comment, ansi::DIM);
-  theme.set_style(highlight_role::operator_, ansi::BOLD_MAGENTA);
-  theme.set_style(highlight_role::string, ansi::BRIGHT_GREEN);
-  theme.set_style(highlight_role::heredoc, ansi::BRIGHT_GREEN);
-  theme.set_style(highlight_role::heredoc_delimiter, ansi::BOLD_BRIGHT_GREEN);
-  theme.set_style(highlight_role::variable, ansi::BRIGHT_CYAN);
-  theme.set_style(highlight_role::assignment_name, ansi::BRIGHT_CYAN);
+  theme.reset = color::Reset;
+  theme.set_style(highlight_role::comment, color::Dim);
+  theme.set_style(highlight_role::operator_, color::BoldMagenta);
+  theme.set_style(highlight_role::string, color::BrightGreen);
+  theme.set_style(highlight_role::heredoc, color::BrightGreen);
+  theme.set_style(highlight_role::heredoc_delimiter, color::BoldBrightGreen);
+  theme.set_style(highlight_role::variable, color::BrightCyan);
+  theme.set_style(highlight_role::assignment_name, color::BrightCyan);
   theme.set_style(highlight_role::unset_variable,
-                  ansi::RED_CURLY_YELLOW_UNDERLINE);
-  theme.set_style(highlight_role::flag, ansi::ITALIC);
-  theme.set_style(highlight_role::keyword, ansi::BOLD_MAGENTA);
+                  color::RedCurlyYellowUnderline);
+  theme.set_style(highlight_role::flag, color::Italic);
+  theme.set_style(highlight_role::keyword, color::BoldMagenta);
   theme.set_style(highlight_role::invalid_syntax,
-                  ansi::BOLD_RED_CURLY_YELLOW_UNDERLINE);
-  theme.set_style(highlight_role::function_name, ansi::BRIGHT_BLUE);
-  theme.set_style(highlight_role::resolved_command, ansi::BLUE);
-  theme.set_style(highlight_role::partial_command, ansi::BRIGHT_BLUE);
+                  color::BoldRedCurlyYellowUnderline);
+  theme.set_style(highlight_role::function_name, color::BrightBlue);
+  theme.set_style(highlight_role::resolved_command, color::Blue);
+  theme.set_style(highlight_role::partial_command, color::BrightBlue);
   theme.set_style(highlight_role::unknown_command,
-                  ansi::RED_CURLY_YELLOW_UNDERLINE);
-  theme.set_style(highlight_role::existing_path, ansi::BRIGHT_CYAN);
-  theme.set_style(highlight_role::partial_path, ansi::CYAN);
-  theme.set_style(highlight_role::invalid_path,
-                  ansi::RED_CURLY_YELLOW_UNDERLINE);
-  theme.set_style(highlight_role::url, ansi::BOLD_WHITE);
-  theme.set_style(highlight_role::glob, ansi::YELLOW);
+                  color::RedCurlyYellowUnderline);
+  theme.set_style(highlight_role::existing_path, color::BrightCyan);
+  theme.set_style(highlight_role::partial_path, color::Cyan);
+  theme.set_style(highlight_role::invalid_path, color::RedCurlyYellowUnderline);
+  theme.set_style(highlight_role::url, color::BoldWhite);
+  theme.set_style(highlight_role::glob, color::Yellow);
   theme.set_style(highlight_role::matching_bracket,
-                  ansi::BOLD_BLACK_ON_BRIGHT_BLACK);
+                  color::BoldBlackOnBrightBlack);
 
   return theme;
 }
@@ -57,10 +57,10 @@ make_noninteractive_highlight_theme() wontthrow -> highlight_theme
 {
   let theme = make_shell_highlight_theme();
 
-  theme.set_style(highlight_role::unset_variable, ansi::BRIGHT_RED);
-  theme.set_style(highlight_role::invalid_syntax, ansi::BOLD_BRIGHT_RED);
-  theme.set_style(highlight_role::unknown_command, ansi::BRIGHT_RED);
-  theme.set_style(highlight_role::invalid_path, ansi::BRIGHT_RED);
+  theme.set_style(highlight_role::unset_variable, color::BrightRed);
+  theme.set_style(highlight_role::invalid_syntax, color::BoldBrightRed);
+  theme.set_style(highlight_role::unknown_command, color::BrightRed);
+  theme.set_style(highlight_role::invalid_path, color::BrightRed);
 
   return theme;
 }
@@ -85,93 +85,132 @@ make_diagnostic_highlight_theme() wontthrow -> highlight_theme
 {
   let theme = make_printed_source_highlight_theme();
 
-  theme.set_style(highlight_role::partial_path, ansi::BRIGHT_RED);
+  theme.set_style(highlight_role::partial_path, color::BrightRed);
 
   return theme;
 }
 
-struct palette_color
+fn
+color_to_sv(color value, color_variant variant) wontthrow -> StringView
 {
-  StringView basic;
-  StringView pastel_256;
-  StringView pastel_true;
-};
+  if (value == color::None) return "";
 
-static const palette_color PALETTE_COLORS[] = {
-    {ansi::RED,               "\x1b[38;5;203m",   "\x1b[38;2;240;110;110m"  },
-    {ansi::GREEN,             "\x1b[38;5;114m",   "\x1b[38;2;130;215;120m"  },
-    {ansi::YELLOW,            "\x1b[38;5;221m",   "\x1b[38;2;240;205;100m"  },
-    {ansi::BLUE,              "\x1b[38;5;75m",    "\x1b[38;2;110;165;245m"  },
-    {ansi::MAGENTA,           "\x1b[38;5;170m",   "\x1b[38;2;215;130;220m"  },
-    {ansi::CYAN,              "\x1b[38;5;80m",    "\x1b[38;2;100;210;215m"  },
-    {ansi::BRIGHT_RED,        "\x1b[38;5;210m",   "\x1b[38;2;255;140;140m"  },
-    {ansi::BRIGHT_GREEN,      "\x1b[38;5;120m",   "\x1b[38;2;140;245;130m"  },
-    {ansi::BRIGHT_BLUE,       "\x1b[38;5;111m",   "\x1b[38;2;140;185;255m"  },
-    {ansi::BRIGHT_MAGENTA,    "\x1b[38;5;213m",   "\x1b[38;2;240;150;245m"  },
-    {ansi::BRIGHT_CYAN,       "\x1b[38;5;123m",   "\x1b[38;2;130;235;240m"  },
-    {ansi::BOLD_RED,          "\x1b[1;38;5;203m", "\x1b[1;38;2;240;110;110m"},
-    {ansi::BOLD_BRIGHT_RED,   "\x1b[1;38;5;210m", "\x1b[1;38;2;255;140;140m"},
-    {ansi::BOLD_GREEN,        "\x1b[1;38;5;114m", "\x1b[1;38;2;130;215;120m"},
-    {ansi::BOLD_BRIGHT_GREEN, "\x1b[1;38;5;120m", "\x1b[1;38;2;140;245;130m"},
-    {ansi::BOLD_YELLOW,       "\x1b[1;38;5;221m", "\x1b[1;38;2;240;205;100m"},
-    {ansi::BOLD_BLUE,         "\x1b[1;38;5;75m",  "\x1b[1;38;2;110;165;245m"},
-    {ansi::BOLD_MAGENTA,      "\x1b[1;38;5;170m", "\x1b[1;38;2;215;130;220m"},
-    {ansi::BOLD_CYAN,         "\x1b[1;38;5;80m",  "\x1b[1;38;2;100;210;215m"},
-};
+  if (variant != color_variant::Basic) {
+    let const is_true_color =
+        variant == color_variant::Soft && terminal_supports_true_color();
 
-enum class palette_tier : u8
-{
-  Basic,
-  Color256,
-  TrueColor,
-};
-
-static fn
-palette_color_of(StringView style, palette_tier tier) wontthrow -> StringView
-{
-  if (tier == palette_tier::Basic) return style;
-
-  for (let const &color : PALETTE_COLORS) {
-    if (color.basic == style) {
-      return tier == palette_tier::TrueColor ? color.pastel_true
-                                             : color.pastel_256;
+    if (is_true_color || terminal_supports_256_color()) {
+      switch (value) {
+      case color::Red:
+        return is_true_color ? StringView{"\x1b[38;2;240;110;110m"}
+                             : StringView{"\x1b[38;5;203m"};
+      case color::Green:
+        return is_true_color ? StringView{"\x1b[38;2;130;215;120m"}
+                             : StringView{"\x1b[38;5;114m"};
+      case color::Yellow:
+        return is_true_color ? StringView{"\x1b[38;2;240;205;100m"}
+                             : StringView{"\x1b[38;5;221m"};
+      case color::Blue:
+        return is_true_color ? StringView{"\x1b[38;2;110;165;245m"}
+                             : StringView{"\x1b[38;5;75m"};
+      case color::Magenta:
+        return is_true_color ? StringView{"\x1b[38;2;215;130;220m"}
+                             : StringView{"\x1b[38;5;170m"};
+      case color::Cyan:
+        return is_true_color ? StringView{"\x1b[38;2;100;210;215m"}
+                             : StringView{"\x1b[38;5;80m"};
+      case color::BrightRed:
+        return is_true_color ? StringView{"\x1b[38;2;255;140;140m"}
+                             : StringView{"\x1b[38;5;210m"};
+      case color::BrightGreen:
+        return is_true_color ? StringView{"\x1b[38;2;140;245;130m"}
+                             : StringView{"\x1b[38;5;120m"};
+      case color::BrightBlue:
+        return is_true_color ? StringView{"\x1b[38;2;140;185;255m"}
+                             : StringView{"\x1b[38;5;111m"};
+      case color::BrightMagenta:
+        return is_true_color ? StringView{"\x1b[38;2;240;150;245m"}
+                             : StringView{"\x1b[38;5;213m"};
+      case color::BrightCyan:
+        return is_true_color ? StringView{"\x1b[38;2;130;235;240m"}
+                             : StringView{"\x1b[38;5;123m"};
+      case color::BoldRed:
+        return is_true_color ? StringView{"\x1b[1;38;2;240;110;110m"}
+                             : StringView{"\x1b[1;38;5;203m"};
+      case color::BoldBrightRed:
+        return is_true_color ? StringView{"\x1b[1;38;2;255;140;140m"}
+                             : StringView{"\x1b[1;38;5;210m"};
+      case color::BoldGreen:
+        return is_true_color ? StringView{"\x1b[1;38;2;130;215;120m"}
+                             : StringView{"\x1b[1;38;5;114m"};
+      case color::BoldBrightGreen:
+        return is_true_color ? StringView{"\x1b[1;38;2;140;245;130m"}
+                             : StringView{"\x1b[1;38;5;120m"};
+      case color::BoldYellow:
+        return is_true_color ? StringView{"\x1b[1;38;2;240;205;100m"}
+                             : StringView{"\x1b[1;38;5;221m"};
+      case color::BoldBlue:
+        return is_true_color ? StringView{"\x1b[1;38;2;110;165;245m"}
+                             : StringView{"\x1b[1;38;5;75m"};
+      case color::BoldMagenta:
+        return is_true_color ? StringView{"\x1b[1;38;2;215;130;220m"}
+                             : StringView{"\x1b[1;38;5;170m"};
+      case color::BoldCyan:
+        return is_true_color ? StringView{"\x1b[1;38;2;100;210;215m"}
+                             : StringView{"\x1b[1;38;5;80m"};
+      default: break;
+      }
     }
   }
 
-  return style;
+  switch (value) {
+  case color::None:                        return "";
+  case color::Reset:                       return "\x1b[0m";
+  case color::Bold:                        return "\x1b[1m";
+  case color::Dim:                         return "\x1b[2m";
+  case color::Italic:                      return "\x1b[3m";
+  case color::Inverse:                     return "\x1b[7m";
+  case color::InverseOff:                  return "\x1b[27m";
+  case color::Black:                       return "\x1b[30m";
+  case color::Red:                         return "\x1b[31m";
+  case color::Green:                       return "\x1b[32m";
+  case color::Yellow:                      return "\x1b[33m";
+  case color::Blue:                        return "\x1b[34m";
+  case color::Magenta:                     return "\x1b[35m";
+  case color::Cyan:                        return "\x1b[36m";
+  case color::White:                       return "\x1b[37m";
+  case color::BrightBlack:                 return "\x1b[90m";
+  case color::BrightRed:                   return "\x1b[91m";
+  case color::BrightGreen:                 return "\x1b[92m";
+  case color::BrightYellow:                return "\x1b[93m";
+  case color::BrightBlue:                  return "\x1b[94m";
+  case color::BrightMagenta:               return "\x1b[95m";
+  case color::BrightCyan:                  return "\x1b[96m";
+  case color::BrightWhite:                 return "\x1b[97m";
+  case color::BoldBlackOnBrightBlack:      return "\x1b[1;30;100m";
+  case color::BoldBlackOnGreen:            return "\x1b[1;30;42m";
+  case color::BoldBlackOnRed:              return "\x1b[1;30;41m";
+  case color::BoldRed:                     return "\x1b[1;31m";
+  case color::BoldBrightRed:               return "\x1b[1;91m";
+  case color::BoldGreen:                   return "\x1b[1;32m";
+  case color::BoldBrightGreen:             return "\x1b[1;92m";
+  case color::BoldYellow:                  return "\x1b[1;33m";
+  case color::BoldBlue:                    return "\x1b[1;34m";
+  case color::BoldMagenta:                 return "\x1b[1;35m";
+  case color::BoldCyan:                    return "\x1b[1;36m";
+  case color::BoldWhite:                   return "\x1b[1;37m";
+  case color::RedCurlyYellowUnderline:     return "\x1b[91;4:3;58:5:3m";
+  case color::BoldRedCurlyYellowUnderline: return "\x1b[1;91;4:3;58:5:3m";
+  }
+
+  return {};
 }
 
-static fn
-make_pastel_theme(highlight_theme theme, palette_tier tier) wontthrow
-    -> highlight_theme
+fn
+color_to_sv(color_style style) wontthrow -> StringView
 {
-  for (let &style : theme.styles)
-    style = palette_color_of(style, tier);
-
-  return theme;
+  return color_to_sv(style.value, style.variant);
 }
-
-/* the three theme arrays below are indexed by static_cast<u32>(palette_tier)
-   in the functions that return them, so each array lists the tiers in
-   palette_tier order. */
-static const highlight_theme NONINTERACTIVE_HIGHLIGHT_THEMES[] = {
-    make_noninteractive_highlight_theme(),
-    make_pastel_theme(make_noninteractive_highlight_theme(),
-                      palette_tier::Color256),
-    make_pastel_theme(make_noninteractive_highlight_theme(),
-                      palette_tier::TrueColor)};
-static const highlight_theme PRINTED_SOURCE_HIGHLIGHT_THEMES[] = {
-    make_printed_source_highlight_theme(),
-    make_pastel_theme(make_printed_source_highlight_theme(),
-                      palette_tier::Color256),
-    make_pastel_theme(make_printed_source_highlight_theme(),
-                      palette_tier::TrueColor)};
-static const highlight_theme DIAGNOSTIC_HIGHLIGHT_THEMES[] = {
-    make_diagnostic_highlight_theme(),
-    make_pastel_theme(make_diagnostic_highlight_theme(),
-                      palette_tier::Color256),
-    make_pastel_theme(make_diagnostic_highlight_theme(),
-                      palette_tier::TrueColor)};
 
 fn
 terminal_supports_true_color() wontthrow -> bool
@@ -202,45 +241,28 @@ terminal_supports_256_color() wontthrow -> bool
   return is_supported;
 }
 
-static fn
-get_palette_tier() wontthrow -> palette_tier
-{
-  if (terminal_supports_true_color()) return palette_tier::TrueColor;
-
-  return terminal_supports_256_color() ? palette_tier::Color256
-                                       : palette_tier::Basic;
-}
-
-fn
-soft(StringView style) wontthrow -> StringView
-{
-  return palette_color_of(style, get_palette_tier());
-}
-
-fn
-prompt_soft(StringView style) wontthrow -> StringView
-{
-  return palette_color_of(style, terminal_supports_256_color()
-                                     ? palette_tier::Color256
-                                     : palette_tier::Basic);
-}
-
 fn
 noninteractive_highlight_theme() wontthrow -> const highlight_theme &
 {
-  return NONINTERACTIVE_HIGHLIGHT_THEMES[static_cast<u32>(get_palette_tier())];
+  static const highlight_theme theme = make_noninteractive_highlight_theme();
+
+  return theme;
 }
 
 fn
 printed_source_highlight_theme() wontthrow -> const highlight_theme &
 {
-  return PRINTED_SOURCE_HIGHLIGHT_THEMES[static_cast<u32>(get_palette_tier())];
+  static const highlight_theme theme = make_printed_source_highlight_theme();
+
+  return theme;
 }
 
 fn
 diagnostic_highlight_theme() wontthrow -> const highlight_theme &
 {
-  return DIAGNOSTIC_HIGHLIGHT_THEMES[static_cast<u32>(get_palette_tier())];
+  static const highlight_theme theme = make_diagnostic_highlight_theme();
+
+  return theme;
 }
 
 static fn
@@ -347,27 +369,34 @@ file_entry_type_of_mode(u32 mode) wontthrow -> file_entry_type
 }
 
 fn
-file_entry_color(file_entry_type type) wontthrow -> StringView
+file_entry_color(file_entry_type type) wontthrow -> color_style
 {
   switch (type) {
-  case file_entry_type::Directory: return soft(ansi::BOLD_BLUE);
+  case file_entry_type::Directory:
+    return color_style{color::BoldBlue, color_variant::Soft};
 
-  case file_entry_type::Symlink: return soft(ansi::BOLD_CYAN);
+  case file_entry_type::Symlink:
+    return color_style{color::BoldCyan, color_variant::Soft};
 
-  case file_entry_type::BrokenSymlink: return soft(ansi::BOLD_RED);
+  case file_entry_type::BrokenSymlink:
+    return color_style{color::BoldRed, color_variant::Soft};
 
-  case file_entry_type::Executable: return soft(ansi::BOLD_GREEN);
+  case file_entry_type::Executable:
+    return color_style{color::BoldGreen, color_variant::Soft};
 
-  case file_entry_type::Fifo: return soft(ansi::YELLOW);
+  case file_entry_type::Fifo:
+    return color_style{color::Yellow, color_variant::Soft};
 
-  case file_entry_type::Socket: return soft(ansi::BOLD_MAGENTA);
+  case file_entry_type::Socket:
+    return color_style{color::BoldMagenta, color_variant::Soft};
 
-  case file_entry_type::Device: return soft(ansi::BOLD_YELLOW);
+  case file_entry_type::Device:
+    return color_style{color::BoldYellow, color_variant::Soft};
 
   case file_entry_type::Regular: break;
   }
 
-  return StringView{};
+  return {};
 }
 
 } /* namespace colors */

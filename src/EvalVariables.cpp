@@ -86,39 +86,36 @@ EvalContext::next_random_u32() const wontthrow -> u32
 
 struct ansi_color_variable
 {
-  StringView name;
-  StringView escape;
+  StringView    name;
+  colors::color escape;
 };
 
 #define ANSI_COLOR_VARIABLE(name, escape)                                      \
   {                                                                            \
-    SSK(name),                                                                 \
-    {                                                                          \
-      StringView{name, sizeof(name) - 1},                                      \
-          StringView{escape, sizeof(escape) - 1}                               \
-    }                                                                          \
+    SSK(name), { StringView{name, sizeof(name) - 1}, escape }                  \
   }
 
 constexpr static_string_entry<ansi_color_variable> KOSH_ANSI_COLOR_ENTRIES[] = {
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BLACK", "\x1b[30m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_RED", "\x1b[31m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_GREEN", "\x1b[32m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_YELLOW", "\x1b[33m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BLUE", "\x1b[34m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_MAGENTA", "\x1b[35m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_CYAN", "\x1b[36m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_WHITE", "\x1b[37m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_BLACK", "\x1b[90m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_RED", "\x1b[91m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_GREEN", "\x1b[92m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_YELLOW", "\x1b[93m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_BLUE", "\x1b[94m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_MAGENTA", "\x1b[95m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_CYAN", "\x1b[96m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_WHITE", "\x1b[97m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_BOLD", "\x1b[1m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_DIM", "\x1b[2m"),
-    ANSI_COLOR_VARIABLE("KOSH_ANSI_RESET", "\x1b[0m"),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BLACK", colors::color::Black),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_RED", colors::color::Red),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_GREEN", colors::color::Green),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_YELLOW", colors::color::Yellow),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BLUE", colors::color::Blue),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_MAGENTA", colors::color::Magenta),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_CYAN", colors::color::Cyan),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_WHITE", colors::color::White),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_BLACK", colors::color::BrightBlack),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_RED", colors::color::BrightRed),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_GREEN", colors::color::BrightGreen),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_YELLOW", colors::color::BrightYellow),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_BLUE", colors::color::BrightBlue),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_MAGENTA",
+                        colors::color::BrightMagenta),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_CYAN", colors::color::BrightCyan),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BRIGHT_WHITE", colors::color::BrightWhite),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_BOLD", colors::color::Bold),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_DIM", colors::color::Dim),
+    ANSI_COLOR_VARIABLE("KOSH_ANSI_RESET", colors::color::Reset),
 };
 constexpr StaticStringMap KOSH_ANSI_COLORS{KOSH_ANSI_COLOR_ENTRIES};
 
@@ -641,7 +638,7 @@ EvalContext::get_variable_value(StringView name) const throws
       if (let const color = KOSH_ANSI_COLORS.find(name)) {
         if (!colors::stdout_wants_color()) return String{heap_allocator()};
 
-        return String{heap_allocator(), color->escape};
+        return String{heap_allocator(), colors::color_to_sv(color->escape)};
       }
     }
 

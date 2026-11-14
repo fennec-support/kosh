@@ -383,9 +383,9 @@ public:
 };
 
 fn
-colored(StringView code, bool should_color) wontthrow -> StringView
+colored(colors::color_style code, bool should_color) wontthrow -> StringView
 {
-  return should_color ? code : StringView{};
+  return should_color ? colors::color_to_sv(code) : StringView{};
 }
 
 /* time: O(n) for two passes over n samples, with one accessor() call per
@@ -576,25 +576,33 @@ append_metric_line(String          &out,
   out.append(row.name.view());
   out.append_repeated(' ', name_width - row.name.length() + 2);
 
-  out.append(colored(colors::soft(colors::ansi::BOLD_GREEN), should_color));
+  out.append(colored(colors::color_style{colors::color::BoldGreen,
+                                         colors::color_variant::Soft},
+                     should_color));
   out.append(row.mean.view());
-  out.append(colored(colors::ansi::RESET, should_color));
+  out.append(colored(colors::color::Reset, should_color));
   out.append_repeated(' ', mean_width - row.mean.length());
 
   out += " +/- ";
-  out.append(colored(colors::soft(colors::ansi::BOLD_GREEN), should_color));
+  out.append(colored(colors::color_style{colors::color::BoldGreen,
+                                         colors::color_variant::Soft},
+                     should_color));
   out.append(row.std_dev.view());
-  out.append(colored(colors::ansi::RESET, should_color));
+  out.append(colored(colors::color::Reset, should_color));
   out.append_repeated(' ', std_dev_width - row.std_dev.length());
 
   out += "  (";
-  out.append(colored(colors::soft(colors::ansi::BOLD_CYAN), should_color));
+  out.append(colored(
+      colors::color_style{colors::color::BoldCyan, colors::color_variant::Soft},
+      should_color));
   out.append(row.min.view());
-  out.append(colored(colors::ansi::RESET, should_color));
+  out.append(colored(colors::color::Reset, should_color));
   out += " ... ";
-  out.append(colored(colors::soft(colors::ansi::BOLD_MAGENTA), should_color));
+  out.append(colored(colors::color_style{colors::color::BoldMagenta,
+                                         colors::color_variant::Soft},
+                     should_color));
   out.append(row.max.view());
-  out.append(colored(colors::ansi::RESET, should_color));
+  out.append(colored(colors::color::Reset, should_color));
   out += ")\n";
 }
 
@@ -629,15 +637,19 @@ append_relative_line(String             &out,
   if (ratio > 1.0) {
     snprintf(buffer, sizeof(buffer), "%.2fx slower +/- %.2f", ratio,
              ratio_uncertainty);
-    out.append(colored(colors::soft(colors::ansi::BOLD_RED), should_color));
+    out.append(colored(colors::color_style{colors::color::BoldRed,
+                                           colors::color_variant::Soft},
+                       should_color));
   } else {
     snprintf(buffer, sizeof(buffer), "%.2fx faster +/- %.2f", 1.0 / ratio,
              ratio_uncertainty / (ratio * ratio));
-    out.append(colored(colors::soft(colors::ansi::BOLD_GREEN), should_color));
+    out.append(colored(colors::color_style{colors::color::BoldGreen,
+                                           colors::color_variant::Soft},
+                       should_color));
   }
 
   out += StringView{buffer};
-  out.append(colored(colors::ansi::RESET, should_color));
+  out.append(colored(colors::color::Reset, should_color));
   out += "\n";
 }
 
@@ -1136,15 +1148,15 @@ append_summary(String              &out,
                        should_color);
 
   if (has_process_row) {
-    out.append(colored(colors::ansi::DIM, should_color));
+    out.append(colored(colors::color::Dim, should_color));
     out += "  * Counts only the measured process, not the processes it "
            "started.";
-    out.append(colored(colors::ansi::RESET, should_color));
+    out.append(colored(colors::color::Reset, should_color));
     out += '\n';
   }
 
   if (result.is_first_run_slow || result.has_outliers) {
-    out.append(colored(colors::ansi::DIM, should_color));
+    out.append(colored(colors::color::Dim, should_color));
     if (result.is_first_run_slow) {
       out += "  The first run took ";
       out += format_metric(result.first_run_nanos, metric_unit::Nanoseconds,
@@ -1156,7 +1168,7 @@ append_summary(String              &out,
              "or raise --warmup.";
     }
 
-    out.append(colored(colors::ansi::RESET, should_color));
+    out.append(colored(colors::color::Reset, should_color));
     out += '\n';
   }
 }

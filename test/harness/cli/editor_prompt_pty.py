@@ -467,6 +467,103 @@ def run_job_notice_checks(binary, directory, report):
         session.close()
 
 
+def run_color_checks(binary, directory, command_directory, report):
+    names = ("BLACK", "RED", "GREEN", "YELLOW", "BLUE", "MAGENTA", "CYAN",
+             "WHITE", "BRIGHT_BLACK", "BRIGHT_RED", "BRIGHT_GREEN",
+             "BRIGHT_YELLOW", "BRIGHT_BLUE", "BRIGHT_MAGENTA", "BRIGHT_CYAN",
+             "BRIGHT_WHITE", "BOLD", "DIM", "RESET")
+    codes = (30, 31, 32, 33, 34, 35, 36, 37, 90, 91, 92, 93, 94, 95, 96,
+             97, 1, 2, 0)
+    expected_variables = b"<ansi>" + b"|".join(
+        b"\x1b[%dm" % code for code in codes) + b"</ansi>"
+    script = os.path.join(directory, "color-check.kosh")
+    with open(script, "w", encoding="ascii") as output:
+        output.write("printf '<ansi>" + "%s|" * 18 + "%s</ansi>\\n' "
+                     + " ".join('"$KOSH_ANSI_%s"' % name for name in names)
+                     + "\nKOSH_ANSI_RED=stored\n"
+                     + "printf '<stored>%s</stored>\\n' \"$KOSH_ANSI_RED\"\n"
+                     + "unset KOSH_ANSI_RED\n"
+                     + "printf 'foo\\n' | koshkit grep --color=always foo\n"
+                     + "printf 'one\\ntwo\\n' | koshkit nl -ba\n"
+                     + "koshkit --color always ls -1 color-regular color-broken\n"
+                     + "printf '<color-done>\\n'\n")
+    with open(os.path.join(directory, "color-regular"), "w"):
+        pass
+    os.symlink("color-absent", os.path.join(directory, "color-broken"))
+    for tier, environment, match_color, link_color, prompt_color in (
+            ("basic", {"TERM": "xterm", "COLORTERM": ""},
+             b"\x1b[1;31m", b"\x1b[1;31m", b"\x1b[32m"),
+            ("256", {"TERM": "xterm-256color", "COLORTERM": ""},
+             b"\x1b[1;38;5;203m", b"\x1b[1;38;5;203m",
+             b"\x1b[38;5;114m"),
+            ("truecolor", {"TERM": "xterm-256color", "COLORTERM": "truecolor"},
+             b"\x1b[1;38;2;240;110;110m", b"\x1b[1;38;2;240;110;110m",
+             b"\x1b[38;5;114m")):
+        session = Session(binary, directory, command_directory, 100,
+                          extra_environment=environment)
+        try:
+            if not session.wait_until(lambda screen:
+                                      screen.get_prompt_row() >= 0):
+                report.record("color-" + tier + "-startup", session,
+                              lambda screen: False)
+                continue
+            mark = len(session.raw)
+            session.send((". " + script + "\r").encode())
+            report.record("color-" + tier + "-ansi-variables", session,
+                          lambda screen: expected_variables
+                          in session.raw[mark:])
+            report.record("color-" + tier + "-soft-bytes", session,
+                          lambda screen: match_color + b"foo\x1b[0m"
+                          in session.raw[mark:])
+            report.record("color-" + tier + "-file-styles", session,
+                          lambda screen: link_color + b"color-broken\x1b[0m"
+                          in session.raw[mark:]
+                          and b"\r\ncolor-regular\r\n"
+                          in session.raw[mark:])
+            report.record("color-" + tier + "-stored-override", session,
+                          lambda screen: b"<stored>stored</stored>"
+                          in session.raw[mark:])
+            session.wait_until(lambda screen: b"<color-done>\r\n"
+                               in session.raw[mark:])
+            mark = len(session.raw)
+            session.send(b"PS1='\\? '; RPS1=''; true\r")
+            report.record("color-" + tier + "-prompt-soft", session,
+                          lambda screen: prompt_color + b"0\x1b[0m"
+                          in session.raw[mark:])
+            session.wait_for_raw_mode()
+            mark = len(session.raw)
+            session.send(b"PS1='P> '; RPS1=''; koshconf set mood bash; "
+                         b"printf '<style-ready>\\n'\r")
+            session.wait_until(lambda screen: b"<style-ready>\r\n"
+                               in session.raw[mark:])
+            session.wait_for_raw_mode()
+            mark = len(session.raw)
+            session.send(b"then")
+            error_style = {"basic": b"\x1b[1;91m",
+                           "256": b"\x1b[1;38;5;210m",
+                           "truecolor": b"\x1b[1;38;2;255;140;140m"}[tier]
+            report.record("color-" + tier + "-dim-and-error-style", session,
+                          lambda screen: b"\x1b[2m" in session.raw
+                          and error_style in session.raw[mark:])
+            session.send(CTRL_C)
+            session.wait_for_raw_mode()
+            for policy, assignment in (("no-color", b"export NO_COLOR=1"),
+                                       ("dumb", b"unset NO_COLOR; export TERM=dumb")):
+                mark = len(session.raw)
+                session.send(assignment + b"; printf '<policy-ready>\\n'\r")
+                session.wait_until(lambda screen: b"<policy-ready>\r\n"
+                                   in session.raw[mark:])
+                session.wait_for_raw_mode()
+                mark = len(session.raw)
+                session.send(b"printf '<plain>%s</plain>\\n' \"$KOSH_ANSI_RED\"\r")
+                report.record("color-" + tier + "-" + policy, session,
+                              lambda screen: b"<plain></plain>"
+                              in session.raw[mark:])
+        finally:
+            session.close()
+
+
+
 def main():
     if sys.platform != "linux":
         print("editor prompt PTY probes: skipped (requires Linux)")
@@ -488,6 +585,7 @@ def main():
         run_message_checks(binary, directory, command_directory, report)
         run_message_default_checks(binary, directory, command_directory,
                                    report)
+        run_color_checks(binary, directory, command_directory, report)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
     return 0 if report.is_ok else 1

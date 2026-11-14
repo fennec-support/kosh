@@ -126,12 +126,12 @@ enum class nl_number_format : uchar
 };
 
 static fn
-append_nl_number(String          &output,
-                 i64              number,
-                 usize            width,
-                 StringView       separator,
-                 nl_number_format format,
-                 StringView       style) throws -> void
+append_nl_number(String             &output,
+                 i64                 number,
+                 usize               width,
+                 StringView          separator,
+                 nl_number_format    format,
+                 colors::color_style style) throws -> void
 {
   char digit_buffer[24];
 
@@ -139,7 +139,7 @@ append_nl_number(String          &output,
       utils::int_to_text_into(number, digit_buffer, sizeof(digit_buffer));
   let const padding = width > digits.length ? width - digits.length : 0;
 
-  output += style;
+  output += colors::color_to_sv(style);
 
   /* the zeros of rz go between the sign and the digits. */
   if (format == nl_number_format::Zero && number < 0) {
@@ -152,7 +152,8 @@ append_nl_number(String          &output,
                            padding);
   output += digits;
   if (format == nl_number_format::Left) output.append_repeated(' ', padding);
-  if (!style.is_empty()) output += colors::ansi::RESET;
+  if (style.value != colors::color::None)
+    output += colors::color_to_sv(colors::color::Reset);
   output += separator;
 }
 
@@ -317,7 +318,9 @@ Nl::execute(const ExecContext               &ec,
   if (delimiter_text.length() == 1) delimiter_text += ':';
 
   let const number_style =
-      koshkit_should_color() ? colors::soft(colors::ansi::GREEN) : StringView{};
+      koshkit_should_color() ? colors::color_style{colors::color::Green,
+                                                   colors::color_variant::Soft}
+                             : colors::color_style{};
   let const delimiter = delimiter_text.view();
   let const sources =
       source_list_from_operands(operands, cxt.scratch_allocator());

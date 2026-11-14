@@ -48,16 +48,20 @@ enum class jobs_color_mode : u8
 
 fn
 state_color(job::State state, jobs_color_mode color_mode) throws
-    -> StringView
+    -> colors::color_style
 {
-  if (color_mode == jobs_color_mode::Plain) return StringView{};
+  if (color_mode == jobs_color_mode::Plain) return {};
   switch (state) {
-  case job::State::Running: return colors::soft(colors::ansi::BOLD_GREEN);
-  case job::State::Stopped: return colors::soft(colors::ansi::BOLD_YELLOW);
-  case job::State::Done:    return colors::ansi::DIM;
+  case job::State::Running:
+    return colors::color_style{colors::color::BoldGreen,
+                               colors::color_variant::Soft};
+  case job::State::Stopped:
+    return colors::color_style{colors::color::BoldYellow,
+                               colors::color_variant::Soft};
+  case job::State::Done: return colors::color::Dim;
   }
 
-  return StringView{};
+  return {};
 }
 
 fn
@@ -132,8 +136,7 @@ Jobs::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
         out, index,
         job_line_format{.should_show_process_id = FLAG_JOBS_LONG.is_enabled(),
                         .is_posix    = cxt.runtime_state().is_posix_option_on(),
-                        .state_color = state_color(job.state, color_mode),
-                        .color_reset = colors::ansi::RESET});
+                        .state_color = state_color(job.state, color_mode)});
     out.push('\n');
   }
 

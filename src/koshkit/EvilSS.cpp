@@ -329,17 +329,47 @@ append_network_socket_report(String                              &output,
 
   for (let const &row : rows) {
     cells.clear();
-    cells.push({row.protocol.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
-    cells.push({row.state.view(), colors::soft(colors::ansi::BOLD_GREEN)});
-    cells.push({row.receive_queue.view(), colors::soft(colors::ansi::GREEN)});
-    cells.push({row.send_queue.view(), colors::soft(colors::ansi::GREEN)});
-    cells.push({row.local.view(), colors::soft(colors::ansi::BOLD_CYAN)});
-    cells.push({row.peer.view(), colors::soft(colors::ansi::CYAN)});
+    cells.push({
+        row.protocol.view(), colors::color_style{colors::color::BoldMagenta,
+                                                 colors::color_variant::Soft}
+    });
+    cells.push({
+        row.state.view(), colors::color_style{colors::color::BoldGreen,
+                                              colors::color_variant::Soft}
+    });
+    cells.push({
+        row.receive_queue.view(),
+        colors::color_style{colors::color::Green,
+                            colors::color_variant::Soft}
+    });
+    cells.push({
+        row.send_queue.view(),
+        colors::color_style{colors::color::Green,
+                            colors::color_variant::Soft}
+    });
+    cells.push({
+        row.local.view(), colors::color_style{colors::color::BoldCyan,
+                                              colors::color_variant::Soft}
+    });
+    cells.push({
+        row.peer.view(),
+        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+    });
     if (options.should_show_processes) {
-      cells.push({row.process_id.view(), colors::soft(colors::ansi::YELLOW)});
-      cells.push(
-          {row.process_name.view(), colors::soft(colors::ansi::BOLD_GREEN)});
-      cells.push({row.owner.view(), colors::soft(colors::ansi::YELLOW)});
+      cells.push({
+          row.process_id.view(),
+          colors::color_style{colors::color::Yellow,
+                              colors::color_variant::Soft}
+      });
+      cells.push({
+          row.process_name.view(),
+          colors::color_style{colors::color::BoldGreen,
+                              colors::color_variant::Soft}
+      });
+      cells.push({
+          row.owner.view(), colors::color_style{colors::color::Yellow,
+                                                colors::color_variant::Soft}
+      });
     }
 
     table.add_row(cells);

@@ -866,7 +866,7 @@ fn
 filesystem_usage_percent(u64 used, u64 available) wontthrow -> u64;
 
 fn
-usage_style(u64 percent) wontthrow -> StringView;
+usage_style(u64 percent) wontthrow -> colors::color_style;
 
 pure fn
 file_type_name(const os::file_status &status) wontthrow -> StringView;

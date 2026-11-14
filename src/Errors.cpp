@@ -113,15 +113,17 @@ source_name_at(u32 source_name_index) wontthrow -> Maybe<StringView>
 
 struct diagnostic_color
 {
-  StringView severity;
-  StringView location;
-  StringView message;
-  StringView caret;
+  colors::color_style severity;
+  colors::color_style location;
+  colors::color_style message;
+  colors::color_style caret;
 
   pure fn
-  get_reset() const wontthrow -> StringView
+  get_reset() const wontthrow -> colors::color_style
   {
-    return severity.is_empty() ? StringView{} : colors::ansi::RESET;
+    return severity.value == colors::color::None
+               ? colors::color_style{}
+               : colors::color_style{colors::color::Reset};
   }
 };
 
@@ -133,25 +135,36 @@ diagnostic_colors_for(error_severity severity) throws
 
   switch (severity) {
   case error_severity::error:
-    return diagnostic_color{colors::soft(colors::ansi::BOLD_BRIGHT_RED),
-                            colors::ansi::BOLD, colors::ansi::BOLD,
-                            colors::soft(colors::ansi::BOLD_BRIGHT_RED)};
+    return diagnostic_color{
+        colors::color_style{colors::color::BoldBrightRed,
+                            colors::color_variant::Soft},
+        colors::color::Bold, colors::color::Bold,
+        colors::color_style{colors::color::BoldBrightRed,
+                            colors::color_variant::Soft}
+    };
   case error_severity::warning:
-    return diagnostic_color{colors::soft(colors::ansi::YELLOW),
-                            {},
-                            {},
-                            colors::soft(colors::ansi::YELLOW)};
+    return diagnostic_color{
+        colors::color_style{colors::color::Yellow, colors::color_variant::Soft},
+        {},
+        {},
+        colors::color_style{colors::color::Yellow,
+                            colors::color_variant::Soft}
+    };
   case error_severity::note:
   case error_severity::trace:
-    return diagnostic_color{colors::soft(colors::ansi::CYAN),
-                            {},
-                            colors::soft(colors::ansi::CYAN),
-                            colors::soft(colors::ansi::CYAN)};
+    return diagnostic_color{
+        colors::color_style{colors::color::Cyan, colors::color_variant::Soft},
+        {},
+        colors::color_style{colors::color::Cyan, colors::color_variant::Soft},
+        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+    };
   case error_severity::details:
-    return diagnostic_color{colors::soft(colors::ansi::BLUE),
-                            {},
-                            colors::soft(colors::ansi::BLUE),
-                            colors::soft(colors::ansi::BLUE)};
+    return diagnostic_color{
+        colors::color_style{colors::color::Blue, colors::color_variant::Soft},
+        {},
+        colors::color_style{colors::color::Blue, colors::color_variant::Soft},
+        colors::color_style{colors::color::Blue, colors::color_variant::Soft}
+    };
   }
 
   unreachable("invalid diagnostic color severity %d", ENUM(severity));
@@ -179,7 +192,7 @@ append_diagnostic_message(String                 &out,
   /* e.g. message = "bad (SC2086)" with color set: digit_start is 11 at the
      ")", and the digit loop stops at "C", so digit_start is 7. the 4 bytes at
      3 are " (SC", so out gets "bad", then DIM " (SC2086)". */
-  if (!reset.is_empty() && message.length > 0 &&
+  if (reset.value != colors::color::None && message.length > 0 &&
       message[message.length - 1] == ')')
   {
     digit_start = message.length - 1;
@@ -195,7 +208,7 @@ append_diagnostic_message(String                 &out,
       digit_start + 1 < message.length && digit_start >= 4 &&
       message.substring_of_length(digit_start - 4, 4) == StringView{" (SC"};
 
-  out += color.message;
+  out += colors::color_to_sv(color.message);
   if (!has_code_suffix) {
     out += message;
 
@@ -203,10 +216,10 @@ append_diagnostic_message(String                 &out,
   }
 
   out += message.substring_of_length(0, digit_start - 4);
-  out += reset;
-  out += colors::ansi::DIM;
+  out += colors::color_to_sv(reset);
+  out += colors::color_to_sv(colors::color::Dim);
   out += message.substring(digit_start - 4);
-  out += reset;
+  out += colors::color_to_sv(reset);
 }
 
 cold static fn
@@ -367,7 +380,7 @@ get_context_pointing_to(StringView                         source,
   let generated_highlights = ArrayList<highlight_span>{heap_allocator()};
   const ArrayList<highlight_span> *source_highlights = &generated_highlights;
 
-  if (eval_context != nullptr && !color.severity.is_empty()) {
+  if (eval_context != nullptr && color.severity.value != colors::color::None) {
     let *cache = eval_context->get_or_create_diagnostic_highlight_cache();
 
     source_highlights = cache->spans_for(source, line_position.line_start,
@@ -486,7 +499,7 @@ get_context_pointing_to(StringView                         source,
 
   msg.append_repeated(' ', caret_pad);
 
-  msg += color.caret;
+  msg += colors::color_to_sv(color.caret);
   msg += '^';
   msg.append_repeated('~', sub_sat(visible_caret, 1u));
 
@@ -497,7 +510,7 @@ get_context_pointing_to(StringView                         source,
     if (!text_ends_a_sentence(*message)) msg += '.';
   }
 
-  msg += color.get_reset();
+  msg += colors::color_to_sv(color.get_reset());
 
   return msg;
 }
@@ -517,9 +530,10 @@ ErrorBase::trailing_details_to_string() const throws -> String
 
   let const note_period = text_ends_a_sentence(note) ? "" : ".";
 
-  return String{heap_allocator(), "\n"} + color.severity + severity_word +
-         color.get_reset() + ": " + color.message + note + note_period +
-         color.get_reset();
+  return String{heap_allocator(), "\n"} + colors::color_to_sv(color.severity) +
+         severity_word + colors::color_to_sv(color.get_reset()) + ": " +
+         colors::color_to_sv(color.message) + note + note_period +
+         colors::color_to_sv(color.get_reset());
 }
 
 cold fn
@@ -549,11 +563,12 @@ ErrorBase::to_string(StringView source, EvalContext *context) const throws -> St
   let const color         = diagnostic_colors_for(severity);
   let const period        = text_ends_a_sentence(message()) ? "" : ".";
 
-  let result = color.severity + severity_word + color.get_reset() + ": ";
+  let result = colors::color_to_sv(color.severity) + severity_word +
+               colors::color_to_sv(color.get_reset()) + ": ";
 
   append_diagnostic_message(result, message().view(), color);
   result += period;
-  result += color.get_reset();
+  result += colors::color_to_sv(color.get_reset());
   result += trailing_details_to_string();
 
   return result;
@@ -663,7 +678,7 @@ append_location_prefix(String                            &result,
                                   byte_position - line_position.line_start) +
       1;
 
-  result += color.location;
+  result += colors::color_to_sv(color.location);
   if (let const name = site.location.get_filename();
       name.has_value() && !is_filename_hidden)
   {
@@ -677,11 +692,11 @@ append_location_prefix(String                            &result,
   result += ':';
   result += String::from(column, heap_allocator());
   result += ':';
-  result += color.get_reset();
+  result += colors::color_to_sv(color.get_reset());
   result += ' ';
-  result += color.severity;
+  result += colors::color_to_sv(color.severity);
   result += severity_word;
-  result += color.get_reset();
+  result += colors::color_to_sv(color.get_reset());
 }
 
 fn
@@ -734,7 +749,7 @@ ErrorWithLocation::to_string(StringView source, EvalContext *context) const
 
     if (!text_ends_a_sentence(m_message.view())) result += '.';
 
-    result += color.get_reset();
+    result += colors::color_to_sv(color.get_reset());
   } else {
     result += ':';
   }

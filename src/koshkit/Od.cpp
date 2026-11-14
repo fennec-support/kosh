@@ -522,12 +522,15 @@ Od::execute(const ExecContext               &ec,
   bool      has_previous_row    = false;
   bool      did_suppress        = false;
   let const address_style =
-      koshkit_should_color() ? colors::soft(colors::ansi::CYAN) : StringView{};
+      koshkit_should_color() ? colors::color_style{colors::color::Cyan,
+                                                   colors::color_variant::Soft}
+                             : colors::color_style{};
 
   let const do_append_address = [&](u64 address) throws -> void {
-    output += address_style;
+    output += colors::color_to_sv(address_style);
     append_od_padded(output, address, false, address_width, '0', address_base);
-    if (!address_style.is_empty()) output += colors::ansi::RESET;
+    if (address_style.value != colors::color::None)
+      output += colors::color_to_sv(colors::color::Reset);
   };
 
   let const do_emit_row = [&](StringView row,

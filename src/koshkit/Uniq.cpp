@@ -434,7 +434,9 @@ Uniq::execute(const ExecContext               &ec,
     if (should_show_count) {
       append_report_text(output,
                          count_prefix(match_count + 1, heap_allocator()).view(),
-                         colors::soft(colors::ansi::GREEN), should_color);
+                         colors::color_style{colors::color::Green,
+                                             colors::color_variant::Soft},
+                         should_color);
     }
 
     do_append(previous.view());

@@ -777,21 +777,22 @@ struct grep_options
 };
 
 static fn
-default_grep_sgr(StringView style) wontthrow -> StringView
+default_grep_sgr(colors::color style) wontthrow -> StringView
 {
-  let const soft_style = colors::soft(style);
+  let const soft_style =
+      colors::color_to_sv(style, colors::color_variant::Soft);
 
   return soft_style.substring_of_length(2, soft_style.length - 3);
 }
 
 struct grep_palette
 {
-  StringView selected_match{default_grep_sgr(colors::ansi::BOLD_RED)};
+  StringView selected_match{default_grep_sgr(colors::color::BoldRed)};
   StringView selected_line{};
   StringView context_line{};
-  StringView file_name{default_grep_sgr(colors::ansi::MAGENTA)};
-  StringView line_number{default_grep_sgr(colors::ansi::GREEN)};
-  StringView separator{default_grep_sgr(colors::ansi::CYAN)};
+  StringView file_name{default_grep_sgr(colors::color::Magenta)};
+  StringView line_number{default_grep_sgr(colors::color::Green)};
+  StringView separator{default_grep_sgr(colors::color::Cyan)};
   bool       is_reversed{false};
 };
 
@@ -2016,7 +2017,7 @@ private:
     m_output += sgr;
     m_output += 'm';
     m_output += text;
-    m_output += colors::ansi::RESET;
+    m_output += colors::color_to_sv(colors::color::Reset);
   }
 
   pure fn

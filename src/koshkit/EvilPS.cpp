@@ -354,7 +354,7 @@ append_bounded_command(String    &output,
   if (command.is_empty()) return;
   if (line_width_limit == 0 || line_width_limit == SIZE_MAX) {
     output += " ";
-    append_report_text(output, command, colors::ansi::DIM, should_color);
+    append_report_text(output, command, colors::color::Dim, should_color);
 
     return;
   }
@@ -379,7 +379,7 @@ append_bounded_command(String    &output,
 
   output += " ";
   if (toiletline::get_display_width(command) <= available) {
-    append_report_text(output, command, colors::ansi::DIM, should_color);
+    append_report_text(output, command, colors::color::Dim, should_color);
 
     return;
   }
@@ -391,7 +391,7 @@ append_bounded_command(String    &output,
             command, available, actual_cells);
 
     append_report_text(output, command.substring_of_length(0, kept_byte_count),
-                       colors::ansi::DIM, should_color);
+                       colors::color::Dim, should_color);
 
     return;
   }
@@ -402,8 +402,8 @@ append_bounded_command(String    &output,
           command, available - 3, actual_cells);
 
   append_report_text(output, command.substring_of_length(0, kept_byte_count),
-                     colors::ansi::DIM, should_color);
-  append_report_text(output, "...", colors::ansi::DIM, should_color);
+                     colors::color::Dim, should_color);
+  append_report_text(output, "...", colors::color::Dim, should_color);
 }
 
 fn
@@ -416,13 +416,16 @@ append_label(String                      &output,
   let const sort_key     = options.sort_key;
 
   append_report_text(output, node.name.view(),
-                     colors::soft(colors::ansi::BOLD_GREEN), should_color);
+                     colors::color_style{colors::color::BoldGreen,
+                                         colors::color_variant::Soft},
+                     should_color);
 
   if (FLAG_EVILPS_ALL.is_enabled() || FLAG_EVILPS_PIDS.is_enabled()) {
     output += "(";
     append_report_text(
         output, String::from(static_cast<u64>(node.pid), allocator).view(),
-        colors::soft(colors::ansi::CYAN), should_color);
+        colors::color_style{colors::color::Cyan, colors::color_variant::Soft},
+        should_color);
     output += ")";
   }
 
@@ -430,8 +433,10 @@ append_label(String                      &output,
     let const owner = utils::user_name_or_id(node.owner_id, allocator);
 
     output += ",";
-    append_report_text(output, owner.view(), colors::soft(colors::ansi::YELLOW),
-                       should_color);
+    append_report_text(
+        output, owner.view(),
+        colors::color_style{colors::color::Yellow, colors::color_variant::Soft},
+        should_color);
   }
 
   let const should_show_cpu =
@@ -444,7 +449,9 @@ append_label(String                      &output,
   if (should_show_cpu || should_show_memory) {
     output += " [";
     if (should_show_cpu) {
-      append_report_text(output, "CPU", colors::soft(colors::ansi::BOLD_CYAN),
+      append_report_text(output, "CPU",
+                         colors::color_style{colors::color::BoldCyan,
+                                             colors::color_variant::Soft},
                          should_color);
       output += " ";
       append_cpu_value(output, node, allocator, options.sampling);
@@ -455,7 +462,9 @@ append_label(String                      &output,
     }
 
     if (should_show_memory) {
-      append_report_text(output, "MEM", colors::soft(colors::ansi::BOLD_CYAN),
+      append_report_text(output, "MEM",
+                         colors::color_style{colors::color::BoldCyan,
+                                             colors::color_variant::Soft},
                          should_color);
       output += " ";
       output += format_human_size(node.resident_kib * 1024, allocator).view();
@@ -546,10 +555,14 @@ render_process_relatives(String                      &output,
 
     nodes[position].was_rendered = true;
 
-    append_report_text(output, prefix.view(), colors::soft(colors::ansi::CYAN),
-                       should_color);
-    append_report_text(output, connector.branch,
-                       colors::soft(colors::ansi::CYAN), should_color);
+    append_report_text(
+        output, prefix.view(),
+        colors::color_style{colors::color::Cyan, colors::color_variant::Soft},
+        should_color);
+    append_report_text(
+        output, connector.branch,
+        colors::color_style{colors::color::Cyan, colors::color_variant::Soft},
+        should_color);
     append_label(output, nodes[position], allocator, options);
     rendered_count++;
 

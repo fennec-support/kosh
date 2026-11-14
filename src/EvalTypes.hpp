@@ -13,6 +13,7 @@
 #pragma once
 
 #include "Builtin.hpp"
+#include "CLIColors.hpp"
 #include "Errors.hpp"
 #include "MimicMood.hpp"
 #include "base/Arena.hpp"
@@ -1164,10 +1165,9 @@ struct job
 
 struct job_line_format
 {
-  bool       should_show_process_id{false};
-  bool       is_posix{false};
-  StringView state_color{};
-  StringView color_reset{};
+  bool                should_show_process_id{false};
+  bool                is_posix{false};
+  colors::color_style state_color{};
 };
 
 struct finished_process_status

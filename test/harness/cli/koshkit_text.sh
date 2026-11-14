@@ -417,6 +417,26 @@ echo "--- grep color modes keep plain output when redirected ---"
 "$BIN" -c 'koshkit grep --color -n foo color-input.txt'
 "$BIN" -c 'koshkit grep -n foo color-input.txt'
 "$BIN" -c 'koshkit grep --color=sometimes foo color-input.txt' 2>&1
+echo "--- grep retains custom and empty SGR values ---"
+printf 'foo\n' > custom-color-input.txt
+GREP_COLOR='01;38;5;111' GREP_COLORS='ms=01;38;5;123:unknown=9' \
+  "$BIN" -c 'koshkit grep --color=always foo custom-color-input.txt' \
+  > custom-color-output.txt
+printf '\033[01;38;5;123mfoo\033[0m\n' > custom-color-expected.txt
+cmp custom-color-output.txt custom-color-expected.txt
+echo "custom-sgr=$?"
+GREP_COLOR='01;38;5;111' GREP_COLORS='ms=' \
+  "$BIN" -c 'koshkit grep --color=always foo custom-color-input.txt' \
+  > custom-color-output.txt
+printf 'foo\n' > custom-color-expected.txt
+cmp custom-color-output.txt custom-color-expected.txt
+echo "empty-sgr=$?"
+GREP_COLOR='01;38;5;111' GREP_COLORS= \
+  "$BIN" -c 'koshkit grep --color=always foo custom-color-input.txt' \
+  > custom-color-output.txt
+printf '\033[01;38;5;111mfoo\033[0m\n' > custom-color-expected.txt
+cmp custom-color-output.txt custom-color-expected.txt
+echo "legacy-sgr=$?"
 echo "--- df human readable header and aligned rows ---"
 "$BIN" -c 'koshkit df -h . | koshkit head -n 1'
 "$BIN" -c 'koshkit df -H . | koshkit head -n 1'

@@ -307,8 +307,14 @@ append_setting_row(ReportTable &table,
 {
   let cells = ArrayList<report_table_cell_view>{allocator};
 
-  cells.push({name, colors::soft(colors::ansi::BOLD_CYAN)});
-  cells.push({value, colors::soft(colors::ansi::GREEN)});
+  cells.push({
+      name, colors::color_style{colors::color::BoldCyan,
+                                colors::color_variant::Soft}
+  });
+  cells.push({
+      value,
+      colors::color_style{colors::color::Green, colors::color_variant::Soft}
+  });
   table.add_row(cells);
 }
 
@@ -406,10 +412,16 @@ append_core_dump_report(String   &output,
           os::format_local_time("%Y-%m-%d %H:%M", dump.modification_time);
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({size.view(), colors::soft(colors::ansi::GREEN)});
-      cells.push({modified.view(), colors::ansi::DIM});
-      cells.push(
-          {dump.program.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
+      cells.push({
+          size.view(), colors::color_style{colors::color::Green,
+                                           colors::color_variant::Soft}
+      });
+      cells.push({modified.view(), colors::color::Dim});
+      cells.push({
+          dump.program.view(),
+          colors::color_style{colors::color::BoldMagenta,
+                              colors::color_variant::Soft}
+      });
       cells.push({dump.name.view(), {}});
       table.add_row(cells);
     }
@@ -683,9 +695,16 @@ append_event_log_report(String   &output,
 
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({generated.view(), colors::ansi::DIM});
-      cells.push({record.level, colors::soft(colors::ansi::BOLD_MAGENTA)});
-      cells.push({record.source.view(), colors::soft(colors::ansi::GREEN)});
+      cells.push({generated.view(), colors::color::Dim});
+      cells.push({
+          record.level, colors::color_style{colors::color::BoldMagenta,
+                                            colors::color_variant::Soft}
+      });
+      cells.push({
+          record.source.view(),
+          colors::color_style{colors::color::Green,
+                              colors::color_variant::Soft}
+      });
       cells.push({message.view(), {}});
       table.add_row(cells);
     }
@@ -746,10 +765,16 @@ append_log_report(String   &output,
           os::format_local_time("%Y-%m-%d %H:%M", entry.modification_time);
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({size.view(), colors::soft(colors::ansi::GREEN)});
-      cells.push(
-          {entry.format_label, colors::soft(colors::ansi::BOLD_MAGENTA)});
-      cells.push({modified.view(), colors::ansi::DIM});
+      cells.push({
+          size.view(), colors::color_style{colors::color::Green,
+                                           colors::color_variant::Soft}
+      });
+      cells.push({
+          entry.format_label,
+          colors::color_style{colors::color::BoldMagenta,
+                              colors::color_variant::Soft}
+      });
+      cells.push({modified.view(), colors::color::Dim});
       cells.push({entry.name.view(), {}});
       table.add_row(cells);
     }

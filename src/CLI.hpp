@@ -10,6 +10,7 @@
 
 #pragma once
 
+#include "CLIColors.hpp"
 #include "Errors.hpp"
 #include "base/Common.hpp"
 #include "base/Containers.hpp"
@@ -664,10 +665,10 @@ pure fn
 get_tree_connector(bool is_last) wontthrow -> tree_connector;
 
 fn
-append_report_text(String    &output,
-                   StringView text,
-                   StringView style,
-                   bool       should_color) throws -> void;
+append_report_text(String             &output,
+                   StringView          text,
+                   colors::color_style style,
+                   bool                should_color) throws -> void;
 
 enum class report_table_alignment : u8
 {
@@ -679,19 +680,19 @@ struct report_table_column
 {
   String                 heading;
   report_table_alignment alignment;
-  StringView             style;
+  colors::color_style    style;
 };
 
 struct report_table_cell_view
 {
-  StringView text;
-  StringView style;
+  StringView          text;
+  colors::color_style style;
 };
 
 struct report_table_cell
 {
-  String     text;
-  StringView style;
+  String              text;
+  colors::color_style style;
 };
 
 class ReportTable
@@ -704,7 +705,7 @@ public:
   fn
   add_column(StringView             heading,
              report_table_alignment alignment = report_table_alignment::Left,
-             StringView             style     = {}) throws -> void;
+             colors::color_style    style     = {}) throws -> void;
   fn
   add_heading(StringView             heading,
               report_table_alignment alignment =
@@ -732,9 +733,9 @@ public:
   add_row(const ArrayList<report_table_cell_view> &cells) throws
       -> void;
   fn
-  add_field_row(StringView name,
-                StringView value,
-                StringView name_style) throws -> void;
+  add_field_row(StringView          name,
+                StringView          value,
+                colors::color_style name_style) throws -> void;
   fn
   to_string(bool should_color, StringView indentation) const throws
       -> String;

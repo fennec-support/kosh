@@ -167,15 +167,23 @@ ps_cell_text(const os::process_entry &process,
 }
 
 static fn
-ps_state_style(char state) wontthrow -> StringView
+ps_state_style(char state) wontthrow -> colors::color_style
 {
   switch (state) {
-  case 'R': return colors::soft(colors::ansi::GREEN);
-  case 'D': return colors::soft(colors::ansi::YELLOW);
+  case 'R':
+    return colors::color_style{colors::color::Green,
+                               colors::color_variant::Soft};
+  case 'D':
+    return colors::color_style{colors::color::Yellow,
+                               colors::color_variant::Soft};
   case 'T':
-  case 't': return colors::soft(colors::ansi::MAGENTA);
-  case 'Z': return colors::soft(colors::ansi::BOLD_RED);
-  default:  return {};
+  case 't':
+    return colors::color_style{colors::color::Magenta,
+                               colors::color_variant::Soft};
+  case 'Z':
+    return colors::color_style{colors::color::BoldRed,
+                               colors::color_variant::Soft};
+  default: return {};
   }
 }
 
@@ -197,8 +205,9 @@ render_ps_columns(const ArrayList<os::process_entry>      &processes,
   for (let const *spec : columns) {
     table.add_column(spec->heading, spec->alignment,
                      spec->column == ps_column::Pid
-                         ? colors::soft(colors::ansi::BOLD_CYAN)
-                         : StringView{});
+                         ? colors::color_style{colors::color::BoldCyan,
+                                               colors::color_variant::Soft}
+                         : colors::color_style{});
   }
 
   for (let const &process : processes) {
@@ -216,7 +225,7 @@ render_ps_columns(const ArrayList<os::process_entry>      &processes,
       cells.push(
           {texts[index].view(), columns[index]->column == ps_column::State
                                     ? ps_state_style(process.state)
-                                    : StringView{}});
+                                    : colors::color_style{}});
     }
 
     table.add_row(cells);
@@ -331,7 +340,9 @@ Ps::execute(const ExecContext               &ec,
 
   if (!FLAG_PS_NO_HEADERS.is_enabled()) {
     append_report_text(output, "  PID CMD",
-                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
+                       colors::color_style{colors::color::BoldCyan,
+                                           colors::color_variant::Soft},
+                       should_color);
     output += '\n';
   }
 
@@ -344,7 +355,9 @@ Ps::execute(const ExecContext               &ec,
 
     output.append_repeated(' ', pid.count() < 5 ? 5 - pid.count() : 0);
     append_report_text(output, pid.view(),
-                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
+                       colors::color_style{colors::color::BoldCyan,
+                                           colors::color_variant::Soft},
+                       should_color);
     output += ' ';
     if (should_escape_text)
       output += escape_terminal_text(allocator, process.name.view()).view();

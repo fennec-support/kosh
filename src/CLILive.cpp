@@ -20,15 +20,32 @@ namespace koshka::koshkit {
 
 namespace {
 
-inline const StringView BAR_BASE_STYLE  = "\x1b[0;48;5;236;38;5;252m";
-inline const StringView BAR_TITLE_STYLE = "\x1b[1;38;5;81m";
-inline const StringView BAR_LIVE_STYLE  = "\x1b[1;38;5;114m";
-inline const StringView BAR_CLOCK_STYLE = "\x1b[22;38;5;252m";
-inline const StringView BAR_LABEL_STYLE = "\x1b[22;38;5;245m";
-inline const StringView BAR_KEY_STYLE   = "\x1b[1;38;5;255m";
-inline const StringView BAR_HINT_STYLE  = "\x1b[22;38;5;245m";
-inline const StringView LIVE_INDICATOR  = "LIVE";
-inline const StringView SEGMENT_GAP     = "  ";
+enum class live_header_style : u8
+{
+  Base,
+  Title,
+  Live,
+  Clock,
+  Label,
+  Key,
+};
+
+fn
+live_header_style_to_sv(live_header_style style) wontthrow -> StringView
+{
+  switch (style) {
+  case live_header_style::Base:  return "\x1b[0;48;5;236;38;5;252m";
+  case live_header_style::Title: return "\x1b[1;38;5;81m";
+  case live_header_style::Live:  return "\x1b[1;38;5;114m";
+  case live_header_style::Clock: return "\x1b[22;38;5;252m";
+  case live_header_style::Label: return "\x1b[22;38;5;245m";
+  case live_header_style::Key:   return "\x1b[1;38;5;255m";
+  }
+
+  return {};
+}
+inline const StringView LIVE_INDICATOR = "LIVE";
+inline const StringView SEGMENT_GAP    = "  ";
 
 constexpr u64 NANOSECONDS_PER_SECOND = 1000000000ULL;
 
@@ -103,12 +120,12 @@ get_header_length(const header_pieces &pieces, header_fit fit)
 }
 
 fn
-append_styled(String    &output,
-              StringView text,
-              StringView style,
-              bool       should_style) throws -> void
+append_styled(String           &output,
+              StringView        text,
+              live_header_style style,
+              bool              should_style) throws -> void
 {
-  if (should_style) output += style;
+  if (should_style) output += live_header_style_to_sv(style);
   output += text;
 }
 
@@ -129,8 +146,8 @@ append_hints(String &output, StringView hints, bool should_style) throws
     if (position != 0) output += SEGMENT_GAP;
 
     append_styled(output, entry.substring_of_length(0, key_length),
-                  BAR_KEY_STYLE, should_style);
-    append_styled(output, entry.substring(key_length), BAR_HINT_STYLE,
+                  live_header_style::Key, should_style);
+    append_styled(output, entry.substring(key_length), live_header_style::Label,
                   should_style);
     if (!separator.has_value()) break;
 
@@ -660,7 +677,7 @@ LiveView::append_frame_start(String                     &frame,
 
   let const shown_hints = get_hint_prefix(pieces.hints, fit.hint_entry_count);
 
-  if (should_style) frame += BAR_BASE_STYLE;
+  if (should_style) frame += live_header_style_to_sv(live_header_style::Base);
   frame += ' ';
 
   let used_length = static_cast<usize>(1);
@@ -671,23 +688,25 @@ LiveView::append_frame_start(String                     &frame,
         pieces.title.length < room ? pieces.title.length : room;
 
     append_styled(frame, pieces.title.substring_of_length(0, title_length),
-                  BAR_TITLE_STYLE, should_style);
+                  live_header_style::Title, should_style);
     used_length += title_length;
   } else {
-    append_styled(frame, pieces.title, BAR_TITLE_STYLE, should_style);
+    append_styled(frame, pieces.title, live_header_style::Title, should_style);
     frame += SEGMENT_GAP;
-    append_styled(frame, LIVE_INDICATOR, BAR_LIVE_STYLE, should_style);
+    append_styled(frame, LIVE_INDICATOR, live_header_style::Live, should_style);
     used_length +=
         pieces.title.length + SEGMENT_GAP.length + LIVE_INDICATOR.length;
     if (fit.has_clock) {
       frame += SEGMENT_GAP;
-      append_styled(frame, pieces.clock, BAR_CLOCK_STYLE, should_style);
+      append_styled(frame, pieces.clock, live_header_style::Clock,
+                    should_style);
       used_length += SEGMENT_GAP.length + pieces.clock.length;
     }
 
     if (fit.has_labels) {
       frame += SEGMENT_GAP;
-      append_styled(frame, pieces.labels, BAR_LABEL_STYLE, should_style);
+      append_styled(frame, pieces.labels, live_header_style::Label,
+                    should_style);
       used_length += SEGMENT_GAP.length + pieces.labels.length;
     }
 
@@ -707,7 +726,7 @@ LiveView::append_frame_start(String                     &frame,
     for (usize index = used_length; index < width; index++)
       frame += ' ';
 
-    frame += colors::ansi::RESET;
+    frame += colors::color_to_sv(colors::color::Reset);
   }
 
   frame += "\n\n";
@@ -735,11 +754,9 @@ constexpr usize PAGER_NUMBER_WIDTH     = 7;
 constexpr usize PAGER_WHEEL_ROW_COUNT  = 3;
 constexpr i64   PAGER_POLL_NANOSECONDS = 150000000;
 
-inline const StringView PAGER_HEADER_RULE   = "::::::::::::::";
-inline const StringView PAGER_REVERSE_START = "\x1b[7m";
-inline const StringView PAGER_REVERSE_END   = "\x1b[27m";
-inline const StringView PAGER_CLEAR_SCREEN  = "\x1b[H\x1b[2J";
-inline const StringView PAGER_REPLACEMENT   = "\xef\xbf\xbd";
+inline const StringView PAGER_HEADER_RULE  = "::::::::::::::";
+inline const StringView PAGER_CLEAR_SCREEN = "\x1b[H\x1b[2J";
+inline const StringView PAGER_REPLACEMENT  = "\xef\xbf\xbd";
 
 /* appends the character at position as the pager shows it: a control byte in
    ^ notation, a byte that is not UTF-8 or a C1 control character, which could
@@ -1620,9 +1637,9 @@ private:
             text.view(), m_column_count > 1 ? usize{m_column_count} - 1 : 1,
             cell_count);
 
-    output += PAGER_REVERSE_START;
+    output += colors::color_to_sv(colors::color::Inverse);
     output += text.view().substring_of_length(0, kept_byte_count);
-    output += PAGER_REVERSE_END;
+    output += colors::color_to_sv(colors::color::InverseOff);
   }
 
   fn

@@ -250,12 +250,12 @@ append_decorated_name(String                &output,
                       const listing_options &options) throws -> void
 {
   let const color = options.should_color ? colors::file_entry_color(entry.type)
-                                         : StringView{};
+                                         : colors::color_style{};
 
-  if (!color.is_empty()) {
-    output += color;
+  if (color.value != colors::color::None) {
+    output += colors::color_to_sv(color);
     output += entry.name.view();
-    output += colors::ansi::RESET;
+    output += colors::color_to_sv(colors::color::Reset);
   } else {
     output += entry.name.view();
   }

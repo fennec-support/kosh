@@ -1332,7 +1332,7 @@ File::execute(const ExecContext               &ec,
         let const target = os::read_symlink(operand.view(), allocator);
         let       line   = String{allocator};
 
-        append_report_text(line, operand.view(), colors::ansi::BOLD,
+        append_report_text(line, operand.view(), colors::color::Bold,
                            should_color);
         line += ": symbolic link";
         if (target.has_value()) line += " to " + *target;
@@ -1400,7 +1400,7 @@ File::execute(const ExecContext               &ec,
 
     let line = String{allocator};
 
-    append_report_text(line, operand.view(), colors::ansi::BOLD, should_color);
+    append_report_text(line, operand.view(), colors::color::Bold, should_color);
     line += ": ";
     line += description;
     line += '\n';

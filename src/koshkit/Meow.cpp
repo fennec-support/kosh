@@ -1723,9 +1723,9 @@ append_colors(String &frame,
               u8      background,
               bool    is_bold) throws -> void
 {
-  frame += colors::ansi::RESET;
+  frame += colors::color_to_sv(colors::color::Reset);
 
-  if (is_bold) frame += colors::ansi::BOLD;
+  if (is_bold) frame += colors::color_to_sv(colors::color::Bold);
 
   if (foreground != 0) {
     frame += "\x1b[38;5;";
@@ -1850,7 +1850,7 @@ render_scene(String      &frame,
     }
 
     if (should_color) {
-      frame += colors::ansi::RESET;
+      frame += colors::color_to_sv(colors::color::Reset);
       active_key = 0;
     }
 

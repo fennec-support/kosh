@@ -701,20 +701,58 @@ EvilFiles::execute(const ExecContext               &ec,
 
     let cells = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({command.view(), colors::soft(colors::ansi::BOLD_GREEN)});
-    cells.push({row.pid.view(), colors::soft(colors::ansi::GREEN)});
-    cells.push({row.user.view(), colors::soft(colors::ansi::YELLOW)});
-    cells.push({row.descriptor.view(), colors::soft(colors::ansi::CYAN)});
-    cells.push({row.type.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
-    cells.push({row.mode.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
-    cells.push({row.state.view(), row.state == "deleted"
-                                      ? colors::soft(colors::ansi::BOLD_RED)
-                                      : colors::soft(colors::ansi::GREEN)});
-    cells.push({row.device.view(), colors::soft(colors::ansi::GREEN)});
-    cells.push({row.size.view(), colors::soft(colors::ansi::GREEN)});
-    cells.push({row.offset.view(), colors::soft(colors::ansi::GREEN)});
-    cells.push({row.node.view(), colors::soft(colors::ansi::GREEN)});
-    cells.push({row.endpoint.view(), colors::soft(colors::ansi::CYAN)});
+    cells.push({
+        command.view(), colors::color_style{colors::color::BoldGreen,
+                                            colors::color_variant::Soft}
+    });
+    cells.push({
+        row.pid.view(), colors::color_style{colors::color::Green,
+                                            colors::color_variant::Soft}
+    });
+    cells.push({
+        row.user.view(), colors::color_style{colors::color::Yellow,
+                                             colors::color_variant::Soft}
+    });
+    cells.push({
+        row.descriptor.view(),
+        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+    });
+    cells.push({
+        row.type.view(), colors::color_style{colors::color::BoldMagenta,
+                                             colors::color_variant::Soft}
+    });
+    cells.push({
+        row.mode.view(), colors::color_style{colors::color::BoldMagenta,
+                                             colors::color_variant::Soft}
+    });
+    cells.push({
+        row.state.view(),
+        row.state == "deleted"
+            ? colors::color_style{colors::color::BoldRed,
+                                  colors::color_variant::Soft}
+            : colors::color_style{colors::color::Green,
+                                  colors::color_variant::Soft}
+    });
+    cells.push({
+        row.device.view(), colors::color_style{colors::color::Green,
+                                               colors::color_variant::Soft}
+    });
+    cells.push({
+        row.size.view(), colors::color_style{colors::color::Green,
+                                             colors::color_variant::Soft}
+    });
+    cells.push({
+        row.offset.view(), colors::color_style{colors::color::Green,
+                                               colors::color_variant::Soft}
+    });
+    cells.push({
+        row.node.view(), colors::color_style{colors::color::Green,
+                                             colors::color_variant::Soft}
+    });
+    cells.push({
+        row.endpoint.view(),
+        colors::color_style{colors::color::Cyan, colors::color_variant::Soft}
+    });
     cells.push({name.view(), {}});
     table.add_row(cells);
   }

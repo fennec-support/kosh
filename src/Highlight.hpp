@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "CLIColors.hpp"
 #include "base/Common.hpp"
 #include "base/StringView.hpp"
 
@@ -69,17 +70,18 @@ struct bracket_pair
 
 struct highlight_theme
 {
-  StringView reset;
-  StringView styles[static_cast<usize>(highlight_role::count)];
+  colors::color         reset{colors::color::None};
+  colors::color         styles[static_cast<usize>(highlight_role::count)]{};
+  colors::color_variant variant{colors::color_variant::Soft};
 
   pure fn
-  style_for(highlight_role role) const wontthrow -> StringView
+  style_for(highlight_role role) const wontthrow -> colors::color
   {
     return styles[static_cast<usize>(role)];
   }
 
   constexpr fn
-  set_style(highlight_role role, StringView style) wontthrow -> void
+  set_style(highlight_role role, colors::color style) wontthrow -> void
   {
     styles[static_cast<usize>(role)] = style;
   }

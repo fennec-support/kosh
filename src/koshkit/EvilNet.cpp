@@ -210,18 +210,25 @@ append_network_interface_report(String &output,
 
   table.add_heading("NAME");
   table.add_column("FAMILY", report_table_alignment::Left,
-                   colors::soft(colors::ansi::BOLD_MAGENTA));
+                   colors::color_style{colors::color::BoldMagenta,
+                                       colors::color_variant::Soft});
   table.add_column("ADDRESS", report_table_alignment::Left,
-                   colors::ansi::RESET);
+                   colors::color::Reset);
 
   for (let const &address : addresses) {
     let cells = ArrayList<report_table_cell_view>{addresses.allocator()};
 
-    cells.push({address.interface_name.view(),
-                colors::soft(colors::ansi::BOLD_GREEN)});
-    cells.push({family_name(address.family),
-                colors::soft(colors::ansi::BOLD_MAGENTA)});
-    cells.push({address.address.view(), colors::ansi::RESET});
+    cells.push({
+        address.interface_name.view(),
+        colors::color_style{colors::color::BoldGreen,
+                            colors::color_variant::Soft}
+    });
+    cells.push({
+        family_name(address.family),
+        colors::color_style{colors::color::BoldMagenta,
+                            colors::color_variant::Soft}
+    });
+    cells.push({address.address.view(), colors::color::Reset});
     table.add_row(cells);
   }
 
@@ -338,14 +345,21 @@ append_network_traffic_statistics_report(
     }
 
     cells.clear();
-    cells.push({entry.interface_name.view(),
-                is_default ? colors::soft(colors::ansi::BOLD_GREEN)
-                           : colors::soft(colors::ansi::GREEN)});
+    cells.push({
+        entry.interface_name.view(),
+        is_default ? colors::color_style{colors::color::BoldGreen,
+                                         colors::color_variant::Soft}
+                   : colors::color_style{colors::color::Green,
+                                         colors::color_variant::Soft}
+    });
 
     for (usize index = 0; index < values.count(); index++)
-      cells.push({values[index].view(), index < 2
-                                            ? colors::soft(colors::ansi::GREEN)
-                                            : colors::ansi::RESET});
+      cells.push({
+          values[index].view(),
+          index < 2 ? colors::color_style{colors::color::Green,
+                                          colors::color_variant::Soft}
+                    : colors::color::Reset
+      });
 
     table.add_row(cells);
 
@@ -437,9 +451,12 @@ append_tcp_report(String            &output,
       let const value = String::from(values[index], allocator);
 
       cells.clear();
-      cells.push({title, colors::soft(colors::ansi::BOLD_CYAN)});
-      cells.push({names[index], colors::ansi::RESET});
-      cells.push({value.view(), colors::ansi::RESET});
+      cells.push({
+          title, colors::color_style{colors::color::BoldCyan,
+                                     colors::color_variant::Soft}
+      });
+      cells.push({names[index], colors::color::Reset});
+      cells.push({value.view(), colors::color::Reset});
       table.add_row(cells);
     }
   };

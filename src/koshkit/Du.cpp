@@ -865,7 +865,9 @@ render_tree(const ArrayList<du_tree_node> &nodes,
     output.append_repeated(' ', size_width - size_text.length);
 
     append_report_text(output, size_text,
-                       colors::soft(colors::ansi::BOLD_GREEN), should_color);
+                       colors::color_style{colors::color::BoldGreen,
+                                           colors::color_variant::Soft},
+                       should_color);
     output += ' ';
     output += prefix;
     output += connector;
@@ -1207,10 +1209,14 @@ Du::execute(const ExecContext               &ec,
 
     output.append_repeated(' ', size_width - size_text.length);
     append_report_text(output, size_text,
-                       colors::soft(colors::ansi::BOLD_GREEN), should_color);
+                       colors::color_style{colors::color::BoldGreen,
+                                           colors::color_variant::Soft},
+                       should_color);
     output += "  ";
     append_report_text(output, row.path.view(),
-                       colors::soft(colors::ansi::BOLD_CYAN), should_color);
+                       colors::color_style{colors::color::BoldCyan,
+                                           colors::color_variant::Soft},
+                       should_color);
     output += line_terminator;
     if (output.length() >= 65536) {
       ec.print_to_stdout(output.view());

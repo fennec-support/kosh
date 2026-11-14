@@ -135,16 +135,27 @@ EvilFS::execute(const ExecContext               &ec,
 
       let cells = ArrayList<report_table_cell_view>{allocator};
 
-      cells.push({mount.source.view(), colors::soft(colors::ansi::GREEN)});
-      cells.push({mount.target.view(), colors::soft(colors::ansi::BOLD_GREEN)});
+      cells.push({
+          mount.source.view(),
+          colors::color_style{colors::color::Green,
+                              colors::color_variant::Soft}
+      });
+      cells.push({
+          mount.target.view(),
+          colors::color_style{colors::color::BoldGreen,
+                              colors::color_variant::Soft}
+      });
       cells.push({mount.volume_name.is_empty() ? StringView{"-"}
                                                : mount.volume_name.view(),
                   {}});
       cells.push({mount.volume_uuid.is_empty() ? StringView{"-"}
                                                : mount.volume_uuid.view(),
                   {}});
-      cells.push({mount.type.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
-      cells.push({mount.options.view(), colors::ansi::DIM});
+      cells.push({
+          mount.type.view(), colors::color_style{colors::color::BoldMagenta,
+                                                 colors::color_variant::Soft}
+      });
+      cells.push({mount.options.view(), colors::color::Dim});
       cells.push({filesystem_id.view(), {}});
       cells.push({type_id.view(), {}});
       cells.push({block_size.view(), {}});
@@ -155,10 +166,14 @@ EvilFS::execute(const ExecContext               &ec,
       cells.push({total_files.view(), {}});
       cells.push({free_files.view(), {}});
       cells.push({name_limit.view(), {}});
-      cells.push(
-          {metadata_status.view(), is_metadata_available
-                                       ? colors::soft(colors::ansi::BOLD_GREEN)
-                                       : colors::soft(colors::ansi::BOLD_RED)});
+      cells.push({
+          metadata_status.view(),
+          is_metadata_available
+              ? colors::color_style{colors::color::BoldGreen,
+                                    colors::color_variant::Soft}
+              : colors::color_style{colors::color::BoldRed,
+                                    colors::color_variant::Soft}
+      });
       table.add_row(cells);
     }
 
@@ -189,10 +204,19 @@ EvilFS::execute(const ExecContext               &ec,
   for (let const &mount : mounts) {
     let cells = ArrayList<report_table_cell_view>{allocator};
 
-    cells.push({mount.source.view(), colors::soft(colors::ansi::GREEN)});
-    cells.push({mount.target.view(), colors::soft(colors::ansi::BOLD_GREEN)});
-    cells.push({mount.type.view(), colors::soft(colors::ansi::BOLD_MAGENTA)});
-    cells.push({mount.options.view(), colors::ansi::DIM});
+    cells.push({
+        mount.source.view(), colors::color_style{colors::color::Green,
+                                                 colors::color_variant::Soft}
+    });
+    cells.push({
+        mount.target.view(), colors::color_style{colors::color::BoldGreen,
+                                                 colors::color_variant::Soft}
+    });
+    cells.push({
+        mount.type.view(), colors::color_style{colors::color::BoldMagenta,
+                                               colors::color_variant::Soft}
+    });
+    cells.push({mount.options.view(), colors::color::Dim});
     table.add_row(cells);
   }
 
