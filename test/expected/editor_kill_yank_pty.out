@@ -110,6 +110,9 @@ slurp-goto-line-preserves-indentation PASS
 slurp-find-file-completes-raw-spaced-path PASS
 slurp-find-file-cancel-preserves-draft PASS
 slurp-find-file-save-precedes-switch PASS
+slurp-vi-edit-opens-raw-spaced-path PASS
+slurp-vi-edit-cancel-preserves-draft PASS
+slurp-vi-edit-save-precedes-switch PASS
 slurp-filter-save-stages-without-output PASS
 slurp-filter-accept-emits-once-without-terminal-bytes PASS
 slurp-filter-staged-quit-emits-nothing PASS

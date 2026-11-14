@@ -975,7 +975,7 @@ def run_slurp_checks(binary, directory, command_directory, report):
         session.send(b"2\rX" + CTRL_X + b"s")
         report.record("slurp-goto-line-preserves-indentation", session,
                       lambda screen: read_bytes(switched) == b"one\nX  two\nthree\n")
-        session.send(ALT_X + b"find-file\r")
+        session.send(ALT_X + b"edit\r")
         session.wait_until(has_text("Find file:"))
         session.send(b"slurp-open\t\r")
         report.record("slurp-find-file-completes-raw-spaced-path", session,
@@ -997,6 +997,36 @@ def run_slurp_checks(binary, directory, command_directory, report):
                       lambda screen: has_row("X  two")(screen)
                       and read_bytes(completed) == b"target!\n")
         session.send(CTRL_X + CTRL_C)
+        session.wait_until(is_line(""))
+
+        vi_completed = os.path.join(
+            directory,
+            "slurp-vi-open space with a long filename past sixty four bytes.txt")
+        with open(vi_completed, "w") as handle:
+            handle.write("vi target\n")
+        session.send(b"koshkit vi slurp-switch.txt\r")
+        session.wait_until(has_text("emulating vi normal"))
+        session.send(b":edit " + os.path.basename(vi_completed).encode() + b"\r")
+        report.record("slurp-vi-edit-opens-raw-spaced-path", session,
+                      has_row("vi target"))
+        session.send(b"A?")
+        session.wait_until(lambda screen: has_row("vi target?")(screen)
+                           and has_text("emulating vi insert")(screen))
+        session.send(KITTY_ESCAPE)
+        session.wait_until(has_text("emulating vi normal"))
+        session.send(b":e slurp-switch.txt\r")
+        session.wait_until(has_text("Unsaved changes:"))
+        session.send(b"cancel\r")
+        report.record("slurp-vi-edit-cancel-preserves-draft", session,
+                      lambda screen: has_row("vi target?")(screen)
+                      and read_bytes(vi_completed) == b"vi target\n")
+        session.send(b":edit slurp-switch.txt\r")
+        session.wait_until(has_text("Unsaved changes:"))
+        session.send(b"save\r")
+        report.record("slurp-vi-edit-save-precedes-switch", session,
+                      lambda screen: has_row("X  two")(screen)
+                      and read_bytes(vi_completed) == b"vi target?\n")
+        session.send(b":q\r")
         session.wait_until(is_line(""))
 
         session.send(b"printf 'one\\n' | slurp - >slurp-filter.out\r")

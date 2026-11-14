@@ -1208,9 +1208,11 @@ row); \f[CR]:set option[=value|?]\f[R], \f[CR]:set nooption\f[R]
 \f[CR]kosh.conf\f[R]); \f[CR]:format\f[R], \f[CR]:%format\f[R] (format
 the caret row or the buffer as \f[CR]\-\-format\f[R] does; source that
 does not parse stays unchanged and its error is shown); \f[CR]:e\f[R],
-\f[CR]:edit\f[R] (edit in an external editor); \f[CR]:u\f[R],
-\f[CR]:undo\f[R], \f[CR]:red\f[R], \f[CR]:redo\f[R]; \f[CR]:h\f[R],
-\f[CR]:help\f[R] (list the colon commands until the next key).
+\f[CR]:edit\f[R] (edit in an external editor), \f[CR]:e FILE\f[R],
+\f[CR]:edit FILE\f[R] (open the raw filename through the
+\f[CR]find\-file\f[R] workflow); \f[CR]:u\f[R], \f[CR]:undo\f[R],
+\f[CR]:red\f[R], \f[CR]:redo\f[R]; \f[CR]:h\f[R], \f[CR]:help\f[R] (list
+the colon commands until the next key).
 T}
 T{
 Emacs \f[CR]M\-x\f[R] commands
@@ -1221,7 +1223,7 @@ T}@T{
 Hint rows list the matching commands, with a description for each when
 six or fewer match.
 Commands: \f[CR]goto\-line\f[R] (move to a positive line number, clamped
-at the end), \f[CR]find\-file\f[R] (open a file),
+at the end), \f[CR]find\-file\f[R], \f[CR]edit\f[R] (open a file),
 \f[CR]save\-and\-quit\f[R] (save the buffer and leave), \f[CR]help\f[R]
 (list the commands), \f[CR]replace\-string\f[R],
 \f[CR]replace\-regexp\f[R] (replace every match in the buffer; supports
