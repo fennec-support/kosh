@@ -17,29 +17,20 @@ jobs:
           apk add --no-cache \
             nodejs git git-doc make build-base musl-dev linux-headers clang \
             llvm lld compiler-rt yash bash dash zsh busybox coreutils mandoc \
-            util-linux-misc python3 expect perl
+            util-linux-misc python3 expect perl pandoc
           [ -e /bin/dash ] || ln -s /usr/bin/dash /bin/dash
           git config --global --add safe.directory '*'
           llvm_bin=$(find /usr/lib /usr/bin -name llvm-profdata 2>/dev/null \
             | head -1 | xargs -r dirname)
           [ -n "$llvm_bin" ] && echo "$llvm_bin" >> "$GITHUB_PATH"
 
-      - name: Verify the test toolchain
-        run: |
-          for tool in make clang++ python3 perl script expect mkfifo strings; do
-            command -v "$tool"
-          done
-          test -x /bin/stty
-          bash --version | head -1
-          dash -c 'echo dash available'
-          make --version | head -1
-          clang++ --version | head -1
-          python3 --version
-
       - name: Checkout
         uses: actions/checkout@v5
         with:
           submodules: recursive
+
+      - name: Verify the test toolchain
+        run: sh scripts/verify-test-toolchain.sh
 
       - name: Create the test user
         run: |
@@ -49,6 +40,14 @@ jobs:
 
       - name: Build ASAN binary
         run: su tester -c 'make kosh'
+
+      - name: Verify generated artifacts
+        run: |
+          make docs baked-scripts
+          ./scripts/generate-completions.sh ./kosh-dbg completions/kosh.bash \
+            > completions/kosh.bash.new
+          mv completions/kosh.bash.new completions/kosh.bash
+          git diff --exit-code -- man src/BakedScripts.hpp completions/kosh.bash
 
       - name: Run golden tests
         run: su tester -c 'make test'
@@ -159,16 +158,7 @@ jobs:
           echo "DASH=$(brew --prefix dash-shell)/bin/dash" >> "$GITHUB_ENV"
 
       - name: Verify the test toolchain
-        run: |
-          for tool in make clang++ python3 perl script expect mkfifo strings; do
-            command -v "$tool"
-          done
-          test -x /bin/stty
-          "$BASHP" --version | head -1
-          "$DASH" -c 'echo dash available'
-          make --version | head -1
-          clang++ --version | head -1
-          python3 --version
+        run: sh scripts/verify-test-toolchain.sh
 
       - name: Build ASAN binary
         run: make kosh
