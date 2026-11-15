@@ -2,139 +2,81 @@ const std = @import("std");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
-
     const optimize = b.standardOptimizeOption(.{});
-    const is_release = optimize != .Debug;
-    const mode = if (is_release) "rel" else "dbg";
-
-    const module = b.createModule(.{
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-        .link_libcpp = true,
-    });
-
-    const exe = b.addExecutable(.{
-        .name = if (is_release) "kosh" else "kosh-dbg",
-        .root_module = module,
-    });
-
-    const baked_scripts = b.addSystemCommand(&.{ "make", "-C" });
-    baked_scripts.addArg(b.pathFromRoot("src"));
-    baked_scripts.addArg("baked-scripts");
-    baked_scripts.has_side_effects = true;
-    exe.step.dependOn(&baked_scripts.step);
-
-    var flags: std.ArrayList([]const u8) = .empty;
-    defer flags.deinit(b.allocator);
-
-    const common_flags = [_][]const u8{
-        "-std=c++23",
-        "-Wall",
-        "-Wextra",
-        "-Wdouble-promotion",
-        "-Wformat",
-        "-Wformat-security",
-        "-Wno-unused-command-line-argument",
-        "-Wno-deprecated",
-        "-Wno-unknown-warning-option",
-        "-Wno-error=maybe-uninitialized",
-        "-fvisibility=hidden",
-        "-fno-rtti",
-        "-fno-semantic-interposition",
-        "-Wno-unknown-pragmas",
-        "-fno-strict-aliasing",
-        "-Wno-date-time",
-    };
-    flags.appendSlice(b.allocator, &common_flags) catch @panic("out of memory");
-
-    const commit_hash = gitCommitHash(b);
-    const os_info = b.fmt("zig {f} {s}", .{ @import("builtin").zig_version, systemInfo(b) });
-
-    const defines = [_][]const u8{
-        "-DKOSH_COMPILER_COMMAND=\"zig c++\"",
-        "-DKOSH_LIBC=\"zig libc++\"",
-        b.fmt("-DKOSH_OS_INFO=\"{s}\"", .{os_info}),
-        b.fmt("-DKOSH_COMMIT_HASH=\"{s}\"", .{commit_hash}),
-        b.fmt("-DKOSH_BUILD_MODE=\"{s}\"", .{mode}),
-        "-DKOSH_ENVCXXFLAGS=\"\"",
-    };
-    flags.appendSlice(b.allocator, &defines) catch @panic("out of memory");
-    if (!is_release) {
-        flags.append(b.allocator, "-DKOSH_DEBUG_SYSTEM_KOSHCONF_OVERRIDE") catch @panic("out of memory");
-    }
-
-    // As in src/Makefile, release builds protect the stack everywhere, add
-    // stack clash probes and control-flow protection on Linux, and link a
-    // position-independent, eagerly bound image there.
-    if (is_release) {
-        flags.append(b.allocator, "-fstack-protector-strong") catch @panic("out of memory");
-        if (target.result.os.tag == .linux) {
-            flags.append(b.allocator, "-fstack-clash-protection") catch @panic("out of memory");
-            switch (target.result.cpu.arch) {
-                .x86_64 => flags.append(b.allocator, "-fcf-protection=full") catch @panic("out of memory"),
-                .aarch64 => flags.append(b.allocator, "-mbranch-protection=standard") catch @panic("out of memory"),
-                else => {},
-            }
-            exe.pie = true;
-            exe.link_z_relro = true;
-            exe.link_z_lazy = false;
-        }
-    }
-
-    // As in src/Makefile, Windows, macOS, and musl link the vendored regex.
-    const is_vendored_regex = target.result.os.tag == .windows or target.result.os.tag == .macos or target.result.isMuslLibC();
-    if (is_vendored_regex) {
-        flags.append(b.allocator, "-DKOSH_VENDORED_REGEX") catch @panic("out of memory");
-        module.addCSourceFiles(.{
-            .root = b.path("vendor/regex"),
-            .files = &.{ "regcomp.c", "regerror.c", "regexec.c", "tre-mem.c" },
-            .flags = &.{"-std=c11"},
-        });
-        module.addIncludePath(b.path("vendor/regex"));
-    }
-
-    const sources = collectSources(b);
-    module.addCSourceFiles(.{
-        .root = b.path("src"),
-        .files = sources,
-        .flags = flags.items,
-    });
-
-    // As in src/Makefile, Windows links the system libraries that the GNU ABI
-    // leaves out, and Darwin links two frameworks.
-    switch (target.result.os.tag) {
-        .windows => {
-            for ([_][]const u8{ "userenv", "advapi32", "shell32", "ole32", "uuid", "iphlpapi", "rstrtmgr", "ws2_32" }) |library| {
-                module.linkSystemLibrary(library, .{});
-            }
-            exe.mingw_unicode_entry_point = true;
+    const mode = b.option([]const u8, "mode", "Make build mode") orelse
+        switch (optimize) {
+            .debug => "dbg",
+            .small => "tinyrel",
+            else => "rel",
+        };
+    const target_name = switch (target.result.os.tag) {
+        .linux => "Linux",
+        .macos => "Darwin",
+        .windows => "Windows_NT",
+        else => {
+            b.getInstallStep().dependOn(&b.addFail("Make supports Linux, macOS, and Windows targets").step);
+            return;
         },
-        .macos => {
-            module.linkFramework("CoreFoundation", .{});
-            module.linkFramework("IOKit", .{});
-        },
-        else => {},
+    };
+    if (target.result.os.tag == .macos and
+        @import("builtin").os.tag == .macos and
+        target.result.cpu.arch != @import("builtin").cpu.arch)
+    {
+        b.getInstallStep().dependOn(&b.addFail("Make does not support native macOS cross-architecture builds").step);
+        return;
     }
-
-    const install_exe = b.addInstallArtifact(exe, .{});
+    if (target.result.os.tag == .windows and
+        target.result.cpu.arch != .x86_64)
+    {
+        b.getInstallStep().dependOn(&b.addFail("Make supports only x86_64 Windows targets").step);
+        return;
+    }
+    const is_windows = target.result.os.tag == .windows;
+    const exe_name = b.fmt("kosh{s}{s}", .{
+        if (std.mem.eql(u8, mode, "rel")) "" else b.fmt("-{s}", .{mode}),
+        if (is_windows) ".exe" else if (std.mem.eql(u8, mode, "cosmo")) ".com" else "",
+    });
+    const make = b.addSystemCommand(&.{ "make", "-C" });
+    make.addDirectoryArg(b.path("src"));
+    make.addArg("kosh");
+    make.has_side_effects = true;
+    make.addArgs(&.{ b.fmt("MODE={s}", .{mode}), b.fmt("TARGET={s}", .{target_name}) });
+    if (target.query.cpu_arch) |arch| {
+        make.addArg(b.fmt("ARCH={s}", .{@tagName(arch)}));
+    }
+    if (b.option(bool, "no-toiletline", "Build without the interactive editor") orelse false)
+        make.addArg("NO_TOILETLINE=1");
+    if (b.option(bool, "no-koshkit", "Build without bundled utilities") orelse false)
+        make.addArg("NO_KOSHKIT=1");
+    if (b.option(bool, "hardened", "Trap on container bounds violations") orelse (optimize == .safe))
+        make.addArg("HARDENED=1");
+    if (b.option([]const u8, "pgo", "Make PGO instrumentation mode")) |pgo|
+        make.addArg(b.fmt("PGO={s}", .{pgo}));
+    if (b.option([]const u8, "pgo-profile", "LLVM profile path")) |profile| {
+        const profile_path = if (std.fs.path.isAbsolute(profile))
+            b.graph.cwdRelativePath(profile)
+        else
+            b.path(profile);
+        make.addFileArg2(profile_path, .{ .prefix = "PGO_PROFILE=", .make_absolute = true });
+    }
+    const executable = make.addOutputFileArg2(exe_name, .{ .prefix = "OUTPUT_PATH=", .make_absolute = true });
+    const install_exe = b.addInstallBinFile(executable, exe_name);
     b.getInstallStep().dependOn(&install_exe.step);
 
-    if (b.option([]const u8, "link-moods", "Link bash, dash, or sh to kosh in the bin directory, separated by commas")) |list| {
-        addMoodLinks(b, install_exe, list, target.result.os.tag == .windows);
+    if (b.option([]const u8, "link-moods", "Link bash, dash, or sh beside kosh, separated by commas")) |list| {
+        addMoodLinks(b, install_exe, executable, exe_name, list, is_windows);
     }
 
     const run_step = b.step("run", "Build and run kosh");
-    const run_cmd = b.addRunArtifact(exe);
-    if (b.args) |args| run_cmd.addArgs(args);
+    const run_cmd = b.addRunFile(executable);
+    run_cmd.addPassthruArgs();
     run_step.dependOn(&run_cmd.step);
 }
 
 /// Each mood becomes a relative link to the executable beside it in bin, or a
 /// copy named MOOD.exe on Windows. A file that is not such a link stays and
 /// fails the install.
-fn addMoodLinks(b: *std.Build, install_exe: *std.Build.Step.InstallArtifact, list: []const u8, is_windows: bool) void {
-    const exe = install_exe.artifact;
+fn addMoodLinks(b: *std.Build, install_exe: *std.Build.Step.InstallFile, executable: std.Build.LazyPath, exe_name: []const u8, list: []const u8, is_windows: bool) void {
     var moods: std.ArrayList([]const u8) = .empty;
     var names = std.mem.splitScalar(u8, list, ',');
 
@@ -150,92 +92,16 @@ fn addMoodLinks(b: *std.Build, install_exe: *std.Build.Step.InstallArtifact, lis
 
     if (is_windows) {
         for (moods.items) |mood| {
-            b.getInstallStep().dependOn(&b.addInstallBinFile(exe.getEmittedBin(), b.fmt("{s}.exe", .{mood})).step);
+            b.getInstallStep().dependOn(&b.addInstallBinFile(executable, b.fmt("{s}.exe", .{mood})).step);
         }
         return;
     }
 
-    const links = b.allocator.create(MoodLinks) catch @panic("out of memory");
-    links.* = .{
-        .step = std.Build.Step.init(.{ .id = .custom, .name = "link moods", .owner = b, .makeFn = MoodLinks.make }),
-        .exe_name = exe.name,
-        .moods = moods.items,
-    };
+    const links = b.addSystemCommand(&.{"sh"});
+    links.addFileArg(b.path("scripts/link-moods.sh"));
+    links.addDirectoryArg(b.graph.path(.install_bin, ""));
+    links.addArg(exe_name);
+    links.addArgs(moods.items);
     links.step.dependOn(&install_exe.step);
     b.getInstallStep().dependOn(&links.step);
-}
-
-const MoodLinks = struct {
-    step: std.Build.Step,
-    exe_name: []const u8,
-    moods: []const []const u8,
-
-    fn make(step: *std.Build.Step, options: std.Build.Step.MakeOptions) anyerror!void {
-        _ = options;
-        const links: *MoodLinks = @fieldParentPtr("step", step);
-        const b = step.owner;
-        const io = b.graph.io;
-        const bin_path = b.getInstallPath(.bin, "");
-        var dir = try std.Io.Dir.cwd().openDir(io, bin_path, .{});
-        defer dir.close(io);
-
-        for (links.moods) |mood| {
-            dir.symLink(io, links.exe_name, mood, .{}) catch |err| switch (err) {
-                error.PathAlreadyExists => {
-                    var buffer: [std.fs.max_path_bytes]u8 = undefined;
-                    const length = dir.readLink(io, mood, &buffer) catch 0;
-                    if (!std.mem.eql(u8, buffer[0..length], links.exe_name)) {
-                        return step.fail("{s}/{s} is not a link to {s}", .{ bin_path, mood, links.exe_name });
-                    }
-                },
-                else => |e| return e,
-            };
-        }
-    }
-};
-
-fn gitCommitHash(b: *std.Build) []const u8 {
-    const result = std.process.run(b.allocator, b.graph.io, .{
-        .argv = &.{ "git", "rev-parse", "HEAD" },
-        .cwd = .{ .path = b.build_root.path orelse "." },
-    }) catch return "<no git>";
-    if (result.term != .exited or result.term.exited != 0) return "<no git>";
-    return std.mem.trim(u8, result.stdout, " \n\r\t");
-}
-
-fn systemInfo(b: *std.Build) []const u8 {
-    const result = std.process.run(b.allocator, b.graph.io, .{
-        .argv = &.{ "uname", "-srvom" },
-        .cwd = .{ .path = b.build_root.path orelse "." },
-    }) catch return @tagName(@import("builtin").target.os.tag);
-    if (result.term != .exited or result.term.exited != 0)
-        return @tagName(@import("builtin").target.os.tag);
-    return std.mem.trim(u8, result.stdout, " \n\r\t");
-}
-
-fn collectSources(b: *std.Build) []const []const u8 {
-    var sources: std.ArrayList([]const u8) = .empty;
-
-    var dir = b.build_root.handle.openDir(
-        b.graph.io,
-        "src",
-        .{ .iterate = true },
-    ) catch @panic("unable to open the src directory");
-    defer dir.close(b.graph.io);
-
-    var walker = dir.walk(b.allocator) catch @panic("out of memory");
-    defer walker.deinit();
-
-    while (walker.next(b.graph.io) catch @panic("unable to walk src")) |entry| {
-        if (entry.kind != .file) continue;
-        if (!std.mem.endsWith(u8, entry.path, ".cpp")) continue;
-        // As in src/Makefile, sources sit in src or one directory below it,
-        // and the routed platform fragments compile through Platform.cpp.
-        if (std.mem.count(u8, entry.path, std.fs.path.sep_str) > 1) continue;
-        if (std.mem.startsWith(u8, std.fs.path.basename(entry.path), "PlatformPosix")) continue;
-        if (std.mem.startsWith(u8, std.fs.path.basename(entry.path), "PlatformWin32")) continue;
-        sources.append(b.allocator, b.dupe(entry.path)) catch @panic("out of memory");
-    }
-
-    return sources.toOwnedSlice(b.allocator) catch @panic("out of memory");
 }
