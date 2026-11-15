@@ -8,6 +8,7 @@
  */
 
 #include "../CLI.hpp"
+#include "../CLILive.hpp"
 #include "../Errors.hpp"
 #include "../Eval.hpp"
 #include "../Koshkit.hpp"
@@ -187,6 +188,8 @@ Man::execute(const ExecContext               &ec,
         }
       }
     }
+    if (colors::stdout_is_a_terminal())
+      output = escape_terminal_text(cxt.scratch_allocator(), output.view());
 
     ec.print_to_stdout(output);
 
@@ -226,8 +229,12 @@ Man::execute(const ExecContext               &ec,
       status = 1;
       continue;
     }
+    let shown = String{cxt.scratch_allocator(), content->view()};
 
-    ec.print_to_stdout(content->view());
+    if (colors::stdout_is_a_terminal())
+      shown = escape_terminal_text(cxt.scratch_allocator(), shown.view());
+
+    ec.print_to_stdout(shown.view());
   }
 
   return status;

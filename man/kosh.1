@@ -2756,6 +2756,9 @@ operand or the first section that has one, searching the directories of
 list each page whose name or source contains the keyword, ignoring ASCII
 case, with its first line).
 Returns \f[CR]1\f[R] for a missing page.
+On a terminal, page and summary text renders control bytes and invalid
+UTF\-8 inertly (caret and replacement notation); redirected output keeps
+the raw bytes.
 T}
 T{
 \f[CR]mkdir\f[R], \f[CR]rmdir\f[R] 
