@@ -2,10 +2,9 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file supplies KOSH_NO_TOILETLINE builds with noninteractive history,
- * which is read from the history file and written back only by an explicit
- * write or append, and inert implementations of terminal-dependent editor
- * operations.
+ * This file supplies no-editor builds with history storage and inert
+ * terminal-dependent operations. Noninteractive history changes stay private;
+ * interactive recording and explicit writes or appends reach the file.
  */
 
 #include "CLIColors.hpp"
@@ -55,6 +54,8 @@ get_no_editor_history_state() -> no_editor_history_state &
 
   return state;
 }
+
+static bool SHOULD_PERSIST_HISTORY = true;
 
 static fn
 update_history_file_status(no_editor_history_state &state, const Path &path)
@@ -978,7 +979,7 @@ append_unwritten_history() -> koshka::ErrorOr<koshka::Ok>
 fn
 set_history_persistent(bool should_persist) -> void
 {
-  unused(should_persist);
+  koshka::internal::SHOULD_PERSIST_HISTORY = should_persist;
 }
 
 fn
@@ -1189,8 +1190,15 @@ append_history_event(StringView command) -> koshka::Maybe<usize>
 
   encode_history_record(record, command);
 
-  return koshka::internal::append_no_editor_history_records(state,
-                                                            record.view());
+  let const number =
+      koshka::internal::append_no_editor_history_records(state, record.view());
+  if (koshka::internal::SHOULD_PERSIST_HISTORY &&
+      append_unwritten_history().is_error())
+  {
+    return koshka::None;
+  }
+
+  return number;
 }
 
 fn
@@ -1313,50 +1321,6 @@ emit_newlines(StringView buffer) -> void
 }
 
 fn
-get_default_prompt_template() -> String
-{
-  let       template_string  = String{koshka::heap_allocator()};
-  let const should_use_color = koshka::colors::stdout_wants_color();
-
-  if (should_use_color) {
-    template_string += "[\\u@\\h${KOSH_GIT_BRANCH:+ (";
-    template_string += koshka::colors::color_to_sv(koshka::colors::color::Cyan);
-    template_string += "$KOSH_GIT_BRANCH";
-    template_string +=
-        koshka::colors::color_to_sv(koshka::colors::color::Reset);
-    template_string += ")} ";
-    template_string +=
-        koshka::colors::color_to_sv(koshka::colors::color::Green);
-    template_string += "\\P";
-    template_string +=
-        koshka::colors::color_to_sv(koshka::colors::color::Reset);
-  } else {
-    template_string += "[\\u@\\h${KOSH_GIT_BRANCH:+ ($KOSH_GIT_BRANCH)} \\P";
-  }
-
-  template_string += "] ";
-
-  return template_string;
-}
-
-fn
-get_default_right_prompt_template() -> String
-{
-  return String{koshka::heap_allocator()};
-}
-
-fn
-decode_prompt_escapes(StringView                 prompt,
-                      const koshka::EvalContext &context) throws
-    -> String
-{
-  unused(prompt);
-  unused(context);
-
-  return String{koshka::heap_allocator()};
-}
-
-fn
 build_prompt(koshka::EvalContext &context) -> String
 {
   unused(context);
@@ -1386,15 +1350,6 @@ build_transient_right_prompt(koshka::EvalContext &context)
   unused(context);
 
   return koshka::None;
-}
-
-fn
-expand_prompt_template(StringView prompt, koshka::EvalContext &context)
-    -> String
-{
-  unused(context);
-
-  return String{koshka::heap_allocator(), prompt};
 }
 
 fn
