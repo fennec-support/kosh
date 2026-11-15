@@ -701,9 +701,7 @@ Server::change_document(const JsonValue *params) throws -> Document *
   /* at this point: document is non-null, and its source holds the full text
      from the last content change. */
 
-  /* spans_for() identifies its source by data pointer and length only. an
-     edit with the same pointer and length would otherwise return spans from
-     a different text. */
+  /* a document change hands the cache different source bytes. */
   m_highlight_cache = completion::ShellHighlightCache{heap_allocator()};
 
   return document;

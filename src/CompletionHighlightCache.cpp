@@ -470,13 +470,8 @@ split_spans_at_lines(StringView                 source,
   }
 }
 
-/* memory: m_pieces and m_line_spans use m_allocator and are freed when the
-           cache is destroyed. a source change replaces m_pieces. each call
-           clears m_line_spans, so its result is valid until the next call.
-   time:   a source change runs scan_highlight_source() over all of source,
-           then split_spans_at_lines(). each call costs O(log m + k), where m
-           is m_pieces.count() and k is the number of pieces that overlap the
-           line. */
+/* Source bytes are owned so equal-address buffers cannot reuse stale roles.
+   Each call compares the bytes before selecting the requested line spans. */
 fn
 ShellHighlightCache::spans_for(StringView   source,
                                usize        line_start,
@@ -484,24 +479,22 @@ ShellHighlightCache::spans_for(StringView   source,
                                EvalContext &context) throws
     -> const ArrayList<highlight_span> *
 {
-  let const has_source_changed =
-      source.data != m_source.data || source.length != m_source.length;
+  let const has_source_changed = source != m_source.view();
 
   if (has_source_changed) {
     /* m_source changes only after the pieces are complete, so a scan that
        throws leaves the next call to scan again. */
-    m_source = StringView{};
+    m_source.clear();
     m_pieces = ArrayList<highlight_span>{m_allocator};
     HIGHLIGHT_ARENA.reset();
     scan_highlight_source(source, context, m_pieces);
     HIGHLIGHT_ARENA.reset();
     split_spans_at_lines(source, m_pieces);
-    m_source = source;
+    m_source = String{m_allocator, source};
   }
 
-  /* at this point: m_pieces holds the pieces of m_source sorted by start.
-     no piece has a newline before its last byte. the cache treats an equal
-     data pointer and length as equal bytes. */
+  /* m_pieces holds the pieces of m_source sorted by start. No piece has a
+     newline before its last byte. */
   usize first_piece = 0;
   usize piece_limit = m_pieces.count();
 
@@ -638,9 +631,62 @@ debug_diagnostic_cache_is_stable(EvalContext &context) throws -> bool
     }
 
   if (!has_resolved_function_call) return false;
+
+  bool has_stale_keyword = true;
+
+  {
+    let mutable_source = heap_allocator().alloc_array<char>(8);
+
+    memcpy(mutable_source, "if true", 8);
+
+    let const  before_view = StringView{mutable_source, 7};
+    let const *before =
+        cache.spans_for(before_view, 0, before_view.count(), context);
+    bool has_if_keyword = false;
+
+    for (let const &span : *before) {
+      if (span.start == 0 && span.end == 2 &&
+          span.role == highlight_role::keyword)
+      {
+        has_if_keyword = true;
+      }
+    }
+
+    heap_allocator().free_array(mutable_source, 8);
+
+    if (!has_if_keyword) return false;
+  }
+
+  {
+    /* the same-size allocation takes the address of the freed buffer, so
+       the old cache rule would reuse the keyword spans of "if true". */
+    let replaced_source = heap_allocator().alloc_array<char>(8);
+
+    memcpy(replaced_source, "xx true", 8);
+
+    let const  after_view = StringView{replaced_source, 7};
+    let const *after =
+        cache.spans_for(after_view, 0, after_view.count(), context);
+
+    has_stale_keyword = false;
+
+    for (let const &span : *after) {
+      if (span.start == 0 && span.end == 2 &&
+          span.role == highlight_role::keyword)
+      {
+        has_stale_keyword = true;
+      }
+    }
+
+    heap_allocator().free_array(replaced_source, 8);
+  }
+
+  if (has_stale_keyword) return false;
+
   /* at this point: the keyword line has a keyword span at 0 through 4, the
-     repeated spans_for() call matches the first, and the function call has a
-     resolved_command span at 0 through 6. */
+     repeated spans_for() call matches the first, the function call has a
+     resolved_command span at 0 through 6, and a buffer reuse cannot keep
+     the keyword role of earlier bytes. */
 
   let const  other_source = ConstString{"echo ok"};
   let const *invalidated =

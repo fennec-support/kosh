@@ -245,18 +245,15 @@ class ShellHighlightCache
 {
 public:
   explicit ShellHighlightCache(Allocator allocator) wontthrow
-      : m_pieces{allocator}, m_line_spans{allocator}, m_allocator{allocator}
+      : m_source{allocator}, m_pieces{allocator}, m_line_spans{allocator},
+        m_allocator{allocator}
   {}
 
-  /* memory: m_pieces and m_line_spans are owned by the cache. m_pieces is
-             replaced when source changes. the pointer returned is valid until
-             the next call. spans_for() identifies source by data pointer and
-             length, so a caller replaces the cache when the bytes at the same
-             address change.
-     time:   when source changes, one scan_highlight_source() over source, then
-             split_spans_at_lines(), which sorts the P pieces when they are out
-             of order. otherwise, a binary search over P pieces, then one step
-             per piece that overlaps the line. */
+  /* memory: the cache owns source bytes, pieces, and line spans. the returned
+             pointer is valid until the next call.
+     time:   source comparison costs O(source.length). a source change scans
+             and splits all pieces; a cache hit searches the pieces and copies
+             the spans that overlap the requested line. */
   fn
   spans_for(StringView   source,
             usize        line_start,
@@ -265,7 +262,7 @@ public:
       -> const ArrayList<highlight_span> *;
 
 private:
-  StringView                m_source{};
+  String                    m_source;
   ArrayList<highlight_span> m_pieces;
   ArrayList<highlight_span> m_line_spans;
   Allocator                 m_allocator;
