@@ -131,7 +131,7 @@ get_help_argument_text(help_argument argument) wontthrow -> StringView
   case help_argument::dash_question:         return "-?";
   }
 
-  return "--help";
+  unreachable("invalid help argument");
 }
 
 inline constexpr static_string_entry<help_argument> HELP_ALLOWLIST_ENTRIES[] = {
@@ -846,8 +846,8 @@ inline constexpr static_string_entry<help_argument> HELP_ALLOWLIST_ENTRIES[] = {
 inline constexpr StaticStringMap HELP_ALLOWLIST{HELP_ALLOWLIST_ENTRIES};
 
 inline constexpr static_string_entry<const char *>
-    SUBCOMMAND_HELP_ARGUMENT_ENTRIES[] = {
-        {SSK("git"), "-h"},
+                                 SUBCOMMAND_HELP_ARGUMENT_ENTRIES[] = {
+                                     {SSK("git"), "-h"},
 };
 inline constexpr StaticStringMap SUBCOMMAND_HELP_ARGUMENTS{
     SUBCOMMAND_HELP_ARGUMENT_ENTRIES};
