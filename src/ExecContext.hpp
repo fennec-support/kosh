@@ -11,6 +11,7 @@
 
 #include "Builtin.hpp"
 #include "Errors.hpp"
+#include "EvalRuntime.hpp"
 #include "EvalTypes.hpp"
 #include "MimicMood.hpp"
 #include "ProgramResolver.hpp"

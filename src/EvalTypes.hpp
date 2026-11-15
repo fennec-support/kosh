@@ -15,6 +15,7 @@
 #include "Builtin.hpp"
 #include "CLIColors.hpp"
 #include "Errors.hpp"
+#include "EvalRuntime.hpp"
 #include "MimicMood.hpp"
 #include "base/Arena.hpp"
 #include "base/Bitset.hpp"

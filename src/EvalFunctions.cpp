@@ -93,7 +93,7 @@ EvalContext::register_function(StringView                name,
   ASSERT(body_storage.has_value());
   ASSERT(body_storage.get_body() != nullptr);
 
-  if (function_store().readonly().contains(name)) {
+  if (function_store().is_readonly(name)) {
     throw ErrorWithLocation{definition_location,
                             "Unable to redefine '" + name +
                                 "' because it is a read only function"};
@@ -187,8 +187,8 @@ EvalContext::register_function(StringView                name,
       info.signature_location =
           SourceLocation{position - first_line.line_start, length,
                          signature_site.location.source_name_index};
-      info.signature_line_offset = static_cast<isize>(first_line.line_number) +
-                                   signature_site.line_offset;
+      info.signature_line_offset  = static_cast<isize>(first_line.line_number) +
+                                    signature_site.line_offset;
       info.has_signature_location = true;
     }
   }
@@ -220,9 +220,9 @@ fn
 EvalContext::function_definition_info_of(StringView name) const wontthrow
     -> const function_definition_info *
 {
-  let const storage = function_store().definitions().find(name);
+  let const *storage = function_store().find_storage(name);
 
-  return storage.has_value() ? storage->get_definition_info() : nullptr;
+  return storage != nullptr ? storage->get_definition_info() : nullptr;
 }
 
 pure fn
@@ -751,7 +751,7 @@ EvalContext::capture_trap_definition(const SourceLocation &location,
       position - line_position.line_start,
       location.length < available_length ? location.length : available_length,
       resolved_source.is_windowed ? resolved_source.source_name_index
-                                     : location.source_name_index};
+                                  : location.source_name_index};
   definition.line_offset = static_cast<isize>(line_position.line_number) +
                            resolved_source.line_offset;
 

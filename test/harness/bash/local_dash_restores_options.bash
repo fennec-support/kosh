@@ -44,3 +44,22 @@ flag_after_dash() {
   declare -p flagged
 }
 flag_after_dash
+
+set +u
+repeated_save() {
+  local -
+  set -u
+  local -
+  : "$(local -; set +u)"
+  case $- in *u*) echo "outer saved nounset=on" ;; esac
+}
+repeated_save
+case $- in *u*) echo "repeated nounset=leaked" ;; *) echo "repeated nounset=off" ;; esac
+
+isolated_save() {
+  : "$(local -; set -u)"
+  set -u
+}
+isolated_save
+case $- in *u*) echo "isolated save does not localize parent" ;; esac
+set +u

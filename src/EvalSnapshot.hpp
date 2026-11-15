@@ -290,12 +290,18 @@ struct completion_snapshot
   }
 };
 
+struct saved_scope_options
+{
+  u64  shell_options;
+  bool was_nounset_explicit;
+};
+
 struct scope_snapshot
 {
-  CopyOnWrite<StringMap<String>>      aliases;
-  ArrayList<ArrayList<local_binding>> local_scopes;
-  usize                               local_scope_depth;
-  ArrayList<Maybe<u64>>               saved_scope_shell_options;
+  CopyOnWrite<StringMap<String>>        aliases;
+  ArrayList<ArrayList<local_binding>>   local_scopes;
+  usize                                 local_scope_depth;
+  ArrayList<Maybe<saved_scope_options>> saved_scope_shell_options;
 };
 
 struct execution_snapshot

@@ -77,9 +77,9 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     for (usize i = 1; i < args.count(); i++) {
       let const arg             = args[i].view();
       let const equals_position = arg.find_character('=');
-      let const name            = equals_position.has_value()
-                                      ? arg.substring_of_length(0, *equals_position)
-                                      : arg;
+      let const name = equals_position.has_value()
+                           ? arg.substring_of_length(0, *equals_position)
+                           : arg;
 
       if (name == "-" || name_is_valid_identifier(name)) {
         continue;
@@ -118,10 +118,9 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
                                          1];
 
     if (!saved_options.has_value()) {
-      saved_options = cxt.runtime_state().get_shell_options();
-      cxt.scope_store().save_explicit_nounset(
-          cxt.scope_store().local_scope_depth() - 1,
-          cxt.runtime_state().was_error_unset_set_explicitly());
+      saved_options = saved_scope_options{
+          cxt.runtime_state().get_shell_options(),
+          cxt.runtime_state().was_error_unset_set_explicitly()};
     }
   };
 
@@ -213,8 +212,8 @@ Local::execute(ExecContext &ec, EvalContext &cxt) const throws -> i32
     if (let const bracket = identifier.find_character('[');
         bracket.has_value() && identifier[identifier.count() - 1] == ']')
     {
-      subscript     = identifier.substring_of_length(*bracket + 1,
-                                                     name.count() - *bracket - 2);
+      subscript = identifier.substring_of_length(*bracket + 1,
+                                                 name.count() - *bracket - 2);
       has_subscript = true;
       identifier    = identifier.substring_of_length(0, *bracket);
     }
