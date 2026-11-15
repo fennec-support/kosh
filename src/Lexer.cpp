@@ -20,6 +20,7 @@
 #include "base/Common.hpp"
 #include "base/Debug.hpp"
 #include "base/Trace.hpp"
+#include "platform/Platform.hpp"
 #include "util/Utils.hpp"
 
 namespace koshka {
@@ -263,6 +264,12 @@ Lexer::peek_shell_token() throws -> Token *
 
   skip_whitespace();
 
+  if (os::is_stack_nearly_exhausted()) {
+    throw ErrorWithLocationAndDetails{
+        here(m_cursor_position, 1), "Shell syntax is nested too deeply",
+        "Move the inner commands into a function"};
+  }
+
   Token *const token = lex_shell_token();
 
   m_peek_cache = token;
@@ -279,6 +286,12 @@ Lexer::next_shell_token() throws -> Token *
   let const is_peek_cache_live = peek_cache_is_live();
 
   if (!is_peek_cache_live) skip_whitespace();
+
+  if (!is_peek_cache_live && os::is_stack_nearly_exhausted()) {
+    throw ErrorWithLocationAndDetails{
+        here(m_cursor_position, 1), "Shell syntax is nested too deeply",
+        "Move the inner commands into a function"};
+  }
 
   Token *const token = is_peek_cache_live ? m_peek_cache : lex_shell_token();
 
@@ -403,8 +416,8 @@ Lexer::register_heredoc(StringView         delimiter,
   let &arena    = m_parse_session.get_arena();
   let  contents = arena.create<heredoc_contents>(
       bump_allocator(arena), tab_policy == heredoc_tab_policy::Preserve
-                                  ? heredoc_source_mapping::Contiguous
-                                  : heredoc_source_mapping::Transformed);
+                                 ? heredoc_source_mapping::Contiguous
+                                 : heredoc_source_mapping::Transformed);
 
   ASSERT(contents != nullptr);
 
@@ -413,11 +426,27 @@ Lexer::register_heredoc(StringView         delimiter,
 
   m_pending_heredocs.push({
       String{heap_allocator(), delimiter},
-      contents, tab_policy,
-      should_expand
+      contents, &arena,
+      m_next_heredoc_registration_index++, tab_policy, should_expand
   });
 
   return contents;
+}
+
+fn
+Lexer::drop_pending_heredocs_in(const BumpArena &arena,
+                                usize            checkpoint) wontthrow -> void
+{
+  for (usize index = m_pending_heredocs.count(); index > 0; index--) {
+    let const &pending = m_pending_heredocs[index - 1];
+
+    /* A nested function owns another arena that the failed body also frees. */
+    if (pending.owning_arena == &arena ||
+        pending.registration_index >= checkpoint)
+    {
+      m_pending_heredocs.remove(index - 1);
+    }
+  }
 }
 
 template <class Emit>
@@ -433,7 +462,7 @@ Lexer::walk_heredoc_body(usize              start,
   bool                      has_near_miss      = false;
   lexer::heredoc_join_state join_state{};
   heredoc_terminator_miss   near_miss{0, 0,
-                                    heredoc_miss_kind::IndentedTerminator};
+                                      heredoc_miss_kind::IndentedTerminator};
 
   loop {
     if (position >= m_source.length) break;
@@ -501,9 +530,9 @@ Lexer::walk_heredoc_body(usize              start,
         has_near_miss = true;
         near_miss     = heredoc_terminator_miss{
             content_start, delimiter.length,
-            leading_length == 0 ? heredoc_miss_kind::TrailingBlankTerminator
-                  : is_tab_indentation ? heredoc_miss_kind::TabIndentedTerminator
-                                       : heredoc_miss_kind::IndentedTerminator};
+            leading_length == 0  ? heredoc_miss_kind::TrailingBlankTerminator
+            : is_tab_indentation ? heredoc_miss_kind::TabIndentedTerminator
+                                 : heredoc_miss_kind::IndentedTerminator};
       }
     }
 
@@ -1823,6 +1852,14 @@ Lexer::validate_substitution_body(
     StringView            body,
     const SourceLocation &outer_location) throws -> void
 {
+  if (os::is_stack_nearly_exhausted()) {
+    record_substitution_error(ErrorWithLocationAndDetails{
+        outer_location, "Command substitution is nested too deeply",
+        "Move the inner commands into a function"});
+
+    return;
+  }
+
   if (m_substitution_nesting_depth >= lexer::MAX_SUBSTITUTION_NESTING_DEPTH) {
     record_substitution_error(ErrorWithLocationAndDetails{
         outer_location,
@@ -1846,7 +1883,7 @@ Lexer::validate_substitution_body(
   let const is_exact     = body.data == m_source.data + body_position;
   let       nested_lexer = Lexer{
       is_exact ? m_source.substring_of_length(0, body_position + body.length)
-                     : body,
+               : body,
       arena, source_name_at(m_parse_session.source_name_index()), mood(),
       m_parse_session.get_allocation_kind()};
 

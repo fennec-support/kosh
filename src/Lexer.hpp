@@ -242,6 +242,8 @@ struct heredoc_pending
 {
   String             delimiter;
   heredoc_contents  *contents;
+  const BumpArena   *owning_arena;
+  usize              registration_index;
   heredoc_tab_policy tab_policy;
   bool               should_expand;
 };
@@ -573,17 +575,14 @@ public:
       -> const heredoc_contents *;
 
   pure fn
-  get_pending_heredoc_count() const wontthrow -> usize
+  pending_heredoc_checkpoint() const wontthrow -> usize
   {
-    return m_pending_heredocs.count();
+    return m_next_heredoc_registration_index;
   }
 
   fn
-  drop_pending_heredocs_after(usize heredoc_count) wontthrow -> void
-  {
-    while (m_pending_heredocs.count() > heredoc_count)
-      m_pending_heredocs.pop_back();
-  }
+  drop_pending_heredocs_in(const BumpArena &arena, usize checkpoint) wontthrow
+      -> void;
 
 protected:
   pure alwaysinline fn
@@ -620,6 +619,7 @@ protected:
   ArrayList<heredoc_terminator_miss> m_heredoc_terminator_misses{
       heap_allocator()};
   ArrayList<heredoc_pending> m_pending_heredocs{heap_allocator()};
+  usize                      m_next_heredoc_registration_index{0};
 
   fn
   collect_pending_heredocs() throws -> void;

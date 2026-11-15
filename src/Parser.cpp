@@ -18,6 +18,7 @@
 #include "base/Arena.hpp"
 #include "base/Debug.hpp"
 #include "base/Trace.hpp"
+#include "platform/Platform.hpp"
 #include "util/Utils.hpp"
 
 namespace koshka {
@@ -602,8 +603,8 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
     }
 
     let const was_command_position = is_command_position;
-    let const is_paren = token->kind() == Token::Kind::LeftParen ||
-                         token->kind() == Token::Kind::RightParen;
+    let const is_paren             = token->kind() == Token::Kind::LeftParen ||
+                                     token->kind() == Token::Kind::RightParen;
     let const is_inside_case =
         !open_closers.is_empty() && open_closers.back() == Token::Kind::Esac;
 
@@ -640,9 +641,9 @@ Parser::skip_failed_statement(ArrayList<Token::Kind> &open_closers,
        reported. The list stops before the closer, which the skip consumes. */
     let const body_mask =
         open_closers.is_empty()
-                 ? u64{0}
-                 : get_skipped_body_mask(open_closers.back(), token->kind(),
-                                         was_command_position);
+            ? u64{0}
+            : get_skipped_body_mask(open_closers.back(), token->kind(),
+                                    was_command_position);
 
     if (body_mask != 0) {
       m_lexer.advance_past_last_peek();
@@ -1041,13 +1042,20 @@ throw_missing_operand(const SourceLocation       &location,
 fn
 Parser::check_command_depth() throws -> void
 {
-  if (m_command_depth <= MAX_COMMAND_DEPTH) return;
+  let const is_stack_exhausted = os::is_stack_nearly_exhausted();
 
-  Token *token = m_lexer.peek_shell_token();
+  if (m_command_depth <= MAX_COMMAND_DEPTH && !is_stack_exhausted) return;
 
-  ASSERT(token != nullptr);
+  let const location =
+      SourceLocation{m_lexer.cursor_position(), 1, m_lexer.source_name_index()};
+
+  if (is_stack_exhausted) {
+    throw koshka::ErrorWithLocationAndDetails{
+        location, "Compound commands are nested too deeply",
+        "Move the inner commands into a function"};
+  }
   throw koshka::ErrorWithLocationAndDetails{
-      token->source_location(),
+      location,
       "Compound commands are nested more than " +
           String::from(static_cast<i64>(MAX_COMMAND_DEPTH), heap_allocator()) +
           " levels deep",
@@ -2323,6 +2331,11 @@ Parser::finish_function_body(const SourceLocation &location,
                                    analysis_scope_definition_kind::Function);
 
   let const scope_mark = open_analysis_scope();
+  defer {
+    while (m_analysis_scope_definitions.count() > scope_mark) {
+      m_analysis_scope_definitions.pop_back();
+    }
+  };
 
   let const rest_of_source = m_lexer.source().substring(location.position);
   let const line_length    = rest_of_source.find_character('\n');
@@ -2331,25 +2344,24 @@ Parser::finish_function_body(const SourceLocation &location,
   let      &previous_arena      = m_lexer.arena();
   let const previous_arena_kind = m_lexer.arena_kind();
   Command  *body                = nullptr;
+  let const heredoc_checkpoint  = m_lexer.pending_heredoc_checkpoint();
+  bool      is_body_retained    = false;
+  defer {
+    if (!is_body_retained)
+      m_lexer.drop_pending_heredocs_in(*body_storage.get_arena(),
+                                       heredoc_checkpoint);
+  };
 
   {
-    /* a failed body drops its pending heredocs. parse_command_list() recovers
-       and keeps lexing with the same lexer, and the lexer consumes pending
-       heredoc lines at the next newline. */
-    let const pending_heredoc_count = m_lexer.get_pending_heredoc_count();
+    /* Pending heredocs cannot outlive a discarded function arena, even when
+       body parsing returns no command or a later definition step throws. */
 
     m_lexer.set_arena(*body_storage.get_arena(),
                       ParseSession::AllocationKind::FunctionBody);
     defer {
       m_lexer.set_arena(previous_arena, previous_arena_kind);
     };
-    try {
-      body = parse_simple_command();
-    } catch (...) {
-      m_lexer.drop_pending_heredocs_after(pending_heredoc_count);
-      unused(close_analysis_scope(scope_mark));
-      throw;
-    }
+    body = parse_simple_command();
   }
 
   if (body == nullptr) {
@@ -2362,11 +2374,13 @@ Parser::finish_function_body(const SourceLocation &location,
      and m_lexer uses previous_arena again for FunctionDefinition. */
   body_storage.set_body(body);
 
+  /* Keep a handle until every throwing definition step has completed. */
   let const definition = m_lexer.arena().create<FunctionDefinition>(
-      location, signature_location, name, steal(body_storage));
+      location, signature_location, name, body_storage);
 
   definition->set_analysis_scope_definitions(close_analysis_scope(scope_mark));
   definition->set_source_end_position(body->source_end_position());
+  is_body_retained = true;
 
   return definition;
 }
@@ -2383,12 +2397,12 @@ Parser::parse_function_definition(const Token *name_token) throws
   LOG(Debug, "parsing a function definition for '%s'", name.c_str());
 
   m_lexer.advance_past_last_peek();
-  let const close              = next_token_of_kind(Token::Kind::RightParen,
-                                                    "Expected ')' in a function definition");
+  let const close = next_token_of_kind(Token::Kind::RightParen,
+                                       "Expected ')' in a function definition");
   let       signature_location = location;
   signature_location.length    = close->source_location().position +
-                              close->source_location().length -
-                              location.position;
+                                 close->source_location().length -
+                                 location.position;
 
   return finish_function_body(location, name.view(), signature_location);
 }

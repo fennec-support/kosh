@@ -6,7 +6,11 @@ deep_close=$(printf ')%.0s' $(seq 1 300))
 deep="${deep_open}deep${deep_close}"
 
 echo "== deep nesting is guarded, not crashing:"
-"$BIN" --mood bash -c "echo $deep" 2>&1 | grep -c "nested too deeply"
+if "$BIN" --mood bash -c "echo $deep" 2>&1 | grep -q "nested too deeply"; then
+  echo ok
+else
+  echo broken
+fi
 
 echo "== exit status is a clean error, not a signal death:"
 "$BIN" --mood bash -c "echo $deep" >/dev/null 2>&1
@@ -78,3 +82,89 @@ echo "== unbounded function recursion is guarded, not crashing:"
 "$BIN" "$TEST_TEMP_DIRECTORY/deep-function-recursion.sh" >/dev/null 2>&1
 status=$?
 [ "$status" -lt 128 ] && echo ok || echo "crashed with signal $((status - 128))"
+
+# Parse-only nesting must stop before native-stack exhaustion in sanitized
+# builds too. Test complete and incomplete words, quote scans, and subshells.
+do_check_parse_depth() {
+  "$BIN" --mood bash -n -c "$2" > "$TEST_TEMP_DIRECTORY/depth.err" 2>&1
+  status=$?
+  if [ "$status" -eq 2 ] &&
+    grep -q 'nested too deeply\|nested more than\|Unterminated' \
+      "$TEST_TEMP_DIRECTORY/depth.err"; then
+    echo "$1: guarded"
+  else
+    echo "$1: unexpected status=$status"
+  fi
+}
+
+echo "== parse depth is bounded independently of evaluation:"
+for depth in 400 5000; do
+  deep_open=$(printf '$(echo %.0s' $(seq 1 "$depth"))
+  deep_close=$(printf ')%.0s' $(seq 1 "$depth"))
+  do_check_parse_depth "substitution $depth" "echo $deep_open:$deep_close"
+done
+do_check_parse_depth 'incomplete substitution' "echo $deep_open"
+quoted_open=$(printf '"$(echo %.0s' $(seq 1 400))
+quoted_close=$(printf ')"%.0s' $(seq 1 400))
+do_check_parse_depth 'quoted substitution' \
+  "echo $quoted_open:$quoted_close"
+paren_open=$(printf '( %.0s' $(seq 1 5000))
+paren_close=$(printf ') %.0s' $(seq 1 5000))
+do_check_parse_depth 'subshell' "$paren_open:$paren_close"
+paren_open=$(printf '( %.0s' $(seq 1 200))
+paren_close=$(printf ') %.0s' $(seq 1 200))
+"$BIN" --mood bash -n -c "$paren_open:$paren_close" >/dev/null 2>&1
+echo "reasonable subshell depth: status=$?"
+
+# Collection clears older pending heredocs, so a queue length cannot identify
+# entries registered in a function arena that error recovery later discards.
+echo "== failed function heredocs do not outlive their arenas:"
+for source in \
+  'f() }' \
+  'cat <<OUT; f() {
+outer
+OUT
+cat <<INNER; )
+inner
+INNER
+}' \
+  'f() { g() { :; } <<INNER; )
+inner
+INNER
+}'; do
+  ASAN_OPTIONS="${ASAN_OPTIONS:+$ASAN_OPTIONS:}quarantine_size_mb=0" \
+    "$BIN" --mood bash -n -c "$source" \
+      > "$TEST_TEMP_DIRECTORY/heredoc-lifetime.err" 2>&1
+  status=$?
+  if [ "$status" -eq 2 ] &&
+     ! grep -q 'AddressSanitizer\|runtime error:' \
+       "$TEST_TEMP_DIRECTORY/heredoc-lifetime.err"; then
+    echo 'syntax error without a lifetime failure'
+  else
+    echo "unexpected status=$status"
+  fi
+done
+
+# Direct and mutual calls share the existing function-call depth guard.
+echo "== direct and mutual function recursion are guarded:"
+for source in 'f() { f; }; f' 'f() { g; }; g() { f; }; f'; do
+  "$BIN" --mood bash -c "$source" \
+    > "$TEST_TEMP_DIRECTORY/function-recursion.err" 2>&1
+  status=$?
+  if [ "$status" -eq 1 ] &&
+     grep -q 'nested too deeply' \
+       "$TEST_TEMP_DIRECTORY/function-recursion.err"; then
+    echo guarded
+  else
+    echo "unexpected status=$status"
+  fi
+done
+
+# Negative star precision is omitted for every standard conversion, including
+# the minimum integer, and still consumes exactly its own operand.
+echo "== negative star precision is omitted without losing operands:"
+"$BIN" --mood bash -c '
+printf "[%.*s][%.*d][%.*f]\\n" -1 abc -1 42 -1 1.5
+printf "[%*.*s][%.*s]\\n" -5 -9223372036854775808 abc 0 abc
+printf "[%.*s]\\n" -1 abc -1 def
+'

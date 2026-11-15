@@ -15,6 +15,7 @@
 #include "base/Common.hpp"
 #include "base/Debug.hpp"
 #include "base/Trace.hpp"
+#include "platform/Platform.hpp"
 #include "util/Utils.hpp"
 
 namespace koshka {
@@ -453,7 +454,9 @@ scan_parameter_expansion(StringView          source,
                          bool               *was_nesting_too_deep) throws
     -> Maybe<usize>
 {
-  if (nesting_depth > MAX_SUBSTITUTION_NESTING_DEPTH) {
+  if (nesting_depth > MAX_SUBSTITUTION_NESTING_DEPTH ||
+      os::is_stack_nearly_exhausted())
+  {
     if (was_nesting_too_deep != nullptr) *was_nesting_too_deep = true;
 
     return None;
@@ -544,9 +547,10 @@ scan_balanced_shell_region(StringView          source,
                            shell_quoting_rules rules) throws
     -> Maybe<usize>
 {
-  /* a quoted substitution recurses here. The recursion stops at the
-     substitution nesting limit of the lexer. */
-  if (nesting_depth > MAX_SUBSTITUTION_NESTING_DEPTH) {
+  /* Recursive quote scans also stop before exhausting the native stack. */
+  if (nesting_depth > MAX_SUBSTITUTION_NESTING_DEPTH ||
+      os::is_stack_nearly_exhausted())
+  {
     if (was_nesting_too_deep != nullptr) *was_nesting_too_deep = true;
 
     return None;

@@ -1,5 +1,5 @@
 == deep nesting is guarded, not crashing:
-1
+ok
 == exit status is a clean error, not a signal death:
 ok
 == shallow nesting still works:
@@ -23,3 +23,22 @@ status=2
 == unbounded function recursion is guarded, not crashing:
 1
 ok
+== parse depth is bounded independently of evaluation:
+substitution 400: guarded
+substitution 5000: guarded
+incomplete substitution: guarded
+quoted substitution: guarded
+subshell: guarded
+reasonable subshell depth: status=0
+== failed function heredocs do not outlive their arenas:
+syntax error without a lifetime failure
+syntax error without a lifetime failure
+syntax error without a lifetime failure
+== direct and mutual function recursion are guarded:
+guarded
+guarded
+== negative star precision is omitted without losing operands:
+[abc][42][1.500000]
+[abc  ][]
+[abc]
+[def]
