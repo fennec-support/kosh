@@ -19,6 +19,7 @@ transient-prompt-collapses-prompt-rows PASS
 narrow-prompt-continues-near-the-left-edge PASS
 prompt-directory-draws-control-bytes PASS
 prompt-directory-writes-no-raw-control PASS
+idle-title-removes-directory-control-strings PASS
 prompt-value-keeps-backslashes PASS
 prompt-value-keeps-backslashes-when-drawn-again PASS
 prompt-markers-take-no-columns PASS

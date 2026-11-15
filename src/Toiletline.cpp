@@ -3513,6 +3513,32 @@ set_title(StringView title) -> void
     }
 
     if (byte == '\x1b' && position + 1 < title.count() &&
+        (title[position + 1] == ']' || title[position + 1] == 'P' ||
+         title[position + 1] == 'X' || title[position + 1] == '^' ||
+         title[position + 1] == '_'))
+    {
+      position += 2;
+
+      while (position < title.count()) {
+        if (title[position] == '\a') {
+          position++;
+          break;
+        }
+
+        if (title[position] == '\x1b' && position + 1 < title.count() &&
+            title[position + 1] == '\\')
+        {
+          position += 2;
+          break;
+        }
+
+        position++;
+      }
+
+      continue;
+    }
+
+    if (byte == '\x1b' && position + 1 < title.count() &&
         title[position + 1] == '[')
     {
       let end_position = position + 2;
@@ -4273,7 +4299,6 @@ append_prompt_data(String    &out,
                    StringView data,
                    bool       should_quote) throws -> void
 {
-  static constexpr u32 INVALID_CODEPOINT = 0xffffffffu;
   let                  shown             = String{koshka::heap_allocator()};
   usize                position          = 0;
 
@@ -4286,17 +4311,20 @@ append_prompt_data(String    &out,
       continue;
     }
 
-    let const decoded = utils::decode_utf8(data, position, INVALID_CODEPOINT);
+    let const decoded = utils::decode_strict_utf8(data, position);
 
-    if (decoded.value == INVALID_CODEPOINT) {
+    if (!decoded.has_value()) {
       append_prompt_notation(shown, byte);
-    } else if (decoded.value >= 0x80 && decoded.value < 0xa0) {
-      append_prompt_notation(shown, decoded.value);
-    } else {
-      shown.append(data.substring_of_length(position, decoded.length));
+      position++;
+      continue;
     }
 
-    position += decoded.length;
+    if (decoded->value >= 0x80 && decoded->value < 0xa0)
+      append_prompt_notation(shown, decoded->value);
+    else
+      shown.append(data.substring_of_length(position, decoded->length));
+
+    position += decoded->length;
   }
 
   append_prompt_value(out, shown.view(), should_quote);

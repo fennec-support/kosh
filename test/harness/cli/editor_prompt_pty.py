@@ -248,6 +248,11 @@ def run_checks(binary, directory, command_directory, report):
                       lambda screen: not any(
                           sequence in bytes(session.raw[mark:])
                           for sequence in CONTROL_DIRECTORY_SEQUENCES))
+        expected_title = "%s @ %s/dREDz" % (
+            pwd.getpwuid(os.getuid()).pw_name, os.path.realpath(directory))
+        report.record("idle-title-removes-directory-control-strings", session,
+                      lambda screen: get_titles(session, mark)[-1:]
+                      == [expected_title])
 
         value_prompt = "C:\\new\\$HOME " + BULLET
         session.send(b"v='C:\\new\\$HOME'; PS1='$v \\. '\r")
