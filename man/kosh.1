@@ -360,6 +360,12 @@ Dynamic runtime sources prefix locations as \f[CR]eval:line:col:\f[R],
 \f[CR]trap:line:col:\f[R], or \f[CR]\-c:line:col:\f[R], while stdin and
 interactive lines omit the source label.
 .IP \[bu] 2
+\f[B]Terminal safety\f[R] \- Diagnostic filenames, messages, and notes
+render non\-printable characters and invalid UTF\-8 bytes with ANSI\-C
+quoting.
+Source excerpts escape those bytes and expand tabs to four spaces;
+carets and syntax colors follow the rendered text.
+.IP \[bu] 2
 \f[B]Stack backtraces\f[R] \- Each active function call, sourced file,
 \f[CR]eval\f[R], trap action, subshell, and command/function/process
 substitution between the top level and the failing command appends a

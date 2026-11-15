@@ -1,0 +1,26 @@
+lint filename: status=1 controls=0
+escaped=0
+empty stdout=0
+syntax filename: status=2 controls=0
+escaped=0
+empty stdout=0
+runtime command: status=127 controls=0
+escaped=0
+empty stdout=0
+runtime operand: status=1 controls=0
+escaped=0
+empty stdout=0
+missing input: status=1 controls=0
+escaped=0
+empty stdout=0
+source excerpt: status=1 controls=0
+escaped=0
+empty stdout=0
+invalid command byte: status=127 controls=0
+escaped=0
+empty stdout=0
+caret after controls: status=2 controls=0
+escaped=0
+empty stdout=0
+     1 |      $'\E'[2Jecho (
+       |                    ^

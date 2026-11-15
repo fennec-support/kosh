@@ -181,6 +181,17 @@ text_ends_a_sentence(StringView text) wontthrow -> bool
          last_byte == ')';
 }
 
+/* Printable UTF-8 stays intact; terminal controls and invalid bytes are
+   rendered with the shell's ANSI-C quoting rules. */
+cold static fn
+append_diagnostic_text(String &out, StringView text) throws -> void
+{
+  if (utils::should_ansi_c_quote(text, true))
+    utils::append_ansi_c_quoted(out, text, true);
+  else
+    out += text;
+}
+
 cold static fn
 append_diagnostic_message(String                 &out,
                           StringView              message,
@@ -210,15 +221,15 @@ append_diagnostic_message(String                 &out,
 
   out += colors::color_to_sv(color.message);
   if (!has_code_suffix) {
-    out += message;
+    append_diagnostic_text(out, message);
 
     return;
   }
 
-  out += message.substring_of_length(0, digit_start - 4);
+  append_diagnostic_text(out, message.substring_of_length(0, digit_start - 4));
   out += colors::color_to_sv(reset);
   out += colors::color_to_sv(colors::color::Dim);
-  out += message.substring(digit_start - 4);
+  append_diagnostic_text(out, message.substring(digit_start - 4));
   out += colors::color_to_sv(reset);
 }
 
@@ -324,50 +335,48 @@ get_context_pointing_to(StringView                         source,
          line_position.line_end);
 
   static constexpr usize TAB_WIDTH = 4;
-  usize                  tab_count = 0;
+  let const should_expand          = utils::should_ansi_c_quote(context, true);
+  let       expanded_line          = String{heap_allocator()};
+  let       expanded_positions     = ArrayList<usize>{heap_allocator()};
+  let       display_line           = context;
 
-  for (usize i = 0; i < context.count(); i++) {
-    if (context[i] != '\t') continue;
-    tab_count++;
-  }
+  if (should_expand) {
+    expanded_positions.reserve(context.length + 1);
 
-  let expanded_line = String{heap_allocator()};
-  let display_line  = context;
+    for (usize position = 0; position < context.length;) {
+      let const decoded    = utils::decode_strict_utf8(context, position);
+      let const byte_count = decoded.has_value() ? decoded->length : 1;
+      let const piece      = context.substring_of_length(position, byte_count);
+      let const expanded_start = expanded_line.length();
+      let const should_quote   = utils::should_ansi_c_quote(piece, true);
 
-  if (tab_count != 0) {
-    expanded_line.reserve(context.count() + tab_count * (TAB_WIDTH - 1));
-
-    for (usize i = 0; i < context.count(); i++) {
-      if (context[i] == '\t') {
+      if (context[position] == '\t')
         expanded_line.append_repeated(' ', TAB_WIDTH);
-      } else {
-        expanded_line += context[i];
+      else
+        append_diagnostic_text(expanded_line, piece);
+
+      for (usize index = 0; index < byte_count; index++) {
+        expanded_positions.push(expanded_start + (should_quote ? 0 : index));
       }
+
+      position += byte_count;
     }
 
+    expanded_positions.push(expanded_line.length());
     display_line = expanded_line.view();
   }
 
-  usize caret_source_position   = 0;
-  usize caret_expanded_position = 0;
-
-  let const do_advance_caret_position = [&](usize byte_offset) {
-    while (caret_source_position < byte_offset) {
-      caret_expanded_position +=
-          context[caret_source_position] == '\t' ? TAB_WIDTH : 1;
-      caret_source_position++;
-    }
-
-    return caret_expanded_position;
+  let const do_expanded_position = [&](usize byte_offset) {
+    return should_expand ? expanded_positions[byte_offset] : byte_offset;
   };
 
   let const   caret_limit = line_position.line_end - byte_position;
   const usize caret_byte_count =
       byte_count > caret_limit ? caret_limit : byte_count;
   const usize expanded_caret_byte_position =
-      do_advance_caret_position(caret_byte_position);
+      do_expanded_position(caret_byte_position);
   const usize expanded_caret_end_byte_position =
-      do_advance_caret_position(caret_byte_position + caret_byte_count);
+      do_expanded_position(caret_byte_position + caret_byte_count);
 
   let const caret_prefix =
       display_line.substring_of_length(0, expanded_caret_byte_position);
@@ -390,26 +399,13 @@ get_context_pointing_to(StringView                         source,
   let expanded_highlights = ArrayList<highlight_span>{heap_allocator()};
   let line_highlights     = source_highlights;
 
-  if (tab_count != 0 && !source_highlights->is_empty()) {
+  if (should_expand && !source_highlights->is_empty()) {
     expanded_highlights.reserve(source_highlights->count());
 
-    usize highlight_source_position   = 0;
-    usize highlight_expanded_position = 0;
-
-    let const do_advance_highlight_position = [&](usize byte_offset) {
-      while (highlight_source_position < byte_offset) {
-        highlight_expanded_position +=
-            context[highlight_source_position] == '\t' ? TAB_WIDTH : 1;
-        highlight_source_position++;
-      }
-
-      return highlight_expanded_position;
-    };
-
     for (let const &span : *source_highlights) {
-      expanded_highlights.push(
-          highlight_span{do_advance_highlight_position(span.start),
-                         do_advance_highlight_position(span.end), span.role});
+      expanded_highlights.push(highlight_span{do_expanded_position(span.start),
+                                              do_expanded_position(span.end),
+                                              span.role});
     }
 
     line_highlights = &expanded_highlights;
@@ -505,7 +501,7 @@ get_context_pointing_to(StringView                         source,
 
   if (message.has_value()) {
     msg += ' ';
-    msg += *message;
+    append_diagnostic_text(msg, *message);
 
     if (!text_ends_a_sentence(*message)) msg += '.';
   }
@@ -530,10 +526,16 @@ ErrorBase::trailing_details_to_string() const throws -> String
 
   let const note_period = text_ends_a_sentence(note) ? "" : ".";
 
-  return String{heap_allocator(), "\n"} + colors::color_to_sv(color.severity) +
-         severity_word + colors::color_to_sv(color.get_reset()) + ": " +
-         colors::color_to_sv(color.message) + note + note_period +
-         colors::color_to_sv(color.get_reset());
+  let result = String{heap_allocator(), "\n"} +
+               colors::color_to_sv(color.severity) + severity_word +
+               colors::color_to_sv(color.get_reset()) + ": " +
+               colors::color_to_sv(color.message);
+
+  append_diagnostic_text(result, note);
+  result += note_period;
+  result += colors::color_to_sv(color.get_reset());
+
+  return result;
 }
 
 cold fn
@@ -682,7 +684,7 @@ append_location_prefix(String                            &result,
   if (let const name = site.location.get_filename();
       name.has_value() && !is_filename_hidden)
   {
-    result += *name;
+    append_diagnostic_text(result, *name);
     result += ':';
   }
 
