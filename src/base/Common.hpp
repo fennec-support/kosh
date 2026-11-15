@@ -74,30 +74,29 @@
   "There is NO WARRANTY, to the extent permitted by law."
 
 /* clang-format off */
-#include <cctype>
-#include <climits>
-#include <cerrno>
-#include <cstdarg>
-#include <cstddef>
-#include <cstdint>
-#include <csignal>
-#include <cstdio>
-#include <cstdlib>
-#include <ctime>
-#include <clocale>
-#include <cmath>
-#include <cstring>
 #include <ctype.h>
+#include <limits.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <time.h>
+#include <locale.h>
+#include <math.h>
+#include <string.h>
 
 #include <initializer_list>
 #include <new>
 #include <exception>
 
 /* clang-format on */
+
+#if defined INVALID_CODEPOINT
+#undef INVALID_CODEPOINT
+#endif
 
 using u8   = uint8_t;
 using u16  = uint16_t;
@@ -195,7 +194,10 @@ public:
 #define usually     [[likely]]
 #define rarely      [[unlikely]]
 #define maybeunused [[maybe_unused]]
-#define wontreturn  [[noreturn]]
+#if defined wontreturn
+#undef wontreturn
+#endif
+#define wontreturn [[noreturn]]
 
 #define fn   auto
 #define let  auto

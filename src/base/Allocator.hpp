@@ -12,8 +12,6 @@
 #include "Common.hpp"
 #include "Debug.hpp"
 
-#include <new>
-
 namespace koshka {
 
 class BumpArena;
