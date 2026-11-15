@@ -290,13 +290,6 @@ parser_format_add_json_fragment(parsed_format_document &document,
                                 mimic_mood              mood) throws -> void;
 
 fn
-parse_workflow_actions_format(const parser_format_input &input,
-                              parsed_format_document    &document) throws
-    -> void;
-fn
-parse_gitlab_ci_format(const parser_format_input &input,
-                       parsed_format_document    &document) throws -> void;
-fn
 parse_ansible_format(const parser_format_input &input,
                      parsed_format_document    &document) throws -> void;
 fn
@@ -313,26 +306,9 @@ fn
 parse_makefile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void;
 fn
-parse_cloud_build_format(const parser_format_input &input,
-                         parsed_format_document    &document) throws
-    -> void;
-fn
-parse_circle_ci_format(const parser_format_input &input,
-                       parsed_format_document    &document) throws -> void;
-fn
 parse_azure_pipelines_format(const parser_format_input &input,
                              parsed_format_document    &document) throws
     -> void;
-fn
-parse_bitbucket_pipelines_format(
-    const parser_format_input &input,
-    parsed_format_document    &document) throws -> void;
-fn
-parse_buildkite_format(const parser_format_input &input,
-                       parsed_format_document    &document) throws -> void;
-fn
-parse_travis_ci_format(const parser_format_input &input,
-                       parsed_format_document    &document) throws -> void;
 fn
 parse_kubernetes_format(const parser_format_input &input,
                         parsed_format_document    &document) throws
@@ -344,13 +320,6 @@ parse_package_json_format(const parser_format_input &input,
 fn
 parse_drone_format(const parser_format_input &input,
                    parsed_format_document    &document) throws -> void;
-fn
-parse_woodpecker_format(const parser_format_input &input,
-                        parsed_format_document    &document) throws
-    -> void;
-fn
-parse_taskfile_format(const parser_format_input &input,
-                      parsed_format_document    &document) throws -> void;
 fn
 parse_justfile_format(const parser_format_input &input,
                       parsed_format_document    &document) throws -> void;

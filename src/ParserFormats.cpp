@@ -5,8 +5,8 @@
  * This file detects host document formats and extracts embedded shell fragments
  * for analysis and formatting. It maps positions between host and shell source,
  * handles indentation and JSON string codecs, and applies formatted
- * replacements to the host document. Each source under formats implements one
- * host format, and shared format code stays here.
+ * replacements to the host document. Specialized parsers live under formats;
+ * shared extractors and data-only YAML format settings stay here.
  */
 
 #include "ParserFormats.hpp"
@@ -2997,6 +2997,75 @@ host_variable_patterns(parser_format_kind kind, usize &count) wontthrow
   return nullptr;
 }
 
+static fn
+parse_simple_yaml_format(const parser_format_input &input,
+                         parsed_format_document    &document) throws
+    -> void
+{
+  static const StringView WORKFLOW[] = {"run"};
+  static const StringView GITLAB[] = {"before_script", "script", "after_script",
+                                      "pre_get_sources_script"};
+  static const StringView BITBUCKET[]  = {"script", "after-script"};
+  static const StringView BUILDKITE[]  = {"command", "commands"};
+  static const StringView CIRCLE[]     = {"run", "command"};
+  static const StringView CLOUD[]      = {"script"};
+  static const StringView CLOUD_EXEC[] = {"args"};
+  static const StringView TASKFILE[] = {"cmd",    "cmds", "defer",        "sh",
+                                        "status", "if",   "preconditions"};
+  static const StringView TRAVIS[]   = {
+      "before_install", "install",       "before_script", "script",
+      "after_success",  "after_failure", "before_deploy", "deploy",
+      "after_deploy",   "after_script",  "before_cache"};
+  static const StringView WOODPECKER[] = {"commands"};
+
+  struct yaml_format
+  {
+    parser_format_kind   kind;
+    const StringView    *keys;
+    usize                key_count;
+    mimic_mood           mood;
+    yaml_shell_selection selection{yaml_shell_selection::Nearby};
+    u8                   template_syntax{TEMPLATE_CURLY};
+    StringView           excluded_ancestor{};
+  };
+
+  static const yaml_format FORMATS[] = {
+      {parser_format_kind::GithubActions, WORKFLOW, countof(WORKFLOW),
+       mimic_mood::Bash, yaml_shell_selection::Workflow, TEMPLATE_DOLLAR_CURLY},
+      {parser_format_kind::GiteaActions, WORKFLOW, countof(WORKFLOW),
+       mimic_mood::Bash, yaml_shell_selection::Workflow, TEMPLATE_DOLLAR_CURLY},
+      {parser_format_kind::ForgejoActions, WORKFLOW, countof(WORKFLOW),
+       mimic_mood::Bash, yaml_shell_selection::Workflow, TEMPLATE_DOLLAR_CURLY},
+      {parser_format_kind::GitlabCi, GITLAB, countof(GITLAB), mimic_mood::Bash},
+      {parser_format_kind::BitbucketPipelines, BITBUCKET, countof(BITBUCKET),
+       mimic_mood::Posix},
+      {parser_format_kind::Buildkite, BUILDKITE, countof(BUILDKITE),
+       mimic_mood::Bash, yaml_shell_selection::Nearby, TEMPLATE_DOUBLE_DOLLAR,
+       "plugins"},
+      {parser_format_kind::CircleCi, CIRCLE, countof(CIRCLE), mimic_mood::Bash,
+       yaml_shell_selection::Nearby, TEMPLATE_CIRCLE_PARAMETERS},
+      {parser_format_kind::CloudBuild, CLOUD, countof(CLOUD), mimic_mood::Posix,
+       yaml_shell_selection::Nearby, TEMPLATE_DOUBLE_DOLLAR},
+      {parser_format_kind::Taskfile, TASKFILE, countof(TASKFILE),
+       mimic_mood::Bash},
+      {parser_format_kind::TravisCi, TRAVIS, countof(TRAVIS), mimic_mood::Bash},
+      {parser_format_kind::Woodpecker, WOODPECKER, countof(WOODPECKER),
+       mimic_mood::Posix},
+  };
+
+  for (let const &format : FORMATS) {
+    if (format.kind != document.kind) continue;
+    parser_format_extract_yaml_keys(
+        document, input.source, format.keys, format.key_count, format.mood,
+        format.selection, format.template_syntax, format.excluded_ancestor);
+    if (document.kind == parser_format_kind::CloudBuild)
+      parser_format_extract_yaml_exec_keys(document, input.source, CLOUD_EXEC,
+                                           countof(CLOUD_EXEC),
+                                           TEMPLATE_DOUBLE_DOLLAR);
+    return;
+  }
+}
+
 /* memory: each fragment holds one String per host variable pattern, at most
            12 for CloudBuild. the returned document owns them.
    time:   O(F log F) for sort() over F fragments, then O(F * V) for V host
@@ -3013,14 +3082,19 @@ parse_format_document(const parser_format_input &input) throws
 
   switch (document.kind) {
   case parser_format_kind::Shell:
-  case parser_format_kind::UnknownHost: break;
+  case parser_format_kind::UnknownHost:        break;
   case parser_format_kind::GithubActions:
   case parser_format_kind::GiteaActions:
   case parser_format_kind::ForgejoActions:
-    parse_workflow_actions_format(input, document);
-    break;
+  case parser_format_kind::CloudBuild:
+  case parser_format_kind::CircleCi:
+  case parser_format_kind::BitbucketPipelines:
+  case parser_format_kind::Buildkite:
+  case parser_format_kind::TravisCi:
+  case parser_format_kind::Woodpecker:
+  case parser_format_kind::Taskfile:
   case parser_format_kind::GitlabCi:
-    parse_gitlab_ci_format(input, document);
+    parse_simple_yaml_format(input, document);
     break;
   case parser_format_kind::Ansible:
     parse_ansible_format(input, document);
@@ -3037,23 +3111,8 @@ parse_format_document(const parser_format_input &input) throws
   case parser_format_kind::Makefile:
     parse_makefile_format(input, document);
     break;
-  case parser_format_kind::CloudBuild:
-    parse_cloud_build_format(input, document);
-    break;
-  case parser_format_kind::CircleCi:
-    parse_circle_ci_format(input, document);
-    break;
   case parser_format_kind::AzurePipelines:
     parse_azure_pipelines_format(input, document);
-    break;
-  case parser_format_kind::BitbucketPipelines:
-    parse_bitbucket_pipelines_format(input, document);
-    break;
-  case parser_format_kind::Buildkite:
-    parse_buildkite_format(input, document);
-    break;
-  case parser_format_kind::TravisCi:
-    parse_travis_ci_format(input, document);
     break;
   case parser_format_kind::Kubernetes:
     parse_kubernetes_format(input, document);
@@ -3062,12 +3121,6 @@ parse_format_document(const parser_format_input &input) throws
     parse_package_json_format(input, document);
     break;
   case parser_format_kind::Drone: parse_drone_format(input, document); break;
-  case parser_format_kind::Woodpecker:
-    parse_woodpecker_format(input, document);
-    break;
-  case parser_format_kind::Taskfile:
-    parse_taskfile_format(input, document);
-    break;
   case parser_format_kind::Justfile:
     parse_justfile_format(input, document);
     break;
