@@ -171,14 +171,14 @@ fn
 scan_quoted_region(StringView source, usize &position, char quote) wontthrow
     -> void
 {
+  if (quote == '`') {
+    position = lexer::skip_backtick_run(source, position + 1);
+    return;
+  }
   position++;
 
   while (position < source.length) {
     let const byte = source[position++];
-    if (byte == '\\' && quote != '\'' && position < source.length) {
-      position++;
-      continue;
-    }
 
     if (byte == quote) return;
   }
@@ -1872,8 +1872,8 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
             opener.has_value())
         {
           switch (*opener) {
-          case block_opener::JoinedLoop:  loop_do_join_states.push(true); break;
-          case block_opener::SplitLoop:   loop_do_join_states.push(false); break;
+          case block_opener::JoinedLoop: loop_do_join_states.push(true); break;
+          case block_opener::SplitLoop:  loop_do_join_states.push(false); break;
           case block_opener::Conditional: pending_fi_counts.push(0); break;
           }
         }
@@ -2186,8 +2186,8 @@ render_format_pieces(const ArrayList<format_piece> &pieces,
         writer.append_token(rendered_operator);
       should_attach_redirection_operand = true;
       should_space_redirection_operand  = is_bash && text != "<<" &&
-                                         text != "<<-" &&
-                                         text[text.length - 1] != '&';
+                                          text != "<<-" &&
+                                          text[text.length - 1] != '&';
       continue;
     }
 
@@ -2246,7 +2246,7 @@ format_shell_source(StringView         source,
                     mimic_mood         mood,
                     Maybe<StringView>  filename) throws -> Maybe<String>
 {
-  let normalized  = String{heap_allocator()};
+  let normalized = String{heap_allocator()};
   let source_view = source;
 
   defer { utils::invalidate_line_number_cache_for(source_view); };

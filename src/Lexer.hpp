@@ -315,6 +315,9 @@ struct shell_quoting_rules
   bool has_ansi_c_quotes{true};
 };
 
+pure fn
+skip_backtick_run(StringView source, usize position) wontthrow -> usize;
+
 fn
 scan_balanced_shell_region(
     StringView          source,

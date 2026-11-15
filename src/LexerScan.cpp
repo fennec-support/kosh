@@ -369,7 +369,7 @@ skip_balanced_scan_heredoc_bodies(
   return position;
 }
 
-pure static fn
+pure fn
 skip_backtick_run(StringView source, usize position) wontthrow -> usize
 {
   while (position < source.length) {
