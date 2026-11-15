@@ -34,12 +34,14 @@ each source path. A pattern recipe passes that path to `test/bin/run-test`.
 The runner prints the status, invokes the process model runner, and appends
 diagnostics to `failed.diff`.
 
-`run-harness-kosh` launches the built executable with `-WWW`, compares the
-complete output with `expected/<name>.out`, and removes the temporary output.
+`run-harness-script` serves Kosh, CLI, completion, and highlight tests. It
+launches Kosh sources with `-WWW` and other sources with the host shell,
+compares complete output with `expected/<name>.out`, and removes the temporary
+output. Refill uses the same execution path.
 
-`run-harness-script` serves CLI, completion, and highlight tests. The
-compatibility runners launch the reference shell and Kosh, compare output and
-status, and compare stderr presence unless the source requests exact stderr.
+`run-harness-compat` selects dash or Bash from the source extension, launches
+the reference shell and Kosh, compares output and status, and compares stderr
+presence unless the source requests exact stderr. `run-test` owns skip checks.
 
 The final `test` recipe fails when `failed.diff` is nonempty. Test preparation
 creates that file and clears the temporary directory. Koshkit provides the

@@ -4,26 +4,25 @@ BIN_DIR=${0%/*}
 read -r -a DIFF_OPTIONS <<<"$DIFF_FLAGS"
 TEST_FILE=$1
 TEST_NAME=${TEST_FILE##*/}
-TEST_NAME=${TEST_NAME%.bash}
-
-case " $SKIPPED_TESTS " in
-*" $TEST_NAME "*)
-  printf "\t%-64s skipped, unsupported on current platform\n" "$TEST_FILE"
-  exit 0
-  ;;
+TEST_NAME=${TEST_NAME%.*}
+MOOD=${TEST_FILE##*.}
+case $MOOD in
+  sh) REFERENCE_SHELL=$DASH ;;
+  bash) REFERENCE_SHELL=$BASHP ;;
+  *) printf 'Unsupported compatibility test: %s\n' "$TEST_FILE" >&2; exit 1 ;;
 esac
 
-REFERENCE="$TEST_TEMP_DIRECTORY/$TEST_NAME.bash"
+REFERENCE="$TEST_TEMP_DIRECTORY/$TEST_NAME.$MOOD"
 REFERENCE_ERROR="$REFERENCE.err"
-CANDIDATE="$TEST_TEMP_DIRECTORY/$TEST_NAME.bash.kosh"
+CANDIDATE="$REFERENCE.kosh"
 CANDIDATE_ERROR="$CANDIDATE.err"
 mkdir -p "$TEST_TEMP_DIRECTORY"
 "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
-  "$BASHP" "$TEST_FILE" >"$REFERENCE" 2>"$REFERENCE_ERROR"
+  "$REFERENCE_SHELL" "$TEST_FILE" >"$REFERENCE" 2>"$REFERENCE_ERROR"
 REFERENCE_STATUS=$?
 
 "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
-  "$BIN" --mood bash "$TEST_FILE" >"$CANDIDATE" 2>"$CANDIDATE_ERROR"
+  "$BIN" --mood "$MOOD" "$TEST_FILE" >"$CANDIDATE" 2>"$CANDIDATE_ERROR"
 KOSH_STATUS=$?
 
 STDOUT_MATCH=0

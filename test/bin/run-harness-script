@@ -4,20 +4,39 @@ BIN_DIR=${0%/*}
 read -r -a DIFF_OPTIONS <<<"$DIFF_FLAGS"
 TEST_FILE=$1
 TEST_NAME=${TEST_FILE##*/}
-TEST_NAME=${TEST_NAME%.sh}
+TEST_NAME=${TEST_NAME%.*}
+if [ "${2-}" = --refill ]; then
+  OUTPUT="expected/.$TEST_NAME.out.tmp"
+else
+  OUTPUT="$TEST_TEMP_DIRECTORY/$TEST_NAME.out"
+  mkdir -p "$TEST_TEMP_DIRECTORY"
+fi
 
-case " $SKIPPED_TESTS " in
-*" $TEST_NAME "*)
-  printf "\t%-64s skipped, unsupported on current platform\n" "$TEST_FILE"
-  exit 0
-  ;;
+case $TEST_FILE in
+  *.kosh)
+    "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
+      "$BIN" -WWW - <"$TEST_FILE" >"$OUTPUT" 2>&1
+    TEST_STATUS=$?
+    case $TEST_STATUS in
+      124|137) ;;
+      *) TEST_STATUS=0 ;;
+    esac
+    ;;
+  *)
+    "$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
+      "$TEST_SHELL" "$TEST_FILE" >"$OUTPUT" 2>&1
+    TEST_STATUS=$?
+    ;;
 esac
 
-OUTPUT="$TEST_TEMP_DIRECTORY/$TEST_NAME.out"
-mkdir -p "$TEST_TEMP_DIRECTORY"
-"$BIN_DIR/invoke-koshkit" timeout -k 2s "${TEST_TIMEOUT_SECONDS:-60}" \
-  "$TEST_SHELL" "$TEST_FILE" >"$OUTPUT" 2>&1
-TEST_STATUS=$?
+if [ "${2-}" = --refill ]; then
+  if [ "$TEST_STATUS" -eq 0 ]; then
+    "$BIN_DIR/invoke-koshkit" mv "$OUTPUT" "expected/$TEST_NAME.out"
+  else
+    rm -f "$OUTPUT"
+  fi
+  exit "$TEST_STATUS"
+fi
 
 if diff "${DIFF_OPTIONS[@]}" "expected/$TEST_NAME.out" "$OUTPUT" >/dev/null 2>&1
 then

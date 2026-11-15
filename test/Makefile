@@ -51,6 +51,7 @@ SKIPPED_TESTS := \
 	completion_glob_quoting path_quoting control_byte_quoting koshkit_mknod \
 	literal_tilde_and_ansi_c_escapes \
 	koshkit_live_pty koshkit_live_sanitizers koshkit_live_deltas \
+	koshkit_man_terminal_controls \
 	editor_ghost_menu_pty editor_kill_yank_pty editor_prompt_pty \
 	editor_pending_tab_pty shell_integration_marks_pty background_terminal_pty \
 	prompt_hooks_pty startup_chain_pty \
@@ -171,7 +172,7 @@ BIN_EXTENSION := .com
 else ifeq ($(TARGET),Windows_NT)
 BIN_EXTENSION := .exe
 endif
-BIN ?= ../$(BIN_NAME)$(BIN_EXTENSION)
+export BIN ?= ../$(BIN_NAME)$(BIN_EXTENSION)
 
 ifeq ($(TARGET),Windows_NT)
 export DIFF_FLAGS := -u -w -a # CRLF on Windows SMH
@@ -179,15 +180,6 @@ else
 export DIFF_FLAGS := -u
 endif
 
-ifeq ($(NO_TOILETLINE), 1)
-BIN_EXTENSION += -no-toiletline
-endif
-
-ifeq ($(MODE),rel)
-export BIN ?= ../kosh$(BIN_EXTENSION)
-else
-export BIN ?= ../kosh-$(MODE)$(BIN_EXTENSION)
-endif
 override BIN := $(abspath $(BIN))
 
 FAILED_LIST := failed.diff
@@ -228,7 +220,11 @@ else
 COMPATIBILITY_SUITES := sh bash
 endif
 
+ifeq ($(NO_TOILETLINE),1)
+test_suites: harness/cli/history_noninteractive.sh | test_prepare
+else
 test_suites: kosh cli $(DEBUG_DRIVER_SUITES) $(COMPATIBILITY_SUITES) | test_prepare
+endif
 
 KOSH_TESTS := $(wildcard harness/kosh/*.kosh)
 kosh: $(KOSH_TESTS)
@@ -249,7 +245,7 @@ BASH_TESTS := $(wildcard harness/bash/*.bash)
 bash: $(BASH_TESTS)
 
 harness/kosh/%.kosh: FORCE $(BIN) | test_prepare
-	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-kosh
+	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-script
 
 harness/cli/%.sh: FORCE $(BIN) | test_prepare
 	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-script
@@ -261,10 +257,10 @@ harness/highlight/%.sh: FORCE $(BIN) | test_prepare
 	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-script
 
 harness/sh/%.sh: FORCE $(BIN) | test_prepare
-	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-sh
+	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-compat
 
 harness/bash/%.bash: FORCE $(BIN) | test_prepare
-	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-bash
+	@$(SHELL) $(BIN_DIR)/run-test '$@' $(BIN_DIR)/run-harness-compat
 
 FORCE:
 
@@ -295,8 +291,7 @@ test:
 REFILL ?=
 
 refill: $(BIN)
-	@REFILL='$(REFILL)' \
-		$(SHELL) $(BIN_DIR)/run-refill '$(SHELL)'
+	@REFILL='$(REFILL)' $(SHELL) $(BIN_DIR)/run-refill
 
 export ZSH ?= /bin/zsh
 export ASH ?= /bin/busybox

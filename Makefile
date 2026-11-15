@@ -36,7 +36,7 @@ export NO_TOILETLINE
 export NO_KOSHKIT
 export TARGET
 
-TEST_TARGET := $(if $(filter 1,$(NO_TOILETLINE)),cli_history_noninteractive,test)
+TEST_TARGET := test
 
 all: kosh test
 
