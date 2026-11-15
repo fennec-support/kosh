@@ -1076,6 +1076,9 @@ Pipeline::evaluate_impl(EvalContext &cxt, root_evaluation_mode) const throws -> 
     }
   }
 
+  if (!has_compound_stage && utils::has_command_not_found_handler(cxt))
+    has_compound_stage = true;
+
   if (!has_compound_stage && cxt.function_store().has_functions()) {
     for (let const stage : m_commands) {
       let const *simple = static_cast<const SimpleCommand *>(stage);

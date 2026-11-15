@@ -213,6 +213,13 @@ CommandBuiltin::execute(ExecContext &ec, EvalContext &cxt) const throws
         cxt.is_shopt_enabled(shopt_option_id::Checkhash), *resolver,
         steal(operand_arg_locations));
   } catch (const CommandResolutionErrorWithLocation &resolution_error) {
+    if (resolution_error.command_status() == 127) {
+      let const handled = utils::run_command_not_found_handler(
+          cxt, operand_args, ec.source_location());
+
+      if (handled.has_value()) return *handled;
+    }
+
     LOG(Debug, "command handled a resolution error: %s",
         resolution_error.message().c_str());
     show_message(resolution_error.to_string(

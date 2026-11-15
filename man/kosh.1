@@ -5141,6 +5141,17 @@ A command not found returns \f[CR]127\f[R], a file that cannot run
 returns \f[CR]126\f[R], and a path ending in a directory separator fails
 with \f[CR]126\f[R] when the target is not a directory.
 .IP \[bu] 2
+A \f[CR]bash\f[R] or \f[CR]bash\-posix\f[R] shell that started
+interactively runs the function
+\f[CR]command_not_found_handle\f[R] when a command word without a slash
+resolves to no command, passing the word and its arguments as the
+positional parameters of a subshell and taking the handler's exit
+status as the command's status.
+The execution form of \f[CR]command\f[R] with such a word dispatches
+the handler too.
+\f[CR]command \-v\f[R], \f[CR]command \-V\f[R], \f[CR]exec\f[R], and
+noninteractive shells report the ordinary not\-found error instead.
+.IP \[bu] 2
 A file without a recognized executable format runs as a shell script in
 a new shell, without the variables, functions, and traps of the caller.
 .RE

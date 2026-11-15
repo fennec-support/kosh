@@ -15,3 +15,19 @@ zsh_negated=1
 zsh_other_variable=1
 zsh_shadowed_test=1
 zsh_shadowed_bracket=1
+handler=<kosh_missing_handler_command> <two words> <> <$(literal)> <a;b> <quote'value>
+handler-status=23 state=no
+handler=<kosh_missing_handler_command> <wrapped>
+command-status=23
+handler=<kosh_missing_handler_command> <piped>
+pipeline-status=23
+redirect-status=23
+handler=<kosh_missing_handler_command> <redirected>
+handler-input=<handler heredoc>
+background-status=23
+query-status=1
+unset-status=127
+handler-default-diagnostic=1
+handler-noninteractive=ok status=127
+handler-exec=ok status=127
+handler-restricted=ok status=1

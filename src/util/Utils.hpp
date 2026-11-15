@@ -225,6 +225,14 @@ set_foreground_program_title(const ArrayList<String> &arguments,
                              EvalContext             &cxt) throws -> void;
 
 fn
+has_command_not_found_handler(const EvalContext &cxt) throws -> bool;
+fn
+run_command_not_found_handler(EvalContext             &cxt,
+                              const ArrayList<String> &arguments,
+                              const SourceLocation    &location) throws
+    -> Maybe<i32>;
+
+fn
 execute_context(ExecContext  &&ec,
                 EvalContext   &cxt,
                 execution_mode mode) throws -> i32;

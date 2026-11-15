@@ -1443,6 +1443,32 @@ SimpleCommand::evaluate_impl(EvalContext &cxt, root_evaluation_mode mode) const
           cxt.execution_store().shell_is_interactive() &&
               cxt.is_shopt_enabled(shopt_option_id::Autocd));
     } catch (CommandResolutionErrorWithLocation &e) {
+      if (e.command_status() == 127 &&
+          utils::has_command_not_found_handler(cxt))
+      {
+        let saved_input = Maybe<os::saved_descriptor>{};
+
+        if (redirect_in_fd) {
+          saved_input = os::save_and_replace_descriptor(0, *redirect_in_fd);
+          if (!saved_input->is_dup2_ok)
+            throw ErrorWithLocation{source_location(), "Bad file descriptor"};
+        }
+        defer {
+          if (saved_input.has_value()) os::restore_descriptor(*saved_input);
+        };
+
+        let const handled = utils::run_command_not_found_handler(
+            cxt, program_args, source_location());
+
+        if (handled.has_value()) {
+          did_resolution_fail       = true;
+          resolution_failure_status = *handled;
+
+          return ExecContext::make_from_unresolved(
+              source_location(), *handled, StringView{});
+        }
+      }
+
       report_command_resolution_error(cxt, e);
       did_resolution_fail       = true;
       resolution_failure_status = e.command_status();

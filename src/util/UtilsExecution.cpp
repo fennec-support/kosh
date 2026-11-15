@@ -52,6 +52,43 @@ set_foreground_program_title(const ArrayList<String> &arguments,
   toiletline::set_title(command_title.view());
 }
 
+fn
+has_command_not_found_handler(const EvalContext &cxt) throws -> bool
+{
+  return cxt.runtime_state().is_bash_compatible() &&
+         cxt.execution_store().was_started_interactive() &&
+         cxt.function_store()
+             .find_function("command_not_found_handle")
+             .has_value();
+}
+
+fn
+run_command_not_found_handler(EvalContext             &cxt,
+                              const ArrayList<String> &arguments,
+                              const SourceLocation    &location) throws
+    -> Maybe<i32>
+{
+  if (arguments.is_empty() ||
+      os::has_directory_separator(arguments[0].view()) ||
+      !has_command_not_found_handler(cxt))
+  {
+    return None;
+  }
+
+  let source = String{cxt.scratch_allocator(), "("};
+
+  append_shell_quoted_arg(source, "command_not_found_handle", true);
+  for (let const &argument : arguments) {
+    source.push(' ');
+    append_shell_quoted_arg(source, argument.view(), true);
+  }
+  source.push(')');
+
+  cxt.run_source(source.view(), "a command-not-found handler", location);
+
+  return cxt.execution_store().last_exit_status();
+}
+
 /* memory: command is a heap_allocator() String freed on return. the replace
            path quits before command is built.
    time:   O(args) to build command for a background or foreground job. one

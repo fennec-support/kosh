@@ -23,3 +23,62 @@ run_probe zsh_negated 'if ! test -n "${ZSH_VERSION+set}"; then setopt NO_GLOB_SU
 run_probe zsh_other_variable 'if test -n "${BASH_VERSION+set}"; then zmodload zsh/parameter; fi'
 run_probe zsh_shadowed_test 'test(){ true; }; if test -n "${ZSH_VERSION+set}"; then emulate sh; fi'
 run_probe zsh_shadowed_bracket 'function [ { true; }; if [ -n "${ZSH_VERSION+set}" ]; then emulate sh; fi'
+
+unset KOSH_FLAGS
+directory=$(mktemp -d) || exit 1
+trap '"$BIN_DIR/invoke-koshkit" rm -rf -- "$directory"' EXIT
+
+handler_source='
+command_not_found_handle() {
+  printf "handler=<%s>" "$1"
+  shift
+  printf " <%s>" "$@"
+  printf "\n"
+  handler_changed=yes
+  return 23
+}
+handler_changed=no
+kosh_missing_handler_command "two words" "" "\$(literal)" "a;b" "quote'"'"'value"
+printf "handler-status=%s state=%s\n" "$?" "$handler_changed"
+command kosh_missing_handler_command wrapped
+printf "command-status=%s\n" "$?"
+kosh_missing_handler_command piped | cat
+printf "pipeline-status=%s\n" "${PIPESTATUS[0]}"
+kosh_missing_handler_command redirected > "$1/handler-output"
+printf "redirect-status=%s\n" "$?"
+cat "$1/handler-output"
+command_not_found_handle() { read -r value; printf "handler-input=<%s>\n" "$value"; }
+kosh_missing_handler_command <<EOF
+handler heredoc
+EOF
+command_not_found_handle() { return 23; }
+kosh_missing_handler_command &
+wait "$!"
+printf "background-status=%s\n" "$?"
+command -v kosh_missing_handler_command
+printf "query-status=%s\n" "$?"
+unset -f command_not_found_handle
+kosh_missing_handler_command
+printf "unset-status=%s\n" "$?"
+'
+KOSH_WELCOME= KOSH_FAREWELL= "$BIN" --no-init-files --mood bash -i \
+  -c "$handler_source" handler-test "$directory" 2> "$directory/error"
+printf 'handler-default-diagnostic=%s\n' \
+  "$(grep -c "was not found" "$directory/error")"
+
+for invocation in noninteractive exec restricted; do
+  case "$invocation" in
+    noninteractive) options=; command=kosh_missing_handler_command ;;
+    exec) options=-i; command='exec kosh_missing_handler_command' ;;
+    restricted) options='-i -r'; command=./kosh_missing_handler_command ;;
+  esac
+  output=$(KOSH_WELCOME= KOSH_FAREWELL= "$BIN" --no-init-files --mood bash \
+    $options -c "command_not_found_handle() { echo handler-called; return 23; }; $command" \
+    2> "$directory/error")
+  status=$?
+  case "$output" in
+    *handler-called*) result=broken ;;
+    *) result=ok ;;
+  esac
+  printf 'handler-%s=%s status=%s\n' "$invocation" "$result" "$status"
+done
