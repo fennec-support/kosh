@@ -15,6 +15,7 @@
 #include "Toiletline.hpp"
 #include "base/Debug.hpp"
 #include "base/StaticStringMap.hpp"
+#include "util/Utils.hpp"
 
 namespace koshka {
 
@@ -2211,6 +2212,7 @@ validate_formatted_source(StringView         source,
                                 ? Maybe<BumpArena::Mark>{function_arena->mark()}
                                 : None;
   defer {
+    utils::invalidate_line_number_cache_for(source);
     arena.release(mark);
     if (function_mark.has_value()) function_arena->release(*function_mark);
   };
@@ -2246,6 +2248,8 @@ format_shell_source(StringView         source,
 {
   let normalized  = String{heap_allocator()};
   let source_view = source;
+
+  defer { utils::invalidate_line_number_cache_for(source_view); };
 
   if (source.find_character('\r').has_value()) {
     normalized = String{normalized.allocator(), source};

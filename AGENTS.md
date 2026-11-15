@@ -123,7 +123,9 @@ on each expansion.
 Runtime diagnostics retain source frames, function calls, embedded sources, and
 trap definitions. Source locations use 32-bit positions and interned source
 indices. Syntax nodes store end positions separately. Diagnostics and LINENO
-share a line index.
+share a line index. Source owners invalidate cached line indexes before they
+release or replace the indexed bytes. Temporary diagnostic copies and formatter
+validation inputs follow the same rule.
 
 Platform sources live in src/platform, and shared utility sources live in
 src/util. src/platform/Platform.cpp selects POSIX or Windows code. Platform

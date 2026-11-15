@@ -706,6 +706,11 @@ read_koshconf_text(StringView        text,
   let source_index   = Maybe<u32>{};
   let printable_text = Maybe<String>{};
 
+  defer {
+    if (printable_text.has_value())
+      utils::invalidate_line_number_cache_for(printable_text->view());
+  };
+
   let const do_render_warning =
       [&](StringView span, StringView message,
           StringView note = {}) throws -> String {
