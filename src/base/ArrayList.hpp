@@ -1201,39 +1201,6 @@ public:
     release();
   }
 
-  /* a copy whose list comes from the same allocator. */
-  mustuse cold fn
-  clone() const throws -> SparseList
-  {
-    return clone_to(m_list != nullptr ? m_list->allocator() : fake_allocator());
-  }
-
-  /* a copy whose list comes from allocator. */
-  mustuse cold fn
-  clone_to(Allocator allocator) const throws -> SparseList
-  {
-    let copy = SparseList{};
-
-    if (m_list != nullptr) copy.fill(m_list->clone_to(allocator));
-
-    return copy;
-  }
-
-  /* moves the list and its elements into storage from allocator. */
-  cold fn
-  move_to_allocator(Allocator allocator) throws -> void
-  {
-    if (m_list == nullptr || m_list->allocator() == allocator) {
-      return;
-    }
-
-    let moved = steal(*m_list);
-
-    moved.move_to_allocator(allocator);
-    release();
-    fill(steal(moved));
-  }
-
   hot mustuse pure fn
   is_empty() const wontthrow -> bool
   {

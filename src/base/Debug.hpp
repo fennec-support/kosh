@@ -2,7 +2,7 @@
  *    This file is a part of the Koshka shell, (c) toiletbril, 2026
  *    See the top-level LICENSE file for the licensing information.
  *
- * This file implements debug assertions, tracing, dumps, traps, and
+ * This file implements debug assertions, tracing, traps, and
  * unreachable checks, with release definitions that remove debug-only work.
  */
 
@@ -90,142 +90,9 @@ debug_print_log(FILE       *stream,
   ::koshka::debug_print_trace(__FILE__, __LINE__, false, __VA_ARGS__)
 #define TRACELN(...)                                                           \
   ::koshka::debug_print_trace(__FILE__, __LINE__, true, __VA_ARGS__)
-#if defined __clang__
-namespace koshka {
-
-template <class P>
-constexpr bool
-t__is_dumpable_record_pointer()
-{
-  using Pointer = __remove_cvref(P);
-
-  if constexpr (!__is_pointer(Pointer)) {
-    return false;
-  } else {
-    using Record = __remove_cv(__remove_pointer(Pointer));
-
-    return requires { sizeof(Record); } &&
-           (__is_class(Record) || __is_union(Record));
-  }
-}
-
-template <class StringT>
-struct t__dump_state
-{
-  StringT output;
-  usize   base_indent{0};
-  bool    is_at_line_start{true};
-};
-
-template <class StringT>
-fn
-t__append_dump_text(t__dump_state<StringT> &state,
-                    const char             *text) throws -> void
-{
-  for (; *text != '\0'; text++) {
-    if (state.is_at_line_start && *text != '\n') {
-      for (usize indent = 0; indent < state.base_indent; indent++)
-        state.output.push(' ');
-
-      state.is_at_line_start = false;
-    }
-
-    state.output.push(*text);
-    if (*text == '\n') state.is_at_line_start = true;
-  }
-}
-
-template <class Last>
-fn
-t__last_dump_argument(Last &last) wontthrow -> Last &
-{
-  return last;
-}
-
-template <class First, class... Rest>
-  requires(sizeof...(Rest) > 0)
-fn
-t__last_dump_argument(First &, Rest &...rest) wontthrow -> decltype(auto)
-{
-  return t__last_dump_argument(rest...);
-}
-
-template <class StringT, class... Args>
-fn
-t__strprintf(t__dump_state<StringT> &state,
-             const char             *format,
-             Args &&...args) throws -> void
-{
-  const int written = ::snprintf(nullptr, 0, format, args...);
-
-  if (written < 0) return;
-
-  const usize formatted_length = static_cast<usize>(written);
-  let         allocator        = state.output.allocator();
-  char *rendered = allocator.template alloc_array<char>(formatted_length + 1);
-
-  defer { allocator.free_array(rendered, formatted_length + 1); };
-
-  unused(::snprintf(rendered, formatted_length + 1, format, args...));
-
-  usize clang_indent = 0;
-
-  while (rendered[clang_indent] == ' ')
-    clang_indent++;
-
-  t__append_dump_text(state, rendered);
-
-  if constexpr (sizeof...(Args) > 0) {
-    let pointer = t__last_dump_argument(args...);
-    using Last  = decltype(pointer);
-
-    if constexpr (t__is_dumpable_record_pointer<Last>()) {
-      const bool is_pointer_value = ::strstr(format, "%p") != nullptr;
-      const bool is_unknown_field = ::strstr(format, "*%p") != nullptr;
-
-      if (is_pointer_value && !is_unknown_field && pointer != nullptr) {
-        if (!state.is_at_line_start) t__append_dump_text(state, "\n");
-
-        /* at this point: pointer is non-null and points to a class or union,
-           and format contains %p without *%p. */
-        const usize previous_indent = state.base_indent;
-
-        state.base_indent += clang_indent + 2;
-        __builtin_dump_struct(pointer, t__strprintf<StringT>, state);
-        state.base_indent = previous_indent;
-      }
-    }
-  }
-}
-
-template <class StringT, class T, class AllocatorT>
-fn
-t__string_from_struct(const T &value, AllocatorT allocator) throws
-    -> StringT
-{
-  let state = t__dump_state<StringT>{StringT{allocator}, 0, true};
-
-  __builtin_dump_struct(&value, t__strprintf<StringT>, state);
-
-  return static_cast<StringT &&>(state.output);
-}
-
-} /* namespace koshka */
-
-#define STRUCT_STRING(x)                                                       \
-  ::koshka::t__string_from_struct<::koshka::String>(                           \
-      x, ::koshka::heap_allocator())
-#endif
 #else
-#define STRUCT_STRING(...)                                                     \
-  ::koshka::String{::koshka::heap_allocator(), "<optimized out>"}
 #define TRACE(...)
 #define TRACELN(...)
-#endif
-
-#if !defined STRUCT_STRING
-#define STRUCT_STRING(...)                                                     \
-  ::koshka::String{::koshka::heap_allocator(), "<not supported>"}
 #endif
 
 #define t__va_are_empty(...) (sizeof((char[]) {#__VA_ARGS__}) == 1)
