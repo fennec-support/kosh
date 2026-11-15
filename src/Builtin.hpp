@@ -106,14 +106,6 @@ public:
     KOSH_BUILTIN_KINDS(T__BUILTIN_KIND)
   };
 #undef T__BUILTIN_KIND
-
-  virtual i32
-  execute(ExecContext &ec, EvalContext &cxt) const throws abstract;
-
-  virtual ~Builtin() = default;
-
-protected:
-  Builtin() = default;
 };
 
 #define T__BUILTIN_ENTRY(kind, name, section, should_dispatch_help)            \
@@ -165,11 +157,11 @@ inline constexpr StaticStringMap BUILTIN_ENTRY_POSITIONS{
 #define BUILTIN_SWITCH_CASES() KOSH_BUILTIN_KINDS(T__BUILTIN_CASE)
 
 #define BUILTIN_STRUCT(kind, name, section, should_dispatch_help)              \
-  class kind : public Builtin                                                  \
+  class kind                                                                   \
   {                                                                            \
   public:                                                                      \
     i32                                                                        \
-    execute(ExecContext &ec, EvalContext &cxt) const throws override;          \
+    execute(ExecContext &ec, EvalContext &cxt) const throws;                   \
   };
 
 KOSH_BUILTIN_KINDS(BUILTIN_STRUCT)

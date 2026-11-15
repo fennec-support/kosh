@@ -185,14 +185,6 @@ public:
     KOSHKIT_UTILITY_LIST(T__KOSHKIT_KIND)
   };
 #undef T__KOSHKIT_KIND
-
-  virtual i32
-  execute(const ExecContext               &ec,
-          EvalContext                     &cxt,
-          const ArrayList<String>         &args,
-          const ArrayList<SourceLocation> &arg_locations) const throws abstract;
-
-  virtual ~Utility() = default;
 };
 
 #define T__KOSHKIT_ENTRY(util, name) {SSK(name), Utility::Kind::util},
@@ -412,7 +404,7 @@ path_error_message(StringView verb,
 #define UTILITY_SWITCH_CASES() KOSHKIT_UTILITY_LIST(U_CASE)
 
 #define UTILITY_STRUCT(u, name)                                                \
-  class u : public Utility                                                     \
+  class u                                                                      \
   {                                                                            \
   public:                                                                      \
     fn                                                                         \
@@ -420,7 +412,7 @@ path_error_message(StringView verb,
             EvalContext                     &cxt,                              \
             const ArrayList<String>         &args,                             \
             const ArrayList<SourceLocation> &arg_locations) const throws       \
-        -> i32 override;                                                       \
+        -> i32;                                                                \
   };
 
 KOSHKIT_UTILITY_LIST(UTILITY_STRUCT)
