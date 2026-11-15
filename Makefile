@@ -98,6 +98,7 @@ fuzz:
 	echo Fuzzing...
 	$(MAKE) $(AUTO_JOBS) -C src MODE=fuzz fuzz
 	for harness in ./kosh-fuzz-*; do \
+		test -f "$$harness" && test -x "$$harness" || continue; \
 		name=$${harness#./kosh-fuzz-}; \
 		mkdir -p "fuzz/corpus/$$name" "fuzz/crashes/$$name"; \
 		echo "Running $$name for $(FUZZ_SECONDS) seconds..."; \
