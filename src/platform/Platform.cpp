@@ -64,6 +64,25 @@ path_configuration(StringView path, path_configuration_key key) wontthrow
   return result.value;
 }
 
+fn
+path_is_older_than(StringView first, StringView second) wontthrow -> bool
+{
+  return path_is_newer_than(second, first);
+}
+
+cold fn
+list_directory_typed(StringView dir) throws
+    -> Maybe<ArrayList<Path::DirectoryChild>>
+{
+  return list_directory_typed(dir, heap_allocator());
+}
+
+pure fn
+TerminalEchoGuard::did_succeed() const wontthrow -> bool
+{
+  return m_did_succeed;
+}
+
 static fn
 is_trappable_signal(i32 signal_number) wontthrow -> bool;
 

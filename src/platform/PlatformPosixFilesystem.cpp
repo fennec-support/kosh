@@ -259,12 +259,6 @@ path_is_newer_than(StringView first, StringView second) wontthrow -> bool
 }
 
 fn
-path_is_older_than(StringView first, StringView second) wontthrow -> bool
-{
-  return path_is_newer_than(second, first);
-}
-
-fn
 path_is_readable(StringView path) wontthrow -> bool
 {
   const String path_string{heap_allocator(), path};
@@ -338,13 +332,6 @@ restore_current_directory(const DirectoryReference &reference) wontthrow -> bool
 static fn
 fill_file_status(const struct stat &info, file_status &status)
     wontthrow -> void;
-
-cold fn
-list_directory_typed(StringView dir) throws
-    -> Maybe<ArrayList<Path::DirectoryChild>>
-{
-  return list_directory_typed(dir, heap_allocator());
-}
 
 static fn
 list_directory_typed_handle(DIR *handle, Allocator allocator) throws

@@ -1660,15 +1660,15 @@ network_sockets(network_socket_process_mode process_mode) throws
           info.soi_snd.sbi_cc,
           0,
           process_mode == network_socket_process_mode::WithProcesses
-                        ? static_cast<u32>(process.pid)
-                        : 0,
+              ? static_cast<u32>(process.pid)
+              : 0,
           ntohs(static_cast<u16>(internet.insi_lport)),
           ntohs(static_cast<u16>(internet.insi_fport)),
           protocol,
           family,
           protocol == network_socket_protocol::Tcp
-                        ? socket_state_of(info.soi_proto.pri_tcp.tcpsi_state)
-                        : network_socket_state::Unconnected,
+              ? socket_state_of(info.soi_proto.pri_tcp.tcpsi_state)
+              : network_socket_state::Unconnected,
           network_unix_socket_type::Stream,
       };
 
@@ -1705,7 +1705,7 @@ network_sockets(network_socket_process_mode process_mode) throws
     let       entries = linux_network_sockets_from_file(
         path.view(), source.protocol,
         process_mode == network_socket_process_mode::WithProcesses ? &owners
-                                                                         : nullptr,
+                                                                   : nullptr,
         allocator, source.family, process_mode);
 
     for (let &entry : entries)
@@ -1887,12 +1887,6 @@ TerminalEchoGuard::TerminalEchoGuard(descriptor         input,
 TerminalEchoGuard::~TerminalEchoGuard()
 {
   if (m_should_restore) unused(tcsetattr(m_input, TCSANOW, &m_original_mode));
-}
-
-pure fn
-TerminalEchoGuard::did_succeed() const wontthrow -> bool
-{
-  return m_did_succeed;
 }
 
 /* the raw input mode clears ECHO and ICANON and keeps ISIG. */

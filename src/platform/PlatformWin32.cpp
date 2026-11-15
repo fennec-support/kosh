@@ -38,7 +38,7 @@ static bool HAS_SCANNED_INHERITED_SHELL_FDS = false;
 static constexpr i32 TRACKED_SHELL_FD_COUNT     = 8192;
 static constexpr i32 TRACKED_SHELL_FDS_PER_WORD = 64;
 static u64           CLOSE_ON_EXEC_SHELL_FDS[TRACKED_SHELL_FD_COUNT /
-                                   TRACKED_SHELL_FDS_PER_WORD];
+                                             TRACKED_SHELL_FDS_PER_WORD];
 
 enum class close_on_exec_mode : u8
 {
@@ -1680,7 +1680,7 @@ get_home_directory() -> Maybe<Path>
 fn
 get_system_koshconf_path() throws -> Maybe<Path>
 {
-  PWSTR     folder = nullptr;
+  PWSTR folder = nullptr;
   let const result = SHGetKnownFolderPath(FOLDERID_ProgramData, KF_FLAG_DEFAULT,
                                           nullptr, &folder);
 
@@ -1804,12 +1804,6 @@ TerminalEchoGuard::TerminalEchoGuard(descriptor         input,
 TerminalEchoGuard::~TerminalEchoGuard()
 {
   if (m_should_restore) unused(SetConsoleMode(m_input, m_original_mode));
-}
-
-pure fn
-TerminalEchoGuard::did_succeed() const wontthrow -> bool
-{
-  return m_did_succeed;
 }
 
 /* the console mode of original without echo and line input, reporting the

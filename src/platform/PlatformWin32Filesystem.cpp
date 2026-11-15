@@ -71,9 +71,9 @@ static fn
 fill_file_identity(const BY_HANDLE_FILE_INFORMATION &identity,
                    file_status                      &status) wontthrow -> void
 {
-  status.device_id = identity.dwVolumeSerialNumber;
-  status.file_id   = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
-                   identity.nFileIndexLow;
+  status.device_id         = identity.dwVolumeSerialNumber;
+  status.file_id           = (static_cast<u64>(identity.nFileIndexHigh) << 32) |
+                             identity.nFileIndexLow;
   status.has_file_identity = true;
 }
 
@@ -880,12 +880,6 @@ path_is_newer_than(StringView first, StringView second) wontthrow -> bool
 }
 
 fn
-path_is_older_than(StringView first, StringView second) wontthrow -> bool
-{
-  return path_is_newer_than(second, first);
-}
-
-fn
 path_is_readable(StringView path) wontthrow -> bool
 {
   if (is_named_pipe_path(path)) return named_pipe_exists(path);
@@ -997,13 +991,6 @@ restore_current_directory(const DirectoryReference &reference) wontthrow -> bool
           : path.begin();
 
   return SetCurrentDirectoryW(restored_path) != 0;
-}
-
-cold fn
-list_directory_typed(StringView dir) throws
-    -> Maybe<ArrayList<Path::DirectoryChild>>
-{
-  return list_directory_typed(dir, heap_allocator());
 }
 
 /* memory: one String per entry and the entries list, both from allocator.
@@ -1206,7 +1193,7 @@ acquire_process_lock(StringView       path,
 
   let const path_attributes = GetFileAttributesW(wide_path->begin());
   let const is_directory    = path_attributes != INVALID_FILE_ATTRIBUTES &&
-                           (path_attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
+                              (path_attributes & FILE_ATTRIBUTE_DIRECTORY) != 0;
 
   constexpr wchar_t LOCK_NAME[]      = L".kosh-flock.lock";
   constexpr usize   LOCK_NAME_LENGTH = countof(LOCK_NAME) - 1;
@@ -2587,9 +2574,9 @@ sync_filesystems() wontthrow -> bool
     if (GetDriveTypeW(drives + position) == DRIVE_FIXED && drive_length >= 2) {
       wchar_t   volume_path[8] = {L'\\', L'\\', L'.', L'\\', drives[position],
                                   L':',  L'\0'};
-      let const volume         = CreateFileW(volume_path, GENERIC_WRITE,
-                                             FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                             nullptr, OPEN_EXISTING, 0, nullptr);
+      let const volume = CreateFileW(volume_path, GENERIC_WRITE,
+                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                     nullptr, OPEN_EXISTING, 0, nullptr);
 
       if (volume != INVALID_HANDLE_VALUE) {
         if (FlushFileBuffers(volume) != 0) was_any_flushed = true;
@@ -2642,7 +2629,7 @@ current_executable_path() wontthrow -> Maybe<String>
     if (module_path_length == 0) return None;
     if (module_path_length < capacity)
       return wide_to_utf8(module_path.begin(), module_path_length,
-                                       heap_allocator());
+                          heap_allocator());
     if (capacity >= 32768) return None;
     capacity = capacity > 16384 ? 32768 : capacity * 2;
   }
