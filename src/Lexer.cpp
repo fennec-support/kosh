@@ -623,8 +623,8 @@ Lexer::lex_shell_token() throws -> Token *
   let const ch = chop_character();
 
   if (!has_character()) {
-    token = m_parse_session.get_arena().create<tokens::EndOfFile>(
-        here(m_cursor_position, 1));
+    token = m_parse_session.get_arena().create<tokens::LiteralToken>(
+        here(m_cursor_position, 1), Token::Kind::EndOfFile);
     m_was_last_shell_token_newline = false;
     m_did_lex_end_of_file          = true;
 
@@ -1645,10 +1645,8 @@ Lexer::lex_identifier() throws -> Token *
     if (keyword.has_value() &&
         !(*keyword == Token::Kind::Time && is_posix_mode()))
     {
-      switch (*keyword) {
-        KW_SWITCH_CASES();
-      default: unreachable("unhandled keyword of type %d", ENUM(*keyword));
-      }
+      token = arena.create<tokens::LiteralToken>(
+          here(actual_cursor_position, byte_count), *keyword);
     }
   }
 
@@ -1675,18 +1673,24 @@ Lexer::lex_sentinel() throws -> Token *
   Token *token{};
 
 #define TOKEN_CASE_ONE(byte, t)                                                \
-  case byte: token = arena.create<tokens::t>(here(m_cursor_position, 1)); break;
+  case byte:                                                                   \
+    token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 1),     \
+                                               Token::Kind::t);                \
+    break;
 
 #define TOKEN_CASE_THREE(byte, t, ch2, t2, ch3, t3)                            \
   case byte: {                                                                 \
     if (chop_character(1) == ch2) {                                            \
-      token = arena.create<tokens::t2>(here(m_cursor_position, 2));            \
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 2),   \
+                                                 Token::Kind::t2);             \
       extra_length++;                                                          \
     } else if (chop_character(1) == ch3) {                                     \
-      token = arena.create<tokens::t3>(here(m_cursor_position, 2));            \
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 2),   \
+                                                 Token::Kind::t3);             \
       extra_length++;                                                          \
     } else {                                                                   \
-      token = arena.create<tokens::t>(here(m_cursor_position, 1));             \
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 1),   \
+                                                 Token::Kind::t);              \
     }                                                                          \
   } break;
 
@@ -1696,51 +1700,57 @@ Lexer::lex_sentinel() throws -> Token *
   case ';': {
     if (chop_character(1) == ';') {
       if (chop_character(2) == '&') {
-        token = arena.create<tokens::DoubleSemicolonAmpersand>(
-            here(m_cursor_position, 3));
+        token = arena.create<tokens::LiteralToken>(
+            here(m_cursor_position, 3), Token::Kind::DoubleSemicolonAmpersand);
         extra_length += 2;
       } else {
-        token =
-            arena.create<tokens::DoubleSemicolon>(here(m_cursor_position, 2));
+        token = arena.create<tokens::LiteralToken>(
+            here(m_cursor_position, 2), Token::Kind::DoubleSemicolon);
         extra_length++;
       }
     } else if (chop_character(1) == '&') {
-      token =
-          arena.create<tokens::SemicolonAmpersand>(here(m_cursor_position, 2));
+      token = arena.create<tokens::LiteralToken>(
+          here(m_cursor_position, 2), Token::Kind::SemicolonAmpersand);
       extra_length++;
     } else {
-      token = arena.create<tokens::Semicolon>(here(m_cursor_position, 1));
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 1),
+                                                 Token::Kind::Semicolon);
     }
   } break;
     TOKEN_CASE_ONE('\n', Newline);
   case '&': {
     if (bash_additions_enabled() && chop_character(1) == '>') {
       if (chop_character(2) == '>') {
-        token = arena.create<tokens::AmpersandDoubleGreater>(
-            here(m_cursor_position, 3));
+        token = arena.create<tokens::LiteralToken>(
+            here(m_cursor_position, 3), Token::Kind::AmpersandDoubleGreater);
         extra_length += 2;
       } else {
-        token =
-            arena.create<tokens::AmpersandGreater>(here(m_cursor_position, 2));
+        token = arena.create<tokens::LiteralToken>(
+            here(m_cursor_position, 2), Token::Kind::AmpersandGreater);
         extra_length++;
       }
     } else if (chop_character(1) == '&') {
-      token = arena.create<tokens::DoubleAmpersand>(here(m_cursor_position, 2));
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 2),
+                                                 Token::Kind::DoubleAmpersand);
       extra_length++;
     } else {
-      token = arena.create<tokens::Ampersand>(here(m_cursor_position, 1));
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 1),
+                                                 Token::Kind::Ampersand);
     }
   } break;
 
   case '|': {
     if (chop_character(1) == '|') {
-      token = arena.create<tokens::DoublePipe>(here(m_cursor_position, 2));
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 2),
+                                                 Token::Kind::DoublePipe);
       extra_length++;
     } else if (bash_additions_enabled() && chop_character(1) == '&') {
-      token = arena.create<tokens::PipeAmpersand>(here(m_cursor_position, 2));
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 2),
+                                                 Token::Kind::PipeAmpersand);
       extra_length++;
     } else {
-      token = arena.create<tokens::Pipe>(here(m_cursor_position, 1));
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 1),
+                                                 Token::Kind::Pipe);
     }
   } break;
 
@@ -1749,17 +1759,21 @@ Lexer::lex_sentinel() throws -> Token *
   case '<': {
     if (chop_character(1) == '<') {
       if (chop_character(2) == '<' && bash_additions_enabled()) {
-        token = arena.create<tokens::TripleLess>(here(m_cursor_position, 3));
+        token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 3),
+                                                   Token::Kind::TripleLess);
         extra_length += 2;
       } else {
-        token = arena.create<tokens::DoubleLess>(here(m_cursor_position, 2));
+        token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 2),
+                                                   Token::Kind::DoubleLess);
         extra_length++;
       }
     } else if (chop_character(1) == '=') {
-      token = arena.create<tokens::LessEquals>(here(m_cursor_position, 2));
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 2),
+                                                 Token::Kind::LessEquals);
       extra_length++;
     } else {
-      token = arena.create<tokens::Less>(here(m_cursor_position, 1));
+      token = arena.create<tokens::LiteralToken>(here(m_cursor_position, 1),
+                                                 Token::Kind::Less);
     }
   } break;
 

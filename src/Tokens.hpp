@@ -1185,74 +1185,24 @@ token_kind_is_keyword(Token::Kind kind) wontthrow -> bool
 fn
 keyword_names() throws -> const ArrayList<String> &;
 
-/* clang-format off */
-#define KW_CASE(k)                                                             \
-  case Token::Kind::k:                                                         \
-    token = arena.create<tokens::k>(here(actual_cursor_position, byte_count)); \
-    break
-/* clang-format on */
-
-#define KW_SWITCH_CASES()                                                      \
-  KW_CASE(If);                                                                 \
-  KW_CASE(Then);                                                               \
-  KW_CASE(Else);                                                               \
-  KW_CASE(Elif);                                                               \
-  KW_CASE(Fi);                                                                 \
-  KW_CASE(Case);                                                               \
-  KW_CASE(While);                                                              \
-  KW_CASE(Esac);                                                               \
-  KW_CASE(For);                                                                \
-  KW_CASE(Done);                                                               \
-  KW_CASE(Until);                                                              \
-  KW_CASE(Time);                                                               \
-  KW_CASE(Do);                                                                 \
-  KW_CASE(Function);
-
 namespace tokens {
 
-#define TOKEN_STRUCT(t)                                                        \
-  class t : public Token                                                       \
-  {                                                                            \
-  public:                                                                      \
-    static constexpr bool is_arena_destructor_noop = true;                     \
-                                                                               \
-    t(SourceLocation location);                                                \
-                                                                               \
-    String                                                                     \
-    raw_string() const throws override;                                        \
-    Maybe<StringView>                                                          \
-    raw_view() const wontthrow override;                                       \
-  }
+class LiteralToken final : public Token
+{
+public:
+  static constexpr bool is_arena_destructor_noop = true;
 
-TOKEN_STRUCT(If);
-TOKEN_STRUCT(Fi);
-TOKEN_STRUCT(Else);
-TOKEN_STRUCT(Elif);
-TOKEN_STRUCT(Then);
-TOKEN_STRUCT(Case);
-TOKEN_STRUCT(Esac);
-TOKEN_STRUCT(For);
-TOKEN_STRUCT(While);
-TOKEN_STRUCT(Until);
-TOKEN_STRUCT(Do);
-TOKEN_STRUCT(Done);
-TOKEN_STRUCT(Time);
-TOKEN_STRUCT(Function);
+  LiteralToken(SourceLocation location, Kind kind)
+      : Token(steal(location), kind)
+  {}
 
-TOKEN_STRUCT(EndOfFile);
+  fn
+  raw_string() const throws -> String override;
+  fn
+  raw_view() const wontthrow -> Maybe<StringView> override;
+};
 
-TOKEN_STRUCT(Newline);
-TOKEN_STRUCT(Semicolon);
-TOKEN_STRUCT(DoubleSemicolon);
-TOKEN_STRUCT(SemicolonAmpersand);
-TOKEN_STRUCT(DoubleSemicolonAmpersand);
-TOKEN_STRUCT(AmpersandGreater);
-TOKEN_STRUCT(AmpersandDoubleGreater);
-TOKEN_STRUCT(PipeAmpersand);
-TOKEN_STRUCT(TripleLess);
-
-TOKEN_STRUCT(LeftParen);
-TOKEN_STRUCT(RightParen);
+static_assert(sizeof(LiteralToken) == sizeof(Token));
 
 class Assignment : public Token
 {
@@ -1329,17 +1279,6 @@ fn
 create_word_token(BumpArena     &arena,
                   SourceLocation location,
                   Word           word) throws -> WordToken *;
-
-TOKEN_STRUCT(Ampersand);
-TOKEN_STRUCT(DoubleAmpersand);
-TOKEN_STRUCT(DoublePipe);
-TOKEN_STRUCT(Greater);
-TOKEN_STRUCT(DoubleGreater);
-TOKEN_STRUCT(GreaterEquals);
-TOKEN_STRUCT(Less);
-TOKEN_STRUCT(DoubleLess);
-TOKEN_STRUCT(LessEquals);
-TOKEN_STRUCT(Pipe);
 
 } /* namespace tokens */
 

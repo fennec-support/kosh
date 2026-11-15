@@ -170,10 +170,10 @@ WordSegment::reset_copied_eval_cache(segment_eval_cache &cache,
   cache.exact_constant_text     = {};
   cache.has_exact_constant_text = false;
 
-  let const tree      = cache.arithmetic_tree;
-  let const is_shared = tree != nullptr && !tree->is_heap &&
-                        allocator.get_kind() == Allocator::Kind::Bump &&
-                        allocator.owns(tree);
+  let const tree        = cache.arithmetic_tree;
+  let const is_shared   = tree != nullptr && !tree->is_heap &&
+                          allocator.get_kind() == Allocator::Kind::Bump &&
+                          allocator.owns(tree);
   cache.arithmetic_tree = nullptr;
   if (is_shared) {
     cache.arithmetic_tree = tree;
@@ -1053,8 +1053,8 @@ SegmentText::append(StringView other) throws -> void
     let const source_address  = reinterpret_cast<uintptr>(other.data);
     let const storage_address = reinterpret_cast<uintptr>(m_data);
     let const is_aliased      = m_data != nullptr &&
-                           source_address >= storage_address &&
-                           source_address - storage_address < m_length;
+                                source_address >= storage_address &&
+                                source_address - storage_address < m_length;
     let const source_offset =
         is_aliased ? source_address - storage_address : usize{0};
 
@@ -1073,37 +1073,55 @@ SegmentText::append(StringView other) throws -> void
 
 namespace tokens {
 
-#define TOKEN_DECLS(t, s)                                                      \
-  t::t(SourceLocation location) : Token(steal(location), Token::Kind::t) {}    \
-  String t::raw_string() const throws { return String{heap_allocator(), s}; }  \
-  Maybe<StringView> t::raw_view() const wontthrow { return StringView{s}; }
+fn
+LiteralToken::raw_string() const throws -> String
+{
+  return String{heap_allocator(), *raw_view()};
+}
 
-TOKEN_DECLS(If, "if");
-TOKEN_DECLS(Then, "then");
-TOKEN_DECLS(Else, "else");
-TOKEN_DECLS(Elif, "elif");
-TOKEN_DECLS(Fi, "fi");
-TOKEN_DECLS(For, "for");
-TOKEN_DECLS(While, "while");
-TOKEN_DECLS(Until, "until");
-TOKEN_DECLS(Do, "do");
-TOKEN_DECLS(Done, "done");
-TOKEN_DECLS(Case, "case");
-TOKEN_DECLS(Esac, "esac");
-TOKEN_DECLS(Time, "time");
-TOKEN_DECLS(Function, "function");
-TOKEN_DECLS(Newline, "newline");
-TOKEN_DECLS(Semicolon, ";");
-TOKEN_DECLS(EndOfFile, "end of input");
-TOKEN_DECLS(DoubleSemicolon, ";;");
-TOKEN_DECLS(SemicolonAmpersand, ";&");
-TOKEN_DECLS(DoubleSemicolonAmpersand, ";;&");
-TOKEN_DECLS(AmpersandGreater, "&>");
-TOKEN_DECLS(AmpersandDoubleGreater, "&>>");
-TOKEN_DECLS(PipeAmpersand, "|&");
-TOKEN_DECLS(TripleLess, "<<<");
-TOKEN_DECLS(LeftParen, "(");
-TOKEN_DECLS(RightParen, ")");
+fn
+LiteralToken::raw_view() const wontthrow -> Maybe<StringView>
+{
+  switch (kind()) {
+  case Kind::If:                       return StringView{"if"};
+  case Kind::Then:                     return StringView{"then"};
+  case Kind::Else:                     return StringView{"else"};
+  case Kind::Elif:                     return StringView{"elif"};
+  case Kind::Fi:                       return StringView{"fi"};
+  case Kind::For:                      return StringView{"for"};
+  case Kind::While:                    return StringView{"while"};
+  case Kind::Until:                    return StringView{"until"};
+  case Kind::Do:                       return StringView{"do"};
+  case Kind::Done:                     return StringView{"done"};
+  case Kind::Case:                     return StringView{"case"};
+  case Kind::Esac:                     return StringView{"esac"};
+  case Kind::Time:                     return StringView{"time"};
+  case Kind::Function:                 return StringView{"function"};
+  case Kind::Newline:                  return StringView{"newline"};
+  case Kind::EndOfFile:                return StringView{"end of input"};
+  case Kind::Semicolon:                return StringView{";"};
+  case Kind::DoubleSemicolon:          return StringView{";;"};
+  case Kind::SemicolonAmpersand:       return StringView{";&"};
+  case Kind::DoubleSemicolonAmpersand: return StringView{";;&"};
+  case Kind::AmpersandGreater:         return StringView{"&>"};
+  case Kind::AmpersandDoubleGreater:   return StringView{"&>>"};
+  case Kind::PipeAmpersand:            return StringView{"|&"};
+  case Kind::TripleLess:               return StringView{"<<<"};
+  case Kind::LeftParen:                return StringView{"("};
+  case Kind::RightParen:               return StringView{")"};
+  case Kind::DoublePipe:               return StringView{"||"};
+  case Kind::Ampersand:                return StringView{"&"};
+  case Kind::DoubleAmpersand:          return StringView{"&&"};
+  case Kind::Greater:                  return StringView{">"};
+  case Kind::DoubleGreater:            return StringView{">>"};
+  case Kind::GreaterEquals:            return StringView{">="};
+  case Kind::Less:                     return StringView{"<"};
+  case Kind::DoubleLess:               return StringView{"<<"};
+  case Kind::LessEquals:               return StringView{"<="};
+  case Kind::Pipe:                     return StringView{"|"};
+  default:                             unreachable("nonliteral token kind");
+  }
+}
 
 Assignment::Assignment(SourceLocation         location,
                        StringView             key,
@@ -1268,17 +1286,6 @@ create_word_token(BumpArena     &arena,
 
   return arena.create<ExpandedWordToken>(steal(location), steal(word));
 }
-
-TOKEN_DECLS(DoublePipe, "||");
-TOKEN_DECLS(Ampersand, "&");
-TOKEN_DECLS(DoubleAmpersand, "&&");
-TOKEN_DECLS(Greater, ">");
-TOKEN_DECLS(DoubleGreater, ">>");
-TOKEN_DECLS(GreaterEquals, ">=");
-TOKEN_DECLS(Less, "<");
-TOKEN_DECLS(DoubleLess, "<<");
-TOKEN_DECLS(LessEquals, "<=");
-TOKEN_DECLS(Pipe, "|");
 
 } /* namespace tokens */
 
