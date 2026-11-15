@@ -52,3 +52,11 @@ rc=0
 note: The right operand is 0.
 after
 rc=0
+fatal-runtime-command-pipe=ok
+fatal-runtime-command-file=ok
+fatal-prerun-command-pipe=ok
+fatal-prerun-command-file=ok
+fatal-runtime-file-pipe=ok
+fatal-runtime-file-file=ok
+fatal-prerun-file-pipe=ok
+fatal-prerun-file-file=ok
