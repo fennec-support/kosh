@@ -1623,12 +1623,6 @@ print_analysis_diagnostic_summary(
 }
 
 cold fn
-AnalysisContext::print_diagnostic_summary() const throws -> void
-{
-  print_analysis_diagnostic_summary(reporter.totals);
-}
-
-cold fn
 AnalysisContext::print_optimizer_summary() const throws -> void
 {
   if (!options.should_report_optimizer_diagnostics) return;
@@ -3180,7 +3174,7 @@ analyze_ast(const Expression                *root,
              (eval_context == nullptr ||
               !eval_context->execution_store().shell_is_interactive()))
   {
-    actx.print_diagnostic_summary();
+    print_analysis_diagnostic_summary(actx.reporter.totals);
   }
 
   actx.print_optimizer_summary();

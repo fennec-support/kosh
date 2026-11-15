@@ -685,7 +685,7 @@ public:
   bool                    is_koshkit_utility_reachable{true};
   analysis_function_table functions;
   StringMap<String>       constant_variables{heap_allocator(),
-                                       SMALL_MAP_FIRST_CAPACITY};
+                                             SMALL_MAP_FIRST_CAPACITY};
 
   usize function_scope_depth{0};
 
@@ -698,7 +698,7 @@ public:
   variable_occurrence_pair occurrences;
 
   StringMap<SourceLocation> global_assigned_names{heap_allocator()};
-  HashSet                   inherited_global_assigned_names{heap_allocator(),
+  HashSet inherited_global_assigned_names{heap_allocator(),
                                           SMALL_MAP_FIRST_CAPACITY};
 
   HashSet always_exiting_function_names{heap_allocator()};
@@ -909,8 +909,6 @@ public:
     reporter.flush(get_report_site());
   }
 
-  fn
-  print_diagnostic_summary() const throws -> void;
   fn
   print_optimizer_summary() const throws -> void;
 
